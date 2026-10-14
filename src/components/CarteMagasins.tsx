@@ -1,5 +1,6 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import { CircleMarker, MapContainer, Popup, TileLayer } from 'react-leaflet'
+import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
@@ -7,15 +8,36 @@ import Typography from '@mui/material/Typography'
 import { lienFiche } from '../lib/format'
 import { statutLibelle, type Magasin, type ResponsableRegional } from '../data/modele'
 
+function AjusterTaille({ hauteur }: { hauteur: number }) {
+  const map = useMap()
+  useEffect(() => { map.invalidateSize() }, [map, hauteur])
+  return null
+}
+
 // Carte : un point par magasin, coloré par Responsable Régional
-export function CarteMagasins({ magasins, rrs, hauteur = 600 }: { magasins: Magasin[]; rrs: ResponsableRegional[]; hauteur?: number | string }) {
+export function CarteMagasins({ magasins, rrs, margeBas = 24 }: { magasins: Magasin[]; rrs: ResponsableRegional[]; margeBas?: number }) {
   const places = magasins.filter((m) => m.lat !== null && m.lon !== null)
   const nonPlaces = magasins.length - places.length
   const rrPresents = rrs.filter((r) => places.some((m) => m.rr?.id === r.id))
+  // La carte occupe toute la hauteur restante de l'écran, légende comprise
+  const carteRef = useRef<HTMLDivElement>(null)
+  const legendeRef = useRef<HTMLDivElement>(null)
+  const [hauteur, setHauteur] = useState(500)
+  useEffect(() => {
+    const calculer = () => {
+      const haut = carteRef.current?.getBoundingClientRect().top ?? 0
+      const legende = (legendeRef.current?.offsetHeight ?? 0) + 12
+      setHauteur(Math.max(280, Math.floor(window.innerHeight - haut - legende - margeBas)))
+    }
+    calculer()
+    window.addEventListener('resize', calculer)
+    return () => window.removeEventListener('resize', calculer)
+  }, [margeBas, rrPresents.length, nonPlaces])
   return (
     <Box>
-      <Box sx={{ height: hauteur, borderRadius: 4, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+      <Box ref={carteRef} sx={{ height: hauteur, borderRadius: 4, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
         <MapContainer center={[46.6, 2.4]} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
+          <AjusterTaille hauteur={hauteur} />
           <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           {places.map((m) => (
             <CircleMarker
@@ -34,7 +56,7 @@ export function CarteMagasins({ magasins, rrs, hauteur = 600 }: { magasins: Maga
           ))}
         </MapContainer>
       </Box>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1.5, alignItems: 'center' }}>
+      <Box ref={legendeRef} sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1.5, alignItems: 'center' }}>
         {rrPresents.map((r) => (
           <Box key={r.id} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
             <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: r.couleur }} />

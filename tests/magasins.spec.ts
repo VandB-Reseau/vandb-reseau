@@ -76,6 +76,11 @@ test('la carte affiche les magasins et leur légende', async ({ page }, info) =>
   await expect(page.getByRole('tab', { name: 'Carte', selected: true })).toBeVisible()
   await expect(page.locator('path.leaflet-interactive')).toHaveCount(30)
   await expect(page.getByText('Alex NORD')).toBeVisible()
+  // La carte occupe la hauteur restante : pas de défilement de page, au moins 40 % de l'écran
+  const boite = await page.locator('.leaflet-container').boundingBox()
+  const ecran = page.viewportSize()!
+  expect(boite!.height).toBeGreaterThan(ecran.height * 0.4)
+  expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1)).toBe(true)
   await page.screenshot({ path: `captures/${info.project.name}-carte.png` })
 })
 
