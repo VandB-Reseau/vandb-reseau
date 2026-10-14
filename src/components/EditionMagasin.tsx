@@ -41,6 +41,7 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
   const depsInitiaux = (magasin && reseau.deploiements.valeurs[magasin.nom]) || {}
   const [notes, setNotes] = useState<Partial<Record<IdCritere, Note>>>(() => ({ ...notesInitiales }))
   const [deps, setDeps] = useState<Record<string, string>>(() => ({ ...depsInitiaux }))
+  const [dateChangement, setDateChangement] = useState(reseau.jour)
   const noter = (c: IdCritere, n: Note | null) => setNotes((x) => { const y = { ...x }; if (n === null) delete y[c]; else y[c] = n; return y })
   const deployer = (t: string, v: string | null) => setDeps((x) => { const y = { ...x }; if (v) y[t] = v; else delete y[t]; return y })
   const champ = (cle: keyof FicheMagasin, libelle: string, extra: Record<string, unknown> = {}) => (
@@ -69,11 +70,11 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
         await enregistrerMagasin({ ...f, nom, responsable, ...coordonnees() }, magasin?.nom ?? null)
         if (magasin) {
           if (JSON.stringify(notes) !== JSON.stringify(notesInitiales)) {
-            const e: Evaluation = { notes, date: reseau.jour, par: reseau.directeur.nom }
-            await enregistrerEvaluations({ [nom]: { e, caseId: caseDe(e)?.id ?? null } })
+            const e: Evaluation = { notes, date: dateChangement, par: reseau.directeur.nom }
+            await enregistrerEvaluations([{ magasin: nom, e }])
           }
           const changes = reseau.deploiements.thematiques.filter((t) => (deps[t.id] ?? '') !== (depsInitiaux[t.id] ?? ''))
-          if (changes.length) await enregistrerDeploiements(changes.map((t) => ({ magasin: nom, thematique: t.id, etat: deps[t.id] ?? '' })), reseau.jour)
+          if (changes.length) await enregistrerDeploiements(changes.map((t) => ({ magasin: nom, thematique: t.id, etat: deps[t.id] ?? '' })), dateChangement)
         }
         return magasin ? (renomme ? `${magasin.nom} s’appelle désormais ${nom}.` : `${nom} est mis à jour.`) : `${nom} est ajouté au réseau.`
       }}
@@ -111,6 +112,8 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
             <Typography variant="subtitle2" component="h3" sx={{ flex: 1 }}>Santé (nine box)</Typography>
             <PastilleCase c={caseDe({ notes, date: '', par: '' })} />
           </Box>
+          <TextField type="date" label="Date du classement et des déploiements" value={dateChangement} onChange={(e) => setDateChangement(e.target.value || reseau.jour)}
+            slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: reseau.jour } }} sx={{ mb: 2, minWidth: 280 }} />
           <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
             {tousCriteres.map((k) => (
               <Box key={k.id}>

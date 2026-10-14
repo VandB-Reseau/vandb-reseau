@@ -42,4 +42,17 @@ test.describe('construction du réseau', () => {
     expect(m('Lyon Test').franchise).toBe(false)
     expect(reseau.coachs['Tom TECHNICIEN']).toBeUndefined()
   })
+  test('un seul changement par jour : le dernier enregistré remplace les précédents', () => {
+    const r = construireReseau({
+      magasins: magasinsFictifs, renommages: {}, surcharges: [],
+      affectations: [...affectationsFictives, { store: 'Nantes Test', cs: 'Hugo FICTIF', date: '2026-09-01', note: '', type: 'manual' }, { store: 'Nantes Test', cs: 'Noé MODELE', date: '2026-09-01', note: 'Corrigé', type: 'manual' }] as never,
+      configRR: { ...configRRFictive, dr_assigns: [...(configRRFictive.dr_assigns ?? []), { cs: 'Noé MODELE', dr: 'rr1', date: '2026-09-01' }, { cs: 'Noé MODELE', dr: 'rr2', date: '2026-09-01' }] },
+      coachs: coachsFictifs, parametres: p,
+    }, '2026-10-14')
+    const nantes = r.magasins.find((x) => x.nom === 'Nantes Test')!
+    expect(nantes.historiqueCoach.filter((h) => h.date === '2026-09-01')).toEqual([{ coach: 'Noé MODELE', date: '2026-09-01', note: 'Corrigé' }])
+    expect(nantes.coach).toBe('Noé MODELE')
+    const noe = r.equipe.find((c) => c.nom === 'Noé MODELE')!
+    expect(noe.historiqueRR.filter((h) => h.date === '2026-09-01').map((h) => h.rr?.id)).toEqual(['rr2'])
+  })
 })
