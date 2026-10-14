@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { affectationsFictives, coachsFictifs, congesFictifs, evenementsFictifs, recruesFictives, visitesFictives, configRRFictive, magasinsFictifs } from './donnees-fictives'
+import { affectationsFictives, coachsFictifs, congesFictifs, evenementsFictifs, recruesFictives, visitesFictives, configRRFictive, magasinsFictifs, santeFictive, deploiementsFictifs } from './donnees-fictives'
 
 export const COMPTE = { email: 'joseph@vandb.test', motDePasse: 'bon-mot-de-passe' }
 
@@ -37,6 +37,8 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
       return route.fulfill({ json: filtrer([
         { key: 'store_adds', value: JSON.stringify(magasinsFictifs) },
         { key: 'drs_data', value: JSON.stringify(configRRFictive) },
+        { key: 'sante_parc', value: JSON.stringify(santeFictive) },
+        { key: 'deploiements', value: JSON.stringify(deploiementsFictifs) },
         { key: 'params', value: JSON.stringify({ prepDuration: 2, postDuration: 4, directionHorizon: 6 }) },
       ]) })
     }

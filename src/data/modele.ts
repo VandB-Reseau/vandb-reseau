@@ -92,6 +92,8 @@ export interface Reseau {
   conges: Conge[]
   evenements: Evenement[]
   anniversaires: Anniversaire[]
+  evaluations: import('./sante').Evaluations
+  deploiements: import('./sante').Deploiements
   rrs: ResponsableRegional[]
   parametres: ParametresReseau
   jour: string

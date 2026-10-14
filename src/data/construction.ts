@@ -175,5 +175,5 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
   }
   const dir = d.configRR.directeur
   const directeur = { nom: dir?.name || 'Direction du réseau', titre: dir?.titre || 'Directeur de réseau', telephone: dir?.tel || undefined, email: dir?.email || undefined }
-  return { visites: [], conges: [], evenements: [], anniversaires: [], magasins, coachs, equipe, techniciens, directeur, rrs, parametres, jour, chargeLe: new Date().toISOString() }
+  return { evaluations: {}, deploiements: { thematiques: [], valeurs: {} }, visites: [], conges: [], evenements: [], anniversaires: [], magasins, coachs, equipe, techniciens, directeur, rrs, parametres, jour, chargeLe: new Date().toISOString() }
 }

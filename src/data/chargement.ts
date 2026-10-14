@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
+import { thematiquesParDefaut, type Deploiements, type Evaluation, type Evaluations, type Thematique } from './sante'
 import type { Conge, Evenement, Reseau, Visite } from './modele'
 
 function json<T>(valeur: unknown, defaut: T): T {
@@ -45,6 +46,10 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
     },
   }
   const reseau = construireReseau(brutes, jour)
+  // Santé du parc et déploiements : stockés dans app_config (aucune table à créer)
+  reseau.evaluations = json<Evaluations>(cle('sante_parc'), {})
+  const dep = json<Partial<Deploiements>>(cle('deploiements'), {})
+  reseau.deploiements = { thematiques: dep.thematiques?.length ? dep.thematiques : thematiquesParDefaut, valeurs: dep.valeurs ?? {} }
   // Tables facultatives : absentes ou vides, l'app fonctionne quand même
   type L = Record<string, unknown>
   const t = (v: unknown) => (v === null || v === undefined ? '' : String(v))
@@ -246,6 +251,11 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
     await renommerColonne('reassigns', 'store', ancienNom, f.nom)
     await renommerColonne('visits', 'store', ancienNom, f.nom)
     await renommerColonne('store_finance', 'store_name', ancienNom, f.nom)
+    for (const cleConfig of ['sante_parc', 'deploiements'] as const) {
+      const lu = await lireCle<Record<string, unknown>>(cleConfig, {})
+      const cible = (cleConfig === 'deploiements' ? lu.valeur.valeurs : lu.valeur) as Record<string, unknown> | undefined
+      if (cible && ancienNom in cible) { cible[f.nom] = cible[ancienNom]; delete cible[ancienNom]; await ecrireCle(cleConfig, lu.valeur, lu.existe) }
+    }
   }
   const ligne = ligneSurcharge(f)
   const ex = await supabase.from('store_overrides').select('store_name').eq('store_name', f.nom)
@@ -299,3 +309,37 @@ export async function enregistrerEvenement(e: Evenement) {
   verifier(e.id !== null ? await supabase.from('events').update(l).eq('id', e.id) : await supabase.from('events').insert(l))
 }
 export async function supprimerEvenement(id: number) { verifier(await supabase.from('events').delete().eq('id', id)) }
+
+// ── Santé du parc et déploiements (relus puis réécrits pour ne rien écraser) ──
+
+export async function enregistrerEvaluation(magasin: string, e: Evaluation, caseId: string | null) {
+  const { valeur, existe } = await lireCle<Evaluations>('sante_parc', {})
+  const avant = valeur[magasin]
+  const historique = [...(avant?.historique ?? [])]
+  if (caseId && historique.at(-1)?.caseId !== caseId) historique.push({ date: e.date, caseId })
+  valeur[magasin] = { ...e, historique }
+  await ecrireCle('sante_parc', valeur, existe)
+}
+
+async function modifierDeploiements(changer: (d: Deploiements) => void) {
+  const { valeur, existe } = await lireCle<Partial<Deploiements>>('deploiements', {})
+  const d: Deploiements = { thematiques: valeur.thematiques?.length ? valeur.thematiques : thematiquesParDefaut, valeurs: valeur.valeurs ?? {} }
+  changer(d)
+  await ecrireCle('deploiements', d, existe)
+}
+
+export async function enregistrerDeploiement(magasin: string, thematique: string, etat: string) {
+  await modifierDeploiements((d) => {
+    d.valeurs[magasin] = { ...(d.valeurs[magasin] ?? {}) }
+    if (etat) d.valeurs[magasin][thematique] = etat
+    else delete d.valeurs[magasin][thematique]
+  })
+}
+
+export async function enregistrerThematiques(thematiques: Thematique[]) {
+  await modifierDeploiements((d) => {
+    d.thematiques = thematiques
+    const ids = new Set(thematiques.map((t) => t.id))
+    for (const m of Object.keys(d.valeurs)) for (const k of Object.keys(d.valeurs[m])) if (!ids.has(k)) delete d.valeurs[m][k]
+  })
+}

@@ -40,9 +40,9 @@ interface Element { cle: string; categorie: Categorie; debut: string; fin: strin
 
 const iso = (d: Date) => d.toISOString().slice(0, 10)
 const jourUTC = (s: string) => new Date(`${s}T00:00:00Z`)
-const ajouterJours = (s: string, n: number) => { const d = jourUTC(s); d.setUTCDate(d.getUTCDate() + n); return iso(d) }
+export const ajouterJours = (s: string, n: number) => { const d = jourUTC(s); d.setUTCDate(d.getUTCDate() + n); return iso(d) }
 const nomMois = (s: string) => jourUTC(s).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-const jourLong = (s: string) => jourUTC(s).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+export const jourLong = (s: string) => jourUTC(s).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
 
 // Coach le plus proche, présent sur toute la période et le moins chargé, pour couvrir une absence
 export function remplacantSuggere(reseau: Reseau, c: Conge): string | null {
@@ -55,7 +55,7 @@ export function remplacantSuggere(reseau: Reseau, c: Conge): string | null {
   return tries[0]?.nom ?? null
 }
 
-function elementsDuMois(reseau: Reseau, debut: string, fin: string): Element[] {
+export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Element[] {
   const el: Element[] = []
   for (const m of reseau.magasins) {
     if (m.ouvertureConnue && m.ouverture >= debut && m.ouverture <= fin) el.push({ cle: `o-${m.nom}`, categorie: 'ouverture', debut: m.ouverture, fin: m.ouverture, titre: `Ouverture ${m.nom}`, detail: m.coach ? `Coach ${m.coach}` : 'Sans Coach', lien: lienFiche(m.nom), couleur: '#ef7d00' })
