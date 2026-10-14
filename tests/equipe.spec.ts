@@ -35,16 +35,20 @@ test('Équipe s’ouvre sur l’organigramme par Responsable Régional', async (
   await page.screenshot({ path: `captures/${info.project.name}-equipe.png`, fullPage: !isMobile })
 })
 
-test('l’onglet Charge projette mois par mois', async ({ page, isMobile }, info) => {
+test('l’onglet Charge montre par Coach magasins, tournée et changements de l’année', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/plus/charge')
   await expect(page.getByRole('tab', { name: 'Charge des Coachs', selected: true })).toBeVisible()
-  await expect(page.getByText('Coachs en dépassement')).toBeVisible()
-  if (!isMobile) await expect(page.getByRole('table', { name: 'Projection de charge' })).toBeVisible()
-  await page.getByRole('tablist', { name: 'Mois affiché' }).getByRole('tab').nth(3).click()
-  await expect(page.getByRole('heading', { name: /Charge des Coachs · (?!Aujourd)/ })).toBeVisible()
+  if (!isMobile) await expect(page.getByRole('table', { name: 'Charge par Coach' })).toBeVisible()
+  await expect(page.getByText(/\d+ km · \d+ h \d{2}/).first()).toBeVisible()
+  // Déplier un Coach montre ses magasins et ses changements à venir
+  await page.getByRole('button', { name: 'Déplier Noé MODELE' }).click()
+  await expect(page.getByRole('link', { name: 'Lyon Test' })).toBeVisible()
+  await expect(page.getByText('Changements dans les douze prochains mois')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-equipe-charge.png`, fullPage: !isMobile })
+  await page.screenshot({ path: `captures/${info.project.name}-equipe-charge.png`, fullPage: true })
+  await page.getByRole('link', { name: 'Proposer une répartition' }).click()
+  await expect(page.getByRole('tab', { name: 'Plan d’affectation', selected: true })).toBeVisible()
 })
 
 test('l’onglet Postes à pourvoir liste Coachs à recruter, arrivées et responsables', async ({ page, isMobile }, info) => {

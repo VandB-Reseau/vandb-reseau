@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -32,6 +32,7 @@ import {
   chargesAvecPlan, coachsDisponibles, coachsParRR, optionsCoach, optionsRR, plafondCharge, positionsCoachs, proposerMagasins, proposerRR,
   raisonMagasinLibelle, raisonRRLibelle, rrDuCoachA, rrsRattachables, type Plafond, type PropositionMagasin, type PropositionRR,
 } from '../data/plan'
+import { duree } from '../data/tournee'
 import { dateLongue, lienCoach, lienFiche } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
 import type { VueCarte } from '../components/CarteMagasins'
@@ -43,7 +44,8 @@ type Choix = Record<string, { cible?: string; garde?: boolean }>
 
 export function VuePlan({ reseau }: { reseau: Reseau }) {
   // Par défaut : le premier jour du mois prochain
-  const [jour, setJour] = useState(() => moisAVenir(reseau.jour, 2)[1])
+  const [params] = useSearchParams()
+  const [jour, setJour] = useState(() => params.get('date') ?? moisAVenir(reseau.jour, 2)[1])
   const [plafond, setPlafond] = useState<Plafond>('maximum')
   const dateValide = /^\d{4}-\d{2}-\d{2}$/.test(jour)
   return (
@@ -108,6 +110,8 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
   const sansRR = (choix: Map<string, string>) => disponibles.filter((c) => !(choix.get(c.nom) ?? rrDuCoachA(c, jour)?.id)).length
 
   const total = retenusM.size + retenusR.size
+  // Changements déjà enregistrés à la date du plan ou après : ils ne sont pas effacés, l'historique garde tout
+  const conflits = propM.filter(gardeM).flatMap((p) => p.magasin.historiqueCoach.filter((h) => h.date >= jour).map((h) => ({ magasin: p.magasin.nom, date: h.date, coach: h.coach })))
 
   const enregistrer = async () => {
     setEnvoi(true); setErreur(false)
@@ -179,13 +183,10 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
             <Card sx={{ mb: 3 }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                 <Typography variant="h3" component="h2">Magasins à confier à un Coach ({propM.length})</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  Coach proposé : le plus proche qui reste sous la charge choisie. Distances à vol d’oiseau depuis le domicile du Coach, ou le centre de ses magasins s’il n’est pas renseigné.
-                </Typography>
                 <Box role="list" aria-label="Propositions pour les magasins">
                   {propM.map((p) => {
                     const sans = new Map(retenusM); sans.delete(p.magasin.nom)
-                    const options = optionsCoach(reseau, p.magasin, jour, chargesAvecPlan(reseau, jour, sans), plafond, p.avant, positions)
+                    const options = optionsCoach(reseau, p.magasin, jour, chargesAvecPlan(reseau, jour, sans), plafond, p.avant, positions, sans)
                     const choisie = options.find((o) => o.coach.nom === cibleM(p))
                     const garde = gardeM(p)
                     return (
@@ -207,7 +208,7 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
                         >
                           {options.map((o) => (
                             <option key={o.coach.nom} value={o.coach.nom}>
-                              {o.coach.nom}{o.coach.fictif ? ' (poste à pourvoir)' : ''} · {km(o.distance)} · charge {o.chargeApres}/{reseau.parametres.maxUnits}
+                              {o.coach.nom}{o.coach.fictif ? ' (poste à pourvoir)' : ''} · {o.minutesEnPlus === null ? 'trajet inconnu' : `+${duree(o.minutesEnPlus)} de tournée`} · charge {o.chargeApres}/{reseau.parametres.maxUnits}
                             </option>
                           ))}
                         </TextField>
@@ -224,9 +225,6 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
             <Card sx={{ mb: 3 }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                 <Typography variant="h3" component="h2">Coachs à rattacher à un Responsable Régional ({propR.length})</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  Responsable Régional proposé : celui dont la zone est la plus proche du Coach, sans dépasser {reseau.parametres.maxCoachsRR} Coachs (réglable dans Direction).
-                </Typography>
                 <Box role="list" aria-label="Propositions pour les Coachs">
                   {propR.map((p) => {
                     const sans = new Map(retenusR); sans.delete(p.coach.nom)
@@ -270,6 +268,14 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
             {retenusM.size > 0 && <>{retenusM.size} magasin{retenusM.size > 1 ? 's changent' : ' change'} de Coach. </>}
             {retenusR.size > 0 && <>{retenusR.size} Coach{retenusR.size > 1 ? 's changent' : ' change'} de Responsable Régional. </>}
           </Typography>
+          {conflits.length > 0 && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Ces magasins ont déjà un changement de Coach enregistré à cette date ou après. L’historique garde tout, mais à partir de sa date c’est le changement le plus tardif qui s’applique :
+              <Box component="ul" sx={{ pl: 2.5, my: 0.5 }}>
+                {conflits.map((c) => <li key={c.magasin + c.date + c.coach}>{c.magasin} : {c.coach || 'aucun Coach'} le {dateLongue(c.date)}{c.date === jour ? ' (même date, ce plan passera après)' : ''}</li>)}
+              </Box>
+            </Alert>
+          )}
           {erreur && <Alert severity="error" sx={{ mt: 2 }}>Le plan n’a pas pu être enregistré en entier. Vérifie ta connexion et réessaie : les changements déjà passés ne seront pas doublés.</Alert>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

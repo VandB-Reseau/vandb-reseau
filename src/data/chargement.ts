@@ -17,7 +17,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements] = await Promise.all([
     supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes']),
     supabase.from('store_overrides').select('*'),
-    supabase.from('reassigns').select('store,cs,date,note,type').order('date'),
+    supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
     supabase.from('recruits').select('*'),
     supabase.from('visits').select('*').order('visit_date', { ascending: false }),
@@ -44,6 +44,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
       poidsOuvert: params.poidsOuvert === undefined ? 1 : Number(params.poidsOuvert),
       poidsRenforce: params.poidsRenforce === undefined ? 2 : Number(params.poidsRenforce),
       maxCoachsRR: Number(params.maxCoachsRR) || 8,
+      maxTourneeHeures: Number(params.maxTourneeHeures) || 12,
     },
   }
   const reseau = construireReseau(brutes, jour)
@@ -137,7 +138,7 @@ async function modifierConfigRR(changer: (c: ConfigRRComplete) => void) {
 }
 
 type RRComplet = { id: string; name: string; tel?: string; email?: string; color?: string; role?: string; [k: string]: unknown }
-type ConfigRRComplete = { drs?: RRComplet[]; cs_dr?: Record<string, string>; dr_assigns?: { cs: string; dr: string; date: string }[]; directeur?: Record<string, unknown>; [k: string]: unknown }
+type ConfigRRComplete = { drs?: RRComplet[]; cs_dr?: Record<string, string>; dr_assigns?: { cs: string; dr: string; date: string; saisi?: string }[]; directeur?: Record<string, unknown>; [k: string]: unknown }
 
 export interface FicheDirecteur { nom: string; titre: string; telephone: string; email: string; naissance: string; arrivee: string }
 export async function enregistrerDirecteur(d: FicheDirecteur) {
@@ -168,9 +169,10 @@ export async function supprimerRR(id: string) {
 // Rattache un Coach à un RR à partir d'une date (historique conservé, comme dans l'ancienne app)
 export async function rattacherCoach(coach: string, rrId: string, date: string) {
   await modifierConfigRR((c) => {
-    c.dr_assigns = (c.dr_assigns ?? []).filter((a) => !(a.cs === coach && a.date === date))
-    c.dr_assigns.push({ cs: coach, dr: rrId, date })
-    c.cs_dr = { ...(c.cs_dr ?? {}), [coach]: rrId }
+    // Historique conservé : on ajoute sans rien effacer ; à date égale, le dernier ajouté s'applique
+    c.dr_assigns = [...(c.dr_assigns ?? []), { cs: coach, dr: rrId, date, saisi: new Date().toISOString() }]
+    // Rattachement « actuel » lu par l'ancienne app : seulement si le changement a déjà pris effet
+    if (date <= new Date().toISOString().slice(0, 10)) c.cs_dr = { ...(c.cs_dr ?? {}), [coach]: rrId }
   })
 }
 

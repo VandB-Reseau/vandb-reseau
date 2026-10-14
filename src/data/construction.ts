@@ -16,7 +16,7 @@ export interface RRBrut { id: string; name: string; tel?: string; email?: string
 export interface ConfigRR { directeur?: { name?: string; titre?: string; tel?: string; email?: string; birth?: string; entry?: string }; drs?: RRBrut[]; cs_dr?: Record<string, string>; dr_assigns?: { cs: string; dr: string; date: string }[] }
 export interface SurchargeCoach { cs_name: string; color?: string; tel?: string; email?: string; birth?: string | null; tech?: boolean; fictif?: boolean; ville?: string; lat?: number | null; lon?: number | null }
 export interface RecrueBrute { name: string; color?: string; start?: string | null; post?: string | null; ville?: string; lat?: number | null; lon?: number | null; fictif?: boolean }
-export interface Parametres { prepDuration: number; postDuration: number; maxUnits?: number; alertThreshold?: number; poidsOuvert?: number; poidsRenforce?: number; maxCoachsRR?: number }
+export interface Parametres { prepDuration: number; postDuration: number; maxUnits?: number; alertThreshold?: number; poidsOuvert?: number; poidsRenforce?: number; maxCoachsRR?: number; maxTourneeHeures?: number }
 
 export interface DonneesBrutes {
   magasins: MagasinBrut[]
@@ -172,6 +172,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
     maxUnits: d.parametres.maxUnits || 8, alertThreshold: d.parametres.alertThreshold || 7,
     poidsOuvert: d.parametres.poidsOuvert ?? 1, poidsRenforce: d.parametres.poidsRenforce ?? 2,
     maxCoachsRR: d.parametres.maxCoachsRR || 8,
+    maxTourneeHeures: d.parametres.maxTourneeHeures || 12,
   }
   const dir = d.configRR.directeur
   const directeur = { nom: dir?.name || 'Direction du réseau', titre: dir?.titre || 'Directeur de réseau', telephone: dir?.tel || undefined, email: dir?.email || undefined, naissance: texte(dir?.birth).slice(0, 10), arrivee: texte(dir?.entry).slice(0, 10) }

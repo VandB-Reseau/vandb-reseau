@@ -1,3 +1,4 @@
+import { normaliser } from '../data/filtres'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
@@ -135,7 +136,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
     { titre: 'Non classés', n: nonClasses, detail: 'Il manque des notes', couleur: theme.palette.text.secondary, action: nonClasses > 0 },
   ]
   const caseOuverte = nineBox.find((c) => c.id === ouverte)
-  const dansCase = caseOuverte ? classes.filter((x) => x.c?.id === caseOuverte.id && (!cherche || x.m.nom.toLowerCase().includes(cherche.toLowerCase()))) : []
+  const dansCase = caseOuverte ? classes.filter((x) => x.c?.id === caseOuverte.id && (!cherche || normaliser(`${x.m.nom} ${x.m.ville} ${coachA(x.m, reseau.jour)}`).includes(normaliser(cherche)))) : []
   const groupes = [...dansCase.reduce((g, x) => g.set(x.coach || '', [...(g.get(x.coach || '') ?? []), x.m]), new Map<string, Magasin[]>())].sort((a, b) => b[1].length - a[1].length)
 
   return (
@@ -223,7 +224,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
               <IconButton onClick={() => setOuverte(null)} aria-label="Fermer"><CloseOutlined /></IconButton>
             </Box>
             <Box sx={{ p: 2, pb: 1 }}>
-              <TextField fullWidth size="small" label="Chercher dans la case" value={cherche} onChange={(e) => setCherche(e.target.value)} sx={{ '& .MuiInputBase-root': { minHeight: 48 } }} />
+              <TextField fullWidth size="small" label="Chercher un magasin ou un Coach" value={cherche} onChange={(e) => setCherche(e.target.value)} sx={{ '& .MuiInputBase-root': { minHeight: 48 } }} />
             </Box>
             <Box sx={{ overflowY: 'auto', px: 2, pb: 2 }}>
               {groupes.map(([coach, ms]) => (
@@ -237,7 +238,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
                     <Link key={m.nom} component={RouterLink} to={lienFiche(m.nom)} underline="none" color="inherit"
                       sx={{ display: 'flex', alignItems: 'center', minHeight: 44, px: 1.5, borderRadius: 2, '&:hover': { bgcolor: 'action.hover' } }}>
                       <Typography sx={{ flex: 1 }}>{m.nom}</Typography>
-                      <Typography variant="body2" color="text.secondary">{m.ville}</Typography>
+                      {normaliser(m.ville) !== normaliser(m.nom) && !normaliser(m.nom).startsWith(normaliser(m.ville)) && <Typography variant="body2" color="text.secondary">{m.ville}</Typography>}
                     </Link>
                   ))}
                 </Box>
