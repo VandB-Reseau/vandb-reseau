@@ -17,6 +17,7 @@ test('la liste affiche tous les magasins et se filtre', async ({ page, isMobile 
   await page.getByLabel('Rechercher dans les magasins').fill('nantes')
   await expect(page.getByText('1 sur 30 magasins')).toBeVisible()
   await page.getByLabel('Rechercher dans les magasins').fill('')
+  if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
   await page.getByLabel('Filtre Type').click()
   await page.getByRole('menuitem', { name: /Intégré/ }).click()
   await page.keyboard.press('Escape')
@@ -106,4 +107,14 @@ test('la carte passe en plein écran et le titre ne bouge pas entre Liste et Car
   await expect.poll(async () => (await page.locator('.leaflet-container').boundingBox())!.height).toBeGreaterThan(vp.height - 4)
   await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: 'Carte en plein écran' })).toBeVisible()
+})
+
+test('sur téléphone, les filtres des magasins et de la carte se replient derrière un bouton', async ({ page, isMobile }, info) => {
+  test.skip(!isMobile, 'Spécifique au téléphone')
+  await seConnecter(page)
+  await page.goto('./#/magasins?vue=carte')
+  await expect(page.getByRole('button', { name: 'Statut' })).toHaveCount(0)
+  await page.screenshot({ path: `captures/${info.project.name}-carte-filtres.png` })
+  await page.getByRole('button', { name: 'Filtres' }).click()
+  await expect(page.getByRole('button', { name: 'Statut' })).toBeVisible()
 })

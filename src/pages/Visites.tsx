@@ -27,6 +27,7 @@ import EditOutlined from '@mui/icons-material/EditOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
+import { RechercheFiltres } from '../components/RechercheFiltres'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
@@ -125,8 +126,9 @@ function VueHistorique({ reseau, modifier, surPC }: { reseau: Reseau; modifier: 
   )
   return (
     <>
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '2fr 1fr 1fr 1fr' }, mb: 2 }}>
-        <TextField label="Rechercher un magasin ou une note" value={recherche} onChange={(e) => setRecherche(e.target.value)} />
+      <RechercheFiltres actifs={(cle ? 1 : 0) + (type ? 1 : 0) + (visiteur ? 1 : 0)}
+        recherche={<TextField fullWidth label="Rechercher un magasin ou une note" value={recherche} onChange={(e) => setRecherche(e.target.value)} />}
+        pc={(r, f) => <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '2fr 1fr 1fr 1fr' }, mb: 2 }}>{r}{f}</Box>}>
         <TextField select label="Période" value={cle} onChange={(e) => setCle(e.target.value)} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
           <MenuItem value="">Toutes les périodes</MenuItem>
           {semestres.map((x) => <MenuItem key={x.cle} value={x.cle}>{x.libelle}</MenuItem>)}
@@ -139,7 +141,7 @@ function VueHistorique({ reseau, modifier, surPC }: { reseau: Reseau; modifier: 
           <MenuItem value="">Tout le monde</MenuItem>
           {visiteurs(reseau).map((n) => <MenuItem key={n} value={n}>{n}</MenuItem>)}
         </TextField>
-      </Box>
+      </RechercheFiltres>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{liste.length} visite{liste.length > 1 ? 's' : ''}</Typography>
       {liste.length === 0 ? (
         <EmptyState icone={<EventNoteOutlined />} titre="Aucune visite" texte={reseau.visites.length ? 'Aucune visite ne correspond à ces filtres.' : 'Saisis ta première visite avec le bouton « Saisir une visite ».'} />
