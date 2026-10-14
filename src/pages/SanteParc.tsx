@@ -285,7 +285,7 @@ const LigneDeploiements = memo(function LigneDeploiements({ m, valeurs, ths, coc
 function FicheSaisie({ reseau, magasins, saisie, parties }: { reseau: Reseau; magasins: Magasin[]; saisie: Saisie; parties: ('notes' | 'deploiements')[] }) {
   const [aCompleter, setACompleter] = useState(false)
   const [nom, setNom] = useState('')
-  const incomplet = (m: Magasin) => (parties.includes('notes') && tousCriteres.some((c) => !reseau.evaluations[m.nom]?.notes[c.id]))
+  const incomplet = (m: Magasin) => (parties.includes('notes') && tousCriteres.some((c) => reseau.evaluations[m.nom]?.notes[c.id] === undefined))
     || (parties.includes('deploiements') && reseau.deploiements.thematiques.some((t) => !reseau.deploiements.valeurs[m.nom]?.[t.id]))
   // La liste est figée tant que le filtre ne change pas, pour ne pas faire sauter le magasin en cours
   const liste = useMemo(() => (aCompleter ? magasins.filter(incomplet) : magasins), [magasins, aCompleter]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -547,7 +547,7 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
   // Les boutons restent en place (masqués sur la nine box) pour que le titre ne bouge pas entre onglets
   const actions = (
     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', visibility: vue === 'ninebox' ? 'hidden' : 'visible' }} aria-hidden={vue === 'ninebox'}>
-      <Button variant="outlined" startIcon={<UploadFileOutlined />} onClick={() => setImporter(true)} sx={{ minHeight: 48 }}>Importer Excel</Button>
+      {surPC && <Button variant="outlined" startIcon={<UploadFileOutlined />} onClick={() => setImporter(true)} sx={{ minHeight: 48 }}>Importer Excel</Button>}
       <Button variant="contained" startIcon={<TuneOutlined />} onClick={() => setGestion(true)} sx={{ minHeight: 48, visibility: vue === 'deploiements' ? 'visible' : 'hidden' }} tabIndex={vue === 'deploiements' ? 0 : -1} aria-hidden={vue !== 'deploiements'}>Gérer les thématiques</Button>
     </Box>
   )

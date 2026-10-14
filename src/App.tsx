@@ -28,7 +28,7 @@ function Routes_() {
         <Route path="/" element={<Accueil />} />
         <Route path="/magasins" element={<Magasins />} />
         <Route path="/magasins/:nom" element={<FicheMagasin />} />
-        <Route path="/plus/carte" element={<Magasins vueInitiale="carte" />} />
+        <Route path="/plus/carte" element={<Navigate to="/magasins?vue=carte" replace />} />
         <Route path="/equipe" element={<Equipe />} />
         <Route path="/equipe/coach/:nom" element={<FicheCoach />} />
         <Route path="/equipe/rr/:id" element={<FicheRR />} />
@@ -42,7 +42,7 @@ function Routes_() {
         <Route path="/plus/sante" element={<SanteParc />} />
         <Route path="/plus/evolution" element={<Evolution />} />
         <Route path="/plus" element={<Plus />} />
-        {secondaires.slice(1).filter((d) => !['/plus/direction', '/plus/agenda', '/plus/sante', '/plus/evolution'].includes(d.chemin)).map((d) => <Route key={d.chemin} path={d.chemin} element={<Chantier destination={d} />} />)}
+        {secondaires.filter((d) => !['/plus/direction', '/plus/agenda', '/plus/sante', '/plus/evolution'].includes(d.chemin)).map((d) => <Route key={d.chemin} path={d.chemin} element={<Chantier destination={d} />} />)}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

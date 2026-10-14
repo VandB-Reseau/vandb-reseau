@@ -1,7 +1,8 @@
 import type { Reseau } from './modele'
 
 // Santé du parc : six critères notés à la main (pas encore de lien avec la BI), de 1 (faible) à 3 (fort)
-export type Note = 1 | 2 | 3
+// 0 = non concerné (critère volontairement non évalué, exclu des moyennes)
+export type Note = 0 | 1 | 2 | 3
 export const criteresResultats = [
   { id: 'caExterieur', libelle: 'CA marché extérieur' },
   { id: 'panierCave', libelle: 'Panier moyen cave' },
@@ -13,7 +14,7 @@ export const critereManagement = { id: 'franchise', libelle: 'Niveau du franchis
 export const tousCriteres = [...criteresResultats, critereManagement]
 export type IdCritere = (typeof tousCriteres)[number]['id']
 
-export const libelleNote: Record<Note, string> = { 1: 'Faible', 2: 'Moyen', 3: 'Fort' }
+export const libelleNote: Record<Note, string> = { 0: 'Non concerné', 1: 'Faible', 2: 'Moyen', 3: 'Fort' }
 
 export interface Evaluation { notes: Partial<Record<IdCritere, Note>>; date: string; par: string }
 export type Evaluations = Record<string, Evaluation & { historique?: { date: string; caseId: string }[] }>
@@ -36,7 +37,7 @@ const niveau = (moyenne: number): 1 | 2 | 3 => (moyenne < 1.67 ? 1 : moyenne < 2
 
 export function scoreResultats(e: Evaluation | undefined): number | null {
   const n = criteresResultats.map((c) => e?.notes[c.id]).filter((x): x is Note => !!x)
-  return n.length ? n.reduce((a, b) => a + b, 0) / n.length : null
+  return n.length ? n.reduce((a: number, b) => a + b, 0) / n.length : null
 }
 
 // Case de la nine box : il faut au moins un critère de résultat et la note du franchisé

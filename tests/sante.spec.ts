@@ -90,7 +90,8 @@ test('les thématiques se gèrent', async ({ page, isMobile }, info) => {
   await expect.poll(() => ecritures.some((e) => JSON.stringify(e.corps).includes('Click and collect'))).toBe(true)
 })
 
-test('import d’un fichier CSV façon Asana', async ({ page }, info) => {
+test('import d’un fichier CSV façon Asana', async ({ page, isMobile }, info) => {
+  test.skip(isMobile, 'Import réservé au PC')
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/plus/sante?vue=deploiements')
@@ -180,4 +181,28 @@ test('le titre et la recherche restent en place d’un onglet à l’autre', asy
     await page.getByRole('tab', { name: onglet }).click()
     await expect.poll(async () => [await titre.boundingBox(), await champ.boundingBox()]).toEqual(ref)
   }
+})
+
+test('« Non concerné » exclut un critère du calcul de la case', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/magasins/Rennes%20Test')
+  await page.getByRole('button', { name: 'Non concerné : Panier moyen bar' }).click()
+  await page.getByRole('button', { name: 'Non concerné : Flux bar' }).click()
+  await page.getByRole('button', { name: 'Fort : CA marché extérieur' }).click()
+  await page.getByRole('button', { name: /^Fort : Niveau du franchisé/ }).click()
+  await expect(page.getByText('Locomotive').first()).toBeVisible()
+  await expect.poll(() => ecritures.filter((e) => e.table === 'app_config').length).toBe(1)
+  expect(JSON.stringify(ecritures[0].corps)).toContain('\\"panierBar\\":0')
+})
+
+test('pas d’import Excel sur téléphone et plus de doublon Carte', async ({ page, isMobile }) => {
+  await seConnecter(page)
+  await page.goto('./#/plus/sante?vue=evaluer')
+  await expect(page.getByRole('heading', { name: 'Santé du parc' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Importer Excel' })).toHaveCount(isMobile ? 0 : 1)
+  await page.goto('./#/plus/carte')
+  await expect(page).toHaveURL(/#\/magasins\?vue=carte/)
+  await page.goto('./#/plus')
+  await expect(page.getByRole('link', { name: /^Carte/ })).toHaveCount(0)
 })

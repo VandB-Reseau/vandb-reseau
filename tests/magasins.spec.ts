@@ -72,7 +72,7 @@ test('la recherche globale ouvre une fiche magasin ou une fiche Coach', async ({
 
 test('la carte affiche les magasins et leur légende', async ({ page }, info) => {
   await seConnecter(page)
-  await page.goto('./#/plus/carte')
+  await page.goto('./#/magasins?vue=carte')
   await expect(page.getByRole('tab', { name: 'Carte', selected: true })).toBeVisible()
   await expect(page.locator('path.leaflet-interactive:not(.zone-coach):not(.zone-rr)')).toHaveCount(30)
   // Zones des Coachs affichées par défaut, légende par Coach
