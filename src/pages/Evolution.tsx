@@ -39,7 +39,7 @@ function Contenu({ reseau }: { reseau: Reseau }) {
   const ouverts = reseau.magasins.filter((m) => m.ouverture && m.ouverture <= reseau.jour).length
   return (
     <>
-      <PageHeader titre="Évolution du réseau" sousTitre={`${ouverts} magasins ouverts aujourd’hui · années fiscales d’octobre à septembre`} />
+      <PageHeader titre="Évolution du parc" sousTitre={`${ouverts} magasins ouverts aujourd’hui · années fiscales d’octobre à septembre`} />
       <Alert severity="info" sx={{ mb: 3 }}>Les fermetures ne sont pas encore enregistrées : seules les ouvertures sont comptées.{sansDate ? ` ${sansDate} magasin${sansDate > 1 ? 's' : ''} sans date d’ouverture ne ${sansDate > 1 ? 'sont' : 'est'} pas compté${sansDate > 1 ? 's' : ''}.` : ''}</Alert>
       <Card sx={{ mb: 3 }}>
         <CardContent sx={{ p: 3 }}>

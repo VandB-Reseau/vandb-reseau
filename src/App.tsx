@@ -7,14 +7,13 @@ import { CompteRendu } from './pages/CompteRendu'
 import { Agenda } from './pages/Agenda'
 import { SanteParc } from './pages/SanteParc'
 import { Evolution } from './pages/Evolution'
+import { Personnes } from './pages/VuePersonnes'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import { AppShell } from './layout/AppShell'
 import { useAuth } from './auth/AuthContext'
-import { secondaires } from './navigation/destinations'
 import { Accueil } from './pages/Accueil'
-import { Chantier } from './pages/Chantier'
 import { Connexion } from './pages/Connexion'
 import { Plus } from './pages/Plus'
 import { Magasins } from './pages/Magasins'
@@ -35,14 +34,17 @@ function Routes_() {
         <Route path="/equipe/directeur" element={<FicheDirecteur />} />
         <Route path="/equipe/franchise/:nom" element={<FicheFranchise />} />
         <Route path="/plus/charge" element={<Navigate to="/equipe?vue=charge" replace />} />
-        <Route path="/plus/direction" element={<Direction />} />
+        <Route path="/parametres/reglages" element={<Direction />} />
+        <Route path="/plus/direction" element={<Navigate to="/parametres/reglages" replace />} />
+        <Route path="/parametres/collaborateurs" element={<Personnes perimetre="collaborateurs" />} />
+        <Route path="/parametres/franchises" element={<Personnes perimetre="franchises" />} />
         <Route path="/visites" element={<Visites />} />
         <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
         <Route path="/plus/agenda" element={<Agenda />} />
         <Route path="/plus/sante" element={<SanteParc />} />
-        <Route path="/plus/evolution" element={<Evolution />} />
+        <Route path="/parametres/evolution" element={<Evolution />} />
+        <Route path="/plus/evolution" element={<Navigate to="/parametres/evolution" replace />} />
         <Route path="/plus" element={<Plus />} />
-        {secondaires.filter((d) => !['/plus/direction', '/plus/agenda', '/plus/sante', '/plus/evolution'].includes(d.chemin)).map((d) => <Route key={d.chemin} path={d.chemin} element={<Chantier destination={d} />} />)}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

@@ -73,8 +73,7 @@ test('fiche d’un Responsable Régional : champs personnels et département rem
 
 test('l’onglet Collaborateurs liste Directeur, RR et Coachs et ouvre leur fiche', async ({ page, isMobile }, info) => {
   await seConnecter(page)
-  await page.goto('./#/equipe')
-  await page.getByRole('tab', { name: 'Collaborateurs' }).click()
+  await page.goto('./#/parametres/collaborateurs')
   await expect(page.getByRole('button', { name: /Responsables Régionaux \(3\)/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Coachs \(6\)/ })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Dominique DIRECTION' })).toBeVisible()
@@ -93,8 +92,8 @@ test('l’onglet Collaborateurs liste Directeur, RR et Coachs et ouvre leur fich
 
 test('l’onglet Franchisés liste les franchisés sans le poste en recrutement', async ({ page, isMobile }, info) => {
   await seConnecter(page)
-  await page.goto('./#/equipe?vue=franchises')
-  await expect(page.getByRole('tab', { name: 'Franchisés', selected: true })).toBeVisible()
+  await page.goto('./#/parametres/franchises')
+  await expect(page.getByRole('heading', { level: 1, name: 'Franchisés' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Paul MULTI' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Alex NORD' })).toHaveCount(0)
   await expect(page.getByText('En cours de recrutement')).toHaveCount(0)
@@ -105,7 +104,7 @@ test('l’onglet Franchisés liste les franchisés sans le poste en recrutement'
 test('franchisés : fiche, renommage repris sur tous ses magasins', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/equipe?vue=franchises')
+  await page.goto('./#/parametres/franchises')
   await page.getByRole('link', { name: /^Paul MULTI/ }).first().click()
   await expect(page.getByRole('heading', { name: 'Paul MULTI', level: 1 })).toBeVisible()
   await expect(page.getByText('Franchisé · 2 magasins')).toBeVisible()
@@ -126,7 +125,7 @@ test('franchisés : fiche, renommage repris sur tous ses magasins', async ({ pag
 test('ajouter un franchisé et lui confier un magasin', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/equipe?vue=franchises')
+  await page.goto('./#/parametres/franchises')
   await page.getByRole('button', { name: 'Ajouter un franchisé' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter un franchisé' })
   await d.getByLabel('Prénom').fill('Jeanne')

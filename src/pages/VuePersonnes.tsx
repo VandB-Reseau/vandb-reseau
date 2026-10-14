@@ -28,6 +28,10 @@ import { normaliser } from '../data/filtres'
 import { fichePersonne, franchises, libelleRole, type FichePersonnelle, type TypePersonne } from '../data/personnes'
 import { lienCoach, lienDirecteur, lienFranchise, lienRR, telLien } from '../lib/format'
 import type { Reseau } from '../data/modele'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
+import { PageHeader } from '../components/PageHeader'
+import { AvecReseau } from '../components/EtatDonnees'
 
 interface LignePersonne { cle: string; type: TypePersonne; nom: string; role: string; rattachement: string; lien: string; fiche: FichePersonnelle }
 
@@ -147,6 +151,18 @@ export function VuePersonnes({ reseau, surPC, perimetre }: { reseau: Reseau; sur
       {ajout === 'rr' && <DialogRR reseau={reseau} rr={null} onFermer={(m) => fermer(m)} />}
       {ajout === 'franchise' && <DialogFranchise reseau={reseau} nom={null} onFermer={(m, n) => fermer(m, n, lienFranchise)} />}
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
+    </>
+  )
+}
+
+// Page de la partie « Paramètres » : Collaborateurs ou Franchisés
+export function Personnes({ perimetre }: { perimetre: Perimetre }) {
+  const theme = useTheme()
+  const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
+  return (
+    <>
+      <PageHeader titre={perimetre === 'franchises' ? 'Franchisés' : 'Collaborateurs'} />
+      <AvecReseau>{(reseau) => <VuePersonnes key={perimetre} perimetre={perimetre} reseau={reseau} surPC={surPC} />}</AvecReseau>
     </>
   )
 }

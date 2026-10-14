@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Link as RouterLink, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, Navigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -27,7 +27,6 @@ import ChevronRight from '@mui/icons-material/ChevronRight'
 import ExpandMore from '@mui/icons-material/ExpandMore'
 import WorkOutlineOutlined from '@mui/icons-material/WorkOutlineOutlined'
 import { VueCharge } from './VueCharge'
-import { VuePersonnes } from './VuePersonnes'
 import { VuePlan } from './VuePlan'
 import { PastilleStatut } from '../components/Pastilles'
 import { PageHeader } from '../components/PageHeader'
@@ -308,11 +307,11 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
 }
 
 export function Equipe() {
-  const theme = useTheme()
-  const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [params, setParams] = useSearchParams()
   const demandee = params.get('vue')
   const vue = (demandee === 'magasins' ? 'franchises' : demandee as Vue | null) ?? 'organisation'
+  // Collaborateurs et Franchisés ont rejoint la partie « Paramètres »
+  if (vue === 'collaborateurs' || vue === 'franchises') return <Navigate to={`/parametres/${vue}`} replace />
   const changerVue = (v: Vue) => setParams({ vue: v }, { replace: true })
   return (
     <AvecReseau>
@@ -321,13 +320,11 @@ export function Equipe() {
           <PageHeader titre="Équipe" sousTitre={`${reseau.equipe.length} Coachs · ${reseau.rrs.length} Responsables Régionaux · ${reseau.techniciens.length} technicien${reseau.techniciens.length > 1 ? 's' : ''}`} />
           <Tabs value={vue} onChange={(_e, v) => changerVue(v)} variant="scrollable" allowScrollButtonsMobile aria-label="Rubriques de l’équipe" sx={{ mb: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Tab value="organisation" label="Organisation" sx={{ minHeight: 48 }} />
-            <Tab value="collaborateurs" label="Collaborateurs" sx={{ minHeight: 48 }} />
-            <Tab value="franchises" label="Franchisés" sx={{ minHeight: 48 }} />
             <Tab value="charge" label="Charge des Coachs" sx={{ minHeight: 48 }} />
             <Tab value="postes" label="Postes à pourvoir" sx={{ minHeight: 48 }} />
             <Tab value="plan" label="Plan d’affectation" sx={{ minHeight: 48 }} />
           </Tabs>
-          {vue === 'plan' ? <VuePlan reseau={reseau} /> : vue === 'charge' ? <VueCharge reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : vue === 'collaborateurs' || vue === 'franchises' ? <VuePersonnes key={vue} perimetre={vue} reseau={reseau} surPC={surPC} /> : <VueOrganisation reseau={reseau} />}
+          {vue === 'plan' ? <VuePlan reseau={reseau} /> : vue === 'charge' ? <VueCharge reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
         </>
       )}
     </AvecReseau>

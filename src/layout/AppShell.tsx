@@ -25,7 +25,7 @@ import Logout from '@mui/icons-material/Logout'
 import { Logo } from '../components/Logo'
 import { RechercheGlobale } from '../components/RechercheGlobale'
 import { brandStripe } from '../theme/theme'
-import { principales, secondaires, plus, type Destination } from '../navigation/destinations'
+import { parametres, principales, secondaires, plus, type Destination } from '../navigation/destinations'
 import { useAuth } from '../auth/AuthContext'
 import { roleLibelle } from '../auth/roles'
 
@@ -79,10 +79,10 @@ function MenuLateral() {
     >
       <Toolbar sx={{ minHeight: 68 }} />
       <Box component="nav" aria-label="Navigation principale" sx={{ pt: 2 }}>
-        <List disablePadding>{principales.map(item)}</List>
+        <List disablePadding>{[...principales, ...secondaires].map(item)}</List>
         <Divider sx={{ my: 1.5, mx: 3 }} />
-        <List disablePadding subheader={<ListSubheader sx={{ bgcolor: 'transparent', px: 4, lineHeight: '36px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Pilotage</ListSubheader>}>
-          {secondaires.map(item)}
+        <List disablePadding subheader={<ListSubheader sx={{ bgcolor: 'transparent', px: 4, lineHeight: '36px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramètres</ListSubheader>}>
+          {parametres.map(item)}
         </List>
       </Box>
     </Drawer>

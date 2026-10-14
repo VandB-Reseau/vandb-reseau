@@ -6,16 +6,17 @@ import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import { PageHeader } from '../components/PageHeader'
-import { secondaires } from '../navigation/destinations'
+import Typography from '@mui/material/Typography'
+import { parametres, secondaires, type Destination } from '../navigation/destinations'
 
 export function Plus() {
   const naviguer = useNavigate()
-  return (
+  const groupe = (titre: string | null, liste: Destination[]) => (
     <>
-      <PageHeader titre="Plus" sousTitre="Pilotage et paramètres" />
+      {titre && <Typography variant="overline" component="h2" color="text.secondary" sx={{ display: 'block', mt: 3, mb: 1, fontWeight: 600 }}>{titre}</Typography>}
       <Card>
         <List disablePadding>
-          {secondaires.map((d) => (
+          {liste.map((d) => (
             <ListItemButton key={d.chemin} onClick={() => naviguer(d.chemin)} sx={{ borderRadius: 0, py: 1.5, minHeight: 64 }}>
               <ListItemIcon sx={{ minWidth: 44 }}>{d.icone}</ListItemIcon>
               <ListItemText primary={d.libelle} secondary={d.description} slotProps={{ primary: { sx: { fontWeight: 600 } } }} />
@@ -24,6 +25,13 @@ export function Plus() {
           ))}
         </List>
       </Card>
+    </>
+  )
+  return (
+    <>
+      <PageHeader titre="Plus" />
+      {groupe(null, secondaires)}
+      {groupe('Paramètres', parametres)}
     </>
   )
 }

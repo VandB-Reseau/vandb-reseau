@@ -55,10 +55,7 @@ function RegleCharge({ reseau }: { reseau: Reseau }) {
   return (
     <Card>
       <CardContent sx={{ p: 3 }}>
-        <Typography variant="h3" component="h2">Règle de charge des Coachs</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Ces réglages servent au plan de charge, aux alertes et aux suggestions de réaffectation. Le maximum, le seuil et les durées sont partagés avec l’ancienne application ; les unités par magasin et le nombre de Coachs par Responsable Régional ne s’appliquent qu’ici.
-        </Typography>
+        <Typography variant="h3" component="h2" sx={{ mb: 3 }}>Règle de charge des Coachs</Typography>
         <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
           {champs.map((c) => (
             <TextField
@@ -68,7 +65,7 @@ function RegleCharge({ reseau }: { reseau: Reseau }) {
               value={valeurs[c.cle]}
               onChange={(e) => setValeurs((v) => ({ ...v, [c.cle]: e.target.value }))}
               error={invalides.includes(c)}
-              helperText={invalides.includes(c) ? `Entre ${c.min} et ${c.max}, nombre entier.` : c.aide}
+              helperText={invalides.includes(c) ? `Entre ${c.min} et ${c.max}, nombre entier.` : ' '}
               slotProps={{ htmlInput: { min: c.min, max: c.max, step: 1 } }}
             />
           ))}
@@ -95,7 +92,7 @@ export function Direction() {
     <AvecReseau>
       {(reseau) => (
         <>
-          <PageHeader titre="Direction" sousTitre="Réglages du réseau" />
+          <PageHeader titre="Paramètres" />
           <RegleCharge reseau={reseau} />
         </>
       )}

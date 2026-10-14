@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { COMPTE, seConnecter, simulerSupabase, textesTropPetits } from './supabase-simule'
 
 const principales = ['Magasins', 'Visites', 'Équipe']
-const secondaires = ['Agenda', 'Santé du parc', 'Évolution du réseau', 'Direction']
+const secondaires = ['Agenda', 'Santé du parc', 'Évolution du parc', 'Collaborateurs', 'Franchisés', 'Paramètres']
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -94,4 +94,18 @@ test('la déconnexion ramène à l’écran de connexion', async ({ page }) => {
   await page.getByRole('button', { name: 'Mon compte' }).click()
   await page.getByRole('menuitem', { name: 'Se déconnecter' }).click()
   await expect(page.getByRole('button', { name: 'Se connecter' })).toBeVisible()
+})
+
+test('le menu a deux parties : la partie classique et Paramètres', async ({ page, isMobile }) => {
+  await seConnecter(page)
+  if (isMobile) {
+    await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Plus' }).click()
+    await expect(page.getByRole('heading', { name: 'Paramètres' })).toBeVisible()
+    return
+  }
+  const nav = page.getByRole('navigation', { name: 'Navigation principale' })
+  await expect(nav.getByRole('button', { name: 'Dashboard' })).toBeVisible()
+  await expect(nav.getByText('Paramètres', { exact: true }).first()).toBeVisible()
+  await page.goto('./#/equipe?vue=franchises')
+  await expect(page).toHaveURL(/#\/parametres\/franchises/)
 })

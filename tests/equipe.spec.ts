@@ -94,7 +94,7 @@ test('réaffecter un magasin propose le Coach le plus proche et enregistre', asy
 test('Direction règle la charge sans perdre les autres paramètres', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/plus/direction')
+  await page.goto('./#/parametres/reglages')
   await page.getByLabel('Charge maximale d’un Coach').fill('10')
   await expect(page.getByText(/Avec ces réglages, 0 Coach serait en dépassement/)).toBeVisible()
   await page.getByLabel('Charge maximale d’un Coach').fill('0')
@@ -116,7 +116,7 @@ const cle = (ecritures: Ecriture[], k: string) => configEcrite(ecritures.filter(
 test('ajouter un Coach l’enregistre et le rattache à son Responsable Régional', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/equipe?vue=collaborateurs')
+  await page.goto('./#/parametres/collaborateurs')
   await page.getByRole('button', { name: 'Ajouter un collaborateur' }).click()
   await page.getByRole('menuitem', { name: 'Un Coach' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter un Coach' })
