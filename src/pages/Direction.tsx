@@ -22,7 +22,6 @@ const champs: { cle: Cle; libelle: string; aide: string; min: number; max: numbe
   { cle: 'poidsRenforce', libelle: 'Unités pour un magasin en accompagnement renforcé', aide: 'Magasin en pré-ouverture ou ouvert depuis peu.', min: 0, max: 5 },
   { cle: 'prepDuration', libelle: 'Mois de pré-ouverture', aide: 'Le Coach prend en charge le magasin ce nombre de mois avant l’ouverture.', min: 0, max: 12 },
   { cle: 'postDuration', libelle: 'Mois d’accompagnement après ouverture', aide: 'Durée pendant laquelle un magasin reste « nouvelle ouverture ».', min: 0, max: 24 },
-  { cle: 'maxTourneeHeures', libelle: 'Durée maximale de la tournée d’un Coach (heures)', aide: 'Domicile, tous ses magasins, retour. Au-delà, le plan d’affectation propose de le soulager.', min: 1, max: 60 },
   { cle: 'maxCoachsRR', libelle: 'Coachs maximum par Responsable Régional', aide: 'Sert aux propositions de rattachement des Coachs aux Responsables Régionaux.', min: 1, max: 30 },
 ]
 
