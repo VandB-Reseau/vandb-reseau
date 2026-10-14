@@ -1,3 +1,7 @@
+import { useState } from 'react'
+import Snackbar from '@mui/material/Snackbar'
+import EditOutlined from '@mui/icons-material/EditOutlined'
+import { DialogCoach } from '../components/EditionEquipe'
 import { useNavigate, useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -35,6 +39,8 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const naviguer = useNavigate()
+  const [edition, setEdition] = useState(false)
+  const [message, setMessage] = useState('')
   const magasins = magasinsDuCoach(reseau, coach.nom)
   const charge = chargeA(reseau, coach.nom)
   const evenements = historiqueCoach(reseau, coach)
@@ -42,7 +48,10 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
   return (
     <>
       <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe'))} sx={{ mb: 2, ml: -1 }}>Équipe</Button>
-      <Typography variant="h1">{coach.nom}</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        <Typography variant="h1" sx={{ flex: 1 }}>{coach.nom}</Typography>
+        <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setEdition(true)} sx={{ minHeight: 48 }}>Modifier</Button>
+      </Box>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         Coach · {magasins.length} magasin{magasins.length > 1 ? 's' : ''}{coach.rr ? ` · ${coach.rr.nom}` : ''}
       </Typography>
@@ -80,6 +89,8 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
           </Box>
         ))}
       </Section>
+      {edition && <DialogCoach reseau={reseau} coach={coach} onFermer={(m) => { setEdition(false); if (m?.includes('retiré')) naviguer('/equipe'); else if (m) setMessage(m) }} />}
+      <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>
   )
 }

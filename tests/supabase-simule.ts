@@ -31,19 +31,19 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
       options.ecritures?.push({ methode: req.method(), table, corps: req.postDataJSON(), filtre: url.search })
       return route.fulfill({ status: 201, json: [] })
     }
+    // Filtres simples « colonne=eq.valeur » appliqués comme le ferait Supabase
+    const filtrer = (lignes: Record<string, unknown>[]) => lignes.filter((l) => [...url.searchParams].every(([k, v]) => !v.startsWith('eq.') || String(l[k]) === v.slice(3)))
     if (table === 'app_config') {
-      const filtre = url.searchParams.get('key') ?? ''
-      const cle = filtre.startsWith('eq.') ? filtre.slice(3) : ''
-      return route.fulfill({ json: [
+      return route.fulfill({ json: filtrer([
         { key: 'store_adds', value: JSON.stringify(magasinsFictifs) },
         { key: 'drs_data', value: JSON.stringify(configRRFictive) },
         { key: 'params', value: JSON.stringify({ prepDuration: 2, postDuration: 4, directionHorizon: 6 }) },
-      ].filter((r) => !cle || r.key === cle) })
+      ]) })
     }
     if (table === 'store_overrides') return route.fulfill({ json: [{ store_name: 'Nice Test', resp: 'Responsable surchargé' }, { store_name: 'Metz Test', rr: 'rr1' }] })
     if (table === 'reassigns') return route.fulfill({ json: affectationsFictives })
-    if (table === 'cs_overrides') return route.fulfill({ json: coachsFictifs })
-    if (table === 'recruits') return route.fulfill({ json: recruesFictives })
+    if (table === 'cs_overrides') return route.fulfill({ json: filtrer(coachsFictifs) })
+    if (table === 'recruits') return route.fulfill({ json: filtrer(recruesFictives) })
     return route.fulfill({ json: [] })
   })
 }

@@ -25,6 +25,7 @@ export interface DonneesBrutes {
   configRR: ConfigRR
   coachs: SurchargeCoach[]
   recrues?: RecrueBrute[]
+  coachsSupprimes?: string[]
   parametres: Parametres
 }
 
@@ -144,7 +145,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
   magasins.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
 
   // 5) Équipe : tout Coach présent dans les affectations ou fiches, hors techniciens
-  const nomsTech = new Set(techniciens.map((t) => t.nom))
+  const nomsTech = new Set([...techniciens.map((t) => t.nom), ...(d.coachsSupprimes ?? [])])
   const equipe: Coach[] = Object.values(coachs)
     .filter((c) => !nomsTech.has(c.nom))
     .map((c) => {

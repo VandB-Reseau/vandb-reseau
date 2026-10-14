@@ -103,3 +103,77 @@ test('Direction règle la charge sans perdre les autres paramètres', async ({ p
   const valeur = JSON.parse((ecrite.corps as { value: string }).value)
   expect(valeur).toMatchObject({ maxUnits: 10, alertThreshold: 7, poidsOuvert: 1, poidsRenforce: 2, prepDuration: 2, postDuration: 4, directionHorizon: 6 })
 })
+
+const dernier = (ecritures: Ecriture[], table: string) => ecritures.filter((e) => e.table === table).at(-1)
+const configEcrite = (e: Ecriture | undefined) => JSON.parse((e!.corps as { value: string }).value)
+
+test('ajouter un Coach l’enregistre et le rattache à son Responsable Régional', async ({ page }, info) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/equipe?forme=liste')
+  await page.getByRole('button', { name: 'Coach', exact: true }).click()
+  const d = page.getByRole('dialog', { name: 'Ajouter un Coach' })
+  await d.getByLabel('Prénom et NOM').fill('Hugo FICTIF')
+  await expect(d.getByText('Cette personne existe déjà')).toBeVisible()
+  await d.getByLabel('Prénom et NOM').fill('Lou NOUVEAU')
+  await d.getByLabel('Téléphone').fill('+33 6 99 99 99 99')
+  await d.getByLabel('Responsable Régional').click()
+  await expect(page.getByRole('option', { name: 'Léa INTEGRES' })).toHaveCount(0)
+  await page.getByRole('option', { name: 'Sam SUD' }).click()
+  await page.screenshot({ path: `captures/${info.project.name}-ajouter-coach.png` })
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText('Lou NOUVEAU est ajouté à l’équipe.')).toBeVisible()
+  expect(dernier(ecritures, 'cs_overrides')).toMatchObject({ methode: 'POST', corps: { cs_name: 'Lou NOUVEAU', tel: '+33 6 99 99 99 99', fictif: false } })
+  const config = configEcrite(dernier(ecritures, 'app_config'))
+  expect(config.dr_assigns.at(-1)).toMatchObject({ cs: 'Lou NOUVEAU', dr: 'rr2' })
+  expect(config.drs).toHaveLength(3) // le reste de la configuration est conservé
+})
+
+test('modifier un Responsable Régional et le Directeur', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/equipe?forme=pyramide')
+  await page.getByRole('button', { name: 'Modifier Sam SUD' }).click()
+  const d = page.getByRole('dialog', { name: 'Modifier Sam SUD' })
+  await d.getByLabel('Email').fill('sam@exemple')
+  await expect(d.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
+  await d.getByLabel('Email').fill('sam@exemple.test')
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText('Sam SUD est mis à jour.')).toBeVisible()
+  expect(configEcrite(dernier(ecritures, 'app_config')).drs.find((r: { id: string }) => r.id === 'rr2')).toMatchObject({ name: 'Sam SUD', email: 'sam@exemple.test', color: '#ef7d00' })
+
+  await page.getByRole('button', { name: 'Modifier Dominique DIRECTION' }).click()
+  const dd = page.getByRole('dialog', { name: 'Modifier le Directeur de réseau' })
+  await dd.getByLabel('Téléphone').fill('+33 1 00 00 00 00')
+  await dd.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText('Fiche du Directeur enregistrée.')).toBeVisible()
+  expect(configEcrite(dernier(ecritures, 'app_config')).directeur).toMatchObject({ name: 'Dominique DIRECTION', tel: '+33 1 00 00 00 00' })
+})
+
+test('supprimer : bloqué tant qu’il reste des Coachs ou des magasins, possible sinon', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/equipe?forme=pyramide')
+  await page.getByRole('button', { name: 'Modifier Alex NORD' }).click()
+  await expect(page.getByText(/Rattache d’abord ses 3 Coachs/)).toBeVisible()
+  await page.getByRole('button', { name: 'Annuler' }).click()
+
+  await page.getByRole('button', { name: 'Modifier Léa INTEGRES' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Supprimer' }).click()
+  await page.getByRole('alert').getByRole('button', { name: 'Supprimer' }).click()
+  await expect(page.getByText('Léa INTEGRES est supprimé.')).toBeVisible()
+  expect(configEcrite(dernier(ecritures, 'app_config')).drs.map((r: { id: string }) => r.id)).toEqual(['rr1', 'rr2'])
+
+  await page.goto('./#/equipe/coach/Camille%20TESTARD')
+  await page.getByRole('button', { name: 'Modifier' }).click()
+  await expect(page.getByText(/Réaffecte d’abord ses 7 magasins/)).toBeVisible()
+  await page.getByRole('button', { name: 'Annuler' }).click()
+
+  await page.goto('./#/equipe/coach/Poste%20NORD')
+  await page.getByRole('button', { name: 'Modifier' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Supprimer' }).click()
+  await page.getByRole('alert').getByRole('button', { name: 'Supprimer' }).click()
+  await expect(page.getByRole('heading', { name: 'Équipe', level: 1 })).toBeVisible()
+  expect(ecritures).toContainEqual(expect.objectContaining({ methode: 'DELETE', table: 'cs_overrides', filtre: expect.stringContaining('Poste') }))
+  expect(configEcrite(dernier(ecritures, 'app_config'))).toEqual(['Poste NORD'])
+})

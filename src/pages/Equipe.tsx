@@ -26,6 +26,11 @@ import { useTheme, type Theme } from '@mui/material/styles'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import FormatListBulleted from '@mui/icons-material/FormatListBulleted'
+import EditOutlined from '@mui/icons-material/EditOutlined'
+import AddOutlined from '@mui/icons-material/AddOutlined'
+import PersonAddAlt1Outlined from '@mui/icons-material/PersonAddAlt1Outlined'
+import Snackbar from '@mui/material/Snackbar'
+import { DialogCoach, DialogDirecteur, DialogRR } from '../components/EditionEquipe'
 import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
@@ -44,7 +49,7 @@ import { EmptyState } from '../components/EmptyState'
 import { PastilleCharge } from '../components/Charge'
 import { chargeA, magasinsDuCoach, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche, telLien } from '../lib/format'
-import type { Personne, Reseau } from '../data/modele'
+import type { Coach, Personne, Reseau, ResponsableRegional } from '../data/modele'
 
 type Vue = 'organisation' | 'charge' | 'magasins' | 'postes'
 
@@ -106,22 +111,33 @@ function LigneCoachOrga({ l, reseau, ouverts, basculer }: { l: LigneCoach; resea
   )
 }
 
-interface Groupe { cle: string; titre: string; role: string; couleur: string; personne: Personne | null; coachs: LigneCoach[]; direct: number }
+interface Groupe { cle: string; titre: string; role: string; couleur: string; personne: Personne | null; rr: ResponsableRegional | null; coachs: LigneCoach[]; direct: number }
+
+type Edition = { type: 'directeur' } | { type: 'rr'; rr: ResponsableRegional | null } | { type: 'coach'; coach: Coach | null }
+
+function BoutonModifier({ nom, onClick, flottant = true }: { nom: string; onClick: () => void; flottant?: boolean }) {
+  return (
+    <Tooltip title="Modifier">
+      <IconButton onClick={onClick} aria-label={`Modifier ${nom}`} sx={flottant ? { position: 'absolute', top: 2, right: 2 } : undefined}><EditOutlined fontSize="small" /></IconButton>
+    </Tooltip>
+  )
+}
 
 const trait = (theme: Theme) => `2px solid ${theme.palette.divider}`
 
 // Organigramme graphique : Directeur en haut, une colonne par Responsable Régional, ses Coachs en dessous
-function Pyramide({ reseau, groupes }: { reseau: Reseau; groupes: Groupe[] }) {
-  const Boite = ({ couleur, children, lien }: { couleur?: string; children: ReactNode; lien?: string }) => (
+function Pyramide({ reseau, groupes, modifier }: { reseau: Reseau; groupes: Groupe[]; modifier: (e: Edition) => void }) {
+  const Boite = ({ couleur, children, lien, modifiable }: { couleur?: string; children: ReactNode; lien?: string; modifiable?: boolean }) => (
     <Box
       {...(lien ? { component: RouterLink, to: lien } : {})}
-      sx={{ display: 'block', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderTop: couleur ? `4px solid ${couleur}` : undefined, borderRadius: 2, px: 1.5, py: 1, textAlign: 'center', color: 'text.primary', textDecoration: 'none', minWidth: 0, '&:hover': lien ? { bgcolor: 'action.hover' } : undefined }}
+      sx={{ display: 'block', position: 'relative', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderTop: couleur ? `4px solid ${couleur}` : undefined, borderRadius: 2, px: modifiable ? 5 : 1.5, py: 1, textAlign: 'center', color: 'text.primary', textDecoration: 'none', minWidth: 0, '&:hover': lien ? { bgcolor: 'action.hover' } : undefined }}
     >{children}</Box>
   )
   return (
     <Box sx={{ overflowX: 'auto', pb: 1, mt: 2 }}>
       <Box sx={{ minWidth: groupes.length * 210, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <Boite>
+        <Boite modifiable>
+          <BoutonModifier nom={reseau.directeur.nom} onClick={() => modifier({ type: 'directeur' })} />
           <Typography variant="body2" color="text.secondary">{reseau.directeur.titre}</Typography>
           <Typography variant="h4" component="p">{reseau.directeur.nom}</Typography>
           <Typography variant="body2" color="text.secondary">{reseau.equipe.length} Coachs · {reseau.magasins.length} magasins</Typography>
@@ -134,7 +150,8 @@ function Pyramide({ reseau, groupes }: { reseau: Reseau; groupes: Groupe[] }) {
               '&::before': { content: '""', position: 'absolute', top: 0, left: i === 0 ? '50%' : 0, right: i === groupes.length - 1 ? '50%' : 0, borderTop: trait },
               '&::after': { content: '""', position: 'absolute', top: 0, left: '50%', height: 24, borderLeft: trait },
             }}>
-              <Boite couleur={g.couleur}>
+              <Boite couleur={g.couleur} modifiable={!!g.rr}>
+                {g.rr && <BoutonModifier nom={g.titre} onClick={() => modifier({ type: 'rr', rr: g.rr! })} />}
                 <Typography variant="body2" color="text.secondary">{g.role}</Typography>
                 <Typography variant="h4" component="h3">{g.titre}</Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -174,6 +191,9 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
   const [params, setParams] = useSearchParams()
   const forme = (params.get('forme') as 'pyramide' | 'liste' | null) ?? (surPC ? 'pyramide' : 'liste')
   const changerForme = (f: string) => { const p = new URLSearchParams(params); p.set('forme', f); setParams(p, { replace: true }) }
+  const [edition, setEdition] = useState<Edition | null>(null)
+  const [message, setMessage] = useState('')
+  const fermer = (m?: string) => { setEdition(null); if (m) setMessage(m) }
   const lignes = lignesCoachs(reseau)
   const [ouverts, setOuverts] = useState<Set<string>>(() => new Set(reseau.rrs.map((r) => `r:${r.id}`)))
   const basculer = (k: string) => setOuverts((o) => { const n = new Set(o); if (n.has(k)) n.delete(k); else n.add(k); return n })
@@ -185,8 +205,8 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
   const aPourvoir = reseau.equipe.filter((c) => c.fictif).length + reseau.magasins.filter((m) => m.statut !== 'avenir' && m.responsableARecruter).length
 
   const groupes: Groupe[] = [
-    ...reseau.rrs.map((r) => ({ cle: `r:${r.id}`, titre: r.nom, role: r.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional', couleur: r.couleur, personne: r as Personne | null, coachs: lignes.filter((l) => l.coach.rr?.id === r.id), direct: reseau.magasins.filter((m) => m.rr?.id === r.id && m.rrEnDirect).length })),
-    ...(sansRR.length ? [{ cle: 'r:aucun', titre: 'Coachs sans Responsable Régional', role: 'À rattacher', couleur: '#9e9e9e', personne: null, coachs: sansRR, direct: 0 }] : []),
+    ...reseau.rrs.map((r) => ({ cle: `r:${r.id}`, titre: r.nom, role: r.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional', couleur: r.couleur, personne: r as Personne | null, rr: r, coachs: lignes.filter((l) => l.coach.rr?.id === r.id), direct: reseau.magasins.filter((m) => m.rr?.id === r.id && m.rrEnDirect).length })),
+    ...(sansRR.length ? [{ cle: 'r:aucun', titre: 'Coachs sans Responsable Régional', role: 'À rattacher', couleur: '#9e9e9e', personne: null, rr: null, coachs: sansRR, direct: 0 }] : []),
   ]
 
   return (
@@ -203,6 +223,8 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
             <AccountTreeOutlined color="action" />
             <Typography variant="h3" component="h2" sx={{ flex: 1 }}>Organigramme</Typography>
+            <Button startIcon={<PersonAddAlt1Outlined />} onClick={() => setEdition({ type: 'coach', coach: null })} sx={{ minHeight: 48 }}>Coach</Button>
+            <Button startIcon={<AddOutlined />} onClick={() => setEdition({ type: 'rr', rr: null })} sx={{ minHeight: 48 }}>Responsable Régional</Button>
             <ToggleButtonGroup exclusive size="small" value={forme} onChange={(_e, v) => v && changerForme(v)} aria-label="Forme de l’organigramme">
               <ToggleButton value="pyramide" sx={{ minHeight: 48, px: 2, gap: 1 }}><AccountTreeOutlined fontSize="small" />Pyramide</ToggleButton>
               <ToggleButton value="liste" sx={{ minHeight: 48, px: 2, gap: 1 }}><FormatListBulleted fontSize="small" />Liste</ToggleButton>
@@ -212,13 +234,14 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
               <Button onClick={toutReplier} sx={{ minHeight: 48 }}>Tout replier</Button>
             </>}
           </Box>
-          {forme === 'pyramide' ? <Pyramide reseau={reseau} groupes={groupes} /> : <>
+          {forme === 'pyramide' ? <Pyramide reseau={reseau} groupes={groupes} modifier={setEdition} /> : <>
           <Noeud niveau={0}>
             <AdminPanelSettingsOutlined color="action" />
             <Box sx={{ flex: 1 }}>
               <Typography variant="body2" color="text.secondary">{reseau.directeur.titre}</Typography>
               <Typography variant="body1" sx={{ fontWeight: 600 }}>{reseau.directeur.nom} · {reseau.equipe.length} Coachs · {reseau.magasins.length} magasins</Typography>
             </Box>
+            <BoutonModifier flottant={false} nom={reseau.directeur.nom} onClick={() => setEdition({ type: 'directeur' })} />
           </Noeud>
           {groupes.map((g) => (
             <Noeud key={g.cle} niveau={1} ouvert={ouverts.has(g.cle)} onBasculer={() => basculer(g.cle)} enfants={
@@ -236,11 +259,16 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
                 {g.coachs.length} Coach{g.coachs.length > 1 ? 's' : ''}{g.direct ? ` · ${g.direct} en direct` : ''}
               </Typography>
               {g.personne && <BoutonsContact p={g.personne} />}
+              {g.rr && <BoutonModifier flottant={false} nom={g.titre} onClick={() => setEdition({ type: 'rr', rr: g.rr })} />}
             </Noeud>
           ))}
           </>}
         </CardContent>
       </Card>
+      {edition?.type === 'directeur' && <DialogDirecteur reseau={reseau} onFermer={fermer} />}
+      {edition?.type === 'rr' && <DialogRR reseau={reseau} rr={edition.rr} onFermer={fermer} />}
+      {edition?.type === 'coach' && <DialogCoach reseau={reseau} coach={edition.coach} onFermer={fermer} />}
+      <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
       {reseau.techniciens.length > 0 && (
         <Box sx={{ mt: 3 }}>
           <Typography variant="h3" component="h2" sx={{ mb: 0.5 }}>Techniciens et formateurs</Typography>
