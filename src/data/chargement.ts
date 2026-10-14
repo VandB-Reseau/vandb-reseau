@@ -311,29 +311,46 @@ export async function supprimerEvenement(id: number) { verifier(await supabase.f
 
 // ── Santé du parc et déploiements (relus puis réécrits pour ne rien écraser) ──
 
-export async function enregistrerEvaluation(magasin: string, e: Evaluation, caseId: string | null) {
-  const { valeur, existe } = await lireCle<Evaluations>('sante_parc', {})
-  const avant = valeur[magasin]
-  const historique = [...(avant?.historique ?? [])]
-  if (caseId && historique.at(-1)?.caseId !== caseId) historique.push({ date: e.date, caseId })
-  valeur[magasin] = { ...e, historique }
-  await ecrireCle('sante_parc', valeur, existe)
+// Les écritures sur app_config passent une par une : deux saisies rapides ne s'écrasent plus
+let file: Promise<unknown> = Promise.resolve()
+function enFile<T>(f: () => Promise<T>): Promise<T> {
+  const p = file.then(f, f)
+  file = p.catch(() => undefined)
+  return p
 }
 
-async function modifierDeploiements(changer: (d: Deploiements) => void) {
-  const { valeur, existe } = await lireCle<Partial<Deploiements>>('deploiements', {})
-  const d: Deploiements = { thematiques: valeur.thematiques?.length ? valeur.thematiques : thematiquesParDefaut, valeurs: valeur.valeurs ?? {} }
-  changer(d)
-  await ecrireCle('deploiements', d, existe)
-}
-
-export async function enregistrerDeploiement(magasin: string, thematique: string, etat: string) {
-  await modifierDeploiements((d) => {
-    d.valeurs[magasin] = { ...(d.valeurs[magasin] ?? {}) }
-    if (etat) d.valeurs[magasin][thematique] = etat
-    else delete d.valeurs[magasin][thematique]
+export function enregistrerEvaluations(lot: Record<string, { e: Evaluation; caseId: string | null }>) {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<Evaluations>('sante_parc', {})
+    for (const [magasin, { e, caseId }] of Object.entries(lot)) {
+      const historique = [...(valeur[magasin]?.historique ?? [])]
+      if (caseId && historique.at(-1)?.caseId !== caseId) historique.push({ date: e.date, caseId })
+      valeur[magasin] = { ...e, historique }
+    }
+    await ecrireCle('sante_parc', valeur, existe)
   })
 }
+export const enregistrerEvaluation = (magasin: string, e: Evaluation, caseId: string | null) => enregistrerEvaluations({ [magasin]: { e, caseId } })
+
+function modifierDeploiements(changer: (d: Deploiements) => void) {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<Partial<Deploiements>>('deploiements', {})
+    const d: Deploiements = { thematiques: valeur.thematiques?.length ? valeur.thematiques : thematiquesParDefaut, valeurs: valeur.valeurs ?? {} }
+    changer(d)
+    await ecrireCle('deploiements', d, existe)
+  })
+}
+
+export function enregistrerDeploiements(lot: { magasin: string; thematique: string; etat: string }[]) {
+  return modifierDeploiements((d) => {
+    for (const { magasin, thematique, etat } of lot) {
+      d.valeurs[magasin] = { ...(d.valeurs[magasin] ?? {}) }
+      if (etat) d.valeurs[magasin][thematique] = etat
+      else delete d.valeurs[magasin][thematique]
+    }
+  })
+}
+export const enregistrerDeploiement = (magasin: string, thematique: string, etat: string) => enregistrerDeploiements([{ magasin, thematique, etat }])
 
 export async function enregistrerThematiques(thematiques: Thematique[]) {
   await modifierDeploiements((d) => {

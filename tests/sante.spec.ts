@@ -85,3 +85,20 @@ test('l’évolution compte les ouvertures par année fiscale', async ({ page, i
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-evolution.png`, fullPage: !isMobile })
 })
+
+test('plusieurs notes rapides partent en une seule écriture et restent après un changement de page', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/plus/sante?vue=evaluer')
+  await page.getByLabel('Rechercher un magasin').fill('Rennes')
+  for (const nom of ['CA marché extérieur', 'Flux bar']) {
+    await page.getByRole('combobox', { name: new RegExp(`^${nom}`) }).click()
+    await page.getByRole('option', { name: 'Moyen' }).click()
+  }
+  await expect.poll(() => ecritures.filter((e) => e.table === 'app_config').length).toBe(1)
+  const corps = JSON.stringify(ecritures[0].corps)
+  expect(corps).toContain('caExterieur')
+  expect(corps).toContain('fluxBar')
+  await page.goto('./#/magasins/Rennes%20Test')
+  await expect(page.getByRole('combobox', { name: 'Flux bar' })).toHaveText('Moyen')
+})
