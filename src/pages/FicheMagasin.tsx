@@ -16,6 +16,8 @@ import MailOutlined from '@mui/icons-material/MailOutlined'
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
+import { PastilleCase, SelectDeploiement, SelectNote, useSaisieSante } from '../components/Sante'
+import { caseDe, tousCriteres } from '../data/sante'
 import { AvecReseau } from '../components/EtatDonnees'
 import { ReaffecterDialog } from '../components/ReaffecterDialog'
 import Snackbar from '@mui/material/Snackbar'
@@ -152,12 +154,12 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
                   </Box>
                 ))}
                 {vs.length > 6 && <Link component={RouterLink} to={`/visites?vue=historique`} variant="body2">Voir les {vs.length} visites</Link>}
-                <Divider sx={{ my: 1.5 }} />
-                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', color: 'text.secondary' }}><QueryStatsOutlined /><Typography variant="body2">Le CA, l’EBITDA, le panier et la fréquentation s’afficheront ici au sprint 4.</Typography></Box>
               </>
             )
           })()}
         </Section>
+
+        <SectionSante reseau={reseau} m={m} signaler={setConfirmation} />
       </Box>
       {reaffectation && <ReaffecterDialog reseau={reseau} magasin={m} ouvert onFermer={(fait) => { setReaffectation(false); if (fait) setConfirmation(`${m.nom} est confié à ${fait}.`) }} />}
       {edition && <DialogMagasin reseau={reseau} magasin={m} onFermer={(msg, nom) => {
@@ -186,5 +188,27 @@ export function FicheMagasin() {
         return <Fiche m={m} reseau={reseau} />
       }}
     </AvecReseau>
+  )
+}
+
+// Santé du parc : notes nine box et état des déploiements, modifiables sur place
+function SectionSante({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (s: string) => void }) {
+  const saisie = useSaisieSante(reseau, signaler)
+  const e = saisie.evaluation(m.nom)
+  const c = caseDe(e)
+  return (
+    <Section titre="Santé et déploiements" action={<Button component={RouterLink} to="/plus/sante" startIcon={<QueryStatsOutlined />} sx={{ minHeight: 48 }}>Nine box</Button>}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+        <PastilleCase c={c} />
+        <Typography variant="body2" color="text.secondary">{c ? `Rythme de visite conseillé : ${c.rythme}` : 'Note au moins un critère de résultats et le niveau du franchisé pour classer le magasin.'}</Typography>
+      </Box>
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+        {tousCriteres.map((k) => <SelectNote key={k.id} libelle={k.libelle} valeur={e?.notes[k.id]} onChange={(n) => saisie.noter(m.nom, k.id, n)} />)}
+      </Box>
+      <Divider sx={{ my: 2 }} />
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+        {reseau.deploiements.thematiques.map((t) => <SelectDeploiement key={t.id} t={t} libelle={t.libelle} valeur={saisie.etat(m.nom, t.id)} onChange={(v) => saisie.deployer(m.nom, t.id, v)} />)}
+      </Box>
+    </Section>
   )
 }

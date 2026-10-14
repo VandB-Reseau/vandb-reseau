@@ -60,3 +60,8 @@ export const visitesFictives = [
 ]
 export const congesFictifs = [{ id: 1, person: 'Hugo FICTIF', role: 'cs', start_date: '2026-10-20', end_date: '2026-10-24', notes: 'Congés' }]
 export const evenementsFictifs = [{ id: 1, title: 'Séminaire des Coachs', type: 'event', start_date: '2026-10-15', end_date: '2026-10-16', color: '#7c3aed' }]
+
+// Santé du parc : Lyon en redressement urgent, Annecy locomotive, Nantes cœur de réseau
+const n = (r: number, f: number) => ({ notes: { caExterieur: r, panierCave: r, panierBar: r, fluxCave: r, fluxBar: r, franchise: f }, date: '2026-10-01', par: 'Dominique DIRECTION' })
+export const santeFictive = { 'Lyon Test': n(1, 1), 'Annecy Test': n(3, 3), 'Nantes Test': n(2, 2) }
+export const deploiementsFictifs = { valeurs: { 'Lyon Test': { concept20: 'Fait', terrasse: 'Oui' }, 'Annecy Test': { concept20: 'En cours' } } }

@@ -4,6 +4,8 @@ import { Direction } from './pages/Direction'
 import { Visites } from './pages/Visites'
 import { CompteRendu } from './pages/CompteRendu'
 import { Agenda } from './pages/Agenda'
+import { SanteParc } from './pages/SanteParc'
+import { Evolution } from './pages/Evolution'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -33,8 +35,10 @@ function Routes_() {
         <Route path="/visites" element={<Visites />} />
         <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
         <Route path="/plus/agenda" element={<Agenda />} />
+        <Route path="/plus/sante" element={<SanteParc />} />
+        <Route path="/plus/evolution" element={<Evolution />} />
         <Route path="/plus" element={<Plus />} />
-        {secondaires.slice(1).filter((d) => !['/plus/direction', '/plus/agenda'].includes(d.chemin)).map((d) => <Route key={d.chemin} path={d.chemin} element={<Chantier destination={d} />} />)}
+        {secondaires.slice(1).filter((d) => !['/plus/direction', '/plus/agenda', '/plus/sante', '/plus/evolution'].includes(d.chemin)).map((d) => <Route key={d.chemin} path={d.chemin} element={<Chantier destination={d} />} />)}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

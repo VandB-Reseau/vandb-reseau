@@ -35,8 +35,8 @@ export const principales: Destination[] = [
 export const secondaires: Destination[] = [
   { chemin: '/plus/carte', libelle: 'Carte', description: 'Tous les magasins sur la carte, par Responsable Régional', icone: <MapOutlined />, sprint: 'Sprint 1' },
   { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Ouvertures, anniversaires, événements et congés', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
-  { chemin: '/plus/sante', libelle: 'Santé du parc', description: 'Complétude des fiches et performance des magasins', icone: <MonitorHeartOutlined />, sprint: 'Sprint 4' },
-  { chemin: '/plus/evolution', libelle: 'Évolution du réseau', description: 'Ouvertures et fermetures par année fiscale', icone: <TimelineOutlined />, sprint: 'Sprint 4' },
+  { chemin: '/plus/sante', libelle: 'Santé du parc', description: 'Nine box des magasins et suivi des déploiements', icone: <MonitorHeartOutlined />, sprint: 'Sprint 4' },
+  { chemin: '/plus/evolution', libelle: 'Évolution du réseau', description: 'Ouvertures par année fiscale', icone: <TimelineOutlined />, sprint: 'Sprint 4' },
   { chemin: '/plus/direction', libelle: 'Direction', description: 'Règle de charge ; import et export Excel, sauvegarde', icone: <AdminPanelSettingsOutlined />, sprint: 'Sprint 5' },
 ]
 
