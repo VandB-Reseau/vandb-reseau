@@ -23,6 +23,7 @@ const champs: { cle: Cle; libelle: string; aide: string; min: number; max: numbe
   { cle: 'poidsRenforce', libelle: 'Unités pour un magasin en accompagnement renforcé', aide: 'Magasin en pré-ouverture ou ouvert depuis peu.', min: 0, max: 5 },
   { cle: 'prepDuration', libelle: 'Mois de pré-ouverture', aide: 'Le Coach prend en charge le magasin ce nombre de mois avant l’ouverture.', min: 0, max: 12 },
   { cle: 'postDuration', libelle: 'Mois d’accompagnement après ouverture', aide: 'Durée pendant laquelle un magasin reste « nouvelle ouverture ».', min: 0, max: 24 },
+  { cle: 'maxCoachsRR', libelle: 'Coachs maximum par Responsable Régional', aide: 'Sert aux propositions de rattachement des Coachs aux Responsables Régionaux.', min: 1, max: 30 },
 ]
 
 function compterDepassements(reseau: Reseau, p: ParametresReseau) {
@@ -56,7 +57,7 @@ function RegleCharge({ reseau }: { reseau: Reseau }) {
       <CardContent sx={{ p: 3 }}>
         <Typography variant="h3" component="h2">Règle de charge des Coachs</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Ces réglages servent au plan de charge, aux alertes et aux suggestions de réaffectation. Le maximum, le seuil et les durées sont partagés avec l’ancienne application ; les unités par magasin ne s’appliquent qu’ici.
+          Ces réglages servent au plan de charge, aux alertes et aux suggestions de réaffectation. Le maximum, le seuil et les durées sont partagés avec l’ancienne application ; les unités par magasin et le nombre de Coachs par Responsable Régional ne s’appliquent qu’ici.
         </Typography>
         <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
           {champs.map((c) => (

@@ -1,3 +1,4 @@
+import { couleurAuto } from './zones'
 import type { AffectationCoach, Coach, Magasin, Personne, Reseau, ResponsableRegional, Statut } from './modele'
 
 // Lignes brutes telles que stockées par l'ancienne app
@@ -13,9 +14,9 @@ export interface SurchargeMagasin extends Partial<Record<keyof MagasinBrut, unkn
 export interface AffectationBrute { store: string; cs: string; date: string; note?: string; type?: string }
 export interface RRBrut { id: string; name: string; tel?: string; email?: string; color?: string; role?: string }
 export interface ConfigRR { directeur?: { name?: string; titre?: string; tel?: string; email?: string }; drs?: RRBrut[]; cs_dr?: Record<string, string>; dr_assigns?: { cs: string; dr: string; date: string }[] }
-export interface SurchargeCoach { cs_name: string; tel?: string; email?: string; tech?: boolean; fictif?: boolean; ville?: string; lat?: number | null; lon?: number | null }
-export interface RecrueBrute { name: string; start?: string | null; post?: string | null; ville?: string; lat?: number | null; lon?: number | null; fictif?: boolean }
-export interface Parametres { prepDuration: number; postDuration: number; maxUnits?: number; alertThreshold?: number; poidsOuvert?: number; poidsRenforce?: number }
+export interface SurchargeCoach { cs_name: string; color?: string; tel?: string; email?: string; tech?: boolean; fictif?: boolean; ville?: string; lat?: number | null; lon?: number | null }
+export interface RecrueBrute { name: string; color?: string; start?: string | null; post?: string | null; ville?: string; lat?: number | null; lon?: number | null; fictif?: boolean }
+export interface Parametres { prepDuration: number; postDuration: number; maxUnits?: number; alertThreshold?: number; poidsOuvert?: number; poidsRenforce?: number; maxCoachsRR?: number }
 
 export interface DonneesBrutes {
   magasins: MagasinBrut[]
@@ -156,6 +157,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       return {
       ...c,
       fictif: !!(ov?.fictif || rec?.fictif),
+      couleur: [ov?.color, rec?.color].find((x) => x && x !== '#000000') || couleurAuto(c.nom),
       arrivee: texte(rec?.start).slice(0, 10),
       ville: texte(ov?.ville) || texte(rec?.ville),
       lat, lon,
@@ -169,6 +171,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
     prepDuration: d.parametres.prepDuration, postDuration: d.parametres.postDuration,
     maxUnits: d.parametres.maxUnits || 8, alertThreshold: d.parametres.alertThreshold || 7,
     poidsOuvert: d.parametres.poidsOuvert ?? 1, poidsRenforce: d.parametres.poidsRenforce ?? 2,
+    maxCoachsRR: d.parametres.maxCoachsRR || 8,
   }
   const dir = d.configRR.directeur
   const directeur = { nom: dir?.name || 'Direction du réseau', titre: dir?.titre || 'Directeur de réseau', telephone: dir?.tel || undefined, email: dir?.email || undefined }
