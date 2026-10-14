@@ -83,6 +83,7 @@ export interface ParametresReseau {
   alertThreshold: number // seuil d'attention
   poidsOuvert: number // unités pour un magasin ouvert
   poidsRenforce: number // unités pour un magasin en pré-ouverture ou ouvert depuis peu
+  maxTourneeHeures: number // durée de tournée au-delà de laquelle l'app propose de soulager un Coach
   maxCoachsRR: number // nombre de Coachs au-delà duquel un Responsable Régional est surchargé
 }
 

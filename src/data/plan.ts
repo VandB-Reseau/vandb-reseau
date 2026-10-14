@@ -1,6 +1,7 @@
 import { chargeA, coachA, distanceKm, poids } from './charge'
 import { statutA } from './construction'
 import { centre, type Point } from './zones'
+import { tournee } from './tournee'
 import type { Coach, Magasin, Reseau, ResponsableRegional } from './modele'
 
 // Plan d'affectation à une date : l'app propose, le Directeur coche ce qu'il garde, puis enregistre.
@@ -12,11 +13,12 @@ export function plafondCharge(reseau: Reseau, p: Plafond): number {
   return p === 'maximum' ? reseau.parametres.maxUnits : reseau.parametres.alertThreshold - 1
 }
 
-export type RaisonMagasin = 'sans-coach' | 'coach-absent' | 'depassement'
+export type RaisonMagasin = 'sans-coach' | 'coach-absent' | 'depassement' | 'trajets'
 export const raisonMagasinLibelle: Record<RaisonMagasin, string> = {
   'sans-coach': 'Sans Coach',
   'coach-absent': 'Coach plus dans l’équipe',
   depassement: 'Rééquilibrage de charge',
+  trajets: 'Tournée trop longue',
 }
 
 export interface PropositionMagasin { magasin: Magasin; avant: string; raison: RaisonMagasin; coach: string }
@@ -62,24 +64,37 @@ export function positionCoach(reseau: Reseau, c: Coach, jour: string, choix?: Ma
   return centre(reseau.magasins.filter((m) => (choix?.get(m.nom) ?? coachA(m, jour)) === c.nom))
 }
 
-export interface OptionCoach { coach: Coach; distance: number | null; chargeApres: number; depasse: boolean }
+export interface OptionCoach { coach: Coach; distance: number | null; minutesEnPlus: number | null; chargeApres: number; depasse: boolean }
+
+// Magasins d'un Coach à la date, une fois le plan appliqué
+export function magasinsAvecPlan(reseau: Reseau, coach: string, jour: string, choix: Map<string, string>): Magasin[] {
+  return reseau.magasins.filter((m) => (choix.get(m.nom) ?? coachA(m, jour)) === coach)
+}
+
+// Durée de tournée (minutes) d'un Coach : domicile, ses magasins, retour
+export function minutesTournee(reseau: Reseau, coach: string, jour: string, choix: Map<string, string>, positions: Map<string, Point | null>): number {
+  return tournee(positions.get(coach) ?? null, magasinsAvecPlan(reseau, coach, jour, choix)).minutes
+}
 
 // Coachs candidats pour un magasin, classés : sous le plafond d'abord, Coachs en poste avant postes à pourvoir,
-// puis le plus proche et enfin le moins chargé
+// puis celui dont la tournée s'allonge le moins, et enfin le moins chargé
 export function positionsCoachs(reseau: Reseau, jour: string): Map<string, Point | null> {
   return new Map(reseau.equipe.map((c) => [c.nom, positionCoach(reseau, c, jour)]))
 }
 
-export function optionsCoach(reseau: Reseau, m: Magasin, jour: string, charges: Map<string, number>, plafond: number, exclure = '', positions = positionsCoachs(reseau, jour)): OptionCoach[] {
+export function optionsCoach(reseau: Reseau, m: Magasin, jour: string, charges: Map<string, number>, plafond: number, exclure = '', positions = positionsCoachs(reseau, jour), choix = new Map<string, string>()): OptionCoach[] {
   const w = poidsA(reseau, m, jour)
   return coachsDisponibles(reseau, jour)
     .filter((c) => c.nom !== exclure)
     .map((c) => {
       const pos = positions.get(c.nom) ?? null
       const apres = (charges.get(c.nom) ?? 0) + w
-      return { coach: c, distance: pos ? distanceKm(pos, m) : null, chargeApres: apres, depasse: apres > plafond }
+      const sans = new Map(choix); sans.delete(m.nom)
+      const avec = new Map(sans); avec.set(m.nom, c.nom)
+      const minutesEnPlus = pos && m.lat !== null ? minutesTournee(reseau, c.nom, jour, avec, positions) - minutesTournee(reseau, c.nom, jour, sans, positions) : null
+      return { coach: c, distance: pos ? distanceKm(pos, m) : null, minutesEnPlus, chargeApres: apres, depasse: apres > plafond }
     })
-    .sort((a, b) => Number(a.depasse) - Number(b.depasse) || Number(a.coach.fictif) - Number(b.coach.fictif) || (a.distance ?? 9999) - (b.distance ?? 9999) || a.chargeApres - b.chargeApres)
+    .sort((a, b) => Number(a.depasse) - Number(b.depasse) || Number(a.coach.fictif) - Number(b.coach.fictif) || (a.minutesEnPlus ?? 99999) - (b.minutesEnPlus ?? 99999) || a.chargeApres - b.chargeApres)
 }
 
 export function proposerMagasins(reseau: Reseau, jour: string, plafond: number): PropositionMagasin[] {
@@ -96,37 +111,42 @@ export function proposerMagasins(reseau: Reseau, jour: string, plafond: number):
     .filter(({ avant }) => !avant || !equipe.has(avant))
     .sort((a, b) => a.m.ouverture.localeCompare(b.m.ouverture))
   for (const { m, avant } of aPourvoir) {
-    const meilleur = optionsCoach(reseau, m, jour, charges(), plafond, avant, positions)[0]
+    const meilleur = optionsCoach(reseau, m, jour, charges(), plafond, avant, positions, choix)[0]
     if (!meilleur) continue
     choix.set(m.nom, meilleur.coach.nom)
     res.push({ magasin: m, avant, raison: avant ? 'coach-absent' : 'sans-coach', coach: meilleur.coach.nom })
   }
 
-  // 2) Coachs au-dessus du plafond : on confie, un par un, le magasin dont la reprise allonge le moins
-  //    les trajets à un Coach en poste qui reste sous le plafond
+  // 2) Coachs au-dessus du plafond de charge ou dont la tournée dépasse la durée maximale : on confie, un par un,
+  //    le magasin dont le transfert fait gagner le plus de temps de trajet au total, à un Coach en poste qui reste
+  //    sous le plafond et sous la durée maximale
+  const maxMin = reseau.parametres.maxTourneeHeures * 60
   const enPoste = coachsDisponibles(reseau, jour).filter((c) => !c.fictif)
-  const surcharges = enPoste.filter((c) => (charges().get(c.nom) ?? 0) > plafond).sort((a, b) => charges().get(b.nom)! - charges().get(a.nom)!)
-  for (const c of surcharges) {
-    const posC = positions.get(c.nom) ?? null
-    for (let garde = 0; garde < 50 && (charges().get(c.nom) ?? 0) > plafond; garde++) {
+  const minutes = (c: string) => minutesTournee(reseau, c, jour, choix, positions)
+  const tropCharge = (c: string) => (charges().get(c) ?? 0) > plafond || minutes(c) > maxMin
+  const aSoulager = enPoste.filter((c) => tropCharge(c.nom)).sort((a, b) => minutes(b.nom) - minutes(a.nom))
+  for (const c of aSoulager) {
+    for (let garde = 0; garde < 50 && tropCharge(c.nom); garde++) {
       const ch = charges()
+      const minC = minutes(c.nom)
       let mieux: { m: Magasin; vers: string; cout: number } | null = null
       for (const m of reseau.magasins) {
-        if ((choix.get(m.nom) ?? coachA(m, jour)) !== c.nom || choix.has(m.nom)) continue
+        if ((choix.get(m.nom) ?? coachA(m, jour)) !== c.nom || choix.has(m.nom) || m.lat === null) continue
         const w = poidsA(reseau, m, jour)
-        if (w === 0) continue
-        const dC = posC ? distanceKm(posC, m) : null
+        const sansM = new Map(choix); sansM.set(m.nom, '')
+        const gain = minC - minutesTournee(reseau, c.nom, jour, sansM, positions)
         for (const t of enPoste) {
-          if (t.nom === c.nom || (ch.get(t.nom) ?? 0) + w > plafond) continue
-          const pos = positions.get(t.nom) ?? null
-          const dT = pos ? distanceKm(pos, m) : null
-          const cout = dT === null ? 5000 : dT - (dC ?? 0)
+          if (t.nom === c.nom || (ch.get(t.nom) ?? 0) + w > plafond || !positions.get(t.nom)) continue
+          const avec = new Map(choix); avec.set(m.nom, t.nom)
+          const apresT = minutesTournee(reseau, t.nom, jour, avec, positions)
+          if (apresT > maxMin) continue
+          const cout = apresT - minutes(t.nom) - gain
           if (!mieux || cout < mieux.cout) mieux = { m, vers: t.nom, cout }
         }
       }
       if (!mieux) break
       choix.set(mieux.m.nom, mieux.vers)
-      res.push({ magasin: mieux.m, avant: c.nom, raison: 'depassement', coach: mieux.vers })
+      res.push({ magasin: mieux.m, avant: c.nom, raison: (ch.get(c.nom) ?? 0) > plafond ? 'depassement' : 'trajets', coach: mieux.vers })
     }
   }
   return res
