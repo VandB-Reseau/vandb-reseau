@@ -35,16 +35,22 @@ test('Équipe s’ouvre sur l’organigramme par Responsable Régional', async (
   await page.screenshot({ path: `captures/${info.project.name}-equipe.png`, fullPage: !isMobile })
 })
 
-test('l’onglet Charge projette mois par mois', async ({ page, isMobile }, info) => {
+test('l’onglet Charge montre d’abord ce qui est à traiter, puis le détail par Coach', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/plus/charge')
   await expect(page.getByRole('tab', { name: 'Charge des Coachs', selected: true })).toBeVisible()
-  await expect(page.getByText('Coachs en dépassement')).toBeVisible()
-  if (!isMobile) await expect(page.getByRole('table', { name: 'Projection de charge' })).toBeVisible()
-  await page.getByRole('tablist', { name: 'Mois affiché' }).getByRole('tab').nth(3).click()
-  await expect(page.getByRole('heading', { name: /Charge des Coachs · (?!Aujourd)/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'À traiter sur les douze prochains mois' })).toBeVisible()
+  await expect(page.getByText(/est en dépassement aujourd’hui/).first()).toBeVisible()
+  if (!isMobile) await expect(page.getByRole('table', { name: 'Charge par Coach' })).toBeVisible()
+  // Déplier un Coach montre les magasins qui composent sa charge
+  await page.getByRole('button', { name: 'Déplier Noé MODELE' }).click()
+  await expect(page.getByRole('link', { name: 'Lyon Test' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-equipe-charge.png`, fullPage: !isMobile })
+  await page.screenshot({ path: `captures/${info.project.name}-equipe-charge.png`, fullPage: true })
+  // Le bouton ouvre le plan d’affectation à la bonne date
+  await page.getByRole('link', { name: 'Proposer des réaffectations' }).click()
+  await expect(page.getByRole('tab', { name: 'Plan d’affectation', selected: true })).toBeVisible()
+  await expect(page.getByLabel('À la date du')).toHaveValue(/^\d{4}-\d{2}-\d{2}$/)
 })
 
 test('l’onglet Postes à pourvoir liste Coachs à recruter, arrivées et responsables', async ({ page, isMobile }, info) => {

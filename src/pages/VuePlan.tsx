@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -43,7 +43,8 @@ type Choix = Record<string, { cible?: string; garde?: boolean }>
 
 export function VuePlan({ reseau }: { reseau: Reseau }) {
   // Par défaut : le premier jour du mois prochain
-  const [jour, setJour] = useState(() => moisAVenir(reseau.jour, 2)[1])
+  const [params] = useSearchParams()
+  const [jour, setJour] = useState(() => params.get('date') ?? moisAVenir(reseau.jour, 2)[1])
   const [plafond, setPlafond] = useState<Plafond>('maximum')
   const dateValide = /^\d{4}-\d{2}-\d{2}$/.test(jour)
   return (
