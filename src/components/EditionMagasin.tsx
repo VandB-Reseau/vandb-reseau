@@ -73,7 +73,7 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
             await enregistrerEvaluations({ [nom]: { e, caseId: caseDe(e)?.id ?? null } })
           }
           const changes = reseau.deploiements.thematiques.filter((t) => (deps[t.id] ?? '') !== (depsInitiaux[t.id] ?? ''))
-          if (changes.length) await enregistrerDeploiements(changes.map((t) => ({ magasin: nom, thematique: t.id, etat: deps[t.id] ?? '' })))
+          if (changes.length) await enregistrerDeploiements(changes.map((t) => ({ magasin: nom, thematique: t.id, etat: deps[t.id] ?? '' })), reseau.jour)
         }
         return magasin ? (renomme ? `${magasin.nom} s’appelle désormais ${nom}.` : `${nom} est mis à jour.`) : `${nom} est ajouté au réseau.`
       }}

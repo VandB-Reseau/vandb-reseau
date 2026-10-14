@@ -3,7 +3,6 @@ import { memo, useCallback, useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
-import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -49,6 +48,10 @@ import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { Fenetre } from '../components/EditionEquipe'
+import { RechercheFiltres } from '../components/RechercheFiltres'
+import { FiltreMenu } from '../components/FiltreMenu'
+import InputAdornment from '@mui/material/InputAdornment'
+import SearchIcon from '@mui/icons-material/Search'
 import { BoutonsNote, BoutonsOption, PastilleCase, couleursCoachs, useSaisieSante, type Saisie } from '../components/Sante'
 import { coachA } from '../data/charge'
 import { enregistrerThematiques } from '../data/chargement'
@@ -59,55 +62,39 @@ import type { Magasin, Reseau } from '../data/modele'
 
 // Filtres communs : recherche, Responsable Régional, Coach
 function useFiltres(reseau: Reseau) {
-  const [rr, setRR] = useState('')
-  const [coach, setCoach] = useState('')
+  const [rrs, setRRs] = useState<string[]>([])
+  const [coachsChoisis, setCoachs] = useState<string[]>([])
   const [recherche, setRecherche] = useState('')
   const magasins = useMemo(() => reseau.magasins
     .filter((m) => m.statut !== 'avenir')
-    .filter((m) => (!rr || m.rr?.id === rr) && (!coach || coachA(m, reseau.jour) === coach) && (!recherche || `${m.nom} ${m.ville} ${coachA(m, reseau.jour)}`.toLowerCase().includes(recherche.toLowerCase())))
-    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr')), [reseau, rr, coach, recherche])
-  const coachs = useMemo(() => [...new Set(reseau.magasins.map((m) => coachA(m, reseau.jour)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr')), [reseau])
+    .filter((m) => (!rrs.length || rrs.includes(m.rr?.id ?? '__aucun__')) && (!coachsChoisis.length || coachsChoisis.includes(coachA(m, reseau.jour) || '__aucun__'))
+      && (!recherche || `${m.nom} ${m.ville} ${coachA(m, reseau.jour)}`.toLowerCase().includes(recherche.toLowerCase())))
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr')), [reseau, rrs, coachsChoisis, recherche])
+  const actifsMag = reseau.magasins.filter((m) => m.statut !== 'avenir')
+  const coachs = [...new Set(actifsMag.map((m) => coachA(m, reseau.jour)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'))
   // Propositions : les magasins, rangés par Coach
   const options = useMemo(() => reseau.magasins.filter((m) => m.statut !== 'avenir').map((m) => ({ nom: m.nom, coach: coachA(m, reseau.jour) }))
     .sort((a, b) => (a.coach || '~').localeCompare(b.coach || '~', 'fr') || a.nom.localeCompare(b.nom, 'fr')), [reseau])
   const theme = useTheme()
   const telephone = !useMediaQuery(theme.breakpoints.up('sm'), { noSsr: true })
-  const [deplies, setDeplies] = useState(false)
-  const actifs = (rr ? 1 : 0) + (coach ? 1 : 0)
-  const selects = (
-    <>
-      <TextField select label="Responsable Régional" value={rr} onChange={(e) => setRR(e.target.value)} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
-        <MenuItem value="">Tous les Responsables Régionaux</MenuItem>
-        {reseau.rrs.map((r) => <MenuItem key={r.id} value={r.id}>{r.nom}</MenuItem>)}
-      </TextField>
-      <TextField select label="Coach" value={coach} onChange={(e) => setCoach(e.target.value)} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
-        <MenuItem value="">Tous les Coachs</MenuItem>
-        {coachs.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-      </TextField>
-    </>
-  )
   const champ = (
       <Autocomplete freeSolo options={options} groupBy={(o) => o.coach || 'Sans Coach'} getOptionLabel={(o) => (typeof o === 'string' ? o : o.nom)}
-        inputValue={recherche} onInputChange={(_e, v) => setRecherche(v)}
+        inputValue={recherche} onInputChange={(_e, v) => setRecherche(v)} size="small"
         filterOptions={(os, { inputValue }) => { const q = inputValue.toLowerCase(); return os.filter((o) => !q || o.nom.toLowerCase().includes(q) || o.coach.toLowerCase().includes(q)) }}
-        renderInput={(p) => <TextField {...p} size={telephone ? 'small' : 'medium'} label="Rechercher un magasin ou un Coach" sx={telephone ? { '& .MuiInputBase-root': { minHeight: 48 } } : undefined} />} />
+        sx={{ width: { xs: '100%', md: 320 } }}
+        renderInput={(p) => <TextField {...p} placeholder="Rechercher un magasin ou un Coach"
+          slotProps={{ ...p.slotProps, htmlInput: { ...p.slotProps.htmlInput, 'aria-label': 'Rechercher un magasin ou un Coach' }, input: { ...p.slotProps.input, startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> } }}
+          sx={{ '& .MuiOutlinedInput-root': { borderRadius: 999, minHeight: telephone ? 48 : 40 } }} />} />
   )
-  // Sur téléphone : la recherche et un bouton « Filtres » sur une ligne, les listes se déplient au besoin
-  const barre = telephone ? (
-    <Box sx={{ mb: 2 }}>
-      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-        <Box sx={{ flex: 1, minWidth: 0 }}>{champ}</Box>
-        <Badge badgeContent={actifs} color="secondary">
-          <IconButton onClick={() => setDeplies((v) => !v)} aria-label="Filtres" aria-expanded={deplies} sx={{ width: 48, height: 48, border: '1px solid', borderColor: 'divider' }}><TuneOutlined /></IconButton>
-        </Badge>
-      </Box>
-      {deplies && <Box sx={{ display: 'grid', gap: 1.5, mt: 1.5 }}>{selects}</Box>}
-    </Box>
-  ) : (
-    <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '2fr 1fr 1fr' }, mb: 2 }}>
-      {champ}
-      {selects}
-    </Box>
+  const compter = (p: (m: Reseau['magasins'][number]) => boolean) => `${actifsMag.filter(p).length} magasins`
+  const barre = (
+    <RechercheFiltres recherche={champ} actifs={rrs.length + coachsChoisis.length} pc={(r, f) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 2 }}>{r}{f}</Box>}>
+      <FiltreMenu libelle="Responsable Régional" choisis={rrs} onChange={setRRs}
+        options={[...reseau.rrs.map((r) => ({ valeur: r.id, libelle: r.nom, detail: compter((m) => m.rr?.id === r.id) })), { valeur: '__aucun__', libelle: 'Sans RR', detail: compter((m) => !m.rr) }]} />
+      <FiltreMenu libelle="Coach" choisis={coachsChoisis} onChange={setCoachs}
+        options={[...coachs.map((c) => ({ valeur: c, libelle: c, detail: compter((m) => coachA(m, reseau.jour) === c) })), { valeur: '__aucun__', libelle: 'Sans Coach', detail: compter((m) => !coachA(m, reseau.jour)) }]} />
+      {(rrs.length > 0 || coachsChoisis.length > 0 || recherche) && <Button onClick={() => { setRRs([]); setCoachs([]); setRecherche('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
+    </RechercheFiltres>
   )
   return { magasins, barre }
 }

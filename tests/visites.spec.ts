@@ -10,16 +10,29 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
 })
 
-test('la couverture du semestre liste les magasins à visiter par Coach', async ({ page, isMobile }, info) => {
+test('le rythme de visite suit la nine box et signale les retards', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/visites')
-  await expect(page.getByRole('tab', { name: 'Couverture du semestre', selected: true })).toBeVisible()
-  await expect(page.getByText(/1 magasin visité sur \d+/)).toBeVisible()
-  // Lyon est visité ce semestre, Nantes seulement au semestre précédent
+  await expect(page.getByRole('tab', { name: 'Rythme de visite', selected: true })).toBeVisible()
+  // Lyon (redressement, 8 visites par an) vu le 2 octobre : à jour ; Nantes (cœur de réseau, 3 par an) vu en mars : en retard
+  const lyon = isMobile ? page.locator('.MuiCard-root', { hasText: 'Lyon Test' }) : page.getByRole('row', { name: /Lyon Test/ })
+  const nantes = isMobile ? page.locator('.MuiCard-root', { hasText: 'Nantes Test' }) : page.getByRole('row', { name: /Nantes Test/ })
+  await expect(lyon.getByText(/1 sur 8/)).toBeVisible()
+  await expect(lyon.getByText(/avant le 17 nov/)).toBeVisible()
+  await expect(nantes.getByText(/j de retard/)).toBeVisible()
+  // Filtres : seulement les magasins en retard, puis une case de la nine box
+  if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
+  await page.getByRole('button', { name: 'Filtre État' }).click()
+  await page.getByRole('menuitem', { name: /En retard/ }).click()
+  await page.keyboard.press('Escape')
   await expect(page.getByRole('link', { name: 'Lyon Test' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Nantes Test' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-visites-couverture.png`, fullPage: !isMobile })
+  await page.screenshot({ path: `captures/${info.project.name}-visites-rythme.png`, fullPage: !isMobile })
+  await page.getByRole('button', { name: 'Filtre Nine box' }).click()
+  await page.getByRole('menuitem', { name: /Locomotive/ }).click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('link', { name: 'Nantes Test' })).toHaveCount(0)
 })
 
 test('saisir une tournée crée une visite par magasin', async ({ page }, info) => {
@@ -55,8 +68,9 @@ test('l’historique se filtre et ouvre le compte rendu à imprimer', async ({ p
   await page.goto('./#/visites?vue=historique')
   await expect(page.getByText('2 visites', { exact: true })).toBeVisible()
   if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
-  await page.getByLabel('Type').click()
-  await page.getByRole('option', { name: 'Audit hygiène' }).click()
+  await page.getByRole('button', { name: 'Filtre Type' }).click()
+  await page.getByRole('menuitem', { name: 'Audit hygiène' }).click()
+  await page.keyboard.press('Escape')
   await expect(page.getByText('1 visite', { exact: true })).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-visites-historique.png`, fullPage: !isMobile })
   await page.getByRole('link', { name: /Compte rendu de Nantes Test/ }).click()
@@ -74,7 +88,7 @@ test('modifier puis supprimer une visite depuis la fiche magasin', async ({ page
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test')
-  await expect(page.getByText(/^Visité sur S1 FY27/)).toBeVisible()
+  await expect(page.getByText(/^1 visite sur 8 en FY27 · prochaine avant le/)).toBeVisible()
   await page.getByRole('button', { name: /Modifier la visite du/ }).click()
   const d = page.getByRole('dialog', { name: 'Modifier la visite de Lyon Test' })
   await d.getByLabel('Lien du compte rendu signé (Drive)').fill('https://exemple.test/cr')

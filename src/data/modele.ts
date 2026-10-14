@@ -99,6 +99,7 @@ export interface Reseau {
   evenements: Evenement[]
   anniversaires: Anniversaire[]
   evaluations: import('./sante').Evaluations
+  notesMagasins: Record<string, NoteMagasin[]>
   deploiements: import('./sante').Deploiements
   rrs: ResponsableRegional[]
   parametres: ParametresReseau
@@ -133,6 +134,8 @@ export interface Visite {
   parties: string[] // parties du compte rendu (PARTIES), vides si non abordées
   plan: ActionPlan[]
 }
+
+export interface NoteMagasin { id: string; date: string; texte: string; par: string }
 
 export interface Conge { id: number | null; personne: string; role: string; debut: string; fin: string; notes: string }
 export interface Evenement { id: number | null; titre: string; type: string; debut: string; fin: string; notes: string; couleur: string }

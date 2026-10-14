@@ -17,7 +17,9 @@ export type IdCritere = (typeof tousCriteres)[number]['id']
 export const libelleNote: Record<Note, string> = { 0: 'Non concerné', 1: 'Faible', 2: 'Moyen', 3: 'Fort' }
 
 export interface Evaluation { notes: Partial<Record<IdCritere, Note>>; date: string; par: string }
-export type Evaluations = Record<string, Evaluation & { historique?: { date: string; caseId: string }[] }>
+// Historique daté : une ligne par jour de saisie (case et notes du moment) ; les plus anciennes n'ont que la case
+export interface PointSante { date: string; caseId: string; notes?: Partial<Record<IdCritere, Note>> }
+export type Evaluations = Record<string, Evaluation & { historique?: PointSante[] }>
 
 // Nine box (démarche coach octobre 2026) : résultats en colonnes, management en lignes
 export interface CaseNineBox { id: string; libelle: string; resultats: 1 | 2 | 3; management: 1 | 2 | 3; rythme: string; couleur: string }
@@ -32,6 +34,13 @@ export const nineBox: CaseNineBox[] = [
   { id: 'renforcer', libelle: 'Management à renforcer', resultats: 2, management: 1, rythme: '6 visites × ½ j', couleur: '#ef7d00' },
   { id: 'fragile', libelle: 'Performance fragile', resultats: 3, management: 1, rythme: '4 visites × ½ j', couleur: '#f6c544' },
 ]
+
+// Nombre de visites par an et durée d'une visite, lus dans le rythme de la case
+export const visitesParAn = (c: CaseNineBox | null): number => (c ? Number(c.rythme.match(/^\d+/)?.[0] ?? 2) : 2)
+export function joursParVisite(c: CaseNineBox | null): number {
+  const d = c?.rythme.split('×')[1]?.trim() ?? '1 j'
+  return d.startsWith('½') ? 0.5 : Number(d.replace(',', '.').replace(/[^\d.]/g, '')) || 1
+}
 
 const niveau = (moyenne: number): 1 | 2 | 3 => (moyenne < 1.67 ? 1 : moyenne < 2.34 ? 2 : 3)
 
@@ -48,11 +57,44 @@ export function caseDe(e: Evaluation | undefined): CaseNineBox | null {
   return nineBox.find((c) => c.resultats === niveau(r) && c.management === m) ?? null
 }
 
+// Rang d'une case : plus il est haut, mieux se porte le magasin
+const rang = (c: CaseNineBox) => c.resultats + c.management
+
+export function historiqueSante(evaluations: Evaluations, magasin: string): PointSante[] {
+  return [...(evaluations[magasin]?.historique ?? [])].sort((a, b) => a.date.localeCompare(b.date))
+}
+
+export type Sens = 'monte' | 'descend' | 'stable'
+export interface Tendance { actuelle: CaseNineBox; precedente: CaseNineBox | null; sens: Sens; depuis: string }
+
+// Compare la case actuelle à la dernière case différente de l'historique
+export function tendance(evaluations: Evaluations, magasin: string): Tendance | null {
+  const actuelle = caseDe(evaluations[magasin])
+  if (!actuelle) return null
+  const h = historiqueSante(evaluations, magasin).filter((p) => p.caseId)
+  let i = h.length - 1
+  while (i >= 0 && h[i].caseId === actuelle.id) i--
+  const depuis = h[i + 1]?.date ?? evaluations[magasin].date
+  const precedente = i >= 0 ? nineBox.find((c) => c.id === h[i].caseId) ?? null : null
+  const sens: Sens = !precedente ? 'stable' : rang(actuelle) > rang(precedente) ? 'monte' : rang(actuelle) < rang(precedente) ? 'descend' : 'stable'
+  return { actuelle, precedente, sens, depuis }
+}
+
+// Point à ajouter à l'historique : remplace la saisie du même jour, ignore une saisie identique à la précédente
+export function ajouterPoint(historique: PointSante[], p: PointSante): PointSante[] {
+  const h = [...historique]
+  const dernier = h.at(-1)
+  if (dernier && dernier.date === p.date) h[h.length - 1] = p
+  else if (!dernier || dernier.caseId !== p.caseId || JSON.stringify(dernier.notes ?? null) !== JSON.stringify(p.notes)) h.push(p)
+  return h
+}
+
 // ── Déploiements : thématiques libres, chaque magasin a un état par thématique ──
 export type Ton = 'positif' | 'partiel' | 'negatif'
 export interface OptionDeploiement { libelle: string; ton: Ton }
 export interface Thematique { id: string; libelle: string; options: OptionDeploiement[] }
-export interface Deploiements { thematiques: Thematique[]; valeurs: Record<string, Record<string, string>> }
+export interface ChangementDeploiement { date: string; thematique: string; etat: string }
+export interface Deploiements { thematiques: Thematique[]; valeurs: Record<string, Record<string, string>>; journal?: Record<string, ChangementDeploiement[]> }
 
 const ouiNon: OptionDeploiement[] = [{ libelle: 'Oui', ton: 'positif' }, { libelle: 'Non', ton: 'negatif' }]
 export const thematiquesParDefaut: Thematique[] = [

@@ -4,19 +4,21 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
+import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import TrendingDown from '@mui/icons-material/TrendingDown'
+import SwapVert from '@mui/icons-material/SwapVert'
 import EventBusyOutlined from '@mui/icons-material/EventBusyOutlined'
 import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined'
 import PersonSearchOutlined from '@mui/icons-material/PersonSearchOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
-import { PastilleCase } from '../components/Sante'
+import { PastilleCase, PastilleTendance } from '../components/Sante'
 import { useAuth } from '../auth/AuthContext'
-import { caseDe } from '../data/sante'
-import { couverture, semestreDe } from '../data/visites'
+import { caseDe, tendance } from '../data/sante'
+import { anneeFiscale, suiviRythme } from '../data/visites'
 import { chargeA, coachA, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
 import { ajouterJours, elementsDuMois, jourLong } from './Agenda'
@@ -62,9 +64,14 @@ function Tableau({ reseau }: { reseau: Reseau }) {
     .filter((x) => x.c && PRIORITAIRES.includes(x.c.id))
     .sort((a, b) => PRIORITAIRES.indexOf(a.c!.id) - PRIORITAIRES.indexOf(b.c!.id))
   const nonEvalues = actifs.filter((m) => !caseDe(reseau.evaluations[m.nom])).length
-  const s = semestreDe(j)
-  const aVisiter = couverture(reseau, s).filter((l) => l.visites.length === 0)
-    .sort((a, b) => (a.derniere?.date ?? '').localeCompare(b.derniere?.date ?? ''))
+  const a = anneeFiscale(j)
+  const aVisiter = suiviRythme(reseau, a).filter((l) => l.retard > 0)
+    .sort((x, y) => y.retard - x.retard || (x.derniere?.date ?? '').localeCompare(y.derniere?.date ?? ''))
+  // Magasins qui ont changé de case ces trois derniers mois, ceux qui reculent d'abord
+  const il3mois = ajouterJours(j, -92)
+  const changements = actifs.map((m) => ({ m, t: tendance(reseau.evaluations, m.nom) }))
+    .filter((x) => x.t?.precedente && x.t.depuis >= il3mois)
+    .sort((x, y) => ['descend', 'stable', 'monte'].indexOf(x.t!.sens) - ['descend', 'stable', 'monte'].indexOf(y.t!.sens) || y.t!.depuis.localeCompare(x.t!.depuis))
   const finSemaine = ajouterJours(j, 6)
   const semaine = elementsDuMois(reseau, j, finSemaine)
   const surcharges = reseau.equipe.filter((c) => !c.fictif).map((c) => ({ c, charge: chargeA(reseau, c.nom) }))
@@ -83,8 +90,11 @@ function Tableau({ reseau }: { reseau: Reseau }) {
         vide={nonEvalues ? `Aucun magasin en redressement, relance ou management à renforcer. ${nonEvalues} magasin${nonEvalues > 1 ? 's restent' : ' reste'} à évaluer dans la santé du parc.` : 'Aucun magasin en redressement, relance ou management à renforcer.'}>
         {sousPerf.slice(0, MAX).map(({ m, c }) => <Ligne key={m.nom} lien={lienFiche(m.nom)} titre={m.nom} detail={`Coach ${coachA(m, j) || 'à désigner'} · rythme conseillé ${c!.rythme}`} fin={<PastilleCase c={c} />} />)}
       </Bloc>
-      <Bloc titre="Magasins à visiter" icone={<EventBusyOutlined />} total={aVisiter.length} lien="/visites" libelleLien="Voir la couverture" vide={`Tous les magasins ont reçu une visite sur ${s.court}.`}>
-        {aVisiter.slice(0, MAX).map((l) => <Ligne key={l.magasin.nom} lien={lienFiche(l.magasin.nom)} titre={l.magasin.nom} detail={`${l.coach ? `Coach ${l.coach}` : 'Sans Coach'} · ${l.derniere ? `dernière visite le ${dateCourte(l.derniere.date)}` : 'jamais visité'}`} />)}
+      <Bloc titre="Visites en retard" icone={<EventBusyOutlined />} total={aVisiter.length} lien="/visites" libelleLien="Voir le rythme de visite" vide={`Tous les magasins sont à jour de leurs visites sur ${a.court}.`}>
+        {aVisiter.slice(0, MAX).map((l) => <Ligne key={l.magasin.nom} lien={lienFiche(l.magasin.nom)} titre={l.magasin.nom} detail={`${l.coach ? `Coach ${l.coach}` : 'Sans Coach'} · ${l.derniere ? `dernière visite le ${dateCourte(l.derniere.date)}` : 'jamais visité'} · une visite tous les ${l.intervalle} jours`} fin={<Chip size="small" color="warning" label={`${l.retard} j de retard`} sx={{ fontSize: 12, fontWeight: 600 }} />} />)}
+      </Bloc>
+      <Bloc titre="Changements de case" icone={<SwapVert />} total={changements.length} lien="/plus/sante" libelleLien="Voir la nine box" vide="Aucun magasin n’a changé de case ces trois derniers mois.">
+        {changements.slice(0, MAX).map(({ m, t }) => <Ligne key={m.nom} lien={lienFiche(m.nom)} titre={m.nom} detail={`${dateCourte(t!.depuis)} · ${t!.precedente!.libelle} vers ${t!.actuelle.libelle}`} fin={<PastilleTendance t={t} court />} />)}
       </Bloc>
       <Bloc titre="Agenda de la semaine" icone={<CalendarMonthOutlined />} total={semaine.length} lien="/plus/agenda" libelleLien="Ouvrir l’agenda" vide="Rien de prévu dans les sept prochains jours.">
         {semaine.slice(0, MAX).map((e) => <Ligne key={e.cle} lien={e.lien} titre={e.titre} detail={[jourLong(e.debut < j ? j : e.debut), e.detail].filter(Boolean).join(' · ')} />)}

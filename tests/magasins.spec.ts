@@ -39,7 +39,7 @@ test('les filtres restent dans l’adresse', async ({ page }) => {
 
 test('la fiche magasin regroupe équipe, coordonnées et historique', async ({ page, isMobile }, info) => {
   await seConnecter(page)
-  await page.goto('./#/magasins')
+  await page.goto('./#/magasins?vue=liste')
   if (isMobile) await page.getByRole('heading', { name: 'Lyon Test' }).click()
   else await page.getByRole('row', { name: /Lyon Test/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()

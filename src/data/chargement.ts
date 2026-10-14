@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
-import { thematiquesParDefaut, type Deploiements, type Evaluation, type Evaluations, type Thematique } from './sante'
-import type { Conge, Evenement, Reseau, Visite } from './modele'
+import { ajouterPoint, thematiquesParDefaut, type Deploiements, type Evaluation, type Evaluations, type Thematique } from './sante'
+import type { Conge, Evenement, NoteMagasin, Reseau, Visite } from './modele'
 import { normaliserParties, normaliserPlan } from './compteRendu'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 
@@ -16,7 +16,7 @@ export class ErreurChargement extends Error {}
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -51,8 +51,9 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   const reseau = construireReseau(brutes, jour)
   // Santé du parc et déploiements : stockés dans app_config (aucune table à créer)
   reseau.evaluations = json<Evaluations>(cle('sante_parc'), {})
+  reseau.notesMagasins = json<Record<string, NoteMagasin[]>>(cle('notes_magasins'), {})
   const dep = json<Partial<Deploiements>>(cle('deploiements'), {})
-  reseau.deploiements = { thematiques: dep.thematiques?.length ? dep.thematiques : thematiquesParDefaut, valeurs: dep.valeurs ?? {} }
+  reseau.deploiements = { thematiques: dep.thematiques?.length ? dep.thematiques : thematiquesParDefaut, valeurs: dep.valeurs ?? {}, journal: dep.journal ?? {} }
   // Tables facultatives : absentes ou vides, l'app fonctionne quand même
   type L = Record<string, unknown>
   const t = (v: unknown) => (v === null || v === undefined ? '' : String(v))
@@ -320,10 +321,12 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
     await renommerColonne('reassigns', 'store', ancienNom, f.nom)
     await renommerColonne('visits', 'store', ancienNom, f.nom)
     await renommerColonne('store_finance', 'store_name', ancienNom, f.nom)
-    for (const cleConfig of ['sante_parc', 'deploiements'] as const) {
+    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins'] as const) {
       const lu = await lireCle<Record<string, unknown>>(cleConfig, {})
-      const cible = (cleConfig === 'deploiements' ? lu.valeur.valeurs : lu.valeur) as Record<string, unknown> | undefined
-      if (cible && ancienNom in cible) { cible[f.nom] = cible[ancienNom]; delete cible[ancienNom]; await ecrireCle(cleConfig, lu.valeur, lu.existe) }
+      const cibles = (cleConfig === 'deploiements' ? [lu.valeur.valeurs, lu.valeur.journal] : [lu.valeur]) as (Record<string, unknown> | undefined)[]
+      let change = false
+      for (const cible of cibles) if (cible && ancienNom in cible) { cible[f.nom] = cible[ancienNom]; delete cible[ancienNom]; change = true }
+      if (change) await ecrireCle(cleConfig, lu.valeur, lu.existe)
     }
   }
   const ligne = ligneSurcharge(f)
@@ -394,8 +397,7 @@ export function enregistrerEvaluations(lot: Record<string, { e: Evaluation; case
   return enFile(async () => {
     const { valeur, existe } = await lireCle<Evaluations>('sante_parc', {})
     for (const [magasin, { e, caseId }] of Object.entries(lot)) {
-      const historique = [...(valeur[magasin]?.historique ?? [])]
-      if (caseId && historique.at(-1)?.caseId !== caseId) historique.push({ date: e.date, caseId })
+      const historique = ajouterPoint(valeur[magasin]?.historique ?? [], { date: e.date, caseId: caseId ?? '', notes: e.notes })
       valeur[magasin] = { ...e, historique }
     }
     await ecrireCle('sante_parc', valeur, existe)
@@ -406,27 +408,51 @@ export const enregistrerEvaluation = (magasin: string, e: Evaluation, caseId: st
 function modifierDeploiements(changer: (d: Deploiements) => void) {
   return enFile(async () => {
     const { valeur, existe } = await lireCle<Partial<Deploiements>>('deploiements', {})
-    const d: Deploiements = { thematiques: valeur.thematiques?.length ? valeur.thematiques : thematiquesParDefaut, valeurs: valeur.valeurs ?? {} }
+    const d: Deploiements = { thematiques: valeur.thematiques?.length ? valeur.thematiques : thematiquesParDefaut, valeurs: valeur.valeurs ?? {}, journal: valeur.journal ?? {} }
     changer(d)
     await ecrireCle('deploiements', d, existe)
   })
 }
 
-export function enregistrerDeploiements(lot: { magasin: string; thematique: string; etat: string }[]) {
+export function enregistrerDeploiements(lot: { magasin: string; thematique: string; etat: string }[], date: string) {
   return modifierDeploiements((d) => {
     for (const { magasin, thematique, etat } of lot) {
       d.valeurs[magasin] = { ...(d.valeurs[magasin] ?? {}) }
+      // Journal daté des changements, repris dans le journal du magasin
+      if ((d.valeurs[magasin][thematique] ?? '') !== etat) {
+        const j = (d.journal![magasin] ?? []).filter((c) => !(c.date === date && c.thematique === thematique))
+        d.journal![magasin] = [...j, { date, thematique, etat }]
+      }
       if (etat) d.valeurs[magasin][thematique] = etat
       else delete d.valeurs[magasin][thematique]
     }
   })
 }
-export const enregistrerDeploiement = (magasin: string, thematique: string, etat: string) => enregistrerDeploiements([{ magasin, thematique, etat }])
+export const enregistrerDeploiement = (magasin: string, thematique: string, etat: string, date: string) => enregistrerDeploiements([{ magasin, thematique, etat }], date)
 
 export async function enregistrerThematiques(thematiques: Thematique[]) {
   await modifierDeploiements((d) => {
     d.thematiques = thematiques
     const ids = new Set(thematiques.map((t) => t.id))
     for (const m of Object.keys(d.valeurs)) for (const k of Object.keys(d.valeurs[m])) if (!ids.has(k)) delete d.valeurs[m][k]
+    for (const m of Object.keys(d.journal ?? {})) d.journal![m] = d.journal![m].filter((c) => ids.has(c.thematique))
+  })
+}
+
+// ── Notes libres datées du journal d'un magasin ──
+export function enregistrerNoteMagasin(magasin: string, note: NoteMagasin) {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<Record<string, NoteMagasin[]>>('notes_magasins', {})
+    const liste = (valeur[magasin] ?? []).filter((n) => n.id !== note.id)
+    valeur[magasin] = [...liste, note].sort((a, b) => a.date.localeCompare(b.date))
+    await ecrireCle('notes_magasins', valeur, existe)
+  })
+}
+export function supprimerNoteMagasin(magasin: string, id: string) {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<Record<string, NoteMagasin[]>>('notes_magasins', {})
+    valeur[magasin] = (valeur[magasin] ?? []).filter((n) => n.id !== id)
+    if (!valeur[magasin].length) delete valeur[magasin]
+    await ecrireCle('notes_magasins', valeur, existe)
   })
 }

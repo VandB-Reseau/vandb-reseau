@@ -61,6 +61,9 @@ export const theme = createTheme({
     overline: { fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em' },
   },
   components: {
+    // Ouvrir un menu ou une liste ne doit pas retirer la barre de défilement (sinon la page se décale)
+    MuiPopover: { defaultProps: { disableScrollLock: true } },
+    MuiMenu: { defaultProps: { disableScrollLock: true } },
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: { root: { borderRadius: 999, minHeight: 40, paddingInline: 20 } },

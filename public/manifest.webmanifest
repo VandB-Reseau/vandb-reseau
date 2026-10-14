@@ -1,0 +1,13 @@
+{
+  "name": "V and B Réseau",
+  "short_name": "V and B Réseau",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1b1b1f",
+  "theme_color": "#1b1b1f",
+  "icons": [
+    { "src": "icone-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
