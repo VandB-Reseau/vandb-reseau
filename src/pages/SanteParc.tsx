@@ -8,6 +8,7 @@ import CardContent from '@mui/material/CardContent'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
+import Drawer from '@mui/material/Drawer'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
@@ -46,7 +47,7 @@ import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { Fenetre } from '../components/EditionEquipe'
-import { BoutonsNote, BoutonsOption, PastilleCase, couleursCoachs, texteSur, useSaisieSante, type Saisie } from '../components/Sante'
+import { BoutonsNote, BoutonsOption, PastilleCase, couleursCoachs, useSaisieSante, type Saisie } from '../components/Sante'
 import { coachA } from '../data/charge'
 import { enregistrerThematiques } from '../data/chargement'
 import { analyser, lireFichier, type ResultatImport } from '../data/import'
@@ -84,98 +85,134 @@ const niveaux = ['faible', 'moyen', 'fort']
 const SURVEILLER = ['redressement', 'relance', 'renforcer']
 const SOLIDES = ['locomotive', 'grandir', 'potentiel']
 
-// ── Nine box : une case par catégorie, un point par magasin coloré selon son Coach ──
+// Nine box : chaque case donne un nombre, une part du parc et la répartition par Coach ;
+// un clic ouvre la liste des magasins de la case, regroupés par Coach (lisible même avec des centaines de magasins)
 function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () => void; surPC: boolean }) {
   const theme = useTheme()
   const { magasins, barre } = useFiltres(reseau)
-  const [actif, setActif] = useState('')
-  const classes = magasins.map((m) => ({ m, c: caseDe(reseau.evaluations[m.nom]), coach: coachA(m, reseau.jour) }))
+  const [ouverte, setOuverte] = useState<string | null>(null)
+  const [cherche, setCherche] = useState('')
+  const classes = useMemo(() => magasins.map((m) => ({ m, c: caseDe(reseau.evaluations[m.nom]), coach: coachA(m, reseau.jour) })), [magasins, reseau])
   const couleurs = couleursCoachs(reseau.magasins.map((m) => coachA(m, reseau.jour)).filter(Boolean))
-  const presents = [...new Set(classes.filter((x) => x.c).map((x) => x.coach || ''))].sort((a, b) => a.localeCompare(b, 'fr'))
+  const nbClasses = classes.filter((x) => x.c).length
   const compte = (ids: string[]) => classes.filter((x) => x.c && ids.includes(x.c.id)).length
-  const nonClasses = classes.filter((x) => !x.c).length
+  const nonClasses = classes.length - nbClasses
+  const pct = (n: number, total = nbClasses) => (total ? Math.round((n / total) * 100) : 0)
+  const maxCase = Math.max(1, ...nineBox.map((c) => compte([c.id])))
   const tuiles = [
     { titre: 'À surveiller', n: compte(SURVEILLER), detail: 'Redressement, relance, management à renforcer', couleur: theme.palette.error.main },
     { titre: 'Solides', n: compte(SOLIDES), detail: 'Locomotive, à faire grandir, potentiel à activer', couleur: theme.palette.success.main },
     { titre: 'Non classés', n: nonClasses, detail: 'Il manque des notes', couleur: theme.palette.text.secondary, action: nonClasses > 0 },
   ]
+  const caseOuverte = nineBox.find((c) => c.id === ouverte)
+  const dansCase = caseOuverte ? classes.filter((x) => x.c?.id === caseOuverte.id && (!cherche || x.m.nom.toLowerCase().includes(cherche.toLowerCase()))) : []
+  const groupes = [...dansCase.reduce((g, x) => g.set(x.coach || '', [...(g.get(x.coach || '') ?? []), x.m]), new Map<string, Magasin[]>())].sort((a, b) => b[1].length - a[1].length)
+
   return (
     <>
       {barre}
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, mb: 3 }}>
         {tuiles.map((t) => (
-          <Card key={t.titre} sx={{ borderLeft: `6px solid ${t.couleur}` }}>
+          <Card key={t.titre}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography sx={{ fontSize: 36, fontWeight: 700, lineHeight: 1, color: t.couleur }}>{t.n}</Typography>
+              <Box sx={{ width: 56, height: 56, borderRadius: 3, bgcolor: alpha(t.couleur, 0.12), color: t.couleur, display: 'grid', placeItems: 'center', fontSize: 24, fontWeight: 700, flexShrink: 0 }}>{t.n}</Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography variant="h4" component="p">{t.titre}</Typography>
-                <Typography variant="body2" color="text.secondary">{t.detail}</Typography>
+                <Typography variant="body2" color="text.secondary">{t.action ? t.detail : `${pct(t.n)} % des magasins classés`}</Typography>
               </Box>
               {t.action && <Button onClick={evaluer} sx={{ minHeight: 48 }}>Évaluer</Button>}
             </CardContent>
           </Card>
         ))}
       </Box>
-      {presents.length > 0 && (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2, alignItems: 'center' }} aria-label="Couleur de chaque Coach">
-          <Typography variant="body2" color="text.secondary" sx={{ mr: 0.5 }}>Coachs :</Typography>
-          {presents.map((c) => (
-            <Chip key={c} label={c || 'Sans Coach'} onClick={() => setActif(actif === c ? '' : c)} variant={actif === c ? 'filled' : 'outlined'}
-              icon={<Box component="span" sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: couleurs.get(c) ?? 'grey.500', ml: '8px !important' }} />}
-              sx={{ fontSize: 13, minHeight: { xs: 48, md: 32 }, opacity: actif && actif !== c ? 0.5 : 1 }} aria-pressed={actif === c} />
-          ))}
-        </Box>
-      )}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '32px repeat(3, 1fr)' }, gap: 1.5 }} role="table" aria-label="Nine box">
-        {[3, 2, 1].map((mg) => (
-          <Box key={mg} sx={{ display: 'contents' }} role="row">
-            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', justifyContent: 'center' }}>
-              <Typography variant="body2" color="text.secondary" sx={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontWeight: 600 }}>Franchisé {niveaux[mg - 1]}</Typography>
-            </Box>
-            {[1, 2, 3].map((rs) => {
-              const c = nineBox.find((x) => x.resultats === rs && x.management === mg)!
-              const liste = classes.filter((x) => x.c?.id === c.id)
-              return (
-                <Box key={c.id} role="cell" aria-label={`${c.libelle} : ${liste.length} magasin${liste.length > 1 ? 's' : ''}`}
-                  sx={{ borderRadius: 4, p: 2, minHeight: { md: 190 }, display: 'flex', flexDirection: 'column', gap: 1,
-                    background: `linear-gradient(145deg, ${alpha(c.couleur, 0.28)}, ${alpha(c.couleur, 0.08)})`, border: `1px solid ${alpha(c.couleur, 0.5)}` }}>
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                    <Typography variant="h3" component="h2" sx={{ flex: 1 }}>{c.libelle}</Typography>
-                    <Box sx={{ minWidth: 44, height: 44, borderRadius: '50%', bgcolor: c.couleur, color: texteSur(c.couleur), display: 'grid', placeItems: 'center', fontSize: 20, fontWeight: 700, boxShadow: 1 }}>{liste.length}</Box>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: 'text.secondary' }}>
-                    <EventRepeatOutlined sx={{ fontSize: 18 }} />
-                    <Typography variant="body2">{c.rythme}</Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: surPC ? 0.75 : 1, mt: 'auto', pt: 1 }}>
-                    {liste.length === 0 && <Typography variant="body2" color="text.secondary">Aucun magasin</Typography>}
-                    {liste.map(({ m, coach }) => {
-                      const couleur = couleurs.get(coach) ?? '#757575'
-                      const estompe = !!actif && actif !== coach
-                      return surPC ? (
-                        <Tooltip key={m.nom} title={`${m.nom} · ${coach || 'sans Coach'}`} arrow>
-                          <Box component={RouterLink} to={lienFiche(m.nom)} aria-label={m.nom}
-                            sx={{ width: 24, height: 24, borderRadius: '50%', bgcolor: couleur, border: '2px solid', borderColor: 'background.paper', boxShadow: 1, opacity: estompe ? 0.15 : 1, transition: 'transform .1s', '&:hover, &:focus-visible': { transform: 'scale(1.35)' } }} />
+      <Card sx={{ p: { xs: 1.5, md: 3 } }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '28px repeat(3, 1fr)' }, gap: { xs: 1.5, md: 2 } }} role="table" aria-label="Nine box">
+          {[3, 2, 1].map((mg) => (
+            <Box key={mg} sx={{ display: 'contents' }} role="row">
+              <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', justifyContent: 'center' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontWeight: 600, letterSpacing: 0.5 }}>Franchisé {niveaux[mg - 1]}</Typography>
+              </Box>
+              {[1, 2, 3].map((rs) => {
+                const c = nineBox.find((x) => x.resultats === rs && x.management === mg)!
+                const liste = classes.filter((x) => x.c?.id === c.id)
+                const parCoach = [...liste.reduce((g, x) => g.set(x.coach || '', (g.get(x.coach || '') ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])
+                const intensite = liste.length / maxCase
+                return (
+                  <Box key={c.id} role="cell" aria-label={`${c.libelle} : ${liste.length} magasin${liste.length > 1 ? 's' : ''}`}>
+                    <Box component="button" type="button" onClick={() => { setOuverte(c.id); setCherche('') }} disabled={!liste.length} aria-label={`Voir les ${liste.length} magasins : ${c.libelle}`}
+                      sx={{ all: 'unset', boxSizing: 'border-box', width: '100%', height: '100%', minHeight: { md: 168 }, display: 'flex', flexDirection: 'column', gap: 1, p: 2, borderRadius: 4, cursor: liste.length ? 'pointer' : 'default',
+                        bgcolor: liste.length ? alpha(c.couleur, 0.08 + intensite * 0.22) : 'action.hover', outline: `1px solid ${alpha(c.couleur, liste.length ? 0.45 : 0.15)}`,
+                        transition: 'transform .15s, box-shadow .15s', '&:hover:not(:disabled), &:focus-visible': { transform: 'translateY(-2px)', boxShadow: 4 } }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c.couleur, flexShrink: 0 }} />
+                        <Typography sx={{ fontWeight: 700, fontSize: 15, flex: 1 }}>{c.libelle}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                        <Typography sx={{ fontSize: { xs: 32, md: 40 }, fontWeight: 800, lineHeight: 1 }}>{liste.length}</Typography>
+                        <Typography variant="body2" color="text.secondary">{liste.length ? `${pct(liste.length)} % des classés` : 'aucun magasin'}</Typography>
+                      </Box>
+                      {liste.length > 0 && (
+                        <Tooltip title={parCoach.map(([k, n]) => `${k || 'Sans Coach'} : ${n}`).join(' · ')}>
+                          <Box sx={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', bgcolor: 'background.paper' }} aria-hidden>
+                            {parCoach.map(([k, n]) => <Box key={k} sx={{ width: `${(n / liste.length) * 100}%`, bgcolor: couleurs.get(k) ?? 'grey.500' }} />)}
+                          </Box>
                         </Tooltip>
-                      ) : (
-                        <Chip key={m.nom} component={RouterLink} to={lienFiche(m.nom)} clickable label={m.nom} aria-label={m.nom}
-                          icon={<Box component="span" sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: couleur, ml: '8px !important' }} />}
-                          sx={{ fontSize: 13, minHeight: 48, bgcolor: 'background.paper', opacity: estompe ? 0.3 : 1 }} />
-                      )
-                    })}
+                      )}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: 'text.secondary', mt: 'auto' }}>
+                        <EventRepeatOutlined sx={{ fontSize: 18 }} />
+                        <Typography variant="body2">{c.rythme}</Typography>
+                      </Box>
+                    </Box>
                   </Box>
+                )
+              })}
+            </Box>
+          ))}
+          <Box sx={{ display: { xs: 'none', md: 'block' } }} />
+          {niveaux.map((n) => <Typography key={n} variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' }, textAlign: 'center', fontWeight: 600, letterSpacing: 0.5 }}>Résultats {n}s</Typography>)}
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2, color: 'text.secondary', justifyContent: { md: 'center' } }}>
+          <ArrowUpwardOutlined sx={{ fontSize: 18, transform: 'rotate(45deg)' }} />
+          <Typography variant="body2">Plus on monte vers la droite, plus le magasin est solide. Clique une case pour voir ses magasins.</Typography>
+        </Box>
+      </Card>
+
+      <Drawer anchor={surPC ? 'right' : 'bottom'} open={!!caseOuverte} onClose={() => setOuverte(null)} sx={{ zIndex: (t) => t.zIndex.appBar + 10 }}
+        slotProps={{ paper: { sx: { width: surPC ? 440 : '100%', top: surPC ? 72 : undefined, height: surPC ? 'calc(100% - 72px)' : undefined, maxHeight: surPC ? undefined : '85dvh', borderRadius: surPC ? '16px 0 0 16px' : '16px 16px 0 0' } } }}>
+        {caseOuverte && (
+          <Box role="dialog" aria-label={caseOuverte.libelle} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <Box sx={{ p: 2.5, bgcolor: alpha(caseOuverte.couleur, 0.18), display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h2" component="h2">{caseOuverte.libelle}</Typography>
+                <Typography variant="body2" color="text.secondary">{dansCase.length} magasin{dansCase.length > 1 ? 's' : ''} · rythme conseillé {caseOuverte.rythme}</Typography>
+              </Box>
+              <IconButton onClick={() => setOuverte(null)} aria-label="Fermer"><CloseOutlined /></IconButton>
+            </Box>
+            <Box sx={{ p: 2, pb: 1 }}>
+              <TextField fullWidth size="small" label="Chercher dans la case" value={cherche} onChange={(e) => setCherche(e.target.value)} sx={{ '& .MuiInputBase-root': { minHeight: 48 } }} />
+            </Box>
+            <Box sx={{ overflowY: 'auto', px: 2, pb: 2 }}>
+              {groupes.map(([coach, ms]) => (
+                <Box key={coach} sx={{ mt: 1.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                    <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: couleurs.get(coach) ?? 'grey.500' }} />
+                    <Typography sx={{ fontWeight: 700, flex: 1 }}>{coach || 'Sans Coach'}</Typography>
+                    <Typography variant="body2" color="text.secondary">{ms.length}</Typography>
+                  </Box>
+                  {ms.map((m) => (
+                    <Link key={m.nom} component={RouterLink} to={lienFiche(m.nom)} underline="none" color="inherit"
+                      sx={{ display: 'flex', alignItems: 'center', minHeight: 44, px: 1.5, borderRadius: 2, '&:hover': { bgcolor: 'action.hover' } }}>
+                      <Typography sx={{ flex: 1 }}>{m.nom}</Typography>
+                      <Typography variant="body2" color="text.secondary">{m.ville}</Typography>
+                    </Link>
+                  ))}
                 </Box>
-              )
-            })}
+              ))}
+              {dansCase.length === 0 && <Typography color="text.secondary" sx={{ mt: 2 }}>Aucun magasin ne correspond.</Typography>}
+            </Box>
           </Box>
-        ))}
-        <Box sx={{ display: { xs: 'none', md: 'block' } }} />
-        {niveaux.map((n) => <Typography key={n} variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' }, textAlign: 'center', fontWeight: 600 }}>Résultats {n}s</Typography>)}
-      </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1.5, color: 'text.secondary', justifyContent: { md: 'center' } }}>
-        <ArrowUpwardOutlined sx={{ fontSize: 18, transform: 'rotate(45deg)' }} />
-        <Typography variant="body2">Plus on va en haut à droite, plus le magasin est solide. Résultats : moyenne du CA marché extérieur, des paniers et des flux cave et bar.</Typography>
-      </Box>
+        )}
+      </Drawer>
     </>
   )
 }
