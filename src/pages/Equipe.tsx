@@ -42,6 +42,7 @@ import ChevronRight from '@mui/icons-material/ChevronRight'
 import ExpandMore from '@mui/icons-material/ExpandMore'
 import WorkOutlineOutlined from '@mui/icons-material/WorkOutlineOutlined'
 import { VueCharge } from './VueCharge'
+import { VuePlan } from './VuePlan'
 import { PastilleStatut } from '../components/Pastilles'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
@@ -51,7 +52,7 @@ import { chargeA, magasinsDuCoach, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche, telLien } from '../lib/format'
 import type { Coach, Personne, Reseau, ResponsableRegional } from '../data/modele'
 
-type Vue = 'organisation' | 'charge' | 'magasins' | 'postes'
+type Vue = 'organisation' | 'charge' | 'magasins' | 'postes' | 'plan'
 
 function BoutonsContact({ p }: { p: Personne }) {
   return (
@@ -419,8 +420,9 @@ export function Equipe() {
             <Tab value="charge" label="Charge des Coachs" sx={{ minHeight: 48 }} />
             <Tab value="postes" label="Postes à pourvoir" sx={{ minHeight: 48 }} />
             <Tab value="magasins" label="Responsables magasin" sx={{ minHeight: 48 }} />
+            <Tab value="plan" label="Plan d’affectation" sx={{ minHeight: 48 }} />
           </Tabs>
-          {vue === 'charge' ? <VueCharge reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : vue === 'magasins' ? <VueResponsables reseau={reseau} surPC={surPC} /> : <VueOrganisation reseau={reseau} />}
+          {vue === 'plan' ? <VuePlan reseau={reseau} /> : vue === 'charge' ? <VueCharge reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : vue === 'magasins' ? <VueResponsables reseau={reseau} surPC={surPC} /> : <VueOrganisation reseau={reseau} />}
         </>
       )}
     </AvecReseau>
