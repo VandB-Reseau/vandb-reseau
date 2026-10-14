@@ -10,7 +10,7 @@ import PersonOutline from '@mui/icons-material/PersonOutlineOutlined'
 import SupervisorAccountOutlined from '@mui/icons-material/SupervisorAccountOutlined'
 import { useReseau } from '../data/ReseauContext'
 import { normaliser } from '../data/filtres'
-import { lienFiche } from '../lib/format'
+import { lienCoach, lienFiche } from '../lib/format'
 
 interface Resultat { type: 'Magasins' | 'Coachs' | 'Responsables Régionaux'; libelle: string; detail: string; cible: string; cle: string }
 
@@ -24,7 +24,7 @@ export function RechercheGlobale({ surFonce, onChoix }: { surFonce?: boolean; on
     const nbCoach = (c: string) => reseau.magasins.filter((m) => m.coach === c).length
     return [
       ...reseau.magasins.map((m) => ({ type: 'Magasins' as const, libelle: m.nom, detail: [m.ville, m.departement && `Dépt ${m.departement}`, m.coach].filter(Boolean).join(' · '), cible: lienFiche(m.nom), cle: `m-${m.nom}` })),
-      ...Object.keys(reseau.coachs).filter((c) => nbCoach(c) > 0).sort((a, b) => a.localeCompare(b, 'fr')).map((c) => ({ type: 'Coachs' as const, libelle: c, detail: `${nbCoach(c)} magasins`, cible: `/magasins?coach=${encodeURIComponent(c)}`, cle: `c-${c}` })),
+      ...Object.keys(reseau.coachs).filter((c) => nbCoach(c) > 0).sort((a, b) => a.localeCompare(b, 'fr')).map((c) => ({ type: 'Coachs' as const, libelle: c, detail: `${nbCoach(c)} magasins`, cible: lienCoach(c), cle: `c-${c}` })),
       ...reseau.rrs.map((r) => ({ type: 'Responsables Régionaux' as const, libelle: r.nom, detail: `${reseau.magasins.filter((m) => m.rr?.id === r.id).length} magasins`, cible: `/magasins?rr=${encodeURIComponent(r.id)}`, cle: `r-${r.id}` })),
     ]
   }, [reseau])

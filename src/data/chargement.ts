@@ -30,7 +30,10 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
     affectations: affectations.data ?? [],
     configRR: json(cle('drs_data'), {}),
     coachs: coachs.data ?? [],
-    parametres: { prepDuration: Number(params.prepDuration) || 2, postDuration: Number(params.postDuration) || 4 },
+    parametres: {
+      prepDuration: Number(params.prepDuration) || 2, postDuration: Number(params.postDuration) || 4,
+      maxUnits: Number(params.maxUnits) || 8, alertThreshold: Number(params.alertThreshold) || 7,
+    },
   }
   return construireReseau(brutes, jour)
 }

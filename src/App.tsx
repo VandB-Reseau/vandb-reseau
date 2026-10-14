@@ -1,3 +1,6 @@
+import { Equipe } from './pages/Equipe'
+import { FicheCoach } from './pages/FicheCoach'
+import { PlanCharge } from './pages/PlanCharge'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -20,9 +23,12 @@ function Routes_() {
         <Route path="/magasins" element={<Magasins />} />
         <Route path="/magasins/:nom" element={<FicheMagasin />} />
         <Route path="/plus/carte" element={<Magasins vueInitiale="carte" />} />
-        {principales.slice(2).map((d) => <Route key={d.chemin} path={d.chemin} element={<Chantier destination={d} />} />)}
+        <Route path="/equipe" element={<Equipe />} />
+        <Route path="/equipe/coach/:nom" element={<FicheCoach />} />
+        <Route path="/plus/charge" element={<PlanCharge />} />
+        {principales.slice(2, 3).map((d) => <Route key={d.chemin} path={d.chemin} element={<Chantier destination={d} />} />)}
         <Route path="/plus" element={<Plus />} />
-        {secondaires.slice(1).map((d) => <Route key={d.chemin} path={d.chemin} element={<Chantier destination={d} />} />)}
+        {secondaires.slice(1).filter((d) => d.chemin !== '/plus/charge').map((d) => <Route key={d.chemin} path={d.chemin} element={<Chantier destination={d} />} />)}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

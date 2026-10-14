@@ -57,7 +57,7 @@ test('un magasin inconnu affiche un message clair', async ({ page }) => {
   await expect(page.getByText('Magasin introuvable')).toBeVisible()
 })
 
-test('la recherche globale ouvre une fiche ou filtre par Coach', async ({ page, isMobile }) => {
+test('la recherche globale ouvre une fiche magasin ou une fiche Coach', async ({ page, isMobile }) => {
   await seConnecter(page)
   if (isMobile) await page.getByRole('button', { name: 'Rechercher' }).click()
   const champ = page.getByLabel('Recherche globale')
@@ -67,7 +67,7 @@ test('la recherche globale ouvre une fiche ou filtre par Coach', async ({ page, 
   if (isMobile) await page.getByRole('button', { name: 'Rechercher' }).click()
   await page.getByLabel('Recherche globale').fill('inès')
   await page.getByRole('option', { name: /^Inès EXEMPLE/ }).click()
-  await expect(page.getByLabel('Filtre Coach')).toContainText('Inès EXEMPLE')
+  await expect(page.getByRole('heading', { name: 'Inès EXEMPLE', level: 1 })).toBeVisible()
 })
 
 test('la carte affiche les magasins et leur légende', async ({ page }, info) => {

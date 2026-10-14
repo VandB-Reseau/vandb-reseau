@@ -15,3 +15,7 @@ export function lienFiche(nom: string): string {
 export function telLien(tel: string): string {
   return `tel:${tel.replace(/[^\d+]/g, '')}`
 }
+
+export function lienCoach(nom: string): string {
+  return `/equipe/coach/${encodeURIComponent(nom)}`
+}

@@ -59,9 +59,26 @@ export interface Magasin {
   historiqueCoach: AffectationCoach[]
 }
 
+export interface Coach extends Personne {
+  rr: ResponsableRegional | null
+  // Rattachements successifs au Responsable Régional
+  historiqueRR: { rr: ResponsableRegional | null; date: string }[]
+}
+
+export interface ParametresReseau {
+  prepDuration: number // mois de préparation avant ouverture
+  postDuration: number // mois d'accompagnement renforcé après ouverture
+  maxUnits: number // charge maximale d'un Coach
+  alertThreshold: number // seuil d'attention
+}
+
 export interface Reseau {
   magasins: Magasin[]
   coachs: Record<string, Personne>
+  equipe: Coach[] // Coachs pilotant des magasins (hors techniciens)
+  techniciens: Personne[]
   rrs: ResponsableRegional[]
+  parametres: ParametresReseau
+  jour: string
   chargeLe: string
 }

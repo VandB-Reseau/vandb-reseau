@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -20,10 +20,10 @@ import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { PastilleStatut, PastilleType } from '../components/Pastilles'
-import { dateCourte, dateLongue, telLien } from '../lib/format'
+import { dateCourte, dateLongue, lienCoach, telLien } from '../lib/format'
 import type { Magasin, Personne, Reseau } from '../data/modele'
 
-function Section({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
+export function Section({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
   return (
     <Card>
       <CardContent sx={{ p: 3 }}>
@@ -37,7 +37,7 @@ function Section({ titre, children, action }: { titre: string; children: ReactNo
   )
 }
 
-function Ligne({ libelle, children }: { libelle: string; children: ReactNode }) {
+export function Ligne({ libelle, children }: { libelle: string; children: ReactNode }) {
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '180px 1fr' }, gap: { xs: 0.25, sm: 2 }, py: 1.25, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
       <Typography variant="body2" color="text.secondary">{libelle}</Typography>
@@ -46,12 +46,14 @@ function Ligne({ libelle, children }: { libelle: string; children: ReactNode }) 
   )
 }
 
-function Contact({ role, p, sousTitre }: { role: string; p: Personne | null; sousTitre?: string }) {
+export function Contact({ role, p, sousTitre, lien }: { role: string; p: Personne | null; sousTitre?: string; lien?: string }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1.25, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography variant="body2" color="text.secondary">{role}</Typography>
-        <Typography variant="body1" sx={{ fontWeight: 500 }}>{p?.nom ?? 'Non renseigné'}</Typography>
+        {p && lien
+          ? <Link component={RouterLink} to={lien} variant="body1" sx={{ fontWeight: 500, display: 'inline-flex', minHeight: 32, alignItems: 'center' }}>{p.nom}</Link>
+          : <Typography variant="body1" sx={{ fontWeight: 500 }}>{p?.nom ?? 'Non renseigné'}</Typography>}
         {sousTitre && <Typography variant="caption" color="text.secondary">{sousTitre}</Typography>}
       </Box>
       {p?.telephone && <Tooltip title={p.telephone}><IconButton href={telLien(p.telephone)} aria-label={`Appeler ${p.nom}`}><CallOutlined /></IconButton></Tooltip>}
@@ -79,7 +81,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
         <Section titre="Équipe">
-          <Contact role="Coach" p={coach} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
+          <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
           <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
           <Contact role="Responsable magasin" p={m.responsable} />
           <Contact role="Adjoint" p={m.adjoint} />
