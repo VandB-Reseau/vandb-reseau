@@ -35,7 +35,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], onFermer }
   const [notes, setNotes] = useState(visite?.notes ?? '')
   const [parties, setParties] = useState<string[]>(visite?.parties ?? partiesVides())
   const [plan, setPlan] = useState<ActionPlan[]>(visite?.plan ?? [])
-  const unSeul = magasins.length === 1
+  const unSeul = magasins.length <= 1
   const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date)
   const noms = reseau.magasins.map((m) => m.nom)
   return (
@@ -55,7 +55,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], onFermer }
         value={magasins}
         onChange={(_e, v) => setMagasins(visite ? v.slice(-1) : v)}
         disableCloseOnSelect={!visite}
-        renderInput={(p) => <TextField {...p} label={visite ? 'Magasin' : 'Magasins visités'} helperText={visite ? ' ' : 'Une tournée : choisis plusieurs magasins, une visite est créée pour chacun.'} />}
+        renderInput={(p) => <TextField {...p} label={visite ? 'Magasin' : 'Magasins visités'} />}
         noOptionsText="Aucun magasin ne correspond"
       />
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' } }}>
@@ -69,7 +69,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], onFermer }
         </TextField>
       </Box>
       <SaisieCompteRendu
-        reseau={reseau} visite={visite} magasin={unSeul ? magasins[0] : ''} date={date}
+        reseau={reseau} visite={visite} tournee={!unSeul} magasin={magasins[0] ?? ''} date={date}
         notes={notes} setNotes={setNotes} parties={parties} setParties={setParties} plan={plan} setPlan={setPlan}
       />
       <Box>
