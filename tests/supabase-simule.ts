@@ -32,7 +32,12 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
       return route.fulfill({ status: 201, json: [] })
     }
     // Filtres simples « colonne=eq.valeur » appliqués comme le ferait Supabase
-    const filtrer = (lignes: Record<string, unknown>[]) => lignes.filter((l) => [...url.searchParams].every(([k, v]) => !v.startsWith('eq.') || String(l[k]) === v.slice(3)))
+    const filtrer = (lignes: Record<string, unknown>[]) => lignes.filter((l) => [...url.searchParams].every(([k, v]) => {
+      if (v.startsWith('eq.')) return String(l[k]) === v.slice(3)
+      // « in.(a,b) » : sans lui, une clé oubliée dans la liste chargée passerait inaperçue
+      if (v.startsWith('in.(')) return v.slice(4, -1).split(',').map((x) => x.replace(/^"|"$/g, '')).includes(String(l[k]))
+      return true
+    }))
     if (table === 'app_config') {
       return route.fulfill({ json: filtrer([
         { key: 'store_adds', value: JSON.stringify(magasinsFictifs) },
