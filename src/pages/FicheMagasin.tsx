@@ -16,7 +16,7 @@ import MailOutlined from '@mui/icons-material/MailOutlined'
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
-import { PastilleCase, SelectDeploiement, SelectNote, useSaisieSante } from '../components/Sante'
+import { BoutonsNote, BoutonsOption, PastilleCase, useSaisieSante } from '../components/Sante'
 import { caseDe, tousCriteres } from '../data/sante'
 import { AvecReseau } from '../components/EtatDonnees'
 import { ReaffecterDialog } from '../components/ReaffecterDialog'
@@ -194,7 +194,7 @@ export function FicheMagasin() {
 // Santé du parc : notes nine box et état des déploiements, modifiables sur place
 function SectionSante({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (s: string) => void }) {
   const saisie = useSaisieSante(reseau, signaler)
-  const e = saisie.evaluation(m.nom)
+  const e = reseau.evaluations[m.nom]
   const c = caseDe(e)
   return (
     <Section titre="Santé et déploiements" action={<Button component={RouterLink} to="/plus/sante" startIcon={<QueryStatsOutlined />} sx={{ minHeight: 48 }}>Nine box</Button>}>
@@ -202,12 +202,22 @@ function SectionSante({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; sig
         <PastilleCase c={c} />
         <Typography variant="body2" color="text.secondary">{c ? `Rythme de visite conseillé : ${c.rythme}` : 'Note au moins un critère de résultats et le niveau du franchisé pour classer le magasin.'}</Typography>
       </Box>
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
-        {tousCriteres.map((k) => <SelectNote key={k.id} libelle={k.libelle} valeur={e?.notes[k.id]} onChange={(n) => saisie.noter(m.nom, k.id, n)} />)}
+      <Box sx={{ display: 'grid', gap: 1.5 }}>
+        {tousCriteres.map((k) => (
+          <Box key={k.id}>
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{k.libelle}</Typography>
+            <BoutonsNote libelle={k.libelle} valeur={e?.notes[k.id]} onChange={(n) => saisie.noter([m.nom], k.id, n)} />
+          </Box>
+        ))}
       </Box>
       <Divider sx={{ my: 2 }} />
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
-        {reseau.deploiements.thematiques.map((t) => <SelectDeploiement key={t.id} t={t} libelle={t.libelle} valeur={saisie.etat(m.nom, t.id)} onChange={(v) => saisie.deployer(m.nom, t.id, v)} />)}
+      <Box sx={{ display: 'grid', gap: 1.5 }}>
+        {reseau.deploiements.thematiques.map((t) => (
+          <Box key={t.id} sx={{ overflowX: 'auto' }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{t.libelle}</Typography>
+            <BoutonsOption t={t} libelle={t.libelle} valeur={reseau.deploiements.valeurs[m.nom]?.[t.id] ?? ''} onChange={(v) => saisie.deployer([m.nom], t.id, v)} />
+          </Box>
+        ))}
       </Box>
     </Section>
   )
