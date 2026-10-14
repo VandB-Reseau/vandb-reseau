@@ -112,8 +112,9 @@ const cle = (ecritures: Ecriture[], k: string) => configEcrite(ecritures.filter(
 test('ajouter un Coach l’enregistre et le rattache à son Responsable Régional', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/equipe?forme=liste')
-  await page.getByRole('button', { name: 'Coach', exact: true }).click()
+  await page.goto('./#/equipe?vue=collaborateurs')
+  await page.getByRole('button', { name: 'Ajouter un collaborateur' }).click()
+  await page.getByRole('menuitem', { name: 'Un Coach' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter un Coach' })
   await d.getByLabel('Prénom').fill('Hugo')
   await d.getByLabel(/^Nom/).fill('FICTIF')
@@ -128,7 +129,7 @@ test('ajouter un Coach l’enregistre et le rattache à son Responsable Régiona
   await page.getByRole('option', { name: 'Sam SUD' }).click()
   await page.screenshot({ path: `captures/${info.project.name}-ajouter-coach.png` })
   await d.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect(page.getByText('Lou NOUVEAU est ajouté à l’équipe.')).toBeVisible()
+  await expect(page).toHaveURL(/coach\/Lou%20NOUVEAU/) // la base simulée ne garde pas l’ajout : on vérifie l’ouverture de sa fiche
   expect(dernier(ecritures, 'cs_overrides')).toMatchObject({ methode: 'POST', corps: { cs_name: 'Lou NOUVEAU', tel: '+33 6 99 99 99 99', fictif: false } })
   const config = cle(ecritures, 'drs_data')
   expect(config.dr_assigns.at(-1)).toMatchObject({ cs: 'Lou NOUVEAU', dr: 'rr2' })
