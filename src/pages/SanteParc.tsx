@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
+import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -62,12 +63,18 @@ function useFiltres(reseau: Reseau) {
   const [recherche, setRecherche] = useState('')
   const magasins = useMemo(() => reseau.magasins
     .filter((m) => m.statut !== 'avenir')
-    .filter((m) => (!rr || m.rr?.id === rr) && (!coach || coachA(m, reseau.jour) === coach) && (!recherche || `${m.nom} ${m.ville}`.toLowerCase().includes(recherche.toLowerCase())))
+    .filter((m) => (!rr || m.rr?.id === rr) && (!coach || coachA(m, reseau.jour) === coach) && (!recherche || `${m.nom} ${m.ville} ${coachA(m, reseau.jour)}`.toLowerCase().includes(recherche.toLowerCase())))
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr')), [reseau, rr, coach, recherche])
   const coachs = useMemo(() => [...new Set(reseau.magasins.map((m) => coachA(m, reseau.jour)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr')), [reseau])
+  // Propositions : les magasins, rangés par Coach
+  const options = useMemo(() => reseau.magasins.filter((m) => m.statut !== 'avenir').map((m) => ({ nom: m.nom, coach: coachA(m, reseau.jour) }))
+    .sort((a, b) => (a.coach || '~').localeCompare(b.coach || '~', 'fr') || a.nom.localeCompare(b.nom, 'fr')), [reseau])
   const barre = (
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '2fr 1fr 1fr' }, mb: 2 }}>
-      <TextField label="Rechercher un magasin" value={recherche} onChange={(e) => setRecherche(e.target.value)} />
+      <Autocomplete freeSolo options={options} groupBy={(o) => o.coach || 'Sans Coach'} getOptionLabel={(o) => (typeof o === 'string' ? o : o.nom)}
+        inputValue={recherche} onInputChange={(_e, v) => setRecherche(v)}
+        filterOptions={(os, { inputValue }) => { const q = inputValue.toLowerCase(); return os.filter((o) => !q || o.nom.toLowerCase().includes(q) || o.coach.toLowerCase().includes(q)) }}
+        renderInput={(p) => <TextField {...p} label="Rechercher un magasin ou un Coach" />} />
       <TextField select label="Responsable Régional" value={rr} onChange={(e) => setRR(e.target.value)} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
         <MenuItem value="">Tous les Responsables Régionaux</MenuItem>
         {reseau.rrs.map((r) => <MenuItem key={r.id} value={r.id}>{r.nom}</MenuItem>)}

@@ -31,7 +31,8 @@ test('noter en un clic enregistre la case du magasin', async ({ page, isMobile }
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/plus/sante?vue=evaluer')
-  await page.getByLabel('Rechercher un magasin').fill('Rennes')
+  await page.getByRole('combobox', { name: 'Rechercher un magasin ou un Coach' }).fill('Rennes')
+  await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Fort : CA marché extérieur de Rennes Test' }).click()
   await page.getByRole('button', { name: /^Fort : Niveau du franchisé.* de Rennes Test/ }).click()
   await expect(page.getByText('Locomotive').first()).toBeVisible()
@@ -153,4 +154,18 @@ test('plusieurs notes rapides partent en une seule écriture et restent après u
   await page.goto('./#/plus/sante?vue=evaluer')
   await page.goto('./#/magasins/Rennes%20Test')
   await expect(page.getByRole('button', { name: 'Moyen : Flux bar' })).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('la recherche propose les magasins rangés par Coach et accepte un nom de Coach', async ({ page }, info) => {
+  await seConnecter(page)
+  await page.goto('./#/plus/sante?vue=deploiements')
+  const champ = page.getByRole('combobox', { name: 'Rechercher un magasin ou un Coach' })
+  await champ.click()
+  await expect(page.getByRole('listbox')).toContainText('Hugo FICTIF')
+  await page.screenshot({ path: `captures/${info.project.name}-sante-recherche.png` })
+  await champ.fill('Noé')
+  await expect(page.getByRole('option', { name: 'Lyon Test' })).toBeVisible()
+  await expect(page.getByRole('option', { name: 'Annecy Test' })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('link', { name: 'Annecy Test' })).toHaveCount(0)
 })
