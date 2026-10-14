@@ -36,15 +36,15 @@ function ChampDicte({ libelle, valeur, changer, minRows = 2 }: { libelle: string
   )
 }
 
-export function SaisieCompteRendu({ reseau, visite, magasin, date, notes, setNotes, parties, setParties, plan, setPlan }: {
-  reseau: Reseau; visite: Visite | null; magasin: string; date: string
+export function SaisieCompteRendu({ reseau, visite, tournee, magasin, date, notes, setNotes, parties, setParties, plan, setPlan }: {
+  reseau: Reseau; visite: Visite | null; tournee: boolean; magasin: string; date: string
   notes: string; setNotes: (f: (n: string) => string) => void
   parties: string[]; setParties: (f: (p: string[]) => string[]) => void
   plan: ActionPlan[]; setPlan: (f: (p: ActionPlan[]) => ActionPlan[]) => void
 }) {
   // Tournée de plusieurs magasins : seules les notes communes sont saisies
-  if (!magasin) return <ChampDicte libelle="Notes de visite" valeur={notes} changer={setNotes} minRows={4} />
-  const precedente = visitePrecedenteAvecPlan(reseau.visites, magasin, date, visite?.id ?? null)
+  if (tournee) return <ChampDicte libelle="Notes de visite" valeur={notes} changer={setNotes} minRows={4} />
+  const precedente = magasin && visitePrecedenteAvecPlan(reseau.visites, magasin, date, visite?.id ?? null)
 
   return (
     <>

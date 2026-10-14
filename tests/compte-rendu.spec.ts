@@ -58,6 +58,7 @@ test('une tournée garde des notes communes dictées, sans parties', async ({ pa
   await page.goto('./#/visites')
   await page.getByRole('button', { name: 'Saisir une visite pour Nantes Test' }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  await expect(d.getByLabel('1. Chiffres et gestion', { exact: true })).toBeVisible()
   await d.getByLabel('Magasins visités').fill('Rennes')
   await page.getByRole('option', { name: 'Rennes Test' }).click()
   await page.keyboard.press('Escape')
