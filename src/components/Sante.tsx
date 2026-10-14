@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
 import Chip from '@mui/material/Chip'
-import MenuItem from '@mui/material/MenuItem'
-import TextField from '@mui/material/TextField'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { enregistrerDeploiements, enregistrerEvaluations } from '../data/chargement'
-import { caseDe, couleurTon, libelleNote, tonDe, type CaseNineBox, type Evaluation, type IdCritere, type Note, type Thematique } from '../data/sante'
+import { caseDe, couleurTon, libelleNote, type CaseNineBox, type Evaluation, type IdCritere, type Note, type Thematique } from '../data/sante'
 import type { Reseau } from '../data/modele'
 import { messageErreur } from './EditionEquipe'
 
@@ -20,6 +20,7 @@ async function vider() {
   const ev = evalsEnAttente, dp = depsEnAttente
   evalsEnAttente = {}; depsEnAttente = []
   const n = Object.keys(ev).length + dp.length
+  if (!n) return
   try {
     if (Object.keys(ev).length) await enregistrerEvaluations(ev)
     if (dp.length) await enregistrerDeploiements(dp)
@@ -33,56 +34,91 @@ function planifier() {
 // Si on quitte la page avant la fin de la pause, on enregistre quand même
 if (typeof window !== 'undefined') window.addEventListener('pagehide', () => { if (minuteur) { clearTimeout(minuteur); vider() } })
 
-export function useSaisieSante(reseau: Reseau, signaler: (m: string) => void) {
-  const [, setVersion] = useState(0)
+export interface Saisie {
+  noter: (magasins: string[], critere: IdCritere, note: Note | null) => void
+  deployer: (magasins: string[], thematique: string, valeur: string | null) => void
+}
+
+// Fonctions stables (même référence à chaque rendu) pour que seules les lignes modifiées se redessinent
+export function useSaisieSante(reseau: Reseau, signaler: (m: string) => void): Saisie & { version: number } {
+  const [version, setVersion] = useState(0)
+  const ref = useRef(reseau)
+  ref.current = reseau
   signalerDernier = signaler
-  const evaluation = (magasin: string): Evaluation | undefined => reseau.evaluations[magasin]
-  const etat = (magasin: string, t: string): string => reseau.deploiements.valeurs[magasin]?.[t] ?? ''
-  const noter = (magasin: string, critere: IdCritere, note: Note | '') => {
-    const notes = { ...(reseau.evaluations[magasin]?.notes ?? {}) }
-    if (note) notes[critere] = note
-    else delete notes[critere]
-    const e: Evaluation = { notes, date: reseau.jour, par: reseau.directeur.nom }
-    reseau.evaluations[magasin] = { ...reseau.evaluations[magasin], ...e }
-    evalsEnAttente[magasin] = { e, caseId: caseDe(e)?.id ?? null }
+  const noter = useCallback((magasins: string[], critere: IdCritere, note: Note | null) => {
+    const r = ref.current
+    for (const magasin of magasins) {
+      const notes = { ...(r.evaluations[magasin]?.notes ?? {}) }
+      if (note) notes[critere] = note
+      else delete notes[critere]
+      const e: Evaluation = { notes, date: r.jour, par: r.directeur.nom }
+      r.evaluations[magasin] = { ...r.evaluations[magasin], ...e }
+      evalsEnAttente[magasin] = { e, caseId: caseDe(e)?.id ?? null }
+    }
     setVersion((v) => v + 1)
     planifier()
-  }
-  const deployer = (magasin: string, t: string, valeur: string) => {
-    const v = { ...(reseau.deploiements.valeurs[magasin] ?? {}) }
-    if (valeur) v[t] = valeur
-    else delete v[t]
-    reseau.deploiements.valeurs[magasin] = v
-    depsEnAttente = [...depsEnAttente.filter((x) => !(x.magasin === magasin && x.thematique === t)), { magasin, thematique: t, etat: valeur }]
+  }, [])
+  const deployer = useCallback((magasins: string[], t: string, valeur: string | null) => {
+    const r = ref.current
+    for (const magasin of magasins) {
+      const v = { ...(r.deploiements.valeurs[magasin] ?? {}) }
+      if (valeur) v[t] = valeur
+      else delete v[t]
+      r.deploiements.valeurs[magasin] = v
+      depsEnAttente = [...depsEnAttente.filter((x) => !(x.magasin === magasin && x.thematique === t)), { magasin, thematique: t, etat: valeur ?? '' }]
+    }
     setVersion((x) => x + 1)
     planifier()
-  }
-  return { evaluation, etat, noter, deployer }
+  }, [])
+  return { noter, deployer, version }
 }
 
-export function SelectNote({ libelle, valeur, onChange, compact }: { libelle: string; valeur: Note | undefined; onChange: (n: Note | '') => void; compact?: boolean }) {
-  return (
-    <TextField select size={compact ? 'small' : 'medium'} label={compact ? undefined : libelle} value={valeur ?? ''} onChange={(e) => onChange(e.target.value ? (Number(e.target.value) as Note) : '')}
-      slotProps={{ select: { displayEmpty: true, SelectDisplayProps: { 'aria-label': libelle } as object }, inputLabel: { shrink: true } }} sx={{ minWidth: compact ? 110 : 200, '& .MuiInputBase-root': { minHeight: 48 } }}>
-      <MenuItem value="">Non noté</MenuItem>
-      {([3, 2, 1] as Note[]).map((n) => <MenuItem key={n} value={n}>{libelleNote[n]}</MenuItem>)}
-    </TextField>
-  )
-}
+const couleurNote: Record<Note, 'error' | 'warning' | 'success'> = { 1: 'error', 2: 'warning', 3: 'success' }
 
-export function SelectDeploiement({ t, valeur, onChange, libelle, compact }: { t: Thematique; valeur: string; onChange: (v: string) => void; libelle: string; compact?: boolean }) {
-  const ton = tonDe(t, valeur)
+const styleGroupe = (compact?: boolean) => ({
+  flexWrap: 'nowrap' as const,
+  '& .MuiToggleButton-root': {
+    minHeight: { xs: 48, md: compact ? 36 : 44 }, px: compact ? 1 : 1.5, py: 0, fontSize: 13, textTransform: 'none', lineHeight: 1.2, whiteSpace: 'nowrap',
+    transition: 'none',
+  },
+})
+
+// Un clic suffit ; recliquer sur la note choisie l'efface
+export const BoutonsNote = memo(function BoutonsNote({ libelle, valeur, onChange, compact }: { libelle: string; valeur: Note | undefined; onChange: (n: Note | null) => void; compact?: boolean }) {
   return (
-    <TextField select size={compact ? 'small' : 'medium'} label={compact ? undefined : t.libelle} value={t.options.some((o) => o.libelle === valeur) ? valeur : ''} onChange={(e) => onChange(e.target.value)}
-      slotProps={{ select: { displayEmpty: true, SelectDisplayProps: { 'aria-label': libelle } as object }, inputLabel: { shrink: true } }}
-      sx={{ minWidth: compact ? 130 : 200, '& .MuiInputBase-root': { minHeight: 48, bgcolor: ton ? `${couleurTon[ton]}.light` : undefined, color: ton ? `${couleurTon[ton]}.contrastText` : undefined } }}>
-      <MenuItem value="">Non renseigné</MenuItem>
-      {t.options.map((o) => <MenuItem key={o.libelle} value={o.libelle}>{o.libelle}</MenuItem>)}
-    </TextField>
+    <ToggleButtonGroup exclusive size="small" value={valeur ?? null} onChange={(_e, v) => onChange(v ?? null)} aria-label={libelle} sx={styleGroupe(compact)}>
+      {([1, 2, 3] as Note[]).map((n) => (
+        <ToggleButton key={n} value={n} aria-label={`${libelleNote[n]} : ${libelle}`}
+          sx={{ '&.Mui-selected, &.Mui-selected:hover': { bgcolor: `${couleurNote[n]}.main`, color: `${couleurNote[n]}.contrastText`, fontWeight: 700 } }}>
+          {libelleNote[n]}
+        </ToggleButton>
+      ))}
+    </ToggleButtonGroup>
   )
-}
+})
+
+export const BoutonsOption = memo(function BoutonsOption({ t, libelle, valeur, onChange, compact }: { t: Thematique; libelle: string; valeur: string; onChange: (v: string | null) => void; compact?: boolean }) {
+  return (
+    <ToggleButtonGroup exclusive size="small" value={valeur || null} onChange={(_e, v) => onChange(v ?? null)} aria-label={libelle} sx={styleGroupe(compact)}>
+      {t.options.map((o) => (
+        <ToggleButton key={o.libelle} value={o.libelle} aria-label={`${o.libelle} : ${libelle}`}
+          sx={{ '&.Mui-selected, &.Mui-selected:hover': { bgcolor: `${couleurTon[o.ton]}.main`, color: `${couleurTon[o.ton]}.contrastText`, fontWeight: 700 } }}>
+          {o.libelle}
+        </ToggleButton>
+      ))}
+    </ToggleButtonGroup>
+  )
+})
+
+export const texteSur = (couleur: string) => (['#f6c544', '#8bc34a'].includes(couleur) ? '#1d1d1b' : '#fff')
 
 export function PastilleCase({ c }: { c: CaseNineBox | null }) {
   if (!c) return <Chip label="Non classé" variant="outlined" sx={{ fontSize: 12 }} />
-  return <Chip label={c.libelle} sx={{ bgcolor: c.couleur, color: ['#f6c544', '#8bc34a'].includes(c.couleur) ? '#1d1d1b' : '#fff', fontWeight: 600, fontSize: 12 }} />
+  return <Chip label={c.libelle} sx={{ bgcolor: c.couleur, color: texteSur(c.couleur), fontWeight: 600, fontSize: 12 }} />
+}
+
+// Une couleur par Coach, stable d'un écran à l'autre (ordre alphabétique)
+const PALETTE = ['#1b6fce', '#c2185b', '#0f766e', '#7c3aed', '#b45309', '#0891b2', '#4d7c0f', '#be123c', '#4338ca', '#a16207', '#047857', '#9333ea']
+export function couleursCoachs(coachs: string[]): Map<string, string> {
+  return new Map([...new Set(coachs)].sort((a, b) => a.localeCompare(b, 'fr')).map((c, i) => [c, PALETTE[i % PALETTE.length]]))
 }

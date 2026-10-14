@@ -66,6 +66,7 @@ export interface Magasin {
 export interface Coach extends Personne {
   rr: ResponsableRegional | null
   fictif: boolean // poste prévu, Coach pas encore recruté
+  couleur: string // couleur de sa zone sur la carte (même que dans l'ancienne app)
   arrivee: string // date d'arrivée prévue ou réelle (AAAA-MM-JJ), vide si inconnue
   naissance: string
   ville: string
@@ -82,6 +83,7 @@ export interface ParametresReseau {
   alertThreshold: number // seuil d'attention
   poidsOuvert: number // unités pour un magasin ouvert
   poidsRenforce: number // unités pour un magasin en pré-ouverture ou ouvert depuis peu
+  maxCoachsRR: number // nombre de Coachs au-delà duquel un Responsable Régional est surchargé
 }
 
 export interface Reseau {

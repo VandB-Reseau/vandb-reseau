@@ -43,6 +43,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
       maxUnits: Number(params.maxUnits) || 8, alertThreshold: Number(params.alertThreshold) || 7,
       poidsOuvert: params.poidsOuvert === undefined ? 1 : Number(params.poidsOuvert),
       poidsRenforce: params.poidsRenforce === undefined ? 2 : Number(params.poidsRenforce),
+      maxCoachsRR: Number(params.maxCoachsRR) || 8,
     },
   }
   const reseau = construireReseau(brutes, jour)
