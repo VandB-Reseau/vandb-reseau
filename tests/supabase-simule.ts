@@ -6,9 +6,7 @@ export const COMPTE = { email: 'joseph@vandb.test', motDePasse: 'bon-mot-de-pass
 // Simule l'API d'authentification Supabase : seul COMPTE est accepté.
 export interface Ecriture { methode: string; table: string; corps: unknown; filtre: string }
 
-export interface OptionsSimulation { panne?: boolean; ecritures?: Ecriture[]; redaction?: 'ok' | 'panne'; demandesRedaction?: unknown[] }
-
-export async function simulerSupabase(page: Page, options: OptionsSimulation = {}) {
+export async function simulerSupabase(page: Page, options: { panne?: boolean; ecritures?: Ecriture[] } = {}) {
   await page.route('https://*.tile.openstreetmap.org/**', (r) => r.fulfill({ status: 204, body: '' }))
   await page.route('https://supabase.test/**', async (route) => {
     const req = route.request()
@@ -27,16 +25,6 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       })
     }
     if (url.pathname === '/auth/v1/logout') return route.fulfill({ status: 204, body: '' })
-    // Rédaction du compte rendu par l'IA (fonction Supabase), réponse fixe
-    if (url.pathname === '/functions/v1/rediger-compte-rendu') {
-      if (req.method() === 'OPTIONS') return route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' }, body: 'ok' })
-      options.demandesRedaction?.push(req.postDataJSON())
-      if (options.redaction === 'panne') return route.fulfill({ status: 500, json: { erreur: 'rédaction impossible' } })
-      const parties = Array(10).fill('')
-      parties[2] = '- Magasin propre, vitrine soignée.\n- Ruptures sur les bières de garde.'
-      parties[9] = 'Point fort : propreté. Axe de progrès : disponibilité des bières.'
-      return route.fulfill({ json: { parties, plan: [{ action: 'Recommander les bières de garde', porteur: 'Franchisé', echeance: 'fin octobre' }] } })
-    }
     if (options.panne && url.pathname.startsWith('/rest/')) return route.fulfill({ status: 500, json: { message: 'indisponible' } })
     const table = url.pathname.replace('/rest/v1/', '')
     if (req.method() !== 'GET' && req.method() !== 'HEAD') {
@@ -71,7 +59,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
   })
 }
 
-export async function seConnecter(page: Page, options: OptionsSimulation = {}) {
+export async function seConnecter(page: Page, options: { panne?: boolean; ecritures?: Ecriture[] } = {}) {
   await simulerSupabase(page, options)
   await page.goto('./')
   await page.getByLabel('Email').fill(COMPTE.email)

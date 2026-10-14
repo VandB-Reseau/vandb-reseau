@@ -26,51 +26,44 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
 })
 
-test('dicter, faire rédiger les parties et le plan d’action, puis enregistrer', async ({ page }, info) => {
+test('dicter chaque partie, reprendre le plan précédent, puis enregistrer', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
-  const demandesRedaction: unknown[] = []
-  await seConnecter(page, { ecritures, demandesRedaction })
+  await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test')
   await page.getByRole('button', { name: 'Saisir', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
-  // Le plan d'action de la visite précédente est repris
+  // Le plan d'action de la visite précédente est rappelé
   await expect(d.getByText('Refaire la tête de gondole Beaujolais · Franchisé · novembre')).toBeVisible()
-  await expect(d.getByRole('button', { name: 'Rédiger le compte rendu' })).toBeDisabled()
-  await d.getByRole('button', { name: 'Dicter' }).click()
-  await expect(d.getByLabel('Notes de visite')).toHaveValue('Magasin propre, ruptures sur les bières de garde.')
-  await d.getByRole('button', { name: 'Arrêter la dictée' }).click()
-  await expect(d.getByRole('button', { name: 'Dicter' })).toBeVisible()
-  await d.getByRole('button', { name: 'Rédiger le compte rendu' }).click()
-  await expect(d.getByLabel('3. Respect du concept : PPM')).toHaveValue(/Ruptures sur les bières de garde/)
-  await expect(d.getByLabel('10. Synthèse')).toBeVisible()
-  // Les parties non abordées restent repliées
-  await expect(d.getByLabel('1. Chiffres clés et gestion')).toHaveCount(0)
-  await expect(d.getByLabel('Action', { exact: true })).toHaveValue('Recommander les bières de garde')
-  expect(demandesRedaction[0]).toMatchObject({ magasin: 'Lyon Test', planPrecedent: [{ action: 'Refaire la tête de gondole Beaujolais' }] })
-  // Ajouter une partie à la main
-  await d.getByRole('button', { name: 'Équipe et management' }).click()
-  await d.getByLabel('9. Équipe et management').fill('Équipe stable.')
+  // Une partie dictée, une partie tapée, les autres laissées vides
+  await d.getByRole('button', { name: 'Dicter : 3. Magasin et offre' }).click()
+  await expect(d.getByLabel('3. Magasin et offre', { exact: true })).toHaveValue('Magasin propre, ruptures sur les bières de garde.')
+  await d.getByRole('button', { name: 'Arrêter la dictée : 3. Magasin et offre' }).click()
+  await expect(d.getByRole('button', { name: 'Dicter : 3. Magasin et offre' })).toBeVisible()
+  await d.getByLabel('5. Équipe', { exact: true }).fill('Équipe stable.')
+  await d.getByRole('button', { name: 'Ajouter une action' }).click()
+  await d.getByLabel('Action', { exact: true }).fill('Recommander les bières de garde')
+  await d.getByLabel('Porteur', { exact: true }).fill('Franchisé')
+  await d.getByLabel('Échéance', { exact: true }).fill('fin octobre')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-compte-rendu-saisie.png` })
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Visite enregistrée.')).toBeVisible()
   const ligne = (ecritures.find((e) => e.table === 'visits' && e.methode === 'POST')!.corps as Record<string, unknown>[])[0]
-  const sections = ligne.sections as string[]
-  expect(sections).toHaveLength(10)
-  expect(sections[0]).toBe('')
-  expect(sections[8]).toBe('Équipe stable.')
+  expect(ligne.sections).toEqual(['', '', 'Magasin propre, ruptures sur les bières de garde.', '', 'Équipe stable.', ''])
   expect(ligne.action_plan).toEqual([{ action: 'Recommander les bières de garde', porteur: 'Franchisé', echeance: 'fin octobre' }])
 })
 
-test('si la rédaction échoue, les notes restent et un message humain s’affiche', async ({ page }) => {
-  await seConnecter(page, { redaction: 'panne' })
-  await page.goto('./#/magasins/Lyon%20Test')
-  await page.getByRole('button', { name: 'Saisir', exact: true }).click()
+test('une tournée garde des notes communes dictées, sans parties', async ({ page }) => {
+  await seConnecter(page)
+  await page.goto('./#/visites')
+  await page.getByRole('button', { name: 'Saisir une visite pour Nantes Test' }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
-  await d.getByLabel('Notes de visite').fill('Bonne visite.')
-  await d.getByRole('button', { name: 'Rédiger le compte rendu' }).click()
-  await expect(d.getByText(/La rédaction automatique n’a pas abouti/)).toBeVisible()
-  await expect(d.getByLabel('Notes de visite')).toHaveValue('Bonne visite.')
+  await d.getByLabel('Magasins visités').fill('Rennes')
+  await page.getByRole('option', { name: 'Rennes Test' }).click()
+  await page.keyboard.press('Escape')
+  await expect(d.getByLabel('1. Chiffres et gestion', { exact: true })).toHaveCount(0)
+  await d.getByRole('button', { name: 'Dicter : Notes de visite' }).click()
+  await expect(d.getByLabel('Notes de visite', { exact: true })).toHaveValue('Magasin propre, ruptures sur les bières de garde.')
 })
 
 test('le compte rendu n’affiche que les parties abordées, le plan d’action et les signatures si contractuelle', async ({ page, isMobile }, info) => {
@@ -79,6 +72,9 @@ test('le compte rendu n’affiche que les parties abordées, le plan d’action 
   await expect(page.getByRole('heading', { name: 'Lyon Test', level: 1 })).toBeVisible()
   await expect(page.getByText('Compte rendu de visite contractuelle')).toBeVisible()
   await expect(page.getByRole('cell', { name: 'Refaire la tête de gondole Beaujolais' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '3. Magasin et offre' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '1. Chiffres et gestion' })).toHaveCount(0)
+  await expect(page.getByText('Vitrine refaite, stock à revoir.')).toBeVisible()
   await expect(page.getByText(/^Signature/)).toHaveCount(2)
   await page.screenshot({ path: `captures/${info.project.name}-compte-rendu-plan.png`, fullPage: !isMobile })
   // Visite non contractuelle : pas de cadre de signature

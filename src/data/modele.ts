@@ -130,7 +130,7 @@ export interface Visite {
   dateSignature: string
   documents: Document[]
   notes: string
-  parties: string[] // 10 parties du compte rendu, vides si non abordées
+  parties: string[] // parties du compte rendu (PARTIES), vides si non abordées
   plan: ActionPlan[]
 }
 

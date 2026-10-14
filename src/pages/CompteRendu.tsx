@@ -78,15 +78,16 @@ export function CompteRendu() {
                   <Champ libelle="Adresse">{[m?.adresse, m?.pays].filter(Boolean).join(', ')}</Champ>
                   <Champ libelle="Code magasin">{m?.code}</Champ>
                 </Box>
-                {redigees.length > 0 ? redigees.map((i) => (
+                {redigees.map((i) => (
                   <Box key={i} sx={{ mb: 3, breakInside: 'avoid' }}>
                     <Titre>{`${i + 1}. ${PARTIES[i].titre}`}</Titre>
                     <Typography sx={{ whiteSpace: 'pre-wrap', color: '#1b1b1f' }}>{v.parties[i].trim()}</Typography>
                   </Box>
-                )) : (
+                ))}
+                {(v.notes || redigees.length === 0) && (
                   <>
                     <Titre>Notes de visite</Titre>
-                    <Typography sx={{ whiteSpace: 'pre-wrap', color: '#1b1b1f', minHeight: 120, mb: 3 }}>{v.notes || 'Aucune note saisie.'}</Typography>
+                    <Typography sx={{ whiteSpace: 'pre-wrap', color: '#1b1b1f', minHeight: redigees.length ? 0 : 120, mb: 3 }}>{v.notes || 'Aucune note saisie.'}</Typography>
                   </>
                 )}
                 {v.plan.length > 0 && (
