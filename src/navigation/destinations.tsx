@@ -40,7 +40,7 @@ export const secondaires: Destination[] = [
 
 // Partie « Paramètres »
 export const parametres: Destination[] = [
-  { chemin: '/parametres/evolution', libelle: 'Évolution du parc', description: 'Ouvertures par année fiscale', icone: <TimelineOutlined />, sprint: 'Sprint 4' },
+  { chemin: '/parametres/evolution', libelle: 'Évolution du parc', description: 'Ouvertures par année', icone: <TimelineOutlined />, sprint: 'Sprint 4' },
   { chemin: '/parametres/collaborateurs', libelle: 'Collaborateurs', description: 'Coachs, Responsables Régionaux, Directeur de réseau', icone: <BadgeOutlined />, sprint: 'Sprint 4' },
   { chemin: '/parametres/franchises', libelle: 'Franchisés', description: 'Franchisés et leurs magasins', icone: <HandshakeOutlined />, sprint: 'Sprint 4' },
   { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Règle de charge des Coachs', icone: <SettingsOutlined />, sprint: 'Sprint 5' },

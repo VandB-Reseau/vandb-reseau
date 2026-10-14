@@ -88,7 +88,7 @@ test('modifier puis supprimer une visite depuis la fiche magasin', async ({ page
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test')
-  await expect(page.getByText(/^1 visite sur 8 en FY27 · prochaine avant le/)).toBeVisible()
+  await expect(page.getByText(/^1 visite sur 8 en 2026 · prochaine avant le/)).toBeVisible()
   await page.getByRole('button', { name: /Modifier la visite du/ }).click()
   const d = page.getByRole('dialog', { name: 'Modifier la visite de Lyon Test' })
   await d.getByLabel('Lien du compte rendu signé (Drive)').fill('https://exemple.test/cr')
