@@ -2,17 +2,15 @@ import type { Magasin, Reseau, Visite } from './modele'
 import { coachA } from './charge'
 import { caseDe, joursParVisite, visitesParAn, type CaseNineBox } from './sante'
 
-// Semestres de l'année fiscale (octobre → septembre) : S1 = octobre → mars, S2 = avril → septembre
+// Semestres de l'année (janvier → décembre) : S1 = janvier → juin, S2 = juillet → décembre
 export interface Semestre { cle: string; debut: string; fin: string; libelle: string; court: string }
 
 const mois = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 
 export function semestreDe(iso: string): Semestre {
   const a = Number(iso.slice(0, 4)), m = Number(iso.slice(5, 7))
-  const fy = (y: number) => `FY${String(y).slice(2)}`
-  if (m >= 10) return { cle: `${a + 1}-S1`, debut: `${a}-10-01`, fin: `${a + 1}-03-31`, court: `S1 ${fy(a + 1)}`, libelle: `S1 ${fy(a + 1)} · ${mois[9]} ${a} à ${mois[2]} ${a + 1}` }
-  if (m <= 3) return { cle: `${a}-S1`, debut: `${a - 1}-10-01`, fin: `${a}-03-31`, court: `S1 ${fy(a)}`, libelle: `S1 ${fy(a)} · ${mois[9]} ${a - 1} à ${mois[2]} ${a}` }
-  return { cle: `${a}-S2`, debut: `${a}-04-01`, fin: `${a}-09-30`, court: `S2 ${fy(a)}`, libelle: `S2 ${fy(a)} · ${mois[3]} à ${mois[8]} ${a}` }
+  if (m <= 6) return { cle: `${a}-S1`, debut: `${a}-01-01`, fin: `${a}-06-30`, court: `S1 ${a}`, libelle: `S1 ${a} · ${mois[0]} à ${mois[5]} ${a}` }
+  return { cle: `${a}-S2`, debut: `${a}-07-01`, fin: `${a}-12-31`, court: `S2 ${a}`, libelle: `S2 ${a} · ${mois[6]} à ${mois[11]} ${a}` }
 }
 
 export function semestresDisponibles(reseau: Reseau): Semestre[] {
@@ -46,18 +44,16 @@ export function lienCompteRendu(v: Visite): string { return `/visites/compte-ren
 // ── Rythme de visite selon la nine box (démarche coach : 2 à 8 visites par an, 2 au minimum) ──
 export interface Annee { cle: string; debut: string; fin: string; libelle: string; court: string }
 
-export function anneeFiscale(iso: string): Annee {
-  const a = Number(iso.slice(0, 4)), m = Number(iso.slice(5, 7))
-  const fin = m >= 10 ? a + 1 : a
-  const court = `FY${String(fin).slice(2)}`
-  return { cle: String(fin), debut: `${fin - 1}-10-01`, fin: `${fin}-09-30`, court, libelle: `${court} · ${mois[9]} ${fin - 1} à ${mois[8]} ${fin}` }
+export function anneeDe(iso: string): Annee {
+  const a = iso.slice(0, 4)
+  return { cle: a, debut: `${a}-01-01`, fin: `${a}-12-31`, court: a, libelle: a }
 }
 
 export function anneesDisponibles(reseau: Reseau): Annee[] {
   const m = new Map<string, Annee>()
-  const cour = anneeFiscale(reseau.jour)
+  const cour = anneeDe(reseau.jour)
   m.set(cour.cle, cour)
-  reseau.visites.forEach((v) => { if (v.date) { const a = anneeFiscale(v.date); m.set(a.cle, a) } })
+  reseau.visites.forEach((v) => { if (v.date) { const a = anneeDe(v.date); m.set(a.cle, a) } })
   return [...m.values()].sort((a, b) => b.debut.localeCompare(a.debut))
 }
 

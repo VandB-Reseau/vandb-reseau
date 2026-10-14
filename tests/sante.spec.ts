@@ -154,11 +154,11 @@ test('l’accueil donne les priorités du jour', async ({ page, isMobile }, info
   await page.screenshot({ path: `captures/${info.project.name}-accueil.png`, fullPage: !isMobile })
 })
 
-test('l’évolution compte les ouvertures par année fiscale', async ({ page, isMobile }, info) => {
+test('l’évolution compte les ouvertures par année', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/parametres/evolution')
   await expect(page.getByText('Les fermetures ne sont pas encore enregistrées')).toBeVisible()
-  await expect(page.getByRole('row', { name: /FY27 \(en cours\)/ })).toContainText('30')
+  await expect(page.getByRole('row', { name: /2026 \(en cours\)/ })).toContainText('dont 2 prévues29')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-evolution.png`, fullPage: !isMobile })
 })

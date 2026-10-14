@@ -18,7 +18,7 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { PastilleCase, PastilleTendance } from '../components/Sante'
 import { useAuth } from '../auth/AuthContext'
 import { caseDe, tendance } from '../data/sante'
-import { anneeFiscale, suiviRythme } from '../data/visites'
+import { anneeDe, suiviRythme } from '../data/visites'
 import { chargeA, coachA, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
 import { ajouterJours, elementsDuMois, jourLong } from './Agenda'
@@ -64,7 +64,7 @@ function Tableau({ reseau }: { reseau: Reseau }) {
     .filter((x) => x.c && PRIORITAIRES.includes(x.c.id))
     .sort((a, b) => PRIORITAIRES.indexOf(a.c!.id) - PRIORITAIRES.indexOf(b.c!.id))
   const nonEvalues = actifs.filter((m) => !caseDe(reseau.evaluations[m.nom])).length
-  const a = anneeFiscale(j)
+  const a = anneeDe(j)
   const aVisiter = suiviRythme(reseau, a).filter((l) => l.retard > 0)
     .sort((x, y) => y.retard - x.retard || (x.derniere?.date ?? '').localeCompare(y.derniere?.date ?? ''))
   // Magasins qui ont changé de case ces trois derniers mois, ceux qui reculent d'abord
