@@ -16,6 +16,9 @@ export const statutAide: Record<Statut, string> = {
   ouvert: 'Magasin en activité courante',
 }
 
+// Libellé de la personne qui tient le magasin
+export const libelleResponsable = (m: { franchise: boolean }) => (m.franchise ? 'Franchisé' : 'Responsable du magasin')
+
 export interface Personne {
   nom: string
   telephone?: string
@@ -26,6 +29,8 @@ export interface ResponsableRegional extends Personne {
   id: string
   couleur: string
   integres: boolean // Responsable Magasins Intégrés (rôle transverse)
+  naissance: string
+  arrivee: string
 }
 
 export interface AffectationCoach {
@@ -46,15 +51,13 @@ export interface Magasin {
   ouvertureConnue: boolean
   statut: Statut
   franchise: boolean
-  plateforme: string
   telephone: string
   email: string
   coach: string
   rr: ResponsableRegional | null
   rrEnDirect: boolean
-  responsable: Personne | null
-  responsableARecruter: boolean // poste de responsable magasin en recrutement
-  adjoint: Personne | null
+  responsable: Personne | null // franchisé (ou responsable d'un magasin intégré)
+  responsableARecruter: boolean // franchisé recherché
   lat: number | null
   lon: number | null
   historiqueCoach: AffectationCoach[]
@@ -65,6 +68,7 @@ export interface Coach extends Personne {
   fictif: boolean // poste prévu, Coach pas encore recruté
   couleur: string // couleur de sa zone sur la carte (même que dans l'ancienne app)
   arrivee: string // date d'arrivée prévue ou réelle (AAAA-MM-JJ), vide si inconnue
+  naissance: string
   ville: string
   lat: number | null
   lon: number | null
@@ -87,7 +91,8 @@ export interface Reseau {
   coachs: Record<string, Personne>
   equipe: Coach[] // Coachs pilotant des magasins (hors techniciens)
   techniciens: Personne[]
-  directeur: Personne & { titre: string }
+  directeur: Personne & { titre: string; naissance?: string; arrivee?: string }
+  personnes: Record<string, Partial<import('./personnes').FichePersonnelle>>
   visites: Visite[]
   conges: Conge[]
   evenements: Evenement[]

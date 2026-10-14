@@ -20,7 +20,7 @@ import { couverture, semestreDe } from '../data/visites'
 import { chargeA, coachA, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
 import { ajouterJours, elementsDuMois, jourLong } from './Agenda'
-import type { Reseau } from '../data/modele'
+import { libelleResponsable, type Reseau } from '../data/modele'
 
 // Ordre de priorité fixé par Joseph le 14/10/2026
 const PRIORITAIRES = ['redressement', 'relance', 'renforcer']
@@ -75,7 +75,7 @@ function Tableau({ reseau }: { reseau: Reseau }) {
   ]
   const dans6mois = ajouterJours(j, 183)
   const ouvertures = reseau.magasins.filter((m) => m.ouverture > j && m.ouverture <= dans6mois).sort((a, b) => a.ouverture.localeCompare(b.ouverture))
-  const manque = (m: (typeof ouvertures)[number]) => [!coachA(m, j) && 'Coach', !m.responsable && 'Responsable Magasin', !m.ouvertureConnue && 'date confirmée'].filter(Boolean) as string[]
+  const manque = (m: (typeof ouvertures)[number]) => [!coachA(m, j) && 'Coach', !m.responsable && libelleResponsable(m), !m.ouvertureConnue && 'date confirmée'].filter(Boolean) as string[]
 
   return (
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' } }}>

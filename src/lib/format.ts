@@ -19,3 +19,7 @@ export function telLien(tel: string): string {
 export function lienCoach(nom: string): string {
   return `/equipe/coach/${encodeURIComponent(nom)}`
 }
+
+export const lienRR = (id: string) => `/equipe/rr/${encodeURIComponent(id)}`
+export const lienDirecteur = () => '/equipe/directeur'
+export const lienFranchise = (nom: string) => `/equipe/franchise/${encodeURIComponent(nom)}`

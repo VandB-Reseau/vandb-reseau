@@ -24,10 +24,10 @@ import Snackbar from '@mui/material/Snackbar'
 import SwapHoriz from '@mui/icons-material/SwapHoriz'
 import { EmptyState } from '../components/EmptyState'
 import { PastilleStatut, PastilleType } from '../components/Pastilles'
-import { dateCourte, dateLongue, lienCoach, lienFiche, telLien } from '../lib/format'
+import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienRR, telLien } from '../lib/format'
 import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
-import { libelleTypeVisite, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
+import { libelleResponsable, libelleTypeVisite, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
 import { lienCompteRendu, semestreDe, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
@@ -98,9 +98,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
         <Section titre="Équipe" action={<Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button>}>
           <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
-          <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
-          <Contact role="Responsable magasin" p={m.responsable} />
-          <Contact role="Adjoint" p={m.adjoint} />
+          <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
+          <Contact role={libelleResponsable(m)} p={m.responsable} lien={m.responsable ? lienFranchise(m.responsable.nom) : undefined} sousTitre={m.responsable ? undefined : m.responsableARecruter ? 'En cours de recrutement' : undefined} />
         </Section>
 
         <Section titre="Magasin">
@@ -115,7 +114,6 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           </Ligne>
           <Ligne libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
           <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
-          <Ligne libelle="Plateforme logistique">{m.plateforme}</Ligne>
         </Section>
 
         <Section titre="Historique des Coachs">

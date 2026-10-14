@@ -17,7 +17,8 @@ import { TableMagasins } from '../components/TableMagasins'
 import { ListeMagasins } from '../components/ListeMagasins'
 import { Contact, Section } from './FicheMagasin'
 import { chargeA, libelleMois, magasinsDuCoach, moisAVenir } from '../data/charge'
-import { dateCourte, lienCoach } from '../lib/format'
+import { dateCourte, lienCoach, lienRR } from '../lib/format'
+import { SectionFichePersonnelle } from './FichePersonne'
 import type { Coach, Reseau } from '../data/modele'
 
 interface Evenement { date: string; texte: string; note?: string }
@@ -65,10 +66,12 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
             {projection.map((p) => <JaugeCharge key={p.mois} reseau={reseau} charge={p.charge} libelle={libelleMois(p.mois)} />)}
           </Box>
         </Section>
-        <Section titre="Contact">
-          <Contact role="Coach" p={coach} />
-          <Contact role={coach.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={coach.rr} sousTitre={coach.rr ? undefined : 'Non rattaché à ce jour'} />
-        </Section>
+        <Box sx={{ display: 'grid', gap: 2 }}>
+          <SectionFichePersonnelle reseau={reseau} r={{ type: 'coach', cle: coach.nom }} />
+          <Section titre="Rattachement">
+            <Contact role={coach.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={coach.rr} lien={coach.rr ? lienRR(coach.rr.id) : undefined} sousTitre={coach.rr ? undefined : 'Non rattaché à ce jour'} />
+          </Section>
+        </Box>
       </Box>
 
       <Box sx={{ mb: 2 }}>

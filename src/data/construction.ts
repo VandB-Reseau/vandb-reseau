@@ -12,9 +12,9 @@ export interface SurchargeMagasin extends Partial<Record<keyof MagasinBrut, unkn
   store_name: string; email_mag?: string; open_date?: string
 }
 export interface AffectationBrute { store: string; cs: string; date: string; note?: string; type?: string }
-export interface RRBrut { id: string; name: string; tel?: string; email?: string; color?: string; role?: string }
-export interface ConfigRR { directeur?: { name?: string; titre?: string; tel?: string; email?: string }; drs?: RRBrut[]; cs_dr?: Record<string, string>; dr_assigns?: { cs: string; dr: string; date: string }[] }
-export interface SurchargeCoach { cs_name: string; color?: string; tel?: string; email?: string; tech?: boolean; fictif?: boolean; ville?: string; lat?: number | null; lon?: number | null }
+export interface RRBrut { id: string; name: string; tel?: string; email?: string; color?: string; role?: string; birth?: string; entry?: string }
+export interface ConfigRR { directeur?: { name?: string; titre?: string; tel?: string; email?: string; birth?: string; entry?: string }; drs?: RRBrut[]; cs_dr?: Record<string, string>; dr_assigns?: { cs: string; dr: string; date: string }[] }
+export interface SurchargeCoach { cs_name: string; color?: string; tel?: string; email?: string; birth?: string | null; tech?: boolean; fictif?: boolean; ville?: string; lat?: number | null; lon?: number | null }
 export interface RecrueBrute { name: string; color?: string; start?: string | null; post?: string | null; ville?: string; lat?: number | null; lon?: number | null; fictif?: boolean }
 export interface Parametres { prepDuration: number; postDuration: number; maxUnits?: number; alertThreshold?: number; poidsOuvert?: number; poidsRenforce?: number; maxCoachsRR?: number }
 
@@ -79,6 +79,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
   const rrs: ResponsableRegional[] = (d.configRR.drs ?? []).map((r) => ({
     id: r.id, nom: r.name, telephone: r.tel || undefined, email: r.email || undefined,
     couleur: r.color || COULEUR_DEFAUT, integres: r.role === 'integres',
+    naissance: texte(r.birth).slice(0, 10), arrivee: texte(r.entry).slice(0, 10),
   }))
   const rrParId = new Map(rrs.map((r) => [r.id, r]))
   const rrDuCoach = (coach: string): ResponsableRegional | null => {
@@ -131,7 +132,6 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       ouvertureConnue: !DATES_INCONNUES.has(ouverture),
       statut: statutA(ouverture, jour, d.parametres),
       franchise: v('franchise') !== false,
-      plateforme: texte(v('plat')),
       telephone: texte(v('tel')),
       email: texte(v('email_mag')),
       coach,
@@ -139,7 +139,6 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       rrEnDirect: !!rrDirect && !rrDirect.integres,
       responsable: personne(v('resp'), v('tel_resp'), v('email_resp')),
       responsableARecruter: /recrutement/i.test(texte(v('resp'))),
-      adjoint: personne(v('adj'), v('tel_adj')),
       lat, lon,
       historiqueCoach: historique,
     }
@@ -159,6 +158,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       fictif: !!(ov?.fictif || rec?.fictif),
       couleur: [ov?.color, rec?.color].find((x) => x && x !== '#000000') || couleurAuto(c.nom),
       arrivee: texte(rec?.start).slice(0, 10),
+      naissance: texte(ov?.birth).slice(0, 10),
       ville: texte(ov?.ville) || texte(rec?.ville),
       lat, lon,
       rr: rrDuCoach(c.nom),
@@ -174,6 +174,6 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
     maxCoachsRR: d.parametres.maxCoachsRR || 8,
   }
   const dir = d.configRR.directeur
-  const directeur = { nom: dir?.name || 'Direction du réseau', titre: dir?.titre || 'Directeur de réseau', telephone: dir?.tel || undefined, email: dir?.email || undefined }
-  return { evaluations: {}, deploiements: { thematiques: [], valeurs: {} }, visites: [], conges: [], evenements: [], anniversaires: [], magasins, coachs, equipe, techniciens, directeur, rrs, parametres, jour, chargeLe: new Date().toISOString() }
+  const directeur = { nom: dir?.name || 'Direction du réseau', titre: dir?.titre || 'Directeur de réseau', telephone: dir?.tel || undefined, email: dir?.email || undefined, naissance: texte(dir?.birth).slice(0, 10), arrivee: texte(dir?.entry).slice(0, 10) }
+  return { personnes: {}, evaluations: {}, deploiements: { thematiques: [], valeurs: {} }, visites: [], conges: [], evenements: [], anniversaires: [], magasins, coachs, equipe, techniciens, directeur, rrs, parametres, jour, chargeLe: new Date().toISOString() }
 }

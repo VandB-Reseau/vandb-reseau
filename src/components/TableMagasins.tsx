@@ -37,7 +37,7 @@ const colonnes: { id: Colonne; libelle: string }[] = [
   { id: 'type', libelle: 'Type' },
   { id: 'coach', libelle: 'Coach' },
   { id: 'rr', libelle: 'Responsable Régional' },
-  { id: 'responsable', libelle: 'Responsable magasin' },
+  { id: 'responsable', libelle: 'Franchisé' },
   { id: 'ouverture', libelle: 'Ouverture' },
 ]
 

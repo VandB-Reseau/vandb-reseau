@@ -63,7 +63,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], onFermer }
           {visiteurs(reseau).map((n) => <MenuItem key={n} value={n}>{n}</MenuItem>)}
         </TextField>
       </Box>
-      <TextField label="Notes de visite" value={notes} onChange={(e) => setNotes(e.target.value)} multiline minRows={4} placeholder="Points observés, actions convenues avec le responsable…" />
+      <TextField label="Notes de visite" value={notes} onChange={(e) => setNotes(e.target.value)} multiline minRows={4} placeholder="Points observés, actions convenues avec le franchisé…" />
       <Box>
         <FormControlLabel control={<Switch checked={signatureRequise} onChange={(e) => setSignatureRequise(e.target.checked)} />} label="Compte rendu à faire signer" sx={{ minHeight: 48 }} />
         <Collapse in={signatureRequise}>

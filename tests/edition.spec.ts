@@ -19,11 +19,15 @@ test('modifier et renommer un magasin met à jour toutes les tables', async ({ p
   await page.goto('./#/magasins/Nantes%20Test')
   await page.getByRole('button', { name: 'Modifier', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Modifier Nantes Test' })
-  await expect(d.getByLabel('Responsable magasin', { exact: true })).toHaveValue('Responsable 2')
+  await expect(d.getByLabel('Franchisé', { exact: true })).toHaveValue('Franchisé 2')
+  // Plus d'adjoint ni de plateforme logistique
+  await expect(d.getByLabel('Adjoint')).toHaveCount(0)
+  await expect(d.getByLabel('Plateforme logistique')).toHaveCount(0)
   await d.getByLabel('Nom du magasin').fill('Lyon Test')
   await expect(d.getByText('Un magasin porte déjà ce nom.')).toBeVisible()
   await d.getByLabel('Nom du magasin').fill('Nantes Centre Test')
-  await d.getByLabel('Adjoint', { exact: true }).fill('Adjoint nouveau')
+  // Un franchisé existant reprend ses coordonnées
+  await d.getByLabel('Franchisé', { exact: true }).fill('Paul MULTI')
   await page.screenshot({ path: `captures/${info.project.name}-modifier-magasin.png` })
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   // La base simulée ne garde pas les écritures : la fiche relue sous le nouveau nom n'existe pas ici
@@ -35,7 +39,10 @@ test('modifier et renommer un magasin met à jour toutes les tables', async ({ p
   for (const t of ['reassigns', 'visits', 'store_finance', 'store_overrides']) {
     expect(ecritures).toContainEqual(expect.objectContaining({ methode: 'PATCH', table: t, filtre: expect.stringContaining('Nantes+Test') }))
   }
-  expect(ecrituresSur(ecritures, 'store_overrides').at(-1)!.corps).toMatchObject({ store_name: 'Nantes Centre Test', adj: 'Adjoint nouveau', franchise: true })
+  expect(ecrituresSur(ecritures, 'store_overrides').at(-1)!.corps).toMatchObject({ store_name: 'Nantes Centre Test', resp: 'Paul MULTI', tel_resp: '+33 6 00 00 00 00', franchise: true })
+  // Les valeurs d'adjoint et de plateforme déjà en base ne sont pas touchées
+  expect(ecrituresSur(ecritures, 'store_overrides').at(-1)!.corps).not.toHaveProperty('adj')
+  expect(ecrituresSur(ecritures, 'store_overrides').at(-1)!.corps).not.toHaveProperty('plat')
 })
 
 test('ajouter puis supprimer un magasin', async ({ page }) => {
@@ -68,9 +75,13 @@ test('renommer un Coach le renomme partout', async ({ page }) => {
   await page.goto('./#/equipe/coach/Hugo%20FICTIF')
   await page.getByRole('button', { name: 'Modifier', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Modifier Hugo FICTIF' })
-  await d.getByLabel('Prénom et NOM').fill('Noé MODELE')
+  await expect(d.getByLabel('Prénom')).toHaveValue('Hugo')
+  await expect(d.getByLabel(/^Nom/)).toHaveValue('FICTIF')
+  await d.getByLabel('Prénom').fill('Noé')
+  await d.getByLabel(/^Nom/).fill('MODELE')
   await expect(d.getByText('Cette personne existe déjà')).toBeVisible()
-  await d.getByLabel('Prénom et NOM').fill('Hugo RENOMME')
+  await d.getByLabel('Prénom').fill('Hugo')
+  await d.getByLabel(/^Nom/).fill('RENOMME')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page).toHaveURL(/Hugo%20RENOMME/)
   for (const t of ['reassigns', 'cs_overrides', 'recruits', 'leaves', 'visits']) {

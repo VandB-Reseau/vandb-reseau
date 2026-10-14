@@ -10,7 +10,7 @@ export const magasinsFictifs = villes.map((v, i) => ({
   code: `T${100 + i}`,
   tel: `+33 4 00 00 0${i % 10} 0${i % 10}`,
   email_mag: `magasin${i}@exemple.test`,
-  resp: i % 5 === 0 ? 'En cours de recrutement' : `Responsable ${i}`,
+  resp: i % 5 === 0 ? 'En cours de recrutement' : i === 1 || i === 3 ? 'Paul MULTI' : `Franchisé ${i}`,
   tel_resp: '+33 6 00 00 00 00',
   adj: i % 3 === 0 ? `Adjoint ${i}` : '',
   addr: `${i + 1} rue de l’Exemple, ${depts[i]}000 ${v}`,
@@ -65,3 +65,8 @@ export const evenementsFictifs = [{ id: 1, title: 'Séminaire des Coachs', type:
 const n = (r: number, f: number) => ({ notes: { caExterieur: r, panierCave: r, panierBar: r, fluxCave: r, fluxBar: r, franchise: f }, date: '2026-10-01', par: 'Dominique DIRECTION' })
 export const santeFictive = { 'Lyon Test': n(1, 1), 'Annecy Test': n(3, 3), 'Nantes Test': n(2, 2) }
 export const deploiementsFictifs = { valeurs: { 'Lyon Test': { concept20: 'Fait', terrasse: 'Oui' }, 'Annecy Test': { concept20: 'En cours' } } }
+
+// Fiches personnelles (app_config, clé fiches_personnes)
+export const fichesFictives = {
+  'rr:rr1': { prenom: 'Alex', nom: 'NORD', naissance: '1980-04-12', arrivee: '2019-09-01', codePostal: '59000', departement: '59', ville: 'Lille', pays: 'France', email: 'alex@exemple.test', telephone: '+33 6 11 11 11 11' },
+}
