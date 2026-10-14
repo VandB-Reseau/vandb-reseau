@@ -28,6 +28,7 @@ export const affectationsFictives = magasinsFictifs
   .concat([{ store: 'Lyon Test', cs: 'Noé MODELE', date: '2025-06-01', note: 'Réaffectation', type: 'manual' }])
 
 export const configRRFictive = {
+  directeur: { name: 'Dominique DIRECTION', titre: 'Directeur de réseau' },
   drs: [
     { id: 'rr1', name: 'Alex NORD', color: '#1b6fce', tel: '+33 6 11 11 11 11', email: 'alex@exemple.test' },
     { id: 'rr2', name: 'Sam SUD', color: '#ef7d00' },

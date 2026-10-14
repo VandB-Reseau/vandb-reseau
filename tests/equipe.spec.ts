@@ -19,6 +19,13 @@ test('Équipe s’ouvre sur l’organigramme par Responsable Régional', async (
   await expect(page.getByRole('link', { name: 'Camille TESTARD' })).toBeVisible()
   await expect(page.getByText('Tom TECHNICIEN')).toBeVisible()
   await expect(page.getByRole('link', { name: /poste.* à pourvoir/ })).toBeVisible()
+  await expect(page.getByText('Dominique DIRECTION').first()).toBeVisible()
+  // Pyramide par défaut sur PC, liste sur téléphone
+  await expect(page.getByRole('button', { name: isMobile ? 'Liste' : 'Pyramide', pressed: true })).toBeVisible()
+  if (!isMobile) {
+    await page.screenshot({ path: `captures/${info.project.name}-equipe-pyramide.png`, fullPage: true })
+    await page.getByRole('button', { name: 'Liste' }).click()
+  }
   // Déplier un Coach montre ses magasins
   await expect(page.getByRole('link', { name: 'Lyon Test' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Tout déplier' }).click()

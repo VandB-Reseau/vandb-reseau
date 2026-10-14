@@ -85,6 +85,7 @@ export interface Reseau {
   coachs: Record<string, Personne>
   equipe: Coach[] // Coachs pilotant des magasins (hors techniciens)
   techniciens: Personne[]
+  directeur: Personne & { titre: string }
   rrs: ResponsableRegional[]
   parametres: ParametresReseau
   jour: string

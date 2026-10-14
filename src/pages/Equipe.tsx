@@ -22,7 +22,10 @@ import Tabs from '@mui/material/Tabs'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
+import { useTheme, type Theme } from '@mui/material/styles'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import FormatListBulleted from '@mui/icons-material/FormatListBulleted'
 import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
@@ -103,7 +106,74 @@ function LigneCoachOrga({ l, reseau, ouverts, basculer }: { l: LigneCoach; resea
   )
 }
 
+interface Groupe { cle: string; titre: string; role: string; couleur: string; personne: Personne | null; coachs: LigneCoach[]; direct: number }
+
+const trait = (theme: Theme) => `2px solid ${theme.palette.divider}`
+
+// Organigramme graphique : Directeur en haut, une colonne par Responsable Régional, ses Coachs en dessous
+function Pyramide({ reseau, groupes }: { reseau: Reseau; groupes: Groupe[] }) {
+  const Boite = ({ couleur, children, lien }: { couleur?: string; children: ReactNode; lien?: string }) => (
+    <Box
+      {...(lien ? { component: RouterLink, to: lien } : {})}
+      sx={{ display: 'block', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderTop: couleur ? `4px solid ${couleur}` : undefined, borderRadius: 2, px: 1.5, py: 1, textAlign: 'center', color: 'text.primary', textDecoration: 'none', minWidth: 0, '&:hover': lien ? { bgcolor: 'action.hover' } : undefined }}
+    >{children}</Box>
+  )
+  return (
+    <Box sx={{ overflowX: 'auto', pb: 1, mt: 2 }}>
+      <Box sx={{ minWidth: groupes.length * 210, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Boite>
+          <Typography variant="body2" color="text.secondary">{reseau.directeur.titre}</Typography>
+          <Typography variant="h4" component="p">{reseau.directeur.nom}</Typography>
+          <Typography variant="body2" color="text.secondary">{reseau.equipe.length} Coachs · {reseau.magasins.length} magasins</Typography>
+        </Boite>
+        <Box sx={{ width: 0, height: 24, borderLeft: trait }} />
+        <Box sx={{ display: 'flex', width: '100%' }}>
+          {groupes.map((g, i) => (
+            <Box key={g.cle} sx={{ flex: 1, minWidth: 0, px: 1, position: 'relative', pt: 3,
+              // Barre horizontale reliant les colonnes, et trait vertical vers la boîte du RR
+              '&::before': { content: '""', position: 'absolute', top: 0, left: i === 0 ? '50%' : 0, right: i === groupes.length - 1 ? '50%' : 0, borderTop: trait },
+              '&::after': { content: '""', position: 'absolute', top: 0, left: '50%', height: 24, borderLeft: trait },
+            }}>
+              <Boite couleur={g.couleur}>
+                <Typography variant="body2" color="text.secondary">{g.role}</Typography>
+                <Typography variant="h4" component="h3">{g.titre}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {g.coachs.length} Coach{g.coachs.length > 1 ? 's' : ''}{g.direct ? ` · ${g.direct} en direct` : ''}
+                </Typography>
+              </Boite>
+              {g.coachs.length > 0 && (
+                <Box sx={{ ml: 2, borderLeft: trait, pt: 1 }}>
+                  {g.coachs.map((l) => (
+                    <Box key={l.coach.nom} sx={{ display: 'flex', alignItems: 'center', '&::before': { content: '""', width: 12, flexShrink: 0, borderTop: trait } }}>
+                      <Box sx={{ flex: 1, minWidth: 0, my: 0.75 }}>
+                        <Boite lien={lienCoach(l.coach.nom)}>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>{l.coach.nom}</Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                            {l.coach.fictif
+                              ? <Chip size="small" variant="outlined" color="warning" label="À recruter" sx={{ fontSize: '0.75rem' }} />
+                              : <Typography variant="body2" color="text.secondary">{l.magasins} mag.</Typography>}
+                            <PastilleCharge reseau={reseau} charge={l.charge} />
+                          </Box>
+                        </Boite>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          ))}
+        </Box>
+      </Box>
+    </Box>
+  )
+}
+
 function VueOrganisation({ reseau }: { reseau: Reseau }) {
+  const theme = useTheme()
+  const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
+  const [params, setParams] = useSearchParams()
+  const forme = (params.get('forme') as 'pyramide' | 'liste' | null) ?? (surPC ? 'pyramide' : 'liste')
+  const changerForme = (f: string) => { const p = new URLSearchParams(params); p.set('forme', f); setParams(p, { replace: true }) }
   const lignes = lignesCoachs(reseau)
   const [ouverts, setOuverts] = useState<Set<string>>(() => new Set(reseau.rrs.map((r) => `r:${r.id}`)))
   const basculer = (k: string) => setOuverts((o) => { const n = new Set(o); if (n.has(k)) n.delete(k); else n.add(k); return n })
@@ -114,7 +184,7 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
   const sansCoach = reseau.magasins.filter((m) => m.statut !== 'avenir' && !m.coach).length
   const aPourvoir = reseau.equipe.filter((c) => c.fictif).length + reseau.magasins.filter((m) => m.statut !== 'avenir' && m.responsableARecruter).length
 
-  const groupes = [
+  const groupes: Groupe[] = [
     ...reseau.rrs.map((r) => ({ cle: `r:${r.id}`, titre: r.nom, role: r.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional', couleur: r.couleur, personne: r as Personne | null, coachs: lignes.filter((l) => l.coach.rr?.id === r.id), direct: reseau.magasins.filter((m) => m.rr?.id === r.id && m.rrEnDirect).length })),
     ...(sansRR.length ? [{ cle: 'r:aucun', titre: 'Coachs sans Responsable Régional', role: 'À rattacher', couleur: '#9e9e9e', personne: null, coachs: sansRR, direct: 0 }] : []),
   ]
@@ -133,14 +203,21 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
             <AccountTreeOutlined color="action" />
             <Typography variant="h3" component="h2" sx={{ flex: 1 }}>Organigramme</Typography>
-            <Button onClick={toutDeplier} sx={{ minHeight: 48 }}>Tout déplier</Button>
-            <Button onClick={toutReplier} sx={{ minHeight: 48 }}>Tout replier</Button>
+            <ToggleButtonGroup exclusive size="small" value={forme} onChange={(_e, v) => v && changerForme(v)} aria-label="Forme de l’organigramme">
+              <ToggleButton value="pyramide" sx={{ minHeight: 48, px: 2, gap: 1 }}><AccountTreeOutlined fontSize="small" />Pyramide</ToggleButton>
+              <ToggleButton value="liste" sx={{ minHeight: 48, px: 2, gap: 1 }}><FormatListBulleted fontSize="small" />Liste</ToggleButton>
+            </ToggleButtonGroup>
+            {forme === 'liste' && <>
+              <Button onClick={toutDeplier} sx={{ minHeight: 48 }}>Tout déplier</Button>
+              <Button onClick={toutReplier} sx={{ minHeight: 48 }}>Tout replier</Button>
+            </>}
           </Box>
+          {forme === 'pyramide' ? <Pyramide reseau={reseau} groupes={groupes} /> : <>
           <Noeud niveau={0}>
             <AdminPanelSettingsOutlined color="action" />
             <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" color="text.secondary">Direction du réseau</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 600 }}>{reseau.equipe.length} Coachs · {reseau.magasins.length} magasins</Typography>
+              <Typography variant="body2" color="text.secondary">{reseau.directeur.titre}</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>{reseau.directeur.nom} · {reseau.equipe.length} Coachs · {reseau.magasins.length} magasins</Typography>
             </Box>
           </Noeud>
           {groupes.map((g) => (
@@ -161,6 +238,7 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
               {g.personne && <BoutonsContact p={g.personne} />}
             </Noeud>
           ))}
+          </>}
         </CardContent>
       </Card>
       {reseau.techniciens.length > 0 && (
