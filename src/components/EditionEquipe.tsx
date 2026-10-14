@@ -24,6 +24,15 @@ import type { Coach, Reseau, ResponsableRegional } from '../data/modele'
 const COULEURS = ['#1b6fce', '#ef7d00', '#2e7d32', '#7c3aed', '#c2185b', '#00838f', '#6d4c41', '#eaa400']
 const emailValide = (e: string) => !e || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 
+// Traduit le refus de la base en message compréhensible
+export function messageErreur(e: unknown): string {
+  const m = e instanceof Error ? e.message : String(e)
+  if (/does not exist|schema cache|could not find the table/i.test(m)) return 'Cette partie n’est pas encore activée dans la base : le script SQL correspondant doit être lancé dans Supabase.'
+  if (/row-level security|permission denied/i.test(m)) return 'La base refuse l’enregistrement : la règle d’accès de cette table manque dans Supabase.'
+  if (/column/i.test(m)) return 'La base n’a pas toutes les colonnes attendues : le script SQL de mise à jour doit être lancé dans Supabase.'
+  return 'L’enregistrement n’a pas abouti. Vérifie ta connexion et réessaie.'
+}
+
 // Squelette commun : titre, champs, suppression avec confirmation, enregistrement avec message humain
 export function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer, supprimer, suppressionBloquee, libelleSuppression, large }: {
   large?: boolean; titre: string; ouvert: boolean; onFermer: (message?: string) => void; children: ReactNode; valide: boolean
@@ -33,11 +42,11 @@ export function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer
   const pleinEcran = useMediaQuery(theme.breakpoints.down('sm'))
   const { recharger } = useReseau()
   const [envoi, setEnvoi] = useState(false)
-  const [erreur, setErreur] = useState(false)
+  const [erreur, setErreur] = useState<string | false>(false)
   const [confirmer, setConfirmer] = useState(false)
   const agir = async (action: () => Promise<string>) => {
     setEnvoi(true); setErreur(false)
-    try { const message = await action(); await recharger(); onFermer(message) } catch { setErreur(true) } finally { setEnvoi(false) }
+    try { const message = await action(); await recharger(); onFermer(message) } catch (e) { setErreur(messageErreur(e)) } finally { setEnvoi(false) }
   }
   return (
     <Dialog open={ouvert} onClose={() => onFermer()} fullScreen={pleinEcran} fullWidth maxWidth={large ? "md" : "sm"} aria-labelledby="titre-edition">
@@ -49,7 +58,7 @@ export function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer
             {libelleSuppression}
           </Alert>
         )}
-        {erreur && <Alert severity="error" sx={{ mt: 2 }}>L’enregistrement n’a pas abouti. Vérifie ta connexion et réessaie.</Alert>}
+        {erreur && <Alert severity="error" sx={{ mt: 2 }}>{erreur}</Alert>}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1 }}>
         {supprimer && (
