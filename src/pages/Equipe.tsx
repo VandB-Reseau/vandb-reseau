@@ -1,23 +1,14 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, type ReactNode } from 'react'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
-import CardActionArea from '@mui/material/CardActionArea'
 import Collapse from '@mui/material/Collapse'
 import CardContent from '@mui/material/CardContent'
 import Chip from '@mui/material/Chip'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
-import Switch from '@mui/material/Switch'
 import Tab from '@mui/material/Tab'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Tabs from '@mui/material/Tabs'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
@@ -26,15 +17,9 @@ import { useTheme, type Theme } from '@mui/material/styles'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import FormatListBulleted from '@mui/icons-material/FormatListBulleted'
-import AddOutlined from '@mui/icons-material/AddOutlined'
-import PersonAddAlt1Outlined from '@mui/icons-material/PersonAddAlt1Outlined'
-import Snackbar from '@mui/material/Snackbar'
-import { DialogCoach, DialogFranchise, DialogRR } from '../components/EditionEquipe'
-import { fichePersonne, franchises, type Franchise } from '../data/personnes'
 import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
-import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import BuildOutlined from '@mui/icons-material/BuildOutlined'
 import AccountTreeOutlined from '@mui/icons-material/AccountTreeOutlined'
 import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined'
@@ -42,6 +27,7 @@ import ChevronRight from '@mui/icons-material/ChevronRight'
 import ExpandMore from '@mui/icons-material/ExpandMore'
 import WorkOutlineOutlined from '@mui/icons-material/WorkOutlineOutlined'
 import { VueCharge } from './VueCharge'
+import { VuePersonnes } from './VuePersonnes'
 import { VuePlan } from './VuePlan'
 import { PastilleStatut } from '../components/Pastilles'
 import { PageHeader } from '../components/PageHeader'
@@ -49,10 +35,10 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { PastilleCharge } from '../components/Charge'
 import { chargeA, magasinsDuCoach, niveauCharge } from '../data/charge'
-import { dateCourte, lienCoach, lienDirecteur, lienFiche, lienFranchise, lienRR, telLien } from '../lib/format'
+import { dateCourte, lienCoach, lienDirecteur, lienFiche, lienRR, telLien } from '../lib/format'
 import type { Personne, Reseau, ResponsableRegional } from '../data/modele'
 
-type Vue = 'organisation' | 'charge' | 'franchises' | 'postes' | 'plan'
+type Vue = 'organisation' | 'collaborateurs' | 'franchises' | 'charge' | 'postes' | 'plan'
 
 function BoutonsContact({ p }: { p: Personne }) {
   return (
@@ -114,8 +100,6 @@ function LigneCoachOrga({ l, reseau, ouverts, basculer }: { l: LigneCoach; resea
 
 interface Groupe { cle: string; titre: string; role: string; couleur: string; personne: Personne | null; rr: ResponsableRegional | null; coachs: LigneCoach[]; direct: number }
 
-// L'organigramme ne sert qu'à voir et à ajouter : chaque personne se modifie depuis sa fiche
-type Edition = 'rr' | 'coach'
 
 const trait = (theme: Theme) => `2px solid ${theme.palette.divider}`
 
@@ -183,9 +167,6 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
   const [params, setParams] = useSearchParams()
   const forme = (params.get('forme') as 'pyramide' | 'liste' | null) ?? (surPC ? 'pyramide' : 'liste')
   const changerForme = (f: string) => { const p = new URLSearchParams(params); p.set('forme', f); setParams(p, { replace: true }) }
-  const [edition, setEdition] = useState<Edition | null>(null)
-  const [message, setMessage] = useState('')
-  const fermer = (m?: string) => { setEdition(null); if (m) setMessage(m) }
   const lignes = lignesCoachs(reseau)
   const [ouverts, setOuverts] = useState<Set<string>>(() => new Set(reseau.rrs.map((r) => `r:${r.id}`)))
   const basculer = (k: string) => setOuverts((o) => { const n = new Set(o); if (n.has(k)) n.delete(k); else n.add(k); return n })
@@ -214,9 +195,10 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
         <CardContent sx={{ p: { xs: 1.5, sm: 3 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
             <AccountTreeOutlined color="action" />
-            <Typography variant="h3" component="h2" sx={{ flex: 1 }}>Organigramme</Typography>
-            <Button startIcon={<PersonAddAlt1Outlined />} onClick={() => setEdition('coach')} sx={{ minHeight: 48 }}>Coach</Button>
-            <Button startIcon={<AddOutlined />} onClick={() => setEdition('rr')} sx={{ minHeight: 48 }}>Responsable Régional</Button>
+            <Box sx={{ flex: 1, minWidth: 200 }}>
+              <Typography variant="h3" component="h2">Organigramme</Typography>
+              <Typography variant="body2" color="text.secondary">Clique sur une personne pour ouvrir sa fiche. Les ajouts se font dans les onglets <Link component={RouterLink} to="/equipe?vue=collaborateurs">Collaborateurs</Link> et <Link component={RouterLink} to="/equipe?vue=franchises">Franchisés</Link>.</Typography>
+            </Box>
             <ToggleButtonGroup exclusive size="small" value={forme} onChange={(_e, v) => v && changerForme(v)} aria-label="Forme de l’organigramme">
               <ToggleButton value="pyramide" sx={{ minHeight: 48, px: 2, gap: 1 }}><AccountTreeOutlined fontSize="small" />Pyramide</ToggleButton>
               <ToggleButton value="liste" sx={{ minHeight: 48, px: 2, gap: 1 }}><FormatListBulleted fontSize="small" />Liste</ToggleButton>
@@ -255,9 +237,6 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
           </>}
         </CardContent>
       </Card>
-      {edition === 'rr' && <DialogRR reseau={reseau} rr={null} onFermer={fermer} />}
-      {edition === 'coach' && <DialogCoach reseau={reseau} coach={null} onFermer={fermer} />}
-      <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
       {reseau.techniciens.length > 0 && (
         <Box sx={{ mt: 3 }}>
           <Typography variant="h3" component="h2" sx={{ mb: 0.5 }}>Techniciens et formateurs</Typography>
@@ -330,88 +309,6 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
   )
 }
 
-function VueFranchises({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
-  const naviguer = useNavigate()
-  const [manquants, setManquants] = useState(false)
-  const [ajout, setAjout] = useState(false)
-  const [message, setMessage] = useState('')
-  const liste = useMemo(() => franchises(reseau), [reseau])
-  const sans = reseau.magasins.filter((m) => m.statut !== 'avenir' && !m.responsable)
-  const Magasins = ({ f }: { f: Franchise }) => (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1.5 }}>
-      {f.magasins.map((m) => <Link key={m.nom} component={RouterLink} to={lienFiche(m.nom)} variant="body2" sx={{ minHeight: 32, display: 'inline-flex', alignItems: 'center' }}>{m.nom}</Link>)}
-    </Box>
-  )
-  return (
-    <>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-        <FormControlLabel
-          control={<Switch checked={manquants} onChange={(e) => setManquants(e.target.checked)} />}
-          label={`Magasins sans franchisé (${sans.length})`}
-          sx={{ minHeight: 48, flex: 1 }}
-        />
-        <Button variant="contained" startIcon={<PersonAddAlt1Outlined />} onClick={() => setAjout(true)} sx={{ minHeight: 48 }}>Ajouter un franchisé</Button>
-      </Box>
-      {manquants ? (
-        sans.length === 0
-          ? <EmptyState icone={<StorefrontOutlined />} titre="Chaque magasin a son franchisé" texte="Aucun magasin ouvert ou en préparation n’est sans franchisé renseigné." />
-          : <Card>
-            {sans.map((m) => (
-              <CardActionArea key={m.nom} component={RouterLink} to={lienFiche(m.nom)} sx={{ px: 2, py: 1.5, minHeight: 56, borderBottom: '1px solid', borderColor: 'divider' }}>
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>{m.nom}</Typography>
-                <Typography variant="body2" color="warning.main">{m.responsableARecruter ? 'En cours de recrutement' : 'Non renseigné'}{m.coach ? ` · Coach ${m.coach}` : ''}</Typography>
-              </CardActionArea>
-            ))}
-          </Card>
-      ) : liste.length === 0 ? (
-        <EmptyState icone={<PersonOutlineOutlined />} titre="Aucun franchisé renseigné" texte="Ajoute un franchisé et choisis ses magasins, ou renseigne-le depuis la fiche d’un magasin." action={<Button variant="contained" onClick={() => setAjout(true)}>Ajouter un franchisé</Button>} />
-      ) : surPC ? (
-        <Card>
-          <TableContainer>
-            <Table aria-label="Franchisés">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Franchisé</TableCell>
-                  <TableCell>Magasins</TableCell>
-                  <TableCell>Téléphone</TableCell>
-                  <TableCell>Email</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {liste.map((f) => {
-                  const p = fichePersonne(reseau, { type: 'franchise', cle: f.nom })
-                  return (
-                    <TableRow key={f.nom} hover>
-                      <TableCell>
-                        <Link component={RouterLink} to={lienFranchise(f.nom)} sx={{ fontWeight: 600 }}>{f.nom}</Link>
-                        {f.integresSeulement && <Typography variant="body2" color="text.secondary">Responsable de magasin intégré</Typography>}
-                      </TableCell>
-                      <TableCell><Magasins f={f} /></TableCell>
-                      <TableCell>{p.telephone ? <Link href={telLien(p.telephone)} variant="body2">{p.telephone}</Link> : <Typography variant="body2" color="text.secondary">Non renseigné</Typography>}</TableCell>
-                      <TableCell>{p.email ? <Link href={`mailto:${p.email}`} variant="body2">{p.email}</Link> : <Typography variant="body2" color="text.secondary">Non renseigné</Typography>}</TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
-      ) : (
-        <Card>
-          {liste.map((f) => (
-            <CardActionArea key={f.nom} component={RouterLink} to={lienFranchise(f.nom)} sx={{ px: 2, py: 1.5, minHeight: 56, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="body1" sx={{ fontWeight: 600 }}>{f.nom}</Typography>
-              <Typography variant="body2" color="text.secondary">{f.magasins.map((m) => m.nom).join(', ')}</Typography>
-            </CardActionArea>
-          ))}
-        </Card>
-      )}
-      {ajout && <DialogFranchise reseau={reseau} nom={null} onFermer={(m, nom) => { setAjout(false); if (m) { setMessage(m); if (nom) naviguer(lienFranchise(nom)) } }} />}
-      <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
-    </>
-  )
-}
-
 export function Equipe() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
@@ -426,12 +323,13 @@ export function Equipe() {
           <PageHeader titre="Équipe" sousTitre={`${reseau.equipe.length} Coachs · ${reseau.rrs.length} Responsables Régionaux · ${reseau.techniciens.length} technicien${reseau.techniciens.length > 1 ? 's' : ''}`} />
           <Tabs value={vue} onChange={(_e, v) => changerVue(v)} variant="scrollable" allowScrollButtonsMobile aria-label="Rubriques de l’équipe" sx={{ mb: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Tab value="organisation" label="Organisation" sx={{ minHeight: 48 }} />
+            <Tab value="collaborateurs" label="Collaborateurs" sx={{ minHeight: 48 }} />
+            <Tab value="franchises" label="Franchisés" sx={{ minHeight: 48 }} />
             <Tab value="charge" label="Charge des Coachs" sx={{ minHeight: 48 }} />
             <Tab value="postes" label="Postes à pourvoir" sx={{ minHeight: 48 }} />
-            <Tab value="franchises" label="Franchisés" sx={{ minHeight: 48 }} />
             <Tab value="plan" label="Plan d’affectation" sx={{ minHeight: 48 }} />
           </Tabs>
-          {vue === 'plan' ? <VuePlan reseau={reseau} /> : vue === 'charge' ? <VueCharge reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : vue === 'franchises' ? <VueFranchises reseau={reseau} surPC={surPC} /> : <VueOrganisation reseau={reseau} />}
+          {vue === 'plan' ? <VuePlan reseau={reseau} /> : vue === 'charge' ? <VueCharge reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : vue === 'collaborateurs' || vue === 'franchises' ? <VuePersonnes key={vue} perimetre={vue} reseau={reseau} surPC={surPC} /> : <VueOrganisation reseau={reseau} />}
         </>
       )}
     </AvecReseau>

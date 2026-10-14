@@ -19,6 +19,7 @@ test('l’organigramme ne modifie plus rien : chaque personne s’ouvre sur sa f
     await page.goto(`./#/equipe?forme=${forme}`)
     await expect(page.getByRole('heading', { name: 'Organigramme' })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Modifier/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /^Ajouter/ })).toHaveCount(0)
   }
   await page.getByRole('link', { name: 'Alex NORD', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Alex NORD', level: 1 })).toBeVisible()
@@ -70,14 +71,41 @@ test('fiche d’un Responsable Régional : champs personnels et département rem
   expect(cle(ecritures, 'drs_data').drs.find((r: { id: string }) => r.id === 'rr2')).toMatchObject({ birth: '1985-03-02', entry: '2021-01-04' })
 })
 
-test('franchisés : liste, fiche, renommage repris sur tous ses magasins', async ({ page, isMobile }, info) => {
+test('l’onglet Collaborateurs liste Directeur, RR et Coachs et ouvre leur fiche', async ({ page, isMobile }, info) => {
+  await seConnecter(page)
+  await page.goto('./#/equipe')
+  await page.getByRole('tab', { name: 'Collaborateurs' }).click()
+  await expect(page.getByRole('button', { name: /Responsables Régionaux \(3\)/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Coachs \(6\)/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Dominique DIRECTION' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Paul MULTI' })).toHaveCount(0) // les franchisés ont leur onglet
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-equipe-collaborateurs.png`, fullPage: !isMobile })
+  await page.getByRole('button', { name: /Coachs \(6\)/ }).click()
+  await expect(page.getByRole('link', { name: 'Alex NORD' })).toHaveCount(0)
+  await page.getByLabel('Rechercher une personne').fill('inès')
+  await page.getByRole('link', { name: 'Inès EXEMPLE' }).click()
+  await expect(page.getByRole('heading', { name: 'Inès EXEMPLE', level: 1 })).toBeVisible()
+  await page.getByRole('button', { name: 'Modifier', exact: true }).click()
+  const d = page.getByRole('dialog', { name: 'Modifier Inès EXEMPLE' })
+  for (const l of ['Prénom', 'Date de naissance', 'Date d’arrivée', 'Pays', 'Code postal', 'Département', 'Ville', 'Email', 'Téléphone']) await expect(d.getByLabel(l, { exact: true })).toBeVisible()
+})
+
+test('l’onglet Franchisés liste les franchisés sans le poste en recrutement', async ({ page, isMobile }, info) => {
+  await seConnecter(page)
+  await page.goto('./#/equipe?vue=franchises')
+  await expect(page.getByRole('tab', { name: 'Franchisés', selected: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Paul MULTI' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Alex NORD' })).toHaveCount(0)
+  await expect(page.getByText('En cours de recrutement')).toHaveCount(0)
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-equipe-franchises.png`, fullPage: !isMobile })
+})
+
+test('franchisés : fiche, renommage repris sur tous ses magasins', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/equipe?vue=franchises')
-  await expect(page.getByRole('tab', { name: 'Franchisés', selected: true })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'Responsables magasin' })).toHaveCount(0)
-  expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-equipe-franchises.png`, fullPage: !isMobile })
   await page.getByRole('link', { name: /^Paul MULTI/ }).first().click()
   await expect(page.getByRole('heading', { name: 'Paul MULTI', level: 1 })).toBeVisible()
   await expect(page.getByText('Franchisé · 2 magasins')).toBeVisible()
@@ -99,7 +127,7 @@ test('ajouter un franchisé et lui confier un magasin', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/equipe?vue=franchises')
-  await page.getByRole('button', { name: 'Ajouter un franchisé' }).first().click()
+  await page.getByRole('button', { name: 'Ajouter un franchisé' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter un franchisé' })
   await d.getByLabel('Prénom').fill('Jeanne')
   await d.getByLabel(/^Nom/).fill('NOUVELLE')
