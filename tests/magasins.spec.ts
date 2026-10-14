@@ -118,3 +118,15 @@ test('sur téléphone, les filtres des magasins et de la carte se replient derri
   await page.getByRole('button', { name: 'Filtres' }).click()
   await expect(page.getByRole('button', { name: 'Statut' })).toBeVisible()
 })
+
+test('« Tous » coche toutes les options d’un filtre, puis on en exclut une', async ({ page, isMobile }) => {
+  await seConnecter(page)
+  await page.goto('./#/magasins')
+  if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
+  await page.getByLabel('Filtre Type').click()
+  await page.getByRole('menuitem', { name: 'Tous' }).click()
+  await expect(page.getByText(/^30 (sur 30 )?magasins/)).toBeVisible()
+  await page.getByRole('menuitem', { name: /Intégré/ }).click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByText('25 sur 30 magasins')).toBeVisible()
+})
