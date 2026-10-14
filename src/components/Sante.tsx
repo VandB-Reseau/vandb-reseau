@@ -1,9 +1,13 @@
 import { memo, useCallback, useRef, useState } from 'react'
 import Chip from '@mui/material/Chip'
+import TrendingUp from '@mui/icons-material/TrendingUp'
+import TrendingDown from '@mui/icons-material/TrendingDown'
+import TrendingFlat from '@mui/icons-material/TrendingFlat'
+import { dateCourte } from '../lib/format'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { enregistrerDeploiements, enregistrerEvaluations } from '../data/chargement'
-import { caseDe, couleurTon, libelleNote, type CaseNineBox, type Evaluation, type IdCritere, type Note, type Thematique } from '../data/sante'
+import { ajouterPoint, caseDe, couleurTon, libelleNote, type CaseNineBox, type Evaluation, type Tendance, type IdCritere, type Note, type Thematique } from '../data/sante'
 import type { Reseau } from '../data/modele'
 import { messageErreur } from './EditionEquipe'
 
@@ -12,6 +16,7 @@ import { messageErreur } from './EditionEquipe'
 const DELAI = 800
 let evalsEnAttente: Record<string, { e: Evaluation; caseId: string | null }> = {}
 let depsEnAttente: { magasin: string; thematique: string; etat: string }[] = []
+let jourEnAttente = ''
 let minuteur: ReturnType<typeof setTimeout> | undefined
 let signalerDernier: (m: string) => void = () => {}
 
@@ -23,7 +28,7 @@ async function vider() {
   if (!n) return
   try {
     if (Object.keys(ev).length) await enregistrerEvaluations(ev)
-    if (dp.length) await enregistrerDeploiements(dp)
+    if (dp.length) await enregistrerDeploiements(dp, jourEnAttente)
     signalerDernier(n > 1 ? `${n} modifications enregistrées` : 'Modification enregistrée')
   } catch (err) { signalerDernier(messageErreur(err)) }
 }
@@ -52,8 +57,9 @@ export function useSaisieSante(reseau: Reseau, signaler: (m: string) => void): S
       if (note !== null) notes[critere] = note
       else delete notes[critere]
       const e: Evaluation = { notes, date: r.jour, par: r.directeur.nom }
-      r.evaluations[magasin] = { ...r.evaluations[magasin], ...e }
-      evalsEnAttente[magasin] = { e, caseId: caseDe(e)?.id ?? null }
+      const caseId = caseDe(e)?.id ?? null
+      r.evaluations[magasin] = { ...r.evaluations[magasin], ...e, historique: ajouterPoint(r.evaluations[magasin]?.historique ?? [], { date: e.date, caseId: caseId ?? '', notes }) }
+      evalsEnAttente[magasin] = { e, caseId }
     }
     setVersion((v) => v + 1)
     planifier()
@@ -64,7 +70,12 @@ export function useSaisieSante(reseau: Reseau, signaler: (m: string) => void): S
       const v = { ...(r.deploiements.valeurs[magasin] ?? {}) }
       if (valeur) v[t] = valeur
       else delete v[t]
+      if ((r.deploiements.valeurs[magasin]?.[t] ?? '') !== (valeur ?? '')) {
+        const j = r.deploiements.journal ?? (r.deploiements.journal = {})
+        j[magasin] = [...(j[magasin] ?? []).filter((c) => !(c.date === r.jour && c.thematique === t)), { date: r.jour, thematique: t, etat: valeur ?? '' }]
+      }
       r.deploiements.valeurs[magasin] = v
+      jourEnAttente = r.jour
       depsEnAttente = [...depsEnAttente.filter((x) => !(x.magasin === magasin && x.thematique === t)), { magasin, thematique: t, etat: valeur ?? '' }]
     }
     setVersion((x) => x + 1)
@@ -121,4 +132,16 @@ export function PastilleCase({ c }: { c: CaseNineBox | null }) {
 const PALETTE = ['#1b6fce', '#c2185b', '#0f766e', '#7c3aed', '#b45309', '#0891b2', '#4d7c0f', '#be123c', '#4338ca', '#a16207', '#047857', '#9333ea']
 export function couleursCoachs(coachs: string[]): Map<string, string> {
   return new Map([...new Set(coachs)].sort((a, b) => a.localeCompare(b, 'fr')).map((c, i) => [c, PALETTE[i % PALETTE.length]]))
+}
+
+// Sens d'évolution de la case depuis la case précédente
+export function PastilleTendance({ t, court }: { t: Tendance | null; court?: boolean }) {
+  if (!t || !t.precedente) return null
+  const config = {
+    monte: { icone: <TrendingUp />, couleur: 'success' as const, mot: 'En progrès' },
+    descend: { icone: <TrendingDown />, couleur: 'error' as const, mot: 'En recul' },
+    stable: { icone: <TrendingFlat />, couleur: 'default' as const, mot: 'Changement de case' },
+  }[t.sens]
+  const label = court ? config.mot : `${config.mot} depuis le ${dateCourte(t.depuis)} · avant : ${t.precedente.libelle}`
+  return <Chip size="small" variant="outlined" icon={config.icone} color={config.couleur} label={label} sx={{ fontSize: 12, fontWeight: 600 }} />
 }

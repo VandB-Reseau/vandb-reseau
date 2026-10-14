@@ -63,8 +63,13 @@ export const evenementsFictifs = [{ id: 1, title: 'Séminaire des Coachs', type:
 
 // Santé du parc : Lyon en redressement urgent, Annecy locomotive, Nantes cœur de réseau
 const n = (r: number, f: number) => ({ notes: { caExterieur: r, panierCave: r, panierBar: r, fluxCave: r, fluxBar: r, franchise: f }, date: '2026-10-01', par: 'Dominique DIRECTION' })
-export const santeFictive = { 'Lyon Test': n(1, 1), 'Annecy Test': n(3, 3), 'Nantes Test': n(2, 2) }
-export const deploiementsFictifs = { valeurs: { 'Lyon Test': { concept20: 'Fait', terrasse: 'Oui' }, 'Annecy Test': { concept20: 'En cours' } } }
+// Lyon était en cœur de réseau avant de passer en redressement (historique daté)
+export const santeFictive = {
+  'Lyon Test': { ...n(1, 1), historique: [{ date: '2026-06-01', caseId: 'coeur', notes: n(2, 2).notes }, { date: '2026-10-01', caseId: 'redressement', notes: n(1, 1).notes }] },
+  'Annecy Test': n(3, 3), 'Nantes Test': n(2, 2),
+}
+export const notesMagasinsFictives = { 'Lyon Test': [{ id: 'n1', date: '2026-09-15', texte: 'Appel du franchisé : travaux de vitrine prévus.', par: 'Dominique DIRECTION' }] }
+export const deploiementsFictifs = { valeurs: { 'Lyon Test': { concept20: 'Fait', terrasse: 'Oui' }, 'Annecy Test': { concept20: 'En cours' } }, journal: { 'Lyon Test': [{ date: '2026-05-04', thematique: 'concept20', etat: 'Fait' }] } }
 
 // Fiches personnelles (app_config, clé fiches_personnes)
 export const fichesFictives = {

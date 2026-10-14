@@ -14,8 +14,9 @@ import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
-import { PastilleCase } from '../components/Sante'
-import { caseDe, couleurTon, libelleNote, tonDe, tousCriteres } from '../data/sante'
+import { PastilleCase, PastilleTendance } from '../components/Sante'
+import { Journal } from '../components/Journal'
+import { caseDe, couleurTon, historiqueSante, libelleNote, nineBox, tendance, tonDe, tousCriteres } from '../data/sante'
 import { AvecReseau } from '../components/EtatDonnees'
 import { ReaffecterDialog } from '../components/ReaffecterDialog'
 import Snackbar from '@mui/material/Snackbar'
@@ -27,7 +28,7 @@ import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { libelleResponsable, libelleTypeVisite, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
-import { lienCompteRendu, semestreDe, visitesDuMagasin } from '../data/visites'
+import { anneeFiscale, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 
@@ -114,30 +115,16 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
         </Section>
 
-        <Section titre="Historique des Coachs">
-          {m.historiqueCoach.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">Aucune affectation enregistrée.</Typography>
-          ) : (
-            [...m.historiqueCoach].reverse().map((h, i) => (
-              <Box key={`${h.date}-${i}`} sx={{ display: 'flex', gap: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
-                <Typography variant="body2" color="text.secondary" sx={{ width: 110, flexShrink: 0 }}>{dateCourte(h.date)}</Typography>
-                <Box>
-                  <Typography variant="body1">{h.coach || 'Sans Coach'}</Typography>
-                  {h.note && <Typography variant="caption" color="text.secondary">{h.note}</Typography>}
-                </Box>
-              </Box>
-            ))
-          )}
-        </Section>
-
         <Section titre="Visites" action={<Button startIcon={<AddOutlined />} onClick={() => setVisite(null)} sx={{ minHeight: 48 }}>Saisir</Button>}>
           {(() => {
             const vs = visitesDuMagasin(reseau, m.nom)
-            const s = semestreDe(reseau.jour)
-            const ceSemestre = vs.some((v) => v.date >= s.debut && v.date <= s.fin)
+            const a = anneeFiscale(reseau.jour)
+            const r = suiviRythme(reseau, a).find((l) => l.magasin.nom === m.nom)
             return (
               <>
-                <Chip size="small" color={ceSemestre ? 'success' : 'warning'} variant={ceSemestre ? 'filled' : 'outlined'} label={ceSemestre ? `Visité sur ${s.court}` : `Pas encore visité sur ${s.court}`} sx={{ fontSize: '0.75rem', fontWeight: 600, mb: 1 }} />
+                {r && <Chip size="small" color={r.retard ? 'warning' : 'success'} variant={r.retard ? 'filled' : 'outlined'}
+                  label={`${r.faites} visite${r.faites > 1 ? 's' : ''} sur ${r.objectif} en ${a.court} · ${r.retard ? `${r.retard} j de retard` : `prochaine avant le ${dateCourte(r.prochaine)}`}`}
+                  sx={{ fontSize: '0.75rem', fontWeight: 600, mb: 1 }} />}
                 {vs.length === 0 ? <Typography variant="body2" color="text.secondary">Aucune visite enregistrée.</Typography> : vs.slice(0, 6).map((v) => (
                   <Box key={v.id ?? v.date} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
                     <Typography variant="body2" color="text.secondary" sx={{ width: 110, flexShrink: 0 }}>{dateCourte(v.date)}</Typography>
@@ -157,6 +144,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 
         <SectionSante reseau={reseau} m={m} modifier={() => setEdition(true)} />
         <SectionDeploiements reseau={reseau} m={m} modifier={() => setEdition(true)} />
+        <Box sx={{ gridColumn: { lg: 'span 2' } }}><Journal reseau={reseau} m={m} signaler={setConfirmation} /></Box>
       </Box>
       {reaffectation && <ReaffecterDialog reseau={reseau} magasin={m} ouvert onFermer={(fait) => { setReaffectation(false); if (fait) setConfirmation(`${m.nom} est confié à ${fait}.`) }} />}
       {edition && <DialogMagasin reseau={reseau} magasin={m} onFermer={(msg, nom) => {
@@ -196,13 +184,32 @@ function SectionSante({ reseau, m, modifier }: { reseau: Reseau; m: Magasin; mod
     <Section titre="Santé" action={<Button startIcon={<EditOutlined />} onClick={modifier} aria-label="Modifier la santé" sx={{ minHeight: 48 }}>Modifier</Button>}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
         <PastilleCase c={c} />
-        {c && <Typography variant="body2" color="text.secondary">Rythme de visite : {c.rythme}</Typography>}
+        <PastilleTendance t={tendance(reseau.evaluations, m.nom)} />
+        {c && <Typography variant="body2" color="text.secondary">Rythme de visite : {c.rythme} par an</Typography>}
       </Box>
       {tousCriteres.map((k) => {
         const n = e?.notes[k.id]
         return <Ligne key={k.id} libelle={k.libelle}>{n === undefined ? null : <Chip size="small" label={libelleNote[n]} color={n === 0 ? 'default' : couleurNoteChip[n]} sx={{ fontSize: 12 }} />}</Ligne>
       })}
+      <EvolutionCases points={historiqueSante(reseau.evaluations, m.nom)} />
     </Section>
+  )
+}
+
+// Cases successives, de la plus récente à la plus ancienne
+function EvolutionCases({ points }: { points: { date: string; caseId: string }[] }) {
+  const changements = points.filter((p, i) => p.caseId && p.caseId !== points.slice(0, i).filter((x) => x.caseId).at(-1)?.caseId)
+  if (changements.length < 2) return null
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="h4" component="h3" sx={{ mb: 1 }}>Évolution</Typography>
+      {[...changements].reverse().map((p) => (
+        <Box key={p.date + p.caseId} sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 0.75 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ width: 110, flexShrink: 0 }}>{dateCourte(p.date)}</Typography>
+          <PastilleCase c={nineBox.find((c) => c.id === p.caseId) ?? null} />
+        </Box>
+      ))}
+    </Box>
   )
 }
 

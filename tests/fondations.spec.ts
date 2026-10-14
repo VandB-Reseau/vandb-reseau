@@ -28,7 +28,8 @@ test('après connexion, l’accueil montre les 5 priorités dans l’ordre chois
   const titres = await page.locator('main h2').allTextContents()
   expect(titres).toEqual([
     'Magasins qui sous-performent',
-    'Magasins à visiter',
+    'Visites en retard',
+    'Changements de case',
     'Agenda de la semaine',
     'Coachs surchargés et postes vacants',
     'Ouvertures à préparer',
