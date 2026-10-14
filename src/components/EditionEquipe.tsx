@@ -16,7 +16,7 @@ import { useTheme } from '@mui/material/styles'
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import { useReseau } from '../data/ReseauContext'
 import {
-  enregistrerCoach, enregistrerDirecteur, enregistrerRR, rattacherCoach, supprimerCoach, supprimerRR,
+  enregistrerCoach, enregistrerDirecteur, enregistrerRR, rattacherCoach, renommerCoach, supprimerCoach, supprimerRR,
 } from '../data/chargement'
 import { coachA } from '../data/charge'
 import type { Coach, Reseau, ResponsableRegional } from '../data/modele'
@@ -25,8 +25,8 @@ const COULEURS = ['#1b6fce', '#ef7d00', '#2e7d32', '#7c3aed', '#c2185b', '#00838
 const emailValide = (e: string) => !e || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 
 // Squelette commun : titre, champs, suppression avec confirmation, enregistrement avec message humain
-function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer, supprimer, suppressionBloquee, libelleSuppression }: {
-  titre: string; ouvert: boolean; onFermer: (message?: string) => void; children: ReactNode; valide: boolean
+export function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer, supprimer, suppressionBloquee, libelleSuppression, large }: {
+  large?: boolean; titre: string; ouvert: boolean; onFermer: (message?: string) => void; children: ReactNode; valide: boolean
   enregistrer: () => Promise<string>; supprimer?: () => Promise<string>; suppressionBloquee?: string; libelleSuppression?: string
 }) {
   const theme = useTheme()
@@ -37,10 +37,10 @@ function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer, suppr
   const [confirmer, setConfirmer] = useState(false)
   const agir = async (action: () => Promise<string>) => {
     setEnvoi(true); setErreur(false)
-    try { const message = await action(); recharger(); onFermer(message) } catch { setErreur(true) } finally { setEnvoi(false) }
+    try { const message = await action(); await recharger(); onFermer(message) } catch { setErreur(true) } finally { setEnvoi(false) }
   }
   return (
-    <Dialog open={ouvert} onClose={() => onFermer()} fullScreen={pleinEcran} fullWidth maxWidth="sm" aria-labelledby="titre-edition">
+    <Dialog open={ouvert} onClose={() => onFermer()} fullScreen={pleinEcran} fullWidth maxWidth={large ? "md" : "sm"} aria-labelledby="titre-edition">
       <DialogTitle id="titre-edition">{titre}</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>{children}</Box>
@@ -122,7 +122,7 @@ export function DialogRR({ reseau, rr, onFermer }: { reseau: Reseau; rr: Respons
   )
 }
 
-export function DialogCoach({ reseau, coach, onFermer }: { reseau: Reseau; coach: Coach | null; onFermer: (m?: string) => void }) {
+export function DialogCoach({ reseau, coach, onFermer }: { reseau: Reseau; coach: Coach | null; onFermer: (m?: string, nouveauNom?: string) => void }) {
   const [nom, setNom] = useState(coach?.nom ?? '')
   const [tel, setTel] = useState(coach?.telephone ?? '')
   const [email, setEmail] = useState(coach?.email ?? '')
@@ -133,25 +133,26 @@ export function DialogCoach({ reseau, coach, onFermer }: { reseau: Reseau; coach
   const [dateRattachement, setDateRattachement] = useState(reseau.jour)
   const rrs = reseau.rrs.filter((r) => !r.integres)
   const nomPropre = nom.trim().replace(/\s+/g, ' ')
-  const doublon = !coach && (reseau.equipe.some((c) => c.nom.toLowerCase() === nomPropre.toLowerCase()) || reseau.rrs.some((r) => r.nom.toLowerCase() === nomPropre.toLowerCase()))
+  const doublon = nomPropre !== coach?.nom && (reseau.equipe.some((c) => c.nom.toLowerCase() === nomPropre.toLowerCase()) || reseau.rrs.some((r) => r.nom.toLowerCase() === nomPropre.toLowerCase()))
   const changeRR = rrId && rrId !== (coach?.rr?.id ?? '')
   // Magasins suivis aujourd'hui ou plus tard : on ne supprime pas un Coach qui en a encore
   const suivis = coach ? reseau.magasins.filter((m) => coachA(m, reseau.jour) === coach.nom || (m.historiqueCoach.at(-1)?.coach === coach.nom)).length : 0
   return (
     <Fenetre
-      titre={coach ? `Modifier ${coach.nom}` : 'Ajouter un Coach'} ouvert onFermer={onFermer}
+      titre={coach ? `Modifier ${coach.nom}` : 'Ajouter un Coach'} ouvert onFermer={(m) => onFermer(m, m ? nomPropre : undefined)}
       valide={!!nomPropre && !doublon && emailValide(email)}
       enregistrer={async () => {
+        if (coach && nomPropre !== coach.nom) await renommerCoach(coach.nom, nomPropre)
         await enregistrerCoach({ nom: nomPropre, telephone: tel.trim(), email: email.trim(), ville: ville.trim(), fictif, arrivee })
         if (changeRR) await rattacherCoach(nomPropre, rrId, dateRattachement || reseau.jour)
-        return coach ? `${nomPropre} est mis à jour.` : `${nomPropre} est ajouté à l’équipe.`
+        return coach ? (nomPropre !== coach.nom ? `${coach.nom} s’appelle désormais ${nomPropre}.` : `${nomPropre} est mis à jour.`) : `${nomPropre} est ajouté à l’équipe.`
       }}
       supprimer={coach ? async () => { await supprimerCoach(coach.nom); return `${coach.nom} est retiré de l’équipe.` } : undefined}
       suppressionBloquee={suivis ? `Réaffecte d’abord ses ${suivis} magasin${suivis > 1 ? 's' : ''} pour pouvoir le supprimer.` : undefined}
       libelleSuppression={coach ? `Retirer ${coach.nom} de l’équipe ? L’historique des magasins qu’il a suivis est conservé.` : undefined}
     >
-      <TextField label="Prénom et NOM" value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus={!coach} disabled={!!coach}
-        error={doublon} helperText={doublon ? 'Cette personne existe déjà dans l’équipe.' : coach ? 'Le nom ne se modifie pas : il relie le Coach à l’historique de ses magasins.' : 'Par exemple : Camille DUPONT'} />
+      <TextField label="Prénom et NOM" value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus={!coach}
+        error={doublon} helperText={doublon ? 'Cette personne existe déjà dans l’équipe.' : coach && nomPropre !== coach.nom ? 'Le nouveau nom sera repris partout : magasins, historique, rattachements, visites.' : 'Par exemple : Camille DUPONT'} />
       <ChampsContact tel={tel} setTel={setTel} email={email} setEmail={setEmail} />
       <TextField label="Ville de résidence" value={ville} onChange={(e) => setVille(e.target.value)} helperText="Sert aux suggestions de réaffectation par distance, une fois géolocalisée." />
       <TextField select label="Responsable Régional" value={rrId} onChange={(e) => setRrId(e.target.value)}>

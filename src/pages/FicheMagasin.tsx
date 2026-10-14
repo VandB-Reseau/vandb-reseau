@@ -23,7 +23,9 @@ import Snackbar from '@mui/material/Snackbar'
 import SwapHoriz from '@mui/icons-material/SwapHoriz'
 import { EmptyState } from '../components/EmptyState'
 import { PastilleStatut, PastilleType } from '../components/Pastilles'
-import { dateCourte, dateLongue, lienCoach, telLien } from '../lib/format'
+import { dateCourte, dateLongue, lienCoach, lienFiche, telLien } from '../lib/format'
+import { DialogMagasin } from '../components/EditionMagasin'
+import EditOutlined from '@mui/icons-material/EditOutlined'
 import type { Magasin, Personne, Reseau } from '../data/modele'
 
 export function Section({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
@@ -68,6 +70,7 @@ export function Contact({ role, p, sousTitre, lien }: { role: string; p: Personn
 function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const naviguer = useNavigate()
   const [reaffectation, setReaffectation] = useState(false)
+  const [edition, setEdition] = useState(false)
   const [confirmation, setConfirmation] = useState('')
   const coach = m.coach ? reseau.coachs[m.coach] ?? { nom: m.coach } : null
   const adresseComplete = [m.adresse || [m.codePostal, m.ville].filter(Boolean).join(' '), m.pays].filter(Boolean).join(', ')
@@ -79,6 +82,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         <Typography variant="h1" sx={{ mr: 1 }}>{m.nom}</Typography>
         <PastilleStatut statut={m.statut} />
         <PastilleType franchise={m.franchise} />
+        <Box sx={{ flex: 1 }} />
+        <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setEdition(true)} sx={{ minHeight: 48 }}>Modifier</Button>
       </Box>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         {[m.ville || null, m.departement && `Département ${m.departement}`, m.pays || null, m.code && `Code ${m.code}`].filter(Boolean).join(' · ')}
@@ -132,6 +137,13 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         </Section>
       </Box>
       {reaffectation && <ReaffecterDialog reseau={reseau} magasin={m} ouvert onFermer={(fait) => { setReaffectation(false); if (fait) setConfirmation(`${m.nom} est confié à ${fait}.`) }} />}
+      {edition && <DialogMagasin reseau={reseau} magasin={m} onFermer={(msg, nom) => {
+        setEdition(false)
+        if (!msg) return
+        if (msg.includes('supprimé')) { naviguer('/magasins', { replace: true }); return }
+        setConfirmation(msg)
+        if (nom && nom !== m.nom) naviguer(lienFiche(nom), { replace: true })
+      }} />}
       <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
     </>
   )

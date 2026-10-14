@@ -40,7 +40,7 @@ export function ReaffecterDialog({ reseau, magasin, ouvert, onFermer }: { reseau
     setErreur(false)
     try {
       await reaffecter(magasin.nom, choisi, date, note.trim() || 'Réaffectation')
-      recharger()
+      await recharger()
       onFermer(choisi)
     } catch {
       setErreur(true)

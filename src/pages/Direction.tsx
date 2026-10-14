@@ -47,7 +47,7 @@ function RegleCharge({ reseau }: { reseau: Reseau }) {
     setEnvoi(true); setErreur(false)
     try {
       await enregistrerParametres(nombres as unknown as Record<string, number>)
-      recharger(); setOk(true)
+      await recharger(); setOk(true)
     } catch { setErreur(true) } finally { setEnvoi(false) }
   }
 

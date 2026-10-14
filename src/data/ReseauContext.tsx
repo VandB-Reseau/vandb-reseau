@@ -6,7 +6,7 @@ interface EtatReseau {
   reseau: Reseau | null
   chargement: boolean
   erreur: boolean
-  recharger: () => void
+  recharger: () => Promise<void>
 }
 
 const Ctx = createContext<EtatReseau | null>(null)
@@ -20,13 +20,13 @@ export function ReseauProvider({ children }: { children: ReactNode }) {
   const recharger = useCallback(() => {
     setReseau((r) => { if (!r) setChargement(true); return r })
     setErreur(false)
-    chargerReseau()
+    return chargerReseau()
       .then(setReseau)
       .catch(() => setErreur(true))
       .finally(() => setChargement(false))
   }, [])
 
-  useEffect(recharger, [recharger])
+  useEffect(() => { recharger() }, [recharger])
 
   return <Ctx.Provider value={{ reseau, chargement, erreur, recharger }}>{children}</Ctx.Provider>
 }

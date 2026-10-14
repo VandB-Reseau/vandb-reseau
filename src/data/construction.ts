@@ -66,6 +66,7 @@ function coordonnees(lat: unknown, lon: unknown): [number | null, number | null]
 
 export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
   // 1) Liste de base + renommages + surcharges (même ordre d'application que l'ancienne app)
+  // store_deletes ne concerne que le fichier de base de l'ancienne app, jamais store_adds
   const bruts = d.magasins.map((m) => ({ ...m }))
   for (const [ancien, nouveau] of Object.entries(d.renommages)) {
     const m = bruts.find((x) => x.n === ancien)

@@ -40,7 +40,7 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
         { key: 'params', value: JSON.stringify({ prepDuration: 2, postDuration: 4, directionHorizon: 6 }) },
       ]) })
     }
-    if (table === 'store_overrides') return route.fulfill({ json: [{ store_name: 'Nice Test', resp: 'Responsable surchargé' }, { store_name: 'Metz Test', rr: 'rr1' }] })
+    if (table === 'store_overrides') return route.fulfill({ json: filtrer([{ store_name: 'Nice Test', resp: 'Responsable surchargé' }, { store_name: 'Metz Test', rr: 'rr1' }]) })
     if (table === 'reassigns') return route.fulfill({ json: affectationsFictives })
     if (table === 'cs_overrides') return route.fulfill({ json: filtrer(coachsFictifs) })
     if (table === 'recruits') return route.fulfill({ json: filtrer(recruesFictives) })

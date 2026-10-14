@@ -159,3 +159,87 @@ export async function supprimerCoach(nom: string) {
   const del = await lireCle<string[]>('cs_deletes', [])
   if (!del.valeur.includes(nom)) await ecrireCle('cs_deletes', [...del.valeur, nom], del.existe)
 }
+
+// ── Renommages : le nom sert de lien entre les tables, on le change partout ──
+
+async function renommerColonne(table: string, colonne: string, ancien: string, nouveau: string) {
+  const r = await supabase.from(table).update({ [colonne]: nouveau }).eq(colonne, ancien)
+  // Une table absente (fonction pas encore utilisée) n'empêche pas le renommage
+  if (r.error && !/does not exist|schema cache/i.test(r.error.message)) throw new ErreurEnregistrement(r.error.message)
+}
+
+export async function renommerCoach(ancien: string, nouveau: string) {
+  await renommerColonne('reassigns', 'cs', ancien, nouveau)
+  await renommerColonne('cs_overrides', 'cs_name', ancien, nouveau)
+  await renommerColonne('recruits', 'name', ancien, nouveau)
+  await renommerColonne('leaves', 'person', ancien, nouveau)
+  await renommerColonne('visits', 'visitor', ancien, nouveau)
+  await modifierConfigRR((c) => {
+    c.dr_assigns?.forEach((a) => { if (a.cs === ancien) a.cs = nouveau })
+    if (c.cs_dr?.[ancien]) { c.cs_dr[nouveau] = c.cs_dr[ancien]; delete c.cs_dr[ancien] }
+  })
+  // L'ancien nom peut exister dans le fichier de base de l'ancienne app : on le masque
+  const del = await lireCle<string[]>('cs_deletes', [])
+  await ecrireCle('cs_deletes', [...del.valeur.filter((n) => n !== nouveau && n !== ancien), ancien], del.existe)
+}
+
+// ── Magasins ──
+
+export interface FicheMagasin {
+  nom: string; code: string; departement: string; ouverture: string; franchise: boolean; plateforme: string
+  telephone: string; email: string; adresse: string; codePostal: string; ville: string; pays: string
+  responsable: string; telResponsable: string; emailResponsable: string; adjoint: string; telAdjoint: string
+  rrDirect: string
+}
+
+function ligneSurcharge(f: FicheMagasin) {
+  const v = (x: string) => x.trim() || null
+  return {
+    store_name: f.nom, open_date: v(f.ouverture), dept: v(f.departement), tel: v(f.telephone), email_mag: v(f.email),
+    resp: v(f.responsable), tel_resp: v(f.telResponsable), email_resp: v(f.emailResponsable), adj: v(f.adjoint), tel_adj: v(f.telAdjoint),
+    addr: v(f.adresse), code: v(f.code), plat: v(f.plateforme), updated_at: new Date().toISOString(),
+    cp: v(f.codePostal), ville: v(f.ville), franchise: f.franchise, rr: v(f.rrDirect), pays: v(f.pays),
+  }
+}
+
+type MagasinStocke = Record<string, unknown> & { n: string }
+
+export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | null) {
+  const adds = await lireCle<MagasinStocke[]>('store_adds', [])
+  if (ancienNom === null) {
+    // Création : le magasin rejoint la liste partagée avec l'ancienne app
+    adds.valeur.push({ n: f.nom, open: f.ouverture || '2027-01-01', dept: f.departement, franchise: f.franchise, ville: f.ville, cp: f.codePostal, addr: f.adresse, code: f.code })
+    await ecrireCle('store_adds', adds.valeur, adds.existe)
+  } else if (ancienNom !== f.nom) {
+    const m = adds.valeur.find((x) => x.n === ancienNom)
+    if (m) { m.n = f.nom; await ecrireCle('store_adds', adds.valeur, adds.existe) }
+    await renommerColonne('store_overrides', 'store_name', ancienNom, f.nom)
+    await renommerColonne('reassigns', 'store', ancienNom, f.nom)
+    await renommerColonne('visits', 'store', ancienNom, f.nom)
+    await renommerColonne('store_finance', 'store_name', ancienNom, f.nom)
+  }
+  const ligne = ligneSurcharge(f)
+  const ex = await supabase.from('store_overrides').select('store_name').eq('store_name', f.nom)
+  if (ex.error) throw new ErreurEnregistrement(ex.error.message)
+  const ecrire = (l: Record<string, unknown>) => ex.data?.length
+    ? supabase.from('store_overrides').update(l).eq('store_name', f.nom)
+    : supabase.from('store_overrides').insert(l)
+  let res = await ecrire(ligne)
+  if (res.error) {
+    // Base plus ancienne sans les colonnes d'adresse détaillée : on enregistre l'essentiel, comme l'ancienne app
+    const { cp: _cp, ville: _v, franchise: _f, rr: _r, pays: _p, ...essentiel } = ligne
+    res = await ecrire(essentiel)
+  }
+  if (res.error) throw new ErreurEnregistrement(res.error.message)
+}
+
+export async function supprimerMagasin(nom: string) {
+  const adds = await lireCle<MagasinStocke[]>('store_adds', [])
+  if (adds.valeur.some((x) => x.n === nom)) await ecrireCle('store_adds', adds.valeur.filter((x) => x.n !== nom), adds.existe)
+  const del = await lireCle<string[]>('store_deletes', [])
+  if (!del.valeur.includes(nom)) await ecrireCle('store_deletes', [...del.valeur, nom], del.existe)
+  for (const [table, colonne] of [['store_overrides', 'store_name'], ['reassigns', 'store']] as const) {
+    const r = await supabase.from(table).delete().eq(colonne, nom)
+    if (r.error) throw new ErreurEnregistrement(r.error.message)
+  }
+}

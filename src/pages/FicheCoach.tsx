@@ -17,7 +17,7 @@ import { TableMagasins } from '../components/TableMagasins'
 import { ListeMagasins } from '../components/ListeMagasins'
 import { Contact, Section } from './FicheMagasin'
 import { chargeA, libelleMois, magasinsDuCoach, moisAVenir } from '../data/charge'
-import { dateCourte } from '../lib/format'
+import { dateCourte, lienCoach } from '../lib/format'
 import type { Coach, Reseau } from '../data/modele'
 
 interface Evenement { date: string; texte: string; note?: string }
@@ -89,7 +89,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
           </Box>
         ))}
       </Section>
-      {edition && <DialogCoach reseau={reseau} coach={coach} onFermer={(m) => { setEdition(false); if (m?.includes('retiré')) naviguer('/equipe'); else if (m) setMessage(m) }} />}
+      {edition && <DialogCoach reseau={reseau} coach={coach} onFermer={(m, nom) => { setEdition(false); if (m?.includes('retiré')) naviguer('/equipe'); else if (m) { setMessage(m); if (nom && nom !== coach.nom) naviguer(lienCoach(nom), { replace: true }) } }} />}
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>
   )

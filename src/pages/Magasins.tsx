@@ -1,5 +1,10 @@
-import { lazy, Suspense } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { lazy, Suspense, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
+import AddOutlined from '@mui/icons-material/AddOutlined'
+import { DialogMagasin } from '../components/EditionMagasin'
+import { lienFiche } from '../lib/format'
 import Box from '@mui/material/Box'
 import Skeleton from '@mui/material/Skeleton'
 import Tab from '@mui/material/Tab'
@@ -27,6 +32,8 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
   const filtres = filtresDepuisUrl(params)
   const vue = (params.get('vue') as 'liste' | 'carte' | null) ?? vueInitiale
   const changerFiltres = (f: Filtres) => setParams(filtresVersUrl(f, params), { replace: true })
+  const [ajout, setAjout] = useState(false)
+  const naviguer = useNavigate()
   const changerVue = (v: 'liste' | 'carte') => { const p = new URLSearchParams(params); p.set('vue', v); setParams(p, { replace: true }) }
 
   return (
@@ -46,7 +53,13 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
                 </Tabs>
               }
             />
-            <BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres} />
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}><BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres} /></Box>
+              {surPC
+                ? <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setAjout(true)} sx={{ minHeight: 48, mb: 2 }}>Ajouter un magasin</Button>
+                : <IconButton onClick={() => setAjout(true)} aria-label="Ajouter un magasin" sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', '&:hover': { bgcolor: 'primary.dark' } }}><AddOutlined /></IconButton>}
+            </Box>
+            {ajout && <DialogMagasin reseau={reseau} magasin={null} onFermer={(msg, nom) => { setAjout(false); if (msg && nom) naviguer(lienFiche(nom)) }} />}
             {resultats.length === 0 ? (
               <EmptyState icone={<SearchOff />} titre="Aucun magasin ne correspond" texte="Modifie la recherche ou retire un filtre pour voir plus de magasins." />
             ) : vue === 'carte' ? (
@@ -60,7 +73,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
             )}
             {vue === 'liste' && <Box sx={{ mt: 3 }}>
               <Typography variant="caption" color="text.secondary">
-                Pour modifier un magasin, utilise encore l’ancienne application. La modification arrive dans un prochain sprint.
+                Pour modifier ou supprimer un magasin, ouvre sa fiche et choisis « Modifier ».
               </Typography>
             </Box>}
           </>
