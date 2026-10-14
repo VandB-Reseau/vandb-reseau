@@ -49,18 +49,18 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
               <EmptyState icone={<SearchOff />} titre="Aucun magasin ne correspond" texte="Modifie la recherche ou retire un filtre pour voir plus de magasins." />
             ) : vue === 'carte' ? (
               <Suspense fallback={<Skeleton variant="rounded" height={600} />}>
-                <CarteMagasins magasins={resultats} rrs={reseau.rrs} hauteur={surPC ? 'calc(100dvh - 330px)' : 480} />
+                <CarteMagasins magasins={resultats} rrs={reseau.rrs} hauteur={surPC ? 'max(560px, calc(100dvh - 290px))' : 'max(420px, calc(100dvh - 360px))'} />
               </Suspense>
             ) : surPC ? (
               <TableMagasins magasins={resultats} />
             ) : (
               <ListeMagasins magasins={resultats} />
             )}
-            <Box sx={{ mt: 3 }}>
+            {vue === 'liste' && <Box sx={{ mt: 3 }}>
               <Typography variant="caption" color="text.secondary">
                 Pour modifier un magasin, utilise encore l’ancienne application. La modification arrive dans un prochain sprint.
               </Typography>
-            </Box>
+            </Box>}
           </>
         )
       }}
