@@ -112,16 +112,36 @@ test('import d’un fichier CSV façon Asana', async ({ page, isMobile }, info) 
   expect(tout).toContain('fluxBar')
 })
 
-test('la fiche magasin montre la santé et les déploiements', async ({ page }, info) => {
+test('la fiche magasin montre la santé et les déploiements dans deux blocs', async ({ page }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
+  await expect(page.getByRole('heading', { name: 'Santé', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Déploiements', exact: true })).toBeVisible()
   await expect(page.getByText('Redressement urgent')).toBeVisible()
-  await expect(page.getByText('Rythme de visite conseillé : 8 visites × ½ j')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Fait : Concept 2.0' })).toHaveAttribute('aria-pressed', 'true')
-  await page.getByText('Santé et déploiements').scrollIntoViewIfNeeded()
+  await expect(page.getByText('Rythme de visite : 8 visites × ½ j')).toBeVisible()
+  await page.getByRole('heading', { name: 'Déploiements', exact: true }).scrollIntoViewIfNeeded()
   await page.screenshot({ path: `captures/${info.project.name}-fiche-sante.png` })
 })
 
+test('modifier la fiche magasin change aussi les notes et les déploiements', async ({ page }, info) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/magasins/Rennes%20Test')
+  await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
+  const d = page.getByRole('dialog', { name: 'Modifier Rennes Test' })
+  await d.getByRole('button', { name: 'Non concerné : Panier moyen bar' }).click()
+  await d.getByRole('button', { name: 'Fort : CA marché extérieur' }).click()
+  await d.getByRole('button', { name: /^Fort : Niveau du franchisé/ }).click()
+  await expect(d.getByText('Locomotive')).toBeVisible()
+  await d.getByRole('button', { name: 'Oui : Terrasse' }).click()
+  await page.screenshot({ path: `captures/${info.project.name}-fiche-modifier-sante.png` })
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  const config = JSON.stringify(ecritures.filter((e) => e.table === 'app_config').map((e) => e.corps))
+  expect(config).toContain('locomotive')
+  expect(config).toContain('\\"panierBar\\":0')
+  expect(config).toContain('terrasse')
+})
 test('l’accueil donne les priorités du jour', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/')
@@ -146,18 +166,21 @@ test('l’évolution compte les ouvertures par année fiscale', async ({ page, i
 test('plusieurs notes rapides partent en une seule écriture et restent après un changement de page', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Rennes%20Test')
-  await page.getByRole('button', { name: 'Moyen : CA marché extérieur' }).click()
-  await page.getByRole('button', { name: 'Moyen : Flux bar' }).click()
+  await page.goto('./#/plus/sante?vue=evaluer')
+  await page.getByRole('combobox', { name: 'Rechercher un magasin ou un Coach' }).fill('Rennes')
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Moyen : CA marché extérieur de Rennes Test' }).click()
+  await page.getByRole('button', { name: 'Moyen : Flux bar de Rennes Test' }).click()
   await expect.poll(() => ecritures.filter((e) => e.table === 'app_config').length).toBe(1)
   const corps = JSON.stringify(ecritures[0].corps)
   expect(corps).toContain('caExterieur')
   expect(corps).toContain('fluxBar')
-  await page.goto('./#/plus/sante?vue=evaluer')
   await page.goto('./#/magasins/Rennes%20Test')
-  await expect(page.getByRole('button', { name: 'Moyen : Flux bar' })).toHaveAttribute('aria-pressed', 'true')
+  await page.goto('./#/plus/sante?vue=evaluer')
+  await page.getByRole('combobox', { name: 'Rechercher un magasin ou un Coach' }).fill('Rennes')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: 'Moyen : Flux bar de Rennes Test' })).toHaveAttribute('aria-pressed', 'true')
 })
-
 test('la recherche propose les magasins rangés par Coach et accepte un nom de Coach', async ({ page }, info) => {
   await seConnecter(page)
   await page.goto('./#/plus/sante?vue=deploiements')
@@ -182,19 +205,6 @@ test('le titre et la recherche restent en place d’un onglet à l’autre', asy
     await page.getByRole('tab', { name: onglet }).click()
     await expect.poll(async () => [await titre.boundingBox(), await champ.boundingBox()]).toEqual(ref)
   }
-})
-
-test('« Non concerné » exclut un critère du calcul de la case', async ({ page }) => {
-  const ecritures: Ecriture[] = []
-  await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Rennes%20Test')
-  await page.getByRole('button', { name: 'Non concerné : Panier moyen bar' }).click()
-  await page.getByRole('button', { name: 'Non concerné : Flux bar' }).click()
-  await page.getByRole('button', { name: 'Fort : CA marché extérieur' }).click()
-  await page.getByRole('button', { name: /^Fort : Niveau du franchisé/ }).click()
-  await expect(page.getByText('Locomotive').first()).toBeVisible()
-  await expect.poll(() => ecritures.filter((e) => e.table === 'app_config').length).toBe(1)
-  expect(JSON.stringify(ecritures[0].corps)).toContain('\\"panierBar\\":0')
 })
 
 test('pas d’import Excel sur téléphone et plus de doublon Carte', async ({ page, isMobile }) => {

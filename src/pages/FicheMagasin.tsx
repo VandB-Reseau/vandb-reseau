@@ -5,7 +5,6 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Chip from '@mui/material/Chip'
-import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Tooltip from '@mui/material/Tooltip'
@@ -15,9 +14,8 @@ import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
-import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
-import { BoutonsNote, BoutonsOption, PastilleCase, useSaisieSante } from '../components/Sante'
-import { caseDe, tousCriteres } from '../data/sante'
+import { PastilleCase } from '../components/Sante'
+import { caseDe, couleurTon, libelleNote, tonDe, tousCriteres } from '../data/sante'
 import { AvecReseau } from '../components/EtatDonnees'
 import { ReaffecterDialog } from '../components/ReaffecterDialog'
 import Snackbar from '@mui/material/Snackbar'
@@ -157,7 +155,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           })()}
         </Section>
 
-        <SectionSante reseau={reseau} m={m} signaler={setConfirmation} />
+        <SectionSante reseau={reseau} m={m} modifier={() => setEdition(true)} />
+        <SectionDeploiements reseau={reseau} m={m} modifier={() => setEdition(true)} />
       </Box>
       {reaffectation && <ReaffecterDialog reseau={reseau} magasin={m} ouvert onFermer={(fait) => { setReaffectation(false); if (fait) setConfirmation(`${m.nom} est confié à ${fait}.`) }} />}
       {edition && <DialogMagasin reseau={reseau} magasin={m} onFermer={(msg, nom) => {
@@ -189,34 +188,34 @@ export function FicheMagasin() {
   )
 }
 
-// Santé du parc : notes nine box et état des déploiements, modifiables sur place
-function SectionSante({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (s: string) => void }) {
-  const saisie = useSaisieSante(reseau, signaler)
+// Santé et déploiements : deux blocs en lecture, modifiables avec « Modifier »
+function SectionSante({ reseau, m, modifier }: { reseau: Reseau; m: Magasin; modifier: () => void }) {
   const e = reseau.evaluations[m.nom]
   const c = caseDe(e)
   return (
-    <Section titre="Santé et déploiements" action={<Button component={RouterLink} to="/plus/sante" startIcon={<QueryStatsOutlined />} sx={{ minHeight: 48 }}>Nine box</Button>}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+    <Section titre="Santé" action={<Button startIcon={<EditOutlined />} onClick={modifier} aria-label="Modifier la santé" sx={{ minHeight: 48 }}>Modifier</Button>}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
         <PastilleCase c={c} />
-        <Typography variant="body2" color="text.secondary">{c ? `Rythme de visite conseillé : ${c.rythme}` : 'Note au moins un critère de résultats et le niveau du franchisé pour classer le magasin.'}</Typography>
+        {c && <Typography variant="body2" color="text.secondary">Rythme de visite : {c.rythme}</Typography>}
       </Box>
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
-        {tousCriteres.map((k) => (
-          <Box key={k.id}>
-            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{k.libelle}</Typography>
-            <BoutonsNote libelle={k.libelle} valeur={e?.notes[k.id]} onChange={(n) => saisie.noter([m.nom], k.id, n)} />
-          </Box>
-        ))}
-      </Box>
-      <Divider sx={{ my: 2 }} />
-      <Box sx={{ display: 'grid', gap: 1.5 }}>
-        {reseau.deploiements.thematiques.map((t) => (
-          <Box key={t.id} sx={{ overflowX: 'auto' }}>
-            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{t.libelle}</Typography>
-            <BoutonsOption t={t} libelle={t.libelle} valeur={reseau.deploiements.valeurs[m.nom]?.[t.id] ?? ''} onChange={(v) => saisie.deployer([m.nom], t.id, v)} />
-          </Box>
-        ))}
-      </Box>
+      {tousCriteres.map((k) => {
+        const n = e?.notes[k.id]
+        return <Ligne key={k.id} libelle={k.libelle}>{n === undefined ? null : <Chip size="small" label={libelleNote[n]} color={n === 0 ? 'default' : couleurNoteChip[n]} sx={{ fontSize: 12 }} />}</Ligne>
+      })}
     </Section>
   )
 }
+
+function SectionDeploiements({ reseau, m, modifier }: { reseau: Reseau; m: Magasin; modifier: () => void }) {
+  return (
+    <Section titre="Déploiements" action={<Button startIcon={<EditOutlined />} onClick={modifier} aria-label="Modifier les déploiements" sx={{ minHeight: 48 }}>Modifier</Button>}>
+      {reseau.deploiements.thematiques.map((t) => {
+        const v = reseau.deploiements.valeurs[m.nom]?.[t.id]
+        const ton = tonDe(t, v)
+        return <Ligne key={t.id} libelle={t.libelle}>{v ? <Chip size="small" label={v} color={ton ? couleurTon[ton] : 'default'} sx={{ fontSize: 12 }} /> : null}</Ligne>
+      })}
+    </Section>
+  )
+}
+
+const couleurNoteChip = { 1: 'error', 2: 'warning', 3: 'success' } as const
