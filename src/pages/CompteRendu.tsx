@@ -13,7 +13,7 @@ import { EmptyState } from '../components/EmptyState'
 import { Logo } from '../components/Logo'
 import { dateLongue } from '../lib/format'
 import { coachA } from '../data/charge'
-import { libelleTypeVisite } from '../data/modele'
+import { libelleResponsable, libelleTypeVisite } from '../data/modele'
 
 // À l'impression, seule la feuille du compte rendu reste visible (menu, barres et boutons masqués)
 const styleImpression = (
@@ -70,7 +70,7 @@ export function CompteRendu() {
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 4, mb: 3 }}>
                   <Champ libelle="Visité par">{v.visiteur}</Champ>
                   <Champ libelle="Coach du magasin">{coach}</Champ>
-                  <Champ libelle="Responsable magasin">{m?.responsable?.nom}</Champ>
+                  <Champ libelle={m ? libelleResponsable(m) : 'Franchisé'}>{m?.responsable?.nom}</Champ>
                   <Champ libelle="Responsable Régional">{m?.rr?.nom}</Champ>
                   <Champ libelle="Adresse">{[m?.adresse, m?.pays].filter(Boolean).join(', ')}</Champ>
                   <Champ libelle="Code magasin">{m?.code}</Champ>
@@ -86,7 +86,7 @@ export function CompteRendu() {
                   </>
                 )}
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, mt: 4 }}>
-                  {['Responsable magasin', v.visiteur ? `Visiteur : ${v.visiteur}` : 'Visiteur'].map((s) => (
+                  {[m ? libelleResponsable(m) : 'Franchisé', v.visiteur ? `Visiteur : ${v.visiteur}` : 'Visiteur'].map((s) => (
                     <Box key={s}>
                       <Typography variant="body2" sx={{ color: '#5f5f66' }}>Signature · {s}</Typography>
                       <Box sx={{ height: 90, border: '1px solid #c9c9cf', borderRadius: 1, mt: 1 }} />

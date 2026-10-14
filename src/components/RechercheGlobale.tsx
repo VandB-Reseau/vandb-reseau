@@ -10,11 +10,14 @@ import PersonOutline from '@mui/icons-material/PersonOutlineOutlined'
 import SupervisorAccountOutlined from '@mui/icons-material/SupervisorAccountOutlined'
 import { useReseau } from '../data/ReseauContext'
 import { normaliser } from '../data/filtres'
-import { lienCoach, lienFiche } from '../lib/format'
+import { lienCoach, lienDirecteur, lienFiche, lienFranchise, lienRR } from '../lib/format'
+import { franchises } from '../data/personnes'
+import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
+import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined'
 
-interface Resultat { type: 'Magasins' | 'Coachs' | 'Responsables Régionaux'; libelle: string; detail: string; cible: string; cle: string }
+interface Resultat { type: 'Magasins' | 'Coachs' | 'Responsables Régionaux' | 'Franchisés' | 'Direction'; libelle: string; detail: string; cible: string; cle: string }
 
-const icones = { Magasins: <StorefrontOutlined />, Coachs: <PersonOutline />, 'Responsables Régionaux': <SupervisorAccountOutlined /> }
+const icones = { Magasins: <StorefrontOutlined />, Coachs: <PersonOutline />, 'Responsables Régionaux': <SupervisorAccountOutlined />, Franchisés: <HandshakeOutlined />, Direction: <AdminPanelSettingsOutlined /> }
 
 export function RechercheGlobale({ surFonce, onChoix }: { surFonce?: boolean; onChoix?: () => void }) {
   const { reseau } = useReseau()
@@ -25,7 +28,9 @@ export function RechercheGlobale({ surFonce, onChoix }: { surFonce?: boolean; on
     return [
       ...reseau.magasins.map((m) => ({ type: 'Magasins' as const, libelle: m.nom, detail: [m.ville, m.departement && `Dépt ${m.departement}`, m.coach].filter(Boolean).join(' · '), cible: lienFiche(m.nom), cle: `m-${m.nom}` })),
       ...Object.keys(reseau.coachs).filter((c) => nbCoach(c) > 0).sort((a, b) => a.localeCompare(b, 'fr')).map((c) => ({ type: 'Coachs' as const, libelle: c, detail: `${nbCoach(c)} magasins`, cible: lienCoach(c), cle: `c-${c}` })),
-      ...reseau.rrs.map((r) => ({ type: 'Responsables Régionaux' as const, libelle: r.nom, detail: `${reseau.magasins.filter((m) => m.rr?.id === r.id).length} magasins`, cible: `/magasins?rr=${encodeURIComponent(r.id)}`, cle: `r-${r.id}` })),
+      ...reseau.rrs.map((r) => ({ type: 'Responsables Régionaux' as const, libelle: r.nom, detail: `${reseau.magasins.filter((m) => m.rr?.id === r.id).length} magasins`, cible: lienRR(r.id), cle: `r-${r.id}` })),
+      ...franchises(reseau).map((f) => ({ type: 'Franchisés' as const, libelle: f.nom, detail: f.magasins.map((m) => m.nom).join(', '), cible: lienFranchise(f.nom), cle: `f-${f.nom}` })),
+      ...(reseau.directeur.nom !== 'Direction du réseau' ? [{ type: 'Direction' as const, libelle: reseau.directeur.nom, detail: reseau.directeur.titre, cible: lienDirecteur(), cle: 'directeur' }] : []),
     ]
   }, [reseau])
 

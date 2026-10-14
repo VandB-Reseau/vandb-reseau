@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { affectationsFictives, coachsFictifs, congesFictifs, evenementsFictifs, recruesFictives, visitesFictives, configRRFictive, magasinsFictifs, santeFictive, deploiementsFictifs } from './donnees-fictives'
+import { affectationsFictives, coachsFictifs, congesFictifs, evenementsFictifs, recruesFictives, visitesFictives, configRRFictive, magasinsFictifs, santeFictive, deploiementsFictifs, fichesFictives } from './donnees-fictives'
 
 export const COMPTE = { email: 'joseph@vandb.test', motDePasse: 'bon-mot-de-passe' }
 
@@ -32,13 +32,17 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
       return route.fulfill({ status: 201, json: [] })
     }
     // Filtres simples « colonne=eq.valeur » appliqués comme le ferait Supabase
-    const filtrer = (lignes: Record<string, unknown>[]) => lignes.filter((l) => [...url.searchParams].every(([k, v]) => !v.startsWith('eq.') || String(l[k]) === v.slice(3)))
+    // et « colonne=in.(a,b) », pour qu'une clé oubliée dans une lecture se voie dans les tests
+    const dans = (v: string) => v.slice(4, -1).split(',').map((x) => x.replace(/^"|"$/g, ''))
+    const filtrer = (lignes: Record<string, unknown>[]) => lignes.filter((l) => [...url.searchParams].every(([k, v]) =>
+      v.startsWith('eq.') ? String(l[k]) === v.slice(3) : v.startsWith('in.(') ? dans(v).includes(String(l[k])) : true))
     if (table === 'app_config') {
       return route.fulfill({ json: filtrer([
         { key: 'store_adds', value: JSON.stringify(magasinsFictifs) },
         { key: 'drs_data', value: JSON.stringify(configRRFictive) },
         { key: 'sante_parc', value: JSON.stringify(santeFictive) },
         { key: 'deploiements', value: JSON.stringify(deploiementsFictifs) },
+        { key: 'fiches_personnes', value: JSON.stringify(fichesFictives) },
         { key: 'params', value: JSON.stringify({ prepDuration: 2, postDuration: 4, directionHorizon: 6 }) },
       ]) })
     }

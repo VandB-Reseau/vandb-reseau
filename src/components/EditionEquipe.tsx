@@ -15,14 +15,16 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import { useReseau } from '../data/ReseauContext'
+import Autocomplete from '@mui/material/Autocomplete'
 import {
-  enregistrerCoach, enregistrerDirecteur, enregistrerRR, rattacherCoach, renommerCoach, supprimerCoach, supprimerRR,
+  enregistrerCoach, enregistrerDirecteur, enregistrerFichePersonne, enregistrerFranchise, enregistrerRR, rattacherCoach, renommerCoach, supprimerCoach, supprimerFranchise, supprimerRR,
 } from '../data/chargement'
+import { ChampsPersonnels, fichePersonnelleValide } from './ChampsPersonnels'
+import { fichePersonne, ficheVide, franchises, nomComplet, type FichePersonnelle, type RefPersonne } from '../data/personnes'
 import { coachA } from '../data/charge'
-import type { Coach, Reseau, ResponsableRegional } from '../data/modele'
+import type { Coach, Magasin, Reseau, ResponsableRegional } from '../data/modele'
 
 const COULEURS = ['#1b6fce', '#ef7d00', '#2e7d32', '#7c3aed', '#c2185b', '#00838f', '#6d4c41', '#eaa400']
-const emailValide = (e: string) => !e || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 
 // Traduit le refus de la base en message compréhensible
 export function messageErreur(e: unknown): string {
@@ -73,50 +75,48 @@ export function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer
   )
 }
 
-function ChampsContact({ tel, setTel, email, setEmail }: { tel: string; setTel: (v: string) => void; email: string; setEmail: (v: string) => void }) {
-  return (
-    <>
-      <TextField label="Téléphone" type="tel" value={tel} onChange={(e) => setTel(e.target.value)} />
-      <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={!emailValide(email)} helperText={emailValide(email) ? ' ' : 'Adresse email incomplète.'} />
-    </>
-  )
+function useFiche(reseau: Reseau, r: RefPersonne | null) {
+  return useState<FichePersonnelle>(() => (r ? fichePersonne(reseau, r) : ficheVide()))
 }
 
 export function DialogDirecteur({ reseau, onFermer }: { reseau: Reseau; onFermer: (m?: string) => void }) {
-  const d = reseau.directeur
-  const [nom, setNom] = useState(d.nom === 'Direction du réseau' ? '' : d.nom)
-  const [titre, setTitre] = useState(d.titre)
-  const [tel, setTel] = useState(d.telephone ?? '')
-  const [email, setEmail] = useState(d.email ?? '')
+  const [f, setF] = useFiche(reseau, { type: 'directeur', cle: '' })
+  const [titre, setTitre] = useState(reseau.directeur.titre)
+  const nom = nomComplet(f)
   return (
-    <Fenetre titre="Modifier le Directeur de réseau" ouvert onFermer={onFermer} valide={!!nom.trim() && emailValide(email)}
-      enregistrer={async () => { await enregistrerDirecteur({ nom: nom.trim(), titre: titre.trim() || 'Directeur de réseau', telephone: tel.trim(), email: email.trim() }); return 'Fiche du Directeur enregistrée.' }}>
-      <TextField label="Nom" value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus />
+    <Fenetre titre="Modifier le Directeur de réseau" ouvert large onFermer={onFermer} valide={fichePersonnelleValide(f)}
+      enregistrer={async () => {
+        await enregistrerDirecteur({ nom, titre: titre.trim() || 'Directeur de réseau', telephone: f.telephone.trim(), email: f.email.trim(), naissance: f.naissance, arrivee: f.arrivee })
+        await enregistrerFichePersonne({ type: 'directeur', cle: '' }, f)
+        return 'Fiche du Directeur enregistrée.'
+      }}>
+      <ChampsPersonnels f={f} onChange={setF} autoFocus />
       <TextField label="Fonction" value={titre} onChange={(e) => setTitre(e.target.value)} />
-      <ChampsContact tel={tel} setTel={setTel} email={email} setEmail={setEmail} />
     </Fenetre>
   )
 }
 
 export function DialogRR({ reseau, rr, onFermer }: { reseau: Reseau; rr: ResponsableRegional | null; onFermer: (m?: string) => void }) {
-  const [nom, setNom] = useState(rr?.nom ?? '')
-  const [tel, setTel] = useState(rr?.telephone ?? '')
-  const [email, setEmail] = useState(rr?.email ?? '')
+  const [f, setF] = useFiche(reseau, rr ? { type: 'rr', cle: rr.id } : null)
   const [couleur, setCouleur] = useState(rr?.couleur ?? COULEURS.find((c) => !reseau.rrs.some((r) => r.couleur === c)) ?? COULEURS[0])
   const [integres, setIntegres] = useState(rr?.integres ?? false)
+  const nom = nomComplet(f)
   const coachs = rr ? reseau.equipe.filter((c) => c.rr?.id === rr.id).length : 0
-  const doublon = reseau.rrs.some((r) => r.id !== rr?.id && r.nom.toLowerCase() === nom.trim().toLowerCase())
+  const doublon = reseau.rrs.some((r) => r.id !== rr?.id && r.nom.toLowerCase() === nom.toLowerCase())
   return (
     <Fenetre
-      titre={rr ? `Modifier ${rr.nom}` : 'Ajouter un Responsable Régional'} ouvert onFermer={onFermer}
-      valide={!!nom.trim() && !doublon && emailValide(email)}
-      enregistrer={async () => { await enregistrerRR({ id: rr?.id, nom: nom.trim(), telephone: tel.trim(), email: email.trim(), couleur, integres }); return rr ? `${nom.trim()} est mis à jour.` : `${nom.trim()} est ajouté.` }}
+      titre={rr ? `Modifier ${rr.nom}` : 'Ajouter un Responsable Régional'} ouvert large onFermer={onFermer}
+      valide={fichePersonnelleValide(f) && !doublon}
+      enregistrer={async () => {
+        const id = await enregistrerRR({ id: rr?.id, nom, telephone: f.telephone.trim(), email: f.email.trim(), couleur, integres, naissance: f.naissance, arrivee: f.arrivee })
+        await enregistrerFichePersonne({ type: 'rr', cle: id }, f)
+        return rr ? `${nom} est mis à jour.` : `${nom} est ajouté.`
+      }}
       supprimer={rr ? async () => { await supprimerRR(rr.id); return `${rr.nom} est supprimé.` } : undefined}
       suppressionBloquee={coachs ? `Rattache d’abord ses ${coachs} Coach${coachs > 1 ? 's' : ''} à un autre Responsable Régional pour pouvoir le supprimer.` : undefined}
       libelleSuppression={rr ? `Supprimer ${rr.nom} ? Les magasins qu’il gère en direct n’auront plus de Responsable Régional désigné.` : undefined}
     >
-      <TextField label="Nom" value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus error={doublon} helperText={doublon ? 'Ce nom existe déjà.' : ' '} />
-      <ChampsContact tel={tel} setTel={setTel} email={email} setEmail={setEmail} />
+      <ChampsPersonnels f={f} onChange={setF} doublon={doublon} autoFocus={!rr} />
       <Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Couleur sur la carte</Typography>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }} role="radiogroup" aria-label="Couleur sur la carte">
@@ -132,47 +132,76 @@ export function DialogRR({ reseau, rr, onFermer }: { reseau: Reseau; rr: Respons
 }
 
 export function DialogCoach({ reseau, coach, onFermer }: { reseau: Reseau; coach: Coach | null; onFermer: (m?: string, nouveauNom?: string) => void }) {
-  const [nom, setNom] = useState(coach?.nom ?? '')
-  const [tel, setTel] = useState(coach?.telephone ?? '')
-  const [email, setEmail] = useState(coach?.email ?? '')
-  const [ville, setVille] = useState(coach?.ville ?? '')
+  const [f, setF] = useFiche(reseau, coach ? { type: 'coach', cle: coach.nom } : null)
   const [rrId, setRrId] = useState(coach?.rr?.id ?? '')
   const [fictif, setFictif] = useState(coach?.fictif ?? false)
-  const [arrivee, setArrivee] = useState(coach?.arrivee ?? '')
   const [dateRattachement, setDateRattachement] = useState(reseau.jour)
   const rrs = reseau.rrs.filter((r) => !r.integres)
-  const nomPropre = nom.trim().replace(/\s+/g, ' ')
+  const nomPropre = nomComplet(f)
   const doublon = nomPropre !== coach?.nom && (reseau.equipe.some((c) => c.nom.toLowerCase() === nomPropre.toLowerCase()) || reseau.rrs.some((r) => r.nom.toLowerCase() === nomPropre.toLowerCase()))
   const changeRR = rrId && rrId !== (coach?.rr?.id ?? '')
   // Magasins suivis aujourd'hui ou plus tard : on ne supprime pas un Coach qui en a encore
   const suivis = coach ? reseau.magasins.filter((m) => coachA(m, reseau.jour) === coach.nom || (m.historiqueCoach.at(-1)?.coach === coach.nom)).length : 0
   return (
     <Fenetre
-      titre={coach ? `Modifier ${coach.nom}` : 'Ajouter un Coach'} ouvert onFermer={(m) => onFermer(m, m ? nomPropre : undefined)}
-      valide={!!nomPropre && !doublon && emailValide(email)}
+      titre={coach ? `Modifier ${coach.nom}` : 'Ajouter un Coach'} ouvert large onFermer={(m) => onFermer(m, m ? nomPropre : undefined)}
+      valide={fichePersonnelleValide(f) && !doublon}
       enregistrer={async () => {
         if (coach && nomPropre !== coach.nom) await renommerCoach(coach.nom, nomPropre)
-        await enregistrerCoach({ nom: nomPropre, telephone: tel.trim(), email: email.trim(), ville: ville.trim(), fictif, arrivee })
+        await enregistrerCoach({ nom: nomPropre, telephone: f.telephone.trim(), email: f.email.trim(), ville: f.ville.trim(), fictif, arrivee: f.arrivee })
         if (changeRR) await rattacherCoach(nomPropre, rrId, dateRattachement || reseau.jour)
+        await enregistrerFichePersonne({ type: 'coach', cle: nomPropre }, f)
         return coach ? (nomPropre !== coach.nom ? `${coach.nom} s’appelle désormais ${nomPropre}.` : `${nomPropre} est mis à jour.`) : `${nomPropre} est ajouté à l’équipe.`
       }}
       supprimer={coach ? async () => { await supprimerCoach(coach.nom); return `${coach.nom} est retiré de l’équipe.` } : undefined}
       suppressionBloquee={suivis ? `Réaffecte d’abord ses ${suivis} magasin${suivis > 1 ? 's' : ''} pour pouvoir le supprimer.` : undefined}
       libelleSuppression={coach ? `Retirer ${coach.nom} de l’équipe ? L’historique des magasins qu’il a suivis est conservé.` : undefined}
     >
-      <TextField label="Prénom et NOM" value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus={!coach}
-        error={doublon} helperText={doublon ? 'Cette personne existe déjà dans l’équipe.' : coach && nomPropre !== coach.nom ? 'Le nouveau nom sera repris partout : magasins, historique, rattachements, visites.' : 'Par exemple : Camille DUPONT'} />
-      <ChampsContact tel={tel} setTel={setTel} email={email} setEmail={setEmail} />
-      <TextField label="Ville de résidence" value={ville} onChange={(e) => setVille(e.target.value)} helperText="Sert aux suggestions de réaffectation par distance, une fois géolocalisée." />
-      <TextField select label="Responsable Régional" value={rrId} onChange={(e) => setRrId(e.target.value)}>
-        <MenuItem value="" disabled>Choisir</MenuItem>
-        {rrs.map((r) => <MenuItem key={r.id} value={r.id}>{r.nom}</MenuItem>)}
-      </TextField>
-      {changeRR && coach && (
-        <TextField type="date" label="Rattaché à ce Responsable Régional à partir du" value={dateRattachement} onChange={(e) => setDateRattachement(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-      )}
+      <ChampsPersonnels f={f} onChange={setF} doublon={doublon} autoFocus={!coach} libelleArrivee={fictif ? 'Arrivée visée' : 'Date d’arrivée'}
+        aideNom={coach && nomPropre !== coach.nom ? 'Le nouveau nom sera repris partout : magasins, historique, rattachements, visites.' : undefined} />
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+        <TextField select label="Responsable Régional" value={rrId} onChange={(e) => setRrId(e.target.value)}>
+          <MenuItem value="" disabled>Choisir</MenuItem>
+          {rrs.map((r) => <MenuItem key={r.id} value={r.id}>{r.nom}</MenuItem>)}
+        </TextField>
+        {changeRR && coach && (
+          <TextField type="date" label="Rattaché à ce Responsable Régional à partir du" value={dateRattachement} onChange={(e) => setDateRattachement(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        )}
+      </Box>
       <FormControlLabel control={<Switch checked={fictif} onChange={(e) => setFictif(e.target.checked)} />} label="Poste à pourvoir (Coach pas encore recruté)" sx={{ minHeight: 48 }} />
-      <TextField type="date" label={fictif ? 'Arrivée visée' : 'Date d’arrivée'} value={arrivee} onChange={(e) => setArrivee(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} helperText="Facultatif." />
+    </Fenetre>
+  )
+}
+
+export const RECRUTEMENT = 'En cours de recrutement'
+
+export function DialogFranchise({ reseau, nom: ancien, magasinsInitiaux = [], onFermer }: { reseau: Reseau; nom: string | null; magasinsInitiaux?: string[]; onFermer: (m?: string, nouveauNom?: string) => void }) {
+  const [f, setF] = useFiche(reseau, ancien ? { type: 'franchise', cle: ancien } : null)
+  const actuels = ancien ? reseau.magasins.filter((m) => m.responsable?.nom === ancien).map((m) => m.nom) : []
+  const [magasins, setMagasins] = useState<string[]>(ancien ? actuels : magasinsInitiaux)
+  const nom = nomComplet(f)
+  const doublon = nom !== ancien && franchises(reseau).some((x) => x.nom.toLowerCase() === nom.toLowerCase())
+  const repris = magasins.map((n) => reseau.magasins.find((m) => m.nom === n)).filter((m) => m?.responsable && m.responsable.nom !== ancien) as Magasin[]
+  const integresSeulement = magasins.length > 0 && magasins.every((n) => reseau.magasins.find((m) => m.nom === n)?.franchise === false)
+  return (
+    <Fenetre
+      titre={ancien ? `Modifier ${ancien}` : 'Ajouter un franchisé'} ouvert large onFermer={(m) => onFermer(m, m ? nom : undefined)}
+      valide={fichePersonnelleValide(f) && !doublon && !/recrutement/i.test(nom)}
+      enregistrer={async () => {
+        await enregistrerFranchise(nom, ancien, magasins, actuels, f)
+        return ancien ? (nom !== ancien ? `${ancien} s’appelle désormais ${nom}.` : `${nom} est mis à jour.`) : `${nom} est ajouté.`
+      }}
+      supprimer={ancien ? async () => { await supprimerFranchise(ancien, actuels); return `${ancien} est retiré de ses magasins.` } : undefined}
+      libelleSuppression={ancien ? `Retirer ${ancien} ? ${actuels.length ? `Ses ${actuels.length} magasin${actuels.length > 1 ? 's' : ''} n’auront plus de franchisé renseigné.` : ''}` : undefined}
+    >
+      <ChampsPersonnels f={f} onChange={setF} doublon={doublon} autoFocus={!ancien}
+        aideNom={ancien && nom !== ancien ? 'Le nouveau nom sera repris sur tous ses magasins.' : undefined} />
+      <Autocomplete
+        multiple options={reseau.magasins.map((m) => m.nom)} value={magasins} onChange={(_e, v) => setMagasins(v)}
+        renderInput={(p) => <TextField {...p} label="Ses magasins" helperText={repris.length
+          ? `Remplace ${repris.map((m) => `${m.responsable!.nom} sur ${m.nom}`).join(', ')}.`
+          : integresSeulement ? 'Magasins intégrés : la personne apparaîtra comme responsable de magasin.' : ' '} />}
+      />
     </Fenetre>
   )
 }

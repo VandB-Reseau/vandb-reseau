@@ -62,7 +62,7 @@ test('la recherche globale ouvre une fiche magasin ou une fiche Coach', async ({
   if (isMobile) await page.getByRole('button', { name: 'Rechercher' }).click()
   const champ = page.getByLabel('Recherche globale')
   await champ.fill('bordeaux')
-  await page.getByRole('option', { name: /Bordeaux Test/ }).click()
+  await page.getByRole('option', { name: /^Bordeaux Test/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Bordeaux Test' })).toBeVisible()
   if (isMobile) await page.getByRole('button', { name: 'Rechercher' }).click()
   await page.getByLabel('Recherche globale').fill('inès')

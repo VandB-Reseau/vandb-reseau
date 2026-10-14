@@ -28,7 +28,7 @@ export const principales: Destination[] = [
   { chemin: '/', libelle: 'Accueil', description: 'Ce qui demande ton attention aujourd’hui', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 4' },
   { chemin: '/magasins', libelle: 'Magasins', description: 'Tous les magasins, leur fiche complète et la carte', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 1' },
   { chemin: '/visites', libelle: 'Visites', description: 'Visites terrain, audits et couverture du semestre', icone: <EventNoteOutlined />, iconeActive: <EventNote />, sprint: 'Sprint 3' },
-  { chemin: '/equipe', libelle: 'Équipe', description: 'Organisation, charge des Coachs, postes à pourvoir, responsables magasin', icone: <GroupsOutlined />, iconeActive: <Groups />, sprint: 'Sprint 2' },
+  { chemin: '/equipe', libelle: 'Équipe', description: 'Organisation, charge des Coachs, postes à pourvoir, franchisés', icone: <GroupsOutlined />, iconeActive: <Groups />, sprint: 'Sprint 2' },
 ]
 
 // Destinations secondaires : écran « Plus » sur téléphone, section « Pilotage » du menu sur PC

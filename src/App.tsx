@@ -1,5 +1,6 @@
 import { Equipe } from './pages/Equipe'
 import { FicheCoach } from './pages/FicheCoach'
+import { FicheDirecteur, FicheFranchise, FicheRR } from './pages/FichePersonne'
 import { Direction } from './pages/Direction'
 import { Visites } from './pages/Visites'
 import { CompteRendu } from './pages/CompteRendu'
@@ -30,6 +31,9 @@ function Routes_() {
         <Route path="/plus/carte" element={<Magasins vueInitiale="carte" />} />
         <Route path="/equipe" element={<Equipe />} />
         <Route path="/equipe/coach/:nom" element={<FicheCoach />} />
+        <Route path="/equipe/rr/:id" element={<FicheRR />} />
+        <Route path="/equipe/directeur" element={<FicheDirecteur />} />
+        <Route path="/equipe/franchise/:nom" element={<FicheFranchise />} />
         <Route path="/plus/charge" element={<Navigate to="/equipe?vue=charge" replace />} />
         <Route path="/plus/direction" element={<Direction />} />
         <Route path="/visites" element={<Visites />} />

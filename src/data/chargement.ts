@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { thematiquesParDefaut, type Deploiements, type Evaluation, type Evaluations, type Thematique } from './sante'
 import type { Conge, Evenement, Reseau, Visite } from './modele'
+import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 
 function json<T>(valeur: unknown, defaut: T): T {
   if (valeur === null || valeur === undefined) return defaut
@@ -14,7 +15,7 @@ export class ErreurChargement extends Error {}
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('store,cs,date,note,type').order('date'),
     supabase.from('cs_overrides').select('*'),
@@ -72,7 +73,20 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
     if (r.entry) ann.push({ nom: r.name, role: 'Responsable Régional', date: r.entry.slice(0, 10), nature: 'arrivee' })
   }
   for (const r of recrues.error ? [] : recrues.data ?? []) if (r.start && !reseau.equipe.find((c) => c.nom === r.name)?.fictif) ann.push({ nom: r.name, role: 'Coach', date: t(r.start).slice(0, 10), nature: 'arrivee' })
-  reseau.anniversaires = ann.filter((a) => /^\d{4}-\d{2}-\d{2}$/.test(a.date))
+  // Fiches personnelles : elles complètent ou remplacent les dates connues de l'ancienne app
+  reseau.personnes = json<Reseau['personnes']>(cle('fiches_personnes'), {})
+  const parCle = new Map(ann.map((a) => [`${a.nom}|${a.nature}`, a]))
+  const ajouter = (nom: string, role: string, f: Partial<FichePersonnelle> | undefined) => {
+    if (!nom || !f) return
+    if (f.naissance) parCle.set(`${nom}|naissance`, { nom, role, date: f.naissance, nature: 'naissance' })
+    if (f.arrivee) parCle.set(`${nom}|arrivee`, { nom, role, date: f.arrivee, nature: 'arrivee' })
+  }
+  const p = reseau.personnes
+  if (reseau.directeur.nom !== 'Direction du réseau') ajouter(reseau.directeur.nom, libelleRole('directeur'), { naissance: reseau.directeur.naissance, arrivee: reseau.directeur.arrivee, ...p.directeur })
+  for (const c of reseau.equipe) ajouter(c.nom, 'Coach', p[cleFiche({ type: 'coach', cle: c.nom })])
+  for (const r of reseau.rrs) ajouter(r.nom, libelleRole('rr'), p[cleFiche({ type: 'rr', cle: r.id })])
+  for (const f of franchises(reseau)) ajouter(f.nom, libelleRole('franchise', f.integresSeulement), p[cleFiche({ type: 'franchise', cle: f.nom })])
+  reseau.anniversaires = [...parCle.values()].filter((a) => /^\d{4}-\d{2}-\d{2}$/.test(a.date))
   return reseau
 }
 
@@ -124,17 +138,17 @@ async function modifierConfigRR(changer: (c: ConfigRRComplete) => void) {
 type RRComplet = { id: string; name: string; tel?: string; email?: string; color?: string; role?: string; [k: string]: unknown }
 type ConfigRRComplete = { drs?: RRComplet[]; cs_dr?: Record<string, string>; dr_assigns?: { cs: string; dr: string; date: string }[]; directeur?: Record<string, unknown>; [k: string]: unknown }
 
-export interface FicheDirecteur { nom: string; titre: string; telephone: string; email: string }
+export interface FicheDirecteur { nom: string; titre: string; telephone: string; email: string; naissance: string; arrivee: string }
 export async function enregistrerDirecteur(d: FicheDirecteur) {
-  await modifierConfigRR((c) => { c.directeur = { ...(c.directeur ?? {}), name: d.nom, titre: d.titre, tel: d.telephone, email: d.email } })
+  await modifierConfigRR((c) => { c.directeur = { ...(c.directeur ?? {}), name: d.nom, titre: d.titre, tel: d.telephone, email: d.email, birth: d.naissance || null, entry: d.arrivee || null } })
 }
 
-export interface FicheRR { id?: string; nom: string; telephone: string; email: string; couleur: string; integres: boolean }
+export interface FicheRR { id?: string; nom: string; telephone: string; email: string; couleur: string; integres: boolean; naissance: string; arrivee: string }
 export async function enregistrerRR(r: FicheRR): Promise<string> {
   const id = r.id ?? `dr_${Date.now()}`
   await modifierConfigRR((c) => {
     c.drs = c.drs ?? []
-    const champs = { name: r.nom, tel: r.telephone, email: r.email, color: r.couleur, role: r.integres ? 'integres' : 'rr' }
+    const champs = { name: r.nom, tel: r.telephone, email: r.email, color: r.couleur, role: r.integres ? 'integres' : 'rr', birth: r.naissance || null, entry: r.arrivee || null }
     const ex = c.drs.find((x) => x.id === id)
     if (ex) Object.assign(ex, champs)
     else c.drs.push({ id, lon: null, lat: null, ...champs })
@@ -147,6 +161,7 @@ export async function supprimerRR(id: string) {
     c.drs = (c.drs ?? []).filter((x) => x.id !== id)
     for (const cs of Object.keys(c.cs_dr ?? {})) if (c.cs_dr![cs] === id) delete c.cs_dr![cs]
   })
+  await supprimerFichePersonne({ type: 'rr', cle: id })
 }
 
 // Rattache un Coach à un RR à partir d'une date (historique conservé, comme dans l'ancienne app)
@@ -191,6 +206,7 @@ export async function supprimerCoach(nom: string) {
   }
   const del = await lireCle<string[]>('cs_deletes', [])
   if (!del.valeur.includes(nom)) await ecrireCle('cs_deletes', [...del.valeur, nom], del.existe)
+  await supprimerFichePersonne({ type: 'coach', cle: nom })
 }
 
 // ── Renommages : le nom sert de lien entre les tables, on le change partout ──
@@ -214,14 +230,62 @@ export async function renommerCoach(ancien: string, nouveau: string) {
   // L'ancien nom peut exister dans le fichier de base de l'ancienne app : on le masque
   const del = await lireCle<string[]>('cs_deletes', [])
   await ecrireCle('cs_deletes', [...del.valeur.filter((n) => n !== nouveau && n !== ancien), ancien], del.existe)
+  await deplacerFichePersonne({ type: 'coach', cle: ancien }, { type: 'coach', cle: nouveau })
+}
+
+// ── Fiches personnelles (Directeur, Responsables Régionaux, Coachs, franchisés) ──
+
+function modifierFiches(changer: (f: Record<string, Partial<FichePersonnelle>>) => void) {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<Record<string, Partial<FichePersonnelle>>>('fiches_personnes', {})
+    changer(valeur)
+    await ecrireCle('fiches_personnes', valeur, existe)
+  })
+}
+
+export function enregistrerFichePersonne(r: RefPersonne, f: FichePersonnelle) {
+  const propre = Object.fromEntries(Object.keys(ficheVide()).map((k) => [k, String(f[k as keyof FichePersonnelle] ?? '').trim()])) as unknown as FichePersonnelle
+  return modifierFiches((v) => { v[cleFiche(r)] = propre })
+}
+export function supprimerFichePersonne(r: RefPersonne) {
+  return modifierFiches((v) => { delete v[cleFiche(r)] })
+}
+function deplacerFichePersonne(de: RefPersonne, vers: RefPersonne) {
+  return modifierFiches((v) => {
+    const a = cleFiche(de), b = cleFiche(vers)
+    if (a !== b && v[a]) { v[b] = v[a]; delete v[a] }
+  })
+}
+
+// Franchisé : son nom est inscrit sur chacun de ses magasins (colonne resp, partagée avec l'ancienne app)
+async function surchargerMagasin(magasin: string, champs: Record<string, unknown>) {
+  const ex = await supabase.from('store_overrides').select('store_name').eq('store_name', magasin)
+  if (ex.error) throw new ErreurEnregistrement(ex.error.message)
+  const l = { ...champs, updated_at: new Date().toISOString() }
+  verifier(ex.data?.length
+    ? await supabase.from('store_overrides').update(l).eq('store_name', magasin)
+    : await supabase.from('store_overrides').insert({ store_name: magasin, ...l }))
+}
+
+export async function enregistrerFranchise(nom: string, ancien: string | null, magasins: string[], anciensMagasins: string[], f: FichePersonnelle) {
+  // Une chaîne vide (et non null) efface bien la valeur venue du fichier de base de l'ancienne app
+  for (const m of anciensMagasins.filter((x) => !magasins.includes(x))) await surchargerMagasin(m, { resp: '', tel_resp: '', email_resp: '' })
+  for (const m of magasins) await surchargerMagasin(m, { resp: nom, tel_resp: f.telephone.trim(), email_resp: f.email.trim() })
+  if (ancien && ancien !== nom) await deplacerFichePersonne({ type: 'franchise', cle: ancien }, { type: 'franchise', cle: nom })
+  await enregistrerFichePersonne({ type: 'franchise', cle: nom }, f)
+}
+
+export async function supprimerFranchise(nom: string, magasins: string[]) {
+  for (const m of magasins) await surchargerMagasin(m, { resp: '', tel_resp: '', email_resp: '' })
+  await supprimerFichePersonne({ type: 'franchise', cle: nom })
 }
 
 // ── Magasins ──
 
 export interface FicheMagasin {
-  nom: string; code: string; departement: string; ouverture: string; franchise: boolean; plateforme: string
+  nom: string; code: string; departement: string; ouverture: string; franchise: boolean
   telephone: string; email: string; adresse: string; codePostal: string; ville: string; pays: string
-  responsable: string; telResponsable: string; emailResponsable: string; adjoint: string; telAdjoint: string
+  responsable: string; telResponsable: string; emailResponsable: string // coordonnées reprises de la fiche du franchisé
   rrDirect: string
 }
 
@@ -229,8 +293,9 @@ function ligneSurcharge(f: FicheMagasin) {
   const v = (x: string) => x.trim() || null
   return {
     store_name: f.nom, open_date: v(f.ouverture), dept: v(f.departement), tel: v(f.telephone), email_mag: v(f.email),
-    resp: v(f.responsable), tel_resp: v(f.telResponsable), email_resp: v(f.emailResponsable), adj: v(f.adjoint), tel_adj: v(f.telAdjoint),
-    addr: v(f.adresse), code: v(f.code), plat: v(f.plateforme), updated_at: new Date().toISOString(),
+    // Adjoint et plateforme logistique ne sont plus affichés : leurs valeurs en base restent intactes
+    resp: f.responsable.trim(), tel_resp: f.telResponsable.trim(), email_resp: f.emailResponsable.trim(),
+    addr: v(f.adresse), code: v(f.code), updated_at: new Date().toISOString(),
     cp: v(f.codePostal), ville: v(f.ville), franchise: f.franchise, rr: v(f.rrDirect), pays: v(f.pays),
   }
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Link as RouterLink, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -26,11 +26,11 @@ import { useTheme, type Theme } from '@mui/material/styles'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import FormatListBulleted from '@mui/icons-material/FormatListBulleted'
-import EditOutlined from '@mui/icons-material/EditOutlined'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PersonAddAlt1Outlined from '@mui/icons-material/PersonAddAlt1Outlined'
 import Snackbar from '@mui/material/Snackbar'
-import { DialogCoach, DialogDirecteur, DialogRR } from '../components/EditionEquipe'
+import { DialogCoach, DialogFranchise, DialogRR } from '../components/EditionEquipe'
+import { fichePersonne, franchises, type Franchise } from '../data/personnes'
 import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
@@ -48,10 +48,10 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { PastilleCharge } from '../components/Charge'
 import { chargeA, magasinsDuCoach, niveauCharge } from '../data/charge'
-import { dateCourte, lienCoach, lienFiche, telLien } from '../lib/format'
-import type { Coach, Personne, Reseau, ResponsableRegional } from '../data/modele'
+import { dateCourte, lienCoach, lienDirecteur, lienFiche, lienFranchise, lienRR, telLien } from '../lib/format'
+import type { Personne, Reseau, ResponsableRegional } from '../data/modele'
 
-type Vue = 'organisation' | 'charge' | 'magasins' | 'postes'
+type Vue = 'organisation' | 'charge' | 'franchises' | 'postes'
 
 function BoutonsContact({ p }: { p: Personne }) {
   return (
@@ -113,31 +113,23 @@ function LigneCoachOrga({ l, reseau, ouverts, basculer }: { l: LigneCoach; resea
 
 interface Groupe { cle: string; titre: string; role: string; couleur: string; personne: Personne | null; rr: ResponsableRegional | null; coachs: LigneCoach[]; direct: number }
 
-type Edition = { type: 'directeur' } | { type: 'rr'; rr: ResponsableRegional | null } | { type: 'coach'; coach: Coach | null }
-
-function BoutonModifier({ nom, onClick, flottant = true }: { nom: string; onClick: () => void; flottant?: boolean }) {
-  return (
-    <Tooltip title="Modifier">
-      <IconButton onClick={onClick} aria-label={`Modifier ${nom}`} sx={flottant ? { position: 'absolute', top: 2, right: 2 } : undefined}><EditOutlined fontSize="small" /></IconButton>
-    </Tooltip>
-  )
-}
+// L'organigramme ne sert qu'à voir et à ajouter : chaque personne se modifie depuis sa fiche
+type Edition = 'rr' | 'coach'
 
 const trait = (theme: Theme) => `2px solid ${theme.palette.divider}`
 
 // Organigramme graphique : Directeur en haut, une colonne par Responsable Régional, ses Coachs en dessous
-function Pyramide({ reseau, groupes, modifier }: { reseau: Reseau; groupes: Groupe[]; modifier: (e: Edition) => void }) {
-  const Boite = ({ couleur, children, lien, modifiable }: { couleur?: string; children: ReactNode; lien?: string; modifiable?: boolean }) => (
+function Pyramide({ reseau, groupes }: { reseau: Reseau; groupes: Groupe[] }) {
+  const Boite = ({ couleur, children, lien }: { couleur?: string; children: ReactNode; lien?: string }) => (
     <Box
       {...(lien ? { component: RouterLink, to: lien } : {})}
-      sx={{ display: 'block', position: 'relative', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderTop: couleur ? `4px solid ${couleur}` : undefined, borderRadius: 2, px: modifiable ? 5 : 1.5, py: 1, textAlign: 'center', color: 'text.primary', textDecoration: 'none', minWidth: 0, '&:hover': lien ? { bgcolor: 'action.hover' } : undefined }}
+      sx={{ display: 'block', position: 'relative', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderTop: couleur ? `4px solid ${couleur}` : undefined, borderRadius: 2, px: 1.5, py: 1, textAlign: 'center', color: 'text.primary', textDecoration: 'none', minWidth: 0, '&:hover': lien ? { bgcolor: 'action.hover' } : undefined }}
     >{children}</Box>
   )
   return (
     <Box sx={{ overflowX: 'auto', pb: 1, mt: 2 }}>
       <Box sx={{ minWidth: groupes.length * 210, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <Boite modifiable>
-          <BoutonModifier nom={reseau.directeur.nom} onClick={() => modifier({ type: 'directeur' })} />
+        <Boite lien={lienDirecteur()}>
           <Typography variant="body2" color="text.secondary">{reseau.directeur.titre}</Typography>
           <Typography variant="h4" component="p">{reseau.directeur.nom}</Typography>
           <Typography variant="body2" color="text.secondary">{reseau.equipe.length} Coachs · {reseau.magasins.length} magasins</Typography>
@@ -150,8 +142,7 @@ function Pyramide({ reseau, groupes, modifier }: { reseau: Reseau; groupes: Grou
               '&::before': { content: '""', position: 'absolute', top: 0, left: i === 0 ? '50%' : 0, right: i === groupes.length - 1 ? '50%' : 0, borderTop: trait },
               '&::after': { content: '""', position: 'absolute', top: 0, left: '50%', height: 24, borderLeft: trait },
             }}>
-              <Boite couleur={g.couleur} modifiable={!!g.rr}>
-                {g.rr && <BoutonModifier nom={g.titre} onClick={() => modifier({ type: 'rr', rr: g.rr! })} />}
+              <Boite couleur={g.couleur} lien={g.rr ? lienRR(g.rr.id) : undefined}>
                 <Typography variant="body2" color="text.secondary">{g.role}</Typography>
                 <Typography variant="h4" component="h3">{g.titre}</Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -223,8 +214,8 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
             <AccountTreeOutlined color="action" />
             <Typography variant="h3" component="h2" sx={{ flex: 1 }}>Organigramme</Typography>
-            <Button startIcon={<PersonAddAlt1Outlined />} onClick={() => setEdition({ type: 'coach', coach: null })} sx={{ minHeight: 48 }}>Coach</Button>
-            <Button startIcon={<AddOutlined />} onClick={() => setEdition({ type: 'rr', rr: null })} sx={{ minHeight: 48 }}>Responsable Régional</Button>
+            <Button startIcon={<PersonAddAlt1Outlined />} onClick={() => setEdition('coach')} sx={{ minHeight: 48 }}>Coach</Button>
+            <Button startIcon={<AddOutlined />} onClick={() => setEdition('rr')} sx={{ minHeight: 48 }}>Responsable Régional</Button>
             <ToggleButtonGroup exclusive size="small" value={forme} onChange={(_e, v) => v && changerForme(v)} aria-label="Forme de l’organigramme">
               <ToggleButton value="pyramide" sx={{ minHeight: 48, px: 2, gap: 1 }}><AccountTreeOutlined fontSize="small" />Pyramide</ToggleButton>
               <ToggleButton value="liste" sx={{ minHeight: 48, px: 2, gap: 1 }}><FormatListBulleted fontSize="small" />Liste</ToggleButton>
@@ -234,14 +225,13 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
               <Button onClick={toutReplier} sx={{ minHeight: 48 }}>Tout replier</Button>
             </>}
           </Box>
-          {forme === 'pyramide' ? <Pyramide reseau={reseau} groupes={groupes} modifier={setEdition} /> : <>
+          {forme === 'pyramide' ? <Pyramide reseau={reseau} groupes={groupes} /> : <>
           <Noeud niveau={0}>
             <AdminPanelSettingsOutlined color="action" />
             <Box sx={{ flex: 1 }}>
               <Typography variant="body2" color="text.secondary">{reseau.directeur.titre}</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 600 }}>{reseau.directeur.nom} · {reseau.equipe.length} Coachs · {reseau.magasins.length} magasins</Typography>
+              <Typography variant="body1"><Link component={RouterLink} to={lienDirecteur()} sx={{ fontWeight: 600 }}>{reseau.directeur.nom}</Link> · {reseau.equipe.length} Coachs · {reseau.magasins.length} magasins</Typography>
             </Box>
-            <BoutonModifier flottant={false} nom={reseau.directeur.nom} onClick={() => setEdition({ type: 'directeur' })} />
           </Noeud>
           {groupes.map((g) => (
             <Noeud key={g.cle} niveau={1} ouvert={ouverts.has(g.cle)} onBasculer={() => basculer(g.cle)} enfants={
@@ -253,21 +243,19 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
               <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: g.couleur, flexShrink: 0 }} />
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography variant="body2" color="text.secondary">{g.role}</Typography>
-                <Typography variant="h4" component="h3">{g.titre}</Typography>
+                <Typography variant="h4" component="h3">{g.rr ? <Link component={RouterLink} to={lienRR(g.rr.id)} color="inherit">{g.titre}</Link> : g.titre}</Typography>
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
                 {g.coachs.length} Coach{g.coachs.length > 1 ? 's' : ''}{g.direct ? ` · ${g.direct} en direct` : ''}
               </Typography>
               {g.personne && <BoutonsContact p={g.personne} />}
-              {g.rr && <BoutonModifier flottant={false} nom={g.titre} onClick={() => setEdition({ type: 'rr', rr: g.rr })} />}
             </Noeud>
           ))}
           </>}
         </CardContent>
       </Card>
-      {edition?.type === 'directeur' && <DialogDirecteur reseau={reseau} onFermer={fermer} />}
-      {edition?.type === 'rr' && <DialogRR reseau={reseau} rr={edition.rr} onFermer={fermer} />}
-      {edition?.type === 'coach' && <DialogCoach reseau={reseau} coach={edition.coach} onFermer={fermer} />}
+      {edition === 'rr' && <DialogRR reseau={reseau} rr={null} onFermer={fermer} />}
+      {edition === 'coach' && <DialogCoach reseau={reseau} coach={null} onFermer={fermer} />}
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
       {reseau.techniciens.length > 0 && (
         <Box sx={{ mt: 3 }}>
@@ -294,7 +282,7 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
   const arrivees = reseau.equipe.filter((c) => !c.fictif && c.arrivee > reseau.jour).sort((a, b) => a.arrivee.localeCompare(b.arrivee))
   const responsables = reseau.magasins.filter((m) => m.statut !== 'avenir' && m.responsableARecruter)
   const rien = !coachsARecruter.length && !arrivees.length && !responsables.length
-  if (rien) return <EmptyState icone={<WorkOutlineOutlined />} titre="Aucun poste à pourvoir" texte="Tous les postes de Coach et de responsable magasin sont pourvus. Un Coach marqué « non recruté » dans l’ancienne application apparaîtra ici." />
+  if (rien) return <EmptyState icone={<WorkOutlineOutlined />} titre="Aucun poste à pourvoir" texte="Tous les postes de Coach sont pourvus et chaque magasin a son franchisé. Un Coach marqué « non recruté » dans l’ancienne application apparaîtra ici." />
   const Bloc = ({ titre, aide, children }: { titre: string; aide: string; children: ReactNode }) => (
     <Card sx={{ mb: 2 }}>
       <CardContent sx={{ p: 3 }}>
@@ -328,11 +316,11 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
         </Bloc>
       )}
       {responsables.length > 0 && (
-        <Bloc titre={`Responsables magasin à recruter (${responsables.length})`} aide="Magasins dont le poste de responsable est indiqué en recrutement.">
+        <Bloc titre={`Franchisés à trouver (${responsables.length})`} aide="Magasins dont le franchisé est indiqué « En cours de recrutement ».">
           {responsables.map((m) => (
             <Rangee key={m.nom}>
               <Link component={RouterLink} to={lienFiche(m.nom)} sx={{ flex: 1, minWidth: 160, py: 1.5, fontWeight: 500 }}>{m.nom}</Link>
-              <Typography variant="body2" color="text.secondary">{[m.coach && `Coach ${m.coach}`, m.adjoint && `adjoint ${m.adjoint.nom}`].filter(Boolean).join(' · ') || 'Sans adjoint'}</Typography>
+              <Typography variant="body2" color="text.secondary">{m.coach ? `Coach ${m.coach}` : 'Sans Coach'}</Typography>
             </Rangee>
           ))}
         </Bloc>
@@ -341,64 +329,84 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
   )
 }
 
-function VueResponsables({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
+function VueFranchises({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
+  const naviguer = useNavigate()
   const [manquants, setManquants] = useState(false)
-  const magasins = useMemo(() => reseau.magasins.filter((m) => m.statut !== 'avenir' && (!manquants || !m.responsable)), [reseau, manquants])
-  const nbManquants = reseau.magasins.filter((m) => m.statut !== 'avenir' && !m.responsable).length
+  const [ajout, setAjout] = useState(false)
+  const [message, setMessage] = useState('')
+  const liste = useMemo(() => franchises(reseau), [reseau])
+  const sans = reseau.magasins.filter((m) => m.statut !== 'avenir' && !m.responsable)
+  const Magasins = ({ f }: { f: Franchise }) => (
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1.5 }}>
+      {f.magasins.map((m) => <Link key={m.nom} component={RouterLink} to={lienFiche(m.nom)} variant="body2" sx={{ minHeight: 32, display: 'inline-flex', alignItems: 'center' }}>{m.nom}</Link>)}
+    </Box>
+  )
   return (
     <>
-      <FormControlLabel
-        control={<Switch checked={manquants} onChange={(e) => setManquants(e.target.checked)} />}
-        label={`Seulement les magasins sans responsable (${nbManquants})`}
-        sx={{ mb: 2, minHeight: 48 }}
-      />
-      {magasins.length === 0 ? (
-        <EmptyState icone={<StorefrontOutlined />} titre="Tous les magasins ont un responsable" texte="Aucun poste de responsable magasin n’est vacant ou non renseigné." />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+        <FormControlLabel
+          control={<Switch checked={manquants} onChange={(e) => setManquants(e.target.checked)} />}
+          label={`Magasins sans franchisé (${sans.length})`}
+          sx={{ minHeight: 48, flex: 1 }}
+        />
+        <Button variant="contained" startIcon={<PersonAddAlt1Outlined />} onClick={() => setAjout(true)} sx={{ minHeight: 48 }}>Ajouter un franchisé</Button>
+      </Box>
+      {manquants ? (
+        sans.length === 0
+          ? <EmptyState icone={<StorefrontOutlined />} titre="Chaque magasin a son franchisé" texte="Aucun magasin ouvert ou en préparation n’est sans franchisé renseigné." />
+          : <Card>
+            {sans.map((m) => (
+              <CardActionArea key={m.nom} component={RouterLink} to={lienFiche(m.nom)} sx={{ px: 2, py: 1.5, minHeight: 56, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>{m.nom}</Typography>
+                <Typography variant="body2" color="warning.main">{m.responsableARecruter ? 'En cours de recrutement' : 'Non renseigné'}{m.coach ? ` · Coach ${m.coach}` : ''}</Typography>
+              </CardActionArea>
+            ))}
+          </Card>
+      ) : liste.length === 0 ? (
+        <EmptyState icone={<PersonOutlineOutlined />} titre="Aucun franchisé renseigné" texte="Ajoute un franchisé et choisis ses magasins, ou renseigne-le depuis la fiche d’un magasin." action={<Button variant="contained" onClick={() => setAjout(true)}>Ajouter un franchisé</Button>} />
       ) : surPC ? (
         <Card>
           <TableContainer>
-            <Table aria-label="Responsables magasin">
+            <Table aria-label="Franchisés">
               <TableHead>
                 <TableRow>
-                  <TableCell>Magasin</TableCell>
-                  <TableCell>Responsable magasin</TableCell>
-                  <TableCell>Adjoint</TableCell>
-                  <TableCell>Coach</TableCell>
+                  <TableCell>Franchisé</TableCell>
+                  <TableCell>Magasins</TableCell>
+                  <TableCell>Téléphone</TableCell>
+                  <TableCell>Email</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {magasins.map((m) => (
-                  <TableRow key={m.nom} hover>
-                    <TableCell><Link component={RouterLink} to={lienFiche(m.nom)} sx={{ fontWeight: 600 }}>{m.nom}</Link></TableCell>
-                    <TableCell>
-                      {m.responsable ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <span>{m.responsable.nom}</span>
-                          {m.responsable.telephone && <Link href={telLien(m.responsable.telephone)} variant="body2">{m.responsable.telephone}</Link>}
-                        </Box>
-                      ) : <Chip size="small" color="warning" label="À pourvoir ou non renseigné" sx={{ fontSize: '0.75rem' }} />}
-                    </TableCell>
-                    <TableCell>{m.adjoint?.nom ?? <Typography variant="body2" color="text.secondary">Aucun</Typography>}</TableCell>
-                    <TableCell>{m.coach || <Typography variant="body2" color="text.secondary">Aucun</Typography>}</TableCell>
-                  </TableRow>
-                ))}
+                {liste.map((f) => {
+                  const p = fichePersonne(reseau, { type: 'franchise', cle: f.nom })
+                  return (
+                    <TableRow key={f.nom} hover>
+                      <TableCell>
+                        <Link component={RouterLink} to={lienFranchise(f.nom)} sx={{ fontWeight: 600 }}>{f.nom}</Link>
+                        {f.integresSeulement && <Typography variant="body2" color="text.secondary">Responsable de magasin intégré</Typography>}
+                      </TableCell>
+                      <TableCell><Magasins f={f} /></TableCell>
+                      <TableCell>{p.telephone ? <Link href={telLien(p.telephone)} variant="body2">{p.telephone}</Link> : <Typography variant="body2" color="text.secondary">Non renseigné</Typography>}</TableCell>
+                      <TableCell>{p.email ? <Link href={`mailto:${p.email}`} variant="body2">{p.email}</Link> : <Typography variant="body2" color="text.secondary">Non renseigné</Typography>}</TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </TableContainer>
         </Card>
       ) : (
         <Card>
-          {magasins.map((m) => (
-            <CardActionArea key={m.nom} component={RouterLink} to={lienFiche(m.nom)} sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="body1" sx={{ fontWeight: 600 }}>{m.nom}</Typography>
-              <Typography variant="body2" color={m.responsable ? 'text.secondary' : 'warning.main'}>
-                {m.responsable ? `Responsable : ${m.responsable.nom}` : 'Responsable à pourvoir ou non renseigné'}
-              </Typography>
-              {m.adjoint && <Typography variant="body2" color="text.secondary">Adjoint : {m.adjoint.nom}</Typography>}
+          {liste.map((f) => (
+            <CardActionArea key={f.nom} component={RouterLink} to={lienFranchise(f.nom)} sx={{ px: 2, py: 1.5, minHeight: 56, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>{f.nom}</Typography>
+              <Typography variant="body2" color="text.secondary">{f.magasins.map((m) => m.nom).join(', ')}</Typography>
             </CardActionArea>
           ))}
         </Card>
       )}
+      {ajout && <DialogFranchise reseau={reseau} nom={null} onFermer={(m, nom) => { setAjout(false); if (m) { setMessage(m); if (nom) naviguer(lienFranchise(nom)) } }} />}
+      <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>
   )
 }
@@ -407,7 +415,8 @@ export function Equipe() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [params, setParams] = useSearchParams()
-  const vue = (params.get('vue') as Vue | null) ?? 'organisation'
+  const demandee = params.get('vue')
+  const vue = (demandee === 'magasins' ? 'franchises' : demandee as Vue | null) ?? 'organisation'
   const changerVue = (v: Vue) => setParams({ vue: v }, { replace: true })
   return (
     <AvecReseau>
@@ -418,9 +427,9 @@ export function Equipe() {
             <Tab value="organisation" label="Organisation" sx={{ minHeight: 48 }} />
             <Tab value="charge" label="Charge des Coachs" sx={{ minHeight: 48 }} />
             <Tab value="postes" label="Postes à pourvoir" sx={{ minHeight: 48 }} />
-            <Tab value="magasins" label="Responsables magasin" sx={{ minHeight: 48 }} />
+            <Tab value="franchises" label="Franchisés" sx={{ minHeight: 48 }} />
           </Tabs>
-          {vue === 'charge' ? <VueCharge reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : vue === 'magasins' ? <VueResponsables reseau={reseau} surPC={surPC} /> : <VueOrganisation reseau={reseau} />}
+          {vue === 'charge' ? <VueCharge reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : vue === 'franchises' ? <VueFranchises reseau={reseau} surPC={surPC} /> : <VueOrganisation reseau={reseau} />}
         </>
       )}
     </AvecReseau>
