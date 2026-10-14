@@ -73,9 +73,9 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
           freeSolo options={[...connus.map((x) => x.nom), RECRUTEMENT]} value={f.responsable} inputValue={f.responsable}
           onInputChange={(_e, v) => setF((x) => ({ ...x, responsable: v }))}
           renderInput={(p) => <TextField {...p} label={libelleResponsable(f)}
-            helperText={!responsable ? 'Choisis une personne existante ou tape un nouveau nom.' : existant || /recrutement/i.test(responsable) ? 'Ses coordonnées se modifient sur sa fiche personnelle.' : 'Nouvelle personne : complète sa fiche ensuite (téléphone, email…).'} />}
+            helperText={!responsable ? undefined : existant || /recrutement/i.test(responsable) ? 'Ses coordonnées se modifient sur sa fiche personnelle.' : 'Nouvelle personne : complète sa fiche ensuite (téléphone, email…).'} />}
         />
-        <TextField select label="Géré en direct par" value={f.rrDirect} onChange={(e) => setF((x) => ({ ...x, rrDirect: e.target.value }))} helperText="Seulement si un Responsable Régional gère ce magasin sans Coach." slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
+        <TextField select label="Géré en direct par" value={f.rrDirect} onChange={(e) => setF((x) => ({ ...x, rrDirect: e.target.value }))} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
           <MenuItem value="">Personne (suivi par son Coach)</MenuItem>
           {reseau.rrs.filter((r) => !r.integres).map((r) => <MenuItem key={r.id} value={r.id}>{r.nom}</MenuItem>)}
         </TextField>
@@ -89,7 +89,6 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
         {champ('departement', 'Département')}
         {champ('pays', 'Pays', { helperText: 'Laisse vide pour la France.' })}
       </Groupe>
-      {magasin && <Typography variant="body2" color="text.secondary">Pour changer de Coach, utilise « Réaffecter » sur la fiche : l’historique est ainsi conservé.</Typography>}
     </Fenetre>
   )
 }

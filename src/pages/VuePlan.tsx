@@ -48,9 +48,6 @@ export function VuePlan({ reseau }: { reseau: Reseau }) {
   const dateValide = /^\d{4}-\d{2}-\d{2}$/.test(jour)
   return (
     <>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 2, maxWidth: 820 }}>
-        Choisis une date : l’app propose qui reprend les magasins sans Coach ou trop chargés, et à quel Responsable Régional rattacher les Coachs, d’après les distances et la règle de charge. Rien n’est enregistré tant que tu n’as pas validé.
-      </Typography>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 3 }}>
         <TextField type="date" label="À la date du" value={jour} onChange={(e) => setJour(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ width: { xs: '100%', sm: 220 } }} />
         <Box>
@@ -273,7 +270,6 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
             {retenusM.size > 0 && <>{retenusM.size} magasin{retenusM.size > 1 ? 's changent' : ' change'} de Coach. </>}
             {retenusR.size > 0 && <>{retenusR.size} Coach{retenusR.size > 1 ? 's changent' : ' change'} de Responsable Régional. </>}
           </Typography>
-          <Typography variant="body2" color="text.secondary">Les changements prennent effet à cette date et apparaissent dans l’historique de chaque magasin et de chaque Coach. Tu pourras toujours réaffecter ensuite.</Typography>
           {erreur && <Alert severity="error" sx={{ mt: 2 }}>Le plan n’a pas pu être enregistré en entier. Vérifie ta connexion et réessaie : les changements déjà passés ne seront pas doublés.</Alert>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

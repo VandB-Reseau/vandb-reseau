@@ -36,7 +36,6 @@ import { alpha, useTheme } from '@mui/material/styles'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined'
 import ArrowForwardOutlined from '@mui/icons-material/ArrowForwardOutlined'
-import ArrowUpwardOutlined from '@mui/icons-material/ArrowUpwardOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import EventRepeatOutlined from '@mui/icons-material/EventRepeatOutlined'
@@ -209,10 +208,6 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
           ))}
           <Box sx={{ display: { xs: 'none', md: 'block' } }} />
           {niveaux.map((n) => <Typography key={n} variant="body2" color="text.secondary" sx={{ textAlign: 'center', fontWeight: 600, fontSize: { xs: 12, md: 14 } }}>Résultats {n}s</Typography>)}
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2, color: 'text.secondary', justifyContent: { md: 'center' } }}>
-          <ArrowUpwardOutlined sx={{ fontSize: 18, transform: 'rotate(45deg)' }} />
-          <Typography variant="body2">En haut : franchisé fort. À droite : résultats forts. Touche une case pour voir ses magasins.</Typography>
         </Box>
       </Card>
 
@@ -472,9 +467,6 @@ function DialogImport({ reseau, saisie, onFermer }: { reseau: Reseau; saisie: Sa
         for (const d of res!.deploiements) saisie.deployer([d.magasin], d.thematique, d.etat)
         return `${total} valeur${total > 1 ? 's' : ''} importée${total > 1 ? 's' : ''}`
       }}>
-      <Typography variant="body2" color="text.secondary">
-        Une ligne par magasin, une colonne par critère (Faible, Moyen, Fort ou 1, 2, 3) ou par thématique (par exemple Oui, Partiellement, Non). Les colonnes sont reconnues par leur titre, un export Asana convient. Les cases vides ne changent rien.
-      </Typography>
       <Button variant="outlined" component="label" startIcon={<UploadFileOutlined />} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
         {nomFichier || 'Choisir un fichier'}
         <input type="file" hidden accept=".xlsx,.csv,.txt" aria-label="Fichier à importer" onChange={(e) => choisir(e.target.files?.[0])} />
@@ -531,7 +523,6 @@ export function DialogThematiques({ reseau, onFermer }: { reseau: Reseau; onFerm
   return (
     <Fenetre large titre="Thématiques de déploiement" ouvert onFermer={onFermer} valide={valide}
       enregistrer={async () => { await enregistrerThematiques(liste.map((t) => ({ ...t, libelle: t.libelle.trim(), options: t.options.map((o) => ({ ...o, libelle: o.libelle.trim() })) }))); return 'Thématiques enregistrées' }}>
-      <Typography variant="body2" color="text.secondary">Supprimer une thématique efface aussi les états saisis pour elle dans tous les magasins.</Typography>
       {liste.map((t, i) => (
         <Card key={t.id} variant="outlined">
           <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>

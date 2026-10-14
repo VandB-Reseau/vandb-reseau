@@ -87,7 +87,6 @@ export function VueCharge({ reseau }: { reseau: Reseau }) {
       {surPC && (
         <>
           <Typography variant="h3" component="h2" sx={{ mb: 0.5 }}>Projection sur douze mois</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>Calculée avec les ouvertures prévues et les réaffectations déjà programmées.</Typography>
           <Card>
             <TableContainer>
               <Table size="small" aria-label="Projection de charge">
