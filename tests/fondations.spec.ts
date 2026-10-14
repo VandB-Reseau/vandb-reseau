@@ -50,7 +50,8 @@ test('chaque destination est accessible depuis la navigation', async ({ page, is
     } else {
       await nav.getByRole('button', { name: nom }).click()
     }
-    await expect(page.getByRole('heading', { level: 1, name: nom })).toBeVisible()
+    if (nom === 'Carte') await expect(page.getByRole('tab', { name: 'Carte', selected: true })).toBeVisible()
+    else await expect(page.getByRole('heading', { level: 1, name: nom })).toBeVisible()
   }
   if (isMobile) {
     await nav.getByRole('button', { name: 'Plus' }).click()

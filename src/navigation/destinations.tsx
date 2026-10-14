@@ -34,7 +34,7 @@ export const principales: Destination[] = [
 
 // Destinations secondaires : écran « Plus » sur téléphone, section « Pilotage » du menu sur PC
 export const secondaires: Destination[] = [
-  { chemin: '/plus/carte', libelle: 'Carte', description: 'Zones des Coachs et des RR, simulateur de réaffectation', icone: <MapOutlined />, sprint: 'Sprint 1' },
+  { chemin: '/plus/carte', libelle: 'Carte', description: 'Tous les magasins sur la carte, par Responsable Régional', icone: <MapOutlined />, sprint: 'Sprint 1' },
   { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Ouvertures, anniversaires, événements et congés', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
   { chemin: '/plus/charge', libelle: 'Plan de charge', description: 'Charge des Coachs, alertes et réaffectations', icone: <BalanceOutlined />, sprint: 'Sprint 2' },
   { chemin: '/plus/sante', libelle: 'Santé du parc', description: 'Complétude des fiches et performance des magasins', icone: <MonitorHeartOutlined />, sprint: 'Sprint 4' },

@@ -8,7 +8,6 @@ import Box from '@mui/material/Box'
 import Divider from '@mui/material/Divider'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
-import InputBase from '@mui/material/InputBase'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
@@ -18,13 +17,13 @@ import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Toolbar from '@mui/material/Toolbar'
-import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import SearchIcon from '@mui/icons-material/Search'
 import Logout from '@mui/icons-material/Logout'
 import { Logo } from '../components/Logo'
+import { RechercheGlobale } from '../components/RechercheGlobale'
 import { brandStripe } from '../theme/theme'
 import { principales, secondaires, plus, type Destination } from '../navigation/destinations'
 import { useAuth } from '../auth/AuthContext'
@@ -34,31 +33,6 @@ const LARGEUR_MENU = 264
 
 function estActive(d: Destination, pathname: string): boolean {
   return d.chemin === '/' ? pathname === '/' : pathname.startsWith(d.chemin)
-}
-
-function Recherche({ pleineLargeur, surFonce }: { pleineLargeur?: boolean; surFonce?: boolean }) {
-  return (
-    <Tooltip title="La recherche globale arrive au sprint 1">
-      <Box
-        sx={{
-          display: 'flex', alignItems: 'center', gap: 1, px: 2, height: 44, borderRadius: 999,
-          bgcolor: surFonce ? 'rgba(255,255,255,0.12)' : 'action.hover', width: pleineLargeur ? '100%' : 480, maxWidth: '100%',
-        }}
-      >
-        <SearchIcon sx={{ color: surFonce ? '#ffffff' : 'text.secondary' }} />
-        <InputBase
-          disabled
-          placeholder="Rechercher un magasin, une personne, une ville"
-          inputProps={{ 'aria-label': 'Recherche globale' }}
-          sx={{
-            flex: 1, fontSize: '0.875rem',
-            '& input::placeholder, & input.Mui-disabled::placeholder': { color: surFonce ? 'rgba(255,255,255,0.78)' : 'text.secondary', opacity: 1 },
-            '& input.Mui-disabled': { WebkitTextFillColor: 'unset' },
-          }}
-        />
-      </Box>
-    </Tooltip>
-  )
 }
 
 function MenuCompte() {
@@ -145,7 +119,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'inline' } }}>Réseau</Typography>
           </Box>
           <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-            {surPC && <Recherche surFonce />}
+            {surPC && <RechercheGlobale surFonce />}
           </Box>
           {!surPC && (
             <IconButton aria-label="Rechercher" onClick={() => setRechercheOuverte((v) => !v)} sx={{ color: '#ffffff' }}>
@@ -157,7 +131,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Box aria-hidden sx={{ height: 4, background: brandStripe }} />
         {!surPC && rechercheOuverte && (
           <Box sx={{ px: 2, py: 1.5, bgcolor: 'background.paper', color: 'text.primary' }}>
-            <Recherche pleineLargeur />
+            <RechercheGlobale onChoix={() => setRechercheOuverte(false)} />
           </Box>
         )}
       </AppBar>
