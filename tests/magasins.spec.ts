@@ -91,3 +91,19 @@ test('une panne de la base affiche un message et un bouton Réessayer', async ({
   await expect(page.getByText('Impossible de charger le réseau')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Réessayer' })).toBeVisible()
 })
+
+test('la carte passe en plein écran et le titre ne bouge pas entre Liste et Carte', async ({ page }) => {
+  await seConnecter(page)
+  await page.goto('./#/magasins')
+  const titre = page.getByRole('heading', { name: 'Magasins', level: 1 })
+  const recherche = page.getByRole('textbox').first()
+  const avant = [await titre.boundingBox(), await recherche.boundingBox()]
+  await page.getByRole('tab', { name: 'Carte' }).click()
+  await expect(page.locator('.leaflet-container')).toBeVisible()
+  expect([await titre.boundingBox(), await recherche.boundingBox()]).toEqual(avant)
+  await page.getByRole('button', { name: 'Carte en plein écran' }).click()
+  const vp = page.viewportSize()!
+  await expect.poll(async () => (await page.locator('.leaflet-container').boundingBox())!.height).toBeGreaterThan(vp.height - 4)
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: 'Carte en plein écran' })).toBeVisible()
+})

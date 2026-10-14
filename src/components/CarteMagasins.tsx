@@ -7,6 +7,8 @@ import Link from '@mui/material/Link'
 import ToggleButton from '@mui/material/ToggleButton'
 import Typography from '@mui/material/Typography'
 import PersonPinCircleOutlined from '@mui/icons-material/PersonPinCircleOutlined'
+import FullscreenOutlined from '@mui/icons-material/FullscreenOutlined'
+import FullscreenExitOutlined from '@mui/icons-material/FullscreenExitOutlined'
 import HubOutlined from '@mui/icons-material/HubOutlined'
 import { lienFiche } from '../lib/format'
 import { contourZone, couleurAuto, grappes, type Point } from '../data/zones'
@@ -66,16 +68,23 @@ export function CarteMagasins({ magasins, rrs, equipe = [], vue = vueDuJour, mar
   const carteRef = useRef<HTMLDivElement>(null)
   const legendeRef = useRef<HTMLDivElement>(null)
   const [hauteur, setHauteur] = useState(500)
+  const [pleinEcran, setPleinEcran] = useState(false)
   useEffect(() => {
     const calculer = () => {
       const haut = carteRef.current?.getBoundingClientRect().top ?? 0
       const leg = (legendeRef.current?.offsetHeight ?? 0) + 12
-      setHauteur(Math.max(280, Math.floor(window.innerHeight - haut - leg - margeBas)))
+      setHauteur(pleinEcran ? window.innerHeight : Math.max(280, Math.floor(window.innerHeight - haut - leg - margeBas)))
     }
     calculer()
     window.addEventListener('resize', calculer)
     return () => window.removeEventListener('resize', calculer)
-  }, [margeBas, legende.length, nonPlaces, zonesCoachs])
+  }, [margeBas, legende.length, nonPlaces, zonesCoachs, pleinEcran])
+  useEffect(() => {
+    if (!pleinEcran) return
+    const echap = (e: KeyboardEvent) => { if (e.key === 'Escape') setPleinEcran(false) }
+    window.addEventListener('keydown', echap)
+    return () => window.removeEventListener('keydown', echap)
+  }, [pleinEcran])
 
   const couleurPoint = (m: Magasin) => {
     const coach = vue.coachDe(m)
@@ -96,7 +105,7 @@ export function CarteMagasins({ magasins, rrs, equipe = [], vue = vueDuJour, mar
 
   return (
     <Box>
-      <Box ref={carteRef} sx={{ position: 'relative', height: hauteur, borderRadius: 4, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+      <Box ref={carteRef} sx={{ position: pleinEcran ? 'fixed' : 'relative', inset: pleinEcran ? 0 : undefined, zIndex: pleinEcran ? 1400 : undefined, bgcolor: 'background.paper', height: hauteur, borderRadius: pleinEcran ? 0 : 4, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
         {/* Boutons posés sur la carte pour lui laisser toute la hauteur */}
         <Box role="group" aria-label="Zones affichées" sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
           {[
@@ -108,6 +117,10 @@ export function CarteMagasins({ magasins, rrs, equipe = [], vue = vueDuJour, mar
               {b.icone}<Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{b.long}</Box><Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{b.court}</Box>
             </ToggleButton>
           ))}
+          <ToggleButton value="plein" size="small" selected={pleinEcran} onChange={() => setPleinEcran((v) => !v)} aria-label={pleinEcran ? 'Quitter le plein écran' : 'Carte en plein écran'}
+            sx={{ minHeight: 48, px: 2, gap: 1, borderRadius: 6, bgcolor: 'background.paper', boxShadow: 2, '&:hover': { bgcolor: 'background.paper' }, '&.Mui-selected, &.Mui-selected:hover': { bgcolor: 'primary.main', color: 'primary.contrastText' } }}>
+            {pleinEcran ? <FullscreenExitOutlined fontSize="small" /> : <FullscreenOutlined fontSize="small" />}<Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{pleinEcran ? 'Quitter le plein écran' : 'Plein écran'}</Box>
+          </ToggleButton>
         </Box>
         <MapContainer center={[46.6, 2.4]} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
           <AjusterTaille hauteur={hauteur} />

@@ -169,3 +169,15 @@ test('la recherche propose les magasins rangés par Coach et accepte un nom de C
   await page.keyboard.press('Escape')
   await expect(page.getByRole('link', { name: 'Annecy Test' })).toHaveCount(0)
 })
+
+test('le titre et la recherche restent en place d’un onglet à l’autre', async ({ page }) => {
+  await seConnecter(page)
+  await page.goto('./#/plus/sante')
+  const titre = page.getByRole('heading', { name: 'Santé du parc', level: 1 })
+  const champ = page.getByRole('combobox', { name: 'Rechercher un magasin ou un Coach' })
+  const ref = [await titre.boundingBox(), await champ.boundingBox()]
+  for (const onglet of ['Évaluer', 'Déploiements', 'Nine box']) {
+    await page.getByRole('tab', { name: onglet }).click()
+    await expect.poll(async () => [await titre.boundingBox(), await champ.boundingBox()]).toEqual(ref)
+  }
+})

@@ -353,8 +353,8 @@ function VueEvaluer({ reseau, saisie, surPC }: { reseau: Reseau; saisie: Saisie 
   const cibles: Cible[] = tousCriteres.map((c) => ({ type: 'note', id: c.id, libelle: c.libelle }))
   return (
     <>
-      {surPC && <ChoixMode mode={mode} changer={setMode} />}
       {barre}
+      {surPC && <ChoixMode mode={mode} changer={setMode} />}
       {magasins.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." />
         : !surPC || mode === 'fiche' ? <FicheSaisie reseau={reseau} magasins={magasins} saisie={saisie} parties={['notes']} /> : (
           <>
@@ -388,11 +388,11 @@ function VueDeploiements({ reseau, saisie, surPC }: { reseau: Reseau; saisie: Sa
   const cibles: Cible[] = ths.map((t) => ({ type: 'deploiement', t, libelle: t.libelle }))
   return (
     <>
+      {barre}
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' }, mb: 3 }}>
         {ths.map((t) => <Avancement key={t.id} reseau={reseau} t={t} />)}
       </Box>
       {surPC && <ChoixMode mode={mode} changer={setMode} />}
-      {barre}
       {magasins.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." />
         : !surPC || mode === 'fiche' ? <FicheSaisie reseau={reseau} magasins={magasins} saisie={saisie} parties={['deploiements']} /> : (
           <>
@@ -544,10 +544,11 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
   const saisie = useSaisieSante(reseau, setMessage)
   const actifs = reseau.magasins.filter((m) => m.statut !== 'avenir')
   const classes = actifs.filter((m) => caseDe(reseau.evaluations[m.nom])).length
-  const actions = vue === 'ninebox' ? undefined : (
-    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+  // Les boutons restent en place (masqués sur la nine box) pour que le titre ne bouge pas entre onglets
+  const actions = (
+    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', visibility: vue === 'ninebox' ? 'hidden' : 'visible' }} aria-hidden={vue === 'ninebox'}>
       <Button variant="outlined" startIcon={<UploadFileOutlined />} onClick={() => setImporter(true)} sx={{ minHeight: 48 }}>Importer Excel</Button>
-      {vue === 'deploiements' && <Button variant="contained" startIcon={<TuneOutlined />} onClick={() => setGestion(true)} sx={{ minHeight: 48 }}>Gérer les thématiques</Button>}
+      <Button variant="contained" startIcon={<TuneOutlined />} onClick={() => setGestion(true)} sx={{ minHeight: 48, visibility: vue === 'deploiements' ? 'visible' : 'hidden' }} tabIndex={vue === 'deploiements' ? 0 : -1} aria-hidden={vue !== 'deploiements'}>Gérer les thématiques</Button>
     </Box>
   )
   return (

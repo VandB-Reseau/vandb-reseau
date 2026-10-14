@@ -64,7 +64,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
               <EmptyState icone={<SearchOff />} titre="Aucun magasin ne correspond" texte="Modifie la recherche ou retire un filtre pour voir plus de magasins." />
             ) : vue === 'carte' ? (
               <Suspense fallback={<Skeleton variant="rounded" height={600} />}>
-                <CarteMagasins magasins={resultats} rrs={reseau.rrs} equipe={reseau.equipe} margeBas={surPC ? 40 : 104} />
+                <CarteMagasins magasins={resultats} rrs={reseau.rrs} equipe={reseau.equipe} margeBas={surPC ? 40 : 96} />
               </Suspense>
             ) : surPC ? (
               <TableMagasins magasins={resultats} />
