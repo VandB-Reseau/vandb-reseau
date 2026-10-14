@@ -116,6 +116,7 @@ export const typesVisite: { id: TypeVisite; libelle: string; couleur: string }[]
 export const libelleTypeVisite = (t: string) => typesVisite.find((x) => x.id === t)?.libelle ?? 'Visite'
 
 export interface Document { label: string; url: string }
+export interface ActionPlan { action: string; porteur: string; echeance: string }
 
 export interface Visite {
   id: number | null
@@ -129,6 +130,8 @@ export interface Visite {
   dateSignature: string
   documents: Document[]
   notes: string
+  parties: string[] // parties du compte rendu (PARTIES), vides si non abordées
+  plan: ActionPlan[]
 }
 
 export interface Conge { id: number | null; personne: string; role: string; debut: string; fin: string; notes: string }
