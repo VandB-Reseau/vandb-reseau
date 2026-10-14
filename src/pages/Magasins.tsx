@@ -39,11 +39,13 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
             <PageHeader
               titre="Magasins"
               sousTitre={resultats.length === total ? `${total} magasins dans le réseau` : `${resultats.length} sur ${total} magasins`}
+              actions={
+                <Tabs value={vue} onChange={(_e, v) => changerVue(v)} sx={{ bgcolor: 'action.hover', borderRadius: 6, p: 0.5, minHeight: 48, '& .MuiTabs-indicator': { height: '100%', borderRadius: 6, zIndex: 0 }, '& .MuiTab-root.Mui-selected': { color: 'primary.contrastText' } }} aria-label="Affichage">
+                  <Tab value="liste" label="Liste" icon={<TableRowsOutlined />} iconPosition="start" sx={{ minHeight: 48, position: 'relative', zIndex: 1, borderRadius: 6, px: 2.5 }} />
+                  <Tab value="carte" label="Carte" icon={<MapOutlined />} iconPosition="start" sx={{ minHeight: 48, position: 'relative', zIndex: 1, borderRadius: 6, px: 2.5 }} />
+                </Tabs>
+              }
             />
-            <Tabs value={vue} onChange={(_e, v) => changerVue(v)} sx={{ mb: 2, borderBottom: '1px solid', borderColor: 'divider' }} aria-label="Affichage">
-              <Tab value="liste" label="Liste" icon={<TableRowsOutlined />} iconPosition="start" sx={{ minHeight: 48 }} />
-              <Tab value="carte" label="Carte" icon={<MapOutlined />} iconPosition="start" sx={{ minHeight: 48 }} />
-            </Tabs>
             <BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres} />
             {resultats.length === 0 ? (
               <EmptyState icone={<SearchOff />} titre="Aucun magasin ne correspond" texte="Modifie la recherche ou retire un filtre pour voir plus de magasins." />
