@@ -58,7 +58,8 @@ test('ajouter, modifier et supprimer une note du journal', async ({ page }) => {
 test('l’accueil liste les visites en retard et les changements de case', async ({ page }) => {
   await seConnecter(page)
   const retard = page.getByRole('region', { name: 'Visites en retard' })
-  await expect(retard.getByRole('link', { name: 'Nantes Test' })).toBeVisible()
+  // Jamais visité depuis janvier : en retard en premier
+  await expect(retard.getByRole('link', { name: 'Agen Test' })).toBeVisible()
   await expect(retard.getByRole('link', { name: 'Lyon Test' })).toHaveCount(0)
   const cases = page.getByRole('region', { name: 'Changements de case' })
   await expect(cases.getByText('Cœur de réseau vers Redressement urgent')).toBeVisible()

@@ -28,7 +28,7 @@ import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { libelleResponsable, libelleTypeVisite, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
-import { anneeFiscale, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
+import { anneeDe, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 
@@ -118,7 +118,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         <Section titre="Visites" action={<Button startIcon={<AddOutlined />} onClick={() => setVisite(null)} sx={{ minHeight: 48 }}>Saisir</Button>}>
           {(() => {
             const vs = visitesDuMagasin(reseau, m.nom)
-            const a = anneeFiscale(reseau.jour)
+            const a = anneeDe(reseau.jour)
             const r = suiviRythme(reseau, a).find((l) => l.magasin.nom === m.nom)
             return (
               <>

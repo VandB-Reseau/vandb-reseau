@@ -31,7 +31,7 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { DialogVisite, visiteurs } from '../components/DialogVisite'
 import { PastilleSignature, PastilleTypeVisite } from '../components/PastilleVisite'
-import { anneeFiscale, anneesDisponibles, lienCompteRendu, semestresDisponibles, suiviRythme, type LigneRythme } from '../data/visites'
+import { anneeDe, anneesDisponibles, lienCompteRendu, semestresDisponibles, suiviRythme, type LigneRythme } from '../data/visites'
 import { nineBox } from '../data/sante'
 import { PastilleCase } from '../components/Sante'
 import { FiltreMenu } from '../components/FiltreMenu'
@@ -47,7 +47,7 @@ type Etat = 'retard' | 'ajour'
 
 function VueRythme({ reseau, saisir, surPC }: { reseau: Reseau; saisir: (magasins: string[]) => void; surPC: boolean }) {
   const annees = anneesDisponibles(reseau)
-  const [cle, setCle] = useState(anneeFiscale(reseau.jour).cle)
+  const [cle, setCle] = useState(anneeDe(reseau.jour).cle)
   const [texte, setTexte] = useState('')
   const [coachs, setCoachs] = useState<string[]>([])
   const [cases, setCases] = useState<string[]>([])
@@ -80,7 +80,7 @@ function VueRythme({ reseau, saisir, surPC }: { reseau: Reseau; saisir: (magasin
       <RechercheFiltres actifs={actifs}
         recherche={<ChampRecherche valeur={texte} onChange={setTexte} libelle="Magasin, ville, Coach…" />}
         pc={(r, f) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 2 }}>{r}{f}</Box>}>
-        <FiltreMenu unique libelle="Année" choisis={[a.cle]} onChange={(v) => setCle(v[0])} options={annees.map((x) => ({ valeur: x.cle, libelle: x.court, detail: x.libelle.split(' · ')[1] }))} />
+        <FiltreMenu unique libelle="Année" choisis={[a.cle]} onChange={(v) => setCle(v[0])} options={annees.map((x) => ({ valeur: x.cle, libelle: x.court }))} />
         <FiltreMenu libelle="Coach" choisis={coachs} onChange={setCoachs}
           options={[...listeCoachs.map((c) => ({ valeur: c, libelle: c, detail: `${mag((l) => l.coach === c)}` })), { valeur: '__aucun__', libelle: 'Sans Coach', detail: `${mag((l) => !l.coach)}` }]} />
         <FiltreMenu libelle="Nine box" choisis={cases} onChange={setCases}
@@ -216,7 +216,7 @@ function VueHistorique({ reseau, modifier, surPC }: { reseau: Reseau; modifier: 
       <RechercheFiltres actifs={(cle ? 1 : 0) + (type ? 1 : 0) + (visiteur ? 1 : 0)}
         recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} libelle="Rechercher un magasin ou une note" />}
         pc={(r, f) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 2 }}>{r}{f}</Box>}>
-        <FiltreMenu libelle="Période" choisis={cle ? [cle] : []} onChange={(v) => setCle(v.at(-1) ?? '')} options={semestres.map((x) => ({ valeur: x.cle, libelle: x.court, detail: x.libelle.split(' · ')[1] }))} />
+        <FiltreMenu libelle="Période" choisis={cle ? [cle] : []} onChange={(v) => setCle(v.at(-1) ?? '')} options={semestres.map((x) => ({ valeur: x.cle, libelle: x.court }))} />
         <FiltreMenu libelle="Type" choisis={type ? [type] : []} onChange={(v) => setType(v.at(-1) ?? '')} options={typesVisite.map((t) => ({ valeur: t.id, libelle: t.libelle }))} />
         <FiltreMenu libelle="Visité par" choisis={visiteur ? [visiteur] : []} onChange={(v) => setVisiteur(v.at(-1) ?? '')} options={visiteurs(reseau).map((n) => ({ valeur: n, libelle: n }))} />
         {(cle || type || visiteur || recherche) && <Button onClick={() => { setCle(''); setType(''); setVisiteur(''); setRecherche('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
