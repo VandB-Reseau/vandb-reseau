@@ -15,7 +15,6 @@ import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
-import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { ReaffecterDialog } from '../components/ReaffecterDialog'
@@ -26,7 +25,11 @@ import { PastilleStatut, PastilleType } from '../components/Pastilles'
 import { dateCourte, dateLongue, lienCoach, lienFiche, telLien } from '../lib/format'
 import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
-import type { Magasin, Personne, Reseau } from '../data/modele'
+import { libelleTypeVisite, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
+import { DialogVisite } from '../components/DialogVisite'
+import { lienCompteRendu, semestreDe, visitesDuMagasin } from '../data/visites'
+import AddOutlined from '@mui/icons-material/AddOutlined'
+import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 
 export function Section({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
   return (
@@ -71,6 +74,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const naviguer = useNavigate()
   const [reaffectation, setReaffectation] = useState(false)
   const [edition, setEdition] = useState(false)
+  const [visite, setVisite] = useState<Visite | null | undefined>(undefined)
   const [confirmation, setConfirmation] = useState('')
   const coach = m.coach ? reseau.coachs[m.coach] ?? { nom: m.coach } : null
   const adresseComplete = [m.adresse || [m.codePostal, m.ville].filter(Boolean).join(' '), m.pays].filter(Boolean).join(', ')
@@ -128,12 +132,31 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           )}
         </Section>
 
-        <Section titre="Visites et performance">
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', color: 'text.secondary' }}><EventNoteOutlined /><Typography variant="body2">Les visites de ce magasin s’afficheront ici au sprint 3.</Typography></Box>
-            <Divider />
-            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', color: 'text.secondary' }}><QueryStatsOutlined /><Typography variant="body2">Le CA, l’EBITDA, le panier et la fréquentation s’afficheront ici au sprint 4.</Typography></Box>
-          </Box>
+        <Section titre="Visites" action={<Button startIcon={<AddOutlined />} onClick={() => setVisite(null)} sx={{ minHeight: 48 }}>Saisir</Button>}>
+          {(() => {
+            const vs = visitesDuMagasin(reseau, m.nom)
+            const s = semestreDe(reseau.jour)
+            const ceSemestre = vs.some((v) => v.date >= s.debut && v.date <= s.fin)
+            return (
+              <>
+                <Chip size="small" color={ceSemestre ? 'success' : 'warning'} variant={ceSemestre ? 'filled' : 'outlined'} label={ceSemestre ? `Visité sur ${s.court}` : `Pas encore visité sur ${s.court}`} sx={{ fontSize: '0.75rem', fontWeight: 600, mb: 1 }} />
+                {vs.length === 0 ? <Typography variant="body2" color="text.secondary">Aucune visite enregistrée.</Typography> : vs.slice(0, 6).map((v) => (
+                  <Box key={v.id ?? v.date} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ width: 110, flexShrink: 0 }}>{dateCourte(v.date)}</Typography>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="body1">{libelleTypeVisite(v.type)}{v.visiteur ? ` · ${v.visiteur}` : ''}</Typography>
+                      {v.notes && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>{v.notes}</Typography>}
+                    </Box>
+                    <Tooltip title="Compte rendu PDF"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu du ${dateCourte(v.date)}`}><PictureAsPdfOutlined /></IconButton></Tooltip>
+                    <Tooltip title="Modifier"><IconButton onClick={() => setVisite(v)} aria-label={`Modifier la visite du ${dateCourte(v.date)}`}><EditOutlined /></IconButton></Tooltip>
+                  </Box>
+                ))}
+                {vs.length > 6 && <Link component={RouterLink} to={`/visites?vue=historique`} variant="body2">Voir les {vs.length} visites</Link>}
+                <Divider sx={{ my: 1.5 }} />
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', color: 'text.secondary' }}><QueryStatsOutlined /><Typography variant="body2">Le CA, l’EBITDA, le panier et la fréquentation s’afficheront ici au sprint 4.</Typography></Box>
+              </>
+            )
+          })()}
         </Section>
       </Box>
       {reaffectation && <ReaffecterDialog reseau={reseau} magasin={m} ouvert onFermer={(fait) => { setReaffectation(false); if (fait) setConfirmation(`${m.nom} est confié à ${fait}.`) }} />}
@@ -144,6 +167,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         setConfirmation(msg)
         if (nom && nom !== m.nom) naviguer(lienFiche(nom), { replace: true })
       }} />}
+      {visite !== undefined && <DialogVisite reseau={reseau} visite={visite} magasinsInitiaux={[m.nom]} onFermer={(msg) => { setVisite(undefined); if (msg) setConfirmation(msg) }} />}
       <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
     </>
   )

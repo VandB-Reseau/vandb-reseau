@@ -1,0 +1,104 @@
+import type { ReactNode } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import GlobalStyles from '@mui/material/GlobalStyles'
+import Link from '@mui/material/Link'
+import Typography from '@mui/material/Typography'
+import ArrowBack from '@mui/icons-material/ArrowBack'
+import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
+import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
+import { AvecReseau } from '../components/EtatDonnees'
+import { EmptyState } from '../components/EmptyState'
+import { Logo } from '../components/Logo'
+import { dateLongue } from '../lib/format'
+import { coachA } from '../data/charge'
+import { libelleTypeVisite } from '../data/modele'
+
+// À l'impression, seule la feuille du compte rendu reste visible (menu, barres et boutons masqués)
+const styleImpression = (
+  <GlobalStyles styles={{
+    '@media print': {
+      'header, nav, .MuiDrawer-root, .MuiBottomNavigation-root, .sans-impression': { display: 'none !important' },
+      'body, main': { background: '#fff !important', padding: '0 !important', margin: '0 !important' },
+      '.feuille': { boxShadow: 'none !important', border: '0 !important', margin: '0 !important', maxWidth: 'none !important' },
+      '@page': { size: 'A4', margin: '14mm' },
+    },
+  }} />
+)
+
+function Champ({ libelle, children }: { libelle: string; children: ReactNode }) {
+  return (
+    <Box sx={{ py: 0.75 }}>
+      <Typography variant="caption" sx={{ color: '#5f5f66', display: 'block' }}>{libelle}</Typography>
+      <Typography variant="body1" sx={{ color: '#1b1b1f' }}>{children || 'Non renseigné'}</Typography>
+    </Box>
+  )
+}
+
+export function CompteRendu() {
+  const { id = '' } = useParams()
+  const naviguer = useNavigate()
+  return (
+    <AvecReseau>
+      {(reseau) => {
+        const v = reseau.visites.find((x) => String(x.id) === id)
+        if (!v) return <EmptyState icone={<EventNoteOutlined />} titre="Visite introuvable" texte="Cette visite a peut-être été supprimée." action={<Button variant="contained" onClick={() => naviguer('/visites?vue=historique')}>Voir les visites</Button>} />
+        const m = reseau.magasins.find((x) => x.nom === v.magasin)
+        const coach = m ? coachA(m, v.date) : ''
+        return (
+          <>
+            {styleImpression}
+            <Box className="sans-impression" sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+              <Button startIcon={<ArrowBack />} onClick={() => naviguer(-1)} sx={{ ml: -1, minHeight: 48 }}>Retour</Button>
+              <Box sx={{ flex: 1 }} />
+              <Button variant="contained" startIcon={<PictureAsPdfOutlined />} onClick={() => window.print()} sx={{ minHeight: 48 }}>Télécharger en PDF</Button>
+            </Box>
+            <Typography className="sans-impression" variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Dans la fenêtre qui s’ouvre, choisis « Enregistrer au format PDF » comme imprimante.
+            </Typography>
+            <Box className="feuille" sx={{ bgcolor: '#fff', color: '#1b1b1f', maxWidth: 820, mx: 'auto', borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
+              <Box sx={{ bgcolor: '#1b1b1f', px: 4, py: 2.5, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Logo size={24} />
+                <Box sx={{ flex: 1 }} />
+                <Typography sx={{ color: '#fff', fontWeight: 600 }}>Compte rendu de visite</Typography>
+              </Box>
+              <Box sx={{ height: 4, background: 'linear-gradient(90deg, #f6c544, #ef7d00, #1b6fce)' }} />
+              <Box sx={{ p: 4 }}>
+                <Typography variant="h2" component="h1" sx={{ color: '#1b1b1f' }}>{v.magasin}</Typography>
+                <Typography sx={{ color: '#5f5f66', mb: 3 }}>{libelleTypeVisite(v.type)} · {dateLongue(v.date)}</Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 4, mb: 3 }}>
+                  <Champ libelle="Visité par">{v.visiteur}</Champ>
+                  <Champ libelle="Coach du magasin">{coach}</Champ>
+                  <Champ libelle="Responsable magasin">{m?.responsable?.nom}</Champ>
+                  <Champ libelle="Responsable Régional">{m?.rr?.nom}</Champ>
+                  <Champ libelle="Adresse">{[m?.adresse, m?.pays].filter(Boolean).join(', ')}</Champ>
+                  <Champ libelle="Code magasin">{m?.code}</Champ>
+                </Box>
+                <Typography variant="h4" component="h2" sx={{ color: '#1b1b1f', borderBottom: '2px solid #eaa400', pb: 0.5, mb: 1.5 }}>Notes de visite</Typography>
+                <Typography sx={{ whiteSpace: 'pre-wrap', color: '#1b1b1f', minHeight: 120, mb: 3 }}>{v.notes || 'Aucune note saisie.'}</Typography>
+                {v.documents.length > 0 && (
+                  <>
+                    <Typography variant="h4" component="h2" sx={{ color: '#1b1b1f', borderBottom: '2px solid #eaa400', pb: 0.5, mb: 1.5 }}>Documents</Typography>
+                    <Box component="ul" sx={{ mt: 0, mb: 3, pl: 3 }}>
+                      {v.documents.map((d, i) => <li key={i}><Link href={d.url} target="_blank" rel="noopener">{d.label || d.url}</Link></li>)}
+                    </Box>
+                  </>
+                )}
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, mt: 4 }}>
+                  {['Responsable magasin', v.visiteur ? `Visiteur : ${v.visiteur}` : 'Visiteur'].map((s) => (
+                    <Box key={s}>
+                      <Typography variant="body2" sx={{ color: '#5f5f66' }}>Signature · {s}</Typography>
+                      <Box sx={{ height: 90, border: '1px solid #c9c9cf', borderRadius: 1, mt: 1 }} />
+                    </Box>
+                  ))}
+                </Box>
+                {v.signatureRequise && v.dateSignature && <Typography variant="body2" sx={{ color: '#5f5f66', mt: 2 }}>Signé le {dateLongue(v.dateSignature)}.</Typography>}
+              </Box>
+            </Box>
+          </>
+        )
+      }}
+    </AvecReseau>
+  )
+}

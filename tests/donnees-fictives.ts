@@ -53,3 +53,10 @@ export const coachsFictifs = [
 ]
 
 export const recruesFictives = [{ id: 1, name: 'Zoé ARRIVEE', start: '2099-03-01', ville: 'Dijon', lat: 47.3, lon: 5.0 }]
+
+export const visitesFictives = [
+  { id: 1, store: 'Lyon Test', visit_date: '2026-10-02', type: 'terrain', visitor: 'Noé MODELE', signed_required: true, signed_url: '', docs: [{ label: 'Photos', url: 'https://exemple.test/photos' }], notes: 'Vitrine refaite, stock à revoir.' },
+  { id: 2, store: 'Nantes Test', visit_date: '2026-03-10', type: 'hygiene', visitor: 'Inès EXEMPLE', signed_required: false, docs: [], notes: 'Audit conforme.' },
+]
+export const congesFictifs = [{ id: 1, person: 'Hugo FICTIF', role: 'cs', start_date: '2026-10-20', end_date: '2026-10-24', notes: 'Congés' }]
+export const evenementsFictifs = [{ id: 1, title: 'Séminaire des Coachs', type: 'event', start_date: '2026-10-15', end_date: '2026-10-16', color: '#7c3aed' }]

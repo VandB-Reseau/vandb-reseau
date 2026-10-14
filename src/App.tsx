@@ -1,12 +1,15 @@
 import { Equipe } from './pages/Equipe'
 import { FicheCoach } from './pages/FicheCoach'
 import { Direction } from './pages/Direction'
+import { Visites } from './pages/Visites'
+import { CompteRendu } from './pages/CompteRendu'
+import { Agenda } from './pages/Agenda'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import { AppShell } from './layout/AppShell'
 import { useAuth } from './auth/AuthContext'
-import { principales, secondaires } from './navigation/destinations'
+import { secondaires } from './navigation/destinations'
 import { Accueil } from './pages/Accueil'
 import { Chantier } from './pages/Chantier'
 import { Connexion } from './pages/Connexion'
@@ -27,9 +30,11 @@ function Routes_() {
         <Route path="/equipe/coach/:nom" element={<FicheCoach />} />
         <Route path="/plus/charge" element={<Navigate to="/equipe?vue=charge" replace />} />
         <Route path="/plus/direction" element={<Direction />} />
-        {principales.slice(2, 3).map((d) => <Route key={d.chemin} path={d.chemin} element={<Chantier destination={d} />} />)}
+        <Route path="/visites" element={<Visites />} />
+        <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
+        <Route path="/plus/agenda" element={<Agenda />} />
         <Route path="/plus" element={<Plus />} />
-        {secondaires.slice(1).filter((d) => d.chemin !== '/plus/direction').map((d) => <Route key={d.chemin} path={d.chemin} element={<Chantier destination={d} />} />)}
+        {secondaires.slice(1).filter((d) => !['/plus/direction', '/plus/agenda'].includes(d.chemin)).map((d) => <Route key={d.chemin} path={d.chemin} element={<Chantier destination={d} />} />)}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

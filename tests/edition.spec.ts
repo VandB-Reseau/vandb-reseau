@@ -17,7 +17,7 @@ test('modifier et renommer un magasin met à jour toutes les tables', async ({ p
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Nantes%20Test')
-  await page.getByRole('button', { name: 'Modifier' }).click()
+  await page.getByRole('button', { name: 'Modifier', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Modifier Nantes Test' })
   await expect(d.getByLabel('Responsable magasin', { exact: true })).toHaveValue('Responsable 2')
   await d.getByLabel('Nom du magasin').fill('Lyon Test')
@@ -54,7 +54,7 @@ test('ajouter puis supprimer un magasin', async ({ page }) => {
   expect(adds).toHaveLength(31)
 
   await page.goto('./#/magasins/Dax%20Test')
-  await page.getByRole('button', { name: 'Modifier' }).click()
+  await page.getByRole('button', { name: 'Modifier', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Supprimer' }).click()
   await page.getByRole('alert').getByRole('button', { name: 'Supprimer' }).click()
   await expect(page.getByRole('heading', { name: 'Magasins', level: 1 })).toBeVisible()
@@ -66,7 +66,7 @@ test('renommer un Coach le renomme partout', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/equipe/coach/Hugo%20FICTIF')
-  await page.getByRole('button', { name: 'Modifier' }).click()
+  await page.getByRole('button', { name: 'Modifier', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Modifier Hugo FICTIF' })
   await d.getByLabel('Prénom et NOM').fill('Noé MODELE')
   await expect(d.getByText('Cette personne existe déjà')).toBeVisible()

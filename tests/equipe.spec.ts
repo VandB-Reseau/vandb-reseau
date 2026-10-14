@@ -165,12 +165,12 @@ test('supprimer : bloqué tant qu’il reste des Coachs ou des magasins, possibl
   expect(configEcrite(dernier(ecritures, 'app_config')).drs.map((r: { id: string }) => r.id)).toEqual(['rr1', 'rr2'])
 
   await page.goto('./#/equipe/coach/Camille%20TESTARD')
-  await page.getByRole('button', { name: 'Modifier' }).click()
+  await page.getByRole('button', { name: 'Modifier', exact: true }).click()
   await expect(page.getByText(/Réaffecte d’abord ses 7 magasins/)).toBeVisible()
   await page.getByRole('button', { name: 'Annuler' }).click()
 
   await page.goto('./#/equipe/coach/Poste%20NORD')
-  await page.getByRole('button', { name: 'Modifier' }).click()
+  await page.getByRole('button', { name: 'Modifier', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Supprimer' }).click()
   await page.getByRole('alert').getByRole('button', { name: 'Supprimer' }).click()
   await expect(page.getByRole('heading', { name: 'Équipe', level: 1 })).toBeVisible()

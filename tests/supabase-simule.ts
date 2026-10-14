@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { affectationsFictives, coachsFictifs, recruesFictives, configRRFictive, magasinsFictifs } from './donnees-fictives'
+import { affectationsFictives, coachsFictifs, congesFictifs, evenementsFictifs, recruesFictives, visitesFictives, configRRFictive, magasinsFictifs } from './donnees-fictives'
 
 export const COMPTE = { email: 'joseph@vandb.test', motDePasse: 'bon-mot-de-passe' }
 
@@ -43,6 +43,9 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
     if (table === 'store_overrides') return route.fulfill({ json: filtrer([{ store_name: 'Nice Test', resp: 'Responsable surchargé' }, { store_name: 'Metz Test', rr: 'rr1' }]) })
     if (table === 'reassigns') return route.fulfill({ json: affectationsFictives })
     if (table === 'cs_overrides') return route.fulfill({ json: filtrer(coachsFictifs) })
+    if (table === 'visits') return route.fulfill({ json: filtrer(visitesFictives) })
+    if (table === 'leaves') return route.fulfill({ json: filtrer(congesFictifs) })
+    if (table === 'events') return route.fulfill({ json: filtrer(evenementsFictifs) })
     if (table === 'recruits') return route.fulfill({ json: filtrer(recruesFictives) })
     return route.fulfill({ json: [] })
   })

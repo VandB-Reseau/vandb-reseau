@@ -86,8 +86,41 @@ export interface Reseau {
   equipe: Coach[] // Coachs pilotant des magasins (hors techniciens)
   techniciens: Personne[]
   directeur: Personne & { titre: string }
+  visites: Visite[]
+  conges: Conge[]
+  evenements: Evenement[]
+  anniversaires: Anniversaire[]
   rrs: ResponsableRegional[]
   parametres: ParametresReseau
   jour: string
   chargeLe: string
 }
+
+export type TypeVisite = 'terrain' | 'hygiene' | 'excellence' | 'ouverture'
+export const typesVisite: { id: TypeVisite; libelle: string; couleur: string }[] = [
+  { id: 'terrain', libelle: 'Visite terrain', couleur: '#1b6fce' },
+  { id: 'hygiene', libelle: 'Audit hygiène', couleur: '#0f766e' },
+  { id: 'excellence', libelle: 'Audit excellence', couleur: '#b7791f' },
+  { id: 'ouverture', libelle: 'Accompagnement ouverture', couleur: '#ef7d00' },
+]
+export const libelleTypeVisite = (t: string) => typesVisite.find((x) => x.id === t)?.libelle ?? 'Visite'
+
+export interface Document { label: string; url: string }
+
+export interface Visite {
+  id: number | null
+  groupe: string // même valeur pour une tournée de plusieurs magasins saisie en une fois
+  magasin: string
+  date: string
+  type: string
+  visiteur: string
+  signatureRequise: boolean
+  lienSigne: string
+  dateSignature: string
+  documents: Document[]
+  notes: string
+}
+
+export interface Conge { id: number | null; personne: string; role: string; debut: string; fin: string; notes: string }
+export interface Evenement { id: number | null; titre: string; type: string; debut: string; fin: string; notes: string; couleur: string }
+export interface Anniversaire { nom: string; role: string; date: string; nature: 'naissance' | 'arrivee' }

@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
-import type { Reseau } from './modele'
+import type { Conge, Evenement, Reseau, Visite } from './modele'
 
 function json<T>(valeur: unknown, defaut: T): T {
   if (valeur === null || valeur === undefined) return defaut
@@ -12,12 +12,15 @@ export class ErreurChargement extends Error {}
 
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
-  const [config, surcharges, affectations, coachs, recrues] = await Promise.all([
+  const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements] = await Promise.all([
     supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('store,cs,date,note,type').order('date'),
     supabase.from('cs_overrides').select('*'),
     supabase.from('recruits').select('*'),
+    supabase.from('visits').select('*').order('visit_date', { ascending: false }),
+    supabase.from('leaves').select('*').order('start_date'),
+    supabase.from('events').select('*').order('start_date'),
   ])
   const erreur = config.error ?? surcharges.error ?? affectations.error ?? coachs.error
   if (erreur) throw new ErreurChargement(erreur.message)
@@ -40,7 +43,32 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
       poidsRenforce: params.poidsRenforce === undefined ? 2 : Number(params.poidsRenforce),
     },
   }
-  return construireReseau(brutes, jour)
+  const reseau = construireReseau(brutes, jour)
+  // Tables facultatives : absentes ou vides, l'app fonctionne quand même
+  type L = Record<string, unknown>
+  const t = (v: unknown) => (v === null || v === undefined ? '' : String(v))
+  reseau.visites = ((visites.error ? [] : visites.data) as L[]).map((v) => ({
+    id: Number(v.id) || null, groupe: t(v.group_id), magasin: t(v.store), date: t(v.visit_date).slice(0, 10), type: t(v.type) || 'terrain',
+    visiteur: t(v.visitor), signatureRequise: !!v.signed_required, lienSigne: t(v.signed_url), dateSignature: t(v.signed_date).slice(0, 10),
+    documents: Array.isArray(v.docs) ? (v.docs as { label?: string; url?: string }[]).map((d) => ({ label: t(d.label), url: t(d.url) })) : [], notes: t(v.notes),
+  }))
+  reseau.conges = ((conges.error ? [] : conges.data) as L[]).map((c) => ({
+    id: Number(c.id) || null, personne: t(c.person), role: t(c.role) || 'cs', debut: t(c.start_date).slice(0, 10), fin: t(c.end_date).slice(0, 10) || t(c.start_date).slice(0, 10), notes: t(c.notes),
+  }))
+  reseau.evenements = ((evenements.error ? [] : evenements.data) as L[]).map((e) => ({
+    id: Number(e.id) || null, titre: t(e.title), type: t(e.type) || 'event', debut: t(e.start_date).slice(0, 10), fin: t(e.end_date).slice(0, 10) || t(e.start_date).slice(0, 10), notes: t(e.notes), couleur: t(e.color) || '#7c3aed',
+  }))
+  // Anniversaires : naissance (fiches Coach et RR) et arrivée (recrues)
+  const ann: Reseau['anniversaires'] = []
+  for (const c of coachs.data ?? []) if (c.birth && !c.tech) ann.push({ nom: c.cs_name, role: 'Coach', date: t(c.birth).slice(0, 10), nature: 'naissance' })
+  const cfgRR = json<{ drs?: { name: string; birth?: string; entry?: string }[] }>(cle('drs_data'), {})
+  for (const r of cfgRR.drs ?? []) {
+    if (r.birth) ann.push({ nom: r.name, role: 'Responsable Régional', date: r.birth.slice(0, 10), nature: 'naissance' })
+    if (r.entry) ann.push({ nom: r.name, role: 'Responsable Régional', date: r.entry.slice(0, 10), nature: 'arrivee' })
+  }
+  for (const r of recrues.error ? [] : recrues.data ?? []) if (r.start && !reseau.equipe.find((c) => c.nom === r.name)?.fictif) ann.push({ nom: r.name, role: 'Coach', date: t(r.start).slice(0, 10), nature: 'arrivee' })
+  reseau.anniversaires = ann.filter((a) => /^\d{4}-\d{2}-\d{2}$/.test(a.date))
+  return reseau
 }
 
 // ── Écritures (partagées avec l'ancienne app) ──
@@ -243,3 +271,30 @@ export async function supprimerMagasin(nom: string) {
     if (r.error) throw new ErreurEnregistrement(r.error.message)
   }
 }
+
+// ── Visites, congés, événements ──
+
+function verifier(r: { error: { message: string } | null }) { if (r.error) throw new ErreurEnregistrement(r.error.message) }
+
+export async function enregistrerVisites(base: Omit<Visite, 'magasin' | 'id'>, magasins: string[], id: number | null) {
+  const ligne = (magasin: string) => ({
+    group_id: base.groupe || null, store: magasin, visit_date: base.date, type: base.type, visitor: base.visiteur || null,
+    signed_required: base.signatureRequise, signed_url: base.lienSigne || null, signed_date: base.dateSignature || null,
+    docs: base.documents.filter((d) => d.url.trim()), notes: base.notes || null,
+  })
+  if (id !== null) verifier(await supabase.from('visits').update(ligne(magasins[0])).eq('id', id))
+  else verifier(await supabase.from('visits').insert(magasins.map(ligne)))
+}
+export async function supprimerVisite(id: number) { verifier(await supabase.from('visits').delete().eq('id', id)) }
+
+export async function enregistrerConge(c: Conge) {
+  const l = { person: c.personne, role: c.role, start_date: c.debut, end_date: c.fin, notes: c.notes || null }
+  verifier(c.id !== null ? await supabase.from('leaves').update(l).eq('id', c.id) : await supabase.from('leaves').insert(l))
+}
+export async function supprimerConge(id: number) { verifier(await supabase.from('leaves').delete().eq('id', id)) }
+
+export async function enregistrerEvenement(e: Evenement) {
+  const l = { title: e.titre, type: e.type, start_date: e.debut, end_date: e.fin || null, notes: e.notes || null, color: e.couleur }
+  verifier(e.id !== null ? await supabase.from('events').update(l).eq('id', e.id) : await supabase.from('events').insert(l))
+}
+export async function supprimerEvenement(id: number) { verifier(await supabase.from('events').delete().eq('id', id)) }
