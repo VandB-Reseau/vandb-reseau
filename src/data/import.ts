@@ -24,6 +24,7 @@ function critereDe(entete: string): IdCritere | null {
 
 function noteDe(v: unknown): Note | null {
   const n = normaliser(v)
+  if (['nc', 'n c', 'na', 'n a', 'non concerne', 'sans objet'].includes(n)) return 0
   if (['1', 'faible', 'f', 'bas'].includes(n)) return 1
   if (['2', 'moyen', 'm', 'moyenne'].includes(n)) return 2
   if (['3', 'fort', 'eleve', 'bon'].includes(n)) return 3
@@ -81,7 +82,7 @@ export function analyser(lignes: unknown[][], reseau: Reseau): ResultatImport | 
     if (!nom) { if (normaliser(l[iMag])) inconnus.push(String(l[iMag]).trim()); continue }
     for (const [i, col] of colonnes) {
       if (!normaliser(l[i])) continue
-      if ('id' in col) { const n = noteDe(l[i]); if (n) (notes[nom] ??= {})[col.id] = n; else illisibles++ }
+      if ('id' in col) { const n = noteDe(l[i]); if (n !== null) (notes[nom] ??= {})[col.id] = n; else illisibles++ }
       else { const o = optionDe(col.t, l[i]); if (o) deploiements.push({ magasin: nom, thematique: col.t.id, etat: o }); else illisibles++ }
     }
   }

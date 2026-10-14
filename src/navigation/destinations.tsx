@@ -8,7 +8,6 @@ import EventNote from '@mui/icons-material/EventNote'
 import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
 import Groups from '@mui/icons-material/Groups'
 import MoreHoriz from '@mui/icons-material/MoreHoriz'
-import MapOutlined from '@mui/icons-material/MapOutlined'
 import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined'
 import MonitorHeartOutlined from '@mui/icons-material/MonitorHeartOutlined'
 import TimelineOutlined from '@mui/icons-material/TimelineOutlined'
@@ -33,7 +32,6 @@ export const principales: Destination[] = [
 
 // Destinations secondaires : écran « Plus » sur téléphone, section « Pilotage » du menu sur PC
 export const secondaires: Destination[] = [
-  { chemin: '/plus/carte', libelle: 'Carte', description: 'Tous les magasins sur la carte, par Responsable Régional', icone: <MapOutlined />, sprint: 'Sprint 1' },
   { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Ouvertures, anniversaires, événements et congés', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
   { chemin: '/plus/sante', libelle: 'Santé du parc', description: 'Nine box des magasins et suivi des déploiements', icone: <MonitorHeartOutlined />, sprint: 'Sprint 4' },
   { chemin: '/plus/evolution', libelle: 'Évolution du réseau', description: 'Ouvertures par année fiscale', icone: <TimelineOutlined />, sprint: 'Sprint 4' },

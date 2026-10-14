@@ -49,7 +49,7 @@ export function useSaisieSante(reseau: Reseau, signaler: (m: string) => void): S
     const r = ref.current
     for (const magasin of magasins) {
       const notes = { ...(r.evaluations[magasin]?.notes ?? {}) }
-      if (note) notes[critere] = note
+      if (note !== null) notes[critere] = note
       else delete notes[critere]
       const e: Evaluation = { notes, date: r.jour, par: r.directeur.nom }
       r.evaluations[magasin] = { ...r.evaluations[magasin], ...e }
@@ -73,7 +73,7 @@ export function useSaisieSante(reseau: Reseau, signaler: (m: string) => void): S
   return { noter, deployer, version }
 }
 
-const couleurNote: Record<Note, 'error' | 'warning' | 'success'> = { 1: 'error', 2: 'warning', 3: 'success' }
+const couleurNote: Record<Note, 'error' | 'warning' | 'success' | 'info'> = { 0: 'info', 1: 'error', 2: 'warning', 3: 'success' }
 
 const styleGroupe = (compact?: boolean) => ({
   flexWrap: 'nowrap' as const,
@@ -87,10 +87,10 @@ const styleGroupe = (compact?: boolean) => ({
 export const BoutonsNote = memo(function BoutonsNote({ libelle, valeur, onChange, compact }: { libelle: string; valeur: Note | undefined; onChange: (n: Note | null) => void; compact?: boolean }) {
   return (
     <ToggleButtonGroup exclusive size="small" value={valeur ?? null} onChange={(_e, v) => onChange(v ?? null)} aria-label={libelle} sx={styleGroupe(compact)}>
-      {([1, 2, 3] as Note[]).map((n) => (
+      {([1, 2, 3, 0] as Note[]).map((n) => (
         <ToggleButton key={n} value={n} aria-label={`${libelleNote[n]} : ${libelle}`}
           sx={{ '&.Mui-selected, &.Mui-selected:hover': { bgcolor: `${couleurNote[n]}.main`, color: `${couleurNote[n]}.contrastText`, fontWeight: 700 } }}>
-          {libelleNote[n]}
+          {n === 0 && compact ? 'N/C' : libelleNote[n]}
         </ToggleButton>
       ))}
     </ToggleButtonGroup>
