@@ -38,10 +38,17 @@ export const configRRFictive = {
     { cs: 'Hugo FICTIF', dr: 'rr1', date: '2018-01-01' },
     { cs: 'Inès EXEMPLE', dr: 'rr2', date: '2018-01-01' },
     { cs: 'Noé MODELE', dr: 'rr2', date: '2018-01-01' },
+    { cs: 'Poste NORD', dr: 'rr1', date: '2026-01-01' },
   ],
 }
 
 export const coachsFictifs = [
-  { cs_name: 'Camille TESTARD', tel: '+33 6 22 22 22 22', email: 'camille@exemple.test', tech: false },
+  { cs_name: 'Camille TESTARD', tel: '+33 6 22 22 22 22', email: 'camille@exemple.test', tech: false, lat: 45.7, lon: 4.8 },
+  { cs_name: 'Hugo FICTIF', lat: 47.2, lon: -1.5 },
+  { cs_name: 'Inès EXEMPLE', lat: 44.8, lon: -0.6 },
+  { cs_name: 'Noé MODELE', lat: 43.6, lon: 1.4 },
+  { cs_name: 'Poste NORD', fictif: true, ville: 'Lille' },
   { cs_name: 'Tom TECHNICIEN', tech: true },
 ]
+
+export const recruesFictives = [{ id: 1, name: 'Zoé ARRIVEE', start: '2099-03-01', ville: 'Dijon', lat: 47.3, lon: 5.0 }]

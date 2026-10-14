@@ -13,8 +13,9 @@ export interface SurchargeMagasin extends Partial<Record<keyof MagasinBrut, unkn
 export interface AffectationBrute { store: string; cs: string; date: string; note?: string; type?: string }
 export interface RRBrut { id: string; name: string; tel?: string; email?: string; color?: string; role?: string }
 export interface ConfigRR { drs?: RRBrut[]; cs_dr?: Record<string, string>; dr_assigns?: { cs: string; dr: string; date: string }[] }
-export interface SurchargeCoach { cs_name: string; tel?: string; email?: string; tech?: boolean }
-export interface Parametres { prepDuration: number; postDuration: number; maxUnits?: number; alertThreshold?: number }
+export interface SurchargeCoach { cs_name: string; tel?: string; email?: string; tech?: boolean; fictif?: boolean; ville?: string; lat?: number | null; lon?: number | null }
+export interface RecrueBrute { name: string; start?: string | null; post?: string | null; ville?: string; lat?: number | null; lon?: number | null; fictif?: boolean }
+export interface Parametres { prepDuration: number; postDuration: number; maxUnits?: number; alertThreshold?: number; poidsOuvert?: number; poidsRenforce?: number }
 
 export interface DonneesBrutes {
   magasins: MagasinBrut[]
@@ -23,6 +24,7 @@ export interface DonneesBrutes {
   affectations: AffectationBrute[]
   configRR: ConfigRR
   coachs: SurchargeCoach[]
+  recrues?: RecrueBrute[]
   parametres: Parametres
 }
 
@@ -87,6 +89,8 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
   const techniciens: Personne[] = d.coachs.filter((c) => c.tech).map((c) => ({ nom: c.cs_name, telephone: c.tel || undefined, email: c.email || undefined }))
   const ajouterCoach = (nom: string) => { if (nom && !coachs[nom]) coachs[nom] = { nom } }
   d.affectations.forEach((a) => ajouterCoach(a.cs))
+  const recrues = d.recrues ?? []
+  recrues.forEach((r) => ajouterCoach(r.name))
   d.coachs.forEach((c) => {
     if (c.tech) return
     ajouterCoach(c.cs_name)
@@ -131,6 +135,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       rr,
       rrEnDirect: !!rrDirect && !rrDirect.integres,
       responsable: personne(v('resp'), v('tel_resp'), v('email_resp')),
+      responsableARecruter: /recrutement/i.test(texte(v('resp'))),
       adjoint: personne(v('adj'), v('tel_adj')),
       lat, lon,
       historiqueCoach: historique,
@@ -142,17 +147,26 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
   const nomsTech = new Set(techniciens.map((t) => t.nom))
   const equipe: Coach[] = Object.values(coachs)
     .filter((c) => !nomsTech.has(c.nom))
-    .map((c) => ({
+    .map((c) => {
+      const ov = d.coachs.find((x) => x.cs_name === c.nom)
+      const rec = recrues.find((x) => x.name === c.nom)
+      const [lat, lon] = coordonnees(ov?.lat ?? rec?.lat, ov?.lon ?? rec?.lon)
+      return {
       ...c,
+      fictif: !!(ov?.fictif || rec?.fictif),
+      arrivee: texte(rec?.start).slice(0, 10),
+      ville: texte(ov?.ville) || texte(rec?.ville),
+      lat, lon,
       rr: rrDuCoach(c.nom),
       historiqueRR: (d.configRR.dr_assigns ?? []).filter((a) => a.cs === c.nom).sort((a, b) => a.date.localeCompare(b.date))
         .map((a) => ({ rr: rrParId.get(a.dr) ?? null, date: a.date })),
-    }))
+    }})
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
 
   const parametres = {
     prepDuration: d.parametres.prepDuration, postDuration: d.parametres.postDuration,
     maxUnits: d.parametres.maxUnits || 8, alertThreshold: d.parametres.alertThreshold || 7,
+    poidsOuvert: d.parametres.poidsOuvert ?? 1, poidsRenforce: d.parametres.poidsRenforce ?? 2,
   }
   return { magasins, coachs, equipe, techniciens, rrs, parametres, jour, chargeLe: new Date().toISOString() }
 }

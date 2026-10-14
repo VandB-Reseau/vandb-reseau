@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { COMPTE, seConnecter, simulerSupabase, textesTropPetits } from './supabase-simule'
 
 const principales = ['Magasins', 'Visites', 'Équipe']
-const secondaires = ['Carte', 'Agenda', 'Plan de charge', 'Santé du parc', 'Évolution du réseau', 'Direction']
+const secondaires = ['Carte', 'Agenda', 'Santé du parc', 'Évolution du réseau', 'Direction']
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []

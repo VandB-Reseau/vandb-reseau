@@ -16,8 +16,9 @@ export function ReseauProvider({ children }: { children: ReactNode }) {
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState(false)
 
+  // Le premier chargement affiche un squelette ; les suivants (après un enregistrement) se font en arrière-plan
   const recharger = useCallback(() => {
-    setChargement(true)
+    setReseau((r) => { if (!r) setChargement(true); return r })
     setErreur(false)
     chargerReseau()
       .then(setReseau)

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -18,6 +18,9 @@ import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
+import { ReaffecterDialog } from '../components/ReaffecterDialog'
+import Snackbar from '@mui/material/Snackbar'
+import SwapHoriz from '@mui/icons-material/SwapHoriz'
 import { EmptyState } from '../components/EmptyState'
 import { PastilleStatut, PastilleType } from '../components/Pastilles'
 import { dateCourte, dateLongue, lienCoach, telLien } from '../lib/format'
@@ -64,6 +67,8 @@ export function Contact({ role, p, sousTitre, lien }: { role: string; p: Personn
 
 function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const naviguer = useNavigate()
+  const [reaffectation, setReaffectation] = useState(false)
+  const [confirmation, setConfirmation] = useState('')
   const coach = m.coach ? reseau.coachs[m.coach] ?? { nom: m.coach } : null
   const adresseComplete = [m.adresse || [m.codePostal, m.ville].filter(Boolean).join(' '), m.pays].filter(Boolean).join(', ')
   const lienPlan = adresseComplete ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`V and B ${m.nom} ${adresseComplete}`)}` : null
@@ -80,7 +85,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
       </Typography>
 
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-        <Section titre="Équipe">
+        <Section titre="Équipe" action={<Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button>}>
           <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
           <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
           <Contact role="Responsable magasin" p={m.responsable} />
@@ -126,6 +131,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           </Box>
         </Section>
       </Box>
+      {reaffectation && <ReaffecterDialog reseau={reseau} magasin={m} ouvert onFermer={(fait) => { setReaffectation(false); if (fait) setConfirmation(`${m.nom} est confié à ${fait}.`) }} />}
+      <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
     </>
   )
 }

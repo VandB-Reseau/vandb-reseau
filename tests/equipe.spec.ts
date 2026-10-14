@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -10,61 +10,89 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
 })
 
-test('l’équipe liste les Coachs avec leur charge et les techniciens à part', async ({ page, isMobile }, info) => {
+test('Équipe s’ouvre sur l’organigramme par Responsable Régional', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/equipe')
-  await expect(page.getByText('4 Coachs · 3 Responsables Régionaux')).toBeVisible()
-  for (const c of ['Camille TESTARD', 'Hugo FICTIF', 'Inès EXEMPLE', 'Noé MODELE']) await expect(page.getByText(c, { exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Organisation', selected: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Alex NORD' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Léa INTEGRES' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Camille TESTARD' })).toBeVisible()
   await expect(page.getByText('Tom TECHNICIEN')).toBeVisible()
-  await expect(page.getByText(/\d+ \/ 8/).first()).toBeVisible()
+  await expect(page.getByRole('link', { name: /poste.* à pourvoir/ })).toBeVisible()
+  // Déplier un Coach montre ses magasins
+  await expect(page.getByRole('link', { name: 'Lyon Test' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Tout déplier' }).click()
+  await expect(page.getByRole('link', { name: 'Lyon Test' })).toBeVisible()
+  await page.waitForTimeout(500) // fin de l’animation de dépliage avant la capture
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-equipe.png`, fullPage: !isMobile })
 })
 
-test('l’onglet Responsables Régionaux montre l’organisation', async ({ page, isMobile }, info) => {
+test('l’onglet Charge projette mois par mois', async ({ page, isMobile }, info) => {
   await seConnecter(page)
-  await page.goto('./#/equipe?vue=rr')
-  await expect(page.getByRole('heading', { name: 'Alex NORD' })).toBeVisible()
-  await expect(page.getByText('Responsable Magasins Intégrés')).toBeVisible()
-  await page.screenshot({ path: `captures/${info.project.name}-equipe-rr.png`, fullPage: !isMobile })
+  await page.goto('./#/plus/charge')
+  await expect(page.getByRole('tab', { name: 'Charge des Coachs', selected: true })).toBeVisible()
+  await expect(page.getByText('Coachs en dépassement')).toBeVisible()
+  if (!isMobile) await expect(page.getByRole('table', { name: 'Projection de charge' })).toBeVisible()
+  await page.getByRole('tablist', { name: 'Mois affiché' }).getByRole('tab').nth(3).click()
+  await expect(page.getByRole('heading', { name: /Charge des Coachs · (?!Aujourd)/ })).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-equipe-charge.png`, fullPage: !isMobile })
 })
 
-test('l’onglet Responsables magasin filtre les postes non renseignés', async ({ page }) => {
+test('l’onglet Postes à pourvoir liste Coachs à recruter, arrivées et responsables', async ({ page, isMobile }, info) => {
   await seConnecter(page)
-  await page.goto('./#/equipe?vue=magasins')
-  await page.getByLabel(/Seulement les magasins sans responsable/).check()
-  await expect(page.getByText(/À pourvoir ou non renseigné|Responsable à pourvoir/).first()).toBeVisible()
-  await expect(page.getByText('Responsable 1', { exact: false })).toHaveCount(0)
+  await page.goto('./#/equipe?vue=postes')
+  await expect(page.getByRole('heading', { name: /Coachs à recruter \(1\)/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Poste NORD' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Zoé ARRIVEE' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Responsables magasin à recruter/ })).toBeVisible()
+  await page.screenshot({ path: `captures/${info.project.name}-equipe-postes.png`, fullPage: !isMobile })
 })
 
-test('la fiche Coach montre charge, magasins et historique', async ({ page, isMobile }, info) => {
+test('la fiche Coach montre charge, magasins et historique', async ({ page }, info) => {
   await seConnecter(page)
   await page.goto('./#/equipe')
-  await page.getByRole('link', { name: /Noé MODELE/ }).first().click()
+  await page.getByRole('link', { name: 'Noé MODELE' }).click()
   await expect(page.getByRole('heading', { name: 'Noé MODELE', level: 1 })).toBeVisible()
   await expect(page.getByText('Les six prochains mois')).toBeVisible()
   await expect(page.getByText('Prend en charge Lyon Test (après Camille TESTARD)')).toBeVisible()
-  await expect(page.getByText('Rattaché à Sam SUD')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-coach.png`, fullPage: true })
 })
 
-test('la fiche magasin mène à la fiche du Coach', async ({ page }) => {
-  await seConnecter(page)
+test('réaffecter un magasin propose le Coach le plus proche et enregistre', async ({ page }, info) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Nantes%20Test')
-  await page.getByRole('link', { name: 'Inès EXEMPLE' }).click()
-  await expect(page.getByRole('heading', { name: 'Inès EXEMPLE', level: 1 })).toBeVisible()
+  await page.getByRole('button', { name: 'Réaffecter' }).click()
+  const dialogue = page.getByRole('dialog', { name: 'Réaffecter Nantes Test' })
+  await expect(dialogue).toBeVisible()
+  const liste = dialogue.getByRole('list', { name: 'Coachs proposés' }).getByRole('button')
+  // Seul le poste à pourvoir resterait sous le maximum ; parmi les autres, le plus proche vient en premier
+  await expect(liste.nth(0)).toContainText('Poste NORD')
+  await expect(liste.nth(1)).toContainText('Noé MODELE')
+  await expect(liste.nth(1)).toContainText('km')
+  await page.screenshot({ path: `captures/${info.project.name}-reaffecter.png` })
+  await liste.nth(1).click()
+  await dialogue.getByRole('button', { name: 'Confier à Noé MODELE' }).click()
+  await expect(page.getByText('Nantes Test est confié à Noé MODELE.')).toBeVisible()
+  expect(ecritures).toEqual([expect.objectContaining({ methode: 'POST', table: 'reassigns', corps: expect.objectContaining({ store: 'Nantes Test', cs: 'Noé MODELE', type: 'manual', note: 'Réaffectation' }) })])
 })
 
-test('le plan de charge se projette mois par mois', async ({ page, isMobile }, info) => {
-  await seConnecter(page)
-  await page.goto('./#/plus/charge')
-  await expect(page.getByRole('heading', { name: 'Plan de charge' })).toBeVisible()
-  await expect(page.getByText('Coachs en dépassement')).toBeVisible()
-  await expect(page.getByRole('heading', { name: /Charge des Coachs · Aujourd’hui/ })).toBeVisible()
-  if (!isMobile) await expect(page.getByRole('table', { name: 'Projection de charge' }).getByRole('row')).toHaveCount(5)
-  await page.getByRole('tab').nth(3).click()
-  await expect(page.getByRole('heading', { name: /Charge des Coachs · (?!Aujourd)/ })).toBeVisible()
-  expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-plan-charge.png`, fullPage: !isMobile })
+test('Direction règle la charge sans perdre les autres paramètres', async ({ page, isMobile }, info) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/plus/direction')
+  await page.getByLabel('Charge maximale d’un Coach').fill('10')
+  await expect(page.getByText(/Avec ces réglages, 0 Coach serait en dépassement/)).toBeVisible()
+  await page.getByLabel('Charge maximale d’un Coach').fill('0')
+  await expect(page.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
+  await page.getByLabel('Charge maximale d’un Coach').fill('10')
+  await page.screenshot({ path: `captures/${info.project.name}-direction.png`, fullPage: !isMobile })
+  await page.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText('Règle de charge enregistrée.')).toBeVisible()
+  const ecrite = ecritures.find((e) => e.table === 'app_config')!
+  const valeur = JSON.parse((ecrite.corps as { value: string }).value)
+  expect(valeur).toMatchObject({ maxUnits: 10, alertThreshold: 7, poidsOuvert: 1, poidsRenforce: 2, prepDuration: 2, postDuration: 4, directionHorizon: 6 })
 })

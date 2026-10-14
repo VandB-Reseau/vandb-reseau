@@ -17,8 +17,6 @@ import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import BalanceOutlined from '@mui/icons-material/BalanceOutlined'
-import { PageHeader } from '../components/PageHeader'
-import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { JaugeCharge, PastilleCharge, aideCharge } from '../components/Charge'
 import { chargeA, coachA, libelleMois, moisAVenir, niveauCharge } from '../data/charge'
@@ -26,7 +24,7 @@ import { statutA } from '../data/construction'
 import { lienCoach, lienFiche } from '../lib/format'
 import type { Reseau } from '../data/modele'
 
-function Contenu({ reseau }: { reseau: Reseau }) {
+export function VueCharge({ reseau }: { reseau: Reseau }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   // Colonne 0 = aujourd'hui, puis le 1er de chacun des 11 mois suivants
@@ -113,21 +111,9 @@ function Contenu({ reseau }: { reseau: Reseau }) {
         </>
       )}
       <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 3 }}>
-        Pour réaffecter un magasin, utilise encore l’ancienne application. La réaffectation arrive dans un prochain sprint.
+        Pour réaffecter un magasin, ouvre sa fiche et choisis « Réaffecter ». La règle de charge se règle dans Direction.
       </Typography>
     </>
   )
 }
 
-export function PlanCharge() {
-  return (
-    <AvecReseau>
-      {(reseau) => (
-        <>
-          <PageHeader titre="Plan de charge" sousTitre={`Charge maximale d’un Coach : ${reseau.parametres.maxUnits} unités, seuil d’attention à ${reseau.parametres.alertThreshold}`} />
-          <Contenu reseau={reseau} />
-        </>
-      )}
-    </AvecReseau>
-  )
-}

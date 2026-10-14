@@ -53,6 +53,7 @@ export interface Magasin {
   rr: ResponsableRegional | null
   rrEnDirect: boolean
   responsable: Personne | null
+  responsableARecruter: boolean // poste de responsable magasin en recrutement
   adjoint: Personne | null
   lat: number | null
   lon: number | null
@@ -61,6 +62,11 @@ export interface Magasin {
 
 export interface Coach extends Personne {
   rr: ResponsableRegional | null
+  fictif: boolean // poste prévu, Coach pas encore recruté
+  arrivee: string // date d'arrivée prévue ou réelle (AAAA-MM-JJ), vide si inconnue
+  ville: string
+  lat: number | null
+  lon: number | null
   // Rattachements successifs au Responsable Régional
   historiqueRR: { rr: ResponsableRegional | null; date: string }[]
 }
@@ -70,6 +76,8 @@ export interface ParametresReseau {
   postDuration: number // mois d'accompagnement renforcé après ouverture
   maxUnits: number // charge maximale d'un Coach
   alertThreshold: number // seuil d'attention
+  poidsOuvert: number // unités pour un magasin ouvert
+  poidsRenforce: number // unités pour un magasin en pré-ouverture ou ouvert depuis peu
 }
 
 export interface Reseau {
