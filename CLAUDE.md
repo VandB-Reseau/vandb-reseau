@@ -9,6 +9,7 @@ React 19 + TypeScript + MUI 9 (thème `src/theme/theme.ts`), react-router (HashR
 - Français partout dans l'interface. Vocabulaire : Coach, RR / Responsable Régional, Directeur de réseau, magasin, Franchisé (remplace « Responsable magasin » depuis le 14/10/2026 ; « Responsable du magasin » seulement pour un magasin intégré). Plus d'adjoint ni de plateforme logistique à l'écran (données conservées en base). Pas d'abréviation non expliquée, jamais « CS » ni « DR ».
 - Aucun texte sous 12 px, zones tactiles ≥ 48 px sur téléphone (vérifié par les tests).
 - Icônes `@mui/icons-material` uniquement, pas d'emojis.
+- Pas de texte d'explication de l'outil dans l'interface (choix de Joseph, 14/10/2026) : ni mode d'emploi, ni « clique sur… ».
 - Aucune erreur technique à l'écran : messages humains, états vides qui expliquent et proposent l'action.
 - Aucune ressource externe bloquante (polices et icônes embarquées).
 - PC = usage principal (menu latéral, tableaux complets) ; téléphone soigné (barre basse).

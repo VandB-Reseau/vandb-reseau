@@ -3,6 +3,7 @@ import { memo, useCallback, useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
+import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -36,7 +37,6 @@ import { alpha, useTheme } from '@mui/material/styles'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined'
 import ArrowForwardOutlined from '@mui/icons-material/ArrowForwardOutlined'
-import ArrowUpwardOutlined from '@mui/icons-material/ArrowUpwardOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import EventRepeatOutlined from '@mui/icons-material/EventRepeatOutlined'
@@ -70,12 +70,12 @@ function useFiltres(reseau: Reseau) {
   // Propositions : les magasins, rangés par Coach
   const options = useMemo(() => reseau.magasins.filter((m) => m.statut !== 'avenir').map((m) => ({ nom: m.nom, coach: coachA(m, reseau.jour) }))
     .sort((a, b) => (a.coach || '~').localeCompare(b.coach || '~', 'fr') || a.nom.localeCompare(b.nom, 'fr')), [reseau])
-  const barre = (
-    <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '2fr 1fr 1fr' }, mb: 2 }}>
-      <Autocomplete freeSolo options={options} groupBy={(o) => o.coach || 'Sans Coach'} getOptionLabel={(o) => (typeof o === 'string' ? o : o.nom)}
-        inputValue={recherche} onInputChange={(_e, v) => setRecherche(v)}
-        filterOptions={(os, { inputValue }) => { const q = inputValue.toLowerCase(); return os.filter((o) => !q || o.nom.toLowerCase().includes(q) || o.coach.toLowerCase().includes(q)) }}
-        renderInput={(p) => <TextField {...p} label="Rechercher un magasin ou un Coach" />} />
+  const theme = useTheme()
+  const telephone = !useMediaQuery(theme.breakpoints.up('sm'), { noSsr: true })
+  const [deplies, setDeplies] = useState(false)
+  const actifs = (rr ? 1 : 0) + (coach ? 1 : 0)
+  const selects = (
+    <>
       <TextField select label="Responsable Régional" value={rr} onChange={(e) => setRR(e.target.value)} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
         <MenuItem value="">Tous les Responsables Régionaux</MenuItem>
         {reseau.rrs.map((r) => <MenuItem key={r.id} value={r.id}>{r.nom}</MenuItem>)}
@@ -84,6 +84,29 @@ function useFiltres(reseau: Reseau) {
         <MenuItem value="">Tous les Coachs</MenuItem>
         {coachs.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
       </TextField>
+    </>
+  )
+  const champ = (
+      <Autocomplete freeSolo options={options} groupBy={(o) => o.coach || 'Sans Coach'} getOptionLabel={(o) => (typeof o === 'string' ? o : o.nom)}
+        inputValue={recherche} onInputChange={(_e, v) => setRecherche(v)}
+        filterOptions={(os, { inputValue }) => { const q = inputValue.toLowerCase(); return os.filter((o) => !q || o.nom.toLowerCase().includes(q) || o.coach.toLowerCase().includes(q)) }}
+        renderInput={(p) => <TextField {...p} size={telephone ? 'small' : 'medium'} label="Rechercher un magasin ou un Coach" sx={telephone ? { '& .MuiInputBase-root': { minHeight: 48 } } : undefined} />} />
+  )
+  // Sur téléphone : la recherche et un bouton « Filtres » sur une ligne, les listes se déplient au besoin
+  const barre = telephone ? (
+    <Box sx={{ mb: 2 }}>
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>{champ}</Box>
+        <Badge badgeContent={actifs} color="secondary">
+          <IconButton onClick={() => setDeplies((v) => !v)} aria-label="Filtres" aria-expanded={deplies} sx={{ width: 48, height: 48, border: '1px solid', borderColor: 'divider' }}><TuneOutlined /></IconButton>
+        </Badge>
+      </Box>
+      {deplies && <Box sx={{ display: 'grid', gap: 1.5, mt: 1.5 }}>{selects}</Box>}
+    </Box>
+  ) : (
+    <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '2fr 1fr 1fr' }, mb: 2 }}>
+      {champ}
+      {selects}
     </Box>
   )
   return { magasins, barre }
@@ -119,8 +142,16 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
   return (
     <>
       {barre}
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, mb: 3 }}>
-        {tuiles.map((t) => (
+      <Box sx={{ display: 'grid', gap: { xs: 1, sm: 2 }, gridTemplateColumns: 'repeat(3, 1fr)', mb: 3 }}>
+        {tuiles.map((t) => !surPC ? (
+          <Card key={t.titre} sx={{ borderTop: `4px solid ${t.couleur}` }}>
+            <Box component={t.action ? 'button' : 'div'} type={t.action ? 'button' : undefined} onClick={t.action ? evaluer : undefined}
+              sx={{ all: 'unset', boxSizing: 'border-box', width: '100%', p: 1.5, minHeight: 48, display: 'block', textAlign: 'center', cursor: t.action ? 'pointer' : 'default' }}>
+              <Typography sx={{ fontSize: 24, fontWeight: 800, color: t.couleur, lineHeight: 1.1 }}>{t.n}</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{t.titre}</Typography>
+            </Box>
+          </Card>
+        ) : (
           <Card key={t.titre}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Box sx={{ width: 56, height: 56, borderRadius: 3, bgcolor: alpha(t.couleur, 0.12), color: t.couleur, display: 'grid', placeItems: 'center', fontSize: 24, fontWeight: 700, flexShrink: 0 }}>{t.n}</Box>
@@ -134,7 +165,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
         ))}
       </Box>
       <Card sx={{ p: { xs: 1.5, md: 3 } }}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '28px repeat(3, 1fr)' }, gap: { xs: 1.5, md: 2 } }} role="table" aria-label="Nine box">
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(3, 1fr)', md: '28px repeat(3, 1fr)' }, gap: { xs: 1, md: 2 } }} role="table" aria-label="Nine box">
           {[3, 2, 1].map((mg) => (
             <Box key={mg} sx={{ display: 'contents' }} role="row">
               <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', justifyContent: 'center' }}>
@@ -148,16 +179,16 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
                 return (
                   <Box key={c.id} role="cell" aria-label={`${c.libelle} : ${liste.length} magasin${liste.length > 1 ? 's' : ''}`}>
                     <Box component="button" type="button" onClick={() => { setOuverte(c.id); setCherche('') }} disabled={!liste.length} aria-label={`Voir les ${liste.length} magasins : ${c.libelle}`}
-                      sx={{ all: 'unset', boxSizing: 'border-box', width: '100%', height: '100%', minHeight: { md: 168 }, display: 'flex', flexDirection: 'column', gap: 1, p: 2, borderRadius: 4, cursor: liste.length ? 'pointer' : 'default',
+                      sx={{ all: 'unset', boxSizing: 'border-box', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: { xs: 0.5, md: 1 }, p: { xs: 1, md: 2 }, borderRadius: { xs: 3, md: 4 }, minHeight: { xs: 96, md: 168 }, cursor: liste.length ? 'pointer' : 'default',
                         bgcolor: liste.length ? alpha(c.couleur, 0.08 + intensite * 0.22) : 'action.hover', outline: `1px solid ${alpha(c.couleur, liste.length ? 0.45 : 0.15)}`,
                         transition: 'transform .15s, box-shadow .15s', '&:hover:not(:disabled), &:focus-visible': { transform: 'translateY(-2px)', boxShadow: 4 } }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c.couleur, flexShrink: 0 }} />
-                        <Typography sx={{ fontWeight: 700, fontSize: 15, flex: 1 }}>{c.libelle}</Typography>
+                        <Typography sx={{ fontWeight: 700, fontSize: { xs: 12, md: 15 }, flex: 1, lineHeight: 1.2 }}>{c.libelle}</Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
                         <Typography sx={{ fontSize: { xs: 32, md: 40 }, fontWeight: 800, lineHeight: 1 }}>{liste.length}</Typography>
-                        <Typography variant="body2" color="text.secondary">{liste.length ? `${pct(liste.length)} % des classés` : 'aucun magasin'}</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>{liste.length ? `${pct(liste.length)} % des classés` : 'aucun magasin'}</Typography>
                       </Box>
                       {liste.length > 0 && (
                         <Tooltip title={parCoach.map(([k, n]) => `${k || 'Sans Coach'} : ${n}`).join(' · ')}>
@@ -166,7 +197,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
                           </Box>
                         </Tooltip>
                       )}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: 'text.secondary', mt: 'auto' }}>
+                      <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.75, color: 'text.secondary', mt: 'auto' }}>
                         <EventRepeatOutlined sx={{ fontSize: 18 }} />
                         <Typography variant="body2">{c.rythme}</Typography>
                       </Box>
@@ -177,11 +208,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
             </Box>
           ))}
           <Box sx={{ display: { xs: 'none', md: 'block' } }} />
-          {niveaux.map((n) => <Typography key={n} variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' }, textAlign: 'center', fontWeight: 600, letterSpacing: 0.5 }}>Résultats {n}s</Typography>)}
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2, color: 'text.secondary', justifyContent: { md: 'center' } }}>
-          <ArrowUpwardOutlined sx={{ fontSize: 18, transform: 'rotate(45deg)' }} />
-          <Typography variant="body2">Plus on monte vers la droite, plus le magasin est solide. Clique une case pour voir ses magasins.</Typography>
+          {niveaux.map((n) => <Typography key={n} variant="body2" color="text.secondary" sx={{ textAlign: 'center', fontWeight: 600, fontSize: { xs: 12, md: 14 } }}>Résultats {n}s</Typography>)}
         </Box>
       </Card>
 
@@ -441,9 +468,6 @@ function DialogImport({ reseau, saisie, onFermer }: { reseau: Reseau; saisie: Sa
         for (const d of res!.deploiements) saisie.deployer([d.magasin], d.thematique, d.etat)
         return `${total} valeur${total > 1 ? 's' : ''} importée${total > 1 ? 's' : ''}`
       }}>
-      <Typography variant="body2" color="text.secondary">
-        Une ligne par magasin, une colonne par critère (Faible, Moyen, Fort ou 1, 2, 3) ou par thématique (par exemple Oui, Partiellement, Non). Les colonnes sont reconnues par leur titre, un export Asana convient. Les cases vides ne changent rien.
-      </Typography>
       <Button variant="outlined" component="label" startIcon={<UploadFileOutlined />} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
         {nomFichier || 'Choisir un fichier'}
         <input type="file" hidden accept=".xlsx,.csv,.txt" aria-label="Fichier à importer" onChange={(e) => choisir(e.target.files?.[0])} />
@@ -500,7 +524,6 @@ export function DialogThematiques({ reseau, onFermer }: { reseau: Reseau; onFerm
   return (
     <Fenetre large titre="Thématiques de déploiement" ouvert onFermer={onFermer} valide={valide}
       enregistrer={async () => { await enregistrerThematiques(liste.map((t) => ({ ...t, libelle: t.libelle.trim(), options: t.options.map((o) => ({ ...o, libelle: o.libelle.trim() })) }))); return 'Thématiques enregistrées' }}>
-      <Typography variant="body2" color="text.secondary">Supprimer une thématique efface aussi les états saisis pour elle dans tous les magasins.</Typography>
       {liste.map((t, i) => (
         <Card key={t.id} variant="outlined">
           <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -547,14 +570,14 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
   const classes = actifs.filter((m) => caseDe(reseau.evaluations[m.nom])).length
   // Les boutons restent en place (masqués sur la nine box) pour que le titre ne bouge pas entre onglets
   const actions = (
-    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', visibility: vue === 'ninebox' ? 'hidden' : 'visible' }} aria-hidden={vue === 'ninebox'}>
+    <Box sx={{ gap: 1, flexWrap: 'wrap', visibility: vue === 'ninebox' ? 'hidden' : 'visible', display: surPC ? 'flex' : 'none' }} aria-hidden={vue === 'ninebox'}>
       {surPC && <Button variant="outlined" startIcon={<UploadFileOutlined />} onClick={() => setImporter(true)} sx={{ minHeight: 48 }}>Importer Excel</Button>}
       <Button variant="contained" startIcon={<TuneOutlined />} onClick={() => setGestion(true)} sx={{ minHeight: 48, visibility: vue === 'deploiements' ? 'visible' : 'hidden' }} tabIndex={vue === 'deploiements' ? 0 : -1} aria-hidden={vue !== 'deploiements'}>Gérer les thématiques</Button>
     </Box>
   )
   return (
     <>
-      <PageHeader titre="Santé du parc" sousTitre={`${classes} magasin${classes > 1 ? 's' : ''} classé${classes > 1 ? 's' : ''} sur ${actifs.length} · notes saisies à la main en attendant le lien avec la BI`} actions={actions} />
+      <PageHeader titre="Santé du parc" sousTitre={`${classes} magasin${classes > 1 ? 's' : ''} classé${classes > 1 ? 's' : ''} sur ${actifs.length}`} actions={actions} />
       <Tabs value={vue} onChange={(_e, v) => aller(v)} aria-label="Rubriques de la santé du parc" variant="scrollable" sx={{ mb: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
         <Tab value="ninebox" label="Nine box" sx={{ minHeight: 48 }} />
         <Tab value="evaluer" label="Évaluer" sx={{ minHeight: 48 }} />

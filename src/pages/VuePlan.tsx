@@ -32,7 +32,7 @@ import {
   chargesAvecPlan, coachsDisponibles, coachsParRR, optionsCoach, optionsRR, plafondCharge, positionsCoachs, proposerMagasins, proposerRR,
   raisonMagasinLibelle, raisonRRLibelle, rrDuCoachA, rrsRattachables, type Plafond, type PropositionMagasin, type PropositionRR,
 } from '../data/plan'
-import { duree, VITESSE_KMH } from '../data/tournee'
+import { duree } from '../data/tournee'
 import { dateLongue, lienCoach, lienFiche } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
 import type { VueCarte } from '../components/CarteMagasins'
@@ -50,9 +50,6 @@ export function VuePlan({ reseau }: { reseau: Reseau }) {
   const dateValide = /^\d{4}-\d{2}-\d{2}$/.test(jour)
   return (
     <>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 2, maxWidth: 820 }}>
-        Choisis une date : l’app propose qui reprend les magasins sans Coach ou trop chargés, et à quel Responsable Régional rattacher les Coachs, d’après les distances et la règle de charge. Rien n’est enregistré tant que tu n’as pas validé.
-      </Typography>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 3 }}>
         <TextField type="date" label="À la date du" value={jour} onChange={(e) => setJour(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ width: { xs: '100%', sm: 220 } }} />
         <Box>
@@ -186,9 +183,6 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
             <Card sx={{ mb: 3 }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                 <Typography variant="h3" component="h2">Magasins à confier à un Coach ({propM.length})</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  Coach proposé : celui dont la tournée (domicile, magasins, retour) s’allonge le moins, sans dépasser la charge choisie ni {reseau.parametres.maxTourneeHeures} h de tournée. Temps estimés à partir des distances, à {VITESSE_KMH} km/h de moyenne.
-                </Typography>
                 <Box role="list" aria-label="Propositions pour les magasins">
                   {propM.map((p) => {
                     const sans = new Map(retenusM); sans.delete(p.magasin.nom)
@@ -231,9 +225,6 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
             <Card sx={{ mb: 3 }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                 <Typography variant="h3" component="h2">Coachs à rattacher à un Responsable Régional ({propR.length})</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  Responsable Régional proposé : celui dont la zone est la plus proche du Coach, sans dépasser {reseau.parametres.maxCoachsRR} Coachs (réglable dans Direction).
-                </Typography>
                 <Box role="list" aria-label="Propositions pour les Coachs">
                   {propR.map((p) => {
                     const sans = new Map(retenusR); sans.delete(p.coach.nom)
@@ -285,7 +276,6 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
               </Box>
             </Alert>
           )}
-          <Typography variant="body2" color="text.secondary">Les changements prennent effet à cette date et apparaissent dans l’historique de chaque magasin et de chaque Coach. Tu pourras toujours réaffecter ensuite.</Typography>
           {erreur && <Alert severity="error" sx={{ mt: 2 }}>Le plan n’a pas pu être enregistré en entier. Vérifie ta connexion et réessaie : les changements déjà passés ne seront pas doublés.</Alert>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

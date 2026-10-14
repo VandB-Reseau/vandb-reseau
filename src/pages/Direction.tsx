@@ -7,7 +7,6 @@ import CardContent from '@mui/material/CardContent'
 import Snackbar from '@mui/material/Snackbar'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import ConstructionOutlined from '@mui/icons-material/ConstructionOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { chargeA, niveauCharge } from '../data/charge'
@@ -98,10 +97,6 @@ export function Direction() {
         <>
           <PageHeader titre="Direction" sousTitre="Réglages du réseau" />
           <RegleCharge reseau={reseau} />
-          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', color: 'text.secondary', mt: 3 }}>
-            <ConstructionOutlined />
-            <Typography variant="body2">L’import et l’export Excel et la sauvegarde arrivent au sprint 5.</Typography>
-          </Box>
         </>
       )}
     </AvecReseau>

@@ -197,7 +197,6 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
             <AccountTreeOutlined color="action" />
             <Box sx={{ flex: 1, minWidth: 200 }}>
               <Typography variant="h3" component="h2">Organigramme</Typography>
-              <Typography variant="body2" color="text.secondary">Clique sur une personne pour ouvrir sa fiche. Les ajouts se font dans les onglets <Link component={RouterLink} to="/equipe?vue=collaborateurs">Collaborateurs</Link> et <Link component={RouterLink} to="/equipe?vue=franchises">Franchisés</Link>.</Typography>
             </Box>
             <ToggleButtonGroup exclusive size="small" value={forme} onChange={(_e, v) => v && changerForme(v)} aria-label="Forme de l’organigramme">
               <ToggleButton value="pyramide" sx={{ minHeight: 48, px: 2, gap: 1 }}><AccountTreeOutlined fontSize="small" />Pyramide</ToggleButton>
@@ -240,7 +239,6 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
       {reseau.techniciens.length > 0 && (
         <Box sx={{ mt: 3 }}>
           <Typography variant="h3" component="h2" sx={{ mb: 0.5 }}>Techniciens et formateurs</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>Ils accompagnent les Coachs sans piloter de magasin, ils n’ont donc pas de charge.</Typography>
           <Card>
             {reseau.techniciens.map((t) => (
               <Box key={t.nom} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, minHeight: 56, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>

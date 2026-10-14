@@ -75,6 +75,7 @@ test('magasin par magasin avec « Magasin suivant »', async ({ page, isMobile }
 })
 
 test('les thématiques se gèrent', async ({ page, isMobile }, info) => {
+  test.skip(isMobile, 'Gestion des thématiques réservée au PC')
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/plus/sante?vue=deploiements')
@@ -205,4 +206,17 @@ test('pas d’import Excel sur téléphone et plus de doublon Carte', async ({ p
   await expect(page).toHaveURL(/#\/magasins\?vue=carte/)
   await page.goto('./#/plus')
   await expect(page.getByRole('link', { name: /^Carte/ })).toHaveCount(0)
+})
+
+test('sur téléphone, la nine box apparaît sans faire défiler et les filtres se déplient', async ({ page, isMobile }, info) => {
+  test.skip(!isMobile, 'Spécifique au téléphone')
+  await seConnecter(page)
+  await page.goto('./#/plus/sante')
+  await expect(page.getByText('en attendant le lien avec la BI')).toHaveCount(0)
+  await expect(page.getByRole('combobox', { name: 'Coach', exact: true })).toHaveCount(0)
+  const caseHaut = await page.getByRole('cell', { name: /^Diagnostic marché/ }).boundingBox()
+  expect(caseHaut!.y).toBeLessThan(page.viewportSize()!.height)
+  await page.screenshot({ path: `captures/${info.project.name}-sante-ninebox.png` })
+  await page.getByRole('button', { name: 'Filtres' }).click()
+  await expect(page.getByRole('combobox', { name: 'Coach', exact: true })).toBeVisible()
 })

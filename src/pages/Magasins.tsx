@@ -9,7 +9,6 @@ import Box from '@mui/material/Box'
 import Skeleton from '@mui/material/Skeleton'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
-import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import SearchOff from '@mui/icons-material/SearchOff'
@@ -71,11 +70,6 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
             ) : (
               <ListeMagasins magasins={resultats} />
             )}
-            {vue === 'liste' && <Box sx={{ mt: 3 }}>
-              <Typography variant="caption" color="text.secondary">
-                Pour modifier ou supprimer un magasin, ouvre sa fiche et choisis « Modifier ».
-              </Typography>
-            </Box>}
           </>
         )
       }}

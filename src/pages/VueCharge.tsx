@@ -22,11 +22,11 @@ import ChevronRight from '@mui/icons-material/ChevronRight'
 import ExpandMore from '@mui/icons-material/ExpandMore'
 import AutoFixHighOutlined from '@mui/icons-material/AutoFixHighOutlined'
 import { EmptyState } from '../components/EmptyState'
-import { PastilleCharge, aideCharge } from '../components/Charge'
+import { PastilleCharge } from '../components/Charge'
 import { chargeA, coachA, magasinsDuCoach } from '../data/charge'
 import { ajouterMois, statutA } from '../data/construction'
 import { positionsCoachs } from '../data/plan'
-import { duree, tournee, VITESSE_KMH, type Tournee } from '../data/tournee'
+import { duree, tournee, type Tournee } from '../data/tournee'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
 import type { Coach, Magasin, Reseau } from '../data/modele'
 
@@ -200,10 +200,7 @@ export function VueCharge({ reseau }: { reseau: Reseau }) {
         </Box>
       )}
 
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-        Tournée complète : départ du domicile du Coach, passage par tous ses magasins dans l’ordre le plus court, retour chez lui. Kilomètres estimés à partir des distances (30 % de plus qu’à vol d’oiseau) et temps à {VITESSE_KMH} km/h de moyenne. {aideCharge}
-        {sansDomicile.length > 0 && ` * Domicile non renseigné pour ${sansDomicile.join(', ')} : la tournée part du centre de ses magasins.`}
-      </Typography>
+      {sansDomicile.length > 0 && <Alert severity="info" sx={{ mt: 2 }}>Domicile non renseigné pour {sansDomicile.join(', ')} : tournée calculée depuis le centre de ses magasins (*).</Alert>}
     </>
   )
 }
