@@ -12,8 +12,10 @@ import Typography from '@mui/material/Typography'
 import AddLinkOutlined from '@mui/icons-material/AddLinkOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import { Fenetre } from './EditionEquipe'
+import { SaisieCompteRendu } from './SaisieCompteRendu'
 import { enregistrerVisites, supprimerVisite } from '../data/chargement'
-import { typesVisite, type Document, type Reseau, type Visite } from '../data/modele'
+import { partiesVides } from '../data/compteRendu'
+import { typesVisite, type ActionPlan, type Document, type Reseau, type Visite } from '../data/modele'
 
 // Personnes qui peuvent visiter : Coachs, RR, Directeur
 export function visiteurs(reseau: Reseau): string[] {
@@ -31,6 +33,9 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], onFermer }
   const [dateSignature, setDateSignature] = useState(visite?.dateSignature ?? '')
   const [documents, setDocuments] = useState<Document[]>(visite?.documents.length ? visite.documents : [])
   const [notes, setNotes] = useState(visite?.notes ?? '')
+  const [parties, setParties] = useState<string[]>(visite?.parties ?? partiesVides())
+  const [plan, setPlan] = useState<ActionPlan[]>(visite?.plan ?? [])
+  const unSeul = magasins.length === 1
   const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date)
   const noms = reseau.magasins.map((m) => m.nom)
   return (
@@ -38,7 +43,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], onFermer }
       large titre={visite ? `Modifier la visite de ${visite.magasin}` : 'Saisir une visite'} ouvert onFermer={onFermer} valide={valide}
       enregistrer={async () => {
         const groupe = visite?.groupe || (magasins.length > 1 ? `g_${Date.now()}` : '')
-        await enregistrerVisites({ groupe, date, type, visiteur, signatureRequise, lienSigne: signatureRequise ? lienSigne.trim() : '', dateSignature: signatureRequise ? dateSignature : '', documents, notes: notes.trim() }, magasins, visite?.id ?? null)
+        await enregistrerVisites({ groupe, date, type, visiteur, signatureRequise, lienSigne: signatureRequise ? lienSigne.trim() : '', dateSignature: signatureRequise ? dateSignature : '', documents, notes: notes.trim(), parties: unSeul ? parties : partiesVides(), plan: unSeul ? plan : [] }, magasins, visite?.id ?? null)
         return visite ? 'Visite mise à jour.' : magasins.length > 1 ? `${magasins.length} visites enregistrées.` : 'Visite enregistrée.'
       }}
       supprimer={visite?.id ? async () => { await supprimerVisite(visite.id!); return 'Visite supprimée.' } : undefined}
@@ -63,9 +68,12 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], onFermer }
           {visiteurs(reseau).map((n) => <MenuItem key={n} value={n}>{n}</MenuItem>)}
         </TextField>
       </Box>
-      <TextField label="Notes de visite" value={notes} onChange={(e) => setNotes(e.target.value)} multiline minRows={4} placeholder="Points observés, actions convenues avec le franchisé…" />
+      <SaisieCompteRendu
+        reseau={reseau} visite={visite} magasin={unSeul ? magasins[0] : ''} date={date}
+        notes={notes} setNotes={setNotes} parties={parties} setParties={setParties} plan={plan} setPlan={setPlan}
+      />
       <Box>
-        <FormControlLabel control={<Switch checked={signatureRequise} onChange={(e) => setSignatureRequise(e.target.checked)} />} label="Compte rendu à faire signer" sx={{ minHeight: 48 }} />
+        <FormControlLabel control={<Switch checked={signatureRequise} onChange={(e) => setSignatureRequise(e.target.checked)} />} label="Visite contractuelle, à faire signer" sx={{ minHeight: 48 }} />
         <Collapse in={signatureRequise}>
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr' }, mt: 1 }}>
             <TextField label="Lien du compte rendu signé (Drive)" value={lienSigne} onChange={(e) => setLienSigne(e.target.value)} placeholder="https://drive.google.com/…" />

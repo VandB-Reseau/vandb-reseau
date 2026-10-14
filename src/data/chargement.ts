@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { thematiquesParDefaut, type Deploiements, type Evaluation, type Evaluations, type Thematique } from './sante'
 import type { Conge, Evenement, Reseau, Visite } from './modele'
+import { normaliserParties, normaliserPlan } from './compteRendu'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 
 function json<T>(valeur: unknown, defaut: T): T {
@@ -59,6 +60,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
     id: Number(v.id) || null, groupe: t(v.group_id), magasin: t(v.store), date: t(v.visit_date).slice(0, 10), type: t(v.type) || 'terrain',
     visiteur: t(v.visitor), signatureRequise: !!v.signed_required, lienSigne: t(v.signed_url), dateSignature: t(v.signed_date).slice(0, 10),
     documents: Array.isArray(v.docs) ? (v.docs as { label?: string; url?: string }[]).map((d) => ({ label: t(d.label), url: t(d.url) })) : [], notes: t(v.notes),
+    parties: normaliserParties(v.sections), plan: normaliserPlan(v.action_plan),
   }))
   reseau.conges = ((conges.error ? [] : conges.data) as L[]).map((c) => ({
     id: Number(c.id) || null, personne: t(c.person), role: t(c.role) || 'cs', debut: t(c.start_date).slice(0, 10), fin: t(c.end_date).slice(0, 10) || t(c.start_date).slice(0, 10), notes: t(c.notes),
@@ -359,6 +361,7 @@ export async function enregistrerVisites(base: Omit<Visite, 'magasin' | 'id'>, m
     group_id: base.groupe || null, store: magasin, visit_date: base.date, type: base.type, visitor: base.visiteur || null,
     signed_required: base.signatureRequise, signed_url: base.lienSigne || null, signed_date: base.dateSignature || null,
     docs: base.documents.filter((d) => d.url.trim()), notes: base.notes || null,
+    sections: base.parties.some((x) => x.trim()) ? base.parties.map((x) => x.trim()) : null, action_plan: base.plan.filter((a) => a.action.trim()),
   })
   if (id !== null) verifier(await supabase.from('visits').update(ligne(magasins[0])).eq('id', id))
   else verifier(await supabase.from('visits').insert(magasins.map(ligne)))
