@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type ReactElement, type ReactNode } from 'react'
 import { Link as RouterLink, Navigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -25,6 +25,8 @@ import AccountTreeOutlined from '@mui/icons-material/AccountTreeOutlined'
 import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import ExpandMore from '@mui/icons-material/ExpandMore'
+import BalanceOutlined from '@mui/icons-material/BalanceOutlined'
+import AutoFixHighOutlined from '@mui/icons-material/AutoFixHighOutlined'
 import WorkOutlineOutlined from '@mui/icons-material/WorkOutlineOutlined'
 import { VueCharge } from './VueCharge'
 import { VuePlan } from './VuePlan'
@@ -306,23 +308,32 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
   )
 }
 
+const rubriques: { vue: Vue; libelle: string; court: string; icone: ReactElement }[] = [
+  { vue: 'organisation', libelle: 'Organisation', court: 'Organisation', icone: <AccountTreeOutlined /> },
+  { vue: 'charge', libelle: 'Charge des Coachs', court: 'Charge', icone: <BalanceOutlined /> },
+  { vue: 'plan', libelle: 'Plan d’affectation', court: 'Répartition', icone: <AutoFixHighOutlined /> },
+  { vue: 'postes', libelle: 'Postes à pourvoir', court: 'Postes', icone: <WorkOutlineOutlined /> },
+]
+
 export function Equipe() {
   const [params, setParams] = useSearchParams()
   const demandee = params.get('vue')
   const vue = (demandee === 'magasins' ? 'franchises' : demandee as Vue | null) ?? 'organisation'
   // Collaborateurs et Franchisés ont rejoint la partie « Paramètres »
   if (vue === 'collaborateurs' || vue === 'franchises') return <Navigate to={`/parametres/${vue}`} replace />
+  const theme = useTheme()
+  const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const changerVue = (v: Vue) => setParams({ vue: v }, { replace: true })
   return (
     <AvecReseau>
       {(reseau) => (
         <>
           <PageHeader titre="Équipe" sousTitre={`${reseau.equipe.length} Coachs · ${reseau.rrs.length} Responsables Régionaux · ${reseau.techniciens.length} technicien${reseau.techniciens.length > 1 ? 's' : ''}`} />
-          <Tabs value={vue} onChange={(_e, v) => changerVue(v)} variant="scrollable" allowScrollButtonsMobile aria-label="Rubriques de l’équipe" sx={{ mb: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Tab value="organisation" label="Organisation" sx={{ minHeight: 48 }} />
-            <Tab value="charge" label="Charge des Coachs" sx={{ minHeight: 48 }} />
-            <Tab value="postes" label="Postes à pourvoir" sx={{ minHeight: 48 }} />
-            <Tab value="plan" label="Plan d’affectation" sx={{ minHeight: 48 }} />
+          <Tabs value={vue} onChange={(_e, v) => changerVue(v)} variant="fullWidth" aria-label="Rubriques de l’équipe" sx={{ mb: 3, borderBottom: '1px solid', borderColor: 'divider', bgcolor: { xs: 'background.paper', md: 'transparent' }, borderRadius: { xs: 2, md: 0 } }}>
+            {rubriques.map((r) => (
+              <Tab key={r.vue} value={r.vue} icon={r.icone} iconPosition={surPC ? 'start' : 'top'} aria-label={r.libelle}
+                label={surPC ? r.libelle : r.court} sx={{ minHeight: { xs: 64, md: 56 }, minWidth: 0, px: { xs: 0.5, md: 2 }, fontSize: { xs: '0.8125rem', md: '0.9375rem' } }} />
+            ))}
           </Tabs>
           {vue === 'plan' ? <VuePlan reseau={reseau} /> : vue === 'charge' ? <VueCharge reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
         </>

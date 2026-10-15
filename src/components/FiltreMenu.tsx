@@ -16,6 +16,7 @@ export function FiltreMenu({ libelle, options, choisis, onChange, unique }: { li
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const actif = choisis.length > 0 && !unique
   const resume = unique ? options.find((o) => o.valeur === choisis[0])?.libelle ?? libelle : !actif ? libelle : choisis.length === 1 ? options.find((o) => o.valeur === choisis[0])?.libelle ?? libelle : `${libelle} · ${choisis.length}`
+  const tous = options.length > 0 && options.every((o) => choisis.includes(o.valeur))
   const basculer = (v: string) => unique ? (onChange([v]), setAncre(null)) : onChange(choisis.includes(v) ? choisis.filter((x) => x !== v) : [...choisis, v])
   return (
     <>
@@ -30,6 +31,13 @@ export function FiltreMenu({ libelle, options, choisis, onChange, unique }: { li
         sx={{ height: 36, fontSize: '0.875rem', fontWeight: 500, borderRadius: 2 }}
       />
       <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} slotProps={{ paper: { sx: { maxHeight: 420, minWidth: 260 } } }}>
+        {!unique && options.length > 1 && (
+          <MenuItem onClick={() => onChange(tous ? [] : options.map((o) => o.valeur))} dense sx={{ minHeight: 44 }}>
+            <Checkbox checked={tous} indeterminate={actif && !tous} size="small" sx={{ p: 0.5, mr: 1 }} tabIndex={-1} />
+            <ListItemText primary="Tous" />
+          </MenuItem>
+        )}
+        {!unique && options.length > 1 && <Divider />}
         {options.map((o) => (
           <MenuItem key={o.valeur} onClick={() => basculer(o.valeur)} selected={unique && choisis.includes(o.valeur)} dense sx={{ minHeight: 44 }}>
             {!unique && <Checkbox checked={choisis.includes(o.valeur)} size="small" sx={{ p: 0.5, mr: 1 }} tabIndex={-1} />}

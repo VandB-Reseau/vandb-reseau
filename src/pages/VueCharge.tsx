@@ -89,7 +89,6 @@ export function VueCharge({ reseau }: { reseau: Reseau }) {
   const basculer = (n: string) => setOuverts((s) => { const t = new Set(s); if (t.has(n)) t.delete(n); else t.add(n); return t })
   const fin = ajouterMois(reseau.jour, 12)
   const max = reseau.parametres.maxUnits
-  const maxMin = reseau.parametres.maxTourneeHeures * 60
 
   const lignes: Ligne[] = useMemo(() => {
     const positions = positionsCoachs(reseau, reseau.jour)
@@ -109,13 +108,12 @@ export function VueCharge({ reseau }: { reseau: Reseau }) {
   if (!lignes.length) return <EmptyState icone={<BalanceOutlined />} titre="Aucun Coach à afficher" texte="La charge apparaîtra dès qu’un Coach aura des magasins. Ajoute un Coach dans l’onglet Organisation." />
 
   const sansDomicile = lignes.filter((l) => l.coach.lat === null).map((l) => l.coach.nom)
-  const longues = lignes.filter((l) => l.tournee.minutes > maxMin)
   const depassements = lignes.filter((l) => l.charge > max || l.chargeDans1an > max)
   const sansCoach = reseau.magasins.filter((m) => !m.rrEnDirect && statutA(m.ouverture, fin, reseau.parametres) !== 'avenir' && !coachA(m, fin) && !coachA(m, reseau.jour))
-  const aTraiter = longues.length + depassements.length + sansCoach.length > 0
+  const aTraiter = depassements.length + sansCoach.length > 0
 
   const Tour = ({ t }: { t: Tournee }) => (
-    <Typography variant="body2" component="span" sx={{ color: t.minutes > maxMin ? 'error.main' : 'text.primary', fontWeight: t.minutes > maxMin ? 700 : 400 }}>
+    <Typography variant="body2" component="span">
       {Math.round(t.km).toLocaleString('fr-FR')} km · {duree(t.minutes)}{!t.complete && ' *'}
     </Typography>
   )
@@ -125,11 +123,16 @@ export function VueCharge({ reseau }: { reseau: Reseau }) {
       {aTraiter && (
         <Alert severity="warning" sx={{ mb: 2 }} action={<Button color="inherit" component={RouterLink} to={`/equipe?vue=plan&date=${reseau.jour}`} startIcon={<AutoFixHighOutlined />} sx={{ minHeight: 48 }}>Proposer une répartition</Button>}>
           {[
-            longues.length && `${longues.length} tournée${longues.length > 1 ? 's' : ''} au-delà de ${reseau.parametres.maxTourneeHeures} h`,
             depassements.length && `${depassements.length} Coach${depassements.length > 1 ? 's' : ''} au-delà de ${max} unités maintenant ou dans l’année`,
             sansCoach.length && `${sansCoach.length} magasin${sansCoach.length > 1 ? 's' : ''} sans Coach d’ici un an`,
           ].filter(Boolean).join(' · ')}
         </Alert>
+      )}
+
+      {!aTraiter && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Button variant="outlined" component={RouterLink} to={`/equipe?vue=plan&date=${reseau.jour}`} startIcon={<AutoFixHighOutlined />} sx={{ minHeight: 48 }}>Proposer une répartition</Button>
+        </Box>
       )}
 
       {surPC ? (

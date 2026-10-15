@@ -53,8 +53,9 @@ export function CarteMagasins({ magasins, rrs, equipe = [], vue = vueDuJour, mar
     actifs.forEach((m) => { const c = vue.coachDe(m); if (c) parCoach.set(c, [...(parCoach.get(c) ?? []), m]) })
     parCoach.forEach((l, c) => res.push({ cle: `c:${c}`, nom: c, couleur: couleurCoach.get(c) ?? couleurAuto(c), magasins: l, rr: false }))
     rrs.forEach((r) => {
-      // Responsable Magasins Intégrés : rôle transverse, sa zone couvre tous les magasins intégrés
-      const l = actifs.filter((m) => (r.integres ? !m.franchise : vue.rrDe(m)?.id === r.id))
+      // Responsable Magasins Intégrés : rôle transverse, sans territoire, donc sans zone
+      if (r.integres) return
+      const l = actifs.filter((m) => vue.rrDe(m)?.id === r.id)
       if (l.length) res.push({ cle: `r:${r.id}`, nom: r.nom, couleur: r.couleur, magasins: l, rr: true })
     })
     return res.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
