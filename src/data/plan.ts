@@ -1,7 +1,7 @@
 import { chargeA, coachA, distanceKm, poids } from './charge'
 import { statutA } from './construction'
 import { centre, type Point } from './zones'
-import { tournee } from './tournee'
+import { matriceMinutes, ordre } from './tournee'
 import type { Coach, Magasin, Reseau, ResponsableRegional } from './modele'
 
 // Plan d'affectation à une date : l'app propose, le Directeur coche ce qu'il garde, puis enregistre.
@@ -45,13 +45,13 @@ export function rrDuCoachA(c: Coach, jour: string): ResponsableRegional | null {
 export const poidsA = (reseau: Reseau, m: Magasin, jour: string) => poids(reseau, statutA(m.ouverture, jour, reseau.parametres))
 
 // Charges à la date, une fois les choix du plan appliqués (magasin -> Coach)
-export function chargesAvecPlan(reseau: Reseau, jour: string, choix: Map<string, string>): Map<string, number> {
-  const ch = new Map(reseau.equipe.map((c) => [c.nom, chargeA(reseau, c.nom, jour)]))
+export function chargesAvecPlan(reseau: Reseau, jour: string, choix: Map<string, string>, calcul?: Calcul): Map<string, number> {
+  const ch = new Map(calcul ? calcul.chargesBase : reseau.equipe.map((c) => [c.nom, chargeA(reseau, c.nom, jour)]))
   for (const [nom, coach] of choix) {
-    const m = reseau.magasins.find((x) => x.nom === nom)
+    const m = calcul ? calcul.magasin.get(nom) : reseau.magasins.find((x) => x.nom === nom)
     if (!m) continue
-    const w = poidsA(reseau, m, jour)
-    const avant = coachA(m, jour)
+    const w = calcul ? calcul.poids.get(m)! : poidsA(reseau, m, jour)
+    const avant = calcul ? calcul.coachDe.get(m)! : coachA(m, jour)
     if (avant && ch.has(avant)) ch.set(avant, ch.get(avant)! - w)
     if (coach) ch.set(coach, (ch.get(coach) ?? 0) + w)
   }
@@ -71,47 +71,107 @@ export function magasinsAvecPlan(reseau: Reseau, coach: string, jour: string, ch
   return reseau.magasins.filter((m) => (choix.get(m.nom) ?? coachA(m, jour)) === coach)
 }
 
-// Durée de tournée (minutes) d'un Coach : domicile, ses magasins, retour
-export function minutesTournee(reseau: Reseau, coach: string, jour: string, choix: Map<string, string>, positions: Map<string, Point | null>): number {
-  return tournee(positions.get(coach) ?? null, magasinsAvecPlan(reseau, coach, jour, choix)).minutes
+// Contexte de calcul d'un plan à une date : Coach, poids et charge de chaque magasin, positions des Coachs,
+// durées entre points et tournées déjà calculées, gardés pour ne pas refaire les mêmes calculs des milliers de fois
+export interface Calcul {
+  jour: string
+  positions: Map<string, Point | null>
+  magasin: Map<string, Magasin>
+  coachDe: Map<Magasin, string>
+  poids: Map<Magasin, number>
+  chargesBase: Map<string, number>
+  minutes: (coach: string, choix: Map<string, string>, magasin?: string, vers?: string) => number
 }
 
-// Coachs candidats pour un magasin, classés : sous le plafond d'abord, Coachs en poste avant postes à pourvoir,
-// puis celui dont la tournée s'allonge le moins, et enfin le moins chargé
+export function creerCalcul(reseau: Reseau, jour: string): Calcul {
+  const positions = new Map(reseau.equipe.map((c) => [c.nom, positionCoach(reseau, c, jour)]))
+  const coachDe = new Map(reseau.magasins.map((m) => [m, coachA(m, jour)]))
+  const poids = new Map(reseau.magasins.map((m) => [m, poidsA(reseau, m, jour)]))
+  const chargesBase = new Map(reseau.equipe.map((c) => [c.nom, 0]))
+  const parCoach = new Map<string, number[]>()
+  reseau.magasins.forEach((m, i) => {
+    const c = coachDe.get(m)!
+    if (chargesBase.has(c)) chargesBase.set(c, chargesBase.get(c)! + poids.get(m)!)
+    if (m.lat !== null && m.lon !== null) parCoach.set(c, [...(parCoach.get(c) ?? []), i])
+  })
+  // Points : les magasins (indices 0..n-1), puis les positions des Coachs
+  const points: Point[] = reseau.magasins.map((m) => ({ lat: m.lat ?? 0, lon: m.lon ?? 0 }))
+  const indiceCoach = new Map<string, number>()
+  for (const [nom, p] of positions) if (p) { indiceCoach.set(nom, points.length); points.push(p) }
+  const dist = matriceMinutes(points)
+  const indice = new Map(reseau.magasins.map((m, i) => [m.nom, i]))
+  const deja = new Map<string, number>()
+
+  // Tournée du Coach avec les choix du plan, et éventuellement un magasin de plus confié à « vers » (vide : retiré)
+  const minutes = (coach: string, choix: Map<string, string>, magasin?: string, vers?: string) => {
+    const dep = indiceCoach.get(coach)
+    if (dep === undefined) return 0
+    const change = (nom: string) => magasin === nom || choix.has(nom)
+    const etapes = new Set((parCoach.get(coach) ?? []).filter((i) => !change(reseau.magasins[i].nom)))
+    const ajouter = (nom: string, c: string) => {
+      const i = indice.get(nom)
+      if (c === coach && i !== undefined && reseau.magasins[i].lat !== null && reseau.magasins[i].lon !== null) etapes.add(i)
+    }
+    for (const [nom, c] of choix) if (nom !== magasin) ajouter(nom, c)
+    if (magasin !== undefined) ajouter(magasin, vers ?? '')
+    if (!etapes.size) return 0
+    const liste = [...etapes].sort((a, b) => a - b)
+    const cle = `${coach}|${liste.join(',')}`
+    const connu = deja.get(cle)
+    if (connu !== undefined) return connu
+    const ids = [dep, ...liste]
+    const local = (i: number, j: number) => dist(ids[i], ids[j])
+    const chemin = ordre(liste.length, local)
+    let total = 0
+    for (let k = 1; k < chemin.length; k++) total += local(chemin[k - 1], chemin[k])
+    deja.set(cle, total)
+    return total
+  }
+  return { jour, positions, magasin: new Map(reseau.magasins.map((m) => [m.nom, m])), coachDe, poids, chargesBase, minutes }
+}
+
+// Durée de tournée (minutes) d'un Coach : domicile, ses magasins, retour
+export function minutesTournee(calcul: Calcul, coach: string, choix: Map<string, string>, magasin?: string, vers?: string): number {
+  return calcul.minutes(coach, choix, magasin, vers)
+}
+
 export function positionsCoachs(reseau: Reseau, jour: string): Map<string, Point | null> {
   return new Map(reseau.equipe.map((c) => [c.nom, positionCoach(reseau, c, jour)]))
 }
 
-export function optionsCoach(reseau: Reseau, m: Magasin, jour: string, charges: Map<string, number>, plafond: number, exclure = '', positions = positionsCoachs(reseau, jour), choix = new Map<string, string>()): OptionCoach[] {
-  const w = poidsA(reseau, m, jour)
+// Coachs candidats pour un magasin, classés : sous le plafond d'abord, Coachs en poste avant postes à pourvoir,
+// puis celui dont la tournée s'allonge le moins, et enfin le moins chargé
+export function optionsCoach(reseau: Reseau, m: Magasin, jour: string, charges: Map<string, number>, plafond: number, exclure = '', calcul = creerCalcul(reseau, jour), choix = new Map<string, string>()): OptionCoach[] {
+  const w = calcul.poids.get(m) ?? poidsA(reseau, m, jour)
+  const positions = calcul.positions
   return coachsDisponibles(reseau, jour)
     .filter((c) => c.nom !== exclure)
     .map((c) => {
       const pos = positions.get(c.nom) ?? null
       const apres = (charges.get(c.nom) ?? 0) + w
-      const sans = new Map(choix); sans.delete(m.nom)
-      const avec = new Map(sans); avec.set(m.nom, c.nom)
-      const minutesEnPlus = pos && m.lat !== null ? minutesTournee(reseau, c.nom, jour, avec, positions) - minutesTournee(reseau, c.nom, jour, sans, positions) : null
+      const minutesEnPlus = pos && m.lat !== null ? minutesTournee(calcul, c.nom, choix, m.nom, c.nom) - minutesTournee(calcul, c.nom, choix, m.nom, calcul.coachDe.get(m) ?? coachA(m, jour)) : null
       return { coach: c, distance: pos ? distanceKm(pos, m) : null, minutesEnPlus, chargeApres: apres, depasse: apres > plafond }
     })
     .sort((a, b) => Number(a.depasse) - Number(b.depasse) || Number(a.coach.fictif) - Number(b.coach.fictif) || (a.minutesEnPlus ?? 99999) - (b.minutesEnPlus ?? 99999) || a.chargeApres - b.chargeApres)
 }
 
-export function proposerMagasins(reseau: Reseau, jour: string, plafond: number): PropositionMagasin[] {
+export function proposerMagasins(reseau: Reseau, jour: string, plafond: number, calcul = creerCalcul(reseau, jour)): PropositionMagasin[] {
   const equipe = new Set(reseau.equipe.map((c) => c.nom))
   const choix = new Map<string, string>()
   const res: PropositionMagasin[] = []
-  const charges = () => chargesAvecPlan(reseau, jour, choix)
-  const positions = positionsCoachs(reseau, jour)
+  const charges = () => chargesAvecPlan(reseau, jour, choix, calcul)
+  const positions = calcul.positions
+  const coachA = (m: Magasin) => calcul.coachDe.get(m)!
+  const poidsA = (m: Magasin) => calcul.poids.get(m)!
 
   // 1) Magasins en activité ou en préparation à la date, sans Coach (hors gestion directe par un RR)
   const aPourvoir = reseau.magasins
     .filter((m) => statutA(m.ouverture, jour, reseau.parametres) !== 'avenir' && !m.rrEnDirect)
-    .map((m) => ({ m, avant: coachA(m, jour) }))
+    .map((m) => ({ m, avant: coachA(m) }))
     .filter(({ avant }) => !avant || !equipe.has(avant))
     .sort((a, b) => a.m.ouverture.localeCompare(b.m.ouverture))
   for (const { m, avant } of aPourvoir) {
-    const meilleur = optionsCoach(reseau, m, jour, charges(), plafond, avant, positions, choix)[0]
+    const meilleur = optionsCoach(reseau, m, jour, charges(), plafond, avant, calcul, choix)[0]
     if (!meilleur) continue
     choix.set(m.nom, meilleur.coach.nom)
     res.push({ magasin: m, avant, raison: avant ? 'coach-absent' : 'sans-coach', coach: meilleur.coach.nom })
@@ -120,9 +180,9 @@ export function proposerMagasins(reseau: Reseau, jour: string, plafond: number):
   // 2) Coachs au-dessus du plafond de charge : on confie, un par un, le magasin dont le transfert fait gagner
   //    le plus de temps de trajet au total, à un Coach en poste qui reste sous le plafond
   const enPoste = coachsDisponibles(reseau, jour).filter((c) => !c.fictif && positions.get(c.nom))
-  const minutes = (c: string) => minutesTournee(reseau, c, jour, choix, positions)
+  const minutes = (c: string) => minutesTournee(calcul, c, choix)
   const raisons = new Map<string, RaisonMagasin>()
-  const origine = (m: Magasin) => coachA(m, jour)
+  const origine = coachA
   const surcharges = enPoste.filter((c) => (charges().get(c.nom) ?? 0) > plafond).sort((a, b) => minutes(b.nom) - minutes(a.nom))
   for (const c of surcharges) {
     for (let garde = 0; garde < 50 && (charges().get(c.nom) ?? 0) > plafond; garde++) {
@@ -130,14 +190,12 @@ export function proposerMagasins(reseau: Reseau, jour: string, plafond: number):
       const minC = minutes(c.nom)
       let mieux: { m: Magasin; vers: string; cout: number } | null = null
       for (const m of reseau.magasins) {
-        if ((choix.get(m.nom) ?? coachA(m, jour)) !== c.nom || choix.has(m.nom) || m.lat === null) continue
-        const w = poidsA(reseau, m, jour)
-        const sansM = new Map(choix); sansM.set(m.nom, '')
-        const gain = minC - minutesTournee(reseau, c.nom, jour, sansM, positions)
+        if ((choix.get(m.nom) ?? coachA(m)) !== c.nom || choix.has(m.nom) || m.lat === null) continue
+        const w = poidsA(m)
+        const gain = minC - minutesTournee(calcul, c.nom, choix, m.nom, '')
         for (const t of enPoste) {
           if (t.nom === c.nom || (ch.get(t.nom) ?? 0) + w > plafond) continue
-          const avec = new Map(choix); avec.set(m.nom, t.nom)
-          const cout = minutesTournee(reseau, t.nom, jour, avec, positions) - minutes(t.nom) - gain
+          const cout = minutesTournee(calcul, t.nom, choix, m.nom, t.nom) - minutes(t.nom) - gain
           if (!mieux || cout < mieux.cout) mieux = { m, vers: t.nom, cout }
         }
       }
@@ -161,16 +219,14 @@ export function proposerMagasins(reseau: Reseau, jour: string, plafond: number):
       if (m.lat === null || m.rrEnDirect || statutA(m.ouverture, jour, reseau.parametres) === 'avenir') continue
       const de = choix.get(m.nom) ?? origine(m)
       if (!de || !duree.has(de) || places.has(m.nom)) continue
-      const sansM = new Map(choix); sansM.set(m.nom, '')
-      const dDe = minutesTournee(reseau, de, jour, sansM, positions)
-      const w = poidsA(reseau, m, jour)
+      const dDe = minutesTournee(calcul, de, choix, m.nom, '')
+      const w = poidsA(m)
       const proches = enPoste
         .filter((t) => t.nom !== de && (ch.get(t.nom) ?? 0) + w <= plafond)
         .sort((a, b) => (distanceKm(positions.get(a.nom)!, m) ?? 0) - (distanceKm(positions.get(b.nom)!, m) ?? 0))
         .slice(0, VOISINS)
       for (const t of proches) {
-        const avec = new Map(choix); avec.set(m.nom, t.nom)
-        const dVers = minutesTournee(reseau, t.nom, jour, avec, positions)
+        const dVers = minutesTournee(calcul, t.nom, choix, m.nom, t.nom)
         const avant = duree.get(de)! ** 2 + duree.get(t.nom)! ** 2
         const gain = avant - dDe ** 2 - dVers ** 2
         if (gain > SEUIL && (!mieux || gain > mieux.gain)) mieux = { m, de, vers: t.nom, gain, dDe, dVers }

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { choisirMois, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
-import { coachsFictifs } from './donnees-fictives'
+import { coachsFictifs, magasinsFictifs } from './donnees-fictives'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -110,4 +110,16 @@ test('le plan soulage les Coachs en dépassement avec le Coach en poste le plus 
   // Plus aucun Coach en dépassement une fois le plan appliqué
   await expect(page.getByText('Coachs en dépassement', { exact: true }).locator('..')).toContainText('→ 0')
   await page.screenshot({ path: `captures/${info.project.name}-plan-reequilibrage.png`, fullPage: true })
+})
+
+test('le plan d’affectation s’affiche rapidement sur un réseau de 280 magasins', async ({ page }) => {
+  // 280 magasins fictifs sans Coach : le plan doit les répartir entre les Coachs sans bloquer la page
+  const grand = Array.from({ length: 280 }, (_v, i) => ({
+    ...magasinsFictifs[i % magasinsFictifs.length], n: `Magasin ${i + 1}`, code: `G${i}`, open: '2020-01-15',
+    lat: 43 + ((i * 37) % 60) / 10, lon: -1 + ((i * 53) % 80) / 10,
+  }))
+  await seConnecter(page, { config: { store_adds: grand } })
+  await page.goto('./#/equipe?vue=plan')
+  await choisirMois(page, 'À partir de', 'Novembre 2026')
+  await expect(page.getByRole('heading', { name: /Magasins à confier à un Coach/ })).toBeVisible({ timeout: 8000 })
 })
