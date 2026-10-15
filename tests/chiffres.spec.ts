@@ -95,11 +95,11 @@ test('saisir les chiffres du mois pendant une visite et noter un audit', async (
   await d.getByLabel('Flux bar').fill('2100')
   await d.getByLabel('CA marché extérieur (€)').fill('3 200')
   await d.getByLabel('Marge (%)').fill('41,5')
-  // CA et flux calculés : 40 × 1 500 + 12 × 2 100
+  // CA et flux calculés : 40 × 1 500 + 12 × 2 100 + 3 200 de marché extérieur
   const calcules = d.getByRole('group', { name: 'Chiffres calculés' })
   await expect(calcules).toContainText('60 000 €')
   await expect(calcules).toContainText('25 200 €')
-  await expect(calcules).toContainText('85 200 €')
+  await expect(calcules).toContainText('88 400 €')
   await expect(calcules).toContainText('3 600')
   await calcules.scrollIntoViewIfNeeded()
   await page.screenshot({ path: `captures/${test.info().project.name}-saisie-chiffres.png` })

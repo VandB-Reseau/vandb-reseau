@@ -84,7 +84,7 @@ const moisFictifs = Array.from({ length: 24 }, (_x, i) => { const t = 2024 * 12 
 // Panier moyen HT 40 € en cave et 12 € au bar ; 70 % du CA en cave
 const ligneCA = (store: string, mois: string, ca: number) => {
   const fluxCave = (ca * 0.7) / 40, fluxBar = (ca * 0.3) / 12
-  return { store_name: store, month: `${mois}-01`, ca_ext: 1000, pm_cave: 40, flux_cave: fluxCave, pm_bar: 12, flux_bar: fluxBar, ca_cave: Math.round(ca * 0.7), ca_bar: Math.round(ca * 0.3), freq: fluxCave + fluxBar, panier: Math.round((ca / (fluxCave + fluxBar)) * 100) / 100, marge: 42, updated_at: '2026-10-05T08:00:00Z' }
+  return { store_name: store, month: `${mois}-01`, ca_ext: 0, pm_cave: 40, flux_cave: fluxCave, pm_bar: 12, flux_bar: fluxBar, ca_cave: Math.round(ca * 0.7), ca_bar: Math.round(ca * 0.3), freq: fluxCave + fluxBar, panier: Math.round((ca / (fluxCave + fluxBar)) * 100) / 100, marge: 42, updated_at: '2026-10-05T08:00:00Z' }
 }
 export const chiffresFictifs = [
   ...moisFictifs.map((m) => ligneCA('Lyon Test', m, m === '2026-09' ? 70000 : 100000)),

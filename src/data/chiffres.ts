@@ -3,7 +3,7 @@ import type { Reseau, Visite } from './modele'
 // Chiffres mensuels d'un magasin (table store_finance)
 // Saisis : CA marché extérieur, panier moyen HT et flux de la cave et du bar, marge en %
 // Calculés : CA cave et CA bar (panier × flux), flux cumulé (colonne freq), panier moyen global
-// Le CA cumulé (cave + bar, hors marché extérieur) sert à l'alerte de décrochage
+// Le CA cumulé (cave + bar + marché extérieur) sert à l'alerte de décrochage
 export interface ChiffreMois {
   magasin: string
   mois: string // AAAA-MM
@@ -78,7 +78,7 @@ export function decalerMois(m: string, n: number): string {
 // Mois précédent une date : celui dont on saisit les chiffres en début de mois
 export const moisPrecedent = (iso: string) => decalerMois(iso.slice(0, 7), -1)
 
-export const caDe = (c: ChiffreMois | undefined): number | null => (!c || (c.caCave === null && c.caBar === null) ? null : (c.caCave ?? 0) + (c.caBar ?? 0))
+export const caDe = (c: ChiffreMois | undefined): number | null => (!c || (c.caCave === null && c.caBar === null && c.caExt === null) ? null : (c.caCave ?? 0) + (c.caBar ?? 0) + (c.caExt ?? 0))
 
 export function chiffresDuMagasin(reseau: Reseau, nom: string): ChiffreMois[] {
   return reseau.chiffres[nom] ?? []

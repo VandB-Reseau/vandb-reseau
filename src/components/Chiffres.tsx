@@ -87,7 +87,7 @@ export function ChampsChiffres({ s, reseau, titre }: { s: SaisieChiffres; reseau
 function Calcules({ s }: { s: SaisieChiffres }) {
   if (s.invalides.length) return null
   const l = s.ligne()
-  const ca = caDe(l as ChiffreMois)
+  const ca = caDe({ caExt: null, caCave: null, caBar: null, ...l } as ChiffreMois)
   const lignes: [string, string][] = [
     ['CA cave', formatValeur('caCave', l.caCave ?? null)], ['CA bar', formatValeur('caBar', l.caBar ?? null)],
     ['CA cumulé', formatEuros(ca)], ['Flux cumulé', formatValeur('tickets', l.tickets ?? null)],
