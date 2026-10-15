@@ -31,7 +31,8 @@ export function RetourEnHaut() {
   useLayoutEffect(() => {
     if (precedent.current === ecran) return
     precedent.current = ecran
-    const memorisee = navigation === 'POP' ? positions.current.get(key) : undefined
+    // « default » : entrée sans clé (premier chargement, adresse tapée), partagée par plusieurs écrans
+    const memorisee = navigation === 'POP' && key !== 'default' ? positions.current.get(key) : undefined
     window.scrollTo({ top: memorisee ?? 0, left: 0, behavior: 'instant' })
   }, [ecran, key, navigation])
 
