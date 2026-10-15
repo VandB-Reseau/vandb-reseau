@@ -60,8 +60,13 @@ export function caseDe(e: Evaluation | undefined): CaseNineBox | null {
 // Rang d'une case : plus il est haut, mieux se porte le magasin
 const rang = (c: CaseNineBox) => c.resultats + c.management
 
+// Une seule ligne par jour : à date égale, la dernière saisie l'emporte (nettoie aussi les doublons enregistrés avant la règle)
+function unParJour(points: PointSante[]): PointSante[] {
+  return [...new Map(points.map((p) => [p.date, p])).values()].sort((a, b) => a.date.localeCompare(b.date))
+}
+
 export function historiqueSante(evaluations: Evaluations, magasin: string): PointSante[] {
-  return [...(evaluations[magasin]?.historique ?? [])].sort((a, b) => a.date.localeCompare(b.date))
+  return unParJour(evaluations[magasin]?.historique ?? [])
 }
 
 export type Sens = 'monte' | 'descend' | 'stable'
@@ -82,12 +87,12 @@ export function tendance(evaluations: Evaluations, magasin: string): Tendance | 
 
 // Historique : une seule ligne par jour (un nouveau changement le même jour remplace l'ancien), rangé par date
 export function ajouterPoint(historique: PointSante[], p: PointSante): PointSante[] {
-  return [...historique.filter((x) => x.date !== p.date), p].sort((a, b) => a.date.localeCompare(b.date))
+  return unParJour([...historique, p])
 }
 
 // Notes en vigueur à une date : celles du dernier point daté jusqu'à ce jour
 export function notesAu(e: (Evaluation & { historique?: PointSante[] }) | undefined, date: string): Partial<Record<IdCritere, Note>> {
-  const p = (e?.historique ?? []).filter((x) => x.notes && x.date <= date).at(-1)
+  const p = unParJour(e?.historique ?? []).filter((x) => x.notes && x.date <= date).at(-1)
   if (p) return { ...p.notes }
   return e && (!e.date || e.date <= date) ? { ...e.notes } : {}
 }
@@ -109,6 +114,11 @@ export interface OptionDeploiement { libelle: string; ton: Ton }
 export interface Thematique { id: string; libelle: string; options: OptionDeploiement[] }
 export interface ChangementDeploiement { date: string; thematique: string; etat: string }
 export interface Deploiements { thematiques: Thematique[]; valeurs: Record<string, Record<string, string>>; journal?: Record<string, ChangementDeploiement[]> }
+
+// Même règle pour les déploiements : un seul changement par jour et par thématique, le dernier l'emporte
+export function unChangementParJour(changements: ChangementDeploiement[]): ChangementDeploiement[] {
+  return [...new Map(changements.map((c) => [`${c.date}|${c.thematique}`, c])).values()].sort((a, b) => a.date.localeCompare(b.date))
+}
 
 const ouiNon: OptionDeploiement[] = [{ libelle: 'Oui', ton: 'positif' }, { libelle: 'Non', ton: 'negatif' }]
 export const thematiquesParDefaut: Thematique[] = [

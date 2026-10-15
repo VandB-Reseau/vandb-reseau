@@ -6,7 +6,9 @@ export const COMPTE = { email: 'joseph@vandb.test', motDePasse: 'bon-mot-de-pass
 // Simule l'API d'authentification Supabase : seul COMPTE est accepté.
 export interface Ecriture { methode: string; table: string; corps: unknown; filtre: string }
 
-export async function simulerSupabase(page: Page, options: { panne?: boolean; ecritures?: Ecriture[] } = {}) {
+export async function simulerSupabase(page: Page, options: { panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown> } = {}) {
+  // « config » remplace des clés d'app_config ; avec « persister », les clés réécrites sont relues telles qu'enregistrées
+  const configEcrite = new Map<string, string>(Object.entries(options.config ?? {}).map(([k, v]) => [k, JSON.stringify(v)]))
   await page.route('https://*.tile.openstreetmap.org/**', (r) => r.fulfill({ status: 204, body: '' }))
   // Service d'itinéraire simulé : 1,25 fois la distance à vol d'oiseau, à 72 km/h
   await page.route('https://router.project-osrm.org/**', (r) => {
@@ -42,6 +44,8 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
     const table = url.pathname.replace('/rest/v1/', '')
     if (req.method() !== 'GET' && req.method() !== 'HEAD') {
       options.ecritures?.push({ methode: req.method(), table, corps: req.postDataJSON(), filtre: url.search })
+      const cle = url.searchParams.get('key')?.replace(/^eq\./, '')
+      if (options.persister && table === 'app_config' && cle) configEcrite.set(cle, (req.postDataJSON() as { value: string }).value)
       return route.fulfill({ status: 201, json: [] })
     }
     // Filtres simples « colonne=eq.valeur » appliqués comme le ferait Supabase
@@ -61,7 +65,7 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
         { key: 'notes_magasins', value: JSON.stringify(notesMagasinsFictives) },
         { key: 'audits', value: JSON.stringify(auditsFictifs) },
         { key: 'params', value: JSON.stringify({ prepDuration: 2, postDuration: 4, directionHorizon: 6 }) },
-      ]) })
+      ].map((l) => (configEcrite.has(l.key) ? { ...l, value: configEcrite.get(l.key)! } : l))) })
     }
     if (table === 'store_overrides') return route.fulfill({ json: filtrer([{ store_name: 'Nice Test', resp: 'Responsable surchargé' }, { store_name: 'Metz Test', rr: 'rr1' }]) })
     if (table === 'reassigns') return route.fulfill({ json: affectationsFictives })
@@ -75,7 +79,7 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
   })
 }
 
-export async function seConnecter(page: Page, options: { panne?: boolean; ecritures?: Ecriture[] } = {}) {
+export async function seConnecter(page: Page, options: { panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown> } = {}) {
   await simulerSupabase(page, options)
   await page.goto('./')
   await page.getByLabel('Email').fill(COMPTE.email)
