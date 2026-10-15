@@ -56,7 +56,7 @@ export function Magasins({ vueInitiale = 'carte' }: { vueInitiale?: 'liste' | 'c
             />
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <Box sx={{ flex: 1, minWidth: 0 }}><BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres} /></Box>
-              {vue === 'carte' ? <Box ref={setEmplacementBoutons} sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, flexBasis: { xs: '100%', md: 'auto' } }} /> : surPC
+              {vue === 'carte' ? <Box ref={setEmplacementBoutons} sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }} /> : surPC
                 ? <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setAjout(true)} sx={{ minHeight: 48, mb: 2 }}>Ajouter un magasin</Button>
                 : <IconButton onClick={() => setAjout(true)} aria-label="Ajouter un magasin" sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', '&:hover': { bgcolor: 'primary.dark' } }}><AddOutlined /></IconButton>}
             </Box>

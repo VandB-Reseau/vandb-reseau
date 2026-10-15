@@ -10,6 +10,11 @@ import ToggleButton from '@mui/material/ToggleButton'
 import Typography from '@mui/material/Typography'
 import InfoBulle from '@mui/material/Tooltip'
 import useMediaQuery from '@mui/material/useMediaQuery'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
+import LayersOutlined from '@mui/icons-material/LayersOutlined'
+import CheckBoxOutlined from '@mui/icons-material/CheckBoxOutlined'
+import CheckBoxOutlineBlankOutlined from '@mui/icons-material/CheckBoxOutlineBlankOutlined'
 import type { SxProps, Theme } from '@mui/material/styles'
 import PersonPinCircleOutlined from '@mui/icons-material/PersonPinCircleOutlined'
 import FullscreenOutlined from '@mui/icons-material/FullscreenOutlined'
@@ -163,6 +168,8 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
   const [pleinEcran, setPleinEcran] = useState(false)
   // Libellé au survol seulement avec une souris : sur écran tactile, icônes seules
   const souris = useMediaQuery('(hover: hover)')
+  const compact = useMediaQuery((t: Theme) => t.breakpoints.down('md'), { noSsr: true })
+  const [menu, setMenu] = useState<HTMLElement | null>(null)
   useEffect(() => {
     const calculer = () => {
       const haut = carteRef.current?.getBoundingClientRect().top ?? 0
@@ -198,21 +205,38 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
   ))
 
   // Boutons hors de la carte : dans la ligne des filtres, ou au-dessus de la carte en plein écran
+  const affichages = [
+    { cle: 'coachs', actif: zonesCoachs, basculer: () => setZonesCoachs((v) => !v), icone: <PersonPinCircleOutlined />, long: 'Zones des Coachs' },
+    { cle: 'rr', actif: zonesRR, basculer: () => setZonesRR((v) => !v), icone: <HubOutlined />, long: 'Zones des Responsables Régionaux' },
+    { cle: 'personnes', actif: voirPersonnes, basculer: () => setVoirPersonnes((v) => !v), icone: <BadgeOutlined />, long: 'Coachs et Responsables Régionaux' },
+  ]
+  const bulle = { placement: 'bottom', disableHoverListener: !souris, disableFocusListener: !souris, disableTouchListener: true, slotProps: { tooltip: { sx: { fontSize: 13 } } } } as const
+  // Boutons hors de la carte : dans la ligne des filtres, ou au-dessus de la carte en plein écran.
+  // Sur téléphone, les trois affichages tiennent dans un seul bouton pour laisser la place à la recherche.
   const boutons = (
     <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, flexShrink: 0 }}>
-      <Box role="group" aria-label="Zones affichées" sx={barreSx}>
-        {[
-          { cle: 'coachs', actif: zonesCoachs, basculer: () => setZonesCoachs((v) => !v), icone: <PersonPinCircleOutlined />, long: 'Zones des Coachs' },
-          { cle: 'rr', actif: zonesRR, basculer: () => setZonesRR((v) => !v), icone: <HubOutlined />, long: 'Zones des Responsables Régionaux' },
-          { cle: 'personnes', actif: voirPersonnes, basculer: () => setVoirPersonnes((v) => !v), icone: <BadgeOutlined />, long: 'Coachs et Responsables Régionaux' },
-        ].map((b) => (
-          <InfoBulle key={b.cle} title={b.long} placement="bottom" disableHoverListener={!souris} disableFocusListener={!souris} disableTouchListener slotProps={{ tooltip: { sx: { fontSize: 13 } } }}>
-            <ToggleButton value={b.cle} selected={b.actif} onChange={b.basculer} aria-label={b.long} sx={boutonSx}>{b.icone}</ToggleButton>
-          </InfoBulle>
-        ))}
-      </Box>
+      {compact ? (
+        <Box sx={barreSx}>
+          <ToggleButton value="affichage" selected={Boolean(menu)} onChange={(e) => setMenu(e.currentTarget as HTMLElement)} aria-label="Affichage de la carte" aria-haspopup="menu" sx={boutonSx}><LayersOutlined /></ToggleButton>
+          <Menu anchorEl={menu} open={Boolean(menu)} onClose={() => setMenu(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }} sx={{ zIndex: 1500 }}>
+            {affichages.map((b) => (
+              <MenuItem key={b.cle} role="menuitemcheckbox" aria-checked={b.actif} onClick={b.basculer} sx={{ minHeight: 48, gap: 1.5 }}>
+                {b.actif ? <CheckBoxOutlined color="primary" /> : <CheckBoxOutlineBlankOutlined />}{b.icone}<Typography variant="body2">{b.long}</Typography>
+              </MenuItem>
+            ))}
+          </Menu>
+        </Box>
+      ) : (
+        <Box role="group" aria-label="Zones affichées" sx={barreSx}>
+          {affichages.map((b) => (
+            <InfoBulle key={b.cle} title={b.long} {...bulle}>
+              <ToggleButton value={b.cle} selected={b.actif} onChange={b.basculer} aria-label={b.long} sx={boutonSx}>{b.icone}</ToggleButton>
+            </InfoBulle>
+          ))}
+        </Box>
+      )}
       <Box sx={barreSx}>
-        <InfoBulle title={pleinEcran ? 'Quitter le plein écran' : 'Plein écran'} placement="bottom" disableHoverListener={!souris} disableFocusListener={!souris} disableTouchListener slotProps={{ tooltip: { sx: { fontSize: 13 } } }}>
+        <InfoBulle title={pleinEcran ? 'Quitter le plein écran' : 'Plein écran'} {...bulle}>
           <ToggleButton value="plein" selected={pleinEcran} onChange={() => setPleinEcran((v) => !v)} aria-label={pleinEcran ? 'Quitter le plein écran' : 'Carte en plein écran'} sx={boutonSx}>
             {pleinEcran ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
           </ToggleButton>

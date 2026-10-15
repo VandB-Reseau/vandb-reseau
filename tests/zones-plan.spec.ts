@@ -1,6 +1,13 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { choisirMois, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { coachsFictifs, magasinsFictifs } from './donnees-fictives'
+
+// Bouton d'affichage de la carte : direct sur PC, dans le menu « Affichage de la carte » sur téléphone
+async function affichage(page: Page, isMobile: boolean, nom: string) {
+  if (!isMobile) return { bouton: page.getByRole('button', { name: nom }), etat: 'aria-pressed' }
+  if (await page.getByRole('menu').count() === 0) await page.getByRole('button', { name: 'Affichage de la carte' }).click()
+  return { bouton: page.getByRole('menuitemcheckbox', { name: nom }), etat: 'aria-checked' }
+}
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -14,57 +21,73 @@ test.afterEach(async ({ page }) => {
 test('la carte regroupe les magasins en zones de Coach et de Responsable Régional, masquables', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins?vue=carte')
-  const zonesCoachs = page.getByRole('button', { name: 'Zones des Coachs' })
-  const zonesRR = page.getByRole('button', { name: 'Zones des Responsables Régionaux' })
-  await expect(zonesCoachs).toHaveAttribute('aria-pressed', 'true')
-  await expect(zonesRR).toHaveAttribute('aria-pressed', 'false')
+  const legende = page.getByLabel('Légende de la carte')
   await expect(page.locator('path.zone-coach').first()).toBeAttached()
   await expect(page.locator('path.zone-rr')).toHaveCount(0)
   // Légende par Coach quand leurs zones sont affichées
-  const legende = page.getByLabel('Légende de la carte')
   await expect(legende.getByText('Camille TESTARD')).toBeVisible()
-
-  await zonesRR.click()
-  await expect(zonesRR).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.locator('path.zone-rr').first()).toBeAttached()
-  await expect(legende.getByText('Pointillés : zones des Responsables Régionaux (RR)')).toBeVisible()
-  expect(await textesTropPetits(page)).toEqual([])
-  // Boutons icônes compacts au-dessus de la carte, jamais posés dessus
   const carte = (await page.locator('.leaflet-container').boundingBox())!
-  for (const b of [zonesCoachs, zonesRR]) { const boite = (await b.boundingBox())!; expect(boite.y + boite.height).toBeLessThanOrEqual(carte.y) }
-  // 48 px de côté, sans libellé écrit, libellé au survol sur PC
-  for (const b of [zonesCoachs, zonesRR]) {
-    const boite = (await b.boundingBox())!
-    expect(boite.height).toBeGreaterThanOrEqual(48)
-    expect(boite.width).toBeLessThanOrEqual(56)
-    await expect(b).toHaveText('')
+  if (isMobile) {
+    // Téléphone : un bouton d'affichage et le plein écran, sur la ligne de la recherche et des filtres
+    const filtres = (await page.getByRole('button', { name: 'Filtres' }).boundingBox())!
+    for (const nom of ['Affichage de la carte', 'Carte en plein écran']) {
+      const boite = (await page.getByRole('button', { name: nom }).boundingBox())!
+      expect(Math.abs(boite.y - filtres.y)).toBeLessThanOrEqual(4)
+      expect(boite.height).toBeGreaterThanOrEqual(48)
+      expect(boite.y + boite.height).toBeLessThanOrEqual(carte.y)
+    }
+    expect((await page.getByRole('textbox').first().boundingBox())!.width).toBeGreaterThanOrEqual(150)
+    await page.screenshot({ path: `captures/telephone-carte-ligne-filtres.png` })
   }
+  const coachs = await affichage(page, isMobile, 'Zones des Coachs')
+  await expect(coachs.bouton).toHaveAttribute(coachs.etat, 'true')
+  const rr = await affichage(page, isMobile, 'Zones des Responsables Régionaux')
+  await expect(rr.bouton).toHaveAttribute(rr.etat, 'false')
+  await rr.bouton.click()
+  await expect(rr.bouton).toHaveAttribute(rr.etat, 'true')
+  await expect(page.locator('path.zone-rr').first()).toBeAttached()
+  await expect(legende.getByText('Pointillés : zones des Responsables Régionaux (RR)')).toBeAttached()
+  expect(await textesTropPetits(page)).toEqual([])
+  for (const b of [coachs.bouton, rr.bouton]) await expect.poll(async () => (await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  if (isMobile) await page.screenshot({ path: `captures/telephone-carte-menu-affichage.png` })
   if (!isMobile) {
-    await zonesRR.hover()
+    // Boutons icônes compacts au-dessus de la carte, sans libellé écrit, libellé au survol
+    for (const b of [coachs.bouton, rr.bouton]) {
+      const boite = (await b.boundingBox())!
+      expect(boite.y + boite.height).toBeLessThanOrEqual(carte.y)
+      expect(boite.width).toBeLessThanOrEqual(56)
+      await expect(b).toHaveText('')
+    }
+    await rr.bouton.hover()
     await expect(page.getByRole('tooltip', { name: 'Zones des Responsables Régionaux' })).toBeVisible()
     expect(await textesTropPetits(page)).toEqual([])
     await page.screenshot({ path: `captures/pc-carte-boutons-survol.png` })
     await page.mouse.move(0, 0)
   } else {
-    await expect(page.getByRole('tooltip')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('menu')).toHaveCount(0)
   }
   await page.screenshot({ path: `captures/${info.project.name}-carte-zones.png`, fullPage: !isMobile })
 
   // Sans zones de Coach : points et légende par Responsable Régional
-  await zonesCoachs.click()
+  const coachs2 = await affichage(page, isMobile, 'Zones des Coachs')
+  await coachs2.bouton.click()
   await expect(page.locator('path.zone-coach')).toHaveCount(0)
+  if (isMobile) await page.keyboard.press('Escape')
   await expect(legende.getByText('Alex NORD')).toBeVisible()
   await expect(legende.getByText('Camille TESTARD')).toHaveCount(0)
-  await zonesRR.click()
+  const rr2 = await affichage(page, isMobile, 'Zones des Responsables Régionaux')
+  await rr2.bouton.click()
   await expect(page.locator('path.zone-rr')).toHaveCount(0)
 })
 
 test('la carte place les Coachs et les Responsables Régionaux avec leur propre picto, masquables', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins?vue=carte')
-  const bouton = page.getByRole('button', { name: 'Coachs et Responsables Régionaux' })
-  await expect(bouton).toHaveAttribute('aria-pressed', 'true')
-  expect((await bouton.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  const { bouton, etat } = await affichage(page, isMobile, 'Coachs et Responsables Régionaux')
+  await expect(bouton).toHaveAttribute(etat, 'true')
+  await expect.poll(async () => (await bouton.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  if (isMobile) await page.keyboard.press('Escape')
   // Coachs à leur domicile connu (poste à pourvoir et Coach pas encore arrivé exclus), RR à la ville de sa fiche
   await expect(page.locator('.picto-coach')).toHaveCount(4)
   await expect(page.locator('.picto-rr')).toHaveCount(1)
@@ -86,8 +109,10 @@ test('la carte place les Coachs et les Responsables Régionaux avec leur propre 
   await expect(bulle.getByRole('link', { name: 'Ouvrir la fiche' })).toHaveAttribute('href', '#/equipe/rr/rr1')
   await page.keyboard.press('Escape')
 
-  await bouton.click()
-  await expect(bouton).toHaveAttribute('aria-pressed', 'false')
+  const masquer = await affichage(page, isMobile, 'Coachs et Responsables Régionaux')
+  await masquer.bouton.click()
+  await expect(masquer.bouton).toHaveAttribute(masquer.etat, 'false')
+  if (isMobile) await page.keyboard.press('Escape')
   await expect(page.locator('.picto-coach, .picto-rr')).toHaveCount(0)
   await expect(legende.getByText('Coach', { exact: true })).toHaveCount(0)
 })
