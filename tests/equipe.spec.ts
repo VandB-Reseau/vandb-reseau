@@ -101,10 +101,10 @@ test('Direction règle la charge sans perdre les autres paramètres', async ({ p
   await page.getByLabel('Charge maximale d’un Coach').fill('10')
   await expect(page.getByText(/Avec ces réglages, 0 Coach serait en dépassement/)).toBeVisible()
   await page.getByLabel('Charge maximale d’un Coach').fill('0')
-  await expect(page.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Enregistrer' }).first()).toBeDisabled()
   await page.getByLabel('Charge maximale d’un Coach').fill('10')
   await page.screenshot({ path: `captures/${info.project.name}-direction.png`, fullPage: !isMobile })
-  await page.getByRole('button', { name: 'Enregistrer' }).click()
+  await page.getByRole('button', { name: 'Enregistrer' }).first().click()
   await expect(page.getByText('Règle de charge enregistrée.')).toBeVisible()
   const ecrite = ecritures.find((e) => e.table === 'app_config')!
   const valeur = JSON.parse((ecrite.corps as { value: string }).value)

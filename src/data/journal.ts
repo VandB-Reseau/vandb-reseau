@@ -2,6 +2,7 @@ import type { Magasin, Reseau } from './modele'
 import { libelleTypeVisite } from './modele'
 import { historiqueSante, libelleNote, nineBox, tousCriteres, type Note } from './sante'
 import { lienCompteRendu } from './visites'
+import { auditDe, libelleAudit } from './chiffres'
 
 // Journal d'un magasin : tout ce qui s'y est passé, du plus récent au plus ancien
 export type TypeJournal = 'visite' | 'sante' | 'deploiement' | 'coach' | 'note' | 'ouverture'
@@ -29,9 +30,10 @@ export function journalMagasin(reseau: Reseau, m: Magasin): EvenementJournal[] {
 
   reseau.visites.filter((v) => v.magasin === m.nom && v.date <= reseau.jour).forEach((v) => {
     const actions = v.plan.length
+    const audit = auditDe(reseau, m.nom, v.date, v.type)
     ev.push({
       cle: `visite-${v.id ?? v.date}`, date: v.date, type: 'visite', titre: `${libelleTypeVisite(v.type)}${v.visiteur ? ` · ${v.visiteur}` : ''}`,
-      detail: [v.notes, actions ? `${actions} action${actions > 1 ? 's' : ''} au plan` : ''].filter(Boolean).join(' · '),
+      detail: [audit ? libelleAudit(audit) : '', v.notes, actions ? `${actions} action${actions > 1 ? 's' : ''} au plan` : ''].filter(Boolean).join(' · '),
       lien: v.id !== null ? lienCompteRendu(v) : undefined,
     })
   })

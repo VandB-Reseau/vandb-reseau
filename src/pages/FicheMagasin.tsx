@@ -31,6 +31,9 @@ import { DialogVisite } from '../components/DialogVisite'
 import { anneeDe, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
+import PhoneInTalkOutlined from '@mui/icons-material/PhoneInTalkOutlined'
+import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
+import { analyser, chiffresDuMagasin, dernierAudit, formatPoints, formatPourcent, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 
 export function Section({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
   return (
@@ -76,6 +79,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const [reaffectation, setReaffectation] = useState(false)
   const [edition, setEdition] = useState(false)
   const [visite, setVisite] = useState<Visite | null | undefined>(undefined)
+  const [typeVisite, setTypeVisite] = useState('terrain')
+  const [saisieChiffres, setSaisieChiffres] = useState(false)
   const [confirmation, setConfirmation] = useState('')
   const coach = m.coach ? reseau.coachs[m.coach] ?? { nom: m.coach } : null
   const adresseComplete = [m.adresse || [m.codePostal, m.ville].filter(Boolean).join(' '), m.pays].filter(Boolean).join(', ')
@@ -115,7 +120,9 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
         </Section>
 
-        <Section titre="Visites" action={<Button startIcon={<AddOutlined />} onClick={() => setVisite(null)} sx={{ minHeight: 48 }}>Saisir</Button>}>
+        <SectionChiffres reseau={reseau} m={m} saisir={() => setSaisieChiffres(true)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
+
+        <Section titre="Visites" action={<Button startIcon={<AddOutlined />} onClick={() => { setTypeVisite('terrain'); setVisite(null) }} sx={{ minHeight: 48 }}>Saisir</Button>}>
           {(() => {
             const vs = visitesDuMagasin(reseau, m.nom)
             const a = anneeDe(reseau.jour)
@@ -154,7 +161,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         setConfirmation(msg)
         if (nom && nom !== m.nom) naviguer(lienFiche(nom), { replace: true })
       }} />}
-      {visite !== undefined && <DialogVisite reseau={reseau} visite={visite} magasinsInitiaux={[m.nom]} onFermer={(msg) => { setVisite(undefined); if (msg) setConfirmation(msg) }} />}
+      {visite !== undefined && <DialogVisite reseau={reseau} visite={visite} magasinsInitiaux={[m.nom]} typeInitial={typeVisite} onFermer={(msg) => { setVisite(undefined); if (msg) setConfirmation(msg) }} />}
+      {saisieChiffres && <DialogChiffres reseau={reseau} magasin={m.nom} onFermer={(msg) => { setSaisieChiffres(false); if (msg) setConfirmation(msg) }} />}
       <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
     </>
   )
@@ -226,3 +234,33 @@ function SectionDeploiements({ reseau, m, modifier }: { reseau: Reseau; m: Magas
 }
 
 const couleurNoteChip = { 1: 'error', 2: 'warning', 3: 'success' } as const
+
+// Chiffres du mois, alerte de décrochage, appel et derniers audits
+function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Magasin; saisir: () => void; appeler: () => void }) {
+  const a = analyser(reseau, m.nom)
+  const suivi = suiviAlerte(reseau, m.nom, a)
+  const audits = [['hygiene', 'Dernier audit hygiène'], ['excellence', 'Dernier audit excellence']] as const
+  return (
+    <Section titre="Chiffres" action={<Button startIcon={<EditOutlined />} onClick={saisir} aria-label="Saisir les chiffres" sx={{ minHeight: 48 }}>Saisir</Button>}>
+      {!a ? <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Aucun chiffre enregistré pour ce magasin.</Typography> : (
+        <>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+            <PastilleAlerte statut={a.statut} />
+            <PastilleAppel s={suivi} />
+            <Typography variant="body2" color="text.secondary">Chiffres à fin {libelleMois(a.mois)}</Typography>
+          </Box>
+          {a.raisons.length > 0 && <Typography variant="body2" sx={{ mb: 1 }}>{a.raisons.join(' · ').replace(/^./, (c) => c.toUpperCase())}</Typography>}
+          {suivi && !suivi.contact && <Button variant="contained" startIcon={<PhoneInTalkOutlined />} onClick={appeler} sx={{ minHeight: 48, mb: 1 }}>Saisir un appel</Button>}
+          <Ligne libelle="CA 3 mois vs an dernier">{formatPourcent(a.evol3)}</Ligne>
+          <Ligne libelle="CA 12 mois vs an dernier">{formatPourcent(a.evol12)}</Ligne>
+          <Ligne libelle="Rupture de tendance">{formatPoints(a.rupture)}</Ligne>
+        </>
+      )}
+      {audits.map(([type, libelle]) => {
+        const r = dernierAudit(reseau, m.nom, type)
+        return <Ligne key={type} libelle={libelle}>{r ? `${libelleAudit(r)} · ${dateCourte(r.date)}` : null}</Ligne>
+      })}
+      <GraphiqueCA liste={chiffresDuMagasin(reseau, m.nom)} />
+    </Section>
+  )
+}

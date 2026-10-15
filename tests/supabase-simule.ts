@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { affectationsFictives, coachsFictifs, congesFictifs, evenementsFictifs, recruesFictives, visitesFictives, configRRFictive, magasinsFictifs, santeFictive, deploiementsFictifs, fichesFictives, notesMagasinsFictives } from './donnees-fictives'
+import { affectationsFictives, coachsFictifs, congesFictifs, evenementsFictifs, recruesFictives, visitesFictives, configRRFictive, magasinsFictifs, santeFictive, deploiementsFictifs, fichesFictives, notesMagasinsFictives, chiffresFictifs, auditsFictifs } from './donnees-fictives'
 
 export const COMPTE = { email: 'joseph@vandb.test', motDePasse: 'bon-mot-de-passe' }
 
@@ -46,6 +46,7 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
         { key: 'deploiements', value: JSON.stringify(deploiementsFictifs) },
         { key: 'fiches_personnes', value: JSON.stringify(fichesFictives) },
         { key: 'notes_magasins', value: JSON.stringify(notesMagasinsFictives) },
+        { key: 'audits', value: JSON.stringify(auditsFictifs) },
         { key: 'params', value: JSON.stringify({ prepDuration: 2, postDuration: 4, directionHorizon: 6 }) },
       ]) })
     }
@@ -55,6 +56,7 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
     if (table === 'visits') return route.fulfill({ json: filtrer(visitesFictives) })
     if (table === 'leaves') return route.fulfill({ json: filtrer(congesFictifs) })
     if (table === 'events') return route.fulfill({ json: filtrer(evenementsFictifs) })
+    if (table === 'store_finance') return route.fulfill({ json: filtrer(chiffresFictifs) })
     if (table === 'recruits') return route.fulfill({ json: filtrer(recruesFictives) })
     return route.fulfill({ json: [] })
   })

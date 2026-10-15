@@ -13,7 +13,9 @@ import AddLinkOutlined from '@mui/icons-material/AddLinkOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import { Fenetre } from './EditionEquipe'
 import { SaisieCompteRendu } from './SaisieCompteRendu'
-import { enregistrerVisites, supprimerVisite } from '../data/chargement'
+import { enregistrerAudit, enregistrerChiffres, enregistrerVisites, supprimerVisite } from '../data/chargement'
+import { ChampsChiffres, useSaisieChiffres } from './Chiffres'
+import { auditDe, lireNombre, moisPrecedent, typesAudit, typesContact } from '../data/chiffres'
 import { partiesVides } from '../data/compteRendu'
 import { typesVisite, type ActionPlan, type Document, type Reseau, type Visite } from '../data/modele'
 
@@ -22,10 +24,10 @@ export function visiteurs(reseau: Reseau): string[] {
   return [...reseau.equipe.filter((c) => !c.fictif).map((c) => c.nom), ...reseau.rrs.map((r) => r.nom), reseau.directeur.nom].filter((n, i, t) => n && t.indexOf(n) === i)
 }
 
-export function DialogVisite({ reseau, visite, magasinsInitiaux = [], onFermer }: { reseau: Reseau; visite: Visite | null; magasinsInitiaux?: string[]; onFermer: (m?: string) => void }) {
+export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitial = 'terrain', onFermer }: { reseau: Reseau; visite: Visite | null; magasinsInitiaux?: string[]; typeInitial?: string; onFermer: (m?: string) => void }) {
   const [magasins, setMagasins] = useState<string[]>(visite ? [visite.magasin] : magasinsInitiaux)
   const [date, setDate] = useState(visite?.date ?? reseau.jour)
-  const [type, setType] = useState(visite?.type ?? 'terrain')
+  const [type, setType] = useState(visite?.type ?? typeInitial)
   const coachDuPremier = reseau.magasins.find((m) => m.nom === magasinsInitiaux[0])?.coach ?? ''
   const [visiteur, setVisiteur] = useState(visite?.visiteur ?? coachDuPremier)
   const [signatureRequise, setSignatureRequise] = useState(visite?.signatureRequise ?? false)
@@ -36,17 +38,34 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], onFermer }
   const [parties, setParties] = useState<string[]>(visite?.parties ?? partiesVides())
   const [plan, setPlan] = useState<ActionPlan[]>(visite?.plan ?? [])
   const unSeul = magasins.length <= 1
-  const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date)
+  const contact = typesContact.includes(type)
+  const audit = typesAudit.includes(type) && unSeul
+  const auditAvant = visite ? auditDe(reseau, visite.magasin, visite.date, visite.type) : null
+  const [conforme, setConforme] = useState(auditAvant?.conforme === true ? 'oui' : auditAvant?.conforme === false ? 'non' : '')
+  const [score, setScore] = useState(auditAvant?.score === null || auditAvant?.score === undefined ? '' : String(auditAvant.score).replace('.', ','))
+  const scoreLu = lireNombre(score)
+  const scoreInvalide = !!score.trim() && (scoreLu === null || scoreLu < 0 || scoreLu > 100)
+  const chiffres = useSaisieChiffres(reseau, magasins[0] ?? '', moisPrecedent(visite?.date ?? reseau.jour))
+  const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date) && (!unSeul || chiffres.valide) && !(audit && scoreInvalide)
   const noms = reseau.magasins.map((m) => m.nom)
   return (
     <Fenetre
       large titre={visite ? `Modifier la visite de ${visite.magasin}` : 'Saisir une visite'} ouvert onFermer={onFermer} valide={valide}
       enregistrer={async () => {
         const groupe = visite?.groupe || (magasins.length > 1 ? `g_${Date.now()}` : '')
-        await enregistrerVisites({ groupe, date, type, visiteur, signatureRequise, lienSigne: signatureRequise ? lienSigne.trim() : '', dateSignature: signatureRequise ? dateSignature : '', documents, notes: notes.trim(), parties: unSeul ? parties : partiesVides(), plan: unSeul ? plan : [] }, magasins, visite?.id ?? null)
+        const signe = signatureRequise && !contact
+        await enregistrerVisites({ groupe, date, type, visiteur, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [] }, magasins, visite?.id ?? null)
+        if (unSeul && chiffres.modifie) await enregistrerChiffres([chiffres.ligne()])
+        const resultat = audit && (conforme || scoreLu !== null) ? { date, type, conforme: conforme ? conforme === 'oui' : null, score: scoreLu } : null
+        const ancien = visite && typesAudit.includes(visite.type) ? { date: visite.date, type: visite.type } : null
+        if (resultat || (ancien && auditAvant)) await enregistrerAudit(magasins[0], ancien, resultat)
         return visite ? 'Visite mise à jour.' : magasins.length > 1 ? `${magasins.length} visites enregistrées.` : 'Visite enregistrée.'
       }}
-      supprimer={visite?.id ? async () => { await supprimerVisite(visite.id!); return 'Visite supprimée.' } : undefined}
+      supprimer={visite?.id ? async () => {
+        await supprimerVisite(visite.id!)
+        if (auditAvant) await enregistrerAudit(visite.magasin, { date: visite.date, type: visite.type }, null)
+        return 'Visite supprimée.'
+      } : undefined}
       libelleSuppression={visite ? `Supprimer la visite du ${date} à ${visite.magasin} ?` : undefined}
     >
       <Autocomplete
@@ -63,15 +82,29 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], onFermer }
         <TextField select label="Type" value={type} onChange={(e) => setType(e.target.value)}>
           {typesVisite.map((t) => <MenuItem key={t.id} value={t.id}>{t.libelle}</MenuItem>)}
         </TextField>
-        <TextField select label="Visité par" value={visiteur} onChange={(e) => setVisiteur(e.target.value)} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
+        <TextField select label={contact ? 'Fait par' : 'Visité par'} value={visiteur} onChange={(e) => setVisiteur(e.target.value)} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
           <MenuItem value="">Non précisé</MenuItem>
           {visiteurs(reseau).map((n) => <MenuItem key={n} value={n}>{n}</MenuItem>)}
         </TextField>
       </Box>
-      <SaisieCompteRendu
-        reseau={reseau} visite={visite} tournee={!unSeul} magasin={magasins[0] ?? ''} date={date}
-        notes={notes} setNotes={setNotes} parties={parties} setParties={setParties} plan={plan} setPlan={setPlan}
-      />
+      {audit && (
+        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+          <TextField select label="Résultat de l’audit" value={conforme} onChange={(e) => setConforme(e.target.value)} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
+            <MenuItem value="">Non renseigné</MenuItem>
+            <MenuItem value="oui">Conforme</MenuItem>
+            <MenuItem value="non">Non conforme</MenuItem>
+          </TextField>
+          <TextField label="Score de l’audit (%)" value={score} onChange={(e) => setScore(e.target.value)} error={scoreInvalide} helperText={scoreInvalide ? 'Entre 0 et 100' : undefined} slotProps={{ htmlInput: { inputMode: 'decimal' } }} />
+        </Box>
+      )}
+      {contact
+        ? <TextField label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} multiline minRows={3} />
+        : <SaisieCompteRendu
+          reseau={reseau} visite={visite} tournee={!unSeul} magasin={magasins[0] ?? ''} date={date}
+          notes={notes} setNotes={setNotes} parties={parties} setParties={setParties} plan={plan} setPlan={setPlan}
+        />}
+      {unSeul && magasins[0] && <ChampsChiffres s={chiffres} reseau={reseau} titre="Chiffres du mois" />}
+      {!contact && <>
       <Box>
         <FormControlLabel control={<Switch checked={signatureRequise} onChange={(e) => setSignatureRequise(e.target.checked)} />} label="Visite contractuelle, à faire signer" sx={{ minHeight: 48 }} />
         <Collapse in={signatureRequise}>
@@ -92,6 +125,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], onFermer }
         ))}
         <Button startIcon={<AddLinkOutlined />} onClick={() => setDocuments((x) => [...x, { label: '', url: '' }])} sx={{ minHeight: 48 }}>Ajouter un document</Button>
       </Box>
+      </>}
     </Fenetre>
   )
 }

@@ -66,7 +66,7 @@ test('l’historique se filtre et ouvre le compte rendu à imprimer', async ({ p
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/visites?vue=historique')
-  await expect(page.getByText('2 visites', { exact: true })).toBeVisible()
+  await expect(page.getByText('3 visites', { exact: true })).toBeVisible()
   if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
   await page.getByRole('button', { name: 'Filtre Type' }).click()
   await page.getByRole('menuitem', { name: 'Audit hygiène' }).click()
