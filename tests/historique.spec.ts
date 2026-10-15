@@ -92,3 +92,56 @@ test('l’import avec une colonne Date remplit l’historique, une ligne par jou
   expect(dv.journal['Rennes Test']).toEqual([{ date: '2026-01-15', thematique: 'terrasse', etat: 'Non' }, { date: '2026-05-10', thematique: 'terrasse', etat: 'Oui' }])
   expect(dv.valeurs['Rennes Test'].terrasse).toBe('Oui')
 })
+
+test('deux changements de case le même jour : le second remplace le premier, même après rechargement', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, persister: true })
+  await page.goto('./#/magasins/Lyon%20Test')
+  for (const note of ['Moyen', 'Fort']) {
+    await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
+    const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
+    await d.getByLabel('Date du classement et des déploiements').fill('2026-10-14')
+    await d.getByRole('button', { name: new RegExp(`^${note} : Niveau du franchisé`) }).click()
+    await d.getByRole('button', { name: 'Enregistrer' }).click()
+    await expect(d).toBeHidden()
+  }
+  const v = derniereSante(ecritures)['Lyon Test']
+  expect(v.historique.map((p: { date: string; caseId: string }) => `${p.date} ${p.caseId}`)).toEqual(['2026-06-01 coeur', '2026-10-01 redressement', '2026-10-14 diagnostic'])
+  await page.reload()
+  const journal = page.getByRole('list').filter({ hasText: 'Diagnostic marché' })
+  await expect(journal.getByText('Passe en Diagnostic marché')).toHaveCount(1)
+  await expect(journal.getByText('Passe en Relance commerciale')).toHaveCount(0)
+})
+
+test('les doublons du même jour déjà enregistrés n’apparaissent qu’une fois et disparaissent à la saisie suivante', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  const notes = (r: number, f: number) => ({ caExterieur: r, panierCave: r, panierBar: r, fluxCave: r, fluxBar: r, franchise: f })
+  // Saisies empilées par l'ancienne règle : trois cases le 1er octobre, la dernière est la bonne
+  const config = {
+    sante_parc: { 'Lyon Test': { notes: notes(1, 1), date: '2026-10-01', par: 'Dominique DIRECTION', historique: [
+      { date: '2026-06-01', caseId: 'coeur', notes: notes(2, 2) },
+      { date: '2026-10-01', caseId: 'renforcer', notes: notes(2, 1) },
+      { date: '2026-10-01', caseId: 'locomotive', notes: notes(3, 3) },
+      { date: '2026-10-01', caseId: 'redressement', notes: notes(1, 1) },
+    ] } },
+    deploiements: { valeurs: { 'Lyon Test': { concept20: 'Fait' } }, journal: { 'Lyon Test': [
+      { date: '2026-05-04', thematique: 'concept20', etat: 'En cours' }, { date: '2026-05-04', thematique: 'concept20', etat: 'Fait' },
+    ] } },
+  }
+  await seConnecter(page, { ecritures, config })
+  await page.goto('./#/magasins/Lyon%20Test')
+  const journal = page.getByRole('list').filter({ hasText: 'Concept 2.0' })
+  await expect(journal.getByText('Passe en Redressement urgent')).toHaveCount(1)
+  await expect(journal.getByText(/Management à renforcer|Locomotive/)).toHaveCount(0)
+  await expect(journal.getByText('Concept 2.0 : Fait')).toHaveCount(1)
+  await expect(journal.getByText('Concept 2.0 : En cours')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
+  const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
+  await d.getByLabel('Date du classement et des déploiements').fill('2026-10-10')
+  await d.getByRole('button', { name: /^Moyen : Niveau du franchisé/ }).click()
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  const v = derniereSante(ecritures)['Lyon Test']
+  expect(v.historique.map((p: { date: string; caseId: string }) => `${p.date} ${p.caseId}`)).toEqual(['2026-06-01 coeur', '2026-10-01 redressement', '2026-10-10 relance'])
+})

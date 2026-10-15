@@ -1,6 +1,6 @@
 import type { Magasin, Reseau } from './modele'
 import { libelleTypeVisite, nomsVisiteurs } from './modele'
-import { historiqueSante, libelleNote, nineBox, tousCriteres, type Note } from './sante'
+import { historiqueSante, libelleNote, nineBox, tousCriteres, unChangementParJour, type Note } from './sante'
 import { lienCompteRendu } from './visites'
 import { auditDe, libelleAudit } from './chiffres'
 
@@ -52,7 +52,7 @@ export function journalMagasin(reseau: Reseau, m: Magasin): EvenementJournal[] {
   })
 
   const thematiques = new Map(reseau.deploiements.thematiques.map((t) => [t.id, t.libelle]))
-  ;(reseau.deploiements.journal?.[m.nom] ?? []).forEach((c, i) => {
+  unChangementParJour(reseau.deploiements.journal?.[m.nom] ?? []).forEach((c, i) => {
     const t = thematiques.get(c.thematique)
     if (t) ev.push({ cle: `dep-${i}`, date: c.date, type: 'deploiement', titre: `${t} : ${c.etat || 'non renseigné'}`, detail: '' })
   })
