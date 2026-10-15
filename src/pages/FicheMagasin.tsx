@@ -31,6 +31,7 @@ import { DialogVisite } from '../components/DialogVisite'
 import { anneeDe, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
+import { SectionGoogle } from '../components/SectionGoogle'
 
 export function Section({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
   return (
@@ -114,6 +115,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           <Ligne libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
           <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
         </Section>
+
+        <SectionGoogle m={m} lienRecherche={lienPlan} />
 
         <Section titre="Visites" action={<Button startIcon={<AddOutlined />} onClick={() => setVisite(null)} sx={{ minHeight: 48 }}>Saisir</Button>}>
           {(() => {

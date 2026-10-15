@@ -30,6 +30,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: https://aipodcpbakywbrrilaud.supabase.co
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_GOOGLE_PLACES_KEY: ${{ secrets.VITE_GOOGLE_PLACES_KEY }}
       - run: npx playwright test
         env:
           CI: 'true'

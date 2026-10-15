@@ -11,7 +11,7 @@ export default defineConfig({
     { name: 'telephone', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: 'VITE_SUPABASE_URL=https://supabase.test VITE_SUPABASE_ANON_KEY=cle-test npx vite build --outDir dist-test && npx vite preview --outDir dist-test --port 4173 --strictPort',
+    command: 'VITE_SUPABASE_URL=https://supabase.test VITE_SUPABASE_ANON_KEY=cle-test VITE_GOOGLE_PLACES_KEY=cle-google-test npx vite build --outDir dist-test && npx vite preview --outDir dist-test --port 4173 --strictPort',
     port: 4173,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

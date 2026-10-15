@@ -1,6 +1,17 @@
 import type { Page } from '@playwright/test'
 import { affectationsFictives, coachsFictifs, congesFictifs, evenementsFictifs, recruesFictives, visitesFictives, configRRFictive, magasinsFictifs, santeFictive, deploiementsFictifs, fichesFictives, notesMagasinsFictives } from './donnees-fictives'
 
+export const lieuGoogleFictif = {
+  id: 'lieu-test',
+  displayName: { text: 'V and B Test' },
+  rating: 4.6,
+  userRatingCount: 213,
+  regularOpeningHours: { weekdayDescriptions: ['lundi: 14:00 – 20:00', 'mardi: 10:00 – 20:30', 'mercredi: 10:00 – 20:30', 'jeudi: 10:00 – 20:30', 'vendredi: 10:00 – 21:00', 'samedi: 09:30 – 21:00', 'dimanche: Fermé'] },
+  currentOpeningHours: { openNow: true },
+  businessStatus: 'OPERATIONAL',
+  googleMapsUri: 'https://maps.google.com/?cid=123',
+}
+
 export const COMPTE = { email: 'joseph@vandb.test', motDePasse: 'bon-mot-de-passe' }
 
 // Simule l'API d'authentification Supabase : seul COMPTE est accepté.
@@ -20,6 +31,11 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
     }
     const distances = idx('sources').map((i) => idx('destinations').map((k) => m(pts[i], pts[k])))
     return r.fulfill({ json: { code: 'Ok', distances, durations: distances.map((l) => l.map((x) => x / 20)) } })
+  })
+  // Google Places simulé : une fiche V and B fictive
+  await page.route('https://places.googleapis.com/**', (r) => {
+    const lieu = lieuGoogleFictif
+    return r.fulfill({ json: r.request().method() === 'POST' ? { places: [{ ...lieu, id: 'lieu-autre', displayName: { text: 'Cave voisine' } }, lieu] } : lieu })
   })
   await page.route('https://supabase.test/**', async (route) => {
     const req = route.request()
