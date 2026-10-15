@@ -65,8 +65,11 @@ function unParJour(points: PointSante[]): PointSante[] {
   return [...new Map(points.map((p) => [p.date, p])).values()].sort((a, b) => a.date.localeCompare(b.date))
 }
 
+// Le classement en place figure toujours dans l'historique (notes saisies avant l'historique daté)
 export function historiqueSante(evaluations: Evaluations, magasin: string): PointSante[] {
-  return unParJour(evaluations[magasin]?.historique ?? [])
+  const e = evaluations[magasin]
+  const h = e?.historique ?? []
+  return unParJour(e?.date && !h.some((p) => p.date === e.date) ? [{ date: e.date, caseId: caseDe(e)?.id ?? '', notes: e.notes }, ...h] : h)
 }
 
 export type Sens = 'monte' | 'descend' | 'stable'
@@ -106,6 +109,15 @@ export function avecPoint(ancienne: (Evaluation & { historique?: PointSante[] })
   const historique = ajouterPoint(base, { date: e.date, caseId: c?.id ?? '', notes: e.notes })
   const plusRecente = ancienne && ancienne.date > e.date && historique.some((x) => x.date > e.date)
   return plusRecente ? { ...ancienne, historique } : { ...e, historique }
+}
+
+// Retire la saisie d'une date ; si c'était la plus récente, la saisie précédente redevient l'évaluation en place
+export function sansPoint(e: (Evaluation & { historique?: PointSante[] }) | undefined, date: string): (Evaluation & { historique: PointSante[] }) | undefined {
+  if (!e) return undefined
+  const historique = unParJour(e.historique ?? []).filter((p) => p.date !== date)
+  if (e.date !== date) return { ...e, historique }
+  const avant = historique.filter((p) => p.notes).at(-1)
+  return avant ? { notes: { ...avant.notes }, date: avant.date, par: e.par, historique } : undefined
 }
 
 // ── Déploiements : thématiques libres, chaque magasin a un état par thématique ──

@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
-import { avecPoint, notesAu, thematiquesParDefaut, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
+import { avecPoint, notesAu, sansPoint, thematiquesParDefaut, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
 import type { Conge, Evenement, NoteMagasin, Reseau, Visite } from './modele'
 import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
@@ -454,6 +454,16 @@ export function enregistrerEvaluations(lot: { magasin: string; e: Evaluation }[]
   return enFile(async () => {
     const { valeur, existe } = await lireCle<Evaluations>('sante_parc', {})
     for (const { magasin, e } of lot) valeur[magasin] = avecPoint(valeur[magasin], e)
+    await ecrireCle('sante_parc', valeur, existe)
+  })
+}
+// Supprime la note nine box d'un magasin à une date (comme une visite) ; sans autre saisie, le magasin redevient non classé
+export function supprimerEvaluation(magasin: string, date: string) {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<Evaluations>('sante_parc', {})
+    const e = sansPoint(valeur[magasin], date)
+    if (e) valeur[magasin] = e
+    else delete valeur[magasin]
     await ecrireCle('sante_parc', valeur, existe)
   })
 }
