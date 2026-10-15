@@ -21,18 +21,18 @@ export function RetourEnHaut() {
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
   }, [])
 
-  // Mémorise la position de l'écran affiché, pour le retour arrière
+  // Mémorise la position de l'écran affiché, pour le retour arrière ; la clé « default »
+  // (premier chargement, adresse tapée) est partagée par plusieurs écrans, d'où l'écran dans la clé
   useEffect(() => {
-    const noter = () => positions.current.set(key, window.scrollY)
+    const noter = () => positions.current.set(`${key}|${ecran}`, window.scrollY)
     window.addEventListener('scroll', noter, { passive: true })
     return () => window.removeEventListener('scroll', noter)
-  }, [key])
+  }, [key, ecran])
 
   useLayoutEffect(() => {
     if (precedent.current === ecran) return
     precedent.current = ecran
-    // « default » : entrée sans clé (premier chargement, adresse tapée), partagée par plusieurs écrans
-    const memorisee = navigation === 'POP' && key !== 'default' ? positions.current.get(key) : undefined
+    const memorisee = navigation === 'POP' ? positions.current.get(`${key}|${ecran}`) : undefined
     window.scrollTo({ top: memorisee ?? 0, left: 0, behavior: 'instant' })
   }, [ecran, key, navigation])
 
