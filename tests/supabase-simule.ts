@@ -102,3 +102,10 @@ export async function textesTropPetits(page: Page, min = 12): Promise<string[]> 
     return fautifs
   }, min)
 }
+
+// Choisit un mois dans un champ « mois » (les affectations se font au mois)
+export async function choisirMois(page: Page, libelle: string, mois: string) {
+  await page.getByLabel(libelle).click()
+  await page.getByRole('option', { name: mois, exact: true }).click()
+  await page.getByRole('listbox').waitFor({ state: 'hidden' })
+}

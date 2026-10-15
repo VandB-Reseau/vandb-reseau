@@ -1,5 +1,5 @@
 import type { Magasin, Reseau } from './modele'
-import { libelleTypeVisite } from './modele'
+import { libelleTypeVisite, nomsVisiteurs } from './modele'
 import { historiqueSante, libelleNote, nineBox, tousCriteres, type Note } from './sante'
 import { lienCompteRendu } from './visites'
 import { auditDe, libelleAudit } from './chiffres'
@@ -32,7 +32,7 @@ export function journalMagasin(reseau: Reseau, m: Magasin): EvenementJournal[] {
     const actions = v.plan.length
     const audit = auditDe(reseau, m.nom, v.date, v.type)
     ev.push({
-      cle: `visite-${v.id ?? v.date}`, date: v.date, type: 'visite', titre: `${libelleTypeVisite(v.type)}${v.visiteur ? ` · ${v.visiteur}` : ''}`,
+      cle: `visite-${v.id ?? v.date}`, date: v.date, type: 'visite', titre: `${libelleTypeVisite(v.type)}${v.visiteurs.length ? ` · ${nomsVisiteurs(v)}` : ''}`,
       detail: [audit ? libelleAudit(audit) : '', v.notes, actions ? `${actions} action${actions > 1 ? 's' : ''} au plan` : ''].filter(Boolean).join(' · '),
       lien: v.id !== null ? lienCompteRendu(v) : undefined,
     })

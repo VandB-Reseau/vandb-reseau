@@ -20,16 +20,27 @@ import { partiesVides } from '../data/compteRendu'
 import { typesVisite, type ActionPlan, type Document, type Reseau, type Visite } from '../data/modele'
 
 // Personnes qui peuvent visiter : Coachs, RR, Directeur
-export function visiteurs(reseau: Reseau): string[] {
-  return [...reseau.equipe.filter((c) => !c.fictif).map((c) => c.nom), ...reseau.rrs.map((r) => r.nom), reseau.directeur.nom].filter((n, i, t) => n && t.indexOf(n) === i)
+export function visiteursGroupes(reseau: Reseau): { nom: string; groupe: string }[] {
+  const tous = [
+    ...reseau.equipe.filter((c) => !c.fictif).map((c) => ({ nom: c.nom, groupe: 'Coachs' })),
+    ...reseau.rrs.map((r) => ({ nom: r.nom, groupe: 'Responsables Régionaux' })),
+    { nom: reseau.directeur.nom, groupe: 'Directeur de réseau' },
+  ]
+  return tous.filter((p, i) => p.nom && tous.findIndex((x) => x.nom === p.nom) === i)
 }
+export function visiteurs(reseau: Reseau): string[] { return visiteursGroupes(reseau).map((p) => p.nom) }
 
 export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitial = 'terrain', onFermer }: { reseau: Reseau; visite: Visite | null; magasinsInitiaux?: string[]; typeInitial?: string; onFermer: (m?: string) => void }) {
   const [magasins, setMagasins] = useState<string[]>(visite ? [visite.magasin] : magasinsInitiaux)
   const [date, setDate] = useState(visite?.date ?? reseau.jour)
   const [type, setType] = useState(visite?.type ?? typeInitial)
-  const coachDuPremier = reseau.magasins.find((m) => m.nom === magasinsInitiaux[0])?.coach ?? ''
-  const [visiteur, setVisiteur] = useState(visite?.visiteur ?? coachDuPremier)
+  // Par défaut : le Coach du magasin, tant que les participants n'ont pas été choisis à la main
+  const coachDe = (noms: string[]) => { const c = reseau.magasins.find((m) => m.nom === noms[0])?.coach; return c ? [c] : [] }
+  const [participants, setParticipants] = useState<string[]>(visite?.visiteurs ?? coachDe(magasinsInitiaux))
+  const [participantsChoisis, setParticipantsChoisis] = useState(!!visite)
+  const groupes = visiteursGroupes(reseau)
+  const options = [...groupes.map((p) => p.nom), ...participants.filter((n) => !groupes.some((p) => p.nom === n))]
+  const groupeDe = (n: string) => groupes.find((p) => p.nom === n)?.groupe ?? 'Autres'
   const [signatureRequise, setSignatureRequise] = useState(visite?.signatureRequise ?? false)
   const [lienSigne, setLienSigne] = useState(visite?.lienSigne ?? '')
   const [dateSignature, setDateSignature] = useState(visite?.dateSignature ?? '')
@@ -54,7 +65,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
       enregistrer={async () => {
         const groupe = visite?.groupe || (magasins.length > 1 ? `g_${Date.now()}` : '')
         const signe = signatureRequise && !contact
-        await enregistrerVisites({ groupe, date, type, visiteur, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [] }, magasins, visite?.id ?? null)
+        await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [] }, magasins, visite?.id ?? null)
         if (unSeul && chiffres.modifie) await enregistrerChiffres([chiffres.ligne()])
         const resultat = audit && (conforme || scoreLu !== null) ? { date, type, conforme: conforme ? conforme === 'oui' : null, score: scoreLu } : null
         const ancien = visite && typesAudit.includes(visite.type) ? { date: visite.date, type: visite.type } : null
@@ -72,21 +83,27 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         multiple
         options={noms}
         value={magasins}
-        onChange={(_e, v) => setMagasins(visite ? v.slice(-1) : v)}
+        onChange={(_e, v) => { const m = visite ? v.slice(-1) : v; setMagasins(m); if (!participantsChoisis) setParticipants(coachDe(m)) }}
         disableCloseOnSelect={!visite}
         renderInput={(p) => <TextField {...p} label={visite ? 'Magasin' : 'Magasins visités'} />}
         noOptionsText="Aucun magasin ne correspond"
       />
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' } }}>
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
         <TextField type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
         <TextField select label="Type" value={type} onChange={(e) => setType(e.target.value)}>
           {typesVisite.map((t) => <MenuItem key={t.id} value={t.id}>{t.libelle}</MenuItem>)}
         </TextField>
-        <TextField select label={contact ? 'Fait par' : 'Visité par'} value={visiteur} onChange={(e) => setVisiteur(e.target.value)} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
-          <MenuItem value="">Non précisé</MenuItem>
-          {visiteurs(reseau).map((n) => <MenuItem key={n} value={n}>{n}</MenuItem>)}
-        </TextField>
       </Box>
+      <Autocomplete
+        multiple
+        options={options}
+        groupBy={groupeDe}
+        value={participants}
+        onChange={(_e, v) => { setParticipants(v); setParticipantsChoisis(true) }}
+        disableCloseOnSelect
+        renderInput={(p) => <TextField {...p} label={contact ? 'Fait par' : 'Visité par'} />}
+        noOptionsText="Aucune personne ne correspond"
+      />
       {audit && (
         <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
           <TextField select label="Résultat de l’audit" value={conforme} onChange={(e) => setConforme(e.target.value)} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>

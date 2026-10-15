@@ -39,7 +39,7 @@ import Chip from '@mui/material/Chip'
 import InputAdornment from '@mui/material/InputAdornment'
 import SearchIcon from '@mui/icons-material/Search'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
-import { typesVisite, type Reseau, type Visite } from '../data/modele'
+import { nomsVisiteurs, typesVisite, type Reseau, type Visite } from '../data/modele'
 
 type Edition = { visite: Visite | null; magasins: string[] } | null
 
@@ -202,7 +202,7 @@ function VueHistorique({ reseau, modifier, surPC }: { reseau: Reseau; modifier: 
   const [recherche, setRecherche] = useState('')
   const s = semestres.find((x) => x.cle === cle)
   const liste = useMemo(() => reseau.visites
-    .filter((v) => (!s || (v.date >= s.debut && v.date <= s.fin)) && (!type || v.type === type) && (!visiteur || v.visiteur === visiteur)
+    .filter((v) => (!s || (v.date >= s.debut && v.date <= s.fin)) && (!type || v.type === type) && (!visiteur || v.visiteurs.includes(visiteur))
       && (!recherche || `${v.magasin} ${v.notes}`.toLowerCase().includes(recherche.toLowerCase())))
     .sort((a, b) => b.date.localeCompare(a.date)), [reseau, s, type, visiteur, recherche])
   const Actions = ({ v }: { v: Visite }) => (
@@ -239,7 +239,7 @@ function VueHistorique({ reseau, modifier, surPC }: { reseau: Reseau; modifier: 
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{dateCourte(v.date)}</TableCell>
                     <TableCell><Link component={RouterLink} to={lienFiche(v.magasin)} sx={{ fontWeight: 600 }}>{v.magasin}</Link></TableCell>
                     <TableCell><PastilleTypeVisite type={v.type} /></TableCell>
-                    <TableCell>{v.visiteur || <Typography variant="body2" color="text.secondary">Non précisé</Typography>}</TableCell>
+                    <TableCell>{nomsVisiteurs(v) || <Typography variant="body2" color="text.secondary">Non précisé</Typography>}</TableCell>
                     <TableCell sx={{ maxWidth: 320 }}><Typography variant="body2" noWrap>{v.notes}</Typography></TableCell>
                     <TableCell><PastilleSignature requise={v.signatureRequise} signe={!!v.lienSigne} /></TableCell>
                     <TableCell sx={{ py: 0 }}><Actions v={v} /></TableCell>
@@ -257,7 +257,7 @@ function VueHistorique({ reseau, modifier, surPC }: { reseau: Reseau; modifier: 
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Link component={RouterLink} to={lienFiche(v.magasin)} variant="h4" sx={{ display: 'block' }}>{v.magasin}</Link>
-                    <Typography variant="body2" color="text.secondary">{dateCourte(v.date)}{v.visiteur ? ` · ${v.visiteur}` : ''}</Typography>
+                    <Typography variant="body2" color="text.secondary">{dateCourte(v.date)}{v.visiteurs.length ? ` · ${nomsVisiteurs(v)}` : ''}</Typography>
                   </Box>
                   <Actions v={v} />
                 </Box>

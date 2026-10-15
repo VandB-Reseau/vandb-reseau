@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { avecPoint, notesAu, thematiquesParDefaut, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
 import type { Conge, Evenement, NoteMagasin, Reseau, Visite } from './modele'
+import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
 import { champsChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
 import { normaliserParties, normaliserPlan } from './compteRendu'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
@@ -64,7 +65,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   const t = (v: unknown) => (v === null || v === undefined ? '' : String(v))
   reseau.visites = ((visites.error ? [] : visites.data) as L[]).map((v) => ({
     id: Number(v.id) || null, groupe: t(v.group_id), magasin: t(v.store), date: t(v.visit_date).slice(0, 10), type: t(v.type) || 'terrain',
-    visiteur: t(v.visitor), signatureRequise: !!v.signed_required, lienSigne: t(v.signed_url), dateSignature: t(v.signed_date).slice(0, 10),
+    visiteurs: lireVisiteurs(t(v.visitor)), signatureRequise: !!v.signed_required, lienSigne: t(v.signed_url), dateSignature: t(v.signed_date).slice(0, 10),
     documents: Array.isArray(v.docs) ? (v.docs as { label?: string; url?: string }[]).map((d) => ({ label: t(d.label), url: t(d.url) })) : [], notes: t(v.notes),
     parties: normaliserParties(v.sections), plan: normaliserPlan(v.action_plan),
   }))
@@ -113,10 +114,18 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
 
 export class ErreurEnregistrement extends Error {}
 
-// Réaffecte un magasin à un Coach à partir d'une date (même format que l'ancienne app)
-// Un seul changement par jour : celui du même jour est remplacé
-export async function reaffecter(magasin: string, coach: string, date: string, note: string): Promise<void> {
-  const ancien = await supabase.from('reassigns').delete().eq('store', magasin).eq('date', date)
+// Les affectations (Coach du magasin, RR du Coach) changent au mois : à partir du 1er du mois choisi
+const premierDuMois = (iso: string) => `${iso.slice(0, 7)}-01`
+function moisSuivant(iso: string) {
+  const [a, m] = iso.split('-').map(Number)
+  return new Date(Date.UTC(a, m, 1)).toISOString().slice(0, 10)
+}
+
+// Réaffecte un magasin à un Coach à partir du 1er du mois (même format que l'ancienne app)
+// Un seul changement par mois : celui du même mois est remplacé
+export async function reaffecter(magasin: string, coach: string, mois: string, note: string): Promise<void> {
+  const date = premierDuMois(mois)
+  const ancien = await supabase.from('reassigns').delete().eq('store', magasin).gte('date', date).lt('date', moisSuivant(date))
   if (ancien.error) throw new ErreurEnregistrement(ancien.error.message)
   const { error } = await supabase.from('reassigns').insert({ store: magasin, cs: coach, date, note, type: 'manual' })
   if (error) throw new ErreurEnregistrement(error.message)
@@ -186,11 +195,12 @@ export async function supprimerRR(id: string) {
   await supprimerFichePersonne({ type: 'rr', cle: id })
 }
 
-// Rattache un Coach à un RR à partir d'une date (historique conservé, comme dans l'ancienne app)
-export async function rattacherCoach(coach: string, rrId: string, date: string) {
+// Rattache un Coach à un RR à partir du 1er du mois (historique conservé, comme dans l'ancienne app)
+export async function rattacherCoach(coach: string, rrId: string, mois: string) {
+  const date = premierDuMois(mois)
   await modifierConfigRR((c) => {
-    // Historique conservé ; un seul changement par jour : celui du même jour est remplacé
-    c.dr_assigns = [...(c.dr_assigns ?? []).filter((a) => !(a.cs === coach && a.date === date)), { cs: coach, dr: rrId, date, saisi: new Date().toISOString() }]
+    // Historique conservé ; un seul changement par mois : celui du même mois est remplacé
+    c.dr_assigns = [...(c.dr_assigns ?? []).filter((a) => !(a.cs === coach && a.date?.slice(0, 7) === date.slice(0, 7))), { cs: coach, dr: rrId, date, saisi: new Date().toISOString() }]
     // Rattachement « actuel » lu par l'ancienne app : seulement si le changement a déjà pris effet
     if (date <= new Date().toISOString().slice(0, 10)) c.cs_dr = { ...(c.cs_dr ?? {}), [coach]: rrId }
   })
@@ -245,7 +255,7 @@ export async function renommerCoach(ancien: string, nouveau: string) {
   await renommerColonne('cs_overrides', 'cs_name', ancien, nouveau)
   await renommerColonne('recruits', 'name', ancien, nouveau)
   await renommerColonne('leaves', 'person', ancien, nouveau)
-  await renommerColonne('visits', 'visitor', ancien, nouveau)
+  await renommerVisiteur(ancien, nouveau)
   await modifierConfigRR((c) => {
     c.dr_assigns?.forEach((a) => { if (a.cs === ancien) a.cs = nouveau })
     if (c.cs_dr?.[ancien]) { c.cs_dr[nouveau] = c.cs_dr[ancien]; delete c.cs_dr[ancien] }
@@ -254,6 +264,19 @@ export async function renommerCoach(ancien: string, nouveau: string) {
   const del = await lireCle<string[]>('cs_deletes', [])
   await ecrireCle('cs_deletes', [...del.valeur.filter((n) => n !== nouveau && n !== ancien), ancien], del.existe)
   await deplacerFichePersonne({ type: 'coach', cle: ancien }, { type: 'coach', cle: nouveau })
+}
+
+// Une visite peut avoir plusieurs participants : le nom est remplacé dans chaque liste
+export async function renommerVisiteur(ancien: string, nouveau: string) {
+  await renommerColonne('visits', 'visitor', ancien, nouveau)
+  const lu = await supabase.from('visits').select('id,visitor').like('visitor', `%${ancien}%`)
+  if (lu.error) return
+  for (const v of (lu.data ?? []) as { id: number; visitor: string | null }[]) {
+    const noms = lireVisiteurs(v.visitor ?? '')
+    if (noms.length < 2 || !noms.includes(ancien)) continue
+    const visitor = noms.map((n) => (n === ancien ? nouveau : n)).filter((n, i, t) => t.indexOf(n) === i).join(SEPARATEUR_VISITEURS)
+    verifier(await supabase.from('visits').update({ visitor }).eq('id', v.id))
+  }
 }
 
 // ── Fiches personnelles (Directeur, Responsables Régionaux, Coachs, franchisés) ──
@@ -378,7 +401,7 @@ function verifier(r: { error: { message: string } | null }) { if (r.error) throw
 
 export async function enregistrerVisites(base: Omit<Visite, 'magasin' | 'id'>, magasins: string[], id: number | null) {
   const ligne = (magasin: string) => ({
-    group_id: base.groupe || null, store: magasin, visit_date: base.date, type: base.type, visitor: base.visiteur || null,
+    group_id: base.groupe || null, store: magasin, visit_date: base.date, type: base.type, visitor: base.visiteurs.join(SEPARATEUR_VISITEURS) || null,
     signed_required: base.signatureRequise, signed_url: base.lienSigne || null, signed_date: base.dateSignature || null,
     docs: base.documents.filter((d) => d.url.trim()), notes: base.notes || null,
     sections: base.parties.some((x) => x.trim()) ? base.parties.map((x) => x.trim()) : null, action_plan: base.plan.filter((a) => a.action.trim()),
