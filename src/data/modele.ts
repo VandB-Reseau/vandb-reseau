@@ -104,6 +104,7 @@ export interface Reseau {
   deploiements: import('./sante').Deploiements
   chiffres: Record<string, import('./chiffres').ChiffreMois[]> // par magasin, du plus ancien au plus récent
   audits: import('./chiffres').Audits
+  grilles: import('./grilles').Grilles
   seuils: import('./chiffres').SeuilsAlerte
   rrs: ResponsableRegional[]
   parametres: ParametresReseau

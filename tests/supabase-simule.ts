@@ -6,7 +6,11 @@ export const COMPTE = { email: 'joseph@vandb.test', motDePasse: 'bon-mot-de-pass
 // Simule l'API d'authentification Supabase : seul COMPTE est accepté.
 export interface Ecriture { methode: string; table: string; corps: unknown; filtre: string }
 
-export async function simulerSupabase(page: Page, options: { panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown> } = {}) {
+export interface OptionsSimulation { panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean }
+// Image PNG de 40 × 40 px, rouge
+export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
+
+export async function simulerSupabase(page: Page, options: OptionsSimulation = {}) {
   // « config » remplace des clés d'app_config ; avec « persister », les clés réécrites sont relues telles qu'enregistrées
   const configEcrite = new Map<string, string>(Object.entries(options.config ?? {}).map(([k, v]) => [k, JSON.stringify(v)]))
   await page.route('https://*.tile.openstreetmap.org/**', (r) => r.fulfill({ status: 204, body: '' }))
@@ -55,6 +59,16 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
       })
     }
     if (url.pathname === '/auth/v1/logout') return route.fulfill({ status: 204, body: '' })
+    // Espace photos (Storage) : envoi, liens temporaires, suppression
+    if (url.pathname.startsWith('/storage/v1/')) {
+      const chemin = url.pathname.replace('/storage/v1/object/', '')
+      if (options.sansPhotos) return route.fulfill({ status: 400, json: { statusCode: '404', error: 'Bucket not found', message: 'Bucket not found' } })
+      if (req.method() === 'GET') return route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from(PNG, 'base64') })
+      if (chemin.startsWith('sign/')) return route.fulfill({ json: { signedURL: `/object/${chemin}?token=jeton` } })
+      options.ecritures?.push({ methode: req.method(), table: 'storage', corps: req.method() === 'DELETE' ? req.postDataJSON() : { taille: req.postDataBuffer()?.length ?? 0 }, filtre: chemin })
+      if (req.method() === 'DELETE') return route.fulfill({ json: [] })
+      return route.fulfill({ json: { Key: chemin, Id: 'photo-test' } })
+    }
     if (options.panne && url.pathname.startsWith('/rest/')) return route.fulfill({ status: 500, json: { message: 'indisponible' } })
     const table = url.pathname.replace('/rest/v1/', '')
     if (req.method() !== 'GET' && req.method() !== 'HEAD') {
@@ -94,7 +108,7 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
   })
 }
 
-export async function seConnecter(page: Page, options: { panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown> } = {}) {
+export async function seConnecter(page: Page, options: OptionsSimulation = {}) {
   await simulerSupabase(page, options)
   await page.goto('./')
   await page.getByLabel('Email').fill(COMPTE.email)

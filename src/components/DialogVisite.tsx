@@ -17,6 +17,9 @@ import { enregistrerAudit, enregistrerChiffres, enregistrerVisites, supprimerVis
 import { ChampsChiffres, useSaisieChiffres } from './Chiffres'
 import { auditDe, lireNombre, moisPrecedent, typesAudit, typesContact } from '../data/chiffres'
 import { partiesVides } from '../data/compteRendu'
+import { libellesGrilles, photosDe, reponsesPourSaisie, resultatGrille, type Reponses } from '../data/grilles'
+import { supprimerPhotos } from '../lib/photos'
+import { SaisieGrille } from './GrilleAudit'
 import { typesVisite, type ActionPlan, type Document, type Reseau, type Visite } from '../data/modele'
 
 // Personnes qui peuvent visiter : Coachs, RR, Directeur
@@ -56,8 +59,16 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const [score, setScore] = useState(auditAvant?.score === null || auditAvant?.score === undefined ? '' : String(auditAvant.score).replace('.', ','))
   const scoreLu = lireNombre(score)
   const scoreInvalide = !!score.trim() && (scoreLu === null || scoreLu < 0 || scoreLu > 100)
+  // Grille du type d'audit choisi : reprise de l'audit enregistré, sinon vide
+  const grille = audit ? reseau.grilles[type] : undefined
+  const [reponsesParType, setReponsesParType] = useState<Record<string, Reponses>>({})
+  const reponses = grille ? reponsesParType[type] ?? reponsesPourSaisie(grille, auditAvant?.type === type ? auditAvant.reponses : undefined) : {}
+  const setReponses = (f: (r: Reponses) => Reponses) => setReponsesParType((x) => ({ ...x, [type]: f(reponses) }))
+  const [photosRetirees, setPhotosRetirees] = useState<string[]>([])
+  const resultatG = grille ? resultatGrille(reponses, grille.seuil) : null
+  const grilleRemplie = !!resultatG && (resultatG.renseignes > 0 || photosDe(reponses).length > 0)
   const chiffres = useSaisieChiffres(reseau, magasins[0] ?? '', moisPrecedent(visite?.date ?? reseau.jour))
-  const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date) && (!unSeul || chiffres.valide) && !(audit && scoreInvalide)
+  const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date) && (!unSeul || chiffres.valide) && !(audit && !grilleRemplie && scoreInvalide)
   const noms = reseau.magasins.map((m) => m.nom)
   return (
     <Fenetre
@@ -67,14 +78,19 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         const signe = signatureRequise && !contact
         await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [] }, magasins, visite?.id ?? null)
         if (unSeul && chiffres.modifie) await enregistrerChiffres([chiffres.ligne()])
-        const resultat = audit && (conforme || scoreLu !== null) ? { date, type, conforme: conforme ? conforme === 'oui' : null, score: scoreLu } : null
+        const resultat = audit && grilleRemplie && resultatG ? { date, type, conforme: resultatG.conforme, score: resultatG.score, reponses }
+          : audit && (conforme || scoreLu !== null) ? { date, type, conforme: conforme ? conforme === 'oui' : null, score: scoreLu } : null
         const ancien = visite && typesAudit.includes(visite.type) ? { date: visite.date, type: visite.type } : null
         if (resultat || (ancien && auditAvant)) await enregistrerAudit(magasins[0], ancien, resultat)
+        // Photos retirées ou d'un audit remplacé : effacées de l'espace photos une fois l'audit enregistré
+        const gardees = new Set(photosDe(resultat?.reponses).map((p) => p.chemin))
+        await supprimerPhotos([...new Set([...photosRetirees, ...photosDe(auditAvant?.reponses).map((p) => p.chemin)])].filter((c) => !gardees.has(c)))
         return visite ? 'Visite mise à jour.' : magasins.length > 1 ? `${magasins.length} visites enregistrées.` : 'Visite enregistrée.'
       }}
       supprimer={visite?.id ? async () => {
         await supprimerVisite(visite.id!)
         if (auditAvant) await enregistrerAudit(visite.magasin, { date: visite.date, type: visite.type }, null)
+        await supprimerPhotos(photosDe(auditAvant?.reponses).map((p) => p.chemin))
         return 'Visite supprimée.'
       } : undefined}
       libelleSuppression={visite ? `Supprimer la visite du ${date} à ${visite.magasin} ?` : undefined}
@@ -104,7 +120,10 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         renderInput={(p) => <TextField {...p} label={contact ? 'Fait par' : 'Visité par'} />}
         noOptionsText="Aucune personne ne correspond"
       />
-      {audit && (
+      {grille && grille.themes.length > 0 && (
+        <SaisieGrille titre={`Grille ${libellesGrilles[type]?.toLowerCase() ?? ''}`} reponses={reponses} setReponses={setReponses} seuil={grille.seuil} onRetirerPhoto={(c) => setPhotosRetirees((x) => [...x, c])} />
+      )}
+      {audit && !grilleRemplie && (
         <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
           <TextField select label="Résultat de l’audit" value={conforme} onChange={(e) => setConforme(e.target.value)} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
             <MenuItem value="">Non renseigné</MenuItem>

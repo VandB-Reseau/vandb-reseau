@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import { EcartsAudit } from '../components/GrilleAudit'
+import { Fragment, useState, type ReactNode } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -272,7 +273,7 @@ function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Ma
       )}
       {audits.map(([type, libelle]) => {
         const r = dernierAudit(reseau, m.nom, type)
-        return <Ligne key={type} libelle={libelle}>{r ? `${libelleAudit(r)} · ${dateCourte(r.date)}` : null}</Ligne>
+        return <Fragment key={type}><Ligne libelle={libelle}>{r ? `${libelleAudit(r)} · ${dateCourte(r.date)}` : null}</Ligne>{r && <EcartsAudit reponses={r.reponses} />}</Fragment>
       })}
       <GraphiqueCA liste={chiffresDuMagasin(reseau, m.nom)} />
       {(() => {
