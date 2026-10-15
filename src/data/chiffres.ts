@@ -135,7 +135,8 @@ export function analyser(reseau: Reseau, nom: string): Analyse | null {
 
 // Contacts qui ne sont pas des visites : ils ne comptent pas dans le rythme de visite
 export const typesContact = ['appel', 'point']
-export const estVisite = (v: Visite) => !typesContact.includes(v.type)
+// La feuille de route (revue budgétaire) a son compte rendu mais ne compte pas non plus dans le rythme
+export const estVisite = (v: Visite) => !typesContact.includes(v.type) && v.type !== 'feuille'
 
 export interface SuiviAlerte {
   depuis: string // premier mois de la série « Décroche »

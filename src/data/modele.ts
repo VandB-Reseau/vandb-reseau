@@ -110,12 +110,14 @@ export interface Reseau {
   chargeLe: string
 }
 
-export type TypeVisite = 'terrain' | 'hygiene' | 'excellence' | 'ouverture' | 'appel' | 'point'
+export type TypeVisite = 'terrain' | 'hygiene' | 'excellence' | 'ouverture' | 'feuille' | 'appel' | 'point'
 export const typesVisite: { id: TypeVisite; libelle: string; couleur: string }[] = [
   { id: 'terrain', libelle: 'Visite terrain', couleur: '#1b6fce' },
   { id: 'hygiene', libelle: 'Audit hygiène', couleur: '#0f766e' },
   { id: 'excellence', libelle: 'Audit excellence', couleur: '#b7791f' },
   { id: 'ouverture', libelle: 'Accompagnement ouverture', couleur: '#ef7d00' },
+  // Revue budgétaire avec le franchisé : hors rythme de visite
+  { id: 'feuille', libelle: 'Feuille de route', couleur: '#6d4c41' },
   // Contacts sans visite : ne comptent pas dans le rythme de visite
   { id: 'appel', libelle: 'Appel', couleur: '#5e35b1' },
   { id: 'point', libelle: 'Point chiffre', couleur: '#c2185b' },

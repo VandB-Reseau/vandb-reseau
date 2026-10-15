@@ -68,11 +68,37 @@ export interface ResultatImport {
   illisibles: number
 }
 
+// « ST PAUL LES DAX » = « Saint-Paul-Lès-Dax », « Elbeufs » = « Elbeuf »
+const canonique = (s: string) => sansEnseigne(s).split(' ').map((m) => ({ st: 'saint', ste: 'sainte', lez: 'les' })[m] ?? m.replace(/(.{3,})s$/, '$1')).join(' ')
+
 // Retrouve un magasin à partir du nom écrit dans un fichier (avec ou sans « V and B » devant)
 export function trouveurMagasin(reseau: Reseau): (v: unknown) => string | null {
-  const parNom = new Map<string, string>()
-  for (const m of reseau.magasins) { parNom.set(normaliser(m.nom), m.nom); parNom.set(sansEnseigne(normaliser(m.nom)), m.nom) }
-  return (v: unknown) => parNom.get(normaliser(v)) ?? parNom.get(sansEnseigne(normaliser(v))) ?? null
+  const parNom = new Map<string, string>(), parCanon = new Map<string, string>()
+  for (const m of reseau.magasins) { parNom.set(normaliser(m.nom), m.nom); parNom.set(sansEnseigne(normaliser(m.nom)), m.nom); parCanon.set(canonique(normaliser(m.nom)), m.nom) }
+  const canons = [...parCanon.keys()]
+  return (v: unknown) => {
+    const n = normaliser(v)
+    if (!n) return null
+    const exact = parNom.get(n) ?? parNom.get(sansEnseigne(n)) ?? parCanon.get(canonique(n))
+    if (exact) return exact
+    // « Balma Gramont » = « Balma », « Toulon » = « Toulon La Valette » : le nom commun le plus long, s'il est seul
+    const c = canonique(n)
+    if (c.length < 4) return null
+    const proches = canons.filter((k) => k.length >= 4 && (c.startsWith(`${k} `) || k.startsWith(`${c} `)))
+    const long = Math.max(0, ...proches.map((k) => Math.min(k.length, c.length)))
+    const meilleurs = proches.filter((k) => Math.min(k.length, c.length) === long)
+    if (meilleurs.length === 1) return parCanon.get(meilleurs[0])!
+    // Une seule lettre d'écart sur un nom assez long (« Biscarosse » = « Biscarrosse »)
+    const fautes = c.length >= 6 ? canons.filter((k) => unEcart(k, c)) : []
+    return fautes.length === 1 ? parCanon.get(fautes[0])! : null
+  }
+}
+
+function unEcart(a: string, b: string): boolean {
+  if (a === b || Math.abs(a.length - b.length) > 1) return false
+  let i = 0
+  while (i < a.length && a[i] === b[i]) i++
+  return a.slice(i + 1) === b.slice(i + 1) || a.slice(i + 1) === b.slice(i) || a.slice(i) === b.slice(i + 1)
 }
 
 export function analyser(lignes: unknown[][], reseau: Reseau, dateParDefaut: string): ResultatImport | null {
