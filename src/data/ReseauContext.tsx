@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { chargerReseau } from './chargement'
-import { corrigerPositions } from './geolocalisation'
+import { corrigerDomicilesCoachs, corrigerPositions } from './geolocalisation'
 import type { Reseau } from './modele'
 
 interface EtatReseau {
@@ -34,7 +34,8 @@ export function ReseauProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!reseau || positionsCorrigees.current) return
     positionsCorrigees.current = true
-    corrigerPositions(reseau.magasins).then((n) => { if (n) recharger() }).catch(() => { /* nouvel essai à la prochaine session */ })
+    Promise.all([corrigerPositions(reseau.magasins), corrigerDomicilesCoachs(reseau)])
+      .then(([a, b]) => { if (a + b) recharger() }).catch(() => { /* nouvel essai à la prochaine session */ })
   }, [reseau, recharger])
 
   return <Ctx.Provider value={{ reseau, chargement, erreur, recharger }}>{children}</Ctx.Provider>
