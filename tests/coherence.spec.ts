@@ -40,3 +40,17 @@ test('sur téléphone, l’Agenda garde son titre sur une ligne avec des boutons
     expect(b.height).toBeGreaterThanOrEqual(48)
   }
 })
+
+test('les bandes d’onglets ont la même hauteur sur toutes les pages, 48 px sur téléphone', async ({ page, isMobile }, info) => {
+  await seConnecter(page)
+  const hauteurs: number[] = []
+  for (const [url, nom] of [['/equipe', 'Rubriques de l’équipe'], ['/magasins?vue=liste', 'Affichage'], ['/visites', 'Rubriques des visites'], ['/plus/sante', 'Rubriques de la santé du parc']]) {
+    await page.goto('./#' + url)
+    const bande = page.getByRole('tablist', { name: nom })
+    await expect(bande).toBeVisible()
+    hauteurs.push(Math.round((await bande.boundingBox())!.height))
+    await page.screenshot({ path: `captures/${info.project.name}-onglets${url.replace(/[\/?=]/g, '-')}.png` })
+  }
+  expect(new Set(hauteurs).size).toBe(1)
+  if (isMobile) expect(hauteurs[0]).toBeLessThanOrEqual(50)
+})
