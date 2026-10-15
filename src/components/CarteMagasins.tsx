@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { CircleMarker, MapContainer, Marker, Pane, Polygon, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { divIcon } from 'leaflet'
+import { createPortal } from 'react-dom'
 import 'leaflet/dist/leaflet.css'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
@@ -81,7 +82,9 @@ interface PersonneCarte { cle: string; type: TypePicto; nom: string; role: strin
 
 // Carte : un point par magasin ; zones des Coachs et des Responsables Régionaux, affichables séparément
 // restreindre : seuls les Coachs et RR des magasins affichés (liste filtrée)
-export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, restreindre = false, vue = vueDuJour, margeBas = 24, zonesInitiales = { coachs: true, rr: false } }: {
+export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, restreindre = false, vue = vueDuJour, margeBas = 24, zonesInitiales = { coachs: true, rr: false }, emplacementBoutons = null }: {
+  // Où poser les boutons (ligne des filtres) ; à défaut, juste au-dessus de la carte
+  emplacementBoutons?: HTMLElement | null
   magasins: Magasin[]; rrs: ResponsableRegional[]; equipe?: Coach[]; personnes?: Reseau['personnes']; restreindre?: boolean; vue?: VueCarte; margeBas?: number; zonesInitiales?: { coachs: boolean; rr: boolean }
 }) {
   const [zonesCoachs, setZonesCoachs] = useState(zonesInitiales.coachs)
@@ -194,30 +197,35 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
     </Polygon>
   ))
 
+  // Boutons hors de la carte : dans la ligne des filtres, ou au-dessus de la carte en plein écran
+  const boutons = (
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, flexShrink: 0 }}>
+      <Box role="group" aria-label="Zones affichées" sx={barreSx}>
+        {[
+          { cle: 'coachs', actif: zonesCoachs, basculer: () => setZonesCoachs((v) => !v), icone: <PersonPinCircleOutlined />, long: 'Zones des Coachs' },
+          { cle: 'rr', actif: zonesRR, basculer: () => setZonesRR((v) => !v), icone: <HubOutlined />, long: 'Zones des Responsables Régionaux' },
+          { cle: 'personnes', actif: voirPersonnes, basculer: () => setVoirPersonnes((v) => !v), icone: <BadgeOutlined />, long: 'Coachs et Responsables Régionaux' },
+        ].map((b) => (
+          <InfoBulle key={b.cle} title={b.long} placement="bottom" disableHoverListener={!souris} disableFocusListener={!souris} disableTouchListener slotProps={{ tooltip: { sx: { fontSize: 13 } } }}>
+            <ToggleButton value={b.cle} selected={b.actif} onChange={b.basculer} aria-label={b.long} sx={boutonSx}>{b.icone}</ToggleButton>
+          </InfoBulle>
+        ))}
+      </Box>
+      <Box sx={barreSx}>
+        <InfoBulle title={pleinEcran ? 'Quitter le plein écran' : 'Plein écran'} placement="bottom" disableHoverListener={!souris} disableFocusListener={!souris} disableTouchListener slotProps={{ tooltip: { sx: { fontSize: 13 } } }}>
+          <ToggleButton value="plein" selected={pleinEcran} onChange={() => setPleinEcran((v) => !v)} aria-label={pleinEcran ? 'Quitter le plein écran' : 'Carte en plein écran'} sx={boutonSx}>
+            {pleinEcran ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+          </ToggleButton>
+        </InfoBulle>
+      </Box>
+    </Box>
+  )
+
   return (
     <Box>
+      {emplacementBoutons && !pleinEcran && createPortal(boutons, emplacementBoutons)}
       <Box ref={carteRef} sx={{ position: pleinEcran ? 'fixed' : 'relative', inset: pleinEcran ? 0 : undefined, zIndex: pleinEcran ? 1400 : undefined, bgcolor: pleinEcran ? 'background.default' : undefined, height: hauteur, display: 'flex', flexDirection: 'column', gap: 1, p: pleinEcran ? 1 : 0 }}>
-        {/* Barre de boutons compacte au-dessus de la carte, sans rien poser dessus */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, flexShrink: 0 }}>
-          <Box role="group" aria-label="Zones affichées" sx={barreSx}>
-            {[
-              { cle: 'coachs', actif: zonesCoachs, basculer: () => setZonesCoachs((v) => !v), icone: <PersonPinCircleOutlined />, long: 'Zones des Coachs' },
-              { cle: 'rr', actif: zonesRR, basculer: () => setZonesRR((v) => !v), icone: <HubOutlined />, long: 'Zones des Responsables Régionaux' },
-              { cle: 'personnes', actif: voirPersonnes, basculer: () => setVoirPersonnes((v) => !v), icone: <BadgeOutlined />, long: 'Coachs et Responsables Régionaux' },
-            ].map((b) => (
-              <InfoBulle key={b.cle} title={b.long} placement="bottom" disableHoverListener={!souris} disableFocusListener={!souris} disableTouchListener slotProps={{ tooltip: { sx: { fontSize: 13 } } }}>
-                <ToggleButton value={b.cle} selected={b.actif} onChange={b.basculer} aria-label={b.long} sx={boutonSx}>{b.icone}</ToggleButton>
-              </InfoBulle>
-            ))}
-          </Box>
-          <Box sx={barreSx}>
-            <InfoBulle title={pleinEcran ? 'Quitter le plein écran' : 'Plein écran'} placement="bottom" disableHoverListener={!souris} disableFocusListener={!souris} disableTouchListener slotProps={{ tooltip: { sx: { fontSize: 13 } } }}>
-              <ToggleButton value="plein" selected={pleinEcran} onChange={() => setPleinEcran((v) => !v)} aria-label={pleinEcran ? 'Quitter le plein écran' : 'Carte en plein écran'} sx={boutonSx}>
-                {pleinEcran ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-              </ToggleButton>
-            </InfoBulle>
-          </Box>
-        </Box>
+        {(pleinEcran || !emplacementBoutons) && boutons}
         <Box sx={{ flex: 1, minHeight: 0, borderRadius: pleinEcran ? 2 : 4, overflow: 'hidden', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
         <MapContainer center={[46.6, 2.4]} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
           <AjusterTaille hauteur={hauteur} />

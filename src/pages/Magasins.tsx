@@ -33,6 +33,7 @@ export function Magasins({ vueInitiale = 'carte' }: { vueInitiale?: 'liste' | 'c
   const vue = (params.get('vue') as 'liste' | 'carte' | null) ?? vueInitiale
   const changerFiltres = (f: Filtres) => setParams(filtresVersUrl(f, params), { replace: true })
   const [ajout, setAjout] = useState(false)
+  const [emplacementBoutons, setEmplacementBoutons] = useState<HTMLElement | null>(null)
   const naviguer = useNavigate()
   const changerVue = (v: 'liste' | 'carte') => { const p = new URLSearchParams(params); p.set('vue', v); setParams(p, { replace: true }) }
 
@@ -55,7 +56,7 @@ export function Magasins({ vueInitiale = 'carte' }: { vueInitiale?: 'liste' | 'c
             />
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <Box sx={{ flex: 1, minWidth: 0 }}><BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres} /></Box>
-              {surPC
+              {vue === 'carte' ? <Box ref={setEmplacementBoutons} sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, flexBasis: { xs: '100%', md: 'auto' } }} /> : surPC
                 ? <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setAjout(true)} sx={{ minHeight: 48, mb: 2 }}>Ajouter un magasin</Button>
                 : <IconButton onClick={() => setAjout(true)} aria-label="Ajouter un magasin" sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', '&:hover': { bgcolor: 'primary.dark' } }}><AddOutlined /></IconButton>}
             </Box>
@@ -64,7 +65,7 @@ export function Magasins({ vueInitiale = 'carte' }: { vueInitiale?: 'liste' | 'c
               <EmptyState icone={<SearchOff />} titre="Aucun magasin ne correspond" texte="Modifie la recherche ou retire un filtre pour voir plus de magasins." />
             ) : vue === 'carte' ? (
               <Suspense fallback={<Skeleton variant="rounded" height={600} />}>
-                <CarteMagasins magasins={resultats} rrs={reseau.rrs} equipe={reseau.equipe} personnes={reseau.personnes} restreindre={resultats.length !== total} margeBas={surPC ? 40 : 96} />
+                <CarteMagasins magasins={resultats} rrs={reseau.rrs} equipe={reseau.equipe} personnes={reseau.personnes} restreindre={resultats.length !== total} margeBas={surPC ? 40 : 96} emplacementBoutons={emplacementBoutons} />
               </Suspense>
             ) : surPC ? (
               <TableMagasins magasins={resultats} />

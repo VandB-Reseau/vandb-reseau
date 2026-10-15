@@ -48,7 +48,11 @@ test('modifier et renommer un magasin met à jour toutes les tables', async ({ p
 test('ajouter puis supprimer un magasin', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins')
+  await page.goto('./#/magasins?vue=carte')
+  // Ajout de magasin seulement en vue Liste
+  await expect(page.locator('.leaflet-container')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Ajouter un magasin' })).toHaveCount(0)
+  await page.getByRole('tab', { name: 'Liste' }).click()
   await page.getByRole('button', { name: 'Ajouter un magasin' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter un magasin' })
   await expect(d.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
