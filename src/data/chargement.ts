@@ -7,6 +7,7 @@ import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type 
 import { normaliserParties, normaliserPlan } from './compteRendu'
 import { normaliserGrilles, type Grilles } from './grilles'
 import { normaliserPratiques, type BonnePratique } from './bonnesPratiques'
+import { normaliserCampagnes, type Campagne, type Campagnes } from './campagnes'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 
 function json<T>(valeur: unknown, defaut: T): T {
@@ -20,7 +21,7 @@ export class ErreurChargement extends Error {}
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'derniere_sauvegarde']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -60,6 +61,8 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   reseau.audits = json<Audits>(cle('audits'), {})
   reseau.grilles = normaliserGrilles(json<unknown>(cle('grilles_audit'), {}))
   reseau.pratiques = normaliserPratiques(json<unknown>(cle('bonnes_pratiques'), []))
+  reseau.campagnes = normaliserCampagnes(json<unknown>(cle('campagnes'), {}))
+  reseau.derniereSauvegarde = json<{ date?: string }>(cle('derniere_sauvegarde'), {}).date ?? ''
   const seuil = (k: keyof SeuilsAlerte) => (params[k as keyof typeof params] === undefined || isNaN(Number(params[k as keyof typeof params])) ? seuilsParDefaut[k] : Number(params[k as keyof typeof params]))
   reseau.seuils = { seuilDecroche: seuil('seuilDecroche'), seuilSurveiller: seuil('seuilSurveiller'), moisReference: seuil('moisReference') === 1 ? 1 : 12, delaiAppel: seuil('delaiAppel') }
   const dep = json<Partial<Deploiements>>(cle('deploiements'), {})
@@ -373,6 +376,13 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
     if (bp.valeur.some((p) => p.magasin === ancienNom || p.reprises?.includes(ancienNom))) {
       await ecrireCle('bonnes_pratiques', bp.valeur.map((p) => ({ ...p, magasin: p.magasin === ancienNom ? f.nom : p.magasin, reprises: (p.reprises ?? []).map((r) => (r === ancienNom ? f.nom : r)) })), bp.existe)
     }
+    const cp = await lireCle<Campagnes>('campagnes', { liste: [], constats: {} })
+    const constats = Object.values(cp.valeur.constats ?? {})
+    if (constats.some((k) => ancienNom in k) || (cp.valeur.liste ?? []).some((c) => c.magasins?.includes(ancienNom))) {
+      for (const k of constats) if (ancienNom in k) { k[f.nom] = k[ancienNom]; delete k[ancienNom] }
+      for (const c of cp.valeur.liste ?? []) c.magasins = (c.magasins ?? []).map((n) => (n === ancienNom ? f.nom : n))
+      await ecrireCle('campagnes', cp.valeur, cp.existe)
+    }
     for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits'] as const) {
       const lu = await lireCle<Record<string, unknown>>(cleConfig, {})
       const cibles = (cleConfig === 'deploiements' ? [lu.valeur.valeurs, lu.valeur.journal] : [lu.valeur]) as (Record<string, unknown> | undefined)[]
@@ -605,5 +615,70 @@ export function enregistrerPratique(id: string, pratique: BonnePratique | null) 
     const { valeur, existe } = await lireCle<BonnePratique[]>('bonnes_pratiques', [])
     const liste = valeur.filter((p) => p.id !== id)
     await ecrireCle('bonnes_pratiques', pratique ? [pratique, ...liste] : liste, existe)
+  })
+}
+
+// ── Campagnes : liste et constats par magasin (app_config, clé campagnes) ──
+function modifierCampagnes(changer: (c: Campagnes) => void) {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<unknown>('campagnes', {})
+    const c = normaliserCampagnes(valeur)
+    changer(c)
+    await ecrireCle('campagnes', c, existe)
+  })
+}
+
+// Campagne ajoutée ou modifiée (même id) ; null la supprime avec ses constats
+export function enregistrerCampagne(id: string, campagne: Campagne | null) {
+  return modifierCampagnes((c) => {
+    const i = c.liste.findIndex((x) => x.id === id)
+    if (!campagne) { c.liste = c.liste.filter((x) => x.id !== id); delete c.constats[id]; return }
+    if (i >= 0) c.liste[i] = campagne
+    else c.liste.push(campagne)
+    // Points retirés : leurs constats disparaissent
+    const ids = new Set(campagne.points.map((p) => p.id))
+    for (const k of Object.values(c.constats[id] ?? {})) for (const p of Object.keys(k)) if (!ids.has(p)) delete k[p]
+  })
+}
+
+// fait null : le point redevient à constater
+export function enregistrerConstats(lot: { campagne: string; magasin: string; point: string; fait: boolean | null; date: string; par: string }[]) {
+  return modifierCampagnes((c) => {
+    for (const l of lot) {
+      const parMagasin = (c.constats[l.campagne] ??= {})
+      const k = (parMagasin[l.magasin] ??= {})
+      if (l.fait === null) delete k[l.point]
+      else k[l.point] = { fait: l.fait, date: l.date, par: l.par }
+      if (!Object.keys(k).length) delete parMagasin[l.magasin]
+    }
+  })
+}
+
+// ── Sauvegarde complète : toutes les tables lues telles quelles ──
+export const tablesSauvegardees = ['app_config', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits', 'visits', 'leaves', 'events', 'store_finance'] as const
+
+export async function lireSauvegarde(): Promise<Record<string, unknown[]>> {
+  const tables: Record<string, unknown[]> = {}
+  for (const t of tablesSauvegardees) {
+    const lignes: unknown[] = []
+    // Lecture par pages de 1 000 lignes (limite d'une réponse Supabase)
+    for (let debut = 0; ; debut += 1000) {
+      const r = await supabase.from(t).select('*').range(debut, debut + 999)
+      if (r.error) {
+        if (/does not exist|schema cache/i.test(r.error.message)) break // table jamais créée : rien à sauvegarder
+        throw new ErreurEnregistrement(r.error.message)
+      }
+      lignes.push(...(r.data ?? []))
+      if ((r.data ?? []).length < 1000) break
+    }
+    tables[t] = lignes
+  }
+  return tables
+}
+
+export function noterSauvegarde(date: string, par: string) {
+  return enFile(async () => {
+    const { existe } = await lireCle<unknown>('derniere_sauvegarde', {})
+    await ecrireCle('derniere_sauvegarde', { date, par }, existe)
   })
 }
