@@ -4,6 +4,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
+import MenuItem from '@mui/material/MenuItem'
 import Snackbar from '@mui/material/Snackbar'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -13,7 +14,7 @@ import { chargeA, niveauCharge } from '../data/charge'
 import { enregistrerParametres } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
 import type { ParametresReseau, Reseau } from '../data/modele'
-import { analyser, type SeuilsAlerte } from '../data/chiffres'
+import { analyser, referencesPossibles, type SeuilsAlerte } from '../data/chiffres'
 
 type Cle = keyof ParametresReseau
 const champs: { cle: Cle; libelle: string; aide: string; min: number; max: number }[] = [
@@ -89,28 +90,26 @@ function RegleCharge({ reseau }: { reseau: Reseau }) {
 
 type CleSeuil = keyof SeuilsAlerte
 const champsSeuils: { cle: CleSeuil; libelle: string; min: number; max: number }[] = [
-  { cle: 'seuilDecroche', libelle: 'Décroche : baisse du CA sur 3 mois (%)', min: 1, max: 50 },
-  { cle: 'seuilSurveiller', libelle: 'À surveiller : baisse du CA sur 3 mois (%)', min: 0, max: 50 },
-  { cle: 'seuilRupture', libelle: 'À surveiller : rupture de tendance (points)', min: 1, max: 50 },
+  { cle: 'seuilDecroche', libelle: 'Décroche : baisse du CA (%)', min: 1, max: 50 },
+  { cle: 'seuilSurveiller', libelle: 'À surveiller : baisse du CA (%)', min: 0, max: 50 },
   { cle: 'delaiAppel', libelle: 'Délai pour appeler un magasin qui décroche (jours)', min: 1, max: 30 },
 ]
 
 function compterDecroches(reseau: Reseau, s: SeuilsAlerte) {
-  const r = { ...reseau, seuils: s }
-  return reseau.magasins.filter((m) => analyser(r, m.nom)?.statut === 'decroche').length
+  return reseau.magasins.filter((m) => analyser(reseau, m.nom, s)?.statut === 'decroche').length
 }
 
 function RegleAlerte({ reseau }: { reseau: Reseau }) {
   const { recharger } = useReseau()
-  const initiales = () => Object.fromEntries(champsSeuils.map((c) => [c.cle, String(reseau.seuils[c.cle])])) as Record<CleSeuil, string>
+  const initiales = () => Object.fromEntries(([...champsSeuils.map((c) => c.cle), 'moisReference'] as CleSeuil[]).map((c) => [c, String(reseau.seuils[c])])) as Record<CleSeuil, string>
   const [valeurs, setValeurs] = useState<Record<CleSeuil, string>>(initiales)
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState(false)
   const [ok, setOk] = useState(false)
-  const nombres = Object.fromEntries(champsSeuils.map((c) => [c.cle, Number(valeurs[c.cle])])) as unknown as SeuilsAlerte
+  const nombres = Object.fromEntries(Object.entries(valeurs).map(([c, v]) => [c, Number(v)])) as unknown as SeuilsAlerte
   const invalides = champsSeuils.filter((c) => valeurs[c.cle] === '' || !Number.isInteger(nombres[c.cle]) || nombres[c.cle] < c.min || nombres[c.cle] > c.max)
   const incoherent = !invalides.length && nombres.seuilSurveiller > nombres.seuilDecroche
-  const modifie = champsSeuils.some((c) => nombres[c.cle] !== reseau.seuils[c.cle])
+  const modifie = (Object.keys(valeurs) as CleSeuil[]).some((c) => nombres[c] !== reseau.seuils[c])
   const avecChiffres = Object.keys(reseau.chiffres).length > 0
   const enregistrer = async () => {
     setEnvoi(true); setErreur(false)
@@ -121,6 +120,9 @@ function RegleAlerte({ reseau }: { reseau: Reseau }) {
       <CardContent sx={{ p: 3 }}>
         <Typography variant="h3" component="h2" sx={{ mb: 3 }}>Alerte sur les chiffres</Typography>
         <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
+          <TextField select label="Écart de CA par rapport au" value={valeurs.moisReference} onChange={(e) => setValeurs((v) => ({ ...v, moisReference: e.target.value }))} helperText=" ">
+            {referencesPossibles.map((r) => <MenuItem key={r.valeur} value={String(r.valeur)}>{r.libelle}</MenuItem>)}
+          </TextField>
           {champsSeuils.map((c) => (
             <TextField key={c.cle} type="number" label={c.libelle} value={valeurs[c.cle]} onChange={(e) => setValeurs((v) => ({ ...v, [c.cle]: e.target.value }))}
               error={invalides.includes(c)} helperText={invalides.includes(c) ? `Entre ${c.min} et ${c.max}, nombre entier.` : ' '} slotProps={{ htmlInput: { min: c.min, max: c.max, step: 1 } }} />
