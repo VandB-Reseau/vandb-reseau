@@ -33,6 +33,7 @@ import {
   raisonMagasinLibelle, raisonRRLibelle, rrDuCoachA, rrsRattachables, type Plafond, type PropositionMagasin, type PropositionRR,
 } from '../data/plan'
 import { duree } from '../data/tournee'
+import { useTrajetsRoutiers } from '../data/routes'
 import { dateLongue, lienCoach, lienFiche } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
 import type { VueCarte } from '../components/CarteMagasins'
@@ -80,7 +81,8 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const { recharger } = useReseau()
-  const propM = useMemo(() => proposerMagasins(reseau, jour, plafond), [reseau, jour, plafond])
+  const routes = useTrajetsRoutiers(reseau)
+  const propM = useMemo(() => proposerMagasins(reseau, jour, plafond), [reseau, jour, plafond, routes.version]) // eslint-disable-line react-hooks/exhaustive-deps
   const propR = useMemo(() => proposerRR(reseau, jour, new Map(propM.map((p) => [p.magasin.nom, p.coach]))), [reseau, jour, propM])
   const [choixM, setChoixM] = useState<Choix>({})
   const [choixR, setChoixR] = useState<Choix>({})

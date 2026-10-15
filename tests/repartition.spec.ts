@@ -17,3 +17,13 @@ test('la répartition confie les magasins éloignés au Coach le plus proche', (
   expect(p.map((x) => `${x.magasin.nom}>${x.coach}`).sort()).toEqual(['Est 1>Bruno EST', 'Est 2>Bruno EST'])
   expect(p.every((x) => x.raison === 'trajets')).toBe(true)
 })
+
+test('sans service d’itinéraire, la charge indique que les trajets sont estimés', async ({ page }) => {
+  const { seConnecter } = await import('./supabase-simule')
+  await seConnecter(page)
+  await page.route('https://router.project-osrm.org/**', (r) => r.abort())
+  await page.evaluate(() => localStorage.removeItem('vandb-trajets-routiers'))
+  await page.goto('./#/equipe?vue=charge')
+  await page.reload()
+  await expect(page.getByText('Trajets estimés')).toBeVisible()
+})

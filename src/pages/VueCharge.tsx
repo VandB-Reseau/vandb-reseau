@@ -26,6 +26,7 @@ import { PastilleCharge } from '../components/Charge'
 import { chargeA, coachA, magasinsDuCoach } from '../data/charge'
 import { ajouterMois, statutA } from '../data/construction'
 import { positionsCoachs } from '../data/plan'
+import { useTrajetsRoutiers } from '../data/routes'
 import { duree, tournee, type Tournee } from '../data/tournee'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
 import type { Coach, Magasin, Reseau } from '../data/modele'
@@ -90,6 +91,7 @@ export function VueCharge({ reseau }: { reseau: Reseau }) {
   const fin = ajouterMois(reseau.jour, 12)
   const max = reseau.parametres.maxUnits
 
+  const routes = useTrajetsRoutiers(reseau)
   const lignes: Ligne[] = useMemo(() => {
     const positions = positionsCoachs(reseau, reseau.jour)
     return reseau.equipe
@@ -103,7 +105,7 @@ export function VueCharge({ reseau }: { reseau: Reseau }) {
       })
       .filter((l) => l.magasins.length || l.changements.length)
       .sort((a, b) => a.coach.nom.localeCompare(b.coach.nom, 'fr'))
-  }, [reseau, fin])
+  }, [reseau, fin, routes.version])
 
   if (!lignes.length) return <EmptyState icone={<BalanceOutlined />} titre="Aucun Coach à afficher" texte="La charge apparaîtra dès qu’un Coach aura des magasins. Ajoute un Coach dans l’onglet Organisation." />
 
@@ -128,6 +130,8 @@ export function VueCharge({ reseau }: { reseau: Reseau }) {
           ].filter(Boolean).join(' · ')}
         </Alert>
       )}
+
+      {routes.etat === 'estime' && <Alert severity="info" sx={{ mb: 2 }}>Trajets estimés : le service d’itinéraire ne répond pas pour le moment.</Alert>}
 
       {!aTraiter && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>

@@ -8,6 +8,19 @@ export interface Ecriture { methode: string; table: string; corps: unknown; filt
 
 export async function simulerSupabase(page: Page, options: { panne?: boolean; ecritures?: Ecriture[] } = {}) {
   await page.route('https://*.tile.openstreetmap.org/**', (r) => r.fulfill({ status: 204, body: '' }))
+  // Service d'itinéraire simulé : 1,25 fois la distance à vol d'oiseau, à 72 km/h
+  await page.route('https://router.project-osrm.org/**', (r) => {
+    const u = new URL(r.request().url())
+    const pts = decodeURIComponent(u.pathname.split('/').pop()!).split(';').map((c) => c.split(',').map(Number))
+    const idx = (k: string) => u.searchParams.get(k)!.split(';').map(Number)
+    const m = (a: number[], b: number[]) => {
+      const rad = Math.PI / 180, dLat = (b[1] - a[1]) * rad, dLon = (b[0] - a[0]) * rad
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin(dLon / 2) ** 2
+      return 6371000 * 2 * Math.asin(Math.sqrt(h)) * 1.25
+    }
+    const distances = idx('sources').map((i) => idx('destinations').map((k) => m(pts[i], pts[k])))
+    return r.fulfill({ json: { code: 'Ok', distances, durations: distances.map((l) => l.map((x) => x / 20)) } })
+  })
   await page.route('https://supabase.test/**', async (route) => {
     const req = route.request()
     const url = new URL(req.url())
