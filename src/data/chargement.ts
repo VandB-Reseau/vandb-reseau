@@ -566,6 +566,10 @@ export async function enregistrerChiffres(lignes: (Partial<ChiffreMois> & { maga
   }
 }
 
+export async function supprimerChiffres(magasin: string, mois: string) {
+  verifier(await supabase.from('store_finance').delete().eq('store_name', magasin).eq('month', `${mois}-01`))
+}
+
 // Résultat d'un audit, rattaché au magasin, à la date et au type de la visite
 export function enregistrerAudit(magasin: string, ancien: { date: string; type: string } | null, audit: ResultatAudit | null) {
   return enFile(async () => {

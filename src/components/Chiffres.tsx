@@ -8,7 +8,7 @@ import ErrorOutline from '@mui/icons-material/ErrorOutlineOutlined'
 import WarningAmberOutlined from '@mui/icons-material/WarningAmberOutlined'
 import CheckCircleOutline from '@mui/icons-material/CheckCircleOutlineOutlined'
 import { Fenetre } from './EditionEquipe'
-import { enregistrerChiffres } from '../data/chargement'
+import { enregistrerChiffres, supprimerChiffres } from '../data/chargement'
 import {
   caDe, champsSaisis, chiffresDuMagasin, completerChiffres, formatValeur, libellesChiffres, couleurAlerte, decalerMois, formatEuros, libelleAlerte, libelleMois, libelleMoisCourt, lireNombre, moisPrecedent,
   type ChampChiffre, type ChiffreMois, type StatutAlerte, type SuiviAlerte,
@@ -104,11 +104,14 @@ function Calcules({ s }: { s: SaisieChiffres }) {
   )
 }
 
-export function DialogChiffres({ reseau, magasin, onFermer }: { reseau: Reseau; magasin: string; onFermer: (m?: string) => void }) {
-  const s = useSaisieChiffres(reseau, magasin, moisPrecedent(reseau.jour))
+export function DialogChiffres({ reseau, magasin, mois, onFermer }: { reseau: Reseau; magasin: string; mois?: string; onFermer: (m?: string) => void }) {
+  const s = useSaisieChiffres(reseau, magasin, mois ?? moisPrecedent(reseau.jour))
+  const existe = chiffresDuMagasin(reseau, magasin).some((c) => c.mois === s.mois)
   return (
     <Fenetre titre={`Chiffres de ${magasin}`} ouvert onFermer={onFermer} valide={s.valide && s.modifie}
-      enregistrer={async () => { await enregistrerChiffres([s.ligne()]); return `Chiffres de ${libelleMois(s.mois)} enregistrés.` }}>
+      enregistrer={async () => { await enregistrerChiffres([s.ligne()]); return `Chiffres de ${libelleMois(s.mois)} enregistrés.` }}
+      supprimer={existe ? async () => { await supprimerChiffres(magasin, s.mois); return `Chiffres de ${libelleMois(s.mois)} supprimés.` } : undefined}
+      libelleSuppression={`Supprimer les chiffres de ${libelleMois(s.mois)} pour ${magasin} ?`}>
       <ChampsChiffres s={s} reseau={reseau} />
     </Fenetre>
   )

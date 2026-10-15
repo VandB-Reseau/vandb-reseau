@@ -80,7 +80,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const [edition, setEdition] = useState(false)
   const [visite, setVisite] = useState<Visite | null | undefined>(undefined)
   const [typeVisite, setTypeVisite] = useState('terrain')
-  const [saisieChiffres, setSaisieChiffres] = useState(false)
+  const [saisieChiffres, setSaisieChiffres] = useState<string | null | undefined>(undefined)
   const [confirmation, setConfirmation] = useState('')
   const coach = m.coach ? reseau.coachs[m.coach] ?? { nom: m.coach } : null
   const adresseComplete = [m.adresse || [m.codePostal, m.ville].filter(Boolean).join(' '), m.pays].filter(Boolean).join(', ')
@@ -120,7 +120,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
         </Section>
 
-        <SectionChiffres reseau={reseau} m={m} saisir={() => setSaisieChiffres(true)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
+        <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
 
         <Section titre="Visites" action={<Button startIcon={<AddOutlined />} onClick={() => { setTypeVisite('terrain'); setVisite(null) }} sx={{ minHeight: 48 }}>Saisir</Button>}>
           {(() => {
@@ -162,7 +162,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         if (nom && nom !== m.nom) naviguer(lienFiche(nom), { replace: true })
       }} />}
       {visite !== undefined && <DialogVisite reseau={reseau} visite={visite} magasinsInitiaux={[m.nom]} typeInitial={typeVisite} onFermer={(msg) => { setVisite(undefined); if (msg) setConfirmation(msg) }} />}
-      {saisieChiffres && <DialogChiffres reseau={reseau} magasin={m.nom} onFermer={(msg) => { setSaisieChiffres(false); if (msg) setConfirmation(msg) }} />}
+      {saisieChiffres !== undefined && <DialogChiffres reseau={reseau} magasin={m.nom} mois={saisieChiffres ?? undefined} onFermer={(msg) => { setSaisieChiffres(undefined); if (msg) setConfirmation(msg) }} />}
       <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
     </>
   )
@@ -236,12 +236,13 @@ function SectionDeploiements({ reseau, m, modifier }: { reseau: Reseau; m: Magas
 const couleurNoteChip = { 1: 'error', 2: 'warning', 3: 'success' } as const
 
 // Chiffres du mois, alerte de décrochage, appel et derniers audits
-function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Magasin; saisir: () => void; appeler: () => void }) {
+function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Magasin; saisir: (mois?: string) => void; appeler: () => void }) {
+  const [tousLesMois, setTousLesMois] = useState(false)
   const a = analyser(reseau, m.nom)
   const suivi = suiviAlerte(reseau, m.nom, a)
   const audits = [['hygiene', 'Dernier audit hygiène'], ['excellence', 'Dernier audit excellence']] as const
   return (
-    <Section titre="Chiffres" action={<Button startIcon={<EditOutlined />} onClick={saisir} aria-label="Saisir les chiffres" sx={{ minHeight: 48 }}>Saisir</Button>}>
+    <Section titre="Chiffres" action={<Button startIcon={<EditOutlined />} onClick={() => saisir()} aria-label="Saisir les chiffres" sx={{ minHeight: 48 }}>Saisir</Button>}>
       {!a ? <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Aucun chiffre enregistré pour ce magasin.</Typography> : (
         <>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
@@ -270,6 +271,28 @@ function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Ma
         return <Ligne key={type} libelle={libelle}>{r ? `${libelleAudit(r)} · ${dateCourte(r.date)}` : null}</Ligne>
       })}
       <GraphiqueCA liste={chiffresDuMagasin(reseau, m.nom)} />
+      {(() => {
+        const liste = [...chiffresDuMagasin(reseau, m.nom)].reverse()
+        if (!liste.length) return null
+        return (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" component="h3" sx={{ mb: 0.5 }}>Mois enregistrés</Typography>
+            {(tousLesMois ? liste : liste.slice(0, 6)).map((c) => (
+              <Box key={c.mois} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+                <Typography variant="body2" color="text.secondary" sx={{ width: 130, flexShrink: 0 }}>{libelleMois(c.mois)}</Typography>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="body1">{formatEuros(caDe(c))}</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    {[c.tickets !== null && c.tickets !== undefined && `Flux ${formatValeur('tickets', c.tickets)}`, c.marge !== null && c.marge !== undefined && `Marge ${formatValeur('marge', c.marge)}`].filter(Boolean).join(' · ')}
+                  </Typography>
+                </Box>
+                <Tooltip title="Modifier"><IconButton onClick={() => saisir(c.mois)} sx={{ width: 48, height: 48 }} aria-label={`Modifier les chiffres de ${libelleMois(c.mois)}`}><EditOutlined /></IconButton></Tooltip>
+              </Box>
+            ))}
+            {liste.length > 6 && <Button onClick={() => setTousLesMois((v) => !v)} sx={{ minHeight: 48, mt: 0.5 }}>{tousLesMois ? 'Afficher moins' : `Voir les ${liste.length} mois`}</Button>}
+          </Box>
+        )
+      })()}
     </Section>
   )
 }
