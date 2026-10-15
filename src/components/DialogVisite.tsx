@@ -13,13 +13,14 @@ import AddLinkOutlined from '@mui/icons-material/AddLinkOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import { Fenetre } from './EditionEquipe'
 import { SaisieCompteRendu } from './SaisieCompteRendu'
-import { enregistrerAudit, enregistrerChiffres, enregistrerVisites, supprimerVisite } from '../data/chargement'
+import { enregistrerAudit, enregistrerChiffres, enregistrerConstats, enregistrerVisites, supprimerVisite } from '../data/chargement'
 import { ChampsChiffres, useSaisieChiffres } from './Chiffres'
 import { auditDe, lireNombre, moisPrecedent, typesAudit, typesContact } from '../data/chiffres'
 import { partiesVides } from '../data/compteRendu'
 import { libellesGrilles, photosDe, reponsesPourSaisie, resultatGrille, type Reponses } from '../data/grilles'
 import { supprimerPhotos } from '../lib/photos'
 import { ChampPhotos, SaisieGrille } from './GrilleAudit'
+import { SaisieCampagnes, useSaisieCampagnes } from './Campagnes'
 import { typesVisite, type ActionPlan, type Document, type Reseau, type Visite } from '../data/modele'
 
 // Personnes qui peuvent visiter : Coachs, RR, Directeur
@@ -69,6 +70,8 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const resultatG = grille ? resultatGrille(reponses, grille.seuil) : null
   const grilleRemplie = !!resultatG && (resultatG.renseignes > 0 || photosDe(reponses).length > 0)
   const chiffres = useSaisieChiffres(reseau, magasins[0] ?? '', moisPrecedent(visite?.date ?? reseau.jour))
+  // Campagnes en cours à la date de la visite : constatées sur place, rangées à cette date
+  const campagnes = useSaisieCampagnes(reseau, unSeul ? magasins[0] ?? '' : '', date)
   const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date) && (!unSeul || chiffres.valide) && !(audit && !grilleRemplie && scoreInvalide)
   const noms = reseau.magasins.map((m) => m.nom)
   return (
@@ -79,6 +82,8 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         const signe = signatureRequise && !contact
         await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, photos: unSeul && !contact ? photos : [], notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [] }, magasins, visite?.id ?? null)
         if (unSeul && chiffres.modifie) await enregistrerChiffres([chiffres.ligne()])
+        const constats = unSeul ? campagnes.lot(date, participants[0] ?? reseau.directeur.nom) : []
+        if (constats.length) await enregistrerConstats(constats)
         const resultat = audit && grilleRemplie && resultatG ? { date, type, conforme: resultatG.conforme, score: resultatG.score, reponses }
           : audit && (conforme || scoreLu !== null) ? { date, type, conforme: conforme ? conforme === 'oui' : null, score: scoreLu } : null
         const ancien = visite && typesAudit.includes(visite.type) ? { date: visite.date, type: visite.type } : null
@@ -141,6 +146,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
           notes={notes} setNotes={setNotes} parties={parties} setParties={setParties} plan={plan} setPlan={setPlan}
         />}
       {unSeul && magasins[0] && <ChampsChiffres s={chiffres} reseau={reseau} titre="Chiffres du mois" />}
+      {unSeul && <SaisieCampagnes s={campagnes} />}
       {!contact && <>
       <Box>
         <FormControlLabel control={<Switch checked={signatureRequise} onChange={(e) => setSignatureRequise(e.target.checked)} />} label="Visite contractuelle, à faire signer" sx={{ minHeight: 48 }} />

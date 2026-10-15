@@ -26,6 +26,8 @@ import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined'
 import Alert from '@mui/material/Alert'
 import { Fenetre } from '../components/EditionEquipe'
+import { VueCampagnes } from '../components/Campagnes'
+import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import { importerVisites } from '../data/chargement'
 import { analyserVisites, lireClasseur, type ResultatImportVisites } from '../data/importVisites'
 import { RechercheFiltres } from '../components/RechercheFiltres'
@@ -338,7 +340,7 @@ export function Visites() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [params, setParams] = useSearchParams()
-  const vue = params.get('vue') === 'historique' ? 'historique' : params.get('vue') === 'pratiques' ? 'pratiques' : 'rythme'
+  const vue = (['historique', 'pratiques', 'campagnes'] as const).find((v) => v === params.get('vue')) ?? 'rythme'
   const [pratique, setPratique] = useState<BonnePratique | null | undefined>(undefined)
   const [edition, setEdition] = useState<Edition>(null)
   const [message, setMessage] = useState('')
@@ -359,8 +361,11 @@ export function Visites() {
             { vue: 'rythme', libelle: 'Rythme de visite', court: 'Rythme', icone: <EventRepeatOutlined /> },
             { vue: 'historique', libelle: 'Historique', icone: <HistoryOutlined /> },
             { vue: 'pratiques', libelle: 'Bonnes pratiques', court: 'Pratiques', icone: <TipsAndUpdatesOutlined /> },
+            { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
           ]} />
-          {vue === 'pratiques'
+          {vue === 'campagnes'
+            ? <VueCampagnes reseau={reseau} />
+            : vue === 'pratiques'
             ? <VuePratiques reseau={reseau} modifier={setPratique} actions={<BoutonAction libelle="Ajouter une bonne pratique" onClick={() => setPratique(null)} />} />
             : vue === 'historique'
             ? <VueHistorique reseau={reseau} surPC={surPC} actions={actions} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />

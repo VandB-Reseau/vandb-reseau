@@ -31,6 +31,8 @@ import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
+import { ConstatsMagasin } from '../components/Campagnes'
+import { campagnesDuMagasin } from '../data/campagnes'
 import { anneeDe, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
@@ -165,6 +167,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 
         <SectionSante reseau={reseau} m={m} modifier={() => setEdition(true)} />
         <SectionDeploiements reseau={reseau} m={m} modifier={() => setEdition(true)} />
+        {campagnesDuMagasin(reseau, m.nom, reseau.jour).length > 0 && <Section titre="Campagnes"><ConstatsMagasin reseau={reseau} magasin={m.nom} signaler={setConfirmation} /></Section>}
         <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />
         <Box sx={{ gridColumn: { lg: 'span 2' } }}><Journal reseau={reseau} m={m} signaler={setConfirmation} /></Box>
       </Box>
