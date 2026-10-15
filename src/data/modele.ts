@@ -60,6 +60,7 @@ export interface Magasin {
   responsableARecruter: boolean // franchisé recherché
   lat: number | null
   lon: number | null
+  positionApprochee: boolean // posé au centre de son département (import Excel) ou jamais trouvé : à géolocaliser
   historiqueCoach: AffectationCoach[]
 }
 

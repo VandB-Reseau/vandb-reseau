@@ -23,6 +23,14 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
     const distances = idx('sources').map((i) => idx('destinations').map((k) => m(pts[i], pts[k])))
     return r.fulfill({ json: { code: 'Ok', distances, durations: distances.map((l) => l.map((x) => x / 20)) } })
   })
+  // Géolocalisation simulée : toute adresse avec un code postal est trouvée dans sa commune (position fictive)
+  await page.route('https://data.geopf.fr/**', (r) => {
+    const q = new URL(r.request().url()).searchParams.get('q') ?? ''
+    const cp = q.match(/\b\d{5}\b/)?.[0]
+    if (!cp) return r.fulfill({ json: { features: [] } })
+    return r.fulfill({ json: { features: [{ geometry: { coordinates: [-2.0 + Number(cp.slice(0, 2)) / 100, 47.65] }, properties: { score: 0.9, postcode: cp } }] } })
+  })
+  await page.route('https://nominatim.openstreetmap.org/**', (r) => r.fulfill({ json: [] }))
   await page.route('https://supabase.test/**', async (route) => {
     const req = route.request()
     const url = new URL(req.url())

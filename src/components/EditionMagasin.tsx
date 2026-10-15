@@ -8,6 +8,7 @@ import Typography from '@mui/material/Typography'
 import Autocomplete from '@mui/material/Autocomplete'
 import { Fenetre, RECRUTEMENT } from './EditionEquipe'
 import { departementDepuisCP, estFrance, fichePersonne, franchises } from '../data/personnes'
+import { enregistrerPosition, geolocaliser } from '../data/geolocalisation'
 import { enregistrerDeploiements, enregistrerEvaluations, enregistrerMagasin, supprimerMagasin, type FicheMagasin } from '../data/chargement'
 import { BoutonsNote, BoutonsOption, PastilleCase } from './Sante'
 import { caseDe, tousCriteres, type Evaluation, type IdCritere, type Note } from '../data/sante'
@@ -68,6 +69,12 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
       valide={!!nom && !doublon && emailsOk}
       enregistrer={async () => {
         await enregistrerMagasin({ ...f, nom, responsable, ...coordonnees() }, magasin?.nom ?? null)
+        // Nouvelle adresse : le point sur la carte suit
+        const adresse = (x: { adresse: string; codePostal: string; ville: string; pays: string }) => [x.adresse, x.codePostal, x.ville, x.pays].map((v) => v.trim()).join('|')
+        if (!magasin || adresse(f) !== adresse(magasin)) {
+          const p = await geolocaliser(f)
+          if (p) await enregistrerPosition(nom, p)
+        }
         if (magasin) {
           if (JSON.stringify(notes) !== JSON.stringify(notesInitiales)) {
             const e: Evaluation = { notes, date: dateChangement, par: reseau.directeur.nom }
