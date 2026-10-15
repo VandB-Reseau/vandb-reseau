@@ -74,6 +74,8 @@ test('fiche d’un Responsable Régional : champs personnels et département rem
 test('l’onglet Collaborateurs liste Directeur, RR et Coachs et ouvre leur fiche', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/parametres/collaborateurs')
+  // Sur téléphone, les filtres par rôle sont repliés derrière le bouton Filtres
+  if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
   await expect(page.getByRole('button', { name: /Responsables Régionaux \(3\)/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Coachs \(6\)/ })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Dominique DIRECTION' })).toBeVisible()
