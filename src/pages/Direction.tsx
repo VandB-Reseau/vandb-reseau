@@ -13,6 +13,7 @@ import { chargeA, niveauCharge } from '../data/charge'
 import { enregistrerParametres } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
 import type { ParametresReseau, Reseau } from '../data/modele'
+import { analyser, type SeuilsAlerte } from '../data/chiffres'
 
 type Cle = keyof ParametresReseau
 const champs: { cle: Cle; libelle: string; aide: string; min: number; max: number }[] = [
@@ -86,6 +87,62 @@ function RegleCharge({ reseau }: { reseau: Reseau }) {
   )
 }
 
+type CleSeuil = keyof SeuilsAlerte
+const champsSeuils: { cle: CleSeuil; libelle: string; min: number; max: number }[] = [
+  { cle: 'seuilDecroche', libelle: 'Décroche : baisse du CA sur 3 mois (%)', min: 1, max: 50 },
+  { cle: 'seuilSurveiller', libelle: 'À surveiller : baisse du CA sur 3 mois (%)', min: 0, max: 50 },
+  { cle: 'seuilRupture', libelle: 'À surveiller : rupture de tendance (points)', min: 1, max: 50 },
+  { cle: 'delaiAppel', libelle: 'Délai pour appeler un magasin qui décroche (jours)', min: 1, max: 30 },
+]
+
+function compterDecroches(reseau: Reseau, s: SeuilsAlerte) {
+  const r = { ...reseau, seuils: s }
+  return reseau.magasins.filter((m) => analyser(r, m.nom)?.statut === 'decroche').length
+}
+
+function RegleAlerte({ reseau }: { reseau: Reseau }) {
+  const { recharger } = useReseau()
+  const initiales = () => Object.fromEntries(champsSeuils.map((c) => [c.cle, String(reseau.seuils[c.cle])])) as Record<CleSeuil, string>
+  const [valeurs, setValeurs] = useState<Record<CleSeuil, string>>(initiales)
+  const [envoi, setEnvoi] = useState(false)
+  const [erreur, setErreur] = useState(false)
+  const [ok, setOk] = useState(false)
+  const nombres = Object.fromEntries(champsSeuils.map((c) => [c.cle, Number(valeurs[c.cle])])) as unknown as SeuilsAlerte
+  const invalides = champsSeuils.filter((c) => valeurs[c.cle] === '' || !Number.isInteger(nombres[c.cle]) || nombres[c.cle] < c.min || nombres[c.cle] > c.max)
+  const incoherent = !invalides.length && nombres.seuilSurveiller > nombres.seuilDecroche
+  const modifie = champsSeuils.some((c) => nombres[c.cle] !== reseau.seuils[c.cle])
+  const avecChiffres = Object.keys(reseau.chiffres).length > 0
+  const enregistrer = async () => {
+    setEnvoi(true); setErreur(false)
+    try { await enregistrerParametres(nombres as unknown as Record<string, number>); await recharger(); setOk(true) } catch { setErreur(true) } finally { setEnvoi(false) }
+  }
+  return (
+    <Card sx={{ mt: 2 }}>
+      <CardContent sx={{ p: 3 }}>
+        <Typography variant="h3" component="h2" sx={{ mb: 3 }}>Alerte sur les chiffres</Typography>
+        <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
+          {champsSeuils.map((c) => (
+            <TextField key={c.cle} type="number" label={c.libelle} value={valeurs[c.cle]} onChange={(e) => setValeurs((v) => ({ ...v, [c.cle]: e.target.value }))}
+              error={invalides.includes(c)} helperText={invalides.includes(c) ? `Entre ${c.min} et ${c.max}, nombre entier.` : ' '} slotProps={{ htmlInput: { min: c.min, max: c.max, step: 1 } }} />
+          ))}
+        </Box>
+        {incoherent && <Alert severity="warning" sx={{ mt: 2 }}>La baisse « À surveiller » doit être inférieure ou égale à la baisse « Décroche ».</Alert>}
+        {modifie && avecChiffres && !invalides.length && !incoherent && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Avec ces réglages, {compterDecroches(reseau, nombres)} magasin{compterDecroches(reseau, nombres) > 1 ? 's décrocheraient' : ' décrocherait'} (contre {compterDecroches(reseau, reseau.seuils)} actuellement).
+          </Alert>
+        )}
+        {erreur && <Alert severity="error" sx={{ mt: 2 }}>Les réglages n’ont pas pu être enregistrés. Vérifie ta connexion et réessaie.</Alert>}
+        <Box sx={{ display: 'flex', gap: 1, mt: 3, justifyContent: 'flex-end' }}>
+          <Button disabled={!modifie || envoi} onClick={() => setValeurs(initiales())} sx={{ minHeight: 48 }}>Annuler</Button>
+          <Button variant="contained" disabled={!modifie || envoi || invalides.length > 0 || incoherent} onClick={enregistrer} sx={{ minHeight: 48 }}>{envoi ? 'Enregistrement…' : 'Enregistrer'}</Button>
+        </Box>
+      </CardContent>
+      <Snackbar open={ok} autoHideDuration={5000} onClose={() => setOk(false)} message="Alerte sur les chiffres enregistrée." />
+    </Card>
+  )
+}
+
 export function Direction() {
   return (
     <AvecReseau>
@@ -93,6 +150,7 @@ export function Direction() {
         <>
           <PageHeader titre="Paramètres" />
           <RegleCharge reseau={reseau} />
+          <RegleAlerte reseau={reseau} />
         </>
       )}
     </AvecReseau>

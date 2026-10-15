@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { avecPoint, notesAu, thematiquesParDefaut, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
 import type { Conge, Evenement, NoteMagasin, Reseau, Visite } from './modele'
+import { champsChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
 import { normaliserParties, normaliserPlan } from './compteRendu'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 
@@ -15,8 +16,8 @@ export class ErreurChargement extends Error {}
 
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
-  const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins']),
+  const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances] = await Promise.all([
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -24,6 +25,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
     supabase.from('visits').select('*').order('visit_date', { ascending: false }),
     supabase.from('leaves').select('*').order('start_date'),
     supabase.from('events').select('*').order('start_date'),
+    supabase.from('store_finance').select('*').order('month'),
   ])
   const erreur = config.error ?? surcharges.error ?? affectations.error ?? coachs.error
   if (erreur) throw new ErreurChargement(erreur.message)
@@ -52,6 +54,9 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   // Santé du parc et déploiements : stockés dans app_config (aucune table à créer)
   reseau.evaluations = json<Evaluations>(cle('sante_parc'), {})
   reseau.notesMagasins = json<Record<string, NoteMagasin[]>>(cle('notes_magasins'), {})
+  reseau.audits = json<Audits>(cle('audits'), {})
+  const seuil = (k: keyof SeuilsAlerte) => (params[k as keyof typeof params] === undefined || isNaN(Number(params[k as keyof typeof params])) ? seuilsParDefaut[k] : Number(params[k as keyof typeof params]))
+  reseau.seuils = { seuilDecroche: seuil('seuilDecroche'), seuilSurveiller: seuil('seuilSurveiller'), seuilRupture: seuil('seuilRupture'), delaiAppel: seuil('delaiAppel') }
   const dep = json<Partial<Deploiements>>(cle('deploiements'), {})
   reseau.deploiements = { thematiques: dep.thematiques?.length ? dep.thematiques : thematiquesParDefaut, valeurs: dep.valeurs ?? {}, journal: dep.journal ?? {} }
   // Tables facultatives : absentes ou vides, l'app fonctionne quand même
@@ -63,6 +68,15 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
     documents: Array.isArray(v.docs) ? (v.docs as { label?: string; url?: string }[]).map((d) => ({ label: t(d.label), url: t(d.url) })) : [], notes: t(v.notes),
     parties: normaliserParties(v.sections), plan: normaliserPlan(v.action_plan),
   }))
+  // Chiffres mensuels : table facultative, absente = aucun chiffre
+  const nb = (v: unknown) => (v === null || v === undefined || v === '' || isNaN(Number(v)) ? null : Number(v))
+  reseau.chiffres = {}
+  for (const f of (finances.error ? [] : finances.data ?? []) as L[]) {
+    const c: ChiffreMois = { magasin: t(f.store_name), mois: t(f.month).slice(0, 7), caCave: nb(f.ca_cave), caBar: nb(f.ca_bar), tickets: nb(f.freq), panier: nb(f.panier), ebitda: nb(f.ebitda) }
+    if (!c.magasin || !/^\d{4}-\d{2}$/.test(c.mois)) continue
+    ;(reseau.chiffres[c.magasin] ??= []).push(c)
+  }
+  for (const l of Object.values(reseau.chiffres)) l.sort((a, b) => a.mois.localeCompare(b.mois))
   reseau.conges = ((conges.error ? [] : conges.data) as L[]).map((c) => ({
     id: Number(c.id) || null, personne: t(c.person), role: t(c.role) || 'cs', debut: t(c.start_date).slice(0, 10), fin: t(c.end_date).slice(0, 10) || t(c.start_date).slice(0, 10), notes: t(c.notes),
   }))
@@ -324,7 +338,7 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
     await renommerColonne('reassigns', 'store', ancienNom, f.nom)
     await renommerColonne('visits', 'store', ancienNom, f.nom)
     await renommerColonne('store_finance', 'store_name', ancienNom, f.nom)
-    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins'] as const) {
+    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits'] as const) {
       const lu = await lireCle<Record<string, unknown>>(cleConfig, {})
       const cibles = (cleConfig === 'deploiements' ? [lu.valeur.valeurs, lu.valeur.journal] : [lu.valeur]) as (Record<string, unknown> | undefined)[]
       let change = false
@@ -471,5 +485,32 @@ export function supprimerNoteMagasin(magasin: string, id: string) {
     valeur[magasin] = (valeur[magasin] ?? []).filter((n) => n.id !== id)
     if (!valeur[magasin].length) delete valeur[magasin]
     await ecrireCle('notes_magasins', valeur, existe)
+  })
+}
+
+// ── Chiffres mensuels (store_finance) : une ligne par magasin et par mois ──
+// Seules les colonnes fournies sont écrites : un import sans EBITDA ne l'efface pas
+export async function enregistrerChiffres(lignes: (Partial<ChiffreMois> & { magasin: string; mois: string })[]) {
+  const groupes = new Map<string, Record<string, unknown>[]>()
+  for (const l of lignes) {
+    const ligne: Record<string, unknown> = { store_name: l.magasin, month: `${l.mois}-01`, updated_at: new Date().toISOString() }
+    for (const c of champsChiffres) if (l[c.id] !== undefined) ligne[c.colonne] = l[c.id]
+    const cle = Object.keys(ligne).join(',')
+    groupes.set(cle, [...(groupes.get(cle) ?? []), ligne])
+  }
+  for (const g of groupes.values()) {
+    for (let i = 0; i < g.length; i += 500) verifier(await supabase.from('store_finance').upsert(g.slice(i, i + 500), { onConflict: 'store_name,month' }))
+  }
+}
+
+// Résultat d'un audit, rattaché au magasin, à la date et au type de la visite
+export function enregistrerAudit(magasin: string, ancien: { date: string; type: string } | null, audit: ResultatAudit | null) {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<Audits>('audits', {})
+    const garde = (a: ResultatAudit) => !(ancien && a.date === ancien.date && a.type === ancien.type) && !(audit && a.date === audit.date && a.type === audit.type)
+    const liste = [...(valeur[magasin] ?? []).filter(garde), ...(audit ? [audit] : [])].sort((a, b) => a.date.localeCompare(b.date))
+    if (liste.length) valeur[magasin] = liste
+    else delete valeur[magasin]
+    await ecrireCle('audits', valeur, existe)
   })
 }

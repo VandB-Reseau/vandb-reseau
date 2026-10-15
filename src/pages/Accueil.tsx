@@ -16,6 +16,9 @@ import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { PastilleCase, PastilleTendance } from '../components/Sante'
+import { PastilleAlerte, PastilleAppel } from '../components/Chiffres'
+import { analyser, formatPourcent, suiviAlerte } from '../data/chiffres'
+import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import { useAuth } from '../auth/AuthContext'
 import { caseDe, tendance } from '../data/sante'
 import { anneeDe, suiviRythme } from '../data/visites'
@@ -63,6 +66,11 @@ function Tableau({ reseau }: { reseau: Reseau }) {
   const sousPerf = actifs.map((m) => ({ m, c: caseDe(reseau.evaluations[m.nom]) }))
     .filter((x) => x.c && PRIORITAIRES.includes(x.c.id))
     .sort((a, b) => PRIORITAIRES.indexOf(a.c!.id) - PRIORITAIRES.indexOf(b.c!.id))
+  // Démarche coach : les magasins qui décrochent d'abord (appel en retard en tête), puis ceux à surveiller
+  const alertes = actifs.map((m) => { const an = analyser(reseau, m.nom); return { m, an, suivi: suiviAlerte(reseau, m.nom, an) } })
+    .filter((x) => x.an?.statut === 'decroche' || x.an?.statut === 'surveiller')
+    .sort((x, y) => (x.an!.statut === y.an!.statut ? 0 : x.an!.statut === 'decroche' ? -1 : 1) || (y.suivi?.retard ?? 0) - (x.suivi?.retard ?? 0) || (x.an!.evol3 ?? 0) - (y.an!.evol3 ?? 0))
+  const avecChiffres = Object.keys(reseau.chiffres).length > 0
   const nonEvalues = actifs.filter((m) => !caseDe(reseau.evaluations[m.nom])).length
   const a = anneeDe(j)
   const aVisiter = suiviRythme(reseau, a).filter((l) => l.retard > 0)
@@ -86,6 +94,10 @@ function Tableau({ reseau }: { reseau: Reseau }) {
 
   return (
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' } }}>
+      <Bloc large titre="Magasins qui décrochent" icone={<QueryStatsOutlined />} total={alertes.length} lien="/plus/sante?vue=chiffres" libelleLien="Voir les chiffres"
+        vide={avecChiffres ? 'Aucun magasin ne décroche ni n’est à surveiller sur ses derniers chiffres.' : 'Aucun chiffre mensuel enregistré pour l’instant.'}>
+        {alertes.slice(0, MAX).map(({ m, an, suivi }) => <Ligne key={m.nom} lien={lienFiche(m.nom)} titre={m.nom} detail={`Coach ${coachA(m, j) || 'à désigner'} · CA 3 mois ${formatPourcent(an!.evol3)}${an!.raisons.filter((r) => !r.startsWith('CA sur 3 mois sous')).map((r) => ` · ${r}`).join('')}`} fin={<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}><PastilleAlerte statut={an!.statut} /><PastilleAppel s={suivi} /></Box>} />)}
+      </Bloc>
       <Bloc large titre="Magasins qui sous-performent" icone={<TrendingDown />} total={sousPerf.length} lien="/plus/sante" libelleLien="Voir la nine box"
         vide={nonEvalues ? `Aucun magasin en redressement, relance ou management à renforcer. ${nonEvalues} magasin${nonEvalues > 1 ? 's restent' : ' reste'} à évaluer dans la santé du parc.` : 'Aucun magasin en redressement, relance ou management à renforcer.'}>
         {sousPerf.slice(0, MAX).map(({ m, c }) => <Ligne key={m.nom} lien={lienFiche(m.nom)} titre={m.nom} detail={`Coach ${coachA(m, j) || 'à désigner'} · rythme conseillé ${c!.rythme}`} fin={<PastilleCase c={c} />} />)}

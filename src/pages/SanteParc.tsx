@@ -59,6 +59,10 @@ import { enregistrerDeploiements, enregistrerThematiques, importerHistorique } f
 import { analyser, lireFichier, type ResultatImport } from '../data/import'
 import { avancement, caseDe, nineBox, tousCriteres, type Evaluation, type IdCritere, type Thematique, type Ton } from '../data/sante'
 import { dateCourte, lienFiche } from '../lib/format'
+import { PastilleAlerte, PastilleAppel } from '../components/Chiffres'
+import { analyser as analyserCA, champsChiffres, dernierAudit, formatPoints, formatPourcent, libelleAudit, libelleMois, libelleMoisCourt, moisPrecedent, suiviAlerte, type StatutAlerte } from '../data/chiffres'
+import { analyserChiffres, type ResultatImportChiffres } from '../data/importChiffres'
+import { enregistrerChiffres } from '../data/chargement'
 import type { Magasin, Reseau } from '../data/modele'
 
 // Filtres communs : recherche, Responsable Régional, Coach
@@ -552,7 +556,7 @@ export function SanteParc() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [params, setParams] = useSearchParams()
-  const vue = ['evaluer', 'deploiements'].includes(params.get('vue') ?? '') ? params.get('vue')! : 'ninebox'
+  const vue = ['evaluer', 'deploiements', 'chiffres'].includes(params.get('vue') ?? '') ? params.get('vue')! : 'ninebox'
   return (
     <AvecReseau>
       {(reseau) => <Contenu reseau={reseau} vue={vue} surPC={surPC} aller={(v) => setParams({ vue: v }, { replace: true })} />}
@@ -564,6 +568,7 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
   const [message, setMessage] = useState('')
   const [gestion, setGestion] = useState(false)
   const [importer, setImporter] = useState(false)
+  const [importerChiffres, setImporterChiffres] = useState(false)
   const [date, setDate] = useState(reseau.jour)
   const saisie = useSaisieSante(reseau, setMessage, date)
   const actifs = reseau.magasins.filter((m) => m.statut !== 'avenir')
@@ -571,7 +576,7 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
   // Les boutons restent en place (masqués sur la nine box) pour que le titre ne bouge pas entre onglets
   const actions = (
     <Box sx={{ gap: 1, flexWrap: 'wrap', visibility: vue === 'ninebox' ? 'hidden' : 'visible', display: surPC ? 'flex' : 'none' }} aria-hidden={vue === 'ninebox'}>
-      {surPC && <Button variant="outlined" startIcon={<UploadFileOutlined />} onClick={() => setImporter(true)} sx={{ minHeight: 48 }}>Importer Excel</Button>}
+      {surPC && <Button variant="outlined" startIcon={<UploadFileOutlined />} onClick={() => (vue === 'chiffres' ? setImporterChiffres(true) : setImporter(true))} sx={{ minHeight: 48 }}>Importer Excel</Button>}
       <Button variant="contained" startIcon={<TuneOutlined />} onClick={() => setGestion(true)} sx={{ minHeight: 48, visibility: vue === 'deploiements' ? 'visible' : 'hidden' }} tabIndex={vue === 'deploiements' ? 0 : -1} aria-hidden={vue !== 'deploiements'}>Gérer les thématiques</Button>
     </Box>
   )
@@ -582,13 +587,153 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
         <Tab value="ninebox" label="Nine box" sx={{ minHeight: 48 }} />
         <Tab value="evaluer" label="Évaluer" sx={{ minHeight: 48 }} />
         <Tab value="deploiements" label="Déploiements" sx={{ minHeight: 48 }} />
+        <Tab value="chiffres" label="Chiffres" sx={{ minHeight: 48 }} />
       </Tabs>
       {vue === 'ninebox' && <VueNineBox reseau={reseau} evaluer={() => aller('evaluer')} surPC={surPC} />}
       {vue === 'evaluer' && <VueEvaluer reseau={reseau} saisie={saisie} surPC={surPC} date={<ChampDate valeur={date} max={reseau.jour} onChange={setDate} />} />}
       {vue === 'deploiements' && <VueDeploiements reseau={reseau} saisie={saisie} surPC={surPC} date={<ChampDate valeur={date} max={reseau.jour} onChange={setDate} />} />}
+      {vue === 'chiffres' && <VueChiffres reseau={reseau} surPC={surPC} />}
+      {importerChiffres && <DialogImportChiffres reseau={reseau} onFermer={(m) => { setImporterChiffres(false); if (m) setMessage(m) }} />}
       {gestion && <DialogThematiques reseau={reseau} onFermer={(m) => { setGestion(false); if (m) setMessage(m) }} />}
       {importer && <DialogImport reseau={reseau} date={date} onFermer={(m) => { setImporter(false); if (m) setMessage(m) }} />}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </>
   )
 }
+
+// ── Chiffres : alerte de décrochage de chaque magasin (démarche coach) ──
+const ordreAlerte: (StatutAlerte | null)[] = ['decroche', 'surveiller', 'ok', null]
+
+function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
+  const theme = useTheme()
+  const { magasins, barre } = useFiltres(reseau)
+  const [statuts, setStatuts] = useState<string[]>([])
+  const lignes = useMemo(() => magasins.map((m) => {
+    const a = analyserCA(reseau, m.nom)
+    return { m, a, suivi: suiviAlerte(reseau, m.nom, a), coach: coachA(m, reseau.jour), hygiene: dernierAudit(reseau, m.nom, 'hygiene'), excellence: dernierAudit(reseau, m.nom, 'excellence') }
+  }).sort((x, y) => ordreAlerte.indexOf(x.a?.statut ?? null) - ordreAlerte.indexOf(y.a?.statut ?? null) || (y.suivi?.retard ?? 0) - (x.suivi?.retard ?? 0) || (x.a?.evol3 ?? 0) - (y.a?.evol3 ?? 0) || x.m.nom.localeCompare(y.m.nom, 'fr')), [magasins, reseau])
+  const compte = (st: StatutAlerte | null) => lignes.filter((l) => (l.a?.statut ?? null) === st).length
+  const visibles = lignes.filter((l) => !statuts.length || statuts.includes(l.a?.statut ?? 'sans'))
+  // Indicateurs de la démarche : délai entre l'alerte et le premier contact, audits conformes
+  const suivis = lignes.map((l) => l.suivi).filter((x) => x !== null)
+  const delais = suivis.map((x) => x.delai).filter((d) => d !== null)
+  const enRetard = suivis.filter((x) => x.retard > 0).length
+  const audits = lignes.flatMap((l) => [l.hygiene, l.excellence]).filter((x) => x && x.conforme !== null)
+  const conformes = audits.filter((x) => x!.conforme).length
+  const tuiles = [
+    { id: 'decroche', titre: 'Décroche', n: compte('decroche'), couleur: theme.palette.error.main, detail: enRetard ? `${enRetard} appel${enRetard > 1 ? 's' : ''} en retard` : 'Aucun appel en retard' },
+    { id: 'surveiller', titre: 'À surveiller', n: compte('surveiller'), couleur: theme.palette.warning.main, detail: 'Point au prochain échange' },
+    { id: 'ok', titre: 'OK', n: compte('ok'), couleur: theme.palette.success.main, detail: 'Rythme normal' },
+    { id: 'sans', titre: 'Sans chiffres', n: compte(null), couleur: theme.palette.text.secondary, detail: 'Moins de 15 mois de chiffres' },
+  ]
+  const indicateurs = [
+    `Délai moyen avant le premier contact : ${delais.length ? `${(delais.reduce((a, b) => a + b, 0) / delais.length).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} j sur ${delais.length} alerte${delais.length > 1 ? 's' : ''}` : 'aucun contact encore'} (objectif ${reseau.seuils.delaiAppel} j)`,
+    `Audits conformes : ${audits.length ? `${conformes} sur ${audits.length} (${Math.round((conformes / audits.length) * 100)} %)` : 'aucun résultat saisi'}`,
+  ]
+  return (
+    <>
+      {barre}
+      <Box sx={{ mb: 2, mt: -1 }}>
+        <FiltreMenu libelle="Alerte" choisis={statuts} onChange={setStatuts} options={tuiles.map((t) => ({ valeur: t.id, libelle: t.titre, detail: `${t.n} magasins` }))} />
+      </Box>
+      <Box sx={{ display: 'grid', gap: { xs: 1, sm: 2 }, gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, mb: 2 }}>
+        {tuiles.map((t) => (
+          <Card key={t.id} sx={{ borderTop: `4px solid ${t.couleur}` }}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 }, '&:last-child': { pb: { xs: 1.5, md: 2 } } }}>
+              <Typography sx={{ fontSize: { xs: 24, md: 32 }, fontWeight: 800, color: t.couleur, lineHeight: 1.1 }}>{t.n}</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{t.titre}</Typography>
+              <Typography variant="body2" color="text.secondary">{t.detail}</Typography>
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
+      <Box sx={{ mb: 3 }}>{indicateurs.map((t) => <Typography key={t} variant="body2" color="text.secondary">{t}</Typography>)}</Box>
+      {visibles.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." /> : surPC ? (
+        <TableContainer component={Paper}>
+          <Table size="small" aria-label="Chiffres des magasins">
+            <TableHead>
+              <TableRow>
+                {['Magasin', 'Coach', 'Chiffres à fin', 'CA 3 mois', 'CA 12 mois', 'Rupture', 'Alerte', 'Appel', 'Audit hygiène', 'Audit excellence'].map((h) => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {visibles.map(({ m, a, suivi, coach, hygiene, excellence }) => (
+                <TableRow key={m.nom} hover>
+                  <TableCell><Link component={RouterLink} to={lienFiche(m.nom)} sx={{ fontWeight: 600 }}>{m.nom}</Link></TableCell>
+                  <TableCell>{coach || 'Sans Coach'}</TableCell>
+                  <TableCell>{a ? libelleMoisCourt(a.mois) : '—'}</TableCell>
+                  <TableCell>{formatPourcent(a?.evol3 ?? null)}</TableCell>
+                  <TableCell>{formatPourcent(a?.evol12 ?? null)}</TableCell>
+                  <TableCell>{formatPoints(a?.rupture ?? null)}</TableCell>
+                  <TableCell><Tooltip title={a?.raisons.join(' · ') ?? ''}><span><PastilleAlerte statut={a?.statut ?? null} /></span></Tooltip></TableCell>
+                  <TableCell><PastilleAppel s={suivi} /></TableCell>
+                  <TableCell>{hygiene ? libelleAudit(hygiene) : '—'}</TableCell>
+                  <TableCell>{excellence ? libelleAudit(excellence) : '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {visibles.map(({ m, a, suivi, coach }) => (
+            <Card key={m.nom}>
+              <Link component={RouterLink} to={lienFiche(m.nom)} underline="none" color="inherit" sx={{ display: 'block', p: 2, minHeight: 48 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Typography sx={{ fontWeight: 700, flex: 1 }}>{m.nom}</Typography>
+                  <PastilleAlerte statut={a?.statut ?? null} />
+                </Box>
+                <Typography variant="body2" color="text.secondary">{[coach || 'Sans Coach', a ? `CA 3 mois ${formatPourcent(a.evol3)} à fin ${libelleMois(a.mois)}` : 'aucun chiffre'].join(' · ')}</Typography>
+                {suivi && <Box sx={{ mt: 1 }}><PastilleAppel s={suivi} /></Box>}
+              </Link>
+            </Card>
+          ))}
+        </Box>
+      )}
+    </>
+  )
+}
+
+function DialogImportChiffres({ reseau, onFermer }: { reseau: Reseau; onFermer: (m?: string) => void }) {
+  const [res, setRes] = useState<ResultatImportChiffres | null>(null)
+  const [nomFichier, setNomFichier] = useState('')
+  const [erreur, setErreur] = useState('')
+  const choisir = async (f: File | undefined) => {
+    if (!f) return
+    setNomFichier(f.name); setErreur(''); setRes(null)
+    try {
+      const r = analyserChiffres(await lireFichier(f), reseau, moisPrecedent(reseau.jour))
+      if (!r) setErreur('Aucune colonne de noms de magasins reconnue dans ce fichier. Vérifie que les noms sont écrits comme dans l’app.')
+      else setRes(r)
+    } catch { setErreur('Ce fichier ne peut pas être lu. Enregistre-le au format Excel (.xlsx) ou CSV puis réessaie.') }
+  }
+  const total = res?.lignes.length ?? 0
+  const mois = res ? [...new Set(res.lignes.map((l) => l.mois))].sort() : []
+  const nbMag = res ? new Set(res.lignes.map((l) => l.magasin)).size : 0
+  return (
+    <Fenetre large titre="Importer les chiffres mensuels" ouvert onFermer={onFermer} valide={total > 0}
+      enregistrer={async () => { await enregistrerChiffres(res!.lignes); return `${total} mois de chiffres importé${total > 1 ? 's' : ''}` }}>
+      <Button variant="outlined" component="label" startIcon={<UploadFileOutlined />} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
+        {nomFichier || 'Choisir un fichier'}
+        <input type="file" hidden accept=".xlsx,.csv,.txt" aria-label="Fichier de chiffres à importer" onChange={(e) => choisir(e.target.files?.[0])} />
+      </Button>
+      {erreur && <Alert severity="warning">{erreur}</Alert>}
+      {res && (
+        <>
+          <Alert severity={total ? 'success' : 'info'}>
+            {total ? `${total} ligne${total > 1 ? 's' : ''} prête${total > 1 ? 's' : ''} à importer pour ${nbMag} magasin${nbMag > 1 ? 's' : ''}, ${mois.length > 1 ? `${/^[aeiouo]/.test(libelleMois(mois[0])) ? 'd’' : 'de '}${libelleMois(mois[0])} à ${libelleMois(mois.at(-1)!)}` : libelleMois(mois[0])}.${res.colonneMois ? '' : ' Aucune colonne de mois : les chiffres sont rangés sur le mois dernier.'}` : 'Aucun chiffre reconnu dans ce fichier.'}
+          </Alert>
+          {res.colonnes.length > 0 && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {res.colonnes.map((c) => <Chip key={c.entete} label={`${c.entete} → ${champsChiffres.find((x) => x.id === c.id)!.libelle}`} color="primary" variant="outlined" sx={{ fontSize: 13 }} />)}
+            </Box>
+          )}
+          {res.ignorees.length > 0 && <Typography variant="body2" color="text.secondary">Colonnes ignorées : {res.ignorees.join(', ')}.</Typography>}
+          {res.inconnus.length > 0 && <Typography variant="body2" color="text.secondary">Magasins non trouvés ({res.inconnus.length}) : {res.inconnus.slice(0, 12).join(', ')}{res.inconnus.length > 12 ? '…' : ''}</Typography>}
+          {res.illisibles > 0 && <Typography variant="body2" color="text.secondary">{res.illisibles} case{res.illisibles > 1 ? 's' : ''} avec une valeur non reconnue, laissée{res.illisibles > 1 ? 's' : ''} de côté.</Typography>}
+        </>
+      )}
+    </Fenetre>
+  )
+}
+

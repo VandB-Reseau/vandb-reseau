@@ -101,18 +101,24 @@ export interface Reseau {
   evaluations: import('./sante').Evaluations
   notesMagasins: Record<string, NoteMagasin[]>
   deploiements: import('./sante').Deploiements
+  chiffres: Record<string, import('./chiffres').ChiffreMois[]> // par magasin, du plus ancien au plus récent
+  audits: import('./chiffres').Audits
+  seuils: import('./chiffres').SeuilsAlerte
   rrs: ResponsableRegional[]
   parametres: ParametresReseau
   jour: string
   chargeLe: string
 }
 
-export type TypeVisite = 'terrain' | 'hygiene' | 'excellence' | 'ouverture'
+export type TypeVisite = 'terrain' | 'hygiene' | 'excellence' | 'ouverture' | 'appel' | 'point'
 export const typesVisite: { id: TypeVisite; libelle: string; couleur: string }[] = [
   { id: 'terrain', libelle: 'Visite terrain', couleur: '#1b6fce' },
   { id: 'hygiene', libelle: 'Audit hygiène', couleur: '#0f766e' },
   { id: 'excellence', libelle: 'Audit excellence', couleur: '#b7791f' },
   { id: 'ouverture', libelle: 'Accompagnement ouverture', couleur: '#ef7d00' },
+  // Contacts sans visite : ne comptent pas dans le rythme de visite
+  { id: 'appel', libelle: 'Appel', couleur: '#5e35b1' },
+  { id: 'point', libelle: 'Point chiffre', couleur: '#c2185b' },
 ]
 export const libelleTypeVisite = (t: string) => typesVisite.find((x) => x.id === t)?.libelle ?? 'Visite'
 

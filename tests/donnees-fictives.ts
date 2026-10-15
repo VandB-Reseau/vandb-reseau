@@ -57,6 +57,8 @@ export const recruesFictives = [{ id: 1, name: 'Zoé ARRIVEE', start: '2099-03-0
 export const visitesFictives = [
   { id: 1, store: 'Lyon Test', visit_date: '2026-10-02', type: 'terrain', visitor: 'Noé MODELE', signed_required: true, signed_url: '', docs: [{ label: 'Photos', url: 'https://exemple.test/photos' }], notes: 'Vitrine refaite, stock à revoir.', sections: ['', '', 'Tête de gondole à reprendre.', '', '', ''], action_plan: [{ action: 'Refaire la tête de gondole Beaujolais', porteur: 'Franchisé', echeance: 'novembre' }] },
   { id: 2, store: 'Nantes Test', visit_date: '2026-03-10', type: 'hygiene', visitor: 'Inès EXEMPLE', signed_required: false, docs: [], notes: 'Audit conforme.' },
+  // Un appel ne compte pas comme visite : Agen reste en retard
+  { id: 3, store: 'Agen Test', visit_date: '2026-10-01', type: 'appel', visitor: 'Inès EXEMPLE', signed_required: false, docs: [], notes: 'Appel de suivi.' },
 ]
 export const congesFictifs = [{ id: 1, person: 'Hugo FICTIF', role: 'cs', start_date: '2026-10-20', end_date: '2026-10-24', notes: 'Congés' }]
 export const evenementsFictifs = [{ id: 1, title: 'Séminaire des Coachs', type: 'event', start_date: '2026-10-15', end_date: '2026-10-16', color: '#7c3aed' }]
@@ -75,3 +77,14 @@ export const deploiementsFictifs = { valeurs: { 'Lyon Test': { concept20: 'Fait'
 export const fichesFictives = {
   'rr:rr1': { prenom: 'Alex', nom: 'NORD', naissance: '1980-04-12', arrivee: '2019-09-01', codePostal: '59000', departement: '59', ville: 'Lille', pays: 'France', email: 'alex@exemple.test', telephone: '+33 6 11 11 11 11' },
 }
+
+// Chiffres mensuels fictifs (table store_finance), d'octobre 2024 à septembre 2026
+// Lyon décroche en septembre 2026 (-30 % sur le mois), Nantes recule de 3 % (à surveiller), Annecy est stable
+const moisFictifs = Array.from({ length: 24 }, (_x, i) => { const t = 2024 * 12 + 9 + i; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}` })
+const ligneCA = (store: string, mois: string, ca: number) => ({ store_name: store, month: `${mois}-01`, ca_cave: Math.round(ca * 0.7), ca_bar: Math.round(ca * 0.3), freq: Math.round(ca / 25), panier: 25, ebitda: Math.round(ca * 0.08), updated_at: '2026-10-05T08:00:00Z' })
+export const chiffresFictifs = [
+  ...moisFictifs.map((m) => ligneCA('Lyon Test', m, m === '2026-09' ? 70000 : 100000)),
+  ...moisFictifs.map((m) => ligneCA('Nantes Test', m, m >= '2026-07' ? 97000 : 100000)),
+  ...moisFictifs.map((m) => ligneCA('Annecy Test', m, 80000)),
+]
+export const auditsFictifs = { 'Nantes Test': [{ date: '2026-03-10', type: 'hygiene', conforme: true, score: 92 }] }

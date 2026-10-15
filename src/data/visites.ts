@@ -1,6 +1,7 @@
 import type { Magasin, Reseau, Visite } from './modele'
 import { coachA } from './charge'
 import { caseDe, joursParVisite, visitesParAn, type CaseNineBox } from './sante'
+import { estVisite } from './chiffres'
 
 // Semestres de l'année (janvier → décembre) : S1 = janvier → juin, S2 = juillet → décembre
 export interface Semestre { cle: string; debut: string; fin: string; libelle: string; court: string }
@@ -29,7 +30,7 @@ export function couverture(reseau: Reseau, s: Semestre): LigneCouverture[] {
   return reseau.magasins
     .filter((m) => m.ouverture <= s.fin && m.statut !== 'avenir')
     .map((m) => {
-      const toutes = reseau.visites.filter((v) => v.magasin === m.nom)
+      const toutes = reseau.visites.filter((v) => v.magasin === m.nom && estVisite(v))
       const visites = toutes.filter((v) => v.date >= s.debut && v.date <= s.fin)
       return { magasin: m, coach: coachA(m, reference), visites, derniere: toutes.filter((v) => v.date <= reseau.jour).sort((a, b) => b.date.localeCompare(a.date))[0] ?? null }
     })
@@ -82,7 +83,7 @@ export function suiviRythme(reseau: Reseau, a: Annee): LigneRythme[] {
       const debut = m.ouverture > a.debut ? m.ouverture : a.debut
       const part = Math.min(1, (jourNum(a.fin) - jourNum(debut) + 1) / (jourNum(a.fin) - jourNum(a.debut) + 1))
       const objectif = Math.max(1, Math.round(parAn * part))
-      const toutes = reseau.visites.filter((v) => v.magasin === m.nom && v.date <= reseau.jour)
+      const toutes = reseau.visites.filter((v) => v.magasin === m.nom && v.date <= reseau.jour && estVisite(v))
       const faites = toutes.filter((v) => v.date >= a.debut && v.date <= a.fin).length
       const derniere = toutes.sort((x, y) => y.date.localeCompare(x.date))[0] ?? null
       const intervalle = Math.round(365 / parAn)

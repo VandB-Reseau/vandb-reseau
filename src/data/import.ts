@@ -68,14 +68,19 @@ export interface ResultatImport {
   illisibles: number
 }
 
+// Retrouve un magasin à partir du nom écrit dans un fichier (avec ou sans « V and B » devant)
+export function trouveurMagasin(reseau: Reseau): (v: unknown) => string | null {
+  const parNom = new Map<string, string>()
+  for (const m of reseau.magasins) { parNom.set(normaliser(m.nom), m.nom); parNom.set(sansEnseigne(normaliser(m.nom)), m.nom) }
+  return (v: unknown) => parNom.get(normaliser(v)) ?? parNom.get(sansEnseigne(normaliser(v))) ?? null
+}
+
 export function analyser(lignes: unknown[][], reseau: Reseau, dateParDefaut: string): ResultatImport | null {
   const iEntete = lignes.findIndex((l) => l.filter((c) => normaliser(c)).length >= 2)
   if (iEntete < 0) return null
   const entetes = lignes[iEntete].map((c) => String(c ?? '').trim())
   const corps = lignes.slice(iEntete + 1).filter((l) => l.some((c) => normaliser(c)))
-  const parNom = new Map<string, string>()
-  for (const m of reseau.magasins) { parNom.set(normaliser(m.nom), m.nom); parNom.set(sansEnseigne(normaliser(m.nom)), m.nom) }
-  const trouver = (v: unknown) => parNom.get(normaliser(v)) ?? parNom.get(sansEnseigne(normaliser(v))) ?? null
+  const trouver = trouveurMagasin(reseau)
   // La colonne des magasins est celle qui reconnaît le plus de noms
   let iMag = -1, meilleur = 0
   entetes.forEach((_e, i) => { const n = corps.filter((l) => trouver(l[i])).length; if (n > meilleur) { meilleur = n; iMag = i } })
