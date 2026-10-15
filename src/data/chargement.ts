@@ -410,9 +410,9 @@ export async function enregistrerVisites(base: Omit<Visite, 'magasin' | 'id'>, m
   else verifier(await supabase.from('visits').insert(magasins.map(ligne)))
 }
 // Import d'un classeur de suivi : visites terrain par paquets, puis notes d'audit rangées à la date choisie
-export async function importerVisites(visites: { magasin: string; date: string; visiteurs: string[]; notes: string }[], audits: { magasin: string; type: string; score: number }[], dateAudits: string) {
+export async function importerVisites(visites: { magasin: string; date: string; visiteurs: string[]; notes: string; type?: string }[], audits: { magasin: string; type: string; score: number }[], dateAudits: string) {
   const lignes = visites.map((v) => ({
-    group_id: null, store: v.magasin, visit_date: v.date, type: 'terrain', visitor: v.visiteurs.join(SEPARATEUR_VISITEURS) || null,
+    group_id: null, store: v.magasin, visit_date: v.date, type: v.type ?? 'terrain', visitor: v.visiteurs.join(SEPARATEUR_VISITEURS) || null,
     signed_required: false, signed_url: null, signed_date: null, docs: [], notes: v.notes || null, sections: null, action_plan: [],
   }))
   for (let i = 0; i < lignes.length; i += 200) verifier(await supabase.from('visits').insert(lignes.slice(i, i + 200)))

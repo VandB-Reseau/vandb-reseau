@@ -292,16 +292,18 @@ function DialogImportVisites({ reseau, onFermer }: { reseau: Reseau; onFermer: (
       else setRes(r)
     } catch { setErreur('Ce fichier ne peut pas être lu. Enregistre-le au format Excel (.xlsx) puis réessaie.') }
   }
-  const n = res?.visites.length ?? 0, a = res?.audits.length ?? 0
+  // Feuilles de route sans date : rangées à la date choisie, sauf si elles y sont déjà
+  const feuilles = (res?.feuillesDeRoute ?? []).filter((f) => !reseau.visites.some((v) => v.magasin === f.magasin && v.date === dateAudits && v.type === 'feuille'))
+  const n = res?.visites.length ?? 0, a = res?.audits.length ?? 0, fr = feuilles.length
   const nbMag = res ? new Set(res.visites.map((v) => v.magasin)).size : 0
   const annees = res ? [...new Set(res.visites.map((v) => v.date.slice(0, 4)))].sort() : []
   const pluriel = (k: number, mot: string) => `${k} ${mot}${k > 1 ? 's' : ''}`
   const dateValide = /^\d{4}-\d{2}-\d{2}$/.test(dateAudits)
   return (
-    <Fenetre large titre="Importer des visites" ouvert onFermer={onFermer} valide={n + a > 0 && (!a || dateValide)}
+    <Fenetre large titre="Importer des visites" ouvert onFermer={onFermer} valide={n + a + fr > 0 && (!(a + fr) || dateValide)}
       enregistrer={async () => {
-        await importerVisites(res!.visites, res!.audits, dateAudits)
-        return [n ? `${pluriel(n, 'visite')} importée${n > 1 ? 's' : ''}` : '', a ? `${pluriel(a, 'note')} d’audit` : ''].filter(Boolean).join(' et ')
+        await importerVisites([...res!.visites, ...feuilles.map((f) => ({ ...f, date: dateAudits, type: 'feuille' }))], res!.audits, dateAudits)
+        return [n ? `${pluriel(n, 'visite')} importée${n > 1 ? 's' : ''}` : '', fr ? pluriel(fr, 'feuille') + ' de route' : '', a ? `${pluriel(a, 'note')} d’audit` : ''].filter(Boolean).join(', ')
       }}>
       <Button variant="outlined" component="label" startIcon={<UploadFileOutlined />} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
         {nomFichier || 'Choisir un fichier'}
@@ -314,13 +316,14 @@ function DialogImportVisites({ reseau, onFermer }: { reseau: Reseau; onFermer: (
             {n ? `${pluriel(n, 'visite')} à ajouter pour ${pluriel(nbMag, 'magasin')}, ${annees.length > 1 ? `de ${annees[0]} à ${annees.at(-1)}` : `en ${annees[0]}`}.` : 'Aucune nouvelle visite.'}
             {res.dejaLa > 0 && ` ${pluriel(res.dejaLa, 'visite')} déjà dans l’app, laissée${res.dejaLa > 1 ? 's' : ''} telle${res.dejaLa > 1 ? 's' : ''} quelle${res.dejaLa > 1 ? 's' : ''}.`}
           </Alert>
-          {a > 0 && (
+          {a + fr > 0 && (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
-              <Typography variant="body1" sx={{ flex: '1 1 240px' }}>
-                {pluriel(a, 'note')} d’audit : {res.audits.filter((x) => x.type === 'hygiene').length} hygiène, {res.audits.filter((x) => x.type === 'excellence').length} excellence.
-              </Typography>
-              <TextField type="date" label="Date des audits" value={dateAudits} onChange={(e) => setDateAudits(e.target.value)} error={!dateValide}
-                slotProps={{ inputLabel: { shrink: true } }} sx={{ width: { xs: '100%', sm: 220 } }} />
+              <Box sx={{ flex: '1 1 240px' }}>
+                {a > 0 && <Typography variant="body1">{pluriel(a, 'note')} d’audit : {res.audits.filter((x) => x.type === 'hygiene').length} hygiène, {res.audits.filter((x) => x.type === 'excellence').length} excellence.</Typography>}
+                {fr > 0 && <Typography variant="body1">{pluriel(fr, 'feuille')} de route faite{fr > 1 ? 's' : ''}.</Typography>}
+              </Box>
+              <TextField type="date" label="Date des audits et feuilles de route" value={dateAudits} onChange={(e) => setDateAudits(e.target.value)} error={!dateValide}
+                slotProps={{ inputLabel: { shrink: true } }} sx={{ width: { xs: '100%', sm: 300 } }} />
             </Box>
           )}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>

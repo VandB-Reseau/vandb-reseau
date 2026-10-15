@@ -7,11 +7,14 @@ import { lireDate, normaliser, trouveurMagasin } from './import'
 
 export interface Feuille { nom: string; lignes: unknown[][] }
 export interface VisiteImportee { magasin: string; date: string; visiteurs: string[]; notes: string }
+// Feuille de route faite (OUI, OK, X, 1), sans date dans le fichier
+export interface FeuilleImportee { magasin: string; visiteurs: string[]; notes: string }
 export interface AuditImporte { magasin: string; type: 'hygiene' | 'excellence'; score: number }
 export interface ResultatImportVisites {
   visites: VisiteImportee[] // visites absentes de l'app
   dejaLa: number // visites déjà enregistrées le même jour pour le même magasin
   audits: AuditImporte[]
+  feuillesDeRoute: FeuilleImportee[]
   feuilles: { nom: string; personne: string | null; equipe: boolean; visites: number }[]
   inconnus: string[]
   illisibles: string[]
@@ -88,6 +91,10 @@ function typeAudit(entete: unknown): AuditImporte['type'] | null {
   return null
 }
 
+const estFeuilleDeRoute = (entete: unknown) => typeof entete === 'string' && entete.length <= 40 && normaliser(entete).includes('feuille de route')
+// « X » majuscule = fait ; « x » minuscule (case grisée) = sans objet
+const faite = (v: unknown) => v === 1 || (typeof v === 'string' && (/^(oui|ok)( |$)/.test(normaliser(v)) || v.trim() === 'X'))
+
 const estColonneVisite = (entete: unknown) => {
   const n = normaliser(entete)
   return /^visite( |$)/.test(n) || /^derniere visite \d{4}$/.test(n)
@@ -99,6 +106,7 @@ export function analyserVisites(feuilles: Feuille[], reseau: Reseau): ResultatIm
   const parCle = new Map<string, VisiteImportee>()
   const parFeuille = new Map<string, string[]>() // Coach de chaque onglet où la visite apparaît
   const audits = new Map<string, AuditImporte>()
+  const feuillesDeRoute = new Map<string, FeuilleImportee>()
   const inconnus = new Set<string>(), illisibles: string[] = []
   const resume: ResultatImportVisites['feuilles'] = []
 
@@ -153,6 +161,19 @@ export function analyserVisites(feuilles: Feuille[], reseau: Reseau): ResultatIm
     // Tableaux de notes d'audit, où qu'ils soient dans l'onglet
     f.lignes.forEach((ligne, r) => {
       ligne.forEach((entete, c) => {
+        if (estFeuilleDeRoute(entete)) {
+          for (let k = r + 1; k < f.lignes.length && !vide(f.lignes[k]); k++) {
+            const l = f.lignes[k]
+            const nom = l.map((x, i) => (i === c || typeof x !== 'string' ? null : trouver(x.replace(/\(.*$/, '')))).find(Boolean)
+            if (!nom || !faite(l[c])) continue
+            const fr = feuillesDeRoute.get(nom) ?? { magasin: nom, visiteurs: [], notes: '' }
+            if (personne && !fr.visiteurs.includes(personne)) fr.visiteurs.push(personne)
+            const titre = String(entete).trim()
+            if (!fr.notes.includes(titre)) fr.notes = fr.notes ? `${fr.notes}\n${titre}` : titre
+            feuillesDeRoute.set(nom, fr)
+          }
+          return
+        }
         const type = typeAudit(entete)
         if (!type) return
         const notes: number[] = []
@@ -177,10 +198,14 @@ export function analyserVisites(feuilles: Feuille[], reseau: Reseau): ResultatIm
     const coach = coachA(reseau.magasins.find((m) => m.nom === v.magasin)!, v.date)
     v.visiteurs = ps.length > 1 && ps.includes(coach) ? [coach] : ps.length ? ps : [coach].filter(Boolean)
   }
+  for (const fr of feuillesDeRoute.values()) {
+    const coach = coachA(reseau.magasins.find((m) => m.nom === fr.magasin)!, reseau.jour)
+    if (fr.visiteurs.length > 1 && fr.visiteurs.includes(coach)) fr.visiteurs = [coach]
+  }
   const toutes = [...parCle.values()].sort((a, b) => a.date.localeCompare(b.date) || a.magasin.localeCompare(b.magasin, 'fr'))
   const existe = new Set(reseau.visites.map((v) => `${v.magasin}|${v.date}`))
   const visites = toutes.filter((v) => !existe.has(`${v.magasin}|${v.date}`))
-  return { visites, dejaLa: toutes.length - visites.length, audits: [...audits.values()], feuilles: resume, inconnus: [...inconnus], illisibles }
+  return { visites, dejaLa: toutes.length - visites.length, audits: [...audits.values()], feuillesDeRoute: [...feuillesDeRoute.values()], feuilles: resume, inconnus: [...inconnus], illisibles }
 }
 
 export async function lireClasseur(f: File): Promise<Feuille[]> {
