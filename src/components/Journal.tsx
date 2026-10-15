@@ -19,7 +19,9 @@ import { Section } from '../pages/FicheMagasin'
 import { Fenetre } from './EditionEquipe'
 import { FiltreMenu } from './FiltreMenu'
 import { journalMagasin, typesJournal, type TypeJournal } from '../data/journal'
-import { enregistrerNoteMagasin, supprimerNoteMagasin } from '../data/chargement'
+import { enregistrerEvaluations, enregistrerNoteMagasin, supprimerEvaluation, supprimerNoteMagasin } from '../data/chargement'
+import { caseDe, historiqueSante, tousCriteres, type IdCritere, type Note } from '../data/sante'
+import { BoutonsNote, PastilleCase } from './Sante'
 import { dateCourte } from '../lib/format'
 import type { Magasin, NoteMagasin, Reseau } from '../data/modele'
 
@@ -38,6 +40,7 @@ export function Journal({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; s
   const [types, setTypes] = useState<string[]>([])
   const [nombre, setNombre] = useState(PAS)
   const [note, setNote] = useState<NoteMagasin | null>(null)
+  const [sante, setSante] = useState<string | null>(null)
   const tous = journalMagasin(reseau, m)
   const liste = tous.filter((e) => !types.length || types.includes(e.type))
   const nouvelle = (): NoteMagasin => ({ id: '', date: reseau.jour, texte: '', par: reseau.directeur.nom })
@@ -63,12 +66,14 @@ export function Journal({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; s
                 </Box>
                 {e.lien && <Tooltip title="Compte rendu PDF"><IconButton component={RouterLink} to={e.lien} aria-label={`Compte rendu du ${dateCourte(e.date)}`} sx={{ mt: -1 }}><PictureAsPdfOutlined /></IconButton></Tooltip>}
                 {n && <Tooltip title="Modifier"><IconButton onClick={() => setNote(n)} aria-label={`Modifier la note du ${dateCourte(e.date)}`} sx={{ mt: -1 }}><EditOutlined /></IconButton></Tooltip>}
+                {e.type === 'sante' && <Tooltip title="Modifier"><IconButton onClick={() => setSante(e.date)} aria-label={`Modifier le classement du ${dateCourte(e.date)}`} sx={{ mt: -1 }}><EditOutlined /></IconButton></Tooltip>}
               </Box>
             )
           })}
         </Box>
       )}
       {liste.length > nombre && <Button onClick={() => setNombre((x) => x + PAS * 2)} sx={{ mt: 1, minHeight: 48 }}>Afficher plus ({liste.length - nombre})</Button>}
+      {sante && <DialogSante reseau={reseau} magasin={m.nom} date={sante} onFermer={(msg) => { setSante(null); if (msg) signaler(msg) }} />}
       {note && <DialogNote magasin={m.nom} note={note} onFermer={(msg) => { setNote(null); if (msg) signaler(msg) }} />}
     </Section>
   )
@@ -87,6 +92,31 @@ function DialogNote({ magasin, note, onFermer }: { magasin: string; note: NoteMa
       libelleSuppression="Supprimer cette note du journal ?">
       <TextField type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       <TextField label="Note" value={texte} onChange={(e) => setTexte(e.target.value)} multiline minRows={4} autoFocus />
+    </Fenetre>
+  )
+}
+
+// Classement nine box d'une date : notes modifiables, ou suppression de la saisie (comme une visite)
+function DialogSante({ reseau, magasin, date, onFermer }: { reseau: Reseau; magasin: string; date: string; onFermer: (message?: string) => void }) {
+  const point = historiqueSante(reseau.evaluations, magasin).find((p) => p.date === date)
+  const e = reseau.evaluations[magasin]
+  const [notes, setNotes] = useState<Partial<Record<IdCritere, Note>>>(() => ({ ...(point?.notes ?? (e?.date === date ? e.notes : {})) }))
+  const noter = (id: IdCritere, n: Note | null) => setNotes((x) => { const y = { ...x }; if (n === null) delete y[id]; else y[id] = n; return y })
+  return (
+    <Fenetre titre={`Classement du ${dateCourte(date)}`} ouvert onFermer={onFermer} valide={Object.keys(notes).length > 0}
+      enregistrer={async () => {
+        await enregistrerEvaluations([{ magasin, e: { notes, date, par: reseau.directeur.nom } }])
+        return 'Classement enregistré.'
+      }}
+      supprimer={async () => { await supprimerEvaluation(magasin, date); return 'Classement supprimé.' }}
+      libelleSuppression={`Supprimer le classement du ${dateCourte(date)} ?`}>
+      <Box><PastilleCase c={caseDe({ notes, date, par: '' })} /></Box>
+      {tousCriteres.map((k) => (
+        <Box key={k.id} sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>{k.libelle}</Typography>
+          <Box sx={{ overflowX: 'auto' }}><BoutonsNote libelle={k.libelle} valeur={notes[k.id]} onChange={(n) => noter(k.id, n)} /></Box>
+        </Box>
+      ))}
     </Fenetre>
   )
 }
