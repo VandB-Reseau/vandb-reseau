@@ -21,11 +21,11 @@ import { statutLibelle, type Coach, type Magasin, type Reseau, type ResponsableR
 import { cleCommune, centreCommune, normaliserVille } from '../data/geocodage'
 import { cleFiche, estFrance, type FichePersonnelle } from '../data/personnes'
 
-// Contrôles de carte : boutons carrés de 48 px empilés dans un cadre unique
-const barreSx: SxProps<Theme> = { display: 'flex', flexDirection: 'column', bgcolor: 'background.paper', borderRadius: '10px', boxShadow: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }
+// Contrôles de carte : boutons carrés de 48 px côte à côte dans un cadre unique
+const barreSx: SxProps<Theme> = { display: 'flex', flexDirection: 'row', bgcolor: 'background.paper', borderRadius: '10px', boxShadow: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }
 const boutonSx: SxProps<Theme> = {
   width: 48, height: 48, minWidth: 48, p: 0, border: 0, borderRadius: 0, color: 'text.secondary',
-  '& + &': { borderTop: '1px solid', borderTopColor: 'divider' },
+  '& + &': { borderLeft: '1px solid', borderLeftColor: 'divider' },
   '&:hover': { bgcolor: 'action.hover' },
   '&.Mui-selected, &.Mui-selected:hover': { bgcolor: 'primary.main', color: 'primary.contrastText' },
 }
@@ -196,28 +196,29 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
 
   return (
     <Box>
-      <Box ref={carteRef} sx={{ position: pleinEcran ? 'fixed' : 'relative', inset: pleinEcran ? 0 : undefined, zIndex: pleinEcran ? 1400 : undefined, bgcolor: 'background.paper', height: hauteur, borderRadius: pleinEcran ? 0 : 4, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
-        {/* Barre de boutons compacte posée sur la carte, façon contrôles de carte */}
-        <Box sx={{ position: 'absolute', top: 10, right: 10, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <Box ref={carteRef} sx={{ position: pleinEcran ? 'fixed' : 'relative', inset: pleinEcran ? 0 : undefined, zIndex: pleinEcran ? 1400 : undefined, bgcolor: pleinEcran ? 'background.default' : undefined, height: hauteur, display: 'flex', flexDirection: 'column', gap: 1, p: pleinEcran ? 1 : 0 }}>
+        {/* Barre de boutons compacte au-dessus de la carte, sans rien poser dessus */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, flexShrink: 0 }}>
           <Box role="group" aria-label="Zones affichées" sx={barreSx}>
             {[
               { cle: 'coachs', actif: zonesCoachs, basculer: () => setZonesCoachs((v) => !v), icone: <PersonPinCircleOutlined />, long: 'Zones des Coachs' },
               { cle: 'rr', actif: zonesRR, basculer: () => setZonesRR((v) => !v), icone: <HubOutlined />, long: 'Zones des Responsables Régionaux' },
               { cle: 'personnes', actif: voirPersonnes, basculer: () => setVoirPersonnes((v) => !v), icone: <BadgeOutlined />, long: 'Coachs et Responsables Régionaux' },
             ].map((b) => (
-              <InfoBulle key={b.cle} title={b.long} placement="left" disableHoverListener={!souris} disableFocusListener={!souris} disableTouchListener slotProps={{ tooltip: { sx: { fontSize: 13 } } }}>
+              <InfoBulle key={b.cle} title={b.long} placement="bottom" disableHoverListener={!souris} disableFocusListener={!souris} disableTouchListener slotProps={{ tooltip: { sx: { fontSize: 13 } } }}>
                 <ToggleButton value={b.cle} selected={b.actif} onChange={b.basculer} aria-label={b.long} sx={boutonSx}>{b.icone}</ToggleButton>
               </InfoBulle>
             ))}
           </Box>
           <Box sx={barreSx}>
-            <InfoBulle title={pleinEcran ? 'Quitter le plein écran' : 'Plein écran'} placement="left" disableHoverListener={!souris} disableFocusListener={!souris} disableTouchListener slotProps={{ tooltip: { sx: { fontSize: 13 } } }}>
+            <InfoBulle title={pleinEcran ? 'Quitter le plein écran' : 'Plein écran'} placement="bottom" disableHoverListener={!souris} disableFocusListener={!souris} disableTouchListener slotProps={{ tooltip: { sx: { fontSize: 13 } } }}>
               <ToggleButton value="plein" selected={pleinEcran} onChange={() => setPleinEcran((v) => !v)} aria-label={pleinEcran ? 'Quitter le plein écran' : 'Carte en plein écran'} sx={boutonSx}>
                 {pleinEcran ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
               </ToggleButton>
             </InfoBulle>
           </Box>
         </Box>
+        <Box sx={{ flex: 1, minHeight: 0, borderRadius: pleinEcran ? 2 : 4, overflow: 'hidden', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
         <MapContainer center={[46.6, 2.4]} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
           <AjusterTaille hauteur={hauteur} />
           <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -256,6 +257,7 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
             </Marker>
           ))}
         </MapContainer>
+        </Box>
       </Box>
       <Box ref={legendeRef} sx={{ display: 'flex', flexWrap: { xs: 'nowrap', sm: 'wrap' }, overflowX: { xs: 'auto', sm: 'visible' }, columnGap: 2, rowGap: 1, mt: 1.5, pb: { xs: 0.5, sm: 0 }, alignItems: 'center', '& > *': { flexShrink: 0, whiteSpace: 'nowrap' } }} aria-label="Légende de la carte">
         {legende.map((l) => (

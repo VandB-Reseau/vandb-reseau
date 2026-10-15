@@ -113,7 +113,10 @@ test('la carte passe en plein écran et le titre ne bouge pas entre Liste et Car
   expect([await titre.boundingBox(), await recherche.boundingBox()]).toEqual(avant)
   await page.getByRole('button', { name: 'Carte en plein écran' }).click()
   const vp = page.viewportSize()!
-  await expect.poll(async () => (await page.locator('.leaflet-container').boundingBox())!.height).toBeGreaterThan(vp.height - 4)
+  // Plein écran : la barre de boutons au-dessus, la carte dessous occupe tout le reste
+  await expect.poll(async () => (await page.locator('.leaflet-container').boundingBox())!.height).toBeGreaterThan(vp.height - 80)
+  const barre = (await page.getByRole('group', { name: 'Zones affichées' }).boundingBox())!
+  expect(barre.y + barre.height).toBeLessThanOrEqual((await page.locator('.leaflet-container').boundingBox())!.y)
   await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: 'Carte en plein écran' })).toBeVisible()
 })

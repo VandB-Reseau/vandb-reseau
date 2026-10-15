@@ -29,7 +29,10 @@ test('la carte regroupe les magasins en zones de Coach et de Responsable Région
   await expect(page.locator('path.zone-rr').first()).toBeAttached()
   await expect(legende.getByText('Pointillés : zones des Responsables Régionaux (RR)')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
-  // Boutons icônes compacts : 48 px de côté, sans libellé écrit, libellé au survol sur PC
+  // Boutons icônes compacts au-dessus de la carte, jamais posés dessus
+  const carte = (await page.locator('.leaflet-container').boundingBox())!
+  for (const b of [zonesCoachs, zonesRR]) { const boite = (await b.boundingBox())!; expect(boite.y + boite.height).toBeLessThanOrEqual(carte.y) }
+  // 48 px de côté, sans libellé écrit, libellé au survol sur PC
   for (const b of [zonesCoachs, zonesRR]) {
     const boite = (await b.boundingBox())!
     expect(boite.height).toBeGreaterThanOrEqual(48)
