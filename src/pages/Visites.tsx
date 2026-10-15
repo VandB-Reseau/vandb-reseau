@@ -25,6 +25,11 @@ import AddOutlined from '@mui/icons-material/AddOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
+import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined'
+import Alert from '@mui/material/Alert'
+import { Fenetre } from '../components/EditionEquipe'
+import { importerVisites } from '../data/chargement'
+import { analyserVisites, lireClasseur, type ResultatImportVisites } from '../data/importVisites'
 import { RechercheFiltres } from '../components/RechercheFiltres'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
@@ -272,6 +277,65 @@ function VueHistorique({ reseau, modifier, surPC }: { reseau: Reseau; modifier: 
   )
 }
 
+// ── Import du classeur de suivi des visites (un onglet par Coach) ──
+function DialogImportVisites({ reseau, onFermer }: { reseau: Reseau; onFermer: (m?: string) => void }) {
+  const [res, setRes] = useState<ResultatImportVisites | null>(null)
+  const [nomFichier, setNomFichier] = useState('')
+  const [erreur, setErreur] = useState('')
+  const [dateAudits, setDateAudits] = useState(reseau.jour)
+  const choisir = async (f: File | undefined) => {
+    if (!f) return
+    setNomFichier(f.name); setErreur(''); setRes(null)
+    try {
+      const r = analyserVisites(await lireClasseur(f), reseau)
+      if (!r.visites.length && !r.audits.length && !r.dejaLa) setErreur('Aucune visite reconnue dans ce fichier. Vérifie que chaque onglet a une colonne « Magasin » et des colonnes « Visite 1 », « Visite 2 »…')
+      else setRes(r)
+    } catch { setErreur('Ce fichier ne peut pas être lu. Enregistre-le au format Excel (.xlsx) puis réessaie.') }
+  }
+  const n = res?.visites.length ?? 0, a = res?.audits.length ?? 0
+  const nbMag = res ? new Set(res.visites.map((v) => v.magasin)).size : 0
+  const annees = res ? [...new Set(res.visites.map((v) => v.date.slice(0, 4)))].sort() : []
+  const pluriel = (k: number, mot: string) => `${k} ${mot}${k > 1 ? 's' : ''}`
+  const dateValide = /^\d{4}-\d{2}-\d{2}$/.test(dateAudits)
+  return (
+    <Fenetre large titre="Importer des visites" ouvert onFermer={onFermer} valide={n + a > 0 && (!a || dateValide)}
+      enregistrer={async () => {
+        await importerVisites(res!.visites, res!.audits, dateAudits)
+        return [n ? `${pluriel(n, 'visite')} importée${n > 1 ? 's' : ''}` : '', a ? `${pluriel(a, 'note')} d’audit` : ''].filter(Boolean).join(' et ')
+      }}>
+      <Button variant="outlined" component="label" startIcon={<UploadFileOutlined />} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
+        {nomFichier || 'Choisir un fichier'}
+        <input type="file" hidden accept=".xlsx" aria-label="Fichier de visites à importer" onChange={(e) => choisir(e.target.files?.[0])} />
+      </Button>
+      {erreur && <Alert severity="warning">{erreur}</Alert>}
+      {res && (
+        <>
+          <Alert severity={n ? 'success' : 'info'}>
+            {n ? `${pluriel(n, 'visite')} à ajouter pour ${pluriel(nbMag, 'magasin')}, ${annees.length > 1 ? `de ${annees[0]} à ${annees.at(-1)}` : `en ${annees[0]}`}.` : 'Aucune nouvelle visite.'}
+            {res.dejaLa > 0 && ` ${pluriel(res.dejaLa, 'visite')} déjà dans l’app, laissée${res.dejaLa > 1 ? 's' : ''} telle${res.dejaLa > 1 ? 's' : ''} quelle${res.dejaLa > 1 ? 's' : ''}.`}
+          </Alert>
+          {a > 0 && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+              <Typography variant="body1" sx={{ flex: '1 1 240px' }}>
+                {pluriel(a, 'note')} d’audit : {res.audits.filter((x) => x.type === 'hygiene').length} hygiène, {res.audits.filter((x) => x.type === 'excellence').length} excellence.
+              </Typography>
+              <TextField type="date" label="Date des audits" value={dateAudits} onChange={(e) => setDateAudits(e.target.value)} error={!dateValide}
+                slotProps={{ inputLabel: { shrink: true } }} sx={{ width: { xs: '100%', sm: 220 } }} />
+            </Box>
+          )}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {res.feuilles.filter((f) => f.visites).map((f) => (
+              <Chip key={f.nom} label={`${f.nom} → ${f.personne}${f.equipe ? '' : ' (hors équipe)'} · ${f.visites}`} color={f.equipe ? 'primary' : 'default'} variant="outlined" sx={{ fontSize: 13 }} />
+            ))}
+          </Box>
+          {res.inconnus.length > 0 && <Typography variant="body2" color="text.secondary">Magasins non trouvés ({res.inconnus.length}) : {res.inconnus.slice(0, 12).join(', ')}{res.inconnus.length > 12 ? '…' : ''}</Typography>}
+          {res.illisibles.length > 0 && <Typography variant="body2" color="text.secondary">Dates non reconnues, laissées de côté ({res.illisibles.length}) : {res.illisibles.slice(0, 12).join(' · ')}{res.illisibles.length > 12 ? '…' : ''}</Typography>}
+        </>
+      )}
+    </Fenetre>
+  )
+}
+
 export function Visites() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
@@ -279,6 +343,7 @@ export function Visites() {
   const vue = params.get('vue') === 'historique' ? 'historique' : 'rythme'
   const [edition, setEdition] = useState<Edition>(null)
   const [message, setMessage] = useState('')
+  const [importer, setImporter] = useState(false)
   return (
     <AvecReseau>
       {(reseau) => (
@@ -286,7 +351,10 @@ export function Visites() {
           <PageHeader
             titre="Visites"
             sousTitre={`${reseau.visites.length} visite${reseau.visites.length > 1 ? 's' : ''} enregistrée${reseau.visites.length > 1 ? 's' : ''}`}
-            actions={<Button variant="contained" startIcon={<AddOutlined />} onClick={() => setEdition({ visite: null, magasins: [] })} sx={{ minHeight: 48 }}>Saisir une visite</Button>}
+            actions={<>
+              {surPC && <Button variant="outlined" startIcon={<UploadFileOutlined />} onClick={() => setImporter(true)} sx={{ minHeight: 48 }}>Importer Excel</Button>}
+              <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setEdition({ visite: null, magasins: [] })} sx={{ minHeight: 48 }}>Saisir une visite</Button>
+            </>}
           />
           <Tabs value={vue} onChange={(_e, v) => setParams({ vue: v }, { replace: true })} aria-label="Rubriques des visites" sx={{ mb: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Tab value="rythme" label="Rythme de visite" sx={{ minHeight: 48 }} />
@@ -296,6 +364,7 @@ export function Visites() {
             ? <VueHistorique reseau={reseau} surPC={surPC} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
             : <VueRythme reseau={reseau} surPC={surPC} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
           {edition && <DialogVisite reseau={reseau} visite={edition.visite} magasinsInitiaux={edition.magasins} onFermer={(m) => { setEdition(null); if (m) setMessage(m) }} />}
+          {importer && <DialogImportVisites reseau={reseau} onFermer={(m) => { setImporter(false); if (m) setMessage(m) }} />}
           <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
         </>
       )}

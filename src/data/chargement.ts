@@ -409,6 +409,23 @@ export async function enregistrerVisites(base: Omit<Visite, 'magasin' | 'id'>, m
   if (id !== null) verifier(await supabase.from('visits').update(ligne(magasins[0])).eq('id', id))
   else verifier(await supabase.from('visits').insert(magasins.map(ligne)))
 }
+// Import d'un classeur de suivi : visites terrain par paquets, puis notes d'audit rangées à la date choisie
+export async function importerVisites(visites: { magasin: string; date: string; visiteurs: string[]; notes: string }[], audits: { magasin: string; type: string; score: number }[], dateAudits: string) {
+  const lignes = visites.map((v) => ({
+    group_id: null, store: v.magasin, visit_date: v.date, type: 'terrain', visitor: v.visiteurs.join(SEPARATEUR_VISITEURS) || null,
+    signed_required: false, signed_url: null, signed_date: null, docs: [], notes: v.notes || null, sections: null, action_plan: [],
+  }))
+  for (let i = 0; i < lignes.length; i += 200) verifier(await supabase.from('visits').insert(lignes.slice(i, i + 200)))
+  if (!audits.length) return
+  await enFile(async () => {
+    const { valeur, existe } = await lireCle<Audits>('audits', {})
+    for (const a of audits) {
+      const liste = (valeur[a.magasin] ?? []).filter((x) => !(x.date === dateAudits && x.type === a.type))
+      valeur[a.magasin] = [...liste, { date: dateAudits, type: a.type, conforme: null, score: a.score }].sort((x, y) => x.date.localeCompare(y.date))
+    }
+    await ecrireCle('audits', valeur, existe)
+  })
+}
 export async function supprimerVisite(id: number) { verifier(await supabase.from('visits').delete().eq('id', id)) }
 
 export async function enregistrerConge(c: Conge) {
