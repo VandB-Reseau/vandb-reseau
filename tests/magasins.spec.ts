@@ -130,3 +130,24 @@ test('« Tous » coche toutes les options d’un filtre, puis on en exclut une',
   await page.keyboard.press('Escape')
   await expect(page.getByText('25 sur 30 magasins')).toBeVisible()
 })
+
+test('après une mise en ligne, la carte se recharge au lieu de laisser une page blanche', async ({ page }) => {
+  await seConnecter(page)
+  // Ancien fichier de la carte introuvable une fois : la page se recharge et la carte s'affiche
+  let refus = 0
+  await page.route(/assets\/CarteMagasins-[^/]*\.js$/, (r) => (refus++ === 0 ? r.fulfill({ status: 404, body: '' }) : r.continue()))
+  await page.goto('./#/magasins?vue=carte')
+  await expect(page.locator('.leaflet-container')).toBeVisible()
+  expect(refus).toBeGreaterThanOrEqual(2)
+})
+
+test('si la carte reste introuvable, un message propose de recharger', async ({ page }) => {
+  await seConnecter(page)
+  await page.route(/assets\/CarteMagasins-[^/]*\.js$/, (r) => r.fulfill({ status: 404, body: '' }))
+  await page.goto('./#/magasins?vue=carte')
+  await expect(page.getByText('Cette page n’a pas pu s’afficher')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Recharger' })).toBeVisible()
+  // Le menu reste utilisable
+  await page.goto('./#/')
+  await expect(page.getByRole('heading', { level: 1, name: /Bonjour|Bonsoir/ })).toBeVisible()
+})

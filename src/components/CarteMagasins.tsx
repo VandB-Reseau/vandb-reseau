@@ -61,6 +61,10 @@ const iconePicto = (type: TypePicto, couleur: string) => {
   return icones.get(cle)!
 }
 
+// Fiche lue sans se fier au format enregistré (anciennes saisies, imports)
+const texte = (v: unknown) => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '')
+const fiche = (f: Partial<FichePersonnelle> | undefined) => ({ ville: texte(f?.ville), codePostal: texte(f?.codePostal), pays: texte(f?.pays) })
+
 interface PersonneCarte { cle: string; type: TypePicto; nom: string; role: string; couleur: string; ville: string; codePostal: string; domicile: Point | null; lien: string; magasins: number }
 
 // Carte : un point par magasin ; zones des Coachs et des Responsables Régionaux, affichables séparément
@@ -100,19 +104,19 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
       if (c.fictif || (c.arrivee && c.arrivee > aujourdhui)) continue
       const n = magasins.filter((m) => vue.coachDe(m) === c.nom).length
       if (restreindre && !n) continue
-      const f = personnes[cleFiche({ type: 'coach', cle: c.nom })] ?? ({} as Partial<FichePersonnelle>)
+      const f = fiche(personnes[cleFiche({ type: 'coach', cle: c.nom })])
       if (f.pays && !estFrance(f.pays) && c.lat === null) continue
-      const ville = f.ville || c.ville
+      const ville = f.ville || texte(c.ville)
       // Position connue de l'ancienne app, tant que la ville n'a pas changé
-      const domicile = c.lat !== null && c.lon !== null && (!f.ville || !c.ville || normaliserVille(f.ville) === normaliserVille(c.ville)) ? { lat: c.lat, lon: c.lon } : null
-      res.push({ cle: `coach:${c.nom}`, type: 'coach', nom: c.nom, role: 'Coach', couleur: c.couleur, ville, codePostal: f.codePostal ?? '', domicile, lien: lienCoach(c.nom), magasins: n })
+      const domicile = c.lat !== null && c.lon !== null && (!f.ville || !c.ville || normaliserVille(f.ville) === normaliserVille(texte(c.ville))) ? { lat: c.lat, lon: c.lon } : null
+      res.push({ cle: `coach:${c.nom}`, type: 'coach', nom: c.nom, role: 'Coach', couleur: c.couleur, ville, codePostal: f.codePostal, domicile, lien: lienCoach(c.nom), magasins: n })
     }
     for (const r of rrs) {
       const n = magasins.filter((m) => vue.rrDe(m)?.id === r.id).length
       if (restreindre && !n) continue
-      const f = personnes[cleFiche({ type: 'rr', cle: r.id })] ?? ({} as Partial<FichePersonnelle>)
+      const f = fiche(personnes[cleFiche({ type: 'rr', cle: r.id })])
       if (f.pays && !estFrance(f.pays)) continue
-      res.push({ cle: `rr:${r.id}`, type: 'rr', nom: r.nom, role: r.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional', couleur: r.couleur, ville: f.ville ?? '', codePostal: f.codePostal ?? '', domicile: null, lien: lienRR(r.id), magasins: n })
+      res.push({ cle: `rr:${r.id}`, type: 'rr', nom: r.nom, role: r.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional', couleur: r.couleur, ville: f.ville, codePostal: f.codePostal, domicile: null, lien: lienRR(r.id), magasins: n })
     }
     return res
   }, [equipe, rrs, personnes, magasins, vue, restreindre])

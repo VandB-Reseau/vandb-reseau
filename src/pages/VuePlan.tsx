@@ -1,4 +1,5 @@
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { chargementDiffere } from '../lib/chargementDiffere'
+import { Suspense, useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -39,7 +40,7 @@ import { dateLongue, lienCoach, lienFiche } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
 import type { VueCarte } from '../components/CarteMagasins'
 
-const CarteMagasins = lazy(() => import('../components/CarteMagasins').then((m) => ({ default: m.CarteMagasins })))
+const CarteMagasins = chargementDiffere(() => import('../components/CarteMagasins').then((m) => ({ default: m.CarteMagasins })))
 
 const km = (d: number | null) => (d === null ? 'distance inconnue' : `${Math.round(d)} km`)
 type Choix = Record<string, { cible?: string; garde?: boolean }>

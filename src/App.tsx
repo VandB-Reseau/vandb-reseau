@@ -8,7 +8,7 @@ import { Agenda } from './pages/Agenda'
 import { SanteParc } from './pages/SanteParc'
 import { Evolution } from './pages/Evolution'
 import { Personnes } from './pages/VuePersonnes'
-import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import { AppShell } from './layout/AppShell'
@@ -20,11 +20,15 @@ import { Magasins } from './pages/Magasins'
 import { FicheMagasin } from './pages/FicheMagasin'
 import { ReseauProvider } from './data/ReseauContext'
 import { RetourEnHaut } from './navigation/RetourEnHaut'
+import { ErreurEcran } from './components/ErreurEcran'
 
 function Routes_() {
+  const { pathname } = useLocation()
   return (
     <AppShell>
       <RetourEnHaut />
+      {/* Changer d'écran efface l'erreur de l'écran précédent */}
+      <ErreurEcran key={pathname}>
       <Routes>
         <Route path="/" element={<Accueil />} />
         <Route path="/magasins" element={<Magasins />} />
@@ -49,6 +53,7 @@ function Routes_() {
         <Route path="/plus" element={<Plus />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </ErreurEcran>
     </AppShell>
   )
 }

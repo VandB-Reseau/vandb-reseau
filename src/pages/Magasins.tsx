@@ -1,10 +1,11 @@
-import { lazy, Suspense, useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import { DialogMagasin } from '../components/EditionMagasin'
 import { lienFiche } from '../lib/format'
+import { chargementDiffere } from '../lib/chargementDiffere'
 import Box from '@mui/material/Box'
 import Skeleton from '@mui/material/Skeleton'
 import Tab from '@mui/material/Tab'
@@ -22,7 +23,7 @@ import { TableMagasins } from '../components/TableMagasins'
 import { ListeMagasins } from '../components/ListeMagasins'
 import { filtrer, filtresDepuisUrl, filtresVersUrl, type Filtres } from '../data/filtres'
 
-const CarteMagasins = lazy(() => import('../components/CarteMagasins').then((m) => ({ default: m.CarteMagasins })))
+const CarteMagasins = chargementDiffere(() => import('../components/CarteMagasins').then((m) => ({ default: m.CarteMagasins })))
 
 export function Magasins({ vueInitiale = 'carte' }: { vueInitiale?: 'liste' | 'carte' }) {
   const theme = useTheme()
