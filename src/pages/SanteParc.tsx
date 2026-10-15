@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { normaliser } from '../data/filtres'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
@@ -54,10 +55,10 @@ import InputAdornment from '@mui/material/InputAdornment'
 import SearchIcon from '@mui/icons-material/Search'
 import { BoutonsNote, BoutonsOption, PastilleCase, couleursCoachs, useSaisieSante, type Saisie } from '../components/Sante'
 import { coachA } from '../data/charge'
-import { enregistrerThematiques } from '../data/chargement'
+import { enregistrerDeploiements, enregistrerThematiques, importerHistorique } from '../data/chargement'
 import { analyser, lireFichier, type ResultatImport } from '../data/import'
-import { avancement, caseDe, nineBox, tousCriteres, type Evaluation, type IdCritere, type Note, type Thematique, type Ton } from '../data/sante'
-import { lienFiche } from '../lib/format'
+import { avancement, caseDe, nineBox, tousCriteres, type Evaluation, type IdCritere, type Thematique, type Ton } from '../data/sante'
+import { dateCourte, lienFiche } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
 
 // Filtres communs : recherche, Responsable Régional, Coach
@@ -361,7 +362,7 @@ function ChoixMode({ mode, changer }: { mode: string; changer: (m: string) => vo
   )
 }
 
-function VueEvaluer({ reseau, saisie, surPC }: { reseau: Reseau; saisie: Saisie & { version: number }; surPC: boolean }) {
+function VueEvaluer({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: Saisie & { version: number }; surPC: boolean; date: ReactNode }) {
   const { magasins, barre } = useFiltres(reseau)
   const [mode, setMode] = useState('tableau')
   const sel = useSelection()
@@ -369,6 +370,7 @@ function VueEvaluer({ reseau, saisie, surPC }: { reseau: Reseau; saisie: Saisie 
   return (
     <>
       {barre}
+      {date}
       {surPC && <ChoixMode mode={mode} changer={setMode} />}
       {magasins.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." />
         : !surPC || mode === 'fiche' ? <FicheSaisie reseau={reseau} magasins={magasins} saisie={saisie} parties={['notes']} /> : (
@@ -395,7 +397,7 @@ function VueEvaluer({ reseau, saisie, surPC }: { reseau: Reseau; saisie: Saisie 
   )
 }
 
-function VueDeploiements({ reseau, saisie, surPC }: { reseau: Reseau; saisie: Saisie & { version: number }; surPC: boolean }) {
+function VueDeploiements({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: Saisie & { version: number }; surPC: boolean; date: ReactNode }) {
   const { magasins, barre } = useFiltres(reseau)
   const [mode, setMode] = useState('tableau')
   const sel = useSelection()
@@ -404,6 +406,7 @@ function VueDeploiements({ reseau, saisie, surPC }: { reseau: Reseau; saisie: Sa
   return (
     <>
       {barre}
+      {date}
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' }, mb: 3 }}>
         {ths.map((t) => <Avancement key={t.id} reseau={reseau} t={t} />)}
       </Box>
@@ -433,7 +436,7 @@ function VueDeploiements({ reseau, saisie, surPC }: { reseau: Reseau; saisie: Sa
 }
 
 // ── Import d'un fichier Excel ou CSV ──
-function DialogImport({ reseau, saisie, onFermer }: { reseau: Reseau; saisie: Saisie; onFermer: (m?: string) => void }) {
+function DialogImport({ reseau, date, onFermer }: { reseau: Reseau; date: string; onFermer: (m?: string) => void }) {
   const [res, setRes] = useState<ResultatImport | null>(null)
   const [nomFichier, setNomFichier] = useState('')
   const [erreur, setErreur] = useState('')
@@ -441,18 +444,19 @@ function DialogImport({ reseau, saisie, onFermer }: { reseau: Reseau; saisie: Sa
     if (!f) return
     setNomFichier(f.name); setErreur(''); setRes(null)
     try {
-      const r = analyser(await lireFichier(f), reseau)
+      const r = analyser(await lireFichier(f), reseau, date)
       if (!r) setErreur('Aucune colonne de noms de magasins reconnue dans ce fichier. Vérifie que les noms sont écrits comme dans l’app.')
       else setRes(r)
     } catch { setErreur('Ce fichier ne peut pas être lu. Enregistre-le au format Excel (.xlsx) ou CSV puis réessaie.') }
   }
-  const nbNotes = res ? Object.values(res.notes).reduce((t, n) => t + Object.keys(n).length, 0) : 0
+  const nbNotes = res ? res.notes.reduce((t, n) => t + Object.keys(n.notes).length, 0) : 0
+  const dates = res ? [...new Set([...res.notes.map((n) => n.date), ...res.deploiements.map((d) => d.date)])].sort() : []
   const total = nbNotes + (res?.deploiements.length ?? 0)
   return (
     <Fenetre large titre="Importer depuis Excel" ouvert onFermer={onFermer} valide={total > 0}
       enregistrer={async () => {
-        for (const [magasin, notes] of Object.entries(res!.notes)) for (const [c, n] of Object.entries(notes)) saisie.noter([magasin], c as IdCritere, n as Note)
-        for (const d of res!.deploiements) saisie.deployer([d.magasin], d.thematique, d.etat)
+        if (res!.notes.length) await importerHistorique(res!.notes, reseau.directeur.nom)
+        if (res!.deploiements.length) await enregistrerDeploiements(res!.deploiements, date)
         return `${total} valeur${total > 1 ? 's' : ''} importée${total > 1 ? 's' : ''}`
       }}>
       <Button variant="outlined" component="label" startIcon={<UploadFileOutlined />} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
@@ -463,7 +467,7 @@ function DialogImport({ reseau, saisie, onFermer }: { reseau: Reseau; saisie: Sa
       {res && (
         <>
           <Alert severity={total ? 'success' : 'info'}>
-            {total ? `${total} valeur${total > 1 ? 's' : ''} prête${total > 1 ? 's' : ''} à importer pour ${new Set([...Object.keys(res.notes), ...res.deploiements.map((d) => d.magasin)]).size} magasins (colonne des magasins : « ${res.colonneMagasin} »).` : 'Aucune valeur reconnue dans ce fichier.'}
+            {total ? `${total} valeur${total > 1 ? 's' : ''} prête${total > 1 ? 's' : ''} à importer pour ${new Set([...res.notes.map((n) => n.magasin), ...res.deploiements.map((d) => d.magasin)]).size} magasins (colonne des magasins : « ${res.colonneMagasin} »). ${dates.length > 1 ? `${dates.length} dates, du ${dateCourte(dates[0])} au ${dateCourte(dates.at(-1)!)}, ajoutées à l’historique.` : `Datées du ${dateCourte(dates[0] ?? date)}.`}` : 'Aucune valeur reconnue dans ce fichier.'}
           </Alert>
           {res.criteres.length + res.thematiques.length > 0 && (
             <Box>
@@ -536,6 +540,14 @@ export function DialogThematiques({ reseau, onFermer }: { reseau: Reseau; onFerm
   )
 }
 
+// Date à laquelle les notes et déploiements saisis prennent effet
+function ChampDate({ valeur, max, onChange }: { valeur: string; max: string; onChange: (v: string) => void }) {
+  return (
+    <TextField type="date" size="small" label="Date des changements" value={valeur} onChange={(e) => onChange(e.target.value || max)}
+      slotProps={{ inputLabel: { shrink: true }, htmlInput: { max } }} sx={{ mb: 2, minWidth: 220, '& .MuiInputBase-root': { minHeight: 48 } }} />
+  )
+}
+
 export function SanteParc() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
@@ -552,7 +564,8 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
   const [message, setMessage] = useState('')
   const [gestion, setGestion] = useState(false)
   const [importer, setImporter] = useState(false)
-  const saisie = useSaisieSante(reseau, setMessage)
+  const [date, setDate] = useState(reseau.jour)
+  const saisie = useSaisieSante(reseau, setMessage, date)
   const actifs = reseau.magasins.filter((m) => m.statut !== 'avenir')
   const classes = actifs.filter((m) => caseDe(reseau.evaluations[m.nom])).length
   // Les boutons restent en place (masqués sur la nine box) pour que le titre ne bouge pas entre onglets
@@ -571,10 +584,10 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
         <Tab value="deploiements" label="Déploiements" sx={{ minHeight: 48 }} />
       </Tabs>
       {vue === 'ninebox' && <VueNineBox reseau={reseau} evaluer={() => aller('evaluer')} surPC={surPC} />}
-      {vue === 'evaluer' && <VueEvaluer reseau={reseau} saisie={saisie} surPC={surPC} />}
-      {vue === 'deploiements' && <VueDeploiements reseau={reseau} saisie={saisie} surPC={surPC} />}
+      {vue === 'evaluer' && <VueEvaluer reseau={reseau} saisie={saisie} surPC={surPC} date={<ChampDate valeur={date} max={reseau.jour} onChange={setDate} />} />}
+      {vue === 'deploiements' && <VueDeploiements reseau={reseau} saisie={saisie} surPC={surPC} date={<ChampDate valeur={date} max={reseau.jour} onChange={setDate} />} />}
       {gestion && <DialogThematiques reseau={reseau} onFermer={(m) => { setGestion(false); if (m) setMessage(m) }} />}
-      {importer && <DialogImport reseau={reseau} saisie={saisie} onFermer={(m) => { setImporter(false); if (m) setMessage(m) }} />}
+      {importer && <DialogImport reseau={reseau} date={date} onFermer={(m) => { setImporter(false); if (m) setMessage(m) }} />}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </>
   )

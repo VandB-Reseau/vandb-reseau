@@ -104,7 +104,8 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
   // 4) Affectations Coach par magasin
   const parMagasin = new Map<string, AffectationCoach[]>()
   ;[...d.affectations].sort((a, b) => a.date.localeCompare(b.date)).forEach((a) => {
-    const l = parMagasin.get(a.store) ?? []
+    // Un seul changement par jour : le dernier enregistré remplace les précédents
+    const l = (parMagasin.get(a.store) ?? []).filter((x) => x.date !== a.date)
     l.push({ coach: a.cs, date: a.date, note: a.note ?? '' })
     parMagasin.set(a.store, l)
   })
@@ -163,6 +164,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       lat, lon,
       rr: rrDuCoach(c.nom),
       historiqueRR: (d.configRR.dr_assigns ?? []).filter((a) => a.cs === c.nom).sort((a, b) => a.date.localeCompare(b.date))
+        .filter((a, i, l) => l[i + 1]?.date !== a.date) // un seul changement par jour : le dernier saisi
         .map((a) => ({ rr: rrParId.get(a.dr) ?? null, date: a.date })),
     }})
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))

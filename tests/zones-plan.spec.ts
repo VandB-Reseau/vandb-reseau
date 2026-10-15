@@ -71,7 +71,7 @@ test('le plan d’affectation propose un Coach pour un magasin sans Coach et enr
   await expect(dialogue).toContainText('1 magasin change de Coach')
   await dialogue.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText(/Plan enregistré : 1 magasin/)).toBeVisible()
-  const ecrite = ecritures.find((e) => e.table === 'reassigns')!
+  const ecrite = ecritures.find((e) => e.table === 'reassigns' && e.methode === 'POST')!
   expect(ecrite.corps).toMatchObject({ store: 'Vichy Test', cs: 'Inès EXEMPLE', date: '2026-11-01' })
 })
 

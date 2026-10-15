@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
-import { ajouterPoint, thematiquesParDefaut, type Deploiements, type Evaluation, type Evaluations, type Thematique } from './sante'
+import { avecPoint, notesAu, thematiquesParDefaut, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
 import type { Conge, Evenement, NoteMagasin, Reseau, Visite } from './modele'
 import { normaliserParties, normaliserPlan } from './compteRendu'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
@@ -100,7 +100,10 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
 export class ErreurEnregistrement extends Error {}
 
 // Réaffecte un magasin à un Coach à partir d'une date (même format que l'ancienne app)
+// Un seul changement par jour : celui du même jour est remplacé
 export async function reaffecter(magasin: string, coach: string, date: string, note: string): Promise<void> {
+  const ancien = await supabase.from('reassigns').delete().eq('store', magasin).eq('date', date)
+  if (ancien.error) throw new ErreurEnregistrement(ancien.error.message)
   const { error } = await supabase.from('reassigns').insert({ store: magasin, cs: coach, date, note, type: 'manual' })
   if (error) throw new ErreurEnregistrement(error.message)
 }
@@ -172,8 +175,8 @@ export async function supprimerRR(id: string) {
 // Rattache un Coach à un RR à partir d'une date (historique conservé, comme dans l'ancienne app)
 export async function rattacherCoach(coach: string, rrId: string, date: string) {
   await modifierConfigRR((c) => {
-    // Historique conservé : on ajoute sans rien effacer ; à date égale, le dernier ajouté s'applique
-    c.dr_assigns = [...(c.dr_assigns ?? []), { cs: coach, dr: rrId, date, saisi: new Date().toISOString() }]
+    // Historique conservé ; un seul changement par jour : celui du même jour est remplacé
+    c.dr_assigns = [...(c.dr_assigns ?? []).filter((a) => !(a.cs === coach && a.date === date)), { cs: coach, dr: rrId, date, saisi: new Date().toISOString() }]
     // Rattachement « actuel » lu par l'ancienne app : seulement si le changement a déjà pris effet
     if (date <= new Date().toISOString().slice(0, 10)) c.cs_dr = { ...(c.cs_dr ?? {}), [coach]: rrId }
   })
@@ -393,17 +396,27 @@ function enFile<T>(f: () => Promise<T>): Promise<T> {
   return p
 }
 
-export function enregistrerEvaluations(lot: Record<string, { e: Evaluation; caseId: string | null }>) {
+export function enregistrerEvaluations(lot: { magasin: string; e: Evaluation }[]) {
   return enFile(async () => {
     const { valeur, existe } = await lireCle<Evaluations>('sante_parc', {})
-    for (const [magasin, { e, caseId }] of Object.entries(lot)) {
-      const historique = ajouterPoint(valeur[magasin]?.historique ?? [], { date: e.date, caseId: caseId ?? '', notes: e.notes })
-      valeur[magasin] = { ...e, historique }
+    for (const { magasin, e } of lot) valeur[magasin] = avecPoint(valeur[magasin], e)
+    await ecrireCle('sante_parc', valeur, existe)
+  })
+}
+// Import d'un historique : plusieurs lignes datées par magasin, une seule par jour
+export function importerHistorique(points: { magasin: string; date: string; notes: Partial<Record<IdCritere, Note>> }[], par: string) {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<Evaluations>('sante_parc', {})
+    for (const p of [...points].sort((a, b) => a.date.localeCompare(b.date))) {
+      // Les critères absents de la ligne reprennent leur valeur en vigueur à cette date
+      const e: Evaluation = { notes: { ...notesAu(valeur[p.magasin], p.date), ...p.notes }, date: p.date, par }
+      valeur[p.magasin] = avecPoint(valeur[p.magasin], e)
     }
     await ecrireCle('sante_parc', valeur, existe)
   })
 }
-export const enregistrerEvaluation = (magasin: string, e: Evaluation, caseId: string | null) => enregistrerEvaluations({ [magasin]: { e, caseId } })
+
+export const enregistrerEvaluation = (magasin: string, e: Evaluation) => enregistrerEvaluations([{ magasin, e }])
 
 function modifierDeploiements(changer: (d: Deploiements) => void) {
   return enFile(async () => {
@@ -414,15 +427,19 @@ function modifierDeploiements(changer: (d: Deploiements) => void) {
   })
 }
 
-export function enregistrerDeploiements(lot: { magasin: string; thematique: string; etat: string }[], date: string) {
+// Chaque changement est daté ; à date égale le dernier remplace le précédent ; l'état actuel est le plus récent
+export function enregistrerDeploiements(lot: { magasin: string; thematique: string; etat: string; date?: string }[], date: string) {
   return modifierDeploiements((d) => {
-    for (const { magasin, thematique, etat } of lot) {
+    for (const { magasin, thematique, etat, date: dateLigne } of lot) {
+      const quand = dateLigne || date
+      const avant = (d.journal![magasin] ?? []).filter((c) => c.thematique === thematique && c.date < quand).at(-1)
+      const apres = (d.journal![magasin] ?? []).some((c) => c.thematique === thematique && c.date > quand)
+      if (avant?.etat === etat && !apres && (d.valeurs[magasin]?.[thematique] ?? '') === etat) continue // rien ne change
+      const j = [...(d.journal![magasin] ?? []).filter((c) => !(c.date === quand && c.thematique === thematique)), { date: quand, thematique, etat }]
+        .sort((a, b) => a.date.localeCompare(b.date))
+      d.journal![magasin] = j
+      if (j.filter((c) => c.thematique === thematique).at(-1)?.date !== quand) continue // un changement plus récent existe déjà
       d.valeurs[magasin] = { ...(d.valeurs[magasin] ?? {}) }
-      // Journal daté des changements, repris dans le journal du magasin
-      if ((d.valeurs[magasin][thematique] ?? '') !== etat) {
-        const j = (d.journal![magasin] ?? []).filter((c) => !(c.date === date && c.thematique === thematique))
-        d.journal![magasin] = [...j, { date, thematique, etat }]
-      }
       if (etat) d.valeurs[magasin][thematique] = etat
       else delete d.valeurs[magasin][thematique]
     }

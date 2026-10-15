@@ -88,7 +88,10 @@ test('réaffecter un magasin propose le Coach le plus proche et enregistre', asy
   await liste.nth(1).click()
   await dialogue.getByRole('button', { name: 'Confier à Noé MODELE' }).click()
   await expect(page.getByText('Nantes Test est confié à Noé MODELE.')).toBeVisible()
-  expect(ecritures).toEqual([expect.objectContaining({ methode: 'POST', table: 'reassigns', corps: expect.objectContaining({ store: 'Nantes Test', cs: 'Noé MODELE', type: 'manual', note: 'Réaffectation' }) })])
+  // Un seul changement par jour : celui du même jour est d'abord retiré
+  expect(ecritures[0]).toMatchObject({ methode: 'DELETE', table: 'reassigns' })
+  expect(ecritures[0].filtre).toContain('store=eq.Nantes')
+  expect(ecritures.slice(1)).toEqual([expect.objectContaining({ methode: 'POST', table: 'reassigns', corps: expect.objectContaining({ store: 'Nantes Test', cs: 'Noé MODELE', type: 'manual', note: 'Réaffectation' }) })])
 })
 
 test('Direction règle la charge sans perdre les autres paramètres', async ({ page, isMobile }, info) => {

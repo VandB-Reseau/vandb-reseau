@@ -41,18 +41,34 @@ export function optionDe(t: Thematique, v: unknown): string | null {
   return debut?.libelle ?? null
 }
 
+// Date d'une case : objet Date (Excel), nombre de jours Excel, JJ/MM/AAAA ou AAAA-MM-JJ
+export function lireDate(v: unknown): string | null {
+  const iso = (d: Date) => (isNaN(d.getTime()) ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
+  if (v instanceof Date) return iso(new Date(v.getTime() + v.getTimezoneOffset() * 60000 * (v.getUTCHours() === 0 ? 1 : 0)))
+  if (typeof v === 'number' && v > 20000 && v < 80000) return new Date(Date.UTC(1899, 11, 30) + v * 86400000).toISOString().slice(0, 10)
+  const t = String(v ?? '').trim()
+  let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
+  m = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/)
+  if (m) return `${m[3].length === 2 ? `20${m[3]}` : m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
+  return null
+}
+
+export interface LigneHistorique { magasin: string; date: string; notes: Partial<Record<IdCritere, Note>> }
+
 export interface ResultatImport {
   colonneMagasin: string
+  colonneDate: string | null // sans colonne de date, tout est daté du jour choisi
   criteres: { entete: string; id: IdCritere }[]
   thematiques: { entete: string; t: Thematique }[]
   ignorees: string[]
-  notes: Record<string, Partial<Record<IdCritere, Note>>>
-  deploiements: { magasin: string; thematique: string; etat: string }[]
+  notes: LigneHistorique[] // une ligne par magasin et par date
+  deploiements: { magasin: string; thematique: string; etat: string; date: string }[]
   inconnus: string[]
   illisibles: number
 }
 
-export function analyser(lignes: unknown[][], reseau: Reseau): ResultatImport | null {
+export function analyser(lignes: unknown[][], reseau: Reseau, dateParDefaut: string): ResultatImport | null {
   const iEntete = lignes.findIndex((l) => l.filter((c) => normaliser(c)).length >= 2)
   if (iEntete < 0) return null
   const entetes = lignes[iEntete].map((c) => String(c ?? '').trim())
@@ -66,8 +82,9 @@ export function analyser(lignes: unknown[][], reseau: Reseau): ResultatImport | 
   if (iMag < 0) return null
   const criteres: ResultatImport['criteres'] = [], thematiques: ResultatImport['thematiques'] = [], ignorees: string[] = []
   const colonnes = new Map<number, { id: IdCritere } | { t: Thematique }>()
+  const iDate = entetes.findIndex((e, i) => i !== iMag && normaliser(e).split(' ').includes('date'))
   entetes.forEach((e, i) => {
-    if (i === iMag || !normaliser(e)) return
+    if (i === iMag || i === iDate || !normaliser(e)) return
     const t = reseau.deploiements.thematiques.find((x) => normaliser(x.libelle) === normaliser(e)) ?? reseau.deploiements.thematiques.find((x) => normaliser(e).includes(normaliser(x.libelle)))
       ?? (normaliser(e).length >= 3 ? reseau.deploiements.thematiques.find((x) => ` ${normaliser(x.libelle)} `.includes(` ${normaliser(e)} `)) : undefined)
     const c = t ? null : critereDe(e)
@@ -75,18 +92,32 @@ export function analyser(lignes: unknown[][], reseau: Reseau): ResultatImport | 
     else if (c) { criteres.push({ entete: e, id: c }); colonnes.set(i, { id: c }) }
     else ignorees.push(e)
   })
-  const notes: ResultatImport['notes'] = {}, deploiements: ResultatImport['deploiements'] = [], inconnus: string[] = []
+  const parCle = new Map<string, LigneHistorique>(), inconnus: string[] = []
+  const deps = new Map<string, ResultatImport['deploiements'][number]>()
   let illisibles = 0
   for (const l of corps) {
     const nom = trouver(l[iMag])
     if (!nom) { if (normaliser(l[iMag])) inconnus.push(String(l[iMag]).trim()); continue }
+    const date = (iDate >= 0 ? lireDate(l[iDate]) : null) ?? dateParDefaut
+    if (iDate >= 0 && normaliser(l[iDate]) && !lireDate(l[iDate])) illisibles++
     for (const [i, col] of colonnes) {
       if (!normaliser(l[i])) continue
-      if ('id' in col) { const n = noteDe(l[i]); if (n !== null) (notes[nom] ??= {})[col.id] = n; else illisibles++ }
-      else { const o = optionDe(col.t, l[i]); if (o) deploiements.push({ magasin: nom, thematique: col.t.id, etat: o }); else illisibles++ }
+      if ('id' in col) {
+        const n = noteDe(l[i])
+        if (n === null) { illisibles++; continue }
+        // Deux lignes pour le même magasin et le même jour : la dernière l'emporte
+        const cle = `${nom}|${date}`
+        const h = parCle.get(cle) ?? { magasin: nom, date, notes: {} }
+        h.notes[col.id] = n
+        parCle.set(cle, h)
+      } else {
+        const o = optionDe(col.t, l[i])
+        if (o) deps.set(`${nom}|${date}|${col.t.id}`, { magasin: nom, thematique: col.t.id, etat: o, date }); else illisibles++
+      }
     }
   }
-  return { colonneMagasin: entetes[iMag], criteres, thematiques, ignorees, notes, deploiements, inconnus, illisibles }
+  const notes = [...parCle.values()], deploiements = [...deps.values()]
+  return { colonneMagasin: entetes[iMag], colonneDate: iDate >= 0 ? entetes[iDate] : null, criteres, thematiques, ignorees, notes, deploiements, inconnus, illisibles }
 }
 
 // CSV séparé par virgules ou points-virgules, guillemets gérés

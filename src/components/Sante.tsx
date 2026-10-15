@@ -7,16 +7,16 @@ import { dateCourte } from '../lib/format'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { enregistrerDeploiements, enregistrerEvaluations } from '../data/chargement'
-import { ajouterPoint, caseDe, couleurTon, libelleNote, type CaseNineBox, type Evaluation, type Tendance, type IdCritere, type Note, type Thematique } from '../data/sante'
+import { avecPoint, notesAu, couleurTon, libelleNote, type CaseNineBox, type Evaluation, type Tendance, type IdCritere, type Note, type Thematique } from '../data/sante'
 import type { Reseau } from '../data/modele'
 import { messageErreur } from './EditionEquipe'
 
 // Saisies affichées tout de suite, gardées dans le réseau chargé (elles restent en changeant de page),
 // puis regroupées et enregistrées en une seule écriture après une courte pause
 const DELAI = 800
-let evalsEnAttente: Record<string, { e: Evaluation; caseId: string | null }> = {}
-let depsEnAttente: { magasin: string; thematique: string; etat: string }[] = []
-let jourEnAttente = ''
+// Clé : magasin et date (on peut noter à une date choisie)
+let evalsEnAttente: Record<string, { magasin: string; e: Evaluation }> = {}
+let depsEnAttente: { magasin: string; thematique: string; etat: string; date: string }[] = []
 let minuteur: ReturnType<typeof setTimeout> | undefined
 let signalerDernier: (m: string) => void = () => {}
 
@@ -27,8 +27,8 @@ async function vider() {
   const n = Object.keys(ev).length + dp.length
   if (!n) return
   try {
-    if (Object.keys(ev).length) await enregistrerEvaluations(ev)
-    if (dp.length) await enregistrerDeploiements(dp, jourEnAttente)
+    if (Object.keys(ev).length) await enregistrerEvaluations(Object.values(ev))
+    if (dp.length) await enregistrerDeploiements(dp, '')
     signalerDernier(n > 1 ? `${n} modifications enregistrées` : 'Modification enregistrée')
   } catch (err) { signalerDernier(messageErreur(err)) }
 }
@@ -45,38 +45,39 @@ export interface Saisie {
 }
 
 // Fonctions stables (même référence à chaque rendu) pour que seules les lignes modifiées se redessinent
-export function useSaisieSante(reseau: Reseau, signaler: (m: string) => void): Saisie & { version: number } {
+export function useSaisieSante(reseau: Reseau, signaler: (m: string) => void, date = reseau.jour): Saisie & { version: number } {
   const [version, setVersion] = useState(0)
   const ref = useRef(reseau)
   ref.current = reseau
+  const refDate = useRef(date)
+  refDate.current = date
   signalerDernier = signaler
   const noter = useCallback((magasins: string[], critere: IdCritere, note: Note | null) => {
-    const r = ref.current
+    const r = ref.current, date = refDate.current
     for (const magasin of magasins) {
-      const notes = { ...(r.evaluations[magasin]?.notes ?? {}) }
+      const notes = notesAu(r.evaluations[magasin], date)
       if (note !== null) notes[critere] = note
       else delete notes[critere]
-      const e: Evaluation = { notes, date: r.jour, par: r.directeur.nom }
-      const caseId = caseDe(e)?.id ?? null
-      r.evaluations[magasin] = { ...r.evaluations[magasin], ...e, historique: ajouterPoint(r.evaluations[magasin]?.historique ?? [], { date: e.date, caseId: caseId ?? '', notes }) }
-      evalsEnAttente[magasin] = { e, caseId }
+      const e: Evaluation = { notes, date, par: r.directeur.nom }
+      r.evaluations[magasin] = avecPoint(r.evaluations[magasin], e)
+      evalsEnAttente[`${magasin}|${date}`] = { magasin, e }
     }
     setVersion((v) => v + 1)
     planifier()
   }, [])
   const deployer = useCallback((magasins: string[], t: string, valeur: string | null) => {
-    const r = ref.current
+    const r = ref.current, date = refDate.current
     for (const magasin of magasins) {
-      const v = { ...(r.deploiements.valeurs[magasin] ?? {}) }
-      if (valeur) v[t] = valeur
-      else delete v[t]
-      if ((r.deploiements.valeurs[magasin]?.[t] ?? '') !== (valeur ?? '')) {
-        const j = r.deploiements.journal ?? (r.deploiements.journal = {})
-        j[magasin] = [...(j[magasin] ?? []).filter((c) => !(c.date === r.jour && c.thematique === t)), { date: r.jour, thematique: t, etat: valeur ?? '' }]
+      const j = r.deploiements.journal ?? (r.deploiements.journal = {})
+      j[magasin] = [...(j[magasin] ?? []).filter((c) => !(c.date === date && c.thematique === t)), { date, thematique: t, etat: valeur ?? '' }].sort((a, b) => a.date.localeCompare(b.date))
+      // L'état affiché reste le plus récent
+      if (!j[magasin].some((c) => c.thematique === t && c.date > date)) {
+        const v = { ...(r.deploiements.valeurs[magasin] ?? {}) }
+        if (valeur) v[t] = valeur
+        else delete v[t]
+        r.deploiements.valeurs[magasin] = v
       }
-      r.deploiements.valeurs[magasin] = v
-      jourEnAttente = r.jour
-      depsEnAttente = [...depsEnAttente.filter((x) => !(x.magasin === magasin && x.thematique === t)), { magasin, thematique: t, etat: valeur ?? '' }]
+      depsEnAttente = [...depsEnAttente.filter((x) => !(x.magasin === magasin && x.thematique === t && x.date === date)), { magasin, thematique: t, etat: valeur ?? '', date }]
     }
     setVersion((x) => x + 1)
     planifier()

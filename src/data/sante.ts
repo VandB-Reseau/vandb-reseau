@@ -80,13 +80,27 @@ export function tendance(evaluations: Evaluations, magasin: string): Tendance | 
   return { actuelle, precedente, sens, depuis }
 }
 
-// Point à ajouter à l'historique : remplace la saisie du même jour, ignore une saisie identique à la précédente
+// Historique : une seule ligne par jour (un nouveau changement le même jour remplace l'ancien), rangé par date
 export function ajouterPoint(historique: PointSante[], p: PointSante): PointSante[] {
-  const h = [...historique]
-  const dernier = h.at(-1)
-  if (dernier && dernier.date === p.date) h[h.length - 1] = p
-  else if (!dernier || dernier.caseId !== p.caseId || JSON.stringify(dernier.notes ?? null) !== JSON.stringify(p.notes)) h.push(p)
-  return h
+  return [...historique.filter((x) => x.date !== p.date), p].sort((a, b) => a.date.localeCompare(b.date))
+}
+
+// Notes en vigueur à une date : celles du dernier point daté jusqu'à ce jour
+export function notesAu(e: (Evaluation & { historique?: PointSante[] }) | undefined, date: string): Partial<Record<IdCritere, Note>> {
+  const p = (e?.historique ?? []).filter((x) => x.notes && x.date <= date).at(-1)
+  if (p) return { ...p.notes }
+  return e && (!e.date || e.date <= date) ? { ...e.notes } : {}
+}
+
+// Ajoute une saisie datée ; l'évaluation actuelle reste la plus récente
+export function avecPoint(ancienne: (Evaluation & { historique?: PointSante[] }) | undefined, e: Evaluation): Evaluation & { historique: PointSante[] } {
+  const c = caseDe(e)
+  // L'évaluation en place entre dans l'historique si elle n'y figure pas encore (notes saisies avant l'historique daté)
+  let base = ancienne?.historique ?? []
+  if (ancienne?.date && !base.some((x) => x.date === ancienne.date)) base = ajouterPoint(base, { date: ancienne.date, caseId: caseDe(ancienne)?.id ?? '', notes: ancienne.notes })
+  const historique = ajouterPoint(base, { date: e.date, caseId: c?.id ?? '', notes: e.notes })
+  const plusRecente = ancienne && ancienne.date > e.date && historique.some((x) => x.date > e.date)
+  return plusRecente ? { ...ancienne, historique } : { ...e, historique }
 }
 
 // ── Déploiements : thématiques libres, chaque magasin a un état par thématique ──
