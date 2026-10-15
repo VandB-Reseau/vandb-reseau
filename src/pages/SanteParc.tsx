@@ -55,7 +55,13 @@ import InputAdornment from '@mui/material/InputAdornment'
 import SearchIcon from '@mui/icons-material/Search'
 import { BoutonsNote, BoutonsOption, PastilleCase, couleursCoachs, useSaisieSante, type Saisie } from '../components/Sante'
 import { coachA } from '../data/charge'
-import { enregistrerDeploiements, enregistrerThematiques, importerHistorique } from '../data/chargement'
+import { effacerToutesEvaluations, enregistrerDeploiements, enregistrerThematiques, importerHistorique } from '../data/chargement'
+import { useReseau } from '../data/ReseauContext'
+import { messageErreur } from '../components/EditionEquipe'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
 import { analyser, lireFichier, type ResultatImport } from '../data/import'
 import { avancement, caseDe, nineBox, tousCriteres, type Evaluation, type IdCritere, type Thematique, type Ton } from '../data/sante'
 import { dateCourte, lienFiche } from '../lib/format'
@@ -366,15 +372,44 @@ function ChoixMode({ mode, changer }: { mode: string; changer: (m: string) => vo
   )
 }
 
+function DialogEffacerNotes({ nombre, onFermer }: { nombre: number; onFermer: () => void }) {
+  const { recharger } = useReseau()
+  const [envoi, setEnvoi] = useState(false)
+  const [erreur, setErreur] = useState('')
+  const effacer = async () => {
+    setEnvoi(true); setErreur('')
+    try { await effacerToutesEvaluations(); await recharger(); onFermer() } catch (e) { setErreur(messageErreur(e)); setEnvoi(false) }
+  }
+  return (
+    <Dialog open onClose={onFermer} aria-labelledby="titre-effacer-notes" maxWidth="xs" fullWidth>
+      <DialogTitle id="titre-effacer-notes">Effacer toutes les notes ?</DialogTitle>
+      <DialogContent>
+        <Typography>Les notes nine box de {nombre} magasin{nombre > 1 ? 's' : ''}, historique compris, seront effacées. Tous les magasins redeviennent non classés. Les déploiements ne changent pas.</Typography>
+        {erreur && <Alert severity="error" sx={{ mt: 2 }}>{erreur}</Alert>}
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onFermer} sx={{ minHeight: 48 }}>Annuler</Button>
+        <Button variant="contained" color="error" onClick={effacer} disabled={envoi} sx={{ minHeight: 48 }}>{envoi ? 'Effacement…' : 'Tout effacer'}</Button>
+      </DialogActions>
+    </Dialog>
+  )
+}
+
 function VueEvaluer({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: Saisie & { version: number }; surPC: boolean; date: ReactNode }) {
   const { magasins, barre } = useFiltres(reseau)
   const [mode, setMode] = useState('tableau')
   const sel = useSelection()
   const cibles: Cible[] = tousCriteres.map((c) => ({ type: 'note', id: c.id, libelle: c.libelle }))
+  const [effacer, setEffacer] = useState(false)
+  const notes = Object.keys(reseau.evaluations).length
   return (
     <>
       {barre}
-      {date}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        {date}
+        {notes > 0 && <Button color="error" startIcon={<DeleteOutlined />} onClick={() => setEffacer(true)} sx={{ minHeight: 48, mb: 2 }}>Effacer toutes les notes</Button>}
+      </Box>
+      {effacer && <DialogEffacerNotes nombre={notes} onFermer={() => setEffacer(false)} />}
       {surPC && <ChoixMode mode={mode} changer={setMode} />}
       {magasins.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." />
         : !surPC || mode === 'fiche' ? <FicheSaisie reseau={reseau} magasins={magasins} saisie={saisie} parties={['notes']} /> : (

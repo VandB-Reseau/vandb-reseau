@@ -189,3 +189,18 @@ test('corriger les notes d’un classement passé depuis le journal', async ({ p
   expect(v.historique.find((p: { date: string }) => p.date === '2026-06-01').notes.franchise).toBe(3)
   expect(v.date).toBe('2026-10-01')
 })
+
+test('effacer toutes les notes nine box en une fois, avec une copie de sauvegarde', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/plus/sante?vue=evaluer')
+  await page.getByRole('button', { name: 'Effacer toutes les notes' }).click()
+  const d = page.getByRole('dialog', { name: 'Effacer toutes les notes ?' })
+  await expect(d).toContainText('3 magasins')
+  await page.screenshot({ path: `captures/suppression-ninebox/${test.info().project.name}-tout-effacer.png` })
+  await d.getByRole('button', { name: 'Tout effacer' }).click()
+  await expect(d).toBeHidden()
+  const config = ecritures.filter((e) => e.table === 'app_config').map((e) => e.corps as { key?: string; value: string })
+  expect(JSON.parse(config.at(-1)!.value)).toEqual({})
+  expect(JSON.parse(config.at(-2)!.value)['Lyon Test'].date).toBe('2026-10-01')
+})
