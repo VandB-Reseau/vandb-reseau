@@ -19,10 +19,12 @@ import { Plus } from './pages/Plus'
 import { Magasins } from './pages/Magasins'
 import { FicheMagasin } from './pages/FicheMagasin'
 import { ReseauProvider } from './data/ReseauContext'
+import { RetourEnHaut } from './navigation/RetourEnHaut'
 
 function Routes_() {
   return (
     <AppShell>
+      <RetourEnHaut />
       <Routes>
         <Route path="/" element={<Accueil />} />
         <Route path="/magasins" element={<Magasins />} />
