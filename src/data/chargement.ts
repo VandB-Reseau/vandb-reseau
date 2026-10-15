@@ -3,7 +3,7 @@ import { construireReseau, type DonneesBrutes, type Parametres } from './constru
 import { avecPoint, notesAu, thematiquesParDefaut, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
 import type { Conge, Evenement, NoteMagasin, Reseau, Visite } from './modele'
 import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
-import { champsChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
+import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
 import { normaliserParties, normaliserPlan } from './compteRendu'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 
@@ -73,7 +73,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   const nb = (v: unknown) => (v === null || v === undefined || v === '' || isNaN(Number(v)) ? null : Number(v))
   reseau.chiffres = {}
   for (const f of (finances.error ? [] : finances.data ?? []) as L[]) {
-    const c: ChiffreMois = { magasin: t(f.store_name), mois: t(f.month).slice(0, 7), caCave: nb(f.ca_cave), caBar: nb(f.ca_bar), tickets: nb(f.freq), panier: nb(f.panier), ebitda: nb(f.ebitda) }
+    const c = { magasin: t(f.store_name), mois: t(f.month).slice(0, 7), ...Object.fromEntries(Object.entries(colonnesChiffres).map(([id, col]) => [id, nb(f[col])])) } as ChiffreMois
     if (!c.magasin || !/^\d{4}-\d{2}$/.test(c.mois)) continue
     ;(reseau.chiffres[c.magasin] ??= []).push(c)
   }
@@ -517,7 +517,7 @@ export async function enregistrerChiffres(lignes: (Partial<ChiffreMois> & { maga
   const groupes = new Map<string, Record<string, unknown>[]>()
   for (const l of lignes) {
     const ligne: Record<string, unknown> = { store_name: l.magasin, month: `${l.mois}-01`, updated_at: new Date().toISOString() }
-    for (const c of champsChiffres) if (l[c.id] !== undefined) ligne[c.colonne] = l[c.id]
+    for (const [id, col] of Object.entries(colonnesChiffres) as [keyof typeof colonnesChiffres, string][]) if (l[id] !== undefined) ligne[col] = l[id]
     const cle = Object.keys(ligne).join(',')
     groupes.set(cle, [...(groupes.get(cle) ?? []), ligne])
   }

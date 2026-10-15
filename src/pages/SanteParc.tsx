@@ -60,7 +60,7 @@ import { analyser, lireFichier, type ResultatImport } from '../data/import'
 import { avancement, caseDe, nineBox, tousCriteres, type Evaluation, type IdCritere, type Thematique, type Ton } from '../data/sante'
 import { dateCourte, lienFiche } from '../lib/format'
 import { PastilleAlerte, PastilleAppel } from '../components/Chiffres'
-import { analyser as analyserCA, champsChiffres, dernierAudit, formatPoints, formatPourcent, libelleAudit, libelleMois, libelleMoisCourt, moisPrecedent, suiviAlerte, type StatutAlerte } from '../data/chiffres'
+import { analyser as analyserCA, completerChiffres, libellesChiffres, dernierAudit, formatPoints, formatPourcent, libelleAudit, libelleMois, libelleMoisCourt, moisPrecedent, suiviAlerte, type StatutAlerte } from '../data/chiffres'
 import { analyserChiffres, type ResultatImportChiffres } from '../data/importChiffres'
 import { enregistrerChiffres } from '../data/chargement'
 import type { Magasin, Reseau } from '../data/modele'
@@ -712,7 +712,7 @@ function DialogImportChiffres({ reseau, onFermer }: { reseau: Reseau; onFermer: 
   const nbMag = res ? new Set(res.lignes.map((l) => l.magasin)).size : 0
   return (
     <Fenetre large titre="Importer les chiffres mensuels" ouvert onFermer={onFermer} valide={total > 0}
-      enregistrer={async () => { await enregistrerChiffres(res!.lignes); return `${total} mois de chiffres importé${total > 1 ? 's' : ''}` }}>
+      enregistrer={async () => { await enregistrerChiffres(res!.lignes.map((l) => completerChiffres(l, reseau.chiffres[l.magasin]?.find((c) => c.mois === l.mois)))); return `${total} mois de chiffres importé${total > 1 ? 's' : ''}` }}>
       <Button variant="outlined" component="label" startIcon={<UploadFileOutlined />} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
         {nomFichier || 'Choisir un fichier'}
         <input type="file" hidden accept=".xlsx,.csv,.txt" aria-label="Fichier de chiffres à importer" onChange={(e) => choisir(e.target.files?.[0])} />
@@ -725,7 +725,7 @@ function DialogImportChiffres({ reseau, onFermer }: { reseau: Reseau; onFermer: 
           </Alert>
           {res.colonnes.length > 0 && (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {res.colonnes.map((c) => <Chip key={c.entete} label={`${c.entete} → ${champsChiffres.find((x) => x.id === c.id)!.libelle}`} color="primary" variant="outlined" sx={{ fontSize: 13 }} />)}
+              {res.colonnes.map((c) => <Chip key={c.entete} label={`${c.entete} → ${libellesChiffres[c.id].libelle}`} color="primary" variant="outlined" sx={{ fontSize: 13 }} />)}
             </Box>
           )}
           {res.ignorees.length > 0 && <Typography variant="body2" color="text.secondary">Colonnes ignorées : {res.ignorees.join(', ')}.</Typography>}

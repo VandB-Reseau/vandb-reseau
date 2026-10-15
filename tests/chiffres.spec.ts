@@ -85,16 +85,29 @@ test('saisir les chiffres du mois pendant une visite et noter un audit', async (
   await d.getByLabel('Score de l’audit (%)').fill('68')
   // Mois dernier pré-rempli avec les chiffres connus
   await expect(d.getByLabel('Mois')).toHaveText('septembre 2026')
-  await expect(d.getByLabel('CA cave (€)')).toHaveValue('56000')
-  await d.getByLabel('CA cave (€)').fill('61 500')
-  await d.getByLabel('Tickets').fill('abc')
+  await expect(d.getByLabel('Panier moyen HT cave (€)')).toHaveValue('40')
+  await expect(d.getByLabel('Flux cave')).toHaveValue('1400')
+  await d.getByLabel('Flux cave').fill('1 500')
+  await d.getByLabel('Flux bar').fill('abc')
   await expect(d.getByText('Nombre attendu')).toBeVisible()
   await expect(d.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
-  await d.getByLabel('Tickets').fill('3300')
+  await d.getByLabel('Flux bar').fill('2100')
+  await d.getByLabel('CA marché extérieur (€)').fill('3 200')
+  // CA et flux calculés : 40 × 1 500 + 12 × 2 100
+  const calcules = d.getByRole('group', { name: 'Chiffres calculés' })
+  await expect(calcules).toContainText('60 000 €')
+  await expect(calcules).toContainText('25 200 €')
+  await expect(calcules).toContainText('85 200 €')
+  await expect(calcules).toContainText('3 600')
+  await calcules.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: `captures/${test.info().project.name}-saisie-chiffres.png` })
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
   const chiffres = ecritures.find((e) => e.table === 'store_finance')!
-  expect(chiffres.corps).toEqual([expect.objectContaining({ store_name: 'Annecy Test', month: '2026-09-01', ca_cave: 61500, ca_bar: 24000, freq: 3300 })])
+  expect(chiffres.corps).toEqual([expect.objectContaining({
+    store_name: 'Annecy Test', month: '2026-09-01', ca_ext: 3200, pm_cave: 40, flux_cave: 1500, pm_bar: 12, flux_bar: 2100,
+    ca_cave: 60000, ca_bar: 25200, freq: 3600, panier: 23.67,
+  })])
   const audit = ecritures.filter((e) => e.table === 'app_config').at(-1)!
   const valeur = JSON.parse((audit.corps as { value: string }).value)
   expect(valeur['Annecy Test']).toEqual([expect.objectContaining({ type: 'hygiene', conforme: false, score: 68 })])
@@ -132,20 +145,20 @@ test('importer l’export mensuel des chiffres', async ({ page, isMobile }) => {
   await page.goto('./#/plus/sante?vue=chiffres')
   await page.getByRole('button', { name: 'Importer Excel' }).click()
   const d = page.getByRole('dialog', { name: 'Importer les chiffres mensuels' })
-  const csv = 'Magasin;Mois;CA cave;CA bar;CA cave N-1;Nb tickets;Panier moyen\nV and B Brest Test;09/2026;50 000;20 000,5;48000;2800;25\nBrest Test;08/2026;49000;;;2700;\nInconnu Test;09/2026;1;1;1;1;1\n'
+  const csv = 'Magasin;Mois;CA marché extérieur;PM HT cave;Flux cave;PM HT bar;Flux bar;CA cave N-1;CA cumulé\nV and B Brest Test;09/2026;1 500;40;1250;12,5;1600;48000;70000\nBrest Test;08/2026;;40;1200;;;;\nInconnu Test;09/2026;1;1;1;1;1;1;1\n'
   await d.getByLabel('Fichier de chiffres à importer').setInputFiles({ name: 'export.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
   await expect(d.getByText(/2 lignes prêtes à importer pour 1 magasin, d’août 2026 à septembre 2026/)).toBeVisible()
-  await expect(d.getByText('Colonnes ignorées : CA cave N-1.')).toBeVisible()
+  await expect(d.getByText('Colonnes ignorées : CA cave N-1, CA cumulé.')).toBeVisible()
   await expect(d.getByText(/Magasins non trouvés \(1\) : Inconnu Test/)).toBeVisible()
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
   const lots = ecritures.filter((e) => e.table === 'store_finance').flatMap((e) => e.corps as Record<string, unknown>[])
   expect(lots).toEqual(expect.arrayContaining([
-    expect.objectContaining({ store_name: 'Brest Test', month: '2026-09-01', ca_cave: 50000, ca_bar: 20000.5, freq: 2800, panier: 25 }),
-    expect.objectContaining({ store_name: 'Brest Test', month: '2026-08-01', ca_cave: 49000, freq: 2700 }),
+    expect.objectContaining({ store_name: 'Brest Test', month: '2026-09-01', ca_ext: 1500, pm_cave: 40, flux_cave: 1250, pm_bar: 12.5, flux_bar: 1600, ca_cave: 50000, ca_bar: 20000, freq: 2850, panier: 24.56 }),
+    expect.objectContaining({ store_name: 'Brest Test', month: '2026-08-01', pm_cave: 40, flux_cave: 1200, ca_cave: 48000 }),
   ]))
   // Une colonne vide n'efface pas la valeur en base
-  expect(lots.find((l) => l.month === '2026-08-01')).not.toHaveProperty('ca_bar')
+  expect(lots.find((l) => l.month === '2026-08-01')).not.toHaveProperty('pm_bar')
 })
 
 test('régler les seuils de l’alerte et le délai d’appel', async ({ page }) => {

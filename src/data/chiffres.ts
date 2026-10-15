@@ -1,24 +1,57 @@
 import type { Reseau, Visite } from './modele'
 
-// Chiffres mensuels d'un magasin (table store_finance, partagée avec l'ancienne app)
-// tickets = fréquentation (colonne freq)
+// Chiffres mensuels d'un magasin (table store_finance)
+// Saisis : CA marché extérieur, panier moyen HT et flux de la cave et du bar
+// Calculés : CA cave et CA bar (panier × flux), flux cumulé (colonne freq), panier moyen global
+// Le CA cumulé (cave + bar, hors marché extérieur) sert à l'alerte de décrochage
 export interface ChiffreMois {
   magasin: string
   mois: string // AAAA-MM
+  caExt: number | null
+  pmCave: number | null
+  fluxCave: number | null
+  pmBar: number | null
+  fluxBar: number | null
   caCave: number | null
   caBar: number | null
-  tickets: number | null
+  tickets: number | null // flux cumulé
   panier: number | null
-  ebitda: number | null
+  ebitda: number | null // anciens imports seulement
 }
-export type ChampChiffre = 'caCave' | 'caBar' | 'tickets' | 'panier' | 'ebitda'
-export const champsChiffres: { id: ChampChiffre; libelle: string; colonne: string; unite: string }[] = [
-  { id: 'caCave', libelle: 'CA cave', colonne: 'ca_cave', unite: '€' },
-  { id: 'caBar', libelle: 'CA bar', colonne: 'ca_bar', unite: '€' },
-  { id: 'tickets', libelle: 'Tickets', colonne: 'freq', unite: '' },
-  { id: 'panier', libelle: 'Panier moyen', colonne: 'panier', unite: '€' },
-  { id: 'ebitda', libelle: 'EBITDA', colonne: 'ebitda', unite: '€' },
-]
+export type ChampChiffre = Exclude<keyof ChiffreMois, 'magasin' | 'mois'>
+export const colonnesChiffres: Record<ChampChiffre, string> = {
+  caExt: 'ca_ext', pmCave: 'pm_cave', fluxCave: 'flux_cave', pmBar: 'pm_bar', fluxBar: 'flux_bar',
+  caCave: 'ca_cave', caBar: 'ca_bar', tickets: 'freq', panier: 'panier', ebitda: 'ebitda',
+}
+export const libellesChiffres: Record<ChampChiffre, { libelle: string; unite: string }> = {
+  caExt: { libelle: 'CA marché extérieur', unite: '€' },
+  pmCave: { libelle: 'Panier moyen HT cave', unite: '€' },
+  fluxCave: { libelle: 'Flux cave', unite: '' },
+  pmBar: { libelle: 'Panier moyen HT bar', unite: '€' },
+  fluxBar: { libelle: 'Flux bar', unite: '' },
+  caCave: { libelle: 'CA cave', unite: '€' },
+  caBar: { libelle: 'CA bar', unite: '€' },
+  tickets: { libelle: 'Flux cumulé', unite: '' },
+  panier: { libelle: 'Panier moyen', unite: '€' },
+  ebitda: { libelle: 'EBITDA', unite: '€' },
+}
+// Champs saisis à la main ; les autres se calculent
+export const champsSaisis: ChampChiffre[] = ['caExt', 'pmCave', 'fluxCave', 'pmBar', 'fluxBar']
+
+type LigneChiffre = Partial<ChiffreMois> & { magasin: string; mois: string }
+// Ajoute à une ligne les chiffres calculés, à partir de ses valeurs et de celles déjà connues pour ce mois
+export function completerChiffres(l: LigneChiffre, existant?: ChiffreMois): LigneChiffre {
+  const v = <K extends ChampChiffre>(k: K) => (l[k] !== undefined ? l[k] : existant?.[k]) ?? null
+  const r: LigneChiffre = { ...l }
+  const touche = (a: ChampChiffre, b: ChampChiffre) => l[a] !== undefined || l[b] !== undefined
+  if (touche('pmCave', 'fluxCave') && v('pmCave') !== null && v('fluxCave') !== null) r.caCave = Math.round(v('pmCave')! * v('fluxCave')! * 100) / 100
+  if (touche('pmBar', 'fluxBar') && v('pmBar') !== null && v('fluxBar') !== null) r.caBar = Math.round(v('pmBar')! * v('fluxBar')! * 100) / 100
+  if (touche('fluxCave', 'fluxBar') && (v('fluxCave') !== null || v('fluxBar') !== null)) r.tickets = (v('fluxCave') ?? 0) + (v('fluxBar') ?? 0)
+  const caCave = r.caCave !== undefined ? r.caCave : v('caCave'), caBar = r.caBar !== undefined ? r.caBar : v('caBar')
+  const ca = caCave === null && caBar === null ? null : (caCave ?? 0) + (caBar ?? 0)
+  if (r.tickets && ca !== null) r.panier = Math.round((ca / r.tickets) * 100) / 100
+  return r
+}
 
 // Seuils de l'alerte (démarche coach), réglables dans Paramètres
 export interface SeuilsAlerte {
@@ -139,7 +172,7 @@ export function suiviAlerte(reseau: Reseau, nom: string, a: Analyse | null): Sui
 export const formatPourcent = (n: number | null) => (n === null ? '—' : `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('fr-FR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} %`)
 export const formatPoints = (n: number | null) => (n === null ? '—' : `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('fr-FR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} pts`)
 export const formatEuros = (n: number | null) => (n === null ? '—' : `${Math.round(n).toLocaleString('fr-FR')} €`)
-export const formatValeur = (id: ChampChiffre, n: number | null) => (n === null ? '—' : id === 'tickets' ? Math.round(n).toLocaleString('fr-FR') : id === 'panier' ? `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : formatEuros(n))
+export const formatValeur = (id: ChampChiffre, n: number | null) => (n === null ? '—' : ['tickets', 'fluxCave', 'fluxBar'].includes(id) ? Math.round(n).toLocaleString('fr-FR') : ['panier', 'pmCave', 'pmBar'].includes(id) ? `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : formatEuros(n))
 
 // Nombre saisi ou importé : « 12 345,67 € » → 12345.67
 export function lireNombre(v: unknown): number | null {
