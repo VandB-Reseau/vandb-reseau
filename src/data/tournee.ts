@@ -1,14 +1,18 @@
 import { distanceKm } from './charge'
+import { trajetRoutier } from './routes'
 import type { Point } from './zones'
 
 // Tournée estimée d'un Coach : départ de son domicile, passage par chacun de ses magasins, retour chez lui.
-// Sans service d'itinéraire, la distance routière est estimée à partir de la distance à vol d'oiseau.
+// Trajets routiers réels quand ils sont connus (voir routes.ts), sinon estimés à partir de la distance à vol d'oiseau.
 export const FACTEUR_ROUTE = 1.3 // une route fait en moyenne 30 % de plus que la ligne droite
 export const VITESSE_KMH = 70 // vitesse moyenne retenue, villes et routes confondues
 
 export interface Tournee { km: number; minutes: number; etapes: number; complete: boolean }
 
-const d = (a: Point, b: Point) => distanceKm(a, b) ?? 0
+const estime = (a: Point, b: Point) => { const km = (distanceKm(a, b) ?? 0) * FACTEUR_ROUTE; return { km, minutes: (km / VITESSE_KMH) * 60 } }
+const trajet = (a: Point, b: Point) => trajetRoutier(a, b) ?? estime(a, b)
+// L'ordre de passage cherche le moins de temps de route
+const d = (a: Point, b: Point) => trajet(a, b).minutes
 
 // Ordre de passage : le plus proche à chaque étape, puis amélioration en décroisant les trajets (2-opt)
 function ordre(depart: Point, points: Point[]): Point[] {
@@ -39,10 +43,9 @@ export function tournee(domicile: Point | null, magasins: { lat: number | null; 
   if (!places.length) return { km: 0, minutes: 0, etapes: 0, complete }
   const depart = domicile ?? places[0]
   const chemin = ordre(depart, places)
-  let km = 0
-  for (let i = 1; i < chemin.length; i++) km += d(chemin[i - 1], chemin[i])
-  km *= FACTEUR_ROUTE
-  return { km, minutes: (km / VITESSE_KMH) * 60, etapes: places.length, complete }
+  let km = 0, minutes = 0
+  for (let i = 1; i < chemin.length; i++) { const t = trajet(chemin[i - 1], chemin[i]); km += t.km; minutes += t.minutes }
+  return { km, minutes, etapes: places.length, complete }
 }
 
 export function duree(minutes: number): string {
