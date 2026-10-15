@@ -7,6 +7,9 @@ import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import ToggleButton from '@mui/material/ToggleButton'
 import Typography from '@mui/material/Typography'
+import InfoBulle from '@mui/material/Tooltip'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import type { SxProps, Theme } from '@mui/material/styles'
 import PersonPinCircleOutlined from '@mui/icons-material/PersonPinCircleOutlined'
 import FullscreenOutlined from '@mui/icons-material/FullscreenOutlined'
 import FullscreenExitOutlined from '@mui/icons-material/FullscreenExitOutlined'
@@ -17,6 +20,15 @@ import { contourZone, couleurAuto, grappes, type Point } from '../data/zones'
 import { statutLibelle, type Coach, type Magasin, type Reseau, type ResponsableRegional, type Statut } from '../data/modele'
 import { cleCommune, centreCommune, normaliserVille } from '../data/geocodage'
 import { cleFiche, estFrance, type FichePersonnelle } from '../data/personnes'
+
+// Contrôles de carte : boutons carrés de 48 px empilés dans un cadre unique
+const barreSx: SxProps<Theme> = { display: 'flex', flexDirection: 'column', bgcolor: 'background.paper', borderRadius: '10px', boxShadow: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }
+const boutonSx: SxProps<Theme> = {
+  width: 48, height: 48, minWidth: 48, p: 0, border: 0, borderRadius: 0, color: 'text.secondary',
+  '& + &': { borderTop: '1px solid', borderTopColor: 'divider' },
+  '&:hover': { bgcolor: 'action.hover' },
+  '&.Mui-selected, &.Mui-selected:hover': { bgcolor: 'primary.main', color: 'primary.contrastText' },
+}
 
 function AjusterTaille({ hauteur }: { hauteur: number }) {
   const map = useMap()
@@ -146,6 +158,8 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
   const legendeRef = useRef<HTMLDivElement>(null)
   const [hauteur, setHauteur] = useState(500)
   const [pleinEcran, setPleinEcran] = useState(false)
+  // Libellé au survol seulement avec une souris : sur écran tactile, icônes seules
+  const souris = useMediaQuery('(hover: hover)')
   useEffect(() => {
     const calculer = () => {
       const haut = carteRef.current?.getBoundingClientRect().top ?? 0
@@ -183,22 +197,26 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
   return (
     <Box>
       <Box ref={carteRef} sx={{ position: pleinEcran ? 'fixed' : 'relative', inset: pleinEcran ? 0 : undefined, zIndex: pleinEcran ? 1400 : undefined, bgcolor: 'background.paper', height: hauteur, borderRadius: pleinEcran ? 0 : 4, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
-        {/* Boutons posés sur la carte pour lui laisser toute la hauteur */}
-        <Box role="group" aria-label="Zones affichées" sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-          {[
-            { cle: 'coachs', actif: zonesCoachs, basculer: () => setZonesCoachs((v) => !v), icone: <PersonPinCircleOutlined fontSize="small" />, long: 'Zones des Coachs', court: 'Zones Coach' },
-            { cle: 'rr', actif: zonesRR, basculer: () => setZonesRR((v) => !v), icone: <HubOutlined fontSize="small" />, long: 'Zones des Responsables Régionaux', court: 'Zones RR' },
-            { cle: 'personnes', actif: voirPersonnes, basculer: () => setVoirPersonnes((v) => !v), icone: <BadgeOutlined fontSize="small" />, long: 'Coachs et Responsables Régionaux', court: 'Coachs et RR' },
-          ].map((b) => (
-            <ToggleButton key={b.cle} value={b.cle} size="small" color="primary" selected={b.actif} onChange={b.basculer} aria-label={b.long}
-              sx={{ minHeight: 48, px: 2, gap: 1, borderRadius: 6, bgcolor: 'background.paper', boxShadow: 2, '&:hover': { bgcolor: 'background.paper' }, '&.Mui-selected, &.Mui-selected:hover': { bgcolor: 'primary.main', color: 'primary.contrastText' } }}>
-              {b.icone}<Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{b.long}</Box><Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{b.court}</Box>
-            </ToggleButton>
-          ))}
-          <ToggleButton value="plein" size="small" selected={pleinEcran} onChange={() => setPleinEcran((v) => !v)} aria-label={pleinEcran ? 'Quitter le plein écran' : 'Carte en plein écran'}
-            sx={{ minHeight: 48, px: 2, gap: 1, borderRadius: 6, bgcolor: 'background.paper', boxShadow: 2, '&:hover': { bgcolor: 'background.paper' }, '&.Mui-selected, &.Mui-selected:hover': { bgcolor: 'primary.main', color: 'primary.contrastText' } }}>
-            {pleinEcran ? <FullscreenExitOutlined fontSize="small" /> : <FullscreenOutlined fontSize="small" />}<Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{pleinEcran ? 'Quitter le plein écran' : 'Plein écran'}</Box>
-          </ToggleButton>
+        {/* Barre de boutons compacte posée sur la carte, façon contrôles de carte */}
+        <Box sx={{ position: 'absolute', top: 10, right: 10, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box role="group" aria-label="Zones affichées" sx={barreSx}>
+            {[
+              { cle: 'coachs', actif: zonesCoachs, basculer: () => setZonesCoachs((v) => !v), icone: <PersonPinCircleOutlined />, long: 'Zones des Coachs' },
+              { cle: 'rr', actif: zonesRR, basculer: () => setZonesRR((v) => !v), icone: <HubOutlined />, long: 'Zones des Responsables Régionaux' },
+              { cle: 'personnes', actif: voirPersonnes, basculer: () => setVoirPersonnes((v) => !v), icone: <BadgeOutlined />, long: 'Coachs et Responsables Régionaux' },
+            ].map((b) => (
+              <InfoBulle key={b.cle} title={b.long} placement="left" disableHoverListener={!souris} disableFocusListener={!souris} disableTouchListener slotProps={{ tooltip: { sx: { fontSize: 13 } } }}>
+                <ToggleButton value={b.cle} selected={b.actif} onChange={b.basculer} aria-label={b.long} sx={boutonSx}>{b.icone}</ToggleButton>
+              </InfoBulle>
+            ))}
+          </Box>
+          <Box sx={barreSx}>
+            <InfoBulle title={pleinEcran ? 'Quitter le plein écran' : 'Plein écran'} placement="left" disableHoverListener={!souris} disableFocusListener={!souris} disableTouchListener slotProps={{ tooltip: { sx: { fontSize: 13 } } }}>
+              <ToggleButton value="plein" selected={pleinEcran} onChange={() => setPleinEcran((v) => !v)} aria-label={pleinEcran ? 'Quitter le plein écran' : 'Carte en plein écran'} sx={boutonSx}>
+                {pleinEcran ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+              </ToggleButton>
+            </InfoBulle>
+          </Box>
         </Box>
         <MapContainer center={[46.6, 2.4]} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
           <AjusterTaille hauteur={hauteur} />
