@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
@@ -10,10 +11,11 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import AddAPhotoOutlined from '@mui/icons-material/AddAPhotoOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import PhotoCameraOutlined from '@mui/icons-material/PhotoCameraOutlined'
 import ImageNotSupportedOutlined from '@mui/icons-material/ImageNotSupportedOutlined'
-import { ecarts, parTheme, resultatGrille, type EtatPoint, type ReponsePoint, type Reponses } from '../data/grilles'
+import { ecarts, parTheme, resultatGrille, type EtatPoint, type Photo, type ReponsePoint, type Reponses } from '../data/grilles'
 import { envoyerPhoto, lienPhoto, messagePhoto } from '../lib/photos'
 
 export function MiniaturePhoto({ chemin, numero, onRetirer }: { chemin: string; numero: number; onRetirer?: () => void }) {
@@ -134,13 +136,52 @@ export function EcartsAudit({ reponses }: { reponses: Reponses | undefined }) {
             {p.libelle}
           </Typography>
           {p.commentaire && <Typography variant="body2" color="text.secondary">{p.commentaire}</Typography>}
-          {(p.photos?.length ?? 0) > 0 && (
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-              {p.photos!.map((ph, k) => <MiniaturePhoto key={ph.chemin} chemin={ph.chemin} numero={k + 1} />)}
-            </Box>
-          )}
+          <RangeePhotos photos={p.photos} />
         </Box>
       ))}
+    </Box>
+  )
+}
+
+// Photos libres (visite, bonne pratique) : prises au téléphone ou choisies sur le PC
+export function ChampPhotos({ photos, onChange, onRetirer, titre = 'Photos' }: { photos: Photo[]; onChange: (p: Photo[]) => void; onRetirer: (chemin: string) => void; titre?: string }) {
+  const entree = useRef<HTMLInputElement>(null)
+  const [envoi, setEnvoi] = useState(false)
+  const [erreur, setErreur] = useState<string | null>(null)
+  const ajouter = async (fichiers: FileList | null) => {
+    if (!fichiers?.length) return
+    setEnvoi(true); setErreur(null)
+    const ajoutees = [...photos]
+    try {
+      for (const f of Array.from(fichiers)) ajoutees.push(await envoyerPhoto(f))
+    } catch (e) { setErreur(messagePhoto(e)) } finally {
+      onChange(ajoutees); setEnvoi(false)
+      if (entree.current) entree.current.value = ''
+    }
+  }
+  return (
+    <Box component="section" aria-label={titre}>
+      <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>{titre}</Typography>
+      {photos.length > 0 && (
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 1.5, ml: 0.5, mt: 2 }}>
+          {photos.map((ph, i) => <MiniaturePhoto key={ph.chemin} chemin={ph.chemin} numero={i + 1} onRetirer={() => { onRetirer(ph.chemin); onChange(photos.filter((x) => x.chemin !== ph.chemin)) }} />)}
+        </Box>
+      )}
+      <Button startIcon={envoi ? <CircularProgress size={18} /> : <AddAPhotoOutlined />} onClick={() => entree.current?.click()} disabled={envoi} sx={{ minHeight: 48 }}>
+        {envoi ? 'Envoi…' : 'Ajouter des photos'}
+      </Button>
+      <input ref={entree} type="file" accept="image/*" multiple hidden onChange={(e) => ajouter(e.target.files)} data-testid="photos-libres" />
+      {erreur && <Alert severity="error" sx={{ mt: 1 }}>{erreur}</Alert>}
+    </Box>
+  )
+}
+
+// Lecture seule : rangée de miniatures
+export function RangeePhotos({ photos }: { photos: Photo[] | undefined }) {
+  if (!photos?.length) return null
+  return (
+    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+      {photos.map((ph, k) => <MiniaturePhoto key={ph.chemin} chemin={ph.chemin} numero={k + 1} />)}
     </Box>
   )
 }

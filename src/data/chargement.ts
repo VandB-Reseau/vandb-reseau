@@ -6,6 +6,7 @@ import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
 import { normaliserParties, normaliserPlan } from './compteRendu'
 import { normaliserGrilles, type Grilles } from './grilles'
+import { normaliserPratiques, type BonnePratique } from './bonnesPratiques'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 
 function json<T>(valeur: unknown, defaut: T): T {
@@ -19,7 +20,7 @@ export class ErreurChargement extends Error {}
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -58,6 +59,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   reseau.notesMagasins = json<Record<string, NoteMagasin[]>>(cle('notes_magasins'), {})
   reseau.audits = json<Audits>(cle('audits'), {})
   reseau.grilles = normaliserGrilles(json<unknown>(cle('grilles_audit'), {}))
+  reseau.pratiques = normaliserPratiques(json<unknown>(cle('bonnes_pratiques'), []))
   const seuil = (k: keyof SeuilsAlerte) => (params[k as keyof typeof params] === undefined || isNaN(Number(params[k as keyof typeof params])) ? seuilsParDefaut[k] : Number(params[k as keyof typeof params]))
   reseau.seuils = { seuilDecroche: seuil('seuilDecroche'), seuilSurveiller: seuil('seuilSurveiller'), moisReference: seuil('moisReference') === 1 ? 1 : 12, delaiAppel: seuil('delaiAppel') }
   const dep = json<Partial<Deploiements>>(cle('deploiements'), {})
@@ -68,7 +70,8 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   reseau.visites = ((visites.error ? [] : visites.data) as L[]).map((v) => ({
     id: Number(v.id) || null, groupe: t(v.group_id), magasin: t(v.store), date: t(v.visit_date).slice(0, 10), type: t(v.type) || 'terrain',
     visiteurs: lireVisiteurs(t(v.visitor)), signatureRequise: !!v.signed_required, lienSigne: t(v.signed_url), dateSignature: t(v.signed_date).slice(0, 10),
-    documents: Array.isArray(v.docs) ? (v.docs as { label?: string; url?: string }[]).map((d) => ({ label: t(d.label), url: t(d.url) })) : [], notes: t(v.notes),
+    documents: Array.isArray(v.docs) ? (v.docs as { label?: string; url?: string; chemin?: string }[]).filter((d) => !d.chemin).map((d) => ({ label: t(d.label), url: t(d.url) })) : [], notes: t(v.notes),
+    photos: Array.isArray(v.docs) ? (v.docs as { chemin?: string; taille?: number }[]).filter((d) => d.chemin).map((d) => ({ chemin: t(d.chemin), taille: Number(d.taille) || 0 })) : [],
     parties: normaliserParties(v.sections), plan: normaliserPlan(v.action_plan),
   }))
   // Chiffres mensuels : table facultative, absente = aucun chiffre
@@ -366,6 +369,10 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
     await renommerColonne('reassigns', 'store', ancienNom, f.nom)
     await renommerColonne('visits', 'store', ancienNom, f.nom)
     await renommerColonne('store_finance', 'store_name', ancienNom, f.nom)
+    const bp = await lireCle<BonnePratique[]>('bonnes_pratiques', [])
+    if (bp.valeur.some((p) => p.magasin === ancienNom || p.reprises?.includes(ancienNom))) {
+      await ecrireCle('bonnes_pratiques', bp.valeur.map((p) => ({ ...p, magasin: p.magasin === ancienNom ? f.nom : p.magasin, reprises: (p.reprises ?? []).map((r) => (r === ancienNom ? f.nom : r)) })), bp.existe)
+    }
     for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits'] as const) {
       const lu = await lireCle<Record<string, unknown>>(cleConfig, {})
       const cibles = (cleConfig === 'deploiements' ? [lu.valeur.valeurs, lu.valeur.journal] : [lu.valeur]) as (Record<string, unknown> | undefined)[]
@@ -408,7 +415,7 @@ export async function enregistrerVisites(base: Omit<Visite, 'magasin' | 'id'>, m
   const ligne = (magasin: string) => ({
     group_id: base.groupe || null, store: magasin, visit_date: base.date, type: base.type, visitor: base.visiteurs.join(SEPARATEUR_VISITEURS) || null,
     signed_required: base.signatureRequise, signed_url: base.lienSigne || null, signed_date: base.dateSignature || null,
-    docs: base.documents.filter((d) => d.url.trim()), notes: base.notes || null,
+    docs: [...base.documents.filter((d) => d.url.trim()), ...(base.photos ?? []).map((p) => ({ label: 'Photo', url: '', chemin: p.chemin, taille: p.taille }))], notes: base.notes || null,
     sections: base.parties.some((x) => x.trim()) ? base.parties.map((x) => x.trim()) : null, action_plan: base.plan.filter((a) => a.action.trim()),
   })
   if (id !== null) verifier(await supabase.from('visits').update(ligne(magasins[0])).eq('id', id))
@@ -589,5 +596,14 @@ export function enregistrerGrilles(grilles: Grilles) {
   return enFile(async () => {
     const { existe } = await lireCle<Grilles>('grilles_audit', {})
     await ecrireCle('grilles_audit', grilles, existe)
+  })
+}
+
+// Bonne pratique ajoutée, modifiée (même id) ou supprimée (null)
+export function enregistrerPratique(id: string, pratique: BonnePratique | null) {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<BonnePratique[]>('bonnes_pratiques', [])
+    const liste = valeur.filter((p) => p.id !== id)
+    await ecrireCle('bonnes_pratiques', pratique ? [pratique, ...liste] : liste, existe)
   })
 }

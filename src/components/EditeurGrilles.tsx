@@ -102,7 +102,7 @@ export function GrillesAudit({ reseau }: { reseau: Reseau }) {
 
 // Espace photos utilisé, à partir des tailles enregistrées avec chaque photo
 export function EspacePhotos({ reseau }: { reseau: Reseau }) {
-  const photos = Object.values(reseau.audits).flat().flatMap((a) => photosDe(a.reponses))
+  const photos = [...Object.values(reseau.audits).flat().flatMap((a) => photosDe(a.reponses)), ...reseau.visites.flatMap((v) => v.photos ?? []), ...reseau.pratiques.flatMap((p) => p.photos)]
   const total = photos.reduce((n, p) => n + (p.taille || 0), 0)
   const part = Math.min(100, (total / ESPACE_GRATUIT) * 100)
   return (

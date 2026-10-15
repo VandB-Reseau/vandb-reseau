@@ -105,6 +105,7 @@ export interface Reseau {
   chiffres: Record<string, import('./chiffres').ChiffreMois[]> // par magasin, du plus ancien au plus récent
   audits: import('./chiffres').Audits
   grilles: import('./grilles').Grilles
+  pratiques: import('./bonnesPratiques').BonnePratique[]
   seuils: import('./chiffres').SeuilsAlerte
   rrs: ResponsableRegional[]
   parametres: ParametresReseau
@@ -147,6 +148,7 @@ export interface Visite {
   notes: string
   parties: string[] // parties du compte rendu (PARTIES), vides si non abordées
   plan: ActionPlan[]
+  photos?: import('./grilles').Photo[] // rangées dans la colonne docs avec un chemin d'espace photos
 }
 
 export interface NoteMagasin { id: string; date: string; texte: string; par: string }

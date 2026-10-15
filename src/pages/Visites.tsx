@@ -32,6 +32,9 @@ import { RechercheFiltres } from '../components/RechercheFiltres'
 import { Onglets } from '../components/Onglets'
 import EventRepeatOutlined from '@mui/icons-material/EventRepeatOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
+import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
+import { DialogPratique, VuePratiques } from '../components/BonnesPratiques'
+import type { BonnePratique } from '../data/bonnesPratiques'
 import { BoutonAction, ChampRecherche } from '../components/Outils'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
@@ -335,7 +338,8 @@ export function Visites() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [params, setParams] = useSearchParams()
-  const vue = params.get('vue') === 'historique' ? 'historique' : 'rythme'
+  const vue = params.get('vue') === 'historique' ? 'historique' : params.get('vue') === 'pratiques' ? 'pratiques' : 'rythme'
+  const [pratique, setPratique] = useState<BonnePratique | null | undefined>(undefined)
   const [edition, setEdition] = useState<Edition>(null)
   const [message, setMessage] = useState('')
   const [importer, setImporter] = useState(false)
@@ -354,11 +358,15 @@ export function Visites() {
           <Onglets valeur={vue} onChange={(v) => setParams({ vue: v }, { replace: true })} libelle="Rubriques des visites" rubriques={[
             { vue: 'rythme', libelle: 'Rythme de visite', court: 'Rythme', icone: <EventRepeatOutlined /> },
             { vue: 'historique', libelle: 'Historique', icone: <HistoryOutlined /> },
+            { vue: 'pratiques', libelle: 'Bonnes pratiques', court: 'Pratiques', icone: <TipsAndUpdatesOutlined /> },
           ]} />
-          {vue === 'historique'
+          {vue === 'pratiques'
+            ? <VuePratiques reseau={reseau} modifier={setPratique} actions={<BoutonAction libelle="Ajouter une bonne pratique" onClick={() => setPratique(null)} />} />
+            : vue === 'historique'
             ? <VueHistorique reseau={reseau} surPC={surPC} actions={actions} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
             : <VueRythme reseau={reseau} surPC={surPC} actions={actions} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
           {edition && <DialogVisite reseau={reseau} visite={edition.visite} magasinsInitiaux={edition.magasins} onFermer={(m) => { setEdition(null); if (m) setMessage(m) }} />}
+          {pratique !== undefined && <DialogPratique reseau={reseau} pratique={pratique} onFermer={(m) => { setPratique(undefined); if (m) setMessage(m) }} />}
           {importer && <DialogImportVisites reseau={reseau} onFermer={(m) => { setImporter(false); if (m) setMessage(m) }} />}
           <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
         </>

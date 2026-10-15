@@ -1,4 +1,6 @@
-import { EcartsAudit } from '../components/GrilleAudit'
+import { EcartsAudit, RangeePhotos } from '../components/GrilleAudit'
+import { CartePratique, DialogPratique } from '../components/BonnesPratiques'
+import type { BonnePratique } from '../data/bonnesPratiques'
 import { Fragment, useState, type ReactNode } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -149,6 +151,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography variant="body1">{libelleTypeVisite(v.type)}{v.visiteurs.length ? ` · ${nomsVisiteurs(v)}` : ''}</Typography>
                       {v.notes && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>{v.notes}</Typography>}
+                      <RangeePhotos photos={v.photos} />
                     </Box>
                     <Tooltip title="Compte rendu PDF"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu du ${dateCourte(v.date)}`}><PictureAsPdfOutlined /></IconButton></Tooltip>
                     <Tooltip title="Modifier"><IconButton onClick={() => setVisite(v)} aria-label={`Modifier la visite du ${dateCourte(v.date)}`}><EditOutlined /></IconButton></Tooltip>
@@ -162,6 +165,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 
         <SectionSante reseau={reseau} m={m} modifier={() => setEdition(true)} />
         <SectionDeploiements reseau={reseau} m={m} modifier={() => setEdition(true)} />
+        <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />
         <Box sx={{ gridColumn: { lg: 'span 2' } }}><Journal reseau={reseau} m={m} signaler={setConfirmation} /></Box>
       </Box>
       {reaffectation && <ReaffecterDialog reseau={reseau} magasin={m} ouvert onFermer={(fait) => { setReaffectation(false); if (fait) setConfirmation(`${m.nom} est confié à ${fait}.`) }} />}
@@ -298,6 +302,30 @@ function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Ma
           </Box>
         )
       })()}
+    </Section>
+  )
+}
+
+// Bonnes pratiques du magasin, et celles d'autres magasins qu'il a reprises
+function SectionPratiques({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (msg: string) => void }) {
+  const [edition, setEdition] = useState<BonnePratique | null | undefined>(undefined)
+  const siennes = reseau.pratiques.filter((p) => p.magasin === m.nom)
+  const reprises = reseau.pratiques.filter((p) => p.reprises.includes(m.nom))
+  return (
+    <Section titre="Bonnes pratiques" action={<Button startIcon={<AddOutlined />} onClick={() => setEdition(null)} aria-label="Ajouter une bonne pratique" sx={{ minHeight: 48 }}>Ajouter</Button>}>
+      {!siennes.length && !reprises.length && <Typography variant="body2" color="text.secondary">Aucune bonne pratique enregistrée.</Typography>}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        {siennes.map((p) => <CartePratique key={p.id} p={p} sansMagasin modifier={() => setEdition(p)} />)}
+      </Box>
+      {reprises.length > 0 && (
+        <Box sx={{ mt: siennes.length ? 2 : 0 }}>
+          <Typography variant="subtitle2" component="h3" sx={{ mb: 0.5 }}>Reprises d’autres magasins</Typography>
+          {reprises.map((p) => (
+            <Typography key={p.id} variant="body2" sx={{ py: 0.5 }}>{p.titre} · <Link component={RouterLink} to={lienFiche(p.magasin)}>{p.magasin}</Link></Typography>
+          ))}
+        </Box>
+      )}
+      {edition !== undefined && <DialogPratique reseau={reseau} pratique={edition} magasinInitial={m.nom} onFermer={(msg) => { setEdition(undefined); if (msg) signaler(msg) }} />}
     </Section>
   )
 }

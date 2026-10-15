@@ -118,9 +118,9 @@ test('la fiche magasin montre les écarts du dernier audit et leurs photos', asy
   await img.scrollIntoViewIfNeeded()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-ecarts-audit.png`, fullPage: !isMobile })
-  // Espace photos dans Paramètres
+  // Espace photos dans Paramètres : la photo de l'audit et celle d'une visite
   await page.goto('./#/parametres/reglages')
-  await expect(page.getByText('1 photo · 234 Ko sur 1 Go')).toBeVisible()
+  await expect(page.getByText(/^2 photos · 430 Ko sur 1 Go$/)).toBeVisible()
 })
 
 test('retirer une photo d’un audit l’efface de l’espace photos', async ({ page }) => {
