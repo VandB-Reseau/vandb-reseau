@@ -10,6 +10,12 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
   // « config » remplace des clés d'app_config ; avec « persister », les clés réécrites sont relues telles qu'enregistrées
   const configEcrite = new Map<string, string>(Object.entries(options.config ?? {}).map(([k, v]) => [k, JSON.stringify(v)]))
   await page.route('https://*.tile.openstreetmap.org/**', (r) => r.fulfill({ status: 204, body: '' }))
+  // Communes simulées (centre des villes des fiches personnes)
+  await page.route('https://geo.api.gouv.fr/**', (r) => {
+    const cp = new URL(r.request().url()).searchParams.get('codePostal')
+    const communes: Record<string, unknown[]> = { '59000': [{ nom: 'Lille', centre: { type: 'Point', coordinates: [3.06, 50.63] }, population: 236000 }] }
+    return r.fulfill({ json: communes[cp ?? ''] ?? [] })
+  })
   // Service d'itinéraire simulé : 1,25 fois la distance à vol d'oiseau, à 72 km/h
   await page.route('https://router.project-osrm.org/**', (r) => {
     const u = new URL(r.request().url())

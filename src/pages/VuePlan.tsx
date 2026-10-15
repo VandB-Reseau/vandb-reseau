@@ -179,7 +179,7 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
 
         {affichage === 'carte' ? (
           <Suspense fallback={<Skeleton variant="rounded" height={500} />}>
-            <CarteMagasins magasins={reseau.magasins} rrs={reseau.rrs} equipe={reseau.equipe} vue={vueCarte} margeBas={surPC ? 40 : 104} />
+            <CarteMagasins magasins={reseau.magasins} rrs={reseau.rrs} equipe={reseau.equipe} personnes={reseau.personnes} vue={vueCarte} margeBas={surPC ? 40 : 104} />
           </Suspense>
         ) : <>
           {propM.length > 0 && (
