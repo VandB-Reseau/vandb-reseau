@@ -37,6 +37,7 @@ export async function simulerSupabase(page: Page, options: { panne?: boolean; ec
     return r.fulfill({ json: { features: [{ geometry: { coordinates: [-2.0 + Number(cp.slice(0, 2)) / 100, 47.65] }, properties: { score: 0.9, postcode: cp } }] } })
   })
   await page.route('https://nominatim.openstreetmap.org/**', (r) => r.fulfill({ json: [] }))
+  await page.route(/^https:\/\/www\.google\.com\/maps/, (r) => r.fulfill({ contentType: 'text/html; charset=utf-8', body: '<!doctype html><title>Carte</title><p>Carte simulée</p>' }))
   await page.route('https://supabase.test/**', async (route) => {
     const req = route.request()
     const url = new URL(req.url())
