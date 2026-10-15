@@ -5,6 +5,7 @@ import type { Conge, Evenement, NoteMagasin, Reseau, Visite } from './modele'
 import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
 import { normaliserParties, normaliserPlan } from './compteRendu'
+import { normaliserGrilles, type Grilles } from './grilles'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 
 function json<T>(valeur: unknown, defaut: T): T {
@@ -18,7 +19,7 @@ export class ErreurChargement extends Error {}
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -56,6 +57,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   reseau.evaluations = json<Evaluations>(cle('sante_parc'), {})
   reseau.notesMagasins = json<Record<string, NoteMagasin[]>>(cle('notes_magasins'), {})
   reseau.audits = json<Audits>(cle('audits'), {})
+  reseau.grilles = normaliserGrilles(json<unknown>(cle('grilles_audit'), {}))
   const seuil = (k: keyof SeuilsAlerte) => (params[k as keyof typeof params] === undefined || isNaN(Number(params[k as keyof typeof params])) ? seuilsParDefaut[k] : Number(params[k as keyof typeof params]))
   reseau.seuils = { seuilDecroche: seuil('seuilDecroche'), seuilSurveiller: seuil('seuilSurveiller'), moisReference: seuil('moisReference') === 1 ? 1 : 12, delaiAppel: seuil('delaiAppel') }
   const dep = json<Partial<Deploiements>>(cle('deploiements'), {})
@@ -579,5 +581,13 @@ export function enregistrerAudit(magasin: string, ancien: { date: string; type: 
     if (liste.length) valeur[magasin] = liste
     else delete valeur[magasin]
     await ecrireCle('audits', valeur, existe)
+  })
+}
+
+// Grilles d'audit construites dans Paramètres
+export function enregistrerGrilles(grilles: Grilles) {
+  return enFile(async () => {
+    const { existe } = await lireCle<Grilles>('grilles_audit', {})
+    await ecrireCle('grilles_audit', grilles, existe)
   })
 }

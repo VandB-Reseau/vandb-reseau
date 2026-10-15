@@ -171,7 +171,8 @@ export function lireNombre(v: unknown): number | null {
 }
 
 // ── Audits obligatoires : résultat consolidé (app_config, clé audits) ──
-export interface ResultatAudit { date: string; type: string; conforme: boolean | null; score: number | null }
+// reponses : grille remplie pendant la visite (sinon résultat saisi directement ou importé)
+export interface ResultatAudit { date: string; type: string; conforme: boolean | null; score: number | null; reponses?: import('./grilles').Reponses }
 export type Audits = Record<string, ResultatAudit[]>
 export const typesAudit = ['hygiene', 'excellence']
 
