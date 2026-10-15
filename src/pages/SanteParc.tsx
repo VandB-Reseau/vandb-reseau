@@ -69,8 +69,8 @@ import DialogTitle from '@mui/material/DialogTitle'
 import { analyser, lireFichier, type ResultatImport } from '../data/import'
 import { avancement, caseDe, nineBox, tousCriteres, type Evaluation, type IdCritere, type Thematique, type Ton } from '../data/sante'
 import { dateCourte, lienFiche } from '../lib/format'
-import { PastilleAlerte, PastilleAppel } from '../components/Chiffres'
-import { analyser as analyserCA, completerChiffres, libellesChiffres, dernierAudit, formatPoints, formatPourcent, libelleAudit, libelleMois, libelleMoisCourt, moisPrecedent, suiviAlerte, type StatutAlerte } from '../data/chiffres'
+import { PastilleAlerte } from '../components/Chiffres'
+import { analyser as analyserCA, completerChiffres, libellesChiffres, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, libelleMoisCourt, moisPrecedent, type StatutAlerte } from '../data/chiffres'
 import { analyserChiffres, type ResultatImportChiffres } from '../data/importChiffres'
 import { enregistrerChiffres } from '../data/chargement'
 import type { Magasin, Reseau } from '../data/modele'
@@ -638,35 +638,29 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
   )
 }
 
-// ── Chiffres : alerte de décrochage de chaque magasin (démarche coach) ──
+// ── Chiffres : les chiffres de la fiche magasin et l'alerte de décrochage ──
 const ordreAlerte: (StatutAlerte | null)[] = ['decroche', 'surveiller', 'ok', null]
 
 function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
   const theme = useTheme()
   const { magasins, barre } = useFiltres(reseau)
   const [statuts, setStatuts] = useState<string[]>([])
-  const lignes = useMemo(() => magasins.map((m) => {
-    const a = analyserCA(reseau, m.nom)
-    return { m, a, suivi: suiviAlerte(reseau, m.nom, a), coach: coachA(m, reseau.jour), hygiene: dernierAudit(reseau, m.nom, 'hygiene'), excellence: dernierAudit(reseau, m.nom, 'excellence') }
-  }).sort((x, y) => ordreAlerte.indexOf(x.a?.statut ?? null) - ordreAlerte.indexOf(y.a?.statut ?? null) || (y.suivi?.retard ?? 0) - (x.suivi?.retard ?? 0) || (x.a?.evol3 ?? 0) - (y.a?.evol3 ?? 0) || x.m.nom.localeCompare(y.m.nom, 'fr')), [magasins, reseau])
+  const lignes = useMemo(() => magasins.map((m) => ({ m, a: analyserCA(reseau, m.nom), coach: coachA(m, reseau.jour), hygiene: dernierAudit(reseau, m.nom, 'hygiene'), excellence: dernierAudit(reseau, m.nom, 'excellence') }))
+    .sort((x, y) => ordreAlerte.indexOf(x.a?.statut ?? null) - ordreAlerte.indexOf(y.a?.statut ?? null) || (x.a?.ecart ?? 0) - (y.a?.ecart ?? 0) || x.m.nom.localeCompare(y.m.nom, 'fr')), [magasins, reseau])
   const compte = (st: StatutAlerte | null) => lignes.filter((l) => (l.a?.statut ?? null) === st).length
   const visibles = lignes.filter((l) => !statuts.length || statuts.includes(l.a?.statut ?? 'sans'))
-  // Indicateurs de la démarche : délai entre l'alerte et le premier contact, audits conformes
-  const suivis = lignes.map((l) => l.suivi).filter((x) => x !== null)
-  const delais = suivis.map((x) => x.delai).filter((d) => d !== null)
-  const enRetard = suivis.filter((x) => x.retard > 0).length
   const audits = lignes.flatMap((l) => [l.hygiene, l.excellence]).filter((x) => x && x.conforme !== null)
   const conformes = audits.filter((x) => x!.conforme).length
+  const { seuilDecroche, seuilSurveiller, moisReference } = reseau.seuils
+  const sansChiffres = lignes.filter((l) => !l.a).length
   const tuiles = [
-    { id: 'decroche', titre: 'Décroche', n: compte('decroche'), couleur: theme.palette.error.main, detail: enRetard ? `${enRetard} appel${enRetard > 1 ? 's' : ''} en retard` : 'Aucun appel en retard' },
-    { id: 'surveiller', titre: 'À surveiller', n: compte('surveiller'), couleur: theme.palette.warning.main, detail: 'Point au prochain échange' },
-    { id: 'ok', titre: 'OK', n: compte('ok'), couleur: theme.palette.success.main, detail: 'Rythme normal' },
-    { id: 'sans', titre: 'Sans chiffres', n: compte(null), couleur: theme.palette.text.secondary, detail: 'Moins de 15 mois de chiffres' },
+    { id: 'decroche', titre: 'Décroche', n: compte('decroche'), couleur: theme.palette.error.main, detail: `CA sous −${seuilDecroche} %` },
+    { id: 'surveiller', titre: 'À surveiller', n: compte('surveiller'), couleur: theme.palette.warning.main, detail: `CA sous −${seuilSurveiller} %` },
+    { id: 'ok', titre: 'OK', n: compte('ok'), couleur: theme.palette.success.main, detail: `CA au-dessus de −${seuilSurveiller} %` },
+    { id: 'sans', titre: 'Sans comparaison', n: compte(null), couleur: theme.palette.text.secondary, detail: sansChiffres ? `Dont ${sansChiffres} sans chiffres` : 'Mois de comparaison manquant' },
   ]
-  const indicateurs = [
-    `Délai moyen avant le premier contact : ${delais.length ? `${(delais.reduce((a, b) => a + b, 0) / delais.length).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} j sur ${delais.length} alerte${delais.length > 1 ? 's' : ''}` : 'aucun contact encore'} (objectif ${reseau.seuils.delaiAppel} j)`,
-    `Audits conformes : ${audits.length ? `${conformes} sur ${audits.length} (${Math.round((conformes / audits.length) * 100)} %)` : 'aucun résultat saisi'}`,
-  ]
+  const reference = moisReference === 1 ? 'mois précédent' : 'même mois l’an dernier'
+  const enTetes = ['Magasin', 'Coach', 'Mois', 'CA cumulé', `Écart vs ${reference}`, 'Flux cumulé', 'Panier moyen', 'Marge', 'CA marché extérieur', 'Alerte', 'Audits']
   return (
     <>
       {barre}
@@ -684,28 +678,31 @@ function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
           </Card>
         ))}
       </Box>
-      <Box sx={{ mb: 3 }}>{indicateurs.map((t) => <Typography key={t} variant="body2" color="text.secondary">{t}</Typography>)}</Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        {`Audits conformes : ${audits.length ? `${conformes} sur ${audits.length} (${Math.round((conformes / audits.length) * 100)} %)` : 'aucun résultat saisi'}`}
+      </Typography>
       {visibles.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." /> : surPC ? (
         <TableContainer component={Paper}>
           <Table size="small" aria-label="Chiffres des magasins">
             <TableHead>
               <TableRow>
-                {['Magasin', 'Coach', 'Chiffres à fin', 'CA 3 mois', 'CA 12 mois', 'Rupture', 'Alerte', 'Appel', 'Audit hygiène', 'Audit excellence'].map((h) => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
+                {enTetes.map((h) => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
               </TableRow>
             </TableHead>
             <TableBody>
-              {visibles.map(({ m, a, suivi, coach, hygiene, excellence }) => (
+              {visibles.map(({ m, a, coach, hygiene, excellence }) => (
                 <TableRow key={m.nom} hover>
                   <TableCell><Link component={RouterLink} to={lienFiche(m.nom)} sx={{ fontWeight: 600 }}>{m.nom}</Link></TableCell>
                   <TableCell>{coach || 'Sans Coach'}</TableCell>
-                  <TableCell>{a ? libelleMoisCourt(a.mois) : '—'}</TableCell>
-                  <TableCell>{formatPourcent(a?.evol3 ?? null)}</TableCell>
-                  <TableCell>{formatPourcent(a?.evol12 ?? null)}</TableCell>
-                  <TableCell>{formatPoints(a?.rupture ?? null)}</TableCell>
-                  <TableCell><Tooltip title={a?.raisons.join(' · ') ?? ''}><span><PastilleAlerte statut={a?.statut ?? null} /></span></Tooltip></TableCell>
-                  <TableCell><PastilleAppel s={suivi} /></TableCell>
-                  <TableCell>{hygiene ? libelleAudit(hygiene) : '—'}</TableCell>
-                  <TableCell>{excellence ? libelleAudit(excellence) : '—'}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{a ? libelleMoisCourt(a.mois) : '—'}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatEuros(a?.ca ?? null)}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{a?.ecart === null || !a ? '—' : <Tooltip title={`${libelleMois(a.reference)} : ${formatEuros(a.caReference)}`}><span>{formatPourcent(a.ecart)}</span></Tooltip>}</TableCell>
+                  <TableCell>{formatValeur('tickets', a?.chiffre.tickets ?? null)}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatValeur('panier', a?.chiffre.panier ?? null)}</TableCell>
+                  <TableCell>{formatValeur('marge', a?.chiffre.marge ?? null)}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatEuros(a?.chiffre.caExt ?? null)}</TableCell>
+                  <TableCell><PastilleAlerte statut={a?.statut ?? null} /></TableCell>
+                  <TableCell>{[hygiene && `Hygiène : ${libelleAudit(hygiene)}`, excellence && `Excellence : ${libelleAudit(excellence)}`].filter(Boolean).join(' · ') || '—'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -713,15 +710,17 @@ function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
         </TableContainer>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {visibles.map(({ m, a, suivi, coach }) => (
+          {visibles.map(({ m, a, coach }) => (
             <Card key={m.nom}>
               <Link component={RouterLink} to={lienFiche(m.nom)} underline="none" color="inherit" sx={{ display: 'block', p: 2, minHeight: 48 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                   <Typography sx={{ fontWeight: 700, flex: 1 }}>{m.nom}</Typography>
                   <PastilleAlerte statut={a?.statut ?? null} />
                 </Box>
-                <Typography variant="body2" color="text.secondary">{[coach || 'Sans Coach', a ? `CA 3 mois ${formatPourcent(a.evol3)} à fin ${libelleMois(a.mois)}` : 'aucun chiffre'].join(' · ')}</Typography>
-                {suivi && <Box sx={{ mt: 1 }}><PastilleAppel s={suivi} /></Box>}
+                <Typography variant="body2" color="text.secondary">{coach || 'Sans Coach'}</Typography>
+                {a ? (
+                  <Typography variant="body2">{[`${libelleMois(a.mois)} : ${formatEuros(a.ca)}`, a.ecart !== null && `${formatPourcent(a.ecart)} vs ${libelleMoisCourt(a.reference)}`, a.chiffre.marge !== null && `marge ${formatValeur('marge', a.chiffre.marge)}`].filter(Boolean).join(' · ')}</Typography>
+                ) : <Typography variant="body2" color="text.secondary">Aucun chiffre</Typography>}
               </Link>
             </Card>
           ))}

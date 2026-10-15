@@ -53,14 +53,19 @@ export function completerChiffres(l: LigneChiffre, existant?: ChiffreMois): Lign
   return r
 }
 
-// Seuils de l'alerte (démarche coach), réglables dans Paramètres
+// Règle de décrochage, réglable dans Paramètres : écart du CA cumulé du dernier mois connu
+// avec le même mois un an plus tôt (référence 12) ou avec le mois précédent (référence 1)
 export interface SeuilsAlerte {
-  seuilDecroche: number // baisse du CA sur 3 mois, en %, pour « Décroche »
-  seuilSurveiller: number // baisse du CA sur 3 mois, en %, pour « À surveiller »
-  seuilRupture: number // écart en points entre l'évolution sur 3 mois et sur 12 mois
+  seuilDecroche: number // baisse du CA, en %, pour « Décroche »
+  seuilSurveiller: number // baisse du CA, en %, pour « À surveiller »
+  moisReference: number // 12 : même mois l'an dernier ; 1 : mois précédent
   delaiAppel: number // jours pour appeler un magasin qui décroche
 }
-export const seuilsParDefaut: SeuilsAlerte = { seuilDecroche: 5, seuilSurveiller: 2, seuilRupture: 5, delaiAppel: 2 }
+export const seuilsParDefaut: SeuilsAlerte = { seuilDecroche: 10, seuilSurveiller: 5, moisReference: 12, delaiAppel: 2 }
+export const referencesPossibles = [
+  { valeur: 12, libelle: 'Même mois l’an dernier' },
+  { valeur: 1, libelle: 'Mois précédent' },
+]
 
 export type StatutAlerte = 'decroche' | 'surveiller' | 'ok'
 export const libelleAlerte: Record<StatutAlerte, string> = { decroche: 'Décroche', surveiller: 'À surveiller', ok: 'OK' }
@@ -84,53 +89,38 @@ export function chiffresDuMagasin(reseau: Reseau, nom: string): ChiffreMois[] {
   return reseau.chiffres[nom] ?? []
 }
 
-// Évolution du CA sur n mois finissant à « fin », comparée aux mêmes mois un an plus tôt (en %)
-export function evolution(liste: ChiffreMois[], fin: string, n: number): number | null {
-  const parMois = new Map(liste.map((c) => [c.mois, c]))
-  let actuel = 0, avant = 0
-  for (let i = 0; i < n; i++) {
-    const a = caDe(parMois.get(decalerMois(fin, -i))), b = caDe(parMois.get(decalerMois(fin, -i - 12)))
-    if (a === null || b === null) return null
-    actuel += a; avant += b
-  }
-  return avant > 0 ? ((actuel - avant) / avant) * 100 : null
-}
-
 export interface Analyse {
   mois: string // dernier mois connu
-  evol3: number | null
-  evol12: number | null
-  rupture: number | null // evol3 - evol12, en points
-  fragilites: string[]
+  chiffre: ChiffreMois // chiffres de ce mois, ceux de la fiche magasin
+  ca: number | null // CA cumulé du mois
+  reference: string // mois de comparaison
+  caReference: number | null
+  ecart: number | null // en %
   raisons: string[]
-  statut: StatutAlerte | null // null : pas assez de chiffres
+  statut: StatutAlerte | null // null : pas de CA pour le mois de comparaison
 }
 
-function analyserAu(reseau: Reseau, nom: string, liste: ChiffreMois[], mois: string, s: SeuilsAlerte): Analyse {
-  const evol3 = evolution(liste, mois, 3)
-  const evol12 = evolution(liste, mois, 12)
-  const rupture = evol3 !== null && evol12 !== null ? evol3 - evol12 : null
-  const fragilites: string[] = []
-  if (reseau.evaluations[nom]?.notes.franchise === 1) fragilites.push('management faible')
+function analyserAu(liste: ChiffreMois[], mois: string, s: SeuilsAlerte): Analyse {
+  const parMois = new Map(liste.map((c) => [c.mois, c]))
+  const chiffre = parMois.get(mois) ?? { magasin: '', mois, caExt: null, pmCave: null, fluxCave: null, pmBar: null, fluxBar: null, caCave: null, caBar: null, tickets: null, panier: null, marge: null }
+  const reference = decalerMois(mois, -(s.moisReference || 12))
+  const ca = caDe(chiffre), caReference = caDe(parMois.get(reference))
+  const ecart = ca !== null && caReference ? ((ca - caReference) / caReference) * 100 : null
   const raisons: string[] = []
   let statut: StatutAlerte | null = null
-  if (evol3 !== null) {
-    if (evol3 <= -s.seuilDecroche) raisons.push(`CA sur 3 mois sous −${s.seuilDecroche} %`)
-    else if (evol3 <= -s.seuilSurveiller && fragilites.length) raisons.push(`CA sur 3 mois sous −${s.seuilSurveiller} % avec ${fragilites.join(', ')}`)
+  if (ecart !== null) {
+    const vs = `vs ${libelleMois(reference)}`
+    if (ecart <= -s.seuilDecroche) { statut = 'decroche'; raisons.push(`CA ${formatPourcent(ecart)} ${vs}`) }
+    else if (ecart <= -s.seuilSurveiller) { statut = 'surveiller'; raisons.push(`CA ${formatPourcent(ecart)} ${vs}`) }
+    else statut = 'ok'
   }
-  if (raisons.length) statut = 'decroche'
-  else if (evol3 !== null) {
-    if (evol3 <= -s.seuilSurveiller) raisons.push(`CA sur 3 mois sous −${s.seuilSurveiller} %`)
-    if (rupture !== null && rupture <= -s.seuilRupture) raisons.push(`rupture de tendance de ${formatPoints(rupture)}`)
-    statut = raisons.length ? 'surveiller' : 'ok'
-  }
-  return { mois, evol3, evol12, rupture, fragilites, raisons, statut }
+  return { mois, chiffre, ca, reference, caReference, ecart, raisons, statut }
 }
 
-export function analyser(reseau: Reseau, nom: string): Analyse | null {
+export function analyser(reseau: Reseau, nom: string, seuils = reseau.seuils): Analyse | null {
   const liste = chiffresDuMagasin(reseau, nom)
   const mois = liste.filter((c) => caDe(c) !== null).at(-1)?.mois
-  return mois ? analyserAu(reseau, nom, liste, mois, reseau.seuils) : null
+  return mois ? analyserAu(liste, mois, seuils) : null
 }
 
 // Contacts qui ne sont pas des visites : ils ne comptent pas dans le rythme de visite
@@ -157,7 +147,7 @@ export function suiviAlerte(reseau: Reseau, nom: string, a: Analyse | null): Sui
   if (a?.statut !== 'decroche') return null
   const liste = chiffresDuMagasin(reseau, nom)
   let depuis = a.mois
-  for (let m = decalerMois(a.mois, -1); analyserAu(reseau, nom, liste, m, reseau.seuils).statut === 'decroche'; m = decalerMois(m, -1)) depuis = m
+  for (let m = decalerMois(a.mois, -1); analyserAu(liste, m, reseau.seuils).statut === 'decroche'; m = decalerMois(m, -1)) depuis = m
   const alerte = dateAlerte(depuis)
   const limite = isoDe(jourNum(alerte) + reseau.seuils.delaiAppel)
   const contact = reseau.visites.filter((v) => v.magasin === nom && v.date >= alerte && v.date <= reseau.jour).sort((x, y) => x.date.localeCompare(y.date))[0] ?? null
@@ -167,7 +157,6 @@ export function suiviAlerte(reseau: Reseau, nom: string, a: Analyse | null): Sui
 }
 
 export const formatPourcent = (n: number | null) => (n === null ? '—' : `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('fr-FR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} %`)
-export const formatPoints = (n: number | null) => (n === null ? '—' : `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('fr-FR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} pts`)
 export const formatEuros = (n: number | null) => (n === null ? '—' : `${Math.round(n).toLocaleString('fr-FR')} €`)
 export const formatValeur = (id: ChampChiffre, n: number | null) => (n === null ? '—' : ['tickets', 'fluxCave', 'fluxBar'].includes(id) ? Math.round(n).toLocaleString('fr-FR') : id === 'marge' ? `${n.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %` : ['panier', 'pmCave', 'pmBar'].includes(id) ? `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : formatEuros(n))
 

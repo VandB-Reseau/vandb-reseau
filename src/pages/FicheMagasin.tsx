@@ -33,7 +33,7 @@ import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import PhoneInTalkOutlined from '@mui/icons-material/PhoneInTalkOutlined'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
-import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatPoints, formatPourcent, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
+import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 
 export function Section({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
   return (
@@ -262,18 +262,12 @@ function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Ma
           </Box>
           {a.raisons.length > 0 && <Typography variant="body2" sx={{ mb: 1 }}>{a.raisons.join(' · ').replace(/^./, (c) => c.toUpperCase())}</Typography>}
           {suivi && !suivi.contact && <Button variant="contained" startIcon={<PhoneInTalkOutlined />} onClick={appeler} sx={{ minHeight: 48, mb: 1 }}>Saisir un appel</Button>}
-          <Ligne libelle="CA 3 mois vs an dernier">{formatPourcent(a.evol3)}</Ligne>
-          <Ligne libelle="CA 12 mois vs an dernier">{formatPourcent(a.evol12)}</Ligne>
-          <Ligne libelle="Rupture de tendance">{formatPoints(a.rupture)}</Ligne>
-          {(() => {
-            const c = chiffresDuMagasin(reseau, m.nom).find((x) => x.mois === a.mois)
-            return <>
-              <Ligne libelle={`CA cumulé de ${libelleMois(a.mois)}`}>{formatEuros(caDe(c))}</Ligne>
-              <Ligne libelle="Flux cumulé">{c?.tickets === null || c?.tickets === undefined ? null : formatValeur('tickets', c.tickets)}</Ligne>
-              <Ligne libelle="Marge">{c?.marge === null || c?.marge === undefined ? null : formatValeur('marge', c.marge)}</Ligne>
-              <Ligne libelle="CA marché extérieur">{c?.caExt === null || c?.caExt === undefined ? null : formatEuros(c.caExt)}</Ligne>
-            </>
-          })()}
+          <Ligne libelle={`CA cumulé de ${libelleMois(a.mois)}`}>{formatEuros(a.ca)}</Ligne>
+          <Ligne libelle={`Écart vs ${libelleMois(a.reference)}`}>{a.ecart === null ? null : `${formatPourcent(a.ecart)} (${formatEuros(a.caReference)})`}</Ligne>
+          <Ligne libelle="Flux cumulé">{a.chiffre.tickets === null ? null : formatValeur('tickets', a.chiffre.tickets)}</Ligne>
+          <Ligne libelle="Panier moyen">{a.chiffre.panier === null ? null : formatValeur('panier', a.chiffre.panier)}</Ligne>
+          <Ligne libelle="Marge">{a.chiffre.marge === null ? null : formatValeur('marge', a.chiffre.marge)}</Ligne>
+          <Ligne libelle="CA marché extérieur">{a.chiffre.caExt === null ? null : formatEuros(a.chiffre.caExt)}</Ligne>
         </>
       )}
       {audits.map(([type, libelle]) => {

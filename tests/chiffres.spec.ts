@@ -22,7 +22,7 @@ test('l’accueil met en tête les magasins qui décrochent, avec l’appel en r
   await seConnecter(page)
   const bloc = page.getByRole('region', { name: 'Magasins qui décrochent' })
   await expect(bloc.getByRole('link', { name: 'Lyon Test' })).toBeVisible()
-  await expect(bloc.getByText(/CA 3 mois −10,0 %/)).toBeVisible()
+  await expect(bloc.getByText(/CA −30,0 % vs septembre 2025/)).toBeVisible()
   await expect(bloc.getByText(/Appel en retard de \d+ j/)).toBeVisible()
   await expect(bloc.getByRole('link', { name: 'Nantes Test' })).toBeVisible()
   await expect(bloc.getByText('À surveiller')).toBeVisible()
@@ -39,8 +39,9 @@ test('la fiche magasin montre les chiffres, l’alerte et le graphique', async (
   const section = page.getByRole('heading', { name: 'Chiffres', exact: true }).locator('xpath=ancestor::div[contains(@class,"MuiCard-root")]')
   await expect(section.getByText('Décroche')).toBeVisible()
   await expect(section.getByText('Chiffres à fin septembre 2026')).toBeVisible()
-  await expect(section.getByText('CA sur 3 mois sous −5 %')).toBeVisible()
-  await expect(section.getByText('−10,0 %')).toBeVisible()
+  await expect(section.getByText('CA −30,0 % vs septembre 2025')).toBeVisible()
+  await expect(section.getByText(/^−30,0 % \(100\s000\s€\)$/)).toBeVisible()
+  await expect(section.getByText(/^70\s000\s€$/).first()).toBeVisible()
   await expect(section.getByText('42 %', { exact: true })).toBeVisible()
   await expect(section.getByRole('img', { name: /CA mensuel sur 12 mois/ })).toBeVisible()
   await expect(section.getByRole('button', { name: 'Saisir un appel' })).toBeVisible()
@@ -121,13 +122,19 @@ test('l’onglet Chiffres donne les indicateurs et la liste des magasins', async
   await page.goto('./#/plus/sante?vue=chiffres')
   await expect(page.getByRole('tab', { name: 'Chiffres', selected: true })).toBeVisible()
   await expect(page.getByText(/Audits conformes : 1 sur 1/)).toBeVisible()
-  await expect(page.getByText(/1 appel en retard/)).toBeVisible()
+  // Pas d'appel ni de délai de contact à ce niveau
+  await expect(page.locator('main').getByText(/appel|délai/i)).toHaveCount(0)
+  await expect(page.getByText('CA sous −10 %')).toBeVisible()
   if (!isMobile) {
     const table = page.getByRole('table', { name: 'Chiffres des magasins' })
+    await expect(table.getByRole('columnheader', { name: 'Écart vs même mois l’an dernier' })).toBeVisible()
+    // Les mêmes chiffres que la fiche magasin
     await expect(table.getByRole('row').nth(1)).toContainText('Lyon Test')
+    await expect(table.getByRole('row').nth(1)).toContainText(/sept\. 26.*70\s000\s€.*−30,0 %.*42 %/)
     await expect(table.getByRole('row').nth(2)).toContainText('Nantes Test')
+    await expect(table.getByRole('row').nth(2)).toContainText('−7,0 %')
   } else {
-    await expect(page.getByRole('link', { name: /Lyon Test/ }).first()).toBeVisible()
+    await expect(page.getByRole('link', { name: /Lyon Test/ }).first()).toContainText(/septembre 2026 : 70\s000\s€ · −30,0 % vs sept\. 25 · marge 42 %/)
     expect(await petitesZones(page, 'main a, main button')).toEqual([])
   }
   expect(await textesTropPetits(page)).toEqual([])
@@ -163,21 +170,26 @@ test('importer l’export mensuel des chiffres', async ({ page, isMobile }) => {
   expect(lots.find((l) => l.month === '2026-08-01')).not.toHaveProperty('pm_bar')
 })
 
-test('régler les seuils de l’alerte et le délai d’appel', async ({ page }) => {
+test('régler la règle de décrochage sur l’écart de CA et le délai d’appel', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/parametres/reglages')
   await expect(page.getByRole('heading', { name: 'Alerte sur les chiffres' })).toBeVisible()
-  const decroche = page.getByLabel('Décroche : baisse du CA sur 3 mois (%)')
-  await expect(decroche).toHaveValue('5')
-  await decroche.fill('15')
-  await page.getByLabel('À surveiller : baisse du CA sur 3 mois (%)').fill('12')
+  await expect(page.getByLabel('Écart de CA par rapport au')).toHaveText('Même mois l’an dernier')
+  const decroche = page.getByLabel('Décroche : baisse du CA (%)')
+  await expect(decroche).toHaveValue('10')
+  await page.getByRole('heading', { name: 'Alerte sur les chiffres' }).scrollIntoViewIfNeeded()
+  await page.screenshot({ path: `captures/${info.project.name}-parametres-decrochage.png`, fullPage: true })
+  await decroche.fill('35')
+  await page.getByLabel('À surveiller : baisse du CA (%)').fill('32')
   await expect(page.getByText('Avec ces réglages, 0 magasin décrocherait (contre 1 actuellement).')).toBeVisible()
+  await page.getByLabel('Écart de CA par rapport au').click()
+  await page.getByRole('option', { name: 'Mois précédent' }).click()
   await page.getByLabel('Délai pour appeler un magasin qui décroche (jours)').fill('3')
   await page.getByRole('button', { name: 'Enregistrer' }).nth(1).click()
   await expect(page.getByText('Alerte sur les chiffres enregistrée.')).toBeVisible()
   const params = ecritures.filter((e) => e.table === 'app_config').at(-1)!
-  expect(JSON.parse((params.corps as { value: string }).value)).toEqual(expect.objectContaining({ seuilDecroche: 15, seuilSurveiller: 12, delaiAppel: 3, prepDuration: 2 }))
+  expect(JSON.parse((params.corps as { value: string }).value)).toEqual(expect.objectContaining({ seuilDecroche: 35, seuilSurveiller: 32, moisReference: 1, delaiAppel: 3, prepDuration: 2 }))
 })
 
 test('modifier puis supprimer les chiffres d’un mois déjà saisi depuis la fiche', async ({ page, isMobile }, info) => {

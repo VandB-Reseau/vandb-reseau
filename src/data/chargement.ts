@@ -57,7 +57,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   reseau.notesMagasins = json<Record<string, NoteMagasin[]>>(cle('notes_magasins'), {})
   reseau.audits = json<Audits>(cle('audits'), {})
   const seuil = (k: keyof SeuilsAlerte) => (params[k as keyof typeof params] === undefined || isNaN(Number(params[k as keyof typeof params])) ? seuilsParDefaut[k] : Number(params[k as keyof typeof params]))
-  reseau.seuils = { seuilDecroche: seuil('seuilDecroche'), seuilSurveiller: seuil('seuilSurveiller'), seuilRupture: seuil('seuilRupture'), delaiAppel: seuil('delaiAppel') }
+  reseau.seuils = { seuilDecroche: seuil('seuilDecroche'), seuilSurveiller: seuil('seuilSurveiller'), moisReference: seuil('moisReference') === 1 ? 1 : 12, delaiAppel: seuil('delaiAppel') }
   const dep = json<Partial<Deploiements>>(cle('deploiements'), {})
   reseau.deploiements = { thematiques: dep.thematiques?.length ? dep.thematiques : thematiquesParDefaut, valeurs: dep.valeurs ?? {}, journal: dep.journal ?? {} }
   // Tables facultatives : absentes ou vides, l'app fonctionne quand même

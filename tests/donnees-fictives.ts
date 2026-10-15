@@ -79,7 +79,7 @@ export const fichesFictives = {
 }
 
 // Chiffres mensuels fictifs (table store_finance), d'octobre 2024 à septembre 2026
-// Lyon décroche en septembre 2026 (-30 % sur le mois), Nantes recule de 3 % (à surveiller), Annecy est stable
+// Lyon décroche en septembre 2026 (−30 % sur le mois), Nantes recule de 7 % (à surveiller), Annecy est stable
 const moisFictifs = Array.from({ length: 24 }, (_x, i) => { const t = 2024 * 12 + 9 + i; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}` })
 // Panier moyen HT 40 € en cave et 12 € au bar ; 70 % du CA en cave
 const ligneCA = (store: string, mois: string, ca: number) => {
@@ -88,7 +88,7 @@ const ligneCA = (store: string, mois: string, ca: number) => {
 }
 export const chiffresFictifs = [
   ...moisFictifs.map((m) => ligneCA('Lyon Test', m, m === '2026-09' ? 70000 : 100000)),
-  ...moisFictifs.map((m) => ligneCA('Nantes Test', m, m >= '2026-07' ? 97000 : 100000)),
+  ...moisFictifs.map((m) => ligneCA('Nantes Test', m, m >= '2026-07' ? 93000 : 100000)),
   ...moisFictifs.map((m) => ligneCA('Annecy Test', m, 80000)),
 ]
 export const auditsFictifs = { 'Nantes Test': [{ date: '2026-03-10', type: 'hygiene', conforme: true, score: 92 }] }
