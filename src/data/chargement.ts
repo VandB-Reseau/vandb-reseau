@@ -512,7 +512,7 @@ export function supprimerNoteMagasin(magasin: string, id: string) {
 }
 
 // ── Chiffres mensuels (store_finance) : une ligne par magasin et par mois ──
-// Seules les colonnes fournies sont écrites : un import sans EBITDA ne l'efface pas
+// Seules les colonnes fournies sont écrites : un import sans marge ne l'efface pas
 export async function enregistrerChiffres(lignes: (Partial<ChiffreMois> & { magasin: string; mois: string })[]) {
   const groupes = new Map<string, Record<string, unknown>[]>()
   for (const l of lignes) {

@@ -10,6 +10,7 @@ const mots: Partial<Record<ChampChiffre, string[][]>> = {
   fluxCave: [['flux', 'cave'], ['tickets', 'cave'], ['ticket', 'cave'], ['frequentation', 'cave'], ['clients', 'cave']],
   pmBar: [['pm', 'bar'], ['panier', 'bar']],
   fluxBar: [['flux', 'bar'], ['tickets', 'bar'], ['ticket', 'bar'], ['frequentation', 'bar'], ['clients', 'bar']],
+  marge: [['marge']],
   caCave: [['ca', 'cave'], ['chiffre', 'cave'], ['ventes', 'cave'], ['vente', 'cave']],
   caBar: [['ca', 'bar'], ['chiffre', 'bar'], ['ventes', 'bar'], ['vente', 'bar']],
 }

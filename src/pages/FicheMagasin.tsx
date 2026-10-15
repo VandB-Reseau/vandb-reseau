@@ -259,6 +259,7 @@ function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Ma
             return <>
               <Ligne libelle={`CA cumulé de ${libelleMois(a.mois)}`}>{formatEuros(caDe(c))}</Ligne>
               <Ligne libelle="Flux cumulé">{c?.tickets === null || c?.tickets === undefined ? null : formatValeur('tickets', c.tickets)}</Ligne>
+              <Ligne libelle="Marge">{c?.marge === null || c?.marge === undefined ? null : formatValeur('marge', c.marge)}</Ligne>
               <Ligne libelle="CA marché extérieur">{c?.caExt === null || c?.caExt === undefined ? null : formatEuros(c.caExt)}</Ligne>
             </>
           })()}

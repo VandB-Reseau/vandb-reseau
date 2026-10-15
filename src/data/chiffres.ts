@@ -1,7 +1,7 @@
 import type { Reseau, Visite } from './modele'
 
 // Chiffres mensuels d'un magasin (table store_finance)
-// Saisis : CA marché extérieur, panier moyen HT et flux de la cave et du bar
+// Saisis : CA marché extérieur, panier moyen HT et flux de la cave et du bar, marge en %
 // Calculés : CA cave et CA bar (panier × flux), flux cumulé (colonne freq), panier moyen global
 // Le CA cumulé (cave + bar, hors marché extérieur) sert à l'alerte de décrochage
 export interface ChiffreMois {
@@ -16,12 +16,12 @@ export interface ChiffreMois {
   caBar: number | null
   tickets: number | null // flux cumulé
   panier: number | null
-  ebitda: number | null // anciens imports seulement
+  marge: number | null // en %
 }
 export type ChampChiffre = Exclude<keyof ChiffreMois, 'magasin' | 'mois'>
 export const colonnesChiffres: Record<ChampChiffre, string> = {
   caExt: 'ca_ext', pmCave: 'pm_cave', fluxCave: 'flux_cave', pmBar: 'pm_bar', fluxBar: 'flux_bar',
-  caCave: 'ca_cave', caBar: 'ca_bar', tickets: 'freq', panier: 'panier', ebitda: 'ebitda',
+  caCave: 'ca_cave', caBar: 'ca_bar', tickets: 'freq', panier: 'panier', marge: 'marge',
 }
 export const libellesChiffres: Record<ChampChiffre, { libelle: string; unite: string }> = {
   caExt: { libelle: 'CA marché extérieur', unite: '€' },
@@ -33,10 +33,10 @@ export const libellesChiffres: Record<ChampChiffre, { libelle: string; unite: st
   caBar: { libelle: 'CA bar', unite: '€' },
   tickets: { libelle: 'Flux cumulé', unite: '' },
   panier: { libelle: 'Panier moyen', unite: '€' },
-  ebitda: { libelle: 'EBITDA', unite: '€' },
+  marge: { libelle: 'Marge', unite: '%' },
 }
 // Champs saisis à la main ; les autres se calculent
-export const champsSaisis: ChampChiffre[] = ['caExt', 'pmCave', 'fluxCave', 'pmBar', 'fluxBar']
+export const champsSaisis: ChampChiffre[] = ['caExt', 'pmCave', 'fluxCave', 'pmBar', 'fluxBar', 'marge']
 
 type LigneChiffre = Partial<ChiffreMois> & { magasin: string; mois: string }
 // Ajoute à une ligne les chiffres calculés, à partir de ses valeurs et de celles déjà connues pour ce mois
@@ -101,7 +101,6 @@ export interface Analyse {
   evol3: number | null
   evol12: number | null
   rupture: number | null // evol3 - evol12, en points
-  ebitda3: number | null
   fragilites: string[]
   raisons: string[]
   statut: StatutAlerte | null // null : pas assez de chiffres
@@ -111,13 +110,10 @@ function analyserAu(reseau: Reseau, nom: string, liste: ChiffreMois[], mois: str
   const evol3 = evolution(liste, mois, 3)
   const evol12 = evolution(liste, mois, 12)
   const rupture = evol3 !== null && evol12 !== null ? evol3 - evol12 : null
-  const derniers = [0, 1, 2].map((i) => liste.find((c) => c.mois === decalerMois(mois, -i))?.ebitda ?? null)
-  const ebitda3 = derniers.every((e) => e !== null) ? derniers.reduce((a, b) => a! + b!, 0) : null
   const fragilites: string[] = []
   if (reseau.evaluations[nom]?.notes.franchise === 1) fragilites.push('management faible')
   const raisons: string[] = []
   let statut: StatutAlerte | null = null
-  if (ebitda3 !== null && ebitda3 < 0) raisons.push('EBITDA négatif sur 3 mois')
   if (evol3 !== null) {
     if (evol3 <= -s.seuilDecroche) raisons.push(`CA sur 3 mois sous −${s.seuilDecroche} %`)
     else if (evol3 <= -s.seuilSurveiller && fragilites.length) raisons.push(`CA sur 3 mois sous −${s.seuilSurveiller} % avec ${fragilites.join(', ')}`)
@@ -128,12 +124,12 @@ function analyserAu(reseau: Reseau, nom: string, liste: ChiffreMois[], mois: str
     if (rupture !== null && rupture <= -s.seuilRupture) raisons.push(`rupture de tendance de ${formatPoints(rupture)}`)
     statut = raisons.length ? 'surveiller' : 'ok'
   }
-  return { mois, evol3, evol12, rupture, ebitda3, fragilites, raisons, statut }
+  return { mois, evol3, evol12, rupture, fragilites, raisons, statut }
 }
 
 export function analyser(reseau: Reseau, nom: string): Analyse | null {
   const liste = chiffresDuMagasin(reseau, nom)
-  const mois = liste.filter((c) => caDe(c) !== null || c.ebitda !== null).at(-1)?.mois
+  const mois = liste.filter((c) => caDe(c) !== null).at(-1)?.mois
   return mois ? analyserAu(reseau, nom, liste, mois, reseau.seuils) : null
 }
 
@@ -172,7 +168,7 @@ export function suiviAlerte(reseau: Reseau, nom: string, a: Analyse | null): Sui
 export const formatPourcent = (n: number | null) => (n === null ? '—' : `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('fr-FR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} %`)
 export const formatPoints = (n: number | null) => (n === null ? '—' : `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('fr-FR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} pts`)
 export const formatEuros = (n: number | null) => (n === null ? '—' : `${Math.round(n).toLocaleString('fr-FR')} €`)
-export const formatValeur = (id: ChampChiffre, n: number | null) => (n === null ? '—' : ['tickets', 'fluxCave', 'fluxBar'].includes(id) ? Math.round(n).toLocaleString('fr-FR') : ['panier', 'pmCave', 'pmBar'].includes(id) ? `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : formatEuros(n))
+export const formatValeur = (id: ChampChiffre, n: number | null) => (n === null ? '—' : ['tickets', 'fluxCave', 'fluxBar'].includes(id) ? Math.round(n).toLocaleString('fr-FR') : id === 'marge' ? `${n.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %` : ['panier', 'pmCave', 'pmBar'].includes(id) ? `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : formatEuros(n))
 
 // Nombre saisi ou importé : « 12 345,67 € » → 12345.67
 export function lireNombre(v: unknown): number | null {
