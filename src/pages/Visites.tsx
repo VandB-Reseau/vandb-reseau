@@ -8,14 +8,12 @@ import IconButton from '@mui/material/IconButton'
 import LinearProgress from '@mui/material/LinearProgress'
 import Link from '@mui/material/Link'
 import Snackbar from '@mui/material/Snackbar'
-import Tab from '@mui/material/Tab'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import Tabs from '@mui/material/Tabs'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
@@ -31,6 +29,9 @@ import { Fenetre } from '../components/EditionEquipe'
 import { importerVisites } from '../data/chargement'
 import { analyserVisites, lireClasseur, type ResultatImportVisites } from '../data/importVisites'
 import { RechercheFiltres } from '../components/RechercheFiltres'
+import { Onglets } from '../components/Onglets'
+import EventRepeatOutlined from '@mui/icons-material/EventRepeatOutlined'
+import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
 import { BoutonAction, ChampRecherche } from '../components/Outils'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
@@ -350,10 +351,10 @@ export function Visites() {
             titre="Visites"
             sousTitre={`${reseau.visites.length} visite${reseau.visites.length > 1 ? 's' : ''} enregistrée${reseau.visites.length > 1 ? 's' : ''}`}
           />
-          <Tabs value={vue} onChange={(_e, v) => setParams({ vue: v }, { replace: true })} aria-label="Rubriques des visites" sx={{ mb: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Tab value="rythme" label="Rythme de visite" sx={{ minHeight: 48 }} />
-            <Tab value="historique" label="Historique" sx={{ minHeight: 48 }} />
-          </Tabs>
+          <Onglets valeur={vue} onChange={(v) => setParams({ vue: v }, { replace: true })} libelle="Rubriques des visites" rubriques={[
+            { vue: 'rythme', libelle: 'Rythme de visite', court: 'Rythme', icone: <EventRepeatOutlined /> },
+            { vue: 'historique', libelle: 'Historique', icone: <HistoryOutlined /> },
+          ]} />
           {vue === 'historique'
             ? <VueHistorique reseau={reseau} surPC={surPC} actions={actions} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
             : <VueRythme reseau={reseau} surPC={surPC} actions={actions} saisir={(m) => setEdition({ visite: null, magasins: m })} />}

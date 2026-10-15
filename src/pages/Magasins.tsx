@@ -5,8 +5,6 @@ import { lienFiche } from '../lib/format'
 import { chargementDiffere } from '../lib/chargementDiffere'
 import Box from '@mui/material/Box'
 import Skeleton from '@mui/material/Skeleton'
-import Tab from '@mui/material/Tab'
-import Tabs from '@mui/material/Tabs'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import SearchOff from '@mui/icons-material/SearchOff'
@@ -17,6 +15,7 @@ import { EmptyState } from '../components/EmptyState'
 import { AvecReseau } from '../components/EtatDonnees'
 import { BarreFiltres } from '../components/BarreFiltres'
 import { BoutonAction } from '../components/Outils'
+import { Onglets } from '../components/Onglets'
 import { TableMagasins } from '../components/TableMagasins'
 import { ListeMagasins } from '../components/ListeMagasins'
 import { filtrer, filtresDepuisUrl, filtresVersUrl, type Filtres } from '../data/filtres'
@@ -45,13 +44,11 @@ export function Magasins({ vueInitiale = 'carte' }: { vueInitiale?: 'liste' | 'c
             <PageHeader
               titre="Magasins"
               sousTitre={resultats.length === total ? `${total} magasins dans le réseau` : `${resultats.length} sur ${total} magasins`}
-              actions={
-                <Tabs value={vue} onChange={(_e, v) => changerVue(v)} sx={{ bgcolor: 'action.hover', borderRadius: 6, p: 0.5, minHeight: 48, '& .MuiTabs-indicator': { height: '100%', borderRadius: 6, zIndex: 0 }, '& .MuiTab-root.Mui-selected': { color: 'primary.contrastText' } }} aria-label="Affichage">
-                  <Tab value="liste" label="Liste" icon={<TableRowsOutlined />} iconPosition="start" sx={{ minHeight: 48, position: 'relative', zIndex: 1, borderRadius: 6, px: 2.5 }} />
-                  <Tab value="carte" label="Carte" icon={<MapOutlined />} iconPosition="start" sx={{ minHeight: 48, position: 'relative', zIndex: 1, borderRadius: 6, px: 2.5 }} />
-                </Tabs>
-              }
             />
+            <Onglets valeur={vue} onChange={changerVue} libelle="Affichage" rubriques={[
+              { vue: 'liste', libelle: 'Liste', icone: <TableRowsOutlined /> },
+              { vue: 'carte', libelle: 'Carte', icone: <MapOutlined /> },
+            ]} />
             <BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres}
               actions={vue === 'carte' ? <Box ref={setEmplacementBoutons} sx={{ display: 'flex' }} /> : <BoutonAction libelle="Ajouter un magasin" onClick={() => setAjout(true)} />} />
             {ajout && <DialogMagasin reseau={reseau} magasin={null} onFermer={(msg, nom) => { setAjout(false); if (msg && nom) naviguer(lienFiche(nom)) }} />}

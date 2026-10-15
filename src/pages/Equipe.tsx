@@ -8,8 +8,6 @@ import CardContent from '@mui/material/CardContent'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
-import Tab from '@mui/material/Tab'
-import Tabs from '@mui/material/Tabs'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
@@ -32,6 +30,7 @@ import { VueCharge } from './VueCharge'
 import { VuePlan } from './VuePlan'
 import { PastilleStatut } from '../components/Pastilles'
 import { PageHeader } from '../components/PageHeader'
+import { Onglets } from '../components/Onglets'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { PastilleCharge } from '../components/Charge'
@@ -321,20 +320,13 @@ export function Equipe() {
   const vue = (demandee === 'magasins' ? 'franchises' : demandee as Vue | null) ?? 'organisation'
   // Collaborateurs et Franchisés ont rejoint la partie « Paramètres »
   if (vue === 'collaborateurs' || vue === 'franchises') return <Navigate to={`/parametres/${vue}`} replace />
-  const theme = useTheme()
-  const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const changerVue = (v: Vue) => setParams({ vue: v }, { replace: true })
   return (
     <AvecReseau>
       {(reseau) => (
         <>
           <PageHeader titre="Équipe" sousTitre={`${reseau.equipe.length} Coachs · ${reseau.rrs.length} Responsables Régionaux · ${reseau.techniciens.length} technicien${reseau.techniciens.length > 1 ? 's' : ''}`} />
-          <Tabs value={vue} onChange={(_e, v) => changerVue(v)} variant="fullWidth" aria-label="Rubriques de l’équipe" sx={{ mb: 3, borderBottom: '1px solid', borderColor: 'divider', bgcolor: { xs: 'background.paper', md: 'transparent' }, borderRadius: { xs: 2, md: 0 } }}>
-            {rubriques.map((r) => (
-              <Tab key={r.vue} value={r.vue} icon={r.icone} iconPosition={surPC ? 'start' : 'top'} aria-label={r.libelle}
-                label={surPC ? r.libelle : r.court} sx={{ minHeight: { xs: 64, md: 56 }, minWidth: 0, px: { xs: 0.5, md: 2 }, fontSize: { xs: '0.8125rem', md: '0.9375rem' } }} />
-            ))}
-          </Tabs>
+          <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle="Rubriques de l’équipe" />
           {vue === 'plan' ? <VuePlan reseau={reseau} /> : vue === 'charge' ? <VueCharge reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
         </>
       )}
