@@ -102,7 +102,7 @@ test('une panne de la base affiche un message et un bouton Réessayer', async ({
   await expect(page.getByRole('button', { name: 'Réessayer' })).toBeVisible()
 })
 
-test('la carte passe en plein écran et le titre ne bouge pas entre Liste et Carte', async ({ page }) => {
+test('la carte passe en plein écran et le titre ne bouge pas entre Liste et Carte', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./#/magasins')
   const titre = page.getByRole('heading', { name: 'Magasins', level: 1 })
@@ -110,10 +110,15 @@ test('la carte passe en plein écran et le titre ne bouge pas entre Liste et Car
   const avant = [await titre.boundingBox(), await recherche.boundingBox()]
   await page.getByRole('tab', { name: 'Carte' }).click()
   await expect(page.locator('.leaflet-container')).toBeVisible()
-  expect([await titre.boundingBox(), await recherche.boundingBox()]).toEqual(avant)
+  // Sur téléphone, la recherche s'élargit en vue Carte (pas de bouton d'ajout) mais ne bouge pas
+  const sansLargeur = (b: { x: number, y: number, width: number, height: number } | null) => isMobile && b ? { ...b, width: 0 } : b
+  expect([await titre.boundingBox(), sansLargeur(await recherche.boundingBox())]).toEqual([avant[0], sansLargeur(avant[1])])
   await page.getByRole('button', { name: 'Carte en plein écran' }).click()
   const vp = page.viewportSize()!
-  await expect.poll(async () => (await page.locator('.leaflet-container').boundingBox())!.height).toBeGreaterThan(vp.height - 4)
+  // Plein écran : la barre de boutons au-dessus, la carte dessous occupe tout le reste
+  await expect.poll(async () => (await page.locator('.leaflet-container').boundingBox())!.height).toBeGreaterThan(vp.height - 80)
+  const barre = (await page.getByRole('group', { name: 'Zones affichées' }).boundingBox())!
+  expect(barre.y + barre.height).toBeLessThanOrEqual((await page.locator('.leaflet-container').boundingBox())!.y)
   await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: 'Carte en plein écran' })).toBeVisible()
 })

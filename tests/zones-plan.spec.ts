@@ -29,7 +29,25 @@ test('la carte regroupe les magasins en zones de Coach et de Responsable Région
   await expect(page.locator('path.zone-rr').first()).toBeAttached()
   await expect(legende.getByText('Pointillés : zones des Responsables Régionaux (RR)')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
-  for (const b of [zonesCoachs, zonesRR]) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  // Boutons icônes compacts au-dessus de la carte, jamais posés dessus
+  const carte = (await page.locator('.leaflet-container').boundingBox())!
+  for (const b of [zonesCoachs, zonesRR]) { const boite = (await b.boundingBox())!; expect(boite.y + boite.height).toBeLessThanOrEqual(carte.y) }
+  // 48 px de côté, sans libellé écrit, libellé au survol sur PC
+  for (const b of [zonesCoachs, zonesRR]) {
+    const boite = (await b.boundingBox())!
+    expect(boite.height).toBeGreaterThanOrEqual(48)
+    expect(boite.width).toBeLessThanOrEqual(56)
+    await expect(b).toHaveText('')
+  }
+  if (!isMobile) {
+    await zonesRR.hover()
+    await expect(page.getByRole('tooltip', { name: 'Zones des Responsables Régionaux' })).toBeVisible()
+    expect(await textesTropPetits(page)).toEqual([])
+    await page.screenshot({ path: `captures/pc-carte-boutons-survol.png` })
+    await page.mouse.move(0, 0)
+  } else {
+    await expect(page.getByRole('tooltip')).toHaveCount(0)
+  }
   await page.screenshot({ path: `captures/${info.project.name}-carte-zones.png`, fullPage: !isMobile })
 
   // Sans zones de Coach : points et légende par Responsable Régional
