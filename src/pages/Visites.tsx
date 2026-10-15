@@ -295,12 +295,14 @@ function DialogImportVisites({ reseau, onFermer }: { reseau: Reseau; onFermer: (
   // Feuilles de route sans date : rangées à la date choisie, sauf si elles y sont déjà
   const feuilles = (res?.feuillesDeRoute ?? []).filter((f) => !reseau.visites.some((v) => v.magasin === f.magasin && v.date === dateAudits && v.type === 'feuille'))
   const n = res?.visites.length ?? 0, a = res?.audits.length ?? 0, fr = feuilles.length
+  // Seules les notes des anciens tableaux d'audit et les feuilles de route sans date demandent une date
+  const sansDate = (res?.audits.filter((x) => !x.date).length ?? 0) + fr
   const nbMag = res ? new Set(res.visites.map((v) => v.magasin)).size : 0
   const annees = res ? [...new Set(res.visites.map((v) => v.date.slice(0, 4)))].sort() : []
   const pluriel = (k: number, mot: string) => `${k} ${mot}${k > 1 ? 's' : ''}`
   const dateValide = /^\d{4}-\d{2}-\d{2}$/.test(dateAudits)
   return (
-    <Fenetre large titre="Importer des visites" ouvert onFermer={onFermer} valide={n + a + fr > 0 && (!(a + fr) || dateValide)}
+    <Fenetre large titre="Importer des visites" ouvert onFermer={onFermer} valide={n + a + fr > 0 && (!sansDate || dateValide)}
       enregistrer={async () => {
         await importerVisites([...res!.visites, ...feuilles.map((f) => ({ ...f, date: dateAudits, type: 'feuille' }))], res!.audits, dateAudits)
         return [n ? `${pluriel(n, 'visite')} importée${n > 1 ? 's' : ''}` : '', fr ? pluriel(fr, 'feuille') + ' de route' : '', a ? `${pluriel(a, 'note')} d’audit` : ''].filter(Boolean).join(', ')
@@ -322,8 +324,8 @@ function DialogImportVisites({ reseau, onFermer }: { reseau: Reseau; onFermer: (
                 {a > 0 && <Typography variant="body1">{pluriel(a, 'note')} d’audit : {res.audits.filter((x) => x.type === 'hygiene').length} hygiène, {res.audits.filter((x) => x.type === 'excellence').length} excellence.</Typography>}
                 {fr > 0 && <Typography variant="body1">{pluriel(fr, 'feuille')} de route faite{fr > 1 ? 's' : ''}.</Typography>}
               </Box>
-              <TextField type="date" label="Date des audits et feuilles de route" value={dateAudits} onChange={(e) => setDateAudits(e.target.value)} error={!dateValide}
-                slotProps={{ inputLabel: { shrink: true } }} sx={{ width: { xs: '100%', sm: 300 } }} />
+              {sansDate > 0 && <TextField type="date" label="Date des audits et feuilles de route" value={dateAudits} onChange={(e) => setDateAudits(e.target.value)} error={!dateValide}
+                slotProps={{ inputLabel: { shrink: true } }} sx={{ width: { xs: '100%', sm: 300 } }} />}
             </Box>
           )}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>

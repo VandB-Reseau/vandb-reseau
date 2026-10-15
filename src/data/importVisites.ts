@@ -6,10 +6,11 @@ import { lireDate, normaliser, trouveurMagasin } from './import'
 // un tableau « Magasin / Visite 1 / Visite 2… » et, plus bas, des tableaux de notes d'audit sans date
 
 export interface Feuille { nom: string; lignes: unknown[][] }
-export interface VisiteImportee { magasin: string; date: string; visiteurs: string[]; notes: string }
+export interface VisiteImportee { magasin: string; date: string; type: string; visiteurs: string[]; notes: string }
 // Feuille de route faite (OUI, OK, X, 1), sans date dans le fichier
 export interface FeuilleImportee { magasin: string; visiteurs: string[]; notes: string }
-export interface AuditImporte { magasin: string; type: 'hygiene' | 'excellence'; score: number }
+// Sans date : note d'un tableau d'audit, rangée à la date choisie à l'import
+export interface AuditImporte { magasin: string; type: 'hygiene' | 'excellence'; score: number; date?: string }
 export interface ResultatImportVisites {
   visites: VisiteImportee[] // visites absentes de l'app
   dejaLa: number // visites déjà enregistrées le même jour pour le même magasin
@@ -95,6 +96,18 @@ const estFeuilleDeRoute = (entete: unknown) => typeof entete === 'string' && ent
 // « X » majuscule = fait ; « x » minuscule (case grisée) = sans objet
 const faite = (v: unknown) => v === 1 || (typeof v === 'string' && (/^(oui|ok)( |$)/.test(normaliser(v)) || v.trim() === 'X'))
 
+// Colonne « Type N » à côté d'une visite : Visite terrain, Audit hygiène, Audit excellence, Feuille de route…
+export function typeVisiteDe(v: unknown): string {
+  const n = normaliser(v)
+  if (n.includes('hygiene')) return 'hygiene'
+  if (n.includes('excellence') || n.includes('concept')) return 'excellence'
+  if (n.includes('feuille') || n.includes('budget')) return 'feuille'
+  if (n.includes('ouverture')) return 'ouverture'
+  if (n.includes('appel')) return 'appel'
+  if (n.includes('point')) return 'point'
+  return 'terrain'
+}
+
 const estColonneVisite = (entete: unknown) => {
   const n = normaliser(entete)
   return /^visite( |$)/.test(n) || /^derniere visite \d{4}$/.test(n)
@@ -122,37 +135,39 @@ export function analyserVisites(feuilles: Feuille[], reseau: Reseau): ResultatIm
     if (iEntete >= 0 && !synthese) {
       const entetes = f.lignes[iEntete]
       const iMag = entetes.findIndex((c) => normaliser(c) === 'magasin')
-      const iCom = entetes.findIndex((c) => normaliser(c).startsWith('commentaire'))
       const colonnes = entetes.map((e, i) => (estColonneVisite(e) ? i : -1)).filter((i) => i >= 0)
+      // Colonnes « Type » et « Note » qui suivent une visite, avant la visite suivante
+      const voisine = (i: number, mot: string) => {
+        for (let k = i + 1; k < entetes.length && k <= i + 3 && !estColonneVisite(entetes[k]); k++) if (normaliser(entetes[k]).startsWith(mot)) return k
+        return -1
+      }
       for (let r = iEntete + 1; r < f.lignes.length && !vide(f.lignes[r]); r++) {
         const l = f.lignes[r]
         const brut = String(l[iMag] ?? '').trim()
         if (!brut || normaliser(brut) === 'moyenne') continue
         const nom = trouver(brut.replace(/\(.*$/, ''))
-        const dates: string[] = []
         for (const i of colonnes) {
           if (!normaliser(l[i]) || String(l[i]).startsWith('#')) continue // cases vides ou erreurs de formule (#REF!)
           const annee = /\d{4}/.test(String(entetes[i])) ? null : anneeFeuille
           const date = lireDateVisite(l[i], annee)
           if (!date) { if (nom && typeof l[i] === 'string') illisibles.push(`${nom} : ${String(l[i]).trim()}`); continue }
           if (!nom) { inconnus.add(brut); continue }
-          dates.push(date)
+          const iType = voisine(i, 'type'), iNote = voisine(i, 'note')
+          const type = iType >= 0 ? typeVisiteDe(l[iType]) : 'terrain'
+          if ((type === 'hygiene' || type === 'excellence') && iNote >= 0) {
+            const score = lireScore(l[iNote])
+            if (score !== null) audits.set(`${nom}|${type}|${date}`, { magasin: nom, type, score, date })
+          }
           // Le texte de la case devient la note de la visite, sauf s'il ne contient qu'une date
           const note = typeof l[i] === 'string' && /[a-zà-ÿ]{3}/i.test(String(l[i])) ? String(l[i]).trim() : ''
-          const cle = `${nom}|${date}`
-          const v = parCle.get(cle) ?? { magasin: nom, date, visiteurs: [], notes: '' }
+          const cle = `${nom}|${date}|${type}`
+          const v = parCle.get(cle) ?? { magasin: nom, date, type, visiteurs: [], notes: '' }
           const ps = parFeuille.get(cle) ?? []
           if (personne && !ps.includes(personne)) ps.push(personne)
           parFeuille.set(cle, ps)
           if (note && !v.notes.includes(note)) v.notes = v.notes ? `${v.notes}\n${note}` : note
           compte++
           parCle.set(cle, v)
-        }
-        // Le commentaire de la ligne porte sur la dernière visite
-        const com = iCom >= 0 && typeof l[iCom] === 'string' ? String(l[iCom]).trim() : ''
-        if (nom && dates.length && com.length > 1) {
-          const v = parCle.get(`${nom}|${dates.sort().at(-1)}`)!
-          if (!v.notes.includes(com)) v.notes = v.notes ? `${v.notes}\n${com}` : com
         }
       }
     }
@@ -203,8 +218,9 @@ export function analyserVisites(feuilles: Feuille[], reseau: Reseau): ResultatIm
     if (fr.visiteurs.length > 1 && fr.visiteurs.includes(coach)) fr.visiteurs = [coach]
   }
   const toutes = [...parCle.values()].sort((a, b) => a.date.localeCompare(b.date) || a.magasin.localeCompare(b.magasin, 'fr'))
-  const existe = new Set(reseau.visites.map((v) => `${v.magasin}|${v.date}`))
-  const visites = toutes.filter((v) => !existe.has(`${v.magasin}|${v.date}`))
+  // Une visite terrain est déjà là si le magasin a une visite ce jour-là, quel qu'en soit le type ; les autres types, s'il y a le même
+  const existe = new Set(reseau.visites.flatMap((v) => [`${v.magasin}|${v.date}|${v.type}`, `${v.magasin}|${v.date}|terrain`]))
+  const visites = toutes.filter((v) => !existe.has(`${v.magasin}|${v.date}|${v.type}`))
   return { visites, dejaLa: toutes.length - visites.length, audits: [...audits.values()], feuillesDeRoute: [...feuillesDeRoute.values()], feuilles: resume, inconnus: [...inconnus], illisibles }
 }
 
