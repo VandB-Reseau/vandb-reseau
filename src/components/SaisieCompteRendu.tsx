@@ -17,7 +17,7 @@ import { useDictee } from '../lib/dictee'
 const titre = { mb: 1 } as const
 
 // Champ texte avec micro : le texte dicté s'ajoute à la fin
-function ChampDicte({ libelle, valeur, changer, minRows = 2 }: { libelle: string; valeur: string; changer: (f: (v: string) => string) => void; minRows?: number }) {
+export function ChampDicte({ libelle, valeur, changer, minRows = 2 }: { libelle: string; valeur: string; changer: (f: (v: string) => string) => void; minRows?: number }) {
   const dictee = useDictee((t) => changer((v) => (v.trim() ? `${v.trimEnd()} ${t}` : t)))
   return (
     <Box>

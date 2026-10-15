@@ -1,3 +1,4 @@
+import { RangeePhotos } from '../components/GrilleAudit'
 import type { ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -106,6 +107,12 @@ export function CompteRendu() {
                       {v.documents.map((d, i) => <li key={i}><Link href={d.url} target="_blank" rel="noopener">{d.label || d.url}</Link></li>)}
                     </Box>
                   </>
+                )}
+                {(v.photos?.length ?? 0) > 0 && (
+                  <Box sx={{ mb: 3, breakInside: 'avoid' }}>
+                    <Titre>Photos</Titre>
+                    <RangeePhotos photos={v.photos} />
+                  </Box>
                 )}
                 {v.signatureRequise && (
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, mt: 4, breakInside: 'avoid' }}>

@@ -19,7 +19,7 @@ import { auditDe, lireNombre, moisPrecedent, typesAudit, typesContact } from '..
 import { partiesVides } from '../data/compteRendu'
 import { libellesGrilles, photosDe, reponsesPourSaisie, resultatGrille, type Reponses } from '../data/grilles'
 import { supprimerPhotos } from '../lib/photos'
-import { SaisieGrille } from './GrilleAudit'
+import { ChampPhotos, SaisieGrille } from './GrilleAudit'
 import { typesVisite, type ActionPlan, type Document, type Reseau, type Visite } from '../data/modele'
 
 // Personnes qui peuvent visiter : Coachs, RR, Directeur
@@ -65,6 +65,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const reponses = grille ? reponsesParType[type] ?? reponsesPourSaisie(grille, auditAvant?.type === type ? auditAvant.reponses : undefined) : {}
   const setReponses = (f: (r: Reponses) => Reponses) => setReponsesParType((x) => ({ ...x, [type]: f(reponses) }))
   const [photosRetirees, setPhotosRetirees] = useState<string[]>([])
+  const [photos, setPhotos] = useState(visite?.photos ?? [])
   const resultatG = grille ? resultatGrille(reponses, grille.seuil) : null
   const grilleRemplie = !!resultatG && (resultatG.renseignes > 0 || photosDe(reponses).length > 0)
   const chiffres = useSaisieChiffres(reseau, magasins[0] ?? '', moisPrecedent(visite?.date ?? reseau.jour))
@@ -76,21 +77,21 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
       enregistrer={async () => {
         const groupe = visite?.groupe || (magasins.length > 1 ? `g_${Date.now()}` : '')
         const signe = signatureRequise && !contact
-        await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [] }, magasins, visite?.id ?? null)
+        await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, photos: unSeul && !contact ? photos : [], notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [] }, magasins, visite?.id ?? null)
         if (unSeul && chiffres.modifie) await enregistrerChiffres([chiffres.ligne()])
         const resultat = audit && grilleRemplie && resultatG ? { date, type, conforme: resultatG.conforme, score: resultatG.score, reponses }
           : audit && (conforme || scoreLu !== null) ? { date, type, conforme: conforme ? conforme === 'oui' : null, score: scoreLu } : null
         const ancien = visite && typesAudit.includes(visite.type) ? { date: visite.date, type: visite.type } : null
         if (resultat || (ancien && auditAvant)) await enregistrerAudit(magasins[0], ancien, resultat)
         // Photos retirées ou d'un audit remplacé : effacées de l'espace photos une fois l'audit enregistré
-        const gardees = new Set(photosDe(resultat?.reponses).map((p) => p.chemin))
-        await supprimerPhotos([...new Set([...photosRetirees, ...photosDe(auditAvant?.reponses).map((p) => p.chemin)])].filter((c) => !gardees.has(c)))
+        const gardees = new Set([...photosDe(resultat?.reponses), ...(unSeul && !contact ? photos : [])].map((p) => p.chemin))
+        await supprimerPhotos([...new Set([...photosRetirees, ...photosDe(auditAvant?.reponses).map((p) => p.chemin), ...(visite?.photos ?? []).map((p) => p.chemin)])].filter((c) => !gardees.has(c)))
         return visite ? 'Visite mise à jour.' : magasins.length > 1 ? `${magasins.length} visites enregistrées.` : 'Visite enregistrée.'
       }}
       supprimer={visite?.id ? async () => {
         await supprimerVisite(visite.id!)
         if (auditAvant) await enregistrerAudit(visite.magasin, { date: visite.date, type: visite.type }, null)
-        await supprimerPhotos(photosDe(auditAvant?.reponses).map((p) => p.chemin))
+        await supprimerPhotos([...photosDe(auditAvant?.reponses), ...(visite.photos ?? [])].map((p) => p.chemin))
         return 'Visite supprimée.'
       } : undefined}
       libelleSuppression={visite ? `Supprimer la visite du ${date} à ${visite.magasin} ?` : undefined}
@@ -150,6 +151,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
           </Box>
         </Collapse>
       </Box>
+      {unSeul && <ChampPhotos photos={photos} onChange={setPhotos} onRetirer={(c) => setPhotosRetirees((x) => [...x, c])} />}
       <Box>
         <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>Documents (liens Drive)</Typography>
         {documents.map((d, i) => (

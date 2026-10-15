@@ -94,12 +94,14 @@ test('modifier puis supprimer une visite depuis la fiche magasin', async ({ page
   await d.getByLabel('Lien du compte rendu signé (Drive)').fill('https://exemple.test/cr')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Visite mise à jour.')).toBeVisible()
-  expect(ecritures.at(-1)).toMatchObject({ methode: 'PATCH', table: 'visits', filtre: '?id=eq.1', corps: { signed_url: 'https://exemple.test/cr', store: 'Lyon Test' } })
+  expect(ecritures.filter((e) => e.table === 'visits').at(-1)).toMatchObject({ methode: 'PATCH', table: 'visits', filtre: '?id=eq.1', corps: { signed_url: 'https://exemple.test/cr', store: 'Lyon Test' } })
   await page.getByRole('button', { name: /Modifier la visite du/ }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Supprimer' }).click()
   await page.getByRole('alert').getByRole('button', { name: 'Supprimer' }).click()
   await expect(page.getByText('Visite supprimée.')).toBeVisible()
-  expect(ecritures.at(-1)).toMatchObject({ methode: 'DELETE', table: 'visits', filtre: '?id=eq.1' })
+  expect(ecritures.filter((e) => e.table === 'visits').at(-1)).toMatchObject({ methode: 'DELETE', table: 'visits', filtre: '?id=eq.1' })
+  // Ses photos sont effacées de l'espace photos
+  expect(ecritures.at(-1)).toMatchObject({ methode: 'DELETE', table: 'storage', corps: { prefixes: ['visites/2026-10/lyon.jpg'] } })
 })
 
 test('l’agenda montre ouvertures, événements et absences avec remplaçant suggéré', async ({ page, isMobile }, info) => {
