@@ -24,7 +24,8 @@ import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import FormatListBulleted from '@mui/icons-material/FormatListBulleted'
 import MapOutlined from '@mui/icons-material/MapOutlined'
 import { EmptyState } from '../components/EmptyState'
-import { coachA, chargeA, moisAVenir } from '../data/charge'
+import { coachA, chargeA, libelleMois, moisAVenir } from '../data/charge'
+import { ChampMois, premierDuMois } from '../components/ChampMois'
 import { statutA } from '../data/construction'
 import { rattacherCoach, reaffecter } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
@@ -46,13 +47,13 @@ type Choix = Record<string, { cible?: string; garde?: boolean }>
 export function VuePlan({ reseau }: { reseau: Reseau }) {
   // Par défaut : le premier jour du mois prochain
   const [params] = useSearchParams()
-  const [jour, setJour] = useState(() => params.get('date') ?? moisAVenir(reseau.jour, 2)[1])
+  const [jour, setJour] = useState(() => premierDuMois(params.get('date') ?? moisAVenir(reseau.jour, 2)[1]))
   const [plafond, setPlafond] = useState<Plafond>('maximum')
   const dateValide = /^\d{4}-\d{2}-\d{2}$/.test(jour)
   return (
     <>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 3 }}>
-        <TextField type="date" label="À la date du" value={jour} onChange={(e) => setJour(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ width: { xs: '100%', sm: 220 } }} />
+        <ChampMois label="À partir de" value={jour} onChange={setJour} jour={reseau.jour} sx={{ width: { xs: '100%', sm: 220 } }} />
         <Box>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Charge à ne pas dépasser</Typography>
           <ToggleButtonGroup exclusive size="small" value={plafond} onChange={(_e, v) => v && setPlafond(v)} aria-label="Charge à ne pas dépasser">
@@ -122,7 +123,7 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
       for (const p of propR.filter(gardeR)) await rattacherCoach(p.coach.nom, cibleR(p), jour)
       await recharger()
       setConfirmer(false)
-      setMessage(`Plan enregistré : ${retenusM.size} magasin${retenusM.size > 1 ? 's' : ''} et ${retenusR.size} Coach${retenusR.size > 1 ? 's' : ''} au ${dateLongue(jour)}.`)
+      setMessage(`Plan enregistré : ${retenusM.size} magasin${retenusM.size > 1 ? 's' : ''} et ${retenusR.size} Coach${retenusR.size > 1 ? 's' : ''} à partir de ${libelleMois(jour)}.`)
       setChoixM({}); setChoixR({})
     } catch {
       setErreur(true)
@@ -163,7 +164,7 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
         </Alert>
       )}
       {propM.length === 0 && propR.length === 0 ? (
-        <EmptyState icone={<TaskAltOutlined />} titre={`Rien à proposer au ${dateLongue(jour)}`} texte="Chaque magasin en activité ou en préparation a un Coach sous la charge choisie, et chaque Coach a un Responsable Régional. Essaie une autre date ou le seuil d’attention." />
+        <EmptyState icone={<TaskAltOutlined />} titre={`Rien à proposer à partir de ${libelleMois(jour)}`} texte="Chaque magasin en activité ou en préparation a un Coach sous la charge choisie, et chaque Coach a un Responsable Régional. Essaie un autre mois ou le seuil d’attention." />
       ) : <>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mb: 2 }}>
           <ToggleButtonGroup exclusive size="small" value={affichage} onChange={(_e, v) => v && setAffichage(v)} aria-label="Affichage du plan">
@@ -264,7 +265,7 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
       {rrsRattachables(reseau).length === 0 && <Alert severity="info" sx={{ mb: 2 }}>Ajoute un Responsable Régional dans l’onglet Organisation pour recevoir des propositions de rattachement.</Alert>}
 
       <Dialog open={confirmer} onClose={() => !envoi && setConfirmer(false)} aria-labelledby="titre-plan" fullWidth maxWidth="sm">
-        <DialogTitle id="titre-plan">Enregistrer le plan au {dateLongue(jour)} ?</DialogTitle>
+        <DialogTitle id="titre-plan">Enregistrer le plan à partir de {libelleMois(jour)} ?</DialogTitle>
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 1 }}>
             {retenusM.size > 0 && <>{retenusM.size} magasin{retenusM.size > 1 ? 's changent' : ' change'} de Coach. </>}
@@ -272,9 +273,9 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
           </Typography>
           {conflits.length > 0 && (
             <Alert severity="warning" sx={{ mb: 2 }}>
-              Ces magasins ont déjà un changement de Coach enregistré à cette date ou après. L’historique garde tout, mais à partir de sa date c’est le changement le plus tardif qui s’applique :
+              Ces magasins ont déjà un changement de Coach enregistré ce mois-ci ou après. Celui du même mois est remplacé ; un changement d’un mois suivant s’appliquera à partir de son mois :
               <Box component="ul" sx={{ pl: 2.5, my: 0.5 }}>
-                {conflits.map((c) => <li key={c.magasin + c.date + c.coach}>{c.magasin} : {c.coach || 'aucun Coach'} le {dateLongue(c.date)}{c.date === jour ? ' (même date, ce plan passera après)' : ''}</li>)}
+                {conflits.map((c) => <li key={c.magasin + c.date + c.coach}>{c.magasin} : {c.coach || 'aucun Coach'} le {dateLongue(c.date)}{c.date.slice(0, 7) === jour.slice(0, 7) ? ' (remplacé par ce plan)' : ''}</li>)}
               </Box>
             </Alert>
           )}

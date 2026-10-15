@@ -120,6 +120,10 @@ export const typesVisite: { id: TypeVisite; libelle: string; couleur: string }[]
   { id: 'appel', libelle: 'Appel', couleur: '#5e35b1' },
   { id: 'point', libelle: 'Point chiffre', couleur: '#c2185b' },
 ]
+// Plusieurs participants enregistrés dans la colonne visitor, séparés par une virgule
+export const SEPARATEUR_VISITEURS = ', '
+export const lireVisiteurs = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean)
+export const nomsVisiteurs = (v: { visiteurs: string[] }) => v.visiteurs.join(', ')
 export const libelleTypeVisite = (t: string) => typesVisite.find((x) => x.id === t)?.libelle ?? 'Visite'
 
 export interface Document { label: string; url: string }
@@ -131,7 +135,7 @@ export interface Visite {
   magasin: string
   date: string
   type: string
-  visiteur: string
+  visiteurs: string[] // participants : Coachs, RR, Directeur
   signatureRequise: boolean
   lienSigne: string
   dateSignature: string

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { choisirMois, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -84,14 +84,17 @@ test('réaffecter un magasin propose le Coach le plus proche et enregistre', asy
   await expect(liste.nth(0)).toContainText('Poste NORD')
   await expect(liste.nth(1)).toContainText('Noé MODELE')
   await expect(liste.nth(1)).toContainText('km')
+  await choisirMois(page, 'À partir de', 'Novembre 2026')
   await page.screenshot({ path: `captures/${info.project.name}-reaffecter.png` })
   await liste.nth(1).click()
   await dialogue.getByRole('button', { name: 'Confier à Noé MODELE' }).click()
   await expect(page.getByText('Nantes Test est confié à Noé MODELE.')).toBeVisible()
-  // Un seul changement par jour : celui du même jour est d'abord retiré
+  // Au mois : un seul changement par mois, celui du même mois est d'abord retiré
   expect(ecritures[0]).toMatchObject({ methode: 'DELETE', table: 'reassigns' })
   expect(ecritures[0].filtre).toContain('store=eq.Nantes')
-  expect(ecritures.slice(1)).toEqual([expect.objectContaining({ methode: 'POST', table: 'reassigns', corps: expect.objectContaining({ store: 'Nantes Test', cs: 'Noé MODELE', type: 'manual', note: 'Réaffectation' }) })])
+  expect(ecritures[0].filtre).toContain('date=gte.2026-11-01')
+  expect(ecritures[0].filtre).toContain('date=lt.2026-12-01')
+  expect(ecritures.slice(1)).toEqual([expect.objectContaining({ methode: 'POST', table: 'reassigns', corps: expect.objectContaining({ store: 'Nantes Test', cs: 'Noé MODELE', date: '2026-11-01', type: 'manual', note: 'Réaffectation' }) })])
 })
 
 test('Direction règle la charge sans perdre les autres paramètres', async ({ page, isMobile }, info) => {

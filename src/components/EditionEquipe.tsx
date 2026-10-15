@@ -17,11 +17,12 @@ import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import { useReseau } from '../data/ReseauContext'
 import Autocomplete from '@mui/material/Autocomplete'
 import {
-  enregistrerCoach, enregistrerDirecteur, enregistrerFichePersonne, enregistrerFranchise, enregistrerRR, rattacherCoach, renommerCoach, supprimerCoach, supprimerFranchise, supprimerRR,
+  enregistrerCoach, enregistrerDirecteur, enregistrerFichePersonne, enregistrerFranchise, enregistrerRR, rattacherCoach, renommerCoach, renommerVisiteur, supprimerCoach, supprimerFranchise, supprimerRR,
 } from '../data/chargement'
 import { ChampsPersonnels, fichePersonnelleValide } from './ChampsPersonnels'
 import { fichePersonne, ficheVide, franchises, nomComplet, type FichePersonnelle, type RefPersonne } from '../data/personnes'
 import { coachA } from '../data/charge'
+import { ChampMois, premierDuMois } from './ChampMois'
 import type { Coach, Magasin, Reseau, ResponsableRegional } from '../data/modele'
 
 const COULEURS = ['#1b6fce', '#ef7d00', '#2e7d32', '#7c3aed', '#c2185b', '#00838f', '#6d4c41', '#eaa400']
@@ -86,6 +87,7 @@ export function DialogDirecteur({ reseau, onFermer }: { reseau: Reseau; onFermer
   return (
     <Fenetre titre="Modifier le Directeur de réseau" ouvert large onFermer={onFermer} valide={fichePersonnelleValide(f)}
       enregistrer={async () => {
+        if (reseau.directeur.nom !== nom && reseau.directeur.nom !== 'Direction du réseau') await renommerVisiteur(reseau.directeur.nom, nom)
         await enregistrerDirecteur({ nom, titre: titre.trim() || 'Directeur de réseau', telephone: f.telephone.trim(), email: f.email.trim(), naissance: f.naissance, arrivee: f.arrivee })
         await enregistrerFichePersonne({ type: 'directeur', cle: '' }, f)
         return 'Fiche du Directeur enregistrée.'
@@ -108,6 +110,7 @@ export function DialogRR({ reseau, rr, onFermer }: { reseau: Reseau; rr: Respons
       titre={rr ? `Modifier ${rr.nom}` : 'Ajouter un Responsable Régional'} ouvert large onFermer={onFermer}
       valide={fichePersonnelleValide(f) && !doublon}
       enregistrer={async () => {
+        if (rr && rr.nom !== nom) await renommerVisiteur(rr.nom, nom)
         const id = await enregistrerRR({ id: rr?.id, nom, telephone: f.telephone.trim(), email: f.email.trim(), couleur, integres, naissance: f.naissance, arrivee: f.arrivee })
         await enregistrerFichePersonne({ type: 'rr', cle: id }, f)
         return rr ? `${nom} est mis à jour.` : `${nom} est ajouté.`
@@ -135,7 +138,7 @@ export function DialogCoach({ reseau, coach, onFermer }: { reseau: Reseau; coach
   const [f, setF] = useFiche(reseau, coach ? { type: 'coach', cle: coach.nom } : null)
   const [rrId, setRrId] = useState(coach?.rr?.id ?? '')
   const [fictif, setFictif] = useState(coach?.fictif ?? false)
-  const [dateRattachement, setDateRattachement] = useState(reseau.jour)
+  const [dateRattachement, setDateRattachement] = useState(premierDuMois(reseau.jour))
   const rrs = reseau.rrs.filter((r) => !r.integres)
   const nomPropre = nomComplet(f)
   const doublon = nomPropre !== coach?.nom && (reseau.equipe.some((c) => c.nom.toLowerCase() === nomPropre.toLowerCase()) || reseau.rrs.some((r) => r.nom.toLowerCase() === nomPropre.toLowerCase()))
@@ -165,7 +168,7 @@ export function DialogCoach({ reseau, coach, onFermer }: { reseau: Reseau; coach
           {rrs.map((r) => <MenuItem key={r.id} value={r.id}>{r.nom}</MenuItem>)}
         </TextField>
         {changeRR && coach && (
-          <TextField type="date" label="Rattaché à ce Responsable Régional à partir du" value={dateRattachement} onChange={(e) => setDateRattachement(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+          <ChampMois label="Rattaché à ce Responsable Régional à partir de" value={dateRattachement} onChange={setDateRattachement} jour={reseau.jour} />
         )}
       </Box>
       <FormControlLabel control={<Switch checked={fictif} onChange={(e) => setFictif(e.target.checked)} />} label="Poste à pourvoir (Coach pas encore recruté)" sx={{ minHeight: 48 }} />

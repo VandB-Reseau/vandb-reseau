@@ -26,7 +26,7 @@ import { PastilleStatut, PastilleType } from '../components/Pastilles'
 import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienRR, telLien } from '../lib/format'
 import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
-import { libelleResponsable, libelleTypeVisite, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
+import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
 import { anneeDe, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
@@ -136,7 +136,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
                   <Box key={v.id ?? v.date} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
                     <Typography variant="body2" color="text.secondary" sx={{ width: 110, flexShrink: 0 }}>{dateCourte(v.date)}</Typography>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body1">{libelleTypeVisite(v.type)}{v.visiteur ? ` · ${v.visiteur}` : ''}</Typography>
+                      <Typography variant="body1">{libelleTypeVisite(v.type)}{v.visiteurs.length ? ` · ${nomsVisiteurs(v)}` : ''}</Typography>
                       {v.notes && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>{v.notes}</Typography>}
                     </Box>
                     <Tooltip title="Compte rendu PDF"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu du ${dateCourte(v.date)}`}><PictureAsPdfOutlined /></IconButton></Tooltip>

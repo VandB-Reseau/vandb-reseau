@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { choisirMois, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { coachsFictifs } from './donnees-fictives'
 
 test.beforeEach(async ({ page }) => {
@@ -46,7 +46,7 @@ test('le plan d’affectation propose un Coach pour un magasin sans Coach et enr
   await seConnecter(page, { ecritures })
   await page.goto('./#/equipe?vue=plan')
   await expect(page.getByRole('tab', { name: 'Plan d’affectation', selected: true })).toBeVisible()
-  await page.getByLabel('À la date du').fill('2026-11-01')
+  await choisirMois(page, 'À partir de', 'Novembre 2026')
 
   // Vichy Test passe en pré-ouverture sans Coach : seul le poste à pourvoir reste sous le maximum
   const ligne = page.getByRole('listitem', { name: 'Vichy Test' })
@@ -67,7 +67,7 @@ test('le plan d’affectation propose un Coach pour un magasin sans Coach et enr
   await choix.selectOption('Inès EXEMPLE')
   await page.getByRole('button', { name: /^Valider 1 changement$/ }).click()
   expect(ecritures).toEqual([])
-  const dialogue = page.getByRole('dialog', { name: /Enregistrer le plan au 1 novembre 2026/ })
+  const dialogue = page.getByRole('dialog', { name: /Enregistrer le plan à partir de novembre 2026/ })
   await expect(dialogue).toContainText('1 magasin change de Coach')
   await dialogue.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText(/Plan enregistré : 1 magasin/)).toBeVisible()
@@ -78,9 +78,9 @@ test('le plan d’affectation propose un Coach pour un magasin sans Coach et enr
 test('le plan propose un Responsable Régional pour un Coach qui arrive et décocher retire la proposition', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/equipe?vue=plan')
   // Zoé ARRIVEE prend son poste en mars 2099 sans Responsable Régional
-  await page.getByLabel('À la date du').fill('2099-03-01')
+  await page.goto('./#/equipe?vue=plan&date=2099-03-15')
+  await expect(page.getByLabel('À partir de')).toHaveText('Mars 2099')
   const ligne = page.getByRole('listitem', { name: 'Zoé ARRIVEE' })
   await expect(ligne).toContainText('Sans Responsable Régional')
   await expect(ligne.getByLabel('Rattacher à').locator('option')).toHaveCount(2) // la Responsable Magasins Intégrés n’est pas proposée
@@ -102,7 +102,7 @@ test('le plan soulage les Coachs en dépassement avec le Coach en poste le plus 
   await page.route('https://supabase.test/rest/v1/cs_overrides**', (r) => r.fulfill({ json: [...coachsFictifs, { cs_name: 'Léo RENFORT', lat: 44.5, lon: 2.0 }] }))
   await page.goto('./#/equipe?vue=plan')
   await page.reload()
-  await page.getByLabel('À la date du').fill('2026-11-01')
+  await choisirMois(page, 'À partir de', 'Novembre 2026')
   const rodez = page.getByRole('listitem', { name: 'Rodez Test' })
   await expect(rodez).toContainText('Rééquilibrage de charge · actuellement Camille TESTARD')
   await expect(rodez.getByLabel('Confier à')).toHaveValue('Léo RENFORT')
