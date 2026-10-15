@@ -467,6 +467,15 @@ export function supprimerEvaluation(magasin: string, date: string) {
     await ecrireCle('sante_parc', valeur, existe)
   })
 }
+// Efface toutes les notes nine box (une copie est gardée sous une autre clé, que l'app ne lit pas)
+export function effacerToutesEvaluations() {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<Evaluations>('sante_parc', {})
+    const copie = await lireCle<Evaluations>('sante_parc_sauvegarde', {})
+    await ecrireCle('sante_parc_sauvegarde', valeur, copie.existe)
+    await ecrireCle('sante_parc', {}, existe)
+  })
+}
 // Import d'un historique : plusieurs lignes datées par magasin, une seule par jour
 export function importerHistorique(points: { magasin: string; date: string; notes: Partial<Record<IdCritere, Note>> }[], par: string) {
   return enFile(async () => {
