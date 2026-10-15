@@ -19,14 +19,12 @@ import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Snackbar from '@mui/material/Snackbar'
 import Switch from '@mui/material/Switch'
-import Tab from '@mui/material/Tab'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import Tabs from '@mui/material/Tabs'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
@@ -49,6 +47,11 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { Fenetre } from '../components/EditionEquipe'
 import { RechercheFiltres } from '../components/RechercheFiltres'
+import { Onglets } from '../components/Onglets'
+import GridViewOutlined from '@mui/icons-material/GridViewOutlined'
+import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
+import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined'
+import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import { BoutonAction } from '../components/Outils'
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import { FiltreMenu } from '../components/FiltreMenu'
@@ -617,12 +620,12 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
   return (
     <>
       <PageHeader titre="Santé du parc" sousTitre={`${classes} magasin${classes > 1 ? 's' : ''} classé${classes > 1 ? 's' : ''} sur ${actifs.length}`} actions={actions} />
-      <Tabs value={vue} onChange={(_e, v) => aller(v)} aria-label="Rubriques de la santé du parc" variant="scrollable" sx={{ mb: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
-        <Tab value="ninebox" label="Nine box" sx={{ minHeight: 48 }} />
-        <Tab value="evaluer" label="Évaluer" sx={{ minHeight: 48 }} />
-        <Tab value="deploiements" label="Déploiements" sx={{ minHeight: 48 }} />
-        <Tab value="chiffres" label="Chiffres" sx={{ minHeight: 48 }} />
-      </Tabs>
+      <Onglets valeur={vue} onChange={aller} libelle="Rubriques de la santé du parc" rubriques={[
+        { vue: 'ninebox', libelle: 'Nine box', icone: <GridViewOutlined /> },
+        { vue: 'evaluer', libelle: 'Évaluer', icone: <FactCheckOutlined /> },
+        { vue: 'deploiements', libelle: 'Déploiements', icone: <RocketLaunchOutlined /> },
+        { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
+      ]} />
       {vue === 'ninebox' && <VueNineBox reseau={reseau} evaluer={() => aller('evaluer')} surPC={surPC} />}
       {vue === 'evaluer' && <VueEvaluer reseau={reseau} saisie={saisie} surPC={surPC} date={<ChampDate valeur={date} max={reseau.jour} onChange={setDate} />} />}
       {vue === 'deploiements' && <VueDeploiements reseau={reseau} saisie={saisie} surPC={surPC} date={<ChampDate valeur={date} max={reseau.jour} onChange={setDate} />} />}
