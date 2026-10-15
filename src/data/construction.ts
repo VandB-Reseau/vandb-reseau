@@ -122,6 +122,10 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
     const rrDirect = rrDirectId ? rrParId.get(rrDirectId) ?? null : null
     const rr = rrDirect && !rrDirect.integres ? rrDirect : coach ? rrDuCoach(coach) : rrDirect
     const [lat, lon] = coordonnees(v('lat'), v('lon'))
+    // L'import Excel de l'ancienne app posait le magasin au chef-lieu du département (geo « dept ») en attendant
+    // une géolocalisation précise ; une position enregistrée dans store_overrides est toujours précise
+    const surchargePosition = s?.lat !== null && s?.lat !== undefined && s?.lon !== null && s?.lon !== undefined
+    const positionApprochee = !surchargePosition && (lat === null || b.geo === 'dept' || b.geo === 'fail')
     return {
       nom: b.n,
       code: texte(v('code')),
@@ -141,7 +145,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       rrEnDirect: !!rrDirect && !rrDirect.integres,
       responsable: personne(v('resp'), v('tel_resp'), v('email_resp')),
       responsableARecruter: /recrutement/i.test(texte(v('resp'))),
-      lat, lon,
+      lat, lon, positionApprochee,
       historiqueCoach: historique,
     }
   })
