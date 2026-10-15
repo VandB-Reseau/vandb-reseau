@@ -1,8 +1,5 @@
 import { Suspense, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import Button from '@mui/material/Button'
-import IconButton from '@mui/material/IconButton'
-import AddOutlined from '@mui/icons-material/AddOutlined'
 import { DialogMagasin } from '../components/EditionMagasin'
 import { lienFiche } from '../lib/format'
 import { chargementDiffere } from '../lib/chargementDiffere'
@@ -19,6 +16,7 @@ import { PageHeader } from '../components/PageHeader'
 import { EmptyState } from '../components/EmptyState'
 import { AvecReseau } from '../components/EtatDonnees'
 import { BarreFiltres } from '../components/BarreFiltres'
+import { BoutonAction } from '../components/Outils'
 import { TableMagasins } from '../components/TableMagasins'
 import { ListeMagasins } from '../components/ListeMagasins'
 import { filtrer, filtresDepuisUrl, filtresVersUrl, type Filtres } from '../data/filtres'
@@ -54,12 +52,8 @@ export function Magasins({ vueInitiale = 'carte' }: { vueInitiale?: 'liste' | 'c
                 </Tabs>
               }
             />
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}><BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres} /></Box>
-              {vue === 'carte' ? <Box ref={setEmplacementBoutons} sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }} /> : surPC
-                ? <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setAjout(true)} sx={{ minHeight: 48, mb: 2 }}>Ajouter un magasin</Button>
-                : <IconButton onClick={() => setAjout(true)} aria-label="Ajouter un magasin" sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', '&:hover': { bgcolor: 'primary.dark' } }}><AddOutlined /></IconButton>}
-            </Box>
+            <BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres}
+              actions={vue === 'carte' ? <Box ref={setEmplacementBoutons} sx={{ display: 'flex' }} /> : <BoutonAction libelle="Ajouter un magasin" onClick={() => setAjout(true)} />} />
             {ajout && <DialogMagasin reseau={reseau} magasin={null} onFermer={(msg, nom) => { setAjout(false); if (msg && nom) naviguer(lienFiche(nom)) }} />}
             {resultats.length === 0 ? (
               <EmptyState icone={<SearchOff />} titre="Aucun magasin ne correspond" texte="Modifie la recherche ou retire un filtre pour voir plus de magasins." />

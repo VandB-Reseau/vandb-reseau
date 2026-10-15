@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -31,6 +31,7 @@ import { Fenetre } from '../components/EditionEquipe'
 import { importerVisites } from '../data/chargement'
 import { analyserVisites, lireClasseur, type ResultatImportVisites } from '../data/importVisites'
 import { RechercheFiltres } from '../components/RechercheFiltres'
+import { BoutonAction, ChampRecherche } from '../components/Outils'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
@@ -41,8 +42,6 @@ import { nineBox } from '../data/sante'
 import { PastilleCase } from '../components/Sante'
 import { FiltreMenu } from '../components/FiltreMenu'
 import Chip from '@mui/material/Chip'
-import InputAdornment from '@mui/material/InputAdornment'
-import SearchIcon from '@mui/icons-material/Search'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
 import { nomsVisiteurs, typesVisite, type Reseau, type Visite } from '../data/modele'
 
@@ -50,7 +49,7 @@ type Edition = { visite: Visite | null; magasins: string[] } | null
 
 type Etat = 'retard' | 'ajour'
 
-function VueRythme({ reseau, saisir, surPC }: { reseau: Reseau; saisir: (magasins: string[]) => void; surPC: boolean }) {
+function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir: (magasins: string[]) => void; surPC: boolean; actions: ReactNode }) {
   const annees = anneesDisponibles(reseau)
   const [cle, setCle] = useState(anneeDe(reseau.jour).cle)
   const [texte, setTexte] = useState('')
@@ -82,9 +81,8 @@ function VueRythme({ reseau, saisir, surPC }: { reseau: Reseau; saisir: (magasin
 
   return (
     <>
-      <RechercheFiltres actifs={actifs}
-        recherche={<ChampRecherche valeur={texte} onChange={setTexte} libelle="Magasin, ville, Coach…" />}
-        pc={(r, f) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 2 }}>{r}{f}</Box>}>
+      <RechercheFiltres actifs={actifs} actions={actions}
+        recherche={<ChampRecherche valeur={texte} onChange={setTexte} placeholder="Magasin, ville, Coach…" />}>
         <FiltreMenu unique libelle="Année" choisis={[a.cle]} onChange={(v) => setCle(v[0])} options={annees.map((x) => ({ valeur: x.cle, libelle: x.court }))} />
         <FiltreMenu libelle="Coach" choisis={coachs} onChange={setCoachs}
           options={[...listeCoachs.map((c) => ({ valeur: c, libelle: c, detail: `${mag((l) => l.coach === c)}` })), { valeur: '__aucun__', libelle: 'Sans Coach', detail: `${mag((l) => !l.coach)}` }]} />
@@ -191,15 +189,7 @@ function Echeance({ l }: { l: LigneRythme }) {
     : <Typography variant="body2" color="text.secondary" component="span">avant le {dateCourte(l.prochaine)}</Typography>
 }
 
-function ChampRecherche({ valeur, onChange, libelle }: { valeur: string; onChange: (v: string) => void; libelle: string }) {
-  return (
-    <TextField size="small" placeholder={libelle} value={valeur} onChange={(e) => onChange(e.target.value)}
-      slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }, htmlInput: { 'aria-label': libelle } }}
-      sx={{ width: { xs: '100%', md: 320 }, '& .MuiOutlinedInput-root': { borderRadius: 999, minHeight: { xs: 48, md: 40 } } }} />
-  )
-}
-
-function VueHistorique({ reseau, modifier, surPC }: { reseau: Reseau; modifier: (v: Visite) => void; surPC: boolean }) {
+function VueHistorique({ reseau, modifier, surPC, actions }: { reseau: Reseau; modifier: (v: Visite) => void; surPC: boolean; actions: ReactNode }) {
   const semestres = semestresDisponibles(reseau)
   const [cle, setCle] = useState('')
   const [type, setType] = useState('')
@@ -218,9 +208,8 @@ function VueHistorique({ reseau, modifier, surPC }: { reseau: Reseau; modifier: 
   )
   return (
     <>
-      <RechercheFiltres actifs={(cle ? 1 : 0) + (type ? 1 : 0) + (visiteur ? 1 : 0)}
-        recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} libelle="Rechercher un magasin ou une note" />}
-        pc={(r, f) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 2 }}>{r}{f}</Box>}>
+      <RechercheFiltres actifs={(cle ? 1 : 0) + (type ? 1 : 0) + (visiteur ? 1 : 0)} actions={actions}
+        recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher un magasin ou une note" />}>
         <FiltreMenu libelle="Période" choisis={cle ? [cle] : []} onChange={(v) => setCle(v.at(-1) ?? '')} options={semestres.map((x) => ({ valeur: x.cle, libelle: x.court }))} />
         <FiltreMenu libelle="Type" choisis={type ? [type] : []} onChange={(v) => setType(v.at(-1) ?? '')} options={typesVisite.map((t) => ({ valeur: t.id, libelle: t.libelle }))} />
         <FiltreMenu libelle="Visité par" choisis={visiteur ? [visiteur] : []} onChange={(v) => setVisiteur(v.at(-1) ?? '')} options={visiteurs(reseau).map((n) => ({ valeur: n, libelle: n }))} />
@@ -349,6 +338,10 @@ export function Visites() {
   const [edition, setEdition] = useState<Edition>(null)
   const [message, setMessage] = useState('')
   const [importer, setImporter] = useState(false)
+  const actions = <>
+    {surPC && <BoutonAction secondaire libelle="Importer Excel" icone={<UploadFileOutlined />} onClick={() => setImporter(true)} />}
+    <BoutonAction libelle="Saisir une visite" onClick={() => setEdition({ visite: null, magasins: [] })} />
+  </>
   return (
     <AvecReseau>
       {(reseau) => (
@@ -356,18 +349,14 @@ export function Visites() {
           <PageHeader
             titre="Visites"
             sousTitre={`${reseau.visites.length} visite${reseau.visites.length > 1 ? 's' : ''} enregistrée${reseau.visites.length > 1 ? 's' : ''}`}
-            actions={<>
-              {surPC && <Button variant="outlined" startIcon={<UploadFileOutlined />} onClick={() => setImporter(true)} sx={{ minHeight: 48 }}>Importer Excel</Button>}
-              <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setEdition({ visite: null, magasins: [] })} sx={{ minHeight: 48 }}>Saisir une visite</Button>
-            </>}
           />
           <Tabs value={vue} onChange={(_e, v) => setParams({ vue: v }, { replace: true })} aria-label="Rubriques des visites" sx={{ mb: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Tab value="rythme" label="Rythme de visite" sx={{ minHeight: 48 }} />
             <Tab value="historique" label="Historique" sx={{ minHeight: 48 }} />
           </Tabs>
           {vue === 'historique'
-            ? <VueHistorique reseau={reseau} surPC={surPC} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
-            : <VueRythme reseau={reseau} surPC={surPC} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
+            ? <VueHistorique reseau={reseau} surPC={surPC} actions={actions} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
+            : <VueRythme reseau={reseau} surPC={surPC} actions={actions} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
           {edition && <DialogVisite reseau={reseau} visite={edition.visite} magasinsInitiaux={edition.magasins} onFermer={(m) => { setEdition(null); if (m) setMessage(m) }} />}
           {importer && <DialogImportVisites reseau={reseau} onFermer={(m) => { setImporter(false); if (m) setMessage(m) }} />}
           <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />

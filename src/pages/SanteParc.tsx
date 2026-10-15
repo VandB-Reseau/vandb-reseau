@@ -42,7 +42,6 @@ import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import EventRepeatOutlined from '@mui/icons-material/EventRepeatOutlined'
 import TableRowsOutlined from '@mui/icons-material/TableRowsOutlined'
 import ViewAgendaOutlined from '@mui/icons-material/ViewAgendaOutlined'
-import TuneOutlined from '@mui/icons-material/TuneOutlined'
 import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined'
 import SearchOffOutlined from '@mui/icons-material/SearchOffOutlined'
 import { PageHeader } from '../components/PageHeader'
@@ -50,6 +49,8 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { Fenetre } from '../components/EditionEquipe'
 import { RechercheFiltres } from '../components/RechercheFiltres'
+import { BoutonAction } from '../components/Outils'
+import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import { FiltreMenu } from '../components/FiltreMenu'
 import InputAdornment from '@mui/material/InputAdornment'
 import SearchIcon from '@mui/icons-material/Search'
@@ -86,20 +87,18 @@ function useFiltres(reseau: Reseau) {
   // Propositions : les magasins, rangés par Coach
   const options = useMemo(() => reseau.magasins.filter((m) => m.statut !== 'avenir').map((m) => ({ nom: m.nom, coach: coachA(m, reseau.jour) }))
     .sort((a, b) => (a.coach || '~').localeCompare(b.coach || '~', 'fr') || a.nom.localeCompare(b.nom, 'fr')), [reseau])
-  const theme = useTheme()
-  const telephone = !useMediaQuery(theme.breakpoints.up('sm'), { noSsr: true })
   const champ = (
       <Autocomplete freeSolo options={options} groupBy={(o) => o.coach || 'Sans Coach'} getOptionLabel={(o) => (typeof o === 'string' ? o : o.nom)}
         inputValue={recherche} onInputChange={(_e, v) => setRecherche(v)} size="small"
         filterOptions={(os, { inputValue }) => { const q = inputValue.toLowerCase(); return os.filter((o) => !q || o.nom.toLowerCase().includes(q) || o.coach.toLowerCase().includes(q)) }}
-        sx={{ width: { xs: '100%', md: 320 } }}
+        sx={{ width: { xs: '100%', sm: 320 } }}
         renderInput={(p) => <TextField {...p} placeholder="Rechercher un magasin ou un Coach"
           slotProps={{ ...p.slotProps, htmlInput: { ...p.slotProps.htmlInput, 'aria-label': 'Rechercher un magasin ou un Coach' }, input: { ...p.slotProps.input, startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> } }}
-          sx={{ '& .MuiOutlinedInput-root': { borderRadius: 999, minHeight: telephone ? 48 : 40 } }} />} />
+          sx={{ '& .MuiOutlinedInput-root': { borderRadius: 999, minHeight: 48 } }} />} />
   )
   const compter = (p: (m: Reseau['magasins'][number]) => boolean) => `${actifsMag.filter(p).length} magasins`
   const barre = (
-    <RechercheFiltres recherche={champ} actifs={rrs.length + coachsChoisis.length} pc={(r, f) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 2 }}>{r}{f}</Box>}>
+    <RechercheFiltres recherche={champ} actifs={rrs.length + coachsChoisis.length}>
       <FiltreMenu libelle="Responsable Régional" choisis={rrs} onChange={setRRs}
         options={[...reseau.rrs.map((r) => ({ valeur: r.id, libelle: r.nom, detail: compter((m) => m.rr?.id === r.id) })), { valeur: '__aucun__', libelle: 'Sans RR', detail: compter((m) => !m.rr) }]} />
       <FiltreMenu libelle="Coach" choisis={coachsChoisis} onChange={setCoachs}
@@ -611,8 +610,8 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
   // Les boutons restent en place (masqués sur la nine box) pour que le titre ne bouge pas entre onglets
   const actions = (
     <Box sx={{ gap: 1, flexWrap: 'wrap', visibility: vue === 'ninebox' ? 'hidden' : 'visible', display: surPC ? 'flex' : 'none' }} aria-hidden={vue === 'ninebox'}>
-      {surPC && <Button variant="outlined" startIcon={<UploadFileOutlined />} onClick={() => (vue === 'chiffres' ? setImporterChiffres(true) : setImporter(true))} sx={{ minHeight: 48 }}>Importer Excel</Button>}
-      <Button variant="contained" startIcon={<TuneOutlined />} onClick={() => setGestion(true)} sx={{ minHeight: 48, visibility: vue === 'deploiements' ? 'visible' : 'hidden' }} tabIndex={vue === 'deploiements' ? 0 : -1} aria-hidden={vue !== 'deploiements'}>Gérer les thématiques</Button>
+      {surPC && <BoutonAction secondaire libelle="Importer Excel" icone={<UploadFileOutlined />} onClick={() => (vue === 'chiffres' ? setImporterChiffres(true) : setImporter(true))} />}
+      <Box sx={{ visibility: vue === 'deploiements' ? 'visible' : 'hidden' }} aria-hidden={vue !== 'deploiements'}><BoutonAction secondaire libelle="Gérer les thématiques" icone={<SettingsOutlined />} onClick={() => setGestion(true)} /></Box>
     </Box>
   )
   return (

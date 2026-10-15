@@ -20,6 +20,7 @@ import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import CakeOutlined from '@mui/icons-material/CakeOutlined'
 import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined'
 import { PageHeader } from '../components/PageHeader'
+import { BoutonAction } from '../components/Outils'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { Fenetre } from '../components/EditionEquipe'
@@ -156,9 +157,9 @@ export function Agenda() {
         return (
           <>
             <PageHeader titre="Agenda" sousTitre="Ouvertures, événements, absences et anniversaires"
-              actions={<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Button variant="outlined" startIcon={<BeachAccessOutlined />} onClick={() => setConge(null)} sx={{ minHeight: 48 }}>Absence</Button>
-                <Button variant="contained" startIcon={<EventOutlined />} onClick={() => setEvenement(null)} sx={{ minHeight: 48 }}>Événement</Button>
+              actions={<Box sx={{ display: 'flex', gap: 1 }}>
+                <BoutonAction secondaire libelle="Absence" icone={<BeachAccessOutlined />} onClick={() => setConge(null)} />
+                <BoutonAction libelle="Événement" icone={<EventOutlined />} onClick={() => setEvenement(null)} />
               </Box>} />
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 2 }}>
               <IconButton onClick={() => changerMois(-1)} aria-label="Mois précédent"><ChevronLeft /></IconButton>

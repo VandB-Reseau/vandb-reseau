@@ -5,7 +5,6 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardActionArea from '@mui/material/CardActionArea'
 import Chip from '@mui/material/Chip'
-import InputAdornment from '@mui/material/InputAdornment'
 import Link from '@mui/material/Link'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
@@ -16,14 +15,14 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import PersonAddAlt1Outlined from '@mui/icons-material/PersonAddAlt1Outlined'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
-import SearchIcon from '@mui/icons-material/Search'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import { DialogCoach, DialogFranchise, DialogRR } from '../components/EditionEquipe'
 import { EmptyState } from '../components/EmptyState'
+import { RechercheFiltres } from '../components/RechercheFiltres'
+import { BoutonAction, ChampRecherche } from '../components/Outils'
 import { normaliser } from '../data/filtres'
 import { fichePersonne, franchises, libelleRole, type FichePersonnelle, type TypePersonne } from '../data/personnes'
 import { lienCoach, lienDirecteur, lienFranchise, lienRR, telLien } from '../lib/format'
@@ -83,24 +82,22 @@ export function VuePersonnes({ reseau, surPC, perimetre }: { reseau: Reseau; sur
 
   return (
     <>
-      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mb: 2 }}>
-        <TextField size="small" placeholder="Nom, ville, magasin…" value={texte} onChange={(e) => setTexte(e.target.value)}
-          slotProps={{ htmlInput: { 'aria-label': 'Rechercher une personne' }, input: { startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> } }}
-          sx={{ flex: 1, minWidth: 220, '& .MuiInputBase-root': { minHeight: 48 } }} />
-        {perimetre === 'franchises'
-          ? <Button variant="contained" startIcon={<PersonAddAlt1Outlined />} onClick={() => setAjout('franchise')} sx={{ minHeight: 48 }}>Ajouter un franchisé</Button>
-          : <Button variant="contained" startIcon={<PersonAddAlt1Outlined />} onClick={(e) => setMenu(e.currentTarget)} sx={{ minHeight: 48 }}>Ajouter un collaborateur</Button>}
-        <Menu anchorEl={menu} open={!!menu} onClose={() => setMenu(null)}>
-          {AJOUTS[perimetre].map(([id, l]) => (
-            <MenuItem key={id} onClick={() => { setMenu(null); setAjout(id) }} sx={{ minHeight: 48 }}>{l}</MenuItem>
+      <RechercheFiltres actifs={filtre === 'tous' ? 0 : 1}
+        recherche={<ChampRecherche valeur={texte} onChange={setTexte} placeholder="Nom, ville, magasin…" libelle="Rechercher une personne" />}
+        actions={perimetre === 'franchises'
+          ? <BoutonAction libelle="Ajouter un franchisé" icone={<PersonAddAlt1Outlined />} onClick={() => setAjout('franchise')} />
+          : <BoutonAction libelle="Ajouter un collaborateur" icone={<PersonAddAlt1Outlined />} onClick={(e) => setMenu(e.currentTarget)} />}>
+        {perimetre === 'collaborateurs' && <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }} role="group" aria-label="Filtrer par rôle">
+          {FILTRES.map((f) => (
+            <Chip key={f.id} label={`${f.libelle} (${compte(f.id)})`} onClick={() => changerFiltre(f.id)} color={filtre === f.id ? 'secondary' : 'default'} variant={filtre === f.id ? 'filled' : 'outlined'} aria-pressed={filtre === f.id} sx={{ height: 36, fontSize: '0.875rem', fontWeight: 500, borderRadius: 2 }} />
           ))}
-        </Menu>
-      </Box>
-      {perimetre === 'collaborateurs' && <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }} role="group" aria-label="Filtrer par rôle">
-        {FILTRES.map((f) => (
-          <Chip key={f.id} label={`${f.libelle} (${compte(f.id)})`} onClick={() => changerFiltre(f.id)} color={filtre === f.id ? 'primary' : 'default'} variant={filtre === f.id ? 'filled' : 'outlined'} aria-pressed={filtre === f.id} sx={{ minHeight: 40 }} />
+        </Box>}
+      </RechercheFiltres>
+      <Menu anchorEl={menu} open={!!menu} onClose={() => setMenu(null)}>
+        {AJOUTS[perimetre].map(([id, l]) => (
+          <MenuItem key={id} onClick={() => { setMenu(null); setAjout(id) }} sx={{ minHeight: 48 }}>{l}</MenuItem>
         ))}
-      </Box>}
+      </Menu>
       {visibles.length === 0 ? (
         <EmptyState icone={<PersonOutlineOutlined />} titre={toutes.length ? 'Personne ne correspond' : perimetre === 'franchises' ? 'Aucun franchisé renseigné' : 'Aucun collaborateur'}
           texte={toutes.length ? 'Change la recherche ou le filtre.' : 'Ajoute la personne : elle aura sa fiche personnelle.'}

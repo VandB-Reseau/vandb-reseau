@@ -8,14 +8,12 @@ import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import ToggleButton from '@mui/material/ToggleButton'
 import Typography from '@mui/material/Typography'
-import InfoBulle from '@mui/material/Tooltip'
-import useMediaQuery from '@mui/material/useMediaQuery'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import LayersOutlined from '@mui/icons-material/LayersOutlined'
 import CheckBoxOutlined from '@mui/icons-material/CheckBoxOutlined'
 import CheckBoxOutlineBlankOutlined from '@mui/icons-material/CheckBoxOutlineBlankOutlined'
-import type { SxProps, Theme } from '@mui/material/styles'
+import { Bulle, BoutonOutil, boutonGroupeSx, groupeSx, useTelephone } from './Outils'
 import PersonPinCircleOutlined from '@mui/icons-material/PersonPinCircleOutlined'
 import FullscreenOutlined from '@mui/icons-material/FullscreenOutlined'
 import FullscreenExitOutlined from '@mui/icons-material/FullscreenExitOutlined'
@@ -27,14 +25,6 @@ import { statutLibelle, type Coach, type Magasin, type Reseau, type ResponsableR
 import { cleCommune, centreCommune, normaliserVille } from '../data/geocodage'
 import { cleFiche, estFrance, type FichePersonnelle } from '../data/personnes'
 
-// Contrôles de carte : boutons carrés de 48 px côte à côte dans un cadre unique
-const barreSx: SxProps<Theme> = { display: 'flex', flexDirection: 'row', bgcolor: 'background.paper', borderRadius: '10px', boxShadow: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }
-const boutonSx: SxProps<Theme> = {
-  width: 48, height: 48, minWidth: 48, p: 0, border: 0, borderRadius: 0, color: 'text.secondary',
-  '& + &': { borderLeft: '1px solid', borderLeftColor: 'divider' },
-  '&:hover': { bgcolor: 'action.hover' },
-  '&.Mui-selected, &.Mui-selected:hover': { bgcolor: 'primary.main', color: 'primary.contrastText' },
-}
 
 function AjusterTaille({ hauteur }: { hauteur: number }) {
   const map = useMap()
@@ -166,9 +156,7 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
   const legendeRef = useRef<HTMLDivElement>(null)
   const [hauteur, setHauteur] = useState(500)
   const [pleinEcran, setPleinEcran] = useState(false)
-  // Libellé au survol seulement avec une souris : sur écran tactile, icônes seules
-  const souris = useMediaQuery('(hover: hover)')
-  const compact = useMediaQuery((t: Theme) => t.breakpoints.down('md'), { noSsr: true })
+  const compact = useTelephone()
   const [menu, setMenu] = useState<HTMLElement | null>(null)
   useEffect(() => {
     const calculer = () => {
@@ -210,14 +198,13 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
     { cle: 'rr', actif: zonesRR, basculer: () => setZonesRR((v) => !v), icone: <HubOutlined />, long: 'Zones des Responsables Régionaux' },
     { cle: 'personnes', actif: voirPersonnes, basculer: () => setVoirPersonnes((v) => !v), icone: <BadgeOutlined />, long: 'Coachs et Responsables Régionaux' },
   ]
-  const bulle = { placement: 'bottom', disableHoverListener: !souris, disableFocusListener: !souris, disableTouchListener: true, slotProps: { tooltip: { sx: { fontSize: 13 } } } } as const
   // Boutons hors de la carte : dans la ligne des filtres, ou au-dessus de la carte en plein écran.
   // Sur téléphone, les trois affichages tiennent dans un seul bouton pour laisser la place à la recherche.
   const boutons = (
     <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, flexShrink: 0 }}>
       {compact ? (
-        <Box sx={barreSx}>
-          <ToggleButton value="affichage" selected={Boolean(menu)} onChange={(e) => setMenu(e.currentTarget as HTMLElement)} aria-label="Affichage de la carte" aria-haspopup="menu" sx={boutonSx}><LayersOutlined /></ToggleButton>
+        <>
+          <BoutonOutil libelle="Affichage de la carte" icone={<LayersOutlined />} onClick={(e) => setMenu(e.currentTarget)} actif={Boolean(menu)} attributs={{ 'aria-haspopup': 'menu' }} />
           <Menu anchorEl={menu} open={Boolean(menu)} onClose={() => setMenu(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }} sx={{ zIndex: 1500 }}>
             {affichages.map((b) => (
               <MenuItem key={b.cle} role="menuitemcheckbox" aria-checked={b.actif} onClick={b.basculer} sx={{ minHeight: 48, gap: 1.5 }}>
@@ -225,23 +212,17 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
               </MenuItem>
             ))}
           </Menu>
-        </Box>
+        </>
       ) : (
-        <Box role="group" aria-label="Zones affichées" sx={barreSx}>
+        <Box role="group" aria-label="Zones affichées" sx={groupeSx}>
           {affichages.map((b) => (
-            <InfoBulle key={b.cle} title={b.long} {...bulle}>
-              <ToggleButton value={b.cle} selected={b.actif} onChange={b.basculer} aria-label={b.long} sx={boutonSx}>{b.icone}</ToggleButton>
-            </InfoBulle>
+            <Bulle key={b.cle} titre={b.long}>
+              <ToggleButton value={b.cle} selected={b.actif} onChange={b.basculer} aria-label={b.long} sx={boutonGroupeSx}>{b.icone}</ToggleButton>
+            </Bulle>
           ))}
         </Box>
       )}
-      <Box sx={barreSx}>
-        <InfoBulle title={pleinEcran ? 'Quitter le plein écran' : 'Plein écran'} {...bulle}>
-          <ToggleButton value="plein" selected={pleinEcran} onChange={() => setPleinEcran((v) => !v)} aria-label={pleinEcran ? 'Quitter le plein écran' : 'Carte en plein écran'} sx={boutonSx}>
-            {pleinEcran ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-          </ToggleButton>
-        </InfoBulle>
-      </Box>
+      <BoutonOutil libelle={pleinEcran ? 'Quitter le plein écran' : 'Carte en plein écran'} icone={pleinEcran ? <FullscreenExitOutlined /> : <FullscreenOutlined />} onClick={() => setPleinEcran((v) => !v)} actif={pleinEcran} />
     </Box>
   )
 
