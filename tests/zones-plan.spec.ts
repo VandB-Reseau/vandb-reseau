@@ -41,6 +41,64 @@ test('la carte regroupe les magasins en zones de Coach et de Responsable Région
   await expect(page.locator('path.zone-rr')).toHaveCount(0)
 })
 
+test('la carte place les Coachs et les Responsables Régionaux avec leur propre picto, masquables', async ({ page, isMobile }, info) => {
+  await seConnecter(page)
+  await page.goto('./#/magasins?vue=carte')
+  const bouton = page.getByRole('button', { name: 'Coachs et Responsables Régionaux' })
+  await expect(bouton).toHaveAttribute('aria-pressed', 'true')
+  expect((await bouton.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  // Coachs à leur domicile connu (poste à pourvoir et Coach pas encore arrivé exclus), RR à la ville de sa fiche
+  await expect(page.locator('.picto-coach')).toHaveCount(4)
+  await expect(page.locator('.picto-rr')).toHaveCount(1)
+  await expect(page.locator('.picto-coach[title="Coach : Camille TESTARD"]')).toBeAttached()
+  const rr = page.locator('.picto-rr[title="Responsable Régional : Alex NORD"]')
+  await expect(rr).toBeAttached()
+  const legende = page.getByLabel('Légende de la carte')
+  await expect(legende.getByText('Coach', { exact: true })).toBeVisible()
+  await expect(legende.getByText('Responsable Régional', { exact: true })).toBeVisible()
+  // Sam SUD et Léa INTEGRES n'ont pas de ville sur leur fiche
+  await expect(legende.getByText('2 Coachs ou RR sans ville renseignée, non affichés')).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-carte-coachs-rr.png`, fullPage: !isMobile })
+
+  await rr.dispatchEvent('click')
+  const bulle = page.locator('.leaflet-popup')
+  await expect(bulle).toContainText('Alex NORD')
+  await expect(bulle).toContainText('Responsable Régional · Lille')
+  await expect(bulle.getByRole('link', { name: 'Ouvrir la fiche' })).toHaveAttribute('href', '#/equipe/rr/rr1')
+  await page.keyboard.press('Escape')
+
+  await bouton.click()
+  await expect(bouton).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.locator('.picto-coach, .picto-rr')).toHaveCount(0)
+  await expect(legende.getByText('Coach', { exact: true })).toHaveCount(0)
+})
+
+test('avec un filtre, la carte ne montre que les Coachs et RR des magasins affichés', async ({ page, isMobile }) => {
+  await seConnecter(page)
+  await page.goto('./#/magasins?vue=carte')
+  if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
+  await page.getByLabel('Filtre Coach').click()
+  await page.getByRole('menuitem', { name: /Camille TESTARD/ }).click()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.picto-coach')).toHaveCount(1)
+  await expect(page.locator('.picto-coach[title="Coach : Camille TESTARD"]')).toBeAttached()
+  await expect(page.locator('.picto-rr[title="Responsable Régional : Alex NORD"]')).toBeAttached()
+})
+
+test('changer la ville d’un Coach efface sa position précédente', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/equipe/coach/Camille%20TESTARD')
+  await page.getByRole('button', { name: 'Modifier', exact: true }).click()
+  const d = page.getByRole('dialog', { name: 'Modifier Camille TESTARD' })
+  await d.getByLabel('Code postal').fill('59000')
+  await d.getByLabel('Ville').fill('Lille')
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText(/Camille TESTARD est mis à jour/)).toBeVisible()
+  expect(ecritures.filter((e) => e.table === 'cs_overrides').at(-1)).toMatchObject({ methode: 'PATCH', corps: { ville: 'Lille', lat: null, lon: null } })
+})
+
 test('le plan d’affectation propose un Coach pour un magasin sans Coach et enregistre après validation', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })

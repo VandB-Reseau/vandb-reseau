@@ -209,17 +209,20 @@ export async function rattacherCoach(coach: string, rrId: string, mois: string) 
 export interface FicheCoach { nom: string; telephone: string; email: string; ville: string; fictif: boolean; arrivee: string }
 export async function enregistrerCoach(f: FicheCoach) {
   const ligne = { cs_name: f.nom, tel: f.telephone, email: f.email, ville: f.ville, fictif: f.fictif }
-  const ex = await supabase.from('cs_overrides').select('cs_name').eq('cs_name', f.nom)
+  // Ville changée : l'ancienne position n'est plus valable, la carte se replace sur la nouvelle ville
+  const autreVille = (v: unknown) => (typeof v === 'string' ? v : '').trim() !== f.ville.trim()
+  const sansPosition = { lat: null, lon: null }
+  const ex = await supabase.from('cs_overrides').select('cs_name,ville').eq('cs_name', f.nom)
   if (ex.error) throw new ErreurEnregistrement(ex.error.message)
   const res = ex.data?.length
-    ? await supabase.from('cs_overrides').update(ligne).eq('cs_name', f.nom)
+    ? await supabase.from('cs_overrides').update(autreVille(ex.data[0].ville) ? { ...ligne, ...sansPosition } : ligne).eq('cs_name', f.nom)
     : await supabase.from('cs_overrides').insert(ligne)
   if (res.error) throw new ErreurEnregistrement(res.error.message)
   // Date d'arrivée : table des recrues de l'ancienne app
-  const rec = await supabase.from('recruits').select('id').eq('name', f.nom)
+  const rec = await supabase.from('recruits').select('id,ville').eq('name', f.nom)
   if (rec.error) throw new ErreurEnregistrement(rec.error.message)
   if (rec.data?.length) {
-    const r = await supabase.from('recruits').update({ start: f.arrivee || null, ville: f.ville }).eq('name', f.nom)
+    const r = await supabase.from('recruits').update({ start: f.arrivee || null, ville: f.ville, ...(autreVille(rec.data[0].ville) ? sansPosition : {}) }).eq('name', f.nom)
     if (r.error) throw new ErreurEnregistrement(r.error.message)
   } else if (f.arrivee) {
     const r = await supabase.from('recruits').insert({ name: f.nom, start: f.arrivee, ville: f.ville, color: '#4caf50' })
