@@ -24,13 +24,13 @@ import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import FormatListBulleted from '@mui/icons-material/FormatListBulleted'
 import MapOutlined from '@mui/icons-material/MapOutlined'
 import { EmptyState } from '../components/EmptyState'
-import { coachA, chargeA, libelleMois, moisAVenir } from '../data/charge'
+import { coachA, libelleMois, moisAVenir } from '../data/charge'
 import { ChampMois, premierDuMois } from '../components/ChampMois'
 import { statutA } from '../data/construction'
 import { rattacherCoach, reaffecter } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
 import {
-  chargesAvecPlan, coachsDisponibles, coachsParRR, optionsCoach, optionsRR, plafondCharge, positionsCoachs, proposerMagasins, proposerRR,
+  chargesAvecPlan, coachsDisponibles, coachsParRR, creerCalcul, optionsCoach, optionsRR, plafondCharge, proposerMagasins, proposerRR,
   raisonMagasinLibelle, raisonRRLibelle, rrDuCoachA, rrsRattachables, type Plafond, type PropositionMagasin, type PropositionRR,
 } from '../data/plan'
 import { duree } from '../data/tournee'
@@ -83,7 +83,8 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const { recharger } = useReseau()
   const routes = useTrajetsRoutiers(reseau)
-  const propM = useMemo(() => proposerMagasins(reseau, jour, plafond), [reseau, jour, plafond, routes.version]) // eslint-disable-line react-hooks/exhaustive-deps
+  const calcul = useMemo(() => creerCalcul(reseau, jour), [reseau, jour, routes.version]) // eslint-disable-line react-hooks/exhaustive-deps
+  const propM = useMemo(() => proposerMagasins(reseau, jour, plafond, calcul), [reseau, jour, plafond, calcul])
   const propR = useMemo(() => proposerRR(reseau, jour, new Map(propM.map((p) => [p.magasin.nom, p.coach]))), [reseau, jour, propM])
   const [choixM, setChoixM] = useState<Choix>({})
   const [choixR, setChoixR] = useState<Choix>({})
@@ -99,13 +100,12 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
   const gardeR = (p: PropositionRR) => choixR[p.coach.nom]?.garde ?? true
   const retenusM = new Map(propM.filter(gardeM).map((p) => [p.magasin.nom, cibleM(p)]))
   const retenusR = new Map(propR.filter(gardeR).map((p) => [p.coach.nom, cibleR(p)]))
-  const positions = useMemo(() => positionsCoachs(reseau, jour), [reseau, jour])
 
   // Indicateurs avant / après le plan retenu
   const max = reseau.parametres.maxUnits
   const disponibles = coachsDisponibles(reseau, jour)
-  const chargesAvant = new Map(reseau.equipe.map((c) => [c.nom, chargeA(reseau, c.nom, jour)]))
-  const chargesApres = chargesAvecPlan(reseau, jour, retenusM)
+  const chargesAvant = calcul.chargesBase
+  const chargesApres = chargesAvecPlan(reseau, jour, retenusM, calcul)
   const depassements = (ch: Map<string, number>) => disponibles.filter((c) => (ch.get(c.nom) ?? 0) > max).length
   const equipe = new Set(reseau.equipe.map((c) => c.nom))
   const sansCoach = (choix: Map<string, string>) => reseau.magasins.filter((m) => statutA(m.ouverture, jour, reseau.parametres) !== 'avenir' && !m.rrEnDirect && !equipe.has(choix.get(m.nom) ?? coachA(m, jour))).length
@@ -189,7 +189,7 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
                 <Box role="list" aria-label="Propositions pour les magasins">
                   {propM.map((p) => {
                     const sans = new Map(retenusM); sans.delete(p.magasin.nom)
-                    const options = optionsCoach(reseau, p.magasin, jour, chargesAvecPlan(reseau, jour, sans), plafond, p.avant, positions, sans)
+                    const options = optionsCoach(reseau, p.magasin, jour, chargesAvecPlan(reseau, jour, sans, calcul), plafond, p.avant, calcul, sans)
                     const choisie = options.find((o) => o.coach.nom === cibleM(p))
                     const garde = gardeM(p)
                     return (
