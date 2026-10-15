@@ -1,7 +1,10 @@
 import { supabase } from '../lib/supabase'
 import { estFrance } from './personnes'
 import type { Point } from './zones'
-import type { Magasin } from './modele'
+import type { Reseau } from './modele'
+import { centreCommune } from './geocodage'
+import { distanceKm } from './charge'
+import { cleFiche } from './personnes'
 
 // Géolocalisation gratuite et sans clé : Base Adresse Nationale (Géoplateforme IGN) pour la France,
 // OpenStreetMap (Nominatim) pour l'étranger ou en repli.
@@ -85,7 +88,7 @@ export async function enregistrerPosition(nom: string, p: Point): Promise<boolea
 }
 
 // Magasins posés au centre de leur département : on cherche leur vraie position, une fois par session
-export async function corrigerPositions(magasins: Magasin[]): Promise<number> {
+export async function corrigerPositions(magasins: Reseau['magasins']): Promise<number> {
   const deja = echecs()
   const cibles = magasins.filter((m) => m.positionApprochee && (m.ville || m.codePostal || m.adresse) && !deja.has(m.nom))
   let corriges = 0
@@ -95,5 +98,29 @@ export async function corrigerPositions(magasins: Magasin[]): Promise<number> {
     else deja.add(m.nom)
   }
   try { sessionStorage.setItem(ECHECS, JSON.stringify([...deja])) } catch { /* stockage indisponible */ }
+  return corriges
+}
+
+// Domicile des Coachs : l'ancienne app le cherchait avec le seul nom de la ville (sans code postal),
+// d'où des homonymes à l'autre bout de la France. On le recale sur la commune de la fiche (code postal, ville).
+export async function corrigerDomicilesCoachs(reseau: Reseau): Promise<number> {
+  let corriges = 0
+  for (const c of reseau.equipe) {
+    if (c.fictif) continue
+    const f = reseau.personnes[cleFiche({ type: 'coach', cle: c.nom })] ?? {}
+    const texte = (v: unknown) => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '').trim()
+    const ville = texte(f.ville) || c.ville, cp = texte(f.codePostal)
+    if ((!ville && !cp) || !estFrance(texte(f.pays))) continue
+    const p = await centreCommune(cp, ville, undefined, texte(f.departement))
+    // Domicile déjà dans sa commune (ou commune introuvable) : on n'y touche pas
+    if (!p || (distanceKm(c, p) ?? Infinity) < 10) continue
+    const ligne = { lat: p.lat, lon: p.lon, ville }
+    const ex = await supabase.from('cs_overrides').select('cs_name').eq('cs_name', c.nom)
+    if (ex.error) continue
+    const r = ex.data?.length
+      ? await supabase.from('cs_overrides').update(ligne).eq('cs_name', c.nom)
+      : await supabase.from('cs_overrides').insert({ cs_name: c.nom, ...ligne })
+    if (!r.error) corriges++
+  }
   return corriges
 }

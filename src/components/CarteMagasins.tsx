@@ -63,9 +63,9 @@ const iconePicto = (type: TypePicto, couleur: string) => {
 
 // Fiche lue sans se fier au format enregistré (anciennes saisies, imports)
 const texte = (v: unknown) => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '')
-const fiche = (f: Partial<FichePersonnelle> | undefined) => ({ ville: texte(f?.ville), codePostal: texte(f?.codePostal), pays: texte(f?.pays) })
+const fiche = (f: Partial<FichePersonnelle> | undefined) => ({ ville: texte(f?.ville), codePostal: texte(f?.codePostal), departement: texte(f?.departement), pays: texte(f?.pays) })
 
-interface PersonneCarte { cle: string; type: TypePicto; nom: string; role: string; couleur: string; ville: string; codePostal: string; domicile: Point | null; lien: string; magasins: number }
+interface PersonneCarte { cle: string; type: TypePicto; nom: string; role: string; couleur: string; ville: string; codePostal: string; departement: string; domicile: Point | null; lien: string; magasins: number }
 
 // Carte : un point par magasin ; zones des Coachs et des Responsables Régionaux, affichables séparément
 // restreindre : seuls les Coachs et RR des magasins affichés (liste filtrée)
@@ -109,26 +109,26 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
       const ville = f.ville || texte(c.ville)
       // Position connue de l'ancienne app, tant que la ville n'a pas changé
       const domicile = c.lat !== null && c.lon !== null && (!f.ville || !c.ville || normaliserVille(f.ville) === normaliserVille(texte(c.ville))) ? { lat: c.lat, lon: c.lon } : null
-      res.push({ cle: `coach:${c.nom}`, type: 'coach', nom: c.nom, role: 'Coach', couleur: c.couleur, ville, codePostal: f.codePostal, domicile, lien: lienCoach(c.nom), magasins: n })
+      res.push({ cle: `coach:${c.nom}`, type: 'coach', nom: c.nom, role: 'Coach', couleur: c.couleur, ville, codePostal: f.codePostal, departement: f.departement, domicile, lien: lienCoach(c.nom), magasins: n })
     }
     for (const r of rrs) {
       const n = magasins.filter((m) => vue.rrDe(m)?.id === r.id).length
       if (restreindre && !n) continue
       const f = fiche(personnes[cleFiche({ type: 'rr', cle: r.id })])
       if (f.pays && !estFrance(f.pays)) continue
-      res.push({ cle: `rr:${r.id}`, type: 'rr', nom: r.nom, role: r.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional', couleur: r.couleur, ville: f.ville, codePostal: f.codePostal, domicile: null, lien: lienRR(r.id), magasins: n })
+      res.push({ cle: `rr:${r.id}`, type: 'rr', nom: r.nom, role: r.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional', couleur: r.couleur, ville: f.ville, codePostal: f.codePostal, departement: f.departement, domicile: null, lien: lienRR(r.id), magasins: n })
     }
     return res
   }, [equipe, rrs, personnes, magasins, vue, restreindre])
   const [centres, setCentres] = useState<Record<string, Point | null>>({})
   // Communes à situer, une seule demande par commune
   const communes = useMemo(() => new Map(listePersonnes.filter((p) => !p.domicile && (p.ville || p.codePostal))
-    .map((p) => [cleCommune(p.codePostal, p.ville), { codePostal: p.codePostal, ville: p.ville }])), [listePersonnes])
+    .map((p) => [cleCommune(p.codePostal, p.ville), { codePostal: p.codePostal, ville: p.ville, departement: p.departement }])), [listePersonnes])
   const cleCommunes = [...communes.keys()].sort().join(';')
   useEffect(() => {
     const ctrl = new AbortController()
     communes.forEach((c, cle) => {
-      centreCommune(c.codePostal, c.ville, ctrl.signal).then((pt) => { if (pt !== undefined && !ctrl.signal.aborted) setCentres((x) => ({ ...x, [cle]: pt })) })
+      centreCommune(c.codePostal, c.ville, ctrl.signal, c.departement).then((pt) => { if (pt !== undefined && !ctrl.signal.aborted) setCentres((x) => ({ ...x, [cle]: pt })) })
     })
     return () => ctrl.abort()
   }, [cleCommunes]) // eslint-disable-line react-hooks/exhaustive-deps
