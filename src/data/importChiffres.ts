@@ -1,21 +1,25 @@
 import type { Reseau } from './modele'
-import { champsChiffres, lireNombre, type ChampChiffre, type ChiffreMois } from './chiffres'
+import { lireNombre, type ChampChiffre, type ChiffreMois } from './chiffres'
 import { lireDate, normaliser, trouveurMagasin } from './import'
 
 // Import de l'export BI mensuel : une ligne par magasin et par mois, une colonne par chiffre
-const mots: Record<ChampChiffre, string[][]> = {
+// Les CA, flux cumulé et panier moyen global se calculent : seuls les chiffres de base s'importent
+const mots: Partial<Record<ChampChiffre, string[][]>> = {
+  caExt: [['exterieur'], ['ext'], ['marche']],
+  pmCave: [['pm', 'cave'], ['panier', 'cave']],
+  fluxCave: [['flux', 'cave'], ['tickets', 'cave'], ['ticket', 'cave'], ['frequentation', 'cave'], ['clients', 'cave']],
+  pmBar: [['pm', 'bar'], ['panier', 'bar']],
+  fluxBar: [['flux', 'bar'], ['tickets', 'bar'], ['ticket', 'bar'], ['frequentation', 'bar'], ['clients', 'bar']],
+  marge: [['marge']],
   caCave: [['ca', 'cave'], ['chiffre', 'cave'], ['ventes', 'cave'], ['vente', 'cave']],
   caBar: [['ca', 'bar'], ['chiffre', 'bar'], ['ventes', 'bar'], ['vente', 'bar']],
-  tickets: [['tickets'], ['ticket'], ['frequentation'], ['freq'], ['clients']],
-  panier: [['panier']],
-  ebitda: [['ebitda'], ['caf']],
 }
 
 function champDe(entete: string): ChampChiffre | null {
   const n = normaliser(entete)
   if (/(^| )n ?1( |$)/.test(n) || n.includes('objectif')) return null // colonnes N-1 ou objectifs : l'app calcule elle-même les comparaisons
   const m = n.split(' ')
-  for (const c of champsChiffres) if (mots[c.id].some((g) => g.every((x) => m.includes(x)))) return c.id
+  for (const [id, groupes] of Object.entries(mots) as [ChampChiffre, string[][]][]) if (groupes.some((g) => g.every((x) => m.includes(x)))) return id
   return null
 }
 

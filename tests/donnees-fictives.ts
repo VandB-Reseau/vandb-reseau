@@ -81,7 +81,11 @@ export const fichesFictives = {
 // Chiffres mensuels fictifs (table store_finance), d'octobre 2024 à septembre 2026
 // Lyon décroche en septembre 2026 (-30 % sur le mois), Nantes recule de 3 % (à surveiller), Annecy est stable
 const moisFictifs = Array.from({ length: 24 }, (_x, i) => { const t = 2024 * 12 + 9 + i; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}` })
-const ligneCA = (store: string, mois: string, ca: number) => ({ store_name: store, month: `${mois}-01`, ca_cave: Math.round(ca * 0.7), ca_bar: Math.round(ca * 0.3), freq: Math.round(ca / 25), panier: 25, ebitda: Math.round(ca * 0.08), updated_at: '2026-10-05T08:00:00Z' })
+// Panier moyen HT 40 € en cave et 12 € au bar ; 70 % du CA en cave
+const ligneCA = (store: string, mois: string, ca: number) => {
+  const fluxCave = (ca * 0.7) / 40, fluxBar = (ca * 0.3) / 12
+  return { store_name: store, month: `${mois}-01`, ca_ext: 0, pm_cave: 40, flux_cave: fluxCave, pm_bar: 12, flux_bar: fluxBar, ca_cave: Math.round(ca * 0.7), ca_bar: Math.round(ca * 0.3), freq: fluxCave + fluxBar, panier: Math.round((ca / (fluxCave + fluxBar)) * 100) / 100, marge: 42, updated_at: '2026-10-05T08:00:00Z' }
+}
 export const chiffresFictifs = [
   ...moisFictifs.map((m) => ligneCA('Lyon Test', m, m === '2026-09' ? 70000 : 100000)),
   ...moisFictifs.map((m) => ligneCA('Nantes Test', m, m >= '2026-07' ? 97000 : 100000)),

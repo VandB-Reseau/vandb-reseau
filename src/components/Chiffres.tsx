@@ -10,7 +10,7 @@ import CheckCircleOutline from '@mui/icons-material/CheckCircleOutlineOutlined'
 import { Fenetre } from './EditionEquipe'
 import { enregistrerChiffres } from '../data/chargement'
 import {
-  caDe, champsChiffres, chiffresDuMagasin, couleurAlerte, decalerMois, formatEuros, libelleAlerte, libelleMois, libelleMoisCourt, lireNombre, moisPrecedent,
+  caDe, champsSaisis, chiffresDuMagasin, completerChiffres, formatValeur, libellesChiffres, couleurAlerte, decalerMois, formatEuros, libelleAlerte, libelleMois, libelleMoisCourt, lireNombre, moisPrecedent,
   type ChampChiffre, type ChiffreMois, type StatutAlerte, type SuiviAlerte,
 } from '../data/chiffres'
 import { dateCourte } from '../lib/format'
@@ -34,8 +34,8 @@ export function PastilleAppel({ s }: { s: SuiviAlerte | null }) {
 }
 
 // ── Saisie des chiffres d'un mois ──
-type Valeurs = Record<ChampChiffre, string>
-const versTexte = (c: ChiffreMois | undefined): Valeurs => Object.fromEntries(champsChiffres.map((k) => [k.id, c?.[k.id] === null || c?.[k.id] === undefined ? '' : String(c[k.id]).replace('.', ',')])) as Valeurs
+type Valeurs = Partial<Record<ChampChiffre, string>>
+const versTexte = (c: ChiffreMois | undefined): Valeurs => Object.fromEntries(champsSaisis.map((k) => [k, c?.[k] === null || c?.[k] === undefined ? '' : String(c[k]).replace('.', ',')]))
 
 export function useSaisieChiffres(reseau: Reseau, magasin: string, moisInitial: string) {
   const [mois, setMoisBrut] = useState(moisInitial)
@@ -45,10 +45,11 @@ export function useSaisieChiffres(reseau: Reseau, magasin: string, moisInitial: 
   // Changer de mois ou de magasin recharge les chiffres déjà connus
   if (pour !== magasin) { setPour(magasin); setValeurs(versTexte(lu(mois))) }
   const setMois = (m: string) => { setMoisBrut(m); if (/^\d{4}-\d{2}$/.test(m)) setValeurs(versTexte(lu(m))) }
-  const invalides = champsChiffres.filter((k) => valeurs[k.id].trim() && lireNombre(valeurs[k.id]) === null).map((k) => k.id)
+  const invalides = champsSaisis.filter((k) => valeurs[k]?.trim() && lireNombre(valeurs[k]) === null)
   const avant = versTexte(lu(mois))
-  const modifie = /^\d{4}-\d{2}$/.test(mois) && champsChiffres.some((k) => lireNombre(valeurs[k.id]) !== lireNombre(avant[k.id]))
-  const ligne = (): ChiffreMois => ({ magasin, mois, ...Object.fromEntries(champsChiffres.map((k) => [k.id, lireNombre(valeurs[k.id])])) } as ChiffreMois)
+  const modifie = /^\d{4}-\d{2}$/.test(mois) && champsSaisis.some((k) => lireNombre(valeurs[k]) !== lireNombre(avant[k]))
+  // Les chiffres saisis, complétés des CA, flux cumulé et panier moyen calculés
+  const ligne = () => completerChiffres({ magasin, mois, ...Object.fromEntries(champsSaisis.map((k) => [k, lireNombre(valeurs[k])])) }, lu(mois))
   return { mois, setMois, valeurs, setValeurs, invalides, modifie, ligne, valide: invalides.length === 0 }
 }
 export type SaisieChiffres = ReturnType<typeof useSaisieChiffres>
@@ -60,19 +61,45 @@ export function ChampsChiffres({ s, reseau, titre }: { s: SaisieChiffres; reseau
   return (
     <Box component="fieldset" sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}>
       {titre && <Typography component="legend" variant="subtitle2" sx={{ mb: 1.5 }}>{titre}</Typography>}
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3, 1fr)' } }}>
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: '1fr 1fr' }}>
         <TextField select label="Mois" value={s.mois} onChange={(e) => s.setMois(e.target.value)} sx={{ gridColumn: { xs: 'span 2', sm: 'auto' } }}>
           {options.map((m) => <MenuItem key={m} value={m}>{libelleMois(m)}</MenuItem>)}
         </TextField>
-        {champsChiffres.map((k) => (
-          <TextField
-            key={k.id} label={k.unite ? `${k.libelle} (${k.unite})` : k.libelle} value={s.valeurs[k.id]} inputMode="decimal"
-            onChange={(e) => s.setValeurs((v) => ({ ...v, [k.id]: e.target.value }))}
-            error={s.invalides.includes(k.id)} helperText={s.invalides.includes(k.id) ? 'Nombre attendu' : undefined}
-            slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-          />
-        ))}
+        {champsSaisis.map((k) => {
+          const { libelle, unite } = libellesChiffres[k]
+          return (
+            <TextField
+              key={k} label={unite ? `${libelle} (${unite})` : libelle} value={s.valeurs[k] ?? ''} inputMode="decimal"
+              sx={k === 'caExt' ? { gridColumn: { xs: 'span 2', sm: 'auto' } } : undefined}
+              onChange={(e) => s.setValeurs((v) => ({ ...v, [k]: e.target.value }))}
+              error={s.invalides.includes(k)} helperText={s.invalides.includes(k) ? 'Nombre attendu' : undefined}
+              slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+            />
+          )
+        })}
       </Box>
+      <Calcules s={s} />
+    </Box>
+  )
+}
+
+// CA cave, CA bar, CA cumulé et flux cumulé, calculés à partir de la saisie
+function Calcules({ s }: { s: SaisieChiffres }) {
+  if (s.invalides.length) return null
+  const l = s.ligne()
+  const ca = caDe({ caExt: null, caCave: null, caBar: null, ...l } as ChiffreMois)
+  const lignes: [string, string][] = [
+    ['CA cave', formatValeur('caCave', l.caCave ?? null)], ['CA bar', formatValeur('caBar', l.caBar ?? null)],
+    ['CA cumulé', formatEuros(ca)], ['Flux cumulé', formatValeur('tickets', l.tickets ?? null)],
+  ]
+  return (
+    <Box aria-label="Chiffres calculés" role="group" sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' }, mt: 2, p: 1.5, borderRadius: 2, bgcolor: 'action.hover' }}>
+      {lignes.map(([t, v]) => (
+        <Box key={t}>
+          <Typography variant="body2" color="text.secondary">{t}</Typography>
+          <Typography variant="body1" sx={{ fontWeight: 600 }}>{v}</Typography>
+        </Box>
+      ))}
     </Box>
   )
 }
