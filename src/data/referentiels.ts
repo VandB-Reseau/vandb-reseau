@@ -1,6 +1,6 @@
 // Référentiels exportés en Excel pré-rempli puis réimportés pour mise à jour.
-// Règles communes : une cellule vide ne change rien, une ligne absente du fichier est ignorée (jamais supprimée),
-// une ligne inconnue est ajoutée quand le référentiel le permet.
+// Règles communes : une cellule vide ne change rien, une ligne inconnue est ajoutée quand le référentiel le permet,
+// une ligne absente du fichier est supprimée quand le référentiel le permet (magasins, personnes, chiffres, visites).
 import type { Reseau } from './modele'
 import { libelleTypeVisite, lireVisiteurs, typesVisite } from './modele'
 import { coachA } from './charge'
@@ -11,7 +11,8 @@ import { libelleNote, tousCriteres, type IdCritere, type Note } from './sante'
 import { departementDepuisCP, fichePersonne, ficheVide, franchises, separerNom, type FichePersonnelle, type RefPersonne } from './personnes'
 import {
   enregistrerChiffres, enregistrerCoach, enregistrerDeploiements, enregistrerFichePersonne, enregistrerFranchise, enregistrerMagasin,
-  enregistrerRR, enregistrerVisites, importerHistorique, importerVisites, rattacherCoach, reaffecter, type FicheMagasin,
+  enregistrerRR, enregistrerVisites, importerHistorique, importerVisites, rattacherCoach, reaffecter, supprimerChiffres, supprimerCoach,
+  supprimerFranchise, supprimerMagasin, supprimerRR, supprimerVisite, type FicheMagasin,
 } from './chargement'
 
 export type TypeColonne = 'texte' | 'date' | 'mois' | 'nombre' | 'ouiNon' | 'choix' | 'liste'
@@ -32,12 +33,12 @@ export interface Colonne {
 export type Ligne = Record<string, string>
 
 export interface Changement {
-  type: 'ajout' | 'modif'
+  type: 'ajout' | 'modif' | 'suppression'
   cle: string
   libelle: string // clé lisible, pour l'aperçu
   avant: Ligne | null
   apres: Ligne
-  champs: string[] // colonnes modifiées (toutes les colonnes remplies pour un ajout)
+  champs: string[] // colonnes modifiées (toutes les colonnes remplies pour un ajout, aucune pour une suppression)
 }
 
 export interface Referentiel {
@@ -48,6 +49,16 @@ export interface Referentiel {
   lignes: (r: Reseau) => Ligne[]
   ajout?: { obligatoires: string[] } // sans : une ligne inconnue est signalée, pas ajoutée
   appliquer: (r: Reseau, changements: Changement[]) => Promise<void>
+  // Sans : une ligne absente du fichier ne change rien (référentiels d'une ligne par magasin ou par Coach)
+  supprimer?: (r: Reseau, suppressions: Changement[]) => Promise<void>
+}
+
+// Suppressions d'abord : un Franchisé remplacé libère ses magasins avant que le nouveau les reprenne
+export async function appliquerImport(ref: Referentiel, r: Reseau, changements: Changement[]) {
+  const suppressions = changements.filter((c) => c.type === 'suppression')
+  if (suppressions.length) await ref.supprimer!(r, suppressions)
+  const autres = changements.filter((c) => c.type !== 'suppression')
+  if (autres.length) await ref.appliquer(r, autres)
 }
 
 // ── Valeurs ──
@@ -155,10 +166,13 @@ export function analyserReferentiel(ref: Referentiel, feuille: { nom: string; li
   const existantes = new Map(ref.lignes(reseau).map((l) => [cleDe(l), l]))
   const vues = new Map<string, Changement>()
   const changements: Changement[] = [], erreurs: Analyse['erreurs'] = []
+  const citees = new Set<string>() // lignes de l'app présentes dans le fichier, même illisibles : jamais supprimées
+  let lues = 0
   let inchangees = 0
   feuille.lignes.slice(iEntete + 1).forEach((brute, k) => {
     const numero = iEntete + k + 2 // numéro de ligne dans Excel
     if (!brute.some((x) => normaliser(x))) return
+    lues++
     const lue: Ligne = {}
     const problemes: string[] = []
     for (const c of colonnes) {
@@ -178,9 +192,10 @@ export function analyserReferentiel(ref: Referentiel, feuille: { nom: string; li
         else lue[c.id] = v
       } else lue[c.id] = v
     }
-    if (problemes.length) { erreurs.push({ ligne: numero, message: problemes.join(' ; ') }); return }
     const sansCle = cles.some((c) => !lue[c.id])
     const cle = sansCle ? `nouvelle-${numero}` : cleDe(lue)
+    if (!sansCle) citees.add(cle)
+    if (problemes.length) { erreurs.push({ ligne: numero, message: problemes.join(' ; ') }); return }
     const avant = sansCle ? null : existantes.get(cle) ?? null
     const parametres = Object.fromEntries(ref.colonnes.filter((c) => c.parametre).map((c) => [c.id, lue[c.id] || (c.type === 'mois' ? jour.slice(0, 7) : jour)]))
     if (avant) {
@@ -201,6 +216,14 @@ export function analyserReferentiel(ref: Referentiel, feuille: { nom: string; li
     if (vues.has(cle)) changements.splice(changements.indexOf(vues.get(cle)!), 1)
     vues.set(cle, ch); changements.push(ch)
   })
+  // Fichier sans aucune ligne : rien n'est supprimé
+  // Sans colonne N° (visites) : impossible de savoir quelles lignes manquent, rien n'est supprimé
+  if (ref.supprimer && lues && cles.every((c) => index.has(c.id))) {
+    for (const [cle, l] of existantes) {
+      if (citees.has(cle)) continue
+      changements.push({ type: 'suppression', cle, libelle: ref.id === 'visites' ? `Visite n° ${cle} · ${l.magasin} · ${afficher({ id: 'date', entete: '', type: 'date' }, l.date ?? '')}` : libelleDe(l), avant: l, apres: l, champs: [] })
+    }
+  }
   return { feuille: feuille.nom, colonnes, ignorees, manquantes: [], changements, inchangees, erreurs }
 }
 
@@ -303,6 +326,7 @@ const magasins: Referentiel = {
       await enregistrerMagasin(f, m ? m.nom : null)
     }
   },
+  async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerMagasin(ch.cle) },
 }
 
 const franchisesRef: Referentiel = {
@@ -321,6 +345,7 @@ const franchisesRef: Referentiel = {
       await enregistrerFranchise(nom, ch.avant ? nom : null, elementsListe(ch.apres.magasins), anciens, ficheDepuis(r, ch.avant ? { type: 'franchise', cle: nom } : null, nom, ch.apres))
     }
   },
+  async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerFranchise(ch.cle, elementsListe(ch.avant!.magasins)) },
 }
 
 const coachs: Referentiel = {
@@ -340,6 +365,7 @@ const coachs: Referentiel = {
       await enregistrerFichePersonne({ type: 'coach', cle: nom }, f)
     }
   },
+  async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerCoach(ch.cle) },
 }
 
 const COULEURS_RR = ['#1b6fce', '#ef7d00', '#2e7d32', '#7c3aed', '#c2185b', '#00838f', '#6d4c41', '#eaa400']
@@ -363,6 +389,7 @@ const rrs: Referentiel = {
       await enregistrerFichePersonne({ type: 'rr', cle: id }, f)
     }
   },
+  async supprimer(r, suppressions) { for (const ch of suppressions) await supprimerRR(r.rrs.find((x) => x.nom === ch.cle)!.id) },
 }
 
 const affectations: Referentiel = {
@@ -394,6 +421,7 @@ const chiffres: Referentiel = {
       return completerChiffres(l, r.chiffres[l.magasin]?.find((c) => c.mois === l.mois))
     }))
   },
+  async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerChiffres(ch.avant!.magasin, ch.avant!.mois) },
 }
 
 const NOTES = [libelleNote[1], libelleNote[2], libelleNote[3], libelleNote[0]]
@@ -446,6 +474,7 @@ const visites: Referentiel = {
     }
     if (nouvelles.length) await importerVisites(nouvelles.map((ch) => ({ magasin: ch.apres.magasin, date: ch.apres.date, visiteurs: lireVisiteurs(ch.apres.visiteurs ?? ''), notes: ch.apres.notes ?? '', type: typeDe(ch.apres.type ?? '') })), [], r.jour)
   },
+  async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerVisite(Number(ch.cle)) },
 }
 
 export function referentiels(reseau: Reseau | null): Referentiel[] {

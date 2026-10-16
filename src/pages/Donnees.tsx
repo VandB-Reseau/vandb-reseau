@@ -17,7 +17,7 @@ import { useReseau } from '../data/ReseauContext'
 import { lireSauvegarde, noterSauvegarde } from '../data/chargement'
 import type { Reseau } from '../data/modele'
 import {
-  afficher, analyserReferentiel, choisirFeuille, feuilleExport, lireClasseur, referentiels, telechargerBlob, telechargerClasseur,
+  afficher, analyserReferentiel, appliquerImport, choisirFeuille, feuilleExport, lireClasseur, referentiels, telechargerBlob, telechargerClasseur,
   type Analyse, type Referentiel,
 } from '../data/referentiels'
 import { dateCourte } from '../lib/format'
@@ -94,10 +94,12 @@ const MAX_APERCU = 60
 function Apercu({ ref_, a }: { ref_: Referentiel; a: Analyse }) {
   const col = (id: string) => ref_.colonnes.find((c) => c.id === id)!
   const ajouts = a.changements.filter((c) => c.type === 'ajout').length
-  const modifs = a.changements.length - ajouts
+  const suppressions = a.changements.filter((c) => c.type === 'suppression').length
+  const modifs = a.changements.length - ajouts - suppressions
   const resume = [
     ajouts && `${ajouts} ajout${ajouts > 1 ? 's' : ''}`,
     modifs && `${modifs} ligne${modifs > 1 ? 's' : ''} modifiée${modifs > 1 ? 's' : ''}`,
+    suppressions && `${suppressions} suppression${suppressions > 1 ? 's' : ''}`,
     a.inchangees && `${a.inchangees} inchangée${a.inchangees > 1 ? 's' : ''}`,
   ].filter(Boolean).join(' · ')
   return (
@@ -105,6 +107,11 @@ function Apercu({ ref_, a }: { ref_: Referentiel; a: Analyse }) {
       <Alert severity={a.changements.length ? 'success' : 'info'}>
         {a.changements.length ? resume : `Aucun changement par rapport aux données de l’app${a.inchangees ? ` (${a.inchangees} ligne${a.inchangees > 1 ? 's' : ''} identique${a.inchangees > 1 ? 's' : ''})` : ''}.`}
       </Alert>
+      {suppressions > 0 && (
+        <Alert severity="error">
+          {suppressions} ligne{suppressions > 1 ? 's' : ''} absente{suppressions > 1 ? 's' : ''} du fichier {suppressions > 1 ? 'seront supprimées' : 'sera supprimée'} de l’app.
+        </Alert>
+      )}
       {a.erreurs.length > 0 && (
         <Alert severity="warning">
           {a.erreurs.length} ligne{a.erreurs.length > 1 ? 's' : ''} laissée{a.erreurs.length > 1 ? 's' : ''} de côté :
@@ -117,11 +124,11 @@ function Apercu({ ref_, a }: { ref_: Referentiel; a: Analyse }) {
       {a.ignorees.length > 0 && <Typography variant="body2" color="text.secondary">Colonnes ignorées : {a.ignorees.join(', ')}</Typography>}
       {a.changements.length > 0 && (
         <Box component="ul" aria-label="Changements" sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {a.changements.slice(0, MAX_APERCU).map((ch) => (
+          {[...a.changements].sort((x, y) => Number(y.type === 'suppression') - Number(x.type === 'suppression')).slice(0, MAX_APERCU).map((ch) => (
             <Box component="li" key={ch.cle} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', mb: 0.5 }}>
                 <Typography variant="body1" sx={{ fontWeight: 600 }}>{ch.libelle}</Typography>
-                <Chip size="small" label={ch.type === 'ajout' ? 'Ajout' : 'Modification'} color={ch.type === 'ajout' ? 'secondary' : 'primary'} variant="outlined" sx={{ fontSize: 13 }} />
+                <Chip size="small" label={{ ajout: 'Ajout', modif: 'Modification', suppression: 'Suppression' }[ch.type]} color={({ ajout: 'secondary', modif: 'primary', suppression: 'error' } as const)[ch.type]} variant="outlined" sx={{ fontSize: 13 }} />
               </Box>
               {ch.champs.map((id) => (
                 <Typography key={id} variant="body2" sx={{ overflowWrap: 'anywhere' }}>
@@ -157,7 +164,7 @@ function DialogImport({ reseau, r, onFermer }: { reseau: Reseau; r: Referentiel;
   const n = analyse?.changements.length ?? 0
   return (
     <Fenetre large titre={`Importer : ${r.libelle}`} ouvert onFermer={onFermer} valide={n > 0}
-      enregistrer={async () => { await r.appliquer(reseau, analyse!.changements); return `${n} ligne${n > 1 ? 's' : ''} mise${n > 1 ? 's' : ''} à jour` }}>
+      enregistrer={async () => { await appliquerImport(r, reseau, analyse!.changements); return `${n} ligne${n > 1 ? 's' : ''} mise${n > 1 ? 's' : ''} à jour` }}>
       <Button variant="outlined" component="label" startIcon={<UploadFileOutlined />} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
         {nom || 'Choisir un fichier'}
         <input type="file" hidden accept=".xlsx,.csv,.txt" aria-label={`Fichier ${r.libelle} à importer`} onChange={(e) => choisir(e.target.files?.[0])} />
