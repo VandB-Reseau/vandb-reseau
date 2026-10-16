@@ -123,7 +123,8 @@ export interface Analyse {
   erreurs: { ligne: number; message: string }[]
 }
 
-const mots = (s: string) => normaliser(s).replace(/ d /g, ' ').trim()
+// « Magasin (clé) » et « Magasin » désignent la même colonne
+const mots = (s: string) => normaliser(s).replace(/ d /g, ' ').replace(/ cle$/, '').trim()
 
 function ligneEntete(lignes: unknown[][], ref: Referentiel): number {
   let meilleure = -1, max = 0
@@ -237,7 +238,9 @@ export async function lireClasseur(f: File): Promise<{ nom: string; lignes: unkn
   return (await lire(f)).map((s) => ({ nom: s.sheet, lignes: s.data as unknown[][] }))
 }
 
-const entete = (c: Colonne) => ({ value: c.entete, fontWeight: 'bold' as const, type: String })
+// Colonnes clés : repérées par « (clé) » et un fond doré, elles identifient la ligne à mettre à jour
+export const enteteExport = (c: Colonne) => (c.cle ? `${c.entete} (clé)` : c.entete)
+const entete = (c: Colonne) => ({ value: enteteExport(c), fontWeight: 'bold' as const, type: String, ...(c.cle ? { backgroundColor: '#eaa400', textColor: '#1b1b1f' } : {}) })
 
 export function feuilleExport(ref: Referentiel, reseau: Reseau) {
   const lignes = ref.lignes(reseau)

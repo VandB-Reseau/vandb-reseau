@@ -36,7 +36,7 @@ test('exporter les magasins puis réimporter le fichier modifié', async ({ page
   const [feuille] = await lireExcel(readFileSync(chemin))
   expect(feuille.sheet).toBe('Magasins')
   const [entetes, ...lignes] = feuille.data as unknown[][]
-  expect(entetes).toEqual(['Magasin', 'Code', 'Statut', 'Date d’ouverture', 'Adresse', 'Code postal', 'Ville', 'Département', 'Pays', 'Téléphone', 'Email'])
+  expect(entetes).toEqual(['Magasin (clé)', 'Code', 'Statut', 'Date d’ouverture', 'Adresse', 'Code postal', 'Ville', 'Département', 'Pays', 'Téléphone', 'Email'])
   expect(lignes).toHaveLength(30)
   const lyon = lignes.find((l) => l[0] === 'Lyon Test')!
   expect(lyon.slice(1, 3)).toEqual(['T100', 'Intégré'])
@@ -98,7 +98,8 @@ test('chiffres, Coach des magasins et Responsable Régional des Coachs depuis un
   const [feuille] = await lireExcel(readFileSync(chemin))
   const [entetes, ...lignes] = feuille.data as unknown[][]
   const iCA = entetes.indexOf('CA marché extérieur (€)')
-  const iMois = entetes.indexOf('Mois')
+  expect(entetes.slice(0, 2)).toEqual(['Magasin (clé)', 'Mois (clé)'])
+  const iMois = entetes.indexOf('Mois (clé)')
   const lyon = lignes.find((l) => l[0] === 'Lyon Test' && l[iMois] === '09/2026')!
   lyon[iCA] = '1 234,5'
   const texte = [entetes, ...lignes, ['Cave Inconnue', '09/2026']].map((l) => l.map((v) => (v === null || v === undefined ? '' : String(v))).join(';')).join('\n')
