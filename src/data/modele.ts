@@ -106,6 +106,8 @@ export interface Reseau {
   audits: import('./chiffres').Audits
   grilles: import('./grilles').Grilles
   pratiques: import('./bonnesPratiques').BonnePratique[]
+  campagnes: import('./campagnes').Campagnes
+  derniereSauvegarde: string // date de la dernière sauvegarde complète téléchargée
   seuils: import('./chiffres').SeuilsAlerte
   rrs: ResponsableRegional[]
   parametres: ParametresReseau

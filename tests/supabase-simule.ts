@@ -73,7 +73,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
     const table = url.pathname.replace('/rest/v1/', '')
     if (req.method() !== 'GET' && req.method() !== 'HEAD') {
       options.ecritures?.push({ methode: req.method(), table, corps: req.postDataJSON(), filtre: url.search })
-      const cle = url.searchParams.get('key')?.replace(/^eq\./, '')
+      const cle = url.searchParams.get('key')?.replace(/^eq\./, '') ?? (table === 'app_config' && req.method() === 'POST' ? (req.postDataJSON() as { key?: string }).key : undefined)
       if (options.persister && table === 'app_config' && cle) configEcrite.set(cle, (req.postDataJSON() as { value: string }).value)
       return route.fulfill({ status: 201, json: [] })
     }

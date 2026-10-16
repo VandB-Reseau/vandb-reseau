@@ -12,6 +12,7 @@ import TimelineOutlined from '@mui/icons-material/TimelineOutlined'
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import BadgeOutlined from '@mui/icons-material/BadgeOutlined'
 import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
+import ImportExportOutlined from '@mui/icons-material/ImportExportOutlined'
 import DashboardOutlined from '@mui/icons-material/DashboardOutlined'
 import Dashboard from '@mui/icons-material/Dashboard'
 
@@ -43,6 +44,7 @@ export const parametres: Destination[] = [
   { chemin: '/parametres/evolution', libelle: 'Évolution du parc', description: 'Ouvertures par année', icone: <TimelineOutlined />, sprint: 'Sprint 4' },
   { chemin: '/parametres/collaborateurs', libelle: 'Collaborateurs', description: 'Coachs, Responsables Régionaux, Directeur de réseau', icone: <BadgeOutlined />, sprint: 'Sprint 4' },
   { chemin: '/parametres/franchises', libelle: 'Franchisés', description: 'Franchisés et leurs magasins', icone: <HandshakeOutlined />, sprint: 'Sprint 4' },
+  { chemin: '/parametres/donnees', libelle: 'Import et export', description: 'Référentiels en Excel et sauvegarde complète', icone: <ImportExportOutlined />, sprint: 'Sprint 8' },
   { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Règle de charge des Coachs', icone: <SettingsOutlined />, sprint: 'Sprint 5' },
 ]
 
