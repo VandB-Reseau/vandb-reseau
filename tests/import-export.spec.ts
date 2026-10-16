@@ -36,7 +36,7 @@ test('exporter les magasins puis réimporter le fichier modifié', async ({ page
   const [feuille] = await lireExcel(readFileSync(chemin))
   expect(feuille.sheet).toBe('Magasins')
   const [entetes, ...lignes] = feuille.data as unknown[][]
-  expect(entetes).toEqual(['Magasin', 'Code', 'Statut', 'Date d’ouverture', 'Adresse', 'Code postal', 'Ville', 'Département', 'Pays', 'Téléphone', 'Email'])
+  expect(entetes).toEqual(['Magasin (clé)', 'Code', 'Statut', 'Date d’ouverture', 'Adresse', 'Code postal', 'Ville', 'Département', 'Pays', 'Téléphone', 'Email'])
   expect(lignes).toHaveLength(30)
   const lyon = lignes.find((l) => l[0] === 'Lyon Test')!
   expect(lyon.slice(1, 3)).toEqual(['T100', 'Intégré'])
@@ -48,22 +48,25 @@ test('exporter les magasins puis réimporter le fichier modifié', async ({ page
   await expect(d.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
   await d.getByRole('button', { name: 'Annuler' }).click()
 
-  // Un téléphone modifié, une cellule vidée (sans effet), un magasin ajouté, une ligne illisible
+  // Un téléphone modifié, une cellule vidée (sans effet), un magasin retiré, un magasin ajouté, une ligne illisible
   lyon[9] = '04 99 99 99 99'
+  const retire = lignes.splice(lignes.findIndex((l) => l[0] !== 'Lyon Test' && l[0] !== 'Nantes Test'), 1)[0][0] as string
   lignes.find((l) => l[0] === 'Nantes Test')![10] = null
   lignes.push(['Vierzon Test', 'T900', 'Franchisé', null, '1 place du Test', '18100', 'Vierzon', null, null, null, null])
   lignes.push(['Gap Test', null, 'Coopérative', null, null, null, null, null, null, null, null])
   const modifie = info.outputPath('magasins-modifies.xlsx')
   writeFileSync(modifie, Buffer.from(await (await ecrireExcel([entetes, ...lignes].map((l) => l.map((v) => (v === undefined ? null : v))) as never, { dateFormat: 'dd/mm/yyyy' } as never).toBuffer())))
   d = await importer(page, 'Magasins', modifie)
-  await expect(d.getByText('1 ajout · 1 ligne modifiée · 29 inchangées')).toBeVisible()
-  await expect(d.getByText('Ligne 33 : « Coopérative » non reconnu dans Statut')).toBeVisible()
+  await expect(d.getByText('1 ajout · 1 ligne modifiée · 1 suppression · 28 inchangées')).toBeVisible()
+  await expect(d.getByText('1 ligne absente du fichier sera supprimée de l’app.')).toBeVisible()
+  await expect(d.getByRole('list', { name: 'Changements' }).getByRole('listitem').first()).toContainText(`${retire}Suppression`)
+  await expect(d.getByText('Ligne 32 : « Coopérative » non reconnu dans Statut')).toBeVisible()
   await expect(d.getByText('04 99 99 99 99')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-import-apercu.png` })
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
-  await expect(page.getByText('2 lignes mises à jour')).toBeVisible()
+  await expect(page.getByText('3 lignes mises à jour')).toBeVisible()
 
   const surcharges = ecritures.filter((e) => e.table === 'store_overrides' && e.methode !== 'DELETE')
   const surMagasin = (n: string) => surcharges.filter((e) => (e.corps as { store_name?: string }).store_name === n || e.filtre.includes(encodeURIComponent(n).replace(/%20/g, '+')) || e.filtre.includes(n))
@@ -72,6 +75,10 @@ test('exporter les magasins puis réimporter le fichier modifié', async ({ page
   expect(surMagasin('Nantes Test')).toEqual([])
   const ajout = ecritures.find((e) => e.table === 'app_config' && (e.corps as { value: string }).value?.includes('Vierzon Test'))
   expect(JSON.parse((ajout!.corps as { value: string }).value).at(-1)).toEqual(expect.objectContaining({ n: 'Vierzon Test', dept: '18', cp: '18100', franchise: true }))
+  const supprimes = ecritures.find((e) => e.table === 'app_config' && (e.corps as { key?: string }).key === 'store_deletes' || e.filtre.includes('key=eq.store_deletes'))
+  expect(JSON.parse((supprimes!.corps as { value: string }).value)).toContain(retire)
+  // Seul le magasin retiré du fichier est supprimé
+  expect(ecritures.filter((e) => e.table === 'store_overrides' && e.methode === 'DELETE').map((e) => decodeURIComponent(e.filtre.replace(/\+/g, ' ')))).toEqual([expect.stringContaining(retire)])
 })
 
 test('chiffres, Coach des magasins et Responsable Régional des Coachs depuis un CSV', async ({ page, isMobile }) => {
@@ -80,15 +87,32 @@ test('chiffres, Coach des magasins et Responsable Régional des Coachs depuis un
   await seConnecter(page, { ecritures })
   await page.goto('./#/parametres/donnees')
 
-  let d = await importer(page, 'Chiffres mensuels', csv('chiffres.csv', 'Magasin;Mois;CA marché extérieur (€);Flux cave\nV and B Lyon Test;09/2026;1 234,5;\nCave Inconnue;09/2026;10;\n'))
-  await expect(d.getByText('1 ligne modifiée', { exact: true })).toBeVisible()
+  // Un fichier partiel : les mois absents seraient supprimés, on s'arrête à l'aperçu
+  let d = await importer(page, 'Chiffres mensuels', csv('chiffres.csv', 'Magasin;Mois;CA marché extérieur (€)\nV and B Lyon Test;09/2026;1 234,5\n'))
+  await expect(d.getByText(/^1 ligne modifiée · \d+ suppressions$/)).toBeVisible()
+  await expect(d.getByText(/lignes absentes du fichier seront supprimées de l’app/)).toBeVisible()
+  await d.getByRole('button', { name: 'Annuler' }).click()
+
+  // Fichier complet exporté, un chiffre modifié et un magasin inconnu
+  const { chemin } = await telecharger(page, 'Exporter Chiffres mensuels')
+  const [feuille] = await lireExcel(readFileSync(chemin))
+  const [entetes, ...lignes] = feuille.data as unknown[][]
+  const iCA = entetes.indexOf('CA marché extérieur (€)')
+  expect(entetes.slice(0, 2)).toEqual(['Magasin (clé)', 'Mois (clé)'])
+  const iMois = entetes.indexOf('Mois (clé)')
+  const lyon = lignes.find((l) => l[0] === 'Lyon Test' && l[iMois] === '09/2026')!
+  lyon[iCA] = '1 234,5'
+  const texte = [entetes, ...lignes, ['Cave Inconnue', '09/2026']].map((l) => l.map((v) => (v === null || v === undefined ? '' : String(v))).join(';')).join('\n')
+  d = await importer(page, 'Chiffres mensuels', csv('chiffres.csv', texte))
+  await expect(d.getByText('1 ligne modifiée', { exact: false })).toBeVisible()
+  await expect(d.getByText('suppression', { exact: false })).toHaveCount(0)
   await expect(d.getByText('1 234,5')).toBeVisible()
-  await expect(d.getByText('Ligne 3 : Cave Inconnue introuvable dans Magasin')).toBeVisible()
+  await expect(d.getByText(`Ligne ${lignes.length + 2} : Cave Inconnue introuvable dans Magasin`)).toBeVisible()
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
   const chiffres = ecritures.filter((e) => e.table === 'store_finance').flatMap((e) => e.corps as Record<string, unknown>[])
   expect(chiffres).toEqual([expect.objectContaining({ store_name: 'Lyon Test', month: '2026-09-01', ca_ext: 1234.5 })])
-  expect(chiffres[0]).not.toHaveProperty('flux_cave')
+  expect(ecritures.filter((e) => e.table === 'store_finance' && e.methode === 'DELETE')).toEqual([])
 
   d = await importer(page, 'Coach des magasins', csv('coachs.csv', 'Magasin;Coach;À partir du mois\nNantes Test;camille testard;11/2026\nRennes Test;Zorro;\nLyon Test;Noé MODELE;\n'))
   await expect(d.getByText('1 ligne modifiée · 1 inchangée')).toBeVisible()
