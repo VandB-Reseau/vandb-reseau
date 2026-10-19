@@ -48,9 +48,14 @@ test('la fiche magasin montre les chiffres, l’alerte et le graphique', async (
   expect(await textesTropPetits(page)).toEqual([])
   await section.scrollIntoViewIfNeeded()
   await page.screenshot({ path: `captures/${info.project.name}-fiche-chiffres.png`, fullPage: !isMobile })
-  // Audit consolidé sur une autre fiche
+  // Les audits ne sont plus dans les chiffres : ils sont rangés avec les visites
   await page.goto('./#/magasins/Nantes%20Test?vue=chiffres')
-  await expect(page.getByText('Conforme · 92 % · 10 mars 2026')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Chiffres', exact: true })).toBeVisible()
+  await expect(page.getByText('Dernier audit hygiène')).toHaveCount(0)
+  await page.goto('./#/magasins/Nantes%20Test?vue=visites')
+  const audits = page.getByRole('heading', { name: 'Audits', exact: true }).locator('xpath=ancestor::div[contains(@class,"MuiCard-root")]')
+  await expect(audits.getByText('Conforme · 92 % · 10 mars 2026')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Visites', exact: true })).toBeVisible()
 })
 
 test('saisir un appel : il ne compte pas comme visite et arrête le retard', async ({ page }) => {
@@ -235,4 +240,14 @@ test('pas de suppression pour un mois sans chiffres', async ({ page }) => {
   await d.getByLabel('Mois').click()
   await page.getByRole('option', { name: 'octobre 2026', exact: true }).click()
   await expect(d.getByRole('button', { name: 'Supprimer' })).toHaveCount(0)
+})
+
+test('l’onglet Visites commence par les audits du magasin', async ({ page, isMobile }, info) => {
+  await seConnecter(page)
+  await page.goto('./#/magasins/Nantes%20Test?vue=visites')
+  await expect(page.getByRole('heading', { name: 'Visites', exact: true })).toBeVisible()
+  const titres = await page.locator('main h2').allTextContents()
+  expect(titres.slice(0, 2)).toEqual(['Audits', 'Visites'])
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-fiche-audits-visites.png`, fullPage: !isMobile })
 })

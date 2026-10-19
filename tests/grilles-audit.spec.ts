@@ -108,7 +108,7 @@ test('remplir la grille pendant un audit, avec une photo', async ({ page, isMobi
 
 test('la fiche magasin montre les écarts du dernier audit et leurs photos', async ({ page, isMobile }, info) => {
   await seConnecter(page, { config: { audits: auditRempli } })
-  await page.goto('./#/magasins/Nantes%20Test?vue=chiffres')
+  await page.goto('./#/magasins/Nantes%20Test?vue=visites')
   await expect(page.getByText('Non conforme · 50 % · 10 mars 2026')).toBeVisible()
   await expect(page.getByText(FRIGOS)).toBeVisible()
   await expect(page.getByText('Relevés arrêtés depuis le 2 septembre')).toBeVisible()
