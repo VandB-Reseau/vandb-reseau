@@ -76,11 +76,12 @@ const fiche = (f: Partial<FichePersonnelle> | undefined) => ({ ville: texte(f?.v
 interface PersonneCarte { cle: string; type: TypePicto; nom: string; role: string; couleur: string; ville: string; codePostal: string; departement: string; domicile: Point | null; lien: string; magasins: number }
 
 // Carte : un point par magasin ; zones des Coachs et des Responsables Régionaux, affichables séparément
-// restreindre : seuls les Coachs et RR des magasins affichés (liste filtrée)
-export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, restreindre = false, vue = vueDuJour, margeBas = 24, zonesInitiales = { coachs: true, rr: false }, emplacementBoutons = null }: {
+// restreindre : seuls les Coachs et RR des magasins affichés (liste filtrée) ;
+// ouvrables : magasins dont la fiche s'ouvre (par défaut tous)
+export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, restreindre = false, vue = vueDuJour, margeBas = 24, zonesInitiales = { coachs: true, rr: false }, emplacementBoutons = null, ouvrables }: {
   // Où poser les boutons (ligne des filtres) ; à défaut, juste au-dessus de la carte
   emplacementBoutons?: HTMLElement | null
-  magasins: Magasin[]; rrs: ResponsableRegional[]; equipe?: Coach[]; personnes?: Reseau['personnes']; restreindre?: boolean; vue?: VueCarte; margeBas?: number; zonesInitiales?: { coachs: boolean; rr: boolean }
+  magasins: Magasin[]; rrs: ResponsableRegional[]; equipe?: Coach[]; personnes?: Reseau['personnes']; restreindre?: boolean; vue?: VueCarte; margeBas?: number; zonesInitiales?: { coachs: boolean; rr: boolean }; ouvrables?: Set<string>
 }) {
   const [zonesCoachs, setZonesCoachs] = useState(zonesInitiales.coachs)
   const [zonesRR, setZonesRR] = useState(zonesInitiales.rr)
@@ -254,7 +255,7 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
                   <Typography variant="body2" component="div">{statutLibelle[statut]} · {m.franchise ? 'Franchisé' : 'Intégré'}</Typography>
                   <Typography variant="body2" component="div">Coach : {coach || (m.rrEnDirect ? 'aucun, géré en direct par le Responsable Régional' : 'aucun')}</Typography>
                   {avant !== undefined && <Typography variant="body2" component="div">Proposé dans le plan, avant : {avant || 'aucun Coach'}</Typography>}
-                  <Link component={RouterLink} to={lienFiche(m.nom)} variant="body2">Ouvrir la fiche</Link>
+                  {(!ouvrables || ouvrables.has(m.nom)) && <Link component={RouterLink} to={lienFiche(m.nom)} variant="body2">Ouvrir la fiche</Link>}
                 </Popup>
               </CircleMarker>
             )

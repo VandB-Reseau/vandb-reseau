@@ -1,11 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { chargerReseau } from './chargement'
 import { synchroniserAcces } from './espaceFranchise'
 import { corrigerDomicilesCoachs, corrigerPositions } from './geolocalisation'
 import type { Reseau } from './modele'
+import { magasinsDu, synchroniserPerimetre, type Perimetre } from './perimetre'
 
 interface EtatReseau {
   reseau: Reseau | null
+  complet: Reseau | null // tout le réseau, même pour un Coach ou un RR (carte)
   chargement: boolean
   erreur: boolean
   recharger: () => Promise<void>
@@ -14,8 +16,9 @@ interface EtatReseau {
 const Ctx = createContext<EtatReseau | null>(null)
 
 // charger : autre source (espace d'un franchisé) ; lectureSeule : aucune écriture en arrière-plan ;
-// accesFranchises : le Directeur de réseau tient les accès des franchisés à jour
-export function ReseauProvider({ children, charger = chargerReseau, lectureSeule = false, accesFranchises = false }: { children: ReactNode; charger?: () => Promise<Reseau>; lectureSeule?: boolean; accesFranchises?: boolean }) {
+// accesFranchises : le Directeur de réseau tient à jour les accès des franchisés et le périmètre de l'équipe ;
+// perimetre : un Coach ou un Responsable Régional ne voit que ses magasins et leurs visites
+export function ReseauProvider({ children, charger = chargerReseau, lectureSeule = false, accesFranchises = false, perimetre = null }: { children: ReactNode; charger?: () => Promise<Reseau>; lectureSeule?: boolean; accesFranchises?: boolean; perimetre?: Perimetre | null }) {
   const [reseau, setReseau] = useState<Reseau | null>(null)
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState(false)
@@ -41,12 +44,24 @@ export function ReseauProvider({ children, charger = chargerReseau, lectureSeule
       .then(([a, b]) => { if (a + b) recharger() }).catch(() => { /* nouvel essai à la prochaine session */ })
   }, [reseau, recharger, lectureSeule])
 
-  // Accès des franchisés : magasins suivis après chaque chargement (associés, renommages)
+  // Accès des franchisés et périmètre des Coachs et RR : suivis après chaque chargement (associés, renommages, affectations)
   useEffect(() => {
-    if (reseau && accesFranchises) synchroniserAcces(reseau).catch(() => { /* nouvel essai au prochain chargement */ })
+    if (!reseau || !accesFranchises) return
+    synchroniserAcces(reseau).catch(() => { /* nouvel essai au prochain chargement */ })
+    synchroniserPerimetre(reseau).catch(() => { /* nouvel essai au prochain chargement */ })
   }, [reseau, accesFranchises])
 
-  return <Ctx.Provider value={{ reseau, chargement, erreur, recharger }}>{children}</Ctx.Provider>
+  const vue = useMemo(() => (reseau && perimetre ? restreindre(reseau, perimetre) : reseau), [reseau, perimetre])
+
+  return <Ctx.Provider value={{ reseau: vue, complet: reseau, chargement, erreur, recharger }}>{children}</Ctx.Provider>
+}
+
+// Magasins du périmètre et leurs visites. Les bonnes pratiques restent celles de tout le réseau ;
+// les données rangées par magasin (notes, chiffres…) restent entières pour ne rien perdre à l'enregistrement.
+function restreindre(reseau: Reseau, p: Perimetre): Reseau {
+  const magasins = magasinsDu(reseau, p)
+  const noms = new Set(magasins.map((m) => m.nom))
+  return { ...reseau, magasins, visites: reseau.visites.filter((v) => noms.has(v.magasin)) }
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

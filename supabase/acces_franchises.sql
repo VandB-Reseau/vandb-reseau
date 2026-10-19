@@ -10,6 +10,8 @@
 --    lui renvoie uniquement ses magasins et des repères réseau anonymes.
 -- 4) Un compte sans rôle n'a plus accès à rien tant que le Directeur
 --    ne l'a pas rattaché à un franchisé.
+-- Après tout passage de ce script, rejouer cloisonnement_equipe.sql
+-- (périmètre des Coachs et des RR).
 -- ════════════════════════════════════════════════════════════════
 
 -- ── 0) Premier passage : les comptes existants sans rôle deviennent Directeur
@@ -49,7 +51,7 @@ END $$;
 DO $$
 DECLARE t record; p record;
 BEGIN
-  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'acces_franchises' LOOP
+  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT IN ('acces_franchises', 'perimetre_equipe', 'sauvegarde_cloisonnement') LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t.tablename);
     FOR p IN SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = t.tablename LOOP
       EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', p.policyname, t.tablename);

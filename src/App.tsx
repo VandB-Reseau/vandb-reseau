@@ -23,7 +23,8 @@ import { ReseauProvider } from './data/ReseauContext'
 import { MessagerieProvider } from './data/MessagerieContext'
 import { RetourEnHaut } from './navigation/RetourEnHaut'
 import { ErreurEcran } from './components/ErreurEcran'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
+import { cleVue, lireVue, perimetreDuProfil } from './data/perimetre'
 import Button from '@mui/material/Button'
 import LockOutlined from '@mui/icons-material/LockOutlined'
 import { EmptyState } from './components/EmptyState'
@@ -32,10 +33,12 @@ import { chargerEspaceFranchise } from './data/espaceFranchise'
 import { espaceFranchise } from './navigation/destinations'
 import { BandeauApercu, FicheMagasinFranchise, MagasinsFranchise, PratiquesFranchise, TableauFranchise } from './pages/EspaceFranchise'
 
-function Routes_() {
+// equipeSeule : Coach ou Responsable Régional, sans la partie Paramètres (les fiches des personnes restent ouvertes)
+function Routes_({ equipeSeule = false }: { equipeSeule?: boolean }) {
   const { pathname } = useLocation()
+  if (equipeSeule && (pathname === '/equipe' || pathname.startsWith('/parametres') || pathname === '/plus/direction' || pathname.startsWith('/plus/evolution') || pathname === '/plus/charge')) return <Navigate to="/" replace />
   return (
-    <AppShell>
+    <AppShell sansParametres={equipeSeule}>
       <RetourEnHaut />
       {/* Changer d'écran efface l'erreur de l'écran précédent */}
       <ErreurEcran key={pathname}>
@@ -106,9 +109,12 @@ function Espace() {
   const directeur = profil?.role === 'directeur'
   const vueApercu = directeur && !!apercu
   const charger = useCallback(() => chargerEspaceFranchise(vueApercu ? apercu : null), [vueApercu, apercu])
+  const impose = perimetreDuProfil(profil)
+  const cle = impose ? cleVue(impose) : null
+  const perimetre = useMemo(() => (cle ? lireVue(cle) : null), [cle])
   if (!profil || profil.role === 'aucun') return <AccesFerme />
   if (franchise || vueApercu) return <MessagerieProvider><ReseauProvider key={apercu?.franchise ?? 'franchise'} charger={charger} lectureSeule><RoutesFranchise apercu={vueApercu} /></ReseauProvider></MessagerieProvider>
-  return <MessagerieProvider><ReseauProvider accesFranchises={directeur}><Routes_ /></ReseauProvider></MessagerieProvider>
+  return <MessagerieProvider><ReseauProvider accesFranchises={directeur} perimetre={perimetre}><Routes_ equipeSeule={!!perimetre} /></ReseauProvider></MessagerieProvider>
 }
 
 export default function App() {

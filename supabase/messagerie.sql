@@ -1,12 +1,13 @@
 -- ════════════════════════════════════════════════════════════════
 -- V and B — Messagerie par magasin et notifications
 -- À exécuter dans Supabase > SQL Editor, APRÈS acces_franchises.sql. Réexécutable.
+-- Un Coach ou un RR ne voit que le fil de ses magasins dès que cloisonnement_equipe.sql est passé.
 --
 -- 1) Un fil de messages par magasin : Directeur de réseau, Responsables Régionaux,
 --    Coachs et franchisés du magasin.
 -- 2) Personne ne lit ni n'écrit les tables directement : tout passe par les
---    fonctions ci-dessous, qui vérifient le rôle (lu dans la base) et, pour un
---    franchisé, que le magasin est bien le sien.
+--    fonctions ci-dessous, qui vérifient le rôle (lu dans la base) et que le
+--    magasin fait partie de ceux du compte.
 -- 3) Le nom et le rôle de l'auteur sont posés par la base, jamais par l'app.
 -- ════════════════════════════════════════════════════════════════
 
@@ -36,11 +37,30 @@ ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages_lus ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.messages, public.messages_lus FROM anon, authenticated;
 
--- Le compte connecté peut-il écrire sur ce magasin ?
+-- Magasins dont le compte voit le fil : NULL = tous (Directeur de réseau).
+-- Coach et RR : leurs magasins une fois cloisonnement_equipe.sql passé, tous avant.
+CREATE OR REPLACE FUNCTION public.magasins_messagerie() RETURNS text[]
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_role text := public.mon_role(); v_mag text[];
+BEGIN
+  IF v_role = 'franchise' THEN RETURN public.mes_magasins(); END IF;
+  IF v_role IN ('coach', 'rr') AND to_regprocedure('public.magasins_visibles()') IS NOT NULL THEN
+    EXECUTE 'SELECT public.magasins_visibles()' INTO v_mag;
+    RETURN coalesce(v_mag, '{}');
+  END IF;
+  IF public.est_equipe() THEN RETURN NULL; END IF;
+  RETURN '{}'::text[];
+END $$;
+
+-- Le compte connecté peut-il lire et écrire sur ce magasin ?
 CREATE OR REPLACE FUNCTION public.peut_ecrire_magasin(p_store text) RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
-  SELECT public.est_equipe() OR (public.mon_role() = 'franchise' AND p_store = ANY(public.mes_magasins()))
-$$;
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_mag text[];
+BEGIN
+  IF NOT (public.est_equipe() OR public.mon_role() = 'franchise') THEN RETURN false; END IF;
+  v_mag := public.magasins_messagerie();
+  RETURN v_mag IS NULL OR p_store = ANY(v_mag);
+END $$;
 
 -- Nom affiché de l'auteur : Coach, Responsable Régional, Directeur de réseau ou franchisé
 CREATE OR REPLACE FUNCTION public.mon_nom() RETURNS text
@@ -56,18 +76,18 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
   END), ''), (SELECT split_part(email, '@', 1) FROM u), 'Utilisateur')
 $$;
 
--- Messages visibles par le compte (18 derniers mois) et ses dernières lectures.
+-- Messages visibles par le compte (ses magasins, 18 derniers mois) et ses dernières lectures.
 -- « reference » : ouverture de l'accès d'un franchisé, pour ne pas lui signaler tout l'historique.
 CREATE OR REPLACE FUNCTION public.messagerie() RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v_role text := public.mon_role(); v_mag text[]; v_ref timestamptz;
 BEGIN
   IF v_role = 'franchise' THEN
-    v_mag := public.mes_magasins();
     SELECT a.ouvert_le INTO v_ref FROM public.acces_franchises a WHERE a.user_id = auth.uid();
   ELSIF NOT public.est_equipe() THEN
     RAISE EXCEPTION 'acces_refuse';
   END IF;
+  v_mag := public.magasins_messagerie();
   RETURN jsonb_build_object(
     'moi', auth.uid(),
     'reference', v_ref,
@@ -112,7 +132,7 @@ END $$;
 CREATE OR REPLACE FUNCTION public.renommer_magasin_messages(p_ancien text, p_nouveau text) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 BEGIN
-  IF NOT public.est_equipe() THEN RAISE EXCEPTION 'acces_refuse'; END IF;
+  IF NOT public.est_equipe() OR NOT public.peut_ecrire_magasin(p_ancien) THEN RAISE EXCEPTION 'acces_refuse'; END IF;
   UPDATE public.messages SET store = p_nouveau WHERE store = p_ancien;
   DELETE FROM public.messages_lus l WHERE l.store = p_ancien
     AND EXISTS (SELECT 1 FROM public.messages_lus n WHERE n.user_id = l.user_id AND n.store = p_nouveau AND n.sujet = l.sujet);
@@ -123,7 +143,7 @@ END $$;
 DO $$
 DECLARE f text;
 BEGIN
-  FOREACH f IN ARRAY ARRAY['peut_ecrire_magasin(text)', 'mon_nom()', 'messagerie()', 'marquer_lu(text, text)',
+  FOREACH f IN ARRAY ARRAY['magasins_messagerie()', 'peut_ecrire_magasin(text)', 'mon_nom()', 'messagerie()', 'marquer_lu(text, text)',
     'envoyer_message(text, text, text[])', 'supprimer_message(bigint)', 'renommer_magasin_messages(text, text)'] LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION public.%s FROM PUBLIC, anon', f);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.%s TO authenticated', f);

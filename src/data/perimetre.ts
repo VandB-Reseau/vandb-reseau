@@ -1,5 +1,6 @@
 // Périmètre d'une vue : tout le réseau (Directeur), les magasins d'un Responsable Régional ou ceux d'un Coach
 import type { Profil } from '../auth/roles'
+import { supabase } from '../lib/supabase'
 import { coachA } from './charge'
 import type { Magasin, Reseau } from './modele'
 
@@ -42,4 +43,20 @@ export function libelleVue(reseau: Reseau, p: Perimetre): string {
   if (p.type === 'coach') return p.nom
   if (p.type === 'rr') return reseau.rrs.find((r) => r.id === p.id)?.nom ?? 'Responsable Régional'
   return 'Tout le réseau'
+}
+
+// Périmètre de chaque magasin, écrit dans la base par l'app du Directeur de réseau après chaque chargement :
+// la base s'en sert pour ne montrer à un Coach ou à un RR que les visites, chiffres et suivi de ses magasins
+let dernierEnvoi = ''
+export async function synchroniserPerimetre(reseau: Reseau): Promise<void> {
+  const lignes = reseau.magasins.map((m) => ({
+    magasin: m.nom,
+    coach: coachA(m, reseau.jour),
+    rrs: reseau.rrs.filter((r) => m.rr?.id === r.id || (r.integres && !m.franchise)).map((r) => r.id).sort(),
+  }))
+  const envoi = JSON.stringify(lignes)
+  if (envoi === dernierEnvoi) return
+  const { error } = await supabase.rpc('maj_perimetre_equipe', { p_lignes: lignes })
+  // Fonction absente (script pas encore passé) : nouvel essai au prochain chargement
+  if (!error) dernierEnvoi = envoi
 }

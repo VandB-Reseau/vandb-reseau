@@ -73,9 +73,10 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', onFermer
   )
 }
 
-// modifier absent : lecture seule, sans lien vers les fiches des magasins (espace franchisé)
-export function CartePratique({ p, modifier, sansMagasin }: { p: BonnePratique; modifier?: () => void; sansMagasin?: boolean }) {
-  const nomMagasin = (nom: string, gras?: boolean) => (modifier ? <Link component={RouterLink} to={lienFiche(nom)} sx={gras ? { fontWeight: 600 } : undefined}>{nom}</Link> : <Box component="span" sx={gras ? { fontWeight: 600 } : undefined}>{nom}</Box>)
+// modifier absent : lecture seule, sans lien vers les fiches des magasins (espace franchisé) ;
+// ouvrables : magasins dont la fiche s'ouvre (ceux d'un Coach ou d'un RR), par défaut tous
+export function CartePratique({ p, modifier, sansMagasin, ouvrables }: { p: BonnePratique; modifier?: () => void; sansMagasin?: boolean; ouvrables?: Set<string> }) {
+  const nomMagasin = (nom: string, gras?: boolean) => (modifier && (!ouvrables || ouvrables.has(nom)) ? <Link component={RouterLink} to={lienFiche(nom)} sx={gras ? { fontWeight: 600 } : undefined}>{nom}</Link> : <Box component="span" sx={gras ? { fontWeight: 600 } : undefined}>{nom}</Box>)
   return (
     <Card component="article" aria-label={p.titre}>
       <CardContent sx={{ pb: '16px !important' }}>
@@ -110,6 +111,8 @@ export function VuePratiques({ reseau, actions, modifier }: { reseau: Reseau; ac
   const liste = useMemo(() => reseau.pratiques.filter((p) => (!themes.length || themes.includes(p.theme))
     && (!recherche || `${p.titre} ${p.magasin} ${p.texte}`.toLowerCase().includes(recherche.toLowerCase()))), [reseau, themes, recherche])
   const reprises = reseau.pratiques.filter((p) => p.reprises.length > 0).length
+  // Les pratiques de tout le réseau ; un Coach ou un RR ne modifie que celles de ses magasins
+  const ouvrables = useMemo(() => new Set(reseau.magasins.map((m) => m.nom)), [reseau])
   return (
     <>
       <RechercheFiltres actifs={themes.length ? 1 : 0} actions={actions}
@@ -122,7 +125,7 @@ export function VuePratiques({ reseau, actions, modifier }: { reseau: Reseau; ac
       </Typography>
       {liste.length === 0
         ? <EmptyState icone={<TipsAndUpdatesOutlined />} titre="Aucune bonne pratique" texte={reseau.pratiques.length ? 'Aucune bonne pratique ne correspond à ces filtres.' : 'Les initiatives réussies des magasins apparaîtront ici.'} />
-        : <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' } }}>{liste.map((p) => <CartePratique key={p.id} p={p} modifier={modifier ? () => modifier(p) : undefined} />)}</Box>}
+        : <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' } }}>{liste.map((p) => <CartePratique key={p.id} p={p} ouvrables={ouvrables} modifier={modifier && ouvrables.has(p.magasin) ? () => modifier(p) : undefined} />)}</Box>}
     </>
   )
 }

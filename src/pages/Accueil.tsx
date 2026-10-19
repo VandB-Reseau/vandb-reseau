@@ -72,7 +72,7 @@ function Ligne({ lien, titre, detail, fin }: { lien?: string; titre: string; det
   )
 }
 
-function Tableau({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
+function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Perimetre; sansParametres?: boolean }) {
   const j = reseau.jour
   const perimetre = magasinsDu(reseau, p)
   const noms = new Set(perimetre.map((m) => m.nom))
@@ -142,7 +142,7 @@ function Tableau({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
         {campagnes.slice(0, MAX).map(({ c, b }) => <Ligne key={c.id} lien={`/visites?vue=campagnes&campagne=${encodeURIComponent(c.id)}`} titre={c.nom} detail={`${b.fait} sur ${b.total} magasin${b.total > 1 ? 's' : ''} exécuté${b.fait > 1 ? 's' : ''} · ${b.aConstater} à constater`} fin={<Typography sx={{ fontWeight: 600 }}>{b.taux === null ? '—' : `${b.taux} %`}</Typography>} />)}
       </Bloc>
       {p.type !== 'coach' && (
-        <Bloc titre="Mandats à renouveler" icone={<HandshakeOutlined />} total={mandats.length} lien="/parametres/franchises" libelleLien="Voir les franchisés" vide="Aucun mandat de franchisé ne finit dans l’année.">
+        <Bloc titre="Mandats à renouveler" icone={<HandshakeOutlined />} total={mandats.length} lien={sansParametres ? '/magasins?vue=liste' : '/parametres/franchises'} libelleLien={sansParametres ? 'Voir les magasins' : 'Voir les franchisés'} vide="Aucun mandat de franchisé ne finit dans l’année.">
           {mandats.slice(0, MAX).map((x) => <Ligne key={`${x.m.nom}-${x.a.id}`} lien={lienFiche(x.m.nom)} titre={`${x.a.nom} · ${x.m.nom}`} detail={`Fin du mandat le ${dateCourte(x.mandat.fin)}`}
             fin={<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}><PastilleCase c={caseDe(reseau.evaluations[x.m.nom])} /><Chip size="small" color={x.etat === 'echu' ? 'error' : 'warning'} label={libellesEtatMandat[x.etat]} sx={{ fontSize: 12, fontWeight: 600 }} /></Box>} />)}
         </Bloc>
@@ -204,7 +204,7 @@ export function Accueil() {
     <>
       <PageHeader titre={`${salutation()}${profil ? ` ${profil.nom}` : ''}`} sousTitre={[date.charAt(0).toUpperCase() + date.slice(1), perimetre].filter(Boolean).join(' · ')}
         actions={impose || !reseau ? undefined : <ChoixVue reseau={reseau} valeur={choisi} onChange={changer} />} />
-      <AvecReseau>{(r) => <Tableau reseau={r} p={choisi} />}</AvecReseau>
+      <AvecReseau>{(r) => <Tableau reseau={r} p={choisi} sansParametres={!!impose} />}</AvecReseau>
     </>
   )
 }

@@ -72,7 +72,7 @@ function MenuCompte() {
   )
 }
 
-function MenuLateral({ franchise }: { franchise?: Destination[] }) {
+function MenuLateral({ franchise, sansParametres }: { franchise?: Destination[]; sansParametres?: boolean }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
   const item = (d: Destination) => {
@@ -92,7 +92,7 @@ function MenuLateral({ franchise }: { franchise?: Destination[] }) {
       <Toolbar sx={{ minHeight: 68 }} />
       <Box component="nav" aria-label="Navigation principale" sx={{ pt: 2 }}>
         <List disablePadding>{(franchise ?? [...principales, ...secondaires]).map(item)}</List>
-        {!franchise && <>
+        {!franchise && !sansParametres && <>
           <Divider sx={{ my: 1.5, mx: 3 }} />
           <List disablePadding subheader={<ListSubheader sx={{ bgcolor: 'transparent', px: 4, lineHeight: '36px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramètres</ListSubheader>}>
             {parametres.map(item)}
@@ -120,8 +120,8 @@ function BarreBasse({ franchise }: { franchise?: Destination[] }) {
 }
 
 // franchise : navigation réduite de l'espace franchisé (sans recherche ni Paramètres) ; bandeau : sous l'en-tête ;
-// sansCloche : aperçu de l'espace d'un franchisé, sans ses notifications
-export function AppShell({ children, franchise, bandeau, sansCloche = false }: { children: ReactNode; franchise?: Destination[]; bandeau?: ReactNode; sansCloche?: boolean }) {
+// sansParametres : Coach ou Responsable Régional ; sansCloche : aperçu de l'espace d'un franchisé, sans ses notifications
+export function AppShell({ children, franchise, bandeau, sansParametres = false, sansCloche = false }: { children: ReactNode; franchise?: Destination[]; bandeau?: ReactNode; sansParametres?: boolean; sansCloche?: boolean }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [rechercheOuverte, setRechercheOuverte] = useState(false)
@@ -153,7 +153,7 @@ export function AppShell({ children, franchise, bandeau, sansCloche = false }: {
         )}
       </AppBar>
 
-      {surPC && <MenuLateral franchise={franchise} />}
+      {surPC && <MenuLateral franchise={franchise} sansParametres={sansParametres} />}
 
       <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: '72px' }, pb: surPC ? 4 : '96px' }}>
         {bandeau}
