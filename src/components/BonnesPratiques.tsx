@@ -73,7 +73,9 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', onFermer
   )
 }
 
-export function CartePratique({ p, modifier, sansMagasin }: { p: BonnePratique; modifier: () => void; sansMagasin?: boolean }) {
+// modifier absent : lecture seule, sans lien vers les fiches des magasins (espace franchisé)
+export function CartePratique({ p, modifier, sansMagasin }: { p: BonnePratique; modifier?: () => void; sansMagasin?: boolean }) {
+  const nomMagasin = (nom: string, gras?: boolean) => (modifier ? <Link component={RouterLink} to={lienFiche(nom)} sx={gras ? { fontWeight: 600 } : undefined}>{nom}</Link> : <Box component="span" sx={gras ? { fontWeight: 600 } : undefined}>{nom}</Box>)
   return (
     <Card component="article" aria-label={p.titre}>
       <CardContent sx={{ pb: '16px !important' }}>
@@ -81,11 +83,11 @@ export function CartePratique({ p, modifier, sansMagasin }: { p: BonnePratique; 
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="h4" component="h3">{p.titre}</Typography>
             <Typography variant="body2" color="text.secondary">
-              {!sansMagasin && <><Link component={RouterLink} to={lienFiche(p.magasin)} sx={{ fontWeight: 600 }}>{p.magasin}</Link> · </>}
+              {!sansMagasin && <>{nomMagasin(p.magasin, true)} · </>}
               {dateCourte(p.date)}{p.par ? ` · ${p.par}` : ''}
             </Typography>
           </Box>
-          <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la bonne pratique ${p.titre}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>
+          {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la bonne pratique ${p.titre}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
         </Box>
         {p.theme && <Chip label={p.theme} size="small" sx={{ mt: 1, fontSize: '0.75rem' }} />}
         {p.texte && <Typography variant="body1" sx={{ mt: 1, whiteSpace: 'pre-line' }}>{p.texte}</Typography>}
@@ -93,7 +95,7 @@ export function CartePratique({ p, modifier, sansMagasin }: { p: BonnePratique; 
         {p.reprises.length > 0 && (
           <Typography variant="body2" sx={{ mt: 1 }}>
             <Box component="span" color="text.secondary">Reprise par </Box>
-            {p.reprises.map((r, i) => <span key={r}>{i ? ', ' : ''}<Link component={RouterLink} to={lienFiche(r)}>{r}</Link></span>)}
+            {p.reprises.map((r, i) => <span key={r}>{i ? ', ' : ''}{nomMagasin(r)}</span>)}
           </Typography>
         )}
       </CardContent>
@@ -101,7 +103,7 @@ export function CartePratique({ p, modifier, sansMagasin }: { p: BonnePratique; 
   )
 }
 
-export function VuePratiques({ reseau, actions, modifier }: { reseau: Reseau; actions: ReactNode; modifier: (p: BonnePratique) => void }) {
+export function VuePratiques({ reseau, actions, modifier }: { reseau: Reseau; actions?: ReactNode; modifier?: (p: BonnePratique) => void }) {
   const [recherche, setRecherche] = useState('')
   const [themes, setThemes] = useState<string[]>([])
   const presents = [...new Set(reseau.pratiques.map((p) => p.theme).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'))
@@ -120,7 +122,7 @@ export function VuePratiques({ reseau, actions, modifier }: { reseau: Reseau; ac
       </Typography>
       {liste.length === 0
         ? <EmptyState icone={<TipsAndUpdatesOutlined />} titre="Aucune bonne pratique" texte={reseau.pratiques.length ? 'Aucune bonne pratique ne correspond à ces filtres.' : 'Les initiatives réussies des magasins apparaîtront ici.'} />
-        : <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' } }}>{liste.map((p) => <CartePratique key={p.id} p={p} modifier={() => modifier(p)} />)}</Box>}
+        : <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' } }}>{liste.map((p) => <CartePratique key={p.id} p={p} modifier={modifier ? () => modifier(p) : undefined} />)}</Box>}
     </>
   )
 }

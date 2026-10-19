@@ -1,4 +1,6 @@
 import { associesDu, mandatActuel } from '../data/associes'
+import { SectionAcces } from '../components/AccesFranchise'
+import { useAuth } from '../auth/AuthContext'
 import { PastilleMandat, periode } from '../components/Associes'
 import { PastilleCase } from '../components/Sante'
 import { caseDe } from '../data/sante'
@@ -148,6 +150,7 @@ function PageDirecteur({ reseau }: { reseau: Reseau }) {
 
 function PageFranchise({ reseau, nom }: { reseau: Reseau; nom: string }) {
   const naviguer = useNavigate()
+  const { profil } = useAuth()
   const [edition, setEdition] = useState(false)
   const [message, setMessage] = useState('')
   const f = franchises(reseau).find((x) => x.nom === nom)!
@@ -155,8 +158,9 @@ function PageFranchise({ reseau, nom }: { reseau: Reseau; nom: string }) {
   return (
     <>
       <Entete retour="/parametres/franchises" titre={nom} sousTitre={`${libelleRole('franchise', f.integresSeulement)} · ${pluriel(f.magasins.length, 'magasin')}${coachs.length ? ` · suivi par ${coachs.join(', ')}` : ''}`} onModifier={() => setEdition(true)} />
-      <Box sx={{ mb: 2, maxWidth: { lg: '50%' } }}>
+      <Box sx={{ mb: 2, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
         <SectionFichePersonnelle reseau={reseau} r={{ type: 'franchise', cle: nom }} />
+        {profil?.role === 'directeur' && <SectionAcces nom={nom} magasins={f.magasins.map((m) => m.nom)} signaler={setMessage} />}
       </Box>
       {f.magasins.some((m) => m.franchise) && (
         <Box sx={{ mb: 2 }}>

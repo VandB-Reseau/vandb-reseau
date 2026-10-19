@@ -6,7 +6,11 @@ export const COMPTE = { email: 'joseph@vandb.test', motDePasse: 'bon-mot-de-pass
 // Simule l'API d'authentification Supabase : seul COMPTE est accepté.
 export interface Ecriture { methode: string; table: string; corps: unknown; filtre: string }
 
-export interface OptionsSimulation { appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean }
+// Accès lu dans la base (fonction mon_acces) ; null : fonctions pas encore créées (script non passé)
+export interface AccesSimule { role: string; franchise?: string; magasins?: string[]; coach?: string; rr?: string }
+export interface AccesFranchiseSimule { user_id: string; email: string; franchise: string; magasins: string[]; ouvert_le?: string; derniere_connexion?: string | null }
+export interface EspaceSimule { visites?: Record<string, unknown>[]; reperes?: unknown; campagnes?: unknown; pratiques?: unknown[] }
+export interface OptionsSimulation { acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -59,6 +63,38 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       })
     }
     if (url.pathname === '/auth/v1/logout') return route.fulfill({ status: 204, body: '' })
+    if (url.pathname === '/auth/v1/user' && req.method() === 'PUT') {
+      options.ecritures?.push({ methode: 'PUT', table: 'auth/user', corps: req.postDataJSON(), filtre: '' })
+      return route.fulfill({ json: { id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: COMPTE.email, app_metadata: options.appMetadata ?? {}, user_metadata: {} } })
+    }
+    // Fonctions de la base (script supabase/acces_franchises.sql)
+    if (url.pathname.startsWith('/rest/v1/rpc/')) {
+      const fn = url.pathname.replace('/rest/v1/rpc/', '')
+      const corps = (req.postDataJSON() ?? {}) as Record<string, unknown>
+      const absente = () => route.fulfill({ status: 404, json: { code: 'PGRST202', message: `Could not find the function public.${fn}` } })
+      if (options.acces === null) return absente()
+      const meta = options.appMetadata ?? {}
+      const acces: AccesSimule = options.acces ?? (meta.role === 'coach' || meta.role === 'rr' ? { role: String(meta.role), coach: meta.coach as string, rr: meta.rr as string } : { role: 'directeur' })
+      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
+      if (fn === 'mon_acces') return route.fulfill({ json: { role: acces.role, coach: acces.coach ?? null, rr: acces.rr ?? null, franchise: acces.franchise ?? null, magasins: acces.magasins ?? [] } })
+      if (fn === 'espace_franchise') {
+        const apercu = Array.isArray(corps.p_magasins)
+        if (apercu ? acces.role !== 'directeur' : acces.role !== 'franchise') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        options.ecritures?.push({ methode: 'POST', table: 'rpc/espace_franchise', corps, filtre: '' })
+        const magasins = apercu ? (corps.p_magasins as string[]) : acces.magasins ?? []
+        return route.fulfill({ json: espaceSimule(apercu ? String(corps.p_franchise) : acces.franchise ?? '', magasins, options.espace ?? {}) })
+      }
+      const liste = options.accesFranchises ?? []
+      if (fn === 'liste_acces_franchises') return route.fulfill({ json: liste.map((a) => ({ ouvert_le: '2026-10-19T10:00:00Z', derniere_connexion: null, ...a })) })
+      if (fn === 'ouvrir_acces_franchise') {
+        if (corps.p_email === 'inconnu@exemple.test') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'compte_introuvable' } })
+        liste.push({ user_id: 'u-nouveau', email: String(corps.p_email), franchise: String(corps.p_franchise), magasins: corps.p_magasins as string[] })
+        options.accesFranchises = liste
+      }
+      if (fn === 'couper_acces_franchise') options.accesFranchises = liste.filter((a) => a.user_id !== corps.p_user)
+      if (fn === 'maj_acces_franchise') { const a = liste.find((x) => x.user_id === corps.p_user); if (a) { a.franchise = String(corps.p_franchise); a.magasins = corps.p_magasins as string[] } }
+      return route.fulfill({ status: 200, json: null })
+    }
     // Espace photos (Storage) : envoi, liens temporaires, suppression
     if (url.pathname.startsWith('/storage/v1/')) {
       const chemin = url.pathname.replace('/storage/v1/object/', '')
@@ -108,6 +144,29 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
     if (table === 'recruits') return route.fulfill({ json: filtrer(recruesFictives) })
     return route.fulfill({ json: [] })
   })
+}
+
+// Ce que la base renvoie à un franchisé : ses magasins seulement, au format des tables
+function espaceSimule(franchise: string, magasins: string[], e: EspaceSimule) {
+  const dans = (n: unknown) => magasins.includes(String(n))
+  const coachs = new Set(affectationsFictives.filter((a) => a && dans(a.store)).map((a) => a!.cs))
+  return {
+    franchise, magasins,
+    app_config: [
+      { key: 'store_adds', value: magasinsFictifs.filter((m) => dans(m.n)) },
+      { key: 'drs_data', value: { directeur: { name: configRRFictive.directeur.name, titre: configRRFictive.directeur.titre }, drs: configRRFictive.drs, dr_assigns: configRRFictive.dr_assigns.filter((a) => coachs.has(a.cs)) } },
+      { key: 'params', value: { prepDuration: 2, postDuration: 4 } },
+      { key: 'audits', value: Object.fromEntries(Object.entries(auditsFictifs).filter(([k]) => dans(k))) },
+      { key: 'campagnes', value: e.campagnes ?? { liste: [], constats: {} } },
+      { key: 'bonnes_pratiques', value: e.pratiques ?? [] },
+    ],
+    store_overrides: [],
+    reassigns: affectationsFictives.filter((a) => a && dans(a.store)),
+    cs_overrides: coachsFictifs.filter((c) => coachs.has(c.cs_name) && !c.tech).map((c) => ({ cs_name: c.cs_name, tel: c.tel, email: c.email })),
+    visits: [...visitesFictives, ...(e.visites ?? [])].filter((v) => dans(v.store) && !['appel', 'point'].includes(String(v.type))),
+    store_finance: chiffresFictifs.filter((c) => dans(c.store_name)),
+    reperes: e.reperes === undefined ? { mois: '2026-09', indicateurs: { evolution: { n: 40, mediane: -2, quartHaut: 3 }, pmCave: { n: 40, mediane: 38, quartHaut: 42 }, fluxBar: { n: 40, mediane: 2500, quartHaut: 3000 } } } : e.reperes,
+  }
 }
 
 export async function seConnecter(page: Page, options: OptionsSimulation = {}) {

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { chargerReseau } from './chargement'
+import { synchroniserAcces } from './espaceFranchise'
 import { corrigerDomicilesCoachs, corrigerPositions } from './geolocalisation'
 import type { Reseau } from './modele'
 
@@ -12,7 +13,9 @@ interface EtatReseau {
 
 const Ctx = createContext<EtatReseau | null>(null)
 
-export function ReseauProvider({ children }: { children: ReactNode }) {
+// charger : autre source (espace d'un franchisé) ; lectureSeule : aucune écriture en arrière-plan ;
+// accesFranchises : le Directeur de réseau tient les accès des franchisés à jour
+export function ReseauProvider({ children, charger = chargerReseau, lectureSeule = false, accesFranchises = false }: { children: ReactNode; charger?: () => Promise<Reseau>; lectureSeule?: boolean; accesFranchises?: boolean }) {
   const [reseau, setReseau] = useState<Reseau | null>(null)
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState(false)
@@ -21,22 +24,27 @@ export function ReseauProvider({ children }: { children: ReactNode }) {
   const recharger = useCallback(() => {
     setReseau((r) => { if (!r) setChargement(true); return r })
     setErreur(false)
-    return chargerReseau()
+    return charger()
       .then(setReseau)
       .catch(() => setErreur(true))
       .finally(() => setChargement(false))
-  }, [])
+  }, [charger])
 
   useEffect(() => { recharger() }, [recharger])
 
   // Magasins encore posés au centre de leur département : géolocalisation précise en arrière-plan
   const positionsCorrigees = useRef(false)
   useEffect(() => {
-    if (!reseau || positionsCorrigees.current) return
+    if (!reseau || lectureSeule || positionsCorrigees.current) return
     positionsCorrigees.current = true
     Promise.all([corrigerPositions(reseau.magasins), corrigerDomicilesCoachs(reseau)])
       .then(([a, b]) => { if (a + b) recharger() }).catch(() => { /* nouvel essai à la prochaine session */ })
-  }, [reseau, recharger])
+  }, [reseau, recharger, lectureSeule])
+
+  // Accès des franchisés : magasins suivis après chaque chargement (associés, renommages)
+  useEffect(() => {
+    if (reseau && accesFranchises) synchroniserAcces(reseau).catch(() => { /* nouvel essai au prochain chargement */ })
+  }, [reseau, accesFranchises])
 
   return <Ctx.Provider value={{ reseau, chargement, erreur, recharger }}>{children}</Ctx.Provider>
 }

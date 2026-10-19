@@ -115,6 +115,7 @@ export interface Reseau {
   parametres: ParametresReseau
   jour: string
   chargeLe: string
+  espace?: import('./espaceFranchise').EspaceFranchise // espace d'un franchisé : ses magasins seulement
 }
 
 export type TypeVisite = 'terrain' | 'hygiene' | 'excellence' | 'ouverture' | 'feuille' | 'appel' | 'point'
