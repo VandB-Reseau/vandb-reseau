@@ -22,6 +22,9 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import SearchIcon from '@mui/icons-material/Search'
 import Logout from '@mui/icons-material/Logout'
+import KeyOutlined from '@mui/icons-material/KeyOutlined'
+import Snackbar from '@mui/material/Snackbar'
+import { DialogMotDePasse } from '../components/DialogMotDePasse'
 import { Logo } from '../components/Logo'
 import { RechercheGlobale } from '../components/RechercheGlobale'
 import { brandStripe } from '../theme/theme'
@@ -38,6 +41,8 @@ function estActive(d: Destination, pathname: string): boolean {
 function MenuCompte() {
   const { profil, deconnexion } = useAuth()
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
+  const [motDePasse, setMotDePasse] = useState(false)
+  const [confirmation, setConfirmation] = useState('')
   if (!profil) return null
   const initiale = profil.nom.slice(0, 1).toUpperCase()
   return (
@@ -51,16 +56,22 @@ function MenuCompte() {
           <Typography variant="caption" color="text.secondary">{roleLibelle[profil.role]}</Typography>
         </Box>
         <Divider />
+        <MenuItem onClick={() => { setAncre(null); setMotDePasse(true) }}>
+          <ListItemIcon><KeyOutlined fontSize="small" /></ListItemIcon>
+          Changer mon mot de passe
+        </MenuItem>
         <MenuItem onClick={() => { setAncre(null); void deconnexion() }}>
           <ListItemIcon><Logout fontSize="small" /></ListItemIcon>
           Se déconnecter
         </MenuItem>
       </Menu>
+      {motDePasse && <DialogMotDePasse onFermer={(msg) => { setMotDePasse(false); if (msg) setConfirmation(msg) }} />}
+      <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
     </>
   )
 }
 
-function MenuLateral() {
+function MenuLateral({ franchise }: { franchise?: Destination[] }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
   const item = (d: Destination) => {
@@ -79,20 +90,22 @@ function MenuLateral() {
     >
       <Toolbar sx={{ minHeight: 68 }} />
       <Box component="nav" aria-label="Navigation principale" sx={{ pt: 2 }}>
-        <List disablePadding>{[...principales, ...secondaires].map(item)}</List>
-        <Divider sx={{ my: 1.5, mx: 3 }} />
-        <List disablePadding subheader={<ListSubheader sx={{ bgcolor: 'transparent', px: 4, lineHeight: '36px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramètres</ListSubheader>}>
-          {parametres.map(item)}
-        </List>
+        <List disablePadding>{(franchise ?? [...principales, ...secondaires]).map(item)}</List>
+        {!franchise && <>
+          <Divider sx={{ my: 1.5, mx: 3 }} />
+          <List disablePadding subheader={<ListSubheader sx={{ bgcolor: 'transparent', px: 4, lineHeight: '36px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramètres</ListSubheader>}>
+            {parametres.map(item)}
+          </List>
+        </>}
       </Box>
     </Drawer>
   )
 }
 
-function BarreBasse() {
+function BarreBasse({ franchise }: { franchise?: Destination[] }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
-  const items = [...principales, plus]
+  const items = franchise ?? [...principales, plus]
   const actif = items.findIndex((d) => (d === plus ? pathname.startsWith('/plus') : estActive(d, pathname)))
   return (
     <Paper component="nav" aria-label="Navigation principale" sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: (t) => t.zIndex.appBar, borderTop: '1px solid', borderColor: 'divider', pb: 'env(safe-area-inset-bottom)' }}>
@@ -105,7 +118,8 @@ function BarreBasse() {
   )
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+// franchise : navigation réduite de l'espace franchisé (sans recherche ni Paramètres) ; bandeau : sous l'en-tête
+export function AppShell({ children, franchise, bandeau }: { children: ReactNode; franchise?: Destination[]; bandeau?: ReactNode }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [rechercheOuverte, setRechercheOuverte] = useState(false)
@@ -116,12 +130,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Toolbar sx={{ minHeight: { xs: 60, md: 68 }, gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: surPC ? LARGEUR_MENU - 24 : 'auto' }}>
             <Logo size={surPC ? 22 : 20} />
-            <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'inline' } }}>Réseau</Typography>
+            <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'inline' } }}>{franchise ? 'Espace franchisé' : 'Réseau'}</Typography>
           </Box>
           <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-            {surPC && <RechercheGlobale surFonce />}
+            {surPC && !franchise && <RechercheGlobale surFonce />}
           </Box>
-          {!surPC && (
+          {!surPC && !franchise && (
             <IconButton aria-label="Rechercher" onClick={() => setRechercheOuverte((v) => !v)} sx={{ color: '#ffffff' }}>
               <SearchIcon />
             </IconButton>
@@ -136,13 +150,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       </AppBar>
 
-      {surPC && <MenuLateral />}
+      {surPC && <MenuLateral franchise={franchise} />}
 
       <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: '72px' }, pb: surPC ? 4 : '96px' }}>
+        {bandeau}
         <Box sx={{ maxWidth: 1280, mx: 'auto', px: { xs: 2, sm: 3, md: 5 }, pt: { xs: 3, md: 4 } }}>{children}</Box>
       </Box>
 
-      {!surPC && <BarreBasse />}
+      {!surPC && <BarreBasse franchise={franchise} />}
     </Box>
   )
 }

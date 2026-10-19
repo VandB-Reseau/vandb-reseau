@@ -22,6 +22,14 @@ import { FicheMagasin } from './pages/FicheMagasin'
 import { ReseauProvider } from './data/ReseauContext'
 import { RetourEnHaut } from './navigation/RetourEnHaut'
 import { ErreurEcran } from './components/ErreurEcran'
+import { useCallback } from 'react'
+import Button from '@mui/material/Button'
+import LockOutlined from '@mui/icons-material/LockOutlined'
+import { EmptyState } from './components/EmptyState'
+import { ApercuProvider, useApercu } from './auth/Apercu'
+import { chargerEspaceFranchise } from './data/espaceFranchise'
+import { espaceFranchise } from './navigation/destinations'
+import { BandeauApercu, FicheMagasinFranchise, MagasinsFranchise, PratiquesFranchise, TableauFranchise } from './pages/EspaceFranchise'
 
 function Routes_() {
   const { pathname } = useLocation()
@@ -60,10 +68,52 @@ function Routes_() {
   )
 }
 
+// Espace d'un franchisé (ou son aperçu par le Directeur de réseau) : ses magasins seulement
+function RoutesFranchise({ apercu }: { apercu: boolean }) {
+  const { pathname } = useLocation()
+  return (
+    <AppShell franchise={espaceFranchise} bandeau={apercu ? <BandeauApercu /> : undefined}>
+      <RetourEnHaut />
+      <ErreurEcran key={pathname}>
+      <Routes>
+        <Route path="/" element={<TableauFranchise />} />
+        <Route path="/magasins" element={<MagasinsFranchise />} />
+        <Route path="/magasins/:nom" element={<FicheMagasinFranchise />} />
+        <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
+        <Route path="/bonnes-pratiques" element={<PratiquesFranchise />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      </ErreurEcran>
+    </AppShell>
+  )
+}
+
+function AccesFerme() {
+  const { deconnexion } = useAuth()
+  return (
+    <Box sx={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', px: 2 }}>
+      <EmptyState icone={<LockOutlined />} titre="Ton accès n’est pas encore ouvert" texte="Ton compte existe, mais il n’est rattaché à aucun magasin. Contacte ton Coach ou la direction du réseau."
+        action={<Button variant="contained" onClick={() => void deconnexion()} sx={{ minHeight: 48 }}>Se déconnecter</Button>} />
+    </Box>
+  )
+}
+
+function Espace() {
+  const { profil } = useAuth()
+  const { apercu } = useApercu()
+  const franchise = profil?.role === 'franchise'
+  const directeur = profil?.role === 'directeur'
+  const vueApercu = directeur && !!apercu
+  const charger = useCallback(() => chargerEspaceFranchise(vueApercu ? apercu : null), [vueApercu, apercu])
+  if (!profil || profil.role === 'aucun') return <AccesFerme />
+  if (franchise || vueApercu) return <ReseauProvider key={apercu?.franchise ?? 'franchise'} charger={charger} lectureSeule><RoutesFranchise apercu={vueApercu} /></ReseauProvider>
+  return <ReseauProvider accesFranchises={directeur}><Routes_ /></ReseauProvider>
+}
+
 export default function App() {
   const { session, chargement } = useAuth()
   if (chargement) {
     return <Box sx={{ minHeight: '100dvh', display: 'grid', placeItems: 'center' }}><CircularProgress color="secondary" aria-label="Chargement" /></Box>
   }
-  return <HashRouter>{session ? <ReseauProvider><Routes_ /></ReseauProvider> : <Connexion />}</HashRouter>
+  return <HashRouter>{session ? <ApercuProvider><Espace /></ApercuProvider> : <Connexion />}</HashRouter>
 }

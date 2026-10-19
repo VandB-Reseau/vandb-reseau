@@ -9,6 +9,7 @@ import { normaliserGrilles, type Grilles } from './grilles'
 import { normaliserPratiques, type BonnePratique } from './bonnesPratiques'
 import { normaliserCampagnes, type Campagne, type Campagnes } from './campagnes'
 import { associesEnPlace, normaliserAssocies, type Associe, type Associes } from './associes'
+import { couperAccesDe, renommerAcces } from './espaceFranchise'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 
 function json<T>(valeur: unknown, defaut: T): T {
@@ -18,6 +19,14 @@ function json<T>(valeur: unknown, defaut: T): T {
 }
 
 export class ErreurChargement extends Error {}
+
+type Ligne = Record<string, unknown>
+// Tables lues, dans leur format Supabase (l'espace franchisé renvoie le même format, filtré par la base)
+export interface Tables {
+  config: { key: string; value: unknown }[]
+  surcharges: Ligne[]; affectations: Ligne[]; coachs: Ligne[]; recrues: Ligne[]
+  visites: Ligne[]; conges: Ligne[]; evenements: Ligne[]; finances: Ligne[]
+}
 
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
@@ -34,18 +43,28 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   ])
   const erreur = config.error ?? surcharges.error ?? affectations.error ?? coachs.error
   if (erreur) throw new ErreurChargement(erreur.message)
+  // Tables facultatives : absentes ou vides, l'app fonctionne quand même
+  const facultative = (r: { error: unknown; data: unknown }) => (r.error ? [] : (r.data as Ligne[] | null) ?? [])
+  return assemblerReseau({
+    config: config.data ?? [], surcharges: surcharges.data ?? [], affectations: affectations.data ?? [], coachs: coachs.data ?? [],
+    recrues: facultative(recrues), visites: facultative(visites), conges: facultative(conges), evenements: facultative(evenements), finances: facultative(finances),
+  }, jour)
+}
 
-  const cle = (k: string) => config.data?.find((r) => r.key === k)?.value
+// Construit le réseau à partir des tables lues
+export function assemblerReseau(tables: Tables, jour = new Date().toISOString().slice(0, 10)): Reseau {
+  const { config: lignesConfig, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances } = tables
+  const cle = (k: string) => lignesConfig.find((r) => r.key === k)?.value
   const params = json<Partial<Parametres>>(cle('params'), {})
   const brutes: DonneesBrutes = {
     magasins: json(cle('store_adds'), []),
     renommages: json(cle('store_renames'), {}),
-    surcharges: surcharges.data ?? [],
-    affectations: affectations.data ?? [],
+    surcharges: surcharges as unknown as DonneesBrutes['surcharges'],
+    affectations: affectations as unknown as DonneesBrutes['affectations'],
     configRR: json(cle('drs_data'), {}),
-    coachs: coachs.data ?? [],
+    coachs: coachs as unknown as DonneesBrutes['coachs'],
     coachsSupprimes: json<string[]>(cle('cs_deletes'), []),
-    recrues: recrues.error ? [] : recrues.data ?? [],
+    recrues: recrues as unknown as DonneesBrutes['recrues'],
     parametres: {
       prepDuration: Number(params.prepDuration) || 2, postDuration: Number(params.postDuration) || 4,
       maxUnits: Number(params.maxUnits) || 8, alertThreshold: Number(params.alertThreshold) || 7,
@@ -72,10 +91,9 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   reseau.seuils = { seuilDecroche: seuil('seuilDecroche'), seuilSurveiller: seuil('seuilSurveiller'), moisReference: seuil('moisReference') === 1 ? 1 : 12, delaiAppel: seuil('delaiAppel') }
   const dep = json<Partial<Deploiements>>(cle('deploiements'), {})
   reseau.deploiements = { thematiques: dep.thematiques?.length ? dep.thematiques : thematiquesParDefaut, valeurs: dep.valeurs ?? {}, journal: dep.journal ?? {} }
-  // Tables facultatives : absentes ou vides, l'app fonctionne quand même
-  type L = Record<string, unknown>
+  type L = Ligne
   const t = (v: unknown) => (v === null || v === undefined ? '' : String(v))
-  reseau.visites = ((visites.error ? [] : visites.data) as L[]).map((v) => ({
+  reseau.visites = (visites as L[]).map((v) => ({
     id: Number(v.id) || null, groupe: t(v.group_id), magasin: t(v.store), date: t(v.visit_date).slice(0, 10), type: t(v.type) || 'terrain',
     visiteurs: lireVisiteurs(t(v.visitor)), signatureRequise: !!v.signed_required, lienSigne: t(v.signed_url), dateSignature: t(v.signed_date).slice(0, 10),
     documents: Array.isArray(v.docs) ? (v.docs as { label?: string; url?: string; chemin?: string }[]).filter((d) => !d.chemin).map((d) => ({ label: t(d.label), url: t(d.url) })) : [], notes: t(v.notes),
@@ -85,27 +103,27 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   // Chiffres mensuels : table facultative, absente = aucun chiffre
   const nb = (v: unknown) => (v === null || v === undefined || v === '' || isNaN(Number(v)) ? null : Number(v))
   reseau.chiffres = {}
-  for (const f of (finances.error ? [] : finances.data ?? []) as L[]) {
+  for (const f of finances as L[]) {
     const c = { magasin: t(f.store_name), mois: t(f.month).slice(0, 7), ...Object.fromEntries(Object.entries(colonnesChiffres).map(([id, col]) => [id, nb(f[col])])) } as ChiffreMois
     if (!c.magasin || !/^\d{4}-\d{2}$/.test(c.mois)) continue
     ;(reseau.chiffres[c.magasin] ??= []).push(c)
   }
   for (const l of Object.values(reseau.chiffres)) l.sort((a, b) => a.mois.localeCompare(b.mois))
-  reseau.conges = ((conges.error ? [] : conges.data) as L[]).map((c) => ({
+  reseau.conges = (conges as L[]).map((c) => ({
     id: Number(c.id) || null, personne: t(c.person), role: t(c.role) || 'cs', debut: t(c.start_date).slice(0, 10), fin: t(c.end_date).slice(0, 10) || t(c.start_date).slice(0, 10), notes: t(c.notes),
   }))
-  reseau.evenements = ((evenements.error ? [] : evenements.data) as L[]).map((e) => ({
+  reseau.evenements = (evenements as L[]).map((e) => ({
     id: Number(e.id) || null, titre: t(e.title), type: t(e.type) || 'event', debut: t(e.start_date).slice(0, 10), fin: t(e.end_date).slice(0, 10) || t(e.start_date).slice(0, 10), notes: t(e.notes), couleur: t(e.color) || '#7c3aed',
   }))
   // Anniversaires : naissance (fiches Coach et RR) et arrivée (recrues)
   const ann: Reseau['anniversaires'] = []
-  for (const c of coachs.data ?? []) if (c.birth && !c.tech) ann.push({ nom: c.cs_name, role: 'Coach', date: t(c.birth).slice(0, 10), nature: 'naissance' })
+  for (const c of coachs as L[]) if (c.birth && !c.tech) ann.push({ nom: t(c.cs_name), role: 'Coach', date: t(c.birth).slice(0, 10), nature: 'naissance' })
   const cfgRR = json<{ drs?: { name: string; birth?: string; entry?: string }[] }>(cle('drs_data'), {})
   for (const r of cfgRR.drs ?? []) {
     if (r.birth) ann.push({ nom: r.name, role: 'Responsable Régional', date: r.birth.slice(0, 10), nature: 'naissance' })
     if (r.entry) ann.push({ nom: r.name, role: 'Responsable Régional', date: r.entry.slice(0, 10), nature: 'arrivee' })
   }
-  for (const r of recrues.error ? [] : recrues.data ?? []) if (r.start && !reseau.equipe.find((c) => c.nom === r.name)?.fictif) ann.push({ nom: r.name, role: 'Coach', date: t(r.start).slice(0, 10), nature: 'arrivee' })
+  for (const r of recrues as L[]) if (r.start && !reseau.equipe.find((c) => c.nom === r.name)?.fictif) ann.push({ nom: t(r.name), role: 'Coach', date: t(r.start).slice(0, 10), nature: 'arrivee' })
   // Fiches personnelles : elles complètent ou remplacent les dates connues de l'ancienne app
   reseau.personnes = json<Reseau['personnes']>(cle('fiches_personnes'), {})
   const parCle = new Map(ann.map((a) => [`${a.nom}|${a.nature}`, a]))
@@ -390,6 +408,7 @@ export async function enregistrerFranchise(nom: string, ancien: string | null, m
   })
   if (ancien && ancien !== nom) await deplacerFichePersonne({ type: 'franchise', cle: ancien }, { type: 'franchise', cle: nom })
   await enregistrerFichePersonne({ type: 'franchise', cle: nom }, f)
+  if (ancien && ancien !== nom) await renommerAcces(ancien, nom, magasins).catch(() => undefined)
 }
 
 export async function supprimerFranchise(nom: string, magasins: string[], reseau: Reseau) {
@@ -401,6 +420,7 @@ export async function supprimerFranchise(nom: string, magasins: string[], reseau
   }
   await modifierAssocies((a) => { for (const k of Object.keys(a)) a[k] = a[k].filter((x) => x.nom !== nom) })
   await supprimerFichePersonne({ type: 'franchise', cle: nom })
+  await couperAccesDe(nom).catch(() => undefined)
 }
 
 // ── Magasins ──

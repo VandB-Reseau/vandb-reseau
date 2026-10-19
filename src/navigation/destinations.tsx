@@ -15,6 +15,8 @@ import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
 import ImportExportOutlined from '@mui/icons-material/ImportExportOutlined'
 import DashboardOutlined from '@mui/icons-material/DashboardOutlined'
 import Dashboard from '@mui/icons-material/Dashboard'
+import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
+import TipsAndUpdates from '@mui/icons-material/TipsAndUpdates'
 
 export interface Destination {
   chemin: string
@@ -46,6 +48,13 @@ export const parametres: Destination[] = [
   { chemin: '/parametres/franchises', libelle: 'Franchisés', description: 'Franchisés et leurs magasins', icone: <HandshakeOutlined />, sprint: 'Sprint 4' },
   { chemin: '/parametres/donnees', libelle: 'Import et export', description: 'Référentiels en Excel et sauvegarde complète', icone: <ImportExportOutlined />, sprint: 'Sprint 8' },
   { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Charge des Coachs, alertes, nine box, audits', icone: <SettingsOutlined />, sprint: 'Sprint 5' },
+]
+
+// Espace d'un franchisé : ses magasins seulement, sans Paramètres
+export const espaceFranchise: Destination[] = [
+  { chemin: '/', libelle: 'Dashboard', description: 'Mes chiffres, mon plan d’action, mes visites', icone: <DashboardOutlined />, iconeActive: <Dashboard />, sprint: 'Sprint 11' },
+  { chemin: '/magasins', libelle: 'Mes magasins', description: 'Fiche, chiffres, visites et campagnes', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 11' },
+  { chemin: '/bonnes-pratiques', libelle: 'Bonnes pratiques', description: 'Initiatives réussies du réseau', icone: <TipsAndUpdatesOutlined />, iconeActive: <TipsAndUpdates />, sprint: 'Sprint 11' },
 ]
 
 export const plus: Destination = {

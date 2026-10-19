@@ -13,7 +13,7 @@ React 19 + TypeScript + MUI 9 (thème `src/theme/theme.ts`), react-router (HashR
 - Aucune erreur technique à l'écran : messages humains, états vides qui expliquent et proposent l'action.
 - Aucune ressource externe bloquante (polices et icônes embarquées).
 - PC = usage principal (menu latéral, tableaux complets) ; téléphone soigné (barre basse).
-- Rôles prévus (`src/auth/roles.ts`) : directeur, rr, coach. Aujourd'hui seul Joseph (directeur) a un compte.
+- Rôles (`src/auth/roles.ts`) : directeur, rr, coach (l'équipe) et franchise. Le rôle est lu dans la base (`mon_acces`), pas seulement dans le jeton. Un franchisé ne lit aucune table : la fonction `espace_franchise()` lui renvoie ses magasins (script `supabase/acces_franchises.sql`). Tout nouvel écran de l'équipe reste invisible au franchisé ; toute nouvelle donnée à lui montrer passe par cette fonction.
 - Chaque fonctionnalité livrée a ses tests Playwright sur les projets `pc` et `telephone`, avec Supabase simulé (`tests/supabase-simule.ts`).
 
 - Dépôt **public** (choix de Joseph, 14/10/2026) : aucune donnée réelle ni clé dans le dépôt. Tests avec données fictives uniquement. Clé Supabase fournie par le secret GitHub `VITE_SUPABASE_ANON_KEY`.
