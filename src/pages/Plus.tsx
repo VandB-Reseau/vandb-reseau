@@ -8,9 +8,13 @@ import ChevronRight from '@mui/icons-material/ChevronRight'
 import { PageHeader } from '../components/PageHeader'
 import Typography from '@mui/material/Typography'
 import { parametres, secondaires, type Destination } from '../navigation/destinations'
+import { useAuth } from '../auth/AuthContext'
+import { perimetreDuProfil } from '../data/perimetre'
 
 export function Plus() {
   const naviguer = useNavigate()
+  const { profil } = useAuth()
+  const sansParametres = !!perimetreDuProfil(profil)
   const groupe = (titre: string | null, liste: Destination[]) => (
     <>
       {titre && <Typography variant="overline" component="h2" color="text.secondary" sx={{ display: 'block', mt: 3, mb: 1, fontWeight: 600 }}>{titre}</Typography>}
@@ -31,7 +35,7 @@ export function Plus() {
     <>
       <PageHeader titre="Plus" />
       {groupe(null, secondaires)}
-      {groupe('Paramètres', parametres)}
+      {!sansParametres && groupe('Paramètres', parametres)}
     </>
   )
 }
