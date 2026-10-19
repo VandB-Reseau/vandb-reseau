@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useDroits } from '../auth/Droits'
 import { normaliser } from '../data/filtres'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
@@ -394,13 +395,14 @@ function VueEvaluer({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: S
   const sel = useSelection()
   const cibles: Cible[] = tousCriteres.map((c) => ({ type: 'note', id: c.id, libelle: c.libelle }))
   const [effacer, setEffacer] = useState(false)
+  const { referentiels } = useDroits()
   const notes = Object.keys(reseau.evaluations).length
   return (
     <>
       {barre}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'flex-start', justifyContent: 'space-between' }}>
         {date}
-        {notes > 0 && <Button color="error" startIcon={<DeleteOutlined />} onClick={() => setEffacer(true)} sx={{ minHeight: 48, mb: 2 }}>Effacer toutes les notes</Button>}
+        {notes > 0 && referentiels && <Button color="error" startIcon={<DeleteOutlined />} onClick={() => setEffacer(true)} sx={{ minHeight: 48, mb: 2 }}>Effacer toutes les notes</Button>}
       </Box>
       {effacer && <DialogEffacerNotes nombre={notes} onFermer={() => setEffacer(false)} />}
       {surPC && <ChoixMode mode={mode} changer={setMode} />}
@@ -602,6 +604,7 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
   const [gestion, setGestion] = useState(false)
   const [importer, setImporter] = useState(false)
   const [importerChiffres, setImporterChiffres] = useState(false)
+  const { referentiels } = useDroits()
   const [date, setDate] = useState(reseau.jour)
   const saisie = useSaisieSante(reseau, setMessage, date)
   const actifs = reseau.magasins.filter((m) => m.statut !== 'avenir')
@@ -609,8 +612,8 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
   // Les boutons restent en place (masqués sur la nine box) pour que le titre ne bouge pas entre onglets
   const actions = (
     <Box sx={{ gap: 1, flexWrap: 'wrap', visibility: vue === 'ninebox' ? 'hidden' : 'visible', display: surPC ? 'flex' : 'none' }} aria-hidden={vue === 'ninebox'}>
-      {surPC && <BoutonAction secondaire libelle="Importer Excel" icone={<UploadFileOutlined />} onClick={() => (vue === 'chiffres' ? setImporterChiffres(true) : setImporter(true))} />}
-      <Box sx={{ visibility: vue === 'deploiements' ? 'visible' : 'hidden' }} aria-hidden={vue !== 'deploiements'}><BoutonAction secondaire libelle="Gérer les thématiques" icone={<SettingsOutlined />} onClick={() => setGestion(true)} /></Box>
+      {surPC && referentiels && <BoutonAction secondaire libelle="Importer Excel" icone={<UploadFileOutlined />} onClick={() => (vue === 'chiffres' ? setImporterChiffres(true) : setImporter(true))} />}
+      {referentiels && <Box sx={{ visibility: vue === 'deploiements' ? 'visible' : 'hidden' }} aria-hidden={vue !== 'deploiements'}><BoutonAction secondaire libelle="Gérer les thématiques" icone={<SettingsOutlined />} onClick={() => setGestion(true)} /></Box>}
     </Box>
   )
   return (

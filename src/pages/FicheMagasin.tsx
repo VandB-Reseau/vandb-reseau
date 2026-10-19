@@ -26,7 +26,7 @@ import Snackbar from '@mui/material/Snackbar'
 import SwapHoriz from '@mui/icons-material/SwapHoriz'
 import { EmptyState } from '../components/EmptyState'
 import { PastilleStatut, PastilleType } from '../components/Pastilles'
-import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienRR, telLien } from '../lib/format'
+import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienPreparation, lienRR, telLien } from '../lib/format'
 import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
@@ -34,6 +34,8 @@ import { DialogVisite } from '../components/DialogVisite'
 import { CampagnesMagasin } from '../components/Campagnes'
 import { BoutonAjouterAction, ListeActions } from '../components/Actions'
 import { ListeAssocies } from '../components/Associes'
+import { useDroits } from '../auth/Droits'
+import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
 import { Onglets, type Rubrique } from '../components/Onglets'
 import { actionsDuMagasin, enRetard } from '../data/actions'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
@@ -127,6 +129,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const alerte = analyser(reseau, m.nom)
   const saisirVisite = () => { setTypeVisite('terrain'); setVisite(null) }
   const nonLus = useNonLusMagasin(m.nom)
+  const { referentiels } = useDroits()
   const rubriques = rubriquesFiche.map((r) => (r.vue === 'messages' ? { ...r, pastille: nonLus } : r))
   return (
     <>
@@ -136,7 +139,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         <PastilleStatut statut={m.statut} />
         <PastilleType franchise={m.franchise} />
         <Box sx={{ flex: 1 }} />
-        <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setEdition(true)} sx={{ minHeight: 48 }}>Modifier</Button>
+        <Button variant="outlined" startIcon={<AssignmentOutlined />} component={RouterLink} to={lienPreparation(m.nom)} sx={{ minHeight: 48 }}>Préparer la visite</Button>
+        {referentiels && <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setEdition(true)} sx={{ minHeight: 48 }}>Modifier</Button>}
       </Box>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 1.5 }}>
         {[m.ville || null, m.departement && `Département ${m.departement}`, m.pays || null, m.code && `Code ${m.code}`, m.coach && `Coach ${m.coach}`].filter(Boolean).join(' · ')}
@@ -152,7 +156,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 
       {vue === 'fiche' && (
         <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-          <Section titre="Équipe" action={<Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button>}>
+          <Section titre="Équipe" action={referentiels ? <Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button> : undefined}>
             <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
             <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
             {!m.franchise && <Contact role={libelleResponsable(m)} p={m.responsable} lien={m.responsable ? lienFranchise(m.responsable.nom) : undefined} sousTitre={m.responsable ? undefined : m.responsableARecruter ? 'En cours de recrutement' : undefined} />}

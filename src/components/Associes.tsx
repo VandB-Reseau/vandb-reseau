@@ -1,3 +1,4 @@
+import { useDroits } from '../auth/Droits'
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Autocomplete from '@mui/material/Autocomplete'
@@ -57,19 +58,20 @@ export function ListeAssocies({ reseau, m, signaler }: { reseau: Reseau; m: Maga
   const tous = associesDu(reseau, m)
   const enplace = tous.filter((a) => enPlace(a, reseau.jour))
   const anciens = tous.filter((a) => !enPlace(a, reseau.jour))
+  const { referentiels } = useDroits()
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
         <Typography variant="h4" component="h3" sx={{ flex: 1 }}>{libelleAssocies(m)}</Typography>
-        <Button startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }} aria-label="Ajouter un associé">Ajouter</Button>
+        {referentiels && <Button startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }} aria-label="Ajouter un associé">Ajouter</Button>}
       </Box>
       {!m.franchise && <Box sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider' }}><Typography variant="body1" sx={{ fontWeight: 500 }}>V and B</Typography></Box>}
       {enplace.length === 0 && m.franchise && <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>Aucun franchisé associé renseigné.</Typography>}
-      {enplace.map((a) => <LigneAssocie key={a.id} reseau={reseau} m={m} a={a} modifier={() => setEdition(a)} />)}
+      {enplace.map((a) => <LigneAssocie key={a.id} reseau={reseau} m={m} a={a} modifier={referentiels ? () => setEdition(a) : undefined} />)}
       {anciens.length > 0 && (
         <>
           <Typography variant="subtitle2" component="h4" color="text.secondary" sx={{ mt: 1.5 }}>Anciens associés</Typography>
-          {anciens.map((a) => <LigneAssocie key={a.id} reseau={reseau} m={m} a={a} modifier={() => setEdition(a)} />)}
+          {anciens.map((a) => <LigneAssocie key={a.id} reseau={reseau} m={m} a={a} modifier={referentiels ? () => setEdition(a) : undefined} />)}
         </>
       )}
       {edition !== undefined && <DialogAssocie reseau={reseau} m={m} associe={edition} onFermer={(msg) => { setEdition(undefined); if (msg) signaler(msg) }} />}

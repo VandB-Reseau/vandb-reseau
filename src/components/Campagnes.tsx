@@ -1,3 +1,4 @@
+import { useDroits } from '../auth/Droits'
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Autocomplete from '@mui/material/Autocomplete'
@@ -163,14 +164,15 @@ export function VueCampagnes({ reseau }: { reseau: Reseau }) {
   const [message, setMessage] = useState('')
   const choisie = reseau.campagnes.liste.find((c) => c.id === params.get('campagne'))
   const ouvrir = (id: string | null) => setParams((p) => { const n = new URLSearchParams(p); if (id) n.set('campagne', id); else n.delete('campagne'); return n })
-  const nouvelle = <BoutonAction libelle="Nouvelle campagne" onClick={() => setEdition(null)} />
+  const { referentiels } = useDroits()
+  const nouvelle = referentiels ? <BoutonAction libelle="Nouvelle campagne" onClick={() => setEdition(null)} /> : null
   const parPhase = (ph: Phase) => reseau.campagnes.liste.filter((c) => phase(c, reseau.jour) === ph).sort((a, b) => (ph === 'terminee' ? b.fin.localeCompare(a.fin) : a.debut.localeCompare(b.debut)))
   return (
     <>
       {choisie
         ? <DetailCampagne reseau={reseau} c={choisie} retour={() => ouvrir(null)} modifier={() => setEdition(choisie)} signaler={setMessage} />
         : !reseau.campagnes.liste.length
-        ? <EmptyState icone={<CampaignOutlined />} titre="Aucune campagne" texte="Les campagnes commerciales et leur exécution en magasin apparaîtront ici." action={<Button variant="contained" startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }}>Nouvelle campagne</Button>} />
+        ? <EmptyState icone={<CampaignOutlined />} titre="Aucune campagne" texte="Les campagnes commerciales et leur exécution en magasin apparaîtront ici." action={referentiels ? <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }}>Nouvelle campagne</Button> : undefined} />
         : (
           <>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>{nouvelle}</Box>
@@ -219,6 +221,7 @@ function TableBilan({ titre, lignes }: { titre: string; lignes: { nom: string; b
 const ordreExecution: Execution[] = ['aConstater', 'non', 'partiel', 'fait']
 
 function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Reseau; c: Campagne; retour: () => void; modifier: () => void; signaler: (m: string) => void }) {
+  const { referentiels } = useDroits()
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const d = useConstatsDirects(reseau, signaler)
   const [recherche, setRecherche] = useState('')
@@ -241,7 +244,7 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
           <Typography variant="h2" component="h2">{c.nom}</Typography>
           <Typography variant="body2" color="text.secondary">Du {dateCourte(c.debut)} au {dateCourte(c.fin)} · {perimetres.find((p) => p.id === c.perimetre)?.libelle}</Typography>
         </Box>
-        <Button startIcon={<EditOutlined />} onClick={modifier} sx={{ minHeight: 48 }}>Modifier</Button>
+        {referentiels && <Button startIcon={<EditOutlined />} onClick={modifier} sx={{ minHeight: 48 }}>Modifier</Button>}
       </Box>
       <Card sx={{ mb: 2 }}>
         <CardContent>

@@ -12,6 +12,10 @@
 --    ne lit et n'écrit que les lignes de ses magasins.
 -- 4) Restent lisibles par toute l'équipe : la liste des magasins (carte),
 --    les affectations, les bonnes pratiques, l'agenda et les réglages.
+-- 5) Référentiels (liste des magasins, affectations, équipe, réglages, campagnes,
+--    grilles) : seul le Directeur de réseau les modifie. L'équipe garde l'écriture
+--    des bonnes pratiques, de l'agenda et des absences.
+-- 6) Accès des Coachs et des RR, ouverts par le Directeur depuis leur fiche.
 -- ════════════════════════════════════════════════════════════════
 
 -- ── 1) Périmètre de chaque magasin, écrit par l'app du Directeur
@@ -218,16 +222,94 @@ BEGIN
     'reperes', public.reperes_reseau(v_mag));
 END $$;
 
--- ── 5) Droits d'appel des fonctions : comptes connectés seulement
+-- ── 5) Référentiels : lus par toute l'équipe, modifiés par le Directeur de réseau seul
+--       (app_config garde l'écriture des bonnes pratiques pour toute l'équipe)
+DO $$
+DECLARE t text; p record; v_ecrire text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['app_config', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits'] LOOP
+    CONTINUE WHEN NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = t);
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+    FOR p IN SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = t LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', p.policyname, t);
+    END LOOP;
+    v_ecrire := CASE WHEN t = 'app_config'
+      THEN '(SELECT public.est_directeur()) OR ((SELECT public.est_equipe()) AND key = ''bonnes_pratiques'')'
+      ELSE '(SELECT public.est_directeur())' END;
+    EXECUTE format('CREATE POLICY "equipe_lecture" ON public.%I FOR SELECT TO authenticated USING ((SELECT public.est_equipe()))', t);
+    EXECUTE format('CREATE POLICY "directeur_ajout" ON public.%I FOR INSERT TO authenticated WITH CHECK (%s)', t, v_ecrire);
+    EXECUTE format('CREATE POLICY "directeur_modification" ON public.%I FOR UPDATE TO authenticated USING (%s) WITH CHECK (%s)', t, v_ecrire, v_ecrire);
+    EXECUTE format('CREATE POLICY "directeur_suppression" ON public.%I FOR DELETE TO authenticated USING (%s)', t, v_ecrire);
+  END LOOP;
+END $$;
+
+-- ── 6) Accès des Coachs et des Responsables Régionaux, ouverts par le Directeur de réseau
+--       p_role 'coach' : p_nom = nom du Coach ; p_role 'rr' : p_nom = identifiant du RR.
+--       Une personne = un compte : un autre compte déjà rattaché à la même personne est coupé.
+CREATE OR REPLACE FUNCTION public.ouvrir_acces_equipe(p_email text, p_role text, p_nom text) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_id uuid; v_role text; v_email text;
+BEGIN
+  IF NOT public.est_directeur() THEN RAISE EXCEPTION 'acces_refuse'; END IF;
+  IF p_role NOT IN ('coach', 'rr') OR coalesce(trim(p_nom), '') = '' THEN RAISE EXCEPTION 'format'; END IF;
+  SELECT u.id, coalesce(u.raw_app_meta_data->>'role', ''), u.email INTO v_id, v_role, v_email
+  FROM auth.users u WHERE lower(u.email) = lower(trim(p_email));
+  IF v_id IS NULL THEN RAISE EXCEPTION 'compte_introuvable'; END IF;
+  IF v_id = auth.uid() OR v_role = 'directeur' THEN RAISE EXCEPTION 'compte_directeur'; END IF;
+  IF v_role = 'franchise' OR EXISTS (SELECT 1 FROM public.acces_franchises a WHERE a.user_id = v_id) THEN RAISE EXCEPTION 'compte_franchise'; END IF;
+  UPDATE auth.users SET raw_app_meta_data = (coalesce(raw_app_meta_data, '{}'::jsonb) - 'coach' - 'rr') || '{"role":"sans_acces"}'::jsonb
+  WHERE id <> v_id AND raw_app_meta_data->>'role' = p_role AND raw_app_meta_data->>p_role = p_nom;
+  UPDATE auth.users SET raw_app_meta_data = (coalesce(raw_app_meta_data, '{}'::jsonb) - 'coach' - 'rr' - 'franchise') || jsonb_build_object('role', p_role, p_role, p_nom)
+  WHERE id = v_id;
+  RETURN jsonb_build_object('user_id', v_id, 'email', v_email);
+END $$;
+
+-- Couper l'accès : le compte reste, mais ne voit plus rien (rôle « sans_acces »)
+CREATE OR REPLACE FUNCTION public.couper_acces_equipe(p_user uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  IF NOT public.est_directeur() THEN RAISE EXCEPTION 'acces_refuse'; END IF;
+  UPDATE auth.users SET raw_app_meta_data = (coalesce(raw_app_meta_data, '{}'::jsonb) - 'coach' - 'rr') || '{"role":"sans_acces"}'::jsonb
+  WHERE id = p_user AND raw_app_meta_data->>'role' IN ('coach', 'rr');
+END $$;
+
+-- Coach renommé : son compte le suit
+CREATE OR REPLACE FUNCTION public.renommer_acces_coach(p_ancien text, p_nouveau text) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  IF NOT public.est_directeur() THEN RAISE EXCEPTION 'acces_refuse'; END IF;
+  IF coalesce(trim(p_nouveau), '') = '' THEN RAISE EXCEPTION 'format'; END IF;
+  UPDATE auth.users SET raw_app_meta_data = raw_app_meta_data || jsonb_build_object('coach', p_nouveau)
+  WHERE raw_app_meta_data->>'role' = 'coach' AND raw_app_meta_data->>'coach' = p_ancien;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.liste_acces_equipe() RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+  SELECT CASE WHEN public.est_directeur() THEN coalesce(jsonb_agg(jsonb_build_object(
+    'user_id', u.id, 'email', u.email, 'role', u.raw_app_meta_data->>'role',
+    'nom', u.raw_app_meta_data->>(u.raw_app_meta_data->>'role'), 'derniere_connexion', u.last_sign_in_at) ORDER BY u.email), '[]'::jsonb) END
+  FROM auth.users u WHERE u.raw_app_meta_data->>'role' IN ('coach', 'rr')
+$$;
+
+-- Repères réseau anonymes (médiane, quart supérieur) d'un magasin, pour la fiche avant visite de l'équipe
+CREATE OR REPLACE FUNCTION public.reperes_equipe(p_magasins text[]) RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  IF NOT public.est_equipe() THEN RAISE EXCEPTION 'acces_refuse'; END IF;
+  RETURN public.reperes_reseau(p_magasins);
+END $$;
+
+-- ── 7) Droits d'appel des fonctions : comptes connectés seulement
 DO $$
 DECLARE f text;
 BEGIN
-  FOREACH f IN ARRAY ARRAY['magasins_visibles()', 'maj_perimetre_equipe(jsonb)', 'espace_franchise(text, text[])'] LOOP
+  FOREACH f IN ARRAY ARRAY['magasins_visibles()', 'maj_perimetre_equipe(jsonb)', 'espace_franchise(text, text[])',
+    'ouvrir_acces_equipe(text, text, text)', 'couper_acces_equipe(uuid)', 'renommer_acces_coach(text, text)', 'liste_acces_equipe()', 'reperes_equipe(text[])'] LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION public.%s FROM PUBLIC, anon', f);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.%s TO authenticated', f);
   END LOOP;
 END $$;
 
 -- Vérification : règles des tables cloisonnées, et ce qui a été déplacé
-SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('visits', 'store_finance', 'suivi_magasins', 'perimetre_equipe', 'sauvegarde_cloisonnement') ORDER BY tablename;
+SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('visits', 'store_finance', 'suivi_magasins', 'perimetre_equipe', 'sauvegarde_cloisonnement', 'app_config', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits') ORDER BY tablename, policyname;
 SELECT cle, count(*) AS magasins FROM public.suivi_magasins GROUP BY cle ORDER BY cle;

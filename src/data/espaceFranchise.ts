@@ -101,3 +101,10 @@ export async function renommerAcces(ancien: string, nouveau: string, magasins: s
 export async function couperAccesDe(nom: string) {
   for (const a of (await listerAcces()) ?? []) if (a.franchise === nom) await couperAcces(a.userId)
 }
+
+// Repères réseau d'un magasin pour l'équipe (fiche avant visite). null : pas assez de chiffres,
+// ou fonction pas encore activée dans la base
+export async function chargerReperesEquipe(magasins: string[]): Promise<Reperes | null> {
+  const { data, error } = await supabase.rpc('reperes_equipe', { p_magasins: magasins })
+  return !error && data && typeof data === 'object' ? data as Reperes : null
+}

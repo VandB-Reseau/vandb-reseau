@@ -1,3 +1,4 @@
+import { renommerAccesCoach } from './accesEquipe'
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { avecPoint, definirGrille, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
@@ -355,6 +356,7 @@ export async function renommerCoach(ancien: string, nouveau: string) {
   const del = await lireCle<string[]>('cs_deletes', [])
   await ecrireCle('cs_deletes', [...del.valeur.filter((n) => n !== nouveau && n !== ancien), ancien], del.existe)
   await deplacerFichePersonne({ type: 'coach', cle: ancien }, { type: 'coach', cle: nouveau })
+  await renommerAccesCoach(ancien, nouveau).catch(() => undefined)
 }
 
 // Une visite peut avoir plusieurs participants : le nom est remplacé dans chaque liste
