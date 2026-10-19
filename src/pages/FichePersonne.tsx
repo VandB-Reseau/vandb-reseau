@@ -1,5 +1,7 @@
+import { useDroits } from '../auth/Droits'
 import { associesDu, mandatActuel } from '../data/associes'
 import { SectionAcces } from '../components/AccesFranchise'
+import { SectionAccesEquipe } from '../components/AccesEquipe'
 import { useAuth } from '../auth/AuthContext'
 import { PastilleMandat, periode } from '../components/Associes'
 import { PastilleCase } from '../components/Sante'
@@ -54,12 +56,13 @@ export function SectionFichePersonnelle({ reseau, r, action }: { reseau: Reseau;
 
 function Entete({ retour, titre, sousTitre, onModifier }: { retour?: string; titre: string; sousTitre: string; onModifier: () => void }) {
   const naviguer = useNavigate()
+  const { referentiels } = useDroits()
   return (
     <>
       <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer(retour ?? '/equipe'))} sx={{ mb: 2, ml: -1 }}>Équipe</Button>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <Typography variant="h1" sx={{ flex: 1 }}>{titre}</Typography>
-        <Button variant="outlined" startIcon={<EditOutlined />} onClick={onModifier} sx={{ minHeight: 48 }}>Modifier</Button>
+        {referentiels && <Button variant="outlined" startIcon={<EditOutlined />} onClick={onModifier} sx={{ minHeight: 48 }}>Modifier</Button>}
       </Box>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>{sousTitre}</Typography>
     </>
@@ -88,12 +91,14 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
   const magasins = reseau.magasins.filter((m) => m.rr?.id === id)
   const directs = magasins.filter((m) => m.rrEnDirect)
   const role = rr.integres ? 'Responsable Magasins Intégrés' : libelleRole('rr')
+  const { referentiels } = useDroits()
   return (
     <>
       <Entete titre={rr.nom} sousTitre={`${role} · ${pluriel(coachs.length, 'Coach')} · ${pluriel(magasins.length, 'magasin')}`} onModifier={() => setEdition(true)} />
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start', mb: 2 }}>
         <SectionFichePersonnelle reseau={reseau} r={{ type: 'rr', cle: id }} />
         <Box sx={{ display: 'grid', gap: 2 }}>
+          {referentiels && <SectionAccesEquipe role="rr" cle={id} nom={rr.nom} signaler={setMessage} />}
           <Section titre="Coachs rattachés">
             {coachs.length === 0 ? <Typography variant="body2" color="text.secondary">Aucun Coach rattaché.</Typography> : coachs.map((c) => (
               <Rangee key={c.nom}>
@@ -151,6 +156,7 @@ function PageDirecteur({ reseau }: { reseau: Reseau }) {
 function PageFranchise({ reseau, nom }: { reseau: Reseau; nom: string }) {
   const naviguer = useNavigate()
   const { profil } = useAuth()
+  const { referentiels } = useDroits()
   const [edition, setEdition] = useState(false)
   const [message, setMessage] = useState('')
   const f = franchises(reseau).find((x) => x.nom === nom)!
@@ -160,7 +166,7 @@ function PageFranchise({ reseau, nom }: { reseau: Reseau; nom: string }) {
       <Entete retour="/parametres/franchises" titre={nom} sousTitre={`${libelleRole('franchise', f.integresSeulement)} · ${pluriel(f.magasins.length, 'magasin')}${coachs.length ? ` · suivi par ${coachs.join(', ')}` : ''}`} onModifier={() => setEdition(true)} />
       <Box sx={{ mb: 2, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
         <SectionFichePersonnelle reseau={reseau} r={{ type: 'franchise', cle: nom }} />
-        {profil?.role === 'directeur' && <SectionAcces nom={nom} magasins={f.magasins.map((m) => m.nom)} signaler={setMessage} />}
+        {profil?.role === 'directeur' && referentiels && <SectionAcces nom={nom} magasins={f.magasins.map((m) => m.nom)} signaler={setMessage} />}
       </Box>
       {f.magasins.some((m) => m.franchise) && (
         <Box sx={{ mb: 2 }}>

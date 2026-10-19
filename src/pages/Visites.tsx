@@ -20,6 +20,7 @@ import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import AddOutlined from '@mui/icons-material/AddOutlined'
+import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
@@ -48,7 +49,7 @@ import { nineBox } from '../data/sante'
 import { PastilleCase } from '../components/Sante'
 import { FiltreMenu } from '../components/FiltreMenu'
 import Chip from '@mui/material/Chip'
-import { dateCourte, lienCoach, lienFiche } from '../lib/format'
+import { dateCourte, lienCoach, lienFiche, lienPreparation } from '../lib/format'
 import { nomsVisiteurs, typesVisite, type Reseau, type Visite } from '../data/modele'
 
 type Edition = { visite: Visite | null; magasins: string[] } | null
@@ -154,7 +155,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
                         </TableCell>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}>{l.derniere ? dateCourte(l.derniere.date) : <Typography variant="body2" color="text.secondary">Jamais visité</Typography>}</TableCell>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}><Echeance l={l} /></TableCell>
-                        <TableCell sx={{ py: 0 }}><Tooltip title="Saisir une visite"><IconButton aria-label={`Saisir une visite pour ${l.magasin.nom}`} onClick={() => saisir([l.magasin.nom])}><AddOutlined /></IconButton></Tooltip></TableCell>
+                        <TableCell sx={{ py: 0, whiteSpace: 'nowrap' }}><Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(l.magasin.nom)} aria-label={`Préparer la visite de ${l.magasin.nom}`}><AssignmentOutlined /></IconButton></Tooltip><Tooltip title="Saisir une visite"><IconButton aria-label={`Saisir une visite pour ${l.magasin.nom}`} onClick={() => saisir([l.magasin.nom])}><AddOutlined /></IconButton></Tooltip></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -171,6 +172,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
                         <Link component={RouterLink} to={lienFiche(l.magasin.nom)} variant="h4" sx={{ display: 'block' }}>{l.magasin.nom}</Link>
                         <Typography variant="body2" color="text.secondary">{l.coach ? `Coach ${l.coach}` : 'Sans Coach'} · {l.derniere ? `dernière visite le ${dateCourte(l.derniere.date)}` : 'jamais visité'}</Typography>
                       </Box>
+                      <IconButton component={RouterLink} to={lienPreparation(l.magasin.nom)} aria-label={`Préparer la visite de ${l.magasin.nom}`}><AssignmentOutlined /></IconButton>
                       <IconButton aria-label={`Saisir une visite pour ${l.magasin.nom}`} onClick={() => saisir([l.magasin.nom])}><AddOutlined /></IconButton>
                     </Box>
                     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1, alignItems: 'center' }}>

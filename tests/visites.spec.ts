@@ -25,14 +25,14 @@ test('le rythme de visite suit la nine box et signale les retards', async ({ pag
   await page.getByRole('button', { name: 'Filtre État' }).click()
   await page.getByRole('menuitem', { name: /En retard/ }).click()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('link', { name: 'Lyon Test' })).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'Nantes Test' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Lyon Test', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Nantes Test', exact: true })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-visites-rythme.png`, fullPage: !isMobile })
   await page.getByRole('button', { name: 'Filtre Nine box' }).click()
   await page.getByRole('menuitem', { name: /Locomotive/ }).click()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('link', { name: 'Nantes Test' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Nantes Test', exact: true })).toHaveCount(0)
 })
 
 test('saisir une tournée crée une visite par magasin', async ({ page }, info) => {

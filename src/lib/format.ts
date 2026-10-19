@@ -11,6 +11,7 @@ export function dateCourte(iso: string): string {
 export function lienFiche(nom: string): string {
   return `/magasins/${encodeURIComponent(nom)}`
 }
+export const lienPreparation = (nom: string) => `${lienFiche(nom)}/preparer`
 
 export function telLien(tel: string): string {
   return `tel:${tel.replace(/[^\d+]/g, '')}`

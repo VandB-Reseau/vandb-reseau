@@ -13,17 +13,21 @@ import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-d
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import { AppShell } from './layout/AppShell'
-import { useAuth } from './auth/AuthContext'
+import { ProfilVu, useAuth } from './auth/AuthContext'
+import type { Profil } from './auth/roles'
+import { DroitsProvider } from './auth/Droits'
+import { BandeauApercuEquipe } from './components/AccesEquipe'
 import { Accueil } from './pages/Accueil'
 import { Connexion } from './pages/Connexion'
 import { Plus } from './pages/Plus'
 import { Magasins } from './pages/Magasins'
 import { FicheMagasin } from './pages/FicheMagasin'
+import { PreparationVisite } from './pages/PreparationVisite'
 import { ReseauProvider } from './data/ReseauContext'
 import { MessagerieProvider } from './data/MessagerieContext'
 import { RetourEnHaut } from './navigation/RetourEnHaut'
 import { ErreurEcran } from './components/ErreurEcran'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, type ReactNode } from 'react'
 import { cleVue, lireVue, perimetreDuProfil } from './data/perimetre'
 import Button from '@mui/material/Button'
 import LockOutlined from '@mui/icons-material/LockOutlined'
@@ -34,11 +38,11 @@ import { espaceFranchise } from './navigation/destinations'
 import { BandeauApercu, FicheMagasinFranchise, MagasinsFranchise, PratiquesFranchise, TableauFranchise } from './pages/EspaceFranchise'
 
 // equipeSeule : Coach ou Responsable Régional, sans la partie Paramètres (les fiches des personnes restent ouvertes)
-function Routes_({ equipeSeule = false }: { equipeSeule?: boolean }) {
+function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; bandeau?: ReactNode }) {
   const { pathname } = useLocation()
   if (equipeSeule && (pathname === '/equipe' || pathname.startsWith('/parametres') || pathname === '/plus/direction' || pathname.startsWith('/plus/evolution') || pathname === '/plus/charge')) return <Navigate to="/" replace />
   return (
-    <AppShell sansParametres={equipeSeule}>
+    <AppShell sansParametres={equipeSeule} bandeau={bandeau}>
       <RetourEnHaut />
       {/* Changer d'écran efface l'erreur de l'écran précédent */}
       <ErreurEcran key={pathname}>
@@ -46,6 +50,7 @@ function Routes_({ equipeSeule = false }: { equipeSeule?: boolean }) {
         <Route path="/" element={<Accueil />} />
         <Route path="/magasins" element={<Magasins />} />
         <Route path="/magasins/:nom" element={<FicheMagasin />} />
+        <Route path="/magasins/:nom/preparer" element={<PreparationVisite />} />
         <Route path="/plus/carte" element={<Navigate to="/magasins?vue=carte" replace />} />
         <Route path="/equipe" element={<Equipe />} />
         <Route path="/equipe/coach/:nom" element={<FicheCoach />} />
@@ -104,6 +109,18 @@ function AccesFerme() {
 
 function Espace() {
   const { profil } = useAuth()
+  const { apercu, equipe } = useApercu()
+  const directeur = profil?.role === 'directeur'
+  // « Voir comme » un Coach ou un RR : l'app se construit avec son profil et sans droit sur les référentiels
+  if (profil && directeur && !apercu && equipe) {
+    const vu: Profil = { ...profil, nom: equipe.nom.split(' ')[0], role: equipe.role, perimetre: equipe.role === 'coach' ? { coachs: [equipe.cle] } : { rr: [equipe.cle] } }
+    return <ProfilVu profil={vu}><DroitsProvider referentiels={false}><EspaceDe bandeau={<BandeauApercuEquipe />} /></DroitsProvider></ProfilVu>
+  }
+  return <DroitsProvider referentiels={directeur}><EspaceDe /></DroitsProvider>
+}
+
+function EspaceDe({ bandeau }: { bandeau?: ReactNode }) {
+  const { profil } = useAuth()
   const { apercu } = useApercu()
   const franchise = profil?.role === 'franchise'
   const directeur = profil?.role === 'directeur'
@@ -114,7 +131,7 @@ function Espace() {
   const perimetre = useMemo(() => (cle ? lireVue(cle) : null), [cle])
   if (!profil || profil.role === 'aucun') return <AccesFerme />
   if (franchise || vueApercu) return <MessagerieProvider><ReseauProvider key={apercu?.franchise ?? 'franchise'} charger={charger} lectureSeule><RoutesFranchise apercu={vueApercu} /></ReseauProvider></MessagerieProvider>
-  return <MessagerieProvider><ReseauProvider accesFranchises={directeur} perimetre={perimetre}><Routes_ equipeSeule={!!perimetre} /></ReseauProvider></MessagerieProvider>
+  return <MessagerieProvider><ReseauProvider key={cle ?? 'reseau'} accesFranchises={directeur} lectureSeule={!directeur} perimetre={perimetre}><Routes_ equipeSeule={!!perimetre} bandeau={bandeau} /></ReseauProvider></MessagerieProvider>
 }
 
 export default function App() {

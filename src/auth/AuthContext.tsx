@@ -92,11 +92,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     deconnexion: async () => {
-      try { sessionStorage.removeItem('apercu-franchise') } catch { /* rien à effacer */ }
+      try { sessionStorage.removeItem('apercu-franchise'); sessionStorage.removeItem('apercu-equipe') } catch { /* rien à effacer */ }
       await supabase.auth.signOut()
     },
   }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+// Aperçu « Voir comme » : l'écran se construit avec le profil de la personne vue (le compte connecté ne change pas)
+export function ProfilVu({ profil, children }: { profil: Profil; children: ReactNode }) {
+  const ctx = useAuth()
+  return <AuthContext.Provider value={{ ...ctx, profil }}>{children}</AuthContext.Provider>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

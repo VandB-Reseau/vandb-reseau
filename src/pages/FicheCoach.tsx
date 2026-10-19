@@ -1,3 +1,4 @@
+import { useDroits } from '../auth/Droits'
 import { useState } from 'react'
 import Snackbar from '@mui/material/Snackbar'
 import EditOutlined from '@mui/icons-material/EditOutlined'
@@ -19,6 +20,7 @@ import { Contact, Section } from './FicheMagasin'
 import { chargeA, libelleMois, magasinsDuCoach, moisAVenir } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche, lienRR } from '../lib/format'
 import { SectionFichePersonnelle } from './FichePersonne'
+import { SectionAccesEquipe } from '../components/AccesEquipe'
 import { libelleTypeVisite, type Coach, type Reseau } from '../data/modele'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
@@ -66,6 +68,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
   const visites = reseau.visites.filter((v) => v.date <= reseau.jour && (v.visiteurs.includes(coach.nom) || (noms.has(v.magasin) && !v.visiteurs.length)))
     .sort((x, y) => y.date.localeCompare(x.date))
   const [toutes, setToutes] = useState(false)
+  const { referentiels } = useDroits()
   const actions = actionsDes(reseau, noms)
   const ouvertes = actions.filter((x) => !x.a.faite)
   const retards = ouvertes.filter((x) => enRetard(x.a, reseau.jour)).length
@@ -75,7 +78,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
       <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe'))} sx={{ mb: 2, ml: -1 }}>Équipe</Button>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <Typography variant="h1" sx={{ flex: 1 }}>{coach.nom}</Typography>
-        <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setEdition(true)} sx={{ minHeight: 48 }}>Modifier</Button>
+        {referentiels && <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setEdition(true)} sx={{ minHeight: 48 }}>Modifier</Button>}
       </Box>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 1.5 }}>
         Coach · {magasins.length} magasin{magasins.length > 1 ? 's' : ''}{coach.rr ? ` · ${coach.rr.nom}` : ''}
@@ -143,6 +146,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
           <Section titre="Rattachement">
             <Contact role={coach.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={coach.rr} lien={coach.rr ? lienRR(coach.rr.id) : undefined} sousTitre={coach.rr ? undefined : 'Non rattaché à ce jour'} />
           </Section>
+          {referentiels && !coach.fictif && <SectionAccesEquipe role="coach" cle={coach.nom} nom={coach.nom} signaler={setMessage} />}
         </Box>
       )}
       {edition && <DialogCoach reseau={reseau} coach={coach} onFermer={(m, nom) => { setEdition(false); if (m?.includes('retiré')) naviguer('/equipe'); else if (m) { setMessage(m); if (nom && nom !== coach.nom) naviguer(lienCoach(nom), { replace: true }) } }} />}

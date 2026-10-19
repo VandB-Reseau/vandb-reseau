@@ -10,6 +10,7 @@ export interface Ecriture { methode: string; table: string; corps: unknown; filt
 // Accès lu dans la base (fonction mon_acces) ; null : fonctions pas encore créées (script non passé)
 export interface AccesSimule { role: string; franchise?: string; magasins?: string[]; coach?: string; rr?: string }
 export interface AccesFranchiseSimule { user_id: string; email: string; franchise: string; magasins: string[]; ouvert_le?: string; derniere_connexion?: string | null }
+export interface AccesEquipeSimule { user_id: string; email: string; role: 'coach' | 'rr'; nom: string; derniere_connexion?: string | null }
 export interface EspaceSimule { visites?: Record<string, unknown>[]; reperes?: unknown; campagnes?: unknown; pratiques?: unknown[] }
 // Messagerie (script supabase/messagerie.sql) : null = pas encore activée
 export interface MessageSimule { id: number; store: string; auteur: string; auteur_nom: string; auteur_role: string; texte: string; mentions: string[]; cree_le: string }
@@ -17,7 +18,7 @@ export interface MessagerieSimulee { messages?: MessageSimule[]; lus?: Record<st
 export const MOI = '00000000-0000-0000-0000-000000000001'
 // Périmètre envoyé par l'app du Directeur (fonction maj_perimetre_equipe)
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
-export interface OptionsSimulation { messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean }
+export interface OptionsSimulation { messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -105,7 +106,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       const meta = options.appMetadata ?? {}
       const acces: AccesSimule = options.acces ?? (meta.role === 'coach' || meta.role === 'rr' ? { role: String(meta.role), coach: meta.coach as string, rr: meta.rr as string } : { role: 'directeur' })
       if (fn === 'maj_perimetre_equipe') options.perimetreRecu = corps.p_lignes as PerimetreRecu[]
-      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'maj_perimetre_equipe', 'messagerie'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
+      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
       if (fn === 'mon_acces') return route.fulfill({ json: { role: acces.role, coach: acces.coach ?? null, rr: acces.rr ?? null, franchise: acces.franchise ?? null, magasins: acces.magasins ?? [] } })
       if (fn === 'espace_franchise') {
         const apercu = Array.isArray(corps.p_magasins)
@@ -136,6 +137,19 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         if (fn === 'supprimer_message') mg.messages = mg.messages.filter((m) => !(m.id === corps.p_id && m.auteur === MOI))
         return route.fulfill({ status: 200, json: null })
       }
+      // Accès de l'équipe et repères réseau (script cloisonnement_equipe.sql)
+      if (fn === 'reperes_equipe') {
+        if (!['directeur', 'rr', 'coach'].includes(acces.role)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        return route.fulfill({ json: options.reperesEquipe === undefined ? { mois: '2026-09', indicateurs: { evolution: { n: 40, mediane: -2, quartHaut: 3 }, pmCave: { n: 40, mediane: 38, quartHaut: 42 } } } : options.reperesEquipe })
+      }
+      const equipe = options.accesEquipe ?? []
+      if (['liste_acces_equipe', 'ouvrir_acces_equipe', 'couper_acces_equipe'].includes(fn) && acces.role !== 'directeur') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+      if (fn === 'liste_acces_equipe') return route.fulfill({ json: equipe.map((a) => ({ derniere_connexion: null, ...a })) })
+      if (fn === 'ouvrir_acces_equipe') {
+        if (corps.p_email === 'inconnu@exemple.test') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'compte_introuvable' } })
+        options.accesEquipe = [...equipe.filter((a) => !(a.role === corps.p_role && a.nom === corps.p_nom)), { user_id: 'u-equipe', email: String(corps.p_email), role: corps.p_role as 'coach' | 'rr', nom: String(corps.p_nom) }]
+      }
+      if (fn === 'couper_acces_equipe') options.accesEquipe = equipe.filter((a) => a.user_id !== corps.p_user)
       const liste = options.accesFranchises ?? []
       if (fn === 'liste_acces_franchises') return route.fulfill({ json: liste.map((a) => ({ ouvert_le: '2026-10-19T10:00:00Z', derniere_connexion: null, ...a })) })
       if (fn === 'ouvrir_acces_franchise') {
