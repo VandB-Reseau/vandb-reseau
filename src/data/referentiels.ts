@@ -429,16 +429,20 @@ const chiffres: Referentiel = {
 
 const NOTES = [libelleNote[1], libelleNote[2], libelleNote[3], libelleNote[0]]
 const noteDe = (s: string) => (Object.entries(libelleNote).find(([, v]) => v === s)?.[0] ?? '') as `${Note}`
-const ninebox: Referentiel = {
-  id: 'ninebox', libelle: 'Nine box', feuille: 'Nine box',
-  colonnes: [colMagasin(), ...tousCriteres.map((c) => ({ id: c.id, entete: c.libelle, type: 'choix' as const, choix: NOTES, largeur: 18 })), colDateChangement],
-  lignes: (r) => r.magasins.map((m) => ({ magasin: m.nom, ...Object.fromEntries(tousCriteres.map((c) => { const n = r.evaluations[m.nom]?.notes[c.id]; return [c.id, n === undefined ? '' : libelleNote[n]] })) })),
-  async appliquer(r, changements) {
-    await importerHistorique(changements.map((ch) => ({
-      magasin: ch.apres.magasin, date: ch.apres.date,
-      notes: Object.fromEntries(ch.champs.map((k) => [k, Number(noteDe(ch.apres[k])) as Note])) as Partial<Record<IdCritere, Note>>,
-    })), r.directeur.nom)
-  },
+// Une colonne par critère de la grille en vigueur
+function ninebox(reseau: Reseau | null): Referentiel {
+  const criteres = reseau?.grilleNineBox.criteres ?? tousCriteres
+  return {
+    id: 'ninebox', libelle: 'Nine box', feuille: 'Nine box',
+    colonnes: [colMagasin(), ...criteres.map((c) => ({ id: c.id, entete: c.libelle, type: 'choix' as const, choix: NOTES, largeur: 18 })), colDateChangement],
+    lignes: (r) => r.magasins.map((m) => ({ magasin: m.nom, ...Object.fromEntries(criteres.map((c) => { const n = r.evaluations[m.nom]?.notes[c.id]; return [c.id, n === undefined ? '' : libelleNote[n]] })) })),
+    async appliquer(r, changements) {
+      await importerHistorique(changements.map((ch) => ({
+        magasin: ch.apres.magasin, date: ch.apres.date,
+        notes: Object.fromEntries(ch.champs.map((k) => [k, Number(noteDe(ch.apres[k])) as Note])) as Partial<Record<IdCritere, Note>>,
+      })), r.directeur.nom)
+    },
+  }
 }
 
 // Colonnes construites à partir des thématiques du moment
@@ -481,5 +485,5 @@ const visites: Referentiel = {
 }
 
 export function referentiels(reseau: Reseau | null): Referentiel[] {
-  return [magasins, franchisesRef, coachs, rrs, affectations, rattachements, chiffres, ninebox, deploiements(reseau), visites]
+  return [magasins, franchisesRef, coachs, rrs, affectations, rattachements, chiffres, ninebox(reseau), deploiements(reseau), visites]
 }

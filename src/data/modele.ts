@@ -100,6 +100,7 @@ export interface Reseau {
   evenements: Evenement[]
   anniversaires: Anniversaire[]
   evaluations: import('./sante').Evaluations
+  grilleNineBox: import('./sante').GrilleNineBox
   notesMagasins: Record<string, NoteMagasin[]>
   deploiements: import('./sante').Deploiements
   chiffres: Record<string, import('./chiffres').ChiffreMois[]> // par magasin, du plus ancien au plus récent

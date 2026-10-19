@@ -1,5 +1,5 @@
 import type { Reseau } from './modele'
-import { tousCriteres, type IdCritere, type Note, type Thematique } from './sante'
+import { ANCIENNE_NOTE_FRANCHISE, tousCriteres, type IdCritere, type Note, type Thematique } from './sante'
 
 // Import d'un tableau (Excel ou CSV, par exemple un export Asana) : une ligne par magasin,
 // une colonne par critère de la nine box ou par thématique de déploiement
@@ -7,18 +7,27 @@ import { tousCriteres, type IdCritere, type Note, type Thematique } from './sant
 export const normaliser = (s: unknown) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9+]+/g, ' ').trim()
 const sansEnseigne = (s: string) => s.replace(/^(v and b|vandb|v b)\s+/, '')
 
-const motsCriteres: Record<IdCritere, string[][]> = {
+const motsConnus: Record<string, string[][]> = {
   caExterieur: [['exterieur'], ['ca', 'marche']],
   panierCave: [['panier', 'cave']],
   panierBar: [['panier', 'bar']],
   fluxCave: [['flux', 'cave']],
   fluxBar: [['flux', 'bar']],
-  franchise: [['franchise'], ['management'], ['gestion']],
+}
+const motsVides = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'l', 'au', 'aux', 'et', 'en', 'a'])
+// Mots d'un critère : connus pour les critères historiques, tirés du libellé pour les autres
+function motsCritere(c: { id: string; libelle: string }): string[][] {
+  if (motsConnus[c.id]) return motsConnus[c.id]
+  const mots = normaliser(c.libelle).split(' ').filter((m) => m && !motsVides.has(m))
+  // Le premier mot seul suffit s'il est assez parlant (« Animation », « Management »)
+  return mots.length > 1 && mots[0].length >= 5 && mots[0] !== 'magasin' ? [mots, [mots[0]]] : [mots]
 }
 
 function critereDe(entete: string): IdCritere | null {
   const mots = normaliser(entete).split(' ')
-  for (const c of tousCriteres) if (motsCriteres[c.id].some((groupe) => groupe.every((m) => mots.includes(m)))) return c.id
+  for (const c of tousCriteres) if (motsCritere(c).some((groupe) => groupe.length && groupe.every((m) => mots.includes(m)))) return c.id
+  // Ancienne colonne unique du franchisé (exports faits avant la grille détaillée)
+  if (['franchise', 'franchisee'].some((m) => mots.includes(m))) return ANCIENNE_NOTE_FRANCHISE
   return null
 }
 

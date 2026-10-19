@@ -10,8 +10,8 @@ import { Fenetre, RECRUTEMENT } from './EditionEquipe'
 import { departementDepuisCP, estFrance, fichePersonne, franchises } from '../data/personnes'
 import { enregistrerPosition, geolocaliser } from '../data/geolocalisation'
 import { enregistrerDeploiements, enregistrerEvaluations, enregistrerMagasin, supprimerMagasin, type FicheMagasin } from '../data/chargement'
-import { BoutonsNote, BoutonsOption, PastilleCase } from './Sante'
-import { caseDe, tousCriteres, type Evaluation, type IdCritere, type Note } from '../data/sante'
+import { BoutonsOption, NotesParAxe, PastilleCase } from './Sante'
+import { caseDe, type Evaluation, type IdCritere, type Note } from '../data/sante'
 import { libelleResponsable, type Magasin, type Reseau } from '../data/modele'
 
 const emailValide = (e: string) => !e.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())
@@ -121,14 +121,7 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
           </Box>
           <TextField type="date" label="Date du classement et des déploiements" value={dateChangement} onChange={(e) => setDateChangement(e.target.value || reseau.jour)}
             slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: reseau.jour } }} sx={{ mb: 2, minWidth: 280 }} />
-          <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
-            {tousCriteres.map((k) => (
-              <Box key={k.id}>
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{k.libelle}</Typography>
-                <BoutonsNote libelle={k.libelle} valeur={notes[k.id]} onChange={(n) => noter(k.id, n)} />
-              </Box>
-            ))}
-          </Box>
+          <NotesParAxe integre={!f.franchise} notes={notes} noter={noter} />
         </Box>
       )}
       {magasin && (

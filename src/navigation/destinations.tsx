@@ -45,7 +45,7 @@ export const parametres: Destination[] = [
   { chemin: '/parametres/collaborateurs', libelle: 'Collaborateurs', description: 'Coachs, Responsables Régionaux, Directeur de réseau', icone: <BadgeOutlined />, sprint: 'Sprint 4' },
   { chemin: '/parametres/franchises', libelle: 'Franchisés', description: 'Franchisés et leurs magasins', icone: <HandshakeOutlined />, sprint: 'Sprint 4' },
   { chemin: '/parametres/donnees', libelle: 'Import et export', description: 'Référentiels en Excel et sauvegarde complète', icone: <ImportExportOutlined />, sprint: 'Sprint 8' },
-  { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Règle de charge des Coachs', icone: <SettingsOutlined />, sprint: 'Sprint 5' },
+  { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Charge des Coachs, alertes, nine box, audits', icone: <SettingsOutlined />, sprint: 'Sprint 5' },
 ]
 
 export const plus: Destination = {

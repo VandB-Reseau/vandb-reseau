@@ -1,6 +1,9 @@
 import type { Magasin, Reseau } from './modele'
 import { libelleTypeVisite, nomsVisiteurs } from './modele'
-import { historiqueSante, libelleNote, nineBox, tousCriteres, unChangementParJour, type Note } from './sante'
+import { historiqueSante, libelleCritere, libelleNote, nineBox, tousCriteres, unChangementParJour, type Note } from './sante'
+
+// Ordre de la grille ; les critères retirés de la grille passent après
+const rangCritere = (id: string) => { const i = tousCriteres.findIndex((c) => c.id === id); return i < 0 ? tousCriteres.length : i }
 import { lienCompteRendu } from './visites'
 import { auditDe, libelleAudit } from './chiffres'
 
@@ -43,8 +46,9 @@ export function journalMagasin(reseau: Reseau, m: Magasin): EvenementJournal[] {
   let caseAvant = ''
   historiqueSante(reseau.evaluations, m.nom).forEach((p, i) => {
     const c = nineBox.find((x) => x.id === p.caseId)
-    const changements = p.notes ? tousCriteres.filter((k) => p.notes![k.id] !== undefined && p.notes![k.id] !== avant[k.id])
-      .map((k) => `${k.libelle} : ${libelleNote[p.notes![k.id]!]}`) : []
+    const changements = p.notes ? Object.keys(p.notes).filter((k) => p.notes![k] !== undefined && p.notes![k] !== avant[k])
+      .sort((a, b) => rangCritere(a) - rangCritere(b))
+      .map((k) => `${libelleCritere(k)} : ${libelleNote[p.notes![k]!]}`) : []
     const titre = c ? (caseAvant && caseAvant !== p.caseId ? `Passe en ${c.libelle}` : `Classé ${c.libelle}`) : 'Santé mise à jour'
     ev.push({ cle: `sante-${i}`, date: p.date, type: 'sante', titre, detail: changements.join(' · ') })
     if (p.notes) avant = p.notes
