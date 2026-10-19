@@ -197,10 +197,10 @@ test('télécharger la sauvegarde complète et tous les référentiels', async (
   const tous = await telecharger(page, 'Exporter tous les référentiels')
   expect(tous.nom).toMatch(/^V and B - Referentiels - \d{4}-\d{2}-\d{2}\.xlsx$/)
   const feuilles = await lireExcel(readFileSync(tous.chemin))
-  expect(feuilles.map((f) => f.sheet)).toEqual(['Magasins', 'Franchisés', 'Coachs', 'Responsables Régionaux', 'Coach des magasins', 'RR des Coachs', 'Chiffres mensuels', 'Nine box', 'Déploiements', 'Visites'])
+  expect(feuilles.map((f) => f.sheet)).toEqual(['Magasins', 'Franchisés', 'Mandats', 'Coachs', 'Responsables Régionaux', 'Coach des magasins', 'RR des Coachs', 'Chiffres mensuels', 'Nine box', 'Déploiements', 'Visites'])
   // Le classeur complet sert aussi à l'import : la bonne feuille est retrouvée par son nom
   // Chaque référentiel réimporté tel quel : aucun changement
-  for (const r of ['Magasins', 'Franchisés', 'Coachs', 'Responsables Régionaux', 'Coach des magasins', 'Responsable Régional des Coachs', 'Chiffres mensuels', 'Nine box', 'Déploiements', 'Visites']) {
+  for (const r of ['Magasins', 'Franchisés', 'Mandats des franchisés', 'Coachs', 'Responsables Régionaux', 'Coach des magasins', 'Responsable Régional des Coachs', 'Chiffres mensuels', 'Nine box', 'Déploiements', 'Visites']) {
     const d = await importer(page, r, tous.chemin)
     await expect(d.getByText('Aucun changement par rapport aux données de l’app', { exact: false }), r).toBeVisible()
     await expect(d.getByText('laissée', { exact: false }), r).toHaveCount(0)

@@ -53,6 +53,8 @@ export interface Referentiel {
   appliquer: (r: Reseau, changements: Changement[]) => Promise<void>
   // Sans : une ligne absente du fichier ne change rien (référentiels d'une ligne par magasin ou par Coach)
   supprimer?: (r: Reseau, suppressions: Changement[]) => Promise<void>
+  // Ligne exportée vide, à compléter dans le fichier : laissée telle quelle sans erreur
+  aCompleter?: (l: Ligne) => boolean
 }
 
 // Suppressions d'abord : un Franchisé remplacé libère ses magasins avant que le nouveau les reprenne
@@ -166,7 +168,7 @@ export function analyserReferentiel(ref: Referentiel, feuille: { nom: string; li
   const resolveurs = new Map(ref.colonnes.filter((c) => c.reference).map((c) => [c.id, c.reference!(reseau)]))
   const cleDe = (l: Ligne) => cles.map((c) => l[c.id] ?? '').join(' · ')
   const libelleDe = (l: Ligne) => cles.map((c) => afficher(c, l[c.id] ?? '')).join(' · ')
-  const existantes = new Map(ref.lignes(reseau).map((l) => [cleDe(l), l]))
+  const existantes = new Map(ref.lignes(reseau).filter((l) => !ref.aCompleter?.(l)).map((l) => [cleDe(l), l]))
   const vues = new Map<string, Changement>()
   const changements: Changement[] = [], erreurs: Analyse['erreurs'] = []
   const citees = new Set<string>() // lignes de l'app présentes dans le fichier, même illisibles : jamais supprimées
@@ -195,6 +197,7 @@ export function analyserReferentiel(ref: Referentiel, feuille: { nom: string; li
         else lue[c.id] = v
       } else lue[c.id] = v
     }
+    if (ref.aCompleter?.(lue)) { inchangees++; return }
     const sansCle = cles.some((c) => !lue[c.id])
     const cle = sansCle ? `nouvelle-${numero}` : cleDe(lue)
     if (!sansCle) citees.add(cle)
@@ -386,6 +389,7 @@ const mandats: Referentiel = {
   lignes: (r) => r.magasins.filter((m) => m.franchise).flatMap((m) => associesDu(r, m).filter((a) => !/recrutement/i.test(a.nom)).flatMap((a) =>
     (a.mandats.length ? a.mandats : [{ debut: '', fin: '' }]).map((x) => ({ magasin: m.nom, nom: a.nom, debut: x.debut, fin: x.fin, sortie: a.sortie })))),
   ajout: { obligatoires: ['magasin', 'nom'] },
+  aCompleter: (l) => !!l.magasin && !!l.nom && !l.debut && !l.fin && !l.sortie,
   async appliquer(r, changements) {
     for (const magasin of [...new Set(changements.map((c) => c.apres.magasin))]) {
       await modifierAssociesMagasin(r, magasin, (liste) => {
