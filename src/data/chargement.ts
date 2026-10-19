@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { avecPoint, definirGrille, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
-import type { Conge, Evenement, NoteMagasin, Reseau, Visite } from './modele'
+import type { ActionLibre, Conge, Evenement, NoteMagasin, Reseau, Visite } from './modele'
 import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
 import { normaliserParties, normaliserPlan } from './compteRendu'
@@ -9,6 +9,7 @@ import { normaliserGrilles, type Grilles } from './grilles'
 import { normaliserPratiques, type BonnePratique } from './bonnesPratiques'
 import { normaliserCampagnes, type Campagne, type Campagnes } from './campagnes'
 import { associesEnPlace, normaliserAssocies, type Associe, type Associes } from './associes'
+import { normaliserActionsLibres } from './actions'
 import { couperAccesDe, renommerAcces } from './espaceFranchise'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 
@@ -31,7 +32,7 @@ export interface Tables {
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'derniere_sauvegarde', 'grille_ninebox']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -86,6 +87,7 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   reseau.pratiques = normaliserPratiques(json<unknown>(cle('bonnes_pratiques'), []))
   reseau.campagnes = normaliserCampagnes(json<unknown>(cle('campagnes'), {}))
   reseau.associes = normaliserAssocies(json<unknown>(cle('associes'), {}))
+  reseau.actionsLibres = normaliserActionsLibres(json<unknown>(cle('actions'), {}))
   reseau.derniereSauvegarde = json<{ date?: string }>(cle('derniere_sauvegarde'), {}).date ?? ''
   const seuil = (k: keyof SeuilsAlerte) => (params[k as keyof typeof params] === undefined || isNaN(Number(params[k as keyof typeof params])) ? seuilsParDefaut[k] : Number(params[k as keyof typeof params]))
   reseau.seuils = { seuilDecroche: seuil('seuilDecroche'), seuilSurveiller: seuil('seuilSurveiller'), moisReference: seuil('moisReference') === 1 ? 1 : 12, delaiAppel: seuil('delaiAppel') }
@@ -347,6 +349,30 @@ async function surchargerMagasin(magasin: string, champs: Record<string, unknown
     : await supabase.from('store_overrides').insert({ store_name: magasin, ...l }))
 }
 
+// Actions hors visite : relues puis réécrites (une liste par magasin)
+function modifierActionsLibres(changer: (t: Record<string, ActionLibre[]>) => void) {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<unknown>('actions', {})
+    const t = normaliserActionsLibres(valeur)
+    changer(t)
+    for (const k of Object.keys(t)) if (!t[k].length) delete t[k]
+    await ecrireCle('actions', t, existe)
+  })
+}
+export function enregistrerActionLibre(magasin: string, a: Omit<ActionLibre, 'id'> & { id?: string }) {
+  return modifierActionsLibres((t) => {
+    const l = t[magasin] ?? (t[magasin] = [])
+    const i = a.id ? l.findIndex((x) => x.id === a.id) : -1
+    const propre: ActionLibre = { ...a, id: a.id || `l_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}` }
+    if (!propre.faite) delete propre.faite
+    if (i >= 0) l[i] = propre
+    else l.push(propre)
+  })
+}
+export function supprimerActionLibre(magasin: string, id: string) {
+  return modifierActionsLibres((t) => { t[magasin] = (t[magasin] ?? []).filter((x) => x.id !== id) })
+}
+
 // Associés d'un magasin : la liste est réécrite ; le premier associé en place d'un franchisé est inscrit sur le magasin
 function modifierAssocies(changer: (a: Associes) => void) {
   return enFile(async () => {
@@ -469,7 +495,7 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
       for (const c of cp.valeur.liste ?? []) c.magasins = (c.magasins ?? []).map((n) => (n === ancienNom ? f.nom : n))
       await ecrireCle('campagnes', cp.valeur, cp.existe)
     }
-    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes'] as const) {
+    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes', 'actions'] as const) {
       const lu = await lireCle<Record<string, unknown>>(cleConfig, {})
       const cibles = (cleConfig === 'deploiements' ? [lu.valeur.valeurs, lu.valeur.journal] : [lu.valeur]) as (Record<string, unknown> | undefined)[]
       let change = false
@@ -535,13 +561,26 @@ export async function importerVisites(visites: { magasin: string; date: string; 
     await ecrireCle('audits', valeur, existe)
   })
 }
-// Actions d'un plan marquées faites (date) ou remises en cours ('') : relues puis réécrites visite par visite
-export async function marquerActions(lot: { visite: number; index: number; faite: string }[]) {
-  for (const id of [...new Set(lot.map((l) => l.visite))]) {
+// Actions marquées faites (date) ou remises en cours ('') : celles d'un plan sont relues puis réécrites visite par visite,
+// celles ajoutées hors visite (libre = id) dans la clé actions
+export async function marquerActions(lot: ({ visite: number; index: number; faite: string } | { libre: string; magasin: string; faite: string })[]) {
+  const libres = lot.filter((l) => 'libre' in l)
+  if (libres.length) {
+    await modifierActionsLibres((t) => {
+      for (const l of libres) {
+        const a = t[l.magasin]?.find((x) => x.id === l.libre)
+        if (!a) continue
+        if (l.faite) a.faite = l.faite
+        else delete a.faite
+      }
+    })
+  }
+  const plans = lot.filter((l) => 'visite' in l)
+  for (const id of [...new Set(plans.map((l) => l.visite))]) {
     const lu = await supabase.from('visits').select('id,action_plan').eq('id', id)
     if (lu.error) throw new ErreurEnregistrement(lu.error.message)
     const plan = normaliserPlan(lu.data?.[0]?.action_plan)
-    for (const l of lot.filter((x) => x.visite === id)) {
+    for (const l of plans.filter((x) => x.visite === id)) {
       const a = plan[l.index]
       if (!a) continue
       if (l.faite) a.faite = l.faite

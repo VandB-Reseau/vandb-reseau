@@ -187,7 +187,7 @@ BEGIN
   END IF;
 
   SELECT coalesce(jsonb_object_agg(c.key, public.json_sur(c.value)), '{}'::jsonb) INTO v_cfg FROM public.app_config c
-  WHERE c.key IN ('store_adds', 'store_renames', 'drs_data', 'params', 'associes', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes');
+  WHERE c.key IN ('store_adds', 'store_renames', 'drs_data', 'params', 'associes', 'actions', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes');
 
   -- Magasins (avec les renommages, appliqués comme dans l'app)
   v_renames := CASE WHEN jsonb_typeof(v_cfg->'store_renames') = 'object' THEN v_cfg->'store_renames' ELSE '{}'::jsonb END;
@@ -222,6 +222,7 @@ BEGIN
     jsonb_build_object('key', 'drs_data', 'value', v_drs),
     jsonb_build_object('key', 'params', 'value', coalesce(v_cfg->'params', '{}'::jsonb)),
     jsonb_build_object('key', 'associes', 'value', (SELECT coalesce(jsonb_object_agg(k, v), '{}'::jsonb) FROM jsonb_each(CASE WHEN jsonb_typeof(v_cfg->'associes') = 'object' THEN v_cfg->'associes' ELSE '{}'::jsonb END) AS a(k, v) WHERE k = ANY(v_mag))),
+    jsonb_build_object('key', 'actions', 'value', (SELECT coalesce(jsonb_object_agg(k, v), '{}'::jsonb) FROM jsonb_each(CASE WHEN jsonb_typeof(v_cfg->'actions') = 'object' THEN v_cfg->'actions' ELSE '{}'::jsonb END) AS a(k, v) WHERE k = ANY(v_mag))),
     jsonb_build_object('key', 'audits', 'value', (SELECT coalesce(jsonb_object_agg(k, v), '{}'::jsonb) FROM jsonb_each(CASE WHEN jsonb_typeof(v_cfg->'audits') = 'object' THEN v_cfg->'audits' ELSE '{}'::jsonb END) AS a(k, v) WHERE k = ANY(v_mag))),
     jsonb_build_object('key', 'grilles_audit', 'value', coalesce(v_cfg->'grilles_audit', '{}'::jsonb)),
     jsonb_build_object('key', 'bonnes_pratiques', 'value', coalesce(v_cfg->'bonnes_pratiques', '[]'::jsonb)),

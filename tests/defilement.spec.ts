@@ -26,15 +26,18 @@ test('une fiche s’ouvre en haut et le retour retrouve la liste où on l’avai
   await seConnecter(page)
   await page.goto('./#/magasins?vue=liste')
   const dernier = isMobile ? page.locator('main h3, main h2').filter({ hasText: /Test/ }).last() : page.getByRole('row').last()
+  // Sur PC, la liste défile dans sa carte (ligne des titres fixe) ; sur téléphone, la page défile
+  const tableau = () => page.evaluate(() => document.querySelector('.MuiTableContainer-root')?.scrollTop ?? 0)
+  const lu = () => (isMobile ? hauteur(page) : tableau())
   await dernier.scrollIntoViewIfNeeded()
   await page.mouse.wheel(0, 200)
-  await expect.poll(() => hauteur(page)).toBeGreaterThan(300)
-  const position = await hauteur(page)
+  await expect.poll(lu).toBeGreaterThan(300)
+  const position = await lu()
   await dernier.click()
   await expect(page).toHaveURL(/#\/magasins\/[^?]+$/)
   await expect.poll(() => hauteur(page)).toBe(0)
   await page.goBack()
-  await expect.poll(() => hauteur(page)).toBeGreaterThan(position - 50)
+  await expect.poll(lu).toBeGreaterThan(position - 50)
 })
 
 test('changer d’onglet ou de rubrique ramène en haut', async ({ page }) => {

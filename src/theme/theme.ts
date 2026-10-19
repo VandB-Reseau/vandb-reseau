@@ -77,6 +77,25 @@ export const theme = createTheme({
         }),
       },
     },
+    // Ligne des titres fixe au défilement vertical : le tableau défile dans sa carte, limitée à la hauteur de l'écran
+    MuiTableContainer: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          maxHeight: 'calc(100dvh - 136px)',
+          [theme.breakpoints.down('md')]: { maxHeight: 'calc(100dvh - 200px)' },
+          '@media print': { maxHeight: 'none' },
+        }),
+      },
+    },
+    MuiTableHead: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          position: 'sticky', top: 0, zIndex: 3,
+          '& th': { backgroundColor: theme.palette.background.paper },
+          '& tr:last-of-type > th': { boxShadow: `inset 0 -1px 0 ${theme.palette.divider}` },
+        }),
+      },
+    },
     MuiMenu: { defaultProps: { disableScrollLock: true } },
     MuiButton: {
       defaultProps: { disableElevation: true },

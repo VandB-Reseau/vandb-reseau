@@ -186,7 +186,7 @@ function SectionPlan({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[]
           {ouvertes.map((x) => (
             <Box component="li" key={x.cle}>
               <LigneSimple titre={x.a.action}
-                detail={[magasins.length > 1 && x.visite.magasin, x.a.porteur, echeanceDate(x.a) ? `Échéance ${dateCourte(echeanceDate(x.a))}` : x.a.echeance].filter(Boolean).join(' · ')}
+                detail={[magasins.length > 1 && x.magasin, x.a.porteur, echeanceDate(x.a) ? `Échéance ${dateCourte(echeanceDate(x.a))}` : x.a.echeance].filter(Boolean).join(' · ')}
                 fin={enRetard(x.a, reseau.jour) ? <Chip size="small" color="error" label="En retard" sx={pastille} /> : undefined} />
             </Box>
           ))}

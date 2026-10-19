@@ -32,7 +32,7 @@ import BalanceOutlined from '@mui/icons-material/BalanceOutlined'
 import BadgeOutlined from '@mui/icons-material/BadgeOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import { Onglets, type Rubrique } from '../components/Onglets'
-import { ListeActions } from '../components/Actions'
+import { BoutonAjouterAction, ListeActions } from '../components/Actions'
 import { BilanCampagnes } from '../components/Campagnes'
 import { actionsDes, enRetard } from '../data/actions'
 import { anneeDe, lienCompteRendu, suiviRythme } from '../data/visites'
@@ -122,7 +122,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
         </Box>
       )}
 
-      {vue === 'actions' && <Section titre="Actions en cours de ses magasins"><ListeActions reseau={reseau} actions={actions} avecMagasin signaler={setMessage} libelle={`Actions en cours des magasins de ${coach.nom}`} /></Section>}
+      {vue === 'actions' && <Section titre="Actions en cours de ses magasins" action={<BoutonAjouterAction reseau={reseau} magasins={[...noms].sort()} signaler={setMessage} />}><ListeActions reseau={reseau} actions={actions} avecMagasin signaler={setMessage} libelle={`Actions en cours des magasins de ${coach.nom}`} magasins={[...noms]} /></Section>}
 
       {vue === 'campagnes' && <Section titre="Campagnes"><BilanCampagnes reseau={reseau} magasins={magasins} /></Section>}
 

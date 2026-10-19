@@ -49,7 +49,7 @@ export function SaisieCompteRendu({ reseau, visite, tournee, magasin, notes, set
   // Tournée de plusieurs magasins : seules les notes communes sont saisies
   if (tournee) return <ChampDicte libelle="Notes de visite" valeur={notes} changer={setNotes} minRows={4} />
   // Actions encore en cours des visites précédentes : cochées faites, elles sortent du plan du magasin
-  const enCours = magasin ? actionsEnCours(reseau, new Set([magasin])).filter((x) => x.visite.id !== (visite?.id ?? null)) : []
+  const enCours = magasin ? actionsEnCours(reseau, new Set([magasin])).filter((x) => !x.visite || x.visite.id !== (visite?.id ?? null)) : []
 
   return (
     <>
@@ -62,7 +62,7 @@ export function SaisieCompteRendu({ reseau, visite, tournee, magasin, notes, set
               label={<Box sx={{ py: 1 }}>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>{x.a.action}</Typography>
                 <Typography variant="caption" color={enRetard(x.a, reseau.jour) ? 'error' : 'text.secondary'} sx={{ display: 'block' }}>
-                  {[x.a.porteur, x.a.echeance && `échéance ${echeanceDate(x.a) ? dateCourte(x.a.echeance) : x.a.echeance}`, `depuis le ${dateCourte(x.visite.date)}`].filter(Boolean).join(' · ')}
+                  {[x.a.porteur, x.a.echeance && `échéance ${echeanceDate(x.a) ? dateCourte(x.a.echeance) : x.a.echeance}`, x.date && `depuis le ${dateCourte(x.date)}`].filter(Boolean).join(' · ')}
                 </Typography>
               </Box>} />
           ))}
