@@ -3,11 +3,10 @@
 // une ligne absente du fichier est supprimée quand le référentiel le permet (magasins, personnes, chiffres, visites).
 import type { Reseau } from './modele'
 import { libelleTypeVisite, lireVisiteurs, typesVisite } from './modele'
-import { coachA } from './charge'
 import { champsSaisis, completerChiffres, libellesChiffres, lireNombre, type ChampChiffre } from './chiffres'
 import { lireMois } from './importChiffres'
 import { lireCSV, lireDate, normaliser, trouveurMagasin } from './import'
-import { libelleNote, tousCriteres, type IdCritere, type Note } from './sante'
+import { historiqueSante, libelleNote, tousCriteres, unChangementParJour, type Evaluation, type IdCritere, type Note } from './sante'
 import { departementDepuisCP, fichePersonne, ficheVide, franchises, separerNom, type FichePersonnelle, type RefPersonne } from './personnes'
 import {
   enregistrerChiffres, enregistrerCoach, enregistrerDeploiements, enregistrerFichePersonne, enregistrerFranchise, enregistrerMagasin,
@@ -23,7 +22,9 @@ export interface Colonne {
   type?: TypeColonne
   choix?: string[] // valeurs possibles d'une colonne « choix »
   cle?: boolean // identifie la ligne
-  parametre?: boolean // exportée vide, sert seulement à l'import (date ou mois du changement)
+  // Date (ou mois) depuis laquelle les valeurs de ces colonnes sont en place : vide ou inchangée, un changement prend la date du jour ;
+  // une date plus ancienne seule fait remonter les valeurs en place à cette date
+  depuis?: string[]
   nouveau?: boolean // un nom inconnu de l'app crée une nouvelle ligne au lieu d'être refusé
   largeur?: number
   // Noms reconnus (magasins, Coachs…) : la valeur lue est remplacée par le nom exact de l'app
@@ -198,11 +199,22 @@ export function analyserReferentiel(ref: Referentiel, feuille: { nom: string; li
     if (!sansCle) citees.add(cle)
     if (problemes.length) { erreurs.push({ ligne: numero, message: problemes.join(' ; ') }); return }
     const avant = sansCle ? null : existantes.get(cle) ?? null
-    const parametres = Object.fromEntries(ref.colonnes.filter((c) => c.parametre).map((c) => [c.id, lue[c.id] || (c.type === 'mois' ? jour.slice(0, 7) : jour)]))
+    const dates = colonnes.filter((c) => c.depuis)
+    const parDefaut = (d: Colonne) => (d.type === 'mois' ? jour.slice(0, 7) : jour)
     if (avant) {
-      const champs = colonnes.filter((c) => !c.cle && !c.parametre && lue[c.id] && !memeValeur(c, lue[c.id], avant[c.id] ?? ''))
-      if (!champs.length) { inchangees++; return }
-      const ch: Changement = { type: 'modif', cle, libelle: ref.id === 'visites' ? `Visite n° ${cle} · ${avant.magasin}` : libelleDe(avant), avant, apres: { ...avant, ...Object.fromEntries(champs.map((c) => [c.id, lue[c.id]])), ...parametres }, champs: champs.map((c) => c.id) }
+      const champs = colonnes.filter((c) => !c.cle && !c.depuis && lue[c.id] && !memeValeur(c, lue[c.id], avant[c.id] ?? '')).map((c) => c.id)
+      const depuis: Ligne = {}
+      for (const d of dates) {
+        const lu = lue[d.id] ?? '', ancien = avant[d.id] ?? ''
+        if (d.depuis!.some((id) => champs.includes(id))) { depuis[d.id] = lu && lu !== ancien ? lu : parDefaut(d); continue }
+        if (!lu || lu === ancien) continue
+        if (!d.depuis!.some((id) => avant[id])) { erreurs.push({ ligne: numero, message: `${d.entete} sans valeur à dater` }); return }
+        if (ancien && lu > ancien) { erreurs.push({ ligne: numero, message: `${d.entete} plus récente que celle en place : change la valeur pour la dater` }); return }
+        depuis[d.id] = lu
+      }
+      const modifiees = [...champs, ...Object.keys(depuis).filter((id) => depuis[id] !== avant[id])]
+      if (!modifiees.length) { inchangees++; return }
+      const ch: Changement = { type: 'modif', cle, libelle: ref.id === 'visites' ? `Visite n° ${cle} · ${avant.magasin}` : libelleDe(avant), avant, apres: { ...avant, ...Object.fromEntries(champs.map((id) => [id, lue[id]])), ...depuis }, champs: modifiees }
       // Deux lignes pour la même clé : la dernière l'emporte
       if (vues.has(cle)) changements.splice(changements.indexOf(vues.get(cle)!), 1)
       vues.set(cle, ch); changements.push(ch)
@@ -213,7 +225,8 @@ export function analyserReferentiel(ref: Referentiel, feuille: { nom: string; li
     if (!sansCle && ref.id === 'visites') { erreurs.push({ ligne: numero, message: `visite n° ${cle} introuvable` }); return }
     const manque = ref.ajout.obligatoires.filter((id) => !lue[id])
     if (manque.length) { erreurs.push({ ligne: numero, message: `${manque.map((id) => ref.colonnes.find((c) => c.id === id)!.entete).join(', ')} à remplir pour un ajout` }); return }
-    const ch: Changement = { type: 'ajout', cle, libelle: sansCle ? `${lue.magasin ?? ''} · ${afficher({ id: 'date', entete: '', type: 'date' }, lue.date ?? '')}` : libelleDe(lue), avant: null, apres: { ...lue, ...parametres }, champs: colonnes.filter((c) => !c.cle && !c.parametre && lue[c.id]).map((c) => c.id) }
+    const apres = { ...lue, ...Object.fromEntries(dates.map((d) => [d.id, lue[d.id] || parDefaut(d)])) }
+    const ch: Changement = { type: 'ajout', cle, libelle: sansCle ? `${lue.magasin ?? ''} · ${afficher({ id: 'date', entete: '', type: 'date' }, lue.date ?? '')}` : libelleDe(lue), avant: null, apres, champs: colonnes.filter((c) => !c.cle && apres[c.id]).map((c) => c.id) }
     if (vues.has(cle)) changements.splice(changements.indexOf(vues.get(cle)!), 1)
     vues.set(cle, ch); changements.push(ch)
   })
@@ -246,7 +259,7 @@ export function feuilleExport(ref: Referentiel, reseau: Reseau) {
   const lignes = ref.lignes(reseau)
   return {
     sheet: ref.feuille,
-    data: [ref.colonnes.map(entete), ...lignes.map((l) => ref.colonnes.map((c) => (c.parametre ? null : cellule(c, l[c.id] ?? ''))))],
+    data: [ref.colonnes.map(entete), ...lignes.map((l) => ref.colonnes.map((c) => cellule(c, l[c.id] ?? '')))],
     columns: ref.colonnes.map((c) => ({ width: c.largeur ?? Math.max(12, c.entete.length + 2) })),
     stickyRowsCount: 1,
   }
@@ -274,8 +287,16 @@ const refCoach = (r: Reseau) => parNom(r.equipe.map((c) => c.nom))
 const refRR = (r: Reseau) => parNom(r.rrs.filter((x) => !x.integres).map((x) => x.nom))
 
 const colMagasin = (nouveau = false): Colonne => ({ id: 'magasin', entete: 'Magasin', cle: true, largeur: 28, reference: refMagasin, nouveau })
-const colDateChangement: Colonne = { id: 'date', entete: 'Date du changement', type: 'date', parametre: true, largeur: 18 }
-const colMoisChangement: Colonne = { id: 'depuis', entete: 'À partir du mois', type: 'mois', parametre: true, largeur: 18 }
+const colMoisDepuis = (valeur: string): Colonne => ({ id: 'depuis', entete: 'À partir du mois', type: 'mois', depuis: [valeur], largeur: 18 })
+
+// Début de la dernière période où la valeur est restée la même, dans un historique rangé par date
+function debutPeriode<T>(historique: T[], valeur: (x: T) => string, date: (x: T) => string): string {
+  let i = historique.length - 1
+  if (i < 0) return ''
+  const v = valeur(historique[i])
+  while (i > 0 && valeur(historique[i - 1]) === v) i--
+  return date(historique[i])
+}
 const colsPersonne: Colonne[] = [
   { id: 'telephone', entete: 'Téléphone', largeur: 16 },
   { id: 'email', entete: 'Email', largeur: 30 },
@@ -397,8 +418,12 @@ const rrs: Referentiel = {
 
 const affectations: Referentiel = {
   id: 'affectations', libelle: 'Coach des magasins', feuille: 'Coach des magasins',
-  colonnes: [colMagasin(), { id: 'coach', entete: 'Coach', largeur: 24, reference: refCoach }, colMoisChangement],
-  lignes: (r) => r.magasins.map((m) => ({ magasin: m.nom, coach: coachA(m, r.jour) || m.historiqueCoach.at(-1)?.coach || '' })),
+  colonnes: [colMagasin(), { id: 'coach', entete: 'Coach', largeur: 24, reference: refCoach }, colMoisDepuis('coach')],
+  lignes: (r) => r.magasins.map((m) => {
+    const enPlace = m.historiqueCoach.filter((a) => a.date <= r.jour)
+    const h = enPlace.length ? enPlace : m.historiqueCoach.slice(-1)
+    return { magasin: m.nom, coach: h.at(-1)?.coach ?? '', depuis: debutPeriode(h, (a) => a.coach, (a) => a.date).slice(0, 7) }
+  }),
   async appliquer(_r, changements) {
     for (const ch of changements) await reaffecter(ch.apres.magasin, ch.apres.coach, `${ch.apres.depuis}-01`, 'Import Excel')
   },
@@ -406,8 +431,11 @@ const affectations: Referentiel = {
 
 const rattachements: Referentiel = {
   id: 'rattachements', libelle: 'Responsable Régional des Coachs', feuille: 'RR des Coachs',
-  colonnes: [{ id: 'coach', entete: 'Coach', cle: true, largeur: 24, reference: refCoach }, { id: 'rr', entete: 'Responsable Régional', largeur: 24, reference: refRR }, colMoisChangement],
-  lignes: (r) => r.equipe.map((c) => ({ coach: c.nom, rr: c.rr?.nom ?? '' })),
+  colonnes: [{ id: 'coach', entete: 'Coach', cle: true, largeur: 24, reference: refCoach }, { id: 'rr', entete: 'Responsable Régional', largeur: 24, reference: refRR }, colMoisDepuis('rr')],
+  lignes: (r) => r.equipe.map((c) => {
+    const h = c.historiqueRR.filter((a) => a.date <= r.jour)
+    return { coach: c.nom, rr: c.rr?.nom ?? '', depuis: h.at(-1)?.rr?.id === c.rr?.id ? debutPeriode(h, (a) => a.rr?.id ?? '', (a) => a.date).slice(0, 7) : '' }
+  }),
   async appliquer(r, changements) {
     for (const ch of changements) await rattacherCoach(ch.apres.coach, r.rrs.find((x) => x.nom === ch.apres.rr)!.id, `${ch.apres.depuis}-01`)
   },
@@ -428,28 +456,50 @@ const chiffres: Referentiel = {
 }
 
 const NOTES = [libelleNote[1], libelleNote[2], libelleNote[3], libelleNote[0]]
-const noteDe = (s: string) => (Object.entries(libelleNote).find(([, v]) => v === s)?.[0] ?? '') as `${Note}`
+const noteDe = (s: string) => Number(Object.entries(libelleNote).find(([, v]) => v === s)?.[0] ?? '') as Note
+// Une ligne par magasin : les notes et la date depuis laquelle ce classement est en place
 const ninebox: Referentiel = {
   id: 'ninebox', libelle: 'Nine box', feuille: 'Nine box',
-  colonnes: [colMagasin(), ...tousCriteres.map((c) => ({ id: c.id, entete: c.libelle, type: 'choix' as const, choix: NOTES, largeur: 18 })), colDateChangement],
-  lignes: (r) => r.magasins.map((m) => ({ magasin: m.nom, ...Object.fromEntries(tousCriteres.map((c) => { const n = r.evaluations[m.nom]?.notes[c.id]; return [c.id, n === undefined ? '' : libelleNote[n]] })) })),
+  colonnes: [
+    colMagasin(),
+    ...tousCriteres.map((c) => ({ id: c.id, entete: c.libelle, type: 'choix' as const, choix: NOTES, largeur: 18 })),
+    { id: 'date', entete: 'Date du classement', type: 'date', depuis: tousCriteres.map((c) => c.id), largeur: 18 },
+  ],
+  lignes: (r) => r.magasins.map((m) => {
+    const e = r.evaluations[m.nom]
+    const points = historiqueSante(r.evaluations, m.nom).filter((p) => p.notes)
+    const cle = (n: Evaluation['notes']) => JSON.stringify(tousCriteres.map((c) => n[c.id] ?? null))
+    const date = !e ? '' : points.length && cle(points.at(-1)!.notes!) === cle(e.notes) ? debutPeriode(points, (p) => cle(p.notes!), (p) => p.date) : e.date
+    return { magasin: m.nom, ...Object.fromEntries(tousCriteres.map((c) => { const n = e?.notes[c.id]; return [c.id, n === undefined ? '' : libelleNote[n]] })), date }
+  }),
   async appliquer(r, changements) {
     await importerHistorique(changements.map((ch) => ({
       magasin: ch.apres.magasin, date: ch.apres.date,
-      notes: Object.fromEntries(ch.champs.map((k) => [k, Number(noteDe(ch.apres[k])) as Note])) as Partial<Record<IdCritere, Note>>,
+      // Date seule reprise : le classement en place est daté à nouveau en entier
+      notes: Object.fromEntries(tousCriteres.filter((c) => ch.apres[c.id] && (ch.champs.includes(c.id) || ch.champs.includes('date'))).map((c) => [c.id, noteDe(ch.apres[c.id])])) as Partial<Record<IdCritere, Note>>,
     })), r.directeur.nom)
   },
 }
 
+// Une ligne par magasin : pour chaque thématique, l'état et la date depuis laquelle il est en place.
 // Colonnes construites à partir des thématiques du moment
 function deploiements(reseau: Reseau | null): Referentiel {
   const ths = reseau?.deploiements.thematiques ?? []
   return {
     id: 'deploiements', libelle: 'Déploiements', feuille: 'Déploiements',
-    colonnes: [colMagasin(), ...ths.map((t) => ({ id: `t:${t.id}`, entete: t.libelle, type: 'choix' as const, choix: t.options.map((o) => o.libelle), largeur: 20 })), colDateChangement],
-    lignes: (r) => r.magasins.map((m) => ({ magasin: m.nom, ...Object.fromEntries(ths.map((t) => [`t:${t.id}`, r.deploiements.valeurs[m.nom]?.[t.id] ?? ''])) })),
+    colonnes: [colMagasin(), ...ths.flatMap((t): Colonne[] => [
+      { id: `t:${t.id}`, entete: t.libelle, type: 'choix', choix: t.options.map((o) => o.libelle), largeur: 18 },
+      { id: `d:${t.id}`, entete: `${t.libelle} : date`, type: 'date', depuis: [`t:${t.id}`], largeur: 16 },
+    ])],
+    lignes: (r) => r.magasins.map((m) => ({ magasin: m.nom, ...Object.fromEntries(ths.flatMap((t) => {
+      const etat = r.deploiements.valeurs[m.nom]?.[t.id] ?? ''
+      const h = unChangementParJour(r.deploiements.journal?.[m.nom] ?? []).filter((c) => c.thematique === t.id)
+      return [[`t:${t.id}`, etat], [`d:${t.id}`, etat && h.at(-1)?.etat === etat ? debutPeriode(h, (c) => c.etat, (c) => c.date) : '']]
+    })) })),
     async appliquer(r, changements) {
-      await enregistrerDeploiements(changements.flatMap((ch) => ch.champs.map((k) => ({ magasin: ch.apres.magasin, thematique: k.slice(2), etat: ch.apres[k], date: ch.apres.date }))), r.jour)
+      await enregistrerDeploiements(changements.flatMap((ch) => ths
+        .filter((t) => ch.apres[`t:${t.id}`] && (ch.champs.includes(`t:${t.id}`) || ch.champs.includes(`d:${t.id}`)))
+        .map((t) => ({ magasin: ch.apres.magasin, thematique: t.id, etat: ch.apres[`t:${t.id}`], date: ch.apres[`d:${t.id}`] }))), r.jour)
     },
   }
 }
