@@ -189,7 +189,12 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 
       {vue === 'messages' && <Section titre="Messages"><FilMessages key={m.nom} reseau={reseau} m={m} signaler={setConfirmation} /></Section>}
 
-      {vue === 'visites' && <SectionVisites reseau={reseau} m={m} saisir={saisirVisite} modifier={setVisite} />}
+      {vue === 'visites' && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <SectionAudits reseau={reseau} m={m} />
+          <SectionVisites reseau={reseau} m={m} saisir={saisirVisite} modifier={setVisite} />
+        </Box>
+      )}
 
       {vue === 'chiffres' && <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />}
 
@@ -335,12 +340,24 @@ function SectionDeploiements({ reseau, m, modifier }: { reseau: Reseau; m: Magas
 
 const couleurNoteChip = { 1: 'error', 2: 'warning', 3: 'success' } as const
 
-// Chiffres du mois, alerte de décrochage, appel et derniers audits
+// Derniers audits hygiène et excellence, avec leurs écarts
+function SectionAudits({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+  const audits = [['hygiene', 'Dernier audit hygiène'], ['excellence', 'Dernier audit excellence']] as const
+  return (
+    <Section titre="Audits">
+      {audits.map(([type, libelle]) => {
+        const r = dernierAudit(reseau, m.nom, type)
+        return <Fragment key={type}><Ligne libelle={libelle}>{r ? `${libelleAudit(r)} · ${dateCourte(r.date)}` : null}</Ligne>{r && <EcartsAudit reponses={r.reponses} />}</Fragment>
+      })}
+    </Section>
+  )
+}
+
+// Chiffres du mois, alerte de décrochage, appel
 function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Magasin; saisir: (mois?: string) => void; appeler: () => void }) {
   const [tousLesMois, setTousLesMois] = useState(false)
   const a = analyser(reseau, m.nom)
   const suivi = suiviAlerte(reseau, m.nom, a)
-  const audits = [['hygiene', 'Dernier audit hygiène'], ['excellence', 'Dernier audit excellence']] as const
   return (
     <Section titre="Chiffres" action={<Button startIcon={<EditOutlined />} onClick={() => saisir()} aria-label="Saisir les chiffres" sx={{ minHeight: 48 }}>Saisir</Button>}>
       {!a ? <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Aucun chiffre enregistré pour ce magasin.</Typography> : (
@@ -360,10 +377,6 @@ function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Ma
           <Ligne libelle="CA marché extérieur">{a.chiffre.caExt === null ? null : formatEuros(a.chiffre.caExt)}</Ligne>
         </>
       )}
-      {audits.map(([type, libelle]) => {
-        const r = dernierAudit(reseau, m.nom, type)
-        return <Fragment key={type}><Ligne libelle={libelle}>{r ? `${libelleAudit(r)} · ${dateCourte(r.date)}` : null}</Ligne>{r && <EcartsAudit reponses={r.reponses} />}</Fragment>
-      })}
       <GraphiqueCA liste={chiffresDuMagasin(reseau, m.nom)} />
       {(() => {
         const liste = [...chiffresDuMagasin(reseau, m.nom)].reverse()
