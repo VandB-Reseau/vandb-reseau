@@ -25,6 +25,7 @@ test('un mauvais mot de passe affiche un message clair', async ({ page }) => {
 
 test('après connexion, l’accueil montre les priorités dans l’ordre choisi', async ({ page }, info) => {
   await seConnecter(page)
+  await expect(page.locator('main h2').first()).toBeVisible()
   const titres = await page.locator('main h2').allTextContents()
   expect(titres).toEqual([
     'Magasins qui décrochent',

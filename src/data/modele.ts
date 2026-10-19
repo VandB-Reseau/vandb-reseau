@@ -109,6 +109,7 @@ export interface Reseau {
   pratiques: import('./bonnesPratiques').BonnePratique[]
   campagnes: import('./campagnes').Campagnes
   associes: import('./associes').Associes // par magasin
+  actionsLibres: Record<string, ActionLibre[]> // par magasin
   derniereSauvegarde: string // date de la dernière sauvegarde complète téléchargée
   seuils: import('./chiffres').SeuilsAlerte
   rrs: ResponsableRegional[]
@@ -139,6 +140,8 @@ export const libelleTypeVisite = (t: string) => typesVisite.find((x) => x.id ===
 export interface Document { label: string; url: string }
 // echeance : AAAA-MM-JJ (texte libre pour les plans saisis avant) ; faite : date de réalisation, vide tant qu'elle est en cours
 export interface ActionPlan { id?: string; action: string; porteur: string; echeance: string; faite?: string }
+// Action ajoutée hors visite, sur un magasin (app_config, clé actions, par magasin)
+export interface ActionLibre extends ActionPlan { id: string; creeLe: string; auteur?: string }
 
 export interface Visite {
   id: number | null

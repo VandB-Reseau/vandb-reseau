@@ -82,8 +82,11 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         const groupe = visite?.groupe || (magasins.length > 1 ? `g_${Date.now()}` : '')
         const signe = signatureRequise && !contact
         await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, photos: unSeul && !contact ? photos : [], notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [] }, magasins, visite?.id ?? null)
-        const actionsFaites = unSeul && !contact ? Object.entries(faites).filter(([, v]) => v).map(([k]) => k.split(':').map(Number)).filter(([id]) => id) : []
-        if (actionsFaites.length) await marquerActions(actionsFaites.map(([id, index]) => ({ visite: id, index, faite: date })))
+        // Clés « visite:index » (plan d'une visite) ou « l:id » (action hors visite)
+        const cles = unSeul && !contact ? Object.entries(faites).filter(([, v]) => v).map(([k]) => k) : []
+        const lot = cles.map((k) => k.startsWith('l:') ? { libre: k.slice(2), magasin: magasins[0], faite: date } : { visite: Number(k.split(':')[0]), index: Number(k.split(':')[1]), faite: date })
+          .filter((l) => 'libre' in l || l.visite)
+        if (lot.length) await marquerActions(lot)
         if (unSeul && chiffres.modifie) await enregistrerChiffres([chiffres.ligne()])
         const constats = unSeul ? campagnes.lot(date, participants[0] ?? reseau.directeur.nom) : []
         if (constats.length) await enregistrerConstats(constats)

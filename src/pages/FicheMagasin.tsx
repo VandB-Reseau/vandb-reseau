@@ -32,7 +32,7 @@ import EditOutlined from '@mui/icons-material/EditOutlined'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
 import { CampagnesMagasin } from '../components/Campagnes'
-import { ListeActions } from '../components/Actions'
+import { BoutonAjouterAction, ListeActions } from '../components/Actions'
 import { ListeAssocies } from '../components/Associes'
 import { Onglets, type Rubrique } from '../components/Onglets'
 import { actionsDuMagasin, enRetard } from '../data/actions'
@@ -177,8 +177,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
       )}
 
       {vue === 'actions' && (
-        <Section titre="Actions en cours" action={<Button startIcon={<AddOutlined />} onClick={saisirVisite} sx={{ minHeight: 48 }}>Saisir une visite</Button>}>
-          <ListeActions reseau={reseau} actions={actions} signaler={setConfirmation} libelle={`Actions en cours de ${m.nom}`} />
+        <Section titre="Actions en cours" action={<BoutonAjouterAction reseau={reseau} magasins={[m.nom]} signaler={setConfirmation} />}>
+          <ListeActions reseau={reseau} actions={actions} signaler={setConfirmation} libelle={`Actions en cours de ${m.nom}`} magasins={[m.nom]} />
         </Section>
       )}
 
