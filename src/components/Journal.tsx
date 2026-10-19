@@ -20,8 +20,8 @@ import { Fenetre } from './EditionEquipe'
 import { FiltreMenu } from './FiltreMenu'
 import { journalMagasin, typesJournal, type TypeJournal } from '../data/journal'
 import { enregistrerEvaluations, enregistrerNoteMagasin, supprimerEvaluation, supprimerNoteMagasin } from '../data/chargement'
-import { caseDe, historiqueSante, tousCriteres, type IdCritere, type Note } from '../data/sante'
-import { BoutonsNote, PastilleCase } from './Sante'
+import { caseDe, historiqueSante, type IdCritere, type Note } from '../data/sante'
+import { NotesParAxe, PastilleCase } from './Sante'
 import { dateCourte } from '../lib/format'
 import type { Magasin, NoteMagasin, Reseau } from '../data/modele'
 
@@ -111,12 +111,7 @@ function DialogSante({ reseau, magasin, date, onFermer }: { reseau: Reseau; maga
       supprimer={async () => { await supprimerEvaluation(magasin, date); return 'Classement supprimé.' }}
       libelleSuppression={`Supprimer le classement du ${dateCourte(date)} ?`}>
       <Box><PastilleCase c={caseDe({ notes, date, par: '' })} /></Box>
-      {tousCriteres.map((k) => (
-        <Box key={k.id} sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>{k.libelle}</Typography>
-          <Box sx={{ overflowX: 'auto' }}><BoutonsNote libelle={k.libelle} valeur={notes[k.id]} onChange={(n) => noter(k.id, n)} /></Box>
-        </Box>
-      ))}
+      <Box><NotesParAxe integre={reseau.magasins.find((m) => m.nom === magasin)?.franchise === false} notes={notes} noter={noter} /></Box>
     </Fenetre>
   )
 }

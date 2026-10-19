@@ -10,6 +10,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { PageHeader } from '../components/PageHeader'
 import { EspacePhotos, GrillesAudit } from '../components/EditeurGrilles'
+import { EditeurGrilleNineBox } from '../components/EditeurGrilleNineBox'
 import { AvecReseau } from '../components/EtatDonnees'
 import { chargeA, niveauCharge } from '../data/charge'
 import { enregistrerParametres } from '../data/chargement'
@@ -154,6 +155,7 @@ export function Direction() {
           <PageHeader titre="Paramètres" />
           <RegleCharge reseau={reseau} />
           <RegleAlerte reseau={reseau} />
+          <EditeurGrilleNineBox reseau={reseau} />
           <GrillesAudit reseau={reseau} />
           <EspacePhotos reseau={reseau} />
         </>

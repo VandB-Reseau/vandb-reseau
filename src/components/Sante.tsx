@@ -1,5 +1,10 @@
 import { memo, useCallback, useRef, useState } from 'react'
 import Chip from '@mui/material/Chip'
+import Box from '@mui/material/Box'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
+import Typography from '@mui/material/Typography'
+import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import TrendingUp from '@mui/icons-material/TrendingUp'
 import TrendingDown from '@mui/icons-material/TrendingDown'
 import TrendingFlat from '@mui/icons-material/TrendingFlat'
@@ -7,7 +12,7 @@ import { dateCourte } from '../lib/format'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { enregistrerDeploiements, enregistrerEvaluations } from '../data/chargement'
-import { avecPoint, notesAu, couleurTon, libelleNote, type CaseNineBox, type Evaluation, type Tendance, type IdCritere, type Note, type Thematique } from '../data/sante'
+import { avecPoint, notesAu, couleurTon, criteresAxe, libelleAxe, libelleNote, type Axe, type CritereGrille, type CaseNineBox, type Evaluation, type Tendance, type IdCritere, type Note, type Thematique } from '../data/sante'
 import type { Reseau } from '../data/modele'
 import { messageErreur } from './EditionEquipe'
 
@@ -145,4 +150,39 @@ export function PastilleTendance({ t, court }: { t: Tendance | null; court?: boo
   }[t.sens]
   const label = court ? config.mot : `${config.mot} depuis le ${dateCourte(t.depuis)} · avant : ${t.precedente.libelle}`
   return <Chip size="small" variant="outlined" icon={config.icone} color={config.couleur} label={label} sx={{ fontSize: 12, fontWeight: 600 }} />
+}
+
+// Libellé d'un critère, avec sa définition en info-bulle quand elle existe
+export function LibelleCritere({ c, gras }: { c: CritereGrille; gras?: boolean }) {
+  return (
+    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
+      <Typography component="span" variant="body2" sx={{ fontWeight: gras ? 600 : 500 }}>{c.libelle}</Typography>
+      {c.definition && (
+        <Tooltip title={c.definition} enterTouchDelay={0} leaveTouchDelay={4000}>
+          <IconButton aria-label={`${c.libelle} : ${c.definition}`} sx={{ width: 48, height: 48, my: -1.5 }}><InfoOutlined sx={{ fontSize: 18 }} /></IconButton>
+        </Tooltip>
+      )}
+    </Box>
+  )
+}
+
+// Saisie des notes rangée par axe (Résultats, puis Franchisé ou Responsable du magasin)
+export function NotesParAxe({ integre, notes, noter, libelleMagasin }: { integre: boolean; notes: Partial<Record<IdCritere, Note>> | undefined; noter: (id: IdCritere, n: Note | null) => void; libelleMagasin?: string }) {
+  return (
+    <>
+      {(['resultats', 'franchise'] as Axe[]).map((axe) => (
+        <Box key={axe} sx={{ mb: 2 }}>
+          <Typography variant="overline" component="h3" color="text.secondary" sx={{ fontSize: 13, display: 'block', mb: 0.5 }}>{libelleAxe(axe, integre)}</Typography>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
+            {criteresAxe(axe).map((c) => (
+              <Box key={c.id}>
+                <Box sx={{ mb: 0.5, minHeight: 24 }}><LibelleCritere c={c} gras /></Box>
+                <BoutonsNote libelle={libelleMagasin ? `${c.libelle} de ${libelleMagasin}` : c.libelle} valeur={notes?.[c.id]} onChange={(n) => noter(c.id, n)} />
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      ))}
+    </>
+  )
 }

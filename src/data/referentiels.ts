@@ -457,28 +457,31 @@ const chiffres: Referentiel = {
 
 const NOTES = [libelleNote[1], libelleNote[2], libelleNote[3], libelleNote[0]]
 const noteDe = (s: string) => Number(Object.entries(libelleNote).find(([, v]) => v === s)?.[0] ?? '') as Note
-// Une ligne par magasin : les notes et la date depuis laquelle ce classement est en place
-const ninebox: Referentiel = {
-  id: 'ninebox', libelle: 'Nine box', feuille: 'Nine box',
-  colonnes: [
-    colMagasin(),
-    ...tousCriteres.map((c) => ({ id: c.id, entete: c.libelle, type: 'choix' as const, choix: NOTES, largeur: 18 })),
-    { id: 'date', entete: 'Date du classement', type: 'date', depuis: tousCriteres.map((c) => c.id), largeur: 18 },
-  ],
-  lignes: (r) => r.magasins.map((m) => {
-    const e = r.evaluations[m.nom]
-    const points = historiqueSante(r.evaluations, m.nom).filter((p) => p.notes)
-    const cle = (n: Evaluation['notes']) => JSON.stringify(tousCriteres.map((c) => n[c.id] ?? null))
-    const date = !e ? '' : points.length && cle(points.at(-1)!.notes!) === cle(e.notes) ? debutPeriode(points, (p) => cle(p.notes!), (p) => p.date) : e.date
-    return { magasin: m.nom, ...Object.fromEntries(tousCriteres.map((c) => { const n = e?.notes[c.id]; return [c.id, n === undefined ? '' : libelleNote[n]] })), date }
-  }),
-  async appliquer(r, changements) {
-    await importerHistorique(changements.map((ch) => ({
-      magasin: ch.apres.magasin, date: ch.apres.date,
-      // Date seule reprise : le classement en place est daté à nouveau en entier
-      notes: Object.fromEntries(tousCriteres.filter((c) => ch.apres[c.id] && (ch.champs.includes(c.id) || ch.champs.includes('date'))).map((c) => [c.id, noteDe(ch.apres[c.id])])) as Partial<Record<IdCritere, Note>>,
-    })), r.directeur.nom)
-  },
+// Une ligne par magasin : une colonne par critère de la grille en vigueur et la date depuis laquelle ce classement est en place
+function ninebox(reseau: Reseau | null): Referentiel {
+  const criteres = reseau?.grilleNineBox.criteres ?? tousCriteres
+  return {
+    id: 'ninebox', libelle: 'Nine box', feuille: 'Nine box',
+    colonnes: [
+      colMagasin(),
+      ...criteres.map((c) => ({ id: c.id, entete: c.libelle, type: 'choix' as const, choix: NOTES, largeur: 18 })),
+      { id: 'date', entete: 'Date du classement', type: 'date', depuis: criteres.map((c) => c.id), largeur: 18 },
+    ],
+    lignes: (r) => r.magasins.map((m) => {
+      const e = r.evaluations[m.nom]
+      const points = historiqueSante(r.evaluations, m.nom).filter((p) => p.notes)
+      const cle = (n: Evaluation['notes']) => JSON.stringify(criteres.map((c) => n[c.id] ?? null))
+      const date = !e ? '' : points.length && cle(points.at(-1)!.notes!) === cle(e.notes) ? debutPeriode(points, (p) => cle(p.notes!), (p) => p.date) : e.date
+      return { magasin: m.nom, ...Object.fromEntries(criteres.map((c) => { const n = e?.notes[c.id]; return [c.id, n === undefined ? '' : libelleNote[n]] })), date }
+    }),
+    async appliquer(r, changements) {
+      await importerHistorique(changements.map((ch) => ({
+        magasin: ch.apres.magasin, date: ch.apres.date,
+        // Date seule reprise : le classement en place est daté à nouveau en entier
+        notes: Object.fromEntries(criteres.filter((c) => ch.apres[c.id] && (ch.champs.includes(c.id) || ch.champs.includes('date'))).map((c) => [c.id, noteDe(ch.apres[c.id])])) as Partial<Record<IdCritere, Note>>,
+      })), r.directeur.nom)
+    },
+  }
 }
 
 // Une ligne par magasin : pour chaque thématique, l'état et la date depuis laquelle il est en place.
@@ -529,5 +532,5 @@ const visites: Referentiel = {
 }
 
 export function referentiels(reseau: Reseau | null): Referentiel[] {
-  return [magasins, franchisesRef, coachs, rrs, affectations, rattachements, chiffres, ninebox, deploiements(reseau), visites]
+  return [magasins, franchisesRef, coachs, rrs, affectations, rattachements, chiffres, ninebox(reseau), deploiements(reseau), visites]
 }

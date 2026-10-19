@@ -19,7 +19,7 @@ import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { PastilleCase, PastilleTendance } from '../components/Sante'
 import { Journal } from '../components/Journal'
-import { caseDe, couleurTon, historiqueSante, libelleNote, nineBox, tendance, tonDe, tousCriteres } from '../data/sante'
+import { ANCIENNE_NOTE_FRANCHISE, caseDe, couleurTon, criteresAxe, historiqueSante, libelleAncienneNote, libelleAxe, libelleNote, niveauAxe, nineBox, scoreAxe, tendance, tonDe, type Axe } from '../data/sante'
 import { AvecReseau } from '../components/EtatDonnees'
 import { ReaffecterDialog } from '../components/ReaffecterDialog'
 import Snackbar from '@mui/material/Snackbar'
@@ -213,9 +213,23 @@ function SectionSante({ reseau, m, modifier }: { reseau: Reseau; m: Magasin; mod
         <PastilleTendance t={tendance(reseau.evaluations, m.nom)} />
         {c && <Typography variant="body2" color="text.secondary">Rythme de visite : {c.rythme} par an</Typography>}
       </Box>
-      {tousCriteres.map((k) => {
-        const n = e?.notes[k.id]
-        return <Ligne key={k.id} libelle={k.libelle}>{n === undefined ? null : <Chip size="small" label={libelleNote[n]} color={n === 0 ? 'default' : couleurNoteChip[n]} sx={{ fontSize: 12 }} />}</Ligne>
+      {(['resultats', 'franchise'] as Axe[]).map((axe) => {
+        const niveau = niveauAxe(e, axe)
+        // L'ancienne note unique du franchisé reste affichée tant qu'elle décide de la ligne
+        const ancienne = axe === 'franchise' && scoreAxe(e, axe) === null ? e?.notes[ANCIENNE_NOTE_FRANCHISE] : undefined
+        return (
+          <Box key={axe} sx={{ mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+              <Typography variant="h4" component="h3" sx={{ flex: 1 }}>{libelleAxe(axe, !m.franchise)}</Typography>
+              {niveau && <Chip size="small" label={libelleNote[niveau]} color={couleurNoteChip[niveau]} sx={{ fontSize: 12 }} />}
+            </Box>
+            {criteresAxe(axe).map((k) => {
+              const n = e?.notes[k.id]
+              return <Ligne key={k.id} libelle={k.libelle}>{n === undefined ? null : <Chip size="small" label={libelleNote[n]} color={n === 0 ? 'default' : couleurNoteChip[n]} sx={{ fontSize: 12 }} />}</Ligne>
+            })}
+            {ancienne !== undefined && <Ligne libelle={libelleAncienneNote}><Chip size="small" label={libelleNote[ancienne]} color={ancienne === 0 ? 'default' : couleurNoteChip[ancienne]} sx={{ fontSize: 12 }} /></Ligne>}
+          </Box>
+        )
       })}
       <EvolutionCases points={historiqueSante(reseau.evaluations, m.nom)} />
     </Section>
