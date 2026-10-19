@@ -143,6 +143,8 @@ test('modifier la fiche magasin change aussi les notes et les déploiements', as
   expect(config).toContain('terrasse')
 })
 test('l’accueil donne les priorités du jour', async ({ page, isMobile }, info) => {
+  // Semaine du séminaire fictif : le test ne dépend pas du jour où il tourne
+  await page.clock.setFixedTime(new Date('2026-10-14T09:00:00'))
   await seConnecter(page)
   await page.goto('./#/')
   const sp = page.getByRole('region', { name: 'Magasins qui sous-performent' })
