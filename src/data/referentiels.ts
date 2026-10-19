@@ -12,8 +12,9 @@ import { departementDepuisCP, fichePersonne, ficheVide, franchises, separerNom, 
 import {
   enregistrerChiffres, enregistrerCoach, enregistrerDeploiements, enregistrerFichePersonne, enregistrerFranchise, enregistrerMagasin,
   enregistrerRR, enregistrerVisites, importerHistorique, importerVisites, rattacherCoach, reaffecter, supprimerChiffres, supprimerCoach,
-  supprimerFranchise, supprimerMagasin, supprimerRR, supprimerVisite, type FicheMagasin,
+  supprimerFranchise, supprimerMagasin, supprimerRR, supprimerVisite, modifierAssociesMagasin, type FicheMagasin,
 } from './chargement'
+import { associesDu, type Associe } from './associes'
 
 export type TypeColonne = 'texte' | 'date' | 'mois' | 'nombre' | 'ouiNon' | 'choix' | 'liste'
 
@@ -345,10 +346,57 @@ const franchisesRef: Referentiel = {
     for (const ch of changements) {
       const nom = ch.apres.nom
       const anciens = ch.avant ? elementsListe(ch.avant.magasins) : []
-      await enregistrerFranchise(nom, ch.avant ? nom : null, elementsListe(ch.apres.magasins), anciens, ficheDepuis(r, ch.avant ? { type: 'franchise', cle: nom } : null, nom, ch.apres))
+      await enregistrerFranchise(nom, ch.avant ? nom : null, elementsListe(ch.apres.magasins), anciens, ficheDepuis(r, ch.avant ? { type: 'franchise', cle: nom } : null, nom, ch.apres), r)
     }
   },
-  async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerFranchise(ch.cle, elementsListe(ch.avant!.magasins)) },
+  async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerFranchise(ch.cle, elementsListe(ch.avant!.magasins), _r) },
+}
+
+// Une ligne par mandat (ou par associé sans mandat) des magasins franchisés
+const mandats: Referentiel = {
+  id: 'mandats', libelle: 'Mandats des franchisés', feuille: 'Mandats',
+  colonnes: [
+    { ...colMagasin(), nouveau: false },
+    { id: 'nom', entete: 'Franchisé', cle: true, nouveau: true, largeur: 26, reference: (r) => parNom(franchises(r).map((f) => f.nom)) },
+    { id: 'debut', entete: 'Début du mandat', type: 'date', cle: true, largeur: 16 },
+    { id: 'fin', entete: 'Fin du mandat', type: 'date', largeur: 16 },
+    { id: 'sortie', entete: 'Date de sortie', type: 'date', largeur: 16 },
+  ],
+  lignes: (r) => r.magasins.filter((m) => m.franchise).flatMap((m) => associesDu(r, m).filter((a) => !/recrutement/i.test(a.nom)).flatMap((a) =>
+    (a.mandats.length ? a.mandats : [{ debut: '', fin: '' }]).map((x) => ({ magasin: m.nom, nom: a.nom, debut: x.debut, fin: x.fin, sortie: a.sortie })))),
+  ajout: { obligatoires: ['magasin', 'nom'] },
+  async appliquer(r, changements) {
+    for (const magasin of [...new Set(changements.map((c) => c.apres.magasin))]) {
+      await modifierAssociesMagasin(r, magasin, (liste) => {
+        const l = liste.map((a) => ({ ...a, mandats: [...a.mandats] }))
+        for (const ch of changements.filter((c) => c.apres.magasin === magasin)) {
+          let a = l.find((x) => x.nom === ch.apres.nom)
+          if (!a) { a = { id: '', nom: ch.apres.nom, entree: '', sortie: '', mandats: [] } as Associe; l.push(a) }
+          if (ch.apres.sortie !== undefined && (ch.type === 'ajout' || ch.champs.includes('sortie'))) a.sortie = ch.apres.sortie
+          const ancien = ch.avant ? a.mandats.findIndex((x) => x.debut === ch.avant!.debut) : -1
+          const fin = ch.apres.fin ?? (ancien >= 0 ? a.mandats[ancien].fin : '')
+          if (!ch.apres.debut && !fin) continue
+          if (ancien >= 0) a.mandats[ancien] = { debut: ch.apres.debut, fin }
+          else a.mandats = [...a.mandats.filter((x) => x.debut !== ch.apres.debut || (!x.debut && !x.fin)), { debut: ch.apres.debut, fin }]
+          a.mandats.sort((x, y) => (x.debut || x.fin).localeCompare(y.debut || y.fin))
+        }
+        return l
+      })
+    }
+  },
+  async supprimer(r, suppressions) {
+    for (const magasin of [...new Set(suppressions.map((c) => c.avant!.magasin))]) {
+      await modifierAssociesMagasin(r, magasin, (liste) => {
+        // Seuls les mandats sont retirés : un associé quitte le magasin depuis sa fiche ou avec une date de sortie
+        const l = liste.map((a) => ({ ...a, mandats: [...a.mandats] }))
+        for (const ch of suppressions.filter((c) => c.avant!.magasin === magasin)) {
+          const a = l.find((x) => x.nom === ch.avant!.nom)
+          if (a) a.mandats = a.mandats.filter((x) => x.debut !== ch.avant!.debut)
+        }
+        return l
+      })
+    }
+  },
 }
 
 const coachs: Referentiel = {
@@ -481,5 +529,5 @@ const visites: Referentiel = {
 }
 
 export function referentiels(reseau: Reseau | null): Referentiel[] {
-  return [magasins, franchisesRef, coachs, rrs, affectations, rattachements, chiffres, ninebox, deploiements(reseau), visites]
+  return [magasins, franchisesRef, mandats, coachs, rrs, affectations, rattachements, chiffres, ninebox, deploiements(reseau), visites]
 }

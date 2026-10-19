@@ -107,6 +107,7 @@ export interface Reseau {
   grilles: import('./grilles').Grilles
   pratiques: import('./bonnesPratiques').BonnePratique[]
   campagnes: import('./campagnes').Campagnes
+  associes: import('./associes').Associes // par magasin
   derniereSauvegarde: string // date de la dernière sauvegarde complète téléchargée
   seuils: import('./chiffres').SeuilsAlerte
   rrs: ResponsableRegional[]
@@ -134,7 +135,8 @@ export const nomsVisiteurs = (v: { visiteurs: string[] }) => v.visiteurs.join(',
 export const libelleTypeVisite = (t: string) => typesVisite.find((x) => x.id === t)?.libelle ?? 'Visite'
 
 export interface Document { label: string; url: string }
-export interface ActionPlan { action: string; porteur: string; echeance: string }
+// echeance : AAAA-MM-JJ (texte libre pour les plans saisis avant) ; faite : date de réalisation, vide tant qu'elle est en cours
+export interface ActionPlan { id?: string; action: string; porteur: string; echeance: string; faite?: string }
 
 export interface Visite {
   id: number | null

@@ -105,7 +105,7 @@ export function VuePersonnes({ reseau, surPC, perimetre }: { reseau: Reseau; sur
       ) : surPC ? (
         <Card>
           <TableContainer>
-            <Table aria-label={perimetre === 'franchises' ? 'Franchisés' : 'Collaborateurs'}>
+            <Table className="colonne-fixe" aria-label={perimetre === 'franchises' ? 'Franchisés' : 'Collaborateurs'}>
               <TableHead>
                 <TableRow>
                   <TableCell>Nom</TableCell>

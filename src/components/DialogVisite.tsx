@@ -13,7 +13,7 @@ import AddLinkOutlined from '@mui/icons-material/AddLinkOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import { Fenetre } from './EditionEquipe'
 import { SaisieCompteRendu } from './SaisieCompteRendu'
-import { enregistrerAudit, enregistrerChiffres, enregistrerConstats, enregistrerVisites, supprimerVisite } from '../data/chargement'
+import { enregistrerAudit, enregistrerChiffres, enregistrerConstats, enregistrerVisites, marquerActions, supprimerVisite } from '../data/chargement'
 import { ChampsChiffres, useSaisieChiffres } from './Chiffres'
 import { auditDe, lireNombre, moisPrecedent, typesAudit, typesContact } from '../data/chiffres'
 import { partiesVides } from '../data/compteRendu'
@@ -52,6 +52,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const [notes, setNotes] = useState(visite?.notes ?? '')
   const [parties, setParties] = useState<string[]>(visite?.parties ?? partiesVides())
   const [plan, setPlan] = useState<ActionPlan[]>(visite?.plan ?? [])
+  const [faites, setFaites] = useState<Record<string, boolean>>({})
   const unSeul = magasins.length <= 1
   const contact = typesContact.includes(type)
   const audit = typesAudit.includes(type) && unSeul
@@ -81,6 +82,8 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         const groupe = visite?.groupe || (magasins.length > 1 ? `g_${Date.now()}` : '')
         const signe = signatureRequise && !contact
         await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, photos: unSeul && !contact ? photos : [], notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [] }, magasins, visite?.id ?? null)
+        const actionsFaites = unSeul && !contact ? Object.entries(faites).filter(([, v]) => v).map(([k]) => k.split(':').map(Number)).filter(([id]) => id) : []
+        if (actionsFaites.length) await marquerActions(actionsFaites.map(([id, index]) => ({ visite: id, index, faite: date })))
         if (unSeul && chiffres.modifie) await enregistrerChiffres([chiffres.ligne()])
         const constats = unSeul ? campagnes.lot(date, participants[0] ?? reseau.directeur.nom) : []
         if (constats.length) await enregistrerConstats(constats)
@@ -142,8 +145,8 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
       {contact
         ? <TextField label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} multiline minRows={3} />
         : <SaisieCompteRendu
-          reseau={reseau} visite={visite} tournee={!unSeul} magasin={magasins[0] ?? ''} date={date}
-          notes={notes} setNotes={setNotes} parties={parties} setParties={setParties} plan={plan} setPlan={setPlan}
+          reseau={reseau} visite={visite} tournee={!unSeul} magasin={magasins[0] ?? ''}
+          notes={notes} setNotes={setNotes} parties={parties} setParties={setParties} plan={plan} setPlan={setPlan} faites={faites} setFaites={setFaites}
         />}
       {unSeul && magasins[0] && <ChampsChiffres s={chiffres} reseau={reseau} titre="Chiffres du mois" />}
       {unSeul && <SaisieCampagnes s={campagnes} />}

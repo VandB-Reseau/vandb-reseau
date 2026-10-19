@@ -2,7 +2,7 @@ import { EcartsAudit, RangeePhotos } from '../components/GrilleAudit'
 import { CartePratique, DialogPratique } from '../components/BonnesPratiques'
 import type { BonnePratique } from '../data/bonnesPratiques'
 import { Fragment, useState, type ReactNode } from 'react'
-import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -31,8 +31,17 @@ import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
-import { ConstatsMagasin } from '../components/Campagnes'
-import { campagnesDuMagasin } from '../data/campagnes'
+import { CampagnesMagasin } from '../components/Campagnes'
+import { ListeActions } from '../components/Actions'
+import { ListeAssocies } from '../components/Associes'
+import { Onglets, type Rubrique } from '../components/Onglets'
+import { actionsDuMagasin, enRetard } from '../data/actions'
+import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
+import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
+import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
+import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined'
+import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
+import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
 import { anneeDe, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
@@ -79,8 +88,22 @@ export function Contact({ role, p, sousTitre, lien }: { role: string; p: Personn
   )
 }
 
+type VueFiche = 'fiche' | 'actions' | 'visites' | 'chiffres' | 'sante' | 'campagnes' | 'journal'
+const rubriquesFiche: Rubrique<VueFiche>[] = [
+  { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
+  { vue: 'actions', libelle: 'Actions', icone: <TaskAltOutlined /> },
+  { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
+  { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
+  { vue: 'sante', libelle: 'Santé', icone: <FavoriteBorderOutlined /> },
+  { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
+  { vue: 'journal', libelle: 'Journal', icone: <HistoryOutlined /> },
+]
+
 function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const naviguer = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const vue = (rubriquesFiche.find((r) => r.vue === params.get('vue'))?.vue ?? 'fiche') as VueFiche
+  const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const [reaffectation, setReaffectation] = useState(false)
   const [edition, setEdition] = useState(false)
   const [visite, setVisite] = useState<Visite | null | undefined>(undefined)
@@ -93,6 +116,13 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const rechercheCarte = [m.adresse, !villeDansAdresse && [m.codePostal, m.ville].filter(Boolean).join(' '), m.pays].filter(Boolean).join(' ')
   const lieuCarte = rechercheCarte ? `V and B ${rechercheCarte}` : m.lat !== null && m.lon !== null ? `${m.lat},${m.lon}` : null
   const lienPlan = adresseComplete ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`V and B ${m.nom} ${adresseComplete}`)}` : null
+  const actions = actionsDuMagasin(reseau, m.nom)
+  const ouvertes = actions.filter((x) => !x.a.faite)
+  const enRetardNb = ouvertes.filter((x) => enRetard(x.a, reseau.jour)).length
+  const a = anneeDe(reseau.jour)
+  const rythme = suiviRythme(reseau, a).find((l) => l.magasin.nom === m.nom)
+  const alerte = analyser(reseau, m.nom)
+  const saisirVisite = () => { setTypeVisite('terrain'); setVisite(null) }
   return (
     <>
       <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 2, ml: -1 }}>Magasins</Button>
@@ -103,74 +133,75 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         <Box sx={{ flex: 1 }} />
         <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setEdition(true)} sx={{ minHeight: 48 }}>Modifier</Button>
       </Box>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        {[m.ville || null, m.departement && `Département ${m.departement}`, m.pays || null, m.code && `Code ${m.code}`].filter(Boolean).join(' · ')}
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 1.5 }}>
+        {[m.ville || null, m.departement && `Département ${m.departement}`, m.pays || null, m.code && `Code ${m.code}`, m.coach && `Coach ${m.coach}`].filter(Boolean).join(' · ')}
       </Typography>
-
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-        <Section titre="Équipe" action={<Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button>}>
-          <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
-          <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
-          <Contact role={libelleResponsable(m)} p={m.responsable} lien={m.responsable ? lienFranchise(m.responsable.nom) : undefined} sousTitre={m.responsable ? undefined : m.responsableARecruter ? 'En cours de recrutement' : undefined} />
-        </Section>
-
-        <Section titre="Magasin">
-          <Ligne libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
-          <Ligne libelle="Adresse">
-            {adresseComplete && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                <span>{adresseComplete}</span>
-                {lienPlan && <Chip icon={<PlaceOutlined />} label="Itinéraire" size="small" component="a" href={lienPlan} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />}
-              </Box>
-            )}
-          </Ligne>
-          <Ligne libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
-          <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
-        </Section>
-
-        {lieuCarte && (
-          <Card sx={{ gridColumn: { lg: 'span 2' }, overflow: 'hidden' }}>
-            <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
-              loading="lazy" referrerPolicy="no-referrer-when-downgrade" sx={{ display: 'block', width: '100%', height: 300, border: 0 }} />
-          </Card>
-        )}
-
-        <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
-
-        <Section titre="Visites" action={<Button startIcon={<AddOutlined />} onClick={() => { setTypeVisite('terrain'); setVisite(null) }} sx={{ minHeight: 48 }}>Saisir</Button>}>
-          {(() => {
-            const vs = visitesDuMagasin(reseau, m.nom)
-            const a = anneeDe(reseau.jour)
-            const r = suiviRythme(reseau, a).find((l) => l.magasin.nom === m.nom)
-            return (
-              <>
-                {r && <Chip size="small" color={r.retard ? 'warning' : 'success'} variant={r.retard ? 'filled' : 'outlined'}
-                  label={`${r.faites} visite${r.faites > 1 ? 's' : ''} sur ${r.objectif} en ${a.court} · ${r.retard ? `${r.retard} j de retard` : `prochaine avant le ${dateCourte(r.prochaine)}`}`}
-                  sx={{ fontSize: '0.75rem', fontWeight: 600, mb: 1 }} />}
-                {vs.length === 0 ? <Typography variant="body2" color="text.secondary">Aucune visite enregistrée.</Typography> : vs.slice(0, 6).map((v) => (
-                  <Box key={v.id ?? v.date} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ width: 110, flexShrink: 0 }}>{dateCourte(v.date)}</Typography>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body1">{libelleTypeVisite(v.type)}{v.visiteurs.length ? ` · ${nomsVisiteurs(v)}` : ''}</Typography>
-                      {v.notes && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>{v.notes}</Typography>}
-                      <RangeePhotos photos={v.photos} />
-                    </Box>
-                    <Tooltip title="Compte rendu PDF"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu du ${dateCourte(v.date)}`}><PictureAsPdfOutlined /></IconButton></Tooltip>
-                    <Tooltip title="Modifier"><IconButton onClick={() => setVisite(v)} aria-label={`Modifier la visite du ${dateCourte(v.date)}`}><EditOutlined /></IconButton></Tooltip>
-                  </Box>
-                ))}
-                {vs.length > 6 && <Link component={RouterLink} to={`/visites?vue=historique`} variant="body2">Voir les {vs.length} visites</Link>}
-              </>
-            )
-          })()}
-        </Section>
-
-        <SectionSante reseau={reseau} m={m} modifier={() => setEdition(true)} />
-        <SectionDeploiements reseau={reseau} m={m} modifier={() => setEdition(true)} />
-        {campagnesDuMagasin(reseau, m.nom, reseau.jour).length > 0 && <Section titre="Campagnes"><ConstatsMagasin reseau={reseau} magasin={m.nom} signaler={setConfirmation} /></Section>}
-        <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />
-        <Box sx={{ gridColumn: { lg: 'span 2' } }}><Journal reseau={reseau} m={m} signaler={setConfirmation} /></Box>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }} aria-label="En bref" role="group">
+        <PastilleCase c={caseDe(reseau.evaluations[m.nom])} />
+        {alerte && <PastilleAlerte statut={alerte.statut} />}
+        {ouvertes.length > 0 && <Chip size="small" clickable onClick={() => changerVue('actions')} color={enRetardNb ? 'error' : 'default'} variant={enRetardNb ? 'filled' : 'outlined'}
+          label={`${ouvertes.length} action${ouvertes.length > 1 ? 's' : ''} en cours${enRetardNb ? ` · ${enRetardNb} en retard` : ''}`} sx={{ fontSize: 12, fontWeight: 600 }} />}
+        {rythme && rythme.retard > 0 && <Chip size="small" color="warning" clickable onClick={() => changerVue('visites')} label={`Visite en retard de ${rythme.retard} j`} sx={{ fontSize: 12, fontWeight: 600 }} />}
       </Box>
+      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesFiche} libelle={`Rubriques de ${m.nom}`} />
+
+      {vue === 'fiche' && (
+        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
+          <Section titre="Équipe" action={<Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button>}>
+            <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
+            <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
+            {!m.franchise && <Contact role={libelleResponsable(m)} p={m.responsable} lien={m.responsable ? lienFranchise(m.responsable.nom) : undefined} sousTitre={m.responsable ? undefined : m.responsableARecruter ? 'En cours de recrutement' : undefined} />}
+            {m.franchise && m.responsableARecruter && <Contact role={libelleResponsable(m)} p={null} sousTitre="En cours de recrutement" />}
+            <ListeAssocies reseau={reseau} m={m} signaler={setConfirmation} />
+          </Section>
+          <Section titre="Magasin">
+            <Ligne libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
+            <Ligne libelle="Adresse">
+              {adresseComplete && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <span>{adresseComplete}</span>
+                  {lienPlan && <Chip icon={<PlaceOutlined />} label="Itinéraire" size="small" component="a" href={lienPlan} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />}
+                </Box>
+              )}
+            </Ligne>
+            <Ligne libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
+            <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
+          </Section>
+          {lieuCarte && (
+            <Card sx={{ gridColumn: { lg: 'span 2' }, overflow: 'hidden' }}>
+              <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
+                loading="lazy" referrerPolicy="no-referrer-when-downgrade" sx={{ display: 'block', width: '100%', height: 300, border: 0 }} />
+            </Card>
+          )}
+        </Box>
+      )}
+
+      {vue === 'actions' && (
+        <Section titre="Actions en cours" action={<Button startIcon={<AddOutlined />} onClick={saisirVisite} sx={{ minHeight: 48 }}>Saisir une visite</Button>}>
+          <ListeActions reseau={reseau} actions={actions} signaler={setConfirmation} libelle={`Actions en cours de ${m.nom}`} />
+        </Section>
+      )}
+
+      {vue === 'visites' && <SectionVisites reseau={reseau} m={m} saisir={saisirVisite} modifier={setVisite} />}
+
+      {vue === 'chiffres' && <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />}
+
+      {vue === 'sante' && (
+        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
+          <SectionSante reseau={reseau} m={m} modifier={() => setEdition(true)} />
+          <SectionDeploiements reseau={reseau} m={m} modifier={() => setEdition(true)} />
+        </Box>
+      )}
+
+      {vue === 'campagnes' && <Section titre="Campagnes"><CampagnesMagasin reseau={reseau} magasin={m.nom} signaler={setConfirmation} /></Section>}
+
+      {vue === 'journal' && (
+        <Box sx={{ display: 'grid', gap: 2 }}>
+          <Journal reseau={reseau} m={m} signaler={setConfirmation} />
+          <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />
+        </Box>
+      )}
+
       {reaffectation && <ReaffecterDialog reseau={reseau} magasin={m} ouvert onFermer={(fait) => { setReaffectation(false); if (fait) setConfirmation(`${m.nom} est confié à ${fait}.`) }} />}
       {edition && <DialogMagasin reseau={reseau} magasin={m} onFermer={(msg, nom) => {
         setEdition(false)
@@ -183,6 +214,36 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
       {saisieChiffres !== undefined && <DialogChiffres reseau={reseau} magasin={m.nom} mois={saisieChiffres ?? undefined} onFermer={(msg) => { setSaisieChiffres(undefined); if (msg) setConfirmation(msg) }} />}
       <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
     </>
+  )
+}
+
+// Rythme de visite de l'année et toutes les visites du magasin, de la plus récente à la plus ancienne
+function SectionVisites({ reseau, m, saisir, modifier }: { reseau: Reseau; m: Magasin; saisir: () => void; modifier: (v: Visite) => void }) {
+  const [toutes, setToutes] = useState(false)
+  const vs = visitesDuMagasin(reseau, m.nom)
+  const a = anneeDe(reseau.jour)
+  const r = suiviRythme(reseau, a).find((l) => l.magasin.nom === m.nom)
+  const MAXI = 15
+  return (
+    <Section titre="Visites" action={<Button startIcon={<AddOutlined />} onClick={saisir} sx={{ minHeight: 48 }}>Saisir</Button>}>
+      {r && <Chip size="small" color={r.retard ? 'warning' : 'success'} variant={r.retard ? 'filled' : 'outlined'}
+        label={`${r.faites} visite${r.faites > 1 ? 's' : ''} sur ${r.objectif} en ${a.court} · ${r.retard ? `${r.retard} j de retard` : `prochaine avant le ${dateCourte(r.prochaine)}`}`}
+        sx={{ fontSize: '0.75rem', fontWeight: 600, mb: 1 }} />}
+      {vs.length === 0 ? <Typography variant="body2" color="text.secondary">Aucune visite enregistrée.</Typography> : (toutes ? vs : vs.slice(0, MAXI)).map((v) => (
+        <Box key={v.id ?? v.date} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+          <Typography variant="body2" color="text.secondary" sx={{ width: 110, flexShrink: 0 }}>{dateCourte(v.date)}</Typography>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="body1">{libelleTypeVisite(v.type)}{v.visiteurs.length ? ` · ${nomsVisiteurs(v)}` : ''}</Typography>
+            {v.notes && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>{v.notes}</Typography>}
+            {v.plan.length > 0 && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{v.plan.length} action{v.plan.length > 1 ? 's' : ''} au plan · {v.plan.filter((x) => x.faite).length} faite{v.plan.filter((x) => x.faite).length > 1 ? 's' : ''}</Typography>}
+            <RangeePhotos photos={v.photos} />
+          </Box>
+          <Tooltip title="Compte rendu PDF"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu du ${dateCourte(v.date)}`}><PictureAsPdfOutlined /></IconButton></Tooltip>
+          <Tooltip title="Modifier"><IconButton onClick={() => modifier(v)} aria-label={`Modifier la visite du ${dateCourte(v.date)}`}><EditOutlined /></IconButton></Tooltip>
+        </Box>
+      ))}
+      {vs.length > MAXI && <Button onClick={() => setToutes((x) => !x)} sx={{ minHeight: 48, mt: 0.5 }}>{toutes ? 'Afficher moins' : `Voir les ${vs.length} visites`}</Button>}
+    </Section>
   )
 }
 

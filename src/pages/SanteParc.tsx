@@ -417,7 +417,7 @@ function VueEvaluer({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: S
         : !surPC || mode === 'fiche' ? <FicheSaisie reseau={reseau} magasins={magasins} saisie={saisie} parties={['notes']} /> : (
           <>
             <TableContainer component={Card}>
-              <Table size="small" aria-label="Évaluation des magasins">
+              <Table size="small" className="deux-colonnes-fixes" aria-label="Évaluation des magasins">
                 <TableHead>
                   <TableRow>
                     <TableCell padding="checkbox"><CaseTout magasins={magasins} {...sel} /></TableCell>
@@ -456,7 +456,7 @@ function VueDeploiements({ reseau, saisie, surPC, date }: { reseau: Reseau; sais
         : !surPC || mode === 'fiche' ? <FicheSaisie reseau={reseau} magasins={magasins} saisie={saisie} parties={['deploiements']} /> : (
           <>
             <TableContainer component={Card}>
-              <Table size="small" aria-label="Déploiements par magasin">
+              <Table size="small" className="deux-colonnes-fixes" aria-label="Déploiements par magasin">
                 <TableHead>
                   <TableRow>
                     <TableCell padding="checkbox"><CaseTout magasins={magasins} {...sel} /></TableCell>
@@ -683,7 +683,7 @@ function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
       </Typography>
       {visibles.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." /> : surPC ? (
         <TableContainer component={Paper}>
-          <Table size="small" aria-label="Chiffres des magasins">
+          <Table size="small" className="colonne-fixe" aria-label="Chiffres des magasins">
             <TableHead>
               <TableRow>
                 {enTetes.map((h) => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}

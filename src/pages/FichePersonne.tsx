@@ -1,3 +1,7 @@
+import { associesDu, mandatActuel } from '../data/associes'
+import { PastilleMandat, periode } from '../components/Associes'
+import { PastilleCase } from '../components/Sante'
+import { caseDe } from '../data/sante'
 import { useState, type ReactNode } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -21,7 +25,7 @@ import { ListeMagasins } from '../components/ListeMagasins'
 import { Ligne, Section } from './FicheMagasin'
 import { chargeA, magasinsDuCoach } from '../data/charge'
 import { ageDepuis, estFrance, fichePersonne, franchises, libelleDepartement, libelleRole, type RefPersonne } from '../data/personnes'
-import { dateLongue, lienCoach, lienFiche, lienFranchise, lienRR, telLien } from '../lib/format'
+import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienRR, telLien } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
 
 // Bloc « Fiche personnelle » commun aux quatre rôles
@@ -154,6 +158,30 @@ function PageFranchise({ reseau, nom }: { reseau: Reseau; nom: string }) {
       <Box sx={{ mb: 2, maxWidth: { lg: '50%' } }}>
         <SectionFichePersonnelle reseau={reseau} r={{ type: 'franchise', cle: nom }} />
       </Box>
+      {f.magasins.some((m) => m.franchise) && (
+        <Box sx={{ mb: 2 }}>
+          <Section titre="Mandats">
+            {f.magasins.filter((m) => m.franchise).map((m) => {
+              const a = associesDu(reseau, m).find((x) => x.nom === nom)
+              const mandat = a ? mandatActuel(a, reseau.jour) : null
+              return (
+                <Rangee key={m.nom}>
+                  <Box sx={{ flex: 1, minWidth: 0, py: 1 }}>
+                    <Link component={RouterLink} to={lienFiche(m.nom)} sx={{ fontWeight: 500 }}>{m.nom}</Link>
+                    <Typography variant="body2" color="text.secondary">
+                      {[mandat ? `Mandat ${periode(mandat)}` : 'Mandat non renseigné', a && a.mandats.length > 1 && `${a.mandats.length} mandats depuis le ${dateCourte(a.mandats[0].debut || a.mandats[0].fin)}`].filter(Boolean).join(' · ')}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <PastilleCase c={caseDe(reseau.evaluations[m.nom])} />
+                    <PastilleMandat m={mandat} jour={reseau.jour} />
+                  </Box>
+                </Rangee>
+              )
+            })}
+          </Section>
+        </Box>
+      )}
       <Typography variant="h3" component="h2" sx={{ mb: 1.5 }}>Ses magasins</Typography>
       <ListeMagasinsAdaptee magasins={f.magasins} vide="Aucun magasin." />
       {edition && <DialogFranchise reseau={reseau} nom={nom} onFermer={(m, nouveau) => {

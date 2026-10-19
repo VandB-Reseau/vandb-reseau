@@ -8,6 +8,7 @@ import { normaliserParties, normaliserPlan } from './compteRendu'
 import { normaliserGrilles, type Grilles } from './grilles'
 import { normaliserPratiques, type BonnePratique } from './bonnesPratiques'
 import { normaliserCampagnes, type Campagne, type Campagnes } from './campagnes'
+import { associesEnPlace, normaliserAssocies, type Associe, type Associes } from './associes'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 
 function json<T>(valeur: unknown, defaut: T): T {
@@ -21,7 +22,7 @@ export class ErreurChargement extends Error {}
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'derniere_sauvegarde']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'derniere_sauvegarde']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -62,6 +63,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   reseau.grilles = normaliserGrilles(json<unknown>(cle('grilles_audit'), {}))
   reseau.pratiques = normaliserPratiques(json<unknown>(cle('bonnes_pratiques'), []))
   reseau.campagnes = normaliserCampagnes(json<unknown>(cle('campagnes'), {}))
+  reseau.associes = normaliserAssocies(json<unknown>(cle('associes'), {}))
   reseau.derniereSauvegarde = json<{ date?: string }>(cle('derniere_sauvegarde'), {}).date ?? ''
   const seuil = (k: keyof SeuilsAlerte) => (params[k as keyof typeof params] === undefined || isNaN(Number(params[k as keyof typeof params])) ? seuilsParDefaut[k] : Number(params[k as keyof typeof params]))
   reseau.seuils = { seuilDecroche: seuil('seuilDecroche'), seuilSurveiller: seuil('seuilSurveiller'), moisReference: seuil('moisReference') === 1 ? 1 : 12, delaiAppel: seuil('delaiAppel') }
@@ -324,16 +326,77 @@ async function surchargerMagasin(magasin: string, champs: Record<string, unknown
     : await supabase.from('store_overrides').insert({ store_name: magasin, ...l }))
 }
 
-export async function enregistrerFranchise(nom: string, ancien: string | null, magasins: string[], anciensMagasins: string[], f: FichePersonnelle) {
-  // Une chaîne vide (et non null) efface bien la valeur venue du fichier de base de l'ancienne app
-  for (const m of anciensMagasins.filter((x) => !magasins.includes(x))) await surchargerMagasin(m, { resp: '', tel_resp: '', email_resp: '' })
-  for (const m of magasins) await surchargerMagasin(m, { resp: nom, tel_resp: f.telephone.trim(), email_resp: f.email.trim() })
+// Associés d'un magasin : la liste est réécrite ; le premier associé en place d'un franchisé est inscrit sur le magasin
+function modifierAssocies(changer: (a: Associes) => void) {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<unknown>('associes', {})
+    const a = normaliserAssocies(valeur)
+    changer(a)
+    for (const k of Object.keys(a)) if (!a[k].length) delete a[k]
+    await ecrireCle('associes', a, existe)
+  })
+}
+
+// Liste relue au moment d'écrire (un import peut enchaîner plusieurs changements sur le même magasin)
+export async function modifierAssociesMagasin(reseau: Reseau, magasin: string, changer: (l: Associe[]) => Associe[]) {
+  const m = reseau.magasins.find((x) => x.nom === magasin)
+  let liste: Associe[] = []
+  await modifierAssocies((a) => {
+    const base = a[magasin] ?? []
+    const implicite = m?.franchise && m.responsable && !/recrutement/i.test(m.responsable.nom) && !base.some((x) => x.nom === m.responsable!.nom)
+      ? [{ id: 'resp', nom: m.responsable.nom, entree: '', sortie: '', mandats: [] }] : []
+    liste = changer([...implicite, ...base]).map((x, i) => ({ ...x, id: x.id === 'resp' || !x.id ? `as_${Date.now().toString(36)}_${i}${Math.random().toString(36).slice(2, 5)}` : x.id }))
+    a[magasin] = liste
+  })
+  if (!m?.franchise) return
+  const principal = liste.find((x) => !x.sortie || x.sortie > reseau.jour)?.nom ?? ''
+  if (principal === (m.responsable?.nom ?? '') || (!principal && m.responsableARecruter)) return
+  const fiche = principal ? reseau.personnes[cleFiche({ type: 'franchise', cle: principal })] ?? {} : {}
+  await surchargerMagasin(magasin, { resp: principal, tel_resp: String(fiche.telephone ?? ''), email_resp: String(fiche.email ?? '') })
+}
+export const enregistrerAssocies = (reseau: Reseau, magasin: string, liste: Associe[]) => modifierAssociesMagasin(reseau, magasin, () => liste)
+
+// Franchisé : inscrit sur un magasin sans franchisé, ou ajouté à ses associés ; sur un intégré, il devient le responsable
+export async function enregistrerFranchise(nom: string, ancien: string | null, magasins: string[], anciensMagasins: string[], f: FichePersonnelle, reseau: Reseau) {
+  const parNom = new Map(reseau.magasins.map((m) => [m.nom, m]))
+  const coord = { tel_resp: f.telephone.trim(), email_resp: f.email.trim() }
+  const assoc = normaliserAssocies((await lireCle<unknown>('associes', {})).valeur)
+  for (const n of anciensMagasins.filter((x) => !magasins.includes(x))) {
+    const m = parNom.get(n)
+    const autres = (m ? associesEnPlace({ ...reseau, associes: assoc }, m) : []).filter((a) => a.nom !== ancien)
+    // Une chaîne vide (et non null) efface bien la valeur venue du fichier de base de l'ancienne app
+    if (!m || m.responsable?.nom === ancien) await surchargerMagasin(n, { resp: autres[0]?.nom ?? '', tel_resp: '', email_resp: '' })
+  }
+  for (const n of magasins) {
+    const m = parNom.get(n)
+    const resp = m?.responsable?.nom ?? ''
+    const ajoute = m?.franchise && resp && resp !== ancien && resp !== nom
+    if (!ajoute) await surchargerMagasin(n, { resp: nom, ...coord })
+  }
+  await modifierAssocies((a) => {
+    for (const n of anciensMagasins.filter((x) => !magasins.includes(x))) a[n] = (a[n] ?? []).filter((x) => x.nom !== ancien)
+    for (const l of Object.values(a)) for (const x of l) if (ancien && x.nom === ancien) x.nom = nom
+    for (const n of magasins) {
+      const m = parNom.get(n)
+      const resp = m?.responsable?.nom ?? ''
+      if (!m?.franchise || !resp || resp === ancien || resp === nom) continue
+      const l = (a[n] ??= [])
+      if (!l.some((x) => x.nom === resp)) l.unshift({ id: `as_${Date.now().toString(36)}_r`, nom: resp, entree: '', sortie: '', mandats: [] })
+      if (!l.some((x) => x.nom === nom)) l.push({ id: `as_${Date.now().toString(36)}_${l.length}`, nom, entree: '', sortie: '', mandats: [] })
+    }
+  })
   if (ancien && ancien !== nom) await deplacerFichePersonne({ type: 'franchise', cle: ancien }, { type: 'franchise', cle: nom })
   await enregistrerFichePersonne({ type: 'franchise', cle: nom }, f)
 }
 
-export async function supprimerFranchise(nom: string, magasins: string[]) {
-  for (const m of magasins) await surchargerMagasin(m, { resp: '', tel_resp: '', email_resp: '' })
+export async function supprimerFranchise(nom: string, magasins: string[], reseau: Reseau) {
+  for (const n of magasins) {
+    const m = reseau.magasins.find((x) => x.nom === n)
+    if (m && m.responsable?.nom !== nom) continue
+    const suivant = m ? associesEnPlace(reseau, m).find((a) => a.nom !== nom)?.nom ?? '' : ''
+    await surchargerMagasin(n, { resp: suivant, tel_resp: '', email_resp: '' })
+  }
+  await modifierAssocies((a) => { for (const k of Object.keys(a)) a[k] = a[k].filter((x) => x.nom !== nom) })
   await supprimerFichePersonne({ type: 'franchise', cle: nom })
 }
 
@@ -383,7 +446,7 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
       for (const c of cp.valeur.liste ?? []) c.magasins = (c.magasins ?? []).map((n) => (n === ancienNom ? f.nom : n))
       await ecrireCle('campagnes', cp.valeur, cp.existe)
     }
-    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits'] as const) {
+    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes'] as const) {
       const lu = await lireCle<Record<string, unknown>>(cleConfig, {})
       const cibles = (cleConfig === 'deploiements' ? [lu.valeur.valeurs, lu.valeur.journal] : [lu.valeur]) as (Record<string, unknown> | undefined)[]
       let change = false
@@ -426,7 +489,7 @@ export async function enregistrerVisites(base: Omit<Visite, 'magasin' | 'id'>, m
     group_id: base.groupe || null, store: magasin, visit_date: base.date, type: base.type, visitor: base.visiteurs.join(SEPARATEUR_VISITEURS) || null,
     signed_required: base.signatureRequise, signed_url: base.lienSigne || null, signed_date: base.dateSignature || null,
     docs: [...base.documents.filter((d) => d.url.trim()), ...(base.photos ?? []).map((p) => ({ label: 'Photo', url: '', chemin: p.chemin, taille: p.taille }))], notes: base.notes || null,
-    sections: base.parties.some((x) => x.trim()) ? base.parties.map((x) => x.trim()) : null, action_plan: base.plan.filter((a) => a.action.trim()),
+    sections: base.parties.some((x) => x.trim()) ? base.parties.map((x) => x.trim()) : null, action_plan: base.plan.filter((a) => a.action.trim()).map((a, i) => ({ ...a, id: a.id || `a_${Date.now().toString(36)}_${i}` })),
   })
   if (id !== null) verifier(await supabase.from('visits').update(ligne(magasins[0])).eq('id', id))
   else verifier(await supabase.from('visits').insert(magasins.map(ligne)))
@@ -448,6 +511,21 @@ export async function importerVisites(visites: { magasin: string; date: string; 
     }
     await ecrireCle('audits', valeur, existe)
   })
+}
+// Actions d'un plan marquées faites (date) ou remises en cours ('') : relues puis réécrites visite par visite
+export async function marquerActions(lot: { visite: number; index: number; faite: string }[]) {
+  for (const id of [...new Set(lot.map((l) => l.visite))]) {
+    const lu = await supabase.from('visits').select('id,action_plan').eq('id', id)
+    if (lu.error) throw new ErreurEnregistrement(lu.error.message)
+    const plan = normaliserPlan(lu.data?.[0]?.action_plan)
+    for (const l of lot.filter((x) => x.visite === id)) {
+      const a = plan[l.index]
+      if (!a) continue
+      if (l.faite) a.faite = l.faite
+      else delete a.faite
+    }
+    verifier(await supabase.from('visits').update({ action_plan: plan }).eq('id', id))
+  }
 }
 export async function supprimerVisite(id: number) { verifier(await supabase.from('visits').delete().eq('id', id)) }
 

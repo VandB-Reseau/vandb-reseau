@@ -63,6 +63,20 @@ export const theme = createTheme({
   components: {
     // Ouvrir un menu ou une liste ne doit pas retirer la barre de défilement (sinon la page se décale)
     MuiPopover: { defaultProps: { disableScrollLock: true } },
+    // Colonne Magasin fixe au défilement horizontal : « colonne-fixe » (1re colonne) ou « deux-colonnes-fixes » (case à cocher + Magasin)
+    MuiTable: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          '&.colonne-fixe tr > :first-of-type, &.deux-colonnes-fixes tr > :nth-of-type(-n+2)': {
+            position: 'sticky', left: 0, zIndex: 2, backgroundColor: theme.palette.background.paper,
+          },
+          '&.colonne-fixe tr > :first-of-type': { boxShadow: `inset -1px 0 0 ${theme.palette.divider}` },
+          '&.deux-colonnes-fixes tr > :first-of-type': { width: 52, minWidth: 52, maxWidth: 52 },
+          '&.deux-colonnes-fixes tr > :nth-of-type(2)': { left: 52, boxShadow: `inset -1px 0 0 ${theme.palette.divider}` },
+          '& thead tr > th': { zIndex: 3 },
+        }),
+      },
+    },
     MuiMenu: { defaultProps: { disableScrollLock: true } },
     MuiButton: {
       defaultProps: { disableElevation: true },

@@ -136,7 +136,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
           {surPC ? (
             <Card>
               <TableContainer>
-                <Table aria-label="Rythme de visite par magasin" size="small">
+                <Table aria-label="Rythme de visite par magasin" size="small" className="colonne-fixe">
                   <TableHead>
                     <TableRow>
                       <TableCell>Magasin</TableCell><TableCell>Coach</TableCell><TableCell>Nine box</TableCell><TableCell>Visites de l’année</TableCell><TableCell>Dernière visite</TableCell><TableCell>Prochaine visite</TableCell><TableCell />

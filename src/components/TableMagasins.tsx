@@ -57,7 +57,7 @@ export function TableMagasins({ magasins }: { magasins: Magasin[] }) {
   return (
     <Card>
       <TableContainer>
-        <Table size="small" aria-label="Liste des magasins">
+        <Table size="small" className="colonne-fixe" aria-label="Liste des magasins">
           <TableHead>
             <TableRow>
               {colonnes.map((c) => (
