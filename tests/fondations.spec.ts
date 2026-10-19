@@ -114,3 +114,17 @@ test('le menu a deux parties : la partie classique et Paramètres', async ({ pag
   await page.goto('./#/equipe?vue=franchises')
   await expect(page).toHaveURL(/#\/parametres\/franchises/)
 })
+
+test('Équipe ouvre le groupe Paramètres', async ({ page, isMobile }) => {
+  await seConnecter(page)
+  if (isMobile) {
+    await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Plus' }).click()
+    const groupe = page.getByRole('main').getByRole('heading', { name: 'Paramètres' }).locator('xpath=following-sibling::*[1]')
+    await expect(groupe.getByRole('button').first()).toHaveText(/^Équipe/)
+  } else {
+    const groupe = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('list').filter({ hasText: 'Paramètres' }).last()
+    await expect(groupe.getByRole('button').first()).toHaveText('Équipe')
+    const classique = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('list').first()
+    await expect(classique.getByRole('button', { name: 'Équipe' })).toHaveCount(0)
+  }
+})
