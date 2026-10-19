@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture, type OptionsSimulation } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -88,4 +88,43 @@ test('le Responsable des intégrés ne voit que les intégrés', async ({ page }
   // Intégrés : un magasin sur six (Lyon, Lille, Brest, Albi, Lavaur…)
   await expect(page.getByText('Lyon Test').first()).toBeVisible()
   await expect(page.getByText('Annecy Test')).toHaveCount(0)
+})
+
+test('le Directeur tient à jour dans la base le périmètre de chaque magasin', async ({ page }) => {
+  const options: OptionsSimulation = {}
+  await seConnecter(page, options)
+  await expect.poll(() => options.perimetreRecu?.length).toBe(30)
+  const ligne = (n: string) => options.perimetreRecu!.find((l) => l.magasin === n)
+  expect(ligne('Rennes Test')).toEqual({ magasin: 'Rennes Test', coach: 'Noé MODELE', rrs: ['rr2'] })
+  // Lyon : intégré, suivi aussi par le Responsable des intégrés ; Metz : géré en direct par Alex NORD
+  expect(ligne('Lyon Test')!.rrs).toEqual(['rr2', 'rr3'])
+  expect(ligne('Metz Test')!.rrs).toEqual(['rr1'])
+})
+
+test('un Coach ne l’envoie pas, et sa note de santé ne réécrit que la ligne de son magasin', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  const options: OptionsSimulation = { ...NOE, ecritures }
+  await seConnecter(page, options)
+  await page.goto('./#/plus/sante?vue=evaluer')
+  await page.getByRole('combobox', { name: 'Rechercher un magasin ou un Coach' }).fill('Rennes')
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Fort : CA marché extérieur de Rennes Test' }).click()
+  await expect.poll(() => ecritures.filter((e) => e.table === 'suivi_magasins').length).toBe(1)
+  const e = ecritures.find((x) => x.table === 'suivi_magasins')!
+  expect((e.corps as { store_name: string; cle: string }[]).map((l) => [l.store_name, l.cle])).toEqual([['Rennes Test', 'sante']])
+  expect(ecritures.filter((x) => x.table === 'app_config' && x.methode !== 'SUIVI')).toEqual([])
+  expect(options.perimetreRecu).toBeUndefined()
+})
+
+test('tant que le script n’est pas passé, le suivi reste dans app_config', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, suiviEnConfig: true })
+  await page.goto('./#/magasins/Lyon%20Test?vue=journal')
+  await expect(page.getByText('Appel du franchisé : travaux de vitrine prévus.')).toBeVisible()
+  await page.goto('./#/plus/sante?vue=evaluer')
+  await page.getByRole('combobox', { name: 'Rechercher un magasin ou un Coach' }).fill('Rennes')
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Fort : CA marché extérieur de Rennes Test' }).click()
+  await expect.poll(() => ecritures.filter((e) => e.table === 'app_config' && (e.corps as { key?: string }).key !== 'derniere_sauvegarde').length).toBe(1)
+  expect(ecritures.filter((e) => e.table === 'suivi_magasins')).toEqual([])
 })
