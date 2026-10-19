@@ -73,7 +73,7 @@ test('noter un magasin garde l’historique daté', async ({ page }) => {
   await page.goto('./#/magasins/Lyon%20Test')
   await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
   const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
-  await d.getByRole('button', { name: /^Fort : Niveau du franchisé/ }).click()
+  await d.getByRole('button', { name: /^Fort : Gestion/ }).click()
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
   const sante = ecritures.filter((e) => e.table === 'app_config' && JSON.stringify(e.corps).includes('historique')).at(-1)!

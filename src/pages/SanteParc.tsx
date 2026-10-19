@@ -57,7 +57,7 @@ import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import { FiltreMenu } from '../components/FiltreMenu'
 import InputAdornment from '@mui/material/InputAdornment'
 import SearchIcon from '@mui/icons-material/Search'
-import { BoutonsNote, BoutonsOption, PastilleCase, couleursCoachs, useSaisieSante, type Saisie } from '../components/Sante'
+import { BoutonsNote, BoutonsOption, LibelleCritere, NotesParAxe, PastilleCase, couleursCoachs, useSaisieSante, type Saisie } from '../components/Sante'
 import { coachA } from '../data/charge'
 import { effacerToutesEvaluations, enregistrerDeploiements, enregistrerThematiques, importerHistorique } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
@@ -67,7 +67,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import { analyser, lireFichier, type ResultatImport } from '../data/import'
-import { avancement, caseDe, nineBox, tousCriteres, type Evaluation, type IdCritere, type Thematique, type Ton } from '../data/sante'
+import { avancement, caseDe, criteresAxe, libelleAxe, libelleCritere, nineBox, tousCriteres, type Evaluation, type IdCritere, type Thematique, type Ton } from '../data/sante'
 import { dateCourte, lienFiche } from '../lib/format'
 import { PastilleAlerte } from '../components/Chiffres'
 import { analyser as analyserCA, completerChiffres, libellesChiffres, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, libelleMoisCourt, moisPrecedent, type StatutAlerte } from '../data/chiffres'
@@ -332,16 +332,7 @@ function FicheSaisie({ reseau, magasins, saisie, parties }: { reseau: Reseau; ma
               {parties.includes('notes') && <PastilleCase c={caseDe(e)} />}
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Magasin {i + 1} sur {liste.length} · Coach {coachA(m, reseau.jour) || 'à désigner'}</Typography>
-            {parties.includes('notes') && (
-              <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
-                {tousCriteres.map((c) => (
-                  <Box key={c.id}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{c.libelle}</Typography>
-                    <BoutonsNote libelle={`${c.libelle} de ${m.nom}`} valeur={e?.notes[c.id]} onChange={(n) => saisie.noter([m.nom], c.id, n)} />
-                  </Box>
-                ))}
-              </Box>
-            )}
+            {parties.includes('notes') && <NotesParAxe integre={!m.franchise} notes={e?.notes} noter={(id, n) => saisie.noter([m.nom], id, n)} libelleMagasin={m.nom} />}
             {parties.length > 1 && <Divider sx={{ my: 2.5 }} />}
             {parties.includes('deploiements') && (
               <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
@@ -420,9 +411,14 @@ function VueEvaluer({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: S
               <Table size="small" className="deux-colonnes-fixes" aria-label="Évaluation des magasins">
                 <TableHead>
                   <TableRow>
+                    <TableCell colSpan={2} />
+                    {(['resultats', 'franchise'] as const).map((axe) => <TableCell key={axe} colSpan={criteresAxe(axe).length} sx={{ fontWeight: 700, borderLeft: 1, borderColor: 'divider' }}>{libelleAxe(axe)}</TableCell>)}
+                    <TableCell />
+                  </TableRow>
+                  <TableRow>
                     <TableCell padding="checkbox"><CaseTout magasins={magasins} {...sel} /></TableCell>
                     <TableCell>Magasin</TableCell>
-                    {tousCriteres.map((c) => <TableCell key={c.id} sx={{ minWidth: 170 }}>{c.id === 'franchise' ? 'Franchisé' : c.libelle}</TableCell>)}
+                    {tousCriteres.map((c) => <TableCell key={c.id} sx={{ minWidth: 170 }}><LibelleCritere c={c} /></TableCell>)}
                     <TableCell>Case</TableCell>
                   </TableRow>
                 </TableHead>
@@ -514,7 +510,7 @@ function DialogImport({ reseau, date, onFermer }: { reseau: Reseau; date: string
             <Box>
               <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Colonnes reconnues</Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {res.criteres.map((c) => <Chip key={c.entete} label={`${c.entete} → ${tousCriteres.find((x) => x.id === c.id)!.libelle}`} color="primary" variant="outlined" sx={{ fontSize: 13 }} />)}
+                {res.criteres.map((c) => <Chip key={c.entete} label={`${c.entete} → ${libelleCritere(c.id)}`} color="primary" variant="outlined" sx={{ fontSize: 13 }} />)}
                 {res.thematiques.map((t) => <Chip key={t.entete} label={`${t.entete} → ${t.t.libelle}`} color="secondary" variant="outlined" sx={{ fontSize: 13 }} />)}
               </Box>
             </Box>

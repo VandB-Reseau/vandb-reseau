@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
-import { avecPoint, notesAu, sansPoint, thematiquesParDefaut, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
+import { avecPoint, definirGrille, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
 import type { Conge, Evenement, NoteMagasin, Reseau, Visite } from './modele'
 import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
@@ -22,7 +22,7 @@ export class ErreurChargement extends Error {}
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'derniere_sauvegarde']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'derniere_sauvegarde', 'grille_ninebox']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -57,6 +57,9 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   }
   const reseau = construireReseau(brutes, jour)
   // Santé du parc et déploiements : stockés dans app_config (aucune table à créer)
+  // La grille de la nine box est fixée avant tout calcul de case
+  reseau.grilleNineBox = normaliserGrille(json<unknown>(cle('grille_ninebox'), null))
+  definirGrille(reseau.grilleNineBox)
   reseau.evaluations = json<Evaluations>(cle('sante_parc'), {})
   reseau.notesMagasins = json<Record<string, NoteMagasin[]>>(cle('notes_magasins'), {})
   reseau.audits = json<Audits>(cle('audits'), {})
@@ -587,6 +590,14 @@ export function importerHistorique(points: { magasin: string; date: string; note
       valeur[p.magasin] = avecPoint(valeur[p.magasin], e)
     }
     await ecrireCle('sante_parc', valeur, existe)
+  })
+}
+
+// Grille de la nine box (critères, poids, seuils) : la case de chaque magasin est recalculée au chargement
+export function enregistrerGrille(g: GrilleNineBox, jour: string) {
+  return enFile(async () => {
+    const { existe } = await lireCle<unknown>('grille_ninebox', null)
+    await ecrireCle('grille_ninebox', { ...g, modifieLe: jour }, existe)
   })
 }
 

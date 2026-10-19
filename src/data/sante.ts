@@ -1,18 +1,65 @@
 import type { Reseau } from './modele'
 
-// Santé du parc : six critères notés à la main (pas encore de lien avec la BI), de 1 (faible) à 3 (fort)
+// Santé du parc : critères notés à la main (pas encore de lien avec la BI), de 1 (faible) à 3 (fort)
 // 0 = non concerné (critère volontairement non évalué, exclu des moyennes)
 export type Note = 0 | 1 | 2 | 3
-export const criteresResultats = [
-  { id: 'caExterieur', libelle: 'CA marché extérieur' },
-  { id: 'panierCave', libelle: 'Panier moyen cave' },
-  { id: 'panierBar', libelle: 'Panier moyen bar' },
-  { id: 'fluxCave', libelle: 'Flux cave' },
-  { id: 'fluxBar', libelle: 'Flux bar' },
-] as const
-export const critereManagement = { id: 'franchise', libelle: 'Niveau du franchisé (management, gestion)' } as const
-export const tousCriteres = [...criteresResultats, critereManagement]
-export type IdCritere = (typeof tousCriteres)[number]['id']
+export type IdCritere = string
+export type Axe = 'resultats' | 'franchise'
+
+// Grille de la nine box, réglable dans Paramètres (app_config, clé grille_ninebox)
+// Chaque axe = moyenne pondérée des critères notés ; un critère bloquant noté Faible rend l'axe Faible
+export interface CritereGrille { id: IdCritere; libelle: string; axe: Axe; poids: number; bloquant?: boolean; definition?: string }
+export interface GrilleNineBox { criteres: CritereGrille[]; seuilBas: number; seuilHaut: number; modifieLe?: string }
+
+export const grilleParDefaut: GrilleNineBox = {
+  seuilBas: 1.67, seuilHaut: 2.34,
+  criteres: [
+    { id: 'caExterieur', libelle: 'CA marché extérieur', axe: 'resultats', poids: 20 },
+    { id: 'panierCave', libelle: 'Panier moyen cave', axe: 'resultats', poids: 20 },
+    { id: 'panierBar', libelle: 'Panier moyen bar', axe: 'resultats', poids: 20 },
+    { id: 'fluxCave', libelle: 'Flux cave', axe: 'resultats', poids: 20 },
+    { id: 'fluxBar', libelle: 'Flux bar', axe: 'resultats', poids: 20 },
+    { id: 'gestion', libelle: 'Gestion', axe: 'franchise', poids: 25, definition: 'Suit ses chiffres, marge, stocks, trésorerie, paiements au réseau à l’heure' },
+    { id: 'management', libelle: 'Management de l’équipe', axe: 'franchise', poids: 25, definition: 'Recrutement, formation à la vente, planning, stabilité de l’équipe' },
+    { id: 'animation', libelle: 'Animation commerciale', axe: 'franchise', poids: 20, definition: 'Vente additionnelle, dégustations, événements, fidélité, réseaux sociaux locaux' },
+    { id: 'tenue', libelle: 'Tenue du magasin', axe: 'franchise', poids: 20, bloquant: true, definition: 'Hygiène, merchandising, respect du concept' },
+    { id: 'relation', libelle: 'Relation au réseau', axe: 'franchise', poids: 10, definition: 'Applique les standards, entre dans les programmes, répond au Coach' },
+  ],
+}
+
+// Ancienne note unique du franchisé : elle décide encore de la ligne tant qu'aucun critère détaillé n'est noté
+export const ANCIENNE_NOTE_FRANCHISE = 'franchise'
+export const libelleAncienneNote = 'Niveau du franchisé (ancienne note)'
+
+// Relit une grille enregistrée ; tout ce qui est invalide reprend la valeur par défaut
+export function normaliserGrille(v: unknown): GrilleNineBox {
+  const g = (v ?? {}) as Partial<GrilleNineBox>
+  const criteres = Array.isArray(g.criteres)
+    ? g.criteres.filter((c) => c && typeof c.id === 'string' && c.id && typeof c.libelle === 'string' && (c.axe === 'resultats' || c.axe === 'franchise'))
+      .map((c) => ({ id: c.id, libelle: c.libelle, axe: c.axe, poids: Math.max(0, Number(c.poids) || 0), ...(c.bloquant ? { bloquant: true } : {}), ...(c.definition ? { definition: String(c.definition) } : {}) }))
+    : []
+  const axesComplets = criteres.some((c) => c.axe === 'resultats') && criteres.some((c) => c.axe === 'franchise')
+  const bas = Number(g.seuilBas), haut = Number(g.seuilHaut)
+  const seuilsOk = bas > 1 && haut > bas && haut < 3
+  // Résultats d'abord, puis Franchisé (ordre des colonnes partout)
+  const ordre = (l: CritereGrille[]) => [...l.filter((c) => c.axe === 'resultats'), ...l.filter((c) => c.axe === 'franchise')]
+  return {
+    criteres: axesComplets ? ordre(criteres) : grilleParDefaut.criteres,
+    seuilBas: seuilsOk ? bas : grilleParDefaut.seuilBas, seuilHaut: seuilsOk ? haut : grilleParDefaut.seuilHaut,
+    ...(g.modifieLe ? { modifieLe: String(g.modifieLe) } : {}),
+  }
+}
+
+// Grille en vigueur : fixée au chargement du réseau, lue par tous les calculs (liaison vivante des modules)
+export let grilleActive: GrilleNineBox = grilleParDefaut
+export let tousCriteres: CritereGrille[] = grilleParDefaut.criteres
+export function definirGrille(g: GrilleNineBox) {
+  grilleActive = g
+  tousCriteres = g.criteres
+}
+export const criteresAxe = (axe: Axe, g: GrilleNineBox = grilleActive) => g.criteres.filter((c) => c.axe === axe)
+export const libelleCritere = (id: IdCritere) => (id === ANCIENNE_NOTE_FRANCHISE ? libelleAncienneNote : tousCriteres.find((c) => c.id === id)?.libelle ?? id)
+export const libelleAxe = (axe: Axe, integre = false) => (axe === 'resultats' ? 'Résultats' : integre ? 'Responsable du magasin' : 'Franchisé')
 
 export const libelleNote: Record<Note, string> = { 0: 'Non concerné', 1: 'Faible', 2: 'Moyen', 3: 'Fort' }
 
@@ -42,19 +89,34 @@ export function joursParVisite(c: CaseNineBox | null): number {
   return d.startsWith('½') ? 0.5 : Number(d.replace(',', '.').replace(/[^\d.]/g, '')) || 1
 }
 
-const niveau = (moyenne: number): 1 | 2 | 3 => (moyenne < 1.67 ? 1 : moyenne < 2.34 ? 2 : 3)
+const niveau = (moyenne: number, g: GrilleNineBox): 1 | 2 | 3 => (moyenne < g.seuilBas ? 1 : moyenne < g.seuilHaut ? 2 : 3)
 
-export function scoreResultats(e: Evaluation | undefined): number | null {
-  const n = criteresResultats.map((c) => e?.notes[c.id]).filter((x): x is Note => !!x)
-  return n.length ? n.reduce((a: number, b) => a + b, 0) / n.length : null
+// Moyenne pondérée des critères notés d'un axe (les « Non concerné » sortent du calcul et leur poids est redistribué)
+export function scoreAxe(e: Evaluation | undefined, axe: Axe, g: GrilleNineBox = grilleActive): number | null {
+  const notes = criteresAxe(axe, g).map((c) => ({ c, n: e?.notes[c.id] })).filter((x): x is { c: CritereGrille; n: 1 | 2 | 3 } => !!x.n)
+  if (!notes.length) return null
+  const poids = notes.reduce((a, x) => a + x.c.poids, 0)
+  return poids > 0 ? notes.reduce((a, x) => a + x.n * x.c.poids, 0) / poids : notes.reduce((a, x) => a + x.n, 0) / notes.length
+}
+export const scoreResultats = (e: Evaluation | undefined, g: GrilleNineBox = grilleActive) => scoreAxe(e, 'resultats', g)
+
+// Niveau d'un axe : un critère bloquant noté Faible l'emporte sur la moyenne
+export function niveauAxe(e: Evaluation | undefined, axe: Axe, g: GrilleNineBox = grilleActive): 1 | 2 | 3 | null {
+  const s = scoreAxe(e, axe, g)
+  if (s === null) {
+    const ancienne = axe === 'franchise' ? e?.notes[ANCIENNE_NOTE_FRANCHISE] : undefined
+    return ancienne ? ancienne : null
+  }
+  if (criteresAxe(axe, g).some((c) => c.bloquant && e?.notes[c.id] === 1)) return 1
+  return niveau(s, g)
 }
 
-// Case de la nine box : il faut au moins un critère de résultat et la note du franchisé
-export function caseDe(e: Evaluation | undefined): CaseNineBox | null {
-  const r = scoreResultats(e)
-  const m = e?.notes.franchise
-  if (r === null || !m) return null
-  return nineBox.find((c) => c.resultats === niveau(r) && c.management === m) ?? null
+// Case de la nine box : il faut au moins un critère noté sur chaque axe (ou l'ancienne note du franchisé)
+export function caseDe(e: Evaluation | undefined, g: GrilleNineBox = grilleActive): CaseNineBox | null {
+  const r = niveauAxe(e, 'resultats', g)
+  const m = niveauAxe(e, 'franchise', g)
+  if (!r || !m) return null
+  return nineBox.find((c) => c.resultats === r && c.management === m) ?? null
 }
 
 // Rang d'une case : plus il est haut, mieux se porte le magasin

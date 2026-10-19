@@ -22,14 +22,14 @@ test('changer le classement à une date choisie, un seul changement par jour', a
   await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
   const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
   await d.getByLabel('Date du classement', { exact: true }).fill('2026-08-15')
-  await d.getByRole('button', { name: /^Moyen : Niveau du franchisé/ }).click()
+  await d.getByRole('button', { name: /^Moyen : Gestion/ }).click()
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
   const v = derniereSante(ecritures)['Lyon Test']
   // Inséré à sa date entre les deux points existants ; le classement actuel reste le plus récent
   expect(v.historique.map((p: { date: string; caseId: string }) => `${p.date} ${p.caseId}`)).toEqual(['2026-06-01 coeur', '2026-08-15 relance', '2026-10-01 redressement'])
   expect(v.date).toBe('2026-10-01')
-  expect(v.notes.franchise).toBe(1)
+  expect(v.notes.gestion).toBeUndefined()
 })
 
 test('noter le même jour remplace la ligne du jour', async ({ page }) => {
@@ -39,12 +39,12 @@ test('noter le même jour remplace la ligne du jour', async ({ page }) => {
   await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
   let d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
   await d.getByLabel('Date du classement', { exact: true }).fill('2026-10-01')
-  await d.getByRole('button', { name: /^Fort : Niveau du franchisé/ }).click()
+  await d.getByRole('button', { name: /^Fort : Gestion/ }).click()
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
   const v = derniereSante(ecritures)['Lyon Test']
   expect(v.historique.map((p: { date: string; caseId: string }) => `${p.date} ${p.caseId}`)).toEqual(['2026-06-01 coeur', '2026-10-01 diagnostic'])
-  expect(v.notes.franchise).toBe(3)
+  expect(v.notes.gestion).toBe(3)
   d = page.getByRole('dialog')
 })
 
@@ -101,7 +101,7 @@ test('deux changements de case le même jour : le second remplace le premier, m�
     await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
     const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
     await d.getByLabel('Date du classement', { exact: true }).fill('2026-10-14')
-    await d.getByRole('button', { name: new RegExp(`^${note} : Niveau du franchisé`) }).click()
+    await d.getByRole('button', { name: new RegExp(`^${note} : Gestion`) }).click()
     await d.getByRole('button', { name: 'Enregistrer' }).click()
     await expect(d).toBeHidden()
   }
@@ -139,7 +139,7 @@ test('les doublons du même jour déjà enregistrés n’apparaissent qu’une f
   await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
   const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
   await d.getByLabel('Date du classement', { exact: true }).fill('2026-10-10')
-  await d.getByRole('button', { name: /^Moyen : Niveau du franchisé/ }).click()
+  await d.getByRole('button', { name: /^Moyen : Gestion/ }).click()
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
   const v = derniereSante(ecritures)['Lyon Test']
@@ -152,7 +152,7 @@ test('supprimer un classement du journal : la saisie précédente redevient le c
   await page.goto('./#/magasins/Lyon%20Test?vue=journal')
   await page.getByRole('button', { name: /^Modifier le classement du 1 oct/ }).click()
   const d = page.getByRole('dialog', { name: /^Classement du 1 oct/ })
-  await expect(d.getByRole('button', { name: /^Faible : Niveau du franchisé/ })).toHaveAttribute('aria-pressed', 'true')
+  await expect(d.getByRole('button', { name: /^Faible : CA marché extérieur/ })).toHaveAttribute('aria-pressed', 'true')
   await page.screenshot({ path: `captures/suppression-ninebox/${test.info().project.name}-classement.png` })
   await d.getByRole('button', { name: 'Supprimer' }).click()
   await d.getByRole('alert').getByRole('button', { name: 'Supprimer' }).click()
@@ -182,11 +182,11 @@ test('corriger les notes d’un classement passé depuis le journal', async ({ p
   await page.goto('./#/magasins/Lyon%20Test?vue=journal')
   await page.getByRole('button', { name: /^Modifier le classement du 1 juin/ }).click()
   const d = page.getByRole('dialog', { name: /^Classement du 1 juin/ })
-  await d.getByRole('button', { name: /^Fort : Niveau du franchisé/ }).click()
+  await d.getByRole('button', { name: /^Fort : Gestion/ }).click()
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
   const v = derniereSante(ecritures)['Lyon Test']
-  expect(v.historique.find((p: { date: string }) => p.date === '2026-06-01').notes.franchise).toBe(3)
+  expect(v.historique.find((p: { date: string }) => p.date === '2026-06-01').notes.gestion).toBe(3)
   expect(v.date).toBe('2026-10-01')
 })
 
