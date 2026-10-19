@@ -21,7 +21,7 @@ test('changer le classement à une date choisie, un seul changement par jour', a
   await page.goto('./#/magasins/Lyon%20Test')
   await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
   const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
-  await d.getByLabel('Date du classement et des déploiements').fill('2026-08-15')
+  await d.getByLabel('Date du classement', { exact: true }).fill('2026-08-15')
   await d.getByRole('button', { name: /^Moyen : Niveau du franchisé/ }).click()
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
@@ -38,7 +38,7 @@ test('noter le même jour remplace la ligne du jour', async ({ page }) => {
   await page.goto('./#/magasins/Lyon%20Test')
   await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
   let d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
-  await d.getByLabel('Date du classement et des déploiements').fill('2026-10-01')
+  await d.getByLabel('Date du classement', { exact: true }).fill('2026-10-01')
   await d.getByRole('button', { name: /^Fort : Niveau du franchisé/ }).click()
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
@@ -100,7 +100,7 @@ test('deux changements de case le même jour : le second remplace le premier, m�
   for (const note of ['Moyen', 'Fort']) {
     await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
     const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
-    await d.getByLabel('Date du classement et des déploiements').fill('2026-10-14')
+    await d.getByLabel('Date du classement', { exact: true }).fill('2026-10-14')
     await d.getByRole('button', { name: new RegExp(`^${note} : Niveau du franchisé`) }).click()
     await d.getByRole('button', { name: 'Enregistrer' }).click()
     await expect(d).toBeHidden()
@@ -138,7 +138,7 @@ test('les doublons du même jour déjà enregistrés n’apparaissent qu’une f
 
   await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
   const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
-  await d.getByLabel('Date du classement et des déploiements').fill('2026-10-10')
+  await d.getByLabel('Date du classement', { exact: true }).fill('2026-10-10')
   await d.getByRole('button', { name: /^Moyen : Niveau du franchisé/ }).click()
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
@@ -203,4 +203,33 @@ test('effacer toutes les notes nine box en une fois, avec une copie de sauvegard
   const config = ecritures.filter((e) => e.table === 'app_config').map((e) => e.corps as { key?: string; value: string })
   expect(JSON.parse(config.at(-1)!.value)).toEqual({})
   expect(JSON.parse(config.at(-2)!.value)['Lyon Test'].date).toBe('2026-10-01')
+})
+
+test('chaque déploiement a sa date dans la fiche magasin', async ({ page }, info) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/magasins/Lyon%20Test')
+  await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
+  const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
+  await expect(d.getByLabel('Date : Concept 2.0')).toHaveValue('2026-05-04')
+  await expect(d.getByLabel('Date : Terrasse')).toHaveValue('')
+  await expect(d.getByLabel('Date : Offre 5+1')).toHaveCount(0)
+  // Date reprise seule : la terrasse est en place depuis le 1er mars
+  await d.getByLabel('Date : Terrasse').fill('2026-03-01')
+  // Nouvel état : daté du jour, puis daté à la main
+  await d.getByRole('button', { name: 'Oui : Offre 5+1' }).click()
+  const jour = new Date().toISOString().slice(0, 10)
+  await expect(d.getByLabel('Date : Offre 5+1')).toHaveValue(jour)
+  await d.getByLabel('Date : Offre 5+1').fill('2026-09-01')
+  await d.getByLabel('Date : Offre 5+1').scrollIntoViewIfNeeded()
+  await page.screenshot({ path: `captures/${info.project.name}-dates-deploiements.png` })
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  const e = ecritures.filter((x) => x.table === 'app_config' && JSON.stringify(x.corps).includes('journal')).at(-1)!
+  const dv = JSON.parse((e.corps as { value: string }).value)
+  expect(dv.journal['Lyon Test']).toEqual([
+    { date: '2026-03-01', thematique: 'terrasse', etat: 'Oui' },
+    { date: '2026-05-04', thematique: 'concept20', etat: 'Fait' },
+    { date: '2026-09-01', thematique: 'offre5plus1', etat: 'Oui' },
+  ])
 })

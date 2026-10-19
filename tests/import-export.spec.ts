@@ -133,6 +133,55 @@ test('chiffres, Coach des magasins et Responsable Régional des Coachs depuis un
   await expect(d.getByText('Colonnes introuvables : Magasin, Date', { exact: false }).or(d.getByText('introuvable', { exact: false }))).toBeVisible()
 })
 
+test('déploiements et nine box : une date par déploiement et par classement', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'mêmes règles que sur PC')
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/parametres/donnees')
+
+  const dep = await telecharger(page, 'Exporter Déploiements')
+  const [fd] = await lireExcel(readFileSync(dep.chemin))
+  const [ed, ...ld] = fd.data as unknown[][]
+  expect(ed.slice(0, 5)).toEqual(['Magasin (clé)', 'Concept 2.0', 'Concept 2.0 : date', 'Terrasse', 'Terrasse : date'])
+  expect(ld).toHaveLength(30)
+  const col = (e: string) => ed.indexOf(e)
+  const lyon = ld.find((l) => l[0] === 'Lyon Test')!, annecy = ld.find((l) => l[0] === 'Annecy Test')!
+  expect([lyon[1], lyon[2], lyon[3], lyon[4]]).toEqual(['Fait', new Date(Date.UTC(2026, 4, 4)), 'Oui', null])
+  // Nouvel état sans date : daté du jour ; date seule plus ancienne : l'état remonte à cette date ; date plus récente : refusée
+  annecy[1] = 'Fait'
+  lyon[4] = '01/03/2026'
+  const texte = (lignes: unknown[][]) => lignes.map((l) => l.map((v) => (v instanceof Date ? v.toISOString().slice(0, 10).split('-').reverse().join('/') : v ?? '')).join(';')).join('\n')
+  let d = await importer(page, 'Déploiements', csv('dep.csv', texte([ed, ...ld])))
+  await expect(d.getByText(/^2 lignes modifiées · 28 inchangées$/)).toBeVisible()
+  await d.getByRole('button', { name: 'Annuler' }).click()
+  const plusTard = ld.map((l) => [...l])
+  plusTard.find((l) => l[0] === 'Lyon Test')![col('Concept 2.0 : date')] = '01/09/2026'
+  d = await importer(page, 'Déploiements', csv('dep.csv', texte([ed, ...plusTard])))
+  await expect(d.getByText(/Concept 2.0 : date plus récente que celle en place/)).toBeVisible()
+  await d.getByRole('button', { name: 'Annuler' }).click()
+  d = await importer(page, 'Déploiements', csv('dep.csv', texte([ed, ...ld])))
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  const journal = JSON.parse((ecritures.filter((e) => e.table === 'app_config').at(-1)!.corps as { value: string }).value).journal
+  const jour = new Date().toISOString().slice(0, 10)
+  expect(journal['Annecy Test']).toEqual([{ date: jour, thematique: 'concept20', etat: 'Fait' }])
+  expect(journal['Lyon Test']).toContainEqual({ date: '2026-03-01', thematique: 'terrasse', etat: 'Oui' })
+
+  const nb = await telecharger(page, 'Exporter Nine box')
+  const [fn] = await lireExcel(readFileSync(nb.chemin))
+  const [en, ...ln] = fn.data as unknown[][]
+  expect(en[0]).toBe('Magasin (clé)')
+  expect(en.at(-1)).toBe('Date du classement')
+  expect(ln.find((l) => l[0] === 'Lyon Test')!.at(-1)).toEqual(new Date(Date.UTC(2026, 9, 1)))
+  ln.find((l) => l[0] === 'Nantes Test')![en.indexOf('Flux cave')] = 'Fort'
+  d = await importer(page, 'Nine box', csv('nb.csv', texte([en, ...ln])))
+  await expect(d.getByText(/^1 ligne modifiée · 29 inchangées$/)).toBeVisible()
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  const sante = JSON.parse((ecritures.filter((e) => e.table === 'app_config').at(-1)!.corps as { value: string }).value)
+  expect(sante['Nantes Test']).toEqual(expect.objectContaining({ date: jour, notes: expect.objectContaining({ fluxCave: 3, fluxBar: 2 }) }))
+})
+
 test('télécharger la sauvegarde complète et tous les référentiels', async ({ page, isMobile }) => {
   test.skip(isMobile, 'mêmes fichiers que sur PC')
   const ecritures: Ecriture[] = []
