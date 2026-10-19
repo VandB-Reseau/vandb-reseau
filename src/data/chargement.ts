@@ -12,6 +12,7 @@ import { associesEnPlace, normaliserAssocies, type Associe, type Associes } from
 import { normaliserActionsLibres } from './actions'
 import { couperAccesDe, renommerAcces } from './espaceFranchise'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
+import { configDepuisSuivi, eclater, assembler, rubriques, type CleSuivie } from './suivi'
 
 function json<T>(valeur: unknown, defaut: T): T {
   if (valeur === null || valeur === undefined) return defaut
@@ -29,25 +30,46 @@ export interface Tables {
   visites: Ligne[]; conges: Ligne[]; evenements: Ligne[]; finances: Ligne[]
 }
 
+const absente = (message: string) => /does not exist|schema cache|Could not find the table/i.test(message)
+
+// Une réponse Supabase compte au plus 1 000 lignes : les grandes tables se lisent par pages
+type Requete = { range: (debut: number, fin: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }> }
+async function toutLire(requete: () => Requete): Promise<{ data: Ligne[]; error: { message: string } | null }> {
+  const data: Ligne[] = []
+  for (let debut = 0; ; debut += 1000) {
+    const r = await requete().range(debut, debut + 999)
+    if (r.error) return { data, error: r.error }
+    data.push(...((r.data ?? []) as Ligne[]))
+    if ((r.data ?? []).length < 1000) return { data, error: null }
+  }
+}
+
+// Suivi rangé par magasin : table suivi_magasins une fois le script de cloisonnement passé, sinon app_config
+let suiviEnTable: boolean | null = null
+
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
-  const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances] = await Promise.all([
+  const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances, suivi] = await Promise.all([
     supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
     supabase.from('recruits').select('*'),
-    supabase.from('visits').select('*').order('visit_date', { ascending: false }),
+    toutLire(() => supabase.from('visits').select('*').order('visit_date', { ascending: false }).order('id')),
     supabase.from('leaves').select('*').order('start_date'),
     supabase.from('events').select('*').order('start_date'),
-    supabase.from('store_finance').select('*').order('month'),
+    toutLire(() => supabase.from('store_finance').select('*').order('month').order('store_name')),
+    toutLire(() => supabase.from('suivi_magasins').select('store_name,cle,valeur').order('store_name').order('cle')),
   ])
-  const erreur = config.error ?? surcharges.error ?? affectations.error ?? coachs.error
+  const erreur = config.error ?? surcharges.error ?? affectations.error ?? coachs.error ?? (suivi.error && !absente(suivi.error.message) ? suivi.error : null)
   if (erreur) throw new ErreurChargement(erreur.message)
+  suiviEnTable = !suivi.error
   // Tables facultatives : absentes ou vides, l'app fonctionne quand même
   const facultative = (r: { error: unknown; data: unknown }) => (r.error ? [] : (r.data as Ligne[] | null) ?? [])
+  const lignesConfig = config.data ?? []
   return assemblerReseau({
-    config: config.data ?? [], surcharges: surcharges.data ?? [], affectations: affectations.data ?? [], coachs: coachs.data ?? [],
+    config: suiviEnTable ? configDepuisSuivi(lignesConfig, suivi.data as { store_name: string; cle: string; valeur: unknown }[]) : lignesConfig,
+    surcharges: surcharges.data ?? [], affectations: affectations.data ?? [], coachs: coachs.data ?? [],
     recrues: facultative(recrues), visites: facultative(visites), conges: facultative(conges), evenements: facultative(evenements), finances: facultative(finances),
   }, jour)
 }
@@ -190,6 +212,39 @@ async function ecrireCle(cle: string, valeur: unknown, existe: boolean) {
     ? await supabase.from('app_config').update({ value }).eq('key', cle)
     : await supabase.from('app_config').insert({ key: cle, value })
   if (res.error) throw new ErreurEnregistrement(res.error.message)
+}
+
+// Clé suivie (rangée par magasin) : même format qu'app_config, mais seules les lignes des magasins
+// modifiés sont réécrites, et un Coach ou un RR ne lit que les siennes
+interface LuSuivi<T> { valeur: T; existe: boolean; commun: string; lignes: Map<string, string> }
+async function lireSuivi<T>(cle: CleSuivie, defaut: T): Promise<LuSuivi<T>> {
+  if (suiviEnTable === null) {
+    const essai = await supabase.from('suivi_magasins').select('store_name').limit(1)
+    if (essai.error && !absente(essai.error.message)) throw new ErreurEnregistrement(essai.error.message)
+    suiviEnTable = !essai.error
+  }
+  if (!suiviEnTable) return { ...(await lireCle<T>(cle, defaut)), commun: '', lignes: new Map() }
+  const avecCommun = cle === 'deploiements' || cle === 'campagnes'
+  const [commun, lu] = await Promise.all([
+    avecCommun ? lireCle<unknown>(cle, {}) : Promise.resolve({ valeur: undefined, existe: false }),
+    toutLire(() => supabase.from('suivi_magasins').select('store_name,valeur').eq('cle', rubriques[cle]).order('store_name')),
+  ])
+  if (lu.error) throw new ErreurEnregistrement(lu.error.message)
+  const parMagasin = Object.fromEntries(lu.data.map((l) => [String(l.store_name), l.valeur]))
+  const valeur = lu.data.length || avecCommun ? assembler(cle, commun.valeur, parMagasin) as T : defaut
+  return { valeur, existe: commun.existe, commun: JSON.stringify(eclater(cle, commun.valeur).commun), lignes: new Map(lu.data.map((l) => [String(l.store_name), JSON.stringify(l.valeur)])) }
+}
+
+async function ecrireSuivi<T>(cle: CleSuivie, valeur: T, lu: LuSuivi<T>) {
+  if (!suiviEnTable) return ecrireCle(cle, valeur, lu.existe)
+  const { commun, parMagasin } = eclater(cle, valeur)
+  if (commun !== undefined && JSON.stringify(commun) !== lu.commun) await ecrireCle(cle, commun, lu.existe)
+  const rubrique = rubriques[cle]
+  const changes = Object.entries(parMagasin).filter(([m, v]) => lu.lignes.get(m) !== JSON.stringify(v))
+    .map(([m, v]) => ({ store_name: m, cle: rubrique, valeur: v, maj_le: new Date().toISOString() }))
+  const retires = [...lu.lignes.keys()].filter((m) => !(m in parMagasin))
+  for (let i = 0; i < changes.length; i += 500) verifier(await supabase.from('suivi_magasins').upsert(changes.slice(i, i + 500), { onConflict: 'store_name,cle' }))
+  for (let i = 0; i < retires.length; i += 100) verifier(await supabase.from('suivi_magasins').delete().eq('cle', rubrique).in('store_name', retires.slice(i, i + 100)))
 }
 
 // Relit drs_data, applique la modification et réécrit tout (les champs inconnus de la nouvelle app sont conservés)
@@ -352,11 +407,12 @@ async function surchargerMagasin(magasin: string, champs: Record<string, unknown
 // Actions hors visite : relues puis réécrites (une liste par magasin)
 function modifierActionsLibres(changer: (t: Record<string, ActionLibre[]>) => void) {
   return enFile(async () => {
-    const { valeur, existe } = await lireCle<unknown>('actions', {})
+    const lu = await lireSuivi<unknown>('actions', {})
+    const { valeur } = lu
     const t = normaliserActionsLibres(valeur)
     changer(t)
     for (const k of Object.keys(t)) if (!t[k].length) delete t[k]
-    await ecrireCle('actions', t, existe)
+    await ecrireSuivi('actions', t, lu)
   })
 }
 export function enregistrerActionLibre(magasin: string, a: Omit<ActionLibre, 'id'> & { id?: string }) {
@@ -376,11 +432,12 @@ export function supprimerActionLibre(magasin: string, id: string) {
 // Associés d'un magasin : la liste est réécrite ; le premier associé en place d'un franchisé est inscrit sur le magasin
 function modifierAssocies(changer: (a: Associes) => void) {
   return enFile(async () => {
-    const { valeur, existe } = await lireCle<unknown>('associes', {})
+    const lu = await lireSuivi<unknown>('associes', {})
+    const { valeur } = lu
     const a = normaliserAssocies(valeur)
     changer(a)
     for (const k of Object.keys(a)) if (!a[k].length) delete a[k]
-    await ecrireCle('associes', a, existe)
+    await ecrireSuivi('associes', a, lu)
   })
 }
 
@@ -407,7 +464,7 @@ export const enregistrerAssocies = (reseau: Reseau, magasin: string, liste: Asso
 export async function enregistrerFranchise(nom: string, ancien: string | null, magasins: string[], anciensMagasins: string[], f: FichePersonnelle, reseau: Reseau) {
   const parNom = new Map(reseau.magasins.map((m) => [m.nom, m]))
   const coord = { tel_resp: f.telephone.trim(), email_resp: f.email.trim() }
-  const assoc = normaliserAssocies((await lireCle<unknown>('associes', {})).valeur)
+  const assoc = normaliserAssocies((await lireSuivi<unknown>('associes', {})).valeur)
   for (const n of anciensMagasins.filter((x) => !magasins.includes(x))) {
     const m = parNom.get(n)
     const autres = (m ? associesEnPlace({ ...reseau, associes: assoc }, m) : []).filter((a) => a.nom !== ancien)
@@ -488,19 +545,19 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
     if (bp.valeur.some((p) => p.magasin === ancienNom || p.reprises?.includes(ancienNom))) {
       await ecrireCle('bonnes_pratiques', bp.valeur.map((p) => ({ ...p, magasin: p.magasin === ancienNom ? f.nom : p.magasin, reprises: (p.reprises ?? []).map((r) => (r === ancienNom ? f.nom : r)) })), bp.existe)
     }
-    const cp = await lireCle<Campagnes>('campagnes', { liste: [], constats: {} })
+    const cp = await lireSuivi<Campagnes>('campagnes', { liste: [], constats: {} })
     const constats = Object.values(cp.valeur.constats ?? {})
     if (constats.some((k) => ancienNom in k) || (cp.valeur.liste ?? []).some((c) => c.magasins?.includes(ancienNom))) {
       for (const k of constats) if (ancienNom in k) { k[f.nom] = k[ancienNom]; delete k[ancienNom] }
       for (const c of cp.valeur.liste ?? []) c.magasins = (c.magasins ?? []).map((n) => (n === ancienNom ? f.nom : n))
-      await ecrireCle('campagnes', cp.valeur, cp.existe)
+      await ecrireSuivi('campagnes', cp.valeur, cp)
     }
     for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes', 'actions'] as const) {
-      const lu = await lireCle<Record<string, unknown>>(cleConfig, {})
+      const lu = await lireSuivi<Record<string, unknown>>(cleConfig, {})
       const cibles = (cleConfig === 'deploiements' ? [lu.valeur.valeurs, lu.valeur.journal] : [lu.valeur]) as (Record<string, unknown> | undefined)[]
       let change = false
       for (const cible of cibles) if (cible && ancienNom in cible) { cible[f.nom] = cible[ancienNom]; delete cible[ancienNom]; change = true }
-      if (change) await ecrireCle(cleConfig, lu.valeur, lu.existe)
+      if (change) await ecrireSuivi(cleConfig, lu.valeur, lu)
     }
   }
   const ligne = ligneSurcharge(f)
@@ -552,13 +609,14 @@ export async function importerVisites(visites: { magasin: string; date: string; 
   for (let i = 0; i < lignes.length; i += 200) verifier(await supabase.from('visits').insert(lignes.slice(i, i + 200)))
   if (!audits.length) return
   await enFile(async () => {
-    const { valeur, existe } = await lireCle<Audits>('audits', {})
+    const lu = await lireSuivi<Audits>('audits', {})
+    const { valeur } = lu
     for (const a of audits) {
       const date = a.date ?? dateAudits
       const liste = (valeur[a.magasin] ?? []).filter((x) => !(x.date === date && x.type === a.type))
       valeur[a.magasin] = [...liste, { date, type: a.type, conforme: null, score: a.score }].sort((x, y) => x.date.localeCompare(y.date))
     }
-    await ecrireCle('audits', valeur, existe)
+    await ecrireSuivi('audits', valeur, lu)
   })
 }
 // Actions marquées faites (date) ou remises en cours ('') : celles d'un plan sont relues puis réécrites visite par visite,
@@ -615,40 +673,44 @@ function enFile<T>(f: () => Promise<T>): Promise<T> {
 
 export function enregistrerEvaluations(lot: { magasin: string; e: Evaluation }[]) {
   return enFile(async () => {
-    const { valeur, existe } = await lireCle<Evaluations>('sante_parc', {})
+    const lu = await lireSuivi<Evaluations>('sante_parc', {})
+    const { valeur } = lu
     for (const { magasin, e } of lot) valeur[magasin] = avecPoint(valeur[magasin], e)
-    await ecrireCle('sante_parc', valeur, existe)
+    await ecrireSuivi('sante_parc', valeur, lu)
   })
 }
 // Supprime la note nine box d'un magasin à une date (comme une visite) ; sans autre saisie, le magasin redevient non classé
 export function supprimerEvaluation(magasin: string, date: string) {
   return enFile(async () => {
-    const { valeur, existe } = await lireCle<Evaluations>('sante_parc', {})
+    const lu = await lireSuivi<Evaluations>('sante_parc', {})
+    const { valeur } = lu
     const e = sansPoint(valeur[magasin], date)
     if (e) valeur[magasin] = e
     else delete valeur[magasin]
-    await ecrireCle('sante_parc', valeur, existe)
+    await ecrireSuivi('sante_parc', valeur, lu)
   })
 }
 // Efface toutes les notes nine box (une copie est gardée sous une autre clé, que l'app ne lit pas)
 export function effacerToutesEvaluations() {
   return enFile(async () => {
-    const { valeur, existe } = await lireCle<Evaluations>('sante_parc', {})
-    const copie = await lireCle<Evaluations>('sante_parc_sauvegarde', {})
-    await ecrireCle('sante_parc_sauvegarde', valeur, copie.existe)
-    await ecrireCle('sante_parc', {}, existe)
+    const lu = await lireSuivi<Evaluations>('sante_parc', {})
+    const { valeur } = lu
+    const copie = await lireSuivi<Evaluations>('sante_parc_sauvegarde', {})
+    await ecrireSuivi('sante_parc_sauvegarde', valeur, copie)
+    await ecrireSuivi('sante_parc', {}, lu)
   })
 }
 // Import d'un historique : plusieurs lignes datées par magasin, une seule par jour
 export function importerHistorique(points: { magasin: string; date: string; notes: Partial<Record<IdCritere, Note>> }[], par: string) {
   return enFile(async () => {
-    const { valeur, existe } = await lireCle<Evaluations>('sante_parc', {})
+    const lu = await lireSuivi<Evaluations>('sante_parc', {})
+    const { valeur } = lu
     for (const p of [...points].sort((a, b) => a.date.localeCompare(b.date))) {
       // Les critères absents de la ligne reprennent leur valeur en vigueur à cette date
       const e: Evaluation = { notes: { ...notesAu(valeur[p.magasin], p.date), ...p.notes }, date: p.date, par }
       valeur[p.magasin] = avecPoint(valeur[p.magasin], e)
     }
-    await ecrireCle('sante_parc', valeur, existe)
+    await ecrireSuivi('sante_parc', valeur, lu)
   })
 }
 
@@ -664,10 +726,11 @@ export const enregistrerEvaluation = (magasin: string, e: Evaluation) => enregis
 
 function modifierDeploiements(changer: (d: Deploiements) => void) {
   return enFile(async () => {
-    const { valeur, existe } = await lireCle<Partial<Deploiements>>('deploiements', {})
+    const lu = await lireSuivi<Partial<Deploiements>>('deploiements', {})
+    const { valeur } = lu
     const d: Deploiements = { thematiques: valeur.thematiques?.length ? valeur.thematiques : thematiquesParDefaut, valeurs: valeur.valeurs ?? {}, journal: valeur.journal ?? {} }
     changer(d)
-    await ecrireCle('deploiements', d, existe)
+    await ecrireSuivi('deploiements', d, lu)
   })
 }
 
@@ -703,18 +766,20 @@ export async function enregistrerThematiques(thematiques: Thematique[]) {
 // ── Notes libres datées du journal d'un magasin ──
 export function enregistrerNoteMagasin(magasin: string, note: NoteMagasin) {
   return enFile(async () => {
-    const { valeur, existe } = await lireCle<Record<string, NoteMagasin[]>>('notes_magasins', {})
+    const lu = await lireSuivi<Record<string, NoteMagasin[]>>('notes_magasins', {})
+    const { valeur } = lu
     const liste = (valeur[magasin] ?? []).filter((n) => n.id !== note.id)
     valeur[magasin] = [...liste, note].sort((a, b) => a.date.localeCompare(b.date))
-    await ecrireCle('notes_magasins', valeur, existe)
+    await ecrireSuivi('notes_magasins', valeur, lu)
   })
 }
 export function supprimerNoteMagasin(magasin: string, id: string) {
   return enFile(async () => {
-    const { valeur, existe } = await lireCle<Record<string, NoteMagasin[]>>('notes_magasins', {})
+    const lu = await lireSuivi<Record<string, NoteMagasin[]>>('notes_magasins', {})
+    const { valeur } = lu
     valeur[magasin] = (valeur[magasin] ?? []).filter((n) => n.id !== id)
     if (!valeur[magasin].length) delete valeur[magasin]
-    await ecrireCle('notes_magasins', valeur, existe)
+    await ecrireSuivi('notes_magasins', valeur, lu)
   })
 }
 
@@ -740,12 +805,13 @@ export async function supprimerChiffres(magasin: string, mois: string) {
 // Résultat d'un audit, rattaché au magasin, à la date et au type de la visite
 export function enregistrerAudit(magasin: string, ancien: { date: string; type: string } | null, audit: ResultatAudit | null) {
   return enFile(async () => {
-    const { valeur, existe } = await lireCle<Audits>('audits', {})
+    const lu = await lireSuivi<Audits>('audits', {})
+    const { valeur } = lu
     const garde = (a: ResultatAudit) => !(ancien && a.date === ancien.date && a.type === ancien.type) && !(audit && a.date === audit.date && a.type === audit.type)
     const liste = [...(valeur[magasin] ?? []).filter(garde), ...(audit ? [audit] : [])].sort((a, b) => a.date.localeCompare(b.date))
     if (liste.length) valeur[magasin] = liste
     else delete valeur[magasin]
-    await ecrireCle('audits', valeur, existe)
+    await ecrireSuivi('audits', valeur, lu)
   })
 }
 
@@ -769,10 +835,11 @@ export function enregistrerPratique(id: string, pratique: BonnePratique | null) 
 // ── Campagnes : liste et constats par magasin (app_config, clé campagnes) ──
 function modifierCampagnes(changer: (c: Campagnes) => void) {
   return enFile(async () => {
-    const { valeur, existe } = await lireCle<unknown>('campagnes', {})
+    const lu = await lireSuivi<unknown>('campagnes', {})
+    const { valeur } = lu
     const c = normaliserCampagnes(valeur)
     changer(c)
-    await ecrireCle('campagnes', c, existe)
+    await ecrireSuivi('campagnes', c, lu)
   })
 }
 
@@ -803,7 +870,7 @@ export function enregistrerConstats(lot: { campagne: string; magasin: string; po
 }
 
 // ── Sauvegarde complète : toutes les tables lues telles quelles ──
-export const tablesSauvegardees = ['app_config', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits', 'visits', 'leaves', 'events', 'store_finance'] as const
+export const tablesSauvegardees = ['app_config', 'suivi_magasins', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits', 'visits', 'leaves', 'events', 'store_finance'] as const
 
 export async function lireSauvegarde(): Promise<Record<string, unknown[]>> {
   const tables: Record<string, unknown[]> = {}
