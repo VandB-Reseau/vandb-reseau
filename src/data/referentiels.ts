@@ -6,7 +6,7 @@ import { libelleTypeVisite, lireVisiteurs, typesVisite } from './modele'
 import { champsSaisis, completerChiffres, libellesChiffres, lireNombre, type ChampChiffre } from './chiffres'
 import { lireMois } from './importChiffres'
 import { lireCSV, lireDate, normaliser, trouveurMagasin } from './import'
-import { historiqueSante, libelleNote, tousCriteres, unChangementParJour, type Evaluation, type IdCritere, type Note } from './sante'
+import { depuisDeploiement, historiqueSante, libelleNote, tousCriteres, type Evaluation, type IdCritere, type Note } from './sante'
 import { departementDepuisCP, fichePersonne, ficheVide, franchises, separerNom, type FichePersonnelle, type RefPersonne } from './personnes'
 import {
   enregistrerChiffres, enregistrerCoach, enregistrerDeploiements, enregistrerFichePersonne, enregistrerFranchise, enregistrerMagasin,
@@ -492,9 +492,7 @@ function deploiements(reseau: Reseau | null): Referentiel {
       { id: `d:${t.id}`, entete: `${t.libelle} : date`, type: 'date', depuis: [`t:${t.id}`], largeur: 16 },
     ])],
     lignes: (r) => r.magasins.map((m) => ({ magasin: m.nom, ...Object.fromEntries(ths.flatMap((t) => {
-      const etat = r.deploiements.valeurs[m.nom]?.[t.id] ?? ''
-      const h = unChangementParJour(r.deploiements.journal?.[m.nom] ?? []).filter((c) => c.thematique === t.id)
-      return [[`t:${t.id}`, etat], [`d:${t.id}`, etat && h.at(-1)?.etat === etat ? debutPeriode(h, (c) => c.etat, (c) => c.date) : '']]
+      return [[`t:${t.id}`, r.deploiements.valeurs[m.nom]?.[t.id] ?? ''], [`d:${t.id}`, depuisDeploiement(r.deploiements, m.nom, t.id)]]
     })) })),
     async appliquer(r, changements) {
       await enregistrerDeploiements(changements.flatMap((ch) => ths
