@@ -114,7 +114,7 @@ test('import d’un fichier CSV façon Asana', async ({ page, isMobile }, info) 
 
 test('la fiche magasin montre la santé et les déploiements dans deux blocs', async ({ page }, info) => {
   await seConnecter(page)
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=sante')
   await expect(page.getByRole('heading', { name: 'Santé', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Déploiements', exact: true })).toBeVisible()
   await expect(page.getByText('Redressement urgent', { exact: true }).first()).toBeVisible()

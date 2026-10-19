@@ -1,4 +1,4 @@
-import type { ActionPlan, Visite } from './modele'
+import type { ActionPlan } from './modele'
 
 // Parties du compte rendu de visite (non officiel). Aucune n'est obligatoire.
 export const PARTIES: { titre: string }[] = [
@@ -19,12 +19,8 @@ export function normaliserParties(v: unknown): string[] {
 
 export function normaliserPlan(v: unknown): ActionPlan[] {
   if (!Array.isArray(v)) return []
-  return v.map((a: Record<string, unknown>) => ({ action: String(a?.action ?? ''), porteur: String(a?.porteur ?? ''), echeance: String(a?.echeance ?? '') })).filter((a) => a.action.trim())
-}
-
-// Plan d'action de la visite précédente du même magasin (repris à la visite suivante)
-export function visitePrecedenteAvecPlan(visites: Visite[], magasin: string, date: string, id: number | null): Visite | null {
-  return visites
-    .filter((v) => v.magasin === magasin && v.id !== id && v.date < date && v.plan.length > 0)
-    .sort((a, b) => b.date.localeCompare(a.date))[0] ?? null
+  return v.map((a: Record<string, unknown>) => ({
+    ...(a?.id ? { id: String(a.id) } : {}), action: String(a?.action ?? ''), porteur: String(a?.porteur ?? ''), echeance: String(a?.echeance ?? ''),
+    ...(a?.faite ? { faite: String(a.faite) } : {}),
+  })).filter((a) => a.action.trim())
 }

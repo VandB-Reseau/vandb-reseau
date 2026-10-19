@@ -13,11 +13,16 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null)
 
-// Tant que la table des profils n'existe pas, tout compte connecté est Directeur (Joseph seul a un compte).
+// Rôle et périmètre posés sur le compte par l'administrateur Supabase (app_metadata : role, coach ou rr) ;
+// sans rôle, le compte est Directeur (Joseph seul a un compte aujourd'hui).
 function profilDepuisSession(session: Session | null): Profil | null {
   if (!session) return null
   const email = session.user.email ?? ''
-  return { id: session.user.id, email, nom: nomDepuisEmail(email), role: 'directeur', perimetre: {} }
+  const meta = (session.user.app_metadata ?? {}) as { role?: string; coach?: string; rr?: string }
+  const base = { id: session.user.id, email, nom: nomDepuisEmail(email) }
+  if (meta.role === 'coach' && meta.coach) return { ...base, role: 'coach', perimetre: { coachs: [meta.coach] } }
+  if (meta.role === 'rr' && meta.rr) return { ...base, role: 'rr', perimetre: { rr: [meta.rr] } }
+  return { ...base, role: 'directeur', perimetre: {} }
 }
 
 // « joseph.martin@… » → « Joseph » (en attendant la table des profils)

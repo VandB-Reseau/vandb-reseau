@@ -2,6 +2,7 @@
 // Stockée dans app_config (clé fiches_personnes) ; téléphone, email, ville et dates sont aussi recopiés
 // aux endroits que lit l'ancienne app.
 import type { Magasin, Reseau } from './modele'
+import { associesEnPlace } from './associes'
 
 export interface FichePersonnelle {
   prenom: string
@@ -63,14 +64,16 @@ const NOMS_DEPARTEMENTS: Record<string, string> = {
 
 export const libelleDepartement = (d: string) => (NOMS_DEPARTEMENTS[d] ? `${d} · ${NOMS_DEPARTEMENTS[d]}` : d)
 
-// Franchisés : personnes inscrites sur les magasins (champ resp de l'ancienne app)
+// Franchisés : associés en place des magasins franchisés (le premier est inscrit dans le champ resp),
+// et responsables des magasins intégrés
 export interface Franchise { nom: string; magasins: Magasin[]; integresSeulement: boolean }
 
 export function franchises(reseau: Reseau): Franchise[] {
   const parNom = new Map<string, Magasin[]>()
+  const ajouter = (nom: string, m: Magasin) => { if (!(parNom.get(nom) ?? []).includes(m)) parNom.set(nom, [...(parNom.get(nom) ?? []), m]) }
   for (const m of reseau.magasins) {
-    if (!m.responsable) continue
-    parNom.set(m.responsable.nom, [...(parNom.get(m.responsable.nom) ?? []), m])
+    if (m.franchise) for (const a of associesEnPlace(reseau, m)) { if (!/recrutement/i.test(a.nom)) ajouter(a.nom, m) }
+    else if (m.responsable) ajouter(m.responsable.nom, m)
   }
   return [...parNom].map(([nom, magasins]) => ({ nom, magasins, integresSeulement: magasins.every((m) => !m.franchise) }))
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { numeric: true }))

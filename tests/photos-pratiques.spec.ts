@@ -20,7 +20,7 @@ const pratiques = [
 test('ajouter des photos à une visite terrain', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Annecy%20Test')
+  await page.goto('./#/magasins/Annecy%20Test?vue=visites')
   await page.getByRole('button', { name: 'Saisir', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
   const zone = d.getByRole('region', { name: 'Photos' })
@@ -40,7 +40,7 @@ test('ajouter des photos à une visite terrain', async ({ page, isMobile }, info
   expect(ecritures.filter((e) => e.table === 'storage' && e.methode === 'DELETE')).toHaveLength(1)
   if (isMobile) return
   // La fiche et le compte rendu montrent les photos d'une visite
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=visites')
   await expect(page.getByRole('img', { name: 'Photo 1' }).first()).toBeVisible()
 })
 
@@ -62,7 +62,7 @@ test('les bonnes pratiques : liste, filtre par thème, fiche magasin', async ({ 
   await expect(page.getByText('1 bonne pratique · 1 reprise ailleurs')).toBeVisible()
   await expect(page.getByRole('article', { name: 'Dégustation du samedi' })).toHaveCount(0)
   // Fiche du magasin qui l'a reprise
-  await page.goto('./#/magasins/Nantes%20Test')
+  await page.goto('./#/magasins/Nantes%20Test?vue=journal')
   const section = page.getByRole('heading', { name: 'Bonnes pratiques' }).locator('xpath=ancestor::div[contains(@class,"MuiCard-root")]')
   await expect(section.getByText('Reprises d’autres magasins')).toBeVisible()
   await expect(section.getByRole('link', { name: 'Annecy Test' })).toBeVisible()
@@ -71,7 +71,7 @@ test('les bonnes pratiques : liste, filtre par thème, fiche magasin', async ({ 
 test('ajouter une bonne pratique avec une photo et un magasin qui la reprend', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, config: { bonnes_pratiques: pratiques } })
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=journal')
   await page.getByRole('button', { name: 'Ajouter une bonne pratique' }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle bonne pratique' })
   await expect(d.getByRole('combobox', { name: 'Magasin' })).toHaveValue('Lyon Test')

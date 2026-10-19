@@ -41,7 +41,7 @@ import {
   MAX_POINTS, bilan, bilanPar, campagnesDuMagasin, executionMagasin, libellesExecution, libellesPhase, magasinsConcernes, perimetres, phase,
   type Bilan, type Campagne, type Execution, type Perimetre, type Phase,
 } from '../data/campagnes'
-import type { Reseau } from '../data/modele'
+import type { Magasin, Reseau } from '../data/modele'
 import { dateCourte, lienFiche } from '../lib/format'
 
 const couleursExecution: Record<Execution, 'success' | 'warning' | 'error' | 'default'> = { fait: 'success', partiel: 'warning', non: 'error', aConstater: 'default' }
@@ -197,7 +197,7 @@ const pc = { display: { xs: 'none', md: 'table-cell' } }
 function TableBilan({ titre, lignes }: { titre: string; lignes: { nom: string; b: Bilan }[] }) {
   return (
     <TableContainer component={Card}>
-      <Table size="small" aria-label={`Exécution par ${titre}`}>
+      <Table size="small" className="colonne-fixe" aria-label={`Exécution par ${titre}`}>
         <TableHead>
           <TableRow><TableCell>{titre}</TableCell><TableCell align="right" sx={pc}>Magasins</TableCell><TableCell align="right">Exécutés</TableCell><TableCell align="right" sx={pc}>Constatés</TableCell><TableCell align="right">Taux</TableCell></TableRow>
         </TableHead>
@@ -268,7 +268,7 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
       {!visibles.length ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." />
         : surPC ? (
           <TableContainer component={Card}>
-            <Table size="small" aria-label={`Constats de la campagne ${c.nom}`}>
+            <Table size="small" className="colonne-fixe" aria-label={`Constats de la campagne ${c.nom}`}>
               <TableHead>
                 <TableRow>
                   <TableCell>Magasin</TableCell><TableCell>Coach</TableCell>
@@ -371,5 +371,73 @@ function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau; campag
       )}
       {perimetre !== 'choix' && <Typography variant="body2" color="text.secondary">{magasinsConcernes(reseau, { id, nom, debut, fin, points, perimetre, magasins }).length} magasins</Typography>}
     </Fenetre>
+  )
+}
+
+const lienCampagne = (c: Campagne) => `/visites?vue=campagnes&campagne=${encodeURIComponent(c.id)}`
+
+// État des lieux des campagnes d'un magasin : à constater pour celles en cours, exécution des précédentes
+export function CampagnesMagasin({ reseau, magasin, signaler }: { reseau: Reseau; magasin: string; signaler: (m: string) => void }) {
+  const encours = campagnesDuMagasin(reseau, magasin, reseau.jour)
+  const autres = reseau.campagnes.liste.filter((c) => phase(c, reseau.jour) !== 'encours' && magasinsConcernes(reseau, c).some((m) => m.nom === magasin))
+    .sort((a, b) => b.debut.localeCompare(a.debut))
+  if (!encours.length && !autres.length) return <Typography variant="body2" color="text.secondary">Aucune campagne ne concerne ce magasin.</Typography>
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {encours.length > 0 && <ConstatsMagasin reseau={reseau} magasin={magasin} signaler={signaler} />}
+      {autres.length > 0 && (
+        <Box>
+          <Typography variant="subtitle2" component="h3" sx={{ mb: 0.5 }}>Autres campagnes</Typography>
+          {autres.map((c) => {
+            const e = executionMagasin(reseau.campagnes, c, magasin)
+            const ph = phase(c, reseau.jour)
+            return (
+              <Box key={c.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Link component={RouterLink} to={lienCampagne(c)} sx={{ fontWeight: 500 }}>{c.nom}</Link>
+                  <Typography variant="body2" color="text.secondary">Du {dateCourte(c.debut)} au {dateCourte(c.fin)}</Typography>
+                </Box>
+                <Chip size="small" label={ph === 'avenir' ? 'À venir' : libellesExecution[e]} color={ph === 'avenir' ? 'default' : couleursExecution[e]} variant={ph === 'avenir' ? 'outlined' : 'filled'} sx={{ fontSize: 12, fontWeight: 600 }} />
+              </Box>
+            )
+          })}
+        </Box>
+      )}
+    </Box>
+  )
+}
+
+// Campagnes en cours et terminées sur un portefeuille de magasins (Coach, Responsable Régional)
+export function BilanCampagnes({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
+  const noms = new Set(magasins.map((m) => m.nom))
+  const liste = reseau.campagnes.liste.filter((c) => phase(c, reseau.jour) !== 'avenir')
+    .map((c) => ({ c, ms: magasinsConcernes(reseau, c).filter((m) => noms.has(m.nom)) })).filter((x) => x.ms.length)
+    .sort((a, b) => b.c.debut.localeCompare(a.c.debut))
+  if (!liste.length) return <Typography variant="body2" color="text.secondary">Aucune campagne en cours ou passée sur ces magasins.</Typography>
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {liste.map(({ c, ms }) => {
+        const b = bilan(reseau.campagnes, c, ms)
+        const aFaire = ms.filter((m) => executionMagasin(reseau.campagnes, c, m.nom) !== 'fait')
+        return (
+          <Box key={c.id}>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+              <Link component={RouterLink} to={lienCampagne(c)} variant="body1" sx={{ fontWeight: 600, flex: 1 }}>{c.nom}</Link>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>{b.taux === null ? '—' : `${b.taux} %`}</Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>{libellesPhase[phase(c, reseau.jour)]} · {resumeBilan(b)}</Typography>
+            <BarreExecution b={b} libelle={c.nom} />
+            {phase(c, reseau.jour) === 'encours' && aFaire.length > 0 && (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                {aFaire.map((m) => {
+                  const e = executionMagasin(reseau.campagnes, c, m.nom)
+                  return <Chip key={m.nom} size="small" component={RouterLink} to={`${lienFiche(m.nom)}?vue=campagnes`} clickable label={`${m.nom} · ${libellesExecution[e]}`} color={couleursExecution[e]} variant="outlined" sx={{ fontSize: 12, minHeight: 32 }} />
+                })}
+              </Box>
+            )}
+          </Box>
+        )
+      })}
+    </Box>
   )
 }

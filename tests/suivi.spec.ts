@@ -12,8 +12,9 @@ test.afterEach(async ({ page }) => {
 
 test('la fiche magasin montre l’évolution de la santé et le journal du magasin', async ({ page, isMobile }, info) => {
   await seConnecter(page)
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=sante')
   await expect(page.getByText(/En recul depuis le 1 oct\. 2026 · avant : Cœur de réseau/)).toBeVisible()
+  await page.getByRole('tab', { name: 'Journal' }).click()
   const journal = page.getByRole('list', { name: 'Journal de Lyon Test' })
   await expect(journal.getByText('Passe en Redressement urgent')).toBeVisible()
   await expect(journal.getByText('Classé Cœur de réseau')).toBeVisible()
@@ -37,7 +38,7 @@ test('la fiche magasin montre l’évolution de la santé et le journal du magas
 test('ajouter, modifier et supprimer une note du journal', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=journal')
   await page.getByRole('button', { name: 'Note', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle note' })
   await d.getByLabel('Note').fill('Franchisé motivé par la terrasse.')

@@ -61,13 +61,15 @@ test('l’onglet Postes à pourvoir liste Coachs à recruter, arrivées et respo
   await page.screenshot({ path: `captures/${info.project.name}-equipe-postes.png`, fullPage: !isMobile })
 })
 
-test('la fiche Coach montre charge, magasins et historique', async ({ page }, info) => {
+test('la fiche Coach montre charge et magasins', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/equipe')
   await page.getByRole('link', { name: 'Noé MODELE' }).click()
   await expect(page.getByRole('heading', { name: 'Noé MODELE', level: 1 })).toBeVisible()
+  if (!isMobile) await expect(page.getByRole('table', { name: 'Liste des magasins' })).toContainText('Lyon Test')
+  else await expect(page.getByRole('heading', { name: 'Lyon Test' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Charge' }).click()
   await expect(page.getByText('Les six prochains mois')).toBeVisible()
-  await expect(page.getByText('Prend en charge Lyon Test (après Camille TESTARD)')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-coach.png`, fullPage: true })
 })

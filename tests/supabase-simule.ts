@@ -6,7 +6,7 @@ export const COMPTE = { email: 'joseph@vandb.test', motDePasse: 'bon-mot-de-pass
 // Simule l'API d'authentification Supabase : seul COMPTE est accepté.
 export interface Ecriture { methode: string; table: string; corps: unknown; filtre: string }
 
-export interface OptionsSimulation { panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean }
+export interface OptionsSimulation { appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -54,7 +54,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       return route.fulfill({
         json: {
           access_token: 'jeton-test', token_type: 'bearer', expires_in: 3600, expires_at: maintenant + 3600, refresh_token: 'rafraichissement-test',
-          user: { id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: COMPTE.email, app_metadata: {}, user_metadata: {}, created_at: '2026-10-14T00:00:00Z' },
+          user: { id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: COMPTE.email, app_metadata: options.appMetadata ?? {}, user_metadata: {}, created_at: '2026-10-14T00:00:00Z' },
         },
       })
     }

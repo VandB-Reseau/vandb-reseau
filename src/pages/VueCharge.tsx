@@ -142,7 +142,7 @@ export function VueCharge({ reseau }: { reseau: Reseau }) {
       {surPC ? (
         <Card>
           <TableContainer>
-            <Table aria-label="Charge par Coach">
+            <Table className="colonne-fixe" aria-label="Charge par Coach">
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ width: 48 }} />

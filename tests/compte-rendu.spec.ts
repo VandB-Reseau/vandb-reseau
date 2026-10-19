@@ -26,14 +26,16 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
 })
 
-test('dicter chaque partie, reprendre le plan précédent, puis enregistrer', async ({ page }, info) => {
+test('dicter chaque partie, reprendre les actions en cours, puis enregistrer', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=visites')
   await page.getByRole('button', { name: 'Saisir', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
-  // Le plan d'action de la visite précédente est rappelé
-  await expect(d.getByText('Refaire la tête de gondole Beaujolais · Franchisé · novembre')).toBeVisible()
+  // Les actions en cours des visites précédentes sont rappelées
+  const enCours = d.getByRole('group', { name: 'Actions en cours' })
+  await expect(enCours.getByText('Refaire la tête de gondole Beaujolais')).toBeVisible()
+  await expect(enCours.getByText(/^Franchisé · échéance novembre · depuis le/)).toBeVisible()
   // Une partie dictée, une partie tapée, les autres laissées vides
   await d.getByRole('button', { name: 'Dicter : 3. Magasin et offre' }).click()
   await expect(d.getByLabel('3. Magasin et offre', { exact: true })).toHaveValue('Magasin propre, ruptures sur les bières de garde.')
@@ -43,14 +45,14 @@ test('dicter chaque partie, reprendre le plan précédent, puis enregistrer', as
   await d.getByRole('button', { name: 'Ajouter une action' }).click()
   await d.getByLabel('Action', { exact: true }).fill('Recommander les bières de garde')
   await d.getByLabel('Porteur', { exact: true }).fill('Franchisé')
-  await d.getByLabel('Échéance', { exact: true }).fill('fin octobre')
+  await d.getByLabel('Échéance', { exact: true }).fill('2026-10-31')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-compte-rendu-saisie.png` })
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Visite enregistrée.')).toBeVisible()
   const ligne = (ecritures.find((e) => e.table === 'visits' && e.methode === 'POST')!.corps as Record<string, unknown>[])[0]
   expect(ligne.sections).toEqual(['', '', 'Magasin propre, ruptures sur les bières de garde.', '', 'Équipe stable.', ''])
-  expect(ligne.action_plan).toEqual([{ action: 'Recommander les bières de garde', porteur: 'Franchisé', echeance: 'fin octobre' }])
+  expect(ligne.action_plan).toEqual([expect.objectContaining({ action: 'Recommander les bières de garde', porteur: 'Franchisé', echeance: '2026-10-31' })])
 })
 
 test('une tournée garde des notes communes dictées, sans parties', async ({ page }) => {

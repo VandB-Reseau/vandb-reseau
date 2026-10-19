@@ -80,7 +80,7 @@ test('la saisie affiche le détail du franchisé, rangé par axe', async ({ page
 
 test('la fiche magasin montre le niveau de chaque axe et l’ancienne note tant qu’elle compte', async ({ page }) => {
   await seConnecter(page)
-  await page.goto('./#/magasins/Annecy%20Test')
+  await page.goto('./#/magasins/Annecy%20Test?vue=sante')
   await expect(page.getByRole('heading', { name: 'Franchisé', exact: true })).toBeVisible()
   await expect(page.getByText('Niveau du franchisé (ancienne note)', { exact: true })).toBeVisible()
 })

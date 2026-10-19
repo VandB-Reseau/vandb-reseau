@@ -16,6 +16,14 @@ export interface Adresse { adresse: string; codePostal: string; ville: string; p
 
 // « Northampton (Royaume-Uni) » ou « Redon (35) » : la parenthèse finale n'est pas dans le nom de la ville
 const nettoyer = (ville: string) => ville.replace(/\s*\([^)]*\)\s*$/, '').trim()
+// Les services d'adresse lisent mal la ligature « Œ » (« Rue des Œillets »)
+const sansLigature = (s: string) => s.replace(/Œ/g, 'Oe').replace(/œ/g, 'oe')
+
+// Magasins importés avec la seule adresse « Rue X, 85340 Les Sables D Olonne » : code postal et ville en sont tirés
+export function communeDepuisAdresse(adresse: string): { codePostal: string; ville: string } {
+  const r = adresse.match(/\b(\d{5})\s+([^,\d][^,]*)\s*$/) ?? adresse.match(/\b(\d{5})\s+([^,\d][^,]*)/)
+  return r ? { codePostal: r[1], ville: r[2].trim() } : { codePostal: '', ville: '' }
+}
 
 async function lireJson(url: string): Promise<unknown> {
   const ctrl = new AbortController()
@@ -55,9 +63,10 @@ async function nominatim(q: string, pays: string): Promise<Point | null> {
 
 // Position la plus précise possible : adresse complète, sinon commune (code postal + ville)
 export async function geolocaliser(a: Adresse): Promise<Point | null> {
-  const ville = nettoyer(a.ville), cp = a.codePostal.trim()
+  const tiree = communeDepuisAdresse(a.adresse)
+  const ville = sansLigature(nettoyer(a.ville) || tiree.ville), cp = a.codePostal.trim() || tiree.codePostal
   // L'adresse stockée contient souvent déjà le code postal et la ville
-  const rue = a.adresse.split(',')[0].trim()
+  const rue = sansLigature(a.adresse.split(',')[0].trim())
   const commune = [cp, ville].filter(Boolean).join(' ')
   if (!commune && !rue) return null
   const essais: (() => Promise<Point | null>)[] = estFrance(a.pays)
@@ -87,14 +96,29 @@ export async function enregistrerPosition(nom: string, p: Point): Promise<boolea
   return !r.error
 }
 
-// Magasins posés au centre de leur département : on cherche leur vraie position, une fois par session
+// Position à plus de 20 km de la commune de son code postal : géolocalisation fausse de l'ancienne app
+// (homonyme, ou adresse sans code postal posée sur le chef-lieu du département)
+const ECART_MAX_KM = 20
+async function horsDeSaCommune(m: Reseau['magasins'][number]): Promise<boolean> {
+  if (m.lat === null || m.lon === null || !estFrance(m.pays)) return false
+  const tiree = communeDepuisAdresse(m.adresse)
+  const cp = m.codePostal.trim() || tiree.codePostal
+  if (!/^\d{5}$/.test(cp)) return false
+  const c = await centreCommune(cp, m.ville || tiree.ville)
+  return !!c && (distanceKm({ lat: m.lat, lon: m.lon }, c) ?? 0) > ECART_MAX_KM
+}
+
+// Magasins posés au centre de leur département ou loin de leur commune : on cherche leur vraie position, une fois par session
 export async function corrigerPositions(magasins: Reseau['magasins']): Promise<number> {
   const deja = echecs()
-  const cibles = magasins.filter((m) => m.positionApprochee && (m.ville || m.codePostal || m.adresse) && !deja.has(m.nom))
+  const candidats = magasins.filter((m) => (m.ville || m.codePostal || m.adresse) && !deja.has(m.nom))
   let corriges = 0
-  for (const m of cibles) {
+  for (const m of candidats) {
+    if (!m.positionApprochee && !(await horsDeSaCommune(m))) continue
     const p = await geolocaliser(m)
-    if (p && await enregistrerPosition(m.nom, p)) corriges++
+    // Nouvelle position retenue seulement si elle est bien différente de l'ancienne
+    const differente = !p || m.lat === null || m.lon === null || (distanceKm({ lat: m.lat, lon: m.lon }, p) ?? 0) > 0.5
+    if (p && differente && await enregistrerPosition(m.nom, p)) corriges++
     else deja.add(m.nom)
   }
   try { sessionStorage.setItem(ECHECS, JSON.stringify([...deja])) } catch { /* stockage indisponible */ }

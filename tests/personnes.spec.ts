@@ -35,7 +35,7 @@ test('l’organigramme ne modifie plus rien : chaque personne s’ouvre sur sa f
   await expect(page.getByRole('heading', { name: 'Fiche personnelle' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Sam SUD' })).toBeVisible()
 
-  await page.goto('./#/equipe/coach/Camille%20TESTARD')
+  await page.goto('./#/equipe/coach/Camille%20TESTARD?vue=fiche')
   await expect(page.getByRole('heading', { name: 'Fiche personnelle' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Alex NORD', exact: true })).toBeVisible()
 })
@@ -134,16 +134,19 @@ test('ajouter un franchisé et lui confier un magasin', async ({ page }) => {
   await d.getByLabel(/^Nom/).fill('NOUVELLE')
   await d.getByLabel('Ses magasins').fill('Nantes')
   await page.getByRole('option', { name: 'Nantes Test' }).click()
-  await expect(d.getByText('Remplace Franchisé 2 sur Nantes Test.')).toBeVisible()
+  // Nantes a déjà un franchisé : Jeanne devient son associée
+  await expect(d.getByText('Associé à Franchisé 2 sur Nantes Test.')).toBeVisible()
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page).toHaveURL(/franchise\/Jeanne%20NOUVELLE/)
-  expect(surcharges(ecritures)).toContainEqual(expect.objectContaining({ store_name: 'Nantes Test', resp: 'Jeanne NOUVELLE' }))
+  expect(surcharges(ecritures)).not.toContainEqual(expect.objectContaining({ store_name: 'Nantes Test', resp: 'Jeanne NOUVELLE' }))
+  const associes = ecritures.filter((e) => e.table === 'app_config' && JSON.stringify(e.corps).includes('Jeanne NOUVELLE') && JSON.stringify(e.corps).includes('mandats')).at(-1)!
+  expect(JSON.parse((associes.corps as { value: string }).value)['Nantes Test'].map((a: { nom: string }) => a.nom)).toEqual(['Franchisé 2', 'Jeanne NOUVELLE'])
 })
 
 test('fiche magasin : Franchisé à la place du responsable, sans adjoint ni plateforme', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Annecy%20Test')
-  await expect(page.getByRole('paragraph').filter({ hasText: /^Franchisé$/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Franchisés associés' })).toBeVisible()
   await expect(page.getByText('Adjoint')).toHaveCount(0)
   await expect(page.getByText('Plateforme logistique')).toHaveCount(0)
   await expect(page.getByText('Responsable magasin')).toHaveCount(0)

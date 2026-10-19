@@ -55,7 +55,7 @@ test('l’historique montre et filtre chaque participant, le compte rendu prévo
   await page.route('https://supabase.test/rest/v1/visits**', (r) => r.fulfill({ json: visites }))
   await page.goto('./#/visites?vue=historique')
   await page.reload()
-  await expect(page.getByText('3 visites', { exact: true })).toBeVisible()
+  await expect(page.getByText('4 visites', { exact: true })).toBeVisible()
   if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
   await page.getByRole('button', { name: 'Filtre Visité par' }).click()
   await page.getByRole('menuitem', { name: 'Alex NORD' }).click()

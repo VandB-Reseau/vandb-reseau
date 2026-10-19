@@ -180,21 +180,21 @@ export const RECRUTEMENT = 'En cours de recrutement'
 
 export function DialogFranchise({ reseau, nom: ancien, magasinsInitiaux = [], onFermer }: { reseau: Reseau; nom: string | null; magasinsInitiaux?: string[]; onFermer: (m?: string, nouveauNom?: string) => void }) {
   const [f, setF] = useFiche(reseau, ancien ? { type: 'franchise', cle: ancien } : null)
-  const actuels = ancien ? reseau.magasins.filter((m) => m.responsable?.nom === ancien).map((m) => m.nom) : []
+  const actuels = ancien ? franchises(reseau).find((x) => x.nom === ancien)?.magasins.map((m) => m.nom) ?? [] : []
   const [magasins, setMagasins] = useState<string[]>(ancien ? actuels : magasinsInitiaux)
   const nom = nomComplet(f)
   const doublon = nom !== ancien && franchises(reseau).some((x) => x.nom.toLowerCase() === nom.toLowerCase())
-  const repris = magasins.map((n) => reseau.magasins.find((m) => m.nom === n)).filter((m) => m?.responsable && m.responsable.nom !== ancien) as Magasin[]
+  const repris = magasins.filter((n) => !actuels.includes(n)).map((n) => reseau.magasins.find((m) => m.nom === n)).filter((m) => m?.responsable && m.responsable.nom !== ancien) as Magasin[]
   const integresSeulement = magasins.length > 0 && magasins.every((n) => reseau.magasins.find((m) => m.nom === n)?.franchise === false)
   return (
     <Fenetre
       titre={ancien ? `Modifier ${ancien}` : 'Ajouter un franchisé'} ouvert large onFermer={(m) => onFermer(m, m ? nom : undefined)}
       valide={fichePersonnelleValide(f) && !doublon && !/recrutement/i.test(nom)}
       enregistrer={async () => {
-        await enregistrerFranchise(nom, ancien, magasins, actuels, f)
+        await enregistrerFranchise(nom, ancien, magasins, actuels, f, reseau)
         return ancien ? (nom !== ancien ? `${ancien} s’appelle désormais ${nom}.` : `${nom} est mis à jour.`) : `${nom} est ajouté.`
       }}
-      supprimer={ancien ? async () => { await supprimerFranchise(ancien, actuels); return `${ancien} est retiré de ses magasins.` } : undefined}
+      supprimer={ancien ? async () => { await supprimerFranchise(ancien, actuels, reseau); return `${ancien} est retiré de ses magasins.` } : undefined}
       libelleSuppression={ancien ? `Retirer ${ancien} ? ${actuels.length ? `Ses ${actuels.length} magasin${actuels.length > 1 ? 's' : ''} n’auront plus de franchisé renseigné.` : ''}` : undefined}
     >
       <ChampsPersonnels f={f} onChange={setF} doublon={doublon} autoFocus={!ancien}
@@ -202,7 +202,7 @@ export function DialogFranchise({ reseau, nom: ancien, magasinsInitiaux = [], on
       <Autocomplete
         multiple options={reseau.magasins.map((m) => m.nom)} value={magasins} onChange={(_e, v) => setMagasins(v)}
         renderInput={(p) => <TextField {...p} label="Ses magasins" helperText={repris.length
-          ? `Remplace ${repris.map((m) => `${m.responsable!.nom} sur ${m.nom}`).join(', ')}.`
+          ? repris.map((m) => (m.franchise ? `Associé à ${m.responsable!.nom} sur ${m.nom}` : `Remplace ${m.responsable!.nom} sur ${m.nom}`)).join(', ') + '.'
           : integresSeulement ? 'Magasins intégrés : la personne apparaîtra comme responsable de magasin.' : ' '} />}
       />
     </Fenetre>
