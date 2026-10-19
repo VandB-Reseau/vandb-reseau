@@ -11,9 +11,13 @@ export interface Ecriture { methode: string; table: string; corps: unknown; filt
 export interface AccesSimule { role: string; franchise?: string; magasins?: string[]; coach?: string; rr?: string }
 export interface AccesFranchiseSimule { user_id: string; email: string; franchise: string; magasins: string[]; ouvert_le?: string; derniere_connexion?: string | null }
 export interface EspaceSimule { visites?: Record<string, unknown>[]; reperes?: unknown; campagnes?: unknown; pratiques?: unknown[] }
+// Messagerie (script supabase/messagerie.sql) : null = pas encore activée
+export interface MessageSimule { id: number; store: string; auteur: string; auteur_nom: string; auteur_role: string; texte: string; mentions: string[]; cree_le: string }
+export interface MessagerieSimulee { messages?: MessageSimule[]; lus?: Record<string, string>; reference?: string | null }
+export const MOI = '00000000-0000-0000-0000-000000000001'
 // Périmètre envoyé par l'app du Directeur (fonction maj_perimetre_equipe)
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
-export interface OptionsSimulation { perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean }
+export interface OptionsSimulation { messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -101,7 +105,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       const meta = options.appMetadata ?? {}
       const acces: AccesSimule = options.acces ?? (meta.role === 'coach' || meta.role === 'rr' ? { role: String(meta.role), coach: meta.coach as string, rr: meta.rr as string } : { role: 'directeur' })
       if (fn === 'maj_perimetre_equipe') options.perimetreRecu = corps.p_lignes as PerimetreRecu[]
-      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'maj_perimetre_equipe'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
+      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'maj_perimetre_equipe', 'messagerie'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
       if (fn === 'mon_acces') return route.fulfill({ json: { role: acces.role, coach: acces.coach ?? null, rr: acces.rr ?? null, franchise: acces.franchise ?? null, magasins: acces.magasins ?? [] } })
       if (fn === 'espace_franchise') {
         const apercu = Array.isArray(corps.p_magasins)
@@ -109,6 +113,28 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         options.ecritures?.push({ methode: 'POST', table: 'rpc/espace_franchise', corps, filtre: '' })
         const magasins = apercu ? (corps.p_magasins as string[]) : acces.magasins ?? []
         return route.fulfill({ json: espaceSimule(apercu ? String(corps.p_franchise) : acces.franchise ?? '', magasins, options.espace ?? {}) })
+      }
+      if (['messagerie', 'envoyer_message', 'marquer_lu', 'supprimer_message', 'renommer_magasin_messages'].includes(fn)) {
+        if (options.messagerie === null) return absente()
+        const mg = (options.messagerie ??= {})
+        mg.messages ??= []; mg.lus ??= {}
+        const visibles = (st: string) => acces.role !== 'franchise' || (acces.magasins ?? []).includes(st)
+        if (fn === 'messagerie') {
+          if (!['directeur', 'rr', 'coach', 'franchise'].includes(acces.role)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+          return route.fulfill({ json: { moi: MOI, reference: mg.reference ?? null, messages: mg.messages.filter((m) => visibles(m.store)), lus: mg.lus } })
+        }
+        const st = String(corps.p_store ?? '')
+        if ((fn === 'envoyer_message' || fn === 'marquer_lu') && !visibles(st)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        if (fn === 'envoyer_message') {
+          const nom = acces.role === 'franchise' ? acces.franchise : acces.role === 'coach' ? acces.coach : acces.role === 'rr' ? configRRFictive.drs.find((d) => d.id === acces.rr)?.name : configRRFictive.directeur.name
+          const maintenant = new Date().toISOString()
+          mg.messages.push({ id: Math.max(0, ...mg.messages.map((m) => m.id)) + 1, store: st, auteur: MOI, auteur_nom: nom ?? 'joseph', auteur_role: acces.role, texte: String(corps.p_texte).trim(), mentions: (corps.p_mentions as string[]) ?? [], cree_le: maintenant })
+          mg.lus[`${st}|messages`] = maintenant
+          return route.fulfill({ json: { id: mg.messages.length } })
+        }
+        if (fn === 'marquer_lu') mg.lus[`${st}|${String(corps.p_sujet ?? 'messages')}`] = new Date().toISOString()
+        if (fn === 'supprimer_message') mg.messages = mg.messages.filter((m) => !(m.id === corps.p_id && m.auteur === MOI))
+        return route.fulfill({ status: 200, json: null })
       }
       const liste = options.accesFranchises ?? []
       if (fn === 'liste_acces_franchises') return route.fulfill({ json: liste.map((a) => ({ ouvert_le: '2026-10-19T10:00:00Z', derniere_connexion: null, ...a })) })

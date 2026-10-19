@@ -75,7 +75,7 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Annecy Test', 'Rennes Test'])
   await page.getByRole('link', { name: /Annecy Test/ }).click()
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(['Fiche', 'Chiffres', 'Visites', 'Campagnes'])
+  await expect(onglets.getByRole('tab')).toHaveText(['Fiche', 'Messages', 'Chiffres', 'Visites', 'Campagnes'])
   await expect(page.getByRole('button', { name: /Modifier|Réaffecter|Saisir/ })).toHaveCount(0)
   await expect(page.getByText('Paul MULTI')).toBeVisible()
   await onglets.getByRole('tab', { name: 'Visites' }).click()

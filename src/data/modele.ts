@@ -158,6 +158,7 @@ export interface Visite {
   parties: string[] // parties du compte rendu (PARTIES), vides si non abordées
   plan: ActionPlan[]
   photos?: import('./grilles').Photo[] // rangées dans la colonne docs avec un chemin d'espace photos
+  creeLe?: string // date d'enregistrement (nouveautés de l'espace franchisé)
 }
 
 export interface NoteMagasin { id: string; date: string; texte: string; par: string }

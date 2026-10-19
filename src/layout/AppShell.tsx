@@ -27,6 +27,7 @@ import Snackbar from '@mui/material/Snackbar'
 import { DialogMotDePasse } from '../components/DialogMotDePasse'
 import { Logo } from '../components/Logo'
 import { RechercheGlobale } from '../components/RechercheGlobale'
+import { Cloche } from '../components/Messages'
 import { brandStripe } from '../theme/theme'
 import { parametres, principales, secondaires, plus, type Destination } from '../navigation/destinations'
 import { useAuth } from '../auth/AuthContext'
@@ -119,8 +120,8 @@ function BarreBasse({ franchise }: { franchise?: Destination[] }) {
 }
 
 // franchise : navigation réduite de l'espace franchisé (sans recherche ni Paramètres) ; bandeau : sous l'en-tête ;
-// sansParametres : Coach ou Responsable Régional
-export function AppShell({ children, franchise, bandeau, sansParametres = false }: { children: ReactNode; franchise?: Destination[]; bandeau?: ReactNode; sansParametres?: boolean }) {
+// sansParametres : Coach ou Responsable Régional ; sansCloche : aperçu de l'espace d'un franchisé, sans ses notifications
+export function AppShell({ children, franchise, bandeau, sansParametres = false, sansCloche = false }: { children: ReactNode; franchise?: Destination[]; bandeau?: ReactNode; sansParametres?: boolean; sansCloche?: boolean }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [rechercheOuverte, setRechercheOuverte] = useState(false)
@@ -141,6 +142,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false 
               <SearchIcon />
             </IconButton>
           )}
+          {!sansCloche && <Cloche />}
           <MenuCompte />
         </Toolbar>
         <Box aria-hidden sx={{ height: 4, background: brandStripe }} />

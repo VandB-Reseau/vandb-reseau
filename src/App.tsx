@@ -20,6 +20,7 @@ import { Plus } from './pages/Plus'
 import { Magasins } from './pages/Magasins'
 import { FicheMagasin } from './pages/FicheMagasin'
 import { ReseauProvider } from './data/ReseauContext'
+import { MessagerieProvider } from './data/MessagerieContext'
 import { RetourEnHaut } from './navigation/RetourEnHaut'
 import { ErreurEcran } from './components/ErreurEcran'
 import { useCallback, useMemo } from 'react'
@@ -75,7 +76,7 @@ function Routes_({ equipeSeule = false }: { equipeSeule?: boolean }) {
 function RoutesFranchise({ apercu }: { apercu: boolean }) {
   const { pathname } = useLocation()
   return (
-    <AppShell franchise={espaceFranchise} bandeau={apercu ? <BandeauApercu /> : undefined}>
+    <AppShell franchise={espaceFranchise} bandeau={apercu ? <BandeauApercu /> : undefined} sansCloche={apercu}>
       <RetourEnHaut />
       <ErreurEcran key={pathname}>
       <Routes>
@@ -112,8 +113,8 @@ function Espace() {
   const cle = impose ? cleVue(impose) : null
   const perimetre = useMemo(() => (cle ? lireVue(cle) : null), [cle])
   if (!profil || profil.role === 'aucun') return <AccesFerme />
-  if (franchise || vueApercu) return <ReseauProvider key={apercu?.franchise ?? 'franchise'} charger={charger} lectureSeule><RoutesFranchise apercu={vueApercu} /></ReseauProvider>
-  return <ReseauProvider accesFranchises={directeur} perimetre={perimetre}><Routes_ equipeSeule={!!perimetre} /></ReseauProvider>
+  if (franchise || vueApercu) return <MessagerieProvider><ReseauProvider key={apercu?.franchise ?? 'franchise'} charger={charger} lectureSeule><RoutesFranchise apercu={vueApercu} /></ReseauProvider></MessagerieProvider>
+  return <MessagerieProvider><ReseauProvider accesFranchises={directeur} perimetre={perimetre}><Routes_ equipeSeule={!!perimetre} /></ReseauProvider></MessagerieProvider>
 }
 
 export default function App() {

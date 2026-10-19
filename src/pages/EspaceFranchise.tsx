@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -17,6 +17,10 @@ import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
+import ForumOutlined from '@mui/icons-material/ForumOutlined'
+import Snackbar from '@mui/material/Snackbar'
+import { FilMessages, useNonLusMagasin } from '../components/Messages'
+import { useMessagerie } from '../data/MessagerieContext'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
@@ -315,9 +319,10 @@ export function MagasinsFranchise() {
 }
 
 // ── Fiche magasin du franchisé : lecture seule ──
-type VueFiche = 'fiche' | 'chiffres' | 'visites' | 'campagnes'
+type VueFiche = 'fiche' | 'messages' | 'chiffres' | 'visites' | 'campagnes'
 const rubriques: Rubrique<VueFiche>[] = [
   { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
+  { vue: 'messages', libelle: 'Messages', icone: <ForumOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
   { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
   { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
@@ -417,12 +422,25 @@ function OngletCampagnes({ reseau, m }: { reseau: Reseau; m: Magasin }) {
   )
 }
 
+// Ouvrir l'onglet Visites lit les nouveaux comptes rendus (pas pendant l'aperçu du Directeur de réseau)
+function LireVisites({ magasin }: { magasin: string }) {
+  const { apercu } = useApercu()
+  const { marquerLu, messagerie } = useMessagerie()
+  const pret = !!messagerie
+  useEffect(() => { if (pret && !apercu) marquerLu(magasin, 'visites') }, [pret, apercu, marquerLu, magasin])
+  return null
+}
+
 export function FicheMagasinFranchise() {
   const { nom = '' } = useParams()
   const naviguer = useNavigate()
+  const { apercu } = useApercu()
+  const [confirmation, setConfirmation] = useState('')
   const [params, setParams] = useSearchParams()
   const vue = (rubriques.find((r) => r.vue === params.get('vue'))?.vue ?? 'fiche') as VueFiche
   const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
+  const nonLus = useNonLusMagasin(nom)
+  const onglets = rubriques.map((r) => (r.vue === 'messages' ? { ...r, pastille: apercu ? 0 : nonLus } : r))
   return (
     <AvecReseau>
       {(reseau) => {
@@ -437,11 +455,13 @@ export function FicheMagasinFranchise() {
               <PastilleType franchise={m.franchise} />
             </Box>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>{[m.ville, m.coach && `Coach ${m.coach}`].filter(Boolean).join(' · ')}</Typography>
-            <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} />
+            <Onglets valeur={vue} onChange={changerVue} rubriques={onglets} libelle={`Rubriques de ${m.nom}`} />
             {vue === 'fiche' && <OngletFiche reseau={reseau} m={m} />}
+            {vue === 'messages' && <Section titre="Messages"><FilMessages key={m.nom} reseau={reseau} m={m} signaler={setConfirmation} lectureSeule={!!apercu} /></Section>}
             {vue === 'chiffres' && <OngletChiffres reseau={reseau} m={m} />}
-            {vue === 'visites' && <OngletVisites reseau={reseau} m={m} />}
+            {vue === 'visites' && <><LireVisites magasin={m.nom} /><OngletVisites reseau={reseau} m={m} /></>}
             {vue === 'campagnes' && <OngletCampagnes reseau={reseau} m={m} />}
+            <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
           </>
         )
       }}
