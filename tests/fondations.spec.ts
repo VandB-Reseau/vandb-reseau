@@ -23,13 +23,16 @@ test('un mauvais mot de passe affiche un message clair', async ({ page }) => {
   await expect(page.getByText('Email ou mot de passe incorrect.')).toBeVisible()
 })
 
-test('après connexion, l’accueil montre les 5 priorités dans l’ordre choisi', async ({ page }, info) => {
+test('après connexion, l’accueil montre les priorités dans l’ordre choisi', async ({ page }, info) => {
   await seConnecter(page)
   const titres = await page.locator('main h2').allTextContents()
   expect(titres).toEqual([
     'Magasins qui décrochent',
     'Magasins qui sous-performent',
     'Visites en retard',
+    'Actions à échéance',
+    'Campagnes en cours',
+    'Mandats à renouveler',
     'Changements de case',
     'Agenda de la semaine',
     'Coachs surchargés et postes vacants',

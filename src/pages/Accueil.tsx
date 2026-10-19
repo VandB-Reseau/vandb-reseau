@@ -20,6 +20,7 @@ import { PastilleAlerte, PastilleAppel } from '../components/Chiffres'
 import { analyser, suiviAlerte } from '../data/chiffres'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import { useAuth } from '../auth/AuthContext'
+import { useReseau } from '../data/ReseauContext'
 import { caseDe, tendance } from '../data/sante'
 import { anneeDe, suiviRythme } from '../data/visites'
 import { chargeA, coachA, niveauCharge } from '../data/charge'
@@ -190,22 +191,20 @@ function ChoixVue({ reseau, valeur, onChange }: { reseau: Reseau; valeur: Perime
 
 export function Accueil() {
   const { profil } = useAuth()
+  const { reseau } = useReseau()
   const [params, setParams] = useSearchParams()
   const impose = perimetreDuProfil(profil)
   const choisi = impose ?? lireVue(params.get('vue'))
   const changer = (p: Perimetre) => setParams((x) => { const n = new URLSearchParams(x); if (p.type === 'reseau') n.delete('vue'); else n.set('vue', cleVue(p)); return n }, { replace: true })
   const date = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const role = impose ? roleLibelle[profil!.role] : choisi.type === 'reseau' ? roleLibelle.directeur : choisi.type === 'rr' ? roleLibelle.rr : roleLibelle.coach
+  const n = reseau ? magasinsDu(reseau, choisi).length : 0
+  const perimetre = !reseau ? null : choisi.type === 'reseau' ? `${n} magasins` : `${role} · ${libelleVue(reseau, choisi)} · ${n} magasin${n > 1 ? 's' : ''}`
   return (
-    <AvecReseau>{(reseau) => {
-      const role = impose ? roleLibelle[profil!.role] : choisi.type === 'reseau' ? roleLibelle.directeur : choisi.type === 'rr' ? roleLibelle.rr : roleLibelle.coach
-      const n = magasinsDu(reseau, choisi).length
-      const sousTitre = [date.charAt(0).toUpperCase() + date.slice(1), choisi.type === 'reseau' ? `${n} magasins` : `${role} · ${libelleVue(reseau, choisi)} · ${n} magasin${n > 1 ? 's' : ''}`].join(' · ')
-      return (
-        <>
-          <PageHeader titre={`${salutation()}${profil ? ` ${profil.nom}` : ''}`} sousTitre={sousTitre} actions={impose ? undefined : <ChoixVue reseau={reseau} valeur={choisi} onChange={changer} />} />
-          <Tableau reseau={reseau} p={choisi} />
-        </>
-      )
-    }}</AvecReseau>
+    <>
+      <PageHeader titre={`${salutation()}${profil ? ` ${profil.nom}` : ''}`} sousTitre={[date.charAt(0).toUpperCase() + date.slice(1), perimetre].filter(Boolean).join(' · ')}
+        actions={impose || !reseau ? undefined : <ChoixVue reseau={reseau} valeur={choisi} onChange={changer} />} />
+      <AvecReseau>{(r) => <Tableau reseau={r} p={choisi} />}</AvecReseau>
+    </>
   )
 }

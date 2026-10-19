@@ -66,7 +66,7 @@ test('l’historique se filtre et ouvre le compte rendu à imprimer', async ({ p
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/visites?vue=historique')
-  await expect(page.getByText('3 visites', { exact: true })).toBeVisible()
+  await expect(page.getByText('4 visites', { exact: true })).toBeVisible()
   if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
   await page.getByRole('button', { name: 'Filtre Type' }).click()
   await page.getByRole('menuitem', { name: 'Audit hygiène' }).click()
@@ -87,7 +87,7 @@ test('l’historique se filtre et ouvre le compte rendu à imprimer', async ({ p
 test('modifier puis supprimer une visite depuis la fiche magasin', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=visites')
   await expect(page.getByText(/^1 visite sur 8 en 2026 · prochaine avant le/)).toBeVisible()
   await page.getByRole('button', { name: /Modifier la visite du/ }).click()
   const d = page.getByRole('dialog', { name: 'Modifier la visite de Lyon Test' })

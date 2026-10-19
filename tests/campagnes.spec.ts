@@ -80,8 +80,8 @@ test('taux d’exécution par Responsable Régional, par Coach et par magasin', 
 test('constater une campagne depuis la fiche magasin et pendant une visite', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, config: { campagnes } })
-  await page.goto(`./#/magasins/${encodeURIComponent('Nantes Test')}`)
-  const section = page.getByRole('heading', { name: 'Campagnes' }).locator('xpath=ancestor::div[contains(@class,"MuiCard-root")]')
+  await page.goto(`./#/magasins/${encodeURIComponent('Nantes Test')}?vue=campagnes`)
+  const section = page.getByRole('heading', { name: 'Campagnes', level: 2 }).locator('xpath=ancestor::div[contains(@class,"MuiCard-root")]')
   await expect(section.getByText('Noël 2026')).toBeVisible()
   await expect(section.getByRole('button', { name: 'Noël 2026, Vitrine posée : pas fait' })).toHaveAttribute('aria-pressed', 'true')
   await section.getByRole('button', { name: 'Noël 2026, Vitrine posée : fait' }).click()
@@ -89,7 +89,7 @@ test('constater une campagne depuis la fiche magasin et pendant une visite', asy
   expect(derniereValeur(ecritures).constats.c1['Nantes Test'].p1).toEqual(expect.objectContaining({ fait: true }))
 
   // Pendant une visite : constats enregistrés à la date de la visite
-  await page.goto(`./#/magasins/${encodeURIComponent('Annecy Test')}`)
+  await page.goto(`./#/magasins/${encodeURIComponent('Annecy Test')}?vue=visites`)
   await page.getByRole('button', { name: 'Saisir', exact: true }).first().click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
   await d.getByLabel('Date').fill('2026-10-10')

@@ -35,7 +35,7 @@ test('l’accueil met en tête les magasins qui décrochent, avec l’appel en r
 
 test('la fiche magasin montre les chiffres, l’alerte et le graphique', async ({ page, isMobile }, info) => {
   await seConnecter(page)
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=chiffres')
   const section = page.getByRole('heading', { name: 'Chiffres', exact: true }).locator('xpath=ancestor::div[contains(@class,"MuiCard-root")]')
   await expect(section.getByText('Décroche')).toBeVisible()
   await expect(section.getByText('Chiffres à fin septembre 2026')).toBeVisible()
@@ -49,14 +49,14 @@ test('la fiche magasin montre les chiffres, l’alerte et le graphique', async (
   await section.scrollIntoViewIfNeeded()
   await page.screenshot({ path: `captures/${info.project.name}-fiche-chiffres.png`, fullPage: !isMobile })
   // Audit consolidé sur une autre fiche
-  await page.goto('./#/magasins/Nantes%20Test')
+  await page.goto('./#/magasins/Nantes%20Test?vue=chiffres')
   await expect(page.getByText('Conforme · 92 % · 10 mars 2026')).toBeVisible()
 })
 
 test('saisir un appel : il ne compte pas comme visite et arrête le retard', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=chiffres')
   await page.getByRole('button', { name: 'Saisir un appel' }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
   await expect(d.getByLabel('Type')).toHaveText('Appel')
@@ -69,7 +69,7 @@ test('saisir un appel : il ne compte pas comme visite et arrête le retard', asy
   expect(JSON.stringify(visite.corps)).toContain('"type":"appel"')
   expect(ecritures.some((e) => e.table === 'store_finance')).toBe(false)
   // Un appel déjà saisi ne compte pas dans le rythme de visite
-  await page.goto('./#/magasins/Agen%20Test')
+  await page.goto('./#/magasins/Agen%20Test?vue=visites')
   await expect(page.getByText(/^0 visite sur \d+ en \d{4} · \d+ j de retard$/)).toBeVisible()
   await expect(page.getByText('Appel · Inès EXEMPLE').first()).toBeVisible()
 })
@@ -77,7 +77,7 @@ test('saisir un appel : il ne compte pas comme visite et arrête le retard', asy
 test('saisir les chiffres du mois pendant une visite et noter un audit', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Annecy%20Test')
+  await page.goto('./#/magasins/Annecy%20Test?vue=visites')
   await page.getByRole('button', { name: 'Saisir', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
   await d.getByLabel('Type').click()
@@ -195,7 +195,7 @@ test('régler la règle de décrochage sur l’écart de CA et le délai d’app
 test('modifier puis supprimer les chiffres d’un mois déjà saisi depuis la fiche', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Annecy%20Test')
+  await page.goto('./#/magasins/Annecy%20Test?vue=chiffres')
   const section = page.getByRole('heading', { name: 'Chiffres', exact: true }).locator('xpath=ancestor::div[contains(@class,"MuiCard-root")]')
   await expect(section.getByRole('button', { name: /^Modifier les chiffres de / })).toHaveCount(6)
   await section.getByRole('button', { name: /^Voir les \d+ mois$/ }).click()
@@ -228,7 +228,7 @@ test('modifier puis supprimer les chiffres d’un mois déjà saisi depuis la fi
 
 test('pas de suppression pour un mois sans chiffres', async ({ page }) => {
   await seConnecter(page)
-  await page.goto('./#/magasins/Annecy%20Test')
+  await page.goto('./#/magasins/Annecy%20Test?vue=chiffres')
   await page.getByRole('button', { name: 'Saisir les chiffres' }).click()
   const d = page.getByRole('dialog', { name: 'Chiffres de Annecy Test' })
   await expect(d.getByRole('button', { name: 'Supprimer' })).toBeVisible()

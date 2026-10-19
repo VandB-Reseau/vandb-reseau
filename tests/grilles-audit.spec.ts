@@ -67,7 +67,7 @@ test('construire les grilles d’audit dans Paramètres', async ({ page, isMobil
 test('remplir la grille pendant un audit, avec une photo', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Annecy%20Test')
+  await page.goto('./#/magasins/Annecy%20Test?vue=visites')
   await page.getByRole('button', { name: 'Saisir', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
   await d.getByLabel('Type').click()
@@ -108,7 +108,7 @@ test('remplir la grille pendant un audit, avec une photo', async ({ page, isMobi
 
 test('la fiche magasin montre les écarts du dernier audit et leurs photos', async ({ page, isMobile }, info) => {
   await seConnecter(page, { config: { audits: auditRempli } })
-  await page.goto('./#/magasins/Nantes%20Test')
+  await page.goto('./#/magasins/Nantes%20Test?vue=chiffres')
   await expect(page.getByText('Non conforme · 50 % · 10 mars 2026')).toBeVisible()
   await expect(page.getByText(FRIGOS)).toBeVisible()
   await expect(page.getByText('Relevés arrêtés depuis le 2 septembre')).toBeVisible()
@@ -126,7 +126,7 @@ test('la fiche magasin montre les écarts du dernier audit et leurs photos', asy
 test('retirer une photo d’un audit l’efface de l’espace photos', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, config: { audits: auditRempli } })
-  await page.goto('./#/magasins/Nantes%20Test')
+  await page.goto('./#/magasins/Nantes%20Test?vue=visites')
   await page.getByRole('button', { name: /Modifier la visite du 10 mars/ }).first().click()
   const d = page.getByRole('dialog', { name: 'Modifier la visite de Nantes Test' })
   const grille = d.getByRole('region', { name: 'Grille hygiène' })
@@ -140,7 +140,7 @@ test('retirer une photo d’un audit l’efface de l’espace photos', async ({ 
 
 test('sans espace photos activé, un message clair', async ({ page }) => {
   await seConnecter(page, { sansPhotos: true })
-  await page.goto('./#/magasins/Annecy%20Test')
+  await page.goto('./#/magasins/Annecy%20Test?vue=visites')
   await page.getByRole('button', { name: 'Saisir', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
   await d.getByLabel('Type').click()

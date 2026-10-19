@@ -96,7 +96,7 @@ test('l’import avec une colonne Date remplit l’historique, une ligne par jou
 test('deux changements de case le même jour : le second remplace le premier, même après rechargement', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, persister: true })
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=journal')
   for (const note of ['Moyen', 'Fort']) {
     await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
     const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
@@ -129,7 +129,7 @@ test('les doublons du même jour déjà enregistrés n’apparaissent qu’une f
     ] } },
   }
   await seConnecter(page, { ecritures, config })
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=journal')
   const journal = page.getByRole('list').filter({ hasText: 'Concept 2.0' })
   await expect(journal.getByText('Passe en Redressement urgent')).toHaveCount(1)
   await expect(journal.getByText(/Management à renforcer|Locomotive/)).toHaveCount(0)
@@ -149,7 +149,7 @@ test('les doublons du même jour déjà enregistrés n’apparaissent qu’une f
 test('supprimer un classement du journal : la saisie précédente redevient le classement en place', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=journal')
   await page.getByRole('button', { name: /^Modifier le classement du 1 oct/ }).click()
   const d = page.getByRole('dialog', { name: /^Classement du 1 oct/ })
   await expect(d.getByRole('button', { name: /^Faible : Niveau du franchisé/ })).toHaveAttribute('aria-pressed', 'true')
@@ -165,7 +165,7 @@ test('supprimer un classement du journal : la saisie précédente redevient le c
 test('supprimer le seul classement d’un magasin le rend non classé', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Annecy%20Test')
+  await page.goto('./#/magasins/Annecy%20Test?vue=journal')
   await page.getByRole('button', { name: /^Modifier le classement du 1 oct/ }).click()
   const d = page.getByRole('dialog', { name: /^Classement du 1 oct/ })
   await d.getByRole('button', { name: 'Supprimer' }).click()
@@ -179,7 +179,7 @@ test('supprimer le seul classement d’un magasin le rend non classé', async ({
 test('corriger les notes d’un classement passé depuis le journal', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=journal')
   await page.getByRole('button', { name: /^Modifier le classement du 1 juin/ }).click()
   const d = page.getByRole('dialog', { name: /^Classement du 1 juin/ })
   await d.getByRole('button', { name: /^Fort : Niveau du franchisé/ }).click()

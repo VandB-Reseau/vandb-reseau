@@ -17,8 +17,9 @@ export const magasinsFictifs = villes.map((v, i) => ({
   cp: `${depts[i]}000`,
   ville: v,
   franchise: i % 6 !== 0,
-  lat: 43 + (i % 7) * 0.8,
-  lon: -1 + (i % 9) * 0.9,
+  // Lille est à sa vraie place (sa commune est connue du service des communes simulé)
+  lat: v === 'Lille' ? 50.63 : 43 + (i % 7) * 0.8,
+  lon: v === 'Lille' ? 3.06 : -1 + (i % 9) * 0.9,
   rr: '',
 }))
 
@@ -59,9 +60,17 @@ export const visitesFictives = [
   { id: 2, store: 'Nantes Test', visit_date: '2026-03-10', type: 'hygiene', visitor: 'Inès EXEMPLE', signed_required: false, docs: [], notes: 'Audit conforme.' },
   // Un appel ne compte pas comme visite : Agen reste en retard
   { id: 3, store: 'Agen Test', visit_date: '2026-10-01', type: 'appel', visitor: 'Inès EXEMPLE', signed_required: false, docs: [], notes: 'Appel de suivi.' },
+  // Plan d'action de Brest : une action en retard, une à venir, une déjà faite
+  { id: 4, store: 'Brest Test', visit_date: '2026-09-20', type: 'terrain', visitor: 'Noé MODELE', signed_required: false, docs: [], notes: 'Visite de suivi.', action_plan: [
+    { id: 'a1', action: 'Refaire la vitrine', porteur: 'Franchisé 11', echeance: '2026-09-30' },
+    { id: 'a2', action: 'Former l’équipe à la vente additionnelle', porteur: 'Noé MODELE', echeance: '2099-01-31' },
+    { id: 'a3', action: 'Changer l’enseigne', porteur: 'Franchisé 11', echeance: '2026-09-25', faite: '2026-09-24' },
+  ] },
 ]
 export const congesFictifs = [{ id: 1, person: 'Hugo FICTIF', role: 'cs', start_date: '2026-10-20', end_date: '2026-10-24', notes: 'Congés' }]
-export const evenementsFictifs = [{ id: 1, title: 'Séminaire des Coachs', type: 'event', start_date: '2026-10-15', end_date: '2026-10-16', color: '#7c3aed' }]
+// Séminaire dans la semaine qui vient, quel que soit le jour où les tests tournent
+const dansJours = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10)
+export const evenementsFictifs = [{ id: 1, title: 'Séminaire des Coachs', type: 'event', start_date: dansJours(1), end_date: dansJours(2), color: '#7c3aed' }]
 
 // Santé du parc : Lyon en redressement urgent, Annecy locomotive, Nantes cœur de réseau
 const n = (r: number, f: number) => ({ notes: { caExterieur: r, panierCave: r, panierBar: r, fluxCave: r, fluxBar: r, franchise: f }, date: '2026-10-01', par: 'Dominique DIRECTION' })
