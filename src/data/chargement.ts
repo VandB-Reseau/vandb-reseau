@@ -100,7 +100,7 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
     visiteurs: lireVisiteurs(t(v.visitor)), signatureRequise: !!v.signed_required, lienSigne: t(v.signed_url), dateSignature: t(v.signed_date).slice(0, 10),
     documents: Array.isArray(v.docs) ? (v.docs as { label?: string; url?: string; chemin?: string }[]).filter((d) => !d.chemin).map((d) => ({ label: t(d.label), url: t(d.url) })) : [], notes: t(v.notes),
     photos: Array.isArray(v.docs) ? (v.docs as { chemin?: string; taille?: number }[]).filter((d) => d.chemin).map((d) => ({ chemin: t(d.chemin), taille: Number(d.taille) || 0 })) : [],
-    parties: normaliserParties(v.sections), plan: normaliserPlan(v.action_plan),
+    parties: normaliserParties(v.sections), plan: normaliserPlan(v.action_plan), creeLe: t(v.created_at),
   }))
   // Chiffres mensuels : table facultative, absente = aucun chiffre
   const nb = (v: unknown) => (v === null || v === undefined || v === '' || isNaN(Number(v)) ? null : Number(v))
@@ -483,6 +483,8 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
     await renommerColonne('store_overrides', 'store_name', ancienNom, f.nom)
     await renommerColonne('reassigns', 'store', ancienNom, f.nom)
     await renommerColonne('visits', 'store', ancienNom, f.nom)
+    // Fil de messages (fonction absente : messagerie pas encore activée)
+    await supabase.rpc('renommer_magasin_messages', { p_ancien: ancienNom, p_nouveau: f.nom }).then(() => undefined, () => undefined)
     await renommerColonne('store_finance', 'store_name', ancienNom, f.nom)
     const bp = await lireCle<BonnePratique[]>('bonnes_pratiques', [])
     if (bp.valeur.some((p) => p.magasin === ancienNom || p.reprises?.includes(ancienNom))) {

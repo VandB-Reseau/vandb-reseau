@@ -42,6 +42,8 @@ import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
+import ForumOutlined from '@mui/icons-material/ForumOutlined'
+import { FilMessages, useNonLusMagasin } from '../components/Messages'
 import { anneeDe, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
@@ -88,10 +90,11 @@ export function Contact({ role, p, sousTitre, lien }: { role: string; p: Personn
   )
 }
 
-type VueFiche = 'fiche' | 'actions' | 'visites' | 'chiffres' | 'sante' | 'campagnes' | 'journal'
+type VueFiche = 'fiche' | 'actions' | 'messages' | 'visites' | 'chiffres' | 'sante' | 'campagnes' | 'journal'
 const rubriquesFiche: Rubrique<VueFiche>[] = [
   { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
   { vue: 'actions', libelle: 'Actions', icone: <TaskAltOutlined /> },
+  { vue: 'messages', libelle: 'Messages', icone: <ForumOutlined /> },
   { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
   { vue: 'sante', libelle: 'Santé', icone: <FavoriteBorderOutlined /> },
@@ -123,6 +126,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const rythme = suiviRythme(reseau, a).find((l) => l.magasin.nom === m.nom)
   const alerte = analyser(reseau, m.nom)
   const saisirVisite = () => { setTypeVisite('terrain'); setVisite(null) }
+  const nonLus = useNonLusMagasin(m.nom)
+  const rubriques = rubriquesFiche.map((r) => (r.vue === 'messages' ? { ...r, pastille: nonLus } : r))
   return (
     <>
       <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 2, ml: -1 }}>Magasins</Button>
@@ -143,7 +148,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           label={`${ouvertes.length} action${ouvertes.length > 1 ? 's' : ''} en cours${enRetardNb ? ` · ${enRetardNb} en retard` : ''}`} sx={{ fontSize: 12, fontWeight: 600 }} />}
         {rythme && rythme.retard > 0 && <Chip size="small" color="warning" clickable onClick={() => changerVue('visites')} label={`Visite en retard de ${rythme.retard} j`} sx={{ fontSize: 12, fontWeight: 600 }} />}
       </Box>
-      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesFiche} libelle={`Rubriques de ${m.nom}`} />
+      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} />
 
       {vue === 'fiche' && (
         <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
@@ -181,6 +186,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           <ListeActions reseau={reseau} actions={actions} signaler={setConfirmation} libelle={`Actions en cours de ${m.nom}`} magasins={[m.nom]} />
         </Section>
       )}
+
+      {vue === 'messages' && <Section titre="Messages"><FilMessages key={m.nom} reseau={reseau} m={m} signaler={setConfirmation} /></Section>}
 
       {vue === 'visites' && <SectionVisites reseau={reseau} m={m} saisir={saisirVisite} modifier={setVisite} />}
 

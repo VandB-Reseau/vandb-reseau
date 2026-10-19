@@ -20,6 +20,7 @@ import { Plus } from './pages/Plus'
 import { Magasins } from './pages/Magasins'
 import { FicheMagasin } from './pages/FicheMagasin'
 import { ReseauProvider } from './data/ReseauContext'
+import { MessagerieProvider } from './data/MessagerieContext'
 import { RetourEnHaut } from './navigation/RetourEnHaut'
 import { ErreurEcran } from './components/ErreurEcran'
 import { useCallback } from 'react'
@@ -72,7 +73,7 @@ function Routes_() {
 function RoutesFranchise({ apercu }: { apercu: boolean }) {
   const { pathname } = useLocation()
   return (
-    <AppShell franchise={espaceFranchise} bandeau={apercu ? <BandeauApercu /> : undefined}>
+    <AppShell franchise={espaceFranchise} bandeau={apercu ? <BandeauApercu /> : undefined} sansCloche={apercu}>
       <RetourEnHaut />
       <ErreurEcran key={pathname}>
       <Routes>
@@ -106,8 +107,8 @@ function Espace() {
   const vueApercu = directeur && !!apercu
   const charger = useCallback(() => chargerEspaceFranchise(vueApercu ? apercu : null), [vueApercu, apercu])
   if (!profil || profil.role === 'aucun') return <AccesFerme />
-  if (franchise || vueApercu) return <ReseauProvider key={apercu?.franchise ?? 'franchise'} charger={charger} lectureSeule><RoutesFranchise apercu={vueApercu} /></ReseauProvider>
-  return <ReseauProvider accesFranchises={directeur}><Routes_ /></ReseauProvider>
+  if (franchise || vueApercu) return <MessagerieProvider><ReseauProvider key={apercu?.franchise ?? 'franchise'} charger={charger} lectureSeule><RoutesFranchise apercu={vueApercu} /></ReseauProvider></MessagerieProvider>
+  return <MessagerieProvider><ReseauProvider accesFranchises={directeur}><Routes_ /></ReseauProvider></MessagerieProvider>
 }
 
 export default function App() {

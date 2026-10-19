@@ -21,7 +21,7 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(['Fiche', 'Actions', 'Visites', 'Chiffres', 'Santé', 'Campagnes', 'Journal'])
+  await expect(onglets.getByRole('tab')).toHaveText(['Fiche', 'Actions', 'Messages', 'Visites', 'Chiffres', 'Santé', 'Campagnes', 'Journal'])
   await expect(page.getByRole('heading', { name: 'Équipe' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Journal', exact: true })).toHaveCount(0)
   // En-tête : deux actions en cours dont une en retard
