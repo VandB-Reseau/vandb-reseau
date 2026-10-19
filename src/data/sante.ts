@@ -194,6 +194,16 @@ export function unChangementParJour(changements: ChangementDeploiement[]): Chang
   return [...new Map(changements.map((c) => [`${c.date}|${c.thematique}`, c])).values()].sort((a, b) => a.date.localeCompare(b.date))
 }
 
+// Date depuis laquelle l'état d'une thématique est en place dans un magasin (vide si inconnue)
+export function depuisDeploiement(d: Deploiements, magasin: string, thematique: string): string {
+  const etat = d.valeurs[magasin]?.[thematique] ?? ''
+  const h = unChangementParJour(d.journal?.[magasin] ?? []).filter((c) => c.thematique === thematique)
+  if (!etat || h.at(-1)?.etat !== etat) return ''
+  let i = h.length - 1
+  while (i > 0 && h[i - 1].etat === etat) i--
+  return h[i].date
+}
+
 const ouiNon: OptionDeploiement[] = [{ libelle: 'Oui', ton: 'positif' }, { libelle: 'Non', ton: 'negatif' }]
 export const thematiquesParDefaut: Thematique[] = [
   { id: 'concept20', libelle: 'Concept 2.0', options: [{ libelle: 'Fait', ton: 'positif' }, { libelle: 'En cours', ton: 'partiel' }, { libelle: 'Non', ton: 'negatif' }] },
