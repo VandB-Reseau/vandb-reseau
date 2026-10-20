@@ -32,7 +32,7 @@ test('un franchisé arrive sur son dashboard, limité à ses magasins', async ({
   await seConnecterFranchise(page, { ecritures })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^(Bonjour|Bonsoir) Paul MULTI$/)
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(['Dashboard', 'Mes magasins', 'Messages', 'Bonnes pratiques'])
+  await expect(nav.getByRole('button')).toHaveText(['Dashboard', 'Mes magasins', 'Actions', 'Messages', 'Bonnes pratiques'])
   await expect(page.getByText('Paramètres')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Rechercher' })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button')).toHaveText(['Tous mes magasins', 'Annecy Test', 'Rennes Test'])

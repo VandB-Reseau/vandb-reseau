@@ -23,12 +23,14 @@ import { ChampsPersonnels, fichePersonnelleValide } from './ChampsPersonnels'
 import { fichePersonne, ficheVide, franchises, nomComplet, type FichePersonnelle, type RefPersonne } from '../data/personnes'
 import { coachA } from '../data/charge'
 import { ChampMois, premierDuMois } from './ChampMois'
+import { ErreurAction } from '../data/espaceFranchise'
 import type { Coach, Magasin, Reseau, ResponsableRegional } from '../data/modele'
 
 const COULEURS = ['#1b6fce', '#ef7d00', '#2e7d32', '#7c3aed', '#c2185b', '#00838f', '#6d4c41', '#eaa400']
 
 // Traduit le refus de la base en message compréhensible
 export function messageErreur(e: unknown): string {
+  if (e instanceof ErreurAction) return e.message
   const m = e instanceof Error ? e.message : String(e)
   if (/does not exist|schema cache|could not find the table/i.test(m)) return 'Cette partie n’est pas encore activée dans la base : le script SQL correspondant doit être lancé dans Supabase.'
   if (/row-level security|permission denied/i.test(m)) return 'La base refuse l’enregistrement : la règle d’accès de cette table manque dans Supabase.'

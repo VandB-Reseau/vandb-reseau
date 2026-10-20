@@ -86,7 +86,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         const cles = unSeul && !contact ? Object.entries(faites).filter(([, v]) => v).map(([k]) => k) : []
         const lot = cles.map((k) => k.startsWith('l:') ? { libre: k.slice(2), magasin: magasins[0], faite: date } : { visite: Number(k.split(':')[0]), index: Number(k.split(':')[1]), faite: date })
           .filter((l) => 'libre' in l || l.visite)
-        if (lot.length) await marquerActions(lot)
+        if (lot.length) await marquerActions(lot, participants[0] ?? '')
         if (unSeul && chiffres.modifie) await enregistrerChiffres([chiffres.ligne()])
         const constats = unSeul ? campagnes.lot(date, participants[0] ?? reseau.directeur.nom) : []
         if (constats.length) await enregistrerConstats(constats)

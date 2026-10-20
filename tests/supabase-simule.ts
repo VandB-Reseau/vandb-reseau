@@ -11,7 +11,7 @@ export interface Ecriture { methode: string; table: string; corps: unknown; filt
 export interface AccesSimule { role: string; franchise?: string; magasins?: string[]; coach?: string; rr?: string }
 export interface AccesFranchiseSimule { user_id: string; email: string; franchise: string; magasins: string[]; ouvert_le?: string; derniere_connexion?: string | null }
 export interface AccesEquipeSimule { user_id: string; email: string; role: 'coach' | 'rr'; nom: string; derniere_connexion?: string | null }
-export interface EspaceSimule { visites?: Record<string, unknown>[]; reperes?: unknown; campagnes?: unknown; pratiques?: unknown[] }
+export interface EspaceSimule { actions?: Record<string, Record<string, unknown>[]>; visites?: Record<string, unknown>[]; reperes?: unknown; campagnes?: unknown; pratiques?: unknown[] }
 // Messagerie (script supabase/messagerie.sql) : null = pas encore activée
 // destinataire : échange à deux (clé de la personne), avec auteur_cle et magasins cités ; sinon ancien message par magasin (store)
 export interface MessageSimule {
@@ -161,6 +161,31 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         }
         return route.fulfill({ status: 200, json: null })
       }
+      // Actions du franchisé (script actions_franchise.sql) : la base pose son nom et la date
+      if (fn === 'ajouter_action_franchise' || fn === 'marquer_action_franchise') {
+        const st = String(corps.p_store ?? '')
+        const introuvable = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'action_introuvable' } })
+        if (acces.role !== 'franchise' || !(acces.magasins ?? []).includes(st)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const e = (options.espace ??= {})
+        const actions = (e.actions ??= {})
+        const jour = new Date().toISOString().slice(0, 10)
+        const marquer = (a: Record<string, unknown>) => { if (corps.p_faite) Object.assign(a, { faite: jour, faitePar: acces.franchise }); else { delete a.faite; delete a.faitePar } }
+        if (fn === 'ajouter_action_franchise') {
+          actions[st] = [...(actions[st] ?? []), { id: `l_simule${Object.values(actions).flat().length + 1}`, action: String(corps.p_action).trim(), porteur: String(corps.p_porteur ?? ''), echeance: String(corps.p_echeance ?? ''), creeLe: jour, auteur: acces.franchise }]
+        } else if (corps.p_libre) {
+          const a = actions[st]?.find((x) => x.id === corps.p_libre)
+          if (!a) return introuvable()
+          marquer(a)
+        } else {
+          const v = e.visites?.find((x) => x.id === corps.p_visite && x.store === st)
+          const plan = ((v?.action_plan ?? []) as Record<string, unknown>[]).filter((a) => String(a.action ?? '').trim())
+          const a = plan[Number(corps.p_index)]
+          if (!v || !a || a.action !== corps.p_texte) return introuvable()
+          marquer(a)
+          v.action_plan = plan
+        }
+        return route.fulfill({ status: 200, json: null })
+      }
       // Accès de l'équipe et repères réseau (script cloisonnement_equipe.sql)
       if (fn === 'reperes_equipe') {
         if (!['directeur', 'rr', 'coach'].includes(acces.role)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
@@ -282,6 +307,7 @@ function espaceSimule(franchise: string, magasins: string[], e: EspaceSimule) {
       { key: 'audits', value: Object.fromEntries(Object.entries(auditsFictifs).filter(([k]) => dans(k))) },
       { key: 'campagnes', value: e.campagnes ?? { liste: [], constats: {} } },
       { key: 'bonnes_pratiques', value: e.pratiques ?? [] },
+      { key: 'actions', value: Object.fromEntries(Object.entries(e.actions ?? {}).filter(([k]) => dans(k))) },
     ],
     store_overrides: [],
     reassigns: affectationsFictives.filter((a) => a && dans(a.store)),

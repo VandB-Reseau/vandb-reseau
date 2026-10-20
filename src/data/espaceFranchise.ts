@@ -108,3 +108,25 @@ export async function chargerReperesEquipe(magasins: string[]): Promise<Reperes 
   const { data, error } = await supabase.rpc('reperes_equipe', { p_magasins: magasins })
   return !error && data && typeof data === 'object' ? data as Reperes : null
 }
+
+// ── Actions du franchisé sur ses magasins (script supabase/actions_franchise.sql) ──
+// La base vérifie que le magasin est le sien et y inscrit son nom et la date.
+export class ErreurAction extends Error {}
+function erreurAction(e: { message?: string; code?: string }): never {
+  if (e.code === 'PGRST202' || e.message?.includes('Could not find the function')) throw new ErreurAction('Les actions ne peuvent pas encore être modifiées depuis ton espace. Ton Coach peut le faire pour toi.')
+  if (e.message?.includes('action_introuvable')) throw new ErreurAction('Cette action a été modifiée entre-temps. Recharge la page et réessaie.')
+  throw new ErreurAction('L’action n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.')
+}
+
+export async function ajouterActionFranchise(magasin: string, action: string, porteur: string, echeance: string) {
+  const { error } = await supabase.rpc('ajouter_action_franchise', { p_store: magasin, p_action: action, p_porteur: porteur, p_echeance: echeance })
+  if (error) erreurAction(error)
+}
+
+// Action hors visite (libre) ou action du plan d'une visite (visite, index, texte vérifié par la base)
+export async function marquerActionFranchise(magasin: string, faite: boolean, cible: { libre: string } | { visite: number; index: number; texte: string }) {
+  const { error } = await supabase.rpc('marquer_action_franchise', 'libre' in cible
+    ? { p_store: magasin, p_faite: faite, p_libre: cible.libre }
+    : { p_store: magasin, p_faite: faite, p_visite: cible.visite, p_index: cible.index, p_texte: cible.texte })
+  if (error) erreurAction(error)
+}

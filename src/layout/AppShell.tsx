@@ -29,7 +29,7 @@ import { Logo } from '../components/Logo'
 import { RechercheGlobale } from '../components/RechercheGlobale'
 import { BoutonMessages, Cloche } from '../components/Messages'
 import { brandStripe } from '../theme/theme'
-import { parametres, principales, secondaires, plus, type Destination } from '../navigation/destinations'
+import { barreTelephone, parametres, principales, secondaires, plus, type Destination } from '../navigation/destinations'
 import { useAuth } from '../auth/AuthContext'
 import { roleLibelle } from '../auth/roles'
 
@@ -106,7 +106,7 @@ function MenuLateral({ franchise, sansParametres }: { franchise?: Destination[];
 function BarreBasse({ franchise }: { franchise?: Destination[] }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
-  const items = franchise ?? [...principales, plus]
+  const items = franchise ?? [...barreTelephone, plus]
   const actif = items.findIndex((d) => (d === plus ? pathname.startsWith('/plus') : estActive(d, pathname)))
   return (
     <Paper component="nav" aria-label="Navigation principale" sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: (t) => t.zIndex.appBar, borderTop: '1px solid', borderColor: 'divider', pb: 'env(safe-area-inset-bottom)' }}>

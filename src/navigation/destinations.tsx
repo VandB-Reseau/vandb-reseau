@@ -19,6 +19,8 @@ import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import TipsAndUpdates from '@mui/icons-material/TipsAndUpdates'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import Forum from '@mui/icons-material/Forum'
+import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
+import TaskAlt from '@mui/icons-material/TaskAlt'
 
 export interface Destination {
   chemin: string
@@ -29,13 +31,19 @@ export interface Destination {
   sprint: string
 }
 
-// Destinations principales : barre du bas sur téléphone, haut du menu latéral sur PC
+export const actions: Destination = { chemin: '/actions', libelle: 'Actions', description: 'Actions à faire et faites sur les magasins', icone: <TaskAltOutlined />, iconeActive: <TaskAlt />, sprint: 'Sprint 15' }
+
+// Destinations principales : haut du menu latéral sur PC
 export const principales: Destination[] = [
   { chemin: '/', libelle: 'Dashboard', description: 'Ce qui demande ton attention aujourd’hui', icone: <DashboardOutlined />, iconeActive: <Dashboard />, sprint: 'Sprint 4' },
   { chemin: '/magasins', libelle: 'Magasins', description: 'Tous les magasins, leur fiche complète et la carte', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 1' },
   { chemin: '/visites', libelle: 'Visites', description: 'Visites terrain, audits et couverture du semestre', icone: <EventNoteOutlined />, iconeActive: <EventNote />, sprint: 'Sprint 3' },
+  actions,
   { chemin: '/plus/sante', libelle: 'Santé du parc', description: 'Nine box des magasins et suivi des déploiements', icone: <MonitorHeartOutlined />, sprint: 'Sprint 4' },
 ]
+
+// Barre du bas sur téléphone (suivie de « Plus », qui reprend les autres)
+export const barreTelephone = principales.filter((d) => d.chemin !== '/plus/sante')
 
 // Suite de la partie classique : sous les principales dans le menu PC, dans « Plus » sur téléphone
 export const messages: Destination = { chemin: '/messages', libelle: 'Messages', description: 'Conversations par personne', icone: <ForumOutlined />, iconeActive: <Forum />, sprint: 'Sprint 14' }
@@ -59,6 +67,7 @@ export const parametres: Destination[] = [
 export const espaceFranchise: Destination[] = [
   { chemin: '/', libelle: 'Dashboard', description: 'Mes chiffres, mon plan d’action, mes visites', icone: <DashboardOutlined />, iconeActive: <Dashboard />, sprint: 'Sprint 11' },
   { chemin: '/magasins', libelle: 'Mes magasins', description: 'Fiche, chiffres, visites et campagnes', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 11' },
+  { ...actions, libelle: 'Actions', description: 'Mes actions à faire et faites' },
   messages,
   { chemin: '/bonnes-pratiques', libelle: 'Bonnes pratiques', description: 'Initiatives réussies du réseau', icone: <TipsAndUpdatesOutlined />, iconeActive: <TipsAndUpdates />, sprint: 'Sprint 11' },
 ]
