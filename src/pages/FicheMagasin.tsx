@@ -39,6 +39,8 @@ import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
+import { DialogPlanifier } from '../components/DialogPlanifier'
+import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { CampagnesMagasin } from '../components/Campagnes'
 import { BoutonAjouterAction, ListeActions } from '../components/Actions'
 import { ListeAssocies } from '../components/Associes'
@@ -59,7 +61,7 @@ import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import PhoneInTalkOutlined from '@mui/icons-material/PhoneInTalkOutlined'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
-import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
+import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, estVisite, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 
 export function Section({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
   return (
@@ -121,6 +123,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const [reaffectation, setReaffectation] = useState(false)
   const [edition, setEdition] = useState(false)
   const [visite, setVisite] = useState<Visite | null | undefined>(undefined)
+  const [planifier, setPlanifier] = useState(false)
   const [typeVisite, setTypeVisite] = useState('terrain')
   const [saisieChiffres, setSaisieChiffres] = useState<string | null | undefined>(undefined)
   const [confirmation, setConfirmation] = useState('')
@@ -144,7 +147,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
     <>
       <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Magasins</Button>
       <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} retardVisite={rythme?.retard ?? 0}
-        appeler={m.telephone || m.responsable?.telephone || ''} message={() => changerVue('messages')} visite={saisirVisite}
+        appeler={m.telephone || m.responsable?.telephone || ''} message={() => changerVue('messages')} visite={saisirVisite} planifier={() => setPlanifier(true)}
         modifier={referentiels ? () => setEdition(true) : undefined} />
       <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} collants />
       <ContenuOnglet>
@@ -223,6 +226,9 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           setConfirmation(msg)
           if (nom && nom !== m.nom) naviguer(lienFiche(nom), { replace: true })
         }} />}
+        {planifier && <DialogPlanifier reseau={reseau} magasins={[m.nom]} dateInitiale={reseau.jour}
+          visite={reseau.visites.filter((v) => v.magasin === m.nom && v.date > reseau.jour && estVisite(v)).sort((a, b) => a.date.localeCompare(b.date))[0] ?? null}
+          onFermer={(msg) => { setPlanifier(false); if (msg) setConfirmation(msg) }} />}
         {visite !== undefined && <DialogVisite reseau={reseau} visite={visite} magasinsInitiaux={[m.nom]} typeInitial={typeVisite} onFermer={(msg) => { setVisite(undefined); if (msg) setConfirmation(msg) }} />}
         {saisieChiffres !== undefined && <DialogChiffres reseau={reseau} magasin={m.nom} mois={saisieChiffres ?? undefined} onFermer={(msg) => { setSaisieChiffres(undefined); if (msg) setConfirmation(msg) }} />}
         <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
@@ -432,9 +438,9 @@ function SectionPratiques({ reseau, m, signaler }: { reseau: Reseau; m: Magasin;
 }
 
 // Haut de fiche façon profil : initiales, nom, trois compteurs, puis Appeler, Message, Visite
-function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, appeler, message, visite, modifier, retour }: {
+function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, appeler, message, visite, planifier, modifier, retour }: {
   m: Magasin; reseau: Reseau; alerte: ReturnType<typeof analyser>; enRetardNb: number; ouvertes: number; retardVisite: number
-  appeler: string; message: () => void; visite: () => void; modifier?: () => void; retour: { libelle: string; aller: () => void }
+  appeler: string; message: () => void; visite: () => void; planifier: () => void; modifier?: () => void; retour: { libelle: string; aller: () => void }
 }) {
   const c = caseDe(reseau.evaluations[m.nom])
   // Une seule pastille : la plus grave
@@ -454,7 +460,10 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, 
       ]}
       detail={c && <><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} visites par an</>}
       telephone={appeler} modifier={modifier}
-      icones={<Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(m.nom)} aria-label="Préparer la visite" sx={{ width: 48, height: 48 }}><AssignmentOutlined /></IconButton></Tooltip>}
+      icones={<>
+        <Tooltip title="Planifier la visite"><IconButton onClick={planifier} aria-label="Planifier la visite" sx={{ width: 48, height: 48 }}><EventAvailableOutlined /></IconButton></Tooltip>
+        <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(m.nom)} aria-label="Préparer la visite" sx={{ width: 48, height: 48 }}><AssignmentOutlined /></IconButton></Tooltip>
+      </>}
       actions={<>
         <Tooltip title="Message"><IconButton onClick={message} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Tooltip>
         <Tooltip title="Saisir une visite"><IconButton onClick={visite} aria-label="Saisir une visite" sx={rond}><AddOutlined /></IconButton></Tooltip>
