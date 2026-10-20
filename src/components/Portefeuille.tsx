@@ -15,6 +15,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
+import ArrowBack from '@mui/icons-material/ArrowBack'
 import CallOutlined from '@mui/icons-material/CallOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
@@ -31,33 +32,58 @@ import type { Reseau } from '../data/modele'
 // ── Haut de fiche façon profil, pour un Coach ou un Responsable Régional ──
 export interface Compteur { valeur: ReactNode; libelle: string; couleur?: string }
 
-export function ProfilPersonne({ nom, lignes, pastille, compteurs, telephone, libelleAppel = 'Appeler', lienMessage, modifier, actions }: {
+// PC : grande pastille, compteurs en colonnes. Téléphone : en-tête bas (petite pastille, lignes sur une ligne,
+// compteurs en texte, flèche de retour à la place de la pastille) pour laisser la place aux onglets. icones : boutons ronds avant Modifier ; detail : ligne en plus.
+export function ProfilPersonne({ nom, lignes, pastille, compteurs, telephone, libelleAppel = 'Appeler', lienMessage, modifier, actions, icones, detail, retour }: {
   nom: string; lignes: string[]; pastille?: { ton: Ton; libelle: string } | null; compteurs: Compteur[]
-  telephone?: string; libelleAppel?: string; lienMessage?: string; modifier?: () => void; actions?: ReactNode
+  telephone?: string; libelleAppel?: string; lienMessage?: string; modifier?: () => void; actions?: ReactNode; icones?: ReactNode; detail?: ReactNode
+  retour?: { libelle: string; aller: () => void }
 }) {
-  const bouton = { flex: 1, minHeight: 48 } as const
-  // En-tête plus serré sur téléphone : les onglets et leur contenu gardent la place
+  const bouton = { flex: 1, minHeight: 48, minWidth: 0 } as const
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
+  const uneLigne = surPC ? {} : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const
   return (
     <Card sx={{ border: 0, p: { xs: 1.5, md: 3 }, mb: { xs: 1.5, md: 2 } }}>
       <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 2 }, alignItems: 'center' }}>
-        <Initiales nom={nom} taille={surPC ? 72 : 56} />
+        {!surPC && retour
+          ? <IconButton onClick={retour.aller} aria-label={retour.libelle} sx={{ width: 48, height: 48, ml: -1, mr: -1, flexShrink: 0 }}><ArrowBack /></IconButton>
+          : <Initiales nom={nom} taille={surPC ? 72 : 44} />}
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="h1" sx={{ fontSize: { xs: '1.375rem', md: '1.75rem' } }}>{nom}</Typography>
-          {lignes.filter(Boolean).map((l) => <Typography key={l} variant="body2" color="text.secondary">{l}</Typography>)}
+          <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.75rem' }, ...uneLigne }}>{nom}</Typography>
+          {lignes.filter(Boolean).map((l) => <Typography key={l} variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8125rem', md: undefined }, ...uneLigne }}>{l}</Typography>)}
         </Box>
-        {modifier && <Box sx={{ alignSelf: 'flex-start' }}><Tooltip title="Modifier"><IconButton onClick={modifier} aria-label="Modifier" sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip></Box>}
-      </Box>
-      {pastille && <Box sx={{ mt: 1.5 }}><Pastille ton={pastille.ton}>{pastille.libelle}</Pastille></Box>}
-      <Box sx={{ display: 'flex', mt: { xs: 1.5, md: 2 }, py: { xs: 0.75, md: 1 }, borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', '& > * + *': { borderLeft: '1px solid', borderColor: 'divider' } }} role="group" aria-label="En bref">
-        {compteurs.map((c) => (
-          <Box key={c.libelle} sx={{ flex: 1, minWidth: 0, textAlign: 'center', px: 0.5 }}>
-            <Typography sx={{ fontSize: '1.25rem', fontWeight: 700, lineHeight: 1.2, color: c.couleur, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.valeur}</Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{c.libelle}</Typography>
+        {(icones || modifier) && (
+          <Box sx={{ display: 'flex', alignSelf: 'flex-start', mr: { xs: -1, md: 0 } }}>
+            {icones}
+            {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label="Modifier" sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
           </Box>
-        ))}
+        )}
       </Box>
-      <Box sx={{ display: 'flex', gap: 1, mt: { xs: 1.5, md: 2 } }}>
+      {surPC ? (
+        <>
+          {pastille && <Box sx={{ mt: 1.5 }}><Pastille ton={pastille.ton}>{pastille.libelle}</Pastille></Box>}
+          <Box sx={{ display: 'flex', mt: 2, py: 1, borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', '& > * + *': { borderLeft: '1px solid', borderColor: 'divider' } }} role="group" aria-label="En bref">
+            {compteurs.map((c) => (
+              <Box key={c.libelle} sx={{ flex: 1, minWidth: 0, textAlign: 'center', px: 0.5 }}>
+                <Typography sx={{ fontSize: '1.25rem', fontWeight: 700, lineHeight: 1.2, color: c.couleur, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.valeur}</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{c.libelle}</Typography>
+              </Box>
+            ))}
+          </Box>
+          {detail && <Typography variant="body2" sx={{ mt: 1.5 }}>{detail}</Typography>}
+        </>
+      ) : (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.5, rowGap: 0.5, mt: 1 }} role="group" aria-label="En bref">
+          {pastille && <Pastille ton={pastille.ton}>{pastille.libelle}</Pastille>}
+          {compteurs.map((c) => (
+            <Typography key={c.libelle} variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+              <Box component="b" sx={{ color: c.couleur ?? 'text.primary' }}>{c.valeur}</Box> {c.libelle}
+            </Typography>
+          ))}
+          {detail && <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>{detail}</Typography>}
+        </Box>
+      )}
+      <Box sx={{ display: 'flex', gap: 1, mt: { xs: 1, md: 2 } }}>
         <Button variant="outlined" startIcon={<CallOutlined />} href={telephone ? telLien(telephone) : undefined} disabled={!telephone} aria-label={libelleAppel === 'Appeler' ? undefined : `Appeler ${libelleAppel === 'Coach' ? 'mon Coach' : libelleAppel}`} sx={bouton}>{libelleAppel}</Button>
         {lienMessage && <Button variant="outlined" startIcon={<ChatBubbleOutlineOutlined />} component={RouterLink} to={lienMessage} sx={bouton}>Message</Button>}
         {actions}

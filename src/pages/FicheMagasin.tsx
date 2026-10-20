@@ -4,7 +4,8 @@ import type { BonnePratique } from '../data/bonnesPratiques'
 import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import DynamicFeedOutlined from '@mui/icons-material/DynamicFeedOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
-import { GrillePhotos, Initiales, Pastille, TitreSection, type Ton } from '../components/Social'
+import { GrillePhotos, TitreSection, type Ton } from '../components/Social'
+import { ProfilPersonne } from '../components/Portefeuille'
 import { FilActivite } from './Accueil'
 import { filDu } from '../data/fil'
 import { useMessagerie } from '../data/MessagerieContext'
@@ -19,8 +20,6 @@ import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import ArrowBack from '@mui/icons-material/ArrowBack'
 import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
@@ -142,8 +141,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const rubriques = rubriquesFiche.map((r) => (r.vue === 'messages' ? { ...r, pastille: nonLus } : r))
   return (
     <>
-      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 1, ml: -1 }}>Magasins</Button>
-      <ProfilMagasin m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} retardVisite={rythme?.retard ?? 0}
+      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Magasins</Button>
+      <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} retardVisite={rythme?.retard ?? 0}
         appeler={m.telephone || m.responsable?.telephone || ''} message={() => changerVue('messages')} visite={saisirVisite}
         modifier={referentiels ? () => setEdition(true) : undefined} />
       <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} collants />
@@ -431,9 +430,9 @@ function SectionPratiques({ reseau, m, signaler }: { reseau: Reseau; m: Magasin;
 }
 
 // Haut de fiche façon profil : initiales, nom, trois compteurs, puis Appeler, Message, Visite
-function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, appeler, message, visite, modifier }: {
+function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, appeler, message, visite, modifier, retour }: {
   m: Magasin; reseau: Reseau; alerte: ReturnType<typeof analyser>; enRetardNb: number; ouvertes: number; retardVisite: number
-  appeler: string; message: () => void; visite: () => void; modifier?: () => void
+  appeler: string; message: () => void; visite: () => void; modifier?: () => void; retour: { libelle: string; aller: () => void }
 }) {
   const c = caseDe(reseau.evaluations[m.nom])
   // Une seule pastille : la plus grave
@@ -442,42 +441,23 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, 
     : alerte?.statut === 'surveiller' ? { ton: 'orange', libelle: 'À surveiller' }
     : retardVisite > 0 ? { ton: 'orange', libelle: `Visite en retard de ${retardVisite} j` }
     : m.statut !== 'ouvert' ? { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] } : null
-  const compteur = (valeur: ReactNode, libelle: string, couleur?: string) => (
-    <Box sx={{ flex: 1, minWidth: 0, textAlign: 'center', px: 0.5 }}>
-      <Typography sx={{ fontSize: '1.25rem', fontWeight: 700, lineHeight: 1.2, color: couleur, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{valeur}</Typography>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{libelle}</Typography>
-    </Box>
-  )
-  const bouton = { flex: 1, minHeight: 48 } as const
-  // En-tête plus serré sur téléphone : les onglets et leur contenu gardent la place
-  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
+  const bouton = { flex: 1, minHeight: 48, minWidth: 0 } as const
   return (
-    <Card sx={{ border: 0, p: { xs: 1.5, md: 3 }, mb: { xs: 1.5, md: 2 } }}>
-      <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 2 }, alignItems: 'center' }}>
-        <Initiales nom={m.nom} taille={surPC ? 72 : 56} />
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="h1" sx={{ fontSize: { xs: '1.375rem', md: '1.75rem' } }}>{m.nom}</Typography>
-          <Typography variant="body2" color="text.secondary">{[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · ')}</Typography>
-          <Typography variant="body2" color="text.secondary">{[m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')}</Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignSelf: 'flex-start' }}>
-          <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(m.nom)} aria-label="Préparer la visite" sx={{ width: 48, height: 48 }}><AssignmentOutlined /></IconButton></Tooltip>
-          {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label="Modifier" sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
-        </Box>
-      </Box>
-      {pastille && <Box sx={{ mt: 1.5 }}><Pastille ton={pastille.ton}>{pastille.libelle}</Pastille></Box>}
-      <Box sx={{ display: 'flex', mt: { xs: 1.5, md: 2 }, py: { xs: 0.75, md: 1 }, borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', '& > * + *': { borderLeft: '1px solid', borderColor: 'divider' } }} role="group" aria-label="En bref">
-        {compteur(alerte ? formatKEuros(alerte.ca) : '—', alerte ? `CA ${libelleMois(alerte.mois).split(' ')[0]}` : 'CA du mois')}
-        {compteur(alerte?.ecart === null || alerte?.ecart === undefined ? '—' : formatPourcent(alerte.ecart), 'vs l’an dernier', alerte?.ecart !== null && alerte?.ecart !== undefined && alerte.ecart < 0 ? 'error.main' : undefined)}
-        {compteur(ouvertes || '0', ouvertes > 1 ? 'tâches en cours' : 'tâche en cours')}
-      </Box>
-      {c && <Typography variant="body2" sx={{ mt: 1.5 }}><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} visites par an</Typography>}
-      <Box sx={{ display: 'flex', gap: 1, mt: { xs: 1.5, md: 2 } }}>
-        <Button variant="outlined" startIcon={<CallOutlined />} href={appeler ? telLien(appeler) : undefined} disabled={!appeler} sx={bouton}>Appeler</Button>
+    <ProfilPersonne nom={m.nom} retour={retour}
+      lignes={[[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · '), [m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')]}
+      pastille={pastille}
+      compteurs={[
+        { valeur: alerte ? formatKEuros(alerte.ca) : '—', libelle: alerte ? `CA ${libelleMois(alerte.mois).split(' ')[0]}` : 'CA du mois' },
+        { valeur: alerte?.ecart === null || alerte?.ecart === undefined ? '—' : formatPourcent(alerte.ecart), libelle: 'vs l’an dernier', couleur: alerte?.ecart !== null && alerte?.ecart !== undefined && alerte.ecart < 0 ? 'error.main' : undefined },
+        { valeur: ouvertes || '0', libelle: ouvertes > 1 ? 'tâches en cours' : 'tâche en cours' },
+      ]}
+      detail={c && <><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} visites par an</>}
+      telephone={appeler} modifier={modifier}
+      icones={<Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(m.nom)} aria-label="Préparer la visite" sx={{ width: 48, height: 48 }}><AssignmentOutlined /></IconButton></Tooltip>}
+      actions={<>
         <Button variant="outlined" startIcon={<ChatBubbleOutlineOutlined />} onClick={message} sx={bouton}>Message</Button>
         <Button variant="contained" startIcon={<AddOutlined />} onClick={visite} sx={bouton}>Visite</Button>
-      </Box>
-    </Card>
+      </>} />
   )
 }
 

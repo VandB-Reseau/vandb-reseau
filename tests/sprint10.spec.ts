@@ -36,7 +36,7 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   await expect(page.getByRole('heading', { name: 'Équipe' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Journal', exact: true })).toHaveCount(0)
   // En-tête : deux actions en cours dont une en retard
-  await expect(page.getByRole('group', { name: 'En bref' })).toContainText('2tâches en cours')
+  await expect(page.getByRole('group', { name: 'En bref' })).toContainText(/2 ?tâches en cours/)
   await expect(page.getByText('1 tâche en retard', { exact: true })).toBeVisible()
   await onglets.getByRole('tab', { name: 'Actions' }).click()
   const liste = page.getByRole('list', { name: 'Actions en cours de Brest Test' })

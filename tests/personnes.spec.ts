@@ -23,7 +23,7 @@ test('l’organigramme ne modifie plus rien : chaque personne s’ouvre sur sa f
   }
   await page.getByRole('link', { name: 'Alex NORD', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Alex NORD', level: 1 })).toBeVisible()
-  await expect(page.getByRole('group', { name: 'En bref' })).toContainText('3Coachs')
+  await expect(page.getByRole('group', { name: 'En bref' })).toContainText(/3 ?Coachs/)
   await page.getByRole('tab', { name: 'Coachs' }).click()
   await expect(page.getByRole('link', { name: 'Camille TESTARD', exact: true })).toBeVisible()
   await page.getByRole('tab', { name: 'Fiche' }).click()
