@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { Point } from './zones'
+import { centre, type Point } from './zones'
+import { coachA } from './charge'
 import type { Reseau } from './modele'
 
 // Trajets routiers réels (distance et durée en voiture) entre domiciles des Coachs et magasins,
@@ -57,10 +58,15 @@ export async function chargerTrajets(points: Point[]): Promise<boolean> {
   return complet
 }
 
+// Domiciles, magasins, et centre des magasins d'un Coach dont le domicile n'est pas renseigné (point de départ de ses trajets)
 export function pointsDuReseau(reseau: Reseau): Point[] {
+  const sansDomicile = reseau.equipe.filter((c) => c.lat === null || c.lon === null)
+    .map((c) => centre(reseau.magasins.filter((m) => coachA(m, reseau.jour) === c.nom)))
+    .filter((p): p is Point => !!p)
   return [...reseau.equipe, ...reseau.magasins]
     .filter((x) => x.lat !== null && x.lon !== null)
     .map((x) => ({ lat: x.lat as number, lon: x.lon as number }))
+    .concat(sansDomicile)
 }
 
 // Charge les trajets routiers du réseau ; « version » change quand de nouveaux trajets arrivent

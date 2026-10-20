@@ -10,6 +10,7 @@ import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined'
 import MonitorHeartOutlined from '@mui/icons-material/MonitorHeartOutlined'
 import TimelineOutlined from '@mui/icons-material/TimelineOutlined'
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
+import BalanceOutlined from '@mui/icons-material/BalanceOutlined'
 import BadgeOutlined from '@mui/icons-material/BadgeOutlined'
 import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
 import ImportExportOutlined from '@mui/icons-material/ImportExportOutlined'
@@ -47,12 +48,13 @@ export const secondaires: Destination[] = [
 
 // Partie « Paramètres »
 export const parametres: Destination[] = [
-  { chemin: '/equipe', libelle: 'Équipe', description: 'Organisation, charge des Coachs, postes à pourvoir', icone: <GroupsOutlined />, iconeActive: <Groups />, sprint: 'Sprint 2' },
+  { chemin: '/equipe', libelle: 'Équipe', description: 'Organisation, portefeuilles, postes à pourvoir', icone: <GroupsOutlined />, iconeActive: <Groups />, sprint: 'Sprint 2' },
+  { chemin: '/parametres/charge', libelle: 'Charge des Coachs', description: 'Charge, route par an, répartitions à évaluer', icone: <BalanceOutlined />, sprint: 'Sprint 19' },
   { chemin: '/parametres/evolution', libelle: 'Évolution du parc', description: 'Ouvertures par année', icone: <TimelineOutlined />, sprint: 'Sprint 4' },
   { chemin: '/parametres/collaborateurs', libelle: 'Collaborateurs', description: 'Coachs, Responsables Régionaux, Directeur de réseau', icone: <BadgeOutlined />, sprint: 'Sprint 4' },
   { chemin: '/parametres/franchises', libelle: 'Franchisés', description: 'Franchisés et leurs magasins', icone: <HandshakeOutlined />, sprint: 'Sprint 4' },
   { chemin: '/parametres/donnees', libelle: 'Import et export', description: 'Référentiels en Excel et sauvegarde complète', icone: <ImportExportOutlined />, sprint: 'Sprint 8' },
-  { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Charge des Coachs, alertes, nine box, audits', icone: <SettingsOutlined />, sprint: 'Sprint 5' },
+  { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Règle de charge, alertes, nine box, audits', icone: <SettingsOutlined />, sprint: 'Sprint 5' },
 ]
 
 // Espace d'un franchisé : ses magasins seulement, sans Paramètres

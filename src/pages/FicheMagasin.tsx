@@ -39,6 +39,7 @@ import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
+import { EnvoyerCompteRendu } from '../components/EnvoyerCompteRendu'
 import { DialogPlanifier } from '../components/DialogPlanifier'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { CampagnesMagasin } from '../components/Campagnes'
@@ -259,6 +260,7 @@ function SectionVisites({ reseau, m, saisir, modifier }: { reseau: Reseau; m: Ma
             <RangeePhotos photos={v.photos} />
           </Box>
           <Tooltip title="Compte rendu PDF"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu du ${dateCourte(v.date)}`}><PictureAsPdfOutlined /></IconButton></Tooltip>
+          <EnvoyerCompteRendu reseau={reseau} visite={v} icone />
           <Tooltip title="Modifier"><IconButton onClick={() => modifier(v)} aria-label={`Modifier la visite du ${dateCourte(v.date)}`}><EditOutlined /></IconButton></Tooltip>
         </Box>
       ))}
