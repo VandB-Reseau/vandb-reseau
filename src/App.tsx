@@ -11,6 +11,7 @@ import { Evolution } from './pages/Evolution'
 import { Personnes } from './pages/VuePersonnes'
 import { Conversations } from './pages/Conversations'
 import { Notifications } from './pages/Notifications'
+import { PageActions } from './pages/PageActions'
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -66,6 +67,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/parametres/collaborateurs" element={<Personnes perimetre="collaborateurs" />} />
         <Route path="/parametres/franchises" element={<Personnes perimetre="franchises" />} />
         <Route path="/visites" element={<Visites />} />
+        <Route path="/actions" element={<PageActions />} />
         <Route path="/messages" element={<Conversations />} />
         <Route path="/messages/:nom" element={<Conversations />} />
         <Route path="/messages/personne/:cle" element={<Conversations />} />
@@ -96,6 +98,7 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
         <Route path="/magasins/:nom" element={<FicheMagasinFranchise />} />
         <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
         <Route path="/bonnes-pratiques" element={<PratiquesFranchise />} />
+        <Route path="/actions" element={<PageActions />} />
         <Route path="/messages" element={<Conversations lectureSeule={apercu} />} />
         <Route path="/messages/:nom" element={<Conversations lectureSeule={apercu} />} />
         <Route path="/messages/personne/:cle" element={<Conversations lectureSeule={apercu} />} />

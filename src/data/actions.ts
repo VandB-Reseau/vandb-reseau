@@ -18,7 +18,7 @@ export function normaliserActionsLibres(v: unknown): Record<string, ActionLibre[
     const liste = l.filter((a) => a && typeof a === 'object' && (a as ActionLibre).id && String((a as ActionLibre).action ?? '').trim()).map((x) => {
       const a = x as Record<string, unknown>
       return { id: String(a.id), action: String(a.action), porteur: String(a.porteur ?? ''), echeance: String(a.echeance ?? ''), creeLe: String(a.creeLe ?? ''),
-        ...(a.faite ? { faite: String(a.faite) } : {}), ...(a.auteur ? { auteur: String(a.auteur) } : {}) }
+        ...(a.faite ? { faite: String(a.faite) } : {}), ...(a.faite && a.faitePar ? { faitePar: String(a.faitePar) } : {}), ...(a.auteur ? { auteur: String(a.auteur) } : {}) }
     })
     if (liste.length) r[magasin] = liste
   }

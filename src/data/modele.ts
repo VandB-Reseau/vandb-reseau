@@ -139,7 +139,8 @@ export const libelleTypeVisite = (t: string) => typesVisite.find((x) => x.id ===
 
 export interface Document { label: string; url: string }
 // echeance : AAAA-MM-JJ (texte libre pour les plans saisis avant) ; faite : date de réalisation, vide tant qu'elle est en cours
-export interface ActionPlan { id?: string; action: string; porteur: string; echeance: string; faite?: string }
+// faitePar : qui l'a cochée faite
+export interface ActionPlan { id?: string; action: string; porteur: string; echeance: string; faite?: string; faitePar?: string }
 // Action ajoutée hors visite, sur un magasin (app_config, clé actions, par magasin)
 export interface ActionLibre extends ActionPlan { id: string; creeLe: string; auteur?: string }
 

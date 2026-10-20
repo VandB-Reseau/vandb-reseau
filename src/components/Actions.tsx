@@ -12,10 +12,13 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
+import CheckCircle from '@mui/icons-material/CheckCircle'
+import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import { useReseau } from '../data/ReseauContext'
 import { useAuth } from '../auth/AuthContext'
 import { enregistrerActionLibre, marquerActions, supprimerActionLibre } from '../data/chargement'
 import { echeanceDate, enRetard, type ActionSuivie } from '../data/actions'
+import { ajouterActionFranchise, ErreurAction, marquerActionFranchise } from '../data/espaceFranchise'
 import { associesEnPlace } from '../data/associes'
 import { coachA } from '../data/charge'
 import type { ActionLibre, Reseau } from '../data/modele'
@@ -23,22 +26,51 @@ import { dateCourte, lienFiche } from '../lib/format'
 import { lienCompteRendu } from '../data/visites'
 import { Fenetre } from './EditionEquipe'
 
-function LigneAction({ reseau, x, avecMagasin, cocher, enCours, modifier }: { reseau: Reseau; x: ActionSuivie; avecMagasin?: boolean; cocher: (faite: boolean) => void; enCours: boolean; modifier?: () => void }) {
+// Écriture des actions : l'équipe écrit directement ; un franchisé passe par les fonctions de la base ;
+// l'aperçu de l'espace d'un franchisé ne modifie rien
+// eslint-disable-next-line react-refresh/only-export-components
+export function useEcritureActions(reseau: Reseau) {
+  const { profil } = useAuth()
+  const franchise = !!reseau.espace
+  const lectureSeule = franchise && profil?.role !== 'franchise'
+  const cocher = async (x: ActionSuivie, faite: boolean) => {
+    if (franchise) {
+      if (x.libre) return marquerActionFranchise(x.magasin, faite, { libre: x.libre.id })
+      if (x.visite?.id != null) return marquerActionFranchise(x.magasin, faite, { visite: x.visite.id, index: x.index, texte: x.a.action })
+      return
+    }
+    const jour = faite ? reseau.jour : ''
+    const cible = x.libre ? { libre: x.libre.id, magasin: x.magasin, faite: jour } : x.visite?.id != null ? { visite: x.visite.id, index: x.index, faite: jour } : null
+    if (cible) await marquerActions([cible], profil?.nom ?? '')
+  }
+  return { franchise, lectureSeule, cocher }
+}
+
+const messageErreur = (e: unknown) => (e instanceof ErreurAction ? e.message : 'L’action n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.')
+
+// Ligne d'une action ; sans « cocher », lecture seule
+export function LigneAction({ reseau, x, avecMagasin, cocher, enCours = false, modifier }: { reseau: Reseau; x: ActionSuivie; avecMagasin?: boolean; cocher?: (faite: boolean) => void; enCours?: boolean; modifier?: () => void }) {
   const retard = enRetard(x.a, reseau.jour)
   const echeance = x.a.echeance && (echeanceDate(x.a) ? dateCourte(x.a.echeance) : x.a.echeance)
+  const auteur = x.libre?.auteur ? ` par ${x.libre.auteur}` : ''
   const origine = x.visite
     ? <Link component={RouterLink} to={lienCompteRendu(x.visite)}>visite du {dateCourte(x.visite.date)}</Link>
-    : x.date ? `ajoutée le ${dateCourte(x.date)}` : 'hors visite'
+    : x.date ? `ajoutée le ${dateCourte(x.date)}${auteur}` : 'hors visite'
+  const faite = x.a.faite ? `faite le ${dateCourte(x.a.faite)}${x.a.faitePar ? ` par ${x.a.faitePar}` : ''}` : null
   return (
     <Box component="li" sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, py: 0.75, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
-      <Checkbox checked={!!x.a.faite} disabled={enCours} onChange={(e) => cocher(e.target.checked)} sx={{ width: 48, height: 48, flexShrink: 0 }}
-        slotProps={{ input: { 'aria-label': `${x.a.faite ? 'Remettre en cours' : 'Marquer faite'} : ${x.a.action}` } }} />
+      {cocher
+        ? <Checkbox checked={!!x.a.faite} disabled={enCours} onChange={(e) => cocher(e.target.checked)} sx={{ width: 48, height: 48, flexShrink: 0 }}
+            slotProps={{ input: { 'aria-label': `${x.a.faite ? 'Remettre en cours' : 'Marquer faite'} : ${x.a.action}` } }} />
+        : <Box sx={{ width: 48, height: 48, flexShrink: 0, display: 'grid', placeItems: 'center', color: x.a.faite ? 'success.main' : 'text.secondary' }}>
+            {x.a.faite ? <CheckCircle aria-label="Faite" /> : <RadioButtonUnchecked aria-label="À faire" />}
+          </Box>}
       <Box sx={{ flex: 1, minWidth: 0, py: 1 }}>
-        <Typography variant="body1" sx={{ fontWeight: 500, textDecoration: x.a.faite ? 'line-through' : undefined, color: x.a.faite ? 'text.secondary' : undefined }}>{x.a.action}</Typography>
+        <Typography variant="body1" sx={{ fontWeight: 500, textDecoration: x.a.faite ? 'line-through' : undefined, color: x.a.faite ? 'text.secondary' : undefined, overflowWrap: 'anywhere' }}>{x.a.action}</Typography>
         <Typography variant="body2" color="text.secondary">
           {avecMagasin && <><Link component={RouterLink} to={lienFiche(x.magasin)}>{x.magasin}</Link> · </>}
-          {[x.a.porteur, x.a.faite ? `faite le ${dateCourte(x.a.faite)}` : null].filter(Boolean).join(' · ')}
-          {(x.a.porteur || x.a.faite) && ' · '}
+          {[x.a.porteur, faite].filter(Boolean).join(' · ')}
+          {(x.a.porteur || faite) && ' · '}
           {origine}
         </Typography>
       </Box>
@@ -57,20 +89,19 @@ export function ListeActions({ reseau, actions, avecMagasin, signaler, libelle, 
   const [edition, setEdition] = useState<ActionSuivie | null | undefined>(undefined)
   const ouvertes = actions.filter((x) => !x.a.faite)
   const faites = actions.filter((x) => x.a.faite)
+  const ecriture = useEcritureActions(reseau)
   const cocher = async (x: ActionSuivie, faite: boolean) => {
-    const jour = faite ? reseau.jour : ''
-    const cible = x.libre ? { libre: x.libre.id, magasin: x.magasin, faite: jour } : x.visite?.id != null ? { visite: x.visite.id, index: x.index, faite: jour } : null
-    if (!cible) return
     setEnCours(x.cle)
     try {
-      await marquerActions([cible])
+      await ecriture.cocher(x, faite)
       await recharger()
       signaler(faite ? 'Action marquée faite.' : 'Action remise en cours.')
-    } catch { signaler('L’action n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.') }
+    } catch (e) { signaler(messageErreur(e)) }
     finally { setEnCours(null) }
   }
-  const ligne = (x: ActionSuivie) => <LigneAction key={x.cle} reseau={reseau} x={x} avecMagasin={avecMagasin} enCours={enCours === x.cle} cocher={(f) => cocher(x, f)}
-    modifier={x.libre && magasins.length ? () => setEdition(x) : undefined} />
+  const ligne = (x: ActionSuivie) => <LigneAction key={x.cle} reseau={reseau} x={x} avecMagasin={avecMagasin} enCours={enCours === x.cle}
+    cocher={ecriture.lectureSeule ? undefined : (f) => void cocher(x, f)}
+    modifier={x.libre && magasins.length && !ecriture.franchise ? () => setEdition(x) : undefined} />
   return (
     <>
       {ouvertes.length === 0
@@ -88,11 +119,12 @@ export function ListeActions({ reseau, actions, avecMagasin, signaler, libelle, 
 }
 
 // Bouton « Ajouter une action » et sa fenêtre, pour l'en-tête d'une section
-export function BoutonAjouterAction({ reseau, magasins, signaler }: { reseau: Reseau; magasins: string[]; signaler: (m: string) => void }) {
+export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false }: { reseau: Reseau; magasins: string[]; signaler: (m: string) => void; plein?: boolean }) {
   const [ouvert, setOuvert] = useState(false)
+  if (useEcritureActions(reseau).lectureSeule || !magasins.length) return null
   return (
     <>
-      <Button startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>Ajouter une action</Button>
+      <Button variant={plein ? 'contained' : 'text'} startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>Ajouter une action</Button>
       {ouvert && <DialogAction reseau={reseau} magasins={magasins} action={null} onFermer={(msg) => { setOuvert(false); if (msg) signaler(msg) }} />}
     </>
   )
@@ -102,6 +134,7 @@ const dateValide = (d: string) => !d || /^\d{4}-\d{2}-\d{2}$/.test(d)
 
 export function DialogAction({ reseau, magasins, action, onFermer }: { reseau: Reseau; magasins: string[]; action: ActionSuivie | null; onFermer: (msg?: string) => void }) {
   const { profil } = useAuth()
+  const { franchise } = useEcritureActions(reseau)
   const a = action?.libre ?? null
   const [magasin, setMagasin] = useState(action?.magasin ?? (magasins.length === 1 ? magasins[0] : ''))
   const [texte, setTexte] = useState(a?.action ?? '')
@@ -114,7 +147,11 @@ export function DialogAction({ reseau, magasins, action, onFermer }: { reseau: R
     <Fenetre titre={a ? 'Modifier l’action' : 'Ajouter une action'} ouvert onFermer={onFermer}
       valide={!!propre && !!magasin && dateValide(echeance)}
       enregistrer={async () => {
-        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}) }
+        if (franchise) {
+          await ajouterActionFranchise(magasin, propre, porteur.trim(), echeance)
+          return 'Action ajoutée.'
+        }
+        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}) }
         await enregistrerActionLibre(magasin, l)
         return a ? 'Action mise à jour.' : 'Action ajoutée.'
       }}

@@ -134,7 +134,7 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
       <Bloc titre="Visites en retard" icone={<EventBusyOutlined />} total={aVisiter.length} lien="/visites" libelleLien="Voir le rythme de visite" vide={`Tous les magasins sont à jour de leurs visites sur ${a.court}.`}>
         {aVisiter.slice(0, MAX).map((l) => <Ligne key={l.magasin.nom} lien={lienFiche(l.magasin.nom)} titre={l.magasin.nom} detail={[avecCoach && (l.coach ? `Coach ${l.coach}` : 'Sans Coach'), l.derniere ? `dernière visite le ${dateCourte(l.derniere.date)}` : 'jamais visité', `une visite tous les ${l.intervalle} jours`].filter(Boolean).join(' · ')} fin={<Chip size="small" color="warning" label={`${l.retard} j de retard`} sx={{ fontSize: 12, fontWeight: 600 }} />} />)}
       </Bloc>
-      <Bloc titre="Actions à échéance" icone={<TaskAltOutlined />} total={actionsProches.length} lien={p.type === 'coach' ? `${lienCoach(p.nom)}?vue=actions` : '/visites?vue=historique'} libelleLien={p.type === 'coach' ? 'Voir toutes ses actions' : 'Voir les visites'} vide="Aucune action en retard ni à échéance dans les quinze jours.">
+      <Bloc titre="Actions à échéance" icone={<TaskAltOutlined />} total={actionsProches.length} lien={sansParametres || p.type === 'reseau' ? '/actions' : `/actions?vue=${encodeURIComponent(cleVue(p))}`} libelleLien="Voir toutes les actions" vide="Aucune action en retard ni à échéance dans les quinze jours.">
         {actionsProches.slice(0, MAX).map((x) => <Ligne key={x.cle} lien={`${lienFiche(x.magasin)}?vue=actions`} titre={x.a.action} detail={[x.magasin, x.a.porteur].filter(Boolean).join(' · ')}
           fin={<Chip size="small" color={enRetard(x.a, j) ? 'error' : 'default'} variant={enRetard(x.a, j) ? 'filled' : 'outlined'} label={enRetard(x.a, j) ? `En retard · ${dateCourte(x.a.echeance)}` : dateCourte(x.a.echeance)} sx={{ fontSize: 12, fontWeight: 600 }} />} />)}
       </Bloc>
@@ -170,7 +170,7 @@ function salutation(): string {
 }
 
 // Le Directeur choisit sa vue (réseau, un Responsable Régional, un Coach) ; un Coach ou un RR voit ses magasins
-function ChoixVue({ reseau, valeur, onChange }: { reseau: Reseau; valeur: Perimetre; onChange: (p: Perimetre) => void }) {
+export function ChoixVue({ reseau, valeur, onChange }: { reseau: Reseau; valeur: Perimetre; onChange: (p: Perimetre) => void }) {
   const options = [
     { cle: 'reseau', libelle: 'Tout le réseau' },
     ...reseau.rrs.map((r) => ({ cle: `rr:${r.id}`, libelle: r.nom })),

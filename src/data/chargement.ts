@@ -2,7 +2,7 @@ import { renommerAccesCoach } from './accesEquipe'
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { avecPoint, definirGrille, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
-import type { ActionLibre, Conge, Evenement, NoteMagasin, Reseau, Visite } from './modele'
+import type { ActionLibre, ActionPlan, Conge, Evenement, NoteMagasin, Reseau, Visite } from './modele'
 import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
 import { normaliserParties, normaliserPlan } from './compteRendu'
@@ -425,7 +425,7 @@ export function enregistrerActionLibre(magasin: string, a: Omit<ActionLibre, 'id
     const l = t[magasin] ?? (t[magasin] = [])
     const i = a.id ? l.findIndex((x) => x.id === a.id) : -1
     const propre: ActionLibre = { ...a, id: a.id || `l_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}` }
-    if (!propre.faite) delete propre.faite
+    if (!propre.faite) { delete propre.faite; delete propre.faitePar }
     if (i >= 0) l[i] = propre
     else l.push(propre)
   })
@@ -633,15 +633,18 @@ export async function importerVisites(visites: { magasin: string; date: string; 
 }
 // Actions marquées faites (date) ou remises en cours ('') : celles d'un plan sont relues puis réécrites visite par visite,
 // celles ajoutées hors visite (libre = id) dans la clé actions
-export async function marquerActions(lot: ({ visite: number; index: number; faite: string } | { libre: string; magasin: string; faite: string })[]) {
+// par : nom de la personne qui coche l'action faite
+export async function marquerActions(lot: ({ visite: number; index: number; faite: string } | { libre: string; magasin: string; faite: string })[], par = '') {
+  const marquer = (a: ActionPlan, faite: string) => {
+    if (faite) { a.faite = faite; if (par) a.faitePar = par; else delete a.faitePar }
+    else { delete a.faite; delete a.faitePar }
+  }
   const libres = lot.filter((l) => 'libre' in l)
   if (libres.length) {
     await modifierActionsLibres((t) => {
       for (const l of libres) {
         const a = t[l.magasin]?.find((x) => x.id === l.libre)
-        if (!a) continue
-        if (l.faite) a.faite = l.faite
-        else delete a.faite
+        if (a) marquer(a, l.faite)
       }
     })
   }
@@ -652,9 +655,7 @@ export async function marquerActions(lot: ({ visite: number; index: number; fait
     const plan = normaliserPlan(lu.data?.[0]?.action_plan)
     for (const l of plans.filter((x) => x.visite === id)) {
       const a = plan[l.index]
-      if (!a) continue
-      if (l.faite) a.faite = l.faite
-      else delete a.faite
+      if (a) marquer(a, l.faite)
     }
     verifier(await supabase.from('visits').update({ action_plan: plan }).eq('id', id))
   }
