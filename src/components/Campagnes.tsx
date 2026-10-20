@@ -181,7 +181,7 @@ export function VueCampagnes({ reseau }: { reseau: Reseau }) {
   const choisie = reseau.campagnes.liste.find((c) => c.id === params.get('campagne'))
   const ouvrir = (id: string | null) => setParams((p) => { const n = new URLSearchParams(p); if (id) n.set('campagne', id); else n.delete('campagne'); return n })
   const droits = useDroitsCampagnes()
-  const nouvelle = droits.creer ? <BoutonAction libelle="Nouvelle campagne" onClick={() => setEdition(null)} /> : null
+  const nouvelle = droits.creer ? <BoutonAction libelle="Nouvelle campagne" court="Campagne" onClick={() => setEdition(null)} /> : null
   // Hors Directeur : seules les campagnes qui touchent au moins un de ses magasins
   const liste = reseau.campagnes.liste.filter((c) => droits.referentiels || magasinsConcernes(reseau, c).length > 0)
   const parPhase = (ph: Phase) => liste.filter((c) => phase(c, reseau.jour) === ph).sort((a, b) => (ph === 'terminee' ? b.fin.localeCompare(a.fin) : a.debut.localeCompare(b.debut)))

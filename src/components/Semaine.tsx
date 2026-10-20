@@ -45,8 +45,8 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
   const planifier = (magasins: string[], date: string, visite: Visite | null = null) => setPlanif({ magasins, date, visite })
   const unSeul = coachs.length <= 1
   const actions = s && <>
-    {s.aPlanifier.length > 1 && <BoutonAction secondaire libelle="Planifier la tournée" icone={<RouteOutlined />} onClick={() => planifier(s.aPlanifier.map((x) => x.l.magasin.nom), reseau.jour)} />}
-    <BoutonAction libelle="Planifier une visite" icone={<EventAvailableOutlined />} onClick={() => planifier([], reseau.jour)} />
+    {s.aPlanifier.length > 1 && <BoutonAction secondaire libelle="Planifier la tournée" court="Tournée" icone={<RouteOutlined />} onClick={() => planifier(s.aPlanifier.map((x) => x.l.magasin.nom), reseau.jour)} />}
+    <BoutonAction libelle="Planifier une visite" court="Planifier" icone={<EventAvailableOutlined />} onClick={() => planifier([], reseau.jour)} />
   </>
   const barre = (
     <RechercheFiltres actions={actions}
