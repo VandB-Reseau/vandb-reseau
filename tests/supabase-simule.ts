@@ -18,7 +18,7 @@ export interface MessagerieSimulee { messages?: MessageSimule[]; lus?: Record<st
 export const MOI = '00000000-0000-0000-0000-000000000001'
 // Périmètre envoyé par l'app du Directeur (fonction maj_perimetre_equipe)
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
-export interface OptionsSimulation { messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean }
+export interface OptionsSimulation { messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -176,6 +176,15 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
     if (table === 'suivi_magasins' && options.suiviEnConfig) return route.fulfill({ status: 404, json: { code: '42P01', message: 'relation "public.suivi_magasins" does not exist' } })
     if (req.method() !== 'GET' && req.method() !== 'HEAD') {
       options.ecritures?.push({ methode: req.method(), table, corps: req.postDataJSON(), filtre: url.search })
+      // Campagnes régionales : enregistrées telles quelles, relues au chargement suivant
+      if (table === 'campagnes_regions' && options.campagnesRegions !== null) {
+        const liste = (options.campagnesRegions ??= [])
+        const id = url.searchParams.get('id')?.replace(/^eq\./, '')
+        if (req.method() === 'DELETE') options.campagnesRegions = liste.filter((l) => l.id !== id)
+        else if (req.method() === 'PATCH') { const l = liste.find((x) => x.id === id); if (l) Object.assign(l, req.postDataJSON()) }
+        else for (const l of [req.postDataJSON()].flat() as { id: string; rr: string; valeur: unknown }[]) options.campagnesRegions = [...options.campagnesRegions!.filter((x) => x.id !== l.id), { id: l.id, rr: l.rr, valeur: l.valeur }]
+        return route.fulfill({ status: 201, json: [] })
+      }
       if (table === 'suivi_magasins') {
         const corps = req.postDataJSON() as { store_name: string; cle: string; valeur: unknown }[] | null
         const rubrique = req.method() === 'DELETE' ? url.searchParams.get('cle')!.replace(/^eq\./, '') : corps![0].cle
@@ -199,6 +208,10 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       if (v.startsWith('in.(')) return v.slice(4, -1).split(',').map((x) => x.replace(/^"|"$/g, '')).includes(String(l[k]))
       return true
     }))
+    if (table === 'campagnes_regions') {
+      if (options.campagnesRegions === null) return route.fulfill({ status: 404, json: { code: '42P01', message: 'relation "public.campagnes_regions" does not exist' } })
+      return route.fulfill({ json: structuredClone(options.campagnesRegions ?? []) })
+    }
     if (table === 'suivi_magasins') {
       suiviCourant = structuredClone(options.persister ? suiviPersiste : suiviDeBase)
       return route.fulfill({ json: filtrer(suiviCourant) })

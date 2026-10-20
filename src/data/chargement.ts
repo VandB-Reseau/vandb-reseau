@@ -29,6 +29,7 @@ export interface Tables {
   config: { key: string; value: unknown }[]
   surcharges: Ligne[]; affectations: Ligne[]; coachs: Ligne[]; recrues: Ligne[]
   visites: Ligne[]; conges: Ligne[]; evenements: Ligne[]; finances: Ligne[]
+  campagnesRegions?: Ligne[]
 }
 
 const absente = (message: string) => /does not exist|schema cache|Could not find the table/i.test(message)
@@ -50,7 +51,7 @@ let suiviEnTable: boolean | null = null
 
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
-  const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances, suivi] = await Promise.all([
+  const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances, suivi, regions] = await Promise.all([
     supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
@@ -61,6 +62,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
     supabase.from('events').select('*').order('start_date'),
     toutLire(() => supabase.from('store_finance').select('*').order('month').order('store_name')),
     toutLire(() => supabase.from('suivi_magasins').select('store_name,cle,valeur').order('store_name').order('cle')),
+    supabase.from('campagnes_regions').select('id,rr,valeur').order('id'),
   ])
   const erreur = config.error ?? surcharges.error ?? affectations.error ?? coachs.error ?? (suivi.error && !absente(suivi.error.message) ? suivi.error : null)
   if (erreur) throw new ErreurChargement(erreur.message)
@@ -72,6 +74,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
     config: suiviEnTable ? configDepuisSuivi(lignesConfig, suivi.data as { store_name: string; cle: string; valeur: unknown }[]) : lignesConfig,
     surcharges: surcharges.data ?? [], affectations: affectations.data ?? [], coachs: coachs.data ?? [],
     recrues: facultative(recrues), visites: facultative(visites), conges: facultative(conges), evenements: facultative(evenements), finances: facultative(finances),
+    campagnesRegions: facultative(regions),
   }, jour)
 }
 
@@ -108,7 +111,7 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   reseau.audits = json<Audits>(cle('audits'), {})
   reseau.grilles = normaliserGrilles(json<unknown>(cle('grilles_audit'), {}))
   reseau.pratiques = normaliserPratiques(json<unknown>(cle('bonnes_pratiques'), []))
-  reseau.campagnes = normaliserCampagnes(json<unknown>(cle('campagnes'), {}))
+  reseau.campagnes = normaliserCampagnes(json<unknown>(cle('campagnes'), {}), tables.campagnesRegions)
   reseau.associes = normaliserAssocies(json<unknown>(cle('associes'), {}))
   reseau.actionsLibres = normaliserActionsLibres(json<unknown>(cle('actions'), {}))
   reseau.derniereSauvegarde = json<{ date?: string }>(cle('derniere_sauvegarde'), {}).date ?? ''
@@ -556,6 +559,11 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
       for (const c of cp.valeur.liste ?? []) c.magasins = (c.magasins ?? []).map((n) => (n === ancienNom ? f.nom : n))
       await ecrireSuivi('campagnes', cp.valeur, cp)
     }
+    const regions = await supabase.from('campagnes_regions').select('id,valeur')
+    for (const l of regions.error ? [] : regions.data ?? []) {
+      const v = l.valeur as Campagne | null
+      if (v?.magasins?.includes(ancienNom)) verifier(await supabase.from('campagnes_regions').update({ valeur: { ...v, magasins: v.magasins.map((n) => (n === ancienNom ? f.nom : n)) } }).eq('id', l.id))
+    }
     for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes', 'actions'] as const) {
       const lu = await lireSuivi<Record<string, unknown>>(cleConfig, {})
       const cibles = (cleConfig === 'deploiements' ? [lu.valeur.valeurs, lu.valeur.journal] : [lu.valeur]) as (Record<string, unknown> | undefined)[]
@@ -847,13 +855,21 @@ function modifierCampagnes(changer: (c: Campagnes) => void) {
   })
 }
 
-// Campagne ajoutée ou modifiée (même id) ; null la supprime avec ses constats
-export function enregistrerCampagne(id: string, campagne: Campagne | null) {
+// Campagne ajoutée ou modifiée (même id) ; null la supprime avec ses constats.
+// Une campagne régionale est rangée à part (table campagnes_regions), écrite par son Responsable Régional.
+export async function enregistrerCampagne(id: string, campagne: Campagne | null, regionale = false) {
+  if (regionale) {
+    verifier(campagne
+      ? await supabase.from('campagnes_regions').upsert({ id, rr: campagne.rr, valeur: campagne, maj_le: new Date().toISOString() })
+      : await supabase.from('campagnes_regions').delete().eq('id', id))
+  }
   return modifierCampagnes((c) => {
-    const i = c.liste.findIndex((x) => x.id === id)
     if (!campagne) { c.liste = c.liste.filter((x) => x.id !== id); delete c.constats[id]; return }
-    if (i >= 0) c.liste[i] = campagne
-    else c.liste.push(campagne)
+    if (!regionale) {
+      const i = c.liste.findIndex((x) => x.id === id)
+      if (i >= 0) c.liste[i] = campagne
+      else c.liste.push(campagne)
+    }
     // Points retirés : leurs constats disparaissent
     const ids = new Set(campagne.points.map((p) => p.id))
     for (const k of Object.values(c.constats[id] ?? {})) for (const p of Object.keys(k)) if (!ids.has(p)) delete k[p]
@@ -874,7 +890,7 @@ export function enregistrerConstats(lot: { campagne: string; magasin: string; po
 }
 
 // ── Sauvegarde complète : toutes les tables lues telles quelles ──
-export const tablesSauvegardees = ['app_config', 'suivi_magasins', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits', 'visits', 'leaves', 'events', 'store_finance'] as const
+export const tablesSauvegardees = ['app_config', 'suivi_magasins', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits', 'visits', 'leaves', 'events', 'store_finance', 'campagnes_regions'] as const
 
 export async function lireSauvegarde(): Promise<Record<string, unknown[]>> {
   const tables: Record<string, unknown[]> = {}

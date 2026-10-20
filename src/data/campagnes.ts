@@ -1,16 +1,24 @@
 // Campagnes commerciales (Noël, Beaujolais…) : des points à constater en magasin pendant une période.
 // Stockées dans app_config (clé campagnes) : la liste des campagnes et les constats par magasin.
+// Campagnes régionales : créées par un Responsable Régional pour ses magasins (table campagnes_regions).
 import type { Magasin, Reseau } from './modele'
 import { coachA } from './charge'
+import { magasinsDu } from './perimetre'
 
 export interface PointCampagne { id: string; libelle: string }
-export type Perimetre = 'tous' | 'franchises' | 'integres' | 'choix'
+export type Perimetre = 'tous' | 'franchises' | 'integres' | 'choix' | 'region'
 export const perimetres: { id: Perimetre; libelle: string }[] = [
   { id: 'tous', libelle: 'Tous les magasins ouverts' },
   { id: 'franchises', libelle: 'Magasins franchisés' },
   { id: 'integres', libelle: 'Magasins intégrés' },
   { id: 'choix', libelle: 'Magasins choisis' },
 ]
+// Campagne régionale : toute la région du Responsable Régional, ou une partie de ses magasins
+export const perimetresRegion: { id: Perimetre; libelle: string }[] = [
+  { id: 'region', libelle: 'Tous les magasins de la région' },
+  { id: 'choix', libelle: 'Magasins choisis' },
+]
+export const libellePerimetre = (c: Campagne) => (c.rr ? perimetresRegion : perimetres).find((p) => p.id === c.perimetre)?.libelle ?? ''
 export const MAX_POINTS = 5
 
 export interface Campagne {
@@ -21,6 +29,7 @@ export interface Campagne {
   points: PointCampagne[]
   perimetre: Perimetre
   magasins: string[] // périmètre « choix »
+  rr?: string // campagne régionale : identifiant du Responsable Régional qui la tient
 }
 
 // Constat d'un point dans un magasin : fait ou non, à une date, par une personne
@@ -32,16 +41,28 @@ export interface Campagnes {
 
 export const campagnesVides = (): Campagnes => ({ liste: [], constats: {} })
 
-export function normaliserCampagnes(brut: unknown): Campagnes {
-  const b = (brut && typeof brut === 'object' ? brut : {}) as Partial<Campagnes>
-  const t = (v: unknown) => (typeof v === 'string' ? v : '')
-  const liste = (Array.isArray(b.liste) ? b.liste : []).filter((c) => c && typeof c === 'object').map((c: Partial<Campagne>) => ({
+const texte = (v: unknown) => (typeof v === 'string' ? v : '')
+function normaliserCampagne(c: Partial<Campagne>, rr = ''): Campagne {
+  const t = texte
+  const choix = rr ? perimetresRegion : perimetres
+  return {
     id: t(c.id), nom: t(c.nom), debut: t(c.debut), fin: t(c.fin),
     points: (Array.isArray(c.points) ? c.points : []).map((p) => ({ id: t(p?.id), libelle: t(p?.libelle) })).filter((p) => p.id && p.libelle),
-    perimetre: perimetres.some((p) => p.id === c.perimetre) ? c.perimetre! : 'tous',
+    perimetre: choix.some((p) => p.id === c.perimetre) ? c.perimetre! : choix[0].id,
     magasins: Array.isArray(c.magasins) ? c.magasins.map(t).filter(Boolean) : [],
-  })).filter((c) => c.id && c.nom)
-  return { liste, constats: b.constats && typeof b.constats === 'object' ? b.constats : {} }
+    ...(rr ? { rr } : {}),
+  }
+}
+
+// regions : lignes de campagnes_regions (une par campagne régionale), ajoutées à la liste
+export function normaliserCampagnes(brut: unknown, regions: { id?: unknown; rr?: unknown; valeur?: unknown }[] = []): Campagnes {
+  const b = (brut && typeof brut === 'object' ? brut : {}) as Partial<Campagnes>
+  const objet = (c: unknown) => !!c && typeof c === 'object'
+  const liste = (Array.isArray(b.liste) ? b.liste : []).filter(objet).map((c: Partial<Campagne>) => normaliserCampagne(c))
+  const ids = new Set(liste.map((c) => c.id))
+  const regionales = regions.filter((r) => texte(r.rr) && objet(r.valeur))
+    .map((r) => normaliserCampagne({ ...(r.valeur as Partial<Campagne>), id: texte(r.id) }, texte(r.rr))).filter((c) => !ids.has(c.id))
+  return { liste: [...liste, ...regionales].filter((c) => c.id && c.nom), constats: b.constats && typeof b.constats === 'object' ? b.constats : {} }
 }
 
 export type Phase = 'encours' | 'avenir' | 'terminee'
@@ -57,6 +78,7 @@ export function magasinsConcernes(reseau: Reseau, c: Campagne): Magasin[] {
   if (c.perimetre === 'franchises') return ouverts.filter((m) => m.franchise)
   if (c.perimetre === 'integres') return ouverts.filter((m) => !m.franchise)
   if (c.perimetre === 'choix') return reseau.magasins.filter((m) => c.magasins.includes(m.nom))
+  if (c.perimetre === 'region') return magasinsDu(reseau, { type: 'rr', id: c.rr ?? '' }).filter((m) => m.statut !== 'avenir')
   return ouverts
 }
 
