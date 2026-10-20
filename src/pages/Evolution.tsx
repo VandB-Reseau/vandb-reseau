@@ -11,6 +11,10 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
+import CalendarTodayOutlined from '@mui/icons-material/CalendarTodayOutlined'
+import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, useAffichage } from '../components/Social'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { lienFiche } from '../lib/format'
@@ -37,6 +41,8 @@ function Contenu({ reseau }: { reseau: Reseau }) {
   const recentes = l.slice(-8)
   const sansDate = reseau.magasins.filter((m) => !m.ouverture).length
   const ouverts = reseau.magasins.filter((m) => m.ouverture && m.ouverture <= reseau.jour).length
+  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
+  const [affichage, setAffichage] = useAffichage('evolution')
   return (
     <>
       <PageHeader titre="Évolution du parc" sousTitre={`${ouverts} magasins ouverts aujourd’hui`} />
@@ -55,6 +61,20 @@ function Contenu({ reseau }: { reseau: Reseau }) {
           </Box>
         </CardContent>
       </Card>
+      {surPC && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}><ChoixAffichage valeur={affichage} onChange={setAffichage} /></Box>}
+      {!surPC || affichage === 'lignes' ? (
+        <CarteLignes label="Évolution par année">
+          {[...l].reverse().map((x) => (
+            <LigneCompacte key={x.a} avatar={<Initiales nom={String(x.a)} icone={<CalendarTodayOutlined />} />}
+              titre={`${x.a}${x.enCours ? ' (en cours)' : ''}`}
+              detail={x.ouvertures.map((m) => m.nom).join(', ')}
+              fin={<Box sx={{ textAlign: 'right' }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '1.125rem', lineHeight: 1.2 }}>+{x.ouvertures.length}</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{x.prevues ? `dont ${x.prevues} prévue${x.prevues > 1 ? 's' : ''} · ` : ''}{x.cumul} au total</Typography>
+              </Box>} />
+          ))}
+        </CarteLignes>
+      ) : (
       <TableContainer component={Card}>
         <Table aria-label="Évolution par année">
           <TableHead>
@@ -77,6 +97,7 @@ function Contenu({ reseau }: { reseau: Reseau }) {
           </TableBody>
         </Table>
       </TableContainer>
+      )}
     </>
   )
 }

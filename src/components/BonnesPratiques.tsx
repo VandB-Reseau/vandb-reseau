@@ -1,11 +1,10 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
-import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import TextField from '@mui/material/TextField'
@@ -15,13 +14,19 @@ import EditOutlined from '@mui/icons-material/EditOutlined'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import { Fenetre } from './EditionEquipe'
 import { ChampDicte } from './SaisieCompteRendu'
-import { ChampPhotos, RangeePhotos } from './GrilleAudit'
+import { ChampPhotos } from './GrilleAudit'
+import { GrillePhotos, Initiales } from './Social'
+import Favorite from '@mui/icons-material/Favorite'
+import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined'
+import { useReseau } from '../data/ReseauContext'
+import { useAuth } from '../auth/AuthContext'
+import { monNomPorteur } from '../data/actions'
 import { ChampRecherche } from './Outils'
 import { FiltreMenu } from './FiltreMenu'
 import { RechercheFiltres } from './RechercheFiltres'
 import { EmptyState } from './EmptyState'
 import { visiteurs } from './DialogVisite'
-import { enregistrerPratique } from '../data/chargement'
+import { basculerJaime, enregistrerPratique } from '../data/chargement'
 import { themesConnus, type BonnePratique } from '../data/bonnesPratiques'
 import { nouvelId, type Photo } from '../data/grilles'
 import { supprimerPhotos } from '../lib/photos'
@@ -44,7 +49,7 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', onFermer
     <Fenetre
       large ouvert onFermer={onFermer} valide={valide} titre={pratique ? 'Modifier la bonne pratique' : 'Nouvelle bonne pratique'}
       enregistrer={async () => {
-        await enregistrerPratique(pratique?.id ?? '', { id: pratique?.id || nouvelId('bp'), magasin, date, titre: titre.trim(), theme: theme.trim(), texte: texte.trim(), par, photos, reprises: reprises.filter((r) => r !== magasin) })
+        await enregistrerPratique(pratique?.id ?? '', { id: pratique?.id || nouvelId('bp'), magasin, date, titre: titre.trim(), theme: theme.trim(), texte: texte.trim(), par, photos, reprises: reprises.filter((r) => r !== magasin), jaime: pratique?.jaime ?? [] })
         const gardees = new Set(photos.map((p) => p.chemin))
         await supprimerPhotos([...new Set([...retirees, ...(pratique?.photos ?? []).map((p) => p.chemin)])].filter((c) => !gardees.has(c)))
         return pratique ? 'Bonne pratique mise à jour.' : 'Bonne pratique enregistrée.'
@@ -73,38 +78,62 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', onFermer
   )
 }
 
+// Publication du fil des bonnes pratiques : magasin, photos en grand, texte, « J'aime » et reprises.
 // modifier absent : lecture seule, sans lien vers les fiches des magasins (espace franchisé) ;
-// ouvrables : magasins dont la fiche s'ouvre (ceux d'un Coach ou d'un RR), par défaut tous
-export function CartePratique({ p, modifier, sansMagasin, ouvrables }: { p: BonnePratique; modifier?: () => void; sansMagasin?: boolean; ouvrables?: Set<string> }) {
-  const nomMagasin = (nom: string, gras?: boolean) => (modifier && (!ouvrables || ouvrables.has(nom)) ? <Link component={RouterLink} to={lienFiche(nom)} sx={gras ? { fontWeight: 600 } : undefined}>{nom}</Link> : <Box component="span" sx={gras ? { fontWeight: 600 } : undefined}>{nom}</Box>)
+// ouvrables : magasins dont la fiche s'ouvre (ceux d'un Coach ou d'un RR), par défaut tous ;
+// moi : nom de la personne de l'équipe qui réagit (absent : pas de bouton « J'aime »)
+export function CartePratique({ p, modifier, sansMagasin, ouvrables, moi }: { p: BonnePratique; modifier?: () => void; sansMagasin?: boolean; ouvrables?: Set<string>; moi?: string }) {
+  const { recharger } = useReseau()
+  const [jaime, setJaime] = useState(p.jaime ?? [])
+  const [envoi, setEnvoi] = useState(false)
+  useEffect(() => setJaime(p.jaime ?? []), [p.jaime])
+  const aime = !!moi && jaime.includes(moi)
+  const reagir = async () => {
+    if (!moi || envoi) return
+    setJaime(aime ? jaime.filter((n) => n !== moi) : [...jaime, moi])
+    setEnvoi(true)
+    try { await basculerJaime(p.id, moi); recharger() } catch { setJaime(p.jaime ?? []) } finally { setEnvoi(false) }
+  }
+  const nomMagasin = (nom: string, gras?: boolean) => (modifier && (!ouvrables || ouvrables.has(nom)) ? <Link component={RouterLink} to={lienFiche(nom)} color="inherit" sx={gras ? { fontWeight: 600 } : undefined}>{nom}</Link> : <Box component="span" sx={gras ? { fontWeight: 600 } : undefined}>{nom}</Box>)
   return (
     <Card component="article" aria-label={p.titre}>
-      <CardContent sx={{ pb: '16px !important' }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="h4" component="h3">{p.titre}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {!sansMagasin && <>{nomMagasin(p.magasin, true)} · </>}
-              {dateCourte(p.date)}{p.par ? ` · ${p.par}` : ''}
-            </Typography>
-          </Box>
-          {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la bonne pratique ${p.titre}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, pt: 1.5, pb: 1 }}>
+        {!sansMagasin && <Initiales nom={p.magasin} taille={40} />}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          {!sansMagasin && <Typography noWrap>{nomMagasin(p.magasin, true)}</Typography>}
+          <Typography variant="body2" color="text.secondary" noWrap>{[dateCourte(p.date), p.par, p.theme].filter(Boolean).join(' · ')}</Typography>
         </Box>
-        {p.theme && <Chip label={p.theme} size="small" sx={{ mt: 1, fontSize: '0.75rem' }} />}
-        {p.texte && <Typography variant="body1" sx={{ mt: 1, whiteSpace: 'pre-line' }}>{p.texte}</Typography>}
-        <RangeePhotos photos={p.photos} />
+        {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la bonne pratique ${p.titre}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
+      </Box>
+      {p.photos.length > 0 && <Box sx={{ px: 2 }}><GrillePhotos photos={p.photos} max={4} colonnes={2} /></Box>}
+      <CardContent sx={{ pt: 1.5, pb: '8px !important' }}>
+        <Typography variant="h4" component="h3">{p.titre}</Typography>
+        {p.texte && <Typography variant="body1" sx={{ mt: 0.5, whiteSpace: 'pre-line' }}>{p.texte}</Typography>}
         {p.reprises.length > 0 && (
           <Typography variant="body2" sx={{ mt: 1 }}>
             <Box component="span" color="text.secondary">Reprise par </Box>
             {p.reprises.map((r, i) => <span key={r}>{i ? ', ' : ''}{nomMagasin(r)}</span>)}
           </Typography>
         )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, ml: -1 }}>
+          {moi ? (
+            <Button onClick={reagir} aria-pressed={aime} startIcon={aime ? <Favorite /> : <FavoriteBorderOutlined />} color={aime ? 'error' : 'inherit'} sx={{ minHeight: 48, px: 1.5 }}>
+              {jaime.length ? `J’aime · ${jaime.length}` : 'J’aime'}
+            </Button>
+          ) : jaime.length > 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, minHeight: 40 }}><FavoriteBorderOutlined fontSize="small" />{jaime.length}</Typography>
+          )}
+          {jaime.length > 0 && moi && <Typography variant="body2" color="text.secondary" noWrap sx={{ minWidth: 0 }}>{jaime.slice(0, 3).join(', ')}{jaime.length > 3 ? ` et ${jaime.length - 3} autre${jaime.length > 4 ? 's' : ''}` : ''}</Typography>}
+        </Box>
       </CardContent>
     </Card>
   )
 }
 
 export function VuePratiques({ reseau, actions, modifier }: { reseau: Reseau; actions?: ReactNode; modifier?: (p: BonnePratique) => void }) {
+  const { profil } = useAuth()
+  // Réactions réservées à l'équipe : l'espace franchisé ne voit que le nombre
+  const moi = modifier ? monNomPorteur(reseau, profil) || undefined : undefined
   const [recherche, setRecherche] = useState('')
   const [themes, setThemes] = useState<string[]>([])
   const presents = [...new Set(reseau.pratiques.map((p) => p.theme).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'))
@@ -125,7 +154,7 @@ export function VuePratiques({ reseau, actions, modifier }: { reseau: Reseau; ac
       </Typography>
       {liste.length === 0
         ? <EmptyState icone={<TipsAndUpdatesOutlined />} titre="Aucune bonne pratique" texte={reseau.pratiques.length ? 'Aucune bonne pratique ne correspond à ces filtres.' : 'Les initiatives réussies des magasins apparaîtront ici.'} />
-        : <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' } }}>{liste.map((p) => <CartePratique key={p.id} p={p} ouvrables={ouvrables} modifier={modifier && ouvrables.has(p.magasin) ? () => modifier(p) : undefined} />)}</Box>}
+        : <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 640, mx: 'auto' }}>{liste.map((p) => <CartePratique key={p.id} p={p} ouvrables={ouvrables} moi={moi} modifier={modifier && ouvrables.has(p.magasin) ? () => modifier(p) : undefined} />)}</Box>}
     </>
   )
 }

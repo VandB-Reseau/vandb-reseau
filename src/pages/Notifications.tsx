@@ -12,6 +12,8 @@ import AlternateEmail from '@mui/icons-material/AlternateEmail'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import NotificationsOutlined from '@mui/icons-material/NotificationsOutlined'
+import DoneAllOutlined from '@mui/icons-material/DoneAllOutlined'
+import { Glisser } from '../components/Social'
 import { useAuth } from '../auth/AuthContext'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
@@ -24,8 +26,9 @@ const PAGE = 100
 const icone = { message: <ForumOutlined />, mention: <AlternateEmail />, visite: <EventNoteOutlined /> }
 const titre = (e: Evenement) => (e.type === 'visite' ? 'Nouveau compte rendu de visite' : e.type === 'mention' ? `${e.auteur} te mentionne` : `Message de ${e.auteur}`)
 
-function LigneEvenement({ e, ouvrir }: { e: Evenement; ouvrir: () => void }) {
+function LigneEvenement({ e, ouvrir, lire }: { e: Evenement; ouvrir: () => void; lire?: () => void }) {
   return (
+    <Glisser libelle="Lu" icone={<DoneAllOutlined />} actif={!!lire && e.nouveau} onGlisser={() => lire?.()} couleur="#1f1f23">
     <ListItemButton onClick={ouvrir} aria-label={`${e.nouveau ? 'Nouveau : ' : ''}${[titre(e), ...e.magasins].join(' · ')}`} sx={{ borderRadius: 3, minHeight: 64, gap: 1.5, alignItems: 'flex-start', py: 1.25 }}>
       <Box sx={{ position: 'relative', mt: 0.25, color: e.type === 'mention' ? 'error.main' : 'text.secondary', display: 'flex' }}>
         {icone[e.type]}
@@ -40,6 +43,7 @@ function LigneEvenement({ e, ouvrir }: { e: Evenement; ouvrir: () => void }) {
         {e.texte && <Typography variant="body2" color={e.nouveau ? 'text.primary' : 'text.secondary'} sx={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{e.texte}</Typography>}
       </Box>
     </ListItemButton>
+    </Glisser>
   )
 }
 
@@ -75,7 +79,7 @@ export function Notifications() {
       {nouvelles.length > 0 && (
         <Box component="section" aria-label="Nouvelles" sx={{ mb: 3 }}>
           <Typography variant="overline" component="h2" color="text.secondary" sx={{ display: 'block', fontWeight: 600, mb: 0.5 }}>Nouvelles</Typography>
-          <Card><List disablePadding sx={{ p: 0.5 }}>{nouvelles.map((e) => <LigneEvenement key={e.cle} e={e} ouvrir={() => ouvrir(e)} />)}</List></Card>
+          <Card><List disablePadding sx={{ p: 0.5 }}>{nouvelles.map((e) => <LigneEvenement key={e.cle} e={e} ouvrir={() => ouvrir(e)} lire={() => lire(e.lecture)} />)}</List></Card>
         </Box>
       )}
       {vues.length > 0 && (

@@ -1,4 +1,5 @@
 import { useAuth } from '../auth/AuthContext'
+import { CarteLignes, Initiales, LigneCompacte, TitreSection } from './Social'
 import { useDroits } from '../auth/Droits'
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
@@ -211,27 +212,19 @@ export function VueCampagnes({ reseau }: { reseau: Reseau }) {
 
 // ── Une campagne : exécution par Responsable Régional, par Coach, par magasin ──
 
-// Sur téléphone : nom, exécutés sur le total et taux, pour tenir dans la largeur
-const pc = { display: { xs: 'none', md: 'table-cell' } }
-function TableBilan({ titre, lignes }: { titre: string; lignes: { nom: string; b: Bilan }[] }) {
+// Une ligne par Responsable Régional ou par Coach : exécutés sur le total, taux en grand
+function LignesBilan({ titre, lignes }: { titre: string; lignes: { nom: string; b: Bilan }[] }) {
   return (
-    <TableContainer component={Card}>
-      <Table size="small" className="colonne-fixe" aria-label={`Exécution par ${titre}`}>
-        <TableHead>
-          <TableRow><TableCell>{titre}</TableCell><TableCell align="right" sx={pc}>Magasins</TableCell><TableCell align="right">Exécutés</TableCell><TableCell align="right" sx={pc}>Constatés</TableCell><TableCell align="right">Taux</TableCell></TableRow>
-        </TableHead>
-        <TableBody>
-          {lignes.map((l) => (
-            <TableRow key={l.nom}>
-              <TableCell>{l.nom}</TableCell><TableCell align="right" sx={pc}>{l.b.total}</TableCell>
-              <TableCell align="right"><Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>{l.b.fait}</Box><Box component="span" sx={{ display: { md: 'none' } }}>{l.b.fait} sur {l.b.total}</Box></TableCell>
-              <TableCell align="right" sx={pc}>{l.b.constates}</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 600 }}>{l.b.taux === null ? '—' : `${l.b.taux} %`}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+    <Box>
+      <TitreSection>{`Par ${titre}`}</TitreSection>
+      <CarteLignes label={`Exécution par ${titre}`}>
+        {lignes.map((l) => (
+          <LigneCompacte key={l.nom} avatar={<Initiales nom={l.nom} />} titre={l.nom}
+            detail={`${l.b.fait} exécuté${l.b.fait > 1 ? 's' : ''} sur ${l.b.total} · ${l.b.constates} constaté${l.b.constates > 1 ? 's' : ''}`}
+            fin={<Typography sx={{ fontWeight: 700, fontSize: '1.125rem' }}>{l.b.taux === null ? '—' : `${l.b.taux} %`}</Typography>} />
+        ))}
+      </CarteLignes>
+    </Box>
   )
 }
 
@@ -276,8 +269,8 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
         </CardContent>
       </Card>
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, mb: 3 }}>
-        <TableBilan titre="Responsable Régional" lignes={bilanPar(reseau, c, concernes, 'rr')} />
-        <TableBilan titre="Coach" lignes={bilanPar(reseau, c, concernes, 'coach')} />
+        <LignesBilan titre="Responsable Régional" lignes={bilanPar(reseau, c, concernes, 'rr')} />
+        <LignesBilan titre="Coach" lignes={bilanPar(reseau, c, concernes, 'coach')} />
       </Box>
       <RechercheFiltres actifs={actifs} recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher un magasin ou un Coach" />}>
         <FiltreMenu libelle="Responsable Régional" choisis={rrs} onChange={setRRs} options={reseau.rrs.filter((r) => concernes.some((m) => m.rr?.id === r.id)).map((r) => ({ valeur: r.id, libelle: r.nom }))} />

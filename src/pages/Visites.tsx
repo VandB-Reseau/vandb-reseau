@@ -43,14 +43,15 @@ import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { DialogVisite, visiteurs } from '../components/DialogVisite'
-import { PastilleSignature, PastilleTypeVisite } from '../components/PastilleVisite'
+import { PastilleSignature } from '../components/PastilleVisite'
+import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, Pastille, useAffichage } from '../components/Social'
 import { anneeDe, anneesDisponibles, lienCompteRendu, semestresDisponibles, suiviRythme, type LigneRythme } from '../data/visites'
 import { nineBox } from '../data/sante'
 import { PastilleCase } from '../components/Sante'
 import { FiltreMenu } from '../components/FiltreMenu'
 import Chip from '@mui/material/Chip'
 import { dateCourte, lienCoach, lienFiche, lienPreparation } from '../lib/format'
-import { nomsVisiteurs, typesVisite, type Reseau, type Visite } from '../data/modele'
+import { libelleTypeVisite, nomsVisiteurs, typesVisite, type Reseau, type Visite } from '../data/modele'
 
 type Edition = { visite: Visite | null; magasins: string[] } | null
 
@@ -98,6 +99,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
   const jours = (n: number) => `${String(Math.round(n * 10) / 10).replace('.', ',')} j`
   const visites = (l: LigneRythme) => `${l.faites} sur ${l.objectif}`
   const { visibles, suite } = useParTranches(lignes, JSON.stringify([a.cle, t, coachs, cases, etats]))
+  const [affichage, setAffichage] = useAffichage('rythme')
 
   return (
     <>
@@ -146,8 +148,11 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
             ))}
           </Box>
 
-          <Typography variant="h3" component="h2" sx={{ mb: 1.5 }}>Par magasin ({lignes.length})</Typography>
-          {surPC ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+            <Typography variant="h3" component="h2" sx={{ flex: 1 }}>Par magasin ({lignes.length})</Typography>
+            {surPC && <ChoixAffichage valeur={affichage} onChange={setAffichage} />}
+          </Box>
+          {surPC && affichage === 'tableau' ? (
             <Card>
               <TableContainer>
                 <Table aria-label="Rythme de visite par magasin" size="small" className="colonne-fixe">
@@ -176,27 +181,17 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
               </TableContainer>
             </Card>
           ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <CarteLignes label="Rythme de visite par magasin">
               {visibles.map((l) => (
-                <Card key={l.magasin.nom}>
-                  <CardContent sx={{ pb: '12px !important' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Link component={RouterLink} to={lienFiche(l.magasin.nom)} variant="h4" sx={{ display: 'block' }}>{l.magasin.nom}</Link>
-                        <Typography variant="body2" color="text.secondary">{l.coach ? `Coach ${l.coach}` : 'Sans Coach'} · {l.derniere ? `dernière visite le ${dateCourte(l.derniere.date)}` : 'jamais visité'}</Typography>
-                      </Box>
-                      <IconButton component={RouterLink} to={lienPreparation(l.magasin.nom)} aria-label={`Préparer la visite de ${l.magasin.nom}`}><AssignmentOutlined /></IconButton>
-                      <IconButton aria-label={`Saisir une visite pour ${l.magasin.nom}`} onClick={() => saisir([l.magasin.nom])}><AddOutlined /></IconButton>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1, alignItems: 'center' }}>
-                      <PastilleCase c={l.case} />
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{visites(l)} en {a.court}</Typography>
-                      <Echeance l={l} />
-                    </Box>
-                  </CardContent>
-                </Card>
+                <LigneCompacte key={l.magasin.nom} lien={lienFiche(l.magasin.nom)} avatar={<Initiales nom={l.magasin.nom} />} titre={l.magasin.nom}
+                  detail={[l.coach || 'Sans Coach', `${visites(l)} en ${a.court}`, l.derniere ? `dernière le ${dateCourte(l.derniere.date)}` : 'jamais visité'].join(' · ')}
+                  fin={l.retard ? <Pastille ton="orange">{`${l.retard} j de retard`}</Pastille> : <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' }, whiteSpace: 'nowrap' }}>avant le {dateCourte(l.prochaine)}</Typography>}
+                  actions={<>
+                    {surPC && <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(l.magasin.nom)} aria-label={`Préparer la visite de ${l.magasin.nom}`}><AssignmentOutlined /></IconButton></Tooltip>}
+                    <Tooltip title="Saisir une visite"><IconButton aria-label={`Saisir une visite pour ${l.magasin.nom}`} onClick={() => saisir([l.magasin.nom])}><AddOutlined /></IconButton></Tooltip>
+                  </>} />
               ))}
-            </Box>
+            </CarteLignes>
           )}
           {suite}
         </>
@@ -211,7 +206,7 @@ function Echeance({ l }: { l: LigneRythme }) {
     : <Typography variant="body2" color="text.secondary" component="span">avant le {dateCourte(l.prochaine)}</Typography>
 }
 
-function VueHistorique({ reseau, modifier, surPC, actions }: { reseau: Reseau; modifier: (v: Visite) => void; surPC: boolean; actions: ReactNode }) {
+function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier: (v: Visite) => void; actions: ReactNode }) {
   const semestres = useMemo(() => semestresDisponibles(reseau), [reseau])
   const [cle, setCle] = useState('')
   const [type, setType] = useState('')
@@ -241,49 +236,15 @@ function VueHistorique({ reseau, modifier, surPC, actions }: { reseau: Reseau; m
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{liste.length} visite{liste.length > 1 ? 's' : ''}</Typography>
       {liste.length === 0 ? (
         <EmptyState icone={<EventNoteOutlined />} titre="Aucune visite" texte={reseau.visites.length ? 'Aucune visite ne correspond à ces filtres.' : 'Saisis ta première visite avec le bouton « Saisir une visite ».'} />
-      ) : surPC ? (
-        <Card>
-          <TableContainer>
-            <Table aria-label="Visites">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Date</TableCell><TableCell>Magasin</TableCell><TableCell>Type</TableCell><TableCell>Visité par</TableCell><TableCell>Notes</TableCell><TableCell>Compte rendu</TableCell><TableCell />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {visibles.map((v) => (
-                  <TableRow key={v.id ?? `${v.magasin}-${v.date}`} hover>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{dateCourte(v.date)}</TableCell>
-                    <TableCell><Link component={RouterLink} to={lienFiche(v.magasin)} sx={{ fontWeight: 600 }}>{v.magasin}</Link></TableCell>
-                    <TableCell><PastilleTypeVisite type={v.type} /></TableCell>
-                    <TableCell>{nomsVisiteurs(v) || <Typography variant="body2" color="text.secondary">Non précisé</Typography>}</TableCell>
-                    <TableCell sx={{ maxWidth: 320 }}><Typography variant="body2" noWrap>{v.notes}</Typography></TableCell>
-                    <TableCell><PastilleSignature requise={v.signatureRequise} signe={!!v.lienSigne} /></TableCell>
-                    <TableCell sx={{ py: 0 }}><Actions v={v} /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <CarteLignes label="Visites">
           {visibles.map((v) => (
-            <Card key={v.id ?? `${v.magasin}-${v.date}`}>
-              <CardContent sx={{ pb: '12px !important' }}>
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Link component={RouterLink} to={lienFiche(v.magasin)} variant="h4" sx={{ display: 'block' }}>{v.magasin}</Link>
-                    <Typography variant="body2" color="text.secondary">{dateCourte(v.date)}{v.visiteurs.length ? ` · ${nomsVisiteurs(v)}` : ''}</Typography>
-                  </Box>
-                  <Actions v={v} />
-                </Box>
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}><PastilleTypeVisite type={v.type} /><PastilleSignature requise={v.signatureRequise} signe={!!v.lienSigne} /></Box>
-                {v.notes && <Typography variant="body2" sx={{ mt: 1 }}>{v.notes}</Typography>}
-              </CardContent>
-            </Card>
+            <LigneCompacte key={v.id ?? `${v.magasin}-${v.date}`} lien={lienFiche(v.magasin)} avatar={<Initiales nom={v.magasin} />} titre={v.magasin}
+              detail={[dateCourte(v.date), libelleTypeVisite(v.type), nomsVisiteurs(v), v.notes].filter(Boolean).join(' · ')}
+              fin={v.signatureRequise ? <PastilleSignature requise signe={!!v.lienSigne} /> : undefined}
+              actions={<Actions v={v} />} />
           ))}
-        </Box>
+        </CarteLignes>
       )}
       {suite}
     </>
@@ -386,7 +347,7 @@ export function Visites() {
             : vue === 'pratiques'
             ? <VuePratiques reseau={reseau} modifier={setPratique} actions={<BoutonAction libelle="Ajouter une bonne pratique" onClick={() => setPratique(null)} />} />
             : vue === 'historique'
-            ? <VueHistorique reseau={reseau} surPC={surPC} actions={actions} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
+            ? <VueHistorique reseau={reseau} actions={actions} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
             : <VueRythme reseau={reseau} surPC={surPC} actions={actions} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
           {edition && <DialogVisite reseau={reseau} visite={edition.visite} magasinsInitiaux={edition.magasins} onFermer={(m) => { setEdition(null); if (m) setMessage(m) }} />}
           {pratique !== undefined && <DialogPratique reseau={reseau} pratique={pratique} onFermer={(m) => { setPratique(undefined); if (m) setMessage(m) }} />}

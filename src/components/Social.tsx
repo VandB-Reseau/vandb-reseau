@@ -1,4 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import ViewAgendaOutlined from '@mui/icons-material/ViewAgendaOutlined'
+import TableChartOutlined from '@mui/icons-material/TableChartOutlined'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -59,7 +63,16 @@ export function Pastille({ ton, children }: { ton: Ton; children: ReactNode }) {
 }
 
 // Ligne compacte : avatar, titre, détail sur une ligne, puis une pastille ou une valeur à droite
-export function LigneCompacte({ avatar, titre, detail, fin, lien, onClick, label }: { avatar?: ReactNode; titre: ReactNode; detail?: ReactNode; fin?: ReactNode; lien?: string; onClick?: () => void; label?: string }) {
+// actions : boutons à droite, hors de la zone cliquable de la ligne
+export function LigneCompacte({ avatar, titre, detail, fin, lien, onClick, label, actions }: { avatar?: ReactNode; titre: ReactNode; detail?: ReactNode; fin?: ReactNode; lien?: string; onClick?: () => void; label?: string; actions?: ReactNode }) {
+  if (actions) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', pr: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 0, display: 'flex' }}><LigneCompacte avatar={avatar} titre={titre} detail={detail} fin={fin} lien={lien} onClick={onClick} label={label} /></Box>
+        {actions}
+      </Box>
+    )
+  }
   const contenu = (
     <>
       {avatar}
@@ -166,6 +179,59 @@ export function GrillePhotos({ photos, max = 3, colonnes = 3 }: { photos: Photo[
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`, gap: 0.5, borderRadius: 3, overflow: 'hidden', maxWidth: n === 1 ? 480 : undefined, '& > div': n === 1 ? { aspectRatio: '4 / 3' } : {} }}>
       {vues.map((p, i) => <Vignette key={p.chemin} chemin={p.chemin} numero={i + 1} reste={i === vues.length - 1 ? photos.length - vues.length : 0} />)}
+    </Box>
+  )
+}
+
+// Lignes par défaut, tableau à la demande (PC) ; le choix est gardé par écran
+export type Affichage = 'lignes' | 'tableau'
+export function useAffichage(ecran: string): [Affichage, (a: Affichage) => void] {
+  const cle = `vandb-affichage-${ecran}`
+  const [a, setA] = useState<Affichage>(() => { try { return localStorage.getItem(cle) === 'tableau' ? 'tableau' : 'lignes' } catch { return 'lignes' } })
+  return [a, (v) => { setA(v); try { localStorage.setItem(cle, v) } catch { /* stockage indisponible */ } }]
+}
+
+export function ChoixAffichage({ valeur, onChange }: { valeur: Affichage; onChange: (a: Affichage) => void }) {
+  return (
+    <ToggleButtonGroup exclusive size="small" value={valeur} onChange={(_e, v: Affichage | null) => v && onChange(v)} aria-label="Affichage">
+      <ToggleButton value="lignes" sx={{ minHeight: 40, px: 1.5, gap: 0.75 }}><ViewAgendaOutlined fontSize="small" />Lignes</ToggleButton>
+      <ToggleButton value="tableau" sx={{ minHeight: 40, px: 1.5, gap: 0.75 }}><TableChartOutlined fontSize="small" />Tableau</ToggleButton>
+    </ToggleButtonGroup>
+  )
+}
+
+// Glisser vers la gauche au doigt (téléphone) pour l'action rapide de la ligne : tâche faite, notification lue.
+// Sans animation : la ligne suit le doigt et revient en place au lâcher ; la souris n'est pas concernée.
+const SEUIL_GLISSER = 96
+export function Glisser({ children, libelle, icone, onGlisser, actif = true, couleur = '#2e7d32' }: { children: ReactNode; libelle: string; icone: ReactNode; onGlisser: () => void; actif?: boolean; couleur?: string }) {
+  const [dx, setDx] = useState(0)
+  const depart = useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null)
+  const vientDeGlisser = useRef(false)
+  if (!actif) return <>{children}</>
+  const fin = () => {
+    if (depart.current?.horizontal && dx <= -SEUIL_GLISSER) onGlisser()
+    vientDeGlisser.current = !!depart.current?.horizontal
+    depart.current = null
+    setDx(0)
+  }
+  return (
+    <Box sx={{ position: 'relative', overflow: 'hidden', touchAction: 'pan-y' }}
+      onPointerDown={(e) => { if (e.pointerType === 'touch') { depart.current = { x: e.clientX, y: e.clientY, horizontal: null }; vientDeGlisser.current = false } }}
+      onPointerMove={(e) => {
+        const d = depart.current
+        if (!d) return
+        const x = e.clientX - d.x, y = e.clientY - d.y
+        if (d.horizontal === null && Math.abs(x) + Math.abs(y) > 10) d.horizontal = Math.abs(x) > Math.abs(y)
+        if (d.horizontal) setDx(Math.min(0, Math.max(x, -160)))
+      }}
+      onPointerUp={fin} onPointerCancel={() => { depart.current = null; setDx(0) }}
+      onClickCapture={(e) => { if (vientDeGlisser.current) { e.preventDefault(); e.stopPropagation(); vientDeGlisser.current = false } }}>
+      {dx < 0 && (
+        <Box aria-hidden sx={{ position: 'absolute', inset: 0, bgcolor: couleur, color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, px: 2.5, fontWeight: 600 }}>
+          {icone}{libelle}
+        </Box>
+      )}
+      <Box sx={{ position: 'relative', bgcolor: 'background.paper', transform: dx ? `translateX(${dx}px)` : undefined }}>{children}</Box>
     </Box>
   )
 }

@@ -191,3 +191,9 @@ export const formatKEuros = (n: number | null) => {
   if (a >= 1000) return `${(n / 1000).toLocaleString('fr-FR', { maximumFractionDigits: a >= 100_000 ? 0 : 1 })} k€`
   return formatEuros(n)
 }
+
+// Chiffre d'affaires des n mois jusqu'à « mois » inclus (null quand le mois manque), pour la mini-courbe
+export function courbeCA(reseau: Reseau, nom: string, mois: string, n = 12): (number | null)[] {
+  const liste = chiffresDuMagasin(reseau, nom)
+  return Array.from({ length: n }, (_x, i) => caDe(liste.find((c) => c.mois === decalerMois(mois, i - n + 1))))
+}
