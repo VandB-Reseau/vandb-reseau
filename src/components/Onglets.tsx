@@ -1,5 +1,6 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import Badge from '@mui/material/Badge'
+import Box from '@mui/material/Box'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import useMediaQuery from '@mui/material/useMediaQuery'
@@ -11,12 +12,20 @@ export interface Rubrique<V extends string> { vue: V; libelle: string; court?: s
 // Onglets des pages en puces, comme dans une app : la rubrique ouverte en noir, les autres cerclées.
 // PC : icône et libellé complet ; téléphone : libellé court seul. La bande défile quand elle déborde.
 // Chaque puce garde une zone tactile de 48 px de haut.
-export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle }: { valeur: V; onChange: (v: V) => void; rubriques: Rubrique<V>[]; libelle: string }) {
+// collants (fiches) : la bande reste sous la barre du haut quand l'en-tête de la fiche a défilé,
+// et changer d'onglet garde la position (RetourEnHaut) au lieu de remonter tout en haut.
+export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle, collants }: { valeur: V; onChange: (v: V) => void; rubriques: Rubrique<V>[]; libelle: string; collants?: boolean }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   return (
-    <Tabs value={valeur} onChange={(_e, v) => onChange(v as V)} variant="scrollable" scrollButtons={false} aria-label={libelle}
+    <>
+    {collants && <Box className="onglets-repere" aria-hidden />}
+    <Tabs className={collants ? 'onglets-collants' : undefined} value={valeur} onChange={(_e, v) => onChange(v as V)} variant="scrollable" scrollButtons={false} aria-label={libelle}
       slotProps={{ indicator: { sx: { display: 'none' } } }}
-      sx={{ mb: { xs: 1.5, md: 2.5 }, minHeight: 48, mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, '& .MuiTabs-flexContainer': { gap: 1 } }}>
+      sx={{
+        mb: { xs: 1.5, md: 2.5 }, minHeight: 48, mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, '& .MuiTabs-flexContainer': { gap: 1 },
+        // Sous la barre du haut (64 px téléphone, 72 px PC), sur le fond de la page
+        ...(collants ? { position: 'sticky', top: { xs: 64, md: 72 }, zIndex: 4, bgcolor: 'background.default' } : {}),
+      }}>
       {rubriques.map((r) => (
         <Tab key={r.vue} value={r.vue} icon={surPC ? r.icone : undefined} iconPosition="start" aria-label={r.libelle} disableRipple
           label={r.pastille ? <Badge color="error" badgeContent={r.pastille} sx={{ '& .MuiBadge-badge': { position: 'static', transform: 'none', ml: 0.75, fontSize: '0.75rem' } }}>{surPC ? r.libelle : r.court ?? r.libelle}</Badge> : surPC ? r.libelle : r.court ?? r.libelle}
@@ -32,5 +41,12 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
           }} />
       ))}
     </Tabs>
+    </>
   )
+}
+
+// Contenu sous des onglets collants : toujours assez haut pour que les onglets restent en haut
+// de l'écran quand l'onglet ouvert est court (sinon la page remonte et l'en-tête réapparaît)
+export function ContenuOnglet({ children }: { children: ReactNode }) {
+  return <Box sx={{ minHeight: { xs: 'calc(100dvh - 216px)', md: 'calc(100dvh - 168px)' } }}>{children}</Box>
 }

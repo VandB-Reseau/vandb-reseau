@@ -19,6 +19,8 @@ import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import ArrowBack from '@mui/icons-material/ArrowBack'
 import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
@@ -42,7 +44,7 @@ import { BoutonAjouterAction, ListeActions } from '../components/Actions'
 import { ListeAssocies } from '../components/Associes'
 import { useDroits } from '../auth/Droits'
 import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
-import { Onglets, type Rubrique } from '../components/Onglets'
+import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { actionsDuMagasin, enRetard } from '../data/actions'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
@@ -144,85 +146,87 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
       <ProfilMagasin m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} retardVisite={rythme?.retard ?? 0}
         appeler={m.telephone || m.responsable?.telephone || ''} message={() => changerVue('messages')} visite={saisirVisite}
         modifier={referentiels ? () => setEdition(true) : undefined} />
-      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} />
+      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} collants />
+      <ContenuOnglet>
 
-      {vue === 'fil' && <FilMagasin reseau={reseau} m={m} />}
+        {vue === 'fil' && <FilMagasin reseau={reseau} m={m} />}
 
-      {vue === 'fiche' && (
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-          <Section titre="Équipe" action={referentiels ? <Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button> : undefined}>
-            <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
-            <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
-            {!m.franchise && <Contact role={libelleResponsable(m)} p={m.responsable} lien={m.responsable ? lienFranchise(m.responsable.nom) : undefined} sousTitre={m.responsable ? undefined : m.responsableARecruter ? 'En cours de recrutement' : undefined} />}
-            {m.franchise && m.responsableARecruter && <Contact role={libelleResponsable(m)} p={null} sousTitre="En cours de recrutement" />}
-            <ListeAssocies reseau={reseau} m={m} signaler={setConfirmation} />
+        {vue === 'fiche' && (
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
+            <Section titre="Équipe" action={referentiels ? <Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button> : undefined}>
+              <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
+              <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
+              {!m.franchise && <Contact role={libelleResponsable(m)} p={m.responsable} lien={m.responsable ? lienFranchise(m.responsable.nom) : undefined} sousTitre={m.responsable ? undefined : m.responsableARecruter ? 'En cours de recrutement' : undefined} />}
+              {m.franchise && m.responsableARecruter && <Contact role={libelleResponsable(m)} p={null} sousTitre="En cours de recrutement" />}
+              <ListeAssocies reseau={reseau} m={m} signaler={setConfirmation} />
+            </Section>
+            <Section titre="Magasin">
+              <Ligne libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
+              <Ligne libelle="Adresse">
+                {adresseComplete && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    <span>{adresseComplete}</span>
+                    {lienPlan && <Chip icon={<PlaceOutlined />} label="Itinéraire" size="small" component="a" href={lienPlan} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />}
+                  </Box>
+                )}
+              </Ligne>
+              <Ligne libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
+              <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
+            </Section>
+            {lieuCarte && (
+              <Card sx={{ gridColumn: { lg: 'span 2' }, overflow: 'hidden' }}>
+                <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
+                  loading="lazy" referrerPolicy="no-referrer-when-downgrade" sx={{ display: 'block', width: '100%', height: 300, border: 0 }} />
+              </Card>
+            )}
+          </Box>
+        )}
+
+        {vue === 'actions' && (
+          <Section titre="Actions en cours" action={<BoutonAjouterAction reseau={reseau} magasins={[m.nom]} signaler={setConfirmation} />}>
+            <ListeActions reseau={reseau} actions={actions} signaler={setConfirmation} libelle={`Actions en cours de ${m.nom}`} magasins={[m.nom]} />
           </Section>
-          <Section titre="Magasin">
-            <Ligne libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
-            <Ligne libelle="Adresse">
-              {adresseComplete && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                  <span>{adresseComplete}</span>
-                  {lienPlan && <Chip icon={<PlaceOutlined />} label="Itinéraire" size="small" component="a" href={lienPlan} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />}
-                </Box>
-              )}
-            </Ligne>
-            <Ligne libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
-            <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
-          </Section>
-          {lieuCarte && (
-            <Card sx={{ gridColumn: { lg: 'span 2' }, overflow: 'hidden' }}>
-              <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
-                loading="lazy" referrerPolicy="no-referrer-when-downgrade" sx={{ display: 'block', width: '100%', height: 300, border: 0 }} />
-            </Card>
-          )}
-        </Box>
-      )}
+        )}
 
-      {vue === 'actions' && (
-        <Section titre="Actions en cours" action={<BoutonAjouterAction reseau={reseau} magasins={[m.nom]} signaler={setConfirmation} />}>
-          <ListeActions reseau={reseau} actions={actions} signaler={setConfirmation} libelle={`Actions en cours de ${m.nom}`} magasins={[m.nom]} />
-        </Section>
-      )}
+        {vue === 'messages' && <SectionMessages reseau={reseau} m={m} signaler={setConfirmation} />}
 
-      {vue === 'messages' && <SectionMessages reseau={reseau} m={m} signaler={setConfirmation} />}
+        {vue === 'visites' && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <SectionAudits reseau={reseau} m={m} />
+            <SectionVisites reseau={reseau} m={m} saisir={saisirVisite} modifier={setVisite} />
+          </Box>
+        )}
 
-      {vue === 'visites' && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <SectionAudits reseau={reseau} m={m} />
-          <SectionVisites reseau={reseau} m={m} saisir={saisirVisite} modifier={setVisite} />
-        </Box>
-      )}
+        {vue === 'chiffres' && <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />}
 
-      {vue === 'chiffres' && <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />}
+        {vue === 'sante' && (
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
+            <SectionSante reseau={reseau} m={m} modifier={() => setEdition(true)} />
+            <SectionDeploiements reseau={reseau} m={m} modifier={() => setEdition(true)} />
+          </Box>
+        )}
 
-      {vue === 'sante' && (
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-          <SectionSante reseau={reseau} m={m} modifier={() => setEdition(true)} />
-          <SectionDeploiements reseau={reseau} m={m} modifier={() => setEdition(true)} />
-        </Box>
-      )}
+        {vue === 'campagnes' && <Section titre="Campagnes"><CampagnesMagasin reseau={reseau} magasin={m.nom} signaler={setConfirmation} /></Section>}
 
-      {vue === 'campagnes' && <Section titre="Campagnes"><CampagnesMagasin reseau={reseau} magasin={m.nom} signaler={setConfirmation} /></Section>}
+        {vue === 'journal' && (
+          <Box sx={{ display: 'grid', gap: 2 }}>
+            <Journal reseau={reseau} m={m} signaler={setConfirmation} />
+            <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />
+          </Box>
+        )}
 
-      {vue === 'journal' && (
-        <Box sx={{ display: 'grid', gap: 2 }}>
-          <Journal reseau={reseau} m={m} signaler={setConfirmation} />
-          <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />
-        </Box>
-      )}
-
-      {reaffectation && <ReaffecterDialog reseau={reseau} magasin={m} ouvert onFermer={(fait) => { setReaffectation(false); if (fait) setConfirmation(`${m.nom} est confié à ${fait}.`) }} />}
-      {edition && <DialogMagasin reseau={reseau} magasin={m} onFermer={(msg, nom) => {
-        setEdition(false)
-        if (!msg) return
-        if (msg.includes('supprimé')) { naviguer('/magasins', { replace: true }); return }
-        setConfirmation(msg)
-        if (nom && nom !== m.nom) naviguer(lienFiche(nom), { replace: true })
-      }} />}
-      {visite !== undefined && <DialogVisite reseau={reseau} visite={visite} magasinsInitiaux={[m.nom]} typeInitial={typeVisite} onFermer={(msg) => { setVisite(undefined); if (msg) setConfirmation(msg) }} />}
-      {saisieChiffres !== undefined && <DialogChiffres reseau={reseau} magasin={m.nom} mois={saisieChiffres ?? undefined} onFermer={(msg) => { setSaisieChiffres(undefined); if (msg) setConfirmation(msg) }} />}
-      <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
+        {reaffectation && <ReaffecterDialog reseau={reseau} magasin={m} ouvert onFermer={(fait) => { setReaffectation(false); if (fait) setConfirmation(`${m.nom} est confié à ${fait}.`) }} />}
+        {edition && <DialogMagasin reseau={reseau} magasin={m} onFermer={(msg, nom) => {
+          setEdition(false)
+          if (!msg) return
+          if (msg.includes('supprimé')) { naviguer('/magasins', { replace: true }); return }
+          setConfirmation(msg)
+          if (nom && nom !== m.nom) naviguer(lienFiche(nom), { replace: true })
+        }} />}
+        {visite !== undefined && <DialogVisite reseau={reseau} visite={visite} magasinsInitiaux={[m.nom]} typeInitial={typeVisite} onFermer={(msg) => { setVisite(undefined); if (msg) setConfirmation(msg) }} />}
+        {saisieChiffres !== undefined && <DialogChiffres reseau={reseau} magasin={m.nom} mois={saisieChiffres ?? undefined} onFermer={(msg) => { setSaisieChiffres(undefined); if (msg) setConfirmation(msg) }} />}
+        <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
+      </ContenuOnglet>
     </>
   )
 }
@@ -445,10 +449,12 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, 
     </Box>
   )
   const bouton = { flex: 1, minHeight: 48 } as const
+  // En-tête plus serré sur téléphone : les onglets et leur contenu gardent la place
+  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   return (
-    <Card sx={{ border: 0, p: { xs: 2, md: 3 }, mb: 2 }}>
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-        <Initiales nom={m.nom} taille={72} />
+    <Card sx={{ border: 0, p: { xs: 1.5, md: 3 }, mb: { xs: 1.5, md: 2 } }}>
+      <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 2 }, alignItems: 'center' }}>
+        <Initiales nom={m.nom} taille={surPC ? 72 : 56} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="h1" sx={{ fontSize: { xs: '1.375rem', md: '1.75rem' } }}>{m.nom}</Typography>
           <Typography variant="body2" color="text.secondary">{[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · ')}</Typography>
@@ -460,13 +466,13 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, 
         </Box>
       </Box>
       {pastille && <Box sx={{ mt: 1.5 }}><Pastille ton={pastille.ton}>{pastille.libelle}</Pastille></Box>}
-      <Box sx={{ display: 'flex', mt: 2, py: 1, borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', '& > * + *': { borderLeft: '1px solid', borderColor: 'divider' } }} role="group" aria-label="En bref">
+      <Box sx={{ display: 'flex', mt: { xs: 1.5, md: 2 }, py: { xs: 0.75, md: 1 }, borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', '& > * + *': { borderLeft: '1px solid', borderColor: 'divider' } }} role="group" aria-label="En bref">
         {compteur(alerte ? formatKEuros(alerte.ca) : '—', alerte ? `CA ${libelleMois(alerte.mois).split(' ')[0]}` : 'CA du mois')}
         {compteur(alerte?.ecart === null || alerte?.ecart === undefined ? '—' : formatPourcent(alerte.ecart), 'vs l’an dernier', alerte?.ecart !== null && alerte?.ecart !== undefined && alerte.ecart < 0 ? 'error.main' : undefined)}
         {compteur(ouvertes || '0', ouvertes > 1 ? 'tâches en cours' : 'tâche en cours')}
       </Box>
       {c && <Typography variant="body2" sx={{ mt: 1.5 }}><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} visites par an</Typography>}
-      <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+      <Box sx={{ display: 'flex', gap: 1, mt: { xs: 1.5, md: 2 } }}>
         <Button variant="outlined" startIcon={<CallOutlined />} href={appeler ? telLien(appeler) : undefined} disabled={!appeler} sx={bouton}>Appeler</Button>
         <Button variant="outlined" startIcon={<ChatBubbleOutlineOutlined />} onClick={message} sx={bouton}>Message</Button>
         <Button variant="contained" startIcon={<AddOutlined />} onClick={visite} sx={bouton}>Visite</Button>

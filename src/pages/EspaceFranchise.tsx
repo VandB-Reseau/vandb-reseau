@@ -34,7 +34,7 @@ import { useMessagerie } from '../data/MessagerieContext'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
-import { Onglets, type Rubrique } from '../components/Onglets'
+import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { GraphiqueCA } from '../components/Chiffres'
 import { VuePratiques } from '../components/BonnesPratiques'
 import { Contact, Ligne, Section } from './FicheMagasin'
@@ -541,14 +541,16 @@ export function FicheMagasinFranchise() {
           <>
             {reseau.magasins.length > 1 && <Button startIcon={<ArrowBack />} onClick={() => naviguer('/magasins')} sx={{ mb: 2, ml: -1, minHeight: 48 }}>Mes magasins</Button>}
             <ProfilFranchise reseau={reseau} m={m} message={() => changerVue('messages')} />
-            <Onglets valeur={vue} onChange={changerVue} rubriques={onglets} libelle={`Rubriques de ${m.nom}`} />
-            {vue === 'fil' && <FilMagasin reseau={reseau} m={m} />}
-            {vue === 'fiche' && <OngletFiche reseau={reseau} m={m} />}
-            {vue === 'messages' && <SectionMessages reseau={reseau} m={m} signaler={setConfirmation} lectureSeule={!!apercu} />}
-            {vue === 'chiffres' && <OngletChiffres reseau={reseau} m={m} />}
-            {vue === 'visites' && <><LireVisites magasin={m.nom} /><OngletVisites reseau={reseau} m={m} /></>}
-            {vue === 'campagnes' && <OngletCampagnes reseau={reseau} m={m} />}
-            <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
+            <Onglets valeur={vue} onChange={changerVue} rubriques={onglets} libelle={`Rubriques de ${m.nom}`} collants />
+            <ContenuOnglet>
+              {vue === 'fil' && <FilMagasin reseau={reseau} m={m} />}
+              {vue === 'fiche' && <OngletFiche reseau={reseau} m={m} />}
+              {vue === 'messages' && <SectionMessages reseau={reseau} m={m} signaler={setConfirmation} lectureSeule={!!apercu} />}
+              {vue === 'chiffres' && <OngletChiffres reseau={reseau} m={m} />}
+              {vue === 'visites' && <><LireVisites magasin={m.nom} /><OngletVisites reseau={reseau} m={m} /></>}
+              {vue === 'campagnes' && <OngletCampagnes reseau={reseau} m={m} />}
+              <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
+            </ContenuOnglet>
           </>
         )
       }}

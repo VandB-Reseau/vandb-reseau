@@ -11,7 +11,7 @@ import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'rea
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
 import BadgeOutlined from '@mui/icons-material/BadgeOutlined'
-import { Onglets, type Rubrique } from '../components/Onglets'
+import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { BlocPortefeuille, ProfilPersonne } from '../components/Portefeuille'
 import { portefeuilleDe } from '../data/portefeuille'
 import { lienPersonne } from '../data/messagerie'
@@ -117,40 +117,42 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
           { valeur: `${p.visitesFaites}/${p.visitesObjectif}`, libelle: `visites ${reseau.jour.slice(0, 4)}` },
         ]}
         telephone={fichePersonne(reseau, { type: 'rr', cle: id }).telephone || rr.telephone} lienMessage={lienPersonne(`rr:${id}`)} modifier={referentiels ? () => setEdition(true) : undefined} />
-      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesRR} libelle={`Rubriques de ${rr.nom}`} />
-      {vue === 'portefeuille' && <BlocPortefeuille reseau={reseau} p={p} />}
-      {vue === 'coachs' && (
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-          <Section titre="Coachs rattachés">
-            {coachs.length === 0 ? <Typography variant="body2" color="text.secondary">Aucun Coach rattaché.</Typography> : coachs.map((c) => (
-              <Rangee key={c.nom}>
-                <Link component={RouterLink} to={lienCoach(c.nom)} sx={{ flex: 1, py: 1.5, fontWeight: 500 }}>{c.nom}</Link>
-                <Typography variant="body2" color="text.secondary">{pluriel(magasinsDuCoach(reseau, c.nom).length, 'magasin')}</Typography>
-                <PastilleCharge reseau={reseau} charge={chargeA(reseau, c.nom)} />
-              </Rangee>
-            ))}
-          </Section>
-          {directs.length > 0 && (
-            <Section titre="Magasins gérés en direct">
-              {directs.map((m) => (
-                <Rangee key={m.nom}>
-                  <Link component={RouterLink} to={lienFiche(m.nom)} sx={{ flex: 1, py: 1.5 }}>{m.nom}</Link>
-                  <PastilleStatut statut={m.statut} />
+      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesRR} libelle={`Rubriques de ${rr.nom}`} collants />
+      <ContenuOnglet>
+        {vue === 'portefeuille' && <BlocPortefeuille reseau={reseau} p={p} />}
+        {vue === 'coachs' && (
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
+            <Section titre="Coachs rattachés">
+              {coachs.length === 0 ? <Typography variant="body2" color="text.secondary">Aucun Coach rattaché.</Typography> : coachs.map((c) => (
+                <Rangee key={c.nom}>
+                  <Link component={RouterLink} to={lienCoach(c.nom)} sx={{ flex: 1, py: 1.5, fontWeight: 500 }}>{c.nom}</Link>
+                  <Typography variant="body2" color="text.secondary">{pluriel(magasinsDuCoach(reseau, c.nom).length, 'magasin')}</Typography>
+                  <PastilleCharge reseau={reseau} charge={chargeA(reseau, c.nom)} />
                 </Rangee>
               ))}
             </Section>
-          )}
-        </Box>
-      )}
-      {vue === 'magasins' && <ListeMagasinsAdaptee magasins={magasins} vide="Aucun magasin dans son périmètre." />}
-      {vue === 'fiche' && (
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-          <SectionFichePersonnelle reseau={reseau} r={{ type: 'rr', cle: id }} />
-          {referentiels && <SectionAccesEquipe role="rr" cle={id} nom={rr.nom} signaler={setMessage} />}
-        </Box>
-      )}
-      {edition && <DialogRR reseau={reseau} rr={rr} onFermer={(m) => { setEdition(false); if (m?.includes('supprimé')) naviguer('/equipe', { replace: true }); else if (m) setMessage(m) }} />}
-      <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
+            {directs.length > 0 && (
+              <Section titre="Magasins gérés en direct">
+                {directs.map((m) => (
+                  <Rangee key={m.nom}>
+                    <Link component={RouterLink} to={lienFiche(m.nom)} sx={{ flex: 1, py: 1.5 }}>{m.nom}</Link>
+                    <PastilleStatut statut={m.statut} />
+                  </Rangee>
+                ))}
+              </Section>
+            )}
+          </Box>
+        )}
+        {vue === 'magasins' && <ListeMagasinsAdaptee magasins={magasins} vide="Aucun magasin dans son périmètre." />}
+        {vue === 'fiche' && (
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
+            <SectionFichePersonnelle reseau={reseau} r={{ type: 'rr', cle: id }} />
+            {referentiels && <SectionAccesEquipe role="rr" cle={id} nom={rr.nom} signaler={setMessage} />}
+          </Box>
+        )}
+        {edition && <DialogRR reseau={reseau} rr={rr} onFermer={(m) => { setEdition(false); if (m?.includes('supprimé')) naviguer('/equipe', { replace: true }); else if (m) setMessage(m) }} />}
+        <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
+      </ContenuOnglet>
     </>
   )
 }

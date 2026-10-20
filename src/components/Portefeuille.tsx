@@ -36,10 +36,12 @@ export function ProfilPersonne({ nom, lignes, pastille, compteurs, telephone, li
   telephone?: string; libelleAppel?: string; lienMessage?: string; modifier?: () => void; actions?: ReactNode
 }) {
   const bouton = { flex: 1, minHeight: 48 } as const
+  // En-tête plus serré sur téléphone : les onglets et leur contenu gardent la place
+  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   return (
-    <Card sx={{ border: 0, p: { xs: 2, md: 3 }, mb: 2 }}>
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-        <Initiales nom={nom} taille={72} />
+    <Card sx={{ border: 0, p: { xs: 1.5, md: 3 }, mb: { xs: 1.5, md: 2 } }}>
+      <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 2 }, alignItems: 'center' }}>
+        <Initiales nom={nom} taille={surPC ? 72 : 56} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="h1" sx={{ fontSize: { xs: '1.375rem', md: '1.75rem' } }}>{nom}</Typography>
           {lignes.filter(Boolean).map((l) => <Typography key={l} variant="body2" color="text.secondary">{l}</Typography>)}
@@ -47,7 +49,7 @@ export function ProfilPersonne({ nom, lignes, pastille, compteurs, telephone, li
         {modifier && <Box sx={{ alignSelf: 'flex-start' }}><Tooltip title="Modifier"><IconButton onClick={modifier} aria-label="Modifier" sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip></Box>}
       </Box>
       {pastille && <Box sx={{ mt: 1.5 }}><Pastille ton={pastille.ton}>{pastille.libelle}</Pastille></Box>}
-      <Box sx={{ display: 'flex', mt: 2, py: 1, borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', '& > * + *': { borderLeft: '1px solid', borderColor: 'divider' } }} role="group" aria-label="En bref">
+      <Box sx={{ display: 'flex', mt: { xs: 1.5, md: 2 }, py: { xs: 0.75, md: 1 }, borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', '& > * + *': { borderLeft: '1px solid', borderColor: 'divider' } }} role="group" aria-label="En bref">
         {compteurs.map((c) => (
           <Box key={c.libelle} sx={{ flex: 1, minWidth: 0, textAlign: 'center', px: 0.5 }}>
             <Typography sx={{ fontSize: '1.25rem', fontWeight: 700, lineHeight: 1.2, color: c.couleur, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.valeur}</Typography>
@@ -55,7 +57,7 @@ export function ProfilPersonne({ nom, lignes, pastille, compteurs, telephone, li
           </Box>
         ))}
       </Box>
-      <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+      <Box sx={{ display: 'flex', gap: 1, mt: { xs: 1.5, md: 2 } }}>
         <Button variant="outlined" startIcon={<CallOutlined />} href={telephone ? telLien(telephone) : undefined} disabled={!telephone} aria-label={libelleAppel === 'Appeler' ? undefined : `Appeler ${libelleAppel === 'Coach' ? 'mon Coach' : libelleAppel}`} sx={bouton}>{libelleAppel}</Button>
         {lienMessage && <Button variant="outlined" startIcon={<ChatBubbleOutlineOutlined />} component={RouterLink} to={lienMessage} sx={bouton}>Message</Button>}
         {actions}

@@ -29,7 +29,7 @@ import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import BalanceOutlined from '@mui/icons-material/BalanceOutlined'
 import BadgeOutlined from '@mui/icons-material/BadgeOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
-import { Onglets, type Rubrique } from '../components/Onglets'
+import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { BoutonAjouterAction, ListeActions } from '../components/Actions'
 import { BilanCampagnes } from '../components/Campagnes'
 import { actionsDes, enRetard } from '../data/actions'
@@ -84,69 +84,71 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
           { valeur: `${charge}/${reseau.parametres.maxUnits}`, libelle: 'charge', couleur: charge > reseau.parametres.maxUnits ? 'error.main' : undefined },
         ]}
         telephone={fichePersonne(reseau, { type: 'coach', cle: coach.nom }).telephone || coach.telephone} lienMessage={coach.fictif ? undefined : lienPersonne(`coach:${coach.nom}`)} modifier={referentiels ? () => setEdition(true) : undefined} />
-      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesCoach} libelle={`Rubriques de ${coach.nom}`} />
+      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesCoach} libelle={`Rubriques de ${coach.nom}`} collants />
+      <ContenuOnglet>
 
-      {vue === 'portefeuille' && <BlocPortefeuille reseau={reseau} p={portefeuilleDe(reseau, magasins.filter((m) => m.statut !== 'avenir'), rythme)} />}
+        {vue === 'portefeuille' && <BlocPortefeuille reseau={reseau} p={portefeuilleDe(reseau, magasins.filter((m) => m.statut !== 'avenir'), rythme)} />}
 
-      {vue === 'magasins' && (magasins.length === 0
-        ? <Typography variant="body2" color="text.secondary">Aucun magasin affecté aujourd’hui.</Typography>
-        : <ListeMagasins magasins={magasins} />)}
+        {vue === 'magasins' && (magasins.length === 0
+          ? <Typography variant="body2" color="text.secondary">Aucun magasin affecté aujourd’hui.</Typography>
+          : <ListeMagasins magasins={magasins} />)}
 
-      {vue === 'visites' && (
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-          <Section titre="Visites en retard">
-            {enRetardVisite.length === 0 ? <Typography variant="body2" color="text.secondary">Tous ses magasins sont à jour de leurs visites sur {a.court}.</Typography> : enRetardVisite.map((l) => (
-              <Box key={l.magasin.nom} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Link component={RouterLink} to={lienFiche(l.magasin.nom)} sx={{ fontWeight: 500 }}>{l.magasin.nom}</Link>
-                  <Typography variant="body2" color="text.secondary">{l.derniere ? `Dernière visite le ${dateCourte(l.derniere.date)}` : 'Jamais visité'} · {l.faites} sur {l.objectif}</Typography>
+        {vue === 'visites' && (
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
+            <Section titre="Visites en retard">
+              {enRetardVisite.length === 0 ? <Typography variant="body2" color="text.secondary">Tous ses magasins sont à jour de leurs visites sur {a.court}.</Typography> : enRetardVisite.map((l) => (
+                <Box key={l.magasin.nom} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Link component={RouterLink} to={lienFiche(l.magasin.nom)} sx={{ fontWeight: 500 }}>{l.magasin.nom}</Link>
+                    <Typography variant="body2" color="text.secondary">{l.derniere ? `Dernière visite le ${dateCourte(l.derniere.date)}` : 'Jamais visité'} · {l.faites} sur {l.objectif}</Typography>
+                  </Box>
+                  <Chip size="small" color="warning" label={`${l.retard} j de retard`} sx={{ fontSize: 12, fontWeight: 600 }} />
                 </Box>
-                <Chip size="small" color="warning" label={`${l.retard} j de retard`} sx={{ fontSize: 12, fontWeight: 600 }} />
-              </Box>
-            ))}
-          </Section>
-          <Section titre="Dernières visites">
-            {visites.length === 0 ? <Typography variant="body2" color="text.secondary">Aucune visite enregistrée.</Typography> : (toutes ? visites : visites.slice(0, 12)).map((v) => (
-              <Box key={v.id ?? `${v.magasin}-${v.date}`} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
-                <Typography variant="body2" color="text.secondary" sx={{ width: 100, flexShrink: 0 }}>{dateCourte(v.date)}</Typography>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Link component={RouterLink} to={lienFiche(v.magasin)} sx={{ fontWeight: 500 }}>{v.magasin}</Link>
-                  <Typography variant="body2" color="text.secondary">{libelleTypeVisite(v.type)}</Typography>
+              ))}
+            </Section>
+            <Section titre="Dernières visites">
+              {visites.length === 0 ? <Typography variant="body2" color="text.secondary">Aucune visite enregistrée.</Typography> : (toutes ? visites : visites.slice(0, 12)).map((v) => (
+                <Box key={v.id ?? `${v.magasin}-${v.date}`} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ width: 100, flexShrink: 0 }}>{dateCourte(v.date)}</Typography>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Link component={RouterLink} to={lienFiche(v.magasin)} sx={{ fontWeight: 500 }}>{v.magasin}</Link>
+                    <Typography variant="body2" color="text.secondary">{libelleTypeVisite(v.type)}</Typography>
+                  </Box>
+                  <Tooltip title="Compte rendu PDF"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu de ${v.magasin} du ${dateCourte(v.date)}`}><PictureAsPdfOutlined /></IconButton></Tooltip>
                 </Box>
-                <Tooltip title="Compte rendu PDF"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu de ${v.magasin} du ${dateCourte(v.date)}`}><PictureAsPdfOutlined /></IconButton></Tooltip>
-              </Box>
-            ))}
-            {visites.length > 12 && <Button onClick={() => setToutes((x) => !x)} sx={{ minHeight: 48, mt: 0.5 }}>{toutes ? 'Afficher moins' : `Voir les ${visites.length} visites`}</Button>}
-          </Section>
-        </Box>
-      )}
-
-      {vue === 'actions' && <Section titre="Actions en cours de ses magasins" action={<BoutonAjouterAction reseau={reseau} magasins={[...noms].sort()} signaler={setMessage} />}><ListeActions reseau={reseau} actions={actions} avecMagasin signaler={setMessage} libelle={`Actions en cours des magasins de ${coach.nom}`} magasins={[...noms]} /></Section>}
-
-      {vue === 'campagnes' && <Section titre="Campagnes"><BilanCampagnes reseau={reseau} magasins={magasins} /></Section>}
-
-      {vue === 'charge' && (
-        <Section titre="Charge">
-          <JaugeCharge reseau={reseau} charge={charge} libelle="Aujourd’hui" />
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>{aideCharge}</Typography>
-          <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>Les six prochains mois</Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {projection.map((p) => <JaugeCharge key={p.mois} reseau={reseau} charge={p.charge} libelle={libelleMois(p.mois)} />)}
+              ))}
+              {visites.length > 12 && <Button onClick={() => setToutes((x) => !x)} sx={{ minHeight: 48, mt: 0.5 }}>{toutes ? 'Afficher moins' : `Voir les ${visites.length} visites`}</Button>}
+            </Section>
           </Box>
-        </Section>
-      )}
+        )}
 
-      {vue === 'fiche' && (
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-          <SectionFichePersonnelle reseau={reseau} r={{ type: 'coach', cle: coach.nom }} />
-          <Section titre="Rattachement">
-            <Contact role={coach.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={coach.rr} lien={coach.rr ? lienRR(coach.rr.id) : undefined} sousTitre={coach.rr ? undefined : 'Non rattaché à ce jour'} />
+        {vue === 'actions' && <Section titre="Actions en cours de ses magasins" action={<BoutonAjouterAction reseau={reseau} magasins={[...noms].sort()} signaler={setMessage} />}><ListeActions reseau={reseau} actions={actions} avecMagasin signaler={setMessage} libelle={`Actions en cours des magasins de ${coach.nom}`} magasins={[...noms]} /></Section>}
+
+        {vue === 'campagnes' && <Section titre="Campagnes"><BilanCampagnes reseau={reseau} magasins={magasins} /></Section>}
+
+        {vue === 'charge' && (
+          <Section titre="Charge">
+            <JaugeCharge reseau={reseau} charge={charge} libelle="Aujourd’hui" />
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>{aideCharge}</Typography>
+            <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>Les six prochains mois</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {projection.map((p) => <JaugeCharge key={p.mois} reseau={reseau} charge={p.charge} libelle={libelleMois(p.mois)} />)}
+            </Box>
           </Section>
-          {referentiels && !coach.fictif && <SectionAccesEquipe role="coach" cle={coach.nom} nom={coach.nom} signaler={setMessage} />}
-        </Box>
-      )}
-      {edition && <DialogCoach reseau={reseau} coach={coach} onFermer={(m, nom) => { setEdition(false); if (m?.includes('retiré')) naviguer('/equipe'); else if (m) { setMessage(m); if (nom && nom !== coach.nom) naviguer(lienCoach(nom), { replace: true }) } }} />}
-      <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
+        )}
+
+        {vue === 'fiche' && (
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
+            <SectionFichePersonnelle reseau={reseau} r={{ type: 'coach', cle: coach.nom }} />
+            <Section titre="Rattachement">
+              <Contact role={coach.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={coach.rr} lien={coach.rr ? lienRR(coach.rr.id) : undefined} sousTitre={coach.rr ? undefined : 'Non rattaché à ce jour'} />
+            </Section>
+            {referentiels && !coach.fictif && <SectionAccesEquipe role="coach" cle={coach.nom} nom={coach.nom} signaler={setMessage} />}
+          </Box>
+        )}
+        {edition && <DialogCoach reseau={reseau} coach={coach} onFermer={(m, nom) => { setEdition(false); if (m?.includes('retiré')) naviguer('/equipe'); else if (m) { setMessage(m); if (nom && nom !== coach.nom) naviguer(lienCoach(nom), { replace: true }) } }} />}
+        <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
+      </ContenuOnglet>
     </>
   )
 }
