@@ -45,7 +45,10 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   await expect(actions.first()).toContainText('Lancer une dégustation')
   await expect(actions.first()).toContainText('En retard')
   await expect(page.getByText('Refaire la vitrine')).toHaveCount(0)
-  await expect(page.getByText(/Lyon Test|Brest Test/)).toHaveCount(0)
+  // Seule exception : les bonnes pratiques, communes à tout le réseau, citent leur magasin
+  await expect(page.getByText(/Brest Test/)).toHaveCount(0)
+  await expect(page.getByText(/Lyon Test/)).toHaveCount(1)
+  await expect(page.getByRole('article', { name: 'Dégustation du vendredi' })).toContainText('Lyon Test')
   // Aucun libellé de pilotage interne
   await expect(page.getByText(/Décroche|À surveiller|nine box/i)).toHaveCount(0)
   await expect(page.getByText('Hugo FICTIF').first()).toBeVisible()

@@ -38,6 +38,8 @@ import { ReactionsCommunication } from './Communications'
 import { useApercu } from '../auth/Apercu'
 import Snackbar from '@mui/material/Snackbar'
 import { VisuelFil } from '../components/MiseEnForme'
+import { ReactionsPratique } from '../components/BonnesPratiques'
+import { useReactionsPratiques, type ReactionsPratiques } from '../data/reactionsPratiques'
 
 // Ordre de priorité fixé par Joseph le 14/10/2026
 const PRIORITAIRES = ['redressement', 'relance', 'renforcer']
@@ -194,8 +196,8 @@ export function PublicationFil({ e, jour, sansMagasin = false }: { e: ElementFil
   )
 }
 
-export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil de mes magasins', communications }: {
-  elements: ElementFil[]; jour: string; sansMagasin?: boolean; titre?: string; communications?: CommunicationsDuFil
+export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil de mes magasins', communications, reactionsPratiques }: {
+  elements: ElementFil[]; jour: string; sansMagasin?: boolean; titre?: string; communications?: CommunicationsDuFil; reactionsPratiques?: ReactionsPratiques | null
 }) {
   const { apercu, equipe } = useApercu()
   const [message, setMessage] = useState('')
@@ -212,12 +214,13 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil 
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           {vus.slice(0, nb).map((e) => (
-            <Card key={e.cle} component={e.communication ? 'article' : 'div'} aria-label={e.communication?.titre} sx={{ border: 0, overflow: 'hidden' }}>
+            <Card key={e.cle} component={e.communication || e.pratique ? 'article' : 'div'} aria-label={e.communication?.titre ?? e.pratique?.titre} sx={{ border: 0, overflow: 'hidden' }}>
               <PublicationFil e={e} jour={jour} sansMagasin={sansMagasin} />
               {e.communication && communications?.moi && (
                 <ReactionsCommunication c={e.communication} moi={communications.moi} jour={jour} lectureSeule={!!apercu || !!equipe}
                   apres={communications.recharger} signaler={setMessage} />
               )}
+              {e.pratique && reactionsPratiques && <ReactionsPratique p={e.pratique} reactions={reactionsPratiques} lectureSeule={!!apercu || !!equipe} signaler={setMessage} />}
             </Card>
           ))}
           {vus.length > nb && <Button onClick={() => setNb(nb + PAS_FIL)} sx={{ alignSelf: 'center', minHeight: 48 }}>Voir plus</Button>}
@@ -233,7 +236,8 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
   const items = aTraiter(reseau, p, sansParametres)
   const noms = useMemo(() => new Set(magasinsDu(reseau, p).map((m) => m.nom)), [reseau, p])
   const communications = useCommunicationsDuFil()
-  const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications.liste), [reseau, noms, messagerie, communications.liste])
+  const reactionsPratiques = useReactionsPratiques()
+  const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications.liste, true), [reseau, noms, messagerie, communications.liste])
   return (
     <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start' }}>
       <Box sx={{ order: { xs: 1, md: 2 }, position: { md: 'sticky' }, top: { md: 88 } }}>
@@ -241,7 +245,7 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
         <BlocSemaine reseau={reseau} p={p} />
       </Box>
       <Box sx={{ order: { xs: 2, md: 1 }, minWidth: 0 }}>
-        <FilActivite elements={fil} jour={reseau.jour} communications={communications} />
+        <FilActivite elements={fil} jour={reseau.jour} communications={communications} reactionsPratiques={reactionsPratiques} />
       </Box>
     </Box>
   )

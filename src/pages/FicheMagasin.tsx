@@ -1,5 +1,6 @@
 import { EcartsAudit, RangeePhotos } from '../components/GrilleAudit'
 import { CartePratique, DialogPratique } from '../components/BonnesPratiques'
+import { useReactionsPratiques } from '../data/reactionsPratiques'
 import type { BonnePratique } from '../data/bonnesPratiques'
 import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import DynamicFeedOutlined from '@mui/icons-material/DynamicFeedOutlined'
@@ -408,13 +409,14 @@ function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Ma
 // Bonnes pratiques du magasin, et celles d'autres magasins qu'il a reprises
 function SectionPratiques({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (msg: string) => void }) {
   const [edition, setEdition] = useState<BonnePratique | null | undefined>(undefined)
+  const reactions = useReactionsPratiques()
   const siennes = reseau.pratiques.filter((p) => p.magasin === m.nom)
   const reprises = reseau.pratiques.filter((p) => p.reprises.includes(m.nom))
   return (
     <Section titre="Bonnes pratiques" action={<Button startIcon={<AddOutlined />} onClick={() => setEdition(null)} aria-label="Ajouter une bonne pratique" sx={{ minHeight: 48 }}>Ajouter</Button>}>
       {!siennes.length && !reprises.length && <Typography variant="body2" color="text.secondary">Aucune bonne pratique enregistrée.</Typography>}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        {siennes.map((p) => <CartePratique key={p.id} p={p} sansMagasin modifier={() => setEdition(p)} />)}
+        {siennes.map((p) => <CartePratique key={p.id} p={p} sansMagasin modifier={() => setEdition(p)} reactions={reactions} signaler={signaler} />)}
       </Box>
       {reprises.length > 0 && (
         <Box sx={{ mt: siennes.length ? 2 : 0 }}>

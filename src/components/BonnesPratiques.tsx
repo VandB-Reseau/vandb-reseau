@@ -18,7 +18,11 @@ import { ChampPhotos } from './GrilleAudit'
 import { GrillePhotos, Initiales } from './Social'
 import Favorite from '@mui/icons-material/Favorite'
 import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined'
+import Snackbar from '@mui/material/Snackbar'
 import { useReseau } from '../data/ReseauContext'
+import { useApercu } from '../auth/Apercu'
+import { Reactions } from './Reactions'
+import { basculerPoucePratique, commenterPratique, messageReaction, supprimerCommentairePratique, useReactionsPratiques, type ReactionsPratiques } from '../data/reactionsPratiques'
 import { useAuth } from '../auth/AuthContext'
 import { monNomPorteur } from '../data/actions'
 import { ChampRecherche } from './Outils'
@@ -78,11 +82,25 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', onFermer
   )
 }
 
+// « J'aime » et commentaires d'une bonne pratique (anciens « J'aime » de l'équipe compris) : sur la page et dans le fil
+export function ReactionsPratique({ p, reactions, lectureSeule, signaler }: { p: BonnePratique; reactions: ReactionsPratiques; lectureSeule: boolean; signaler: (m: string) => void }) {
+  return (
+    <Reactions titre={p.titre} pouces={reactions.pouces[p.id] ?? AUCUN} commentaires={reactions.commentaires[p.id] ?? AUCUN} autres={p.jaime} moi={reactions.moi}
+      jour={new Date().toLocaleDateString('sv-SE')} lectureSeule={lectureSeule} basculer={() => basculerPoucePratique(p.id)} commenter={(t) => commenterPratique(p.id, t)}
+      supprimer={supprimerCommentairePratique} message={messageReaction} apres={reactions.recharger} signaler={signaler} />
+  )
+}
+const AUCUN: never[] = []
+
 // Publication du fil des bonnes pratiques : magasin, photos en grand, texte, « J'aime » et reprises.
 // modifier absent : lecture seule, sans lien vers les fiches des magasins (espace franchisé) ;
 // ouvrables : magasins dont la fiche s'ouvre (ceux d'un Coach ou d'un RR), par défaut tous ;
-// moi : nom de la personne de l'équipe qui réagit (absent : pas de bouton « J'aime »)
-export function CartePratique({ p, modifier, sansMagasin, ouvrables, moi }: { p: BonnePratique; modifier?: () => void; sansMagasin?: boolean; ouvrables?: Set<string>; moi?: string }) {
+// moi : nom de la personne de l'équipe qui réagit (absent : pas de bouton « J'aime ») ;
+// reactions : « J'aime » et commentaires de la base, pour l'équipe et les franchisés (remplacent les anciens « J'aime »)
+export function CartePratique({ p, modifier, sansMagasin, ouvrables, moi, reactions, lectureSeule = false, signaler = () => undefined }: {
+  p: BonnePratique; modifier?: () => void; sansMagasin?: boolean; ouvrables?: Set<string>; moi?: string
+  reactions?: ReactionsPratiques | null; lectureSeule?: boolean; signaler?: (m: string) => void
+}) {
   const { recharger } = useReseau()
   const [jaime, setJaime] = useState(p.jaime ?? [])
   const [envoi, setEnvoi] = useState(false)
@@ -106,7 +124,7 @@ export function CartePratique({ p, modifier, sansMagasin, ouvrables, moi }: { p:
         {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la bonne pratique ${p.titre}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
       </Box>
       {p.photos.length > 0 && <Box sx={{ px: 2 }}><GrillePhotos photos={p.photos} max={4} colonnes={2} /></Box>}
-      <CardContent sx={{ pt: 1.5, pb: '8px !important' }}>
+      <CardContent sx={{ pt: 1.5, pb: reactions ? '0 !important' : '8px !important' }}>
         <Typography variant="h4" component="h3">{p.titre}</Typography>
         {p.texte && <Typography variant="body1" sx={{ mt: 0.5, whiteSpace: 'pre-line' }}>{p.texte}</Typography>}
         {p.reprises.length > 0 && (
@@ -115,7 +133,7 @@ export function CartePratique({ p, modifier, sansMagasin, ouvrables, moi }: { p:
             {p.reprises.map((r, i) => <span key={r}>{i ? ', ' : ''}{nomMagasin(r)}</span>)}
           </Typography>
         )}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, ml: -1 }}>
+        {!reactions && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, ml: -1 }}>
           {moi ? (
             <Button onClick={reagir} aria-pressed={aime} startIcon={aime ? <Favorite /> : <FavoriteBorderOutlined />} color={aime ? 'error' : 'inherit'} sx={{ minHeight: 48, px: 1.5 }}>
               {jaime.length ? `J’aime · ${jaime.length}` : 'J’aime'}
@@ -124,14 +142,18 @@ export function CartePratique({ p, modifier, sansMagasin, ouvrables, moi }: { p:
             <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, minHeight: 40 }}><FavoriteBorderOutlined fontSize="small" />{jaime.length}</Typography>
           )}
           {jaime.length > 0 && moi && <Typography variant="body2" color="text.secondary" noWrap sx={{ minWidth: 0 }}>{jaime.slice(0, 3).join(', ')}{jaime.length > 3 ? ` et ${jaime.length - 3} autre${jaime.length > 4 ? 's' : ''}` : ''}</Typography>}
-        </Box>
+        </Box>}
       </CardContent>
+      {reactions && <ReactionsPratique p={p} reactions={reactions} lectureSeule={lectureSeule} signaler={signaler} />}
     </Card>
   )
 }
 
 export function VuePratiques({ reseau, actions, modifier }: { reseau: Reseau; actions?: ReactNode; modifier?: (p: BonnePratique) => void }) {
   const { profil } = useAuth()
+  const { apercu, equipe } = useApercu()
+  const reactions = useReactionsPratiques()
+  const [message, setMessage] = useState('')
   // Réactions réservées à l'équipe : l'espace franchisé ne voit que le nombre
   const moi = modifier ? monNomPorteur(reseau, profil) || undefined : undefined
   const [recherche, setRecherche] = useState('')
@@ -154,7 +176,9 @@ export function VuePratiques({ reseau, actions, modifier }: { reseau: Reseau; ac
       </Typography>
       {liste.length === 0
         ? <EmptyState icone={<TipsAndUpdatesOutlined />} titre="Aucune bonne pratique" texte={reseau.pratiques.length ? 'Aucune bonne pratique ne correspond à ces filtres.' : 'Les initiatives réussies des magasins apparaîtront ici.'} />
-        : <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 640, mx: 'auto' }}>{liste.map((p) => <CartePratique key={p.id} p={p} ouvrables={ouvrables} moi={moi} modifier={modifier && ouvrables.has(p.magasin) ? () => modifier(p) : undefined} />)}</Box>}
+        : <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 640, mx: 'auto' }}>{liste.map((p) => <CartePratique key={p.id} p={p} ouvrables={ouvrables} moi={moi} modifier={modifier && ouvrables.has(p.magasin) ? () => modifier(p) : undefined}
+            reactions={reactions} lectureSeule={!!apercu || !!equipe} signaler={setMessage} />)}</Box>}
+      <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </>
   )
 }
