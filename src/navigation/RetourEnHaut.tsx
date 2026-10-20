@@ -13,13 +13,23 @@ function cleEcran(pathname: string, search: string): string {
 interface Position { y: number; tableaux: number[] }
 const tableaux = () => [...document.querySelectorAll<HTMLElement>('.MuiTableContainer-root')]
 
-// Chaque nouvel écran, onglet ou fiche s'ouvre en haut ; le retour arrière retrouve la position quittée
+// Onglets collants d'une fiche (Onglets collants) : position où la bande touche la barre du haut
+function hauteurOnglets(): number | null {
+  const repere = document.querySelector('.onglets-repere'), bande = document.querySelector('.onglets-collants')
+  if (!repere || !bande) return null
+  return Math.max(0, repere.getBoundingClientRect().top + window.scrollY - (parseFloat(getComputedStyle(bande).top) || 0))
+}
+
+// Chaque nouvel écran, onglet ou fiche s'ouvre en haut ; le retour arrière retrouve la position quittée.
+// Dans une fiche à onglets collants, changer d'onglet garde la position, au plus les onglets en haut de l'écran.
 export function RetourEnHaut() {
   const { pathname, search, key } = useLocation()
   const navigation = useNavigationType()
   const positions = useRef(new Map<string, Position>())
   const ecran = cleEcran(pathname, search)
   const precedent = useRef(ecran)
+  const chemin = useRef(pathname)
+  const derniereY = useRef(0)
 
   useEffect(() => {
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
@@ -28,7 +38,10 @@ export function RetourEnHaut() {
   // Mémorise la position de l'écran affiché, pour le retour arrière ; la clé « default »
   // (premier chargement, adresse tapée) est partagée par plusieurs écrans, d'où l'écran dans la clé
   useEffect(() => {
-    const noter = () => positions.current.set(`${key}|${ecran}`, { y: window.scrollY, tableaux: tableaux().map((t) => t.scrollTop) })
+    const noter = () => {
+      derniereY.current = window.scrollY
+      positions.current.set(`${key}|${ecran}`, { y: window.scrollY, tableaux: tableaux().map((t) => t.scrollTop) })
+    }
     // Capture : le défilement d'un tableau dans sa carte ne remonte pas jusqu'à la fenêtre
     window.addEventListener('scroll', noter, { passive: true, capture: true })
     return () => window.removeEventListener('scroll', noter, { capture: true })
@@ -37,8 +50,13 @@ export function RetourEnHaut() {
   useLayoutEffect(() => {
     if (precedent.current === ecran) return
     precedent.current = ecran
+    const memeFiche = chemin.current === pathname
+    chemin.current = pathname
     const memorisee = navigation === 'POP' ? positions.current.get(`${key}|${ecran}`) : undefined
-    window.scrollTo({ top: memorisee?.y ?? 0, left: 0, behavior: 'instant' })
+    const onglets = memeFiche && !memorisee ? hauteurOnglets() : null
+    const y = memorisee?.y ?? (onglets === null ? 0 : Math.min(derniereY.current, onglets))
+    window.scrollTo({ top: y, left: 0, behavior: 'instant' })
+    derniereY.current = window.scrollY
     if (memorisee?.tableaux.some(Boolean)) tableaux().forEach((t, i) => { t.scrollTop = memorisee.tableaux[i] ?? 0 })
   }, [ecran, key, navigation])
 
