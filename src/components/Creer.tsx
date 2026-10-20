@@ -53,18 +53,19 @@ export function BoutonCreer({ rond = false }: { rond?: boolean }) {
       ) : (
         <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 52, px: 3, fontSize: '0.9375rem' }}>Créer</Button>
       )}
-      <Dialog open={ouvert} onClose={() => setOuvert(false)} fullWidth maxWidth="xs" aria-labelledby="titre-creer">
-        <DialogTitle id="titre-creer" sx={{ display: 'flex', alignItems: 'center', pr: 1 }}>
+      <Dialog open={ouvert} onClose={() => setOuvert(false)} fullWidth maxWidth={false} aria-labelledby="titre-creer" slotProps={{ paper: { sx: { width: { sm: 340 } } } }}>
+        <DialogTitle id="titre-creer" sx={{ display: 'flex', alignItems: 'center', pr: 1, py: 1 }}>
           <Box component="span" sx={{ flex: 1 }}>Créer</Box>
           <IconButton aria-label="Fermer" onClick={() => setOuvert(false)} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
         </DialogTitle>
-        <DialogContent sx={{ pb: 3 }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1.25 }}>
+        <DialogContent sx={{ pb: 2, px: 2 }}>
+          {/* Téléphone : les quatre choix sur une ligne ; PC : deux par ligne */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(4, minmax(0, 1fr))', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1 }}>
             {tuiles.map((t) => (
               <ButtonBase key={t.id} onClick={() => choisir(t.id)} disabled={!reseau}
-                sx={{ height: 112, borderRadius: 4, bgcolor: 'background.default', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Box sx={{ width: 52, height: 52, borderRadius: '50%', bgcolor: t.fond, color: t.texte, display: 'grid', placeItems: 'center' }}>{t.icone}</Box>
-                <Typography sx={{ fontWeight: 600 }}>{t.libelle}</Typography>
+                sx={{ minHeight: 84, py: 1, px: 0.5, borderRadius: 3, bgcolor: 'background.default', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: t.fond, color: t.texte, display: 'grid', placeItems: 'center' }}>{t.icone}</Box>
+                <Typography sx={{ fontWeight: 600, fontSize: '0.8125rem', lineHeight: 1.25, textAlign: 'center' }}>{t.libelle}</Typography>
               </ButtonBase>
             ))}
           </Box>

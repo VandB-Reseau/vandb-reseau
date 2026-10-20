@@ -10,7 +10,7 @@ import { useTheme } from '@mui/material/styles'
 export interface Rubrique<V extends string> { vue: V; libelle: string; court?: string; icone: ReactElement; pastille?: number }
 
 // Onglets des pages en puces, comme dans une app : la rubrique ouverte en noir, les autres cerclées.
-// PC : icône et libellé complet ; téléphone : libellé court seul. La bande défile quand elle déborde.
+// Icône à côté du libellé partout : libellé complet sur PC, libellé court sur téléphone. La bande défile quand elle déborde.
 // Chaque puce garde une zone tactile de 48 px de haut.
 // collants (fiches) : la bande reste sous la barre du haut quand l'en-tête de la fiche a défilé,
 // et changer d'onglet garde la position (RetourEnHaut) au lieu de remonter tout en haut.
@@ -27,7 +27,7 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
         ...(collants ? { position: 'sticky', top: { xs: 64, md: 72 }, zIndex: 4, bgcolor: 'background.default' } : {}),
       }}>
       {rubriques.map((r) => (
-        <Tab key={r.vue} value={r.vue} icon={surPC ? r.icone : undefined} iconPosition="start" aria-label={r.libelle} disableRipple
+        <Tab key={r.vue} value={r.vue} icon={r.icone} iconPosition="start" aria-label={r.libelle} disableRipple
           label={r.pastille ? <Badge color="error" badgeContent={r.pastille} sx={{ '& .MuiBadge-badge': { position: 'static', transform: 'none', ml: 0.75, fontSize: '0.75rem' } }}>{surPC ? r.libelle : r.court ?? r.libelle}</Badge> : surPC ? r.libelle : r.court ?? r.libelle}
           sx={{
             minHeight: 48, minWidth: 0, px: 2, py: 0, gap: 0.75, position: 'relative', zIndex: 0, color: 'text.primary', opacity: 1,
