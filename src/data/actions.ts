@@ -1,6 +1,9 @@
 // Actions suivies sur un magasin : celles des plans de visite et celles ajoutées hors visite.
 // Elles s'accumulent de visite en visite, jusqu'à être faites.
-import type { ActionLibre, ActionPlan, Reseau, Visite } from './modele'
+import { libelleResponsable, type ActionLibre, type ActionPlan, type Reseau, type Visite } from './modele'
+import type { Profil } from '../auth/roles'
+import { associesEnPlace } from './associes'
+import { coachA } from './charge'
 
 export interface ActionSuivie { visite: Visite | null; libre: ActionLibre | null; magasin: string; date: string; index: number; a: ActionPlan; cle: string }
 
@@ -44,3 +47,31 @@ export function actionsDes(reseau: Reseau, magasins: Set<string> | null): Action
 
 export const actionsDuMagasin = (reseau: Reseau, magasin: string) => actionsDes(reseau, new Set([magasin]))
 export const actionsEnCours = (reseau: Reseau, magasins: Set<string> | null) => actionsDes(reseau, magasins).filter((x) => !x.a.faite)
+
+// Porteurs possibles d'une action sur un magasin : son franchisé (ou responsable), son Coach,
+// son Responsable Régional (et celui des intégrés), le Directeur de réseau
+export interface Porteur { nom: string; role: string }
+export function porteursDu(reseau: Reseau, magasin: string): Porteur[] {
+  const m = reseau.magasins.find((x) => x.nom === magasin)
+  const l: Porteur[] = []
+  if (m) {
+    for (const a of associesEnPlace(reseau, m)) l.push({ nom: a.nom, role: libelleResponsable(m) })
+    if (m.responsable && !/recrutement/i.test(m.responsable.nom)) l.push({ nom: m.responsable.nom, role: libelleResponsable(m) })
+    const coach = coachA(m, reseau.jour)
+    if (coach) l.push({ nom: coach, role: 'Coach' })
+    if (m.rr) l.push({ nom: m.rr.nom, role: 'Responsable Régional' })
+    if (!m.franchise) for (const r of reseau.rrs.filter((x) => x.integres)) l.push({ nom: r.nom, role: 'Responsable des magasins intégrés' })
+  }
+  if (reseau.directeur.nom) l.push({ nom: reseau.directeur.nom, role: 'Directeur de réseau' })
+  return l.filter((p, i) => p.nom && l.findIndex((x) => x.nom === p.nom) === i)
+}
+
+// Nom de la personne connectée, tel qu'il apparaît comme porteur
+export function monNomPorteur(reseau: Reseau, profil: Profil | null): string {
+  if (!profil) return ''
+  if (reseau.espace) return profil.role === 'franchise' ? reseau.espace.franchise : ''
+  if (profil.role === 'coach') return profil.perimetre.coachs?.[0] ?? ''
+  if (profil.role === 'rr') return reseau.rrs.find((r) => r.id === profil.perimetre.rr?.[0])?.nom ?? ''
+  if (profil.role === 'directeur') return reseau.directeur.nom
+  return ''
+}

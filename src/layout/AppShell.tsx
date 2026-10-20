@@ -28,8 +28,9 @@ import { DialogMotDePasse } from '../components/DialogMotDePasse'
 import { Logo } from '../components/Logo'
 import { RechercheGlobale } from '../components/RechercheGlobale'
 import { BoutonMessages, Cloche } from '../components/Messages'
+import { BoutonTaches } from '../components/Actions'
 import { brandStripe } from '../theme/theme'
-import { barreTelephone, parametres, principales, secondaires, plus, type Destination } from '../navigation/destinations'
+import { parametres, principales, secondaires, plus, type Destination } from '../navigation/destinations'
 import { useAuth } from '../auth/AuthContext'
 import { roleLibelle } from '../auth/roles'
 
@@ -106,7 +107,7 @@ function MenuLateral({ franchise, sansParametres }: { franchise?: Destination[];
 function BarreBasse({ franchise }: { franchise?: Destination[] }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
-  const items = franchise ?? [...barreTelephone, plus]
+  const items = franchise ?? [...principales, plus]
   const actif = items.findIndex((d) => (d === plus ? pathname.startsWith('/plus') : estActive(d, pathname)))
   return (
     <Paper component="nav" aria-label="Navigation principale" sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: (t) => t.zIndex.appBar, borderTop: '1px solid', borderColor: 'divider', pb: 'env(safe-area-inset-bottom)' }}>
@@ -145,7 +146,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
   return (
     <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'background.default', '--barre-basse': sansBarre ? '0px' : 'calc(72px + env(safe-area-inset-bottom))' }}>
       <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1, bgcolor: '#000000', color: '#ffffff' }}>
-        <Toolbar sx={{ minHeight: { xs: 60, md: 68 }, gap: 2 }}>
+        <Toolbar sx={{ minHeight: { xs: 60, md: 68 }, gap: { xs: 0.5, sm: 2 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: surPC ? LARGEUR_MENU - 24 : 'auto' }}>
             <Logo size={surPC ? 22 : 20} />
             <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'inline' } }}>{franchise ? 'Espace franchisé' : 'Réseau'}</Typography>
@@ -158,6 +159,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
               <SearchIcon />
             </IconButton>
           )}
+          <BoutonTaches />
           {!sansCloche && <BoutonMessages />}
           {!sansCloche && <Cloche />}
           <MenuCompte />

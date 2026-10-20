@@ -15,6 +15,7 @@ import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import type { ActionPlan, Reseau, Visite } from '../data/modele'
 import { dateCourte } from '../lib/format'
+import { ChampPorteur } from './Actions'
 import { useDictee } from '../lib/dictee'
 
 const titre = { mb: 1 } as const
@@ -81,7 +82,7 @@ export function SaisieCompteRendu({ reseau, visite, tournee, magasin, notes, set
           return (
             <Box key={i} sx={{ display: 'grid', gap: 1, mb: 1.5, alignItems: 'center', gridTemplateColumns: { xs: '1fr 1fr 48px', sm: '3fr 1.2fr 1fr 48px' } }}>
               <TextField label="Action" value={a.action} onChange={(e) => changer('action', e.target.value)} sx={{ gridColumn: { xs: '1 / 3', sm: 'auto' } }} />
-              <TextField label="Porteur" value={a.porteur} onChange={(e) => changer('porteur', e.target.value)} sx={{ gridRow: { xs: 2, sm: 'auto' } }} />
+              <ChampPorteur reseau={reseau} magasin={magasin} valeur={a.porteur} changer={(v) => changer('porteur', v)} sx={{ gridRow: { xs: 2, sm: 'auto' }, minWidth: 0 }} />
               <TextField label="Échéance" type={!a.echeance || echeanceDate(a) ? 'date' : 'text'} value={a.echeance} onChange={(e) => changer('echeance', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ gridRow: { xs: 2, sm: 'auto' } }} />
               <IconButton aria-label={`Retirer l’action ${i + 1}`} onClick={() => setPlan((p) => p.filter((_x, j) => j !== i))} sx={{ gridColumn: { xs: 3, sm: 'auto' }, gridRow: { xs: '1', sm: 'auto' } }}><CloseOutlined /></IconButton>
             </Box>

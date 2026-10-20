@@ -269,9 +269,9 @@ test('ancien lien vers les messages d’un magasin : la fiche du magasin', async
   await expect(page.getByRole('list', { name: 'Messages de Annecy Test' }).or(page.getByText('Aucun message sur ce magasin.'))).toBeVisible()
 })
 
-test('le franchisé retrouve ses conversations dans sa navigation', async ({ page }) => {
+test('le franchisé retrouve ses conversations depuis l’icône de l’en-tête', async ({ page }) => {
   await seConnecter(page, { acces: PAUL, messagerie: { messages: [prive(1, 'coach:Noé MODELE', 'Noé MODELE', 'franchise:Paul MULTI', 'Bonne semaine !', ['Rennes Test'], 15)] } })
-  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Messages' }).click()
+  await page.locator('button[aria-label^="Messages"]').click()
   const liste = page.getByRole('list', { name: 'Conversations' })
   // Son Coach en tête (dernier message), puis les autres personnes de l'équipe de ses magasins, jamais un franchisé
   await expect(liste.getByRole('button').first()).toHaveText(/^NMNoé MODELE.*Bonne semaine !/)
