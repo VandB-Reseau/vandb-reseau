@@ -24,7 +24,7 @@ import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, MiniCourbe, Pastille, Puces, TitreSection, type Ton } from '../components/Social'
-import { ProfilPersonne } from '../components/Portefeuille'
+import { ProfilPersonne, rond } from '../components/Portefeuille'
 import { FilActivite } from './Accueil'
 import { filDu, type ElementFil } from '../data/fil'
 import { useCommunicationsDuFil, type Communication } from '../data/communications'
@@ -502,7 +502,7 @@ function ProfilFranchise({ reseau, m, message, retour }: { reseau: Reseau; m: Ma
         { valeur: ouvertes.length, libelle: ouvertes.length > 1 ? 'tâches en cours' : 'tâche en cours' },
       ]}
       telephone={coach?.telephone} libelleAppel="Coach"
-      actions={<Button variant="outlined" startIcon={<ChatBubbleOutlineOutlined />} onClick={message} sx={{ flex: 1, minHeight: 48 }}>Message</Button>} />
+      actions={<Tooltip title="Message"><IconButton onClick={message} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Tooltip>} />
   )
 }
 
