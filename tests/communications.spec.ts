@@ -222,3 +222,50 @@ test('le franchisé voit dans son fil les communications qui le concernent seule
   await fil.getByRole('link', { name: /V and B Day/ }).click()
   await expect(page.getByRole('article', { name: 'V and B Day : J-7' })).toBeVisible()
 })
+
+test('dans le fil, la photo de la communication s’affiche en grand, on aime et on commente sans quitter l’accueil', async ({ page, isMobile }, info) => {
+  const ecritures: Ecriture[] = []
+  await page.route('https://exemple.test/**', (r) => r.fulfill({ contentType: 'image/png', body: Buffer.from(PNG, 'base64') }))
+  const photo = { chemin: `${AUTRE}/2026-10/vandb-day.jpg`, nom: 'vandb-day.jpg', taille: 1000, type: 'image/jpeg' }
+  await seConnecter(page, { ecritures, communications: [
+    { id: 1, titre: 'V and B Day : J-7', texte: 'Ne tardez plus à confirmer votre présence !', pieces: [photo], entete: photo.chemin, magasins: null, auteur: AUTRE, auteur_nom: 'Joseph PERREAU', auteur_role: 'directeur', cree_le: ilYa(1),
+      pouces: [{ user_id: AUTRE, nom: 'Noé MODELE' }], commentaires: [{ id: 1, auteur: AUTRE, auteur_nom: 'Noé MODELE', auteur_role: 'coach', texte: 'Inscrit !', cree_le: ilYa(1) }] },
+    { id: 2, titre: 'Carte d’hiver', texte: '', html: '<p>La carte arrive.</p><img src="https://exemple.test/carte.png" alt="Carte">', magasins: null, auteur: AUTRE, auteur_nom: 'Joseph PERREAU', auteur_role: 'directeur', cree_le: ilYa(2) },
+  ] })
+  const fil = page.getByRole('region', { name: 'Fil de mes magasins' })
+  const carte = fil.getByRole('article', { name: 'V and B Day : J-7' })
+  const image = carte.getByRole('img', { name: 'V and B Day : J-7' })
+  await expect(image).toBeVisible()
+  // Pleine largeur de la carte
+  const [li, lc] = await Promise.all([image.boundingBox(), carte.boundingBox()])
+  expect(Math.round(li!.width)).toBe(Math.round(lc!.width))
+  // Sans photo jointe : la première image de la communication mise en forme
+  await expect(fil.getByRole('article', { name: 'Carte d’hiver' }).getByRole('img')).toHaveAttribute('src', 'https://exemple.test/carte.png')
+  await expect(carte.getByText('Inscrit !')).toBeVisible()
+  const pouce = carte.getByRole('button', { name: /^J’aime/ })
+  await pouce.click()
+  await expect(pouce).toHaveText('J’aime · 2')
+  expect(ecritures.find((e) => e.table === 'rpc/basculer_pouce_communication')?.corps).toEqual({ p_id: 1 })
+  await carte.getByRole('button', { name: /^Commenter/ }).click()
+  await carte.getByRole('textbox', { name: 'Commentaire sur V and B Day : J-7' }).fill('On y sera.')
+  await carte.getByRole('button', { name: 'Envoyer le commentaire' }).click()
+  await expect(carte.getByText('On y sera.')).toBeVisible()
+  await expect(page).not.toHaveURL(/communications/)
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-fil-communication-photo.png`, fullPage: !isMobile })
+})
+
+test('le franchisé aime et commente une communication depuis son fil', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { acces: PAUL, ecritures, communications: [
+    { id: 1, titre: 'V and B Day : J-7', texte: 'Ne tardez plus.', magasins: null, auteur: AUTRE, auteur_nom: 'Joseph PERREAU', auteur_role: 'directeur', cree_le: ilYa(1) },
+  ] })
+  const carte = page.getByRole('region', { name: 'Fil de mes magasins' }).getByRole('article', { name: 'V and B Day : J-7' })
+  await carte.getByRole('button', { name: /^J’aime/ }).click()
+  await expect(carte.getByRole('button', { name: /^J’aime/ })).toHaveAttribute('aria-pressed', 'true')
+  await carte.getByRole('button', { name: /^Commenter/ }).click()
+  await carte.getByRole('textbox', { name: 'Commentaire sur V and B Day : J-7' }).fill('Merci !')
+  await carte.getByRole('button', { name: 'Envoyer le commentaire' }).click()
+  await expect(carte.getByText('Merci !')).toBeVisible()
+  expect(ecritures.find((e) => e.table === 'rpc/commenter_communication')?.corps).toEqual({ p_id: 1, p_texte: 'Merci !' })
+})

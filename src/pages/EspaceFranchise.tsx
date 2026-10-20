@@ -28,6 +28,7 @@ import { ProfilPersonne } from '../components/Portefeuille'
 import { FilActivite } from './Accueil'
 import { filDu, type ElementFil } from '../data/fil'
 import { useCommunicationsDuFil, type Communication } from '../data/communications'
+import { useReactionsPratiques } from '../data/reactionsPratiques'
 import { brand } from '../theme/theme'
 import Snackbar from '@mui/material/Snackbar'
 import { SectionMessages, useNonLusMagasin } from '../components/Messages'
@@ -298,11 +299,11 @@ function SectionContacts({ reseau, magasins }: { reseau: Reseau; magasins: Magas
 }
 
 // Fil des magasins du franchisé : les liens restent dans son espace
-function useFilFranchise(reseau: Reseau, noms: string[], jours = 120, communications: Communication[] = []): ElementFil[] {
+function useFilFranchise(reseau: Reseau, noms: string[], jours = 120, communications: Communication[] = [], pratiquesReseau = false): ElementFil[] {
   const { messagerie } = useMessagerie()
   const cle = noms.join('|')
-  return useMemo(() => filDu(reseau, new Set(cle.split('|')), messagerie, jours, communications)
-    .map((e) => (e.genre === 'tache' ? { ...e, lien: '/taches' } : e.genre === 'pratique' ? { ...e, lien: '/bonnes-pratiques' } : e)), [reseau, cle, messagerie, jours, communications])
+  return useMemo(() => filDu(reseau, new Set(cle.split('|')), messagerie, jours, communications, pratiquesReseau)
+    .map((e) => (e.genre === 'tache' ? { ...e, lien: '/taches' } : e.genre === 'pratique' ? { ...e, lien: '/bonnes-pratiques' } : e)), [reseau, cle, messagerie, jours, communications, pratiquesReseau])
 }
 
 // ── Accueil du franchisé ──
@@ -319,7 +320,8 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
   const tous = reseau.magasins
   const magasins = choix ? tous.filter((m) => m.nom === choix) : tous
   const communications = useCommunicationsDuFil()
-  const fil = useFilFranchise(reseau, magasins.map((m) => m.nom), 120, communications)
+  const reactionsPratiques = useReactionsPratiques()
+  const fil = useFilFranchise(reseau, magasins.map((m) => m.nom), 120, communications.liste, true)
   if (!tous.length) return <><PageHeader titre="Accueil" /><EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." /></>
   return (
     <>
@@ -329,7 +331,7 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           <SectionChiffresDuMois reseau={reseau} magasins={magasins} />
           <SectionReperes reseau={reseau} magasins={magasins} />
-          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Fil de mes magasins" />
+          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Fil de mes magasins" communications={communications} reactionsPratiques={reactionsPratiques} />
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           <SectionTaches reseau={reseau} magasins={magasins} />

@@ -101,3 +101,8 @@ export function texteDuHtml(html: string): string {
   doc.querySelectorAll('p, div, li, tr, h1, h2, h3, h4, h5, h6, blockquote, center, table').forEach((b) => b.append('\n'))
   return (doc.body.textContent ?? '').replace(/[ \t ]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim()
 }
+
+// Première image (https) d'une communication mise en forme, pour le fil
+export function premiereImage(html: string): string {
+  return new DOMParser().parseFromString(nettoyerHtml(html), 'text/html').querySelector('img')?.getAttribute('src') ?? ''
+}

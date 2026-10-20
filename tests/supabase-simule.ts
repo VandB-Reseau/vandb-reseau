@@ -29,8 +29,10 @@ export interface CommunicationSimulee {
   id: number; titre: string; texte: string; html?: string | null; entete?: string | null; pieces?: unknown[]; magasins: string[] | null; auteur: string; auteur_nom: string; auteur_role: string; cree_le: string
   pouces?: { user_id: string; nom: string }[]; commentaires?: { id: number; auteur: string; auteur_nom: string; auteur_role: string; texte: string; cree_le: string }[]
 }
+// « J'aime » et commentaires des bonnes pratiques (script pratiques_reactions.sql), rangés par pratique
+export interface ReactionsPratiquesSimulees { pouces?: Record<string, { user_id: string; nom: string }[]>; commentaires?: Record<string, { id: number; auteur: string; auteur_nom: string; auteur_role: string; texte: string; cree_le: string }[]> }
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
-export interface OptionsSimulation { communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null }
+export interface OptionsSimulation { reactionsPratiques?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -118,7 +120,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       const meta = options.appMetadata ?? {}
       const acces: AccesSimule = options.acces ?? (meta.role === 'coach' || meta.role === 'rr' ? { role: String(meta.role), coach: meta.coach as string, rr: meta.rr as string } : { role: 'directeur' })
       if (fn === 'maj_perimetre_equipe') options.perimetreRecu = corps.p_lignes as PerimetreRecu[]
-      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie', 'communications'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
+      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie', 'communications', 'reactions_pratiques'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
       if (fn === 'mon_acces') return route.fulfill({ json: { role: acces.role, coach: acces.coach ?? null, rr: acces.rr ?? null, franchise: acces.franchise ?? null, magasins: acces.magasins ?? [] } })
       if (fn === 'espace_franchise') {
         const apercu = Array.isArray(corps.p_magasins)
@@ -167,6 +169,24 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
           mg.messages = mg.messages.filter((m) => !(m.auteur === MOI && (m.id === corps.p_id || (lot && m.lot === lot))))
         }
         return route.fulfill({ status: 200, json: null })
+      }
+      // Réactions aux bonnes pratiques (script pratiques_reactions.sql) : absent des options = script pas encore passé
+      if (['reactions_pratiques', 'basculer_pouce_pratique', 'commenter_pratique', 'supprimer_commentaire_pratique'].includes(fn)) {
+        const r = options.reactionsPratiques
+        if (!r) return absente()
+        const pouces = (r.pouces ??= {}), commentaires = (r.commentaires ??= {})
+        const nom = acces.role === 'franchise' ? acces.franchise : acces.role === 'coach' ? acces.coach : acces.role === 'rr' ? configRRFictive.drs.find((d) => d.id === acces.rr)?.name : configRRFictive.directeur.name
+        if (fn === 'reactions_pratiques') return route.fulfill({ json: { moi: MOI, pouces, commentaires } })
+        const id = String(corps.p_id)
+        if (fn === 'basculer_pouce_pratique') {
+          const avant = pouces[id] ?? []
+          pouces[id] = avant.some((p) => p.user_id === MOI) ? avant.filter((p) => p.user_id !== MOI) : [...avant, { user_id: MOI, nom: nom ?? '' }]
+          return route.fulfill({ json: pouces[id].some((p) => p.user_id === MOI) })
+        }
+        if (fn === 'supprimer_commentaire_pratique') { for (const k of Object.keys(commentaires)) commentaires[k] = commentaires[k].filter((c) => !(c.id === corps.p_id && c.auteur === MOI)); return route.fulfill({ status: 200, json: null }) }
+        const tous = Object.values(commentaires).flat()
+        commentaires[id] = [...(commentaires[id] ?? []), { id: Math.max(0, ...tous.map((k) => k.id)) + 1, auteur: MOI, auteur_nom: nom ?? '', auteur_role: acces.role, texte: String(corps.p_texte ?? '').trim(), cree_le: new Date().toISOString() }]
+        return route.fulfill({ json: { id: tous.length + 1 } })
       }
       // Communications du réseau (script communications.sql) : le Directeur pour tout le réseau, un RR pour ses magasins
       if (['communications', 'publier_communication', 'supprimer_communication', 'basculer_pouce_communication', 'commenter_communication', 'supprimer_commentaire_communication'].includes(fn)) {

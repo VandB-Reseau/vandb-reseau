@@ -51,6 +51,23 @@ export function BanniereEntete({ piece, children }: { piece: Piece; children?: R
   )
 }
 
+// Photo d'une communication dans le fil : pleine largeur, proportions gardées, comme un fil d'actualité
+export function VisuelFil({ piece, url, alt }: { piece?: Piece; url?: string; alt: string }) {
+  const [lien, setLien] = useState<string | null>(url ?? null)
+  const [illisible, setIllisible] = useState(false)
+  useEffect(() => {
+    if (!piece) return
+    let actif = true
+    void lienPiece(piece.chemin).then((l) => { if (actif) setLien(l) })
+    return () => { actif = false }
+  }, [piece])
+  // Image introuvable (lien d'un courriel expiré) : la publication reste, sans photo
+  if (illisible) return null
+  if (!lien) return <Box sx={{ height: 200, bgcolor: 'action.hover' }} />
+  return <Box component="img" src={lien} alt={alt} loading="lazy" referrerPolicy="no-referrer" onError={() => setIllisible(true)}
+    sx={{ display: 'block', width: '100%', height: 'auto', maxHeight: { xs: 420, sm: 520 }, objectFit: 'contain', bgcolor: '#ffffff' }} />
+}
+
 // Choix de la photo d'en-tête : envoyée aussitôt, retirable
 export function ChampEntete({ piece, changer, signaler }: { piece: Piece | null; changer: (p: Piece | null) => void; signaler: (m: string) => void }) {
   const { profil } = useAuth()

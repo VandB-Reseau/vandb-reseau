@@ -1,7 +1,7 @@
 // Communications du réseau vers les franchisés (script supabase/communications.sql) : publiées par le Directeur
 // de réseau (tout le réseau) ou un Responsable Régional (ses magasins), lues, commentées et « J'aime » par l'équipe
 // et les franchisés concernés. Tout passe par des fonctions de la base.
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { normaliserPieces, type Piece } from '../lib/pieces'
 
@@ -61,12 +61,14 @@ export function messageCommunication(e: unknown): string {
 }
 
 // Communications reprises dans le fil d'activité (liste vide tant que la base ne les connaît pas)
-export function useCommunicationsDuFil(): Communication[] {
-  const [liste, setListe] = useState<Communication[]>([])
+export interface CommunicationsDuFil { liste: Communication[]; moi: string; recharger: () => Promise<void> }
+export function useCommunicationsDuFil(): CommunicationsDuFil {
+  const [etat, setEtat] = useState<Communications | null>(null)
+  const recharger = useCallback(async () => { setEtat(await chargerCommunications()) }, [])
   useEffect(() => {
     let actif = true
-    void chargerCommunications().then((c) => { if (actif) setListe(c?.liste ?? []) })
+    void chargerCommunications().then((c) => { if (actif) setEtat(c) })
     return () => { actif = false }
   }, [])
-  return liste
+  return useMemo(() => ({ liste: etat?.liste ?? [], moi: etat?.moi ?? '', recharger }), [etat, recharger])
 }
