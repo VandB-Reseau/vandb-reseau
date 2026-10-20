@@ -2,10 +2,6 @@ import { EcartsAudit, RangeePhotos } from '../components/GrilleAudit'
 import { CartePratique, DialogPratique } from '../components/BonnesPratiques'
 import type { BonnePratique } from '../data/bonnesPratiques'
 import { Fragment, useMemo, useState, type ReactNode } from 'react'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
-import ListItemIcon from '@mui/material/ListItemIcon'
-import MoreVert from '@mui/icons-material/MoreVert'
 import DynamicFeedOutlined from '@mui/icons-material/DynamicFeedOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import { GrillePhotos, Initiales, Pastille, TitreSection, type Ton } from '../components/Social'
@@ -435,7 +431,6 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, 
   m: Magasin; reseau: Reseau; alerte: ReturnType<typeof analyser>; enRetardNb: number; ouvertes: number; retardVisite: number
   appeler: string; message: () => void; visite: () => void; modifier?: () => void
 }) {
-  const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const c = caseDe(reseau.evaluations[m.nom])
   // Une seule pastille : la plus grave
   const pastille: { ton: Ton; libelle: string } | null = alerte?.statut === 'decroche' ? { ton: 'rouge', libelle: 'Décroche' }
@@ -459,11 +454,10 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, 
           <Typography variant="body2" color="text.secondary">{[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · ')}</Typography>
           <Typography variant="body2" color="text.secondary">{[m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')}</Typography>
         </Box>
-        <IconButton aria-label="Plus d’actions" onClick={(e) => setAncre(e.currentTarget)} sx={{ width: 48, height: 48, alignSelf: 'flex-start' }}><MoreVert /></IconButton>
-        <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
-          <MenuItem component={RouterLink} to={lienPreparation(m.nom)} sx={{ minHeight: 48 }}><ListItemIcon><AssignmentOutlined fontSize="small" /></ListItemIcon>Préparer la visite</MenuItem>
-          {modifier && <MenuItem onClick={() => { setAncre(null); modifier() }} sx={{ minHeight: 48 }}><ListItemIcon><EditOutlined fontSize="small" /></ListItemIcon>Modifier</MenuItem>}
-        </Menu>
+        <Box sx={{ display: 'flex', alignSelf: 'flex-start' }}>
+          <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(m.nom)} aria-label="Préparer la visite" sx={{ width: 48, height: 48 }}><AssignmentOutlined /></IconButton></Tooltip>
+          {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label="Modifier" sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
+        </Box>
       </Box>
       {pastille && <Box sx={{ mt: 1.5 }}><Pastille ton={pastille.ton}>{pastille.libelle}</Pastille></Box>}
       <Box sx={{ display: 'flex', mt: 2, py: 1, borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', '& > * + *': { borderLeft: '1px solid', borderColor: 'divider' } }} role="group" aria-label="En bref">
