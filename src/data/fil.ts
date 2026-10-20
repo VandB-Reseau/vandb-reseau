@@ -6,9 +6,11 @@ import { analyser, decalerMois, formatKEuros, formatPourcent, libelleMois } from
 import { apercuDe, type Messagerie } from './messagerie'
 import { lienCompteRendu } from './visites'
 import { lienFiche } from '../lib/format'
+import type { Communication } from './communications'
 
-// Fil d'activité des magasins suivis : visites, tâches, messages, chiffres et bonnes pratiques, du plus récent au plus ancien
-export type GenreFil = 'visite' | 'tache' | 'message' | 'chiffres' | 'pratique'
+// Fil d'activité des magasins suivis : visites, tâches, messages, chiffres, bonnes pratiques et communications du réseau,
+// du plus récent au plus ancien
+export type GenreFil = 'visite' | 'tache' | 'message' | 'chiffres' | 'pratique' | 'communication'
 
 export interface ElementFil {
   cle: string
@@ -16,7 +18,8 @@ export interface ElementFil {
   instant: string // AAAA-MM-JJ ou date et heure ISO
   auteur: string // qui a agi (vide si inconnu)
   action: string // « a visité », « a fait la tâche »…
-  magasin: string
+  magasin: string // vide pour une communication du réseau
+  cible?: string // communication : « Tout le réseau », « 3 magasins »
   titre?: string // tâche, bonne pratique
   texte?: string
   photos?: Photo[]
@@ -30,7 +33,7 @@ const instantDe = (s: string) => (s.length === 10 ? `${s}T00:00:00` : s)
 // Premier texte d'un compte rendu : les notes, sinon la première partie remplie
 const resume = (notes: string, parties: string[]) => (notes || parties.find((p) => p.trim()) || '').trim()
 
-export function filDu(reseau: Reseau, noms: Set<string>, mg: Messagerie | null, jours = 45): ElementFil[] {
+export function filDu(reseau: Reseau, noms: Set<string>, mg: Messagerie | null, jours = 45, communications: Communication[] = []): ElementFil[] {
   const depuis = new Date(Date.parse(`${reseau.jour}T00:00:00`) - jours * 86_400_000).toISOString().slice(0, 10)
   const res: ElementFil[] = []
   for (const v of reseau.visites) {
@@ -64,6 +67,15 @@ export function filDu(reseau: Reseau, noms: Set<string>, mg: Messagerie | null, 
   for (const p of reseau.pratiques) {
     if (!noms.has(p.magasin) || p.date < depuis || p.date > reseau.jour) continue
     res.push({ cle: `p|${p.id}`, genre: 'pratique', instant: p.date, auteur: p.par, action: 'bonne pratique', magasin: p.magasin, titre: p.titre, texte: p.texte, photos: p.photos, lien: `${lienFiche(p.magasin)}?vue=journal` })
+  }
+  // Communications : celles de tout le réseau et celles qui citent un des magasins suivis
+  for (const c of communications) {
+    if (c.creeLe.slice(0, 10) < depuis || (c.magasins !== null && !c.magasins.some((n) => noms.has(n)))) continue
+    res.push({
+      cle: `k|${c.id}`, genre: 'communication', instant: c.creeLe, auteur: c.auteurNom, action: 'communication', magasin: '',
+      cible: c.magasins === null ? 'Tout le réseau' : `${c.magasins.length} magasin${c.magasins.length > 1 ? 's' : ''}`,
+      titre: c.titre, texte: c.texte, lien: `/communications?c=${c.id}`,
+    })
   }
   return res.sort((a, b) => instantDe(b.instant).localeCompare(instantDe(a.instant)))
 }

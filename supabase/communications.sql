@@ -9,6 +9,9 @@
 --    Coach et RR : les publications de tout le réseau et celles qui citent un de leurs magasins.
 -- 3) Personne ne lit ni n'écrit les tables directement : tout passe par les fonctions ci-dessous.
 --    Le nom et le rôle de l'auteur sont posés par la base, jamais par l'app.
+-- 4) Communication mise en forme (collée depuis un courriel ou en code HTML) : colonne html, 200 000 caractères
+--    au plus ; l'app la reconstruit à partir d'une liste fermée de balises à chaque affichage (aucun script).
+--    Le texte brut reste dans « texte » (recherche, fil d'activité). Photo d'en-tête = une des pièces jointes (entete).
 -- ════════════════════════════════════════════════════════════════
 
 CREATE TABLE IF NOT EXISTS public.communications (
@@ -23,6 +26,8 @@ CREATE TABLE IF NOT EXISTS public.communications (
   cree_le     timestamptz NOT NULL DEFAULT now(),
   modifie_le  timestamptz
 );
+ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS html text;
+ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS entete text; -- chemin d'une photo de « pieces »
 CREATE INDEX IF NOT EXISTS communications_date ON public.communications (cree_le DESC);
 
 CREATE TABLE IF NOT EXISTS public.communications_pouces (
@@ -74,7 +79,7 @@ BEGIN
     'moi', auth.uid(),
     'role', public.mon_role(),
     'liste', (SELECT coalesce(jsonb_agg(jsonb_build_object(
-        'id', c.id, 'titre', c.titre, 'texte', c.texte, 'pieces', c.pieces, 'magasins', to_jsonb(c.magasins),
+        'id', c.id, 'titre', c.titre, 'texte', c.texte, 'html', c.html, 'entete', c.entete, 'pieces', c.pieces, 'magasins', to_jsonb(c.magasins),
         'auteur', c.auteur, 'auteur_nom', c.auteur_nom, 'auteur_role', c.auteur_role, 'cree_le', c.cree_le, 'modifie_le', c.modifie_le,
         'pouces', (SELECT coalesce(jsonb_agg(jsonb_build_object('user_id', p.user_id, 'nom', p.nom) ORDER BY p.cree_le), '[]'::jsonb)
                    FROM public.communications_pouces p WHERE p.communication = c.id),
@@ -89,19 +94,18 @@ END $$;
 
 -- Publication nouvelle (p_id NULL) ou modifiée par son auteur.
 -- Directeur : tout le réseau ; Responsable Régional : ses magasins.
-CREATE OR REPLACE FUNCTION public.publier_communication(p_id bigint, p_titre text, p_texte text, p_pieces jsonb DEFAULT '[]') RETURNS jsonb
+DROP FUNCTION IF EXISTS public.publier_communication(bigint, text, text, jsonb);
+CREATE OR REPLACE FUNCTION public.publier_communication(p_id bigint, p_titre text, p_texte text, p_pieces jsonb DEFAULT '[]',
+  p_html text DEFAULT NULL, p_entete text DEFAULT NULL) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v_role text := public.mon_role(); v_titre text := trim(coalesce(p_titre, '')); v_texte text := trim(coalesce(p_texte, ''));
-  v_cible text[]; v_id bigint; v_pieces jsonb;
+  v_html text := nullif(trim(coalesce(p_html, '')), ''); v_cible text[]; v_id bigint; v_pieces jsonb; v_entete text;
 BEGIN
   IF v_role NOT IN ('directeur', 'rr') THEN RAISE EXCEPTION 'acces_refuse'; END IF;
   IF v_titre = '' THEN RAISE EXCEPTION 'titre_vide'; END IF;
-  IF length(v_titre) > 200 OR length(v_texte) > 8000 THEN RAISE EXCEPTION 'message_trop_long'; END IF;
+  IF length(v_titre) > 200 OR length(v_texte) > 8000 OR length(coalesce(v_html, '')) > 200000 THEN RAISE EXCEPTION 'message_trop_long'; END IF;
   IF p_id IS NULL THEN
-    v_cible := CASE WHEN v_role = 'rr' THEN coalesce(public.magasins_messagerie(), '{}') END;
-    INSERT INTO public.communications (titre, texte, pieces, magasins, auteur, auteur_nom, auteur_role)
-    VALUES (v_titre, v_texte, public.pieces_propres(p_pieces), v_cible, auth.uid(), public.mon_nom(), v_role)
-    RETURNING id INTO v_id;
+    v_pieces := public.pieces_propres(p_pieces);
   ELSE
     -- Les fichiers déjà joints restent ; seuls les nouveaux doivent appartenir au compte
     SELECT coalesce(jsonb_agg(e), '[]'::jsonb) INTO v_pieces FROM (
@@ -110,7 +114,17 @@ BEGIN
       UNION ALL SELECT e FROM jsonb_array_elements(public.pieces_propres(p_pieces)) e
         WHERE NOT EXISTS (SELECT 1 FROM public.communications c WHERE c.id = p_id AND c.pieces @> jsonb_build_array(jsonb_build_object('chemin', e->>'chemin')))
     ) x;
-    UPDATE public.communications SET titre = v_titre, texte = v_texte, pieces = v_pieces, modifie_le = now()
+  END IF;
+  -- La photo d'en-tête doit être une photo jointe
+  SELECT e->>'chemin' INTO v_entete FROM jsonb_array_elements(v_pieces) e
+  WHERE e->>'chemin' = p_entete AND coalesce(e->>'type', '') LIKE 'image/%' LIMIT 1;
+  IF p_id IS NULL THEN
+    v_cible := CASE WHEN v_role = 'rr' THEN coalesce(public.magasins_messagerie(), '{}') END;
+    INSERT INTO public.communications (titre, texte, html, entete, pieces, magasins, auteur, auteur_nom, auteur_role)
+    VALUES (v_titre, v_texte, v_html, v_entete, v_pieces, v_cible, auth.uid(), public.mon_nom(), v_role)
+    RETURNING id INTO v_id;
+  ELSE
+    UPDATE public.communications SET titre = v_titre, texte = v_texte, html = v_html, entete = v_entete, pieces = v_pieces, modifie_le = now()
     WHERE id = p_id AND auteur = auth.uid() RETURNING id INTO v_id;
     IF v_id IS NULL THEN RAISE EXCEPTION 'acces_refuse'; END IF;
   END IF;
@@ -158,7 +172,7 @@ END $$;
 DO $$
 DECLARE f text;
 BEGIN
-  FOREACH f IN ARRAY ARRAY['communication_visible(bigint)', 'communications()', 'publier_communication(bigint, text, text, jsonb)', 'supprimer_communication(bigint)',
+  FOREACH f IN ARRAY ARRAY['communication_visible(bigint)', 'communications()', 'publier_communication(bigint, text, text, jsonb, text, text)', 'supprimer_communication(bigint)',
     'basculer_pouce_communication(bigint)', 'commenter_communication(bigint, text)', 'supprimer_commentaire_communication(bigint)'] LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION public.%s FROM PUBLIC, anon', f);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.%s TO authenticated', f);

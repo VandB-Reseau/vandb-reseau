@@ -21,11 +21,14 @@ import { ChampDicte } from '../components/SaisieCompteRendu'
 import { ChampPieces, ListePieces } from '../components/Pieces'
 import { RechercheFiltres } from '../components/RechercheFiltres'
 import { BoutonAction, ChampRecherche } from '../components/Outils'
-import { Initiales, useParTranches } from '../components/Social'
+import { Initiales, Puces, useParTranches } from '../components/Social'
+import { AlerteTaille, BanniereEntete, ChampCodeHtml, ChampEntete, ContenuMisEnForme, EditeurMiseEnForme } from '../components/MiseEnForme'
 import { useAuth } from '../auth/AuthContext'
 import { ErreurAction } from '../data/espaceFranchise'
 import { quand } from '../data/fil'
-import type { Piece } from '../lib/pieces'
+import { estImage, type Piece } from '../lib/pieces'
+import { HTML_MAX, nettoyerHtml, texteDuHtml } from '../lib/html'
+import { useSearchParams } from 'react-router-dom'
 import {
   basculerPouce, chargerCommunications, commenter, messageCommunication, publierCommunication, supprimerCommentaire, supprimerCommunication,
   type Communication, type Communications,
@@ -34,22 +37,50 @@ import {
 const aujourdhui = () => new Date().toLocaleDateString('sv-SE')
 const roles: Record<string, string> = { directeur: 'Directeur de réseau', rr: 'Responsable Régional', coach: 'Coach', franchise: 'Franchisé' }
 
+type Mode = 'texte' | 'forme' | 'code'
+const modes: { v: Mode; libelle: string }[] = [{ v: 'texte', libelle: 'Texte' }, { v: 'forme', libelle: 'Mise en forme' }, { v: 'code', libelle: 'Code HTML' }]
+const echapper = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
 function DialogCommunication({ c, onFermer }: { c: Communication | null; onFermer: (m?: string) => void }) {
   const [titre, setTitre] = useState(c?.titre ?? '')
   const [texte, setTexte] = useState(c?.texte ?? '')
-  const [pieces, setPieces] = useState<Piece[]>(c?.pieces ?? [])
+  const [html, setHtml] = useState(c?.html ?? '')
+  const [mode, setMode] = useState<Mode>(c?.html ? 'forme' : 'texte')
+  const [entete, setEntete] = useState<Piece | null>(c?.pieces.find((p) => p.chemin === c.entete) ?? null)
+  const [pieces, setPieces] = useState<Piece[]>(c?.pieces.filter((p) => p.chemin !== c.entete) ?? [])
   const [alerte, setAlerte] = useState('')
+  const changerMode = (m: Mode) => {
+    if (m === mode) return
+    // Le texte simple devient des paragraphes ; la mise en forme redevient du texte simple
+    if (m !== 'texte' && mode === 'texte' && !html.trim() && texte.trim()) setHtml(texte.trim().split(/\n{2,}/).map((b) => `<p>${echapper(b).replace(/\n/g, '<br>')}</p>`).join(''))
+    if (m === 'texte' && mode !== 'texte' && html.trim()) setTexte(texteDuHtml(nettoyerHtml(html)).slice(0, 8000))
+    setMode(m)
+  }
+  const propre = mode === 'texte' ? '' : nettoyerHtml(html)
+  const tropLourd = propre.length > HTML_MAX
   const agir = async (action: () => Promise<unknown>, ok: string) => {
     try { await action() } catch (e) { throw new ErreurAction(messageCommunication(e)) }
     return ok
   }
+  const enregistrer = () => {
+    const toutes = entete ? [entete, ...pieces] : pieces
+    const brut = mode === 'texte' ? texte.trim() : texteDuHtml(propre).slice(0, 8000)
+    return publierCommunication(c?.id ?? null, titre.trim(), brut, toutes, propre || null, entete?.chemin ?? null)
+  }
   return (
-    <Fenetre large ouvert onFermer={onFermer} valide={!!titre.trim()} titre={c ? 'Modifier la communication' : 'Nouvelle communication'}
-      enregistrer={() => agir(() => publierCommunication(c?.id ?? null, titre.trim(), texte.trim(), pieces), c ? 'Communication mise à jour.' : 'Communication publiée.')}
+    <Fenetre large ouvert onFermer={onFermer} valide={!!titre.trim() && !tropLourd} titre={c ? 'Modifier la communication' : 'Nouvelle communication'}
+      enregistrer={() => agir(enregistrer, c ? 'Communication mise à jour.' : 'Communication publiée.')}
       supprimer={c ? () => agir(() => supprimerCommunication(c.id), 'Communication retirée.') : undefined}
       libelleSuppression={c ? `Retirer « ${c.titre} » ? Les commentaires partent avec.` : undefined}>
       <TextField label="Titre" value={titre} onChange={(e) => setTitre(e.target.value)} slotProps={{ htmlInput: { maxLength: 200 } }} />
-      <ChampDicte libelle="Message" valeur={texte} changer={setTexte} minRows={5} />
+      <ChampEntete piece={entete} changer={setEntete} signaler={setAlerte} />
+      <Box>
+        <Puces label="Format du message" valeur={mode} options={modes} onChange={changerMode} />
+        {mode === 'texte' && <ChampDicte libelle="Message" valeur={texte} changer={setTexte} minRows={5} />}
+        {mode === 'forme' && <EditeurMiseEnForme html={html} changer={setHtml} libelle="Message mis en forme" />}
+        {mode === 'code' && <ChampCodeHtml html={html} changer={setHtml} />}
+      </Box>
+      <AlerteTaille visible={tropLourd} />
       <ChampPieces pieces={pieces} changer={setPieces} signaler={setAlerte} />
       {alerte && <Typography color="error" variant="body2">{alerte}</Typography>}
     </Fenetre>
@@ -66,6 +97,7 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
   const [pouces, setPouces] = useState(c.pouces)
   useEffect(() => setPouces(c.pouces), [c.pouces])
   const aime = pouces.some((p) => p.userId === moi)
+  const entete = c.entete ? c.pieces.find((p) => p.chemin === c.entete && estImage(p)) ?? null : null
   const agir = async (action: () => Promise<unknown>) => {
     setEnvoi(true)
     try { await action(); await apres(); return true } catch (e) { signaler(messageCommunication(e)); return false } finally { setEnvoi(false) }
@@ -79,7 +111,7 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
   const commentaires = ouvert ? c.commentaires : c.commentaires.slice(-2)
   const cible = c.magasins === null ? 'Tout le réseau' : `${c.magasins.length} magasin${c.magasins.length > 1 ? 's' : ''}`
   return (
-    <Card component="article" aria-label={c.titre} sx={{ border: 0 }}>
+    <Card component="article" id={`communication-${c.id}`} aria-label={c.titre} sx={{ border: 0, scrollMarginTop: 88 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, pt: 1.5, pb: 1 }}>
         <Initiales nom={c.auteurNom} taille={40} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -88,10 +120,12 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
         </Box>
         {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la communication ${c.titre}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
       </Box>
+      {entete && <Box sx={{ mb: 1.5 }}><BanniereEntete piece={entete} /></Box>}
       <Box sx={{ px: 2 }}>
         <Typography variant="h4" component="h2">{c.titre}</Typography>
-        {c.texte && <Typography sx={{ mt: 0.5, whiteSpace: 'pre-line' }}>{c.texte}</Typography>}
-        <ListePieces pieces={c.pieces} />
+        {c.html ? <Box sx={{ mt: 1 }}><ContenuMisEnForme html={c.html} /></Box>
+          : c.texte && <Typography sx={{ mt: 0.5, whiteSpace: 'pre-line' }}>{c.texte}</Typography>}
+        <ListePieces pieces={c.pieces.filter((p) => p !== entete)} />
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, pt: 0.5 }}>
         <Button onClick={() => void reagir()} disabled={lectureSeule || envoi} aria-pressed={aime} startIcon={aime ? <ThumbUp /> : <ThumbUpOutlined />} color={aime ? 'secondary' : 'inherit'} sx={{ minHeight: 48, px: 1.5 }}>
@@ -144,6 +178,11 @@ export function PageCommunications({ lectureSeule = false }: { lectureSeule?: bo
   const [message, setMessage] = useState('')
   const charger = useCallback(async () => { setEtat(await chargerCommunications()) }, [])
   useEffect(() => { void charger() }, [charger])
+  // Arrivée depuis le fil d'activité : la communication citée est amenée à l'écran
+  const [params] = useSearchParams()
+  const cible = params.get('c')
+  const pret = etat !== undefined
+  useEffect(() => { if (pret && cible) document.getElementById(`communication-${cible}`)?.scrollIntoView({ block: 'start' }) }, [pret, cible])
   const peutPublier = !lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')
   const jour = aujourdhui()
   const q = recherche.trim().toLowerCase()

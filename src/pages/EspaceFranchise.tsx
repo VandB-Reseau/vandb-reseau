@@ -27,6 +27,7 @@ import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, MiniCourbe, Pastil
 import { ProfilPersonne } from '../components/Portefeuille'
 import { FilActivite } from './Accueil'
 import { filDu, type ElementFil } from '../data/fil'
+import { useCommunicationsDuFil, type Communication } from '../data/communications'
 import { brand } from '../theme/theme'
 import Snackbar from '@mui/material/Snackbar'
 import { SectionMessages, useNonLusMagasin } from '../components/Messages'
@@ -297,11 +298,11 @@ function SectionContacts({ reseau, magasins }: { reseau: Reseau; magasins: Magas
 }
 
 // Fil des magasins du franchisé : les liens restent dans son espace
-function useFilFranchise(reseau: Reseau, noms: string[], jours = 120): ElementFil[] {
+function useFilFranchise(reseau: Reseau, noms: string[], jours = 120, communications: Communication[] = []): ElementFil[] {
   const { messagerie } = useMessagerie()
   const cle = noms.join('|')
-  return useMemo(() => filDu(reseau, new Set(cle.split('|')), messagerie, jours)
-    .map((e) => (e.genre === 'tache' ? { ...e, lien: '/taches' } : e.genre === 'pratique' ? { ...e, lien: '/bonnes-pratiques' } : e)), [reseau, cle, messagerie, jours])
+  return useMemo(() => filDu(reseau, new Set(cle.split('|')), messagerie, jours, communications)
+    .map((e) => (e.genre === 'tache' ? { ...e, lien: '/taches' } : e.genre === 'pratique' ? { ...e, lien: '/bonnes-pratiques' } : e)), [reseau, cle, messagerie, jours, communications])
 }
 
 // ── Accueil du franchisé ──
@@ -317,7 +318,8 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
   const [choix, setChoix] = useState('')
   const tous = reseau.magasins
   const magasins = choix ? tous.filter((m) => m.nom === choix) : tous
-  const fil = useFilFranchise(reseau, magasins.map((m) => m.nom))
+  const communications = useCommunicationsDuFil()
+  const fil = useFilFranchise(reseau, magasins.map((m) => m.nom), 120, communications)
   if (!tous.length) return <><PageHeader titre="Accueil" /><EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." /></>
   return (
     <>

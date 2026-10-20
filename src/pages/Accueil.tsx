@@ -33,6 +33,7 @@ import { actionsEnCours, echeanceDate, enRetard } from '../data/actions'
 import { libellesEtatMandat, mandatsARenouveler } from '../data/associes'
 import { bilan, magasinsConcernes, phase } from '../data/campagnes'
 import { filDu, quand, type ElementFil, type GenreFil } from '../data/fil'
+import { useCommunicationsDuFil } from '../data/communications'
 
 // Ordre de priorité fixé par Joseph le 14/10/2026
 const PRIORITAIRES = ['redressement', 'relance', 'renforcer']
@@ -154,20 +155,22 @@ type FiltreFil = 'tout' | GenreFil
 const filtresFil: { v: FiltreFil; libelle: string }[] = [
   { v: 'tout', libelle: 'Tout' }, { v: 'visite', libelle: 'Visites' }, { v: 'tache', libelle: 'Tâches' },
   { v: 'message', libelle: 'Messages' }, { v: 'chiffres', libelle: 'Chiffres' }, { v: 'pratique', libelle: 'Bonnes pratiques' },
+  { v: 'communication', libelle: 'Communications' },
 ]
 const PAS_FIL = 20
 
-const iconeFil: Record<GenreFil, ReactNode> = { visite: <EventNoteOutlined />, tache: <TaskAltOutlined />, message: <ChatBubbleOutlineOutlined />, chiffres: <QueryStatsOutlined />, pratique: <TipsAndUpdatesOutlined /> }
+const iconeFil: Record<GenreFil, ReactNode> = { visite: <EventNoteOutlined />, tache: <TaskAltOutlined />, message: <ChatBubbleOutlineOutlined />, chiffres: <QueryStatsOutlined />, pratique: <TipsAndUpdatesOutlined />, communication: <CampaignOutlined /> }
 
 // Une publication du fil : qui, quoi, où, quand ; le texte et les photos en dessous
 export function PublicationFil({ e, jour, sansMagasin = false }: { e: ElementFil; jour: string; sansMagasin?: boolean }) {
   const qui = e.genre === 'chiffres' ? '' : e.auteur
   const action = qui ? e.action : e.action.charAt(0).toUpperCase() + e.action.slice(1)
-  const tete = <>{qui && <><b>{qui}</b> · </>}{action}{sansMagasin ? '' : <> · <b>{e.magasin}</b></>}</>
+  const ou = e.genre === 'communication' ? e.cible : sansMagasin ? '' : e.magasin
+  const tete = <>{qui && <><b>{qui}</b> · </>}{action}{ou ? <> · <b>{ou}</b></> : ''}</>
   return (
     <ButtonBase component={RouterLink} to={e.lien} sx={{ display: 'block', textAlign: 'left', width: '100%', p: 2, color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
       <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-        <Initiales nom={qui || e.magasin} icone={qui ? undefined : iconeFil[e.genre]} />
+        <Initiales nom={qui || e.magasin} icone={qui && e.genre !== 'communication' ? undefined : iconeFil[e.genre]} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tete}</Typography>
           <Typography variant="body2" color="text.secondary">{quand(e.instant, jour)}</Typography>
@@ -196,7 +199,7 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil 
       <TitreSection>{titre}</TitreSection>
       {options.length > 2 && <Puces valeur={filtre} options={options} onChange={(v) => { setFiltre(v); setNb(PAS_FIL) }} label="Filtrer le fil" />}
       {!vus.length ? (
-        <CarteLignes><LigneCompacte avatar={<Initiales nom="fil" icone={<HistoryOutlined />} />} titre="Rien de nouveau" detail="Les visites, tâches, messages et chiffres des dernières semaines s’afficheront ici." /></CarteLignes>
+        <CarteLignes><LigneCompacte avatar={<Initiales nom="fil" icone={<HistoryOutlined />} />} titre="Rien de nouveau" detail="Les visites, tâches, messages, chiffres et communications des dernières semaines s’afficheront ici." /></CarteLignes>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           {vus.slice(0, nb).map((e) => <Card key={e.cle} sx={{ border: 0, overflow: 'hidden' }}><PublicationFil e={e} jour={jour} sansMagasin={sansMagasin} /></Card>)}
@@ -211,7 +214,8 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
   const { messagerie } = useMessagerie()
   const items = aTraiter(reseau, p, sansParametres)
   const noms = useMemo(() => new Set(magasinsDu(reseau, p).map((m) => m.nom)), [reseau, p])
-  const fil = useMemo(() => filDu(reseau, noms, messagerie), [reseau, noms, messagerie])
+  const communications = useCommunicationsDuFil()
+  const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications), [reseau, noms, messagerie, communications])
   return (
     <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start' }}>
       <Box sx={{ order: { xs: 1, md: 2 }, position: { md: 'sticky' }, top: { md: 88 } }}>
