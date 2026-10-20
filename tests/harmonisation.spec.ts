@@ -21,7 +21,9 @@ test('le titre de chaque onglet est à la même place, sans grand blanc au-dessu
     positions.push(Math.round((await h1.boundingBox())!.y))
   }
   expect(new Set(positions).size).toBe(1)
-  expect(positions[0]).toBeLessThan(140)
+  // Mesuré sous la bande noire (plus haute sur téléphone, où elle porte la recherche)
+  const bande = (await page.locator('header').boundingBox())!
+  expect(positions[0] - (bande.y + bande.height)).toBeLessThan(76)
 })
 
 test('Évaluer et Déploiements montrent un grand réseau par tranches avec « Voir plus »', async ({ page, isMobile }, info) => {

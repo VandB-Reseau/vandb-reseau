@@ -19,7 +19,6 @@ import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
-import SearchIcon from '@mui/icons-material/Search'
 import Logout from '@mui/icons-material/Logout'
 import KeyOutlined from '@mui/icons-material/KeyOutlined'
 import InstallMobileOutlined from '@mui/icons-material/InstallMobileOutlined'
@@ -157,7 +156,6 @@ function BarreBasse({ franchise }: { franchise?: Destination[] }) {
 export function AppShell({ children, franchise, bandeau, sansParametres = false, sansCloche = false }: { children: ReactNode; franchise?: Destination[]; bandeau?: ReactNode; sansParametres?: boolean; sansCloche?: boolean }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
-  const [rechercheOuverte, setRechercheOuverte] = useState(false)
   const { pathname } = useLocation()
   // Téléphone : la barre du bas s'efface dans une conversation et pendant la saisie d'un message, pour laisser la place au clavier
   const [saisie, setSaisie] = useState(false)
@@ -174,9 +172,12 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
   }, [])
   const conversation = /^\/messages\/./.test(pathname)
   const sansBarre = surPC || saisie || conversation
+  // Téléphone : la recherche occupe une seconde ligne de la bande noire (sauf dans une conversation)
+  const rechercheSousLogo = !surPC && !franchise && !conversation
+  const hautEntete = surPC ? '72px' : rechercheSousLogo ? '116px' : '64px'
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'background.default', '--barre-basse': sansBarre ? '0px' : 'calc(72px + env(safe-area-inset-bottom))' }}>
+    <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'background.default', '--barre-basse': sansBarre ? '0px' : 'calc(72px + env(safe-area-inset-bottom))', '--haut-entete': hautEntete }}>
       <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1, bgcolor: '#000000', color: '#ffffff' }}>
         <Toolbar sx={{ minHeight: { xs: 60, md: 68 }, gap: { xs: 0.5, sm: 2 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: surPC ? LARGEUR_MENU - 24 : 'auto' }}>
@@ -186,27 +187,22 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
           <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
             {surPC && !franchise && <RechercheGlobale surFonce />}
           </Box>
-          {!surPC && !franchise && (
-            <IconButton aria-label="Rechercher" onClick={() => setRechercheOuverte((v) => !v)} sx={{ color: '#ffffff' }}>
-              <SearchIcon />
-            </IconButton>
-          )}
           <BoutonTaches />
           {!sansCloche && <BoutonMessages />}
           {!sansCloche && <Cloche />}
           <MenuCompte liens={surPC || franchise ? [] : [{ destinations: secondaires }, ...(sansParametres ? [] : [{ titre: 'Paramètres', destinations: parametres }])]} />
         </Toolbar>
-        <Box aria-hidden sx={{ height: 4, background: brandStripe }} />
-        {!surPC && rechercheOuverte && (
-          <Box sx={{ px: 2, py: 1.5, bgcolor: 'background.paper', color: 'text.primary' }}>
-            <RechercheGlobale onChoix={() => setRechercheOuverte(false)} />
+        {rechercheSousLogo && (
+          <Box sx={{ px: 2, pb: 1, display: 'flex' }}>
+            <RechercheGlobale surFonce court />
           </Box>
         )}
+        <Box aria-hidden sx={{ height: 4, background: brandStripe }} />
       </AppBar>
 
       {surPC && <MenuLateral franchise={franchise} sansParametres={sansParametres} />}
 
-      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: '72px' }, pb: surPC ? 4 : conversation ? 0 : '96px' }}>
+      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: 'var(--haut-entete)', pb: surPC ? 4 : conversation ? 0 : '96px' }}>
         {bandeau}
         <Box sx={{ maxWidth: 1280, mx: 'auto', px: { xs: 2, sm: 3, md: 5 }, pt: { xs: 2, md: 3 } }}>{children}</Box>
       </Box>

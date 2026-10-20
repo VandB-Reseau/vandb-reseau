@@ -99,7 +99,7 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
   const entete = c.entete ? c.pieces.find((p) => p.chemin === c.entete && estImage(p)) ?? null : null
   const cible = c.magasins === null ? 'Tout le réseau' : `${c.magasins.length} magasin${c.magasins.length > 1 ? 's' : ''}`
   return (
-    <Card component="article" id={`communication-${c.id}`} aria-label={c.titre} sx={{ border: 0, scrollMarginTop: 88 }}>
+    <Card component="article" id={`communication-${c.id}`} aria-label={c.titre} sx={{ border: 0, scrollMarginTop: 'calc(var(--haut-entete, 64px) + 16px)' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, pt: 1.5, pb: 1 }}>
         <Initiales nom={c.auteurNom} taille={40} />
         <Box sx={{ flex: 1, minWidth: 0 }}>

@@ -19,7 +19,8 @@ interface Resultat { type: 'Magasins' | 'Coachs' | 'Responsables Régionaux' | '
 
 const icones = { Magasins: <StorefrontOutlined />, Coachs: <PersonOutline />, 'Responsables Régionaux': <SupervisorAccountOutlined />, Franchisés: <HandshakeOutlined />, Direction: <AdminPanelSettingsOutlined /> }
 
-export function RechercheGlobale({ surFonce, onChoix }: { surFonce?: boolean; onChoix?: () => void }) {
+// court : libellé raccourci pour la largeur d'un téléphone
+export function RechercheGlobale({ surFonce, court }: { surFonce?: boolean; court?: boolean }) {
   const { reseau } = useReseau()
   const naviguer = useNavigate()
   const options = useMemo<Resultat[]>(() => {
@@ -49,7 +50,7 @@ export function RechercheGlobale({ surFonce, onChoix }: { surFonce?: boolean; on
       value={null}
       blurOnSelect
       clearOnBlur
-      onChange={(_e, o) => { if (o) { naviguer(o.cible); onChoix?.() } }}
+      onChange={(_e, o) => { if (o) naviguer(o.cible) }}
       renderOption={({ key, ...props }, o) => (
         <Box component="li" key={key} {...props} sx={{ display: 'flex', gap: 1.5, alignItems: 'center', minHeight: 48 }}>
           <Box sx={{ color: 'text.secondary', display: 'flex' }}>{icones[o.type]}</Box>
@@ -66,7 +67,7 @@ export function RechercheGlobale({ surFonce, onChoix }: { surFonce?: boolean; on
           <SearchIcon sx={{ color: surFonce ? '#ffffff' : 'text.secondary' }} />
           <InputBase
             inputProps={{ ...p.slotProps.htmlInput, 'aria-label': 'Recherche globale' }}
-            placeholder="Rechercher un magasin, une personne, une ville"
+            placeholder={court ? 'Rechercher un magasin, une personne' : 'Rechercher un magasin, une personne, une ville'}
             sx={{ flex: 1, fontSize: '0.875rem', color: surFonce ? '#ffffff' : 'text.primary', '& input::placeholder': { color: surFonce ? 'rgba(255,255,255,0.78)' : 'text.secondary', opacity: 1 } }}
           />
         </Box>

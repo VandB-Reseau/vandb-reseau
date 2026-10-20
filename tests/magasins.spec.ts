@@ -68,14 +68,19 @@ test('un magasin inconnu affiche un message clair', async ({ page }) => {
   await expect(page.getByText('Magasin introuvable')).toBeVisible()
 })
 
-test('la recherche globale ouvre une fiche magasin ou une fiche Coach', async ({ page, isMobile }) => {
+test('la recherche globale ouvre une fiche magasin ou une fiche Coach', async ({ page }, info) => {
   await seConnecter(page)
-  if (isMobile) await page.getByRole('button', { name: 'Rechercher' }).click()
+  // Le champ est affiché d'emblée dans la bande noire, sans bouton à toucher
   const champ = page.getByLabel('Recherche globale')
+  await expect(champ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Rechercher' })).toHaveCount(0)
+  const bande = await page.locator('header').boundingBox()
+  const zone = await champ.boundingBox()
+  expect(zone!.y + zone!.height).toBeLessThanOrEqual(bande!.y + bande!.height)
+  await page.screenshot({ path: `captures/recherche-bande/${info.project.name}-recherche-bande.png` })
   await champ.fill('bordeaux')
   await page.getByRole('option', { name: /^Bordeaux Test/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Bordeaux Test' })).toBeVisible()
-  if (isMobile) await page.getByRole('button', { name: 'Rechercher' }).click()
   await page.getByLabel('Recherche globale').fill('inès')
   await page.getByRole('option', { name: /^Inès EXEMPLE/ }).click()
   await expect(page.getByRole('heading', { name: 'Inès EXEMPLE', level: 1 })).toBeVisible()
