@@ -33,7 +33,11 @@ import { actionsEnCours, echeanceDate, enRetard } from '../data/actions'
 import { libellesEtatMandat, mandatsARenouveler } from '../data/associes'
 import { bilan, magasinsConcernes, phase } from '../data/campagnes'
 import { filDu, quand, type ElementFil, type GenreFil } from '../data/fil'
-import { useCommunicationsDuFil } from '../data/communications'
+import { useCommunicationsDuFil, type CommunicationsDuFil } from '../data/communications'
+import { ReactionsCommunication } from './Communications'
+import { useApercu } from '../auth/Apercu'
+import Snackbar from '@mui/material/Snackbar'
+import { VisuelFil } from '../components/MiseEnForme'
 
 // Ordre de priorité fixé par Joseph le 14/10/2026
 const PRIORITAIRES = ['redressement', 'relance', 'renforcer']
@@ -182,6 +186,7 @@ export function PublicationFil({ e, jour, sansMagasin = false }: { e: ElementFil
           </Box>
         )}
       </Box>
+      {e.visuel && <Box sx={{ mx: -2, mt: 1.5 }}><VisuelFil piece={e.visuel.piece} url={e.visuel.url} alt={e.titre ?? ''} /></Box>}
       {e.titre && <Typography sx={{ mt: 1.25, fontWeight: 600 }}>{e.titre}</Typography>}
       {e.texte && !e.valeur && <Typography sx={{ mt: e.titre ? 0.25 : 1.25, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'pre-line' }}>{e.texte}</Typography>}
       {!!e.photos?.length && <Box sx={{ mt: 1.25 }}><GrillePhotos photos={e.photos} /></Box>}
@@ -189,7 +194,11 @@ export function PublicationFil({ e, jour, sansMagasin = false }: { e: ElementFil
   )
 }
 
-export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil de mes magasins' }: { elements: ElementFil[]; jour: string; sansMagasin?: boolean; titre?: string }) {
+export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil de mes magasins', communications }: {
+  elements: ElementFil[]; jour: string; sansMagasin?: boolean; titre?: string; communications?: CommunicationsDuFil
+}) {
+  const { apercu, equipe } = useApercu()
+  const [message, setMessage] = useState('')
   const [filtre, setFiltre] = useState<FiltreFil>('tout')
   const [nb, setNb] = useState(PAS_FIL)
   const vus = elements.filter((e) => filtre === 'tout' || e.genre === filtre)
@@ -202,10 +211,19 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil 
         <CarteLignes><LigneCompacte avatar={<Initiales nom="fil" icone={<HistoryOutlined />} />} titre="Rien de nouveau" detail="Les visites, tâches, messages, chiffres et communications des dernières semaines s’afficheront ici." /></CarteLignes>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          {vus.slice(0, nb).map((e) => <Card key={e.cle} sx={{ border: 0, overflow: 'hidden' }}><PublicationFil e={e} jour={jour} sansMagasin={sansMagasin} /></Card>)}
+          {vus.slice(0, nb).map((e) => (
+            <Card key={e.cle} component={e.communication ? 'article' : 'div'} aria-label={e.communication?.titre} sx={{ border: 0, overflow: 'hidden' }}>
+              <PublicationFil e={e} jour={jour} sansMagasin={sansMagasin} />
+              {e.communication && communications?.moi && (
+                <ReactionsCommunication c={e.communication} moi={communications.moi} jour={jour} lectureSeule={!!apercu || !!equipe}
+                  apres={communications.recharger} signaler={setMessage} />
+              )}
+            </Card>
+          ))}
           {vus.length > nb && <Button onClick={() => setNb(nb + PAS_FIL)} sx={{ alignSelf: 'center', minHeight: 48 }}>Voir plus</Button>}
         </Box>
       )}
+      <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </Box>
   )
 }
@@ -215,7 +233,7 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
   const items = aTraiter(reseau, p, sansParametres)
   const noms = useMemo(() => new Set(magasinsDu(reseau, p).map((m) => m.nom)), [reseau, p])
   const communications = useCommunicationsDuFil()
-  const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications), [reseau, noms, messagerie, communications])
+  const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications.liste), [reseau, noms, messagerie, communications.liste])
   return (
     <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start' }}>
       <Box sx={{ order: { xs: 1, md: 2 }, position: { md: 'sticky' }, top: { md: 88 } }}>
@@ -223,7 +241,7 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
         <BlocSemaine reseau={reseau} p={p} />
       </Box>
       <Box sx={{ order: { xs: 2, md: 1 }, minWidth: 0 }}>
-        <FilActivite elements={fil} jour={reseau.jour} />
+        <FilActivite elements={fil} jour={reseau.jour} communications={communications} />
       </Box>
     </Box>
   )

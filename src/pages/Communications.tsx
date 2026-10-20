@@ -87,9 +87,9 @@ function DialogCommunication({ c, onFermer }: { c: Communication | null; onFerme
   )
 }
 
-// Une publication : auteur, titre, texte, pièces jointes, « J'aime » et commentaires
-function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signaler }: {
-  c: Communication; moi: string; jour: string; lectureSeule: boolean; modifier?: () => void; apres: () => Promise<void>; signaler: (m: string) => void
+// « J'aime » et commentaires d'une communication : sur sa page et dans le fil d'activité
+export function ReactionsCommunication({ c, moi, jour, lectureSeule, apres, signaler }: {
+  c: Communication; moi: string; jour: string; lectureSeule: boolean; apres: () => Promise<void>; signaler: (m: string) => void
 }) {
   const [ouvert, setOuvert] = useState(false)
   const [texte, setTexte] = useState('')
@@ -97,7 +97,6 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
   const [pouces, setPouces] = useState(c.pouces)
   useEffect(() => setPouces(c.pouces), [c.pouces])
   const aime = pouces.some((p) => p.userId === moi)
-  const entete = c.entete ? c.pieces.find((p) => p.chemin === c.entete && estImage(p)) ?? null : null
   const agir = async (action: () => Promise<unknown>) => {
     setEnvoi(true)
     try { await action(); await apres(); return true } catch (e) { signaler(messageCommunication(e)); return false } finally { setEnvoi(false) }
@@ -109,24 +108,8 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
   const envoyer = () => { if (texte.trim()) void agir(async () => { await commenter(c.id, texte.trim()); setTexte('') }) }
   // Repliés : les deux derniers commentaires seulement
   const commentaires = ouvert ? c.commentaires : c.commentaires.slice(-2)
-  const cible = c.magasins === null ? 'Tout le réseau' : `${c.magasins.length} magasin${c.magasins.length > 1 ? 's' : ''}`
   return (
-    <Card component="article" id={`communication-${c.id}`} aria-label={c.titre} sx={{ border: 0, scrollMarginTop: 88 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, pt: 1.5, pb: 1 }}>
-        <Initiales nom={c.auteurNom} taille={40} />
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 600 }} noWrap>{c.auteurNom}</Typography>
-          <Typography variant="body2" color="text.secondary" noWrap>{[roles[c.auteurRole], quand(c.creeLe, jour), cible].filter(Boolean).join(' · ')}</Typography>
-        </Box>
-        {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la communication ${c.titre}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
-      </Box>
-      {entete && <Box sx={{ mb: 1.5 }}><BanniereEntete piece={entete} /></Box>}
-      <Box sx={{ px: 2 }}>
-        <Typography variant="h4" component="h2">{c.titre}</Typography>
-        {c.html ? <Box sx={{ mt: 1 }}><ContenuMisEnForme html={c.html} /></Box>
-          : c.texte && <Typography sx={{ mt: 0.5, whiteSpace: 'pre-line' }}>{c.texte}</Typography>}
-        <ListePieces pieces={c.pieces.filter((p) => p !== entete)} />
-      </Box>
+    <>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, pt: 0.5 }}>
         <Button onClick={() => void reagir()} disabled={lectureSeule || envoi} aria-pressed={aime} startIcon={aime ? <ThumbUp /> : <ThumbUpOutlined />} color={aime ? 'secondary' : 'inherit'} sx={{ minHeight: 48, px: 1.5 }}>
           {pouces.length ? `J’aime · ${pouces.length}` : 'J’aime'}
@@ -164,6 +147,34 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
           )}
         </Box>
       )}
+    </>
+  )
+}
+
+// Une publication : auteur, titre, texte, pièces jointes, « J'aime » et commentaires
+function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signaler }: {
+  c: Communication; moi: string; jour: string; lectureSeule: boolean; modifier?: () => void; apres: () => Promise<void>; signaler: (m: string) => void
+}) {
+  const entete = c.entete ? c.pieces.find((p) => p.chemin === c.entete && estImage(p)) ?? null : null
+  const cible = c.magasins === null ? 'Tout le réseau' : `${c.magasins.length} magasin${c.magasins.length > 1 ? 's' : ''}`
+  return (
+    <Card component="article" id={`communication-${c.id}`} aria-label={c.titre} sx={{ border: 0, scrollMarginTop: 88 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, pt: 1.5, pb: 1 }}>
+        <Initiales nom={c.auteurNom} taille={40} />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 600 }} noWrap>{c.auteurNom}</Typography>
+          <Typography variant="body2" color="text.secondary" noWrap>{[roles[c.auteurRole], quand(c.creeLe, jour), cible].filter(Boolean).join(' · ')}</Typography>
+        </Box>
+        {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la communication ${c.titre}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
+      </Box>
+      {entete && <Box sx={{ mb: 1.5 }}><BanniereEntete piece={entete} /></Box>}
+      <Box sx={{ px: 2 }}>
+        <Typography variant="h4" component="h2">{c.titre}</Typography>
+        {c.html ? <Box sx={{ mt: 1 }}><ContenuMisEnForme html={c.html} /></Box>
+          : c.texte && <Typography sx={{ mt: 0.5, whiteSpace: 'pre-line' }}>{c.texte}</Typography>}
+        <ListePieces pieces={c.pieces.filter((p) => p !== entete)} />
+      </Box>
+      <ReactionsCommunication c={c} moi={moi} jour={jour} lectureSeule={lectureSeule} apres={apres} signaler={signaler} />
     </Card>
   )
 }

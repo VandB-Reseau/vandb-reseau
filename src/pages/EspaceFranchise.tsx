@@ -319,7 +319,7 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
   const tous = reseau.magasins
   const magasins = choix ? tous.filter((m) => m.nom === choix) : tous
   const communications = useCommunicationsDuFil()
-  const fil = useFilFranchise(reseau, magasins.map((m) => m.nom), 120, communications)
+  const fil = useFilFranchise(reseau, magasins.map((m) => m.nom), 120, communications.liste)
   if (!tous.length) return <><PageHeader titre="Accueil" /><EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." /></>
   return (
     <>
@@ -329,7 +329,7 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           <SectionChiffresDuMois reseau={reseau} magasins={magasins} />
           <SectionReperes reseau={reseau} magasins={magasins} />
-          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Fil de mes magasins" />
+          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Fil de mes magasins" communications={communications} />
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           <SectionTaches reseau={reseau} magasins={magasins} />

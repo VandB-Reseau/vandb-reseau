@@ -7,6 +7,8 @@ import { apercuDe, type Messagerie } from './messagerie'
 import { lienCompteRendu } from './visites'
 import { lienFiche } from '../lib/format'
 import type { Communication } from './communications'
+import { estImage, type Piece } from '../lib/pieces'
+import { premiereImage } from '../lib/html'
 
 // Fil d'activité des magasins suivis : visites, tâches, messages, chiffres, bonnes pratiques et communications du réseau,
 // du plus récent au plus ancien
@@ -20,6 +22,8 @@ export interface ElementFil {
   action: string // « a visité », « a fait la tâche »…
   magasin: string // vide pour une communication du réseau
   cible?: string // communication : « Tout le réseau », « 3 magasins »
+  communication?: Communication // pour « J'aime » et commentaires depuis le fil
+  visuel?: { piece?: Piece; url?: string } // communication : photo affichée en grand (en-tête, photo jointe ou première image)
   titre?: string // tâche, bonne pratique
   texte?: string
   photos?: Photo[]
@@ -74,10 +78,17 @@ export function filDu(reseau: Reseau, noms: Set<string>, mg: Messagerie | null, 
     res.push({
       cle: `k|${c.id}`, genre: 'communication', instant: c.creeLe, auteur: c.auteurNom, action: 'communication', magasin: '',
       cible: c.magasins === null ? 'Tout le réseau' : `${c.magasins.length} magasin${c.magasins.length > 1 ? 's' : ''}`,
-      titre: c.titre, texte: c.texte, lien: `/communications?c=${c.id}`,
+      titre: c.titre, texte: c.texte, lien: `/communications?c=${c.id}`, visuel: visuelDe(c), communication: c,
     })
   }
   return res.sort((a, b) => instantDe(b.instant).localeCompare(instantDe(a.instant)))
+}
+
+function visuelDe(c: Communication): ElementFil['visuel'] {
+  const piece = c.pieces.find((p) => p.chemin === c.entete && estImage(p)) ?? c.pieces.find(estImage)
+  if (piece) return { piece }
+  const url = c.html ? premiereImage(c.html) : ''
+  return url ? { url } : undefined
 }
 
 // « Aujourd’hui », « Hier », « Il y a 3 j », « 12 oct. »
