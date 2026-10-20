@@ -30,12 +30,14 @@ import { useAuth } from '../auth/AuthContext'
 import { useMessagerie } from '../data/MessagerieContext'
 import { useReseau } from '../data/ReseauContext'
 import {
-  concerne, destinatairesDu, estNouveau, heure, horodatage, interlocuteur, jourDuFil, libelleAuteur, libelleNotification, magasinsCites, messagesDu, nomDe, notifications,
+  concerne, conversationsPersonnes, destinatairesDu, estNouveau, lienPersonne, heure, horodatage, interlocuteur, jourDuFil, libelleAuteur, libelleNotification, magasinsCites, messagesDu, nomDe, notifications,
   participants, sansPrives, type Contact, type Message, type Notification, type Participant,
 } from '../data/messagerie'
 import type { Magasin, Reseau } from '../data/modele'
 import { EmptyState } from './EmptyState'
 import { Bulle } from './Outils'
+import { LigneConversation } from './LigneConversation'
+import { MenuEntete } from './MenuEntete'
 import { BoutonJoindre, ListePieces, PiecesEnAttente } from './Pieces'
 import type { Piece } from '../lib/pieces'
 
@@ -382,20 +384,33 @@ export function Cloche() {
   )
 }
 
-// Bouton « Messages » de l'en-tête : conversations, avec le nombre de messages non lus
+// Bouton « Messages » de l'en-tête : aperçu des dernières conversations, avec le nombre de messages non lus
+const APERCU_MESSAGES = 6
+
 export function BoutonMessages() {
   const { profil } = useAuth()
   const { reseau } = useReseau()
   const { messagerie } = useMessagerie()
   const naviguer = useNavigate()
+  const [ancre, setAncre] = useState<HTMLElement | null>(null)
   // Messages non lus qui concernent le compte (mêmes règles que la cloche), un par un
   const nombre = useMemo(() => notifications(reseau, profil, messagerie).filter((n) => n.lecture.sujet === 'messages').reduce((t, n) => t + n.nombre, 0), [reseau, profil, messagerie])
+  const recentes = useMemo(() => (ancre && reseau && messagerie ? conversationsPersonnes(reseau, messagerie, profil).filter((c) => c.dernier).slice(0, APERCU_MESSAGES) : []), [ancre, reseau, messagerie, profil])
   if (!messagerie) return null
+  const fermer = () => setAncre(null)
   return (
-    <Bulle titre="Messages">
-      <IconButton aria-label={nombre ? `Messages : ${nombre} non lu${nombre > 1 ? 's' : ''}` : 'Messages'} onClick={() => naviguer('/messages')} sx={{ color: '#ffffff', width: 48, height: 48 }}>
-        <Badge color="error" badgeContent={nombre} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><ForumOutlined /></Badge>
-      </IconButton>
-    </Bulle>
+    <>
+      <Bulle titre="Messages">
+        <IconButton aria-label={nombre ? `Messages : ${nombre} non lu${nombre > 1 ? 's' : ''}` : 'Messages'} onClick={(e) => setAncre(e.currentTarget)} sx={{ color: '#ffffff', width: 48, height: 48 }}>
+          <Badge color="error" badgeContent={nombre} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><ForumOutlined /></Badge>
+        </IconButton>
+      </Bulle>
+      <MenuEntete ancre={ancre} fermer={fermer} titre="Messages" vide={recentes.length ? null : 'Aucune conversation pour le moment.'}
+        tout="Tous les messages" icone={<ForumOutlined />} ouvrirTout={() => naviguer('/messages')}>
+        <Box sx={{ py: 0.5 }}>
+          {recentes.map((c) => <LigneConversation key={c.contact.cle} c={c} mg={messagerie} actif={false} ouvrir={() => { fermer(); naviguer(lienPersonne(c.contact.cle)) }} />)}
+        </Box>
+      </MenuEntete>
+    </>
   )
 }
