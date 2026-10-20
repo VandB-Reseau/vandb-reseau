@@ -131,6 +131,8 @@ function BlocSemaine({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
   const noms = new Set(magasinsDu(reseau, p).map((m) => m.nom))
   const personnes = personnesDu(reseau, p)
   const semaine = elementsDuMois(reseau, j, ajouterJours(j, 6)).filter((e) => {
+    // Visites de la semaine : seulement celles à venir ; le Directeur garde les autres rubriques
+    if (e.categorie === 'visite') return e.debut >= j && p.type !== 'reseau' && noms.has(e.magasin ?? '')
     if (p.type === 'reseau') return true
     if (e.categorie === 'ouverture') return noms.has(e.cle.slice(2))
     if (e.categorie === 'conge') return !!e.conge && personnes!.has(e.conge.personne)

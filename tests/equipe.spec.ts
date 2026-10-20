@@ -73,6 +73,8 @@ test('la fiche Coach montre charge et magasins', async ({ page }, info) => {
   await page.goto('./#/equipe')
   await page.getByRole('link', { name: 'Noé MODELE' }).click()
   await expect(page.getByRole('heading', { name: 'Noé MODELE', level: 1 })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Portefeuille' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Magasins' }).click()
   await expect(page.getByRole('region', { name: 'Liste des magasins' }).getByRole('link', { name: /^Lyon Test/ })).toBeVisible()
   await page.getByRole('tab', { name: 'Charge' }).click()
   await expect(page.getByText('Les six prochains mois')).toBeVisible()

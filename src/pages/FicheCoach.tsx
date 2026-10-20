@@ -1,7 +1,6 @@
 import { useDroits } from '../auth/Droits'
 import { useState } from 'react'
 import Snackbar from '@mui/material/Snackbar'
-import EditOutlined from '@mui/icons-material/EditOutlined'
 import { DialogCoach } from '../components/EditionEquipe'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -35,9 +34,15 @@ import { BoutonAjouterAction, ListeActions } from '../components/Actions'
 import { BilanCampagnes } from '../components/Campagnes'
 import { actionsDes, enRetard } from '../data/actions'
 import { anneeDe, lienCompteRendu, suiviRythme } from '../data/visites'
+import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
+import { BlocPortefeuille, ProfilPersonne } from '../components/Portefeuille'
+import { portefeuilleDe } from '../data/portefeuille'
+import { lienPersonne } from '../data/messagerie'
+import { fichePersonne } from '../data/personnes'
 
-type VueCoach = 'magasins' | 'visites' | 'actions' | 'campagnes' | 'charge' | 'fiche'
+type VueCoach = 'portefeuille' | 'magasins' | 'visites' | 'actions' | 'campagnes' | 'charge' | 'fiche'
 const rubriquesCoach: Rubrique<VueCoach>[] = [
+  { vue: 'portefeuille', libelle: 'Portefeuille', icone: <InsightsOutlined /> },
   { vue: 'magasins', libelle: 'Magasins', icone: <StorefrontOutlined /> },
   { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
   { vue: 'actions', libelle: 'Actions', icone: <TaskAltOutlined /> },
@@ -49,8 +54,8 @@ const rubriquesCoach: Rubrique<VueCoach>[] = [
 function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
   const naviguer = useNavigate()
   const [params, setParams] = useSearchParams()
-  const vue = (rubriquesCoach.find((r) => r.vue === params.get('vue'))?.vue ?? 'magasins') as VueCoach
-  const changerVue = (v: VueCoach) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'magasins') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
+  const vue = (rubriquesCoach.find((r) => r.vue === params.get('vue'))?.vue ?? 'portefeuille') as VueCoach
+  const changerVue = (v: VueCoach) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'portefeuille') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const [edition, setEdition] = useState(false)
   const [message, setMessage] = useState('')
   const magasins = magasinsDuCoach(reseau, coach.nom)
@@ -70,22 +75,18 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
   const faitesAn = rythme.reduce((t, l) => t + l.faites, 0), objectifAn = rythme.reduce((t, l) => t + l.objectif, 0)
   return (
     <>
-      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe'))} sx={{ mb: 2, ml: -1 }}>Équipe</Button>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-        <Typography variant="h1" sx={{ flex: 1 }}>{coach.nom}</Typography>
-        {referentiels && <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setEdition(true)} sx={{ minHeight: 48 }}>Modifier</Button>}
-      </Box>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 1.5 }}>
-        Coach · {magasins.length} magasin{magasins.length > 1 ? 's' : ''}{coach.rr ? ` · ${coach.rr.nom}` : ''}
-      </Typography>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }} role="group" aria-label="En bref">
-        <Chip size="small" variant="outlined" label={`Charge ${charge} sur ${reseau.parametres.maxUnits}`} sx={{ fontSize: 12, fontWeight: 600 }} />
-        <Chip size="small" variant="outlined" label={`${faitesAn} visite${faitesAn > 1 ? 's' : ''} sur ${objectifAn} en ${a.court}`} sx={{ fontSize: 12, fontWeight: 600 }} />
-        {enRetardVisite.length > 0 && <Chip size="small" color="warning" clickable onClick={() => changerVue('visites')} label={`${enRetardVisite.length} visite${enRetardVisite.length > 1 ? 's' : ''} en retard`} sx={{ fontSize: 12, fontWeight: 600 }} />}
-        {ouvertes.length > 0 && <Chip size="small" clickable onClick={() => changerVue('actions')} color={retards ? 'error' : 'default'} variant={retards ? 'filled' : 'outlined'}
-          label={`${ouvertes.length} action${ouvertes.length > 1 ? 's' : ''} en cours${retards ? ` · ${retards} en retard` : ''}`} sx={{ fontSize: 12, fontWeight: 600 }} />}
-      </Box>
+      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe'))} sx={{ mb: 1, ml: -1 }}>Équipe</Button>
+      <ProfilPersonne nom={coach.nom} lignes={[['Coach', coach.rr?.nom].filter(Boolean).join(' · ')]}
+        pastille={retards ? { ton: 'rouge', libelle: `${retards} tâche${retards > 1 ? 's' : ''} en retard` } : enRetardVisite.length ? { ton: 'orange', libelle: `${enRetardVisite.length} visite${enRetardVisite.length > 1 ? 's' : ''} en retard` } : null}
+        compteurs={[
+          { valeur: magasins.length, libelle: magasins.length > 1 ? 'magasins' : 'magasin' },
+          { valeur: `${faitesAn}/${objectifAn}`, libelle: `visites ${a.court}` },
+          { valeur: `${charge}/${reseau.parametres.maxUnits}`, libelle: 'charge', couleur: charge > reseau.parametres.maxUnits ? 'error.main' : undefined },
+        ]}
+        telephone={fichePersonne(reseau, { type: 'coach', cle: coach.nom }).telephone || coach.telephone} lienMessage={coach.fictif ? undefined : lienPersonne(`coach:${coach.nom}`)} modifier={referentiels ? () => setEdition(true) : undefined} />
       <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesCoach} libelle={`Rubriques de ${coach.nom}`} />
+
+      {vue === 'portefeuille' && <BlocPortefeuille reseau={reseau} p={portefeuilleDe(reseau, magasins.filter((m) => m.statut !== 'avenir'), rythme)} />}
 
       {vue === 'magasins' && (magasins.length === 0
         ? <Typography variant="body2" color="text.secondary">Aucun magasin affecté aujourd’hui.</Typography>

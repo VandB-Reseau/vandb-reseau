@@ -34,9 +34,9 @@ export function visiteursGroupes(reseau: Reseau): { nom: string; groupe: string 
 }
 export function visiteurs(reseau: Reseau): string[] { return visiteursGroupes(reseau).map((p) => p.nom) }
 
-export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitial = 'terrain', onFermer }: { reseau: Reseau; visite: Visite | null; magasinsInitiaux?: string[]; typeInitial?: string; onFermer: (m?: string) => void }) {
+export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitial = 'terrain', dateInitiale, onFermer }: { reseau: Reseau; visite: Visite | null; magasinsInitiaux?: string[]; typeInitial?: string; dateInitiale?: string; onFermer: (m?: string) => void }) {
   const [magasins, setMagasins] = useState<string[]>(visite ? [visite.magasin] : magasinsInitiaux)
-  const [date, setDate] = useState(visite?.date ?? reseau.jour)
+  const [date, setDate] = useState(visite?.date ?? dateInitiale ?? reseau.jour)
   const [type, setType] = useState(visite?.type ?? typeInitial)
   // Par défaut : le Coach du magasin, tant que les participants n'ont pas été choisis à la main
   const coachDe = (noms: string[]) => { const c = reseau.magasins.find((m) => m.nom === noms[0])?.coach; return c ? [c] : [] }

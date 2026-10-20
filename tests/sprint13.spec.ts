@@ -88,7 +88,7 @@ test('le Directeur ouvre l’accès d’un Coach puis voit l’app comme lui', a
 test('le Directeur rattache un compte à un Responsable Régional et le coupe', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, accesEquipe: [{ user_id: 'u-alex', email: 'alex.nord@vandb.test', role: 'rr', nom: 'rr1', derniere_connexion: '2026-10-18T08:00:00Z' }] })
-  await page.goto('./#/equipe/rr/rr1')
+  await page.goto('./#/equipe/rr/rr1?vue=fiche')
   await expect(page.getByText('alex.nord@vandb.test')).toBeVisible()
   await expect(page.getByRole('button', { name: /^Voir comme / })).toBeVisible()
   await page.getByRole('button', { name: 'Couper l’accès' }).click()
@@ -142,7 +142,7 @@ test('un Coach prépare la visite d’un de ses magasins', async ({ page, isMobi
     await page.goto('./#/magasins/Lyon%20Test')
     await page.getByRole('link', { name: 'Préparer la visite' }).click()
   } else {
-    await page.goto('./#/visites')
+    await page.goto('./#/visites?vue=rythme')
     await page.getByRole('link', { name: 'Préparer la visite de Lyon Test' }).first().click()
   }
   await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()

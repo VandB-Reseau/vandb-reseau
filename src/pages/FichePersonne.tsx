@@ -6,8 +6,15 @@ import { useAuth } from '../auth/AuthContext'
 import { PastilleMandat, periode } from '../components/Associes'
 import { PastilleCase } from '../components/Sante'
 import { caseDe } from '../data/sante'
-import { useState, type ReactNode } from 'react'
-import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import { useMemo, useState, type ReactNode } from 'react'
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
+import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
+import BadgeOutlined from '@mui/icons-material/BadgeOutlined'
+import { Onglets, type Rubrique } from '../components/Onglets'
+import { BlocPortefeuille, ProfilPersonne } from '../components/Portefeuille'
+import { portefeuilleDe } from '../data/portefeuille'
+import { lienPersonne } from '../data/messagerie'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
@@ -77,8 +84,19 @@ function ListeMagasinsAdaptee({ magasins, vide }: { magasins: Magasin[]; vide: s
 
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 
+type VueRR = 'portefeuille' | 'coachs' | 'magasins' | 'fiche'
+const rubriquesRR: Rubrique<VueRR>[] = [
+  { vue: 'portefeuille', libelle: 'Portefeuille', icone: <InsightsOutlined /> },
+  { vue: 'coachs', libelle: 'Coachs', icone: <GroupsOutlined /> },
+  { vue: 'magasins', libelle: 'Magasins', icone: <StorefrontOutlined /> },
+  { vue: 'fiche', libelle: 'Fiche', icone: <BadgeOutlined /> },
+]
+
 function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
   const naviguer = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const vue = (rubriquesRR.find((r) => r.vue === params.get('vue'))?.vue ?? 'portefeuille') as VueRR
+  const changerVue = (v: VueRR) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'portefeuille') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const [edition, setEdition] = useState(false)
   const [message, setMessage] = useState('')
   const rr = reseau.rrs.find((r) => r.id === id)!
@@ -87,13 +105,22 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
   const directs = magasins.filter((m) => m.rrEnDirect)
   const role = rr.integres ? 'Responsable Magasins Intégrés' : libelleRole('rr')
   const { referentiels } = useDroits()
+  const p = useMemo(() => portefeuilleDe(reseau, magasins.filter((m) => m.statut !== 'avenir')), [reseau, magasins])
   return (
     <>
-      <Entete titre={rr.nom} sousTitre={`${role} · ${pluriel(coachs.length, 'Coach')} · ${pluriel(magasins.length, 'magasin')}`} onModifier={() => setEdition(true)} />
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start', mb: 2 }}>
-        <SectionFichePersonnelle reseau={reseau} r={{ type: 'rr', cle: id }} />
-        <Box sx={{ display: 'grid', gap: 2 }}>
-          {referentiels && <SectionAccesEquipe role="rr" cle={id} nom={rr.nom} signaler={setMessage} />}
+      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe'))} sx={{ mb: 1, ml: -1 }}>Équipe</Button>
+      <ProfilPersonne nom={rr.nom} lignes={[role]}
+        pastille={p.decroche ? { ton: 'rouge', libelle: `${p.decroche} magasin${p.decroche > 1 ? 's' : ''} en Décroche` } : null}
+        compteurs={[
+          { valeur: coachs.length, libelle: coachs.length > 1 ? 'Coachs' : 'Coach' },
+          { valeur: magasins.length, libelle: magasins.length > 1 ? 'magasins' : 'magasin' },
+          { valeur: `${p.visitesFaites}/${p.visitesObjectif}`, libelle: `visites ${reseau.jour.slice(0, 4)}` },
+        ]}
+        telephone={fichePersonne(reseau, { type: 'rr', cle: id }).telephone || rr.telephone} lienMessage={lienPersonne(`rr:${id}`)} modifier={referentiels ? () => setEdition(true) : undefined} />
+      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesRR} libelle={`Rubriques de ${rr.nom}`} />
+      {vue === 'portefeuille' && <BlocPortefeuille reseau={reseau} p={p} />}
+      {vue === 'coachs' && (
+        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
           <Section titre="Coachs rattachés">
             {coachs.length === 0 ? <Typography variant="body2" color="text.secondary">Aucun Coach rattaché.</Typography> : coachs.map((c) => (
               <Rangee key={c.nom}>
@@ -114,9 +141,14 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
             </Section>
           )}
         </Box>
-      </Box>
-      <Typography variant="h3" component="h2" sx={{ mb: 1.5 }}>Magasins de son périmètre</Typography>
-      <ListeMagasinsAdaptee magasins={magasins} vide="Aucun magasin dans son périmètre." />
+      )}
+      {vue === 'magasins' && <ListeMagasinsAdaptee magasins={magasins} vide="Aucun magasin dans son périmètre." />}
+      {vue === 'fiche' && (
+        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
+          <SectionFichePersonnelle reseau={reseau} r={{ type: 'rr', cle: id }} />
+          {referentiels && <SectionAccesEquipe role="rr" cle={id} nom={rr.nom} signaler={setMessage} />}
+        </Box>
+      )}
       {edition && <DialogRR reseau={reseau} rr={rr} onFermer={(m) => { setEdition(false); if (m?.includes('supprimé')) naviguer('/equipe', { replace: true }); else if (m) setMessage(m) }} />}
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>
