@@ -72,8 +72,8 @@ export function VuePersonnes({ reseau, perimetre }: { reseau: Reseau; perimetre:
       <RechercheFiltres actifs={filtre === 'tous' ? 0 : 1}
         recherche={<ChampRecherche valeur={texte} onChange={setTexte} placeholder="Nom, ville, magasin…" libelle="Rechercher une personne" />}
         actions={perimetre === 'franchises'
-          ? <BoutonAction libelle="Ajouter un franchisé" court="Ajouter" icone={<PersonAddAlt1Outlined />} onClick={() => setAjout('franchise')} />
-          : <BoutonAction libelle="Ajouter un collaborateur" court="Ajouter" icone={<PersonAddAlt1Outlined />} onClick={(e) => setMenu(e.currentTarget)} />}>
+          ? <BoutonAction libelle="Ajouter un franchisé" icone={<PersonAddAlt1Outlined />} onClick={() => setAjout('franchise')} />
+          : <BoutonAction libelle="Ajouter un collaborateur" icone={<PersonAddAlt1Outlined />} onClick={(e) => setMenu(e.currentTarget)} />}>
         {perimetre === 'collaborateurs' && <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }} role="group" aria-label="Filtrer par rôle">
           {FILTRES.map((f) => (
             <Chip key={f.id} label={`${f.libelle} (${compte(f.id)})`} onClick={() => changerFiltre(f.id)} color={filtre === f.id ? 'secondary' : 'default'} variant={filtre === f.id ? 'filled' : 'outlined'} aria-pressed={filtre === f.id} sx={{ height: 36, fontSize: '0.875rem', fontWeight: 500, borderRadius: 2 }} />

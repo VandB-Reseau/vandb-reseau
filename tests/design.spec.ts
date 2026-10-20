@@ -51,7 +51,7 @@ test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ou
   const bref = page.getByRole('group', { name: 'En bref' })
   await expect(bref).toContainText('70 k€')
   await expect(bref).toContainText('−30,0 %')
-  for (const b of ['Appeler', 'Message', 'Visite']) await expect(page.getByRole('main').getByRole('button', { name: b, exact: true }).or(page.getByRole('main').getByRole('link', { name: b, exact: true }))).toBeVisible()
+  for (const b of ['Appeler', 'Écrire un message', 'Saisir une visite']) await expect(page.getByRole('main').getByRole('button', { name: b, exact: true }).or(page.getByRole('main').getByRole('link', { name: b, exact: true }))).toBeVisible()
   await expect(page.getByRole('link', { name: 'Préparer la visite' })).toBeVisible()
   expect(await sansDebordement(page.locator('body'))).toBe(true)
   expect(await textesTropPetits(page)).toEqual([])
@@ -123,4 +123,33 @@ test('glisser une tâche vers la gauche la marque faite (téléphone)', async ({
   for (const dx of [20, 60, 100, 140]) await evt('pointermove', x0 - dx)
   await evt('pointerup', x0 - 140)
   await expect.poll(() => ecritures.some((e) => e.table === 'app_config' && JSON.stringify(e.corps).includes('"faite\\":\\"'))).toBe(true)
+})
+
+// Appeler, Message et Visite en pictos à côté du nom, sur PC comme sur téléphone
+for (const f of [
+  { url: '/magasins/Nantes%20Test', nom: 'Nantes Test', etroit: true, pictos: ['Appeler', 'Écrire un message', 'Saisir une visite'] },
+  { url: '/equipe/coach/In%C3%A8s%20EXEMPLE', nom: 'Inès EXEMPLE', pictos: ['Appeler', 'Écrire un message'] },
+]) test(`pictos à côté du nom : ${f.nom}`, async ({ page, isMobile }, info) => {
+  await seConnecter(page)
+  await page.goto('./#' + f.url)
+  const titre = page.getByRole('heading', { name: f.nom, level: 1 })
+  await expect(titre).toBeVisible()
+  const t = (await titre.boundingBox())!
+  expect(t.width).toBeGreaterThanOrEqual(80)
+  for (const nom of f.pictos) {
+    const b = page.locator('main').getByLabel(nom, { exact: true }).first()
+    await expect(b).toBeVisible()
+    await expect(b).toHaveText('')
+    const r = (await b.boundingBox())!
+    expect(r.width).toBeGreaterThanOrEqual(48)
+    expect(r.height).toBeGreaterThanOrEqual(48)
+    // À droite du nom ; sur téléphone, juste sous le nom si la ligne est trop étroite
+    if (!f.etroit || !isMobile) {
+      expect(r.x).toBeGreaterThan(t.x + t.width - 1)
+      expect(r.y).toBeLessThan(t.y + t.height)
+    } else expect(r.y).toBeLessThan(t.y + t.height + 80)
+  }
+  expect(await sansDebordement(page.locator('body'))).toBe(true)
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-pictos-${f.nom.split(' ')[0]}.png` })
 })

@@ -15,6 +15,7 @@ import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, typ
 import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAlerte, libelleAudit, libelleMois, type ChampChiffre } from '../data/chiffres'
 import { caseDe } from '../data/sante'
 import { anneeDe, suiviRythme } from '../data/visites'
+import { preparationDe } from '../data/semaine'
 import { actionsDuMagasin, echeanceDate, enRetard } from '../data/actions'
 import { campagnesDuMagasin } from '../data/campagnes'
 import { associesEnPlace } from '../data/associes'
@@ -131,6 +132,7 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
 
   const rythme = suiviRythme(reseau, anneeDe(reseau.jour)).find((l) => l.magasin.nom === m.nom)
   const prevue = reseau.visites.filter((v) => v.magasin === m.nom && v.date > reseau.jour).sort((a, b) => a.date.localeCompare(b.date))[0]
+  const preparation = preparationDe(reseau, m.nom)
   const c = caseDe(reseau.evaluations[m.nom])
   const associes = associesEnPlace(reseau, m).map((a) => a.nom)
   const actions = actionsDuMagasin(reseau, m.nom).filter((x) => !x.a.faite)
@@ -167,11 +169,18 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
               <Champ libelle={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'}>{m.rr?.nom}</Champ>
               <Champ libelle="Nine box">{c ? `${c.libelle} · ${c.rythme}` : 'Non classé'}</Champ>
               <Champ libelle="Dernière visite">{rythme?.derniere ? `${dateCourte(rythme.derniere.date)} · ${libelleTypeVisite(rythme.derniere.type)}${rythme.derniere.visiteurs.length ? ` · ${nomsVisiteurs(rythme.derniere)}` : ''}` : 'Jamais visité'}</Champ>
-              <Champ libelle="Prochaine visite">{prevue ? `Prévue le ${dateCourte(prevue.date)}` : rythme ? `${rythme.retard > 0 ? `En retard de ${rythme.retard} j` : `Due avant le ${dateCourte(rythme.prochaine)}`} · ${rythme.faites} sur ${rythme.objectif} cette année` : null}</Champ>
+              <Champ libelle="Prochaine visite">{prevue ? `Prévue le ${dateCourte(prevue.date)}${preparation?.heure ? ` à ${preparation.heure.replace(':', 'h')}` : ''}` : rythme ? `${rythme.retard > 0 ? `En retard de ${rythme.retard} j` : `Due avant le ${dateCourte(rythme.prochaine)}`} · ${rythme.faites} sur ${rythme.objectif} cette année` : null}</Champ>
               <Champ libelle="Adresse">{[m.adresse, m.pays].filter(Boolean).join(', ')}</Champ>
               <Champ libelle="Téléphone du magasin">{m.telephone}</Champ>
             </Box>
           </Bloc>
+
+          {preparation?.notes && (
+            <Bloc titre="Notes de préparation">
+              <Typography variant="body1" sx={{ color: NOIR, whiteSpace: 'pre-wrap' }}>{preparation.notes}</Typography>
+              <Typography variant="body2" sx={{ color: GRIS, mt: 0.5 }}>{preparation.par} · {dateCourte(preparation.maj)}</Typography>
+            </Bloc>
+          )}
 
           <Bloc titre="Chiffres"><Chiffres reseau={reseau} m={m} /></Bloc>
           <Bloc titre="Repères réseau"><Reperes reseau={reseau} m={m} r={reperes} /></Bloc>
