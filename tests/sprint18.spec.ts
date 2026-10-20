@@ -48,8 +48,9 @@ test('l’onglet Portefeuilles de l’équipe compare chaque Coach au réseau', 
   }
 })
 
-test('un Coach arrive sur sa semaine et pose une visite due à l’agenda', async ({ page, isMobile }, info) => {
+test('un Coach arrive sur sa semaine, prépare et planifie une visite due', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
+  await page.addInitScript(() => { (window as unknown as { ouverts: string[] }).ouverts = []; window.open = (u?: string | URL) => { (window as unknown as { ouverts: string[] }).ouverts.push(String(u)); return null } })
   await seConnecter(page, { ecritures, appMetadata: { role: 'coach', coach: 'Inès EXEMPLE' } })
   await page.goto('./#/visites')
   await expect(page.getByRole('tab', { name: isMobile ? 'Semaine' : 'Ma semaine', selected: true })).toBeVisible()
@@ -58,13 +59,87 @@ test('un Coach arrive sur sa semaine et pose une visite due à l’agenda', asyn
   await expect(nantes).toContainText(/j de retard/)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-ma-semaine.png`, fullPage: !isMobile })
-  await page.getByRole('button', { name: 'Poser à l’agenda la visite de Nantes Test' }).click()
-  const d = page.getByRole('dialog', { name: 'Saisir une visite' })
-  await expect(d.getByLabel('Date')).toHaveValue(/^\d{4}-\d{2}-\d{2}$/)
+  await page.getByRole('button', { name: 'Planifier la visite de Nantes Test' }).click()
+  const d = page.getByRole('dialog', { name: 'Visite de Nantes Test' })
+  const demain = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+  await d.getByLabel('Date').fill(demain)
+  await d.getByLabel('Heure').fill('09:30')
+  await d.getByLabel('Notes de préparation').fill('Revoir la vitrine et le corner épicerie')
+  await expect(d.getByRole('switch', { name: 'Ajouter à Google Agenda' })).toBeChecked()
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-planifier-visite.png` })
   await d.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect(page.getByText('Visite enregistrée.')).toBeVisible()
-  const ecrite = ecritures.find((e) => e.table === 'visits' && e.methode === 'POST')!
-  expect((ecrite.corps as Record<string, unknown>[])[0]).toMatchObject({ store: 'Nantes Test', visitor: 'Inès EXEMPLE' })
+  await expect(page.getByText(/^Visite planifiée le /)).toBeVisible()
+  const visite = ecritures.find((e) => e.table === 'visits' && e.methode === 'POST')!
+  expect((visite.corps as Record<string, unknown>[])[0]).toMatchObject({ store: 'Nantes Test', visitor: 'Inès EXEMPLE', visit_date: demain, notes: null })
+  const prepa = ecritures.find((e) => e.table === 'suivi_magasins' && e.methode === 'POST')!
+  expect((prepa.corps as Record<string, unknown>[])[0]).toMatchObject({ store_name: 'Nantes Test', cle: 'preparation', valeur: { notes: 'Revoir la vitrine et le corner épicerie', heure: '09:30', par: 'Inès EXEMPLE' } })
+  const [lien] = await page.evaluate(() => (window as unknown as { ouverts: string[] }).ouverts)
+  const url = new URL(lien)
+  expect(url.host).toBe('calendar.google.com')
+  expect(url.searchParams.get('text')).toBe('Visite Nantes Test')
+  expect(url.searchParams.get('dates')).toBe(`${demain.replace(/-/g, '')}T093000/${demain.replace(/-/g, '')}T110000`)
+  expect(url.searchParams.get('details')).toContain('Revoir la vitrine')
+  expect(url.searchParams.get('details')).toContain('/preparer')
+})
+
+test('la tournée de la semaine se planifie le même jour, en un seul événement', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await page.addInitScript(() => { (window as unknown as { ouverts: string[] }).ouverts = []; window.open = (u?: string | URL) => { (window as unknown as { ouverts: string[] }).ouverts.push(String(u)); return null } })
+  await seConnecter(page, { ecritures, appMetadata: { role: 'coach', coach: 'Inès EXEMPLE' } })
+  await page.goto('./#/visites?vue=semaine')
+  const n = await page.getByRole('region', { name: 'Visites à planifier' }).getByRole('button', { name: /^Planifier la visite de / }).count()
+  test.skip(n < 2, 'une seule visite due')
+  await page.getByRole('button', { name: 'Planifier la tournée' }).click()
+  const d = page.getByRole('dialog', { name: `Tournée de ${n} magasins` })
+  await d.getByRole('switch', { name: 'Ajouter à Google Agenda' }).click()
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText(`${n} visites planifiées le`, { exact: false })).toBeVisible()
+  const visites = ecritures.find((e) => e.table === 'visits' && e.methode === 'POST')!.corps as Record<string, unknown>[]
+  expect(visites).toHaveLength(n)
+  expect(new Set(visites.map((v) => v.group_id)).size).toBe(1)
+  expect(await page.evaluate(() => (window as unknown as { ouverts: string[] }).ouverts)).toEqual([])
+})
+
+test('un Coach planifie une visite en plus, même pour un magasin qui n’est pas dû', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await page.addInitScript(() => { window.open = () => null })
+  await seConnecter(page, { ecritures, appMetadata: { role: 'coach', coach: 'Inès EXEMPLE' } })
+  await page.goto('./#/visites?vue=semaine')
+  await page.getByRole('button', { name: 'Planifier une visite' }).click()
+  const d = page.getByRole('dialog', { name: 'Planifier une visite' })
+  await expect(d.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
+  await d.getByLabel('Magasins').click()
+  const options = page.getByRole('option')
+  const nom = (await options.last().textContent())!
+  await options.last().click()
+  await page.keyboard.press('Escape')
+  await d.getByLabel(`Notes de préparation`).fill('Point sur la fidélité')
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText(/^Visite planifiée le /)).toBeVisible()
+  const visite = ecritures.find((e) => e.table === 'visits' && e.methode === 'POST')!
+  expect((visite.corps as Record<string, unknown>[])[0]).toMatchObject({ store: nom, visitor: 'Inès EXEMPLE' })
+})
+
+test('la fiche magasin permet de planifier la visite', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await page.addInitScript(() => { window.open = () => null })
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/magasins/Nantes%20Test')
+  await page.getByRole('button', { name: 'Planifier la visite' }).click()
+  const d = page.getByRole('dialog', { name: 'Visite de Nantes Test' })
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText(/^Visite planifiée le /)).toBeVisible()
+  expect(ecritures.some((e) => e.table === 'visits' && e.methode === 'POST')).toBe(true)
+})
+
+test('les notes de préparation figurent sur la fiche avant visite', async ({ page }) => {
+  const jour = new Date().toISOString().slice(0, 10)
+  await seConnecter(page, { config: { preparations_visites: { 'Nantes Test': { notes: 'Parler du corner épicerie', heure: '14:00', par: 'Inès EXEMPLE', maj: jour } } } })
+  await page.goto('./#/magasins/Nantes%20Test/preparer')
+  const bloc = page.getByRole('region', { name: 'Notes de préparation' })
+  await expect(bloc).toContainText('Parler du corner épicerie')
+  await expect(bloc).toContainText('Inès EXEMPLE')
 })
 
 test('le Directeur choisit le Coach dont il regarde la semaine', async ({ page }) => {

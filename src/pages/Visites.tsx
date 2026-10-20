@@ -260,7 +260,7 @@ export function Visites() {
             : vue === 'pratiques'
             ? <VuePratiques reseau={reseau} modifier={setPratique} actions={<BoutonAction libelle="Ajouter une bonne pratique" court="Ajouter" onClick={() => setPratique(null)} />} />
             : vue === 'semaine'
-            ? <VueSemaine reseau={reseau} surPC={surPC} planifier={(m, date) => setEdition({ visite: null, magasins: m, date })} />
+            ? <VueSemaine reseau={reseau} surPC={surPC} onMessage={setMessage} />
             : vue === 'historique'
             ? <VueHistorique reseau={reseau} actions={actions} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
             : <VueRythme reseau={reseau} surPC={surPC} actions={actions} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
