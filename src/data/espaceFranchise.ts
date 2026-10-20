@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { assemblerReseau, ErreurChargement, type Tables } from './chargement'
 import { franchises } from './personnes'
 import type { Reseau } from './modele'
+import type { Piece } from '../lib/pieces'
 
 export type IndicateurRepere = 'pmCave' | 'pmBar' | 'fluxCave' | 'fluxBar' | 'panier' | 'marge' | 'evolution'
 export interface Repere { n: number; mediane: number; quartHaut: number }
@@ -118,8 +119,8 @@ function erreurAction(e: { message?: string; code?: string }): never {
   throw new ErreurAction('L’action n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.')
 }
 
-export async function ajouterActionFranchise(magasin: string, action: string, porteur: string, echeance: string) {
-  const { error } = await supabase.rpc('ajouter_action_franchise', { p_store: magasin, p_action: action, p_porteur: porteur, p_echeance: echeance })
+export async function ajouterActionFranchise(magasin: string, action: string, porteur: string, echeance: string, pieces: Piece[] = []) {
+  const { error } = await supabase.rpc('ajouter_action_franchise', { p_store: magasin, p_action: action, p_porteur: porteur, p_echeance: echeance, ...(pieces.length ? { p_pieces: pieces } : {}) })
   if (error) erreurAction(error)
 }
 

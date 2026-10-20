@@ -6,12 +6,13 @@ import type { Profil } from '../auth/roles'
 import { associesEnPlace } from './associes'
 import { libelleResponsable, type Magasin, type Reseau } from './modele'
 import { lienFiche } from '../lib/format'
+import { normaliserPieces, type Piece } from '../lib/pieces'
 
 // destinataire : clé de la personne à qui le message est écrit (null = ancien message par magasin) ;
 // magasins : magasins cités (ancien message : son magasin) ; equipe : ancien message caché au franchisé
 export interface Message {
   id: number; auteur: string; auteurNom: string; auteurRole: string; auteurCle: string | null; destinataire: string | null
-  texte: string; mentions: string[]; creeLe: string; equipe: boolean; magasins: string[]
+  texte: string; mentions: string[]; creeLe: string; equipe: boolean; magasins: string[]; pieces: Piece[]
 }
 export type Sujet = 'messages' | 'visites'
 // lus : dernière lecture par « magasin|sujet » ou « personne:<clé>|messages » ; reference : ouverture de l'accès d'un franchisé ;
@@ -19,6 +20,9 @@ export type Sujet = 'messages' | 'visites'
 export interface Messagerie { moi: string; cle: string; version: number; reference: string; messages: Message[]; lus: Record<string, string> }
 
 export class ErreurMessage extends Error {}
+
+// Texte d'aperçu : un message fait seulement de pièces jointes est annoncé comme tel
+export const apercuDe = (x: Message) => x.texte || (x.pieces.length > 1 ? `${x.pieces.length} pièces jointes` : x.pieces[0]?.type.startsWith('image/') ? 'Photo' : 'Fichier joint')
 
 type Ligne = Record<string, unknown>
 const t = (v: unknown) => (v === null || v === undefined ? '' : String(v))
@@ -39,7 +43,7 @@ export async function chargerMessagerie(): Promise<Messagerie | null> {
     if (deja) { deja.magasins.push(...magasins); continue }
     const x: Message = {
       id: Number(m.id), auteur: t(m.auteur), auteurNom: t(m.auteur_nom), auteurRole: t(m.auteur_role), auteurCle: m.auteur_cle ? t(m.auteur_cle) : null,
-      destinataire, texte: t(m.texte), mentions: Array.isArray(m.mentions) ? m.mentions.map(String) : [], creeLe: t(m.cree_le), equipe: m.equipe === true, magasins,
+      destinataire, texte: t(m.texte), mentions: Array.isArray(m.mentions) ? m.mentions.map(String) : [], creeLe: t(m.cree_le), equipe: m.equipe === true, magasins, pieces: normaliserPieces(m.pieces),
     }
     if (lot) lots.set(lot, x)
     messages.push(x)
@@ -52,9 +56,10 @@ export async function chargerMessagerie(): Promise<Messagerie | null> {
 
 // Message privé à une personne. Base pas encore mise à jour (avant la version 3) : ancien message sur un magasin
 // (le premier cité, sinon « repli »), la personne mentionnée pour être notifiée.
-export async function envoyerMessage(destinataire: string, texte: string, magasins: string[], version: number, repli: string | null) {
+// pieces : photos et fichiers joints (échanges à deux seulement)
+export async function envoyerMessage(destinataire: string, texte: string, magasins: string[], version: number, repli: string | null, pieces: Piece[] = []) {
   const { error } = version >= 3
-    ? await supabase.rpc('envoyer_a', { p_destinataire: destinataire, p_texte: texte, p_magasins: magasins })
+    ? await supabase.rpc('envoyer_a', { p_destinataire: destinataire, p_texte: texte, p_magasins: magasins, ...(pieces.length ? { p_pieces: pieces } : {}) })
     : await supabase.rpc('envoyer_message', { p_store: magasins[0] ?? repli, p_texte: texte, p_mentions: [destinataire] })
   if (error) throw new ErreurMessage(error.message)
 }
@@ -204,7 +209,7 @@ export function notifications(reseau: Reseau | null, profil: Profil | null, mg: 
   }
   for (const [cle, l] of recus) {
     const dernier = l[l.length - 1]
-    res.push({ cle: `p|${cle}`, titre: dernier.auteurNom, type: 'message', nombre: l.length, date: dernier.creeLe, apercu: dernier.texte, lien: lienPersonne(cle), lecture: { personne: cle, sujet: 'messages' } })
+    res.push({ cle: `p|${cle}`, titre: dernier.auteurNom, type: 'message', nombre: l.length, date: dernier.creeLe, apercu: apercuDe(dernier), lien: lienPersonne(cle), lecture: { personne: cle, sujet: 'messages' } })
   }
   const cles = mesCles(profil)
   const coach = profil.role === 'coach' ? profil.perimetre.coachs?.[0] : undefined
@@ -222,7 +227,7 @@ export function notifications(reseau: Reseau | null, profil: Profil | null, mg: 
     const dernier = retenus[retenus.length - 1]
     res.push({
       cle: `m|${magasin}`, titre: magasin, type: mentions.length ? 'mention' : 'message', nombre: retenus.length, date: dernier.creeLe,
-      apercu: `${dernier.auteurNom} : ${dernier.texte}`, lien: `${lienFiche(magasin)}?vue=messages`, lecture: { magasin, sujet: 'messages' },
+      apercu: `${dernier.auteurNom} : ${apercuDe(dernier)}`, lien: `${lienFiche(magasin)}?vue=messages`, lecture: { magasin, sujet: 'messages' },
     })
   }
   if (franchise) {
@@ -251,7 +256,7 @@ export function historique(reseau: Reseau | null, profil: Profil | null, mg: Mes
   const res: Evenement[] = []
   for (const x of mg.messages) {
     if (x.auteur === mg.moi) continue
-    const base = { cle: `m|${x.id}`, magasins: x.magasins, date: x.creeLe, auteur: x.auteurNom, texte: x.texte, nouveau: estNouveau(x, mg) }
+    const base = { cle: `m|${x.id}`, magasins: x.magasins, date: x.creeLe, auteur: x.auteurNom, texte: apercuDe(x), nouveau: estNouveau(x, mg) }
     if (x.destinataire) {
       if (x.auteurCle) res.push({ ...base, type: 'message', lien: lienPersonne(x.auteurCle), lecture: { personne: x.auteurCle, sujet: 'messages' } })
       continue

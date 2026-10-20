@@ -16,11 +16,13 @@ export interface EspaceSimule { actions?: Record<string, Record<string, unknown>
 // destinataire : échange à deux (clé de la personne), avec auteur_cle et magasins cités ; sinon ancien message par magasin (store)
 export interface MessageSimule {
   id: number; store?: string | null; auteur: string; auteur_nom: string; auteur_role: string; texte: string; mentions: string[]; cree_le: string
-  equipe?: boolean; lot?: string | null; destinataire?: string | null; auteur_cle?: string | null; magasins?: string[]
+  equipe?: boolean; lot?: string | null; destinataire?: string | null; auteur_cle?: string | null; magasins?: string[]; pieces?: { chemin: string; nom: string; taille: number; type: string }[]
 }
 // version 1 et 2 : base d'avant les échanges à deux (script messagerie.sql pas encore repassé)
 export interface MessagerieSimulee { messages?: MessageSimule[]; lus?: Record<string, string>; reference?: string | null; version?: number }
 export const MOI = '00000000-0000-0000-0000-000000000001'
+// Comme la base : seuls les fichiers rangés sous le compte connecté, 10 au plus
+const piecesPropres = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 10).filter((p) => typeof p?.chemin === 'string' && p.chemin.startsWith(`${MOI}/`))
 // Périmètre envoyé par l'app du Directeur (fonction maj_perimetre_equipe)
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
 export interface OptionsSimulation { messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null }
@@ -140,7 +142,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
           const magasins = (corps.p_magasins as string[] | undefined) ?? []
           if (!/^(directeur|rr:.+|coach:.+|franchise:.+)$/.test(dest) || dest === cle || (acces.role === 'franchise' && dest.startsWith('franchise:')) || !magasins.every(visibles)) return refus()
           const maintenant = new Date().toISOString()
-          mg.messages.push({ id: Math.max(0, ...mg.messages.map((m) => m.id)) + 1, store: null, auteur: MOI, auteur_nom: nom ?? 'joseph', auteur_role: acces.role, texte: String(corps.p_texte).trim(), mentions: [dest], cree_le: maintenant, destinataire: dest, auteur_cle: cle, magasins: [...new Set(magasins)] })
+          mg.messages.push({ id: Math.max(0, ...mg.messages.map((m) => m.id)) + 1, store: null, auteur: MOI, auteur_nom: nom ?? 'joseph', auteur_role: acces.role, texte: String(corps.p_texte).trim(), mentions: [dest], cree_le: maintenant, destinataire: dest, auteur_cle: cle, magasins: [...new Set(magasins)], pieces: piecesPropres(corps.p_pieces) })
           mg.lus[`personne:${dest}|messages`] = maintenant
           return route.fulfill({ json: { id: mg.messages.length } })
         }
@@ -171,7 +173,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         const jour = new Date().toISOString().slice(0, 10)
         const marquer = (a: Record<string, unknown>) => { if (corps.p_faite) Object.assign(a, { faite: jour, faitePar: acces.franchise }); else { delete a.faite; delete a.faitePar } }
         if (fn === 'ajouter_action_franchise') {
-          actions[st] = [...(actions[st] ?? []), { id: `l_simule${Object.values(actions).flat().length + 1}`, action: String(corps.p_action).trim(), porteur: String(corps.p_porteur ?? ''), echeance: String(corps.p_echeance ?? ''), creeLe: jour, auteur: acces.franchise }]
+          actions[st] = [...(actions[st] ?? []), { id: `l_simule${Object.values(actions).flat().length + 1}`, action: String(corps.p_action).trim(), porteur: String(corps.p_porteur ?? ''), echeance: String(corps.p_echeance ?? ''), creeLe: jour, auteur: acces.franchise, ...(piecesPropres(corps.p_pieces).length ? { pieces: piecesPropres(corps.p_pieces) } : {}) }]
         } else if (corps.p_libre) {
           const a = actions[st]?.find((x) => x.id === corps.p_libre)
           if (!a) return introuvable()

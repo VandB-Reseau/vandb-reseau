@@ -1,4 +1,5 @@
 import type { ActionPlan } from './modele'
+import { normaliserPieces } from '../lib/pieces'
 
 // Parties du compte rendu de visite (non officiel). Aucune n'est obligatoire.
 export const PARTIES: { titre: string }[] = [
@@ -22,5 +23,6 @@ export function normaliserPlan(v: unknown): ActionPlan[] {
   return v.map((a: Record<string, unknown>) => ({
     ...(a?.id ? { id: String(a.id) } : {}), action: String(a?.action ?? ''), porteur: String(a?.porteur ?? ''), echeance: String(a?.echeance ?? ''),
     ...(a?.faite ? { faite: String(a.faite) } : {}), ...(a?.faite && a?.faitePar ? { faitePar: String(a.faitePar) } : {}),
+    ...(Array.isArray(a?.pieces) && a.pieces.length ? { pieces: normaliserPieces(a.pieces) } : {}),
   })).filter((a) => a.action.trim())
 }
