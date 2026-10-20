@@ -71,7 +71,10 @@ import { analyser, lireFichier, type ResultatImport } from '../data/import'
 import { avancement, caseDe, criteresAxe, libelleAxe, libelleCritere, nineBox, tousCriteres, type Evaluation, type IdCritere, type Thematique, type Ton } from '../data/sante'
 import { dateCourte, lienFiche } from '../lib/format'
 import { PastilleAlerte } from '../components/Chiffres'
-import { analyser as analyserCA, completerChiffres, libellesChiffres, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, libelleMoisCourt, moisPrecedent, type StatutAlerte } from '../data/chiffres'
+import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, MiniCourbe, useAffichage } from '../components/Social'
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
+import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
+import { analyser as analyserCA, completerChiffres, libellesChiffres, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, libelleMoisCourt, moisPrecedent, courbeCA, formatKEuros, type StatutAlerte } from '../data/chiffres'
 import { analyserChiffres, type ResultatImportChiffres } from '../data/importChiffres'
 import { enregistrerChiffres } from '../data/chargement'
 import type { Magasin, Reseau } from '../data/modele'
@@ -644,6 +647,7 @@ function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
   const theme = useTheme()
   const { magasins, barre } = useFiltres(reseau)
   const [statuts, setStatuts] = useState<string[]>([])
+  const [affichage, setAffichage] = useAffichage('chiffres')
   const lignes = useMemo(() => magasins.map((m) => ({ m, a: analyserCA(reseau, m.nom), coach: coachA(m, reseau.jour), hygiene: dernierAudit(reseau, m.nom, 'hygiene'), excellence: dernierAudit(reseau, m.nom, 'excellence') }))
     .sort((x, y) => ordreAlerte.indexOf(x.a?.statut ?? null) - ordreAlerte.indexOf(y.a?.statut ?? null) || (x.a?.ecart ?? 0) - (y.a?.ecart ?? 0) || x.m.nom.localeCompare(y.m.nom, 'fr')), [magasins, reseau])
   const compte = (st: StatutAlerte | null) => lignes.filter((l) => (l.a?.statut ?? null) === st).length
@@ -663,8 +667,9 @@ function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
   return (
     <>
       {barre}
-      <Box sx={{ mb: 2, mt: -1 }}>
+      <Box sx={{ mb: 2, mt: -1, display: 'flex', alignItems: 'center', gap: 1 }}>
         <FiltreMenu libelle="Alerte" choisis={statuts} onChange={setStatuts} options={tuiles.map((t) => ({ valeur: t.id, libelle: t.titre, detail: `${t.n} magasins` }))} />
+        {surPC && <Box sx={{ ml: 'auto' }}><ChoixAffichage valeur={affichage} onChange={setAffichage} /></Box>}
       </Box>
       <Box sx={{ display: 'grid', gap: { xs: 1, sm: 2 }, gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, mb: 2 }}>
         {tuiles.map((t) => (
@@ -680,7 +685,7 @@ function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         {`Audits conformes : ${audits.length ? `${conformes} sur ${audits.length} (${Math.round((conformes / audits.length) * 100)} %)` : 'aucun résultat saisi'}`}
       </Typography>
-      {visibles.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." /> : surPC ? (
+      {visibles.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." /> : surPC && affichage === 'tableau' ? (
         <TableContainer component={Paper}>
           <Table size="small" className="colonne-fixe" aria-label="Chiffres des magasins">
             <TableHead>
@@ -708,24 +713,45 @@ function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
           </Table>
         </TableContainer>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {visibles.map(({ m, a, coach }) => (
-            <Card key={m.nom}>
-              <Link component={RouterLink} to={lienFiche(m.nom)} underline="none" color="inherit" sx={{ display: 'block', p: 2, minHeight: 48 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                  <Typography sx={{ fontWeight: 700, flex: 1 }}>{m.nom}</Typography>
-                  <PastilleAlerte statut={a?.statut ?? null} />
-                </Box>
-                <Typography variant="body2" color="text.secondary">{coach || 'Sans Coach'}</Typography>
-                {a ? (
-                  <Typography variant="body2">{[`${libelleMois(a.mois)} : ${formatEuros(a.ca)}`, a.ecart !== null && `${formatPourcent(a.ecart)} vs ${libelleMoisCourt(a.reference)}`, a.chiffre.marge !== null && `marge ${formatValeur('marge', a.chiffre.marge)}`].filter(Boolean).join(' · ')}</Typography>
-                ) : <Typography variant="body2" color="text.secondary">Aucun chiffre</Typography>}
-              </Link>
-            </Card>
-          ))}
-        </Box>
+        <LignesChiffres reseau={reseau} lignes={visibles} />
       )}
     </>
+  )
+}
+
+// Une ligne par magasin : mini-courbe sur 12 mois, chiffre du mois en grand, écart en couleur ; les magasins sans chiffres sont repliés
+function LignesChiffres({ reseau, lignes }: { reseau: Reseau; lignes: { m: Magasin; a: ReturnType<typeof analyserCA>; coach: string }[] }) {
+  const theme = useTheme()
+  const [ouvert, setOuvert] = useState(false)
+  const [nb, setNb] = useState(50)
+  const avec = lignes.filter((l) => l.a)
+  const sans = lignes.filter((l) => !l.a)
+  const couleur = (a: NonNullable<ReturnType<typeof analyserCA>>) => a.statut === 'decroche' ? theme.palette.error.main : a.statut === 'surveiller' ? theme.palette.warning.dark : a.statut === 'ok' ? theme.palette.success.main : theme.palette.text.secondary
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      <CarteLignes label="Chiffres des magasins">
+        {avec.slice(0, nb).map(({ m, a, coach }) => (
+          <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Initiales nom={m.nom} />} titre={m.nom}
+            detail={[coach || 'Sans Coach', libelleMois(a!.mois)].join(' · ')}
+            fin={<>
+              <Box sx={{ display: { xs: 'none', sm: 'block' } }}><MiniCourbe valeurs={courbeCA(reseau, m.nom, a!.mois)} couleur={couleur(a!)} label={`Chiffre d'affaires de ${m.nom} sur 12 mois`} /></Box>
+              <Box sx={{ textAlign: 'right', minWidth: 72 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '1.125rem', lineHeight: 1.2 }}>{formatKEuros(a!.ca)}</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: couleur(a!) }}>{formatPourcent(a!.ecart)}</Typography>
+              </Box>
+            </>} />
+        ))}
+        {sans.length > 0 && (
+          <LigneCompacte onClick={() => setOuvert(!ouvert)} label={ouvert ? 'Replier les magasins sans chiffres' : 'Voir les magasins sans chiffres'}
+            avatar={<Initiales nom="sans" icone={<QueryStatsOutlined />} couleur={theme.palette.text.secondary} />}
+            titre={`${sans.length} magasin${sans.length > 1 ? 's' : ''} sans chiffres`} fin={ouvert ? <ExpandLessOutlined /> : <ExpandMoreOutlined />} />
+        )}
+        {ouvert && sans.map(({ m, coach }) => (
+          <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Initiales nom={m.nom} />} titre={m.nom} detail={coach || 'Sans Coach'} />
+        ))}
+      </CarteLignes>
+      {nb < avec.length && <Button variant="outlined" onClick={() => setNb(nb + 50)} sx={{ alignSelf: 'center', minHeight: 48 }}>Afficher {Math.min(50, avec.length - nb)} magasins de plus</Button>}
+    </Box>
   )
 }
 

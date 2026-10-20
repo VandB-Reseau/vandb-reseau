@@ -145,8 +145,8 @@ function EspaceDe({ bandeau }: { bandeau?: ReactNode }) {
   const cle = impose ? cleVue(impose) : null
   const perimetre = useMemo(() => (cle ? lireVue(cle) : null), [cle])
   if (!profil || profil.role === 'aucun') return <AccesFerme />
-  if (franchise || vueApercu) return <MessagerieProvider><ReseauProvider key={apercu?.franchise ?? 'franchise'} charger={charger} lectureSeule><RoutesFranchise apercu={vueApercu} /></ReseauProvider></MessagerieProvider>
-  return <MessagerieProvider><ReseauProvider key={cle ?? 'reseau'} accesFranchises={directeur} lectureSeule={!directeur} perimetre={perimetre}><Routes_ equipeSeule={!!perimetre} bandeau={bandeau} /></ReseauProvider></MessagerieProvider>
+  if (franchise || vueApercu) return <MessagerieProvider><ReseauProvider key={apercu?.franchise ?? 'franchise'} charger={charger} lectureSeule cache={vueApercu ? undefined : `${profil.id}:franchise`}><RoutesFranchise apercu={vueApercu} /></ReseauProvider></MessagerieProvider>
+  return <MessagerieProvider><ReseauProvider key={cle ?? 'reseau'} accesFranchises={directeur} lectureSeule={!directeur} perimetre={perimetre} cache={`${profil.id}:reseau`}><Routes_ equipeSeule={!!perimetre} bandeau={bandeau} /></ReseauProvider></MessagerieProvider>
 }
 
 export default function App() {

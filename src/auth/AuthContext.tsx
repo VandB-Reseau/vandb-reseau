@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { viderCache } from '../lib/cacheLocal'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { Profil } from './roles'
@@ -93,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     deconnexion: async () => {
       try { sessionStorage.removeItem('apercu-franchise'); sessionStorage.removeItem('apercu-equipe') } catch { /* rien à effacer */ }
+      await viderCache()
       await supabase.auth.signOut()
     },
   }

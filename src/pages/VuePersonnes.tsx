@@ -1,21 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
+import { CarteLignes, Initiales, LigneCompacte } from '../components/Social'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
-import CardActionArea from '@mui/material/CardActionArea'
 import Chip from '@mui/material/Chip'
-import Link from '@mui/material/Link'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Snackbar from '@mui/material/Snackbar'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
-import Typography from '@mui/material/Typography'
 import PersonAddAlt1Outlined from '@mui/icons-material/PersonAddAlt1Outlined'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
 import ChevronRight from '@mui/icons-material/ChevronRight'
@@ -25,10 +16,8 @@ import { RechercheFiltres } from '../components/RechercheFiltres'
 import { BoutonAction, ChampRecherche } from '../components/Outils'
 import { normaliser } from '../data/filtres'
 import { fichePersonne, franchises, libelleRole, type FichePersonnelle, type TypePersonne } from '../data/personnes'
-import { lienCoach, lienDirecteur, lienFranchise, lienRR, telLien } from '../lib/format'
+import { lienCoach, lienDirecteur, lienFranchise, lienRR } from '../lib/format'
 import type { Reseau } from '../data/modele'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 
@@ -62,10 +51,8 @@ export function lignesPersonnes(reseau: Reseau): LignePersonne[] {
   return l
 }
 
-const Vide = () => <Typography component="span" variant="body2" color="text.secondary">Non renseigné</Typography>
-
 // Annuaire des collaborateurs V and B (Directeur, RR, Coachs) ou des franchisés ; un clic ouvre la fiche, où l'on modifie
-export function VuePersonnes({ reseau, surPC, perimetre }: { reseau: Reseau; surPC: boolean; perimetre: Perimetre }) {
+export function VuePersonnes({ reseau, perimetre }: { reseau: Reseau; perimetre: Perimetre }) {
   const naviguer = useNavigate()
   const [params, setParams] = useSearchParams()
   const filtre = (FILTRES.find((f) => f.id === params.get('role'))?.id ?? 'tous') as 'tous' | TypePersonne
@@ -102,47 +89,14 @@ export function VuePersonnes({ reseau, surPC, perimetre }: { reseau: Reseau; sur
         <EmptyState icone={<PersonOutlineOutlined />} titre={toutes.length ? 'Personne ne correspond' : perimetre === 'franchises' ? 'Aucun franchisé renseigné' : 'Aucun collaborateur'}
           texte={toutes.length ? 'Change la recherche ou le filtre.' : 'Ajoute la personne : elle aura sa fiche personnelle.'}
           action={!toutes.length ? <Button variant="contained" onClick={(e) => (perimetre === 'franchises' ? setAjout('franchise') : setMenu(e.currentTarget))}>Ajouter</Button> : undefined} />
-      ) : surPC ? (
-        <Card>
-          <TableContainer>
-            <Table className="colonne-fixe" aria-label={perimetre === 'franchises' ? 'Franchisés' : 'Collaborateurs'}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Nom</TableCell>
-                  <TableCell>Rôle</TableCell>
-                  <TableCell>{perimetre === 'franchises' ? 'Magasins' : 'Rattachement'}</TableCell>
-                  <TableCell>Ville</TableCell>
-                  <TableCell>Téléphone</TableCell>
-                  <TableCell>Email</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {visibles.map((p) => (
-                  <TableRow key={p.cle} hover onClick={() => naviguer(p.lien)} sx={{ cursor: 'pointer' }}>
-                    <TableCell><Link component={RouterLink} to={p.lien} onClick={(e) => e.stopPropagation()} sx={{ fontWeight: 600 }}>{p.nom}</Link></TableCell>
-                    <TableCell>{p.role}</TableCell>
-                    <TableCell sx={{ maxWidth: 280 }}>{p.rattachement || <Vide />}</TableCell>
-                    <TableCell>{p.fiche.ville || <Vide />}</TableCell>
-                    <TableCell>{p.fiche.telephone ? <Link href={telLien(p.fiche.telephone)} onClick={(e) => e.stopPropagation()} variant="body2">{p.fiche.telephone}</Link> : <Vide />}</TableCell>
-                    <TableCell>{p.fiche.email ? <Link href={`mailto:${p.fiche.email}`} onClick={(e) => e.stopPropagation()} variant="body2">{p.fiche.email}</Link> : <Vide />}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
       ) : (
-        <Card>
+        <CarteLignes label={perimetre === 'franchises' ? 'Franchisés' : 'Collaborateurs'}>
           {visibles.map((p) => (
-            <CardActionArea key={p.cle} component={RouterLink} to={p.lien} aria-label={p.nom} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, minHeight: 56, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>{p.nom}</Typography>
-                <Typography variant="body2" color="text.secondary" noWrap>{[p.role, p.rattachement, p.fiche.ville].filter(Boolean).join(' · ')}</Typography>
-              </Box>
-              <ChevronRight color="action" />
-            </CardActionArea>
+            <LigneCompacte key={p.cle} lien={p.lien} label={p.nom} avatar={<Initiales nom={p.nom} />} titre={p.nom}
+              detail={[p.role, p.rattachement, p.fiche.ville].filter(Boolean).join(' · ')}
+              fin={<ChevronRight color="action" />} />
           ))}
-        </Card>
+        </CarteLignes>
       )}
       {ajout === 'coach' && <DialogCoach reseau={reseau} coach={null} onFermer={(m, n) => fermer(m, n, lienCoach)} />}
       {ajout === 'rr' && <DialogRR reseau={reseau} rr={null} onFermer={(m) => fermer(m)} />}
@@ -154,12 +108,10 @@ export function VuePersonnes({ reseau, surPC, perimetre }: { reseau: Reseau; sur
 
 // Page de la partie « Paramètres » : Collaborateurs ou Franchisés
 export function Personnes({ perimetre }: { perimetre: Perimetre }) {
-  const theme = useTheme()
-  const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   return (
     <>
       <PageHeader titre={perimetre === 'franchises' ? 'Franchisés' : 'Collaborateurs'} />
-      <AvecReseau>{(reseau) => <VuePersonnes key={perimetre} perimetre={perimetre} reseau={reseau} surPC={surPC} />}</AvecReseau>
+      <AvecReseau>{(reseau) => <VuePersonnes key={perimetre} perimetre={perimetre} reseau={reseau} />}</AvecReseau>
     </>
   )
 }

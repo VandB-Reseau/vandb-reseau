@@ -44,7 +44,7 @@ test('icône Tâches : aperçu des tâches à faire, la plus urgente d’abord, 
 
 test('icône Tâches sans tâche : un aperçu vide, le lien vers la liste reste', async ({ page }) => {
   await seConnecter(page, { config: { actions: {} } })
-  await page.getByRole('button', { name: 'Tâches', exact: true }).click()
+  await page.getByLabel('Tâches', { exact: true }).click()
   const menu = page.getByRole('menu', { name: 'Tâches à faire' })
   await expect(menu).toContainText('Aucune tâche à faire.')
   await menu.getByRole('button', { name: 'Toutes les tâches' }).click()

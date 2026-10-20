@@ -40,12 +40,12 @@ test('les filtres restent dans l’adresse', async ({ page }) => {
 test('la fiche magasin regroupe équipe, coordonnées et historique', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins?vue=liste')
-  if (isMobile) await page.getByRole('heading', { name: 'Lyon Test' }).click()
-  else await page.getByRole('row', { name: /Lyon Test/ }).click()
+  await page.getByRole('region', { name: 'Liste des magasins' }).getByRole('link', { name: /^Lyon Test/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Fiche' }).click()
   await expect(page.getByText('Noé MODELE').first()).toBeVisible()
-  await expect(page.getByText('Sam SUD')).toBeVisible()
-  await expect(page.getByText('Intégré')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Sam SUD', exact: true })).toBeVisible()
+  await expect(page.getByText(/^Intégré · Lyon/)).toBeVisible()
   const carte = page.locator('iframe[title="Carte Google de Lyon Test"]')
   await carte.scrollIntoViewIfNeeded()
   await expect(carte).toBeVisible()
@@ -164,5 +164,5 @@ test('si la carte reste introuvable, un message propose de recharger', async ({ 
   await expect(page.getByRole('button', { name: 'Recharger' })).toBeVisible()
   // Le menu reste utilisable
   await page.goto('./#/')
-  await expect(page.getByRole('heading', { level: 1, name: /Bonjour|Bonsoir/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Accueil' })).toBeAttached()
 })

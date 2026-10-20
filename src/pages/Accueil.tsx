@@ -1,172 +1,229 @@
-import type { ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
-import Chip from '@mui/material/Chip'
-import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
-import TrendingDown from '@mui/icons-material/TrendingDown'
-import SwapVert from '@mui/icons-material/SwapVert'
-import EventBusyOutlined from '@mui/icons-material/EventBusyOutlined'
 import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined'
 import PersonSearchOutlined from '@mui/icons-material/PersonSearchOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
-import { PageHeader } from '../components/PageHeader'
-import { AvecReseau } from '../components/EtatDonnees'
-import { PastilleCase, PastilleTendance } from '../components/Sante'
-import { PastilleAlerte, PastilleAppel } from '../components/Chiffres'
-import { analyser, suiviAlerte } from '../data/chiffres'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
+import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
+import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
+import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
+import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
+import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
+import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
+import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
+import ListSubheader from '@mui/material/ListSubheader'
+import MenuItem from '@mui/material/MenuItem'
+import TextField from '@mui/material/TextField'
+import { AvecReseau } from '../components/EtatDonnees'
+import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, Pastille, Puces, TitreSection, type Ton } from '../components/Social'
+import { analyser, suiviAlerte } from '../data/chiffres'
 import { useAuth } from '../auth/AuthContext'
-import { useReseau } from '../data/ReseauContext'
+import { useMessagerie } from '../data/MessagerieContext'
 import { caseDe, tendance } from '../data/sante'
 import { anneeDe, suiviRythme } from '../data/visites'
 import { chargeA, coachA, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
+import { visuellementCache } from '../lib/accessibilite'
 import { ajouterJours, elementsDuMois, jourLong } from './Agenda'
-import { libelleResponsable, type Reseau } from '../data/modele'
-import ListSubheader from '@mui/material/ListSubheader'
-import MenuItem from '@mui/material/MenuItem'
-import TextField from '@mui/material/TextField'
-import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
-import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
-import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
-import { roleLibelle } from '../auth/roles'
-import { cleVue, libelleVue, lireVue, magasinsDu, perimetreDuProfil, personnesDu, type Perimetre } from '../data/perimetre'
+import { libelleResponsable, type Magasin, type Reseau } from '../data/modele'
+import { cleVue, lireVue, magasinsDu, perimetreDuProfil, personnesDu, type Perimetre } from '../data/perimetre'
 import { actionsEnCours, echeanceDate, enRetard } from '../data/actions'
 import { libellesEtatMandat, mandatsARenouveler } from '../data/associes'
 import { bilan, magasinsConcernes, phase } from '../data/campagnes'
+import { filDu, quand, type ElementFil, type GenreFil } from '../data/fil'
 
 // Ordre de priorité fixé par Joseph le 14/10/2026
 const PRIORITAIRES = ['redressement', 'relance', 'renforcer']
-const MAX = 6
+const APERCU = 5
 
-function Bloc({ titre, icone, vide, lien, libelleLien, total, children, large }: { titre: string; icone: ReactNode; vide: string; lien: string; libelleLien: string; total: number; children: ReactNode; large?: boolean }) {
-  return (
-    <Card sx={{ gridColumn: { md: large ? 'span 2' : 'auto' } }} component="section" aria-label={titre}>
-      <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mb: 1.5 }}>
-          <Box sx={{ display: 'inline-flex', p: 1, borderRadius: 3, bgcolor: 'action.hover' }}>{icone}</Box>
-          <Typography variant="h4" component="h2" sx={{ flex: 1 }}>{titre}</Typography>
-          {total > 0 && <Typography variant="h4" component="span" color="text.secondary">{total}</Typography>}
-        </Box>
-        {total === 0 ? <Typography variant="body2" color="text.secondary">{vide}</Typography> : <Box sx={{ display: 'flex', flexDirection: 'column' }}>{children}</Box>}
-        {total > MAX && <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>et {total - MAX} de plus</Typography>}
-        <Button component={RouterLink} to={lien} sx={{ mt: 1.5, minHeight: 48, ml: -1 }}>{libelleLien}</Button>
-      </CardContent>
-    </Card>
-  )
-}
+// Une ligne « À traiter » : un avatar, deux lignes de texte, une seule pastille (la plus grave)
+interface ATraiter { cle: string; titre: string; detail: string; lien: string; avatar: string; icone?: ReactNode; pastille?: { ton: Ton; libelle: string } }
 
-function Ligne({ lien, titre, detail, fin }: { lien?: string; titre: string; detail?: string; fin?: ReactNode }) {
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minHeight: 48, borderBottom: '1px solid', borderColor: 'divider', flexWrap: 'wrap', py: 0.5 }}>
-      <Box sx={{ flex: 1, minWidth: 160 }}>
-        {lien ? <Link component={RouterLink} to={lien} sx={{ fontWeight: 600 }}>{titre}</Link> : <Typography sx={{ fontWeight: 600 }}>{titre}</Typography>}
-        {detail && <Typography variant="body2" color="text.secondary">{detail}</Typography>}
-      </Box>
-      {fin}
-    </Box>
-  )
-}
-
-function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Perimetre; sansParametres?: boolean }) {
+function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATraiter[] {
   const j = reseau.jour
   const perimetre = magasinsDu(reseau, p)
   const noms = new Set(perimetre.map((m) => m.nom))
-  const personnes = personnesDu(reseau, p)
   const actifs = perimetre.filter((m) => m.statut !== 'avenir')
-  const sousPerf = actifs.map((m) => ({ m, c: caseDe(reseau.evaluations[m.nom]) }))
-    .filter((x) => x.c && PRIORITAIRES.includes(x.c.id))
-    .sort((a, b) => PRIORITAIRES.indexOf(a.c!.id) - PRIORITAIRES.indexOf(b.c!.id))
+  const avecCoach = p.type !== 'coach'
+  const coachDe = (m: Magasin) => (avecCoach ? `${coachA(m, j) || 'Sans Coach'} · ` : '')
+  const items: ATraiter[] = []
+  const vus = new Set<string>()
   // Démarche coach : les magasins qui décrochent d'abord (appel en retard en tête), puis ceux à surveiller
   const alertes = actifs.map((m) => { const an = analyser(reseau, m.nom); return { m, an, suivi: suiviAlerte(reseau, m.nom, an) } })
     .filter((x) => x.an?.statut === 'decroche' || x.an?.statut === 'surveiller')
     .sort((x, y) => (x.an!.statut === y.an!.statut ? 0 : x.an!.statut === 'decroche' ? -1 : 1) || (y.suivi?.retard ?? 0) - (x.suivi?.retard ?? 0) || (x.an!.ecart ?? 0) - (y.an!.ecart ?? 0))
-  const avecChiffres = Object.keys(reseau.chiffres).length > 0
-  const nonEvalues = actifs.filter((m) => !caseDe(reseau.evaluations[m.nom])).length
-  const a = anneeDe(j)
-  const aVisiter = suiviRythme(reseau, a).filter((l) => l.retard > 0 && noms.has(l.magasin.nom))
-    .sort((x, y) => y.retard - x.retard || (x.derniere?.date ?? '').localeCompare(y.derniere?.date ?? ''))
-  // Actions des plans de visite en retard ou à échéance dans les quinze jours
+  for (const { m, an, suivi } of alertes) {
+    vus.add(m.nom)
+    const appel = suivi && !suivi.contact ? (suivi.retard > 0 ? `appel en retard de ${suivi.retard} j` : `à appeler avant le ${dateCourte(suivi.limite)}`) : ''
+    items.push({ cle: `a-${m.nom}`, titre: m.nom, avatar: m.nom, lien: lienFiche(m.nom), detail: coachDe(m) + [an!.raisons.join(' · '), appel].filter(Boolean).join(' · '),
+      pastille: an!.statut === 'decroche' ? { ton: 'rouge', libelle: 'Décroche' } : { ton: 'orange', libelle: 'À surveiller' } })
+  }
+  // Tâches en retard ou à échéance dans les quinze jours
   const dans15j = ajouterJours(j, 15)
-  const actionsProches = actionsEnCours(reseau, noms).filter((x) => echeanceDate(x.a) && echeanceDate(x.a) <= dans15j)
-  const mandats = p.type === 'coach' ? [] : mandatsARenouveler(reseau, perimetre)
-  // Magasins qui ont changé de case ces trois derniers mois, ceux qui reculent d'abord
+  for (const x of actionsEnCours(reseau, noms).filter((x) => echeanceDate(x.a) && echeanceDate(x.a) <= dans15j).sort((x, y) => echeanceDate(x.a).localeCompare(echeanceDate(y.a)))) {
+    const retard = enRetard(x.a, j)
+    items.push({ cle: `t-${x.cle}`, titre: x.a.action, avatar: x.a.action, icone: <TaskAltOutlined />, lien: `${lienFiche(x.magasin)}?vue=actions`,
+      detail: [x.magasin, x.a.porteur, `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · '), pastille: retard ? { ton: 'rouge', libelle: 'En retard' } : undefined })
+  }
+  const a = anneeDe(j)
+  for (const l of suiviRythme(reseau, a).filter((l) => l.retard > 0 && noms.has(l.magasin.nom)).sort((x, y) => y.retard - x.retard)) {
+    items.push({ cle: `v-${l.magasin.nom}`, titre: l.magasin.nom, avatar: l.magasin.nom, lien: lienFiche(l.magasin.nom),
+      detail: (avecCoach ? `${l.coach || 'Sans Coach'} · ` : '') + `${l.derniere ? `vu le ${dateCourte(l.derniere.date)}` : 'jamais visité'} · ${l.retard} j de retard`, pastille: { ton: 'orange', libelle: 'Visite' } })
+  }
+  for (const { m, c } of actifs.map((m) => ({ m, c: caseDe(reseau.evaluations[m.nom]) })).filter((x) => x.c && PRIORITAIRES.includes(x.c.id) && !vus.has(x.m.nom))
+    .sort((x, y) => PRIORITAIRES.indexOf(x.c!.id) - PRIORITAIRES.indexOf(y.c!.id))) {
+    items.push({ cle: `s-${m.nom}`, titre: m.nom, avatar: m.nom, lien: lienFiche(m.nom), detail: coachDe(m) + `rythme conseillé ${c!.rythme}`, pastille: { ton: c!.id === 'redressement' ? 'rouge' : 'orange', libelle: c!.libelle } })
+  }
+  // Magasins qui ont reculé d'une case ces trois derniers mois
   const il3mois = ajouterJours(j, -92)
-  const changements = actifs.map((m) => ({ m, t: tendance(reseau.evaluations, m.nom) }))
-    .filter((x) => x.t?.precedente && x.t.depuis >= il3mois)
-    .sort((x, y) => ['descend', 'stable', 'monte'].indexOf(x.t!.sens) - ['descend', 'stable', 'monte'].indexOf(y.t!.sens) || y.t!.depuis.localeCompare(x.t!.depuis))
-  const campagnes = reseau.campagnes.liste.filter((c) => phase(c, j) === 'encours')
-    .map((c) => ({ c, b: bilan(reseau.campagnes, c, magasinsConcernes(reseau, c).filter((m) => noms.has(m.nom))) })).filter((x) => x.b.total > 0)
-  const finSemaine = ajouterJours(j, 6)
-  const semaine = elementsDuMois(reseau, j, finSemaine).filter((e) => {
+  for (const { m, t } of actifs.map((m) => ({ m, t: tendance(reseau.evaluations, m.nom) })).filter((x) => x.t?.precedente && x.t.depuis >= il3mois && x.t.sens === 'descend')) {
+    items.push({ cle: `c-${m.nom}`, titre: m.nom, avatar: m.nom, lien: lienFiche(m.nom), detail: `${dateCourte(t!.depuis)} · ${t!.precedente!.libelle} vers ${t!.actuelle.libelle}`, pastille: { ton: 'gris', libelle: 'Recule' } })
+  }
+  if (p.type !== 'coach') {
+    for (const x of mandatsARenouveler(reseau, perimetre)) {
+      items.push({ cle: `m-${x.m.nom}-${x.a.id}`, titre: `${x.a.nom} · ${x.m.nom}`, avatar: x.m.nom, icone: <HandshakeOutlined />, lien: lienFiche(x.m.nom), detail: `Fin du mandat le ${dateCourte(x.mandat.fin)}`,
+        pastille: x.etat === 'echu' ? { ton: 'rouge', libelle: libellesEtatMandat[x.etat] } : { ton: 'orange', libelle: 'Mandat' } })
+    }
+    const coachsVus = reseau.equipe.filter((c) => p.type === 'reseau' || (p.type === 'rr' && c.rr?.id === p.id))
+    for (const x of coachsVus.filter((c) => !c.fictif).map((c) => ({ c, charge: chargeA(reseau, c.nom) })).filter((x) => ['depassement', 'complet'].includes(niveauCharge(reseau, x.charge))).sort((a, b) => b.charge - a.charge)) {
+      items.push({ cle: `ch-${x.c.nom}`, titre: x.c.nom, avatar: x.c.nom, lien: lienCoach(x.c.nom), detail: `Charge ${x.charge} sur ${reseau.parametres.maxUnits}`, pastille: { ton: 'orange', libelle: 'Surchargé' } })
+    }
+    for (const c of coachsVus.filter((c) => c.fictif)) items.push({ cle: `pv-${c.nom}`, titre: c.nom, avatar: c.nom, icone: <PersonSearchOutlined />, lien: lienCoach(c.nom), detail: 'Poste de Coach à pourvoir', pastille: { ton: 'gris', libelle: 'Vacant' } })
+    for (const m of actifs.filter((m) => !coachA(m, j))) items.push({ cle: `sc-${m.nom}`, titre: m.nom, avatar: m.nom, lien: lienFiche(m.nom), detail: 'Magasin sans Coach', pastille: { ton: 'gris', libelle: 'Sans Coach' } })
+  }
+  const dans6mois = ajouterJours(j, 183)
+  for (const m of perimetre.filter((m) => m.ouverture > j && m.ouverture <= dans6mois).sort((a, b) => a.ouverture.localeCompare(b.ouverture))) {
+    const manque = [!coachA(m, j) && 'Coach', !m.responsable && libelleResponsable(m), !m.ouvertureConnue && 'date confirmée'].filter(Boolean) as string[]
+    if (!manque.length) continue
+    items.push({ cle: `o-${m.nom}`, titre: m.nom, avatar: m.nom, icone: <StorefrontOutlined />, lien: lienFiche(m.nom), detail: `Ouvre le ${dateCourte(m.ouverture)} · manque : ${manque.join(', ')}`, pastille: { ton: 'bleu', libelle: 'Ouverture' } })
+  }
+  for (const { c, b } of reseau.campagnes.liste.filter((c) => phase(c, j) === 'encours')
+    .map((c) => ({ c, b: bilan(reseau.campagnes, c, magasinsConcernes(reseau, c).filter((m) => noms.has(m.nom))) })).filter((x) => x.b.total > 0 && x.b.aConstater > 0)) {
+    items.push({ cle: `cp-${c.id}`, titre: c.nom, avatar: c.nom, icone: <CampaignOutlined />, lien: `/visites?vue=campagnes&campagne=${encodeURIComponent(c.id)}`,
+      detail: `${b.fait} sur ${b.total} magasin${b.total > 1 ? 's' : ''} exécuté${b.fait > 1 ? 's' : ''} · ${b.aConstater} à constater`, pastille: { ton: 'gris', libelle: b.taux === null ? 'Campagne' : `${b.taux} %` } })
+  }
+  void sansParametres
+  return items
+}
+
+function BlocATraiter({ items }: { items: ATraiter[] }) {
+  const [tout, setTout] = useState(false)
+  const vus = tout ? items : items.slice(0, APERCU)
+  return (
+    <Box component="section" aria-label="À traiter">
+      <TitreSection nombre={items.length}>À traiter</TitreSection>
+      {!items.length ? <CarteLignes><LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur="#2e7d32" />} titre="Rien d’urgent" detail="Aucun magasin ne décroche, aucune visite ni tâche en retard." /></CarteLignes> : (
+        <CarteLignes>
+          {vus.map((x) => <LigneCompacte key={x.cle} lien={x.lien} avatar={<Initiales nom={x.avatar} icone={x.icone} />} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />)}
+          {items.length > APERCU && (
+            <ButtonBase onClick={() => setTout((v) => !v)} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{tout ? 'Afficher moins' : `Voir les ${items.length}`}</ButtonBase>
+          )}
+        </CarteLignes>
+      )}
+    </Box>
+  )
+}
+
+function BlocSemaine({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
+  const j = reseau.jour
+  const noms = new Set(magasinsDu(reseau, p).map((m) => m.nom))
+  const personnes = personnesDu(reseau, p)
+  const semaine = elementsDuMois(reseau, j, ajouterJours(j, 6)).filter((e) => {
     if (p.type === 'reseau') return true
     if (e.categorie === 'ouverture') return noms.has(e.cle.slice(2))
     if (e.categorie === 'conge') return !!e.conge && personnes!.has(e.conge.personne)
     if (e.categorie === 'anniversaire') return [...personnes!].some((n) => e.cle.startsWith(`a-${n}-`))
     return true
   })
-  const coachsVus = reseau.equipe.filter((c) => p.type === 'reseau' || (p.type === 'rr' && c.rr?.id === p.id))
-  const surcharges = p.type === 'coach' ? [] : coachsVus.filter((c) => !c.fictif).map((c) => ({ c, charge: chargeA(reseau, c.nom) }))
-    .filter((x) => ['depassement', 'complet'].includes(niveauCharge(reseau, x.charge))).sort((a, b) => b.charge - a.charge)
-  const vacants = p.type === 'coach' ? [] : [
-    ...coachsVus.filter((c) => c.fictif).map((c) => ({ titre: c.nom, detail: 'Poste de Coach à pourvoir', lien: lienCoach(c.nom) })),
-    ...actifs.filter((m) => !coachA(m, j)).map((m) => ({ titre: m.nom, detail: 'Magasin sans Coach', lien: lienFiche(m.nom) })),
-  ]
-  const dans6mois = ajouterJours(j, 183)
-  const ouvertures = perimetre.filter((m) => m.ouverture > j && m.ouverture <= dans6mois).sort((a, b) => a.ouverture.localeCompare(b.ouverture))
-  const manque = (m: (typeof ouvertures)[number]) => [!coachA(m, j) && 'Coach', !m.responsable && libelleResponsable(m), !m.ouvertureConnue && 'date confirmée'].filter(Boolean) as string[]
-  const avecCoach = p.type !== 'coach'
-
+  if (!semaine.length) return null
   return (
-    <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' } }}>
-      <Bloc large titre="Magasins qui décrochent" icone={<QueryStatsOutlined />} total={alertes.length} lien="/plus/sante?vue=chiffres" libelleLien="Voir les chiffres"
-        vide={avecChiffres ? 'Aucun magasin ne décroche ni n’est à surveiller sur ses derniers chiffres.' : 'Aucun chiffre mensuel enregistré pour l’instant.'}>
-        {alertes.slice(0, MAX).map(({ m, an, suivi }) => <Ligne key={m.nom} lien={lienFiche(m.nom)} titre={m.nom} detail={[avecCoach && `Coach ${coachA(m, j) || 'à désigner'}`, an!.raisons.join(' · ')].filter(Boolean).join(' · ')} fin={<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}><PastilleAlerte statut={an!.statut} /><PastilleAppel s={suivi} /></Box>} />)}
-      </Bloc>
-      <Bloc large titre="Magasins qui sous-performent" icone={<TrendingDown />} total={sousPerf.length} lien="/plus/sante" libelleLien="Voir la nine box"
-        vide={nonEvalues ? `Aucun magasin en redressement, relance ou management à renforcer. ${nonEvalues} magasin${nonEvalues > 1 ? 's restent' : ' reste'} à évaluer dans la santé du parc.` : 'Aucun magasin en redressement, relance ou management à renforcer.'}>
-        {sousPerf.slice(0, MAX).map(({ m, c }) => <Ligne key={m.nom} lien={lienFiche(m.nom)} titre={m.nom} detail={[avecCoach && `Coach ${coachA(m, j) || 'à désigner'}`, `rythme conseillé ${c!.rythme}`].filter(Boolean).join(' · ')} fin={<PastilleCase c={c} />} />)}
-      </Bloc>
-      <Bloc titre="Visites en retard" icone={<EventBusyOutlined />} total={aVisiter.length} lien="/visites" libelleLien="Voir le rythme de visite" vide={`Tous les magasins sont à jour de leurs visites sur ${a.court}.`}>
-        {aVisiter.slice(0, MAX).map((l) => <Ligne key={l.magasin.nom} lien={lienFiche(l.magasin.nom)} titre={l.magasin.nom} detail={[avecCoach && (l.coach ? `Coach ${l.coach}` : 'Sans Coach'), l.derniere ? `dernière visite le ${dateCourte(l.derniere.date)}` : 'jamais visité', `une visite tous les ${l.intervalle} jours`].filter(Boolean).join(' · ')} fin={<Chip size="small" color="warning" label={`${l.retard} j de retard`} sx={{ fontSize: 12, fontWeight: 600 }} />} />)}
-      </Bloc>
-      <Bloc titre="Actions à échéance" icone={<TaskAltOutlined />} total={actionsProches.length} lien={sansParametres || p.type === 'reseau' ? '/taches' : `/taches?de=${encodeURIComponent(libelleVue(reseau, p))}`} libelleLien={sansParametres || p.type === 'reseau' ? 'Voir mes tâches' : 'Voir ses tâches'} vide="Aucune action en retard ni à échéance dans les quinze jours.">
-        {actionsProches.slice(0, MAX).map((x) => <Ligne key={x.cle} lien={`${lienFiche(x.magasin)}?vue=actions`} titre={x.a.action} detail={[x.magasin, x.a.porteur].filter(Boolean).join(' · ')}
-          fin={<Chip size="small" color={enRetard(x.a, j) ? 'error' : 'default'} variant={enRetard(x.a, j) ? 'filled' : 'outlined'} label={enRetard(x.a, j) ? `En retard · ${dateCourte(x.a.echeance)}` : dateCourte(x.a.echeance)} sx={{ fontSize: 12, fontWeight: 600 }} />} />)}
-      </Bloc>
-      <Bloc titre="Campagnes en cours" icone={<CampaignOutlined />} total={campagnes.length} lien="/visites?vue=campagnes" libelleLien="Voir les campagnes" vide="Aucune campagne en cours.">
-        {campagnes.slice(0, MAX).map(({ c, b }) => <Ligne key={c.id} lien={`/visites?vue=campagnes&campagne=${encodeURIComponent(c.id)}`} titre={c.nom} detail={`${b.fait} sur ${b.total} magasin${b.total > 1 ? 's' : ''} exécuté${b.fait > 1 ? 's' : ''} · ${b.aConstater} à constater`} fin={<Typography sx={{ fontWeight: 600 }}>{b.taux === null ? '—' : `${b.taux} %`}</Typography>} />)}
-      </Bloc>
-      {p.type !== 'coach' && (
-        <Bloc titre="Mandats à renouveler" icone={<HandshakeOutlined />} total={mandats.length} lien={sansParametres ? '/magasins?vue=liste' : '/parametres/franchises'} libelleLien={sansParametres ? 'Voir les magasins' : 'Voir les franchisés'} vide="Aucun mandat de franchisé ne finit dans l’année.">
-          {mandats.slice(0, MAX).map((x) => <Ligne key={`${x.m.nom}-${x.a.id}`} lien={lienFiche(x.m.nom)} titre={`${x.a.nom} · ${x.m.nom}`} detail={`Fin du mandat le ${dateCourte(x.mandat.fin)}`}
-            fin={<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}><PastilleCase c={caseDe(reseau.evaluations[x.m.nom])} /><Chip size="small" color={x.etat === 'echu' ? 'error' : 'warning'} label={libellesEtatMandat[x.etat]} sx={{ fontSize: 12, fontWeight: 600 }} /></Box>} />)}
-        </Bloc>
-      )}
-      <Bloc titre="Changements de case" icone={<SwapVert />} total={changements.length} lien="/plus/sante" libelleLien="Voir la nine box" vide="Aucun magasin n’a changé de case ces trois derniers mois.">
-        {changements.slice(0, MAX).map(({ m, t }) => <Ligne key={m.nom} lien={lienFiche(m.nom)} titre={m.nom} detail={`${dateCourte(t!.depuis)} · ${t!.precedente!.libelle} vers ${t!.actuelle.libelle}`} fin={<PastilleTendance t={t} court />} />)}
-      </Bloc>
-      <Bloc titre="Agenda de la semaine" icone={<CalendarMonthOutlined />} total={semaine.length} lien="/plus/agenda" libelleLien="Ouvrir l’agenda" vide="Rien de prévu dans les sept prochains jours.">
-        {semaine.slice(0, MAX).map((e) => <Ligne key={e.cle} lien={e.lien} titre={e.titre} detail={[jourLong(e.debut < j ? j : e.debut), e.detail].filter(Boolean).join(' · ')} />)}
-      </Bloc>
-      {p.type !== 'coach' && (
-        <Bloc titre="Coachs surchargés et postes vacants" icone={<PersonSearchOutlined />} total={surcharges.length + vacants.length} lien="/equipe?vue=charge" libelleLien="Voir la charge" vide="Aucun Coach au maximum et aucun poste vacant.">
-          {[...surcharges.map((x) => ({ titre: x.c.nom, detail: `Charge ${x.charge} sur ${reseau.parametres.maxUnits}`, lien: lienCoach(x.c.nom) })), ...vacants].slice(0, MAX).map((x) => <Ligne key={x.titre + x.detail} {...x} />)}
-        </Bloc>
-      )}
-      <Bloc titre="Ouvertures à préparer" icone={<StorefrontOutlined />} total={ouvertures.length} lien="/magasins" libelleLien="Voir les magasins" vide="Aucune ouverture prévue dans les six prochains mois.">
-        {ouvertures.slice(0, MAX).map((m) => { const k = manque(m); return <Ligne key={m.nom} lien={lienFiche(m.nom)} titre={m.nom} detail={`${dateCourte(m.ouverture)} · ${k.length ? `manque : ${k.join(', ')}` : 'tout est prêt'}`} /> })}
-      </Bloc>
+    <Box component="section" aria-label="Cette semaine" sx={{ mt: 2 }}>
+      <TitreSection action={<Button component={RouterLink} to="/plus/agenda" sx={{ minHeight: 40 }}>Agenda</Button>}>Cette semaine</TitreSection>
+      <CarteLignes>
+        {semaine.slice(0, 4).map((e) => <LigneCompacte key={e.cle} lien={e.lien} avatar={<Initiales nom={e.titre} icone={<CalendarMonthOutlined />} />} titre={e.titre} detail={[jourLong(e.debut < j ? j : e.debut), e.detail].filter(Boolean).join(' · ')} />)}
+      </CarteLignes>
     </Box>
   )
 }
 
-function salutation(): string {
-  return new Date().getHours() < 18 ? 'Bonjour' : 'Bonsoir'
+type FiltreFil = 'tout' | GenreFil
+const filtresFil: { v: FiltreFil; libelle: string }[] = [
+  { v: 'tout', libelle: 'Tout' }, { v: 'visite', libelle: 'Visites' }, { v: 'tache', libelle: 'Tâches' },
+  { v: 'message', libelle: 'Messages' }, { v: 'chiffres', libelle: 'Chiffres' }, { v: 'pratique', libelle: 'Bonnes pratiques' },
+]
+const PAS_FIL = 20
+
+const iconeFil: Record<GenreFil, ReactNode> = { visite: <EventNoteOutlined />, tache: <TaskAltOutlined />, message: <ChatBubbleOutlineOutlined />, chiffres: <QueryStatsOutlined />, pratique: <TipsAndUpdatesOutlined /> }
+
+// Une publication du fil : qui, quoi, où, quand ; le texte et les photos en dessous
+export function PublicationFil({ e, jour, sansMagasin = false }: { e: ElementFil; jour: string; sansMagasin?: boolean }) {
+  const qui = e.genre === 'chiffres' ? '' : e.auteur
+  const action = qui ? e.action : e.action.charAt(0).toUpperCase() + e.action.slice(1)
+  const tete = <>{qui && <><b>{qui}</b> · </>}{action}{sansMagasin ? '' : <> · <b>{e.magasin}</b></>}</>
+  return (
+    <ButtonBase component={RouterLink} to={e.lien} sx={{ display: 'block', textAlign: 'left', width: '100%', p: 2, color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
+      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+        <Initiales nom={qui || e.magasin} icone={qui ? undefined : iconeFil[e.genre]} />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tete}</Typography>
+          <Typography variant="body2" color="text.secondary">{quand(e.instant, jour)}</Typography>
+        </Box>
+        {e.valeur && (
+          <Box sx={{ textAlign: 'right' }}>
+            <Typography sx={{ fontWeight: 700 }}>{e.valeur}</Typography>
+            {e.texte && <Typography variant="body2" sx={{ fontWeight: 600, color: e.ecart !== null && e.ecart !== undefined && e.ecart < 0 ? 'error.main' : 'text.secondary' }}>{e.texte}</Typography>}
+          </Box>
+        )}
+      </Box>
+      {e.titre && <Typography sx={{ mt: 1.25, fontWeight: 600 }}>{e.titre}</Typography>}
+      {e.texte && !e.valeur && <Typography sx={{ mt: e.titre ? 0.25 : 1.25, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'pre-line' }}>{e.texte}</Typography>}
+      {!!e.photos?.length && <Box sx={{ mt: 1.25 }}><GrillePhotos photos={e.photos} /></Box>}
+    </ButtonBase>
+  )
+}
+
+export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil de mes magasins' }: { elements: ElementFil[]; jour: string; sansMagasin?: boolean; titre?: string }) {
+  const [filtre, setFiltre] = useState<FiltreFil>('tout')
+  const [nb, setNb] = useState(PAS_FIL)
+  const vus = elements.filter((e) => filtre === 'tout' || e.genre === filtre)
+  const options = filtresFil.filter((f) => f.v === 'tout' || elements.some((e) => e.genre === f.v))
+  return (
+    <Box component="section" aria-label={titre}>
+      <TitreSection>{titre}</TitreSection>
+      {options.length > 2 && <Puces valeur={filtre} options={options} onChange={(v) => { setFiltre(v); setNb(PAS_FIL) }} label="Filtrer le fil" />}
+      {!vus.length ? (
+        <CarteLignes><LigneCompacte avatar={<Initiales nom="fil" icone={<HistoryOutlined />} />} titre="Rien de nouveau" detail="Les visites, tâches, messages et chiffres des dernières semaines s’afficheront ici." /></CarteLignes>
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {vus.slice(0, nb).map((e) => <Card key={e.cle} sx={{ border: 0, overflow: 'hidden' }}><PublicationFil e={e} jour={jour} sansMagasin={sansMagasin} /></Card>)}
+          {vus.length > nb && <Button onClick={() => setNb(nb + PAS_FIL)} sx={{ alignSelf: 'center', minHeight: 48 }}>Voir plus</Button>}
+        </Box>
+      )}
+    </Box>
+  )
+}
+
+function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Perimetre; sansParametres?: boolean }) {
+  const { messagerie } = useMessagerie()
+  const items = aTraiter(reseau, p, sansParametres)
+  const noms = useMemo(() => new Set(magasinsDu(reseau, p).map((m) => m.nom)), [reseau, p])
+  const fil = useMemo(() => filDu(reseau, noms, messagerie), [reseau, noms, messagerie])
+  return (
+    <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start', maxWidth: 1080, mx: 'auto' }}>
+      <Box sx={{ order: { xs: 1, md: 2 }, position: { md: 'sticky' }, top: { md: 88 } }}>
+        <BlocATraiter items={items} />
+        <BlocSemaine reseau={reseau} p={p} />
+      </Box>
+      <Box sx={{ order: { xs: 2, md: 1 }, minWidth: 0 }}>
+        <FilActivite elements={fil} jour={reseau.jour} />
+      </Box>
+    </Box>
+  )
 }
 
 // Le Directeur choisit sa vue (réseau, un Responsable Régional, un Coach) ; un Coach ou un RR voit ses magasins
@@ -191,20 +248,19 @@ function ChoixVue({ reseau, valeur, onChange }: { reseau: Reseau; valeur: Perime
 
 export function Accueil() {
   const { profil } = useAuth()
-  const { reseau } = useReseau()
   const [params, setParams] = useSearchParams()
   const impose = perimetreDuProfil(profil)
   const choisi = impose ?? lireVue(params.get('vue'))
   const changer = (p: Perimetre) => setParams((x) => { const n = new URLSearchParams(x); if (p.type === 'reseau') n.delete('vue'); else n.set('vue', cleVue(p)); return n }, { replace: true })
-  const date = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-  const role = impose ? roleLibelle[profil!.role] : choisi.type === 'reseau' ? roleLibelle.directeur : choisi.type === 'rr' ? roleLibelle.rr : roleLibelle.coach
-  const n = reseau ? magasinsDu(reseau, choisi).length : 0
-  const perimetre = !reseau ? null : choisi.type === 'reseau' ? `${n} magasins` : `${role} · ${libelleVue(reseau, choisi)} · ${n} magasin${n > 1 ? 's' : ''}`
   return (
     <>
-      <PageHeader titre={`${salutation()}${profil ? ` ${profil.nom}` : ''}`} sousTitre={[date.charAt(0).toUpperCase() + date.slice(1), perimetre].filter(Boolean).join(' · ')}
-        actions={impose || !reseau ? undefined : <ChoixVue reseau={reseau} valeur={choisi} onChange={changer} />} />
-      <AvecReseau>{(r) => <Tableau reseau={r} p={choisi} sansParametres={!!impose} />}</AvecReseau>
+      <Typography variant="h1" sx={visuellementCache}>Accueil</Typography>
+      <AvecReseau>{(r) => (
+        <>
+          {!impose && <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', md: 'flex-end' }, mb: 1, maxWidth: 1080, mx: 'auto', '& > *': { flex: { xs: 1, md: 'none' } } }}><ChoixVue reseau={r} valeur={choisi} onChange={changer} /></Box>}
+          <Tableau reseau={r} p={choisi} sansParametres={!!impose} />
+        </>
+      )}</AvecReseau>
     </>
   )
 }

@@ -1,10 +1,10 @@
 import { Fragment, useMemo, useState } from 'react'
+import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, useAffichage } from '../components/Social'
 import { Link as RouterLink } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import Collapse from '@mui/material/Collapse'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
@@ -87,6 +87,7 @@ export function VueCharge({ reseau }: { reseau: Reseau }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [ouverts, setOuverts] = useState<Set<string>>(new Set())
+  const [affichage, setAffichage] = useAffichage('charge')
   const basculer = (n: string) => setOuverts((s) => { const t = new Set(s); if (t.has(n)) t.delete(n); else t.add(n); return t })
   const fin = ajouterMois(reseau.jour, 12)
   const max = reseau.parametres.maxUnits
@@ -139,7 +140,10 @@ export function VueCharge({ reseau }: { reseau: Reseau }) {
         </Box>
       )}
 
-      {surPC ? (
+      {surPC && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}><ChoixAffichage valeur={affichage} onChange={setAffichage} /></Box>
+      )}
+      {surPC && affichage === 'tableau' ? (
         <Card>
           <TableContainer>
             <Table className="colonne-fixe" aria-label="Charge par Coach">
@@ -186,25 +190,20 @@ export function VueCharge({ reseau }: { reseau: Reseau }) {
           </TableContainer>
         </Card>
       ) : (
-        <Box sx={{ display: 'grid', gap: 1.5 }}>
+        <CarteLignes label="Charge par Coach">
           {lignes.map((l) => {
             const ouvert = ouverts.has(l.coach.nom)
             return (
-              <Card key={l.coach.nom}>
-                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Link component={RouterLink} to={lienCoach(l.coach.nom)} sx={{ flex: 1, minWidth: 0, fontWeight: 600, py: 1 }}>{l.coach.nom}</Link>
-                    <PastilleCharge reseau={reseau} charge={l.charge} />
-                    <IconButton onClick={() => basculer(l.coach.nom)} aria-label={`${ouvert ? 'Replier' : 'Déplier'} ${l.coach.nom}`} aria-expanded={ouvert}>{ouvert ? <ExpandMore /> : <ChevronRight />}</IconButton>
-                  </Box>
-                  <Typography variant="body2">{l.magasins.length} magasin{l.magasins.length > 1 ? 's' : ''} · <Tour t={l.tournee} /></Typography>
-                  <Typography variant="body2" color="text.secondary">{l.changements.length ? `${l.changements.length} changement${l.changements.length > 1 ? 's' : ''} dans l’année` : 'Aucun changement dans l’année'}</Typography>
-                  <Collapse in={ouvert} unmountOnExit><Detail l={l} /></Collapse>
-                </CardContent>
-              </Card>
+              <Box key={l.coach.nom}>
+                <LigneCompacte lien={lienCoach(l.coach.nom)} avatar={<Initiales nom={l.coach.nom} />} titre={l.coach.nom}
+                  detail={<>{l.magasins.length} magasin{l.magasins.length > 1 ? 's' : ''} · <Tour t={l.tournee} />{l.changements.length ? ` · ${l.changements.length} changement${l.changements.length > 1 ? 's' : ''} dans l’année` : ''}</>}
+                  fin={<PastilleCharge reseau={reseau} charge={l.charge} />}
+                  actions={<IconButton onClick={() => basculer(l.coach.nom)} aria-label={`${ouvert ? 'Replier' : 'Déplier'} ${l.coach.nom}`} aria-expanded={ouvert}>{ouvert ? <ExpandMore /> : <ChevronRight />}</IconButton>} />
+                <Collapse in={ouvert} unmountOnExit><Box sx={{ px: 2, pb: 2 }}><Detail l={l} /></Box></Collapse>
+              </Box>
             )
           })}
-        </Box>
+        </CarteLignes>
       )}
 
       {sansDomicile.length > 0 && <Alert severity="info" sx={{ mt: 2 }}>Domicile non renseigné pour {sansDomicile.join(', ')} : tournée calculée depuis le centre de ses magasins (*).</Alert>}

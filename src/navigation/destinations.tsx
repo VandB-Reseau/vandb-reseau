@@ -13,27 +13,28 @@ import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import BadgeOutlined from '@mui/icons-material/BadgeOutlined'
 import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
 import ImportExportOutlined from '@mui/icons-material/ImportExportOutlined'
-import DashboardOutlined from '@mui/icons-material/DashboardOutlined'
-import Dashboard from '@mui/icons-material/Dashboard'
+import HomeOutlined from '@mui/icons-material/HomeOutlined'
+import Home from '@mui/icons-material/Home'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import TipsAndUpdates from '@mui/icons-material/TipsAndUpdates'
 
 export interface Destination {
   chemin: string
   libelle: string
+  court?: string // libellé de la barre du bas sur téléphone
   description: string
   icone: ReactElement
   iconeActive?: ReactElement
   sprint: string
 }
 
-// Destinations principales : barre du bas sur téléphone, haut du menu latéral sur PC.
-// Messages et Tâches sont des icônes de l'en-tête, à côté de la cloche.
+// Destinations principales : barre du bas sur téléphone (avec le bouton Créer au centre), haut du menu latéral sur PC.
+// Messages et Tâches sont des icônes de l'en-tête, à côté de la cloche ; le reste est derrière la photo du compte.
 export const principales: Destination[] = [
-  { chemin: '/', libelle: 'Dashboard', description: 'Ce qui demande ton attention aujourd’hui', icone: <DashboardOutlined />, iconeActive: <Dashboard />, sprint: 'Sprint 4' },
+  { chemin: '/', libelle: 'Accueil', description: 'Ce qui demande ton attention aujourd’hui', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 4' },
   { chemin: '/magasins', libelle: 'Magasins', description: 'Tous les magasins, leur fiche complète et la carte', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 1' },
   { chemin: '/visites', libelle: 'Visites', description: 'Visites terrain, audits et couverture du semestre', icone: <EventNoteOutlined />, iconeActive: <EventNote />, sprint: 'Sprint 3' },
-  { chemin: '/plus/sante', libelle: 'Santé du parc', description: 'Nine box des magasins et suivi des déploiements', icone: <MonitorHeartOutlined />, sprint: 'Sprint 4' },
+  { chemin: '/plus/sante', libelle: 'Santé du parc', court: 'Santé', description: 'Nine box des magasins et suivi des déploiements', icone: <MonitorHeartOutlined />, sprint: 'Sprint 4' },
 ]
 
 // Suite de la partie classique : sous les principales dans le menu PC, dans « Plus » sur téléphone
@@ -53,7 +54,7 @@ export const parametres: Destination[] = [
 
 // Espace d'un franchisé : ses magasins seulement, sans Paramètres
 export const espaceFranchise: Destination[] = [
-  { chemin: '/', libelle: 'Dashboard', description: 'Mes chiffres, mon plan d’action, mes visites', icone: <DashboardOutlined />, iconeActive: <Dashboard />, sprint: 'Sprint 11' },
+  { chemin: '/', libelle: 'Accueil', description: 'Mes chiffres, mon plan d’action, mes visites', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 11' },
   { chemin: '/magasins', libelle: 'Mes magasins', description: 'Fiche, chiffres, visites et campagnes', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 11' },
   { chemin: '/bonnes-pratiques', libelle: 'Bonnes pratiques', description: 'Initiatives réussies du réseau', icone: <TipsAndUpdatesOutlined />, iconeActive: <TipsAndUpdates />, sprint: 'Sprint 11' },
 ]

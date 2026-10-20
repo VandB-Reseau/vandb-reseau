@@ -36,7 +36,7 @@ test('le Directeur ne voit que les tâches qui lui sont attribuées, les coche e
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
   // Tâches et Messages ne sont plus dans la navigation, seulement en icônes dans l'en-tête
   await expect(nav.getByRole('button', { name: /Tâches|Actions|Messages/ })).toHaveCount(0)
-  if (isMobile) await expect(nav.getByRole('button')).toHaveText(['Dashboard', 'Magasins', 'Visites', 'Santé du parc', 'Plus'])
+  if (isMobile) await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Magasins', '', 'Visites', 'Santé'])
   // L'icône compte ses tâches à faire
   await expect(page.locator('button[aria-label^="Tâches"]')).toHaveAccessibleName('Tâches : 1 à faire')
   await ouvrirTaches(page)
@@ -136,12 +136,21 @@ test('le Coach ouvre la liste des tâches des franchisés de ses magasins', asyn
   await page.screenshot({ path: `captures/${info.project.name}-taches-franchises.png`, fullPage: true })
 })
 
-test('le lien du Dashboard mène aux actions de la personne', async ({ page }) => {
+test('une tâche en retard de l’accueil mène aux actions du magasin', async ({ page }) => {
   const actions = { 'Brest Test': [{ id: 'l1', action: 'Commander la nouvelle PLV', porteur: '', echeance: '2026-10-01', creeLe: '2026-09-25' }] }
   await seConnecter(page, { config: { actions } })
-  await page.getByRole('link', { name: 'Voir mes tâches' }).click()
-  await expect(page).toHaveURL(/#\/taches$/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Mes tâches' })).toBeVisible()
+  // La tâche en retard apparaît dans « À traiter » de l'accueil et mène aux tâches du magasin
+  const aTraiter = page.getByRole('region', { name: 'À traiter' })
+  const voirTout = aTraiter.getByRole('button', { name: /^Voir les \d+$/ })
+  if (await voirTout.count()) await voirTout.click()
+  const ligne = aTraiter.getByRole('link', { name: /^Commander la nouvelle PLV/ })
+  await expect(ligne).toContainText('Brest Test')
+  await expect(ligne).toContainText('En retard')
+  await ligne.click()
+  await expect(page).toHaveURL(/#\/magasins\/Brest%20Test\?vue=actions$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Brest Test' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: /^Actions/, selected: true })).toBeVisible()
+  await expect(page.getByText('Commander la nouvelle PLV')).toBeVisible()
 })
 
 // Paul MULTI, franchisé fictif d'Annecy Test et de Rennes Test

@@ -841,7 +841,21 @@ export function enregistrerPratique(id: string, pratique: BonnePratique | null) 
   return enFile(async () => {
     const { valeur, existe } = await lireCle<BonnePratique[]>('bonnes_pratiques', [])
     const liste = valeur.filter((p) => p.id !== id)
-    await ecrireCle('bonnes_pratiques', pratique ? [pratique, ...liste] : liste, existe)
+    // Les réactions ne passent pas par la fenêtre de modification : on garde celles déjà enregistrées
+    const jaime = valeur.find((p) => p.id === id)?.jaime ?? []
+    await ecrireCle('bonnes_pratiques', pratique ? [{ ...pratique, jaime }, ...liste] : liste, existe)
+  })
+}
+
+// « J'aime » d'une personne de l'équipe sur une bonne pratique : ajouté ou retiré
+export function basculerJaime(id: string, nom: string) {
+  return enFile(async () => {
+    const { valeur, existe } = await lireCle<BonnePratique[]>('bonnes_pratiques', [])
+    await ecrireCle('bonnes_pratiques', valeur.map((p) => {
+      if (p.id !== id) return p
+      const jaime = p.jaime ?? []
+      return { ...p, jaime: jaime.includes(nom) ? jaime.filter((n) => n !== nom) : [...jaime, nom] }
+    }), existe)
   })
 }
 

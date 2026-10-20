@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Glisser } from './Social'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import Badge from '@mui/material/Badge'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
@@ -67,7 +68,9 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
     : x.date ? `ajoutée le ${dateCourte(x.date)}${auteur}` : 'hors visite'
   const faite = x.a.faite ? `faite le ${dateCourte(x.a.faite)}${x.a.faitePar ? ` par ${x.a.faitePar}` : ''}` : null
   return (
-    <Box component="li" sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, py: 0.75, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+    <Box component="li" sx={{ borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+    <Glisser libelle="Faite" icone={<CheckCircle />} actif={!!cocher && !x.a.faite && !enCours} onGlisser={() => cocher?.(true)}>
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, py: 0.75 }}>
       {cocher
         ? <Checkbox checked={!!x.a.faite} disabled={enCours} onChange={(e) => cocher(e.target.checked)} sx={{ width: 48, height: 48, flexShrink: 0 }}
             slotProps={{ input: { 'aria-label': `${x.a.faite ? 'Remettre en cours' : 'Marquer faite'} : ${x.a.action}` } }} />
@@ -86,6 +89,8 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
       </Box>
       {!x.a.faite && echeance && <Chip size="small" color={retard ? 'error' : 'default'} variant={retard ? 'filled' : 'outlined'} label={retard ? `En retard · ${echeance}` : echeance} sx={{ fontSize: 12, fontWeight: 600, mt: 1.5, flexShrink: 0 }} />}
       {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier l’action ${x.a.action}`}><EditOutlined /></IconButton></Tooltip>}
+    </Box>
+    </Glisser>
     </Box>
   )
 }

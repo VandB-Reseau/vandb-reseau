@@ -30,7 +30,6 @@ import { GraphiqueCA } from '../components/Chiffres'
 import { VuePratiques } from '../components/BonnesPratiques'
 import { RangeePhotos } from '../components/GrilleAudit'
 import { Contact, Ligne, Section } from './FicheMagasin'
-import { useAuth } from '../auth/AuthContext'
 import { useApercu } from '../auth/Apercu'
 import { dateCourte, dateLongue, lienFiche, telLien } from '../lib/format'
 import { actionsDes, echeanceDate, enRetard } from '../data/actions'
@@ -44,9 +43,6 @@ import type { IndicateurRepere } from '../data/espaceFranchise'
 const couleurExecution: Record<Execution, 'success' | 'warning' | 'error' | 'default'> = { fait: 'success', partiel: 'warning', non: 'error', aConstater: 'default' }
 const pastille = { fontSize: 12, fontWeight: 600 }
 
-function salutation(): string {
-  return new Date().getHours() < 18 ? 'Bonjour' : 'Bonsoir'
-}
 
 // ── Bandeau de l'aperçu (Directeur de réseau) ──
 export function BandeauApercu() {
@@ -249,22 +245,19 @@ function SectionContacts({ reseau, magasins }: { reseau: Reseau; magasins: Magas
   )
 }
 
-// ── Dashboard du franchisé ──
+// ── Accueil du franchisé ──
 export function TableauFranchise() {
-  const { profil } = useAuth()
-  const { apercu } = useApercu()
   const [choix, setChoix] = useState<string | null>(null)
   const date = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
   return (
     <AvecReseau>
       {(reseau) => {
-        const nom = apercu?.franchise ?? reseau.espace?.franchise ?? profil?.nom ?? ''
         const tous = reseau.magasins
-        if (!tous.length) return <><PageHeader titre={`${salutation()} ${nom}`} /><EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." /></>
+        if (!tous.length) return <><PageHeader titre="Accueil" /><EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." /></>
         const magasins = choix ? tous.filter((m) => m.nom === choix) : tous
         return (
           <>
-            <PageHeader titre={`${salutation()} ${nom}`} sousTitre={`${date.charAt(0).toUpperCase() + date.slice(1)} · ${tous.length === 1 ? tous[0].nom : `${tous.length} magasins`}`} />
+            <PageHeader titre="Accueil" sousTitre={`${date.charAt(0).toUpperCase() + date.slice(1)} · ${tous.length === 1 ? tous[0].nom : `${tous.length} magasins`}`} />
             {tous.length > 1 && (
               <Box role="group" aria-label="Magasins affichés" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
                 <Chip label="Tous mes magasins" color={choix ? 'default' : 'primary'} variant={choix ? 'outlined' : 'filled'} onClick={() => setChoix(null)} aria-pressed={!choix} sx={{ minHeight: 40 }} />

@@ -27,12 +27,12 @@ async function seConnecterFranchise(page: Page, options: OptionsSimulation = {})
   await seConnecter(page, { acces: PAUL, espace, ...options })
 }
 
-test('un franchisé arrive sur son dashboard, limité à ses magasins', async ({ page, isMobile }, info) => {
+test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecterFranchise(page, { ecritures })
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^(Bonjour|Bonsoir) Paul MULTI$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(['Dashboard', 'Mes magasins', 'Bonnes pratiques'])
+  await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Mes magasins', 'Bonnes pratiques'])
   await expect(page.getByText('Paramètres')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Rechercher' })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button')).toHaveText(['Tous mes magasins', 'Annecy Test', 'Rennes Test'])
@@ -101,7 +101,7 @@ test('un franchisé ne peut ouvrir ni un autre magasin ni les écrans de l’éq
   await expect(page.getByText('Magasin introuvable')).toBeVisible()
   for (const ecran of ['/equipe', '/parametres/reglages', '/visites', '/plus/sante', '/parametres/franchises']) {
     await page.goto(`./#${ecran}`)
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^(Bonjour|Bonsoir) Paul MULTI$/)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   }
   await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Bonnes pratiques' }).click()
   await expect(page.getByRole('heading', { name: 'Dégustation du vendredi' })).toBeVisible()
@@ -141,7 +141,7 @@ test('le Directeur ouvre l’accès d’un franchisé et voit son espace', async
   // Aperçu : la même fonction de la base, pour ce franchisé
   await acces.getByRole('button', { name: 'Voir son espace' }).click()
   await expect(page.getByRole('region', { name: 'Aperçu' })).toContainText('Espace de Paul MULTI')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^(Bonjour|Bonsoir) Paul MULTI$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   expect(ecritures.filter((e) => e.table === 'rpc/espace_franchise').at(-1)!.corps).toEqual({ p_franchise: 'Paul MULTI', p_magasins: ['Annecy Test', 'Rennes Test'] })
   await page.screenshot({ path: `captures/${info.project.name}-franchise-apercu.png`, fullPage: true })
   // Rechargement : l'aperçu reste ouvert ; le quitter ramène à la fiche du franchisé
@@ -198,6 +198,6 @@ test('la connexion d’un franchisé n’affiche jamais l’app de l’équipe, 
   await page.getByLabel('Email').fill(COMPTE.email)
   await page.getByLabel('Mot de passe').fill(COMPTE.motDePasse)
   await page.getByRole('button', { name: 'Se connecter' }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^(Bonjour|Bonsoir) Paul MULTI$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   expect(vus).toEqual([])
 })

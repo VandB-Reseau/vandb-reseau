@@ -183,3 +183,17 @@ export function dernierAudit(reseau: Reseau, magasin: string, type: string): Res
   return (reseau.audits[magasin] ?? []).filter((a) => a.type === type && a.date <= reseau.jour && (a.conforme !== null || a.score !== null)).sort((x, y) => x.date.localeCompare(y.date)).at(-1) ?? null
 }
 export const libelleAudit = (a: ResultatAudit) => [a.conforme === null ? '' : a.conforme ? 'Conforme' : 'Non conforme', a.score === null ? '' : `${a.score.toLocaleString('fr-FR')} %`].filter(Boolean).join(' · ')
+// Montant arrondi au millier, pour les lignes compactes : « 70 k€ », « 93,5 k€ », « 1,2 M€ »
+export const formatKEuros = (n: number | null) => {
+  if (n === null) return '—'
+  const a = Math.abs(n)
+  if (a >= 1_000_000) return `${(n / 1_000_000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M€`
+  if (a >= 1000) return `${(n / 1000).toLocaleString('fr-FR', { maximumFractionDigits: a >= 100_000 ? 0 : 1 })} k€`
+  return formatEuros(n)
+}
+
+// Chiffre d'affaires des n mois jusqu'à « mois » inclus (null quand le mois manque), pour la mini-courbe
+export function courbeCA(reseau: Reseau, nom: string, mois: string, n = 12): (number | null)[] {
+  const liste = chiffresDuMagasin(reseau, nom)
+  return Array.from({ length: n }, (_x, i) => caDe(liste.find((c) => c.mois === decalerMois(mois, i - n + 1))))
+}

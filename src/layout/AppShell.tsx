@@ -2,9 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import AppBar from '@mui/material/AppBar'
 import Avatar from '@mui/material/Avatar'
-import BottomNavigation from '@mui/material/BottomNavigation'
-import BottomNavigationAction from '@mui/material/BottomNavigationAction'
 import Box from '@mui/material/Box'
+import ButtonBase from '@mui/material/ButtonBase'
 import Divider from '@mui/material/Divider'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
@@ -23,14 +22,17 @@ import { useTheme } from '@mui/material/styles'
 import SearchIcon from '@mui/icons-material/Search'
 import Logout from '@mui/icons-material/Logout'
 import KeyOutlined from '@mui/icons-material/KeyOutlined'
+import InstallMobileOutlined from '@mui/icons-material/InstallMobileOutlined'
 import Snackbar from '@mui/material/Snackbar'
 import { DialogMotDePasse } from '../components/DialogMotDePasse'
 import { Logo } from '../components/Logo'
 import { RechercheGlobale } from '../components/RechercheGlobale'
 import { BoutonMessages, Cloche } from '../components/Messages'
 import { BoutonTaches } from '../components/Actions'
+import { BoutonCreer } from '../components/Creer'
+import { useInstallation } from '../lib/installation'
 import { brandStripe } from '../theme/theme'
-import { parametres, principales, secondaires, plus, type Destination } from '../navigation/destinations'
+import { parametres, principales, secondaires, type Destination } from '../navigation/destinations'
 import { useAuth } from '../auth/AuthContext'
 import { roleLibelle } from '../auth/roles'
 
@@ -40,8 +42,11 @@ function estActive(d: Destination, pathname: string): boolean {
   return d.chemin === '/' ? pathname === '/' : pathname.startsWith(d.chemin)
 }
 
-function MenuCompte() {
+// liens : sur téléphone, les écrans hors de la barre du bas (agenda, équipe, paramètres)
+function MenuCompte({ liens = [] }: { liens?: { titre?: string; destinations: Destination[] }[] }) {
   const { profil, deconnexion } = useAuth()
+  const naviguer = useNavigate()
+  const installation = useInstallation()
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const [motDePasse, setMotDePasse] = useState(false)
   const [confirmation, setConfirmation] = useState('')
@@ -58,6 +63,22 @@ function MenuCompte() {
           <Typography variant="caption" color="text.secondary">{roleLibelle[profil.role]}</Typography>
         </Box>
         <Divider />
+        {liens.flatMap((g, i) => [
+          g.titre ? <ListSubheader key={`t${i}`} sx={{ lineHeight: '36px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{g.titre}</ListSubheader> : null,
+          ...g.destinations.map((d) => (
+            <MenuItem key={d.chemin} onClick={() => { setAncre(null); naviguer(d.chemin) }} sx={{ minHeight: 48 }}>
+              <ListItemIcon>{d.icone}</ListItemIcon>
+              {d.libelle}
+            </MenuItem>
+          )),
+          <Divider key={`d${i}`} />,
+        ])}
+        {installation && (
+          <MenuItem onClick={() => { setAncre(null); installation() }} sx={{ minHeight: 48 }}>
+            <ListItemIcon><InstallMobileOutlined fontSize="small" /></ListItemIcon>
+            Installer l’app
+          </MenuItem>
+        )}
         <MenuItem onClick={() => { setAncre(null); setMotDePasse(true) }}>
           <ListItemIcon><KeyOutlined fontSize="small" /></ListItemIcon>
           Changer mon mot de passe
@@ -92,6 +113,7 @@ function MenuLateral({ franchise, sansParametres }: { franchise?: Destination[];
     >
       <Toolbar sx={{ minHeight: 68 }} />
       <Box component="nav" aria-label="Navigation principale" sx={{ pt: 2 }}>
+        {!franchise && <Box sx={{ px: 1.5, pb: 2 }}><BoutonCreer /></Box>}
         <List disablePadding>{(franchise ?? [...principales, ...secondaires]).map(item)}</List>
         {!franchise && !sansParametres && <>
           <Divider sx={{ my: 1.5, mx: 3 }} />
@@ -107,15 +129,25 @@ function MenuLateral({ franchise, sansParametres }: { franchise?: Destination[];
 function BarreBasse({ franchise }: { franchise?: Destination[] }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
-  const items = franchise ?? [...principales, plus]
-  const actif = items.findIndex((d) => (d === plus ? pathname.startsWith('/plus') : estActive(d, pathname)))
+  const item = (d: Destination) => {
+    const actif = estActive(d, pathname)
+    return (
+      <ButtonBase key={d.chemin} onClick={() => naviguer(d.chemin)} aria-current={actif ? 'page' : undefined}
+        sx={{ flex: 1, minWidth: 0, height: 72, display: 'flex', flexDirection: 'column', gap: 0.25, color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.75rem', fontWeight: actif ? 600 : 500 }}>
+        {actif ? d.iconeActive ?? d.icone : d.icone}
+        <Box component="span" sx={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', px: 0.5 }}>{d.court ?? d.libelle}</Box>
+      </ButtonBase>
+    )
+  }
   return (
-    <Paper component="nav" aria-label="Navigation principale" sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: (t) => t.zIndex.appBar, borderTop: '1px solid', borderColor: 'divider', pb: 'env(safe-area-inset-bottom)' }}>
-      <BottomNavigation showLabels value={actif} onChange={(_e, i: number) => naviguer(items[i].chemin)} sx={{ height: 72, bgcolor: 'background.paper' }}>
-        {items.map((d, i) => (
-          <BottomNavigationAction key={d.chemin} label={d.libelle} icon={i === actif ? d.iconeActive ?? d.icone : d.icone} sx={{ minWidth: 0, px: 0.5 }} />
-        ))}
-      </BottomNavigation>
+    <Paper component="nav" aria-label="Navigation principale" sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: (t) => t.zIndex.appBar, borderTop: '1px solid', borderColor: 'divider', pb: 'env(safe-area-inset-bottom)', bgcolor: 'background.paper' }}>
+      <Box sx={{ display: 'flex', height: 72 }}>
+        {franchise ? franchise.map(item) : <>
+          {principales.slice(0, 2).map(item)}
+          <BoutonCreer rond />
+          {principales.slice(2).map(item)}
+        </>}
+      </Box>
     </Paper>
   )
 }
@@ -162,7 +194,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
           <BoutonTaches />
           {!sansCloche && <BoutonMessages />}
           {!sansCloche && <Cloche />}
-          <MenuCompte />
+          <MenuCompte liens={surPC || franchise ? [] : [{ destinations: secondaires }, ...(sansParametres ? [] : [{ titre: 'Paramètres', destinations: parametres }])]} />
         </Toolbar>
         <Box aria-hidden sx={{ height: 4, background: brandStripe }} />
         {!surPC && rechercheOuverte && (

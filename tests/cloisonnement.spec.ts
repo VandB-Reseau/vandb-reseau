@@ -20,9 +20,9 @@ const pratiques = [
 test('un Coach ne voit pas les Paramètres', async ({ page, isMobile }, info) => {
   await seConnecter(page, NOE)
   if (isMobile) {
-    await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Plus' }).click()
-    await expect(page.getByRole('heading', { name: 'Plus' })).toBeVisible()
-    await expect(page.getByText('Agenda')).toBeVisible()
+    // Sur téléphone, les écrans hors de la barre du bas sont dans le menu du compte
+    await page.getByRole('button', { name: 'Mon compte' }).click()
+    await expect(page.getByRole('menuitem', { name: 'Agenda' })).toBeVisible()
   }
   await expect(page.getByText('Paramètres', { exact: true })).toHaveCount(0)
   await expect(page.getByText('Import et export')).toHaveCount(0)

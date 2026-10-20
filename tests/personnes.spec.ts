@@ -26,7 +26,7 @@ test('l’organigramme ne modifie plus rien : chaque personne s’ouvre sur sa f
   await expect(page.getByText('Responsable Régional · 3 Coachs')).toBeVisible()
   await expect(page.getByText(/12 avril 1980 · \d+ ans/)).toBeVisible()
   await expect(page.getByText('59 · Nord')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Camille TESTARD' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Camille TESTARD', exact: true })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-rr.png`, fullPage: !isMobile })
 
@@ -145,7 +145,7 @@ test('ajouter un franchisé et lui confier un magasin', async ({ page }) => {
 
 test('fiche magasin : Franchisé à la place du responsable, sans adjoint ni plateforme', async ({ page, isMobile }) => {
   await seConnecter(page)
-  await page.goto('./#/magasins/Annecy%20Test')
+  await page.goto('./#/magasins/Annecy%20Test?vue=fiche')
   await expect(page.getByRole('heading', { name: 'Franchisés associés' })).toBeVisible()
   await expect(page.getByText('Adjoint')).toHaveCount(0)
   await expect(page.getByText('Plateforme logistique')).toHaveCount(0)

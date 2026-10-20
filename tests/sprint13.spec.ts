@@ -64,7 +64,7 @@ test('le Directeur ouvre l’accès d’un Coach puis voit l’app comme lui', a
   // Voir comme Noé : son périmètre, sans Paramètres ni boutons des référentiels
   await page.getByRole('button', { name: 'Voir comme Noé' }).click()
   await expect(page.getByRole('region', { name: 'Aperçu' })).toContainText('L’app vue par Noé MODELE')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^(Bonjour|Bonsoir) Noé$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   await expect(page.getByText('Paramètres', { exact: true })).toHaveCount(0)
   await page.screenshot({ path: `captures/${info.project.name}-voir-comme-coach.png` })
   await page.goto('./#/magasins?vue=liste')
@@ -135,10 +135,16 @@ test('fiche avant visite : tout le magasin sur une page, téléchargeable en PDF
   }
 })
 
-test('un Coach prépare la visite d’un de ses magasins', async ({ page }) => {
+test('un Coach prépare la visite d’un de ses magasins', async ({ page, isMobile }) => {
   await seConnecter(page, NOE)
-  await page.goto('./#/visites')
-  await page.getByRole('link', { name: 'Préparer la visite de Lyon Test' }).first().click()
+  // Sur PC depuis le rythme de visite, sur téléphone depuis la fiche du magasin
+  if (isMobile) {
+    await page.goto('./#/magasins/Lyon%20Test')
+    await page.getByRole('link', { name: 'Préparer la visite' }).click()
+  } else {
+    await page.goto('./#/visites')
+    await page.getByRole('link', { name: 'Préparer la visite de Lyon Test' }).first().click()
+  }
   await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()
   await expect(page.getByRole('table', { name: 'Repères réseau' })).toBeVisible()
   // Hors de son périmètre : introuvable

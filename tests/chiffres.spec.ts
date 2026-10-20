@@ -20,15 +20,21 @@ async function petitesZones(page: import('@playwright/test').Page, selecteur: st
 
 test('l’accueil met en tête les magasins qui décrochent, avec l’appel en retard', async ({ page }, info) => {
   await seConnecter(page)
-  const bloc = page.getByRole('region', { name: 'Magasins qui décrochent' })
-  await expect(bloc.getByRole('link', { name: 'Lyon Test' })).toBeVisible()
-  await expect(bloc.getByText(/CA −30,0 % vs septembre 2025/)).toBeVisible()
-  await expect(bloc.getByText(/Appel en retard de \d+ j/)).toBeVisible()
-  await expect(bloc.getByRole('link', { name: 'Nantes Test' })).toBeVisible()
-  await expect(bloc.getByText('À surveiller')).toBeVisible()
-  await expect(bloc.getByRole('link', { name: 'Annecy Test' })).toHaveCount(0)
+  const bloc = page.getByRole('region', { name: 'À traiter' })
+  const lyon = bloc.getByRole('link', { name: /^Lyon Test/ })
+  await expect(lyon).toBeVisible()
+  await expect(lyon).toContainText(/CA −30,0 % vs septembre 2025/)
+  await expect(lyon).toContainText(/appel en retard de \d+ j/)
+  await expect(lyon).toContainText('Décroche')
+  const nantes = bloc.getByRole('link', { name: /^Nantes Test/ })
+  await expect(nantes).toBeVisible()
+  await expect(nantes).toContainText('À surveiller')
+  // Les magasins qui décrochent passent en tête, avant ceux à surveiller
+  await expect(bloc.getByRole('link').nth(0)).toHaveAccessibleName(/^Lyon Test.*Décroche$/)
+  await expect(bloc.getByRole('link').nth(1)).toHaveAccessibleName(/^Nantes Test.*À surveiller$/)
+  await expect(bloc.getByRole('link', { name: /^Annecy Test.*(Décroche|À surveiller)$/ })).toHaveCount(0)
   // Premier bloc de l'accueil
-  await expect(page.getByRole('region').first()).toHaveAttribute('aria-label', 'Magasins qui décrochent')
+  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', 'À traiter')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-accueil-chiffres.png` })
 })
@@ -130,16 +136,23 @@ test('l’onglet Chiffres donne les indicateurs et la liste des magasins', async
   // Pas d'appel ni de délai de contact à ce niveau
   await expect(page.locator('main').getByText(/appel|délai/i)).toHaveCount(0)
   await expect(page.getByText('CA sous −10 %')).toBeVisible()
+  // Une ligne par magasin : les mêmes chiffres que la fiche magasin, ceux qui décrochent en tête
+  const lignes = page.getByRole('region', { name: 'Chiffres des magasins' })
+  await expect(lignes.getByRole('link').nth(0)).toHaveAccessibleName(/^Lyon Test/)
+  await expect(lignes.getByRole('link', { name: /^Lyon Test/ })).toContainText(/septembre 2026.*70\s?k€.*−30,0 %/)
+  await expect(lignes.getByRole('link').nth(1)).toHaveAccessibleName(/^Nantes Test/)
+  await expect(lignes.getByRole('link', { name: /^Nantes Test/ })).toContainText('−7,0 %')
   if (!isMobile) {
+    // Sur PC, le tableau complet reste disponible
+    await page.getByRole('group', { name: 'Affichage' }).getByRole('button', { name: 'Tableau' }).click()
     const table = page.getByRole('table', { name: 'Chiffres des magasins' })
     await expect(table.getByRole('columnheader', { name: 'Écart vs même mois l’an dernier' })).toBeVisible()
-    // Les mêmes chiffres que la fiche magasin
     await expect(table.getByRole('row').nth(1)).toContainText('Lyon Test')
     await expect(table.getByRole('row').nth(1)).toContainText(/sept\. 26.*70\s000\s€.*−30,0 %.*42 %/)
     await expect(table.getByRole('row').nth(2)).toContainText('Nantes Test')
     await expect(table.getByRole('row').nth(2)).toContainText('−7,0 %')
   } else {
-    await expect(page.getByRole('link', { name: /Lyon Test/ }).first()).toContainText(/septembre 2026 : 70\s000\s€ · −30,0 % vs sept\. 25 · marge 42 %/)
+    await expect(page.getByRole('group', { name: 'Affichage' })).toHaveCount(0)
     expect(await petitesZones(page, 'main a, main button')).toEqual([])
   }
   expect(await textesTropPetits(page)).toEqual([])

@@ -11,6 +11,7 @@ export interface BonnePratique {
   par: string // personne qui l'a remontée
   photos: Photo[]
   reprises: string[] // magasins qui l'appliquent depuis
+  jaime: string[] // personnes de l'équipe qui ont réagi
 }
 
 export const themesPratiques = ['Vente et conseil', 'Vente additionnelle', 'Fidélité', 'Vitrine et merchandising', 'Bar', 'Offre food', 'Animation et événements', 'Équipe', 'Gestion']
@@ -22,6 +23,7 @@ export function normaliserPratiques(brut: unknown): BonnePratique[] {
     id: t(x.id), magasin: t(x.magasin), date: t(x.date), titre: t(x.titre), theme: t(x.theme), texte: t(x.texte), par: t(x.par),
     photos: Array.isArray(x.photos) ? (x.photos as Photo[]) : [],
     reprises: Array.isArray(x.reprises) ? (x.reprises as unknown[]).map(t).filter(Boolean) : [],
+    jaime: Array.isArray(x.jaime) ? [...new Set((x.jaime as unknown[]).map(t).filter(Boolean))] : [],
   })).filter((x) => x.id && x.titre).sort((a, b) => b.date.localeCompare(a.date))
 }
 

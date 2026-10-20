@@ -13,8 +13,6 @@ import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
 import Snackbar from '@mui/material/Snackbar'
 import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import ArrowBack from '@mui/icons-material/ArrowBack'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
@@ -24,7 +22,6 @@ import { EmptyState } from '../components/EmptyState'
 import { DialogDirecteur, DialogFranchise, DialogRR } from '../components/EditionEquipe'
 import { PastilleCharge } from '../components/Charge'
 import { PastilleStatut } from '../components/Pastilles'
-import { TableMagasins } from '../components/TableMagasins'
 import { ListeMagasins } from '../components/ListeMagasins'
 import { Ligne, Section } from './FicheMagasin'
 import { chargeA, magasinsDuCoach } from '../data/charge'
@@ -74,10 +71,8 @@ const Rangee = ({ children }: { children: ReactNode }) => (
 )
 
 function ListeMagasinsAdaptee({ magasins, vide }: { magasins: Magasin[]; vide: string }) {
-  const theme = useTheme()
-  const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   if (!magasins.length) return <Typography variant="body2" color="text.secondary">{vide}</Typography>
-  return surPC ? <TableMagasins magasins={magasins} /> : <ListeMagasins magasins={magasins} />
+  return <ListeMagasins magasins={magasins} />
 }
 
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
