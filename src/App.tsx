@@ -2,6 +2,7 @@ import { Equipe } from './pages/Equipe'
 import { FicheCoach } from './pages/FicheCoach'
 import { FicheDirecteur, FicheFranchise, FicheRR } from './pages/FichePersonne'
 import { Direction } from './pages/Direction'
+import { ChargeCoachs } from './pages/ChargeCoachs'
 import { Donnees } from './pages/Donnees'
 import { Visites } from './pages/Visites'
 import { CompteRendu } from './pages/CompteRendu'
@@ -61,7 +62,8 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/equipe/rr/:id" element={<FicheRR />} />
         <Route path="/equipe/directeur" element={<FicheDirecteur />} />
         <Route path="/equipe/franchise/:nom" element={<FicheFranchise />} />
-        <Route path="/plus/charge" element={<Navigate to="/equipe?vue=charge" replace />} />
+        <Route path="/plus/charge" element={<Navigate to="/parametres/charge" replace />} />
+        <Route path="/parametres/charge" element={<ChargeCoachs />} />
         <Route path="/parametres/reglages" element={<Direction />} />
         <Route path="/parametres/donnees" element={<Donnees />} />
         <Route path="/plus/direction" element={<Navigate to="/parametres/reglages" replace />} />

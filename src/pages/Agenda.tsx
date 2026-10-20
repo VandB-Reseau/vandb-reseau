@@ -25,7 +25,10 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { Fenetre } from '../components/EditionEquipe'
 import { enregistrerConge, enregistrerEvenement, supprimerConge, supprimerEvenement } from '../data/chargement'
-import { chargeA, distanceKm } from '../data/charge'
+import { chargeA, magasinsDuCoach } from '../data/charge'
+import { minutesMoyennes } from '../data/kilometrage'
+import { positionCoach } from '../data/plan'
+import { trajetEntre } from '../data/tournee'
 import { lienFiche } from '../lib/format'
 import { libelleTypeVisite, nomsVisiteurs, type Conge, type Evenement, type Reseau } from '../data/modele'
 import { estVisite } from '../data/chiffres'
@@ -48,13 +51,19 @@ export const ajouterJours = (s: string, n: number) => { const d = jourUTC(s); d.
 const nomMois = (s: string) => jourUTC(s).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 export const jourLong = (s: string) => jourUTC(s).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
 
-// Coach le plus proche, présent sur toute la période et le moins chargé, pour couvrir une absence
+// Coach le plus proche par la route des magasins de l'absent, présent sur toute la période et le moins chargé, pour couvrir une absence
 export function remplacantSuggere(reseau: Reseau, c: Conge): string | null {
   const absent = reseau.equipe.find((x) => x.nom === c.personne)
   if (!absent) return null
   const presents = reseau.equipe.filter((x) => x.nom !== absent.nom && !x.fictif
     && !reseau.conges.some((l) => l.personne === x.nom && l.debut <= c.fin && l.fin >= c.debut))
-  const tries = presents.map((x) => ({ nom: x.nom, d: distanceKm(x, absent) ?? 9999, charge: chargeA(reseau, x.nom, c.debut) }))
+  const sesMagasins = magasinsDuCoach(reseau, absent.nom, c.debut)
+  const chez = positionCoach(reseau, absent, c.debut)
+  const tries = presents.map((x) => {
+    const ici = positionCoach(reseau, x, c.debut)
+    const d = minutesMoyennes(ici, sesMagasins) ?? (ici && chez ? trajetEntre(ici, chez).minutes : 99999)
+    return { nom: x.nom, d, charge: chargeA(reseau, x.nom, c.debut) }
+  })
     .sort((a, b) => a.d - b.d || a.charge - b.charge)
   return tries[0]?.nom ?? null
 }

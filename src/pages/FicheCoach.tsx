@@ -10,10 +10,9 @@ import ArrowBack from '@mui/icons-material/ArrowBack'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
-import { JaugeCharge, aideCharge } from '../components/Charge'
 import { ListeMagasins } from '../components/ListeMagasins'
 import { Contact, Section } from './FicheMagasin'
-import { chargeA, libelleMois, magasinsDuCoach, moisAVenir } from '../data/charge'
+import { chargeA, magasinsDuCoach } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche, lienRR } from '../lib/format'
 import { SectionFichePersonnelle } from './FichePersonne'
 import { SectionAccesEquipe } from '../components/AccesEquipe'
@@ -26,7 +25,6 @@ import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
-import BalanceOutlined from '@mui/icons-material/BalanceOutlined'
 import BadgeOutlined from '@mui/icons-material/BadgeOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
@@ -40,14 +38,13 @@ import { portefeuilleDe } from '../data/portefeuille'
 import { lienPersonne } from '../data/messagerie'
 import { fichePersonne } from '../data/personnes'
 
-type VueCoach = 'portefeuille' | 'magasins' | 'visites' | 'actions' | 'campagnes' | 'charge' | 'fiche'
+type VueCoach = 'portefeuille' | 'magasins' | 'visites' | 'actions' | 'campagnes' | 'fiche'
 const rubriquesCoach: Rubrique<VueCoach>[] = [
   { vue: 'portefeuille', libelle: 'Portefeuille', icone: <InsightsOutlined /> },
   { vue: 'magasins', libelle: 'Magasins', icone: <StorefrontOutlined /> },
   { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
   { vue: 'actions', libelle: 'Actions', icone: <TaskAltOutlined /> },
   { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
-  { vue: 'charge', libelle: 'Charge', icone: <BalanceOutlined /> },
   { vue: 'fiche', libelle: 'Fiche', icone: <BadgeOutlined /> },
 ]
 
@@ -61,7 +58,6 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
   const magasins = magasinsDuCoach(reseau, coach.nom)
   const noms = new Set(magasins.map((m) => m.nom))
   const charge = chargeA(reseau, coach.nom)
-  const projection = moisAVenir(reseau.jour, 7).slice(1).map((mois) => ({ mois, charge: chargeA(reseau, coach.nom, mois) }))
   const a = anneeDe(reseau.jour)
   const rythme = suiviRythme(reseau, a).filter((l) => noms.has(l.magasin.nom))
   const enRetardVisite = rythme.filter((l) => l.retard > 0).sort((x, y) => y.retard - x.retard)
@@ -125,17 +121,6 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
         {vue === 'actions' && <Section titre="Actions en cours de ses magasins" action={<BoutonAjouterAction reseau={reseau} magasins={[...noms].sort()} signaler={setMessage} />}><ListeActions reseau={reseau} actions={actions} avecMagasin signaler={setMessage} libelle={`Actions en cours des magasins de ${coach.nom}`} magasins={[...noms]} /></Section>}
 
         {vue === 'campagnes' && <Section titre="Campagnes"><BilanCampagnes reseau={reseau} magasins={magasins} /></Section>}
-
-        {vue === 'charge' && (
-          <Section titre="Charge">
-            <JaugeCharge reseau={reseau} charge={charge} libelle="Aujourd’hui" />
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>{aideCharge}</Typography>
-            <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>Les six prochains mois</Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              {projection.map((p) => <JaugeCharge key={p.mois} reseau={reseau} charge={p.charge} libelle={libelleMois(p.mois)} />)}
-            </Box>
-          </Section>
-        )}
 
         {vue === 'fiche' && (
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>

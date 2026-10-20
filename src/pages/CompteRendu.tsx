@@ -11,6 +11,7 @@ import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
+import { EnvoyerCompteRendu } from '../components/EnvoyerCompteRendu'
 import { Logo } from '../components/Logo'
 import { dateLongue } from '../lib/format'
 import { coachA } from '../data/charge'
@@ -59,6 +60,7 @@ export function CompteRendu() {
             <Box className="sans-impression" sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
               <Button startIcon={<ArrowBack />} onClick={() => naviguer(-1)} sx={{ ml: -1, minHeight: 48 }}>Retour</Button>
               <Box sx={{ flex: 1 }} />
+              <EnvoyerCompteRendu reseau={reseau} visite={v} />
               <Button variant="contained" startIcon={<PictureAsPdfOutlined />} onClick={() => window.print()} sx={{ minHeight: 48 }}>Télécharger en PDF</Button>
             </Box>
             <Box className="feuille" sx={{ bgcolor: '#fff', color: '#1b1b1f', maxWidth: 820, mx: 'auto', borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>

@@ -35,27 +35,53 @@ test('Équipe s’ouvre sur l’organigramme par Responsable Régional', async (
   await page.screenshot({ path: `captures/${info.project.name}-equipe.png`, fullPage: !isMobile })
 })
 
-test('l’onglet Charge montre par Coach magasins, tournée et changements de l’année', async ({ page, isMobile }, info) => {
-  await seConnecter(page)
+test('Paramètres > Charge des Coachs : route par an par la route, simulation d’un changement puis validation', async ({ page, isMobile }, info) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
   await page.goto('./#/plus/charge')
-  await expect(page.getByRole('tab', { name: 'Charge des Coachs', selected: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Charge des Coachs', level: 1 })).toBeVisible()
+  await expect(page.getByRole('tab', { name: isMobile ? 'Charge' : 'Charge et simulation', selected: true })).toBeVisible()
   const lignes = page.getByRole('region', { name: 'Charge par Coach' })
   await expect(lignes.getByRole('link', { name: /Noé MODELE/ })).toBeVisible()
-  await expect(page.getByText(/\d+ km · \d+ h \d{2}/).first()).toBeVisible()
-  // Déplier un Coach montre ses magasins et ses changements à venir
+  await expect(lignes.getByText(/[\d\s]+ km · \d+ h de route par an/).first()).toBeVisible()
+  // Déplier un Coach : ses magasins du plus loin au plus près, aller-retour par la route et visites du rythme
   await page.getByRole('button', { name: 'Déplier Noé MODELE' }).click()
-  await expect(page.getByRole('link', { name: 'Lyon Test' })).toBeVisible()
+  const lyon = page.getByRole('list', { name: 'Magasins de Noé MODELE' }).getByRole('listitem', { name: 'Lyon Test' })
+  await expect(lyon).toContainText(/aller-retour \([\d\s]+ km\) · \d visites? par an/)
   await expect(page.getByText('Changements dans les douze prochains mois')).toBeVisible()
+  // Simuler : Lyon Test passe à Camille TESTARD, l’effet sur les deux Coachs s’affiche avant de valider
+  const choix = lyon.getByLabel('Confier à')
+  const option = await choix.locator('option', { hasText: 'Camille TESTARD' }).getAttribute('value')
+  await choix.selectOption(option!)
+  const simulation = page.getByRole('region', { name: 'Simulation' })
+  await expect(simulation).toContainText('Lyon Test : Noé MODELE → Camille TESTARD')
+  await expect(simulation.getByRole('listitem', { name: 'Noé MODELE' })).toContainText(/h → \d+ h de route par an/)
+  await expect(simulation.getByRole('listitem', { name: 'Camille TESTARD' })).toContainText(/Charge \d+ → \d+/)
   expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-equipe-charge.png`, fullPage: true })
+  await page.screenshot({ path: `captures/${info.project.name}-charge-simulation.png`, fullPage: true })
+  await choisirMois(page, 'À partir de', 'Novembre 2026')
+  await simulation.getByRole('button', { name: 'Valider 1 changement' }).click()
+  await expect(page.getByText('1 magasin change de Coach à partir de novembre 2026.')).toBeVisible()
+  expect(ecritures.filter((e) => e.methode === 'POST')).toEqual([expect.objectContaining({ table: 'reassigns', corps: expect.objectContaining({ store: 'Lyon Test', cs: 'Camille TESTARD', date: '2026-11-01', note: 'Simulation de charge' }) })])
   // Sur PC, le tableau reste au choix
   if (!isMobile) {
     await page.getByRole('group', { name: 'Affichage' }).getByRole('button', { name: 'Tableau' }).click()
     await expect(page.getByRole('table', { name: 'Charge par Coach' })).toContainText('Noé MODELE')
-    await expect(page.getByRole('table', { name: 'Charge par Coach' }).getByText(/\d+ km · \d+ h \d{2}/).first()).toBeVisible()
+    await expect(page.getByRole('table', { name: 'Charge par Coach' }).getByText(/[\d\s]+ km · \d+ h/).first()).toBeVisible()
   }
-  await page.getByRole('link', { name: 'Proposer une répartition' }).click()
-  await expect(page.getByRole('tab', { name: 'Plan d’affectation', selected: true })).toBeVisible()
+  await page.getByRole('tab', { name: isMobile ? 'Répartition' : 'Répartition proposée' }).click()
+  await expect(page.getByLabel('À partir de')).toBeVisible()
+})
+
+test('les anciennes adresses de la charge mènent à Paramètres, la fiche Coach n’a plus d’onglet Charge', async ({ page }) => {
+  await seConnecter(page)
+  await page.goto('./#/equipe?vue=charge')
+  await expect(page.getByRole('heading', { name: 'Charge des Coachs', level: 1 })).toBeVisible()
+  await page.goto('./#/equipe?vue=plan')
+  await expect(page).toHaveURL(/parametres\/charge\?vue=repartition/)
+  await page.goto('./#/equipe/coach/No%C3%A9%20MODELE')
+  await expect(page.getByRole('heading', { name: 'Noé MODELE', level: 1 })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Charge' })).toHaveCount(0)
 })
 
 test('l’onglet Postes à pourvoir liste Coachs à recruter, arrivées et responsables', async ({ page, isMobile }, info) => {
@@ -68,7 +94,7 @@ test('l’onglet Postes à pourvoir liste Coachs à recruter, arrivées et respo
   await page.screenshot({ path: `captures/${info.project.name}-equipe-postes.png`, fullPage: !isMobile })
 })
 
-test('la fiche Coach montre charge et magasins', async ({ page }, info) => {
+test('la fiche Coach montre portefeuille et magasins', async ({ page }, info) => {
   await seConnecter(page)
   await page.goto('./#/equipe')
   await page.getByRole('link', { name: 'Noé MODELE' }).click()
@@ -76,8 +102,6 @@ test('la fiche Coach montre charge et magasins', async ({ page }, info) => {
   await expect(page.getByRole('region', { name: 'Portefeuille' })).toBeVisible()
   await page.getByRole('tab', { name: 'Magasins' }).click()
   await expect(page.getByRole('region', { name: 'Liste des magasins' }).getByRole('link', { name: /^Lyon Test/ })).toBeVisible()
-  await page.getByRole('tab', { name: 'Charge' }).click()
-  await expect(page.getByText('Les six prochains mois')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-coach.png`, fullPage: true })
 })
@@ -93,7 +117,8 @@ test('réaffecter un magasin propose le Coach le plus proche et enregistre', asy
   // Seul le poste à pourvoir resterait sous le maximum ; parmi les autres, le plus proche vient en premier
   await expect(liste.nth(0)).toContainText('Poste NORD')
   await expect(liste.nth(1)).toContainText('Noé MODELE')
-  await expect(liste.nth(1)).toContainText('km')
+  await expect(liste.nth(1)).toContainText(/de route \([\d\s]+ km\)/)
+  await expect(liste.nth(1)).toContainText(/\+\d+ h de route par an/)
   await choisirMois(page, 'À partir de', 'Novembre 2026')
   await page.screenshot({ path: `captures/${info.project.name}-reaffecter.png` })
   await liste.nth(1).click()

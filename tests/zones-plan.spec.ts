@@ -145,8 +145,8 @@ test('changer la ville d’un Coach efface sa position précédente', async ({ p
 test('le plan d’affectation propose un Coach pour un magasin sans Coach et enregistre après validation', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/equipe?vue=plan')
-  await expect(page.getByRole('tab', { name: 'Plan d’affectation', selected: true })).toBeVisible()
+  await page.goto('./#/parametres/charge?vue=repartition')
+  await expect(page.getByRole('tab', { name: /^Répartition/, selected: true })).toBeVisible()
   await choisirMois(page, 'À partir de', 'Novembre 2026')
 
   // Vichy Test passe en pré-ouverture sans Coach : seul le poste à pourvoir reste sous le maximum
@@ -180,7 +180,7 @@ test('le plan propose un Responsable Régional pour un Coach qui arrive et déco
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   // Zoé ARRIVEE prend son poste en mars 2099 sans Responsable Régional
-  await page.goto('./#/equipe?vue=plan&date=2099-03-15')
+  await page.goto('./#/parametres/charge?vue=repartition&date=2099-03-15')
   await expect(page.getByLabel('À partir de')).toHaveText('Mars 2099')
   const ligne = page.getByRole('listitem', { name: 'Zoé ARRIVEE' })
   await expect(ligne).toContainText('Sans Responsable Régional')
@@ -201,7 +201,7 @@ test('le plan soulage les Coachs en dépassement avec le Coach en poste le plus 
   await seConnecter(page)
   // Un Coach de plus, basé dans l’Aveyron, sans magasin ni Responsable Régional
   await page.route('https://supabase.test/rest/v1/cs_overrides**', (r) => r.fulfill({ json: [...coachsFictifs, { cs_name: 'Léo RENFORT', lat: 44.5, lon: 2.0 }] }))
-  await page.goto('./#/equipe?vue=plan')
+  await page.goto('./#/parametres/charge?vue=repartition')
   await page.reload()
   await choisirMois(page, 'À partir de', 'Novembre 2026')
   const rodez = page.getByRole('listitem', { name: 'Rodez Test' })
@@ -220,7 +220,7 @@ test('le plan d’affectation s’affiche rapidement sur un réseau de 280 magas
     lat: 43 + ((i * 37) % 60) / 10, lon: -1 + ((i * 53) % 80) / 10,
   }))
   await seConnecter(page, { config: { store_adds: grand } })
-  await page.goto('./#/equipe?vue=plan')
+  await page.goto('./#/parametres/charge?vue=repartition')
   await choisirMois(page, 'À partir de', 'Novembre 2026')
   await expect(page.getByRole('heading', { name: /Magasins à confier à un Coach/ })).toBeVisible({ timeout: 8000 })
 })
