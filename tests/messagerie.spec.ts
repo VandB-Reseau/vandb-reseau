@@ -58,7 +58,7 @@ test('le Directeur de réseau écrit sur un magasin et mentionne le franchisé',
   await page.getByRole('button', { name: 'Envoyer' }).click()
   await expect(champ).toHaveValue('')
   const envoi = ecritures.find((e) => e.table === 'rpc/envoyer_message')!.corps as { p_store: string; p_texte: string; p_mentions: string[] }
-  expect(envoi).toEqual({ p_store: 'Annecy Test', p_texte: 'Bonjour @Paul MULTI peux-tu envoyer le stock ? @Hugo FICTIF', p_mentions: ['coach:Hugo FICTIF', 'franchise:Paul MULTI'] })
+  expect(envoi).toEqual({ p_store: 'Annecy Test', p_texte: 'Bonjour @Paul MULTI peux-tu envoyer le stock ? @Hugo FICTIF', p_mentions: ['coach:Hugo FICTIF', 'franchise:Paul MULTI'], p_equipe: false, p_lot: null })
   const mien = fil.getByRole('listitem', { name: 'Message de Dominique DIRECTION' })
   await expect(mien.locator('strong')).toHaveText(['@Paul MULTI', '@Hugo FICTIF'])
   expect(await textesTropPetits(page)).toEqual([])
@@ -83,7 +83,7 @@ test('le Coach est notifié des messages de ses magasins, pas des autres', async
   const cloche = page.getByRole('button', { name: /^Notifications/ })
   await expect(cloche).toHaveAccessibleName('Notifications : 1 nouveauté')
   const menu = await ouvrirCloche(page)
-  await expect(menu.getByRole('button')).toHaveCount(3) // la nouveauté, « Toutes les conversations » et « Tout marquer comme lu »
+  await expect(menu.getByRole('button')).toHaveCount(3) // la nouveauté, « Toutes les notifications » et « Tout marquer comme lu »
   await expect(menu).toContainText('Annecy Test')
   await expect(menu).toContainText('Nouveau message')
   await expect(menu).toContainText('Paul MULTI : La livraison est arrivée cassée.')
@@ -143,7 +143,7 @@ test('le franchisé est notifié des messages et des nouveaux comptes rendus, et
   await page.getByLabel('Message', { exact: true }).pressSequentially('c’est noté, merci.')
   await page.getByRole('button', { name: 'Envoyer' }).click()
   await expect(page.getByRole('list', { name: 'Messages de Annecy Test' }).getByRole('listitem', { name: 'Message de Paul MULTI' })).toContainText('@Alex NORD c’est noté, merci.')
-  expect(ecritures.find((e) => e.table === 'rpc/envoyer_message')!.corps).toEqual({ p_store: 'Annecy Test', p_texte: '@Alex NORD c’est noté, merci.', p_mentions: ['rr:rr1'] })
+  expect(ecritures.find((e) => e.table === 'rpc/envoyer_message')!.corps).toEqual({ p_store: 'Annecy Test', p_texte: '@Alex NORD c’est noté, merci.', p_mentions: ['rr:rr1'], p_equipe: false, p_lot: null })
   await expect(cloche).toHaveAccessibleName('Notifications')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-messagerie-franchise.png`, fullPage: true })
@@ -187,6 +187,7 @@ test('conversations par magasin : la plus récente d’abord, non lus, recherche
     await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Messages' }).click()
   }
   const liste = page.getByRole('list', { name: 'Conversations' })
+  await page.getByRole('group', { name: 'Classer les conversations' }).getByRole('button', { name: 'Par magasin' }).click()
   await expect(liste.getByRole('button')).toHaveText([/^Annecy Test.*Paul MULTI : @Dominique DIRECTION oui/, /^Lyon Test.*Camille TESTARD : Merci pour la visite\./])
 
   if (isMobile) {
@@ -224,7 +225,10 @@ test('conversations par magasin : la plus récente d’abord, non lus, recherche
   await page.screenshot({ path: `captures/${info.project.name}-messagerie-conversation.png` })
 
   // Démarrer une conversation sur un magasin sans message
-  if (isMobile) await page.getByRole('button', { name: 'Conversations' }).click()
+  if (isMobile) {
+    await page.getByRole('button', { name: 'Conversations' }).click()
+    await page.getByRole('group', { name: 'Classer les conversations' }).getByRole('button', { name: 'Par magasin' }).click()
+  }
   await page.getByLabel('Rechercher un magasin').fill('renn')
   await liste.getByRole('button', { name: /^Rennes Test/ }).click()
   await expect(page).toHaveURL(/#\/messages\/Rennes%20Test$/)
@@ -237,12 +241,138 @@ test('le franchisé retrouve ses conversations dans sa navigation', async ({ pag
   await seConnecter(page, { acces: PAUL, messagerie: { messages: [msg(1, 'Rennes Test', 'Noé MODELE', 'coach', 'Bonne semaine !', [], 15)] } })
   await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Messages' }).click()
   const liste = page.getByRole('list', { name: 'Conversations' })
-  if (isMobile) {
-    await expect(liste.getByRole('button')).toHaveText([/^Rennes Test.*Noé MODELE : Bonne semaine !/])
-    await liste.getByRole('button', { name: /^Rennes Test/ }).click()
-  }
-  await expect(page.getByRole('list', { name: 'Messages de Rennes Test' })).toContainText('Bonne semaine !')
+  // Par personne : son Coach en tête (dernier message), puis les autres personnes de ses magasins
+  await expect(liste.getByRole('button').first()).toHaveText(/^NMNoé MODELE.*Rennes Test · Noé MODELE : Bonne semaine !/)
+  await expect(liste).toContainText('Hugo FICTIF')
+  if (isMobile) await liste.getByRole('button', { name: /^Noé MODELE/ }).click()
+  await expect(page.getByRole('list', { name: 'Messages de Noé MODELE' })).toContainText('Bonne semaine !')
+  // Un franchisé n'a pas « Équipe seulement »
+  await expect(page.getByRole('button', { name: 'Équipe seulement' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Mentionner quelqu’un' }).click()
   await expect(page.getByRole('list', { name: 'Personnes à mentionner' })).toContainText('Noé MODELE')
   await expect(page.getByRole('list', { name: 'Personnes à mentionner' })).not.toContainText('Paul MULTI')
+})
+
+test('par personne : écrire au franchisé sur ses deux magasins en un envoi', async ({ page, isMobile }, info) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, {
+    ecritures,
+    messagerie: { messages: [
+      msg(1, 'Annecy Test', 'Paul MULTI', 'franchise', 'Inventaire Annecy envoyé.', [], 120),
+      msg(2, 'Rennes Test', 'Paul MULTI', 'franchise', 'Travaux à Rennes la semaine prochaine.', [], 60),
+    ] },
+  })
+  await page.goto('./#/messages')
+  const liste = page.getByRole('list', { name: 'Conversations' })
+  await page.getByLabel('Rechercher une personne').fill('paul')
+  await liste.getByRole('button', { name: /^Paul MULTI/ }).click()
+  await expect(page).toHaveURL(/#\/messages\/personne\/franchise%3APaul%20MULTI$/)
+  const fil = page.getByRole('list', { name: 'Messages de Paul MULTI' })
+  // Les échanges des deux magasins dans un seul fil, chaque bulle avec son magasin
+  await expect(fil.getByRole('listitem')).toHaveText([/Annecy Test.*Inventaire Annecy envoyé\./, /Rennes Test.*Travaux à Rennes/])
+  await page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button', { name: 'Annecy Test' }).click()
+  await expect(fil.getByRole('listitem')).toHaveCount(1)
+  await page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button', { name: 'Tous les magasins' }).click()
+  // Envoi : par défaut le magasin du dernier message, on ajoute l'autre ; le franchisé est mentionné et le message reste visible de lui
+  const choix = page.getByRole('button', { name: /^Magasins du message/ })
+  await expect(choix).toHaveAccessibleName('Magasins du message : Rennes Test')
+  await expect(page.getByRole('button', { name: 'Équipe seulement' })).toHaveAttribute('aria-pressed', 'false')
+  await choix.click()
+  await page.getByRole('menuitemcheckbox', { name: 'Annecy Test' }).click()
+  await page.keyboard.press('Escape')
+  await expect(choix).toHaveAccessibleName('Magasins du message : Rennes Test, Annecy Test')
+  await page.getByLabel('Message', { exact: true }).fill('Merci, on en parle jeudi.')
+  await page.getByRole('button', { name: 'Envoyer' }).click()
+  await expect(page.getByLabel('Message', { exact: true })).toHaveValue('')
+  const envois = ecritures.filter((e) => e.table === 'rpc/envoyer_message').map((e) => e.corps as { p_store: string; p_mentions: string[]; p_equipe: boolean; p_lot: string })
+  expect(envois.map((e) => e.p_store)).toEqual(['Rennes Test', 'Annecy Test'])
+  expect(envois[0].p_lot).toBeTruthy()
+  expect(envois[1].p_lot).toBe(envois[0].p_lot)
+  expect(envois.every((e) => e.p_equipe === false && e.p_mentions.includes('franchise:Paul MULTI'))).toBe(true)
+  // Un seul message affiché pour les deux magasins
+  await expect(fil.getByRole('listitem', { name: 'Message de Dominique DIRECTION' })).toHaveCount(1)
+  await expect(fil.getByRole('listitem', { name: 'Message de Dominique DIRECTION' })).toContainText('Rennes Test, Annecy Test')
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-messagerie-personne.png` })
+  // Supprimer l'envoi le retire des deux magasins
+  await fil.getByText('Merci, on en parle jeudi.').click()
+  await fil.getByRole('button', { name: /^Supprimer mon message/ }).click()
+  await expect(fil.getByRole('listitem', { name: 'Message de Dominique DIRECTION' })).toHaveCount(0)
+  if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toHaveCount(0)
+})
+
+test('équipe seulement : un échange avec le Coach n’est jamais montré au franchisé', async ({ page }, info) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, messagerie: { messages: [msg(1, 'Annecy Test', 'Hugo FICTIF', 'coach', 'Le franchisé décroche, on en parle ?', [], 30)] } })
+  await page.goto('./#/messages/personne/coach%3AHugo%20FICTIF')
+  // Entre membres de l'équipe, « Équipe seulement » est mis d'office
+  const verrou = page.getByRole('button', { name: 'Équipe seulement' })
+  await expect(verrou).toHaveAttribute('aria-pressed', 'true')
+  await page.getByLabel('Message', { exact: true }).fill('Oui, appelle-moi demain.')
+  await page.getByRole('button', { name: 'Envoyer' }).click()
+  await expect(page.getByLabel('Message', { exact: true })).toHaveValue('')
+  const envoi = ecritures.find((e) => e.table === 'rpc/envoyer_message')!.corps as { p_store: string; p_equipe: boolean; p_mentions: string[] }
+  expect(envoi).toMatchObject({ p_store: 'Annecy Test', p_equipe: true, p_mentions: ['coach:Hugo FICTIF'] })
+  const mien = page.getByRole('list', { name: 'Messages de Hugo FICTIF' }).getByRole('listitem', { name: 'Message de Dominique DIRECTION' })
+  await expect(mien).toContainText('Équipe seulement')
+  await page.screenshot({ path: `captures/${info.project.name}-messagerie-equipe.png` })
+})
+
+test('le franchisé ne reçoit pas les messages « Équipe seulement »', async ({ page }) => {
+  await seConnecter(page, { acces: PAUL, messagerie: { messages: [
+    { ...msg(1, 'Annecy Test', 'Hugo FICTIF', 'coach', 'Entre nous : à surveiller.', [], 30), equipe: true },
+    msg(2, 'Annecy Test', 'Hugo FICTIF', 'coach', 'Bonjour Paul !', [], 20),
+  ] } })
+  await page.goto('./#/magasins/Annecy%20Test?vue=messages')
+  const fil = page.getByRole('list', { name: 'Messages de Annecy Test' })
+  await expect(fil).toContainText('Bonjour Paul !')
+  await expect(fil).not.toContainText('Entre nous')
+})
+
+test('base pas encore mise à jour : pas d’« Équipe seulement », envoi comme avant', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, messagerie: { version: 1, messages: [] } })
+  await page.goto('./#/messages/Annecy%20Test')
+  await expect(page.getByLabel('Message', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Équipe seulement' })).toHaveCount(0)
+  await page.getByLabel('Message', { exact: true }).fill('Bonjour')
+  await page.getByRole('button', { name: 'Envoyer' }).click()
+  await expect.poll(() => ecritures.find((e) => e.table === 'rpc/envoyer_message')?.corps).toEqual({ p_store: 'Annecy Test', p_texte: 'Bonjour', p_mentions: [] })
+})
+
+test('page Notifications : les nouvelles avec un point, puis l’historique déjà vu', async ({ page, isMobile }, info) => {
+  await seConnecter(page, {
+    appMetadata: HUGO,
+    messagerie: {
+      messages: [
+        msg(1, 'Annecy Test', 'Paul MULTI', 'franchise', 'Ancienne question réglée.', [], 60 * 24 * 2),
+        msg(2, 'Lyon Test', 'Camille TESTARD', 'coach', '@Hugo FICTIF tu peux me remplacer ?', ['coach:Hugo FICTIF'], 60 * 24),
+        msg(3, 'Annecy Test', 'Paul MULTI', 'franchise', 'Nouvelle demande de PLV.', [], 10),
+      ],
+      lus: { 'Annecy Test|messages': ilYa(60 * 24 * 2 - 5), 'Lyon Test|messages': ilYa(60 * 12) },
+    },
+  })
+  const menu = await ouvrirCloche(page)
+  await menu.getByRole('button', { name: 'Toutes les notifications' }).click()
+  await expect(page).toHaveURL(/#\/notifications$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Notifications' })).toBeVisible()
+  const nouvelles = page.getByRole('region', { name: 'Nouvelles' })
+  const vues = page.getByRole('region', { name: 'Déjà vues' })
+  await expect(nouvelles.getByRole('button')).toHaveText([/Message de Paul MULTI.*Annecy Test.*Nouvelle demande de PLV/])
+  await expect(vues.getByRole('button')).toHaveText([/Camille TESTARD te mentionne.*Lyon Test/, /Message de Paul MULTI.*Ancienne question réglée/])
+  await page.getByRole('group', { name: 'Notifications affichées' }).getByRole('button', { name: 'Mentions' }).click()
+  await expect(page.getByRole('main').getByRole('button', { name: /mentionne/ })).toHaveCount(1)
+  await expect(nouvelles).toHaveCount(0)
+  await page.getByRole('group', { name: 'Notifications affichées' }).getByRole('button', { name: 'Toutes' }).click()
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-notifications.png`, fullPage: true })
+  // Tout marquer comme lu : tout passe dans l'historique, rien n'est perdu
+  await page.getByRole('button', { name: 'Tout marquer comme lu' }).click()
+  await expect(nouvelles).toHaveCount(0)
+  await expect(vues.getByRole('button')).toHaveCount(3)
+  await expect(page.getByRole('button', { name: /^Notifications/ })).toHaveAccessibleName('Notifications')
+  // Une notification ouvre la conversation
+  await vues.getByRole('button', { name: /Nouvelle demande de PLV|Message de Paul MULTI · Annecy Test/ }).first().click()
+  await expect(page).toHaveURL(/#\/messages\/Annecy%20Test$/)
+  if (isMobile) await expect(page.getByRole('heading', { level: 1, name: 'Annecy Test' })).toBeVisible()
 })

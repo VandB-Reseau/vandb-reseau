@@ -9,6 +9,8 @@
 --    fonctions ci-dessous, qui vérifient le rôle (lu dans la base) et que le
 --    magasin fait partie de ceux du compte.
 -- 3) Le nom et le rôle de l'auteur sont posés par la base, jamais par l'app.
+-- 4) « Équipe seulement » : message entre Directeur, RR et Coachs, jamais renvoyé à un franchisé.
+-- 5) Un message sur plusieurs magasins : une ligne par magasin, reliées par « lot ».
 -- ════════════════════════════════════════════════════════════════
 
 CREATE TABLE IF NOT EXISTS public.messages (
@@ -22,6 +24,8 @@ CREATE TABLE IF NOT EXISTS public.messages (
   cree_le     timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS messages_store_date ON public.messages (store, cree_le);
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS equipe boolean NOT NULL DEFAULT false;
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS lot uuid;
 
 -- Dernière lecture de chaque compte, par magasin et par sujet (messages, visites)
 CREATE TABLE IF NOT EXISTS public.messages_lus (
@@ -90,10 +94,12 @@ BEGIN
   v_mag := public.magasins_messagerie();
   RETURN jsonb_build_object(
     'moi', auth.uid(),
+    'version', 2,
     'reference', v_ref,
     'messages', (SELECT coalesce(jsonb_agg(jsonb_build_object('id', m.id, 'store', m.store, 'auteur', m.auteur, 'auteur_nom', m.auteur_nom,
-        'auteur_role', m.auteur_role, 'texte', m.texte, 'mentions', to_jsonb(m.mentions), 'cree_le', m.cree_le) ORDER BY m.cree_le, m.id), '[]'::jsonb)
-      FROM public.messages m WHERE (v_mag IS NULL OR m.store = ANY(v_mag)) AND m.cree_le > now() - interval '18 months'),
+        'auteur_role', m.auteur_role, 'texte', m.texte, 'mentions', to_jsonb(m.mentions), 'cree_le', m.cree_le, 'equipe', m.equipe, 'lot', m.lot) ORDER BY m.cree_le, m.id), '[]'::jsonb)
+      FROM public.messages m WHERE (v_mag IS NULL OR m.store = ANY(v_mag)) AND m.cree_le > now() - interval '18 months'
+        AND NOT (m.equipe AND v_role = 'franchise')),
     'lus', (SELECT coalesce(jsonb_object_agg(l.store || '|' || l.sujet, l.lu_le), '{}'::jsonb) FROM public.messages_lus l WHERE l.user_id = auth.uid()));
 END $$;
 
@@ -106,26 +112,31 @@ BEGIN
   ON CONFLICT (user_id, store, sujet) DO UPDATE SET lu_le = now();
 END $$;
 
-CREATE OR REPLACE FUNCTION public.envoyer_message(p_store text, p_texte text, p_mentions text[] DEFAULT '{}') RETURNS jsonb
+DROP FUNCTION IF EXISTS public.envoyer_message(text, text, text[]);
+CREATE OR REPLACE FUNCTION public.envoyer_message(p_store text, p_texte text, p_mentions text[] DEFAULT '{}', p_equipe boolean DEFAULT false, p_lot uuid DEFAULT NULL) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v_texte text := trim(coalesce(p_texte, '')); v_id bigint; v_le timestamptz;
 BEGIN
+  IF coalesce(p_equipe, false) AND NOT public.est_equipe() THEN RAISE EXCEPTION 'acces_refuse'; END IF;
   IF NOT public.peut_ecrire_magasin(p_store) THEN RAISE EXCEPTION 'acces_refuse'; END IF;
   IF v_texte = '' THEN RAISE EXCEPTION 'message_vide'; END IF;
   IF length(v_texte) > 4000 THEN RAISE EXCEPTION 'message_trop_long'; END IF;
-  INSERT INTO public.messages (store, auteur, auteur_nom, auteur_role, texte, mentions)
+  INSERT INTO public.messages (store, auteur, auteur_nom, auteur_role, texte, mentions, equipe, lot)
   VALUES (p_store, auth.uid(), public.mon_nom(), public.mon_role(), v_texte,
-    coalesce((SELECT array_agg(DISTINCT x) FROM unnest(p_mentions) x WHERE x ~ '^(directeur|rr:.+|coach:.+|franchise:.+)$'), '{}'))
+    coalesce((SELECT array_agg(DISTINCT x) FROM unnest(p_mentions) x WHERE x ~ '^(directeur|rr:.+|coach:.+|franchise:.+)$'), '{}'),
+    coalesce(p_equipe, false), p_lot)
   RETURNING id, cree_le INTO v_id, v_le;
   PERFORM public.marquer_lu(p_store, 'messages');
   RETURN jsonb_build_object('id', v_id, 'cree_le', v_le);
 END $$;
 
--- Un auteur retire son propre message
+-- Un auteur retire son propre message (sur tous les magasins du même envoi)
 CREATE OR REPLACE FUNCTION public.supprimer_message(p_id bigint) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_lot uuid;
 BEGIN
-  DELETE FROM public.messages WHERE id = p_id AND auteur = auth.uid();
+  SELECT lot INTO v_lot FROM public.messages WHERE id = p_id AND auteur = auth.uid();
+  DELETE FROM public.messages WHERE auteur = auth.uid() AND (id = p_id OR (v_lot IS NOT NULL AND lot = v_lot));
 END $$;
 
 -- Un magasin renommé garde son fil
@@ -144,7 +155,7 @@ DO $$
 DECLARE f text;
 BEGIN
   FOREACH f IN ARRAY ARRAY['magasins_messagerie()', 'peut_ecrire_magasin(text)', 'mon_nom()', 'messagerie()', 'marquer_lu(text, text)',
-    'envoyer_message(text, text, text[])', 'supprimer_message(bigint)', 'renommer_magasin_messages(text, text)'] LOOP
+    'envoyer_message(text, text, text[], boolean, uuid)', 'supprimer_message(bigint)', 'renommer_magasin_messages(text, text)'] LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION public.%s FROM PUBLIC, anon', f);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.%s TO authenticated', f);
   END LOOP;

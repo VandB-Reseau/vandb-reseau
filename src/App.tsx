@@ -10,6 +10,7 @@ import { SanteParc } from './pages/SanteParc'
 import { Evolution } from './pages/Evolution'
 import { Personnes } from './pages/VuePersonnes'
 import { Conversations } from './pages/Conversations'
+import { Notifications } from './pages/Notifications'
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -67,6 +68,8 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/visites" element={<Visites />} />
         <Route path="/messages" element={<Conversations />} />
         <Route path="/messages/:nom" element={<Conversations />} />
+        <Route path="/messages/personne/:cle" element={<Conversations />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
         <Route path="/plus/agenda" element={<Agenda />} />
         <Route path="/plus/sante" element={<SanteParc />} />
@@ -95,6 +98,8 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
         <Route path="/bonnes-pratiques" element={<PratiquesFranchise />} />
         <Route path="/messages" element={<Conversations lectureSeule={apercu} />} />
         <Route path="/messages/:nom" element={<Conversations lectureSeule={apercu} />} />
+        <Route path="/messages/personne/:cle" element={<Conversations lectureSeule={apercu} />} />
+        {!apercu && <Route path="/notifications" element={<Notifications />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </ErreurEcran>

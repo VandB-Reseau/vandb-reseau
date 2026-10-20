@@ -4,7 +4,7 @@ import { chargerMessagerie, envoyerMessage, marquerLu as marquerLuBase, supprime
 interface EtatMessagerie {
   messagerie: Messagerie | null
   charge: boolean // premier chargement terminé
-  envoyer: (magasin: string, texte: string, mentions: string[]) => Promise<void>
+  envoyer: (magasins: string[], texte: string, mentions: string[], equipe?: boolean) => Promise<void>
   supprimer: (id: number) => Promise<void>
   marquerLu: (magasin: string, sujet: Sujet) => void
 }
@@ -40,14 +40,22 @@ export function MessagerieProvider({ children }: { children: ReactNode }) {
     marquerLuBase(magasin, sujet).catch(() => { /* reprise à la prochaine ouverture */ })
   }, [])
 
-  const envoyer = useCallback(async (magasin: string, texte: string, mentions: string[]) => {
-    await envoyerMessage(magasin, texte, mentions)
-    await recharger()
-  }, [recharger])
+  const version = messagerie?.version ?? 1
+  const envoyer = useCallback(async (magasins: string[], texte: string, mentions: string[], equipe = false) => {
+    try {
+      await envoyerMessage(magasins, texte, mentions, equipe, version)
+    } finally {
+      await recharger()
+    }
+  }, [recharger, version])
 
   const supprimer = useCallback(async (id: number) => {
     await supprimerMessage(id)
-    setMessagerie((m) => (m ? { ...m, messages: m.messages.filter((x) => x.id !== id) } : m))
+    setMessagerie((m) => {
+      if (!m) return m
+      const lot = m.messages.find((x) => x.id === id)?.lot
+      return { ...m, messages: m.messages.filter((x) => x.id !== id && !(lot && x.lot === lot)) }
+    })
   }, [])
 
   return <Ctx.Provider value={{ messagerie, charge, envoyer, supprimer, marquerLu }}>{children}</Ctx.Provider>
