@@ -17,6 +17,8 @@ import DashboardOutlined from '@mui/icons-material/DashboardOutlined'
 import Dashboard from '@mui/icons-material/Dashboard'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import TipsAndUpdates from '@mui/icons-material/TipsAndUpdates'
+import ForumOutlined from '@mui/icons-material/ForumOutlined'
+import Forum from '@mui/icons-material/Forum'
 
 export interface Destination {
   chemin: string
@@ -36,7 +38,10 @@ export const principales: Destination[] = [
 ]
 
 // Suite de la partie classique : sous les principales dans le menu PC, dans « Plus » sur téléphone
+export const messages: Destination = { chemin: '/messages', libelle: 'Messages', description: 'Conversations par magasin', icone: <ForumOutlined />, iconeActive: <Forum />, sprint: 'Sprint 14' }
+
 export const secondaires: Destination[] = [
+  messages,
   { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Ouvertures, anniversaires, événements et congés', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
 ]
 
@@ -54,6 +59,7 @@ export const parametres: Destination[] = [
 export const espaceFranchise: Destination[] = [
   { chemin: '/', libelle: 'Dashboard', description: 'Mes chiffres, mon plan d’action, mes visites', icone: <DashboardOutlined />, iconeActive: <Dashboard />, sprint: 'Sprint 11' },
   { chemin: '/magasins', libelle: 'Mes magasins', description: 'Fiche, chiffres, visites et campagnes', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 11' },
+  messages,
   { chemin: '/bonnes-pratiques', libelle: 'Bonnes pratiques', description: 'Initiatives réussies du réseau', icone: <TipsAndUpdatesOutlined />, iconeActive: <TipsAndUpdates />, sprint: 'Sprint 11' },
 ]
 

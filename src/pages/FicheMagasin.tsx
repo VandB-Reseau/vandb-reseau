@@ -43,7 +43,7 @@ import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
-import { FilMessages, useNonLusMagasin } from '../components/Messages'
+import { SectionMessages, useNonLusMagasin } from '../components/Messages'
 import { anneeDe, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
@@ -187,7 +187,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         </Section>
       )}
 
-      {vue === 'messages' && <Section titre="Messages"><FilMessages key={m.nom} reseau={reseau} m={m} signaler={setConfirmation} /></Section>}
+      {vue === 'messages' && <SectionMessages reseau={reseau} m={m} signaler={setConfirmation} />}
 
       {vue === 'visites' && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
