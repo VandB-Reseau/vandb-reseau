@@ -70,7 +70,7 @@ export const visitesFictives = [
 export const congesFictifs = [{ id: 1, person: 'Hugo FICTIF', role: 'cs', start_date: '2026-10-20', end_date: '2026-10-24', notes: 'Congés' }]
 // Séminaire dans la semaine qui vient, quel que soit le jour où les tests tournent
 const dansJours = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10)
-export const evenementsFictifs = [{ id: 1, title: 'Séminaire des Coachs', type: 'event', start_date: '2026-10-15', end_date: '2026-10-16', color: '#7c3aed' }]
+export const evenementsFictifs = [{ id: 1, title: 'Séminaire des Coachs', type: 'event', start_date: dansJours(1), end_date: dansJours(2), color: '#7c3aed' }]
 
 // Santé du parc : Lyon en redressement urgent, Annecy locomotive, Nantes cœur de réseau
 const n = (r: number, f: number) => ({ notes: { caExterieur: r, panierCave: r, panierBar: r, fluxCave: r, fluxBar: r, franchise: f }, date: '2026-10-01', par: 'Dominique DIRECTION' })
