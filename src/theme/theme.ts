@@ -67,6 +67,8 @@ export const theme = createTheme({
     overline: { fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em' },
   },
   components: {
+    // Infobulles à 12 px au moins (11 px par défaut dans MUI)
+    MuiTooltip: { styleOverrides: { tooltip: { fontSize: '0.75rem' } } },
     MuiButtonBase: { defaultProps: { disableRipple: true } },
     MuiSkeleton: { defaultProps: { animation: false } },
     // Liens sans soulignement, comme dans une app
