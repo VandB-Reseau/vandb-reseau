@@ -241,6 +241,8 @@ test('conversations par personne : la plus récente d’abord, non lus, magasins
   await expect(suggestions.getByRole('button')).toHaveText(['Rennes Test'])
   await suggestions.getByRole('button', { name: 'Rennes Test' }).click()
   await expect(champ).toHaveValue('#Rennes Test ')
+  // Le curseur est replacé après la citation à l'image suivante : attendre avant de taper la suite
+  await expect.poll(() => champ.evaluate((e) => document.activeElement === e && (e as HTMLTextAreaElement).selectionStart)).toBe('#Rennes Test '.length)
   await champ.pressSequentially('travaux validés')
   await page.getByRole('button', { name: 'Envoyer' }).click()
   await expect(champ).toHaveValue('')
