@@ -90,6 +90,25 @@ export const nonLus = (mg: Messagerie, magasin: string) => {
   return messagesDu(mg, magasin).filter((m) => m.auteur !== mg.moi && instant(m.creeLe) > lu)
 }
 
+export const lienConversation = (magasin: string) => `/messages/${encodeURIComponent(magasin)}`
+
+// ── Conversations : une par magasin, la plus récente d'abord ──
+export interface Conversation { magasin: Magasin; dernier: Message | null; nonLus: number; mention: boolean }
+
+export function conversations(reseau: Reseau, mg: Messagerie, cles: string[]): Conversation[] {
+  const parMagasin = new Map<string, Message[]>()
+  for (const x of mg.messages) {
+    const l = parMagasin.get(x.magasin)
+    if (l) l.push(x); else parMagasin.set(x.magasin, [x])
+  }
+  return reseau.magasins.map((m) => {
+    const liste = parMagasin.get(m.nom) ?? []
+    const lu = derniereLecture(mg, m.nom, 'messages')
+    const nouveaux = liste.filter((x) => x.auteur !== mg.moi && instant(x.creeLe) > lu)
+    return { magasin: m, dernier: liste.at(-1) ?? null, nonLus: nouveaux.length, mention: nouveaux.some((x) => x.mentions.some((k) => cles.includes(k))) }
+  }).sort((a, b) => (b.dernier ? instant(b.dernier.creeLe) : -1) - (a.dernier ? instant(a.dernier.creeLe) : -1) || a.magasin.nom.localeCompare(b.magasin.nom, 'fr'))
+}
+
 export type TypeNotification = 'message' | 'mention' | 'visite'
 export interface Notification { cle: string; magasin: string; type: TypeNotification; nombre: number; date: string; apercu: string; lien: string; sujet: Sujet }
 
@@ -110,7 +129,7 @@ export function notifications(reseau: Reseau | null, profil: Profil | null, mg: 
     const dernier = retenus[retenus.length - 1]
     res.push({
       cle: `m|${magasin}`, magasin, type: mentions.length ? 'mention' : 'message', nombre: retenus.length, date: dernier.creeLe, sujet: 'messages',
-      apercu: `${dernier.auteurNom} : ${dernier.texte}`, lien: `${lienFiche(magasin)}?vue=messages`,
+      apercu: `${dernier.auteurNom} : ${dernier.texte}`, lien: lienConversation(magasin),
     })
   }
   if (franchise) {
@@ -140,3 +159,30 @@ export function horodatage(iso: string): string {
   const jour = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', ...(d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) })
   return `${jour} à ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
 }
+
+const debutDuJour = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+const ecartJours = (d: Date, ref = new Date()) => Math.round((debutDuJour(ref) - debutDuJour(d)) / 86_400_000)
+
+// Liste des conversations : « 15:33 », « Hier », « lun. », « 12 oct. »
+export function heureCourte(iso: string): string {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const ecart = ecartJours(d)
+  if (ecart <= 0) return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  if (ecart === 1) return 'Hier'
+  if (ecart < 7) return d.toLocaleDateString('fr-FR', { weekday: 'short' })
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', ...(d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) })
+}
+
+// Séparateur de jour dans un fil : « Aujourd’hui », « Hier », « lundi 12 octobre »
+export function jourDuFil(iso: string): string {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const ecart = ecartJours(d)
+  if (ecart <= 0) return 'Aujourd’hui'
+  if (ecart === 1) return 'Hier'
+  const j = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', ...(d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) })
+  return j.charAt(0).toUpperCase() + j.slice(1)
+}
+
+export const heure = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }

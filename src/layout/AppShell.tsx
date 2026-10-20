@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import AppBar from '@mui/material/AppBar'
 import Avatar from '@mui/material/Avatar'
@@ -27,7 +27,7 @@ import Snackbar from '@mui/material/Snackbar'
 import { DialogMotDePasse } from '../components/DialogMotDePasse'
 import { Logo } from '../components/Logo'
 import { RechercheGlobale } from '../components/RechercheGlobale'
-import { Cloche } from '../components/Messages'
+import { BoutonMessages, Cloche } from '../components/Messages'
 import { brandStripe } from '../theme/theme'
 import { parametres, principales, secondaires, plus, type Destination } from '../navigation/destinations'
 import { useAuth } from '../auth/AuthContext'
@@ -125,9 +125,21 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [rechercheOuverte, setRechercheOuverte] = useState(false)
+  const { pathname } = useLocation()
+  // Téléphone : la barre du bas s'efface dans une conversation et pendant la saisie d'un message, pour laisser la place au clavier
+  const [saisie, setSaisie] = useState(false)
+  useEffect(() => {
+    const suivre = () => setSaisie(!!(document.activeElement as HTMLElement | null)?.closest?.('[data-composeur]'))
+    const sortie = () => requestAnimationFrame(suivre)
+    document.addEventListener('focusin', suivre)
+    document.addEventListener('focusout', sortie)
+    return () => { document.removeEventListener('focusin', suivre); document.removeEventListener('focusout', sortie) }
+  }, [])
+  const conversation = /^\/messages\/./.test(pathname)
+  const sansBarre = surPC || saisie || conversation
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'background.default' }}>
+    <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'background.default', '--barre-basse': sansBarre ? '0px' : 'calc(72px + env(safe-area-inset-bottom))' }}>
       <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1, bgcolor: '#000000', color: '#ffffff' }}>
         <Toolbar sx={{ minHeight: { xs: 60, md: 68 }, gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: surPC ? LARGEUR_MENU - 24 : 'auto' }}>
@@ -142,6 +154,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
               <SearchIcon />
             </IconButton>
           )}
+          {!surPC && !franchise && <BoutonMessages />}
           {!sansCloche && <Cloche />}
           <MenuCompte />
         </Toolbar>
@@ -155,12 +168,12 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
 
       {surPC && <MenuLateral franchise={franchise} sansParametres={sansParametres} />}
 
-      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: '72px' }, pb: surPC ? 4 : '96px' }}>
+      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: '72px' }, pb: surPC ? 4 : conversation ? 0 : '96px' }}>
         {bandeau}
         <Box sx={{ maxWidth: 1280, mx: 'auto', px: { xs: 2, sm: 3, md: 5 }, pt: { xs: 3, md: 4 } }}>{children}</Box>
       </Box>
 
-      {!surPC && <BarreBasse franchise={franchise} />}
+      {!sansBarre && <BarreBasse franchise={franchise} />}
     </Box>
   )
 }

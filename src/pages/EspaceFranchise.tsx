@@ -19,7 +19,7 @@ import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import Snackbar from '@mui/material/Snackbar'
-import { FilMessages, useNonLusMagasin } from '../components/Messages'
+import { SectionMessages, useNonLusMagasin } from '../components/Messages'
 import { useMessagerie } from '../data/MessagerieContext'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
@@ -457,7 +457,7 @@ export function FicheMagasinFranchise() {
             <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>{[m.ville, m.coach && `Coach ${m.coach}`].filter(Boolean).join(' · ')}</Typography>
             <Onglets valeur={vue} onChange={changerVue} rubriques={onglets} libelle={`Rubriques de ${m.nom}`} />
             {vue === 'fiche' && <OngletFiche reseau={reseau} m={m} />}
-            {vue === 'messages' && <Section titre="Messages"><FilMessages key={m.nom} reseau={reseau} m={m} signaler={setConfirmation} lectureSeule={!!apercu} /></Section>}
+            {vue === 'messages' && <SectionMessages reseau={reseau} m={m} signaler={setConfirmation} lectureSeule={!!apercu} />}
             {vue === 'chiffres' && <OngletChiffres reseau={reseau} m={m} />}
             {vue === 'visites' && <><LireVisites magasin={m.nom} /><OngletVisites reseau={reseau} m={m} /></>}
             {vue === 'campagnes' && <OngletCampagnes reseau={reseau} m={m} />}
