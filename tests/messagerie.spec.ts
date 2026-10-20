@@ -190,6 +190,7 @@ test('conversations par personne : la plus récente d’abord, non lus, magasins
   // Icône Messages à côté de la cloche, avec le nombre de messages non lus
   if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveCount(5)
   await page.getByRole('button', { name: 'Messages : 1 non lu' }).click()
+  await page.getByRole('button', { name: 'Tous les messages' }).click()
   const liste = page.getByRole('list', { name: 'Conversations' })
   await expect(liste.getByRole('button').nth(0)).toHaveText(/^PMPaul MULTI.*Oui, à 9 h\./)
   await expect(liste.getByRole('button').nth(1)).toHaveText(/^CTCamille TESTARD.*Merci pour la visite\./)
@@ -272,6 +273,7 @@ test('ancien lien vers les messages d’un magasin : la fiche du magasin', async
 test('le franchisé retrouve ses conversations depuis l’icône de l’en-tête', async ({ page }) => {
   await seConnecter(page, { acces: PAUL, messagerie: { messages: [prive(1, 'coach:Noé MODELE', 'Noé MODELE', 'franchise:Paul MULTI', 'Bonne semaine !', ['Rennes Test'], 15)] } })
   await page.locator('button[aria-label^="Messages"]').click()
+  await page.getByRole('button', { name: 'Tous les messages' }).click()
   const liste = page.getByRole('list', { name: 'Conversations' })
   // Son Coach en tête (dernier message), puis les autres personnes de l'équipe de ses magasins, jamais un franchisé
   await expect(liste.getByRole('button').first()).toHaveText(/^NMNoé MODELE.*Bonne semaine !/)
