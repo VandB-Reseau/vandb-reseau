@@ -249,7 +249,7 @@ function SectionContacts({ reseau, magasins }: { reseau: Reseau; magasins: Magas
   )
 }
 
-// ── Dashboard du franchisé ──
+// ── Accueil du franchisé ──
 export function TableauFranchise() {
   const { profil } = useAuth()
   const { apercu } = useApercu()

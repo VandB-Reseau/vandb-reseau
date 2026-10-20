@@ -7,14 +7,11 @@ import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'rea
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import ArrowBack from '@mui/icons-material/ArrowBack'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { JaugeCharge, aideCharge } from '../components/Charge'
-import { TableMagasins } from '../components/TableMagasins'
 import { ListeMagasins } from '../components/ListeMagasins'
 import { Contact, Section } from './FicheMagasin'
 import { chargeA, libelleMois, magasinsDuCoach, moisAVenir } from '../data/charge'
@@ -50,8 +47,6 @@ const rubriquesCoach: Rubrique<VueCoach>[] = [
 ]
 
 function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
-  const theme = useTheme()
-  const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const naviguer = useNavigate()
   const [params, setParams] = useSearchParams()
   const vue = (rubriquesCoach.find((r) => r.vue === params.get('vue'))?.vue ?? 'magasins') as VueCoach
@@ -94,7 +89,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
 
       {vue === 'magasins' && (magasins.length === 0
         ? <Typography variant="body2" color="text.secondary">Aucun magasin affecté aujourd’hui.</Typography>
-        : surPC ? <TableMagasins magasins={magasins} /> : <ListeMagasins magasins={magasins} />)}
+        : <ListeMagasins magasins={magasins} />)}
 
       {vue === 'visites' && (
         <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>

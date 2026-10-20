@@ -326,7 +326,7 @@ export async function seConnecter(page: Page, options: OptionsSimulation = {}) {
   await page.getByLabel('Email').fill(COMPTE.email)
   await page.getByLabel('Mot de passe').fill(COMPTE.motDePasse)
   await page.getByRole('button', { name: 'Se connecter' }).click()
-  await page.getByRole('heading', { level: 1, name: /Bonjour|Bonsoir/ }).waitFor()
+  await page.getByRole('heading', { level: 1, name: /^Accueil$|Bonjour|Bonsoir/ }).waitFor()
 }
 
 // Liste les textes visibles plus petits que min px

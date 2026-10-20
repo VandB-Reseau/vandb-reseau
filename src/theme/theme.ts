@@ -15,7 +15,12 @@ export const brandStripe = `linear-gradient(90deg, ${brand.jaune} 0%, ${brand.or
 
 const fontFamily = '"Outfit", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
 
+const base = createTheme()
+const telephone = base.breakpoints.down('sm')
+
 export const theme = createTheme({
+  // Aucune animation (choix de Joseph, 20/10/2026) : chaque écran, menu et fenêtre s'affiche aussitôt
+  transitions: { create: () => 'none', duration: { shortest: 0, shorter: 0, short: 0, standard: 0, complex: 0, enteringScreen: 0, leavingScreen: 0 } },
   // Mode clair / sombre suivi automatiquement depuis le réglage de l'appareil
   cssVariables: { colorSchemeSelector: 'media' },
   colorSchemes: {
@@ -46,7 +51,8 @@ export const theme = createTheme({
   typography: {
     fontFamily,
     // Aucune taille sous 12 px dans l'app
-    h1: { fontSize: '2rem', fontWeight: 600, letterSpacing: '-0.01em' },
+    // Titres de page compacts sur téléphone, pour laisser la place au contenu
+    h1: { fontSize: '2rem', fontWeight: 600, letterSpacing: '-0.01em', [telephone]: { fontSize: '1.5rem' } },
     h2: { fontSize: '1.5rem', fontWeight: 600 },
     h3: { fontSize: '1.25rem', fontWeight: 600 },
     h4: { fontSize: '1.125rem', fontWeight: 600 },
@@ -61,6 +67,18 @@ export const theme = createTheme({
     overline: { fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em' },
   },
   components: {
+    MuiButtonBase: { defaultProps: { disableRipple: true } },
+    MuiSkeleton: { defaultProps: { animation: false } },
+    // Liens sans soulignement, comme dans une app
+    MuiLink: { defaultProps: { underline: 'hover' } },
+    // Sur téléphone, les fenêtres montent du bas de l'écran
+    MuiDialog: {
+      styleOverrides: {
+        container: { [telephone]: { alignItems: 'flex-end' } },
+        paper: { [telephone]: { margin: 0, width: '100%', maxWidth: '100%', maxHeight: 'calc(100% - 24px)', borderRadius: '24px 24px 0 0' } },
+        paperFullScreen: { [telephone]: { height: 'auto', maxHeight: 'calc(100% - 24px)', borderRadius: '24px 24px 0 0' } },
+      },
+    },
     // Ouvrir un menu ou une liste ne doit pas retirer la barre de défilement (sinon la page se décale)
     MuiPopover: { defaultProps: { disableScrollLock: true } },
     // Colonne Magasin fixe au défilement horizontal : « colonne-fixe » (1re colonne) ou « deux-colonnes-fixes » (case à cocher + Magasin)

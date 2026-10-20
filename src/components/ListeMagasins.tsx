@@ -1,41 +1,47 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
-import CardActionArea from '@mui/material/CardActionArea'
-import Typography from '@mui/material/Typography'
-import { PastilleStatut, PastilleType } from './Pastilles'
+import { CarteLignes, Initiales, LigneCompacte, Pastille, type Ton } from './Social'
 import { lienFiche } from '../lib/format'
-import type { Magasin } from '../data/modele'
+import { statutLibelle, type Magasin, type Reseau } from '../data/modele'
+import { useReseau } from '../data/ReseauContext'
+import { analyser } from '../data/chiffres'
+import { anneeDe, suiviRythme } from '../data/visites'
 
-const PAS = 40
+const PAS = 50
 
-// Version téléphone : cartes empilées, chargement progressif
+// La pastille la plus grave du magasin : chiffres, puis visite en retard, puis statut d'ouverture
+function pastillesDe(reseau: Reseau | null): Map<string, { ton: Ton; libelle: string }> {
+  const res = new Map<string, { ton: Ton; libelle: string }>()
+  if (!reseau) return res
+  const retards = new Set(suiviRythme(reseau, anneeDe(reseau.jour)).filter((l) => l.retard > 0).map((l) => l.magasin.nom))
+  for (const m of reseau.magasins) {
+    const a = analyser(reseau, m.nom)
+    if (a?.statut === 'decroche') res.set(m.nom, { ton: 'rouge', libelle: 'Décroche' })
+    else if (a?.statut === 'surveiller') res.set(m.nom, { ton: 'orange', libelle: 'À surveiller' })
+    else if (retards.has(m.nom)) res.set(m.nom, { ton: 'orange', libelle: 'Visite' })
+    else if (m.statut !== 'ouvert') res.set(m.nom, { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] })
+  }
+  return res
+}
+
+// Magasins en lignes compactes (PC et téléphone) : initiales, nom, Coach et Responsable Régional, une pastille au plus
 export function ListeMagasins({ magasins }: { magasins: Magasin[] }) {
-  const naviguer = useNavigate()
+  const { reseau } = useReseau()
   const [nb, setNb] = useState(PAS)
+  const pastilles = useMemo(() => pastillesDe(reseau), [reseau])
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      {magasins.slice(0, nb).map((m) => (
-        <Card key={m.nom}>
-          <CardActionArea onClick={() => naviguer(lienFiche(m.nom))} sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="h4" component="h2" noWrap>{m.nom}</Typography>
-                <Typography variant="body2" color="text.secondary" noWrap>
-                  {[m.departement && `Dépt ${m.departement}`, m.coach ? `Coach ${m.coach}` : 'Sans Coach'].filter(Boolean).join(' · ')}
-                </Typography>
-              </Box>
-              <PastilleType franchise={m.franchise} compacte />
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1, mt: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
-              <PastilleStatut statut={m.statut} />
-              {m.rr && <Typography variant="caption" color="text.secondary">RR : {m.rr.nom}</Typography>}
-            </Box>
-          </CardActionArea>
-        </Card>
-      ))}
+      <CarteLignes label="Liste des magasins">
+        {magasins.slice(0, nb).map((m) => {
+          const p = pastilles.get(m.nom)
+          return (
+            <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Initiales nom={m.nom} />} titre={m.nom}
+              detail={[m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')}
+              fin={p && <Pastille ton={p.ton}>{p.libelle}</Pastille>} />
+          )
+        })}
+      </CarteLignes>
       {nb < magasins.length && (
         <Button variant="outlined" onClick={() => setNb(nb + PAS)} sx={{ alignSelf: 'center', minHeight: 48 }}>
           Afficher {Math.min(PAS, magasins.length - nb)} magasins de plus

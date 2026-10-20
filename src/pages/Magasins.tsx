@@ -16,7 +16,6 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { BarreFiltres } from '../components/BarreFiltres'
 import { BoutonAction } from '../components/Outils'
 import { Onglets } from '../components/Onglets'
-import { TableMagasins } from '../components/TableMagasins'
 import { ListeMagasins } from '../components/ListeMagasins'
 import { useReseau } from '../data/ReseauContext'
 import { filtrer, filtresDepuisUrl, filtresVersUrl, type Filtres } from '../data/filtres'
@@ -64,8 +63,6 @@ export function Magasins({ vueInitiale = 'carte' }: { vueInitiale?: 'liste' | 'c
                 <CarteMagasins magasins={resultats} rrs={reseau.rrs} equipe={reseau.equipe} personnes={reseau.personnes} restreindre={resultats.length !== total} margeBas={surPC ? 40 : 96} emplacementBoutons={emplacementBoutons}
                   ouvrables={restreint ? new Set(perimetre.magasins.map((m) => m.nom)) : undefined} />
               </Suspense>
-            ) : surPC ? (
-              <TableMagasins magasins={resultats} />
             ) : (
               <ListeMagasins magasins={resultats} />
             )}

@@ -4,6 +4,7 @@ import { synchroniserAcces } from './espaceFranchise'
 import { corrigerDomicilesCoachs, corrigerPositions } from './geolocalisation'
 import type { Reseau } from './modele'
 import { magasinsDu, synchroniserPerimetre, type Perimetre } from './perimetre'
+import { ecrireCache, lireCache } from '../lib/cacheLocal'
 
 interface EtatReseau {
   reseau: Reseau | null
@@ -17,28 +18,42 @@ const Ctx = createContext<EtatReseau | null>(null)
 
 // charger : autre source (espace d'un franchisé) ; lectureSeule : aucune écriture en arrière-plan ;
 // accesFranchises : le Directeur de réseau tient à jour les accès des franchisés et le périmètre de l'équipe ;
-// perimetre : un Coach ou un Responsable Régional ne voit que ses magasins et leurs visites
-export function ReseauProvider({ children, charger = chargerReseau, lectureSeule = false, accesFranchises = false, perimetre = null }: { children: ReactNode; charger?: () => Promise<Reseau>; lectureSeule?: boolean; accesFranchises?: boolean; perimetre?: Perimetre | null }) {
+// perimetre : un Coach ou un Responsable Régional ne voit que ses magasins et leurs visites ;
+// cache : clé des dernières données gardées sur l'appareil, affichées aussitôt à l'ouverture
+export function ReseauProvider({ children, charger = chargerReseau, lectureSeule = false, accesFranchises = false, perimetre = null, cache }: { children: ReactNode; charger?: () => Promise<Reseau>; lectureSeule?: boolean; accesFranchises?: boolean; perimetre?: Perimetre | null; cache?: string }) {
   const [reseau, setReseau] = useState<Reseau | null>(null)
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState(false)
+  const frais = useRef(false)
 
   // Le premier chargement affiche un squelette ; les suivants (après un enregistrement) se font en arrière-plan
   const recharger = useCallback(() => {
     setReseau((r) => { if (!r) setChargement(true); return r })
     setErreur(false)
     return charger()
-      .then(setReseau)
+      .then((r) => { frais.current = true; setReseau(r); if (cache) void ecrireCache(cache, r) })
       .catch(() => setErreur(true))
       .finally(() => setChargement(false))
-  }, [charger])
+  }, [charger, cache])
 
   useEffect(() => { recharger() }, [recharger])
+
+  // Dernières données de l'appareil en attendant la base (jamais par-dessus des données fraîches)
+  useEffect(() => {
+    if (!cache) return
+    let actif = true
+    lireCache<Reseau>(cache).then((r) => {
+      if (!actif || !r || frais.current) return
+      setReseau((avant) => avant ?? r)
+      setChargement(false)
+    })
+    return () => { actif = false }
+  }, [cache])
 
   // Magasins encore posés au centre de leur département : géolocalisation précise en arrière-plan
   const positionsCorrigees = useRef(false)
   useEffect(() => {
-    if (!reseau || lectureSeule || positionsCorrigees.current) return
+    if (!reseau || !frais.current || lectureSeule || positionsCorrigees.current) return
     positionsCorrigees.current = true
     Promise.all([corrigerPositions(reseau.magasins), corrigerDomicilesCoachs(reseau)])
       .then(([a, b]) => { if (a + b) recharger() }).catch(() => { /* nouvel essai à la prochaine session */ })
@@ -46,7 +61,7 @@ export function ReseauProvider({ children, charger = chargerReseau, lectureSeule
 
   // Accès des franchisés et périmètre des Coachs et RR : suivis après chaque chargement (associés, renommages, affectations)
   useEffect(() => {
-    if (!reseau || !accesFranchises) return
+    if (!reseau || !frais.current || !accesFranchises) return
     synchroniserAcces(reseau).catch(() => { /* nouvel essai au prochain chargement */ })
     synchroniserPerimetre(reseau).catch(() => { /* nouvel essai au prochain chargement */ })
   }, [reseau, accesFranchises])
