@@ -129,7 +129,11 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
   // Téléphone : la barre du bas s'efface dans une conversation et pendant la saisie d'un message, pour laisser la place au clavier
   const [saisie, setSaisie] = useState(false)
   useEffect(() => {
-    const suivre = () => setSaisie(!!(document.activeElement as HTMLElement | null)?.closest?.('[data-composeur]'))
+    const suivre = () => {
+      const actif = document.activeElement as HTMLElement | null
+      // Le champ ouvre le clavier ; un bouton de la saisie (envoi, destinataire) le garde ouvert sans l'ouvrir
+      setSaisie((avant) => !!actif?.closest('[data-composeur]') && (avant || actif.tagName === 'TEXTAREA'))
+    }
     const sortie = () => requestAnimationFrame(suivre)
     document.addEventListener('focusin', suivre)
     document.addEventListener('focusout', sortie)
@@ -154,7 +158,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
               <SearchIcon />
             </IconButton>
           )}
-          {!surPC && !franchise && <BoutonMessages />}
+          {!sansCloche && <BoutonMessages />}
           {!sansCloche && <Cloche />}
           <MenuCompte />
         </Toolbar>

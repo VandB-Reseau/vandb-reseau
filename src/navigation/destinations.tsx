@@ -38,7 +38,7 @@ export const principales: Destination[] = [
 ]
 
 // Suite de la partie classique : sous les principales dans le menu PC, dans « Plus » sur téléphone
-export const messages: Destination = { chemin: '/messages', libelle: 'Messages', description: 'Conversations par magasin', icone: <ForumOutlined />, iconeActive: <Forum />, sprint: 'Sprint 14' }
+export const messages: Destination = { chemin: '/messages', libelle: 'Messages', description: 'Conversations par personne', icone: <ForumOutlined />, iconeActive: <Forum />, sprint: 'Sprint 14' }
 
 export const secondaires: Destination[] = [
   messages,
