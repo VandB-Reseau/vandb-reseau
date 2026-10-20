@@ -22,13 +22,12 @@ test('ouvrir un filtre ne décale pas la page', async ({ page, isMobile }) => {
 
 const hauteur = (page: import('@playwright/test').Page) => page.evaluate(() => window.scrollY)
 
-test('une fiche s’ouvre en haut et le retour retrouve la liste où on l’avait laissée', async ({ page, isMobile }) => {
+test('une fiche s’ouvre en haut et le retour retrouve la liste où on l’avait laissée', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/magasins?vue=liste')
-  const dernier = isMobile ? page.locator('main h3, main h2').filter({ hasText: /Test/ }).last() : page.getByRole('row').last()
-  // Sur PC, la liste défile dans sa carte (ligne des titres fixe) ; sur téléphone, la page défile
-  const tableau = () => page.evaluate(() => document.querySelector('.MuiTableContainer-root')?.scrollTop ?? 0)
-  const lu = () => (isMobile ? hauteur(page) : tableau())
+  // Liste en lignes (un lien par magasin) : la page défile, sur PC comme sur téléphone
+  const dernier = page.getByRole('region', { name: 'Liste des magasins' }).getByRole('link').last()
+  const lu = () => hauteur(page)
   await dernier.scrollIntoViewIfNeeded()
   await page.mouse.wheel(0, 200)
   await expect.poll(lu).toBeGreaterThan(300)

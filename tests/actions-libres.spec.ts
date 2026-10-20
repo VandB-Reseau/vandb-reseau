@@ -73,7 +73,7 @@ test('une action hors visite se coche faite pendant la visite suivante et appara
   const actions = { 'Brest Test': [{ id: 'l1', action: 'Commander la nouvelle PLV', porteur: 'Noé MODELE', echeance: '2026-10-01', creeLe: '2026-09-25' }] }
   await seConnecter(page, { ecritures, config: { actions } })
   await page.goto('./#/')
-  await expect(page.getByRole('link', { name: /Commander la nouvelle PLV/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /^Commander la nouvelle PLV/ })).toBeVisible()
   await page.goto('./#/magasins/Brest%20Test?vue=visites')
   await page.getByRole('button', { name: 'Saisir', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
@@ -102,12 +102,14 @@ test('depuis la fiche Coach, une action s’ajoute sur l’un de ses magasins', 
 })
 
 test('la ligne des titres d’un tableau reste visible au défilement', async ({ page, isMobile }) => {
+  // Sur téléphone, plus aucun tableau : les listes sont en lignes (refonte visuelle)
+  test.skip(isMobile, 'Aucun tableau sur téléphone : listes en lignes')
   await seConnecter(page)
-  await page.goto(isMobile ? './#/plus/evolution' : './#/magasins?vue=liste')
-  const table = page.getByRole('table').first()
+  await page.goto('./#/plus/sante?vue=chiffres')
+  await page.getByRole('group', { name: 'Affichage' }).getByRole('button', { name: 'Tableau' }).click()
+  const table = page.getByRole('table', { name: 'Chiffres des magasins' })
   const tete = table.locator('thead')
   await expect(tete).toHaveCSS('position', 'sticky')
-  if (isMobile) return
   const boite = table.locator('xpath=..')
   const haut = (await boite.boundingBox())!.y
   // Le tableau défile dans sa carte : la ligne des titres reste en haut

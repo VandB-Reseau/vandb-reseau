@@ -62,9 +62,10 @@ test('taux d’exécution par Responsable Régional, par Coach et par magasin', 
   await expect(page.getByText('Exécutée : 1', { exact: true })).toBeVisible()
   await expect(page.getByText('En partie : 1')).toBeVisible()
   await expect(page.getByText('Non exécutée : 1')).toBeVisible()
-  const parCoach = page.getByRole('table', { name: 'Exécution par Coach' })
-  await expect(parCoach.getByRole('row', { name: /Hugo FICTIF/ })).toBeVisible()
-  await expect(page.getByRole('table', { name: 'Exécution par Responsable Régional' }).getByRole('row', { name: /Alex NORD/ })).toBeVisible()
+  const parCoach = page.getByRole('region', { name: 'Exécution par Coach' })
+  await expect(parCoach.getByText('Hugo FICTIF', { exact: true })).toBeVisible()
+  await expect(parCoach.getByText(/^\d+ exécutés? sur \d+ · \d+ constatés?$/).first()).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Exécution par Responsable Régional' }).getByText('Alex NORD', { exact: true })).toBeVisible()
   // Les magasins intégrés ne sont pas concernés par une campagne des franchisés
   await expect(page.getByRole('link', { name: 'Lyon Test' })).toHaveCount(0)
   if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()

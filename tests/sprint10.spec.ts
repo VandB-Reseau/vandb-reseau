@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { magasinsFictifs } from './donnees-fictives'
 
@@ -11,6 +11,13 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
 })
 
+// Déplie toute la liste « À traiter » de l'accueil quand elle dépasse cinq lignes
+const voirTout = async (page: Page) => {
+  const bouton = page.getByRole('region', { name: 'À traiter' }).getByRole('button', { name: /^Voir les \d+$/ })
+  await page.getByRole('region', { name: 'À traiter' }).waitFor()
+  if (await bouton.count()) await bouton.click()
+}
+
 const derniere = (ecritures: Ecriture[], cle: string) => {
   const e = ecritures.filter((x) => x.table === 'app_config' && ((x.corps as { key?: string }).key === cle || x.filtre.includes(`key=eq.${cle}`))).at(-1)
   return e ? JSON.parse((e.corps as { value: string }).value) : undefined
@@ -21,11 +28,17 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(['Fiche', 'Actions', 'Messages', 'Visites', 'Chiffres', 'Santé', 'Campagnes', 'Journal'])
+  await expect(onglets.getByRole('tab')).toHaveText(['Fil', 'Fiche', 'Actions', 'Messages', 'Visites', 'Chiffres', 'Santé', 'Campagnes', 'Journal'])
+  // Le fil est la vue par défaut ; l'équipe est dans l'onglet Fiche
+  await expect(page.getByRole('region', { name: 'Fil du magasin' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Équipe' })).toHaveCount(0)
+  await onglets.getByRole('tab', { name: 'Fiche' }).click()
   await expect(page.getByRole('heading', { name: 'Équipe' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Journal', exact: true })).toHaveCount(0)
   // En-tête : deux actions en cours dont une en retard
-  await page.getByRole('button', { name: '2 actions en cours · 1 en retard' }).click()
+  await expect(page.getByRole('group', { name: 'En bref' })).toContainText('2tâches en cours')
+  await expect(page.getByText('1 tâche en retard', { exact: true })).toBeVisible()
+  await onglets.getByRole('tab', { name: 'Actions' }).click()
   const liste = page.getByRole('list', { name: 'Actions en cours de Brest Test' })
   await expect(liste.getByRole('listitem')).toHaveCount(2)
   await expect(liste.getByRole('listitem').first()).toContainText('Refaire la vitrine')
@@ -73,7 +86,7 @@ test('un magasin franchisé a plusieurs associés avec leurs mandats', async ({ 
     { id: 'x2', nom: 'Ancien ASSOCIE', entree: '', sortie: '2024-06-30', mandats: [{ debut: '2017-01-01', fin: '2021-12-31' }] },
   ] }
   await seConnecter(page, { ecritures, config: { associes } })
-  await page.goto('./#/magasins/Brest%20Test')
+  await page.goto('./#/magasins/Brest%20Test?vue=fiche')
   await expect(page.getByRole('heading', { name: 'Franchisés associés' })).toBeVisible()
   await expect(page.getByText('Mandat du 1 janv. 2022 au 31 mars 2027 · 2 mandats')).toBeVisible()
   await expect(page.getByText('Fin dans moins d’un an')).toBeVisible()
@@ -105,7 +118,7 @@ test('un magasin franchisé a plusieurs associés avec leurs mandats', async ({ 
 test('un magasin intégré associe V and B à des particuliers', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=fiche')
   await expect(page.getByRole('heading', { name: 'Associés', exact: true })).toBeVisible()
   await expect(page.getByText('V and B', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Ajouter un associé' }).click()
@@ -122,9 +135,11 @@ test('un magasin intégré associe V and B à des particuliers', async ({ page }
 test('les mandats à renouveler remontent à l’accueil et sur la fiche du franchisé', async ({ page }) => {
   const associes = { 'Brest Test': [{ id: 'x1', nom: 'Franchisé 11', entree: '', sortie: '', mandats: [{ debut: '2016-01-01', fin: '2026-06-30' }] }] }
   await seConnecter(page, { config: { associes } })
-  const bloc = page.getByRole('region', { name: 'Mandats à renouveler' })
-  await expect(bloc).toContainText('Franchisé 11 · Brest Test')
-  await expect(bloc).toContainText('Mandat échu')
+  const bloc = page.getByRole('region', { name: 'À traiter' })
+  await voirTout(page)
+  const mandat = bloc.getByRole('link', { name: /^Franchisé 11 · Brest Test/ })
+  await expect(mandat).toContainText('Fin du mandat le')
+  await expect(mandat).toContainText('Mandat échu')
   await page.goto('./#/equipe/franchise/Franchis%C3%A9%2011')
   await expect(page.getByRole('heading', { name: 'Mandats' })).toBeVisible()
   await expect(page.getByText('Mandat du 1 janv. 2016 au 30 juin 2026')).toBeVisible()
@@ -150,37 +165,45 @@ test('la fiche Coach est rangée en onglets, sans historique des affectations', 
 
 test('l’accueil change selon la vue : réseau, Responsable Régional ou Coach', async ({ page, isMobile }, info) => {
   await seConnecter(page)
-  await expect(page.getByRole('region', { name: 'Coachs surchargés et postes vacants' })).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Actions à échéance' })).toContainText('Refaire la vitrine')
+  const aTraiter = page.getByRole('region', { name: 'À traiter' })
+  await voirTout(page)
+  await expect(aTraiter.getByText(/^(Poste de Coach à pourvoir|Charge \d+ sur \d+)$/).first()).toBeVisible()
+  await expect(aTraiter).toContainText('Refaire la vitrine')
   // Vue d'un Coach : seulement ses magasins
   await page.getByRole('combobox', { name: 'Vue' }).click()
   await page.getByRole('option', { name: 'Inès EXEMPLE' }).click()
-  await expect(page.getByText(/Coach · Inès EXEMPLE · \d+ magasins/)).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Coachs surchargés et postes vacants' })).toHaveCount(0)
-  await expect(page.getByRole('region', { name: 'Actions à échéance' })).not.toContainText('Refaire la vitrine')
-  await expect(page.getByRole('region', { name: 'Magasins qui sous-performent' })).not.toContainText('Lyon Test')
+  await expect(page.getByRole('combobox', { name: 'Vue' })).toHaveText('Inès EXEMPLE')
+  await voirTout(page)
+  await expect(aTraiter.getByText(/^(Poste de Coach à pourvoir|Charge \d+ sur \d+)$/)).toHaveCount(0)
+  await expect(aTraiter).not.toContainText('Refaire la vitrine')
+  await expect(aTraiter).not.toContainText('Lyon Test')
   // Vue d'un Responsable Régional
   await page.getByRole('combobox', { name: 'Vue' }).click()
   await page.getByRole('option', { name: 'Sam SUD' }).click()
-  await expect(page.getByText(/Responsable Régional · Sam SUD/)).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Actions à échéance' })).toContainText('Refaire la vitrine')
+  await expect(page.getByRole('combobox', { name: 'Vue' })).toHaveText('Sam SUD')
+  await voirTout(page)
+  await expect(aTraiter).toContainText('Refaire la vitrine')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-accueil-rr.png`, fullPage: !isMobile })
 })
 
 test('un compte Coach ne voit que ses magasins à l’accueil', async ({ page }) => {
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Noé MODELE' } })
-  await expect(page.getByText(/Coach · Noé MODELE · \d+ magasins/)).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Accueil' })).toBeAttached()
   await expect(page.getByRole('combobox', { name: 'Vue' })).toHaveCount(0)
-  await expect(page.getByRole('region', { name: 'Magasins qui sous-performent' })).toContainText('Lyon Test')
-  await expect(page.getByRole('region', { name: 'Mandats à renouveler' })).toHaveCount(0)
+  const aTraiter = page.getByRole('region', { name: 'À traiter' })
+  await voirTout(page)
+  await expect(aTraiter.getByRole('link', { name: /^Lyon Test/ }).first()).toBeVisible()
+  await expect(aTraiter).not.toContainText('Fin du mandat')
+  await expect(aTraiter).not.toContainText('Nantes Test')
 })
 
 test('la colonne Magasin reste fixe dans les tableaux', async ({ page, isMobile }) => {
   test.skip(isMobile, 'Tableaux affichés sur PC')
   await seConnecter(page)
-  await page.goto('./#/magasins?vue=liste')
-  await expect(page.getByRole('table', { name: 'Liste des magasins' }).locator('tbody tr').first().locator('td').first()).toHaveCSS('position', 'sticky')
+  await page.goto('./#/visites')
+  await page.getByRole('group', { name: 'Affichage' }).getByRole('button', { name: 'Tableau' }).click()
+  await expect(page.getByRole('table', { name: 'Rythme de visite par magasin' }).locator('tbody tr').first().locator('td').first()).toHaveCSS('position', 'sticky')
   await page.goto('./#/plus/sante?vue=deploiements')
   const ligne = page.getByRole('table', { name: 'Déploiements par magasin' }).locator('tbody tr').first()
   await expect(ligne.locator('td').nth(1)).toHaveCSS('position', 'sticky')

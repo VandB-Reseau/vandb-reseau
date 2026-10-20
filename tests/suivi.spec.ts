@@ -58,13 +58,16 @@ test('ajouter, modifier et supprimer une note du journal', async ({ page }) => {
 
 test('l’accueil liste les visites en retard et les changements de case', async ({ page }) => {
   await seConnecter(page)
-  const retard = page.getByRole('region', { name: 'Visites en retard' })
+  const aTraiter = page.getByRole('region', { name: 'À traiter' })
+  await aTraiter.getByRole('button', { name: /^Voir les \d+$/ }).click()
+  const retard = aTraiter.getByRole('link').filter({ hasText: /j de retard/ })
   // Jamais visité depuis janvier : en retard en premier
-  await expect(retard.getByRole('link', { name: 'Agen Test' })).toBeVisible()
-  await expect(retard.getByRole('link', { name: 'Lyon Test' })).toHaveCount(0)
-  const cases = page.getByRole('region', { name: 'Changements de case' })
-  await expect(cases.getByText('Cœur de réseau vers Redressement urgent')).toBeVisible()
-  await expect(cases.getByText('En recul')).toBeVisible()
+  await expect(retard.first()).toContainText('Agen Test')
+  await expect(retard.first()).toContainText('jamais visité')
+  await expect(retard.filter({ hasText: 'Lyon Test' })).toHaveCount(0)
+  const recul = aTraiter.getByRole('link').filter({ hasText: 'Cœur de réseau vers Redressement urgent' })
+  await expect(recul).toBeVisible()
+  await expect(recul).toContainText('Recule')
 })
 
 test('noter un magasin garde l’historique daté', async ({ page }) => {
