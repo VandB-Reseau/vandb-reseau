@@ -1,3 +1,4 @@
+import { useAuth } from '../auth/AuthContext'
 import { useDroits } from '../auth/Droits'
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
@@ -39,10 +40,11 @@ import { useReseau } from '../data/ReseauContext'
 import { enregistrerCampagne, enregistrerConstats } from '../data/chargement'
 import { coachA } from '../data/charge'
 import {
-  MAX_POINTS, bilan, bilanPar, campagnesDuMagasin, executionMagasin, libellesExecution, libellesPhase, magasinsConcernes, perimetres, phase,
+  MAX_POINTS, bilan, bilanPar, campagnesDuMagasin, executionMagasin, libellePerimetre, libellesExecution, libellesPhase, magasinsConcernes, perimetres, perimetresRegion, phase,
   type Bilan, type Campagne, type Execution, type Perimetre, type Phase,
 } from '../data/campagnes'
 import type { Magasin, Reseau } from '../data/modele'
+import { magasinsDu } from '../data/perimetre'
 import { dateCourte, lienFiche } from '../lib/format'
 
 const couleursExecution: Record<Execution, 'success' | 'warning' | 'error' | 'default'> = { fait: 'success', partiel: 'warning', non: 'error', aConstater: 'default' }
@@ -137,6 +139,18 @@ export function BarreExecution({ b, libelle }: { b: Bilan; libelle: string }) {
   )
 }
 
+// Ce que le compte peut faire des campagnes : le Directeur toutes, un Responsable Régional celles de sa région
+function useDroitsCampagnes() {
+  const { referentiels } = useDroits()
+  const { profil } = useAuth()
+  const monRR = profil?.role === 'rr' ? profil.perimetre.rr?.[0] : undefined
+  return { referentiels, monRR, creer: referentiels || !!monRR, modifier: (c: Campagne) => referentiels || (!!monRR && c.rr === monRR) }
+}
+
+const nomRR = (reseau: Reseau, id?: string) => reseau.rrs.find((r) => r.id === id)?.nom ?? 'Responsable Régional'
+// Campagne d'un Responsable Régional : sa région, ou tout le réseau quand il la lance exceptionnellement
+const origine = (reseau: Reseau, c: Campagne) => `${c.perimetre === 'tous' ? 'Lancée par' : 'Région de'} ${nomRR(reseau, c.rr)}`
+
 const resumeBilan = (b: Bilan) => `${b.fait} sur ${b.total} exécuté${b.fait > 1 ? 's' : ''} · ${b.constates} constaté${b.constates > 1 ? 's' : ''}`
 
 function CarteCampagne({ reseau, c, ouvrir }: { reseau: Reseau; c: Campagne; ouvrir: () => void }) {
@@ -151,6 +165,7 @@ function CarteCampagne({ reseau, c, ouvrir }: { reseau: Reseau; c: Campagne; ouv
           </Box>
           <Typography variant="body2" color="text.secondary">Du {dateCourte(c.debut)} au {dateCourte(c.fin)} · {c.points.length} point{c.points.length > 1 ? 's' : ''}</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{resumeBilan(b)}</Typography>
+          {c.rr && <Chip size="small" variant="outlined" label={origine(reseau, c)} sx={{ mb: 1, fontSize: 13 }} />}
           <BarreExecution b={b} libelle={c.nom} />
         </CardContent>
       </CardActionArea>
@@ -164,15 +179,17 @@ export function VueCampagnes({ reseau }: { reseau: Reseau }) {
   const [message, setMessage] = useState('')
   const choisie = reseau.campagnes.liste.find((c) => c.id === params.get('campagne'))
   const ouvrir = (id: string | null) => setParams((p) => { const n = new URLSearchParams(p); if (id) n.set('campagne', id); else n.delete('campagne'); return n })
-  const { referentiels } = useDroits()
-  const nouvelle = referentiels ? <BoutonAction libelle="Nouvelle campagne" onClick={() => setEdition(null)} /> : null
-  const parPhase = (ph: Phase) => reseau.campagnes.liste.filter((c) => phase(c, reseau.jour) === ph).sort((a, b) => (ph === 'terminee' ? b.fin.localeCompare(a.fin) : a.debut.localeCompare(b.debut)))
+  const droits = useDroitsCampagnes()
+  const nouvelle = droits.creer ? <BoutonAction libelle="Nouvelle campagne" onClick={() => setEdition(null)} /> : null
+  // Hors Directeur : seules les campagnes qui touchent au moins un de ses magasins
+  const liste = reseau.campagnes.liste.filter((c) => droits.referentiels || magasinsConcernes(reseau, c).length > 0)
+  const parPhase = (ph: Phase) => liste.filter((c) => phase(c, reseau.jour) === ph).sort((a, b) => (ph === 'terminee' ? b.fin.localeCompare(a.fin) : a.debut.localeCompare(b.debut)))
   return (
     <>
       {choisie
         ? <DetailCampagne reseau={reseau} c={choisie} retour={() => ouvrir(null)} modifier={() => setEdition(choisie)} signaler={setMessage} />
-        : !reseau.campagnes.liste.length
-        ? <EmptyState icone={<CampaignOutlined />} titre="Aucune campagne" texte="Les campagnes commerciales et leur exécution en magasin apparaîtront ici." action={referentiels ? <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }}>Nouvelle campagne</Button> : undefined} />
+        : !liste.length
+        ? <EmptyState icone={<CampaignOutlined />} titre="Aucune campagne" texte="Les campagnes commerciales et leur exécution en magasin apparaîtront ici." action={droits.creer ? <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }}>Nouvelle campagne</Button> : undefined} />
         : (
           <>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>{nouvelle}</Box>
@@ -221,7 +238,7 @@ function TableBilan({ titre, lignes }: { titre: string; lignes: { nom: string; b
 const ordreExecution: Execution[] = ['aConstater', 'non', 'partiel', 'fait']
 
 function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Reseau; c: Campagne; retour: () => void; modifier: () => void; signaler: (m: string) => void }) {
-  const { referentiels } = useDroits()
+  const droits = useDroitsCampagnes()
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const d = useConstatsDirects(reseau, signaler)
   const [recherche, setRecherche] = useState('')
@@ -242,9 +259,9 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
         <IconButton onClick={retour} aria-label="Retour aux campagnes"><ArrowBackOutlined /></IconButton>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="h2" component="h2">{c.nom}</Typography>
-          <Typography variant="body2" color="text.secondary">Du {dateCourte(c.debut)} au {dateCourte(c.fin)} · {perimetres.find((p) => p.id === c.perimetre)?.libelle}</Typography>
+          <Typography variant="body2" color="text.secondary">Du {dateCourte(c.debut)} au {dateCourte(c.fin)} · {libellePerimetre(c)}{c.rr ? ` · ${origine(reseau, c)}` : ''}</Typography>
         </Box>
-        {referentiels && <Button startIcon={<EditOutlined />} onClick={modifier} sx={{ minHeight: 48 }}>Modifier</Button>}
+        {droits.modifier(c) && <Button startIcon={<EditOutlined />} onClick={modifier} sx={{ minHeight: 48 }}>Modifier</Button>}
       </Box>
       <Card sx={{ mb: 2 }}>
         <CardContent>
@@ -328,12 +345,18 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
 const SUPPRIMEE = 'Campagne supprimée.'
 
 function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau; campagne: Campagne | null; onFermer: (m?: string, id?: string | null) => void }) {
+  const droits = useDroitsCampagnes()
+  // Campagne régionale : celle d'un Responsable Régional, ou toute campagne qu'il crée
+  const rr = campagne ? campagne.rr : droits.referentiels ? undefined : droits.monRR
+  const regionale = !!rr
+  const choixPerimetre = regionale ? perimetresRegion : perimetres
+  const magasinsPossibles = rr ? magasinsDu(reseau, { type: 'rr', id: rr }) : reseau.magasins
   const [id] = useState(() => campagne?.id ?? `c${Date.now().toString(36)}`)
   const [nom, setNom] = useState(campagne?.nom ?? '')
   const [debut, setDebut] = useState(campagne?.debut ?? reseau.jour)
   const [fin, setFin] = useState(campagne?.fin ?? '')
   const [points, setPoints] = useState(campagne?.points.length ? campagne.points.map((p) => ({ ...p })) : [{ id: 'p1', libelle: '' }])
-  const [perimetre, setPerimetre] = useState<Perimetre>(campagne?.perimetre ?? 'tous')
+  const [perimetre, setPerimetre] = useState<Perimetre>(campagne?.perimetre ?? choixPerimetre[0].id)
   const [magasins, setMagasins] = useState<string[]>(campagne?.magasins ?? [])
   const datesOk = /^\d{4}-\d{2}-\d{2}$/.test(debut) && /^\d{4}-\d{2}-\d{2}$/.test(fin) && fin >= debut
   const remplis = points.filter((p) => p.libelle.trim())
@@ -344,10 +367,10 @@ function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau; campag
     <Fenetre large titre={campagne ? `Modifier ${campagne.nom}` : 'Nouvelle campagne'} ouvert valide={valide}
       onFermer={(m) => onFermer(m, m === SUPPRIMEE ? null : m ? id : undefined)}
       enregistrer={async () => {
-        await enregistrerCampagne(id, { id, nom: nom.trim(), debut, fin, points: remplis.map((p) => ({ id: p.id, libelle: p.libelle.trim() })), perimetre, magasins: perimetre === 'choix' ? magasins : [] })
+        await enregistrerCampagne(id, { id, nom: nom.trim(), debut, fin, points: remplis.map((p) => ({ id: p.id, libelle: p.libelle.trim() })), perimetre, magasins: perimetre === 'choix' ? magasins : [], ...(rr ? { rr } : {}) }, regionale)
         return campagne ? 'Campagne mise à jour.' : 'Campagne créée.'
       }}
-      supprimer={campagne ? async () => { await enregistrerCampagne(id, null); return SUPPRIMEE } : undefined}
+      supprimer={campagne ? async () => { await enregistrerCampagne(id, null, regionale); return SUPPRIMEE } : undefined}
       libelleSuppression={campagne ? `Supprimer la campagne ${campagne.nom}${constats ? ` et les constats de ses ${constats} magasin${constats > 1 ? 's' : ''}` : ''} ?` : undefined}>
       <TextField label="Nom de la campagne" value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus={!campagne} />
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
@@ -366,13 +389,13 @@ function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau; campag
         {points.length < MAX_POINTS && <Button startIcon={<AddOutlined />} onClick={nouveauPoint} sx={{ minHeight: 48 }}>Ajouter un point</Button>}
       </Box>
       <TextField select label="Magasins concernés" value={perimetre} onChange={(e) => setPerimetre(e.target.value as Perimetre)}>
-        {perimetres.map((p) => <MenuItem key={p.id} value={p.id}>{p.libelle}</MenuItem>)}
+        {choixPerimetre.map((p) => <MenuItem key={p.id} value={p.id}>{p.libelle}</MenuItem>)}
       </TextField>
       {perimetre === 'choix' && (
-        <Autocomplete multiple options={reseau.magasins.map((m) => m.nom)} value={magasins} onChange={(_e, v) => setMagasins(v)} disableCloseOnSelect
+        <Autocomplete multiple options={magasinsPossibles.map((m) => m.nom)} value={magasins} onChange={(_e, v) => setMagasins(v)} disableCloseOnSelect
           renderInput={(p) => <TextField {...p} label="Magasins" />} noOptionsText="Aucun magasin ne correspond" />
       )}
-      {perimetre !== 'choix' && <Typography variant="body2" color="text.secondary">{magasinsConcernes(reseau, { id, nom, debut, fin, points, perimetre, magasins }).length} magasins</Typography>}
+      {perimetre !== 'choix' && <Typography variant="body2" color="text.secondary">{magasinsConcernes(reseau, { id, nom, debut, fin, points, perimetre, magasins, rr }).length} magasins</Typography>}
     </Fenetre>
   )
 }

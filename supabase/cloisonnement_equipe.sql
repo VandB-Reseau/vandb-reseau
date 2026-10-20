@@ -16,6 +16,8 @@
 --    grilles) : seul le Directeur de réseau les modifie. L'équipe garde l'écriture
 --    des bonnes pratiques, de l'agenda et des absences.
 -- 6) Accès des Coachs et des RR, ouverts par le Directeur depuis leur fiche.
+-- 3 bis) Campagnes régionales : créées et tenues par chaque Responsable Régional
+--    pour ses magasins, ou exceptionnellement tout le réseau (table campagnes_regions) ; le Directeur les voit et les modifie toutes.
 -- ════════════════════════════════════════════════════════════════
 
 -- ── 1) Périmètre de chaque magasin, écrit par l'app du Directeur
@@ -148,6 +150,44 @@ BEGIN
   END LOOP;
 END $$;
 
+-- ── 3 bis) Campagnes régionales, une ligne par campagne, tenues par leur Responsable Régional
+CREATE TABLE IF NOT EXISTS public.campagnes_regions (
+  id     text PRIMARY KEY,
+  rr     text NOT NULL,
+  valeur jsonb NOT NULL,
+  maj_le timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.campagnes_regions ENABLE ROW LEVEL SECURITY;
+DO $$ DECLARE p record; BEGIN
+  FOR p IN SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = 'campagnes_regions' LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.campagnes_regions', p.policyname);
+  END LOOP;
+END $$;
+
+-- Identifiant du Responsable Régional connecté (null pour tout autre compte)
+CREATE OR REPLACE FUNCTION public.mon_rr() RETURNS text
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+  SELECT CASE WHEN public.mon_role() = 'rr' THEN (SELECT nullif(u.raw_app_meta_data->>'rr', '') FROM auth.users u WHERE u.id = auth.uid()) END
+$$;
+
+-- Un RR n'écrit que ses campagnes : sa région entière, des magasins qu'il suit, ou exceptionnellement tout le réseau
+CREATE OR REPLACE FUNCTION public.campagne_region_permise(p_rr text, p_valeur jsonb) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+  SELECT public.est_directeur() OR (
+    p_rr = public.mon_rr() AND jsonb_typeof(p_valeur) = 'object' AND p_valeur->>'rr' = p_rr AND (
+      p_valeur->>'perimetre' IN ('region', 'tous')
+      OR (p_valeur->>'perimetre' = 'choix' AND jsonb_typeof(p_valeur->'magasins') = 'array' AND jsonb_array_length(p_valeur->'magasins') > 0
+          AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(p_valeur->'magasins') m WHERE NOT m = ANY(public.magasins_visibles())))))
+$$;
+
+CREATE POLICY "equipe_lecture" ON public.campagnes_regions FOR SELECT TO authenticated USING ((SELECT public.est_equipe()));
+CREATE POLICY "rr_ajout" ON public.campagnes_regions FOR INSERT TO authenticated WITH CHECK (public.campagne_region_permise(rr, valeur));
+CREATE POLICY "rr_modification" ON public.campagnes_regions FOR UPDATE TO authenticated
+  USING ((SELECT public.est_directeur()) OR rr = (SELECT public.mon_rr())) WITH CHECK (public.campagne_region_permise(rr, valeur));
+CREATE POLICY "rr_suppression" ON public.campagnes_regions FOR DELETE TO authenticated USING ((SELECT public.est_directeur()) OR rr = (SELECT public.mon_rr()));
+REVOKE ALL ON public.campagnes_regions FROM anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.campagnes_regions TO authenticated;
+
 -- ── 4) Espace franchisé : associés, actions, audits et constats lus dans suivi_magasins
 CREATE OR REPLACE FUNCTION public.espace_franchise(p_franchise text DEFAULT NULL, p_magasins text[] DEFAULT NULL) RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
@@ -194,7 +234,14 @@ BEGIN
         FROM public.suivi_magasins s, jsonb_each(s.valeur) x
         WHERE s.cle = 'constats' AND s.store_name = ANY(v_mag) AND jsonb_typeof(s.valeur) = 'object'
         GROUP BY x.key) y), '{}'::jsonb)) INTO v_camp
-  FROM jsonb_array_elements(CASE WHEN jsonb_typeof(v_cfg->'campagnes'->'liste') = 'array' THEN v_cfg->'campagnes'->'liste' ELSE '[]'::jsonb END) c
+  FROM (
+    SELECT x FROM jsonb_array_elements(CASE WHEN jsonb_typeof(v_cfg->'campagnes'->'liste') = 'array' THEN v_cfg->'campagnes'->'liste' ELSE '[]'::jsonb END) x
+    UNION ALL
+    -- Campagnes régionales : la région devient la liste de ses magasins
+    SELECT CASE WHEN r.valeur->>'perimetre' = 'region'
+      THEN jsonb_set(jsonb_set(r.valeur, '{perimetre}', '"choix"'), '{magasins}', coalesce((SELECT jsonb_agg(p.store_name) FROM public.perimetre_equipe p WHERE r.rr = ANY(p.rrs)), '[]'::jsonb))
+      ELSE r.valeur END
+    FROM public.campagnes_regions r WHERE jsonb_typeof(r.valeur) = 'object') AS l(c)
   WHERE coalesce(c->>'perimetre', 'tous') <> 'choix' OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(coalesce(c->'magasins', '[]'::jsonb)) m WHERE m = ANY(v_mag));
 
   v_config := jsonb_build_array(
@@ -304,12 +351,13 @@ DO $$
 DECLARE f text;
 BEGIN
   FOREACH f IN ARRAY ARRAY['magasins_visibles()', 'maj_perimetre_equipe(jsonb)', 'espace_franchise(text, text[])',
-    'ouvrir_acces_equipe(text, text, text)', 'couper_acces_equipe(uuid)', 'renommer_acces_coach(text, text)', 'liste_acces_equipe()', 'reperes_equipe(text[])'] LOOP
+    'ouvrir_acces_equipe(text, text, text)', 'couper_acces_equipe(uuid)', 'renommer_acces_coach(text, text)', 'liste_acces_equipe()', 'reperes_equipe(text[])',
+    'mon_rr()', 'campagne_region_permise(text, jsonb)'] LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION public.%s FROM PUBLIC, anon', f);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.%s TO authenticated', f);
   END LOOP;
 END $$;
 
 -- Vérification : règles des tables cloisonnées, et ce qui a été déplacé
-SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('visits', 'store_finance', 'suivi_magasins', 'perimetre_equipe', 'sauvegarde_cloisonnement', 'app_config', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits') ORDER BY tablename, policyname;
+SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('visits', 'store_finance', 'suivi_magasins', 'perimetre_equipe', 'sauvegarde_cloisonnement', 'app_config', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits', 'campagnes_regions') ORDER BY tablename, policyname;
 SELECT cle, count(*) AS magasins FROM public.suivi_magasins GROUP BY cle ORDER BY cle;
