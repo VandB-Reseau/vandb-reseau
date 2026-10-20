@@ -1,4 +1,4 @@
-import type { Reseau, Visite } from './modele'
+import type { PreparationVisite, Reseau, Visite } from './modele'
 import { anneeDe, suiviRythme, type LigneRythme } from './visites'
 import { estVisite } from './chiffres'
 import { matriceMinutes, ordre, tournee, type Tournee } from './tournee'
@@ -40,3 +40,10 @@ export function semaineDu(reseau: Reseau, coach: string): Semaine {
 
 // Jour proposé pour poser la visite : la date due si elle tombe dans la semaine, sinon dès que possible
 export const jourPropose = (reseau: Reseau, l: LigneRythme) => (l.retard > 0 || l.prochaine <= reseau.jour ? reseau.jour : l.prochaine)
+
+// Préparation encore valable : aucune visite faite depuis qu'elle a été écrite (celle du jour compte encore comme à venir)
+export function preparationDe(reseau: Reseau, magasin: string): PreparationVisite | null {
+  const p = reseau.preparations[magasin]
+  if (!p) return null
+  return reseau.visites.some((v) => v.magasin === magasin && estVisite(v) && v.date > p.maj && v.date < reseau.jour) ? null : p
+}

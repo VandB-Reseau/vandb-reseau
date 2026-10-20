@@ -103,6 +103,7 @@ export interface Reseau {
   evaluations: import('./sante').Evaluations
   grilleNineBox: import('./sante').GrilleNineBox
   notesMagasins: Record<string, NoteMagasin[]>
+  preparations: Record<string, PreparationVisite> // notes de la prochaine visite, par magasin (jamais montrées au franchisé)
   deploiements: import('./sante').Deploiements
   chiffres: Record<string, import('./chiffres').ChiffreMois[]> // par magasin, du plus ancien au plus récent
   audits: import('./chiffres').Audits
@@ -164,6 +165,7 @@ export interface Visite {
 }
 
 export interface NoteMagasin { id: string; date: string; texte: string; par: string }
+export interface PreparationVisite { notes: string; heure: string; par: string; maj: string }
 
 export interface Conge { id: number | null; personne: string; role: string; debut: string; fin: string; notes: string }
 export interface Evenement { id: number | null; titre: string; type: string; debut: string; fin: string; notes: string; couleur: string }

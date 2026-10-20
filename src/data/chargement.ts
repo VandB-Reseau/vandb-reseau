@@ -2,7 +2,7 @@ import { renommerAccesCoach } from './accesEquipe'
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { avecPoint, definirGrille, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
-import type { ActionLibre, ActionPlan, Conge, Evenement, NoteMagasin, Reseau, Visite } from './modele'
+import type { ActionLibre, ActionPlan, Conge, Evenement, NoteMagasin, PreparationVisite, Reseau, Visite } from './modele'
 import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
 import { normaliserParties, normaliserPlan } from './compteRendu'
@@ -52,7 +52,7 @@ let suiviEnTable: boolean | null = null
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances, suivi, regions] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -108,6 +108,7 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   definirGrille(reseau.grilleNineBox)
   reseau.evaluations = json<Evaluations>(cle('sante_parc'), {})
   reseau.notesMagasins = json<Record<string, NoteMagasin[]>>(cle('notes_magasins'), {})
+  reseau.preparations = json<Record<string, PreparationVisite>>(cle('preparations_visites'), {})
   reseau.audits = json<Audits>(cle('audits'), {})
   reseau.grilles = normaliserGrilles(json<unknown>(cle('grilles_audit'), {}))
   reseau.pratiques = normaliserPratiques(json<unknown>(cle('bonnes_pratiques'), []))
@@ -564,7 +565,7 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
       const v = l.valeur as Campagne | null
       if (v?.magasins?.includes(ancienNom)) verifier(await supabase.from('campagnes_regions').update({ valeur: { ...v, magasins: v.magasins.map((n) => (n === ancienNom ? f.nom : n)) } }).eq('id', l.id))
     }
-    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes', 'actions'] as const) {
+    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes', 'actions', 'preparations_visites'] as const) {
       const lu = await lireSuivi<Record<string, unknown>>(cleConfig, {})
       const cibles = (cleConfig === 'deploiements' ? [lu.valeur.valeurs, lu.valeur.journal] : [lu.valeur]) as (Record<string, unknown> | undefined)[]
       let change = false
@@ -793,6 +794,17 @@ export function supprimerNoteMagasin(magasin: string, id: string) {
     valeur[magasin] = (valeur[magasin] ?? []).filter((n) => n.id !== id)
     if (!valeur[magasin].length) delete valeur[magasin]
     await ecrireSuivi('notes_magasins', valeur, lu)
+  })
+}
+
+// ── Préparation de la prochaine visite d'un magasin (notes et heure), retirée si tout est vide ──
+export function enregistrerPreparation(magasin: string, preparation: PreparationVisite | null) {
+  return enFile(async () => {
+    const lu = await lireSuivi<Record<string, PreparationVisite>>('preparations_visites', {})
+    const { valeur } = lu
+    if (preparation && (preparation.notes.trim() || preparation.heure)) valeur[magasin] = { ...preparation, notes: preparation.notes.trim() }
+    else delete valeur[magasin]
+    await ecrireSuivi('preparations_visites', valeur, lu)
   })
 }
 
