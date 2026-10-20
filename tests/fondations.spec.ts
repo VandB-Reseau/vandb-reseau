@@ -147,7 +147,7 @@ test('Équipe ouvre le groupe Paramètres', async ({ page, isMobile }) => {
     // Juste sous le titre « Paramètres » ; la partie classique (au-dessus) ne le contient pas
     const titre = menu.locator('li', { hasText: /^Paramètres$/ }).first()
     await expect(titre.locator('xpath=following-sibling::*[1]')).toHaveText('Équipe')
-    await expect(menu.getByRole('menuitem').first()).toHaveText('Agenda')
+    await expect(menu.getByRole('menuitem').first()).toHaveText('Communications')
   } else {
     const groupe = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('list').filter({ hasText: 'Paramètres' }).last()
     await expect(groupe.getByRole('button').first()).toHaveText('Équipe')

@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Link as RouterLink, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -16,9 +16,6 @@ import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
-import ListSubheader from '@mui/material/ListSubheader'
-import MenuItem from '@mui/material/MenuItem'
-import TextField from '@mui/material/TextField'
 import { AvecReseau } from '../components/EtatDonnees'
 import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, Pastille, Puces, TitreSection, type Ton } from '../components/Social'
 import { analyser, suiviAlerte } from '../data/chiffres'
@@ -28,10 +25,10 @@ import { caseDe, tendance } from '../data/sante'
 import { anneeDe, suiviRythme } from '../data/visites'
 import { chargeA, coachA, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
-import { visuellementCache } from '../lib/accessibilite'
 import { ajouterJours, elementsDuMois, jourLong } from './Agenda'
 import { libelleResponsable, type Magasin, type Reseau } from '../data/modele'
-import { cleVue, lireVue, magasinsDu, perimetreDuProfil, personnesDu, type Perimetre } from '../data/perimetre'
+import { magasinsDu, perimetreDuProfil, personnesDu, type Perimetre } from '../data/perimetre'
+import { PageHeader } from '../components/PageHeader'
 import { actionsEnCours, echeanceDate, enRetard } from '../data/actions'
 import { libellesEtatMandat, mandatsARenouveler } from '../data/associes'
 import { bilan, magasinsConcernes, phase } from '../data/campagnes'
@@ -214,7 +211,7 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
   const noms = useMemo(() => new Set(magasinsDu(reseau, p).map((m) => m.nom)), [reseau, p])
   const fil = useMemo(() => filDu(reseau, noms, messagerie), [reseau, noms, messagerie])
   return (
-    <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start', maxWidth: 1080, mx: 'auto' }}>
+    <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start' }}>
       <Box sx={{ order: { xs: 1, md: 2 }, position: { md: 'sticky' }, top: { md: 88 } }}>
         <BlocATraiter items={items} />
         <BlocSemaine reseau={reseau} p={p} />
@@ -226,41 +223,14 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
   )
 }
 
-// Le Directeur choisit sa vue (réseau, un Responsable Régional, un Coach) ; un Coach ou un RR voit ses magasins
-function ChoixVue({ reseau, valeur, onChange }: { reseau: Reseau; valeur: Perimetre; onChange: (p: Perimetre) => void }) {
-  const options = [
-    { cle: 'reseau', libelle: 'Tout le réseau' },
-    ...reseau.rrs.map((r) => ({ cle: `rr:${r.id}`, libelle: r.nom })),
-    ...reseau.equipe.filter((c) => !c.fictif).map((c) => ({ cle: `coach:${c.nom}`, libelle: c.nom })),
-  ]
-  return (
-    <TextField select size="small" label="Vue" value={options.some((o) => o.cle === cleVue(valeur)) ? cleVue(valeur) : 'reseau'} onChange={(e) => onChange(lireVue(e.target.value))}
-      sx={{ minWidth: 240, '& .MuiInputBase-root': { minHeight: 48 } }}>
-      <ListSubheader>Directeur de réseau</ListSubheader>
-      <MenuItem value="reseau">Tout le réseau</MenuItem>
-      {reseau.rrs.length > 0 && <ListSubheader>Responsables Régionaux</ListSubheader>}
-      {options.filter((o) => o.cle.startsWith('rr:')).map((o) => <MenuItem key={o.cle} value={o.cle}>{o.libelle}</MenuItem>)}
-      <ListSubheader>Coachs</ListSubheader>
-      {options.filter((o) => o.cle.startsWith('coach:')).map((o) => <MenuItem key={o.cle} value={o.cle}>{o.libelle}</MenuItem>)}
-    </TextField>
-  )
-}
-
 export function Accueil() {
   const { profil } = useAuth()
-  const [params, setParams] = useSearchParams()
-  const impose = perimetreDuProfil(profil)
-  const choisi = impose ?? lireVue(params.get('vue'))
-  const changer = (p: Perimetre) => setParams((x) => { const n = new URLSearchParams(x); if (p.type === 'reseau') n.delete('vue'); else n.set('vue', cleVue(p)); return n }, { replace: true })
+  // Le Directeur voit tout le réseau ; un Coach ou un RR, ses magasins
+  const p = perimetreDuProfil(profil) ?? { type: 'reseau' as const }
   return (
     <>
-      <Typography variant="h1" sx={visuellementCache}>Accueil</Typography>
-      <AvecReseau>{(r) => (
-        <>
-          {!impose && <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', md: 'flex-end' }, mb: 1, maxWidth: 1080, mx: 'auto', '& > *': { flex: { xs: 1, md: 'none' } } }}><ChoixVue reseau={r} valeur={choisi} onChange={changer} /></Box>}
-          <Tableau reseau={r} p={choisi} sansParametres={!!impose} />
-        </>
-      )}</AvecReseau>
+      <PageHeader titre="Accueil" />
+      <AvecReseau>{(r) => <Tableau reseau={r} p={p} sansParametres={p.type !== 'reseau'} />}</AvecReseau>
     </>
   )
 }

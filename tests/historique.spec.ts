@@ -52,12 +52,10 @@ test('la date des changements s’applique aux notes saisies dans Santé du parc
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/plus/sante?vue=evaluer')
+  if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
   await page.getByLabel('Date des changements').fill('2026-09-20')
-  if (isMobile) {
-    await page.getByRole('button', { name: /^Fort : CA marché extérieur de/ }).first().click()
-  } else {
-    await page.getByRole('button', { name: 'Fort : CA marché extérieur de Nantes Test' }).click()
-  }
+  await page.getByRole('button', { name: 'Saisir Nantes Test' }).click()
+  await page.getByRole('button', { name: 'Fort : CA marché extérieur de Nantes Test' }).click()
   await expect.poll(() => ecritures.filter((e) => e.table === 'app_config').length).toBeGreaterThan(0)
   expect(JSON.stringify(derniereSante(ecritures))).toContain('"date":"2026-09-20"')
 })
@@ -66,8 +64,8 @@ test('l’import avec une colonne Date remplit l’historique, une ligne par jou
   test.skip(isMobile, 'Import réservé au PC')
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/plus/sante?vue=evaluer')
-  await page.getByRole('button', { name: 'Importer Excel' }).click()
+  await page.goto('./#/parametres/donnees')
+  await page.getByRole('button', { name: 'Importer le fichier : Export Asana de la santé du parc' }).click()
   const d = page.getByRole('dialog', { name: 'Importer depuis Excel' })
   const csv = [
     'Magasin;Date;CA marché extérieur;Panier moyen cave;Niveau du franchisé;Terrasse',
@@ -193,7 +191,7 @@ test('corriger les notes d’un classement passé depuis le journal', async ({ p
 test('effacer toutes les notes nine box en une fois, avec une copie de sauvegarde', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/plus/sante?vue=evaluer')
+  await page.goto('./#/parametres/reglages')
   await page.getByRole('button', { name: 'Effacer toutes les notes' }).click()
   const d = page.getByRole('dialog', { name: 'Effacer toutes les notes ?' })
   await expect(d).toContainText('3 magasins')

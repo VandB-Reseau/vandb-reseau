@@ -11,6 +11,7 @@ import Typography from '@mui/material/Typography'
 import { PageHeader } from '../components/PageHeader'
 import { EspacePhotos, GrillesAudit } from '../components/EditeurGrilles'
 import { EditeurGrilleNineBox } from '../components/EditeurGrilleNineBox'
+import { CarteEffacerNotes, CarteThematiques } from '../components/ImportsSuivi'
 import { AvecReseau } from '../components/EtatDonnees'
 import { chargeA, niveauCharge } from '../data/charge'
 import { enregistrerParametres } from '../data/chargement'
@@ -148,6 +149,7 @@ function RegleAlerte({ reseau }: { reseau: Reseau }) {
 }
 
 export function Direction() {
+  const [message, setMessage] = useState('')
   return (
     <AvecReseau>
       {(reseau) => (
@@ -156,8 +158,11 @@ export function Direction() {
           <RegleCharge reseau={reseau} />
           <RegleAlerte reseau={reseau} />
           <EditeurGrilleNineBox reseau={reseau} />
+          <CarteEffacerNotes reseau={reseau} />
+          <CarteThematiques reseau={reseau} signaler={setMessage} />
           <GrillesAudit reseau={reseau} />
           <EspacePhotos reseau={reseau} />
+          <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
         </>
       )}
     </AvecReseau>

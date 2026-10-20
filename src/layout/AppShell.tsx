@@ -208,7 +208,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
 
       <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: '72px' }, pb: surPC ? 4 : conversation ? 0 : '96px' }}>
         {bandeau}
-        <Box sx={{ maxWidth: 1280, mx: 'auto', px: { xs: 2, sm: 3, md: 5 }, pt: { xs: 3, md: 4 } }}>{children}</Box>
+        <Box sx={{ maxWidth: 1280, mx: 'auto', px: { xs: 2, sm: 3, md: 5 }, pt: { xs: 2, md: 3 } }}>{children}</Box>
       </Box>
 
       {!sansBarre && <BarreBasse franchise={franchise} />}

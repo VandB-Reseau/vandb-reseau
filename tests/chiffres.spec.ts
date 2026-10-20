@@ -169,8 +169,8 @@ test('importer l’export mensuel des chiffres', async ({ page, isMobile }) => {
   test.skip(isMobile, 'Import sur PC')
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/plus/sante?vue=chiffres')
-  await page.getByRole('button', { name: 'Importer Excel' }).click()
+  await page.goto('./#/parametres/donnees')
+  await page.getByRole('button', { name: 'Importer le fichier : Export mensuel des chiffres' }).click()
   const d = page.getByRole('dialog', { name: 'Importer les chiffres mensuels' })
   const csv = 'Magasin;Mois;CA marché extérieur;PM HT cave;Flux cave;PM HT bar;Flux bar;Marge %;CA cave N-1;CA cumulé\nV and B Brest Test;09/2026;1 500;40;1250;12,5;1600;43,2;48000;70000\nBrest Test;08/2026;;40;1200;;;;;\nInconnu Test;09/2026;1;1;1;1;1;1;1;1\n'
   await d.getByLabel('Fichier de chiffres à importer').setInputFiles({ name: 'export.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })

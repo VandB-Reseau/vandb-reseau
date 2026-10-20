@@ -148,7 +148,7 @@ test('un grand réseau s’affiche par tranches sans bloquer les onglets', async
   await page.getByRole('button', { name: 'Se connecter' }).click()
   await page.getByRole('heading', { level: 1, name: 'Accueil' }).waitFor({ state: 'attached' })
   await page.goto('./#/visites')
-  await expect(page.getByText('Par magasin (280)')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Par magasin' })).toBeVisible()
   const parMagasin = page.getByRole('region', { name: 'Rythme de visite par magasin' }).getByRole('link', { name: /^Grand\d+ Test/ })
   await expect(parMagasin).toHaveCount(50)
   await page.getByRole('button', { name: 'Voir plus (230)' }).click()

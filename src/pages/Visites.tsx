@@ -3,7 +3,6 @@ import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import IconButton from '@mui/material/IconButton'
 import LinearProgress from '@mui/material/LinearProgress'
 import Link from '@mui/material/Link'
@@ -14,7 +13,6 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
@@ -24,13 +22,8 @@ import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
-import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined'
-import Alert from '@mui/material/Alert'
-import { Fenetre } from '../components/EditionEquipe'
 import { VueCampagnes } from '../components/Campagnes'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
-import { importerVisites } from '../data/chargement'
-import { analyserVisites, lireClasseur, type ResultatImportVisites } from '../data/importVisites'
 import { RechercheFiltres } from '../components/RechercheFiltres'
 import { Onglets } from '../components/Onglets'
 import EventRepeatOutlined from '@mui/icons-material/EventRepeatOutlined'
@@ -44,7 +37,8 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { DialogVisite, visiteurs } from '../components/DialogVisite'
 import { PastilleSignature } from '../components/PastilleVisite'
-import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, Pastille, useAffichage } from '../components/Social'
+import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, Pastille, TitreSection, useAffichage, useParTranches } from '../components/Social'
+import RouteOutlined from '@mui/icons-material/RouteOutlined'
 import { anneeDe, anneesDisponibles, lienCompteRendu, semestresDisponibles, suiviRythme, type LigneRythme } from '../data/visites'
 import { nineBox } from '../data/sante'
 import { PastilleCase } from '../components/Sante'
@@ -56,18 +50,6 @@ import { libelleTypeVisite, nomsVisiteurs, typesVisite, type Reseau, type Visite
 type Edition = { visite: Visite | null; magasins: string[] } | null
 
 type Etat = 'retard' | 'ajour'
-
-// Longues listes affichées par tranches : le rendu de centaines de lignes bloquait le changement d'onglet
-const PAGE = 50
-function useParTranches<T>(liste: T[], filtres: string) {
-  const [vu, setVu] = useState({ filtres, nombre: PAGE })
-  const nombre = vu.filtres === filtres ? vu.nombre : PAGE
-  const restantes = liste.length - nombre
-  return {
-    visibles: restantes > 0 ? liste.slice(0, nombre) : liste,
-    suite: restantes > 0 && <Box sx={{ textAlign: 'center', mt: 1.5 }}><Button onClick={() => setVu({ filtres, nombre: nombre + PAGE })} sx={{ minHeight: 48 }}>Voir plus ({restantes})</Button></Box>,
-  }
-}
 
 function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir: (magasins: string[]) => void; surPC: boolean; actions: ReactNode }) {
   const annees = useMemo(() => anneesDisponibles(reseau), [reseau])
@@ -115,43 +97,36 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
         {(actifs > 0 || texte) && <Button onClick={() => { setCoachs([]); setCases([]); setEtats([]); setTexte('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
       </RechercheFiltres>
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
-            <Typography variant="h2" component="p">{faites} sur {objectif}</Typography>
-            <Typography variant="body1" color="text.secondary">visites faites en {a.court} · {enRetard.length} magasin{enRetard.length > 1 ? 's' : ''} en retard</Typography>
+      <Card sx={{ mb: 2, border: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 2, py: 1.5 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
+              <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2 }}>{faites} sur {objectif}</Typography>
+              <Typography variant="body2" color="text.secondary">visites faites en {a.court}</Typography>
+            </Box>
+            <LinearProgress variant="determinate" value={taux} color={enRetard.length ? 'primary' : 'success'} aria-label={`Visites faites ${taux} %`} sx={{ mt: 1, height: 8, borderRadius: 4, bgcolor: 'action.hover' }} />
           </Box>
-          <LinearProgress variant="determinate" value={taux} color={enRetard.length ? 'primary' : 'success'} aria-label={`Visites faites ${taux} %`} sx={{ height: 10, borderRadius: 5, bgcolor: 'action.hover' }} />
-        </CardContent>
+          {enRetard.length > 0 ? <Pastille ton="orange">{`${enRetard.length} en retard`}</Pastille> : <Pastille ton="vert">À jour</Pastille>}
+        </Box>
       </Card>
 
       {lignes.length === 0 ? (
         <EmptyState icone={<EventNoteOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." />
       ) : (
         <>
-          <Typography variant="h3" component="h2" sx={{ mb: 1.5 }}>Par Coach</Typography>
-          <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr', xl: '1fr 1fr 1fr' }, mb: 3 }}>
-            {parCoach.map((g) => (
-              <Card key={g.coach} component="section" aria-label={g.coach || 'Sans Coach'}>
-                <CardContent sx={{ p: 2, pb: '12px !important' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="h4" component="h3" sx={{ flex: 1, minWidth: 0 }} noWrap>
-                      {g.coach ? <Link component={RouterLink} to={lienCoach(g.coach)} color="inherit">{g.coach}</Link> : 'Sans Coach'}
-                    </Typography>
-                    {g.retard.length > 0 && <Button size="small" startIcon={<AddOutlined />} onClick={() => saisir(g.retard.map((l) => l.magasin.nom))} sx={{ minHeight: 48 }}>Tournée</Button>}
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    {g.faites} visites sur {g.objectif} · {jours(g.jours)} de visite sur l’année · {g.retard.length ? `${g.retard.length} magasin${g.retard.length > 1 ? 's' : ''} en retard` : 'à jour'}
-                  </Typography>
-                </CardContent>
-              </Card>
-            ))}
-          </Box>
+          {parCoach.length > 1 && <>
+            <TitreSection nombre={parCoach.length}>Par Coach</TitreSection>
+            <CarteLignes label="Visites par Coach">
+              {parCoach.map((g) => (
+                <LigneCompacte key={g.coach} lien={g.coach ? lienCoach(g.coach) : undefined} avatar={<Initiales nom={g.coach || 'Sans Coach'} />} titre={g.coach || 'Sans Coach'}
+                  detail={`${g.faites} sur ${g.objectif} visites · ${jours(g.jours)} sur l’année`}
+                  fin={g.retard.length ? <Pastille ton="orange">{`${g.retard.length} en retard`}</Pastille> : <Pastille ton="gris">À jour</Pastille>}
+                  actions={g.retard.length > 0 ? <Tooltip title="Préparer la tournée des magasins en retard"><IconButton onClick={() => saisir(g.retard.map((l) => l.magasin.nom))} aria-label={`Tournée de ${g.coach || 'Sans Coach'}`} sx={{ width: 48, height: 48 }}><RouteOutlined /></IconButton></Tooltip> : undefined} />
+              ))}
+            </CarteLignes>
+          </>}
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-            <Typography variant="h3" component="h2" sx={{ flex: 1 }}>Par magasin ({lignes.length})</Typography>
-            {surPC && <ChoixAffichage valeur={affichage} onChange={setAffichage} />}
-          </Box>
+          <TitreSection nombre={lignes.length} action={surPC && <ChoixAffichage valeur={affichage} onChange={setAffichage} />}>Par magasin</TitreSection>
           {surPC && affichage === 'tableau' ? (
             <Card>
               <TableContainer>
@@ -233,7 +208,7 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
         <FiltreMenu libelle="Visité par" choisis={visiteur ? [visiteur] : []} onChange={(v) => setVisiteur(v.at(-1) ?? '')} options={visiteurs(reseau).map((n) => ({ valeur: n, libelle: n }))} />
         {(cle || type || visiteur || recherche) && <Button onClick={() => { setCle(''); setType(''); setVisiteur(''); setRecherche('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
       </RechercheFiltres>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{liste.length} visite{liste.length > 1 ? 's' : ''}</Typography>
+      <TitreSection>{`${liste.length} visite${liste.length > 1 ? 's' : ''}`}</TitreSection>
       {liste.length === 0 ? (
         <EmptyState icone={<EventNoteOutlined />} titre="Aucune visite" texte={reseau.visites.length ? 'Aucune visite ne correspond à ces filtres.' : 'Saisis ta première visite avec le bouton « Saisir une visite ».'} />
       ) : (
@@ -251,70 +226,6 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
   )
 }
 
-// ── Import du classeur de suivi des visites (un onglet par Coach) ──
-function DialogImportVisites({ reseau, onFermer }: { reseau: Reseau; onFermer: (m?: string) => void }) {
-  const [res, setRes] = useState<ResultatImportVisites | null>(null)
-  const [nomFichier, setNomFichier] = useState('')
-  const [erreur, setErreur] = useState('')
-  const [dateAudits, setDateAudits] = useState(reseau.jour)
-  const choisir = async (f: File | undefined) => {
-    if (!f) return
-    setNomFichier(f.name); setErreur(''); setRes(null)
-    try {
-      const r = analyserVisites(await lireClasseur(f), reseau)
-      if (!r.visites.length && !r.audits.length && !r.dejaLa) setErreur('Aucune visite reconnue dans ce fichier. Vérifie que chaque onglet a une colonne « Magasin » et des colonnes « Visite 1 », « Visite 2 »…')
-      else setRes(r)
-    } catch { setErreur('Ce fichier ne peut pas être lu. Enregistre-le au format Excel (.xlsx) puis réessaie.') }
-  }
-  // Feuilles de route sans date : rangées à la date choisie, sauf si elles y sont déjà
-  const feuilles = (res?.feuillesDeRoute ?? []).filter((f) => !reseau.visites.some((v) => v.magasin === f.magasin && v.date === dateAudits && v.type === 'feuille'))
-  const n = res?.visites.length ?? 0, a = res?.audits.length ?? 0, fr = feuilles.length
-  // Seules les notes des anciens tableaux d'audit et les feuilles de route sans date demandent une date
-  const sansDate = (res?.audits.filter((x) => !x.date).length ?? 0) + fr
-  const nbMag = res ? new Set(res.visites.map((v) => v.magasin)).size : 0
-  const annees = res ? [...new Set(res.visites.map((v) => v.date.slice(0, 4)))].sort() : []
-  const pluriel = (k: number, mot: string) => `${k} ${mot}${k > 1 ? 's' : ''}`
-  const dateValide = /^\d{4}-\d{2}-\d{2}$/.test(dateAudits)
-  return (
-    <Fenetre large titre="Importer des visites" ouvert onFermer={onFermer} valide={n + a + fr > 0 && (!sansDate || dateValide)}
-      enregistrer={async () => {
-        await importerVisites([...res!.visites, ...feuilles.map((f) => ({ ...f, date: dateAudits, type: 'feuille' }))], res!.audits, dateAudits)
-        return [n ? `${pluriel(n, 'visite')} importée${n > 1 ? 's' : ''}` : '', fr ? pluriel(fr, 'feuille') + ' de route' : '', a ? `${pluriel(a, 'note')} d’audit` : ''].filter(Boolean).join(', ')
-      }}>
-      <Button variant="outlined" component="label" startIcon={<UploadFileOutlined />} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
-        {nomFichier || 'Choisir un fichier'}
-        <input type="file" hidden accept=".xlsx" aria-label="Fichier de visites à importer" onChange={(e) => choisir(e.target.files?.[0])} />
-      </Button>
-      {erreur && <Alert severity="warning">{erreur}</Alert>}
-      {res && (
-        <>
-          <Alert severity={n ? 'success' : 'info'}>
-            {n ? `${pluriel(n, 'visite')} à ajouter pour ${pluriel(nbMag, 'magasin')}, ${annees.length > 1 ? `de ${annees[0]} à ${annees.at(-1)}` : `en ${annees[0]}`}.` : 'Aucune nouvelle visite.'}
-            {res.dejaLa > 0 && ` ${pluriel(res.dejaLa, 'visite')} déjà dans l’app, laissée${res.dejaLa > 1 ? 's' : ''} telle${res.dejaLa > 1 ? 's' : ''} quelle${res.dejaLa > 1 ? 's' : ''}.`}
-          </Alert>
-          {a + fr > 0 && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
-              <Box sx={{ flex: '1 1 240px' }}>
-                {a > 0 && <Typography variant="body1">{pluriel(a, 'note')} d’audit : {res.audits.filter((x) => x.type === 'hygiene').length} hygiène, {res.audits.filter((x) => x.type === 'excellence').length} excellence.</Typography>}
-                {fr > 0 && <Typography variant="body1">{pluriel(fr, 'feuille')} de route faite{fr > 1 ? 's' : ''}.</Typography>}
-              </Box>
-              {sansDate > 0 && <TextField type="date" label="Date des audits et feuilles de route" value={dateAudits} onChange={(e) => setDateAudits(e.target.value)} error={!dateValide}
-                slotProps={{ inputLabel: { shrink: true } }} sx={{ width: { xs: '100%', sm: 300 } }} />}
-            </Box>
-          )}
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {res.feuilles.filter((f) => f.visites).map((f) => (
-              <Chip key={f.nom} label={`${f.nom} → ${f.personne}${f.equipe ? '' : ' (hors équipe)'} · ${f.visites}`} color={f.equipe ? 'primary' : 'default'} variant="outlined" sx={{ fontSize: 13 }} />
-            ))}
-          </Box>
-          {res.inconnus.length > 0 && <Typography variant="body2" color="text.secondary">Magasins non trouvés ({res.inconnus.length}) : {res.inconnus.slice(0, 12).join(', ')}{res.inconnus.length > 12 ? '…' : ''}</Typography>}
-          {res.illisibles.length > 0 && <Typography variant="body2" color="text.secondary">Dates non reconnues, laissées de côté ({res.illisibles.length}) : {res.illisibles.slice(0, 12).join(' · ')}{res.illisibles.length > 12 ? '…' : ''}</Typography>}
-        </>
-      )}
-    </Fenetre>
-  )
-}
-
 export function Visites() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
@@ -323,11 +234,7 @@ export function Visites() {
   const [pratique, setPratique] = useState<BonnePratique | null | undefined>(undefined)
   const [edition, setEdition] = useState<Edition>(null)
   const [message, setMessage] = useState('')
-  const [importer, setImporter] = useState(false)
-  const actions = <>
-    {surPC && <BoutonAction secondaire libelle="Importer Excel" icone={<UploadFileOutlined />} onClick={() => setImporter(true)} />}
-    <BoutonAction libelle="Saisir une visite" onClick={() => setEdition({ visite: null, magasins: [] })} />
-  </>
+  const actions = <BoutonAction libelle="Saisir une visite" onClick={() => setEdition({ visite: null, magasins: [] })} />
   return (
     <AvecReseau>
       {(reseau) => (
@@ -351,7 +258,6 @@ export function Visites() {
             : <VueRythme reseau={reseau} surPC={surPC} actions={actions} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
           {edition && <DialogVisite reseau={reseau} visite={edition.visite} magasinsInitiaux={edition.magasins} onFermer={(m) => { setEdition(null); if (m) setMessage(m) }} />}
           {pratique !== undefined && <DialogPratique reseau={reseau} pratique={pratique} onFermer={(m) => { setPratique(undefined); if (m) setMessage(m) }} />}
-          {importer && <DialogImportVisites reseau={reseau} onFermer={(m) => { setImporter(false); if (m) setMessage(m) }} />}
           <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
         </>
       )}

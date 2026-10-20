@@ -12,6 +12,7 @@ import { Personnes } from './pages/VuePersonnes'
 import { Conversations } from './pages/Conversations'
 import { Notifications } from './pages/Notifications'
 import { PageTaches } from './pages/Taches'
+import { PageCommunications } from './pages/Communications'
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -69,6 +70,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/visites" element={<Visites />} />
         <Route path="/taches" element={<PageTaches />} />
         <Route path="/actions" element={<Navigate to="/taches" replace />} />
+        <Route path="/communications" element={<PageCommunications />} />
         <Route path="/messages" element={<Conversations />} />
         <Route path="/messages/:nom" element={<Conversations />} />
         <Route path="/messages/personne/:cle" element={<Conversations />} />
@@ -99,6 +101,7 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
         <Route path="/magasins/:nom" element={<FicheMagasinFranchise />} />
         <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
         <Route path="/bonnes-pratiques" element={<PratiquesFranchise />} />
+        <Route path="/communications" element={<PageCommunications lectureSeule={apercu} />} />
         <Route path="/taches" element={<PageTaches />} />
         <Route path="/actions" element={<Navigate to="/taches" replace />} />
         <Route path="/messages" element={<Conversations lectureSeule={apercu} />} />

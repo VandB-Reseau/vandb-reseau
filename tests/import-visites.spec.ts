@@ -7,13 +7,13 @@ const fichier = new URL('./fichiers/suivi-visites-fictif.xlsx', import.meta.url)
 test('importer le classeur de suivi des visites et les notes d’audit', async ({ page, isMobile }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
+  // Plus d'import dans l'onglet Visites : il est dans Paramètres, Import et export
   await page.goto('./#/visites?vue=historique')
-  if (isMobile) {
-    await expect(page.getByRole('heading', { name: 'Visites' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Importer Excel' })).toHaveCount(0)
-    return
-  }
-  await page.getByRole('button', { name: 'Importer Excel' }).click()
+  await expect(page.getByRole('heading', { name: 'Visites', level: 1 })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Importer Excel' })).toHaveCount(0)
+  if (isMobile) return
+  await page.goto('./#/parametres/donnees')
+  await page.getByRole('button', { name: 'Importer le fichier : Classeur des visites' }).click()
   const d = page.getByRole('dialog', { name: 'Importer des visites' })
   await d.getByLabel('Fichier de visites à importer').setInputFiles(fichier)
   await expect(d.getByText('8 visites à ajouter pour 4 magasins, de 2025 à 2026. 2 visites déjà dans l’app, laissées telles quelles.')).toBeVisible()

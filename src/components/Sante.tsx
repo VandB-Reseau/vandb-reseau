@@ -167,13 +167,13 @@ export function LibelleCritere({ c, gras }: { c: CritereGrille; gras?: boolean }
 }
 
 // Saisie des notes rangée par axe (Résultats, puis Franchisé ou Responsable du magasin)
-export function NotesParAxe({ integre, notes, noter, libelleMagasin }: { integre: boolean; notes: Partial<Record<IdCritere, Note>> | undefined; noter: (id: IdCritere, n: Note | null) => void; libelleMagasin?: string }) {
+export function NotesParAxe({ integre, notes, noter, libelleMagasin, colonnes = 2 }: { integre: boolean; notes: Partial<Record<IdCritere, Note>> | undefined; noter: (id: IdCritere, n: Note | null) => void; libelleMagasin?: string; colonnes?: 1 | 2 }) {
   return (
     <>
       {(['resultats', 'franchise'] as Axe[]).map((axe) => (
         <Box key={axe} sx={{ mb: 2 }}>
           <Typography variant="overline" component="h3" color="text.secondary" sx={{ fontSize: 13, display: 'block', mb: 0.5 }}>{libelleAxe(axe, integre)}</Typography>
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: colonnes === 2 ? '1fr 1fr' : '1fr' } }}>
             {criteresAxe(axe).map((c) => (
               <Box key={c.id}>
                 <Box sx={{ mb: 0.5, minHeight: 24 }}><LibelleCritere c={c} gras /></Box>

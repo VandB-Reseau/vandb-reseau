@@ -24,8 +24,13 @@ export const MOI = '00000000-0000-0000-0000-000000000001'
 // Comme la base : seuls les fichiers rangés sous le compte connecté, 10 au plus
 const piecesPropres = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 10).filter((p) => typeof p?.chemin === 'string' && p.chemin.startsWith(`${MOI}/`))
 // Périmètre envoyé par l'app du Directeur (fonction maj_perimetre_equipe)
+// Communications du réseau (script communications.sql), au format renvoyé par la base
+export interface CommunicationSimulee {
+  id: number; titre: string; texte: string; pieces?: unknown[]; magasins: string[] | null; auteur: string; auteur_nom: string; auteur_role: string; cree_le: string
+  pouces?: { user_id: string; nom: string }[]; commentaires?: { id: number; auteur: string; auteur_nom: string; auteur_role: string; texte: string; cree_le: string }[]
+}
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
-export interface OptionsSimulation { messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null }
+export interface OptionsSimulation { communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -113,7 +118,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       const meta = options.appMetadata ?? {}
       const acces: AccesSimule = options.acces ?? (meta.role === 'coach' || meta.role === 'rr' ? { role: String(meta.role), coach: meta.coach as string, rr: meta.rr as string } : { role: 'directeur' })
       if (fn === 'maj_perimetre_equipe') options.perimetreRecu = corps.p_lignes as PerimetreRecu[]
-      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
+      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie', 'communications'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
       if (fn === 'mon_acces') return route.fulfill({ json: { role: acces.role, coach: acces.coach ?? null, rr: acces.rr ?? null, franchise: acces.franchise ?? null, magasins: acces.magasins ?? [] } })
       if (fn === 'espace_franchise') {
         const apercu = Array.isArray(corps.p_magasins)
@@ -162,6 +167,38 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
           mg.messages = mg.messages.filter((m) => !(m.auteur === MOI && (m.id === corps.p_id || (lot && m.lot === lot))))
         }
         return route.fulfill({ status: 200, json: null })
+      }
+      // Communications du réseau (script communications.sql) : le Directeur pour tout le réseau, un RR pour ses magasins
+      if (['communications', 'publier_communication', 'supprimer_communication', 'basculer_pouce_communication', 'commenter_communication', 'supprimer_commentaire_communication'].includes(fn)) {
+        if (options.communications === null) return absente()
+        const liste = (options.communications ??= [])
+        const refus = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const mesMagasins = acces.role === 'franchise' ? acces.magasins ?? [] : acces.role === 'directeur' ? null : magasinsFictifs.map((m) => String(m.n))
+        const visible = (c: CommunicationSimulee) => c.magasins === null || c.auteur === MOI || mesMagasins === null || c.magasins.some((m) => mesMagasins.includes(m))
+        const nom = acces.role === 'franchise' ? acces.franchise : acces.role === 'coach' ? acces.coach : acces.role === 'rr' ? configRRFictive.drs.find((d) => d.id === acces.rr)?.name : configRRFictive.directeur.name
+        const id = Number(corps.p_id)
+        const c = liste.find((x) => x.id === id)
+        if (fn === 'communications') return route.fulfill({ json: { moi: MOI, role: acces.role, liste: structuredClone(liste.filter(visible)).sort((a, b) => b.cree_le.localeCompare(a.cree_le)).map((x) => ({ pouces: [], commentaires: [], pieces: [], ...x })) } })
+        if (fn === 'publier_communication') {
+          if (!['directeur', 'rr'].includes(acces.role) || !String(corps.p_titre ?? '').trim()) return refus()
+          if (corps.p_id === null) liste.push({ id: Math.max(0, ...liste.map((x) => x.id)) + 1, titre: String(corps.p_titre), texte: String(corps.p_texte ?? ''), pieces: piecesPropres(corps.p_pieces), magasins: acces.role === 'rr' ? ['Lyon Test', 'Metz Test'] : null, auteur: MOI, auteur_nom: nom ?? '', auteur_role: acces.role, cree_le: new Date().toISOString() })
+          else if (!c || c.auteur !== MOI) return refus()
+          else Object.assign(c, { titre: String(corps.p_titre), texte: String(corps.p_texte ?? '') })
+          return route.fulfill({ json: { id: corps.p_id ?? liste.length } })
+        }
+        if (fn === 'supprimer_communication') { options.communications = liste.filter((x) => !(x.id === id && (x.auteur === MOI || acces.role === 'directeur'))); return route.fulfill({ status: 200, json: null }) }
+        if (fn === 'supprimer_commentaire_communication') { for (const x of liste) x.commentaires = (x.commentaires ?? []).filter((k) => !(k.id === id && k.auteur === MOI)); return route.fulfill({ status: 200, json: null }) }
+        if (!c || !visible(c)) return refus()
+        if (fn === 'basculer_pouce_communication') {
+          const avant = c.pouces ?? []
+          c.pouces = avant.some((p) => p.user_id === MOI) ? avant.filter((p) => p.user_id !== MOI) : [...avant, { user_id: MOI, nom: nom ?? '' }]
+          return route.fulfill({ json: c.pouces.some((p) => p.user_id === MOI) })
+        }
+        const texte = String(corps.p_texte ?? '').trim()
+        if (!texte) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'message_vide' } })
+        const tous = liste.flatMap((x) => x.commentaires ?? [])
+        c.commentaires = [...(c.commentaires ?? []), { id: Math.max(0, ...tous.map((k) => k.id)) + 1, auteur: MOI, auteur_nom: nom ?? '', auteur_role: acces.role, texte, cree_le: new Date().toISOString() }]
+        return route.fulfill({ json: { id: c.commentaires.length } })
       }
       // Actions du franchisé (script actions_franchise.sql) : la base pose son nom et la date
       if (fn === 'ajouter_action_franchise' || fn === 'marquer_action_franchise') {

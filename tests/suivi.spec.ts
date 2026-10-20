@@ -84,10 +84,10 @@ test('noter un magasin garde l’historique daté', async ({ page }) => {
   expect(valeur['Lyon Test'].historique.map((p: { caseId: string }) => p.caseId)).toEqual(['coeur', 'redressement', 'diagnostic'])
 })
 
-test('Magasins s’ouvre sur la carte', async ({ page }) => {
+test('Magasins s’ouvre sur la liste', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/magasins')
-  await expect(page.getByRole('tab', { name: 'Carte', selected: true })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Liste', selected: true })).toBeVisible()
 })
 
 test('l’icône de l’app est le logo V and B', async ({ page, request }) => {

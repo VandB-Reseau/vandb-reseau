@@ -108,6 +108,7 @@ test('un Coach ne l’envoie pas, et sa note de santé ne réécrit que la ligne
   await page.goto('./#/plus/sante?vue=evaluer')
   await page.getByRole('combobox', { name: 'Rechercher un magasin ou un Coach' }).fill('Rennes')
   await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Saisir Rennes Test' }).click()
   await page.getByRole('button', { name: 'Fort : CA marché extérieur de Rennes Test' }).click()
   await expect.poll(() => ecritures.filter((e) => e.table === 'suivi_magasins').length).toBe(1)
   const e = ecritures.find((x) => x.table === 'suivi_magasins')!
@@ -124,6 +125,7 @@ test('tant que le script n’est pas passé, le suivi reste dans app_config', as
   await page.goto('./#/plus/sante?vue=evaluer')
   await page.getByRole('combobox', { name: 'Rechercher un magasin ou un Coach' }).fill('Rennes')
   await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Saisir Rennes Test' }).click()
   await page.getByRole('button', { name: 'Fort : CA marché extérieur de Rennes Test' }).click()
   await expect.poll(() => ecritures.filter((e) => e.table === 'app_config' && (e.corps as { key?: string }).key !== 'derniere_sauvegarde').length).toBe(1)
   expect(ecritures.filter((e) => e.table === 'suivi_magasins')).toEqual([])
