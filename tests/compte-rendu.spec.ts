@@ -44,7 +44,8 @@ test('dicter chaque partie, reprendre les actions en cours, puis enregistrer', a
   await d.getByLabel('5. Équipe', { exact: true }).fill('Équipe stable.')
   await d.getByRole('button', { name: 'Ajouter une action' }).click()
   await d.getByLabel('Action', { exact: true }).fill('Recommander les bières de garde')
-  await d.getByLabel('Porteur', { exact: true }).fill('Franchisé')
+  await d.getByLabel('Porteur', { exact: true }).click()
+  await page.getByRole('option', { name: 'Noé MODELE' }).click()
   await d.getByLabel('Échéance', { exact: true }).fill('2026-10-31')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-compte-rendu-saisie.png` })
@@ -52,7 +53,7 @@ test('dicter chaque partie, reprendre les actions en cours, puis enregistrer', a
   await expect(page.getByText('Visite enregistrée.')).toBeVisible()
   const ligne = (ecritures.find((e) => e.table === 'visits' && e.methode === 'POST')!.corps as Record<string, unknown>[])[0]
   expect(ligne.sections).toEqual(['', '', 'Magasin propre, ruptures sur les bières de garde.', '', 'Équipe stable.', ''])
-  expect(ligne.action_plan).toEqual([expect.objectContaining({ action: 'Recommander les bières de garde', porteur: 'Franchisé', echeance: '2026-10-31' })])
+  expect(ligne.action_plan).toEqual([expect.objectContaining({ action: 'Recommander les bières de garde', porteur: 'Noé MODELE', echeance: '2026-10-31' })])
 })
 
 test('une tournée garde des notes communes dictées, sans parties', async ({ page }) => {

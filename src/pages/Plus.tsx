@@ -7,7 +7,7 @@ import ListItemText from '@mui/material/ListItemText'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import { PageHeader } from '../components/PageHeader'
 import Typography from '@mui/material/Typography'
-import { barreTelephone, parametres, principales, secondaires, type Destination } from '../navigation/destinations'
+import { parametres, secondaires, type Destination } from '../navigation/destinations'
 import { useAuth } from '../auth/AuthContext'
 import { perimetreDuProfil } from '../data/perimetre'
 
@@ -34,7 +34,7 @@ export function Plus() {
   return (
     <>
       <PageHeader titre="Plus" />
-      {groupe(null, [...principales.filter((d) => !barreTelephone.includes(d)), ...secondaires])}
+      {groupe(null, secondaires)}
       {!sansParametres && groupe('Paramètres', parametres)}
     </>
   )

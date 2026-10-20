@@ -1,6 +1,10 @@
 import { useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import Badge from '@mui/material/Badge'
+import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
+import { Bulle } from './Outils'
 import Autocomplete from '@mui/material/Autocomplete'
+import type { SxProps, Theme } from '@mui/material/styles'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
@@ -17,10 +21,8 @@ import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import { useReseau } from '../data/ReseauContext'
 import { useAuth } from '../auth/AuthContext'
 import { enregistrerActionLibre, marquerActions, supprimerActionLibre } from '../data/chargement'
-import { echeanceDate, enRetard, type ActionSuivie } from '../data/actions'
+import { actionsDes, echeanceDate, enRetard, monNomPorteur, porteursDu, type ActionSuivie } from '../data/actions'
 import { ajouterActionFranchise, ErreurAction, marquerActionFranchise } from '../data/espaceFranchise'
-import { associesEnPlace } from '../data/associes'
-import { coachA } from '../data/charge'
 import type { ActionLibre, Reseau } from '../data/modele'
 import { dateCourte, lienFiche } from '../lib/format'
 import { lienCompteRendu } from '../data/visites'
@@ -49,7 +51,7 @@ export function useEcritureActions(reseau: Reseau) {
 const messageErreur = (e: unknown) => (e instanceof ErreurAction ? e.message : 'L’action n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.')
 
 // Ligne d'une action ; sans « cocher », lecture seule
-export function LigneAction({ reseau, x, avecMagasin, cocher, enCours = false, modifier }: { reseau: Reseau; x: ActionSuivie; avecMagasin?: boolean; cocher?: (faite: boolean) => void; enCours?: boolean; modifier?: () => void }) {
+export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher, enCours = false, modifier }: { reseau: Reseau; x: ActionSuivie; avecMagasin?: boolean; avecPorteur?: boolean; cocher?: (faite: boolean) => void; enCours?: boolean; modifier?: () => void }) {
   const retard = enRetard(x.a, reseau.jour)
   const echeance = x.a.echeance && (echeanceDate(x.a) ? dateCourte(x.a.echeance) : x.a.echeance)
   const auteur = x.libre?.auteur ? ` par ${x.libre.auteur}` : ''
@@ -69,8 +71,8 @@ export function LigneAction({ reseau, x, avecMagasin, cocher, enCours = false, m
         <Typography variant="body1" sx={{ fontWeight: 500, textDecoration: x.a.faite ? 'line-through' : undefined, color: x.a.faite ? 'text.secondary' : undefined, overflowWrap: 'anywhere' }}>{x.a.action}</Typography>
         <Typography variant="body2" color="text.secondary">
           {avecMagasin && <><Link component={RouterLink} to={lienFiche(x.magasin)}>{x.magasin}</Link> · </>}
-          {[x.a.porteur, faite].filter(Boolean).join(' · ')}
-          {(x.a.porteur || faite) && ' · '}
+          {[avecPorteur && x.a.porteur, faite].filter(Boolean).join(' · ')}
+          {((avecPorteur && x.a.porteur) || faite) && ' · '}
           {origine}
         </Typography>
       </Box>
@@ -118,52 +120,80 @@ export function ListeActions({ reseau, actions, avecMagasin, signaler, libelle, 
   )
 }
 
+// Icône « Tâches » de l'en-tête, avec le nombre de tâches à faire de la personne
+export function BoutonTaches() {
+  const { profil } = useAuth()
+  const { reseau } = useReseau()
+  const naviguer = useNavigate()
+  const moi = reseau ? monNomPorteur(reseau, profil) : ''
+  const nombre = reseau && moi ? actionsDes(reseau, null).filter((x) => !x.a.faite && x.a.porteur === moi).length : 0
+  return (
+    <Bulle titre="Tâches">
+      <IconButton aria-label={nombre ? `Tâches : ${nombre} à faire` : 'Tâches'} onClick={() => naviguer('/taches')} sx={{ color: '#ffffff', width: 48, height: 48 }}>
+        <Badge color="error" badgeContent={nombre} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><TaskAltOutlined /></Badge>
+      </IconButton>
+    </Bulle>
+  )
+}
+
 // Bouton « Ajouter une action » et sa fenêtre, pour l'en-tête d'une section
-export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false }: { reseau: Reseau; magasins: string[]; signaler: (m: string) => void; plein?: boolean }) {
+// porteur : proposé d'office (liste d'une personne)
+// tache : libellés de l'écran Tâches
+export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false, porteur, tache = false }: { reseau: Reseau; magasins: string[]; signaler: (m: string) => void; plein?: boolean; porteur?: string; tache?: boolean }) {
   const [ouvert, setOuvert] = useState(false)
   if (useEcritureActions(reseau).lectureSeule || !magasins.length) return null
   return (
     <>
-      <Button variant={plein ? 'contained' : 'text'} startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>Ajouter une action</Button>
-      {ouvert && <DialogAction reseau={reseau} magasins={magasins} action={null} onFermer={(msg) => { setOuvert(false); if (msg) signaler(msg) }} />}
+      <Button variant={plein ? 'contained' : 'text'} startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>{tache ? 'Ajouter une tâche' : 'Ajouter une action'}</Button>
+      {ouvert && <DialogAction reseau={reseau} magasins={magasins} action={null} porteurInitial={porteur} tache={tache} onFermer={(msg) => { setOuvert(false); if (msg) signaler(msg) }} />}
     </>
+  )
+}
+
+// Porteur choisi parmi les personnes du magasin ; un ancien porteur saisi à la main reste affiché
+export function ChampPorteur({ reseau, magasin, valeur, changer, sx }: { reseau: Reseau; magasin: string; valeur: string; changer: (v: string) => void; sx?: SxProps<Theme> }) {
+  const liste = porteursDu(reseau, magasin)
+  const options = valeur && !liste.some((p) => p.nom === valeur) ? [...liste, { nom: valeur, role: 'Autre' }] : liste
+  const role = (n: string) => options.find((p) => p.nom === n)?.role ?? ''
+  return (
+    <Autocomplete options={options.map((p) => p.nom)} value={valeur || null} onChange={(_e, v) => changer(v ?? '')} groupBy={role} sx={sx}
+      noOptionsText="Choisis d’abord le magasin"
+      renderInput={(p) => <TextField {...p} label="Porteur" />} />
   )
 }
 
 const dateValide = (d: string) => !d || /^\d{4}-\d{2}-\d{2}$/.test(d)
 
-export function DialogAction({ reseau, magasins, action, onFermer }: { reseau: Reseau; magasins: string[]; action: ActionSuivie | null; onFermer: (msg?: string) => void }) {
+export function DialogAction({ reseau, magasins, action, porteurInitial = '', tache = false, onFermer }: { reseau: Reseau; magasins: string[]; action: ActionSuivie | null; porteurInitial?: string; tache?: boolean; onFermer: (msg?: string) => void }) {
+  const [mot, Mot] = tache ? ['tâche', 'Tâche'] : ['action', 'Action']
   const { profil } = useAuth()
   const { franchise } = useEcritureActions(reseau)
   const a = action?.libre ?? null
   const [magasin, setMagasin] = useState(action?.magasin ?? (magasins.length === 1 ? magasins[0] : ''))
   const [texte, setTexte] = useState(a?.action ?? '')
-  const [porteur, setPorteur] = useState(a?.porteur ?? '')
+  const [porteur, setPorteur] = useState(a?.porteur ?? porteurInitial)
   const [echeance, setEcheance] = useState(a ? echeanceDate(a) : '')
-  const m = reseau.magasins.find((x) => x.nom === magasin)
-  const porteurs = m ? [...new Set([coachA(m, reseau.jour), ...associesEnPlace(reseau, m).map((x) => x.nom)].filter(Boolean))] : []
   const propre = texte.trim().replace(/\s+/g, ' ')
   return (
-    <Fenetre titre={a ? 'Modifier l’action' : 'Ajouter une action'} ouvert onFermer={onFermer}
+    <Fenetre titre={a ? `Modifier l’${mot}` : `Ajouter une ${mot}`} ouvert onFermer={onFermer}
       valide={!!propre && !!magasin && dateValide(echeance)}
       enregistrer={async () => {
         if (franchise) {
           await ajouterActionFranchise(magasin, propre, porteur.trim(), echeance)
-          return 'Action ajoutée.'
+          return `${Mot} ajoutée.`
         }
         const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}) }
         await enregistrerActionLibre(magasin, l)
-        return a ? 'Action mise à jour.' : 'Action ajoutée.'
+        return a ? `${Mot} mise à jour.` : `${Mot} ajoutée.`
       }}
-      supprimer={a ? async () => { await supprimerActionLibre(magasin, a.id); return 'Action supprimée.' } : undefined}
-      libelleSuppression={a ? `Supprimer l’action « ${a.action} » ?` : undefined}>
+      supprimer={a ? async () => { await supprimerActionLibre(magasin, a.id); return `${Mot} supprimée.` } : undefined}
+      libelleSuppression={a ? `Supprimer l’${mot} « ${a.action} » ?` : undefined}>
       {magasins.length > 1 && !a && (
         <Autocomplete options={magasins} value={magasin || null} onChange={(_e, v) => setMagasin(v ?? '')}
           renderInput={(p) => <TextField {...p} label="Magasin" />} />
       )}
-      <TextField label="Action" value={texte} onChange={(e) => setTexte(e.target.value)} autoFocus={!a} multiline minRows={2} />
-      <Autocomplete freeSolo options={porteurs} value={porteur} inputValue={porteur} onInputChange={(_e, v) => setPorteur(v)}
-        renderInput={(p) => <TextField {...p} label="Porteur" />} />
+      <TextField label={Mot} value={texte} onChange={(e) => setTexte(e.target.value)} autoFocus={!a} multiline minRows={2} />
+      <ChampPorteur reseau={reseau} magasin={magasin} valeur={porteur} changer={setPorteur} />
       <TextField type="date" label="Échéance" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
     </Fenetre>
   )

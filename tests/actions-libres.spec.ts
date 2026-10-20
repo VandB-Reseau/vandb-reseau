@@ -23,7 +23,10 @@ test('ajouter une action hors visite, la cocher faite, puis la modifier et la su
   await page.getByRole('button', { name: 'Ajouter une action' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une action' })
   await d.getByLabel('Action', { exact: true }).fill('Relancer la commande de coffrets')
-  await d.getByLabel('Porteur').fill('Franchisé 11')
+  await d.getByLabel('Porteur').click()
+  // Porteurs du magasin : franchisé, Coach, Responsable Régional, Directeur de réseau
+  await expect(page.getByRole('option')).toContainText(['Franchisé 11', 'Noé MODELE', 'Dominique DIRECTION'])
+  await page.getByRole('option', { name: 'Franchisé 11' }).click()
   await d.getByLabel('Échéance', { exact: true }).fill('2099-02-15')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-action-hors-visite.png` })
