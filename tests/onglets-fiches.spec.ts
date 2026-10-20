@@ -16,6 +16,8 @@ for (const fiche of [
     await page.goto(fiche.adresse)
     await expect(bande(page, fiche.nom)).toBeVisible()
     const haut = isMobile ? 64 : 72
+    // Téléphone : en-tête bas, les onglets commencent avant 300 px
+    if (isMobile) expect(await hautBande(page, fiche.nom)).toBeLessThan(300)
     // En haut de la fiche : changer d'onglet ne bouge pas la page
     await bande(page, fiche.nom).getByRole('tab', { name: fiche.retour }).click()
     await expect.poll(() => hauteur(page)).toBe(0)

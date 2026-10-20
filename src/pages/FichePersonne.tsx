@@ -108,8 +108,8 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
   const p = useMemo(() => portefeuilleDe(reseau, magasins.filter((m) => m.statut !== 'avenir')), [reseau, magasins])
   return (
     <>
-      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe'))} sx={{ mb: 1, ml: -1 }}>Équipe</Button>
-      <ProfilPersonne nom={rr.nom} lignes={[role]}
+      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Équipe</Button>
+      <ProfilPersonne retour={{ libelle: 'Équipe', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe')) }} nom={rr.nom} lignes={[role]}
         pastille={p.decroche ? { ton: 'rouge', libelle: `${p.decroche} magasin${p.decroche > 1 ? 's' : ''} en Décroche` } : null}
         compteurs={[
           { valeur: coachs.length, libelle: coachs.length > 1 ? 'Coachs' : 'Coach' },

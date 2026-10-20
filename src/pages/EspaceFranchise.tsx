@@ -483,13 +483,13 @@ function OngletCampagnes({ reseau, m }: { reseau: Reseau; m: Magasin }) {
 }
 
 // Haut de fiche façon profil : CA du mois, écart, tâches en cours ; appeler son Coach, écrire, voir les visites
-function ProfilFranchise({ reseau, m, message }: { reseau: Reseau; m: Magasin; message: () => void }) {
+function ProfilFranchise({ reseau, m, message, retour }: { reseau: Reseau; m: Magasin; message: () => void; retour?: { libelle: string; aller: () => void } }) {
   const a = analyser(reseau, m.nom)
   const ouvertes = actionsDes(reseau, new Set([m.nom])).filter((x) => !x.a.faite)
   const retard = ouvertes.filter((x) => enRetard(x.a, reseau.jour)).length
   const coach = m.coach ? reseau.coachs[m.coach] ?? { nom: m.coach } : null
   return (
-    <ProfilPersonne nom={m.nom}
+    <ProfilPersonne nom={m.nom} retour={retour}
       lignes={[[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · '), [m.coach && `Coach ${m.coach}`, m.rr?.nom].filter(Boolean).join(' · ')]}
       pastille={retard ? { ton: 'rouge', libelle: `${retard} tâche${retard > 1 ? 's' : ''} en retard` } : m.statut !== 'ouvert' ? { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] } : null}
       compteurs={[
@@ -539,8 +539,8 @@ export function FicheMagasinFranchise() {
         if (!m) return <EmptyState icone={<StorefrontOutlined />} titre="Magasin introuvable" texte="Ce magasin ne fait pas partie de tes magasins." action={<Button variant="contained" onClick={() => naviguer('/magasins')}>Voir mes magasins</Button>} />
         return (
           <>
-            {reseau.magasins.length > 1 && <Button startIcon={<ArrowBack />} onClick={() => naviguer('/magasins')} sx={{ mb: 2, ml: -1, minHeight: 48 }}>Mes magasins</Button>}
-            <ProfilFranchise reseau={reseau} m={m} message={() => changerVue('messages')} />
+            {reseau.magasins.length > 1 && <Button startIcon={<ArrowBack />} onClick={() => naviguer('/magasins')} sx={{ mb: 2, ml: -1, minHeight: 48, display: { xs: 'none', md: 'inline-flex' } }}>Mes magasins</Button>}
+            <ProfilFranchise retour={reseau.magasins.length > 1 ? { libelle: 'Mes magasins', aller: () => naviguer('/magasins') } : undefined} reseau={reseau} m={m} message={() => changerVue('messages')} />
             <Onglets valeur={vue} onChange={changerVue} rubriques={onglets} libelle={`Rubriques de ${m.nom}`} collants />
             <ContenuOnglet>
               {vue === 'fil' && <FilMagasin reseau={reseau} m={m} />}

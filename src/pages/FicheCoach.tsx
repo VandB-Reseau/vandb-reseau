@@ -75,8 +75,8 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
   const faitesAn = rythme.reduce((t, l) => t + l.faites, 0), objectifAn = rythme.reduce((t, l) => t + l.objectif, 0)
   return (
     <>
-      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe'))} sx={{ mb: 1, ml: -1 }}>Équipe</Button>
-      <ProfilPersonne nom={coach.nom} lignes={[['Coach', coach.rr?.nom].filter(Boolean).join(' · ')]}
+      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Équipe</Button>
+      <ProfilPersonne retour={{ libelle: 'Équipe', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe')) }} nom={coach.nom} lignes={[['Coach', coach.rr?.nom].filter(Boolean).join(' · ')]}
         pastille={retards ? { ton: 'rouge', libelle: `${retards} tâche${retards > 1 ? 's' : ''} en retard` } : enRetardVisite.length ? { ton: 'orange', libelle: `${enRetardVisite.length} visite${enRetardVisite.length > 1 ? 's' : ''} en retard` } : null}
         compteurs={[
           { valeur: magasins.length, libelle: magasins.length > 1 ? 'magasins' : 'magasin' },
