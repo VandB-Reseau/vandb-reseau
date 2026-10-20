@@ -20,6 +20,7 @@ const aujourdhui = () => new Date().toISOString().slice(0, 10)
 // Tâches : icône de l'en-tête, à côté de la cloche
 async function ouvrirTaches(page: Page) {
   await page.locator('button[aria-label^="Tâches"]').click()
+  await page.getByRole('button', { name: 'Toutes les tâches' }).click()
   await expect(page).toHaveURL(/#\/taches$/)
 }
 

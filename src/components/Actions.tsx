@@ -3,6 +3,10 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import Badge from '@mui/material/Badge'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import { Bulle } from './Outils'
+import { MenuEntete } from './MenuEntete'
+import ListItemButton from '@mui/material/ListItemButton'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import ListItemText from '@mui/material/ListItemText'
 import { ChampPieces, ListePieces } from './Pieces'
 import Alert from '@mui/material/Alert'
 import type { Piece } from '../lib/pieces'
@@ -124,19 +128,47 @@ export function ListeActions({ reseau, actions, avecMagasin, signaler, libelle, 
   )
 }
 
-// Icône « Tâches » de l'en-tête, avec le nombre de tâches à faire de la personne
+// Icône « Tâches » de l'en-tête : nombre de tâches à faire de la personne, aperçu des plus urgentes
+const APERCU_TACHES = 6
+const parUrgence = (x: ActionSuivie, y: ActionSuivie) => (echeanceDate(x.a) || '9999').localeCompare(echeanceDate(y.a) || '9999') || y.date.localeCompare(x.date)
+
 export function BoutonTaches() {
   const { profil } = useAuth()
   const { reseau } = useReseau()
   const naviguer = useNavigate()
+  const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const moi = reseau ? monNomPorteur(reseau, profil) : ''
-  const nombre = reseau && moi ? actionsDes(reseau, null).filter((x) => !x.a.faite && x.a.porteur === moi).length : 0
+  const aFaire = reseau && moi ? actionsDes(reseau, null).filter((x) => !x.a.faite && x.a.porteur === moi) : []
+  const nombre = aFaire.length
+  const fermer = () => setAncre(null)
+  const ouvrir = () => { fermer(); naviguer('/taches') }
   return (
-    <Bulle titre="Tâches">
-      <IconButton aria-label={nombre ? `Tâches : ${nombre} à faire` : 'Tâches'} onClick={() => naviguer('/taches')} sx={{ color: '#ffffff', width: 48, height: 48 }}>
-        <Badge color="error" badgeContent={nombre} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><TaskAltOutlined /></Badge>
-      </IconButton>
-    </Bulle>
+    <>
+      <Bulle titre="Tâches">
+        <IconButton aria-label={nombre ? `Tâches : ${nombre} à faire` : 'Tâches'} onClick={(e) => setAncre(e.currentTarget)} sx={{ color: '#ffffff', width: 48, height: 48 }}>
+          <Badge color="error" badgeContent={nombre} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><TaskAltOutlined /></Badge>
+        </IconButton>
+      </Bulle>
+      <MenuEntete ancre={ancre} fermer={fermer} titre={nombre ? `Tâches à faire · ${nombre}` : 'Tâches à faire'} vide={nombre ? null : 'Aucune tâche à faire.'}
+        tout="Toutes les tâches" icone={<TaskAltOutlined />} ouvrirTout={() => naviguer('/taches')}>
+        {ancre && reseau && [...aFaire].sort(parUrgence).slice(0, APERCU_TACHES).map((x) => {
+          const retard = enRetard(x.a, reseau.jour)
+          const echeance = echeanceDate(x.a)
+          return (
+            <ListItemButton key={x.cle} onClick={ouvrir} sx={{ minHeight: 56, alignItems: 'flex-start' }}>
+              <ListItemIcon sx={{ minWidth: 40, mt: 0.5, color: retard ? 'error.main' : 'text.secondary' }}><RadioButtonUnchecked /></ListItemIcon>
+              <ListItemText primary={x.a.action}
+                secondary={<>
+                  <Box component="span" sx={{ display: 'block' }}>{x.magasin}</Box>
+                  {echeance && <Box component="span" sx={{ display: 'block', fontWeight: retard ? 600 : 400, color: retard ? 'error.main' : undefined }}>{retard ? `En retard · ${dateCourte(echeance)}` : `Pour le ${dateCourte(echeance)}`}</Box>}
+                </>}
+                slotProps={{ primary: { sx: { fontWeight: 600, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'normal' } }, secondary: { component: 'span' } }} />
+            </ListItemButton>
+          )
+        })}
+        {nombre > APERCU_TACHES && <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 1 }}>{`Et ${nombre - APERCU_TACHES} autre${nombre - APERCU_TACHES > 1 ? 's' : ''}`}</Typography>}
+      </MenuEntete>
+    </>
   )
 }
 
