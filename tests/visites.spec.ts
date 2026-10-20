@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { COMPTE, seConnecter, simulerSupabase, textesTropPetits, type Ecriture } from './supabase-simule'
+import { COACHS, magasinsFictifs } from './donnees-fictives'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -126,5 +127,38 @@ test('l’agenda montre ouvertures, événements et absences avec remplaçant su
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Absence enregistrée.')).toBeVisible()
   expect(ecritures.at(-1)).toMatchObject({ methode: 'POST', table: 'leaves', corps: { person: 'Camille TESTARD', role: 'cs' } })
+  expect(await textesTropPetits(page)).toEqual([])
+})
+
+test('un grand réseau s’affiche par tranches sans bloquer les onglets', async ({ page }) => {
+  // 280 magasins et 3 000 visites fictifs, lus par pages de 1 000 comme sur Supabase
+  const magasins = Array.from({ length: 280 }, (_, i) => ({ ...magasinsFictifs[i % 24], n: `Grand${i} Test`, code: `G${i}` }))
+  const visites = Array.from({ length: 3000 }, (_, i) => ({ id: 5000 + i, store: `Grand${i % 280} Test`, visit_date: `202${4 + (i % 3)}-0${1 + (i % 9)}-${String(1 + (i % 27)).padStart(2, '0')}`, type: 'terrain', visitor: COACHS[i % 4], signed_required: false, docs: [], notes: `Visite fictive ${i}` }))
+  await simulerSupabase(page, { config: { store_adds: magasins } })
+  await page.route(/supabase\.test\/rest\/v1\/visits/, (r) => {
+    const u = new URL(r.request().url())
+    const debut = Number(u.searchParams.get('offset') ?? 0)
+    return r.fulfill({ json: visites.slice(debut, debut + Number(u.searchParams.get('limit') ?? 1000)) })
+  })
+  await page.route(/supabase\.test\/rest\/v1\/reassigns/, (r) => r.fulfill({ json: magasins.map((m, i) => ({ id: i + 1, store: m.n, cs: COACHS[i % 4], date: '2018-01-01', note: '', type: 'pre' })) }))
+  await page.goto('./')
+  await page.getByLabel('Email').fill(COMPTE.email)
+  await page.getByLabel('Mot de passe').fill(COMPTE.motDePasse)
+  await page.getByRole('button', { name: 'Se connecter' }).click()
+  await page.getByRole('heading', { level: 1, name: /Bonjour|Bonsoir/ }).waitFor()
+  await page.goto('./#/visites')
+  await expect(page.getByText('Par magasin (280)')).toBeVisible()
+  await expect(page.getByRole('link', { name: /^Grand\d+ Test$/ })).toHaveCount(50)
+  await page.getByRole('button', { name: 'Voir plus (230)' }).click()
+  await expect(page.getByRole('link', { name: /^Grand\d+ Test$/ })).toHaveCount(100)
+  // Seules les 50 visites les plus récentes sont dessinées à l'ouverture de l'onglet
+  await page.getByRole('tab', { name: /Historique/ }).click()
+  await expect(page.getByText('3000 visites')).toBeVisible()
+  await expect(page.getByRole('link', { name: /^Grand\d+ Test$/ })).toHaveCount(50)
+  await page.getByRole('button', { name: 'Voir plus (2950)' }).click()
+  await expect(page.getByRole('link', { name: /^Grand\d+ Test$/ })).toHaveCount(100)
+  // Un filtre repart de la première tranche
+  await page.getByRole('textbox', { name: /Rechercher/ }).or(page.getByPlaceholder('Rechercher un magasin ou une note')).first().fill('Grand7 Test')
+  await expect(page.getByText(/^\d+ visites?$/)).toHaveText(/^1\d visites$/)
   expect(await textesTropPetits(page)).toEqual([])
 })
