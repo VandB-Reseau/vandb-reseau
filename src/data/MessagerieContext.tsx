@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import type { Piece } from '../lib/pieces'
 import { chargerMessagerie, envoyerMessage, marquerLu as marquerLuBase, marquerLuPersonne as marquerLuPersonneBase, supprimerMessage, type Lecture, type Messagerie, type Sujet } from './messagerie'
 
 interface EtatMessagerie {
   messagerie: Messagerie | null
   charge: boolean // premier chargement terminé
   // repli : magasin de l'envoi tant que la base n'est pas passée aux échanges à deux
-  envoyer: (destinataire: string, texte: string, magasins: string[], repli: string | null) => Promise<void>
+  envoyer: (destinataire: string, texte: string, magasins: string[], repli: string | null, pieces?: Piece[]) => Promise<void>
   supprimer: (id: number) => Promise<void>
   marquerLu: (magasin: string, sujet: Sujet) => void
   marquerLuPersonne: (cle: string) => void
@@ -54,9 +55,9 @@ export function MessagerieProvider({ children }: { children: ReactNode }) {
   }, [marquerLu, marquerLuPersonne])
 
   const version = messagerie?.version ?? 1
-  const envoyer = useCallback(async (destinataire: string, texte: string, magasins: string[], repli: string | null) => {
+  const envoyer = useCallback(async (destinataire: string, texte: string, magasins: string[], repli: string | null, pieces: Piece[] = []) => {
     try {
-      await envoyerMessage(destinataire, texte, magasins, version, repli)
+      await envoyerMessage(destinataire, texte, magasins, version, repli, pieces)
     } finally {
       await recharger()
     }

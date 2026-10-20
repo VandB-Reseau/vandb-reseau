@@ -10,6 +10,7 @@
 --    fonctions ci-dessous, qui vérifient le rôle (lu dans la base) et que le
 --    magasin fait partie de ceux du compte.
 -- 3) Le nom et le rôle de l'auteur sont posés par la base, jamais par l'app.
+-- 5) Photos et fichiers joints (pieces) : l'espace fichiers est créé par pieces_jointes.sql.
 -- 4) Anciens messages : « equipe » = jamais renvoyé à un franchisé ; un envoi sur plusieurs
 --    magasins = une ligne par magasin, reliées par « lot ».
 -- ════════════════════════════════════════════════════════════════
@@ -33,6 +34,8 @@ ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS auteur_cle text;
 ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS magasins text[] NOT NULL DEFAULT '{}';
 ALTER TABLE public.messages ALTER COLUMN store DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS messages_destinataire ON public.messages (destinataire, cree_le);
+-- Photos et fichiers joints (script pieces_jointes.sql pour l'espace fichiers) : [{chemin, nom, taille, type}]
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS pieces jsonb NOT NULL DEFAULT '[]'::jsonb;
 
 -- Dernière lecture de chaque compte, par magasin et par sujet (messages, visites)
 CREATE TABLE IF NOT EXISTS public.messages_lus (
@@ -118,7 +121,7 @@ BEGIN
     'reference', v_ref,
     'messages', (SELECT coalesce(jsonb_agg(jsonb_build_object('id', m.id, 'store', m.store, 'auteur', m.auteur, 'auteur_nom', m.auteur_nom,
         'auteur_role', m.auteur_role, 'texte', m.texte, 'mentions', to_jsonb(m.mentions), 'cree_le', m.cree_le, 'equipe', m.equipe, 'lot', m.lot,
-        'destinataire', m.destinataire, 'auteur_cle', m.auteur_cle, 'magasins', to_jsonb(m.magasins)) ORDER BY m.cree_le, m.id), '[]'::jsonb)
+        'destinataire', m.destinataire, 'auteur_cle', m.auteur_cle, 'magasins', to_jsonb(m.magasins), 'pieces', m.pieces) ORDER BY m.cree_le, m.id), '[]'::jsonb)
       FROM public.messages m WHERE m.cree_le > now() - interval '18 months' AND (
         -- Échange à deux : l'auteur et le destinataire seulement
         (m.destinataire IS NOT NULL AND (m.auteur = auth.uid() OR m.destinataire = v_cle))
@@ -154,23 +157,34 @@ BEGIN
   RETURN jsonb_build_object('id', v_id, 'cree_le', v_le);
 END $$;
 
--- Message privé à une personne, magasins cités en option (parmi ceux du compte).
+-- Pièces jointes reçues de l'app : seuls les fichiers rangés sous le compte connecté, 10 au plus
+CREATE OR REPLACE FUNCTION public.pieces_propres(p_pieces jsonb) RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+  SELECT coalesce(jsonb_agg(jsonb_build_object('chemin', e->>'chemin', 'nom', left(coalesce(e->>'nom', 'Fichier'), 200),
+      'taille', CASE WHEN coalesce(e->>'taille', '') ~ '^\d{1,12}$' THEN (e->>'taille')::bigint ELSE 0 END, 'type', left(coalesce(e->>'type', ''), 120)) ORDER BY o), '[]'::jsonb)
+  FROM jsonb_array_elements(CASE WHEN jsonb_typeof(p_pieces) = 'array' THEN p_pieces ELSE '[]'::jsonb END) WITH ORDINALITY AS t(e, o)
+  WHERE o <= 10 AND jsonb_typeof(e) = 'object' AND coalesce(e->>'chemin', '') LIKE auth.uid()::text || '/%'
+$$;
+
+-- Message privé à une personne, magasins cités en option (parmi ceux du compte), photos et fichiers en option.
 -- Un franchisé écrit à l'équipe, jamais à un autre franchisé.
-CREATE OR REPLACE FUNCTION public.envoyer_a(p_destinataire text, p_texte text, p_magasins text[] DEFAULT '{}') RETURNS jsonb
+DROP FUNCTION IF EXISTS public.envoyer_a(text, text, text[]);
+CREATE OR REPLACE FUNCTION public.envoyer_a(p_destinataire text, p_texte text, p_magasins text[] DEFAULT '{}', p_pieces jsonb DEFAULT '[]') RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v_texte text := trim(coalesce(p_texte, '')); v_cle text := public.ma_cle(); v_mag text; v_id bigint; v_le timestamptz;
+  v_pieces jsonb := public.pieces_propres(p_pieces);
 BEGIN
   IF v_cle IS NULL OR NOT (public.est_equipe() OR public.mon_role() = 'franchise') THEN RAISE EXCEPTION 'acces_refuse'; END IF;
   IF coalesce(p_destinataire, '') !~ '^(directeur|rr:.+|coach:.+|franchise:.+)$' OR p_destinataire = v_cle THEN RAISE EXCEPTION 'destinataire_inconnu'; END IF;
   IF public.mon_role() = 'franchise' AND p_destinataire LIKE 'franchise:%' THEN RAISE EXCEPTION 'acces_refuse'; END IF;
-  IF v_texte = '' THEN RAISE EXCEPTION 'message_vide'; END IF;
+  IF v_texte = '' AND jsonb_array_length(v_pieces) = 0 THEN RAISE EXCEPTION 'message_vide'; END IF;
   IF length(v_texte) > 4000 THEN RAISE EXCEPTION 'message_trop_long'; END IF;
   FOREACH v_mag IN ARRAY coalesce(p_magasins, '{}') LOOP
     IF NOT public.peut_ecrire_magasin(v_mag) THEN RAISE EXCEPTION 'acces_refuse'; END IF;
   END LOOP;
-  INSERT INTO public.messages (store, auteur, auteur_nom, auteur_role, texte, mentions, destinataire, auteur_cle, magasins)
+  INSERT INTO public.messages (store, auteur, auteur_nom, auteur_role, texte, mentions, destinataire, auteur_cle, magasins, pieces)
   VALUES (NULL, auth.uid(), public.mon_nom(), public.mon_role(), v_texte, ARRAY[p_destinataire], p_destinataire, v_cle,
-    coalesce((SELECT array_agg(DISTINCT x) FROM unnest(p_magasins) x), '{}'))
+    coalesce((SELECT array_agg(DISTINCT x) FROM unnest(p_magasins) x), '{}'), v_pieces)
   RETURNING id, cree_le INTO v_id, v_le;
   PERFORM public.marquer_lu_personne(p_destinataire);
   RETURN jsonb_build_object('id', v_id, 'cree_le', v_le);
@@ -210,7 +224,7 @@ END $$;
 DO $$
 DECLARE f text;
 BEGIN
-  FOREACH f IN ARRAY ARRAY['ma_cle()', 'envoyer_a(text, text, text[])', 'marquer_lu_personne(text)', 'magasins_messagerie()', 'peut_ecrire_magasin(text)', 'mon_nom()', 'messagerie()', 'marquer_lu(text, text)',
+  FOREACH f IN ARRAY ARRAY['ma_cle()', 'pieces_propres(jsonb)', 'envoyer_a(text, text, text[], jsonb)', 'marquer_lu_personne(text)', 'magasins_messagerie()', 'peut_ecrire_magasin(text)', 'mon_nom()', 'messagerie()', 'marquer_lu(text, text)',
     'envoyer_message(text, text, text[], boolean, uuid)', 'supprimer_message(bigint)', 'renommer_magasin_messages(text, text)'] LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION public.%s FROM PUBLIC, anon', f);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.%s TO authenticated', f);

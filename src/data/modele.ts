@@ -1,4 +1,5 @@
 // Modèle métier lisible, construit à partir des tables Supabase de l'ancienne app.
+import type { Piece } from '../lib/pieces'
 
 export type Statut = 'avenir' | 'preouverture' | 'nouveau' | 'ouvert'
 
@@ -139,8 +140,8 @@ export const libelleTypeVisite = (t: string) => typesVisite.find((x) => x.id ===
 
 export interface Document { label: string; url: string }
 // echeance : AAAA-MM-JJ (texte libre pour les plans saisis avant) ; faite : date de réalisation, vide tant qu'elle est en cours
-// faitePar : qui l'a cochée faite
-export interface ActionPlan { id?: string; action: string; porteur: string; echeance: string; faite?: string; faitePar?: string }
+// faitePar : qui l'a cochée faite ; pieces : photos et fichiers joints
+export interface ActionPlan { id?: string; action: string; porteur: string; echeance: string; faite?: string; faitePar?: string; pieces?: Piece[] }
 // Action ajoutée hors visite, sur un magasin (app_config, clé actions, par magasin)
 export interface ActionLibre extends ActionPlan { id: string; creeLe: string; auteur?: string }
 

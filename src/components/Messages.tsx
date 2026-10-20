@@ -36,6 +36,8 @@ import {
 import type { Magasin, Reseau } from '../data/modele'
 import { EmptyState } from './EmptyState'
 import { Bulle } from './Outils'
+import { BoutonJoindre, ListePieces, PiecesEnAttente } from './Pieces'
+import type { Piece } from '../lib/pieces'
 
 const MAXI = 30
 const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr')
@@ -70,7 +72,8 @@ function BulleMessage({ msg, moi, noms, premier, dernier, choisi, contexte, choi
           {msg.equipe ? <LockOutlined sx={{ fontSize: 14 }} /> : contexte && !contexte.startsWith('À ') ? <StorefrontOutlined sx={{ fontSize: 14 }} /> : null}{etiquette}
         </Typography>
       )}
-      <Typography variant="body1" component="span" sx={{ display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}><Texte texte={msg.texte} noms={noms} /></Typography>
+      {msg.texte && <Typography variant="body1" component="span" sx={{ display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}><Texte texte={msg.texte} noms={noms} /></Typography>}
+      {msg.pieces.length > 0 && <ListePieces pieces={msg.pieces} clair={moi} />}
     </>
   )
   const bulleSx: SxProps<Theme> = {
@@ -103,11 +106,13 @@ const bande = { display: 'flex', gap: 1, overflowX: 'auto', pb: 1, scrollbarWidt
 // Saisie d'un message : champ arrondi et envoi sur une ligne.
 // citables : magasins à citer avec « # » (proposés en puces au-dessus du champ, sans le masquer) ;
 // destinataires : sur une fiche magasin, la personne à qui l'on écrit.
-function Saisie({ citables, destinataires, dest, setDest, envoyer, fond, collante }: {
+// joindre : photos et fichiers possibles (base à jour)
+function Saisie({ citables, destinataires, dest, setDest, envoyer, fond, collante, joindre, signaler }: {
   citables: Magasin[]; destinataires: Participant[]; dest: string | null; setDest: (cle: string) => void
-  envoyer: (texte: string) => Promise<boolean>; fond: string; collante: boolean
+  envoyer: (texte: string, pieces: Piece[]) => Promise<boolean>; fond: string; collante: boolean; joindre: boolean; signaler: (m: string) => void
 }) {
   const [texte, setTexte] = useState('')
+  const [pieces, setPieces] = useState<Piece[]>([])
   const [curseur, setCurseur] = useState(0)
   const [envoi, setEnvoi] = useState(false)
   const [masque, setMasque] = useState(false)
@@ -129,11 +134,11 @@ function Saisie({ citables, destinataires, dest, setDest, envoyer, fond, collant
     const nouveau = `${avant}${curseur > 0 && !/\s$/.test(avant) ? ' ' : ''}#${texte.slice(curseur)}`
     placer(nouveau, nouveau.length - texte.slice(curseur).length)
   }
-  const pret = !!texte.trim() && !!dest && !envoi
+  const pret = (!!texte.trim() || pieces.length > 0) && !!dest && !envoi
   const valider = async () => {
     if (!pret) return
     setEnvoi(true)
-    if (await envoyer(texte.trim())) { setTexte(''); setCurseur(0) }
+    if (await envoyer(texte.trim(), pieces)) { setTexte(''); setCurseur(0); setPieces([]) }
     setEnvoi(false)
   }
   const touche = (e: KeyboardEvent) => {
@@ -165,7 +170,9 @@ function Saisie({ citables, destinataires, dest, setDest, envoyer, fond, collant
           ))}
         </Box>
       )}
+      {pieces.length > 0 && <Box sx={{ pb: 1 }}><PiecesEnAttente pieces={pieces} changer={setPieces} /></Box>}
       <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 0.5 }}>
+        {joindre && <BoutonJoindre pieces={pieces} changer={setPieces} signaler={signaler} />}
         {citables.length > 0 && <Bulle titre="Citer un magasin"><IconButton onClick={diese} aria-label="Citer un magasin" sx={{ width: 48, height: 48, flexShrink: 0 }}><Tag /></IconButton></Bulle>}
         <TextField placeholder={nomDest && destinataires.length ? `Message à ${nomDest}` : 'Message'} multiline maxRows={6} fullWidth value={texte} inputRef={champ}
           onChange={(e) => { setTexte(e.target.value); setCurseur(e.target.selectionStart ?? e.target.value.length); setMasque(false) }}
@@ -243,11 +250,11 @@ export function FilMessages({ reseau, m, contact, signaler, lectureSeule = false
   if (!charge) return <Typography variant="body2" color="text.secondary">Chargement des messages…</Typography>
   if (!messagerie) return <EmptyState icone={<ForumOutlined />} titre="Messagerie pas encore activée" texte="Les messages apparaîtront ici dès son activation dans la base." />
 
-  const ecrire = async (texte: string) => {
+  const ecrire = async (texte: string, pieces: Piece[]) => {
     if (!dest) return false
     // Échange avec une personne : magasins cités par « # » (et le magasin affiché) ; fiche magasin : ce magasin
     const magasins = contact ? [...new Set([...(filtre ? [filtre] : []), ...magasinsCites(texte, citables)])] : m ? [m.nom] : []
-    try { await envoyer(dest, texte, magasins, magasins[0] ?? contact?.magasins[0]?.nom ?? null); return true } catch { signaler('Message non envoyé. Réessaie dans un instant.'); return false }
+    try { await envoyer(dest, texte, magasins, magasins[0] ?? contact?.magasins[0]?.nom ?? null, pieces); return true } catch { signaler('Message non envoyé. Réessaie dans un instant.'); return false }
   }
   const affiches = tous ? liste : liste.slice(-MAXI)
   const premierNouveau = affiches.find((x) => nouveauxAvant?.has(x.id))
@@ -295,7 +302,7 @@ export function FilMessages({ reseau, m, contact, signaler, lectureSeule = false
     </>
   )
   const saisie = !lectureSeule && (contact || destinataires.length > 0) && (
-    <Saisie citables={citables} destinataires={destinataires} dest={dest} setDest={setDest} envoyer={ecrire} fond={fond} collante={!cadre} />
+    <Saisie citables={citables} destinataires={destinataires} dest={dest} setDest={setDest} envoyer={ecrire} fond={fond} collante={!cadre} joindre={messagerie.version >= 3} signaler={signaler} />
   )
   if (cadre) {
     return (

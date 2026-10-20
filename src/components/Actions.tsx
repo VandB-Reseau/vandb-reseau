@@ -3,6 +3,9 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import Badge from '@mui/material/Badge'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import { Bulle } from './Outils'
+import { ChampPieces, ListePieces } from './Pieces'
+import Alert from '@mui/material/Alert'
+import type { Piece } from '../lib/pieces'
 import Autocomplete from '@mui/material/Autocomplete'
 import type { SxProps, Theme } from '@mui/material/styles'
 import Box from '@mui/material/Box'
@@ -75,6 +78,7 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
           {((avecPorteur && x.a.porteur) || faite) && ' · '}
           {origine}
         </Typography>
+        {x.a.pieces && <ListePieces pieces={x.a.pieces} />}
       </Box>
       {!x.a.faite && echeance && <Chip size="small" color={retard ? 'error' : 'default'} variant={retard ? 'filled' : 'outlined'} label={retard ? `En retard · ${echeance}` : echeance} sx={{ fontSize: 12, fontWeight: 600, mt: 1.5, flexShrink: 0 }} />}
       {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier l’action ${x.a.action}`}><EditOutlined /></IconButton></Tooltip>}
@@ -173,16 +177,18 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ta
   const [texte, setTexte] = useState(a?.action ?? '')
   const [porteur, setPorteur] = useState(a?.porteur ?? porteurInitial)
   const [echeance, setEcheance] = useState(a ? echeanceDate(a) : '')
+  const [pieces, setPieces] = useState<Piece[]>(a?.pieces ?? [])
+  const [alerte, setAlerte] = useState('')
   const propre = texte.trim().replace(/\s+/g, ' ')
   return (
     <Fenetre titre={a ? `Modifier l’${mot}` : `Ajouter une ${mot}`} ouvert onFermer={onFermer}
       valide={!!propre && !!magasin && dateValide(echeance)}
       enregistrer={async () => {
         if (franchise) {
-          await ajouterActionFranchise(magasin, propre, porteur.trim(), echeance)
+          await ajouterActionFranchise(magasin, propre, porteur.trim(), echeance, pieces)
           return `${Mot} ajoutée.`
         }
-        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}) }
+        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}) }
         await enregistrerActionLibre(magasin, l)
         return a ? `${Mot} mise à jour.` : `${Mot} ajoutée.`
       }}
@@ -195,6 +201,8 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ta
       <TextField label={Mot} value={texte} onChange={(e) => setTexte(e.target.value)} autoFocus={!a} multiline minRows={2} />
       <ChampPorteur reseau={reseau} magasin={magasin} valeur={porteur} changer={setPorteur} />
       <TextField type="date" label="Échéance" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+      <ChampPieces pieces={pieces} changer={(p) => { setPieces(p); setAlerte('') }} signaler={setAlerte} />
+      {alerte && <Alert severity="warning">{alerte}</Alert>}
     </Fenetre>
   )
 }

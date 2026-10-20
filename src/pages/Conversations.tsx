@@ -21,7 +21,7 @@ import { FilMessages } from '../components/Messages'
 import { Bulle, ChampRecherche } from '../components/Outils'
 import { PageHeader } from '../components/PageHeader'
 import { useMessagerie } from '../data/MessagerieContext'
-import { conversationsPersonnes, heureCourte, lienPersonne, sansPrives, type Contact, type ConversationPersonne, type Messagerie } from '../data/messagerie'
+import { apercuDe, conversationsPersonnes, heureCourte, lienPersonne, sansPrives, type Contact, type ConversationPersonne, type Messagerie } from '../data/messagerie'
 import type { Reseau } from '../data/modele'
 import { lienFiche } from '../lib/format'
 
@@ -31,7 +31,7 @@ const detailContact = (c: Contact) => [c.role, c.magasins.length > 3 ? `${c.maga
 
 function LigneConversation({ c, mg, actif, ouvrir }: { c: ConversationPersonne; mg: Messagerie; actif: boolean; ouvrir: () => void }) {
   const d = c.dernier
-  const apercu = d ? `${d.auteur === mg.moi ? 'Moi : ' : ''}${d.texte}` : detailContact(c.contact)
+  const apercu = d ? `${d.auteur === mg.moi ? 'Moi : ' : ''}${apercuDe(d)}` : detailContact(c.contact)
   const fort = c.nonLus > 0
   return (
     <ListItemButton selected={actif} onClick={ouvrir} aria-current={actif ? 'true' : undefined}

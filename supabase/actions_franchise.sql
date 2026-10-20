@@ -1,6 +1,6 @@
 -- ════════════════════════════════════════════════════════════════
 -- V and B — Le franchisé coche et ajoute les actions de ses magasins
--- À exécuter dans Supabase > SQL Editor, APRÈS acces_franchises.sql et cloisonnement_equipe.sql. Réexécutable.
+-- À exécuter dans Supabase > SQL Editor, APRÈS acces_franchises.sql, cloisonnement_equipe.sql et messagerie.sql. Réexécutable.
 --
 -- 1) Un franchisé ne lit ni n'écrit aucune table : il passe par les deux fonctions ci-dessous,
 --    qui vérifient que le magasin fait partie des siens (table acces_franchises).
@@ -21,8 +21,10 @@ BEGIN
   RETURN v_fr;
 END $$;
 
--- Ajoute une action hors visite (une liste par magasin dans suivi_magasins, rubrique « actions »)
-CREATE OR REPLACE FUNCTION public.ajouter_action_franchise(p_store text, p_action text, p_porteur text DEFAULT '', p_echeance text DEFAULT '') RETURNS void
+-- Ajoute une action hors visite (une liste par magasin dans suivi_magasins, rubrique « actions »),
+-- avec ses photos et fichiers (pieces_propres, script messagerie.sql)
+DROP FUNCTION IF EXISTS public.ajouter_action_franchise(text, text, text, text);
+CREATE OR REPLACE FUNCTION public.ajouter_action_franchise(p_store text, p_action text, p_porteur text DEFAULT '', p_echeance text DEFAULT '', p_pieces jsonb DEFAULT '[]') RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE
   v_fr text := public.franchise_du_magasin(p_store);
@@ -36,6 +38,7 @@ BEGIN
     'id', 'l_' || substr(md5(random()::text || clock_timestamp()::text), 1, 12),
     'action', v_texte, 'porteur', left(btrim(coalesce(p_porteur, '')), 200), 'echeance', v_echeance,
     'creeLe', to_char((now() AT TIME ZONE 'Europe/Paris')::date, 'YYYY-MM-DD'), 'auteur', v_fr);
+  IF jsonb_array_length(public.pieces_propres(p_pieces)) > 0 THEN v_a := v_a || jsonb_build_object('pieces', public.pieces_propres(p_pieces)); END IF;
   INSERT INTO public.suivi_magasins AS s (store_name, cle, valeur) VALUES (p_store, 'actions', jsonb_build_array(v_a))
   ON CONFLICT (store_name, cle) DO UPDATE
     SET valeur = (CASE WHEN jsonb_typeof(s.valeur) = 'array' THEN s.valeur ELSE '[]'::jsonb END) || excluded.valeur, maj_le = now();
@@ -80,7 +83,7 @@ END $$;
 DO $$
 DECLARE f text;
 BEGIN
-  FOREACH f IN ARRAY ARRAY['franchise_du_magasin(text)', 'ajouter_action_franchise(text, text, text, text)',
+  FOREACH f IN ARRAY ARRAY['franchise_du_magasin(text)', 'ajouter_action_franchise(text, text, text, text, jsonb)',
     'marquer_action_franchise(text, boolean, text, bigint, integer, text)'] LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION public.%s FROM PUBLIC, anon', f);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.%s TO authenticated', f);
