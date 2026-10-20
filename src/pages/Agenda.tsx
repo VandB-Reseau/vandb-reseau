@@ -27,17 +27,20 @@ import { Fenetre } from '../components/EditionEquipe'
 import { enregistrerConge, enregistrerEvenement, supprimerConge, supprimerEvenement } from '../data/chargement'
 import { chargeA, distanceKm } from '../data/charge'
 import { lienFiche } from '../lib/format'
-import type { Conge, Evenement, Reseau } from '../data/modele'
+import { libelleTypeVisite, nomsVisiteurs, type Conge, type Evenement, type Reseau } from '../data/modele'
+import { estVisite } from '../data/chiffres'
+import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 
-type Categorie = 'ouverture' | 'anniversaire' | 'evenement' | 'conge'
+type Categorie = 'visite' | 'ouverture' | 'anniversaire' | 'evenement' | 'conge'
 const categories: { id: Categorie; libelle: string; couleur: string; icone: ReactElement }[] = [
+  { id: 'visite', libelle: 'Visites', couleur: '#1b6fce', icone: <EventAvailableOutlined fontSize="small" /> },
   { id: 'ouverture', libelle: 'Ouvertures', couleur: '#ef7d00', icone: <StorefrontOutlined fontSize="small" /> },
   { id: 'evenement', libelle: 'Événements', couleur: '#7c3aed', icone: <EventOutlined fontSize="small" /> },
   { id: 'conge', libelle: 'Congés', couleur: '#0f766e', icone: <BeachAccessOutlined fontSize="small" /> },
   { id: 'anniversaire', libelle: 'Anniversaires', couleur: '#c2185b', icone: <CakeOutlined fontSize="small" /> },
 ]
 
-interface Element { cle: string; categorie: Categorie; debut: string; fin: string; titre: string; detail: string; lien?: string; conge?: Conge; evenement?: Evenement; couleur: string }
+interface Element { cle: string; categorie: Categorie; debut: string; fin: string; titre: string; detail: string; lien?: string; conge?: Conge; evenement?: Evenement; couleur: string; magasin?: string }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10)
 const jourUTC = (s: string) => new Date(`${s}T00:00:00Z`)
@@ -58,6 +61,10 @@ export function remplacantSuggere(reseau: Reseau, c: Conge): string | null {
 
 export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Element[] {
   const el: Element[] = []
+  // Visites faites et prévues (pas les appels ni les points)
+  for (const v of reseau.visites) if (v.date >= debut && v.date <= fin && estVisite(v)) {
+    el.push({ cle: `v-${v.id ?? v.date}-${v.magasin}`, categorie: 'visite', debut: v.date, fin: v.date, titre: `Visite ${v.magasin}`, detail: [libelleTypeVisite(v.type), nomsVisiteurs(v)].filter(Boolean).join(' · '), lien: lienFiche(v.magasin), couleur: '#1b6fce', magasin: v.magasin })
+  }
   for (const m of reseau.magasins) {
     if (m.ouvertureConnue && m.ouverture >= debut && m.ouverture <= fin) el.push({ cle: `o-${m.nom}`, categorie: 'ouverture', debut: m.ouverture, fin: m.ouverture, titre: `Ouverture ${m.nom}`, detail: m.coach ? `Coach ${m.coach}` : 'Sans Coach', lien: lienFiche(m.nom), couleur: '#ef7d00' })
   }
@@ -142,7 +149,7 @@ export function Agenda() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [params, setParams] = useSearchParams()
-  const [actives, setActives] = useState<Set<Categorie>>(new Set(['ouverture', 'evenement', 'conge', 'anniversaire']))
+  const [actives, setActives] = useState<Set<Categorie>>(new Set(['visite', 'ouverture', 'evenement', 'conge', 'anniversaire']))
   const [conge, setConge] = useState<Conge | null | undefined>(undefined)
   const [evenement, setEvenement] = useState<Evenement | null | undefined>(undefined)
   const [message, setMessage] = useState('')

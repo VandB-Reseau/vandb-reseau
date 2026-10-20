@@ -36,11 +36,11 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   await expect(page.getByText('Paramètres')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Rechercher' })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button')).toHaveText(['Tous mes magasins', 'Annecy Test', 'Rennes Test'])
-  for (const t of ['Mes chiffres', 'Repères réseau · septembre 2026', 'Mon plan d’action', 'Visites et audits', 'Campagnes en cours', 'Mon équipe V and B']) {
+  for (const t of ['Mes chiffres', 'Repères réseau · septembre 2026', 'Mes tâches', 'Visites et audits', 'Campagnes en cours', 'Mon équipe V and B', 'Fil de mes magasins']) {
     await expect(page.getByRole('heading', { name: t, exact: true })).toBeVisible()
   }
-  // Plan d'action : l'action en retard d'abord ; rien de Lyon ni de Brest
-  const actions = page.getByRole('list', { name: 'Actions en cours' }).getByRole('listitem')
+  // Tâches : celle en retard d'abord ; rien de Lyon ni de Brest
+  const actions = page.getByRole('list', { name: 'Tâches en cours' }).getByRole('listitem')
   await expect(actions).toHaveCount(2)
   await expect(actions.first()).toContainText('Lancer une dégustation')
   await expect(actions.first()).toContainText('En retard')
@@ -75,8 +75,12 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Annecy Test', 'Rennes Test'])
   await page.getByRole('link', { name: /Annecy Test/ }).click()
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(['Fiche', 'Messages', 'Chiffres', 'Visites', 'Campagnes'])
+  await expect(onglets.getByRole('tab')).toHaveText(['Fil', 'Fiche', 'Messages', 'Chiffres', 'Visites', 'Campagnes'])
   await expect(page.getByRole('button', { name: /Modifier|Réaffecter|Saisir/ })).toHaveCount(0)
+  await expect(page.getByRole('group', { name: 'En bref' })).toContainText('tâches en cours')
+  await expect(page.getByRole('region', { name: 'Fil du magasin' })).toBeVisible()
+  await page.screenshot({ path: `captures/${info.project.name}-franchise-fiche-profil.png`, fullPage: true })
+  await onglets.getByRole('tab', { name: 'Fiche' }).click()
   await expect(page.getByText('Paul MULTI')).toBeVisible()
   await onglets.getByRole('tab', { name: 'Visites' }).click()
   await expect(page.getByText('Prévue')).toBeVisible()

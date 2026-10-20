@@ -39,6 +39,9 @@ import { DialogVisite, visiteurs } from '../components/DialogVisite'
 import { PastilleSignature } from '../components/PastilleVisite'
 import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, Pastille, TitreSection, useAffichage, useParTranches } from '../components/Social'
 import RouteOutlined from '@mui/icons-material/RouteOutlined'
+import DateRangeOutlined from '@mui/icons-material/DateRangeOutlined'
+import { VueSemaine } from '../components/Semaine'
+import { useAuth } from '../auth/AuthContext'
 import { anneeDe, anneesDisponibles, lienCompteRendu, semestresDisponibles, suiviRythme, type LigneRythme } from '../data/visites'
 import { nineBox } from '../data/sante'
 import { PastilleCase } from '../components/Sante'
@@ -47,7 +50,7 @@ import Chip from '@mui/material/Chip'
 import { dateCourte, lienCoach, lienFiche, lienPreparation } from '../lib/format'
 import { libelleTypeVisite, nomsVisiteurs, typesVisite, type Reseau, type Visite } from '../data/modele'
 
-type Edition = { visite: Visite | null; magasins: string[] } | null
+type Edition = { visite: Visite | null; magasins: string[]; date?: string } | null
 
 type Etat = 'retard' | 'ajour'
 
@@ -230,7 +233,9 @@ export function Visites() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [params, setParams] = useSearchParams()
-  const vue = (['historique', 'pratiques', 'campagnes'] as const).find((v) => v === params.get('vue')) ?? 'rythme'
+  const { profil } = useAuth()
+  // Le Coach arrive sur sa semaine ; les autres sur le rythme de visite
+  const vue = (['semaine', 'rythme', 'historique', 'pratiques', 'campagnes'] as const).find((v) => v === params.get('vue')) ?? (profil?.role === 'coach' ? 'semaine' : 'rythme')
   const [pratique, setPratique] = useState<BonnePratique | null | undefined>(undefined)
   const [edition, setEdition] = useState<Edition>(null)
   const [message, setMessage] = useState('')
@@ -244,6 +249,7 @@ export function Visites() {
             sousTitre={`${reseau.visites.length} visite${reseau.visites.length > 1 ? 's' : ''} enregistrée${reseau.visites.length > 1 ? 's' : ''}`}
           />
           <Onglets valeur={vue} onChange={(v) => setParams({ vue: v }, { replace: true })} libelle="Rubriques des visites" rubriques={[
+            { vue: 'semaine', libelle: profil?.role === 'coach' ? 'Ma semaine' : 'Semaine', court: 'Semaine', icone: <DateRangeOutlined /> },
             { vue: 'rythme', libelle: 'Rythme de visite', court: 'Rythme', icone: <EventRepeatOutlined /> },
             { vue: 'historique', libelle: 'Historique', icone: <HistoryOutlined /> },
             { vue: 'pratiques', libelle: 'Bonnes pratiques', court: 'Pratiques', icone: <TipsAndUpdatesOutlined /> },
@@ -253,10 +259,12 @@ export function Visites() {
             ? <VueCampagnes reseau={reseau} />
             : vue === 'pratiques'
             ? <VuePratiques reseau={reseau} modifier={setPratique} actions={<BoutonAction libelle="Ajouter une bonne pratique" onClick={() => setPratique(null)} />} />
+            : vue === 'semaine'
+            ? <VueSemaine reseau={reseau} surPC={surPC} planifier={(m, date) => setEdition({ visite: null, magasins: m, date })} />
             : vue === 'historique'
             ? <VueHistorique reseau={reseau} actions={actions} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
             : <VueRythme reseau={reseau} surPC={surPC} actions={actions} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
-          {edition && <DialogVisite reseau={reseau} visite={edition.visite} magasinsInitiaux={edition.magasins} onFermer={(m) => { setEdition(null); if (m) setMessage(m) }} />}
+          {edition && <DialogVisite reseau={reseau} visite={edition.visite} magasinsInitiaux={edition.magasins} dateInitiale={edition.date} onFermer={(m) => { setEdition(null); if (m) setMessage(m) }} />}
           {pratique !== undefined && <DialogPratique reseau={reseau} pratique={pratique} onFermer={(m) => { setPratique(undefined); if (m) setMessage(m) }} />}
           <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
         </>

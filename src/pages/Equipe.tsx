@@ -27,6 +27,8 @@ import BalanceOutlined from '@mui/icons-material/BalanceOutlined'
 import AutoFixHighOutlined from '@mui/icons-material/AutoFixHighOutlined'
 import WorkOutlineOutlined from '@mui/icons-material/WorkOutlineOutlined'
 import { VueCharge } from './VueCharge'
+import { VuePortefeuilles } from '../components/Portefeuille'
+import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import { VuePlan } from './VuePlan'
 import { PastilleStatut } from '../components/Pastilles'
 import { PageHeader } from '../components/PageHeader'
@@ -38,7 +40,7 @@ import { chargeA, magasinsDuCoach, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienDirecteur, lienFiche, lienRR, telLien } from '../lib/format'
 import type { Personne, Reseau, ResponsableRegional } from '../data/modele'
 
-type Vue = 'organisation' | 'collaborateurs' | 'franchises' | 'charge' | 'postes' | 'plan'
+type Vue = 'organisation' | 'portefeuilles' | 'collaborateurs' | 'franchises' | 'charge' | 'postes' | 'plan'
 
 function BoutonsContact({ p }: { p: Personne }) {
   return (
@@ -309,6 +311,7 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
 
 const rubriques: { vue: Vue; libelle: string; court: string; icone: ReactElement }[] = [
   { vue: 'organisation', libelle: 'Organisation', court: 'Organisation', icone: <AccountTreeOutlined /> },
+  { vue: 'portefeuilles', libelle: 'Portefeuilles', court: 'Portefeuilles', icone: <InsightsOutlined /> },
   { vue: 'charge', libelle: 'Charge des Coachs', court: 'Charge', icone: <BalanceOutlined /> },
   { vue: 'plan', libelle: 'Plan d’affectation', court: 'Répartition', icone: <AutoFixHighOutlined /> },
   { vue: 'postes', libelle: 'Postes à pourvoir', court: 'Postes', icone: <WorkOutlineOutlined /> },
@@ -327,7 +330,7 @@ export function Equipe() {
         <>
           <PageHeader titre="Équipe" sousTitre={`${reseau.equipe.length} Coachs · ${reseau.rrs.length} Responsables Régionaux · ${reseau.techniciens.length} technicien${reseau.techniciens.length > 1 ? 's' : ''}`} />
           <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle="Rubriques de l’équipe" />
-          {vue === 'plan' ? <VuePlan reseau={reseau} /> : vue === 'charge' ? <VueCharge reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
+          {vue === 'portefeuilles' ? <VuePortefeuilles reseau={reseau} /> : vue === 'plan' ? <VuePlan reseau={reseau} /> : vue === 'charge' ? <VueCharge reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
         </>
       )}
     </AvecReseau>

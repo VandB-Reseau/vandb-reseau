@@ -23,10 +23,12 @@ test('l’organigramme ne modifie plus rien : chaque personne s’ouvre sur sa f
   }
   await page.getByRole('link', { name: 'Alex NORD', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Alex NORD', level: 1 })).toBeVisible()
-  await expect(page.getByText('Responsable Régional · 3 Coachs')).toBeVisible()
+  await expect(page.getByRole('group', { name: 'En bref' })).toContainText('3Coachs')
+  await page.getByRole('tab', { name: 'Coachs' }).click()
+  await expect(page.getByRole('link', { name: 'Camille TESTARD', exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: 'Fiche' }).click()
   await expect(page.getByText(/12 avril 1980 · \d+ ans/)).toBeVisible()
   await expect(page.getByText('59 · Nord')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Camille TESTARD', exact: true })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-rr.png`, fullPage: !isMobile })
 
