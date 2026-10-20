@@ -148,6 +148,8 @@ function useDroitsCampagnes() {
 }
 
 const nomRR = (reseau: Reseau, id?: string) => reseau.rrs.find((r) => r.id === id)?.nom ?? 'Responsable Régional'
+// Campagne d'un Responsable Régional : sa région, ou tout le réseau quand il la lance exceptionnellement
+const origine = (reseau: Reseau, c: Campagne) => `${c.perimetre === 'tous' ? 'Lancée par' : 'Région de'} ${nomRR(reseau, c.rr)}`
 
 const resumeBilan = (b: Bilan) => `${b.fait} sur ${b.total} exécuté${b.fait > 1 ? 's' : ''} · ${b.constates} constaté${b.constates > 1 ? 's' : ''}`
 
@@ -163,7 +165,7 @@ function CarteCampagne({ reseau, c, ouvrir }: { reseau: Reseau; c: Campagne; ouv
           </Box>
           <Typography variant="body2" color="text.secondary">Du {dateCourte(c.debut)} au {dateCourte(c.fin)} · {c.points.length} point{c.points.length > 1 ? 's' : ''}</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{resumeBilan(b)}</Typography>
-          {c.rr && <Chip size="small" variant="outlined" label={`Région de ${nomRR(reseau, c.rr)}`} sx={{ mb: 1, fontSize: 13 }} />}
+          {c.rr && <Chip size="small" variant="outlined" label={origine(reseau, c)} sx={{ mb: 1, fontSize: 13 }} />}
           <BarreExecution b={b} libelle={c.nom} />
         </CardContent>
       </CardActionArea>
@@ -257,7 +259,7 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
         <IconButton onClick={retour} aria-label="Retour aux campagnes"><ArrowBackOutlined /></IconButton>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="h2" component="h2">{c.nom}</Typography>
-          <Typography variant="body2" color="text.secondary">Du {dateCourte(c.debut)} au {dateCourte(c.fin)} · {libellePerimetre(c)}{c.rr ? ` · Région de ${nomRR(reseau, c.rr)}` : ''}</Typography>
+          <Typography variant="body2" color="text.secondary">Du {dateCourte(c.debut)} au {dateCourte(c.fin)} · {libellePerimetre(c)}{c.rr ? ` · ${origine(reseau, c)}` : ''}</Typography>
         </Box>
         {droits.modifier(c) && <Button startIcon={<EditOutlined />} onClick={modifier} sx={{ minHeight: 48 }}>Modifier</Button>}
       </Box>

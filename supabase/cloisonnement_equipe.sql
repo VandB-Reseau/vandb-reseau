@@ -17,7 +17,7 @@
 --    des bonnes pratiques, de l'agenda et des absences.
 -- 6) Accès des Coachs et des RR, ouverts par le Directeur depuis leur fiche.
 -- 3 bis) Campagnes régionales : créées et tenues par chaque Responsable Régional
---    pour ses magasins (table campagnes_regions) ; le Directeur les voit et les modifie toutes.
+--    pour ses magasins, ou exceptionnellement tout le réseau (table campagnes_regions) ; le Directeur les voit et les modifie toutes.
 -- ════════════════════════════════════════════════════════════════
 
 -- ── 1) Périmètre de chaque magasin, écrit par l'app du Directeur
@@ -170,12 +170,12 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
   SELECT CASE WHEN public.mon_role() = 'rr' THEN (SELECT nullif(u.raw_app_meta_data->>'rr', '') FROM auth.users u WHERE u.id = auth.uid()) END
 $$;
 
--- Un RR n'écrit que ses campagnes, sur sa région entière ou sur des magasins qu'il suit
+-- Un RR n'écrit que ses campagnes : sa région entière, des magasins qu'il suit, ou exceptionnellement tout le réseau
 CREATE OR REPLACE FUNCTION public.campagne_region_permise(p_rr text, p_valeur jsonb) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
   SELECT public.est_directeur() OR (
     p_rr = public.mon_rr() AND jsonb_typeof(p_valeur) = 'object' AND p_valeur->>'rr' = p_rr AND (
-      p_valeur->>'perimetre' = 'region'
+      p_valeur->>'perimetre' IN ('region', 'tous')
       OR (p_valeur->>'perimetre' = 'choix' AND jsonb_typeof(p_valeur->'magasins') = 'array' AND jsonb_array_length(p_valeur->'magasins') > 0
           AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(p_valeur->'magasins') m WHERE NOT m = ANY(public.magasins_visibles())))))
 $$;

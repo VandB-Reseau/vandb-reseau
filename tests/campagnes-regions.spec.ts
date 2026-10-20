@@ -75,6 +75,36 @@ test('un Responsable Régional limite sa campagne à quelques magasins de sa ré
   await expect(page.getByText(/0 sur 1 exécuté/)).toBeVisible()
 })
 
+test('un Responsable Régional lance exceptionnellement une campagne sur tout le réseau', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  const options: OptionsSimulation = { ...ALEX, ecritures, campagnesRegions: [] }
+  await seConnecter(page, options)
+  await page.goto('./#/visites?vue=campagnes')
+  await page.getByRole('button', { name: 'Nouvelle campagne' }).first().click()
+  const d = page.getByRole('dialog', { name: 'Nouvelle campagne' })
+  await d.getByLabel('Nom de la campagne').fill('Foire aux vins')
+  await d.getByLabel('Fin').fill('2099-01-31')
+  await d.getByLabel('Point 1', { exact: true }).fill('Catalogue distribué')
+  await d.getByLabel('Magasins concernés').click()
+  await page.getByRole('option', { name: 'Tout le réseau' }).click()
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  expect(options.campagnesRegions).toEqual([expect.objectContaining({ rr: 'rr1', valeur: expect.objectContaining({ perimetre: 'tous', rr: 'rr1' }) })])
+  await expect(page.getByText(/Tout le réseau · Lancée par Alex NORD/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Modifier', exact: true })).toBeVisible()
+})
+
+test('le Directeur voit la campagne réseau lancée par un Responsable Régional sur tous les magasins', async ({ page }) => {
+  const reseau = { id: 'foire', rr: 'rr1', valeur: { ...regionNord.valeur, id: 'foire', nom: 'Foire aux vins', perimetre: 'tous' } }
+  await seConnecter(page, { campagnesRegions: [reseau] })
+  await page.goto('./#/visites?vue=campagnes')
+  await expect(page.getByText('Lancée par Alex NORD')).toBeVisible()
+  await page.getByRole('button', { name: 'Ouvrir la campagne Foire aux vins' }).click()
+  const parRR = page.getByRole('table', { name: 'Exécution par Responsable Régional' })
+  await expect(parRR).toContainText('Alex NORD')
+  await expect(parRR).toContainText('Sam SUD')
+})
+
 test('le Directeur voit les campagnes de chaque région et peut en supprimer une', async ({ page }) => {
   const ecritures: Ecriture[] = []
   const options: OptionsSimulation = { ecritures, campagnesRegions: [regionNord, regionSud] }

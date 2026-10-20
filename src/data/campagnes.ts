@@ -13,10 +13,11 @@ export const perimetres: { id: Perimetre; libelle: string }[] = [
   { id: 'integres', libelle: 'Magasins intégrés' },
   { id: 'choix', libelle: 'Magasins choisis' },
 ]
-// Campagne régionale : toute la région du Responsable Régional, ou une partie de ses magasins
+// Campagne d'un Responsable Régional : sa région, une partie de ses magasins, ou exceptionnellement tout le réseau
 export const perimetresRegion: { id: Perimetre; libelle: string }[] = [
   { id: 'region', libelle: 'Tous les magasins de la région' },
   { id: 'choix', libelle: 'Magasins choisis' },
+  { id: 'tous', libelle: 'Tout le réseau' },
 ]
 export const libellePerimetre = (c: Campagne) => (c.rr ? perimetresRegion : perimetres).find((p) => p.id === c.perimetre)?.libelle ?? ''
 export const MAX_POINTS = 5
