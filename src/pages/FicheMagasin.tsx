@@ -6,7 +6,7 @@ import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import DynamicFeedOutlined from '@mui/icons-material/DynamicFeedOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import { GrillePhotos, TitreSection, type Ton } from '../components/Social'
-import { ProfilPersonne } from '../components/Portefeuille'
+import { ProfilPersonne, rond } from '../components/Portefeuille'
 import { FilActivite } from './Accueil'
 import { filDu } from '../data/fil'
 import { useMessagerie } from '../data/MessagerieContext'
@@ -449,7 +449,6 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, 
     : alerte?.statut === 'surveiller' ? { ton: 'orange', libelle: 'À surveiller' }
     : retardVisite > 0 ? { ton: 'orange', libelle: `Visite en retard de ${retardVisite} j` }
     : m.statut !== 'ouvert' ? { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] } : null
-  const bouton = { flex: 1, minHeight: 48, minWidth: 0 } as const
   return (
     <ProfilPersonne nom={m.nom} retour={retour}
       lignes={[[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · '), [m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')]}
@@ -466,8 +465,8 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, 
         <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(m.nom)} aria-label="Préparer la visite" sx={{ width: 48, height: 48 }}><AssignmentOutlined /></IconButton></Tooltip>
       </>}
       actions={<>
-        <Button variant="outlined" startIcon={<ChatBubbleOutlineOutlined />} onClick={message} sx={bouton}>Message</Button>
-        <Button variant="contained" startIcon={<AddOutlined />} onClick={visite} sx={bouton}>Visite</Button>
+        <Tooltip title="Message"><IconButton onClick={message} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Tooltip>
+        <Tooltip title="Saisir une visite"><IconButton onClick={visite} aria-label="Saisir une visite" sx={rond}><AddOutlined /></IconButton></Tooltip>
       </>} />
   )
 }

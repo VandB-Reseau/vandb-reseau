@@ -239,7 +239,7 @@ export function Visites() {
   const [pratique, setPratique] = useState<BonnePratique | null | undefined>(undefined)
   const [edition, setEdition] = useState<Edition>(null)
   const [message, setMessage] = useState('')
-  const actions = <BoutonAction libelle="Saisir une visite" court="Visite" onClick={() => setEdition({ visite: null, magasins: [] })} />
+  const actions = <BoutonAction libelle="Saisir une visite" onClick={() => setEdition({ visite: null, magasins: [] })} />
   return (
     <AvecReseau>
       {(reseau) => (
@@ -258,7 +258,7 @@ export function Visites() {
           {vue === 'campagnes'
             ? <VueCampagnes reseau={reseau} />
             : vue === 'pratiques'
-            ? <VuePratiques reseau={reseau} modifier={setPratique} actions={<BoutonAction libelle="Ajouter une bonne pratique" court="Ajouter" onClick={() => setPratique(null)} />} />
+            ? <VuePratiques reseau={reseau} modifier={setPratique} actions={<BoutonAction libelle="Ajouter une bonne pratique" onClick={() => setPratique(null)} />} />
             : vue === 'semaine'
             ? <VueSemaine reseau={reseau} surPC={surPC} onMessage={setMessage} />
             : vue === 'historique'
