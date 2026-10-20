@@ -74,7 +74,9 @@ export const theme = createTheme({
     // Liens sans soulignement, comme dans une app
     MuiLink: { defaultProps: { underline: 'hover' } },
     // Sur téléphone, les fenêtres montent du bas de l'écran
+    // Ouvrir une fenêtre ne retire pas non plus la barre de défilement (le contenu derrière ne se décale pas)
     MuiDialog: {
+      defaultProps: { disableScrollLock: true },
       styleOverrides: {
         container: { [telephone]: { alignItems: 'flex-end' } },
         paper: { [telephone]: { margin: 0, width: '100%', maxWidth: '100%', maxHeight: 'calc(100% - 24px)', borderRadius: '24px 24px 0 0' } },

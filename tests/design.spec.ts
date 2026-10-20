@@ -24,6 +24,13 @@ test('le bouton Créer propose visite, tâche, message et bonne pratique', async
   await creer.click()
   const d = page.getByRole('dialog', { name: 'Créer' })
   for (const t of ['Visite', 'Tâche', 'Message', 'Bonne pratique']) await expect(d.getByRole('button', { name: t })).toBeVisible()
+  // Fenêtre compacte : 340 px de large sur PC, les quatre choix sur une ligne sur téléphone
+  const fenetre = (await d.boundingBox())!
+  if (isMobile) {
+    expect(fenetre.height).toBeLessThanOrEqual(200)
+    const [v, p] = [(await d.getByRole('button', { name: 'Visite' }).boundingBox())!, (await d.getByRole('button', { name: 'Bonne pratique' }).boundingBox())!]
+    expect(Math.abs(v.y - p.y)).toBeLessThanOrEqual(1)
+  } else expect(fenetre.width).toBeLessThanOrEqual(340)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-creer.png` })
   await d.getByRole('button', { name: 'Tâche' }).click()

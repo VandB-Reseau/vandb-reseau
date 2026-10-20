@@ -58,8 +58,11 @@ export function BoutonOutil({ libelle, icone, onClick, plein, actif, badge, attr
   return <Bulle titre={libelle}>{badge ? <Badge badgeContent={badge} color="secondary">{bouton}</Badge> : bouton}</Bulle>
 }
 
-// Action d'une page : libellé complet sur PC, bouton rond sur téléphone (plein si principale)
-export function BoutonAction({ libelle, icone = <AddOutlined />, onClick, secondaire }: { libelle: string; icone?: ReactNode; onClick: (e: MouseEvent<HTMLElement>) => void; secondaire?: boolean }) {
-  if (useTelephone()) return <BoutonOutil libelle={libelle} icone={icone} onClick={onClick} plein={!secondaire} />
-  return <Button variant={secondaire ? 'outlined' : 'contained'} startIcon={icone} onClick={onClick} sx={{ minHeight: 48, flexShrink: 0 }}>{libelle}</Button>
+// Action d'une page : icône et libellé, sur PC comme sur téléphone (libellé court sur téléphone si fourni)
+export function BoutonAction({ libelle, court, icone = <AddOutlined />, onClick, secondaire }: { libelle: string; court?: string; icone?: ReactNode; onClick: (e: MouseEvent<HTMLElement>) => void; secondaire?: boolean }) {
+  const telephone = useTelephone()
+  return (
+    <Button variant={secondaire ? 'outlined' : 'contained'} startIcon={icone} onClick={onClick} aria-label={telephone && court ? libelle : undefined}
+      sx={{ minHeight: 48, flexShrink: 0, whiteSpace: 'nowrap', ...(telephone && { px: 2 }) }}>{telephone ? court ?? libelle : libelle}</Button>
+  )
 }

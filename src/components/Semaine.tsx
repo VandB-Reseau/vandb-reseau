@@ -41,7 +41,7 @@ export function VueSemaine({ reseau, planifier, surPC }: { reseau: Reseau; plani
   const s = useMemo(() => (coach ? semaineDu(reseau, coach) : null), [reseau, coach])
   const unSeul = coachs.length <= 1
   const actions = s && s.aPlanifier.length > 1
-    ? <BoutonAction libelle="Planifier la tournée" icone={<RouteOutlined />} onClick={() => planifier(s.aPlanifier.map((x) => x.l.magasin.nom), reseau.jour)} />
+    ? <BoutonAction libelle="Planifier la tournée" court="Planifier" icone={<RouteOutlined />} onClick={() => planifier(s.aPlanifier.map((x) => x.l.magasin.nom), reseau.jour)} />
     : undefined
   const barre = (!unSeul || actions) && (
     <RechercheFiltres actions={actions}
