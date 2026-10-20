@@ -1,12 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { chargerMessagerie, envoyerMessage, marquerLu as marquerLuBase, supprimerMessage, type Messagerie, type Sujet } from './messagerie'
+import { chargerMessagerie, envoyerMessage, marquerLu as marquerLuBase, marquerLuPersonne as marquerLuPersonneBase, supprimerMessage, type Lecture, type Messagerie, type Sujet } from './messagerie'
 
 interface EtatMessagerie {
   messagerie: Messagerie | null
   charge: boolean // premier chargement terminé
-  envoyer: (magasins: string[], texte: string, mentions: string[], equipe?: boolean) => Promise<void>
+  // repli : magasin de l'envoi tant que la base n'est pas passée aux échanges à deux
+  envoyer: (destinataire: string, texte: string, magasins: string[], repli: string | null) => Promise<void>
   supprimer: (id: number) => Promise<void>
   marquerLu: (magasin: string, sujet: Sujet) => void
+  marquerLuPersonne: (cle: string) => void
+  lire: (l: Lecture) => void
 }
 
 const Ctx = createContext<EtatMessagerie | null>(null)
@@ -40,10 +43,20 @@ export function MessagerieProvider({ children }: { children: ReactNode }) {
     marquerLuBase(magasin, sujet).catch(() => { /* reprise à la prochaine ouverture */ })
   }, [])
 
+  const marquerLuPersonne = useCallback((cle: string) => {
+    setMessagerie((m) => (m ? { ...m, lus: { ...m.lus, [`personne:${cle}|messages`]: new Date().toISOString() } } : m))
+    marquerLuPersonneBase(cle).catch(() => { /* reprise à la prochaine ouverture */ })
+  }, [])
+
+  const lire = useCallback((l: Lecture) => {
+    if (l.personne) marquerLuPersonne(l.personne)
+    else if (l.magasin) marquerLu(l.magasin, l.sujet)
+  }, [marquerLu, marquerLuPersonne])
+
   const version = messagerie?.version ?? 1
-  const envoyer = useCallback(async (magasins: string[], texte: string, mentions: string[], equipe = false) => {
+  const envoyer = useCallback(async (destinataire: string, texte: string, magasins: string[], repli: string | null) => {
     try {
-      await envoyerMessage(magasins, texte, mentions, equipe, version)
+      await envoyerMessage(destinataire, texte, magasins, version, repli)
     } finally {
       await recharger()
     }
@@ -51,14 +64,10 @@ export function MessagerieProvider({ children }: { children: ReactNode }) {
 
   const supprimer = useCallback(async (id: number) => {
     await supprimerMessage(id)
-    setMessagerie((m) => {
-      if (!m) return m
-      const lot = m.messages.find((x) => x.id === id)?.lot
-      return { ...m, messages: m.messages.filter((x) => x.id !== id && !(lot && x.lot === lot)) }
-    })
+    setMessagerie((m) => (m ? { ...m, messages: m.messages.filter((x) => x.id !== id) } : m))
   }, [])
 
-  return <Ctx.Provider value={{ messagerie, charge, envoyer, supprimer, marquerLu }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ messagerie, charge, envoyer, supprimer, marquerLu, marquerLuPersonne, lire }}>{children}</Ctx.Provider>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

@@ -13,8 +13,12 @@ export interface AccesFranchiseSimule { user_id: string; email: string; franchis
 export interface AccesEquipeSimule { user_id: string; email: string; role: 'coach' | 'rr'; nom: string; derniere_connexion?: string | null }
 export interface EspaceSimule { visites?: Record<string, unknown>[]; reperes?: unknown; campagnes?: unknown; pratiques?: unknown[] }
 // Messagerie (script supabase/messagerie.sql) : null = pas encore activée
-export interface MessageSimule { id: number; store: string; auteur: string; auteur_nom: string; auteur_role: string; texte: string; mentions: string[]; cree_le: string; equipe?: boolean; lot?: string | null }
-// version 1 : base d'avant « Équipe seulement » (script messagerie.sql pas encore repassé)
+// destinataire : échange à deux (clé de la personne), avec auteur_cle et magasins cités ; sinon ancien message par magasin (store)
+export interface MessageSimule {
+  id: number; store?: string | null; auteur: string; auteur_nom: string; auteur_role: string; texte: string; mentions: string[]; cree_le: string
+  equipe?: boolean; lot?: string | null; destinataire?: string | null; auteur_cle?: string | null; magasins?: string[]
+}
+// version 1 et 2 : base d'avant les échanges à deux (script messagerie.sql pas encore repassé)
 export interface MessagerieSimulee { messages?: MessageSimule[]; lus?: Record<string, string>; reference?: string | null; version?: number }
 export const MOI = '00000000-0000-0000-0000-000000000001'
 // Périmètre envoyé par l'app du Directeur (fonction maj_perimetre_equipe)
@@ -116,22 +120,35 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         const magasins = apercu ? (corps.p_magasins as string[]) : acces.magasins ?? []
         return route.fulfill({ json: espaceSimule(apercu ? String(corps.p_franchise) : acces.franchise ?? '', magasins, options.espace ?? {}) })
       }
-      if (['messagerie', 'envoyer_message', 'marquer_lu', 'supprimer_message', 'renommer_magasin_messages'].includes(fn)) {
+      if (['messagerie', 'envoyer_message', 'envoyer_a', 'marquer_lu', 'marquer_lu_personne', 'supprimer_message', 'renommer_magasin_messages'].includes(fn)) {
         if (options.messagerie === null) return absente()
         const mg = (options.messagerie ??= {})
         mg.messages ??= []; mg.lus ??= {}
         const visibles = (st: string) => acces.role !== 'franchise' || (acces.magasins ?? []).includes(st)
+        const cle = acces.role === 'directeur' ? 'directeur' : acces.role === 'rr' ? `rr:${acces.rr}` : acces.role === 'coach' ? `coach:${acces.coach}` : `franchise:${acces.franchise}`
+        const version = mg.version ?? 3
+        const refus = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const nom = acces.role === 'franchise' ? acces.franchise : acces.role === 'coach' ? acces.coach : acces.role === 'rr' ? configRRFictive.drs.find((d) => d.id === acces.rr)?.name : configRRFictive.directeur.name
         if (fn === 'messagerie') {
-          if (!['directeur', 'rr', 'coach', 'franchise'].includes(acces.role)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
-          const version = mg.version ?? 2
-          return route.fulfill({ json: { moi: MOI, ...(version >= 2 ? { version } : {}), reference: mg.reference ?? null, lus: mg.lus,
-            messages: mg.messages.filter((m) => visibles(m.store) && !(m.equipe && acces.role === 'franchise')) } })
+          if (!['directeur', 'rr', 'coach', 'franchise'].includes(acces.role)) return refus()
+          return route.fulfill({ json: { moi: MOI, ...(version >= 2 ? { version } : {}), ...(version >= 3 ? { cle } : {}), reference: mg.reference ?? null, lus: mg.lus,
+            messages: mg.messages.filter((m) => (m.destinataire ? m.auteur === MOI || m.destinataire === cle : visibles(String(m.store)) && !(m.equipe && acces.role === 'franchise'))) } })
         }
+        if ((fn === 'envoyer_a' || fn === 'marquer_lu_personne') && version < 3) return absente()
+        if (fn === 'envoyer_a') {
+          const dest = String(corps.p_destinataire ?? '')
+          const magasins = (corps.p_magasins as string[] | undefined) ?? []
+          if (!/^(directeur|rr:.+|coach:.+|franchise:.+)$/.test(dest) || dest === cle || (acces.role === 'franchise' && dest.startsWith('franchise:')) || !magasins.every(visibles)) return refus()
+          const maintenant = new Date().toISOString()
+          mg.messages.push({ id: Math.max(0, ...mg.messages.map((m) => m.id)) + 1, store: null, auteur: MOI, auteur_nom: nom ?? 'joseph', auteur_role: acces.role, texte: String(corps.p_texte).trim(), mentions: [dest], cree_le: maintenant, destinataire: dest, auteur_cle: cle, magasins: [...new Set(magasins)] })
+          mg.lus[`personne:${dest}|messages`] = maintenant
+          return route.fulfill({ json: { id: mg.messages.length } })
+        }
+        if (fn === 'marquer_lu_personne') { mg.lus[`personne:${String(corps.p_cle)}|messages`] = new Date().toISOString(); return route.fulfill({ status: 200, json: null }) }
         const st = String(corps.p_store ?? '')
         if ((fn === 'envoyer_message' || fn === 'marquer_lu') && !visibles(st)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
         if (fn === 'envoyer_message') {
-          if (corps.p_equipe && acces.role === 'franchise') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
-          const nom = acces.role === 'franchise' ? acces.franchise : acces.role === 'coach' ? acces.coach : acces.role === 'rr' ? configRRFictive.drs.find((d) => d.id === acces.rr)?.name : configRRFictive.directeur.name
+          if (corps.p_equipe && acces.role === 'franchise') return refus()
           const maintenant = new Date().toISOString()
           mg.messages.push({ id: Math.max(0, ...mg.messages.map((m) => m.id)) + 1, store: st, auteur: MOI, auteur_nom: nom ?? 'joseph', auteur_role: acces.role, texte: String(corps.p_texte).trim(), mentions: (corps.p_mentions as string[]) ?? [], cree_le: maintenant, equipe: corps.p_equipe === true, lot: (corps.p_lot as string | null) ?? null })
           mg.lus[`${st}|messages`] = maintenant
