@@ -214,7 +214,7 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
   const noms = useMemo(() => new Set(magasinsDu(reseau, p).map((m) => m.nom)), [reseau, p])
   const fil = useMemo(() => filDu(reseau, noms, messagerie), [reseau, noms, messagerie])
   return (
-    <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start', maxWidth: 1080, mx: 'auto' }}>
+    <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start', maxWidth: 1080, mx: 'auto' }}>
       <Box sx={{ order: { xs: 1, md: 2 }, position: { md: 'sticky' }, top: { md: 88 } }}>
         <BlocATraiter items={items} />
         <BlocSemaine reseau={reseau} p={p} />

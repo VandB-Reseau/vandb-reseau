@@ -1,7 +1,18 @@
 import { EcartsAudit, RangeePhotos } from '../components/GrilleAudit'
 import { CartePratique, DialogPratique } from '../components/BonnesPratiques'
 import type { BonnePratique } from '../data/bonnesPratiques'
-import { Fragment, useState, type ReactNode } from 'react'
+import { Fragment, useMemo, useState, type ReactNode } from 'react'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import MoreVert from '@mui/icons-material/MoreVert'
+import DynamicFeedOutlined from '@mui/icons-material/DynamicFeedOutlined'
+import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
+import { GrillePhotos, Initiales, Pastille, TitreSection, type Ton } from '../components/Social'
+import { FilActivite } from './Accueil'
+import { filDu } from '../data/fil'
+import { useMessagerie } from '../data/MessagerieContext'
+import { statutLibelle } from '../data/modele'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -25,7 +36,6 @@ import { ReaffecterDialog } from '../components/ReaffecterDialog'
 import Snackbar from '@mui/material/Snackbar'
 import SwapHoriz from '@mui/icons-material/SwapHoriz'
 import { EmptyState } from '../components/EmptyState'
-import { PastilleStatut, PastilleType } from '../components/Pastilles'
 import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienPreparation, lienRR, telLien } from '../lib/format'
 import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
@@ -51,7 +61,7 @@ import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import PhoneInTalkOutlined from '@mui/icons-material/PhoneInTalkOutlined'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
-import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
+import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 
 export function Section({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
   return (
@@ -92,8 +102,9 @@ export function Contact({ role, p, sousTitre, lien }: { role: string; p: Personn
   )
 }
 
-type VueFiche = 'fiche' | 'actions' | 'messages' | 'visites' | 'chiffres' | 'sante' | 'campagnes' | 'journal'
+type VueFiche = 'fil' | 'fiche' | 'actions' | 'messages' | 'visites' | 'chiffres' | 'sante' | 'campagnes' | 'journal'
 const rubriquesFiche: Rubrique<VueFiche>[] = [
+  { vue: 'fil', libelle: 'Fil', icone: <DynamicFeedOutlined /> },
   { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
   { vue: 'actions', libelle: 'Actions', icone: <TaskAltOutlined /> },
   { vue: 'messages', libelle: 'Messages', icone: <ForumOutlined /> },
@@ -107,8 +118,8 @@ const rubriquesFiche: Rubrique<VueFiche>[] = [
 function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const naviguer = useNavigate()
   const [params, setParams] = useSearchParams()
-  const vue = (rubriquesFiche.find((r) => r.vue === params.get('vue'))?.vue ?? 'fiche') as VueFiche
-  const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
+  const vue = (rubriquesFiche.find((r) => r.vue === params.get('vue'))?.vue ?? 'fil') as VueFiche
+  const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'fil') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const [reaffectation, setReaffectation] = useState(false)
   const [edition, setEdition] = useState(false)
   const [visite, setVisite] = useState<Visite | null | undefined>(undefined)
@@ -133,26 +144,13 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const rubriques = rubriquesFiche.map((r) => (r.vue === 'messages' ? { ...r, pastille: nonLus } : r))
   return (
     <>
-      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 2, ml: -1 }}>Magasins</Button>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5, mb: 1 }}>
-        <Typography variant="h1" sx={{ mr: 1 }}>{m.nom}</Typography>
-        <PastilleStatut statut={m.statut} />
-        <PastilleType franchise={m.franchise} />
-        <Box sx={{ flex: 1 }} />
-        <Button variant="outlined" startIcon={<AssignmentOutlined />} component={RouterLink} to={lienPreparation(m.nom)} sx={{ minHeight: 48 }}>Préparer la visite</Button>
-        {referentiels && <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setEdition(true)} sx={{ minHeight: 48 }}>Modifier</Button>}
-      </Box>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 1.5 }}>
-        {[m.ville || null, m.departement && `Département ${m.departement}`, m.pays || null, m.code && `Code ${m.code}`, m.coach && `Coach ${m.coach}`].filter(Boolean).join(' · ')}
-      </Typography>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }} aria-label="En bref" role="group">
-        <PastilleCase c={caseDe(reseau.evaluations[m.nom])} />
-        {alerte && <PastilleAlerte statut={alerte.statut} />}
-        {ouvertes.length > 0 && <Chip size="small" clickable onClick={() => changerVue('actions')} color={enRetardNb ? 'error' : 'default'} variant={enRetardNb ? 'filled' : 'outlined'}
-          label={`${ouvertes.length} action${ouvertes.length > 1 ? 's' : ''} en cours${enRetardNb ? ` · ${enRetardNb} en retard` : ''}`} sx={{ fontSize: 12, fontWeight: 600 }} />}
-        {rythme && rythme.retard > 0 && <Chip size="small" color="warning" clickable onClick={() => changerVue('visites')} label={`Visite en retard de ${rythme.retard} j`} sx={{ fontSize: 12, fontWeight: 600 }} />}
-      </Box>
+      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 1, ml: -1 }}>Magasins</Button>
+      <ProfilMagasin m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} retardVisite={rythme?.retard ?? 0}
+        appeler={m.telephone || m.responsable?.telephone || ''} message={() => changerVue('messages')} visite={saisirVisite}
+        modifier={referentiels ? () => setEdition(true) : undefined} />
       <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} />
+
+      {vue === 'fil' && <FilMagasin reseau={reseau} m={m} />}
 
       {vue === 'fiche' && (
         <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
@@ -429,5 +427,69 @@ function SectionPratiques({ reseau, m, signaler }: { reseau: Reseau; m: Magasin;
       )}
       {edition !== undefined && <DialogPratique reseau={reseau} pratique={edition} magasinInitial={m.nom} onFermer={(msg) => { setEdition(undefined); if (msg) signaler(msg) }} />}
     </Section>
+  )
+}
+
+// Haut de fiche façon profil : initiales, nom, trois compteurs, puis Appeler, Message, Visite
+function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, appeler, message, visite, modifier }: {
+  m: Magasin; reseau: Reseau; alerte: ReturnType<typeof analyser>; enRetardNb: number; ouvertes: number; retardVisite: number
+  appeler: string; message: () => void; visite: () => void; modifier?: () => void
+}) {
+  const [ancre, setAncre] = useState<HTMLElement | null>(null)
+  const c = caseDe(reseau.evaluations[m.nom])
+  // Une seule pastille : la plus grave
+  const pastille: { ton: Ton; libelle: string } | null = alerte?.statut === 'decroche' ? { ton: 'rouge', libelle: 'Décroche' }
+    : enRetardNb ? { ton: 'rouge', libelle: `${enRetardNb} tâche${enRetardNb > 1 ? 's' : ''} en retard` }
+    : alerte?.statut === 'surveiller' ? { ton: 'orange', libelle: 'À surveiller' }
+    : retardVisite > 0 ? { ton: 'orange', libelle: `Visite en retard de ${retardVisite} j` }
+    : m.statut !== 'ouvert' ? { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] } : null
+  const compteur = (valeur: ReactNode, libelle: string, couleur?: string) => (
+    <Box sx={{ flex: 1, minWidth: 0, textAlign: 'center', px: 0.5 }}>
+      <Typography sx={{ fontSize: '1.25rem', fontWeight: 700, lineHeight: 1.2, color: couleur, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{valeur}</Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{libelle}</Typography>
+    </Box>
+  )
+  const bouton = { flex: 1, minHeight: 48 } as const
+  return (
+    <Card sx={{ border: 0, p: { xs: 2, md: 3 }, mb: 2 }}>
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        <Initiales nom={m.nom} taille={72} />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="h1" sx={{ fontSize: { xs: '1.375rem', md: '1.75rem' } }}>{m.nom}</Typography>
+          <Typography variant="body2" color="text.secondary">{[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · ')}</Typography>
+          <Typography variant="body2" color="text.secondary">{[m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')}</Typography>
+        </Box>
+        <IconButton aria-label="Plus d’actions" onClick={(e) => setAncre(e.currentTarget)} sx={{ width: 48, height: 48, alignSelf: 'flex-start' }}><MoreVert /></IconButton>
+        <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
+          <MenuItem component={RouterLink} to={lienPreparation(m.nom)} sx={{ minHeight: 48 }}><ListItemIcon><AssignmentOutlined fontSize="small" /></ListItemIcon>Préparer la visite</MenuItem>
+          {modifier && <MenuItem onClick={() => { setAncre(null); modifier() }} sx={{ minHeight: 48 }}><ListItemIcon><EditOutlined fontSize="small" /></ListItemIcon>Modifier</MenuItem>}
+        </Menu>
+      </Box>
+      {pastille && <Box sx={{ mt: 1.5 }}><Pastille ton={pastille.ton}>{pastille.libelle}</Pastille></Box>}
+      <Box sx={{ display: 'flex', mt: 2, py: 1, borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', '& > * + *': { borderLeft: '1px solid', borderColor: 'divider' } }} role="group" aria-label="En bref">
+        {compteur(alerte ? formatKEuros(alerte.ca) : '—', alerte ? `CA ${libelleMois(alerte.mois).split(' ')[0]}` : 'CA du mois')}
+        {compteur(alerte?.ecart === null || alerte?.ecart === undefined ? '—' : formatPourcent(alerte.ecart), 'vs l’an dernier', alerte?.ecart !== null && alerte?.ecart !== undefined && alerte.ecart < 0 ? 'error.main' : undefined)}
+        {compteur(ouvertes || '0', ouvertes > 1 ? 'tâches en cours' : 'tâche en cours')}
+      </Box>
+      {c && <Typography variant="body2" sx={{ mt: 1.5 }}><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} visites par an</Typography>}
+      <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+        <Button variant="outlined" startIcon={<CallOutlined />} href={appeler ? telLien(appeler) : undefined} disabled={!appeler} sx={bouton}>Appeler</Button>
+        <Button variant="outlined" startIcon={<ChatBubbleOutlineOutlined />} onClick={message} sx={bouton}>Message</Button>
+        <Button variant="contained" startIcon={<AddOutlined />} onClick={visite} sx={bouton}>Visite</Button>
+      </Box>
+    </Card>
+  )
+}
+
+// Fil du magasin : toutes les photos en grille, puis visites, tâches, messages, chiffres et journal du plus récent au plus ancien
+function FilMagasin({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+  const { messagerie } = useMessagerie()
+  const elements = useMemo(() => filDu(reseau, new Set([m.nom]), messagerie, 730), [reseau, m.nom, messagerie])
+  const photos = elements.flatMap((e) => e.photos ?? [])
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 760 }}>
+      {photos.length > 0 && <Box component="section" aria-label="Photos"><TitreSection nombre={photos.length}>Photos</TitreSection><GrillePhotos photos={photos} max={6} /></Box>}
+      <FilActivite elements={elements} jour={reseau.jour} sansMagasin titre="Fil du magasin" />
+    </Box>
   )
 }
