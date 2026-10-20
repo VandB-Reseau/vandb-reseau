@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { MOI, seConnecter, textesTropPetits, type CommunicationSimulee, type Ecriture } from './supabase-simule'
+import { MOI, PNG, seConnecter, textesTropPetits, type CommunicationSimulee, type Ecriture } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -99,4 +99,126 @@ test('tant que le script n’est pas passé, la page le dit sans erreur techniqu
   await page.goto('./#/communications')
   await expect(page.getByText('Communications pas encore activées')).toBeVisible()
   await expect(page.getByText(/PGRST|function/)).toHaveCount(0)
+})
+
+// ── Communications mises en forme et fil d'activité ──
+const ilYa = (jours: number) => new Date(Date.now() - jours * 86_400_000).toISOString()
+const PIEGE = `<table width="600"><tr><td align="center"><h1 style="color:#1b1b1f;font-size:28px">V AND B DAY : J-7 FIN DES INSCRIPTIONS !</h1>
+<p onclick="window.pirate=1" style="font-size:8px;background:url(https://exemple.test/x.png)"><strong>Description :</strong> Ne tardez plus à confirmer votre présence !</p>
+<script>window.pirate=1</script><img src="x" onerror="window.pirate=1"><iframe src="https://exemple.test"></iframe>
+<a href="javascript:window.pirate=1">Piège</a> <a href="https://exemple.test/inscription">S’inscrire</a></td></tr></table>`
+
+test('le Directeur publie une communication mise en forme, nettoyée, avec une photo d’en-tête', async ({ page, isMobile }, info) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, communications: [] })
+  await page.goto('./#/communications')
+  await page.getByRole('button', { name: 'Publier' }).click()
+  const d = page.getByRole('dialog', { name: 'Nouvelle communication' })
+  await d.getByLabel('Titre').fill('V and B Day')
+  await d.getByLabel('Photo d’en-tête').setInputFiles({ name: 'bandeau.png', mimeType: 'image/png', buffer: Buffer.from(PNG, 'base64') })
+  await expect(d.getByRole('button', { name: 'Retirer la photo d’en-tête' })).toBeVisible()
+  await d.getByRole('group', { name: 'Format du message' }).getByRole('button', { name: 'Code HTML' }).click()
+  await d.getByLabel('Code HTML').fill(PIEGE)
+  // Retour à la mise en forme : le contenu est déjà nettoyé dans l'éditeur
+  await d.getByRole('group', { name: 'Format du message' }).getByRole('button', { name: 'Mise en forme' }).click()
+  const editeur = d.getByRole('textbox', { name: 'Message mis en forme' })
+  await expect(editeur.getByRole('heading', { name: /V AND B DAY/ })).toBeVisible()
+  await expect(editeur.locator('script, iframe, img')).toHaveCount(0)
+  expect(await textesTropPetits(page)).toEqual([])
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+
+  const corps = ecritures.find((e) => e.table === 'rpc/publier_communication')?.corps as Record<string, unknown>
+  expect(String(corps.p_html)).toContain('<h1')
+  expect(String(corps.p_html)).not.toMatch(/<script|onclick|onerror|<iframe|javascript:|url\(| 8px/)
+  expect(String(corps.p_texte)).toContain('Ne tardez plus à confirmer votre présence')
+  expect(corps.p_entete).toBe((corps.p_pieces as { chemin: string }[])[0].chemin)
+
+  const carte = page.getByRole('article', { name: 'V and B Day' })
+  await expect(carte.getByRole('heading', { name: /V AND B DAY/ })).toBeVisible()
+  await expect(carte.getByRole('img', { name: 'bandeau.jpg' })).toBeVisible()
+  // La photo d'en-tête n'est pas répétée dans les pièces jointes
+  await expect(carte.getByRole('list', { name: 'Photos jointes' })).toHaveCount(0)
+  await expect(carte.getByRole('link', { name: 'S’inscrire' })).toHaveAttribute('href', 'https://exemple.test/inscription')
+  await expect(carte.getByRole('link', { name: 'S’inscrire' })).toHaveAttribute('rel', 'noopener noreferrer')
+  await expect(carte.getByText('Piège')).not.toHaveAttribute('href')
+  expect(await page.evaluate(() => (window as unknown as { pirate?: number }).pirate)).toBeUndefined()
+  expect(await textesTropPetits(page)).toEqual([])
+  const largeur = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+  expect(largeur).toBeLessThanOrEqual(0)
+  await page.screenshot({ path: `captures/${info.project.name}-communication-mise-en-forme.png`, fullPage: !isMobile })
+
+  // Modifier : la mise en forme et la photo d'en-tête reviennent
+  await carte.getByRole('button', { name: 'Modifier la communication V and B Day' }).click()
+  const m = page.getByRole('dialog', { name: 'Modifier la communication' })
+  await expect(m.getByRole('textbox', { name: 'Message mis en forme' }).getByRole('heading', { name: /V AND B DAY/ })).toBeVisible()
+  await expect(m.getByRole('button', { name: 'Retirer la photo d’en-tête' })).toBeVisible()
+})
+
+test('un courriel collé dans la zone mise en forme garde sa mise en forme, sans script', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, communications: [] })
+  await page.goto('./#/communications')
+  await page.getByRole('button', { name: 'Publier' }).click()
+  const d = page.getByRole('dialog', { name: 'Nouvelle communication' })
+  await d.getByLabel('Titre').fill('Actualité')
+  await d.getByRole('group', { name: 'Format du message' }).getByRole('button', { name: 'Mise en forme' }).click()
+  const editeur = d.getByRole('textbox', { name: 'Message mis en forme' })
+  await editeur.click()
+  await editeur.evaluate((el, html) => {
+    const dt = new DataTransfer()
+    dt.setData('text/html', html)
+    dt.setData('text/plain', 'V AND B DAY')
+    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+  }, PIEGE)
+  await expect(editeur.locator('strong')).toHaveText('Description :')
+  await expect(editeur.locator('script, iframe, img, [onclick]')).toHaveCount(0)
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  const corps = ecritures.find((e) => e.table === 'rpc/publier_communication')?.corps as Record<string, unknown>
+  expect(String(corps.p_html)).toContain('<strong>Description :</strong>')
+  expect(String(corps.p_html)).not.toMatch(/<script|onclick|onerror/)
+  expect(await page.evaluate(() => (window as unknown as { pirate?: number }).pirate)).toBeUndefined()
+})
+
+test('une communication stockée piégée est nettoyée à l’affichage', async ({ page }) => {
+  await seConnecter(page, { communications: [{ id: 7, titre: 'Ancienne', texte: 'Ne tardez plus', html: PIEGE, magasins: null, auteur: AUTRE, auteur_nom: 'Joseph PERREAU', auteur_role: 'directeur', cree_le: ilYa(1) }] })
+  await page.goto('./#/communications')
+  const carte = page.getByRole('article', { name: 'Ancienne' })
+  await expect(carte.getByRole('heading', { name: /V AND B DAY/ })).toBeVisible()
+  await expect(carte.locator('script, iframe, img, [onclick], [onerror]')).toHaveCount(0)
+  expect(await page.evaluate(() => (window as unknown as { pirate?: number }).pirate)).toBeUndefined()
+})
+
+test('les dernières communications apparaissent dans le fil de l’accueil', async ({ page, isMobile }, info) => {
+  const liste: CommunicationSimulee[] = [
+    { id: 1, titre: 'V and B Day : J-7', texte: 'Ne tardez plus à confirmer votre présence !', magasins: null, auteur: AUTRE, auteur_nom: 'Joseph PERREAU', auteur_role: 'directeur', cree_le: ilYa(1) },
+    { id: 2, titre: 'Réunion des franchisés du Sud', texte: 'Rendez-vous à Marseille.', magasins: ['Nice Test'], auteur: AUTRE, auteur_nom: 'Sam SUD', auteur_role: 'rr', cree_le: ilYa(2) },
+    { id: 3, titre: 'Vieille annonce', texte: 'Hors du fil.', magasins: null, auteur: AUTRE, auteur_nom: 'Joseph PERREAU', auteur_role: 'directeur', cree_le: ilYa(200) },
+  ]
+  await seConnecter(page, { communications: liste })
+  const fil = page.getByRole('region', { name: 'Fil de mes magasins' })
+  await expect(fil.getByText('V and B Day : J-7')).toBeVisible()
+  await expect(fil.getByText('Réunion des franchisés du Sud')).toBeVisible()
+  await expect(fil.getByText('Vieille annonce')).toHaveCount(0)
+  await fil.getByRole('group', { name: 'Filtrer le fil' }).getByRole('button', { name: 'Communications' }).click()
+  await expect(fil.getByRole('link')).toHaveCount(2)
+  await expect(fil.getByRole('link').first()).toContainText('Tout le réseau')
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-fil-communications.png`, fullPage: !isMobile })
+  await fil.getByRole('link', { name: /Réunion des franchisés du Sud/ }).click()
+  await expect(page).toHaveURL(/#\/communications\?c=2$/)
+  await expect(page.getByRole('article', { name: 'Réunion des franchisés du Sud' })).toBeInViewport()
+})
+
+test('le franchisé voit dans son fil les communications qui le concernent seulement', async ({ page }) => {
+  await seConnecter(page, { acces: PAUL, communications: [
+    { id: 1, titre: 'V and B Day : J-7', texte: 'Ne tardez plus.', magasins: null, auteur: AUTRE, auteur_nom: 'Joseph PERREAU', auteur_role: 'directeur', cree_le: ilYa(1) },
+    { id: 2, titre: 'Réunion des franchisés du Sud', texte: 'Rendez-vous à Marseille.', magasins: ['Nice Test'], auteur: AUTRE, auteur_nom: 'Sam SUD', auteur_role: 'rr', cree_le: ilYa(2) },
+  ] })
+  const fil = page.getByRole('region', { name: 'Fil de mes magasins' })
+  await expect(fil.getByText('V and B Day : J-7')).toBeVisible()
+  await expect(fil.getByText('Réunion des franchisés du Sud')).toHaveCount(0)
+  await fil.getByRole('link', { name: /V and B Day/ }).click()
+  await expect(page.getByRole('article', { name: 'V and B Day : J-7' })).toBeVisible()
 })

@@ -26,7 +26,7 @@ const piecesPropres = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 10).f
 // Périmètre envoyé par l'app du Directeur (fonction maj_perimetre_equipe)
 // Communications du réseau (script communications.sql), au format renvoyé par la base
 export interface CommunicationSimulee {
-  id: number; titre: string; texte: string; pieces?: unknown[]; magasins: string[] | null; auteur: string; auteur_nom: string; auteur_role: string; cree_le: string
+  id: number; titre: string; texte: string; html?: string | null; entete?: string | null; pieces?: unknown[]; magasins: string[] | null; auteur: string; auteur_nom: string; auteur_role: string; cree_le: string
   pouces?: { user_id: string; nom: string }[]; commentaires?: { id: number; auteur: string; auteur_nom: string; auteur_role: string; texte: string; cree_le: string }[]
 }
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
@@ -181,9 +181,12 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         if (fn === 'communications') return route.fulfill({ json: { moi: MOI, role: acces.role, liste: structuredClone(liste.filter(visible)).sort((a, b) => b.cree_le.localeCompare(a.cree_le)).map((x) => ({ pouces: [], commentaires: [], pieces: [], ...x })) } })
         if (fn === 'publier_communication') {
           if (!['directeur', 'rr'].includes(acces.role) || !String(corps.p_titre ?? '').trim()) return refus()
-          if (corps.p_id === null) liste.push({ id: Math.max(0, ...liste.map((x) => x.id)) + 1, titre: String(corps.p_titre), texte: String(corps.p_texte ?? ''), pieces: piecesPropres(corps.p_pieces), magasins: acces.role === 'rr' ? ['Lyon Test', 'Metz Test'] : null, auteur: MOI, auteur_nom: nom ?? '', auteur_role: acces.role, cree_le: new Date().toISOString() })
+          // Comme la base : la photo d'en-tête est une des photos jointes
+          const pieces = corps.p_id === null ? piecesPropres(corps.p_pieces) : [...(c?.pieces ?? []).filter((p) => (corps.p_pieces as { chemin: string }[]).some((x) => x.chemin === (p as { chemin: string }).chemin)), ...piecesPropres(corps.p_pieces).filter((p) => !(c?.pieces ?? []).some((x) => (x as { chemin: string }).chemin === p.chemin))]
+          const forme = { html: corps.p_html ? String(corps.p_html) : null, entete: pieces.some((p) => p.chemin === corps.p_entete && String(p.type).startsWith('image/')) ? String(corps.p_entete) : null }
+          if (corps.p_id === null) liste.push({ id: Math.max(0, ...liste.map((x) => x.id)) + 1, titre: String(corps.p_titre), texte: String(corps.p_texte ?? ''), ...forme, pieces, magasins: acces.role === 'rr' ? ['Lyon Test', 'Metz Test'] : null, auteur: MOI, auteur_nom: nom ?? '', auteur_role: acces.role, cree_le: new Date().toISOString() })
           else if (!c || c.auteur !== MOI) return refus()
-          else Object.assign(c, { titre: String(corps.p_titre), texte: String(corps.p_texte ?? '') })
+          else Object.assign(c, { titre: String(corps.p_titre), texte: String(corps.p_texte ?? ''), ...forme, pieces })
           return route.fulfill({ json: { id: corps.p_id ?? liste.length } })
         }
         if (fn === 'supprimer_communication') { options.communications = liste.filter((x) => !(x.id === id && (x.auteur === MOI || acces.role === 'directeur'))); return route.fulfill({ status: 200, json: null }) }
