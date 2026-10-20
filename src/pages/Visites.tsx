@@ -56,15 +56,27 @@ type Edition = { visite: Visite | null; magasins: string[] } | null
 
 type Etat = 'retard' | 'ajour'
 
+// Longues listes affichées par tranches : le rendu de centaines de lignes bloquait le changement d'onglet
+const PAGE = 50
+function useParTranches<T>(liste: T[], filtres: string) {
+  const [vu, setVu] = useState({ filtres, nombre: PAGE })
+  const nombre = vu.filtres === filtres ? vu.nombre : PAGE
+  const restantes = liste.length - nombre
+  return {
+    visibles: restantes > 0 ? liste.slice(0, nombre) : liste,
+    suite: restantes > 0 && <Box sx={{ textAlign: 'center', mt: 1.5 }}><Button onClick={() => setVu({ filtres, nombre: nombre + PAGE })} sx={{ minHeight: 48 }}>Voir plus ({restantes})</Button></Box>,
+  }
+}
+
 function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir: (magasins: string[]) => void; surPC: boolean; actions: ReactNode }) {
-  const annees = anneesDisponibles(reseau)
+  const annees = useMemo(() => anneesDisponibles(reseau), [reseau])
   const [cle, setCle] = useState(anneeDe(reseau.jour).cle)
   const [texte, setTexte] = useState('')
   const [coachs, setCoachs] = useState<string[]>([])
   const [cases, setCases] = useState<string[]>([])
   const [etats, setEtats] = useState<string[]>([])
   const a = annees.find((x) => x.cle === cle) ?? annees[0]
-  const toutes = suiviRythme(reseau, a)
+  const toutes = useMemo(() => suiviRythme(reseau, a), [reseau, a])
   const t = texte.trim().toLowerCase()
   const lignes = toutes
     .filter((l) => !coachs.length || coachs.includes(l.coach || '__aucun__'))
@@ -85,6 +97,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
   const mag = (p: (l: LigneRythme) => boolean) => { const n = toutes.filter(p).length; return `${n} magasin${n > 1 ? 's' : ''}` }
   const jours = (n: number) => `${String(Math.round(n * 10) / 10).replace('.', ',')} j`
   const visites = (l: LigneRythme) => `${l.faites} sur ${l.objectif}`
+  const { visibles, suite } = useParTranches(lignes, JSON.stringify([a.cle, t, coachs, cases, etats]))
 
   return (
     <>
@@ -144,7 +157,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {lignes.map((l) => (
+                    {visibles.map((l) => (
                       <TableRow key={l.magasin.nom} hover>
                         <TableCell><Link component={RouterLink} to={lienFiche(l.magasin.nom)} sx={{ fontWeight: 600 }}>{l.magasin.nom}</Link></TableCell>
                         <TableCell>{l.coach || <Typography variant="body2" color="text.secondary">Sans Coach</Typography>}</TableCell>
@@ -164,7 +177,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
             </Card>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              {lignes.map((l) => (
+              {visibles.map((l) => (
                 <Card key={l.magasin.nom}>
                   <CardContent sx={{ pb: '12px !important' }}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -185,6 +198,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
               ))}
             </Box>
           )}
+          {suite}
         </>
       )}
     </>
@@ -198,16 +212,17 @@ function Echeance({ l }: { l: LigneRythme }) {
 }
 
 function VueHistorique({ reseau, modifier, surPC, actions }: { reseau: Reseau; modifier: (v: Visite) => void; surPC: boolean; actions: ReactNode }) {
-  const semestres = semestresDisponibles(reseau)
+  const semestres = useMemo(() => semestresDisponibles(reseau), [reseau])
   const [cle, setCle] = useState('')
   const [type, setType] = useState('')
   const [visiteur, setVisiteur] = useState('')
   const [recherche, setRecherche] = useState('')
-  const s = semestres.find((x) => x.cle === cle)
+  const s = useMemo(() => semestres.find((x) => x.cle === cle), [semestres, cle])
   const liste = useMemo(() => reseau.visites
     .filter((v) => (!s || (v.date >= s.debut && v.date <= s.fin)) && (!type || v.type === type) && (!visiteur || v.visiteurs.includes(visiteur))
       && (!recherche || `${v.magasin} ${v.notes}`.toLowerCase().includes(recherche.toLowerCase())))
     .sort((a, b) => b.date.localeCompare(a.date)), [reseau, s, type, visiteur, recherche])
+  const { visibles, suite } = useParTranches(liste, JSON.stringify([cle, type, visiteur, recherche]))
   const Actions = ({ v }: { v: Visite }) => (
     <Box sx={{ display: 'flex' }}>
       <Tooltip title="Compte rendu PDF"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu de ${v.magasin} du ${dateCourte(v.date)}`}><PictureAsPdfOutlined /></IconButton></Tooltip>
@@ -236,7 +251,7 @@ function VueHistorique({ reseau, modifier, surPC, actions }: { reseau: Reseau; m
                 </TableRow>
               </TableHead>
               <TableBody>
-                {liste.map((v) => (
+                {visibles.map((v) => (
                   <TableRow key={v.id ?? `${v.magasin}-${v.date}`} hover>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{dateCourte(v.date)}</TableCell>
                     <TableCell><Link component={RouterLink} to={lienFiche(v.magasin)} sx={{ fontWeight: 600 }}>{v.magasin}</Link></TableCell>
@@ -253,7 +268,7 @@ function VueHistorique({ reseau, modifier, surPC, actions }: { reseau: Reseau; m
         </Card>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          {liste.map((v) => (
+          {visibles.map((v) => (
             <Card key={v.id ?? `${v.magasin}-${v.date}`}>
               <CardContent sx={{ pb: '12px !important' }}>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -270,6 +285,7 @@ function VueHistorique({ reseau, modifier, surPC, actions }: { reseau: Reseau; m
           ))}
         </Box>
       )}
+      {suite}
     </>
   )
 }

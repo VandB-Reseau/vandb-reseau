@@ -75,6 +75,12 @@ const isoDe = (n: number) => new Date(n * 86400000).toISOString().slice(0, 10)
 // Une visite est due tous les 365 / (visites par an) jours après la précédente
 export function suiviRythme(reseau: Reseau, a: Annee): LigneRythme[] {
   const reference = a.fin < reseau.jour ? a.fin : reseau.jour
+  // Visites rangées par magasin en un seul passage (le réseau compte des centaines de magasins et des milliers de visites)
+  const parMagasin = new Map<string, Visite[]>()
+  for (const v of reseau.visites) if (v.date <= reseau.jour && estVisite(v)) {
+    const l = parMagasin.get(v.magasin)
+    if (l) l.push(v); else parMagasin.set(v.magasin, [v])
+  }
   return reseau.magasins
     .filter((m) => m.ouverture <= a.fin && m.statut !== 'avenir' && m.ouverture <= reseau.jour)
     .map((m) => {
@@ -83,9 +89,9 @@ export function suiviRythme(reseau: Reseau, a: Annee): LigneRythme[] {
       const debut = m.ouverture > a.debut ? m.ouverture : a.debut
       const part = Math.min(1, (jourNum(a.fin) - jourNum(debut) + 1) / (jourNum(a.fin) - jourNum(a.debut) + 1))
       const objectif = Math.max(1, Math.round(parAn * part))
-      const toutes = reseau.visites.filter((v) => v.magasin === m.nom && v.date <= reseau.jour && estVisite(v))
+      const toutes = parMagasin.get(m.nom) ?? []
       const faites = toutes.filter((v) => v.date >= a.debut && v.date <= a.fin).length
-      const derniere = toutes.sort((x, y) => y.date.localeCompare(x.date))[0] ?? null
+      const derniere = toutes.reduce<Visite | null>((d, v) => (!d || v.date > d.date ? v : d), null)
       const intervalle = Math.round(365 / parAn)
       // Jamais visité : le délai court depuis l'ouverture, ou depuis le début de l'année pour un magasin plus ancien
       const depart = derniere?.date ?? (m.ouvertureConnue && m.ouverture > a.debut ? m.ouverture : a.debut)

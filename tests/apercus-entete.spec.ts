@@ -62,6 +62,8 @@ test('icône Messages : aperçu des dernières conversations, puis tous les mess
   await expect(menu.getByRole('button').filter({ hasNotText: 'Tous les messages' })).toHaveText([/Paul MULTI.*Le devis est arrivé\./, /Camille TESTARD.*Merci pour la visite\./])
   await expect(menu.getByRole('button', { name: 'Paul MULTI : 1 message non lu' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
+  // Mesure une fois l'ouverture animée terminée (le menu grandit jusqu'à sa taille réelle)
+  await expect(page.locator('.MuiMenu-paper')).toHaveCSS('transform', 'none')
   if (info.project.name === 'telephone') for (const b of await menu.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   await page.screenshot({ path: `captures/${info.project.name}-apercu-messages.png` })
   await menu.getByRole('button', { name: /^Paul MULTI/ }).click()
