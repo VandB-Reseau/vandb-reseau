@@ -17,6 +17,8 @@ import HomeOutlined from '@mui/icons-material/HomeOutlined'
 import Home from '@mui/icons-material/Home'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import TipsAndUpdates from '@mui/icons-material/TipsAndUpdates'
+import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
+import Campaign from '@mui/icons-material/Campaign'
 
 export interface Destination {
   chemin: string
@@ -39,6 +41,7 @@ export const principales: Destination[] = [
 
 // Suite de la partie classique : sous les principales dans le menu PC, dans « Plus » sur téléphone
 export const secondaires: Destination[] = [
+  { chemin: '/communications', libelle: 'Communications', description: 'Annonces du réseau aux franchisés', icone: <CampaignOutlined />, iconeActive: <Campaign />, sprint: 'Sprint 17' },
   { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Ouvertures, anniversaires, événements et congés', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
 ]
 
@@ -56,7 +59,8 @@ export const parametres: Destination[] = [
 export const espaceFranchise: Destination[] = [
   { chemin: '/', libelle: 'Accueil', description: 'Mes chiffres, mon plan d’action, mes visites', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 11' },
   { chemin: '/magasins', libelle: 'Mes magasins', description: 'Fiche, chiffres, visites et campagnes', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 11' },
-  { chemin: '/bonnes-pratiques', libelle: 'Bonnes pratiques', description: 'Initiatives réussies du réseau', icone: <TipsAndUpdatesOutlined />, iconeActive: <TipsAndUpdates />, sprint: 'Sprint 11' },
+  { chemin: '/communications', libelle: 'Communications', court: 'Infos', description: 'Annonces du réseau', icone: <CampaignOutlined />, iconeActive: <Campaign />, sprint: 'Sprint 17' },
+  { chemin: '/bonnes-pratiques', libelle: 'Bonnes pratiques', court: 'Pratiques', description: 'Initiatives réussies du réseau', icone: <TipsAndUpdatesOutlined />, iconeActive: <TipsAndUpdates />, sprint: 'Sprint 11' },
 ]
 
 export const plus: Destination = {

@@ -13,6 +13,7 @@ import BackupOutlined from '@mui/icons-material/BackupOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { Fenetre } from '../components/EditionEquipe'
+import { FichiersSuivi } from '../components/ImportsSuivi'
 import { useReseau } from '../data/ReseauContext'
 import { lireSauvegarde, noterSauvegarde } from '../data/chargement'
 import type { Reseau } from '../data/modele'
@@ -191,6 +192,7 @@ export function Donnees() {
             <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' } }}>
               {liste.map((r) => <CarteReferentiel key={r.id} reseau={reseau} r={r} importer={() => setImporter(r.id)} signaler={setMessage} />)}
             </Box>
+            <FichiersSuivi reseau={reseau} signaler={setMessage} />
             {choisi && <DialogImport reseau={reseau} r={choisi} onFermer={(m) => { setImporter(null); if (m) setMessage(m) }} />}
             <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
           </>

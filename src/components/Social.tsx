@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import Button from '@mui/material/Button'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import ViewAgendaOutlined from '@mui/icons-material/ViewAgendaOutlined'
@@ -234,4 +235,20 @@ export function Glisser({ children, libelle, icone, onGlisser, actif = true, cou
       <Box sx={{ position: 'relative', bgcolor: 'background.paper', transform: dx ? `translateX(${dx}px)` : undefined }}>{children}</Box>
     </Box>
   )
+}
+
+// Longues listes affichées par tranches, avec « Voir plus » : le rendu de centaines de lignes bloquait le changement d'onglet.
+// cle : change quand les filtres changent, pour revenir à la première tranche
+export function useParTranches<T>(liste: T[], cle: string, tranche = 50) {
+  const [vu, setVu] = useState({ cle, nombre: tranche })
+  const nombre = vu.cle === cle ? vu.nombre : tranche
+  const restantes = liste.length - nombre
+  return {
+    visibles: restantes > 0 ? liste.slice(0, nombre) : liste,
+    suite: restantes > 0 && (
+      <Box sx={{ textAlign: 'center', mt: 1.5 }}>
+        <Button variant="outlined" onClick={() => setVu({ cle, nombre: nombre + tranche })} sx={{ minHeight: 48 }}>Voir plus ({restantes})</Button>
+      </Box>
+    ),
+  }
 }

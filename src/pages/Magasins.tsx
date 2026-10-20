@@ -22,7 +22,7 @@ import { filtrer, filtresDepuisUrl, filtresVersUrl, type Filtres } from '../data
 
 const CarteMagasins = chargementDiffere(() => import('../components/CarteMagasins').then((m) => ({ default: m.CarteMagasins })))
 
-export function Magasins({ vueInitiale = 'carte' }: { vueInitiale?: 'liste' | 'carte' }) {
+export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'carte' }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [params, setParams] = useSearchParams()

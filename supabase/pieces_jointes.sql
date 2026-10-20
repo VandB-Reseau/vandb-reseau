@@ -1,13 +1,14 @@
 -- ════════════════════════════════════════════════════════════════
 -- V and B — Photos et fichiers joints aux messages et aux tâches (Supabase Storage)
 -- À exécuter dans Supabase > SQL Editor, APRÈS messagerie.sql et actions_franchise.sql. Réexécutable.
+-- À rejouer après communications.sql, pour les fichiers joints aux communications du réseau.
 --
 -- 1) Seau privé « pieces » : photos (l'app les réduit en JPEG), PDF, Word, Excel, PowerPoint,
 --    texte et CSV, 10 Mo au plus par fichier. Lus seulement par liens temporaires.
 -- 2) Chaque compte (équipe ou franchisé) range ses fichiers sous son identifiant : « <uid>/… ».
 -- 3) Un fichier n'est lisible que par son auteur, ou par qui voit le message ou la tâche qui le cite :
 --    échange à deux = l'auteur et le destinataire ; tâche = qui voit le magasin
---    (Directeur : tous, Coach et RR : les leurs, franchisé : les siens).
+--    (Directeur : tous, Coach et RR : les leurs, franchisé : les siens) ; communication = qui la voit.
 -- 4) Chacun ne supprime que ses propres fichiers.
 -- ════════════════════════════════════════════════════════════════
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -26,6 +27,7 @@ DECLARE
   v_cle text;
   v_mag text[];
   v_ref jsonb := jsonb_build_array(jsonb_build_object('chemin', p_chemin));
+  v_vu boolean;
 BEGIN
   IF auth.uid() IS NULL OR coalesce(p_chemin, '') = '' THEN RETURN false; END IF;
   IF NOT (public.est_equipe() OR v_role = 'franchise') THEN RETURN false; END IF;
@@ -36,6 +38,12 @@ BEGIN
   IF EXISTS (SELECT 1 FROM public.messages m
     WHERE m.pieces @> v_ref AND m.destinataire IS NOT NULL AND (m.auteur = auth.uid() OR m.destinataire = v_cle)) THEN
     RETURN true;
+  END IF;
+
+  -- Communication du réseau visible par le compte (script communications.sql)
+  IF to_regclass('public.communications') IS NOT NULL THEN
+    EXECUTE 'SELECT EXISTS (SELECT 1 FROM public.communications c WHERE c.pieces @> $1 AND public.communication_visible(c.id))' INTO v_vu USING v_ref;
+    IF v_vu THEN RETURN true; END IF;
   END IF;
 
   -- Tâche d'un magasin visible (hors visite, ou plan d'action d'une visite)

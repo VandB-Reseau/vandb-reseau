@@ -32,7 +32,7 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   await seConnecterFranchise(page, { ecritures })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Mes magasins', 'Bonnes pratiques'])
+  await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Mes magasins', 'Infos', 'Pratiques'] : ['Accueil', 'Mes magasins', 'Communications', 'Bonnes pratiques'])
   await expect(page.getByText('Paramètres')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Rechercher' })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button')).toHaveText(['Tous mes magasins', 'Annecy Test', 'Rennes Test'])
@@ -103,7 +103,7 @@ test('un franchisé ne peut ouvrir ni un autre magasin ni les écrans de l’éq
     await page.goto(`./#${ecran}`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   }
-  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Bonnes pratiques' }).click()
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^(Bonnes pratiques|Pratiques)$/ }).click()
   await expect(page.getByRole('heading', { name: 'Dégustation du vendredi' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Modifier|Ajouter/ })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Lyon Test' })).toHaveCount(0)

@@ -33,9 +33,10 @@ test('noter en un clic enregistre la case du magasin', async ({ page, isMobile }
   await page.goto('./#/plus/sante?vue=evaluer')
   await page.getByRole('combobox', { name: 'Rechercher un magasin ou un Coach' }).fill('Rennes')
   await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Saisir Rennes Test' }).click()
   await page.getByRole('button', { name: 'Fort : CA marché extérieur de Rennes Test' }).click()
   await page.getByRole('button', { name: /^Fort : Gestion.* de Rennes Test/ }).click()
-  await expect(page.getByText('Locomotive').first()).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Rennes Test' }).getByText('Locomotive')).toBeVisible()
   await expect.poll(() => ecritures.filter((e) => e.table === 'app_config' && JSON.stringify(e.corps).includes('locomotive')).length).toBe(1)
   await page.screenshot({ path: `captures/${info.project.name}-sante-evaluer.png`, fullPage: !isMobile })
 })
@@ -52,6 +53,7 @@ test('saisie groupée : une valeur pour plusieurs magasins', async ({ page, isMo
   await barre.getByLabel('Appliquer à').click()
   await page.getByRole('option', { name: 'Terrasse' }).click()
   await barre.getByRole('button', { name: 'Oui : Terrasse pour la sélection' }).click()
+  await page.getByRole('group', { name: 'Affichage' }).getByRole('button', { name: 'Tableau' }).click()
   await expect(page.getByRole('button', { name: 'Oui : Terrasse de Nice Test' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('button', { name: 'Oui : Terrasse de Metz Test' })).toHaveAttribute('aria-pressed', 'true')
   // Une seule écriture : les deux magasins partent ensemble
@@ -62,15 +64,23 @@ test('saisie groupée : une valeur pour plusieurs magasins', async ({ page, isMo
   await page.screenshot({ path: 'captures/pc-sante-groupe.png' })
 })
 
-test('magasin par magasin avec « Magasin suivant »', async ({ page, isMobile }, info) => {
+test('une ligne par magasin, la saisie en panneau avec « Magasin suivant »', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/plus/sante?vue=evaluer')
-  if (!isMobile) await page.getByRole('button', { name: 'Magasin par magasin' }).click()
-  await expect(page.getByText(/Magasin 1 sur 29/)).toBeVisible()
-  await page.getByRole('button', { name: 'Magasin suivant' }).click()
-  await expect(page.getByText(/Magasin 2 sur 29/)).toBeVisible()
-  await page.getByText('Seulement les magasins à compléter').click()
-  await expect(page.getByText(/Magasin 1 sur 29/)).toBeVisible()
+  const lignes = page.getByRole('region', { name: 'Évaluation des magasins' }).getByRole('button', { name: /^Saisir / })
+  await expect(lignes).toHaveCount(29)
+  await expect(page.getByRole('table')).toHaveCount(0)
+  await page.screenshot({ path: `captures/${info.project.name}-sante-evaluer-lignes.png`, fullPage: !isMobile })
+  await lignes.first().click()
+  const panneau = page.getByRole('dialog')
+  await expect(panneau.getByText(/1 sur 29/)).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-sante-panneau.png` })
+  await panneau.getByRole('button', { name: 'Magasin suivant' }).click()
+  await expect(panneau.getByText(/2 sur 29/)).toBeVisible()
+  await panneau.getByRole('button', { name: 'Fermer' }).click()
+  await page.getByRole('button', { name: /^À compléter · \d+$/ }).click()
+  await expect(page.getByRole('button', { name: /^À compléter/ })).toHaveAttribute('aria-pressed', 'true')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-sante-fiche.png`, fullPage: !isMobile })
 })
@@ -82,7 +92,10 @@ test('les thématiques se gèrent', async ({ page, isMobile }, info) => {
   await page.goto('./#/plus/sante?vue=deploiements')
   await expect(page.getByRole('img', { name: /Concept 2.0 : 1 magasins/ })).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-sante-deploiements.png`, fullPage: !isMobile })
-  await page.getByRole('button', { name: 'Gérer les thématiques' }).first().click()
+  // Plus de gestion des thématiques ici : elle est dans les Paramètres
+  await expect(page.getByRole('button', { name: 'Gérer les thématiques' })).toHaveCount(0)
+  await page.goto('./#/parametres/reglages')
+  await page.getByRole('button', { name: 'Gérer les thématiques' }).click()
   const d = page.getByRole('dialog', { name: 'Thématiques de déploiement' })
   await d.getByRole('button', { name: 'Ajouter une thématique' }).click()
   await d.getByRole('textbox', { name: 'Thématique' }).last().fill('Click and collect')
@@ -96,8 +109,8 @@ test('import d’un fichier CSV façon Asana', async ({ page, isMobile }, info) 
   test.skip(isMobile, 'Import réservé au PC')
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/plus/sante?vue=deploiements')
-  await page.getByRole('button', { name: 'Importer Excel' }).click()
+  await page.goto('./#/parametres/donnees')
+  await page.getByRole('button', { name: 'Importer le fichier : Export Asana de la santé du parc' }).click()
   const d = page.getByRole('dialog', { name: 'Importer depuis Excel' })
   const csv = 'Nom;Épicerie fine;Mixologie;5+1;Flux bar;Commentaire\nNice Test;Oui - avancé;Partiellement;Non;Fort;ok\nMagasin inconnu;Oui;;;;\nMetz Test;Non;Oui;Oui;2;\n'
   await d.getByLabel('Fichier à importer').setInputFiles({ name: 'asana.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
@@ -178,6 +191,7 @@ test('plusieurs notes rapides partent en une seule écriture et restent après u
   await page.goto('./#/plus/sante?vue=evaluer')
   await page.getByRole('combobox', { name: 'Rechercher un magasin ou un Coach' }).fill('Rennes')
   await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Saisir Rennes Test' }).click()
   await page.getByRole('button', { name: 'Moyen : CA marché extérieur de Rennes Test' }).click()
   await page.getByRole('button', { name: 'Moyen : Flux bar de Rennes Test' }).click()
   await expect.poll(() => ecritures.filter((e) => e.table === 'suivi_magasins').length).toBe(1)
@@ -188,6 +202,7 @@ test('plusieurs notes rapides partent en une seule écriture et restent après u
   await page.goto('./#/plus/sante?vue=evaluer')
   await page.getByRole('combobox', { name: 'Rechercher un magasin ou un Coach' }).fill('Rennes')
   await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Saisir Rennes Test' }).click()
   await expect(page.getByRole('button', { name: 'Moyen : Flux bar de Rennes Test' })).toHaveAttribute('aria-pressed', 'true')
 })
 test('la recherche propose les magasins rangés par Coach et accepte un nom de Coach', async ({ page }, info) => {
@@ -216,11 +231,13 @@ test('le titre et la recherche restent en place d’un onglet à l’autre', asy
   }
 })
 
-test('pas d’import Excel sur téléphone et plus de doublon Carte', async ({ page, isMobile }) => {
+test('plus d’import ni de réglage dans la Santé du parc, et plus de doublon Carte', async ({ page }) => {
   await seConnecter(page)
-  await page.goto('./#/plus/sante?vue=evaluer')
-  await expect(page.getByRole('heading', { name: 'Santé du parc' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Importer Excel' })).toHaveCount(isMobile ? 0 : 1)
+  for (const vue of ['evaluer', 'deploiements', 'chiffres']) {
+    await page.goto(`./#/plus/sante?vue=${vue}`)
+    await expect(page.getByRole('heading', { name: 'Santé du parc' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Importer|Gérer les thématiques|Effacer toutes les notes/ })).toHaveCount(0)
+  }
   await page.goto('./#/plus/carte')
   await expect(page).toHaveURL(/#\/magasins\?vue=carte/)
   await page.goto('./#/plus')

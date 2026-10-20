@@ -163,28 +163,16 @@ test('la fiche Coach est rangée en onglets, sans historique des affectations', 
   await expect(page.getByRole('heading', { name: 'Rattachement' })).toBeVisible()
 })
 
-test('l’accueil change selon la vue : réseau, Responsable Régional ou Coach', async ({ page, isMobile }, info) => {
+test('l’accueil du Directeur montre tout le réseau, avec son titre et sans choix de vue', async ({ page, isMobile }, info) => {
   await seConnecter(page)
+  await expect(page.getByRole('heading', { level: 1, name: 'Accueil' })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Vue' })).toHaveCount(0)
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
   await voirTout(page)
   await expect(aTraiter.getByText(/^(Poste de Coach à pourvoir|Charge \d+ sur \d+)$/).first()).toBeVisible()
   await expect(aTraiter).toContainText('Refaire la vitrine')
-  // Vue d'un Coach : seulement ses magasins
-  await page.getByRole('combobox', { name: 'Vue' }).click()
-  await page.getByRole('option', { name: 'Inès EXEMPLE' }).click()
-  await expect(page.getByRole('combobox', { name: 'Vue' })).toHaveText('Inès EXEMPLE')
-  await voirTout(page)
-  await expect(aTraiter.getByText(/^(Poste de Coach à pourvoir|Charge \d+ sur \d+)$/)).toHaveCount(0)
-  await expect(aTraiter).not.toContainText('Refaire la vitrine')
-  await expect(aTraiter).not.toContainText('Lyon Test')
-  // Vue d'un Responsable Régional
-  await page.getByRole('combobox', { name: 'Vue' }).click()
-  await page.getByRole('option', { name: 'Sam SUD' }).click()
-  await expect(page.getByRole('combobox', { name: 'Vue' })).toHaveText('Sam SUD')
-  await voirTout(page)
-  await expect(aTraiter).toContainText('Refaire la vitrine')
   expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-accueil-rr.png`, fullPage: !isMobile })
+  await page.screenshot({ path: `captures/${info.project.name}-accueil.png`, fullPage: !isMobile })
 })
 
 test('un compte Coach ne voit que ses magasins à l’accueil', async ({ page }) => {
@@ -205,6 +193,7 @@ test('la colonne Magasin reste fixe dans les tableaux', async ({ page, isMobile 
   await page.getByRole('group', { name: 'Affichage' }).getByRole('button', { name: 'Tableau' }).click()
   await expect(page.getByRole('table', { name: 'Rythme de visite par magasin' }).locator('tbody tr').first().locator('td').first()).toHaveCSS('position', 'sticky')
   await page.goto('./#/plus/sante?vue=deploiements')
+  await page.getByRole('group', { name: 'Affichage' }).getByRole('button', { name: 'Tableau' }).click()
   const ligne = page.getByRole('table', { name: 'Déploiements par magasin' }).locator('tbody tr').first()
   await expect(ligne.locator('td').nth(1)).toHaveCSS('position', 'sticky')
   await expect(ligne.locator('td').nth(1)).toHaveCSS('left', '52px')

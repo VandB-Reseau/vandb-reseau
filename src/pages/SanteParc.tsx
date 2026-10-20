@@ -1,25 +1,19 @@
 import type { ReactNode } from 'react'
-import { useDroits } from '../auth/Droits'
 import { normaliser } from '../data/filtres'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
-import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Checkbox from '@mui/material/Checkbox'
-import Chip from '@mui/material/Chip'
-import Divider from '@mui/material/Divider'
 import Drawer from '@mui/material/Drawer'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Snackbar from '@mui/material/Snackbar'
-import Switch from '@mui/material/Switch'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -27,60 +21,40 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { alpha, useTheme } from '@mui/material/styles'
-import AddOutlined from '@mui/icons-material/AddOutlined'
 import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined'
 import ArrowForwardOutlined from '@mui/icons-material/ArrowForwardOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
-import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import EventRepeatOutlined from '@mui/icons-material/EventRepeatOutlined'
-import TableRowsOutlined from '@mui/icons-material/TableRowsOutlined'
-import ViewAgendaOutlined from '@mui/icons-material/ViewAgendaOutlined'
-import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined'
 import SearchOffOutlined from '@mui/icons-material/SearchOffOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
-import { Fenetre } from '../components/EditionEquipe'
 import { RechercheFiltres } from '../components/RechercheFiltres'
 import { Onglets } from '../components/Onglets'
 import GridViewOutlined from '@mui/icons-material/GridViewOutlined'
 import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
 import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
-import { BoutonAction } from '../components/Outils'
-import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import { FiltreMenu } from '../components/FiltreMenu'
 import InputAdornment from '@mui/material/InputAdornment'
 import SearchIcon from '@mui/icons-material/Search'
-import { BoutonsNote, BoutonsOption, LibelleCritere, NotesParAxe, PastilleCase, couleursCoachs, useSaisieSante, type Saisie } from '../components/Sante'
+import { BoutonsNote, BoutonsOption, LibelleCritere, NotesParAxe, PastilleCase, couleursCoachs, texteSur, useSaisieSante, type Saisie } from '../components/Sante'
 import { coachA } from '../data/charge'
-import { effacerToutesEvaluations, enregistrerDeploiements, enregistrerThematiques, importerHistorique } from '../data/chargement'
-import { useReseau } from '../data/ReseauContext'
-import { messageErreur } from '../components/EditionEquipe'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
-import { analyser, lireFichier, type ResultatImport } from '../data/import'
-import { avancement, caseDe, criteresAxe, libelleAxe, libelleCritere, nineBox, tousCriteres, type Evaluation, type IdCritere, type Thematique, type Ton } from '../data/sante'
-import { dateCourte, lienFiche } from '../lib/format'
+import { avancement, caseDe, couleurTon, criteresAxe, libelleAxe, nineBox, tonDe, tousCriteres, type Evaluation, type IdCritere, type Thematique } from '../data/sante'
+import { lienFiche } from '../lib/format'
 import { PastilleAlerte } from '../components/Chiffres'
-import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, MiniCourbe, useAffichage } from '../components/Social'
+import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, MiniCourbe, Pastille, Puces, TitreSection, useAffichage, useParTranches } from '../components/Social'
 import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
-import { analyser as analyserCA, completerChiffres, libellesChiffres, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, libelleMoisCourt, moisPrecedent, courbeCA, formatKEuros, type StatutAlerte } from '../data/chiffres'
-import { analyserChiffres, type ResultatImportChiffres } from '../data/importChiffres'
-import { enregistrerChiffres } from '../data/chargement'
+import { analyser as analyserCA, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, libelleMoisCourt, courbeCA, formatKEuros, type StatutAlerte } from '../data/chiffres'
 import type { Magasin, Reseau } from '../data/modele'
 
 // Filtres communs : recherche, Responsable Régional, Coach
-function useFiltres(reseau: Reseau) {
+function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
   const [rrs, setRRs] = useState<string[]>([])
   const [coachsChoisis, setCoachs] = useState<string[]>([])
   const [recherche, setRecherche] = useState('')
@@ -110,6 +84,7 @@ function useFiltres(reseau: Reseau) {
         options={[...reseau.rrs.map((r) => ({ valeur: r.id, libelle: r.nom, detail: compter((m) => m.rr?.id === r.id) })), { valeur: '__aucun__', libelle: 'Sans RR', detail: compter((m) => !m.rr) }]} />
       <FiltreMenu libelle="Coach" choisis={coachsChoisis} onChange={setCoachs}
         options={[...coachs.map((c) => ({ valeur: c, libelle: c, detail: compter((m) => coachA(m, reseau.jour) === c) })), { valeur: '__aucun__', libelle: 'Sans Coach', detail: compter((m) => !coachA(m, reseau.jour)) }]} />
+      {enPlus}
       {(rrs.length > 0 || coachsChoisis.length > 0 || recherche) && <Button onClick={() => { setRRs([]); setCoachs([]); setRecherche('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
     </RechercheFiltres>
   )
@@ -291,7 +266,7 @@ function BarreLot({ cibles, choisis, vider, saisie }: { cibles: Cible[]; choisis
   )
 }
 
-// ── Lignes de tableau mémorisées : seule la ligne modifiée se redessine ──
+// ── Tableau (PC, à la demande) : seule la ligne modifiée se redessine ──
 const LigneNotes = memo(function LigneNotes({ m, e, coche, basculer, noter }: { m: Magasin; e: Evaluation | undefined; coche: boolean; basculer: (n: string) => void; noter: Saisie['noter'] }) {
   return (
     <TableRow hover selected={coche}>
@@ -313,272 +288,213 @@ const LigneDeploiements = memo(function LigneDeploiements({ m, valeurs, ths, coc
   )
 })
 
-// ── Saisie magasin par magasin, avec « Magasin suivant » ──
-function FicheSaisie({ reseau, magasins, saisie, parties }: { reseau: Reseau; magasins: Magasin[]; saisie: Saisie; parties: ('notes' | 'deploiements')[] }) {
-  const [aCompleter, setACompleter] = useState(false)
-  const [nom, setNom] = useState('')
-  const incomplet = (m: Magasin) => (parties.includes('notes') && tousCriteres.some((c) => reseau.evaluations[m.nom]?.notes[c.id] === undefined))
-    || (parties.includes('deploiements') && reseau.deploiements.thematiques.some((t) => !reseau.deploiements.valeurs[m.nom]?.[t.id]))
-  // La liste est figée tant que le filtre ne change pas, pour ne pas faire sauter le magasin en cours
-  const liste = useMemo(() => (aCompleter ? magasins.filter(incomplet) : magasins), [magasins, aCompleter]) // eslint-disable-line react-hooks/exhaustive-deps
-  const i = Math.max(0, liste.findIndex((m) => m.nom === nom))
-  const m = liste[i]
-  const aller = (k: number) => { setNom(liste[k]?.nom ?? ''); window.scrollTo({ top: 0 }) }
-  const e = m && reseau.evaluations[m.nom]
+// ── Lignes : un point coloré par critère ou par thématique, la saisie s'ouvre en panneau ──
+function Points({ couleurs, label }: { couleurs: (string | null)[]; label: string }) {
+  return (
+    <Box role="img" aria-label={label} sx={{ display: { xs: 'none', sm: 'flex' }, gap: 0.5, flexShrink: 0 }}>
+      {couleurs.map((c, i) => <Box key={i} sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: c ?? 'transparent', border: c ? 0 : '1.5px solid', borderColor: 'divider' }} />)}
+    </Box>
+  )
+}
+
+const LigneSaisie = memo(function LigneSaisie({ m, detail, fin, coche, basculer, ouvrir, selection }: { m: Magasin; detail: string; fin: ReactNode; coche: boolean; basculer: (n: string) => void; ouvrir: (n: string) => void; selection: boolean }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: coche ? 'action.selected' : undefined }}>
+      {selection && <Checkbox checked={coche} onChange={() => basculer(m.nom)} sx={{ ml: 0.5, width: 48, height: 48 }} slotProps={{ input: { 'aria-label': `Sélectionner ${m.nom}` } }} />}
+      <Box sx={{ flex: 1, minWidth: 0, display: 'flex' }}>
+        <LigneCompacte onClick={() => ouvrir(m.nom)} label={`Saisir ${m.nom}`} avatar={<Initiales nom={m.nom} />} titre={m.nom} detail={detail} fin={fin} />
+      </Box>
+    </Box>
+  )
+})
+
+// Panneau de saisie d'un magasin, avec « Précédent » et « Magasin suivant » dans la liste affichée
+function PanneauSaisie({ reseau, liste, nom, aller, fermer, saisie, partie, surPC }: { reseau: Reseau; liste: Magasin[]; nom: string | null; aller: (nom: string) => void; fermer: () => void; saisie: Saisie; partie: 'notes' | 'deploiements'; surPC: boolean }) {
+  const i = liste.findIndex((m) => m.nom === nom)
+  const m = i >= 0 ? liste[i] : null
+  const e = m ? reseau.evaluations[m.nom] : undefined
+  return (
+    <Drawer anchor={surPC ? 'right' : 'bottom'} open={!!m} onClose={fermer} sx={{ zIndex: (t) => t.zIndex.appBar + 10 }}
+      slotProps={{ paper: { sx: { width: surPC ? 520 : '100%', top: surPC ? 72 : undefined, height: surPC ? 'calc(100% - 72px)' : undefined, maxHeight: surPC ? undefined : '90dvh', borderRadius: surPC ? '16px 0 0 16px' : '16px 16px 0 0' } } }}>
+      {m && (
+        <Box role="dialog" aria-label={m.nom} sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Initiales nom={m.nom} />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Link component={RouterLink} to={lienFiche(m.nom)} color="inherit" sx={{ fontWeight: 600, display: 'block' }} noWrap>{m.nom}</Link>
+              <Typography variant="body2" color="text.secondary" noWrap>{coachA(m, reseau.jour) || 'Sans Coach'} · {i + 1} sur {liste.length}</Typography>
+            </Box>
+            {partie === 'notes' && <PastilleCase c={caseDe(e)} />}
+            <IconButton onClick={fermer} aria-label="Fermer" sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
+          </Box>
+          <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', p: 2 }}>
+            {partie === 'notes'
+              ? <NotesParAxe integre={!m.franchise} notes={e?.notes} noter={(id, n) => saisie.noter([m.nom], id, n)} libelleMagasin={m.nom} colonnes={1} />
+              : reseau.deploiements.thematiques.map((t) => (
+                <Box key={t.id} sx={{ mb: 2, overflowX: 'auto' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{t.libelle}</Typography>
+                  <BoutonsOption t={t} libelle={`${t.libelle} de ${m.nom}`} valeur={reseau.deploiements.valeurs[m.nom]?.[t.id] ?? ''} onChange={(v) => saisie.deployer([m.nom], t.id, v)} />
+                </Box>
+              ))}
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1, p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Button variant="outlined" startIcon={<ArrowBackOutlined />} disabled={i === 0} onClick={() => aller(liste[i - 1].nom)} sx={{ minHeight: 48 }}>Précédent</Button>
+            <Box sx={{ flex: 1 }} />
+            <Button variant="contained" endIcon={<ArrowForwardOutlined />} disabled={i >= liste.length - 1} onClick={() => aller(liste[i + 1].nom)} sx={{ minHeight: 48 }}>Magasin suivant</Button>
+          </Box>
+        </Box>
+      )}
+    </Drawer>
+  )
+}
+
+type Etat = 'tous' | 'completer'
+
+// Liste commune d'Évaluer et de Déploiements : puces « Tous / À compléter », lignes par tranches, tableau à la demande sur PC
+function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne, tableau, cibles }: {
+  reseau: Reseau; magasins: Magasin[]; incomplet: (m: Magasin) => boolean; partie: 'notes' | 'deploiements'; saisie: Saisie; surPC: boolean
+  ligne: (m: Magasin) => { detail: string; fin: ReactNode }; tableau: (visibles: Magasin[], sel: ReturnType<typeof useSelection>) => ReactNode; cibles: Cible[]
+}) {
+  const [etat, setEtat] = useState<Etat>('tous')
+  const [ouvert, setOuvert] = useState<string | null>(null)
+  const [affichage, setAffichage] = useAffichage(partie === 'notes' ? 'evaluer' : 'deploiements')
+  const sel = useSelection()
+  const aCompleter = useMemo(() => magasins.filter(incomplet), [magasins, reseau.evaluations, reseau.deploiements]) // eslint-disable-line react-hooks/exhaustive-deps
+  // La liste du panneau reste figée tant qu'il est ouvert, pour ne pas faire sauter le magasin en cours
+  const [figee, setFigee] = useState<Magasin[]>([])
+  const liste = etat === 'completer' ? aCompleter : magasins
+  const { visibles, suite } = useParTranches(liste, `${etat}|${liste.length}|${magasins.map((m) => m.nom).join(',').length}`)
+  const ouvrir = useCallback((nom: string) => { setFigee(liste); setOuvert(nom) }, [liste])
+  const tableauVisible = surPC && affichage === 'tableau'
   return (
     <>
-      <FormControlLabel control={<Switch checked={aCompleter} onChange={(_e, v) => { setACompleter(v); setNom('') }} />} label="Seulement les magasins à compléter" sx={{ mb: 2, minHeight: 48 }} />
-      {!m ? <EmptyState icone={<SearchOffOutlined />} titre="Rien à compléter" texte="Tous les magasins affichés sont renseignés." /> : (
-        <Card>
-          <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 0.5 }}>
-              <Link component={RouterLink} to={lienFiche(m.nom)} variant="h2" sx={{ flex: 1 }}>{m.nom}</Link>
-              {parties.includes('notes') && <PastilleCase c={caseDe(e)} />}
-            </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Magasin {i + 1} sur {liste.length} · Coach {coachA(m, reseau.jour) || 'à désigner'}</Typography>
-            {parties.includes('notes') && <NotesParAxe integre={!m.franchise} notes={e?.notes} noter={(id, n) => saisie.noter([m.nom], id, n)} libelleMagasin={m.nom} />}
-            {parties.length > 1 && <Divider sx={{ my: 2.5 }} />}
-            {parties.includes('deploiements') && (
-              <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
-                {reseau.deploiements.thematiques.map((t) => (
-                  <Box key={t.id} sx={{ overflowX: 'auto' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{t.libelle}</Typography>
-                    <BoutonsOption t={t} libelle={`${t.libelle} de ${m.nom}`} valeur={reseau.deploiements.valeurs[m.nom]?.[t.id] ?? ''} onChange={(v) => saisie.deployer([m.nom], t.id, v)} />
-                  </Box>
-                ))}
-              </Box>
-            )}
-            <Box sx={{ display: 'flex', gap: 1, mt: 3 }}>
-              <Button variant="outlined" startIcon={<ArrowBackOutlined />} disabled={i === 0} onClick={() => aller(i - 1)} sx={{ minHeight: 48 }}>Précédent</Button>
-              <Box sx={{ flex: 1 }} />
-              <Button variant="contained" endIcon={<ArrowForwardOutlined />} disabled={i >= liste.length - 1} onClick={() => aller(i + 1)} sx={{ minHeight: 48 }}>Magasin suivant</Button>
-            </Box>
-          </CardContent>
-        </Card>
-      )}
+      <Puces label="Magasins à afficher" valeur={etat} onChange={setEtat} options={[
+        { v: 'tous', libelle: `Tous · ${magasins.length}` },
+        { v: 'completer', libelle: `À compléter · ${aCompleter.length}` },
+      ]} />
+      <TitreSection nombre={liste.length} action={surPC && <ChoixAffichage valeur={affichage} onChange={setAffichage} />}>Magasins</TitreSection>
+      {liste.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre={etat === 'completer' ? 'Rien à compléter' : 'Aucun magasin'} texte={etat === 'completer' ? 'Tous les magasins affichés sont renseignés.' : 'Aucun magasin ne correspond à ces filtres.'} />
+        : tableauVisible ? tableau(visibles, sel) : (
+          <CarteLignes label={partie === 'notes' ? 'Évaluation des magasins' : 'Déploiements par magasin'}>
+            {visibles.map((m) => { const l = ligne(m); return <LigneSaisie key={m.nom} m={m} detail={l.detail} fin={l.fin} coche={sel.choisis.has(m.nom)} basculer={sel.basculer} ouvrir={ouvrir} selection={surPC} /> })}
+          </CarteLignes>
+        )}
+      {suite}
+      <BarreLot cibles={cibles} choisis={sel.choisis} vider={() => sel.setChoisis(new Set())} saisie={saisie} />
+      <PanneauSaisie reseau={reseau} liste={figee} nom={ouvert} aller={setOuvert} fermer={() => setOuvert(null)} saisie={saisie} partie={partie} surPC={surPC} />
     </>
   )
 }
 
-function ChoixMode({ mode, changer }: { mode: string; changer: (m: string) => void }) {
-  return (
-    <ToggleButtonGroup exclusive value={mode} onChange={(_e, v) => v && changer(v)} aria-label="Mode de saisie" sx={{ mb: 2, '& .MuiToggleButton-root': { minHeight: 48, textTransform: 'none', px: 2 } }}>
-      <ToggleButton value="tableau"><TableRowsOutlined sx={{ mr: 1 }} />Tableau</ToggleButton>
-      <ToggleButton value="fiche"><ViewAgendaOutlined sx={{ mr: 1 }} />Magasin par magasin</ToggleButton>
-    </ToggleButtonGroup>
-  )
-}
-
-function DialogEffacerNotes({ nombre, onFermer }: { nombre: number; onFermer: () => void }) {
-  const { recharger } = useReseau()
-  const [envoi, setEnvoi] = useState(false)
-  const [erreur, setErreur] = useState('')
-  const effacer = async () => {
-    setEnvoi(true); setErreur('')
-    try { await effacerToutesEvaluations(); await recharger(); onFermer() } catch (e) { setErreur(messageErreur(e)); setEnvoi(false) }
-  }
-  return (
-    <Dialog open onClose={onFermer} aria-labelledby="titre-effacer-notes" maxWidth="xs" fullWidth>
-      <DialogTitle id="titre-effacer-notes">Effacer toutes les notes ?</DialogTitle>
-      <DialogContent>
-        <Typography>Les notes nine box de {nombre} magasin{nombre > 1 ? 's' : ''}, historique compris, seront effacées. Tous les magasins redeviennent non classés. Les déploiements ne changent pas.</Typography>
-        {erreur && <Alert severity="error" sx={{ mt: 2 }}>{erreur}</Alert>}
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onFermer} sx={{ minHeight: 48 }}>Annuler</Button>
-        <Button variant="contained" color="error" onClick={effacer} disabled={envoi} sx={{ minHeight: 48 }}>{envoi ? 'Effacement…' : 'Tout effacer'}</Button>
-      </DialogActions>
-    </Dialog>
-  )
-}
+const couleurNotePoint: Record<number, string> = { 0: 'info.main', 1: 'error.main', 2: 'warning.main', 3: 'success.main' }
 
 function VueEvaluer({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: Saisie & { version: number }; surPC: boolean; date: ReactNode }) {
-  const { magasins, barre } = useFiltres(reseau)
-  const [mode, setMode] = useState('tableau')
-  const sel = useSelection()
+  const { magasins, barre } = useFiltres(reseau, date)
   const cibles: Cible[] = tousCriteres.map((c) => ({ type: 'note', id: c.id, libelle: c.libelle }))
-  const [effacer, setEffacer] = useState(false)
-  const { referentiels } = useDroits()
-  const notes = Object.keys(reseau.evaluations).length
+  const incomplet = (m: Magasin) => tousCriteres.some((c) => reseau.evaluations[m.nom]?.notes[c.id] === undefined)
   return (
     <>
       {barre}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        {date}
-        {notes > 0 && referentiels && <Button color="error" startIcon={<DeleteOutlined />} onClick={() => setEffacer(true)} sx={{ minHeight: 48, mb: 2 }}>Effacer toutes les notes</Button>}
-      </Box>
-      {effacer && <DialogEffacerNotes nombre={notes} onFermer={() => setEffacer(false)} />}
-      {surPC && <ChoixMode mode={mode} changer={setMode} />}
-      {magasins.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." />
-        : !surPC || mode === 'fiche' ? <FicheSaisie reseau={reseau} magasins={magasins} saisie={saisie} parties={['notes']} /> : (
-          <>
-            <TableContainer component={Card}>
-              <Table size="small" className="deux-colonnes-fixes" aria-label="Évaluation des magasins">
-                <TableHead>
-                  <TableRow>
-                    <TableCell colSpan={2} />
-                    {(['resultats', 'franchise'] as const).map((axe) => <TableCell key={axe} colSpan={criteresAxe(axe).length} sx={{ fontWeight: 700, borderLeft: 1, borderColor: 'divider' }}>{libelleAxe(axe)}</TableCell>)}
-                    <TableCell />
-                  </TableRow>
-                  <TableRow>
-                    <TableCell padding="checkbox"><CaseTout magasins={magasins} {...sel} /></TableCell>
-                    <TableCell>Magasin</TableCell>
-                    {tousCriteres.map((c) => <TableCell key={c.id} sx={{ minWidth: 170 }}><LibelleCritere c={c} /></TableCell>)}
-                    <TableCell>Case</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {magasins.map((m) => <LigneNotes key={m.nom} m={m} e={reseau.evaluations[m.nom]} coche={sel.choisis.has(m.nom)} basculer={sel.basculer} noter={saisie.noter} />)}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <BarreLot cibles={cibles} choisis={sel.choisis} vider={() => sel.setChoisis(new Set())} saisie={saisie} />
-          </>
-        )}
+      <ListeSaisie reseau={reseau} magasins={magasins} incomplet={incomplet} partie="notes" saisie={saisie} surPC={surPC} cibles={cibles}
+        ligne={(m) => {
+          const e = reseau.evaluations[m.nom]
+          const n = tousCriteres.filter((c) => e?.notes[c.id] !== undefined).length
+          const c = caseDe(e)
+          return {
+            detail: [coachA(m, reseau.jour) || 'Sans Coach', `${n} note${n > 1 ? 's' : ''} sur ${tousCriteres.length}`].join(' · '),
+            fin: <>
+              <Points label={`${n} notes sur ${tousCriteres.length}`} couleurs={tousCriteres.map((x) => { const v = e?.notes[x.id]; return v === undefined ? null : couleurNotePoint[v] })} />
+              {c ? <Box component="span" sx={{ flexShrink: 0, px: 1.25, py: 0.5, borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', bgcolor: c.couleur, color: texteSur(c.couleur) }}>{c.libelle}</Box> : <Pastille ton="gris">Non classé</Pastille>}
+            </>,
+          }
+        }}
+        tableau={(visibles, sel) => (
+          <TableContainer component={Card}>
+            <Table size="small" className="deux-colonnes-fixes" aria-label="Évaluation des magasins">
+              <TableHead>
+                <TableRow>
+                  <TableCell colSpan={2} />
+                  {(['resultats', 'franchise'] as const).map((axe) => <TableCell key={axe} colSpan={criteresAxe(axe).length} sx={{ fontWeight: 700, borderLeft: 1, borderColor: 'divider' }}>{libelleAxe(axe)}</TableCell>)}
+                  <TableCell />
+                </TableRow>
+                <TableRow>
+                  <TableCell padding="checkbox"><CaseTout magasins={visibles} {...sel} /></TableCell>
+                  <TableCell>Magasin</TableCell>
+                  {tousCriteres.map((c) => <TableCell key={c.id} sx={{ minWidth: 170 }}><LibelleCritere c={c} /></TableCell>)}
+                  <TableCell>Case</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {visibles.map((m) => <LigneNotes key={m.nom} m={m} e={reseau.evaluations[m.nom]} coche={sel.choisis.has(m.nom)} basculer={sel.basculer} noter={saisie.noter} />)}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )} />
     </>
   )
 }
 
 function VueDeploiements({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: Saisie & { version: number }; surPC: boolean; date: ReactNode }) {
-  const { magasins, barre } = useFiltres(reseau)
-  const [mode, setMode] = useState('tableau')
-  const sel = useSelection()
+  const { magasins, barre } = useFiltres(reseau, date)
   const ths = reseau.deploiements.thematiques
   const cibles: Cible[] = ths.map((t) => ({ type: 'deploiement', t, libelle: t.libelle }))
+  const incomplet = (m: Magasin) => ths.some((t) => !reseau.deploiements.valeurs[m.nom]?.[t.id])
+  if (!ths.length) return <>{barre}<EmptyState icone={<RocketLaunchOutlined />} titre="Aucune thématique de déploiement" texte="Les thématiques se créent dans les Paramètres." /></>
   return (
     <>
       {barre}
-      {date}
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' }, mb: 3 }}>
+      <TitreSection>Avancement</TitreSection>
+      <CarteLignes label="Avancement des déploiements">
         {ths.map((t) => <Avancement key={t.id} reseau={reseau} t={t} />)}
-      </Box>
-      {surPC && <ChoixMode mode={mode} changer={setMode} />}
-      {magasins.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." />
-        : !surPC || mode === 'fiche' ? <FicheSaisie reseau={reseau} magasins={magasins} saisie={saisie} parties={['deploiements']} /> : (
-          <>
-            <TableContainer component={Card}>
-              <Table size="small" className="deux-colonnes-fixes" aria-label="Déploiements par magasin">
-                <TableHead>
-                  <TableRow>
-                    <TableCell padding="checkbox"><CaseTout magasins={magasins} {...sel} /></TableCell>
-                    <TableCell>Magasin</TableCell>
-                    {ths.map((t) => <TableCell key={t.id}>{t.libelle}</TableCell>)}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {magasins.map((m) => <LigneDeploiements key={m.nom} m={m} valeurs={reseau.deploiements.valeurs[m.nom]} ths={ths} coche={sel.choisis.has(m.nom)} basculer={sel.basculer} deployer={saisie.deployer} />)}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <BarreLot cibles={cibles} choisis={sel.choisis} vider={() => sel.setChoisis(new Set())} saisie={saisie} />
-          </>
-        )}
+      </CarteLignes>
+      <Box sx={{ mt: 2 }} />
+      <ListeSaisie reseau={reseau} magasins={magasins} incomplet={incomplet} partie="deploiements" saisie={saisie} surPC={surPC} cibles={cibles}
+        ligne={(m) => {
+          const v = reseau.deploiements.valeurs[m.nom]
+          const tonsM = ths.map((t) => tonDe(t, v?.[t.id]))
+          const faits = tonsM.filter((x) => x === 'positif').length
+          return {
+            detail: [coachA(m, reseau.jour) || 'Sans Coach', `${faits} sur ${ths.length} déployé${faits > 1 ? 's' : ''}`].join(' · '),
+            fin: <Points label={`${faits} thématiques déployées sur ${ths.length}`} couleurs={tonsM.map((x) => (x ? `${couleurTon[x]}.main` : null))} />,
+          }
+        }}
+        tableau={(visibles, sel) => (
+          <TableContainer component={Card}>
+            <Table size="small" className="deux-colonnes-fixes" aria-label="Déploiements par magasin">
+              <TableHead>
+                <TableRow>
+                  <TableCell padding="checkbox"><CaseTout magasins={visibles} {...sel} /></TableCell>
+                  <TableCell>Magasin</TableCell>
+                  {ths.map((t) => <TableCell key={t.id}>{t.libelle}</TableCell>)}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {visibles.map((m) => <LigneDeploiements key={m.nom} m={m} valeurs={reseau.deploiements.valeurs[m.nom]} ths={ths} coche={sel.choisis.has(m.nom)} basculer={sel.basculer} deployer={saisie.deployer} />)}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )} />
     </>
   )
 }
 
-// ── Import d'un fichier Excel ou CSV ──
-function DialogImport({ reseau, date, onFermer }: { reseau: Reseau; date: string; onFermer: (m?: string) => void }) {
-  const [res, setRes] = useState<ResultatImport | null>(null)
-  const [nomFichier, setNomFichier] = useState('')
-  const [erreur, setErreur] = useState('')
-  const choisir = async (f: File | undefined) => {
-    if (!f) return
-    setNomFichier(f.name); setErreur(''); setRes(null)
-    try {
-      const r = analyser(await lireFichier(f), reseau, date)
-      if (!r) setErreur('Aucune colonne de noms de magasins reconnue dans ce fichier. Vérifie que les noms sont écrits comme dans l’app.')
-      else setRes(r)
-    } catch { setErreur('Ce fichier ne peut pas être lu. Enregistre-le au format Excel (.xlsx) ou CSV puis réessaie.') }
-  }
-  const nbNotes = res ? res.notes.reduce((t, n) => t + Object.keys(n.notes).length, 0) : 0
-  const dates = res ? [...new Set([...res.notes.map((n) => n.date), ...res.deploiements.map((d) => d.date)])].sort() : []
-  const total = nbNotes + (res?.deploiements.length ?? 0)
-  return (
-    <Fenetre large titre="Importer depuis Excel" ouvert onFermer={onFermer} valide={total > 0}
-      enregistrer={async () => {
-        if (res!.notes.length) await importerHistorique(res!.notes, reseau.directeur.nom)
-        if (res!.deploiements.length) await enregistrerDeploiements(res!.deploiements, date)
-        return `${total} valeur${total > 1 ? 's' : ''} importée${total > 1 ? 's' : ''}`
-      }}>
-      <Button variant="outlined" component="label" startIcon={<UploadFileOutlined />} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
-        {nomFichier || 'Choisir un fichier'}
-        <input type="file" hidden accept=".xlsx,.csv,.txt" aria-label="Fichier à importer" onChange={(e) => choisir(e.target.files?.[0])} />
-      </Button>
-      {erreur && <Alert severity="warning">{erreur}</Alert>}
-      {res && (
-        <>
-          <Alert severity={total ? 'success' : 'info'}>
-            {total ? `${total} valeur${total > 1 ? 's' : ''} prête${total > 1 ? 's' : ''} à importer pour ${new Set([...res.notes.map((n) => n.magasin), ...res.deploiements.map((d) => d.magasin)]).size} magasins (colonne des magasins : « ${res.colonneMagasin} »). ${dates.length > 1 ? `${dates.length} dates, du ${dateCourte(dates[0])} au ${dateCourte(dates.at(-1)!)}, ajoutées à l’historique.` : `Datées du ${dateCourte(dates[0] ?? date)}.`}` : 'Aucune valeur reconnue dans ce fichier.'}
-          </Alert>
-          {res.criteres.length + res.thematiques.length > 0 && (
-            <Box>
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Colonnes reconnues</Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {res.criteres.map((c) => <Chip key={c.entete} label={`${c.entete} → ${libelleCritere(c.id)}`} color="primary" variant="outlined" sx={{ fontSize: 13 }} />)}
-                {res.thematiques.map((t) => <Chip key={t.entete} label={`${t.entete} → ${t.t.libelle}`} color="secondary" variant="outlined" sx={{ fontSize: 13 }} />)}
-              </Box>
-            </Box>
-          )}
-          {res.ignorees.length > 0 && <Typography variant="body2" color="text.secondary">Colonnes ignorées : {res.ignorees.join(', ')}. Pour en suivre une, ajoute-la d’abord comme thématique.</Typography>}
-          {res.inconnus.length > 0 && <Typography variant="body2" color="text.secondary">Magasins non trouvés ({res.inconnus.length}) : {res.inconnus.slice(0, 12).join(', ')}{res.inconnus.length > 12 ? '…' : ''}</Typography>}
-          {res.illisibles > 0 && <Typography variant="body2" color="text.secondary">{res.illisibles} case{res.illisibles > 1 ? 's' : ''} avec une valeur non reconnue, laissée{res.illisibles > 1 ? 's' : ''} de côté.</Typography>}
-        </>
-      )}
-    </Fenetre>
-  )
-}
-
+// Une ligne par thématique : nombre de magasins déployés et barre d'avancement
 function Avancement({ reseau, t }: { reseau: Reseau; t: Thematique }) {
   const a = avancement(reseau, t)
   const pct = (n: number) => (a.total ? (n / a.total) * 100 : 0)
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h3" component="h3">{t.libelle}</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{a.positif} sur {a.total} · {a.partiel} en partie · {a.inconnu} non renseigné{a.inconnu > 1 ? 's' : ''}</Typography>
-        <Box sx={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', bgcolor: 'action.hover' }} role="img" aria-label={`${t.libelle} : ${a.positif} magasins sur ${a.total}`}>
-          <Box sx={{ width: `${pct(a.positif)}%`, bgcolor: 'success.main' }} />
-          <Box sx={{ width: `${pct(a.partiel)}%`, bgcolor: 'warning.main' }} />
-          <Box sx={{ width: `${pct(a.negatif)}%`, bgcolor: 'error.light' }} />
-        </Box>
-      </CardContent>
-    </Card>
-  )
-}
-
-const tons: { id: Ton; libelle: string }[] = [{ id: 'positif', libelle: 'Vert (fait)' }, { id: 'partiel', libelle: 'Orange (en partie)' }, { id: 'negatif', libelle: 'Rouge (non)' }]
-
-export function DialogThematiques({ reseau, onFermer }: { reseau: Reseau; onFermer: (m?: string) => void }) {
-  const [liste, setListe] = useState<Thematique[]>(() => reseau.deploiements.thematiques.map((t) => ({ ...t, options: t.options.map((o) => ({ ...o })) })))
-  const changer = (i: number, f: (t: Thematique) => Thematique) => setListe((l) => l.map((t, j) => (j === i ? f(t) : t)))
-  const valide = liste.every((t) => t.libelle.trim() && t.options.length > 0 && t.options.every((o) => o.libelle.trim()))
-  const ajouter = () => setListe((l) => [...l, { id: `t${Date.now().toString(36)}`, libelle: '', options: [{ libelle: 'Oui', ton: 'positif' }, { libelle: 'Non', ton: 'negatif' }] }])
-  return (
-    <Fenetre large titre="Thématiques de déploiement" ouvert onFermer={onFermer} valide={valide}
-      enregistrer={async () => { await enregistrerThematiques(liste.map((t) => ({ ...t, libelle: t.libelle.trim(), options: t.options.map((o) => ({ ...o, libelle: o.libelle.trim() })) }))); return 'Thématiques enregistrées' }}>
-      {liste.map((t, i) => (
-        <Card key={t.id} variant="outlined">
-          <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              <TextField label="Thématique" value={t.libelle} onChange={(e) => changer(i, (x) => ({ ...x, libelle: e.target.value }))} sx={{ flex: 1 }} required />
-              <Tooltip title="Supprimer la thématique"><IconButton onClick={() => setListe((l) => l.filter((_, j) => j !== i))} aria-label={`Supprimer la thématique ${t.libelle || "sans nom"}`}><DeleteOutlined /></IconButton></Tooltip>
-            </Box>
-            {t.options.map((o, k) => (
-              <Box key={k} sx={{ display: 'flex', gap: 1, alignItems: 'center', pl: { sm: 2 }, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
-                <TextField size="small" label="Réponse possible" value={o.libelle} onChange={(e) => changer(i, (x) => ({ ...x, options: x.options.map((p, n) => (n === k ? { ...p, libelle: e.target.value } : p)) }))} sx={{ flex: 1, minWidth: 140, '& .MuiInputBase-root': { minHeight: 48 } }} />
-                <TextField select size="small" label="Couleur" value={o.ton} onChange={(e) => changer(i, (x) => ({ ...x, options: x.options.map((p, n) => (n === k ? { ...p, ton: e.target.value as Ton } : p)) }))} sx={{ minWidth: 170, '& .MuiInputBase-root': { minHeight: 48 } }}>
-                  {tons.map((x) => <MenuItem key={x.id} value={x.id}>{x.libelle}</MenuItem>)}
-                </TextField>
-                <IconButton onClick={() => changer(i, (x) => ({ ...x, options: x.options.filter((_, n) => n !== k) }))} aria-label={`Retirer la réponse ${o.libelle}`} disabled={t.options.length <= 1}><DeleteOutlined /></IconButton>
-              </Box>
-            ))}
-            <Button startIcon={<AddOutlined />} onClick={() => changer(i, (x) => ({ ...x, options: [...x.options, { libelle: '', ton: 'partiel' }] }))} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>Ajouter une réponse</Button>
-          </CardContent>
-        </Card>
-      ))}
-      <Button variant="outlined" startIcon={<AddOutlined />} onClick={ajouter} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>Ajouter une thématique</Button>
-    </Fenetre>
+    <Box sx={{ px: 2, py: 1.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.75 }}>
+        <Typography sx={{ fontWeight: 600, flex: 1, minWidth: 0 }} noWrap>{t.libelle}</Typography>
+        <Typography sx={{ fontWeight: 700 }}>{a.total ? Math.round(pct(a.positif)) : 0} %</Typography>
+      </Box>
+      <Box sx={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', bgcolor: 'action.hover' }} role="img" aria-label={`${t.libelle} : ${a.positif} magasins sur ${a.total}`}>
+        <Box sx={{ width: `${pct(a.positif)}%`, bgcolor: 'success.main' }} />
+        <Box sx={{ width: `${pct(a.partiel)}%`, bgcolor: 'warning.main' }} />
+        <Box sx={{ width: `${pct(a.negatif)}%`, bgcolor: 'error.light' }} />
+      </Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{a.positif} sur {a.total} · {a.partiel} en partie · {a.inconnu} non renseigné{a.inconnu > 1 ? 's' : ''}</Typography>
+    </Box>
   )
 }
 
@@ -586,7 +502,7 @@ export function DialogThematiques({ reseau, onFermer }: { reseau: Reseau; onFerm
 function ChampDate({ valeur, max, onChange }: { valeur: string; max: string; onChange: (v: string) => void }) {
   return (
     <TextField type="date" size="small" label="Date des changements" value={valeur} onChange={(e) => onChange(e.target.value || max)}
-      slotProps={{ inputLabel: { shrink: true }, htmlInput: { max } }} sx={{ mb: 2, minWidth: 220, '& .MuiInputBase-root': { minHeight: 48 } }} />
+      slotProps={{ inputLabel: { shrink: true }, htmlInput: { max } }} sx={{ minWidth: 200, '& .MuiInputBase-root': { minHeight: 48 } }} />
   )
 }
 
@@ -604,24 +520,14 @@ export function SanteParc() {
 
 function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; surPC: boolean; aller: (v: string) => void }) {
   const [message, setMessage] = useState('')
-  const [gestion, setGestion] = useState(false)
-  const [importer, setImporter] = useState(false)
-  const [importerChiffres, setImporterChiffres] = useState(false)
-  const { referentiels } = useDroits()
   const [date, setDate] = useState(reseau.jour)
   const saisie = useSaisieSante(reseau, setMessage, date)
   const actifs = reseau.magasins.filter((m) => m.statut !== 'avenir')
   const classes = actifs.filter((m) => caseDe(reseau.evaluations[m.nom])).length
-  // Les boutons restent en place (masqués sur la nine box) pour que le titre ne bouge pas entre onglets
-  const actions = (
-    <Box sx={{ gap: 1, flexWrap: 'wrap', visibility: vue === 'ninebox' ? 'hidden' : 'visible', display: surPC ? 'flex' : 'none' }} aria-hidden={vue === 'ninebox'}>
-      {surPC && referentiels && <BoutonAction secondaire libelle="Importer Excel" icone={<UploadFileOutlined />} onClick={() => (vue === 'chiffres' ? setImporterChiffres(true) : setImporter(true))} />}
-      {referentiels && <Box sx={{ visibility: vue === 'deploiements' ? 'visible' : 'hidden' }} aria-hidden={vue !== 'deploiements'}><BoutonAction secondaire libelle="Gérer les thématiques" icone={<SettingsOutlined />} onClick={() => setGestion(true)} /></Box>}
-    </Box>
-  )
+  const champDate = <ChampDate valeur={date} max={reseau.jour} onChange={setDate} />
   return (
     <>
-      <PageHeader titre="Santé du parc" sousTitre={`${classes} magasin${classes > 1 ? 's' : ''} classé${classes > 1 ? 's' : ''} sur ${actifs.length}`} actions={actions} />
+      <PageHeader titre="Santé du parc" sousTitre={`${classes} magasin${classes > 1 ? 's' : ''} classé${classes > 1 ? 's' : ''} sur ${actifs.length}`} />
       <Onglets valeur={vue} onChange={aller} libelle="Rubriques de la santé du parc" rubriques={[
         { vue: 'ninebox', libelle: 'Nine box', icone: <GridViewOutlined /> },
         { vue: 'evaluer', libelle: 'Évaluer', icone: <FactCheckOutlined /> },
@@ -629,12 +535,9 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
         { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
       ]} />
       {vue === 'ninebox' && <VueNineBox reseau={reseau} evaluer={() => aller('evaluer')} surPC={surPC} />}
-      {vue === 'evaluer' && <VueEvaluer reseau={reseau} saisie={saisie} surPC={surPC} date={<ChampDate valeur={date} max={reseau.jour} onChange={setDate} />} />}
-      {vue === 'deploiements' && <VueDeploiements reseau={reseau} saisie={saisie} surPC={surPC} date={<ChampDate valeur={date} max={reseau.jour} onChange={setDate} />} />}
+      {vue === 'evaluer' && <VueEvaluer reseau={reseau} saisie={saisie} surPC={surPC} date={champDate} />}
+      {vue === 'deploiements' && <VueDeploiements reseau={reseau} saisie={saisie} surPC={surPC} date={champDate} />}
       {vue === 'chiffres' && <VueChiffres reseau={reseau} surPC={surPC} />}
-      {importerChiffres && <DialogImportChiffres reseau={reseau} onFermer={(m) => { setImporterChiffres(false); if (m) setMessage(m) }} />}
-      {gestion && <DialogThematiques reseau={reseau} onFermer={(m) => { setGestion(false); if (m) setMessage(m) }} />}
-      {importer && <DialogImport reseau={reseau} date={date} onFermer={(m) => { setImporter(false); if (m) setMessage(m) }} />}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </>
   )
@@ -754,47 +657,3 @@ function LignesChiffres({ reseau, lignes }: { reseau: Reseau; lignes: { m: Magas
     </Box>
   )
 }
-
-function DialogImportChiffres({ reseau, onFermer }: { reseau: Reseau; onFermer: (m?: string) => void }) {
-  const [res, setRes] = useState<ResultatImportChiffres | null>(null)
-  const [nomFichier, setNomFichier] = useState('')
-  const [erreur, setErreur] = useState('')
-  const choisir = async (f: File | undefined) => {
-    if (!f) return
-    setNomFichier(f.name); setErreur(''); setRes(null)
-    try {
-      const r = analyserChiffres(await lireFichier(f), reseau, moisPrecedent(reseau.jour))
-      if (!r) setErreur('Aucune colonne de noms de magasins reconnue dans ce fichier. Vérifie que les noms sont écrits comme dans l’app.')
-      else setRes(r)
-    } catch { setErreur('Ce fichier ne peut pas être lu. Enregistre-le au format Excel (.xlsx) ou CSV puis réessaie.') }
-  }
-  const total = res?.lignes.length ?? 0
-  const mois = res ? [...new Set(res.lignes.map((l) => l.mois))].sort() : []
-  const nbMag = res ? new Set(res.lignes.map((l) => l.magasin)).size : 0
-  return (
-    <Fenetre large titre="Importer les chiffres mensuels" ouvert onFermer={onFermer} valide={total > 0}
-      enregistrer={async () => { await enregistrerChiffres(res!.lignes.map((l) => completerChiffres(l, reseau.chiffres[l.magasin]?.find((c) => c.mois === l.mois)))); return `${total} mois de chiffres importé${total > 1 ? 's' : ''}` }}>
-      <Button variant="outlined" component="label" startIcon={<UploadFileOutlined />} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
-        {nomFichier || 'Choisir un fichier'}
-        <input type="file" hidden accept=".xlsx,.csv,.txt" aria-label="Fichier de chiffres à importer" onChange={(e) => choisir(e.target.files?.[0])} />
-      </Button>
-      {erreur && <Alert severity="warning">{erreur}</Alert>}
-      {res && (
-        <>
-          <Alert severity={total ? 'success' : 'info'}>
-            {total ? `${total} ligne${total > 1 ? 's' : ''} prête${total > 1 ? 's' : ''} à importer pour ${nbMag} magasin${nbMag > 1 ? 's' : ''}, ${mois.length > 1 ? `${/^[aeiouo]/.test(libelleMois(mois[0])) ? 'd’' : 'de '}${libelleMois(mois[0])} à ${libelleMois(mois.at(-1)!)}` : libelleMois(mois[0])}.${res.colonneMois ? '' : ' Aucune colonne de mois : les chiffres sont rangés sur le mois dernier.'}` : 'Aucun chiffre reconnu dans ce fichier.'}
-          </Alert>
-          {res.colonnes.length > 0 && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {res.colonnes.map((c) => <Chip key={c.entete} label={`${c.entete} → ${libellesChiffres[c.id].libelle}`} color="primary" variant="outlined" sx={{ fontSize: 13 }} />)}
-            </Box>
-          )}
-          {res.ignorees.length > 0 && <Typography variant="body2" color="text.secondary">Colonnes ignorées : {res.ignorees.join(', ')}.</Typography>}
-          {res.inconnus.length > 0 && <Typography variant="body2" color="text.secondary">Magasins non trouvés ({res.inconnus.length}) : {res.inconnus.slice(0, 12).join(', ')}{res.inconnus.length > 12 ? '…' : ''}</Typography>}
-          {res.illisibles > 0 && <Typography variant="body2" color="text.secondary">{res.illisibles} case{res.illisibles > 1 ? 's' : ''} avec une valeur non reconnue, laissée{res.illisibles > 1 ? 's' : ''} de côté.</Typography>}
-        </>
-      )}
-    </Fenetre>
-  )
-}
-
