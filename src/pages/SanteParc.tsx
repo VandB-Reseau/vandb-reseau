@@ -11,6 +11,8 @@ import Checkbox from '@mui/material/Checkbox'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
+import ListItemText from '@mui/material/ListItemText'
+import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Snackbar from '@mui/material/Snackbar'
@@ -24,7 +26,12 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
-import { alpha, useTheme } from '@mui/material/styles'
+import { alpha, useTheme, type SxProps, type Theme } from '@mui/material/styles'
+import ArrowDownwardOutlined from '@mui/icons-material/ArrowDownwardOutlined'
+import ArrowUpwardOutlined from '@mui/icons-material/ArrowUpwardOutlined'
+import FilterAlt from '@mui/icons-material/FilterAlt'
+import FilterAltOutlined from '@mui/icons-material/FilterAltOutlined'
+import SwapVertOutlined from '@mui/icons-material/SwapVertOutlined'
 import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined'
 import ArrowForwardOutlined from '@mui/icons-material/ArrowForwardOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
@@ -39,12 +46,12 @@ import GridViewOutlined from '@mui/icons-material/GridViewOutlined'
 import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
 import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
-import { FiltreMenu } from '../components/FiltreMenu'
+import { FiltreMenu, type Option } from '../components/FiltreMenu'
 import InputAdornment from '@mui/material/InputAdornment'
 import SearchIcon from '@mui/icons-material/Search'
 import { BoutonsNote, BoutonsOption, LibelleCritere, NotesParAxe, PastilleCase, couleursCoachs, texteSur, useSaisieSante, type Saisie } from '../components/Sante'
 import { coachA } from '../data/charge'
-import { avancement, caseDe, couleurTon, criteresAxe, libelleAxe, nineBox, tonDe, tousCriteres, type Evaluation, type IdCritere, type Thematique } from '../data/sante'
+import { avancement, caseDe, couleurTon, criteresAxe, libelleAxe, libelleNote, nineBox, tonDe, tousCriteres, type Evaluation, type IdCritere, type Thematique } from '../data/sante'
 import { lienFiche } from '../lib/format'
 import { PastilleAlerte } from '../components/Chiffres'
 import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, MiniCourbe, Pastille, Puces, TitreSection, useAffichage, useParTranches } from '../components/Social'
@@ -274,6 +281,62 @@ function BarreLot({ cibles, choisis, vider, saisie }: { cibles: Cible[]; choisis
   )
 }
 
+// ── Tri et filtre par colonne du tableau (PC) ──
+// rang : plus haut = meilleur ; null = non renseigné, toujours en bas de liste
+interface Colonne { id: string; libelle: string; rang: (m: Magasin) => number | null; valeur: (m: Magasin) => string; options: Option[] }
+type Tri = { id: string; sens: 'desc' | 'asc' } | null
+const SANS_VALEUR = '__sans__'
+
+function trierFiltrer(liste: Magasin[], colonnes: Colonne[], tri: Tri, filtres: Record<string, string[]>) {
+  const actives = colonnes.filter((c) => filtres[c.id]?.length)
+  let l = actives.length ? liste.filter((m) => actives.every((c) => filtres[c.id].includes(c.valeur(m)))) : liste
+  const c = tri && colonnes.find((x) => x.id === tri.id)
+  if (c) {
+    const sens = tri.sens === 'desc' ? -1 : 1
+    l = [...l].sort((a, b) => {
+      const ra = c.rang(a), rb = c.rang(b)
+      if (ra === null || rb === null) return ra === rb ? 0 : ra === null ? 1 : -1
+      return (ra - rb) * sens
+    })
+  }
+  return l
+}
+
+function EnTeteColonne({ col, sens, trier, filtre, filtrer, compte, children }: {
+  col: Colonne; sens: 'desc' | 'asc' | null; trier: () => void; filtre: string[]; filtrer: (v: string[]) => void; compte: (valeur: string) => number; children: ReactNode
+}) {
+  const [ancre, setAncre] = useState<HTMLElement | null>(null)
+  const actif = filtre.length > 0
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+      <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+      <Tooltip title={sens === 'desc' ? 'Du plus haut au plus bas' : sens === 'asc' ? 'Du plus bas au plus haut' : 'Trier'}>
+        <IconButton aria-label={`Trier par ${col.libelle}`} onClick={trier} color={sens ? 'secondary' : 'default'} sx={{ width: 40, height: 40, my: -1 }}>
+          {sens === 'asc' ? <ArrowUpwardOutlined fontSize="small" /> : sens === 'desc' ? <ArrowDownwardOutlined fontSize="small" /> : <SwapVertOutlined fontSize="small" />}
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Filtrer">
+        <IconButton aria-label={`Filtrer ${col.libelle}`} onClick={(e) => setAncre(e.currentTarget)} color={actif ? 'secondary' : 'default'} sx={{ width: 40, height: 40, my: -1 }}>
+          {actif ? <FilterAlt fontSize="small" /> : <FilterAltOutlined fontSize="small" />}
+        </IconButton>
+      </Tooltip>
+      <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} slotProps={{ paper: { sx: { maxHeight: 420, minWidth: 240 } } }}>
+        {col.options.map((o) => (
+          <MenuItem key={o.valeur} dense sx={{ minHeight: 44 }} onClick={() => filtrer(filtre.includes(o.valeur) ? filtre.filter((x) => x !== o.valeur) : [...filtre, o.valeur])}>
+            <Checkbox checked={filtre.includes(o.valeur)} size="small" sx={{ p: 0.5, mr: 1 }} tabIndex={-1} />
+            <ListItemText primary={o.libelle} />
+            <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>{compte(o.valeur)}</Typography>
+          </MenuItem>
+        ))}
+        {actif && <MenuItem onClick={() => { filtrer([]); setAncre(null) }} sx={{ justifyContent: 'center', minHeight: 44 }}><Button size="small">Tout afficher</Button></MenuItem>}
+      </Menu>
+    </Box>
+  )
+}
+
+// Cellule d'en-tête du tableau : titre, tri et filtre de la colonne
+type EnTete = (id: string, contenu: ReactNode, sx?: SxProps<Theme>) => ReactNode
+
 // ── Tableau (PC, à la demande) : seule la ligne modifiée se redessine ──
 const LigneNotes = memo(function LigneNotes({ m, e, coche, basculer, noter }: { m: Magasin; e: Evaluation | undefined; coche: boolean; basculer: (n: string) => void; noter: Saisie['noter'] }) {
   return (
@@ -359,9 +422,11 @@ function PanneauSaisie({ reseau, liste, nom, aller, fermer, saisie, partie, surP
 type Etat = 'tous' | 'completer'
 
 // Liste commune d'Évaluer et de Déploiements : puces « Tous / À compléter », lignes par tranches, tableau à la demande sur PC
-function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne, tableau, cibles }: {
+type Tableau = (p: { visibles: Magasin[]; sel: ReturnType<typeof useSelection>; entete: EnTete; pied: ReactNode }) => ReactNode
+
+function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne, tableau, cibles, colonnes }: {
   reseau: Reseau; magasins: Magasin[]; incomplet: (m: Magasin) => boolean; partie: 'notes' | 'deploiements'; saisie: Saisie; surPC: boolean
-  ligne: (m: Magasin) => { detail: string; fin: ReactNode }; tableau: (visibles: Magasin[], sel: ReturnType<typeof useSelection>) => ReactNode; cibles: Cible[]
+  ligne: (m: Magasin) => { detail: string; fin: ReactNode }; tableau: Tableau; cibles: Cible[]; colonnes: Colonne[]
 }) {
   const [etat, setEtat] = useState<Etat>('tous')
   const [ouvert, setOuvert] = useState<string | null>(null)
@@ -370,40 +435,82 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
   const aCompleter = useMemo(() => magasins.filter(incomplet), [magasins, reseau.evaluations, reseau.deploiements]) // eslint-disable-line react-hooks/exhaustive-deps
   // La liste du panneau reste figée tant qu'il est ouvert, pour ne pas faire sauter le magasin en cours
   const [figee, setFigee] = useState<Magasin[]>([])
-  const liste = etat === 'completer' ? aCompleter : magasins
-  const { visibles, suite } = useParTranches(liste, `${etat}|${liste.length}|${magasins.map((m) => m.nom).join(',').length}`)
-  const ouvrir = useCallback((nom: string) => { setFigee(liste); setOuvert(nom) }, [liste])
   const tableauVisible = surPC && affichage === 'tableau'
+  // Tri et filtres par colonne : tableau seulement
+  const [tri, setTri] = useState<Tri>(null)
+  const [filtres, setFiltres] = useState<Record<string, string[]>>({})
+  const base = etat === 'completer' ? aCompleter : magasins
+  const liste = useMemo(() => (tableauVisible ? trierFiltrer(base, colonnes, tri, filtres) : base), [base, colonnes, tri, filtres, tableauVisible])
+  const filtresActifs = Object.values(filtres).some((f) => f.length > 0)
+  const { visibles, suite } = useParTranches(liste, `${etat}|${liste.length}|${magasins.map((m) => m.nom).join(',').length}|${tableauVisible ? JSON.stringify(filtres) : ''}`)
+  const ouvrir = useCallback((nom: string) => { setFigee(liste); setOuvert(nom) }, [liste])
+  const entete: EnTete = (id, contenu, sx) => {
+    const col = colonnes.find((c) => c.id === id)
+    if (!col) return <TableCell key={id} sx={sx}>{contenu}</TableCell>
+    const sens = tri?.id === id ? tri.sens : null
+    return (
+      <TableCell key={id} sx={sx} aria-sort={sens === 'desc' ? 'descending' : sens === 'asc' ? 'ascending' : undefined}>
+        <EnTeteColonne col={col} sens={sens} trier={() => setTri(sens === null ? { id, sens: 'desc' } : sens === 'desc' ? { id, sens: 'asc' } : null)}
+          filtre={filtres[id] ?? []} filtrer={(v) => setFiltres((f) => ({ ...f, [id]: v }))} compte={(v) => base.filter((m) => col.valeur(m) === v).length}>
+          {contenu}
+        </EnTeteColonne>
+      </TableCell>
+    )
+  }
+  // Dans le tableau, « Voir plus » est en bas de la zone qui défile : les lignes ajoutées apparaissent juste au-dessus
+  const pied = visibles.length > 0 ? suite && <Box sx={{ position: 'sticky', left: 0, pb: 1.5 }}>{suite}</Box> : (
+    <Box sx={{ position: 'sticky', left: 0, p: 3, textAlign: 'center' }}>
+      <Typography sx={{ mb: 1 }}>Aucun magasin ne correspond à ces filtres.</Typography>
+      <Button variant="outlined" onClick={() => setFiltres({})} sx={{ minHeight: 48 }}>Tout afficher</Button>
+    </Box>
+  )
   return (
     <>
       <Puces label="Magasins à afficher" valeur={etat} onChange={setEtat} options={[
         { v: 'tous', libelle: `Tous · ${magasins.length}` },
         { v: 'completer', libelle: `À compléter · ${aCompleter.length}` },
       ]} />
-      <TitreSection nombre={liste.length} action={surPC && <ChoixAffichage valeur={affichage} onChange={setAffichage} />}>Magasins</TitreSection>
-      {liste.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre={etat === 'completer' ? 'Rien à compléter' : 'Aucun magasin'} texte={etat === 'completer' ? 'Tous les magasins affichés sont renseignés.' : 'Aucun magasin ne correspond à ces filtres.'} />
-        : tableauVisible ? tableau(visibles, sel) : (
+      <TitreSection nombre={liste.length} action={surPC && <>
+        {tableauVisible && (tri || filtresActifs) && <Button onClick={() => { setTri(null); setFiltres({}) }} sx={{ minHeight: 40 }}>Effacer tri et filtres</Button>}
+        <ChoixAffichage valeur={affichage} onChange={setAffichage} />
+      </>}>Magasins</TitreSection>
+      {base.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre={etat === 'completer' ? 'Rien à compléter' : 'Aucun magasin'} texte={etat === 'completer' ? 'Tous les magasins affichés sont renseignés.' : 'Aucun magasin ne correspond à ces filtres.'} />
+        : tableauVisible ? tableau({ visibles, sel, entete, pied }) : (
           <CarteLignes label={partie === 'notes' ? 'Évaluation des magasins' : 'Déploiements par magasin'}>
             {visibles.map((m) => { const l = ligne(m); return <LigneSaisie key={m.nom} m={m} detail={l.detail} fin={l.fin} coche={sel.choisis.has(m.nom)} basculer={sel.basculer} ouvrir={ouvrir} selection={surPC} /> })}
           </CarteLignes>
         )}
-      {suite}
+      {!tableauVisible && suite}
       <BarreLot cibles={cibles} choisis={sel.choisis} vider={() => sel.setChoisis(new Set())} saisie={saisie} />
       <PanneauSaisie reseau={reseau} liste={figee} nom={ouvert} aller={setOuvert} fermer={() => setOuvert(null)} saisie={saisie} partie={partie} surPC={surPC} />
     </>
   )
 }
 
+const rangTon = { positif: 3, partiel: 2, negatif: 1 } as const
 const couleurNotePoint: Record<number, string> = { 0: 'info.main', 1: 'error.main', 2: 'warning.main', 3: 'success.main' }
 
 function VueEvaluer({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: Saisie & { version: number }; surPC: boolean; date: ReactNode }) {
   const { magasins, barre } = useFiltres(reseau, date)
   const cibles: Cible[] = tousCriteres.map((c) => ({ type: 'note', id: c.id, libelle: c.libelle }))
   const incomplet = (m: Magasin) => tousCriteres.some((c) => reseau.evaluations[m.nom]?.notes[c.id] === undefined)
+  const colonnes = useMemo<Colonne[]>(() => {
+    const options: Option[] = [...([3, 2, 1, 0] as const).map((n) => ({ valeur: String(n), libelle: libelleNote[n] })), { valeur: SANS_VALEUR, libelle: 'Non noté' }]
+    const cases = [...nineBox].sort((a, b) => b.resultats + b.management - (a.resultats + a.management) || b.resultats - a.resultats)
+    return [
+      // « Non concerné » n'est pas une note basse : rangé avec les non notés
+      ...tousCriteres.map((c) => ({ id: c.id, libelle: c.libelle, options,
+        rang: (m: Magasin) => reseau.evaluations[m.nom]?.notes[c.id] || null,
+        valeur: (m: Magasin) => String(reseau.evaluations[m.nom]?.notes[c.id] ?? SANS_VALEUR) })),
+      { id: 'case', libelle: 'Case', options: [...cases.map((c) => ({ valeur: c.id, libelle: c.libelle })), { valeur: SANS_VALEUR, libelle: 'Non classé' }],
+        rang: (m: Magasin) => { const c = caseDe(reseau.evaluations[m.nom]); return c ? (c.resultats + c.management) * 10 + c.resultats : null },
+        valeur: (m: Magasin) => caseDe(reseau.evaluations[m.nom])?.id ?? SANS_VALEUR },
+    ]
+  }, [reseau.evaluations])
   return (
     <>
       {barre}
-      <ListeSaisie reseau={reseau} magasins={magasins} incomplet={incomplet} partie="notes" saisie={saisie} surPC={surPC} cibles={cibles}
+      <ListeSaisie reseau={reseau} magasins={magasins} incomplet={incomplet} partie="notes" saisie={saisie} surPC={surPC} cibles={cibles} colonnes={colonnes}
         ligne={(m) => {
           const e = reseau.evaluations[m.nom]
           const n = tousCriteres.filter((c) => e?.notes[c.id] !== undefined).length
@@ -416,7 +523,7 @@ function VueEvaluer({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: S
             </>,
           }
         }}
-        tableau={(visibles, sel) => (
+        tableau={({ visibles, sel, entete, pied }) => (
           <TableContainer component={Card}>
             <Table size="small" className="deux-colonnes-fixes" aria-label="Évaluation des magasins">
               <TableHead>
@@ -428,14 +535,15 @@ function VueEvaluer({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: S
                 <TableRow>
                   <TableCell padding="checkbox"><CaseTout magasins={visibles} {...sel} /></TableCell>
                   <TableCell>Magasin</TableCell>
-                  {tousCriteres.map((c) => <TableCell key={c.id} sx={{ minWidth: 170 }}><LibelleCritere c={c} /></TableCell>)}
-                  <TableCell>Case</TableCell>
+                  {tousCriteres.map((c) => entete(c.id, <LibelleCritere c={c} />, { minWidth: 220 }))}
+                  {entete('case', 'Case', { minWidth: 170 })}
                 </TableRow>
               </TableHead>
               <TableBody>
                 {visibles.map((m) => <LigneNotes key={m.nom} m={m} e={reseau.evaluations[m.nom]} coche={sel.choisis.has(m.nom)} basculer={sel.basculer} noter={saisie.noter} />)}
               </TableBody>
             </Table>
+            {pied}
           </TableContainer>
         )} />
     </>
@@ -447,6 +555,11 @@ function VueDeploiements({ reseau, saisie, surPC, date }: { reseau: Reseau; sais
   const ths = reseau.deploiements.thematiques
   const cibles: Cible[] = ths.map((t) => ({ type: 'deploiement', t, libelle: t.libelle }))
   const incomplet = (m: Magasin) => ths.some((t) => !reseau.deploiements.valeurs[m.nom]?.[t.id])
+  const colonnes = useMemo<Colonne[]>(() => ths.map((t) => ({ id: t.id, libelle: t.libelle,
+    options: [...t.options.map((o) => ({ valeur: o.libelle, libelle: o.libelle })), { valeur: SANS_VALEUR, libelle: 'Non renseigné' }],
+    rang: (m: Magasin) => { const ton = tonDe(t, reseau.deploiements.valeurs[m.nom]?.[t.id]); return ton ? rangTon[ton] : null },
+    valeur: (m: Magasin) => { const v = reseau.deploiements.valeurs[m.nom]?.[t.id]; return v && t.options.some((o) => o.libelle === v) ? v : SANS_VALEUR },
+  })), [ths, reseau.deploiements.valeurs])
   if (!ths.length) return <>{barre}<EmptyState icone={<RocketLaunchOutlined />} titre="Aucune thématique de déploiement" texte="Les thématiques se créent dans les Paramètres." /></>
   return (
     <>
@@ -456,7 +569,7 @@ function VueDeploiements({ reseau, saisie, surPC, date }: { reseau: Reseau; sais
         {ths.map((t) => <Avancement key={t.id} reseau={reseau} t={t} />)}
       </CarteLignes>
       <Box sx={{ mt: 2 }} />
-      <ListeSaisie reseau={reseau} magasins={magasins} incomplet={incomplet} partie="deploiements" saisie={saisie} surPC={surPC} cibles={cibles}
+      <ListeSaisie reseau={reseau} magasins={magasins} incomplet={incomplet} partie="deploiements" saisie={saisie} surPC={surPC} cibles={cibles} colonnes={colonnes}
         ligne={(m) => {
           const v = reseau.deploiements.valeurs[m.nom]
           const tonsM = ths.map((t) => tonDe(t, v?.[t.id]))
@@ -466,20 +579,21 @@ function VueDeploiements({ reseau, saisie, surPC, date }: { reseau: Reseau; sais
             fin: <Points label={`${faits} thématiques déployées sur ${ths.length}`} couleurs={tonsM.map((x) => (x ? `${couleurTon[x]}.main` : null))} />,
           }
         }}
-        tableau={(visibles, sel) => (
+        tableau={({ visibles, sel, entete, pied }) => (
           <TableContainer component={Card}>
             <Table size="small" className="deux-colonnes-fixes" aria-label="Déploiements par magasin">
               <TableHead>
                 <TableRow>
                   <TableCell padding="checkbox"><CaseTout magasins={visibles} {...sel} /></TableCell>
                   <TableCell>Magasin</TableCell>
-                  {ths.map((t) => <TableCell key={t.id}>{t.libelle}</TableCell>)}
+                  {ths.map((t) => entete(t.id, t.libelle, { minWidth: 200 }))}
                 </TableRow>
               </TableHead>
               <TableBody>
                 {visibles.map((m) => <LigneDeploiements key={m.nom} m={m} valeurs={reseau.deploiements.valeurs[m.nom]} ths={ths} coche={sel.choisis.has(m.nom)} basculer={sel.basculer} deployer={saisie.deployer} />)}
               </TableBody>
             </Table>
+            {pied}
           </TableContainer>
         )} />
     </>

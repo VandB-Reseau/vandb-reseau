@@ -45,6 +45,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   les filtres actifs de Magasins restent en puces sous la recherche ; fiche magasin à trois pictos, Planifier,
   Préparer et Modifier dans « Autres actions » ; historique des visites par mois avec vignettes ; postes à pourvoir
   en ligne grisée dans leur région ; absence et événement se créent depuis le bouton Créer.
+- Santé du parc, tableaux Évaluer et Déploiements (PC) : « Voir plus » est au bas du tableau et les lignes
+  ajoutées apparaissent aussitôt ; chaque critère, la case et chaque thématique se trient (du plus haut au plus bas,
+  puis l'inverse) et se filtrent par valeur (Faible, Moyen, Fort, non noté ; options de la thématique, non renseigné)
 
 ## 21/10/2026
 
