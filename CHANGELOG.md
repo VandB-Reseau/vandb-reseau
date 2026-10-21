@@ -23,7 +23,16 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   gardé au retour arrière, pour retrouver la ligne quittée (#73)
 - Tâches, messages, notifications : les tâches suivent la barre commune (recherche, filtres repliés sur téléphone,
   bouton rond) et sont rangées En retard, Cette semaine, Plus tard, Sans échéance ; bouton « Nouveau message »
-  pour écrire à une personne du réseau ; notifications rangées Aujourd'hui, Hier, Cette semaine, puis par mois.
+  pour écrire à une personne du réseau ; notifications rangées Aujourd'hui, Hier, Cette semaine, puis par mois (#74)
+- Écrans plus lisibles : « À traiter » commence par les urgences, avec des puces Urgent, Suivi, À voir pour filtrer ;
+  Magasins affiche à droite la dernière visite (« vu il y a 45 j ») ; les photos restent en vignettes carrées, même
+  seules, et s'ouvrent en plein écran ; Visites résume l'année en trois compteurs, « pas vus » filtre la liste ;
+  nine box : cases vides discrètes et Coachs en initiales (plus de bulle qui recouvrait le libellé au téléphone) ;
+  Équipe en liste : un intertitre par Responsable Régional, ses Coachs en lignes avec leur charge.
+- Paramètres : un sommaire avec la valeur clé de chaque rubrique (charge maximale, seuils, délais), puis une
+  rubrique par écran sur téléphone ; sur PC, le sommaire reste à gauche.
+- Communications : le Directeur et le Responsable Régional voient « Lue par X franchisés sur Y » et, d'un toucher,
+  qui ne l'a pas encore lue — Base : `0013_lectures_communications`
 
 ## 21/10/2026
 

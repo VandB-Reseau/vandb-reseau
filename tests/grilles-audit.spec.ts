@@ -35,7 +35,7 @@ const auditRempli = {
 test('construire les grilles d’audit dans Paramètres', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/parametres/reglages')
+  await page.goto('./#/parametres/reglages?rubrique=audits')
   const carte = page.getByRole('heading', { name: 'Grilles d’audit' }).locator('xpath=ancestor::div[contains(@class,"MuiCard-root")]')
   await expect(carte.getByRole('tab', { name: 'Hygiène', selected: true })).toBeVisible()
   await expect(carte.getByLabel('Seuil de conformité (%)')).toHaveValue('80')
@@ -119,7 +119,7 @@ test('la fiche magasin montre les écarts du dernier audit et leurs photos', asy
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-ecarts-audit.png`, fullPage: !isMobile })
   // Espace photos dans Paramètres : la photo de l'audit et celle d'une visite
-  await page.goto('./#/parametres/reglages')
+  await page.goto('./#/parametres/reglages?rubrique=photos')
   await expect(page.getByText(/^2 photos · 430 Ko sur 1 Go$/)).toBeVisible()
 })
 

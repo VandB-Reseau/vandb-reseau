@@ -171,7 +171,7 @@ test('un grand réseau s’affiche par tranches sans bloquer les onglets', async
 test('les délais d’alerte de visite se règlent par case de la nine box', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/parametres/reglages')
+  await page.goto('./#/parametres/reglages?rubrique=visite')
   await expect(page.getByRole('heading', { name: 'Alerte de visite' })).toBeVisible()
   const redressement = page.getByLabel('Redressement urgent (jours sans visite)')
   await expect(redressement).toHaveValue('60')
@@ -183,7 +183,7 @@ test('les délais d’alerte de visite se règlent par case de la nine box', asy
   await page.getByRole('heading', { name: 'Alerte de visite' }).scrollIntoViewIfNeeded()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-parametres-alerte-visite.png`, fullPage: !isMobile })
-  await page.getByRole('button', { name: 'Enregistrer' }).nth(2).click()
+  await page.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Alerte de visite enregistrée.')).toBeVisible()
   const params = ecritures.filter((e) => e.table === 'app_config').at(-1)!
   expect(JSON.parse((params.corps as { value: string }).value)).toEqual(expect.objectContaining({ alerteVisite_redressement: 7, alerteVisite_locomotive: 240, prepDuration: 2 }))

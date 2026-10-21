@@ -3,6 +3,8 @@ import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 // Sur téléphone, les filtres de la barre (liste, magasins) sont repliés derrière « Filtres »
 async function deplierFiltres(page: Page) {
+  // La barre doit être affichée avant de savoir si les filtres sont repliés (téléphone)
+  await page.getByRole('textbox', { name: 'Rechercher une tâche' }).waitFor()
   const bouton = page.getByRole('button', { name: 'Filtres' })
   if (await bouton.isVisible() && (await bouton.getAttribute('aria-expanded')) !== 'true') await bouton.click()
 }

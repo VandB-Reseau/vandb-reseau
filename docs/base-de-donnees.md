@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 21/10/2026 (migration `0012`).
+Mis à jour le 21/10/2026 (migration `0013`).
 
 ## Principes
 
@@ -88,6 +88,7 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 | `messages_lus` | Dernière lecture de chaque compte, par magasin ou personne et par sujet |
 | `communications` | Communications du réseau ; `magasins` vide = tout le réseau ; `html` = version mise en forme |
 | `communications_pouces`, `communications_commentaires` | J'aime et commentaires des communications |
+| `communications_lectures` | Première lecture d'une communication par chaque compte franchisé |
 | `pratiques_pouces`, `pratiques_commentaires` | J'aime et commentaires des bonnes pratiques |
 
 ## Clés d'`app_config`
@@ -125,6 +126,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Actions du franchisé | `franchise_du_magasin`, `ajouter_action_franchise`, `marquer_action_franchise` | 0007 |
 | Messagerie | `messagerie`, `envoyer_message`, `envoyer_a`, `marquer_lu`, `marquer_lu_personne`, `supprimer_message`, `renommer_magasin_messages`, `pieces_propres` | 0006 |
 | Communications | `communications`, `communication_visible`, `publier_communication`, `supprimer_communication`, `basculer_pouce_communication`, `commenter_communication`, `supprimer_commentaire_communication` | 0008 |
+| Lecture des communications | `lire_communications` (franchisé), `lectures_communications` (Directeur, Responsable Régional pour ses magasins) | 0013 |
 | Bonnes pratiques | `reactions_pratiques`, `pratique_visible`, `basculer_pouce_pratique`, `commenter_pratique`, `supprimer_commentaire_pratique` | 0010 |
 | Campagnes régionales | `campagne_region_permise` | 0005 |
 | Fichiers | `photo_visible`, `piece_visible` | 0004, 0009 |

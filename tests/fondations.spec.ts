@@ -42,14 +42,15 @@ test('après connexion, l’accueil montre les priorités dans l’ordre choisi'
   // Chaque ligne porte une seule pastille (la plus grave), dans l'ordre de priorité choisi
   const pastilles = (await aTraiter.getByRole('link').allInnerTexts()).map((t) => t.trim().split('\n').at(-1)!.trim())
   expect([...new Set(pastilles)]).toEqual([
+    // Urgences (rouge) d'abord, puis le suivi, les visites à faire en dernier
     'Décroche',
-    'À surveiller',
     'En retard',
-    'Visite',
+    'À surveiller',
     'Recule',
     'Surchargé',
     'Vacant',
     'Ouverture',
+    'Visite',
   ])
   await expect(aTraiter.getByRole('link').first()).toContainText('Lyon Test')
   await aTraiter.getByRole('button', { name: 'Afficher moins' }).click()

@@ -97,6 +97,9 @@ const SOLIDES = ['locomotive', 'grandir', 'potentiel']
 
 // Nine box : chaque case donne un nombre, une part du parc et la répartition par Coach ;
 // un clic ouvre la liste des magasins de la case, regroupés par Coach (lisible même avec des centaines de magasins)
+// Initiales d'un Coach (« Inès EXEMPLE » → « IE »), « SC » sans Coach
+const initialesCoach = (nom: string) => (nom ? nom.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('') : 'SC')
+
 function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () => void; surPC: boolean }) {
   const theme = useTheme()
   const { magasins, barre } = useFiltres(reseau)
@@ -159,22 +162,27 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
                   <Box key={c.id} role="cell" aria-label={`${c.libelle} : ${liste.length} magasin${liste.length > 1 ? 's' : ''}`}>
                     <Box component="button" type="button" onClick={() => { setOuverte(c.id); setCherche('') }} disabled={!liste.length} aria-label={`Voir les ${liste.length} magasins : ${c.libelle}`}
                       sx={{ all: 'unset', boxSizing: 'border-box', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: { xs: 0.5, md: 1 }, p: { xs: 1, md: 2 }, borderRadius: { xs: 3, md: 4 }, minHeight: { xs: 96, md: 168 }, cursor: liste.length ? 'pointer' : 'default',
-                        bgcolor: liste.length ? alpha(c.couleur, 0.08 + intensite * 0.22) : 'action.hover', outline: `1px solid ${alpha(c.couleur, liste.length ? 0.45 : 0.15)}`,
+                        bgcolor: liste.length ? alpha(c.couleur, 0.08 + intensite * 0.22) : 'action.hover', outline: liste.length ? `1px solid ${alpha(c.couleur, 0.45)}` : '1px solid transparent', color: liste.length ? undefined : 'text.secondary',
                         transition: 'transform .15s, box-shadow .15s', '&:hover:not(:disabled), &:focus-visible': { transform: 'translateY(-2px)', boxShadow: 4 } }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c.couleur, flexShrink: 0 }} />
                         <Typography sx={{ fontWeight: 700, fontSize: { xs: 12, md: 15 }, flex: 1, lineHeight: 1.2 }}>{c.libelle}</Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                        <Typography sx={{ fontSize: { xs: 32, md: 40 }, fontWeight: 800, lineHeight: 1 }}>{liste.length}</Typography>
+                        {liste.length ? <Typography sx={{ fontSize: { xs: 32, md: 40 }, fontWeight: 800, lineHeight: 1 }}>{liste.length}</Typography>
+                          : <Typography sx={{ fontSize: { xs: 16, md: 20 }, fontWeight: 600, lineHeight: 1, color: 'text.secondary' }}>0</Typography>}
                         <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>{liste.length ? `${pct(liste.length)} % des classés` : 'aucun magasin'}</Typography>
                       </Box>
-                      {liste.length > 0 && (
-                        <Tooltip title={parCoach.map(([k, n]) => `${k || 'Sans Coach'} : ${n}`).join(' · ')}>
-                          <Box sx={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', bgcolor: 'background.paper' }} aria-hidden>
-                            {parCoach.map(([k, n]) => <Box key={k} sx={{ width: `${(n / liste.length) * 100}%`, bgcolor: couleurs.get(k) ?? 'grey.500' }} />)}
-                          </Box>
-                        </Tooltip>
+                      {/* Coachs en initiales sous le chiffre (plus de barre ni de bulle qui recouvrait le libellé au téléphone) */}
+                      {liste.length > 0 && couleurs.size > 1 && (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1, rowGap: 0.25 }}>
+                          {parCoach.slice(0, 3).map(([k, n]) => (
+                            <Typography key={k} component="span" title={`${k || 'Sans Coach'} : ${n}`} sx={{ fontSize: 12, fontWeight: 700, color: k ? couleurs.get(k) : 'text.secondary', whiteSpace: 'nowrap' }}>
+                              {initialesCoach(k)} {n}
+                            </Typography>
+                          ))}
+                          {parCoach.length > 3 && <Typography component="span" sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary' }}>+{parCoach.length - 3}</Typography>}
+                        </Box>
                       )}
                       <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.75, color: 'text.secondary', mt: 'auto' }}>
                         <EventRepeatOutlined sx={{ fontSize: 18 }} />

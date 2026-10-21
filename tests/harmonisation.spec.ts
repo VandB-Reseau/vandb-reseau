@@ -50,10 +50,11 @@ test('Évaluer et Déploiements montrent un grand réseau par tranches avec « V
 
 test('thématiques, imports et remise à zéro des notes sont dans les Paramètres', async ({ page, isMobile }, info) => {
   await seConnecter(page)
-  await page.goto('./#/parametres/reglages')
+  await page.goto('./#/parametres/reglages?rubrique=thematiques')
   const th = page.getByRole('region', { name: 'Thématiques de déploiement' })
   await expect(th.getByRole('button', { name: 'Gérer les thématiques' })).toBeVisible()
   await expect(th).toContainText('Terrasse')
+  await page.goto('./#/parametres/reglages?rubrique=ninebox')
   await expect(page.getByRole('region', { name: 'Notes de la nine box' }).getByRole('button', { name: 'Effacer toutes les notes' })).toBeVisible()
   await page.goto('./#/parametres/donnees')
   for (const f of ['Classeur des visites', 'Export Asana de la santé du parc', 'Export mensuel des chiffres']) {

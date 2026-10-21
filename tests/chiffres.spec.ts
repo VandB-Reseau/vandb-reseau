@@ -21,7 +21,7 @@ async function petitesZones(page: import('@playwright/test').Page, selecteur: st
 test('l’accueil met en tête les magasins qui décrochent, avec l’appel en retard', async ({ page }, info) => {
   await seConnecter(page)
   const bloc = page.getByRole('region', { name: 'À traiter' })
-  const lyon = bloc.getByRole('link', { name: /^Lyon Test/ })
+  const lyon = bloc.getByRole('link', { name: /^Lyon Test/ }).first()
   await expect(lyon).toBeVisible()
   await expect(lyon).toContainText(/CA −30,0 % vs septembre 2025/)
   await expect(lyon).toContainText(/appel en retard de \d+ j/)
@@ -31,7 +31,9 @@ test('l’accueil met en tête les magasins qui décrochent, avec l’appel en r
   await expect(nantes).toContainText('À surveiller')
   // Les magasins qui décrochent passent en tête, avant ceux à surveiller
   await expect(bloc.getByRole('link').nth(0)).toHaveAccessibleName(/^Lyon Test.*Décroche$/)
-  await expect(bloc.getByRole('link').nth(1)).toHaveAccessibleName(/^Nantes Test.*À surveiller$/)
+  await bloc.getByRole('button', { name: /^Suivi · \d+$/ }).click()
+  await expect(bloc.getByRole('link').nth(0)).toHaveAccessibleName(/^Nantes Test.*À surveiller$/)
+  await bloc.getByRole('button', { name: 'Tout' }).click()
   await expect(bloc.getByRole('link', { name: /^Annecy Test.*(Décroche|À surveiller)$/ })).toHaveCount(0)
   // Premier bloc de l'accueil
   await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', 'À traiter')
@@ -191,7 +193,7 @@ test('importer l’export mensuel des chiffres', async ({ page, isMobile }) => {
 test('régler la règle de décrochage sur l’écart de CA et le délai d’appel', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/parametres/reglages')
+  await page.goto('./#/parametres/reglages?rubrique=chiffres')
   await expect(page.getByRole('heading', { name: 'Alerte sur les chiffres' })).toBeVisible()
   await expect(page.getByLabel('Écart de CA par rapport au')).toHaveText('Même mois l’an dernier')
   const decroche = page.getByLabel('Décroche : baisse du CA (%)')
@@ -204,7 +206,7 @@ test('régler la règle de décrochage sur l’écart de CA et le délai d’app
   await page.getByLabel('Écart de CA par rapport au').click()
   await page.getByRole('option', { name: 'Mois précédent' }).click()
   await page.getByLabel('Délai pour appeler un magasin qui décroche (jours)').fill('3')
-  await page.getByRole('button', { name: 'Enregistrer' }).nth(1).click()
+  await page.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Alerte sur les chiffres enregistrée.')).toBeVisible()
   const params = ecritures.filter((e) => e.table === 'app_config').at(-1)!
   expect(JSON.parse((params.corps as { value: string }).value)).toEqual(expect.objectContaining({ seuilDecroche: 35, seuilSurveiller: 32, moisReference: 1, delaiAppel: 3, prepDuration: 2 }))

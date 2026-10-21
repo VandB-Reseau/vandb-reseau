@@ -94,7 +94,7 @@ test('les thématiques se gèrent', async ({ page, isMobile }, info) => {
   await page.screenshot({ path: `captures/${info.project.name}-sante-deploiements.png`, fullPage: !isMobile })
   // Plus de gestion des thématiques ici : elle est dans les Paramètres
   await expect(page.getByRole('button', { name: 'Gérer les thématiques' })).toHaveCount(0)
-  await page.goto('./#/parametres/reglages')
+  await page.goto('./#/parametres/reglages?rubrique=thematiques')
   await page.getByRole('button', { name: 'Gérer les thématiques' }).click()
   const d = page.getByRole('dialog', { name: 'Thématiques de déploiement' })
   await d.getByRole('button', { name: 'Ajouter une thématique' }).click()

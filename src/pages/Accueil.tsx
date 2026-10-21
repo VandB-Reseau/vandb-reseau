@@ -117,17 +117,30 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
   return items
 }
 
+// Les urgences (pastille rouge) d'abord, puis le suivi, les visites à faire en dernier (Joseph, 21/10/2026)
+type GroupeATraiter = 'urgent' | 'suivi' | 'visite'
+const groupeDe = (x: ATraiter): GroupeATraiter => (x.pastille?.ton === 'rouge' ? 'urgent' : x.cle.startsWith('v-') ? 'visite' : 'suivi')
+const GROUPES: { v: GroupeATraiter; libelle: string }[] = [{ v: 'urgent', libelle: 'Urgent' }, { v: 'suivi', libelle: 'Suivi' }, { v: 'visite', libelle: 'À voir' }]
+
 function BlocATraiter({ items }: { items: ATraiter[] }) {
   const [tout, setTout] = useState(false)
-  const vus = tout ? items : items.slice(0, APERCU)
+  const [filtre, setFiltre] = useState<GroupeATraiter | 'tout'>('tout')
+  const tries = GROUPES.flatMap((g) => items.filter((x) => groupeDe(x) === g.v))
+  const presents = GROUPES.map((g) => ({ ...g, n: tries.filter((x) => groupeDe(x) === g.v).length })).filter((g) => g.n)
+  const filtres = filtre === 'tout' ? tries : tries.filter((x) => groupeDe(x) === filtre)
+  const vus = tout ? filtres : filtres.slice(0, APERCU)
   return (
     <Box component="section" aria-label="À traiter">
       <TitreSection nombre={items.length}>À traiter</TitreSection>
+      {presents.length > 1 && (
+        <Puces label="Éléments à traiter affichés" valeur={filtre} onChange={(v) => { setFiltre(v); setTout(false) }}
+          options={[{ v: 'tout' as const, libelle: 'Tout' }, ...presents.map((g) => ({ v: g.v, libelle: `${g.libelle} · ${g.n}` }))]} />
+      )}
       {!items.length ? <CarteLignes><LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur="#2e7d32" />} titre="Rien d’urgent" detail="Aucun magasin ne décroche ni n’attend de visite, aucune tâche en retard." /></CarteLignes> : (
         <CarteLignes>
           {vus.map((x) => <LigneCompacte key={x.cle} lien={x.lien} avatar={<Initiales nom={x.avatar} icone={x.icone} />} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />)}
-          {items.length > APERCU && (
-            <ButtonBase onClick={() => setTout((v) => !v)} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{tout ? 'Afficher moins' : `Voir les ${items.length}`}</ButtonBase>
+          {filtres.length > APERCU && (
+            <ButtonBase onClick={() => setTout((v) => !v)} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{tout ? 'Afficher moins' : `Voir les ${filtres.length}`}</ButtonBase>
           )}
         </CarteLignes>
       )}
@@ -176,25 +189,28 @@ export function PublicationFil({ e, jour, sansMagasin = false }: { e: ElementFil
   const ou = e.genre === 'communication' ? e.cible : sansMagasin ? '' : e.magasin
   const tete = <>{qui && <><b>{qui}</b> · </>}{action}{ou ? <> · <b>{ou}</b></> : ''}</>
   return (
-    <ButtonBase component={RouterLink} to={e.lien} sx={{ display: 'block', textAlign: 'left', width: '100%', p: 2, color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
-      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-        <Initiales nom={qui || e.magasin} icone={qui && e.genre !== 'communication' ? undefined : iconeFil[e.genre]} />
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tete}</Typography>
-          <Typography variant="body2" color="text.secondary">{quand(e.instant, jour)}</Typography>
-        </Box>
-        {e.valeur && (
-          <Box sx={{ textAlign: 'right' }}>
-            <Typography sx={{ fontWeight: 700 }}>{e.valeur}</Typography>
-            {e.texte && <Typography variant="body2" sx={{ fontWeight: 600, color: e.ecart !== null && e.ecart !== undefined && e.ecart < 0 ? 'error.main' : 'text.secondary' }}>{e.texte}</Typography>}
+    <Box>
+      <ButtonBase component={RouterLink} to={e.lien} sx={{ display: 'block', textAlign: 'left', width: '100%', p: 2, color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+          <Initiales nom={qui || e.magasin} icone={qui && e.genre !== 'communication' ? undefined : iconeFil[e.genre]} />
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tete}</Typography>
+            <Typography variant="body2" color="text.secondary">{quand(e.instant, jour)}</Typography>
           </Box>
-        )}
-      </Box>
-      {e.visuel && <Box sx={{ mx: -2, mt: 1.5 }}><VisuelFil piece={e.visuel.piece} url={e.visuel.url} alt={e.titre ?? ''} /></Box>}
-      {e.titre && <Typography sx={{ mt: 1.25, fontWeight: 600 }}>{e.titre}</Typography>}
-      {e.texte && !e.valeur && <Typography sx={{ mt: e.titre ? 0.25 : 1.25, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'pre-line' }}>{e.texte}</Typography>}
-      {!!e.photos?.length && <Box sx={{ mt: 1.25 }}><GrillePhotos photos={e.photos} /></Box>}
-    </ButtonBase>
+          {e.valeur && (
+            <Box sx={{ textAlign: 'right' }}>
+              <Typography sx={{ fontWeight: 700 }}>{e.valeur}</Typography>
+              {e.texte && <Typography variant="body2" sx={{ fontWeight: 600, color: e.ecart !== null && e.ecart !== undefined && e.ecart < 0 ? 'error.main' : 'text.secondary' }}>{e.texte}</Typography>}
+            </Box>
+          )}
+        </Box>
+        {e.visuel && <Box sx={{ mx: -2, mt: 1.5 }}><VisuelFil piece={e.visuel.piece} url={e.visuel.url} alt={e.titre ?? ''} /></Box>}
+        {e.titre && <Typography sx={{ mt: 1.25, fontWeight: 600 }}>{e.titre}</Typography>}
+        {e.texte && !e.valeur && <Typography sx={{ mt: e.titre ? 0.25 : 1.25, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'pre-line' }}>{e.texte}</Typography>}
+      </ButtonBase>
+      {/* Les photos hors du lien : le toucher les ouvre en plein écran */}
+      {!!e.photos?.length && <Box sx={{ px: 2, pb: 2, mt: -0.75 }}><GrillePhotos photos={e.photos} /></Box>}
+    </Box>
   )
 }
 

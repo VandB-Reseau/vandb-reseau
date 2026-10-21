@@ -88,7 +88,7 @@ test('la fiche magasin montre le niveau de chaque axe et l’ancienne note tant 
 test('régler la grille dans Paramètres, avec l’aperçu des magasins qui changent de case', async ({ page, isMobile }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/parametres/reglages')
+  await page.goto('./#/parametres/reglages?rubrique=ninebox')
   const carte = page.locator('.MuiCard-root').filter({ has: page.getByRole('heading', { name: 'Grille de la nine box' }) })
   await carte.scrollIntoViewIfNeeded()
   await expect(carte.getByText('Total 100 %')).toHaveCount(2)

@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
+import ButtonBase from '@mui/material/ButtonBase'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
@@ -57,6 +58,18 @@ const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 // Jours au-delà du délai de la case (jamais visité en tête)
 const ecart = (l: LigneRythme) => (l.depuis === null ? Infinity : l.depuis - l.delai)
 
+function Compteur({ valeur, libelle, signal, actif, onClick }: { valeur: number; libelle: string; signal?: boolean; actif?: boolean; onClick?: () => void }) {
+  const contenu = (
+    <>
+      <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2, color: signal && valeur > 0 ? 'warning.dark' : undefined }}>{valeur}</Typography>
+      <Typography variant="body2" color="text.secondary">{libelle}</Typography>
+    </>
+  )
+  const sx = { py: 1.5, px: 1, minHeight: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' } as const
+  if (!onClick) return <Box sx={sx}>{contenu}</Box>
+  return <ButtonBase onClick={onClick} aria-pressed={!!actif} aria-label={`${valeur} ${libelle}`} sx={{ ...sx, fontFamily: 'inherit', bgcolor: actif ? 'action.selected' : undefined, '&:hover': { bgcolor: 'action.hover' } }}>{contenu}</ButtonBase>
+}
+
 function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir: (magasins: string[]) => void; surPC: boolean; actions: ReactNode }) {
   const annees = useMemo(() => anneesDisponibles(reseau), [reseau])
   const [cle, setCle] = useState(anneeDe(reseau.jour).cle)
@@ -102,17 +115,12 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
         {(actifs > 0 || texte) && <Button onClick={() => { setCoachs([]); setCases([]); setEtats([]); setTexte('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
       </RechercheFiltres>
 
-      <Card sx={{ mb: 2, border: 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 2, py: 1.5 }}>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
-              <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2 }}>{faites}</Typography>
-              <Typography variant="body2" color="text.secondary">{faites > 1 ? 'visites faites' : 'visite faite'} en {a.court}</Typography>
-            </Box>
-            <Typography variant="body2" color="text.secondary">Référence nine box : {referenceTotale} visites</Typography>
-          </Box>
-          {signales.length > 0 && <Pastille ton="orange">{`${signales.length} pas vu${signales.length > 1 ? 's' : ''} depuis longtemps`}</Pastille>}
-        </Box>
+      {/* Trois compteurs sur une ligne, comme l'en-tête des fiches ; « pas vus » filtre la liste */}
+      <Card aria-label={`Visites ${a.court}`} component="section" sx={{ mb: 2, border: 0, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+        <Compteur valeur={faites} libelle={faites > 1 ? 'faites' : 'faite'} />
+        <Compteur valeur={referenceTotale} libelle="référence" />
+        <Compteur valeur={signales.length} libelle="pas vus" signal actif={etats.length === 1 && etats[0] === 'alerte'}
+          onClick={() => setEtats(etats.length === 1 && etats[0] === 'alerte' ? [] : ['alerte'])} />
       </Card>
 
       {lignes.length === 0 ? (

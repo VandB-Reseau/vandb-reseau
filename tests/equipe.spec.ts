@@ -26,11 +26,9 @@ test('Équipe s’ouvre sur l’organigramme par Responsable Régional', async (
     await page.screenshot({ path: `captures/${info.project.name}-equipe-pyramide.png`, fullPage: true })
     await page.getByRole('button', { name: 'Liste' }).click()
   }
-  // Déplier un Coach montre ses magasins
-  await expect(page.getByRole('link', { name: 'Lyon Test' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Tout déplier' }).click()
-  await expect(page.getByRole('link', { name: 'Lyon Test' })).toBeVisible()
-  await page.waitForTimeout(500) // fin de l’animation de dépliage avant la capture
+  // Liste groupée par Responsable Régional : ses Coachs en lignes, sans arbre à déplier
+  await expect(page.getByRole('button', { name: 'Tout déplier' })).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Coachs de Alex NORD' }).getByRole('link').first()).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-equipe.png`, fullPage: !isMobile })
 })
@@ -135,7 +133,7 @@ test('réaffecter un magasin propose le Coach le plus proche et enregistre', asy
 test('Direction règle la charge sans perdre les autres paramètres', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/parametres/reglages')
+  await page.goto('./#/parametres/reglages?rubrique=charge')
   await page.getByLabel('Charge maximale d’un Coach').fill('10')
   await expect(page.getByText(/Avec ces réglages, 0 Coach serait en dépassement/)).toBeVisible()
   await page.getByLabel('Charge maximale d’un Coach').fill('0')

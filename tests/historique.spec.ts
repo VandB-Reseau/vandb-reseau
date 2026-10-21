@@ -191,7 +191,7 @@ test('corriger les notes d’un classement passé depuis le journal', async ({ p
 test('effacer toutes les notes nine box en une fois, avec une copie de sauvegarde', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/parametres/reglages')
+  await page.goto('./#/parametres/reglages?rubrique=ninebox')
   await page.getByRole('button', { name: 'Effacer toutes les notes' }).click()
   const d = page.getByRole('dialog', { name: 'Effacer toutes les notes ?' })
   await expect(d).toContainText('3 magasins')
