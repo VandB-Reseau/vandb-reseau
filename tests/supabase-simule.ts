@@ -445,3 +445,9 @@ export async function choisirMois(page: Page, libelle: string, mois: string) {
   await page.getByRole('option', { name: mois, exact: true }).click()
   await page.getByRole('listbox').waitFor({ state: 'hidden' })
 }
+
+// Fiche magasin : Planifier, Préparer et Modifier sont dans le menu « Autres actions »
+export async function actionFiche(page: Page, nom: 'Planifier la visite' | 'Préparer la visite' | 'Modifier la fiche') {
+  await page.getByRole('button', { name: 'Autres actions' }).click()
+  await page.getByRole('menu').getByRole('menuitem', { name: nom }).click()
+}

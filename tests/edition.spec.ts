@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, type Ecriture } from './supabase-simule'
+import { seConnecter, type Ecriture, actionFiche } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -17,7 +17,7 @@ test('modifier et renommer un magasin met à jour toutes les tables', async ({ p
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Nantes%20Test')
-  await page.getByRole('button', { name: 'Modifier', exact: true }).click()
+  await actionFiche(page, 'Modifier la fiche')
   const d = page.getByRole('dialog', { name: 'Modifier Nantes Test' })
   await expect(d.getByLabel('Franchisé', { exact: true })).toHaveValue('Franchisé 2')
   // Plus d'adjoint ni de plateforme logistique
@@ -65,7 +65,7 @@ test('ajouter puis supprimer un magasin', async ({ page }) => {
   expect(adds).toHaveLength(31)
 
   await page.goto('./#/magasins/Dax%20Test')
-  await page.getByRole('button', { name: 'Modifier', exact: true }).click()
+  await actionFiche(page, 'Modifier la fiche')
   await page.getByRole('dialog').getByRole('button', { name: 'Supprimer' }).click()
   await page.getByRole('alert').getByRole('button', { name: 'Supprimer' }).click()
   await expect(page.getByRole('heading', { name: 'Magasins', level: 1 })).toBeVisible()

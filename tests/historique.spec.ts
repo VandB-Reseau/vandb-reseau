@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, type Ecriture } from './supabase-simule'
+import { seConnecter, type Ecriture, actionFiche } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -19,7 +19,7 @@ test('changer le classement à une date choisie, un seul changement par jour', a
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test')
-  await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
+  await actionFiche(page, 'Modifier la fiche')
   const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
   await d.getByLabel('Date du classement', { exact: true }).fill('2026-08-15')
   await d.getByRole('button', { name: /^Moyen : Gestion/ }).click()
@@ -36,7 +36,7 @@ test('noter le même jour remplace la ligne du jour', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test')
-  await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
+  await actionFiche(page, 'Modifier la fiche')
   let d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
   await d.getByLabel('Date du classement', { exact: true }).fill('2026-10-01')
   await d.getByRole('button', { name: /^Fort : Gestion/ }).click()
@@ -96,7 +96,7 @@ test('deux changements de case le même jour : le second remplace le premier, m�
   await seConnecter(page, { ecritures, persister: true })
   await page.goto('./#/magasins/Lyon%20Test?vue=journal')
   for (const note of ['Moyen', 'Fort']) {
-    await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
+    await actionFiche(page, 'Modifier la fiche')
     const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
     await d.getByLabel('Date du classement', { exact: true }).fill('2026-10-14')
     await d.getByRole('button', { name: new RegExp(`^${note} : Gestion`) }).click()
@@ -134,7 +134,7 @@ test('les doublons du même jour déjà enregistrés n’apparaissent qu’une f
   await expect(journal.getByText('Concept 2.0 : Fait')).toHaveCount(1)
   await expect(journal.getByText('Concept 2.0 : En cours')).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
+  await actionFiche(page, 'Modifier la fiche')
   const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
   await d.getByLabel('Date du classement', { exact: true }).fill('2026-10-10')
   await d.getByRole('button', { name: /^Moyen : Gestion/ }).click()
@@ -207,7 +207,7 @@ test('chaque déploiement a sa date dans la fiche magasin', async ({ page }, inf
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test')
-  await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
+  await actionFiche(page, 'Modifier la fiche')
   const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
   await expect(d.getByLabel('Date : Concept 2.0')).toHaveValue('2026-05-04')
   await expect(d.getByLabel('Date : Terrasse')).toHaveValue('')

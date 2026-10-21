@@ -77,9 +77,16 @@ function ListeEquipe({ reseau, groupes }: { reseau: Reseau; groupes: Groupe[] })
           </Box>
           <CarteLignes label={`Coachs de ${g.titre}`}>
             {g.coachs.length === 0 && <LigneCompacte titre="Aucun Coach rattaché" />}
-            {g.coachs.map((l) => (
+            {/* Postes à pourvoir : en ligne grisée, à la fin de leur région (Joseph, 21/10/2026) */}
+            {[...g.coachs.filter((l) => !l.coach.fictif), ...g.coachs.filter((l) => l.coach.fictif)].map((l) => l.coach.fictif ? (
+              <Box key={l.coach.nom} sx={{ '& .titre-poste': { color: 'text.secondary', fontStyle: 'italic' } }}>
+                <LigneCompacte lien={lienCoach(l.coach.nom)} avatar={<Initiales nom={l.coach.nom} icone={<WorkOutlineOutlined />} couleur="#9e9e9e" />}
+                  titre={<span className="titre-poste">{l.coach.nom}</span>}
+                  detail={`À recruter · ${l.magasins} magasin${l.magasins > 1 ? 's' : ''} en attente`} />
+              </Box>
+            ) : (
               <LigneCompacte key={l.coach.nom} lien={lienCoach(l.coach.nom)} avatar={<Initiales nom={l.coach.nom} />} titre={l.coach.nom}
-                detail={l.coach.fictif ? 'Poste à pourvoir' : `${l.magasins} magasin${l.magasins > 1 ? 's' : ''}`}
+                detail={`${l.magasins} magasin${l.magasins > 1 ? 's' : ''}`}
                 fin={<PastilleCharge reseau={reseau} charge={l.charge} />} />
             ))}
           </CarteLignes>

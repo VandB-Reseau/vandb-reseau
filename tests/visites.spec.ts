@@ -121,8 +121,9 @@ test('l’agenda montre ouvertures, événements et absences avec remplaçant su
   // Ouvertures du mois suivant
   await page.getByRole('button', { name: 'Mois suivant' }).click()
   await expect(page.getByText('Ouverture Dax Test').first()).toBeVisible()
-  // Ajouter une absence
-  await page.getByRole('button', { name: 'Absence', exact: true }).click()
+  // Ajouter une absence, depuis le bouton Créer
+  await page.getByRole('button', { name: 'Créer', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Créer' }).getByRole('button', { name: 'Absence', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une absence' })
   await d.getByLabel('Personne').click()
   await page.getByRole('option', { name: 'Camille TESTARD' }).click()

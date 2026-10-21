@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { fichesFictives, magasinsFictifs } from './donnees-fictives'
-import { seConnecter, type Ecriture } from './supabase-simule'
+import { seConnecter, type Ecriture, actionFiche } from './supabase-simule'
 
 const positions = (e: Ecriture[]) => e.filter((x) => x.table === 'store_overrides' && (x.corps as { lat?: number })?.lat !== undefined)
 
@@ -17,7 +17,7 @@ test('changer l’adresse d’un magasin déplace son point', async ({ page }) =
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Nantes%20Test')
-  await page.getByRole('button', { name: 'Modifier', exact: true }).click()
+  await actionFiche(page, 'Modifier la fiche')
   const d = page.getByRole('dialog', { name: 'Modifier Nantes Test' })
   await d.getByLabel('Code postal').fill('35600')
   await d.getByLabel('Ville').fill('Redon')

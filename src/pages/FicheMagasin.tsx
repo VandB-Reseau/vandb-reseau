@@ -3,6 +3,10 @@ import { CartePratique, DialogPratique } from '../components/BonnesPratiques'
 import { useReactionsPratiques } from '../data/reactionsPratiques'
 import type { BonnePratique } from '../data/bonnesPratiques'
 import { Fragment, useMemo, useState, type ReactNode } from 'react'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
 import DynamicFeedOutlined from '@mui/icons-material/DynamicFeedOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import { GrillePhotos, Initiales, TitreSection, type Ton } from '../components/Social'
@@ -464,15 +468,28 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
         { valeur: ouvertes || '0', libelle: ouvertes > 1 ? 'tâches en cours' : 'tâche en cours' },
       ]}
       detail={c && <><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} par an</>}
-      telephone={appeler} modifier={modifier}
-      icones={<>
-        <Tooltip title="Planifier la visite"><IconButton onClick={planifier} aria-label="Planifier la visite" sx={{ width: 48, height: 48 }}><EventAvailableOutlined /></IconButton></Tooltip>
-        <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(m.nom)} aria-label="Préparer la visite" sx={{ width: 48, height: 48 }}><AssignmentOutlined /></IconButton></Tooltip>
-      </>}
+      telephone={appeler}
+      icones={<AutresActions planifier={planifier} preparer={lienPreparation(m.nom)} modifier={modifier} />}
       actions={<>
         <Tooltip title="Message"><IconButton onClick={message} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Tooltip>
         <Tooltip title="Saisir une visite"><IconButton onClick={visite} aria-label="Saisir une visite" sx={rond}><AddOutlined /></IconButton></Tooltip>
       </>} />
+  )
+}
+
+// Planifier, Préparer et Modifier dans un menu « ⋯ » : trois pictos seulement à côté du nom (Joseph, 21/10/2026)
+function AutresActions({ planifier, preparer, modifier }: { planifier: () => void; preparer: string; modifier?: () => void }) {
+  const [ancre, setAncre] = useState<HTMLElement | null>(null)
+  const fermer = () => setAncre(null)
+  return (
+    <>
+      <Tooltip title="Autres actions"><IconButton onClick={(e) => setAncre(e.currentTarget)} aria-label="Autres actions" aria-haspopup="menu" aria-expanded={!!ancre} sx={{ width: 48, height: 48 }}><MoreHorizOutlined /></IconButton></Tooltip>
+      <Menu anchorEl={ancre} open={!!ancre} onClose={fermer} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
+        <MenuItem onClick={() => { fermer(); planifier() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><EventAvailableOutlined /></ListItemIcon>Planifier la visite</MenuItem>
+        <MenuItem component={RouterLink} to={preparer} onClick={fermer} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><AssignmentOutlined /></ListItemIcon>Préparer la visite</MenuItem>
+        {modifier && <MenuItem onClick={() => { fermer(); modifier() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><EditOutlined /></ListItemIcon>Modifier la fiche</MenuItem>}
+      </Menu>
+    </>
   )
 }
 

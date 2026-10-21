@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture, actionFiche } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -129,7 +129,7 @@ test('la fiche magasin permet de planifier la visite', async ({ page }) => {
   await page.addInitScript(() => { window.open = () => null })
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Nantes%20Test')
-  await page.getByRole('button', { name: 'Planifier la visite' }).click()
+  await actionFiche(page, 'Planifier la visite')
   const d = page.getByRole('dialog', { name: 'Visite de Nantes Test' })
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText(/^Visite planifiée le /)).toBeVisible()

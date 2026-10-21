@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture, type OptionsSimulation } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture, type OptionsSimulation, actionFiche } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -21,8 +21,10 @@ test('un Coach ne voit pas les boutons des référentiels et ne les écrit pas',
   await seConnecter(page, { ...NOE, ecritures, config: { campagnes } })
   await page.goto('./#/magasins/Lyon%20Test')
   await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Préparer la visite' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Modifier', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Autres actions' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Préparer la visite' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Modifier la fiche' })).toHaveCount(0)
+  await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: 'Réaffecter' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Ajouter un associé' })).toHaveCount(0)
   await page.screenshot({ path: `captures/${info.project.name}-coach-fiche-sans-modifier.png` })
@@ -109,7 +111,7 @@ test('un email inconnu donne un message clair', async ({ page }) => {
 test('fiche avant visite : tout le magasin sur une page, téléchargeable en PDF', async ({ page, isMobile }, info) => {
   await seConnecter(page, { config: { campagnes }, messagerie })
   await page.goto('./#/magasins/Lyon%20Test')
-  await page.getByRole('link', { name: 'Préparer la visite' }).click()
+  await actionFiche(page, 'Préparer la visite')
   await expect(page).toHaveURL(/#\/magasins\/Lyon%20Test\/preparer$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()
   for (const t of ['En bref', 'Chiffres', 'Repères réseau', 'Actions en cours (1)', 'Audits', 'Campagnes à constater', 'Derniers messages']) {
@@ -140,7 +142,7 @@ test('un Coach prépare la visite d’un de ses magasins', async ({ page, isMobi
   // Sur PC depuis le rythme de visite, sur téléphone depuis la fiche du magasin
   if (isMobile) {
     await page.goto('./#/magasins/Lyon%20Test')
-    await page.getByRole('link', { name: 'Préparer la visite' }).click()
+    await actionFiche(page, 'Préparer la visite')
   } else {
     await page.goto('./#/visites?vue=rythme')
     await page.getByRole('link', { name: 'Préparer la visite de Lyon Test' }).first().click()

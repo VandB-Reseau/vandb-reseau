@@ -37,7 +37,7 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { DialogVisite, visiteurs } from '../components/DialogVisite'
 import { PastilleSignature } from '../components/PastilleVisite'
-import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, Pastille, TitreSection, useAffichage, useParTranches } from '../components/Social'
+import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, MiniPhotos, Pastille, TitreSection, useAffichage, useParTranches } from '../components/Social'
 import DateRangeOutlined from '@mui/icons-material/DateRangeOutlined'
 import { VueSemaine } from '../components/Semaine'
 import { useAuth } from '../auth/AuthContext'
@@ -190,6 +190,10 @@ function AlerteVisite({ l }: { l: LigneRythme }) {
     : <Typography variant="body2" color="text.secondary" component="span">{l.echeance ? `le ${dateCourte(l.echeance)}` : ''}</Typography>
 }
 
+const parMois = (vs: Visite[]) => [...vs.reduce((m, v) => m.set(v.date.slice(0, 7), [...(m.get(v.date.slice(0, 7)) ?? []), v]), new Map<string, Visite[]>())]
+const nbDuMois = (vs: Visite[], mois: string) => vs.filter((v) => v.date.startsWith(mois)).length
+const libelleMoisAnnee = (mois: string) => new Date(`${mois}-15T12:00:00`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+
 function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier: (v: Visite) => void; actions: ReactNode }) {
   const semestres = useMemo(() => semestresDisponibles(reseau), [reseau])
   const [cle, setCle] = useState('')
@@ -221,14 +225,26 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
       {liste.length === 0 ? (
         <EmptyState icone={<EventNoteOutlined />} titre="Aucune visite" texte={reseau.visites.length ? 'Aucune visite ne correspond à ces filtres.' : 'Saisis ta première visite avec le bouton « Saisir une visite ».'} />
       ) : (
-        <CarteLignes label="Visites">
-          {visibles.map((v) => (
-            <LigneCompacte key={v.id ?? `${v.magasin}-${v.date}`} lien={lienFiche(v.magasin)} avatar={<Initiales nom={v.magasin} />} titre={v.magasin}
-              detail={[dateCourte(v.date), libelleTypeVisite(v.type), nomsVisiteurs(v), v.notes].filter(Boolean).join(' · ')}
-              fin={v.signatureRequise ? <PastilleSignature requise signe={!!v.lienSigne} /> : undefined}
-              actions={<Actions v={v} />} />
+        // Un intertitre collant par mois, avec le nombre de visites du mois (Joseph, 21/10/2026)
+        <Box component="section" aria-label="Visites" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {parMois(visibles).map(([mois, vs]) => (
+            <Box key={mois} component="section" aria-label={libelleMoisAnnee(mois)}>
+              <Box sx={{ position: 'sticky', top: { xs: 64, md: 72 }, zIndex: 3, bgcolor: 'background.default', py: 0.75, px: 0.5 }}>
+                <Typography component="h2" sx={{ fontWeight: 700, fontSize: '0.875rem', color: 'text.secondary', '&::first-letter': { textTransform: 'uppercase' } }}>
+                  {libelleMoisAnnee(mois)} · {nbDuMois(liste, mois)} visite{nbDuMois(liste, mois) > 1 ? 's' : ''}
+                </Typography>
+              </Box>
+              <CarteLignes>
+                {vs.map((v) => (
+                  <LigneCompacte key={v.id ?? `${v.magasin}-${v.date}`} lien={lienFiche(v.magasin)} avatar={<Initiales nom={v.magasin} />} titre={v.magasin}
+                    detail={[dateCourte(v.date), libelleTypeVisite(v.type), nomsVisiteurs(v), v.notes].filter(Boolean).join(' · ')}
+                    fin={v.signatureRequise ? <PastilleSignature requise signe={!!v.lienSigne} /> : <MiniPhotos photos={v.photos} />}
+                    actions={<Actions v={v} />} />
+                ))}
+              </CarteLignes>
+            </Box>
           ))}
-        </CarteLignes>
+        </Box>
       )}
       {suite}
     </>
