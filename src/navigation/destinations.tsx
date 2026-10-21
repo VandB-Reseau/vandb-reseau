@@ -43,7 +43,7 @@ export const principales: Destination[] = [
 // Suite de la partie classique : sous les principales dans le menu PC, dans « Plus » sur téléphone
 export const secondaires: Destination[] = [
   { chemin: '/communications', libelle: 'Communications', description: 'Annonces du réseau aux franchisés', icone: <CampaignOutlined />, iconeActive: <Campaign />, sprint: 'Sprint 17' },
-  { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Ouvertures, anniversaires, événements et congés', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
+  { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes, absences et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
 ]
 
 // Partie « Paramètres »

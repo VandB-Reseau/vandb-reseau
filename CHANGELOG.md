@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Agenda interactif : cliquer dans une case (ou sur « + » du jour) propose Visite, Absence ou Événement à cette date
+  (visite à venir = planifiée, visite passée = compte rendu) ; sur PC, glisser un événement, une absence ou une visite
+  prévue change sa date, tirer le bord droit d'un événement ou d'une absence change sa fin ; sur téléphone, « + » sur
+  chaque jour et toucher un jour libre de la bande. Les campagnes datées apparaissent dans l'agenda (catégorie
+  Campagnes, lien vers la campagne), limitées aux campagnes qui touchent un magasin visible du compte
+  (`src/pages/Agenda.tsx`, test `agenda-interactif.spec.ts`). Pas de migration.
 - « Actions » devient « Tâches » partout à l'écran : onglet des fiches magasin et Coach, listes en cours et faites,
   fenêtre d'ajout et de modification, messages de confirmation, compte rendu et préparation de visite (« Tâches en cours »,
   colonne « Tâche », « N tâches au plan »), message envoyé au franchisé (« Nos tâches »). « Plan d'action » (titre du
