@@ -1,5 +1,5 @@
 // Accès des Coachs et des Responsables Régionaux : un compte créé dans Supabase, rattaché depuis la fiche
-// de la personne par le Directeur de réseau (fonctions du script cloisonnement_equipe.sql)
+// de la personne par le Directeur de réseau (fonctions du script 0005_cloisonnement_equipe.sql)
 import { supabase } from '../lib/supabase'
 
 export type RoleEquipe = 'coach' | 'rr'

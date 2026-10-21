@@ -1,4 +1,4 @@
-// Messagerie (script supabase/messagerie.sql) : depuis le 20/10/2026, des échanges privés à deux entre le Directeur
+// Messagerie (script supabase/migrations/0006_messagerie.sql) : depuis le 20/10/2026, des échanges privés à deux entre le Directeur
 // de réseau, les Responsables Régionaux, les Coachs et les franchisés, avec des magasins cités en option.
 // Les anciens messages par magasin (sans destinataire) restent lisibles. Tout passe par des fonctions de la base.
 import { supabase } from '../lib/supabase'
@@ -16,7 +16,7 @@ export interface Message {
 }
 export type Sujet = 'messages' | 'visites'
 // lus : dernière lecture par « magasin|sujet » ou « personne:<clé>|messages » ; reference : ouverture de l'accès d'un franchisé ;
-// version 3 : échanges à deux (script messagerie.sql repassé) ; cle : clé du compte connecté
+// version 3 : échanges à deux (script 0006_messagerie.sql repassé) ; cle : clé du compte connecté
 export interface Messagerie { moi: string; cle: string; version: number; reference: string; messages: Message[]; lus: Record<string, string> }
 
 export class ErreurMessage extends Error {}

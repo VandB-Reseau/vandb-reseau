@@ -1,6 +1,6 @@
 -- ════════════════════════════════════════════════════════════════
 -- V and B — Préparation des visites (notes et heure de la prochaine visite)
--- À exécuter dans Supabase > SQL Editor, APRÈS cloisonnement_equipe.sql. Réexécutable.
+-- 20/10/2026 (PR #65). Réexécutable. Suppose 0005.
 --
 -- Une ligne par magasin dans suivi_magasins, rubrique « preparation » :
 -- même cloisonnement que le journal (un Coach ou un RR ne lit et n'écrit que ses magasins),

@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════════════
 -- V and B — Communications du réseau vers les franchisés
--- À exécuter dans Supabase > SQL Editor, APRÈS messagerie.sql. Réexécutable.
--- Puis rejouer pieces_jointes.sql pour que les photos et fichiers joints soient lisibles.
+-- Sprint 17 (20/10/2026, PR #58 et suivante). Réexécutable. Suppose 0006.
+-- Les fichiers joints sont lisibles grâce à 0009, passé après.
 --
 -- 1) Le Directeur de réseau publie pour tout le réseau ; un Responsable Régional, pour ses magasins
 --    (la liste est figée à la publication). L'auteur modifie ou retire sa publication.

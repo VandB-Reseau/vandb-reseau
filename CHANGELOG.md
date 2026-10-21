@@ -1,0 +1,125 @@
+# Journal des versions
+
+Ce qui a changé dans l'app, sprint par sprint, du plus récent au plus ancien.
+Chaque ligne renvoie à sa demande de fusion (#n). La colonne « Base » signale les migrations
+à passer dans Supabase (voir [supabase/README.md](supabase/README.md)).
+
+Reconstitué le 21/10/2026 à partir de l'historique des demandes de fusion et des propositions de sprint.
+Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont pas de demande de fusion ici.
+
+## À venir
+
+- Base de données remise en ordre : migrations numérotées dans `supabase/migrations/`, rejouées à chaque
+  publication sur un PostgreSQL vide avec contrôle des règles d'accès (`npm run test:base`). Deux anciens
+  scripts qui rouvraient les visites et les photos d'audit à tout compte connecté s'ils étaient rejoués sont corrigés.
+- Base en ligne : le contrôle du 21/10/2026 a montré que toutes les tables étaient revenues à « tout compte connecté »
+  (ancien script repassé) et que la dernière version des communications n'était pas passée. Remise à niveau en
+  rejouant 0001 à 0012 — Base : `0012_garde_fous_et_journal` (+ suite complète)
+- Documentation : schéma de la base ([docs/base-de-donnees.md](docs/base-de-donnees.md)),
+  architecture ([docs/architecture.md](docs/architecture.md)), ce journal.
+
+## 21/10/2026
+
+- Barre du bas en verre sur téléphone : flottante, translucide, onglet actif en pastille (#70)
+
+## Sprint 19 — la journée du Coach, la charge du Directeur (20/10/2026)
+
+- Charge des Coachs dans Paramètres, simulation, trajets et kilomètres par la route ; compte rendu envoyé au franchisé en un geste (#69)
+- Visites : préparer et planifier en une fenêtre (date, heure, notes), lien Google Agenda prérempli (#65) — Base : `0011_preparation_visites`
+- Fiches : Appeler, Message et Visite en pictos à côté du nom (#68)
+- Fenêtre Créer plus compacte, icône à côté du libellé partout (#67)
+
+## Sprint 18 — portefeuilles et Ma semaine (20/10/2026)
+
+- Portefeuille Coach et RR, Ma semaine, espace franchisé au nouveau design (#59)
+- Infobulles à 12 px (#60)
+- Fiches : onglets collants, position gardée au changement d'onglet (#61) ; en-tête bas sur téléphone (#62)
+
+## Sprint 17 — harmonisation et communications (20/10/2026)
+
+- Onglets harmonisés, Évaluer et Déploiements en lignes, imports et thématiques dans Paramètres, communications du réseau aux franchisés (#58) — Base : `0008_communications`
+- Communications mises en forme (collées depuis un courriel) et reprises dans le fil d'activité (#63)
+- Fil façon réseau social : photos des communications, bonnes pratiques de tout le réseau, J'aime et commentaires (#64) — Base : `0010_pratiques_reactions`
+
+## Sprint 16 — app fluide, façon réseau social (20/10/2026)
+
+- Accueil « À traiter » et fil d'activité, barre du bas avec Créer, listes en lignes (tableau au choix sur PC), fiche magasin en profil, J'aime sur les bonnes pratiques (#57)
+- Visites : onglets Rythme et Historique sans blocage sur un grand réseau (#56)
+
+## Messagerie, tâches et pièces jointes (20/10/2026)
+
+Livré entre les sprints 13 et 16, sans numéro de sprint.
+
+- Messagerie façon Messenger : conversations par magasin, @ simplifié (#49)
+- Messagerie par personne, « Équipe seulement », page Notifications (#50)
+- Échanges privés à deux, magasins cités avec # (#51) — Base : `0006_messagerie` repassée
+- Actions : liste partagée à faire / faites pour l'équipe et le franchisé (#52) — Base : `0007_actions_franchise`
+- Tâches : porteur choisi, liste de chacun, icône à côté de la cloche (#53)
+- Pièces jointes : photos et fichiers sur les tâches et les messages (#54) — Base : `0009_pieces_jointes`
+- En-tête : aperçu des tâches et des messages (#55)
+
+## Sprint 13 — ouvrir l'app aux Coachs (19-20/10/2026)
+
+- Accès de l'équipe ouverts depuis la fiche du Coach ou du RR, droits sur les référentiels, fiche avant visite, « Voir comme » (#47) — Base : `0005_cloisonnement_equipe` repassée
+- Campagnes régionales tenues par les Responsables Régionaux (#48) — Base : `0005_cloisonnement_equipe` repassée
+
+## Sprint 12 — messagerie et cloisonnement de l'équipe (19/10/2026)
+
+- Messagerie par magasin, @mentions, cloche de notifications (#44) — Base : `0006_messagerie`
+- Coach et RR : sans Paramètres, limités à leurs magasins à l'écran et dans la base (#45) — Base : `0005_cloisonnement_equipe`
+
+## Sprint 11 — espace franchisé cloisonné (19/10/2026)
+
+- L'Équipe passe en tête du groupe Paramètres (#41)
+- Espace franchisé cloisonné par la base : le franchisé ne lit aucune table (#42) — Base : `0004_acces_franchises`
+- Actions hors visite, ligne des titres fixe dans les tableaux (#43)
+- Fiche magasin : audits dans l'onglet Visites (#46)
+
+## Sprint 10 — fiche magasin en onglets (19/10/2026)
+
+- Fiche magasin en onglets, actions suivies, associés et mandats, accueil par rôle (#40)
+
+## Sprint 9 — nine box paramétrable (19/10/2026)
+
+- Franchisé noté sur 5 critères pondérés, grille réglable (#39)
+- Une date par déploiement (export et fiche magasin) (#38)
+
+## Sprint 8 — référentiels, sauvegarde, campagnes (16/10/2026)
+
+- Import et export Excel de chaque référentiel, sauvegarde complète, campagnes (#36)
+- Import : une ligne absente du fichier est supprimée (#37)
+
+## Sprint 7 — audits et photos (15/10/2026)
+
+- Grilles d'audit hygiène et excellence opérationnelle, avec photos (#34) — Base : `0003_photos_audits`
+- Photos sur toutes les visites et bonnes pratiques (#35)
+
+## Sprint 6 — piloter au chiffre (15/10/2026)
+
+- Chiffres mensuels, alerte de décrochage, appels hors rythme, note d'audit (#12)
+- Affectations au mois, visites à plusieurs participants (#14)
+- Menu : Santé du parc et Équipe échangés (#15) ; nine box : un changement par jour (#16)
+- Chiffres : panier moyen et flux cave et bar, marge, CA cumulé calculé (#17)
+- Plan d'affectation qui ne bloque plus (#18)
+- Import du classeur de suivi des Coachs et des notes d'audit (#19, #20)
+- Santé : modifier, supprimer ou effacer les classements nine box (#21, #22)
+- Carte : magasins à leur vraie position, Coachs et RR avec leur picto et à la bonne commune (#23, #25, #28)
+- Écrans ouverts en haut de page (#24) ; plus de page blanche après une mise en ligne (#26)
+- Fiche magasin : chiffres d'un mois modifiables (#27), carte Google intégrée (#29)
+- Barres d'outils et onglets cohérents partout (#30, #31, #32)
+- Santé du parc > Chiffres alignés sur la fiche, décrochage sur l'écart de CA (#33)
+
+## Sprint 5 — suivi des magasins (14-15/10/2026)
+
+- Rythme de visite selon la nine box, historique de la santé, journal (#7)
+- Année civile à la place de l'année fiscale (#8)
+- Équipe : menu simplifié, zones réparties par temps de trajet (#9) ; tournées sur les vrais trajets routiers (#11)
+- Historique daté : classement à une date choisie, import avec date (#10)
+
+## Sprints 0 à 4 — fondations (14/10/2026)
+
+- Sprint 0 : dépôt, React + MUI aux couleurs V and B, navigation PC et téléphone, connexion, tests Playwright, publication sur GitHub Pages
+- Sprints 1 à 4 : magasins et carte, équipe et charge, visites et agenda, pilotage (accueil, santé du parc)
+- Le même jour : zones Coach et RR sur la carte (#1), fiches personnelles et Franchisé (#2), Équipe en onglets (#3),
+  charge des Coachs repensée (#4), compte rendu de visite dicté et plan d'action (#5, #6) — Base : `0002_visites_compte_rendu`
+- Base de départ : les 9 tables de l'ancienne app, verrouillées aux comptes connectés — Base : `0001_tables_de_base`

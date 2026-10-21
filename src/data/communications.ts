@@ -1,4 +1,4 @@
-// Communications du réseau vers les franchisés (script supabase/communications.sql) : publiées par le Directeur
+// Communications du réseau vers les franchisés (script supabase/migrations/0008_communications.sql) : publiées par le Directeur
 // de réseau (tout le réseau) ou un Responsable Régional (ses magasins), lues, commentées et « J'aime » par l'équipe
 // et les franchisés concernés. Tout passe par des fonctions de la base.
 import { useCallback, useEffect, useMemo, useState } from 'react'

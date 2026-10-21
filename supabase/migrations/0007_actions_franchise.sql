@@ -1,6 +1,6 @@
 -- ════════════════════════════════════════════════════════════════
 -- V and B — Le franchisé coche et ajoute les actions de ses magasins
--- À exécuter dans Supabase > SQL Editor, APRÈS acces_franchises.sql, cloisonnement_equipe.sql et messagerie.sql. Réexécutable.
+-- 20/10/2026 (PR #52). Réexécutable. Suppose 0004, 0005 et 0006.
 --
 -- 1) Un franchisé ne lit ni n'écrit aucune table : il passe par les deux fonctions ci-dessous,
 --    qui vérifient que le magasin fait partie des siens (table acces_franchises).
@@ -22,7 +22,7 @@ BEGIN
 END $$;
 
 -- Ajoute une action hors visite (une liste par magasin dans suivi_magasins, rubrique « actions »),
--- avec ses photos et fichiers (pieces_propres, script messagerie.sql)
+-- avec ses photos et fichiers (pieces_propres, 0006)
 DROP FUNCTION IF EXISTS public.ajouter_action_franchise(text, text, text, text);
 CREATE OR REPLACE FUNCTION public.ajouter_action_franchise(p_store text, p_action text, p_porteur text DEFAULT '', p_echeance text DEFAULT '', p_pieces jsonb DEFAULT '[]') RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$

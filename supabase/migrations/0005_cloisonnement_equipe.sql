@@ -1,7 +1,6 @@
 -- ════════════════════════════════════════════════════════════════
 -- V and B — Coachs et Responsables Régionaux : cloisonnement réel des données
--- À exécuter dans Supabase > SQL Editor, APRÈS acces_franchises.sql
--- (et à rejouer après tout nouveau passage de acces_franchises.sql). Réexécutable.
+-- 19/10/2026 (PR #45), complété le 20/10/2026 (PR #47 et #48). Réexécutable. Suppose 0004.
 --
 -- 1) Le périmètre de chaque magasin (son Coach, les RR qui le suivent) est
 --    tenu à jour par l'app du Directeur de réseau dans perimetre_equipe.
