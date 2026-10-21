@@ -1,4 +1,4 @@
-// Suivi rangé par magasin (santé, journal, audits, associés, actions, déploiements, constats de campagne).
+// Suivi rangé par magasin (santé, journal, audits, associés, actions, déploiements, constats de campagne, préparation des visites).
 // Dans la base, une ligne par magasin et par rubrique (table suivi_magasins) : un Coach ou un RR ne lit
 // et n'écrit que celles de ses magasins. L'app garde en mémoire l'ancien format d'app_config.
 // Tant que le script cloisonnement_equipe.sql n'est pas passé, tout reste dans app_config.
@@ -7,6 +7,7 @@
 export const rubriques = {
   sante_parc: 'sante', sante_parc_sauvegarde: 'sante_sauvegarde', notes_magasins: 'notes', audits: 'audits',
   associes: 'associes', actions: 'actions', deploiements: 'deploiements', campagnes: 'constats',
+  preparations_visites: 'preparation',
 } as const
 export type CleSuivie = keyof typeof rubriques
 export const estSuivie = (cle: string): cle is CleSuivie => cle in rubriques

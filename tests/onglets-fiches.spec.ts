@@ -3,7 +3,7 @@ import { seConnecter } from './supabase-simule'
 
 const hauteur = (page: Page) => page.evaluate(() => window.scrollY)
 const bande = (page: Page, nom: string) => page.getByRole('tablist', { name: `Rubriques de ${nom}` })
-// Haut de la bande d'onglets par rapport à l'écran (sous la bande noire : 116 px sur téléphone, recherche comprise ; 72 px sur PC)
+// Haut de la bande d'onglets par rapport à l'écran (64 px sous la barre du haut sur téléphone, 72 px sur PC)
 const hautBande = (page: Page, nom: string) => bande(page, nom).evaluate((e) => Math.round(e.getBoundingClientRect().top))
 
 for (const fiche of [
@@ -15,9 +15,9 @@ for (const fiche of [
     await seConnecter(page)
     await page.goto(fiche.adresse)
     await expect(bande(page, fiche.nom)).toBeVisible()
-    const haut = isMobile ? 116 : 72
-    // Téléphone : en-tête bas, les onglets commencent moins de 240 px sous la bande noire
-    if (isMobile) expect(await hautBande(page, fiche.nom)).toBeLessThan(haut + 240)
+    const haut = isMobile ? 64 : 72
+    // Téléphone : en-tête bas, les onglets commencent avant 300 px
+    if (isMobile) expect(await hautBande(page, fiche.nom)).toBeLessThan(300)
     // En haut de la fiche : changer d'onglet ne bouge pas la page
     await bande(page, fiche.nom).getByRole('tab', { name: fiche.retour }).click()
     await expect.poll(() => hauteur(page)).toBe(0)

@@ -1,5 +1,5 @@
 import { statutA } from './construction'
-import type { Coach, Magasin, Reseau, Statut } from './modele'
+import type { Magasin, Reseau, Statut } from './modele'
 
 // Règle réglable dans Direction (par défaut celle de l'ancienne app) : un magasin ouvert compte 1 unité,
 // un magasin en pré-ouverture ou nouvellement ouvert en compte 2, un magasin à venir 0.
@@ -53,20 +53,4 @@ export function distanceKm(a: { lat: number | null; lon: number | null }, b: { l
   const dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon)
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2
   return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
-}
-
-export interface Suggestion { coach: Coach; distance: number | null; chargeAvant: number; chargeApres: number; depasse: boolean }
-
-// Coachs candidats pour reprendre un magasin : ceux qui restent sous le maximum, les Coachs en poste,
-// puis le plus proche et enfin le moins chargé
-export function suggererCoachs(reseau: Reseau, m: Magasin, jour: string): Suggestion[] {
-  const statut = statutA(m.ouverture, jour, reseau.parametres)
-  return reseau.equipe
-    .filter((c) => c.nom !== coachA(m, jour) && (!c.arrivee || c.arrivee <= jour || c.fictif))
-    .map((c) => {
-      const avant = chargeA(reseau, c.nom, jour)
-      const apres = avant + poids(reseau, statut)
-      return { coach: c, distance: distanceKm(c, m), chargeAvant: avant, chargeApres: apres, depasse: apres > reseau.parametres.maxUnits }
-    })
-    .sort((a, b) => Number(a.depasse) - Number(b.depasse) || Number(a.coach.fictif) - Number(b.coach.fictif) || (a.distance ?? 9999) - (b.distance ?? 9999) || a.chargeAvant - b.chargeAvant)
 }

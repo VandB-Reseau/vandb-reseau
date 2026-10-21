@@ -125,6 +125,8 @@ function MenuLateral({ franchise, sansParametres }: { franchise?: Destination[];
   )
 }
 
+const HAUTEUR_BARRE = 64
+
 function BarreBasse({ franchise }: { franchise?: Destination[] }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
@@ -132,15 +134,32 @@ function BarreBasse({ franchise }: { franchise?: Destination[] }) {
     const actif = estActive(d, pathname)
     return (
       <ButtonBase key={d.chemin} onClick={() => naviguer(d.chemin)} aria-current={actif ? 'page' : undefined}
-        sx={{ flex: 1, minWidth: 0, height: 72, display: 'flex', flexDirection: 'column', gap: 0.25, color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.75rem', fontWeight: actif ? 600 : 500 }}>
-        {actif ? d.iconeActive ?? d.icone : d.icone}
-        <Box component="span" sx={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', px: 0.5 }}>{d.court ?? d.libelle}</Box>
+        sx={{ flex: 1, minWidth: 0, height: HAUTEUR_BARRE, borderRadius: 999, color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.75rem', fontWeight: actif ? 600 : 500 }}>
+        {/* Onglet actif posé sur une pastille, comme les barres en verre d'iOS */}
+        <Box sx={{ width: '100%', height: HAUTEUR_BARRE - 10, borderRadius: 999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.25, ...(actif ? { bgcolor: 'action.selected' } : {}) }}>
+          {actif ? d.iconeActive ?? d.icone : d.icone}
+          <Box component="span" sx={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', px: 0.5 }}>{d.court ?? d.libelle}</Box>
+        </Box>
       </ButtonBase>
     )
   }
+  // Barre flottante en verre : translucide et floutée, le contenu reste visible dessous
   return (
-    <Paper component="nav" aria-label="Navigation principale" sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: (t) => t.zIndex.appBar, borderTop: '1px solid', borderColor: 'divider', pb: 'env(safe-area-inset-bottom)', bgcolor: 'background.paper' }}>
-      <Box sx={{ display: 'flex', height: 72 }}>
+    <Paper component="nav" aria-label="Navigation principale"
+      sx={(t) => ({
+        position: 'fixed', left: 12, right: 12, bottom: 'calc(8px + env(safe-area-inset-bottom))', zIndex: t.zIndex.appBar,
+        borderRadius: 999, overflow: 'hidden', px: 0.625,
+        bgcolor: 'rgba(255, 255, 255, 0.8)',
+        backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        border: '1px solid rgba(255, 255, 255, 0.7)',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+        ...t.applyStyles('dark', {
+          bgcolor: 'rgba(36, 36, 40, 0.8)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+        }),
+      })}>
+      <Box sx={{ display: 'flex', height: HAUTEUR_BARRE }}>
         {franchise ? franchise.map(item) : <>
           {principales.slice(0, 2).map(item)}
           <BoutonCreer rond />
@@ -172,37 +191,29 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
   }, [])
   const conversation = /^\/messages\/./.test(pathname)
   const sansBarre = surPC || saisie || conversation
-  // Téléphone : la recherche occupe une seconde ligne de la bande noire (sauf dans une conversation)
-  const rechercheSousLogo = !surPC && !franchise && !conversation
-  const hautEntete = surPC ? '72px' : rechercheSousLogo ? '116px' : '64px'
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'background.default', '--barre-basse': sansBarre ? '0px' : 'calc(72px + env(safe-area-inset-bottom))', '--haut-entete': hautEntete }}>
+    <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'background.default', '--barre-basse': sansBarre ? '0px' : 'calc(80px + env(safe-area-inset-bottom))' }}>
       <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1, bgcolor: '#000000', color: '#ffffff' }}>
         <Toolbar sx={{ minHeight: { xs: 60, md: 68 }, gap: { xs: 0.5, sm: 2 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: surPC ? LARGEUR_MENU - 24 : 'auto' }}>
             <Logo size={surPC ? 22 : 20} />
             <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'inline' } }}>{franchise ? 'Espace franchisé' : 'Réseau'}</Typography>
           </Box>
-          <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-            {surPC && !franchise && <RechercheGlobale surFonce />}
+          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center' }}>
+            {!franchise && <RechercheGlobale surFonce court={!surPC} />}
           </Box>
           <BoutonTaches />
           {!sansCloche && <BoutonMessages />}
           {!sansCloche && <Cloche />}
           <MenuCompte liens={surPC || franchise ? [] : [{ destinations: secondaires }, ...(sansParametres ? [] : [{ titre: 'Paramètres', destinations: parametres }])]} />
         </Toolbar>
-        {rechercheSousLogo && (
-          <Box sx={{ px: 2, pb: 1, display: 'flex' }}>
-            <RechercheGlobale surFonce court />
-          </Box>
-        )}
         <Box aria-hidden sx={{ height: 4, background: brandStripe }} />
       </AppBar>
 
       {surPC && <MenuLateral franchise={franchise} sansParametres={sansParametres} />}
 
-      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: 'var(--haut-entete)', pb: surPC ? 4 : conversation ? 0 : '96px' }}>
+      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: '72px' }, pb: surPC ? 4 : conversation ? 0 : 'calc(96px + env(safe-area-inset-bottom))' }}>
         {bandeau}
         <Box sx={{ maxWidth: 1280, mx: 'auto', px: { xs: 2, sm: 3, md: 5 }, pt: { xs: 2, md: 3 } }}>{children}</Box>
       </Box>

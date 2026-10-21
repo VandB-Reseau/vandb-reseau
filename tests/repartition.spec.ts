@@ -23,7 +23,7 @@ test('sans service d’itinéraire, la charge indique que les trajets sont estim
   await seConnecter(page)
   await page.route('https://router.project-osrm.org/**', (r) => r.abort())
   await page.evaluate(() => localStorage.removeItem('vandb-trajets-routiers'))
-  await page.goto('./#/equipe?vue=charge')
+  await page.goto('./#/parametres/charge')
   await page.reload()
   await expect(page.getByText('Trajets estimés')).toBeVisible()
 })

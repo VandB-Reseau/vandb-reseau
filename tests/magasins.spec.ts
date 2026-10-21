@@ -77,7 +77,15 @@ test('la recherche globale ouvre une fiche magasin ou une fiche Coach', async ({
   const bande = await page.locator('header').boundingBox()
   const zone = await champ.boundingBox()
   expect(zone!.y + zone!.height).toBeLessThanOrEqual(bande!.y + bande!.height)
+  // Sur la ligne des icônes : la bande garde sa hauteur
+  expect(bande!.height).toBeLessThanOrEqual(info.project.name === 'telephone' ? 64 : 72)
+  expect(zone!.width).toBeGreaterThanOrEqual(60)
   await page.screenshot({ path: `captures/recherche-bande/${info.project.name}-recherche-bande.png` })
+  await champ.fill('bordeaux')
+  // Les résultats s'affichent en entier, même sous un champ étroit
+  await expect(page.getByRole('listbox')).toBeVisible()
+  expect((await page.getByRole('listbox').boundingBox())!.width).toBeGreaterThanOrEqual(300)
+  await page.screenshot({ path: `captures/recherche-bande/${info.project.name}-recherche-resultats.png` })
   await champ.fill('bordeaux')
   await page.getByRole('option', { name: /^Bordeaux Test/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Bordeaux Test' })).toBeVisible()

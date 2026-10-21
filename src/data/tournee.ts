@@ -11,6 +11,11 @@ export interface Tournee { km: number; minutes: number; etapes: number; complete
 
 const estime = (a: Point, b: Point) => { const km = (distanceKm(a, b) ?? 0) * FACTEUR_ROUTE; return { km, minutes: (km / VITESSE_KMH) * 60 } }
 const trajet = (a: Point, b: Point) => trajetRoutier(a, b) ?? estime(a, b)
+// Trajet par la route entre deux points ; « estime » quand le service d'itinéraire ne l'a pas encore donné
+export function trajetEntre(a: Point, b: Point): { km: number; minutes: number; estime: boolean } {
+  const r = trajetRoutier(a, b)
+  return r ? { ...r, estime: false } : { ...estime(a, b), estime: true }
+}
 // L'ordre de passage cherche le moins de temps de route
 const d = (a: Point, b: Point) => trajet(a, b).minutes
 
@@ -61,6 +66,7 @@ export function tournee(domicile: Point | null, magasins: { lat: number | null; 
 }
 
 export function duree(minutes: number): string {
-  const h = Math.floor(minutes / 60), m = Math.round(minutes % 60)
+  const total = Math.round(minutes)
+  const h = Math.floor(total / 60), m = total % 60
   return h ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`
 }

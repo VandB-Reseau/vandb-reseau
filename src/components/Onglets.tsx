@@ -23,8 +23,8 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
       slotProps={{ indicator: { sx: { display: 'none' } } }}
       sx={{
         mb: { xs: 1.5, md: 2.5 }, minHeight: 48, mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, '& .MuiTabs-flexContainer': { gap: 1 },
-        // Sous la barre du haut (hauteur posée par AppShell), sur le fond de la page
-        ...(collants ? { position: 'sticky', top: 'var(--haut-entete, 64px)', zIndex: 4, bgcolor: 'background.default' } : {}),
+        // Sous la barre du haut (64 px téléphone, 72 px PC), sur le fond de la page
+        ...(collants ? { position: 'sticky', top: { xs: 64, md: 72 }, zIndex: 4, bgcolor: 'background.default' } : {}),
       }}>
       {rubriques.map((r) => (
         <Tab key={r.vue} value={r.vue} icon={surPC ? r.icone : undefined} iconPosition="start" aria-label={r.libelle} disableRipple

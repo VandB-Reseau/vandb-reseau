@@ -71,7 +71,7 @@ END $$;
 -- ── 2) Suivi rangé par magasin
 CREATE TABLE IF NOT EXISTS public.suivi_magasins (
   store_name text NOT NULL,
-  cle        text NOT NULL CHECK (cle IN ('sante', 'sante_sauvegarde', 'notes', 'audits', 'associes', 'actions', 'deploiements', 'constats')),
+  cle        text NOT NULL CHECK (cle IN ('sante', 'sante_sauvegarde', 'notes', 'audits', 'associes', 'actions', 'deploiements', 'constats', 'preparation')),
   valeur     jsonb NOT NULL,
   maj_le     timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (store_name, cle)

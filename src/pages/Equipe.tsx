@@ -23,13 +23,9 @@ import AccountTreeOutlined from '@mui/icons-material/AccountTreeOutlined'
 import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import ExpandMore from '@mui/icons-material/ExpandMore'
-import BalanceOutlined from '@mui/icons-material/BalanceOutlined'
-import AutoFixHighOutlined from '@mui/icons-material/AutoFixHighOutlined'
 import WorkOutlineOutlined from '@mui/icons-material/WorkOutlineOutlined'
-import { VueCharge } from './VueCharge'
 import { VuePortefeuilles } from '../components/Portefeuille'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
-import { VuePlan } from './VuePlan'
 import { PastilleStatut } from '../components/Pastilles'
 import { PageHeader } from '../components/PageHeader'
 import { Onglets } from '../components/Onglets'
@@ -188,8 +184,8 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
     <>
       {(depassements > 0 || sansCoach > 0 || aPourvoir > 0) && (
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-          {depassements > 0 && <Chip color="error" component={RouterLink} to="/equipe?vue=charge" clickable label={`${depassements} Coach${depassements > 1 ? 's' : ''} en dépassement`} sx={{ minHeight: 40 }} />}
-          {sansCoach > 0 && <Chip color="warning" component={RouterLink} to="/equipe?vue=charge" clickable label={`${sansCoach} magasin${sansCoach > 1 ? 's' : ''} sans Coach`} sx={{ minHeight: 40 }} />}
+          {depassements > 0 && <Chip color="error" component={RouterLink} to="/parametres/charge" clickable label={`${depassements} Coach${depassements > 1 ? 's' : ''} en dépassement`} sx={{ minHeight: 40 }} />}
+          {sansCoach > 0 && <Chip color="warning" component={RouterLink} to="/parametres/charge" clickable label={`${sansCoach} magasin${sansCoach > 1 ? 's' : ''} sans Coach`} sx={{ minHeight: 40 }} />}
           {aPourvoir > 0 && <Chip color="warning" variant="outlined" component={RouterLink} to="/equipe?vue=postes" clickable label={`${aPourvoir} poste${aPourvoir > 1 ? 's' : ''} à pourvoir`} sx={{ minHeight: 40 }} />}
         </Box>
       )}
@@ -312,8 +308,6 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
 const rubriques: { vue: Vue; libelle: string; court: string; icone: ReactElement }[] = [
   { vue: 'organisation', libelle: 'Organisation', court: 'Organisation', icone: <AccountTreeOutlined /> },
   { vue: 'portefeuilles', libelle: 'Portefeuilles', court: 'Portefeuilles', icone: <InsightsOutlined /> },
-  { vue: 'charge', libelle: 'Charge des Coachs', court: 'Charge', icone: <BalanceOutlined /> },
-  { vue: 'plan', libelle: 'Plan d’affectation', court: 'Répartition', icone: <AutoFixHighOutlined /> },
   { vue: 'postes', libelle: 'Postes à pourvoir', court: 'Postes', icone: <WorkOutlineOutlined /> },
 ]
 
@@ -323,6 +317,9 @@ export function Equipe() {
   const vue = (demandee === 'magasins' ? 'franchises' : demandee as Vue | null) ?? 'organisation'
   // Collaborateurs et Franchisés ont rejoint la partie « Paramètres »
   if (vue === 'collaborateurs' || vue === 'franchises') return <Navigate to={`/parametres/${vue}`} replace />
+  // Charge et répartition ont rejoint Paramètres > Charge des Coachs
+  if (vue === 'charge') return <Navigate to="/parametres/charge" replace />
+  if (vue === 'plan') return <Navigate to={`/parametres/charge?vue=repartition${params.get('date') ? `&date=${params.get('date')}` : ''}`} replace />
   const changerVue = (v: Vue) => setParams({ vue: v }, { replace: true })
   return (
     <AvecReseau>
@@ -330,7 +327,7 @@ export function Equipe() {
         <>
           <PageHeader titre="Équipe" sousTitre={`${reseau.equipe.length} Coachs · ${reseau.rrs.length} Responsables Régionaux · ${reseau.techniciens.length} technicien${reseau.techniciens.length > 1 ? 's' : ''}`} />
           <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle="Rubriques de l’équipe" />
-          {vue === 'portefeuilles' ? <VuePortefeuilles reseau={reseau} /> : vue === 'plan' ? <VuePlan reseau={reseau} /> : vue === 'charge' ? <VueCharge reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
+          {vue === 'portefeuilles' ? <VuePortefeuilles reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
         </>
       )}
     </AvecReseau>

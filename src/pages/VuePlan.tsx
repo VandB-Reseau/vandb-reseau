@@ -35,6 +35,7 @@ import {
   raisonMagasinLibelle, raisonRRLibelle, rrDuCoachA, rrsRattachables, type Plafond, type PropositionMagasin, type PropositionRR,
 } from '../data/plan'
 import { duree } from '../data/tournee'
+import { heures } from '../data/kilometrage'
 import { useTrajetsRoutiers } from '../data/routes'
 import { dateLongue, lienCoach, lienFiche } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
@@ -42,7 +43,7 @@ import type { VueCarte } from '../components/CarteMagasins'
 
 const CarteMagasins = chargementDiffere(() => import('../components/CarteMagasins').then((m) => ({ default: m.CarteMagasins })))
 
-const km = (d: number | null) => (d === null ? 'distance inconnue' : `${Math.round(d)} km`)
+const minutesZone = (m: number | null) => (m === null ? 'trajet inconnu' : `${duree(m)} de route en moyenne`)
 type Choix = Record<string, { cible?: string; garde?: boolean }>
 
 export function VuePlan({ reseau }: { reseau: Reseau }) {
@@ -212,7 +213,7 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
                         >
                           {options.map((o) => (
                             <option key={o.coach.nom} value={o.coach.nom}>
-                              {o.coach.nom}{o.coach.fictif ? ' (poste à pourvoir)' : ''} · {o.minutesEnPlus === null ? 'trajet inconnu' : `+${duree(o.minutesEnPlus)} de tournée`} · charge {o.chargeApres}/{reseau.parametres.maxUnits}
+                              {o.coach.nom}{o.coach.fictif ? ' (poste à pourvoir)' : ''} · {o.minutesEnPlus === null ? 'trajet inconnu' : `+${heures(o.minutesEnPlus)} de route par an`} · charge {o.chargeApres}/{reseau.parametres.maxUnits}
                             </option>
                           ))}
                         </TextField>
@@ -250,7 +251,7 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
                           sx={{ width: { xs: '100%', md: 400 }, flexShrink: 0 }}
                         >
                           {options.map((o) => (
-                            <option key={o.rr.id} value={o.rr.id}>{o.rr.nom} · {km(o.distance)} · {o.coachsApres} Coachs</option>
+                            <option key={o.rr.id} value={o.rr.id}>{o.rr.nom} · {minutesZone(o.minutes)} · {o.coachsApres} Coachs</option>
                           ))}
                         </TextField>
                       </Box>

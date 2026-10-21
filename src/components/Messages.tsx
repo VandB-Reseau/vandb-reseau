@@ -316,7 +316,7 @@ export function FilMessages({ reseau, m, contact, signaler, lectureSeule = false
     )
   }
   // Conversation sur téléphone : la saisie reste au bas de l'écran même quand le fil est court
-  if (aLaFin) return <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh - var(--haut-entete, 64px) - 65px)' }}>{filtres}<Box sx={{ flex: 1 }}>{fil}</Box>{saisie}</Box>
+  if (aLaFin) return <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh - 64px - 65px)' }}>{filtres}<Box sx={{ flex: 1 }}>{fil}</Box>{saisie}</Box>
   return <Box>{filtres}{fil}{saisie}</Box>
 }
 

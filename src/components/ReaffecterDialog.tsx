@@ -15,7 +15,11 @@ import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import CheckCircle from '@mui/icons-material/CheckCircle'
-import { coachA, libelleMois, suggererCoachs } from '../data/charge'
+import { coachA, libelleMois } from '../data/charge'
+import { suggererCoachs } from '../data/plan'
+import { useTrajetsRoutiers } from '../data/routes'
+import { duree } from '../data/tournee'
+import { heures, kilometres } from '../data/kilometrage'
 import { reaffecter } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
 import type { Magasin, Reseau } from '../data/modele'
@@ -32,7 +36,8 @@ export function ReaffecterDialog({ reseau, magasin, ouvert, onFermer }: { reseau
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState(false)
   const dateValide = /^\d{4}-\d{2}-\d{2}$/.test(date)
-  const suggestions = useMemo(() => (dateValide ? suggererCoachs(reseau, magasin, date) : []), [reseau, magasin, date, dateValide])
+  const routes = useTrajetsRoutiers(reseau)
+  const suggestions = useMemo(() => (dateValide ? suggererCoachs(reseau, magasin, date) : []), [reseau, magasin, date, dateValide, routes.version]) // eslint-disable-line react-hooks/exhaustive-deps
   const actuel = date === premierDuMois(reseau.jour) ? coachA(magasin, reseau.jour) : coachA(magasin, date)
 
   const valider = async () => {
@@ -55,7 +60,7 @@ export function ReaffecterDialog({ reseau, magasin, ouvert, onFermer }: { reseau
       <DialogTitle id="titre-reaffecter">Réaffecter {magasin.nom}</DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Coach {date === premierDuMois(reseau.jour) ? 'actuel' : `en ${libelleMois(date)}`} : <strong>{actuel || 'aucun'}</strong>. Les Coachs proposés sont classés du plus proche au plus éloigné, ceux qui dépasseraient la charge maximale en dernier.
+          Coach {date === premierDuMois(reseau.jour) ? 'actuel' : `en ${libelleMois(date)}`} : <strong>{actuel || 'aucun'}</strong>
         </Typography>
         <ChampMois label="À partir de" value={date} onChange={setDate} jour={reseau.jour} sx={{ mb: 2, width: '100%' }} />
         <List aria-label="Coachs proposés" sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, py: 0, maxHeight: 340, overflow: 'auto' }}>
@@ -67,7 +72,11 @@ export function ReaffecterDialog({ reseau, magasin, ouvert, onFermer }: { reseau
                   {i === 0 && !s.depasse && <Chip size="small" color="primary" label="Suggéré" sx={{ fontSize: '0.75rem' }} />}
                   {s.coach.fictif && <Chip size="small" variant="outlined" label="Poste à pourvoir" sx={{ fontSize: '0.75rem' }} />}
                 </Box>}
-                secondary={[s.distance !== null ? `${Math.round(s.distance)} km` : 'Distance inconnue', s.coach.rr?.nom, `charge après : ${s.chargeApres} / ${reseau.parametres.maxUnits}${s.depasse ? ', dépassement' : ''}`].filter(Boolean).join(' · ')}
+                secondary={[
+                  s.trajet ? `${duree(s.trajet.minutes)} de route (${kilometres(s.trajet.km)})${s.trajet.estime ? ', estimé' : ''}` : 'Trajet inconnu',
+                  s.minutesEnPlus !== null && `+${heures(s.minutesEnPlus)} de route par an`,
+                  s.coach.rr?.nom, `charge après : ${s.chargeApres} / ${reseau.parametres.maxUnits}${s.depasse ? ', dépassement' : ''}`,
+                ].filter(Boolean).join(' · ')}
               />
               <PastilleCharge reseau={reseau} charge={s.chargeAvant} />
               {choisi === s.coach.nom && <CheckCircle color="primary" sx={{ ml: 1 }} />}

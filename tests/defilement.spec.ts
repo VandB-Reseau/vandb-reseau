@@ -20,6 +20,21 @@ test('ouvrir un filtre ne décale pas la page', async ({ page, isMobile }) => {
   expect(await largeur()).toBe(avant)
 })
 
+test('ouvrir la fenêtre Créer ne décale pas la page', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'La barre de défilement ne concerne que le PC')
+  await seConnecter(page)
+  await page.goto('./#/magasins?vue=liste')
+  const largeur = () => page.evaluate(() => document.querySelector('main')!.getBoundingClientRect().width)
+  const gauche = () => page.evaluate(() => document.querySelector('main')!.getBoundingClientRect().left)
+  const [l, g] = [await largeur(), await gauche()]
+  await page.getByRole('button', { name: 'Créer', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Créer' })).toBeVisible()
+  const style = await page.evaluate(() => `${document.documentElement.getAttribute('style') ?? ''}${document.body.getAttribute('style') ?? ''}`)
+  expect(style).not.toContain('padding-right')
+  expect(await largeur()).toBe(l)
+  expect(await gauche()).toBe(g)
+})
+
 const hauteur = (page: import('@playwright/test').Page) => page.evaluate(() => window.scrollY)
 
 test('une fiche s’ouvre en haut et le retour retrouve la liste où on l’avait laissée', async ({ page }) => {

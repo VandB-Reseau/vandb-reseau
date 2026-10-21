@@ -1,7 +1,6 @@
 import { useMemo, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
@@ -19,6 +18,7 @@ import ArrowBack from '@mui/icons-material/ArrowBack'
 import CallOutlined from '@mui/icons-material/CallOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
+import { Bulle } from './Outils'
 import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, Pastille, TitreSection, useAffichage, type Ton } from './Social'
 import { useAuth } from '../auth/AuthContext'
 import { formatPourcent } from '../data/chiffres'
@@ -30,34 +30,44 @@ import { lienCoach, lienRR, telLien } from '../lib/format'
 import type { Reseau } from '../data/modele'
 
 // ── Haut de fiche façon profil, pour un Coach ou un Responsable Régional ──
+// Picto de l'en-tête : 48 px, sans fond
+export const rond = { width: 48, height: 48 } as const
+
 export interface Compteur { valeur: ReactNode; libelle: string; couleur?: string }
 
 // PC : grande pastille, compteurs en colonnes. Téléphone : en-tête bas (petite pastille, lignes sur une ligne,
-// compteurs en texte, flèche de retour à la place de la pastille) pour laisser la place aux onglets. icones : boutons ronds avant Modifier ; detail : ligne en plus.
+// compteurs en texte, flèche de retour à la place de la pastille) pour laisser la place aux onglets.
+// À côté du nom, en pictos : Appeler, Message, puis actions et icones (boutons ronds), puis Modifier ; detail : ligne en plus.
 export function ProfilPersonne({ nom, lignes, pastille, compteurs, telephone, libelleAppel = 'Appeler', lienMessage, modifier, actions, icones, detail, retour }: {
   nom: string; lignes: string[]; pastille?: { ton: Ton; libelle: string } | null; compteurs: Compteur[]
   telephone?: string; libelleAppel?: string; lienMessage?: string; modifier?: () => void; actions?: ReactNode; icones?: ReactNode; detail?: ReactNode
   retour?: { libelle: string; aller: () => void }
 }) {
-  const bouton = { flex: 1, minHeight: 48, minWidth: 0 } as const
+  const appel = libelleAppel === 'Appeler' ? 'Appeler' : `Appeler ${libelleAppel === 'Coach' ? 'mon Coach' : libelleAppel}`
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const uneLigne = surPC ? {} : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const
   return (
     <Card sx={{ border: 0, p: { xs: 1.5, md: 3 }, mb: { xs: 1.5, md: 2 } }}>
-      <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 2 }, alignItems: 'center' }}>
+      {/* Les pictos passent sous le nom quand la ligne est trop étroite (téléphone, fiche avec beaucoup d'actions) */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: { xs: 1.5, md: 2 }, alignItems: 'center' }}>
         {!surPC && retour
           ? <IconButton onClick={retour.aller} aria-label={retour.libelle} sx={{ width: 48, height: 48, ml: -1, mr: -1, flexShrink: 0 }}><ArrowBack /></IconButton>
           : <Initiales nom={nom} taille={surPC ? 72 : 44} />}
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ flex: '1 1 140px', minWidth: 0 }}>
           <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.75rem' }, ...uneLigne }}>{nom}</Typography>
           {lignes.filter(Boolean).map((l) => <Typography key={l} variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8125rem', md: undefined }, ...uneLigne }}>{l}</Typography>)}
         </Box>
-        {(icones || modifier) && (
-          <Box sx={{ display: 'flex', alignSelf: 'flex-start', mr: { xs: -1, md: 0 } }}>
-            {icones}
-            {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label="Modifier" sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
-          </Box>
-        )}
+        <Box sx={{ display: 'flex', flexShrink: 0, alignSelf: 'flex-start', ml: 'auto', mr: { xs: -1, md: 0 } }}>
+          <Bulle titre={telephone ? `${appel} · ${telephone}` : appel}>
+            {telephone
+              ? <IconButton href={telLien(telephone)} aria-label={appel} sx={rond}><CallOutlined /></IconButton>
+              : <span><IconButton disabled aria-label={appel} sx={rond}><CallOutlined /></IconButton></span>}
+          </Bulle>
+          {lienMessage && <Bulle titre="Message"><IconButton component={RouterLink} to={lienMessage} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Bulle>}
+          {actions}
+          {icones}
+          {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label="Modifier" sx={rond}><EditOutlined /></IconButton></Tooltip>}
+        </Box>
       </Box>
       {surPC ? (
         <>
@@ -83,11 +93,6 @@ export function ProfilPersonne({ nom, lignes, pastille, compteurs, telephone, li
           {detail && <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>{detail}</Typography>}
         </Box>
       )}
-      <Box sx={{ display: 'flex', gap: 1, mt: { xs: 1, md: 2 } }}>
-        <Button variant="outlined" startIcon={<CallOutlined />} href={telephone ? telLien(telephone) : undefined} disabled={!telephone} aria-label={libelleAppel === 'Appeler' ? undefined : `Appeler ${libelleAppel === 'Coach' ? 'mon Coach' : libelleAppel}`} sx={bouton}>{libelleAppel}</Button>
-        {lienMessage && <Button variant="outlined" startIcon={<ChatBubbleOutlineOutlined />} component={RouterLink} to={lienMessage} sx={bouton}>Message</Button>}
-        {actions}
-      </Box>
     </Card>
   )
 }
