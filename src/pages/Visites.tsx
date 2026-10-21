@@ -48,6 +48,7 @@ import { FiltreMenu } from '../components/FiltreMenu'
 import Chip from '@mui/material/Chip'
 import { dateCourte, lienCoach, lienFiche, lienPreparation } from '../lib/format'
 import { libelleTypeVisite, nomsVisiteurs, typesVisite, type Reseau, type Visite } from '../data/modele'
+import { BoutonExporter, type ColonneExport } from '../components/Exporter'
 import { sousBandes } from '../components/Collant'
 
 type Edition = { visite: Visite | null; magasins: string[]; date?: string } | null
@@ -191,6 +192,15 @@ function AlerteVisite({ l }: { l: LigneRythme }) {
     : <Typography variant="body2" color="text.secondary" component="span">{l.echeance ? `le ${dateCourte(l.echeance)}` : ''}</Typography>
 }
 
+const colonnesVisites: ColonneExport<Visite>[] = [
+  { entete: 'Date', valeur: (v) => v.date },
+  { entete: 'Magasin', valeur: (v) => v.magasin, largeur: 22 },
+  { entete: 'Type', valeur: (v) => libelleTypeVisite(v.type) },
+  { entete: 'Visité par', valeur: (v) => nomsVisiteurs(v), largeur: 28 },
+  { entete: 'État', valeur: (v) => (v.prevue ? 'Prévue' : 'Faite') },
+  { entete: 'Tâches au plan', valeur: (v) => v.plan.length },
+  { entete: 'Notes', valeur: (v) => v.notes, largeur: 50 },
+]
 const parMois = (vs: Visite[]) => [...vs.reduce((m, v) => m.set(v.date.slice(0, 7), [...(m.get(v.date.slice(0, 7)) ?? []), v]), new Map<string, Visite[]>())]
 const nbDuMois = (vs: Visite[], mois: string) => vs.filter((v) => v.date.startsWith(mois)).length
 const libelleMoisAnnee = (mois: string) => new Date(`${mois}-15T12:00:00`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
@@ -222,7 +232,7 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
         <FiltreMenu libelle="Visité par" choisis={visiteur ? [visiteur] : []} onChange={(v) => setVisiteur(v.at(-1) ?? '')} options={visiteurs(reseau).map((n) => ({ valeur: n, libelle: n }))} />
         {(cle || type || visiteur || recherche) && <Button onClick={() => { setCle(''); setType(''); setVisiteur(''); setRecherche('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
       </RechercheFiltres>
-      <TitreSection>{`${liste.length} visite${liste.length > 1 ? 's' : ''}`}</TitreSection>
+      <TitreSection action={<BoutonExporter lignes={liste} colonnes={colonnesVisites} fichier="Visites" feuille="Visites" />}>{`${liste.length} visite${liste.length > 1 ? 's' : ''}`}</TitreSection>
       {liste.length === 0 ? (
         <EmptyState icone={<EventNoteOutlined />} titre="Aucune visite" texte={reseau.visites.length ? 'Aucune visite ne correspond à ces filtres.' : 'Saisis ta première visite avec le bouton « Saisir une visite ».'} />
       ) : (
