@@ -114,9 +114,9 @@ export async function chargerReperesEquipe(magasins: string[]): Promise<Reperes 
 // La base vérifie que le magasin est le sien et y inscrit son nom et la date.
 export class ErreurAction extends Error {}
 function erreurAction(e: { message?: string; code?: string }): never {
-  if (e.code === 'PGRST202' || e.message?.includes('Could not find the function')) throw new ErreurAction('Les actions ne peuvent pas encore être modifiées depuis ton espace. Ton Coach peut le faire pour toi.')
-  if (e.message?.includes('action_introuvable')) throw new ErreurAction('Cette action a été modifiée entre-temps. Recharge la page et réessaie.')
-  throw new ErreurAction('L’action n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.')
+  if (e.code === 'PGRST202' || e.message?.includes('Could not find the function')) throw new ErreurAction('Les tâches ne peuvent pas encore être modifiées depuis ton espace. Ton Coach peut le faire pour toi.')
+  if (e.message?.includes('action_introuvable')) throw new ErreurAction('Cette tâche a été modifiée entre-temps. Recharge la page et réessaie.')
+  throw new ErreurAction('La tâche n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.')
 }
 
 export async function ajouterActionFranchise(magasin: string, action: string, porteur: string, echeance: string, pieces: Piece[] = []) {

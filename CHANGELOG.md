@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- « Actions » devient « Tâches » partout à l'écran : onglet des fiches magasin et Coach, listes en cours et faites,
+  fenêtre d'ajout et de modification, messages de confirmation, compte rendu et préparation de visite (« Tâches en cours »,
+  colonne « Tâche », « N tâches au plan »), message envoyé au franchisé (« Nos tâches »). « Plan d'action » (titre du
+  compte rendu) et « Autres actions » (menu ⋯) inchangés. Code et clés de base inchangés. Pas de migration.
 - Recherche globale : en tapant le nom d'une personne (Coach, Responsable Régional, franchisé, responsable de magasin),
   sa fiche passe en tête, avant ses magasins ; elle n'est plus poussée hors de la liste par les magasins qui la citent
   (`src/components/RechercheGlobale.tsx`, test `magasins.spec.ts`). Pas de migration.

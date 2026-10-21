@@ -116,7 +116,7 @@ type VueFiche = 'fil' | 'fiche' | 'actions' | 'messages' | 'visites' | 'chiffres
 const rubriquesFiche: Rubrique<VueFiche>[] = [
   { vue: 'fil', libelle: 'Fil', icone: <DynamicFeedOutlined /> },
   { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
-  { vue: 'actions', libelle: 'Actions', icone: <TaskAltOutlined /> },
+  { vue: 'actions', libelle: 'Tâches', icone: <TaskAltOutlined /> },
   { vue: 'messages', libelle: 'Messages', icone: <ForumOutlined /> },
   { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
@@ -197,8 +197,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         )}
 
         {vue === 'actions' && (
-          <Section titre="Actions en cours" action={<BoutonAjouterAction reseau={reseau} magasins={[m.nom]} signaler={setConfirmation} />}>
-            <ListeActions reseau={reseau} actions={actions} signaler={setConfirmation} libelle={`Actions en cours de ${m.nom}`} magasins={[m.nom]} />
+          <Section titre="Tâches en cours" action={<BoutonAjouterAction reseau={reseau} magasins={[m.nom]} signaler={setConfirmation} />}>
+            <ListeActions reseau={reseau} actions={actions} signaler={setConfirmation} libelle={`Tâches en cours de ${m.nom}`} magasins={[m.nom]} />
           </Section>
         )}
 
@@ -267,7 +267,7 @@ function SectionVisites({ reseau, m, saisir, modifier }: { reseau: Reseau; m: Ma
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="body1">{libelleTypeVisite(v.type)}{v.visiteurs.length ? ` · ${nomsVisiteurs(v)}` : ''}</Typography>
             {v.notes && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>{v.notes}</Typography>}
-            {v.plan.length > 0 && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{v.plan.length} action{v.plan.length > 1 ? 's' : ''} au plan · {v.plan.filter((x) => x.faite).length} faite{v.plan.filter((x) => x.faite).length > 1 ? 's' : ''}</Typography>}
+            {v.plan.length > 0 && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{v.plan.length} tâche{v.plan.length > 1 ? 's' : ''} au plan · {v.plan.filter((x) => x.faite).length} faite{v.plan.filter((x) => x.faite).length > 1 ? 's' : ''}</Typography>}
             <RangeePhotos photos={v.photos} />
           </Box>
           <Tooltip title="Compte rendu PDF"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu du ${dateCourte(v.date)}`}><PictureAsPdfOutlined /></IconButton></Tooltip>

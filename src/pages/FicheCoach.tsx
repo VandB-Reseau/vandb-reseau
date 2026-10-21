@@ -43,7 +43,7 @@ const rubriquesCoach: Rubrique<VueCoach>[] = [
   { vue: 'portefeuille', libelle: 'Portefeuille', icone: <InsightsOutlined /> },
   { vue: 'magasins', libelle: 'Magasins', icone: <StorefrontOutlined /> },
   { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
-  { vue: 'actions', libelle: 'Actions', icone: <TaskAltOutlined /> },
+  { vue: 'actions', libelle: 'Tâches', icone: <TaskAltOutlined /> },
   { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
   { vue: 'fiche', libelle: 'Fiche', icone: <BadgeOutlined /> },
 ]
@@ -120,7 +120,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
           </Box>
         )}
 
-        {vue === 'actions' && <Section titre="Actions en cours de ses magasins" action={<BoutonAjouterAction reseau={reseau} magasins={[...noms].sort()} signaler={setMessage} />}><ListeActions reseau={reseau} actions={actions} avecMagasin signaler={setMessage} libelle={`Actions en cours des magasins de ${coach.nom}`} magasins={[...noms]} /></Section>}
+        {vue === 'actions' && <Section titre="Tâches en cours de ses magasins" action={<BoutonAjouterAction reseau={reseau} magasins={[...noms].sort()} signaler={setMessage} />}><ListeActions reseau={reseau} actions={actions} avecMagasin signaler={setMessage} libelle={`Tâches en cours des magasins de ${coach.nom}`} magasins={[...noms]} /></Section>}
 
         {vue === 'campagnes' && <Section titre="Campagnes"><BilanCampagnes reseau={reseau} magasins={magasins} /></Section>}
 

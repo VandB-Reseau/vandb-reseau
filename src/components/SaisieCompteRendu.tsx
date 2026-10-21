@@ -55,8 +55,8 @@ export function SaisieCompteRendu({ reseau, visite, tournee, magasin, notes, set
   return (
     <>
       {enCours.length > 0 && (
-        <Box sx={{ bgcolor: 'action.hover', borderRadius: 2, p: 2 }} role="group" aria-label="Actions en cours">
-          <Typography variant="subtitle2" component="h3" sx={titre}>Actions en cours</Typography>
+        <Box sx={{ bgcolor: 'action.hover', borderRadius: 2, p: 2 }} role="group" aria-label="Tâches en cours">
+          <Typography variant="subtitle2" component="h3" sx={titre}>Tâches en cours</Typography>
           {enCours.map((x) => (
             <FormControlLabel key={x.cle} sx={{ display: 'flex', alignItems: 'flex-start', mx: 0, minHeight: 48 }}
               control={<Checkbox checked={!!faites[x.cle]} onChange={(e) => setFaites((f) => ({ ...f, [x.cle]: e.target.checked }))} sx={{ width: 48, height: 48, mt: -0.5 }} />}
@@ -81,14 +81,14 @@ export function SaisieCompteRendu({ reseau, visite, tournee, magasin, notes, set
           const changer = (cle: keyof ActionPlan, v: string) => setPlan((p) => p.map((x, j) => (j === i ? { ...x, [cle]: v } : x)))
           return (
             <Box key={i} sx={{ display: 'grid', gap: 1, mb: 1.5, alignItems: 'center', gridTemplateColumns: { xs: '1fr 1fr 48px', sm: '3fr 1.2fr 1fr 48px' } }}>
-              <TextField label="Action" value={a.action} onChange={(e) => changer('action', e.target.value)} sx={{ gridColumn: { xs: '1 / 3', sm: 'auto' } }} />
+              <TextField label="Tâche" value={a.action} onChange={(e) => changer('action', e.target.value)} sx={{ gridColumn: { xs: '1 / 3', sm: 'auto' } }} />
               <ChampPorteur reseau={reseau} magasin={magasin} valeur={a.porteur} changer={(v) => changer('porteur', v)} sx={{ gridRow: { xs: 2, sm: 'auto' }, minWidth: 0 }} />
               <TextField label="Échéance" type={!a.echeance || echeanceDate(a) ? 'date' : 'text'} value={a.echeance} onChange={(e) => changer('echeance', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ gridRow: { xs: 2, sm: 'auto' } }} />
-              <IconButton aria-label={`Retirer l’action ${i + 1}`} onClick={() => setPlan((p) => p.filter((_x, j) => j !== i))} sx={{ gridColumn: { xs: 3, sm: 'auto' }, gridRow: { xs: '1', sm: 'auto' } }}><CloseOutlined /></IconButton>
+              <IconButton aria-label={`Retirer la tâche ${i + 1}`} onClick={() => setPlan((p) => p.filter((_x, j) => j !== i))} sx={{ gridColumn: { xs: 3, sm: 'auto' }, gridRow: { xs: '1', sm: 'auto' } }}><CloseOutlined /></IconButton>
             </Box>
           )
         })}
-        <Button startIcon={<AddOutlined />} onClick={() => setPlan((p) => [...p, { action: '', porteur: '', echeance: '' }])} sx={{ minHeight: 48 }}>Ajouter une action</Button>
+        <Button startIcon={<AddOutlined />} onClick={() => setPlan((p) => [...p, { action: '', porteur: '', echeance: '' }])} sx={{ minHeight: 48 }}>Ajouter une tâche</Button>
       </Box>
     </>
   )

@@ -105,7 +105,7 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, autreListe, ajou
       await ecriture.cocher(x, faite)
       await recharger()
       signaler(faite ? 'Tâche marquée faite.' : 'Tâche remise à faire.')
-    } catch (e) { signaler(e instanceof ErreurAction ? e.message : 'L’action n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.') }
+    } catch (e) { signaler(e instanceof ErreurAction ? e.message : 'La tâche n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.') }
     finally { setEnCours(null) }
   }
   const ligne = (x: ActionSuivie) => (
@@ -155,7 +155,7 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, autreListe, ajou
           </Box>
         )}
       </Box>
-      {edition && <DialogAction reseau={reseau} magasins={noms} action={edition} tache onFermer={(msg) => { setEdition(null); if (msg) signaler(msg) }} />}
+      {edition && <DialogAction reseau={reseau} magasins={noms} action={edition} onFermer={(msg) => { setEdition(null); if (msg) signaler(msg) }} />}
     </>
   )
 }
@@ -180,7 +180,7 @@ export function PageTaches() {
       <AvecReseau>{(r) => (
         <Liste reseau={r} noms={noms} porteur={porteur} signaler={setMessage} autreListe={porteur !== moi}
           choixPorteur={choixPossible ? <ChoixPorteur reseau={r} moi={moi} valeur={porteur} directeur={!impose} onChange={changer} /> : undefined}
-          ajout={<BoutonAjouterAction barre reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} tache signaler={setMessage} />} />
+          ajout={<BoutonAjouterAction barre reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} signaler={setMessage} />} />
       )}</AvecReseau>
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>

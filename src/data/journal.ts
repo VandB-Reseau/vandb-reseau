@@ -36,7 +36,7 @@ export function journalMagasin(reseau: Reseau, m: Magasin): EvenementJournal[] {
     const audit = auditDe(reseau, m.nom, v.date, v.type)
     ev.push({
       cle: `visite-${v.id ?? v.date}`, date: v.date, type: 'visite', titre: `${libelleTypeVisite(v.type)}${v.visiteurs.length ? ` · ${nomsVisiteurs(v)}` : ''}`,
-      detail: [audit ? libelleAudit(audit) : '', v.notes, actions ? `${actions} action${actions > 1 ? 's' : ''} au plan` : ''].filter(Boolean).join(' · '),
+      detail: [audit ? libelleAudit(audit) : '', v.notes, actions ? `${actions} tâche${actions > 1 ? 's' : ''} au plan` : ''].filter(Boolean).join(' · '),
       lien: v.id !== null ? lienCompteRendu(v) : undefined,
     })
   })

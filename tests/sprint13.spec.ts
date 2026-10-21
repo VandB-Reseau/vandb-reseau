@@ -114,7 +114,7 @@ test('fiche avant visite : tout le magasin sur une page, téléchargeable en PDF
   await actionFiche(page, 'Préparer la visite')
   await expect(page).toHaveURL(/#\/magasins\/Lyon%20Test\/preparer$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()
-  for (const t of ['En bref', 'Chiffres', 'Repères réseau', 'Actions en cours (1)', 'Audits', 'Campagnes à constater', 'Derniers messages']) {
+  for (const t of ['En bref', 'Chiffres', 'Repères réseau', 'Tâches en cours (1)', 'Audits', 'Campagnes à constater', 'Derniers messages']) {
     await expect(page.getByRole('heading', { name: t, exact: true })).toBeVisible()
   }
   // Septembre 2026 à 70 000 € contre 100 000 € un an plus tôt
