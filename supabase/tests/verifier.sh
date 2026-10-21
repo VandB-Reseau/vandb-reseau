@@ -29,6 +29,13 @@ for passage in 1 2; do
   echo "Passage $passage des migrations : OK"
 done
 
+# Incident du 21/10/2026 : un ancien script rouvre tout ; la suite rejouée doit tout refermer
+psql_ -f "$ICI/ancien_verrouillage.sql" >/dev/null
+for f in "$MIGRATIONS"/[0-9][0-9][0-9][0-9]_*.sql; do
+  psql_ -f "$f" >/dev/null || { echo "Échec après l'ancien verrouillage : $(basename "$f")"; exit 1; }
+done
+echo "Suite rejouée après l'ancien verrouillage : OK"
+
 # Chaque migration rejouée seule, dans le désordre, ne doit rien rouvrir
 for f in $(ls "$MIGRATIONS"/[0-9][0-9][0-9][0-9]_*.sql | sort -r); do psql_ -f "$f" >/dev/null; done
 echo "Migrations rejouées dans l'ordre inverse : OK"

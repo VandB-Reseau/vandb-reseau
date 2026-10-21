@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.reassigns (
   id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   store      text NOT NULL,
   cs         text,                   -- nom du Coach
-  date       date NOT NULL,
+  date       text NOT NULL,          -- AAAA-MM-JJ (texte dans la base en ligne)
   note       text,
   type       text DEFAULT 'manual',  -- 'manual' | 'pre' | 'initial'
   created_at timestamptz DEFAULT now()
@@ -25,8 +25,8 @@ CREATE TABLE IF NOT EXISTS public.reassigns (
 CREATE TABLE IF NOT EXISTS public.recruits (
   id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name       text NOT NULL,
-  start      date,                   -- entrée (début de formation)
-  post       date,                   -- prise de poste
+  start      text,                   -- entrée (début de formation), AAAA-MM-JJ
+  post       text,                   -- prise de poste, AAAA-MM-JJ
   ville      text,
   color      text DEFAULT '#4caf50',
   lon        double precision,
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS public.store_overrides (
   ville      text,
   code       text,
   plat       text,
-  open_date  date,
+  open_date  text,                   -- AAAA-MM-JJ
   dept       text,
   franchise  boolean DEFAULT true,   -- true = franchisé, false = intégré
   pays       text,                   -- vide = France

@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 21/10/2026 (migration `0011`).
+Mis à jour le 21/10/2026 (migration `0012`).
 
 ## Principes
 
@@ -33,7 +33,7 @@ Mis à jour le 21/10/2026 (migration `0011`).
 | --- | --- | --- |
 | `app_config` | Réglages et référentiels en clé / valeur, `value` = texte JSON (détail plus bas) | `key` |
 | `store_overrides` | Fiche de chaque magasin : coordonnées, adresse, `franchise` (vrai = franchisé), `rr` (RR en direct), position | `store_name` |
-| `reassigns` | Coach de chaque magasin à partir d'une date (effet le 1er du mois) | `id` ; `store`, `cs`, `date` |
+| `reassigns` | Coach de chaque magasin à partir d'une date (effet le 1er du mois ; `date` en texte AAAA-MM-JJ) | `id` ; `store`, `cs`, `date` |
 | `cs_overrides` | Coachs : téléphone, courriel, ville, couleur, `tech` (Technicien) | `cs_name` |
 | `recruits` | Recrues à venir ou fictives (simulation de charge) | `id` |
 
@@ -78,6 +78,7 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 | `perimetre_equipe` | Pour chaque magasin : son Coach et les RR qui le suivent. Recopié par l'app du Directeur à chaque chargement (`maj_perimetre_equipe`) | lecture Directeur ; écriture par fonction |
 | `campagnes_regions` | Campagnes régionales, tenues par leur RR | lecture équipe ; écriture RR auteur ou Directeur |
 | `sauvegarde_cloisonnement` | Copie d'`app_config` avant le passage de `0005` (19/10/2026) | lecture Directeur |
+| `journal_migrations` | Une ligne par migration passée en ligne, avec sa date | lecture Directeur |
 
 ### Échanges (aucun accès direct, fonctions seulement)
 

@@ -12,6 +12,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 - Base de données remise en ordre : migrations numérotées dans `supabase/migrations/`, rejouées à chaque
   publication sur un PostgreSQL vide avec contrôle des règles d'accès (`npm run test:base`). Deux anciens
   scripts qui rouvraient les visites et les photos d'audit à tout compte connecté s'ils étaient rejoués sont corrigés.
+- Base en ligne : le contrôle du 21/10/2026 a montré que toutes les tables étaient revenues à « tout compte connecté »
+  (ancien script repassé) et que la dernière version des communications n'était pas passée. Remise à niveau en
+  rejouant 0001 à 0012 — Base : `0012_garde_fous_et_journal` (+ suite complète)
 - Documentation : schéma de la base ([docs/base-de-donnees.md](docs/base-de-donnees.md)),
   architecture ([docs/architecture.md](docs/architecture.md)), ce journal.
 

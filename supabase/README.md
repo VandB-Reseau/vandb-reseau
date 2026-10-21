@@ -16,6 +16,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0009_pieces_jointes` | Espace de fichiers `pieces` et qui peut lire quoi | 20/10/2026 |
 | `0010_pratiques_reactions` | J'aime et commentaires des bonnes pratiques | 20/10/2026 |
 | `0011_preparation_visites` | Rubrique `preparation` du suivi | 20/10/2026 |
+| `0012_garde_fous_et_journal` | Retire toute règle « tout compte connecté », refuse de finir s'il en reste ; table `journal_migrations` | 21/10/2026 |
 
 ## Règles
 
@@ -25,6 +26,8 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
   seule ne rouvre jamais un accès (vérifié par le test).
 - **Nouvelle migration** pour tout changement : on ne modifie plus une migration déjà passée en ligne, sauf
   correction de sécurité signalée dans son en-tête. Nom : `NNNN_sujet_en_minuscules.sql`.
+- **Journal** : chaque nouvelle migration se termine par l'ajout de sa ligne dans `journal_migrations`
+  (`INSERT … ON CONFLICT (numero) DO UPDATE SET passee_le = now()`), pour savoir ce qui est passé en ligne.
 - En-tête de chaque migration : objet, date et demande de fusion, migrations dont elle dépend, règles d'accès.
 - Aucune donnée réelle : le dépôt est public. Les données de test sont fictives.
 
@@ -35,11 +38,16 @@ npm run test:base
 ```
 
 Crée un PostgreSQL vide en local, y ajoute le strict minimum de Supabase (`tests/supabase_minimal.sql`),
-rejoue toutes les migrations deux fois, puis une fois dans l'ordre inverse, et contrôle les règles d'accès avec
+rejoue toutes les migrations deux fois, puis après avoir reproduit l'incident du 21/10/2026 (un ancien script
+qui rouvrait tout), puis une fois dans l'ordre inverse, et contrôle les règles d'accès avec
 des comptes fictifs (`tests/regles_acces.sql`) : Directeur, Coach, franchisé, compte sans rôle. Lancé aussi
 par GitHub Actions avant chaque publication.
 
 ## Passer une migration en ligne
+
+Ne jamais repasser les anciens scripts hors dépôt (« Setup COMPLET », « verrouillage ») : ils remplacent toutes
+les règles par « tout compte connecté ». Ils sont archivés dans le dossier du projet.
+
 
 Supabase > SQL Editor > coller le fichier > Run. La dernière requête de certaines migrations affiche un contrôle.
 Noter la migration passée dans le [journal](../CHANGELOG.md) (colonne « Base »).

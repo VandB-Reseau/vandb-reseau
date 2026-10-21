@@ -45,6 +45,10 @@ SELECT pg_temp.attendre('Franchisé : aucune visite en direct', (SELECT count(*)
 SELECT pg_temp.attendre('Franchisé : aucun chiffre en direct', (SELECT count(*) FROM public.store_finance), 0);
 SELECT pg_temp.attendre('Franchisé : aucun réglage en direct', (SELECT count(*) FROM public.app_config), 0);
 SELECT pg_temp.attendre('Franchisé : aucune photo d''un autre magasin', (SELECT count(*) FROM storage.objects WHERE bucket_id = 'photos'), 0);
+SELECT pg_temp.attendre('Franchisé : aucun accès direct aux comptes franchisés', (SELECT count(*) FROM public.acces_franchises), 0);
+SELECT pg_temp.attendre('Franchisé : aucun accès direct au périmètre', (SELECT count(*) FROM public.perimetre_equipe), 0);
+SELECT pg_temp.attendre('Franchisé : aucun accès direct au suivi', (SELECT count(*) FROM public.suivi_magasins), 0);
+SELECT pg_temp.attendre('Franchisé : aucun accès au journal des migrations', (SELECT count(*) FROM public.journal_migrations), 0);
 SELECT pg_temp.attendre('Franchisé : ses visites par espace_franchise()', (SELECT jsonb_array_length(public.espace_franchise()->'visits')), 1);
 
 -- ── Compte sans rôle : rien
@@ -53,3 +57,6 @@ SELECT pg_temp.attendre('Sans rôle : aucune visite', (SELECT count(*) FROM publ
 SELECT pg_temp.attendre('Sans rôle : aucun réglage', (SELECT count(*) FROM public.app_config), 0);
 
 RESET ROLE;
+SELECT pg_temp.attendre('Aucune règle « tout compte connecté »', (SELECT count(*) FROM pg_policies
+  WHERE schemaname IN ('public', 'storage') AND (coalesce(qual, '') = 'true' OR coalesce(with_check, '') = 'true')), 0);
+SELECT pg_temp.attendre('Journal : 0001 à 0012 notées', (SELECT count(*) FROM public.journal_migrations WHERE numero <= '0012'), 12);
