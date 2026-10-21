@@ -22,6 +22,8 @@ interface Resultat { type: 'Favoris' | 'Consultés récemment' | 'Magasins' | 'C
 
 const icones = { Favoris: <StarOutlined />, 'Consultés récemment': <HistoryOutlined />, Magasins: <StorefrontOutlined />, Coachs: <PersonOutline />, 'Responsables Régionaux': <SupervisorAccountOutlined />, Franchisés: <HandshakeOutlined />, Direction: <AdminPanelSettingsOutlined /> }
 
+const ordreTypes: Resultat['type'][] = ['Coachs', 'Responsables Régionaux', 'Direction', 'Franchisés', 'Magasins']
+
 // court : téléphone, champ étroit entre le logo et les icônes ; la liste des résultats prend toute la largeur
 export function RechercheGlobale({ surFonce, court }: { surFonce?: boolean; court?: boolean }) {
   const { reseau } = useReseau()
@@ -58,7 +60,13 @@ export function RechercheGlobale({ surFonce, court }: { surFonce?: boolean; cour
       filterOptions={(opts, { inputValue }) => {
         const t = normaliser(inputValue)
         if (!t) return enTete
-        return opts.filter((o) => o.type !== 'Favoris' && o.type !== 'Consultés récemment' && normaliser(`${o.libelle} ${o.detail}`).includes(t)).slice(0, 12)
+        // Le nom trouvé passe avant ce qui ne le cite qu'en détail : la fiche d'un Coach avant ses magasins
+        const rang = (o: Resultat) => (normaliser(o.libelle).includes(t) ? 0 : 1)
+        const trouves = opts.filter((o) => o.type !== 'Favoris' && o.type !== 'Consultés récemment' && normaliser(`${o.libelle} ${o.detail}`).includes(t))
+        const meilleur = new Map<Resultat['type'], number>()
+        for (const o of trouves) meilleur.set(o.type, Math.min(meilleur.get(o.type) ?? 1, rang(o)))
+        const ordre = (o: Resultat) => meilleur.get(o.type)! * 10 + ordreTypes.indexOf(o.type)
+        return trouves.sort((a, b) => ordre(a) - ordre(b) || rang(a) - rang(b)).slice(0, 12)
       }}
       noOptionsText="Aucun résultat"
       value={null}
