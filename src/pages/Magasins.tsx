@@ -19,6 +19,7 @@ import { Onglets } from '../components/Onglets'
 import { ListeMagasins, trisMagasins, type TriMagasins } from '../components/ListeMagasins'
 import { Puces } from '../components/Social'
 import { useReseau } from '../data/ReseauContext'
+import { magasinsSuivis, useSuivis } from '../lib/suivis'
 import { filtrer, filtresDepuisUrl, filtresVersUrl, type Filtres } from '../data/filtres'
 
 const CarteMagasins = chargementDiffere(() => import('../components/CarteMagasins').then((m) => ({ default: m.CarteMagasins })))
@@ -35,6 +36,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
   const [emplacementBoutons, setEmplacementBoutons] = useState<HTMLElement | null>(null)
   const naviguer = useNavigate()
   const { complet } = useReseau()
+  const suivis = useSuivis()
   const changerVue = (v: 'liste' | 'carte') => { const p = new URLSearchParams(params); p.set('vue', v); setParams(p, { replace: true }) }
 
   return (
@@ -45,6 +47,10 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
         const restreint = reseau.magasins.length !== perimetre.magasins.length
         const resultats = filtrer(reseau.magasins, filtres)
         const total = reseau.magasins.length
+        const parNom = new Map(reseau.magasins.map((m) => [m.nom, m]))
+        const s = magasinsSuivis(suivis, new Set(parNom.keys()))
+        const enTete = resultats.length === total && (s.favoris.length || s.recents.length)
+          ? { favoris: s.favoris.map((n) => parNom.get(n)!), recents: s.recents.map((n) => parNom.get(n)!) } : undefined
         return (
           <>
             <PageHeader
@@ -68,7 +74,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
             ) : (
               <>
                 <Puces label="Trier par" valeur={tri} options={trisMagasins} onChange={(v) => { const p = new URLSearchParams(params); if (v === 'nom') p.delete('tri'); else p.set('tri', v); setParams(p, { replace: true }) }} />
-                <ListeMagasins magasins={resultats} tri={tri} />
+                <ListeMagasins magasins={resultats} tri={tri} suivis={enTete} />
               </>
             )}
           </>
