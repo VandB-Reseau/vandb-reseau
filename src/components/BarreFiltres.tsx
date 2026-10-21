@@ -3,20 +3,21 @@ import Button from '@mui/material/Button'
 import { ChampRecherche } from './Outils'
 import { RechercheFiltres, type FiltreActif } from './RechercheFiltres'
 import { FiltreMenu } from './FiltreMenu'
-import { nbFiltresActifs, filtresVides, type Filtres } from '../data/filtres'
+import { libellesAlerte, nbFiltresActifs, filtresVides, type Alerte, type Filtres } from '../data/filtres'
 import { statutLibelle, type Reseau, type Statut } from '../data/modele'
 
-export function BarreFiltres({ reseau, filtres, onChange, actions }: { reseau: Reseau; filtres: Filtres; onChange: (f: Filtres) => void; actions?: ReactNode }) {
+export function BarreFiltres({ reseau, filtres, onChange, actions, alertesDe }: { reseau: Reseau; filtres: Filtres; onChange: (f: Filtres) => void; actions?: ReactNode; alertesDe?: (nom: string) => Alerte[] }) {
   const compter = (pred: (m: Reseau['magasins'][number]) => boolean) => reseau.magasins.filter(pred).length
   const coachs = [...new Set(reseau.magasins.map((m) => m.coach).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'))
   const rrs = reseau.rrs.filter((r) => reseau.magasins.some((m) => m.rr?.id === r.id))
   const actifs = nbFiltresActifs(filtres)
-  const sans = <K extends 'statuts' | 'types' | 'coachs' | 'rrs'>(k: K, v: string) => () => onChange({ ...filtres, [k]: (filtres[k] as string[]).filter((x) => x !== v) })
+  const sans = <K extends 'statuts' | 'types' | 'coachs' | 'rrs' | 'alertes'>(k: K, v: string) => () => onChange({ ...filtres, [k]: (filtres[k] as string[]).filter((x) => x !== v) })
   const pucesActives: FiltreActif[] = [
     ...filtres.statuts.map((s) => ({ cle: `s-${s}`, libelle: statutLibelle[s], retirer: sans('statuts', s) })),
     ...filtres.types.map((t) => ({ cle: `t-${t}`, libelle: t === 'franchise' ? 'Franchisé' : 'Intégré', retirer: sans('types', t) })),
     ...filtres.coachs.map((c) => ({ cle: `c-${c}`, libelle: c === '__aucun__' ? 'Sans Coach' : c, retirer: sans('coachs', c) })),
     ...filtres.rrs.map((r) => ({ cle: `r-${r}`, libelle: r === '__aucun__' ? 'Sans RR' : reseau.rrs.find((x) => x.id === r)?.nom ?? r, retirer: sans('rrs', r) })),
+    ...filtres.alertes.map((a) => ({ cle: `a-${a}`, libelle: libellesAlerte[a], retirer: sans('alertes', a) })),
   ]
   const recherche = <ChampRecherche valeur={filtres.texte} onChange={(texte) => onChange({ ...filtres, texte })} placeholder="Nom, ville, département, Coach…" libelle="Rechercher dans les magasins" />
   return (
@@ -48,6 +49,14 @@ export function BarreFiltres({ reseau, filtres, onChange, actions }: { reseau: R
         choisis={filtres.rrs}
         onChange={(v) => onChange({ ...filtres, rrs: v })}
       />
+      {alertesDe && (
+        <FiltreMenu
+          libelle="Alerte"
+          options={(Object.keys(libellesAlerte) as Alerte[]).map((a) => ({ valeur: a, libelle: libellesAlerte[a], detail: `${compter((m) => alertesDe(m.nom).includes(a))} magasins` }))}
+          choisis={filtres.alertes}
+          onChange={(v) => onChange({ ...filtres, alertes: v as Alerte[] })}
+        />
+      )}
       {(actifs > 0 || filtres.texte) && (
         <Button onClick={() => onChange(filtresVides)} sx={{ minHeight: 36 }}>Effacer les filtres</Button>
       )}
