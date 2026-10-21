@@ -47,8 +47,8 @@ export function BoutonCreer({ rond = false }: { rond?: boolean }) {
   return (
     <>
       {rond ? (
-        <ButtonBase aria-label="Créer" onClick={() => setOuvert(true)} sx={{ flex: 1, minWidth: 0, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Box sx={{ width: 52, height: 52, borderRadius: '50%', bgcolor: 'primary.main', color: 'primary.contrastText', display: 'grid', placeItems: 'center' }}><AddOutlined sx={{ fontSize: 28 }} /></Box>
+        <ButtonBase aria-label="Créer" onClick={() => setOuvert(true)} sx={{ flex: 1, minWidth: 0, height: 64, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Box sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: 'primary.main', color: 'primary.contrastText', display: 'grid', placeItems: 'center' }}><AddOutlined sx={{ fontSize: 28 }} /></Box>
         </ButtonBase>
       ) : (
         <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 52, px: 3, fontSize: '0.9375rem' }}>Créer</Button>
