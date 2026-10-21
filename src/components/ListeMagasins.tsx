@@ -34,7 +34,8 @@ const lettreDe = (nom: string) => { const l = nom.normalize('NFD').replace(/[\u0
 
 // Magasins en lignes compactes (PC et téléphone) : initiales, nom, Coach et Responsable Régional, une info à droite.
 // Triés par nom : intertitres A, B, C… collants et une rangée de lettres pour sauter directement (Joseph, 21/10/2026).
-export function ListeMagasins({ magasins, tri = 'nom' }: { magasins: Magasin[]; tri?: TriMagasins }) {
+// suivis : favoris et fiches ouvertes récemment, en tête de la liste quand aucun filtre n'est posé
+export function ListeMagasins({ magasins, tri = 'nom', suivis }: { magasins: Magasin[]; tri?: TriMagasins; suivis?: { favoris: Magasin[]; recents: Magasin[] } }) {
   const { reseau } = useReseau()
   const [nb, setNb] = useState(PAS)
   const pastilles = useMemo(() => pastillesDe(reseau), [reseau])
@@ -65,8 +66,15 @@ export function ListeMagasins({ magasins, tri = 'nom' }: { magasins: Magasin[]; 
     if (i >= nb) setNb(Math.ceil((i + 1) / PAS) * PAS)
     requestAnimationFrame(() => document.getElementById(`lettre-${l}`)?.scrollIntoView({ block: 'start' }))
   }
+  const enTete = suivis ? [{ titre: 'Favoris', ms: suivis.favoris }, { titre: 'Consultés récemment', ms: suivis.recents }].filter((g) => g.ms.length) : []
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      {enTete.map((g) => (
+        <Box key={g.titre} component="section" aria-label={g.titre}>
+          <Typography component="h2" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.875rem', py: 0.5, px: 0.5 }}>{g.titre}</Typography>
+          <CarteLignes>{g.ms.map(ligne)}</CarteLignes>
+        </Box>
+      ))}
       {lettres.length > 3 && (
         <Box role="group" aria-label="Aller à la lettre" sx={{ display: 'flex', overflowX: 'auto', mx: { xs: -2, sm: 0 }, px: { xs: 1, sm: 0 }, scrollbarWidth: 'none' }}>
           {lettres.map((l) => (

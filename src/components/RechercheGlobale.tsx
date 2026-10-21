@@ -14,10 +14,13 @@ import { lienCoach, lienDirecteur, lienFiche, lienFranchise, lienRR } from '../l
 import { franchises } from '../data/personnes'
 import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
 import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined'
+import StarOutlined from '@mui/icons-material/StarOutlined'
+import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
+import { magasinsSuivis, useSuivis } from '../lib/suivis'
 
-interface Resultat { type: 'Magasins' | 'Coachs' | 'Responsables Régionaux' | 'Franchisés' | 'Direction'; libelle: string; detail: string; cible: string; cle: string }
+interface Resultat { type: 'Favoris' | 'Consultés récemment' | 'Magasins' | 'Coachs' | 'Responsables Régionaux' | 'Franchisés' | 'Direction'; libelle: string; detail: string; cible: string; cle: string }
 
-const icones = { Magasins: <StorefrontOutlined />, Coachs: <PersonOutline />, 'Responsables Régionaux': <SupervisorAccountOutlined />, Franchisés: <HandshakeOutlined />, Direction: <AdminPanelSettingsOutlined /> }
+const icones = { Favoris: <StarOutlined />, 'Consultés récemment': <HistoryOutlined />, Magasins: <StorefrontOutlined />, Coachs: <PersonOutline />, 'Responsables Régionaux': <SupervisorAccountOutlined />, Franchisés: <HandshakeOutlined />, Direction: <AdminPanelSettingsOutlined /> }
 
 // court : téléphone, champ étroit entre le logo et les icônes ; la liste des résultats prend toute la largeur
 export function RechercheGlobale({ surFonce, court }: { surFonce?: boolean; court?: boolean }) {
@@ -34,17 +37,28 @@ export function RechercheGlobale({ surFonce, court }: { surFonce?: boolean; cour
       ...(reseau.directeur.nom !== 'Direction du réseau' ? [{ type: 'Direction' as const, libelle: reseau.directeur.nom, detail: reseau.directeur.titre, cible: lienDirecteur(), cle: 'directeur' }] : []),
     ]
   }, [reseau])
+  // Champ vide : favoris puis dernières fiches ouvertes
+  const suivis = useSuivis()
+  const enTete = useMemo<Resultat[]>(() => {
+    const magasins = new Map(options.filter((o) => o.type === 'Magasins').map((o) => [o.libelle, o]))
+    const s = magasinsSuivis(suivis, new Set(magasins.keys()))
+    return [
+      ...s.favoris.map((n) => ({ ...magasins.get(n)!, type: 'Favoris' as const, cle: `fav-${n}` })),
+      ...s.recents.map((n) => ({ ...magasins.get(n)!, type: 'Consultés récemment' as const, cle: `rec-${n}` })),
+    ]
+  }, [options, suivis])
 
   return (
     <Autocomplete
-      options={options}
+      options={[...enTete, ...options]}
+      openOnFocus={enTete.length > 0}
       groupBy={(o) => o.type}
       getOptionLabel={(o) => o.libelle}
       getOptionKey={(o) => o.cle}
       filterOptions={(opts, { inputValue }) => {
         const t = normaliser(inputValue)
-        if (!t) return []
-        return opts.filter((o) => normaliser(`${o.libelle} ${o.detail}`).includes(t)).slice(0, 12)
+        if (!t) return enTete
+        return opts.filter((o) => o.type !== 'Favoris' && o.type !== 'Consultés récemment' && normaliser(`${o.libelle} ${o.detail}`).includes(t)).slice(0, 12)
       }}
       noOptionsText="Aucun résultat"
       value={null}
