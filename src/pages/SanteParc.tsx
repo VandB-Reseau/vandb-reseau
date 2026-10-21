@@ -461,7 +461,7 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
   const pied = visibles.length > 0 ? suite && <Box sx={{ position: 'sticky', left: 0, pb: 1.5 }}>{suite}</Box> : (
     <Box sx={{ position: 'sticky', left: 0, p: 3, textAlign: 'center' }}>
       <Typography sx={{ mb: 1 }}>Aucun magasin ne correspond à ces filtres.</Typography>
-      <Button variant="outlined" onClick={() => setFiltres({})} sx={{ minHeight: 48 }}>Tout afficher</Button>
+      <Button variant="outlined" onClick={() => setFiltres({})} sx={{ minHeight: 48 }}>Effacer les filtres</Button>
     </Box>
   )
   return (
