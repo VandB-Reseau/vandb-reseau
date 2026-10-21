@@ -52,6 +52,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 - Santé du parc, tableaux Évaluer et Déploiements (PC) : « Voir plus » est au bas du tableau et les lignes
   ajoutées apparaissent aussitôt ; chaque critère, la case et chaque thématique se trient (du plus haut au plus bas,
   puis l'inverse) et se filtrent par valeur (Faible, Moyen, Fort, non noté ; options de la thématique, non renseigné)
+- Tableaux Évaluer et Déploiements : la colonne Magasin se trie de A à Z ou de Z à A et se filtre par nom,
+  avec une recherche dans la liste
 
 ## 21/10/2026
 

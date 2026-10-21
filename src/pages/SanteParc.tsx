@@ -283,7 +283,8 @@ function BarreLot({ cibles, choisis, vider, saisie }: { cibles: Cible[]; choisis
 
 // ── Tri et filtre par colonne du tableau (PC) ──
 // rang : plus haut = meilleur ; null = non renseigné, toujours en bas de liste
-interface Colonne { id: string; libelle: string; rang: (m: Magasin) => number | null; valeur: (m: Magasin) => string; options: Option[] }
+// alpha : tri par ordre alphabétique (A à Z au premier clic) ; recherche : champ de recherche dans le filtre
+interface Colonne { id: string; libelle: string; rang: (m: Magasin) => number | string | null; valeur: (m: Magasin) => string; options: Option[]; alpha?: boolean; recherche?: boolean }
 type Tri = { id: string; sens: 'desc' | 'asc' } | null
 const SANS_VALEUR = '__sans__'
 
@@ -296,7 +297,7 @@ function trierFiltrer(liste: Magasin[], colonnes: Colonne[], tri: Tri, filtres: 
     l = [...l].sort((a, b) => {
       const ra = c.rang(a), rb = c.rang(b)
       if (ra === null || rb === null) return ra === rb ? 0 : ra === null ? 1 : -1
-      return (ra - rb) * sens
+      return (typeof ra === 'string' || typeof rb === 'string' ? String(ra).localeCompare(String(rb), 'fr') : ra - rb) * sens
     })
   }
   return l
@@ -306,11 +307,14 @@ function EnTeteColonne({ col, sens, trier, filtre, filtrer, compte, children }: 
   col: Colonne; sens: 'desc' | 'asc' | null; trier: () => void; filtre: string[]; filtrer: (v: string[]) => void; compte: (valeur: string) => number; children: ReactNode
 }) {
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
+  const [q, setQ] = useState('')
   const actif = filtre.length > 0
+  const options = q ? col.options.filter((o) => normaliser(o.libelle).includes(normaliser(q))) : col.options
+  const titreTri = col.alpha ? (sens === 'asc' ? 'De A à Z' : sens === 'desc' ? 'De Z à A' : 'Trier') : sens === 'desc' ? 'Du plus haut au plus bas' : sens === 'asc' ? 'Du plus bas au plus haut' : 'Trier'
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
       <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
-      <Tooltip title={sens === 'desc' ? 'Du plus haut au plus bas' : sens === 'asc' ? 'Du plus bas au plus haut' : 'Trier'}>
+      <Tooltip title={titreTri}>
         <IconButton aria-label={`Trier par ${col.libelle}`} onClick={trier} color={sens ? 'secondary' : 'default'} sx={{ width: 40, height: 40, my: -1 }}>
           {sens === 'asc' ? <ArrowUpwardOutlined fontSize="small" /> : sens === 'desc' ? <ArrowDownwardOutlined fontSize="small" /> : <SwapVertOutlined fontSize="small" />}
         </IconButton>
@@ -320,12 +324,18 @@ function EnTeteColonne({ col, sens, trier, filtre, filtrer, compte, children }: 
           {actif ? <FilterAlt fontSize="small" /> : <FilterAltOutlined fontSize="small" />}
         </IconButton>
       </Tooltip>
-      <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} slotProps={{ paper: { sx: { maxHeight: 420, minWidth: 240 } } }}>
-        {col.options.map((o) => (
+      <Menu anchorEl={ancre} open={!!ancre} onClose={() => { setAncre(null); setQ('') }} autoFocus={!col.recherche} slotProps={{ paper: { sx: { maxHeight: 420, minWidth: 240 } } }}>
+        {col.recherche && (
+          <Box sx={{ px: 1.5, pb: 1 }} onKeyDown={(e) => { if (e.key !== 'Escape') e.stopPropagation() }}>
+            <TextField size="small" fullWidth autoFocus placeholder="Rechercher" value={q} onChange={(e) => setQ(e.target.value)}
+              slotProps={{ htmlInput: { 'aria-label': `Rechercher dans ${col.libelle}` }, input: { startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> } }} />
+          </Box>
+        )}
+        {options.map((o) => (
           <MenuItem key={o.valeur} dense sx={{ minHeight: 44 }} onClick={() => filtrer(filtre.includes(o.valeur) ? filtre.filter((x) => x !== o.valeur) : [...filtre, o.valeur])}>
             <Checkbox checked={filtre.includes(o.valeur)} size="small" sx={{ p: 0.5, mr: 1 }} tabIndex={-1} />
             <ListItemText primary={o.libelle} />
-            <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>{compte(o.valeur)}</Typography>
+            {!col.alpha && <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>{compte(o.valeur)}</Typography>}
           </MenuItem>
         ))}
         {actif && <MenuItem onClick={() => { filtrer([]); setAncre(null) }} sx={{ justifyContent: 'center', minHeight: 44 }}><Button size="small">Tout afficher</Button></MenuItem>}
@@ -440,17 +450,20 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
   const [tri, setTri] = useState<Tri>(null)
   const [filtres, setFiltres] = useState<Record<string, string[]>>({})
   const base = etat === 'completer' ? aCompleter : magasins
-  const liste = useMemo(() => (tableauVisible ? trierFiltrer(base, colonnes, tri, filtres) : base), [base, colonnes, tri, filtres, tableauVisible])
+  // Première colonne : le magasin, trié de A à Z et filtré par nom
+  const toutes = useMemo<Colonne[]>(() => [{ id: 'magasin', libelle: 'Magasin', alpha: true, recherche: true,
+    options: base.map((m) => ({ valeur: m.nom, libelle: m.nom })), rang: (m) => m.nom, valeur: (m) => m.nom }, ...colonnes], [base, colonnes])
+  const liste = useMemo(() => (tableauVisible ? trierFiltrer(base, toutes, tri, filtres) : base), [base, toutes, tri, filtres, tableauVisible])
   const filtresActifs = Object.values(filtres).some((f) => f.length > 0)
   const { visibles, suite } = useParTranches(liste, `${etat}|${liste.length}|${magasins.map((m) => m.nom).join(',').length}|${tableauVisible ? JSON.stringify(filtres) : ''}`)
   const ouvrir = useCallback((nom: string) => { setFigee(liste); setOuvert(nom) }, [liste])
   const entete: EnTete = (id, contenu, sx) => {
-    const col = colonnes.find((c) => c.id === id)
+    const col = toutes.find((c) => c.id === id)
     if (!col) return <TableCell key={id} sx={sx}>{contenu}</TableCell>
     const sens = tri?.id === id ? tri.sens : null
     return (
       <TableCell key={id} sx={sx} aria-sort={sens === 'desc' ? 'descending' : sens === 'asc' ? 'ascending' : undefined}>
-        <EnTeteColonne col={col} sens={sens} trier={() => setTri(sens === null ? { id, sens: 'desc' } : sens === 'desc' ? { id, sens: 'asc' } : null)}
+        <EnTeteColonne col={col} sens={sens} trier={() => { const premier = col.alpha ? 'asc' : 'desc'; setTri(sens === null ? { id, sens: premier } : sens === premier ? { id, sens: premier === 'asc' ? 'desc' : 'asc' } : null) }}
           filtre={filtres[id] ?? []} filtrer={(v) => setFiltres((f) => ({ ...f, [id]: v }))} compte={(v) => base.filter((m) => col.valeur(m) === v).length}>
           {contenu}
         </EnTeteColonne>
@@ -537,7 +550,7 @@ function VueEvaluer({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: S
                 </TableRow>
                 <TableRow>
                   <TableCell padding="checkbox"><CaseTout magasins={visibles} {...sel} /></TableCell>
-                  <TableCell>Magasin</TableCell>
+                  {entete('magasin', 'Magasin', { minWidth: 200 })}
                   {tousCriteres.map((c) => entete(c.id, <LibelleCritere c={c} />, { minWidth: 220 }))}
                   {entete('case', 'Case', { minWidth: 170 })}
                 </TableRow>
@@ -588,7 +601,7 @@ function VueDeploiements({ reseau, saisie, surPC, date }: { reseau: Reseau; sais
               <TableHead>
                 <TableRow>
                   <TableCell padding="checkbox"><CaseTout magasins={visibles} {...sel} /></TableCell>
-                  <TableCell>Magasin</TableCell>
+                  {entete('magasin', 'Magasin', { minWidth: 200 })}
                   {ths.map((t) => entete(t.id, t.libelle, { minWidth: 200 }))}
                 </TableRow>
               </TableHead>
