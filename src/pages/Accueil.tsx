@@ -34,7 +34,7 @@ import { libellesEtatMandat, mandatsARenouveler } from '../data/associes'
 import { bilan, magasinsConcernes, phase } from '../data/campagnes'
 import { filDu, quand, type ElementFil, type GenreFil } from '../data/fil'
 import { useCommunicationsDuFil, type CommunicationsDuFil } from '../data/communications'
-import { ReactionsCommunication } from './Communications'
+import { MarqueUne, ReactionsCommunication } from './Communications'
 import { useApercu } from '../auth/Apercu'
 import Snackbar from '@mui/material/Snackbar'
 import { VisuelFil } from '../components/MiseEnForme'
@@ -222,6 +222,18 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil 
   const [filtre, setFiltre] = useState<FiltreFil>('tout')
   const [nb, setNb] = useState(PAS_FIL)
   const vus = elements.filter((e) => filtre === 'tout' || e.genre === filtre)
+  // Visite, photos, tâches et messages d'un même magasin le même jour : une seule carte (Joseph, 21/10/2026)
+  const groupes = useMemo(() => {
+    const parCle = new Map<string, ElementFil[]>()
+    for (const e of vus) {
+      const cle = e.communication || e.pratique || !e.magasin ? e.cle : `${e.magasin}|${e.instant.slice(0, 10)}`
+      const g = parCle.get(cle)
+      if (g) g.push(e); else parCle.set(cle, [e])
+    }
+    // Les communications à la une restent en tête
+    const tous = [...parCle.values()]
+    return [...tous.filter((g) => g[0].communication?.aLaUne), ...tous.filter((g) => !g[0].communication?.aLaUne)]
+  }, [vus])
   const options = filtresFil.filter((f) => f.v === 'tout' || elements.some((e) => e.genre === f.v))
   return (
     <Box component="section" aria-label={titre}>
@@ -231,9 +243,11 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil 
         <CarteLignes><LigneCompacte avatar={<Initiales nom="fil" icone={<HistoryOutlined />} />} titre="Rien de nouveau" detail="Les visites, tâches, messages, chiffres et communications des dernières semaines s’afficheront ici." /></CarteLignes>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          {vus.slice(0, nb).map((e) => (
-            <Card key={e.cle} component={e.communication || e.pratique ? 'article' : 'div'} aria-label={e.communication?.titre ?? e.pratique?.titre} sx={{ border: 0, overflow: 'hidden' }}>
+          {groupes.slice(0, nb).map(([e, ...suite]) => (
+            <Card key={e.cle} component={e.communication || e.pratique ? 'article' : 'div'} aria-label={e.communication?.titre ?? e.pratique?.titre} sx={{ border: 0, overflow: 'hidden', ...(suite.length ? { '& > * + *': { borderTop: '1px solid', borderColor: 'divider' } } : {}) }}>
+              {e.communication?.aLaUne && <Box sx={{ pt: 1.5 }}><MarqueUne jusquAu={e.communication.aLaUne} /></Box>}
               <PublicationFil e={e} jour={jour} sansMagasin={sansMagasin} />
+              {suite.map((x) => <PublicationFil key={x.cle} e={x} jour={jour} sansMagasin={sansMagasin} />)}
               {e.communication && communications?.moi && (
                 <ReactionsCommunication c={e.communication} moi={communications.moi} jour={jour} lectureSeule={!!apercu || !!equipe}
                   apres={communications.recharger} signaler={setMessage} />
@@ -241,7 +255,7 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil 
               {e.pratique && reactionsPratiques && <ReactionsPratique p={e.pratique} reactions={reactionsPratiques} lectureSeule={!!apercu || !!equipe} signaler={setMessage} />}
             </Card>
           ))}
-          {vus.length > nb && <Button onClick={() => setNb(nb + PAS_FIL)} sx={{ alignSelf: 'center', minHeight: 48 }}>Voir plus</Button>}
+          {groupes.length > nb && <Button onClick={() => setNb(nb + PAS_FIL)} sx={{ alignSelf: 'center', minHeight: 48 }}>Voir plus</Button>}
         </Box>
       )}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />

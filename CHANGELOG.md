@@ -33,6 +33,14 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   rubrique par écran sur téléphone ; sur PC, le sommaire reste à gauche.
 - Communications : le Directeur et le Responsable Régional voient « Lue par X franchisés sur Y » et, d'un toucher,
   qui ne l'a pas encore lue — Base : `0013_lectures_communications`
+- Écrans plus compacts : sur téléphone, le compteur passe à droite du titre ; Plus en libellés seuls avec les postes
+  à pourvoir ; Paramètres en lignes, le chiffre à droite ; contacts de la fiche à initiales, rôle sous le nom ;
+  Magasins triés par nom, dernière visite ou évolution du CA, avec accès direct à une lettre ; fil de l'accueil
+  regroupé par magasin et par jour ; Agenda en pastilles neutres et, sur téléphone, une bande des jours du mois ;
+  plus de bouton de tournée par Coach dans Visites (la tournée reste dans Semaine) ; écrans peu utilisés chargés
+  à la demande (application deux fois plus légère au démarrage).
+- Communications : l'auteur ou le Directeur met une communication à la une jusqu'à une date ; elle reste en tête
+  des Communications et du fil de l'accueil — Base : `0014_communications_a_la_une`
 
 ## 21/10/2026
 

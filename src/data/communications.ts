@@ -12,6 +12,7 @@ export interface Communication {
   entete: string | null // chemin de la photo d'en-tête, parmi les pièces jointes
   auteur: string; auteurNom: string; auteurRole: string; creeLe: string; modifieLe: string | null
   pouces: { userId: string; nom: string }[]; commentaires: Commentaire[]
+  aLaUne: string | null // reste en tête jusqu'à ce jour inclus (script 0014_communications_a_la_une.sql)
 }
 export interface Communications { moi: string; role: string; liste: Communication[] }
 
@@ -21,9 +22,11 @@ const lignes = (v: unknown) => (Array.isArray(v) ? (v as Ligne[]).filter((x) => 
 
 // null : communications pas encore activées dans la base
 export async function chargerCommunications(): Promise<Communications | null> {
-  const { data, error } = await supabase.rpc('communications')
+  const [{ data, error }, une] = await Promise.all([supabase.rpc('communications'), supabase.rpc('a_la_une')])
   if (error || !data || typeof data !== 'object') return null
   const d = data as Ligne
+  // Sans le script 0014, aucune communication n'est à la une
+  const unes = new Map(une.error || !Array.isArray(une.data) ? [] : lignes(une.data).map((u) => [Number(u.id), t(u.jusqu_au).slice(0, 10)]))
   return {
     moi: t(d.moi), role: t(d.role),
     liste: lignes(d.liste).map((c) => ({
@@ -33,6 +36,7 @@ export async function chargerCommunications(): Promise<Communications | null> {
       auteur: t(c.auteur), auteurNom: t(c.auteur_nom), auteurRole: t(c.auteur_role), creeLe: t(c.cree_le), modifieLe: c.modifie_le ? t(c.modifie_le) : null,
       pouces: lignes(c.pouces).map((p) => ({ userId: t(p.user_id), nom: t(p.nom) })),
       commentaires: lignes(c.commentaires).map((k) => ({ id: Number(k.id), auteur: t(k.auteur), auteurNom: t(k.auteur_nom), auteurRole: t(k.auteur_role), texte: t(k.texte), creeLe: t(k.cree_le) })),
+      aLaUne: unes.get(Number(c.id)) ?? null,
     })),
   }
 }
@@ -45,6 +49,9 @@ async function appeler(fn: string, args: Record<string, unknown>) {
 
 export const publierCommunication = (id: number | null, titre: string, texte: string, pieces: Piece[], html: string | null = null, entete: string | null = null) =>
   appeler('publier_communication', { p_id: id, p_titre: titre, p_texte: texte, p_pieces: pieces, p_html: html, p_entete: entete })
+export const mettreALaUne = (id: number, jusquAu: string | null) => appeler('mettre_a_la_une', { p_id: id, p_jusqu_au: jusquAu })
+// Les communications à la une d'abord (la plus proche de sa fin en premier), puis les autres dans leur ordre
+export const aLaUneDabord = <T extends { aLaUne: string | null }>(liste: T[]) => [...liste.filter((c) => c.aLaUne), ...liste.filter((c) => !c.aLaUne)]
 export const supprimerCommunication = (id: number) => appeler('supprimer_communication', { p_id: id })
 export const basculerPouce = (id: number) => appeler('basculer_pouce_communication', { p_id: id })
 export const commenter = (id: number, texte: string) => appeler('commenter_communication', { p_id: id, p_texte: texte })
@@ -70,6 +77,7 @@ export function messageCommunication(e: unknown): string {
   if (/acces_refuse/.test(m)) return 'Tu n’as pas accès à cette communication.'
   if (/trop_long/.test(m)) return 'Le texte est trop long.'
   if (/vide/.test(m)) return 'Le texte est vide.'
+  if (/date_invalide/.test(m)) return 'La date de fin doit être dans l’année qui vient.'
   if (/Could not find the function|PGRST202/.test(m)) return 'Les communications ne sont pas encore activées : le script SQL des communications doit être lancé dans Supabase.'
   return 'L’envoi n’a pas abouti. Vérifie ta connexion et réessaie.'
 }

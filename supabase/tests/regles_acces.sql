@@ -44,6 +44,7 @@ SELECT pg_temp.attendre('Coach : lit les réglages', (SELECT count(*) FROM publi
 WITH m AS (UPDATE public.app_config SET value = '{"x":1}' WHERE key = 'params' RETURNING 1)
 SELECT pg_temp.attendre('Coach : ne modifie pas les réglages', (SELECT count(*) FROM m), 0);
 SELECT pg_temp.attendre('Coach : ne voit pas qui a lu les communications', pg_temp.refuse('SELECT public.lectures_communications()'), 1);
+SELECT pg_temp.attendre('Coach : ne met pas une communication à la une', pg_temp.refuse('SELECT public.mettre_a_la_une(' || :annonce || ', current_date)'), 1);
 SELECT pg_temp.attendre('Coach : aucun accès direct aux messages', (SELECT count(*) FROM information_schema.table_privileges
   WHERE table_schema = 'public' AND table_name = 'messages' AND grantee = 'authenticated'), 0);
 
@@ -59,12 +60,15 @@ SELECT pg_temp.attendre('Franchisé : aucun accès direct au suivi', (SELECT cou
 SELECT pg_temp.attendre('Franchisé : aucun accès au journal des migrations', (SELECT count(*) FROM public.journal_migrations), 0);
 SELECT pg_temp.attendre('Franchisé : aucun accès direct aux lectures', (SELECT count(*) FROM information_schema.table_privileges
   WHERE table_schema = 'public' AND table_name = 'communications_lectures' AND grantee = 'authenticated'), 0);
+SELECT pg_temp.attendre('Franchisé : ne met pas une communication à la une', pg_temp.refuse('SELECT public.mettre_a_la_une(' || :annonce || ', current_date)'), 1);
 SELECT pg_temp.attendre('Franchisé : ne voit pas qui a lu les communications', pg_temp.refuse('SELECT public.lectures_communications()'), 1);
 SELECT public.lire_communications(ARRAY[:annonce]::bigint[]);
 SELECT pg_temp.attendre('Franchisé : ses visites par espace_franchise()', (SELECT jsonb_array_length(public.espace_franchise()->'visits')), 1);
 
--- ── Directeur : voit la lecture du franchisé
+-- ── Directeur : voit la lecture du franchisé, met à la une
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT public.mettre_a_la_une(:annonce, current_date + 7);
+SELECT pg_temp.attendre('Directeur : la communication est à la une', (SELECT jsonb_array_length(public.a_la_une())), 1);
 SELECT pg_temp.attendre('Directeur : la communication est lue par le franchisé',
   (SELECT jsonb_array_length(e->'lus') FROM jsonb_array_elements(public.lectures_communications()) e LIMIT 1), 1);
 
@@ -76,4 +80,4 @@ SELECT pg_temp.attendre('Sans rôle : aucun réglage', (SELECT count(*) FROM pub
 RESET ROLE;
 SELECT pg_temp.attendre('Aucune règle « tout compte connecté »', (SELECT count(*) FROM pg_policies
   WHERE schemaname IN ('public', 'storage') AND (coalesce(qual, '') = 'true' OR coalesce(with_check, '') = 'true')), 0);
-SELECT pg_temp.attendre('Journal : 0001 à 0013 notées', (SELECT count(*) FROM public.journal_migrations WHERE numero <= '0013'), 13);
+SELECT pg_temp.attendre('Journal : 0001 à 0014 notées', (SELECT count(*) FROM public.journal_migrations WHERE numero <= '0014'), 14);

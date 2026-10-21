@@ -1,15 +1,9 @@
 import { Equipe } from './pages/Equipe'
 import { FicheCoach } from './pages/FicheCoach'
 import { FicheDirecteur, FicheFranchise, FicheRR } from './pages/FichePersonne'
-import { Direction } from './pages/Direction'
-import { ChargeCoachs } from './pages/ChargeCoachs'
-import { Donnees } from './pages/Donnees'
 import { Visites } from './pages/Visites'
-import { CompteRendu } from './pages/CompteRendu'
 import { Agenda } from './pages/Agenda'
 import { SanteParc } from './pages/SanteParc'
-import { Evolution } from './pages/Evolution'
-import { Personnes } from './pages/VuePersonnes'
 import { Conversations } from './pages/Conversations'
 import { Notifications } from './pages/Notifications'
 import { PageTaches } from './pages/Taches'
@@ -38,19 +32,62 @@ import Button from '@mui/material/Button'
 import LockOutlined from '@mui/icons-material/LockOutlined'
 import { EmptyState } from './components/EmptyState'
 import { ApercuProvider, useApercu } from './auth/Apercu'
+import { Suspense, useEffect } from 'react'
+import Skeleton from '@mui/material/Skeleton'
+import { chargementDiffere } from './lib/chargementDiffere'
 import { chargerEspaceFranchise } from './data/espaceFranchise'
 import { espaceFranchise } from './navigation/destinations'
 import { BandeauApercu, FicheMagasinFranchise, MagasinsFranchise, PratiquesFranchise, TableauFranchise } from './pages/EspaceFranchise'
 
+// Écrans plus rares chargés à la demande : l'ouverture de l'app télécharge moins (Joseph, 21/10/2026).
+// Ils sont préchargés en tâche de fond une fois l'accueil affiché, pour s'ouvrir sans attente.
+const chargeurs = {
+  direction: () => import('./pages/Direction').then((m) => ({ default: m.Direction })),
+  charge: () => import('./pages/ChargeCoachs').then((m) => ({ default: m.ChargeCoachs })),
+  donnees: () => import('./pages/Donnees').then((m) => ({ default: m.Donnees })),
+  compteRendu: () => import('./pages/CompteRendu').then((m) => ({ default: m.CompteRendu })),
+  evolution: () => import('./pages/Evolution').then((m) => ({ default: m.Evolution })),
+  personnes: () => import('./pages/VuePersonnes').then((m) => ({ default: m.Personnes })),
+}
+const Direction = chargementDiffere(chargeurs.direction)
+const ChargeCoachs = chargementDiffere(chargeurs.charge)
+const Donnees = chargementDiffere(chargeurs.donnees)
+const CompteRendu = chargementDiffere(chargeurs.compteRendu)
+const Evolution = chargementDiffere(chargeurs.evolution)
+const Personnes = chargementDiffere(chargeurs.personnes)
+
+function usePrechargement() {
+  useEffect(() => {
+    const lancer = () => { for (const c of Object.values(chargeurs)) void c().catch(() => undefined) }
+    const w = window as Window & { requestIdleCallback?: (f: () => void) => number }
+    const id = w.requestIdleCallback ? w.requestIdleCallback(lancer) : window.setTimeout(lancer, 1500)
+    return () => { if (!w.requestIdleCallback) window.clearTimeout(id) }
+  }, [])
+}
+
+// Silhouette grise pendant le chargement d'un écran
+function SilhouetteEcran() {
+  return (
+    <Box aria-busy="true" aria-label="Chargement" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      <Skeleton variant="text" width="40%" height={44} />
+      <Skeleton variant="rounded" height={72} />
+      <Skeleton variant="rounded" height={72} />
+      <Skeleton variant="rounded" height={72} />
+    </Box>
+  )
+}
+
 // equipeSeule : Coach ou Responsable Régional, sans la partie Paramètres (les fiches des personnes restent ouvertes)
 function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; bandeau?: ReactNode }) {
   const { pathname } = useLocation()
+  usePrechargement()
   if (equipeSeule && (pathname === '/equipe' || pathname.startsWith('/parametres') || pathname === '/plus/direction' || pathname.startsWith('/plus/evolution') || pathname === '/plus/charge')) return <Navigate to="/" replace />
   return (
     <AppShell sansParametres={equipeSeule} bandeau={bandeau}>
       <RetourEnHaut />
       {/* Changer d'écran efface l'erreur de l'écran précédent */}
       <ErreurEcran key={pathname}>
+      <Suspense fallback={<SilhouetteEcran />}>
       <Routes>
         <Route path="/" element={<Accueil />} />
         <Route path="/magasins" element={<Magasins />} />
@@ -85,6 +122,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/plus" element={<Plus />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
       </ErreurEcran>
     </AppShell>
   )
@@ -97,6 +135,7 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
     <AppShell franchise={espaceFranchise} bandeau={apercu ? <BandeauApercu /> : undefined} sansCloche={apercu}>
       <RetourEnHaut />
       <ErreurEcran key={pathname}>
+      <Suspense fallback={<SilhouetteEcran />}>
       <Routes>
         <Route path="/" element={<TableauFranchise />} />
         <Route path="/magasins" element={<MagasinsFranchise />} />
@@ -112,6 +151,7 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
         {!apercu && <Route path="/notifications" element={<Notifications />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
       </ErreurEcran>
     </AppShell>
   )

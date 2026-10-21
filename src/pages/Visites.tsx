@@ -38,7 +38,6 @@ import { EmptyState } from '../components/EmptyState'
 import { DialogVisite, visiteurs } from '../components/DialogVisite'
 import { PastilleSignature } from '../components/PastilleVisite'
 import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, Pastille, TitreSection, useAffichage, useParTranches } from '../components/Social'
-import RouteOutlined from '@mui/icons-material/RouteOutlined'
 import DateRangeOutlined from '@mui/icons-material/DateRangeOutlined'
 import { VueSemaine } from '../components/Semaine'
 import { useAuth } from '../auth/AuthContext'
@@ -133,8 +132,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
               {parCoach.map((g) => (
                 <LigneCompacte key={g.coach} lien={g.coach ? lienCoach(g.coach) : undefined} avatar={<Initiales nom={g.coach || 'Sans Coach'} />} titre={g.coach || 'Sans Coach'}
                   detail={`${pluriel(g.faites, 'visite')} · référence ${g.reference} · ${jours(g.jours)} sur l’année`}
-                  fin={g.signales.length ? <Pastille ton="orange">{`${g.signales.length} à voir`}</Pastille> : undefined}
-                  actions={g.signales.length > 0 ? <Tooltip title="Préparer la tournée des magasins pas vus depuis longtemps"><IconButton onClick={() => saisir(g.signales.map((l) => l.magasin.nom))} aria-label={`Tournée de ${g.coach || 'Sans Coach'}`} sx={{ width: 48, height: 48 }}><RouteOutlined /></IconButton></Tooltip> : undefined} />
+                  fin={g.signales.length ? <Pastille ton="orange">{`${g.signales.length} à voir`}</Pastille> : undefined} />
               ))}
             </CarteLignes>
           </>}

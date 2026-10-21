@@ -4,6 +4,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
+import Skeleton from '@mui/material/Skeleton'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import TextField from '@mui/material/TextField'
@@ -30,7 +31,7 @@ export function MiniaturePhoto({ chemin, numero, onRetirer }: { chemin: string; 
     <Box sx={{ position: 'relative' }}>
       {lien
         ? <Link href={lien} target="_blank" rel="noopener" aria-label={`Ouvrir la photo ${numero}`} sx={cadre}><Box component="img" src={lien} alt={`Photo ${numero}`} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} /></Link>
-        : <Box sx={cadre}>{lien === undefined ? <CircularProgress size={20} /> : <Tooltip title="Photo indisponible"><ImageNotSupportedOutlined color="disabled" /></Tooltip>}</Box>}
+        : <Box sx={cadre}>{lien === undefined ? <Skeleton variant="rectangular" width={72} height={72} aria-label="Chargement de la photo" /> : <Tooltip title="Photo indisponible"><ImageNotSupportedOutlined color="disabled" /></Tooltip>}</Box>}
       {onRetirer && (
         <IconButton aria-label={`Retirer la photo ${numero}`} onClick={onRetirer} size="small"
           sx={{ position: 'absolute', top: -14, right: -14, width: 48, height: 48, '& svg': { bgcolor: 'background.paper', borderRadius: '50%', boxShadow: 1 } }}>
