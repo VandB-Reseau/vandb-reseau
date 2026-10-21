@@ -59,9 +59,6 @@ import { actionsDuMagasin, enRetard } from '../data/actions'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
-import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined'
-import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
-import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import { SectionMessages, useNonLusMagasin } from '../components/Messages'
 import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
@@ -112,23 +109,25 @@ export function Contact({ role, p, sousTitre, lien }: { role: string; p: Personn
   )
 }
 
-type VueFiche = 'fil' | 'fiche' | 'actions' | 'messages' | 'visites' | 'chiffres' | 'sante' | 'campagnes' | 'journal'
+// Six onglets (L3, 21/10/2026) : le journal entre dans le fil, la santé avec les chiffres, les campagnes avec les tâches
+type VueFiche = 'fil' | 'fiche' | 'actions' | 'messages' | 'visites' | 'chiffres'
 const rubriquesFiche: Rubrique<VueFiche>[] = [
   { vue: 'fil', libelle: 'Fil', icone: <DynamicFeedOutlined /> },
   { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
-  { vue: 'actions', libelle: 'Tâches', icone: <TaskAltOutlined /> },
+  { vue: 'actions', libelle: 'Tâches et campagnes', court: 'Tâches', icone: <TaskAltOutlined /> },
   { vue: 'messages', libelle: 'Messages', icone: <ForumOutlined /> },
   { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
-  { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
-  { vue: 'sante', libelle: 'Santé', icone: <FavoriteBorderOutlined /> },
-  { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
-  { vue: 'journal', libelle: 'Journal', icone: <HistoryOutlined /> },
+  { vue: 'chiffres', libelle: 'Chiffres et santé', court: 'Chiffres', icone: <QueryStatsOutlined /> },
 ]
+// Anciens liens vers un onglet regroupé : l'onglet qui l'accueille, ouvert sur sa partie
+const anciennesVues: Record<string, VueFiche> = { sante: 'chiffres', campagnes: 'actions', journal: 'fil' }
 
 function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const naviguer = useNavigate()
   const [params, setParams] = useSearchParams()
-  const vue = (rubriquesFiche.find((r) => r.vue === params.get('vue'))?.vue ?? 'fil') as VueFiche
+  const demandee = params.get('vue') ?? ''
+  const vue = (anciennesVues[demandee] ?? rubriquesFiche.find((r) => r.vue === demandee)?.vue ?? 'fil') as VueFiche
+  useEffect(() => { if (anciennesVues[demandee]) document.getElementById(`partie-${demandee}`)?.scrollIntoView({ block: 'start' }) }, [demandee])
   const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'fil') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const [reaffectation, setReaffectation] = useState(false)
   const [edition, setEdition] = useState(false)
@@ -163,7 +162,15 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
       <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} fiche />
       <ContenuOnglet>
 
-        {vue === 'fil' && <FilMagasin reseau={reseau} m={m} />}
+        {vue === 'fil' && (
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
+            <FilMagasin reseau={reseau} m={m} />
+            <Box id="partie-journal" sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)', scrollMarginTop: 160 }}>
+              <Journal reseau={reseau} m={m} signaler={setConfirmation} />
+              <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />
+            </Box>
+          </Box>
+        )}
 
         {vue === 'fiche' && (
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
@@ -197,9 +204,12 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         )}
 
         {vue === 'actions' && (
-          <Section titre="Tâches en cours" action={<BoutonAjouterAction reseau={reseau} magasins={[m.nom]} signaler={setConfirmation} />}>
-            <ListeActions reseau={reseau} actions={actions} signaler={setConfirmation} libelle={`Tâches en cours de ${m.nom}`} magasins={[m.nom]} />
-          </Section>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
+            <Section titre="Tâches en cours" action={<BoutonAjouterAction reseau={reseau} magasins={[m.nom]} signaler={setConfirmation} />}>
+              <ListeActions reseau={reseau} actions={actions} signaler={setConfirmation} libelle={`Tâches en cours de ${m.nom}`} magasins={[m.nom]} />
+            </Section>
+            <Box id="partie-campagnes" sx={{ scrollMarginTop: 160 }}><Section titre="Campagnes"><CampagnesMagasin reseau={reseau} magasin={m.nom} signaler={setConfirmation} /></Section></Box>
+          </Box>
         )}
 
         {vue === 'messages' && <SectionMessages reseau={reseau} m={m} signaler={setConfirmation} />}
@@ -211,21 +221,13 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           </Box>
         )}
 
-        {vue === 'chiffres' && <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />}
-
-        {vue === 'sante' && (
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-            <SectionSante reseau={reseau} m={m} modifier={() => setEdition(true)} />
-            <SectionDeploiements reseau={reseau} m={m} modifier={() => setEdition(true)} />
-          </Box>
-        )}
-
-        {vue === 'campagnes' && <Section titre="Campagnes"><CampagnesMagasin reseau={reseau} magasin={m.nom} signaler={setConfirmation} /></Section>}
-
-        {vue === 'journal' && (
-          <Box sx={{ display: 'grid', gap: 2 }}>
-            <Journal reseau={reseau} m={m} signaler={setConfirmation} />
-            <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />
+        {vue === 'chiffres' && (
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
+            <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
+            <Box id="partie-sante" sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start', scrollMarginTop: 160 }}>
+              <SectionSante reseau={reseau} m={m} modifier={() => setEdition(true)} />
+              <SectionDeploiements reseau={reseau} m={m} modifier={() => setEdition(true)} />
+            </Box>
           </Box>
         )}
 

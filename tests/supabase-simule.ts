@@ -436,11 +436,13 @@ export async function seConnecter(page: Page, options: OptionsSimulation = {}) {
 }
 
 // Ouvre une rubrique à onglets : sur téléphone, au-delà de 4 rubriques, les dernières sont derrière « Plus »
+// Un onglet regroupé (« Chiffres et santé ») s'ouvre aussi par son nom court (« Chiffres »)
 export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page = page) {
-  const onglet = dans.getByRole('tab', { name: nom, exact: true })
+  const nomComplet = new RegExp(`^${nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( et .+)?$`)
+  const onglet = dans.getByRole('tab', { name: nomComplet })
   if (await onglet.isVisible()) return onglet.click()
   await dans.getByRole('tab', { name: /autres rubriques$/i }).click()
-  await page.getByRole('dialog').getByRole('button', { name: nom, exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: nomComplet }).click()
 }
 
 // Liste les textes visibles plus petits que min px
