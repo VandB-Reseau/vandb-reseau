@@ -35,7 +35,7 @@ export interface CommunicationSimulee {
 // « J'aime » et commentaires des bonnes pratiques (script 0010_pratiques_reactions.sql), rangés par pratique
 export interface ReactionsPratiquesSimulees { pouces?: Record<string, { user_id: string; nom: string }[]>; commentaires?: Record<string, { id: number; auteur: string; auteur_nom: string; auteur_role: string; texte: string; cree_le: string }[]> }
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
-export interface OptionsSimulation { reactionsPratiques?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null }
+export interface OptionsSimulation { reactionsPratiques?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -63,6 +63,16 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
     const commun = configEcrite.has(cle) ? JSON.parse(configEcrite.get(cle)!) : undefined
     const value = JSON.stringify(assembler(cle, commun, Object.fromEntries(suiviCourant.filter((l) => l.cle === rubrique).map((l) => [l.store_name, l.valeur]))))
     options.ecritures?.push({ methode: 'SUIVI', table: 'app_config', corps: { key: cle, value }, filtre: `?key=eq.${cle}` })
+  }
+  // Fiches des personnes (table fiches_personnes, 0015) ; fichesEnConfig : 0015 pas encore passée, fiches dans app_config.
+  // Chaque écriture dans la table est aussi notée comme la valeur complète de l'ancienne clé d'app_config.
+  const fichesDeBase: Record<string, unknown> = configEcrite.has('fiches_personnes') ? JSON.parse(configEcrite.get('fiches_personnes')!) : structuredClone(fichesFictives)
+  if (!options.fichesEnConfig) configEcrite.delete('fiches_personnes')
+  let fichesPersistees = structuredClone(fichesDeBase)
+  let fichesCourantes = structuredClone(fichesDeBase)
+  const noterFiches = () => {
+    if (options.persister) fichesPersistees = structuredClone(fichesCourantes)
+    options.ecritures?.push({ methode: 'FICHES', table: 'app_config', corps: { key: 'fiches_personnes', value: JSON.stringify(fichesCourantes) }, filtre: '?key=eq.fiches_personnes' })
   }
   await page.route('https://*.tile.openstreetmap.org/**', (r) => r.fulfill({ status: 204, body: '' }))
   // Communes simulées (centre des villes des fiches personnes)
@@ -308,6 +318,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
     if (options.panne && url.pathname.startsWith('/rest/')) return route.fulfill({ status: 500, json: { message: 'indisponible' } })
     const table = url.pathname.replace('/rest/v1/', '')
     if (table === 'suivi_magasins' && options.suiviEnConfig) return route.fulfill({ status: 404, json: { code: '42P01', message: 'relation "public.suivi_magasins" does not exist' } })
+    if (table === 'fiches_personnes' && options.fichesEnConfig) return route.fulfill({ status: 404, json: { code: '42P01', message: 'relation "public.fiches_personnes" does not exist' } })
     if (req.method() !== 'GET' && req.method() !== 'HEAD') {
       options.ecritures?.push({ methode: req.method(), table, corps: req.postDataJSON(), filtre: url.search })
       // Campagnes régionales : enregistrées telles quelles, relues au chargement suivant
@@ -317,6 +328,13 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         if (req.method() === 'DELETE') options.campagnesRegions = liste.filter((l) => l.id !== id)
         else if (req.method() === 'PATCH') { const l = liste.find((x) => x.id === id); if (l) Object.assign(l, req.postDataJSON()) }
         else for (const l of [req.postDataJSON()].flat() as { id: string; rr: string; valeur: unknown }[]) options.campagnesRegions = [...options.campagnesRegions!.filter((x) => x.id !== l.id), { id: l.id, rr: l.rr, valeur: l.valeur }]
+        return route.fulfill({ status: 201, json: [] })
+      }
+      if (table === 'fiches_personnes') {
+        if (req.method() === 'DELETE') {
+          for (const k of url.searchParams.get('cle')!.replace(/^in\.\(|\)$/g, '').split(',').map((x) => x.replace(/^"|"$/g, ''))) delete fichesCourantes[k]
+        } else for (const l of [req.postDataJSON()].flat() as { cle: string; fiche: unknown }[]) fichesCourantes[l.cle] = l.fiche
+        noterFiches()
         return route.fulfill({ status: 201, json: [] })
       }
       if (table === 'suivi_magasins') {
@@ -346,6 +364,10 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       if (options.campagnesRegions === null) return route.fulfill({ status: 404, json: { code: '42P01', message: 'relation "public.campagnes_regions" does not exist' } })
       return route.fulfill({ json: structuredClone(options.campagnesRegions ?? []) })
     }
+    if (table === 'fiches_personnes') {
+      fichesCourantes = structuredClone(options.persister ? fichesPersistees : fichesDeBase)
+      return route.fulfill({ json: filtrer(Object.entries(fichesCourantes).map(([cle, fiche]) => ({ cle, fiche }))) })
+    }
     if (table === 'suivi_magasins') {
       suiviCourant = structuredClone(options.persister ? suiviPersiste : suiviDeBase)
       return route.fulfill({ json: filtrer(suiviCourant) })
@@ -365,7 +387,8 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         // Clés fournies par le test et absentes des données de base
         .concat([...configEcrite].filter(([k]) => !['store_adds', 'drs_data', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'params'].includes(k)).map(([key, value]) => ({ key, value })))
         // Une fois le cloisonnement passé, app_config ne garde que la partie commune (thématiques, liste des campagnes)
-        .filter((l) => !enTable(l.key) || configEcrite.has(l.key))) })
+        .filter((l) => !enTable(l.key) || configEcrite.has(l.key))
+        .filter((l) => options.fichesEnConfig || l.key !== 'fiches_personnes')) })
     }
     if (table === 'store_overrides') return route.fulfill({ json: filtrer([{ store_name: 'Nice Test', resp: 'Responsable surchargé' }, { store_name: 'Metz Test', rr: 'rr1' }]) })
     if (table === 'reassigns') return route.fulfill({ json: affectationsFictives })

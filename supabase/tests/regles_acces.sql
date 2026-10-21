@@ -16,6 +16,9 @@ INSERT INTO public.visits (store, visit_date) VALUES ('Lille', '2026-10-01'), ('
 INSERT INTO public.store_finance (store_name, month, ca_cave) VALUES ('Lille', '2026-09-01', 1), ('Nice', '2026-09-01', 1) ON CONFLICT DO NOTHING;
 INSERT INTO public.app_config (key, value) VALUES ('params', '{}') ON CONFLICT DO NOTHING;
 INSERT INTO storage.objects (bucket_id, name) VALUES ('photos', 'audit/Nice/1.jpg');
+INSERT INTO public.store_overrides (store_name, resp) VALUES ('Lille', 'Paul LILLE'), ('Nice', 'Nina NICE');
+INSERT INTO public.fiches_personnes (cle, fiche) VALUES ('directeur', '{}'), ('coach:Coach Nord', '{}'), ('coach:Coach Sud', '{}'), ('rr:rr1', '{}'),
+  ('franchise:Paul LILLE', '{"telephone":"0600000000"}'), ('franchise:Franchisé Test', '{}'), ('franchise:Nina NICE', '{"naissance":"1980-01-01"}') ON CONFLICT DO NOTHING;
 INSERT INTO public.communications (titre, auteur_nom, auteur_role) VALUES ('Annonce réseau', 'Directeur', 'directeur') RETURNING id AS annonce \gset
 CREATE OR REPLACE FUNCTION pg_temp.refuse(appel text) RETURNS bigint LANGUAGE plpgsql AS $$
 BEGIN
@@ -35,11 +38,18 @@ SET ROLE authenticated;
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
 SELECT pg_temp.attendre('Directeur : toutes les visites', (SELECT count(*) FROM public.visits), 2);
 SELECT pg_temp.attendre('Directeur : tous les chiffres', (SELECT count(*) FROM public.store_finance), 2);
+SELECT pg_temp.attendre('Directeur : toutes les fiches des personnes', (SELECT count(*) FROM public.fiches_personnes), 7);
 
 -- ── Coach : seulement ses magasins ; lit les référentiels sans les modifier
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 SELECT pg_temp.attendre('Coach : visites de ses magasins seulement', (SELECT count(*) FROM public.visits), 1);
 SELECT pg_temp.attendre('Coach : chiffres de ses magasins seulement', (SELECT count(*) FROM public.store_finance), 1);
+SELECT pg_temp.attendre('Coach : fiches de l''équipe et des franchisés de ses magasins', (SELECT count(*) FROM public.fiches_personnes), 6);
+SELECT pg_temp.attendre('Coach : pas la fiche d''un franchisé d''un autre magasin', (SELECT count(*) FROM public.fiches_personnes WHERE cle = 'franchise:Nina NICE'), 0);
+WITH m AS (UPDATE public.fiches_personnes SET fiche = '{}' WHERE cle = 'franchise:Paul LILLE' RETURNING 1)
+SELECT pg_temp.attendre('Coach : ne modifie pas une fiche', (SELECT count(*) FROM m), 0);
+SELECT pg_temp.attendre('Coach : n''ajoute pas de fiche', pg_temp.refuse('INSERT INTO public.fiches_personnes (cle) VALUES (''coach:Intrus'')'), 1);
+SELECT pg_temp.attendre('Coach : plus de fiches dans app_config', (SELECT count(*) FROM public.app_config WHERE key = 'fiches_personnes'), 0);
 SELECT pg_temp.attendre('Coach : lit les réglages', (SELECT count(*) FROM public.app_config WHERE key = 'params'), 1);
 WITH m AS (UPDATE public.app_config SET value = '{"x":1}' WHERE key = 'params' RETURNING 1)
 SELECT pg_temp.attendre('Coach : ne modifie pas les réglages', (SELECT count(*) FROM m), 0);
@@ -57,6 +67,7 @@ SELECT pg_temp.attendre('Franchisé : aucune photo d''un autre magasin', (SELECT
 SELECT pg_temp.attendre('Franchisé : aucun accès direct aux comptes franchisés', (SELECT count(*) FROM public.acces_franchises), 0);
 SELECT pg_temp.attendre('Franchisé : aucun accès direct au périmètre', (SELECT count(*) FROM public.perimetre_equipe), 0);
 SELECT pg_temp.attendre('Franchisé : aucun accès direct au suivi', (SELECT count(*) FROM public.suivi_magasins), 0);
+SELECT pg_temp.attendre('Franchisé : aucune fiche des personnes', (SELECT count(*) FROM public.fiches_personnes), 0);
 SELECT pg_temp.attendre('Franchisé : aucun accès au journal des migrations', (SELECT count(*) FROM public.journal_migrations), 0);
 SELECT pg_temp.attendre('Franchisé : aucun accès direct aux lectures', (SELECT count(*) FROM information_schema.table_privileges
   WHERE table_schema = 'public' AND table_name = 'communications_lectures' AND grantee = 'authenticated'), 0);
@@ -76,8 +87,18 @@ SELECT pg_temp.attendre('Directeur : la communication est lue par le franchisé'
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-000000000000';
 SELECT pg_temp.attendre('Sans rôle : aucune visite', (SELECT count(*) FROM public.visits), 0);
 SELECT pg_temp.attendre('Sans rôle : aucun réglage', (SELECT count(*) FROM public.app_config), 0);
+SELECT pg_temp.attendre('Sans rôle : aucune fiche des personnes', (SELECT count(*) FROM public.fiches_personnes), 0);
 
 RESET ROLE;
 SELECT pg_temp.attendre('Aucune règle « tout compte connecté »', (SELECT count(*) FROM pg_policies
   WHERE schemaname IN ('public', 'storage') AND (coalesce(qual, '') = 'true' OR coalesce(with_check, '') = 'true')), 0);
-SELECT pg_temp.attendre('Journal : 0001 à 0014 notées', (SELECT count(*) FROM public.journal_migrations WHERE numero <= '0014'), 14);
+SELECT pg_temp.attendre('Journal : 0001 à 0015 notées', (SELECT count(*) FROM public.journal_migrations WHERE numero <= '0015'), 15);
+
+-- Fiches encore rangées dans app_config (base pas encore passée en 0015) : reprises, la clé disparaît,
+-- une fiche déjà dans la table n'est pas écrasée
+INSERT INTO public.app_config (key, value) VALUES ('fiches_personnes', '{"coach:Lou NOUVEAU":{"prenom":"Lou"},"franchise:Paul LILLE":{"telephone":"autre"},"intrus":{}}');
+\ir ../migrations/0015_fiches_personnes.sql
+SELECT pg_temp.attendre('Reprise : fiche ajoutée depuis app_config', (SELECT count(*) FROM public.fiches_personnes WHERE cle = 'coach:Lou NOUVEAU' AND fiche->>'prenom' = 'Lou'), 1);
+SELECT pg_temp.attendre('Reprise : fiche existante conservée', (SELECT count(*) FROM public.fiches_personnes WHERE cle = 'franchise:Paul LILLE' AND fiche->>'telephone' = '0600000000'), 1);
+SELECT pg_temp.attendre('Reprise : clé inconnue ignorée', (SELECT count(*) FROM public.fiches_personnes WHERE cle = 'intrus'), 0);
+SELECT pg_temp.attendre('Reprise : clé retirée d''app_config', (SELECT count(*) FROM public.app_config WHERE key = 'fiches_personnes'), 0);
