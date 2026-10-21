@@ -17,9 +17,12 @@ export interface EspaceSimule { actions?: Record<string, Record<string, unknown>
 export interface MessageSimule {
   id: number; store?: string | null; auteur: string; auteur_nom: string; auteur_role: string; texte: string; mentions: string[]; cree_le: string
   equipe?: boolean; lot?: string | null; destinataire?: string | null; auteur_cle?: string | null; magasins?: string[]; pieces?: { chemin: string; nom: string; taille: number; type: string }[]
+  groupe?: number | null // groupe libre (script 0018_echanges_groupes.sql)
 }
-// version 1 et 2 : base d'avant les échanges à deux (script 0006_messagerie.sql pas encore repassé)
-export interface MessagerieSimulee { messages?: MessageSimule[]; lus?: Record<string, string>; reference?: string | null; version?: number }
+// Groupe libre (script 0018_echanges_groupes.sql) : membres = clés des personnes
+export interface GroupeSimule { id: number; nom: string; membres: string[]; cree_par: string }
+// version 1 et 2 : base d'avant les échanges à deux (script 0006_messagerie.sql pas encore repassé) ; 3 : avant les groupes (0018)
+export interface MessagerieSimulee { messages?: MessageSimule[]; lus?: Record<string, string>; reference?: string | null; version?: number; groupes?: GroupeSimule[] }
 export const MOI = '00000000-0000-0000-0000-000000000001'
 // Comme la base : seuls les fichiers rangés sous le compte connecté, 10 au plus
 const piecesPropres = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 10).filter((p) => typeof p?.chemin === 'string' && p.chemin.startsWith(`${MOI}/`))
@@ -142,19 +145,52 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         const magasins = apercu ? (corps.p_magasins as string[]) : acces.magasins ?? []
         return route.fulfill({ json: espaceSimule(apercu ? String(corps.p_franchise) : acces.franchise ?? '', magasins, options.espace ?? {}) })
       }
-      if (['messagerie', 'envoyer_message', 'envoyer_a', 'marquer_lu', 'marquer_lu_personne', 'supprimer_message', 'renommer_magasin_messages'].includes(fn)) {
+      if (['messagerie', 'envoyer_message', 'envoyer_a', 'marquer_lu', 'marquer_lu_personne', 'supprimer_message', 'renommer_magasin_messages', 'envoyer_fil', 'marquer_lu_fil', 'creer_groupe', 'modifier_groupe', 'quitter_groupe', 'supprimer_groupe'].includes(fn)) {
         if (options.messagerie === null) return absente()
         const mg = (options.messagerie ??= {})
-        mg.messages ??= []; mg.lus ??= {}
+        mg.messages ??= []; mg.lus ??= {}; mg.groupes ??= []
         const visibles = (st: string) => acces.role !== 'franchise' || (acces.magasins ?? []).includes(st)
         const cle = acces.role === 'directeur' ? 'directeur' : acces.role === 'rr' ? `rr:${acces.rr}` : acces.role === 'coach' ? `coach:${acces.coach}` : `franchise:${acces.franchise}`
-        const version = mg.version ?? 3
+        const version = mg.version ?? 4
         const refus = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
         const nom = acces.role === 'franchise' ? acces.franchise : acces.role === 'coach' ? acces.coach : acces.role === 'rr' ? configRRFictive.drs.find((d) => d.id === acces.rr)?.name : configRRFictive.directeur.name
         if (fn === 'messagerie') {
           if (!['directeur', 'rr', 'coach', 'franchise'].includes(acces.role)) return refus()
-          return route.fulfill({ json: { moi: MOI, ...(version >= 2 ? { version } : {}), ...(version >= 3 ? { cle } : {}), reference: mg.reference ?? null, lus: mg.lus,
-            messages: mg.messages.filter((m) => (m.destinataire ? m.auteur === MOI || m.destinataire === cle : visibles(String(m.store)) && !(m.equipe && acces.role === 'franchise'))) } })
+          const mesGroupes = version >= 4 ? mg.groupes.filter((g) => g.membres.includes(cle)) : []
+          return route.fulfill({ json: { moi: MOI, ...(version >= 2 ? { version } : {}), ...(version >= 3 ? { cle } : {}), ...(version >= 4 ? { groupes: mesGroupes } : {}), reference: mg.reference ?? null, lus: mg.lus,
+            messages: mg.messages.filter((m) => (m.groupe ? version >= 4 && mesGroupes.some((g) => g.id === m.groupe) : m.destinataire ? m.auteur === MOI || m.destinataire === cle : visibles(String(m.store)) && !(m.equipe && acces.role === 'franchise'))) } })
+        }
+        // Groupes et fils (script 0018_echanges_groupes.sql) : magasin:<nom>, equipe:<nom>, groupe:<id>
+        if (['envoyer_fil', 'marquer_lu_fil', 'creer_groupe', 'modifier_groupe', 'quitter_groupe', 'supprimer_groupe'].includes(fn)) {
+          if (version < 4) return absente()
+          const prochain = () => Math.max(0, ...mg.messages!.map((m) => m.id)) + 1
+          if (fn === 'creer_groupe') {
+            if (acces.role !== 'directeur' && acces.role !== 'rr') return refus()
+            const g = { id: Math.max(0, ...mg.groupes!.map((x) => x.id)) + 1, nom: String(corps.p_nom ?? '').trim(), membres: [...new Set([...((corps.p_membres as string[]) ?? []), cle])], cree_par: cle }
+            mg.groupes!.push(g)
+            return route.fulfill({ json: g.id })
+          }
+          const g = mg.groupes!.find((x) => x.id === Number(corps.p_id))
+          if (fn === 'modifier_groupe' || fn === 'supprimer_groupe') {
+            if (!g || (acces.role !== 'directeur' && g.cree_par !== cle)) return refus()
+            if (fn === 'supprimer_groupe') { mg.groupes = mg.groupes!.filter((x) => x !== g); mg.messages = mg.messages!.filter((m) => m.groupe !== g.id) }
+            else { g.nom = String(corps.p_nom ?? g.nom).trim(); g.membres = [...new Set([...((corps.p_membres as string[]) ?? []), g.cree_par])] }
+            return route.fulfill({ status: 200, json: null })
+          }
+          if (fn === 'quitter_groupe') { if (g) g.membres = g.membres.filter((x) => x !== cle); return route.fulfill({ status: 200, json: null }) }
+          const fil = String(corps.p_fil ?? '')
+          const genre = fil.split(':')[0], valeur = fil.slice(genre.length + 1)
+          const groupe = genre === 'groupe' ? mg.groupes!.find((x) => x.id === Number(valeur)) : undefined
+          const permis = genre === 'magasin' ? visibles(valeur) : genre === 'equipe' ? acces.role !== 'franchise' && visibles(valeur) : !!groupe?.membres.includes(cle)
+          if (!valeur || !permis) return refus()
+          const lu = genre === 'groupe' ? `${fil}|messages` : `${valeur}|${genre === 'equipe' ? 'equipe' : 'messages'}`
+          const maintenant = new Date().toISOString()
+          mg.lus[lu] = maintenant
+          if (fn === 'marquer_lu_fil') return route.fulfill({ status: 200, json: null })
+          const mentions = ((corps.p_mentions as string[]) ?? []).filter((x) => (genre !== 'equipe' || !x.startsWith('franchise:')) && (!groupe || groupe.membres.includes(x)))
+          const id = prochain()
+          mg.messages.push({ id, store: groupe ? null : valeur, destinataire: groupe ? fil : null, groupe: groupe?.id ?? null, auteur: MOI, auteur_nom: nom ?? 'joseph', auteur_role: acces.role, auteur_cle: cle, texte: String(corps.p_texte ?? '').trim(), mentions, cree_le: maintenant, equipe: genre === 'equipe', pieces: piecesPropres(corps.p_pieces) })
+          return route.fulfill({ json: { id, cree_le: maintenant } })
         }
         if ((fn === 'envoyer_a' || fn === 'marquer_lu_personne') && version < 3) return absente()
         if (fn === 'envoyer_a') {

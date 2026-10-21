@@ -21,7 +21,6 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, Pastille, Puces, TitreSection, type Ton } from '../components/Social'
 import { analyser, suiviAlerte } from '../data/chiffres'
 import { useAuth } from '../auth/AuthContext'
-import { useMessagerie } from '../data/MessagerieContext'
 import { caseDe, tendance } from '../data/sante'
 import { anneeDe, suiviRythme, type LigneRythme } from '../data/visites'
 import { chargeA, coachA, niveauCharge } from '../data/charge'
@@ -39,14 +38,14 @@ import { PageHeader } from '../components/PageHeader'
 import { actionsEnCours, echeanceDate, enRetard } from '../data/actions'
 import { libellesEtatMandat, mandatsARenouveler } from '../data/associes'
 import { bilan, magasinsConcernes, phase } from '../data/campagnes'
-import { filDu, quand, type ElementFil, type GenreFil } from '../data/fil'
-import { useCommunicationsDuFil, type CommunicationsDuFil } from '../data/communications'
+import { quand, type ElementFil, type GenreFil } from '../data/fil'
+import type { CommunicationsDuFil } from '../data/communications'
 import { MarqueUne, ReactionsCommunication } from './Communications'
 import { useApercu } from '../auth/Apercu'
 import Snackbar from '@mui/material/Snackbar'
 import { VisuelFil } from '../components/MiseEnForme'
 import { ReactionsPratique } from '../components/BonnesPratiques'
-import { useReactionsPratiques, type ReactionsPratiques } from '../data/reactionsPratiques'
+import type { ReactionsPratiques } from '../data/reactionsPratiques'
 import { BandeCollante } from '../components/Collant'
 
 // Ordre de priorité fixé par Joseph le 14/10/2026
@@ -292,23 +291,13 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil 
   )
 }
 
+// Accueil : « À traiter » et « Cette semaine » ; le fil d'activité a laissé place aux Échanges (Joseph, 21/10/2026)
 function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Perimetre; sansParametres?: boolean }) {
-  const { messagerie } = useMessagerie()
   const items = aTraiter(reseau, p, sansParametres)
-  const noms = useMemo(() => new Set(magasinsDu(reseau, p).map((m) => m.nom)), [reseau, p])
-  const communications = useCommunicationsDuFil()
-  const reactionsPratiques = useReactionsPratiques()
-  const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications.liste, true), [reseau, noms, messagerie, communications.liste])
   return (
-    <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start' }}>
-      {/* PC : la colonne reste visible pendant qu'on fait défiler le fil, et défile seule si elle dépasse l'écran */}
-      <Box component="aside" aria-label="À traiter et cette semaine" sx={{ order: { xs: 1, md: 2 }, position: { md: 'sticky' }, top: { md: 88 }, maxHeight: { md: 'calc(100vh - 104px)' }, overflowY: { md: 'auto' }, overscrollBehavior: 'contain', scrollbarWidth: 'thin', mx: { md: -1 }, px: { md: 1 }, pb: { md: 1 } }}>
-        <BlocATraiter reseau={reseau} items={items} />
-        <BlocSemaine reseau={reseau} p={p} />
-      </Box>
-      <Box sx={{ order: { xs: 2, md: 1 }, minWidth: 0 }}>
-        <FilActivite elements={fil} jour={reseau.jour} communications={communications} reactionsPratiques={reactionsPratiques} />
-      </Box>
+    <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
+      <Box sx={{ minWidth: 0 }}><BlocATraiter reseau={reseau} items={items} /></Box>
+      <Box sx={{ minWidth: 0, '& > section': { mt: { md: 0 } } }}><BlocSemaine reseau={reseau} p={p} /></Box>
     </Box>
   )
 }

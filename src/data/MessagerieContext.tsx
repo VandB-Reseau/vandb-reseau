@@ -1,20 +1,31 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Piece } from '../lib/pieces'
-import { chargerMessagerie, envoyerMessage, marquerLu as marquerLuBase, marquerLuPersonne as marquerLuPersonneBase, supprimerMessage, type Lecture, type Messagerie, type Sujet } from './messagerie'
+import {
+  chargerMessagerie, cleFil, envoyerDansFil, envoyerMessage, marquerLu as marquerLuBase, marquerLuFil, supprimerMessage, type Fil, type Messagerie, type Sujet,
+} from './messagerie'
 
 interface EtatMessagerie {
   messagerie: Messagerie | null
   charge: boolean // premier chargement terminé
-  // repli : magasin de l'envoi tant que la base n'est pas passée aux échanges à deux
+  // Échange à deux. repli : magasin de l'envoi tant que la base n'est pas passée aux échanges à deux
   envoyer: (destinataire: string, texte: string, magasins: string[], repli: string | null, pieces?: Piece[]) => Promise<void>
+  // Groupe d'un magasin ou groupe libre ; mentions : clés des personnes citées
+  envoyerFil: (f: Fil, texte: string, mentions: string[], pieces?: Piece[]) => Promise<void>
   supprimer: (id: number) => Promise<void>
   marquerLu: (magasin: string, sujet: Sujet) => void
-  marquerLuPersonne: (cle: string) => void
-  lire: (l: Lecture) => void
+  lireFil: (f: Fil) => void
+  recharger: () => Promise<void>
 }
 
 const Ctx = createContext<EtatMessagerie | null>(null)
 const RAFRAICHISSEMENT = 60_000
+
+// Clé de lecture d'un fil dans « lus »
+function cleLecture(f: Fil, version: number): string {
+  if (f.genre === 'personne') return `personne:${f.cle}|messages`
+  if (f.genre === 'groupe') return `${cleFil(f)}|messages`
+  return `${f.magasin}|${f.equipe && version >= 4 ? 'equipe' : 'messages'}`
+}
 
 // Messages et lectures du compte, relus chaque minute et au retour sur l'onglet
 export function MessagerieProvider({ children }: { children: ReactNode }) {
@@ -44,20 +55,23 @@ export function MessagerieProvider({ children }: { children: ReactNode }) {
     marquerLuBase(magasin, sujet).catch(() => { /* reprise à la prochaine ouverture */ })
   }, [])
 
-  const marquerLuPersonne = useCallback((cle: string) => {
-    setMessagerie((m) => (m ? { ...m, lus: { ...m.lus, [`personne:${cle}|messages`]: new Date().toISOString() } } : m))
-    marquerLuPersonneBase(cle).catch(() => { /* reprise à la prochaine ouverture */ })
-  }, [])
-
-  const lire = useCallback((l: Lecture) => {
-    if (l.personne) marquerLuPersonne(l.personne)
-    else if (l.magasin) marquerLu(l.magasin, l.sujet)
-  }, [marquerLu, marquerLuPersonne])
-
   const version = messagerie?.version ?? 1
+  const lireFil = useCallback((f: Fil) => {
+    setMessagerie((m) => (m ? { ...m, lus: { ...m.lus, [cleLecture(f, m.version)]: new Date().toISOString() } } : m))
+    marquerLuFil(f, version).catch(() => { /* reprise à la prochaine ouverture */ })
+  }, [version])
+
   const envoyer = useCallback(async (destinataire: string, texte: string, magasins: string[], repli: string | null, pieces: Piece[] = []) => {
     try {
       await envoyerMessage(destinataire, texte, magasins, version, repli, pieces)
+    } finally {
+      await recharger()
+    }
+  }, [recharger, version])
+
+  const envoyerFil = useCallback(async (f: Fil, texte: string, mentions: string[], pieces: Piece[] = []) => {
+    try {
+      await envoyerDansFil(f, texte, mentions, pieces, version)
     } finally {
       await recharger()
     }
@@ -68,7 +82,7 @@ export function MessagerieProvider({ children }: { children: ReactNode }) {
     setMessagerie((m) => (m ? { ...m, messages: m.messages.filter((x) => x.id !== id) } : m))
   }, [])
 
-  return <Ctx.Provider value={{ messagerie, charge, envoyer, supprimer, marquerLu, marquerLuPersonne, lire }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ messagerie, charge, envoyer, envoyerFil, supprimer, marquerLu, lireFil, recharger }}>{children}</Ctx.Provider>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

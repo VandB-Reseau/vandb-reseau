@@ -134,3 +134,45 @@ INSERT INTO public.visits (store, visit_date, type, notes) VALUES ('Nice', curre
 SELECT pg_temp.attendre('Reprise : visite à venir sans compte rendu = prévue', (SELECT count(*) FROM public.visits WHERE id = :prevue AND prevue), 1);
 SELECT pg_temp.attendre('Reprise : visite passée = faite', (SELECT count(*) FROM public.visits WHERE visit_date <= current_date AND prevue), 0);
 SELECT pg_temp.attendre('Reprise : visite à venir avec compte rendu = faite', (SELECT count(*) FROM public.visits WHERE id = :ecrite AND prevue), 0);
+
+-- Échanges en groupe (0018) : deux fils par magasin, groupes libres (rejouée ici : la suite a fini dans l'ordre inverse)
+\ir ../migrations/0018_echanges_groupes.sql
+SELECT pg_temp.attendre('Journal : 0018 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0018'), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : écrit dans le groupe de son magasin', pg_temp.refuse('SELECT public.envoyer_fil(''magasin:Lille'', ''Bonjour à tous'')'), 0);
+SELECT pg_temp.attendre('Coach : écrit dans « Équipe seule » de son magasin', pg_temp.refuse('SELECT public.envoyer_fil(''equipe:Lille'', ''Entre nous'', ''{franchise:Franchisé Test}'')'), 0);
+SELECT pg_temp.attendre('Coach : pas dans le groupe d''un autre magasin', pg_temp.refuse('SELECT public.envoyer_fil(''magasin:Nice'', ''Intrus'')'), 1);
+SELECT pg_temp.attendre('Coach : ne crée pas de groupe libre', pg_temp.refuse('SELECT public.creer_groupe(''Coachs'', ''{}'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT public.creer_groupe('Équipe Nord', ARRAY['coach:Coach Nord']) AS groupe \gset
+SELECT pg_temp.attendre('Directeur : écrit dans son groupe', pg_temp.refuse('SELECT public.envoyer_fil(''groupe:' || :groupe || ''', ''Réunion lundi'')'), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : lit le groupe dont il est membre',
+  (SELECT count(*) FROM jsonb_array_elements(public.messagerie()->'messages') e WHERE (e->>'groupe')::bigint = :groupe), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Franchisé : n''écrit pas dans « Équipe seule »', pg_temp.refuse('SELECT public.envoyer_fil(''equipe:Lille'', ''Coucou'')'), 1);
+SELECT pg_temp.attendre('Franchisé : ne lit pas « Équipe seule »',
+  (SELECT count(*) FROM jsonb_array_elements(public.messagerie()->'messages') e WHERE (e->>'equipe')::boolean), 0);
+SELECT pg_temp.attendre('Franchisé : ne lit pas un groupe dont il n''est pas membre',
+  (SELECT count(*) FROM jsonb_array_elements(public.messagerie()->'messages') e WHERE e->>'groupe' IS NOT NULL), 0);
+SELECT pg_temp.attendre('Franchisé : lit le groupe de son magasin',
+  (SELECT count(*) FROM jsonb_array_elements(public.messagerie()->'messages') e WHERE e->>'store' = 'Lille' AND NOT (e->>'equipe')::boolean), 1);
+SELECT pg_temp.attendre('Franchisé : n''écrit pas dans un groupe libre', pg_temp.refuse('SELECT public.envoyer_fil(''groupe:' || :groupe || ''', ''Intrus'')'), 1);
+SELECT pg_temp.attendre('Franchisé : aucun accès direct aux groupes', pg_temp.refuse('SELECT count(*) FROM public.groupes'), 1);
+RESET ROLE;
+SELECT pg_temp.attendre('« Équipe seule » : le franchisé cité est retiré', (SELECT count(*) FROM public.messages WHERE equipe AND 'franchise:Franchisé Test' = ANY(mentions)), 0);
+SET ROLE service_role;
+SELECT pg_temp.attendre('Groupe du magasin : notification au franchisé',
+  (SELECT jsonb_array_length(public.notifications_a_envoyer('message', (SELECT array_agg(id) FROM public.messages WHERE store = 'Lille' AND NOT equipe AND texte = 'Bonjour à tous'), '00000000-0000-0000-0000-00000000000c'))), 1);
+SELECT pg_temp.attendre('« Équipe seule » : rien pour le franchisé',
+  (SELECT jsonb_array_length(public.notifications_a_envoyer('message', (SELECT array_agg(id) FROM public.messages WHERE equipe), '00000000-0000-0000-0000-00000000000c'))), 0);
+RESET ROLE;
+-- Rejouée après 0018, l'ancienne messagerie (0006) ne montre pas les messages d'un groupe libre au Directeur
+\ir ../migrations/0006_messagerie.sql
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('0006 rejouée : le message de groupe reste caché',
+  (SELECT count(*) FROM jsonb_array_elements(public.messagerie()->'messages') e WHERE e->>'texte' = 'Réunion lundi'), 0);
+RESET ROLE;
+\ir ../migrations/0018_echanges_groupes.sql

@@ -14,7 +14,7 @@ test.afterEach(async ({ page }) => {
 test('le titre de chaque onglet est à la même place, sans grand blanc au-dessus', async ({ page }) => {
   await seConnecter(page)
   const positions: number[] = []
-  for (const [chemin, titre] of [['/', 'Accueil'], ['/magasins', 'Magasins'], ['/visites', 'Visites'], ['/plus/sante', 'Santé du parc'], ['/communications', 'Communications'], ['/plus/agenda', 'Agenda']]) {
+  for (const [chemin, titre] of [['/', 'Accueil'], ['/magasins', 'Magasins'], ['/visites', 'Visites'], ['/plus/sante', 'Santé du parc'], ['/echanges?vue=taches', 'Échanges'], ['/plus/agenda', 'Agenda']]) {
     await page.goto(`./#${chemin}`)
     const h1 = page.getByRole('heading', { level: 1, name: titre })
     await expect(h1).toBeVisible()

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { seConnecter, textesTropPetits } from './supabase-simule'
 
-// Priorités 3 des propositions par onglet (Joseph, 21/10/2026) : colonne fixe de l'accueil, filtres actifs en puces,
+// Priorités 3 des propositions par onglet (Joseph, 21/10/2026) : filtres actifs en puces,
 // fiche magasin à trois pictos et un menu, historique des visites par mois, postes à pourvoir dans l'équipe
 
 test.beforeEach(async ({ page }) => {
@@ -11,19 +11,6 @@ test.beforeEach(async ({ page }) => {
 })
 test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
-})
-
-test('accueil sur PC : « À traiter » reste visible pendant qu’on fait défiler le fil', async ({ page, isMobile }) => {
-  test.skip(isMobile, 'Colonne de droite du PC')
-  await seConnecter(page)
-  const colonne = page.getByRole('complementary', { name: 'À traiter et cette semaine' })
-  await expect(colonne).toBeVisible()
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200)
-  const b = (await colonne.boundingBox())!
-  expect(b.y).toBeGreaterThanOrEqual(0)
-  expect(b.y).toBeLessThan(120)
-  expect(b.y + b.height).toBeLessThanOrEqual(page.viewportSize()!.height)
 })
 
 test('Magasins sur téléphone : les filtres actifs restent visibles en puces, une croix pour chacun', async ({ page, isMobile }, info) => {

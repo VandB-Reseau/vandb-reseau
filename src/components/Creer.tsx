@@ -38,7 +38,8 @@ const tuiles: { id: Choix | 'message'; libelle: string; icone: ReactElement; fon
 
 // Bouton « Créer » : visite, tâche, message, bonne pratique, absence ou événement, depuis n'importe quel écran.
 // rond : bouton noir au centre de la barre du bas (téléphone) ; sinon bouton en tête du menu latéral (PC)
-export function BoutonCreer({ rond = false }: { rond?: boolean }) {
+// entete : bouton rond blanc de la barre du haut (téléphone)
+export function BoutonCreer({ entete = false }: { entete?: boolean }) {
   const { reseau } = useReseau()
   const naviguer = useNavigate()
   const [ouvert, setOuvert] = useState(false)
@@ -47,14 +48,14 @@ export function BoutonCreer({ rond = false }: { rond?: boolean }) {
   const fermer = (msg?: string) => { setChoix(null); if (msg) setConfirmation(msg) }
   const choisir = (id: Choix | 'message') => {
     setOuvert(false)
-    if (id === 'message') naviguer('/messages')
+    if (id === 'message') naviguer('/echanges')
     else setChoix(id)
   }
   return (
     <>
-      {rond ? (
-        <ButtonBase aria-label="Créer" onClick={() => setOuvert(true)} sx={{ flex: 1, minWidth: 0, height: 64, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Box sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: 'primary.main', color: 'primary.contrastText', display: 'grid', placeItems: 'center' }}><AddOutlined sx={{ fontSize: 28 }} /></Box>
+      {entete ? (
+        <ButtonBase aria-label="Créer" onClick={() => setOuvert(true)} sx={{ width: 48, height: 48, flexShrink: 0, borderRadius: '50%', display: 'grid', placeItems: 'center' }}>
+          <Box sx={{ width: 36, height: 36, borderRadius: '50%', bgcolor: '#ffffff', color: '#000000', display: 'grid', placeItems: 'center' }}><AddOutlined /></Box>
         </ButtonBase>
       ) : (
         <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 52, px: 3, fontSize: '0.9375rem' }}>Créer</Button>

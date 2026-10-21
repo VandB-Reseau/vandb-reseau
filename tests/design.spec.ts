@@ -17,10 +17,11 @@ const sansDebordement = (l: Locator) => l.evaluate(() => document.documentElemen
 
 test('le bouton Créer propose visite, tâche, message, bonne pratique, absence et événement', async ({ page, isMobile }, info) => {
   await seConnecter(page)
+  // Téléphone : « + » dans l'en-tête, la barre du bas garde cinq onglets (Joseph, 21/10/2026)
   const creer = isMobile
-    ? page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Créer' })
+    ? page.getByRole('banner').getByRole('button', { name: 'Créer' })
     : page.getByRole('button', { name: 'Créer', exact: true })
-  if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Magasins', '', 'Visites', 'Santé'])
+  if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Magasins', /^Échanges/, 'Visites', /^Santé/])
   await creer.click()
   const d = page.getByRole('dialog', { name: 'Créer' })
   for (const t of ['Visite', 'Tâche', 'Message', 'Bonne pratique', 'Absence', 'Événement']) await expect(d.getByRole('button', { name: t })).toBeVisible()
@@ -38,7 +39,7 @@ test('le bouton Créer propose visite, tâche, message, bonne pratique, absence 
   await page.getByRole('dialog', { name: 'Ajouter une tâche' }).getByRole('button', { name: 'Annuler' }).click()
   await creer.click()
   await page.getByRole('dialog', { name: 'Créer' }).getByRole('button', { name: 'Message' }).click()
-  await expect(page).toHaveURL(/#\/messages/)
+  await expect(page).toHaveURL(/#\/echanges/)
 })
 
 test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ouvre sur le fil', async ({ page }, info) => {

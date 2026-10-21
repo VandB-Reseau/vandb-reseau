@@ -160,7 +160,8 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, autreListe, ajou
   )
 }
 
-export function PageTaches() {
+// entete : en-tête fourni par l'onglet Échanges, avec le titre d'une autre liste que la sienne (null : la sienne)
+export function PageTaches({ entete }: { entete?: (titre: string | null) => ReactNode } = {}) {
   const { profil } = useAuth()
   const { reseau } = useReseau()
   const [params, setParams] = useSearchParams()
@@ -176,7 +177,10 @@ export function PageTaches() {
   const noms = reseau ? (impose ? magasinsDu(reseau, impose) : reseau.magasins).map((m) => m.nom).sort((a, b) => a.localeCompare(b, 'fr')) : []
   return (
     <>
-      <PageHeader titre={!porteur || porteur === moi ? 'Mes tâches' : porteur === FRANCHISES ? 'Tâches des franchisés' : `Tâches de ${porteur}`} />
+      {(() => {
+        const autre = !porteur || porteur === moi ? null : porteur === FRANCHISES ? 'Tâches des franchisés' : `Tâches de ${porteur}`
+        return entete ? entete(autre) : <PageHeader titre={autre ?? 'Mes tâches'} />
+      })()}
       <AvecReseau>{(r) => (
         <Liste reseau={r} noms={noms} porteur={porteur} signaler={setMessage} autreListe={porteur !== moi}
           choixPorteur={choixPossible ? <ChoixPorteur reseau={r} moi={moi} valeur={porteur} directeur={!impose} onChange={changer} /> : undefined}

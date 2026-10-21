@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 21/10/2026 (migration `0017`).
+Mis à jour le 21/10/2026 (migration `0018`).
 
 ## Principes
 
@@ -94,8 +94,9 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 
 | Table | Contenu |
 | --- | --- |
-| `messages` | Messages : à deux (`destinataire`), ou anciens messages par magasin (`store`, `lot`, `equipe`) ; `pieces` = fichiers joints |
-| `messages_lus` | Dernière lecture de chaque compte, par magasin ou personne et par sujet |
+| `messages` | Messages : à deux (`destinataire`) ; groupe d'un magasin (`store`, avec `equipe` = fil « Équipe seule », jamais lu par le franchisé) ; groupe libre (`groupe`, et `destinataire` = `groupe:<id>` pour qu'une ancienne version de `messagerie` ne le montre qu'à son auteur, 0018) ; `pieces` = fichiers joints |
+| `messages_lus` | Dernière lecture de chaque compte, par magasin, personne ou groupe (`groupe:<id>`) et par sujet (`messages`, `visites`, `equipe` pour « Équipe seule ») |
+| `groupes` | Groupes libres (0018) : nom, `membres` (clés des personnes : `directeur`, `rr:<id>`, `coach:<nom>`, `franchise:<nom>`), créateur. Créés par le Directeur ou un RR ; un RR n'invite que l'équipe et les franchisés de ses magasins |
 | `communications` | Communications du réseau ; `magasins` vide = tout le réseau ; `html` = version mise en forme ; `a_la_une` = en tête jusqu'à ce jour inclus (0014) |
 | `communications_pouces`, `communications_commentaires` | J'aime et commentaires des communications |
 | `communications_lectures` | Première lecture d'une communication par chaque compte franchisé |
@@ -111,6 +112,7 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 Le compte connecté s'abonne ou se désabonne par `abonner_appareil` / `desabonner_appareil`. Seule la fonction
 Supabase « notifier » (`supabase/functions/notifier/index.ts`, clé `service_role` côté Supabase) lit ces tables et
 appelle `notifications_a_envoyer` : destinataire d'un message privé de moins de 10 minutes écrit par l'appelant ;
+groupe d'un magasin (0018) : franchisés (sauf « Équipe seule ») et Coach du magasin, plus le RR ou le Directeur s'ils sont cités ou ont déjà écrit dans le fil ; groupe libre : tous ses membres ;
 franchisés du magasin pour un compte rendu de visite des 7 derniers jours saisi par l'équipe (pas les appels).
 
 ## Clés d'`app_config`
@@ -146,6 +148,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Espace franchisé | `espace_franchise`, `reperes_reseau` (interne), `reperes_equipe` | 0004, 0005 |
 | Actions du franchisé | `franchise_du_magasin`, `ajouter_action_franchise`, `marquer_action_franchise` | 0007 |
 | Messagerie | `messagerie`, `envoyer_message`, `envoyer_a`, `marquer_lu`, `marquer_lu_personne`, `supprimer_message`, `renommer_magasin_messages`, `pieces_propres` | 0006 |
+| Échanges en groupe | `peut_inviter`, `creer_groupe`, `modifier_groupe`, `supprimer_groupe`, `quitter_groupe`, `peut_ecrire_fil`, `envoyer_fil`, `marquer_lu_fil`, `compte_lit_magasin` (interne) ; `messagerie` renvoie aussi les groupes (version 4) | 0018 |
 | Communications | `communications`, `communication_visible`, `publier_communication`, `supprimer_communication`, `basculer_pouce_communication`, `commenter_communication`, `supprimer_commentaire_communication` | 0008 |
 | Lecture des communications | `lire_communications` (franchisé), `lectures_communications` (Directeur, Responsable Régional pour ses magasins) | 0013 |
 | Communication à la une | `mettre_a_la_une` (auteur ou Directeur, date entre aujourd'hui et un an), `a_la_une` (communications visibles encore à la une) | 0014 |

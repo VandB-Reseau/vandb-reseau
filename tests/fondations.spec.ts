@@ -5,6 +5,7 @@ import { COMPTE, seConnecter, simulerSupabase, textesTropPetits } from './supaba
 const principales = [
   { nom: 'Accueil', court: 'Accueil' },
   { nom: 'Magasins', court: 'Magasins' },
+  { nom: 'Échanges', court: 'Échanges' },
   { nom: 'Visites', court: 'Visites' },
   { nom: 'Santé du parc', court: 'Santé' },
 ]
@@ -35,7 +36,7 @@ test('après connexion, l’accueil montre les priorités dans l’ordre choisi'
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
   await expect(aTraiter).toBeVisible()
   await expect(page.getByRole('region', { name: 'Cette semaine' })).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Fil de mes magasins' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Fil de mes magasins' })).toHaveCount(0)
   // Cinq lignes d'abord, puis tout
   await expect(aTraiter.getByRole('link')).toHaveCount(5)
   await aTraiter.getByRole('button', { name: /^Voir les \d+$/ }).click()
@@ -60,9 +61,11 @@ test('après connexion, l’accueil montre les priorités dans l’ordre choisi'
 test('chaque destination est accessible depuis la navigation', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button', { name: 'Créer' })).toBeVisible()
+  // Téléphone : « + » dans l'en-tête ; PC : en tête du menu latéral
+  await expect(page.getByRole('button', { name: 'Créer', exact: true })).toBeVisible()
   for (const { nom, court } of principales) {
-    await nav.getByRole('button', { name: isMobile ? court : nom, exact: true }).click()
+    // Échanges peut porter son nombre de nouveautés (« Échanges : 2 nouveautés »)
+    await nav.getByRole('button', { name: new RegExp(`^${isMobile ? court : nom}( :.*)?$`) }).click()
     await expect(page.getByRole('heading', { level: 1, name: nom, exact: true })).toBeAttached()
     if (nom !== 'Accueil') await expect(page.getByRole('heading', { level: 1, name: nom, exact: true })).toBeVisible()
   }
@@ -101,7 +104,9 @@ test('zones tactiles d’au moins 48 px sur téléphone', async ({ page, isMobil
   await seConnecter(page)
   const boutons = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')
   await expect(boutons).toHaveCount(5)
-  await expect(boutons.nth(2)).toHaveAccessibleName('Créer')
+  await expect(boutons.nth(2)).toHaveAccessibleName(/^Échanges/)
+  const creer = (await page.getByRole('banner').getByRole('button', { name: 'Créer' }).boundingBox())!
+  expect(creer.height).toBeGreaterThanOrEqual(48)
   for (const b of await boutons.all()) {
     const box = await b.boundingBox()
     expect(box!.height).toBeGreaterThanOrEqual(48)
@@ -148,7 +153,7 @@ test('Équipe ouvre le groupe Paramètres', async ({ page, isMobile }) => {
     // Juste sous le titre « Paramètres » ; la partie classique (au-dessus) ne le contient pas
     const titre = menu.locator('li', { hasText: /^Paramètres$/ }).first()
     await expect(titre.locator('xpath=following-sibling::*[1]')).toHaveText('Équipe')
-    await expect(menu.getByRole('menuitem').first()).toHaveText('Communications')
+    await expect(menu.getByRole('menuitem').first()).toHaveText('Agenda')
   } else {
     const groupe = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('list').filter({ hasText: 'Paramètres' }).last()
     await expect(groupe.getByRole('button').first()).toHaveText('Équipe')

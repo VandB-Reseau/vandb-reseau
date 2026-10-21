@@ -9,6 +9,14 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Échanges façon messagerie : un onglet « Échanges » remplace la cloche, Messages, Tâches et Communications.
+  Discussions | Mes tâches ; un groupe par magasin avec deux fils, « Avec le franchisé » et « Équipe seule » ;
+  comptes rendus et tâches affichés dans le fil ; « En faire une tâche » depuis un message ; groupes libres créés
+  par le Directeur ou un RR ; canal « Réseau V and B » épinglé (les communications) ; messages à deux inchangés.
+  Prévenus : franchisé et Coach de tout, RR et Directeur s'ils sont cités ou ont déjà écrit dans le fil.
+  Barre du bas téléphone : Accueil · Magasins · Échanges · Visites · Santé, « + » dans l'en-tête. Accueil sans fil
+  d'activité. Anciennes adresses redirigées (`src/pages/Echanges.tsx`, test `echanges.spec.ts`).
+  **Base : `0018_echanges_groupes`.**
 - Agenda interactif : cliquer dans une case (ou sur « + » du jour) propose Visite, Absence ou Événement à cette date
   (visite à venir = planifiée, visite passée = compte rendu) ; sur PC, glisser un événement, une absence ou une visite
   prévue change sa date, tirer le bord droit d'un événement ou d'une absence change sa fin ; sur téléphone, « + » sur

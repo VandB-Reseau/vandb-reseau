@@ -26,8 +26,8 @@ import Snackbar from '@mui/material/Snackbar'
 import { DialogMotDePasse } from '../components/DialogMotDePasse'
 import { Logo } from '../components/Logo'
 import { RechercheGlobale } from '../components/RechercheGlobale'
-import { BoutonMessages, Cloche } from '../components/Messages'
-import { BoutonTaches } from '../components/Actions'
+import Badge from '@mui/material/Badge'
+import { useTotalEchanges } from '../data/echanges'
 import { BoutonCreer } from '../components/Creer'
 import { useInstallation } from '../lib/installation'
 import { brandStripe } from '../theme/theme'
@@ -112,14 +112,23 @@ function MenuCompte({ liens = [] }: { liens?: { titre?: string; destinations: De
   )
 }
 
-function MenuLateral({ franchise, sansParametres }: { franchise?: Destination[]; sansParametres?: boolean }) {
+// Icône d'une destination ; Échanges porte le nombre de nouveautés
+function Icone({ d, actif, total }: { d: Destination; actif: boolean; total: number }) {
+  const icone = actif ? d.iconeActive ?? d.icone : d.icone
+  if (d.chemin !== '/echanges' || !total) return icone
+  return <Badge color="error" badgeContent={total} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}>{icone}</Badge>
+}
+const libelleAccessible = (d: Destination, total: number) => (d.chemin === '/echanges' && total ? `${d.libelle} : ${total} nouveauté${total > 1 ? 's' : ''}` : undefined)
+
+function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: Destination[]; sansParametres?: boolean; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
+  const total = useTotalEchanges(sansCompteur)
   const item = (d: Destination) => {
     const actif = estActive(d, pathname)
     return (
-      <ListItemButton key={d.chemin} selected={actif} onClick={() => naviguer(d.chemin)} sx={{ mx: 1.5, mb: 0.5, minHeight: 48 }}>
-        <ListItemIcon sx={{ minWidth: 40, color: actif ? 'text.primary' : 'text.secondary' }}>{actif ? d.iconeActive ?? d.icone : d.icone}</ListItemIcon>
+      <ListItemButton key={d.chemin} selected={actif} onClick={() => naviguer(d.chemin)} aria-label={libelleAccessible(d, total)} sx={{ mx: 1.5, mb: 0.5, minHeight: 48 }}>
+        <ListItemIcon sx={{ minWidth: 40, color: actif ? 'text.primary' : 'text.secondary' }}><Icone d={d} actif={actif} total={total} /></ListItemIcon>
         <ListItemText primary={d.libelle} slotProps={{ primary: { sx: { fontWeight: actif ? 600 : 500, fontSize: '0.9375rem' } } }} />
       </ListItemButton>
     )
@@ -146,17 +155,18 @@ function MenuLateral({ franchise, sansParametres }: { franchise?: Destination[];
 
 const HAUTEUR_BARRE = 64
 
-function BarreBasse({ franchise }: { franchise?: Destination[] }) {
+function BarreBasse({ franchise, sansCompteur }: { franchise?: Destination[]; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
+  const total = useTotalEchanges(sansCompteur)
   const item = (d: Destination) => {
     const actif = estActive(d, pathname)
     return (
-      <ButtonBase key={d.chemin} onClick={() => naviguer(d.chemin)} aria-current={actif ? 'page' : undefined}
+      <ButtonBase key={d.chemin} onClick={() => naviguer(d.chemin)} aria-current={actif ? 'page' : undefined} aria-label={libelleAccessible(d, total)}
         sx={{ flex: 1, minWidth: 0, height: HAUTEUR_BARRE, borderRadius: 999, color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.75rem', fontWeight: actif ? 600 : 500 }}>
         {/* Onglet actif posé sur une pastille, comme les barres en verre d'iOS */}
         <Box sx={{ width: '100%', height: HAUTEUR_BARRE - 10, borderRadius: 999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.25, ...(actif ? { bgcolor: 'action.selected' } : {}) }}>
-          {actif ? d.iconeActive ?? d.icone : d.icone}
+          <Icone d={d} actif={actif} total={total} />
           <Box component="span" sx={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', px: 0.5 }}>{d.court ?? d.libelle}</Box>
         </Box>
       </ButtonBase>
@@ -179,19 +189,15 @@ function BarreBasse({ franchise }: { franchise?: Destination[] }) {
         }),
       })}>
       <Box sx={{ display: 'flex', height: HAUTEUR_BARRE }}>
-        {franchise ? franchise.map(item) : <>
-          {principales.slice(0, 2).map(item)}
-          <BoutonCreer rond />
-          {principales.slice(2).map(item)}
-        </>}
+        {(franchise ?? principales).map(item)}
       </Box>
     </Paper>
   )
 }
 
 // franchise : navigation réduite de l'espace franchisé (sans recherche ni Paramètres) ; bandeau : sous l'en-tête ;
-// sansParametres : Coach ou Responsable Régional ; sansCloche : aperçu de l'espace d'un franchisé, sans ses notifications
-export function AppShell({ children, franchise, bandeau, sansParametres = false, sansCloche = false }: { children: ReactNode; franchise?: Destination[]; bandeau?: ReactNode; sansParametres?: boolean; sansCloche?: boolean }) {
+// sansParametres : Coach ou Responsable Régional ; sansCompteur : aperçu de l'espace d'un franchisé, sans ses nouveautés
+export function AppShell({ children, franchise, bandeau, sansParametres = false, sansCompteur = false }: { children: ReactNode; franchise?: Destination[]; bandeau?: ReactNode; sansParametres?: boolean; sansCompteur?: boolean }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const { pathname } = useLocation()
@@ -208,7 +214,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
     document.addEventListener('focusout', sortie)
     return () => { document.removeEventListener('focusin', suivre); document.removeEventListener('focusout', sortie) }
   }, [])
-  const conversation = /^\/messages\/./.test(pathname)
+  const conversation = /^\/echanges\/(magasin|groupe|personne)\/./.test(pathname)
   const sansBarre = surPC || saisie || conversation
 
   return (
@@ -222,22 +228,20 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
           <Box sx={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center' }}>
             {!franchise && <RechercheGlobale surFonce court={!surPC} />}
           </Box>
-          <BoutonTaches />
-          {!sansCloche && <BoutonMessages />}
-          {!sansCloche && <Cloche />}
+          {!franchise && !surPC && <BoutonCreer entete />}
           <MenuCompte liens={surPC || franchise ? [] : [{ destinations: secondaires }, ...(sansParametres ? [] : [{ titre: 'Paramètres', destinations: parametres }])]} />
         </Toolbar>
         <Box aria-hidden sx={{ height: 4, background: brandStripe }} />
       </AppBar>
 
-      {surPC && <MenuLateral franchise={franchise} sansParametres={sansParametres} />}
+      {surPC && <MenuLateral franchise={franchise} sansParametres={sansParametres} sansCompteur={sansCompteur} />}
 
       <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: '72px' }, pb: surPC ? 4 : conversation ? 0 : 'calc(96px + env(safe-area-inset-bottom))' }}>
         {bandeau}
         <Box sx={{ maxWidth: 1280, mx: 'auto', px: { xs: 2, sm: 3, md: 5 }, pt: { xs: 1.5, md: 3 } }}>{children}</Box>
       </Box>
 
-      {!sansBarre && <BarreBasse franchise={franchise} />}
+      {!sansBarre && <BarreBasse franchise={franchise} sansCompteur={sansCompteur} />}
     </Box>
   )
 }

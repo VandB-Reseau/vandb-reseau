@@ -145,7 +145,8 @@ export interface Document { label: string; url: string }
 // faitePar : qui l'a cochée faite ; pieces : photos et fichiers joints
 export interface ActionPlan { id?: string; action: string; porteur: string; echeance: string; faite?: string; faitePar?: string; pieces?: Piece[] }
 // Action ajoutée hors visite, sur un magasin (app_config, clé actions, par magasin)
-export interface ActionLibre extends ActionPlan { id: string; creeLe: string; auteur?: string }
+// fil : tâche née dans « Équipe seule » (sa carte s'affiche dans ce fil) ; message : message d'où elle vient
+export interface ActionLibre extends ActionPlan { id: string; creeLe: string; auteur?: string; fil?: 'equipe'; message?: number }
 
 export interface Visite {
   id: number | null
