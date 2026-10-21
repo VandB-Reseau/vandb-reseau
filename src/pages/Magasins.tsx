@@ -24,7 +24,8 @@ import { filtrer, filtresDepuisUrl, filtresVersUrl, libellesAlerte, type Alerte,
 import { VuesMagasins } from '../components/VuesMagasins'
 import { analyser } from '../data/chiffres'
 import { anneeDe, suiviRythme } from '../data/visites'
-import { statutLibelle, type Reseau } from '../data/modele'
+import { statutLibelle, type Magasin, type Reseau } from '../data/modele'
+import { BoutonExporter } from '../components/Exporter'
 
 // Alertes de chaque magasin : chiffres (décroche, à surveiller) et visite attendue
 function alertesDuReseau(reseau: Reseau): Map<string, Alerte[]> {
@@ -99,7 +100,20 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
               </Suspense>
             ) : (
               <>
-                <Puces label="Trier par" valeur={tri} options={trisMagasins} onChange={(v) => { const p = new URLSearchParams(params); if (v === 'nom') p.delete('tri'); else p.set('tri', v); setParams(p, { replace: true }) }} />
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Puces label="Trier par" valeur={tri} options={trisMagasins} onChange={(v) => { const p = new URLSearchParams(params); if (v === 'nom') p.delete('tri'); else p.set('tri', v); setParams(p, { replace: true }) }} />
+                  </Box>
+                  <BoutonExporter lignes={resultats} fichier="Magasins" feuille="Magasins" colonnes={[
+                    { entete: 'Magasin', valeur: (m: Magasin) => m.nom, largeur: 22 }, { entete: 'Code', valeur: (m: Magasin) => m.code },
+                    { entete: 'Ville', valeur: (m: Magasin) => m.ville }, { entete: 'Département', valeur: (m: Magasin) => m.departement },
+                    { entete: 'Statut', valeur: (m: Magasin) => statutLibelle[m.statut] }, { entete: 'Type', valeur: (m: Magasin) => (m.franchise ? 'Franchisé' : 'Intégré') },
+                    { entete: 'Coach', valeur: (m: Magasin) => m.coach, largeur: 20 }, { entete: 'Responsable Régional', valeur: (m: Magasin) => m.rr?.nom, largeur: 22 },
+                    { entete: 'Franchisé', valeur: (m: Magasin) => (m.franchise ? m.responsable?.nom : ''), largeur: 22 },
+                    { entete: 'Ouverture', valeur: (m: Magasin) => (m.ouvertureConnue ? m.ouverture : '') },
+                    { entete: 'Alertes', valeur: (m: Magasin) => parAlerte(m.nom).map((a) => libellesAlerte[a]).join(', '), largeur: 30 },
+                  ]} />
+                </Box>
                 <ListeMagasins magasins={resultats} tri={tri} suivis={enTete} />
               </>
             )}

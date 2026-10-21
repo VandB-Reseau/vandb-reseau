@@ -87,6 +87,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 - Magasins : filtre Alerte (Décroche, À surveiller, Pas vu depuis longtemps) ; une combinaison de recherche, filtres
   et tri s'enregistre sous un nom (« Enregistrer la vue ») et revient en puce au-dessus de la liste. Vues gardées sur
   l'appareil (`src/lib/vues.ts`). Pas de migration.
+- Exporter : Magasins, historique des Visites et Santé du parc (Évaluer, Déploiements) partent en Excel avec exactement
+  les lignes affichées, filtres compris ; Directeur et Responsables Régionaux seulement, sans téléphone ni courriel
+  (`src/components/Exporter.tsx`). Pas de migration.
 - Santé du parc, tableaux Évaluer et Déploiements (PC) : « Voir plus » est au bas du tableau et les lignes
   ajoutées apparaissent aussitôt ; chaque critère, la case et chaque thématique se trient (du plus haut au plus bas,
   puis l'inverse) et se filtrent par valeur (Faible, Moyen, Fort, non noté ; options de la thématique, non renseigné)

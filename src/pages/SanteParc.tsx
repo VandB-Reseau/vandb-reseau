@@ -59,6 +59,7 @@ import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
 import { analyser as analyserCA, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, libelleMoisCourt, courbeCA, formatKEuros, type StatutAlerte } from '../data/chiffres'
 import type { Magasin, Reseau } from '../data/modele'
+import { BoutonExporter } from '../components/Exporter'
 
 // Filtres communs : recherche, Responsable Régional, Coach
 function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
@@ -495,9 +496,11 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
         { v: 'tous', libelle: `Tous · ${magasins.length}` },
         { v: 'completer', libelle: `À compléter · ${aCompleter.length}` },
       ]} />
-      <TitreSection nombre={liste.length} action={surPC && <>
-        {tableauVisible && (tri || filtresActifs) && <Button onClick={() => { setTri(null); setFiltres({}) }} sx={{ minHeight: 40 }}>Effacer tri et filtres</Button>}
-        <ChoixAffichage valeur={affichage} onChange={setAffichage} />
+      <TitreSection nombre={liste.length} action={<>
+        <BoutonExporter lignes={liste} fichier={partie === 'notes' ? 'Sante du parc' : 'Deploiements'} feuille={partie === 'notes' ? 'Santé du parc' : 'Déploiements'}
+          colonnes={toutes.map((c) => ({ entete: c.libelle, valeur: (m: Magasin) => { const v = c.valeur(m); return v === SANS_VALEUR ? '' : c.options.find((o) => o.valeur === v)?.libelle ?? v }, largeur: c.id === 'magasin' ? 22 : undefined }))} />
+        {surPC && tableauVisible && (tri || filtresActifs) && <Button onClick={() => { setTri(null); setFiltres({}) }} sx={{ minHeight: 40 }}>Effacer tri et filtres</Button>}
+        {surPC && <ChoixAffichage valeur={affichage} onChange={setAffichage} />}
       </>}>Magasins</TitreSection>
       {base.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre={etat === 'completer' ? 'Rien à compléter' : 'Aucun magasin'} texte={etat === 'completer' ? 'Tous les magasins affichés sont renseignés.' : 'Aucun magasin ne correspond à ces filtres.'} />
         : tableauVisible ? <Box ref={cadre}>{tableau({ visibles, sel, entete })}</Box> : (
