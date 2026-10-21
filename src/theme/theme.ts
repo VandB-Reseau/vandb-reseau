@@ -123,7 +123,10 @@ export const theme = createTheme({
     MuiTableContainer: {
       styleOverrides: {
         root: ({ theme }) => ({
-          maxHeight: 'calc(100dvh - 136px)',
+          // Sous la barre du haut et les bandes collantes (onglets, filtres) : la ligne des titres reste visible
+          maxHeight: 'calc(100dvh - 120px - var(--onglets, 0px) - var(--filtres, 0px))',
+          // Une carte (Card, Paper) masque ce qui dépasse : le tableau doit pouvoir défiler dans sa hauteur
+          '&.MuiTableContainer-root': { overflow: 'auto' },
           [theme.breakpoints.down('md')]: { maxHeight: 'calc(100dvh - 200px)' },
           '@media print': { maxHeight: 'none' },
         }),
