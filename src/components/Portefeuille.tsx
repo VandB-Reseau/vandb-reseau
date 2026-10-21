@@ -47,17 +47,33 @@ export function ProfilPersonne({ nom, lignes, pastille, compteurs, telephone, li
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const uneLigne = surPC ? {} : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const
   return (
-    <Card sx={{ border: 0, p: { xs: 1.5, md: 3 }, mb: { xs: 1.5, md: 2 } }}>
-      {/* Les pictos passent sous le nom quand la ligne est trop étroite (téléphone, fiche avec beaucoup d'actions) */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: { xs: 1.5, md: 2 }, alignItems: 'center' }}>
+    <Card sx={{ border: 0, p: { xs: 1.5, md: 2 }, mb: { xs: 1.5, md: 2 } }}>
+      {/* Sur PC, les compteurs se rangent sur la ligne du nom, entre les infos et les pictos ; les pictos passent dessous quand la ligne est trop étroite */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: { xs: 1.5, md: 2 }, rowGap: { xs: 0, md: 1 }, alignItems: 'center' }}>
         {!surPC && retour
           ? <IconButton onClick={retour.aller} aria-label={retour.libelle} sx={{ width: 48, height: 48, ml: -1, mr: -1, flexShrink: 0 }}><ArrowBack /></IconButton>
-          : <Initiales nom={nom} taille={surPC ? 72 : 44} />}
+          : <Initiales nom={nom} taille={surPC ? 56 : 44} />}
         <Box sx={{ flex: '1 1 140px', minWidth: 0 }}>
-          <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.75rem' }, ...uneLigne }}>{nom}</Typography>
+          <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.5rem' }, ...uneLigne }}>{nom}</Typography>
           {lignes.filter(Boolean).map((l) => <Typography key={l} variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8125rem', md: undefined }, ...uneLigne }}>{l}</Typography>)}
+          {surPC && (pastille || detail) && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.5, rowGap: 0.5, mt: 0.5 }}>
+              {pastille && <Pastille ton={pastille.ton}>{pastille.libelle}</Pastille>}
+              {detail && <Typography variant="body2">{detail}</Typography>}
+            </Box>
+          )}
         </Box>
-        <Box sx={{ display: 'flex', flexShrink: 0, alignSelf: 'flex-start', ml: 'auto', mr: { xs: -1, md: 0 } }}>
+        {surPC && (
+          <Box sx={{ display: 'flex', flexShrink: 0, '& > * + *': { borderLeft: '1px solid', borderColor: 'divider' } }} role="group" aria-label="En bref">
+            {compteurs.map((c) => (
+              <Box key={c.libelle} sx={{ width: 120, textAlign: 'center', px: 1 }}>
+                <Typography sx={{ fontSize: '1.25rem', fontWeight: 700, lineHeight: 1.2, color: c.couleur, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.valeur}</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.libelle}</Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
+        <Box sx={{ display: 'flex', flexShrink: 0, alignSelf: { xs: 'flex-start', md: 'center' }, ml: 'auto', mr: { xs: -1, md: 0 } }}>
           <Bulle titre={telephone ? `${appel} · ${telephone}` : appel}>
             {telephone
               ? <IconButton href={telLien(telephone)} aria-label={appel} sx={rond}><CallOutlined /></IconButton>
@@ -69,20 +85,7 @@ export function ProfilPersonne({ nom, lignes, pastille, compteurs, telephone, li
           {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label="Modifier" sx={rond}><EditOutlined /></IconButton></Tooltip>}
         </Box>
       </Box>
-      {surPC ? (
-        <>
-          {pastille && <Box sx={{ mt: 1.5 }}><Pastille ton={pastille.ton}>{pastille.libelle}</Pastille></Box>}
-          <Box sx={{ display: 'flex', mt: 2, py: 1, borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', '& > * + *': { borderLeft: '1px solid', borderColor: 'divider' } }} role="group" aria-label="En bref">
-            {compteurs.map((c) => (
-              <Box key={c.libelle} sx={{ flex: 1, minWidth: 0, textAlign: 'center', px: 0.5 }}>
-                <Typography sx={{ fontSize: '1.25rem', fontWeight: 700, lineHeight: 1.2, color: c.couleur, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.valeur}</Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{c.libelle}</Typography>
-              </Box>
-            ))}
-          </Box>
-          {detail && <Typography variant="body2" sx={{ mt: 1.5 }}>{detail}</Typography>}
-        </>
-      ) : (
+      {!surPC && (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.5, rowGap: 0.5, mt: 1 }} role="group" aria-label="En bref">
           {pastille && <Pastille ton={pastille.ton}>{pastille.libelle}</Pastille>}
           {compteurs.map((c) => (
