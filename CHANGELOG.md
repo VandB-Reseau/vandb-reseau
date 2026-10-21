@@ -71,6 +71,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 - Tableaux sur PC : le cadre du tableau défile vraiment (une carte masquait ce qui dépassait, « Voir plus » était
   hors d'atteinte à la souris) et sa hauteur tient compte des onglets et filtres collés en haut : la ligne des
   titres reste visible
+- Tableaux Évaluer et Déploiements : « Voir plus » sous le tableau, toujours visible ; le tableau défile jusqu'aux
+  lignes ajoutées
 
 ## 21/10/2026
 

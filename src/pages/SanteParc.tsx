@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { normaliser } from '../data/filtres'
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
@@ -432,7 +432,7 @@ function PanneauSaisie({ reseau, liste, nom, aller, fermer, saisie, partie, surP
 type Etat = 'tous' | 'completer'
 
 // Liste commune d'Évaluer et de Déploiements : puces « Tous / À compléter », lignes par tranches, tableau à la demande sur PC
-type Tableau = (p: { visibles: Magasin[]; sel: ReturnType<typeof useSelection>; entete: EnTete; pied: ReactNode }) => ReactNode
+type Tableau = (p: { visibles: Magasin[]; sel: ReturnType<typeof useSelection>; entete: EnTete }) => ReactNode
 
 function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne, tableau, cibles, colonnes }: {
   reseau: Reseau; magasins: Magasin[]; incomplet: (m: Magasin) => boolean; partie: 'notes' | 'deploiements'; saisie: Saisie; surPC: boolean
@@ -470,8 +470,18 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
       </TableCell>
     )
   }
-  // Dans le tableau, « Voir plus » est en bas de la zone qui défile : les lignes ajoutées apparaissent juste au-dessus
-  const pied = suite && <Box sx={{ position: 'sticky', left: 0, pb: 1.5 }}>{suite}</Box>
+  // « Voir plus » reste sous le tableau ; le cadre défile jusqu'aux lignes ajoutées
+  const cadre = useRef<HTMLDivElement>(null)
+  const avant = useRef(visibles.length)
+  useEffect(() => {
+    const n = avant.current
+    avant.current = visibles.length
+    if (!tableauVisible || visibles.length <= n || n === 0) return
+    const zone = cadre.current?.querySelector<HTMLElement>('.MuiTableContainer-root')
+    const ligne = zone?.querySelectorAll<HTMLElement>('tbody tr')[n]
+    const entete = zone?.querySelector('thead')
+    if (zone && ligne) zone.scrollTop += ligne.getBoundingClientRect().top - zone.getBoundingClientRect().top - (entete?.getBoundingClientRect().height ?? 0)
+  }, [visibles.length, tableauVisible])
   // Tous les magasins écartés par les filtres : message sous le tableau, hors de la zone qui défile
   const aucun = tableauVisible && base.length > 0 && liste.length === 0 && (
     <Box sx={{ p: 3, textAlign: 'center' }}>
@@ -490,13 +500,13 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
         <ChoixAffichage valeur={affichage} onChange={setAffichage} />
       </>}>Magasins</TitreSection>
       {base.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre={etat === 'completer' ? 'Rien à compléter' : 'Aucun magasin'} texte={etat === 'completer' ? 'Tous les magasins affichés sont renseignés.' : 'Aucun magasin ne correspond à ces filtres.'} />
-        : tableauVisible ? tableau({ visibles, sel, entete, pied }) : (
+        : tableauVisible ? <Box ref={cadre}>{tableau({ visibles, sel, entete })}</Box> : (
           <CarteLignes label={partie === 'notes' ? 'Évaluation des magasins' : 'Déploiements par magasin'}>
             {visibles.map((m) => { const l = ligne(m); return <LigneSaisie key={m.nom} m={m} detail={l.detail} fin={l.fin} coche={sel.choisis.has(m.nom)} basculer={sel.basculer} ouvrir={ouvrir} selection={surPC} /> })}
           </CarteLignes>
         )}
       {aucun}
-      {!tableauVisible && suite}
+      {suite}
       <BarreLot cibles={cibles} choisis={sel.choisis} vider={() => sel.setChoisis(new Set())} saisie={saisie} />
       <PanneauSaisie reseau={reseau} liste={figee} nom={ouvert} aller={setOuvert} fermer={() => setOuvert(null)} saisie={saisie} partie={partie} surPC={surPC} />
     </>
@@ -539,7 +549,7 @@ function VueEvaluer({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: S
             </>,
           }
         }}
-        tableau={({ visibles, sel, entete, pied }) => (
+        tableau={({ visibles, sel, entete }) => (
           <TableContainer component={Card}>
             <Table size="small" className="deux-colonnes-fixes" aria-label="Évaluation des magasins">
               <TableHead>
@@ -559,7 +569,6 @@ function VueEvaluer({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: S
                 {visibles.map((m) => <LigneNotes key={m.nom} m={m} e={reseau.evaluations[m.nom]} coche={sel.choisis.has(m.nom)} basculer={sel.basculer} noter={saisie.noter} />)}
               </TableBody>
             </Table>
-            {pied}
           </TableContainer>
         )} />
     </>
@@ -595,7 +604,7 @@ function VueDeploiements({ reseau, saisie, surPC, date }: { reseau: Reseau; sais
             fin: <Points label={`${faits} thématiques déployées sur ${ths.length}`} couleurs={tonsM.map((x) => (x ? `${couleurTon[x]}.main` : null))} />,
           }
         }}
-        tableau={({ visibles, sel, entete, pied }) => (
+        tableau={({ visibles, sel, entete }) => (
           <TableContainer component={Card}>
             <Table size="small" className="deux-colonnes-fixes" aria-label="Déploiements par magasin">
               <TableHead>
@@ -609,7 +618,6 @@ function VueDeploiements({ reseau, saisie, surPC, date }: { reseau: Reseau; sais
                 {visibles.map((m) => <LigneDeploiements key={m.nom} m={m} valeurs={reseau.deploiements.valeurs[m.nom]} ths={ths} coche={sel.choisis.has(m.nom)} basculer={sel.basculer} deployer={saisie.deployer} />)}
               </TableBody>
             </Table>
-            {pied}
           </TableContainer>
         )} />
     </>
