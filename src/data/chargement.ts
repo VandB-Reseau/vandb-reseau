@@ -48,10 +48,12 @@ async function toutLire(requete: () => Requete): Promise<{ data: Ligne[]; error:
 
 // Suivi rangé par magasin : table suivi_magasins une fois le script de cloisonnement passé, sinon app_config
 let suiviEnTable: boolean | null = null
+// Fiches des personnes : table fiches_personnes une fois 0015 passée, sinon clé d'app_config
+let fichesEnTable: boolean | null = null
 
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
-  const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances, suivi, regions] = await Promise.all([
+  const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances, suivi, regions, fiches] = await Promise.all([
     supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
@@ -63,13 +65,18 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
     toutLire(() => supabase.from('store_finance').select('*').order('month').order('store_name')),
     toutLire(() => supabase.from('suivi_magasins').select('store_name,cle,valeur').order('store_name').order('cle')),
     supabase.from('campagnes_regions').select('id,rr,valeur').order('id'),
+    toutLire(() => supabase.from('fiches_personnes').select('cle,fiche').order('cle')),
   ])
   const erreur = config.error ?? surcharges.error ?? affectations.error ?? coachs.error ?? (suivi.error && !absente(suivi.error.message) ? suivi.error : null)
   if (erreur) throw new ErreurChargement(erreur.message)
   suiviEnTable = !suivi.error
+  if (fiches.error && !absente(fiches.error.message)) throw new ErreurChargement(fiches.error.message)
+  fichesEnTable = !fiches.error
   // Tables facultatives : absentes ou vides, l'app fonctionne quand même
   const facultative = (r: { error: unknown; data: unknown }) => (r.error ? [] : (r.data as Ligne[] | null) ?? [])
-  const lignesConfig = config.data ?? []
+  const lignesConfig = fichesEnTable
+    ? [...(config.data ?? []).filter((l) => l.key !== 'fiches_personnes'), { key: 'fiches_personnes', value: JSON.stringify(Object.fromEntries(fiches.data.map((l) => [String(l.cle), l.fiche]))) }]
+    : config.data ?? []
   return assemblerReseau({
     config: suiviEnTable ? configDepuisSuivi(lignesConfig, suivi.data as { store_name: string; cle: string; valeur: unknown }[]) : lignesConfig,
     surcharges: surcharges.data ?? [], affectations: affectations.data ?? [], coachs: coachs.data ?? [],
@@ -380,11 +387,28 @@ export async function renommerVisiteur(ancien: string, nouveau: string) {
 
 // ── Fiches personnelles (Directeur, Responsables Régionaux, Coachs, franchisés) ──
 
+// Seules les fiches modifiées sont réécrites dans la table ; sans la table (0015 pas encore passée), toute la clé d'app_config
 function modifierFiches(changer: (f: Record<string, Partial<FichePersonnelle>>) => void) {
   return enFile(async () => {
-    const { valeur, existe } = await lireCle<Record<string, Partial<FichePersonnelle>>>('fiches_personnes', {})
+    if (fichesEnTable === null) {
+      const essai = await supabase.from('fiches_personnes').select('cle').limit(1)
+      if (essai.error && !absente(essai.error.message)) throw new ErreurEnregistrement(essai.error.message)
+      fichesEnTable = !essai.error
+    }
+    if (!fichesEnTable) {
+      const { valeur, existe } = await lireCle<Record<string, Partial<FichePersonnelle>>>('fiches_personnes', {})
+      changer(valeur)
+      return ecrireCle('fiches_personnes', valeur, existe)
+    }
+    const lu = await toutLire(() => supabase.from('fiches_personnes').select('cle,fiche').order('cle'))
+    if (lu.error) throw new ErreurEnregistrement(lu.error.message)
+    const avant = new Map(lu.data.map((l) => [String(l.cle), JSON.stringify(l.fiche)]))
+    const valeur = Object.fromEntries(lu.data.map((l) => [String(l.cle), l.fiche as Partial<FichePersonnelle>]))
     changer(valeur)
-    await ecrireCle('fiches_personnes', valeur, existe)
+    const changes = Object.entries(valeur).filter(([k, f]) => avant.get(k) !== JSON.stringify(f)).map(([cle, fiche]) => ({ cle, fiche, maj_le: new Date().toISOString() }))
+    const retirees = [...avant.keys()].filter((k) => !(k in valeur))
+    if (changes.length) verifier(await supabase.from('fiches_personnes').upsert(changes, { onConflict: 'cle' }))
+    if (retirees.length) verifier(await supabase.from('fiches_personnes').delete().in('cle', retirees))
   })
 }
 
@@ -919,7 +943,7 @@ export function enregistrerConstats(lot: { campagne: string; magasin: string; po
 }
 
 // ── Sauvegarde complète : toutes les tables lues telles quelles ──
-export const tablesSauvegardees = ['app_config', 'suivi_magasins', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits', 'visits', 'leaves', 'events', 'store_finance', 'campagnes_regions'] as const
+export const tablesSauvegardees = ['app_config', 'suivi_magasins', 'fiches_personnes', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits', 'visits', 'leaves', 'events', 'store_finance', 'campagnes_regions'] as const
 
 export async function lireSauvegarde(): Promise<Record<string, unknown[]>> {
   const tables: Record<string, unknown[]> = {}

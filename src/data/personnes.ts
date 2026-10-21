@@ -1,5 +1,5 @@
 // Fiche personnelle commune au Directeur de réseau, aux Responsables Régionaux, aux Coachs et aux franchisés.
-// Stockée dans app_config (clé fiches_personnes) ; téléphone, email, ville et dates sont aussi recopiés
+// Stockée dans la table fiches_personnes (0015 ; avant, clé fiches_personnes d'app_config) ; téléphone, email, ville et dates sont aussi recopiés
 // aux endroits que lit l'ancienne app.
 import type { Magasin, Reseau } from './modele'
 import { associesEnPlace } from './associes'

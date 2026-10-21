@@ -190,8 +190,9 @@ test('télécharger la sauvegarde complète et tous les référentiels', async (
   const { chemin, nom } = await telecharger(page, 'Télécharger la sauvegarde complète')
   expect(nom).toMatch(/^V and B - Sauvegarde complete - \d{4}-\d{2}-\d{2}\.json$/)
   const sauvegarde = JSON.parse(readFileSync(chemin, 'utf8'))
-  expect(Object.keys(sauvegarde.tables)).toEqual(['app_config', 'suivi_magasins', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits', 'visits', 'leaves', 'events', 'store_finance', 'campagnes_regions'])
+  expect(Object.keys(sauvegarde.tables)).toEqual(['app_config', 'suivi_magasins', 'fiches_personnes', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits', 'visits', 'leaves', 'events', 'store_finance', 'campagnes_regions'])
   expect(sauvegarde.tables.visits.length).toBeGreaterThan(0)
+  expect(sauvegarde.tables.fiches_personnes.length).toBeGreaterThan(0)
   await expect(page.getByText(/^Dernière sauvegarde complète : /)).toBeVisible()
 
   const tous = await telecharger(page, 'Exporter tous les référentiels')

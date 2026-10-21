@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 21/10/2026 (migration `0014`).
+Mis à jour le 21/10/2026 (migration `0015`).
 
 ## Principes
 
@@ -38,6 +38,16 @@ Mis à jour le 21/10/2026 (migration `0014`).
 | `recruits` | Recrues à venir ou fictives (simulation de charge) | `id` |
 
 Exception : toute l'équipe écrit la clé `bonnes_pratiques` d'`app_config`.
+
+### Fiches des personnes (Directeur : tout ; Coach et RR : l'équipe et les franchisés de leurs magasins)
+
+| Table | Contenu | Clé |
+| --- | --- | --- |
+| `fiches_personnes` | Fiche personnelle (prénom, nom, naissance, arrivée, ville, courriel, téléphone) en JSON. Clé : `directeur`, `rr:<identifiant>`, `coach:<nom>`, `franchise:<nom>`. Avant `0015`, clé `fiches_personnes` d'`app_config` | `cle` |
+
+Un franchisé est « de mes magasins » (`franchise_de_mes_magasins`) s'il est inscrit sur un de ces magasins
+(`store_overrides.resp` ou `store_adds`), s'il en est associé (`suivi_magasins`, rubrique `associes`) ou si son
+compte franchisé porte sur l'un d'eux. Seul le Directeur écrit.
 
 ### Données par magasin (Directeur : tout ; Coach et RR : leurs magasins)
 
@@ -100,7 +110,6 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 | `store_deletes` | Magasins retirés (fichier de base de l'ancienne app seulement) | tableau de noms |
 | `drs_data` | Directeur (`directeur`), RR (`drs`), RR de chaque Coach (`cs_dr`) et ses changements datés (`dr_assigns`) | objet |
 | `cs_deletes` | Coachs historiques supprimés | tableau de noms |
-| `fiches_personnes` | Fiches personnelles (Directeur, RR, Coachs, franchisés) : coordonnées, dates | objet |
 | `params` | Réglages de charge : durées, plafonds, poids, seuils | objet |
 | `grille_ninebox` | Critères et pondération de la nine box | objet |
 | `grilles_audit` | Grilles d'audit hygiène et excellence opérationnelle | objet |
@@ -119,7 +128,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Domaine | Fonctions | Migration |
 | --- | --- | --- |
 | Rôle du compte | `mon_role`, `est_equipe`, `est_directeur`, `mon_acces`, `mes_magasins`, `mon_rr`, `mon_nom`, `ma_cle` | 0004, 0005, 0006 |
-| Périmètre | `magasins_visibles`, `maj_perimetre_equipe`, `magasins_messagerie`, `peut_ecrire_magasin` | 0005, 0006 |
+| Périmètre | `magasins_visibles`, `maj_perimetre_equipe`, `magasins_messagerie`, `peut_ecrire_magasin`, `franchise_de_mes_magasins` | 0005, 0006, 0015 |
 | Accès franchisés | `ouvrir_acces_franchise`, `maj_acces_franchise`, `couper_acces_franchise`, `liste_acces_franchises` | 0004 |
 | Accès de l'équipe | `ouvrir_acces_equipe`, `couper_acces_equipe`, `renommer_acces_coach`, `liste_acces_equipe` | 0005 |
 | Espace franchisé | `espace_franchise`, `reperes_reseau` (interne), `reperes_equipe` | 0004, 0005 |
@@ -146,5 +155,7 @@ Les deux espaces sont privés : l'app lit les fichiers par liens temporaires.
 
 - La liste des magasins est un texte JSON (`store_adds`) complété par trois couches (`store_renames`,
   `store_deletes`, `store_overrides`) ; il n'existe pas de table des magasins avec un identifiant stable.
-- `fiches_personnes` (coordonnées des franchisés comprises) est lisible par toute l'équipe.
+- Depuis `0015`, les fiches des personnes ne sont plus lisibles par toute l'équipe. Restent visibles de toute
+  l'équipe : le nom, le téléphone et le courriel du franchisé recopiés sur chaque magasin (`store_overrides.resp`,
+  `tel_resp`, `email_resp`), lus par la carte et la liste de tout le réseau.
 - L'app sait encore lire le suivi rangé dans `app_config` si `0005` n'a pas été passée (`src/data/suivi.ts`).
