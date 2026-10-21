@@ -16,7 +16,8 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { BarreFiltres } from '../components/BarreFiltres'
 import { BoutonAction } from '../components/Outils'
 import { Onglets } from '../components/Onglets'
-import { ListeMagasins } from '../components/ListeMagasins'
+import { ListeMagasins, trisMagasins, type TriMagasins } from '../components/ListeMagasins'
+import { Puces } from '../components/Social'
 import { useReseau } from '../data/ReseauContext'
 import { filtrer, filtresDepuisUrl, filtresVersUrl, type Filtres } from '../data/filtres'
 
@@ -28,6 +29,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
   const [params, setParams] = useSearchParams()
   const filtres = filtresDepuisUrl(params)
   const vue = (params.get('vue') as 'liste' | 'carte' | null) ?? vueInitiale
+  const tri = (trisMagasins.find((t) => t.v === params.get('tri'))?.v ?? 'nom') as TriMagasins
   const changerFiltres = (f: Filtres) => setParams(filtresVersUrl(f, params), { replace: true })
   const [ajout, setAjout] = useState(false)
   const [emplacementBoutons, setEmplacementBoutons] = useState<HTMLElement | null>(null)
@@ -64,7 +66,10 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
                   ouvrables={restreint ? new Set(perimetre.magasins.map((m) => m.nom)) : undefined} />
               </Suspense>
             ) : (
-              <ListeMagasins magasins={resultats} />
+              <>
+                <Puces label="Trier par" valeur={tri} options={trisMagasins} onChange={(v) => { const p = new URLSearchParams(params); if (v === 'nom') p.delete('tri'); else p.set('tri', v); setParams(p, { replace: true }) }} />
+                <ListeMagasins magasins={resultats} tri={tri} />
+              </>
             )}
           </>
         )

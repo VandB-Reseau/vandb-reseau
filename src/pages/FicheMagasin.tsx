@@ -5,7 +5,7 @@ import type { BonnePratique } from '../data/bonnesPratiques'
 import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import DynamicFeedOutlined from '@mui/icons-material/DynamicFeedOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
-import { GrillePhotos, TitreSection, type Ton } from '../components/Social'
+import { GrillePhotos, Initiales, TitreSection, type Ton } from '../components/Social'
 import { ProfilPersonne, rond } from '../components/Portefeuille'
 import { FilActivite } from './Accueil'
 import { filDu } from '../data/fil'
@@ -59,6 +59,7 @@ import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import { SectionMessages, useNonLusMagasin } from '../components/Messages'
 import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
+import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import PhoneInTalkOutlined from '@mui/icons-material/PhoneInTalkOutlined'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
@@ -87,18 +88,19 @@ export function Ligne({ libelle, children }: { libelle: string; children: ReactN
   )
 }
 
+// Ligne de contact à initiales, comme dans Magasins : le nom (vers sa fiche), le rôle dessous, les pictos à droite
 export function Contact({ role, p, sousTitre, lien }: { role: string; p: Personne | null; sousTitre?: string; lien?: string }) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1.25, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+      <Initiales nom={p?.nom ?? role} taille={40} icone={p ? undefined : <PersonOutlineOutlined />} couleur={p ? undefined : '#9e9e9e'} />
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography variant="body2" color="text.secondary">{role}</Typography>
         {p && lien
-          ? <Link component={RouterLink} to={lien} variant="body1" sx={{ fontWeight: 500, display: 'inline-flex', minHeight: 32, alignItems: 'center' }}>{p.nom}</Link>
-          : <Typography variant="body1" sx={{ fontWeight: 500 }}>{p?.nom ?? 'Non renseigné'}</Typography>}
-        {sousTitre && <Typography variant="caption" color="text.secondary">{sousTitre}</Typography>}
+          ? <Link component={RouterLink} to={lien} variant="body1" color="inherit" underline="hover" sx={{ fontWeight: 600, display: 'inline-flex', minHeight: 32, alignItems: 'center' }}>{p.nom}</Link>
+          : <Typography variant="body1" sx={{ fontWeight: 600, color: p ? undefined : 'text.secondary' }}>{p?.nom ?? 'Non renseigné'}</Typography>}
+        <Typography variant="body2" color="text.secondary" noWrap>{[role, sousTitre].filter(Boolean).join(' · ')}</Typography>
       </Box>
-      {p?.telephone && <Tooltip title={p.telephone}><IconButton href={telLien(p.telephone)} aria-label={`Appeler ${p.nom}`}><CallOutlined /></IconButton></Tooltip>}
-      {p?.email && <Tooltip title={p.email}><IconButton href={`mailto:${p.email}`} aria-label={`Écrire à ${p.nom}`}><MailOutlined /></IconButton></Tooltip>}
+      {p?.telephone && <Tooltip title={p.telephone}><IconButton href={telLien(p.telephone)} aria-label={`Appeler ${p.nom}`} sx={{ width: 48, height: 48 }}><CallOutlined /></IconButton></Tooltip>}
+      {p?.email && <Tooltip title={p.email}><IconButton href={`mailto:${p.email}`} aria-label={`Écrire à ${p.nom}`} sx={{ width: 48, height: 48 }}><MailOutlined /></IconButton></Tooltip>}
     </Box>
   )
 }

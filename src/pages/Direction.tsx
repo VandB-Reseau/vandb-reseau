@@ -45,6 +45,23 @@ const champs: { cle: Cle; libelle: string; aide: string; min: number; max: numbe
   { cle: 'maxCoachsRR', libelle: 'Coachs maximum par Responsable Régional', aide: 'Sert aux propositions de rattachement des Coachs aux Responsables Régionaux.', min: 1, max: 30 },
 ]
 
+// Réglage chiffré en ligne : le libellé à gauche, un champ court à droite (Joseph, 21/10/2026)
+function LigneReglage({ libelle, nom = libelle, detail, valeur, onChange, invalide, min, max }: {
+  libelle: string; nom?: string; detail?: string; valeur: string; onChange: (v: string) => void; invalide: boolean; min: number; max: number
+}) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography>{libelle}</Typography>
+        {(invalide || detail) && <Typography variant="body2" color={invalide ? 'error' : 'text.secondary'}>{invalide ? `Entre ${min} et ${max}, nombre entier.` : detail}</Typography>}
+      </Box>
+      <TextField type="number" size="small" value={valeur} onChange={(e) => onChange(e.target.value)} error={invalide}
+        slotProps={{ htmlInput: { min, max, step: 1, inputMode: 'numeric', 'aria-label': nom } }}
+        sx={{ width: 96, flexShrink: 0, '& .MuiInputBase-root': { minHeight: 48 }, '& input': { textAlign: 'right' } }} />
+    </Box>
+  )
+}
+
 function compterDepassements(reseau: Reseau, p: ParametresReseau) {
   const r = { ...reseau, parametres: p }
   return reseau.equipe.filter((c) => niveauCharge(r, chargeA(r, c.nom)) === 'depassement').length
@@ -74,19 +91,10 @@ function RegleCharge({ reseau }: { reseau: Reseau }) {
   return (
     <Card>
       <CardContent sx={{ p: 3 }}>
-        <Typography variant="h3" component="h2" sx={{ mb: 3 }}>Règle de charge des Coachs</Typography>
-        <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
+        <Typography variant="h3" component="h2" sx={{ mb: 1.5 }}>Règle de charge des Coachs</Typography>
+        <Box>
           {champs.map((c) => (
-            <TextField
-              key={c.cle}
-              type="number"
-              label={c.libelle}
-              value={valeurs[c.cle]}
-              onChange={(e) => setValeurs((v) => ({ ...v, [c.cle]: e.target.value }))}
-              error={invalides.includes(c)}
-              helperText={invalides.includes(c) ? `Entre ${c.min} et ${c.max}, nombre entier.` : ' '}
-              slotProps={{ htmlInput: { min: c.min, max: c.max, step: 1 } }}
-            />
+            <LigneReglage key={c.cle} libelle={c.libelle} detail={c.aide} valeur={valeurs[c.cle]} onChange={(v) => setValeurs((x) => ({ ...x, [c.cle]: v }))} invalide={invalides.includes(c)} min={c.min} max={c.max} />
           ))}
         </Box>
         {incoherent && <Alert severity="warning" sx={{ mt: 2 }}>Le seuil d’attention doit être inférieur ou égal à la charge maximale.</Alert>}
@@ -136,14 +144,13 @@ function RegleAlerte({ reseau }: { reseau: Reseau }) {
   return (
     <Card sx={{ mt: 2 }}>
       <CardContent sx={{ p: 3 }}>
-        <Typography variant="h3" component="h2" sx={{ mb: 3 }}>Alerte sur les chiffres</Typography>
-        <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
-          <TextField select label="Écart de CA par rapport au" value={valeurs.moisReference} onChange={(e) => setValeurs((v) => ({ ...v, moisReference: e.target.value }))} helperText=" ">
-            {referencesPossibles.map((r) => <MenuItem key={r.valeur} value={String(r.valeur)}>{r.libelle}</MenuItem>)}
-          </TextField>
+        <Typography variant="h3" component="h2" sx={{ mb: 1.5 }}>Alerte sur les chiffres</Typography>
+        <TextField select fullWidth label="Écart de CA par rapport au" value={valeurs.moisReference} onChange={(e) => setValeurs((v) => ({ ...v, moisReference: e.target.value }))} sx={{ mb: 1 }}>
+          {referencesPossibles.map((r) => <MenuItem key={r.valeur} value={String(r.valeur)}>{r.libelle}</MenuItem>)}
+        </TextField>
+        <Box>
           {champsSeuils.map((c) => (
-            <TextField key={c.cle} type="number" label={c.libelle} value={valeurs[c.cle]} onChange={(e) => setValeurs((v) => ({ ...v, [c.cle]: e.target.value }))}
-              error={invalides.includes(c)} helperText={invalides.includes(c) ? `Entre ${c.min} et ${c.max}, nombre entier.` : ' '} slotProps={{ htmlInput: { min: c.min, max: c.max, step: 1 } }} />
+            <LigneReglage key={c.cle} libelle={c.libelle} valeur={valeurs[c.cle]} onChange={(v) => setValeurs((x) => ({ ...x, [c.cle]: v }))} invalide={invalides.includes(c)} min={c.min} max={c.max} />
           ))}
         </Box>
         {incoherent && <Alert severity="warning" sx={{ mt: 2 }}>La baisse « À surveiller » doit être inférieure ou égale à la baisse « Décroche ».</Alert>}
@@ -185,11 +192,11 @@ function RegleVisite({ reseau }: { reseau: Reseau }) {
   return (
     <Card sx={{ mt: 2 }}>
       <CardContent sx={{ p: 3 }}>
-        <Typography variant="h3" component="h2" sx={{ mb: 3 }}>Alerte de visite</Typography>
-        <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
+        <Typography variant="h3" component="h2" sx={{ mb: 1.5 }}>Alerte de visite</Typography>
+        <Box>
           {casesDelai.map((c) => (
-            <TextField key={c.cle} type="number" label={`${c.libelle} (jours sans visite)`} value={valeurs[c.cle]} onChange={(e) => setValeurs((v) => ({ ...v, [c.cle]: e.target.value }))}
-              error={invalides.includes(c)} helperText={invalides.includes(c) ? 'Entre 7 et 730, nombre entier.' : `Référence ${c.rythme.split('×')[0].trim()} par an`} slotProps={{ htmlInput: { min: 7, max: 730, step: 1 } }} />
+            <LigneReglage key={c.cle} libelle={c.libelle} nom={`${c.libelle} (jours sans visite)`} detail={`Référence ${c.rythme.split('×')[0].trim()} par an · jours sans visite`}
+              valeur={valeurs[c.cle]} onChange={(v) => setValeurs((x) => ({ ...x, [c.cle]: v }))} invalide={invalides.includes(c)} min={7} max={730} />
           ))}
         </Box>
         {modifie && !invalides.length && (

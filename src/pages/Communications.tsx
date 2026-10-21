@@ -10,6 +10,7 @@ import Typography from '@mui/material/Typography'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
+import PushPinOutlined from '@mui/icons-material/PushPinOutlined'
 import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
 import { PageHeader } from '../components/PageHeader'
@@ -29,7 +30,7 @@ import { estImage, type Piece } from '../lib/pieces'
 import { HTML_MAX, nettoyerHtml, texteDuHtml } from '../lib/html'
 import { useSearchParams } from 'react-router-dom'
 import {
-  basculerPouce, chargerCommunications, chargerLectures, commenter, noterLues, messageCommunication, publierCommunication, supprimerCommentaire, supprimerCommunication,
+  aLaUneDabord, basculerPouce, chargerCommunications, chargerLectures, commenter, mettreALaUne, noterLues, messageCommunication, publierCommunication, supprimerCommentaire, supprimerCommunication,
   type Communication, type Communications, type Lecture,
 } from '../data/communications'
 
@@ -48,6 +49,7 @@ function DialogCommunication({ c, onFermer }: { c: Communication | null; onFerme
   const [entete, setEntete] = useState<Piece | null>(c?.pieces.find((p) => p.chemin === c.entete) ?? null)
   const [pieces, setPieces] = useState<Piece[]>(c?.pieces.filter((p) => p.chemin !== c.entete) ?? [])
   const [alerte, setAlerte] = useState('')
+  const [une, setUne] = useState(c?.aLaUne ?? '')
   const changerMode = (m: Mode) => {
     if (m === mode) return
     // Le texte simple devient des paragraphes ; la mise en forme redevient du texte simple
@@ -61,10 +63,12 @@ function DialogCommunication({ c, onFermer }: { c: Communication | null; onFerme
     try { await action() } catch (e) { throw new ErreurAction(messageCommunication(e)) }
     return ok
   }
-  const enregistrer = () => {
+  const enregistrer = async () => {
     const toutes = entete ? [entete, ...pieces] : pieces
     const brut = mode === 'texte' ? texte.trim() : texteDuHtml(propre).slice(0, 8000)
-    return publierCommunication(c?.id ?? null, titre.trim(), brut, toutes, propre || null, entete?.chemin ?? null)
+    const r = await publierCommunication(c?.id ?? null, titre.trim(), brut, toutes, propre || null, entete?.chemin ?? null) as { id?: number } | null
+    const id = c?.id ?? r?.id
+    if (id && une !== (c?.aLaUne ?? '')) await mettreALaUne(id, une || null)
   }
   return (
     <Fenetre large ouvert onFermer={onFermer} valide={!!titre.trim() && !tropLourd} titre={c ? 'Modifier la communication' : 'Nouvelle communication'}
@@ -81,6 +85,8 @@ function DialogCommunication({ c, onFermer }: { c: Communication | null; onFerme
       </Box>
       <AlerteTaille visible={tropLourd} />
       <ChampPieces pieces={pieces} changer={setPieces} signaler={setAlerte} />
+      <TextField type="date" label="À la une jusqu’au" value={une} onChange={(e) => setUne(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: aujourdhui() } }}
+        helperText={une ? 'Reste en tête du fil des franchisés jusqu’à ce jour.' : ' '} />
       {alerte && <Typography color="error" variant="body2">{alerte}</Typography>}
     </Fenetre>
   )
@@ -93,6 +99,15 @@ export function ReactionsCommunication({ c, moi, jour, lectureSeule, apres, sign
   return (
     <Reactions titre={c.titre} pouces={c.pouces} commentaires={c.commentaires} moi={moi} jour={jour} lectureSeule={lectureSeule}
       basculer={() => basculerPouce(c.id)} commenter={(t) => commenter(c.id, t)} supprimer={supprimerCommentaire} message={messageCommunication} apres={apres} signaler={signaler} />
+  )
+}
+
+// Communication épinglée en tête jusqu'à une date (Joseph, 21/10/2026)
+export function MarqueUne({ jusquAu }: { jusquAu: string }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 2, pb: 1, color: 'warning.dark', fontWeight: 600, fontSize: '0.875rem' }}>
+      <PushPinOutlined sx={{ fontSize: 18 }} />À la une jusqu’au {new Date(`${jusquAu}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
+    </Box>
   )
 }
 
@@ -130,6 +145,7 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
         </Box>
         {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la communication ${c.titre}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
       </Box>
+      {c.aLaUne && <MarqueUne jusquAu={c.aLaUne} />}
       {entete && <Box sx={{ mb: 1.5 }}><BanniereEntete piece={entete} /></Box>}
       <Box sx={{ px: 2 }}>
         <Typography variant="h4" component="h2">{c.titre}</Typography>
@@ -166,7 +182,7 @@ export function PageCommunications({ lectureSeule = false }: { lectureSeule?: bo
   const peutPublier = !lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')
   const jour = aujourdhui()
   const q = recherche.trim().toLowerCase()
-  const liste = useMemo(() => (etat?.liste ?? []).filter((c) => !q || `${c.titre} ${c.texte} ${c.auteurNom}`.toLowerCase().includes(q)), [etat, q])
+  const liste = useMemo(() => aLaUneDabord(etat?.liste ?? []).filter((c) => !q || `${c.titre} ${c.texte} ${c.auteurNom}`.toLowerCase().includes(q)), [etat, q])
   const { visibles, suite } = useParTranches(liste, q)
   const n = etat?.liste.length ?? 0
   // Un franchisé qui affiche les communications les a lues

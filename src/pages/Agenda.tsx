@@ -3,7 +3,7 @@ import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
-import Chip from '@mui/material/Chip'
+import ButtonBase from '@mui/material/ButtonBase'
 import IconButton from '@mui/material/IconButton'
 import MenuItem from '@mui/material/MenuItem'
 import Snackbar from '@mui/material/Snackbar'
@@ -182,12 +182,18 @@ export function Agenda() {
               <Typography variant="h3" component="h2" sx={{ minWidth: 180, textAlign: 'center', textTransform: 'capitalize' }}>{nomMois(debut)}</Typography>
               <IconButton onClick={() => changerMois(1)} aria-label="Mois suivant"><ChevronRight /></IconButton>
               <Button onClick={() => setParams({}, { replace: true })} sx={{ minHeight: 48 }}>Aujourd’hui</Button>
-              <Box sx={{ flex: 1 }} />
-              {categories.map((c) => (
-                <Chip key={c.id} icon={c.icone} label={c.libelle} clickable onClick={() => setActives((a) => { const n = new Set(a); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n })}
-                  variant={actives.has(c.id) ? 'filled' : 'outlined'} aria-pressed={actives.has(c.id)}
-                  sx={{ minHeight: 40, ...(actives.has(c.id) && { bgcolor: c.couleur, color: '#fff', '& .MuiChip-icon': { color: '#fff' } }) }} />
-              ))}
+            </Box>
+            {/* Catégories en puces neutres avec un point de couleur, sur une ligne qui défile (Joseph, 21/10/2026) */}
+            <Box role="group" aria-label="Catégories affichées" sx={{ display: 'flex', gap: 1, overflowX: 'auto', mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, mb: 2, scrollbarWidth: 'none' }}>
+              {categories.map((c) => {
+                const actif = actives.has(c.id)
+                return (
+                  <ButtonBase key={c.id} aria-pressed={actif} onClick={() => setActives((a) => { const n = new Set(a); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n })}
+                    sx={{ flexShrink: 0, minHeight: 48, fontFamily: 'inherit', '& > span': { display: 'flex', alignItems: 'center', gap: 0.75, px: 1.5, height: 36, borderRadius: 999, border: '1px solid', borderColor: actif ? 'text.primary' : 'divider', bgcolor: actif ? 'action.selected' : 'background.paper', color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.875rem', fontWeight: actif ? 600 : 500 } }}>
+                    <span><Box component="i" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: c.couleur, opacity: actif ? 1 : 0.4 }} />{c.libelle}</span>
+                  </ButtonBase>
+                )
+              })}
             </Box>
             <ContenuMois reseau={reseau} debut={debut} fin={fin} actives={actives} surPC={surPC} ouvrir={(e) => { if (e.conge) setConge(e.conge); if (e.evenement) setEvenement(e.evenement) }} />
             {conge !== undefined && <DialogConge reseau={reseau} conge={conge} onFermer={fermer} />}
@@ -228,11 +234,32 @@ function ContenuMois({ reseau, debut, fin, actives, surPC, ouvrir }: { reseau: R
   }
   const premierJour = (e: Element) => (e.debut < debut ? debut : e.debut)
   const jours = [...new Set(elements.map(premierJour))].sort()
-  if (!jours.length) return <EmptyState icone={<CalendarMonthOutlined />} titre="Rien de prévu ce mois-ci" texte="Ajoute un événement ou une absence, ou passe au mois suivant." />
+  // Bande des jours du mois qu'on fait glisser ; un point les jours occupés, le toucher amène au jour
+  const tousLesJours: string[] = []
+  for (let j = debut; j <= fin; j = ajouterJours(j, 1)) tousLesJours.push(j)
+  const bande = (
+    <Box ref={(n: HTMLDivElement | null) => { const a = n?.querySelector<HTMLElement>('[aria-current="date"]'); if (n && a) n.scrollLeft = a.offsetLeft - n.clientWidth / 2 + a.clientWidth / 2 }}
+      role="group" aria-label="Jours du mois" sx={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', mx: -2, px: 1, mb: 2, scrollbarWidth: 'none' }}>
+      {tousLesJours.map((j) => {
+        const occupe = duJour(j).length > 0, aujourdhui = j === reseau.jour
+        return (
+          <ButtonBase key={j} aria-label={jourLong(j)} aria-current={aujourdhui ? 'date' : undefined} disabled={!jours.includes(j)}
+            onClick={() => document.getElementById(`jour-${j}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' })}
+            sx={{ flexShrink: 0, width: 48, minHeight: 64, scrollSnapAlign: 'center', flexDirection: 'column', gap: 0.25, fontFamily: 'inherit', borderRadius: 3, bgcolor: aujourdhui ? 'text.primary' : undefined, color: aujourdhui ? 'background.paper' : 'text.primary', '&.Mui-disabled': { color: aujourdhui ? 'background.paper' : 'text.secondary' } }}>
+            <Box component="span" sx={{ fontSize: '0.75rem', textTransform: 'capitalize' }}>{jourUTC(j).toLocaleDateString('fr-FR', { weekday: 'short', timeZone: 'UTC' }).slice(0, 3)}</Box>
+            <Box component="span" sx={{ fontWeight: 700 }}>{Number(j.slice(8))}</Box>
+            <Box component="span" sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: occupe ? (aujourdhui ? 'background.paper' : 'primary.main') : 'transparent' }} />
+          </ButtonBase>
+        )
+      })}
+    </Box>
+  )
+  if (!jours.length) return <>{bande}<EmptyState icone={<CalendarMonthOutlined />} titre="Rien de prévu ce mois-ci" texte="Ajoute un événement ou une absence, ou passe au mois suivant." /></>
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {bande}
       {jours.map((j) => (
-        <Box key={j}>
+        <Box key={j} id={`jour-${j}`} sx={{ scrollMarginTop: 72 }}>
           <Typography variant="subtitle2" component="h3" sx={{ mb: 1, textTransform: 'capitalize', color: j === reseau.jour ? 'primary.main' : 'text.primary' }}>{jourLong(j)}</Typography>
           <Card>
             {elements.filter((e) => premierJour(e) === j).map((e) => (
