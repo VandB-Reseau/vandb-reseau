@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { ouvrirOnglet, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { magasinsFictifs } from './donnees-fictives'
 
 test.beforeEach(async ({ page }) => {
@@ -28,17 +28,17 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(['Fil', 'Fiche', 'Actions', 'Messages', 'Visites', 'Chiffres', 'Santé', 'Campagnes', 'Journal'])
+  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Fil', 'Fiche', 'Actions', 'Plus'] : ['Fil', 'Fiche', 'Actions', 'Messages', 'Visites', 'Chiffres', 'Santé', 'Campagnes', 'Journal'])
   // Le fil est la vue par défaut ; l'équipe est dans l'onglet Fiche
   await expect(page.getByRole('region', { name: 'Fil du magasin' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Équipe' })).toHaveCount(0)
-  await onglets.getByRole('tab', { name: 'Fiche' }).click()
+  await ouvrirOnglet(page, 'Fiche', onglets)
   await expect(page.getByRole('heading', { name: 'Équipe' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Journal', exact: true })).toHaveCount(0)
   // En-tête : deux actions en cours dont une en retard
   await expect(page.getByRole('group', { name: 'En bref' })).toContainText(/2 ?tâches en cours/)
   await expect(page.getByText('1 tâche en retard', { exact: true })).toBeVisible()
-  await onglets.getByRole('tab', { name: 'Actions' }).click()
+  await ouvrirOnglet(page, 'Actions', onglets)
   const liste = page.getByRole('list', { name: 'Actions en cours de Brest Test' })
   await expect(liste.getByRole('listitem')).toHaveCount(2)
   await expect(liste.getByRole('listitem').first()).toContainText('Refaire la vitrine')
@@ -150,16 +150,16 @@ test('la fiche Coach est rangée en onglets, sans historique des affectations', 
   await page.goto('./#/equipe/coach/No%C3%A9%20MODELE')
   await expect(page.getByRole('tablist', { name: 'Rubriques de Noé MODELE' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Historique' })).toHaveCount(0)
-  await page.getByRole('tab', { name: 'Actions' }).click()
+  await ouvrirOnglet(page, 'Actions')
   await expect(page.getByRole('list', { name: 'Actions en cours des magasins de Noé MODELE' })).toContainText('Brest Test')
-  await page.getByRole('tab', { name: 'Visites' }).click()
+  await ouvrirOnglet(page, 'Visites')
   await expect(page.getByRole('heading', { name: 'Dernières visites' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Brest Test' }).first()).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-coach-visites.png`, fullPage: !isMobile })
-  await page.getByRole('tab', { name: 'Campagnes' }).click()
+  await ouvrirOnglet(page, 'Campagnes')
   await expect(page.getByText('Aucune campagne en cours ou passée sur ces magasins.')).toBeVisible()
-  await page.getByRole('tab', { name: 'Fiche' }).click()
+  await ouvrirOnglet(page, 'Fiche')
   await expect(page.getByRole('heading', { name: 'Rattachement' })).toBeVisible()
 })
 

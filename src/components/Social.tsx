@@ -4,14 +4,14 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import ViewAgendaOutlined from '@mui/icons-material/ViewAgendaOutlined'
 import TableChartOutlined from '@mui/icons-material/TableChartOutlined'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useLocation } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import ImageOutlined from '@mui/icons-material/ImageOutlined'
-import { brand } from '../theme/theme'
+import { brand, styleSignal, type CouleurSignal } from '../theme/theme'
 import { lienPhoto } from '../lib/photos'
 import type { Photo } from '../data/grilles'
 
@@ -46,21 +46,15 @@ export function Initiales({ nom, taille = 44, icone, couleur }: { nom: string; t
 }
 
 export type Ton = 'rouge' | 'orange' | 'vert' | 'gris' | 'bleu'
-const tons: Record<Ton, { bg: string; fg: string }> = {
-  rouge: { bg: '#c62828', fg: '#ffffff' },
-  orange: { bg: brand.orange, fg: brand.noir },
-  vert: { bg: '#2e7d32', fg: '#ffffff' },
-  bleu: { bg: brand.bleu, fg: '#ffffff' },
-  gris: { bg: 'action.selected', fg: 'text.primary' },
-}
+const signaux: Record<Exclude<Ton, 'rouge' | 'gris'>, CouleurSignal> = { orange: 'warning', bleu: 'info', vert: 'success' }
 
-// Pastille unique d'une ligne : la plus grave seulement
+// Pastille unique d'une ligne : la plus grave seulement. Seul le rouge est plein ;
+// les autres tons sont un texte coloré précédé d'un point, pour que les alertes ressortent.
 export function Pastille({ ton, children }: { ton: Ton; children: ReactNode }) {
-  return (
-    <Box component="span" sx={{ flexShrink: 0, px: 1.25, py: 0.5, borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap', bgcolor: tons[ton].bg, color: tons[ton].fg }}>
-      {children}
-    </Box>
-  )
+  const forme = { flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 0.75, borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap' } as const
+  if (ton === 'rouge') return <Box component="span" sx={{ ...forme, px: 1.25, py: 0.5, bgcolor: '#c62828', color: '#ffffff' }}>{children}</Box>
+  if (ton === 'gris') return <Box component="span" sx={{ ...forme, py: 0.5, color: 'text.secondary' }}>{children}</Box>
+  return <Box component="span" sx={(t) => ({ ...forme, py: 0.5, ...styleSignal(t, signaux[ton]) })}>{children}</Box>
 }
 
 // Ligne compacte : avatar, titre, détail sur une ligne, puis une pastille ou une valeur à droite
@@ -239,15 +233,21 @@ export function Glisser({ children, libelle, icone, onGlisser, actif = true, cou
 
 // Longues listes affichées par tranches, avec « Voir plus » : le rendu de centaines de lignes bloquait le changement d'onglet.
 // cle : change quand les filtres changent, pour revenir à la première tranche
+// Nombre de lignes dépliées par liste, gardé le temps de la session : en revenant d'une fiche,
+// la liste a la même longueur et le retour arrière retrouve la ligne quittée
+const tranchesDepliees = new Map<string, number>()
+
 export function useParTranches<T>(liste: T[], cle: string, tranche = 50) {
-  const [vu, setVu] = useState({ cle, nombre: tranche })
-  const nombre = vu.cle === cle ? vu.nombre : tranche
+  const { pathname, search } = useLocation()
+  const memo = `${pathname}${search}|${cle}`
+  const [vu, setVu] = useState(() => ({ cle, nombre: tranchesDepliees.get(memo) ?? tranche }))
+  const nombre = vu.cle === cle ? vu.nombre : tranchesDepliees.get(memo) ?? tranche
   const restantes = liste.length - nombre
   return {
     visibles: restantes > 0 ? liste.slice(0, nombre) : liste,
     suite: restantes > 0 && (
       <Box sx={{ textAlign: 'center', mt: 1.5 }}>
-        <Button variant="outlined" onClick={() => setVu({ cle, nombre: nombre + tranche })} sx={{ minHeight: 48 }}>Voir plus ({restantes})</Button>
+        <Button variant="outlined" onClick={() => { tranchesDepliees.set(memo, nombre + tranche); setVu({ cle, nombre: nombre + tranche }) }} sx={{ minHeight: 48 }}>Voir plus ({restantes})</Button>
       </Box>
     ),
   }

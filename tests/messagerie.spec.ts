@@ -114,7 +114,7 @@ test('un Responsable Régional n’est notifié que lorsqu’on le mentionne', a
   await expect(page.getByRole('button', { name: /^Notifications/ })).toHaveAccessibleName('Notifications')
 })
 
-test('le franchisé est notifié des messages et des nouveaux comptes rendus, et répond au Coach', async ({ page }, info) => {
+test('le franchisé est notifié des messages et des nouveaux comptes rendus, et répond au Coach', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, {
     acces: PAUL, ecritures,
@@ -135,7 +135,7 @@ test('le franchisé est notifié des messages et des nouveaux comptes rendus, et
   // Annecy : onglet Messages avec sa pastille (le message du Coach cite le magasin)
   await page.goto('./#/magasins/Annecy%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(['Fil', 'Fiche', 'Messages1', 'Chiffres', 'Visites', 'Campagnes'])
+  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Fil', 'Fiche', 'Messages1', 'Plus'] : ['Fil', 'Fiche', 'Messages1', 'Chiffres', 'Visites', 'Campagnes'])
   await onglets.getByRole('tab', { name: 'Messages' }).click()
   await expect(page.getByText('Nouveaux messages')).toBeVisible()
   // Le franchisé écrit à l'équipe du magasin, jamais à un autre franchisé
