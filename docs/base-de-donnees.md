@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 21/10/2026 (migration `0015`).
+Mis à jour le 21/10/2026 (migration `0016`).
 
 ## Principes
 
@@ -101,6 +101,18 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 | `communications_lectures` | Première lecture d'une communication par chaque compte franchisé |
 | `pratiques_pouces`, `pratiques_commentaires` | J'aime et commentaires des bonnes pratiques |
 
+### Notifications sur le téléphone (aucun accès pour les comptes, 0016)
+
+| Table | Contenu | Clé |
+| --- | --- | --- |
+| `abonnements_push` | Appareils où une personne a activé les notifications : adresse d'envoi du navigateur (`endpoint`), compte (`user_id`), clés de chiffrement de l'appareil | `endpoint` |
+| `cles_push` | La paire de clés d'envoi, créée par la fonction « notifier » à son premier appel | `id` = 1 |
+
+Le compte connecté s'abonne ou se désabonne par `abonner_appareil` / `desabonner_appareil`. Seule la fonction
+Supabase « notifier » (`supabase/functions/notifier/index.ts`, clé `service_role` côté Supabase) lit ces tables et
+appelle `notifications_a_envoyer` : destinataire d'un message privé de moins de 10 minutes écrit par l'appelant ;
+franchisés du magasin pour un compte rendu de visite des 7 derniers jours saisi par l'équipe (pas les appels).
+
 ## Clés d'`app_config`
 
 | Clé | Contenu | Forme |
@@ -140,6 +152,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Bonnes pratiques | `reactions_pratiques`, `pratique_visible`, `basculer_pouce_pratique`, `commenter_pratique`, `supprimer_commentaire_pratique` | 0010 |
 | Campagnes régionales | `campagne_region_permise` | 0005 |
 | Fichiers | `photo_visible`, `piece_visible` | 0004, 0009 |
+| Notifications | `abonner_appareil`, `desabonner_appareil` (compte connecté) ; `comptes_de_cle`, `notifications_a_envoyer` (fonction « notifier » seule) | 0016 |
 | Outil | `json_sur` (lit un texte JSON sans jamais échouer) | 0004 |
 
 ## Fichiers (Supabase Storage)

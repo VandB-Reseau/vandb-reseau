@@ -68,6 +68,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   fiches ouvertes en tête de Magasins (sans filtre) et de la recherche globale dès qu'on touche le champ. Gardés sur l'appareil.
 - Fiches des personnes réservées : le Directeur voit toutes les fiches ; un Coach ou un Responsable Régional, celles
   de l'équipe et des seuls franchisés de ses magasins (préalable à l'ouverture de leurs comptes) — Base : `0015_fiches_personnes`
+- Notifications sur le téléphone : « Recevoir les notifications sur cet appareil » dans le menu du compte ; un message
+  privé reçu et, pour le franchisé, un nouveau compte rendu de visite arrivent en notification, même app fermée
+  (sur iPhone, app ajoutée à l'écran d'accueil) — Base : `0016_notifications_telephone` + fonction Supabase `notifier`
 - Santé du parc, tableaux Évaluer et Déploiements (PC) : « Voir plus » est au bas du tableau et les lignes
   ajoutées apparaissent aussitôt ; chaque critère, la case et chaque thématique se trient (du plus haut au plus bas,
   puis l'inverse) et se filtrent par valeur (Faible, Moyen, Fort, non noté ; options de la thématique, non renseigné)

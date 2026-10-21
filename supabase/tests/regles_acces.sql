@@ -25,13 +25,13 @@ BEGIN
   EXECUTE appel; RETURN 0;
 EXCEPTION WHEN others THEN RETURN 1;
 END $$;
-GRANT EXECUTE ON FUNCTION pg_temp.refuse(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION pg_temp.refuse(text) TO authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION pg_temp.attendre(libelle text, obtenu bigint, attendu bigint) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   IF obtenu IS DISTINCT FROM attendu THEN RAISE EXCEPTION 'ÉCHEC : % (obtenu %, attendu %)', libelle, obtenu, attendu; END IF;
 END $$;
-GRANT EXECUTE ON FUNCTION pg_temp.attendre(text, bigint, bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION pg_temp.attendre(text, bigint, bigint) TO authenticated, service_role;
 
 -- ── Directeur : voit tout
 SET ROLE authenticated;
@@ -50,6 +50,8 @@ WITH m AS (UPDATE public.fiches_personnes SET fiche = '{}' WHERE cle = 'franchis
 SELECT pg_temp.attendre('Coach : ne modifie pas une fiche', (SELECT count(*) FROM m), 0);
 SELECT pg_temp.attendre('Coach : n''ajoute pas de fiche', pg_temp.refuse('INSERT INTO public.fiches_personnes (cle) VALUES (''coach:Intrus'')'), 1);
 SELECT pg_temp.attendre('Coach : plus de fiches dans app_config', (SELECT count(*) FROM public.app_config WHERE key = 'fiches_personnes'), 0);
+SELECT pg_temp.attendre('Coach : écrit au franchisé', pg_temp.refuse('SELECT public.envoyer_a(''franchise:Franchisé Test'', ''Bonjour'', ''{}'')'), 0);
+SELECT pg_temp.attendre('Coach : aucun accès direct aux appareils', pg_temp.refuse('SELECT count(*) FROM public.abonnements_push'), 1);
 SELECT pg_temp.attendre('Coach : lit les réglages', (SELECT count(*) FROM public.app_config WHERE key = 'params'), 1);
 WITH m AS (UPDATE public.app_config SET value = '{"x":1}' WHERE key = 'params' RETURNING 1)
 SELECT pg_temp.attendre('Coach : ne modifie pas les réglages', (SELECT count(*) FROM m), 0);
@@ -60,6 +62,10 @@ SELECT pg_temp.attendre('Coach : aucun accès direct aux messages', (SELECT coun
 
 -- ── Franchisé : aucune table, mais son espace par la fonction
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT public.abonner_appareil('https://push.exemple.test/franchise', 'cle', 'secret');
+SELECT pg_temp.attendre('Franchisé : aucun accès direct aux appareils', pg_temp.refuse('SELECT count(*) FROM public.abonnements_push'), 1);
+SELECT pg_temp.attendre('Franchisé : aucune clé d''envoi', pg_temp.refuse('SELECT count(*) FROM public.cles_push'), 1);
+SELECT pg_temp.attendre('Franchisé : ne liste pas les notifications à envoyer', pg_temp.refuse('SELECT public.notifications_a_envoyer(''message'', ''{1}'', auth.uid())'), 1);
 SELECT pg_temp.attendre('Franchisé : aucune visite en direct', (SELECT count(*) FROM public.visits), 0);
 SELECT pg_temp.attendre('Franchisé : aucun chiffre en direct', (SELECT count(*) FROM public.store_finance), 0);
 SELECT pg_temp.attendre('Franchisé : aucun réglage en direct', (SELECT count(*) FROM public.app_config), 0);
@@ -92,7 +98,24 @@ SELECT pg_temp.attendre('Sans rôle : aucune fiche des personnes', (SELECT count
 RESET ROLE;
 SELECT pg_temp.attendre('Aucune règle « tout compte connecté »', (SELECT count(*) FROM pg_policies
   WHERE schemaname IN ('public', 'storage') AND (coalesce(qual, '') = 'true' OR coalesce(with_check, '') = 'true')), 0);
-SELECT pg_temp.attendre('Journal : 0001 à 0015 notées', (SELECT count(*) FROM public.journal_migrations WHERE numero <= '0015'), 15);
+SELECT pg_temp.attendre('Journal : 0001 à 0016 notées', (SELECT count(*) FROM public.journal_migrations WHERE numero <= '0016'), 16);
+
+-- Notifications sur le téléphone : la fonction d'envoi (service_role) trouve l'appareil du franchisé
+SELECT pg_temp.attendre('Appareil du franchisé enregistré', (SELECT count(*) FROM public.abonnements_push WHERE user_id = '00000000-0000-0000-0000-00000000000f'), 1);
+INSERT INTO public.visits (store, visit_date, type) VALUES ('Lille', current_date, 'terrain') RETURNING id AS visite \gset
+INSERT INTO public.visits (store, visit_date, type) VALUES ('Lille', current_date + 3, 'terrain') RETURNING id AS prevue \gset
+SET ROLE service_role;
+SELECT pg_temp.attendre('Message du Coach : une notification pour le franchisé',
+  (SELECT jsonb_array_length(public.notifications_a_envoyer('message', (SELECT array_agg(id) FROM public.messages WHERE destinataire = 'franchise:Franchisé Test'), '00000000-0000-0000-0000-00000000000c'))), 1);
+SELECT pg_temp.attendre('Message : rien si l''auteur annoncé n''est pas le bon',
+  (SELECT jsonb_array_length(public.notifications_a_envoyer('message', (SELECT array_agg(id) FROM public.messages WHERE destinataire = 'franchise:Franchisé Test'), '00000000-0000-0000-0000-00000000000d'))), 0);
+SELECT pg_temp.attendre('Compte rendu : une notification pour le franchisé du magasin',
+  (SELECT jsonb_array_length(public.notifications_a_envoyer('visite', ARRAY[:visite]::bigint[], '00000000-0000-0000-0000-00000000000c'))), 1);
+SELECT pg_temp.attendre('Visite seulement planifiée : rien',
+  (SELECT jsonb_array_length(public.notifications_a_envoyer('visite', ARRAY[:prevue]::bigint[], '00000000-0000-0000-0000-00000000000c'))), 0);
+SELECT pg_temp.attendre('Compte rendu : rien si l''auteur est un franchisé',
+  (SELECT jsonb_array_length(public.notifications_a_envoyer('visite', ARRAY[:visite]::bigint[], '00000000-0000-0000-0000-00000000000f'))), 0);
+RESET ROLE;
 
 -- Fiches encore rangées dans app_config (base pas encore passée en 0015) : reprises, la clé disparaît,
 -- une fiche déjà dans la table n'est pas écrasée

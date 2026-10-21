@@ -34,6 +34,9 @@ import { brandStripe } from '../theme/theme'
 import { parametres, principales, secondaires, type Destination } from '../navigation/destinations'
 import { useAuth } from '../auth/AuthContext'
 import { roleLibelle } from '../auth/roles'
+import NotificationsActiveOutlined from '@mui/icons-material/NotificationsActiveOutlined'
+import NotificationsOffOutlined from '@mui/icons-material/NotificationsOffOutlined'
+import { activerNotifications, couperNotifications, ErreurNotifications, useNotificationsAppareil } from '../lib/notifications'
 
 const LARGEUR_MENU = 264
 
@@ -49,6 +52,16 @@ function MenuCompte({ liens = [] }: { liens?: { titre?: string; destinations: De
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const [motDePasse, setMotDePasse] = useState(false)
   const [confirmation, setConfirmation] = useState('')
+  const notifications = useNotificationsAppareil()
+  const basculerNotifications = async () => {
+    try {
+      if (notifications.etat === 'actif') { await couperNotifications(); setConfirmation('Notifications coupées sur cet appareil.') }
+      else { await activerNotifications(); setConfirmation('Notifications activées sur cet appareil.') }
+    } catch (e) {
+      setConfirmation(e instanceof ErreurNotifications ? e.message : 'Les notifications n’ont pas pu être activées. Réessaie dans un instant.')
+    }
+    notifications.relire()
+  }
   if (!profil) return null
   const initiale = profil.nom.slice(0, 1).toUpperCase()
   return (
@@ -65,7 +78,7 @@ function MenuCompte({ liens = [] }: { liens?: { titre?: string; destinations: De
         {liens.flatMap((g, i) => [
           g.titre ? <ListSubheader key={`t${i}`} sx={{ lineHeight: '36px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{g.titre}</ListSubheader> : null,
           ...g.destinations.map((d) => (
-            <MenuItem key={d.chemin} onClick={() => { setAncre(null); naviguer(d.chemin) }} sx={{ minHeight: 48 }}>
+            <MenuItem key={d.chemin} onClick={() => { setAncre(null); naviguer(d.chemin) }} sx={{ minHeight: { xs: 48, sm: 48 } }}>
               <ListItemIcon>{d.icone}</ListItemIcon>
               {d.libelle}
             </MenuItem>
@@ -73,9 +86,15 @@ function MenuCompte({ liens = [] }: { liens?: { titre?: string; destinations: De
           <Divider key={`d${i}`} />,
         ])}
         {installation && (
-          <MenuItem onClick={() => { setAncre(null); installation() }} sx={{ minHeight: 48 }}>
+          <MenuItem onClick={() => { setAncre(null); installation() }} sx={{ minHeight: { xs: 48, sm: 48 } }}>
             <ListItemIcon><InstallMobileOutlined fontSize="small" /></ListItemIcon>
             Installer l’app
+          </MenuItem>
+        )}
+        {notifications.etat !== 'indisponible' && (
+          <MenuItem disabled={notifications.etat === 'bloque'} onClick={() => { setAncre(null); void basculerNotifications() }} sx={{ minHeight: { xs: 48, sm: 48 } }}>
+            <ListItemIcon>{notifications.etat === 'actif' ? <NotificationsOffOutlined fontSize="small" /> : <NotificationsActiveOutlined fontSize="small" />}</ListItemIcon>
+            {notifications.etat === 'actif' ? 'Couper les notifications sur cet appareil' : notifications.etat === 'bloque' ? 'Notifications bloquées sur cet appareil' : 'Recevoir les notifications sur cet appareil'}
           </MenuItem>
         )}
         <MenuItem onClick={() => { setAncre(null); setMotDePasse(true) }}>

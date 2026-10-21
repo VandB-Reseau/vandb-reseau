@@ -20,6 +20,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0013_lectures_communications` | Lecture des communications par les franchisés : table `communications_lectures`, fonctions `lire_communications` et `lectures_communications` | 21/10/2026 |
 | `0014_communications_a_la_une` | Communication à la une : colonne `communications.a_la_une`, fonctions `mettre_a_la_une` et `a_la_une` | 21/10/2026 |
 | `0015_fiches_personnes` | Fiches des personnes dans leur table : Directeur tout, Coach et RR l'équipe et les franchisés de leurs magasins ; reprise depuis `app_config`, clé retirée | 21/10/2026 |
+| `0016_notifications_telephone` | Notifications sur le téléphone : tables `abonnements_push` et `cles_push` fermées, fonctions `abonner_appareil`, `desabonner_appareil`, `notifications_a_envoyer` ; puis déployer la fonction Supabase `notifier` (`supabase/functions/notifier/index.ts`) | 21/10/2026 |
 
 ## Règles
 
