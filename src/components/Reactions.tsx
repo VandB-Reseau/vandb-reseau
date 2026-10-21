@@ -28,19 +28,32 @@ export function Reactions({ titre, pouces: initiaux, commentaires: tous, autres 
   const [envoi, setEnvoi] = useState(false)
   const [mesPouces, setPouces] = useState(initiaux)
   useEffect(() => setPouces(initiaux), [initiaux])
+  // Commentaires écrits ou retirés ici, affichés sans attendre la relecture de la base
+  const [ajoutes, setAjoutes] = useState<Commentaire[]>([])
+  const [retires, setRetires] = useState<number[]>([])
+  useEffect(() => { setAjoutes([]); setRetires([]) }, [tous])
   const aime = mesPouces.some((p) => p.userId === moi)
   const pouces = [...mesPouces, ...autres.filter((n) => !mesPouces.some((p) => p.nom === n)).map((nom) => ({ userId: '', nom }))]
+  // La relecture de la base se fait en arrière-plan, le bouton se libère dès la réponse
   const agir = async (action: () => Promise<unknown>) => {
     setEnvoi(true)
-    try { await action(); await apres(); return true } catch (e) { signaler(message(e)); return false } finally { setEnvoi(false) }
+    try { await action(); void apres(); return true } catch (e) { signaler(message(e)); return false } finally { setEnvoi(false) }
   }
   const reagir = async () => {
     setPouces(aime ? mesPouces.filter((p) => p.userId !== moi) : [...mesPouces, { userId: moi, nom: 'Moi' }])
     if (!(await agir(basculer))) setPouces(initiaux)
   }
-  const envoyer = () => { if (texte.trim()) void agir(async () => { await commenter(texte.trim()); setTexte('') }) }
+  const envoyer = () => {
+    const t = texte.trim()
+    if (t) void agir(async () => { await commenter(t); setTexte(''); setAjoutes((a) => [...a, { id: -Date.now(), auteur: moi, auteurNom: 'Moi', auteurRole: '', texte: t, creeLe: new Date().toISOString() }]) })
+  }
+  const retirer = (id: number) => {
+    setRetires((r) => [...r, id])
+    void agir(() => supprimer(id)).then((ok) => { if (!ok) setRetires((r) => r.filter((x) => x !== id)) })
+  }
+  const affiches = [...tous, ...ajoutes].filter((k) => !retires.includes(k.id))
   // Repliés : les deux derniers commentaires seulement
-  const commentaires = ouvert ? tous : tous.slice(-2)
+  const commentaires = ouvert ? affiches : affiches.slice(-2)
   return (
     <>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, pt: 0.5 }}>
@@ -48,14 +61,14 @@ export function Reactions({ titre, pouces: initiaux, commentaires: tous, autres 
           {pouces.length ? `J’aime · ${pouces.length}` : 'J’aime'}
         </Button>
         <Button onClick={() => setOuvert((v) => !v)} aria-expanded={ouvert} startIcon={<ChatBubbleOutlineOutlined />} color="inherit" sx={{ minHeight: 48, px: 1.5 }}>
-          {tous.length ? `Commenter · ${tous.length}` : 'Commenter'}
+          {affiches.length ? `Commenter · ${affiches.length}` : 'Commenter'}
         </Button>
         {pouces.length > 0 && <Typography variant="body2" color="text.secondary" noWrap sx={{ minWidth: 0, display: { xs: 'none', sm: 'block' } }}>{pouces.slice(0, 3).map((p) => p.nom).join(', ')}{pouces.length > 3 ? ` et ${pouces.length - 3} autre${pouces.length > 4 ? 's' : ''}` : ''}</Typography>}
       </Box>
       {(commentaires.length > 0 || ouvert) && (
         <Box sx={{ borderTop: '1px solid', borderColor: 'divider', px: 2, py: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {!ouvert && tous.length > 2 && (
-            <Button onClick={() => setOuvert(true)} sx={{ alignSelf: 'flex-start', minHeight: 48, ml: -1 }}>Voir les {tous.length} commentaires</Button>
+          {!ouvert && affiches.length > 2 && (
+            <Button onClick={() => setOuvert(true)} sx={{ alignSelf: 'flex-start', minHeight: 48, ml: -1 }}>Voir les {affiches.length} commentaires</Button>
           )}
           <Box component="ul" aria-label="Commentaires" sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
             {commentaires.map((k) => (
@@ -65,8 +78,8 @@ export function Reactions({ titre, pouces: initiaux, commentaires: tous, autres 
                   <Typography variant="body2"><b>{k.auteurNom}</b> <Box component="span" sx={{ color: 'text.secondary' }}>· {quand(k.creeLe, jour)}</Box></Typography>
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>{k.texte}</Typography>
                 </Box>
-                {k.auteur === moi && !lectureSeule && (
-                  <Tooltip title="Retirer"><IconButton onClick={() => void agir(() => supprimer(k.id))} disabled={envoi} aria-label={`Retirer mon commentaire du ${quand(k.creeLe, jour)}`} sx={{ width: 48, height: 48, mt: -0.5 }}><DeleteOutlined fontSize="small" /></IconButton></Tooltip>
+                {k.auteur === moi && !lectureSeule && k.id > 0 && (
+                  <Tooltip title="Retirer"><IconButton onClick={() => retirer(k.id)} disabled={envoi} aria-label={`Retirer mon commentaire du ${quand(k.creeLe, jour)}`} sx={{ width: 48, height: 48, mt: -0.5 }}><DeleteOutlined fontSize="small" /></IconButton></Tooltip>
                 )}
               </Box>
             ))}

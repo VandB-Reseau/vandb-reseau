@@ -51,10 +51,19 @@ export async function envoyerPiece(fichier: File, auteur: string): Promise<Piece
   return { chemin, nom, taille: contenu.size, type }
 }
 
-export async function lienPiece(chemin: string, telecharger?: string): Promise<string | null> {
-  const { data, error } = await supabase.storage.from(SEAU_PIECES).createSignedUrl(chemin, 3600, telecharger ? { download: telecharger } : undefined)
-  return error ? null : data.signedUrl
+// Liens temporaires gardés 50 minutes (valables une heure) : le même lien à chaque affichage,
+// donc la photo reste dans le cache du navigateur au lieu d'être retéléchargée
+const liens = new Map<string, { lien: Promise<string | null>; jusqua: number }>()
+export function lienPiece(chemin: string, telecharger?: string): Promise<string | null> {
+  const cle = `${chemin}|${telecharger ?? ''}`
+  const connu = liens.get(cle)
+  if (connu && connu.jusqua > Date.now()) return connu.lien
+  const lien = supabase.storage.from(SEAU_PIECES).createSignedUrl(chemin, 3600, telecharger ? { download: telecharger } : undefined)
+    .then(({ data, error }) => { if (error) liens.delete(cle); return error ? null : data.signedUrl }, () => { liens.delete(cle); return null })
+  liens.set(cle, { lien, jusqua: Date.now() + 50 * 60_000 })
+  return lien
 }
+supabase.auth.onAuthStateChange((evenement) => { if (evenement === 'SIGNED_OUT') liens.clear() })
 
 // Fichier retiré avant l'envoi ; un fichier déjà absent n'empêche rien
 export async function retirerPiece(chemin: string) {

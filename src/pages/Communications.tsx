@@ -24,13 +24,13 @@ import { BoutonAction, ChampRecherche } from '../components/Outils'
 import { Initiales, Puces, useParTranches } from '../components/Social'
 import { AlerteTaille, BanniereEntete, ChampCodeHtml, ChampEntete, ContenuMisEnForme, EditeurMiseEnForme } from '../components/MiseEnForme'
 import { useAuth } from '../auth/AuthContext'
-import { ErreurAction } from '../data/espaceFranchise'
+import { useReseau } from '../data/ReseauContext'
 import { quand } from '../data/fil'
 import { estImage, type Piece } from '../lib/pieces'
 import { HTML_MAX, nettoyerHtml, texteDuHtml } from '../lib/html'
 import { useSearchParams } from 'react-router-dom'
 import {
-  aLaUneDabord, basculerPouce, chargerCommunications, chargerLectures, commenter, mettreALaUne, noterLues, messageCommunication, publierCommunication, supprimerCommentaire, supprimerCommunication,
+  aLaUneDabord, basculerPouce, chargerCommunications, chargerLectures, commenter, communicationsConnues, mettreALaUne, noterLues, messageCommunication, publierCommunication, retenirCommunications, supprimerCommentaire, supprimerCommunication,
   type Communication, type Communications, type Lecture,
 } from '../data/communications'
 
@@ -41,15 +41,25 @@ type Mode = 'texte' | 'forme' | 'code'
 const modes: { v: Mode; libelle: string }[] = [{ v: 'texte', libelle: 'Texte' }, { v: 'forme', libelle: 'Mise en forme' }, { v: 'code', libelle: 'Code HTML' }]
 const echapper = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-function DialogCommunication({ c, onFermer }: { c: Communication | null; onFermer: (m?: string) => void }) {
-  const [titre, setTitre] = useState(c?.titre ?? '')
-  const [texte, setTexte] = useState(c?.texte ?? '')
-  const [html, setHtml] = useState(c?.html ?? '')
-  const [mode, setMode] = useState<Mode>(c?.html ? 'forme' : 'texte')
-  const [entete, setEntete] = useState<Piece | null>(c?.pieces.find((p) => p.chemin === c.entete) ?? null)
-  const [pieces, setPieces] = useState<Piece[]>(c?.pieces.filter((p) => p.chemin !== c.entete) ?? [])
+// Ce qu'il faut pour afficher tout de suite une communication publiée, avant la réponse de la base
+interface Auteur { moi: string; nom: string; role: string; magasins: string[] | null }
+interface Edition { c: Communication | null; brouillon?: Communication; erreur?: string }
+
+// La fenêtre se ferme dès l'enregistrement : la page affiche le résultat et l'envoie à la base ;
+// si la base refuse, la fenêtre revient avec ce qui avait été saisi
+function DialogCommunication({ edition: { c, brouillon, erreur }, auteur, publier, retirer, onFermer }: {
+  edition: Edition; auteur: Auteur; onFermer: () => void
+  publier: (b: Communication, envoyer: () => Promise<void>) => void; retirer: (c: Communication) => void
+}) {
+  const depart = brouillon ?? c
+  const [titre, setTitre] = useState(depart?.titre ?? '')
+  const [texte, setTexte] = useState(depart?.texte ?? '')
+  const [html, setHtml] = useState(depart?.html ?? '')
+  const [mode, setMode] = useState<Mode>(depart?.html ? 'forme' : 'texte')
+  const [entete, setEntete] = useState<Piece | null>(depart?.pieces.find((p) => p.chemin === depart.entete) ?? null)
+  const [pieces, setPieces] = useState<Piece[]>(depart?.pieces.filter((p) => p.chemin !== depart.entete) ?? [])
   const [alerte, setAlerte] = useState('')
-  const [une, setUne] = useState(c?.aLaUne ?? '')
+  const [une, setUne] = useState(depart?.aLaUne ?? '')
   const changerMode = (m: Mode) => {
     if (m === mode) return
     // Le texte simple devient des paragraphes ; la mise en forme redevient du texte simple
@@ -59,21 +69,24 @@ function DialogCommunication({ c, onFermer }: { c: Communication | null; onFerme
   }
   const propre = mode === 'texte' ? '' : nettoyerHtml(html)
   const tropLourd = propre.length > HTML_MAX
-  const agir = async (action: () => Promise<unknown>, ok: string) => {
-    try { await action() } catch (e) { throw new ErreurAction(messageCommunication(e)) }
-    return ok
-  }
   const enregistrer = async () => {
     const toutes = entete ? [entete, ...pieces] : pieces
     const brut = mode === 'texte' ? texte.trim() : texteDuHtml(propre).slice(0, 8000)
-    const r = await publierCommunication(c?.id ?? null, titre.trim(), brut, toutes, propre || null, entete?.chemin ?? null) as { id?: number } | null
-    const id = c?.id ?? r?.id
-    if (id && une !== (c?.aLaUne ?? '')) await mettreALaUne(id, une || null)
+    const b: Communication = {
+      ...(c ?? { id: -Date.now(), magasins: auteur.magasins, auteur: auteur.moi, auteurNom: auteur.nom, auteurRole: auteur.role, creeLe: new Date().toISOString(), modifieLe: null, pouces: [], commentaires: [] }),
+      titre: titre.trim(), texte: brut, pieces: toutes, html: propre || null, entete: entete?.chemin ?? null, aLaUne: une || null,
+    }
+    publier(b, async () => {
+      const r = await publierCommunication(c?.id ?? null, b.titre, brut, toutes, b.html, b.entete) as { id?: number } | null
+      const id = c?.id ?? r?.id
+      if (id && une !== (c?.aLaUne ?? '')) await mettreALaUne(id, une || null)
+    })
+    return ''
   }
   return (
     <Fenetre large ouvert onFermer={onFermer} valide={!!titre.trim() && !tropLourd} titre={c ? 'Modifier la communication' : 'Nouvelle communication'}
-      enregistrer={() => agir(enregistrer, c ? 'Communication mise à jour.' : 'Communication publiée.')}
-      supprimer={c ? () => agir(() => supprimerCommunication(c.id), 'Communication retirée.') : undefined}
+      sansRechargement erreurInitiale={erreur} enregistrer={enregistrer}
+      supprimer={c ? async () => { retirer(c); return '' } : undefined}
       libelleSuppression={c ? `Retirer « ${c.titre} » ? Les commentaires partent avec.` : undefined}>
       <TextField label="Titre" value={titre} onChange={(e) => setTitre(e.target.value)} slotProps={{ htmlInput: { maxLength: 200 } }} />
       <ChampEntete piece={entete} changer={setEntete} signaler={setAlerte} />
@@ -163,17 +176,39 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
 // lectureSeule : aperçu de l'espace d'un franchisé par le Directeur
 export function PageCommunications({ lectureSeule = false }: { lectureSeule?: boolean }) {
   const { profil } = useAuth()
-  const [etat, setEtat] = useState<Communications | null | undefined>(undefined)
-  const [edition, setEdition] = useState<Communication | null | undefined>(undefined)
+  const { reseau } = useReseau()
+  const suitLectures = !lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')
+  // Dernière liste connue affichée aussitôt, la base la remplace dès sa réponse
+  const [etat, setEtat] = useState<Communications | null | undefined>(() => communicationsConnues()?.communications ?? undefined)
+  const [edition, setEdition] = useState<Edition | null>(null)
   const [recherche, setRecherche] = useState('')
   const [message, setMessage] = useState('')
-  const [lectures, setLectures] = useState<Map<number, Lecture> | null>(null)
-  const suitLectures = !lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')
+  const [lectures, setLectures] = useState<Map<number, Lecture> | null>(() => (suitLectures ? communicationsConnues()?.lectures ?? null : null))
   const charger = useCallback(async () => {
     const [c, l] = await Promise.all([chargerCommunications(), suitLectures ? chargerLectures() : Promise.resolve(null)])
     setEtat(c); setLectures(l)
   }, [suitLectures])
   useEffect(() => { void charger() }, [charger])
+  const changerListe = (f: (l: Communication[]) => Communication[]) => setEtat((e) => {
+    if (!e) return e
+    const n = { ...e, liste: f(e.liste) }
+    retenirCommunications(n)
+    return n
+  })
+  const remettre = (c: Communication) => changerListe((l) => [...l.filter((x) => x.id !== c.id), c].sort((a, b) => b.creeLe.localeCompare(a.creeLe)))
+  const publier = (origine: Communication | null, b: Communication, envoyer: () => Promise<void>) => {
+    changerListe((l) => (origine ? l.map((x) => (x.id === origine.id ? b : x)) : [b, ...l]))
+    setEdition(null)
+    envoyer().then(() => { setMessage(origine ? 'Communication mise à jour.' : 'Communication publiée.'); void charger() }, (e) => {
+      if (origine) remettre(origine); else changerListe((l) => l.filter((x) => x.id !== b.id))
+      setEdition({ c: origine, brouillon: b, erreur: messageCommunication(e) })
+    })
+  }
+  const retirer = (c: Communication) => {
+    changerListe((l) => l.filter((x) => x.id !== c.id))
+    setEdition(null)
+    supprimerCommunication(c.id).then(() => { setMessage('Communication retirée.'); void charger() }, (e) => { remettre(c); setMessage(messageCommunication(e)) })
+  }
   // Arrivée depuis le fil d'activité : la communication citée est amenée à l'écran
   const [params] = useSearchParams()
   const cible = params.get('c')
@@ -198,21 +233,26 @@ export function PageCommunications({ lectureSeule = false }: { lectureSeule?: bo
       ) : (
         <>
           <RechercheFiltres recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une communication" />}
-            actions={peutPublier ? <BoutonAction libelle="Publier" onClick={() => setEdition(null)} /> : undefined} />
+            actions={peutPublier ? <BoutonAction libelle="Publier" onClick={() => setEdition({ c: null })} /> : undefined} />
           {etat === undefined ? <Typography variant="body2" color="text.secondary">Chargement…</Typography>
             : !liste.length ? <EmptyState icone={<CampaignOutlined />} titre="Aucune communication" texte={n ? 'Aucune communication ne correspond à cette recherche.' : 'Les annonces du réseau aux franchisés apparaîtront ici.'} />
             : (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxWidth: 720 }}>
                 {visibles.map((c) => (
-                  <CarteCommunication key={c.id} c={c} moi={etat.moi} jour={jour} lectureSeule={lectureSeule} apres={charger} signaler={setMessage} lecture={lectures?.get(c.id)}
-                    modifier={peutPublier && c.auteur === etat.moi ? () => setEdition(c) : undefined} />
+                  // Une publication pas encore enregistrée (numéro provisoire) ne se commente ni ne se modifie
+                  <CarteCommunication key={c.id} c={c} moi={etat.moi} jour={jour} lectureSeule={lectureSeule || c.id < 0} apres={charger} signaler={setMessage} lecture={lectures?.get(c.id)}
+                    modifier={peutPublier && c.auteur === etat.moi && c.id > 0 ? () => setEdition({ c }) : undefined} />
                 ))}
                 {suite}
               </Box>
             )}
         </>
       )}
-      {edition !== undefined && <DialogCommunication c={edition} onFermer={(m) => { setEdition(undefined); if (m) { setMessage(m); void charger() } }} />}
+      {edition && etat && (
+        <DialogCommunication key={edition.brouillon?.id ?? edition.c?.id ?? 0} edition={edition} onFermer={() => setEdition(null)}
+          auteur={{ moi: etat.moi, role: etat.role || profil?.role || '', nom: etat.liste.find((x) => x.auteur === etat.moi)?.auteurNom || profil?.nom || '', magasins: profil?.role === 'rr' ? (reseau?.magasins ?? []).map((m) => m.nom) : null }}
+          publier={(b, envoyer) => publier(edition.c, b, envoyer)} retirer={retirer} />
+      )}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </>
   )
