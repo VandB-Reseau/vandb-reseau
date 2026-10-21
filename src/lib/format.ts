@@ -24,3 +24,10 @@ export function lienCoach(nom: string): string {
 export const lienRR = (id: string) => `/equipe/rr/${encodeURIComponent(id)}`
 export const lienDirecteur = () => '/equipe/directeur'
 export const lienFranchise = (nom: string) => `/equipe/franchise/${encodeURIComponent(nom)}`
+// Instant ISO en heure locale : « 21/10 à 14h32 »
+export function dateHeure(iso: string): string {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const deux = (n: number) => String(n).padStart(2, '0')
+  return `${deux(d.getDate())}/${deux(d.getMonth() + 1)} à ${d.getHours()}h${deux(d.getMinutes())}`
+}

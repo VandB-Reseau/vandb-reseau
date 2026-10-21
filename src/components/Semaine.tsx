@@ -10,9 +10,11 @@ import EditCalendarOutlined from '@mui/icons-material/EditCalendarOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import RouteOutlined from '@mui/icons-material/RouteOutlined'
+import RateReviewOutlined from '@mui/icons-material/RateReviewOutlined'
 import { useAuth } from '../auth/AuthContext'
 import { BoutonAction } from './Outils'
 import { DialogPlanifier } from './DialogPlanifier'
+import { DialogVisite } from './DialogVisite'
 import { RechercheFiltres } from './RechercheFiltres'
 import { FiltreMenu } from './FiltreMenu'
 import { EmptyState } from './EmptyState'
@@ -44,6 +46,7 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
   const s = useMemo(() => (coach ? semaineDu(reseau, coach) : null), [reseau, coach])
   const [planif, setPlanif] = useState<{ magasins: string[]; date: string; visite: Visite | null } | null>(null)
   const planifier = (magasins: string[], date: string, visite: Visite | null = null) => setPlanif({ magasins, date, visite })
+  const [compteRendu, setCompteRendu] = useState<Visite | null>(null)
   const unSeul = coachs.length <= 1
   const actions = s && <>
     {s.aPlanifier.length > 1 && <BoutonAction secondaire libelle="Planifier la tournée" icone={<RouteOutlined />} onClick={() => planifier(s.aPlanifier.map((x) => x.l.magasin.nom), reseau.jour)} />}
@@ -73,6 +76,7 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
         fin={prevue ? <Pastille ton="bleu">{`${jourCourt(prevue.date)}${heure ? ` · ${heure.replace(':', 'h')}` : ''}`}</Pastille> : l.alerte ? <Pastille ton="orange">{libellePasVu(l)}</Pastille> : undefined}
         actions={<>
           {surPC && <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(l.magasin.nom)} aria-label={`Préparer la visite de ${l.magasin.nom}`}><AssignmentOutlined /></IconButton></Tooltip>}
+          {prevue && prevue.date <= reseau.jour && <Tooltip title="Faire le compte rendu"><IconButton onClick={() => setCompteRendu(prevue)} aria-label={`Faire le compte rendu de ${l.magasin.nom}`} sx={{ width: 48, height: 48 }}><RateReviewOutlined /></IconButton></Tooltip>}
           <Tooltip title="Planifier la visite"><IconButton onClick={() => planifier([l.magasin.nom], prevue?.date ?? jourPropose(reseau, l), prevue)} aria-label={`Planifier la visite de ${l.magasin.nom}`} sx={{ width: 48, height: 48 }}>{prevue ? <EditCalendarOutlined /> : <EventAvailableOutlined />}</IconButton></Tooltip>
         </>} />
     )
@@ -81,6 +85,7 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
     <>
       {planif && <DialogPlanifier reseau={reseau} coach={coach} magasins={planif.magasins} dateInitiale={planif.date} visite={planif.visite}
         onFermer={(m) => { setPlanif(null); if (m) onMessage(m) }} />}
+      {compteRendu && <DialogVisite reseau={reseau} visite={compteRendu} onFermer={(m) => { setCompteRendu(null); if (m) onMessage(m) }} />}
       {barre}
       <Card sx={{ mb: 2, border: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 2, py: 1.5 }}>

@@ -1,6 +1,6 @@
 import type { Photo } from './grilles'
 import type { Reseau } from './modele'
-import { libelleTypeVisite } from './modele'
+import { libelleTypeVisite, visiteFaite } from './modele'
 import { actionsDes } from './actions'
 import { analyser, decalerMois, formatKEuros, formatPourcent, libelleMois } from './chiffres'
 import { apercuDe, type Messagerie } from './messagerie'
@@ -44,7 +44,7 @@ export function filDu(reseau: Reseau, noms: Set<string>, mg: Messagerie | null, 
   const depuis = new Date(Date.parse(`${reseau.jour}T00:00:00`) - jours * 86_400_000).toISOString().slice(0, 10)
   const res: ElementFil[] = []
   for (const v of reseau.visites) {
-    if (!noms.has(v.magasin) || v.date > reseau.jour || v.date < depuis) continue
+    if (!noms.has(v.magasin) || !visiteFaite(v, reseau.jour) || v.date < depuis) continue
     res.push({
       cle: `v|${v.id ?? v.magasin + v.date}`, genre: 'visite', instant: v.date, auteur: v.visiteurs[0] ?? '', action: libelleTypeVisite(v.type).toLowerCase(),
       magasin: v.magasin, texte: resume(v.notes, v.parties), photos: v.photos, lien: v.id !== null ? lienCompteRendu(v) : `${lienFiche(v.magasin)}?vue=visites`,

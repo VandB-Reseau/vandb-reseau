@@ -4,7 +4,7 @@
 import { supabase } from '../lib/supabase'
 import type { Profil } from '../auth/roles'
 import { associesEnPlace } from './associes'
-import { libelleResponsable, type Magasin, type Reseau } from './modele'
+import { libelleResponsable, visiteFaite, type Magasin, type Reseau } from './modele'
 import { lienFiche } from '../lib/format'
 import { normaliserPieces, type Piece } from '../lib/pieces'
 import { notifier } from '../lib/notifications'
@@ -236,7 +236,7 @@ export function notifications(reseau: Reseau | null, profil: Profil | null, mg: 
   if (franchise) {
     for (const m of reseau.magasins) {
       const lu = derniereLecture(mg, m.nom, 'visites')
-      const nouvelles = reseau.visites.filter((v) => v.magasin === m.nom && v.date <= reseau.jour && instant(v.creeLe ?? '') > lu)
+      const nouvelles = reseau.visites.filter((v) => v.magasin === m.nom && visiteFaite(v, reseau.jour) && instant(v.creeLe ?? '') > lu)
       if (!nouvelles.length) continue
       res.push({
         cle: `v|${m.nom}`, titre: m.nom, type: 'visite', nombre: nouvelles.length, lecture: { magasin: m.nom, sujet: 'visites' },
@@ -270,7 +270,7 @@ export function historique(reseau: Reseau | null, profil: Profil | null, mg: Mes
   }
   if (franchise) {
     for (const v of reseau.visites) {
-      if (v.date > reseau.jour || !v.creeLe) continue
+      if (!visiteFaite(v, reseau.jour) || !v.creeLe) continue
       res.push({
         cle: `v|${v.id}`, type: 'visite', magasins: [v.magasin], date: v.creeLe, auteur: v.visiteurs.join(', '), texte: '', lecture: { magasin: v.magasin, sujet: 'visites' },
         lien: `${lienFiche(v.magasin)}?vue=visites`, nouveau: instant(v.creeLe) > derniereLecture(mg, v.magasin, 'visites'),

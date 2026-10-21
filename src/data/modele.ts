@@ -163,7 +163,11 @@ export interface Visite {
   plan: ActionPlan[]
   photos?: import('./grilles').Photo[] // rangées dans la colonne docs avec un chemin d'espace photos
   creeLe?: string // date d'enregistrement (nouveautés de l'espace franchisé)
+  prevue?: boolean // planifiée, pas encore faite : ni compte rendu ni « Faite » (0017)
 }
+
+// Visite faite à ce jour : une visite planifiée ne compte qu'une fois confirmée
+export const visiteFaite = (v: Visite, jour: string) => v.date <= jour && !v.prevue
 
 export interface NoteMagasin { id: string; date: string; texte: string; par: string }
 export interface PreparationVisite { notes: string; heure: string; par: string; maj: string }

@@ -125,3 +125,12 @@ SELECT pg_temp.attendre('Reprise : fiche ajoutée depuis app_config', (SELECT co
 SELECT pg_temp.attendre('Reprise : fiche existante conservée', (SELECT count(*) FROM public.fiches_personnes WHERE cle = 'franchise:Paul LILLE' AND fiche->>'telephone' = '0600000000'), 1);
 SELECT pg_temp.attendre('Reprise : clé inconnue ignorée', (SELECT count(*) FROM public.fiches_personnes WHERE cle = 'intrus'), 0);
 SELECT pg_temp.attendre('Reprise : clé retirée d''app_config', (SELECT count(*) FROM public.app_config WHERE key = 'fiches_personnes'), 0);
+
+-- Visite prévue (0017) : à la reprise, une visite à venir sans compte rendu est planifiée ; une visite passée reste faite
+SELECT pg_temp.attendre('Journal : 0017 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0017'), 1);
+UPDATE public.visits SET prevue = false;
+INSERT INTO public.visits (store, visit_date, type, notes) VALUES ('Nice', current_date + 5, 'terrain', 'Compte rendu déjà écrit') RETURNING id AS ecrite \gset
+\ir ../migrations/0017_visites_prevues.sql
+SELECT pg_temp.attendre('Reprise : visite à venir sans compte rendu = prévue', (SELECT count(*) FROM public.visits WHERE id = :prevue AND prevue), 1);
+SELECT pg_temp.attendre('Reprise : visite passée = faite', (SELECT count(*) FROM public.visits WHERE visit_date <= current_date AND prevue), 0);
+SELECT pg_temp.attendre('Reprise : visite à venir avec compte rendu = faite', (SELECT count(*) FROM public.visits WHERE id = :ecrite AND prevue), 0);

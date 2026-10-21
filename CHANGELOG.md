@@ -77,6 +77,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 - Notifications sur le téléphone : « Recevoir les notifications sur cet appareil » dans le menu du compte ; un message
   privé reçu et, pour le franchisé, un nouveau compte rendu de visite arrivent en notification, même app fermée
   (sur iPhone, app ajoutée à l'écran d'accueil) — Base : `0016_notifications_telephone` + fonction Supabase `notifier`
+- Visite prévue, visite faite : une visite planifiée ne compte dans le rythme et « pas vu depuis » qu'une fois son compte
+  rendu enregistré ou confirmée « Faite » ; le jour J, Ma semaine propose « Faire le compte rendu » (prérempli des notes de
+  préparation) ; date passée : ligne dans « À traiter » avec Faite et Reporter. Compte rendu commencé gardé sur
+  l'appareil et repris à la réouverture, effacé à l'enregistrement — Base : `0017_visites_prevues`
 - Santé du parc, tableaux Évaluer et Déploiements (PC) : « Voir plus » est au bas du tableau et les lignes
   ajoutées apparaissent aussitôt ; chaque critère, la case et chaque thématique se trient (du plus haut au plus bas,
   puis l'inverse) et se filtrent par valeur (Faible, Moyen, Fort, non noté ; options de la thématique, non renseigné)

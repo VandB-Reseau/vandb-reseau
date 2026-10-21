@@ -239,7 +239,7 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
                 {vs.map((v) => (
                   <LigneCompacte key={v.id ?? `${v.magasin}-${v.date}`} lien={lienFiche(v.magasin)} avatar={<Initiales nom={v.magasin} />} titre={v.magasin}
                     detail={[dateCourte(v.date), libelleTypeVisite(v.type), nomsVisiteurs(v), v.notes].filter(Boolean).join(' · ')}
-                    fin={v.signatureRequise ? <PastilleSignature requise signe={!!v.lienSigne} /> : <MiniPhotos photos={v.photos} />}
+                    fin={v.prevue ? <Pastille ton="bleu">Prévue</Pastille> : v.signatureRequise ? <PastilleSignature requise signe={!!v.lienSigne} /> : <MiniPhotos photos={v.photos} />}
                     actions={<Actions v={v} />} />
                 ))}
               </CarteLignes>

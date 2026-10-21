@@ -137,6 +137,8 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
     documents: Array.isArray(v.docs) ? (v.docs as { label?: string; url?: string; chemin?: string }[]).filter((d) => !d.chemin).map((d) => ({ label: t(d.label), url: t(d.url) })) : [], notes: t(v.notes),
     photos: Array.isArray(v.docs) ? (v.docs as { chemin?: string; taille?: number }[]).filter((d) => d.chemin).map((d) => ({ chemin: t(d.chemin), taille: Number(d.taille) || 0 })) : [],
     parties: normaliserParties(v.sections), plan: normaliserPlan(v.action_plan), creeLe: t(v.created_at),
+    // Avant 0017 : une visite à venir, ou du jour sans compte rendu, est une visite planifiée
+    prevue: v.prevue === undefined ? t(v.visit_date).slice(0, 10) > jour || (t(v.visit_date).slice(0, 10) === jour && !t(v.notes) && !v.sections) : v.prevue === true,
   }))
   // Chiffres mensuels : table facultative, absente = aucun chiffre
   const nb = (v: unknown) => (v === null || v === undefined || v === '' || isNaN(Number(v)) ? null : Number(v))
@@ -636,12 +638,24 @@ export async function enregistrerVisites(base: Omit<Visite, 'magasin' | 'id'>, m
     signed_required: base.signatureRequise, signed_url: base.lienSigne || null, signed_date: base.dateSignature || null,
     docs: [...base.documents.filter((d) => d.url.trim()), ...(base.photos ?? []).map((p) => ({ label: 'Photo', url: '', chemin: p.chemin, taille: p.taille }))], notes: base.notes || null,
     sections: base.parties.some((x) => x.trim()) ? base.parties.map((x) => x.trim()) : null, action_plan: base.plan.filter((a) => a.action.trim()).map((a, i) => ({ ...a, id: a.id || `a_${Date.now().toString(36)}_${i}` })),
+    prevue: !!base.prevue,
   })
-  if (id !== null) { verifier(await supabase.from('visits').update(ligne(magasins[0])).eq('id', id)); return [id] }
-  const r = await supabase.from('visits').insert(magasins.map(ligne)).select('id')
-  verifier(r)
-  return ((r.data ?? []) as { id: unknown }[]).map((l) => Number(l.id)).filter(Boolean)
+  return avecPrevue(async (sans) => {
+    const l = (m: string) => { const x: Record<string, unknown> = ligne(m); if (sans) delete x.prevue; return x }
+    if (id !== null) { const r = await supabase.from('visits').update(l(magasins[0])).eq('id', id); return { error: r.error, ids: [id] } }
+    const r = await supabase.from('visits').insert(magasins.map(l)).select('id')
+    return { error: r.error, ids: ((r.data ?? []) as { id: unknown }[]).map((x) => Number(x.id)).filter(Boolean) }
+  })
 }
+// Base pas encore passée en 0017 : la colonne prevue manque, la visite s'enregistre sans elle
+async function avecPrevue(f: (sans: boolean) => Promise<{ error: { message: string } | null; ids: number[] }>): Promise<number[]> {
+  let r = await f(false)
+  if (r.error && /prevue/.test(r.error.message)) r = await f(true)
+  verifier(r)
+  return r.ids
+}
+// Visite planifiée confirmée faite, sans compte rendu
+export async function marquerVisiteFaite(id: number) { verifier(await supabase.from('visits').update({ prevue: false }).eq('id', id)) }
 // Import d'un classeur de suivi : visites terrain par paquets, puis notes d'audit rangées à la date choisie
 export async function importerVisites(visites: { magasin: string; date: string; visiteurs: string[]; notes: string; type?: string }[], audits: { magasin: string; type: string; score: number; date?: string }[], dateAudits: string) {
   const lignes = visites.map((v) => ({
