@@ -1,4 +1,4 @@
-import { Suspense, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { DialogMagasin } from '../components/EditionMagasin'
 import { lienFiche } from '../lib/format'
@@ -20,7 +20,23 @@ import { ListeMagasins, trisMagasins, type TriMagasins } from '../components/Lis
 import { Puces } from '../components/Social'
 import { useReseau } from '../data/ReseauContext'
 import { magasinsSuivis, useSuivis } from '../lib/suivis'
-import { filtrer, filtresDepuisUrl, filtresVersUrl, type Filtres } from '../data/filtres'
+import { filtrer, filtresDepuisUrl, filtresVersUrl, libellesAlerte, type Alerte, type Filtres } from '../data/filtres'
+import { VuesMagasins } from '../components/VuesMagasins'
+import { analyser } from '../data/chiffres'
+import { anneeDe, suiviRythme } from '../data/visites'
+import { statutLibelle, type Reseau } from '../data/modele'
+
+// Alertes de chaque magasin : chiffres (décroche, à surveiller) et visite attendue
+function alertesDuReseau(reseau: Reseau): Map<string, Alerte[]> {
+  const res = new Map<string, Alerte[]>()
+  const ajouter = (nom: string, a: Alerte) => res.set(nom, [...(res.get(nom) ?? []), a])
+  for (const m of reseau.magasins) {
+    const s = analyser(reseau, m.nom)?.statut
+    if (s === 'decroche' || s === 'surveiller') ajouter(m.nom, s)
+  }
+  for (const l of suiviRythme(reseau, anneeDe(reseau.jour))) if (l.alerte) ajouter(l.magasin.nom, 'visite')
+  return res
+}
 
 const CarteMagasins = chargementDiffere(() => import('../components/CarteMagasins').then((m) => ({ default: m.CarteMagasins })))
 
@@ -37,6 +53,9 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
   const naviguer = useNavigate()
   const { complet } = useReseau()
   const suivis = useSuivis()
+  // Calculées une fois par réseau chargé (analyse des chiffres et rythme de visite de chaque magasin)
+  const memo = useMemo(() => new WeakMap<Reseau, Map<string, Alerte[]>>(), [])
+  const alertesDe = (r: Reseau) => { let a = memo.get(r); if (!a) { a = alertesDuReseau(r); memo.set(r, a) } return a }
   const changerVue = (v: 'liste' | 'carte') => { const p = new URLSearchParams(params); p.set('vue', v); setParams(p, { replace: true }) }
 
   return (
@@ -45,7 +64,13 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
         // La carte montre tout le réseau, même à un Coach ou un RR ; la liste, ses magasins seulement
         const reseau = vue === 'carte' && complet ? complet : perimetre
         const restreint = reseau.magasins.length !== perimetre.magasins.length
-        const resultats = filtrer(reseau.magasins, filtres)
+        const alertes = alertesDe(reseau)
+        const parAlerte = (nom: string) => alertes.get(nom) ?? []
+        const resultats = filtrer(reseau.magasins, filtres, parAlerte)
+        // Nom proposé pour enregistrer la vue : ses filtres mis bout à bout
+        const nomPropose = [filtres.texte, ...filtres.alertes.map((a) => libellesAlerte[a]), ...filtres.statuts.map((s) => statutLibelle[s]),
+          ...filtres.types.map((t) => (t === 'franchise' ? 'Franchisés' : 'Intégrés')), ...filtres.rrs.map((r) => reseau.rrs.find((x) => x.id === r)?.nom ?? 'Sans RR'),
+          ...filtres.coachs.map((c) => (c === '__aucun__' ? 'Sans Coach' : c))].filter(Boolean).join(' · ').slice(0, 40)
         const total = reseau.magasins.length
         const parNom = new Map(reseau.magasins.map((m) => [m.nom, m]))
         const s = magasinsSuivis(suivis, new Set(parNom.keys()))
@@ -61,8 +86,9 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
               { vue: 'liste', libelle: 'Liste', icone: <TableRowsOutlined /> },
               { vue: 'carte', libelle: 'Carte', icone: <MapOutlined /> },
             ]} />
-            <BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres}
+            <BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres} alertesDe={parAlerte}
               actions={vue === 'carte' ? <Box ref={setEmplacementBoutons} sx={{ display: 'flex' }} /> : <BoutonAction libelle="Ajouter un magasin" onClick={() => setAjout(true)} />} />
+            <VuesMagasins params={params} appliquer={(p) => setParams(p, { replace: true })} nomPropose={nomPropose} />
             {ajout && <DialogMagasin reseau={reseau} magasin={null} onFermer={(msg, nom) => { setAjout(false); if (msg && nom) naviguer(lienFiche(nom)) }} />}
             {resultats.length === 0 ? (
               <EmptyState icone={<SearchOff />} titre="Aucun magasin ne correspond" texte="Modifie la recherche ou retire un filtre pour voir plus de magasins." />

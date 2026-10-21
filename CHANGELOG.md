@@ -84,6 +84,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 - Fiche magasin en six onglets au lieu de neuf : Fil (le journal et les bonnes pratiques au bas du fil), Fiche,
   Tâches et campagnes, Messages, Visites, Chiffres et santé ; les anciens liens (santé, campagnes, journal) ouvrent
   l'onglet qui les accueille, à leur partie. Pas de migration.
+- Magasins : filtre Alerte (Décroche, À surveiller, Pas vu depuis longtemps) ; une combinaison de recherche, filtres
+  et tri s'enregistre sous un nom (« Enregistrer la vue ») et revient en puce au-dessus de la liste. Vues gardées sur
+  l'appareil (`src/lib/vues.ts`). Pas de migration.
 - Santé du parc, tableaux Évaluer et Déploiements (PC) : « Voir plus » est au bas du tableau et les lignes
   ajoutées apparaissent aussitôt ; chaque critère, la case et chaque thématique se trient (du plus haut au plus bas,
   puis l'inverse) et se filtrent par valeur (Faible, Moyen, Fort, non noté ; options de la thématique, non renseigné)
