@@ -18,8 +18,7 @@ export function semaineDu(reseau: Reseau, coach: string): Semaine {
   const fin = isoDe(jourNum(debut) + 6)
   const prevues = new Map<string, Visite>()
   for (const v of reseau.visites) {
-    if (v.date < debut || v.date > fin || !estVisite(v)) continue
-    // Visite prévue aujourd'hui : déjà comptée faite par le rythme, gardée ici comme prévue
+    if (v.date < debut || v.date > fin || !estVisite(v) || !v.prevue) continue
     const p = prevues.get(v.magasin)
     if (!p || v.date < p.date) prevues.set(v.magasin, v)
   }
@@ -46,5 +45,5 @@ export const jourPropose = (reseau: Reseau, l: LigneRythme) => (l.alerte || !l.e
 export function preparationDe(reseau: Reseau, magasin: string): PreparationVisite | null {
   const p = reseau.preparations[magasin]
   if (!p) return null
-  return reseau.visites.some((v) => v.magasin === magasin && estVisite(v) && v.date > p.maj && v.date < reseau.jour) ? null : p
+  return reseau.visites.some((v) => v.magasin === magasin && estVisite(v) && !v.prevue && v.date > p.maj && v.date < reseau.jour) ? null : p
 }

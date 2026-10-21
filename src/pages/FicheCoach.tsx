@@ -16,7 +16,7 @@ import { chargeA, magasinsDuCoach } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche, lienRR } from '../lib/format'
 import { SectionFichePersonnelle } from './FichePersonne'
 import { SectionAccesEquipe } from '../components/AccesEquipe'
-import { libelleTypeVisite, type Coach, type Reseau } from '../data/modele'
+import { libelleTypeVisite, visiteFaite, type Coach, type Reseau } from '../data/modele'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
@@ -62,7 +62,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
   const rythme = suiviRythme(reseau, a).filter((l) => noms.has(l.magasin.nom))
   const ecart = (l: LigneRythme) => (l.depuis === null ? Infinity : l.depuis - l.delai)
   const aVoir = rythme.filter((l) => l.alerte).sort((x, y) => ecart(y) - ecart(x))
-  const visites = reseau.visites.filter((v) => v.date <= reseau.jour && (v.visiteurs.includes(coach.nom) || (noms.has(v.magasin) && !v.visiteurs.length)))
+  const visites = reseau.visites.filter((v) => visiteFaite(v, reseau.jour) && (v.visiteurs.includes(coach.nom) || (noms.has(v.magasin) && !v.visiteurs.length)))
     .sort((x, y) => y.date.localeCompare(x.date))
   const [toutes, setToutes] = useState(false)
   const { referentiels } = useDroits()

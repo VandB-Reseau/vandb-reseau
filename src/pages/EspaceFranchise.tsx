@@ -47,7 +47,7 @@ import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEur
 import { campagnesDuMagasin, executionMagasin, libellesExecution, magasinsConcernes, phase, libellesPhase, type Execution } from '../data/campagnes'
 import { associesEnPlace, mandatActuel } from '../data/associes'
 import { lienCompteRendu, visitesDuMagasin } from '../data/visites'
-import { libelleTypeVisite, nomsVisiteurs, statutLibelle, type Magasin, type Personne, type Reseau } from '../data/modele'
+import { libelleTypeVisite, nomsVisiteurs, statutLibelle, visiteFaite, type Magasin, type Personne, type Reseau } from '../data/modele'
 import type { IndicateurRepere } from '../data/espaceFranchise'
 
 const couleurExecution: Record<Execution, 'success' | 'warning' | 'error' | 'default'> = { fait: 'success', partiel: 'warning', non: 'error', aConstater: 'default' }
@@ -238,7 +238,7 @@ function SectionVisitesAudits({ reseau, magasins }: { reseau: Reseau; magasins: 
       <CarteLignes>
         {magasins.flatMap((m) => {
           const vs = visitesDuMagasin(reseau, m.nom)
-          const faite = vs.find((v) => v.date <= reseau.jour)
+          const faite = vs.find((v) => visiteFaite(v, reseau.jour))
           const prevue = vs.filter((v) => v.date > reseau.jour).at(-1)
           const audits = (['hygiene', 'excellence'] as const).map((t) => [t, dernierAudit(reseau, m.nom, t)] as const)
           const ou = magasins.length > 1 ? ` · ${m.nom}` : ''
@@ -442,7 +442,7 @@ function OngletVisites({ reseau, m }: { reseau: Reseau; m: Magasin }) {
           <CarteLignes>
             {vs.map((v) => {
               const faites = v.plan.filter((x) => x.faite).length
-              const avenir = v.date > reseau.jour
+              const avenir = !!v.prevue || v.date > reseau.jour
               return (
                 <Box key={v.id ?? v.date}>
                   <LigneCompacte avatar={<Initiales nom={v.type} icone={avenir ? <EventAvailableOutlined /> : <EventNoteOutlined />} />}

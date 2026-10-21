@@ -1,4 +1,4 @@
-import type { Magasin, Reseau, Visite } from './modele'
+import { visiteFaite, type Magasin, type Reseau, type Visite } from './modele'
 import { coachA } from './charge'
 import { caseDe, delaiVisite, historiqueSante, joursParVisite, nineBox, visitesParAn, type CaseNineBox } from './sante'
 import { estVisite, typesContact } from './chiffres'
@@ -32,7 +32,7 @@ export function couverture(reseau: Reseau, s: Semestre): LigneCouverture[] {
     .map((m) => {
       const toutes = reseau.visites.filter((v) => v.magasin === m.nom && estVisite(v))
       const visites = toutes.filter((v) => v.date >= s.debut && v.date <= s.fin)
-      return { magasin: m, coach: coachA(m, reference), visites, derniere: toutes.filter((v) => v.date <= reseau.jour).sort((a, b) => b.date.localeCompare(a.date))[0] ?? null }
+      return { magasin: m, coach: coachA(m, reference), visites, derniere: toutes.filter((v) => visiteFaite(v, reseau.jour)).sort((a, b) => b.date.localeCompare(a.date))[0] ?? null }
     })
 }
 
@@ -97,6 +97,7 @@ export function suiviRythme(reseau: Reseau, a: Annee): LigneRythme[] {
   for (const v of reseau.visites) {
     if (v.date > reseau.jour) continue
     if (estVisite(v)) {
+      if (v.prevue) continue
       const l = parMagasin.get(v.magasin)
       if (l) l.push(v); else parMagasin.set(v.magasin, [v])
     } else if (typesContact.includes(v.type) && (contacts.get(v.magasin)?.date ?? '') < v.date) contacts.set(v.magasin, v)

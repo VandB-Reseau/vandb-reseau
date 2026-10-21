@@ -16,6 +16,7 @@ import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
+import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, Pastille, Puces, TitreSection, type Ton } from '../components/Social'
 import { analyser, suiviAlerte } from '../data/chiffres'
@@ -26,7 +27,13 @@ import { anneeDe, suiviRythme, type LigneRythme } from '../data/visites'
 import { chargeA, coachA, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
 import { ajouterJours, elementsDuMois, jourLong } from './Agenda'
-import { libelleResponsable, type Magasin, type Reseau } from '../data/modele'
+import { libelleResponsable, nomsVisiteurs, type Magasin, type Reseau, type Visite } from '../data/modele'
+import { estVisite } from '../data/chiffres'
+import { DialogVisite } from '../components/DialogVisite'
+import { DialogPlanifier } from '../components/DialogPlanifier'
+import { marquerVisiteFaite } from '../data/chargement'
+import { useReseau } from '../data/ReseauContext'
+import { messageErreur } from '../components/EditionEquipe'
 import { magasinsDu, perimetreDuProfil, personnesDu, type Perimetre } from '../data/perimetre'
 import { PageHeader } from '../components/PageHeader'
 import { actionsEnCours, echeanceDate, enRetard } from '../data/actions'
@@ -47,7 +54,7 @@ const PRIORITAIRES = ['redressement', 'relance', 'renforcer']
 const APERCU = 5
 
 // Une ligne « À traiter » : un avatar, deux lignes de texte, une seule pastille (la plus grave)
-interface ATraiter { cle: string; titre: string; detail: string; lien: string; avatar: string; icone?: ReactNode; pastille?: { ton: Ton; libelle: string } }
+interface ATraiter { cle: string; titre: string; detail: string; lien: string; avatar: string; icone?: ReactNode; pastille?: { ton: Ton; libelle: string }; visite?: Visite }
 
 function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATraiter[] {
   const j = reseau.jour
@@ -74,6 +81,11 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
     const retard = enRetard(x.a, j)
     items.push({ cle: `t-${x.cle}`, titre: x.a.action, avatar: x.a.action, icone: <TaskAltOutlined />, lien: `${lienFiche(x.magasin)}?vue=actions`,
       detail: [x.magasin, x.a.porteur, `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · '), pastille: retard ? { ton: 'rouge', libelle: 'En retard' } : undefined })
+  }
+  // Visites planifiées dont la date est passée sans compte rendu : faites ou à reporter
+  for (const v of reseau.visites.filter((v) => v.prevue && v.date < j && v.id !== null && noms.has(v.magasin) && estVisite(v)).sort((x, y) => x.date.localeCompare(y.date))) {
+    items.push({ cle: `vp-${v.id}`, titre: v.magasin, avatar: v.magasin, icone: <EventAvailableOutlined />, lien: '', visite: v,
+      detail: [`Prévue le ${dateCourte(v.date)}`, nomsVisiteurs(v)].filter(Boolean).join(' · '), pastille: { ton: 'bleu', libelle: 'À confirmer' } })
   }
   const a = anneeDe(j)
   // Magasins pas vus depuis plus longtemps que le délai de leur case : les plus en dépassement d'abord
@@ -123,7 +135,14 @@ type GroupeATraiter = 'urgent' | 'suivi' | 'visite'
 const groupeDe = (x: ATraiter): GroupeATraiter => (x.pastille?.ton === 'rouge' ? 'urgent' : x.cle.startsWith('v-') ? 'visite' : 'suivi')
 const GROUPES: { v: GroupeATraiter; libelle: string }[] = [{ v: 'urgent', libelle: 'Urgent' }, { v: 'suivi', libelle: 'Suivi' }, { v: 'visite', libelle: 'À voir' }]
 
-function BlocATraiter({ items }: { items: ATraiter[] }) {
+function BlocATraiter({ reseau, items }: { reseau: Reseau; items: ATraiter[] }) {
+  const { recharger } = useReseau()
+  const [compteRendu, setCompteRendu] = useState<Visite | null>(null)
+  const [reporter, setReporter] = useState<Visite | null>(null)
+  const [message, setMessage] = useState('')
+  const faite = async (v: Visite) => {
+    try { await marquerVisiteFaite(v.id!); await recharger(); setMessage(`Visite de ${v.magasin} comptée faite.`) } catch (e) { setMessage(messageErreur(e)) }
+  }
   const [tout, setTout] = useState(false)
   const [filtre, setFiltre] = useState<GroupeATraiter | 'tout'>('tout')
   const tries = GROUPES.flatMap((g) => items.filter((x) => groupeDe(x) === g.v))
@@ -139,12 +158,21 @@ function BlocATraiter({ items }: { items: ATraiter[] }) {
       )}
       {!items.length ? <CarteLignes><LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur="#2e7d32" />} titre="Rien d’urgent" detail="Aucun magasin ne décroche ni n’attend de visite, aucune tâche en retard." /></CarteLignes> : (
         <CarteLignes>
-          {vus.map((x) => <LigneCompacte key={x.cle} lien={x.lien} avatar={<Initiales nom={x.avatar} icone={x.icone} />} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />)}
+          {vus.map((x) => x.visite
+            ? <LigneCompacte key={x.cle} onClick={() => setCompteRendu(x.visite!)} label={`Compte rendu de ${x.titre}`} avatar={<Initiales nom={x.avatar} icone={x.icone} />} titre={x.titre} detail={x.detail}
+              actions={<Box sx={{ display: 'flex', gap: 0.5, flex: 'none' }}>
+                <Button onClick={() => faite(x.visite!)} aria-label={`Visite de ${x.titre} faite`} sx={{ minHeight: 48, minWidth: 0, px: 1.25 }}>Faite</Button>
+                <Button onClick={() => setReporter(x.visite!)} aria-label={`Reporter la visite de ${x.titre}`} sx={{ minHeight: 48, minWidth: 0, px: 1.25 }}>Reporter</Button>
+              </Box>} />
+            : <LigneCompacte key={x.cle} lien={x.lien} avatar={<Initiales nom={x.avatar} icone={x.icone} />} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />)}
           {filtres.length > APERCU && (
             <ButtonBase onClick={() => setTout((v) => !v)} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{tout ? 'Afficher moins' : `Voir les ${filtres.length}`}</ButtonBase>
           )}
         </CarteLignes>
       )}
+      {compteRendu && <DialogVisite reseau={reseau} visite={compteRendu} onFermer={(m) => { setCompteRendu(null); if (m) setMessage(m) }} />}
+      {reporter && <DialogPlanifier reseau={reseau} magasins={[reporter.magasin]} dateInitiale={reseau.jour} visite={reporter} onFermer={(m) => { setReporter(null); if (m) setMessage(m) }} />}
+      <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </Box>
   )
 }
@@ -275,7 +303,7 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
     <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start' }}>
       {/* PC : la colonne reste visible pendant qu'on fait défiler le fil, et défile seule si elle dépasse l'écran */}
       <Box component="aside" aria-label="À traiter et cette semaine" sx={{ order: { xs: 1, md: 2 }, position: { md: 'sticky' }, top: { md: 88 }, maxHeight: { md: 'calc(100vh - 104px)' }, overflowY: { md: 'auto' }, overscrollBehavior: 'contain', scrollbarWidth: 'thin', mx: { md: -1 }, px: { md: 1 }, pb: { md: 1 } }}>
-        <BlocATraiter items={items} />
+        <BlocATraiter reseau={reseau} items={items} />
         <BlocSemaine reseau={reseau} p={p} />
       </Box>
       <Box sx={{ order: { xs: 2, md: 1 }, minWidth: 0 }}>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -22,6 +22,9 @@ import { supprimerPhotos } from '../lib/photos'
 import { ChampPhotos, SaisieGrille } from './GrilleAudit'
 import { SaisieCampagnes, useSaisieCampagnes } from './Campagnes'
 import { notifier } from '../lib/notifications'
+import { effacerBrouillon, garderBrouillon, lireBrouillon } from '../lib/brouillon'
+import { preparationDe } from '../data/semaine'
+import { dateHeure } from '../lib/format'
 import { typesVisite, type ActionPlan, type Document, type Reseau, type Visite } from '../data/modele'
 
 // Personnes qui peuvent visiter : Coachs, RR, Directeur
@@ -35,25 +38,36 @@ export function visiteursGroupes(reseau: Reseau): { nom: string; groupe: string 
 }
 export function visiteurs(reseau: Reseau): string[] { return visiteursGroupes(reseau).map((p) => p.nom) }
 
+// Ce que garde le brouillon du compte rendu (photos exceptées)
+interface Brouillon {
+  magasins: string[]; date: string; type: string; participants: string[]; signatureRequise: boolean; lienSigne: string; dateSignature: string
+  documents: Document[]; notes: string; parties: string[]; plan: ActionPlan[]; faites: Record<string, boolean>; mois: string; chiffres: Record<string, string>
+}
+
 export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitial = 'terrain', dateInitiale, onFermer }: { reseau: Reseau; visite: Visite | null; magasinsInitiaux?: string[]; typeInitial?: string; dateInitiale?: string; onFermer: (m?: string) => void }) {
-  const [magasins, setMagasins] = useState<string[]>(visite ? [visite.magasin] : magasinsInitiaux)
-  const [date, setDate] = useState(visite?.date ?? dateInitiale ?? reseau.jour)
-  const [type, setType] = useState(visite?.type ?? typeInitial)
+  // Un brouillon par visite enregistrée, ou par saisie nouvelle depuis le même endroit
+  const cleBrouillon = visite?.id ? `visite:${visite.id}` : `nouvelle:${magasinsInitiaux.join('|')}:${typeInitial}`
+  const [brouillon, setBrouillon] = useState(() => lireBrouillon<Brouillon>(cleBrouillon))
+  const b = brouillon
+  const [magasins, setMagasins] = useState<string[]>(b?.magasins ?? (visite ? [visite.magasin] : magasinsInitiaux))
+  const [date, setDate] = useState(b?.date ?? visite?.date ?? dateInitiale ?? reseau.jour)
+  const [type, setType] = useState(b?.type ?? visite?.type ?? typeInitial)
   // Par défaut : le Coach du magasin, tant que les participants n'ont pas été choisis à la main
   const coachDe = (noms: string[]) => { const c = reseau.magasins.find((m) => m.nom === noms[0])?.coach; return c ? [c] : [] }
-  const [participants, setParticipants] = useState<string[]>(visite?.visiteurs ?? coachDe(magasinsInitiaux))
-  const [participantsChoisis, setParticipantsChoisis] = useState(!!visite)
+  const [participants, setParticipants] = useState<string[]>(b?.participants ?? visite?.visiteurs ?? coachDe(magasinsInitiaux))
+  const [participantsChoisis, setParticipantsChoisis] = useState(!!visite || !!b)
   const groupes = visiteursGroupes(reseau)
   const options = [...groupes.map((p) => p.nom), ...participants.filter((n) => !groupes.some((p) => p.nom === n))]
   const groupeDe = (n: string) => groupes.find((p) => p.nom === n)?.groupe ?? 'Autres'
-  const [signatureRequise, setSignatureRequise] = useState(visite?.signatureRequise ?? false)
-  const [lienSigne, setLienSigne] = useState(visite?.lienSigne ?? '')
-  const [dateSignature, setDateSignature] = useState(visite?.dateSignature ?? '')
-  const [documents, setDocuments] = useState<Document[]>(visite?.documents.length ? visite.documents : [])
-  const [notes, setNotes] = useState(visite?.notes ?? '')
-  const [parties, setParties] = useState<string[]>(visite?.parties ?? partiesVides())
-  const [plan, setPlan] = useState<ActionPlan[]>(visite?.plan ?? [])
-  const [faites, setFaites] = useState<Record<string, boolean>>({})
+  const [signatureRequise, setSignatureRequise] = useState(b?.signatureRequise ?? visite?.signatureRequise ?? false)
+  const [lienSigne, setLienSigne] = useState(b?.lienSigne ?? visite?.lienSigne ?? '')
+  const [dateSignature, setDateSignature] = useState(b?.dateSignature ?? visite?.dateSignature ?? '')
+  const [documents, setDocuments] = useState<Document[]>(b?.documents ?? (visite?.documents.length ? visite.documents : []))
+  // Visite planifiée : le compte rendu part des notes de préparation
+  const [notes, setNotes] = useState(b?.notes ?? (visite?.notes || (visite?.prevue ? preparationDe(reseau, visite.magasin)?.notes ?? '' : '')))
+  const [parties, setParties] = useState<string[]>(b?.parties ?? visite?.parties ?? partiesVides())
+  const [plan, setPlan] = useState<ActionPlan[]>(b?.plan ?? visite?.plan ?? [])
+  const [faites, setFaites] = useState<Record<string, boolean>>(b?.faites ?? {})
   const unSeul = magasins.length <= 1
   const contact = typesContact.includes(type)
   const audit = typesAudit.includes(type) && unSeul
@@ -71,18 +85,26 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const [photos, setPhotos] = useState(visite?.photos ?? [])
   const resultatG = grille ? resultatGrille(reponses, grille.seuil) : null
   const grilleRemplie = !!resultatG && (resultatG.renseignes > 0 || photosDe(reponses).length > 0)
-  const chiffres = useSaisieChiffres(reseau, magasins[0] ?? '', moisPrecedent(visite?.date ?? reseau.jour))
+  const chiffres = useSaisieChiffres(reseau, magasins[0] ?? '', b?.mois ?? moisPrecedent(visite?.date ?? reseau.jour))
+  const [chiffresRepris, setChiffresRepris] = useState(!b?.chiffres)
+  if (!chiffresRepris) { setChiffresRepris(true); chiffres.setValeurs(b!.chiffres) }
+  // Toute saisie est gardée sur l'appareil ; rien n'est gardé tant que rien n'a changé
+  const courant: Brouillon = { magasins, date, type, participants, signatureRequise, lienSigne, dateSignature, documents, notes, parties, plan, faites, mois: chiffres.mois, chiffres: chiffres.valeurs as Record<string, string> }
+  const [depart] = useState(() => JSON.stringify(courant))
+  const texte = JSON.stringify(courant)
+  useEffect(() => { if (texte !== depart) garderBrouillon(cleBrouillon, JSON.parse(texte)) }, [texte, depart, cleBrouillon])
   // Campagnes en cours à la date de la visite : constatées sur place, rangées à cette date
   const campagnes = useSaisieCampagnes(reseau, unSeul ? magasins[0] ?? '' : '', date)
   const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date) && (!unSeul || chiffres.valide) && !(audit && !grilleRemplie && scoreInvalide)
   const noms = reseau.magasins.map((m) => m.nom)
   return (
     <Fenetre
-      large titre={visite ? `Modifier la visite de ${visite.magasin}` : 'Saisir une visite'} ouvert onFermer={onFermer} valide={valide}
+      large titre={visite?.prevue ? `Compte rendu · ${visite.magasin}` : visite ? `Modifier la visite de ${visite.magasin}` : 'Saisir une visite'} ouvert onFermer={onFermer} valide={valide}
       enregistrer={async () => {
         const groupe = visite?.groupe || (magasins.length > 1 ? `g_${Date.now()}` : '')
         const signe = signatureRequise && !contact
-        const ids = await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, photos: unSeul && !contact ? photos : [], notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [] }, magasins, visite?.id ?? null)
+        const ids = await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, photos: unSeul && !contact ? photos : [], notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [], prevue: date > reseau.jour }, magasins, visite?.id ?? null)
+        effacerBrouillon(cleBrouillon)
         // Franchisé prévenu sur son téléphone d'un nouveau compte rendu (visite faite, pas un appel ni une visite planifiée)
         const sansCompteRendu = !visite || (!visite.notes.trim() && !visite.parties.some((x) => x.trim()))
         if (!contact && sansCompteRendu && date <= reseau.jour) notifier('visite', ids)
@@ -105,12 +127,19 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
       }}
       supprimer={visite?.id ? async () => {
         await supprimerVisite(visite.id!)
+        effacerBrouillon(cleBrouillon)
         if (auditAvant) await enregistrerAudit(visite.magasin, { date: visite.date, type: visite.type }, null)
         await supprimerPhotos([...photosDe(auditAvant?.reponses), ...(visite.photos ?? [])].map((p) => p.chemin))
         return 'Visite supprimée.'
       } : undefined}
       libelleSuppression={visite ? `Supprimer la visite du ${date} à ${visite.magasin} ?` : undefined}
     >
+      {brouillon && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', bgcolor: 'action.hover', borderRadius: 2, pl: 2, pr: 1 }}>
+          <Typography variant="body2" sx={{ flex: 1, minWidth: 180 }}>{`Brouillon repris du ${dateHeure(brouillon.garde)}`}</Typography>
+          <Button onClick={() => { effacerBrouillon(cleBrouillon); setBrouillon(null); onFermer() }} sx={{ minHeight: 48 }}>Effacer le brouillon</Button>
+        </Box>
+      )}
       <Autocomplete
         multiple
         options={noms}

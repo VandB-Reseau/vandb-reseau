@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 21/10/2026 (migration `0016`).
+Mis à jour le 21/10/2026 (migration `0017`).
 
 ## Principes
 
@@ -53,7 +53,7 @@ compte franchisé porte sur l'un d'eux. Seul le Directeur écrit.
 
 | Table | Contenu | Clé |
 | --- | --- | --- |
-| `visits` | Visites, appels, audits. `visitor` = participants séparés par « , » ; `sections` = compte rendu en 10 parties ; `action_plan` = plan d'action ; `docs` = photos et liens ; `group_id` relie une tournée | `id` |
+| `visits` | Visites, appels, audits. `visitor` = participants séparés par « , » ; `sections` = compte rendu en 10 parties ; `action_plan` = plan d'action ; `docs` = photos et liens ; `group_id` relie une tournée ; `prevue` = planifiée, pas encore faite (0017) : ne compte ni dans le rythme ni dans « pas vu depuis » | `id` |
 | `store_finance` | Chiffres mensuels : `pm_cave`, `flux_cave`, `pm_bar`, `flux_bar`, `ca_ext`, `marge` saisis ; `ca_cave`, `ca_bar`, `panier`, `freq`, `ebitda` hérités | `store_name`, `month` |
 | `suivi_magasins` | Suivi par magasin, une ligne par rubrique (`cle`, liste ci-dessous), `valeur` en JSON | `store_name`, `cle` |
 

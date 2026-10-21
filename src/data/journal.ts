@@ -1,5 +1,5 @@
 import type { Magasin, Reseau } from './modele'
-import { libelleTypeVisite, nomsVisiteurs } from './modele'
+import { libelleTypeVisite, nomsVisiteurs, visiteFaite } from './modele'
 import { historiqueSante, libelleCritere, libelleNote, nineBox, tousCriteres, unChangementParJour, type Note } from './sante'
 
 // Ordre de la grille ; les critères retirés de la grille passent après
@@ -31,7 +31,7 @@ export function journalMagasin(reseau: Reseau, m: Magasin): EvenementJournal[] {
     cle: `coach-${i}`, date: h.date, type: 'coach', titre: h.coach ? `Coach : ${h.coach}` : 'Sans Coach', detail: h.note,
   }))
 
-  reseau.visites.filter((v) => v.magasin === m.nom && v.date <= reseau.jour).forEach((v) => {
+  reseau.visites.filter((v) => v.magasin === m.nom && visiteFaite(v, reseau.jour)).forEach((v) => {
     const actions = v.plan.length
     const audit = auditDe(reseau, m.nom, v.date, v.type)
     ev.push({

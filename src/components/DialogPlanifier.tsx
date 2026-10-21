@@ -27,7 +27,8 @@ export function DialogPlanifier({ reseau, magasins: initiaux, coach: coachDonne,
   const options = choix ? magasinsDu(reseau, coachDonne ? { type: 'coach', nom: coachDonne } : perimetreDuProfil(profil) ?? { type: 'reseau' }).map((m) => m.nom).sort((a, b) => a.localeCompare(b, 'fr')) : []
   const magasins = noms.map((n) => reseau.magasins.find((m) => m.nom === n)).filter((m) => !!m)
   const coach = coachDonne || (magasins[0] ? coachA(magasins[0], reseau.jour) : '')
-  const [date, setDate] = useState(visite?.date ?? dateInitiale)
+  // Visite à reporter : la date passée n'est pas reprise
+  const [date, setDate] = useState(visite && visite.date >= reseau.jour ? visite.date : dateInitiale)
   const [heure, setHeure] = useState(preparationDe(reseau, noms[0])?.heure ?? '')
   const [notes, setNotes] = useState<Record<string, string>>(() => Object.fromEntries(noms.map((n) => [n, preparationDe(reseau, n)?.notes ?? ''])))
   const [agenda, setAgenda] = useState(!visite)
@@ -40,9 +41,9 @@ export function DialogPlanifier({ reseau, magasins: initiaux, coach: coachDonne,
         // Ouvert avant toute attente : le navigateur ne le bloque pas
         if (agenda) window.open(lienGoogleAgenda({ magasins, date, heure, notes }), '_blank', 'noopener')
         if (visite) {
-          if (visite.date !== date) await enregistrerVisites({ ...visite, date }, [visite.magasin], visite.id)
+          if (visite.date !== date) await enregistrerVisites({ ...visite, date, prevue: true }, [visite.magasin], visite.id)
         } else {
-          await enregistrerVisites({ groupe: magasins.length > 1 ? `g_${Date.now()}` : '', date, type: 'terrain', visiteurs: coach ? [coach] : [], signatureRequise: false, lienSigne: '', dateSignature: '', documents: [], photos: [], notes: '', parties: partiesVides(), plan: [] }, noms, null)
+          await enregistrerVisites({ groupe: magasins.length > 1 ? `g_${Date.now()}` : '', date, type: 'terrain', visiteurs: coach ? [coach] : [], signatureRequise: false, lienSigne: '', dateSignature: '', documents: [], photos: [], notes: '', parties: partiesVides(), plan: [], prevue: true }, noms, null)
         }
         const par = monNomPorteur(reseau, profil) || reseau.directeur.nom
         for (const n of noms) await enregistrerPreparation(n, { notes: notes[n] ?? '', heure, par, maj: reseau.jour })
