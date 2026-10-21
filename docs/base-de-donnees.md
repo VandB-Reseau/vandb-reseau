@@ -107,8 +107,8 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 | `deploiements` | Thématiques suivies (état par magasin dans `suivi_magasins`) | objet `{ thematiques }` |
 | `derniere_sauvegarde` | Date de la dernière sauvegarde complète | texte |
 
-Clés de l'ancienne app encore possibles en base mais plus lues : `contacts`, `col_state`, `cs_arrivees`,
-`initial_reassign_v2`.
+Clés de l'ancienne app encore en base (constaté le 21/10/2026) mais plus lues : `contacts`, `col_state`,
+`cs_arrivees`, `initial_reassign_done`, `initial_reassign_v2`.
 
 ## Fonctions
 
