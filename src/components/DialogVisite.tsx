@@ -21,6 +21,7 @@ import { libellesGrilles, photosDe, reponsesPourSaisie, resultatGrille, type Rep
 import { supprimerPhotos } from '../lib/photos'
 import { ChampPhotos, SaisieGrille } from './GrilleAudit'
 import { SaisieCampagnes, useSaisieCampagnes } from './Campagnes'
+import { notifier } from '../lib/notifications'
 import { typesVisite, type ActionPlan, type Document, type Reseau, type Visite } from '../data/modele'
 
 // Personnes qui peuvent visiter : Coachs, RR, Directeur
@@ -81,7 +82,10 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
       enregistrer={async () => {
         const groupe = visite?.groupe || (magasins.length > 1 ? `g_${Date.now()}` : '')
         const signe = signatureRequise && !contact
-        await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, photos: unSeul && !contact ? photos : [], notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [] }, magasins, visite?.id ?? null)
+        const ids = await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, photos: unSeul && !contact ? photos : [], notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [] }, magasins, visite?.id ?? null)
+        // Franchisé prévenu sur son téléphone d'un nouveau compte rendu (visite faite, pas un appel ni une visite planifiée)
+        const sansCompteRendu = !visite || (!visite.notes.trim() && !visite.parties.some((x) => x.trim()))
+        if (!contact && sansCompteRendu && date <= reseau.jour) notifier('visite', ids)
         // Clés « visite:index » (plan d'une visite) ou « l:id » (action hors visite)
         const cles = unSeul && !contact ? Object.entries(faites).filter(([, v]) => v).map(([k]) => k) : []
         const lot = cles.map((k) => k.startsWith('l:') ? { libre: k.slice(2), magasin: magasins[0], faite: date } : { visite: Number(k.split(':')[0]), index: Number(k.split(':')[1]), faite: date })

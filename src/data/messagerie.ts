@@ -7,6 +7,7 @@ import { associesEnPlace } from './associes'
 import { libelleResponsable, type Magasin, type Reseau } from './modele'
 import { lienFiche } from '../lib/format'
 import { normaliserPieces, type Piece } from '../lib/pieces'
+import { notifier } from '../lib/notifications'
 
 // destinataire : clé de la personne à qui le message est écrit (null = ancien message par magasin) ;
 // magasins : magasins cités (ancien message : son magasin) ; equipe : ancien message caché au franchisé
@@ -58,10 +59,12 @@ export async function chargerMessagerie(): Promise<Messagerie | null> {
 // (le premier cité, sinon « repli »), la personne mentionnée pour être notifiée.
 // pieces : photos et fichiers joints (échanges à deux seulement)
 export async function envoyerMessage(destinataire: string, texte: string, magasins: string[], version: number, repli: string | null, pieces: Piece[] = []) {
-  const { error } = version >= 3
+  const { data, error } = version >= 3
     ? await supabase.rpc('envoyer_a', { p_destinataire: destinataire, p_texte: texte, p_magasins: magasins, ...(pieces.length ? { p_pieces: pieces } : {}) })
     : await supabase.rpc('envoyer_message', { p_store: magasins[0] ?? repli, p_texte: texte, p_mentions: [destinataire] })
   if (error) throw new ErreurMessage(error.message)
+  const id = Number((data as { id?: unknown } | null)?.id)
+  if (version >= 3 && id) notifier('message', [id])
 }
 
 export async function marquerLu(magasin: string, sujet: Sujet) {

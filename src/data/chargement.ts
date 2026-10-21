@@ -629,15 +629,18 @@ export async function supprimerMagasin(nom: string) {
 
 function verifier(r: { error: { message: string } | null }) { if (r.error) throw new ErreurEnregistrement(r.error.message) }
 
-export async function enregistrerVisites(base: Omit<Visite, 'magasin' | 'id'>, magasins: string[], id: number | null) {
+// Renvoie les identifiants des visites enregistrées
+export async function enregistrerVisites(base: Omit<Visite, 'magasin' | 'id'>, magasins: string[], id: number | null): Promise<number[]> {
   const ligne = (magasin: string) => ({
     group_id: base.groupe || null, store: magasin, visit_date: base.date, type: base.type, visitor: base.visiteurs.join(SEPARATEUR_VISITEURS) || null,
     signed_required: base.signatureRequise, signed_url: base.lienSigne || null, signed_date: base.dateSignature || null,
     docs: [...base.documents.filter((d) => d.url.trim()), ...(base.photos ?? []).map((p) => ({ label: 'Photo', url: '', chemin: p.chemin, taille: p.taille }))], notes: base.notes || null,
     sections: base.parties.some((x) => x.trim()) ? base.parties.map((x) => x.trim()) : null, action_plan: base.plan.filter((a) => a.action.trim()).map((a, i) => ({ ...a, id: a.id || `a_${Date.now().toString(36)}_${i}` })),
   })
-  if (id !== null) verifier(await supabase.from('visits').update(ligne(magasins[0])).eq('id', id))
-  else verifier(await supabase.from('visits').insert(magasins.map(ligne)))
+  if (id !== null) { verifier(await supabase.from('visits').update(ligne(magasins[0])).eq('id', id)); return [id] }
+  const r = await supabase.from('visits').insert(magasins.map(ligne)).select('id')
+  verifier(r)
+  return ((r.data ?? []) as { id: unknown }[]).map((l) => Number(l.id)).filter(Boolean)
 }
 // Import d'un classeur de suivi : visites terrain par paquets, puis notes d'audit rangées à la date choisie
 export async function importerVisites(visites: { magasin: string; date: string; visiteurs: string[]; notes: string; type?: string }[], audits: { magasin: string; type: string; score: number; date?: string }[], dateAudits: string) {
