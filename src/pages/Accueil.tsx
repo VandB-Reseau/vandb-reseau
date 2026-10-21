@@ -22,7 +22,7 @@ import { analyser, suiviAlerte } from '../data/chiffres'
 import { useAuth } from '../auth/AuthContext'
 import { useMessagerie } from '../data/MessagerieContext'
 import { caseDe, tendance } from '../data/sante'
-import { anneeDe, suiviRythme } from '../data/visites'
+import { anneeDe, suiviRythme, type LigneRythme } from '../data/visites'
 import { chargeA, coachA, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
 import { ajouterJours, elementsDuMois, jourLong } from './Agenda'
@@ -75,9 +75,11 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
       detail: [x.magasin, x.a.porteur, `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · '), pastille: retard ? { ton: 'rouge', libelle: 'En retard' } : undefined })
   }
   const a = anneeDe(j)
-  for (const l of suiviRythme(reseau, a).filter((l) => l.retard > 0 && noms.has(l.magasin.nom)).sort((x, y) => y.retard - x.retard)) {
+  // Magasins pas vus depuis plus longtemps que le délai de leur case : les plus en dépassement d'abord
+  const ecart = (l: LigneRythme) => (l.depuis === null ? Infinity : l.depuis - l.delai)
+  for (const l of suiviRythme(reseau, a).filter((l) => l.alerte && noms.has(l.magasin.nom)).sort((x, y) => ecart(y) - ecart(x))) {
     items.push({ cle: `v-${l.magasin.nom}`, titre: l.magasin.nom, avatar: l.magasin.nom, lien: lienFiche(l.magasin.nom),
-      detail: (avecCoach ? `${l.coach || 'Sans Coach'} · ` : '') + `${l.derniere ? `vu le ${dateCourte(l.derniere.date)}` : 'jamais visité'} · ${l.retard} j de retard`, pastille: { ton: 'orange', libelle: 'Visite' } })
+      detail: (avecCoach ? `${l.coach || 'Sans Coach'} · ` : '') + [l.case?.libelle ?? 'Non classé', l.derniere ? `pas vu depuis ${l.depuis} j` : 'jamais visité', l.dernierContact && `appel le ${dateCourte(l.dernierContact.date)}`].filter(Boolean).join(' · '), pastille: { ton: 'orange', libelle: 'Visite' } })
   }
   for (const { m, c } of actifs.map((m) => ({ m, c: caseDe(reseau.evaluations[m.nom]) })).filter((x) => x.c && PRIORITAIRES.includes(x.c.id) && !vus.has(x.m.nom))
     .sort((x, y) => PRIORITAIRES.indexOf(x.c!.id) - PRIORITAIRES.indexOf(y.c!.id))) {
@@ -121,7 +123,7 @@ function BlocATraiter({ items }: { items: ATraiter[] }) {
   return (
     <Box component="section" aria-label="À traiter">
       <TitreSection nombre={items.length}>À traiter</TitreSection>
-      {!items.length ? <CarteLignes><LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur="#2e7d32" />} titre="Rien d’urgent" detail="Aucun magasin ne décroche, aucune visite ni tâche en retard." /></CarteLignes> : (
+      {!items.length ? <CarteLignes><LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur="#2e7d32" />} titre="Rien d’urgent" detail="Aucun magasin ne décroche ni n’attend de visite, aucune tâche en retard." /></CarteLignes> : (
         <CarteLignes>
           {vus.map((x) => <LigneCompacte key={x.cle} lien={x.lien} avatar={<Initiales nom={x.avatar} icone={x.icone} />} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />)}
           {items.length > APERCU && (

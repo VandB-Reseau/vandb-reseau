@@ -82,6 +82,13 @@ export const nineBox: CaseNineBox[] = [
   { id: 'fragile', libelle: 'Performance fragile', resultats: 3, management: 1, rythme: '4 visites × ½ j', couleur: '#f6c544' },
 ]
 
+// Jours sans visite après lesquels un magasin est signalé, par case (plus la case est faible, plus le délai est court)
+export const NON_CLASSE = 'aucune'
+export const delaisVisiteParDefaut: Record<string, number> = {
+  redressement: 60, relance: 75, renforcer: 75, diagnostic: 120, fragile: 120, potentiel: 150, coeur: 150, grandir: 150, locomotive: 240, [NON_CLASSE]: 180,
+}
+export const delaiVisite = (delais: Record<string, number>, c: CaseNineBox | null) => delais[c?.id ?? NON_CLASSE] ?? delaisVisiteParDefaut[c?.id ?? NON_CLASSE]
+
 // Nombre de visites par an et durée d'une visite, lus dans le rythme de la case
 export const visitesParAn = (c: CaseNineBox | null): number => (c ? Number(c.rythme.match(/^\d+/)?.[0] ?? 2) : 2)
 export function joursParVisite(c: CaseNineBox | null): number {

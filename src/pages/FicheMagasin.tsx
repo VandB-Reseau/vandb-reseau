@@ -57,7 +57,7 @@ import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import { SectionMessages, useNonLusMagasin } from '../components/Messages'
-import { anneeDe, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
+import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import PhoneInTalkOutlined from '@mui/icons-material/PhoneInTalkOutlined'
@@ -147,7 +147,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   return (
     <>
       <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Magasins</Button>
-      <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} retardVisite={rythme?.retard ?? 0}
+      <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} alerteVisite={rythme?.alerte ? libellePasVu(rythme) : ''}
         appeler={m.telephone || m.responsable?.telephone || ''} message={() => changerVue('messages')} visite={saisirVisite} planifier={() => setPlanifier(true)}
         modifier={referentiels ? () => setEdition(true) : undefined} />
       <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} collants />
@@ -247,9 +247,10 @@ function SectionVisites({ reseau, m, saisir, modifier }: { reseau: Reseau; m: Ma
   const MAXI = 15
   return (
     <Section titre="Visites" action={<Button startIcon={<AddOutlined />} onClick={saisir} sx={{ minHeight: 48 }}>Saisir</Button>}>
-      {r && <Chip size="small" color={r.retard ? 'warning' : 'success'} variant={r.retard ? 'filled' : 'outlined'}
-        label={`${r.faites} visite${r.faites > 1 ? 's' : ''} sur ${r.objectif} en ${a.court} · ${r.retard ? `${r.retard} j de retard` : `prochaine avant le ${dateCourte(r.prochaine)}`}`}
-        sx={{ fontSize: '0.75rem', fontWeight: 600, mb: 1 }} />}
+      {r && <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+        <Typography variant="body2" color="text.secondary">{r.faites} visite{r.faites > 1 ? 's' : ''} en {a.court} · référence nine box {r.reference}</Typography>
+        {r.alerte && <Chip size="small" color="warning" label={libellePasVu(r)} sx={{ fontSize: 12, fontWeight: 600 }} />}
+      </Box>}
       {vs.length === 0 ? <Typography variant="body2" color="text.secondary">Aucune visite enregistrée.</Typography> : (toutes ? vs : vs.slice(0, MAXI)).map((v) => (
         <Box key={v.id ?? v.date} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
           <Typography variant="body2" color="text.secondary" sx={{ width: 110, flexShrink: 0 }}>{dateCourte(v.date)}</Typography>
@@ -440,8 +441,8 @@ function SectionPratiques({ reseau, m, signaler }: { reseau: Reseau; m: Magasin;
 }
 
 // Haut de fiche façon profil : initiales, nom, trois compteurs, puis Appeler, Message, Visite
-function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, appeler, message, visite, planifier, modifier, retour }: {
-  m: Magasin; reseau: Reseau; alerte: ReturnType<typeof analyser>; enRetardNb: number; ouvertes: number; retardVisite: number
+function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, appeler, message, visite, planifier, modifier, retour }: {
+  m: Magasin; reseau: Reseau; alerte: ReturnType<typeof analyser>; enRetardNb: number; ouvertes: number; alerteVisite: string
   appeler: string; message: () => void; visite: () => void; planifier: () => void; modifier?: () => void; retour: { libelle: string; aller: () => void }
 }) {
   const c = caseDe(reseau.evaluations[m.nom])
@@ -449,7 +450,7 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, 
   const pastille: { ton: Ton; libelle: string } | null = alerte?.statut === 'decroche' ? { ton: 'rouge', libelle: 'Décroche' }
     : enRetardNb ? { ton: 'rouge', libelle: `${enRetardNb} tâche${enRetardNb > 1 ? 's' : ''} en retard` }
     : alerte?.statut === 'surveiller' ? { ton: 'orange', libelle: 'À surveiller' }
-    : retardVisite > 0 ? { ton: 'orange', libelle: `Visite en retard de ${retardVisite} j` }
+    : alerteVisite ? { ton: 'orange', libelle: alerteVisite }
     : m.statut !== 'ouvert' ? { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] } : null
   return (
     <ProfilPersonne nom={m.nom} retour={retour}
@@ -460,7 +461,7 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, retardVisite, 
         { valeur: alerte?.ecart === null || alerte?.ecart === undefined ? '—' : formatPourcent(alerte.ecart), libelle: 'vs l’an dernier', couleur: alerte?.ecart !== null && alerte?.ecart !== undefined && alerte.ecart < 0 ? 'error.main' : undefined },
         { valeur: ouvertes || '0', libelle: ouvertes > 1 ? 'tâches en cours' : 'tâche en cours' },
       ]}
-      detail={c && <><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} visites par an</>}
+      detail={c && <><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} par an</>}
       telephone={appeler} modifier={modifier}
       icones={<>
         <Tooltip title="Planifier la visite"><IconButton onClick={planifier} aria-label="Planifier la visite" sx={{ width: 48, height: 48 }}><EventAvailableOutlined /></IconButton></Tooltip>

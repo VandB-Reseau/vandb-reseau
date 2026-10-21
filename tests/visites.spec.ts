@@ -11,21 +11,23 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
 })
 
-test('le rythme de visite suit la nine box et signale les retards', async ({ page, isMobile }, info) => {
+test('le rythme de visite est indicatif et signale les magasins pas vus depuis longtemps', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/visites')
   await expect(page.getByRole('tab', { name: 'Rythme de visite', selected: true })).toBeVisible()
-  // Lyon (redressement, 8 visites par an) vu le 2 octobre : à jour ; Nantes (cœur de réseau, 3 par an) vu en mars : en retard
+  // Lyon : Cœur de réseau (3 par an) jusqu'au 1er octobre puis Redressement (8 par an) → référence 4 au prorata ; vu le 2 octobre.
+  // Nantes (Cœur de réseau) vu en mars : au-delà des 150 jours de sa case
   const parMagasin = page.getByRole('region', { name: 'Rythme de visite par magasin' })
   const lyon = parMagasin.getByRole('link', { name: /^Lyon Test/ })
   const nantes = parMagasin.getByRole('link', { name: /^Nantes Test/ })
-  await expect(lyon).toContainText('1 sur 8')
-  await expect(lyon).toContainText(/avant le 17 nov/)
-  await expect(nantes.getByText(/j de retard/)).toBeVisible()
-  // Filtres : seulement les magasins en retard, puis une case de la nine box
+  await expect(lyon).toContainText('1 visite · référence 4')
+  await expect(lyon.getByText(/Pas vu depuis/)).toHaveCount(0)
+  await expect(nantes.getByText(/^Pas vu depuis \d+ j$/)).toBeVisible()
+  await expect(page.getByRole('main')).not.toContainText(/en retard|j de retard|visites? dues?\b/i)
+  // Filtres : seulement les magasins pas vus depuis longtemps, puis une case de la nine box
   if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
-  await page.getByRole('button', { name: 'Filtre État' }).click()
-  await page.getByRole('menuitem', { name: /En retard/ }).click()
+  await page.getByRole('button', { name: 'Filtre Dernière visite' }).click()
+  await page.getByRole('menuitem', { name: /Pas vus depuis longtemps/ }).click()
   await page.keyboard.press('Escape')
   await expect(lyon).toHaveCount(0)
   await expect(nantes).toBeVisible()
@@ -90,7 +92,7 @@ test('modifier puis supprimer une visite depuis la fiche magasin', async ({ page
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test?vue=visites')
-  await expect(page.getByText(/^1 visite sur 8 en 2026 · prochaine avant le/)).toBeVisible()
+  await expect(page.getByText(/^1 visite en 2026 · référence nine box 4$/)).toBeVisible()
   await page.getByRole('button', { name: /Modifier la visite du/ }).click()
   const d = page.getByRole('dialog', { name: 'Modifier la visite de Lyon Test' })
   await d.getByLabel('Lien du compte rendu signé (Drive)').fill('https://exemple.test/cr')
@@ -164,4 +166,25 @@ test('un grand réseau s’affiche par tranches sans bloquer les onglets', async
   await page.getByRole('textbox', { name: /Rechercher/ }).or(page.getByPlaceholder('Rechercher un magasin ou une note')).first().fill('Grand7 Test')
   await expect(page.getByText(/^\d+ visites?$/)).toHaveText(/^1\d visites$/)
   expect(await textesTropPetits(page)).toEqual([])
+})
+
+test('les délais d’alerte de visite se règlent par case de la nine box', async ({ page, isMobile }, info) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/parametres/reglages')
+  await expect(page.getByRole('heading', { name: 'Alerte de visite' })).toBeVisible()
+  const redressement = page.getByLabel('Redressement urgent (jours sans visite)')
+  await expect(redressement).toHaveValue('60')
+  await expect(page.getByLabel('Locomotive (jours sans visite)')).toHaveValue('240')
+  await expect(page.getByLabel('Non classé (jours sans visite)')).toHaveValue('180')
+  // Lyon (Redressement urgent) vu le 2 octobre : signalé dès que le délai passe sous l'ancienneté de sa visite
+  await redressement.fill('7')
+  await expect(page.getByText(/^Avec ces délais, \d+ magasins? serai(en)?t signalés? \(contre \d+ actuellement\)\.$/)).toBeVisible()
+  await page.getByRole('heading', { name: 'Alerte de visite' }).scrollIntoViewIfNeeded()
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-parametres-alerte-visite.png`, fullPage: !isMobile })
+  await page.getByRole('button', { name: 'Enregistrer' }).nth(2).click()
+  await expect(page.getByText('Alerte de visite enregistrée.')).toBeVisible()
+  const params = ecritures.filter((e) => e.table === 'app_config').at(-1)!
+  expect(JSON.parse((params.corps as { value: string }).value)).toEqual(expect.objectContaining({ alerteVisite_redressement: 7, alerteVisite_locomotive: 240, prepDuration: 2 }))
 })
