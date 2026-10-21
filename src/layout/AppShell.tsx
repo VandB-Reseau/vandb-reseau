@@ -19,7 +19,6 @@ import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
-import SearchIcon from '@mui/icons-material/Search'
 import Logout from '@mui/icons-material/Logout'
 import KeyOutlined from '@mui/icons-material/KeyOutlined'
 import InstallMobileOutlined from '@mui/icons-material/InstallMobileOutlined'
@@ -176,7 +175,6 @@ function BarreBasse({ franchise }: { franchise?: Destination[] }) {
 export function AppShell({ children, franchise, bandeau, sansParametres = false, sansCloche = false }: { children: ReactNode; franchise?: Destination[]; bandeau?: ReactNode; sansParametres?: boolean; sansCloche?: boolean }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
-  const [rechercheOuverte, setRechercheOuverte] = useState(false)
   const { pathname } = useLocation()
   // Téléphone : la barre du bas s'efface dans une conversation et pendant la saisie d'un message, pour laisser la place au clavier
   const [saisie, setSaisie] = useState(false)
@@ -202,25 +200,15 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
             <Logo size={surPC ? 22 : 20} />
             <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'inline' } }}>{franchise ? 'Espace franchisé' : 'Réseau'}</Typography>
           </Box>
-          <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-            {surPC && !franchise && <RechercheGlobale surFonce />}
+          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center' }}>
+            {!franchise && <RechercheGlobale surFonce court={!surPC} />}
           </Box>
-          {!surPC && !franchise && (
-            <IconButton aria-label="Rechercher" onClick={() => setRechercheOuverte((v) => !v)} sx={{ color: '#ffffff' }}>
-              <SearchIcon />
-            </IconButton>
-          )}
           <BoutonTaches />
           {!sansCloche && <BoutonMessages />}
           {!sansCloche && <Cloche />}
           <MenuCompte liens={surPC || franchise ? [] : [{ destinations: secondaires }, ...(sansParametres ? [] : [{ titre: 'Paramètres', destinations: parametres }])]} />
         </Toolbar>
         <Box aria-hidden sx={{ height: 4, background: brandStripe }} />
-        {!surPC && rechercheOuverte && (
-          <Box sx={{ px: 2, py: 1.5, bgcolor: 'background.paper', color: 'text.primary' }}>
-            <RechercheGlobale onChoix={() => setRechercheOuverte(false)} />
-          </Box>
-        )}
       </AppBar>
 
       {surPC && <MenuLateral franchise={franchise} sansParametres={sansParametres} />}

@@ -155,7 +155,6 @@ test('fiche magasin : Franchisé à la place du responsable, sans adjoint ni pla
   await page.getByRole('link', { name: 'Paul MULTI', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Paul MULTI', level: 1 })).toBeVisible()
 
-  if (isMobile) await page.getByRole('button', { name: 'Rechercher' }).click()
   await page.getByLabel('Recherche globale').fill('alex')
   await page.getByRole('option', { name: /^Alex NORD/ }).click()
   await expect(page.getByRole('heading', { name: 'Alex NORD', level: 1 })).toBeVisible()
