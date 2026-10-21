@@ -1,6 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
+// Sur téléphone, les filtres de la barre (liste, magasins) sont repliés derrière « Filtres »
+async function deplierFiltres(page: Page) {
+  const bouton = page.getByRole('button', { name: 'Filtres' })
+  if (await bouton.isVisible() && (await bouton.getAttribute('aria-expanded')) !== 'true') await bouton.click()
+}
+
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
   page.on('pageerror', (e) => erreurs.push(e.message))
@@ -75,6 +81,7 @@ test('le Directeur ne voit que les tâches qui lui sont attribuées, les coche e
   await expect(aFaire.getByRole('listitem').filter({ hasText: 'Mettre en avant les coffrets de Noël' })).toContainText('Lyon Test')
 
   // Il ouvre la liste d'un Coach
+  await deplierFiltres(page)
   await page.getByLabel('Liste de').click()
   await page.getByRole('option', { name: 'Noé MODELE' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches de Noé MODELE')
@@ -105,6 +112,7 @@ test('un Coach ne voit que les tâches qui lui sont attribuées', async ({ page 
   await ouvrirTaches(page)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Mes tâches')
   // Sa liste ou celle de ses franchisés, jamais celle d'un autre Coach
+  await deplierFiltres(page)
   await page.getByLabel('Liste de').click()
   await expect(page.getByRole('option')).toHaveText(['Mes tâches', 'Franchisés de mes magasins'])
   await page.keyboard.press('Escape')
@@ -123,6 +131,7 @@ test('le Coach ouvre la liste des tâches des franchisés de ses magasins', asyn
   }
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Noé MODELE' }, config: { actions } })
   await ouvrirTaches(page)
+  await deplierFiltres(page)
   await page.getByLabel('Liste de').click()
   await page.getByRole('option', { name: 'Franchisés de mes magasins' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches des franchisés')
@@ -166,6 +175,7 @@ test('le franchisé coche et ajoute ses actions, la base pose son nom', async ({
   await seConnecter(page, { acces: PAUL, espace: espace(), ecritures })
   await ouvrirTaches(page)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Mes tâches')
+  await deplierFiltres(page)
   await expect(page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button')).toHaveText(['Tous', 'Annecy Test', 'Rennes Test'])
   const aFaire = page.getByRole('list', { name: 'Tâches à faire' })
   // Seule l'action dont il est le porteur ; celle du Coach n'y est pas

@@ -112,7 +112,7 @@ export function Puces<V extends string>({ valeur, options, onChange, label }: { 
         const actif = o.v === valeur
         return (
           <ButtonBase key={o.v} onClick={() => onChange(o.v)} aria-pressed={actif}
-            sx={{ flexShrink: 0, minHeight: 48, px: 0.25, '& > span': { px: 1.75, height: 40, display: 'flex', alignItems: 'center', borderRadius: 999, border: '1px solid', fontSize: '0.875rem', fontWeight: actif ? 600 : 500, borderColor: actif ? 'primary.main' : 'divider', bgcolor: actif ? 'primary.main' : 'background.paper', color: actif ? 'primary.contrastText' : 'text.primary' } }}>
+            sx={{ flexShrink: 0, minHeight: 48, px: 0.25, fontFamily: 'inherit', '& > span': { px: 1.75, height: 40, display: 'flex', alignItems: 'center', borderRadius: 999, border: '1px solid', fontSize: '0.875rem', fontWeight: actif ? 600 : 500, borderColor: actif ? 'primary.main' : 'divider', bgcolor: actif ? 'primary.main' : 'background.paper', color: actif ? 'primary.contrastText' : 'text.primary' } }}>
             <span>{o.libelle}</span>
           </ButtonBase>
         )

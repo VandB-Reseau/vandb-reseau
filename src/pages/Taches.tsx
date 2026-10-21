@@ -5,14 +5,15 @@ import { useSearchParams } from 'react-router-dom'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import Chip from '@mui/material/Chip'
 import Snackbar from '@mui/material/Snackbar'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import { PageHeader } from '../components/PageHeader'
+import { ChampRecherche } from '../components/Outils'
+import { RechercheFiltres } from '../components/RechercheFiltres'
+import { CarteLignes, TitreSection } from '../components/Social'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { BoutonAjouterAction, DialogAction, LigneAction, useEcritureActions } from '../components/Actions'
@@ -20,24 +21,35 @@ import MenuItem from '@mui/material/MenuItem'
 import ListSubheader from '@mui/material/ListSubheader'
 import { useAuth } from '../auth/AuthContext'
 import { useReseau } from '../data/ReseauContext'
-import { actionsDes, enRetard, monNomPorteur, porteursDu, type ActionSuivie } from '../data/actions'
+import { actionsDes, echeanceDate, enRetard, monNomPorteur, porteursDu, type ActionSuivie } from '../data/actions'
 import { magasinsDu, perimetreDuProfil } from '../data/perimetre'
 import { libelleResponsable, type Reseau } from '../data/modele'
 import { ErreurAction } from '../data/espaceFranchise'
 
 const FAITES_VISIBLES = 10
 
-function Bloc({ titre, nombre, couleur, children }: { titre: string; nombre: number; couleur: 'error' | 'success'; children: ReactNode }) {
+const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr')
+
+// Tâches à faire rangées par échéance ; une échéance écrite en toutes lettres (« novembre ») va dans « Plus tard »
+type Groupe = 'retard' | 'semaine' | 'tard' | 'sans'
+const groupes: { g: Groupe; titre: string }[] = [
+  { g: 'retard', titre: 'En retard' }, { g: 'semaine', titre: 'Cette semaine' }, { g: 'tard', titre: 'Plus tard' }, { g: 'sans', titre: 'Sans échéance' },
+]
+function groupeDe(x: ActionSuivie, jour: string, dansUneSemaine: string): Groupe {
+  if (enRetard(x.a, jour)) return 'retard'
+  const date = echeanceDate(x.a)
+  if (date) return date <= dansUneSemaine ? 'semaine' : 'tard'
+  return x.a.echeance?.trim() ? 'tard' : 'sans'
+}
+const plusSept = (jour: string) => { const d = new Date(`${jour}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 7); return d.toISOString().slice(0, 10) }
+
+// Intertitre d'un groupe, à l'intérieur de la liste (pas une tâche)
+function Intertitre({ titre, nombre }: { titre: string; nombre: number }) {
   return (
-    <Card>
-      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-          <Typography variant="h3" component="h2">{titre}</Typography>
-          <Chip size="small" color={nombre ? couleur : 'default'} label={nombre} sx={{ fontSize: 12, fontWeight: 700, minWidth: 28 }} />
-        </Box>
-        {children}
-      </CardContent>
-    </Card>
+    <Box component="li" role="presentation" sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, pt: 1.5, pb: 0.5, bgcolor: 'action.hover' }}>
+      <Typography component="h2" sx={{ flex: 1, fontSize: '0.8125rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'text.secondary' }}>{titre}</Typography>
+      <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.secondary' }}>{nombre}</Typography>
+    </Box>
   )
 }
 
@@ -71,16 +83,20 @@ function porteeParFranchise(reseau: Reseau, x: ActionSuivie, cache: Map<string, 
   return noms.has(x.a.porteur)
 }
 
-function Liste({ reseau, noms, porteur, signaler }: { reseau: Reseau; noms: string[]; porteur: string; signaler: (m: string) => void }) {
+function Liste({ reseau, noms, porteur, signaler, choixPorteur, autreListe, ajout }: { reseau: Reseau; noms: string[]; porteur: string; signaler: (m: string) => void; choixPorteur?: ReactNode; autreListe?: boolean; ajout?: ReactNode }) {
   const { recharger } = useReseau()
   const ecriture = useEcritureActions(reseau)
+  const [recherche, setRecherche] = useState('')
   const [magasin, setMagasin] = useState<string | null>(null)
   const [enCours, setEnCours] = useState<string | null>(null)
   const [toutesFaites, setToutesFaites] = useState(false)
   const [edition, setEdition] = useState<ActionSuivie | null>(null)
   const choix = magasin && noms.includes(magasin) ? magasin : null
   const cache = new Map<string, Set<string>>()
-  const actions = actionsDes(reseau, new Set(choix ? [choix] : noms)).filter((x) => (porteur === FRANCHISES ? porteeParFranchise(reseau, x, cache) : x.a.porteur === porteur))
+  const q = sansAccents(recherche.trim())
+  const actions = actionsDes(reseau, new Set(choix ? [choix] : noms))
+    .filter((x) => (porteur === FRANCHISES ? porteeParFranchise(reseau, x, cache) : x.a.porteur === porteur))
+    .filter((x) => !q || sansAccents(`${x.a.action} ${x.magasin} ${x.a.porteur ?? ''}`).includes(q))
   const aFaire = actions.filter((x) => !x.a.faite)
   const faites = actions.filter((x) => x.a.faite)
   const cocher = async (x: ActionSuivie, faite: boolean) => {
@@ -99,37 +115,44 @@ function Liste({ reseau, noms, porteur, signaler }: { reseau: Reseau; noms: stri
   )
   if (!noms.length) return <EmptyState icone={<TaskAltOutlined />} titre="Aucun magasin" texte="Aucun magasin n’est rattaché à ton accès pour le moment." />
   if (!porteur) return <EmptyState icone={<TaskAltOutlined />} titre="Aucune liste" texte="Ton nom n’est pas encore relié à ton accès. Contacte la direction du réseau." />
-  const retard = aFaire.filter((x) => enRetard(x.a, reseau.jour)).length
+  const dansUneSemaine = plusSept(reseau.jour)
+  const parGroupe = groupes.map((g) => ({ ...g, lignes: aFaire.filter((x) => groupeDe(x, reseau.jour, dansUneSemaine) === g.g) })).filter((g) => g.lignes.length)
+  const filtreMagasin = noms.length > 1 && (noms.length <= 6
+    ? (
+      <Box role="group" aria-label="Magasins affichés" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Chip label="Tous" color={choix ? 'default' : 'primary'} variant={choix ? 'outlined' : 'filled'} onClick={() => setMagasin(null)} aria-pressed={!choix} sx={{ minHeight: 48 }} />
+        {noms.map((n) => <Chip key={n} label={n} color={choix === n ? 'primary' : 'default'} variant={choix === n ? 'filled' : 'outlined'} onClick={() => setMagasin(n)} aria-pressed={choix === n} sx={{ minHeight: 48 }} />)}
+      </Box>
+    )
+    : (
+      <Autocomplete options={[...noms].sort((a, b) => a.localeCompare(b, 'fr'))} value={choix} onChange={(_e, v) => setMagasin(v)} sx={{ width: { xs: '100%', sm: 280 } }}
+        renderInput={(params) => <TextField {...params} size="small" label="Magasin" placeholder="Tous les magasins" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }} />} />
+    ))
+  const filtres = choixPorteur || filtreMagasin ? <>{choixPorteur}{filtreMagasin}</> : undefined
   return (
     <>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 2 }}>
-        {noms.length > 1 && noms.length <= 6 && (
-          <Box role="group" aria-label="Magasins affichés" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Chip label="Tous" color={choix ? 'default' : 'primary'} variant={choix ? 'outlined' : 'filled'} onClick={() => setMagasin(null)} aria-pressed={!choix} sx={{ minHeight: 48 }} />
-            {noms.map((n) => <Chip key={n} label={n} color={choix === n ? 'primary' : 'default'} variant={choix === n ? 'filled' : 'outlined'} onClick={() => setMagasin(n)} aria-pressed={choix === n} sx={{ minHeight: 48 }} />)}
-          </Box>
-        )}
-        {noms.length > 6 && (
-          <Autocomplete options={[...noms].sort((a, b) => a.localeCompare(b, 'fr'))} value={choix} onChange={(_e, v) => setMagasin(v)} sx={{ width: { xs: '100%', sm: 320 } }}
-            renderInput={(params) => <TextField {...params} label="Magasin" placeholder="Tous les magasins" />} />
-        )}
-        <Typography variant="body2" color="text.secondary" sx={{ ml: { sm: 'auto' } }}>
-          {retard ? `${retard} en retard` : aFaire.length ? 'Aucune en retard' : ''}
-        </Typography>
-      </Box>
+      <RechercheFiltres actifs={(choix ? 1 : 0) + (autreListe ? 1 : 0)} actions={ajout}
+        recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Tâche, magasin, porteur" libelle="Rechercher une tâche" />}>
+        {filtres}
+      </RechercheFiltres>
       <Box sx={{ display: 'grid', gap: 2 }}>
-        <Bloc titre="À faire" nombre={aFaire.length} couleur="error">
+        <CarteLignes label="À faire">
           {aFaire.length
-            ? <Box component="ul" aria-label="Tâches à faire" sx={{ listStyle: 'none', m: 0, p: 0 }}>{aFaire.map(ligne)}</Box>
-            : <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>{faites.length ? 'Toutes tes tâches sont faites.' : 'Aucune tâche attribuée pour le moment.'}</Typography>}
-        </Bloc>
+            ? <Box component="ul" aria-label="Tâches à faire" sx={{ listStyle: 'none', m: 0, p: 0, '& > li:not([role=presentation])': { px: 1 } }}>
+                {parGroupe.flatMap((g) => [<Intertitre key={g.g} titre={g.titre} nombre={g.lignes.length} />, ...g.lignes.map(ligne)])}
+              </Box>
+            : <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>{q ? 'Aucune tâche ne correspond à la recherche.' : faites.length ? 'Toutes tes tâches sont faites.' : 'Aucune tâche attribuée pour le moment.'}</Typography>}
+        </CarteLignes>
         {faites.length > 0 && (
-          <Bloc titre="Faites" nombre={faites.length} couleur="success">
-            <Box component="ul" aria-label="Tâches faites" sx={{ listStyle: 'none', m: 0, p: 0 }}>{(toutesFaites ? faites : faites.slice(0, FAITES_VISIBLES)).map(ligne)}</Box>
-            {faites.length > FAITES_VISIBLES && (
-              <Button onClick={() => setToutesFaites((v) => !v)} sx={{ minHeight: 48, mt: 1, ml: -1 }}>{toutesFaites ? 'Voir moins' : `Voir les ${faites.length} tâches faites`}</Button>
-            )}
-          </Bloc>
+          <Box>
+            <TitreSection nombre={faites.length}>Faites</TitreSection>
+            <CarteLignes label="Faites">
+              <Box component="ul" aria-label="Tâches faites" sx={{ listStyle: 'none', m: 0, p: 0, '& > li': { px: 1 } }}>{(toutesFaites ? faites : faites.slice(0, FAITES_VISIBLES)).map(ligne)}</Box>
+              {faites.length > FAITES_VISIBLES && (
+                <Button onClick={() => setToutesFaites((v) => !v)} sx={{ minHeight: 48, width: '100%' }}>{toutesFaites ? 'Voir moins' : `Voir les ${faites.length} tâches faites`}</Button>
+              )}
+            </CarteLignes>
+          </Box>
         )}
       </Box>
       {edition && <DialogAction reseau={reseau} magasins={noms} action={edition} tache onFermer={(msg) => { setEdition(null); if (msg) signaler(msg) }} />}
@@ -153,14 +176,12 @@ export function PageTaches() {
   const noms = reseau ? (impose ? magasinsDu(reseau, impose) : reseau.magasins).map((m) => m.nom).sort((a, b) => a.localeCompare(b, 'fr')) : []
   return (
     <>
-      <PageHeader titre={!porteur || porteur === moi ? 'Mes tâches' : porteur === FRANCHISES ? 'Tâches des franchisés' : `Tâches de ${porteur}`}
-        actions={reseau && (
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-            {choixPossible && <ChoixPorteur reseau={reseau} moi={moi} valeur={porteur} directeur={!impose} onChange={changer} />}
-            <BoutonAjouterAction plein reseau={reseau} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} tache signaler={setMessage} />
-          </Box>
-        )} />
-      <AvecReseau>{(r) => <Liste reseau={r} noms={noms} porteur={porteur} signaler={setMessage} />}</AvecReseau>
+      <PageHeader titre={!porteur || porteur === moi ? 'Mes tâches' : porteur === FRANCHISES ? 'Tâches des franchisés' : `Tâches de ${porteur}`} />
+      <AvecReseau>{(r) => (
+        <Liste reseau={r} noms={noms} porteur={porteur} signaler={setMessage} autreListe={porteur !== moi}
+          choixPorteur={choixPossible ? <ChoixPorteur reseau={r} moi={moi} valeur={porteur} directeur={!impose} onChange={changer} /> : undefined}
+          ajout={<BoutonAjouterAction barre reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} tache signaler={setMessage} />} />
+      )}</AvecReseau>
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>
   )

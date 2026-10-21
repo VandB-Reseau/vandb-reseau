@@ -4,6 +4,9 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import Chip from '@mui/material/Chip'
+import Dialog from '@mui/material/Dialog'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import Snackbar from '@mui/material/Snackbar'
@@ -11,13 +14,14 @@ import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import ArrowBack from '@mui/icons-material/ArrowBack'
+import EditOutlined from '@mui/icons-material/EditOutlined'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import { useAuth } from '../auth/AuthContext'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { FilMessages } from '../components/Messages'
 import { detailContact, LigneConversation } from '../components/LigneConversation'
-import { Bulle, ChampRecherche } from '../components/Outils'
+import { BoutonOutil, Bulle, ChampRecherche } from '../components/Outils'
 import { PageHeader } from '../components/PageHeader'
 import { useMessagerie } from '../data/MessagerieContext'
 import { conversationsPersonnes, lienPersonne, sansPrives, type ConversationPersonne, type Messagerie } from '../data/messagerie'
@@ -28,9 +32,29 @@ const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').to
 
 const PETITE_LISTE = 30
 
-function ListeConversations({ lignes, mg, actif, ouvrir }: { lignes: ConversationPersonne[]; mg: Messagerie; actif?: string; ouvrir: (lien: string) => void }) {
+// Nouveau message : toutes les personnes avec qui l'on partage un magasin, cherchées par nom ou magasin
+function NouveauMessage({ lignes, mg, ouvrir, fermer }: { lignes: ConversationPersonne[]; mg: Messagerie; ouvrir: (lien: string) => void; fermer: () => void }) {
+  const [recherche, setRecherche] = useState('')
+  const q = sansAccents(recherche.trim())
+  const trouvees = [...lignes].sort((a, b) => a.contact.nom.localeCompare(b.contact.nom, 'fr'))
+    .filter((l) => !q || sansAccents(`${l.contact.nom} ${l.contact.magasins.map((m) => `${m.nom} ${m.ville ?? ''}`).join(' ')}`).includes(q))
+  return (
+    <Dialog open onClose={fermer} aria-labelledby="titre-nouveau-message" fullWidth maxWidth="xs">
+      <DialogTitle id="titre-nouveau-message">Nouveau message</DialogTitle>
+      <DialogContent sx={{ px: 2, pb: 2, '& .MuiTextField-root': { width: '100%' } }}>
+        <ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Personne ou magasin" />
+        {trouvees.length
+          ? <List aria-label="Personnes" disablePadding sx={{ mt: 1, mx: -1 }}>{trouvees.map((l) => <LigneConversation key={l.contact.cle} c={l} mg={mg} actif={false} ouvrir={() => { fermer(); ouvrir(lienPersonne(l.contact.cle)) }} />)}</List>
+          : <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>Personne ne correspond à cette recherche.</Typography>}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ListeConversations({ lignes, mg, actif, ouvrir, ecrire }: { lignes: ConversationPersonne[]; mg: Messagerie; actif?: string; ouvrir: (lien: string) => void; ecrire: boolean }) {
   const [recherche, setRecherche] = useState('')
   const [nonLus, setNonLus] = useState(false)
+  const [nouveau, setNouveau] = useState(false)
   const q = sansAccents(recherche.trim())
   // Sans recherche : les conversations en cours (toutes les personnes quand elles sont peu nombreuses) ;
   // avec recherche (nom ou magasin) : tout, pour démarrer une conversation
@@ -45,11 +69,14 @@ function ListeConversations({ lignes, mg, actif, ouvrir }: { lignes: Conversatio
         </Box>
         <Chip label={aLire ? `Non lus · ${aLire}` : 'Non lus'} onClick={() => setNonLus((v) => !v)} aria-pressed={nonLus}
           color={nonLus ? 'primary' : 'default'} variant={nonLus ? 'filled' : 'outlined'} sx={{ height: 48, borderRadius: 999, fontSize: '0.875rem' }} />
+        {ecrire && <BoutonOutil libelle="Nouveau message" icone={<EditOutlined />} onClick={() => setNouveau(true)} plein />}
       </Box>
+      {nouveau && <NouveauMessage lignes={lignes} mg={mg} ouvrir={ouvrir} fermer={() => setNouveau(false)} />}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: { md: 'auto' }, mx: { xs: -1, md: 0 }, pb: 1 }}>
         {!affichees.length
           ? <EmptyState icone={<ForumOutlined />} titre={q ? 'Aucun résultat' : nonLus ? 'Tout est lu' : 'Aucune conversation'}
-            texte={q ? 'Vérifie l’orthographe du nom.' : nonLus ? 'Aucun message en attente.' : 'Tes échanges apparaîtront ici.'} />
+            texte={q ? 'Vérifie l’orthographe du nom.' : nonLus ? 'Aucun message en attente.' : 'Tes échanges apparaîtront ici.'}
+            action={ecrire && !q && !nonLus ? <Button variant="contained" startIcon={<EditOutlined />} onClick={() => setNouveau(true)} sx={{ minHeight: 48 }}>Nouveau message</Button> : undefined} />
           : <List aria-label="Conversations" disablePadding>{affichees.map((l) => <LigneConversation key={l.contact.cle} c={l} mg={mg} actif={l.contact.cle === actif} ouvrir={() => ouvrir(lienPersonne(l.contact.cle))} />)}</List>}
       </Box>
     </Box>
@@ -93,7 +120,7 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
     <FilMessages key={contact.cle} reseau={reseau} contact={contact} signaler={setConfirmation} lectureSeule={lectureSeule}
       cadre={cadre} aLaFin={!cadre} fond={cadre ? 'background.paper' : 'background.default'} />
   )
-  const liste = <ListeConversations lignes={lignes} mg={messagerie} actif={cle} ouvrir={ouvrir} />
+  const liste = <ListeConversations lignes={lignes} mg={messagerie} actif={cle} ouvrir={ouvrir} ecrire={!lectureSeule} />
 
   if (!surPC) {
     if (!contact) return <><PageHeader titre="Messages" />{liste}</>
