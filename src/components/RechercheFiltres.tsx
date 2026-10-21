@@ -4,9 +4,11 @@ import ButtonBase from '@mui/material/ButtonBase'
 import TuneOutlined from '@mui/icons-material/TuneOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import { BoutonOutil, useTelephone } from './Outils'
+import { BandeCollante } from './Collant'
 
 // Barre d'outils d'une page : recherche, filtres, puis les actions à droite.
 // Sur téléphone, tout tient sur une ligne ; les filtres se déplient sous la ligne au besoin.
+// La barre reste collée sous les onglets quand la page défile (Joseph, 21/10/2026).
 export interface FiltreActif { cle: string; libelle: string; retirer: () => void }
 
 // Téléphone : les filtres actifs restent visibles en puces sous la recherche, une croix pour chacun (Joseph, 21/10/2026)
@@ -29,14 +31,14 @@ export function RechercheFiltres({ recherche, actifs = 0, children, actions, puc
   const [deplies, setDeplies] = useState(false)
   if (!telephone) {
     return (
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 2 }}>
+      <BandeCollante sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
         {recherche}{children}
         {actions && <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', ml: 'auto' }}>{actions}</Box>}
-      </Box>
+      </BandeCollante>
     )
   }
   return (
-    <Box sx={{ mb: 2 }}>
+    <BandeCollante>
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>{recherche}</Box>
         {children && <BoutonOutil libelle="Filtres" icone={<TuneOutlined />} onClick={() => setDeplies((v) => !v)} actif={deplies} badge={actifs} attributs={{ 'aria-expanded': deplies }} />}
@@ -44,6 +46,6 @@ export function RechercheFiltres({ recherche, actifs = 0, children, actions, puc
       </Box>
       {!deplies && pucesActives && <PucesFiltresActifs filtres={pucesActives} />}
       {deplies && <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 1.5, '& > .MuiTextField-root': { flex: '1 1 100%' } }}>{children}</Box>}
-    </Box>
+    </BandeCollante>
   )
 }

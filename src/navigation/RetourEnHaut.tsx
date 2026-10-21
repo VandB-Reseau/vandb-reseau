@@ -13,15 +13,15 @@ function cleEcran(pathname: string, search: string): string {
 interface Position { y: number; tableaux: number[] }
 const tableaux = () => [...document.querySelectorAll<HTMLElement>('.MuiTableContainer-root')]
 
-// Onglets collants d'une fiche (Onglets collants) : position où la bande touche la barre du haut
+// Onglets d'une fiche (Onglets fiche) : position où la bande touche la barre du haut
 function hauteurOnglets(): number | null {
-  const repere = document.querySelector('.onglets-repere'), bande = document.querySelector('.onglets-collants')
+  const repere = document.querySelector('.onglets-repere'), bande = document.querySelector('.onglets-fiche')
   if (!repere || !bande) return null
   return Math.max(0, repere.getBoundingClientRect().top + window.scrollY - (parseFloat(getComputedStyle(bande).top) || 0))
 }
 
 // Chaque nouvel écran, onglet ou fiche s'ouvre en haut ; le retour arrière retrouve la position quittée.
-// Dans une fiche à onglets collants, changer d'onglet garde la position, au plus les onglets en haut de l'écran.
+// Dans une fiche à onglets, changer d'onglet garde la position, au plus les onglets en haut de l'écran.
 export function RetourEnHaut() {
   const { pathname, search, key } = useLocation()
   const navigation = useNavigationType()

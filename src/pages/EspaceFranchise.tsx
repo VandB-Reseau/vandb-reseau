@@ -545,7 +545,7 @@ export function FicheMagasinFranchise() {
           <>
             {reseau.magasins.length > 1 && <Button startIcon={<ArrowBack />} onClick={() => naviguer('/magasins')} sx={{ mb: 2, ml: -1, minHeight: 48, display: { xs: 'none', md: 'inline-flex' } }}>Mes magasins</Button>}
             <ProfilFranchise retour={reseau.magasins.length > 1 ? { libelle: 'Mes magasins', aller: () => naviguer('/magasins') } : undefined} reseau={reseau} m={m} message={() => changerVue('messages')} />
-            <Onglets valeur={vue} onChange={changerVue} rubriques={onglets} libelle={`Rubriques de ${m.nom}`} collants />
+            <Onglets valeur={vue} onChange={changerVue} rubriques={onglets} libelle={`Rubriques de ${m.nom}`} fiche />
             <ContenuOnglet>
               {vue === 'fil' && <FilMagasin reseau={reseau} m={m} />}
               {vue === 'fiche' && <OngletFiche reseau={reseau} m={m} />}

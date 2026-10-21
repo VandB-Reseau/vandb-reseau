@@ -48,6 +48,7 @@ import { FiltreMenu } from '../components/FiltreMenu'
 import Chip from '@mui/material/Chip'
 import { dateCourte, lienCoach, lienFiche, lienPreparation } from '../lib/format'
 import { libelleTypeVisite, nomsVisiteurs, typesVisite, type Reseau, type Visite } from '../data/modele'
+import { sousBandes } from '../components/Collant'
 
 type Edition = { visite: Visite | null; magasins: string[]; date?: string } | null
 
@@ -229,7 +230,7 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
         <Box component="section" aria-label="Visites" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           {parMois(visibles).map(([mois, vs]) => (
             <Box key={mois} component="section" aria-label={libelleMoisAnnee(mois)}>
-              <Box sx={{ position: 'sticky', top: { xs: 64, md: 72 }, zIndex: 3, bgcolor: 'background.default', py: 0.75, px: 0.5 }}>
+              <Box sx={{ position: 'sticky', top: sousBandes('--onglets', '--filtres'), zIndex: 3, bgcolor: 'background.default', py: 0.75, px: 0.5 }}>
                 <Typography component="h2" sx={{ fontWeight: 700, fontSize: '0.875rem', color: 'text.secondary', '&::first-letter': { textTransform: 'uppercase' } }}>
                   {libelleMoisAnnee(mois)} · {nbDuMois(liste, mois)} visite{nbDuMois(liste, mois) > 1 ? 's' : ''}
                 </Typography>

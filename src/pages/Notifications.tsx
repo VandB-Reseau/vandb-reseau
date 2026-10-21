@@ -19,6 +19,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useMessagerie } from '../data/MessagerieContext'
 import { useReseau } from '../data/ReseauContext'
 import { heureCourte, historique, type Evenement } from '../data/messagerie'
+import { BandeCollante } from '../components/Collant'
 
 type Filtre = 'toutes' | 'nouvelles'
 
@@ -99,13 +100,13 @@ export function Notifications() {
   return (
     <>
       <PageHeader titre="Notifications" />
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+      <BandeCollante sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Puces valeur={filtre} onChange={setFiltre} label="Notifications affichées"
             options={[{ v: 'toutes', libelle: 'Toutes' }, { v: 'nouvelles', libelle: `Nouvelles${tous.some((e) => e.nouveau) ? ` · ${tous.filter((e) => e.nouveau).length}` : ''}` }]} />
         </Box>
         {tous.some((e) => e.nouveau) && <Box sx={{ mb: 1 }}><BoutonAction libelle="Tout marquer comme lu" icone={<DoneAllOutlined />} onClick={toutLire} secondaire /></Box>}
-      </Box>
+      </BandeCollante>
       {!retenus.length && <EmptyState icone={<NotificationsOutlined />} titre={filtre === 'nouvelles' ? 'Tout est lu' : 'Aucune notification'} texte="Les nouveautés de tes magasins apparaîtront ici." />}
       {nouvelles.length > 0 && (
         <Box component="section" aria-label="Nouvelles" sx={{ mb: 3 }}>

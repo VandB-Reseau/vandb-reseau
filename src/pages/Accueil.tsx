@@ -40,6 +40,7 @@ import Snackbar from '@mui/material/Snackbar'
 import { VisuelFil } from '../components/MiseEnForme'
 import { ReactionsPratique } from '../components/BonnesPratiques'
 import { useReactionsPratiques, type ReactionsPratiques } from '../data/reactionsPratiques'
+import { BandeCollante } from '../components/Collant'
 
 // Ordre de priorité fixé par Joseph le 14/10/2026
 const PRIORITAIRES = ['redressement', 'relance', 'renforcer']
@@ -238,7 +239,7 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil 
   return (
     <Box component="section" aria-label={titre}>
       <TitreSection>{titre}</TitreSection>
-      {options.length > 2 && <Puces valeur={filtre} options={options} onChange={(v) => { setFiltre(v); setNb(PAS_FIL) }} label="Filtrer le fil" />}
+      {options.length > 2 && <BandeCollante><Puces valeur={filtre} options={options} onChange={(v) => { setFiltre(v); setNb(PAS_FIL) }} label="Filtrer le fil" /></BandeCollante>}
       {!vus.length ? (
         <CarteLignes><LigneCompacte avatar={<Initiales nom="fil" icone={<HistoryOutlined />} />} titre="Rien de nouveau" detail="Les visites, tâches, messages, chiffres et communications des dernières semaines s’afficheront ici." /></CarteLignes>
       ) : (

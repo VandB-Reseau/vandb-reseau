@@ -29,6 +29,7 @@ import { PastilleCharge } from '../components/Charge'
 import { chargeA, magasinsDuCoach, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienDirecteur, lienFiche, lienRR, telLien } from '../lib/format'
 import type { Personne, Reseau, ResponsableRegional } from '../data/modele'
+import { sousBandes } from '../components/Collant'
 
 type Vue = 'organisation' | 'portefeuilles' | 'collaborateurs' | 'franchises' | 'charge' | 'postes' | 'plan'
 
@@ -67,7 +68,7 @@ function ListeEquipe({ reseau, groupes }: { reseau: Reseau; groupes: Groupe[] })
       </CarteLignes>
       {groupes.map((g) => (
         <Box key={g.cle} component="section" aria-label={g.titre}>
-          <Box sx={{ position: 'sticky', top: { xs: 64, md: 72 }, zIndex: 3, bgcolor: 'background.default', display: 'flex', alignItems: 'center', gap: 1.25, minHeight: 56, py: 0.5 }}>
+          <Box sx={{ position: 'sticky', top: sousBandes('--onglets', '--filtres'), zIndex: 3, bgcolor: 'background.default', display: 'flex', alignItems: 'center', gap: 1.25, minHeight: 56, py: 0.5 }}>
             <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: g.couleur, flexShrink: 0 }} />
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="h4" component="h3" noWrap>{g.rr ? <Link component={RouterLink} to={lienRR(g.rr.id)} color="inherit" underline="hover">{g.titre}</Link> : g.titre}</Typography>

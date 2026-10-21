@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Onglets et barres de recherche et de filtres collés sous la barre du haut sur tous les écrans, comme dans les fiches
+  (Visites, Magasins, Équipe, Santé du parc, Charge des Coachs, Agenda, Notifications, fil de l'accueil) ; les intertitres
+  (mois, lettres, régions) se rangent dessous ; Paramètres : sommaire fixe sur PC, retour fixe sur téléphone
+  (`src/components/Collant.tsx`, test `onglets-collants.spec.ts`). Pas de migration.
 - Base de données remise en ordre : migrations numérotées dans `supabase/migrations/`, rejouées à chaque
   publication sur un PostgreSQL vide avec contrôle des règles d'accès (`npm run test:base`). Deux anciens
   scripts qui rouvraient les visites et les photos d'audit à tout compte connecté s'ils étaient rejoués sont corrigés.
