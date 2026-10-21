@@ -458,8 +458,10 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
     )
   }
   // Dans le tableau, « Voir plus » est en bas de la zone qui défile : les lignes ajoutées apparaissent juste au-dessus
-  const pied = visibles.length > 0 ? suite && <Box sx={{ position: 'sticky', left: 0, pb: 1.5 }}>{suite}</Box> : (
-    <Box sx={{ position: 'sticky', left: 0, p: 3, textAlign: 'center' }}>
+  const pied = suite && <Box sx={{ position: 'sticky', left: 0, pb: 1.5 }}>{suite}</Box>
+  // Tous les magasins écartés par les filtres : message sous le tableau, hors de la zone qui défile
+  const aucun = tableauVisible && base.length > 0 && liste.length === 0 && (
+    <Box sx={{ p: 3, textAlign: 'center' }}>
       <Typography sx={{ mb: 1 }}>Aucun magasin ne correspond à ces filtres.</Typography>
       <Button variant="outlined" onClick={() => setFiltres({})} sx={{ minHeight: 48 }}>Effacer les filtres</Button>
     </Box>
@@ -480,6 +482,7 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
             {visibles.map((m) => { const l = ligne(m); return <LigneSaisie key={m.nom} m={m} detail={l.detail} fin={l.fin} coche={sel.choisis.has(m.nom)} basculer={sel.basculer} ouvrir={ouvrir} selection={surPC} /> })}
           </CarteLignes>
         )}
+      {aucun}
       {!tableauVisible && suite}
       <BarreLot cibles={cibles} choisis={sel.choisis} vider={() => sel.setChoisis(new Set())} saisie={saisie} />
       <PanneauSaisie reseau={reseau} liste={figee} nom={ouvert} aller={setOuvert} fermer={() => setOuvert(null)} saisie={saisie} partie={partie} surPC={surPC} />
