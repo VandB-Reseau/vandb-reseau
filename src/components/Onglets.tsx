@@ -1,4 +1,4 @@
-import { useState, type ReactElement, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -20,18 +20,64 @@ export interface Rubrique<V extends string> { vue: V; libelle: string; court?: s
 // La bande reste sous la barre du haut quand la page défile, partout (Joseph, 21/10/2026) ;
 // libres : onglets dans une carte, qui défilent avec elle.
 // fiche : changer d'onglet garde la position (RetourEnHaut) au lieu de remonter tout en haut.
-// Téléphone, plus de 4 rubriques : les 3 premières puis « Plus », qui ouvre les autres dans un panneau du bas
-// et prend le nom de la rubrique ouverte quand elle en fait partie (aucun onglet coupé au bord de l'écran).
+// Téléphone : autant de rubriques que la largeur en tient, puis « Plus », qui ouvre les autres dans un panneau du bas
+// et prend le nom de la rubrique ouverte quand elle en fait partie (aucun onglet coupé au bord de l'écran ;
+// largeur comptée d'après le plus long nom que « Plus » peut prendre, pour que les onglets ne bougent pas, Joseph 21/10/2026).
 const PLUS = '__plus'
 const VISIBLES_TELEPHONE = 3
+const ECART = 0 // puces bord à bord, l'espace est dessiné dans la zone tactile
+const MARGE_PUCE = 28 // px de chaque côté (14) d'une puce sur téléphone
+const MARGE_PLUS = 46 // 14 à gauche, 10 à droite, flèche de 20 et son écart
+
+let pinceau: CanvasRenderingContext2D | null | undefined
+function largeurTexte(texte: string, police: string) {
+  if (pinceau === undefined) pinceau = document.createElement('canvas').getContext('2d')
+  if (!pinceau) return texte.length * 9
+  pinceau.font = police
+  return Math.ceil(pinceau.measureText(texte).width) + 2
+}
+
+// Nombre de rubriques affichées avant « Plus » pour une bande de largeur donnée (jamais moins de 3, comme avant)
+export function combienVisibles(noms: string[], largeur: number, mesure: (t: string) => number) {
+  if (noms.length <= VISIBLES_TELEPHONE + 1) return noms.length
+  const w = noms.map((n) => mesure(n) + MARGE_PUCE)
+  if (w.reduce((a, b) => a + b, 0) + ECART * (w.length - 1) <= largeur) return noms.length
+  for (let k = noms.length - 1; k > VISIBLES_TELEPHONE; k--) {
+    const plus = MARGE_PLUS + Math.max(mesure('Plus'), ...noms.slice(k).map(mesure))
+    if (w.slice(0, k).reduce((a, b) => a + b, 0) + plus + ECART * k <= largeur) return k
+  }
+  return Math.min(VISIBLES_TELEPHONE, noms.length)
+}
 
 export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle, fiche, libres }: { valeur: V; onChange: (v: V) => void; rubriques: Rubrique<V>[]; libelle: string; fiche?: boolean; libres?: boolean }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const [panneau, setPanneau] = useState(false)
-  const bande = useBande('--onglets', !libres)
-  const replier = !surPC && rubriques.length > VISIBLES_TELEPHONE + 1
-  const visibles = replier ? rubriques.slice(0, VISIBLES_TELEPHONE) : rubriques
-  const autres = replier ? rubriques.slice(VISIBLES_TELEPHONE) : []
+  const publierBande = useBande('--onglets', !libres)
+  const [place, setPlace] = useState<{ largeur: number; police: string } | null>(null)
+  const suivi = useRef<ResizeObserver | null>(null)
+  const bande = useCallback((e: HTMLElement | null) => {
+    publierBande(e)
+    suivi.current?.disconnect()
+    suivi.current = null
+    if (!e) return
+    const mesurer = () => {
+      const st = getComputedStyle(e)
+      const largeur = e.clientWidth - parseFloat(st.paddingLeft) - parseFloat(st.paddingRight)
+      setPlace((p) => (p && p.largeur === largeur ? p : { largeur, police: `600 14px ${st.fontFamily}` }))
+    }
+    mesurer()
+    suivi.current = new ResizeObserver(mesurer)
+    suivi.current.observe(e)
+  }, [publierBande])
+  const noms = rubriques.map((r) => r.court ?? r.libelle).join('|')
+  const nbVisibles = useMemo(() => {
+    if (surPC) return rubriques.length
+    if (!place) return rubriques.length > VISIBLES_TELEPHONE + 1 ? VISIBLES_TELEPHONE : rubriques.length
+    return combienVisibles(noms.split('|'), place.largeur, (t) => largeurTexte(t, place.police))
+  }, [surPC, place, noms, rubriques.length])
+  const replier = nbVisibles < rubriques.length
+  const visibles = replier ? rubriques.slice(0, nbVisibles) : rubriques
+  const autres = replier ? rubriques.slice(nbVisibles) : []
   const ouverteAilleurs = autres.find((r) => r.vue === valeur)
   const pastilleAutres = autres.reduce((n, r) => n + (r.pastille ?? 0), 0)
   return (
@@ -53,7 +99,7 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
         <Tab value={PLUS} aria-label={ouverteAilleurs ? `${ouverteAilleurs.libelle}, autres rubriques` : 'Autres rubriques'} aria-haspopup="dialog" disableRipple
           onClick={() => setPanneau(true)} icon={<ExpandMore />} iconPosition="end"
           label={pastilleAutres && !ouverteAilleurs ? <Badge color="error" badgeContent={pastilleAutres} sx={{ '& .MuiBadge-badge': { position: 'static', transform: 'none', ml: 0.75, fontSize: '0.75rem' } }}>Plus</Badge> : ouverteAilleurs ? ouverteAilleurs.court ?? ouverteAilleurs.libelle : 'Plus'}
-          sx={{ ...styleOnglet, gap: 0.25, pr: 1.25, '& .MuiTab-icon': { mb: 0, ml: 0, fontSize: 20 } }} />
+          sx={{ ...styleOnglet, gap: 0.25, pl: 1.75, pr: 1.25, '& .MuiTab-icon': { mb: 0, ml: 0, fontSize: 20 } }} />
       )}
     </Tabs>
     {replier && (
@@ -79,7 +125,7 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
 
 // Puce de 40 px dessinée dans la zone tactile de 48 px
 const styleOnglet = {
-  minHeight: 48, minWidth: 0, px: 2, py: 0, gap: 0.75, position: 'relative', zIndex: 0, color: 'text.primary', opacity: 1,
+  minHeight: 48, minWidth: 0, px: { xs: 1.75, md: 2 }, py: 0, gap: 0.75, position: 'relative', zIndex: 0, color: 'text.primary', opacity: 1,
   fontSize: '0.875rem', fontWeight: 500,
   '& .MuiTab-icon': { mb: 0, mr: 0, fontSize: 20 },
   '&::before': { content: '""', position: 'absolute', inset: '4px 0', borderRadius: 999, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', zIndex: -1 },
