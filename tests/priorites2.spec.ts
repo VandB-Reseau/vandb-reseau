@@ -133,7 +133,9 @@ test('le Directeur met une communication à la une jusqu’à une date', async (
   await fenetre.getByLabel('À la une jusqu’au').fill(jour)
   await fenetre.getByRole('button', { name: /Publier|Enregistrer/ }).click()
   await expect.poll(() => ecritures.filter((e) => e.table === 'rpc/mettre_a_la_une').map((e) => e.corps)).toEqual([{ p_id: 1, p_jusqu_au: jour }])
-  await expect(page.getByRole('article').first()).toHaveAttribute('aria-label', 'Foire aux vins')
+  // Les deux sont à la une : elles restent en tête, dans l'ordre de publication
+  await expect(page.getByRole('article', { name: 'Nouvelle gamme' }).getByText(/^À la une jusqu’au/)).toBeVisible()
+  await expect(page.getByRole('article').nth(1)).toHaveAttribute('aria-label', 'Foire aux vins')
 })
 
 test('les écrans peu utilisés se chargent à la demande, avec une silhouette', async ({ page }) => {
