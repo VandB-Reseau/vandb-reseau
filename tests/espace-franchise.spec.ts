@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { seConnecter, simulerSupabase, textesTropPetits, COMPTE, type Ecriture, type OptionsSimulation } from './supabase-simule'
+import { ouvrirOnglet, seConnecter, simulerSupabase, textesTropPetits, COMPTE, type Ecriture, type OptionsSimulation } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -72,20 +72,20 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   expect(ecritures.filter((e) => e.table === 'rpc/espace_franchise').map((e) => e.corps)).toEqual([{}])
 })
 
-test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu complet', async ({ page }, info) => {
+test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu complet', async ({ page, isMobile }, info) => {
   await seConnecterFranchise(page)
   await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Mes magasins' }).click()
   await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Annecy Test', 'Rennes Test'])
   await page.getByRole('link', { name: /Annecy Test/ }).click()
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(['Fil', 'Fiche', 'Messages', 'Chiffres', 'Visites', 'Campagnes'])
+  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Fil', 'Fiche', 'Messages', 'Plus'] : ['Fil', 'Fiche', 'Messages', 'Chiffres', 'Visites', 'Campagnes'])
   await expect(page.getByRole('button', { name: /Modifier|Réaffecter|Saisir/ })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'En bref' })).toContainText('tâches en cours')
   await expect(page.getByRole('region', { name: 'Fil du magasin' })).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-franchise-fiche-profil.png`, fullPage: true })
-  await onglets.getByRole('tab', { name: 'Fiche' }).click()
+  await ouvrirOnglet(page, 'Fiche', onglets)
   await expect(page.getByText('Paul MULTI')).toBeVisible()
-  await onglets.getByRole('tab', { name: 'Visites' }).click()
+  await ouvrirOnglet(page, 'Visites', onglets)
   await expect(page.getByText('Prévue')).toBeVisible()
   await expect(page.getByText('2 actions au plan · 0 faite')).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-franchise-fiche-visites.png`, fullPage: true })
@@ -93,11 +93,11 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await expect(page.getByText('Vitrine propre.')).toBeVisible()
   await expect(page.getByText('Bon mois.')).toBeVisible()
   await page.goBack()
-  await page.getByRole('tablist', { name: 'Rubriques de Annecy Test' }).getByRole('tab', { name: 'Campagnes' }).click()
+  await ouvrirOnglet(page, 'Campagnes', page.getByRole('tablist', { name: 'Rubriques de Annecy Test' }))
   await expect(page.getByRole('heading', { name: 'Noël' })).toBeVisible()
   await expect(page.getByText('Vitrine de Noël')).toBeVisible()
   await expect(page.getByText('En partie')).toBeVisible()
-  await page.getByRole('tablist', { name: 'Rubriques de Annecy Test' }).getByRole('tab', { name: 'Chiffres' }).click()
+  await ouvrirOnglet(page, 'Chiffres', page.getByRole('tablist', { name: 'Rubriques de Annecy Test' }))
   await expect(page.getByRole('heading', { name: 'Mois enregistrés' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
 })

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { ouvrirOnglet, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -14,7 +14,7 @@ test('la fiche magasin montre l’évolution de la santé et le journal du magas
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test?vue=sante')
   await expect(page.getByText(/En recul depuis le 1 oct\. 2026 · avant : Cœur de réseau/)).toBeVisible()
-  await page.getByRole('tab', { name: 'Journal' }).click()
+  await ouvrirOnglet(page, 'Journal')
   const journal = page.getByRole('list', { name: 'Journal de Lyon Test' })
   await expect(journal.getByText('Passe en Redressement urgent')).toBeVisible()
   await expect(journal.getByText('Classé Cœur de réseau')).toBeVisible()

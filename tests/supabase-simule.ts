@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { assembler, eclater, estSuivie, rubriques, type CleSuivie } from '../src/data/suivi'
 import { affectationsFictives, coachsFictifs, congesFictifs, evenementsFictifs, recruesFictives, visitesFictives, configRRFictive, magasinsFictifs, santeFictive, deploiementsFictifs, fichesFictives, notesMagasinsFictives, chiffresFictifs, auditsFictifs } from './donnees-fictives'
 
@@ -387,6 +387,14 @@ export async function seConnecter(page: Page, options: OptionsSimulation = {}) {
   await page.getByLabel('Mot de passe').fill(COMPTE.motDePasse)
   await page.getByRole('button', { name: 'Se connecter' }).click()
   await page.getByRole('heading', { level: 1, name: /^Accueil$|Bonjour|Bonsoir/ }).waitFor()
+}
+
+// Ouvre une rubrique à onglets : sur téléphone, au-delà de 4 rubriques, les dernières sont derrière « Plus »
+export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page = page) {
+  const onglet = dans.getByRole('tab', { name: nom, exact: true })
+  if (await onglet.isVisible()) return onglet.click()
+  await dans.getByRole('tab', { name: /autres rubriques$/i }).click()
+  await page.getByRole('dialog').getByRole('button', { name: nom, exact: true }).click()
 }
 
 // Liste les textes visibles plus petits que min px

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter } from './supabase-simule'
+import { ouvrirOnglet, seConnecter } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -56,7 +56,7 @@ test('la fiche magasin regroupe équipe, coordonnées et historique', async ({ p
   expect((await carte.boundingBox())!.height).toBeGreaterThanOrEqual(290)
   await expect(page.frameLocator('iframe[title="Carte Google de Lyon Test"]').getByText('Carte simulée')).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-fiche.png`, fullPage: true })
-  await page.getByRole('tab', { name: 'Journal' }).click()
+  await ouvrirOnglet(page, 'Journal')
   await expect(page.getByText('Réaffectation')).toBeVisible()
   await page.getByRole('button', { name: 'Magasins' }).first().click()
   await expect(page.getByRole('heading', { level: 1, name: 'Magasins' })).toBeVisible()

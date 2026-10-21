@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { seConnecter } from './supabase-simule'
+import { ouvrirOnglet, seConnecter } from './supabase-simule'
 
 const hauteur = (page: Page) => page.evaluate(() => window.scrollY)
 const bande = (page: Page, nom: string) => page.getByRole('tablist', { name: `Rubriques de ${nom}` })
@@ -27,7 +27,7 @@ for (const fiche of [
     await expect.poll(() => hautBande(page, fiche.nom)).toBe(haut)
     await page.screenshot({ path: `captures/${info.project.name}-fiche-${fiche.titre.toLowerCase()}-onglets-colles.png` })
     // Changer d'onglet : la page ne remonte pas, le nouvel onglet commence sous les onglets
-    await bande(page, fiche.nom).getByRole('tab', { name: fiche.onglet }).click()
+    await ouvrirOnglet(page, fiche.onglet, bande(page, fiche.nom))
     await expect(bande(page, fiche.nom).getByRole('tab', { name: fiche.onglet })).toHaveAttribute('aria-selected', 'true')
     await expect.poll(() => hauteur(page)).toBeGreaterThan(100)
     await expect.poll(() => hautBande(page, fiche.nom)).toBe(haut)

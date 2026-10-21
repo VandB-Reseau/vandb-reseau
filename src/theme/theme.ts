@@ -1,4 +1,4 @@
-import { createTheme } from '@mui/material/styles'
+import { createTheme, type Theme } from '@mui/material/styles'
 
 // Charte V and B 2024
 export const brand = {
@@ -16,6 +16,20 @@ export const brandStripe = `linear-gradient(90deg, ${brand.jaune} 0%, ${brand.or
 const fontFamily = '"Outfit", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
 
 const base = createTheme()
+
+// Une seule couleur forte par ligne (Joseph, 21/10/2026) : le rouge reste une pastille pleine,
+// orange, bleu et vert deviennent un texte coloré précédé d'un point, sans fond.
+export type CouleurSignal = 'warning' | 'info' | 'success'
+export function styleSignal(theme: Theme, couleur: CouleurSignal) {
+  return {
+    backgroundColor: 'transparent', color: theme.vars!.palette[couleur].dark, fontWeight: 600,
+    '&::before': { content: '""', width: 8, height: 8, borderRadius: '50%', backgroundColor: 'currentColor', flexShrink: 0 },
+    '&:has(.MuiChip-icon)::before': { display: 'none' },
+    '& .MuiChip-icon': { color: 'inherit' },
+    '&.MuiChip-clickable:hover': { backgroundColor: theme.vars!.palette.action.hover },
+    ...theme.applyStyles('dark', { color: theme.vars!.palette[couleur].light }),
+  }
+}
 const telephone = base.breakpoints.down('sm')
 
 export const theme = createTheme({
@@ -67,6 +81,12 @@ export const theme = createTheme({
     overline: { fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em' },
   },
   components: {
+    MuiChip: {
+      variants: (['warning', 'info', 'success'] as const).map((couleur) => ({
+        props: { variant: 'filled' as const, color: couleur },
+        style: ({ theme }: { theme: Theme }) => ({ ...styleSignal(theme, couleur), '&::before': { ...styleSignal(theme, couleur)['&::before'], marginLeft: 8, marginRight: -4 } }),
+      })),
+    },
     // Infobulles à 12 px au moins (11 px par défaut dans MUI)
     MuiTooltip: { styleOverrides: { tooltip: { fontSize: '0.75rem' } } },
     MuiButtonBase: { defaultProps: { disableRipple: true } },

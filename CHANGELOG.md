@@ -17,6 +17,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   rejouant 0001 à 0012 — Base : `0012_garde_fous_et_journal` (+ suite complète)
 - Documentation : schéma de la base ([docs/base-de-donnees.md](docs/base-de-donnees.md)),
   architecture ([docs/architecture.md](docs/architecture.md)), ce journal.
+- Couleurs plus calmes : seul le rouge (Décroche, En retard, dépassement de charge) reste une pastille pleine ;
+  orange, bleu et vert deviennent un texte coloré précédé d'un point. Sur téléphone, au-delà de 4 onglets,
+  les 3 premiers restent visibles et « Plus » ouvre les autres dans un panneau du bas. « Voir plus » est
+  gardé au retour arrière, pour retrouver la ligne quittée.
 
 ## 21/10/2026
 
