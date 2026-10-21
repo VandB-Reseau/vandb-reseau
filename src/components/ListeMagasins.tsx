@@ -9,6 +9,7 @@ import { statutLibelle, type Magasin, type Reseau } from '../data/modele'
 import { useReseau } from '../data/ReseauContext'
 import { analyser } from '../data/chiffres'
 import { anneeDe, suiviRythme } from '../data/visites'
+import { sousBandes } from './Collant'
 
 const PAS = 50
 
@@ -84,7 +85,7 @@ export function ListeMagasins({ magasins, tri = 'nom', suivis }: { magasins: Mag
       )}
       {tri === 'nom' ? <Box component="section" aria-label="Liste des magasins" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>{groupes.map((g) => (
         <Box key={g.l} component="section" aria-label={`Magasins en ${g.l}`}>
-          <Box id={`lettre-${g.l}`} sx={{ position: 'sticky', top: { xs: 64, md: 72 }, zIndex: 3, bgcolor: 'background.default', scrollMarginTop: { xs: 64, md: 72 }, py: 0.5, px: 0.5 }}>
+          <Box id={`lettre-${g.l}`} sx={{ position: 'sticky', top: sousBandes('--onglets', '--filtres'), zIndex: 3, bgcolor: 'background.default', scrollMarginTop: sousBandes('--onglets', '--filtres'), py: 0.5, px: 0.5 }}>
             <Typography component="h2" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.875rem' }}>{g.l}</Typography>
           </Box>
           <CarteLignes>{g.ms.map(ligne)}</CarteLignes>

@@ -97,6 +97,38 @@ test('Déploiements : trier et filtrer thématique par thématique', async ({ pa
   expect(await textesTropPetits(page)).toEqual([])
 })
 
+test('la colonne Magasin se trie de A à Z ou de Z à A et se filtre par nom', async ({ page, isMobile }, info) => {
+  test.skip(isMobile, 'Tableau réservé au PC')
+  await seConnecter(page)
+  for (const [vue, nom] of [['evaluer', 'Évaluation des magasins'], ['deploiements', 'Déploiements par magasin']]) {
+    await page.goto(`./#/plus/sante?vue=${vue}`)
+    await afficherTableau(page)
+    const liens = page.getByRole('table', { name: nom }).locator('tbody tr').getByRole('link')
+    const tous = await liens.allInnerTexts()
+    const az = [...tous].sort((a, b) => a.localeCompare(b, 'fr'))
+    const tri = page.getByRole('button', { name: 'Trier par Magasin' })
+    await tri.click()
+    await expect(page.getByRole('columnheader', { name: /^Magasin/ })).toHaveAttribute('aria-sort', 'ascending')
+    await expect.poll(() => liens.allInnerTexts()).toEqual(az)
+    await tri.click()
+    await expect.poll(() => liens.allInnerTexts()).toEqual([...az].reverse())
+    // Filtre : recherche dans la liste, puis deux magasins cochés
+    await page.getByRole('button', { name: 'Filtrer Magasin' }).click()
+    await page.getByRole('textbox', { name: 'Rechercher dans Magasin' }).fill('nan')
+    await expect(page.getByRole('menuitem')).toHaveText(['Nantes Test'])
+    await page.getByRole('menuitem', { name: 'Nantes Test' }).click()
+    await page.getByRole('textbox', { name: 'Rechercher dans Magasin' }).fill('lyon')
+    await page.getByRole('menuitem', { name: 'Lyon Test' }).click()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('menu')).toBeHidden()
+    await expect(liens).toHaveText(['Nantes Test', 'Lyon Test'])
+    if (vue === 'evaluer') await page.screenshot({ path: `captures/${info.project.name}-tableau-magasin-filtre.png` })
+    await page.getByRole('button', { name: 'Effacer tri et filtres' }).click()
+    await expect.poll(() => liens.count()).toBe(tous.length)
+  }
+  expect(await textesTropPetits(page)).toEqual([])
+})
+
 test('sur téléphone, Évaluer et Déploiements restent en lignes', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'Vue téléphone')
   await seConnecter(page)

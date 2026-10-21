@@ -81,7 +81,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
           { valeur: `${charge}/${reseau.parametres.maxUnits}`, libelle: 'charge', couleur: charge > reseau.parametres.maxUnits ? 'error.main' : undefined },
         ]}
         telephone={fichePersonne(reseau, { type: 'coach', cle: coach.nom }).telephone || coach.telephone} lienMessage={coach.fictif ? undefined : lienPersonne(`coach:${coach.nom}`)} modifier={referentiels ? () => setEdition(true) : undefined} />
-      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesCoach} libelle={`Rubriques de ${coach.nom}`} collants />
+      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesCoach} libelle={`Rubriques de ${coach.nom}`} fiche />
       <ContenuOnglet>
 
         {vue === 'portefeuille' && <BlocPortefeuille reseau={reseau} p={portefeuilleDe(reseau, magasins.filter((m) => m.statut !== 'avenir'), rythme)} />}

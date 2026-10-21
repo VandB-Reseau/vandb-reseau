@@ -160,7 +160,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
       <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} alerteVisite={rythme?.alerte ? libellePasVu(rythme) : ''}
         appeler={m.telephone || m.responsable?.telephone || ''} message={() => changerVue('messages')} visite={saisirVisite} planifier={() => setPlanifier(true)}
         modifier={referentiels ? () => setEdition(true) : undefined} />
-      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} collants />
+      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} fiche />
       <ContenuOnglet>
 
         {vue === 'fil' && <FilMagasin reseau={reseau} m={m} />}
