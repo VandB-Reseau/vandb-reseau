@@ -97,7 +97,7 @@ export function CompteRendu() {
                   <Box sx={{ mb: 3, breakInside: 'avoid' }}>
                     <Titre>Plan d’action</Titre>
                     <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', color: '#1b1b1f', '& th, & td': { textAlign: 'left', p: 1, borderBottom: '1px solid #e0e0e0', fontSize: 14, verticalAlign: 'top' }, '& th': { color: '#5f5f66', fontWeight: 600 } }}>
-                      <thead><tr><th>Action</th><th>Porteur</th><th>Échéance</th></tr></thead>
+                      <thead><tr><th>Tâche</th><th>Porteur</th><th>Échéance</th></tr></thead>
                       <tbody>{v.plan.map((a, i) => <tr key={i}><td>{a.action}</td><td>{a.porteur || 'Non précisé'}</td><td>{a.echeance || 'Non précisée'}</td></tr>)}</tbody>
                     </Box>
                   </Box>

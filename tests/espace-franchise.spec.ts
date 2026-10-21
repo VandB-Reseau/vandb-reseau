@@ -87,7 +87,7 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await expect(page.getByText('Paul MULTI')).toBeVisible()
   await ouvrirOnglet(page, 'Visites', onglets)
   await expect(page.getByText('Prévue')).toBeVisible()
-  await expect(page.getByText('2 actions au plan · 0 faite')).toBeVisible()
+  await expect(page.getByText('2 tâches au plan · 0 faite')).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-franchise-fiche-visites.png`, fullPage: true })
   await page.getByRole('link', { name: /^Compte rendu du 15 sept/ }).click()
   await expect(page.getByText('Vitrine propre.')).toBeVisible()

@@ -186,10 +186,10 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
           <Bloc titre="Chiffres"><Chiffres reseau={reseau} m={m} /></Bloc>
           <Bloc titre="Repères réseau"><Reperes reseau={reseau} m={m} r={reperes} /></Bloc>
 
-          <Bloc titre={`Actions en cours (${actions.length})`}>
-            {!actions.length ? <Vide>Aucune action en cours.</Vide> : (
-              <Box component="table" sx={tableau} aria-label="Actions en cours">
-                <thead><tr><th>Action</th><th>Porteur</th><th>Échéance</th></tr></thead>
+          <Bloc titre={`Tâches en cours (${actions.length})`}>
+            {!actions.length ? <Vide>Aucune tâche en cours.</Vide> : (
+              <Box component="table" sx={tableau} aria-label="Tâches en cours">
+                <thead><tr><th>Tâche</th><th>Porteur</th><th>Échéance</th></tr></thead>
                 <tbody>{actions.map((x) => {
                   const retard = enRetard(x.a, reseau.jour)
                   return <tr key={x.cle}><td>{x.a.action}</td><td>{x.a.porteur || 'Non précisé'}</td><td style={{ whiteSpace: 'nowrap', color: retard ? ROUGE : NOIR, fontWeight: retard ? 600 : 400 }}>{echeanceDate(x.a) ? `${dateCourte(echeanceDate(x.a))}${retard ? ' · en retard' : ''}` : x.a.echeance || 'Non précisée'}</td></tr>

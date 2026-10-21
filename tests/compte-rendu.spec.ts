@@ -33,7 +33,7 @@ test('dicter chaque partie, reprendre les actions en cours, puis enregistrer', a
   await page.getByRole('button', { name: 'Saisir', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
   // Les actions en cours des visites précédentes sont rappelées
-  const enCours = d.getByRole('group', { name: 'Actions en cours' })
+  const enCours = d.getByRole('group', { name: 'Tâches en cours' })
   await expect(enCours.getByText('Refaire la tête de gondole Beaujolais')).toBeVisible()
   await expect(enCours.getByText(/^Franchisé · échéance novembre · depuis le/)).toBeVisible()
   // Une partie dictée, une partie tapée, les autres laissées vides
@@ -42,8 +42,8 @@ test('dicter chaque partie, reprendre les actions en cours, puis enregistrer', a
   await d.getByRole('button', { name: 'Arrêter la dictée : 3. Magasin et offre' }).click()
   await expect(d.getByRole('button', { name: 'Dicter : 3. Magasin et offre' })).toBeVisible()
   await d.getByLabel('5. Équipe', { exact: true }).fill('Équipe stable.')
-  await d.getByRole('button', { name: 'Ajouter une action' }).click()
-  await d.getByLabel('Action', { exact: true }).fill('Recommander les bières de garde')
+  await d.getByRole('button', { name: 'Ajouter une tâche' }).click()
+  await d.getByLabel('Tâche', { exact: true }).fill('Recommander les bières de garde')
   await d.getByLabel('Porteur', { exact: true }).click()
   await page.getByRole('option', { name: 'Noé MODELE' }).click()
   await d.getByLabel('Échéance', { exact: true }).fill('2026-10-31')

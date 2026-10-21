@@ -160,7 +160,7 @@ test('une tâche en retard de l’accueil mène aux actions du magasin', async (
   await ligne.click()
   await expect(page).toHaveURL(/#\/magasins\/Brest%20Test\?vue=actions$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Brest Test' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: /^Actions/, selected: true })).toBeVisible()
+  await expect(page.getByRole('tab', { name: /^Tâches/, selected: true })).toBeVisible()
   await expect(page.getByText('Commander la nouvelle PLV')).toBeVisible()
 })
 
@@ -186,7 +186,7 @@ test('le franchisé coche et ajoute ses actions, la base pose son nom', async ({
   const faites = page.getByRole('list', { name: 'Tâches faites' })
   await expect(faites.getByRole('listitem').filter({ hasText: 'Refaire la vitrine' })).toContainText('faite le 5 oct. 2026 par Hugo FICTIF')
   // Pas de modification ni de suppression pour le franchisé
-  await expect(page.getByRole('button', { name: /Modifier l’action/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Modifier la tâche/ })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) for (const c of await page.getByRole('checkbox').all()) expect((await c.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   await page.screenshot({ path: `captures/${info.project.name}-franchise-actions.png`, fullPage: true })
@@ -223,5 +223,5 @@ test('franchisé : un message humain si la base n’est pas encore prête', asyn
   await page.route('**/rest/v1/rpc/marquer_action_franchise', (r) => r.fulfill({ status: 404, json: { code: 'PGRST202', message: 'Could not find the function public.marquer_action_franchise' } }))
   await page.goto('./#/taches')
   await page.getByRole('checkbox', { name: 'Marquer faite : Lancer une dégustation' }).click()
-  await expect(page.getByText('Les actions ne peuvent pas encore être modifiées depuis ton espace. Ton Coach peut le faire pour toi.')).toBeVisible()
+  await expect(page.getByText('Les tâches ne peuvent pas encore être modifiées depuis ton espace. Ton Coach peut le faire pour toi.')).toBeVisible()
 })

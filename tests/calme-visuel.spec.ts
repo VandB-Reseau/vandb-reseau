@@ -33,10 +33,10 @@ test('fiche magasin : sur téléphone, 3 onglets et « Plus » ; sur PC, tous le
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   if (!isMobile) {
-    await expect(onglets.getByRole('tab')).toHaveText(['Fil', 'Fiche', 'Actions', 'Messages', 'Visites', 'Chiffres', 'Santé', 'Campagnes', 'Journal'])
+    await expect(onglets.getByRole('tab')).toHaveText(['Fil', 'Fiche', 'Tâches', 'Messages', 'Visites', 'Chiffres', 'Santé', 'Campagnes', 'Journal'])
     return
   }
-  await expect(onglets.getByRole('tab')).toHaveText(['Fil', 'Fiche', 'Actions', 'Plus'])
+  await expect(onglets.getByRole('tab')).toHaveText(['Fil', 'Fiche', 'Tâches', 'Plus'])
   // Aucun onglet coupé au bord de l'écran
   const largeur = page.viewportSize()!.width
   for (const t of await onglets.getByRole('tab').all()) {

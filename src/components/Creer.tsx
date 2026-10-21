@@ -78,7 +78,7 @@ export function BoutonCreer({ rond = false }: { rond?: boolean }) {
         </DialogContent>
       </Dialog>
       {reseau && choix === 'visite' && <DialogVisite reseau={reseau} visite={null} onFermer={fermer} />}
-      {reseau && choix === 'tache' && <DialogAction reseau={reseau} magasins={reseau.magasins.map((m) => m.nom)} action={null} tache onFermer={fermer} />}
+      {reseau && choix === 'tache' && <DialogAction reseau={reseau} magasins={reseau.magasins.map((m) => m.nom)} action={null} onFermer={fermer} />}
       {reseau && choix === 'pratique' && <DialogPratique reseau={reseau} pratique={null} onFermer={fermer} />}
       {reseau && choix === 'absence' && <DialogConge reseau={reseau} conge={null} onFermer={fermer} />}
       {reseau && choix === 'evenement' && <DialogEvenement reseau={reseau} evenement={null} onFermer={fermer} />}

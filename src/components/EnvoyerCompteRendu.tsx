@@ -39,7 +39,7 @@ function messageParDefaut(v: Visite, noms: string[]): string {
   return [
     `Bonjour ${prenoms},`, '',
     `Voici le compte rendu de notre visite du ${dateLongue(v.date)} à ${v.magasin}.`,
-    ...(actions.length ? ['', 'Nos actions :', ...actions.map((a) => `- ${a.action.trim()}${a.echeance ? ` (${/^\d{4}-\d{2}-\d{2}$/.test(a.echeance) ? dateCourte(a.echeance) : a.echeance})` : ''}`)] : []),
+    ...(actions.length ? ['', 'Nos tâches :', ...actions.map((a) => `- ${a.action.trim()}${a.echeance ? ` (${/^\d{4}-\d{2}-\d{2}$/.test(a.echeance) ? dateCourte(a.echeance) : a.echeance})` : ''}`)] : []),
     '', 'À bientôt,', nomsVisiteurs(v),
   ].join('\n').replace(/\n+$/, '')
 }

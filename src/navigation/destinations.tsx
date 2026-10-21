@@ -59,7 +59,7 @@ export const parametres: Destination[] = [
 
 // Espace d'un franchisé : ses magasins seulement, sans Paramètres
 export const espaceFranchise: Destination[] = [
-  { chemin: '/', libelle: 'Accueil', description: 'Mes chiffres, mon plan d’action, mes visites', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 11' },
+  { chemin: '/', libelle: 'Accueil', description: 'Mes chiffres, mes tâches, mes visites', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 11' },
   { chemin: '/magasins', libelle: 'Mes magasins', description: 'Fiche, chiffres, visites et campagnes', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 11' },
   { chemin: '/communications', libelle: 'Communications', court: 'Infos', description: 'Annonces du réseau', icone: <CampaignOutlined />, iconeActive: <Campaign />, sprint: 'Sprint 17' },
   { chemin: '/bonnes-pratiques', libelle: 'Bonnes pratiques', court: 'Pratiques', description: 'Initiatives réussies du réseau', icone: <TipsAndUpdatesOutlined />, iconeActive: <TipsAndUpdates />, sprint: 'Sprint 11' },

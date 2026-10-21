@@ -56,7 +56,7 @@ export function useEcritureActions(reseau: Reseau) {
   return { franchise, lectureSeule, cocher }
 }
 
-const messageErreur = (e: unknown) => (e instanceof ErreurAction ? e.message : 'L’action n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.')
+const messageErreur = (e: unknown) => (e instanceof ErreurAction ? e.message : 'La tâche n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.')
 
 // Ligne d'une action ; sans « cocher », lecture seule
 export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher, enCours = false, modifier }: { reseau: Reseau; x: ActionSuivie; avecMagasin?: boolean; avecPorteur?: boolean; cocher?: (faite: boolean) => void; enCours?: boolean; modifier?: () => void }) {
@@ -91,7 +91,7 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
         {x.a.pieces && <ListePieces pieces={x.a.pieces} />}
       </Box>
       {pastille && <Box sx={{ display: { xs: 'none', sm: 'block' }, mt: 1.5, flexShrink: 0 }}>{pastille}</Box>}
-      {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier l’action ${x.a.action}`}><EditOutlined /></IconButton></Tooltip>}
+      {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la tâche ${x.a.action}`}><EditOutlined /></IconButton></Tooltip>}
     </Box>
     </Glisser>
     </Box>
@@ -113,7 +113,7 @@ export function ListeActions({ reseau, actions, avecMagasin, signaler, libelle, 
     try {
       await ecriture.cocher(x, faite)
       await recharger()
-      signaler(faite ? 'Action marquée faite.' : 'Action remise en cours.')
+      signaler(faite ? 'Tâche marquée faite.' : 'Tâche remise en cours.')
     } catch (e) { signaler(messageErreur(e)) }
     finally { setEnCours(null) }
   }
@@ -123,11 +123,11 @@ export function ListeActions({ reseau, actions, avecMagasin, signaler, libelle, 
   return (
     <>
       {ouvertes.length === 0
-        ? <Typography variant="body2" color="text.secondary">{actions.length ? 'Toutes les actions sont faites.' : 'Aucune action en cours.'}</Typography>
+        ? <Typography variant="body2" color="text.secondary">{actions.length ? 'Toutes les tâches sont faites.' : 'Aucune tâche en cours.'}</Typography>
         : <Box component="ul" aria-label={libelle} sx={{ listStyle: 'none', m: 0, p: 0 }}>{ouvertes.map(ligne)}</Box>}
       {faites.length > 0 && (
         <>
-          <Button onClick={() => setVoirFaites((v) => !v)} sx={{ minHeight: 48, mt: 1, ml: -1 }}>{voirFaites ? 'Masquer les actions faites' : `Actions faites (${faites.length})`}</Button>
+          <Button onClick={() => setVoirFaites((v) => !v)} sx={{ minHeight: 48, mt: 1, ml: -1 }}>{voirFaites ? 'Masquer les tâches faites' : `Tâches faites (${faites.length})`}</Button>
           {voirFaites && <Box component="ul" aria-label={`${libelle} : faites`} sx={{ listStyle: 'none', m: 0, p: 0 }}>{faites.map(ligne)}</Box>}
         </>
       )}
@@ -180,20 +180,19 @@ export function BoutonTaches() {
   )
 }
 
-// Bouton « Ajouter une action » et sa fenêtre, pour l'en-tête d'une section
+// Bouton « Ajouter une tâche » et sa fenêtre, pour l'en-tête d'une section
 // porteur : proposé d'office (liste d'une personne)
-// tache : libellés de l'écran Tâches
 // barre : action d'une barre d'outils (bouton rond sur téléphone)
-export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false, barre = false, porteur, tache = false }: { reseau: Reseau; magasins: string[]; signaler: (m: string) => void; plein?: boolean; barre?: boolean; porteur?: string; tache?: boolean }) {
+export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false, barre = false, porteur }: { reseau: Reseau; magasins: string[]; signaler: (m: string) => void; plein?: boolean; barre?: boolean; porteur?: string }) {
   const [ouvert, setOuvert] = useState(false)
   if (useEcritureActions(reseau).lectureSeule || !magasins.length) return null
-  const libelle = tache ? 'Ajouter une tâche' : 'Ajouter une action'
+  const libelle = 'Ajouter une tâche'
   return (
     <>
       {barre
         ? <BoutonAction libelle={libelle} onClick={() => setOuvert(true)} />
         : <Button variant={plein ? 'contained' : 'text'} startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>{libelle}</Button>}
-      {ouvert && <DialogAction reseau={reseau} magasins={magasins} action={null} porteurInitial={porteur} tache={tache} onFermer={(msg) => { setOuvert(false); if (msg) signaler(msg) }} />}
+      {ouvert && <DialogAction reseau={reseau} magasins={magasins} action={null} porteurInitial={porteur} onFermer={(msg) => { setOuvert(false); if (msg) signaler(msg) }} />}
     </>
   )
 }
@@ -212,8 +211,7 @@ export function ChampPorteur({ reseau, magasin, valeur, changer, sx }: { reseau:
 
 const dateValide = (d: string) => !d || /^\d{4}-\d{2}-\d{2}$/.test(d)
 
-export function DialogAction({ reseau, magasins, action, porteurInitial = '', tache = false, onFermer }: { reseau: Reseau; magasins: string[]; action: ActionSuivie | null; porteurInitial?: string; tache?: boolean; onFermer: (msg?: string) => void }) {
-  const [mot, Mot] = tache ? ['tâche', 'Tâche'] : ['action', 'Action']
+export function DialogAction({ reseau, magasins, action, porteurInitial = '', onFermer }: { reseau: Reseau; magasins: string[]; action: ActionSuivie | null; porteurInitial?: string; onFermer: (msg?: string) => void }) {
   const { profil } = useAuth()
   const { franchise } = useEcritureActions(reseau)
   const a = action?.libre ?? null
@@ -225,24 +223,24 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ta
   const [alerte, setAlerte] = useState('')
   const propre = texte.trim().replace(/\s+/g, ' ')
   return (
-    <Fenetre titre={a ? `Modifier l’${mot}` : `Ajouter une ${mot}`} ouvert onFermer={onFermer}
+    <Fenetre titre={a ? 'Modifier la tâche' : 'Ajouter une tâche'} ouvert onFermer={onFermer}
       valide={!!propre && !!magasin && dateValide(echeance)}
       enregistrer={async () => {
         if (franchise) {
           await ajouterActionFranchise(magasin, propre, porteur.trim(), echeance, pieces)
-          return `${Mot} ajoutée.`
+          return 'Tâche ajoutée.'
         }
         const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}) }
         await enregistrerActionLibre(magasin, l)
-        return a ? `${Mot} mise à jour.` : `${Mot} ajoutée.`
+        return a ? 'Tâche mise à jour.' : 'Tâche ajoutée.'
       }}
-      supprimer={a ? async () => { await supprimerActionLibre(magasin, a.id); return `${Mot} supprimée.` } : undefined}
-      libelleSuppression={a ? `Supprimer l’${mot} « ${a.action} » ?` : undefined}>
+      supprimer={a ? async () => { await supprimerActionLibre(magasin, a.id); return 'Tâche supprimée.' } : undefined}
+      libelleSuppression={a ? `Supprimer la tâche « ${a.action} » ?` : undefined}>
       {magasins.length > 1 && !a && (
         <Autocomplete options={magasins} value={magasin || null} onChange={(_e, v) => setMagasin(v ?? '')}
           renderInput={(p) => <TextField {...p} label="Magasin" />} />
       )}
-      <TextField label={Mot} value={texte} onChange={(e) => setTexte(e.target.value)} autoFocus={!a} multiline minRows={2} />
+      <TextField label="Tâche" value={texte} onChange={(e) => setTexte(e.target.value)} autoFocus={!a} multiline minRows={2} />
       <ChampPorteur reseau={reseau} magasin={magasin} valeur={porteur} changer={setPorteur} />
       <TextField type="date" label="Échéance" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       <ChampPieces pieces={pieces} changer={(p) => { setPieces(p); setAlerte('') }} signaler={setAlerte} />
