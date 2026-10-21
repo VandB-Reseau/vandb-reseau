@@ -33,6 +33,7 @@ import type { ParametresReseau, Reseau } from '../data/modele'
 import { analyser, referencesPossibles, type SeuilsAlerte } from '../data/chiffres'
 import { NON_CLASSE, nineBox } from '../data/sante'
 import { anneeDe, suiviRythme } from '../data/visites'
+import { hautEntete, sousBandes } from '../components/Collant'
 
 type Cle = keyof ParametresReseau
 const champs: { cle: Cle; libelle: string; aide: string; min: number; max: number }[] = [
@@ -273,7 +274,10 @@ export function Direction() {
             {!surPC && choisie ? (
               <>
                 {/* Le titre de la carte sert de titre à l'écran */}
-                <Button startIcon={<ArrowBackOutlined />} onClick={() => { const n = new URLSearchParams(params); n.delete('rubrique'); setParams(n) }} sx={{ minHeight: 48, ml: -1, mb: 1 }}>Paramètres</Button>
+                {/* Le retour au sommaire reste en haut quand la rubrique défile */}
+                <Box sx={{ position: 'sticky', top: sousBandes(), zIndex: 4, bgcolor: 'background.default', mx: -2, px: 1, mt: -1.5, pt: 0.5, mb: 1 }}>
+                  <Button startIcon={<ArrowBackOutlined />} onClick={() => { const n = new URLSearchParams(params); n.delete('rubrique'); setParams(n) }} sx={{ minHeight: 48 }}>Paramètres</Button>
+                </Box>
                 <ContenuRubrique id={choisie.id} reseau={reseau} signaler={setMessage} />
               </>
             ) : (
@@ -281,7 +285,8 @@ export function Direction() {
                 <PageHeader titre="Paramètres" />
                 {surPC ? (
                   <Box sx={{ display: 'grid', gridTemplateColumns: '320px minmax(0, 1fr)', gap: 3, alignItems: 'start' }}>
-                    {sommaire}
+                    {/* Le sommaire reste à l'écran quand la rubrique défile */}
+                    <Box sx={{ position: 'sticky', top: hautEntete.md + 16, maxHeight: `calc(100vh - ${hautEntete.md + 32}px)`, overflowY: 'auto', scrollbarWidth: 'thin' }}>{sommaire}</Box>
                     {choisie && <ContenuRubrique id={choisie.id} reseau={reseau} signaler={setMessage} />}
                   </Box>
                 ) : sommaire}

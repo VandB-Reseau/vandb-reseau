@@ -9,6 +9,7 @@ import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
+import { sousBandes, useBande } from './Collant'
 
 // pastille : nombre de nouveautés (messages non lus)
 export interface Rubrique<V extends string> { vue: V; libelle: string; court?: string; icone: ReactElement; pastille?: number }
@@ -16,16 +17,18 @@ export interface Rubrique<V extends string> { vue: V; libelle: string; court?: s
 // Onglets des pages en puces, comme dans une app : la rubrique ouverte en noir, les autres cerclées.
 // PC : icône et libellé complet ; téléphone : libellé court seul. La bande défile quand elle déborde.
 // Chaque puce garde une zone tactile de 48 px de haut.
-// collants (fiches) : la bande reste sous la barre du haut quand l'en-tête de la fiche a défilé,
-// et changer d'onglet garde la position (RetourEnHaut) au lieu de remonter tout en haut.
+// La bande reste sous la barre du haut quand la page défile, partout (Joseph, 21/10/2026) ;
+// libres : onglets dans une carte, qui défilent avec elle.
+// fiche : changer d'onglet garde la position (RetourEnHaut) au lieu de remonter tout en haut.
 // Téléphone, plus de 4 rubriques : les 3 premières puis « Plus », qui ouvre les autres dans un panneau du bas
 // et prend le nom de la rubrique ouverte quand elle en fait partie (aucun onglet coupé au bord de l'écran).
 const PLUS = '__plus'
 const VISIBLES_TELEPHONE = 3
 
-export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle, collants }: { valeur: V; onChange: (v: V) => void; rubriques: Rubrique<V>[]; libelle: string; collants?: boolean }) {
+export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle, fiche, libres }: { valeur: V; onChange: (v: V) => void; rubriques: Rubrique<V>[]; libelle: string; fiche?: boolean; libres?: boolean }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const [panneau, setPanneau] = useState(false)
+  const bande = useBande('--onglets', !libres)
   const replier = !surPC && rubriques.length > VISIBLES_TELEPHONE + 1
   const visibles = replier ? rubriques.slice(0, VISIBLES_TELEPHONE) : rubriques
   const autres = replier ? rubriques.slice(VISIBLES_TELEPHONE) : []
@@ -33,13 +36,13 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
   const pastilleAutres = autres.reduce((n, r) => n + (r.pastille ?? 0), 0)
   return (
     <>
-    {collants && <Box className="onglets-repere" aria-hidden />}
-    <Tabs className={collants ? 'onglets-collants' : undefined} value={ouverteAilleurs ? PLUS : valeur} onChange={(_e, v) => { if (v !== PLUS) onChange(v as V) }} variant="scrollable" scrollButtons={false} aria-label={libelle}
+    {fiche && <Box className="onglets-repere" aria-hidden />}
+    <Tabs ref={bande} className={fiche ? 'onglets-fiche' : undefined} value={ouverteAilleurs ? PLUS : valeur} onChange={(_e, v) => { if (v !== PLUS) onChange(v as V) }} variant="scrollable" scrollButtons={false} aria-label={libelle}
       slotProps={{ indicator: { sx: { display: 'none' } } }}
       sx={{
         mb: { xs: 1.5, md: 2.5 }, minHeight: 48, mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, '& .MuiTabs-flexContainer': { gap: 1 },
         // Sous la barre du haut (64 px téléphone, 72 px PC), sur le fond de la page
-        ...(collants ? { position: 'sticky', top: { xs: 64, md: 72 }, zIndex: 4, bgcolor: 'background.default' } : {}),
+        ...(libres ? {} : { position: 'sticky', top: sousBandes(), zIndex: 4, bgcolor: 'background.default' }),
       }}>
       {visibles.map((r) => (
         <Tab key={r.vue} value={r.vue} icon={surPC ? r.icone : undefined} iconPosition="start" aria-label={r.libelle} disableRipple

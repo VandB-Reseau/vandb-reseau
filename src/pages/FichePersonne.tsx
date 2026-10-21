@@ -117,7 +117,7 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
           { valeur: p.visitesFaites, libelle: `visites ${reseau.jour.slice(0, 4)}` },
         ]}
         telephone={fichePersonne(reseau, { type: 'rr', cle: id }).telephone || rr.telephone} lienMessage={lienPersonne(`rr:${id}`)} modifier={referentiels ? () => setEdition(true) : undefined} />
-      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesRR} libelle={`Rubriques de ${rr.nom}`} collants />
+      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesRR} libelle={`Rubriques de ${rr.nom}`} fiche />
       <ContenuOnglet>
         {vue === 'portefeuille' && <BlocPortefeuille reseau={reseau} p={p} />}
         {vue === 'coachs' && (

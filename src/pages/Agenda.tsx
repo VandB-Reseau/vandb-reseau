@@ -32,6 +32,7 @@ import { lienFiche } from '../lib/format'
 import { libelleTypeVisite, nomsVisiteurs, type Conge, type Evenement, type Reseau } from '../data/modele'
 import { estVisite } from '../data/chiffres'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
+import { BandeCollante } from '../components/Collant'
 
 type Categorie = 'visite' | 'ouverture' | 'anniversaire' | 'evenement' | 'conge'
 const categories: { id: Categorie; libelle: string; couleur: string; icone: ReactElement }[] = [
@@ -172,14 +173,16 @@ export function Agenda() {
         return (
           <>
             <PageHeader titre="Agenda" sousTitre="Ouvertures, événements, absences et anniversaires" />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+            {/* Le mois et les catégories restent sous la barre du haut quand la page défile */}
+            <BandeCollante>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0, sm: 1 }, flexWrap: { sm: 'wrap' }, mb: 0.5 }}>
               <IconButton onClick={() => changerMois(-1)} aria-label="Mois précédent"><ChevronLeft /></IconButton>
-              <Typography variant="h3" component="h2" sx={{ minWidth: 180, textAlign: 'center', textTransform: 'capitalize' }}>{nomMois(debut)}</Typography>
+              <Typography variant="h3" component="h2" sx={{ minWidth: { sm: 180 }, flex: { xs: 1, sm: 'none' }, textAlign: 'center', textTransform: 'capitalize' }}>{nomMois(debut)}</Typography>
               <IconButton onClick={() => changerMois(1)} aria-label="Mois suivant"><ChevronRight /></IconButton>
               <Button onClick={() => setParams({}, { replace: true })} sx={{ minHeight: 48 }}>Aujourd’hui</Button>
             </Box>
             {/* Catégories en puces neutres avec un point de couleur, sur une ligne qui défile (Joseph, 21/10/2026) */}
-            <Box role="group" aria-label="Catégories affichées" sx={{ display: 'flex', gap: 1, overflowX: 'auto', mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, mb: 2, scrollbarWidth: 'none' }}>
+            <Box role="group" aria-label="Catégories affichées" sx={{ display: 'flex', gap: 1, overflowX: 'auto', mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, scrollbarWidth: 'none' }}>
               {categories.map((c) => {
                 const actif = actives.has(c.id)
                 return (
@@ -190,6 +193,7 @@ export function Agenda() {
                 )
               })}
             </Box>
+            </BandeCollante>
             <ContenuMois reseau={reseau} debut={debut} fin={fin} actives={actives} surPC={surPC} ouvrir={(e) => { if (e.conge) setConge(e.conge); if (e.evenement) setEvenement(e.evenement) }} />
             {conge !== undefined && <DialogConge reseau={reseau} conge={conge} onFermer={fermer} />}
             {evenement !== undefined && <DialogEvenement reseau={reseau} evenement={evenement} onFermer={fermer} />}

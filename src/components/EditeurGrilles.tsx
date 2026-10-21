@@ -83,7 +83,7 @@ export function GrillesAudit({ reseau }: { reseau: Reseau }) {
     <Card sx={{ mt: 2 }}>
       <CardContent sx={{ p: { xs: 2, md: 3 } }}>
         <Typography variant="h3" component="h2" sx={{ mb: 2 }}>Grilles d’audit</Typography>
-        <Onglets valeur={vue} onChange={setVue} libelle="Grilles d’audit" rubriques={[
+        <Onglets valeur={vue} onChange={setVue} libelle="Grilles d’audit" libres rubriques={[
           { vue: 'hygiene', libelle: libellesGrilles.hygiene, icone: <CleaningServicesOutlined /> },
           { vue: 'excellence', libelle: libellesGrilles.excellence, court: 'Excellence', icone: <StarOutlineOutlined /> },
         ]} />
