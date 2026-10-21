@@ -39,19 +39,22 @@ export function messageErreur(e: unknown): string {
 }
 
 // Squelette commun : titre, champs, suppression avec confirmation, enregistrement avec message humain
-export function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer, supprimer, suppressionBloquee, libelleSuppression, large }: {
+// sansRechargement : l'enregistrement ne touche pas au réseau, la fenêtre se ferme sans le relire ;
+// erreurInitiale : fenêtre rouverte après un envoi refusé par la base
+export function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer, supprimer, suppressionBloquee, libelleSuppression, large, sansRechargement, erreurInitiale }: {
   large?: boolean; titre: string; ouvert: boolean; onFermer: (message?: string) => void; children: ReactNode; valide: boolean
   enregistrer: () => Promise<string>; supprimer?: () => Promise<string>; suppressionBloquee?: string; libelleSuppression?: string
+  sansRechargement?: boolean; erreurInitiale?: string
 }) {
   const theme = useTheme()
   const pleinEcran = useMediaQuery(theme.breakpoints.down('sm'))
   const { recharger } = useReseau()
   const [envoi, setEnvoi] = useState(false)
-  const [erreur, setErreur] = useState<string | false>(false)
+  const [erreur, setErreur] = useState<string | false>(erreurInitiale || false)
   const [confirmer, setConfirmer] = useState(false)
   const agir = async (action: () => Promise<string>) => {
     setEnvoi(true); setErreur(false)
-    try { const message = await action(); await recharger(); onFermer(message) } catch (e) { setErreur(messageErreur(e)) } finally { setEnvoi(false) }
+    try { const message = await action(); if (!sansRechargement) await recharger(); onFermer(message) } catch (e) { setErreur(messageErreur(e)) } finally { setEnvoi(false) }
   }
   return (
     <Dialog open={ouvert} onClose={() => onFermer()} fullScreen={pleinEcran} fullWidth maxWidth={large ? "md" : "sm"} aria-labelledby="titre-edition">

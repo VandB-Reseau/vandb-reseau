@@ -20,8 +20,29 @@ type Ligne = Record<string, unknown>
 const t = (v: unknown) => (v === null || v === undefined ? '' : String(v))
 const lignes = (v: unknown) => (Array.isArray(v) ? (v as Ligne[]).filter((x) => x && typeof x === 'object') : [])
 
+// Dernières communications lues, affichées aussitôt au retour sur la page (puis remplacées par la base) ;
+// oubliées quand le compte change
+let derniere: { utilisateur: string; communications: Communications | null; lectures?: Map<number, Lecture> | null } | null = null
+let utilisateur: string | null = null
+supabase.auth.onAuthStateChange((_e, session) => {
+  const id = session?.user.id ?? null
+  if (id !== utilisateur) { utilisateur = id; derniere = null }
+})
+export const communicationsConnues = () => (derniere && derniere.utilisateur === utilisateur ? derniere : null)
+const retenir = (c: { communications?: Communications | null; lectures?: Map<number, Lecture> | null }) => {
+  if (!utilisateur) return
+  derniere = { ...(derniere?.utilisateur === utilisateur ? derniere : { utilisateur, communications: null }), ...c }
+}
+// Liste changée sur place (publication, retrait) avant la réponse de la base
+export const retenirCommunications = (communications: Communications) => retenir({ communications })
+
 // null : communications pas encore activées dans la base
 export async function chargerCommunications(): Promise<Communications | null> {
+  const c = await lireCommunications()
+  retenir({ communications: c })
+  return c
+}
+async function lireCommunications(): Promise<Communications | null> {
   const [{ data, error }, une] = await Promise.all([supabase.rpc('communications'), supabase.rpc('a_la_une')])
   if (error || !data || typeof data !== 'object') return null
   const d = data as Ligne
@@ -62,8 +83,9 @@ export interface Lecture { lus: string[]; nonLus: string[] }
 // Directeur et Responsable Régional : qui a lu chaque communication ; null tant que la base ne le sait pas
 export async function chargerLectures(): Promise<Map<number, Lecture> | null> {
   const { data, error } = await supabase.rpc('lectures_communications')
-  if (error || !Array.isArray(data)) return null
-  return new Map(lignes(data).map((l) => [Number(l.id), { lus: Array.isArray(l.lus) ? l.lus.map(String) : [], nonLus: Array.isArray(l.non_lus) ? l.non_lus.map(String) : [] }]))
+  const lectures = error || !Array.isArray(data) ? null : new Map(lignes(data).map((l) => [Number(l.id), { lus: Array.isArray(l.lus) ? l.lus.map(String) : [], nonLus: Array.isArray(l.non_lus) ? l.non_lus.map(String) : [] }] as const))
+  retenir({ lectures })
+  return lectures
 }
 // Franchisé : les communications affichées sont notées lues (sans message si la base ne connaît pas encore la fonction)
 export async function noterLues(ids: number[]) {
@@ -85,7 +107,7 @@ export function messageCommunication(e: unknown): string {
 // Communications reprises dans le fil d'activité (liste vide tant que la base ne les connaît pas)
 export interface CommunicationsDuFil { liste: Communication[]; moi: string; recharger: () => Promise<void> }
 export function useCommunicationsDuFil(): CommunicationsDuFil {
-  const [etat, setEtat] = useState<Communications | null>(null)
+  const [etat, setEtat] = useState<Communications | null>(() => communicationsConnues()?.communications ?? null)
   const recharger = useCallback(async () => { setEtat(await chargerCommunications()) }, [])
   useEffect(() => {
     let actif = true

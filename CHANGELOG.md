@@ -12,6 +12,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 - En-tête des fiches (magasin, Coach, RR, personne, espace franchisé) plus bas sur PC : CA du mois, écart vs l'an dernier
   et tâches en cours rangés sur la ligne du nom, entre les infos et les pictos ; téléphone inchangé
   (`ProfilPersonne` dans `src/components/Portefeuille.tsx`, test `entete-compact.spec.ts`). Pas de migration.
+- Communications plus rapides : publier, modifier ou retirer ferme la fenêtre aussitôt (la page se met à jour
+  sur place et la base suit ; si elle refuse, la fenêtre revient avec ce qui était saisi), sans relire tout le réseau ;
+  au retour sur la page, la dernière liste s'affiche sans attendre ; commentaires retirés ou ajoutés sans attente ;
+  liens des photos gardés 50 minutes pour qu'elles restent dans le cache du navigateur
+  (test `communications-rapides.spec.ts`). Pas de migration.
 - Onglets et barres de recherche et de filtres collés sous la barre du haut sur tous les écrans, comme dans les fiches
   (Visites, Magasins, Équipe, Santé du parc, Charge des Coachs, Agenda, Notifications, fil de l'accueil) ; les intertitres
   (mois, lettres, régions) se rangent dessous ; Paramètres : sommaire fixe sur PC, retour fixe sur téléphone
