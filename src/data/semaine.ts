@@ -4,7 +4,8 @@ import { estVisite } from './chiffres'
 import { matriceMinutes, ordre, tournee, type Tournee } from './tournee'
 import { positionsCoachs } from './plan'
 
-// Semaine d'un Coach : magasins dont la visite est due d'ici sept jours (retards compris) et visites déjà prévues,
+// Semaine d'un Coach : magasins signalés (pas vus depuis plus longtemps que le délai de leur case) ou qui le seront
+// d'ici sept jours, et visites déjà prévues,
 // rangés dans l'ordre de tournée depuis son domicile
 export interface LigneSemaine { l: LigneRythme; prevue: Visite | null }
 export interface Semaine { debut: string; fin: string; lignes: LigneSemaine[]; aPlanifier: LigneSemaine[]; tournee: Tournee }
@@ -23,7 +24,7 @@ export function semaineDu(reseau: Reseau, coach: string): Semaine {
     if (!p || v.date < p.date) prevues.set(v.magasin, v)
   }
   const dues = suiviRythme(reseau, anneeDe(debut))
-    .filter((l) => l.coach === coach && (l.retard > 0 || l.prochaine <= fin || prevues.has(l.magasin.nom)))
+    .filter((l) => l.coach === coach && (l.alerte || (!!l.echeance && l.echeance <= fin) || prevues.has(l.magasin.nom)))
     .map((l) => ({ l, prevue: prevues.get(l.magasin.nom) ?? null }))
   const domicile = positionsCoachs(reseau, debut).get(coach) ?? null
   const places = dues.filter((x) => x.l.magasin.lat !== null && x.l.magasin.lon !== null)
@@ -38,8 +39,8 @@ export function semaineDu(reseau: Reseau, coach: string): Semaine {
   return { debut, fin, lignes, aPlanifier, tournee: tournee(domicile, aPlanifier.map((x) => x.l.magasin)) }
 }
 
-// Jour proposé pour poser la visite : la date due si elle tombe dans la semaine, sinon dès que possible
-export const jourPropose = (reseau: Reseau, l: LigneRythme) => (l.retard > 0 || l.prochaine <= reseau.jour ? reseau.jour : l.prochaine)
+// Jour proposé pour poser la visite : le jour où l'alerte part s'il tombe dans la semaine, sinon dès que possible
+export const jourPropose = (reseau: Reseau, l: LigneRythme) => (l.alerte || !l.echeance || l.echeance <= reseau.jour ? reseau.jour : l.echeance)
 
 // Préparation encore valable : aucune visite faite depuis qu'elle a été écrite (celle du jour compte encore comme à venir)
 export function preparationDe(reseau: Reseau, magasin: string): PreparationVisite | null {

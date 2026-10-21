@@ -18,6 +18,8 @@ import { enregistrerParametres } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
 import type { ParametresReseau, Reseau } from '../data/modele'
 import { analyser, referencesPossibles, type SeuilsAlerte } from '../data/chiffres'
+import { NON_CLASSE, nineBox } from '../data/sante'
+import { anneeDe, suiviRythme } from '../data/visites'
 
 type Cle = keyof ParametresReseau
 const champs: { cle: Cle; libelle: string; aide: string; min: number; max: number }[] = [
@@ -148,6 +150,51 @@ function RegleAlerte({ reseau }: { reseau: Reseau }) {
   )
 }
 
+// Jours sans visite avant qu'un magasin soit signalé, case par case de la nine box
+const casesDelai = [...nineBox].sort((x, y) => x.resultats + x.management - (y.resultats + y.management)).map((c) => ({ cle: c.id, libelle: c.libelle, rythme: c.rythme }))
+  .concat({ cle: NON_CLASSE, libelle: 'Non classé', rythme: '2 visites' })
+
+function RegleVisite({ reseau }: { reseau: Reseau }) {
+  const { recharger } = useReseau()
+  const initiales = () => Object.fromEntries(casesDelai.map((c) => [c.cle, String(reseau.delaisVisite[c.cle])]))
+  const [valeurs, setValeurs] = useState<Record<string, string>>(initiales)
+  const [envoi, setEnvoi] = useState(false)
+  const [erreur, setErreur] = useState(false)
+  const [ok, setOk] = useState(false)
+  const nombres = Object.fromEntries(casesDelai.map((c) => [c.cle, Number(valeurs[c.cle])]))
+  const invalides = casesDelai.filter((c) => valeurs[c.cle] === '' || !Number.isInteger(nombres[c.cle]) || nombres[c.cle] < 7 || nombres[c.cle] > 730)
+  const modifie = casesDelai.some((c) => nombres[c.cle] !== reseau.delaisVisite[c.cle])
+  const signales = (delais: Record<string, number>) => suiviRythme({ ...reseau, delaisVisite: delais }, anneeDe(reseau.jour)).filter((l) => l.alerte).length
+  const enregistrer = async () => {
+    setEnvoi(true); setErreur(false)
+    try { await enregistrerParametres(Object.fromEntries(casesDelai.map((c) => [`alerteVisite_${c.cle}`, nombres[c.cle]]))); await recharger(); setOk(true) } catch { setErreur(true) } finally { setEnvoi(false) }
+  }
+  return (
+    <Card sx={{ mt: 2 }}>
+      <CardContent sx={{ p: 3 }}>
+        <Typography variant="h3" component="h2" sx={{ mb: 3 }}>Alerte de visite</Typography>
+        <Box sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
+          {casesDelai.map((c) => (
+            <TextField key={c.cle} type="number" label={`${c.libelle} (jours sans visite)`} value={valeurs[c.cle]} onChange={(e) => setValeurs((v) => ({ ...v, [c.cle]: e.target.value }))}
+              error={invalides.includes(c)} helperText={invalides.includes(c) ? 'Entre 7 et 730, nombre entier.' : `Référence ${c.rythme.split('×')[0].trim()} par an`} slotProps={{ htmlInput: { min: 7, max: 730, step: 1 } }} />
+          ))}
+        </Box>
+        {modifie && !invalides.length && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Avec ces délais, {signales(nombres)} magasin{signales(nombres) > 1 ? 's seraient signalés' : ' serait signalé'} (contre {signales(reseau.delaisVisite)} actuellement).
+          </Alert>
+        )}
+        {erreur && <Alert severity="error" sx={{ mt: 2 }}>Les réglages n’ont pas pu être enregistrés. Vérifie ta connexion et réessaie.</Alert>}
+        <Box sx={{ display: 'flex', gap: 1, mt: 3, justifyContent: 'flex-end' }}>
+          <Button disabled={!modifie || envoi} onClick={() => setValeurs(initiales())} sx={{ minHeight: 48 }}>Annuler</Button>
+          <Button variant="contained" disabled={!modifie || envoi || invalides.length > 0} onClick={enregistrer} sx={{ minHeight: 48 }}>{envoi ? 'Enregistrement…' : 'Enregistrer'}</Button>
+        </Box>
+      </CardContent>
+      <Snackbar open={ok} autoHideDuration={5000} onClose={() => setOk(false)} message="Alerte de visite enregistrée." />
+    </Card>
+  )
+}
+
 export function Direction() {
   const [message, setMessage] = useState('')
   return (
@@ -157,6 +204,7 @@ export function Direction() {
           <PageHeader titre="Paramètres" />
           <RegleCharge reseau={reseau} />
           <RegleAlerte reseau={reseau} />
+          <RegleVisite reseau={reseau} />
           <EditeurGrilleNineBox reseau={reseau} />
           <CarteEffacerNotes reseau={reseau} />
           <CarteThematiques reseau={reseau} signaler={setMessage} />

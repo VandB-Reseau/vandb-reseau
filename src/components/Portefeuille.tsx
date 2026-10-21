@@ -108,8 +108,6 @@ interface Indicateur {
 }
 
 export const indicateurs: Indicateur[] = [
-  { id: 'rythme', libelle: 'Rythme de visite tenu', valeur: (p) => p.aJour, affiche: (p) => pct(p.aJour), sens: 1, seuil: 5, ecart: points,
-    detail: (p) => `${p.visitesFaites} sur ${p.visitesObjectif} visites` },
   { id: 'decroche', libelle: 'En Décroche', valeur: (p) => p.partDecroche, affiche: (p) => String(p.decroche), sens: -1, seuil: 5, ecart: points,
     detail: (p) => (p.avecChiffres ? `${pct(p.partDecroche)} sur ${pluriel(p.avecChiffres, 'magasin')} suivi${p.avecChiffres > 1 ? 's' : ''} au chiffre` : 'Aucun chiffre comparable') },
   { id: 'ca', libelle: 'Évolution du CA', valeur: (p) => p.evolutionCA, affiche: (p) => formatPourcent(p.evolutionCA), sens: 1, seuil: 2, ecart: points,
@@ -216,7 +214,7 @@ export function VuePortefeuilles({ reseau }: { reseau: Reseau }) {
             const n = sous(l.p)
             return (
               <LigneCompacte key={l.cle} lien={l.lien} avatar={<Initiales nom={l.nom} />} titre={l.nom}
-                detail={[l.detail, `rythme ${pct(l.p.aJour)}`, `${l.p.decroche} en Décroche`, `CA ${formatPourcent(l.p.evolutionCA)}`, `audit ${pct(l.p.audit)}`].join(' · ')}
+                detail={[l.detail, `${pluriel(l.p.visitesFaites, 'visite')}`, `${l.p.decroche} en Décroche`, `CA ${formatPourcent(l.p.evolutionCA)}`, `audit ${pct(l.p.audit)}`].join(' · ')}
                 fin={ref ? (n ? <Pastille ton="orange">{`${n} sous ${ref.libelle === 'réseau' ? 'le réseau' : 'la région'}`}</Pastille> : <Pastille ton="gris">Au niveau</Pastille>) : undefined} />
             )
           })}

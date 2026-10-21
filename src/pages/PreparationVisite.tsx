@@ -14,7 +14,7 @@ import { dateCourte, dateLongue } from '../lib/format'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Reseau } from '../data/modele'
 import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAlerte, libelleAudit, libelleMois, type ChampChiffre } from '../data/chiffres'
 import { caseDe } from '../data/sante'
-import { anneeDe, suiviRythme } from '../data/visites'
+import { anneeDe, libellePasVu, suiviRythme } from '../data/visites'
 import { preparationDe } from '../data/semaine'
 import { actionsDuMagasin, echeanceDate, enRetard } from '../data/actions'
 import { campagnesDuMagasin } from '../data/campagnes'
@@ -169,7 +169,8 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
               <Champ libelle={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'}>{m.rr?.nom}</Champ>
               <Champ libelle="Nine box">{c ? `${c.libelle} · ${c.rythme}` : 'Non classé'}</Champ>
               <Champ libelle="Dernière visite">{rythme?.derniere ? `${dateCourte(rythme.derniere.date)} · ${libelleTypeVisite(rythme.derniere.type)}${rythme.derniere.visiteurs.length ? ` · ${nomsVisiteurs(rythme.derniere)}` : ''}` : 'Jamais visité'}</Champ>
-              <Champ libelle="Prochaine visite">{prevue ? `Prévue le ${dateCourte(prevue.date)}${preparation?.heure ? ` à ${preparation.heure.replace(':', 'h')}` : ''}` : rythme ? `${rythme.retard > 0 ? `En retard de ${rythme.retard} j` : `Due avant le ${dateCourte(rythme.prochaine)}`} · ${rythme.faites} sur ${rythme.objectif} cette année` : null}</Champ>
+              <Champ libelle="Prochaine visite">{prevue ? `Prévue le ${dateCourte(prevue.date)}${preparation?.heure ? ` à ${preparation.heure.replace(':', 'h')}` : ''}` : 'Non planifiée'}</Champ>
+              <Champ libelle="Visites de l’année">{rythme ? `${rythme.faites} · référence nine box ${rythme.reference}${rythme.alerte ? ` · ${libellePasVu(rythme).toLowerCase()}` : ''}` : null}</Champ>
               <Champ libelle="Adresse">{[m.adresse, m.pays].filter(Boolean).join(', ')}</Champ>
               <Champ libelle="Téléphone du magasin">{m.telephone}</Champ>
             </Box>

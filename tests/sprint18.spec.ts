@@ -18,7 +18,8 @@ test('la fiche Coach s’ouvre sur son portefeuille comparé au réseau', async 
   await expect(page.getByRole('link', { name: 'Message' })).toBeVisible()
   const portefeuille = page.getByRole('region', { name: 'Portefeuille' })
   await expect(page.getByRole('heading', { name: 'Portefeuille comparé au réseau' })).toBeVisible()
-  for (const l of ['Rythme de visite tenu', 'En Décroche', 'Évolution du CA', 'Note d’audit moyenne', 'Nine box à surveiller']) await expect(portefeuille).toContainText(l)
+  await expect(portefeuille).not.toContainText('Rythme de visite tenu')
+  for (const l of ['En Décroche', 'Évolution du CA', 'Note d’audit moyenne', 'Nine box à surveiller']) await expect(portefeuille).toContainText(l)
   await expect(portefeuille).toContainText('réseau')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-coach-portefeuille.png`, fullPage: !isMobile })
@@ -29,7 +30,7 @@ test('la fiche RR est un profil avec portefeuille, Coachs, magasins et fiche', a
   await page.goto('./#/equipe/rr/rr1')
   await expect(page.getByRole('heading', { name: 'Alex NORD', level: 1 })).toBeVisible()
   await expect(page.getByRole('tablist', { name: 'Rubriques de Alex NORD' }).getByRole('tab')).toHaveText(['Portefeuille', 'Coachs', 'Magasins', 'Fiche'])
-  await expect(page.getByRole('region', { name: 'Portefeuille' })).toContainText('Rythme de visite tenu')
+  await expect(page.getByRole('region', { name: 'Portefeuille' })).toContainText('En Décroche')
   await page.screenshot({ path: `captures/${info.project.name}-fiche-rr-portefeuille.png`, fullPage: !isMobile })
 })
 
@@ -38,7 +39,8 @@ test('l’onglet Portefeuilles de l’équipe compare chaque Coach au réseau', 
   await page.goto('./#/equipe?vue=portefeuilles')
   const coachs = page.getByRole('region', { name: 'Coachs' })
   await expect(coachs.getByRole('link', { name: /^Inès EXEMPLE/ })).toBeVisible()
-  await expect(coachs.getByRole('link', { name: /^Inès EXEMPLE/ })).toContainText('rythme')
+  await expect(coachs.getByRole('link', { name: /^Inès EXEMPLE/ })).toContainText(/\d+ visites?/)
+  await expect(coachs.getByRole('link', { name: /^Inès EXEMPLE/ })).not.toContainText('rythme')
   await expect(page.getByRole('region', { name: 'Responsables Régionaux' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-equipe-portefeuilles.png`, fullPage: !isMobile })
@@ -48,7 +50,7 @@ test('l’onglet Portefeuilles de l’équipe compare chaque Coach au réseau', 
   }
 })
 
-test('un Coach arrive sur sa semaine, prépare et planifie une visite due', async ({ page, isMobile }, info) => {
+test('un Coach arrive sur sa semaine, prépare et planifie un magasin pas vu depuis longtemps', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await page.addInitScript(() => { (window as unknown as { ouverts: string[] }).ouverts = []; window.open = (u?: string | URL) => { (window as unknown as { ouverts: string[] }).ouverts.push(String(u)); return null } })
   await seConnecter(page, { ecritures, appMetadata: { role: 'coach', coach: 'Inès EXEMPLE' } })
@@ -56,7 +58,8 @@ test('un Coach arrive sur sa semaine, prépare et planifie une visite due', asyn
   await expect(page.getByRole('tab', { name: isMobile ? 'Semaine' : 'Ma semaine', selected: true })).toBeVisible()
   const aPlanifier = page.getByRole('region', { name: 'Visites à planifier' })
   const nantes = aPlanifier.getByRole('link', { name: 'Nantes Test', exact: true })
-  await expect(nantes).toContainText(/j de retard/)
+  await expect(nantes).toContainText(/Pas vu depuis \d+ j/)
+  await expect(nantes).not.toContainText(/retard|due/)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-ma-semaine.png`, fullPage: !isMobile })
   await page.getByRole('button', { name: 'Planifier la visite de Nantes Test' }).click()

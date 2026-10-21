@@ -64,7 +64,7 @@ test('la fiche magasin montre les chiffres, l’alerte et le graphique', async (
   await expect(page.getByRole('heading', { name: 'Visites', exact: true })).toBeVisible()
 })
 
-test('saisir un appel : il ne compte pas comme visite et arrête le retard', async ({ page }) => {
+test('saisir un appel : il ne compte pas comme visite', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test?vue=chiffres')
@@ -81,7 +81,7 @@ test('saisir un appel : il ne compte pas comme visite et arrête le retard', asy
   expect(ecritures.some((e) => e.table === 'store_finance')).toBe(false)
   // Un appel déjà saisi ne compte pas dans le rythme de visite
   await page.goto('./#/magasins/Agen%20Test?vue=visites')
-  await expect(page.getByText(/^0 visite sur \d+ en \d{4} · \d+ j de retard$/)).toBeVisible()
+  await expect(page.getByText(/^0 visite en \d{4} · référence nine box \d+$/)).toBeVisible()
   await expect(page.getByText('Appel · Inès EXEMPLE').first()).toBeVisible()
 })
 

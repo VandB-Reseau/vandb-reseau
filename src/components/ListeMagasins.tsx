@@ -10,16 +10,16 @@ import { anneeDe, suiviRythme } from '../data/visites'
 
 const PAS = 50
 
-// La pastille la plus grave du magasin : chiffres, puis visite en retard, puis statut d'ouverture
+// La pastille la plus grave du magasin : chiffres, puis pas vu depuis longtemps, puis statut d'ouverture
 function pastillesDe(reseau: Reseau | null): Map<string, { ton: Ton; libelle: string }> {
   const res = new Map<string, { ton: Ton; libelle: string }>()
   if (!reseau) return res
-  const retards = new Set(suiviRythme(reseau, anneeDe(reseau.jour)).filter((l) => l.retard > 0).map((l) => l.magasin.nom))
+  const aVoir = new Set(suiviRythme(reseau, anneeDe(reseau.jour)).filter((l) => l.alerte).map((l) => l.magasin.nom))
   for (const m of reseau.magasins) {
     const a = analyser(reseau, m.nom)
     if (a?.statut === 'decroche') res.set(m.nom, { ton: 'rouge', libelle: 'Décroche' })
     else if (a?.statut === 'surveiller') res.set(m.nom, { ton: 'orange', libelle: 'À surveiller' })
-    else if (retards.has(m.nom)) res.set(m.nom, { ton: 'orange', libelle: 'Visite' })
+    else if (aVoir.has(m.nom)) res.set(m.nom, { ton: 'orange', libelle: 'Visite' })
     else if (m.statut !== 'ouvert') res.set(m.nom, { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] })
   }
   return res

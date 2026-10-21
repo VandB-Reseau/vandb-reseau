@@ -31,7 +31,7 @@ import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { BoutonAjouterAction, ListeActions } from '../components/Actions'
 import { BilanCampagnes } from '../components/Campagnes'
 import { actionsDes, enRetard } from '../data/actions'
-import { anneeDe, lienCompteRendu, suiviRythme } from '../data/visites'
+import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme, type LigneRythme } from '../data/visites'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import { BlocPortefeuille, ProfilPersonne } from '../components/Portefeuille'
 import { portefeuilleDe } from '../data/portefeuille'
@@ -60,7 +60,8 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
   const charge = chargeA(reseau, coach.nom)
   const a = anneeDe(reseau.jour)
   const rythme = suiviRythme(reseau, a).filter((l) => noms.has(l.magasin.nom))
-  const enRetardVisite = rythme.filter((l) => l.retard > 0).sort((x, y) => y.retard - x.retard)
+  const ecart = (l: LigneRythme) => (l.depuis === null ? Infinity : l.depuis - l.delai)
+  const aVoir = rythme.filter((l) => l.alerte).sort((x, y) => ecart(y) - ecart(x))
   const visites = reseau.visites.filter((v) => v.date <= reseau.jour && (v.visiteurs.includes(coach.nom) || (noms.has(v.magasin) && !v.visiteurs.length)))
     .sort((x, y) => y.date.localeCompare(x.date))
   const [toutes, setToutes] = useState(false)
@@ -68,15 +69,15 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
   const actions = actionsDes(reseau, noms)
   const ouvertes = actions.filter((x) => !x.a.faite)
   const retards = ouvertes.filter((x) => enRetard(x.a, reseau.jour)).length
-  const faitesAn = rythme.reduce((t, l) => t + l.faites, 0), objectifAn = rythme.reduce((t, l) => t + l.objectif, 0)
+  const faitesAn = rythme.reduce((t, l) => t + l.faites, 0), referenceAn = rythme.reduce((t, l) => t + l.reference, 0)
   return (
     <>
       <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Équipe</Button>
       <ProfilPersonne retour={{ libelle: 'Équipe', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe')) }} nom={coach.nom} lignes={[['Coach', coach.rr?.nom].filter(Boolean).join(' · ')]}
-        pastille={retards ? { ton: 'rouge', libelle: `${retards} tâche${retards > 1 ? 's' : ''} en retard` } : enRetardVisite.length ? { ton: 'orange', libelle: `${enRetardVisite.length} visite${enRetardVisite.length > 1 ? 's' : ''} en retard` } : null}
+        pastille={retards ? { ton: 'rouge', libelle: `${retards} tâche${retards > 1 ? 's' : ''} en retard` } : null}
         compteurs={[
           { valeur: magasins.length, libelle: magasins.length > 1 ? 'magasins' : 'magasin' },
-          { valeur: `${faitesAn}/${objectifAn}`, libelle: `visites ${a.court}` },
+          { valeur: faitesAn, libelle: `visites ${a.court}` },
           { valeur: `${charge}/${reseau.parametres.maxUnits}`, libelle: 'charge', couleur: charge > reseau.parametres.maxUnits ? 'error.main' : undefined },
         ]}
         telephone={fichePersonne(reseau, { type: 'coach', cle: coach.nom }).telephone || coach.telephone} lienMessage={coach.fictif ? undefined : lienPersonne(`coach:${coach.nom}`)} modifier={referentiels ? () => setEdition(true) : undefined} />
@@ -91,14 +92,15 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
 
         {vue === 'visites' && (
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-            <Section titre="Visites en retard">
-              {enRetardVisite.length === 0 ? <Typography variant="body2" color="text.secondary">Tous ses magasins sont à jour de leurs visites sur {a.court}.</Typography> : enRetardVisite.map((l) => (
+            <Section titre="Pas vus depuis longtemps">
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{faitesAn} visite{faitesAn > 1 ? 's' : ''} en {a.court} · référence nine box {referenceAn}</Typography>
+              {aVoir.length === 0 ? <Typography variant="body2" color="text.secondary">Tous ses magasins ont été vus dans le délai de leur case.</Typography> : aVoir.map((l) => (
                 <Box key={l.magasin.nom} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Link component={RouterLink} to={lienFiche(l.magasin.nom)} sx={{ fontWeight: 500 }}>{l.magasin.nom}</Link>
-                    <Typography variant="body2" color="text.secondary">{l.derniere ? `Dernière visite le ${dateCourte(l.derniere.date)}` : 'Jamais visité'} · {l.faites} sur {l.objectif}</Typography>
+                    <Typography variant="body2" color="text.secondary">{[l.case?.libelle ?? 'Non classé', l.derniere ? `dernière visite le ${dateCourte(l.derniere.date)}` : null, l.dernierContact && `appel le ${dateCourte(l.dernierContact.date)}`].filter(Boolean).join(' · ')}</Typography>
                   </Box>
-                  <Chip size="small" color="warning" label={`${l.retard} j de retard`} sx={{ fontSize: 12, fontWeight: 600 }} />
+                  <Chip size="small" color="warning" label={libellePasVu(l)} sx={{ fontSize: 12, fontWeight: 600 }} />
                 </Box>
               ))}
             </Section>

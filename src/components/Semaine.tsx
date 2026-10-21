@@ -21,6 +21,7 @@ import { coachA } from '../data/charge'
 import { magasinsDu, perimetreDuProfil } from '../data/perimetre'
 import { jourPropose, preparationDe, semaineDu, type LigneSemaine } from '../data/semaine'
 import { duree } from '../data/tournee'
+import { libellePasVu } from '../data/visites'
 import { lienFiche, lienPreparation } from '../lib/format'
 import type { Reseau, Visite } from '../data/modele'
 
@@ -53,14 +54,15 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
       recherche={!unSeul ? <FiltreMenu unique libelle="Coach" choisis={[coach]} onChange={(v) => setChoisi(v[0])} options={coachs.map((c) => ({ valeur: c, libelle: c }))} /> : null} />
   )
   if (!s) return <EmptyState icone={<EventNoteOutlined />} titre="Aucun Coach" texte="Aucun Coach n’a de magasin à suivre aujourd’hui." />
-  const retards = s.lignes.filter((x) => x.l.retard > 0 && !x.prevue).length
+  const signales = s.lignes.filter((x) => x.l.alerte && !x.prevue).length
   const prevues = s.lignes.filter((x) => x.prevue)
   const ligne = (x: LigneSemaine, i: number | null) => {
     const { l, prevue } = x
     const detail = [
       l.case?.libelle ?? 'Non classé',
-      prevue ? null : l.retard > 0 ? `due depuis le ${jourCourt(l.prochaine)}` : `due le ${jourCourt(l.prochaine)}`,
-      l.derniere ? `vue le ${jourCourt(l.derniere.date)}` : 'jamais visité',
+      l.derniere ? `vu le ${jourCourt(l.derniere.date)}` : l.alerte && !prevue ? null : 'jamais visité',
+      prevue || l.alerte || !l.echeance ? null : `alerte le ${jourCourt(l.echeance)}`,
+      l.dernierContact ? `appel le ${jourCourt(l.dernierContact.date)}` : null,
       preparationDe(reseau, l.magasin.nom)?.notes ? 'préparée' : null,
     ].filter(Boolean).join(' · ')
     const heure = preparationDe(reseau, l.magasin.nom)?.heure
@@ -68,7 +70,7 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
       <LigneCompacte key={l.magasin.nom} lien={lienFiche(l.magasin.nom)} label={l.magasin.nom}
         avatar={<Initiales nom={l.magasin.nom} icone={i !== null ? <Typography component="span" sx={{ fontWeight: 700 }}>{i + 1}</Typography> : <EventAvailableOutlined />} />}
         titre={l.magasin.nom} detail={detail}
-        fin={prevue ? <Pastille ton="bleu">{`${jourCourt(prevue.date)}${heure ? ` · ${heure.replace(':', 'h')}` : ''}`}</Pastille> : l.retard > 0 ? <Pastille ton="orange">{`${l.retard} j de retard`}</Pastille> : undefined}
+        fin={prevue ? <Pastille ton="bleu">{`${jourCourt(prevue.date)}${heure ? ` · ${heure.replace(':', 'h')}` : ''}`}</Pastille> : l.alerte ? <Pastille ton="orange">{libellePasVu(l)}</Pastille> : undefined}
         actions={<>
           {surPC && <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(l.magasin.nom)} aria-label={`Préparer la visite de ${l.magasin.nom}`}><AssignmentOutlined /></IconButton></Tooltip>}
           <Tooltip title="Planifier la visite"><IconButton onClick={() => planifier([l.magasin.nom], prevue?.date ?? jourPropose(reseau, l), prevue)} aria-label={`Planifier la visite de ${l.magasin.nom}`} sx={{ width: 48, height: 48 }}>{prevue ? <EditCalendarOutlined /> : <EventAvailableOutlined />}</IconButton></Tooltip>
@@ -92,11 +94,11 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
                 s.tournee.etapes > 0 && `trajets ${s.tournee.complete ? '' : 'd’au moins '}${duree(s.tournee.minutes)} · ${Math.round(s.tournee.km)} km`].filter(Boolean).join(' · ')}
             </Typography>
           </Box>
-          {retards > 0 ? <Pastille ton="orange">{`${retards} en retard`}</Pastille> : s.lignes.length > 0 && !s.aPlanifier.length ? <Pastille ton="vert">Planifiée</Pastille> : null}
+          {signales > 0 ? <Pastille ton="orange">{`${signales} pas vu${signales > 1 ? 's' : ''} depuis longtemps`}</Pastille> : s.lignes.length > 0 && !s.aPlanifier.length ? <Pastille ton="vert">Planifiée</Pastille> : null}
         </Box>
       </Card>
       {!s.lignes.length ? (
-        <EmptyState icone={<EventAvailableOutlined />} titre="Semaine libre" texte={`Aucune visite n’est due d’ici le ${jourCourt(s.fin)}.`} />
+        <EmptyState icone={<EventAvailableOutlined />} titre="Semaine libre" texte={`Aucun magasin à voir en priorité d’ici le ${jourCourt(s.fin)}.`} />
       ) : (
         <>
           {s.aPlanifier.length > 0 && <>

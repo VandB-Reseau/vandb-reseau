@@ -56,15 +56,16 @@ test('ajouter, modifier et supprimer une note du journal', async ({ page }) => {
   expect(JSON.stringify(suppression.corps)).not.toContain('travaux de vitrine')
 })
 
-test('l’accueil liste les visites en retard et les changements de case', async ({ page }) => {
+test('l’accueil signale les magasins pas vus depuis longtemps et les changements de case', async ({ page }) => {
   await seConnecter(page)
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
   await aTraiter.getByRole('button', { name: /^Voir les \d+$/ }).click()
-  const retard = aTraiter.getByRole('link').filter({ hasText: /j de retard/ })
-  // Jamais visité depuis janvier : en retard en premier
-  await expect(retard.first()).toContainText('Agen Test')
-  await expect(retard.first()).toContainText('jamais visité')
-  await expect(retard.filter({ hasText: 'Lyon Test' })).toHaveCount(0)
+  await expect(aTraiter).not.toContainText('retard de visite')
+  const aVoir = aTraiter.getByRole('link').filter({ hasText: /pas vu depuis|jamais visité/ })
+  // Nantes (Cœur de réseau, vu en mars) dépasse son délai de 150 jours ; Agen n'a eu qu'un appel ; Lyon vient d'être vu
+  await expect(aVoir.filter({ hasText: 'Nantes Test' })).toContainText(/Cœur de réseau · pas vu depuis \d+ j/)
+  await expect(aVoir.filter({ hasText: 'Agen Test' })).toContainText('jamais visité · appel le 1 oct.')
+  await expect(aVoir.filter({ hasText: 'Lyon Test' })).toHaveCount(0)
   const recul = aTraiter.getByRole('link').filter({ hasText: 'Cœur de réseau vers Redressement urgent' })
   await expect(recul).toBeVisible()
   await expect(recul).toContainText('Recule')

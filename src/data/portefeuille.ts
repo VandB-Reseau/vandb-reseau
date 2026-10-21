@@ -8,9 +8,8 @@ export const CASES_A_SURVEILLER = ['redressement', 'relance', 'renforcer']
 
 export interface Portefeuille {
   magasins: number
-  aJour: number | null // part des magasins à jour du rythme de visite (%)
   visitesFaites: number
-  visitesObjectif: number
+  visitesReference: number // visites de référence de la nine box, à titre indicatif
   decroche: number // magasins en Décroche
   avecChiffres: number // magasins dont l'alerte peut se calculer
   partDecroche: number | null // %
@@ -38,9 +37,8 @@ export function portefeuilleDe(reseau: Reseau, magasins: Magasin[], rythme?: Lig
   }
   return {
     magasins: magasins.length,
-    aJour: part(lignes.filter((l) => !l.retard).length, lignes.length),
-    visitesFaites: lignes.reduce((t, l) => t + Math.min(l.faites, l.objectif), 0),
-    visitesObjectif: lignes.reduce((t, l) => t + l.objectif, 0),
+    visitesFaites: lignes.reduce((t, l) => t + l.faites, 0),
+    visitesReference: lignes.reduce((t, l) => t + l.reference, 0),
     decroche, avecChiffres, partDecroche: part(decroche, avecChiffres),
     evolutionCA: caRef ? ((ca - caRef) / caRef) * 100 : null,
     audit: audites ? scores / audites : null, audites,

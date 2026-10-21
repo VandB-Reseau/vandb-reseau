@@ -1,7 +1,7 @@
 import type { Magasin, Reseau, Visite } from './modele'
 import { coachA } from './charge'
-import { caseDe, joursParVisite, visitesParAn, type CaseNineBox } from './sante'
-import { estVisite } from './chiffres'
+import { caseDe, delaiVisite, historiqueSante, joursParVisite, nineBox, visitesParAn, type CaseNineBox } from './sante'
+import { estVisite, typesContact } from './chiffres'
 
 // Semestres de l'année (janvier → décembre) : S1 = janvier → juin, S2 = juillet → décembre
 export interface Semestre { cle: string; debut: string; fin: string; libelle: string; court: string }
@@ -60,45 +60,68 @@ export function anneesDisponibles(reseau: Reseau): Annee[] {
 
 export interface LigneRythme {
   magasin: Magasin; coach: string; case: CaseNineBox | null
-  objectif: number // visites sur l'année (au prorata si le magasin ouvre en cours d'année)
+  reference: number // visites de référence sur l'année, au prorata des cases occupées (et de l'ouverture)
   faites: number // visites faites sur l'année
-  intervalle: number // jours entre deux visites selon le rythme
-  prochaine: string // date avant laquelle la prochaine visite est due
-  retard: number // jours de retard (0 = à jour)
-  jours: number // jours de visite prévus sur l'année
+  delai: number // jours sans visite avant l'alerte, selon la case actuelle
+  depuis: number | null // jours depuis la dernière visite (ou l'ouverture) ; null si jamais visité et ouverture inconnue
+  alerte: boolean // pas vu depuis plus longtemps que le délai de la case
+  echeance: string | null // date à partir de laquelle l'alerte part
+  jours: number // jours de visite de référence sur l'année (charge)
   derniere: Visite | null
+  dernierContact: Visite | null // dernier appel ou point, s'il est plus récent que la dernière visite
 }
 
 const jourNum = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86400000
 const isoDe = (n: number) => new Date(n * 86400000).toISOString().slice(0, 10)
 
-// Une visite est due tous les 365 / (visites par an) jours après la précédente
+// Visites de référence sur l'année : chaque période compte au rythme de la case qu'occupait le magasin.
+// Avant son premier classement, le magasin prend la case de ce premier classement.
+function referenceAnnee(reseau: Reseau, m: Magasin, a: Annee, actuelle: CaseNineBox | null): number {
+  const h = historiqueSante(reseau.evaluations, m.nom)
+  const caseDuPoint = (i: number) => (i >= h.length - 1 ? actuelle : nineBox.find((c) => c.id === h[Math.max(0, i)].caseId) ?? null)
+  const debut = m.ouverture > a.debut ? m.ouverture : a.debut
+  const bornes = [debut, ...h.map((p) => p.date).filter((d) => d > debut && d <= a.fin), isoDe(jourNum(a.fin) + 1)]
+  let total = 0
+  for (let k = 0; k < bornes.length - 1; k++) {
+    const i = h.findLastIndex((p) => p.date <= bornes[k])
+    total += visitesParAn(h.length ? caseDuPoint(i) : actuelle) * (jourNum(bornes[k + 1]) - jourNum(bornes[k]))
+  }
+  return Math.max(1, Math.round(total / (jourNum(a.fin) - jourNum(a.debut) + 1)))
+}
+
 export function suiviRythme(reseau: Reseau, a: Annee): LigneRythme[] {
   const reference = a.fin < reseau.jour ? a.fin : reseau.jour
-  // Visites rangées par magasin en un seul passage (le réseau compte des centaines de magasins et des milliers de visites)
+  // Visites et contacts rangés par magasin en un seul passage (le réseau compte des centaines de magasins et des milliers de visites)
   const parMagasin = new Map<string, Visite[]>()
-  for (const v of reseau.visites) if (v.date <= reseau.jour && estVisite(v)) {
-    const l = parMagasin.get(v.magasin)
-    if (l) l.push(v); else parMagasin.set(v.magasin, [v])
+  const contacts = new Map<string, Visite>()
+  for (const v of reseau.visites) {
+    if (v.date > reseau.jour) continue
+    if (estVisite(v)) {
+      const l = parMagasin.get(v.magasin)
+      if (l) l.push(v); else parMagasin.set(v.magasin, [v])
+    } else if (typesContact.includes(v.type) && (contacts.get(v.magasin)?.date ?? '') < v.date) contacts.set(v.magasin, v)
   }
   return reseau.magasins
     .filter((m) => m.ouverture <= a.fin && m.statut !== 'avenir' && m.ouverture <= reseau.jour)
     .map((m) => {
       const c = caseDe(reseau.evaluations[m.nom])
-      const parAn = visitesParAn(c)
-      const debut = m.ouverture > a.debut ? m.ouverture : a.debut
-      const part = Math.min(1, (jourNum(a.fin) - jourNum(debut) + 1) / (jourNum(a.fin) - jourNum(a.debut) + 1))
-      const objectif = Math.max(1, Math.round(parAn * part))
-      const toutes = parMagasin.get(m.nom) ?? []
-      const faites = toutes.filter((v) => v.date >= a.debut && v.date <= a.fin).length
+      const ref = referenceAnnee(reseau, m, a, c)
+      const toutes = (parMagasin.get(m.nom) ?? []).filter((v) => v.date <= reference)
+      const faites = toutes.filter((v) => v.date >= a.debut).length
       const derniere = toutes.reduce<Visite | null>((d, v) => (!d || v.date > d.date ? v : d), null)
-      const intervalle = Math.round(365 / parAn)
-      // Jamais visité : le délai court depuis l'ouverture, ou depuis le début de l'année pour un magasin plus ancien
-      const depart = derniere?.date ?? (m.ouvertureConnue && m.ouverture > a.debut ? m.ouverture : a.debut)
-      const prochaine = isoDe(jourNum(depart) + intervalle)
+      const delai = delaiVisite(reseau.delaisVisite, c)
+      // Jamais visité : le délai court depuis l'ouverture quand elle est connue
+      const depart = derniere?.date ?? (m.ouvertureConnue ? m.ouverture : null)
+      const depuis = depart ? jourNum(reference) - jourNum(depart) : null
+      const contact = contacts.get(m.nom) ?? null
       return {
-        magasin: m, coach: coachA(m, reference), case: c, objectif, faites, intervalle, prochaine,
-        retard: Math.max(0, jourNum(reference) - jourNum(prochaine)), jours: objectif * joursParVisite(c), derniere,
+        magasin: m, coach: coachA(m, reference), case: c, reference: ref, faites, delai, depuis,
+        alerte: depuis === null || depuis > delai, echeance: depart ? isoDe(jourNum(depart) + delai + 1) : null,
+        jours: ref * joursParVisite(c), derniere,
+        dernierContact: contact && contact.date <= reference && (!derniere || contact.date > derniere.date) ? contact : null,
       }
     })
 }
+
+// Libellé de l'alerte : « pas vu depuis 95 j » ou « jamais visité »
+export const libellePasVu = (l: LigneRythme) => (l.derniere ? `Pas vu depuis ${l.depuis} j` : 'Jamais visité')

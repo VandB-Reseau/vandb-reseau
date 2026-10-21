@@ -1,7 +1,7 @@
 import { renommerAccesCoach } from './accesEquipe'
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
-import { avecPoint, definirGrille, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
+import { avecPoint, definirGrille, delaisVisiteParDefaut, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
 import type { ActionLibre, ActionPlan, Conge, Evenement, NoteMagasin, PreparationVisite, Reseau, Visite } from './modele'
 import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
@@ -118,6 +118,8 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   reseau.derniereSauvegarde = json<{ date?: string }>(cle('derniere_sauvegarde'), {}).date ?? ''
   const seuil = (k: keyof SeuilsAlerte) => (params[k as keyof typeof params] === undefined || isNaN(Number(params[k as keyof typeof params])) ? seuilsParDefaut[k] : Number(params[k as keyof typeof params]))
   reseau.seuils = { seuilDecroche: seuil('seuilDecroche'), seuilSurveiller: seuil('seuilSurveiller'), moisReference: seuil('moisReference') === 1 ? 1 : 12, delaiAppel: seuil('delaiAppel') }
+  const brut = params as Record<string, unknown>
+  reseau.delaisVisite = Object.fromEntries(Object.entries(delaisVisiteParDefaut).map(([k, d]) => [k, Number(brut[`alerteVisite_${k}`]) > 0 ? Number(brut[`alerteVisite_${k}`]) : d]))
   const dep = json<Partial<Deploiements>>(cle('deploiements'), {})
   reseau.deploiements = { thematiques: dep.thematiques?.length ? dep.thematiques : thematiquesParDefaut, valeurs: dep.valeurs ?? {}, journal: dep.journal ?? {} }
   type L = Ligne

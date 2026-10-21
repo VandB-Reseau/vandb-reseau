@@ -114,6 +114,7 @@ export interface Reseau {
   actionsLibres: Record<string, ActionLibre[]> // par magasin
   derniereSauvegarde: string // date de la dernière sauvegarde complète téléchargée
   seuils: import('./chiffres').SeuilsAlerte
+  delaisVisite: Record<string, number> // jours sans visite avant l'alerte, par case de la nine box
   rrs: ResponsableRegional[]
   parametres: ParametresReseau
   jour: string
