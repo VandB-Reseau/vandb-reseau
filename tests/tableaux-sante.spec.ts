@@ -34,17 +34,16 @@ test('« Voir plus » agrandit le tableau d’Évaluer et de Déploiements', asy
     const table = page.getByRole('table', { name: nom })
     const lignes = table.locator('tbody tr')
     await expect(lignes).toHaveCount(50)
-    // Le bouton est au bas de la zone du tableau, qui défile : les nouvelles lignes arrivent juste au-dessus
-    const voirPlus = page.locator('.MuiTableContainer-root').getByRole('button', { name: /^Voir plus \(\d+\)$/ })
-    // Comme à la souris : la molette sur le tableau doit mener jusqu'au bouton (le cadre ne doit pas masquer la suite)
-    const cadre = (await page.locator('.MuiTableContainer-root').boundingBox())!
-    await page.mouse.move(cadre.x + cadre.width / 2, cadre.y + 120)
+    // « Voir plus » sous le tableau, atteint à la molette comme à la souris, puis le cadre montre les lignes ajoutées
+    const voirPlus = page.getByRole('button', { name: /^Voir plus \(\d+\)$/ })
+    await expect(page.locator('.MuiTableContainer-root').getByRole('button', { name: /^Voir plus/ })).toHaveCount(0)
+    await page.mouse.move(700, 200)
     const sousLePointeur = async () => {
       const b = await voirPlus.boundingBox()
       if (!b || b.y + b.height > page.viewportSize()!.height) return false
       return page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.textContent?.startsWith('Voir plus') ?? false, [b.x + b.width / 2, b.y + b.height / 2])
     }
-    for (let i = 0; i < 30 && !(await sousLePointeur()); i++) await page.mouse.wheel(0, 600)
+    for (let i = 0; i < 30 && !(await sousLePointeur()); i++) { await page.mouse.wheel(0, 600); await page.waitForTimeout(50) }
     expect(await sousLePointeur()).toBe(true)
     const b = (await voirPlus.boundingBox())!
     await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2)
