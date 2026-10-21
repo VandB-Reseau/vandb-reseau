@@ -20,7 +20,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 - Couleurs plus calmes : seul le rouge (Décroche, En retard, dépassement de charge) reste une pastille pleine ;
   orange, bleu et vert deviennent un texte coloré précédé d'un point. Sur téléphone, au-delà de 4 onglets,
   les 3 premiers restent visibles et « Plus » ouvre les autres dans un panneau du bas. « Voir plus » est
-  gardé au retour arrière, pour retrouver la ligne quittée.
+  gardé au retour arrière, pour retrouver la ligne quittée (#73)
+- Tâches, messages, notifications : les tâches suivent la barre commune (recherche, filtres repliés sur téléphone,
+  bouton rond) et sont rangées En retard, Cette semaine, Plus tard, Sans échéance ; bouton « Nouveau message »
+  pour écrire à une personne du réseau ; notifications rangées Aujourd'hui, Hier, Cette semaine, puis par mois.
 
 ## 21/10/2026
 

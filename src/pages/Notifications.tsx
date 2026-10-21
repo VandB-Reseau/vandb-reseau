@@ -5,23 +5,51 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import AlternateEmail from '@mui/icons-material/AlternateEmail'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import NotificationsOutlined from '@mui/icons-material/NotificationsOutlined'
 import DoneAllOutlined from '@mui/icons-material/DoneAllOutlined'
-import { Glisser } from '../components/Social'
+import { Glisser, Puces } from '../components/Social'
+import { BoutonAction } from '../components/Outils'
 import { useAuth } from '../auth/AuthContext'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
 import { useMessagerie } from '../data/MessagerieContext'
 import { useReseau } from '../data/ReseauContext'
-import { heureCourte, historique, jourDuFil, type Evenement } from '../data/messagerie'
+import { heureCourte, historique, type Evenement } from '../data/messagerie'
 
 type Filtre = 'toutes' | 'nouvelles'
+
+// Période d'une notification : Aujourd'hui, Hier, Cette semaine, puis le mois
+function periode(iso: string): string {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const minuit = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const ecart = Math.round((minuit(new Date()) - minuit(d)) / 86_400_000)
+  if (ecart <= 0) return 'Aujourd’hui'
+  if (ecart === 1) return 'Hier'
+  if (ecart < 7) return 'Cette semaine'
+  const m = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  return m.charAt(0).toUpperCase() + m.slice(1)
+}
+
+// Lignes d'une section, avec un intertitre à chaque changement de période
+function LignesParPeriode({ evenements, ouvrir, lire }: { evenements: Evenement[]; ouvrir: (e: Evenement) => void; lire?: (e: Evenement) => void }) {
+  return (
+    <Card>
+      <List disablePadding sx={{ p: 0.5 }}>
+        {evenements.map((e, i) => (
+          <Fragment key={e.cle}>
+            {(i === 0 || periode(evenements[i - 1].date) !== periode(e.date)) && <Typography variant="caption" component="p" color="text.secondary" sx={{ fontWeight: 600, px: 2, pt: i ? 1.5 : 1, pb: 0.5 }}>{periode(e.date)}</Typography>}
+            <LigneEvenement e={e} ouvrir={() => ouvrir(e)} lire={lire && (() => lire(e))} />
+          </Fragment>
+        ))}
+      </List>
+    </Card>
+  )
+}
 const PAGE = 100
 const icone = { message: <ForumOutlined />, mention: <AlternateEmail />, visite: <EventNoteOutlined /> }
 const titre = (e: Evenement) => (e.type === 'visite' ? 'Nouveau compte rendu de visite' : e.type === 'mention' ? `${e.auteur} te mentionne` : `Message de ${e.auteur}`)
@@ -70,31 +98,25 @@ export function Notifications() {
   const ouvrir = (e: Evenement) => naviguer(e.lien)
   return (
     <>
-      <PageHeader titre="Notifications" actions={tous.some((e) => e.nouveau) ? <Button variant="outlined" onClick={toutLire} sx={{ minHeight: 48 }}>Tout marquer comme lu</Button> : undefined} />
-      <ToggleButtonGroup exclusive value={filtre} onChange={(_e, v: Filtre | null) => { if (v) setFiltre(v) }} aria-label="Notifications affichées" sx={{ mb: 2, width: { xs: '100%', sm: 'auto' } }}>
-        <ToggleButton value="toutes" sx={{ minHeight: 48, flex: 1, px: 2, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Toutes</ToggleButton>
-        <ToggleButton value="nouvelles" sx={{ minHeight: 48, flex: 1, px: 2, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Nouvelles{tous.some((e) => e.nouveau) ? ` · ${tous.filter((e) => e.nouveau).length}` : ''}</ToggleButton>
-      </ToggleButtonGroup>
+      <PageHeader titre="Notifications" />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Puces valeur={filtre} onChange={setFiltre} label="Notifications affichées"
+            options={[{ v: 'toutes', libelle: 'Toutes' }, { v: 'nouvelles', libelle: `Nouvelles${tous.some((e) => e.nouveau) ? ` · ${tous.filter((e) => e.nouveau).length}` : ''}` }]} />
+        </Box>
+        {tous.some((e) => e.nouveau) && <Box sx={{ mb: 1 }}><BoutonAction libelle="Tout marquer comme lu" icone={<DoneAllOutlined />} onClick={toutLire} secondaire /></Box>}
+      </Box>
       {!retenus.length && <EmptyState icone={<NotificationsOutlined />} titre={filtre === 'nouvelles' ? 'Tout est lu' : 'Aucune notification'} texte="Les nouveautés de tes magasins apparaîtront ici." />}
       {nouvelles.length > 0 && (
         <Box component="section" aria-label="Nouvelles" sx={{ mb: 3 }}>
           <Typography variant="overline" component="h2" color="text.secondary" sx={{ display: 'block', fontWeight: 600, mb: 0.5 }}>Nouvelles</Typography>
-          <Card><List disablePadding sx={{ p: 0.5 }}>{nouvelles.map((e) => <LigneEvenement key={e.cle} e={e} ouvrir={() => ouvrir(e)} lire={() => lire(e.lecture)} />)}</List></Card>
+          <LignesParPeriode evenements={nouvelles} ouvrir={ouvrir} lire={(e) => lire(e.lecture)} />
         </Box>
       )}
       {vues.length > 0 && (
         <Box component="section" aria-label="Déjà vues">
           <Typography variant="overline" component="h2" color="text.secondary" sx={{ display: 'block', fontWeight: 600, mb: 0.5 }}>Déjà vues</Typography>
-          <Card>
-            <List disablePadding sx={{ p: 0.5 }}>
-              {vues.map((e, i) => (
-                <Fragment key={e.cle}>
-                  {(i === 0 || jourDuFil(vues[i - 1].date) !== jourDuFil(e.date)) && <Typography variant="caption" component="p" color="text.secondary" sx={{ fontWeight: 600, px: 2, pt: i ? 1.5 : 1, pb: 0.5 }}>{jourDuFil(e.date)}</Typography>}
-                  <LigneEvenement e={e} ouvrir={() => ouvrir(e)} />
-                </Fragment>
-              ))}
-            </List>
-          </Card>
+          <LignesParPeriode evenements={vues} ouvrir={ouvrir} />
           {restantes > 0 && <Box sx={{ textAlign: 'center', mt: 1 }}><Button onClick={() => setNombre((n) => n + PAGE)} sx={{ minHeight: 48 }}>Voir plus ({restantes})</Button></Box>}
         </Box>
       )}

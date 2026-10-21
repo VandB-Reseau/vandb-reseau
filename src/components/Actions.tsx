@@ -3,7 +3,7 @@ import { Glisser } from './Social'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import Badge from '@mui/material/Badge'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
-import { Bulle } from './Outils'
+import { BoutonAction, Bulle } from './Outils'
 import { MenuEntete } from './MenuEntete'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
@@ -66,6 +66,8 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
   const origine = x.visite
     ? <Link component={RouterLink} to={lienCompteRendu(x.visite)}>visite du {dateCourte(x.visite.date)}</Link>
     : x.date ? `ajoutée le ${dateCourte(x.date)}${auteur}` : 'hors visite'
+  // Échéance : à droite sur PC, sous le texte sur téléphone pour laisser la largeur au libellé
+  const pastille = !x.a.faite && echeance && <Chip size="small" color={retard ? 'error' : 'default'} variant={retard ? 'filled' : 'outlined'} label={retard ? `En retard · ${echeance}` : echeance} sx={{ fontSize: 12, fontWeight: 600 }} />
   const faite = x.a.faite ? `faite le ${dateCourte(x.a.faite)}${x.a.faitePar ? ` par ${x.a.faitePar}` : ''}` : null
   return (
     <Box component="li" sx={{ borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
@@ -85,9 +87,10 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
           {((avecPorteur && x.a.porteur) || faite) && ' · '}
           {origine}
         </Typography>
+        {pastille && <Box sx={{ display: { xs: 'block', sm: 'none' }, mt: 0.75 }}>{pastille}</Box>}
         {x.a.pieces && <ListePieces pieces={x.a.pieces} />}
       </Box>
-      {!x.a.faite && echeance && <Chip size="small" color={retard ? 'error' : 'default'} variant={retard ? 'filled' : 'outlined'} label={retard ? `En retard · ${echeance}` : echeance} sx={{ fontSize: 12, fontWeight: 600, mt: 1.5, flexShrink: 0 }} />}
+      {pastille && <Box sx={{ display: { xs: 'none', sm: 'block' }, mt: 1.5, flexShrink: 0 }}>{pastille}</Box>}
       {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier l’action ${x.a.action}`}><EditOutlined /></IconButton></Tooltip>}
     </Box>
     </Glisser>
@@ -180,12 +183,16 @@ export function BoutonTaches() {
 // Bouton « Ajouter une action » et sa fenêtre, pour l'en-tête d'une section
 // porteur : proposé d'office (liste d'une personne)
 // tache : libellés de l'écran Tâches
-export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false, porteur, tache = false }: { reseau: Reseau; magasins: string[]; signaler: (m: string) => void; plein?: boolean; porteur?: string; tache?: boolean }) {
+// barre : action d'une barre d'outils (bouton rond sur téléphone)
+export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false, barre = false, porteur, tache = false }: { reseau: Reseau; magasins: string[]; signaler: (m: string) => void; plein?: boolean; barre?: boolean; porteur?: string; tache?: boolean }) {
   const [ouvert, setOuvert] = useState(false)
   if (useEcritureActions(reseau).lectureSeule || !magasins.length) return null
+  const libelle = tache ? 'Ajouter une tâche' : 'Ajouter une action'
   return (
     <>
-      <Button variant={plein ? 'contained' : 'text'} startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>{tache ? 'Ajouter une tâche' : 'Ajouter une action'}</Button>
+      {barre
+        ? <BoutonAction libelle={libelle} onClick={() => setOuvert(true)} />
+        : <Button variant={plein ? 'contained' : 'text'} startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>{libelle}</Button>}
       {ouvert && <DialogAction reseau={reseau} magasins={magasins} action={null} porteurInitial={porteur} tache={tache} onFermer={(msg) => { setOuvert(false); if (msg) signaler(msg) }} />}
     </>
   )
