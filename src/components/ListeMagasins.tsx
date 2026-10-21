@@ -10,16 +10,17 @@ import { anneeDe, suiviRythme } from '../data/visites'
 
 const PAS = 50
 
-// La pastille la plus grave du magasin : chiffres, puis pas vu depuis longtemps, puis statut d'ouverture
+// Une seule info à droite : décrochage en rouge, sinon la dernière visite (orange si l'alerte de visite est passée), sinon le statut
 function pastillesDe(reseau: Reseau | null): Map<string, { ton: Ton; libelle: string }> {
   const res = new Map<string, { ton: Ton; libelle: string }>()
   if (!reseau) return res
-  const aVoir = new Set(suiviRythme(reseau, anneeDe(reseau.jour)).filter((l) => l.alerte).map((l) => l.magasin.nom))
+  const rythme = new Map(suiviRythme(reseau, anneeDe(reseau.jour)).map((l) => [l.magasin.nom, l]))
   for (const m of reseau.magasins) {
     const a = analyser(reseau, m.nom)
+    const l = rythme.get(m.nom)
     if (a?.statut === 'decroche') res.set(m.nom, { ton: 'rouge', libelle: 'Décroche' })
     else if (a?.statut === 'surveiller') res.set(m.nom, { ton: 'orange', libelle: 'À surveiller' })
-    else if (aVoir.has(m.nom)) res.set(m.nom, { ton: 'orange', libelle: 'Visite' })
+    else if (l && (l.derniere || l.alerte)) res.set(m.nom, { ton: l.alerte ? 'orange' : 'gris', libelle: l.derniere ? `vu il y a ${l.depuis} j` : 'jamais vu' })
     else if (m.statut !== 'ouvert') res.set(m.nom, { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] })
   }
   return res

@@ -28,6 +28,8 @@ const piecesPropres = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 10).f
 export interface CommunicationSimulee {
   id: number; titre: string; texte: string; html?: string | null; entete?: string | null; pieces?: unknown[]; magasins: string[] | null; auteur: string; auteur_nom: string; auteur_role: string; cree_le: string
   pouces?: { user_id: string; nom: string }[]; commentaires?: { id: number; auteur: string; auteur_nom: string; auteur_role: string; texte: string; cree_le: string }[]
+  // Franchisés concernés qui l'ont lue ou pas (script 0013_lectures_communications.sql)
+  lus?: string[]; non_lus?: string[]
 }
 // « J'aime » et commentaires des bonnes pratiques (script 0010_pratiques_reactions.sql), rangés par pratique
 export interface ReactionsPratiquesSimulees { pouces?: Record<string, { user_id: string; nom: string }[]>; commentaires?: Record<string, { id: number; auteur: string; auteur_nom: string; auteur_role: string; texte: string; cree_le: string }[]> }
@@ -120,7 +122,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       const meta = options.appMetadata ?? {}
       const acces: AccesSimule = options.acces ?? (meta.role === 'coach' || meta.role === 'rr' ? { role: String(meta.role), coach: meta.coach as string, rr: meta.rr as string } : { role: 'directeur' })
       if (fn === 'maj_perimetre_equipe') options.perimetreRecu = corps.p_lignes as PerimetreRecu[]
-      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie', 'communications', 'reactions_pratiques'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
+      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie', 'communications', 'lectures_communications', 'reactions_pratiques'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
       if (fn === 'mon_acces') return route.fulfill({ json: { role: acces.role, coach: acces.coach ?? null, rr: acces.rr ?? null, franchise: acces.franchise ?? null, magasins: acces.magasins ?? [] } })
       if (fn === 'espace_franchise') {
         const apercu = Array.isArray(corps.p_magasins)
@@ -189,7 +191,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         return route.fulfill({ json: { id: tous.length + 1 } })
       }
       // Communications du réseau (script 0008_communications.sql) : le Directeur pour tout le réseau, un RR pour ses magasins
-      if (['communications', 'publier_communication', 'supprimer_communication', 'basculer_pouce_communication', 'commenter_communication', 'supprimer_commentaire_communication'].includes(fn)) {
+      if (['communications', 'publier_communication', 'supprimer_communication', 'basculer_pouce_communication', 'commenter_communication', 'supprimer_commentaire_communication', 'lectures_communications', 'lire_communications'].includes(fn)) {
         if (options.communications === null) return absente()
         const liste = (options.communications ??= [])
         const refus = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
@@ -198,7 +200,18 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         const nom = acces.role === 'franchise' ? acces.franchise : acces.role === 'coach' ? acces.coach : acces.role === 'rr' ? configRRFictive.drs.find((d) => d.id === acces.rr)?.name : configRRFictive.directeur.name
         const id = Number(corps.p_id)
         const c = liste.find((x) => x.id === id)
-        if (fn === 'communications') return route.fulfill({ json: { moi: MOI, role: acces.role, liste: structuredClone(liste.filter(visible)).sort((a, b) => b.cree_le.localeCompare(a.cree_le)).map((x) => ({ pouces: [], commentaires: [], pieces: [], ...x })) } })
+        if (fn === 'communications') return route.fulfill({ json: { moi: MOI, role: acces.role, liste: structuredClone(liste.filter(visible)).sort((a, b) => b.cree_le.localeCompare(a.cree_le)).map((x) => ({ pouces: [], commentaires: [], pieces: [], ...x, lus: undefined, non_lus: undefined })) } })
+        if (fn === 'lectures_communications') {
+          if (!['directeur', 'rr'].includes(acces.role)) return refus()
+          return route.fulfill({ json: liste.filter(visible).filter((x) => x.lus || x.non_lus).map((x) => ({ id: x.id, lus: x.lus ?? [], non_lus: x.non_lus ?? [] })) })
+        }
+        if (fn === 'lire_communications') {
+          if (acces.role === 'franchise') for (const x of liste.filter((x) => visible(x) && (corps.p_ids as number[]).includes(x.id))) {
+            x.non_lus = (x.non_lus ?? []).filter((n) => n !== acces.franchise)
+            if (!(x.lus ?? []).includes(acces.franchise ?? '')) x.lus = [...(x.lus ?? []), acces.franchise ?? '']
+          }
+          return route.fulfill({ status: 200, json: null })
+        }
         if (fn === 'publier_communication') {
           if (!['directeur', 'rr'].includes(acces.role) || !String(corps.p_titre ?? '').trim()) return refus()
           // Comme la base : la photo d'en-tête est une des photos jointes

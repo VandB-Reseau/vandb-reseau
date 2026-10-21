@@ -17,6 +17,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0010_pratiques_reactions` | J'aime et commentaires des bonnes pratiques | 20/10/2026 |
 | `0011_preparation_visites` | Rubrique `preparation` du suivi | 20/10/2026 |
 | `0012_garde_fous_et_journal` | Retire toute règle « tout compte connecté », refuse de finir s'il en reste ; table `journal_migrations` | 21/10/2026 |
+| `0013_lectures_communications` | Lecture des communications par les franchisés : table `communications_lectures`, fonctions `lire_communications` et `lectures_communications` | 21/10/2026 |
 
 ## Règles
 

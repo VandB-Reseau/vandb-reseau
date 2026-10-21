@@ -11,6 +11,11 @@ import Card from '@mui/material/Card'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import ImageOutlined from '@mui/icons-material/ImageOutlined'
+import CloseOutlined from '@mui/icons-material/CloseOutlined'
+import ChevronLeftOutlined from '@mui/icons-material/ChevronLeftOutlined'
+import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
+import Dialog from '@mui/material/Dialog'
+import IconButton from '@mui/material/IconButton'
 import { brand, styleSignal, type CouleurSignal } from '../theme/theme'
 import { lienPhoto } from '../lib/photos'
 import type { Photo } from '../data/grilles'
@@ -150,31 +155,66 @@ function lienGarde(chemin: string) {
   return lien
 }
 
-function Vignette({ chemin, numero, reste }: { chemin: string; numero: number; reste?: number }) {
+function useLienPhoto(chemin: string) {
   const [lien, setLien] = useState<string | null | undefined>(undefined)
   useEffect(() => {
     let actif = true
+    setLien(undefined)
     lienGarde(chemin).then((l) => { if (actif) setLien(l) })
     return () => { actif = false }
   }, [chemin])
+  return lien
+}
+
+function Vignette({ chemin, numero, reste, onOuvrir }: { chemin: string; numero: number; reste?: number; onOuvrir: () => void }) {
+  const lien = useLienPhoto(chemin)
   return (
-    <Box sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: 'action.hover', display: 'grid', placeItems: 'center', color: 'text.secondary', overflow: 'hidden' }}>
+    <ButtonBase onClick={onOuvrir} aria-label={reste ? `Voir les photos, ${reste} de plus` : `Agrandir la photo ${numero}`}
+      sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: 'action.hover', display: 'grid', placeItems: 'center', color: 'text.secondary', overflow: 'hidden', borderRadius: 2 }}>
       {lien ? <Box component="img" src={lien} alt={`Photo ${numero}`} loading="lazy" sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <ImageOutlined aria-hidden />}
       {!!reste && <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.5)', color: '#ffffff', display: 'grid', placeItems: 'center', fontWeight: 600, fontSize: '1.125rem' }}>+{reste}</Box>}
-    </Box>
+    </ButtonBase>
   )
 }
 
-// Photos en grille de vignettes carrées, façon fil de photos ; au-delà de max, la dernière annonce le reste
+// Photo en plein écran : flèches ou balayage pour passer d'une photo à l'autre
+function PhotosPleinEcran({ photos, depart, onFermer }: { photos: Photo[]; depart: number; onFermer: () => void }) {
+  const [i, setI] = useState(depart)
+  const lien = useLienPhoto(photos[i].chemin)
+  const doigt = useRef<number | null>(null)
+  const aller = (d: number) => setI((n) => Math.min(photos.length - 1, Math.max(0, n + d)))
+  const bouton = { color: '#ffffff', width: 48, height: 48, bgcolor: 'rgba(0,0,0,0.4)', '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' } }
+  return (
+    <Dialog open fullScreen onClose={onFermer} slotProps={{ paper: { 'aria-label': 'Photos', sx: { bgcolor: '#000000', color: '#ffffff' } } }}
+      onKeyDown={(e) => { if (e.key === 'ArrowLeft') aller(-1); if (e.key === 'ArrowRight') aller(1) }}>
+      <Box sx={{ position: 'absolute', top: 8, left: 8, right: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
+        <Typography sx={{ fontWeight: 600, px: 1 }}>{i + 1} / {photos.length}</Typography>
+        <IconButton aria-label="Fermer" onClick={onFermer} sx={bouton}><CloseOutlined /></IconButton>
+      </Box>
+      <Box sx={{ flex: 1, display: 'grid', placeItems: 'center', touchAction: 'pan-y', minHeight: 0 }}
+        onPointerDown={(e) => { doigt.current = e.clientX }}
+        onPointerUp={(e) => { if (doigt.current !== null && Math.abs(e.clientX - doigt.current) > 50) aller(e.clientX < doigt.current ? 1 : -1); doigt.current = null }}>
+        {lien ? <Box component="img" src={lien} alt={`Photo ${i + 1}`} sx={{ maxWidth: '100%', maxHeight: '100vh', objectFit: 'contain', display: 'block', userSelect: 'none' }} draggable={false} /> : <ImageOutlined aria-hidden />}
+      </Box>
+      {i > 0 && <IconButton aria-label="Photo précédente" onClick={() => aller(-1)} sx={{ ...bouton, position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)' }}><ChevronLeftOutlined /></IconButton>}
+      {i < photos.length - 1 && <IconButton aria-label="Photo suivante" onClick={() => aller(1)} sx={{ ...bouton, position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }}><ChevronRightOutlined /></IconButton>}
+    </Dialog>
+  )
+}
+
+// Photos toujours en vignettes carrées, même seules (Joseph, 21/10/2026) ; au-delà de max, la dernière annonce le reste.
+// Le toucher ouvre la photo en plein écran.
 export function GrillePhotos({ photos, max = 3, colonnes = 3 }: { photos: Photo[] | undefined; max?: number; colonnes?: number }) {
+  const [ouverte, setOuverte] = useState<number | null>(null)
   if (!photos?.length) return null
   const vues = photos.slice(0, max)
-  // Une seule photo : en grand ; deux : côte à côte
-  const n = Math.min(colonnes, vues.length)
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`, gap: 0.5, borderRadius: 3, overflow: 'hidden', maxWidth: n === 1 ? 480 : undefined, '& > div': n === 1 ? { aspectRatio: '4 / 3' } : {} }}>
-      {vues.map((p, i) => <Vignette key={p.chemin} chemin={p.chemin} numero={i + 1} reste={i === vues.length - 1 ? photos.length - vues.length : 0} />)}
-    </Box>
+    <>
+      <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${colonnes}, minmax(0, 1fr))`, gap: 0.5, maxWidth: 480 }}>
+        {vues.map((p, i) => <Vignette key={p.chemin} chemin={p.chemin} numero={i + 1} reste={i === vues.length - 1 ? photos.length - vues.length : 0} onOuvrir={() => setOuverte(i)} />)}
+      </Box>
+      {ouverte !== null && <PhotosPleinEcran photos={photos} depart={ouverte} onFermer={() => setOuverte(null)} />}
+    </>
   )
 }
 

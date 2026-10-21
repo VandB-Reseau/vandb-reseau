@@ -16,6 +16,13 @@ INSERT INTO public.visits (store, visit_date) VALUES ('Lille', '2026-10-01'), ('
 INSERT INTO public.store_finance (store_name, month, ca_cave) VALUES ('Lille', '2026-09-01', 1), ('Nice', '2026-09-01', 1) ON CONFLICT DO NOTHING;
 INSERT INTO public.app_config (key, value) VALUES ('params', '{}') ON CONFLICT DO NOTHING;
 INSERT INTO storage.objects (bucket_id, name) VALUES ('photos', 'audit/Nice/1.jpg');
+INSERT INTO public.communications (titre, auteur_nom, auteur_role) VALUES ('Annonce réseau', 'Directeur', 'directeur') RETURNING id AS annonce \gset
+CREATE OR REPLACE FUNCTION pg_temp.refuse(appel text) RETURNS bigint LANGUAGE plpgsql AS $$
+BEGIN
+  EXECUTE appel; RETURN 0;
+EXCEPTION WHEN others THEN RETURN 1;
+END $$;
+GRANT EXECUTE ON FUNCTION pg_temp.refuse(text) TO authenticated;
 
 CREATE OR REPLACE FUNCTION pg_temp.attendre(libelle text, obtenu bigint, attendu bigint) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -36,6 +43,7 @@ SELECT pg_temp.attendre('Coach : chiffres de ses magasins seulement', (SELECT co
 SELECT pg_temp.attendre('Coach : lit les réglages', (SELECT count(*) FROM public.app_config WHERE key = 'params'), 1);
 WITH m AS (UPDATE public.app_config SET value = '{"x":1}' WHERE key = 'params' RETURNING 1)
 SELECT pg_temp.attendre('Coach : ne modifie pas les réglages', (SELECT count(*) FROM m), 0);
+SELECT pg_temp.attendre('Coach : ne voit pas qui a lu les communications', pg_temp.refuse('SELECT public.lectures_communications()'), 1);
 SELECT pg_temp.attendre('Coach : aucun accès direct aux messages', (SELECT count(*) FROM information_schema.table_privileges
   WHERE table_schema = 'public' AND table_name = 'messages' AND grantee = 'authenticated'), 0);
 
@@ -49,7 +57,16 @@ SELECT pg_temp.attendre('Franchisé : aucun accès direct aux comptes franchisé
 SELECT pg_temp.attendre('Franchisé : aucun accès direct au périmètre', (SELECT count(*) FROM public.perimetre_equipe), 0);
 SELECT pg_temp.attendre('Franchisé : aucun accès direct au suivi', (SELECT count(*) FROM public.suivi_magasins), 0);
 SELECT pg_temp.attendre('Franchisé : aucun accès au journal des migrations', (SELECT count(*) FROM public.journal_migrations), 0);
+SELECT pg_temp.attendre('Franchisé : aucun accès direct aux lectures', (SELECT count(*) FROM information_schema.table_privileges
+  WHERE table_schema = 'public' AND table_name = 'communications_lectures' AND grantee = 'authenticated'), 0);
+SELECT pg_temp.attendre('Franchisé : ne voit pas qui a lu les communications', pg_temp.refuse('SELECT public.lectures_communications()'), 1);
+SELECT public.lire_communications(ARRAY[:annonce]::bigint[]);
 SELECT pg_temp.attendre('Franchisé : ses visites par espace_franchise()', (SELECT jsonb_array_length(public.espace_franchise()->'visits')), 1);
+
+-- ── Directeur : voit la lecture du franchisé
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT pg_temp.attendre('Directeur : la communication est lue par le franchisé',
+  (SELECT jsonb_array_length(e->'lus') FROM jsonb_array_elements(public.lectures_communications()) e LIMIT 1), 1);
 
 -- ── Compte sans rôle : rien
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-000000000000';
@@ -59,4 +76,4 @@ SELECT pg_temp.attendre('Sans rôle : aucun réglage', (SELECT count(*) FROM pub
 RESET ROLE;
 SELECT pg_temp.attendre('Aucune règle « tout compte connecté »', (SELECT count(*) FROM pg_policies
   WHERE schemaname IN ('public', 'storage') AND (coalesce(qual, '') = 'true' OR coalesce(with_check, '') = 'true')), 0);
-SELECT pg_temp.attendre('Journal : 0001 à 0012 notées', (SELECT count(*) FROM public.journal_migrations WHERE numero <= '0012'), 12);
+SELECT pg_temp.attendre('Journal : 0001 à 0013 notées', (SELECT count(*) FROM public.journal_migrations WHERE numero <= '0013'), 13);

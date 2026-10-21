@@ -1,4 +1,17 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
+import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined'
+import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
+import BalanceOutlined from '@mui/icons-material/BalanceOutlined'
+import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
+import EventRepeatOutlined from '@mui/icons-material/EventRepeatOutlined'
+import GridViewOutlined from '@mui/icons-material/GridViewOutlined'
+import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined'
+import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
+import PhotoLibraryOutlined from '@mui/icons-material/PhotoLibraryOutlined'
+import { CarteLignes, Initiales, LigneCompacte } from '../components/Social'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -195,24 +208,82 @@ function RegleVisite({ reseau }: { reseau: Reseau }) {
   )
 }
 
+// Sommaire puis une rubrique par écran, comme les réglages d'un téléphone (Joseph, 21/10/2026).
+// Sur PC, le sommaire reste à gauche et la rubrique s'affiche à droite.
+type Rubrique = 'charge' | 'chiffres' | 'visite' | 'ninebox' | 'thematiques' | 'audits' | 'photos'
+function rubriques(reseau: Reseau): { id: Rubrique; libelle: string; detail: string; icone: ReactNode }[] {
+  const p = reseau.parametres, s = reseau.seuils
+  const premiere = casesDelai[0]
+  const ths = reseau.deploiements.thematiques.length
+  return [
+    { id: 'charge', libelle: 'Règle de charge', detail: `Charge maximale ${p.maxUnits} · attention à ${p.alertThreshold}`, icone: <BalanceOutlined /> },
+    { id: 'chiffres', libelle: 'Alerte sur les chiffres', detail: `Décroche à −${s.seuilDecroche} % · à surveiller à −${s.seuilSurveiller} %`, icone: <QueryStatsOutlined /> },
+    { id: 'visite', libelle: 'Alerte de visite', detail: `${premiere.libelle} ${reseau.delaisVisite[premiere.cle]} j`, icone: <EventRepeatOutlined /> },
+    { id: 'ninebox', libelle: 'Nine box', detail: 'Grille de notation, notes des magasins', icone: <GridViewOutlined /> },
+    { id: 'thematiques', libelle: 'Thématiques de déploiement', detail: ths ? `${ths} thématique${ths > 1 ? 's' : ''}` : 'Aucune thématique', icone: <RocketLaunchOutlined /> },
+    { id: 'audits', libelle: 'Grilles d’audit', detail: 'Critères et seuils de conformité', icone: <FactCheckOutlined /> },
+    { id: 'photos', libelle: 'Espace photos', detail: 'Place occupée', icone: <PhotoLibraryOutlined /> },
+  ]
+}
+
+function ContenuRubrique({ id, reseau, signaler }: { id: Rubrique; reseau: Reseau; signaler: (m: string) => void }) {
+  return (
+    // Les cartes gardent leur propre marge haute quand elles s'enchaînent ; la première colle au sommaire ou au retour
+    <Box sx={{ '& > .MuiCard-root:first-of-type': { mt: 0 } }}>
+      {id === 'charge' && <RegleCharge reseau={reseau} />}
+      {id === 'chiffres' && <RegleAlerte reseau={reseau} />}
+      {id === 'visite' && <RegleVisite reseau={reseau} />}
+      {id === 'ninebox' && <><EditeurGrilleNineBox reseau={reseau} /><CarteEffacerNotes reseau={reseau} /></>}
+      {id === 'thematiques' && <CarteThematiques reseau={reseau} signaler={signaler} />}
+      {id === 'audits' && <GrillesAudit reseau={reseau} />}
+      {id === 'photos' && <EspacePhotos reseau={reseau} />}
+    </Box>
+  )
+}
+
 export function Direction() {
   const [message, setMessage] = useState('')
+  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
+  const [params, setParams] = useSearchParams()
+  const ouvrir = (id: Rubrique) => { const n = new URLSearchParams(params); n.set('rubrique', id); setParams(n, { replace: surPC }) }
   return (
     <AvecReseau>
-      {(reseau) => (
-        <>
-          <PageHeader titre="Paramètres" />
-          <RegleCharge reseau={reseau} />
-          <RegleAlerte reseau={reseau} />
-          <RegleVisite reseau={reseau} />
-          <EditeurGrilleNineBox reseau={reseau} />
-          <CarteEffacerNotes reseau={reseau} />
-          <CarteThematiques reseau={reseau} signaler={setMessage} />
-          <GrillesAudit reseau={reseau} />
-          <EspacePhotos reseau={reseau} />
-          <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
-        </>
-      )}
+      {(reseau) => {
+        const liste = rubriques(reseau)
+        const choisie = liste.find((r) => r.id === params.get('rubrique')) ?? (surPC ? liste[0] : null)
+        const sommaire = (
+          <CarteLignes label="Rubriques des paramètres">
+            {liste.map((r) => (
+              <Box key={r.id} sx={{ bgcolor: surPC && choisie?.id === r.id ? 'action.selected' : undefined }}>
+                <LigneCompacte onClick={() => ouvrir(r.id)} label={r.libelle} avatar={<Initiales nom={r.libelle} icone={r.icone} />} titre={r.libelle} detail={r.detail}
+                  fin={!surPC && <ChevronRightOutlined color="action" />} />
+              </Box>
+            ))}
+          </CarteLignes>
+        )
+        return (
+          <>
+            {!surPC && choisie ? (
+              <>
+                {/* Le titre de la carte sert de titre à l'écran */}
+                <Button startIcon={<ArrowBackOutlined />} onClick={() => { const n = new URLSearchParams(params); n.delete('rubrique'); setParams(n) }} sx={{ minHeight: 48, ml: -1, mb: 1 }}>Paramètres</Button>
+                <ContenuRubrique id={choisie.id} reseau={reseau} signaler={setMessage} />
+              </>
+            ) : (
+              <>
+                <PageHeader titre="Paramètres" />
+                {surPC ? (
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '320px minmax(0, 1fr)', gap: 3, alignItems: 'start' }}>
+                    {sommaire}
+                    {choisie && <ContenuRubrique id={choisie.id} reseau={reseau} signaler={setMessage} />}
+                  </Box>
+                ) : sommaire}
+              </>
+            )}
+            <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
+          </>
+        )
+      }}
     </AvecReseau>
   )
 }

@@ -1,9 +1,7 @@
-import { useState, type ReactElement, type ReactNode } from 'react'
+import { type ReactElement, type ReactNode } from 'react'
 import { Link as RouterLink, Navigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
-import Collapse from '@mui/material/Collapse'
 import CardContent from '@mui/material/CardContent'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
@@ -17,17 +15,13 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import FormatListBulleted from '@mui/icons-material/FormatListBulleted'
 import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
-import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
 import BuildOutlined from '@mui/icons-material/BuildOutlined'
 import AccountTreeOutlined from '@mui/icons-material/AccountTreeOutlined'
-import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined'
-import ChevronRight from '@mui/icons-material/ChevronRight'
-import ExpandMore from '@mui/icons-material/ExpandMore'
 import WorkOutlineOutlined from '@mui/icons-material/WorkOutlineOutlined'
 import { VuePortefeuilles } from '../components/Portefeuille'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
-import { PastilleStatut } from '../components/Pastilles'
 import { PageHeader } from '../components/PageHeader'
+import { CarteLignes, Initiales, LigneCompacte } from '../components/Social'
 import { Onglets } from '../components/Onglets'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
@@ -58,48 +52,42 @@ export function lignesCoachs(reseau: Reseau) {
 
 type LigneCoach = ReturnType<typeof lignesCoachs>[number]
 
-function Noeud({ niveau, ouvert, onBasculer, enfants, children }: { niveau: number; ouvert?: boolean; onBasculer?: () => void; enfants?: ReactNode; children: ReactNode }) {
-  return (
-    <Box sx={{ ml: niveau ? { xs: 1.5, sm: 3 } : 0, pl: niveau ? { xs: 1, sm: 2 } : 0, borderLeft: niveau ? '2px solid' : 0, borderColor: 'divider' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minHeight: 52 }}>
-        {onBasculer ? (
-          <IconButton onClick={onBasculer} aria-label={ouvert ? 'Replier' : 'Déplier'} aria-expanded={ouvert}>
-            {ouvert ? <ExpandMore /> : <ChevronRight />}
-          </IconButton>
-        ) : <Box sx={{ width: 48, flexShrink: 0 }} />}
-        {children}
-      </Box>
-      {enfants && <Collapse in={ouvert} unmountOnExit>{enfants}</Collapse>}
-    </Box>
-  )
-}
-
-function LigneCoachOrga({ l, reseau, ouverts, basculer }: { l: LigneCoach; reseau: Reseau; ouverts: Set<string>; basculer: (k: string) => void }) {
-  const cle = `c:${l.coach.nom}`
-  return (
-    <Noeud niveau={1} ouvert={ouverts.has(cle)} onBasculer={l.magasins ? () => basculer(cle) : undefined} enfants={
-      <Box>
-        {l.liste.map((m) => (
-          <Noeud key={m.nom} niveau={2}>
-            <Link component={RouterLink} to={lienFiche(m.nom)} sx={{ flex: 1, minWidth: 0, py: 1.5 }}>{m.nom}</Link>
-            <PastilleStatut statut={m.statut} />
-          </Noeud>
-        ))}
-      </Box>
-    }>
-      <PersonOutlineOutlined color="action" />
-      <Link component={RouterLink} to={lienCoach(l.coach.nom)} sx={{ flex: 1, minWidth: 0, py: 1.5, fontWeight: 500 }}>{l.coach.nom}</Link>
-      {l.coach.fictif && <Chip size="small" variant="outlined" color="warning" label="À recruter" sx={{ fontSize: '0.75rem' }} />}
-      <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>{l.magasins} magasin{l.magasins > 1 ? 's' : ''}</Typography>
-      <PastilleCharge reseau={reseau} charge={l.charge} />
-    </Noeud>
-  )
-}
-
 interface Groupe { cle: string; titre: string; role: string; couleur: string; personne: Personne | null; rr: ResponsableRegional | null; coachs: LigneCoach[]; direct: number }
 
 
 const trait = (theme: Theme) => `2px solid ${theme.palette.divider}`
+
+// Liste groupée par Responsable Régional (Joseph, 21/10/2026) : intertitre collant, puis ses Coachs en lignes compactes
+function ListeEquipe({ reseau, groupes }: { reseau: Reseau; groupes: Groupe[] }) {
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <CarteLignes label="Direction">
+        <LigneCompacte lien={lienDirecteur()} avatar={<Initiales nom={reseau.directeur.nom} />} titre={reseau.directeur.nom}
+          detail={`${reseau.directeur.titre} · ${reseau.equipe.length} Coachs · ${reseau.magasins.length} magasins`} />
+      </CarteLignes>
+      {groupes.map((g) => (
+        <Box key={g.cle} component="section" aria-label={g.titre}>
+          <Box sx={{ position: 'sticky', top: { xs: 64, md: 72 }, zIndex: 3, bgcolor: 'background.default', display: 'flex', alignItems: 'center', gap: 1.25, minHeight: 56, py: 0.5 }}>
+            <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: g.couleur, flexShrink: 0 }} />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="h4" component="h3" noWrap>{g.rr ? <Link component={RouterLink} to={lienRR(g.rr.id)} color="inherit" underline="hover">{g.titre}</Link> : g.titre}</Typography>
+              <Typography variant="body2" color="text.secondary" noWrap>{[g.role, `${g.coachs.length} Coach${g.coachs.length > 1 ? 's' : ''}`, g.direct ? `${g.direct} en direct` : ''].filter(Boolean).join(' · ')}</Typography>
+            </Box>
+            {g.personne && <BoutonsContact p={g.personne} />}
+          </Box>
+          <CarteLignes label={`Coachs de ${g.titre}`}>
+            {g.coachs.length === 0 && <LigneCompacte titre="Aucun Coach rattaché" />}
+            {g.coachs.map((l) => (
+              <LigneCompacte key={l.coach.nom} lien={lienCoach(l.coach.nom)} avatar={<Initiales nom={l.coach.nom} />} titre={l.coach.nom}
+                detail={l.coach.fictif ? 'Poste à pourvoir' : `${l.magasins} magasin${l.magasins > 1 ? 's' : ''}`}
+                fin={<PastilleCharge reseau={reseau} charge={l.charge} />} />
+            ))}
+          </CarteLignes>
+        </Box>
+      ))}
+    </Box>
+  )
+}
 
 // Organigramme graphique : Directeur en haut, une colonne par Responsable Régional, ses Coachs en dessous
 function Pyramide({ reseau, groupes }: { reseau: Reseau; groupes: Groupe[] }) {
@@ -166,10 +154,6 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
   const forme = (params.get('forme') as 'pyramide' | 'liste' | null) ?? (surPC ? 'pyramide' : 'liste')
   const changerForme = (f: string) => { const p = new URLSearchParams(params); p.set('forme', f); setParams(p, { replace: true }) }
   const lignes = lignesCoachs(reseau)
-  const [ouverts, setOuverts] = useState<Set<string>>(() => new Set(reseau.rrs.map((r) => `r:${r.id}`)))
-  const basculer = (k: string) => setOuverts((o) => { const n = new Set(o); if (n.has(k)) n.delete(k); else n.add(k); return n })
-  const toutDeplier = () => setOuverts(new Set([...reseau.rrs.map((r) => `r:${r.id}`), 'r:aucun', ...lignes.map((l) => `c:${l.coach.nom}`)]))
-  const toutReplier = () => setOuverts(new Set())
   const sansRR = lignes.filter((l) => !l.coach.rr)
   const depassements = lignes.filter((l) => niveauCharge(reseau, l.charge) === 'depassement').length
   const sansCoach = reseau.magasins.filter((m) => m.statut !== 'avenir' && !m.coach).length
@@ -200,40 +184,11 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
               <ToggleButton value="pyramide" sx={{ minHeight: 48, px: 2, gap: 1 }}><AccountTreeOutlined fontSize="small" />Pyramide</ToggleButton>
               <ToggleButton value="liste" sx={{ minHeight: 48, px: 2, gap: 1 }}><FormatListBulleted fontSize="small" />Liste</ToggleButton>
             </ToggleButtonGroup>
-            {forme === 'liste' && <>
-              <Button onClick={toutDeplier} sx={{ minHeight: 48 }}>Tout déplier</Button>
-              <Button onClick={toutReplier} sx={{ minHeight: 48 }}>Tout replier</Button>
-            </>}
           </Box>
-          {forme === 'pyramide' ? <Pyramide reseau={reseau} groupes={groupes} /> : <>
-          <Noeud niveau={0}>
-            <AdminPanelSettingsOutlined color="action" />
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" color="text.secondary">{reseau.directeur.titre}</Typography>
-              <Typography variant="body1"><Link component={RouterLink} to={lienDirecteur()} sx={{ fontWeight: 600 }}>{reseau.directeur.nom}</Link> · {reseau.equipe.length} Coachs · {reseau.magasins.length} magasins</Typography>
-            </Box>
-          </Noeud>
-          {groupes.map((g) => (
-            <Noeud key={g.cle} niveau={1} ouvert={ouverts.has(g.cle)} onBasculer={() => basculer(g.cle)} enfants={
-              <Box>
-                {g.coachs.length === 0 && <Noeud niveau={1}><Typography variant="body2" color="text.secondary">Aucun Coach rattaché.</Typography></Noeud>}
-                {g.coachs.map((l) => <LigneCoachOrga key={l.coach.nom} l={l} reseau={reseau} ouverts={ouverts} basculer={basculer} />)}
-              </Box>
-            }>
-              <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: g.couleur, flexShrink: 0 }} />
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="body2" color="text.secondary">{g.role}</Typography>
-                <Typography variant="h4" component="h3">{g.rr ? <Link component={RouterLink} to={lienRR(g.rr.id)} color="inherit">{g.titre}</Link> : g.titre}</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
-                {g.coachs.length} Coach{g.coachs.length > 1 ? 's' : ''}{g.direct ? ` · ${g.direct} en direct` : ''}
-              </Typography>
-              {g.personne && <BoutonsContact p={g.personne} />}
-            </Noeud>
-          ))}
-          </>}
+          {forme === 'pyramide' && <Pyramide reseau={reseau} groupes={groupes} />}
         </CardContent>
       </Card>
+      {forme === 'liste' && <Box sx={{ mt: 2 }}><ListeEquipe reseau={reseau} groupes={groupes} /></Box>}
       {reseau.techniciens.length > 0 && (
         <Box sx={{ mt: 3 }}>
           <Typography variant="h3" component="h2" sx={{ mb: 0.5 }}>Techniciens et formateurs</Typography>

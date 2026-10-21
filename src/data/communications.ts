@@ -50,6 +50,20 @@ export const basculerPouce = (id: number) => appeler('basculer_pouce_communicati
 export const commenter = (id: number, texte: string) => appeler('commenter_communication', { p_id: id, p_texte: texte })
 export const supprimerCommentaire = (id: number) => appeler('supprimer_commentaire_communication', { p_id: id })
 
+// Lecture des communications par les franchisés (script supabase/migrations/0013_lectures_communications.sql)
+export interface Lecture { lus: string[]; nonLus: string[] }
+// Directeur et Responsable Régional : qui a lu chaque communication ; null tant que la base ne le sait pas
+export async function chargerLectures(): Promise<Map<number, Lecture> | null> {
+  const { data, error } = await supabase.rpc('lectures_communications')
+  if (error || !Array.isArray(data)) return null
+  return new Map(lignes(data).map((l) => [Number(l.id), { lus: Array.isArray(l.lus) ? l.lus.map(String) : [], nonLus: Array.isArray(l.non_lus) ? l.non_lus.map(String) : [] }]))
+}
+// Franchisé : les communications affichées sont notées lues (sans message si la base ne connaît pas encore la fonction)
+export async function noterLues(ids: number[]) {
+  if (!ids.length) return
+  await supabase.rpc('lire_communications', { p_ids: ids })
+}
+
 // Message humain pour une erreur renvoyée par la base
 export function messageCommunication(e: unknown): string {
   const m = e instanceof Error ? e.message : String(e)

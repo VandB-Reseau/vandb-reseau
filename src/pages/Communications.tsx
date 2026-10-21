@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
+import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
 import Snackbar from '@mui/material/Snackbar'
@@ -8,6 +9,9 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
+import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
+import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { Reactions } from '../components/Reactions'
 import { EmptyState } from '../components/EmptyState'
@@ -25,8 +29,8 @@ import { estImage, type Piece } from '../lib/pieces'
 import { HTML_MAX, nettoyerHtml, texteDuHtml } from '../lib/html'
 import { useSearchParams } from 'react-router-dom'
 import {
-  basculerPouce, chargerCommunications, commenter, messageCommunication, publierCommunication, supprimerCommentaire, supprimerCommunication,
-  type Communication, type Communications,
+  basculerPouce, chargerCommunications, chargerLectures, commenter, noterLues, messageCommunication, publierCommunication, supprimerCommentaire, supprimerCommunication,
+  type Communication, type Communications, type Lecture,
 } from '../data/communications'
 
 const aujourdhui = () => new Date().toLocaleDateString('sv-SE')
@@ -92,9 +96,27 @@ export function ReactionsCommunication({ c, moi, jour, lectureSeule, apres, sign
   )
 }
 
+// « Lue par 3 franchisés sur 5 », et qui ne l'a pas encore lue, pour relancer (Directeur et Responsable Régional)
+function LigneLecture({ l }: { l: Lecture }) {
+  const [ouvert, setOuvert] = useState(false)
+  const total = l.lus.length + l.nonLus.length
+  if (!total) return null
+  return (
+    <Box sx={{ px: 2, pt: 1 }}>
+      <ButtonBase onClick={() => setOuvert((v) => !v)} disabled={!l.nonLus.length} aria-expanded={l.nonLus.length ? ouvert : undefined}
+        sx={{ minHeight: 48, gap: 1, fontFamily: 'inherit', fontSize: '0.875rem', color: 'text.secondary', borderRadius: 2 }}>
+        <VisibilityOutlined fontSize="small" />
+        <span>Lue par <b>{l.lus.length}</b> franchisé{l.lus.length > 1 ? 's' : ''} sur {total}</span>
+        {l.nonLus.length > 0 && (ouvert ? <ExpandLessOutlined fontSize="small" /> : <ExpandMoreOutlined fontSize="small" />)}
+      </ButtonBase>
+      {ouvert && <Typography variant="body2" sx={{ pb: 0.5 }}><Box component="span" sx={{ color: 'text.secondary' }}>Pas encore lue : </Box>{l.nonLus.join(', ')}</Typography>}
+    </Box>
+  )
+}
+
 // Une publication : auteur, titre, texte, pièces jointes, « J'aime » et commentaires
-function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signaler }: {
-  c: Communication; moi: string; jour: string; lectureSeule: boolean; modifier?: () => void; apres: () => Promise<void>; signaler: (m: string) => void
+function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signaler, lecture }: {
+  c: Communication; moi: string; jour: string; lectureSeule: boolean; modifier?: () => void; apres: () => Promise<void>; signaler: (m: string) => void; lecture?: Lecture
 }) {
   const entete = c.entete ? c.pieces.find((p) => p.chemin === c.entete && estImage(p)) ?? null : null
   const cible = c.magasins === null ? 'Tout le réseau' : `${c.magasins.length} magasin${c.magasins.length > 1 ? 's' : ''}`
@@ -115,6 +137,7 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
           : c.texte && <Typography sx={{ mt: 0.5, whiteSpace: 'pre-line' }}>{c.texte}</Typography>}
         <ListePieces pieces={c.pieces.filter((p) => p !== entete)} />
       </Box>
+      {lecture && <LigneLecture l={lecture} />}
       <ReactionsCommunication c={c} moi={moi} jour={jour} lectureSeule={lectureSeule} apres={apres} signaler={signaler} />
     </Card>
   )
@@ -128,7 +151,12 @@ export function PageCommunications({ lectureSeule = false }: { lectureSeule?: bo
   const [edition, setEdition] = useState<Communication | null | undefined>(undefined)
   const [recherche, setRecherche] = useState('')
   const [message, setMessage] = useState('')
-  const charger = useCallback(async () => { setEtat(await chargerCommunications()) }, [])
+  const [lectures, setLectures] = useState<Map<number, Lecture> | null>(null)
+  const suitLectures = !lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')
+  const charger = useCallback(async () => {
+    const [c, l] = await Promise.all([chargerCommunications(), suitLectures ? chargerLectures() : Promise.resolve(null)])
+    setEtat(c); setLectures(l)
+  }, [suitLectures])
   useEffect(() => { void charger() }, [charger])
   // Arrivée depuis le fil d'activité : la communication citée est amenée à l'écran
   const [params] = useSearchParams()
@@ -141,6 +169,11 @@ export function PageCommunications({ lectureSeule = false }: { lectureSeule?: bo
   const liste = useMemo(() => (etat?.liste ?? []).filter((c) => !q || `${c.titre} ${c.texte} ${c.auteurNom}`.toLowerCase().includes(q)), [etat, q])
   const { visibles, suite } = useParTranches(liste, q)
   const n = etat?.liste.length ?? 0
+  // Un franchisé qui affiche les communications les a lues
+  const affichees = visibles.map((c) => c.id).join(',')
+  useEffect(() => {
+    if (!lectureSeule && profil?.role === 'franchise' && affichees) void noterLues(affichees.split(',').map(Number)).catch(() => undefined)
+  }, [affichees, lectureSeule, profil?.role])
   return (
     <>
       <PageHeader titre="Communications" sousTitre={etat ? `${n} communication${n > 1 ? 's' : ''}` : undefined} />
@@ -155,7 +188,7 @@ export function PageCommunications({ lectureSeule = false }: { lectureSeule?: bo
             : (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxWidth: 720 }}>
                 {visibles.map((c) => (
-                  <CarteCommunication key={c.id} c={c} moi={etat.moi} jour={jour} lectureSeule={lectureSeule} apres={charger} signaler={setMessage}
+                  <CarteCommunication key={c.id} c={c} moi={etat.moi} jour={jour} lectureSeule={lectureSeule} apres={charger} signaler={setMessage} lecture={lectures?.get(c.id)}
                     modifier={peutPublier && c.auteur === etat.moi ? () => setEdition(c) : undefined} />
                 ))}
                 {suite}
