@@ -703,6 +703,8 @@ export async function enregistrerEvenement(e: Evenement) {
   verifier(e.id !== null ? await supabase.from('events').update(l).eq('id', e.id) : await supabase.from('events').insert(l))
 }
 export async function supprimerEvenement(id: number) { verifier(await supabase.from('events').delete().eq('id', id)) }
+// Visite prévue glissée à une autre date dans l'agenda : seule la date change
+export async function deplacerVisite(id: number, date: string) { verifier(await supabase.from('visits').update({ visit_date: date }).eq('id', id)) }
 
 // ── Santé du parc et déploiements (relus puis réécrits pour ne rien écraser) ──
 
