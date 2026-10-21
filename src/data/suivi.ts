@@ -1,7 +1,7 @@
 // Suivi rangé par magasin (santé, journal, audits, associés, actions, déploiements, constats de campagne, préparation des visites).
 // Dans la base, une ligne par magasin et par rubrique (table suivi_magasins) : un Coach ou un RR ne lit
 // et n'écrit que celles de ses magasins. L'app garde en mémoire l'ancien format d'app_config.
-// Tant que le script cloisonnement_equipe.sql n'est pas passé, tout reste dans app_config.
+// Tant que le script 0005_cloisonnement_equipe.sql n'est pas passé, tout reste dans app_config.
 
 // Clé d'app_config → rubrique de suivi_magasins
 export const rubriques = {

@@ -1,7 +1,6 @@
 -- ════════════════════════════════════════════════════════════════
 -- V and B — Messagerie entre personnes et notifications
--- À exécuter dans Supabase > SQL Editor, APRÈS acces_franchises.sql. Réexécutable.
--- Un Coach ou un RR ne voit que le fil de ses magasins dès que cloisonnement_equipe.sql est passé.
+-- Sprint 12 (19/10/2026), échanges à deux le 20/10/2026. Réexécutable. Suppose 0004 et 0005.
 --
 -- 1) Depuis le 20/10/2026 : échanges privés à deux (destinataire = clé de la personne),
 --    avec des magasins cités en option. Seuls l'auteur et le destinataire lisent le message.
@@ -10,7 +9,7 @@
 --    fonctions ci-dessous, qui vérifient le rôle (lu dans la base) et que le
 --    magasin fait partie de ceux du compte.
 -- 3) Le nom et le rôle de l'auteur sont posés par la base, jamais par l'app.
--- 5) Photos et fichiers joints (pieces) : l'espace fichiers est créé par pieces_jointes.sql.
+-- 5) Photos et fichiers joints (pieces) : l'espace fichiers est créé par 0009.
 -- 4) Anciens messages : « equipe » = jamais renvoyé à un franchisé ; un envoi sur plusieurs
 --    magasins = une ligne par magasin, reliées par « lot ».
 -- ════════════════════════════════════════════════════════════════
@@ -34,7 +33,7 @@ ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS auteur_cle text;
 ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS magasins text[] NOT NULL DEFAULT '{}';
 ALTER TABLE public.messages ALTER COLUMN store DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS messages_destinataire ON public.messages (destinataire, cree_le);
--- Photos et fichiers joints (script pieces_jointes.sql pour l'espace fichiers) : [{chemin, nom, taille, type}]
+-- Photos et fichiers joints (espace fichiers : 0009) : [{chemin, nom, taille, type}]
 ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS pieces jsonb NOT NULL DEFAULT '[]'::jsonb;
 
 -- Dernière lecture de chaque compte, par magasin et par sujet (messages, visites)
@@ -46,13 +45,13 @@ CREATE TABLE IF NOT EXISTS public.messages_lus (
   PRIMARY KEY (user_id, store, sujet)
 );
 
--- Aucun accès direct (même si la règle « equipe_seulement » est reposée par acces_franchises.sql)
+-- Aucun accès direct (droits retirés : aucune règle ne peut le rouvrir)
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages_lus ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.messages, public.messages_lus FROM anon, authenticated;
 
 -- Magasins dont le compte voit le fil : NULL = tous (Directeur de réseau).
--- Coach et RR : leurs magasins une fois cloisonnement_equipe.sql passé, tous avant.
+-- Coach et RR : leurs magasins (0005).
 CREATE OR REPLACE FUNCTION public.magasins_messagerie() RETURNS text[]
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v_role text := public.mon_role(); v_mag text[];

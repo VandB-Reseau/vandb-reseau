@@ -1,6 +1,6 @@
 -- ════════════════════════════════════════════════════════════════
 -- V and B — « J'aime » et commentaires sur les bonnes pratiques
--- À exécuter dans Supabase > SQL Editor, APRÈS acces_franchises.sql et messagerie.sql. Réexécutable.
+-- 20/10/2026. Réexécutable. Suppose 0004 et 0006.
 --
 -- 1) Les bonnes pratiques sont communes à tout le réseau (app_config, clé bonnes_pratiques) :
 --    toute l'équipe et les franchisés les lisent, mettent un pouce et commentent.

@@ -1,4 +1,4 @@
-// « J'aime » et commentaires des bonnes pratiques (script supabase/pratiques_reactions.sql) : toute l'équipe
+// « J'aime » et commentaires des bonnes pratiques (script supabase/migrations/0010_pratiques_reactions.sql) : toute l'équipe
 // et les franchisés, par des fonctions de la base. Tant que le script n'est pas passé, les anciens « J'aime »
 // de l'équipe (champ jaime) restent seuls.
 import { useCallback, useEffect, useMemo, useState } from 'react'

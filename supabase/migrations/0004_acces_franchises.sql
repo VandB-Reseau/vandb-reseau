@@ -1,6 +1,6 @@
 -- ════════════════════════════════════════════════════════════════
 -- V and B — Espace franchisé : cloisonnement réel des données
--- À exécuter une fois dans Supabase > SQL Editor. Réexécutable.
+-- Sprint 11 (19/10/2026). Réexécutable.
 --
 -- 1) Le rôle de chaque compte est lu dans la base (auth.users), jamais
 --    seulement dans le jeton de connexion.
@@ -10,8 +10,9 @@
 --    lui renvoie uniquement ses magasins et des repères réseau anonymes.
 -- 4) Un compte sans rôle n'a plus accès à rien tant que le Directeur
 --    ne l'a pas rattaché à un franchisé.
--- Après tout passage de ce script, rejouer cloisonnement_equipe.sql
--- (périmètre des Coachs et des RR).
+-- 5) Depuis le 21/10/2026, ce script ne touche plus aux règles déjà posées par 0005
+--    (périmètre des Coachs et des RR) ni à espace_franchise(), définie par 0005 :
+--    le rejouer seul ne rouvre plus rien.
 -- ════════════════════════════════════════════════════════════════
 
 -- ── 0) Premier passage : les comptes existants sans rôle deviennent Directeur
@@ -47,11 +48,14 @@ EXCEPTION WHEN others THEN
   RETURN NULL;
 END $$;
 
--- ── 2) Règles des tables : l'équipe seulement (remplace « connectes_seulement »)
+-- ── 2) Règles des tables de base : l'équipe seulement (remplace « connectes_seulement »)
+--       Une table déjà réglée par 0005 (règle « perimetre » ou « equipe_lecture ») est laissée telle quelle.
 DO $$
 DECLARE t record; p record;
 BEGIN
-  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT IN ('acces_franchises', 'perimetre_equipe', 'sauvegarde_cloisonnement') LOOP
+  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+           AND tablename IN ('app_config', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits', 'visits', 'store_finance', 'events', 'leaves')
+           AND NOT EXISTS (SELECT 1 FROM pg_policies x WHERE x.schemaname = 'public' AND x.tablename = pg_tables.tablename AND x.policyname IN ('perimetre', 'equipe_lecture')) LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t.tablename);
     FOR p IN SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = t.tablename LOOP
       EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', p.policyname, t.tablename);
@@ -171,77 +175,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
     'indicateurs', coalesce((SELECT jsonb_object_agg(ind, jsonb_build_object('n', n, 'mediane', round(med::numeric, 2), 'quartHaut', round(q::numeric, 2))) FROM stats), '{}'::jsonb)) END
 $$;
 
--- ── 6) L'espace du franchisé : ses magasins seulement, dans le format des tables
---       (p_franchise et p_magasins : aperçu par le Directeur de réseau)
-CREATE OR REPLACE FUNCTION public.espace_franchise(p_franchise text DEFAULT NULL, p_magasins text[] DEFAULT NULL) RETURNS jsonb
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
-DECLARE
-  v_mag text[]; v_fr text; v_cfg jsonb := '{}'::jsonb; v_renames jsonb; v_adds jsonb; v_noms text[];
-  v_coachs text[]; v_drs jsonb; v_camp jsonb; v_config jsonb;
-BEGIN
-  IF p_magasins IS NOT NULL THEN
-    IF NOT public.est_directeur() THEN RAISE EXCEPTION 'acces_refuse'; END IF;
-    v_mag := p_magasins; v_fr := p_franchise;
-  ELSE
-    IF public.mon_role() <> 'franchise' THEN RAISE EXCEPTION 'acces_refuse'; END IF;
-    SELECT a.magasins, a.franchise INTO v_mag, v_fr FROM public.acces_franchises a WHERE a.user_id = auth.uid();
-    IF v_fr IS NULL THEN RAISE EXCEPTION 'acces_refuse'; END IF;
-  END IF;
-
-  SELECT coalesce(jsonb_object_agg(c.key, public.json_sur(c.value)), '{}'::jsonb) INTO v_cfg FROM public.app_config c
-  WHERE c.key IN ('store_adds', 'store_renames', 'drs_data', 'params', 'associes', 'actions', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes');
-
-  -- Magasins (avec les renommages, appliqués comme dans l'app)
-  v_renames := CASE WHEN jsonb_typeof(v_cfg->'store_renames') = 'object' THEN v_cfg->'store_renames' ELSE '{}'::jsonb END;
-  SELECT coalesce(jsonb_agg(e), '[]'::jsonb), coalesce(array_agg(e->>'n'), '{}') INTO v_adds, v_noms
-  FROM jsonb_array_elements(CASE WHEN jsonb_typeof(v_cfg->'store_adds') = 'array' THEN v_cfg->'store_adds' ELSE '[]'::jsonb END) e
-  WHERE e->>'n' = ANY(v_mag) OR v_renames->>(e->>'n') = ANY(v_mag) OR v_renames->>(v_renames->>(e->>'n')) = ANY(v_mag);
-  SELECT coalesce(jsonb_object_agg(k, v), '{}'::jsonb) INTO v_renames FROM jsonb_each(v_renames) AS r(k, v)
-  WHERE k = ANY(v_noms) OR k IN (SELECT v_renames->>n FROM unnest(v_noms) n);
-
-  -- Coachs de ces magasins, Responsables Régionaux (coordonnées professionnelles seulement)
-  SELECT coalesce(array_agg(DISTINCT r.cs), '{}') INTO v_coachs FROM public.reassigns r WHERE r.store = ANY(v_mag) AND r.cs IS NOT NULL;
-  v_drs := jsonb_build_object(
-    'directeur', (SELECT jsonb_build_object('name', d->>'name', 'titre', d->>'titre', 'tel', d->>'tel', 'email', d->>'email') FROM (SELECT v_cfg->'drs_data'->'directeur' AS d) x WHERE d IS NOT NULL),
-    'drs', (SELECT coalesce(jsonb_agg(jsonb_build_object('id', d->>'id', 'name', d->>'name', 'tel', d->>'tel', 'email', d->>'email', 'color', d->>'color', 'role', d->>'role')), '[]'::jsonb)
-            FROM jsonb_array_elements(CASE WHEN jsonb_typeof(v_cfg->'drs_data'->'drs') = 'array' THEN v_cfg->'drs_data'->'drs' ELSE '[]'::jsonb END) d),
-    'cs_dr', (SELECT coalesce(jsonb_object_agg(k, v), '{}'::jsonb) FROM jsonb_each(CASE WHEN jsonb_typeof(v_cfg->'drs_data'->'cs_dr') = 'object' THEN v_cfg->'drs_data'->'cs_dr' ELSE '{}'::jsonb END) AS c(k, v) WHERE k = ANY(v_coachs)),
-    'dr_assigns', (SELECT coalesce(jsonb_agg(jsonb_build_object('cs', a->>'cs', 'dr', a->>'dr', 'date', a->>'date')), '[]'::jsonb)
-            FROM jsonb_array_elements(CASE WHEN jsonb_typeof(v_cfg->'drs_data'->'dr_assigns') = 'array' THEN v_cfg->'drs_data'->'dr_assigns' ELSE '[]'::jsonb END) a WHERE a->>'cs' = ANY(v_coachs)));
-
-  -- Campagnes qui concernent ces magasins, avec leurs seuls constats
-  SELECT jsonb_build_object(
-    'liste', coalesce(jsonb_agg(jsonb_set(c, '{magasins}', coalesce((SELECT jsonb_agg(m) FROM jsonb_array_elements_text(coalesce(c->'magasins', '[]'::jsonb)) m WHERE m = ANY(v_mag)), '[]'::jsonb))), '[]'::jsonb),
-    'constats', coalesce((SELECT jsonb_object_agg(k, (SELECT coalesce(jsonb_object_agg(mk, mv), '{}'::jsonb) FROM jsonb_each(v) AS y(mk, mv) WHERE mk = ANY(v_mag)))
-      FROM jsonb_each(CASE WHEN jsonb_typeof(v_cfg->'campagnes'->'constats') = 'object' THEN v_cfg->'campagnes'->'constats' ELSE '{}'::jsonb END) AS x(k, v)
-      WHERE jsonb_typeof(v) = 'object'), '{}'::jsonb)) INTO v_camp
-  FROM jsonb_array_elements(CASE WHEN jsonb_typeof(v_cfg->'campagnes'->'liste') = 'array' THEN v_cfg->'campagnes'->'liste' ELSE '[]'::jsonb END) c
-  WHERE coalesce(c->>'perimetre', 'tous') <> 'choix' OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(coalesce(c->'magasins', '[]'::jsonb)) m WHERE m = ANY(v_mag));
-
-  v_config := jsonb_build_array(
-    jsonb_build_object('key', 'store_adds', 'value', v_adds),
-    jsonb_build_object('key', 'store_renames', 'value', v_renames),
-    jsonb_build_object('key', 'drs_data', 'value', v_drs),
-    jsonb_build_object('key', 'params', 'value', coalesce(v_cfg->'params', '{}'::jsonb)),
-    jsonb_build_object('key', 'associes', 'value', (SELECT coalesce(jsonb_object_agg(k, v), '{}'::jsonb) FROM jsonb_each(CASE WHEN jsonb_typeof(v_cfg->'associes') = 'object' THEN v_cfg->'associes' ELSE '{}'::jsonb END) AS a(k, v) WHERE k = ANY(v_mag))),
-    jsonb_build_object('key', 'actions', 'value', (SELECT coalesce(jsonb_object_agg(k, v), '{}'::jsonb) FROM jsonb_each(CASE WHEN jsonb_typeof(v_cfg->'actions') = 'object' THEN v_cfg->'actions' ELSE '{}'::jsonb END) AS a(k, v) WHERE k = ANY(v_mag))),
-    jsonb_build_object('key', 'audits', 'value', (SELECT coalesce(jsonb_object_agg(k, v), '{}'::jsonb) FROM jsonb_each(CASE WHEN jsonb_typeof(v_cfg->'audits') = 'object' THEN v_cfg->'audits' ELSE '{}'::jsonb END) AS a(k, v) WHERE k = ANY(v_mag))),
-    jsonb_build_object('key', 'grilles_audit', 'value', coalesce(v_cfg->'grilles_audit', '{}'::jsonb)),
-    jsonb_build_object('key', 'bonnes_pratiques', 'value', coalesce(v_cfg->'bonnes_pratiques', '[]'::jsonb)),
-    jsonb_build_object('key', 'campagnes', 'value', v_camp));
-
-  RETURN jsonb_build_object(
-    'franchise', v_fr,
-    'magasins', to_jsonb(v_mag),
-    'app_config', v_config,
-    'store_overrides', (SELECT coalesce(jsonb_agg(to_jsonb(s)), '[]'::jsonb) FROM public.store_overrides s WHERE s.store_name = ANY(v_mag)),
-    'reassigns', (SELECT coalesce(jsonb_agg(jsonb_build_object('id', r.id, 'store', r.store, 'cs', r.cs, 'date', r.date, 'note', '', 'type', r.type) ORDER BY r.date, r.id), '[]'::jsonb) FROM public.reassigns r WHERE r.store = ANY(v_mag)),
-    'cs_overrides', (SELECT coalesce(jsonb_agg(jsonb_build_object('cs_name', c.cs_name, 'tel', c.tel, 'email', c.email, 'color', c.color)), '[]'::jsonb) FROM public.cs_overrides c WHERE c.cs_name = ANY(v_coachs) AND NOT coalesce(c.tech, false)),
-    -- Visites et comptes rendus complets, hors appels et points téléphoniques
-    'visits', (SELECT coalesce(jsonb_agg(to_jsonb(v) ORDER BY v.visit_date DESC), '[]'::jsonb) FROM public.visits v WHERE v.store = ANY(v_mag) AND coalesce(v.type, 'terrain') NOT IN ('appel', 'point')),
-    'store_finance', (SELECT coalesce(jsonb_agg(to_jsonb(f) ORDER BY f.month), '[]'::jsonb) FROM public.store_finance f WHERE f.store_name = ANY(v_mag)),
-    'reperes', public.reperes_reseau(v_mag));
-END $$;
+-- ── 6) L'espace du franchisé : fonction espace_franchise(), définie par 0005
 
 -- ── 7) Photos : l'équipe comme avant ; un franchisé voit celles de ses visites et des bonnes pratiques
 CREATE OR REPLACE FUNCTION public.photo_visible(p_chemin text) RETURNS boolean
@@ -265,7 +199,7 @@ DECLARE f text;
 BEGIN
   FOREACH f IN ARRAY ARRAY['mon_role()', 'est_equipe()', 'est_directeur()', 'mes_magasins()', 'mon_acces()',
     'ouvrir_acces_franchise(text, text, text[])', 'maj_acces_franchise(uuid, text, text[])', 'couper_acces_franchise(uuid)',
-    'liste_acces_franchises()', 'reperes_reseau(text[])', 'espace_franchise(text, text[])', 'photo_visible(text)'] LOOP
+    'liste_acces_franchises()', 'reperes_reseau(text[])', 'photo_visible(text)'] LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION public.%s FROM PUBLIC, anon', f);
     EXECUTE format('GRANT EXECUTE ON FUNCTION public.%s TO authenticated', f);
   END LOOP;
@@ -273,6 +207,6 @@ END $$;
 -- reperes_reseau prend une liste de magasins : réservé à espace_franchise et à l'équipe
 REVOKE EXECUTE ON FUNCTION public.reperes_reseau(text[]) FROM authenticated;
 
--- Vérification : une ligne par table, règle equipe_seulement ; et ton propre rôle
+-- Vérification : règles des tables et rôle de chaque compte
 SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' ORDER BY tablename;
 SELECT email, raw_app_meta_data->>'role' AS role FROM auth.users ORDER BY email;

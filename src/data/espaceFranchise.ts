@@ -110,7 +110,7 @@ export async function chargerReperesEquipe(magasins: string[]): Promise<Reperes 
   return !error && data && typeof data === 'object' ? data as Reperes : null
 }
 
-// ── Actions du franchisé sur ses magasins (script supabase/actions_franchise.sql) ──
+// ── Actions du franchisé sur ses magasins (script supabase/migrations/0007_actions_franchise.sql) ──
 // La base vérifie que le magasin est le sien et y inscrit son nom et la date.
 export class ErreurAction extends Error {}
 function erreurAction(e: { message?: string; code?: string }): never {

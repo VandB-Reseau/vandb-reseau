@@ -25,6 +25,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Migrations de la base rejouées sur un PostgreSQL vide
+        run: npm run test:base
       - run: npx playwright install --with-deps chromium
       - run: npm run build
         env:

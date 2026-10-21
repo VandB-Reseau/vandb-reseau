@@ -1,7 +1,6 @@
 -- ════════════════════════════════════════════════════════════════
 -- V and B — Photos et fichiers joints aux messages et aux tâches (Supabase Storage)
--- À exécuter dans Supabase > SQL Editor, APRÈS messagerie.sql et actions_franchise.sql. Réexécutable.
--- À rejouer après communications.sql, pour les fichiers joints aux communications du réseau.
+-- 20/10/2026 (PR #54), étendu aux communications (0008). Réexécutable. Suppose 0006, 0007 et 0008.
 --
 -- 1) Seau privé « pieces » : photos (l'app les réduit en JPEG), PDF, Word, Excel, PowerPoint,
 --    texte et CSV, 10 Mo au plus par fichier. Lus seulement par liens temporaires.
@@ -40,7 +39,7 @@ BEGIN
     RETURN true;
   END IF;
 
-  -- Communication du réseau visible par le compte (script communications.sql)
+  -- Communication du réseau visible par le compte (0008)
   IF to_regclass('public.communications') IS NOT NULL THEN
     EXECUTE 'SELECT EXISTS (SELECT 1 FROM public.communications c WHERE c.pieces @> $1 AND public.communication_visible(c.id))' INTO v_vu USING v_ref;
     IF v_vu THEN RETURN true; END IF;

@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:base": "bash supabase/tests/verifier.sh"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

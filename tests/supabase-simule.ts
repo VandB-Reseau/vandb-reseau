@@ -12,24 +12,24 @@ export interface AccesSimule { role: string; franchise?: string; magasins?: stri
 export interface AccesFranchiseSimule { user_id: string; email: string; franchise: string; magasins: string[]; ouvert_le?: string; derniere_connexion?: string | null }
 export interface AccesEquipeSimule { user_id: string; email: string; role: 'coach' | 'rr'; nom: string; derniere_connexion?: string | null }
 export interface EspaceSimule { actions?: Record<string, Record<string, unknown>[]>; visites?: Record<string, unknown>[]; reperes?: unknown; campagnes?: unknown; pratiques?: unknown[] }
-// Messagerie (script supabase/messagerie.sql) : null = pas encore activée
+// Messagerie (script supabase/migrations/0006_messagerie.sql) : null = pas encore activée
 // destinataire : échange à deux (clé de la personne), avec auteur_cle et magasins cités ; sinon ancien message par magasin (store)
 export interface MessageSimule {
   id: number; store?: string | null; auteur: string; auteur_nom: string; auteur_role: string; texte: string; mentions: string[]; cree_le: string
   equipe?: boolean; lot?: string | null; destinataire?: string | null; auteur_cle?: string | null; magasins?: string[]; pieces?: { chemin: string; nom: string; taille: number; type: string }[]
 }
-// version 1 et 2 : base d'avant les échanges à deux (script messagerie.sql pas encore repassé)
+// version 1 et 2 : base d'avant les échanges à deux (script 0006_messagerie.sql pas encore repassé)
 export interface MessagerieSimulee { messages?: MessageSimule[]; lus?: Record<string, string>; reference?: string | null; version?: number }
 export const MOI = '00000000-0000-0000-0000-000000000001'
 // Comme la base : seuls les fichiers rangés sous le compte connecté, 10 au plus
 const piecesPropres = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 10).filter((p) => typeof p?.chemin === 'string' && p.chemin.startsWith(`${MOI}/`))
 // Périmètre envoyé par l'app du Directeur (fonction maj_perimetre_equipe)
-// Communications du réseau (script communications.sql), au format renvoyé par la base
+// Communications du réseau (script 0008_communications.sql), au format renvoyé par la base
 export interface CommunicationSimulee {
   id: number; titre: string; texte: string; html?: string | null; entete?: string | null; pieces?: unknown[]; magasins: string[] | null; auteur: string; auteur_nom: string; auteur_role: string; cree_le: string
   pouces?: { user_id: string; nom: string }[]; commentaires?: { id: number; auteur: string; auteur_nom: string; auteur_role: string; texte: string; cree_le: string }[]
 }
-// « J'aime » et commentaires des bonnes pratiques (script pratiques_reactions.sql), rangés par pratique
+// « J'aime » et commentaires des bonnes pratiques (script 0010_pratiques_reactions.sql), rangés par pratique
 export interface ReactionsPratiquesSimulees { pouces?: Record<string, { user_id: string; nom: string }[]>; commentaires?: Record<string, { id: number; auteur: string; auteur_nom: string; auteur_role: string; texte: string; cree_le: string }[]> }
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
 export interface OptionsSimulation { reactionsPratiques?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null }
@@ -111,7 +111,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       options.ecritures?.push({ methode: 'PUT', table: 'auth/user', corps: req.postDataJSON(), filtre: '' })
       return route.fulfill({ json: { id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: COMPTE.email, app_metadata: options.appMetadata ?? {}, user_metadata: {} } })
     }
-    // Fonctions de la base (script supabase/acces_franchises.sql)
+    // Fonctions de la base (script supabase/migrations/0004_acces_franchises.sql)
     if (url.pathname.startsWith('/rest/v1/rpc/')) {
       const fn = url.pathname.replace('/rest/v1/rpc/', '')
       const corps = (req.postDataJSON() ?? {}) as Record<string, unknown>
@@ -170,7 +170,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         }
         return route.fulfill({ status: 200, json: null })
       }
-      // Réactions aux bonnes pratiques (script pratiques_reactions.sql) : absent des options = script pas encore passé
+      // Réactions aux bonnes pratiques (script 0010_pratiques_reactions.sql) : absent des options = script pas encore passé
       if (['reactions_pratiques', 'basculer_pouce_pratique', 'commenter_pratique', 'supprimer_commentaire_pratique'].includes(fn)) {
         const r = options.reactionsPratiques
         if (!r) return absente()
@@ -188,7 +188,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         commentaires[id] = [...(commentaires[id] ?? []), { id: Math.max(0, ...tous.map((k) => k.id)) + 1, auteur: MOI, auteur_nom: nom ?? '', auteur_role: acces.role, texte: String(corps.p_texte ?? '').trim(), cree_le: new Date().toISOString() }]
         return route.fulfill({ json: { id: tous.length + 1 } })
       }
-      // Communications du réseau (script communications.sql) : le Directeur pour tout le réseau, un RR pour ses magasins
+      // Communications du réseau (script 0008_communications.sql) : le Directeur pour tout le réseau, un RR pour ses magasins
       if (['communications', 'publier_communication', 'supprimer_communication', 'basculer_pouce_communication', 'commenter_communication', 'supprimer_commentaire_communication'].includes(fn)) {
         if (options.communications === null) return absente()
         const liste = (options.communications ??= [])
@@ -223,7 +223,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         c.commentaires = [...(c.commentaires ?? []), { id: Math.max(0, ...tous.map((k) => k.id)) + 1, auteur: MOI, auteur_nom: nom ?? '', auteur_role: acces.role, texte, cree_le: new Date().toISOString() }]
         return route.fulfill({ json: { id: c.commentaires.length } })
       }
-      // Actions du franchisé (script actions_franchise.sql) : la base pose son nom et la date
+      // Actions du franchisé (script 0007_actions_franchise.sql) : la base pose son nom et la date
       if (fn === 'ajouter_action_franchise' || fn === 'marquer_action_franchise') {
         const st = String(corps.p_store ?? '')
         const introuvable = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'action_introuvable' } })
@@ -248,7 +248,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         }
         return route.fulfill({ status: 200, json: null })
       }
-      // Accès de l'équipe et repères réseau (script cloisonnement_equipe.sql)
+      // Accès de l'équipe et repères réseau (script 0005_cloisonnement_equipe.sql)
       if (fn === 'reperes_equipe') {
         if (!['directeur', 'rr', 'coach'].includes(acces.role)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
         return route.fulfill({ json: options.reperesEquipe === undefined ? { mois: '2026-09', indicateurs: { evolution: { n: 40, mediane: -2, quartHaut: 3 }, pmCave: { n: 40, mediane: 38, quartHaut: 42 } } } : options.reperesEquipe })

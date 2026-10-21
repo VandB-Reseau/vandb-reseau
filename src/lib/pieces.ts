@@ -1,5 +1,5 @@
 // Pièces jointes des messages et des tâches : espace fichiers Supabase (seau privé « pieces »,
-// script supabase/pieces_jointes.sql), lues par liens temporaires. Chaque fichier est rangé
+// script supabase/migrations/0009_pieces_jointes.sql), lues par liens temporaires. Chaque fichier est rangé
 // sous l'identifiant de son auteur ; la base ne le montre qu'à ceux qui voient le message ou la tâche.
 import { supabase } from './supabase'
 import { compresser } from './photos'
