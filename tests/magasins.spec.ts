@@ -94,6 +94,27 @@ test('la recherche globale ouvre une fiche magasin ou une fiche Coach', async ({
   await expect(page.getByRole('heading', { name: 'Inès EXEMPLE', level: 1 })).toBeVisible()
 })
 
+test('la recherche d’un nom propose la fiche de la personne avant ses magasins', async ({ page }, info) => {
+  await seConnecter(page)
+  const champ = page.getByLabel('Recherche globale')
+  // « test » est dans le nom des 30 magasins : la fiche du Coach ne doit pas être poussée hors de la liste
+  await champ.fill('test')
+  const options = page.getByRole('option')
+  await expect(options.first()).toHaveAccessibleName(/^Camille TESTARD/)
+  await expect(page.getByRole('option', { name: /^Agen Test/ })).toBeVisible()
+  // Nom du Coach : sa fiche d’abord, puis ses magasins
+  await champ.fill('inès')
+  await expect(options.first()).toHaveAccessibleName(/^Inès EXEMPLE/)
+  expect(await options.count()).toBeGreaterThan(1)
+  await page.screenshot({ path: `captures/recherche-bande/${info.project.name}-recherche-personne.png` })
+  // Nom d’un magasin : le magasin d’abord, son franchisé ensuite
+  await champ.fill('nantes')
+  await expect(options.first()).toHaveAccessibleName(/^Nantes Test/)
+  await champ.fill('alex')
+  await options.first().click()
+  await expect(page.getByRole('heading', { name: 'Alex NORD', level: 1 })).toBeVisible()
+})
+
 test('la carte affiche les magasins et leur légende', async ({ page }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins?vue=carte')

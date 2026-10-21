@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Recherche globale : en tapant le nom d'une personne (Coach, Responsable Régional, franchisé, responsable de magasin),
+  sa fiche passe en tête, avant ses magasins ; elle n'est plus poussée hors de la liste par les magasins qui la citent
+  (`src/components/RechercheGlobale.tsx`, test `magasins.spec.ts`). Pas de migration.
 - Onglets et barres de recherche et de filtres collés sous la barre du haut sur tous les écrans, comme dans les fiches
   (Visites, Magasins, Équipe, Santé du parc, Charge des Coachs, Agenda, Notifications, fil de l'accueil) ; les intertitres
   (mois, lettres, régions) se rangent dessous ; Paramètres : sommaire fixe sur PC, retour fixe sur téléphone
