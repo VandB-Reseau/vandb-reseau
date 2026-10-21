@@ -56,6 +56,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   puis l'inverse) et se filtrent par valeur (Faible, Moyen, Fort, non noté ; options de la thématique, non renseigné)
 - Tableaux Évaluer et Déploiements : la colonne Magasin se trie de A à Z ou de Z à A et se filtre par nom,
   avec une recherche dans la liste
+- Tableaux sur PC : le cadre du tableau défile vraiment (une carte masquait ce qui dépassait, « Voir plus » était
+  hors d'atteinte à la souris) et sa hauteur tient compte des onglets et filtres collés en haut : la ligne des
+  titres reste visible
 
 ## 21/10/2026
 
