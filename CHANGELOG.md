@@ -41,6 +41,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   à la demande (application deux fois plus légère au démarrage).
 - Communications : l'auteur ou le Directeur met une communication à la une jusqu'à une date ; elle reste en tête
   des Communications et du fil de l'accueil — Base : `0014_communications_a_la_une`
+- Dernières finitions : sur PC, « À traiter » reste visible pendant qu'on fait défiler l'accueil ; sur téléphone,
+  les filtres actifs de Magasins restent en puces sous la recherche ; fiche magasin à trois pictos, Planifier,
+  Préparer et Modifier dans « Autres actions » ; historique des visites par mois avec vignettes ; postes à pourvoir
+  en ligne grisée dans leur région ; absence et événement se créent depuis le bouton Créer.
 
 ## 21/10/2026
 

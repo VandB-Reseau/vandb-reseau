@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ouvrirOnglet, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { ouvrirOnglet, seConnecter, textesTropPetits, type Ecriture, actionFiche } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -75,7 +75,7 @@ test('noter un magasin garde l’historique daté', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test')
-  await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
+  await actionFiche(page, 'Modifier la fiche')
   const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
   await d.getByRole('button', { name: /^Fort : Gestion/ }).click()
   await d.getByRole('button', { name: 'Enregistrer' }).click()

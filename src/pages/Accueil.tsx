@@ -272,7 +272,8 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
   const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications.liste, true), [reseau, noms, messagerie, communications.liste])
   return (
     <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start' }}>
-      <Box sx={{ order: { xs: 1, md: 2 }, position: { md: 'sticky' }, top: { md: 88 } }}>
+      {/* PC : la colonne reste visible pendant qu'on fait défiler le fil, et défile seule si elle dépasse l'écran */}
+      <Box component="aside" aria-label="À traiter et cette semaine" sx={{ order: { xs: 1, md: 2 }, position: { md: 'sticky' }, top: { md: 88 }, maxHeight: { md: 'calc(100vh - 104px)' }, overflowY: { md: 'auto' }, overscrollBehavior: 'contain', scrollbarWidth: 'thin', mx: { md: -1 }, px: { md: 1 }, pb: { md: 1 } }}>
         <BlocATraiter items={items} />
         <BlocSemaine reseau={reseau} p={p} />
       </Box>

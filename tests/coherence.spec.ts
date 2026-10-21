@@ -30,15 +30,16 @@ for (const p of pages) test(`barre d’outils alignée : ${p.url}`, async ({ pag
   await page.screenshot({ path: `captures/${info.project.name}-barre${p.url.replace(/[\/?=]/g, '-')}.png` })
 })
 
-test('sur téléphone, l’Agenda garde son titre sur une ligne avec des boutons ronds', async ({ page, isMobile }) => {
-  test.skip(!isMobile, 'Spécifique au téléphone')
+test('absence et événement se créent depuis le bouton Créer, plus depuis l’en-tête de l’Agenda', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/plus/agenda')
-  for (const nom of ['Absence', 'Événement']) {
-    const b = (await page.getByRole('button', { name: nom, exact: true }).boundingBox())!
-    expect(b.width).toBeLessThanOrEqual(52)
-    expect(b.height).toBeGreaterThanOrEqual(48)
-  }
+  await expect(page.getByRole('heading', { level: 1, name: 'Agenda' })).toBeVisible()
+  await expect(page.getByRole('main').getByRole('button', { name: /^(Absence|Événement)$/ })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Créer', exact: true }).click()
+  const creer = page.getByRole('dialog', { name: 'Créer' })
+  for (const nom of ['Absence', 'Événement']) expect((await creer.getByRole('button', { name: nom, exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  await creer.getByRole('button', { name: 'Événement', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Ajouter un événement' })).toBeVisible()
 })
 
 test('les bandes d’onglets ont la même hauteur sur toutes les pages, 48 px sur téléphone', async ({ page, isMobile }, info) => {

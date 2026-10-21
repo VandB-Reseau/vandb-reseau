@@ -20,7 +20,6 @@ import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import CakeOutlined from '@mui/icons-material/CakeOutlined'
 import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined'
 import { PageHeader } from '../components/PageHeader'
-import { BoutonAction } from '../components/Outils'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { Fenetre } from '../components/EditionEquipe'
@@ -91,7 +90,7 @@ export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Elem
   return el.sort((a, b) => a.debut.localeCompare(b.debut) || a.titre.localeCompare(b.titre, 'fr'))
 }
 
-function DialogConge({ reseau, conge, onFermer }: { reseau: Reseau; conge: Conge | null; onFermer: (m?: string) => void }) {
+export function DialogConge({ reseau, conge, onFermer }: { reseau: Reseau; conge: Conge | null; onFermer: (m?: string) => void }) {
   const [personne, setPersonne] = useState(conge?.personne ?? '')
   const [debut, setDebut] = useState(conge?.debut ?? reseau.jour)
   const [fin, setFin] = useState(conge?.fin ?? reseau.jour)
@@ -119,7 +118,7 @@ function DialogConge({ reseau, conge, onFermer }: { reseau: Reseau; conge: Conge
 }
 
 const COULEURS_EV = ['#7c3aed', '#1b6fce', '#ef7d00', '#2e7d32', '#c2185b']
-function DialogEvenement({ reseau, evenement, onFermer }: { reseau: Reseau; evenement: Evenement | null; onFermer: (m?: string) => void }) {
+export function DialogEvenement({ reseau, evenement, onFermer }: { reseau: Reseau; evenement: Evenement | null; onFermer: (m?: string) => void }) {
   const [titre, setTitre] = useState(evenement?.titre ?? '')
   const [debut, setDebut] = useState(evenement?.debut ?? reseau.jour)
   const [fin, setFin] = useState(evenement?.fin ?? reseau.jour)
@@ -172,11 +171,7 @@ export function Agenda() {
         const changerMois = (n: number) => { const d = new Date(Date.UTC(Number(mois.slice(0, 4)), Number(mois.slice(5, 7)) - 1 + n, 1)); setParams({ mois: iso(d).slice(0, 7) }, { replace: true }) }
         return (
           <>
-            <PageHeader titre="Agenda" sousTitre="Ouvertures, événements, absences et anniversaires"
-              actions={<Box sx={{ display: 'flex', gap: 1 }}>
-                <BoutonAction secondaire libelle="Absence" icone={<BeachAccessOutlined />} onClick={() => setConge(null)} />
-                <BoutonAction libelle="Événement" icone={<EventOutlined />} onClick={() => setEvenement(null)} />
-              </Box>} />
+            <PageHeader titre="Agenda" sousTitre="Ouvertures, événements, absences et anniversaires" />
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 2 }}>
               <IconButton onClick={() => changerMois(-1)} aria-label="Mois précédent"><ChevronLeft /></IconButton>
               <Typography variant="h3" component="h2" sx={{ minWidth: 180, textAlign: 'center', textTransform: 'capitalize' }}>{nomMois(debut)}</Typography>

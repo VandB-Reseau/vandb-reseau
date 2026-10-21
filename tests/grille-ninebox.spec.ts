@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { caseDe, grilleParDefaut, niveauAxe, normaliserGrille, type GrilleNineBox } from '../src/data/sante'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture, actionFiche } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -60,7 +60,7 @@ test('la saisie affiche le détail du franchisé, rangé par axe', async ({ page
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Rennes%20Test')
-  await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
+  await actionFiche(page, 'Modifier la fiche')
   const d = page.getByRole('dialog', { name: 'Modifier Rennes Test' })
   await expect(d.getByRole('heading', { name: 'Résultats' })).toBeVisible()
   await expect(d.getByRole('heading', { name: 'Franchisé' })).toBeVisible()
@@ -138,7 +138,7 @@ test('une grille enregistrée change les colonnes de la saisie et la case des ma
   }
   await seConnecter(page, { config: { grille_ninebox: grille } })
   await page.goto('./#/magasins/Rennes%20Test')
-  await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
+  await actionFiche(page, 'Modifier la fiche')
   const d = page.getByRole('dialog', { name: 'Modifier Rennes Test' })
   await expect(d.getByRole('button', { name: 'Fort : Digital', exact: true })).toBeVisible()
   await expect(d.getByRole('button', { name: 'Fort : Panier moyen cave', exact: true })).toHaveCount(0)

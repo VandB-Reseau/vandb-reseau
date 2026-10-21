@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture, actionFiche } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -141,7 +141,7 @@ test('modifier la fiche magasin change aussi les notes et les déploiements', as
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Rennes%20Test')
-  await page.getByRole('button', { name: 'Modifier', exact: true }).first().click()
+  await actionFiche(page, 'Modifier la fiche')
   const d = page.getByRole('dialog', { name: 'Modifier Rennes Test' })
   await d.getByRole('button', { name: 'Non concerné : Panier moyen bar' }).click()
   await d.getByRole('button', { name: 'Fort : CA marché extérieur' }).click()

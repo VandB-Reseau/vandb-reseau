@@ -166,6 +166,23 @@ function useLienPhoto(chemin: string) {
   return lien
 }
 
+// Petites vignettes sur une ligne de liste (la ligne entière reste le lien) : au plus deux, puis « +n »
+export function MiniPhotos({ photos }: { photos: Photo[] | undefined }) {
+  if (!photos?.length) return null
+  return (
+    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexShrink: 0 }}>
+      {photos.slice(0, 2).map((p) => <MiniPhoto key={p.chemin} chemin={p.chemin} />)}
+      {photos.length > 2 && <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>+{photos.length - 2}</Typography>}
+    </Box>
+  )
+}
+function MiniPhoto({ chemin }: { chemin: string }) {
+  const lien = useLienPhoto(chemin)
+  return lien
+    ? <Box component="img" src={lien} alt="" sx={{ width: 40, height: 40, borderRadius: 1, objectFit: 'cover', display: 'block' }} />
+    : <Box sx={{ width: 40, height: 40, borderRadius: 1, bgcolor: 'action.hover' }} />
+}
+
 function Vignette({ chemin, numero, reste, onOuvrir }: { chemin: string; numero: number; reste?: number; onOuvrir: () => void }) {
   const lien = useLienPhoto(chemin)
   return (
