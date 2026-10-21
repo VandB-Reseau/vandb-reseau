@@ -7,7 +7,7 @@ const bande = (page: Page, nom: string) => page.getByRole('tablist', { name: `Ru
 const hautBande = (page: Page, nom: string) => bande(page, nom).evaluate((e) => Math.round(e.getBoundingClientRect().top))
 
 for (const fiche of [
-  { titre: 'magasin', adresse: './#/magasins/Brest%20Test?vue=journal', nom: 'Brest Test', onglet: 'Chiffres', retour: 'Fiche' },
+  { titre: 'magasin', adresse: './#/magasins/Brest%20Test', nom: 'Brest Test', onglet: 'Chiffres', retour: 'Fiche' },
   { titre: 'Coach', adresse: './#/equipe/coach/In%C3%A8s%20EXEMPLE?vue=magasins', nom: 'Inès EXEMPLE', onglet: 'Visites', retour: 'Portefeuille' },
 ]) {
   test(`fiche ${fiche.titre} : changer d’onglet garde les onglets à l’écran au lieu de remonter tout en haut`, async ({ page, isMobile }, info) => {
@@ -27,8 +27,10 @@ for (const fiche of [
     await expect.poll(() => hautBande(page, fiche.nom)).toBe(haut)
     await page.screenshot({ path: `captures/${info.project.name}-fiche-${fiche.titre.toLowerCase()}-onglets-colles.png` })
     // Changer d'onglet : la page ne remonte pas, le nouvel onglet commence sous les onglets
-    await ouvrirOnglet(page, fiche.onglet, bande(page, fiche.nom))
-    await expect(bande(page, fiche.nom).getByRole('tab', { name: fiche.onglet })).toHaveAttribute('aria-selected', 'true')
+    // Clic sans défilement du test vers l'onglet (« Chiffres et santé » déborde à droite de la bande)
+    const onglet = bande(page, fiche.nom).getByRole('tab', { name: new RegExp(`^${fiche.onglet}`) })
+    if (await onglet.isVisible()) await onglet.dispatchEvent('click'); else await ouvrirOnglet(page, fiche.onglet, bande(page, fiche.nom))
+    await expect(onglet).toHaveAttribute('aria-selected', 'true')
     await expect.poll(() => hauteur(page)).toBeGreaterThan(100)
     await expect.poll(() => hautBande(page, fiche.nom)).toBe(haut)
     // Même pour un onglet court

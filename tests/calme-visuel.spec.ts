@@ -33,7 +33,7 @@ test('fiche magasin : sur téléphone, 3 onglets et « Plus » ; sur PC, tous le
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   if (!isMobile) {
-    await expect(onglets.getByRole('tab')).toHaveText(['Fil', 'Fiche', 'Tâches', 'Messages', 'Visites', 'Chiffres', 'Santé', 'Campagnes', 'Journal'])
+    await expect(onglets.getByRole('tab')).toHaveText(['Fil', 'Fiche', 'Tâches et campagnes', 'Messages', 'Visites', 'Chiffres et santé'])
     return
   }
   await expect(onglets.getByRole('tab')).toHaveText(['Fil', 'Fiche', 'Tâches', 'Plus'])
@@ -46,15 +46,15 @@ test('fiche magasin : sur téléphone, 3 onglets et « Plus » ; sur PC, tous le
   }
   await onglets.getByRole('tab', { name: 'Autres rubriques' }).click()
   const panneau = page.getByRole('dialog', { name: 'Rubriques de Brest Test' })
-  await expect(panneau.getByRole('button')).toHaveText(['Messages', 'Visites', 'Chiffres', 'Santé', 'Campagnes', 'Journal'])
+  await expect(panneau.getByRole('button')).toHaveText(['Messages', 'Visites', 'Chiffres et santé'])
   for (const b of await panneau.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-onglets-plus.png` })
-  await panneau.getByRole('button', { name: 'Journal' }).click()
-  await expect(page).toHaveURL(/vue=journal/)
-  // L'onglet « Plus » prend le nom de la rubrique ouverte
-  const plus = onglets.getByRole('tab', { name: 'Journal, autres rubriques' })
-  await expect(plus).toHaveText('Journal')
+  await panneau.getByRole('button', { name: 'Chiffres et santé' }).click()
+  await expect(page).toHaveURL(/vue=chiffres/)
+  // L'onglet « Plus » prend le nom court de la rubrique ouverte
+  const plus = onglets.getByRole('tab', { name: 'Chiffres et santé, autres rubriques' })
+  await expect(plus).toHaveText('Chiffres')
   await expect(plus).toHaveAttribute('aria-selected', 'true')
   await page.screenshot({ path: `captures/${info.project.name}-onglet-journal.png` })
   await onglets.getByRole('tab', { name: 'Fiche' }).click()

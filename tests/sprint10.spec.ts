@@ -28,7 +28,7 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Fil', 'Fiche', 'Tâches', 'Plus'] : ['Fil', 'Fiche', 'Tâches', 'Messages', 'Visites', 'Chiffres', 'Santé', 'Campagnes', 'Journal'])
+  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Fil', 'Fiche', 'Tâches', 'Plus'] : ['Fil', 'Fiche', 'Tâches et campagnes', 'Messages', 'Visites', 'Chiffres et santé'])
   // Le fil est la vue par défaut ; l'équipe est dans l'onglet Fiche
   await expect(page.getByRole('region', { name: 'Fil du magasin' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Équipe' })).toHaveCount(0)

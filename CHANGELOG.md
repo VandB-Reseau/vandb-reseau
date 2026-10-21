@@ -81,6 +81,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   rendu enregistré ou confirmée « Faite » ; le jour J, Ma semaine propose « Faire le compte rendu » (prérempli des notes de
   préparation) ; date passée : ligne dans « À traiter » avec Faite et Reporter. Compte rendu commencé gardé sur
   l'appareil et repris à la réouverture, effacé à l'enregistrement — Base : `0017_visites_prevues`
+- Fiche magasin en six onglets au lieu de neuf : Fil (le journal et les bonnes pratiques au bas du fil), Fiche,
+  Tâches et campagnes, Messages, Visites, Chiffres et santé ; les anciens liens (santé, campagnes, journal) ouvrent
+  l'onglet qui les accueille, à leur partie. Pas de migration.
 - Santé du parc, tableaux Évaluer et Déploiements (PC) : « Voir plus » est au bas du tableau et les lignes
   ajoutées apparaissent aussitôt ; chaque critère, la case et chaque thématique se trient (du plus haut au plus bas,
   puis l'inverse) et se filtrent par valeur (Faible, Moyen, Fort, non noté ; options de la thématique, non renseigné)
