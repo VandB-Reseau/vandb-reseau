@@ -47,6 +47,8 @@ import Snackbar from '@mui/material/Snackbar'
 import { VisuelFil } from '../components/MiseEnForme'
 import { ReactionsPratique } from '../components/BonnesPratiques'
 import { useReactionsPratiques, type ReactionsPratiques } from '../data/reactionsPratiques'
+import { basculerPouceVisite, commenterVisite, messageReactionVisite, supprimerCommentaireVisite, useReactionsVisites, type ReactionsVisites } from '../data/reactionsVisites'
+import { Reactions } from '../components/Reactions'
 import { BandeCollante } from '../components/Collant'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
@@ -277,16 +279,16 @@ function Indicateurs({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
       barre: repartition.length ? <Box sx={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', mt: 0.75 }}>{repartition.map((x) => <Box key={x.c.id} sx={{ flex: x.n, bgcolor: x.c.couleur }} />)}</Box> : undefined },
   ]
   return (
-    <Box component="section" aria-label="Pilotage" sx={{
-      display: { xs: 'flex', md: 'grid' }, gridTemplateColumns: { md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 1, md: 2 }, mb: { xs: 2, md: 3 },
-      overflowX: { xs: 'auto', md: 'visible' }, scrollSnapType: { xs: 'x mandatory', md: 'none' }, mx: { xs: -2, md: 0 }, px: { xs: 2, md: 0 }, scrollbarWidth: 'none',
-    }}>
+    // Téléphone : quatre petites cartes égales en 2 × 2, sans défilement de côté (Joseph, 22/10/2026)
+    <Box component="section" aria-label="Pilotage" sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 1, md: 2 }, mb: { xs: 2, md: 3 } }}>
       {tuiles.map((t) => (
         <ButtonBase key={t.cle} component={RouterLink} to={t.lien} aria-label={`${t.libelle} : ${t.valeur}, ${t.detail}`}
-          sx={{ flex: { xs: '0 0 auto', md: 'initial' }, minWidth: { xs: 136, md: 0 }, scrollSnapAlign: 'start', display: 'block', textAlign: 'left', px: { xs: 1.5, md: 2 }, py: { xs: 1.25, md: 2 }, borderRadius: 3, bgcolor: 'background.paper', color: 'text.primary', fontFamily: 'inherit', '&:hover': { bgcolor: 'action.hover' } }}>
-          <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{t.libelle}</Typography>
-          <Typography sx={{ fontSize: { xs: '1.25rem', md: '1.75rem' }, fontWeight: 700, lineHeight: 1.25, color: t.couleur }}>{t.valeur}</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{t.detail}</Typography>
+          sx={{ display: 'block', minWidth: 0, textAlign: 'left', px: { xs: 1.5, md: 2 }, py: { xs: 1, md: 2 }, borderRadius: '14px', bgcolor: 'background.paper', color: 'text.primary', fontFamily: 'inherit',
+            // Pas de survol sur un écran tactile : la carte touchée ne reste pas grisée
+            '@media (hover: hover)': { '&:hover': { bgcolor: 'action.hover' } } }}>
+          <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}>{t.libelle}</Typography>
+          <Typography sx={{ fontSize: { xs: '1.25rem', md: '1.75rem' }, fontWeight: 700, lineHeight: 1.3, color: t.couleur }}>{t.valeur}</Typography>
+          <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>{t.detail}</Typography>
           {t.barre && <Box aria-hidden>{t.barre}</Box>}
         </ButtonBase>
       ))}
@@ -329,6 +331,7 @@ const filtresFil: { v: FiltreFil; libelle: string }[] = [
   { v: 'communication', libelle: 'Communications' }, { v: 'journal', libelle: 'Journal' },
 ]
 const PAS_FIL = 20
+const AUCUNE: never[] = []
 
 const iconeFil: Record<GenreFil, ReactNode> = { visite: <EventNoteOutlined />, tache: <TaskAltOutlined />, message: <ChatBubbleOutlineOutlined />, chiffres: <QueryStatsOutlined />, pratique: <TipsAndUpdatesOutlined />, communication: <CampaignOutlined />, journal: <HistoryOutlined /> }
 
@@ -364,8 +367,9 @@ export function PublicationFil({ e, jour, sansMagasin = false, ouvrir }: { e: El
   )
 }
 
-export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actualités', communications, reactionsPratiques, action, ouvrirJournal }: {
+export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actualités', communications, reactionsPratiques, reactionsVisites, action, ouvrirJournal }: {
   elements: ElementFil[]; jour: string; sansMagasin?: boolean; titre?: string; communications?: CommunicationsDuFil; reactionsPratiques?: ReactionsPratiques | null
+  reactionsVisites?: ReactionsVisites | null
   action?: ReactNode; ouvrirJournal?: (e: ElementFil) => void
 }) {
   const { apercu, equipe } = useApercu()
@@ -377,25 +381,27 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actu
   const groupes = useMemo(() => {
     const parCle = new Map<string, ElementFil[]>()
     for (const e of vus) {
-      const cle = e.communication || e.pratique || e.journal || !e.magasin ? e.cle : `${e.magasin}|${e.instant.slice(0, 10)}`
+      // Un compte rendu qu'on aime et commente garde sa propre carte
+      const cle = e.communication || e.pratique || e.journal || !e.magasin || (reactionsVisites && e.visiteId) ? e.cle : `${e.magasin}|${e.instant.slice(0, 10)}`
       const g = parCle.get(cle)
       if (g) g.push(e); else parCle.set(cle, [e])
     }
     // Les communications à la une restent en tête
     const tous = [...parCle.values()]
     return [...tous.filter((g) => g[0].communication?.aLaUne), ...tous.filter((g) => !g[0].communication?.aLaUne)]
-  }, [vus])
+  }, [vus, reactionsVisites])
   const options = filtresFil.filter((f) => f.v === 'tout' || elements.some((e) => e.genre === f.v))
   return (
     <Box component="section" aria-label={titre}>
       <TitreSection action={action}>{titre}</TitreSection>
       {options.length > 2 && <BandeCollante><Puces valeur={filtre} options={options} onChange={(v) => { setFiltre(v); setNb(PAS_FIL) }} label="Filtrer le fil" /></BandeCollante>}
       {!vus.length ? (
-        <CarteLignes><LigneCompacte avatar={<Initiales nom="fil" icone={<HistoryOutlined />} />} titre="Rien de nouveau" detail="Les visites, tâches, messages, chiffres et communications des dernières semaines s’afficheront ici." /></CarteLignes>
+        <CarteLignes><LigneCompacte avatar={<Initiales nom="fil" icone={<HistoryOutlined />} />} titre="Rien de nouveau" detail="Les comptes rendus et les communications des dernières semaines s’afficheront ici." /></CarteLignes>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           {groupes.slice(0, nb).map(([e, ...suite]) => (
-            <Card key={e.cle} component={e.communication || e.pratique ? 'article' : 'div'} aria-label={e.communication?.titre ?? e.pratique?.titre} sx={{ border: 0, overflow: 'hidden', ...(suite.length ? { '& > * + *': { borderTop: '1px solid', borderColor: 'divider' } } : {}) }}>
+            <Card key={e.cle} component={e.communication || e.pratique || (reactionsVisites && e.visiteId) ? 'article' : 'div'}
+              aria-label={e.communication?.titre ?? e.pratique?.titre ?? (reactionsVisites && e.visiteId ? `Compte rendu de ${e.magasin}` : undefined)} sx={{ border: 0, overflow: 'hidden', ...(suite.length ? { '& > * + *': { borderTop: '1px solid', borderColor: 'divider' } } : {}) }}>
               {e.communication?.aLaUne && <Box sx={{ pt: 1.5 }}><MarqueUne jusquAu={e.communication.aLaUne} /></Box>}
               <PublicationFil e={e} jour={jour} sansMagasin={sansMagasin} ouvrir={e.libelleOuvrir && ouvrirJournal ? ouvrirJournal : undefined} />
               {suite.map((x) => <PublicationFil key={x.cle} e={x} jour={jour} sansMagasin={sansMagasin} ouvrir={x.libelleOuvrir && ouvrirJournal ? ouvrirJournal : undefined} />)}
@@ -404,6 +410,11 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actu
                   apres={communications.recharger} signaler={setMessage} />
               )}
               {e.pratique && reactionsPratiques && <ReactionsPratique p={e.pratique} reactions={reactionsPratiques} lectureSeule={!!apercu || !!equipe} signaler={setMessage} />}
+              {e.visiteId && reactionsVisites && (
+                <Reactions titre={`le compte rendu de ${e.magasin}`} pouces={reactionsVisites.pouces[e.visiteId] ?? AUCUNE} commentaires={reactionsVisites.commentaires[e.visiteId] ?? AUCUNE}
+                  moi={reactionsVisites.moi} jour={jour} lectureSeule={!!apercu || !!equipe} basculer={() => basculerPouceVisite(e.visiteId!)} commenter={(t) => commenterVisite(e.visiteId!, t)}
+                  supprimer={supprimerCommentaireVisite} message={messageReactionVisite} apres={reactionsVisites.recharger} signaler={setMessage} />
+              )}
             </Card>
           ))}
           {groupes.length > nb && <Button onClick={() => setNb(nb + PAS_FIL)} sx={{ alignSelf: 'center', minHeight: 48 }}>Voir plus</Button>}
@@ -425,8 +436,9 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
   const noms = useMemo(() => new Set(magasinsDu(reseau, p).map((m) => m.nom)), [reseau, p])
   const communications = useCommunicationsDuFil()
   const reactionsPratiques = useReactionsPratiques()
-  const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications.liste, true), [reseau, noms, messagerie, communications.liste])
-  const actualites = <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} />
+  const reactionsVisites = useReactionsVisites()
+  const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications.liste, true, true), [reseau, noms, messagerie, communications.liste])
+  const actualites = <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
   if (!surPC) {
     return (
       <>

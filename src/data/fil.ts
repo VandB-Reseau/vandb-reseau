@@ -2,7 +2,7 @@ import type { Photo } from './grilles'
 import type { Reseau } from './modele'
 import { libelleTypeVisite, visiteFaite } from './modele'
 import { actionsDes } from './actions'
-import { analyser, decalerMois, formatKEuros, formatPourcent, libelleMois } from './chiffres'
+import { analyser, decalerMois, estVisite, formatKEuros, formatPourcent, libelleMois } from './chiffres'
 import { apercuDe, type Messagerie } from './messagerie'
 import { lienCompteRendu } from './visites'
 import { lienFiche } from '../lib/format'
@@ -25,6 +25,7 @@ export interface ElementFil {
   cible?: string // communication : « Tout le réseau », « 3 magasins »
   communication?: Communication // pour « J'aime » et commentaires depuis le fil
   pratique?: BonnePratique
+  visiteId?: number // compte rendu : pour « J'aime » et commentaires depuis le fil d'actualité
   visuel?: { piece?: Piece; url?: string } // communication : photo affichée en grand (en-tête, photo jointe ou première image)
   titre?: string // tâche, bonne pratique
   texte?: string
@@ -41,31 +42,32 @@ const instantDe = (s: string) => (s.length === 10 ? `${s}T00:00:00` : s)
 // Premier texte d'un compte rendu : les notes, sinon la première partie remplie
 const resume = (notes: string, parties: string[]) => (notes || parties.find((p) => p.trim()) || '').trim()
 
-// pratiquesReseau : les bonnes pratiques de tout le réseau (communes), pas seulement celles des magasins suivis
-export function filDu(reseau: Reseau, noms: Set<string>, mg: Messagerie | null, jours = 45, communications: Communication[] = [], pratiquesReseau = false): ElementFil[] {
+// pratiquesReseau : les bonnes pratiques de tout le réseau (communes), pas seulement celles des magasins suivis ;
+// actualites : fil de l'accueil, seulement les comptes rendus de visite, les bonnes pratiques et les communications (Joseph, 22/10/2026)
+export function filDu(reseau: Reseau, noms: Set<string>, mg: Messagerie | null, jours = 45, communications: Communication[] = [], pratiquesReseau = false, actualites = false): ElementFil[] {
   const depuis = new Date(Date.parse(`${reseau.jour}T00:00:00`) - jours * 86_400_000).toISOString().slice(0, 10)
   const res: ElementFil[] = []
   for (const v of reseau.visites) {
-    if (!noms.has(v.magasin) || !visiteFaite(v, reseau.jour) || v.date < depuis) continue
+    if (!noms.has(v.magasin) || !visiteFaite(v, reseau.jour) || v.date < depuis || (actualites && !estVisite(v))) continue
     res.push({
       cle: `v|${v.id ?? v.magasin + v.date}`, genre: 'visite', instant: v.date, auteur: v.visiteurs[0] ?? '', action: libelleTypeVisite(v.type).toLowerCase(),
-      magasin: v.magasin, texte: resume(v.notes, v.parties), photos: v.photos, lien: v.id !== null ? lienCompteRendu(v) : `${lienFiche(v.magasin)}?vue=visites`,
+      magasin: v.magasin, texte: resume(v.notes, v.parties), photos: v.photos, visiteId: v.id ?? undefined, lien: v.id !== null ? lienCompteRendu(v) : `${lienFiche(v.magasin)}?vue=visites`,
     })
   }
-  for (const x of actionsDes(reseau, noms)) {
+  for (const x of actualites ? [] : actionsDes(reseau, noms)) {
     if (x.a.faite && x.a.faite >= depuis) {
       res.push({ cle: `t|${x.cle}`, genre: 'tache', instant: x.a.faite, auteur: x.a.faitePar ?? '', action: 'tâche faite', magasin: x.magasin, titre: x.a.action, lien: `${lienFiche(x.magasin)}?vue=actions` })
     } else if (x.libre && !x.a.faite && x.libre.creeLe >= depuis) {
       res.push({ cle: `n|${x.cle}`, genre: 'tache', instant: x.libre.creeLe, auteur: x.libre.auteur ?? '', action: 'nouvelle tâche', magasin: x.magasin, titre: x.a.action, lien: `${lienFiche(x.magasin)}?vue=actions` })
     }
   }
-  for (const m of mg?.messages ?? []) {
+  for (const m of actualites ? [] : mg?.messages ?? []) {
     // Échanges à deux : restent dans la messagerie
     if (m.destinataire || !m.magasins.some((n) => noms.has(n)) || m.creeLe.slice(0, 10) < depuis) continue
     const magasin = m.magasins.find((n) => noms.has(n))!
     res.push({ cle: `m|${m.id}`, genre: 'message', instant: m.creeLe, auteur: m.auteurNom, action: 'message', magasin, texte: apercuDe(m), lien: `${lienFiche(magasin)}?vue=messages` })
   }
-  for (const nom of noms) {
+  for (const nom of actualites ? [] : noms) {
     const a = analyser(reseau, nom)
     if (!a || a.ca === null) continue
     // Chiffres d'un mois : connus au début du mois suivant

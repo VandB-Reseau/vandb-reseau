@@ -45,13 +45,19 @@ test('PC : actualités à gauche, À traiter, Mes tâches et Cette semaine à dr
   await page.screenshot({ path: `captures/${info.project.name}-accueil-pilotage.png` })
 })
 
-test('téléphone : repères qui glissent, un bloc court à onglets, puis les actualités', async ({ page, isMobile }, info) => {
+test('téléphone : repères en 2 × 2, un bloc court à onglets, puis les actualités', async ({ page, isMobile }, info) => {
   test.skip(!isMobile, 'Disposition du téléphone')
   await seConnecter(page)
   const pilotage = page.getByRole('region', { name: 'Pilotage' })
-  // Les repères glissent sur une seule ligne, sans élargir la page
-  const largeur = await pilotage.evaluate((e) => ({ visible: e.clientWidth, contenu: e.scrollWidth }))
-  expect(largeur.contenu).toBeGreaterThan(largeur.visible)
+  // Quatre cartes égales en 2 × 2, toutes dans l'écran, sans défilement de côté
+  const b = await Promise.all((await pilotage.getByRole('link').all()).map(async (l) => (await l.boundingBox())!))
+  expect(b).toHaveLength(4)
+  expect(Math.abs(b[0].y - b[1].y)).toBeLessThan(2)
+  expect(b[2].y).toBeGreaterThan(b[0].y + b[0].height - 1)
+  expect(Math.abs(b[0].width - b[1].width)).toBeLessThan(2)
+  expect(Math.abs(b[0].height - b[1].height)).toBeLessThan(2)
+  for (const x of b) expect(x.x + x.width).toBeLessThanOrEqual(page.viewportSize()!.width)
+  expect(await pilotage.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   const onglets = page.getByRole('tablist', { name: 'Mon point' }).getByRole('tab')
   await expect(onglets).toHaveText([/^À traiter/, /^Tâches/, 'Semaine'])

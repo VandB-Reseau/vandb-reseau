@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fil d'actualité de l'accueil : seulement les comptes rendus de visite, les bonnes pratiques et les communications
+  (plus de messages, tâches ni chiffres ; la fiche magasin garde tout). J'aime et commentaires sur chaque compte
+  rendu, pour l'équipe et le franchisé, chacun sur ses magasins. Échanges : les comptes rendus quittent les groupes
+  magasin (test `fil-actualites.spec.ts`). **Base : `0022_reactions_visites`.**
 - Retouches de Joseph (22/10/2026) : plus de puces « Trier par » sur la liste des magasins (téléphone et PC étroit) ;
   Santé du parc > Chiffres, le filtre Alerte rejoint la barre, juste après Coach ; jusqu'à 20 thématiques de
   déploiement lisibles (fiche magasin : avancement puis thématiques rangées par état ; onglet Déploiements :
