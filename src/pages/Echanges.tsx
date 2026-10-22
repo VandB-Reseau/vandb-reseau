@@ -42,7 +42,7 @@ import { BoutonOutil, Bulle, ChampRecherche } from '../components/Outils'
 import { PageHeader } from '../components/PageHeader'
 import { initialesDe } from '../components/Social'
 import { useMessagerie } from '../data/MessagerieContext'
-import { actionsDuMagasin, actionsDes, monNomPorteur } from '../data/actions'
+import { actionsDuMagasin, actionsDes, monNomPorteur, portePar } from '../data/actions'
 import { communicationsNonVues, magasinsDesEchanges, noterReseauVu, useReseauVu } from '../data/echanges'
 import { useCommunicationsDuFil } from '../data/communications'
 import {
@@ -336,7 +336,7 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
   const nonLusFils = useNonLusFils(fil?.genre === 'magasin' ? fil.magasin : '')
   const vue = params.get('vue') === 'taches' ? 'taches' : 'discussions'
   const moi = monNomPorteur(reseau, profil)
-  const nTaches = moi ? actionsDes(reseau, null).filter((x) => !x.a.faite && x.a.porteur === moi).length : 0
+  const nTaches = moi ? actionsDes(reseau, null).filter((x) => !x.a.faite && portePar(x.a, moi)).length : 0
   const nDiscussions = lignes.reduce((t, l) => t + l.pourMoi, 0)
   const ouvrir = (lien: string) => naviguer(lien, { replace: surPC && !!fil })
   const retour = () => (window.history.length > 1 ? naviguer(-1) : naviguer('/echanges'))

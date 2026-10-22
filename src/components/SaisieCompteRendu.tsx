@@ -80,11 +80,11 @@ export function SaisieCompteRendu({ reseau, visite, tournee, magasin, notes, set
         {plan.map((a, i) => {
           const changer = (cle: keyof ActionPlan, v: string) => setPlan((p) => p.map((x, j) => (j === i ? { ...x, [cle]: v } : x)))
           return (
-            <Box key={i} sx={{ display: 'grid', gap: 1, mb: 1.5, alignItems: 'center', gridTemplateColumns: { xs: '1fr 1fr 48px', sm: '3fr 1.2fr 1fr 48px' } }}>
+            <Box key={i} sx={{ display: 'grid', gap: 1, mb: 1.5, alignItems: 'start', gridTemplateColumns: { xs: '1fr 1fr 48px', sm: '2fr 2fr 170px 48px' } }}>
               <TextField label="Tâche" value={a.action} onChange={(e) => changer('action', e.target.value)} sx={{ gridColumn: { xs: '1 / 3', sm: 'auto' } }} />
               <ChampPorteur reseau={reseau} magasin={magasin} valeur={a.porteur} changer={(v) => changer('porteur', v)} sx={{ gridRow: { xs: 2, sm: 'auto' }, minWidth: 0 }} />
               <TextField label="Échéance" type={!a.echeance || echeanceDate(a) ? 'date' : 'text'} value={a.echeance} onChange={(e) => changer('echeance', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ gridRow: { xs: 2, sm: 'auto' } }} />
-              <IconButton aria-label={`Retirer la tâche ${i + 1}`} onClick={() => setPlan((p) => p.filter((_x, j) => j !== i))} sx={{ gridColumn: { xs: 3, sm: 'auto' }, gridRow: { xs: '1', sm: 'auto' } }}><CloseOutlined /></IconButton>
+              <IconButton aria-label={`Retirer la tâche ${i + 1}`} onClick={() => setPlan((p) => p.filter((_x, j) => j !== i))} sx={{ gridColumn: { xs: 3, sm: 'auto' }, gridRow: { xs: '1', sm: 'auto' }, mt: 0.5 }}><CloseOutlined /></IconButton>
             </Box>
           )
         })}

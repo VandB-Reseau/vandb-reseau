@@ -23,7 +23,7 @@ import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import { useReseau } from '../data/ReseauContext'
 import { useAuth } from '../auth/AuthContext'
 import { enregistrerActionLibre, marquerActions, supprimerActionLibre } from '../data/chargement'
-import { echeanceDate, enRetard, porteursDu, type ActionSuivie } from '../data/actions'
+import { echeanceDate, enRetard, joindrePorteurs, porteursDe, porteursDu, type ActionSuivie } from '../data/actions'
 import { ajouterActionFranchise, ErreurAction, marquerActionFranchise } from '../data/espaceFranchise'
 import type { ActionLibre, Reseau } from '../data/modele'
 import { dateCourte, lienFiche } from '../lib/format'
@@ -148,15 +148,16 @@ export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false,
   )
 }
 
-// Porteur choisi parmi les personnes du magasin ; un ancien porteur saisi à la main reste affiché
+// Porteurs choisis parmi les personnes du magasin (un ou plusieurs) ; un ancien porteur saisi à la main reste affiché
 export function ChampPorteur({ reseau, magasin, valeur, changer, sx }: { reseau: Reseau; magasin: string; valeur: string; changer: (v: string) => void; sx?: SxProps<Theme> }) {
   const liste = porteursDu(reseau, magasin)
-  const options = valeur && !liste.some((p) => p.nom === valeur) ? [...liste, { nom: valeur, role: 'Autre' }] : liste
+  const choisis = porteursDe({ porteur: valeur })
+  const options = [...liste, ...choisis.filter((n) => !liste.some((p) => p.nom === n)).map((nom) => ({ nom, role: 'Autre' }))]
   const role = (n: string) => options.find((p) => p.nom === n)?.role ?? ''
   return (
-    <Autocomplete options={options.map((p) => p.nom)} value={valeur || null} onChange={(_e, v) => changer(v ?? '')} groupBy={role} sx={sx}
+    <Autocomplete multiple disableCloseOnSelect options={options.map((p) => p.nom)} value={choisis} onChange={(_e, v) => changer(joindrePorteurs(v))} groupBy={role} sx={sx}
       noOptionsText="Choisis d’abord le magasin"
-      renderInput={(p) => <TextField {...p} label="Porteur" />} />
+      renderInput={(p) => <TextField {...p} label="Porteurs" />} />
   )
 }
 

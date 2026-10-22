@@ -13,6 +13,12 @@ export const cleLibre = (id: string) => `l:${id}`
 export const echeanceDate = (a: ActionPlan) => (/^\d{4}-\d{2}-\d{2}$/.test(a.echeance) ? a.echeance : '')
 export const enRetard = (a: ActionPlan, jour: string) => !a.faite && !!echeanceDate(a) && echeanceDate(a) < jour
 
+// Porteurs d'une tâche : un ou plusieurs noms, rangés dans « porteur » séparés par des virgules
+// (comme les participants d'une visite), pour que les tâches déjà enregistrées restent lisibles
+export const porteursDe = (a: Pick<ActionPlan, 'porteur'>) => [...new Set(String(a.porteur ?? '').split(',').map((n) => n.trim()).filter(Boolean))]
+export const joindrePorteurs = (noms: string[]) => [...new Set(noms.map((n) => n.trim()).filter(Boolean))].join(', ')
+export const portePar = (a: Pick<ActionPlan, 'porteur'>, nom: string) => !!nom && porteursDe(a).includes(nom)
+
 // Relit les actions hors visite enregistrées (une liste par magasin)
 export function normaliserActionsLibres(v: unknown): Record<string, ActionLibre[]> {
   const r: Record<string, ActionLibre[]> = {}

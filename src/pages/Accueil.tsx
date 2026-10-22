@@ -36,7 +36,7 @@ import { useReseau } from '../data/ReseauContext'
 import { messageErreur } from '../components/EditionEquipe'
 import { magasinsDu, perimetreDuProfil, personnesDu, type Perimetre } from '../data/perimetre'
 import { PageHeader } from '../components/PageHeader'
-import { actionsDes, actionsEnCours, echeanceDate, enRetard, monNomPorteur } from '../data/actions'
+import { actionsDes, actionsEnCours, echeanceDate, enRetard, monNomPorteur, portePar } from '../data/actions'
 import { libellesEtatMandat, mandatsARenouveler } from '../data/associes'
 import { bilan, magasinsConcernes, phase } from '../data/campagnes'
 import { filDu, quand, type ElementFil, type GenreFil } from '../data/fil'
@@ -220,7 +220,7 @@ function BlocSemaine({ reseau, p, compact = false }: { reseau: Reseau; p: Perime
 function mesTaches(reseau: Reseau, p: Perimetre, moi: string) {
   if (!moi) return []
   const noms = p.type === 'reseau' ? null : new Set(magasinsDu(reseau, p).map((m) => m.nom))
-  return actionsDes(reseau, noms).filter((x) => !x.a.faite && x.a.porteur === moi)
+  return actionsDes(reseau, noms).filter((x) => !x.a.faite && portePar(x.a, moi))
     .sort((x, y) => (echeanceDate(x.a) || '9999').localeCompare(echeanceDate(y.a) || '9999'))
 }
 

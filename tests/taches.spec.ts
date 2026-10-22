@@ -76,7 +76,7 @@ test('le Directeur ne voit que les tâches qui lui sont attribuées, les coche e
   await d.getByLabel('Magasin').click()
   await page.getByRole('option', { name: 'Lyon Test' }).click()
   await d.getByLabel('Tâche', { exact: true }).fill('Mettre en avant les coffrets de Noël')
-  await expect(d.getByLabel('Porteur')).toHaveValue(DIRECTEUR)
+  await expect(d.getByRole('button', { name: DIRECTEUR })).toBeVisible()
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Tâche ajoutée.')).toBeVisible()
   expect(derniere(ecritures)!['Lyon Test'][0]).toMatchObject({ action: 'Mettre en avant les coffrets de Noël', porteur: DIRECTEUR, creeLe: aujourdhui() })
@@ -126,6 +126,18 @@ test('un Coach ne voit que les tâches qui lui sont attribuées', async ({ page 
   await expect(page.getByText('Action d’un autre magasin')).toHaveCount(0)
 })
 
+test('une tâche à plusieurs porteurs figure dans la liste de chacun', async ({ page }) => {
+  const actions = { 'Brest Test': [{ id: 'l1', action: 'Préparer la soirée dégustation', porteur: 'Franchisé 11, Noé MODELE', echeance: '', creeLe: '2026-09-25' }] }
+  await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Noé MODELE' }, config: { actions } })
+  await ouvrirTaches(page)
+  const aFaire = page.getByRole('list', { name: 'Tâches à faire' })
+  await expect(aFaire).toContainText('Préparer la soirée dégustation')
+  await deplierFiltres(page)
+  await page.getByLabel('Liste de').click()
+  await page.getByRole('option', { name: 'Franchisés de mes magasins' }).click()
+  await expect(aFaire.getByRole('listitem').filter({ hasText: 'Préparer la soirée dégustation' })).toContainText('Franchisé 11, Noé MODELE')
+})
+
 test('le Coach ouvre la liste des tâches des franchisés de ses magasins', async ({ page }, info) => {
   const actions = {
     'Brest Test': [{ id: 'l1', action: 'Envoyer le bilan du mois', porteur: 'Franchisé 11', echeance: '', creeLe: '2026-09-25' }],
@@ -169,6 +181,16 @@ const espace = () => ({
   visites: [{ id: 50, store: 'Annecy Test', visit_date: '2026-09-15', type: 'terrain', visitor: 'Hugo FICTIF', signed_required: false, docs: [],
     action_plan: [{ action: 'Lancer une dégustation', porteur: 'Paul MULTI', echeance: '2026-09-30' }, { action: '' }, { action: 'Former au conseil', porteur: 'Hugo FICTIF', echeance: '2099-01-31' }] }],
   actions: { 'Rennes Test': [{ id: 'l9', action: 'Refaire la vitrine', porteur: 'Paul MULTI', echeance: '', creeLe: '2026-10-01', auteur: 'Hugo FICTIF', faite: '2026-10-05', faitePar: 'Hugo FICTIF' }] },
+})
+
+test('le franchisé voit la tâche qu’il porte avec son Coach', async ({ page }) => {
+  const e = espace()
+  e.visites[0].action_plan[2].porteur = 'Hugo FICTIF, Paul MULTI'
+  await seConnecter(page, { acces: PAUL, espace: e })
+  await ouvrirTaches(page)
+  const aFaire = page.getByRole('list', { name: 'Tâches à faire' })
+  await expect(aFaire.getByRole('listitem')).toHaveCount(2)
+  await expect(aFaire).toContainText('Former au conseil')
 })
 
 test('le franchisé coche et ajoute ses actions, la base pose son nom', async ({ page, isMobile }, info) => {

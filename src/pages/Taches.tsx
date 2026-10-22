@@ -21,7 +21,7 @@ import MenuItem from '@mui/material/MenuItem'
 import ListSubheader from '@mui/material/ListSubheader'
 import { useAuth } from '../auth/AuthContext'
 import { useReseau } from '../data/ReseauContext'
-import { actionsDes, echeanceDate, enRetard, monNomPorteur, porteursDu, type ActionSuivie } from '../data/actions'
+import { actionsDes, echeanceDate, enRetard, monNomPorteur, portePar, porteursDe, porteursDu, type ActionSuivie } from '../data/actions'
 import { magasinsDu, perimetreDuProfil } from '../data/perimetre'
 import { libelleResponsable, type Reseau } from '../data/modele'
 import { ErreurAction } from '../data/espaceFranchise'
@@ -80,7 +80,8 @@ function porteeParFranchise(reseau: Reseau, x: ActionSuivie, cache: Map<string, 
     noms.add('Franchisé').add('Responsable du magasin')
     cache.set(x.magasin, noms)
   }
-  return noms.has(x.a.porteur)
+  const ensemble = noms
+  return porteursDe(x.a).some((n) => ensemble.has(n))
 }
 
 function Liste({ reseau, noms, porteur, signaler, choixPorteur, autreListe, ajout }: { reseau: Reseau; noms: string[]; porteur: string; signaler: (m: string) => void; choixPorteur?: ReactNode; autreListe?: boolean; ajout?: ReactNode }) {
@@ -95,7 +96,7 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, autreListe, ajou
   const cache = new Map<string, Set<string>>()
   const q = sansAccents(recherche.trim())
   const actions = actionsDes(reseau, new Set(choix ? [choix] : noms))
-    .filter((x) => (porteur === FRANCHISES ? porteeParFranchise(reseau, x, cache) : x.a.porteur === porteur))
+    .filter((x) => (porteur === FRANCHISES ? porteeParFranchise(reseau, x, cache) : portePar(x.a, porteur)))
     .filter((x) => !q || sansAccents(`${x.a.action} ${x.magasin} ${x.a.porteur ?? ''}`).includes(q))
   const aFaire = actions.filter((x) => !x.a.faite)
   const faites = actions.filter((x) => x.a.faite)
