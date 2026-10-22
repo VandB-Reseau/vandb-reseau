@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 21/10/2026 (migration `0018`).
+Mis à jour le 22/10/2026 (migration `0019`).
 
 ## Principes
 
@@ -66,7 +66,7 @@ Rubriques de `suivi_magasins` (contrainte `suivi_magasins_cle_check`) :
 | `notes` | Journal du magasin | `notes_magasins` |
 | `audits` | Résultats consolidés des audits | `audits` |
 | `associes` | Associés et mandats | `associes` |
-| `actions` | Actions hors visite | `actions` |
+| `actions` | Tâches hors visite ; `fil` = `equipe` pour une tâche née dans « Équipe seule », jamais renvoyée au franchisé (0019) | `actions` |
 | `deploiements` | État et journal des thématiques déployées | `deploiements` (partie magasin) |
 | `constats` | Constats de campagne | `campagnes` (partie constats) |
 | `preparation` | Prochaine visite : date, heure, notes | `preparations_visites` |
@@ -145,8 +145,8 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Périmètre | `magasins_visibles`, `maj_perimetre_equipe`, `magasins_messagerie`, `peut_ecrire_magasin`, `franchise_de_mes_magasins` | 0005, 0006, 0015 |
 | Accès franchisés | `ouvrir_acces_franchise`, `maj_acces_franchise`, `couper_acces_franchise`, `liste_acces_franchises` | 0004 |
 | Accès de l'équipe | `ouvrir_acces_equipe`, `couper_acces_equipe`, `renommer_acces_coach`, `liste_acces_equipe` | 0005 |
-| Espace franchisé | `espace_franchise`, `reperes_reseau` (interne), `reperes_equipe` | 0004, 0005 |
-| Actions du franchisé | `franchise_du_magasin`, `ajouter_action_franchise`, `marquer_action_franchise` | 0007 |
+| Espace franchisé | `espace_franchise` (sans les tâches de l'équipe seule depuis 0019), `reperes_reseau` (interne), `reperes_equipe` | 0004, 0005, 0019 |
+| Actions du franchisé | `franchise_du_magasin`, `ajouter_action_franchise`, `marquer_action_franchise` (tâche de l'équipe seule introuvable, 0019) | 0007, 0019 |
 | Messagerie | `messagerie`, `envoyer_message`, `envoyer_a`, `marquer_lu`, `marquer_lu_personne`, `supprimer_message`, `renommer_magasin_messages`, `pieces_propres` | 0006 |
 | Échanges en groupe | `peut_inviter`, `creer_groupe`, `modifier_groupe`, `supprimer_groupe`, `quitter_groupe`, `peut_ecrire_fil`, `envoyer_fil`, `marquer_lu_fil`, `compte_lit_magasin` (interne) ; `messagerie` renvoie aussi les groupes (version 4) | 0018 |
 | Communications | `communications`, `communication_visible`, `publier_communication`, `supprimer_communication`, `basculer_pouce_communication`, `commenter_communication`, `supprimer_commentaire_communication` | 0008 |
@@ -154,7 +154,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Communication à la une | `mettre_a_la_une` (auteur ou Directeur, date entre aujourd'hui et un an), `a_la_une` (communications visibles encore à la une) | 0014 |
 | Bonnes pratiques | `reactions_pratiques`, `pratique_visible`, `basculer_pouce_pratique`, `commenter_pratique`, `supprimer_commentaire_pratique` | 0010 |
 | Campagnes régionales | `campagne_region_permise` | 0005 |
-| Fichiers | `photo_visible`, `piece_visible` | 0004, 0009 |
+| Fichiers | `photo_visible`, `piece_visible` (fichiers d'une tâche de l'équipe seule refusés au franchisé, 0019) | 0004, 0009, 0019 |
 | Notifications | `abonner_appareil`, `desabonner_appareil` (compte connecté) ; `comptes_de_cle`, `notifications_a_envoyer` (fonction « notifier » seule) | 0016 |
 | Outil | `json_sur` (lit un texte JSON sans jamais échouer) | 0004 |
 

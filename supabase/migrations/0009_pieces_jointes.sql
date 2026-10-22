@@ -9,6 +9,7 @@
 --    échange à deux = l'auteur et le destinataire ; tâche = qui voit le magasin
 --    (Directeur : tous, Coach et RR : les leurs, franchisé : les siens) ; communication = qui la voit.
 -- 4) Chacun ne supprime que ses propres fichiers.
+-- Correction de sécurité du 22/10/2026 (0019) : le franchisé ne lit pas les fichiers d'une tâche née dans « Équipe seule ».
 -- ════════════════════════════════════════════════════════════════
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES ('pieces', 'pieces', false, 10485760, ARRAY[
@@ -48,7 +49,8 @@ BEGIN
   -- Tâche d'un magasin visible (hors visite, ou plan d'action d'une visite)
   v_mag := public.magasins_messagerie();
   IF EXISTS (SELECT 1 FROM public.suivi_magasins s, jsonb_array_elements(CASE WHEN jsonb_typeof(s.valeur) = 'array' THEN s.valeur ELSE '[]'::jsonb END) e
-    WHERE s.cle = 'actions' AND (v_mag IS NULL OR s.store_name = ANY(v_mag)) AND jsonb_typeof(e) = 'object' AND e->'pieces' @> v_ref) THEN
+    WHERE s.cle = 'actions' AND (v_mag IS NULL OR s.store_name = ANY(v_mag)) AND jsonb_typeof(e) = 'object' AND e->'pieces' @> v_ref
+      AND (v_role <> 'franchise' OR coalesce(e->>'fil', '') <> 'equipe')) THEN
     RETURN true;
   END IF;
   RETURN EXISTS (SELECT 1 FROM public.visits v, jsonb_array_elements(CASE WHEN jsonb_typeof(v.action_plan) = 'array' THEN v.action_plan ELSE '[]'::jsonb END) e

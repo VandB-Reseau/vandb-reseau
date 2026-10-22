@@ -29,6 +29,8 @@ export async function chargerEspaceFranchise(apercu: Apercu | null, jour = new D
     recrues: [], visites: d.visits ?? [], conges: [], evenements: [], finances: d.store_finance ?? [],
   }, jour)
   reseau.espace = { franchise: d.franchise ?? apercu?.franchise ?? '', reperes: d.reperes && typeof d.reperes === 'object' ? d.reperes : null }
+  // Tâches nées dans « Équipe seule » : la base ne les renvoie plus (0019) ; écartées aussi ici
+  reseau.actionsLibres = Object.fromEntries(Object.entries(reseau.actionsLibres).map(([m, l]) => [m, l.filter((a) => a.fil !== 'equipe')]))
   return reseau
 }
 

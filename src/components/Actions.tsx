@@ -80,6 +80,7 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
           {[avecPorteur && x.a.porteur, faite].filter(Boolean).join(' · ')}
           {((avecPorteur && x.a.porteur) || faite) && ' · '}
           {origine}
+          {x.libre?.fil === 'equipe' && ' · Équipe seule'}
         </Typography>
         {pastille && <Box sx={{ display: { xs: 'block', sm: 'none' }, mt: 0.75 }}>{pastille}</Box>}
         {x.a.pieces && <ListePieces pieces={x.a.pieces} />}

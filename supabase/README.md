@@ -23,6 +23,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0016_notifications_telephone` | Notifications sur le téléphone : tables `abonnements_push` et `cles_push` fermées, fonctions `abonner_appareil`, `desabonner_appareil`, `notifications_a_envoyer` ; puis déployer la fonction Supabase `notifier` (`supabase/functions/notifier/index.ts`) | 21/10/2026 |
 | `0017_visites_prevues` | Colonne `visits.prevue` : une visite planifiée ne compte qu'une fois faite ; reprise : visites passées faites, visites à venir sans compte rendu prévues | 21/10/2026 |
 | `0018_echanges_groupes` | Échanges en groupe : table `groupes` fermée, colonne `messages.groupe`, deux fils par magasin (« Avec le franchisé », « Équipe seule »), fonctions `creer_groupe`, `modifier_groupe`, `quitter_groupe`, `supprimer_groupe`, `envoyer_fil`, `marquer_lu_fil` ; `messagerie` et `notifications_a_envoyer` réécrites | 21/10/2026 |
+| `0019_taches_equipe` | Tâche née dans « Équipe seule » (`fil` = `equipe`) cachée au franchisé : `espace_franchise`, `marquer_action_franchise`, `piece_visible` réécrites ; correction reportée dans 0005, 0007 et 0009 | 22/10/2026 |
 
 ## Règles
 
