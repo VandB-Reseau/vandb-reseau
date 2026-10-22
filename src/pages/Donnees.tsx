@@ -13,7 +13,7 @@ import BackupOutlined from '@mui/icons-material/BackupOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { Fenetre } from '../components/EditionEquipe'
-import { FichiersSuivi } from '../components/ImportsSuivi'
+import { DialogImportChiffres, DialogImportSante, DialogImportVisites } from '../components/ImportsSuivi'
 import { useReseau } from '../data/ReseauContext'
 import { lireSauvegarde, noterSauvegarde } from '../data/chargement'
 import type { Reseau } from '../data/modele'
@@ -147,15 +147,23 @@ function Apercu({ ref_, a }: { ref_: Referentiel; a: Analyse }) {
   )
 }
 
+// Fichiers venus d'autres outils, reconnus sur la même carte que le référentiel (Joseph, 22/10/2026) :
+// classeur des visites, export Asana de la santé du parc, export mensuel des chiffres
+const autresFormats: Record<string, true> = { visites: true, ninebox: true, deploiements: true, chiffres: true }
+// Un export de l'app se reconnaît à ses colonnes clés, marquées « (clé) »
+const estExportApp = (feuilles: { lignes: unknown[][] }[]) => feuilles.some((f) => f.lignes.slice(0, 10).some((l) => l.some((x) => /\(clé\)\s*$/i.test(String(x ?? '')))))
+
 function DialogImport({ reseau, r, onFermer }: { reseau: Reseau; r: Referentiel; onFermer: (m?: string) => void }) {
   const [analyse, setAnalyse] = useState<Analyse | null>(null)
   const [nom, setNom] = useState('')
   const [erreur, setErreur] = useState('')
+  const [autre, setAutre] = useState<File | null>(null)
   const choisir = async (f: File | undefined) => {
     if (!f) return
     setNom(f.name); setErreur(''); setAnalyse(null)
     try {
       const feuilles = await lireClasseur(f)
+      if (autresFormats[r.id] && !estExportApp(feuilles)) { setAutre(f); return }
       const feuille = choisirFeuille(feuilles, r)
       const a = feuille ? analyserReferentiel(r, feuille, reseau, reseau.jour) : null
       if (!a || a.manquantes.length) setErreur(`Colonne${(a?.manquantes.length ?? 1) > 1 ? 's' : ''} introuvable${(a?.manquantes.length ?? 1) > 1 ? 's' : ''} : ${(a?.manquantes ?? r.colonnes.filter((c) => c.cle).map((c) => c.entete)).join(', ')}. Pars du fichier exporté depuis cette page.`)
@@ -163,6 +171,9 @@ function DialogImport({ reseau, r, onFermer }: { reseau: Reseau; r: Referentiel;
     } catch { setErreur('Ce fichier ne peut pas être lu. Enregistre-le au format Excel (.xlsx) ou CSV puis réessaie.') }
   }
   const n = analyse?.changements.length ?? 0
+  if (autre && r.id === 'visites') return <DialogImportVisites reseau={reseau} fichier={autre} onFermer={onFermer} />
+  if (autre && r.id === 'chiffres') return <DialogImportChiffres reseau={reseau} fichier={autre} onFermer={onFermer} />
+  if (autre) return <DialogImportSante reseau={reseau} date={reseau.jour} fichier={autre} onFermer={onFermer} />
   return (
     <Fenetre large titre={`Importer : ${r.libelle}`} ouvert onFermer={onFermer} valide={n > 0}
       enregistrer={async () => { await appliquerImport(r, reseau, analyse!.changements); return `${n} ligne${n > 1 ? 's' : ''} mise${n > 1 ? 's' : ''} à jour` }}>
@@ -192,7 +203,6 @@ export function Donnees() {
             <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' } }}>
               {liste.map((r) => <CarteReferentiel key={r.id} reseau={reseau} r={r} importer={() => setImporter(r.id)} signaler={setMessage} />)}
             </Box>
-            <FichiersSuivi reseau={reseau} signaler={setMessage} />
             {choisi && <DialogImport reseau={reseau} r={choisi} onFermer={(m) => { setImporter(null); if (m) setMessage(m) }} />}
             <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
           </>

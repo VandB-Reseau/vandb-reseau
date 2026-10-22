@@ -4,6 +4,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Chip from '@mui/material/Chip'
+import Badge from '@mui/material/Badge'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
@@ -15,6 +16,8 @@ import CheckCircle from '@mui/icons-material/CheckCircle'
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
+import LockOpenOutlined from '@mui/icons-material/LockOpenOutlined'
+import LockOutlined from '@mui/icons-material/LockOutlined'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import SendOutlined from '@mui/icons-material/SendOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
@@ -161,11 +164,13 @@ const bande = { display: 'flex', gap: 1, overflowX: 'auto', pb: 1, scrollbarWidt
 // Saisie d'un message : champ arrondi et envoi sur une ligne.
 // citables : magasins à citer avec « # » ; mentionnables : personnes à citer avec « @ » (proposées en puces au-dessus du champ).
 // joindre : photos et fichiers possibles (base à jour)
-function Saisie({ citables, mentionnables, envoyer, fond, collante, joindre, signaler, placeholder }: {
+// bascule : groupe d'un magasin, picto « Avec le franchisé » / « Équipe seule » juste avant l'envoi ; le texte en cours suit le changement de fil
+function Saisie({ citables, mentionnables, envoyer, fond, collante, joindre, signaler, placeholder, bascule }: {
   citables: Magasin[]; mentionnables: Participant[]
   envoyer: (texte: string, pieces: Piece[]) => Promise<boolean>; fond: string; collante: boolean; joindre: boolean; signaler: (m: string) => void; placeholder: string
+  bascule?: Bascule
 }) {
-  const [texte, setTexte] = useState('')
+  const [texte, setTexte] = useState(() => reprendreBrouillon(bascule?.magasin))
   const [pieces, setPieces] = useState<Piece[]>([])
   const [curseur, setCurseur] = useState(0)
   const [envoi, setEnvoi] = useState(false)
@@ -235,6 +240,7 @@ function Saisie({ citables, mentionnables, envoyer, fond, collante, joindre, sig
           onSelect={(e) => setCurseur((e.target as HTMLTextAreaElement).selectionStart ?? 0)} onKeyDown={touche}
           slotProps={{ htmlInput: { maxLength: 4000, 'aria-label': 'Message' } }}
           sx={{ '& .MuiOutlinedInput-root': { borderRadius: '24px', minHeight: 48, py: 1.25, px: 2, bgcolor: 'action.hover' }, '& fieldset': { borderColor: 'transparent' } }} />
+        {bascule && <PictoFil b={bascule} changer={() => { garderBrouillon(bascule.magasin, texte); bascule.changer(!bascule.equipe) }} />}
         <Bulle titre="Envoyer">
           <span>
             <IconButton onClick={() => void valider()} disabled={!pret} aria-label="Envoyer"
@@ -254,8 +260,9 @@ type Element = { genre: 'message'; x: Message; instant: string } | { genre: 'vis
 // cadre : le fil défile dans son cadre (PC) ; sinon la page défile et la saisie reste collée en bas.
 // aLaFin : la page s'ouvre sur les derniers messages (téléphone).
 // lectureSeule : aperçu de l'espace d'un franchisé par le Directeur de réseau.
-export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = false, cadre = false, aLaFin = false, fond = 'background.paper' }: {
+export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = false, cadre = false, aLaFin = false, fond = 'background.paper', basculer }: {
   reseau: Reseau; fil: Fil; contact?: Contact; signaler: (msg: string) => void; lectureSeule?: boolean; cadre?: boolean; aLaFin?: boolean; fond?: string
+  basculer?: (equipe: boolean) => void
 }) {
   const { profil } = useAuth()
   const { messagerie: brute, charge, envoyer, envoyerFil, supprimer, lireFil } = useMessagerie()
@@ -391,7 +398,8 @@ export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = fal
   const placeholder = fil.genre === 'personne' ? `Message à ${contact?.nom ?? ''}` : fil.genre === 'magasin' && fil.equipe ? 'Message à l’équipe' : 'Message au groupe'
   const saisie = ecrirePossible && (
     <Saisie citables={citables} mentionnables={mentionnables} envoyer={ecrire} fond={fond} collante={!cadre}
-      joindre={fil.genre === 'personne' ? messagerie.version >= 3 : messagerie.version >= 4} signaler={signaler} placeholder={placeholder} />
+      joindre={fil.genre === 'personne' ? messagerie.version >= 3 : messagerie.version >= 4} signaler={signaler} placeholder={placeholder}
+      bascule={basculer && fil.genre === 'magasin' ? { magasin: fil.magasin, equipe: fil.equipe, changer: basculer } : undefined} />
   )
   if (cadre) {
     return (
@@ -407,20 +415,30 @@ export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = fal
   return <Box>{filtres}{corps}{saisie}</Box>
 }
 
-// Choix du fil d'un magasin : « Avec le franchisé » ou « Équipe seule » (l'équipe seulement)
-export function ChoixFilMagasin({ magasin, equipe, changer, nonLus }: { magasin: string; equipe: boolean; changer: (equipe: boolean) => void; nonLus: { avec: number; equipe: number } }) {
-  const options: { v: boolean; libelle: string; n: number }[] = [{ v: false, libelle: 'Avec le franchisé', n: nonLus.avec }, { v: true, libelle: 'Équipe seule', n: nonLus.equipe }]
+// Fil d'un magasin, choisi par un picto à côté de l'envoi (Joseph, 22/10/2026) : cadenas ouvert = avec le franchisé, fermé = équipe seule.
+// La pastille compte les non lus de l'autre fil.
+export interface Bascule { magasin: string; equipe: boolean; changer: (equipe: boolean) => void }
+let brouillon: { magasin: string; texte: string } | null = null
+const garderBrouillon = (magasin: string, texte: string) => { brouillon = texte.trim() ? { magasin, texte } : null }
+function reprendreBrouillon(magasin?: string) {
+  const b = brouillon
+  brouillon = null
+  return b && b.magasin === magasin ? b.texte : ''
+}
+
+function PictoFil({ b, changer }: { b: Bascule; changer: () => void }) {
+  const nonLus = useNonLusFils(b.magasin)
+  const autre = b.equipe ? nonLus.avec : nonLus.equipe
+  const titre = b.equipe ? 'Équipe seule' : 'Avec le franchisé'
   return (
-    <Box role="radiogroup" aria-label={`Fil de ${magasin}`} sx={{ display: 'flex', p: 0.25, borderRadius: 999, bgcolor: 'action.hover', width: { xs: '100%', sm: 'auto' } }}>
-      {options.map((o) => (
-        <ButtonBase key={o.libelle} role="radio" aria-checked={equipe === o.v} onClick={() => changer(o.v)}
-          sx={{ fontFamily: 'inherit', flex: 1, minHeight: 48, px: 2, borderRadius: 999, gap: 1, fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap',
-            color: equipe === o.v ? 'text.primary' : 'text.secondary', ...(equipe === o.v ? { bgcolor: 'background.paper', boxShadow: 1 } : {}) }}>
-          {o.libelle}
-          {o.n > 0 && <Box component="span" aria-label={`${o.n} non lu${o.n > 1 ? 's' : ''}`} sx={{ minWidth: 20, height: 20, px: 0.5, borderRadius: 999, bgcolor: 'error.main', color: 'error.contrastText', fontSize: '0.75rem', display: 'grid', placeItems: 'center' }}>{o.n}</Box>}
-        </ButtonBase>
-      ))}
-    </Box>
+    <Bulle titre={titre}>
+      <IconButton onClick={changer} aria-label="Équipe seule" aria-pressed={b.equipe}
+        sx={{ width: 48, height: 48, flexShrink: 0, ...(b.equipe ? { bgcolor: 'warning.light', color: 'warning.contrastText', '&:hover': { bgcolor: 'warning.main' } } : {}) }}>
+        <Badge badgeContent={autre} color="error" aria-label={autre ? `${autre} non lu${autre > 1 ? 's' : ''} ${b.equipe ? 'avec le franchisé' : 'en équipe seule'}` : undefined}>
+          {b.equipe ? <LockOutlined /> : <LockOpenOutlined />}
+        </Badge>
+      </IconButton>
+    </Bulle>
   )
 }
 
@@ -438,21 +456,20 @@ export function useNonLusMagasin(magasin: string): number {
   return n.avec + n.equipe
 }
 
-// Groupe d'un magasin dans sa fiche : le choix du fil (équipe) puis le fil
+// Groupe d'un magasin dans sa fiche : le fil, et pour l'équipe le picto du fil à côté de l'envoi
 export function SectionMessages({ reseau, m, signaler, lectureSeule = false, entete }: { reseau: Reseau; m: Magasin; signaler: (msg: string) => void; lectureSeule?: boolean; entete?: ReactNode }) {
   const { profil } = useAuth()
   const equipePossible = profil?.role !== 'franchise' && !lectureSeule
   const [equipe, setEquipe] = useState(false)
-  const nonLus = useNonLusFils(m.nom)
   const fil: Fil = useMemo(() => ({ genre: 'magasin', magasin: m.nom, equipe: equipePossible && equipe }), [m.nom, equipePossible, equipe])
   return (
     <Box sx={{ bgcolor: 'background.paper', borderRadius: 3, border: '1px solid', borderColor: 'divider', p: { xs: 2, md: 3 }, pb: { xs: 1, md: 2 } }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 1 }}>
         <Typography variant="h3" component="h2" sx={{ flex: 1 }}>Échanges</Typography>
         {entete}
-        {equipePossible && <ChoixFilMagasin magasin={m.nom} equipe={equipe} changer={setEquipe} nonLus={nonLus} />}
       </Box>
-      <FilMessages key={`${m.nom}|${fil.genre === 'magasin' && fil.equipe}`} reseau={reseau} fil={fil} signaler={signaler} lectureSeule={lectureSeule} />
+      <FilMessages key={`${m.nom}|${fil.genre === 'magasin' && fil.equipe}`} reseau={reseau} fil={fil} signaler={signaler} lectureSeule={lectureSeule}
+        basculer={equipePossible ? setEquipe : undefined} />
     </Box>
   )
 }

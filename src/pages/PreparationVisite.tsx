@@ -169,7 +169,7 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
               <Champ libelle={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'}>{m.rr?.nom}</Champ>
               <Champ libelle="Nine box">{c ? `${c.libelle} · ${c.rythme}` : 'Non classé'}</Champ>
               <Champ libelle="Dernière visite">{rythme?.derniere ? `${dateCourte(rythme.derniere.date)} · ${libelleTypeVisite(rythme.derniere.type)}${rythme.derniere.visiteurs.length ? ` · ${nomsVisiteurs(rythme.derniere)}` : ''}` : 'Jamais visité'}</Champ>
-              <Champ libelle="Prochaine visite">{prevue ? `Prévue le ${dateCourte(prevue.date)}${preparation?.heure ? ` à ${preparation.heure.replace(':', 'h')}` : ''}` : 'Non planifiée'}</Champ>
+              <Champ libelle="Prochaine visite">{prevue ? `Prévue le ${dateCourte(prevue.date)}` : 'Non planifiée'}</Champ>
               <Champ libelle="Visites de l’année">{rythme ? `${rythme.faites} · référence nine box ${rythme.reference}${rythme.alerte ? ` · ${libellePasVu(rythme).toLowerCase()}` : ''}` : null}</Champ>
               <Champ libelle="Adresse">{[m.adresse, m.pays].filter(Boolean).join(', ')}</Champ>
               <Champ libelle="Téléphone du magasin">{m.telephone}</Champ>

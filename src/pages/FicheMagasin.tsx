@@ -35,7 +35,7 @@ import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { PastilleCase, PastilleTendance } from '../components/Sante'
 import { journalDansLeFil, useEditionJournal } from '../components/Journal'
-import { ANCIENNE_NOTE_FRANCHISE, caseDe, couleurTon, criteresAxe, historiqueSante, libelleAncienneNote, libelleAxe, libelleNote, niveauAxe, nineBox, scoreAxe, tendance, tonDe, type Axe } from '../data/sante'
+import { ANCIENNE_NOTE_FRANCHISE, caseDe, couleurTon, criteresAxe, historiqueSante, libelleAncienneNote, libelleAxe, libelleNote, niveauAxe, nineBox, scoreAxe, tendance, tonDe, type Axe, type Ton as TonDeploiement } from '../data/sante'
 import { AvecReseau } from '../components/EtatDonnees'
 import { ReaffecterDialog } from '../components/ReaffecterDialog'
 import Snackbar from '@mui/material/Snackbar'
@@ -351,14 +351,44 @@ function EvolutionCases({ points }: { points: { date: string; caseId: string }[]
   )
 }
 
+// Une vingtaine de thématiques possibles : l'avancement en tête, puis les thématiques rangées par état (Joseph, 22/10/2026)
+const etatsDeploiement: { ton: TonDeploiement | null; titre: string }[] = [
+  { ton: 'negatif', titre: 'Pas déployé' }, { ton: 'partiel', titre: 'En partie' }, { ton: 'positif', titre: 'Déployé' }, { ton: null, titre: 'Non renseigné' },
+]
+
 function SectionDeploiements({ reseau, m, modifier }: { reseau: Reseau; m: Magasin; modifier: () => void }) {
+  const ths = reseau.deploiements.thematiques
+  const valeurs = reseau.deploiements.valeurs[m.nom] ?? {}
+  const groupes = etatsDeploiement.map((g) => ({ ...g, ths: ths.filter((t) => tonDe(t, valeurs[t.id]) === g.ton) })).filter((g) => g.ths.length)
+  const n = (ton: TonDeploiement) => groupes.find((g) => g.ton === ton)?.ths.length ?? 0
+  const part = (ton: TonDeploiement) => (ths.length ? (n(ton) / ths.length) * 100 : 0)
   return (
     <Section titre="Déploiements" action={<Button startIcon={<EditOutlined />} onClick={modifier} aria-label="Modifier les déploiements" sx={{ minHeight: 48 }}>Modifier</Button>}>
-      {reseau.deploiements.thematiques.map((t) => {
-        const v = reseau.deploiements.valeurs[m.nom]?.[t.id]
-        const ton = tonDe(t, v)
-        return <Ligne key={t.id} libelle={t.libelle}>{v ? <Chip size="small" label={v} color={ton ? couleurTon[ton] : 'default'} sx={{ fontSize: 12 }} /> : null}</Ligne>
-      })}
+      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+        <Typography sx={{ fontSize: '1.5rem', fontWeight: 800, lineHeight: 1.1 }}>{n('positif')}</Typography>
+        <Typography variant="body2" color="text.secondary">sur {ths.length} thématique{ths.length > 1 ? 's' : ''} déployée{n('positif') > 1 ? 's' : ''}</Typography>
+      </Box>
+      <Box role="img" aria-label={`${n('positif')} déployées, ${n('partiel')} en partie, ${n('negatif')} pas déployées sur ${ths.length}`}
+        sx={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', bgcolor: 'action.hover', mt: 1, mb: 1 }}>
+        <Box sx={{ width: `${part('positif')}%`, bgcolor: 'success.main' }} />
+        <Box sx={{ width: `${part('partiel')}%`, bgcolor: 'warning.main' }} />
+        <Box sx={{ width: `${part('negatif')}%`, bgcolor: 'error.light' }} />
+      </Box>
+      {groupes.map((g) => (
+        <Box key={g.titre} component="section" aria-label={g.titre} sx={{ mt: 1.5 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary', mb: 0.75 }}>{g.titre} · {g.ths.length}</Typography>
+          <Box role="list" sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+            {g.ths.map((t) => {
+              const v = valeurs[t.id]
+              // La valeur n'est précisée que si l'état seul ne la dit pas (« En cours », « Partiellement »…)
+              const precise = v && g.ton && t.options.filter((o) => o.ton === g.ton).length > 1
+              return <Chip key={t.id} role="listitem" size="small" variant="outlined" color={g.ton ? couleurTon[g.ton] : 'default'}
+                label={precise ? `${t.libelle} · ${v}` : t.libelle} aria-label={`${t.libelle} : ${v || 'non renseigné'}`}
+                sx={{ fontSize: 13, height: 28, maxWidth: '100%', ...(g.ton ? {} : { color: 'text.secondary' }) }} />
+            })}
+          </Box>
+        </Box>
+      ))}
     </Section>
   )
 }

@@ -110,10 +110,11 @@ test('import d’un fichier CSV façon Asana', async ({ page, isMobile }, info) 
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/parametres/donnees')
-  await page.getByRole('button', { name: 'Importer le fichier : Export Asana de la santé du parc' }).click()
+  // L'export Asana passe par la carte « Déploiements » (ou « Nine box ») : il est reconnu à ses colonnes
+  await page.getByRole('button', { name: 'Importer Déploiements', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Importer depuis Excel' })
   const csv = 'Nom;Épicerie fine;Mixologie;5+1;Flux bar;Commentaire\nNice Test;Oui - avancé;Partiellement;Non;Fort;ok\nMagasin inconnu;Oui;;;;\nMetz Test;Non;Oui;Oui;2;\n'
-  await d.getByLabel('Fichier à importer').setInputFiles({ name: 'asana.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
+  await page.getByRole('dialog', { name: 'Importer : Déploiements' }).getByLabel('Fichier Déploiements à importer').setInputFiles({ name: 'asana.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
   await expect(d).toContainText('8 valeurs prêtes à importer pour 2 magasins')
   await expect(d).toContainText('Colonnes ignorées : Commentaire')
   await expect(d).toContainText('Magasins non trouvés (1) : Magasin inconnu')

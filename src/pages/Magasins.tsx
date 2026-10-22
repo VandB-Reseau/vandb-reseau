@@ -16,16 +16,14 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { BarreFiltres } from '../components/BarreFiltres'
 import { BoutonAction } from '../components/Outils'
 import { Onglets } from '../components/Onglets'
-import { ListeMagasins, trisColonnes, trisMagasins, type TriMagasins } from '../components/ListeMagasins'
-import { Puces } from '../components/Social'
+import { ListeMagasins, trisColonnes, type TriMagasins } from '../components/ListeMagasins'
 import { useReseau } from '../data/ReseauContext'
 import { magasinsSuivis, useSuivis } from '../lib/suivis'
 import { filtrer, filtresDepuisUrl, filtresVersUrl, libellesAlerte, type Alerte, type Filtres } from '../data/filtres'
 import { VuesMagasins } from '../components/VuesMagasins'
 import { analyser } from '../data/chiffres'
 import { anneeDe, suiviRythme } from '../data/visites'
-import { statutLibelle, type Magasin, type Reseau } from '../data/modele'
-import { BoutonExporter } from '../components/Exporter'
+import { statutLibelle, type Reseau } from '../data/modele'
 import { leviersDuMagasin, libellesLevier, useReperesReseau, type Levier } from '../data/leviers'
 
 // Alertes de chaque magasin : chiffres (décroche, à surveiller) et visite attendue
@@ -45,8 +43,6 @@ const CarteMagasins = chargementDiffere(() => import('../components/CarteMagasin
 export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'carte' }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
-  // PC large : les titres des colonnes trient la liste, les puces de tri disparaissent
-  const large = useMediaQuery('(min-width:1100px)', { noSsr: true })
   const [params, setParams] = useSearchParams()
   const filtres = filtresDepuisUrl(params)
   const vue = (params.get('vue') as 'liste' | 'carte' | null) ?? vueInitiale
@@ -111,21 +107,6 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
               </Suspense>
             ) : (
               <>
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    {!large && <Puces label="Trier par" valeur={tri} options={trisMagasins} onChange={trier} />}
-                  </Box>
-                  <BoutonExporter lignes={resultats} fichier="Magasins" feuille="Magasins" colonnes={[
-                    { entete: 'Magasin', valeur: (m: Magasin) => m.nom, largeur: 22 }, { entete: 'Code', valeur: (m: Magasin) => m.code },
-                    { entete: 'Ville', valeur: (m: Magasin) => m.ville }, { entete: 'Département', valeur: (m: Magasin) => m.departement },
-                    { entete: 'Statut', valeur: (m: Magasin) => statutLibelle[m.statut] }, { entete: 'Type', valeur: (m: Magasin) => (m.franchise ? 'Franchisé' : 'Intégré') },
-                    { entete: 'Coach', valeur: (m: Magasin) => m.coach, largeur: 20 }, { entete: 'Responsable Régional', valeur: (m: Magasin) => m.rr?.nom, largeur: 22 },
-                    { entete: 'Franchisé', valeur: (m: Magasin) => (m.franchise ? m.responsable?.nom : ''), largeur: 22 },
-                    { entete: 'Ouverture', valeur: (m: Magasin) => (m.ouvertureConnue ? m.ouverture : '') },
-                    { entete: 'Alertes', valeur: (m: Magasin) => parAlerte(m.nom).map((a) => libellesAlerte[a]).join(', '), largeur: 30 },
-                    ...(parLevier ? [{ entete: 'Levier', valeur: (m: Magasin) => { const l = parLevier(m.nom); return l ? libellesLevier[l] : '' }, largeur: 14 }] : []),
-                  ]} />
-                </Box>
                 <ListeMagasins magasins={resultats} tri={tri} suivis={enTete} trier={trier} />
               </>
             )}

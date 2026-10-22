@@ -40,6 +40,7 @@ test('téléphone : une seule info à droite, pas de colonnes', async ({ page, i
   await seConnecter(page)
   await page.goto('./#/magasins?vue=liste')
   await expect(page.getByRole('group', { name: 'Trier par colonne' })).toHaveCount(0)
-  await expect(page.getByRole('group', { name: 'Trier par', exact: true })).toBeVisible()
+  // Plus de puces de tri au téléphone : la page Visites suffit (Joseph, 22/10/2026)
+  await expect(page.getByRole('group', { name: 'Trier par', exact: true })).toHaveCount(0)
   await expect(page.getByRole('link').filter({ hasText: 'Lyon Test' }).first()).not.toContainText('Redressement urgent')
 })

@@ -59,7 +59,6 @@ import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
 import { analyser as analyserCA, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, libelleMoisCourt, courbeCA, formatKEuros, type StatutAlerte } from '../data/chiffres'
 import type { Magasin, Reseau } from '../data/modele'
-import { BoutonExporter } from '../components/Exporter'
 
 // Filtres communs : recherche, Responsable Régional, Coach
 function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
@@ -86,8 +85,9 @@ function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
           sx={{ '& .MuiOutlinedInput-root': { borderRadius: 999, minHeight: 48 } }} />} />
   )
   const compter = (p: (m: Reseau['magasins'][number]) => boolean) => `${actifsMag.filter(p).length} magasins`
-  const barre = (
-    <RechercheFiltres recherche={champ} actifs={rrs.length + coachsChoisis.length}>
+  // enPlus : filtres propres à l'onglet, posés juste après le Coach ; actions : à droite de la barre
+  const barreDe = (enPlus?: ReactNode, actifsEnPlus = 0, actions?: ReactNode) => (
+    <RechercheFiltres recherche={champ} actifs={rrs.length + coachsChoisis.length + actifsEnPlus} actions={actions}>
       <FiltreMenu libelle="Responsable Régional" choisis={rrs} onChange={setRRs}
         options={[...reseau.rrs.map((r) => ({ valeur: r.id, libelle: r.nom, detail: compter((m) => m.rr?.id === r.id) })), { valeur: '__aucun__', libelle: 'Sans RR', detail: compter((m) => !m.rr) }]} />
       <FiltreMenu libelle="Coach" choisis={coachsChoisis} onChange={setCoachs}
@@ -96,7 +96,7 @@ function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
       {(rrs.length > 0 || coachsChoisis.length > 0 || recherche) && <Button onClick={() => { setRRs([]); setCoachs([]); setRecherche('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
     </RechercheFiltres>
   )
-  return { magasins, barre }
+  return { magasins, barre: barreDe(enPlus), barreDe }
 }
 
 const niveaux = ['faible', 'moyen', 'fort']
@@ -371,10 +371,13 @@ const LigneDeploiements = memo(function LigneDeploiements({ m, valeurs, ths, coc
 })
 
 // ── Lignes : un point coloré par critère ou par thématique, la saisie s'ouvre en panneau ──
+// Au-delà de 10 points (jusqu'à une vingtaine de thématiques), des points plus petits sur deux rangées de 10
 function Points({ couleurs, label }: { couleurs: (string | null)[]; label: string }) {
+  const serre = couleurs.length > 10
+  const taille = serre ? 9 : 12
   return (
-    <Box role="img" aria-label={label} sx={{ display: { xs: 'none', sm: 'flex' }, gap: 0.5, flexShrink: 0 }}>
-      {couleurs.map((c, i) => <Box key={i} sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: c ?? 'transparent', border: c ? 0 : '1.5px solid', borderColor: 'divider' }} />)}
+    <Box role="img" aria-label={label} sx={{ display: { xs: 'none', sm: 'grid' }, gridTemplateColumns: `repeat(${Math.min(couleurs.length, 10)}, ${taille}px)`, gap: serre ? '4px' : 0.5, flexShrink: 0 }}>
+      {couleurs.map((c, i) => <Box key={i} sx={{ width: taille, height: taille, borderRadius: '50%', bgcolor: c ?? 'transparent', border: c ? 0 : '1.5px solid', borderColor: 'divider' }} />)}
     </Box>
   )
 }
@@ -497,8 +500,6 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
         { v: 'completer', libelle: `À compléter · ${aCompleter.length}` },
       ]} />
       <TitreSection nombre={liste.length} action={<>
-        <BoutonExporter lignes={liste} fichier={partie === 'notes' ? 'Sante du parc' : 'Deploiements'} feuille={partie === 'notes' ? 'Santé du parc' : 'Déploiements'}
-          colonnes={toutes.map((c) => ({ entete: c.libelle, valeur: (m: Magasin) => { const v = c.valeur(m); return v === SANS_VALEUR ? '' : c.options.find((o) => o.valeur === v)?.libelle ?? v }, largeur: c.id === 'magasin' ? 22 : undefined }))} />
         {surPC && tableauVisible && (tri || filtresActifs) && <Button onClick={() => { setTri(null); setFiltres({}) }} sx={{ minHeight: 40 }}>Effacer tri et filtres</Button>}
         {surPC && <ChoixAffichage valeur={affichage} onChange={setAffichage} />}
       </>}>Magasins</TitreSection>
@@ -592,10 +593,7 @@ function VueDeploiements({ reseau, saisie, surPC, date }: { reseau: Reseau; sais
   return (
     <>
       {barre}
-      <TitreSection>Avancement</TitreSection>
-      <CarteLignes label="Avancement des déploiements">
-        {ths.map((t) => <Avancement key={t.id} reseau={reseau} t={t} />)}
-      </CarteLignes>
+      <AvancementThematiques reseau={reseau} ths={ths} surPC={surPC} />
       <Box sx={{ mt: 2 }} />
       <ListeSaisie reseau={reseau} magasins={magasins} incomplet={incomplet} partie="deploiements" saisie={saisie} surPC={surPC} cibles={cibles} colonnes={colonnes}
         ligne={(m) => {
@@ -644,6 +642,28 @@ function Avancement({ reseau, t }: { reseau: Reseau; t: Thematique }) {
       </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{a.positif} sur {a.total} · {a.partiel} en partie · {a.inconnu} non renseigné{a.inconnu > 1 ? 's' : ''}</Typography>
     </Box>
+  )
+}
+
+// Avancement de chaque thématique : en grille sur PC ; sur téléphone, les 5 premières puis le reste à la demande
+const AVANCEMENT_TELEPHONE = 5
+function AvancementThematiques({ reseau, ths, surPC }: { reseau: Reseau; ths: Thematique[]; surPC: boolean }) {
+  const [tout, setTout] = useState(false)
+  const visibles = surPC || tout ? ths : ths.slice(0, AVANCEMENT_TELEPHONE)
+  return (
+    <>
+      <TitreSection nombre={ths.length}>Avancement</TitreSection>
+      <Card component="section" aria-label="Avancement des déploiements" sx={{ overflow: 'hidden', border: 0 }}>
+        <Box sx={{ mt: '-1px', '& > *': { borderTop: '1px solid', borderColor: 'divider' }, display: 'grid', columnGap: 2, gridTemplateColumns: { xs: '1fr', md: ths.length > 4 ? 'repeat(2, 1fr)' : '1fr', xl: ths.length > 8 ? 'repeat(3, 1fr)' : ths.length > 4 ? 'repeat(2, 1fr)' : '1fr' } }}>
+          {visibles.map((t) => <Avancement key={t.id} reseau={reseau} t={t} />)}
+        </Box>
+        {visibles.length < ths.length && (
+          <Button fullWidth onClick={() => setTout(true)} endIcon={<ExpandMoreOutlined />} sx={{ minHeight: 48, borderTop: '1px solid', borderColor: 'divider', borderRadius: 0 }}>
+            Voir les {ths.length} thématiques
+          </Button>
+        )}
+      </Card>
+    </>
   )
 }
 
@@ -697,7 +717,7 @@ const ordreAlerte: (StatutAlerte | null)[] = ['decroche', 'surveiller', 'ok', nu
 
 function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
   const theme = useTheme()
-  const { magasins, barre } = useFiltres(reseau)
+  const { magasins, barreDe } = useFiltres(reseau)
   const [statuts, setStatuts] = useState<string[]>([])
   const [affichage, setAffichage] = useAffichage('chiffres')
   const lignes = useMemo(() => magasins.map((m) => ({ m, a: analyserCA(reseau, m.nom), coach: coachA(m, reseau.jour), hygiene: dernierAudit(reseau, m.nom, 'hygiene'), excellence: dernierAudit(reseau, m.nom, 'excellence') }))
@@ -718,11 +738,8 @@ function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
   const enTetes = ['Magasin', 'Coach', 'Mois', 'CA cumulé', `Écart vs ${reference}`, 'Flux cumulé', 'Panier moyen', 'Marge', 'CA marché extérieur', 'Alerte', 'Audits']
   return (
     <>
-      {barre}
-      <Box sx={{ mb: 2, mt: -1, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <FiltreMenu libelle="Alerte" choisis={statuts} onChange={setStatuts} options={tuiles.map((t) => ({ valeur: t.id, libelle: t.titre, detail: `${t.n} magasins` }))} />
-        {surPC && <Box sx={{ ml: 'auto' }}><ChoixAffichage valeur={affichage} onChange={setAffichage} /></Box>}
-      </Box>
+      {barreDe(<FiltreMenu libelle="Alerte" choisis={statuts} onChange={setStatuts} options={tuiles.map((t) => ({ valeur: t.id, libelle: t.titre, detail: `${t.n} magasins` }))} />,
+        statuts.length, surPC ? <ChoixAffichage valeur={affichage} onChange={setAffichage} /> : undefined)}
       <Box sx={{ display: 'grid', gap: { xs: 1, sm: 2 }, gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, mb: 2 }}>
         {tuiles.map((t) => (
           <Card key={t.id} sx={{ borderTop: `4px solid ${t.couleur}` }}>

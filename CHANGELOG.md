@@ -9,6 +9,16 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Retouches de Joseph (22/10/2026) : plus de puces « Trier par » sur la liste des magasins (téléphone et PC étroit) ;
+  Santé du parc > Chiffres, le filtre Alerte rejoint la barre, juste après Coach ; jusqu'à 20 thématiques de
+  déploiement lisibles (fiche magasin : avancement puis thématiques rangées par état ; onglet Déploiements :
+  avancement en grille sur PC, 5 premières puis le reste sur téléphone, points sur deux rangées) ; Paramètres >
+  Import et export, un seul « Importer » par référentiel : le classeur des visites, l'export Asana et l'export mensuel
+  des chiffres sont reconnus sur les cartes Visites, Nine box, Déploiements et Chiffres mensuels (section
+  « Fichiers de suivi » retirée) ; planifier une visite sans heure, événement Google Agenda à la journée ;
+  Échanges, « Avec le franchisé » / « Équipe seule » devient un picto cadenas à côté de l'envoi, le texte commencé
+  suit ; bouton « Exporter » retiré de Magasins, Visites et Santé du parc (choix de Joseph), les exports complets
+  restent dans Paramètres > Import et export (test `retouches-sante-echanges.spec.ts`). Pas de migration.
 - Échanges sur PC : « Mes tâches » s'ouvre aussi quand une conversation est affichée.
 - Favoris, fiches récentes, vues enregistrées de Magasins et lecture du canal « Réseau V and B » suivent le compte :
   rangés dans la base en plus de l'appareil, ils se retrouvent sur le PC comme sur le téléphone ; au premier

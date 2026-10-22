@@ -68,12 +68,11 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
       l.dernierContact ? `appel le ${jourCourt(l.dernierContact.date)}` : null,
       preparationDe(reseau, l.magasin.nom)?.notes ? 'préparée' : null,
     ].filter(Boolean).join(' · ')
-    const heure = preparationDe(reseau, l.magasin.nom)?.heure
     return (
       <LigneCompacte key={l.magasin.nom} lien={lienFiche(l.magasin.nom)} label={l.magasin.nom}
         avatar={<Initiales nom={l.magasin.nom} icone={i !== null ? <Typography component="span" sx={{ fontWeight: 700 }}>{i + 1}</Typography> : <EventAvailableOutlined />} />}
         titre={l.magasin.nom} detail={detail}
-        fin={prevue ? <Pastille ton="bleu">{`${jourCourt(prevue.date)}${heure ? ` · ${heure.replace(':', 'h')}` : ''}`}</Pastille> : l.alerte ? <Pastille ton="orange">{libellePasVu(l)}</Pastille> : undefined}
+        fin={prevue ? <Pastille ton="bleu">{jourCourt(prevue.date)}</Pastille> : l.alerte ? <Pastille ton="orange">{libellePasVu(l)}</Pastille> : undefined}
         actions={<>
           {surPC && <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(l.magasin.nom)} aria-label={`Préparer la visite de ${l.magasin.nom}`}><AssignmentOutlined /></IconButton></Tooltip>}
           {prevue && prevue.date <= reseau.jour && <Tooltip title="Faire le compte rendu"><IconButton onClick={() => setCompteRendu(prevue)} aria-label={`Faire le compte rendu de ${l.magasin.nom}`} sx={{ width: 48, height: 48 }}><RateReviewOutlined /></IconButton></Tooltip>}

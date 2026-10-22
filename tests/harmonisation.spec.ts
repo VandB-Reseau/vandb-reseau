@@ -57,9 +57,9 @@ test('thématiques, imports et remise à zéro des notes sont dans les Paramètr
   await page.goto('./#/parametres/reglages?rubrique=ninebox')
   await expect(page.getByRole('region', { name: 'Notes de la nine box' }).getByRole('button', { name: 'Effacer toutes les notes' })).toBeVisible()
   await page.goto('./#/parametres/donnees')
-  for (const f of ['Classeur des visites', 'Export Asana de la santé du parc', 'Export mensuel des chiffres']) {
-    await expect(page.getByRole('button', { name: `Importer le fichier : ${f}` })).toBeVisible()
-  }
+  // Un seul import par référentiel : les fichiers venus d'autres outils passent par la même carte (Joseph, 22/10/2026)
+  await expect(page.getByRole('heading', { name: 'Fichiers de suivi' })).toHaveCount(0)
+  for (const f of ['Visites', 'Nine box', 'Déploiements', 'Chiffres mensuels']) await expect(page.getByRole('button', { name: `Importer ${f}`, exact: true })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-parametres-imports.png`, fullPage: !isMobile })
 })
