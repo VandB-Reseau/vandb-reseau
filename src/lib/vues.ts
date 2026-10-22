@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { brancher, preferenceChangee } from './preferences'
 
 // Vues enregistrées de Magasins (L5, 21/10/2026) : filtres et tri sous un nom, gardés sur l'appareil
 const CLE = 'vandb-vues-magasins'
@@ -20,11 +21,14 @@ function lire(): VueEnregistree[] {
   return actuel
 }
 
-function ecrire(v: VueEnregistree[]) {
+function ecrireIci(v: VueEnregistree[]) {
   actuel = v
   try { localStorage.setItem(CLE, JSON.stringify(v)) } catch { /* stockage indisponible : gardé pour la session */ }
   abonnes.forEach((f) => f())
 }
+function ecrire(v: VueEnregistree[]) { ecrireIci(v); preferenceChangee() }
+// Recopiées dans la base pour suivre le compte (preferences.ts)
+brancher('vues', { lire, appliquer: (v) => ecrireIci(Array.isArray(v) ? v.filter((x): x is VueEnregistree => typeof x?.nom === 'string' && typeof x?.adresse === 'string') : []), vide: () => !lire().length })
 
 function abonner(f: () => void) {
   abonnes.add(f)

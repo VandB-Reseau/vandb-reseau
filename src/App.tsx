@@ -24,6 +24,7 @@ import { MessagerieProvider } from './data/MessagerieContext'
 import { RetourEnHaut } from './navigation/RetourEnHaut'
 import { ErreurEcran } from './components/ErreurEcran'
 import { useCallback, useMemo, type ReactNode } from 'react'
+import { chargerPreferences } from './lib/preferences'
 import { cleVue, lireVue, perimetreDuProfil } from './data/perimetre'
 import Button from '@mui/material/Button'
 import LockOutlined from '@mui/icons-material/LockOutlined'
@@ -202,6 +203,9 @@ function EspaceDe({ bandeau }: { bandeau?: ReactNode }) {
   const impose = perimetreDuProfil(profil)
   const cle = impose ? cleVue(impose) : null
   const perimetre = useMemo(() => (cle ? lireVue(cle) : null), [cle])
+  // Favoris, vues et canal Réseau du compte de l'équipe connecté, repris de la base (migration 0021)
+  const equipe = !!profil && profil.role !== 'franchise' && profil.role !== 'aucun'
+  useEffect(() => { if (equipe) chargerPreferences().catch(() => { /* table absente : l'appareil suffit */ }) }, [equipe])
   if (!profil || profil.role === 'aucun') return <AccesFerme />
   if (franchise || vueApercu) return <MessagerieProvider><ReseauProvider key={apercu?.franchise ?? 'franchise'} charger={charger} lectureSeule cache={vueApercu ? undefined : `${profil.id}:franchise`}><RoutesFranchise apercu={vueApercu} /></ReseauProvider></MessagerieProvider>
   return <MessagerieProvider><ReseauProvider key={cle ?? 'reseau'} accesFranchises={directeur} lectureSeule={!directeur} perimetre={perimetre} cache={`${profil.id}:reseau`}><Routes_ equipeSeule={!!perimetre} bandeau={bandeau} /></ReseauProvider></MessagerieProvider>

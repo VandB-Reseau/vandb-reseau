@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { brancher, preferenceChangee } from './preferences'
 
 // Magasins favoris et dernières fiches ouvertes, gardés sur l'appareil (L4, Joseph, 21/10/2026)
 const CLE = 'vandb-magasins-suivis'
@@ -19,11 +20,16 @@ function lire(): Suivis {
   return actuel
 }
 
-function ecrire(s: Suivis) {
+function ecrireIci(s: Suivis) {
   actuel = s
   try { localStorage.setItem(CLE, JSON.stringify(s)) } catch { /* stockage indisponible : gardé pour la session */ }
   abonnes.forEach((f) => f())
 }
+function ecrire(s: Suivis) { ecrireIci(s); preferenceChangee() }
+// Recopiés dans la base pour suivre le compte (preferences.ts)
+const liste = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+brancher('suivis', { lire, appliquer: (v) => { const x = (v ?? {}) as Partial<Suivis>; ecrireIci({ favoris: liste(x.favoris), recents: liste(x.recents).slice(0, NB_RECENTS) }) },
+  vide: () => !lire().favoris.length && !lire().recents.length })
 
 function abonner(f: () => void) {
   abonnes.add(f)
