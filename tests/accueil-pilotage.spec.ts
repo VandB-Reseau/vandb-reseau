@@ -50,6 +50,7 @@ test('téléphone : repères en 2 × 2, un bloc court à onglets, puis les actua
   await seConnecter(page)
   const pilotage = page.getByRole('region', { name: 'Pilotage' })
   // Quatre cartes égales en 2 × 2, toutes dans l'écran, sans défilement de côté
+  await expect(pilotage.getByRole('link')).toHaveCount(4)
   const b = await Promise.all((await pilotage.getByRole('link').all()).map(async (l) => (await l.boundingBox())!))
   expect(b).toHaveLength(4)
   expect(Math.abs(b[0].y - b[1].y)).toBeLessThan(2)
