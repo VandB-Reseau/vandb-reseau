@@ -10,6 +10,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 ## À venir
 
 - Échanges sur PC : « Mes tâches » s'ouvre aussi quand une conversation est affichée.
+- Fiche magasin, un seul fil : le Journal entre dans le Fil (notes, changements de santé, déploiements, Coachs,
+  ouverture, mêlés aux visites, tâches et chiffres, du plus récent au plus ancien) ; puce « Journal » pour les voir
+  seuls ; « + Note » en tête du fil ; une note ou un classement se modifie d'un toucher. Plus de doublon de la même
+  visite. En-tête : les compteurs sans valeur (CA du mois, écart) disparaissent au lieu d'un tiret ; fil pleine
+  largeur sur PC (`journalDansLeFil` dans `src/components/Journal.tsx`). Pas de migration.
 - Leviers du CA : dans la fiche magasin (Chiffres et santé), panier et flux de la cave et du bar placés face au réseau
   du même mois (moitié centrale du réseau en bande, médiane, écart en %) et au même mois de l'an dernier ; le levier
   le plus en retrait d'au moins 5 % est nommé (panier comparé au réseau, flux comparé à N-1). Magasins : filtre

@@ -15,23 +15,21 @@ test('la fiche magasin montre l’évolution de la santé et le journal du magas
   await page.goto('./#/magasins/Lyon%20Test?vue=sante')
   await expect(page.getByText(/En recul depuis le 1 oct\. 2026 · avant : Cœur de réseau/)).toBeVisible()
   await ouvrirOnglet(page, 'Fil')
-  const journal = page.getByRole('list', { name: 'Journal de Lyon Test' })
+  // Un seul fil : le journal (santé, déploiements, Coachs, notes) mêlé aux visites
+  const journal = page.getByRole('region', { name: 'Fil du magasin' })
   await expect(journal.getByText('Passe en Redressement urgent')).toBeVisible()
   await expect(journal.getByText('Classé Cœur de réseau')).toBeVisible()
   await expect(journal.getByText('Concept 2.0 : Fait')).toBeVisible()
   await expect(journal.getByText('Coach : Noé MODELE')).toBeVisible()
   await expect(journal.getByText('Appel du franchisé : travaux de vitrine prévus.')).toBeVisible()
-  await expect(journal.getByText(/^Visite terrain · Noé MODELE/)).toBeVisible()
-  // Le plus récent en premier
-  await expect(journal.getByRole('listitem').first()).toContainText('Visite terrain')
+  await expect(journal.getByText(/visite terrain/).first()).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Journal de Lyon Test' })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
-  await page.getByRole('heading', { name: 'Journal', exact: true }).scrollIntoViewIfNeeded()
   await page.screenshot({ path: `captures/${info.project.name}-fiche-journal.png`, fullPage: !isMobile })
-  // Filtrer le journal
-  await page.getByRole('button', { name: 'Filtre Afficher' }).click()
-  await page.getByRole('menuitem', { name: /^Santé/ }).click()
-  await page.keyboard.press('Escape')
-  await expect(journal.getByText('Concept 2.0 : Fait')).toHaveCount(0)
+  // Filtrer le fil : le journal seul
+  await journal.getByRole('button', { name: 'Journal', exact: true }).click()
+  await expect(journal.getByText(/visite terrain/)).toHaveCount(0)
+  await expect(journal.getByText('Concept 2.0 : Fait')).toBeVisible()
   await expect(journal.getByText('Passe en Redressement urgent')).toBeVisible()
 })
 

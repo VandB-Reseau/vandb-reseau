@@ -19,7 +19,7 @@ test('chaque onglet regroupé montre ses deux parties, sans déborder de l’éc
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
   await expect(page.getByRole('region', { name: 'Fil du magasin' })).toBeVisible()
-  await expect(page.getByRole('list', { name: 'Journal de Lyon Test' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Fil du magasin' }).getByText('Classé Cœur de réseau')).toBeVisible()
   expect(await largeurTenue(page)).toBe(true)
   await ouvrirOnglet(page, 'Chiffres')
   await expect(page.getByText(/En recul depuis le 1 oct\. 2026/)).toBeVisible()

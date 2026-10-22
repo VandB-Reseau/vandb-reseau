@@ -34,7 +34,7 @@ import MailOutlined from '@mui/icons-material/MailOutlined'
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { PastilleCase, PastilleTendance } from '../components/Sante'
-import { Journal } from '../components/Journal'
+import { journalDansLeFil, useEditionJournal } from '../components/Journal'
 import { ANCIENNE_NOTE_FRANCHISE, caseDe, couleurTon, criteresAxe, historiqueSante, libelleAncienneNote, libelleAxe, libelleNote, niveauAxe, nineBox, scoreAxe, tendance, tonDe, type Axe } from '../data/sante'
 import { AvecReseau } from '../components/EtatDonnees'
 import { ReaffecterDialog } from '../components/ReaffecterDialog'
@@ -166,9 +166,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 
         {vue === 'fil' && (
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-            <FilMagasin reseau={reseau} m={m} />
+            <FilMagasin reseau={reseau} m={m} signaler={setConfirmation} />
             <Box id="partie-journal" sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)', scrollMarginTop: 160 }}>
-              <Journal reseau={reseau} m={m} signaler={setConfirmation} />
               <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />
             </Box>
           </Box>
@@ -481,8 +480,9 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
       lignes={[[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · '), [m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')]}
       pastille={pastille}
       compteurs={[
-        { valeur: alerte ? formatKEuros(alerte.ca) : '—', libelle: alerte ? `CA ${libelleMois(alerte.mois).split(' ')[0]}` : 'CA du mois' },
-        { valeur: alerte?.ecart === null || alerte?.ecart === undefined ? '—' : formatPourcent(alerte.ecart), libelle: 'vs l’an dernier', couleur: alerte?.ecart !== null && alerte?.ecart !== undefined && alerte.ecart < 0 ? 'error.main' : undefined },
+        // Compteurs sans valeur retirés plutôt qu'affichés en tiret
+        ...(alerte && alerte.ca !== null ? [{ valeur: formatKEuros(alerte.ca), libelle: `CA ${libelleMois(alerte.mois).split(' ')[0]}` }] : []),
+        ...(alerte?.ecart !== null && alerte?.ecart !== undefined ? [{ valeur: formatPourcent(alerte.ecart), libelle: 'vs l’an dernier', couleur: alerte.ecart < 0 ? 'error.main' : undefined }] : []),
         { valeur: ouvertes || '0', libelle: ouvertes > 1 ? 'tâches en cours' : 'tâche en cours' },
       ]}
       detail={c && <><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} par an</>}
@@ -514,14 +514,19 @@ function AutresActions({ nom, planifier, preparer, modifier }: { nom: string; pl
 }
 
 // Fil du magasin : toutes les photos en grille, puis visites, tâches, messages, chiffres et journal du plus récent au plus ancien
-function FilMagasin({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+function FilMagasin({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (message: string) => void }) {
   const { messagerie } = useMessagerie()
-  const elements = useMemo(() => filDu(reseau, new Set([m.nom]), messagerie, 730), [reseau, m.nom, messagerie])
+  // Un seul fil : visites, tâches, messages, chiffres, puis le journal (notes, santé, déploiements, Coachs, ouverture)
+  const elements = useMemo(() => [...filDu(reseau, new Set([m.nom]), messagerie, 730), ...journalDansLeFil(reseau, m)]
+    .sort((a, b) => (b.instant.length === 10 ? `${b.instant}T00:00:00` : b.instant).localeCompare(a.instant.length === 10 ? `${a.instant}T00:00:00` : a.instant)), [reseau, m, messagerie])
+  const edition = useEditionJournal(reseau, m, signaler)
   const photos = elements.flatMap((e) => e.photos ?? [])
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 760 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {photos.length > 0 && <Box component="section" aria-label="Photos"><TitreSection nombre={photos.length}>Photos</TitreSection><GrillePhotos photos={photos} max={6} /></Box>}
-      <FilActivite elements={elements} jour={reseau.jour} sansMagasin titre="Fil du magasin" />
+      <FilActivite elements={elements} jour={reseau.jour} sansMagasin titre="Fil du magasin" ouvrirJournal={edition.ouvrir}
+        action={<Button startIcon={<AddOutlined />} onClick={edition.nouvelleNote} sx={{ minHeight: 48 }}>Note</Button>} />
+      {edition.fenetres}
     </Box>
   )
 }

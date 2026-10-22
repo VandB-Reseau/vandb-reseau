@@ -13,7 +13,7 @@ import { premiereImage } from '../lib/html'
 
 // Fil d'activité des magasins suivis : visites, tâches, messages, chiffres, bonnes pratiques et communications du réseau,
 // du plus récent au plus ancien
-export type GenreFil = 'visite' | 'tache' | 'message' | 'chiffres' | 'pratique' | 'communication'
+export type GenreFil = 'visite' | 'tache' | 'message' | 'chiffres' | 'pratique' | 'communication' | 'journal'
 
 export interface ElementFil {
   cle: string
@@ -32,6 +32,8 @@ export interface ElementFil {
   valeur?: string // chiffres : CA du mois
   ecart?: number | null
   lien: string
+  journal?: import('./journal').EvenementJournal // fiche magasin : note, santé, déploiement, Coach, ouverture
+  libelleOuvrir?: string // élément du journal qui s'ouvre pour être modifié
 }
 
 const instantDe = (s: string) => (s.length === 10 ? `${s}T00:00:00` : s)
