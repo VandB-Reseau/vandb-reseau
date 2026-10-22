@@ -326,21 +326,21 @@ type FiltreFil = 'tout' | GenreFil
 const filtresFil: { v: FiltreFil; libelle: string }[] = [
   { v: 'tout', libelle: 'Tout' }, { v: 'visite', libelle: 'Visites' }, { v: 'tache', libelle: 'Tâches' },
   { v: 'message', libelle: 'Messages' }, { v: 'chiffres', libelle: 'Chiffres' }, { v: 'pratique', libelle: 'Bonnes pratiques' },
-  { v: 'communication', libelle: 'Communications' },
+  { v: 'communication', libelle: 'Communications' }, { v: 'journal', libelle: 'Journal' },
 ]
 const PAS_FIL = 20
 
-const iconeFil: Record<GenreFil, ReactNode> = { visite: <EventNoteOutlined />, tache: <TaskAltOutlined />, message: <ChatBubbleOutlineOutlined />, chiffres: <QueryStatsOutlined />, pratique: <TipsAndUpdatesOutlined />, communication: <CampaignOutlined /> }
+const iconeFil: Record<GenreFil, ReactNode> = { visite: <EventNoteOutlined />, tache: <TaskAltOutlined />, message: <ChatBubbleOutlineOutlined />, chiffres: <QueryStatsOutlined />, pratique: <TipsAndUpdatesOutlined />, communication: <CampaignOutlined />, journal: <HistoryOutlined /> }
 
 // Une publication du fil : qui, quoi, où, quand ; le texte et les photos en dessous
-export function PublicationFil({ e, jour, sansMagasin = false }: { e: ElementFil; jour: string; sansMagasin?: boolean }) {
+export function PublicationFil({ e, jour, sansMagasin = false, ouvrir }: { e: ElementFil; jour: string; sansMagasin?: boolean; ouvrir?: (e: ElementFil) => void }) {
   const qui = e.genre === 'chiffres' ? '' : e.auteur
   const action = qui ? e.action : e.action.charAt(0).toUpperCase() + e.action.slice(1)
   const ou = e.genre === 'communication' ? e.cible : sansMagasin ? '' : e.magasin
   const tete = <>{qui && <><b>{qui}</b> · </>}{action}{ou ? <> · <b>{ou}</b></> : ''}</>
   return (
     <Box>
-      <ButtonBase component={RouterLink} to={e.lien} sx={{ display: 'block', textAlign: 'left', width: '100%', p: 2, color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
+      <ButtonBase {...(ouvrir ? { onClick: () => ouvrir(e), 'aria-label': e.libelleOuvrir } : { component: RouterLink, to: e.lien })} sx={{ display: 'block', textAlign: 'left', width: '100%', p: 2, color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
           <Initiales nom={qui || e.magasin} icone={qui && e.genre !== 'communication' ? undefined : iconeFil[e.genre]} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -364,8 +364,9 @@ export function PublicationFil({ e, jour, sansMagasin = false }: { e: ElementFil
   )
 }
 
-export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actualités', communications, reactionsPratiques }: {
+export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actualités', communications, reactionsPratiques, action, ouvrirJournal }: {
   elements: ElementFil[]; jour: string; sansMagasin?: boolean; titre?: string; communications?: CommunicationsDuFil; reactionsPratiques?: ReactionsPratiques | null
+  action?: ReactNode; ouvrirJournal?: (e: ElementFil) => void
 }) {
   const { apercu, equipe } = useApercu()
   const [message, setMessage] = useState('')
@@ -376,7 +377,7 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actu
   const groupes = useMemo(() => {
     const parCle = new Map<string, ElementFil[]>()
     for (const e of vus) {
-      const cle = e.communication || e.pratique || !e.magasin ? e.cle : `${e.magasin}|${e.instant.slice(0, 10)}`
+      const cle = e.communication || e.pratique || e.journal || !e.magasin ? e.cle : `${e.magasin}|${e.instant.slice(0, 10)}`
       const g = parCle.get(cle)
       if (g) g.push(e); else parCle.set(cle, [e])
     }
@@ -387,7 +388,7 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actu
   const options = filtresFil.filter((f) => f.v === 'tout' || elements.some((e) => e.genre === f.v))
   return (
     <Box component="section" aria-label={titre}>
-      <TitreSection>{titre}</TitreSection>
+      <TitreSection action={action}>{titre}</TitreSection>
       {options.length > 2 && <BandeCollante><Puces valeur={filtre} options={options} onChange={(v) => { setFiltre(v); setNb(PAS_FIL) }} label="Filtrer le fil" /></BandeCollante>}
       {!vus.length ? (
         <CarteLignes><LigneCompacte avatar={<Initiales nom="fil" icone={<HistoryOutlined />} />} titre="Rien de nouveau" detail="Les visites, tâches, messages, chiffres et communications des dernières semaines s’afficheront ici." /></CarteLignes>
@@ -396,8 +397,8 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actu
           {groupes.slice(0, nb).map(([e, ...suite]) => (
             <Card key={e.cle} component={e.communication || e.pratique ? 'article' : 'div'} aria-label={e.communication?.titre ?? e.pratique?.titre} sx={{ border: 0, overflow: 'hidden', ...(suite.length ? { '& > * + *': { borderTop: '1px solid', borderColor: 'divider' } } : {}) }}>
               {e.communication?.aLaUne && <Box sx={{ pt: 1.5 }}><MarqueUne jusquAu={e.communication.aLaUne} /></Box>}
-              <PublicationFil e={e} jour={jour} sansMagasin={sansMagasin} />
-              {suite.map((x) => <PublicationFil key={x.cle} e={x} jour={jour} sansMagasin={sansMagasin} />)}
+              <PublicationFil e={e} jour={jour} sansMagasin={sansMagasin} ouvrir={e.libelleOuvrir && ouvrirJournal ? ouvrirJournal : undefined} />
+              {suite.map((x) => <PublicationFil key={x.cle} e={x} jour={jour} sansMagasin={sansMagasin} ouvrir={x.libelleOuvrir && ouvrirJournal ? ouvrirJournal : undefined} />)}
               {e.communication && communications?.moi && (
                 <ReactionsCommunication c={e.communication} moi={communications.moi} jour={jour} lectureSeule={!!apercu || !!equipe}
                   apres={communications.recharger} signaler={setMessage} />
