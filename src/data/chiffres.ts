@@ -100,7 +100,7 @@ export interface Analyse {
   statut: StatutAlerte | null // null : pas de CA pour le mois de comparaison
 }
 
-function analyserAu(liste: ChiffreMois[], mois: string, s: SeuilsAlerte): Analyse {
+export function analyserAu(liste: ChiffreMois[], mois: string, s: SeuilsAlerte): Analyse {
   const parMois = new Map(liste.map((c) => [c.mois, c]))
   const chiffre = parMois.get(mois) ?? { magasin: '', mois, caExt: null, pmCave: null, fluxCave: null, pmBar: null, fluxBar: null, caCave: null, caBar: null, tickets: null, panier: null, marge: null }
   const reference = decalerMois(mois, -(s.moisReference || 12))

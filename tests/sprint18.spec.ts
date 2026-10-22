@@ -29,7 +29,7 @@ test('la fiche RR est un profil avec portefeuille, Coachs, magasins et fiche', a
   await seConnecter(page)
   await page.goto('./#/equipe/rr/rr1')
   await expect(page.getByRole('heading', { name: 'Alex NORD', level: 1 })).toBeVisible()
-  await expect(page.getByRole('tablist', { name: 'Rubriques de Alex NORD' }).getByRole('tab')).toHaveText(['Portefeuille', 'Coachs', 'Magasins', 'Fiche'])
+  await expect(page.getByRole('tablist', { name: 'Rubriques de Alex NORD' }).getByRole('tab')).toHaveText(isMobile ? ['Portefeuille', 'Revue', 'Coachs', 'Plus'] : ['Portefeuille', 'Revue', 'Coachs', 'Magasins', 'Fiche'])
   await expect(page.getByRole('region', { name: 'Portefeuille' })).toContainText('En Décroche')
   await page.screenshot({ path: `captures/${info.project.name}-fiche-rr-portefeuille.png`, fullPage: !isMobile })
 })
