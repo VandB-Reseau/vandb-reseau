@@ -8,6 +8,7 @@
 --    ou une action hors visite, et ajouter une action hors visite.
 -- 3) Son nom et la date sont posés par la base (« faitePar », « auteur »), jamais par l'app.
 -- 4) Il ne modifie ni ne supprime une action : l'équipe garde la main.
+-- Correction de sécurité du 22/10/2026 (0019) : une tâche née dans « Équipe seule » lui est introuvable.
 -- ════════════════════════════════════════════════════════════════
 
 -- Franchisé connecté, s'il a ce magasin ; sinon refus
@@ -55,7 +56,7 @@ DECLARE
 BEGIN
   IF p_libre IS NOT NULL THEN
     SELECT s.valeur INTO v_l FROM public.suivi_magasins s WHERE s.store_name = p_store AND s.cle = 'actions' FOR UPDATE;
-    IF jsonb_typeof(v_l) IS DISTINCT FROM 'array' OR NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_l) e WHERE e->>'id' = p_libre) THEN
+    IF jsonb_typeof(v_l) IS DISTINCT FROM 'array' OR NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_l) e WHERE e->>'id' = p_libre AND coalesce(e->>'fil', '') <> 'equipe') THEN
       RAISE EXCEPTION 'action_introuvable';
     END IF;
     SELECT jsonb_agg(CASE WHEN e->>'id' = p_libre

@@ -19,6 +19,9 @@ INSERT INTO storage.objects (bucket_id, name) VALUES ('photos', 'audit/Nice/1.jp
 INSERT INTO public.store_overrides (store_name, resp) VALUES ('Lille', 'Paul LILLE'), ('Nice', 'Nina NICE');
 INSERT INTO public.fiches_personnes (cle, fiche) VALUES ('directeur', '{}'), ('coach:Coach Nord', '{}'), ('coach:Coach Sud', '{}'), ('rr:rr1', '{}'),
   ('franchise:Paul LILLE', '{"telephone":"0600000000"}'), ('franchise:Franchisé Test', '{}'), ('franchise:Nina NICE', '{"naissance":"1980-01-01"}') ON CONFLICT DO NOTHING;
+INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES ('Lille', 'actions',
+  '[{"id":"l_a","action":"Refaire la vitrine"},{"id":"l_e","action":"Préparer le point marge","fil":"equipe","pieces":[{"chemin":"00000000-0000-0000-0000-00000000000c/marge.pdf"}]}]')
+ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur;
 INSERT INTO public.communications (titre, auteur_nom, auteur_role) VALUES ('Annonce réseau', 'Directeur', 'directeur') RETURNING id AS annonce \gset
 CREATE OR REPLACE FUNCTION pg_temp.refuse(appel text) RETURNS bigint LANGUAGE plpgsql AS $$
 BEGIN
@@ -57,6 +60,8 @@ WITH m AS (UPDATE public.app_config SET value = '{"x":1}' WHERE key = 'params' R
 SELECT pg_temp.attendre('Coach : ne modifie pas les réglages', (SELECT count(*) FROM m), 0);
 SELECT pg_temp.attendre('Coach : ne voit pas qui a lu les communications', pg_temp.refuse('SELECT public.lectures_communications()'), 1);
 SELECT pg_temp.attendre('Coach : ne met pas une communication à la une', pg_temp.refuse('SELECT public.mettre_a_la_une(' || :annonce || ', current_date)'), 1);
+SELECT pg_temp.attendre('Coach : lit le fichier d''une tâche de l''équipe seule',
+  (SELECT count(*) FROM (SELECT public.piece_visible('00000000-0000-0000-0000-00000000000c/marge.pdf') AS v) x WHERE v), 1);
 SELECT pg_temp.attendre('Coach : aucun accès direct aux messages', (SELECT count(*) FROM information_schema.table_privileges
   WHERE table_schema = 'public' AND table_name = 'messages' AND grantee = 'authenticated'), 0);
 
@@ -81,6 +86,12 @@ SELECT pg_temp.attendre('Franchisé : ne met pas une communication à la une', p
 SELECT pg_temp.attendre('Franchisé : ne voit pas qui a lu les communications', pg_temp.refuse('SELECT public.lectures_communications()'), 1);
 SELECT public.lire_communications(ARRAY[:annonce]::bigint[]);
 SELECT pg_temp.attendre('Franchisé : ses visites par espace_franchise()', (SELECT jsonb_array_length(public.espace_franchise()->'visits')), 1);
+SELECT pg_temp.attendre('Franchisé : ses tâches, sans celles de l''équipe seule', (SELECT jsonb_array_length(e->'value'->'Lille')
+  FROM jsonb_array_elements(public.espace_franchise()->'app_config') e WHERE e->>'key' = 'actions'), 1);
+SELECT pg_temp.attendre('Franchisé : ne coche pas une tâche de l''équipe seule', pg_temp.refuse('SELECT public.marquer_action_franchise(''Lille'', true, ''l_e'')'), 1);
+SELECT pg_temp.attendre('Franchisé : coche une tâche partagée', pg_temp.refuse('SELECT public.marquer_action_franchise(''Lille'', true, ''l_a'')'), 0);
+SELECT pg_temp.attendre('Franchisé : ne lit pas le fichier d''une tâche de l''équipe seule',
+  (SELECT count(*) FROM (SELECT public.piece_visible('00000000-0000-0000-0000-00000000000c/marge.pdf') AS v) x WHERE v), 0);
 
 -- ── Directeur : voit la lecture du franchisé, met à la une
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';

@@ -1,6 +1,7 @@
 -- ════════════════════════════════════════════════════════════════
 -- V and B — Coachs et Responsables Régionaux : cloisonnement réel des données
 -- 19/10/2026 (PR #45), complété le 20/10/2026 (PR #47 et #48). Réexécutable. Suppose 0004.
+-- Correction de sécurité du 22/10/2026 (0019) : espace_franchise() ne renvoie plus les tâches nées dans « Équipe seule ».
 --
 -- 1) Le périmètre de chaque magasin (son Coach, les RR qui le suivent) est
 --    tenu à jour par l'app du Directeur de réseau dans perimetre_equipe.
@@ -249,7 +250,10 @@ BEGIN
     jsonb_build_object('key', 'drs_data', 'value', v_drs),
     jsonb_build_object('key', 'params', 'value', coalesce(v_cfg->'params', '{}'::jsonb)),
     jsonb_build_object('key', 'associes', 'value', (SELECT coalesce(jsonb_object_agg(s.store_name, s.valeur), '{}'::jsonb) FROM public.suivi_magasins s WHERE s.cle = 'associes' AND s.store_name = ANY(v_mag))),
-    jsonb_build_object('key', 'actions', 'value', (SELECT coalesce(jsonb_object_agg(s.store_name, s.valeur), '{}'::jsonb) FROM public.suivi_magasins s WHERE s.cle = 'actions' AND s.store_name = ANY(v_mag))),
+    -- Tâches hors visite, sauf celles nées dans « Équipe seule » (fil = equipe)
+    jsonb_build_object('key', 'actions', 'value', (SELECT coalesce(jsonb_object_agg(s.store_name, (
+      SELECT coalesce(jsonb_agg(e ORDER BY o), '[]'::jsonb) FROM jsonb_array_elements(CASE WHEN jsonb_typeof(s.valeur) = 'array' THEN s.valeur ELSE '[]'::jsonb END) WITH ORDINALITY AS t(e, o)
+      WHERE coalesce(e->>'fil', '') <> 'equipe')), '{}'::jsonb) FROM public.suivi_magasins s WHERE s.cle = 'actions' AND s.store_name = ANY(v_mag))),
     jsonb_build_object('key', 'audits', 'value', (SELECT coalesce(jsonb_object_agg(s.store_name, s.valeur), '{}'::jsonb) FROM public.suivi_magasins s WHERE s.cle = 'audits' AND s.store_name = ANY(v_mag))),
     jsonb_build_object('key', 'grilles_audit', 'value', coalesce(v_cfg->'grilles_audit', '{}'::jsonb)),
     jsonb_build_object('key', 'bonnes_pratiques', 'value', coalesce(v_cfg->'bonnes_pratiques', '[]'::jsonb)),
