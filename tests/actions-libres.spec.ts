@@ -23,10 +23,12 @@ test('ajouter une action hors visite, la cocher faite, puis la modifier et la su
   await page.getByRole('button', { name: 'Ajouter une tâche' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une tâche' })
   await d.getByLabel('Tâche', { exact: true }).fill('Relancer la commande de coffrets')
-  await d.getByLabel('Porteur').click()
-  // Porteurs du magasin : franchisé, Coach, Responsable Régional, Directeur de réseau
+  await d.getByLabel('Porteurs').click()
+  // Porteurs du magasin : franchisé, Coach, Responsable Régional, Directeur de réseau ; plusieurs à la fois
   await expect(page.getByRole('option')).toContainText(['Franchisé 11', 'Noé MODELE', 'Dominique DIRECTION'])
   await page.getByRole('option', { name: 'Franchisé 11' }).click()
+  await page.getByRole('option', { name: 'Noé MODELE' }).click()
+  await page.keyboard.press('Tab')
   await d.getByLabel('Échéance', { exact: true }).fill('2099-02-15')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-action-hors-visite.png` })
@@ -34,7 +36,7 @@ test('ajouter une action hors visite, la cocher faite, puis la modifier et la su
   await expect(page.getByText('Tâche ajoutée.')).toBeVisible()
   const ajoutee = derniere(ecritures)!['Brest Test']
   expect(ajoutee).toHaveLength(1)
-  expect(ajoutee[0]).toMatchObject({ action: 'Relancer la commande de coffrets', porteur: 'Franchisé 11', echeance: '2099-02-15', creeLe: new Date().toISOString().slice(0, 10) })
+  expect(ajoutee[0]).toMatchObject({ action: 'Relancer la commande de coffrets', porteur: 'Franchisé 11, Noé MODELE', echeance: '2099-02-15', creeLe: new Date().toISOString().slice(0, 10) })
 
   // Elle rejoint les actions des visites, avec sa date d'ajout
   const liste = page.getByRole('list', { name: 'Tâches en cours de Brest Test' })

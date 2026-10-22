@@ -33,6 +33,6 @@ export function texteCompteRendu(v: { magasin: string; date: string; parties: st
   if (visiteurs) l.push(`Visité par ${visiteurs}`)
   PARTIES.forEach((p, i) => { const t = v.parties[i]?.trim(); if (t) l.push('', p.titre.toUpperCase(), t) })
   const actions = v.plan.filter((a) => a.action.trim())
-  if (actions.length) l.push('', "PLAN D'ACTION", ...actions.map((a) => `- ${a.action.trim()}${[a.porteur, a.echeance].filter(Boolean).length ? ` (${[a.porteur, a.echeance].filter(Boolean).join(', ')})` : ''}${a.faite ? ' : faite' : ''}`))
+  if (actions.length) l.push('', "PLAN D'ACTION", ...actions.map((a) => `- ${a.action.trim()}${[a.porteur, a.echeance].filter(Boolean).length ? ` (${[a.porteur, a.echeance].filter(Boolean).join(' · ')})` : ''}${a.faite ? ' : faite' : ''}`))
   return l.join('\n')
 }
