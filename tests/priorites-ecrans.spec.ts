@@ -30,15 +30,17 @@ test('« À traiter » : les urgences d’abord, des puces pour filtrer', async 
   await page.screenshot({ path: `captures/${info.project.name}-a-traiter-filtres.png`, fullPage: !isMobile })
 })
 
-test('Magasins : la dernière visite à droite, le rouge réservé au décrochage', async ({ page }, info) => {
+test('Magasins : la dernière visite à droite, le rouge réservé au décrochage', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins')
   const liste = page.getByRole('region', { name: 'Liste des magasins' })
-  await expect(liste.getByText(/^vu il y a \d+ j$/).first()).toBeVisible()
+  // Sur PC, la dernière visite a sa colonne « Vu »
+  const vu = isMobile ? /^vu il y a \d+ j$/ : /^\d+ j$/
+  await expect(liste.getByText(vu).first()).toBeVisible()
   await expect(liste.getByText('Visite', { exact: true })).toHaveCount(0)
   const fond = (t: string) => liste.getByText(t, { exact: true }).first().evaluate((e) => getComputedStyle(e).backgroundColor)
   expect(await fond('Décroche')).toBe('rgb(198, 40, 40)')
-  expect(await liste.getByText(/^vu il y a \d+ j$/).first().evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgba(0, 0, 0, 0)')
+  expect(await liste.getByText(vu).first().evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgba(0, 0, 0, 0)')
   await page.screenshot({ path: `captures/${info.project.name}-magasins-derniere-visite.png` })
 })
 

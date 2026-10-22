@@ -8,7 +8,7 @@ import { magasinsFictifs } from './donnees-fictives'
 const fond = (l: Locator) => l.evaluate((e) => getComputedStyle(e).backgroundColor)
 const transparent = 'rgba(0, 0, 0, 0)'
 
-test('seul le rouge reste une pastille pleine ; le reste est un texte coloré', async ({ page }, info) => {
+test('seul le rouge reste une pastille pleine ; le reste est un texte coloré', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
   await deplierATraiter(page)
@@ -17,8 +17,10 @@ test('seul le rouge reste une pastille pleine ; le reste est un texte coloré', 
   expect(await fond(aTraiter.getByText('Visite', { exact: true }).first())).toBe(transparent)
   await page.goto('./#/magasins')
   const liste = page.getByRole('main')
-  await expect(liste.getByText(/^vu il y a \d+ j$/).first()).toBeVisible()
-  expect(await fond(liste.getByText(/^vu il y a \d+ j$/).first())).toBe(transparent)
+  // PC large : la dernière visite passe en colonne, l'alerte orange reste un texte coloré
+  const orange = isMobile ? liste.getByText(/^vu il y a \d+ j$/).first() : liste.getByText('À surveiller', { exact: true }).first()
+  await expect(orange).toBeVisible()
+  expect(await fond(orange)).toBe(transparent)
   // La charge à 8/8 n'est plus pleine, le dépassement (9/8) l'est toujours
   await page.goto('./#/equipe')
   const charges = page.getByRole('main').locator('.MuiChip-root')
