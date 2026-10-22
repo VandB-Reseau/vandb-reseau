@@ -25,7 +25,7 @@ const PAUL = { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Te
 const HUGO = { role: 'coach', coach: 'Hugo FICTIF' }
 const ALEX = { role: 'rr', rr: 'rr1' }
 
-const onglet = (page: Page) => page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^Échanges/ }).first()
+const onglet = (page: Page) => page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^Messages/ }).first()
 
 test('fiche magasin : le Directeur de réseau écrit dans le groupe du magasin', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
@@ -72,13 +72,13 @@ test('le Coach est prévenu de ce qu’on lui écrit et de tout ce qui se dit su
     ] },
   })
   await page.goto('./#/')
-  await expect(onglet(page)).toHaveAccessibleName('Échanges : 2 nouveautés')
+  await expect(onglet(page)).toHaveAccessibleName('Messages : 2 nouveautés')
   await page.goto('./#/echanges/personne/franchise%3APaul%20MULTI')
   await expect(page.getByRole('list', { name: 'Messages de Paul MULTI' })).toContainText('La livraison est arrivée cassée.')
   await expect(page.getByRole('list', { name: 'Messages de Paul MULTI' })).not.toContainText('Question pour Noé')
   // Téléphone : la barre du bas laisse la place à la saisie dans une conversation
   await page.goto('./#/')
-  await expect(onglet(page)).toHaveAccessibleName('Échanges : 1 nouveauté')
+  await expect(onglet(page)).toHaveAccessibleName('Messages : 1 nouveauté')
 })
 
 test('un Responsable Régional n’est prévenu que s’il est cité ou a déjà écrit dans le fil', async ({ page, isMobile }) => {
@@ -90,7 +90,7 @@ test('un Responsable Régional n’est prévenu que s’il est cité ou a déjà
     ] },
   })
   await page.goto('./#/')
-  await expect(onglet(page)).toHaveAccessibleName('Échanges : 1 nouveauté')
+  await expect(onglet(page)).toHaveAccessibleName('Messages : 1 nouveauté')
   await page.goto('./#/echanges')
   const liste = page.getByRole('list', { name: 'Conversations' })
   // Annecy reste en gras (non lu) sans compter dans le total
@@ -109,7 +109,7 @@ test('le franchisé est prévenu des messages et des nouveaux comptes rendus, et
       { id: 61, store: 'Rennes Test', visit_date: '2026-01-01', type: 'terrain', visitor: 'Noé MODELE', signed_required: false, docs: [], created_at: ilYa(60 * 24 * 90) }] },
   })
   await page.goto('./#/')
-  await expect(onglet(page)).toHaveAccessibleName('Échanges : 2 nouveautés')
+  await expect(onglet(page)).toHaveAccessibleName('Messages : 2 nouveautés')
   await page.goto('./#/echanges/magasin/Annecy%20Test')
   const fil = page.getByRole('list', { name: /^Messages de / })
   await expect(fil).toContainText('Pense au plan de Noël.')
@@ -120,7 +120,7 @@ test('le franchisé est prévenu des messages et des nouveaux comptes rendus, et
   await expect(fil.getByRole('listitem', { name: 'Message de Paul MULTI' })).toContainText('C’est noté, merci.')
   expect(ecritures.find((e) => e.table === 'rpc/envoyer_fil')!.corps).toEqual({ p_fil: 'magasin:Annecy Test', p_texte: 'C’est noté, merci.', p_mentions: [] })
   await page.goto('./#/')
-  await expect(onglet(page)).toHaveAccessibleName('Échanges : 1 nouveauté')
+  await expect(onglet(page)).toHaveAccessibleName('Messages : 1 nouveauté')
   // Les comptes rendus ne sont plus dans les groupes : ils vont dans le fil d'actualité (Joseph, 22/10/2026)
   await page.goto('./#/echanges/magasin/Rennes%20Test')
   await expect(page.getByRole('heading', { name: 'Rennes Test' }).first()).toBeVisible()

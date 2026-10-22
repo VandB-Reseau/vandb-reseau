@@ -23,8 +23,8 @@ for (const schema of ['light', 'dark'] as const) {
       expect(await nav.evaluate((n) => getComputedStyle(n).position)).not.toBe('fixed')
       return
     }
-    await page.goto('./#/magasins')
-    await expect(nav.getByRole('button', { name: 'Magasins' })).toHaveAttribute('aria-current', 'page')
+    await page.goto('./#/visites')
+    await expect(nav.getByRole('button', { name: 'Visites' })).toHaveAttribute('aria-current', 'page')
     const style = await nav.evaluate((n) => {
       const s = getComputedStyle(n)
       return { position: s.position, flou: s.backdropFilter || (s as unknown as Record<string, string>).webkitBackdropFilter, fond: s.backgroundColor, rayon: parseFloat(s.borderTopLeftRadius) }

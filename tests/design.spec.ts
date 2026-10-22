@@ -21,7 +21,7 @@ test('le bouton Créer ouvre sous lui un menu : visite, tâche, message, bonne p
   const creer = isMobile
     ? page.getByRole('banner').getByRole('button', { name: 'Créer' })
     : page.getByRole('button', { name: 'Créer', exact: true })
-  if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Magasins', /^Échanges/, 'Visites', /^Santé/])
+  if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Visites', /Messages$/, /Tâches$/, /^Santé/])
   const bouton = (await creer.boundingBox())!
   await creer.click()
   const d = page.getByRole('menu', { name: 'Créer' })

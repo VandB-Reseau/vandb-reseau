@@ -232,7 +232,7 @@ function BlocMesTaches({ reseau, taches, compact = false }: { reseau: Reseau; ta
       fin={enRetard(x.a, reseau.jour) ? <Pastille ton="rouge">En retard</Pastille> : undefined} />
   ))
   const vide = <LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur="#2e7d32" />} titre="Aucune tâche en cours" />
-  const toutes = `/echanges?vue=taches`
+  const toutes = '/taches'
   return (
     <Box component="section" aria-label="Mes tâches" sx={{ mt: compact ? 0 : 2 }}>
       {!compact && <TitreSection nombre={taches.length} action={<Button component={RouterLink} to={toutes} sx={{ minHeight: 40 }}>Toutes</Button>}>Mes tâches</TitreSection>}

@@ -25,10 +25,8 @@ test('les tâches sont rangées par échéance, sous la barre de recherche commu
   }
   await seConnecter(page, { config: { actions } })
   await page.goto('./#/taches')
-  // « Mes tâches » est le second volet de l'onglet Échanges
-  await expect(page).toHaveURL(/#\/echanges\?vue=taches$/)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Échanges')
-  await expect(page.getByRole('tablist', { name: 'Échanges' }).getByRole('tab', { name: /^Mes tâches/ })).toHaveAttribute('aria-selected', 'true')
+  // Tâches : onglet à part (Joseph, 22/10/2026)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches')
   const aFaire = page.getByRole('list', { name: 'Tâches à faire' })
   await expect(aFaire.getByRole('heading', { level: 2 })).toHaveText(['En retard', 'Cette semaine', 'Plus tard', 'Sans échéance'])
   await expect(aFaire.getByRole('listitem')).toHaveCount(5)

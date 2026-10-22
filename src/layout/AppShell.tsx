@@ -31,7 +31,8 @@ import { useTotalEchanges } from '../data/echanges'
 import { BoutonCreer } from '../components/Creer'
 import { useInstallation } from '../lib/installation'
 import { brandStripe } from '../theme/theme'
-import { parametres, principales, secondaires, type Destination } from '../navigation/destinations'
+import { barreTelephone, magasins, parametres, principales, secondaires, type Destination } from '../navigation/destinations'
+import { useCompteurTaches } from '../data/tachesVues'
 import { useAuth } from '../auth/AuthContext'
 import { roleLibelle } from '../auth/roles'
 import NotificationsActiveOutlined from '@mui/icons-material/NotificationsActiveOutlined'
@@ -114,23 +115,33 @@ function MenuCompte({ liens = [] }: { liens?: { titre?: string; destinations: De
   )
 }
 
-// Icône d'une destination ; Échanges porte le nombre de nouveautés
-function Icone({ d, actif, total }: { d: Destination; actif: boolean; total: number }) {
-  const icone = actif ? d.iconeActive ?? d.icone : d.icone
-  if (d.chemin !== '/echanges' || !total) return icone
-  return <Badge color="error" badgeContent={total} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}>{icone}</Badge>
+// Icône d'une destination ; Messages porte le nombre de nouveautés, Tâches celui des tâches en retard ou nouvelles
+interface Compteurs { messages: number; taches: number }
+const compteDe = (d: Destination, c: Compteurs) => (d.chemin === '/echanges' ? c.messages : d.chemin === '/taches' ? c.taches : 0)
+function useCompteurs(sansCompteur?: boolean): Compteurs {
+  return { messages: useTotalEchanges(sansCompteur), taches: useCompteurTaches(sansCompteur) }
 }
-const libelleAccessible = (d: Destination, total: number) => (d.chemin === '/echanges' && total ? `${d.libelle} : ${total} nouveauté${total > 1 ? 's' : ''}` : undefined)
+function Icone({ d, actif, c }: { d: Destination; actif: boolean; c: Compteurs }) {
+  const icone = actif ? d.iconeActive ?? d.icone : d.icone
+  const n = compteDe(d, c)
+  if (!n) return icone
+  return <Badge color="error" badgeContent={n} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}>{icone}</Badge>
+}
+const libelleAccessible = (d: Destination, c: Compteurs) => {
+  const n = compteDe(d, c)
+  if (!n) return undefined
+  return d.chemin === '/taches' ? `${d.libelle} : ${n} en retard ou nouvelle${n > 1 ? 's' : ''}` : `${d.libelle} : ${n} nouveauté${n > 1 ? 's' : ''}`
+}
 
 function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: Destination[]; sansParametres?: boolean; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
-  const total = useTotalEchanges(sansCompteur)
+  const c = useCompteurs(sansCompteur)
   const item = (d: Destination) => {
     const actif = estActive(d, pathname)
     return (
-      <ListItemButton key={d.chemin} selected={actif} onClick={() => naviguer(d.chemin)} aria-label={libelleAccessible(d, total)} sx={{ mx: 1.5, mb: 0.5, minHeight: 48 }}>
-        <ListItemIcon sx={{ minWidth: 40, color: actif ? 'text.primary' : 'text.secondary' }}><Icone d={d} actif={actif} total={total} /></ListItemIcon>
+      <ListItemButton key={d.chemin} selected={actif} onClick={() => naviguer(d.chemin)} aria-label={libelleAccessible(d, c)} sx={{ mx: 1.5, mb: 0.5, minHeight: 48 }}>
+        <ListItemIcon sx={{ minWidth: 40, color: actif ? 'text.primary' : 'text.secondary' }}><Icone d={d} actif={actif} c={c} /></ListItemIcon>
         <ListItemText primary={d.libelle} slotProps={{ primary: { sx: { fontWeight: actif ? 600 : 500, fontSize: '0.9375rem' } } }} />
       </ListItemButton>
     )
@@ -160,15 +171,15 @@ const HAUTEUR_BARRE = 64
 function BarreBasse({ franchise, sansCompteur }: { franchise?: Destination[]; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
-  const total = useTotalEchanges(sansCompteur)
+  const c = useCompteurs(sansCompteur)
   const item = (d: Destination) => {
     const actif = estActive(d, pathname)
     return (
-      <ButtonBase key={d.chemin} onClick={() => naviguer(d.chemin)} aria-current={actif ? 'page' : undefined} aria-label={libelleAccessible(d, total)}
+      <ButtonBase key={d.chemin} onClick={() => naviguer(d.chemin)} aria-current={actif ? 'page' : undefined} aria-label={libelleAccessible(d, c)}
         sx={{ flex: 1, minWidth: 0, height: HAUTEUR_BARRE, borderRadius: 999, color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.75rem', fontWeight: actif ? 600 : 500 }}>
         {/* Onglet actif posé sur une pastille, comme les barres en verre d'iOS */}
         <Box sx={{ width: '100%', height: HAUTEUR_BARRE - 10, borderRadius: 999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.25, ...(actif ? { bgcolor: 'action.selected' } : {}) }}>
-          <Icone d={d} actif={actif} total={total} />
+          <Icone d={d} actif={actif} c={c} />
           <Box component="span" sx={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', px: 0.5 }}>{d.court ?? d.libelle}</Box>
         </Box>
       </ButtonBase>
@@ -191,7 +202,7 @@ function BarreBasse({ franchise, sansCompteur }: { franchise?: Destination[]; sa
         }),
       })}>
       <Box sx={{ display: 'flex', height: HAUTEUR_BARRE }}>
-        {(franchise ?? principales).map(item)}
+        {(franchise ?? barreTelephone).map(item)}
       </Box>
     </Paper>
   )
@@ -231,7 +242,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
             {!franchise && <RechercheGlobale surFonce court={!surPC} />}
           </Box>
           {!franchise && !surPC && <BoutonCreer entete />}
-          <MenuCompte liens={surPC || franchise ? [] : [{ destinations: secondaires }, ...(sansParametres ? [] : [{ titre: 'Paramètres', destinations: parametres }])]} />
+          <MenuCompte liens={surPC || franchise ? [] : [{ destinations: [magasins, ...secondaires] }, ...(sansParametres ? [] : [{ titre: 'Paramètres', destinations: parametres }])]} />
         </Toolbar>
         <Box aria-hidden sx={{ height: 4, background: brandStripe }} />
       </AppBar>

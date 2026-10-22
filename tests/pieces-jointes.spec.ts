@@ -19,7 +19,7 @@ const AUTRE = '00000000-0000-0000-0000-0000000000aa'
 test('le Directeur joint une photo et un document à une tâche', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, persister: true })
-  await page.goto('./#/echanges?vue=taches')
+  await page.goto('./#/taches')
   await page.getByRole('button', { name: 'Ajouter une tâche' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une tâche' })
   await d.getByLabel('Magasin').click()
@@ -56,7 +56,7 @@ test('le Directeur joint une photo et un document à une tâche', async ({ page 
 test('le franchisé joint une photo à une tâche, la base la range', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, espace: {}, ecritures })
-  await page.goto('./#/echanges?vue=taches')
+  await page.goto('./#/taches')
   await page.getByRole('button', { name: 'Ajouter une tâche' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une tâche' })
   await d.getByLabel('Tâche', { exact: true }).fill('Changer l’ampoule du comptoir')
@@ -100,7 +100,7 @@ test('message avec une photo seule, document reçu ouvert par lien', async ({ pa
 
 test('espace fichiers pas encore activé : un message clair, rien ne casse', async ({ page }) => {
   await seConnecter(page, { sansPhotos: true })
-  await page.goto('./#/echanges?vue=taches')
+  await page.goto('./#/taches')
   await page.getByRole('button', { name: 'Ajouter une tâche' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une tâche' })
   await d.getByLabel('Fichiers à joindre').setInputFiles(devis)
@@ -110,7 +110,7 @@ test('espace fichiers pas encore activé : un message clair, rien ne casse', asy
 
 test('un fichier qui n’est ni une photo ni un document est refusé', async ({ page }) => {
   await seConnecter(page)
-  await page.goto('./#/echanges?vue=taches')
+  await page.goto('./#/taches')
   await page.getByRole('button', { name: 'Ajouter une tâche' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une tâche' })
   await d.getByLabel('Fichiers à joindre').setInputFiles({ name: 'outil.exe', mimeType: 'application/x-msdownload', buffer: Buffer.from('MZ') })
