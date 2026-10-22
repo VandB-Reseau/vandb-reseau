@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Compte rendu dans le fil d'actualité (Joseph, 22/10/2026) : une vignette carrée « Compte rendu », comme une photo, ouvre le
+  compte rendu dans une fenêtre (plein écran sur téléphone) ; la fermer ou revenir en arrière laisse le fil à la même place,
+  pour aimer ou commenter. Le bouton PDF mène à la page imprimable. Sans migration.
 - « Vu par » des bonnes pratiques (Joseph, 22/10/2026) : comme pour les communications, le Directeur et les Responsables
   Régionaux voient sous chaque bonne pratique combien de franchisés l'ont vue, et lesquels pas encore. Un franchisé qui affiche
   les bonnes pratiques les a vues. **Migration à passer : `0023_lectures_pratiques.sql`.**

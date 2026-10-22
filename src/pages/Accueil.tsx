@@ -18,6 +18,7 @@ import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
+import { FenetreCompteRendu, useOuvrirCompteRendu, VignetteCompteRendu } from '../components/ApercuCompteRendu'
 import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, Pastille, Puces, TitreSection, type Ton } from '../components/Social'
 import { analyser, decalerMois, formatPourcent, libelleMoisCourt, suiviAlerte } from '../data/chiffres'
 import { useAuth } from '../auth/AuthContext'
@@ -340,9 +341,12 @@ export function PublicationFil({ e, jour, sansMagasin = false, ouvrir }: { e: El
   const action = qui ? e.action : e.action.charAt(0).toUpperCase() + e.action.slice(1)
   const ou = e.genre === 'communication' ? e.cible : sansMagasin ? '' : e.magasin
   const tete = <>{qui && <><b>{qui}</b> · </>}{action}{ou ? <> · <b>{ou}</b></> : ''}</>
+  // Compte rendu d'une visite : s'ouvre dans une fenêtre, le fil reste à sa place
+  const ouvrirCR = useOuvrirCompteRendu()
+  const cr = e.genre === 'visite' && e.visiteId ? () => ouvrirCR(e.visiteId!) : undefined
   return (
     <Box>
-      <ButtonBase {...(ouvrir ? { onClick: () => ouvrir(e), 'aria-label': e.libelleOuvrir } : { component: RouterLink, to: e.lien })} sx={{ display: 'block', textAlign: 'left', width: '100%', p: 2, color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
+      <ButtonBase {...(ouvrir ? { onClick: () => ouvrir(e), 'aria-label': e.libelleOuvrir } : cr ? { onClick: cr } : { component: RouterLink, to: e.lien })} sx={{ display: 'block', textAlign: 'left', width: '100%', p: 2, color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
           <Initiales nom={qui || e.magasin} icone={qui && e.genre !== 'communication' ? undefined : iconeFil[e.genre]} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -361,7 +365,8 @@ export function PublicationFil({ e, jour, sansMagasin = false, ouvrir }: { e: El
         {e.texte && !e.valeur && <Typography sx={{ mt: e.titre ? 0.25 : 1.25, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'pre-line' }}>{e.texte}</Typography>}
       </ButtonBase>
       {/* Les photos hors du lien : le toucher les ouvre en plein écran */}
-      {!!e.photos?.length && <Box sx={{ px: 2, pb: 2, mt: -0.75 }}><GrillePhotos photos={e.photos} /></Box>}
+      {(!!e.photos?.length || cr) && <Box sx={{ px: 2, pb: 2, mt: -0.75 }}><GrillePhotos photos={e.photos}
+        avant={cr && <VignetteCompteRendu libelle={`Ouvrir le compte rendu de ${e.magasin}`} onOuvrir={cr} />} /></Box>}
     </Box>
   )
 }
@@ -419,6 +424,7 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actu
           {groupes.length > nb && <Button onClick={() => setNb(nb + PAS_FIL)} sx={{ alignSelf: 'center', minHeight: 48 }}>Voir plus</Button>}
         </Box>
       )}
+      <FenetreCompteRendu />
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </Box>
   )
