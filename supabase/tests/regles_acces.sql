@@ -197,3 +197,32 @@ SELECT pg_temp.attendre('0006 rejouée : le message de groupe reste caché',
   (SELECT count(*) FROM jsonb_array_elements(public.messagerie()->'messages') e WHERE e->>'texte' = 'Réunion lundi'), 0);
 RESET ROLE;
 \ir ../migrations/0018_echanges_groupes.sql
+
+-- J'aime et commentaires sur les comptes rendus (0022) : chacun sur les visites qu'il voit
+SELECT pg_temp.attendre('Journal : 0022 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0022'), 1);
+SELECT id AS nice FROM public.visits WHERE store = 'Nice' ORDER BY id LIMIT 1 \gset
+INSERT INTO public.visits (store, visit_date, type) VALUES ('Lille', current_date, 'appel') RETURNING id AS appel \gset
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Franchisé : aime le compte rendu de son magasin', pg_temp.refuse('SELECT public.basculer_pouce_visite(' || :visite || ')'), 0);
+SELECT pg_temp.attendre('Franchisé : commente le compte rendu de son magasin', pg_temp.refuse('SELECT public.commenter_visite(' || :visite || ', ''Merci pour la visite'')'), 0);
+SELECT pg_temp.attendre('Franchisé : pas de réaction sur un autre magasin', pg_temp.refuse('SELECT public.commenter_visite(' || :nice || ', ''Intrus'')'), 1);
+SELECT pg_temp.attendre('Franchisé : pas de réaction sur un appel', pg_temp.refuse('SELECT public.basculer_pouce_visite(' || :appel || ')'), 1);
+SELECT pg_temp.attendre('Franchisé : aucun accès direct aux commentaires', pg_temp.refuse('SELECT count(*) FROM public.visites_commentaires'), 1);
+RESET ROLE;
+SELECT id AS commentaire FROM public.visites_commentaires WHERE visite = :visite \gset
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : lit le commentaire du franchisé',
+  (SELECT jsonb_array_length(public.reactions_visites()->'commentaires'->(:visite)::text)), 1);
+SELECT pg_temp.attendre('Coach : pas de réaction sur un magasin d''un autre Coach', pg_temp.refuse('SELECT public.basculer_pouce_visite(' || :nice || ')'), 1);
+SELECT public.supprimer_commentaire_visite(:commentaire);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT public.commenter_visite(:nice, 'Bien vu');
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Franchisé : ne lit pas les réactions d''un autre magasin',
+  (SELECT count(*) FROM jsonb_object_keys(public.reactions_visites()->'commentaires') k WHERE k = (:nice)::text), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-000000000000';
+SELECT pg_temp.attendre('Sans rôle : aucune réaction', pg_temp.refuse('SELECT public.reactions_visites()'), 1);
+RESET ROLE;
+SELECT pg_temp.attendre('Commentaire du franchisé toujours là', (SELECT count(*) FROM public.visites_commentaires WHERE visite = :visite), 1);

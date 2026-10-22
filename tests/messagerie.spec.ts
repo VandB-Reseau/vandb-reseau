@@ -121,9 +121,10 @@ test('le franchisé est prévenu des messages et des nouveaux comptes rendus, et
   expect(ecritures.find((e) => e.table === 'rpc/envoyer_fil')!.corps).toEqual({ p_fil: 'magasin:Annecy Test', p_texte: 'C’est noté, merci.', p_mentions: [] })
   await page.goto('./#/')
   await expect(onglet(page)).toHaveAccessibleName('Échanges : 1 nouveauté')
-  // Le compte rendu de visite apparaît dans le groupe de Rennes
+  // Les comptes rendus ne sont plus dans les groupes : ils vont dans le fil d'actualité (Joseph, 22/10/2026)
   await page.goto('./#/echanges/magasin/Rennes%20Test')
-  await expect(page.getByRole('link', { name: /^Compte rendu : / }).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Rennes Test' }).first()).toBeVisible()
+  await expect(page.getByRole('link', { name: /^Compte rendu : / })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-messagerie-franchise.png`, fullPage: true })
 })

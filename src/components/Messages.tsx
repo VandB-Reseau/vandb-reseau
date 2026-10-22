@@ -1,5 +1,4 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -14,7 +13,6 @@ import type { SxProps, Theme } from '@mui/material/styles'
 import AlternateEmail from '@mui/icons-material/AlternateEmail'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
-import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import LockOpenOutlined from '@mui/icons-material/LockOpenOutlined'
 import LockOutlined from '@mui/icons-material/LockOutlined'
@@ -31,8 +29,7 @@ import {
   membresDuFil, sansPrives, type Contact, type Fil, type Message, type Participant,
 } from '../data/messagerie'
 import { actionsDuMagasin, echeanceDate, enRetard, type ActionSuivie } from '../data/actions'
-import { libelleTypeVisite, visiteFaite, type Magasin, type Reseau, type Visite } from '../data/modele'
-import { lienCompteRendu } from '../data/visites'
+import { type Magasin, type Reseau } from '../data/modele'
 import { dateCourte } from '../lib/format'
 import { EmptyState } from './EmptyState'
 import { Bulle } from './Outils'
@@ -98,26 +95,6 @@ function BulleMessage({ msg, moi, noms, premier, dernier, choisi, contexte, choi
           {choisi && supprimer && <Button size="small" color="error" startIcon={<DeleteOutlined />} onClick={supprimer} aria-label={`Supprimer mon message du ${horodatage(msg.creeLe)}`} sx={{ minHeight: 40 }}>Supprimer</Button>}
         </Box>
       )}
-    </Box>
-  )
-}
-
-// Carte d'un compte rendu de visite dans le groupe du magasin
-function CarteVisite({ v }: { v: Visite }) {
-  const parties = v.plan.filter((a) => a.action.trim()).length
-  return (
-    <Box component="li" sx={{ display: 'flex', justifyContent: 'center', my: 1.5 }}>
-      <ButtonBase component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu : ${libelleTypeVisite(v.type)} du ${dateCourte(v.date)}`}
-        sx={{ width: '100%', maxWidth: 440, display: 'flex', gap: 1.5, alignItems: 'center', textAlign: 'left', p: 1.5, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', '&:hover': { bgcolor: 'action.hover' } }}>
-        <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: 'action.selected', display: 'grid', placeItems: 'center', flexShrink: 0 }}><DescriptionOutlined /></Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 600 }}>{libelleTypeVisite(v.type)} du {dateCourte(v.date)} · compte rendu</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {[v.visiteurs.join(', '), parties ? `${parties} tâche${parties > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}
-          </Typography>
-        </Box>
-        <Typography variant="body2" color="primary" sx={{ fontWeight: 600, flexShrink: 0 }}>Lire</Typography>
-      </ButtonBase>
     </Box>
   )
 }
@@ -254,7 +231,7 @@ function Saisie({ citables, mentionnables, envoyer, fond, collante, joindre, sig
   )
 }
 
-type Element = { genre: 'message'; x: Message; instant: string } | { genre: 'visite'; v: Visite; instant: string } | { genre: 'tache'; t: ActionSuivie; instant: string }
+type Element = { genre: 'message'; x: Message; instant: string } | { genre: 'tache'; t: ActionSuivie; instant: string }
 
 // Un fil : groupe d'un magasin (avec ses comptes rendus et ses tâches), groupe libre ou échange avec une personne.
 // cadre : le fil défile dans son cadre (PC) ; sinon la page défile et la saisie reste collée en bas.
@@ -276,13 +253,10 @@ export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = fal
   const groupe = fil.genre === 'groupe' ? messagerie?.groupes.find((g) => g.id === fil.id) : undefined
   const complet = useMemo(() => messagesDuFil(messagerie, fil), [messagerie, fil])
   const liste = filtre ? complet.filter((x) => x.magasins.includes(filtre)) : complet
-  // Groupe d'un magasin : comptes rendus (avec le franchisé) et tâches, rangés avec les messages
+  // Groupe d'un magasin : tâches rangées avec les messages ; les comptes rendus vont dans le fil d'actualité (Joseph, 22/10/2026)
   const elements = useMemo<Element[]>(() => {
     const l: Element[] = liste.map((x) => ({ genre: 'message', x, instant: x.creeLe }))
     if (fil.genre === 'magasin') {
-      if (!fil.equipe) {
-        for (const v of reseau.visites) if (v.magasin === fil.magasin && v.id !== null && visiteFaite(v, reseau.jour) && v.type !== 'appel' && v.type !== 'point') l.push({ genre: 'visite', v, instant: v.creeLe || `${v.date}T12:00:00` })
-      }
       for (const t of actionsDuMagasin(reseau, fil.magasin)) {
         if (!t.libre || (t.libre.fil === 'equipe') !== fil.equipe) continue
         const source = t.libre.message ? liste.find((x) => x.id === t.libre!.message) : undefined
@@ -362,7 +336,6 @@ export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = fal
               const precedent = affiches[i - 1]
               const nouveauJour = !precedent || jourDuFil(precedent.instant) !== jourDuFil(e.instant)
               const jour = nouveauJour && <Box component="li" aria-hidden sx={{ textAlign: 'center', mt: 2, mb: 0.5 }}><Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>{jourDuFil(e.instant)}</Typography></Box>
-              if (e.genre === 'visite') return <Fragment key={`v${e.v.id}`}>{jour}<CarteVisite v={e.v} /></Fragment>
               if (e.genre === 'tache') return <Fragment key={e.t.cle}>{jour}<CarteTache reseau={reseau} x={e.t} signaler={signaler} /></Fragment>
               const x = e.x
               const avantMsg = precedent?.genre === 'message' ? precedent.x : undefined

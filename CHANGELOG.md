@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fil d'actualité de l'accueil : seulement les comptes rendus de visite, les bonnes pratiques et les communications
+  (plus de messages, tâches ni chiffres ; la fiche magasin garde tout). J'aime et commentaires sur chaque compte
+  rendu, pour l'équipe et le franchisé, chacun sur ses magasins. Échanges : les comptes rendus quittent les groupes
+  magasin (test `fil-actualites.spec.ts`). **Base : `0022_reactions_visites`.**
 - Bouton Créer (22/10/2026) : les choix s'ouvrent en menu juste sous le bouton, plus de fenêtre au centre ;
   absences retirées de l'app (menu Créer, menu des cases de l'Agenda, catégorie Congés, glisser et étirer,
   remplaçant suggéré, Ma semaine de l'Accueil). La table `leaves` reste en base, sans migration.
