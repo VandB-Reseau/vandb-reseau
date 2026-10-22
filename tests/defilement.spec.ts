@@ -28,7 +28,7 @@ test('ouvrir la fenêtre Créer ne décale pas la page', async ({ page, isMobile
   const gauche = () => page.evaluate(() => document.querySelector('main')!.getBoundingClientRect().left)
   const [l, g] = [await largeur(), await gauche()]
   await page.getByRole('button', { name: 'Créer', exact: true }).click()
-  await expect(page.getByRole('dialog', { name: 'Créer' })).toBeVisible()
+  await expect(page.getByRole('menu', { name: 'Créer' })).toBeVisible()
   const style = await page.evaluate(() => `${document.documentElement.getAttribute('style') ?? ''}${document.body.getAttribute('style') ?? ''}`)
   expect(style).not.toContain('padding-right')
   expect(await largeur()).toBe(l)

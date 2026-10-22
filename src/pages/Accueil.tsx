@@ -192,7 +192,6 @@ function BlocSemaine({ reseau, p, compact = false }: { reseau: Reseau; p: Perime
     if (e.categorie === 'visite') return e.debut >= j && p.type !== 'reseau' && noms.has(e.magasin ?? '')
     if (p.type === 'reseau') return true
     if (e.categorie === 'ouverture') return noms.has(e.cle.slice(2))
-    if (e.categorie === 'conge') return !!e.conge && personnes!.has(e.conge.personne)
     if (e.categorie === 'anniversaire') return [...personnes!].some((n) => e.cle.startsWith(`a-${n}-`))
     return true
   })

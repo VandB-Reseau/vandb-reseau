@@ -2,7 +2,7 @@ import { renommerAccesCoach } from './accesEquipe'
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { avecPoint, definirGrille, delaisVisiteParDefaut, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
-import type { ActionLibre, ActionPlan, Conge, Evenement, NoteMagasin, PreparationVisite, Reseau, Visite } from './modele'
+import type { ActionLibre, ActionPlan, Evenement, NoteMagasin, PreparationVisite, Reseau, Visite } from './modele'
 import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
 import { normaliserParties, normaliserPlan } from './compteRendu'
@@ -28,7 +28,7 @@ type Ligne = Record<string, unknown>
 export interface Tables {
   config: { key: string; value: unknown }[]
   surcharges: Ligne[]; affectations: Ligne[]; coachs: Ligne[]; recrues: Ligne[]
-  visites: Ligne[]; conges: Ligne[]; evenements: Ligne[]; finances: Ligne[]
+  visites: Ligne[]; evenements: Ligne[]; finances: Ligne[]
   campagnesRegions?: Ligne[]
 }
 
@@ -53,14 +53,13 @@ let fichesEnTable: boolean | null = null
 
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
-  const [config, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances, suivi, regions, fiches] = await Promise.all([
+  const [config, surcharges, affectations, coachs, recrues, visites, evenements, finances, suivi, regions, fiches] = await Promise.all([
     supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
     supabase.from('recruits').select('*'),
     toutLire(() => supabase.from('visits').select('*').order('visit_date', { ascending: false }).order('id')),
-    supabase.from('leaves').select('*').order('start_date'),
     supabase.from('events').select('*').order('start_date'),
     toutLire(() => supabase.from('store_finance').select('*').order('month').order('store_name')),
     toutLire(() => supabase.from('suivi_magasins').select('store_name,cle,valeur').order('store_name').order('cle')),
@@ -80,14 +79,14 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   return assemblerReseau({
     config: suiviEnTable ? configDepuisSuivi(lignesConfig, suivi.data as { store_name: string; cle: string; valeur: unknown }[]) : lignesConfig,
     surcharges: surcharges.data ?? [], affectations: affectations.data ?? [], coachs: coachs.data ?? [],
-    recrues: facultative(recrues), visites: facultative(visites), conges: facultative(conges), evenements: facultative(evenements), finances: facultative(finances),
+    recrues: facultative(recrues), visites: facultative(visites), evenements: facultative(evenements), finances: facultative(finances),
     campagnesRegions: facultative(regions),
   }, jour)
 }
 
 // Construit le réseau à partir des tables lues
 export function assemblerReseau(tables: Tables, jour = new Date().toISOString().slice(0, 10)): Reseau {
-  const { config: lignesConfig, surcharges, affectations, coachs, recrues, visites, conges, evenements, finances } = tables
+  const { config: lignesConfig, surcharges, affectations, coachs, recrues, visites, evenements, finances } = tables
   const cle = (k: string) => lignesConfig.find((r) => r.key === k)?.value
   const params = json<Partial<Parametres>>(cle('params'), {})
   const brutes: DonneesBrutes = {
@@ -149,9 +148,6 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
     ;(reseau.chiffres[c.magasin] ??= []).push(c)
   }
   for (const l of Object.values(reseau.chiffres)) l.sort((a, b) => a.mois.localeCompare(b.mois))
-  reseau.conges = (conges as L[]).map((c) => ({
-    id: Number(c.id) || null, personne: t(c.person), role: t(c.role) || 'cs', debut: t(c.start_date).slice(0, 10), fin: t(c.end_date).slice(0, 10) || t(c.start_date).slice(0, 10), notes: t(c.notes),
-  }))
   reseau.evenements = (evenements as L[]).map((e) => ({
     id: Number(e.id) || null, titre: t(e.title), type: t(e.type) || 'event', debut: t(e.start_date).slice(0, 10), fin: t(e.end_date).slice(0, 10) || t(e.start_date).slice(0, 10), notes: t(e.notes), couleur: t(e.color) || '#7c3aed',
   }))
@@ -627,7 +623,7 @@ export async function supprimerMagasin(nom: string) {
   }
 }
 
-// ── Visites, congés, événements ──
+// ── Visites, événements ──
 
 function verifier(r: { error: { message: string } | null }) { if (r.error) throw new ErreurEnregistrement(r.error.message) }
 
@@ -705,12 +701,6 @@ export async function marquerActions(lot: ({ visite: number; index: number; fait
   }
 }
 export async function supprimerVisite(id: number) { verifier(await supabase.from('visits').delete().eq('id', id)) }
-
-export async function enregistrerConge(c: Conge) {
-  const l = { person: c.personne, role: c.role, start_date: c.debut, end_date: c.fin, notes: c.notes || null }
-  verifier(c.id !== null ? await supabase.from('leaves').update(l).eq('id', c.id) : await supabase.from('leaves').insert(l))
-}
-export async function supprimerConge(id: number) { verifier(await supabase.from('leaves').delete().eq('id', id)) }
 
 export async function enregistrerEvenement(e: Evenement) {
   const l = { title: e.titre, type: e.type, start_date: e.debut, end_date: e.fin || null, notes: e.notes || null, color: e.couleur }
