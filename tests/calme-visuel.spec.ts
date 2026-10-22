@@ -28,7 +28,8 @@ test('seul le rouge reste une pastille pleine ; le reste est un texte coloré', 
   await page.screenshot({ path: `captures/${info.project.name}-magasins-calme.png` })
 })
 
-test('fiche magasin : sur téléphone, 3 onglets et « Plus » ; sur PC, tous les onglets', async ({ page, isMobile }, info) => {
+test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur PC, tous les onglets', async ({ page, isMobile }, info) => {
+  if (isMobile) await page.setViewportSize({ width: 390, height: 844 })
   await seConnecter(page)
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })

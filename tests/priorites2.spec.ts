@@ -66,16 +66,11 @@ test('fiche magasin : contacts à initiales, rôle sous le nom, pictos de 48 px'
   await page.screenshot({ path: `captures/${info.project.name}-fiche-contacts.png`, fullPage: !isMobile })
 })
 
-test('Magasins : tri au choix et accès direct à une lettre', async ({ page, isMobile }, info) => {
+test('Magasins : tri au choix, intertitres par lettre sans rangée de lettres', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins')
-  const lettres = page.getByRole('group', { name: 'Aller à la lettre' })
-  await expect(lettres).toBeVisible()
-  for (const b of await lettres.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
-  const derniere = lettres.getByRole('button').last()
-  const lettre = (await derniere.getAttribute('aria-label'))!.replace('Lettre ', '')
-  await derniere.click()
-  await expect(page.getByRole('region', { name: `Magasins en ${lettre}` })).toBeInViewport()
+  await expect(page.getByRole('region', { name: /^Magasins en [A-Z#]$/ }).first()).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Aller à la lettre' })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-magasins-lettres.png`, fullPage: !isMobile })
 
@@ -83,7 +78,7 @@ test('Magasins : tri au choix et accès direct à une lettre', async ({ page, is
   await tri.getByRole('button', { name: 'Évolution du CA' }).click()
   await expect(page).toHaveURL(/tri=ca/)
   await expect(page.getByRole('region', { name: 'Liste des magasins' }).getByText(/^[+−-]?\d+(,\d+)? ?%$/).first()).toBeVisible()
-  await expect(lettres).toHaveCount(0)
+  await expect(page.getByRole('region', { name: /^Magasins en / })).toHaveCount(0)
   await tri.getByRole('button', { name: 'Dernière visite' }).click()
   await expect(page).toHaveURL(/tri=visite/)
 })

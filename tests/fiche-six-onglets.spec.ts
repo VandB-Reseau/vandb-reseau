@@ -42,3 +42,17 @@ for (const { ancienne, onglet, vu } of [
     await expect(page.getByText(vu).first()).toBeInViewport()
   })
 }
+
+test('grand téléphone : quatre onglets avant « Plus », sans déborder même quand « Plus » porte un nom', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'téléphone seulement')
+  await page.setViewportSize({ width: 430, height: 900 })
+  await seConnecter(page)
+  await page.goto('./#/magasins/Lyon%20Test')
+  await expect(page.getByRole('tab', { name: 'Messages' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Autres rubriques' })).toBeVisible()
+  await ouvrirOnglet(page, 'Chiffres')
+  await expect(page.getByRole('tab', { name: /Chiffres et santé, autres rubriques/ })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Messages' })).toBeVisible()
+  const droite = await page.evaluate(() => Math.max(...[...document.querySelectorAll('.onglets-fiche [role=tab]')].map((t) => t.getBoundingClientRect().right)))
+  expect(droite).toBeLessThanOrEqual(430 - 16)
+})

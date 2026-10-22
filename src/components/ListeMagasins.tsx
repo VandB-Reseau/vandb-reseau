@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import ButtonBase from '@mui/material/ButtonBase'
 import Typography from '@mui/material/Typography'
 import { CarteLignes, Initiales, LigneCompacte, Pastille, type Ton } from './Social'
 import { lienFiche } from '../lib/format'
@@ -34,7 +33,7 @@ export const trisMagasins: { v: TriMagasins; libelle: string }[] = [{ v: 'nom', 
 const lettreDe = (nom: string) => { const l = nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').charAt(0).toUpperCase(); return /[A-Z]/.test(l) ? l : '#' }
 
 // Magasins en lignes compactes (PC et téléphone) : initiales, nom, Coach et Responsable Régional, une info à droite.
-// Triés par nom : intertitres A, B, C… collants et une rangée de lettres pour sauter directement (Joseph, 21/10/2026).
+// Triés par nom : intertitres A, B, C… collants (rangée de lettres retirée, Joseph, 21/10/2026).
 // suivis : favoris et fiches ouvertes récemment, en tête de la liste quand aucun filtre n'est posé
 export function ListeMagasins({ magasins, tri = 'nom', suivis }: { magasins: Magasin[]; tri?: TriMagasins; suivis?: { favoris: Magasin[]; recents: Magasin[] } }) {
   const { reseau } = useReseau()
@@ -62,11 +61,6 @@ export function ListeMagasins({ magasins, tri = 'nom', suivis }: { magasins: Mag
   }
   const lettres = tri === 'nom' ? [...new Set(tries.map((m) => lettreDe(m.nom)))] : []
   const groupes = tri === 'nom' ? lettres.map((l) => ({ l, ms: visibles.filter((m) => lettreDe(m.nom) === l) })).filter((g) => g.ms.length) : []
-  const sauter = (l: string) => {
-    const i = tries.findIndex((m) => lettreDe(m.nom) === l)
-    if (i >= nb) setNb(Math.ceil((i + 1) / PAS) * PAS)
-    requestAnimationFrame(() => document.getElementById(`lettre-${l}`)?.scrollIntoView({ block: 'start' }))
-  }
   const enTete = suivis ? [{ titre: 'Favoris', ms: suivis.favoris }, { titre: 'Consultés récemment', ms: suivis.recents }].filter((g) => g.ms.length) : []
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -76,13 +70,6 @@ export function ListeMagasins({ magasins, tri = 'nom', suivis }: { magasins: Mag
           <CarteLignes>{g.ms.map(ligne)}</CarteLignes>
         </Box>
       ))}
-      {lettres.length > 3 && (
-        <Box role="group" aria-label="Aller à la lettre" sx={{ display: 'flex', overflowX: 'auto', mx: { xs: -2, sm: 0 }, px: { xs: 1, sm: 0 }, scrollbarWidth: 'none' }}>
-          {lettres.map((l) => (
-            <ButtonBase key={l} onClick={() => sauter(l)} aria-label={`Lettre ${l}`} sx={{ flexShrink: 0, minWidth: 40, minHeight: 48, fontFamily: 'inherit', fontWeight: 600, fontSize: '0.875rem', color: 'text.secondary', borderRadius: 2, '&:hover': { bgcolor: 'action.hover' } }}>{l}</ButtonBase>
-          ))}
-        </Box>
-      )}
       {tri === 'nom' ? <Box component="section" aria-label="Liste des magasins" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>{groupes.map((g) => (
         <Box key={g.l} component="section" aria-label={`Magasins en ${g.l}`}>
           <Box id={`lettre-${g.l}`} sx={{ position: 'sticky', top: sousBandes('--onglets', '--filtres'), zIndex: 3, bgcolor: 'background.default', scrollMarginTop: sousBandes('--onglets', '--filtres'), py: 0.5, px: 0.5 }}>
