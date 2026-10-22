@@ -37,7 +37,7 @@ import { useAuth } from '../auth/AuthContext'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { Fenetre } from '../components/EditionEquipe'
-import { ChoixFilMagasin, FilMessages, useNonLusFils } from '../components/Messages'
+import { FilMessages } from '../components/Messages'
 import { BoutonOutil, Bulle, ChampRecherche } from '../components/Outils'
 import { PageHeader } from '../components/PageHeader'
 import { initialesDe } from '../components/Social'
@@ -333,7 +333,6 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
   const franchise = profil?.role === 'franchise' || !!reseau.espace
   const fil = filDeAdresse(genre, valeur, !franchise && params.get('fil') === 'equipe')
   const conv = fil ? lignes.find((l) => l.cle === (fil.genre === 'magasin' ? `magasin:${fil.magasin}` : fil.genre === 'groupe' ? `groupe:${fil.id}` : `personne:${fil.cle}`)) : undefined
-  const nonLusFils = useNonLusFils(fil?.genre === 'magasin' ? fil.magasin : '')
   const vue = params.get('vue') === 'taches' ? 'taches' : 'discussions'
   const moi = monNomPorteur(reseau, profil)
   const nTaches = moi ? actionsDes(reseau, null).filter((x) => !x.a.faite && portePar(x.a, moi)).length : 0
@@ -359,16 +358,14 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
     : fil.genre === 'groupe' ? (g?.membres ?? []).map((k) => ({ cle: k, nom: nomDe(reseau, k), role: roleDeCle(k) }))
     : fil.genre === 'magasin' && conv.magasin ? participants(reseau, conv.magasin).filter((p) => !(fil.equipe && p.cle.startsWith('franchise:')))
     : []
-  const choixFil = fil?.genre === 'magasin' && !franchise && !lectureSeule && (
-    <ChoixFilMagasin magasin={fil.magasin} equipe={fil.equipe} nonLus={nonLusFils}
-      changer={(e) => naviguer(`/echanges/magasin/${encodeURIComponent(fil.magasin)}${e ? '?fil=equipe' : ''}`, { replace: true })} />
-  )
+  const basculer = fil?.genre === 'magasin' && !franchise && !lectureSeule
+    ? (e: boolean) => naviguer(`/echanges/magasin/${encodeURIComponent(fil.magasin)}${e ? '?fil=equipe' : ''}`, { replace: true }) : undefined
   const actionEnTete = g && !lectureSeule ? <MenuGroupe g={g} modifier={peutModifier ? () => setEdition(g) : undefined}
     quitter={() => { quitterGroupe(g.id).then(async () => { naviguer('/echanges'); setConfirmation('Tu as quitté le groupe.') }, () => setConfirmation('Impossible de quitter le groupe pour le moment.')) }} />
     : fil?.genre === 'magasin' && !franchise ? <Button component={RouterLink} to={lienFiche(fil.magasin)} sx={{ minHeight: 48, display: { xs: 'none', sm: 'inline-flex' } }}>Fiche</Button> : undefined
   const detail = conv ? (fil?.genre === 'groupe' ? `${membres.length} membres` : conv.detail) : ''
   const filAffiche = (cadre: boolean) => fil && conv && (
-    <FilMessages key={conv.cle + (fil.genre === 'magasin' && fil.equipe ? '|equipe' : '')} reseau={reseau} fil={fil} contact={conv.contact} signaler={setConfirmation} lectureSeule={lectureSeule}
+    <FilMessages key={conv.cle + (fil.genre === 'magasin' && fil.equipe ? '|equipe' : '')} reseau={reseau} fil={fil} contact={conv.contact} signaler={setConfirmation} lectureSeule={lectureSeule} basculer={basculer}
       cadre={cadre} aLaFin={!cadre} fond={cadre ? 'background.paper' : 'background.default'} />
   )
   const liste = <ListeDiscussions reseau={reseau} lignes={lignes} mg={messagerie} actif={conv?.cle} ouvrir={ouvrir} ecrire={!lectureSeule} magasins={magasins} signaler={setConfirmation}
@@ -381,12 +378,11 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
     // la saisie tout en bas, seuls les messages défilent (Joseph, 22/10/2026)
     return (
       <ConversationTelephone>
-        <Box sx={{ px: 2, pb: choixFil ? 1 : 0, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ px: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
           <EnTete titre={conv.titre} detail={detail} niveau="h1" retour={retour} avatar={<AvatarConversation c={conv} taille={40} />} action={actionEnTete} />
-          {choixFil}
         </Box>
         <Box sx={{ flex: 1, minHeight: 0 }}>
-          <FilMessages key={conv.cle + (fil.genre === 'magasin' && fil.equipe ? '|equipe' : '')} reseau={reseau} fil={fil} contact={conv.contact} signaler={setConfirmation} lectureSeule={lectureSeule}
+          <FilMessages key={conv.cle + (fil.genre === 'magasin' && fil.equipe ? '|equipe' : '')} reseau={reseau} fil={fil} contact={conv.contact} signaler={setConfirmation} lectureSeule={lectureSeule} basculer={basculer}
             cadre fond="background.default" />
         </Box>
         {dialogue}
@@ -407,10 +403,9 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
         <Card sx={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {fil && conv
             ? <>
-              <Box sx={{ px: 2.5, pb: choixFil ? 1.5 : 0, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Box sx={{ px: 2.5, borderBottom: '1px solid', borderColor: 'divider' }}>
                 <EnTete titre={conv.titre} detail={detail} niveau="h2" avatar={<AvatarConversation c={conv} taille={40} />} action={actionEnTete} />
-                {choixFil}
-              </Box>
+                    </Box>
               <Box sx={{ flex: 1, minHeight: 0 }}>{filAffiche(true)}</Box>
             </>
             : <EmptyState icone={<ForumOutlined />} titre="Aucune conversation" texte="Choisis un magasin, un groupe ou une personne pour écrire." />}

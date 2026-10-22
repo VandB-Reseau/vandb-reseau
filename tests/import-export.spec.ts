@@ -87,10 +87,12 @@ test('chiffres, Coach des magasins et Responsable Régional des Coachs depuis un
   await seConnecter(page, { ecritures })
   await page.goto('./#/parametres/donnees')
 
-  // Un fichier partiel : les mois absents seraient supprimés, on s'arrête à l'aperçu
-  let d = await importer(page, 'Chiffres mensuels', csv('chiffres.csv', 'Magasin;Mois;CA marché extérieur (€)\nV and B Lyon Test;09/2026;1 234,5\n'))
-  await expect(d.getByText(/^1 ligne modifiée · \d+ suppressions$/)).toBeVisible()
-  await expect(d.getByText(/lignes absentes du fichier seront supprimées de l’app/)).toBeVisible()
+  // Un fichier qui n'est pas un export de l'app (pas de colonne « (clé) ») : lu comme l'export mensuel des chiffres,
+  // il ajoute ou complète des mois sans rien supprimer (Joseph, 22/10/2026)
+  await importer(page, 'Chiffres mensuels', csv('chiffres.csv', 'Magasin;Mois;CA marché extérieur (€)\nV and B Lyon Test;09/2026;1 234,5\n'))
+  let d = page.getByRole('dialog', { name: 'Importer les chiffres mensuels' })
+  await expect(d.getByText(/^1 ligne prête à importer pour 1 magasin/)).toBeVisible()
+  await expect(d.getByText(/seront supprimées/)).toHaveCount(0)
   await d.getByRole('button', { name: 'Annuler' }).click()
 
   // Fichier complet exporté, un chiffre modifié et un magasin inconnu
@@ -129,8 +131,11 @@ test('chiffres, Coach des magasins et Responsable Régional des Coachs depuis un
   expect(JSON.parse(rr).dr_assigns.at(-1)).toEqual(expect.objectContaining({ cs: 'Hugo FICTIF', dr: 'rr2' }))
 
   // Colonne clé absente : rien n'est importé
-  d = await importer(page, 'Visites', csv('autre.csv', 'Ville;Total\nLyon;3\n'))
-  await expect(d.getByText('Colonnes introuvables : Magasin, Date', { exact: false }).or(d.getByText('introuvable', { exact: false }))).toBeVisible()
+  // (sans colonne « (clé) », le fichier est lu comme un classeur de visites : rien n'y est reconnu)
+  await importer(page, 'Visites', csv('autre.csv', 'Ville;Total\nLyon;3\n'))
+  d = page.getByRole('dialog', { name: 'Importer des visites' })
+  await expect(d.getByText(/Aucune visite reconnue|ne peut pas être lu/)).toBeVisible()
+  await expect(d.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
 })
 
 test('déploiements et nine box : une date par déploiement et par classement', async ({ page, isMobile }) => {

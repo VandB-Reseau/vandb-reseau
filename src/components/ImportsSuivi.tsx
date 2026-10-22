@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -29,11 +29,12 @@ import { libelleCritere, type Thematique, type Ton } from '../data/sante'
 import { dateCourte } from '../lib/format'
 import type { Reseau } from '../data/modele'
 
-// Imports des fichiers de suivi (santé du parc, chiffres, classeur des visites) et thématiques de déploiement :
-// réservés au Directeur de réseau, rangés dans les Paramètres
+// Imports des fichiers venus d'autres outils (export Asana de la santé du parc, export mensuel des chiffres, classeur des visites),
+// ouverts depuis la carte du référentiel quand le fichier n'est pas un export de l'app ; thématiques de déploiement.
+// Réservés au Directeur de réseau, rangés dans les Paramètres
 
 // ── Import d'un fichier Excel ou CSV ──
-export function DialogImportSante({ reseau, date, onFermer }: { reseau: Reseau; date: string; onFermer: (m?: string) => void }) {
+export function DialogImportSante({ reseau, date, fichier, onFermer }: { reseau: Reseau; date: string; fichier?: File; onFermer: (m?: string) => void }) {
   const [res, setRes] = useState<ResultatImport | null>(null)
   const [nomFichier, setNomFichier] = useState('')
   const [erreur, setErreur] = useState('')
@@ -46,6 +47,8 @@ export function DialogImportSante({ reseau, date, onFermer }: { reseau: Reseau; 
       else setRes(r)
     } catch { setErreur('Ce fichier ne peut pas être lu. Enregistre-le au format Excel (.xlsx) ou CSV puis réessaie.') }
   }
+  // Fichier déjà choisi depuis la carte du référentiel
+  useEffect(() => { if (fichier) void choisir(fichier) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const nbNotes = res ? res.notes.reduce((t, n) => t + Object.keys(n.notes).length, 0) : 0
   const dates = res ? [...new Set([...res.notes.map((n) => n.date), ...res.deploiements.map((d) => d.date)])].sort() : []
   const total = nbNotes + (res?.deploiements.length ?? 0)
@@ -85,7 +88,7 @@ export function DialogImportSante({ reseau, date, onFermer }: { reseau: Reseau; 
 }
 
 
-export function DialogImportChiffres({ reseau, onFermer }: { reseau: Reseau; onFermer: (m?: string) => void }) {
+export function DialogImportChiffres({ reseau, fichier, onFermer }: { reseau: Reseau; fichier?: File; onFermer: (m?: string) => void }) {
   const [res, setRes] = useState<ResultatImportChiffres | null>(null)
   const [nomFichier, setNomFichier] = useState('')
   const [erreur, setErreur] = useState('')
@@ -98,6 +101,8 @@ export function DialogImportChiffres({ reseau, onFermer }: { reseau: Reseau; onF
       else setRes(r)
     } catch { setErreur('Ce fichier ne peut pas être lu. Enregistre-le au format Excel (.xlsx) ou CSV puis réessaie.') }
   }
+  // Fichier déjà choisi depuis la carte du référentiel
+  useEffect(() => { if (fichier) void choisir(fichier) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const total = res?.lignes.length ?? 0
   const mois = res ? [...new Set(res.lignes.map((l) => l.mois))].sort() : []
   const nbMag = res ? new Set(res.lignes.map((l) => l.magasin)).size : 0
@@ -130,7 +135,7 @@ export function DialogImportChiffres({ reseau, onFermer }: { reseau: Reseau; onF
 
 
 // ── Import du classeur de suivi des visites (un onglet par Coach) ──
-export function DialogImportVisites({ reseau, onFermer }: { reseau: Reseau; onFermer: (m?: string) => void }) {
+export function DialogImportVisites({ reseau, fichier, onFermer }: { reseau: Reseau; fichier?: File; onFermer: (m?: string) => void }) {
   const [res, setRes] = useState<ResultatImportVisites | null>(null)
   const [nomFichier, setNomFichier] = useState('')
   const [erreur, setErreur] = useState('')
@@ -144,6 +149,8 @@ export function DialogImportVisites({ reseau, onFermer }: { reseau: Reseau; onFe
       else setRes(r)
     } catch { setErreur('Ce fichier ne peut pas être lu. Enregistre-le au format Excel (.xlsx) puis réessaie.') }
   }
+  // Fichier déjà choisi depuis la carte du référentiel
+  useEffect(() => { if (fichier) void choisir(fichier) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // Feuilles de route sans date : rangées à la date choisie, sauf si elles y sont déjà
   const feuilles = (res?.feuillesDeRoute ?? []).filter((f) => !reseau.visites.some((v) => v.magasin === f.magasin && v.date === dateAudits && v.type === 'feuille'))
   const n = res?.visites.length ?? 0, a = res?.audits.length ?? 0, fr = feuilles.length
@@ -284,39 +291,5 @@ export function CarteEffacerNotes({ reseau }: { reseau: Reseau }) {
         </DialogActions>
       </Dialog>
     </Card>
-  )
-}
-
-type Fichier = 'visites' | 'sante' | 'chiffres'
-const fichiers: { id: Fichier; libelle: string; detail: string }[] = [
-  { id: 'visites', libelle: 'Classeur des visites', detail: 'Un onglet par Coach' },
-  { id: 'sante', libelle: 'Export Asana de la santé du parc', detail: 'Notes nine box et déploiements, Excel ou CSV' },
-  { id: 'chiffres', libelle: 'Export mensuel des chiffres', detail: 'Excel ou CSV' },
-]
-
-// Import et export : fichiers de suivi venus d'autres outils (anciens classeurs, export Asana)
-export function FichiersSuivi({ reseau, signaler }: { reseau: Reseau; signaler: (m: string) => void }) {
-  const [ouvert, setOuvert] = useState<Fichier | null>(null)
-  const fermer = (m?: string) => { setOuvert(null); if (m) signaler(m) }
-  return (
-    <>
-      <Typography variant="h3" component="h2" sx={{ mt: 3, mb: 2 }}>Fichiers de suivi</Typography>
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' } }}>
-        {fichiers.map((f) => (
-          <Card key={f.id} component="section" aria-label={f.libelle}>
-            <CardContent sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5, height: '100%' }}>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h4" component="h3">{f.libelle}</Typography>
-                <Typography variant="body2" color="text.secondary">{f.detail}</Typography>
-              </Box>
-              <Button variant="outlined" startIcon={<UploadFileOutlined />} onClick={() => setOuvert(f.id)} aria-label={`Importer le fichier : ${f.libelle}`} sx={{ minHeight: 48, alignSelf: 'flex-start' }}>Importer</Button>
-            </CardContent>
-          </Card>
-        ))}
-      </Box>
-      {ouvert === 'visites' && <DialogImportVisites reseau={reseau} onFermer={fermer} />}
-      {ouvert === 'sante' && <DialogImportSante reseau={reseau} date={reseau.jour} onFermer={fermer} />}
-      {ouvert === 'chiffres' && <DialogImportChiffres reseau={reseau} onFermer={fermer} />}
-    </>
   )
 }

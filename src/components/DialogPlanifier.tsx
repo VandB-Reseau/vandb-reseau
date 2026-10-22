@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import Autocomplete from '@mui/material/Autocomplete'
-import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
@@ -16,7 +15,7 @@ import { lienGoogleAgenda } from '../lib/agenda'
 import { dateCourte } from '../lib/format'
 import type { Reseau, Visite } from '../data/modele'
 
-// Planifier une visite (ou une tournée le même jour) : date, heure, notes de préparation, puis Google Agenda prérempli.
+// Planifier une visite (ou une tournée le même jour) : date, notes de préparation, puis Google Agenda prérempli.
 // Sans magasin donné, la personne choisit parmi les siens, dus ou non
 export function DialogPlanifier({ reseau, magasins: initiaux, coach: coachDonne, dateInitiale, visite, onFermer }: {
   reseau: Reseau; magasins: string[]; coach?: string; dateInitiale: string; visite?: Visite | null; onFermer: (m?: string) => void
@@ -29,7 +28,6 @@ export function DialogPlanifier({ reseau, magasins: initiaux, coach: coachDonne,
   const coach = coachDonne || (magasins[0] ? coachA(magasins[0], reseau.jour) : '')
   // Visite à reporter : la date passée n'est pas reprise
   const [date, setDate] = useState(visite && visite.date >= reseau.jour ? visite.date : dateInitiale)
-  const [heure, setHeure] = useState(preparationDe(reseau, noms[0])?.heure ?? '')
   const [notes, setNotes] = useState<Record<string, string>>(() => Object.fromEntries(noms.map((n) => [n, preparationDe(reseau, n)?.notes ?? ''])))
   const [agenda, setAgenda] = useState(!visite)
   const unSeul = magasins.length === 1
@@ -39,14 +37,14 @@ export function DialogPlanifier({ reseau, magasins: initiaux, coach: coachDonne,
       titre={choix ? 'Planifier une visite' : unSeul ? `Visite de ${magasins[0].nom}` : `Tournée de ${magasins.length} magasins`} ouvert onFermer={onFermer} valide={valide}
       enregistrer={async () => {
         // Ouvert avant toute attente : le navigateur ne le bloque pas
-        if (agenda) window.open(lienGoogleAgenda({ magasins, date, heure, notes }), '_blank', 'noopener')
+        if (agenda) window.open(lienGoogleAgenda({ magasins, date, notes }), '_blank', 'noopener')
         if (visite) {
           if (visite.date !== date) await enregistrerVisites({ ...visite, date, prevue: true }, [visite.magasin], visite.id)
         } else {
           await enregistrerVisites({ groupe: magasins.length > 1 ? `g_${Date.now()}` : '', date, type: 'terrain', visiteurs: coach ? [coach] : [], signatureRequise: false, lienSigne: '', dateSignature: '', documents: [], photos: [], notes: '', parties: partiesVides(), plan: [], prevue: true }, noms, null)
         }
         const par = monNomPorteur(reseau, profil) || reseau.directeur.nom
-        for (const n of noms) await enregistrerPreparation(n, { notes: notes[n] ?? '', heure, par, maj: reseau.jour })
+        for (const n of noms) await enregistrerPreparation(n, { notes: notes[n] ?? '', heure: '', par, maj: reseau.jour })
         return unSeul ? `Visite planifiée le ${dateCourte(date)}.` : `${magasins.length} visites planifiées le ${dateCourte(date)}.`
       }}
       supprimer={visite?.id ? async () => { await supprimerVisite(visite.id!); return 'Visite retirée du planning.' } : undefined}
@@ -57,10 +55,7 @@ export function DialogPlanifier({ reseau, magasins: initiaux, coach: coachDonne,
           onChange={(_e, v) => { setNoms(v); setNotes((x) => ({ ...Object.fromEntries(v.map((n) => [n, preparationDe(reseau, n)?.notes ?? ''])), ...x })) }}
           renderInput={(p) => <TextField {...p} label="Magasins" />} />
       )}
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: '1fr 1fr' }}>
-        <TextField type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: reseau.jour } }} error={!!date && date < reseau.jour} />
-        <TextField type="time" label="Heure" value={heure} onChange={(e) => setHeure(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-      </Box>
+      <TextField type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: reseau.jour } }} error={!!date && date < reseau.jour} />
       {magasins.map((m) => (
         <TextField key={m.nom} multiline minRows={unSeul ? 5 : 2} label={unSeul ? 'Notes de préparation' : `Notes · ${m.nom}`} value={notes[m.nom] ?? ''}
           onChange={(e) => setNotes((x) => ({ ...x, [m.nom]: e.target.value }))} />

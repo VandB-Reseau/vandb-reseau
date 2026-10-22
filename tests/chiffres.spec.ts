@@ -160,7 +160,8 @@ test('l’onglet Chiffres donne les indicateurs et la liste des magasins', async
   }
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-sante-chiffres.png`, fullPage: !isMobile })
-  // Filtre sur l'alerte
+  // Filtre sur l'alerte, à côté du Coach (repliés derrière « Filtres » sur téléphone)
+  if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
   await page.getByRole('button', { name: /Filtre Alerte/ }).click()
   await page.getByRole('menuitem', { name: /^OK/ }).click()
   await page.keyboard.press('Escape')
@@ -173,10 +174,10 @@ test('importer l’export mensuel des chiffres', async ({ page, isMobile }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/parametres/donnees')
-  await page.getByRole('button', { name: 'Importer le fichier : Export mensuel des chiffres' }).click()
+  await page.getByRole('button', { name: 'Importer Chiffres mensuels', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Importer les chiffres mensuels' })
   const csv = 'Magasin;Mois;CA marché extérieur;PM HT cave;Flux cave;PM HT bar;Flux bar;Marge %;CA cave N-1;CA cumulé\nV and B Brest Test;09/2026;1 500;40;1250;12,5;1600;43,2;48000;70000\nBrest Test;08/2026;;40;1200;;;;;\nInconnu Test;09/2026;1;1;1;1;1;1;1;1\n'
-  await d.getByLabel('Fichier de chiffres à importer').setInputFiles({ name: 'export.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
+  await page.getByRole('dialog', { name: 'Importer : Chiffres mensuels' }).getByLabel('Fichier Chiffres mensuels à importer').setInputFiles({ name: 'export.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
   await expect(d.getByText(/2 lignes prêtes à importer pour 1 magasin, d’août 2026 à septembre 2026/)).toBeVisible()
   await expect(d.getByText('Colonnes ignorées : CA cave N-1, CA cumulé.')).toBeVisible()
   await expect(d.getByText(/Magasins non trouvés \(1\) : Inconnu Test/)).toBeVisible()

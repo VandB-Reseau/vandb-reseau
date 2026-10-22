@@ -66,7 +66,7 @@ test('un Coach arrive sur sa semaine, prépare et planifie un magasin pas vu dep
   const d = page.getByRole('dialog', { name: 'Visite de Nantes Test' })
   const demain = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
   await d.getByLabel('Date').fill(demain)
-  await d.getByLabel('Heure').fill('09:30')
+  await expect(d.getByLabel('Heure')).toHaveCount(0)
   await d.getByLabel('Notes de préparation').fill('Revoir la vitrine et le corner épicerie')
   await expect(d.getByRole('switch', { name: 'Ajouter à Google Agenda' })).toBeChecked()
   expect(await textesTropPetits(page)).toEqual([])
@@ -76,12 +76,14 @@ test('un Coach arrive sur sa semaine, prépare et planifie un magasin pas vu dep
   const visite = ecritures.find((e) => e.table === 'visits' && e.methode === 'POST')!
   expect((visite.corps as Record<string, unknown>[])[0]).toMatchObject({ store: 'Nantes Test', visitor: 'Inès EXEMPLE', visit_date: demain, notes: null })
   const prepa = ecritures.find((e) => e.table === 'suivi_magasins' && e.methode === 'POST')!
-  expect((prepa.corps as Record<string, unknown>[])[0]).toMatchObject({ store_name: 'Nantes Test', cle: 'preparation', valeur: { notes: 'Revoir la vitrine et le corner épicerie', heure: '09:30', par: 'Inès EXEMPLE' } })
+  expect((prepa.corps as Record<string, unknown>[])[0]).toMatchObject({ store_name: 'Nantes Test', cle: 'preparation', valeur: { notes: 'Revoir la vitrine et le corner épicerie', heure: '', par: 'Inès EXEMPLE' } })
   const [lien] = await page.evaluate(() => (window as unknown as { ouverts: string[] }).ouverts)
   const url = new URL(lien)
   expect(url.host).toBe('calendar.google.com')
   expect(url.searchParams.get('text')).toBe('Visite Nantes Test')
-  expect(url.searchParams.get('dates')).toBe(`${demain.replace(/-/g, '')}T093000/${demain.replace(/-/g, '')}T110000`)
+  // Journée entière : du jour au lendemain, sans heure
+  const lendemain = new Date(Date.parse(`${demain}T00:00:00Z`) + 86400000).toISOString().slice(0, 10)
+  expect(url.searchParams.get('dates')).toBe(`${demain.replace(/-/g, '')}/${lendemain.replace(/-/g, '')}`)
   expect(url.searchParams.get('details')).toContain('Revoir la vitrine')
   expect(url.searchParams.get('details')).toContain('/preparer')
 })

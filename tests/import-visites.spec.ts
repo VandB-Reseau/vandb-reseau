@@ -13,9 +13,10 @@ test('importer le classeur de suivi des visites et les notes d’audit', async (
   await expect(page.getByRole('button', { name: 'Importer Excel' })).toHaveCount(0)
   if (isMobile) return
   await page.goto('./#/parametres/donnees')
-  await page.getByRole('button', { name: 'Importer le fichier : Classeur des visites' }).click()
+  // Le classeur des visites passe par la carte « Visites », comme l'export de l'app
+  await page.getByRole('button', { name: 'Importer Visites', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Importer : Visites' }).getByLabel('Fichier Visites à importer').setInputFiles(fichier)
   const d = page.getByRole('dialog', { name: 'Importer des visites' })
-  await d.getByLabel('Fichier de visites à importer').setInputFiles(fichier)
   await expect(d.getByText('8 visites à ajouter pour 4 magasins, de 2025 à 2026. 2 visites déjà dans l’app, laissées telles quelles.')).toBeVisible()
   await expect(d.getByText('3 notes d’audit : 2 hygiène, 1 excellence.')).toBeVisible()
   await expect(d.getByText('1 feuille de route faite.')).toBeVisible()

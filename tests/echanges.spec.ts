@@ -36,20 +36,29 @@ test('onglet Échanges : groupe du magasin à deux fils, réponse du Coach', asy
   await expect(page).toHaveURL(/#\/echanges\/magasin\/Annecy%20Test/)
 
   // Fil « Avec le franchisé » : le message du franchisé, pas celui de l'équipe
-  const choix = page.getByRole('radiogroup', { name: 'Fil de Annecy Test' })
-  await expect(choix.getByRole('radio', { name: /Avec le franchisé/ })).toHaveAttribute('aria-checked', 'true')
+  // Le fil se choisit par un picto à côté de l'envoi (Joseph, 22/10/2026)
+  const picto = page.getByRole('button', { name: 'Équipe seule', exact: true })
+  await expect(picto).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByRole('radiogroup', { name: /^Fil de / })).toHaveCount(0)
+  const zonePicto = (await picto.boundingBox())!, envoi = (await page.getByRole('button', { name: 'Envoyer' }).boundingBox())!
+  expect(Math.abs(zonePicto.y - envoi.y)).toBeLessThan(4)
+  expect(envoi.x - (zonePicto.x + zonePicto.width)).toBeLessThan(16)
+  expect(zonePicto.height).toBeGreaterThanOrEqual(48)
   const fil = page.getByRole('list', { name: /^Messages de / })
   await expect(fil).toContainText('La vitrine est installée.')
   await expect(fil).not.toContainText('On en parle avant jeudi ?')
   await expect.poll(() => ecritures.some((e) => e.table === 'rpc/marquer_lu_fil' && (e.corps as { p_fil: string }).p_fil === 'magasin:Annecy Test')).toBe(true)
 
   // « Équipe seule » : le message du RR ; une réponse part dans ce fil
-  await choix.getByRole('radio', { name: /Équipe seule/ }).click()
+  // Le texte commencé suit le changement de fil
+  const champ = page.getByLabel('Message', { exact: true })
+  await champ.fill('Oui, mercredi 10 h.')
+  await picto.click()
+  await expect(page.getByRole('button', { name: 'Équipe seule', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(fil).toContainText('On en parle avant jeudi ?')
   await expect(fil).not.toContainText('La vitrine est installée.')
-  const champ = page.getByLabel('Message', { exact: true })
   await expect(champ).toHaveAttribute('placeholder', 'Message à l’équipe')
-  await champ.fill('Oui, mercredi 10 h.')
+  await expect(champ).toHaveValue('Oui, mercredi 10 h.')
   await page.getByRole('button', { name: 'Envoyer' }).click()
   await expect(champ).toHaveValue('')
   expect(ecritures.find((e) => e.table === 'rpc/envoyer_fil')!.corps).toEqual({ p_fil: 'equipe:Annecy Test', p_texte: 'Oui, mercredi 10 h.', p_mentions: [] })
@@ -127,7 +136,7 @@ test('franchisé : le groupe de son magasin sans « Équipe seule », ni groupe 
   await expect(liste.getByRole('button', { name: /^Annecy Test/ })).toBeVisible()
   await expect(liste.getByRole('button', { name: /Coachs du Nord/ })).toHaveCount(0)
   await liste.getByRole('button', { name: /^Annecy Test/ }).click()
-  await expect(page.getByRole('radiogroup', { name: /^Fil de / })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Équipe seule', exact: true })).toHaveCount(0)
   const fil = page.getByRole('list', { name: /^Messages de / })
   await expect(fil).toContainText('Bonne semaine !')
   await expect(fil).not.toContainText('Entre nous.')

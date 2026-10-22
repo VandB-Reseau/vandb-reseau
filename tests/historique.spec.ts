@@ -65,7 +65,7 @@ test('l’import avec une colonne Date remplit l’historique, une ligne par jou
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/parametres/donnees')
-  await page.getByRole('button', { name: 'Importer le fichier : Export Asana de la santé du parc' }).click()
+  await page.getByRole('button', { name: 'Importer Nine box', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Importer depuis Excel' })
   const csv = [
     'Magasin;Date;CA marché extérieur;Panier moyen cave;Niveau du franchisé;Terrasse',
@@ -74,7 +74,7 @@ test('l’import avec une colonne Date remplit l’historique, une ligne par jou
     'Rennes Test;10/05/2026;Fort;Fort;Moyen;',
     'Annecy Test;01/03/2026;Faible;Faible;Fort;',
   ].join('\n')
-  await d.getByLabel('Fichier à importer').setInputFiles({ name: 'historique.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
+  await page.getByRole('dialog', { name: 'Importer : Nine box' }).getByLabel('Fichier Nine box à importer').setInputFiles({ name: 'historique.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
   await expect(d).toContainText('3 dates, du 15 janv. 2026 au 10 mai 2026, ajoutées à l’historique.')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
