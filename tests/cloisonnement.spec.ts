@@ -62,7 +62,7 @@ test('un Coach voit toute la carte et les bonnes pratiques de tout le réseau', 
   await expect(page.getByText('30 magasins dans le réseau')).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-coach-carte.png` })
   await page.goto('./#/visites?vue=pratiques')
-  await expect(page.getByText(/^2 bonnes pratiques/)).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Publications de Bonnes pratiques' }).getByRole('article')).toHaveCount(2)
   const annecy = page.getByRole('article', { name: 'Dégustation du samedi' })
   await expect(annecy).toContainText('Annecy Test')
   await expect(annecy.getByRole('link', { name: 'Annecy Test' })).toHaveCount(0)

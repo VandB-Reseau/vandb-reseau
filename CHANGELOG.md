@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Canaux « Réseau V and B » et « Bonnes pratiques » des Messages présentés comme un groupe (Joseph, 22/10/2026) : les
+  publications défilent comme des messages, la plus récente en bas ; seuls ceux qui publient ont le bouton en pied, tout le
+  monde aime et commente. Recherche et filtres restent dans Infos réseau. Sans migration.
 - Fiche magasin sans fil (Joseph, 22/10/2026) : l'onglet Fil disparaît, la fiche s'ouvre sur l'onglet Fiche, qui reçoit le
   journal (notes, santé, déploiements, Coachs) et les bonnes pratiques du magasin ; même chose pour la fiche du franchisé.
 - Onglet Infos réseau (Joseph, 22/10/2026) : toutes les communications et toutes les bonnes pratiques réunies, côte à côte sur PC,

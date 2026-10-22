@@ -125,7 +125,7 @@ test('une communication à la une passe en tête, sur le canal Réseau V and B c
 test('le Directeur met une communication à la une jusqu’à une date', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { communications: communications(), ecritures })
-  await page.goto('./#/communications')
+  await page.goto('./#/infos')
   await page.getByRole('button', { name: 'Modifier la communication Nouvelle gamme' }).click()
   const fenetre = page.getByRole('dialog')
   const jour = new Date(Date.now() + 7 * 86400000).toLocaleDateString('sv-SE')
@@ -134,7 +134,7 @@ test('le Directeur met une communication à la une jusqu’à une date', async (
   await expect.poll(() => ecritures.filter((e) => e.table === 'rpc/mettre_a_la_une').map((e) => e.corps)).toEqual([{ p_id: 1, p_jusqu_au: jour }])
   // Les deux sont à la une : elles restent en tête, dans l'ordre de publication
   await expect(page.getByRole('article', { name: 'Nouvelle gamme' }).getByText(/^À la une jusqu’au/)).toBeVisible()
-  await expect(page.getByRole('article').nth(1)).toHaveAttribute('aria-label', 'Foire aux vins')
+  await expect(page.getByRole('region', { name: 'Communications' }).getByRole('article').nth(1)).toHaveAttribute('aria-label', 'Foire aux vins')
 })
 
 test('les écrans peu utilisés se chargent à la demande, avec une silhouette', async ({ page }) => {
