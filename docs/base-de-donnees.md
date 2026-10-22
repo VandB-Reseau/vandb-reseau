@@ -134,7 +134,7 @@ franchisés du magasin pour un compte rendu de visite des 7 derniers jours saisi
 | `params` | Réglages de charge : durées, plafonds, poids, seuils | objet |
 | `grille_ninebox` | Critères et pondération de la nine box | objet |
 | `grilles_audit` | Grilles d'audit hygiène et excellence opérationnelle | objet |
-| `bonnes_pratiques` | Bonnes pratiques du réseau (photos, J'aime d'origine) | tableau |
+| `bonnes_pratiques` | Bonnes pratiques du réseau (photos, photo d'en-tête `entete` choisie parmi elles, J'aime d'origine) | tableau |
 | `campagnes` | Liste des campagnes nationales (constats dans `suivi_magasins`) | objet `{ liste }` |
 | `deploiements` | Thématiques suivies (état par magasin dans `suivi_magasins`) | objet `{ thematiques }` |
 | `derniere_sauvegarde` | Date de la dernière sauvegarde complète | texte |

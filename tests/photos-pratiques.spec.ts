@@ -95,3 +95,36 @@ test('ajouter une bonne pratique avec une photo et un magasin qui la reprend', a
   expect(liste[0]).toEqual(expect.objectContaining({ magasin: 'Lyon Test', titre: 'Terrasse chauffée en hiver', theme: 'Bar', reprises: ['Agen Test'] }))
   expect(liste[0].photos).toHaveLength(1)
 })
+
+// Photo d'en-tête facultative (Joseph, 22/10/2026) : rangée avec les photos, en grand au-dessus du titre
+test('une bonne pratique avec une photo d’en-tête, affichée en grand au-dessus du titre', async ({ page }, info) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, config: { bonnes_pratiques: pratiques } })
+  await page.goto('./#/echanges/pratiques')
+  await page.getByRole('button', { name: 'Modifier la bonne pratique Carte fidélité proposée à chaque passage' }).click()
+  const d = page.getByRole('dialog', { name: 'Modifier la bonne pratique' })
+  await d.getByLabel('Photo d’en-tête').setInputFiles(photo)
+  await expect(d.getByRole('img', { name: 'Photo d’en-tête' })).toBeVisible()
+  await expect(d.getByRole('button', { name: 'Retirer la photo d’en-tête' })).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  const ecrit = ecritures.filter((e) => e.table === 'app_config').at(-1)!
+  const fidelite = (JSON.parse((ecrit.corps as { value: string }).value) as { id: string; entete: string; photos: { chemin: string }[] }[]).find((p) => p.id === 'bp_2')!
+  expect(fidelite.photos).toHaveLength(1)
+  expect(fidelite.entete).toBe(fidelite.photos[0].chemin)
+})
+
+test('la photo d’en-tête n’est pas répétée dans les vignettes', async ({ page }, info) => {
+  const avecEntete = [{ ...pratiques[0], photos: [{ chemin: 'pratiques/entete.jpg', taille: 1 }, ...pratiques[0].photos], entete: 'pratiques/entete.jpg' }, pratiques[1]]
+  await seConnecter(page, { config: { bonnes_pratiques: avecEntete } })
+  await page.goto('./#/echanges/pratiques')
+  const carte = page.getByRole('article', { name: 'Dégustation du samedi' })
+  await expect(carte.getByRole('img', { name: 'Photo d’en-tête de Dégustation du samedi' })).toBeVisible()
+  await expect(carte.getByRole('button', { name: /^Agrandir la photo/ })).toHaveCount(1)
+  // En-tête entre l'auteur et le titre
+  const image = (await carte.getByRole('img', { name: /^Photo d’en-tête/ }).boundingBox())!
+  const titre = (await carte.getByRole('heading', { name: 'Dégustation du samedi' }).boundingBox())!
+  expect(image.y + image.height).toBeLessThanOrEqual(titre.y)
+  await page.screenshot({ path: `captures/${info.project.name}-pratique-entete.png` })
+})
