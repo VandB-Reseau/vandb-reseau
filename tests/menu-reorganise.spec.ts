@@ -48,7 +48,7 @@ test('Campagnes passent dans Santé du parc, Bonnes pratiques dans Échanges', a
   await expect(page.getByRole('tablist', { name: 'Rubriques de la santé du parc' })).toContainText('Campagnes')
   await page.goto('./#/visites?vue=pratiques')
   await expect(page).toHaveURL(/#\/echanges\/pratiques/)
-  await expect(page.getByRole('heading', { name: 'Bonnes pratiques', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Bonnes pratiques' })).toBeVisible()
   await page.goto('./#/echanges')
   const epingle = page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: 'Bonnes pratiques' })
   await expect(epingle).toBeVisible()

@@ -245,7 +245,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
     document.addEventListener('focusout', sortie)
     return () => { document.removeEventListener('focusin', suivre); document.removeEventListener('focusout', sortie) }
   }, [])
-  const conversation = /^\/echanges\/(magasin|groupe|personne)\/./.test(pathname)
+  const conversation = /^\/echanges\/(magasin|groupe|personne)\/.|^\/echanges\/(reseau|pratiques)$/.test(pathname)
   const sansBarre = surPC || saisie || conversation
 
   return (
