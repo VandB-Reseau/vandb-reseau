@@ -320,7 +320,7 @@ function Segment({ vue, changer, nTaches, nDiscussions }: { vue: 'discussions' |
 
 function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boolean }) {
   const { genre, valeur } = useParams()
-  const [params, setParams] = useSearchParams()
+  const [params] = useSearchParams()
   const naviguer = useNavigate()
   const { profil } = useAuth()
   const { messagerie: brute, charge } = useMessagerie()
@@ -341,7 +341,9 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
   const ouvrir = (lien: string) => naviguer(lien, { replace: surPC && !!fil })
   const retour = () => (window.history.length > 1 ? naviguer(-1) : naviguer('/echanges'))
   const message = <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
-  const segment = <Segment vue={vue} nTaches={nTaches} nDiscussions={nDiscussions} changer={(v) => setParams(v === 'taches' ? { vue: 'taches' } : {}, { replace: true })} />
+  // Sur PC une conversation est toujours ouverte : « Mes tâches » repart de /echanges, sinon la conversation reste affichée
+  const segment = <Segment vue={vue} nTaches={nTaches} nDiscussions={nDiscussions}
+    changer={(v) => naviguer(v === 'taches' ? '/echanges?vue=taches' : '/echanges', { replace: true })} />
 
   if (!fil && vue === 'taches') return <PageTaches entete={(titre) => <><PageHeader titre={titre ?? 'Échanges'} />{segment}</>} />
   if (!charge) return <><PageHeader titre="Échanges" /><Typography variant="body2" color="text.secondary">Chargement des échanges…</Typography></>
