@@ -109,12 +109,17 @@ test('régler la grille dans Paramètres, avec l’aperçu des magasins qui chan
   await expect(liste).toContainText('À faire grandir')
 
   // Nouveau critère sur l'axe Franchisé
+  // Attendre la nouvelle ligne avant de la remplir, sinon la saisie peut renommer le dernier critère existant
+  const criteres = carte.getByLabel('Critère', { exact: true })
+  const avant = await criteres.count()
   await carte.getByRole('button', { name: 'Ajouter un critère' }).nth(1).click()
-  const nouveau = carte.getByLabel('Critère', { exact: true }).last()
+  await expect(criteres).toHaveCount(avant + 1)
+  const nouveau = criteres.last()
   await nouveau.fill('Digital')
   await carte.getByLabel('Poids de Digital').fill('10')
   await carte.getByLabel('Poids de Relation au réseau').fill('0')
   await expect(carte.getByText('Total 100 %')).toHaveCount(2)
+  await expect(enregistrer).toBeEnabled()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${test.info().project.name}-parametres-grille-ninebox.png`, fullPage: !isMobile })
 

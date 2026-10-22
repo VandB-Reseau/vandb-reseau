@@ -21,7 +21,7 @@ import { ChampDicte } from '../components/SaisieCompteRendu'
 import { ChampPieces, ListePieces } from '../components/Pieces'
 import { RechercheFiltres } from '../components/RechercheFiltres'
 import { BoutonAction, ChampRecherche } from '../components/Outils'
-import { Initiales, Puces, useParTranches } from '../components/Social'
+import { Initiales, Puces, TitreSection, useParTranches } from '../components/Social'
 import { AlerteTaille, BanniereEntete, ChampCodeHtml, ChampEntete, ContenuMisEnForme, EditeurMiseEnForme } from '../components/MiseEnForme'
 import { useAuth } from '../auth/AuthContext'
 import { useReseau } from '../data/ReseauContext'
@@ -174,8 +174,9 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
 
 // Communications du réseau : le Directeur et les RR publient ; l'équipe et les franchisés lisent, commentent et réagissent.
 // lectureSeule : aperçu de l'espace d'un franchisé par le Directeur
-// entete : en-tête fourni par l'onglet Échanges (canal « Réseau V and B »)
-export function PageCommunications({ lectureSeule = false, entete }: { lectureSeule?: boolean; entete?: ReactNode }) {
+// entete : en-tête fourni par l'onglet Messages (canal « Réseau V and B »)
+// filtre et integre : colonne de l'onglet Infos réseau, qui porte la recherche et les filtres communs
+export function PageCommunications({ lectureSeule = false, entete, filtre, integre = false }: { lectureSeule?: boolean; entete?: ReactNode; filtre?: (c: Communication) => boolean; integre?: boolean }) {
   const { profil } = useAuth()
   const { reseau } = useReseau()
   const suitLectures = !lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')
@@ -218,7 +219,7 @@ export function PageCommunications({ lectureSeule = false, entete }: { lectureSe
   const peutPublier = !lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')
   const jour = aujourdhui()
   const q = recherche.trim().toLowerCase()
-  const liste = useMemo(() => aLaUneDabord(etat?.liste ?? []).filter((c) => !q || `${c.titre} ${c.texte} ${c.auteurNom}`.toLowerCase().includes(q)), [etat, q])
+  const liste = useMemo(() => aLaUneDabord(etat?.liste ?? []).filter((c) => (!q || `${c.titre} ${c.texte} ${c.auteurNom}`.toLowerCase().includes(q)) && (!filtre || filtre(c))), [etat, q, filtre])
   const { visibles, suite } = useParTranches(liste, q)
   const n = etat?.liste.length ?? 0
   // Un franchisé qui affiche les communications les a lues
@@ -228,15 +229,17 @@ export function PageCommunications({ lectureSeule = false, entete }: { lectureSe
   }, [affichees, lectureSeule, profil?.role])
   return (
     <>
-      {entete ?? <PageHeader titre="Communications" sousTitre={etat ? `${n} communication${n > 1 ? 's' : ''}` : undefined} />}
+      {integre ? null : entete ?? <PageHeader titre="Communications" sousTitre={etat ? `${n} communication${n > 1 ? 's' : ''}` : undefined} />}
       {etat === null ? (
         <EmptyState icone={<CampaignOutlined />} titre="Communications pas encore activées" texte="Les communications du réseau apparaîtront ici dès leur activation dans la base." />
       ) : (
         <>
-          <RechercheFiltres recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une communication" />}
-            actions={peutPublier ? <BoutonAction libelle="Publier" onClick={() => setEdition({ c: null })} /> : undefined} />
+          {integre
+            ? <TitreSection nombre={etat ? liste.length : undefined} action={peutPublier ? <BoutonAction libelle="Publier" onClick={() => setEdition({ c: null })} /> : undefined}>Communications</TitreSection>
+            : <RechercheFiltres recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une communication" />}
+              actions={peutPublier ? <BoutonAction libelle="Publier" onClick={() => setEdition({ c: null })} /> : undefined} />}
           {etat === undefined ? <Typography variant="body2" color="text.secondary">Chargement…</Typography>
-            : !liste.length ? <EmptyState icone={<CampaignOutlined />} titre="Aucune communication" texte={n ? 'Aucune communication ne correspond à cette recherche.' : 'Les annonces du réseau aux franchisés apparaîtront ici.'} />
+            : !liste.length ? <EmptyState icone={<CampaignOutlined />} titre="Aucune communication" texte={n ? 'Aucune communication ne correspond à ces critères.' : 'Les annonces du réseau aux franchisés apparaîtront ici.'} />
             : (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxWidth: 720 }}>
                 {visibles.map((c) => (

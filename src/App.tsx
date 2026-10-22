@@ -6,6 +6,7 @@ import { Agenda } from './pages/Agenda'
 import { SanteParc } from './pages/SanteParc'
 import { CanalPratiques, CanalReseau, Echanges } from './pages/Echanges'
 import { PageTaches } from './pages/Taches'
+import { InfosReseau } from './pages/InfosReseau'
 import { HashRouter, Navigate, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -127,6 +128,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/visites" element={<Visites />} />
         <Route path="/echanges" element={<Echanges />} />
         <Route path="/taches" element={<PageTaches />} />
+        <Route path="/infos" element={<InfosReseau />} />
         <Route path="/echanges/reseau" element={<CanalReseau />} />
         <Route path="/echanges/pratiques" element={<CanalPratiques />} />
         <Route path="/echanges/:genre/:valeur" element={<Echanges />} />
