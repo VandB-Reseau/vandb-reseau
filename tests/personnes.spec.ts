@@ -98,8 +98,8 @@ test('l’onglet Collaborateurs liste Directeur, RR et Coachs et ouvre leur fich
 
 test('l’onglet Franchisés liste les franchisés sans le poste en recrutement', async ({ page, isMobile }, info) => {
   await seConnecter(page)
-  await page.goto('./#/parametres/franchises')
-  await expect(page.getByRole('heading', { level: 1, name: 'Franchisés' })).toBeVisible()
+  await page.goto('./#/equipe?vue=franchises')
+  await expect(page.getByRole('heading', { level: 1, name: 'Équipe' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Paul MULTI' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Alex NORD' })).toHaveCount(0)
   await expect(page.getByText('En cours de recrutement')).toHaveCount(0)

@@ -46,8 +46,8 @@ test('ajouter des photos à une visite terrain', async ({ page, isMobile }, info
 
 test('les bonnes pratiques : liste, filtre par thème, fiche magasin', async ({ page, isMobile }, info) => {
   await seConnecter(page, { config: { bonnes_pratiques: pratiques } })
-  await page.goto('./#/visites?vue=pratiques')
-  await expect(page.getByRole('tab', { name: 'Bonnes pratiques', selected: true })).toBeVisible()
+  await page.goto('./#/echanges/pratiques')
+  await expect(page.getByRole('heading', { name: 'Bonnes pratiques', level: 1 })).toBeVisible()
   await expect(page.getByText('2 bonnes pratiques · 1 reprise ailleurs')).toBeVisible()
   const carte = page.getByRole('article', { name: 'Dégustation du samedi' })
   await expect(carte.getByText('Trois vins ouverts chaque samedi après-midi.')).toBeVisible()

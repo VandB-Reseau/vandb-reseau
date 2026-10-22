@@ -127,7 +127,7 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
   }
   for (const { c, b } of reseau.campagnes.liste.filter((c) => phase(c, j) === 'encours')
     .map((c) => ({ c, b: bilan(reseau.campagnes, c, magasinsConcernes(reseau, c).filter((m) => noms.has(m.nom))) })).filter((x) => x.b.total > 0 && x.b.aConstater > 0)) {
-    items.push({ cle: `cp-${c.id}`, titre: c.nom, avatar: c.nom, icone: <CampaignOutlined />, lien: `/visites?vue=campagnes&campagne=${encodeURIComponent(c.id)}`,
+    items.push({ cle: `cp-${c.id}`, titre: c.nom, avatar: c.nom, icone: <CampaignOutlined />, lien: `/plus/sante?vue=campagnes&campagne=${encodeURIComponent(c.id)}`,
       detail: `${b.fait} sur ${b.total} magasin${b.total > 1 ? 's' : ''} exécuté${b.fait > 1 ? 's' : ''} · ${b.aConstater} à constater`, pastille: { ton: 'gris', libelle: b.taux === null ? 'Campagne' : `${b.taux} %` } })
   }
   void sansParametres

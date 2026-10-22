@@ -20,6 +20,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   suit ; bouton « Exporter » retiré de Magasins, Visites et Santé du parc (choix de Joseph), les exports complets
   restent dans Paramètres > Import et export (test `retouches-sante-echanges.spec.ts`). Pas de migration.
 - Échanges sur PC : « Mes tâches » s'ouvre aussi quand une conversation est affichée.
+- Menu réorganisé : la partie Paramètres passe de sept à trois entrées (Équipe, avec Collaborateurs et Franchisés
+  en onglets ; Évolution du parc ; Paramètres, avec Charge des Coachs et Import et export en rubriques). Campagnes
+  quittent les Visites pour Santé du parc, à côté de Déploiements ; Bonnes pratiques deviennent un canal épinglé
+  d'Échanges, sous le Réseau V and B. Les anciennes adresses mènent au nouvel endroit (test `menu-reorganise.spec.ts`).
+  Pas de migration.
 - Revue mensuelle du Responsable Régional : nouvel onglet « Revue » de sa fiche. Pour le mois choisi (le mois écoulé
   par défaut) : magasins qui décrochent, visites faites par Coach face à la référence nine box du mois, tâches en
   retard à la fin du mois, changements de case ; téléchargeable en PDF (`src/data/revue.ts`,

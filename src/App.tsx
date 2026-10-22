@@ -4,7 +4,7 @@ import { FicheDirecteur, FicheFranchise, FicheRR } from './pages/FichePersonne'
 import { Visites } from './pages/Visites'
 import { Agenda } from './pages/Agenda'
 import { SanteParc } from './pages/SanteParc'
-import { CanalReseau, Echanges } from './pages/Echanges'
+import { CanalPratiques, CanalReseau, Echanges } from './pages/Echanges'
 import { HashRouter, Navigate, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -45,14 +45,12 @@ const chargeurs = {
   donnees: () => import('./pages/Donnees').then((m) => ({ default: m.Donnees })),
   compteRendu: () => import('./pages/CompteRendu').then((m) => ({ default: m.CompteRendu })),
   evolution: () => import('./pages/Evolution').then((m) => ({ default: m.Evolution })),
-  personnes: () => import('./pages/VuePersonnes').then((m) => ({ default: m.Personnes })),
 }
 const Direction = chargementDiffere(chargeurs.direction)
 const ChargeCoachs = chargementDiffere(chargeurs.charge)
 const Donnees = chargementDiffere(chargeurs.donnees)
 const CompteRendu = chargementDiffere(chargeurs.compteRendu)
 const Evolution = chargementDiffere(chargeurs.evolution)
-const Personnes = chargementDiffere(chargeurs.personnes)
 
 function usePrechargement() {
   useEffect(() => {
@@ -124,11 +122,12 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/parametres/reglages" element={<Direction />} />
         <Route path="/parametres/donnees" element={<Donnees />} />
         <Route path="/plus/direction" element={<Navigate to="/parametres/reglages" replace />} />
-        <Route path="/parametres/collaborateurs" element={<Personnes perimetre="collaborateurs" />} />
-        <Route path="/parametres/franchises" element={<Personnes perimetre="franchises" />} />
+        <Route path="/parametres/collaborateurs" element={<Navigate to="/equipe?vue=collaborateurs" replace />} />
+        <Route path="/parametres/franchises" element={<Navigate to="/equipe?vue=franchises" replace />} />
         <Route path="/visites" element={<Visites />} />
         <Route path="/echanges" element={<Echanges />} />
         <Route path="/echanges/reseau" element={<CanalReseau />} />
+        <Route path="/echanges/pratiques" element={<CanalPratiques />} />
         <Route path="/echanges/:genre/:valeur" element={<Echanges />} />
         {anciensLiens}
         <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />

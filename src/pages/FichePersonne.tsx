@@ -196,7 +196,7 @@ function PageFranchise({ reseau, nom }: { reseau: Reseau; nom: string }) {
   const coachs = [...new Set(f.magasins.map((m) => m.coach).filter(Boolean))]
   return (
     <>
-      <Entete retour="/parametres/franchises" titre={nom} sousTitre={`${libelleRole('franchise', f.integresSeulement)} · ${pluriel(f.magasins.length, 'magasin')}${coachs.length ? ` · suivi par ${coachs.join(', ')}` : ''}`} onModifier={() => setEdition(true)} />
+      <Entete retour="/equipe?vue=franchises" titre={nom} sousTitre={`${libelleRole('franchise', f.integresSeulement)} · ${pluriel(f.magasins.length, 'magasin')}${coachs.length ? ` · suivi par ${coachs.join(', ')}` : ''}`} onModifier={() => setEdition(true)} />
       <Box sx={{ mb: 2, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
         <SectionFichePersonnelle reseau={reseau} r={{ type: 'franchise', cle: nom }} />
         {profil?.role === 'directeur' && referentiels && <SectionAcces nom={nom} magasins={f.magasins.map((m) => m.nom)} signaler={setMessage} />}
@@ -230,7 +230,7 @@ function PageFranchise({ reseau, nom }: { reseau: Reseau; nom: string }) {
       {edition && <DialogFranchise reseau={reseau} nom={nom} onFermer={(m, nouveau) => {
         setEdition(false)
         if (!m) return
-        if (m.includes('retiré')) { naviguer('/parametres/franchises', { replace: true }); return }
+        if (m.includes('retiré')) { naviguer('/equipe?vue=franchises', { replace: true }); return }
         setMessage(m)
         if (nouveau && nouveau !== nom) naviguer(lienFranchise(nouveau), { replace: true })
       }} />}
@@ -260,7 +260,7 @@ export function FicheFranchise() {
     <AvecReseau>
       {(reseau) => franchises(reseau).some((f) => f.nom === nom)
         ? <PageFranchise reseau={reseau} nom={nom} />
-        : <EmptyState icone={<StorefrontOutlined />} titre="Franchisé introuvable" texte={`Aucun magasin n’est rattaché à « ${nom} ». Le nom a peut-être changé.`} action={<Button variant="contained" onClick={() => naviguer('/parametres/franchises')}>Voir les franchisés</Button>} />}
+        : <EmptyState icone={<StorefrontOutlined />} titre="Franchisé introuvable" texte={`Aucun magasin n’est rattaché à « ${nom} ». Le nom a peut-être changé.`} action={<Button variant="contained" onClick={() => naviguer('/equipe?vue=franchises')}>Voir les franchisés</Button>} />}
     </AvecReseau>
   )
 }

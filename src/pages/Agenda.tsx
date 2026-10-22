@@ -89,7 +89,7 @@ export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Elem
   // Campagnes datées qui concernent au moins un magasin visible du compte
   for (const c of reseau.campagnes.liste) {
     const d = c.debut || c.fin, f = c.fin || c.debut
-    if (d && d <= fin && f >= debut && magasinsConcernes(reseau, c).length) el.push({ cle: `cp-${c.id}`, categorie: 'campagne', debut: d, fin: f, titre: c.nom, detail: ['Campagne', libellePerimetre(c)].filter(Boolean).join(' · '), lien: `/visites?vue=campagnes&campagne=${encodeURIComponent(c.id)}`, couleur: '#a15c00' })
+    if (d && d <= fin && f >= debut && magasinsConcernes(reseau, c).length) el.push({ cle: `cp-${c.id}`, categorie: 'campagne', debut: d, fin: f, titre: c.nom, detail: ['Campagne', libellePerimetre(c)].filter(Boolean).join(' · '), lien: `/plus/sante?vue=campagnes&campagne=${encodeURIComponent(c.id)}`, couleur: '#a15c00' })
   }
   for (const m of reseau.magasins) {
     if (m.ouvertureConnue && m.ouverture >= debut && m.ouverture <= fin) el.push({ cle: `o-${m.nom}`, categorie: 'ouverture', debut: m.ouverture, fin: m.ouverture, titre: `Ouverture ${m.nom}`, detail: m.coach ? `Coach ${m.coach}` : 'Sans Coach', lien: lienFiche(m.nom), couleur: '#ef7d00' })

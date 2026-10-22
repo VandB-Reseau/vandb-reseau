@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Link as RouterLink, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, Navigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Button from '@mui/material/Button'
@@ -22,15 +22,10 @@ import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
-import { VueCampagnes } from '../components/Campagnes'
-import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import { RechercheFiltres } from '../components/RechercheFiltres'
 import { Onglets } from '../components/Onglets'
 import EventRepeatOutlined from '@mui/icons-material/EventRepeatOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
-import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
-import { DialogPratique, VuePratiques } from '../components/BonnesPratiques'
-import type { BonnePratique } from '../data/bonnesPratiques'
 import { BoutonAction, ChampRecherche } from '../components/Outils'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
@@ -252,14 +247,21 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
   )
 }
 
+// Campagnes et Bonnes pratiques ont quitté les Visites (sprint 21) : les anciennes adresses y mènent
 export function Visites() {
+  const [params] = useSearchParams()
+  if (params.get('vue') === 'campagnes') return <Navigate to={`/plus/sante?${params.toString()}`} replace />
+  if (params.get('vue') === 'pratiques') return <Navigate to="/echanges/pratiques" replace />
+  return <ContenuVisites />
+}
+
+function ContenuVisites() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [params, setParams] = useSearchParams()
   const { profil } = useAuth()
   // Le Coach arrive sur sa semaine ; les autres sur le rythme de visite
-  const vue = (['semaine', 'rythme', 'historique', 'pratiques', 'campagnes'] as const).find((v) => v === params.get('vue')) ?? (profil?.role === 'coach' ? 'semaine' : 'rythme')
-  const [pratique, setPratique] = useState<BonnePratique | null | undefined>(undefined)
+  const vue = (['semaine', 'rythme', 'historique'] as const).find((v) => v === params.get('vue')) ?? (profil?.role === 'coach' ? 'semaine' : 'rythme')
   const [edition, setEdition] = useState<Edition>(null)
   const [message, setMessage] = useState('')
   const actions = <BoutonAction libelle="Saisir une visite" onClick={() => setEdition({ visite: null, magasins: [] })} />
@@ -275,20 +277,13 @@ export function Visites() {
             { vue: 'semaine', libelle: profil?.role === 'coach' ? 'Ma semaine' : 'Semaine', court: 'Semaine', icone: <DateRangeOutlined /> },
             { vue: 'rythme', libelle: 'Rythme de visite', court: 'Rythme', icone: <EventRepeatOutlined /> },
             { vue: 'historique', libelle: 'Historique', icone: <HistoryOutlined /> },
-            { vue: 'pratiques', libelle: 'Bonnes pratiques', court: 'Pratiques', icone: <TipsAndUpdatesOutlined /> },
-            { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
           ]} />
-          {vue === 'campagnes'
-            ? <VueCampagnes reseau={reseau} />
-            : vue === 'pratiques'
-            ? <VuePratiques reseau={reseau} modifier={setPratique} actions={<BoutonAction libelle="Ajouter une bonne pratique" onClick={() => setPratique(null)} />} />
-            : vue === 'semaine'
+          {vue === 'semaine'
             ? <VueSemaine reseau={reseau} surPC={surPC} onMessage={setMessage} />
             : vue === 'historique'
             ? <VueHistorique reseau={reseau} actions={actions} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
             : <VueRythme reseau={reseau} surPC={surPC} actions={actions} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
           {edition && <DialogVisite reseau={reseau} visite={edition.visite} magasinsInitiaux={edition.magasins} dateInitiale={edition.date} onFermer={(m) => { setEdition(null); if (m) setMessage(m) }} />}
-          {pratique !== undefined && <DialogPratique reseau={reseau} pratique={pratique} onFermer={(m) => { setPratique(undefined); if (m) setMessage(m) }} />}
           <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
         </>
       )}
