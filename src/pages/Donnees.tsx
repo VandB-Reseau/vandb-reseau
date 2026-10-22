@@ -11,6 +11,7 @@ import DownloadOutlined from '@mui/icons-material/DownloadOutlined'
 import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined'
 import BackupOutlined from '@mui/icons-material/BackupOutlined'
 import { PageHeader } from '../components/PageHeader'
+import { RetourParametres } from './ChargeCoachs'
 import { AvecReseau } from '../components/EtatDonnees'
 import { Fenetre } from '../components/EditionEquipe'
 import { DialogImportChiffres, DialogImportSante, DialogImportVisites } from '../components/ImportsSuivi'
@@ -197,6 +198,7 @@ export function Donnees() {
         const choisi = liste.find((r) => r.id === importer)
         return (
           <>
+            <RetourParametres />
             <PageHeader titre="Import et export" />
             <Sauvegarde reseau={reseau} signaler={setMessage} />
             <Typography variant="h3" component="h2" sx={{ mb: 2 }}>Référentiels</Typography>

@@ -18,6 +18,9 @@ import MailOutlined from '@mui/icons-material/MailOutlined'
 import BuildOutlined from '@mui/icons-material/BuildOutlined'
 import AccountTreeOutlined from '@mui/icons-material/AccountTreeOutlined'
 import WorkOutlineOutlined from '@mui/icons-material/WorkOutlineOutlined'
+import BadgeOutlined from '@mui/icons-material/BadgeOutlined'
+import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
+import { VuePersonnes } from './VuePersonnes'
 import { VuePortefeuilles } from '../components/Portefeuille'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import { PageHeader } from '../components/PageHeader'
@@ -272,14 +275,14 @@ const rubriques: { vue: Vue; libelle: string; court: string; icone: ReactElement
   { vue: 'organisation', libelle: 'Organisation', court: 'Organisation', icone: <AccountTreeOutlined /> },
   { vue: 'portefeuilles', libelle: 'Portefeuilles', court: 'Portefeuilles', icone: <InsightsOutlined /> },
   { vue: 'postes', libelle: 'Postes à pourvoir', court: 'Postes', icone: <WorkOutlineOutlined /> },
+  { vue: 'collaborateurs', libelle: 'Collaborateurs', court: 'Collaborateurs', icone: <BadgeOutlined /> },
+  { vue: 'franchises', libelle: 'Franchisés', court: 'Franchisés', icone: <HandshakeOutlined /> },
 ]
 
 export function Equipe() {
   const [params, setParams] = useSearchParams()
   const demandee = params.get('vue')
   const vue = (demandee === 'magasins' ? 'franchises' : demandee as Vue | null) ?? 'organisation'
-  // Collaborateurs et Franchisés ont rejoint la partie « Paramètres »
-  if (vue === 'collaborateurs' || vue === 'franchises') return <Navigate to={`/parametres/${vue}`} replace />
   // Charge et répartition ont rejoint Paramètres > Charge des Coachs
   if (vue === 'charge') return <Navigate to="/parametres/charge" replace />
   if (vue === 'plan') return <Navigate to={`/parametres/charge?vue=repartition${params.get('date') ? `&date=${params.get('date')}` : ''}`} replace />
@@ -290,7 +293,8 @@ export function Equipe() {
         <>
           <PageHeader titre="Équipe" sousTitre={`${reseau.equipe.length} Coachs · ${reseau.rrs.length} Responsables Régionaux · ${reseau.techniciens.length} technicien${reseau.techniciens.length > 1 ? 's' : ''}`} />
           <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle="Rubriques de l’équipe" />
-          {vue === 'portefeuilles' ? <VuePortefeuilles reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
+          {vue === 'collaborateurs' || vue === 'franchises' ? <VuePersonnes key={vue} perimetre={vue} reseau={reseau} />
+            : vue === 'portefeuilles' ? <VuePortefeuilles reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
         </>
       )}
     </AvecReseau>

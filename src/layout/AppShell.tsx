@@ -41,6 +41,8 @@ import { activerNotifications, couperNotifications, ErreurNotifications, useNoti
 const LARGEUR_MENU = 264
 
 function estActive(d: Destination, pathname: string): boolean {
+  // Charge des Coachs et Import et export sont des rubriques de Paramètres
+  if (d.chemin === '/parametres/reglages' && /^\/parametres\/(charge|donnees)/.test(pathname)) return true
   return d.chemin === '/' ? pathname === '/' : pathname.startsWith(d.chemin)
 }
 

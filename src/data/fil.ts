@@ -76,7 +76,7 @@ export function filDu(reseau: Reseau, noms: Set<string>, mg: Messagerie | null, 
   for (const p of reseau.pratiques) {
     if ((!pratiquesReseau && !noms.has(p.magasin)) || p.date < depuis || p.date > reseau.jour) continue
     res.push({ cle: `p|${p.id}`, genre: 'pratique', instant: p.date, auteur: p.par, action: 'bonne pratique', magasin: p.magasin, titre: p.titre, texte: p.texte, photos: p.photos,
-      lien: noms.has(p.magasin) ? `${lienFiche(p.magasin)}?vue=journal` : '/visites?vue=pratiques', pratique: p })
+      lien: noms.has(p.magasin) ? `${lienFiche(p.magasin)}?vue=journal` : '/echanges/pratiques', pratique: p })
   }
   // Communications : celles de tout le réseau et celles qui citent un des magasins suivis
   for (const c of communications) {

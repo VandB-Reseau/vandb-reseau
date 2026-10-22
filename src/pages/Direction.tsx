@@ -4,6 +4,9 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined'
 import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
+import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
+import ImportExportOutlined from '@mui/icons-material/ImportExportOutlined'
+import { dateCourte } from '../lib/format'
 import BalanceOutlined from '@mui/icons-material/BalanceOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import EventRepeatOutlined from '@mui/icons-material/EventRepeatOutlined'
@@ -261,12 +264,16 @@ export function Direction() {
         const choisie = liste.find((r) => r.id === params.get('rubrique')) ?? (surPC ? liste[0] : null)
         const sommaire = (
           <CarteLignes label="Rubriques des paramètres">
+            <LigneCompacte lien="/parametres/charge" label="Charge des Coachs" avatar={<Initiales nom="Charge des Coachs" icone={<GroupsOutlined />} />} titre="Charge des Coachs"
+              detail={`${reseau.equipe.filter((c) => !c.fictif).length} Coachs · simulation et répartition`} fin={<ChevronRightOutlined color="action" />} />
             {liste.map((r) => (
               <Box key={r.id} sx={{ bgcolor: surPC && choisie?.id === r.id ? 'action.selected' : undefined }}>
                 <LigneCompacte onClick={() => ouvrir(r.id)} label={r.libelle} avatar={<Initiales nom={r.libelle} icone={r.icone} />} titre={r.libelle} detail={r.detail}
                   fin={!surPC && <ChevronRightOutlined color="action" />} />
               </Box>
             ))}
+            <LigneCompacte lien="/parametres/donnees" label="Import et export" avatar={<Initiales nom="Import et export" icone={<ImportExportOutlined />} />} titre="Import et export"
+              detail={reseau.derniereSauvegarde ? `Dernière sauvegarde ${dateCourte(reseau.derniereSauvegarde)}` : 'Référentiels en Excel, sauvegarde complète'} fin={<ChevronRightOutlined color="action" />} />
           </CarteLignes>
         )
         return (

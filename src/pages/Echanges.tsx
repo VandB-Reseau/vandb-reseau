@@ -33,12 +33,15 @@ import LogoutOutlined from '@mui/icons-material/LogoutOutlined'
 import MoreVert from '@mui/icons-material/MoreVert'
 import PersonOutlined from '@mui/icons-material/PersonOutlined'
 import PushPinOutlined from '@mui/icons-material/PushPinOutlined'
+import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
+import { DialogPratique, VuePratiques } from '../components/BonnesPratiques'
+import type { BonnePratique } from '../data/bonnesPratiques'
 import { useAuth } from '../auth/AuthContext'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { Fenetre } from '../components/EditionEquipe'
 import { FilMessages } from '../components/Messages'
-import { BoutonOutil, Bulle, ChampRecherche } from '../components/Outils'
+import { BoutonAction, BoutonOutil, Bulle, ChampRecherche } from '../components/Outils'
 import { PageHeader } from '../components/PageHeader'
 import { initialesDe } from '../components/Social'
 import { useMessagerie } from '../data/MessagerieContext'
@@ -108,6 +111,25 @@ function LigneReseau({ actif, ouvrir, nonVues, dernier }: { actif: boolean; ouvr
           <Typography variant="body2" color={nonVues ? 'text.primary' : 'text.secondary'} sx={{ flex: 1, minWidth: 0, fontWeight: nonVues ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dernier?.titre ?? 'Communications du réseau'}</Typography>
           {nonVues > 0 && <Pastille n={nonVues} fort />}
         </Box>
+      </Box>
+    </ListItemButton>
+  )
+}
+
+// Canal « Bonnes pratiques » épinglé sous le Réseau : les initiatives réussies de tout le réseau (équipe seulement)
+function LignePratiques({ actif, ouvrir, derniere }: { actif: boolean; ouvrir: () => void; derniere?: BonnePratique }) {
+  return (
+    <ListItemButton selected={actif} onClick={ouvrir} aria-label="Bonnes pratiques"
+      sx={{ borderRadius: 3, mx: 1, mb: 0.25, minHeight: 72, gap: 1.5, alignItems: 'center', bgcolor: actif ? undefined : 'action.hover' }}>
+      <Avatar variant="rounded" sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: '#8bc34a', color: '#1b1b1f' }}><TipsAndUpdatesOutlined /></Avatar>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+          <Typography variant="body1" sx={{ fontWeight: 600 }}>Bonnes pratiques</Typography>
+          <PushPinOutlined aria-label="Épinglé" sx={{ fontSize: 16, color: 'text.secondary' }} />
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {derniere ? `${derniere.titre} · ${derniere.magasin}` : 'Initiatives réussies des magasins'}
+        </Typography>
       </Box>
     </ListItemButton>
   )
@@ -185,8 +207,8 @@ function NouveauMessage({ lignes, ouvrir, fermer }: { lignes: Conversation[]; ou
 
 const PETITE_LISTE = 30
 
-function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreerGroupe, magasins, signaler }: {
-  reseau: Reseau; lignes: Conversation[]; mg: Messagerie; actif?: string; ouvrir: (lien: string) => void; ecrire: boolean; peutCreerGroupe: boolean; magasins: Reseau['magasins']; signaler: (m: string) => void
+function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreerGroupe, magasins, signaler, pratiques }: {
+  reseau: Reseau; lignes: Conversation[]; mg: Messagerie; actif?: string; ouvrir: (lien: string) => void; ecrire: boolean; peutCreerGroupe: boolean; magasins: Reseau['magasins']; signaler: (m: string) => void; pratiques: boolean
 }) {
   const [recherche, setRecherche] = useState('')
   const [nonLus, setNonLus] = useState(false)
@@ -221,6 +243,7 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
         <List aria-label="Conversations" disablePadding>
           {!q && !nonLus && <LigneReseau actif={actif === 'reseau'} ouvrir={() => ouvrir('/echanges/reseau')} nonVues={nonVues} dernier={dernier} />}
           {!q && nonLus && nonVues > 0 && <LigneReseau actif={actif === 'reseau'} ouvrir={() => ouvrir('/echanges/reseau')} nonVues={nonVues} dernier={dernier} />}
+          {!q && !nonLus && pratiques && <LignePratiques actif={false} ouvrir={() => ouvrir('/echanges/pratiques')} derniere={reseau.pratiques.reduce<BonnePratique | undefined>((d, p) => (!d || p.date > d.date ? p : d), undefined)} />}
           {affichees.map((l) => <LigneEchange key={l.cle} c={l} mg={mg} actif={l.cle === actif} ouvrir={() => ouvrir(l.lien)} />)}
         </List>
         {!affichees.length && (q || nonLus) && (
@@ -368,7 +391,7 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
     <FilMessages key={conv.cle + (fil.genre === 'magasin' && fil.equipe ? '|equipe' : '')} reseau={reseau} fil={fil} contact={conv.contact} signaler={setConfirmation} lectureSeule={lectureSeule} basculer={basculer}
       cadre={cadre} aLaFin={!cadre} fond={cadre ? 'background.paper' : 'background.default'} />
   )
-  const liste = <ListeDiscussions reseau={reseau} lignes={lignes} mg={messagerie} actif={conv?.cle} ouvrir={ouvrir} ecrire={!lectureSeule} magasins={magasins} signaler={setConfirmation}
+  const liste = <ListeDiscussions reseau={reseau} lignes={lignes} mg={messagerie} actif={conv?.cle} ouvrir={ouvrir} ecrire={!lectureSeule} magasins={magasins} signaler={setConfirmation} pratiques={!franchise}
     peutCreerGroupe={!lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')} />
   const dialogue = edition && <DialogGroupe reseau={reseau} magasins={magasins} groupe={edition} onFermer={(msg) => { setEdition(null); if (msg) setConfirmation(msg); if (msg === 'Groupe supprimé.') naviguer('/echanges') }} />
 
@@ -467,5 +490,28 @@ export function CanalReseau({ lectureSeule = false }: { lectureSeule?: boolean }
         <Typography variant="h1" sx={{ flex: 1, fontSize: { xs: '1.375rem', md: '1.75rem' } }}>Réseau V and B</Typography>
       </Box>
     } />
+  )
+}
+
+// Canal « Bonnes pratiques » : les initiatives réussies de tout le réseau ; chacun ajoute celles de ses magasins
+export function CanalPratiques() {
+  const naviguer = useNavigate()
+  const [pratique, setPratique] = useState<BonnePratique | null | undefined>(undefined)
+  const [message, setMessage] = useState('')
+  return (
+    <AvecReseau>
+      {(reseau) => (
+        <>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+            <Bulle titre="Échanges"><IconButton onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/echanges'))} aria-label="Échanges" sx={{ width: 48, height: 48, ml: -1 }}><ArrowBack /></IconButton></Bulle>
+            <Avatar variant="rounded" sx={{ width: 40, height: 40, borderRadius: 3, bgcolor: '#8bc34a', color: '#1b1b1f' }}><TipsAndUpdatesOutlined /></Avatar>
+            <Typography variant="h1" sx={{ flex: 1, fontSize: { xs: '1.375rem', md: '1.75rem' } }}>Bonnes pratiques</Typography>
+          </Box>
+          <VuePratiques reseau={reseau} modifier={setPratique} actions={<BoutonAction libelle="Ajouter une bonne pratique" onClick={() => setPratique(null)} />} />
+          {pratique !== undefined && <DialogPratique reseau={reseau} pratique={pratique} onFermer={(m) => { setPratique(undefined); if (m) setMessage(m) }} />}
+          <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
+        </>
+      )}
+    </AvecReseau>
   )
 }

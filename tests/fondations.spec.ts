@@ -10,7 +10,7 @@ const principales = [
   { nom: 'Santé du parc', court: 'Santé' },
 ]
 // Hors de la barre du bas : dans le menu du compte sur téléphone
-const secondaires = ['Agenda', 'Équipe', 'Évolution du parc', 'Collaborateurs', 'Franchisés', 'Paramètres']
+const secondaires = ['Agenda', 'Équipe', 'Évolution du parc', 'Paramètres']
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -142,8 +142,9 @@ test('le menu a deux parties : la partie classique et Paramètres', async ({ pag
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
   await expect(nav.getByRole('button', { name: 'Accueil' })).toBeVisible()
   await expect(nav.getByText('Paramètres', { exact: true }).first()).toBeVisible()
-  await page.goto('./#/equipe?vue=franchises')
-  await expect(page).toHaveURL(/#\/parametres\/franchises/)
+  // Franchisés est un onglet de l'Équipe, et l'ancienne adresse y mène
+  await page.goto('./#/parametres/franchises')
+  await expect(page).toHaveURL(/#\/equipe\?vue=franchises/)
 })
 
 test('Équipe ouvre le groupe Paramètres', async ({ page, isMobile }) => {

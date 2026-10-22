@@ -393,7 +393,7 @@ function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau; campag
   )
 }
 
-const lienCampagne = (c: Campagne) => `/visites?vue=campagnes&campagne=${encodeURIComponent(c.id)}`
+const lienCampagne = (c: Campagne) => `/plus/sante?vue=campagnes&campagne=${encodeURIComponent(c.id)}`
 
 // État des lieux des campagnes d'un magasin : à constater pour celles en cours, exécution des précédentes
 export function CampagnesMagasin({ reseau, magasin, signaler }: { reseau: Reseau; magasin: string; signaler: (m: string) => void }) {

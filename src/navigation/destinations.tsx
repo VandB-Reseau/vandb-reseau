@@ -10,10 +10,6 @@ import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined'
 import MonitorHeartOutlined from '@mui/icons-material/MonitorHeartOutlined'
 import TimelineOutlined from '@mui/icons-material/TimelineOutlined'
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
-import BalanceOutlined from '@mui/icons-material/BalanceOutlined'
-import BadgeOutlined from '@mui/icons-material/BadgeOutlined'
-import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
-import ImportExportOutlined from '@mui/icons-material/ImportExportOutlined'
 import HomeOutlined from '@mui/icons-material/HomeOutlined'
 import Home from '@mui/icons-material/Home'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
@@ -47,15 +43,12 @@ export const secondaires: Destination[] = [
   { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes, absences et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
 ]
 
-// Partie « Paramètres »
+// Partie « Paramètres » : trois entrées (sprint 21). Collaborateurs et Franchisés sont des onglets d'Équipe ;
+// Charge des Coachs et Import et export sont des rubriques de Paramètres
 export const parametres: Destination[] = [
-  { chemin: '/equipe', libelle: 'Équipe', description: 'Organisation, portefeuilles, postes à pourvoir', icone: <GroupsOutlined />, iconeActive: <Groups />, sprint: 'Sprint 2' },
-  { chemin: '/parametres/charge', libelle: 'Charge des Coachs', description: 'Charge, route par an, répartitions à évaluer', icone: <BalanceOutlined />, sprint: 'Sprint 19' },
+  { chemin: '/equipe', libelle: 'Équipe', description: 'Organisation, portefeuilles, postes à pourvoir, collaborateurs, franchisés', icone: <GroupsOutlined />, iconeActive: <Groups />, sprint: 'Sprint 2' },
   { chemin: '/parametres/evolution', libelle: 'Évolution du parc', description: 'Ouvertures par année', icone: <TimelineOutlined />, sprint: 'Sprint 4' },
-  { chemin: '/parametres/collaborateurs', libelle: 'Collaborateurs', description: 'Coachs, Responsables Régionaux, Directeur de réseau', icone: <BadgeOutlined />, sprint: 'Sprint 4' },
-  { chemin: '/parametres/franchises', libelle: 'Franchisés', description: 'Franchisés et leurs magasins', icone: <HandshakeOutlined />, sprint: 'Sprint 4' },
-  { chemin: '/parametres/donnees', libelle: 'Import et export', description: 'Référentiels en Excel et sauvegarde complète', icone: <ImportExportOutlined />, sprint: 'Sprint 8' },
-  { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Règle de charge, alertes, nine box, audits', icone: <SettingsOutlined />, sprint: 'Sprint 5' },
+  { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Charge des Coachs, import et export, alertes, nine box, audits', icone: <SettingsOutlined />, sprint: 'Sprint 5' },
 ]
 
 // Espace d'un franchisé : ses magasins seulement, sans Paramètres
@@ -72,5 +65,7 @@ export const plus: Destination = {
 
 export function destinationCourante(pathname: string): Destination {
   const toutes = [...secondaires, ...parametres, ...principales.slice(1)]
+  // Rubriques de Paramètres ouvertes sur leur propre écran
+  if (pathname.startsWith('/parametres/charge') || pathname.startsWith('/parametres/donnees')) return parametres[2]
   return toutes.find((d) => pathname.startsWith(d.chemin)) ?? (pathname.startsWith('/plus') || pathname.startsWith('/parametres') ? plus : principales[0])
 }
