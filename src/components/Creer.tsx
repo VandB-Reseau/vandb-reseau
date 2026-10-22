@@ -1,87 +1,74 @@
-import { useState, type ReactElement } from 'react'
+import { useState, type MouseEvent, type ReactElement } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
-import Dialog from '@mui/material/Dialog'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
-import IconButton from '@mui/material/IconButton'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
 import Snackbar from '@mui/material/Snackbar'
-import Typography from '@mui/material/Typography'
 import AddOutlined from '@mui/icons-material/AddOutlined'
-import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import PhotoCameraOutlined from '@mui/icons-material/PhotoCameraOutlined'
-import BeachAccessOutlined from '@mui/icons-material/BeachAccessOutlined'
 import EventOutlined from '@mui/icons-material/EventOutlined'
 import { brand } from '../theme/theme'
 import { useReseau } from '../data/ReseauContext'
 import { DialogVisite } from './DialogVisite'
 import { DialogAction } from './Actions'
 import { DialogPratique } from './BonnesPratiques'
-import { DialogConge, DialogEvenement } from '../pages/Agenda'
+import { DialogEvenement } from '../pages/Agenda'
 
-type Choix = 'visite' | 'tache' | 'pratique' | 'absence' | 'evenement'
+type Choix = 'visite' | 'tache' | 'pratique' | 'evenement'
 
-const tuiles: { id: Choix | 'message'; libelle: string; icone: ReactElement; fond: string; texte: string }[] = [
-  { id: 'visite', libelle: 'Visite', icone: <EventNoteOutlined />, fond: brand.noir, texte: '#ffffff' },
-  { id: 'tache', libelle: 'Tâche', icone: <TaskAltOutlined />, fond: brand.or, texte: brand.noir },
-  { id: 'message', libelle: 'Message', icone: <ChatBubbleOutlineOutlined />, fond: brand.bleu, texte: '#ffffff' },
-  { id: 'pratique', libelle: 'Bonne pratique', icone: <PhotoCameraOutlined />, fond: brand.orange, texte: brand.noir },
-  // Absence et événement rejoignent Créer : plus de boutons dans l'en-tête de l'Agenda (Joseph, 21/10/2026)
-  { id: 'absence', libelle: 'Absence', icone: <BeachAccessOutlined />, fond: '#0f766e', texte: '#ffffff' },
-  { id: 'evenement', libelle: 'Événement', icone: <EventOutlined />, fond: '#7c3aed', texte: '#ffffff' },
+// Absences retirées de l'app (Joseph, 22/10/2026)
+const choixCreer: { id: Choix | 'message'; libelle: string; icone: ReactElement; fond: string; texte: string }[] = [
+  { id: 'visite', libelle: 'Visite', icone: <EventNoteOutlined fontSize="small" />, fond: brand.noir, texte: '#ffffff' },
+  { id: 'tache', libelle: 'Tâche', icone: <TaskAltOutlined fontSize="small" />, fond: brand.or, texte: brand.noir },
+  { id: 'message', libelle: 'Message', icone: <ChatBubbleOutlineOutlined fontSize="small" />, fond: brand.bleu, texte: '#ffffff' },
+  { id: 'pratique', libelle: 'Bonne pratique', icone: <PhotoCameraOutlined fontSize="small" />, fond: brand.orange, texte: brand.noir },
+  { id: 'evenement', libelle: 'Événement', icone: <EventOutlined fontSize="small" />, fond: '#7c3aed', texte: '#ffffff' },
 ]
 
-// Bouton « Créer » : visite, tâche, message, bonne pratique, absence ou événement, depuis n'importe quel écran.
-// rond : bouton noir au centre de la barre du bas (téléphone) ; sinon bouton en tête du menu latéral (PC)
-// entete : bouton rond blanc de la barre du haut (téléphone)
+// Bouton « Créer » : visite, tâche, message, bonne pratique ou événement, depuis n'importe quel écran.
+// Les choix s'ouvrent en menu juste sous le bouton (Joseph, 22/10/2026).
+// entete : bouton rond blanc de la barre du haut (téléphone) ; sinon bouton en tête du menu latéral (PC)
 export function BoutonCreer({ entete = false }: { entete?: boolean }) {
   const { reseau } = useReseau()
   const naviguer = useNavigate()
-  const [ouvert, setOuvert] = useState(false)
+  const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const [choix, setChoix] = useState<Choix | null>(null)
   const [confirmation, setConfirmation] = useState('')
+  const ouvrir = (ev: MouseEvent<HTMLElement>) => setAncre(ev.currentTarget)
   const fermer = (msg?: string) => { setChoix(null); if (msg) setConfirmation(msg) }
   const choisir = (id: Choix | 'message') => {
-    setOuvert(false)
+    setAncre(null)
     if (id === 'message') naviguer('/echanges')
     else setChoix(id)
   }
   return (
     <>
       {entete ? (
-        <ButtonBase aria-label="Créer" onClick={() => setOuvert(true)} sx={{ width: 48, height: 48, flexShrink: 0, borderRadius: '50%', display: 'grid', placeItems: 'center' }}>
+        <ButtonBase aria-label="Créer" aria-haspopup="menu" aria-expanded={!!ancre} onClick={ouvrir} sx={{ width: 48, height: 48, flexShrink: 0, borderRadius: '50%', display: 'grid', placeItems: 'center' }}>
           <Box sx={{ width: 36, height: 36, borderRadius: '50%', bgcolor: '#ffffff', color: '#000000', display: 'grid', placeItems: 'center' }}><AddOutlined /></Box>
         </ButtonBase>
       ) : (
-        <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 52, px: 3, fontSize: '0.9375rem' }}>Créer</Button>
+        <Button variant="contained" aria-haspopup="menu" aria-expanded={!!ancre} startIcon={<AddOutlined />} onClick={ouvrir} sx={{ minHeight: 52, px: 3, fontSize: '0.9375rem' }}>Créer</Button>
       )}
-      <Dialog open={ouvert} onClose={() => setOuvert(false)} fullWidth maxWidth={false} aria-labelledby="titre-creer" slotProps={{ paper: { sx: { width: { sm: 340 } } } }}>
-        <DialogTitle id="titre-creer" sx={{ display: 'flex', alignItems: 'center', pr: 1, py: 1 }}>
-          <Box component="span" sx={{ flex: 1 }}>Créer</Box>
-          <IconButton aria-label="Fermer" onClick={() => setOuvert(false)} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ pb: 2, px: 2 }}>
-          {/* Téléphone : trois choix par ligne ; PC : deux par ligne */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(3, minmax(0, 1fr))', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1 }}>
-            {tuiles.map((t) => (
-              <ButtonBase key={t.id} onClick={() => choisir(t.id)} disabled={!reseau}
-                sx={{ minHeight: 84, py: 1, px: 0.5, borderRadius: 3, bgcolor: 'background.default', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: t.fond, color: t.texte, display: 'grid', placeItems: 'center' }}>{t.icone}</Box>
-                <Typography sx={{ fontWeight: 600, fontSize: '0.8125rem', lineHeight: 1.25, textAlign: 'center' }}>{t.libelle}</Typography>
-              </ButtonBase>
-            ))}
-          </Box>
-        </DialogContent>
-      </Dialog>
+      <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: entete ? 'right' : 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: entete ? 'right' : 'left' }}
+        slotProps={{ list: { 'aria-label': 'Créer' }, paper: { sx: { mt: 0.5, minWidth: 220, borderRadius: 3 } } }}>
+        {choixCreer.map((c) => (
+          <MenuItem key={c.id} onClick={() => choisir(c.id)} disabled={!reseau} sx={{ '&&': { minHeight: 52 }, gap: 1.5, fontWeight: 600 }}>
+            <Box component="span" sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: c.fond, color: c.texte, display: 'grid', placeItems: 'center', flexShrink: 0 }}>{c.icone}</Box>
+            {c.libelle}
+          </MenuItem>
+        ))}
+      </Menu>
       {reseau && choix === 'visite' && <DialogVisite reseau={reseau} visite={null} onFermer={fermer} />}
       {reseau && choix === 'tache' && <DialogAction reseau={reseau} magasins={reseau.magasins.map((m) => m.nom)} action={null} onFermer={fermer} />}
       {reseau && choix === 'pratique' && <DialogPratique reseau={reseau} pratique={null} onFermer={fermer} />}
-      {reseau && choix === 'absence' && <DialogConge reseau={reseau} conge={null} onFermer={fermer} />}
       {reseau && choix === 'evenement' && <DialogEvenement reseau={reseau} evenement={null} onFermer={fermer} />}
       <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
     </>

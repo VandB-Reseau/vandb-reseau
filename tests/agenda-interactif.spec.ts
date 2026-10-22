@@ -34,7 +34,7 @@ test.describe('sur PC', () => {
     const b = (await case_.boundingBox())!
     await page.mouse.click(b.x + b.width / 2, b.y + b.height - 6)
     const menu = page.getByRole('menu', { name: `Ajouter le ${jourLong(jour)}` })
-    await expect(menu.getByRole('menuitem')).toHaveText(['Visite', 'Absence', 'Événement'])
+    await expect(menu.getByRole('menuitem')).toHaveText(['Visite', 'Événement'])
     await page.screenshot({ path: `captures/${info.project.name}-agenda-ajout-case.png` })
     await menu.getByRole('menuitem', { name: 'Événement' }).click()
     const d = page.getByRole('dialog', { name: 'Ajouter un événement' })
@@ -105,12 +105,13 @@ test.describe('sur téléphone', () => {
     await page.goto(`./#/plus/agenda?mois=${moisSeminaire}`)
     await expect(page.getByRole('link', { name: /Vitrine de Noël/ })).toBeVisible()
 
-    // Le bouton d'ajout du jour du séminaire propose visite, absence, événement
+    // Le bouton d'ajout du jour du séminaire propose visite et événement
     const bouton = page.getByRole('button', { name: `Ajouter le ${jourLong(seminaire)}` })
     expect((await bouton.boundingBox())!.height).toBeGreaterThanOrEqual(48)
     await bouton.click()
-    await page.getByRole('menuitem', { name: 'Absence' }).click()
-    const d = page.getByRole('dialog', { name: 'Ajouter une absence' })
+    await expect(page.getByRole('menuitem')).toHaveText(['Visite', 'Événement'])
+    await page.getByRole('menuitem', { name: 'Événement' }).click()
+    const d = page.getByRole('dialog', { name: 'Ajouter un événement' })
     await expect(d.getByLabel('Du')).toHaveValue(seminaire)
     await d.getByRole('button', { name: 'Annuler' }).click()
 

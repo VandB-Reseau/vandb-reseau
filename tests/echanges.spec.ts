@@ -119,7 +119,7 @@ test('téléphone : barre du bas à cinq onglets, « + » dans l’en-tête', as
   const plus = page.getByRole('banner').getByRole('button', { name: 'Créer' })
   expect((await plus.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   await plus.click()
-  await expect(page.getByRole('dialog', { name: 'Créer' })).toBeVisible()
+  await expect(page.getByRole('menu', { name: 'Créer' })).toBeVisible()
 })
 
 test('franchisé : le groupe de son magasin sans « Équipe seule », ni groupe libre', async ({ page }) => {
