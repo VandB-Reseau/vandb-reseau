@@ -10,6 +10,7 @@ export interface BonnePratique {
   texte: string
   par: string // personne qui l'a remontée
   photos: Photo[]
+  entete: string // chemin de la photo d'en-tête, parmi les photos ('' : aucune), comme les communications
   reprises: string[] // magasins qui l'appliquent depuis
   jaime: string[] // personnes de l'équipe qui ont réagi
 }
@@ -22,6 +23,7 @@ export function normaliserPratiques(brut: unknown): BonnePratique[] {
   return brut.filter((x) => x && typeof x === 'object').map((x: Record<string, unknown>) => ({
     id: t(x.id), magasin: t(x.magasin), date: t(x.date), titre: t(x.titre), theme: t(x.theme), texte: t(x.texte), par: t(x.par),
     photos: Array.isArray(x.photos) ? (x.photos as Photo[]) : [],
+    entete: Array.isArray(x.photos) && (x.photos as Photo[]).some((ph) => ph?.chemin === x.entete) ? t(x.entete) : '',
     reprises: Array.isArray(x.reprises) ? (x.reprises as unknown[]).map(t).filter(Boolean) : [],
     jaime: Array.isArray(x.jaime) ? [...new Set((x.jaime as unknown[]).map(t).filter(Boolean))] : [],
   })).filter((x) => x.id && x.titre).sort((a, b) => b.date.localeCompare(a.date))

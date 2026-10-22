@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Photo d'en-tête facultative sur les bonnes pratiques (Joseph, 22/10/2026) : affichée en grand au-dessus du titre, comme
+  pour une communication, et rangée avec les photos de la pratique (champ `entete` dans `bonnes_pratiques`, les franchisés la
+  voient avec les mêmes règles que les autres photos). Sans migration.
 - Canaux « Réseau V and B » et « Bonnes pratiques » des Messages présentés comme un groupe (Joseph, 22/10/2026) : les
   publications défilent comme des messages, la plus récente en bas ; seuls ceux qui publient ont le bouton en pied, tout le
   monde aime et commente. Recherche et filtres restent dans Infos réseau. Sans migration.

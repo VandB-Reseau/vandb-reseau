@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
@@ -11,6 +11,9 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import EditOutlined from '@mui/icons-material/EditOutlined'
+import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
+import ImageOutlined from '@mui/icons-material/ImageOutlined'
+import CircularProgress from '@mui/material/CircularProgress'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import { Fenetre } from './EditionEquipe'
 import { ChampDicte } from './SaisieCompteRendu'
@@ -34,7 +37,7 @@ import { visiteurs } from './DialogVisite'
 import { basculerJaime, enregistrerPratique } from '../data/chargement'
 import { themesConnus, type BonnePratique } from '../data/bonnesPratiques'
 import { nouvelId, type Photo } from '../data/grilles'
-import { supprimerPhotos } from '../lib/photos'
+import { envoyerPhoto, lienPhoto, messagePhoto, supprimerPhotos } from '../lib/photos'
 import { dateCourte, lienFiche } from '../lib/format'
 import type { Reseau } from '../data/modele'
 
@@ -45,7 +48,9 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', onFermer
   const [theme, setTheme] = useState(pratique?.theme ?? '')
   const [texte, setTexte] = useState(pratique?.texte ?? '')
   const [par, setPar] = useState(pratique?.par ?? reseau.directeur.nom)
-  const [photos, setPhotos] = useState<Photo[]>(pratique?.photos ?? [])
+  // La photo d'en-tête est rangée avec les photos (les franchisés voient ainsi les mêmes), en tête de liste
+  const [entete, setEntete] = useState<Photo | null>(pratique?.photos.find((ph) => ph.chemin === pratique.entete) ?? null)
+  const [photos, setPhotos] = useState<Photo[]>(pratique?.photos.filter((ph) => ph.chemin !== pratique.entete) ?? [])
   const [reprises, setReprises] = useState<string[]>(pratique?.reprises ?? [])
   const [retirees, setRetirees] = useState<string[]>([])
   const noms = reseau.magasins.map((m) => m.nom)
@@ -54,8 +59,9 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', onFermer
     <Fenetre
       large ouvert onFermer={onFermer} valide={valide} titre={pratique ? 'Modifier la bonne pratique' : 'Nouvelle bonne pratique'}
       enregistrer={async () => {
-        await enregistrerPratique(pratique?.id ?? '', { id: pratique?.id || nouvelId('bp'), magasin, date, titre: titre.trim(), theme: theme.trim(), texte: texte.trim(), par, photos, reprises: reprises.filter((r) => r !== magasin), jaime: pratique?.jaime ?? [] })
-        const gardees = new Set(photos.map((p) => p.chemin))
+        const toutes = entete ? [entete, ...photos] : photos
+        await enregistrerPratique(pratique?.id ?? '', { id: pratique?.id || nouvelId('bp'), magasin, date, titre: titre.trim(), theme: theme.trim(), texte: texte.trim(), par, photos: toutes, entete: entete?.chemin ?? '', reprises: reprises.filter((r) => r !== magasin), jaime: pratique?.jaime ?? [] })
+        const gardees = new Set(toutes.map((p) => p.chemin))
         await supprimerPhotos([...new Set([...retirees, ...(pratique?.photos ?? []).map((p) => p.chemin)])].filter((c) => !gardees.has(c)))
         return pratique ? 'Bonne pratique mise à jour.' : 'Bonne pratique enregistrée.'
       }}
@@ -67,6 +73,7 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', onFermer
       libelleSuppression={pratique ? `Supprimer « ${pratique.titre} » ?` : undefined}
     >
       <TextField label="Titre" value={titre} onChange={(e) => setTitre(e.target.value)} />
+      <ChampEntetePhoto photo={entete} changer={(ph) => { if (entete && !ph) setRetirees((x) => [...x, entete.chemin]); setEntete(ph) }} />
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr' } }}>
         <Autocomplete options={noms} value={magasin || null} onChange={(_e, v) => setMagasin(v ?? '')} renderInput={(p) => <TextField {...p} label="Magasin" />} noOptionsText="Aucun magasin ne correspond" />
         <TextField type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
@@ -80,6 +87,53 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', onFermer
       <Autocomplete multiple options={noms.filter((n) => n !== magasin)} value={reprises} onChange={(_e, v) => setReprises(v)} disableCloseOnSelect
         renderInput={(p) => <TextField {...p} label="Reprise par" />} noOptionsText="Aucun magasin ne correspond" />
     </Fenetre>
+  )
+}
+
+// Photo d'en-tête : pleine largeur, proportions gardées, comme celle d'une communication
+function BannierePhoto({ chemin, alt, children }: { chemin: string; alt: string; children?: ReactNode }) {
+  const [lien, setLien] = useState<string | null>(null)
+  useEffect(() => {
+    let actif = true
+    void lienPhoto(chemin).then((l) => { if (actif) setLien(l) })
+    return () => { actif = false }
+  }, [chemin])
+  return (
+    <Box sx={{ position: 'relative', bgcolor: '#ffffff', minHeight: lien ? 0 : 120 }}>
+      {lien && <Box component="img" src={lien} alt={alt} sx={{ display: 'block', mx: 'auto', maxWidth: '100%', maxHeight: { xs: 220, sm: 320 }, objectFit: 'contain' }} />}
+      {children}
+    </Box>
+  )
+}
+
+function ChampEntetePhoto({ photo, changer }: { photo: Photo | null; changer: (p: Photo | null) => void }) {
+  const [envoi, setEnvoi] = useState(false)
+  const [erreur, setErreur] = useState('')
+  const entree = useRef<HTMLInputElement | null>(null)
+  const choisir = async (f: File | undefined) => {
+    if (!f) return
+    setEnvoi(true); setErreur('')
+    try { changer(await envoyerPhoto(f)) } catch (e) { setErreur(messagePhoto(e)) } finally { setEnvoi(false) }
+  }
+  return (
+    <Box>
+      <input ref={entree} type="file" accept="image/*" hidden aria-label="Photo d’en-tête" onChange={(e) => { void choisir(e.target.files?.[0]); e.target.value = '' }} />
+      {photo ? (
+        <Box sx={{ borderRadius: 2, overflow: 'hidden' }}>
+          <BannierePhoto chemin={photo.chemin} alt="Photo d’en-tête">
+            <IconButton aria-label="Retirer la photo d’en-tête" onClick={() => changer(null)}
+              sx={{ position: 'absolute', top: 8, right: 8, width: 48, height: 48, bgcolor: 'background.paper', '&:hover': { bgcolor: 'background.paper' } }}>
+              <DeleteOutlined />
+            </IconButton>
+          </BannierePhoto>
+        </Box>
+      ) : (
+        <Button startIcon={envoi ? <CircularProgress size={18} /> : <ImageOutlined />} onClick={() => entree.current?.click()} disabled={envoi} sx={{ minHeight: 48, ml: -1 }}>
+          {envoi ? 'Envoi de la photo…' : 'Photo d’en-tête'}
+        </Button>
+      )}
+      {erreur && <Typography color="error" variant="body2">{erreur}</Typography>}
+    </Box>
   )
 }
 
@@ -107,6 +161,7 @@ export function CartePratique({ p, modifier, sansMagasin, ouvrables, moi, reacti
   const [envoi, setEnvoi] = useState(false)
   useEffect(() => setJaime(p.jaime ?? []), [p.jaime])
   const aime = !!moi && jaime.includes(moi)
+  const autresPhotos = p.photos.filter((ph) => ph.chemin !== p.entete)
   const reagir = async () => {
     if (!moi || envoi) return
     setJaime(aime ? jaime.filter((n) => n !== moi) : [...jaime, moi])
@@ -124,7 +179,8 @@ export function CartePratique({ p, modifier, sansMagasin, ouvrables, moi, reacti
         </Box>
         {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la bonne pratique ${p.titre}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
       </Box>
-      {p.photos.length > 0 && <Box sx={{ px: 2 }}><GrillePhotos photos={p.photos} max={4} colonnes={2} /></Box>}
+      {p.entete && <Box sx={{ mb: 1 }}><BannierePhoto chemin={p.entete} alt={`Photo d’en-tête de ${p.titre}`} /></Box>}
+      {autresPhotos.length > 0 && <Box sx={{ px: 2 }}><GrillePhotos photos={autresPhotos} max={4} colonnes={2} /></Box>}
       <CardContent sx={{ pt: 1.5, pb: reactions ? '0 !important' : '8px !important' }}>
         <Typography variant="h4" component="h3">{p.titre}</Typography>
         {p.texte && <Typography variant="body1" sx={{ mt: 0.5, whiteSpace: 'pre-line' }}>{p.texte}</Typography>}
