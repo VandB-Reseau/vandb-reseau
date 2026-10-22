@@ -142,3 +142,31 @@ test('anciennes adresses redirigées vers les Échanges', async ({ page }) => {
   await page.goto('./#/taches')
   await expect(page).toHaveURL(/#\/echanges\?vue=taches/)
 })
+
+test('téléphone : dans une conversation longue, le nom reste en haut et la saisie tout en bas', async ({ page, isMobile }, info) => {
+  test.skip(!isMobile, 'Conversation plein écran du téléphone')
+  const messages = Array.from({ length: 30 }, (_, i) => msg(100 + i, 'Annecy Test', 'Paul MULTI', 'franchise', `Message numéro ${i + 1} sur la vitrine et les ventes de la semaine.`, {}, 300 - i * 5))
+  await seConnecter(page, { appMetadata: HUGO, messagerie: { messages } })
+  await page.goto('./#/echanges/magasin/Annecy%20Test')
+  const titre = page.getByRole('heading', { level: 1, name: 'Annecy Test' })
+  const champ = page.getByLabel('Message', { exact: true })
+  await expect(page.getByText('Message numéro 30 sur la vitrine')).toBeVisible()
+  const hauteur = page.viewportSize()!.height
+  const verifier = async () => {
+    const t = (await titre.boundingBox())!
+    expect(t.y).toBeGreaterThanOrEqual(60)
+    expect(t.y).toBeLessThan(140)
+    const c = (await champ.boundingBox())!
+    expect(c.y + c.height).toBeGreaterThan(hauteur - 80)
+    expect(c.y + c.height).toBeLessThanOrEqual(hauteur)
+  }
+  await verifier()
+  // On remonte dans les messages à la molette, puis on touche le champ : rien ne bouge
+  await page.mouse.move(200, hauteur / 2)
+  await page.mouse.wheel(0, -2000)
+  await expect(page.getByText('Message numéro 1 sur la vitrine')).toBeInViewport()
+  await verifier()
+  await champ.click()
+  await verifier()
+  await page.screenshot({ path: `captures/${info.project.name}-echanges-conversation-longue.png` })
+})

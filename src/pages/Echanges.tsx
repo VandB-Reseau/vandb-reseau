@@ -375,16 +375,21 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
 
   if (!surPC) {
     if (!fil || !conv) return <><PageHeader titre="Échanges" />{segment}{liste}{message}</>
+    // Conversation en plein écran, calée sur la partie visible (clavier compris) : l'en-tête reste en haut,
+    // la saisie tout en bas, seuls les messages défilent (Joseph, 22/10/2026)
     return (
-      <>
-        <Box sx={{ position: 'sticky', top: 64, zIndex: 3, bgcolor: 'background.default', mx: -2, px: 2, mt: -1.5, pb: choixFil ? 1 : 0, borderBottom: '1px solid', borderColor: 'divider' }}>
+      <ConversationTelephone>
+        <Box sx={{ px: 2, pb: choixFil ? 1 : 0, borderBottom: '1px solid', borderColor: 'divider' }}>
           <EnTete titre={conv.titre} detail={detail} niveau="h1" retour={retour} avatar={<AvatarConversation c={conv} taille={40} />} action={actionEnTete} />
           {choixFil}
         </Box>
-        {filAffiche(false)}
+        <Box sx={{ flex: 1, minHeight: 0 }}>
+          <FilMessages key={conv.cle + (fil.genre === 'magasin' && fil.equipe ? '|equipe' : '')} reseau={reseau} fil={fil} contact={conv.contact} signaler={setConfirmation} lectureSeule={lectureSeule}
+            cadre fond="background.default" />
+        </Box>
         {dialogue}
         {message}
-      </>
+      </ConversationTelephone>
     )
   }
 
@@ -413,6 +418,39 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
       {dialogue}
       {message}
     </>
+  )
+}
+
+// Partie de l'écran réellement visible : le clavier du téléphone la réduit, et le navigateur peut la décaler
+function useZoneVisible() {
+  const lire = () => {
+    const v = window.visualViewport
+    return { haut: v?.offsetTop ?? 0, hauteur: v?.height ?? window.innerHeight, clavier: !!v && window.innerHeight - v.height > 120 }
+  }
+  const [zone, setZone] = useState(lire)
+  useEffect(() => {
+    const v = window.visualViewport
+    if (!v) return
+    const suivre = () => setZone(lire())
+    v.addEventListener('resize', suivre)
+    v.addEventListener('scroll', suivre)
+    return () => { v.removeEventListener('resize', suivre); v.removeEventListener('scroll', suivre) }
+  }, [])
+  return zone
+}
+
+function ConversationTelephone({ children }: { children: ReactNode }) {
+  const { haut, hauteur, clavier } = useZoneVisible()
+  // Sous l'en-tête de l'app (64 px) ; si le navigateur fait glisser la page vers le haut, on suit la partie visible
+  const top = Math.max(64, haut)
+  return (
+    <Box sx={{
+      position: 'fixed', left: 0, right: 0, top, height: haut + hauteur - top, zIndex: 3, display: 'flex', flexDirection: 'column', bgcolor: 'background.default',
+      // Hors clavier, la saisie s'écarte de la barre d'accueil de l'iPhone
+      '& [data-composeur]': { pb: clavier ? 1 : 'calc(8px + env(safe-area-inset-bottom))' },
+    }}>
+      {children}
+    </Box>
   )
 }
 
