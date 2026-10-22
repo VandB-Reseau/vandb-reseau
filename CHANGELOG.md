@@ -9,6 +9,7 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Échanges sur PC : « Mes tâches » s'ouvre aussi quand une conversation est affichée.
 - Tâches à plusieurs porteurs : le champ « Porteurs » accepte plusieurs personnes du magasin (franchisé, Coach,
   RR, Directeur) partout où l'on crée ou modifie une tâche (fiche magasin, compte rendu, Échanges, Mes tâches).
   La tâche figure dans « Mes tâches », l'Accueil et le compteur de chacun de ses porteurs. Rangés dans le champ

@@ -170,3 +170,18 @@ test('téléphone : dans une conversation longue, le nom reste en haut et la sai
   await verifier()
   await page.screenshot({ path: `captures/${info.project.name}-echanges-conversation-longue.png` })
 })
+
+test('« Mes tâches » s’ouvre depuis une conversation, puis « Discussions » y ramène', async ({ page }) => {
+  await seConnecter(page, { appMetadata: HUGO, messagerie: { messages: [msg(1, 'Annecy Test', 'Paul MULTI', 'franchise', 'La vitrine est installée.')] } })
+  await page.goto('./#/echanges/magasin/Annecy%20Test')
+  await expect(page.getByRole('list', { name: /^Messages de / })).toContainText('La vitrine est installée.')
+  const onglets = page.getByRole('tablist', { name: 'Échanges' })
+  // Téléphone : le choix est dans la liste des échanges, hors conversation
+  if (await onglets.count() === 0) await page.goto('./#/echanges')
+  await onglets.getByRole('tab', { name: /^Mes tâches/ }).click()
+  await expect(page).toHaveURL(/#\/echanges\?vue=taches$/)
+  await expect(onglets.getByRole('tab', { name: /^Mes tâches/ })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('list', { name: /^Messages de / })).toHaveCount(0)
+  await onglets.getByRole('tab', { name: /^Discussions/ }).click()
+  await expect(page.getByRole('list', { name: 'Conversations' })).toBeVisible()
+})
