@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin sans fil (Joseph, 22/10/2026) : l'onglet Fil disparaît, la fiche s'ouvre sur l'onglet Fiche, qui reçoit le
+  journal (notes, santé, déploiements, Coachs) et les bonnes pratiques du magasin ; même chose pour la fiche du franchisé.
 - Onglet Infos réseau (Joseph, 22/10/2026) : toutes les communications et toutes les bonnes pratiques réunies, côte à côte sur PC,
   en deux onglets sur téléphone, avec une recherche et des filtres communs (magasin, thème, période). Icône dans l'en-tête,
   à droite du « + », avec le nombre de communications et bonnes pratiques pas encore vues (préférences du compte, sans

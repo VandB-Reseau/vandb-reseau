@@ -106,7 +106,7 @@ test('deux changements de case le même jour : le second remplace le premier, m�
   const v = derniereSante(ecritures)['Lyon Test']
   expect(v.historique.map((p: { date: string; caseId: string }) => `${p.date} ${p.caseId}`)).toEqual(['2026-06-01 coeur', '2026-10-01 redressement', '2026-10-14 diagnostic'])
   await page.reload()
-  const journal = page.getByRole('region', { name: 'Fil du magasin' })
+  const journal = page.getByRole('region', { name: 'Journal' })
   await expect(journal.getByText('Passe en Diagnostic marché')).toHaveCount(1)
   await expect(journal.getByText('Passe en Relance commerciale')).toHaveCount(0)
 })
@@ -128,7 +128,7 @@ test('les doublons du même jour déjà enregistrés n’apparaissent qu’une f
   }
   await seConnecter(page, { ecritures, config })
   await page.goto('./#/magasins/Lyon%20Test?vue=journal')
-  const journal = page.getByRole('region', { name: 'Fil du magasin' })
+  const journal = page.getByRole('region', { name: 'Journal' })
   await expect(journal.getByText('Passe en Redressement urgent')).toHaveCount(1)
   await expect(journal.getByText(/Management à renforcer|Locomotive/)).toHaveCount(0)
   await expect(journal.getByText('Concept 2.0 : Fait')).toHaveCount(1)

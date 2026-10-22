@@ -44,13 +44,13 @@ test('le bouton Créer ouvre sous lui un menu : visite, tâche, message, bonne p
   await expect(page).toHaveURL(/#\/echanges/)
 })
 
-test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ouvre sur le fil', async ({ page }, info) => {
+test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ouvre sur l’onglet Fiche', async ({ page }, info) => {
   await seConnecter(page)
   await expect(page.getByRole('region', { name: 'À traiter' })).toBeVisible()
   expect(await sansDebordement(page.locator('body'))).toBe(true)
   await page.goto('./#/magasins/Lyon%20Test')
   await expect(page.getByRole('heading', { name: 'Lyon Test', level: 1 })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'Fil', selected: true })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Fiche', selected: true })).toBeVisible()
   const bref = page.getByRole('group', { name: 'En bref' })
   await expect(bref).toContainText('70 k€')
   await expect(bref).toContainText('−30,0 %')
@@ -59,8 +59,8 @@ test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ou
   expect(await sansDebordement(page.locator('body'))).toBe(true)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-profil.png`, fullPage: true })
-  await page.getByRole('tab', { name: 'Fiche' }).click()
-  await expect(page).toHaveURL(/vue=fiche/)
+  await page.getByRole('tab', { name: 'Messages' }).click()
+  await expect(page).toHaveURL(/vue=messages/)
 })
 
 test('Santé > Chiffres en lignes, tableau au choix sur PC, magasins sans chiffres repliés', async ({ page, isMobile }, info) => {

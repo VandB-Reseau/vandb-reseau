@@ -10,13 +10,10 @@ import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
-import DynamicFeedOutlined from '@mui/icons-material/DynamicFeedOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
-import { GrillePhotos, Initiales, TitreSection, type Ton } from '../components/Social'
+import { Initiales, type Ton } from '../components/Social'
 import { ProfilPersonne, rond } from '../components/Portefeuille'
 import { FilActivite } from './Accueil'
-import { filDu } from '../data/fil'
-import { useMessagerie } from '../data/MessagerieContext'
 import { statutLibelle } from '../data/modele'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -111,10 +108,10 @@ export function Contact({ role, p, sousTitre, lien }: { role: string; p: Personn
   )
 }
 
-// Six onglets (L3, 21/10/2026) : le journal entre dans le fil, la santé avec les chiffres, les campagnes avec les tâches
-type VueFiche = 'fil' | 'fiche' | 'actions' | 'messages' | 'visites' | 'chiffres'
+// Cinq onglets : plus de fil, redondant avec les onglets (Joseph, 22/10/2026) ; le journal et les bonnes pratiques
+// vont dans la Fiche, la santé avec les chiffres, les campagnes avec les tâches
+type VueFiche = 'fiche' | 'actions' | 'messages' | 'visites' | 'chiffres'
 const rubriquesFiche: Rubrique<VueFiche>[] = [
-  { vue: 'fil', libelle: 'Fil', icone: <DynamicFeedOutlined /> },
   { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
   { vue: 'actions', libelle: 'Tâches et campagnes', court: 'Tâches', icone: <TaskAltOutlined /> },
   { vue: 'messages', libelle: 'Messages', icone: <ForumOutlined /> },
@@ -122,15 +119,15 @@ const rubriquesFiche: Rubrique<VueFiche>[] = [
   { vue: 'chiffres', libelle: 'Chiffres et santé', court: 'Chiffres', icone: <QueryStatsOutlined /> },
 ]
 // Anciens liens vers un onglet regroupé : l'onglet qui l'accueille, ouvert sur sa partie
-const anciennesVues: Record<string, VueFiche> = { sante: 'chiffres', campagnes: 'actions', journal: 'fil' }
+const anciennesVues: Record<string, VueFiche> = { sante: 'chiffres', campagnes: 'actions', journal: 'fiche', fil: 'fiche' }
 
 function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const naviguer = useNavigate()
   const [params, setParams] = useSearchParams()
   const demandee = params.get('vue') ?? ''
-  const vue = (anciennesVues[demandee] ?? rubriquesFiche.find((r) => r.vue === demandee)?.vue ?? 'fil') as VueFiche
+  const vue = (anciennesVues[demandee] ?? rubriquesFiche.find((r) => r.vue === demandee)?.vue ?? 'fiche') as VueFiche
   useEffect(() => { if (anciennesVues[demandee]) document.getElementById(`partie-${demandee}`)?.scrollIntoView({ block: 'start' }) }, [demandee])
-  const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'fil') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
+  const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const [reaffectation, setReaffectation] = useState(false)
   const [edition, setEdition] = useState(false)
   const [visite, setVisite] = useState<Visite | null | undefined>(undefined)
@@ -164,15 +161,6 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
       <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} fiche />
       <ContenuOnglet>
 
-        {vue === 'fil' && (
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-            <FilMagasin reseau={reseau} m={m} signaler={setConfirmation} />
-            <Box id="partie-journal" sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)', scrollMarginTop: 160 }}>
-              <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />
-            </Box>
-          </Box>
-        )}
-
         {vue === 'fiche' && (
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
             <Section titre="Équipe" action={referentiels ? <Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button> : undefined}>
@@ -195,6 +183,10 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
               <Ligne libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
               <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
             </Section>
+            <Box id="partie-journal" sx={{ gridColumn: { lg: 'span 2' }, display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)', scrollMarginTop: 160 }}>
+              <JournalMagasin reseau={reseau} m={m} signaler={setConfirmation} />
+              <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />
+            </Box>
             {lieuCarte && (
               <Card sx={{ gridColumn: { lg: 'span 2' }, overflow: 'hidden' }}>
                 <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
@@ -543,18 +535,15 @@ function AutresActions({ nom, planifier, preparer, modifier }: { nom: string; pl
   )
 }
 
-// Fil du magasin : toutes les photos en grille, puis visites, tâches, messages, chiffres et journal du plus récent au plus ancien
-function FilMagasin({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (message: string) => void }) {
-  const { messagerie } = useMessagerie()
-  // Un seul fil : visites, tâches, messages, chiffres, puis le journal (notes, santé, déploiements, Coachs, ouverture)
-  const elements = useMemo(() => [...filDu(reseau, new Set([m.nom]), messagerie, 730), ...journalDansLeFil(reseau, m)]
-    .sort((a, b) => (b.instant.length === 10 ? `${b.instant}T00:00:00` : b.instant).localeCompare(a.instant.length === 10 ? `${a.instant}T00:00:00` : a.instant)), [reseau, m, messagerie])
+// Journal du magasin : notes, santé, déploiements, Coachs et ouverture, du plus récent au plus ancien
+// (visites, tâches, messages et chiffres ont leurs onglets)
+function JournalMagasin({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (message: string) => void }) {
+  const elements = useMemo(() => journalDansLeFil(reseau, m)
+    .sort((a, b) => (b.instant.length === 10 ? `${b.instant}T00:00:00` : b.instant).localeCompare(a.instant.length === 10 ? `${a.instant}T00:00:00` : a.instant)), [reseau, m])
   const edition = useEditionJournal(reseau, m, signaler)
-  const photos = elements.flatMap((e) => e.photos ?? [])
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {photos.length > 0 && <Box component="section" aria-label="Photos"><TitreSection nombre={photos.length}>Photos</TitreSection><GrillePhotos photos={photos} max={6} /></Box>}
-      <FilActivite elements={elements} jour={reseau.jour} sansMagasin titre="Fil du magasin" ouvrirJournal={edition.ouvrir}
+      <FilActivite elements={elements} jour={reseau.jour} sansMagasin titre="Journal" ouvrirJournal={edition.ouvrir}
         action={<Button startIcon={<AddOutlined />} onClick={edition.nouvelleNote} sx={{ minHeight: 48 }}>Note</Button>} />
       {edition.fenetres}
     </Box>

@@ -46,9 +46,8 @@ test('Magasins : la dernière visite à droite, le rouge réservé au décrochag
 
 test('une photo seule reste une vignette et s’ouvre en plein écran', async ({ page }, info) => {
   await seConnecter(page)
-  await page.goto('./#/magasins/Lyon%20Test')
-  const photos = page.getByRole('region', { name: 'Photos' })
-  const vignette = photos.getByRole('button', { name: 'Agrandir la photo 1' })
+  // Le compte rendu de Lyon et sa photo, dans le fil d'actualité de l'accueil
+  const vignette = page.getByRole('region', { name: 'Actualités' }).getByRole('button', { name: 'Agrandir la photo 1' }).first()
   const v = (await vignette.boundingBox())!
   expect(v.width).toBeLessThanOrEqual(170)
   expect(Math.abs(v.width - v.height)).toBeLessThanOrEqual(2)

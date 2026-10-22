@@ -14,23 +14,18 @@ test('la fiche magasin montre l’évolution de la santé et le journal du magas
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test?vue=sante')
   await expect(page.getByText(/En recul depuis le 1 oct\. 2026 · avant : Cœur de réseau/)).toBeVisible()
-  await ouvrirOnglet(page, 'Fil')
-  // Un seul fil : le journal (santé, déploiements, Coachs, notes) mêlé aux visites
-  const journal = page.getByRole('region', { name: 'Fil du magasin' })
+  await ouvrirOnglet(page, 'Fiche')
+  // Le journal (santé, déploiements, Coachs, notes) dans la fiche ; les visites restent dans leur onglet
+  const journal = page.getByRole('region', { name: 'Journal' })
   await expect(journal.getByText('Passe en Redressement urgent')).toBeVisible()
   await expect(journal.getByText('Classé Cœur de réseau')).toBeVisible()
   await expect(journal.getByText('Concept 2.0 : Fait')).toBeVisible()
   await expect(journal.getByText('Coach : Noé MODELE')).toBeVisible()
   await expect(journal.getByText('Appel du franchisé : travaux de vitrine prévus.')).toBeVisible()
-  await expect(journal.getByText(/visite terrain/).first()).toBeVisible()
+  await expect(journal.getByText(/visite terrain/)).toHaveCount(0)
   await expect(page.getByRole('list', { name: 'Journal de Lyon Test' })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-journal.png`, fullPage: !isMobile })
-  // Filtrer le fil : le journal seul
-  await journal.getByRole('button', { name: 'Journal', exact: true }).click()
-  await expect(journal.getByText(/visite terrain/)).toHaveCount(0)
-  await expect(journal.getByText('Concept 2.0 : Fait')).toBeVisible()
-  await expect(journal.getByText('Passe en Redressement urgent')).toBeVisible()
 })
 
 test('ajouter, modifier et supprimer une note du journal', async ({ page }) => {

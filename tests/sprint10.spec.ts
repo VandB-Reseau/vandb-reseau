@@ -28,13 +28,11 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Fil', 'Fiche', 'Tâches', 'Messages', 'Plus'] : ['Fil', 'Fiche', 'Tâches et campagnes', 'Messages', 'Visites', 'Chiffres et santé'])
-  // Le fil est la vue par défaut ; l'équipe est dans l'onglet Fiche
-  await expect(page.getByRole('region', { name: 'Fil du magasin' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Équipe' })).toHaveCount(0)
-  await ouvrirOnglet(page, 'Fiche', onglets)
+  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Fiche', 'Tâches', 'Messages', 'Plus'] : ['Fiche', 'Tâches et campagnes', 'Messages', 'Visites', 'Chiffres et santé'])
+  // Plus de fil (Joseph, 22/10/2026) : la fiche s'ouvre sur l'équipe, puis le journal
   await expect(page.getByRole('heading', { name: 'Équipe' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Journal', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Journal' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Fil du magasin' })).toHaveCount(0)
   // En-tête : deux actions en cours dont une en retard
   await expect(page.getByRole('group', { name: 'En bref' })).toContainText(/2 ?tâches en cours/)
   await expect(page.getByText('1 tâche en retard', { exact: true })).toBeVisible()
