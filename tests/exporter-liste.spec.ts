@@ -29,7 +29,7 @@ test('Magasins : exactement les magasins filtrés, sans téléphone ni courriel'
   const n = Number((await page.getByText(/^\d+ sur \d+ magasins$/).textContent())!.split(' ')[0])
   const { nom, lignes } = await exporter(page)
   expect(nom).toMatch(/^Magasins \d{4}-\d{2}-\d{2}\.xlsx$/)
-  expect(lignes[0]).toEqual(['Magasin', 'Code', 'Ville', 'Département', 'Statut', 'Type', 'Coach', 'Responsable Régional', 'Franchisé', 'Ouverture', 'Alertes'])
+  expect(lignes[0]).toEqual(['Magasin', 'Code', 'Ville', 'Département', 'Statut', 'Type', 'Coach', 'Responsable Régional', 'Franchisé', 'Ouverture', 'Alertes', 'Levier'])
   expect(lignes).toHaveLength(n + 1)
   expect(lignes.slice(1).every((l) => l[5] === 'Intégré')).toBe(true)
   expect(JSON.stringify(lignes)).not.toMatch(/@|0[67]\d{8}/)

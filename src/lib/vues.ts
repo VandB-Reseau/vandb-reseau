@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react'
 // Vues enregistrées de Magasins (L5, 21/10/2026) : filtres et tri sous un nom, gardés sur l'appareil
 const CLE = 'vandb-vues-magasins'
 // Paramètres d'adresse qui font une vue (l'affichage liste ou carte n'en fait pas partie)
-export const PARAMETRES_VUE = ['q', 'statut', 'type', 'coach', 'rr', 'alerte', 'tri']
+export const PARAMETRES_VUE = ['q', 'statut', 'type', 'coach', 'rr', 'alerte', 'levier', 'tri']
 
 export interface VueEnregistree { nom: string; adresse: string }
 const VIDE: VueEnregistree[] = []

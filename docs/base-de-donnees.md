@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 22/10/2026 (migration `0019`).
+Mis à jour le 22/10/2026 (migration `0020`).
 
 ## Principes
 
@@ -145,7 +145,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Périmètre | `magasins_visibles`, `maj_perimetre_equipe`, `magasins_messagerie`, `peut_ecrire_magasin`, `franchise_de_mes_magasins` | 0005, 0006, 0015 |
 | Accès franchisés | `ouvrir_acces_franchise`, `maj_acces_franchise`, `couper_acces_franchise`, `liste_acces_franchises` | 0004 |
 | Accès de l'équipe | `ouvrir_acces_equipe`, `couper_acces_equipe`, `renommer_acces_coach`, `liste_acces_equipe` | 0005 |
-| Espace franchisé | `espace_franchise` (sans les tâches de l'équipe seule depuis 0019), `reperes_reseau` (interne), `reperes_equipe` | 0004, 0005, 0019 |
+| Espace franchisé | `espace_franchise` (sans les tâches de l'équipe seule depuis 0019), `reperes_reseau` (interne : médiane, quart supérieur et, depuis 0020, quart inférieur `quartBas`), `reperes_equipe` | 0004, 0005, 0019, 0020 |
 | Actions du franchisé | `franchise_du_magasin`, `ajouter_action_franchise`, `marquer_action_franchise` (tâche de l'équipe seule introuvable, 0019) | 0007, 0019 |
 | Messagerie | `messagerie`, `envoyer_message`, `envoyer_a`, `marquer_lu`, `marquer_lu_personne`, `supprimer_message`, `renommer_magasin_messages`, `pieces_propres` | 0006 |
 | Échanges en groupe | `peut_inviter`, `creer_groupe`, `modifier_groupe`, `supprimer_groupe`, `quitter_groupe`, `peut_ecrire_fil`, `envoyer_fil`, `marquer_lu_fil`, `compte_lit_magasin` (interne) ; `messagerie` renvoie aussi les groupes (version 4) | 0018 |

@@ -26,6 +26,7 @@ import { analyser } from '../data/chiffres'
 import { anneeDe, suiviRythme } from '../data/visites'
 import { statutLibelle, type Magasin, type Reseau } from '../data/modele'
 import { BoutonExporter } from '../components/Exporter'
+import { leviersDuMagasin, libellesLevier, useReperesReseau, type Levier } from '../data/leviers'
 
 // Alertes de chaque magasin : chiffres (décroche, à surveiller) et visite attendue
 function alertesDuReseau(reseau: Reseau): Map<string, Alerte[]> {
@@ -52,7 +53,13 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
   const [ajout, setAjout] = useState(false)
   const [emplacementBoutons, setEmplacementBoutons] = useState<HTMLElement | null>(null)
   const naviguer = useNavigate()
-  const { complet } = useReseau()
+  const { complet, reseau: visible } = useReseau()
+  // Leviers du CA : repères du réseau pour le dernier mois des magasins visibles, un appel par session
+  const reperes = useReperesReseau(useMemo(() => (visible?.magasins ?? []).filter((m) => m.statut !== 'avenir').map((m) => m.nom), [visible]))
+  const lev = useMemo(() => {
+    const r = complet ?? visible
+    return reperes && r ? new Map<string, Levier | null>(r.magasins.map((m) => [m.nom, leviersDuMagasin(r, m.nom, reperes)?.levier ?? null])) : null
+  }, [reperes, complet, visible])
   const suivis = useSuivis()
   // Calculées une fois par réseau chargé (analyse des chiffres et rythme de visite de chaque magasin)
   const memo = useMemo(() => new WeakMap<Reseau, Map<string, Alerte[]>>(), [])
@@ -67,9 +74,10 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
         const restreint = reseau.magasins.length !== perimetre.magasins.length
         const alertes = alertesDe(reseau)
         const parAlerte = (nom: string) => alertes.get(nom) ?? []
-        const resultats = filtrer(reseau.magasins, filtres, parAlerte)
+        const parLevier = lev ? (nom: string) => lev.get(nom) ?? null : undefined
+        const resultats = filtrer(reseau.magasins, filtres, parAlerte, parLevier)
         // Nom proposé pour enregistrer la vue : ses filtres mis bout à bout
-        const nomPropose = [filtres.texte, ...filtres.alertes.map((a) => libellesAlerte[a]), ...filtres.statuts.map((s) => statutLibelle[s]),
+        const nomPropose = [filtres.texte, ...filtres.alertes.map((a) => libellesAlerte[a]), ...filtres.leviers.map((l) => libellesLevier[l]), ...filtres.statuts.map((s) => statutLibelle[s]),
           ...filtres.types.map((t) => (t === 'franchise' ? 'Franchisés' : 'Intégrés')), ...filtres.rrs.map((r) => reseau.rrs.find((x) => x.id === r)?.nom ?? 'Sans RR'),
           ...filtres.coachs.map((c) => (c === '__aucun__' ? 'Sans Coach' : c))].filter(Boolean).join(' · ').slice(0, 40)
         const total = reseau.magasins.length
@@ -87,7 +95,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
               { vue: 'liste', libelle: 'Liste', icone: <TableRowsOutlined /> },
               { vue: 'carte', libelle: 'Carte', icone: <MapOutlined /> },
             ]} />
-            <BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres} alertesDe={parAlerte}
+            <BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres} alertesDe={parAlerte} levierDe={parLevier}
               actions={vue === 'carte' ? <Box ref={setEmplacementBoutons} sx={{ display: 'flex' }} /> : <BoutonAction libelle="Ajouter un magasin" onClick={() => setAjout(true)} />} />
             <VuesMagasins params={params} appliquer={(p) => setParams(p, { replace: true })} nomPropose={nomPropose} />
             {ajout && <DialogMagasin reseau={reseau} magasin={null} onFermer={(msg, nom) => { setAjout(false); if (msg && nom) naviguer(lienFiche(nom)) }} />}
@@ -112,6 +120,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
                     { entete: 'Franchisé', valeur: (m: Magasin) => (m.franchise ? m.responsable?.nom : ''), largeur: 22 },
                     { entete: 'Ouverture', valeur: (m: Magasin) => (m.ouvertureConnue ? m.ouverture : '') },
                     { entete: 'Alertes', valeur: (m: Magasin) => parAlerte(m.nom).map((a) => libellesAlerte[a]).join(', '), largeur: 30 },
+                    ...(parLevier ? [{ entete: 'Levier', valeur: (m: Magasin) => { const l = parLevier(m.nom); return l ? libellesLevier[l] : '' }, largeur: 14 }] : []),
                   ]} />
                 </Box>
                 <ListeMagasins magasins={resultats} tri={tri} suivis={enTete} />

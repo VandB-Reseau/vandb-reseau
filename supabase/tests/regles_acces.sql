@@ -62,6 +62,8 @@ SELECT pg_temp.attendre('Coach : ne voit pas qui a lu les communications', pg_te
 SELECT pg_temp.attendre('Coach : ne met pas une communication à la une', pg_temp.refuse('SELECT public.mettre_a_la_une(' || :annonce || ', current_date)'), 1);
 SELECT pg_temp.attendre('Coach : lit le fichier d''une tâche de l''équipe seule',
   (SELECT count(*) FROM (SELECT public.piece_visible('00000000-0000-0000-0000-00000000000c/marge.pdf') AS v) x WHERE v), 1);
+SELECT pg_temp.attendre('Coach : repères du réseau par reperes_equipe()', pg_temp.refuse('SELECT public.reperes_equipe(''{Lille}'')'), 0);
+SELECT pg_temp.attendre('Coach : pas d''appel direct à reperes_reseau()', pg_temp.refuse('SELECT public.reperes_reseau(''{Nice}'')'), 1);
 SELECT pg_temp.attendre('Coach : aucun accès direct aux messages', (SELECT count(*) FROM information_schema.table_privileges
   WHERE table_schema = 'public' AND table_name = 'messages' AND grantee = 'authenticated'), 0);
 
@@ -85,6 +87,8 @@ SELECT pg_temp.attendre('Franchisé : aucun accès direct aux lectures', (SELECT
 SELECT pg_temp.attendre('Franchisé : ne met pas une communication à la une', pg_temp.refuse('SELECT public.mettre_a_la_une(' || :annonce || ', current_date)'), 1);
 SELECT pg_temp.attendre('Franchisé : ne voit pas qui a lu les communications', pg_temp.refuse('SELECT public.lectures_communications()'), 1);
 SELECT public.lire_communications(ARRAY[:annonce]::bigint[]);
+SELECT pg_temp.attendre('Franchisé : pas d''appel direct à reperes_reseau()', pg_temp.refuse('SELECT public.reperes_reseau(''{Nice}'')'), 1);
+SELECT pg_temp.attendre('Franchisé : pas de repères de l''équipe', pg_temp.refuse('SELECT public.reperes_equipe(''{Nice}'')'), 1);
 SELECT pg_temp.attendre('Franchisé : ses visites par espace_franchise()', (SELECT jsonb_array_length(public.espace_franchise()->'visits')), 1);
 SELECT pg_temp.attendre('Franchisé : ses tâches, sans celles de l''équipe seule', (SELECT jsonb_array_length(e->'value'->'Lille')
   FROM jsonb_array_elements(public.espace_franchise()->'app_config') e WHERE e->>'key' = 'actions'), 1);
