@@ -25,7 +25,8 @@ import Snackbar from '@mui/material/Snackbar'
 import { useReseau } from '../data/ReseauContext'
 import { useApercu } from '../auth/Apercu'
 import { Reactions } from './Reactions'
-import { basculerPoucePratique, commenterPratique, messageReaction, supprimerCommentairePratique, useReactionsPratiques, type ReactionsPratiques } from '../data/reactionsPratiques'
+import { basculerPoucePratique, commenterPratique, messageReaction, noterPratiquesLues, supprimerCommentairePratique, useLecturesPratiques, useReactionsPratiques, type LecturePratique, type ReactionsPratiques } from '../data/reactionsPratiques'
+import { LigneLecture } from './LigneLecture'
 import { useAuth } from '../auth/AuthContext'
 import { monNomPorteur } from '../data/actions'
 import { ChampRecherche } from './Outils'
@@ -152,9 +153,9 @@ const AUCUN: never[] = []
 // ouvrables : magasins dont la fiche s'ouvre (ceux d'un Coach ou d'un RR), par défaut tous ;
 // moi : nom de la personne de l'équipe qui réagit (absent : pas de bouton « J'aime ») ;
 // reactions : « J'aime » et commentaires de la base, pour l'équipe et les franchisés (remplacent les anciens « J'aime »)
-export function CartePratique({ p, modifier, sansMagasin, ouvrables, moi, reactions, lectureSeule = false, signaler = () => undefined }: {
+export function CartePratique({ p, modifier, sansMagasin, ouvrables, moi, reactions, lectureSeule = false, signaler = () => undefined, lecture }: {
   p: BonnePratique; modifier?: () => void; sansMagasin?: boolean; ouvrables?: Set<string>; moi?: string
-  reactions?: ReactionsPratiques | null; lectureSeule?: boolean; signaler?: (m: string) => void
+  reactions?: ReactionsPratiques | null; lectureSeule?: boolean; signaler?: (m: string) => void; lecture?: LecturePratique
 }) {
   const { recharger } = useReseau()
   const [jaime, setJaime] = useState(p.jaime ?? [])
@@ -201,6 +202,7 @@ export function CartePratique({ p, modifier, sansMagasin, ouvrables, moi, reacti
           {jaime.length > 0 && moi && <Typography variant="body2" color="text.secondary" noWrap sx={{ minWidth: 0 }}>{jaime.slice(0, 3).join(', ')}{jaime.length > 3 ? ` et ${jaime.length - 3} autre${jaime.length > 4 ? 's' : ''}` : ''}</Typography>}
         </Box>}
       </CardContent>
+      {lecture && <LigneLecture l={lecture} vue />}
       {reactions && <ReactionsPratique p={p} reactions={reactions} lectureSeule={lectureSeule} signaler={signaler} />}
     </Card>
   )
@@ -212,6 +214,10 @@ export function VuePratiques({ reseau, actions, modifier, filtre, integre = fals
   const { profil } = useAuth()
   const { apercu, equipe } = useApercu()
   const reactions = useReactionsPratiques()
+  // « Vu par » : le Directeur et les Responsables Régionaux suivent qui a vu chaque pratique ; un franchisé qui les affiche les a vues
+  const lectures = useLecturesPratiques(!apercu && !equipe && (profil?.role === 'directeur' || profil?.role === 'rr'))
+  const vuesParFranchise = !apercu && profil?.role === 'franchise' ? reseau.pratiques.map((p) => p.id).join(',') : ''
+  useEffect(() => { if (vuesParFranchise) void noterPratiquesLues(vuesParFranchise.split(',')).catch(() => undefined) }, [vuesParFranchise])
   const [message, setMessage] = useState('')
   // Réactions réservées à l'équipe : l'espace franchisé ne voit que le nombre
   const moi = modifier ? monNomPorteur(reseau, profil) || undefined : undefined
@@ -224,7 +230,7 @@ export function VuePratiques({ reseau, actions, modifier, filtre, integre = fals
   // Les pratiques de tout le réseau ; un Coach ou un RR ne modifie que celles de ses magasins
   const ouvrables = useMemo(() => new Set(reseau.magasins.map((m) => m.nom)), [reseau])
   const carte = (p: BonnePratique) => <CartePratique key={p.id} p={p} ouvrables={ouvrables} moi={moi} modifier={modifier && ouvrables.has(p.magasin) ? () => modifier(p) : undefined}
-    reactions={reactions} lectureSeule={!!apercu || !!equipe} signaler={setMessage} />
+    reactions={reactions} lectureSeule={!!apercu || !!equipe} signaler={setMessage} lecture={lectures?.get(p.id)} />
   const vide = <EmptyState icone={<TipsAndUpdatesOutlined />} titre="Aucune bonne pratique" texte={reseau.pratiques.length ? 'Aucune bonne pratique ne correspond à ces critères.' : 'Les initiatives réussies des magasins apparaîtront ici.'} />
   if (enFil) {
     return (

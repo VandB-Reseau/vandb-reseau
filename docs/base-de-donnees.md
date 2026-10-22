@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 22/10/2026 (migration `0022`).
+Mis à jour le 22/10/2026 (migration `0023`).
 
 ## Principes
 
@@ -106,6 +106,7 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 | `communications` | Communications du réseau ; `magasins` vide = tout le réseau ; `html` = version mise en forme ; `a_la_une` = en tête jusqu'à ce jour inclus (0014) |
 | `communications_pouces`, `communications_commentaires` | J'aime et commentaires des communications |
 | `communications_lectures` | Première lecture d'une communication par chaque compte franchisé |
+| `pratiques_lectures` | Première fois qu'un compte franchisé voit une bonne pratique (identifiant de la pratique dans `bonnes_pratiques`), 0023. Aucun accès direct |
 | `pratiques_pouces`, `pratiques_commentaires` | J'aime et commentaires des bonnes pratiques |
 | `visites_pouces`, `visites_commentaires` | J'aime et commentaires des comptes rendus de visite, depuis le fil d'actualité (0022). Lus et écrits par `reactions_visites`, `basculer_pouce_visite`, `commenter_visite`, `supprimer_commentaire_visite`, seulement sur une visite que le compte voit (`visite_visible` : franchisé = ses magasins hors appels et points, Coach et RR = leurs magasins, Directeur = toutes) |
 
@@ -161,6 +162,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Communication à la une | `mettre_a_la_une` (auteur ou Directeur, date entre aujourd'hui et un an), `a_la_une` (communications visibles encore à la une) | 0014 |
 | Bonnes pratiques | `reactions_pratiques`, `pratique_visible`, `basculer_pouce_pratique`, `commenter_pratique`, `supprimer_commentaire_pratique` | 0010 |
 | Comptes rendus de visite | `reactions_visites`, `visite_visible`, `basculer_pouce_visite`, `commenter_visite`, `supprimer_commentaire_visite` | 0022 |
+| « Vu par » des bonnes pratiques | `lire_pratiques` (franchisé, pratiques existantes seulement), `lectures_pratiques` (Directeur, Responsable Régional pour les franchisés de ses magasins), `pratiques_existantes` (interne) | 0023 |
 | Campagnes régionales | `campagne_region_permise` | 0005 |
 | Fichiers | `photo_visible`, `piece_visible` (fichiers d'une tâche de l'équipe seule refusés au franchisé, 0019) | 0004, 0009, 0019 |
 | Notifications | `abonner_appareil`, `desabonner_appareil` (compte connecté) ; `comptes_de_cle`, `notifications_a_envoyer` (fonction « notifier » seule) | 0016 |

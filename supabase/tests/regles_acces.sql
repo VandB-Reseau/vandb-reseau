@@ -15,6 +15,7 @@ INSERT INTO public.perimetre_equipe (store_name, coach, rrs) VALUES ('Lille', 'C
 INSERT INTO public.visits (store, visit_date) VALUES ('Lille', '2026-10-01'), ('Nice', '2026-10-02');
 INSERT INTO public.store_finance (store_name, month, ca_cave) VALUES ('Lille', '2026-09-01', 1), ('Nice', '2026-09-01', 1) ON CONFLICT DO NOTHING;
 INSERT INTO public.app_config (key, value) VALUES ('params', '{}') ON CONFLICT DO NOTHING;
+INSERT INTO public.app_config (key, value) VALUES ('bonnes_pratiques', '[{"id":"bp_t","titre":"Dégustation","magasin":"Lille"}]') ON CONFLICT DO NOTHING;
 INSERT INTO storage.objects (bucket_id, name) VALUES ('photos', 'audit/Nice/1.jpg');
 INSERT INTO public.store_overrides (store_name, resp) VALUES ('Lille', 'Paul LILLE'), ('Nice', 'Nina NICE');
 INSERT INTO public.fiches_personnes (cle, fiche) VALUES ('directeur', '{}'), ('coach:Coach Nord', '{}'), ('coach:Coach Sud', '{}'), ('rr:rr1', '{}'),
@@ -59,6 +60,7 @@ SELECT pg_temp.attendre('Coach : lit les réglages', (SELECT count(*) FROM publi
 WITH m AS (UPDATE public.app_config SET value = '{"x":1}' WHERE key = 'params' RETURNING 1)
 SELECT pg_temp.attendre('Coach : ne modifie pas les réglages', (SELECT count(*) FROM m), 0);
 SELECT pg_temp.attendre('Coach : ne voit pas qui a lu les communications', pg_temp.refuse('SELECT public.lectures_communications()'), 1);
+SELECT pg_temp.attendre('Coach : ne voit pas qui a vu les bonnes pratiques', pg_temp.refuse('SELECT public.lectures_pratiques()'), 1);
 SELECT pg_temp.attendre('Coach : ne met pas une communication à la une', pg_temp.refuse('SELECT public.mettre_a_la_une(' || :annonce || ', current_date)'), 1);
 SELECT pg_temp.attendre('Coach : lit le fichier d''une tâche de l''équipe seule',
   (SELECT count(*) FROM (SELECT public.piece_visible('00000000-0000-0000-0000-00000000000c/marge.pdf') AS v) x WHERE v), 1);
@@ -90,6 +92,11 @@ SELECT pg_temp.attendre('Franchisé : aucun accès direct aux lectures', (SELECT
 SELECT pg_temp.attendre('Franchisé : ne met pas une communication à la une', pg_temp.refuse('SELECT public.mettre_a_la_une(' || :annonce || ', current_date)'), 1);
 SELECT pg_temp.attendre('Franchisé : ne voit pas qui a lu les communications', pg_temp.refuse('SELECT public.lectures_communications()'), 1);
 SELECT public.lire_communications(ARRAY[:annonce]::bigint[]);
+SELECT pg_temp.attendre('Franchisé : ne voit pas qui a vu les bonnes pratiques', pg_temp.refuse('SELECT public.lectures_pratiques()'), 1);
+SELECT pg_temp.attendre('Franchisé : aucun accès direct aux vues des bonnes pratiques', (SELECT count(*) FROM information_schema.table_privileges
+  WHERE table_schema = 'public' AND table_name = 'pratiques_lectures' AND grantee = 'authenticated'), 0);
+SELECT pg_temp.attendre('Franchisé : pas d''appel direct à pratiques_existantes()', pg_temp.refuse('SELECT public.pratiques_existantes()'), 1);
+SELECT public.lire_pratiques(ARRAY['bp_t', 'inconnue']);
 SELECT pg_temp.attendre('Franchisé : aucune préférence en base', pg_temp.refuse('INSERT INTO public.preferences (valeur) VALUES (''{}'')'), 1);
 SELECT pg_temp.attendre('Franchisé : ne lit pas les préférences', (SELECT count(*) FROM public.preferences), 0);
 SELECT pg_temp.attendre('Franchisé : pas d''appel direct à reperes_reseau()', pg_temp.refuse('SELECT public.reperes_reseau(''{Nice}'')'), 1);
@@ -109,6 +116,8 @@ SELECT pg_temp.attendre('Directeur : ne lit pas les préférences du Coach', (SE
 SELECT pg_temp.attendre('Directeur : la communication est à la une', (SELECT jsonb_array_length(public.a_la_une())), 1);
 SELECT pg_temp.attendre('Directeur : la communication est lue par le franchisé',
   (SELECT jsonb_array_length(e->'lus') FROM jsonb_array_elements(public.lectures_communications()) e LIMIT 1), 1);
+SELECT pg_temp.attendre('Directeur : la bonne pratique est vue par le franchisé',
+  (SELECT jsonb_array_length(e->'lus') FROM jsonb_array_elements(public.lectures_pratiques()) e WHERE e->>'id' = 'bp_t'), 1);
 
 -- ── Compte sans rôle : rien
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-000000000000';
@@ -117,6 +126,7 @@ SELECT pg_temp.attendre('Sans rôle : aucun réglage', (SELECT count(*) FROM pub
 SELECT pg_temp.attendre('Sans rôle : aucune fiche des personnes', (SELECT count(*) FROM public.fiches_personnes), 0);
 
 RESET ROLE;
+SELECT pg_temp.attendre('Une pratique inconnue n''est pas notée vue', (SELECT count(*) FROM public.pratiques_lectures WHERE pratique = 'inconnue'), 0);
 SELECT pg_temp.attendre('Aucune règle « tout compte connecté »', (SELECT count(*) FROM pg_policies
   WHERE schemaname IN ('public', 'storage') AND (coalesce(qual, '') = 'true' OR coalesce(with_check, '') = 'true')), 0);
 SELECT pg_temp.attendre('Journal : 0001 à 0016 notées', (SELECT count(*) FROM public.journal_migrations WHERE numero <= '0016'), 16);

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
-import ButtonBase from '@mui/material/ButtonBase'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
@@ -10,12 +9,10 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
-import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
 import PushPinOutlined from '@mui/icons-material/PushPinOutlined'
-import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
-import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import { FilCanal } from '../components/FilCanal'
+import { LigneLecture } from '../components/LigneLecture'
 import { PageHeader } from '../components/PageHeader'
 import { Reactions } from '../components/Reactions'
 import { EmptyState } from '../components/EmptyState'
@@ -123,24 +120,6 @@ export function MarqueUne({ jusquAu }: { jusquAu: string }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 2, pb: 1, color: 'warning.dark', fontWeight: 600, fontSize: '0.875rem' }}>
       <PushPinOutlined sx={{ fontSize: 18 }} />À la une jusqu’au {new Date(`${jusquAu}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
-    </Box>
-  )
-}
-
-// « Lue par 3 franchisés sur 5 », et qui ne l'a pas encore lue, pour relancer (Directeur et Responsable Régional)
-function LigneLecture({ l }: { l: Lecture }) {
-  const [ouvert, setOuvert] = useState(false)
-  const total = l.lus.length + l.nonLus.length
-  if (!total) return null
-  return (
-    <Box sx={{ px: 2, pt: 1 }}>
-      <ButtonBase onClick={() => setOuvert((v) => !v)} disabled={!l.nonLus.length} aria-expanded={l.nonLus.length ? ouvert : undefined}
-        sx={{ minHeight: 48, gap: 1, fontFamily: 'inherit', fontSize: '0.875rem', color: 'text.secondary', borderRadius: 2 }}>
-        <VisibilityOutlined fontSize="small" />
-        <span>Lue par <b>{l.lus.length}</b> franchisé{l.lus.length > 1 ? 's' : ''} sur {total}</span>
-        {l.nonLus.length > 0 && (ouvert ? <ExpandLessOutlined fontSize="small" /> : <ExpandMoreOutlined fontSize="small" />)}
-      </ButtonBase>
-      {ouvert && <Typography variant="body2" sx={{ pb: 0.5 }}><Box component="span" sx={{ color: 'text.secondary' }}>Pas encore lue : </Box>{l.nonLus.join(', ')}</Typography>}
     </Box>
   )
 }

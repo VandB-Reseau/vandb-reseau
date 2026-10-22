@@ -27,6 +27,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0020_reperes_quartiles` | `reperes_reseau` renvoie aussi le quart inférieur (`quartBas`) de chaque indicateur, pour les leviers du CA | 22/10/2026 |
 | `0021_preferences` | Table `preferences` : favoris, fiches récentes, vues enregistrées et canal Réseau de chaque compte de l'équipe ; chacun sa seule ligne, franchisé exclu | 22/10/2026 |
 | `0022_reactions_visites` | Tables `visites_pouces` et `visites_commentaires` sans accès direct ; J'aime et commentaires des comptes rendus par fonctions, chacun sur les visites qu'il voit | 22/10/2026 |
+| `0023_lectures_pratiques` | « Vu par » des bonnes pratiques : table `pratiques_lectures` sans accès direct, fonctions `lire_pratiques` (franchisé) et `lectures_pratiques` (Directeur, RR pour ses magasins) | 22/10/2026 |
 
 ## Règles
 
