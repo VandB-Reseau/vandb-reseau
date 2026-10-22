@@ -10,6 +10,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 ## À venir
 
 - Échanges sur PC : « Mes tâches » s'ouvre aussi quand une conversation est affichée.
+- Leviers du CA : dans la fiche magasin (Chiffres et santé), panier et flux de la cave et du bar placés face au réseau
+  du même mois (moitié centrale du réseau en bande, médiane, écart en %) et au même mois de l'an dernier ; le levier
+  le plus en retrait d'au moins 5 % est nommé (panier comparé au réseau, flux comparé à N-1). Magasins : filtre
+  Levier (Panier cave, Flux cave, Panier bar, Flux bar), repris dans les vues enregistrées et l'export
+  (`src/data/leviers.ts`, test `leviers.spec.ts`). **Base : `0020_reperes_quartiles`** (sans elle, la bande
+  part de la médiane).
 - Tâches de l'équipe cachées au franchisé : une tâche créée depuis un message du fil « Équipe seule » n'est plus
   renvoyée à l'espace franchisé (ni à l'aperçu « Voir comme »), le franchisé ne peut pas la cocher ni lire ses fichiers ;
   l'équipe la voit marquée « Équipe seule » (test `taches-equipe.spec.ts`, contrôles dans `regles_acces.sql`).

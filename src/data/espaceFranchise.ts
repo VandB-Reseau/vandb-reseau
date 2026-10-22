@@ -7,7 +7,7 @@ import type { Reseau } from './modele'
 import type { Piece } from '../lib/pieces'
 
 export type IndicateurRepere = 'pmCave' | 'pmBar' | 'fluxCave' | 'fluxBar' | 'panier' | 'marge' | 'evolution'
-export interface Repere { n: number; mediane: number; quartHaut: number }
+export interface Repere { n: number; mediane: number; quartHaut: number; quartBas?: number } // quartBas : depuis 0020
 export interface Reperes { mois: string; indicateurs: Partial<Record<IndicateurRepere, Repere>> }
 export interface EspaceFranchise { franchise: string; reperes: Reperes | null }
 

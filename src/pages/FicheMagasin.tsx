@@ -66,6 +66,8 @@ import AddOutlined from '@mui/icons-material/AddOutlined'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import PhoneInTalkOutlined from '@mui/icons-material/PhoneInTalkOutlined'
+import { ContenuLeviers } from '../components/Leviers'
+import { leviersDuMagasin, useReperesReseau } from '../data/leviers'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
 import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, estVisite, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 
@@ -224,6 +226,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         {vue === 'chiffres' && (
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
             <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
+            <SectionLeviers reseau={reseau} m={m} />
             <Box id="partie-sante" sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start', scrollMarginTop: 160 }}>
               <SectionSante reseau={reseau} m={m} modifier={() => setEdition(true)} />
               <SectionDeploiements reseau={reseau} m={m} modifier={() => setEdition(true)} />
@@ -377,6 +380,15 @@ function SectionAudits({ reseau, m }: { reseau: Reseau; m: Magasin }) {
 }
 
 // Chiffres du mois, alerte de décrochage, appel
+// Leviers du CA : panier et flux, cave et bar, face au réseau du même mois et à N-1
+function SectionLeviers({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+  const reperes = useReperesReseau([m.nom])
+  if (reperes === undefined) return null
+  const lev = leviersDuMagasin(reseau, m.nom, reperes)
+  if (!lev) return null
+  return <Section titre={`Leviers · ${libelleMois(lev.mois)}`}><ContenuLeviers lev={lev} /></Section>
+}
+
 function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Magasin; saisir: (mois?: string) => void; appeler: () => void }) {
   const [tousLesMois, setTousLesMois] = useState(false)
   const a = analyser(reseau, m.nom)
