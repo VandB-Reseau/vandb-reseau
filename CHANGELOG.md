@@ -10,6 +10,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 ## À venir
 
 - Échanges sur PC : « Mes tâches » s'ouvre aussi quand une conversation est affichée.
+- Revue mensuelle du Responsable Régional : nouvel onglet « Revue » de sa fiche. Pour le mois choisi (le mois écoulé
+  par défaut) : magasins qui décrochent, visites faites par Coach face à la référence nine box du mois, tâches en
+  retard à la fin du mois, changements de case ; téléchargeable en PDF (`src/data/revue.ts`,
+  `src/components/RevueRR.tsx`, test `revue-rr.spec.ts`). Pas de migration.
 - Favoris, fiches récentes, vues enregistrées de Magasins et lecture du canal « Réseau V and B » suivent le compte :
   rangés dans la base en plus de l'appareil, ils se retrouvent sur le PC comme sur le téléphone ; au premier
   lancement, ce que l'appareil avait déjà est repris (`src/lib/preferences.ts`, test `preferences-compte.spec.ts`).

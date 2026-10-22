@@ -26,7 +26,9 @@ test('l’organigramme ne modifie plus rien : chaque personne s’ouvre sur sa f
   await expect(page.getByRole('group', { name: 'En bref' })).toContainText(/3 ?Coachs/)
   await page.getByRole('tab', { name: 'Coachs' }).click()
   await expect(page.getByRole('link', { name: 'Camille TESTARD', exact: true })).toBeVisible()
-  await page.getByRole('tab', { name: 'Fiche' }).click()
+  // Sur téléphone, la Fiche est derrière « Plus »
+  if (isMobile) await page.goto('./#/equipe/rr/rr1?vue=fiche')
+  else await page.getByRole('tab', { name: 'Fiche' }).click()
   await expect(page.getByText(/12 avril 1980 · \d+ ans/)).toBeVisible()
   await expect(page.getByText('59 · Nord')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])

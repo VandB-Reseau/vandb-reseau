@@ -11,6 +11,8 @@ import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'rea
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
 import BadgeOutlined from '@mui/icons-material/BadgeOutlined'
+import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
+import { RevueRR } from '../components/RevueRR'
 import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { BlocPortefeuille, ProfilPersonne } from '../components/Portefeuille'
 import { portefeuilleDe } from '../data/portefeuille'
@@ -84,9 +86,10 @@ function ListeMagasinsAdaptee({ magasins, vide }: { magasins: Magasin[]; vide: s
 
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 
-type VueRR = 'portefeuille' | 'coachs' | 'magasins' | 'fiche'
+type VueRR = 'portefeuille' | 'revue' | 'coachs' | 'magasins' | 'fiche'
 const rubriquesRR: Rubrique<VueRR>[] = [
   { vue: 'portefeuille', libelle: 'Portefeuille', icone: <InsightsOutlined /> },
+  { vue: 'revue', libelle: 'Revue', icone: <EventNoteOutlined /> },
   { vue: 'coachs', libelle: 'Coachs', icone: <GroupsOutlined /> },
   { vue: 'magasins', libelle: 'Magasins', icone: <StorefrontOutlined /> },
   { vue: 'fiche', libelle: 'Fiche', icone: <BadgeOutlined /> },
@@ -96,7 +99,7 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
   const naviguer = useNavigate()
   const [params, setParams] = useSearchParams()
   const vue = (rubriquesRR.find((r) => r.vue === params.get('vue'))?.vue ?? 'portefeuille') as VueRR
-  const changerVue = (v: VueRR) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'portefeuille') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
+  const changerVue = (v: VueRR) => setParams((p) => { const n = new URLSearchParams(p); n.delete('mois'); if (v === 'portefeuille') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const [edition, setEdition] = useState(false)
   const [message, setMessage] = useState('')
   const rr = reseau.rrs.find((r) => r.id === id)!
@@ -120,6 +123,7 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
       <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesRR} libelle={`Rubriques de ${rr.nom}`} fiche />
       <ContenuOnglet>
         {vue === 'portefeuille' && <BlocPortefeuille reseau={reseau} p={p} />}
+        {vue === 'revue' && <RevueRR reseau={reseau} nom={rr.nom} magasins={magasins} />}
         {vue === 'coachs' && (
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
             <Section titre="Coachs rattachés">
