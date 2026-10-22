@@ -1,13 +1,7 @@
 import { useState } from 'react'
 import { Glisser } from './Social'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import Badge from '@mui/material/Badge'
-import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
-import { BoutonAction, Bulle } from './Outils'
-import { MenuEntete } from './MenuEntete'
-import ListItemButton from '@mui/material/ListItemButton'
-import ListItemIcon from '@mui/material/ListItemIcon'
-import ListItemText from '@mui/material/ListItemText'
+import { Link as RouterLink } from 'react-router-dom'
+import { BoutonAction } from './Outils'
 import { ChampPieces, ListePieces } from './Pieces'
 import Alert from '@mui/material/Alert'
 import type { Piece } from '../lib/pieces'
@@ -29,7 +23,7 @@ import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import { useReseau } from '../data/ReseauContext'
 import { useAuth } from '../auth/AuthContext'
 import { enregistrerActionLibre, marquerActions, supprimerActionLibre } from '../data/chargement'
-import { actionsDes, echeanceDate, enRetard, monNomPorteur, porteursDu, type ActionSuivie } from '../data/actions'
+import { echeanceDate, enRetard, porteursDu, type ActionSuivie } from '../data/actions'
 import { ajouterActionFranchise, ErreurAction, marquerActionFranchise } from '../data/espaceFranchise'
 import type { ActionLibre, Reseau } from '../data/modele'
 import { dateCourte, lienFiche } from '../lib/format'
@@ -137,49 +131,6 @@ export function ListeActions({ reseau, actions, avecMagasin, signaler, libelle, 
 }
 
 // Icône « Tâches » de l'en-tête : nombre de tâches à faire de la personne, aperçu des plus urgentes
-const APERCU_TACHES = 6
-const parUrgence = (x: ActionSuivie, y: ActionSuivie) => (echeanceDate(x.a) || '9999').localeCompare(echeanceDate(y.a) || '9999') || y.date.localeCompare(x.date)
-
-export function BoutonTaches() {
-  const { profil } = useAuth()
-  const { reseau } = useReseau()
-  const naviguer = useNavigate()
-  const [ancre, setAncre] = useState<HTMLElement | null>(null)
-  const moi = reseau ? monNomPorteur(reseau, profil) : ''
-  const aFaire = reseau && moi ? actionsDes(reseau, null).filter((x) => !x.a.faite && x.a.porteur === moi) : []
-  const nombre = aFaire.length
-  const fermer = () => setAncre(null)
-  const ouvrir = () => { fermer(); naviguer('/taches') }
-  return (
-    <>
-      <Bulle titre="Tâches">
-        <IconButton aria-label={nombre ? `Tâches : ${nombre} à faire` : 'Tâches'} onClick={(e) => setAncre(e.currentTarget)} sx={{ color: '#ffffff', width: 48, height: 48 }}>
-          <Badge color="error" badgeContent={nombre} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><TaskAltOutlined /></Badge>
-        </IconButton>
-      </Bulle>
-      <MenuEntete ancre={ancre} fermer={fermer} titre={nombre ? `Tâches à faire · ${nombre}` : 'Tâches à faire'} vide={nombre ? null : 'Aucune tâche à faire.'}
-        tout="Toutes les tâches" icone={<TaskAltOutlined />} ouvrirTout={() => naviguer('/taches')}>
-        {ancre && reseau && [...aFaire].sort(parUrgence).slice(0, APERCU_TACHES).map((x) => {
-          const retard = enRetard(x.a, reseau.jour)
-          const echeance = echeanceDate(x.a)
-          return (
-            <ListItemButton key={x.cle} onClick={ouvrir} sx={{ minHeight: 56, alignItems: 'flex-start' }}>
-              <ListItemIcon sx={{ minWidth: 40, mt: 0.5, color: retard ? 'error.main' : 'text.secondary' }}><RadioButtonUnchecked /></ListItemIcon>
-              <ListItemText primary={x.a.action}
-                secondary={<>
-                  <Box component="span" sx={{ display: 'block' }}>{x.magasin}</Box>
-                  {echeance && <Box component="span" sx={{ display: 'block', fontWeight: retard ? 600 : 400, color: retard ? 'error.main' : undefined }}>{retard ? `En retard · ${dateCourte(echeance)}` : `Pour le ${dateCourte(echeance)}`}</Box>}
-                </>}
-                slotProps={{ primary: { sx: { fontWeight: 600, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'normal' } }, secondary: { component: 'span' } }} />
-            </ListItemButton>
-          )
-        })}
-        {nombre > APERCU_TACHES && <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 1 }}>{`Et ${nombre - APERCU_TACHES} autre${nombre - APERCU_TACHES > 1 ? 's' : ''}`}</Typography>}
-      </MenuEntete>
-    </>
-  )
-}
-
 // Bouton « Ajouter une tâche » et sa fenêtre, pour l'en-tête d'une section
 // porteur : proposé d'office (liste d'une personne)
 // barre : action d'une barre d'outils (bouton rond sur téléphone)
@@ -211,12 +162,22 @@ export function ChampPorteur({ reseau, magasin, valeur, changer, sx }: { reseau:
 
 const dateValide = (d: string) => !d || /^\d{4}-\d{2}-\d{2}$/.test(d)
 
-export function DialogAction({ reseau, magasins, action, porteurInitial = '', onFermer }: { reseau: Reseau; magasins: string[]; action: ActionSuivie | null; porteurInitial?: string; onFermer: (msg?: string) => void }) {
+// Échéances proposées d'un geste : demain, vendredi qui vient, dans 15 jours
+function echeancesRapides(jour: string): { libelle: string; date: string }[] {
+  const d = (n: number) => { const x = new Date(`${jour}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10) }
+  const jusquAVendredi = (5 - new Date(`${jour}T12:00:00Z`).getUTCDay() + 7) % 7 || 7
+  return [{ libelle: 'Demain', date: d(1) }, { libelle: 'Vendredi', date: d(jusquAVendredi) }, { libelle: 'Dans 15 jours', date: d(15) }]
+}
+
+// depuis : tâche née d'un message (texte proposé, fil « Équipe seule » ou non, message d'origine)
+export function DialogAction({ reseau, magasins, action, porteurInitial = '', depuis, onFermer }: {
+  reseau: Reseau; magasins: string[]; action: ActionSuivie | null; porteurInitial?: string; depuis?: { texte: string; equipe: boolean; message: number }; onFermer: (msg?: string) => void
+}) {
   const { profil } = useAuth()
   const { franchise } = useEcritureActions(reseau)
   const a = action?.libre ?? null
   const [magasin, setMagasin] = useState(action?.magasin ?? (magasins.length === 1 ? magasins[0] : ''))
-  const [texte, setTexte] = useState(a?.action ?? '')
+  const [texte, setTexte] = useState(a?.action ?? depuis?.texte ?? '')
   const [porteur, setPorteur] = useState(a?.porteur ?? porteurInitial)
   const [echeance, setEcheance] = useState(a ? echeanceDate(a) : '')
   const [pieces, setPieces] = useState<Piece[]>(a?.pieces ?? [])
@@ -230,7 +191,7 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', on
           await ajouterActionFranchise(magasin, propre, porteur.trim(), echeance, pieces)
           return 'Tâche ajoutée.'
         }
-        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}) }
+        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), ...(a?.fil ?? (depuis?.equipe ? 'equipe' : undefined) ? { fil: 'equipe' as const } : {}), ...(a?.message ?? depuis?.message ? { message: a?.message ?? depuis?.message } : {}) }
         await enregistrerActionLibre(magasin, l)
         return a ? 'Tâche mise à jour.' : 'Tâche ajoutée.'
       }}
@@ -243,6 +204,12 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', on
       <TextField label="Tâche" value={texte} onChange={(e) => setTexte(e.target.value)} autoFocus={!a} multiline minRows={2} />
       <ChampPorteur reseau={reseau} magasin={magasin} valeur={porteur} changer={setPorteur} />
       <TextField type="date" label="Échéance" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+      <Box role="group" aria-label="Échéance rapide" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: -1 }}>
+        {echeancesRapides(reseau.jour).map((x) => (
+          <Chip key={x.libelle} label={x.libelle} onClick={() => setEcheance(x.date)} aria-pressed={echeance === x.date}
+            color={echeance === x.date ? 'primary' : 'default'} variant={echeance === x.date ? 'filled' : 'outlined'} sx={{ minHeight: 48, borderRadius: 999 }} />
+        ))}
+      </Box>
       <ChampPieces pieces={pieces} changer={(p) => { setPieces(p); setAlerte('') }} signaler={setAlerte} />
       {alerte && <Alert severity="warning">{alerte}</Alert>}
     </Fenetre>

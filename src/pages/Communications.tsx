@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
@@ -174,7 +174,8 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
 
 // Communications du réseau : le Directeur et les RR publient ; l'équipe et les franchisés lisent, commentent et réagissent.
 // lectureSeule : aperçu de l'espace d'un franchisé par le Directeur
-export function PageCommunications({ lectureSeule = false }: { lectureSeule?: boolean }) {
+// entete : en-tête fourni par l'onglet Échanges (canal « Réseau V and B »)
+export function PageCommunications({ lectureSeule = false, entete }: { lectureSeule?: boolean; entete?: ReactNode }) {
   const { profil } = useAuth()
   const { reseau } = useReseau()
   const suitLectures = !lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')
@@ -227,7 +228,7 @@ export function PageCommunications({ lectureSeule = false }: { lectureSeule?: bo
   }, [affichees, lectureSeule, profil?.role])
   return (
     <>
-      <PageHeader titre="Communications" sousTitre={etat ? `${n} communication${n > 1 ? 's' : ''}` : undefined} />
+      {entete ?? <PageHeader titre="Communications" sousTitre={etat ? `${n} communication${n > 1 ? 's' : ''}` : undefined} />}
       {etat === null ? (
         <EmptyState icone={<CampaignOutlined />} titre="Communications pas encore activées" texte="Les communications du réseau apparaîtront ici dès leur activation dans la base." />
       ) : (

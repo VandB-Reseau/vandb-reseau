@@ -4,11 +4,8 @@ import { FicheDirecteur, FicheFranchise, FicheRR } from './pages/FichePersonne'
 import { Visites } from './pages/Visites'
 import { Agenda } from './pages/Agenda'
 import { SanteParc } from './pages/SanteParc'
-import { Conversations } from './pages/Conversations'
-import { Notifications } from './pages/Notifications'
-import { PageTaches } from './pages/Taches'
-import { PageCommunications } from './pages/Communications'
-import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { CanalReseau, Echanges } from './pages/Echanges'
+import { HashRouter, Navigate, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import { AppShell } from './layout/AppShell'
@@ -77,6 +74,28 @@ function SilhouetteEcran() {
   )
 }
 
+// Anciennes adresses (Messages, Tâches, Communications, Notifications) : vers l'onglet Échanges
+function Vers({ cible }: { cible: (p: Record<string, string | undefined>, recherche: URLSearchParams) => string }) {
+  const p = useParams()
+  const [recherche] = useSearchParams()
+  return <Navigate to={cible(p, recherche)} replace />
+}
+const avec = (chemin: string, r: URLSearchParams, ajout: Record<string, string> = {}) => {
+  const n = new URLSearchParams(r)
+  for (const [k, v] of Object.entries(ajout)) n.set(k, v)
+  const q = n.toString()
+  return q ? `${chemin}?${q}` : chemin
+}
+const anciensLiens = [
+  <Route key="t" path="/taches" element={<Vers cible={(_p, r) => avec('/echanges', r, { vue: 'taches' })} />} />,
+  <Route key="a" path="/actions" element={<Vers cible={(_p, r) => avec('/echanges', r, { vue: 'taches' })} />} />,
+  <Route key="c" path="/communications" element={<Vers cible={(_p, r) => avec('/echanges/reseau', r)} />} />,
+  <Route key="m" path="/messages" element={<Navigate to="/echanges" replace />} />,
+  <Route key="mp" path="/messages/personne/:cle" element={<Vers cible={(p) => `/echanges/personne/${encodeURIComponent(p.cle ?? '')}`} />} />,
+  <Route key="mm" path="/messages/:nom" element={<Vers cible={(p) => `/echanges/magasin/${encodeURIComponent(p.nom ?? '')}`} />} />,
+  <Route key="n" path="/notifications" element={<Navigate to="/echanges" replace />} />,
+]
+
 // equipeSeule : Coach ou Responsable Régional, sans la partie Paramètres (les fiches des personnes restent ouvertes)
 function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; bandeau?: ReactNode }) {
   const { pathname } = useLocation()
@@ -107,13 +126,10 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/parametres/collaborateurs" element={<Personnes perimetre="collaborateurs" />} />
         <Route path="/parametres/franchises" element={<Personnes perimetre="franchises" />} />
         <Route path="/visites" element={<Visites />} />
-        <Route path="/taches" element={<PageTaches />} />
-        <Route path="/actions" element={<Navigate to="/taches" replace />} />
-        <Route path="/communications" element={<PageCommunications />} />
-        <Route path="/messages" element={<Conversations />} />
-        <Route path="/messages/:nom" element={<Conversations />} />
-        <Route path="/messages/personne/:cle" element={<Conversations />} />
-        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/echanges" element={<Echanges />} />
+        <Route path="/echanges/reseau" element={<CanalReseau />} />
+        <Route path="/echanges/:genre/:valeur" element={<Echanges />} />
+        {anciensLiens}
         <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
         <Route path="/plus/agenda" element={<Agenda />} />
         <Route path="/plus/sante" element={<SanteParc />} />
@@ -132,7 +148,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
 function RoutesFranchise({ apercu }: { apercu: boolean }) {
   const { pathname } = useLocation()
   return (
-    <AppShell franchise={espaceFranchise} bandeau={apercu ? <BandeauApercu /> : undefined} sansCloche={apercu}>
+    <AppShell franchise={espaceFranchise} bandeau={apercu ? <BandeauApercu /> : undefined} sansCompteur={apercu}>
       <RetourEnHaut />
       <ErreurEcran key={pathname}>
       <Suspense fallback={<SilhouetteEcran />}>
@@ -142,13 +158,10 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
         <Route path="/magasins/:nom" element={<FicheMagasinFranchise />} />
         <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
         <Route path="/bonnes-pratiques" element={<PratiquesFranchise />} />
-        <Route path="/communications" element={<PageCommunications lectureSeule={apercu} />} />
-        <Route path="/taches" element={<PageTaches />} />
-        <Route path="/actions" element={<Navigate to="/taches" replace />} />
-        <Route path="/messages" element={<Conversations lectureSeule={apercu} />} />
-        <Route path="/messages/:nom" element={<Conversations lectureSeule={apercu} />} />
-        <Route path="/messages/personne/:cle" element={<Conversations lectureSeule={apercu} />} />
-        {!apercu && <Route path="/notifications" element={<Notifications />} />}
+        <Route path="/echanges" element={<Echanges lectureSeule={apercu} />} />
+        <Route path="/echanges/reseau" element={<CanalReseau lectureSeule={apercu} />} />
+        <Route path="/echanges/:genre/:valeur" element={<Echanges lectureSeule={apercu} />} />
+        {anciensLiens}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>

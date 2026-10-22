@@ -331,7 +331,7 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           <SectionChiffresDuMois reseau={reseau} magasins={magasins} />
           <SectionReperes reseau={reseau} magasins={magasins} />
-          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Fil de mes magasins" communications={communications} reactionsPratiques={reactionsPratiques} />
+          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} />
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           <SectionTaches reseau={reseau} magasins={magasins} />

@@ -13,10 +13,10 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
 })
 
-test('accueil sur PC : « À traiter » reste visible pendant qu’on fait défiler le fil', async ({ page, isMobile }) => {
+test('accueil sur PC : « À traiter » reste visible pendant qu’on fait défiler les actualités', async ({ page, isMobile }) => {
   test.skip(isMobile, 'Colonne de droite du PC')
   await seConnecter(page)
-  const colonne = page.getByRole('complementary', { name: 'À traiter et cette semaine' })
+  const colonne = page.getByRole('complementary', { name: 'À traiter, mes tâches et cette semaine' })
   await expect(colonne).toBeVisible()
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200)

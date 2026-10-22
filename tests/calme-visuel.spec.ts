@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test'
-import { COMPTE, seConnecter, simulerSupabase, textesTropPetits } from './supabase-simule'
+import { COMPTE, seConnecter, simulerSupabase, textesTropPetits, deplierATraiter } from './supabase-simule'
 import { magasinsFictifs } from './donnees-fictives'
 
 // Une seule couleur forte par ligne, onglets qui tiennent sur l'écran du téléphone,
@@ -11,6 +11,7 @@ const transparent = 'rgba(0, 0, 0, 0)'
 test('seul le rouge reste une pastille pleine ; le reste est un texte coloré', async ({ page }, info) => {
   await seConnecter(page)
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
+  await deplierATraiter(page)
   expect(await fond(aTraiter.getByText('Décroche', { exact: true }))).toBe('rgb(198, 40, 40)')
   await aTraiter.getByRole('button', { name: /^À voir · \d+$/ }).click()
   expect(await fond(aTraiter.getByText('Visite', { exact: true }).first())).toBe(transparent)

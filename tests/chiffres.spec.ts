@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture, deplierATraiter } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -21,12 +21,13 @@ async function petitesZones(page: import('@playwright/test').Page, selecteur: st
 test('l’accueil met en tête les magasins qui décrochent, avec l’appel en retard', async ({ page }, info) => {
   await seConnecter(page)
   const bloc = page.getByRole('region', { name: 'À traiter' })
+  await deplierATraiter(page)
   const lyon = bloc.getByRole('link', { name: /^Lyon Test/ }).first()
   await expect(lyon).toBeVisible()
   await expect(lyon).toContainText(/CA −30,0 % vs septembre 2025/)
   await expect(lyon).toContainText(/appel en retard de \d+ j/)
   await expect(lyon).toContainText('Décroche')
-  const nantes = bloc.getByRole('link', { name: /^Nantes Test/ })
+  const nantes = bloc.getByRole('link', { name: /^Nantes Test.*À surveiller$/ })
   await expect(nantes).toBeVisible()
   await expect(nantes).toContainText('À surveiller')
   // Les magasins qui décrochent passent en tête, avant ceux à surveiller
@@ -35,8 +36,8 @@ test('l’accueil met en tête les magasins qui décrochent, avec l’appel en r
   await expect(bloc.getByRole('link').nth(0)).toHaveAccessibleName(/^Nantes Test.*À surveiller$/)
   await bloc.getByRole('button', { name: 'Tout' }).click()
   await expect(bloc.getByRole('link', { name: /^Annecy Test.*(Décroche|À surveiller)$/ })).toHaveCount(0)
-  // Premier bloc de l'accueil
-  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', 'À traiter')
+  // Les repères de pilotage en tête de l'accueil
+  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', 'Pilotage')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-accueil-chiffres.png` })
 })

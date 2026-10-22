@@ -19,10 +19,10 @@ import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, Pastille, Puces, TitreSection, type Ton } from '../components/Social'
-import { analyser, suiviAlerte } from '../data/chiffres'
+import { analyser, decalerMois, formatPourcent, libelleMoisCourt, suiviAlerte } from '../data/chiffres'
 import { useAuth } from '../auth/AuthContext'
 import { useMessagerie } from '../data/MessagerieContext'
-import { caseDe, tendance } from '../data/sante'
+import { caseDe, nineBox, tendance } from '../data/sante'
 import { anneeDe, suiviRythme, type LigneRythme } from '../data/visites'
 import { chargeA, coachA, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
@@ -36,7 +36,7 @@ import { useReseau } from '../data/ReseauContext'
 import { messageErreur } from '../components/EditionEquipe'
 import { magasinsDu, perimetreDuProfil, personnesDu, type Perimetre } from '../data/perimetre'
 import { PageHeader } from '../components/PageHeader'
-import { actionsEnCours, echeanceDate, enRetard } from '../data/actions'
+import { actionsDes, actionsEnCours, echeanceDate, enRetard, monNomPorteur } from '../data/actions'
 import { libellesEtatMandat, mandatsARenouveler } from '../data/associes'
 import { bilan, magasinsConcernes, phase } from '../data/campagnes'
 import { filDu, quand, type ElementFil, type GenreFil } from '../data/fil'
@@ -48,10 +48,14 @@ import { VisuelFil } from '../components/MiseEnForme'
 import { ReactionsPratique } from '../components/BonnesPratiques'
 import { useReactionsPratiques, type ReactionsPratiques } from '../data/reactionsPratiques'
 import { BandeCollante } from '../components/Collant'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 
 // Ordre de priorité fixé par Joseph le 14/10/2026
 const PRIORITAIRES = ['redressement', 'relance', 'renforcer']
 const APERCU = 5
+// Téléphone : le bloc reste court pour laisser la place aux actualités (Joseph, 22/10/2026)
+const APERCU_COMPACT = 2
 
 // Une ligne « À traiter » : un avatar, deux lignes de texte, une seule pastille (la plus grave)
 interface ATraiter { cle: string; titre: string; detail: string; lien: string; avatar: string; icone?: ReactNode; pastille?: { ton: Ton; libelle: string }; visite?: Visite }
@@ -135,7 +139,7 @@ type GroupeATraiter = 'urgent' | 'suivi' | 'visite'
 const groupeDe = (x: ATraiter): GroupeATraiter => (x.pastille?.ton === 'rouge' ? 'urgent' : x.cle.startsWith('v-') ? 'visite' : 'suivi')
 const GROUPES: { v: GroupeATraiter; libelle: string }[] = [{ v: 'urgent', libelle: 'Urgent' }, { v: 'suivi', libelle: 'Suivi' }, { v: 'visite', libelle: 'À voir' }]
 
-function BlocATraiter({ reseau, items }: { reseau: Reseau; items: ATraiter[] }) {
+function BlocATraiter({ reseau, items, compact = false }: { reseau: Reseau; items: ATraiter[]; compact?: boolean }) {
   const { recharger } = useReseau()
   const [compteRendu, setCompteRendu] = useState<Visite | null>(null)
   const [reporter, setReporter] = useState<Visite | null>(null)
@@ -148,12 +152,14 @@ function BlocATraiter({ reseau, items }: { reseau: Reseau; items: ATraiter[] }) 
   const tries = GROUPES.flatMap((g) => items.filter((x) => groupeDe(x) === g.v))
   const presents = GROUPES.map((g) => ({ ...g, n: tries.filter((x) => groupeDe(x) === g.v).length })).filter((g) => g.n)
   const filtres = filtre === 'tout' ? tries : tries.filter((x) => groupeDe(x) === filtre)
-  const vus = tout ? filtres : filtres.slice(0, APERCU)
+  const apercu = compact ? APERCU_COMPACT : APERCU
+  const vus = tout ? filtres : filtres.slice(0, apercu)
   return (
     <Box component="section" aria-label="À traiter">
-      <TitreSection nombre={items.length}>À traiter</TitreSection>
-      {presents.length > 1 && (
-        <Puces label="Éléments à traiter affichés" valeur={filtre} onChange={(v) => { setFiltre(v); setTout(false) }}
+      {!compact && <TitreSection nombre={items.length}>À traiter</TitreSection>}
+      {/* Téléphone : les puces n'apparaissent qu'une fois la liste dépliée */}
+      {(!compact || tout) && presents.length > 1 && (
+        <Puces label="Éléments à traiter affichés" valeur={filtre} onChange={(v) => { setFiltre(v); setTout(compact) }}
           options={[{ v: 'tout' as const, libelle: 'Tout' }, ...presents.map((g) => ({ v: g.v, libelle: `${g.libelle} · ${g.n}` }))]} />
       )}
       {!items.length ? <CarteLignes><LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur="#2e7d32" />} titre="Rien d’urgent" detail="Aucun magasin ne décroche ni n’attend de visite, aucune tâche en retard." /></CarteLignes> : (
@@ -165,7 +171,7 @@ function BlocATraiter({ reseau, items }: { reseau: Reseau; items: ATraiter[] }) 
                 <Button onClick={() => setReporter(x.visite!)} aria-label={`Reporter la visite de ${x.titre}`} sx={{ minHeight: 48, minWidth: 0, px: 1.25 }}>Reporter</Button>
               </Box>} />
             : <LigneCompacte key={x.cle} lien={x.lien} avatar={<Initiales nom={x.avatar} icone={x.icone} />} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />)}
-          {filtres.length > APERCU && (
+          {filtres.length > apercu && (
             <ButtonBase onClick={() => setTout((v) => !v)} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{tout ? 'Afficher moins' : `Voir les ${filtres.length}`}</ButtonBase>
           )}
         </CarteLignes>
@@ -177,7 +183,7 @@ function BlocATraiter({ reseau, items }: { reseau: Reseau; items: ATraiter[] }) 
   )
 }
 
-function BlocSemaine({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
+function BlocSemaine({ reseau, p, compact = false }: { reseau: Reseau; p: Perimetre; compact?: boolean }) {
   const j = reseau.jour
   const noms = new Set(magasinsDu(reseau, p).map((m) => m.nom))
   const personnes = personnesDu(reseau, p)
@@ -190,13 +196,128 @@ function BlocSemaine({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
     if (e.categorie === 'anniversaire') return [...personnes!].some((n) => e.cle.startsWith(`a-${n}-`))
     return true
   })
-  if (!semaine.length) return null
+  if (!semaine.length && !compact) return null
+  const lignes = semaine.slice(0, compact ? APERCU_COMPACT : 4).map((e) => <LigneCompacte key={e.cle} lien={e.lien} avatar={<Initiales nom={e.titre} icone={<CalendarMonthOutlined />} />} titre={e.titre} detail={[jourLong(e.debut < j ? j : e.debut), e.detail].filter(Boolean).join(' · ')} />)
+  if (compact) {
+    return (
+      <Box component="section" aria-label="Cette semaine">
+        <CarteLignes>
+          {semaine.length ? lignes : <LigneCompacte avatar={<Initiales nom="semaine" icone={<CalendarMonthOutlined />} />} titre="Rien de prévu cette semaine" />}
+          <ButtonBase component={RouterLink} to="/plus/agenda" sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>Ouvrir l’agenda</ButtonBase>
+        </CarteLignes>
+      </Box>
+    )
+  }
   return (
     <Box component="section" aria-label="Cette semaine" sx={{ mt: 2 }}>
       <TitreSection action={<Button component={RouterLink} to="/plus/agenda" sx={{ minHeight: 40 }}>Agenda</Button>}>Cette semaine</TitreSection>
+      <CarteLignes>{lignes}</CarteLignes>
+    </Box>
+  )
+}
+
+// Mes tâches : celles dont je suis le porteur, les plus pressées d'abord
+function mesTaches(reseau: Reseau, p: Perimetre, moi: string) {
+  if (!moi) return []
+  const noms = p.type === 'reseau' ? null : new Set(magasinsDu(reseau, p).map((m) => m.nom))
+  return actionsDes(reseau, noms).filter((x) => !x.a.faite && x.a.porteur === moi)
+    .sort((x, y) => (echeanceDate(x.a) || '9999').localeCompare(echeanceDate(y.a) || '9999'))
+}
+
+function BlocMesTaches({ reseau, taches, compact = false }: { reseau: Reseau; taches: ReturnType<typeof mesTaches>; compact?: boolean }) {
+  const lignes = taches.slice(0, compact ? APERCU_COMPACT : 4).map((x) => (
+    <LigneCompacte key={x.cle} lien={`${lienFiche(x.magasin)}?vue=actions`} avatar={<Initiales nom={x.a.action} icone={<TaskAltOutlined />} />} titre={x.a.action}
+      detail={[x.magasin, echeanceDate(x.a) && `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · ')}
+      fin={enRetard(x.a, reseau.jour) ? <Pastille ton="rouge">En retard</Pastille> : undefined} />
+  ))
+  const vide = <LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur="#2e7d32" />} titre="Aucune tâche en cours" />
+  const toutes = `/echanges?vue=taches`
+  return (
+    <Box component="section" aria-label="Mes tâches" sx={{ mt: compact ? 0 : 2 }}>
+      {!compact && <TitreSection nombre={taches.length} action={<Button component={RouterLink} to={toutes} sx={{ minHeight: 40 }}>Toutes</Button>}>Mes tâches</TitreSection>}
       <CarteLignes>
-        {semaine.slice(0, 4).map((e) => <LigneCompacte key={e.cle} lien={e.lien} avatar={<Initiales nom={e.titre} icone={<CalendarMonthOutlined />} />} titre={e.titre} detail={[jourLong(e.debut < j ? j : e.debut), e.detail].filter(Boolean).join(' · ')} />)}
+        {taches.length ? lignes : vide}
+        {compact && taches.length > APERCU_COMPACT && <ButtonBase component={RouterLink} to={toutes} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{`Voir les ${taches.length}`}</ButtonBase>}
       </CarteLignes>
+    </Box>
+  )
+}
+
+// Quatre repères de pilotage, calculés sur le périmètre de la personne (Joseph, 22/10/2026)
+function Indicateurs({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
+  const theme = useTheme()
+  const j = reseau.jour
+  const actifs = magasinsDu(reseau, p).filter((m) => m.statut !== 'avenir')
+  const noms = new Set(actifs.map((m) => m.nom))
+  const analyses = actifs.map((m) => analyser(reseau, m.nom)).filter((a) => !!a)
+  // CA : le dernier mois connu, comparé sur les magasins qui ont les deux mois
+  const mois = analyses.reduce((max, a) => (a.mois > max ? a.mois : max), '')
+  const comparables = analyses.filter((a) => a.mois === mois && a.ca !== null && a.caReference)
+  const ca = comparables.reduce((t, a) => t + a.ca!, 0)
+  const caRef = comparables.reduce((t, a) => t + a.caReference!, 0)
+  const ecart = caRef ? ((ca - caRef) / caRef) * 100 : null
+  const reference = comparables[0]?.reference
+  const decrochent = analyses.filter((a) => a.statut === 'decroche').length
+  const surveiller = analyses.filter((a) => a.statut === 'surveiller').length
+  const rythme = suiviRythme(reseau, anneeDe(j)).filter((l) => noms.has(l.magasin.nom))
+  const refVisites = rythme.reduce((t, l) => t + l.reference, 0)
+  const faites = rythme.reduce((t, l) => t + l.faites, 0)
+  const tauxVisites = refVisites ? Math.round((faites / refVisites) * 100) : null
+  const cases = actifs.map((m) => caseDe(reseau.evaluations[m.nom])).filter((c) => !!c)
+  const prioritaires = cases.filter((c) => PRIORITAIRES.includes(c.id)).length
+  const repartition = nineBox.map((c) => ({ c, n: cases.filter((x) => x.id === c.id).length })).filter((x) => x.n)
+  const tuiles: { cle: string; libelle: string; valeur: string; detail: string; lien: string; couleur?: string; barre?: ReactNode }[] = [
+    { cle: 'ca', libelle: mois ? `CA de ${libelleMoisCourt(mois)}` : 'CA du mois', valeur: ecart === null ? '—' : formatPourcent(ecart),
+      detail: ecart === null ? 'Pas encore de chiffres' : reference === decalerMois(mois, -12) ? 'vs N-1' : `vs ${libelleMoisCourt(reference!)}`, lien: '/plus/sante?vue=chiffres',
+      couleur: ecart === null ? undefined : ecart < 0 ? theme.palette.error.main : theme.palette.success.dark },
+    { cle: 'decroche', libelle: 'Décrochent', valeur: String(decrochent), detail: surveiller ? `${surveiller} à surveiller` : 'aucun à surveiller', lien: '/plus/sante?vue=chiffres', couleur: decrochent ? theme.palette.error.main : undefined },
+    { cle: 'visites', libelle: 'Visites de l’année', valeur: tauxVisites === null ? '—' : `${tauxVisites} %`, detail: `${faites} sur ${Math.round(refVisites)} de référence`, lien: '/visites?vue=rythme',
+      barre: tauxVisites === null ? undefined : <Box sx={{ height: 6, borderRadius: 3, bgcolor: 'action.hover', mt: 0.75 }}><Box sx={{ width: `${Math.min(100, tauxVisites)}%`, height: 6, borderRadius: 3, bgcolor: 'warning.main' }} /></Box> },
+    { cle: 'sante', libelle: 'Santé du parc', valeur: String(prioritaires), detail: `prioritaires sur ${cases.length} classés`, lien: '/plus/sante', couleur: prioritaires ? theme.palette.warning.dark : undefined,
+      barre: repartition.length ? <Box sx={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', mt: 0.75 }}>{repartition.map((x) => <Box key={x.c.id} sx={{ flex: x.n, bgcolor: x.c.couleur }} />)}</Box> : undefined },
+  ]
+  return (
+    <Box component="section" aria-label="Pilotage" sx={{
+      display: { xs: 'flex', md: 'grid' }, gridTemplateColumns: { md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 1, md: 2 }, mb: { xs: 2, md: 3 },
+      overflowX: { xs: 'auto', md: 'visible' }, scrollSnapType: { xs: 'x mandatory', md: 'none' }, mx: { xs: -2, md: 0 }, px: { xs: 2, md: 0 }, scrollbarWidth: 'none',
+    }}>
+      {tuiles.map((t) => (
+        <ButtonBase key={t.cle} component={RouterLink} to={t.lien} aria-label={`${t.libelle} : ${t.valeur}, ${t.detail}`}
+          sx={{ flex: { xs: '0 0 auto', md: 'initial' }, minWidth: { xs: 136, md: 0 }, scrollSnapAlign: 'start', display: 'block', textAlign: 'left', px: { xs: 1.5, md: 2 }, py: { xs: 1.25, md: 2 }, borderRadius: 3, bgcolor: 'background.paper', color: 'text.primary', fontFamily: 'inherit', '&:hover': { bgcolor: 'action.hover' } }}>
+          <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{t.libelle}</Typography>
+          <Typography sx={{ fontSize: { xs: '1.25rem', md: '1.75rem' }, fontWeight: 700, lineHeight: 1.25, color: t.couleur }}>{t.valeur}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{t.detail}</Typography>
+          {t.barre && <Box aria-hidden>{t.barre}</Box>}
+        </ButtonBase>
+      ))}
+    </Box>
+  )
+}
+
+// Téléphone : À traiter, tâches et semaine dans une seule carte à onglets, courte (Joseph, 22/10/2026)
+type Onglet = 'traiter' | 'taches' | 'semaine'
+function PointCompact({ reseau, p, items, taches }: { reseau: Reseau; p: Perimetre; items: ATraiter[]; taches: ReturnType<typeof mesTaches> }) {
+  const [onglet, setOnglet] = useState<Onglet>('traiter')
+  const options: { v: Onglet; libelle: string }[] = [
+    { v: 'traiter', libelle: items.length ? `À traiter · ${items.length}` : 'À traiter' },
+    { v: 'taches', libelle: taches.length ? `Tâches · ${taches.length}` : 'Tâches' },
+    { v: 'semaine', libelle: 'Semaine' },
+  ]
+  return (
+    <Box sx={{ mb: 2, '& .MuiCard-root .MuiButtonBase-root': { minHeight: 56, py: 0.5 } }}>
+      <Box role="tablist" aria-label="Mon point" sx={{ display: 'flex', p: 0.25, borderRadius: 999, bgcolor: 'action.hover', mb: 1 }}>
+        {options.map((o) => (
+          <ButtonBase key={o.v} role="tab" aria-selected={onglet === o.v} onClick={() => setOnglet(o.v)}
+            sx={{ fontFamily: 'inherit', flex: 1, minHeight: 48, borderRadius: 999, fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap', color: onglet === o.v ? 'text.primary' : 'text.secondary', ...(onglet === o.v ? { bgcolor: 'background.paper', boxShadow: 1 } : {}) }}>
+            {o.libelle}
+          </ButtonBase>
+        ))}
+      </Box>
+      <Box role="tabpanel" aria-label={options.find((o) => o.v === onglet)!.libelle}>
+        {onglet === 'traiter' && <BlocATraiter reseau={reseau} items={items} compact />}
+        {onglet === 'taches' && <BlocMesTaches reseau={reseau} taches={taches} compact />}
+        {onglet === 'semaine' && <BlocSemaine reseau={reseau} p={p} compact />}
+      </Box>
     </Box>
   )
 }
@@ -243,7 +364,7 @@ export function PublicationFil({ e, jour, sansMagasin = false }: { e: ElementFil
   )
 }
 
-export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil de mes magasins', communications, reactionsPratiques }: {
+export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actualités', communications, reactionsPratiques }: {
   elements: ElementFil[]; jour: string; sansMagasin?: boolean; titre?: string; communications?: CommunicationsDuFil; reactionsPratiques?: ReactionsPratiques | null
 }) {
   const { apercu, equipe } = useApercu()
@@ -292,24 +413,41 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Fil 
   )
 }
 
+// Accueil (maquette A, Joseph 22/10/2026) : quatre repères en tête, les actualités en colonne principale,
+// À traiter, Mes tâches et Cette semaine à droite ; sur téléphone, ces trois blocs en onglets au-dessus des actualités
 function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Perimetre; sansParametres?: boolean }) {
+  const { profil } = useAuth()
   const { messagerie } = useMessagerie()
+  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const items = aTraiter(reseau, p, sansParametres)
+  const taches = mesTaches(reseau, p, monNomPorteur(reseau, profil))
   const noms = useMemo(() => new Set(magasinsDu(reseau, p).map((m) => m.nom)), [reseau, p])
   const communications = useCommunicationsDuFil()
   const reactionsPratiques = useReactionsPratiques()
   const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications.liste, true), [reseau, noms, messagerie, communications.liste])
+  const actualites = <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} />
+  if (!surPC) {
+    return (
+      <>
+        <Indicateurs reseau={reseau} p={p} />
+        <PointCompact reseau={reseau} p={p} items={items} taches={taches} />
+        {actualites}
+      </>
+    )
+  }
   return (
-    <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start' }}>
-      {/* PC : la colonne reste visible pendant qu'on fait défiler le fil, et défile seule si elle dépasse l'écran */}
-      <Box component="aside" aria-label="À traiter et cette semaine" sx={{ order: { xs: 1, md: 2 }, position: { md: 'sticky' }, top: { md: 88 }, maxHeight: { md: 'calc(100vh - 104px)' }, overflowY: { md: 'auto' }, overscrollBehavior: 'contain', scrollbarWidth: 'thin', mx: { md: -1 }, px: { md: 1 }, pb: { md: 1 } }}>
-        <BlocATraiter reseau={reseau} items={items} />
-        <BlocSemaine reseau={reseau} p={p} />
+    <>
+      <Indicateurs reseau={reseau} p={p} />
+      <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: 'minmax(0, 1fr) 400px', alignItems: 'start' }}>
+        <Box sx={{ minWidth: 0 }}>{actualites}</Box>
+        {/* La colonne reste visible pendant qu'on fait défiler les actualités, et défile seule si elle dépasse l'écran */}
+        <Box component="aside" aria-label="À traiter, mes tâches et cette semaine" sx={{ position: 'sticky', top: 88, maxHeight: 'calc(100vh - 104px)', overflowY: 'auto', overscrollBehavior: 'contain', scrollbarWidth: 'thin', mx: -1, px: 1, pb: 1 }}>
+          <BlocATraiter reseau={reseau} items={items} />
+          <BlocMesTaches reseau={reseau} taches={taches} />
+          <BlocSemaine reseau={reseau} p={p} />
+        </Box>
       </Box>
-      <Box sx={{ order: { xs: 2, md: 1 }, minWidth: 0 }}>
-        <FilActivite elements={fil} jour={reseau.jour} communications={communications} reactionsPratiques={reactionsPratiques} />
-      </Box>
-    </Box>
+    </>
   )
 }
 

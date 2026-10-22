@@ -106,7 +106,7 @@ const communications = (): CommunicationSimulee[] => [
   { id: 2, titre: 'Foire aux vins', texte: 'Le calendrier est en ligne.', magasins: null, auteur: '00000000-0000-0000-0000-0000000000dd', auteur_nom: 'Dominique DIRECTION', auteur_role: 'directeur', cree_le: '2026-10-01T09:00:00Z', a_la_une: '2099-01-15' },
 ]
 
-test('une communication à la une passe en tête, sur Communications comme à l’accueil', async ({ page, isMobile }, info) => {
+test('une communication à la une passe en tête, sur le canal Réseau V and B comme dans les actualités de l’accueil', async ({ page, isMobile }, info) => {
   await seConnecter(page, { communications: communications() })
   await page.goto('./#/communications')
   const premiere = page.getByRole('article').first()

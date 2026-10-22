@@ -32,11 +32,11 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   await seConnecterFranchise(page, { ecritures })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Mes magasins', 'Infos', 'Pratiques'] : ['Accueil', 'Mes magasins', 'Communications', 'Bonnes pratiques'])
+  await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Mes magasins', /^Échanges/, 'Pratiques'] : ['Accueil', 'Mes magasins', /^Échanges/, 'Bonnes pratiques'])
   await expect(page.getByText('Paramètres')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Rechercher' })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button')).toHaveText(['Tous mes magasins', 'Annecy Test', 'Rennes Test'])
-  for (const t of ['Mes chiffres', 'Repères réseau · septembre 2026', 'Mes tâches', 'Visites et audits', 'Campagnes en cours', 'Mon équipe V and B', 'Fil de mes magasins']) {
+  for (const t of ['Mes chiffres', 'Repères réseau · septembre 2026', 'Mes tâches', 'Visites et audits', 'Campagnes en cours', 'Mon équipe V and B', 'Actualités']) {
     await expect(page.getByRole('heading', { name: t, exact: true })).toBeVisible()
   }
   // Tâches : celle en retard d'abord ; rien de Lyon ni de Brest
@@ -45,7 +45,7 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   await expect(actions.first()).toContainText('Lancer une dégustation')
   await expect(actions.first()).toContainText('En retard')
   await expect(page.getByText('Refaire la vitrine')).toHaveCount(0)
-  // Seule exception : les bonnes pratiques, communes à tout le réseau, citent leur magasin
+  // Actualités de ses magasins ; seule exception : les bonnes pratiques, communes à tout le réseau, citent leur magasin
   await expect(page.getByText(/Brest Test/)).toHaveCount(0)
   await expect(page.getByText(/Lyon Test/)).toHaveCount(1)
   await expect(page.getByRole('article', { name: 'Dégustation du vendredi' })).toContainText('Lyon Test')

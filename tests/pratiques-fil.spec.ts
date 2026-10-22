@@ -21,11 +21,12 @@ const reactions = (): ReactionsPratiquesSimulees => ({
   commentaires: { bp_1: [{ id: 1, auteur: AUTRE, auteur_nom: 'Inès EXEMPLE', auteur_role: 'coach', texte: 'Je le propose à Nantes.', cree_le: new Date().toISOString() }] },
 })
 
-test('les bonnes pratiques du réseau sont dans le fil de l’accueil, avec J’aime et commentaires', async ({ page, isMobile }, info) => {
+// L'accueil n'a plus de fil d'activité (Joseph, 21/10/2026) : les bonnes pratiques se lisent sur leur page
+test('les bonnes pratiques du réseau avec J’aime et commentaires', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, config: { bonnes_pratiques: pratiques() }, reactionsPratiques: reactions() })
-  const fil = page.getByRole('region', { name: 'Fil de mes magasins' })
-  const carte = fil.getByRole('article', { name: 'Dégustation du samedi' })
+  await page.goto('./#/visites?vue=pratiques')
+  const carte = page.getByRole('article', { name: 'Dégustation du samedi' })
   await expect(carte).toContainText('Trois vins ouverts chaque samedi.')
   await expect(carte.getByText('Je le propose à Nantes.')).toBeVisible()
   // Ancien « J'aime » de l'équipe et nouveau pouce comptés ensemble
@@ -43,18 +44,19 @@ test('les bonnes pratiques du réseau sont dans le fil de l’accueil, avec J’
   await page.screenshot({ path: `captures/${info.project.name}-fil-pratique.png`, fullPage: !isMobile })
 })
 
-test('le franchisé voit les bonnes pratiques de tout le réseau dans son fil, aime et commente', async ({ page }) => {
+test('le franchisé voit les bonnes pratiques de tout le réseau, aime et commente', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { acces: PAUL, ecritures, espace: { pratiques: pratiques() }, reactionsPratiques: reactions() })
-  const carte = page.getByRole('region', { name: 'Fil de mes magasins' }).getByRole('article', { name: 'Dégustation du samedi' })
+  await page.goto('./#/bonnes-pratiques')
+  const carte = page.getByRole('article', { name: 'Dégustation du samedi' })
   await carte.getByRole('button', { name: /^J’aime/ }).click()
   await expect(carte.getByRole('button', { name: /^J’aime/ })).toHaveAttribute('aria-pressed', 'true')
   await carte.getByRole('button', { name: /^Commenter/ }).click()
   await carte.getByRole('textbox', { name: 'Commentaire sur Dégustation du samedi' }).fill('On teste à Annecy.')
   await carte.getByRole('button', { name: 'Envoyer le commentaire' }).click()
   await expect(carte.getByText('On teste à Annecy.')).toBeVisible()
-  // Et sur la page des bonnes pratiques
-  await page.goto('./#/bonnes-pratiques')
+  // Toujours là après rechargement
+  await page.reload()
   const page2 = page.getByRole('article', { name: 'Dégustation du samedi' })
   await expect(page2.getByText('On teste à Annecy.')).toBeVisible()
   await expect(page2.getByRole('button', { name: /^J’aime/ })).toHaveAttribute('aria-pressed', 'true')

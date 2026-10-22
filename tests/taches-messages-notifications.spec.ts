@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type MessageSimule } from './supabase-simule'
+import { seConnecter, textesTropPetits } from './supabase-simule'
 
-// Tâches sur la barre commune et rangées par échéance, « Nouveau message », notifications par période (Joseph, 21/10/2026)
+// Tâches sur la barre commune et rangées par échéance, « Message à une personne » (Joseph, 21/10/2026)
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -25,7 +25,10 @@ test('les tâches sont rangées par échéance, sous la barre de recherche commu
   }
   await seConnecter(page, { config: { actions } })
   await page.goto('./#/taches')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Mes tâches')
+  // « Mes tâches » est le second volet de l'onglet Échanges
+  await expect(page).toHaveURL(/#\/echanges\?vue=taches$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Échanges')
+  await expect(page.getByRole('tablist', { name: 'Échanges' }).getByRole('tab', { name: /^Mes tâches/ })).toHaveAttribute('aria-selected', 'true')
   const aFaire = page.getByRole('list', { name: 'Tâches à faire' })
   await expect(aFaire.getByRole('heading', { level: 2 })).toHaveText(['En retard', 'Cette semaine', 'Plus tard', 'Sans échéance'])
   await expect(aFaire.getByRole('listitem')).toHaveCount(5)
@@ -53,40 +56,18 @@ test('les tâches sont rangées par échéance, sous la barre de recherche commu
   await expect(page.getByText('Aucune tâche ne correspond à la recherche.')).toBeVisible()
 })
 
-const AUTRE = '00000000-0000-0000-0000-0000000000aa'
-const message = (id: number, texte: string, quand: Date): MessageSimule =>
-  ({ id, store: 'Annecy Test', auteur: AUTRE, auteur_nom: 'Paul MULTI', auteur_role: 'franchise', texte, mentions: [], cree_le: quand.toISOString() })
-
-test('« Nouveau message » ouvre la liste des personnes, cherchées par nom ou magasin', async ({ page, isMobile }, info) => {
+test('« Message à une personne » ouvre la liste des personnes, cherchées par nom ou magasin', async ({ page, isMobile }, info) => {
   await seConnecter(page, { messagerie: { messages: [] } })
-  await page.goto('./#/messages')
-  await page.getByRole('button', { name: 'Nouveau message' }).first().click()
-  const d = page.getByRole('dialog', { name: 'Nouveau message' })
+  await page.goto('./#/echanges')
+  await page.getByRole('button', { name: 'Nouvelle conversation' }).click()
+  await page.getByRole('menuitem', { name: 'Message à une personne' }).click()
+  const d = page.getByRole('dialog', { name: 'Message à une personne' })
   await d.getByRole('textbox', { name: 'Personne ou magasin' }).fill('camille')
   await expect(d.getByRole('list', { name: 'Personnes' }).getByRole('button')).toHaveCount(1)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-nouveau-message.png` })
   await d.getByRole('list', { name: 'Personnes' }).getByRole('button').click()
   await expect(d).toHaveCount(0)
-  await expect(page).toHaveURL(/#\/messages\/personne\/coach%3ACamille%20TESTARD$/)
+  await expect(page).toHaveURL(/#\/echanges\/personne\/coach%3ACamille%20TESTARD$/)
   if (isMobile) await expect(page.getByRole('heading', { level: 1, name: 'Camille TESTARD' })).toBeVisible()
-})
-
-test('les notifications sont rangées par période', async ({ page, isMobile }, info) => {
-  await seConnecter(page, {
-    appMetadata: { role: 'coach', coach: 'Hugo FICTIF' },
-    messagerie: { messages: [message(1, 'Question du jour', new Date(Date.now() - 60_000)), message(2, 'Question d’hier', jour(-1)), message(3, 'Question de lundi', jour(-4)), message(4, 'Vieille question', jour(-40))] },
-  })
-  await page.goto('./#/notifications')
-  const nouvelles = page.getByRole('region', { name: 'Nouvelles' })
-  const mois = jour(-40).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
-  await expect(nouvelles.locator('p.MuiTypography-caption')).toHaveText(['Aujourd’hui', 'Hier', 'Cette semaine', mois.charAt(0).toUpperCase() + mois.slice(1)])
-  await expect(page.getByRole('group', { name: 'Notifications affichées' }).getByRole('button')).toHaveText(['Toutes', 'Nouvelles · 4'])
-  const toutLire = page.getByRole('button', { name: 'Tout marquer comme lu' })
-  if (isMobile) expect((await toutLire.boundingBox())!.height).toBeGreaterThanOrEqual(48)
-  expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-notifications-periodes.png`, fullPage: !isMobile })
-  await toutLire.click()
-  await expect(nouvelles).toHaveCount(0)
-  await expect(page.getByRole('region', { name: 'Déjà vues' }).getByRole('button')).toHaveCount(4)
 })

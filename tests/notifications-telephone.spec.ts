@@ -79,11 +79,15 @@ test('un message privé envoyé part aussi en notification vers le téléphone d
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, messagerie: { messages: [] } })
   const appels = await fonctionSimulee(page)
-  await page.goto('./#/magasins/Annecy%20Test?vue=messages')
-  await page.getByRole('radiogroup', { name: 'Écrire à' }).getByRole('radio', { name: /Hugo FICTIF/ }).click()
+  await page.goto('./#/echanges/personne/coach%3AHugo%20FICTIF')
   await page.getByLabel('Message', { exact: true }).fill('Tu passes jeudi ?')
   await page.getByRole('button', { name: 'Envoyer' }).click()
   await expect.poll(() => appels).toContainEqual({ type: 'message', ids: [1] })
+  // Un message dans le groupe d'un magasin part aussi (la base choisit qui est prévenu)
+  await page.goto('./#/magasins/Annecy%20Test?vue=messages')
+  await page.getByLabel('Message', { exact: true }).fill('Bonne semaine à tous')
+  await page.getByRole('button', { name: 'Envoyer' }).click()
+  await expect.poll(() => appels).toContainEqual({ type: 'message', ids: [2] })
 })
 
 test('navigateur sans notifications : rien dans le menu', async ({ page }) => {
