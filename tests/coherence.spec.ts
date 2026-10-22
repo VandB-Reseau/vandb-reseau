@@ -30,15 +30,16 @@ for (const p of pages) test(`barre d’outils alignée : ${p.url}`, async ({ pag
   await page.screenshot({ path: `captures/${info.project.name}-barre${p.url.replace(/[\/?=]/g, '-')}.png` })
 })
 
-test('absence et événement se créent depuis le bouton Créer, plus depuis l’en-tête de l’Agenda', async ({ page }) => {
+test('l’événement se crée depuis le bouton Créer, plus depuis l’en-tête de l’Agenda ; plus d’absence', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/plus/agenda')
   await expect(page.getByRole('heading', { level: 1, name: 'Agenda' })).toBeVisible()
   await expect(page.getByRole('main').getByRole('button', { name: /^(Absence|Événement)$/ })).toHaveCount(0)
   await page.getByRole('button', { name: 'Créer', exact: true }).click()
-  const creer = page.getByRole('dialog', { name: 'Créer' })
-  for (const nom of ['Absence', 'Événement']) expect((await creer.getByRole('button', { name: nom, exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(48)
-  await creer.getByRole('button', { name: 'Événement', exact: true }).click()
+  const creer = page.getByRole('menu', { name: 'Créer' })
+  await expect(creer.getByRole('menuitem', { name: 'Absence' })).toHaveCount(0)
+  expect((await creer.getByRole('menuitem', { name: 'Événement', exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  await creer.getByRole('menuitem', { name: 'Événement', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Ajouter un événement' })).toBeVisible()
 })
 

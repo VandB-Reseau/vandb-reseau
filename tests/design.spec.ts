@@ -15,30 +15,32 @@ test.afterEach(async ({ page }) => {
 const DIRECTEUR = 'Dominique DIRECTION'
 const sansDebordement = (l: Locator) => l.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
-test('le bouton Créer propose visite, tâche, message, bonne pratique, absence et événement', async ({ page, isMobile }, info) => {
+test('le bouton Créer ouvre sous lui un menu : visite, tâche, message, bonne pratique, événement', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   // Téléphone : « + » dans l'en-tête, la barre du bas garde cinq onglets (Joseph, 21/10/2026)
   const creer = isMobile
     ? page.getByRole('banner').getByRole('button', { name: 'Créer' })
     : page.getByRole('button', { name: 'Créer', exact: true })
   if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Magasins', /^Échanges/, 'Visites', /^Santé/])
+  const bouton = (await creer.boundingBox())!
   await creer.click()
-  const d = page.getByRole('dialog', { name: 'Créer' })
-  for (const t of ['Visite', 'Tâche', 'Message', 'Bonne pratique', 'Absence', 'Événement']) await expect(d.getByRole('button', { name: t })).toBeVisible()
-  // Fenêtre compacte : 340 px de large sur PC, trois choix par ligne sur téléphone
-  const fenetre = (await d.boundingBox())!
-  if (isMobile) {
-    expect(fenetre.height).toBeLessThanOrEqual(300)
-    const [v, p] = [(await d.getByRole('button', { name: 'Visite' }).boundingBox())!, (await d.getByRole('button', { name: 'Message' }).boundingBox())!]
-    expect(Math.abs(v.y - p.y)).toBeLessThanOrEqual(1)
-  } else expect(fenetre.width).toBeLessThanOrEqual(340)
+  const d = page.getByRole('menu', { name: 'Créer' })
+  await expect(d.getByRole('menuitem')).toHaveText(['Visite', 'Tâche', 'Message', 'Bonne pratique', 'Événement'])
+  // Menu déroulant collé sous le bouton, pas de fenêtre au centre (Joseph, 22/10/2026)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  const menu = (await d.boundingBox())!
+  expect(menu.y).toBeGreaterThanOrEqual(bouton.y + bouton.height - 1)
+  expect(menu.y).toBeLessThanOrEqual(bouton.y + bouton.height + 16)
+  if (isMobile) expect(Math.abs(menu.x + menu.width - (bouton.x + bouton.width))).toBeLessThanOrEqual(20)
+  else expect(Math.abs(menu.x - bouton.x)).toBeLessThanOrEqual(20)
+  for (const item of await d.getByRole('menuitem').all()) expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-creer.png` })
-  await d.getByRole('button', { name: 'Tâche' }).click()
+  await d.getByRole('menuitem', { name: 'Tâche' }).click()
   await expect(page.getByRole('dialog', { name: 'Ajouter une tâche' })).toBeVisible()
   await page.getByRole('dialog', { name: 'Ajouter une tâche' }).getByRole('button', { name: 'Annuler' }).click()
   await creer.click()
-  await page.getByRole('dialog', { name: 'Créer' }).getByRole('button', { name: 'Message' }).click()
+  await page.getByRole('menu', { name: 'Créer' }).getByRole('menuitem', { name: 'Message' }).click()
   await expect(page).toHaveURL(/#\/echanges/)
 })
 

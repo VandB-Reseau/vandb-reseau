@@ -40,7 +40,7 @@ export const principales: Destination[] = [
 
 // Suite de la partie classique : sous les principales dans le menu PC, dans « Plus » sur téléphone
 export const secondaires: Destination[] = [
-  { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes, absences et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
+  { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
 ]
 
 // Partie « Paramètres » : trois entrées (sprint 21). Collaborateurs et Franchisés sont des onglets d'Équipe ;

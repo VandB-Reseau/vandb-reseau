@@ -108,12 +108,14 @@ test('modifier puis supprimer une visite depuis la fiche magasin', async ({ page
   expect(ecritures.at(-1)).toMatchObject({ methode: 'DELETE', table: 'storage', corps: { prefixes: ['visites/2026-10/lyon.jpg'] } })
 })
 
-test('l’agenda montre ouvertures, événements et absences avec remplaçant suggéré', async ({ page, isMobile }, info) => {
+test('l’agenda montre ouvertures et événements, sans absences', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/plus/agenda?mois=2026-10')
   await expect(page.getByText('Séminaire des Coachs').first()).toBeVisible()
-  await expect(page.getByText('Hugo FICTIF absent').first()).toBeVisible()
+  // Absences retirées de l'app : la table reste en base mais n'est plus lue
+  await expect(page.getByText('Hugo FICTIF absent')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Congés' })).toHaveCount(0)
   await page.screenshot({ path: `captures/${info.project.name}-agenda.png`, fullPage: !isMobile })
   // Filtrer les catégories
   await page.getByRole('button', { name: 'Événements' }).click()
@@ -121,16 +123,6 @@ test('l’agenda montre ouvertures, événements et absences avec remplaçant su
   // Ouvertures du mois suivant
   await page.getByRole('button', { name: 'Mois suivant' }).click()
   await expect(page.getByText('Ouverture Dax Test').first()).toBeVisible()
-  // Ajouter une absence, depuis le bouton Créer
-  await page.getByRole('button', { name: 'Créer', exact: true }).click()
-  await page.getByRole('dialog', { name: 'Créer' }).getByRole('button', { name: 'Absence', exact: true }).click()
-  const d = page.getByRole('dialog', { name: 'Ajouter une absence' })
-  await d.getByLabel('Personne').click()
-  await page.getByRole('option', { name: 'Camille TESTARD' }).click()
-  await expect(d.getByText('Remplaçant suggéré')).toBeVisible()
-  await d.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect(page.getByText('Absence enregistrée.')).toBeVisible()
-  expect(ecritures.at(-1)).toMatchObject({ methode: 'POST', table: 'leaves', corps: { person: 'Camille TESTARD', role: 'cs' } })
   expect(await textesTropPetits(page)).toEqual([])
 })
 

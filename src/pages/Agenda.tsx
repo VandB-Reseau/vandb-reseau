@@ -18,7 +18,6 @@ import { useTheme } from '@mui/material/styles'
 import ChevronLeft from '@mui/icons-material/ChevronLeft'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import EventOutlined from '@mui/icons-material/EventOutlined'
-import BeachAccessOutlined from '@mui/icons-material/BeachAccessOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import CakeOutlined from '@mui/icons-material/CakeOutlined'
 import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined'
@@ -31,30 +30,25 @@ import { EmptyState } from '../components/EmptyState'
 import { Fenetre, messageErreur } from '../components/EditionEquipe'
 import { DialogVisite } from '../components/DialogVisite'
 import { DialogPlanifier } from '../components/DialogPlanifier'
-import { deplacerVisite, enregistrerConge, enregistrerEvenement, supprimerConge, supprimerEvenement } from '../data/chargement'
+import { deplacerVisite, enregistrerEvenement, supprimerEvenement } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
 import { libellePerimetre, magasinsConcernes } from '../data/campagnes'
-import { chargeA, magasinsDuCoach } from '../data/charge'
-import { minutesMoyennes } from '../data/kilometrage'
-import { positionCoach } from '../data/plan'
-import { trajetEntre } from '../data/tournee'
 import { lienFiche } from '../lib/format'
-import { libelleTypeVisite, nomsVisiteurs, type Conge, type Evenement, type Reseau, type Visite } from '../data/modele'
+import { libelleTypeVisite, nomsVisiteurs, type Evenement, type Reseau, type Visite } from '../data/modele'
 import { estVisite } from '../data/chiffres'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { BandeCollante } from '../components/Collant'
 
-type Categorie = 'visite' | 'campagne' | 'ouverture' | 'anniversaire' | 'evenement' | 'conge'
+type Categorie = 'visite' | 'campagne' | 'ouverture' | 'anniversaire' | 'evenement'
 const categories: { id: Categorie; libelle: string; couleur: string; icone: ReactElement }[] = [
   { id: 'visite', libelle: 'Visites', couleur: '#1b6fce', icone: <EventAvailableOutlined fontSize="small" /> },
   { id: 'campagne', libelle: 'Campagnes', couleur: '#a15c00', icone: <CampaignOutlined fontSize="small" /> },
   { id: 'ouverture', libelle: 'Ouvertures', couleur: '#ef7d00', icone: <StorefrontOutlined fontSize="small" /> },
   { id: 'evenement', libelle: 'Événements', couleur: '#7c3aed', icone: <EventOutlined fontSize="small" /> },
-  { id: 'conge', libelle: 'Congés', couleur: '#0f766e', icone: <BeachAccessOutlined fontSize="small" /> },
   { id: 'anniversaire', libelle: 'Anniversaires', couleur: '#c2185b', icone: <CakeOutlined fontSize="small" /> },
 ]
 
-interface Element { cle: string; categorie: Categorie; debut: string; fin: string; titre: string; detail: string; lien?: string; conge?: Conge; evenement?: Evenement; visite?: Visite; couleur: string; magasin?: string }
+interface Element { cle: string; categorie: Categorie; debut: string; fin: string; titre: string; detail: string; lien?: string; evenement?: Evenement; visite?: Visite; couleur: string; magasin?: string }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10)
 const jourUTC = (s: string) => new Date(`${s}T00:00:00Z`)
@@ -62,23 +56,6 @@ export const ajouterJours = (s: string, n: number) => { const d = jourUTC(s); d.
 const nomMois = (s: string) => jourUTC(s).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 const ecartJours = (a: string, b: string) => Math.round((jourUTC(b).getTime() - jourUTC(a).getTime()) / 86400000)
 export const jourLong = (s: string) => jourUTC(s).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
-
-// Coach le plus proche par la route des magasins de l'absent, présent sur toute la période et le moins chargé, pour couvrir une absence
-export function remplacantSuggere(reseau: Reseau, c: Conge): string | null {
-  const absent = reseau.equipe.find((x) => x.nom === c.personne)
-  if (!absent) return null
-  const presents = reseau.equipe.filter((x) => x.nom !== absent.nom && !x.fictif
-    && !reseau.conges.some((l) => l.personne === x.nom && l.debut <= c.fin && l.fin >= c.debut))
-  const sesMagasins = magasinsDuCoach(reseau, absent.nom, c.debut)
-  const chez = positionCoach(reseau, absent, c.debut)
-  const tries = presents.map((x) => {
-    const ici = positionCoach(reseau, x, c.debut)
-    const d = minutesMoyennes(ici, sesMagasins) ?? (ici && chez ? trajetEntre(ici, chez).minutes : 99999)
-    return { nom: x.nom, d, charge: chargeA(reseau, x.nom, c.debut) }
-  })
-    .sort((a, b) => a.d - b.d || a.charge - b.charge)
-  return tries[0]?.nom ?? null
-}
 
 export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Element[] {
   const el: Element[] = []
@@ -95,10 +72,6 @@ export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Elem
     if (m.ouvertureConnue && m.ouverture >= debut && m.ouverture <= fin) el.push({ cle: `o-${m.nom}`, categorie: 'ouverture', debut: m.ouverture, fin: m.ouverture, titre: `Ouverture ${m.nom}`, detail: m.coach ? `Coach ${m.coach}` : 'Sans Coach', lien: lienFiche(m.nom), couleur: '#ef7d00' })
   }
   for (const e of reseau.evenements) if (e.debut <= fin && e.fin >= debut) el.push({ cle: `e-${e.id}`, categorie: 'evenement', debut: e.debut, fin: e.fin, titre: e.titre, detail: e.notes, evenement: e, couleur: e.couleur })
-  for (const c of reseau.conges) if (c.debut <= fin && c.fin >= debut) {
-    const r = remplacantSuggere(reseau, c)
-    el.push({ cle: `c-${c.id}`, categorie: 'conge', debut: c.debut, fin: c.fin, titre: `${c.personne} absent`, detail: [c.notes, r && `remplaçant suggéré : ${r}`].filter(Boolean).join(' · '), conge: c, couleur: '#0f766e' })
-  }
   const annee = debut.slice(0, 4)
   for (const a of reseau.anniversaires) {
     const jour = `${annee}-${a.date.slice(5)}`
@@ -106,33 +79,6 @@ export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Elem
     if (jour >= debut && jour <= fin && ans > 0) el.push({ cle: `a-${a.nom}-${a.nature}`, categorie: 'anniversaire', debut: jour, fin: jour, titre: a.nature === 'naissance' ? `Anniversaire de ${a.nom}` : `${a.nom} : ${ans} an${ans > 1 ? 's' : ''} chez V and B`, detail: a.role, couleur: '#c2185b' })
   }
   return el.sort((a, b) => a.debut.localeCompare(b.debut) || a.titre.localeCompare(b.titre, 'fr'))
-}
-
-export function DialogConge({ reseau, conge, jourInitial, onFermer }: { reseau: Reseau; conge: Conge | null; jourInitial?: string; onFermer: (m?: string) => void }) {
-  const [personne, setPersonne] = useState(conge?.personne ?? '')
-  const [debut, setDebut] = useState(conge?.debut ?? jourInitial ?? reseau.jour)
-  const [fin, setFin] = useState(conge?.fin ?? jourInitial ?? reseau.jour)
-  const [notes, setNotes] = useState(conge?.notes ?? '')
-  const personnes = [...reseau.equipe.filter((c) => !c.fictif).map((c) => ({ nom: c.nom, role: 'cs' })), ...reseau.rrs.map((r) => ({ nom: r.nom, role: 'dr' })), ...reseau.techniciens.map((t) => ({ nom: t.nom, role: 'tech' }))]
-  const ordre = debut && fin && fin >= debut
-  const brouillon: Conge = { id: conge?.id ?? null, personne, role: personnes.find((p) => p.nom === personne)?.role ?? 'cs', debut, fin, notes }
-  const r = personne && ordre ? remplacantSuggere(reseau, brouillon) : null
-  return (
-    <Fenetre titre={conge ? `Modifier l’absence de ${conge.personne}` : 'Ajouter une absence'} ouvert onFermer={onFermer} valide={!!personne && !!ordre}
-      enregistrer={async () => { await enregistrerConge(brouillon); return 'Absence enregistrée.' }}
-      supprimer={conge?.id ? async () => { await supprimerConge(conge.id!); return 'Absence supprimée.' } : undefined}
-      libelleSuppression={conge ? `Supprimer l’absence de ${conge.personne} ?` : undefined}>
-      <TextField select label="Personne" value={personne} onChange={(e) => setPersonne(e.target.value)}>
-        {personnes.map((p) => <MenuItem key={p.nom} value={p.nom}>{p.nom}</MenuItem>)}
-      </TextField>
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: '1fr 1fr' }}>
-        <TextField type="date" label="Du" value={debut} onChange={(e) => setDebut(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <TextField type="date" label="Au" value={fin} onChange={(e) => setFin(e.target.value)} error={!ordre} helperText={ordre ? ' ' : 'La fin doit suivre le début.'} slotProps={{ inputLabel: { shrink: true } }} />
-      </Box>
-      <TextField label="Motif ou remarque (facultatif)" value={notes} onChange={(e) => setNotes(e.target.value)} />
-      {r && <Typography variant="body2" color="text.secondary">Remplaçant suggéré : <strong>{r}</strong> (le plus proche, présent sur toute la période).</Typography>}
-    </Fenetre>
-  )
 }
 
 const COULEURS_EV = ['#7c3aed', '#1b6fce', '#ef7d00', '#2e7d32', '#c2185b']
@@ -162,9 +108,9 @@ export function DialogEvenement({ reseau, evenement, jourInitial, onFermer }: { 
 }
 
 
-// Ce qui se déplace dans l'agenda : événements, absences, visites prévues ; ce qui s'étire : événements et absences
-const deplacable = (e: Element, jour: string) => !!e.evenement?.id || !!e.conge?.id || (!!e.visite?.id && e.visite.date >= jour)
-const etirable = (e: Element) => !!e.evenement?.id || !!e.conge?.id
+// Ce qui se déplace dans l'agenda : événements, visites prévues ; ce qui s'étire : événements
+const deplacable = (e: Element, jour: string) => !!e.evenement?.id || (!!e.visite?.id && e.visite.date >= jour)
+const etirable = (e: Element) => !!e.evenement?.id
 type Mode = 'deplacer' | 'etirer'
 interface Glisse { e: Element; mode: Mode; depart: string; cible: string }
 type Dates = { debut: string; fin: string }
@@ -173,7 +119,7 @@ const datesApres = (g: Glisse): Dates => {
   const n = ecartJours(g.depart, g.cible)
   return { debut: ajouterJours(g.e.debut, n), fin: ajouterJours(g.e.fin, n) }
 }
-type Ajout = 'visite' | 'absence' | 'evenement'
+type Ajout = 'visite' | 'evenement'
 interface Ancre { jour: string; x: number; y: number }
 
 function Pastille({ e, onClick, glissement, poignee, actif }: { e: Element; onClick?: () => void; glissement?: (ev: EvenementPointeur, mode: Mode) => void; poignee?: boolean; actif?: boolean }) {
@@ -196,7 +142,6 @@ function Pastille({ e, onClick, glissement, poignee, actif }: { e: Element; onCl
 function MenuAjout({ ancre, onChoisir, onFermer }: { ancre: Ancre | null; onChoisir: (a: Ajout, jour: string) => void; onFermer: () => void }) {
   const choix: { id: Ajout; libelle: string; icone: ReactElement }[] = [
     { id: 'visite', libelle: 'Visite', icone: <EventNoteOutlined fontSize="small" /> },
-    { id: 'absence', libelle: 'Absence', icone: <BeachAccessOutlined fontSize="small" /> },
     { id: 'evenement', libelle: 'Événement', icone: <EventOutlined fontSize="small" /> },
   ]
   return (
@@ -217,22 +162,20 @@ export function Agenda() {
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const { recharger } = useReseau()
   const [params, setParams] = useSearchParams()
-  const [actives, setActives] = useState<Set<Categorie>>(new Set(['visite', 'campagne', 'ouverture', 'evenement', 'conge', 'anniversaire']))
-  const [conge, setConge] = useState<Conge | null | undefined>(undefined)
+  const [actives, setActives] = useState<Set<Categorie>>(new Set(['visite', 'campagne', 'ouverture', 'evenement', 'anniversaire']))
   const [evenement, setEvenement] = useState<Evenement | null | undefined>(undefined)
   const [ancre, setAncre] = useState<Ancre | null>(null)
   const [ajout, setAjout] = useState<{ type: Ajout; jour: string } | null>(null)
   // Dates posées par glisser-déposer, montrées tant que le réseau n'a pas été relu
   const [modifs, setModifs] = useState<{ pour: Reseau | null; dates: Record<string, Dates> }>({ pour: null, dates: {} })
   const [message, setMessage] = useState('')
-  const fermer = (m?: string) => { setConge(undefined); setEvenement(undefined); setAjout(null); if (m) setMessage(m) }
+  const fermer = (m?: string) => { setEvenement(undefined); setAjout(null); if (m) setMessage(m) }
   const deplacer = async (reseau: Reseau, e: Element, d: Dates) => {
     if (d.debut === e.debut && d.fin === e.fin) return
     if (e.visite && d.debut < reseau.jour) { setMessage('Une visite prévue reste à aujourd’hui ou après.'); return }
     setModifs((m) => ({ pour: reseau, dates: { ...(m.pour === reseau ? m.dates : {}), [e.cle]: d } }))
     try {
       if (e.evenement) await enregistrerEvenement({ ...e.evenement, debut: d.debut, fin: d.fin })
-      else if (e.conge) await enregistrerConge({ ...e.conge, debut: d.debut, fin: d.fin })
       else if (e.visite?.id) await deplacerVisite(e.visite.id, d.debut)
       setMessage(`${e.titre} : ${d.debut === d.fin ? `le ${jourLong(d.debut)}` : `du ${jourLong(d.debut)} au ${jourLong(d.fin)}`}.`)
       await recharger()
@@ -250,7 +193,7 @@ export function Agenda() {
         const changerMois = (n: number) => { const d = new Date(Date.UTC(Number(mois.slice(0, 4)), Number(mois.slice(5, 7)) - 1 + n, 1)); setParams({ mois: iso(d).slice(0, 7) }, { replace: true }) }
         return (
           <>
-            <PageHeader titre="Agenda" sousTitre="Visites, campagnes, absences et événements" />
+            <PageHeader titre="Agenda" sousTitre="Visites, campagnes et événements" />
             {/* Le mois et les catégories restent sous la barre du haut quand la page défile */}
             <BandeCollante>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0, sm: 1 }, flexWrap: { sm: 'wrap' }, mb: 0.5 }}>
@@ -273,12 +216,10 @@ export function Agenda() {
             </Box>
             </BandeCollante>
             <ContenuMois reseau={reseau} debut={debut} fin={fin} actives={actives} surPC={surPC} modifs={modifs.pour === reseau ? modifs.dates : {}}
-              ouvrir={(e) => { if (e.conge) setConge(e.conge); if (e.evenement) setEvenement(e.evenement) }}
+              ouvrir={(e) => { if (e.evenement) setEvenement(e.evenement) }}
               ajouter={setAncre} deplacer={(e, d) => void deplacer(reseau, e, d)} />
             <MenuAjout ancre={ancre} onFermer={() => setAncre(null)} onChoisir={(type, jour) => { setAncre(null); setAjout({ type, jour }) }} />
-            {conge !== undefined && <DialogConge reseau={reseau} conge={conge} onFermer={fermer} />}
             {evenement !== undefined && <DialogEvenement reseau={reseau} evenement={evenement} onFermer={fermer} />}
-            {ajout?.type === 'absence' && <DialogConge reseau={reseau} conge={null} jourInitial={ajout.jour} onFermer={fermer} />}
             {ajout?.type === 'evenement' && <DialogEvenement reseau={reseau} evenement={null} jourInitial={ajout.jour} onFermer={fermer} />}
             {/* Visite à venir : on la planifie ; visite passée : on en saisit le compte rendu */}
             {ajout?.type === 'visite' && (ajout.jour >= reseau.jour
@@ -392,7 +333,7 @@ function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, ouvrir, ajout
       })}
     </Box>
   )
-  if (!jours.length) return <>{bande}<EmptyState icone={<CalendarMonthOutlined />} titre="Rien de prévu ce mois-ci" texte="Ajoute un événement ou une absence, ou passe au mois suivant." /></>
+  if (!jours.length) return <>{bande}<EmptyState icone={<CalendarMonthOutlined />} titre="Rien de prévu ce mois-ci" texte="Ajoute une visite ou un événement, ou passe au mois suivant." /></>
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {bande}

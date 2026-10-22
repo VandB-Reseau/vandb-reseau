@@ -84,7 +84,7 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 | Table | Contenu |
 | --- | --- |
 | `events` | Événements : réunions, séminaires |
-| `leaves` | Congés d'un Coach (`role` = `cs`) ou d'un RR (`dr`) |
+| `leaves` | Congés d'un Coach (`role` = `cs`) ou d'un RR (`dr`). Plus lue par l'app depuis le 22/10/2026 (absences retirées) ; gardée en base et dans la sauvegarde |
 
 ### Accès et périmètre
 

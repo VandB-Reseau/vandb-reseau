@@ -29,7 +29,7 @@ export function magasinsDu(reseau: Reseau, p: Perimetre): Magasin[] {
   return reseau.magasins
 }
 
-// Personnes du périmètre (pour les absences et anniversaires de l'agenda)
+// Personnes du périmètre (pour les anniversaires de l'agenda)
 export function personnesDu(reseau: Reseau, p: Perimetre): Set<string> | null {
   if (p.type === 'coach') return new Set([p.nom])
   if (p.type === 'rr') {
