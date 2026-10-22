@@ -18,6 +18,8 @@ test('accueil sur PC : « À traiter » reste visible pendant qu’on fait défi
   await seConnecter(page)
   const colonne = page.getByRole('complementary', { name: 'À traiter, mes tâches et cette semaine' })
   await expect(colonne).toBeVisible()
+  // Fil court depuis qu'il ne garde que comptes rendus et communications : la page doit dépasser l'écran
+  await page.evaluate(() => { (document.querySelector('[aria-label="Actualités"]') as HTMLElement).style.paddingBottom = '1500px' })
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200)
   const b = (await colonne.boundingBox())!
