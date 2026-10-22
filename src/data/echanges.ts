@@ -9,6 +9,7 @@ import { useMessagerie } from './MessagerieContext'
 import { useReseau } from './ReseauContext'
 import { useAuth } from '../auth/AuthContext'
 import type { Communication } from './communications'
+import { brancher, preferenceChangee } from '../lib/preferences'
 
 // Directeur : tout le réseau ; Coach et RR : leurs magasins ; franchisé : les siens (déjà seuls dans son espace)
 export function magasinsDesEchanges(reseau: Reseau, profil: Profil | null): Magasin[] {
@@ -31,7 +32,14 @@ function lireVu(): string {
 export function noterReseauVu() {
   try { localStorage.setItem(CLE, new Date().toISOString()) } catch { /* appareil sans stockage */ }
   abonnes.forEach((f) => f())
+  preferenceChangee()
 }
+// Recopiée dans la base (preferences.ts) : la plus récente des deux l'emporte
+brancher('reseauVu', { lire: lireVu, appliquer: (v) => {
+  if (typeof v !== 'string' || v <= lireVu()) return
+  try { localStorage.setItem(CLE, v) } catch { /* appareil sans stockage */ }
+  abonnes.forEach((f) => f())
+} })
 const sAbonner = (f: () => void) => { abonnes.add(f); return () => { abonnes.delete(f) } }
 export const useReseauVu = () => useSyncExternalStore(sAbonner, lireVu, () => '')
 

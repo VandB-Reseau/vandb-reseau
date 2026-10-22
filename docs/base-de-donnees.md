@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 22/10/2026 (migration `0020`).
+Mis à jour le 22/10/2026 (migration `0021`).
 
 ## Principes
 
@@ -48,6 +48,12 @@ Exception : toute l'équipe écrit la clé `bonnes_pratiques` d'`app_config`.
 Un franchisé est « de mes magasins » (`franchise_de_mes_magasins`) s'il est inscrit sur un de ces magasins
 (`store_overrides.resp` ou `store_adds`), s'il en est associé (`suivi_magasins`, rubrique `associes`) ou si son
 compte franchisé porte sur l'un d'eux. Seul le Directeur écrit.
+
+### Préférences de chaque compte (équipe : sa seule ligne ; franchisé : aucun accès)
+
+| Table | Contenu | Clé |
+| --- | --- | --- |
+| `preferences` | `valeur` en JSON : `suivis` (favoris, fiches récentes), `vues` (vues enregistrées de Magasins), `reseauVu` (dernière ouverture du canal Réseau). Reprise de l'appareil au premier lancement (0021) | `user_id` |
 
 ### Données par magasin (Directeur : tout ; Coach et RR : leurs magasins)
 

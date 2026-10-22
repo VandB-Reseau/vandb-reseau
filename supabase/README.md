@@ -25,6 +25,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0018_echanges_groupes` | Échanges en groupe : table `groupes` fermée, colonne `messages.groupe`, deux fils par magasin (« Avec le franchisé », « Équipe seule »), fonctions `creer_groupe`, `modifier_groupe`, `quitter_groupe`, `supprimer_groupe`, `envoyer_fil`, `marquer_lu_fil` ; `messagerie` et `notifications_a_envoyer` réécrites | 21/10/2026 |
 | `0019_taches_equipe` | Tâche née dans « Équipe seule » (`fil` = `equipe`) cachée au franchisé : `espace_franchise`, `marquer_action_franchise`, `piece_visible` réécrites ; correction reportée dans 0005, 0007 et 0009 | 22/10/2026 |
 | `0020_reperes_quartiles` | `reperes_reseau` renvoie aussi le quart inférieur (`quartBas`) de chaque indicateur, pour les leviers du CA | 22/10/2026 |
+| `0021_preferences` | Table `preferences` : favoris, fiches récentes, vues enregistrées et canal Réseau de chaque compte de l'équipe ; chacun sa seule ligne, franchisé exclu | 22/10/2026 |
 
 ## Règles
 

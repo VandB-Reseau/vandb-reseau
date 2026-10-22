@@ -62,6 +62,9 @@ SELECT pg_temp.attendre('Coach : ne voit pas qui a lu les communications', pg_te
 SELECT pg_temp.attendre('Coach : ne met pas une communication à la une', pg_temp.refuse('SELECT public.mettre_a_la_une(' || :annonce || ', current_date)'), 1);
 SELECT pg_temp.attendre('Coach : lit le fichier d''une tâche de l''équipe seule',
   (SELECT count(*) FROM (SELECT public.piece_visible('00000000-0000-0000-0000-00000000000c/marge.pdf') AS v) x WHERE v), 1);
+INSERT INTO public.preferences (valeur) VALUES ('{"suivis":{"favoris":["Lille"]}}');
+SELECT pg_temp.attendre('Coach : ses préférences', (SELECT count(*) FROM public.preferences), 1);
+SELECT pg_temp.attendre('Coach : pas de préférences au nom d''un autre', pg_temp.refuse('INSERT INTO public.preferences (user_id) VALUES (''00000000-0000-0000-0000-00000000000d'')'), 1);
 SELECT pg_temp.attendre('Coach : repères du réseau par reperes_equipe()', pg_temp.refuse('SELECT public.reperes_equipe(''{Lille}'')'), 0);
 SELECT pg_temp.attendre('Coach : pas d''appel direct à reperes_reseau()', pg_temp.refuse('SELECT public.reperes_reseau(''{Nice}'')'), 1);
 SELECT pg_temp.attendre('Coach : aucun accès direct aux messages', (SELECT count(*) FROM information_schema.table_privileges
@@ -87,6 +90,8 @@ SELECT pg_temp.attendre('Franchisé : aucun accès direct aux lectures', (SELECT
 SELECT pg_temp.attendre('Franchisé : ne met pas une communication à la une', pg_temp.refuse('SELECT public.mettre_a_la_une(' || :annonce || ', current_date)'), 1);
 SELECT pg_temp.attendre('Franchisé : ne voit pas qui a lu les communications', pg_temp.refuse('SELECT public.lectures_communications()'), 1);
 SELECT public.lire_communications(ARRAY[:annonce]::bigint[]);
+SELECT pg_temp.attendre('Franchisé : aucune préférence en base', pg_temp.refuse('INSERT INTO public.preferences (valeur) VALUES (''{}'')'), 1);
+SELECT pg_temp.attendre('Franchisé : ne lit pas les préférences', (SELECT count(*) FROM public.preferences), 0);
 SELECT pg_temp.attendre('Franchisé : pas d''appel direct à reperes_reseau()', pg_temp.refuse('SELECT public.reperes_reseau(''{Nice}'')'), 1);
 SELECT pg_temp.attendre('Franchisé : pas de repères de l''équipe', pg_temp.refuse('SELECT public.reperes_equipe(''{Nice}'')'), 1);
 SELECT pg_temp.attendre('Franchisé : ses visites par espace_franchise()', (SELECT jsonb_array_length(public.espace_franchise()->'visits')), 1);
@@ -100,6 +105,7 @@ SELECT pg_temp.attendre('Franchisé : ne lit pas le fichier d''une tâche de l''
 -- ── Directeur : voit la lecture du franchisé, met à la une
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
 SELECT public.mettre_a_la_une(:annonce, current_date + 7);
+SELECT pg_temp.attendre('Directeur : ne lit pas les préférences du Coach', (SELECT count(*) FROM public.preferences), 0);
 SELECT pg_temp.attendre('Directeur : la communication est à la une', (SELECT jsonb_array_length(public.a_la_une())), 1);
 SELECT pg_temp.attendre('Directeur : la communication est lue par le franchisé',
   (SELECT jsonb_array_length(e->'lus') FROM jsonb_array_elements(public.lectures_communications()) e LIMIT 1), 1);

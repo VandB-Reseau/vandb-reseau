@@ -10,6 +10,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 ## À venir
 
 - Échanges sur PC : « Mes tâches » s'ouvre aussi quand une conversation est affichée.
+- Favoris, fiches récentes, vues enregistrées de Magasins et lecture du canal « Réseau V and B » suivent le compte :
+  rangés dans la base en plus de l'appareil, ils se retrouvent sur le PC comme sur le téléphone ; au premier
+  lancement, ce que l'appareil avait déjà est repris (`src/lib/preferences.ts`, test `preferences-compte.spec.ts`).
+  Équipe seulement ; le franchisé garde ses réglages sur l'appareil. **Base : `0021_preferences`.**
 - Magasins sur PC large (1 100 px et plus) : chaque ligne montre l'alerte, l'évolution du CA vs N-1, la case nine box,
   la dernière visite et les tâches en cours, en colonnes ; un clic sur un titre trie (Magasin, CA vs N-1, Case,
   Vu, Tâches) et remplace les puces de tri. Téléphone et PC étroit inchangés (`src/components/ListeMagasins.tsx`,

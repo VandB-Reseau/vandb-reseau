@@ -38,7 +38,7 @@ export interface CommunicationSimulee {
 // « J'aime » et commentaires des bonnes pratiques (script 0010_pratiques_reactions.sql), rangés par pratique
 export interface ReactionsPratiquesSimulees { pouces?: Record<string, { user_id: string; nom: string }[]>; commentaires?: Record<string, { id: number; auteur: string; auteur_nom: string; auteur_role: string; texte: string; cree_le: string }[]> }
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
-export interface OptionsSimulation { reactionsPratiques?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null }
+export interface OptionsSimulation { reactionsPratiques?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -355,6 +355,8 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
     const table = url.pathname.replace('/rest/v1/', '')
     if (table === 'suivi_magasins' && options.suiviEnConfig) return route.fulfill({ status: 404, json: { code: '42P01', message: 'relation "public.suivi_magasins" does not exist' } })
     if (table === 'fiches_personnes' && options.fichesEnConfig) return route.fulfill({ status: 404, json: { code: '42P01', message: 'relation "public.fiches_personnes" does not exist' } })
+    // Préférences : notées seulement quand le test s'en occupe (sinon chaque fiche ouverte en écrirait une)
+    if (table === 'preferences' && options.preferences === undefined && req.method() !== 'GET') return route.fulfill({ status: 201, json: [] })
     if (req.method() !== 'GET' && req.method() !== 'HEAD') {
       options.ecritures?.push({ methode: req.method(), table, corps: req.postDataJSON(), filtre: url.search })
       // Campagnes régionales : enregistrées telles quelles, relues au chargement suivant
@@ -396,6 +398,11 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       if (v.startsWith('in.(')) return v.slice(4, -1).split(',').map((x) => x.replace(/^"|"$/g, '')).includes(String(l[k]))
       return true
     }))
+    // Préférences du compte (migration 0021) : null = table absente
+    if (table === 'preferences') {
+      if (options.preferences === null) return route.fulfill({ status: 404, json: { code: '42P01', message: 'relation "public.preferences" does not exist' } })
+      return route.fulfill({ json: options.preferences ? [{ valeur: options.preferences }] : [] })
+    }
     if (table === 'campagnes_regions') {
       if (options.campagnesRegions === null) return route.fulfill({ status: 404, json: { code: '42P01', message: 'relation "public.campagnes_regions" does not exist' } })
       return route.fulfill({ json: structuredClone(options.campagnesRegions ?? []) })
