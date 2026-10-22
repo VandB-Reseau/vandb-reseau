@@ -32,6 +32,7 @@ import LogoutOutlined from '@mui/icons-material/LogoutOutlined'
 import MoreVert from '@mui/icons-material/MoreVert'
 import PersonOutlined from '@mui/icons-material/PersonOutlined'
 import PushPinOutlined from '@mui/icons-material/PushPinOutlined'
+import PushPin from '@mui/icons-material/PushPin'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import { DialogPratique, VuePratiques } from '../components/BonnesPratiques'
 import type { BonnePratique } from '../data/bonnesPratiques'
@@ -45,6 +46,7 @@ import { PageHeader } from '../components/PageHeader'
 import { initialesDe } from '../components/Social'
 import { useMessagerie } from '../data/MessagerieContext'
 import { actionsDuMagasin } from '../data/actions'
+import { basculerEpingle, useEpingles } from '../data/epingles'
 import { communicationsNonVues, magasinsDesEchanges, noterReseauVu, useReseauVu } from '../data/echanges'
 import { useCommunicationsDuFil } from '../data/communications'
 import {
@@ -68,7 +70,7 @@ function Pastille({ n, fort }: { n: number; fort: boolean }) {
   return <Box aria-hidden sx={{ flexShrink: 0, minWidth: 22, height: 22, px: 0.75, borderRadius: 999, bgcolor: fort ? 'error.main' : 'action.selected', color: fort ? 'error.contrastText' : 'text.primary', fontSize: '0.75rem', fontWeight: 700, display: 'grid', placeItems: 'center' }}>{n > 99 ? '99+' : n}</Box>
 }
 
-function LigneEchange({ c, mg, actif, ouvrir }: { c: Conversation; mg: Messagerie; actif: boolean; ouvrir: () => void }) {
+function LigneEchange({ c, mg, actif, ouvrir, epingle }: { c: Conversation; mg: Messagerie; actif: boolean; ouvrir: () => void; epingle?: boolean }) {
   const d = c.dernier
   const qui = d ? (d.auteur === mg.moi ? 'Moi : ' : c.genre === 'personne' ? '' : `${d.auteurNom.split(' ')[0]} : `) : ''
   const apercu = d ? `${d.equipe ? 'Équipe · ' : ''}${qui}${apercuDe(d)}` : c.detail
@@ -81,6 +83,7 @@ function LigneEchange({ c, mg, actif, ouvrir }: { c: Conversation; mg: Messageri
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
           <Typography variant="body1" sx={{ flex: 1, minWidth: 0, fontWeight: fort ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.titre}</Typography>
+          {epingle && <PushPinOutlined aria-label="Épinglée" sx={{ fontSize: 16, color: 'text.secondary', alignSelf: 'center' }} />}
           {d && <Typography variant="caption" color={c.pourMoi ? 'error.main' : 'text.secondary'} sx={{ flexShrink: 0, fontWeight: fort ? 600 : 400 }}>{heureCourte(d.creeLe)}</Typography>}
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -218,7 +221,10 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
   const q = sansAccents(recherche.trim())
   // Sans recherche : les conversations en cours (tout quand la liste est courte) ; avec recherche : tout, pour en démarrer une
   const toutes = lignes.length <= PETITE_LISTE
-  const affichees = lignes.filter((l) => (q ? sansAccents(l.recherche).includes(q) : toutes || !!l.dernier || l.genre === 'groupe') && (!nonLus || l.nonLus > 0))
+  // Conversations épinglées juste sous les canaux du réseau, puis les autres par dernier message
+  const epingles = useEpingles()
+  const affichees = lignes.filter((l) => (q ? sansAccents(l.recherche).includes(q) : toutes || !!l.dernier || l.genre === 'groupe' || epingles.includes(l.cle)) && (!nonLus || l.nonLus > 0))
+    .sort((a, b) => Number(epingles.includes(b.cle)) - Number(epingles.includes(a.cle)))
   const aLire = lignes.filter((l) => l.nonLus > 0).length
   const dernier = communications.liste[0]
   return (
@@ -242,7 +248,7 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
           {!q && !nonLus && <LigneReseau actif={actif === 'reseau'} ouvrir={() => ouvrir('/echanges/reseau')} nonVues={nonVues} dernier={dernier} />}
           {!q && nonLus && nonVues > 0 && <LigneReseau actif={actif === 'reseau'} ouvrir={() => ouvrir('/echanges/reseau')} nonVues={nonVues} dernier={dernier} />}
           {!q && !nonLus && pratiques && <LignePratiques actif={false} ouvrir={() => ouvrir('/echanges/pratiques')} derniere={reseau.pratiques.reduce<BonnePratique | undefined>((d, p) => (!d || p.date > d.date ? p : d), undefined)} />}
-          {affichees.map((l) => <LigneEchange key={l.cle} c={l} mg={mg} actif={l.cle === actif} ouvrir={() => ouvrir(l.lien)} />)}
+          {affichees.map((l) => <LigneEchange key={l.cle} c={l} mg={mg} actif={l.cle === actif} ouvrir={() => ouvrir(l.lien)} epingle={epingles.includes(l.cle)} />)}
         </List>
         {!affichees.length && (q || nonLus) && (
           <EmptyState icone={<ForumOutlined />} titre={q ? 'Aucun résultat' : 'Tout est lu'} texte={q ? 'Vérifie l’orthographe du nom.' : 'Aucun message en attente.'} />
@@ -336,6 +342,7 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   // Message laissé par l'écran précédent (groupe quitté) : l'écran change d'adresse, donc repart de zéro
   const [confirmation, setConfirmation] = useState(etat?.confirmation ?? '')
+  const epingles = useEpingles()
   const [edition, setEdition] = useState<Groupe | null>(null)
   const magasins = useMemo(() => magasinsDesEchanges(reseau, profil), [reseau, profil])
   const lignes = useMemo(() => (messagerie ? conversations(reseau, messagerie, profil, magasins) : []), [reseau, messagerie, profil, magasins])
@@ -365,9 +372,20 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
     : []
   const basculer = fil?.genre === 'magasin' && !franchise && !lectureSeule
     ? (e: boolean) => naviguer(`/echanges/magasin/${encodeURIComponent(fil.magasin)}${e ? '?fil=equipe' : ''}`, { replace: true }) : undefined
-  const actionEnTete = g && !lectureSeule ? <MenuGroupe g={g} modifier={peutModifier ? () => setEdition(g) : undefined}
+  const autresActions = g && !lectureSeule ? <MenuGroupe g={g} modifier={peutModifier ? () => setEdition(g) : undefined}
     quitter={() => { quitterGroupe(g.id).then(async () => { await recharger(); naviguer('/echanges', { replace: true, state: { confirmation: 'Tu as quitté le groupe.' } }) }, () => setConfirmation('Impossible de quitter le groupe pour le moment.')) }} />
     : fil?.genre === 'magasin' && !franchise ? <Button component={RouterLink} to={lienFiche(fil.magasin)} sx={{ minHeight: 48, display: { xs: 'none', sm: 'inline-flex' } }}>Fiche</Button> : undefined
+  const epinglee = !!conv && epingles.includes(conv.cle)
+  const actionEnTete = conv && (
+    <>
+      <Bulle titre={epinglee ? 'Retirer l’épingle' : 'Épingler en tête'}>
+        <IconButton aria-label={epinglee ? 'Retirer l’épingle' : 'Épingler la conversation'} aria-pressed={epinglee} onClick={() => basculerEpingle(conv.cle)} sx={{ width: 48, height: 48 }}>
+          {epinglee ? <PushPin /> : <PushPinOutlined />}
+        </IconButton>
+      </Bulle>
+      {autresActions}
+    </>
+  )
   const detail = conv ? (fil?.genre === 'groupe' ? `${membres.length} membres` : conv.detail) : ''
   const filAffiche = (cadre: boolean) => fil && conv && (
     <FilMessages key={conv.cle + (fil.genre === 'magasin' && fil.equipe ? '|equipe' : '')} reseau={reseau} fil={fil} contact={conv.contact} signaler={setConfirmation} lectureSeule={lectureSeule} basculer={basculer}

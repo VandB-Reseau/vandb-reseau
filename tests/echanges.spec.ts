@@ -210,3 +210,22 @@ test('quitter un groupe : il disparaît de la liste', async ({ page }) => {
   await expect(page).not.toHaveURL(/groupe\/1/)
   await expect(page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /Coachs du Nord/ })).toHaveCount(0)
 })
+
+test('épingler une conversation : elle passe en tête, sous les canaux du réseau, et y reste', async ({ page, isMobile }) => {
+  await seConnecter(page, { messagerie: { messages: [
+    msg(1, 'Annecy Test', 'Paul MULTI', 'franchise', 'La vitrine est installée.', {}, 10),
+    msg(2, 'Rennes Test', 'Paul MULTI', 'franchise', 'Stock reçu.', {}, 60),
+  ] } })
+  await page.goto('./#/echanges/magasin/Rennes%20Test')
+  const epingle = page.getByRole('button', { name: 'Épingler la conversation' })
+  await epingle.click()
+  await expect(page.getByRole('button', { name: 'Retirer l’épingle' })).toHaveAttribute('aria-pressed', 'true')
+  await page.goto(isMobile ? './#/echanges' : './#/echanges/magasin/Annecy%20Test')
+  const liste = page.getByRole('list', { name: 'Conversations' })
+  const lignes = liste.getByRole('button')
+  await expect(lignes.nth(0)).toHaveAccessibleName(/^Réseau V and B/)
+  await expect(lignes.nth(2)).toHaveAccessibleName(/^Rennes Test/)
+  await expect(lignes.nth(2).getByLabel('Épinglée')).toBeVisible()
+  await page.reload()
+  await expect(liste.getByRole('button').nth(2)).toHaveAccessibleName(/^Rennes Test/)
+})

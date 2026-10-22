@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Épingler une conversation (Joseph, 22/10/2026) : punaise dans l'en-tête de la conversation ; les épinglées passent en tête
+  de Messages, sous Réseau V and B et Bonnes pratiques, et suivent le compte du PC au téléphone (préférences, sans migration).
 - Messages et Tâches deviennent deux onglets (Joseph, 22/10/2026) : Échanges s'appelle Messages, Tâches a son onglet
   (`/taches`) avec un compteur rouge (tâches en retard et tâches confiées pas encore vues, chacune une fois ; « vu »
   suivi du PC au téléphone par les préférences du compte, sans migration). Téléphone : barre du bas Accueil, Visites,

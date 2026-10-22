@@ -53,7 +53,7 @@ compte franchisé porte sur l'un d'eux. Seul le Directeur écrit.
 
 | Table | Contenu | Clé |
 | --- | --- | --- |
-| `preferences` | `valeur` en JSON : `suivis` (favoris, fiches récentes), `vues` (vues enregistrées de Magasins), `reseauVu` (dernière ouverture du canal Réseau), `tachesVues` (tâches déjà vues, pour le compteur de l’onglet Tâches, sans migration). Reprise de l'appareil au premier lancement (0021) | `user_id` |
+| `preferences` | `valeur` en JSON : `suivis` (favoris, fiches récentes), `vues` (vues enregistrées de Magasins), `reseauVu` (dernière ouverture du canal Réseau), `tachesVues` (tâches déjà vues, pour le compteur de l’onglet Tâches), `epingles` (conversations épinglées en tête de Messages), ajoutées sans migration. Reprise de l'appareil au premier lancement (0021) | `user_id` |
 
 ### Données par magasin (Directeur : tout ; Coach et RR : leurs magasins)
 
