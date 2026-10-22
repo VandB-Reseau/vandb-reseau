@@ -10,6 +10,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 ## À venir
 
 - Échanges sur PC : « Mes tâches » s'ouvre aussi quand une conversation est affichée.
+- Magasins sur PC large (1 100 px et plus) : chaque ligne montre l'alerte, l'évolution du CA vs N-1, la case nine box,
+  la dernière visite et les tâches en cours, en colonnes ; un clic sur un titre trie (Magasin, CA vs N-1, Case,
+  Vu, Tâches) et remplace les puces de tri. Téléphone et PC étroit inchangés (`src/components/ListeMagasins.tsx`,
+  test `magasins-colonnes.spec.ts`). Pas de migration.
 - Fiche magasin, un seul fil : le Journal entre dans le Fil (notes, changements de santé, déploiements, Coachs,
   ouverture, mêlés aux visites, tâches et chiffres, du plus récent au plus ancien) ; puce « Journal » pour les voir
   seuls ; « + Note » en tête du fil ; une note ou un classement se modifie d'un toucher. Plus de doublon de la même

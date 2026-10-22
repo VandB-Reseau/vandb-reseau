@@ -16,7 +16,7 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { BarreFiltres } from '../components/BarreFiltres'
 import { BoutonAction } from '../components/Outils'
 import { Onglets } from '../components/Onglets'
-import { ListeMagasins, trisMagasins, type TriMagasins } from '../components/ListeMagasins'
+import { ListeMagasins, trisColonnes, trisMagasins, type TriMagasins } from '../components/ListeMagasins'
 import { Puces } from '../components/Social'
 import { useReseau } from '../data/ReseauContext'
 import { magasinsSuivis, useSuivis } from '../lib/suivis'
@@ -45,10 +45,12 @@ const CarteMagasins = chargementDiffere(() => import('../components/CarteMagasin
 export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'carte' }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
+  // PC large : les titres des colonnes trient la liste, les puces de tri disparaissent
+  const large = useMediaQuery('(min-width:1100px)', { noSsr: true })
   const [params, setParams] = useSearchParams()
   const filtres = filtresDepuisUrl(params)
   const vue = (params.get('vue') as 'liste' | 'carte' | null) ?? vueInitiale
-  const tri = (trisMagasins.find((t) => t.v === params.get('tri'))?.v ?? 'nom') as TriMagasins
+  const tri = (trisColonnes.find((t) => t.v === params.get('tri'))?.v ?? 'nom') as TriMagasins
   const changerFiltres = (f: Filtres) => setParams(filtresVersUrl(f, params), { replace: true })
   const [ajout, setAjout] = useState(false)
   const [emplacementBoutons, setEmplacementBoutons] = useState<HTMLElement | null>(null)
@@ -64,6 +66,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
   // Calculées une fois par réseau chargé (analyse des chiffres et rythme de visite de chaque magasin)
   const memo = useMemo(() => new WeakMap<Reseau, Map<string, Alerte[]>>(), [])
   const alertesDe = (r: Reseau) => { let a = memo.get(r); if (!a) { a = alertesDuReseau(r); memo.set(r, a) } return a }
+  const trier = (v: TriMagasins) => { const p = new URLSearchParams(params); if (v === 'nom') p.delete('tri'); else p.set('tri', v); setParams(p, { replace: true }) }
   const changerVue = (v: 'liste' | 'carte') => { const p = new URLSearchParams(params); p.set('vue', v); setParams(p, { replace: true }) }
 
   return (
@@ -110,7 +113,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
               <>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Puces label="Trier par" valeur={tri} options={trisMagasins} onChange={(v) => { const p = new URLSearchParams(params); if (v === 'nom') p.delete('tri'); else p.set('tri', v); setParams(p, { replace: true }) }} />
+                    {!large && <Puces label="Trier par" valeur={tri} options={trisMagasins} onChange={trier} />}
                   </Box>
                   <BoutonExporter lignes={resultats} fichier="Magasins" feuille="Magasins" colonnes={[
                     { entete: 'Magasin', valeur: (m: Magasin) => m.nom, largeur: 22 }, { entete: 'Code', valeur: (m: Magasin) => m.code },
@@ -123,7 +126,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
                     ...(parLevier ? [{ entete: 'Levier', valeur: (m: Magasin) => { const l = parLevier(m.nom); return l ? libellesLevier[l] : '' }, largeur: 14 }] : []),
                   ]} />
                 </Box>
-                <ListeMagasins magasins={resultats} tri={tri} suivis={enTete} />
+                <ListeMagasins magasins={resultats} tri={tri} suivis={enTete} trier={trier} />
               </>
             )}
           </>

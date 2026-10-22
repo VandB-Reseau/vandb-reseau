@@ -74,12 +74,13 @@ test('Magasins : tri au choix, intertitres par lettre sans rangée de lettres', 
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-magasins-lettres.png`, fullPage: !isMobile })
 
-  const tri = page.getByRole('group', { name: 'Trier par' })
-  await tri.getByRole('button', { name: 'Évolution du CA' }).click()
+  // PC large : les titres des colonnes trient (sprint 21, D2) ; téléphone : les puces
+  const tri = page.getByRole('group', { name: isMobile ? 'Trier par' : 'Trier par colonne' })
+  await tri.getByRole('button', { name: isMobile ? 'Évolution du CA' : 'Trier par CA vs N-1' }).click()
   await expect(page).toHaveURL(/tri=ca/)
   await expect(page.getByRole('region', { name: 'Liste des magasins' }).getByText(/^[+−-]?\d+(,\d+)? ?%$/).first()).toBeVisible()
   await expect(page.getByRole('region', { name: /^Magasins en / })).toHaveCount(0)
-  await tri.getByRole('button', { name: 'Dernière visite' }).click()
+  await tri.getByRole('button', { name: isMobile ? 'Dernière visite' : 'Trier par dernière visite' }).click()
   await expect(page).toHaveURL(/tri=visite/)
 })
 
