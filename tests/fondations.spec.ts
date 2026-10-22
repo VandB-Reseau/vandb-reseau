@@ -31,14 +31,15 @@ test('un mauvais mot de passe affiche un message clair', async ({ page }) => {
   await expect(page.getByText('Email ou mot de passe incorrect.')).toBeVisible()
 })
 
-test('après connexion, l’accueil montre les priorités dans l’ordre choisi', async ({ page }, info) => {
+test('après connexion, l’accueil montre les priorités dans l’ordre choisi', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
   await expect(aTraiter).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Cette semaine' })).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Fil de mes magasins' })).toHaveCount(0)
-  // Cinq lignes d'abord, puis tout
-  await expect(aTraiter.getByRole('link')).toHaveCount(5)
+  await expect(page.getByRole('region', { name: 'Actualités' })).toBeVisible()
+  // PC : tout est affiché ; téléphone : Cette semaine est un onglet
+  await expect(page.getByRole('region', { name: 'Cette semaine' })).toHaveCount(isMobile ? 0 : 1)
+  // Cinq lignes d'abord sur PC, deux sur téléphone, puis tout
+  await expect(aTraiter.getByRole('link')).toHaveCount(isMobile ? 2 : 5)
   await aTraiter.getByRole('button', { name: /^Voir les \d+$/ }).click()
   // Chaque ligne porte une seule pastille (la plus grave), dans l'ordre de priorité choisi
   const pastilles = (await aTraiter.getByRole('link').allInnerTexts()).map((t) => t.trim().split('\n').at(-1)!.trim())

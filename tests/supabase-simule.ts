@@ -512,3 +512,12 @@ export async function actionFiche(page: Page, nom: 'Planifier la visite' | 'Pré
   await page.getByRole('button', { name: 'Autres actions' }).click()
   await page.getByRole('menu').getByRole('menuitem', { name: nom }).click()
 }
+
+// Téléphone : « À traiter » ne montre que deux lignes ; on déplie la liste (et ses puces) avant de la vérifier
+export async function deplierATraiter(page: Page) {
+  const bloc = page.getByRole('region', { name: 'À traiter' })
+  await bloc.waitFor()
+  if (page.viewportSize()!.width >= 900) return
+  const voir = bloc.getByRole('button', { name: /^Voir les \d+$/ })
+  if (await voir.count()) await voir.click()
+}

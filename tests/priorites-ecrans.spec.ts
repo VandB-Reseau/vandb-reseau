@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture, deplierATraiter } from './supabase-simule'
 
 // « À traiter » trié par gravité, info utile à droite des magasins, photos en vignettes, compteurs de visites,
 // nine box lisible au téléphone, équipe groupée par Responsable Régional (Joseph, 21/10/2026)
@@ -16,6 +16,7 @@ test.afterEach(async ({ page }) => {
 test('« À traiter » : les urgences d’abord, des puces pour filtrer', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   const bloc = page.getByRole('region', { name: 'À traiter' })
+  await deplierATraiter(page)
   const puces = bloc.getByRole('group', { name: 'Éléments à traiter affichés' })
   await expect(puces.getByRole('button').first()).toHaveText('Tout')
   await expect(puces.getByRole('button', { name: /^Urgent · \d+$/ })).toBeVisible()

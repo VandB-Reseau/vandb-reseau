@@ -36,7 +36,7 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   await expect(page.getByText('Paramètres')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Rechercher' })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button')).toHaveText(['Tous mes magasins', 'Annecy Test', 'Rennes Test'])
-  for (const t of ['Mes chiffres', 'Repères réseau · septembre 2026', 'Mes tâches', 'Visites et audits', 'Campagnes en cours', 'Mon équipe V and B']) {
+  for (const t of ['Mes chiffres', 'Repères réseau · septembre 2026', 'Mes tâches', 'Visites et audits', 'Campagnes en cours', 'Mon équipe V and B', 'Actualités']) {
     await expect(page.getByRole('heading', { name: t, exact: true })).toBeVisible()
   }
   // Tâches : celle en retard d'abord ; rien de Lyon ni de Brest
@@ -45,10 +45,10 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   await expect(actions.first()).toContainText('Lancer une dégustation')
   await expect(actions.first()).toContainText('En retard')
   await expect(page.getByText('Refaire la vitrine')).toHaveCount(0)
-  // Plus de fil d'activité sur l'accueil (Joseph, 21/10/2026)
-  await expect(page.getByRole('heading', { name: 'Fil de mes magasins' })).toHaveCount(0)
+  // Actualités de ses magasins ; seule exception : les bonnes pratiques, communes à tout le réseau, citent leur magasin
   await expect(page.getByText(/Brest Test/)).toHaveCount(0)
-  await expect(page.getByText(/Lyon Test/)).toHaveCount(0)
+  await expect(page.getByText(/Lyon Test/)).toHaveCount(1)
+  await expect(page.getByRole('article', { name: 'Dégustation du vendredi' })).toContainText('Lyon Test')
   // Aucun libellé de pilotage interne
   await expect(page.getByText(/Décroche|À surveiller|nine box/i)).toHaveCount(0)
   await expect(page.getByText('Hugo FICTIF').first()).toBeVisible()

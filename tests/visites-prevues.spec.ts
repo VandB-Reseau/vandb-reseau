@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture, deplierATraiter } from './supabase-simule'
 import { visitesFictives } from './donnees-fictives'
 
 // L1 (Joseph, 21/10/2026) : une visite planifiée ne compte qu'une fois faite (compte rendu ou « Faite ») ;
@@ -27,6 +27,7 @@ test('visite planifiée passée sans compte rendu : pas comptée, à confirmer d
   await avecVisites(page, [{ id: 50, store: 'Nantes Test', visit_date: jour(-3), type: 'terrain', visitor: 'Inès EXEMPLE', docs: [], prevue: true }])
   await page.goto('./#/')
   await page.reload()
+  await deplierATraiter(page)
   const bloc = page.getByRole('region', { name: 'À traiter' })
   // Nantes Test reste « pas vu » : la visite prévue ne compte pas
   await expect(bloc.getByRole('button', { name: 'Visite de Nantes Test faite' })).toBeVisible()
@@ -47,6 +48,7 @@ test('reporter une visite planifiée passée : nouvelle date, toujours prévue',
   await avecVisites(page, [{ id: 50, store: 'Nantes Test', visit_date: jour(-3), type: 'terrain', visitor: 'Inès EXEMPLE', docs: [], prevue: true }])
   await page.goto('./#/')
   await page.reload()
+  await deplierATraiter(page)
   await page.getByRole('button', { name: 'Reporter la visite de Nantes Test' }).click()
   const d = page.getByRole('dialog', { name: 'Visite de Nantes Test' })
   await d.getByLabel('Date').fill(jour(2))

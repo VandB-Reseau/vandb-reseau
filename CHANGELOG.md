@@ -14,9 +14,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   comptes rendus et tâches affichés dans le fil ; « En faire une tâche » depuis un message ; groupes libres créés
   par le Directeur ou un RR ; canal « Réseau V and B » épinglé (les communications) ; messages à deux inchangés.
   Prévenus : franchisé et Coach de tout, RR et Directeur s'ils sont cités ou ont déjà écrit dans le fil.
-  Barre du bas téléphone : Accueil · Magasins · Échanges · Visites · Santé, « + » dans l'en-tête. Accueil sans fil
-  d'activité. Anciennes adresses redirigées (`src/pages/Echanges.tsx`, test `echanges.spec.ts`).
+  Barre du bas téléphone : Accueil · Magasins · Échanges · Visites · Santé, « + » dans l'en-tête.
+  Anciennes adresses redirigées (`src/pages/Echanges.tsx`, test `echanges.spec.ts`).
   **Base : `0018_echanges_groupes`.**
+- Accueil de pilotage : quatre repères en tête (CA vs N-1, magasins qui décrochent, visites de l'année face à la
+  référence nine box, santé du parc), Actualités en colonne principale, À traiter, Mes tâches et Cette semaine à
+  droite. Téléphone : repères qui glissent, un bloc court à onglets (deux lignes, puces une fois la liste dépliée),
+  puis les actualités. Le franchisé retrouve les actualités de ses magasins (test `accueil-pilotage.spec.ts`).
 - Téléphone : les onglets affichent autant de rubriques que la largeur le permet avant « Plus » (fiche magasin :
   Fil, Fiche, Tâches et Messages sur les grands téléphones). Magasins : rangée de lettres A, B, C… retirée, les
   intertitres par lettre restent.

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture, deplierATraiter } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -73,7 +73,8 @@ test('une action hors visite se coche faite pendant la visite suivante et appara
   const actions = { 'Brest Test': [{ id: 'l1', action: 'Commander la nouvelle PLV', porteur: 'Noé MODELE', echeance: '2026-10-01', creeLe: '2026-09-25' }] }
   await seConnecter(page, { ecritures, config: { actions } })
   await page.goto('./#/')
-  await expect(page.getByRole('link', { name: /^Commander la nouvelle PLV/ })).toBeVisible()
+  await deplierATraiter(page)
+  await expect(page.getByRole('region', { name: 'À traiter' }).getByRole('link', { name: /^Commander la nouvelle PLV/ })).toBeVisible()
   await page.goto('./#/magasins/Brest%20Test?vue=visites')
   await page.getByRole('button', { name: 'Saisir', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })

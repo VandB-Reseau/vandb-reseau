@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture, deplierATraiter } from './supabase-simule'
 
 // Sur téléphone, les filtres de la barre (liste, magasins) sont repliés derrière « Filtres »
 async function deplierFiltres(page: Page) {
@@ -152,8 +152,7 @@ test('une tâche en retard de l’accueil mène aux actions du magasin', async (
   await seConnecter(page, { config: { actions } })
   // La tâche en retard apparaît dans « À traiter » de l'accueil et mène aux tâches du magasin
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
-  const voirTout = aTraiter.getByRole('button', { name: /^Voir les \d+$/ })
-  if (await voirTout.count()) await voirTout.click()
+  await deplierATraiter(page)
   const ligne = aTraiter.getByRole('link', { name: /^Commander la nouvelle PLV/ })
   await expect(ligne).toContainText('Brest Test')
   await expect(ligne).toContainText('En retard')

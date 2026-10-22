@@ -27,7 +27,8 @@ import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, MiniCourbe, Pastil
 import { ProfilPersonne, rond } from '../components/Portefeuille'
 import { FilActivite } from './Accueil'
 import { filDu, type ElementFil } from '../data/fil'
-import type { Communication } from '../data/communications'
+import { useCommunicationsDuFil, type Communication } from '../data/communications'
+import { useReactionsPratiques } from '../data/reactionsPratiques'
 import { brand } from '../theme/theme'
 import Snackbar from '@mui/material/Snackbar'
 import { SectionMessages, useNonLusMagasin } from '../components/Messages'
@@ -318,6 +319,9 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
   const [choix, setChoix] = useState('')
   const tous = reseau.magasins
   const magasins = choix ? tous.filter((m) => m.nom === choix) : tous
+  const communications = useCommunicationsDuFil()
+  const reactionsPratiques = useReactionsPratiques()
+  const fil = useFilFranchise(reseau, magasins.map((m) => m.nom), 120, communications.liste, true)
   if (!tous.length) return <><PageHeader titre="Accueil" /><EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." /></>
   return (
     <>
@@ -327,6 +331,7 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           <SectionChiffresDuMois reseau={reseau} magasins={magasins} />
           <SectionReperes reseau={reseau} magasins={magasins} />
+          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} />
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           <SectionTaches reseau={reseau} magasins={magasins} />
