@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Téléphone : les onglets affichent autant de rubriques que la largeur le permet avant « Plus » (fiche magasin :
+  Fil, Fiche, Tâches et Messages sur les grands téléphones). Magasins : rangée de lettres A, B, C… retirée, les
+  intertitres par lettre restent.
 - Agenda interactif : cliquer dans une case (ou sur « + » du jour) propose Visite, Absence ou Événement à cette date
   (visite à venir = planifiée, visite passée = compte rendu) ; sur PC, glisser un événement, une absence ou une visite
   prévue change sa date, tirer le bord droit d'un événement ou d'une absence change sa fin ; sur téléphone, « + » sur
