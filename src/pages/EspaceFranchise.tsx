@@ -16,7 +16,6 @@ import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
-import DynamicFeedOutlined from '@mui/icons-material/DynamicFeedOutlined'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
@@ -377,10 +376,9 @@ export function MagasinsFranchise() {
   )
 }
 
-// ── Fiche magasin du franchisé : lecture seule ──
-type VueFiche = 'fil' | 'fiche' | 'messages' | 'chiffres' | 'visites' | 'campagnes'
+// ── Fiche magasin du franchisé : lecture seule ; plus de fil, redondant avec les onglets (Joseph, 22/10/2026) ──
+type VueFiche = 'fiche' | 'messages' | 'chiffres' | 'visites' | 'campagnes'
 const rubriques: Rubrique<VueFiche>[] = [
-  { vue: 'fil', libelle: 'Fil', icone: <DynamicFeedOutlined /> },
   { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
   { vue: 'messages', libelle: 'Messages', icone: <ForumOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
@@ -508,17 +506,6 @@ function ProfilFranchise({ reseau, m, message, retour }: { reseau: Reseau; m: Ma
   )
 }
 
-function FilMagasin({ reseau, m }: { reseau: Reseau; m: Magasin }) {
-  const elements = useFilFranchise(reseau, [m.nom], 730)
-  const photos = elements.flatMap((e) => e.photos ?? [])
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 760 }}>
-      {photos.length > 0 && <Box component="section" aria-label="Photos"><TitreSection nombre={photos.length}>Photos</TitreSection><GrillePhotos photos={photos} max={6} /></Box>}
-      <FilActivite elements={elements} jour={reseau.jour} sansMagasin titre="Fil du magasin" />
-    </Box>
-  )
-}
-
 // Ouvrir l'onglet Visites lit les nouveaux comptes rendus (pas pendant l'aperçu du Directeur de réseau)
 function LireVisites({ magasin }: { magasin: string }) {
   const { apercu } = useApercu()
@@ -534,8 +521,8 @@ export function FicheMagasinFranchise() {
   const { apercu } = useApercu()
   const [confirmation, setConfirmation] = useState('')
   const [params, setParams] = useSearchParams()
-  const vue = (rubriques.find((r) => r.vue === params.get('vue'))?.vue ?? 'fil') as VueFiche
-  const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'fil') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
+  const vue = (rubriques.find((r) => r.vue === params.get('vue'))?.vue ?? 'fiche') as VueFiche
+  const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const nonLus = useNonLusMagasin(nom)
   const onglets = rubriques.map((r) => (r.vue === 'messages' ? { ...r, pastille: apercu ? 0 : nonLus } : r))
   return (
@@ -549,7 +536,6 @@ export function FicheMagasinFranchise() {
             <ProfilFranchise retour={reseau.magasins.length > 1 ? { libelle: 'Mes magasins', aller: () => naviguer('/magasins') } : undefined} reseau={reseau} m={m} message={() => changerVue('messages')} />
             <Onglets valeur={vue} onChange={changerVue} rubriques={onglets} libelle={`Rubriques de ${m.nom}`} fiche />
             <ContenuOnglet>
-              {vue === 'fil' && <FilMagasin reseau={reseau} m={m} />}
               {vue === 'fiche' && <OngletFiche reseau={reseau} m={m} />}
               {vue === 'messages' && <SectionMessages reseau={reseau} m={m} signaler={setConfirmation} lectureSeule={!!apercu} />}
               {vue === 'chiffres' && <OngletChiffres reseau={reseau} m={m} />}
