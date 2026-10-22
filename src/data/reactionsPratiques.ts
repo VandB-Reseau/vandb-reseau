@@ -58,3 +58,25 @@ export function messageReaction(e: unknown): string {
   if (/vide/.test(m)) return 'Le commentaire est vide.'
   return 'L’envoi n’a pas abouti. Vérifie ta connexion et réessaie.'
 }
+
+// « Vu par » des bonnes pratiques (script supabase/migrations/0023_lectures_pratiques.sql), comme les communications
+export interface LecturePratique { lus: string[]; nonLus: string[] }
+// Directeur et Responsable Régional : qui a vu chaque pratique ; null tant que la base ne le sait pas
+export function useLecturesPratiques(actif: boolean): Map<string, LecturePratique> | null {
+  const [etat, setEtat] = useState<Map<string, LecturePratique> | null>(null)
+  useEffect(() => {
+    if (!actif) return
+    let vivant = true
+    void supabase.rpc('lectures_pratiques').then(({ data, error }) => {
+      if (!vivant || error || !Array.isArray(data)) return
+      setEtat(new Map(lignes(data).map((l) => [t(l.id), { lus: Array.isArray(l.lus) ? l.lus.map(String) : [], nonLus: Array.isArray(l.non_lus) ? l.non_lus.map(String) : [] }] as const)))
+    })
+    return () => { vivant = false }
+  }, [actif])
+  return etat
+}
+// Franchisé : les pratiques affichées sont notées vues (sans message si la base ne connaît pas encore la fonction)
+export async function noterPratiquesLues(ids: string[]) {
+  if (!ids.length) return
+  await supabase.rpc('lire_pratiques', { p_ids: ids })
+}

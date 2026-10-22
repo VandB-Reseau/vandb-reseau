@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- « Vu par » des bonnes pratiques (Joseph, 22/10/2026) : comme pour les communications, le Directeur et les Responsables
+  Régionaux voient sous chaque bonne pratique combien de franchisés l'ont vue, et lesquels pas encore. Un franchisé qui affiche
+  les bonnes pratiques les a vues. **Migration à passer : `0023_lectures_pratiques.sql`.**
 - Photo d'en-tête facultative sur les bonnes pratiques (Joseph, 22/10/2026) : affichée en grand au-dessus du titre, comme
   pour une communication, et rangée avec les photos de la pratique (champ `entete` dans `bonnes_pratiques`, les franchisés la
   voient avec les mêmes règles que les autres photos). Sans migration.
