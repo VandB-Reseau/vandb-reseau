@@ -27,12 +27,15 @@ import { DialogMotDePasse } from '../components/DialogMotDePasse'
 import { Logo } from '../components/Logo'
 import { RechercheGlobale } from '../components/RechercheGlobale'
 import Badge from '@mui/material/Badge'
+import Tooltip from '@mui/material/Tooltip'
 import { useTotalEchanges } from '../data/echanges'
 import { BoutonCreer } from '../components/Creer'
 import { useInstallation } from '../lib/installation'
 import { brandStripe } from '../theme/theme'
 import { barreTelephone, magasins, parametres, principales, secondaires, type Destination } from '../navigation/destinations'
 import { useCompteurTaches } from '../data/tachesVues'
+import { useNouveautesInfos } from '../data/infosVues'
+import NewspaperOutlined from '@mui/icons-material/NewspaperOutlined'
 import { useAuth } from '../auth/AuthContext'
 import { roleLibelle } from '../auth/roles'
 import NotificationsActiveOutlined from '@mui/icons-material/NotificationsActiveOutlined'
@@ -166,6 +169,21 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
   )
 }
 
+// Infos réseau, à droite du « + » : communications et bonnes pratiques, avec le nombre de nouveautés pas encore vues
+function BoutonInfos() {
+  const naviguer = useNavigate()
+  const { pathname } = useLocation()
+  const n = useNouveautesInfos()
+  const libelle = n ? `Infos réseau : ${n} nouveauté${n > 1 ? 's' : ''}` : 'Infos réseau'
+  return (
+    <Tooltip title="Infos réseau">
+      <IconButton aria-label={libelle} aria-current={pathname === '/infos' ? 'page' : undefined} onClick={() => naviguer('/infos')} sx={{ width: 48, height: 48, flexShrink: 0, color: '#ffffff' }}>
+        <Badge color="error" badgeContent={n} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><NewspaperOutlined /></Badge>
+      </IconButton>
+    </Tooltip>
+  )
+}
+
 const HAUTEUR_BARRE = 64
 
 function BarreBasse({ franchise, sansCompteur }: { franchise?: Destination[]; sansCompteur?: boolean }) {
@@ -242,6 +260,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
             {!franchise && <RechercheGlobale surFonce court={!surPC} />}
           </Box>
           {!franchise && !surPC && <BoutonCreer entete />}
+          {!franchise && <BoutonInfos />}
           <MenuCompte liens={surPC || franchise ? [] : [{ destinations: [magasins, ...secondaires] }, ...(sansParametres ? [] : [{ titre: 'Paramètres', destinations: parametres }])]} />
         </Toolbar>
         <Box aria-hidden sx={{ height: 4, background: brandStripe }} />

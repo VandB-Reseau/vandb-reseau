@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Onglet Infos réseau (Joseph, 22/10/2026) : toutes les communications et toutes les bonnes pratiques réunies, côte à côte sur PC,
+  en deux onglets sur téléphone, avec une recherche et des filtres communs (magasin, thème, période). Icône dans l'en-tête,
+  à droite du « + », avec le nombre de communications et bonnes pratiques pas encore vues (préférences du compte, sans
+  migration) ; équipe seulement (test `infos-reseau.spec.ts`).
 - Épingler une conversation (Joseph, 22/10/2026) : punaise dans l'en-tête de la conversation ; les épinglées passent en tête
   de Messages, sous Réseau V and B et Bonnes pratiques, et suivent le compte du PC au téléphone (préférences, sans migration).
 - Messages et Tâches deviennent deux onglets (Joseph, 22/10/2026) : Échanges s'appelle Messages, Tâches a son onglet

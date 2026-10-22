@@ -15,7 +15,7 @@ import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import { Fenetre } from './EditionEquipe'
 import { ChampDicte } from './SaisieCompteRendu'
 import { ChampPhotos } from './GrilleAudit'
-import { GrillePhotos, Initiales } from './Social'
+import { GrillePhotos, Initiales, TitreSection } from './Social'
 import Favorite from '@mui/icons-material/Favorite'
 import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined'
 import Snackbar from '@mui/material/Snackbar'
@@ -149,7 +149,8 @@ export function CartePratique({ p, modifier, sansMagasin, ouvrables, moi, reacti
   )
 }
 
-export function VuePratiques({ reseau, actions, modifier }: { reseau: Reseau; actions?: ReactNode; modifier?: (p: BonnePratique) => void }) {
+// filtre et integre : colonne de l'onglet Infos réseau, qui porte la recherche et les filtres communs
+export function VuePratiques({ reseau, actions, modifier, filtre, integre = false }: { reseau: Reseau; actions?: ReactNode; modifier?: (p: BonnePratique) => void; filtre?: (p: BonnePratique) => boolean; integre?: boolean }) {
   const { profil } = useAuth()
   const { apercu, equipe } = useApercu()
   const reactions = useReactionsPratiques()
@@ -160,22 +161,22 @@ export function VuePratiques({ reseau, actions, modifier }: { reseau: Reseau; ac
   const [themes, setThemes] = useState<string[]>([])
   const presents = [...new Set(reseau.pratiques.map((p) => p.theme).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'))
   const liste = useMemo(() => reseau.pratiques.filter((p) => (!themes.length || themes.includes(p.theme))
-    && (!recherche || `${p.titre} ${p.magasin} ${p.texte}`.toLowerCase().includes(recherche.toLowerCase()))), [reseau, themes, recherche])
+    && (!recherche || `${p.titre} ${p.magasin} ${p.texte}`.toLowerCase().includes(recherche.toLowerCase())) && (!filtre || filtre(p))), [reseau, themes, recherche, filtre])
   const reprises = reseau.pratiques.filter((p) => p.reprises.length > 0).length
   // Les pratiques de tout le réseau ; un Coach ou un RR ne modifie que celles de ses magasins
   const ouvrables = useMemo(() => new Set(reseau.magasins.map((m) => m.nom)), [reseau])
   return (
     <>
-      <RechercheFiltres actifs={themes.length ? 1 : 0} actions={actions}
+      {integre ? <TitreSection nombre={liste.length} action={actions}>Bonnes pratiques</TitreSection> : <RechercheFiltres actifs={themes.length ? 1 : 0} actions={actions}
         recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une pratique ou un magasin" />}>
         <FiltreMenu libelle="Thème" choisis={themes} onChange={setThemes} options={presents.map((t) => ({ valeur: t, libelle: t }))} />
         {(themes.length > 0 || recherche) && <Button onClick={() => { setThemes([]); setRecherche('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
-      </RechercheFiltres>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+      </RechercheFiltres>}
+      {!integre && <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
         {liste.length} bonne{liste.length > 1 ? 's' : ''} pratique{liste.length > 1 ? 's' : ''}{reseau.pratiques.length ? ` · ${reprises} reprise${reprises > 1 ? 's' : ''} ailleurs` : ''}
-      </Typography>
+      </Typography>}
       {liste.length === 0
-        ? <EmptyState icone={<TipsAndUpdatesOutlined />} titre="Aucune bonne pratique" texte={reseau.pratiques.length ? 'Aucune bonne pratique ne correspond à ces filtres.' : 'Les initiatives réussies des magasins apparaîtront ici.'} />
+        ? <EmptyState icone={<TipsAndUpdatesOutlined />} titre="Aucune bonne pratique" texte={reseau.pratiques.length ? 'Aucune bonne pratique ne correspond à ces critères.' : 'Les initiatives réussies des magasins apparaîtront ici.'} />
         : <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 640, mx: 'auto' }}>{liste.map((p) => <CartePratique key={p.id} p={p} ouvrables={ouvrables} moi={moi} modifier={modifier && ouvrables.has(p.magasin) ? () => modifier(p) : undefined}
             reactions={reactions} lectureSeule={!!apercu || !!equipe} signaler={setMessage} />)}</Box>}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
