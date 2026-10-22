@@ -25,6 +25,7 @@ import { actionsDes, echeanceDate, enRetard, monNomPorteur, portePar, porteursDe
 import { magasinsDu, perimetreDuProfil } from '../data/perimetre'
 import { libelleResponsable, type Reseau } from '../data/modele'
 import { ErreurAction } from '../data/espaceFranchise'
+import { useMarquerTachesVues } from '../data/tachesVues'
 
 const FAITES_VISIBLES = 10
 
@@ -161,8 +162,8 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, autreListe, ajou
   )
 }
 
-// entete : en-tête fourni par l'onglet Échanges, avec le titre d'une autre liste que la sienne (null : la sienne)
-export function PageTaches({ entete }: { entete?: (titre: string | null) => ReactNode } = {}) {
+// Onglet Tâches (séparé des Messages, Joseph 22/10/2026) ; ouvrir sa propre liste remet le compteur de l'onglet à jour
+export function PageTaches() {
   const { profil } = useAuth()
   const { reseau } = useReseau()
   const [params, setParams] = useSearchParams()
@@ -175,12 +176,13 @@ export function PageTaches({ entete }: { entete?: (titre: string | null) => Reac
   const demande = choixPossible ? params.get('de') : null
   const porteur = (demande && (!impose || demande === FRANCHISES) ? demande : '') || moi
   const changer = (nom: string) => setParams((x) => { const n = new URLSearchParams(x); if (nom === moi) n.delete('de'); else n.set('de', nom); return n }, { replace: true })
+  useMarquerTachesVues(!!moi && porteur === moi)
   const noms = reseau ? (impose ? magasinsDu(reseau, impose) : reseau.magasins).map((m) => m.nom).sort((a, b) => a.localeCompare(b, 'fr')) : []
   return (
     <>
       {(() => {
         const autre = !porteur || porteur === moi ? null : porteur === FRANCHISES ? 'Tâches des franchisés' : `Tâches de ${porteur}`
-        return entete ? entete(autre) : <PageHeader titre={autre ?? 'Mes tâches'} />
+        return <PageHeader titre={autre ?? 'Tâches'} />
       })()}
       <AvecReseau>{(r) => (
         <Liste reseau={r} noms={noms} porteur={porteur} signaler={setMessage} autreListe={porteur !== moi}

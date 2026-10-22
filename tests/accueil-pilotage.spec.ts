@@ -34,7 +34,7 @@ test('PC : actualités à gauche, À traiter, Mes tâches et Cette semaine à dr
   await expect(actualites).toBeVisible()
   await expect(colonne.getByRole('region', { name: 'À traiter' })).toBeVisible()
   await expect(colonne.getByRole('region', { name: 'Mes tâches' })).toBeVisible()
-  await expect(colonne.getByRole('link', { name: 'Toutes' })).toHaveAttribute('href', '#/echanges?vue=taches')
+  await expect(colonne.getByRole('link', { name: 'Toutes' })).toHaveAttribute('href', '#/taches')
   const a = (await actualites.boundingBox())!
   const c = (await colonne.boundingBox())!
   expect(a.x + a.width).toBeLessThanOrEqual(c.x)

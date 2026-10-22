@@ -17,6 +17,8 @@ import TipsAndUpdates from '@mui/icons-material/TipsAndUpdates'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import Forum from '@mui/icons-material/Forum'
 import MonitorHeart from '@mui/icons-material/MonitorHeart'
+import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
+import TaskAlt from '@mui/icons-material/TaskAlt'
 
 export interface Destination {
   chemin: string
@@ -28,15 +30,21 @@ export interface Destination {
   sprint: string
 }
 
-// Destinations principales : barre du bas sur téléphone (le bouton Créer est dans l'en-tête), haut du menu latéral sur PC.
-// Échanges regroupe messages, groupes, tâches et communications (Joseph, 21/10/2026) ; le reste est derrière la photo du compte.
+const messages: Destination = { chemin: '/echanges', libelle: 'Messages', description: 'Groupes des magasins, échanges à deux et communications', icone: <ForumOutlined />, iconeActive: <Forum />, sprint: 'Échanges' }
+const taches: Destination = { chemin: '/taches', libelle: 'Tâches', description: 'Mes tâches à faire et faites', icone: <TaskAltOutlined />, iconeActive: <TaskAlt />, sprint: 'Échanges' }
+export const magasins: Destination = { chemin: '/magasins', libelle: 'Magasins', description: 'Tous les magasins, leur fiche complète et la carte', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 1' }
+
+// Destinations principales : haut du menu latéral sur PC ; barre du bas sur téléphone sans Magasins, qui passe derrière
+// la photo du compte et reste dans la recherche (Joseph, 22/10/2026 : Messages et Tâches séparés).
 export const principales: Destination[] = [
   { chemin: '/', libelle: 'Accueil', description: 'Ce qui demande ton attention aujourd’hui', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 4' },
-  { chemin: '/magasins', libelle: 'Magasins', description: 'Tous les magasins, leur fiche complète et la carte', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 1' },
-  { chemin: '/echanges', libelle: 'Échanges', description: 'Groupes des magasins, messages, tâches et communications', icone: <ForumOutlined />, iconeActive: <Forum />, sprint: 'Échanges' },
+  magasins,
   { chemin: '/visites', libelle: 'Visites', description: 'Visites terrain, audits et couverture du semestre', icone: <EventNoteOutlined />, iconeActive: <EventNote />, sprint: 'Sprint 3' },
+  messages,
+  taches,
   { chemin: '/plus/sante', libelle: 'Santé du parc', court: 'Santé', description: 'Nine box des magasins et suivi des déploiements', icone: <MonitorHeartOutlined />, iconeActive: <MonitorHeart />, sprint: 'Sprint 4' },
 ]
+export const barreTelephone = principales.filter((d) => d !== magasins)
 
 // Suite de la partie classique : sous les principales dans le menu PC, dans « Plus » sur téléphone
 export const secondaires: Destination[] = [
@@ -55,7 +63,8 @@ export const parametres: Destination[] = [
 export const espaceFranchise: Destination[] = [
   { chemin: '/', libelle: 'Accueil', description: 'Mes chiffres, mes tâches, mes visites', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 11' },
   { chemin: '/magasins', libelle: 'Mes magasins', description: 'Fiche, chiffres, visites et campagnes', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 11' },
-  { chemin: '/echanges', libelle: 'Échanges', description: 'Mes magasins, mon équipe et les communications du réseau', icone: <ForumOutlined />, iconeActive: <Forum />, sprint: 'Échanges' },
+  { ...messages, description: 'Mes magasins, mon équipe et les communications du réseau' },
+  taches,
   { chemin: '/bonnes-pratiques', libelle: 'Bonnes pratiques', court: 'Pratiques', description: 'Initiatives réussies du réseau', icone: <TipsAndUpdatesOutlined />, iconeActive: <TipsAndUpdates />, sprint: 'Sprint 11' },
 ]
 

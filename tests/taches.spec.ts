@@ -25,11 +25,10 @@ const derniere = (ecritures: Ecriture[]): Record<string, Libre[]> | undefined =>
 }
 const aujourdhui = () => new Date().toISOString().slice(0, 10)
 
-// Tâches : volet « Mes tâches » de l'onglet Échanges (Joseph, 21/10/2026)
+// Tâches : onglet à part, séparé des Messages (Joseph, 22/10/2026)
 async function ouvrirTaches(page: Page) {
-  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^Échanges/ }).click()
-  await page.getByRole('tablist', { name: 'Échanges' }).getByRole('tab', { name: /^Mes tâches/ }).click()
-  await expect(page).toHaveURL(/#\/echanges\?vue=taches$/)
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^Tâches/ }).click()
+  await expect(page).toHaveURL(/#\/taches$/)
 }
 
 const DIRECTEUR = 'Dominique DIRECTION'
@@ -42,13 +41,11 @@ test('le Directeur ne voit que les tâches qui lui sont attribuées, les coche e
   ] }
   await seConnecter(page, { ecritures, persister: true, config: { actions } })
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  // Tâches et messages sont réunis dans Échanges
-  await expect(nav.getByRole('button', { name: /Tâches|Actions|Messages/ })).toHaveCount(0)
-  if (isMobile) await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Magasins', /^Échanges/, 'Visites', /^Santé/])
+  // Messages et Tâches sont deux onglets ; la tâche en retard est comptée sur le picto
+  if (isMobile) await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Visites', /Messages$/, /Tâches$/, /^Santé/])
+  await expect(nav.getByRole('button', { name: 'Tâches : 1 en retard ou nouvelle' })).toBeVisible()
   await ouvrirTaches(page)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Échanges')
-  // Le volet compte ses tâches à faire
-  await expect(page.getByRole('tab', { name: 'Mes tâches · 1' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches')
 
   const aFaire = page.getByRole('list', { name: 'Tâches à faire' })
   await expect(aFaire.getByRole('listitem')).toHaveCount(1)
@@ -112,7 +109,7 @@ test('un Coach ne voit que les tâches qui lui sont attribuées', async ({ page 
   }
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Noé MODELE' }, config: { actions } })
   await ouvrirTaches(page)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Échanges')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches')
   // Sa liste ou celle de ses franchisés, jamais celle d'un autre Coach
   await deplierFiltres(page)
   await page.getByLabel('Liste de').click()
@@ -197,7 +194,7 @@ test('le franchisé coche et ajoute ses actions, la base pose son nom', async ({
   const ecritures: Ecriture[] = []
   await seConnecter(page, { acces: PAUL, espace: espace(), ecritures })
   await ouvrirTaches(page)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Échanges')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches')
   await deplierFiltres(page)
   await expect(page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button')).toHaveText(['Tous', 'Annecy Test', 'Rennes Test'])
   const aFaire = page.getByRole('list', { name: 'Tâches à faire' })

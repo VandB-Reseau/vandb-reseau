@@ -20,7 +20,7 @@ const PAUL = { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Te
 
 const barreBasse = (page: Page) => page.getByRole('navigation', { name: 'Navigation principale' })
 
-test('onglet Échanges : groupe du magasin à deux fils, réponse du Coach', async ({ page }, info) => {
+test('onglet Messages : groupe du magasin à deux fils, réponse du Coach', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   const options: OptionsSimulation = { appMetadata: HUGO, ecritures, messagerie: { messages: [
     msg(1, 'Annecy Test', 'Paul MULTI', 'franchise', 'La vitrine est installée.', {}, 60),
@@ -28,7 +28,7 @@ test('onglet Échanges : groupe du magasin à deux fils, réponse du Coach', asy
   ] } }
   await seConnecter(page, options)
   await page.goto('./#/echanges')
-  await expect(page.getByRole('heading', { name: 'Échanges', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Messages', level: 1 })).toBeVisible()
   const liste = page.getByRole('list', { name: 'Conversations' })
   await expect(liste.getByRole('button', { name: 'Réseau V and B' })).toBeVisible()
   // Téléphone : la liste d'abord ; PC : la conversation la plus récente s'ouvre à côté
@@ -114,7 +114,7 @@ test('téléphone : barre du bas à cinq onglets, « + » dans l’en-tête', as
   await seConnecter(page, { messagerie: {} })
   await page.goto('./#/')
   const barre = barreBasse(page)
-  await expect(barre.getByRole('button')).toHaveText(['Accueil', 'Magasins', /Échanges/, 'Visites', /^Santé/])
+  await expect(barre.getByRole('button')).toHaveText(['Accueil', 'Visites', /Messages$/, /Tâches$/, /^Santé/])
   for (const l of await barre.getByRole('button').all()) expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   const plus = page.getByRole('banner').getByRole('button', { name: 'Créer' })
   expect((await plus.boundingBox())!.height).toBeGreaterThanOrEqual(48)
@@ -142,14 +142,17 @@ test('franchisé : le groupe de son magasin sans « Équipe seule », ni groupe 
   await expect(fil).not.toContainText('Entre nous.')
 })
 
-test('anciennes adresses redirigées vers les Échanges', async ({ page }) => {
+test('anciennes adresses redirigées vers Messages et Tâches', async ({ page }) => {
   await seConnecter(page, { messagerie: {} })
   await page.goto('./#/messages')
   await expect(page).toHaveURL(/#\/echanges/)
   await page.goto('./#/communications')
   await expect(page).toHaveURL(/#\/echanges\/reseau/)
-  await page.goto('./#/taches')
-  await expect(page).toHaveURL(/#\/echanges\?vue=taches/)
+  await page.goto('./#/actions')
+  await expect(page).toHaveURL(/#\/taches$/)
+  await page.goto('./#/echanges?vue=taches')
+  await expect(page).toHaveURL(/#\/taches$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches')
 })
 
 test('téléphone : dans une conversation longue, le nom reste en haut et la saisie tout en bas', async ({ page, isMobile }, info) => {
@@ -180,17 +183,30 @@ test('téléphone : dans une conversation longue, le nom reste en haut et la sai
   await page.screenshot({ path: `captures/${info.project.name}-echanges-conversation-longue.png` })
 })
 
-test('« Mes tâches » s’ouvre depuis une conversation, puis « Discussions » y ramène', async ({ page }) => {
+test('Messages et Tâches sont deux onglets : on passe de l’un à l’autre depuis une conversation', async ({ page, isMobile }) => {
   await seConnecter(page, { appMetadata: HUGO, messagerie: { messages: [msg(1, 'Annecy Test', 'Paul MULTI', 'franchise', 'La vitrine est installée.')] } })
   await page.goto('./#/echanges/magasin/Annecy%20Test')
   await expect(page.getByRole('list', { name: /^Messages de / })).toContainText('La vitrine est installée.')
-  const onglets = page.getByRole('tablist', { name: 'Échanges' })
-  // Téléphone : le choix est dans la liste des échanges, hors conversation
-  if (await onglets.count() === 0) await page.goto('./#/echanges')
-  await onglets.getByRole('tab', { name: /^Mes tâches/ }).click()
-  await expect(page).toHaveURL(/#\/echanges\?vue=taches$/)
-  await expect(onglets.getByRole('tab', { name: /^Mes tâches/ })).toHaveAttribute('aria-selected', 'true')
+  // Téléphone : la conversation est en plein écran, sans barre du bas ; on revient à la liste
+  if (isMobile) await page.getByRole('button', { name: 'Messages' }).first().click()
+  const nav = page.getByRole('navigation', { name: 'Navigation principale' })
+  await nav.getByRole('button', { name: /^Tâches/ }).click()
+  await expect(page).toHaveURL(/#\/taches$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches')
   await expect(page.getByRole('list', { name: /^Messages de / })).toHaveCount(0)
-  await onglets.getByRole('tab', { name: /^Discussions/ }).click()
+  await nav.getByRole('button', { name: /^Messages/ }).click()
   await expect(page.getByRole('list', { name: 'Conversations' })).toBeVisible()
+})
+
+test('quitter un groupe : il disparaît de la liste', async ({ page }) => {
+  await seConnecter(page, { appMetadata: HUGO, messagerie: {
+    messages: [{ ...msg(1, '', 'Dominique DIRECTION', 'directeur', 'Bienvenue au groupe'), store: null, destinataire: 'groupe:1', groupe: 1 }],
+    groupes: [{ id: 1, nom: 'Coachs du Nord', membres: ['directeur', 'coach:Hugo FICTIF'], cree_par: 'directeur' }],
+  } })
+  await page.goto('./#/echanges/groupe/1')
+  await page.getByRole('button', { name: 'Autres actions sur Coachs du Nord' }).click()
+  await page.getByRole('menuitem', { name: 'Quitter le groupe' }).click()
+  await expect(page.getByText('Tu as quitté le groupe.')).toBeVisible()
+  await expect(page).not.toHaveURL(/groupe\/1/)
+  await expect(page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /Coachs du Nord/ })).toHaveCount(0)
 })

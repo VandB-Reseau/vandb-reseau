@@ -47,7 +47,7 @@ test('un franchisé lit les communications de ses magasins, met un pouce et comm
   const ecritures: Ecriture[] = []
   await seConnecter(page, { acces: PAUL, ecritures, communications: communications() })
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await nav.getByRole('button', { name: /^Échanges/ }).click()
+  await nav.getByRole('button', { name: /^Messages/ }).click()
   await page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /^Réseau V and B/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Réseau V and B' })).toBeVisible()
   // Celle du Sud ne concerne pas ses magasins

@@ -7,7 +7,7 @@ import ListItemText from '@mui/material/ListItemText'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import { PageHeader } from '../components/PageHeader'
 import Typography from '@mui/material/Typography'
-import { parametres, secondaires, type Destination } from '../navigation/destinations'
+import { magasins, parametres, secondaires, type Destination } from '../navigation/destinations'
 import { useAuth } from '../auth/AuthContext'
 import { perimetreDuProfil } from '../data/perimetre'
 import { useReseau } from '../data/ReseauContext'
@@ -40,7 +40,7 @@ export function Plus() {
   return (
     <>
       <PageHeader titre="Plus" />
-      {groupe(null, secondaires)}
+      {groupe(null, [magasins, ...secondaires])}
       {!sansParametres && groupe('Paramètres', parametres)}
     </>
   )

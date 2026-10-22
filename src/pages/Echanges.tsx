@@ -1,12 +1,11 @@
-// Onglet Échanges (Joseph, 21/10/2026) : Discussions (canal Réseau, groupes des magasins, groupes libres, échanges à deux)
-// et Mes tâches. Téléphone : la liste, puis la conversation en plein écran ; PC : la liste à gauche, la conversation à droite.
+// Onglet Messages (Joseph, 21/10/2026, séparé des Tâches le 22/10) : canal Réseau, groupes des magasins, groupes libres,
+// échanges à deux. Téléphone : la liste, puis la conversation en plein écran ; PC : la liste à gauche, la conversation à droite.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Link as RouterLink, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Autocomplete from '@mui/material/Autocomplete'
 import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
@@ -45,7 +44,7 @@ import { BoutonAction, BoutonOutil, Bulle, ChampRecherche } from '../components/
 import { PageHeader } from '../components/PageHeader'
 import { initialesDe } from '../components/Social'
 import { useMessagerie } from '../data/MessagerieContext'
-import { actionsDuMagasin, actionsDes, monNomPorteur, portePar } from '../data/actions'
+import { actionsDuMagasin } from '../data/actions'
 import { communicationsNonVues, magasinsDesEchanges, noterReseauVu, useReseauVu } from '../data/echanges'
 import { useCommunicationsDuFil } from '../data/communications'
 import {
@@ -55,7 +54,6 @@ import {
 import type { Reseau } from '../data/modele'
 import { dateCourte, lienFiche } from '../lib/format'
 import { PageCommunications } from './Communications'
-import { PageTaches } from './Taches'
 
 const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr')
 
@@ -257,7 +255,7 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
 function EnTete({ titre, detail, retour, niveau, avatar, action }: { titre: string; detail: string; retour?: () => void; niveau: 'h1' | 'h2'; avatar?: ReactNode; action?: ReactNode }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 64 }}>
-      {retour && <Bulle titre="Échanges"><IconButton onClick={retour} aria-label="Échanges" sx={{ width: 48, height: 48, ml: -1 }}><ArrowBack /></IconButton></Bulle>}
+      {retour && <Bulle titre="Messages"><IconButton onClick={retour} aria-label="Messages" sx={{ width: 48, height: 48, ml: -1 }}><ArrowBack /></IconButton></Bulle>}
       {avatar}
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography variant="h3" component={niveau} sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{titre}</Typography>
@@ -327,52 +325,36 @@ function filDeAdresse(genre: string | undefined, valeur: string | undefined, equ
   return null
 }
 
-function Segment({ vue, changer, nTaches, nDiscussions }: { vue: 'discussions' | 'taches'; changer: (v: 'discussions' | 'taches') => void; nTaches: number; nDiscussions: number }) {
-  const options = [{ v: 'discussions' as const, libelle: nDiscussions ? `Discussions · ${nDiscussions}` : 'Discussions' }, { v: 'taches' as const, libelle: nTaches ? `Mes tâches · ${nTaches}` : 'Mes tâches' }]
-  return (
-    <Box role="tablist" aria-label="Échanges" sx={{ display: 'flex', p: 0.25, borderRadius: 999, bgcolor: 'action.hover', mb: 2, maxWidth: 480 }}>
-      {options.map((o) => (
-        <ButtonBase key={o.v} role="tab" aria-selected={vue === o.v} onClick={() => changer(o.v)}
-          sx={{ fontFamily: 'inherit', flex: 1, minHeight: 48, borderRadius: 999, fontWeight: 600, fontSize: '0.9375rem', color: vue === o.v ? 'text.primary' : 'text.secondary', ...(vue === o.v ? { bgcolor: 'background.paper', boxShadow: 1 } : {}) }}>
-          {o.libelle}
-        </ButtonBase>
-      ))}
-    </Box>
-  )
-}
-
 function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boolean }) {
   const { genre, valeur } = useParams()
   const [params] = useSearchParams()
   const naviguer = useNavigate()
+  const etat = useLocation().state as { confirmation?: string } | null
   const { profil } = useAuth()
-  const { messagerie: brute, charge } = useMessagerie()
+  const { messagerie: brute, charge, recharger } = useMessagerie()
   const messagerie = useMemo(() => (brute && lectureSeule ? sansPrives(brute) : brute), [brute, lectureSeule])
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
-  const [confirmation, setConfirmation] = useState('')
+  // Message laissé par l'écran précédent (groupe quitté) : l'écran change d'adresse, donc repart de zéro
+  const [confirmation, setConfirmation] = useState(etat?.confirmation ?? '')
   const [edition, setEdition] = useState<Groupe | null>(null)
   const magasins = useMemo(() => magasinsDesEchanges(reseau, profil), [reseau, profil])
   const lignes = useMemo(() => (messagerie ? conversations(reseau, messagerie, profil, magasins) : []), [reseau, messagerie, profil, magasins])
   const franchise = profil?.role === 'franchise' || !!reseau.espace
   const fil = filDeAdresse(genre, valeur, !franchise && params.get('fil') === 'equipe')
   const conv = fil ? lignes.find((l) => l.cle === (fil.genre === 'magasin' ? `magasin:${fil.magasin}` : fil.genre === 'groupe' ? `groupe:${fil.id}` : `personne:${fil.cle}`)) : undefined
-  const vue = params.get('vue') === 'taches' ? 'taches' : 'discussions'
-  const moi = monNomPorteur(reseau, profil)
-  const nTaches = moi ? actionsDes(reseau, null).filter((x) => !x.a.faite && portePar(x.a, moi)).length : 0
-  const nDiscussions = lignes.reduce((t, l) => t + l.pourMoi, 0)
   const ouvrir = (lien: string) => naviguer(lien, { replace: surPC && !!fil })
   const retour = () => (window.history.length > 1 ? naviguer(-1) : naviguer('/echanges'))
   const message = <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
-  // Sur PC une conversation est toujours ouverte : « Mes tâches » repart de /echanges, sinon la conversation reste affichée
-  const segment = <Segment vue={vue} nTaches={nTaches} nDiscussions={nDiscussions}
-    changer={(v) => naviguer(v === 'taches' ? '/echanges?vue=taches' : '/echanges', { replace: true })} />
-
-  if (!fil && vue === 'taches') return <PageTaches entete={(titre) => <><PageHeader titre={titre ?? 'Échanges'} />{segment}</>} />
-  if (!charge) return <><PageHeader titre="Échanges" /><Typography variant="body2" color="text.secondary">Chargement des échanges…</Typography></>
-  if (!messagerie) return <><PageHeader titre="Échanges" />{segment}<EmptyState icone={<ForumOutlined />} titre="Messagerie pas encore activée" texte="Les échanges apparaîtront ici dès son activation dans la base." /></>
+  // Anciens liens vers les tâches de l'onglet Échanges : onglet Tâches
+  if (!fil && params.get('vue') === 'taches') {
+    const n = new URLSearchParams(params); n.delete('vue')
+    return <Navigate to={`/taches${n.size ? `?${n}` : ''}`} replace />
+  }
+  if (!charge) return <><PageHeader titre="Messages" /><Typography variant="body2" color="text.secondary">Chargement des messages…</Typography></>
+  if (!messagerie) return <><PageHeader titre="Messages" /><EmptyState icone={<ForumOutlined />} titre="Messagerie pas encore activée" texte="Les messages apparaîtront ici dès son activation dans la base." /></>
   if (fil && !conv) {
-    return <EmptyState icone={<ForumOutlined />} titre="Conversation introuvable" texte="Elle ne fait pas partie de tes échanges."
-      action={<Button variant="contained" onClick={() => naviguer('/echanges')} sx={{ minHeight: 48 }}>Voir les échanges</Button>} />
+    return <EmptyState icone={<ForumOutlined />} titre="Conversation introuvable" texte="Elle ne fait pas partie de tes messages."
+      action={<Button variant="contained" onClick={() => naviguer('/echanges')} sx={{ minHeight: 48 }}>Voir les messages</Button>} />
   }
 
   const g = conv?.groupe
@@ -384,7 +366,7 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
   const basculer = fil?.genre === 'magasin' && !franchise && !lectureSeule
     ? (e: boolean) => naviguer(`/echanges/magasin/${encodeURIComponent(fil.magasin)}${e ? '?fil=equipe' : ''}`, { replace: true }) : undefined
   const actionEnTete = g && !lectureSeule ? <MenuGroupe g={g} modifier={peutModifier ? () => setEdition(g) : undefined}
-    quitter={() => { quitterGroupe(g.id).then(async () => { naviguer('/echanges'); setConfirmation('Tu as quitté le groupe.') }, () => setConfirmation('Impossible de quitter le groupe pour le moment.')) }} />
+    quitter={() => { quitterGroupe(g.id).then(async () => { await recharger(); naviguer('/echanges', { replace: true, state: { confirmation: 'Tu as quitté le groupe.' } }) }, () => setConfirmation('Impossible de quitter le groupe pour le moment.')) }} />
     : fil?.genre === 'magasin' && !franchise ? <Button component={RouterLink} to={lienFiche(fil.magasin)} sx={{ minHeight: 48, display: { xs: 'none', sm: 'inline-flex' } }}>Fiche</Button> : undefined
   const detail = conv ? (fil?.genre === 'groupe' ? `${membres.length} membres` : conv.detail) : ''
   const filAffiche = (cadre: boolean) => fil && conv && (
@@ -396,7 +378,7 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
   const dialogue = edition && <DialogGroupe reseau={reseau} magasins={magasins} groupe={edition} onFermer={(msg) => { setEdition(null); if (msg) setConfirmation(msg); if (msg === 'Groupe supprimé.') naviguer('/echanges') }} />
 
   if (!surPC) {
-    if (!fil || !conv) return <><PageHeader titre="Échanges" />{segment}{liste}{message}</>
+    if (!fil || !conv) return <><PageHeader titre="Messages" />{liste}{message}</>
     // Conversation en plein écran, calée sur la partie visible (clavier compris) : l'en-tête reste en haut,
     // la saisie tout en bas, seuls les messages défilent (Joseph, 22/10/2026)
     return (
@@ -416,12 +398,11 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
 
   // PC : la liste à gauche, la conversation au milieu, membres et tâches à droite sur grand écran ; sans choix, la plus récente
   const recente = lignes.find((l) => l.dernier)
-  if (!fil && recente) return <Navigate to={recente.lien} replace />
+  if (!fil && recente) return <Navigate to={recente.lien} replace state={etat} />
   return (
     <>
-      <PageHeader titre="Échanges" />
-      {segment}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { md: '340px minmax(0, 1fr)', lg: fil && membres.length ? '340px minmax(0, 1fr) 260px' : '340px minmax(0, 1fr)' }, gap: 2, height: 'calc(100dvh - 72px - 64px - 84px - 64px)', minHeight: 480 }}>
+      <PageHeader titre="Messages" />
+      <Box sx={{ display: 'grid', gridTemplateColumns: { md: '340px minmax(0, 1fr)', lg: fil && membres.length ? '340px minmax(0, 1fr) 260px' : '340px minmax(0, 1fr)' }, gap: 2, height: 'calc(100dvh - 72px - 64px - 84px)', minHeight: 480 }}>
         <Card sx={{ minHeight: 0 }}>{liste}</Card>
         <Card sx={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {fil && conv
@@ -485,7 +466,7 @@ export function CanalReseau({ lectureSeule = false }: { lectureSeule?: boolean }
   return (
     <PageCommunications lectureSeule={lectureSeule} entete={
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-        <Bulle titre="Échanges"><IconButton onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/echanges'))} aria-label="Échanges" sx={{ width: 48, height: 48, ml: -1 }}><ArrowBack /></IconButton></Bulle>
+        <Bulle titre="Messages"><IconButton onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/echanges'))} aria-label="Messages" sx={{ width: 48, height: 48, ml: -1 }}><ArrowBack /></IconButton></Bulle>
         <Avatar variant="rounded" sx={{ width: 40, height: 40, borderRadius: 3, bgcolor: '#ef7d00', color: '#1b1b1f' }}><CampaignOutlined /></Avatar>
         <Typography variant="h1" sx={{ flex: 1, fontSize: { xs: '1.375rem', md: '1.75rem' } }}>Réseau V and B</Typography>
       </Box>
@@ -503,7 +484,7 @@ export function CanalPratiques() {
       {(reseau) => (
         <>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-            <Bulle titre="Échanges"><IconButton onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/echanges'))} aria-label="Échanges" sx={{ width: 48, height: 48, ml: -1 }}><ArrowBack /></IconButton></Bulle>
+            <Bulle titre="Messages"><IconButton onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/echanges'))} aria-label="Messages" sx={{ width: 48, height: 48, ml: -1 }}><ArrowBack /></IconButton></Bulle>
             <Avatar variant="rounded" sx={{ width: 40, height: 40, borderRadius: 3, bgcolor: '#8bc34a', color: '#1b1b1f' }}><TipsAndUpdatesOutlined /></Avatar>
             <Typography variant="h1" sx={{ flex: 1, fontSize: { xs: '1.375rem', md: '1.75rem' } }}>Bonnes pratiques</Typography>
           </Box>

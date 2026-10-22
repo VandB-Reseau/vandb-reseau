@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Messages et Tâches deviennent deux onglets (Joseph, 22/10/2026) : Échanges s'appelle Messages, Tâches a son onglet
+  (`/taches`) avec un compteur rouge (tâches en retard et tâches confiées pas encore vues, chacune une fois ; « vu »
+  suivi du PC au téléphone par les préférences du compte, sans migration). Téléphone : barre du bas Accueil, Visites,
+  Messages, Tâches, Santé ; Magasins passe dans le menu du compte et reste dans la recherche. Franchisé : Messages et
+  Tâches séparés aussi (test `onglet-taches.spec.ts`).
+- Quitter un groupe : le groupe disparaît aussitôt de la liste (la messagerie est rechargée), avec le message de confirmation.
 - Fil d'actualité de l'accueil : seulement les comptes rendus de visite, les bonnes pratiques et les communications
   (plus de messages, tâches ni chiffres ; la fiche magasin garde tout). J'aime et commentaires sur chaque compte
   rendu, pour l'équipe et le franchisé, chacun sur ses magasins. Échanges : les comptes rendus quittent les groupes

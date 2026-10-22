@@ -5,6 +5,7 @@ import { Visites } from './pages/Visites'
 import { Agenda } from './pages/Agenda'
 import { SanteParc } from './pages/SanteParc'
 import { CanalPratiques, CanalReseau, Echanges } from './pages/Echanges'
+import { PageTaches } from './pages/Taches'
 import { HashRouter, Navigate, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -73,7 +74,7 @@ function SilhouetteEcran() {
   )
 }
 
-// Anciennes adresses (Messages, Tâches, Communications, Notifications) : vers l'onglet Échanges
+// Anciennes adresses (Messages, Tâches, Communications, Notifications) : vers les onglets Messages et Tâches
 function Vers({ cible }: { cible: (p: Record<string, string | undefined>, recherche: URLSearchParams) => string }) {
   const p = useParams()
   const [recherche] = useSearchParams()
@@ -86,8 +87,7 @@ const avec = (chemin: string, r: URLSearchParams, ajout: Record<string, string> 
   return q ? `${chemin}?${q}` : chemin
 }
 const anciensLiens = [
-  <Route key="t" path="/taches" element={<Vers cible={(_p, r) => avec('/echanges', r, { vue: 'taches' })} />} />,
-  <Route key="a" path="/actions" element={<Vers cible={(_p, r) => avec('/echanges', r, { vue: 'taches' })} />} />,
+  <Route key="a" path="/actions" element={<Vers cible={(_p, r) => avec('/taches', r)} />} />,
   <Route key="c" path="/communications" element={<Vers cible={(_p, r) => avec('/echanges/reseau', r)} />} />,
   <Route key="m" path="/messages" element={<Navigate to="/echanges" replace />} />,
   <Route key="mp" path="/messages/personne/:cle" element={<Vers cible={(p) => `/echanges/personne/${encodeURIComponent(p.cle ?? '')}`} />} />,
@@ -126,6 +126,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/parametres/franchises" element={<Navigate to="/equipe?vue=franchises" replace />} />
         <Route path="/visites" element={<Visites />} />
         <Route path="/echanges" element={<Echanges />} />
+        <Route path="/taches" element={<PageTaches />} />
         <Route path="/echanges/reseau" element={<CanalReseau />} />
         <Route path="/echanges/pratiques" element={<CanalPratiques />} />
         <Route path="/echanges/:genre/:valeur" element={<Echanges />} />
@@ -159,6 +160,7 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
         <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
         <Route path="/bonnes-pratiques" element={<PratiquesFranchise />} />
         <Route path="/echanges" element={<Echanges lectureSeule={apercu} />} />
+        <Route path="/taches" element={<PageTaches />} />
         <Route path="/echanges/reseau" element={<CanalReseau lectureSeule={apercu} />} />
         <Route path="/echanges/:genre/:valeur" element={<Echanges lectureSeule={apercu} />} />
         {anciensLiens}

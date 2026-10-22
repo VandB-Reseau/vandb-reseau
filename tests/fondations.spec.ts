@@ -1,12 +1,14 @@
 import { expect, test } from '@playwright/test'
 import { COMPTE, seConnecter, simulerSupabase, textesTropPetits } from './supabase-simule'
 
-// Barre du bas sur téléphone : libellé court ; menu latéral sur PC : libellé long
+// Barre du bas sur téléphone : libellé court ; menu latéral sur PC : libellé long. Magasins n'est pas dans la barre du bas
+// (Joseph, 22/10/2026 : Accueil, Visites, Messages, Tâches, Santé)
 const principales = [
   { nom: 'Accueil', court: 'Accueil' },
-  { nom: 'Magasins', court: 'Magasins' },
-  { nom: 'Échanges', court: 'Échanges' },
+  { nom: 'Magasins', court: '' },
   { nom: 'Visites', court: 'Visites' },
+  { nom: 'Messages', court: 'Messages' },
+  { nom: 'Tâches', court: 'Tâches' },
   { nom: 'Santé du parc', court: 'Santé' },
 ]
 // Hors de la barre du bas : dans le menu du compte sur téléphone
@@ -65,12 +67,13 @@ test('chaque destination est accessible depuis la navigation', async ({ page, is
   // Téléphone : « + » dans l'en-tête ; PC : en tête du menu latéral
   await expect(page.getByRole('button', { name: 'Créer', exact: true })).toBeVisible()
   for (const { nom, court } of principales) {
-    // Échanges peut porter son nombre de nouveautés (« Échanges : 2 nouveautés »)
+    if (isMobile && !court) continue
+    // Messages et Tâches peuvent porter leur compteur (« Messages : 2 nouveautés »)
     await nav.getByRole('button', { name: new RegExp(`^${isMobile ? court : nom}( :.*)?$`) }).click()
     await expect(page.getByRole('heading', { level: 1, name: nom, exact: true })).toBeAttached()
     if (nom !== 'Accueil') await expect(page.getByRole('heading', { level: 1, name: nom, exact: true })).toBeVisible()
   }
-  for (const nom of secondaires) {
+  for (const nom of isMobile ? ['Magasins', ...secondaires] : secondaires) {
     if (isMobile) {
       await expect(nav.getByRole('button', { name: nom, exact: true })).toHaveCount(0)
       await page.getByRole('button', { name: 'Mon compte' }).click()
@@ -105,7 +108,8 @@ test('zones tactiles d’au moins 48 px sur téléphone', async ({ page, isMobil
   await seConnecter(page)
   const boutons = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')
   await expect(boutons).toHaveCount(5)
-  await expect(boutons.nth(2)).toHaveAccessibleName(/^Échanges/)
+  await expect(boutons.nth(2)).toHaveAccessibleName(/^Messages/)
+  await expect(boutons.nth(3)).toHaveAccessibleName(/^Tâches/)
   const creer = (await page.getByRole('banner').getByRole('button', { name: 'Créer' }).boundingBox())!
   expect(creer.height).toBeGreaterThanOrEqual(48)
   for (const b of await boutons.all()) {
@@ -155,7 +159,7 @@ test('Équipe ouvre le groupe Paramètres', async ({ page, isMobile }) => {
     // Juste sous le titre « Paramètres » ; la partie classique (au-dessus) ne le contient pas
     const titre = menu.locator('li', { hasText: /^Paramètres$/ }).first()
     await expect(titre.locator('xpath=following-sibling::*[1]')).toHaveText('Équipe')
-    await expect(menu.getByRole('menuitem').first()).toHaveText('Agenda')
+    await expect(menu.getByRole('menuitem').first()).toHaveText('Magasins')
   } else {
     const groupe = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('list').filter({ hasText: 'Paramètres' }).last()
     await expect(groupe.getByRole('button').first()).toHaveText('Équipe')
