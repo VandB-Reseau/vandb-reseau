@@ -18,9 +18,9 @@ export const brand = {
 // Filet sous l'en-tête : deux aplats jaune-or et vert canard, sans dégradé (la charte travaille en aplats)
 export const brandStripe = `linear-gradient(90deg, ${brand.or} 0 62%, ${brand.vert} 62% 100%)`
 
-// Polices de la charte : Lato partout, Coline pour les titres dès que son fichier web (sous licence) sera embarqué
+// Polices : Lato (charte) pour le texte ; Alegreya, police libre proche de Coline (titres de la charte, sans fichier web), pour les titres
 const fontFamily = '"Lato", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
-const titres = `"Coline", ${fontFamily}`
+const titres = `"Alegreya", Georgia, serif`
 
 const base = createTheme()
 
@@ -79,12 +79,12 @@ export const theme = createTheme({
     fontFamily,
     // Aucune taille sous 12 px dans l'app
     // Titres de page compacts sur téléphone, pour laisser la place au contenu
-    h1: { fontFamily: titres, fontSize: '2rem', fontWeight: 900, letterSpacing: '0.01em', textTransform: 'uppercase', [telephone]: { fontSize: '1.375rem' } },
+    h1: { fontFamily: titres, fontSize: '2rem', fontWeight: 800, letterSpacing: '0.01em', textTransform: 'uppercase', [telephone]: { fontSize: '1.375rem' } },
     h2: { fontFamily: titres, fontSize: '1.5rem', fontWeight: 700 },
     h3: { fontFamily: titres, fontSize: '1.25rem', fontWeight: 700 },
-    h4: { fontFamily: titres, fontSize: '1.125rem', fontWeight: 700 },
-    h5: { fontFamily: titres, fontSize: '1rem', fontWeight: 700 },
-    h6: { fontFamily: titres, fontSize: '1rem', fontWeight: 700 },
+    h4: { fontSize: '1.125rem', fontWeight: 700 },
+    h5: { fontSize: '1rem', fontWeight: 700 },
+    h6: { fontSize: '1rem', fontWeight: 700 },
     subtitle1: { fontSize: '1rem', fontWeight: 500 },
     subtitle2: { fontSize: '0.875rem', fontWeight: 600 },
     body1: { fontSize: '1rem' },

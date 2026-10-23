@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import { CircleMarker, MapContainer, Marker, Pane, Polygon, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { MapContainer, Marker, Pane, Polygon, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { divIcon } from 'leaflet'
 import { createPortal } from 'react-dom'
 import 'leaflet/dist/leaflet.css'
@@ -59,6 +59,23 @@ function htmlPicto(type: TypePicto, couleur: string, taille: number) {
   return `<div style="box-sizing:border-box;width:${taille}px;height:${taille}px;border-radius:${rr ? '7px' : '50%'};background:${couleurSure(couleur)};border:${rr ? 3 : 2.5}px solid ${bord};box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center">`
     + `<svg viewBox="0 0 24 24" width="${Math.round(taille * 0.62)}" height="${Math.round(taille * 0.62)}" aria-hidden="true"><path fill="#ffffff" stroke="#1d1d1b" stroke-width="0.6" d="${rr ? TRACE_RR : TRACE_COACH}"/></svg></div>`
 }
+// Magasin : bulle vide inspirée du logo V and B (cartouche penché, pointe en bas à gauche posée sur le magasin),
+// à la couleur de son Coach ou de son RR ; cerclée de noir quand un plan d'affectation la modifie
+function htmlBulle(couleur: string, modifie: boolean, avenir: boolean, l: number) {
+  const h = Math.round(l * 0.8)
+  return `<svg viewBox="0 0 25 20" width="${l}" height="${h}" aria-hidden="true" style="display:block;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4));opacity:${avenir ? 0.55 : 1}">`
+    + `<path d="M1 1.5 L24 0 L23 13.5 L8.5 14.5 L1.5 19.5 L4 14 L2 13.8 Z" fill="${couleurSure(couleur)}" stroke="${modifie ? '#1d1d1b' : '#ffffff'}" stroke-width="${modifie ? 2.5 : 1.5}" stroke-linejoin="round"${avenir ? ' stroke-dasharray="2.5 2"' : ''}/></svg>`
+}
+const bulles = new Map<string, ReturnType<typeof divIcon>>()
+const iconeBulle = (couleur: string, modifie: boolean, avenir: boolean, petit: boolean) => {
+  const cle = `${couleur}${modifie}${avenir}${petit}`
+  if (!bulles.has(cle)) {
+    const l = modifie ? 28 : petit ? 20 : 23
+    bulles.set(cle, divIcon({ html: htmlBulle(couleur, modifie, avenir, l), className: 'picto-magasin', iconSize: [l, Math.round(l * 0.8)], iconAnchor: [Math.round(l * 0.06), Math.round(l * 0.78)], popupAnchor: [Math.round(l * 0.45), -Math.round(l * 0.7)] }))
+  }
+  return bulles.get(cle)!
+}
+
 const icones = new Map<string, ReturnType<typeof divIcon>>()
 const iconePicto = (type: TypePicto, couleur: string) => {
   const cle = `${type}${couleur}`
@@ -244,11 +261,11 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
             const avant = vue.modifies?.get(m.nom)
             const coach = vue.coachDe(m)
             return (
-              <CircleMarker
+              <Marker
                 key={m.nom}
-                center={[m.lat, m.lon]}
-                radius={avant !== undefined ? 9 : statut === 'avenir' || statut === 'preouverture' ? 6 : 7}
-                pathOptions={{ color: avant !== undefined ? '#1d1d1b' : '#ffffff', weight: avant !== undefined ? 3 : 1.5, fillColor: couleurPoint(m), fillOpacity: statut === 'avenir' ? 0.45 : 0.95, dashArray: statut === 'avenir' ? '3' : undefined }}
+                position={[m.lat, m.lon]}
+                icon={iconeBulle(couleurPoint(m), avant !== undefined, statut === 'avenir', statut === 'avenir' || statut === 'preouverture')}
+                title={m.nom} alt={m.nom}
               >
                 <Popup>
                   <Typography variant="subtitle2" component="div">{m.nom}</Typography>
@@ -257,7 +274,7 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
                   {avant !== undefined && <Typography variant="body2" component="div">Proposé dans le plan, avant : {avant || 'aucun Coach'}</Typography>}
                   {(!ouvrables || ouvrables.has(m.nom)) && <Link component={RouterLink} to={lienFiche(m.nom)} variant="body2">Ouvrir la fiche</Link>}
                 </Popup>
-              </CircleMarker>
+              </Marker>
             )
           })}
           {voirPersonnes && personnesPlacees.map((p) => (

@@ -5,6 +5,10 @@ import { distanceKm } from './charge'
 // Couleurs de la charte V and B
 const COULEURS_AUTO = ['#307672', '#ea6029', '#f8bb09', '#312e2e', '#c24119', '#3a8f8d', '#1d1d1b', '#f7d802', '#ede0c4']
 
+// Une couleur enregistrée hors charte (ancienne app, anciens réglages) est remplacée à l'affichage par une couleur de la charte
+const CHARTE = new Set([...COULEURS_AUTO, '#feedd8', '#000000'])
+export const estCouleurCharte = (c: string | undefined): c is string => !!c && CHARTE.has(c.toLowerCase())
+
 export function couleurAuto(nom: string): string {
   if (!nom) return '#6b6b73'
   let h = 0

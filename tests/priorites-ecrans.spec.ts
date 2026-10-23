@@ -39,7 +39,7 @@ test('Magasins : la dernière visite à droite, le rouge réservé au décrochag
   await expect(liste.getByText(vu).first()).toBeVisible()
   await expect(liste.getByText('Visite', { exact: true })).toHaveCount(0)
   const fond = (t: string) => liste.getByText(t, { exact: true }).first().evaluate((e) => getComputedStyle(e).backgroundColor)
-  expect(await fond('Décroche')).toBe('rgb(198, 40, 40)')
+  expect(await fond('Décroche')).toBe('rgb(194, 65, 25)')
   expect(await liste.getByText(vu).first().evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgba(0, 0, 0, 0)')
   await page.screenshot({ path: `captures/${info.project.name}-magasins-derniere-visite.png` })
 })
