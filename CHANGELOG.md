@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin sans onglet Messages (sprint 22, S2) : le picto message de l'en-tête ouvre le groupe du magasin dans
+  Messages ; six onglets, Visites passe dans ceux visibles sur téléphone. Les anciens liens `?vue=messages` mènent au
+  groupe. La fiche du franchisé garde son onglet Messages. Sans migration.
 - S'inspirer d'un magasin qui réussit (sprint 22, A1) : dans Chiffres et santé de la fiche magasin, sous les leviers,
   les 3 magasins les plus forts sur le levier en retrait sur les 3 derniers mois (panier : valeur moyenne ; flux :
   évolution vs N-1), de la même région d'abord, sinon de tous les magasins visibles du compte ; leur franchisé, leurs
