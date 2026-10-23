@@ -221,16 +221,19 @@ function PhotosPleinEcran({ photos, depart, onFermer }: { photos: Photo[]; depar
 
 // Photos toujours en vignettes carrées, même seules (Joseph, 21/10/2026) ; au-delà de max, la dernière annonce le reste.
 // Le toucher ouvre la photo en plein écran.
-export function GrillePhotos({ photos, max = 3, colonnes = 3 }: { photos: Photo[] | undefined; max?: number; colonnes?: number }) {
+// avant : vignette posée dans la première case (compte rendu d'une visite), qui prend la place d'une photo
+export function GrillePhotos({ photos, max = 3, colonnes = 3, avant }: { photos: Photo[] | undefined; max?: number; colonnes?: number; avant?: ReactNode }) {
   const [ouverte, setOuverte] = useState<number | null>(null)
-  if (!photos?.length) return null
-  const vues = photos.slice(0, max)
+  if (!photos?.length && !avant) return null
+  photos ??= []
+  const vues = photos.slice(0, avant ? max - 1 : max)
   return (
     <>
       <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${colonnes}, minmax(0, 1fr))`, gap: 0.5, maxWidth: 480 }}>
+        {avant}
         {vues.map((p, i) => <Vignette key={p.chemin} chemin={p.chemin} numero={i + 1} reste={i === vues.length - 1 ? photos.length - vues.length : 0} onOuvrir={() => setOuverte(i)} />)}
       </Box>
-      {ouverte !== null && <PhotosPleinEcran photos={photos} depart={ouverte} onFermer={() => setOuverte(null)} />}
+      {ouverte !== null && photos.length > 0 && <PhotosPleinEcran photos={photos} depart={ouverte} onFermer={() => setOuverte(null)} />}
     </>
   )
 }

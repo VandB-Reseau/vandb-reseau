@@ -56,7 +56,7 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-franchise-dashboard.png`, fullPage: true })
   // Un seul magasin choisi : chiffres détaillés et repères
-  await page.getByRole('button', { name: 'Annecy Test' }).click()
+  await page.getByRole('button', { name: 'Annecy Test', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Mes chiffres · septembre 2026' })).toBeVisible()
   const panier = page.getByRole('group', { name: 'Panier moyen HT cave' })
   await expect(panier).toContainText('Médiane du réseau 38,00 €')
