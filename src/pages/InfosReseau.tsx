@@ -1,5 +1,7 @@
 // Onglet Infos réseau (Joseph, 22/10/2026) : toutes les communications et toutes les bonnes pratiques réunies,
 // avec une recherche et des filtres communs. PC : deux colonnes côte à côte ; téléphone : deux onglets.
+// Même onglet pour le franchisé (Joseph, 23/10/2026), en lecture : il aime, commente et propose ses bonnes pratiques ;
+// ses sondages restent sur son accueil.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -23,7 +25,8 @@ import type { Reseau } from '../data/modele'
 import { noterReseauVu } from '../data/echanges'
 import { noterPratiquesVues } from '../data/infosVues'
 import { SectionSondages, SondagesARepondre } from '../components/Questions'
-import { PropositionsARelire } from '../components/Propositions'
+import { MesPropositions, PropositionsARelire } from '../components/Propositions'
+import { useApercu } from '../auth/Apercu'
 import { useAuth } from '../auth/AuthContext'
 import QuizOutlined from '@mui/icons-material/QuizOutlined'
 
@@ -44,6 +47,8 @@ function Contenu({ reseau }: { reseau: Reseau }) {
   // Sondages (sprint 22, A3, puis 23/10/2026) : toute l'équipe y répond, le Directeur et les RR en posent
   const { profil } = useAuth()
   const poseSondages = profil?.role === 'directeur' || profil?.role === 'rr'
+  const { apercu } = useApercu()
+  const franchise = profil?.role === 'franchise' || !!reseau.espace
   const sondages = <>
     <SondagesARepondre equipe titre="Sondages à remplir" />
     {poseSondages && <SectionSondages reseau={reseau} />}
@@ -55,8 +60,8 @@ function Contenu({ reseau }: { reseau: Reseau }) {
   const [pratique, setPratique] = useState<BonnePratique | null | undefined>(undefined)
   const [message, setMessage] = useState('')
   // Ouvrir l'onglet vaut lecture : le nombre de l'en-tête retombe à zéro
-  useEffect(() => { noterReseauVu() }, [])
-  useEffect(() => { noterPratiquesVues(reseau.pratiques.map((p) => p.id)) }, [reseau])
+  useEffect(() => { if (!apercu) noterReseauVu() }, [apercu])
+  useEffect(() => { if (!apercu) noterPratiquesVues(reseau.pratiques.map((p) => p.id)) }, [reseau, apercu])
   const q = sansAccents(recherche.trim())
   const debut = depuis(periode)
   const actifs = (magasins.length ? 1 : 0) + (themes.length ? 1 : 0) + (periode !== 'tout' ? 1 : 0)
@@ -68,12 +73,17 @@ function Contenu({ reseau }: { reseau: Reseau }) {
     && (!magasins.length || magasins.includes(p.magasin) || p.reprises.some((m) => magasins.includes(m)))
     && (!themes.length || themes.includes(p.theme))
     && (!debut || p.date >= debut), [q, magasins, themes, debut])
-  const optionsMagasins = useMemo(() => reseau.magasins.map((m) => m.nom).sort((a, b) => a.localeCompare(b, 'fr')).map((n) => ({ valeur: n, libelle: n })), [reseau])
+  // Franchisé : ses magasins et ceux des bonnes pratiques du réseau
+  const optionsMagasins = useMemo(() => [...new Set([...reseau.magasins.map((m) => m.nom), ...(franchise ? reseau.pratiques.map((p) => p.magasin) : [])])]
+    .sort((a, b) => a.localeCompare(b, 'fr')).map((n) => ({ valeur: n, libelle: n })), [reseau, franchise])
   const optionsThemes = useMemo(() => [...new Set(reseau.pratiques.map((p) => p.theme).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr')).map((t) => ({ valeur: t, libelle: t })), [reseau])
   const effacer = () => { setRecherche(''); setMagasins([]); setThemes([]); setPeriode('tout') }
 
-  const communications = <PageCommunications integre filtre={filtreCommunication} />
-  const pratiques = <>
+  const communications = <PageCommunications integre filtre={filtreCommunication} lectureSeule={!!apercu} />
+  const pratiques = franchise ? <>
+    {!apercu && <MesPropositions reseau={reseau} />}
+    <VuePratiques integre reseau={reseau} filtre={filtrePratique} />
+  </> : <>
     <PropositionsARelire reseau={reseau} signaler={setMessage} />
     <VuePratiques integre reseau={reseau} filtre={filtrePratique} modifier={setPratique}
       actions={<BoutonAction libelle="Ajouter une bonne pratique" onClick={() => setPratique(null)} />} />
@@ -84,7 +94,7 @@ function Contenu({ reseau }: { reseau: Reseau }) {
       {!surPC && <Onglets valeur={vue} onChange={setVue} libelle="Infos réseau" rubriques={[
         { vue: 'communications', libelle: 'Communications', icone: <CampaignOutlined /> },
         { vue: 'pratiques', libelle: 'Bonnes pratiques', icone: <TipsAndUpdatesOutlined /> },
-        { vue: 'questions', libelle: 'Sondages', icone: <QuizOutlined /> },
+        ...(franchise ? [] : [{ vue: 'questions' as const, libelle: 'Sondages', icone: <QuizOutlined /> }]),
       ]} />}
       <RechercheFiltres actifs={actifs} recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Titre, texte, magasin, auteur" libelle="Rechercher une communication ou une pratique" />}>
         <FiltreMenu libelle="Magasin" choisis={magasins} onChange={setMagasins} options={optionsMagasins} />
@@ -92,14 +102,14 @@ function Contenu({ reseau }: { reseau: Reseau }) {
         <FiltreMenu libelle="Période" unique choisis={[periode]} onChange={(v) => setPeriode((v[0] as Periode) ?? 'tout')} options={periodes} />
         {(actifs > 0 || recherche) && <Button onClick={effacer} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
       </RechercheFiltres>
-      {surPC && <Box sx={{ mb: 3 }}>{sondages}</Box>}
+      {surPC && !franchise && <Box sx={{ mb: 3 }}>{sondages}</Box>}
       {surPC ? (
         <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 3, alignItems: 'start' }}>
           <Box component="section" aria-label="Communications" sx={{ minWidth: 0 }}>{communications}</Box>
           <Box component="section" aria-label="Bonnes pratiques" sx={{ minWidth: 0 }}>{pratiques}</Box>
         </Box>
       ) : (
-        vue === 'questions' ? sondages
+        vue === 'questions' && !franchise ? sondages
           : <Box component="section" aria-label={vue === 'communications' ? 'Communications' : 'Bonnes pratiques'}>{vue === 'communications' ? communications : pratiques}</Box>
       )}
       {pratique !== undefined && <DialogPratique reseau={reseau} pratique={pratique} onFermer={(m) => { setPratique(undefined); if (m) setMessage(m) }} />}

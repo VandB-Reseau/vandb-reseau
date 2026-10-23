@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
@@ -15,7 +16,7 @@ import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
-import ForumOutlined from '@mui/icons-material/ForumOutlined'
+import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
@@ -31,19 +32,18 @@ import { useReactionsPratiques } from '../data/reactionsPratiques'
 import { useReactionsVisites } from '../data/reactionsVisites'
 import { brand } from '../theme/theme'
 import Snackbar from '@mui/material/Snackbar'
-import { SectionMessages, useNonLusMagasin } from '../components/Messages'
+import { lienFil } from '../data/messagerie'
 import { useMessagerie } from '../data/MessagerieContext'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
 import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { GraphiqueCA } from '../components/Chiffres'
-import { VuePratiques } from '../components/BonnesPratiques'
+import { CartePratique } from '../components/BonnesPratiques'
 import { Contact, Ligne, Section } from '../components/Section'
 import { useApercu } from '../auth/Apercu'
 import { SectionReunionsFranchise } from '../components/Reunions'
 import { SondagesARepondre } from '../components/Questions'
-import { MesPropositions } from '../components/Propositions'
 import { SectionChallengesFranchise } from '../components/Challenges'
 import { dateCourte, dateLongue, lienFiche, telLien } from '../lib/format'
 import { actionsDes, echeanceDate, enRetard } from '../data/actions'
@@ -120,68 +120,90 @@ function valeurRepere(reseau: Reseau, magasin: string, mois: string, i: Indicate
   return ca !== null && ref ? ((ca - ref) / ref) * 100 : null
 }
 
+const positionDe = (v: number, mediane: number, quartHaut: number): [string, Ton] =>
+  v >= quartHaut ? ['Quart supérieur', 'vert'] : v >= mediane ? ['Au-dessus de la médiane', 'bleu'] : ['Sous la médiane', 'orange']
 function Position({ v, mediane, quartHaut }: { v: number | null; mediane: number; quartHaut: number }) {
   if (v === null) return null
-  const [libelle, ton]: [string, Ton] = v >= quartHaut ? ['Quart supérieur', 'vert'] : v >= mediane ? ['Au-dessus de la médiane', 'bleu'] : ['Sous la médiane', 'orange']
+  const [libelle, ton] = positionDe(v, mediane, quartHaut)
   return <Pastille ton={ton}>{libelle}</Pastille>
+}
+
+// Tuiles carrées comme sur l'accueil de l'équipe (Joseph, 23/10/2026) : deux par ligne sur téléphone, quatre sur PC
+const grilleTuiles = { display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 1, md: 1.5 } } as const
+// large : toute la largeur ; largeTelephone : toute la largeur sur téléphone seulement
+function Tuile({ libelle, valeur, detail, couleur, lien, large = false, largeTelephone = false, fin, children }: {
+  libelle: string; valeur: ReactNode; detail?: ReactNode; couleur?: string; lien?: string; large?: boolean; largeTelephone?: boolean; fin?: ReactNode; children?: ReactNode
+}) {
+  const sx = { display: 'block', minWidth: 0, textAlign: 'left', px: { xs: 1.5, md: 2 }, py: { xs: 1.25, md: 1.75 }, borderRadius: '14px', bgcolor: 'background.paper', color: 'text.primary', fontFamily: 'inherit', textDecoration: 'none',
+    ...(large ? { gridColumn: '1 / -1' } : largeTelephone ? { gridColumn: { xs: '1 / -1', md: 'auto' } } : {}), ...(lien ? { '@media (hover: hover)': { '&:hover': { bgcolor: 'action.hover' } } } : {}) } as const
+  const contenu = (
+    <>
+      <Typography color="text.secondary" sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' }, lineHeight: 1.35 }}>{libelle}</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={{ fontSize: large ? { xs: '1.75rem', md: '2rem' } : { xs: '1.25rem', md: '1.5rem' }, fontWeight: 700, lineHeight: 1.25, color: couleur }}>{valeur}</Typography>
+          {detail && <Typography color="text.secondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>{detail}</Typography>}
+        </Box>
+        {fin}
+      </Box>
+      {children}
+    </>
+  )
+  return lien
+    ? <ButtonBase component={RouterLink} to={lien} sx={sx}>{contenu}</ButtonBase>
+    : <Box role="group" aria-label={libelle} sx={sx}>{contenu}</Box>
 }
 
 function SectionReperes({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
   const r = reseau.espace?.reperes
   const indicateurs = r ? ordreReperes.filter((i) => r.indicateurs[i]) : []
+  const seul = magasins.length === 1
   return (
     <Box component="section" aria-label="Repères réseau">
       <TitreSection>{r ? `Repères réseau · ${libelleMois(r.mois)}` : 'Repères réseau'}</TitreSection>
       {!indicateurs.length ? <Vide>Pas encore assez de magasins avec des chiffres ce mois-ci pour comparer.</Vide> : (
-        <CarteLignes>
+        <Box sx={grilleTuiles}>
           {indicateurs.map((i) => {
             const x = r!.indicateurs[i]!
+            const valeurs = magasins.map((m) => ({ m, v: valeurRepere(reseau, m.nom, r!.mois, i) }))
+            const v = valeurs[0]?.v ?? null
+            const pos = seul && v !== null ? positionDe(v, x.mediane, x.quartHaut) : null
             return (
-              <Box key={i} role="group" aria-label={libellesReperes[i]} sx={{ px: 2, py: 1.25 }}>
-                <Typography sx={{ fontWeight: 600 }}>{libellesReperes[i]}</Typography>
-                <Typography variant="body2" color="text.secondary">Médiane du réseau {formatRepere(i, x.mediane)} · quart supérieur {formatRepere(i, x.quartHaut)}</Typography>
-                {magasins.map((m) => {
-                  const v = valeurRepere(reseau, m.nom, r!.mois, i)
-                  return (
-                    <Box key={m.nom} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 0.75 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600, flex: 1, minWidth: 0 }}>{magasins.length > 1 ? `${m.nom} : ` : ''}{formatRepere(i, v)}</Typography>
-                      <Position v={v} mediane={x.mediane} quartHaut={x.quartHaut} />
-                    </Box>
-                  )
-                })}
-              </Box>
+              <Tuile key={i} largeTelephone={!seul} libelle={libellesReperes[i]} valeur={seul ? formatRepere(i, v) : `${formatRepere(i, x.mediane)}`}
+                couleur={pos ? (pos[1] === 'orange' ? 'warning.dark' : pos[1] === 'vert' ? 'success.dark' : 'info.dark') : undefined}
+                detail={seul ? `Médiane ${formatRepere(i, x.mediane)} · quart sup. ${formatRepere(i, x.quartHaut)}` : `Médiane du réseau · quart sup. ${formatRepere(i, x.quartHaut)}`}>
+                {seul ? pos && <Box sx={{ mt: 0.75 }}><Pastille ton={pos[1]}>{pos[0]}</Pastille></Box> : valeurs.map(({ m, v: w }) => (
+                  <Box key={m.nom} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.75 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, flex: 1, minWidth: 0 }}>{`${m.nom} : ${formatRepere(i, w)}`}</Typography>
+                    <Position v={w} mediane={x.mediane} quartHaut={x.quartHaut} />
+                  </Box>
+                ))}
+              </Tuile>
             )
           })}
-        </CarteLignes>
+        </Box>
       )}
     </Box>
   )
 }
 
-// ── Chiffres : un grand chiffre, l'écart et la courbe des douze derniers mois ──
+// ── Chiffres : le CA du mois en grande tuile avec la courbe des douze derniers mois, puis paniers, flux et marge ──
 function SectionChiffresDuMois({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
   if (magasins.length > 1) {
     return (
       <Box component="section" aria-label="Mes chiffres">
         <TitreSection>Mes chiffres</TitreSection>
-        <CarteLignes>
+        <Box sx={grilleTuiles}>
           {magasins.map((m) => {
             const a = analyser(reseau, m.nom)
             return (
-              <LigneCompacte key={m.nom} lien={`${lienFiche(m.nom)}?vue=chiffres`} avatar={<Initiales nom={m.nom} />} titre={m.nom}
-                detail={a ? libelleMois(a.mois) : 'Aucun chiffre enregistré'}
-                fin={a && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Box sx={{ display: { xs: 'none', sm: 'block' } }}><MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.bleu} /></Box>
-                    <Box sx={{ textAlign: 'right' }}>
-                      <Typography sx={{ fontWeight: 700 }}>{formatKEuros(a.ca)}</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Typography>
-                    </Box>
-                  </Box>
-                )} />
+              <Tuile key={m.nom} lien={`${lienFiche(m.nom)}?vue=chiffres`} libelle={m.nom} valeur={a ? formatKEuros(a.ca) : '—'}
+                detail={a ? <><Box component="span" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Box> · {libelleMois(a.mois)}</> : 'Aucun chiffre enregistré'}>
+                {a && <Box aria-hidden sx={{ mt: 0.75 }}><MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.bleu} largeur={96} hauteur={28} /></Box>}
+              </Tuile>
             )
           })}
-        </CarteLignes>
+        </Box>
       </Box>
     )
   }
@@ -189,25 +211,20 @@ function SectionChiffresDuMois({ reseau, magasins }: { reseau: Reseau; magasins:
   const a = analyser(reseau, m.nom)
   if (!a) return <Box component="section" aria-label="Mes chiffres"><TitreSection>Mes chiffres</TitreSection><Vide>Aucun chiffre enregistré pour ce magasin.</Vide></Box>
   const c = a.chiffre
-  const lignes: [string, string][] = [
+  const tuiles: [string, string, string?][] = [
     ['Panier moyen HT cave', formatValeur('pmCave', c.pmCave)], ['Panier moyen HT bar', formatValeur('pmBar', c.pmBar)],
-    ['Flux cumulé', c.fluxCave !== null || c.fluxBar !== null ? `${formatValeur('tickets', c.tickets)} · cave ${formatValeur('fluxCave', c.fluxCave)} · bar ${formatValeur('fluxBar', c.fluxBar)}` : formatValeur('tickets', c.tickets)],
+    ['Flux cumulé', formatValeur('tickets', c.tickets), c.fluxCave !== null || c.fluxBar !== null ? `cave ${formatValeur('fluxCave', c.fluxCave)} · bar ${formatValeur('fluxBar', c.fluxBar)}` : undefined],
     ['Marge', formatValeur('marge', c.marge)],
   ]
   return (
     <Box component="section" aria-label="Mes chiffres">
       <TitreSection>{`Mes chiffres · ${libelleMois(a.mois)}`}</TitreSection>
-      <CarteLignes>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 2, py: 2 }}>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="body2" color="text.secondary">CA cumulé</Typography>
-            <Typography sx={{ fontSize: '2rem', fontWeight: 700, lineHeight: 1.15 }}>{formatEuros(a.ca)}</Typography>
-            <Typography sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)} <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>vs {libelleMois(a.reference)}</Box></Typography>
-          </Box>
-          <MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.bleu} largeur={120} hauteur={48} label="CA des douze derniers mois" />
-        </Box>
-        {lignes.map(([l, v]) => <LigneCompacte key={l} titre={l} fin={<Typography sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{v}</Typography>} />)}
-      </CarteLignes>
+      <Box sx={grilleTuiles}>
+        <Tuile large libelle="CA cumulé" valeur={formatEuros(a.ca)}
+          detail={<><Box component="span" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Box> vs {libelleMois(a.reference)}</>}
+          fin={<MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.bleu} largeur={120} hauteur={48} label="CA des douze derniers mois" />} />
+        {tuiles.map(([l, v, d]) => <Tuile key={l} libelle={l} valeur={v} detail={d} />)}
+      </Box>
     </Box>
   )
 }
@@ -307,7 +324,7 @@ function useFilFranchise(reseau: Reseau, noms: string[], jours = 120, communicat
   const { messagerie } = useMessagerie()
   const cle = noms.join('|')
   return useMemo(() => filDu(reseau, new Set(cle.split('|')), messagerie, jours, communications, pratiquesReseau, actualites)
-    .map((e) => (e.genre === 'tache' ? { ...e, lien: '/taches' } : e.genre === 'pratique' ? { ...e, lien: '/bonnes-pratiques' } : e)), [reseau, cle, messagerie, jours, communications, pratiquesReseau, actualites])
+    .map((e) => (e.genre === 'tache' ? { ...e, lien: '/taches' } : e.genre === 'pratique' ? { ...e, lien: '/infos?vue=pratiques' } : e)), [reseau, cle, messagerie, jours, communications, pratiquesReseau, actualites])
 }
 
 // ── Accueil du franchisé ──
@@ -353,13 +370,13 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
   )
 }
 
-// ── Mes magasins ──
+// ── Mes magasins ── un seul magasin : sa fiche directement (Joseph, 23/10/2026)
 export function MagasinsFranchise() {
   return (
-    <>
-      <PageHeader titre="Mes magasins" />
-      <AvecReseau>
-        {(reseau) => !reseau.magasins.length
+    <AvecReseau>
+      {(reseau) => reseau.magasins.length === 1 ? <Navigate to={lienFiche(reseau.magasins[0].nom)} replace /> : <>
+        <PageHeader titre="Mes magasins" />
+        {!reseau.magasins.length
           ? <EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." />
           : (
             <CarteLignes label="Mes magasins">
@@ -379,19 +396,21 @@ export function MagasinsFranchise() {
               })}
             </CarteLignes>
           )}
-      </AvecReseau>
-    </>
+      </>}
+    </AvecReseau>
   )
 }
 
-// ── Fiche magasin du franchisé : lecture seule ; plus de fil, redondant avec les onglets (Joseph, 22/10/2026) ──
-type VueFiche = 'fiche' | 'messages' | 'chiffres' | 'visites' | 'campagnes'
+// ── Fiche magasin du franchisé : lecture seule ; plus de fil, redondant avec les onglets (Joseph, 22/10/2026) ;
+// comme pour l'équipe (Joseph, 23/10/2026), plus d'onglet Messages : le picto message ouvre le groupe du magasin dans
+// Messages ; les bonnes pratiques du magasin ont leur onglet
+type VueFiche = 'fiche' | 'chiffres' | 'visites' | 'campagnes' | 'pratiques'
 const rubriques: Rubrique<VueFiche>[] = [
   { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
-  { vue: 'messages', libelle: 'Messages', icone: <ForumOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
   { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
   { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
+  { vue: 'pratiques', libelle: 'Bonnes pratiques', court: 'Pratiques', icone: <TipsAndUpdatesOutlined /> },
 ]
 
 function OngletFiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
@@ -470,6 +489,27 @@ function OngletVisites({ reseau, m }: { reseau: Reseau; m: Magasin }) {
   )
 }
 
+// Bonnes pratiques du magasin et celles d'autres magasins qu'il a reprises : lire, aimer, commenter
+function OngletPratiques({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (msg: string) => void }) {
+  const { apercu } = useApercu()
+  const reactions = useReactionsPratiques()
+  const siennes = reseau.pratiques.filter((p) => p.magasin === m.nom)
+  const reprises = reseau.pratiques.filter((p) => p.reprises.includes(m.nom))
+  if (!siennes.length && !reprises.length) {
+    return <Section titre="Bonnes pratiques"><Vide>Aucune bonne pratique pour ce magasin.</Vide></Section>
+  }
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxWidth: 640 }}>
+      {siennes.map((p) => <CartePratique key={p.id} p={p} sansMagasin reactions={reactions} lectureSeule={!!apercu} signaler={signaler} />)}
+      {reprises.length > 0 && (
+        <Section titre="Reprises d’autres magasins">
+          {reprises.map((p) => <LigneSimple key={p.id} titre={p.titre} detail={p.magasin} lien="/infos?vue=pratiques" />)}
+        </Section>
+      )}
+    </Box>
+  )
+}
+
 function OngletCampagnes({ reseau, m }: { reseau: Reseau; m: Magasin }) {
   const liste = reseau.campagnes.liste.filter((c) => phase(c, reseau.jour) !== 'avenir' && magasinsConcernes(reseau, c).some((x) => x.nom === m.nom))
     .sort((a, b) => b.debut.localeCompare(a.debut))
@@ -526,13 +566,13 @@ function LireVisites({ magasin }: { magasin: string }) {
 export function FicheMagasinFranchise() {
   const { nom = '' } = useParams()
   const naviguer = useNavigate()
-  const { apercu } = useApercu()
   const [confirmation, setConfirmation] = useState('')
   const [params, setParams] = useSearchParams()
   const vue = (rubriques.find((r) => r.vue === params.get('vue'))?.vue ?? 'fiche') as VueFiche
   const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
-  const nonLus = useNonLusMagasin(nom)
-  const onglets = rubriques.map((r) => (r.vue === 'messages' ? { ...r, pastille: apercu ? 0 : nonLus } : r))
+  const groupe = lienFil({ genre: 'magasin', magasin: nom, equipe: false })
+  // Anciens liens vers l'onglet Messages : le groupe du magasin
+  if (params.get('vue') === 'messages') return <Navigate to={groupe} replace />
   return (
     <AvecReseau>
       {(reseau) => {
@@ -541,33 +581,19 @@ export function FicheMagasinFranchise() {
         return (
           <>
             {reseau.magasins.length > 1 && <Button startIcon={<ArrowBack />} onClick={() => naviguer('/magasins')} sx={{ mb: 2, ml: -1, minHeight: 48, display: { xs: 'none', md: 'inline-flex' } }}>Mes magasins</Button>}
-            <ProfilFranchise retour={reseau.magasins.length > 1 ? { libelle: 'Mes magasins', aller: () => naviguer('/magasins') } : undefined} reseau={reseau} m={m} message={() => changerVue('messages')} />
-            <Onglets valeur={vue} onChange={changerVue} rubriques={onglets} libelle={`Rubriques de ${m.nom}`} fiche />
+            <ProfilFranchise retour={reseau.magasins.length > 1 ? { libelle: 'Mes magasins', aller: () => naviguer('/magasins') } : undefined} reseau={reseau} m={m} message={() => naviguer(groupe)} />
+            <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} fiche />
             <ContenuOnglet>
               {vue === 'fiche' && <OngletFiche reseau={reseau} m={m} />}
-              {vue === 'messages' && <SectionMessages reseau={reseau} m={m} signaler={setConfirmation} lectureSeule={!!apercu} />}
               {vue === 'chiffres' && <OngletChiffres reseau={reseau} m={m} />}
               {vue === 'visites' && <><LireVisites magasin={m.nom} /><OngletVisites reseau={reseau} m={m} /></>}
               {vue === 'campagnes' && <OngletCampagnes reseau={reseau} m={m} />}
+              {vue === 'pratiques' && <OngletPratiques reseau={reseau} m={m} signaler={setConfirmation} />}
               <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
             </ContenuOnglet>
           </>
         )
       }}
     </AvecReseau>
-  )
-}
-
-function PratiquesEtPropositions({ reseau }: { reseau: Reseau }) {
-  const { apercu } = useApercu()
-  return <>{!apercu && <MesPropositions reseau={reseau} />}<VuePratiques reseau={reseau} /></>
-}
-
-export function PratiquesFranchise() {
-  return (
-    <>
-      <PageHeader titre="Bonnes pratiques" />
-      <AvecReseau>{(reseau) => <PratiquesEtPropositions reseau={reseau} />}</AvecReseau>
-    </>
   )
 }

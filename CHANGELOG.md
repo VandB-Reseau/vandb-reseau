@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Espace franchisé aligné sur celui de l'équipe (Joseph, 23/10/2026) : onglet Infos réseau à la place de Bonnes
+  pratiques (communications et bonnes pratiques réunies, recherche et filtres, ses propositions), avec le nombre de
+  nouveautés ; le canal Réseau V and B quitte ses Messages (ancienne adresse et lien du fil menant à Infos réseau, la
+  communication citée gardée). Fiche magasin sans onglet Messages : le picto message ouvre le groupe du magasin, les
+  bonnes pratiques du magasin ont leur onglet. Un franchisé d'un seul magasin arrive sur sa fiche par Mes magasins.
+  Accueil : Mes chiffres et Repères réseau en tuiles, comme l'accueil de l'équipe. Sans migration.
 - Comptes des franchisés créés depuis l'app : dans la fiche du franchisé, « Ouvrir l'accès » crée le compte (email de
   la fiche prérempli) et affiche un mot de passe provisoire à copier ou envoyer par email ; le franchisé choisit son mot
   de passe à la première connexion. « Nouveau mot de passe » remplace la réinitialisation dans Supabase. Retirer un
