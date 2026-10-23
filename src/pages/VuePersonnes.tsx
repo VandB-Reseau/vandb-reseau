@@ -20,8 +20,10 @@ import { lienCoach, lienDirecteur, lienFranchise, lienRR } from '../lib/format'
 import type { Reseau } from '../data/modele'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
+import { resumeEngagement } from '../components/Engagement'
+import { peuEngage, useEngagement, type Engagement } from '../data/engagement'
 
-interface LignePersonne { cle: string; type: TypePersonne; nom: string; role: string; rattachement: string; lien: string; fiche: FichePersonnelle }
+interface LignePersonne { cle: string; type: TypePersonne; nom: string; role: string; rattachement: string; lien: string; fiche: FichePersonnelle; magasins?: string[] }
 
 export type Perimetre = 'collaborateurs' | 'franchises'
 
@@ -46,7 +48,7 @@ export function lignesPersonnes(reseau: Reseau): LignePersonne[] {
   }
   for (const f of franchises(reseau)) {
     if (/recrutement/i.test(f.nom)) continue
-    l.push({ cle: `franchise:${f.nom}`, type: 'franchise', nom: f.nom, role: libelleRole('franchise', f.integresSeulement), rattachement: f.magasins.map((m) => m.nom).join(', '), lien: lienFranchise(f.nom), fiche: fichePersonne(reseau, { type: 'franchise', cle: f.nom }) })
+    l.push({ cle: `franchise:${f.nom}`, type: 'franchise', nom: f.nom, role: libelleRole('franchise', f.integresSeulement), rattachement: f.magasins.map((m) => m.nom).join(', '), lien: lienFranchise(f.nom), fiche: fichePersonne(reseau, { type: 'franchise', cle: f.nom }), magasins: f.magasins.map((m) => m.nom) })
   }
   return l
 }
@@ -63,13 +65,23 @@ export function VuePersonnes({ reseau, perimetre }: { reseau: Reseau; perimetre:
   const [message, setMessage] = useState('')
   const toutes = useMemo(() => lignesPersonnes(reseau).filter((p) => (perimetre === 'franchises') === (p.type === 'franchise')), [reseau, perimetre])
   const compte = (id: string) => (id === 'tous' ? toutes.length : toutes.filter((p) => p.type === id).length)
+  // Engagement des franchisés (équipe seule) : repères sur 90 jours, filtre « Peu engagés »
+  const calcul = useEngagement(reseau)
+  const engagements = useMemo(() => {
+    const m = new Map<string, Engagement>()
+    if (calcul && perimetre === 'franchises') for (const p of toutes) m.set(p.cle, calcul(p.nom, p.magasins ?? []))
+    return m
+  }, [calcul, perimetre, toutes])
+  const faibles = new Set([...engagements].filter(([, e]) => peuEngage(e, reseau.jour)).map(([c]) => c))
+  const seulFaibles = perimetre === 'franchises' && params.get('engagement') === 'faible'
+  const basculerFaibles = () => { const p = new URLSearchParams(params); if (seulFaibles) p.delete('engagement'); else p.set('engagement', 'faible'); setParams(p, { replace: true }) }
   const t = normaliser(texte)
-  const visibles = toutes.filter((p) => (perimetre === 'franchises' || filtre === 'tous' || p.type === filtre) && (!t || normaliser(`${p.nom} ${p.role} ${p.rattachement} ${p.fiche.ville}`).includes(t)))
+  const visibles = toutes.filter((p) => (perimetre === 'franchises' || filtre === 'tous' || p.type === filtre) && (!seulFaibles || faibles.has(p.cle)) && (!t || normaliser(`${p.nom} ${p.role} ${p.rattachement} ${p.fiche.ville}`).includes(t)))
   const fermer = (m?: string, nom?: string, lien?: (n: string) => string) => { setAjout(null); if (m) { setMessage(m); if (nom && lien) naviguer(lien(nom)) } }
 
   return (
     <>
-      <RechercheFiltres actifs={filtre === 'tous' ? 0 : 1}
+      <RechercheFiltres actifs={filtre === 'tous' && !seulFaibles ? 0 : 1}
         recherche={<ChampRecherche valeur={texte} onChange={setTexte} placeholder="Nom, ville, magasin…" libelle="Rechercher une personne" />}
         actions={perimetre === 'franchises'
           ? <BoutonAction libelle="Ajouter un franchisé" icone={<PersonAddAlt1Outlined />} onClick={() => setAjout('franchise')} />
@@ -79,6 +91,10 @@ export function VuePersonnes({ reseau, perimetre }: { reseau: Reseau; perimetre:
             <Chip key={f.id} label={`${f.libelle} (${compte(f.id)})`} onClick={() => changerFiltre(f.id)} color={filtre === f.id ? 'secondary' : 'default'} variant={filtre === f.id ? 'filled' : 'outlined'} aria-pressed={filtre === f.id} sx={{ height: 36, fontSize: '0.875rem', fontWeight: 500, borderRadius: 2 }} />
           ))}
         </Box>}
+        {perimetre === 'franchises' && calcul && (
+          <Chip label={`Peu engagés (${faibles.size})`} onClick={basculerFaibles} aria-pressed={seulFaibles}
+            color={seulFaibles ? 'secondary' : 'default'} variant={seulFaibles ? 'filled' : 'outlined'} sx={{ height: { xs: 48, sm: 36 }, fontSize: '0.875rem', fontWeight: 500, borderRadius: 2 }} />
+        )}
       </RechercheFiltres>
       <Menu anchorEl={menu} open={!!menu} onClose={() => setMenu(null)}>
         {AJOUTS[perimetre].map(([id, l]) => (
@@ -86,14 +102,14 @@ export function VuePersonnes({ reseau, perimetre }: { reseau: Reseau; perimetre:
         ))}
       </Menu>
       {visibles.length === 0 ? (
-        <EmptyState icone={<PersonOutlineOutlined />} titre={toutes.length ? 'Personne ne correspond' : perimetre === 'franchises' ? 'Aucun franchisé renseigné' : 'Aucun collaborateur'}
+        <EmptyState icone={<PersonOutlineOutlined />} titre={seulFaibles && !t ? 'Aucun franchisé peu engagé' : toutes.length ? 'Personne ne correspond' : perimetre === 'franchises' ? 'Aucun franchisé renseigné' : 'Aucun collaborateur'}
           texte={toutes.length ? 'Change la recherche ou le filtre.' : 'Ajoute la personne : elle aura sa fiche personnelle.'}
           action={!toutes.length ? <Button variant="contained" onClick={(e) => (perimetre === 'franchises' ? setAjout('franchise') : setMenu(e.currentTarget))}>Ajouter</Button> : undefined} />
       ) : (
         <CarteLignes label={perimetre === 'franchises' ? 'Franchisés' : 'Collaborateurs'}>
           {visibles.map((p) => (
             <LigneCompacte key={p.cle} lien={p.lien} label={p.nom} avatar={<Initiales nom={p.nom} />} titre={p.nom}
-              detail={[p.role, p.rattachement, p.fiche.ville].filter(Boolean).join(' · ')}
+              detail={engagements.has(p.cle) ? [p.rattachement, resumeEngagement(engagements.get(p.cle)!, reseau.jour)].join(' · ') : [p.role, p.rattachement, p.fiche.ville].filter(Boolean).join(' · ')}
               fin={<ChevronRight color="action" />} />
           ))}
         </CarteLignes>
