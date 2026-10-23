@@ -42,13 +42,17 @@ import { envoyerPhoto, lienPhoto, messagePhoto, supprimerPhotos } from '../lib/p
 import { dateCourte, lienFiche } from '../lib/format'
 import type { Reseau } from '../data/modele'
 
-export function DialogPratique({ reseau, pratique, magasinInitial = '', onFermer }: { reseau: Reseau; pratique: BonnePratique | null; magasinInitial?: string; onFermer: (m?: string) => void }) {
-  const [magasin, setMagasin] = useState(pratique?.magasin ?? magasinInitial)
+// depart : proposition d'un franchisé reprise pour relecture ; apres : appelé avec l'identifiant de la pratique enregistrée
+export function DialogPratique({ reseau, pratique, magasinInitial = '', depart, apres, onFermer }: {
+  reseau: Reseau; pratique: BonnePratique | null; magasinInitial?: string; depart?: { magasin: string; titre: string; texte: string; par: string }
+  apres?: (id: string) => Promise<void>; onFermer: (m?: string) => void
+}) {
+  const [magasin, setMagasin] = useState(pratique?.magasin ?? depart?.magasin ?? magasinInitial)
   const [date, setDate] = useState(pratique?.date ?? reseau.jour)
-  const [titre, setTitre] = useState(pratique?.titre ?? '')
+  const [titre, setTitre] = useState(pratique?.titre ?? depart?.titre ?? '')
   const [theme, setTheme] = useState(pratique?.theme ?? '')
-  const [texte, setTexte] = useState(pratique?.texte ?? '')
-  const [par, setPar] = useState(pratique?.par ?? reseau.directeur.nom)
+  const [texte, setTexte] = useState(pratique?.texte ?? depart?.texte ?? '')
+  const [par, setPar] = useState(pratique?.par ?? depart?.par ?? reseau.directeur.nom)
   // La photo d'en-tête est rangée avec les photos (les franchisés voient ainsi les mêmes), en tête de liste
   const [entete, setEntete] = useState<Photo | null>(pratique?.photos.find((ph) => ph.chemin === pratique.entete) ?? null)
   const [photos, setPhotos] = useState<Photo[]>(pratique?.photos.filter((ph) => ph.chemin !== pratique.entete) ?? [])
@@ -58,13 +62,15 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', onFermer
   const valide = !!magasin && !!titre.trim() && /^\d{4}-\d{2}-\d{2}$/.test(date)
   return (
     <Fenetre
-      large ouvert onFermer={onFermer} valide={valide} titre={pratique ? 'Modifier la bonne pratique' : 'Nouvelle bonne pratique'}
+      large ouvert onFermer={onFermer} valide={valide} titre={pratique ? 'Modifier la bonne pratique' : depart ? 'Relire et publier' : 'Nouvelle bonne pratique'}
       enregistrer={async () => {
         const toutes = entete ? [entete, ...photos] : photos
-        await enregistrerPratique(pratique?.id ?? '', { id: pratique?.id || nouvelId('bp'), magasin, date, titre: titre.trim(), theme: theme.trim(), texte: texte.trim(), par, photos: toutes, entete: entete?.chemin ?? '', reprises: reprises.filter((r) => r !== magasin), jaime: pratique?.jaime ?? [] })
+        const id = pratique?.id || nouvelId('bp')
+        await enregistrerPratique(pratique?.id ?? '', { id, magasin, date, titre: titre.trim(), theme: theme.trim(), texte: texte.trim(), par, photos: toutes, entete: entete?.chemin ?? '', reprises: reprises.filter((r) => r !== magasin), jaime: pratique?.jaime ?? [] })
         const gardees = new Set(toutes.map((p) => p.chemin))
         await supprimerPhotos([...new Set([...retirees, ...(pratique?.photos ?? []).map((p) => p.chemin)])].filter((c) => !gardees.has(c)))
-        return pratique ? 'Bonne pratique mise à jour.' : 'Bonne pratique enregistrée.'
+        if (apres) await apres(id)
+        return pratique ? 'Bonne pratique mise à jour.' : depart ? 'Bonne pratique publiée.' : 'Bonne pratique enregistrée.'
       }}
       supprimer={pratique ? async () => {
         await enregistrerPratique(pratique.id, null)
@@ -81,7 +87,7 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', onFermer
       </Box>
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
         <Autocomplete freeSolo options={themesConnus(reseau.pratiques)} value={theme} onInputChange={(_e, v) => setTheme(v)} renderInput={(p) => <TextField {...p} label="Thème" />} />
-        <Autocomplete options={visiteurs(reseau)} value={par || null} onChange={(_e, v) => setPar(v ?? '')} renderInput={(p) => <TextField {...p} label="Remontée par" />} noOptionsText="Aucune personne ne correspond" />
+        <Autocomplete options={[...new Set([...visiteurs(reseau), ...(depart?.par ? [depart.par] : [])])]} value={par || null} onChange={(_e, v) => setPar(v ?? '')} renderInput={(p) => <TextField {...p} label="Remontée par" />} noOptionsText="Aucune personne ne correspond" />
       </Box>
       <ChampDicte libelle="Ce que fait le magasin" valeur={texte} changer={setTexte} minRows={4} />
       <ChampPhotos photos={photos} onChange={setPhotos} onRetirer={(c) => setRetirees((x) => [...x, c])} />

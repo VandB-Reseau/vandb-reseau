@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Bonnes pratiques proposées par les franchisés (sprint 22, A4) : dans son onglet Bonnes pratiques, le franchisé propose
+  une pratique (titre, texte dicté ou écrit) et suit son état (En relecture, Publiée, Non retenue). Dans Infos réseau,
+  l'équipe du magasin relit, complète (photos, thème) et publie au nom du franchisé, ou ne retient pas. Photos ajoutées
+  par l'équipe à la relecture. **Migration à passer : `0027_pratiques_proposees.sql`.**
 - Questions éclair aux franchisés (sprint 22, A3) : dans Infos réseau, le Directeur (tout le réseau ou une région) ou
   un RR (ses magasins) pose une question oui/non, à choix ou note de 1 à 5, avec ou sans le nom des répondants, ouverte
   jusqu'à une date. Le franchisé répond d'un geste depuis son accueil, une seule fois. Résultats, moyenne, détail par

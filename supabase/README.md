@@ -31,6 +31,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0024_notifications_taches_une` | Notifications sur le téléphone d'une tâche confiée et d'une communication mise à la une : fonctions `notifications_tache` et `notifications_une` (fonction « notifier » seule) ; puis redéployer la fonction Supabase `notifier` | 23/10/2026 |
 | `0025_reunions` | Réunions et formations : colonne `events.invites` (Directeur et RR seulement), table `reunions_presences` fermée, fonctions `reunions_franchise`, `repondre_reunion`, `presences_reunions`, `pointer_presence` | 23/10/2026 |
 | `0026_questions_eclair` | Questions éclair : tables `questions_eclair`, `questions_participations`, `questions_reponses` fermées (anonymat en base), fonctions `publier_question`, `supprimer_question`, `resultats_questions`, `questions_franchise`, `repondre_question` | 23/10/2026 |
+| `0027_pratiques_proposees` | Bonnes pratiques proposées par les franchisés : table `pratiques_proposees` fermée, fonctions `proposer_pratique`, `mes_propositions`, `propositions_pratiques`, `traiter_proposition` | 23/10/2026 |
 
 ## Règles
 
