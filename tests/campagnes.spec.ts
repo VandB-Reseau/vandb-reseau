@@ -93,6 +93,7 @@ test('constater une campagne depuis la fiche magasin et pendant une visite', asy
   await page.goto(`./#/magasins/${encodeURIComponent('Annecy Test')}?vue=visites`)
   await page.getByRole('button', { name: 'Saisir', exact: true }).first().click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  await d.getByRole('region', { name: 'Visite' }).getByRole('button', { name: 'Modifier' }).click()
   await d.getByLabel('Date').fill('2026-10-10')
   await expect(d.getByText('Campagnes en cours')).toBeVisible()
   await d.getByRole('button', { name: 'Noël 2026, PLV en place : pas fait' }).click()

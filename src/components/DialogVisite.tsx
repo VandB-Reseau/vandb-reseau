@@ -24,8 +24,8 @@ import { SaisieCampagnes, useSaisieCampagnes } from './Campagnes'
 import { notifier } from '../lib/notifications'
 import { effacerBrouillon, garderBrouillon, lireBrouillon } from '../lib/brouillon'
 import { preparationDe } from '../data/semaine'
-import { dateHeure } from '../lib/format'
-import { typesVisite, type ActionPlan, type Document, type Reseau, type Visite } from '../data/modele'
+import { dateCourte, dateHeure } from '../lib/format'
+import { libelleTypeVisite, typesVisite, type ActionPlan, type Document, type Reseau, type Visite } from '../data/modele'
 
 // Personnes qui peuvent visiter : Coachs, RR, Directeur
 export function visiteursGroupes(reseau: Reseau): { nom: string; groupe: string }[] {
@@ -97,6 +97,9 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const campagnes = useSaisieCampagnes(reseau, unSeul ? magasins[0] ?? '' : '', date)
   const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date) && (!unSeul || chiffres.valide) && !(audit && !grilleRemplie && scoreInvalide)
   const noms = reseau.magasins.map((m) => m.nom)
+  // Depuis un magasin (ou le compte rendu d'une visite prévue) : magasin, date, type et visiteurs déjà connus, sur une ligne
+  const [details, setDetails] = useState(() => !((visite?.prevue || (!visite && magasinsInitiaux.length === 1)) && participants.length > 0))
+  const quand = date === reseau.jour ? 'aujourd’hui' : /^\d{4}-\d{2}-\d{2}$/.test(date) ? `le ${dateCourte(date)}` : ''
   return (
     <Fenetre
       large titre={visite?.prevue ? `Compte rendu · ${visite.magasin}` : visite ? `Modifier la visite de ${visite.magasin}` : 'Saisir une visite'} ouvert onFermer={onFermer} valide={valide}
@@ -140,6 +143,16 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
           <Button onClick={() => { effacerBrouillon(cleBrouillon); setBrouillon(null); onFermer() }} sx={{ minHeight: 48 }}>Effacer le brouillon</Button>
         </Box>
       )}
+      {!details && (
+        <Box component="section" aria-label="Visite" sx={{ display: 'flex', alignItems: 'center', gap: 1, border: '1px solid', borderColor: 'divider', borderRadius: 2, pl: 2, pr: 1, py: 0.5 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontWeight: 700 }}>{[magasins.join(', '), quand].filter(Boolean).join(' · ')}</Typography>
+            <Typography variant="body2" color="text.secondary">{[libelleTypeVisite(type), participants.join(', ')].filter(Boolean).join(' · ')}</Typography>
+          </Box>
+          <Button onClick={() => setDetails(true)} sx={{ minHeight: 48 }}>Modifier</Button>
+        </Box>
+      )}
+      <Collapse in={details} unmountOnExit><Box sx={{ display: 'grid', gap: 2.5, pt: 1 }}>
       <Autocomplete
         multiple
         options={noms}
@@ -165,6 +178,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         renderInput={(p) => <TextField {...p} label={contact ? 'Fait par' : 'Visité par'} />}
         noOptionsText="Aucune personne ne correspond"
       />
+      </Box></Collapse>
       {grille && grille.themes.length > 0 && (
         <SaisieGrille titre={`Grille ${libellesGrilles[type]?.toLowerCase() ?? ''}`} reponses={reponses} setReponses={setReponses} seuil={grille.seuil} onRetirerPhoto={(c) => setPhotosRetirees((x) => [...x, c])} />
       )}

@@ -73,7 +73,7 @@ test('saisir un appel : il ne compte pas comme visite', async ({ page }) => {
   await page.goto('./#/magasins/Lyon%20Test?vue=chiffres')
   await page.getByRole('button', { name: 'Saisir un appel' }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
-  await expect(d.getByLabel('Type')).toHaveText('Appel')
+  await expect(d.getByRole('region', { name: 'Visite' })).toContainText('Appel · ')
   // Pas de compte rendu ni de signature pour un appel
   await expect(d.getByText('Visite contractuelle, à faire signer')).toHaveCount(0)
   await d.getByLabel('Notes').fill('Point sur la baisse de septembre.')
@@ -94,6 +94,7 @@ test('saisir les chiffres du mois pendant une visite et noter un audit', async (
   await page.goto('./#/magasins/Annecy%20Test?vue=visites')
   await page.getByRole('button', { name: 'Saisir', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  await d.getByRole('region', { name: 'Visite' }).getByRole('button', { name: 'Modifier' }).click()
   await d.getByLabel('Type').click()
   await page.getByRole('option', { name: 'Audit hygiène' }).click()
   await d.getByLabel('Résultat de l’audit').click()
