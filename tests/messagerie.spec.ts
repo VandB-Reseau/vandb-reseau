@@ -34,9 +34,9 @@ test('fiche magasin : le Directeur de réseau écrit dans le groupe du magasin',
     prive(2, 'franchise:Paul MULTI', 'Paul MULTI', 'directeur', 'Le devis de la vitrine est arrivé.', ['Annecy Test'], 60),
   ] } }
   await seConnecter(page, options)
+  // L'ancien onglet Messages de la fiche mène au groupe du magasin dans Messages (sprint 22, S2)
   await page.goto('./#/magasins/Annecy%20Test?vue=messages')
-  const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
-  await expect(onglets.getByRole('tab', { name: 'Messages' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page).toHaveURL(/#\/echanges\/magasin\/Annecy%20Test$/)
   // Le groupe du magasin ; les échanges à deux restent dans leur conversation
   const fil = page.getByRole('list', { name: /^Messages de / })
   await expect(fil).toContainText('Inventaire fait ce matin.')
@@ -146,10 +146,8 @@ test('aperçu de l’espace d’un franchisé : groupe en lecture seule, sans é
   expect(ecritures.filter((e) => e.table.startsWith('rpc/marquer_lu'))).toEqual([])
 })
 
-test('messagerie pas encore activée : un état clair dans la fiche et l’onglet', async ({ page }) => {
+test('messagerie pas encore activée : un état clair dans l’onglet', async ({ page }) => {
   await seConnecter(page, { messagerie: null })
-  await page.goto('./#/magasins/Annecy%20Test?vue=messages')
-  await expect(page.getByText('Messagerie pas encore activée')).toBeVisible()
   await page.goto('./#/echanges')
   await expect(page.getByText('Messagerie pas encore activée')).toBeVisible()
 })

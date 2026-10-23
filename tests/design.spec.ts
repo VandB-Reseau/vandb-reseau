@@ -59,8 +59,9 @@ test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ou
   expect(await sansDebordement(page.locator('body'))).toBe(true)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-profil.png`, fullPage: true })
-  await page.getByRole('tab', { name: 'Messages' }).click()
-  await expect(page).toHaveURL(/vue=messages/)
+  await expect(page.getByRole('tab', { name: 'Messages' })).toHaveCount(0)
+  await page.getByRole('main').getByRole('button', { name: 'Écrire un message', exact: true }).or(page.getByRole('main').getByRole('link', { name: 'Écrire un message', exact: true })).click()
+  await expect(page).toHaveURL(/#\/echanges\/magasin\/Lyon%20Test$/)
 })
 
 test('Santé > Chiffres en lignes, tableau au choix sur PC, magasins sans chiffres repliés', async ({ page, isMobile }, info) => {

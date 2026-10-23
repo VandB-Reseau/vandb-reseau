@@ -48,7 +48,7 @@ test('grand téléphone : les onglets tiennent sans déborder, le reste sous « 
   await page.setViewportSize({ width: 430, height: 900 })
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
-  await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab')).toHaveText(['Fiche', 'Tâches', 'Messages', 'Plus'])
+  await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab')).toHaveText(['Fiche', 'Tâches', 'Visites', 'Chiffres', 'Plus'])
   const droite = await page.evaluate(() => Math.max(...[...document.querySelectorAll('.onglets-fiche [role=tab]')].map((t) => t.getBoundingClientRect().right)))
   expect(droite).toBeLessThanOrEqual(430 - 16)
 })

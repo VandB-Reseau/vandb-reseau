@@ -58,8 +58,7 @@ import { actionsDuMagasin, enRetard } from '../data/actions'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
-import ForumOutlined from '@mui/icons-material/ForumOutlined'
-import { SectionMessages, useNonLusMagasin } from '../components/Messages'
+import { lienFil } from '../data/messagerie'
 import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
@@ -111,12 +110,12 @@ export function Contact({ role, p, sousTitre, lien }: { role: string; p: Personn
 }
 
 // Plus de fil, redondant avec les onglets (Joseph, 22/10/2026) ; le journal et les bonnes pratiques ont chacun leur onglet
-// (Joseph, 22/10/2026), la santé va avec les chiffres, les campagnes avec les tâches
-type VueFiche = 'fiche' | 'actions' | 'messages' | 'visites' | 'chiffres' | 'journal' | 'pratiques'
+// (Joseph, 22/10/2026), la santé va avec les chiffres, les campagnes avec les tâches. Plus d'onglet Messages (sprint 22,
+// S2) : le picto message de l'en-tête ouvre le groupe du magasin dans Messages
+type VueFiche = 'fiche' | 'actions' | 'visites' | 'chiffres' | 'journal' | 'pratiques'
 const rubriquesFiche: Rubrique<VueFiche>[] = [
   { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
   { vue: 'actions', libelle: 'Tâches et campagnes', court: 'Tâches', icone: <TaskAltOutlined /> },
-  { vue: 'messages', libelle: 'Messages', icone: <ForumOutlined /> },
   { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres et santé', court: 'Chiffres', icone: <QueryStatsOutlined /> },
   { vue: 'journal', libelle: 'Journal', icone: <HistoryOutlined /> },
@@ -130,6 +129,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const [params, setParams] = useSearchParams()
   const demandee = params.get('vue') ?? ''
   const vue = (anciennesVues[demandee] ?? rubriquesFiche.find((r) => r.vue === demandee)?.vue ?? 'fiche') as VueFiche
+  const versMessages = demandee === 'messages'
+  useEffect(() => { if (versMessages) naviguer(lienFil({ genre: 'magasin', magasin: m.nom, equipe: false }), { replace: true }) }, [versMessages, naviguer, m.nom])
   useEffect(() => { if (anciennesVues[demandee]) document.getElementById(`partie-${demandee}`)?.scrollIntoView({ block: 'start' }) }, [demandee])
   const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const [reaffectation, setReaffectation] = useState(false)
@@ -153,16 +154,14 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const rythme = suiviRythme(reseau, a).find((l) => l.magasin.nom === m.nom)
   const alerte = analyser(reseau, m.nom)
   const saisirVisite = () => { setTypeVisite('terrain'); setVisite(null) }
-  const nonLus = useNonLusMagasin(m.nom)
   const { referentiels } = useDroits()
-  const rubriques = rubriquesFiche.map((r) => (r.vue === 'messages' ? { ...r, pastille: nonLus } : r))
   return (
     <>
       <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Magasins</Button>
       <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} alerteVisite={rythme?.alerte ? libellePasVu(rythme) : ''}
-        appeler={m.telephone || m.responsable?.telephone || ''} message={() => changerVue('messages')} visite={saisirVisite} planifier={() => setPlanifier(true)}
+        appeler={m.telephone || m.responsable?.telephone || ''} message={() => naviguer(lienFil({ genre: 'magasin', magasin: m.nom, equipe: false }))} visite={saisirVisite} planifier={() => setPlanifier(true)}
         modifier={referentiels ? () => setEdition(true) : undefined} />
-      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} fiche />
+      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesFiche} libelle={`Rubriques de ${m.nom}`} fiche />
       <ContenuOnglet>
 
         {vue === 'fiche' && (
@@ -204,8 +203,6 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             <Box id="partie-campagnes" sx={{ scrollMarginTop: 160 }}><Section titre="Campagnes"><CampagnesMagasin reseau={reseau} magasin={m.nom} signaler={setConfirmation} /></Section></Box>
           </Box>
         )}
-
-        {vue === 'messages' && <SectionMessages reseau={reseau} m={m} signaler={setConfirmation} />}
 
         {vue === 'visites' && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

@@ -37,10 +37,10 @@ test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur PC,
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   if (!isMobile) {
-    await expect(onglets.getByRole('tab')).toHaveText(['Fiche', 'Tâches et campagnes', 'Messages', 'Visites', 'Chiffres et santé', 'Journal', 'Bonnes pratiques'])
+    await expect(onglets.getByRole('tab')).toHaveText(['Fiche', 'Tâches et campagnes', 'Visites', 'Chiffres et santé', 'Journal', 'Bonnes pratiques'])
     return
   }
-  await expect(onglets.getByRole('tab')).toHaveText(['Fiche', 'Tâches', 'Messages', 'Plus'])
+  await expect(onglets.getByRole('tab')).toHaveText(['Fiche', 'Tâches', 'Visites', 'Plus'])
   // Aucun onglet coupé au bord de l'écran
   const largeur = page.viewportSize()!.width
   for (const t of await onglets.getByRole('tab').all()) {
@@ -50,7 +50,7 @@ test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur PC,
   }
   await onglets.getByRole('tab', { name: 'Autres rubriques' }).click()
   const panneau = page.getByRole('dialog', { name: 'Rubriques de Brest Test' })
-  await expect(panneau.getByRole('button')).toHaveText(['Visites', 'Chiffres et santé', 'Journal', 'Bonnes pratiques'])
+  await expect(panneau.getByRole('button')).toHaveText(['Chiffres et santé', 'Journal', 'Bonnes pratiques'])
   for (const b of await panneau.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-onglets-plus.png` })
