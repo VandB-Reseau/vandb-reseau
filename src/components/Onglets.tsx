@@ -26,7 +26,7 @@ export interface Rubrique<V extends string> { vue: V; libelle: string; court?: s
 const PLUS = '__plus'
 const VISIBLES_TELEPHONE = 3
 const ECART = 0 // puces bord à bord, l'espace est dessiné dans la zone tactile
-const MARGE_PUCE = 24 // px de chaque côté (12) d'une puce sur téléphone (Lato est plus large que l'ancienne police)
+const MARGE_PUCE = 28 // px de chaque côté (14) d'une puce sur téléphone
 const MARGE_PLUS = 46 // 14 à gauche, 10 à droite, flèche de 20 et son écart
 
 let pinceau: CanvasRenderingContext2D | null | undefined
@@ -128,7 +128,7 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
 
 // Puce de 40 px dessinée dans la zone tactile de 48 px
 const styleOnglet = {
-  minHeight: 48, minWidth: 0, px: { xs: 1.5, md: 2 }, py: 0, gap: 0.75, position: 'relative', zIndex: 0, color: 'text.primary', opacity: 1,
+  minHeight: 48, minWidth: 0, px: { xs: 1.75, md: 2 }, py: 0, gap: 0.75, position: 'relative', zIndex: 0, color: 'text.primary', opacity: 1,
   fontSize: '0.875rem', fontWeight: 500,
   '& .MuiTab-icon': { mb: 0, mr: 0, fontSize: 20 },
   '&::before': { content: '""', position: 'absolute', inset: '4px 0', borderRadius: 999, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', zIndex: -1 },
