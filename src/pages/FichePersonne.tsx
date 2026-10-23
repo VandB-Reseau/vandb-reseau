@@ -33,6 +33,8 @@ import { PastilleCharge } from '../components/Charge'
 import { PastilleStatut } from '../components/Pastilles'
 import { ListeMagasins } from '../components/ListeMagasins'
 import { Ligne, Section } from '../components/Section'
+import { SectionEngagement } from '../components/Engagement'
+import { useEngagement } from '../data/engagement'
 import { chargeA, magasinsDuCoach } from '../data/charge'
 import { ageDepuis, estFrance, fichePersonne, franchises, libelleDepartement, libelleRole, type RefPersonne } from '../data/personnes'
 import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienRR, telLien } from '../lib/format'
@@ -194,10 +196,12 @@ function PageFranchise({ reseau, nom }: { reseau: Reseau; nom: string }) {
   const [message, setMessage] = useState('')
   const f = franchises(reseau).find((x) => x.nom === nom)!
   const coachs = [...new Set(f.magasins.map((m) => m.coach).filter(Boolean))]
+  const engagement = useEngagement(reseau)
   return (
     <>
       <Entete retour="/equipe?vue=franchises" titre={nom} sousTitre={`${libelleRole('franchise', f.integresSeulement)} · ${pluriel(f.magasins.length, 'magasin')}${coachs.length ? ` · suivi par ${coachs.join(', ')}` : ''}`} onModifier={() => setEdition(true)} />
       <Box sx={{ mb: 2, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
+        {engagement && <SectionEngagement e={engagement(nom, f.magasins.map((m) => m.nom))} jour={reseau.jour} lectures={profil?.role !== 'coach'} />}
         <SectionFichePersonnelle reseau={reseau} r={{ type: 'franchise', cle: nom }} />
         {profil?.role === 'directeur' && referentiels && <SectionAcces nom={nom} magasins={f.magasins.map((m) => m.nom)} signaler={setMessage} />}
       </Box>

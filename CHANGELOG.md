@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Engagement du franchisé (sprint 22, A5), équipe seule : dans Équipe > Franchisés et en tête de sa fiche, trois repères
+  sur 90 jours affichés tels quels, sans note : communications lues (Directeur et RR), tâches tenues dans les délais,
+  dernier message écrit. Filtre « Peu engagés » (au moins deux repères en retrait : moins d'une communication sur deux
+  lue, moins d'une tâche sur deux tenue, aucun message depuis 60 jours). Jamais dans l'espace du franchisé. Sans migration.
 - Notifications sur le téléphone d'une tâche confiée et d'une communication à la une (sprint 22, F2) : les porteurs
   d'une nouvelle tâche (sauf celui qui l'écrit) la reçoivent ; une communication mise à la une prévient les franchisés
   visés, une seule fois. Les @ dans les groupes étaient déjà envoyés (0018). **Migration à passer :
