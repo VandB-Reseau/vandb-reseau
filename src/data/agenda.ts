@@ -20,15 +20,15 @@ export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Elem
   const el: Element[] = []
   // Visites faites et prévues (pas les appels ni les points)
   for (const v of reseau.visites) if (v.date >= debut && v.date <= fin && estVisite(v)) {
-    el.push({ cle: `v-${v.id ?? v.date}-${v.magasin}`, categorie: 'visite', debut: v.date, fin: v.date, titre: `Visite ${v.magasin}`, detail: [libelleTypeVisite(v.type), nomsVisiteurs(v)].filter(Boolean).join(' · '), lien: lienFiche(v.magasin), couleur: '#1b6fce', magasin: v.magasin, visite: v })
+    el.push({ cle: `v-${v.id ?? v.date}-${v.magasin}`, categorie: 'visite', debut: v.date, fin: v.date, titre: `Visite ${v.magasin}`, detail: [libelleTypeVisite(v.type), nomsVisiteurs(v)].filter(Boolean).join(' · '), lien: lienFiche(v.magasin), couleur: '#307672', magasin: v.magasin, visite: v })
   }
   // Campagnes datées qui concernent au moins un magasin visible du compte
   for (const c of reseau.campagnes.liste) {
     const d = c.debut || c.fin, f = c.fin || c.debut
-    if (d && d <= fin && f >= debut && magasinsConcernes(reseau, c).length) el.push({ cle: `cp-${c.id}`, categorie: 'campagne', debut: d, fin: f, titre: c.nom, detail: ['Campagne', libellePerimetre(c)].filter(Boolean).join(' · '), lien: `/plus/sante?vue=campagnes&campagne=${encodeURIComponent(c.id)}`, couleur: '#a15c00' })
+    if (d && d <= fin && f >= debut && magasinsConcernes(reseau, c).length) el.push({ cle: `cp-${c.id}`, categorie: 'campagne', debut: d, fin: f, titre: c.nom, detail: ['Campagne', libellePerimetre(c)].filter(Boolean).join(' · '), lien: `/plus/sante?vue=campagnes&campagne=${encodeURIComponent(c.id)}`, couleur: '#312e2e' })
   }
   for (const m of reseau.magasins) {
-    if (m.ouvertureConnue && m.ouverture >= debut && m.ouverture <= fin) el.push({ cle: `o-${m.nom}`, categorie: 'ouverture', debut: m.ouverture, fin: m.ouverture, titre: `Ouverture ${m.nom}`, detail: m.coach ? `Coach ${m.coach}` : 'Sans Coach', lien: lienFiche(m.nom), couleur: '#ef7d00' })
+    if (m.ouvertureConnue && m.ouverture >= debut && m.ouverture <= fin) el.push({ cle: `o-${m.nom}`, categorie: 'ouverture', debut: m.ouverture, fin: m.ouverture, titre: `Ouverture ${m.nom}`, detail: m.coach ? `Coach ${m.coach}` : 'Sans Coach', lien: lienFiche(m.nom), couleur: '#ea6029' })
   }
   // Formations à part (23/10/2026) ; une réunion reste un événement
   for (const e of reseau.evenements) if (e.debut <= fin && e.fin >= debut) {

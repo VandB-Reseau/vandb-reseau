@@ -30,7 +30,7 @@ const choixCreer: { id: Choix | 'message'; libelle: string; icone: ReactElement;
   { id: 'tache', libelle: 'Tâche', icone: <TaskAltOutlined fontSize="small" />, fond: brand.or, texte: brand.noir },
   { id: 'message', libelle: 'Message', icone: <ChatBubbleOutlineOutlined fontSize="small" />, fond: brand.vertFonce, texte: '#ffffff' },
   { id: 'pratique', libelle: 'Bonne pratique', icone: <PhotoCameraOutlined fontSize="small" />, fond: brand.orange, texte: brand.noir },
-  { id: 'evenement', libelle: 'Événement', icone: <EventOutlined fontSize="small" />, fond: '#7c3aed', texte: '#ffffff' },
+  { id: 'evenement', libelle: 'Événement', icone: <EventOutlined fontSize="small" />, fond: brand.brique, texte: '#ffffff' },
 ]
 
 // Bouton « Créer » : visite, tâche, message, bonne pratique ou événement, depuis n'importe quel écran.

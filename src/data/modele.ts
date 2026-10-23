@@ -123,15 +123,15 @@ export interface Reseau {
 
 export type TypeVisite = 'terrain' | 'hygiene' | 'excellence' | 'ouverture' | 'feuille' | 'appel' | 'point'
 export const typesVisite: { id: TypeVisite; libelle: string; couleur: string }[] = [
-  { id: 'terrain', libelle: 'Visite terrain', couleur: '#1b6fce' },
-  { id: 'hygiene', libelle: 'Audit hygiène', couleur: '#0f766e' },
-  { id: 'excellence', libelle: 'Audit excellence', couleur: '#b7791f' },
-  { id: 'ouverture', libelle: 'Accompagnement ouverture', couleur: '#ef7d00' },
+  { id: 'terrain', libelle: 'Visite terrain', couleur: '#307672' },
+  { id: 'hygiene', libelle: 'Audit hygiène', couleur: '#3a8f8d' },
+  { id: 'excellence', libelle: 'Audit excellence', couleur: '#f8bb09' },
+  { id: 'ouverture', libelle: 'Accompagnement ouverture', couleur: '#ea6029' },
   // Revue budgétaire avec le franchisé : hors rythme de visite
-  { id: 'feuille', libelle: 'Feuille de route', couleur: '#6d4c41' },
+  { id: 'feuille', libelle: 'Feuille de route', couleur: '#312e2e' },
   // Contacts sans visite : ne comptent pas dans le rythme de visite
-  { id: 'appel', libelle: 'Appel', couleur: '#5e35b1' },
-  { id: 'point', libelle: 'Point chiffre', couleur: '#c2185b' },
+  { id: 'appel', libelle: 'Appel', couleur: '#1d1d1b' },
+  { id: 'point', libelle: 'Point chiffre', couleur: '#c24119' },
 ]
 // Plusieurs participants enregistrés dans la colonne visitor, séparés par une virgule
 export const SEPARATEUR_VISITEURS = ', '

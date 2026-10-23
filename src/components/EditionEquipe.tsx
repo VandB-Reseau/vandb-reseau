@@ -26,7 +26,7 @@ import { ChampMois, premierDuMois } from './ChampMois'
 import { ErreurAction } from '../data/espaceFranchise'
 import type { Coach, Magasin, Reseau, ResponsableRegional } from '../data/modele'
 
-const COULEURS = ['#1b6fce', '#ef7d00', '#2e7d32', '#7c3aed', '#c2185b', '#00838f', '#6d4c41', '#eaa400']
+const COULEURS = ['#307672', '#ea6029', '#f8bb09', '#312e2e', '#c24119', '#3a8f8d', '#ede0c4', '#f7d802']
 
 // Traduit le refus de la base en message compréhensible
 export function messageErreur(e: unknown): string {

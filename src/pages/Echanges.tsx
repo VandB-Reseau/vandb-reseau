@@ -56,7 +56,7 @@ const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').to
 // Avatar d'une conversation : carré noir et or pour un magasin, icône pour un groupe libre, rond pour une personne
 function AvatarConversation({ c, taille = 48 }: { c: Pick<Conversation, 'genre' | 'titre'>; taille?: number }) {
   if (c.genre === 'groupe') return <Avatar variant="rounded" sx={{ width: taille, height: taille, borderRadius: 3, bgcolor: 'info.main', color: 'info.contrastText' }}><GroupsOutlined /></Avatar>
-  if (c.genre === 'magasin') return <Avatar variant="rounded" sx={{ width: taille, height: taille, borderRadius: 3, bgcolor: '#1b1b1f', color: '#eaa400', fontWeight: 700, fontSize: '0.9375rem' }}>{initialesDe(c.titre)}</Avatar>
+  if (c.genre === 'magasin') return <Avatar variant="rounded" sx={{ width: taille, height: taille, borderRadius: 3, bgcolor: '#1d1d1b', color: '#f8bb09', fontWeight: 700, fontSize: '0.9375rem' }}>{initialesDe(c.titre)}</Avatar>
   return <Avatar sx={{ width: taille, height: taille, bgcolor: 'action.selected', color: 'text.primary', fontWeight: 600, fontSize: '0.9375rem' }}>{initialesDe(c.titre)}</Avatar>
 }
 

@@ -257,7 +257,7 @@ export async function lireClasseur(f: File): Promise<{ nom: string; lignes: unkn
 
 // Colonnes clés : repérées par « (clé) » et un fond doré, elles identifient la ligne à mettre à jour
 export const enteteExport = (c: Colonne) => (c.cle ? `${c.entete} (clé)` : c.entete)
-const entete = (c: Colonne) => ({ value: enteteExport(c), fontWeight: 'bold' as const, type: String, ...(c.cle ? { backgroundColor: '#eaa400', textColor: '#1b1b1f' } : {}) })
+const entete = (c: Colonne) => ({ value: enteteExport(c), fontWeight: 'bold' as const, type: String, ...(c.cle ? { backgroundColor: '#f8bb09', textColor: '#1d1d1b' } : {}) })
 
 export function feuilleExport(ref: Referentiel, reseau: Reseau) {
   const lignes = ref.lignes(reseau)
@@ -444,7 +444,7 @@ const coachs: Referentiel = {
   async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerCoach(ch.cle) },
 }
 
-const COULEURS_RR = ['#1b6fce', '#ef7d00', '#2e7d32', '#7c3aed', '#c2185b', '#00838f', '#6d4c41', '#eaa400']
+const COULEURS_RR = ['#307672', '#ea6029', '#f8bb09', '#312e2e', '#c24119', '#3a8f8d', '#ede0c4', '#f7d802']
 const rrs: Referentiel = {
   id: 'rrs', libelle: 'Responsables Régionaux', feuille: 'Responsables Régionaux',
   colonnes: [

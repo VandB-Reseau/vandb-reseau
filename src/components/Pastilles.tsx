@@ -21,7 +21,7 @@ export function PastilleStatut({ statut }: { statut: Statut }) {
 }
 
 export function PastilleType({ franchise, compacte }: { franchise: boolean; compacte?: boolean }) {
-  const couleur = franchise ? brand.bleu : brand.orange
+  const couleur = franchise ? brand.vertFonce : brand.orange
   return (
     <Chip
       icon={franchise ? <HandshakeOutlined /> : <BusinessOutlined />}

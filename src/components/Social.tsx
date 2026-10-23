@@ -9,7 +9,7 @@ import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import Typography from '@mui/material/Typography'
-import { alpha } from '@mui/material/styles'
+import { alpha, type Theme } from '@mui/material/styles'
 import ImageOutlined from '@mui/icons-material/ImageOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import ChevronLeftOutlined from '@mui/icons-material/ChevronLeftOutlined'
@@ -98,11 +98,18 @@ export function CarteLignes({ children, label }: { children: ReactNode; label?: 
   )
 }
 
-// Titre de section discret, en capitales, avec un nombre à droite
+// Intitulé en cartouche noir, lettres blanches en capitales, légèrement penché, comme les intitulés de la charte V and B
+// En mode sombre, le cartouche passe en jaune-or, lettres noires, pour rester visible sur le fond noir
+export const cartouche = (theme: Theme) => ({
+  display: 'inline-block', px: 1, py: 0.25, bgcolor: '#1d1d1b', color: '#ffffff', fontSize: '0.8125rem', fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', transform: 'rotate(-1.5deg)',
+  ...theme.applyStyles('dark', { bgcolor: brand.or, color: '#1d1d1b' }),
+})
+
+// Titre de section en cartouche, avec un nombre à droite
 export function TitreSection({ children, nombre, action }: { children: ReactNode; nombre?: number; action?: ReactNode }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, mb: 1, minHeight: 40 }}>
-      <Box sx={{ flex: 1 }}><Typography component="h2" sx={{ display: 'inline-block', px: 1, py: 0.25, bgcolor: '#1d1d1b', color: '#ffffff', fontSize: '0.8125rem', fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', transform: 'rotate(-1.5deg)' }}>{children}</Typography></Box>
+      <Box sx={{ flex: 1 }}><Typography component="h2" sx={cartouche}>{children}</Typography></Box>
       {nombre !== undefined && <Typography sx={{ fontWeight: 600 }}>{nombre}</Typography>}
       {action}
     </Box>
@@ -258,7 +265,7 @@ export function ChoixAffichage({ valeur, onChange }: { valeur: Affichage; onChan
 // Glisser vers la gauche au doigt (téléphone) pour l'action rapide de la ligne : tâche faite, notification lue.
 // Sans animation : la ligne suit le doigt et revient en place au lâcher ; la souris n'est pas concernée.
 const SEUIL_GLISSER = 96
-export function Glisser({ children, libelle, icone, onGlisser, actif = true, couleur = '#2e7d32' }: { children: ReactNode; libelle: string; icone: ReactNode; onGlisser: () => void; actif?: boolean; couleur?: string }) {
+export function Glisser({ children, libelle, icone, onGlisser, actif = true, couleur = brand.vertFonce }: { children: ReactNode; libelle: string; icone: ReactNode; onGlisser: () => void; actif?: boolean; couleur?: string }) {
   const [dx, setDx] = useState(0)
   const depart = useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null)
   const vientDeGlisser = useRef(false)

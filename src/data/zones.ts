@@ -2,7 +2,8 @@ import { distanceKm } from './charge'
 
 // Couleurs attribuées aux Coachs sans couleur enregistrée : même calcul que l'ancienne app,
 // un Coach garde donc la même couleur dans les deux applications
-const COULEURS_AUTO = ['#0891b2', '#7c3aed', '#b45309', '#15803d', '#be123c', '#1d4ed8', '#c2410c', '#0e7490', '#6d28d9', '#047857']
+// Couleurs de la charte V and B
+const COULEURS_AUTO = ['#307672', '#ea6029', '#f8bb09', '#312e2e', '#c24119', '#3a8f8d', '#1d1d1b', '#f7d802', '#ede0c4']
 
 export function couleurAuto(nom: string): string {
   if (!nom) return '#6b6b73'

@@ -199,7 +199,7 @@ function SectionChiffresDuMois({ reseau, magasins }: { reseau: Reseau; magasins:
             return (
               <Tuile key={m.nom} lien={`${lienFiche(m.nom)}?vue=chiffres`} libelle={m.nom} valeur={a ? formatKEuros(a.ca) : '—'}
                 detail={a ? <><Box component="span" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Box> · {libelleMois(a.mois)}</> : 'Aucun chiffre enregistré'}>
-                {a && <Box aria-hidden sx={{ mt: 0.75 }}><MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.bleu} largeur={96} hauteur={28} /></Box>}
+                {a && <Box aria-hidden sx={{ mt: 0.75 }}><MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.vertFonce} largeur={96} hauteur={28} /></Box>}
               </Tuile>
             )
           })}
@@ -222,7 +222,7 @@ function SectionChiffresDuMois({ reseau, magasins }: { reseau: Reseau; magasins:
       <Box sx={grilleTuiles}>
         <Tuile large libelle="CA cumulé" valeur={formatEuros(a.ca)}
           detail={<><Box component="span" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Box> vs {libelleMois(a.reference)}</>}
-          fin={<MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.bleu} largeur={120} hauteur={48} label="CA des douze derniers mois" />} />
+          fin={<MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.vertFonce} largeur={120} hauteur={48} label="CA des douze derniers mois" />} />
         {tuiles.map(([l, v, d]) => <Tuile key={l} libelle={l} valeur={v} detail={d} />)}
       </Box>
     </Box>

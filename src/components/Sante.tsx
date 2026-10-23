@@ -127,7 +127,13 @@ export const BoutonsOption = memo(function BoutonsOption({ t, libelle, valeur, o
   )
 })
 
-export const texteSur = (couleur: string) => (['#f6c544', '#8bc34a'].includes(couleur) ? '#1d1d1b' : '#fff')
+// Texte noir sur les teintes claires de la charte (jaunes, orange, crème, beige, vert canard), blanc sur les foncées
+export function texteSur(couleur: string): string {
+  const h = couleur.replace('#', '')
+  if (!/^[0-9a-f]{6}$/i.test(h)) return '#fff'
+  const [r, v, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * r + 0.7152 * v + 0.0722 * b > 0.18 ? '#1d1d1b' : '#fff'
+}
 
 export function PastilleCase({ c }: { c: CaseNineBox | null }) {
   if (!c) return <Chip label="Non classé" variant="outlined" sx={{ fontSize: 12 }} />
@@ -135,7 +141,8 @@ export function PastilleCase({ c }: { c: CaseNineBox | null }) {
 }
 
 // Une couleur par Coach, stable d'un écran à l'autre (ordre alphabétique)
-const PALETTE = ['#1b6fce', '#c2185b', '#0f766e', '#7c3aed', '#b45309', '#0891b2', '#4d7c0f', '#be123c', '#4338ca', '#a16207', '#047857', '#9333ea']
+// Couleurs de la charte V and B, dans un ordre qui alterne clair et foncé
+const PALETTE = ['#307672', '#ea6029', '#1d1d1b', '#f8bb09', '#c24119', '#3a8f8d', '#312e2e', '#f7d802', '#ede0c4']
 export function couleursCoachs(coachs: string[]): Map<string, string> {
   return new Map([...new Set(coachs)].sort((a, b) => a.localeCompare(b, 'fr')).map((c, i) => [c, PALETTE[i % PALETTE.length]]))
 }

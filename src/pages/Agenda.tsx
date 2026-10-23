@@ -45,17 +45,17 @@ import { useAuth } from '../auth/AuthContext'
 import { ajouterJours, ecartJours, elementsDuMois, iso, jourLong, jourUTC, nomMois, type Categorie, type Element } from '../data/agenda'
 
 const categories: { id: Categorie; libelle: string; couleur: string; icone: ReactElement }[] = [
-  { id: 'visite', libelle: 'Visites', couleur: '#1b6fce', icone: <EventAvailableOutlined fontSize="small" /> },
-  { id: 'campagne', libelle: 'Campagnes', couleur: '#a15c00', icone: <CampaignOutlined fontSize="small" /> },
-  { id: 'ouverture', libelle: 'Ouvertures', couleur: '#ef7d00', icone: <StorefrontOutlined fontSize="small" /> },
-  { id: 'evenement', libelle: 'Événements', couleur: '#7c3aed', icone: <EventOutlined fontSize="small" /> },
-  { id: 'formation', libelle: 'Formations', couleur: '#2e7d32', icone: <SchoolOutlined fontSize="small" /> },
-  { id: 'anniversaire', libelle: 'Anniversaires', couleur: '#c2185b', icone: <CakeOutlined fontSize="small" /> },
+  { id: 'visite', libelle: 'Visites', couleur: '#307672', icone: <EventAvailableOutlined fontSize="small" /> },
+  { id: 'campagne', libelle: 'Campagnes', couleur: '#312e2e', icone: <CampaignOutlined fontSize="small" /> },
+  { id: 'ouverture', libelle: 'Ouvertures', couleur: '#ea6029', icone: <StorefrontOutlined fontSize="small" /> },
+  { id: 'evenement', libelle: 'Événements', couleur: '#f8bb09', icone: <EventOutlined fontSize="small" /> },
+  { id: 'formation', libelle: 'Formations', couleur: '#c24119', icone: <SchoolOutlined fontSize="small" /> },
+  { id: 'anniversaire', libelle: 'Anniversaires', couleur: '#3a8f8d', icone: <CakeOutlined fontSize="small" /> },
 ]
 
-const COULEURS_EV = ['#7c3aed', '#1b6fce', '#ef7d00', '#2e7d32', '#c2185b']
+const COULEURS_EV = ['#f8bb09', '#307672', '#ea6029', '#c24119', '#3a8f8d']
 // Couleur proposée pour chaque type, tant que la personne n'en a pas choisi une autre
-const COULEUR_TYPE: Record<TypeEvenement, string> = { event: '#7c3aed', reunion: '#1b6fce', formation: '#2e7d32' }
+const COULEUR_TYPE: Record<TypeEvenement, string> = { event: '#f8bb09', reunion: '#307672', formation: '#c24119' }
 type FormatContenu = 'aucun' | 'forme' | 'code'
 const formatsContenu: { v: FormatContenu; libelle: string }[] = [{ v: 'aucun', libelle: 'Aucun' }, { v: 'forme', libelle: 'Mise en forme' }, { v: 'code', libelle: 'Code HTML' }]
 const titreAjout: Record<TypeEvenement, string> = { event: 'Ajouter un événement', reunion: 'Ajouter une réunion', formation: 'Ajouter une formation' }

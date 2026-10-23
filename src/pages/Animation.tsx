@@ -50,11 +50,11 @@ const DialogEvenement = chargementDiffere(() => import('./Agenda').then((m) => (
 
 export type Genre = 'communication' | 'pratique' | 'sondage' | 'formation' | 'reunion' | 'campagne'
 const genres: { v: Genre; libelle: string; pluriel: string; icone: ReactElement; couleur: string }[] = [
-  { v: 'communication', libelle: 'Communication', pluriel: 'Communications', icone: <CampaignOutlined />, couleur: '#1b6fce' },
-  { v: 'pratique', libelle: 'Bonne pratique', pluriel: 'Bonnes pratiques', icone: <TipsAndUpdatesOutlined />, couleur: '#ef7d00' },
-  { v: 'sondage', libelle: 'Sondage', pluriel: 'Sondages', icone: <QuizOutlined />, couleur: '#7c3aed' },
-  { v: 'formation', libelle: 'Formation', pluriel: 'Formations', icone: <SchoolOutlined />, couleur: '#2e7d32' },
-  { v: 'reunion', libelle: 'Réunion', pluriel: 'Réunions', icone: <GroupsOutlined />, couleur: '#1b1b1f' },
+  { v: 'communication', libelle: 'Communication', pluriel: 'Communications', icone: <CampaignOutlined />, couleur: '#307672' },
+  { v: 'pratique', libelle: 'Bonne pratique', pluriel: 'Bonnes pratiques', icone: <TipsAndUpdatesOutlined />, couleur: '#ea6029' },
+  { v: 'sondage', libelle: 'Sondage', pluriel: 'Sondages', icone: <QuizOutlined />, couleur: '#312e2e' },
+  { v: 'formation', libelle: 'Formation', pluriel: 'Formations', icone: <SchoolOutlined />, couleur: '#c24119' },
+  { v: 'reunion', libelle: 'Réunion', pluriel: 'Réunions', icone: <GroupsOutlined />, couleur: '#1d1d1b' },
   { v: 'campagne', libelle: 'Campagne', pluriel: 'Campagnes', icone: <FlagOutlined />, couleur: '#a15c00' },
 ]
 const genreDe = (g: Genre) => genres.find((x) => x.v === g)!

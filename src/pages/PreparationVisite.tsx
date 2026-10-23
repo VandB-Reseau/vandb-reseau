@@ -23,6 +23,7 @@ import { ecarts } from '../data/grilles'
 import { horodatage, messagesDu } from '../data/messagerie'
 import { useMessagerie } from '../data/MessagerieContext'
 import { chargerReperesEquipe, type IndicateurRepere, type Reperes } from '../data/espaceFranchise'
+import { brandStripe } from '../theme/theme'
 
 // Fiche avant visite : tout ce qu'il faut savoir d'un magasin sur une page, lisible au téléphone
 // et téléchargeable en PDF (même feuille que le compte rendu de visite)
@@ -37,11 +38,11 @@ const styleImpression = (
   }} />
 )
 
-const NOIR = '#1b1b1f', GRIS = '#5f5f66', FILET = '#e0e0e0'
-const ROUGE = '#c62828', ORANGE = '#b45309', VERT = '#2e7d32'
+const NOIR = '#1d1d1b', GRIS = '#5f5f66', FILET = '#e0e0e0'
+const ROUGE = '#c24119', ORANGE = '#b84a1e', VERT = '#307672'
 
 function Titre({ children }: { children: ReactNode }) {
-  return <Typography variant="h4" component="h2" sx={{ color: NOIR, borderBottom: '2px solid #eaa400', pb: 0.5, mb: 1.5 }}>{children}</Typography>
+  return <Typography variant="h4" component="h2" sx={{ color: NOIR, borderBottom: '2px solid #f8bb09', pb: 0.5, mb: 1.5 }}>{children}</Typography>
 }
 function Bloc({ titre, children }: { titre: string; children: ReactNode }) {
   return <Box component="section" aria-label={titre} sx={{ mb: 3, breakInside: 'avoid' }}><Titre>{titre}</Titre>{children}</Box>
@@ -157,7 +158,7 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
           <Box sx={{ flex: 1 }} />
           <Typography sx={{ color: '#fff', fontWeight: 600 }}>Fiche avant visite</Typography>
         </Box>
-        <Box sx={{ height: 4, background: 'linear-gradient(90deg, #f6c544, #ef7d00, #1b6fce)' }} />
+        <Box sx={{ height: 4, background: brandStripe }} />
         <Box sx={{ p: { xs: 2, sm: 4 } }}>
           <Typography variant="h2" component="h1" sx={{ color: NOIR }}>{m.nom}</Typography>
           <Typography sx={{ color: GRIS, mb: 2 }}>{m.franchise ? 'Franchisé' : 'Intégré'} · préparée le {dateLongue(reseau.jour)}</Typography>

@@ -55,9 +55,9 @@ const couleurSure = (c: string) => (/^#[0-9a-f]{3,8}$/i.test(c) ? c : GRIS)
 // Coach : rond cerclé de blanc ; Responsable Régional : carré cerclé de noir, plus grand
 function htmlPicto(type: TypePicto, couleur: string, taille: number) {
   const rr = type === 'rr'
-  const bord = rr ? '#1b1b1f' : '#ffffff'
+  const bord = rr ? '#1d1d1b' : '#ffffff'
   return `<div style="box-sizing:border-box;width:${taille}px;height:${taille}px;border-radius:${rr ? '7px' : '50%'};background:${couleurSure(couleur)};border:${rr ? 3 : 2.5}px solid ${bord};box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center">`
-    + `<svg viewBox="0 0 24 24" width="${Math.round(taille * 0.62)}" height="${Math.round(taille * 0.62)}" aria-hidden="true"><path fill="#ffffff" stroke="#1b1b1f" stroke-width="0.6" d="${rr ? TRACE_RR : TRACE_COACH}"/></svg></div>`
+    + `<svg viewBox="0 0 24 24" width="${Math.round(taille * 0.62)}" height="${Math.round(taille * 0.62)}" aria-hidden="true"><path fill="#ffffff" stroke="#1d1d1b" stroke-width="0.6" d="${rr ? TRACE_RR : TRACE_COACH}"/></svg></div>`
 }
 const icones = new Map<string, ReturnType<typeof divIcon>>()
 const iconePicto = (type: TypePicto, couleur: string) => {
@@ -248,7 +248,7 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
                 key={m.nom}
                 center={[m.lat, m.lon]}
                 radius={avant !== undefined ? 9 : statut === 'avenir' || statut === 'preouverture' ? 6 : 7}
-                pathOptions={{ color: avant !== undefined ? '#1b1b1f' : '#ffffff', weight: avant !== undefined ? 3 : 1.5, fillColor: couleurPoint(m), fillOpacity: statut === 'avenir' ? 0.45 : 0.95, dashArray: statut === 'avenir' ? '3' : undefined }}
+                pathOptions={{ color: avant !== undefined ? '#1d1d1b' : '#ffffff', weight: avant !== undefined ? 3 : 1.5, fillColor: couleurPoint(m), fillOpacity: statut === 'avenir' ? 0.45 : 0.95, dashArray: statut === 'avenir' ? '3' : undefined }}
               >
                 <Popup>
                   <Typography variant="subtitle2" component="div">{m.nom}</Typography>
