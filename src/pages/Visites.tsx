@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink, Navigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
+import { brand } from '../theme/theme'
 import ButtonBase from '@mui/material/ButtonBase'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -128,7 +129,13 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
             <CarteLignes label="Visites par Coach">
               {parCoach.map((g) => (
                 <LigneCompacte key={g.coach} lien={g.coach ? lienCoach(g.coach) : undefined} avatar={<Initiales nom={g.coach || 'Sans Coach'} />} titre={g.coach || 'Sans Coach'}
-                  detail={`${pluriel(g.faites, 'visite')} · référence ${g.reference} · ${jours(g.jours)} sur l’année`}
+                  detail={<Box component="span" sx={{ display: 'block', whiteSpace: 'normal' }}>
+                    {`${pluriel(g.faites, 'visite')} sur ${g.reference} · ${jours(g.jours)} par an`}
+                    <Box component="span" role="meter" aria-label={`Visites de ${g.coach || 'Sans Coach'}`} aria-valuemin={0} aria-valuemax={g.reference} aria-valuenow={Math.min(g.faites, g.reference)}
+                      sx={{ display: 'block', height: 6, mt: 0.5, borderRadius: 3, bgcolor: 'action.hover', overflow: 'hidden' }}>
+                      <Box component="span" sx={{ display: 'block', height: '100%', width: `${g.reference ? Math.min(100, Math.round((g.faites / g.reference) * 100)) : 0}%`, bgcolor: brand.vertFonce }} />
+                    </Box>
+                  </Box>}
                   fin={g.signales.length ? <Pastille ton="orange">{`${g.signales.length} à voir`}</Pastille> : undefined} />
               ))}
             </CarteLignes>
