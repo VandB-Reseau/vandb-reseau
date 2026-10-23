@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin : Journal et Bonnes pratiques ont chacun leur onglet (Joseph, 22/10/2026), au lieu d'être sous la Fiche.
+  Les liens du fil vers une bonne pratique ouvrent l'onglet Bonnes pratiques. Sans migration.
 - Compte rendu dans le fil d'actualité (Joseph, 22/10/2026) : une vignette carrée « Compte rendu », comme une photo, ouvre le
   compte rendu dans une fenêtre (plein écran sur téléphone) ; la fermer ou revenir en arrière laisse le fil à la même place,
   pour aimer ou commenter. Le bouton PDF mène à la page imprimable. Sans migration.
