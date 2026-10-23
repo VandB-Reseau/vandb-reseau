@@ -14,6 +14,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   de passe à la première connexion. « Nouveau mot de passe » remplace la réinitialisation dans Supabase. Retirer un
   franchisé, ou « Supprimer le compte », supprime son compte. Sans migration. **À déployer : fonction Supabase `comptes`
   (`supabase/functions/comptes/index.ts`)** ; tant qu'elle ne l'est pas, l'app garde l'ancien fonctionnement.
+- Sondages (suite du sprint 22, A3) : les questions éclair deviennent des sondages de 1 à 5 questions (oui/non, choix
+  ou note), posés dans Infos réseau par le Directeur ou un RR aux franchisés, à l'équipe (Coachs, et RR quand le
+  Directeur pose) ou aux deux. L'équipe les remplit depuis son accueil et Infos réseau (rubrique Sondages) ; une
+  question se répond d'un geste, plusieurs s'envoient ensemble. Résultats question par question, relance de l'équipe
+  comprise. **Migration à passer : `0029_sondages.sql`.**
 - Résumé automatique des comptes rendus dans le fil d'actualité : en tête de carte, la phrase clé (Synthèse, sinon
   notes, sinon première partie remplie) puis les faits (case nine box notée le jour de la visite, actions au plan,
   actions précédentes faites, sujets abordés). Construit par règles, sans IA ; pas de santé pour le franchisé. Sans migration.
