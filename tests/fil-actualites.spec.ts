@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { premierePhrase, resumeCompteRendu } from '../src/data/resumeCompteRendu'
 
 // Fil d'actualité de l'accueil (Joseph, 22/10/2026) : communications, comptes rendus de visite et bonnes pratiques,
 // plus de messages, tâches ni chiffres ; « J'aime » et commentaires sur les comptes rendus, pour l'équipe et le franchisé
@@ -69,4 +70,24 @@ test('migration pas encore passée : le compte rendu s’affiche sans J’aime n
   const compteRendu = page.getByRole('region', { name: 'Actualités' }).getByText(/visite terrain/).first()
   await expect(compteRendu).toBeVisible()
   await expect(page.getByRole('article', { name: /^Compte rendu de / })).toHaveCount(0)
+})
+
+// Résumé automatique du compte rendu en tête de carte (Joseph, 23/10/2026) : phrase clé et faits, construits par règles
+test('le compte rendu du fil se résume : phrase clé, plan d’action, sujets abordés', async ({ page }, info) => {
+  await seConnecter(page, { reactionsVisites: { pouces: {}, commentaires: {} } })
+  const lyon = page.getByRole('region', { name: 'Actualités' }).getByRole('article', { name: 'Compte rendu de Lyon Test' })
+  await expect(lyon.getByText('Vitrine refaite, stock à revoir.', { exact: true })).toBeVisible()
+  await expect(lyon.getByText('1 action au plan · Abordé : magasin et offre', { exact: true })).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  await lyon.screenshot({ path: `captures/${info.project.name}-fil-resume-compte-rendu.png` })
+})
+
+test('résumé du compte rendu : Synthèse d’abord, santé, actions reprises, phrase coupée', () => {
+  const plan = [{ action: 'Former l’équipe', porteur: '', echeance: '' }, { action: 'Refaire la vitrine', porteur: '', echeance: '' }]
+  expect(resumeCompteRendu({ notes: 'fds', parties: ['CA en hausse.', 'Vitrine faite.', '', '', 'Équipe stable.', 'Bon mois. Reste le stock.'], plan }, 1, 'Cœur de réseau'))
+    .toEqual({ phrase: 'Bon mois.', faits: 'Santé : Cœur de réseau · 2 actions au plan · 1 action précédente faite · Abordé : chiffres, plan précédent, équipe' })
+  expect(resumeCompteRendu({ notes: '', parties: [], plan: [] }, 2)).toEqual({ phrase: '', faits: '2 actions précédentes faites' })
+  const long = premierePhrase('Le magasin tourne bien mais la cave manque de références locales et la terrasse reste fermée en semaine faute de personnel disponible')
+  expect(long.endsWith('…')).toBe(true)
+  expect(long.length).toBeLessThanOrEqual(111)
 })

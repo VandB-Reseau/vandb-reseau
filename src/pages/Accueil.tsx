@@ -362,7 +362,7 @@ export function PublicationFil({ e, jour, sansMagasin = false, ouvrir }: { e: El
         </Box>
         {e.visuel && <Box sx={{ mx: -2, mt: 1.5 }}><VisuelFil piece={e.visuel.piece} url={e.visuel.url} alt={e.titre ?? ''} /></Box>}
         {e.titre && <Typography sx={{ mt: 1.25, fontWeight: 600 }}>{e.titre}</Typography>}
-        {e.texte && !e.valeur && <Typography sx={{ mt: e.titre ? 0.25 : 1.25, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'pre-line' }}>{e.texte}</Typography>}
+        {e.texte && !e.valeur && <Typography {...(e.genre === 'visite' ? { variant: 'body2' as const, color: 'text.secondary' } : {})} sx={{ mt: e.titre ? 0.25 : 1.25, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'pre-line' }}>{e.texte}</Typography>}
       </ButtonBase>
       {/* Les photos hors du lien : le toucher les ouvre en plein écran */}
       {(!!e.photos?.length || cr) && <Box sx={{ px: 2, pb: 2, mt: -0.75 }}><GrillePhotos photos={e.photos}
@@ -442,7 +442,7 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
   const communications = useCommunicationsDuFil()
   const reactionsPratiques = useReactionsPratiques()
   const reactionsVisites = useReactionsVisites()
-  const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications.liste, true, true), [reseau, noms, messagerie, communications.liste])
+  const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications.liste, true, true, true), [reseau, noms, messagerie, communications.liste])
   const actualites = <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
   if (!surPC) {
     return (
