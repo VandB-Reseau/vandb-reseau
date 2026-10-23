@@ -15,6 +15,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   communication citée gardée). Fiche magasin sans onglet Messages : le picto message ouvre le groupe du magasin, les
   bonnes pratiques du magasin ont leur onglet. Un franchisé d'un seul magasin arrive sur sa fiche par Mes magasins.
   Accueil : Mes chiffres et Repères réseau en tuiles, comme l'accueil de l'équipe. Sans migration.
+- Sondages (suite du sprint 22, A3) : les questions éclair deviennent des sondages de 1 à 5 questions (oui/non, choix
+  ou note), posés dans Infos réseau par le Directeur ou un RR aux franchisés, à l'équipe (Coachs, et RR quand le
+  Directeur pose) ou aux deux. L'équipe les remplit depuis son accueil et Infos réseau (rubrique Sondages) ; une
+  question se répond d'un geste, plusieurs s'envoient ensemble. Résultats question par question, relance de l'équipe
+  comprise. **Migration à passer : `0029_sondages.sql`.**
 - Résumé automatique des comptes rendus dans le fil d'actualité : en tête de carte, la phrase clé (Synthèse, sinon
   notes, sinon première partie remplie) puis les faits (case nine box notée le jour de la visite, actions au plan,
   actions précédentes faites, sujets abordés). Construit par règles, sans IA ; pas de santé pour le franchisé. Sans migration.
