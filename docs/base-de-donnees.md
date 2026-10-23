@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 23/10/2026 (migration `0024`).
+Mis à jour le 23/10/2026 (migration `0025`).
 
 ## Principes
 
@@ -83,7 +83,7 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 
 | Table | Contenu |
 | --- | --- |
-| `events` | Événements : réunions, séminaires |
+| `events` | Événements : réunions, séminaires ; `invites` = magasins invités (0025, posés par le Directeur ou un RR seulement, contrôle `garde_invites`) |
 | `leaves` | Congés d'un Coach (`role` = `cs`) ou d'un RR (`dr`). Plus lue par l'app depuis le 22/10/2026 (absences retirées) ; gardée en base et dans la sauvegarde |
 
 ### Accès et périmètre
@@ -107,6 +107,7 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 | `communications_pouces`, `communications_commentaires` | J'aime et commentaires des communications |
 | `communications_lectures` | Première lecture d'une communication par chaque compte franchisé |
 | `pratiques_lectures` | Première fois qu'un compte franchisé voit une bonne pratique (identifiant de la pratique dans `bonnes_pratiques`), 0023. Aucun accès direct |
+| `reunions_presences` | Réponse du franchisé (`present`/`absent`) et pointage de l'équipe pour chaque magasin invité à un événement, 0025. Aucun accès direct |
 | `pratiques_pouces`, `pratiques_commentaires` | J'aime et commentaires des bonnes pratiques |
 | `visites_pouces`, `visites_commentaires` | J'aime et commentaires des comptes rendus de visite, depuis le fil d'actualité (0022). Lus et écrits par `reactions_visites`, `basculer_pouce_visite`, `commenter_visite`, `supprimer_commentaire_visite`, seulement sur une visite que le compte voit (`visite_visible` : franchisé = ses magasins hors appels et points, Coach et RR = leurs magasins, Directeur = toutes) |
 
@@ -167,6 +168,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Bonnes pratiques | `reactions_pratiques`, `pratique_visible`, `basculer_pouce_pratique`, `commenter_pratique`, `supprimer_commentaire_pratique` | 0010 |
 | Comptes rendus de visite | `reactions_visites`, `visite_visible`, `basculer_pouce_visite`, `commenter_visite`, `supprimer_commentaire_visite` | 0022 |
 | « Vu par » des bonnes pratiques | `lire_pratiques` (franchisé, pratiques existantes seulement), `lectures_pratiques` (Directeur, Responsable Régional pour les franchisés de ses magasins), `pratiques_existantes` (interne) | 0023 |
+| Réunions et formations | `reunions_franchise`, `repondre_reunion` (franchisé, ses magasins invités, réponse jusqu'au dernier jour) ; `presences_reunions`, `pointer_presence` (équipe, ses magasins, pointage dès le premier jour) | 0025 |
 | Campagnes régionales | `campagne_region_permise` | 0005 |
 | Fichiers | `photo_visible`, `piece_visible` (fichiers d'une tâche de l'équipe seule refusés au franchisé, 0019) | 0004, 0009, 0019 |
 | Notifications | `abonner_appareil`, `desabonner_appareil` (compte connecté) ; `comptes_de_cle`, `notifications_a_envoyer`, `notifications_tache`, `notifications_une` (fonction « notifier » seule) | 0016, 0024 |

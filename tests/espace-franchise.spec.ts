@@ -67,8 +67,8 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
     for (const b of await boutons.all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   }
   await page.screenshot({ path: `captures/${info.project.name}-franchise-magasin-choisi.png`, fullPage: true })
-  // Le franchisé n'écrit rien et ne lit aucune table directement
-  expect(ecritures.filter((e) => e.table !== 'rpc/espace_franchise')).toEqual([])
+  // Le franchisé n'écrit rien et ne lit aucune table directement : seulement les fonctions de lecture qui lui sont dédiées
+  expect(ecritures.filter((e) => !/^rpc\/\w+_franchise$/.test(e.table))).toEqual([])
   expect(ecritures.filter((e) => e.table === 'rpc/espace_franchise').map((e) => e.corps)).toEqual([{}])
 })
 

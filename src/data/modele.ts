@@ -172,5 +172,6 @@ export const visiteFaite = (v: Visite, jour: string) => v.date <= jour && !v.pre
 export interface NoteMagasin { id: string; date: string; texte: string; par: string }
 export interface PreparationVisite { notes: string; heure: string; par: string; maj: string }
 
-export interface Evenement { id: number | null; titre: string; type: string; debut: string; fin: string; notes: string; couleur: string }
+// invites : magasins invités à une réunion ou une formation (script 0025_reunions.sql) ; absent = événement sans invités
+export interface Evenement { id: number | null; titre: string; type: string; debut: string; fin: string; notes: string; couleur: string; invites?: string[] }
 export interface Anniversaire { nom: string; role: string; date: string; nature: 'naissance' | 'arrivee' }

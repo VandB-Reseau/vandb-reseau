@@ -8,20 +8,22 @@ import { chargerCommunications, chargerLectures, type Communication, type Lectur
 import type { Message } from './messagerie'
 import { useMessagerie } from './MessagerieContext'
 import type { Reseau } from './modele'
+import { usePresences, type Presence } from './reunions'
 import { useAuth } from '../auth/AuthContext'
 
 export const FENETRE = 90
-// Seuils d'un repère en retrait ; « peu engagé » = au moins deux repères en retrait
+// Seuils d'un repère en retrait ; « peu engagé » = au moins deux repères en retrait (réunions : depuis 0025)
 export const SEUIL_LECTURE = 0.5
 export const SEUIL_TACHES = 0.5
 export const SEUIL_SILENCE = 60
+export const SEUIL_REUNIONS = 0.5
 
 export interface Ratio { fait: number; total: number }
-export interface Engagement { communications: Ratio | null; taches: Ratio | null; dernierMessage: string | null }
+export interface Engagement { communications: Ratio | null; taches: Ratio | null; dernierMessage: string | null; reunions: Ratio | null }
 
 const jourMoins = (jour: string, n: number) => { const d = new Date(`${jour}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10) }
 
-export function engagementDe(reseau: Reseau, nom: string, magasins: string[], sources: { communications: Communication[]; lectures: Map<number, Lecture> | null; messages: Message[] }): Engagement {
+export function engagementDe(reseau: Reseau, nom: string, magasins: string[], sources: { communications: Communication[]; lectures: Map<number, Lecture> | null; messages: Message[]; presences?: Presence[] | null }): Engagement {
   const debut = jourMoins(reseau.jour, FENETRE)
   let communications: Ratio | null = null
   if (sources.lectures) {
@@ -46,7 +48,20 @@ export function engagementDe(reseau: Reseau, nom: string, magasins: string[], so
   const dernierMessage = sources.messages
     .filter((m) => m.auteurCle === `franchise:${nom}` || (m.auteurRole === 'franchise' && m.auteurNom === nom))
     .reduce<string | null>((max, m) => (!max || m.creeLe > max ? m.creeLe : max), null)
-  return { communications, taches: taches.total ? taches : null, dernierMessage }
+  // Réunions et formations (0025) passées dans les 90 jours où un de ses magasins était invité et a été pointé
+  let reunions: Ratio | null = null
+  if (sources.presences) {
+    reunions = { fait: 0, total: 0 }
+    for (const e of reseau.evenements) {
+      if (e.id === null || e.debut < debut || e.debut > reseau.jour || !e.invites?.some((m) => magasins.includes(m))) continue
+      const p = sources.presences.filter((x) => x.event === e.id && magasins.includes(x.magasin) && x.present !== null)
+      if (!p.length) continue
+      reunions.total++
+      if (p.some((x) => x.present)) reunions.fait++
+    }
+    if (!reunions.total) reunions = null
+  }
+  return { communications, taches: taches.total ? taches : null, dernierMessage, reunions }
 }
 
 export const silence = (e: Engagement, jour: string) => (e.dernierMessage ? ecartJours(e.dernierMessage.slice(0, 10), jour) : null)
@@ -58,6 +73,7 @@ export function enRetrait(e: Engagement, jour: string) {
     communications: !!e.communications && e.communications.fait / e.communications.total < SEUIL_LECTURE,
     taches: !!e.taches && e.taches.fait / e.taches.total < SEUIL_TACHES,
     messages: s === null || s > SEUIL_SILENCE,
+    reunions: !!e.reunions && e.reunions.fait / e.reunions.total < SEUIL_REUNIONS,
   }
 }
 export const peuEngage = (e: Engagement, jour: string) => Object.values(enRetrait(e, jour)).filter(Boolean).length >= 2
@@ -66,6 +82,7 @@ export const peuEngage = (e: Engagement, jour: string) => Object.values(enRetrai
 export function useEngagement(reseau: Reseau) {
   const { profil } = useAuth()
   const { messagerie } = useMessagerie()
+  const { presences } = usePresences()
   const equipe = profil?.role === 'directeur' || profil?.role === 'rr' || profil?.role === 'coach'
   const lit = profil?.role === 'directeur' || profil?.role === 'rr'
   const [sources, setSources] = useState<{ communications: Communication[]; lectures: Map<number, Lecture> | null }>({ communications: [], lectures: null })
@@ -78,6 +95,6 @@ export function useEngagement(reseau: Reseau) {
   return useMemo(() => {
     if (!equipe) return null
     const messages = messagerie?.messages ?? []
-    return (nom: string, magasins: string[]) => engagementDe(reseau, nom, magasins, { ...sources, messages })
-  }, [equipe, reseau, sources, messagerie])
+    return (nom: string, magasins: string[]) => engagementDe(reseau, nom, magasins, { ...sources, messages, presences })
+  }, [equipe, reseau, sources, messagerie, presences])
 }

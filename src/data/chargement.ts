@@ -150,6 +150,7 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   for (const l of Object.values(reseau.chiffres)) l.sort((a, b) => a.mois.localeCompare(b.mois))
   reseau.evenements = (evenements as L[]).map((e) => ({
     id: Number(e.id) || null, titre: t(e.title), type: t(e.type) || 'event', debut: t(e.start_date).slice(0, 10), fin: t(e.end_date).slice(0, 10) || t(e.start_date).slice(0, 10), notes: t(e.notes), couleur: t(e.color) || '#7c3aed',
+    ...(Array.isArray(e.invites) && e.invites.length ? { invites: (e.invites as unknown[]).map(String) } : {}),
   }))
   // Anniversaires : naissance (fiches Coach et RR) et arrivée (recrues)
   const ann: Reseau['anniversaires'] = []
@@ -706,7 +707,8 @@ export async function marquerActions(lot: ({ visite: number; index: number; fait
 export async function supprimerVisite(id: number) { verifier(await supabase.from('visits').delete().eq('id', id)) }
 
 export async function enregistrerEvenement(e: Evenement) {
-  const l = { title: e.titre, type: e.type, start_date: e.debut, end_date: e.fin || null, notes: e.notes || null, color: e.couleur }
+  // invites seulement s'il est donné : un événement simple s'enregistre aussi sur une base d'avant 0025
+  const l = { title: e.titre, type: e.type, start_date: e.debut, end_date: e.fin || null, notes: e.notes || null, color: e.couleur, ...(e.invites ? { invites: e.invites.length ? e.invites : null } : {}) }
   verifier(e.id !== null ? await supabase.from('events').update(l).eq('id', e.id) : await supabase.from('events').insert(l))
 }
 export async function supprimerEvenement(id: number) { verifier(await supabase.from('events').delete().eq('id', id)) }
