@@ -33,6 +33,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0026_questions_eclair` | Questions éclair : tables `questions_eclair`, `questions_participations`, `questions_reponses` fermées (anonymat en base), fonctions `publier_question`, `supprimer_question`, `resultats_questions`, `questions_franchise`, `repondre_question` | 23/10/2026 |
 | `0027_pratiques_proposees` | Bonnes pratiques proposées par les franchisés : table `pratiques_proposees` fermée, fonctions `proposer_pratique`, `mes_propositions`, `propositions_pratiques`, `traiter_proposition` | 23/10/2026 |
 | `0028_challenges` | Challenge du mois : table `challenges` fermée, classement calculé par la base (`classement_challenge`), fonctions `creer_challenge`, `supprimer_challenge`, `challenges_equipe`, `challenges_franchise` | 23/10/2026 |
+| `0029_sondages` | Sondages de 1 à 5 questions pour les franchisés, l'équipe ou les deux : colonnes `questions`, `cible`, `auteur_role` et `valeurs`, fonctions `publier_sondage`, `questions_equipe`, `repondre_sondage` ; `resultats_questions` compte et relance aussi l'équipe | 23/10/2026 |
 
 ## Règles
 

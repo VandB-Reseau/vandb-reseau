@@ -53,6 +53,7 @@ import { Reactions } from '../components/Reactions'
 import { BandeCollante } from '../components/Collant'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
+import { SondagesARepondre } from '../components/Questions'
 
 // Ordre de priorité fixé par Joseph le 14/10/2026
 const PRIORITAIRES = ['redressement', 'relance', 'renforcer']
@@ -449,6 +450,7 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
       <>
         <Indicateurs reseau={reseau} p={p} />
         <PointCompact reseau={reseau} p={p} items={items} taches={taches} />
+        <SondagesARepondre equipe aFaire titre="Sondages à remplir" />
         {actualites}
       </>
     )
@@ -457,7 +459,7 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
     <>
       <Indicateurs reseau={reseau} p={p} />
       <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: 'minmax(0, 1fr) 400px', alignItems: 'start' }}>
-        <Box sx={{ minWidth: 0 }}>{actualites}</Box>
+        <Box sx={{ minWidth: 0 }}><SondagesARepondre equipe aFaire titre="Sondages à remplir" />{actualites}</Box>
         {/* La colonne reste visible pendant qu'on fait défiler les actualités, et défile seule si elle dépasse l'écran */}
         <Box component="aside" aria-label="À traiter, mes tâches et cette semaine" sx={{ position: 'sticky', top: 88, maxHeight: 'calc(100vh - 104px)', overflowY: 'auto', overscrollBehavior: 'contain', scrollbarWidth: 'thin', mx: -1, px: 1, pb: 1 }}>
           <BlocATraiter reseau={reseau} items={items} />
