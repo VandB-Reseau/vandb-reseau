@@ -9,6 +9,15 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Look V and B selon la charte graphique officielle (Joseph, 23/10/2026) : palette en duos de la charte partout (plus de
+  bleu ; vert canard, jaune-or, orange, brique, crème), police Lato, titres en Alegreya (police libre proche de Coline,
+  capitales pour les titres de page), filet en aplats jaune-or et vert canard, intitulés de section en cartouche noir,
+  fond crème clair, connexion sur fond jaune avec les collines de la charte. Illustrations de la charte dans les états
+  vides. Blason de ville à la place des initiales des magasins (forme littoral, montagne ou terres, réglable dans la
+  fiche ; couleur selon la région). Carte : repères en bulle vide, couleurs de zone de la charte (une couleur enregistrée
+  hors charte est remplacée à l'affichage). Compte rendu et fiche avant visite au format « lettre » de la charte. Textes
+  des états vides au ton de la marque. Démarrage de l'app installée sur fond jaune, icône inchangée.
+  **Migration à passer : `0031_topographie_magasins.sql`** (sans elle, tout s'affiche, la forme choisie n'est pas gardée).
 - Animation du réseau : nouvel onglet Animation réseau (Directeur et RR) pour créer et suivre au même endroit
   communications, bonnes pratiques, sondages, formations, réunions et campagnes : quatre repères (lecture, réponses aux
   sondages, réponses aux invitations, exécution des campagnes), une ligne par contenu avec son taux, et le détail (qui n'a

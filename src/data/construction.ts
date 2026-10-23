@@ -1,8 +1,8 @@
 import { grillesParDefaut } from './grilles'
 import { seuilsParDefaut } from './chiffres'
-import { couleurAuto } from './zones'
+import { COULEURS_AUTO, estCouleurCharte } from './zones'
 import { delaisVisiteParDefaut, grilleParDefaut } from './sante'
-import type { AffectationCoach, Coach, Magasin, Personne, Reseau, ResponsableRegional, Statut } from './modele'
+import type { AffectationCoach, Coach, Magasin, Personne, Reseau, ResponsableRegional, Statut, Topographie } from './modele'
 
 // Lignes brutes telles que stockées par l'ancienne app
 export interface MagasinBrut {
@@ -11,8 +11,10 @@ export interface MagasinBrut {
   addr?: string; cp?: string; ville?: string; pays?: string; franchise?: boolean; rr?: string
   lat?: number; lon?: number; geo?: string
 }
+const estTopographie = (t: unknown): t is Topographie => t === 'littoral' || t === 'montagne' || t === 'terres'
+
 export interface SurchargeMagasin extends Partial<Record<keyof MagasinBrut, unknown>> {
-  store_name: string; email_mag?: string; open_date?: string
+  store_name: string; email_mag?: string; open_date?: string; topographie?: string | null // forme du blason (0031)
 }
 export interface AffectationBrute { store: string; cs: string; date: string; note?: string; type?: string }
 export interface RRBrut { id: string; name: string; tel?: string; email?: string; color?: string; role?: string; birth?: string; entry?: string }
@@ -36,6 +38,8 @@ export interface DonneesBrutes {
 // Dates par défaut posées par l'import Excel quand la date d'ouverture manque
 const DATES_INCONNUES = new Set(['2020-01-01', '2027-01-01'])
 const COULEUR_DEFAUT = '#6b6b73'
+// RR dont la couleur enregistrée est hors charte : une teinte de la charte d'après sa place dans la liste
+const COULEURS_RR_CHARTE = ['#307672', '#ea6029', '#f8bb09', '#312e2e', '#c24119', '#3a8f8d']
 
 export function ajouterMois(iso: string, mois: number): string {
   const [a, m, j] = iso.split('-').map(Number)
@@ -79,9 +83,9 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
   const surcharges = new Map(d.surcharges.map((s) => [s.store_name, s]))
 
   // 2) Responsables Régionaux et rattachement Coach → RR à la date du jour
-  const rrs: ResponsableRegional[] = (d.configRR.drs ?? []).map((r) => ({
+  const rrs: ResponsableRegional[] = (d.configRR.drs ?? []).map((r, i) => ({
     id: r.id, nom: r.name, telephone: r.tel || undefined, email: r.email || undefined,
-    couleur: r.color || COULEUR_DEFAUT, integres: r.role === 'integres',
+    couleur: estCouleurCharte(r.color) ? r.color : r.color ? COULEURS_RR_CHARTE[i % COULEURS_RR_CHARTE.length] : COULEUR_DEFAUT, integres: r.role === 'integres',
     naissance: texte(r.birth).slice(0, 10), arrivee: texte(r.entry).slice(0, 10),
   }))
   const rrParId = new Map(rrs.map((r) => [r.id, r]))
@@ -148,6 +152,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       responsable: personne(v('resp'), v('tel_resp'), v('email_resp')),
       responsableARecruter: /recrutement/i.test(texte(v('resp'))),
       lat, lon, positionApprochee,
+      topographie: estTopographie(s?.topographie) ? s.topographie : '',
       historiqueCoach: historique,
     }
   })
@@ -155,6 +160,8 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
 
   // 5) Équipe : tout Coach présent dans les affectations ou fiches, hors techniciens
   const nomsTech = new Set([...techniciens.map((t) => t.nom), ...(d.coachsSupprimes ?? [])])
+  // Coach sans couleur de la charte : la suivante de la palette, dans l'ordre alphabétique (deux voisins n'ont pas la même)
+  const sansCouleur = Object.values(coachs).filter((c) => !nomsTech.has(c.nom)).map((c) => c.nom).sort((a, b) => a.localeCompare(b, 'fr'))
   const equipe: Coach[] = Object.values(coachs)
     .filter((c) => !nomsTech.has(c.nom))
     .map((c) => {
@@ -164,7 +171,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       return {
       ...c,
       fictif: !!(ov?.fictif || rec?.fictif),
-      couleur: [ov?.color, rec?.color].find((x) => x && x !== '#000000') || couleurAuto(c.nom),
+      couleur: [ov?.color, rec?.color].find((x) => x && x !== '#000000' && estCouleurCharte(x)) || COULEURS_AUTO[sansCouleur.indexOf(c.nom) % COULEURS_AUTO.length],
       arrivee: texte(rec?.start).slice(0, 10),
       naissance: texte(ov?.birth).slice(0, 10),
       ville: texte(ov?.ville) || texte(rec?.ville),

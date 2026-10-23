@@ -1,19 +1,26 @@
 import { createTheme, type Theme } from '@mui/material/styles'
 
-// Charte V and B 2024
+// Charte graphique V and B (guideline officielle) : couleurs en duos, aucune autre teinte, pas de bleu
 export const brand = {
-  noir: '#1b1b1f',
+  noir: '#1d1d1b',
   noirProfond: '#000000',
-  or: '#eaa400',
-  bleu: '#1b6fce',
-  orange: '#ef7d00',
-  jaune: '#f6c544',
+  anthracite: '#312e2e',
+  or: '#f8bb09',
+  jaune: '#f7d802',
+  orange: '#ea6029',
+  brique: '#c24119',
+  creme: '#feedd8',
+  beige: '#ede0c4',
+  vert: '#3a8f8d',
+  vertFonce: '#307672',
 }
 
-// Filet multicolore sous l'en-tête (jaune → orange → bleu)
-export const brandStripe = `linear-gradient(90deg, ${brand.jaune} 0%, ${brand.orange} 50%, ${brand.bleu} 100%)`
+// Filet sous l'en-tête : deux aplats jaune-or et vert canard, sans dégradé (la charte travaille en aplats)
+export const brandStripe = `linear-gradient(90deg, ${brand.or} 0 62%, ${brand.vert} 62% 100%)`
 
-const fontFamily = '"Outfit", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
+// Polices : Lato (charte) pour le texte ; Alegreya, police libre proche de Coline (titres de la charte, sans fichier web), pour les titres
+const fontFamily = '"Lato", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
+const titres = `"Alegreya", Georgia, serif`
 
 const base = createTheme()
 
@@ -42,22 +49,28 @@ export const theme = createTheme({
       palette: {
         primary: { main: brand.noir, contrastText: '#ffffff' },
         secondary: { main: brand.or, contrastText: brand.noir },
-        info: { main: brand.bleu },
-        warning: { main: brand.orange },
-        background: { default: '#f5f5f3', paper: '#ffffff' },
-        text: { primary: brand.noir, secondary: '#55555c' },
-        divider: '#e3e3e0',
+        info: { main: brand.anthracite, dark: brand.anthracite },
+        // Orange de la charte trop clair pour un texte sur blanc : sa nuance foncée sert au texte
+        warning: { main: brand.orange, dark: '#b84a1e' },
+        error: { main: brand.brique },
+        success: { main: brand.vert, dark: brand.vertFonce },
+        background: { default: '#fbf7f0', paper: '#ffffff' },
+        text: { primary: brand.noir, secondary: '#5a5550' },
+        divider: '#ebe3d6',
+        action: { selected: 'rgba(248, 187, 9, 0.28)' },
       },
     },
     dark: {
       palette: {
-        primary: { main: brand.jaune, contrastText: brand.noir },
+        primary: { main: brand.or, contrastText: brand.noir },
         secondary: { main: brand.or, contrastText: brand.noir },
-        info: { main: '#6aa8ef' },
-        warning: { main: '#ff9a33' },
-        background: { default: '#121214', paper: '#1d1d21' },
+        info: { main: '#e6e1da', light: '#e6e1da' },
+        warning: { main: brand.or, light: brand.or },
+        error: { main: brand.orange },
+        success: { main: '#5fb3b0', light: '#5fb3b0' },
+        background: { default: '#1d1d1b', paper: '#312e2e' },
         text: { primary: '#f2f2f0', secondary: '#b4b4ba' },
-        divider: '#33333a',
+        divider: '#4a4545',
       },
     },
   },
@@ -66,12 +79,12 @@ export const theme = createTheme({
     fontFamily,
     // Aucune taille sous 12 px dans l'app
     // Titres de page compacts sur téléphone, pour laisser la place au contenu
-    h1: { fontSize: '2rem', fontWeight: 600, letterSpacing: '-0.01em', [telephone]: { fontSize: '1.375rem' } },
-    h2: { fontSize: '1.5rem', fontWeight: 600 },
-    h3: { fontSize: '1.25rem', fontWeight: 600 },
-    h4: { fontSize: '1.125rem', fontWeight: 600 },
-    h5: { fontSize: '1rem', fontWeight: 600 },
-    h6: { fontSize: '1rem', fontWeight: 600 },
+    h1: { fontFamily: titres, fontSize: '2rem', fontWeight: 800, letterSpacing: '0.01em', textTransform: 'uppercase', [telephone]: { fontSize: '1.375rem' } },
+    h2: { fontFamily: titres, fontSize: '1.5rem', fontWeight: 700 },
+    h3: { fontFamily: titres, fontSize: '1.25rem', fontWeight: 700 },
+    h4: { fontSize: '1.125rem', fontWeight: 700 },
+    h5: { fontSize: '1rem', fontWeight: 700 },
+    h6: { fontSize: '1rem', fontWeight: 700 },
     subtitle1: { fontSize: '1rem', fontWeight: 500 },
     subtitle2: { fontSize: '0.875rem', fontWeight: 600 },
     body1: { fontSize: '1rem' },

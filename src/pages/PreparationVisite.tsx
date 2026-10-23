@@ -9,7 +9,7 @@ import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
-import { Logo } from '../components/Logo'
+import { EnTeteLettre, PiedLettre } from '../components/Lettre'
 import { dateCourte, dateLongue } from '../lib/format'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Reseau } from '../data/modele'
 import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAlerte, libelleAudit, libelleMois, type ChampChiffre } from '../data/chiffres'
@@ -37,11 +37,11 @@ const styleImpression = (
   }} />
 )
 
-const NOIR = '#1b1b1f', GRIS = '#5f5f66', FILET = '#e0e0e0'
-const ROUGE = '#c62828', ORANGE = '#b45309', VERT = '#2e7d32'
+const NOIR = '#1d1d1b', GRIS = '#5f5f66', FILET = '#e0e0e0'
+const ROUGE = '#c24119', ORANGE = '#b84a1e', VERT = '#307672'
 
 function Titre({ children }: { children: ReactNode }) {
-  return <Typography variant="h4" component="h2" sx={{ color: NOIR, borderBottom: '2px solid #eaa400', pb: 0.5, mb: 1.5 }}>{children}</Typography>
+  return <Typography variant="h4" component="h2" sx={{ color: NOIR, borderBottom: '2px solid #f8bb09', pb: 0.5, mb: 1.5 }}>{children}</Typography>
 }
 function Bloc({ titre, children }: { titre: string; children: ReactNode }) {
   return <Box component="section" aria-label={titre} sx={{ mb: 3, breakInside: 'avoid' }}><Titre>{titre}</Titre>{children}</Box>
@@ -152,15 +152,9 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
         <Button variant="contained" startIcon={<PictureAsPdfOutlined />} onClick={() => window.print()} sx={{ minHeight: 48 }}>Télécharger en PDF</Button>
       </Box>
       <Box className="feuille" sx={{ bgcolor: '#fff', color: NOIR, maxWidth: 820, mx: 'auto', borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
-        <Box sx={{ bgcolor: NOIR, px: { xs: 2, sm: 4 }, py: 2.5, display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Logo size={24} />
-          <Box sx={{ flex: 1 }} />
-          <Typography sx={{ color: '#fff', fontWeight: 600 }}>Fiche avant visite</Typography>
-        </Box>
-        <Box sx={{ height: 4, background: 'linear-gradient(90deg, #f6c544, #ef7d00, #1b6fce)' }} />
+        <EnTeteLettre objet="Objet : fiche avant visite" date={`${m.franchise ? 'Franchisé' : 'Intégré'} · préparée le ${dateLongue(reseau.jour)}`} />
         <Box sx={{ p: { xs: 2, sm: 4 } }}>
-          <Typography variant="h2" component="h1" sx={{ color: NOIR }}>{m.nom}</Typography>
-          <Typography sx={{ color: GRIS, mb: 2 }}>{m.franchise ? 'Franchisé' : 'Intégré'} · préparée le {dateLongue(reseau.jour)}</Typography>
+          <Typography variant="h2" component="h1" sx={{ color: NOIR, mb: 2 }}>{m.nom}</Typography>
 
           <Bloc titre="En bref">
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 4 }}>
@@ -230,6 +224,7 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
             ))}
           </Bloc>
         </Box>
+        <PiedLettre />
       </Box>
     </>
   )

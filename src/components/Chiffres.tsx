@@ -136,8 +136,8 @@ export function GraphiqueCA({ liste }: { liste: ChiffreMois[] }) {
           <g key={p.m}>
             <title>{`${libelleMois(p.m)} : ${formatEuros(p.ca)}${p.n1 !== null ? ` · un an plus tôt ${formatEuros(p.n1)}` : ''}`}</title>
             <rect x={i * pas} y={0} width={pas} height={H} fill="transparent" />
-            {p.ca !== null && <path d={`M${i * pas + 5},${bas} V${y(p.ca) + 4} q0,-4 4,-4 h${larg - 8} q4,0 4,4 V${bas} Z`} fill="#1b6fce" />}
-            {p.n1 !== null && <line x1={i * pas + 3} x2={i * pas + pas - 3} y1={y(p.n1)} y2={y(p.n1)} stroke="#ef7d00" strokeWidth={3} strokeLinecap="round" />}
+            {p.ca !== null && <path d={`M${i * pas + 5},${bas} V${y(p.ca) + 4} q0,-4 4,-4 h${larg - 8} q4,0 4,4 V${bas} Z`} fill="#3a8f8d" />}
+            {p.n1 !== null && <line x1={i * pas + 3} x2={i * pas + pas - 3} y1={y(p.n1)} y2={y(p.n1)} stroke="#ea6029" strokeWidth={3} strokeLinecap="round" />}
           </g>
         ))}
       </Box>
@@ -145,8 +145,8 @@ export function GraphiqueCA({ liste }: { liste: ChiffreMois[] }) {
         {points.filter((_p, i) => i % 2 === 1).map((p) => <Typography key={p.m} variant="caption" color="text.secondary" sx={{ textAlign: 'right', pr: '4%' }}>{libelleMoisCourt(p.m)}</Typography>)}
       </Box>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 0.5 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}><Box component="span" sx={{ width: 12, height: 12, borderRadius: 0.5, bgcolor: '#1b6fce' }} />CA du mois</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}><Box component="span" sx={{ width: 14, height: 3, borderRadius: 1, bgcolor: '#ef7d00' }} />Un an plus tôt</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}><Box component="span" sx={{ width: 12, height: 12, borderRadius: 0.5, bgcolor: '#3a8f8d' }} />CA du mois</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}><Box component="span" sx={{ width: 14, height: 3, borderRadius: 1, bgcolor: '#ea6029' }} />Un an plus tôt</Typography>
       </Box>
     </Box>
   )

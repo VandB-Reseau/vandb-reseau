@@ -44,6 +44,7 @@ import Chip from '@mui/material/Chip'
 import { dateCourte, lienCoach, lienFiche, lienPreparation } from '../lib/format'
 import { libelleTypeVisite, nomsVisiteurs, typesVisite, type Reseau, type Visite } from '../data/modele'
 import { sousBandes } from '../components/Collant'
+import { Blason } from '../components/Blason'
 
 type Edition = { visite: Visite | null; magasins: string[]; date?: string } | null
 
@@ -162,7 +163,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
           ) : (
             <CarteLignes label="Rythme de visite par magasin">
               {visibles.map((l) => (
-                <LigneCompacte key={l.magasin.nom} lien={lienFiche(l.magasin.nom)} avatar={<Initiales nom={l.magasin.nom} />} titre={l.magasin.nom}
+                <LigneCompacte key={l.magasin.nom} lien={lienFiche(l.magasin.nom)} avatar={<Blason magasin={l.magasin} />} titre={l.magasin.nom}
                   detail={[l.coach || 'Sans Coach', `${visites(l)} en ${a.court}`, l.derniere ? `dernière le ${dateCourte(l.derniere.date)}` : l.alerte ? null : 'jamais visité', l.dernierContact && `appel le ${dateCourte(l.dernierContact.date)}`].filter(Boolean).join(' · ')}
                   fin={l.alerte ? <Pastille ton="orange">{libellePasVu(l)}</Pastille> : undefined}
                   actions={<>
@@ -232,7 +233,7 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
               </Box>
               <CarteLignes>
                 {vs.map((v) => (
-                  <LigneCompacte key={v.id ?? `${v.magasin}-${v.date}`} lien={lienFiche(v.magasin)} avatar={<Initiales nom={v.magasin} />} titre={v.magasin}
+                  <LigneCompacte key={v.id ?? `${v.magasin}-${v.date}`} lien={lienFiche(v.magasin)} avatar={<Blason magasin={reseau.magasins.find((x) => x.nom === v.magasin)} nom={v.magasin} />} titre={v.magasin}
                     detail={[dateCourte(v.date), libelleTypeVisite(v.type), nomsVisiteurs(v), v.notes].filter(Boolean).join(' · ')}
                     fin={v.prevue ? <Pastille ton="bleu">Prévue</Pastille> : v.signatureRequise ? <PastilleSignature requise signe={!!v.lienSigne} /> : <MiniPhotos photos={v.photos} />}
                     actions={<Actions v={v} />} />

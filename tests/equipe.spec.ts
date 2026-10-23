@@ -193,7 +193,7 @@ test('modifier un Responsable Régional et le Directeur', async ({ page }) => {
   await d.getByLabel('Email').fill('sam@exemple.test')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Sam SUD est mis à jour.')).toBeVisible()
-  expect(cle(ecritures, 'drs_data').drs.find((r: { id: string }) => r.id === 'rr2')).toMatchObject({ name: 'Sam SUD', email: 'sam@exemple.test', color: '#ef7d00' })
+  expect(cle(ecritures, 'drs_data').drs.find((r: { id: string }) => r.id === 'rr2')).toMatchObject({ name: 'Sam SUD', email: 'sam@exemple.test', color: '#ea6029' })
 
   await page.goto('./#/equipe?forme=pyramide')
   await page.getByRole('link', { name: /Dominique DIRECTION/ }).click()

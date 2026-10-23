@@ -53,6 +53,7 @@ import { associesEnPlace, mandatActuel } from '../data/associes'
 import { lienCompteRendu, visitesDuMagasin } from '../data/visites'
 import { libelleTypeVisite, nomsVisiteurs, statutLibelle, visiteFaite, type Magasin, type Personne, type Reseau } from '../data/modele'
 import type { IndicateurRepere } from '../data/espaceFranchise'
+import { Blason } from '../components/Blason'
 
 const couleurExecution: Record<Execution, 'success' | 'warning' | 'error' | 'default'> = { fait: 'success', partiel: 'warning', non: 'error', aConstater: 'default' }
 const pastille = { fontSize: 12, fontWeight: 600 }
@@ -199,7 +200,7 @@ function SectionChiffresDuMois({ reseau, magasins }: { reseau: Reseau; magasins:
             return (
               <Tuile key={m.nom} lien={`${lienFiche(m.nom)}?vue=chiffres`} libelle={m.nom} valeur={a ? formatKEuros(a.ca) : '—'}
                 detail={a ? <><Box component="span" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Box> · {libelleMois(a.mois)}</> : 'Aucun chiffre enregistré'}>
-                {a && <Box aria-hidden sx={{ mt: 0.75 }}><MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.bleu} largeur={96} hauteur={28} /></Box>}
+                {a && <Box aria-hidden sx={{ mt: 0.75 }}><MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.vertFonce} largeur={96} hauteur={28} /></Box>}
               </Tuile>
             )
           })}
@@ -222,7 +223,7 @@ function SectionChiffresDuMois({ reseau, magasins }: { reseau: Reseau; magasins:
       <Box sx={grilleTuiles}>
         <Tuile large libelle="CA cumulé" valeur={formatEuros(a.ca)}
           detail={<><Box component="span" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Box> vs {libelleMois(a.reference)}</>}
-          fin={<MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.bleu} largeur={120} hauteur={48} label="CA des douze derniers mois" />} />
+          fin={<MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.vertFonce} largeur={120} hauteur={48} label="CA des douze derniers mois" />} />
         {tuiles.map(([l, v, d]) => <Tuile key={l} libelle={l} valeur={v} detail={d} />)}
       </Box>
     </Box>
@@ -383,7 +384,7 @@ export function MagasinsFranchise() {
               {reseau.magasins.map((m) => {
                 const a = analyser(reseau, m.nom)
                 return (
-                  <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} label={m.nom} avatar={<Initiales nom={m.nom} />}
+                  <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} label={m.nom} avatar={<Blason magasin={m} />}
                     titre={<Box component="span" role="heading" aria-level={2}>{m.nom}</Box>}
                     detail={[m.ville, m.coach && `Coach ${m.coach}`].filter(Boolean).join(' · ')}
                     fin={a ? (
@@ -541,7 +542,7 @@ function ProfilFranchise({ reseau, m, message, retour }: { reseau: Reseau; m: Ma
   const retard = ouvertes.filter((x) => enRetard(x.a, reseau.jour)).length
   const coach = m.coach ? reseau.coachs[m.coach] ?? { nom: m.coach } : null
   return (
-    <ProfilPersonne nom={m.nom} retour={retour}
+    <ProfilPersonne nom={m.nom} retour={retour} avatar={(taille) => <Blason magasin={m} taille={taille} />}
       lignes={[[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · '), [m.coach && `Coach ${m.coach}`, m.rr?.nom].filter(Boolean).join(' · ')]}
       pastille={retard ? { ton: 'rouge', libelle: `${retard} tâche${retard > 1 ? 's' : ''} en retard` } : m.statut !== 'ouvert' ? { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] } : null}
       compteurs={[

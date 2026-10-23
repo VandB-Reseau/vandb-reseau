@@ -53,7 +53,7 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const [panneau, setPanneau] = useState(false)
   const publierBande = useBande('--onglets', !libres)
-  const [place, setPlace] = useState<{ largeur: number; police: string } | null>(null)
+  const [place, setPlace] = useState<{ largeur: number; police: string; polices: boolean } | null>(null)
   const suivi = useRef<ResizeObserver | null>(null)
   const bande = useCallback((e: HTMLElement | null) => {
     publierBande(e)
@@ -63,9 +63,12 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
     const mesurer = () => {
       const st = getComputedStyle(e)
       const largeur = e.clientWidth - parseFloat(st.paddingLeft) - parseFloat(st.paddingRight)
-      setPlace((p) => (p && p.largeur === largeur ? p : { largeur, police: `600 14px ${st.fontFamily}` }))
+      // Les largeurs se mesurent avec la police embarquée : nouvelle mesure une fois les polices chargées
+      const polices = document.fonts?.status !== 'loading'
+      setPlace((p) => (p && p.largeur === largeur && p.polices === polices ? p : { largeur, police: `600 14px ${st.fontFamily}`, polices }))
     }
     mesurer()
+    document.fonts?.ready.then(mesurer)
     suivi.current = new ResizeObserver(mesurer)
     suivi.current.observe(e)
   }, [publierBande])

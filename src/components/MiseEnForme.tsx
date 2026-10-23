@@ -20,12 +20,12 @@ import { Bulle } from './Outils'
 
 // Rendu « papier » : fond blanc et texte foncé dans les deux thèmes, comme un courriel
 const papier = {
-  bgcolor: '#ffffff', color: '#1b1b1f', borderRadius: 2, p: { xs: 1.5, sm: 2 }, overflowX: 'auto', overflowWrap: 'anywhere', lineHeight: 1.5,
+  bgcolor: '#ffffff', color: '#1d1d1b', borderRadius: 2, p: { xs: 1.5, sm: 2 }, overflowX: 'auto', overflowWrap: 'anywhere', lineHeight: 1.5,
   '& > :first-of-type': { mt: 0 }, '& > :last-child': { mb: 0 },
   '& p': { mt: 0, mb: 1.25 }, '& h1': { fontSize: '1.5rem', lineHeight: 1.25, mt: 1, mb: 1.25 }, '& h2': { fontSize: '1.25rem', lineHeight: 1.3, mt: 1, mb: 1 },
   '& h3, & h4, & h5, & h6': { fontSize: '1.0625rem', mt: 1, mb: 0.75 }, '& sub, & sup': { fontSize: '0.75em' },
   '& img': { maxWidth: '100%', height: 'auto' }, '& table': { maxWidth: '100%', borderCollapse: 'collapse' },
-  '& a': { color: '#1b6fce' }, '& ul, & ol': { pl: 3, my: 1 }, '& blockquote': { borderLeft: '4px solid #eaa400', m: 0, my: 1, pl: 1.5 },
+  '& a': { color: '#307672' }, '& ul, & ol': { pl: 3, my: 1 }, '& blockquote': { borderLeft: '4px solid #f8bb09', m: 0, my: 1, pl: 1.5 },
 } as const
 
 // Communication mise en forme, nettoyée à chaque affichage

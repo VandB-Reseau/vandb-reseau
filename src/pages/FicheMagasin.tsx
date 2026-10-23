@@ -13,6 +13,7 @@ import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import type { Ton } from '../components/Social'
 import { ProfilPersonne, rond } from '../components/Portefeuille'
+import { Blason } from '../components/Blason'
 import { FilActivite } from './Accueil'
 import { statutLibelle } from '../data/modele'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -470,7 +471,7 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
     : alerteVisite ? { ton: 'orange', libelle: alerteVisite }
     : m.statut !== 'ouvert' ? { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] } : null
   return (
-    <ProfilPersonne nom={m.nom} retour={retour}
+    <ProfilPersonne nom={m.nom} retour={retour} avatar={(taille) => <Blason magasin={m} taille={taille} />}
       lignes={[[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · '), [m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')]}
       pastille={pastille}
       compteurs={[

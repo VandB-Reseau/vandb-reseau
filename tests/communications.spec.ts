@@ -24,7 +24,7 @@ test('le Directeur publie une communication pour tout le réseau', async ({ page
   // Pour l'équipe, les communications sont dans Infos réseau (sprint 22, S1)
   await page.goto('./#/communications')
   await expect(page).toHaveURL(/#\/infos$/)
-  await expect(page.getByText('Aucune communication')).toBeVisible()
+  await expect(page.getByText('Rien à annoncer')).toBeVisible()
   await page.getByRole('button', { name: 'Publier' }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle communication' })
   await d.getByLabel('Titre').fill('Nouvelle carte des cocktails')

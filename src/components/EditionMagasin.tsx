@@ -12,7 +12,8 @@ import { enregistrerPosition, geolocaliser } from '../data/geolocalisation'
 import { enregistrerDeploiements, enregistrerEvaluations, enregistrerMagasin, supprimerMagasin, type FicheMagasin } from '../data/chargement'
 import { BoutonsOption, NotesParAxe, PastilleCase } from './Sante'
 import { caseDe, depuisDeploiement, type Evaluation, type IdCritere, type Note } from '../data/sante'
-import { libelleResponsable, type Magasin, type Reseau } from '../data/modele'
+import { libelleResponsable, type Magasin, type Reseau, type Topographie } from '../data/modele'
+import { libellesTopographie, topographieDeduite } from './Blason'
 
 const emailValide = (e: string) => !e.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())
 
@@ -32,7 +33,7 @@ function depuisMagasin(m: Magasin | null): FicheMagasin {
     adresse: m?.adresse ?? '', codePostal: m?.codePostal ?? '', ville: m?.ville ?? '', pays: m?.pays ?? '',
     responsable: m?.responsable?.nom ?? (m?.responsableARecruter ? RECRUTEMENT : ''),
     telResponsable: m?.responsable?.telephone ?? '', emailResponsable: m?.responsable?.email ?? '',
-    rrDirect: m?.rrEnDirect && m.rr ? m.rr.id : '',
+    rrDirect: m?.rrEnDirect && m.rr ? m.rr.id : '', topographie: m?.topographie ?? '',
   }
 }
 
@@ -119,6 +120,11 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
         {champ('ville', 'Ville')}
         {champ('departement', 'Département')}
         {champ('pays', 'Pays', { helperText: 'Laisse vide pour la France.' })}
+        <TextField select label="Forme du blason" value={f.topographie} onChange={(e) => setF((x) => ({ ...x, topographie: e.target.value as FicheMagasin['topographie'] }))}
+          slotProps={{ select: { displayEmpty: true, renderValue: (v) => (v ? libellesTopographie[v as Topographie] : `Selon le département (${libellesTopographie[topographieDeduite(f.departement)].toLowerCase()})`) }, inputLabel: { shrink: true } }}>
+          <MenuItem value="">Selon le département</MenuItem>
+          {(Object.keys(libellesTopographie) as Topographie[]).map((t) => <MenuItem key={t} value={t}>{libellesTopographie[t]}</MenuItem>)}
+        </TextField>
       </Groupe>
       {magasin && (
         <Box>

@@ -10,7 +10,8 @@ import { libellesLevier, type Inspirations, type Levier, type LeviersMagasin, ty
 import type { Reseau } from '../data/modele'
 import { participants, lienPersonne } from '../data/messagerie'
 import { lienFiche } from '../lib/format'
-import { Initiales, LigneCompacte } from './Social'
+import { LigneCompacte } from './Social'
+import { Blason } from './Blason'
 
 // Position d'un indicateur : bande = moitié centrale du réseau, trait fin = médiane, rond = le magasin
 function Barre({ p }: { p: PositionLevier }) {
@@ -68,7 +69,7 @@ export function ListeInspirations({ reseau, levier, insp }: { reseau: Reseau; le
         return (
           <Box component="li" key={magasin.nom}>
             <LigneCompacte lien={lienFiche(magasin.nom)} label={`${magasin.nom} : ${libellesLevier[levier].toLowerCase()} ${valeur}`}
-              avatar={<Initiales nom={magasin.nom} taille={40} />} titre={magasin.nom} detail={detail || undefined}
+              avatar={<Blason magasin={magasin} taille={40} />} titre={magasin.nom} detail={detail || undefined}
               fin={<Typography variant="body2" sx={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{valeur}</Typography>}
               actions={franchise ? (
                 <IconButton component={RouterLink} to={lienPersonne(franchise.cle)} aria-label={`Écrire à ${franchise.nom}`} sx={{ width: 48, height: 48 }}>

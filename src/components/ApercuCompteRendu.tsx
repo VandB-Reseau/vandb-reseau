@@ -15,6 +15,7 @@ import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import { useReseau } from '../data/ReseauContext'
 import { lienCompteRendu } from '../data/visites'
+import { brandStripe } from '../theme/theme'
 
 const FeuilleCompteRendu = lazy(() => import('./FeuilleCompteRendu').then((m) => ({ default: m.FeuilleCompteRendu })))
 
@@ -32,11 +33,10 @@ export function VignetteCompteRendu({ libelle, onOuvrir }: { libelle: string; on
   return (
     <ButtonBase onClick={onOuvrir} aria-label={libelle}
       sx={{ aspectRatio: '1 / 1', borderRadius: 2, overflow: 'hidden', bgcolor: '#ffffff', border: '1px solid', borderColor: 'divider', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-      <Box sx={{ height: 10, bgcolor: '#1b1b1f', flexShrink: 0 }} />
-      <Box sx={{ height: 3, background: 'linear-gradient(90deg, #f6c544, #ef7d00, #1b6fce)', flexShrink: 0 }} />
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.5, color: '#1b1b1f', px: 0.5 }}>
-        <PictureAsPdfOutlined sx={{ fontSize: 32, color: '#c62828' }} />
-        <Typography component="span" sx={{ fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.2, textAlign: 'center', color: '#1b1b1f' }}>Compte rendu</Typography>
+      <Box sx={{ height: 10, display: 'flex', justifyContent: 'flex-end', flexShrink: 0, pt: 0.75, pr: 0.75 }}><Box sx={{ width: '40%', height: 6, background: brandStripe, borderRadius: 0.5 }} /></Box>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.5, color: '#1d1d1b', px: 0.5 }}>
+        <PictureAsPdfOutlined sx={{ fontSize: 32, color: '#c24119' }} />
+        <Typography component="span" sx={{ fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.2, textAlign: 'center', color: '#1d1d1b' }}>Compte rendu</Typography>
       </Box>
     </ButtonBase>
   )

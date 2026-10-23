@@ -5,7 +5,7 @@ import Typography from '@mui/material/Typography'
 import ButtonBase from '@mui/material/ButtonBase'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import ArrowDownward from '@mui/icons-material/ArrowDownward'
-import { CarteLignes, Initiales, LigneCompacte, Pastille, type Ton } from './Social'
+import { CarteLignes, LigneCompacte, Pastille, type Ton } from './Social'
 import { lienFiche } from '../lib/format'
 import { statutLibelle, type Magasin, type Reseau } from '../data/modele'
 import { useReseau } from '../data/ReseauContext'
@@ -14,6 +14,7 @@ import { caseDe, visitesParAn } from '../data/sante'
 import { actionsEnCours } from '../data/actions'
 import { anneeDe, suiviRythme } from '../data/visites'
 import { sousBandes } from './Collant'
+import { Blason } from './Blason'
 
 const PAS = 50
 
@@ -99,11 +100,11 @@ export function ListeMagasins({ magasins, tri = 'nom', suivis, trier }: { magasi
     )
   }
   const ligne = (m: Magasin) => {
-    if (large) return <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Initiales nom={m.nom} />} titre={m.nom} detail={[m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')} fin={colonnesDe(m)} />
+    if (large) return <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Blason magasin={m} />} titre={m.nom} detail={[m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')} fin={colonnesDe(m)} />
     const p = pastilles.get(m.nom)
     const e = tri === 'ca' && reseau ? analyser(reseau, m.nom)?.ecart : undefined
     return (
-      <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Initiales nom={m.nom} />} titre={m.nom}
+      <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Blason magasin={m} />} titre={m.nom}
         detail={[m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')}
         fin={e !== undefined && e !== null && p?.ton !== 'rouge' ? <Pastille ton={e < 0 ? 'orange' : 'gris'}>{`${e > 0 ? '+' : ''}${String(e.toFixed(1)).replace('.', ',')} %`}</Pastille> : p && <Pastille ton={p.ton}>{p.libelle}</Pastille>} />
     )

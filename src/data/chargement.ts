@@ -2,7 +2,7 @@ import { renommerAccesCoach } from './accesEquipe'
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { avecPoint, definirGrille, delaisVisiteParDefaut, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
-import type { ActionLibre, ActionPlan, Evenement, NoteMagasin, PreparationVisite, Reseau, Visite } from './modele'
+import type { ActionLibre, ActionPlan, Evenement, NoteMagasin, PreparationVisite, Reseau, Topographie, Visite } from './modele'
 import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
 import { normaliserParties, normaliserPlan } from './compteRendu'
@@ -548,6 +548,7 @@ export interface FicheMagasin {
   telephone: string; email: string; adresse: string; codePostal: string; ville: string; pays: string
   responsable: string; telResponsable: string; emailResponsable: string // coordonnées reprises de la fiche du franchisé
   rrDirect: string
+  topographie: Topographie | ''
 }
 
 function ligneSurcharge(f: FicheMagasin) {
@@ -558,6 +559,7 @@ function ligneSurcharge(f: FicheMagasin) {
     resp: f.responsable.trim(), tel_resp: f.telResponsable.trim(), email_resp: f.emailResponsable.trim(),
     addr: v(f.adresse), code: v(f.code), updated_at: new Date().toISOString(),
     cp: v(f.codePostal), ville: v(f.ville), franchise: f.franchise, rr: v(f.rrDirect), pays: v(f.pays),
+    topographie: f.topographie || null,
   }
 }
 
@@ -610,8 +612,13 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
     : supabase.from('store_overrides').insert(l)
   let res = await ecrire(ligne)
   if (res.error) {
+    // Base sans la colonne du blason (migration 0031 pas encore passée) : le reste de la fiche est enregistré
+    const { topographie: _t, ...sansBlason } = ligne
+    res = await ecrire(sansBlason)
+  }
+  if (res.error) {
     // Base plus ancienne sans les colonnes d'adresse détaillée : on enregistre l'essentiel, comme l'ancienne app
-    const { cp: _cp, ville: _v, franchise: _f, rr: _r, pays: _p, ...essentiel } = ligne
+    const { cp: _cp, ville: _v, franchise: _f, rr: _r, pays: _p, topographie: _t2, ...essentiel } = ligne
     res = await ecrire(essentiel)
   }
   if (res.error) throw new ErreurEnregistrement(res.error.message)

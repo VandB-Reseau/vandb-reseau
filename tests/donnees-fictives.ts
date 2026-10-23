@@ -31,9 +31,9 @@ export const affectationsFictives = magasinsFictifs
 export const configRRFictive = {
   directeur: { name: 'Dominique DIRECTION', titre: 'Directeur de réseau' },
   drs: [
-    { id: 'rr1', name: 'Alex NORD', color: '#1b6fce', tel: '+33 6 11 11 11 11', email: 'alex@exemple.test' },
-    { id: 'rr2', name: 'Sam SUD', color: '#ef7d00' },
-    { id: 'rr3', name: 'Léa INTEGRES', color: '#7c3aed', role: 'integres' },
+    { id: 'rr1', name: 'Alex NORD', color: '#307672', tel: '+33 6 11 11 11 11', email: 'alex@exemple.test' },
+    { id: 'rr2', name: 'Sam SUD', color: '#ea6029' },
+    { id: 'rr3', name: 'Léa INTEGRES', color: '#312e2e', role: 'integres' },
   ],
   dr_assigns: [
     { cs: 'Camille TESTARD', dr: 'rr1', date: '2018-01-01' },

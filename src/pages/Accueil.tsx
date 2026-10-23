@@ -54,6 +54,8 @@ import { BandeCollante } from '../components/Collant'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import { SondagesARepondre } from '../components/Questions'
+import { brand } from '../theme/theme'
+import { Blason } from '../components/Blason'
 
 // Ordre de priorité fixé par Joseph le 14/10/2026
 const PRIORITAIRES = ['redressement', 'relance', 'renforcer']
@@ -62,6 +64,12 @@ const APERCU = 5
 const APERCU_COMPACT = 2
 
 // Une ligne « À traiter » : un avatar, deux lignes de texte, une seule pastille (la plus grave)
+// Un magasin sans picto propre (tâche, visite prévue, mandat) a son blason de ville ; le reste garde ses initiales
+function avatarATraiter(reseau: Reseau, x: ATraiter) {
+  const m = x.icone ? undefined : reseau.magasins.find((y) => y.nom === x.avatar)
+  return m ? <Blason magasin={m} /> : <Initiales nom={x.avatar} icone={x.icone} />
+}
+
 interface ATraiter { cle: string; titre: string; detail: string; lien: string; avatar: string; icone?: ReactNode; pastille?: { ton: Ton; libelle: string }; visite?: Visite }
 
 function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATraiter[] {
@@ -166,15 +174,15 @@ function BlocATraiter({ reseau, items, compact = false }: { reseau: Reseau; item
         <Puces label="Éléments à traiter affichés" valeur={filtre} onChange={(v) => { setFiltre(v); setTout(compact) }}
           options={[{ v: 'tout' as const, libelle: 'Tout' }, ...presents.map((g) => ({ v: g.v, libelle: `${g.libelle} · ${g.n}` }))]} />
       )}
-      {!items.length ? <CarteLignes><LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur="#2e7d32" />} titre="Rien d’urgent" detail="Aucun magasin ne décroche ni n’attend de visite, aucune tâche en retard." /></CarteLignes> : (
+      {!items.length ? <CarteLignes><LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur={brand.vertFonce} />} titre="Rien d’urgent" detail="Aucun magasin ne décroche ni n’attend de visite, aucune tâche en retard." /></CarteLignes> : (
         <CarteLignes>
           {vus.map((x) => x.visite
-            ? <LigneCompacte key={x.cle} onClick={() => setCompteRendu(x.visite!)} label={`Compte rendu de ${x.titre}`} avatar={<Initiales nom={x.avatar} icone={x.icone} />} titre={x.titre} detail={x.detail}
+            ? <LigneCompacte key={x.cle} onClick={() => setCompteRendu(x.visite!)} label={`Compte rendu de ${x.titre}`} avatar={avatarATraiter(reseau, x)} titre={x.titre} detail={x.detail}
               actions={<Box sx={{ display: 'flex', gap: 0.5, flex: 'none' }}>
                 <Button onClick={() => faite(x.visite!)} aria-label={`Visite de ${x.titre} faite`} sx={{ minHeight: 48, minWidth: 0, px: 1.25 }}>Faite</Button>
                 <Button onClick={() => setReporter(x.visite!)} aria-label={`Reporter la visite de ${x.titre}`} sx={{ minHeight: 48, minWidth: 0, px: 1.25 }}>Reporter</Button>
               </Box>} />
-            : <LigneCompacte key={x.cle} lien={x.lien} avatar={<Initiales nom={x.avatar} icone={x.icone} />} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />)}
+            : <LigneCompacte key={x.cle} lien={x.lien} avatar={avatarATraiter(reseau, x)} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />)}
           {filtres.length > apercu && (
             <ButtonBase onClick={() => setTout((v) => !v)} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{tout ? 'Afficher moins' : `Voir les ${filtres.length}`}</ButtonBase>
           )}
@@ -233,7 +241,7 @@ function BlocMesTaches({ reseau, taches, compact = false }: { reseau: Reseau; ta
       detail={[x.magasin, echeanceDate(x.a) && `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · ')}
       fin={enRetard(x.a, reseau.jour) ? <Pastille ton="rouge">En retard</Pastille> : undefined} />
   ))
-  const vide = <LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur="#2e7d32" />} titre="Aucune tâche en cours" />
+  const vide = <LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur={brand.vertFonce} />} titre="Liste vide" detail="Tout est fait, chapeau." />
   const toutes = '/taches'
   return (
     <Box component="section" aria-label="Mes tâches" sx={{ mt: compact ? 0 : 2 }}>

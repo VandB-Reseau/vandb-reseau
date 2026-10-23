@@ -9,7 +9,7 @@ import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import Typography from '@mui/material/Typography'
-import { alpha } from '@mui/material/styles'
+import { alpha, type Theme } from '@mui/material/styles'
 import ImageOutlined from '@mui/icons-material/ImageOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import ChevronLeftOutlined from '@mui/icons-material/ChevronLeftOutlined'
@@ -23,7 +23,7 @@ import type { Photo } from '../data/grilles'
 // Briques visuelles communes « façon app » : avatars à initiales, lignes compactes, une seule pastille par ligne,
 // puces de filtre. Validées sur la maquette du 20/10/2026.
 
-const TEINTES = [brand.or, brand.bleu, brand.orange, '#7a7a80', '#2e7d32', '#7c3aed']
+const TEINTES = [brand.or, brand.vert, brand.orange, brand.beige, brand.brique, brand.anthracite]
 
 function teinte(nom: string): string {
   let h = 0
@@ -57,7 +57,7 @@ const signaux: Record<Exclude<Ton, 'rouge' | 'gris'>, CouleurSignal> = { orange:
 // les autres tons sont un texte coloré précédé d'un point, pour que les alertes ressortent.
 export function Pastille({ ton, children }: { ton: Ton; children: ReactNode }) {
   const forme = { flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 0.75, borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap' } as const
-  if (ton === 'rouge') return <Box component="span" sx={{ ...forme, px: 1.25, py: 0.5, bgcolor: '#c62828', color: '#ffffff' }}>{children}</Box>
+  if (ton === 'rouge') return <Box component="span" sx={{ ...forme, px: 1.25, py: 0.5, bgcolor: '#c24119', color: '#ffffff' }}>{children}</Box>
   if (ton === 'gris') return <Box component="span" sx={{ ...forme, py: 0.5, color: 'text.secondary' }}>{children}</Box>
   return <Box component="span" sx={(t) => ({ ...forme, py: 0.5, ...styleSignal(t, signaux[ton]) })}>{children}</Box>
 }
@@ -98,11 +98,18 @@ export function CarteLignes({ children, label }: { children: ReactNode; label?: 
   )
 }
 
-// Titre de section discret, en capitales, avec un nombre à droite
+// Intitulé en cartouche noir, lettres blanches en capitales, légèrement penché, comme les intitulés de la charte V and B
+// En mode sombre, le cartouche passe en jaune-or, lettres noires, pour rester visible sur le fond noir
+export const cartouche = (theme: Theme) => ({
+  display: 'inline-block', px: 1, py: 0.25, bgcolor: '#1d1d1b', color: '#ffffff', fontSize: '0.8125rem', fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', transform: 'rotate(-1.5deg)',
+  ...theme.applyStyles('dark', { bgcolor: brand.or, color: '#1d1d1b' }),
+})
+
+// Titre de section en cartouche, avec un nombre à droite
 export function TitreSection({ children, nombre, action }: { children: ReactNode; nombre?: number; action?: ReactNode }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, mb: 1, minHeight: 40 }}>
-      <Typography component="h2" sx={{ flex: 1, fontSize: '0.8125rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'text.secondary' }}>{children}</Typography>
+      <Typography component="h2" sx={cartouche}>{children}</Typography><Box sx={{ flex: 1 }} />
       {nombre !== undefined && <Typography sx={{ fontWeight: 600 }}>{nombre}</Typography>}
       {action}
     </Box>
@@ -258,7 +265,7 @@ export function ChoixAffichage({ valeur, onChange }: { valeur: Affichage; onChan
 // Glisser vers la gauche au doigt (téléphone) pour l'action rapide de la ligne : tâche faite, notification lue.
 // Sans animation : la ligne suit le doigt et revient en place au lâcher ; la souris n'est pas concernée.
 const SEUIL_GLISSER = 96
-export function Glisser({ children, libelle, icone, onGlisser, actif = true, couleur = '#2e7d32' }: { children: ReactNode; libelle: string; icone: ReactNode; onGlisser: () => void; actif?: boolean; couleur?: string }) {
+export function Glisser({ children, libelle, icone, onGlisser, actif = true, couleur = brand.vertFonce }: { children: ReactNode; libelle: string; icone: ReactNode; onGlisser: () => void; actif?: boolean; couleur?: string }) {
   const [dx, setDx] = useState(0)
   const depart = useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null)
   const vientDeGlisser = useRef(false)

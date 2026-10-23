@@ -123,7 +123,7 @@ test('le mode sombre suit le réglage de l’appareil', async ({ page }, info) =
   await page.emulateMedia({ colorScheme: 'dark' })
   await seConnecter(page)
   const fond = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
-  expect(fond).toBe('rgb(18, 18, 20)')
+  expect(fond).toBe('rgb(29, 29, 27)')
   await page.screenshot({ path: `captures/${info.project.name}-sombre.png` })
 })
 

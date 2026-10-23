@@ -13,7 +13,7 @@ import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { ChampRecherche } from '../components/Outils'
 import { RechercheFiltres } from '../components/RechercheFiltres'
-import { CarteLignes, TitreSection } from '../components/Social'
+import { CarteLignes, TitreSection, cartouche } from '../components/Social'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { BoutonAjouterAction, DialogAction, LigneAction, useEcritureActions } from '../components/Actions'
@@ -48,7 +48,7 @@ const plusSept = (jour: string) => { const d = new Date(`${jour}T12:00:00Z`); d.
 function Intertitre({ titre, nombre }: { titre: string; nombre: number }) {
   return (
     <Box component="li" role="presentation" sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, pt: 1.5, pb: 0.5, bgcolor: 'action.hover' }}>
-      <Typography component="h2" sx={{ flex: 1, fontSize: '0.8125rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'text.secondary' }}>{titre}</Typography>
+      <Typography component="h2" sx={cartouche}>{titre}</Typography><Box sx={{ flex: 1 }} />
       <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.secondary' }}>{nombre}</Typography>
     </Box>
   )

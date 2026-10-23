@@ -71,15 +71,15 @@ export type Evaluations = Record<string, Evaluation & { historique?: PointSante[
 // Nine box (démarche coach octobre 2026) : résultats en colonnes, management en lignes
 export interface CaseNineBox { id: string; libelle: string; resultats: 1 | 2 | 3; management: 1 | 2 | 3; rythme: string; couleur: string }
 export const nineBox: CaseNineBox[] = [
-  { id: 'diagnostic', libelle: 'Diagnostic marché', resultats: 1, management: 3, rythme: '4 visites × ½ j', couleur: '#f6c544' },
-  { id: 'potentiel', libelle: 'Potentiel à activer', resultats: 2, management: 3, rythme: '3 visites × 1 j', couleur: '#8bc34a' },
-  { id: 'locomotive', libelle: 'Locomotive', resultats: 3, management: 3, rythme: '2 visites × 1,5 j', couleur: '#2e7d32' },
-  { id: 'relance', libelle: 'Relance commerciale', resultats: 1, management: 2, rythme: '6 visites × ½ j', couleur: '#ef7d00' },
-  { id: 'coeur', libelle: 'Cœur de réseau', resultats: 2, management: 2, rythme: '3 visites × 1 j', couleur: '#f6c544' },
-  { id: 'grandir', libelle: 'À faire grandir', resultats: 3, management: 2, rythme: '3 visites × 1 j', couleur: '#8bc34a' },
-  { id: 'redressement', libelle: 'Redressement urgent', resultats: 1, management: 1, rythme: '8 visites × ½ j', couleur: '#d32f2f' },
-  { id: 'renforcer', libelle: 'Management à renforcer', resultats: 2, management: 1, rythme: '6 visites × ½ j', couleur: '#ef7d00' },
-  { id: 'fragile', libelle: 'Performance fragile', resultats: 3, management: 1, rythme: '4 visites × ½ j', couleur: '#f6c544' },
+  { id: 'diagnostic', libelle: 'Diagnostic marché', resultats: 1, management: 3, rythme: '4 visites × ½ j', couleur: '#f8bb09' },
+  { id: 'potentiel', libelle: 'Potentiel à activer', resultats: 2, management: 3, rythme: '3 visites × 1 j', couleur: '#3a8f8d' },
+  { id: 'locomotive', libelle: 'Locomotive', resultats: 3, management: 3, rythme: '2 visites × 1,5 j', couleur: '#307672' },
+  { id: 'relance', libelle: 'Relance commerciale', resultats: 1, management: 2, rythme: '6 visites × ½ j', couleur: '#ea6029' },
+  { id: 'coeur', libelle: 'Cœur de réseau', resultats: 2, management: 2, rythme: '3 visites × 1 j', couleur: '#f8bb09' },
+  { id: 'grandir', libelle: 'À faire grandir', resultats: 3, management: 2, rythme: '3 visites × 1 j', couleur: '#3a8f8d' },
+  { id: 'redressement', libelle: 'Redressement urgent', resultats: 1, management: 1, rythme: '8 visites × ½ j', couleur: '#c24119' },
+  { id: 'renforcer', libelle: 'Management à renforcer', resultats: 2, management: 1, rythme: '6 visites × ½ j', couleur: '#ea6029' },
+  { id: 'fragile', libelle: 'Performance fragile', resultats: 3, management: 1, rythme: '4 visites × ½ j', couleur: '#f8bb09' },
 ]
 
 // Jours sans visite après lesquels un magasin est signalé, par case (plus la case est faible, plus le délai est court)
