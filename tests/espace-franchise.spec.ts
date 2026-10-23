@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { ouvrirOnglet, seConnecter, simulerSupabase, textesTropPetits, COMPTE, type Ecriture, type OptionsSimulation } from './supabase-simule'
+import { ouvrirInfos, ouvrirOnglet, seConnecter, simulerSupabase, textesTropPetits, COMPTE, type Ecriture, type OptionsSimulation } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -32,7 +32,7 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   await seConnecterFranchise(page, { ecritures })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Mes magasins', /Messages$/, /Tâches$/, 'Pratiques'] : ['Accueil', 'Mes magasins', /Messages$/, /Tâches$/, 'Bonnes pratiques'])
+  await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Mes magasins', /Messages$/, /Tâches$/, /Infos$/] : ['Accueil', 'Mes magasins', /Messages$/, /Tâches$/, /Infos réseau$/])
   await expect(page.getByText('Paramètres')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Rechercher' })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button')).toHaveText(['Tous mes magasins', 'Annecy Test', 'Rennes Test'])
@@ -58,10 +58,17 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   // Un seul magasin choisi : chiffres détaillés et repères
   await page.getByRole('button', { name: 'Annecy Test', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Mes chiffres · septembre 2026' })).toBeVisible()
-  const panier = page.getByRole('group', { name: 'Panier moyen HT cave' })
-  await expect(panier).toContainText('Médiane du réseau 38,00 €')
+  // Tuiles comme sur l'accueil de l'équipe (Joseph, 23/10/2026) : le CA sur toute la largeur, puis deux par ligne sur téléphone
+  const chiffres = page.getByRole('region', { name: 'Mes chiffres' })
+  await expect(chiffres.getByRole('group', { name: 'CA cumulé' })).toContainText('vs septembre 2025')
+  await expect(chiffres.getByRole('group')).toHaveCount(5)
+  const reperes = page.getByRole('region', { name: 'Repères réseau' })
+  const panier = reperes.getByRole('group', { name: 'Panier moyen HT cave' })
+  await expect(panier).toContainText('Médiane 38,00 €')
   await expect(panier).toContainText('Au-dessus de la médiane')
-  await expect(page.getByRole('group', { name: 'Évolution du CA vs N-1' })).toContainText('Au-dessus de la médiane')
+  await expect(reperes.getByRole('group', { name: 'Évolution du CA vs N-1' })).toContainText('Au-dessus de la médiane')
+  const [t1, t2] = await Promise.all([panier, reperes.getByRole('group', { name: 'Évolution du CA vs N-1' })].map(async (l) => (await l.boundingBox())!))
+  expect(Math.abs(t1.y - t2.y)).toBeLessThan(2)
   if (isMobile) {
     const boutons = nav.getByRole('button')
     for (const b of await boutons.all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
@@ -78,7 +85,8 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Annecy Test', 'Rennes Test'])
   await page.getByRole('link', { name: /Annecy Test/ }).click()
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Fiche', 'Messages', 'Chiffres', 'Plus'] : ['Fiche', 'Messages', 'Chiffres', 'Visites', 'Campagnes'])
+  // Plus d'onglet Messages, comme pour l'équipe : le picto message ouvre le groupe du magasin (Joseph, 23/10/2026)
+  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Fiche', 'Chiffres', 'Visites', 'Plus'] : ['Fiche', 'Chiffres', 'Visites', 'Campagnes', 'Bonnes pratiques'])
   await expect(page.getByRole('button', { name: /Modifier|Réaffecter|Saisir/ })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'En bref' })).toContainText('tâches en cours')
   await expect(page.getByRole('region', { name: 'Fil du magasin' })).toHaveCount(0)
@@ -99,6 +107,25 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await ouvrirOnglet(page, 'Chiffres', page.getByRole('tablist', { name: 'Rubriques de Annecy Test' }))
   await expect(page.getByRole('heading', { name: 'Mois enregistrés' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
+  // Le picto message ouvre le groupe du magasin dans Messages ; l'ancien onglet y mène aussi
+  await page.getByRole('button', { name: 'Écrire un message' }).click()
+  await expect(page).toHaveURL(/#\/echanges\/magasin\/Annecy%20Test$/)
+  await page.goto('./#/magasins/Annecy%20Test?vue=messages')
+  await expect(page).toHaveURL(/#\/echanges\/magasin\/Annecy%20Test$/)
+})
+
+test('un franchisé d’un seul magasin arrive sur sa fiche par l’onglet Mes magasins ; ses bonnes pratiques ont leur onglet', async ({ page }, info) => {
+  await seConnecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, espace: { ...espace, pratiques: [...espace.pratiques,
+    { id: 'bp2', magasin: 'Annecy Test', date: '2026-09-20', titre: 'Coffrets à composer', theme: 'Vente additionnelle', texte: 'Le client choisit trois bouteilles.', par: 'Hugo FICTIF', photos: [], reprises: [] }] } })
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Mes magasins' }).click()
+  await expect(page).toHaveURL(/#\/magasins\/Annecy%20Test$/)
+  const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
+  await expect(onglets).toBeVisible()
+  await ouvrirOnglet(page, 'Bonnes pratiques', onglets)
+  await expect(page.getByRole('article', { name: 'Coffrets à composer' })).toBeVisible()
+  await expect(page.getByText('Dégustation du vendredi')).toHaveCount(0)
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-franchise-fiche-pratiques.png`, fullPage: true })
 })
 
 test('un franchisé ne peut ouvrir ni un autre magasin ni les écrans de l’équipe', async ({ page }) => {
@@ -109,7 +136,9 @@ test('un franchisé ne peut ouvrir ni un autre magasin ni les écrans de l’éq
     await page.goto(`./#${ecran}`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   }
-  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^(Bonnes pratiques|Pratiques)$/ }).click()
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^Infos( réseau)?$/ }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Infos réseau')
+  await ouvrirInfos(page, 'Bonnes pratiques')
   await expect(page.getByRole('heading', { name: 'Dégustation du vendredi' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Modifier|Ajouter/ })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Lyon Test' })).toHaveCount(0)

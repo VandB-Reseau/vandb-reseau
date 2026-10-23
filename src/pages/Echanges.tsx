@@ -1,4 +1,4 @@
-// Onglet Messages (Joseph, 21/10/2026, séparé des Tâches le 22/10) : canal Réseau, groupes des magasins, groupes libres,
+// Onglet Messages (Joseph, 21/10/2026, séparé des Tâches le 22/10) : groupes des magasins, groupes libres,
 // échanges à deux. Téléphone : la liste, puis la conversation en plein écran ; PC : la liste à gauche, la conversation à droite.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link as RouterLink, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -24,7 +24,6 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import AlternateEmail from '@mui/icons-material/AlternateEmail'
 import ArrowBack from '@mui/icons-material/ArrowBack'
-import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
@@ -44,15 +43,13 @@ import { initialesDe } from '../components/Social'
 import { useMessagerie } from '../data/MessagerieContext'
 import { actionsDuMagasin } from '../data/actions'
 import { basculerEpingle, useEpingles } from '../data/epingles'
-import { communicationsNonVues, magasinsDesEchanges, noterReseauVu, useReseauVu } from '../data/echanges'
-import { useCommunicationsDuFil } from '../data/communications'
+import { magasinsDesEchanges } from '../data/echanges'
 import {
   apercuDe, conversations, creerGroupe, heureCourte, mesCles, modifierGroupe, nomDe, participants, quitterGroupe, roleDeCle, sansPrives, supprimerGroupe,
   type Conversation, type Fil, type Groupe, type Messagerie, type Participant,
 } from '../data/messagerie'
 import type { Reseau } from '../data/modele'
 import { dateCourte, lienFiche } from '../lib/format'
-import { PageCommunications } from './Communications'
 
 const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr')
 
@@ -87,27 +84,6 @@ function LigneEchange({ c, mg, actif, ouvrir, epingle }: { c: Conversation; mg: 
           {c.mention && <AlternateEmail aria-label="On te cite" sx={{ fontSize: 18, color: 'error.main' }} />}
           <Typography variant="body2" color={fort ? 'text.primary' : 'text.secondary'} sx={{ flex: 1, minWidth: 0, fontWeight: fort ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{apercu}</Typography>
           {fort && <Pastille n={c.nonLus} fort={c.pourMoi > 0} />}
-        </Box>
-      </Box>
-    </ListItemButton>
-  )
-}
-
-// Canal « Réseau V and B » épinglé en tête : les communications du réseau
-function LigneReseau({ actif, ouvrir, nonVues, dernier }: { actif: boolean; ouvrir: () => void; nonVues: number; dernier?: { titre: string; creeLe: string } }) {
-  return (
-    <ListItemButton selected={actif} onClick={ouvrir} aria-label={`Réseau V and B${nonVues ? ` : ${nonVues} nouvelle${nonVues > 1 ? 's' : ''} communication${nonVues > 1 ? 's' : ''}` : ''}`}
-      sx={{ borderRadius: 3, mx: 1, mb: 0.25, minHeight: 72, gap: 1.5, alignItems: 'center', bgcolor: actif ? undefined : 'action.hover' }}>
-      <Avatar variant="rounded" sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: '#ef7d00', color: '#1b1b1f' }}><CampaignOutlined /></Avatar>
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-          <Typography variant="body1" sx={{ fontWeight: nonVues ? 700 : 600 }}>Réseau V and B</Typography>
-          <PushPinOutlined aria-label="Épinglé" sx={{ fontSize: 16, color: 'text.secondary' }} />
-          {dernier && <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto', flexShrink: 0 }}>{heureCourte(dernier.creeLe)}</Typography>}
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="body2" color={nonVues ? 'text.primary' : 'text.secondary'} sx={{ flex: 1, minWidth: 0, fontWeight: nonVues ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dernier?.titre ?? 'Communications du réseau'}</Typography>
-          {nonVues > 0 && <Pastille n={nonVues} fort />}
         </Box>
       </Box>
     </ListItemButton>
@@ -186,16 +162,13 @@ function NouveauMessage({ lignes, ouvrir, fermer }: { lignes: Conversation[]; ou
 
 const PETITE_LISTE = 30
 
-function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreerGroupe, magasins, signaler, canalReseau }: {
-  reseau: Reseau; lignes: Conversation[]; mg: Messagerie; actif?: string; ouvrir: (lien: string) => void; ecrire: boolean; peutCreerGroupe: boolean; magasins: Reseau['magasins']; signaler: (m: string) => void; canalReseau: boolean
+function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreerGroupe, magasins, signaler }: {
+  reseau: Reseau; lignes: Conversation[]; mg: Messagerie; actif?: string; ouvrir: (lien: string) => void; ecrire: boolean; peutCreerGroupe: boolean; magasins: Reseau['magasins']; signaler: (m: string) => void
 }) {
   const [recherche, setRecherche] = useState('')
   const [nonLus, setNonLus] = useState(false)
   const [menu, setMenu] = useState<HTMLElement | null>(null)
   const [nouveau, setNouveau] = useState<'personne' | 'groupe' | null>(null)
-  const communications = useCommunicationsDuFil()
-  const vu = useReseauVu()
-  const nonVues = communicationsNonVues(communications.liste, communications.moi, vu)
   const q = sansAccents(recherche.trim())
   // Sans recherche : les conversations en cours (tout quand la liste est courte) ; avec recherche : tout, pour en démarrer une
   const toutes = lignes.length <= PETITE_LISTE
@@ -204,7 +177,6 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
   const affichees = lignes.filter((l) => (q ? sansAccents(l.recherche).includes(q) : toutes || !!l.dernier || l.genre === 'groupe' || epingles.includes(l.cle)) && (!nonLus || l.nonLus > 0))
     .sort((a, b) => Number(epingles.includes(b.cle)) - Number(epingles.includes(a.cle)))
   const aLire = lignes.filter((l) => l.nonLus > 0).length
-  const dernier = communications.liste[0]
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
       <Box sx={{ px: { xs: 0, md: 2 }, pt: { xs: 0, md: 2 }, pb: 1.5, display: 'flex', gap: 1, alignItems: 'center' }}>
@@ -223,8 +195,7 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
       {nouveau === 'groupe' && <DialogGroupe reseau={reseau} magasins={magasins} groupe={null} onFermer={(msg, id) => { setNouveau(null); if (msg) signaler(msg); if (id) ouvrir(`/echanges/groupe/${id}`) }} />}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: { md: 'auto' }, mx: { xs: -1, md: 0 }, pb: 1 }}>
         <List aria-label="Conversations" disablePadding>
-          {/* L'équipe retrouve communications et bonnes pratiques dans Infos réseau (sprint 22, S1) ; le franchisé garde le canal */}
-          {canalReseau && !q && (!nonLus || nonVues > 0) && <LigneReseau actif={actif === 'reseau'} ouvrir={() => ouvrir('/echanges/reseau')} nonVues={nonVues} dernier={dernier} />}
+          {/* Communications et bonnes pratiques : dans Infos réseau, pour l'équipe comme pour le franchisé */}
           {affichees.map((l) => <LigneEchange key={l.cle} c={l} mg={mg} actif={l.cle === actif} ouvrir={() => ouvrir(l.lien)} epingle={epingles.includes(l.cle)} />)}
         </List>
         {!affichees.length && (q || nonLus) && (
@@ -308,11 +279,7 @@ function filDeAdresse(genre: string | undefined, valeur: string | undefined, equ
   return null
 }
 
-// Canal « Réseau V and B » du franchisé, présenté comme un groupe ; l'équipe passe par Infos réseau (sprint 22, S1)
-type Canal = 'reseau'
-const canalReseau = { titre: 'Réseau V and B', detail: 'Communications du réseau', fond: '#ef7d00', icone: <CampaignOutlined /> }
-
-function Contenu({ reseau, lectureSeule, canal }: { reseau: Reseau; lectureSeule: boolean; canal?: Canal }) {
+function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boolean }) {
   const { genre, valeur } = useParams()
   const [params] = useSearchParams()
   const naviguer = useNavigate()
@@ -333,41 +300,6 @@ function Contenu({ reseau, lectureSeule, canal }: { reseau: Reseau; lectureSeule
   const ouvrir = (lien: string) => naviguer(lien, { replace: surPC && !!fil })
   const retour = () => (window.history.length > 1 ? naviguer(-1) : naviguer('/echanges'))
   const message = <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
-  useEffect(() => { if (canal === 'reseau') noterReseauVu() }, [canal])
-  if (canal) {
-    const c = canalReseau
-    const avatar = <Avatar variant="rounded" sx={{ width: 40, height: 40, borderRadius: 3, bgcolor: c.fond, color: '#1b1b1f' }}>{c.icone}</Avatar>
-    const corps = <PageCommunications enFil lectureSeule={lectureSeule} />
-    if (!surPC) {
-      return (
-        <ConversationTelephone>
-          <Box sx={{ px: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <EnTete titre={c.titre} detail={c.detail} niveau="h1" retour={retour} avatar={avatar} />
-          </Box>
-          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>{corps}</Box>
-          {message}
-        </ConversationTelephone>
-      )
-    }
-    return (
-      <>
-        <PageHeader titre="Messages" />
-        <Box sx={{ display: 'grid', gridTemplateColumns: messagerie ? '340px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 2, height: 'calc(100dvh - 72px - 64px - 84px)', minHeight: 480 }}>
-          {messagerie && <Card sx={{ minHeight: 0 }}>
-            <ListeDiscussions reseau={reseau} lignes={lignes} mg={messagerie} actif={canal} ouvrir={(lien) => naviguer(lien, { replace: true })} ecrire={!lectureSeule} magasins={magasins} signaler={setConfirmation} canalReseau={franchise}
-              peutCreerGroupe={!lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')} />
-          </Card>}
-          <Card sx={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ px: 2.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <EnTete titre={c.titre} detail={c.detail} niveau="h2" avatar={avatar} />
-            </Box>
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>{corps}</Box>
-          </Card>
-        </Box>
-        {message}
-      </>
-    )
-  }
   // Anciens liens vers les tâches de l'onglet Échanges : onglet Tâches
   if (!fil && params.get('vue') === 'taches') {
     const n = new URLSearchParams(params); n.delete('vue')
@@ -407,7 +339,7 @@ function Contenu({ reseau, lectureSeule, canal }: { reseau: Reseau; lectureSeule
     <FilMessages key={conv.cle + (fil.genre === 'magasin' && fil.equipe ? '|equipe' : '')} reseau={reseau} fil={fil} contact={conv.contact} signaler={setConfirmation} lectureSeule={lectureSeule} basculer={basculer}
       cadre={cadre} aLaFin={!cadre} fond={cadre ? 'background.paper' : 'background.default'} />
   )
-  const liste = <ListeDiscussions reseau={reseau} lignes={lignes} mg={messagerie} actif={conv?.cle} ouvrir={ouvrir} ecrire={!lectureSeule} magasins={magasins} signaler={setConfirmation} canalReseau={franchise}
+  const liste = <ListeDiscussions reseau={reseau} lignes={lignes} mg={messagerie} actif={conv?.cle} ouvrir={ouvrir} ecrire={!lectureSeule} magasins={magasins} signaler={setConfirmation}
     peutCreerGroupe={!lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')} />
   const dialogue = edition && <DialogGroupe reseau={reseau} magasins={magasins} groupe={edition} onFermer={(msg) => { setEdition(null); if (msg) setConfirmation(msg); if (msg === 'Groupe supprimé.') naviguer('/echanges') }} />
 
@@ -489,9 +421,7 @@ function ConversationTelephone({ children }: { children: ReactNode }) {
   )
 }
 
-export function Echanges({ lectureSeule = false, canal }: { lectureSeule?: boolean; canal?: Canal }) {
-  return <AvecReseau>{(reseau) => <Contenu reseau={reseau} lectureSeule={lectureSeule} canal={canal} />}</AvecReseau>
+export function Echanges({ lectureSeule = false }: { lectureSeule?: boolean }) {
+  return <AvecReseau>{(reseau) => <Contenu reseau={reseau} lectureSeule={lectureSeule} />}</AvecReseau>
 }
 
-// Canal « Réseau V and B » : les communications du réseau, vues dès l'ouverture
-export const CanalReseau = ({ lectureSeule = false }: { lectureSeule?: boolean }) => <Echanges canal="reseau" lectureSeule={lectureSeule} />

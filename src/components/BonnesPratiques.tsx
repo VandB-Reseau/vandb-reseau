@@ -33,7 +33,6 @@ import { ChampRecherche } from './Outils'
 import { FiltreMenu } from './FiltreMenu'
 import { RechercheFiltres } from './RechercheFiltres'
 import { EmptyState } from './EmptyState'
-import { FilCanal } from './FilCanal'
 import { visiteurs } from './DialogVisite'
 import { basculerJaime, enregistrerPratique } from '../data/chargement'
 import { notifierContenu } from '../lib/notifications'
@@ -218,8 +217,7 @@ export function CartePratique({ p, modifier, sansMagasin, ouvrables, moi, reacti
 }
 
 // filtre et integre : colonne de l'onglet Infos réseau, qui porte la recherche et les filtres communs
-// enFil : canal « Bonnes pratiques » des Messages, les pratiques défilent comme dans un groupe, actions en pied
-export function VuePratiques({ reseau, actions, modifier, filtre, integre = false, enFil = false }: { reseau: Reseau; actions?: ReactNode; modifier?: (p: BonnePratique) => void; filtre?: (p: BonnePratique) => boolean; integre?: boolean; enFil?: boolean }) {
+export function VuePratiques({ reseau, actions, modifier, filtre, integre = false }: { reseau: Reseau; actions?: ReactNode; modifier?: (p: BonnePratique) => void; filtre?: (p: BonnePratique) => boolean; integre?: boolean }) {
   const { profil } = useAuth()
   const { apercu, equipe } = useApercu()
   const reactions = useReactionsPratiques()
@@ -241,14 +239,6 @@ export function VuePratiques({ reseau, actions, modifier, filtre, integre = fals
   const carte = (p: BonnePratique) => <CartePratique key={p.id} p={p} ouvrables={ouvrables} moi={moi} modifier={modifier && ouvrables.has(p.magasin) ? () => modifier(p) : undefined}
     reactions={reactions} lectureSeule={!!apercu || !!equipe} signaler={setMessage} lecture={lectures?.get(p.id)} />
   const vide = <EmptyState icone={<TipsAndUpdatesOutlined />} titre="Aucune bonne pratique" texte={reseau.pratiques.length ? 'Aucune bonne pratique ne correspond à ces critères.' : 'Les initiatives réussies des magasins apparaîtront ici.'} />
-  if (enFil) {
-    return (
-      <>
-        <FilCanal libelle="Bonnes pratiques" publications={reseau.pratiques.map((p) => ({ cle: p.id, instant: `${p.date}T12:00:00`, contenu: carte(p) }))} vide={vide} pied={actions} />
-        <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
-      </>
-    )
-  }
   return (
     <>
       {integre ? <TitreSection nombre={liste.length} action={actions}>Bonnes pratiques</TitreSection> : <RechercheFiltres actifs={themes.length ? 1 : 0} actions={actions}

@@ -12,8 +12,8 @@ import TimelineOutlined from '@mui/icons-material/TimelineOutlined'
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import HomeOutlined from '@mui/icons-material/HomeOutlined'
 import Home from '@mui/icons-material/Home'
-import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
-import TipsAndUpdates from '@mui/icons-material/TipsAndUpdates'
+import NewspaperOutlined from '@mui/icons-material/NewspaperOutlined'
+import Newspaper from '@mui/icons-material/Newspaper'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import Forum from '@mui/icons-material/Forum'
 import MonitorHeart from '@mui/icons-material/MonitorHeart'
@@ -69,9 +69,10 @@ export const parametres: Destination[] = [
 export const espaceFranchise: Destination[] = [
   { chemin: '/', libelle: 'Accueil', description: 'Mes chiffres, mes tâches, mes visites', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 11' },
   { chemin: '/magasins', libelle: 'Mes magasins', description: 'Fiche, chiffres, visites et campagnes', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 11' },
-  { ...messages, description: 'Mes magasins, mon équipe et les communications du réseau' },
+  { ...messages, description: 'Mes magasins et mon équipe' },
   taches,
-  { chemin: '/bonnes-pratiques', libelle: 'Bonnes pratiques', court: 'Pratiques', description: 'Initiatives réussies du réseau', icone: <TipsAndUpdatesOutlined />, iconeActive: <TipsAndUpdates />, sprint: 'Sprint 11' },
+  // Communications et bonnes pratiques réunies, comme pour l'équipe (Joseph, 23/10/2026)
+  { chemin: '/infos', libelle: 'Infos réseau', court: 'Infos', description: 'Communications et bonnes pratiques du réseau', icone: <NewspaperOutlined />, iconeActive: <Newspaper />, sprint: 'Sprint 22' },
 ]
 
 export const plus: Destination = {

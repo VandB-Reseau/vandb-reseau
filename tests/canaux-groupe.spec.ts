@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { seConnecter, type CommunicationSimulee } from './supabase-simule'
 
-// Canal « Réseau V and B » du franchisé présenté comme un groupe (Joseph, 22/10/2026) : les publications défilent
-// comme des messages, la plus récente en bas ; le franchisé aime et commente
+// Canaux « Réseau V and B » et « Bonnes pratiques » : quittent Messages pour Infos réseau, pour l'équipe (sprint 22, S1)
+// comme pour le franchisé (Joseph, 23/10/2026)
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -37,13 +37,17 @@ test('pour l’équipe, les anciens canaux mènent à Infos réseau', async ({ p
   await expect(page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /^(Réseau V and B|Bonnes pratiques)/ })).toHaveCount(0)
 })
 
-test('un franchisé lit le canal sans pouvoir publier, mais aime et commente', async ({ page }) => {
+// Le franchisé aussi retrouve les communications dans Infos réseau (Joseph, 23/10/2026) ; l'ancienne adresse du canal y mène
+test('un franchisé lit les communications dans Infos réseau sans pouvoir publier, mais aime et commente', async ({ page }) => {
   await seConnecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, communications: communications() })
-  await page.goto('./#/echanges/reseau')
-  await expect(publications(page, 'Réseau V and B')).toHaveCount(2)
+  await page.goto('./#/echanges/reseau?c=1')
+  await expect(page).toHaveURL(/#\/infos\?c=1$/)
+  await expect(page.getByRole('region', { name: 'Communications' }).getByRole('article')).toHaveCount(2)
   await expect(page.getByRole('button', { name: 'Publier' })).toHaveCount(0)
   const carte = page.getByRole('article', { name: 'Coffrets de Noël' })
   await expect(carte.getByRole('button', { name: /^J’aime/ })).toBeEnabled()
   await carte.getByRole('button', { name: /^Commenter/ }).click()
   await expect(carte.getByRole('textbox', { name: 'Commentaire sur Coffrets de Noël' })).toBeVisible()
+  await page.goto('./#/echanges')
+  await expect(page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /^Réseau V and B/ })).toHaveCount(0)
 })
