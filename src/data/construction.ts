@@ -1,6 +1,6 @@
 import { grillesParDefaut } from './grilles'
 import { seuilsParDefaut } from './chiffres'
-import { couleurAuto, estCouleurCharte } from './zones'
+import { COULEURS_AUTO, estCouleurCharte } from './zones'
 import { delaisVisiteParDefaut, grilleParDefaut } from './sante'
 import type { AffectationCoach, Coach, Magasin, Personne, Reseau, ResponsableRegional, Statut, Topographie } from './modele'
 
@@ -160,6 +160,8 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
 
   // 5) Équipe : tout Coach présent dans les affectations ou fiches, hors techniciens
   const nomsTech = new Set([...techniciens.map((t) => t.nom), ...(d.coachsSupprimes ?? [])])
+  // Coach sans couleur de la charte : la suivante de la palette, dans l'ordre alphabétique (deux voisins n'ont pas la même)
+  const sansCouleur = Object.values(coachs).filter((c) => !nomsTech.has(c.nom)).map((c) => c.nom).sort((a, b) => a.localeCompare(b, 'fr'))
   const equipe: Coach[] = Object.values(coachs)
     .filter((c) => !nomsTech.has(c.nom))
     .map((c) => {
@@ -169,7 +171,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       return {
       ...c,
       fictif: !!(ov?.fictif || rec?.fictif),
-      couleur: [ov?.color, rec?.color].find((x) => x && x !== '#000000' && estCouleurCharte(x)) || couleurAuto(c.nom),
+      couleur: [ov?.color, rec?.color].find((x) => x && x !== '#000000' && estCouleurCharte(x)) || COULEURS_AUTO[sansCouleur.indexOf(c.nom) % COULEURS_AUTO.length],
       arrivee: texte(rec?.start).slice(0, 10),
       naissance: texte(ov?.birth).slice(0, 10),
       ville: texte(ov?.ville) || texte(rec?.ville),

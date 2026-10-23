@@ -272,7 +272,7 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
                   <Typography variant="body2" component="div">{statutLibelle[statut]} · {m.franchise ? 'Franchisé' : 'Intégré'}</Typography>
                   <Typography variant="body2" component="div">Coach : {coach || (m.rrEnDirect ? 'aucun, géré en direct par le Responsable Régional' : 'aucun')}</Typography>
                   {avant !== undefined && <Typography variant="body2" component="div">Proposé dans le plan, avant : {avant || 'aucun Coach'}</Typography>}
-                  {(!ouvrables || ouvrables.has(m.nom)) && <Link component={RouterLink} to={lienFiche(m.nom)} variant="body2">Ouvrir la fiche</Link>}
+                  {(!ouvrables || ouvrables.has(m.nom)) && <Link component={RouterLink} to={lienFiche(m.nom)} variant="body2" sx={{ color: 'text.primary', fontWeight: 700, textDecoration: 'underline' }}>Ouvrir la fiche</Link>}
                 </Popup>
               </Marker>
             )
@@ -283,7 +283,7 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
                 <Typography variant="subtitle2" component="div">{p.nom}</Typography>
                 <Typography variant="body2" component="div">{p.role}{p.ville ? ` · ${p.ville}` : ''}</Typography>
                 <Typography variant="body2" component="div">{p.magasins} magasin{p.magasins > 1 ? 's' : ''}</Typography>
-                <Link component={RouterLink} to={p.lien} variant="body2">Ouvrir la fiche</Link>
+                <Link component={RouterLink} to={p.lien} variant="body2" sx={{ color: 'text.primary', fontWeight: 700, textDecoration: 'underline' }}>Ouvrir la fiche</Link>
               </Popup>
             </Marker>
           ))}

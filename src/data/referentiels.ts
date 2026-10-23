@@ -444,7 +444,7 @@ const coachs: Referentiel = {
   async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerCoach(ch.cle) },
 }
 
-const COULEURS_RR = ['#307672', '#ea6029', '#f8bb09', '#312e2e', '#c24119', '#3a8f8d', '#ede0c4', '#f7d802']
+const COULEURS_RR = ['#307672', '#ea6029', '#1d1d1b', '#f8bb09', '#c24119', '#3a8f8d', '#f7d802', '#312e2e']
 const rrs: Referentiel = {
   id: 'rrs', libelle: 'Responsables Régionaux', feuille: 'Responsables Régionaux',
   colonnes: [
