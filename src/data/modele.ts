@@ -42,6 +42,9 @@ export interface AffectationCoach {
 
 // Forme du blason de ville (charte V and B) : ville littorale, de montagne ou dans les terres
 export type Topographie = 'littoral' | 'montagne' | 'terres'
+// Figure au centre du blason : un élément local (voir src/components/FiguresBlason.tsx)
+export type Figure = 'voile' | 'phare' | 'ancre' | 'poisson' | 'coquillage' | 'hermine' | 'sommet' | 'sapin' | 'epi' | 'feuille'
+  | 'arbre' | 'clocher' | 'chateau' | 'beffroi' | 'pont' | 'soleil' | 'lavande' | 'olivier' | 'etoile' | 'fleur'
 
 export interface Magasin {
   nom: string
@@ -66,6 +69,7 @@ export interface Magasin {
   lon: number | null
   positionApprochee: boolean // posé au centre de son département (import Excel) ou jamais trouvé : à géolocaliser
   topographie: Topographie | '' // forme du blason de ville, choisie dans la fiche ; vide = déduite du département
+  figure: Figure | '' // figure au centre du blason, choisie dans la fiche ; vide = proposée selon le département
   historiqueCoach: AffectationCoach[]
 }
 

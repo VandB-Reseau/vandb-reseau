@@ -71,6 +71,38 @@ test('la forme du blason se choisit dans la fiche du magasin', async ({ page }) 
   expect(ecritures).toContainEqual(expect.objectContaining({ table: 'store_overrides', corps: expect.objectContaining({ topographie: 'montagne' }) }))
 })
 
+test('chaque blason porte une figure locale au centre, proposée selon le département', async ({ page }, info) => {
+  await seConnecter(page)
+  await page.goto('./#/magasins')
+  const blason = (nom: string) => page.getByRole('link', { name: new RegExp(`^${nom}`) }).first().locator('[data-blason]')
+  await expect(blason('Nantes Test')).toHaveAttribute('data-figure', 'voile')
+  await expect(blason('Annecy Test')).toHaveAttribute('data-figure', 'sommet')
+  await expect(blason('Lyon Test')).toHaveAttribute('data-figure', 'clocher')
+  // La figure reste dans le blason
+  const b = (await blason('Lyon Test').boundingBox())!
+  const f = (await blason('Lyon Test').locator('svg').boundingBox())!
+  expect(f.x).toBeGreaterThanOrEqual(b.x)
+  expect(f.x + f.width).toBeLessThanOrEqual(b.x + b.width)
+  expect(f.y + f.height).toBeLessThanOrEqual(b.y + b.height)
+  await page.screenshot({ path: `captures/${info.project.name}-look-figures.png` })
+})
+
+test('la figure du blason se choisit dans la fiche du magasin', async ({ page }, info) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/magasins/Lyon%20Test')
+  await actionFiche(page, 'Modifier la fiche')
+  const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
+  await expect(d.getByLabel('Figure du blason')).toContainText('Selon le département (clocher)')
+  await d.getByLabel('Figure du blason').click()
+  await expect(page.getByRole('option')).toHaveCount(21)
+  await page.screenshot({ path: `captures/${info.project.name}-look-choix-figure.png` })
+  await page.getByRole('option', { name: 'Pont' }).click()
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  expect(ecritures).toContainEqual(expect.objectContaining({ table: 'store_overrides', corps: expect.objectContaining({ figure: 'pont' }) }))
+})
+
 test('état vide illustré par un pictogramme de la charte', async ({ page }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins')

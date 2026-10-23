@@ -3,6 +3,7 @@ import { seuilsParDefaut } from './chiffres'
 import { COULEURS_AUTO, estCouleurCharte } from './zones'
 import { delaisVisiteParDefaut, grilleParDefaut } from './sante'
 import type { AffectationCoach, Coach, Magasin, Personne, Reseau, ResponsableRegional, Statut, Topographie } from './modele'
+import { estFigure } from '../components/FiguresBlason'
 
 // Lignes brutes telles que stockées par l'ancienne app
 export interface MagasinBrut {
@@ -14,7 +15,7 @@ export interface MagasinBrut {
 const estTopographie = (t: unknown): t is Topographie => t === 'littoral' || t === 'montagne' || t === 'terres'
 
 export interface SurchargeMagasin extends Partial<Record<keyof MagasinBrut, unknown>> {
-  store_name: string; email_mag?: string; open_date?: string; topographie?: string | null // forme du blason (0031)
+  store_name: string; email_mag?: string; open_date?: string; topographie?: string | null; figure?: string | null // forme (0031) et figure (0032) du blason
 }
 export interface AffectationBrute { store: string; cs: string; date: string; note?: string; type?: string }
 export interface RRBrut { id: string; name: string; tel?: string; email?: string; color?: string; role?: string; birth?: string; entry?: string }
@@ -153,6 +154,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       responsableARecruter: /recrutement/i.test(texte(v('resp'))),
       lat, lon, positionApprochee,
       topographie: estTopographie(s?.topographie) ? s.topographie : '',
+      figure: estFigure(s?.figure) ? s.figure : '',
       historiqueCoach: historique,
     }
   })

@@ -12,8 +12,9 @@ import { enregistrerPosition, geolocaliser } from '../data/geolocalisation'
 import { enregistrerDeploiements, enregistrerEvaluations, enregistrerMagasin, supprimerMagasin, type FicheMagasin } from '../data/chargement'
 import { BoutonsOption, NotesParAxe, PastilleCase } from './Sante'
 import { caseDe, depuisDeploiement, type Evaluation, type IdCritere, type Note } from '../data/sante'
-import { libelleResponsable, type Magasin, type Reseau, type Topographie } from '../data/modele'
+import { libelleResponsable, type Figure, type Magasin, type Reseau, type Topographie } from '../data/modele'
 import { libellesTopographie, topographieDeduite } from './Blason'
+import { figureDeduite, figures } from './FiguresBlason'
 
 const emailValide = (e: string) => !e.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())
 
@@ -33,7 +34,7 @@ function depuisMagasin(m: Magasin | null): FicheMagasin {
     adresse: m?.adresse ?? '', codePostal: m?.codePostal ?? '', ville: m?.ville ?? '', pays: m?.pays ?? '',
     responsable: m?.responsable?.nom ?? (m?.responsableARecruter ? RECRUTEMENT : ''),
     telResponsable: m?.responsable?.telephone ?? '', emailResponsable: m?.responsable?.email ?? '',
-    rrDirect: m?.rrEnDirect && m.rr ? m.rr.id : '', topographie: m?.topographie ?? '',
+    rrDirect: m?.rrEnDirect && m.rr ? m.rr.id : '', topographie: m?.topographie ?? '', figure: m?.figure ?? '',
   }
 }
 
@@ -124,6 +125,16 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
           slotProps={{ select: { displayEmpty: true, renderValue: (v) => (v ? libellesTopographie[v as Topographie] : `Selon le département (${libellesTopographie[topographieDeduite(f.departement)].toLowerCase()})`) }, inputLabel: { shrink: true } }}>
           <MenuItem value="">Selon le département</MenuItem>
           {(Object.keys(libellesTopographie) as Topographie[]).map((t) => <MenuItem key={t} value={t}>{libellesTopographie[t]}</MenuItem>)}
+        </TextField>
+        <TextField select label="Figure du blason" value={f.figure} onChange={(e) => setF((x) => ({ ...x, figure: e.target.value as FicheMagasin['figure'] }))}
+          slotProps={{ select: { displayEmpty: true, renderValue: (v) => (v ? figures[v as Figure].libelle : `Selon le département (${figures[figureDeduite(f.departement, f.topographie || topographieDeduite(f.departement))].libelle.toLowerCase()})`) }, inputLabel: { shrink: true } }}>
+          <MenuItem value="">Selon le département</MenuItem>
+          {(Object.keys(figures) as Figure[]).map((k) => (
+            <MenuItem key={k} value={k} sx={{ gap: 1.5 }}>
+              <Box component="svg" aria-hidden viewBox="0 0 24 24" sx={{ width: 24, height: 24, flexShrink: 0 }}>{figures[k].dessin('currentColor')}</Box>
+              {figures[k].libelle}
+            </MenuItem>
+          ))}
         </TextField>
       </Groupe>
       {magasin && (

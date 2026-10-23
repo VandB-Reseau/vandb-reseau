@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Blason de ville : une figure au centre, comme dans la charte (voilier, hermine, sapin, sommet, château, beffroi, lavande,
+  soleil… vingt figures), en blanc, ou en noir sur le jaune et le crème. Proposée selon le département, réglable dans la
+  fiche du magasin. **Migration à passer : `0032_figure_blason.sql`** (sans elle, la figure proposée s'affiche, la figure
+  choisie n'est pas gardée).
 - Look V and B selon la charte graphique officielle (Joseph, 23/10/2026) : palette en duos de la charte partout (plus de
   bleu ; vert canard, jaune-or, orange, brique, crème), police Lato, titres en Alegreya (police libre proche de Coline,
   capitales pour les titres de page), filet en aplats jaune-or et vert canard, intitulés de section en cartouche noir,
