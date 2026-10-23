@@ -308,3 +308,47 @@ SELECT pg_temp.attendre('Franchisé : voit qu''il a été pointé présent',
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-000000000000';
 SELECT pg_temp.attendre('Sans rôle : aucune réunion', pg_temp.refuse('SELECT public.reunions_franchise()'), 1);
 RESET ROLE;
+
+-- Questions éclair (0026) : posées par le Directeur ou un RR (ses magasins), une réponse par franchisé, anonymat en base
+SELECT pg_temp.attendre('Journal : 0026 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0026'), 1);
+INSERT INTO auth.users (id, email, raw_app_meta_data) VALUES ('00000000-0000-0000-0000-00000000000e', 'rr@exemple.fr', '{"role":"rr","rr":"rr1"}') ON CONFLICT (id) DO NOTHING;
+UPDATE public.perimetre_equipe SET rrs = '{rr1}' WHERE store_name = 'Lille';
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : ne pose pas de question', pg_temp.refuse('SELECT public.publier_question(''Satisfait ?'', ''oui_non'', ''{}'', false, NULL, current_date + 7)'), 1);
+SELECT pg_temp.attendre('Coach : ne lit pas les résultats', pg_temp.refuse('SELECT public.resultats_questions()'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT public.publier_question('Êtes-vous satisfait de l''accompagnement ?', 'oui_non', '{}', true, NULL, current_date + 7) AS q_anonyme \gset
+SELECT public.publier_question('Note la formation', 'note', '{}', false, '{Nice}', current_date + 7) AS q_nice \gset
+SELECT pg_temp.attendre('Directeur : pas de question déjà close', pg_temp.refuse('SELECT public.publier_question(''Hier'', ''oui_non'', ''{}'', false, NULL, current_date - 1)'), 1);
+SELECT pg_temp.attendre('Directeur : un choix demande deux options', pg_temp.refuse('SELECT public.publier_question(''Date ?'', ''choix'', ''{Lundi}'', false, NULL, current_date + 3)'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000e';
+SELECT public.publier_question('Quelle date pour la réunion ?', 'choix', '{Lundi,Mardi}', false, NULL, current_date + 3) AS q_rr \gset
+SELECT pg_temp.attendre('RR : sa question vise ses seuls magasins', (SELECT count(*) FROM jsonb_array_elements(public.resultats_questions()) e WHERE (e->>'id')::bigint = :q_rr AND e->'magasins' = '["Lille"]'::jsonb), 1);
+SELECT pg_temp.attendre('RR : n''interroge pas un magasin d''une autre région', pg_temp.refuse('SELECT public.publier_question(''Intrus'', ''oui_non'', ''{}'', false, ''{Nice}'', current_date + 3)'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Franchisé : voit les questions de ses magasins', (SELECT jsonb_array_length(public.questions_franchise())), 2);
+SELECT pg_temp.attendre('Franchisé : répond', pg_temp.refuse('SELECT public.repondre_question(' || :q_anonyme || ', ''oui'')'), 0);
+SELECT pg_temp.attendre('Franchisé : une seule réponse', pg_temp.refuse('SELECT public.repondre_question(' || :q_anonyme || ', ''non'')'), 1);
+SELECT pg_temp.attendre('Franchisé : réponse hors des choix refusée', pg_temp.refuse('SELECT public.repondre_question(' || :q_rr || ', ''Jeudi'')'), 1);
+SELECT pg_temp.attendre('Franchisé : répond à un choix', pg_temp.refuse('SELECT public.repondre_question(' || :q_rr || ', ''Mardi'')'), 0);
+SELECT pg_temp.attendre('Franchisé : pas de réponse à une question d''un autre magasin', pg_temp.refuse('SELECT public.repondre_question(' || :q_nice || ', ''5'')'), 1);
+SELECT pg_temp.attendre('Franchisé : sait qu''il a répondu', (SELECT count(*) FROM jsonb_array_elements(public.questions_franchise()) e WHERE (e->>'repondu')::boolean), 2);
+SELECT pg_temp.attendre('Franchisé : aucun accès direct aux réponses', pg_temp.refuse('SELECT count(*) FROM public.questions_reponses'), 1);
+SELECT pg_temp.attendre('Franchisé : ne lit pas les résultats', pg_temp.refuse('SELECT public.resultats_questions()'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT pg_temp.attendre('Directeur : la réponse anonyme est comptée sans nom',
+  (SELECT count(*) FROM jsonb_array_elements(public.resultats_questions()) e, jsonb_array_elements(e->'reponses') r
+   WHERE (e->>'id')::bigint = :q_anonyme AND r->>'valeur' = 'oui' AND r->'franchise' = 'null'::jsonb AND r->'magasins' = '[]'::jsonb), 1);
+SELECT pg_temp.attendre('Directeur : la réponse nominative porte le nom',
+  (SELECT count(*) FROM jsonb_array_elements(public.resultats_questions()) e, jsonb_array_elements(e->'reponses') r
+   WHERE (e->>'id')::bigint = :q_rr AND r->>'franchise' = 'Franchisé Test'), 1);
+SELECT pg_temp.attendre('Directeur : le franchisé qui a répondu n''est pas à relancer',
+  (SELECT count(*) FROM jsonb_array_elements(public.resultats_questions()) e WHERE (e->>'id')::bigint = :q_anonyme AND e->'sans_reponse' ? 'Franchisé Test'), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000e';
+SELECT pg_temp.attendre('RR : lit la réponse de sa région', (SELECT jsonb_array_length(e->'reponses') FROM jsonb_array_elements(public.resultats_questions()) e WHERE (e->>'id')::bigint = :q_anonyme), 1);
+SELECT pg_temp.attendre('RR : ne voit pas la question d''un autre magasin', (SELECT count(*) FROM jsonb_array_elements(public.resultats_questions()) e WHERE (e->>'id')::bigint = :q_nice), 0);
+SELECT pg_temp.attendre('RR : ne supprime pas la question du Directeur', (SELECT count(*) FROM (SELECT public.supprimer_question(:q_anonyme)) x), 1);
+RESET ROLE;
+SELECT pg_temp.attendre('Question du Directeur toujours là', (SELECT count(*) FROM public.questions_eclair WHERE id = :q_anonyme), 1);
+SELECT pg_temp.attendre('Anonymat en base : ni nom ni magasin', (SELECT count(*) FROM public.questions_reponses WHERE question = :q_anonyme AND (franchise IS NOT NULL OR magasins <> '{}')), 0);

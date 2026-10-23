@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Questions éclair aux franchisés (sprint 22, A3) : dans Infos réseau, le Directeur (tout le réseau ou une région) ou
+  un RR (ses magasins) pose une question oui/non, à choix ou note de 1 à 5, avec ou sans le nom des répondants, ouverte
+  jusqu'à une date. Le franchisé répond d'un geste depuis son accueil, une seule fois. Résultats, moyenne, détail par
+  région et liste des franchisés sans réponse. Anonymat tenu par la base : la réponse est rangée sans compte ni nom.
+  **Migration à passer : `0026_questions_eclair.sql`.**
 - Réunions et formations (sprint 22, A2) : un événement de l'agenda invite des magasins (tout le réseau, une région ou
   une liste ; Directeur et RR seulement). Le franchisé répond Présent ou Absent depuis son accueil ; après la date,
   l'équipe pointe les présents dans l'événement. Fiche magasin, onglet Visites : réunions de l'année, « Présent à X sur
