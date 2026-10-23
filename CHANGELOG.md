@@ -17,6 +17,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   Notifications sur le téléphone de chaque nouveau sondage, réunion ou formation, communication, bonne pratique et
   campagne, aux personnes concernées, une seule fois. **Migration à passer : `0030_animation_reseau.sql`, puis
   redéployer la fonction Supabase `notifier`.**
+- Comptes des franchisés créés depuis l'app : dans la fiche du franchisé, « Ouvrir l'accès » crée le compte (email de
+  la fiche prérempli) et affiche un mot de passe provisoire à copier ou envoyer par email ; le franchisé choisit son mot
+  de passe à la première connexion. « Nouveau mot de passe » remplace la réinitialisation dans Supabase. Retirer un
+  franchisé, ou « Supprimer le compte », supprime son compte. Sans migration. **À déployer : fonction Supabase `comptes`
+  (`supabase/functions/comptes/index.ts`)** ; tant qu'elle ne l'est pas, l'app garde l'ancien fonctionnement.
 - Sondages (suite du sprint 22, A3) : les questions éclair deviennent des sondages de 1 à 5 questions (oui/non, choix
   ou note), posés dans Infos réseau par le Directeur ou un RR aux franchisés, à l'équipe (Coachs, et RR quand le
   Directeur pose) ou aux deux. L'équipe les remplit depuis son accueil et Infos réseau (rubrique Sondages) ; une

@@ -143,6 +143,15 @@ franchisés, Coachs et RR des magasins concernés envoyés par l'app, recoupés 
 | --- | --- | --- |
 | `notifications_envoyees` | Contenus déjà notifiés (`genre` : sondage, evenement, communication, pratique, campagne ; `cle` : son identifiant), 0030 | `genre`, `cle` |
 
+### Comptes des franchisés (fonction « comptes », 23/10/2026)
+
+La fonction Supabase « comptes » (`supabase/functions/comptes/index.ts`, clé `service_role` côté Supabase seulement)
+crée, réinitialise et supprime les comptes Auth des franchisés. Elle relit le rôle de l'appelant dans `auth.users`
+(Directeur seul) et refuse tout compte de l'équipe. Un compte créé reçoit un mot de passe provisoire et
+`user_metadata.mot_de_passe_provisoire = true` : l'app impose de le changer à la connexion. L'accès lui-même reste
+ouvert par `ouvrir_acces_franchise` ; supprimer le compte efface sa ligne d'`acces_franchises` (`ON DELETE CASCADE`).
+Aucun e-mail n'est envoyé par Supabase : le Directeur transmet les identifiants.
+
 ## Clés d'`app_config`
 
 | Clé | Contenu | Forme |
