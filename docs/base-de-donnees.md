@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 23/10/2026 (migration `0029`).
+Mis à jour le 23/10/2026 (migration `0030`).
 
 ## Principes
 
@@ -83,7 +83,7 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 
 | Table | Contenu |
 | --- | --- |
-| `events` | Événements : réunions, séminaires ; `invites` = magasins invités (0025, posés par le Directeur ou un RR seulement, contrôle `garde_invites`) |
+| `events` | Événements : réunions, séminaires, formations ; `type` = `event`, `reunion` ou `formation` ; `invites` = magasins invités (0025, posés par le Directeur ou un RR seulement, contrôle `garde_invites`) ; `heure` (HH:MM, heure de Paris) et `html` (contenu mis en forme, 200 000 caractères au plus, nettoyé par l'app à chaque affichage), 0030 |
 | `leaves` | Congés d'un Coach (`role` = `cs`) ou d'un RR (`dr`). Plus lue par l'app depuis le 22/10/2026 (absences retirées) ; gardée en base et dans la sauvegarde |
 
 ### Accès et périmètre
@@ -132,6 +132,16 @@ franchisés du magasin pour un compte rendu de visite des 7 derniers jours saisi
 magasin ; chaque porteur doit voir le magasin (une tâche « Équipe seule » ne part jamais vers un franchisé).
 `notifications_une` (0024) : franchisés des magasins visés par une communication encore à la une, quand l'appelant est
 le Directeur ou le RR qui l'a écrite.
+`notifications_animation` (0030) : un nouveau contenu, une seule fois (table `notifications_envoyees`, fermée ; les contenus
+d'avant 0030 y sont notés), jamais à son auteur. Sondage de l'appelant encore ouvert : ses destinataires. Réunion ou
+formation à venir avec invités, annoncée par le Directeur ou un RR (ses magasins seulement) : franchisés et Coachs des
+magasins invités. Communication de l'appelant de moins d'un jour : franchisés, Coachs et RR des magasins visés, et le
+Directeur. Bonne pratique existante : tout le réseau. Campagne pas terminée, du Directeur ou du RR qui la tient :
+franchisés, Coachs et RR des magasins concernés envoyés par l'app, recoupés avec ceux de l'appelant.
+
+| Table | Contenu | Clé |
+| --- | --- | --- |
+| `notifications_envoyees` | Contenus déjà notifiés (`genre` : sondage, evenement, communication, pratique, campagne ; `cle` : son identifiant), 0030 | `genre`, `cle` |
 
 ## Clés d'`app_config`
 
@@ -173,13 +183,13 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Bonnes pratiques | `reactions_pratiques`, `pratique_visible`, `basculer_pouce_pratique`, `commenter_pratique`, `supprimer_commentaire_pratique` | 0010 |
 | Comptes rendus de visite | `reactions_visites`, `visite_visible`, `basculer_pouce_visite`, `commenter_visite`, `supprimer_commentaire_visite` | 0022 |
 | « Vu par » des bonnes pratiques | `lire_pratiques` (franchisé, pratiques existantes seulement), `lectures_pratiques` (Directeur, Responsable Régional pour les franchisés de ses magasins), `pratiques_existantes` (interne) | 0023 |
-| Réunions et formations | `reunions_franchise`, `repondre_reunion` (franchisé, ses magasins invités, réponse jusqu'au dernier jour) ; `presences_reunions`, `pointer_presence` (équipe, ses magasins, pointage dès le premier jour) | 0025 |
+| Réunions et formations | `reunions_franchise` (avec type, heure et contenu depuis 0030), `repondre_reunion` (franchisé, ses magasins invités, réponse jusqu'au dernier jour) ; `presences_reunions`, `pointer_presence` (équipe, ses magasins, pointage dès le premier jour) | 0025, 0030 |
 | Sondages | `publier_sondage` (Directeur ; RR sur ses magasins), `supprimer_question`, `resultats_questions` (Directeur ; RR pour ses magasins et sa région, relance des franchisés, Coachs et RR) ; `questions_franchise` (franchisé), `questions_equipe` (Coach ; RR pour les sondages du Directeur), `repondre_sondage` (une réponse par compte, à toutes les questions) ; `publier_question`, `repondre_question` (anciennes écritures d'une question seule) ; `magasins_questions`, `nom_rr`, `destinataire_sondage`, `destinataires_sondage`, `sondages_pour_moi`, `question_valable`, `reponse_valable` (internes) | 0026, 0029 |
 | Propositions de bonnes pratiques | `proposer_pratique`, `mes_propositions` (franchisé, ses magasins) ; `propositions_pratiques`, `traiter_proposition` (équipe, ses magasins ; Directeur, tous) | 0027 |
 | Challenges | `creer_challenge`, `supprimer_challenge` (Directeur ; RR sur ses magasins) ; `challenges_equipe` (équipe, chiffre de ses seuls magasins) ; `challenges_franchise` (rang et podium sans chiffre) ; `classement_challenge` (interne) | 0028 |
 | Campagnes régionales | `campagne_region_permise` | 0005 |
 | Fichiers | `photo_visible`, `piece_visible` (fichiers d'une tâche de l'équipe seule refusés au franchisé, 0019) | 0004, 0009, 0019 |
-| Notifications | `abonner_appareil`, `desabonner_appareil` (compte connecté) ; `comptes_de_cle`, `notifications_a_envoyer`, `notifications_tache`, `notifications_une` (fonction « notifier » seule) | 0016, 0024 |
+| Notifications | `abonner_appareil`, `desabonner_appareil` (compte connecté) ; `comptes_de_cle`, `notifications_a_envoyer`, `notifications_tache`, `notifications_une`, `notifications_animation`, `comptes_concernes` (fonction « notifier » seule) | 0016, 0024, 0030 |
 | Outil | `json_sur` (lit un texte JSON sans jamais échouer) | 0004 |
 
 ## Fichiers (Supabase Storage)

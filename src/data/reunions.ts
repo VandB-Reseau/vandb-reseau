@@ -2,13 +2,14 @@
 // invite des magasins ; le franchisé répond Présent ou Absent ; après la date, l'équipe pointe les présents.
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Evenement, Reseau } from './modele'
+import type { Evenement, Reseau, TypeEvenement } from './modele'
 
 export type Reponse = 'present' | 'absent'
 // Réponse et pointage d'un magasin invité
 export interface Presence { event: number; magasin: string; reponse: Reponse | null; present: boolean | null }
 // Réunion vue par le franchisé
-export interface ReunionFranchise { id: number; titre: string; debut: string; fin: string; notes: string; magasins: string[]; reponse: Reponse | null; present: boolean | null }
+// type, heure et html : script 0030_animation_reseau.sql
+export interface ReunionFranchise { id: number; titre: string; type: TypeEvenement; debut: string; fin: string; heure: string; notes: string; html: string; magasins: string[]; reponse: Reponse | null; present: boolean | null }
 
 type Ligne = Record<string, unknown>
 const lignes = (v: unknown) => (Array.isArray(v) ? (v as Ligne[]).filter((x) => x && typeof x === 'object') : [])
@@ -35,7 +36,7 @@ export async function chargerReunionsFranchise(): Promise<ReunionFranchise[] | n
   const { data, error } = await supabase.rpc('reunions_franchise')
   if (error) return null
   return lignes(data).map((l) => ({
-    id: Number(l.id), titre: String(l.titre ?? ''), debut: String(l.debut ?? '').slice(0, 10), fin: String(l.fin ?? l.debut ?? '').slice(0, 10), notes: String(l.notes ?? ''),
+    id: Number(l.id), titre: String(l.titre ?? ''), type: l.type === 'formation' ? 'formation' : 'reunion', heure: typeof l.heure === 'string' ? l.heure : '', html: typeof l.html === 'string' ? l.html : '', debut: String(l.debut ?? '').slice(0, 10), fin: String(l.fin ?? l.debut ?? '').slice(0, 10), notes: String(l.notes ?? ''),
     magasins: Array.isArray(l.magasins) ? l.magasins.map(String) : [], reponse: reponse(l.reponse), present: booleen(l.present),
   }))
 }

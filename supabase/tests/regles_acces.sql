@@ -464,3 +464,57 @@ SELECT pg_temp.attendre('Franchisé : ne lit pas le classement de l''équipe', p
 SELECT pg_temp.attendre('Franchisé : n''appelle pas le calcul du classement', pg_temp.refuse('SELECT count(*) FROM public.classement_challenge(' || :ch || ')'), 1);
 SELECT pg_temp.attendre('Franchisé : aucun accès direct aux challenges', pg_temp.refuse('SELECT count(*) FROM public.challenges'), 1);
 RESET ROLE;
+
+-- Animation du réseau (0030) : formation avec heure et contenu ; un nouveau contenu notifié une seule fois,
+-- aux personnes concernées, jamais à son auteur, par la fonction d'envoi seule. L'ordre inverse a remis 0025 en dernier.
+\ir ../migrations/0030_animation_reseau.sql
+SELECT pg_temp.attendre('Journal : 0030 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0030'), 1);
+INSERT INTO public.abonnements_push (endpoint, user_id, p256dh, auth) VALUES
+  ('https://push.exemple.fr/coach', '00000000-0000-0000-0000-00000000000c', 'k', 'a'),
+  ('https://push.exemple.fr/directeur', '00000000-0000-0000-0000-00000000000d', 'k', 'a'),
+  ('https://push.exemple.fr/rr', '00000000-0000-0000-0000-00000000000e', 'k', 'a')
+ON CONFLICT (endpoint) DO NOTHING;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT pg_temp.attendre('Événement : heure mal écrite refusée', pg_temp.refuse('INSERT INTO public.events (title, start_date, heure) VALUES (''Tard'', current_date, ''25:00'')'), 1);
+INSERT INTO public.events (title, type, start_date, heure, html, invites) VALUES ('Formation accords mets et vins', 'formation', current_date + 5, '14:30', '<p>Programme</p>', '{Lille,Nice}') RETURNING id AS f30 \gset
+INSERT INTO public.communications (titre, auteur, auteur_nom, auteur_role) VALUES ('Nouvelle gamme', '00000000-0000-0000-0000-00000000000d', 'Directeur', 'directeur') RETURNING id AS c30 \gset
+UPDATE public.app_config SET value = '[{"id":"bp_t","titre":"Dégustation","magasin":"Lille"},{"id":"bp_30","titre":"Vitrine de Noël","magasin":"Lille"}]' WHERE key = 'bonnes_pratiques';
+INSERT INTO public.campagnes_regions (id, rr, valeur) VALUES ('c30', 'rr1', jsonb_build_object('nom', 'Noël', 'debut', current_date::text, 'fin', (current_date + 10)::text, 'rr', 'rr1')) ON CONFLICT (id) DO NOTHING;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Franchisé : reçoit l''heure et le contenu de la formation',
+  (SELECT count(*) FROM jsonb_array_elements(public.reunions_franchise()) e WHERE (e->>'id')::bigint = :f30 AND e->>'type' = 'formation' AND e->>'heure' = '14:30' AND e->>'html' = '<p>Programme</p>'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT public.publier_sondage('Besoin de formation', '[{"titre":"Utile ?","genre":"oui_non"}]', 'tous', false, NULL, current_date + 7) AS s30 \gset
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : ne lit pas les notifications d''un contenu', pg_temp.refuse('SELECT public.notifications_animation(''communication'', ''' || :c30 || ''', NULL, auth.uid())'), 1);
+SELECT pg_temp.attendre('Coach : aucun accès direct aux contenus notifiés', pg_temp.refuse('SELECT count(*) FROM public.notifications_envoyees'), 1);
+RESET ROLE;
+SET ROLE service_role;
+SELECT pg_temp.attendre('Contenu d''avant 0030 : déjà noté comme envoyé',
+  (SELECT jsonb_array_length(public.notifications_animation('evenement', :'reunion', NULL, '00000000-0000-0000-0000-00000000000d'))), 0);
+SELECT pg_temp.attendre('Formation : un Coach ne l''annonce pas',
+  (SELECT jsonb_array_length(public.notifications_animation('evenement', :'f30', NULL, '00000000-0000-0000-0000-00000000000c'))), 0);
+SELECT pg_temp.attendre('Formation par le RR : franchisé et Coach de Lille seulement',
+  (SELECT jsonb_array_length(public.notifications_animation('evenement', :'f30', NULL, '00000000-0000-0000-0000-00000000000e'))), 2);
+SELECT pg_temp.attendre('Formation : une seule fois',
+  (SELECT jsonb_array_length(public.notifications_animation('evenement', :'f30', NULL, '00000000-0000-0000-0000-00000000000d'))), 0);
+SELECT pg_temp.attendre('Communication : rien si l''auteur annoncé n''est pas le sien',
+  (SELECT jsonb_array_length(public.notifications_animation('communication', :'c30', NULL, '00000000-0000-0000-0000-00000000000e'))), 0);
+SELECT pg_temp.attendre('Communication du Directeur : franchisé, Coach et RR',
+  (SELECT jsonb_array_length(public.notifications_animation('communication', :'c30', NULL, '00000000-0000-0000-0000-00000000000d'))), 3);
+SELECT pg_temp.attendre('Bonne pratique du Coach : tout le réseau sauf lui',
+  (SELECT jsonb_array_length(public.notifications_animation('pratique', 'bp_30', NULL, '00000000-0000-0000-0000-00000000000c'))), 3);
+SELECT pg_temp.attendre('Bonne pratique inconnue : rien',
+  (SELECT jsonb_array_length(public.notifications_animation('pratique', 'bp_inconnue', NULL, '00000000-0000-0000-0000-00000000000c'))), 0);
+SELECT pg_temp.attendre('Sondage : rien si l''auteur annoncé n''est pas le sien',
+  (SELECT jsonb_array_length(public.notifications_animation('sondage', :'s30', NULL, '00000000-0000-0000-0000-00000000000e'))), 0);
+SELECT pg_temp.attendre('Sondage pour tous : franchisé, Coach et RR',
+  (SELECT jsonb_array_length(public.notifications_animation('sondage', :'s30', NULL, '00000000-0000-0000-0000-00000000000d'))), 3);
+SELECT pg_temp.attendre('Campagne du RR : ses magasins seulement (Lille), sans lui',
+  (SELECT jsonb_array_length(public.notifications_animation('campagne', 'c30', '{Lille,Nice}', '00000000-0000-0000-0000-00000000000e'))), 3);
+SELECT pg_temp.attendre('Campagne : notée comme envoyée',
+  (SELECT count(*) FROM public.notifications_envoyees WHERE genre = 'campagne' AND cle = 'c30'), 1);
+RESET ROLE;
+SELECT pg_temp.attendre('Animation : fonctions d''envoi fermées aux comptes', (SELECT count(*) FROM information_schema.routine_privileges
+  WHERE routine_schema = 'public' AND grantee IN ('anon', 'authenticated', 'PUBLIC') AND routine_name IN ('comptes_concernes', 'notifications_animation')), 0);

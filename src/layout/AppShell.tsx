@@ -32,7 +32,7 @@ import { useTotalEchanges } from '../data/echanges'
 import { BoutonCreer } from '../components/Creer'
 import { useInstallation } from '../lib/installation'
 import { brandStripe } from '../theme/theme'
-import { barreTelephone, magasins, parametres, principales, secondaires, type Destination } from '../navigation/destinations'
+import { barreTelephone, magasins, parametres, pourRole, principales, secondaires, type Destination } from '../navigation/destinations'
 import { useCompteurTaches } from '../data/tachesVues'
 import { useNouveautesInfos } from '../data/infosVues'
 import NewspaperOutlined from '@mui/icons-material/NewspaperOutlined'
@@ -140,6 +140,7 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
   const { pathname } = useLocation()
   const naviguer = useNavigate()
   const c = useCompteurs(sansCompteur)
+  const { profil } = useAuth()
   const item = (d: Destination) => {
     const actif = estActive(d, pathname)
     return (
@@ -157,7 +158,7 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
       <Toolbar sx={{ minHeight: 68 }} />
       <Box component="nav" aria-label="Navigation principale" sx={{ pt: 2 }}>
         {!franchise && <Box sx={{ px: 1.5, pb: 2 }}><BoutonCreer /></Box>}
-        <List disablePadding>{(franchise ?? [...principales, ...secondaires]).map(item)}</List>
+        <List disablePadding>{(franchise ?? [...principales, ...pourRole(secondaires, profil?.role)]).map(item)}</List>
         {!franchise && !sansParametres && <>
           <Divider sx={{ my: 1.5, mx: 3 }} />
           <List disablePadding subheader={<ListSubheader sx={{ bgcolor: 'transparent', px: 4, lineHeight: '36px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramètres</ListSubheader>}>
@@ -232,6 +233,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const { pathname } = useLocation()
+  const { profil } = useAuth()
   // Téléphone : la barre du bas s'efface dans une conversation et pendant la saisie d'un message, pour laisser la place au clavier
   const [saisie, setSaisie] = useState(false)
   useEffect(() => {
@@ -261,7 +263,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
           </Box>
           {!franchise && !surPC && <BoutonCreer entete />}
           {!franchise && <BoutonInfos />}
-          <MenuCompte liens={surPC || franchise ? [] : [{ destinations: [magasins, ...secondaires] }, ...(sansParametres ? [] : [{ titre: 'Paramètres', destinations: parametres }])]} />
+          <MenuCompte liens={surPC || franchise ? [] : [{ destinations: [magasins, ...pourRole(secondaires, profil?.role)] }, ...(sansParametres ? [] : [{ titre: 'Paramètres', destinations: parametres }])]} />
         </Toolbar>
         <Box aria-hidden sx={{ height: 4, background: brandStripe }} />
       </AppBar>

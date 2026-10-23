@@ -48,9 +48,11 @@ export async function chargerSondages(): Promise<Sondage[] | null> {
   }))
 }
 
-export async function publierSondage(s: { titre: string; questions: QuestionSondage[]; cible: Cible; anonyme: boolean; magasins: string[] | null; jusquAu: string }) {
-  const { error } = await supabase.rpc('publier_sondage', { p_titre: s.titre, p_questions: s.questions, p_cible: s.cible, p_anonyme: s.anonyme, p_magasins: s.magasins, p_jusqu_au: s.jusquAu })
+// Renvoie le numéro du sondage, pour prévenir ses destinataires
+export async function publierSondage(s: { titre: string; questions: QuestionSondage[]; cible: Cible; anonyme: boolean; magasins: string[] | null; jusquAu: string }): Promise<number | null> {
+  const { data, error } = await supabase.rpc('publier_sondage', { p_titre: s.titre, p_questions: s.questions, p_cible: s.cible, p_anonyme: s.anonyme, p_magasins: s.magasins, p_jusqu_au: s.jusquAu })
   if (error) throw humain(error)
+  return Number(data) || null
 }
 
 export async function supprimerSondage(id: number) {

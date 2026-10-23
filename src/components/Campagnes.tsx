@@ -47,6 +47,7 @@ import {
 import type { Magasin, Reseau } from '../data/modele'
 import { magasinsDu } from '../data/perimetre'
 import { dateCourte, lienFiche } from '../lib/format'
+import { notifierContenu } from '../lib/notifications'
 
 const couleursExecution: Record<Execution, 'success' | 'warning' | 'error' | 'default'> = { fait: 'success', partiel: 'warning', non: 'error', aConstater: 'default' }
 
@@ -337,7 +338,7 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
 // ── Créer ou modifier une campagne ──
 const SUPPRIMEE = 'Campagne supprimée.'
 
-function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau; campagne: Campagne | null; onFermer: (m?: string, id?: string | null) => void }) {
+export function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau; campagne: Campagne | null; onFermer: (m?: string, id?: string | null) => void }) {
   const droits = useDroitsCampagnes()
   // Campagne régionale : celle d'un Responsable Régional, ou toute campagne qu'il crée
   const rr = campagne ? campagne.rr : droits.referentiels ? undefined : droits.monRR
@@ -360,7 +361,10 @@ function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau; campag
     <Fenetre large titre={campagne ? `Modifier ${campagne.nom}` : 'Nouvelle campagne'} ouvert valide={valide}
       onFermer={(m) => onFermer(m, m === SUPPRIMEE ? null : m ? id : undefined)}
       enregistrer={async () => {
-        await enregistrerCampagne(id, { id, nom: nom.trim(), debut, fin, points: remplis.map((p) => ({ id: p.id, libelle: p.libelle.trim() })), perimetre, magasins: perimetre === 'choix' ? magasins : [], ...(rr ? { rr } : {}) }, regionale)
+        const c: Campagne = { id, nom: nom.trim(), debut, fin, points: remplis.map((p) => ({ id: p.id, libelle: p.libelle.trim() })), perimetre, magasins: perimetre === 'choix' ? magasins : [], ...(rr ? { rr } : {}) }
+        await enregistrerCampagne(id, c, regionale)
+        // Nouvelle campagne : franchisés et équipe des magasins concernés sont prévenus
+        if (!campagne) notifierContenu('campagne', id, magasinsConcernes(reseau, c).map((m) => m.nom))
         return campagne ? 'Campagne mise à jour.' : 'Campagne créée.'
       }}
       supprimer={campagne ? async () => { await enregistrerCampagne(id, null, regionale); return SUPPRIMEE } : undefined}

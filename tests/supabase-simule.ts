@@ -39,7 +39,8 @@ export interface CommunicationSimulee {
 export interface ReactionsPratiquesSimulees { pouces?: Record<string, { user_id: string; nom: string }[]>; commentaires?: Record<string, { id: number; auteur: string; auteur_nom: string; auteur_role: string; texte: string; cree_le: string }[]> }
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
 // Réunions et formations (script 0025_reunions.sql) : événements avec invités, réponses et présences ; absent = base d'avant 0025
-export interface ReunionsSimulees { evenements: { id: number; title: string; type?: string; start_date: string; end_date?: string | null; color?: string; notes?: string | null; invites?: string[] | null }[]; presences: { event: number; magasin: string; reponse: 'present' | 'absent' | null; present: boolean | null }[] }
+// heure et html : script 0030_animation_reseau.sql
+export interface ReunionsSimulees { evenements: { id: number; title: string; type?: string; start_date: string; end_date?: string | null; color?: string; notes?: string | null; invites?: string[] | null; heure?: string | null; html?: string | null }[]; presences: { event: number; magasin: string; reponse: 'present' | 'absent' | null; present: boolean | null }[] }
 // Sondages (scripts 0026_questions_eclair.sql et 0029_sondages.sql) : résultats vus par le Directeur et le RR, sondages ouverts du franchisé et de l'équipe
 export interface QuestionsSimulees { resultats: Record<string, unknown>[]; franchise: Record<string, unknown>[]; equipe?: Record<string, unknown>[] }
 // Bonnes pratiques proposées par les franchisés (script 0027_pratiques_proposees.sql)
@@ -180,7 +181,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         }
         return route.fulfill({ json: r.evenements.filter((e) => e.invites?.some((m) => miens.includes(m))).map((e) => {
           const p = r.presences.filter((x) => x.event === e.id && miens.includes(x.magasin))
-          return { id: e.id, titre: e.title, debut: e.start_date, fin: e.end_date ?? e.start_date, notes: e.notes ?? '', magasins: e.invites!.filter((m) => miens.includes(m)), reponse: p.find((x) => x.reponse)?.reponse ?? null, present: p.some((x) => x.present) || null }
+          return { id: e.id, titre: e.title, type: e.type ?? 'event', heure: e.heure ?? null, html: e.html ?? null, debut: e.start_date, fin: e.end_date ?? e.start_date, notes: e.notes ?? '', magasins: e.invites!.filter((m) => miens.includes(m)), reponse: p.find((x) => x.reponse)?.reponse ?? null, present: p.some((x) => x.present) || null }
         }) })
       }
       if (['resultats_questions', 'publier_sondage', 'supprimer_question', 'questions_franchise', 'questions_equipe', 'repondre_sondage'].includes(fn)) {
@@ -484,6 +485,8 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         noterSuivi(rubrique)
         return route.fulfill({ status: 201, json: [] })
       }
+      // Nouvel événement : la base renvoie son numéro (demandé par l'app pour prévenir les invités)
+      if (table === 'events' && req.method() === 'POST') return route.fulfill({ status: 201, json: [{ id: 900 + (options.ecritures?.filter((e) => e.table === 'events' && e.methode === 'POST').length ?? 0) }] })
       const cle = url.searchParams.get('key')?.replace(/^eq\./, '') ?? (table === 'app_config' && req.method() === 'POST' ? (req.postDataJSON() as { key?: string }).key : undefined)
       if (options.persister && table === 'app_config' && cle) configEcrite.set(cle, (req.postDataJSON() as { value: string }).value)
       return route.fulfill({ status: 201, json: [] })

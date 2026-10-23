@@ -173,5 +173,10 @@ export interface NoteMagasin { id: string; date: string; texte: string; par: str
 export interface PreparationVisite { notes: string; heure: string; par: string; maj: string }
 
 // invites : magasins invités à une réunion ou une formation (script 0025_reunions.sql) ; absent = événement sans invités
-export interface Evenement { id: number | null; titre: string; type: string; debut: string; fin: string; notes: string; couleur: string; invites?: string[] }
+// type : event, reunion ou formation ; heure (HH:MM, heure de Paris) et html (contenu mis en forme) : script 0030_animation_reseau.sql
+export type TypeEvenement = 'event' | 'reunion' | 'formation'
+export interface Evenement { id: number | null; titre: string; type: string; debut: string; fin: string; notes: string; couleur: string; invites?: string[]; heure?: string; html?: string }
+export const libellesTypeEvenement: Record<TypeEvenement, string> = { event: 'Événement', reunion: 'Réunion', formation: 'Formation' }
+// Un événement qui invite des magasins est une réunion, sauf s'il est noté formation
+export const typeEvenement = (e: Pick<Evenement, 'type' | 'invites'>): TypeEvenement => (e.type === 'formation' ? 'formation' : e.type === 'reunion' || e.invites?.length ? 'reunion' : 'event')
 export interface Anniversaire { nom: string; role: string; date: string; nature: 'naissance' | 'arrivee' }

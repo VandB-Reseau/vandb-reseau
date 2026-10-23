@@ -47,6 +47,7 @@ const chargeurs = {
   echanges: () => import('./pages/Echanges'),
   taches: () => import('./pages/Taches').then((m) => ({ default: m.PageTaches })),
   infos: () => import('./pages/InfosReseau').then((m) => ({ default: m.InfosReseau })),
+  animation: () => import('./pages/Animation').then((m) => ({ default: m.Animation })),
 }
 // Espace franchisé : un seul fichier, jamais préchargé pour l'équipe
 const espace = () => import('./pages/EspaceFranchise')
@@ -65,6 +66,12 @@ const FicheDirecteur = chargementDiffere(() => chargeurs.personnes().then((m) =>
 const FicheFranchise = chargementDiffere(() => chargeurs.personnes().then((m) => ({ default: m.FicheFranchise })))
 const Visites = chargementDiffere(chargeurs.visites)
 const Agenda = chargementDiffere(chargeurs.agenda)
+const PageAnimation = chargementDiffere(chargeurs.animation)
+// Animation réseau : Directeur et Responsables Régionaux seulement
+function Animation() {
+  const { profil } = useAuth()
+  return profil?.role === 'directeur' || profil?.role === 'rr' ? <PageAnimation /> : <Navigate to="/" replace />
+}
 const SanteParc = chargementDiffere(chargeurs.sante)
 const Echanges = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.Echanges })))
 const CanalReseau = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.CanalReseau })))
@@ -158,6 +165,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         {anciensLiens}
         <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
         <Route path="/plus/agenda" element={<Agenda />} />
+        <Route path="/animation" element={<Animation />} />
         <Route path="/plus/sante" element={<SanteParc />} />
         <Route path="/parametres/evolution" element={<Evolution />} />
         <Route path="/plus/evolution" element={<Navigate to="/parametres/evolution" replace />} />

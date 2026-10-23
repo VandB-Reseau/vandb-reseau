@@ -9,6 +9,14 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Animation du réseau : nouvel onglet Animation réseau (Directeur et RR) pour créer et suivre au même endroit
+  communications, bonnes pratiques, sondages, formations, réunions et campagnes : quatre repères (lecture, réponses aux
+  sondages, réponses aux invitations, exécution des campagnes), une ligne par contenu avec son taux, et le détail (qui n'a
+  pas lu, qui a répondu, présences, exécution). Agenda : type Formation (catégorie à part), heure de début et contenu
+  mis en forme ou en code HTML, nettoyé à chaque affichage ; le franchisé ouvre ce contenu depuis son accueil.
+  Notifications sur le téléphone de chaque nouveau sondage, réunion ou formation, communication, bonne pratique et
+  campagne, aux personnes concernées, une seule fois. **Migration à passer : `0030_animation_reseau.sql`, puis
+  redéployer la fonction Supabase `notifier`.**
 - Sondages (suite du sprint 22, A3) : les questions éclair deviennent des sondages de 1 à 5 questions (oui/non, choix
   ou note), posés dans Infos réseau par le Directeur ou un RR aux franchisés, à l'équipe (Coachs, et RR quand le
   Directeur pose) ou aux deux. L'équipe les remplit depuis son accueil et Infos réseau (rubrique Sondages) ; une
