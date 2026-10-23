@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import { MapContainer, Marker, Pane, Polygon, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { MapContainer, Marker, Pane, Polygon, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import { divIcon } from 'leaflet'
 import { createPortal } from 'react-dom'
 import 'leaflet/dist/leaflet.css'
@@ -67,14 +67,21 @@ function htmlBulle(couleur: string, modifie: boolean, avenir: boolean, l: number
     + `<path d="M1 1.5 L24 0 L23 13.5 L8.5 14.5 L1.5 19.5 L4 14 L2 13.8 Z" fill="${couleurSure(couleur)}" stroke="${modifie ? '#1d1d1b' : '#ffffff'}" stroke-width="${modifie ? 3.5 : 2}" stroke-linejoin="round"${avenir ? ' stroke-dasharray="2.5 2"' : ''}/></svg>`
 }
 const bulles = new Map<string, ReturnType<typeof divIcon>>()
-const iconeBulle = (couleur: string, modifie: boolean, avenir: boolean, petit: boolean) => {
-  const cle = `${couleur}${modifie}${avenir}${petit}`
+// La bulle grandit avec le zoom, pour garder sa place à l'écran face à la carte qui s'agrandit (Joseph, 23/10/2026)
+const echelleZoom = (zoom: number) => (zoom <= 6 ? 1 : zoom === 7 ? 1.3 : zoom === 8 ? 1.6 : zoom === 9 ? 1.9 : 2.2)
+const iconeBulle = (couleur: string, modifie: boolean, avenir: boolean, petit: boolean, zoom: number) => {
+  const cle = `${couleur}${modifie}${avenir}${petit}${echelleZoom(zoom)}`
   if (!bulles.has(cle)) {
-    // Petite bulle, à la taille des anciens points : la carte reste lisible sous 300 magasins (Joseph, 23/10/2026)
-    const l = modifie ? 15 : petit ? 9 : 11
+    // Petite bulle sur la France entière, à la taille des anciens points : la carte reste lisible sous 300 magasins
+    const l = Math.round((modifie ? 15 : petit ? 9 : 11) * echelleZoom(zoom))
     bulles.set(cle, divIcon({ html: htmlBulle(couleur, modifie, avenir, l), className: 'picto-magasin', iconSize: [l, Math.round(l * 0.8)], iconAnchor: [Math.round(l * 0.06), Math.round(l * 0.78)], popupAnchor: [Math.round(l * 0.45), -Math.round(l * 0.7)] }))
   }
   return bulles.get(cle)!
+}
+
+function SuivreZoom({ onZoom }: { onZoom: (z: number) => void }) {
+  const carte = useMapEvents({ zoomend: () => onZoom(carte.getZoom()) })
+  return null
 }
 
 const icones = new Map<string, ReturnType<typeof divIcon>>()
@@ -102,6 +109,7 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
   magasins: Magasin[]; rrs: ResponsableRegional[]; equipe?: Coach[]; personnes?: Reseau['personnes']; restreindre?: boolean; vue?: VueCarte; margeBas?: number; zonesInitiales?: { coachs: boolean; rr: boolean }; ouvrables?: Set<string>
 }) {
   const [zonesCoachs, setZonesCoachs] = useState(zonesInitiales.coachs)
+  const [zoom, setZoom] = useState(6)
   const [zonesRR, setZonesRR] = useState(zonesInitiales.rr)
   const [voirPersonnes, setVoirPersonnes] = useState(true)
   const places = useMemo(() => magasins.filter((m): m is Magasin & Point => m.lat !== null && m.lon !== null), [magasins])
@@ -253,6 +261,7 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
         <Box sx={{ flex: 1, minHeight: 0, borderRadius: pleinEcran ? 2 : 4, overflow: 'hidden', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
         <MapContainer center={[46.6, 2.4]} zoom={6} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
           <AjusterTaille hauteur={hauteur} />
+          <SuivreZoom onZoom={setZoom} />
           <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           {/* Zones RR sous les zones Coach, elles-mêmes sous les magasins */}
           <Pane name="zones-rr" style={{ zIndex: 350 }}>{zonesVisibles.filter((z) => z.rr).flatMap(dessinerZone)}</Pane>
@@ -265,7 +274,7 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
               <Marker
                 key={m.nom}
                 position={[m.lat, m.lon]}
-                icon={iconeBulle(couleurPoint(m), avant !== undefined, statut === 'avenir', statut === 'avenir' || statut === 'preouverture')}
+                icon={iconeBulle(couleurPoint(m), avant !== undefined, statut === 'avenir', statut === 'avenir' || statut === 'preouverture', zoom)}
                 title={m.nom} alt={m.nom}
               >
                 <Popup>

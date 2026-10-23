@@ -14,7 +14,7 @@ import GridViewOutlined from '@mui/icons-material/GridViewOutlined'
 import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined'
 import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
 import PhotoLibraryOutlined from '@mui/icons-material/PhotoLibraryOutlined'
-import { CarteLignes, Initiales, LigneCompacte } from '../components/Social'
+import { CarteLignes, Initiales, LigneCompacte, cartouche } from '../components/Social'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -95,7 +95,7 @@ function RegleCharge({ reseau }: { reseau: Reseau }) {
   return (
     <Card>
       <CardContent sx={{ p: 3 }}>
-        <Typography variant="h3" component="h2" sx={{ mb: 1.5 }}>Règle de charge des Coachs</Typography>
+        <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>Règle de charge des Coachs</Typography>
         <Box>
           {champs.map((c) => (
             <LigneReglage key={c.cle} libelle={c.libelle} detail={c.aide} valeur={valeurs[c.cle]} onChange={(v) => setValeurs((x) => ({ ...x, [c.cle]: v }))} invalide={invalides.includes(c)} min={c.min} max={c.max} />
@@ -148,7 +148,7 @@ function RegleAlerte({ reseau }: { reseau: Reseau }) {
   return (
     <Card sx={{ mt: 2 }}>
       <CardContent sx={{ p: 3 }}>
-        <Typography variant="h3" component="h2" sx={{ mb: 1.5 }}>Alerte sur les chiffres</Typography>
+        <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>Alerte sur les chiffres</Typography>
         <TextField select fullWidth label="Écart de CA par rapport au" value={valeurs.moisReference} onChange={(e) => setValeurs((v) => ({ ...v, moisReference: e.target.value }))} sx={{ mb: 1 }}>
           {referencesPossibles.map((r) => <MenuItem key={r.valeur} value={String(r.valeur)}>{r.libelle}</MenuItem>)}
         </TextField>
@@ -196,7 +196,7 @@ function RegleVisite({ reseau }: { reseau: Reseau }) {
   return (
     <Card sx={{ mt: 2 }}>
       <CardContent sx={{ p: 3 }}>
-        <Typography variant="h3" component="h2" sx={{ mb: 1.5 }}>Alerte de visite</Typography>
+        <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>Alerte de visite</Typography>
         <Box>
           {casesDelai.map((c) => (
             <LigneReglage key={c.cle} libelle={c.libelle} nom={`${c.libelle} (jours sans visite)`} detail={`Référence ${c.rythme.split('×')[0].trim()} par an · jours sans visite`}

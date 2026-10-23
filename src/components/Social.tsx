@@ -19,6 +19,8 @@ import IconButton from '@mui/material/IconButton'
 import { brand, styleSignal, type CouleurSignal } from '../theme/theme'
 import { lienPhoto } from '../lib/photos'
 import type { Photo } from '../data/grilles'
+import { useVisage } from '../data/ReseauContext'
+import { estVisage, visages } from './Visages'
 
 // Briques visuelles communes « façon app » : avatars à initiales, lignes compactes, une seule pastille par ligne,
 // puces de filtre. Validées sur la maquette du 20/10/2026.
@@ -39,6 +41,13 @@ export function initialesDe(nom: string): string {
 
 export function Initiales({ nom, taille = 44, icone, couleur }: { nom: string; taille?: number; icone?: ReactNode; couleur?: string }) {
   const c = couleur ?? teinte(nom)
+  const visage = useVisage(nom)
+  // Visage de la charte choisi dans la fiche : sur fond blanc, comme les illustrations de la charte
+  if (!icone && estVisage(visage)) return (
+    <Box aria-hidden data-visage={visage} sx={{ width: taille, height: taille, borderRadius: '50%', flexShrink: 0, bgcolor: '#ffffff', border: '1px solid', borderColor: 'divider', display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
+      <Box component="img" src={visages[visage]} alt="" sx={{ width: '86%', height: '86%', objectFit: 'contain' }} />
+    </Box>
+  )
   return (
     <Box aria-hidden sx={{
       width: taille, height: taille, borderRadius: '50%', flexShrink: 0, display: 'grid', placeItems: 'center',

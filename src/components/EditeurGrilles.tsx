@@ -24,6 +24,7 @@ import { useReseau } from '../data/ReseauContext'
 import { grillesParDefaut, libellesGrilles, nombrePoints, nouvelId, photosDe, type Grille, type Grilles, type ThemeGrille } from '../data/grilles'
 import { ESPACE_GRATUIT, formatTaille } from '../lib/photos'
 import type { Reseau } from '../data/modele'
+import { cartouche } from './Social'
 
 const copie = (g: Grilles): Grilles => JSON.parse(JSON.stringify(g))
 const deplacer = <T,>(liste: T[], i: number, d: number) => { const l = [...liste]; const [x] = l.splice(i, 1); l.splice(i + d, 0, x); return l }
@@ -82,7 +83,7 @@ export function GrillesAudit({ reseau }: { reseau: Reseau }) {
   return (
     <Card sx={{ mt: 2 }}>
       <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-        <Typography variant="h3" component="h2" sx={{ mb: 2 }}>Grilles d’audit</Typography>
+        <Typography component="h2" sx={[cartouche, { mb: 2 }]}>Grilles d’audit</Typography>
         <Onglets valeur={vue} onChange={setVue} libelle="Grilles d’audit" libres rubriques={[
           { vue: 'hygiene', libelle: libellesGrilles.hygiene, icone: <CleaningServicesOutlined /> },
           { vue: 'excellence', libelle: libellesGrilles.excellence, court: 'Excellence', icone: <StarOutlineOutlined /> },
@@ -108,7 +109,7 @@ export function EspacePhotos({ reseau }: { reseau: Reseau }) {
   return (
     <Card sx={{ mt: 2 }}>
       <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-        <Typography variant="h3" component="h2" sx={{ mb: 2 }}>Espace photos</Typography>
+        <Typography component="h2" sx={[cartouche, { mb: 2 }]}>Espace photos</Typography>
         <Typography variant="body1" sx={{ mb: 1 }}>
           {photos.length ? `${photos.length} photo${photos.length > 1 ? 's' : ''} · ${formatTaille(total)} sur ${formatTaille(ESPACE_GRATUIT)}` : `Aucune photo · ${formatTaille(ESPACE_GRATUIT)} disponible`}
         </Typography>

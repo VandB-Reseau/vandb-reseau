@@ -6,11 +6,13 @@ import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import { PageHeader } from '../components/PageHeader'
+import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { magasins, parametres, pourRole, secondaires, type Destination } from '../navigation/destinations'
 import { useAuth } from '../auth/AuthContext'
 import { perimetreDuProfil } from '../data/perimetre'
 import { useReseau } from '../data/ReseauContext'
+import { cartouche } from '../components/Social'
 
 export function Plus() {
   const naviguer = useNavigate()
@@ -22,7 +24,7 @@ export function Plus() {
   const compteurs: Record<string, string> = aPourvoir ? { '/equipe': `${aPourvoir} poste${aPourvoir > 1 ? 's' : ''} à pourvoir` } : {}
   const groupe = (titre: string | null, liste: Destination[]) => (
     <>
-      {titre && <Typography variant="overline" component="h2" color="text.secondary" sx={{ display: 'block', mt: 3, mb: 1, fontWeight: 600 }}>{titre}</Typography>}
+      {titre && <Box sx={{ mt: 3, mb: 1 }}><Typography component="h2" sx={cartouche}>{titre}</Typography></Box>}
       <Card>
         <List disablePadding>
           {liste.map((d) => (

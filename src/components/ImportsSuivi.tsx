@@ -28,6 +28,7 @@ import { completerChiffres, libelleMois, libellesChiffres, moisPrecedent } from 
 import { libelleCritere, type Thematique, type Ton } from '../data/sante'
 import { dateCourte } from '../lib/format'
 import type { Reseau } from '../data/modele'
+import { cartouche } from './Social'
 
 // Imports des fichiers venus d'autres outils (export Asana de la santé du parc, export mensuel des chiffres, classeur des visites),
 // ouverts depuis la carte du référentiel quand le fichier n'est pas un export de l'app ; thématiques de déploiement.
@@ -244,7 +245,7 @@ export function CarteThematiques({ reseau, signaler }: { reseau: Reseau; signale
     <Card sx={{ mt: 2 }} component="section" aria-label="Thématiques de déploiement">
       <CardContent sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
-          <Typography variant="h3" component="h2" sx={{ flex: 1 }}>Thématiques de déploiement</Typography>
+          <Typography component="h2" sx={[cartouche, { mr: 'auto' }]}>Thématiques de déploiement</Typography>
           <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>Gérer les thématiques</Button>
         </Box>
         {ths.length ? (
@@ -274,7 +275,7 @@ export function CarteEffacerNotes({ reseau }: { reseau: Reseau }) {
     <Card sx={{ mt: 2 }} component="section" aria-label="Notes de la nine box">
       <CardContent sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="h3" component="h2">Notes de la nine box</Typography>
+          <Typography component="h2" sx={cartouche}>Notes de la nine box</Typography>
           <Typography variant="body2" color="text.secondary">{nombre} magasin{nombre > 1 ? 's' : ''} noté{nombre > 1 ? 's' : ''}</Typography>
         </Box>
         <Button color="error" startIcon={<DeleteOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>Effacer toutes les notes</Button>

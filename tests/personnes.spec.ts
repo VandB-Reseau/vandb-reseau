@@ -69,7 +69,7 @@ test('fiche d’un Responsable Régional : champs personnels et département rem
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Sam SUD est mis à jour.')).toBeVisible()
   expect(cle(ecritures, 'fiches_personnes')['rr:rr2']).toEqual({
-    prenom: 'Sam', nom: 'SUD', naissance: '1985-03-02', arrivee: '2021-01-04', codePostal: '33000', departement: '33', ville: 'Sartène', pays: 'France', email: '', telephone: '',
+    prenom: 'Sam', nom: 'SUD', naissance: '1985-03-02', arrivee: '2021-01-04', codePostal: '33000', departement: '33', ville: 'Sartène', pays: 'France', email: '', telephone: '', visage: '',
   })
   // Dates recopiées pour l'ancienne app (anniversaires)
   expect(cle(ecritures, 'drs_data').drs.find((r: { id: string }) => r.id === 'rr2')).toMatchObject({ birth: '1985-03-02', entry: '2021-01-04' })

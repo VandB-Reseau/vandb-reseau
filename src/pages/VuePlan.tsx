@@ -40,6 +40,7 @@ import { useTrajetsRoutiers } from '../data/routes'
 import { dateLongue, lienCoach, lienFiche } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
 import type { VueCarte } from '../components/CarteMagasins'
+import { cartouche } from '../components/Social'
 
 const CarteMagasins = chargementDiffere(() => import('../components/CarteMagasins').then((m) => ({ default: m.CarteMagasins })))
 
@@ -187,7 +188,7 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
           {propM.length > 0 && (
             <Card sx={{ mb: 3 }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Typography variant="h3" component="h2">Magasins à confier à un Coach ({propM.length})</Typography>
+                <Typography component="h2" sx={[cartouche, { mb: 1 }]}>Magasins à confier à un Coach ({propM.length})</Typography>
                 <Box role="list" aria-label="Propositions pour les magasins">
                   {propM.map((p) => {
                     const sans = new Map(retenusM); sans.delete(p.magasin.nom)
@@ -229,7 +230,7 @@ function PlanADate({ reseau, jour, plafond }: { reseau: Reseau; jour: string; pl
           {propR.length > 0 && (
             <Card sx={{ mb: 3 }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Typography variant="h3" component="h2">Coachs à rattacher à un Responsable Régional ({propR.length})</Typography>
+                <Typography component="h2" sx={[cartouche, { mb: 1 }]}>Coachs à rattacher à un Responsable Régional ({propR.length})</Typography>
                 <Box role="list" aria-label="Propositions pour les Coachs">
                   {propR.map((p) => {
                     const sans = new Map(retenusR); sans.delete(p.coach.nom)

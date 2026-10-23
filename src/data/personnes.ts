@@ -15,6 +15,7 @@ export interface FichePersonnelle {
   pays: string
   email: string
   telephone: string
+  visage: string // visage de la charte (v1 à v6) ; vide = initiales
 }
 
 export type TypePersonne = 'directeur' | 'rr' | 'coach' | 'franchise'
@@ -23,7 +24,7 @@ export interface RefPersonne { type: TypePersonne; cle: string }
 
 export const cleFiche = (r: RefPersonne) => (r.type === 'directeur' ? 'directeur' : `${r.type}:${r.cle}`)
 
-export const ficheVide = (): FichePersonnelle => ({ prenom: '', nom: '', naissance: '', arrivee: '', codePostal: '', departement: '', ville: '', pays: 'France', email: '', telephone: '' })
+export const ficheVide = (): FichePersonnelle => ({ prenom: '', nom: '', naissance: '', arrivee: '', codePostal: '', departement: '', ville: '', pays: 'France', email: '', telephone: '', visage: '' })
 
 export const nomComplet = (f: Pick<FichePersonnelle, 'prenom' | 'nom'>) => `${f.prenom} ${f.nom}`.trim().replace(/\s+/g, ' ')
 

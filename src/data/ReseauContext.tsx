@@ -12,9 +12,23 @@ interface EtatReseau {
   chargement: boolean
   erreur: boolean
   recharger: () => Promise<void>
+  visages: Map<string, string> // nom affiché → visage choisi dans la fiche
 }
 
 const Ctx = createContext<EtatReseau | null>(null)
+
+// Visage de chaque personne, retrouvé par son nom affiché (fiche du Directeur, d'un RR, d'un Coach ou d'un franchisé)
+function visagesDu(r: Reseau | null) {
+  const v = new Map<string, string>()
+  for (const [cle, f] of Object.entries(r?.personnes ?? {})) {
+    if (!f?.visage) continue
+    const [type, ...reste] = cle.split(':')
+    const id = reste.join(':')
+    const nom = type === 'directeur' ? r!.directeur.nom : type === 'rr' ? r!.rrs.find((x) => x.id === id)?.nom : id
+    if (nom) v.set(nom, f.visage)
+  }
+  return v
+}
 
 // charger : autre source (espace d'un franchisé) ; lectureSeule : aucune écriture en arrière-plan ;
 // accesFranchises : le Directeur de réseau tient à jour les accès des franchisés et le périmètre de l'équipe ;
@@ -68,7 +82,8 @@ export function ReseauProvider({ children, charger = chargerReseau, lectureSeule
 
   const vue = useMemo(() => (reseau && perimetre ? restreindre(reseau, perimetre) : reseau), [reseau, perimetre])
 
-  return <Ctx.Provider value={{ reseau: vue, complet: reseau, chargement, erreur, recharger }}>{children}</Ctx.Provider>
+  const visages = useMemo(() => visagesDu(reseau), [reseau])
+  return <Ctx.Provider value={{ reseau: vue, complet: reseau, chargement, erreur, recharger, visages }}>{children}</Ctx.Provider>
 }
 
 // Magasins du périmètre et leurs visites. Les bonnes pratiques restent celles de tout le réseau ;
@@ -85,3 +100,7 @@ export function useReseau(): EtatReseau {
   if (!c) throw new Error('useReseau hors ReseauProvider')
   return c
 }
+
+// Visage choisi pour une personne, hors du réseau (écran de connexion, tests) : aucun
+// eslint-disable-next-line react-refresh/only-export-components
+export const useVisage = (nom: string) => useContext(Ctx)?.visages.get(nom)

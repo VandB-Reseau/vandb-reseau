@@ -22,6 +22,7 @@ import type { Reseau } from '../data/modele'
 import { caseDe, grilleParDefaut, libelleAxe, normaliserGrille, type Axe, type CritereGrille, type GrilleNineBox } from '../data/sante'
 import { dateCourte } from '../lib/format'
 import { PastilleCase } from './Sante'
+import { cartouche } from './Social'
 
 const AXES: Axe[] = ['resultats', 'franchise']
 type Brouillon = { criteres: (Omit<CritereGrille, 'poids'> & { poids: string })[]; seuilBas: string; seuilHaut: string }
@@ -97,7 +98,7 @@ export function EditeurGrilleNineBox({ reseau }: { reseau: Reseau }) {
     <Card sx={{ mt: 2 }}>
       <CardContent sx={{ p: { xs: 2, md: 3 } }}>
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, flexWrap: 'wrap', mb: 2 }}>
-          <Typography variant="h3" component="h2" sx={{ flex: 1 }}>Grille de la nine box</Typography>
+          <Typography component="h2" sx={[cartouche, { mr: 'auto' }]}>Grille de la nine box</Typography>
           {actuelle.modifieLe && <Typography variant="body2" color="text.secondary">Modifiée le {dateCourte(actuelle.modifieLe)}</Typography>}
         </Box>
         {AXES.map((axe) => {

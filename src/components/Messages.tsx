@@ -36,6 +36,7 @@ import { Bulle } from './Outils'
 import { BoutonJoindre, ListePieces, PiecesEnAttente } from './Pieces'
 import { DialogAction, useEcritureActions } from './Actions'
 import type { Piece } from '../lib/pieces'
+import { cartouche } from './Social'
 
 const MAXI = 40
 const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr')
@@ -438,7 +439,7 @@ export function SectionMessages({ reseau, m, signaler, lectureSeule = false, ent
   return (
     <Box sx={{ bgcolor: 'background.paper', borderRadius: 3, border: '1px solid', borderColor: 'divider', p: { xs: 2, md: 3 }, pb: { xs: 1, md: 2 } }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 1 }}>
-        <Typography variant="h3" component="h2" sx={{ flex: 1 }}>Échanges</Typography>
+        <Typography component="h2" sx={[cartouche, { mr: 'auto' }]}>Échanges</Typography>
         {entete}
       </Box>
       <FilMessages key={`${m.nom}|${fil.genre === 'magasin' && fil.equipe}`} reseau={reseau} fil={fil} signaler={signaler} lectureSeule={lectureSeule}

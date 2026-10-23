@@ -39,6 +39,7 @@ import { chargeA, magasinsDuCoach } from '../data/charge'
 import { ageDepuis, estFrance, fichePersonne, franchises, libelleDepartement, libelleRole, type RefPersonne } from '../data/personnes'
 import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienRR, telLien } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
+import { cartouche } from '../components/Social'
 
 // Bloc « Fiche personnelle » commun aux quatre rôles
 export function SectionFichePersonnelle({ reseau, r, action }: { reseau: Reseau; r: RefPersonne; action?: ReactNode }) {
@@ -229,7 +230,7 @@ function PageFranchise({ reseau, nom }: { reseau: Reseau; nom: string }) {
           </Section>
         </Box>
       )}
-      <Typography variant="h3" component="h2" sx={{ mb: 1.5 }}>Ses magasins</Typography>
+      <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>Ses magasins</Typography>
       <ListeMagasinsAdaptee magasins={f.magasins} vide="Aucun magasin." />
       {edition && <DialogFranchise reseau={reseau} nom={nom} onFermer={(m, nouveau) => {
         setEdition(false)
