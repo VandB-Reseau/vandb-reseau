@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Carte des magasins : bulles deux fois plus petites, à la taille des anciens points, pour revoir la carte sous un réseau
+  de 300 magasins (Joseph, 23/10/2026).
 - Blason de ville : une figure au centre, comme dans la charte (voilier, hermine, sapin, sommet, château, beffroi, lavande,
   soleil… vingt figures), en blanc, ou en noir sur le jaune et le crème. Proposée selon le département, réglable dans la
   fiche du magasin. **Migration à passer : `0032_figure_blason.sql`** (sans elle, la figure proposée s'affiche, la figure
