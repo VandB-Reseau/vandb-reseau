@@ -73,6 +73,20 @@ export function porteursDu(reseau: Reseau, magasin: string): Porteur[] {
   return l.filter((p, i) => p.nom && l.findIndex((x) => x.nom === p.nom) === i)
 }
 
+// Clés des porteurs choisis (directeur, rr:<id>, coach:<nom>, franchise:<nom>), pour leur envoyer la notification
+export function clesDesPorteurs(reseau: Reseau, magasin: string, noms: string[]): string[] {
+  const liste = porteursDu(reseau, magasin)
+  const cles = noms.flatMap((nom) => {
+    const p = liste.find((x) => x.nom === nom)
+    if (!p) return []
+    if (p.role === 'Coach') return [`coach:${nom}`]
+    if (p.role === 'Directeur de réseau') return ['directeur']
+    if (/^Responsable (Régional|des magasins intégrés)$/.test(p.role)) return reseau.rrs.filter((r) => r.nom === nom).map((r) => `rr:${r.id}`)
+    return [`franchise:${nom}`]
+  })
+  return [...new Set(cles)]
+}
+
 // Nom de la personne connectée, tel qu'il apparaît comme porteur
 export function monNomPorteur(reseau: Reseau, profil: Profil | null): string {
   if (!profil) return ''

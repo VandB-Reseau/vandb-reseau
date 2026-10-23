@@ -49,10 +49,16 @@ export async function couperNotifications() {
   await sub.unsubscribe()
 }
 
-// Envoi après un message ou un compte rendu : sans effet si la fonction n'est pas en place
-export function notifier(type: 'message' | 'visite', ids: number[]) {
+// Envoi après un message, un compte rendu ou une mise à la une : sans effet si la fonction n'est pas en place
+export function notifier(type: 'message' | 'visite' | 'une', ids: number[]) {
   if (!ids.length) return
   void supabase.functions.invoke('notifier', { body: { type, ids } }).catch(() => { /* la notification dans l'app reste */ })
+}
+
+// Tâche confiée : ses porteurs (clés directeur, rr:, coach:, franchise:) reçoivent la notification
+export function notifierTache(magasin: string, tache: string, cles: string[]) {
+  if (!cles.length) return
+  void supabase.functions.invoke('notifier', { body: { type: 'tache', magasin, tache, cles } }).catch(() => { /* la tâche reste dans l'app */ })
 }
 
 export function useNotificationsAppareil() {

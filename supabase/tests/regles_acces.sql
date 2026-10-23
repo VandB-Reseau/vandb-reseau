@@ -236,3 +236,38 @@ SET request.jwt.claim.sub = '00000000-0000-0000-0000-000000000000';
 SELECT pg_temp.attendre('Sans rôle : aucune réaction', pg_temp.refuse('SELECT public.reactions_visites()'), 1);
 RESET ROLE;
 SELECT pg_temp.attendre('Commentaire du franchisé toujours là', (SELECT count(*) FROM public.visites_commentaires WHERE visite = :visite), 1);
+
+-- Notifications d'une tâche confiée et d'une communication à la une (0024) : fonction d'envoi seule
+SELECT pg_temp.attendre('Journal : 0024 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0024'), 1);
+UPDATE public.suivi_magasins SET valeur = valeur || jsonb_build_array(
+  jsonb_build_object('id', 'l_n', 'action', 'Commander les coffrets', 'porteur', 'Franchisé Test', 'creeLe', current_date::text),
+  jsonb_build_object('id', 'l_q', 'action', 'Point marge', 'fil', 'equipe', 'creeLe', current_date::text),
+  jsonb_build_object('id', 'l_v', 'action', 'Ancienne', 'creeLe', (current_date - 5)::text))
+WHERE store_name = 'Lille' AND cle = 'actions';
+UPDATE public.communications SET a_la_une = current_date + 3 WHERE id = :annonce;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : ne lit pas les notifications d''une tâche', pg_temp.refuse('SELECT public.notifications_tache(''Lille'', ''l_n'', ''{franchise:Franchisé Test}'', auth.uid())'), 1);
+SELECT pg_temp.attendre('Coach : ne lit pas les notifications à la une', pg_temp.refuse('SELECT public.notifications_une(ARRAY[' || :annonce || ']::bigint[], auth.uid())'), 1);
+RESET ROLE;
+SET ROLE service_role;
+SELECT pg_temp.attendre('Tâche confiée au franchisé : une notification',
+  (SELECT jsonb_array_length(public.notifications_tache('Lille', 'l_n', '{franchise:Franchisé Test}', '00000000-0000-0000-0000-00000000000c'))), 1);
+SELECT pg_temp.attendre('Tâche « Équipe seule » : rien pour le franchisé',
+  (SELECT jsonb_array_length(public.notifications_tache('Lille', 'l_q', '{franchise:Franchisé Test}', '00000000-0000-0000-0000-00000000000c'))), 0);
+SELECT pg_temp.attendre('Tâche ancienne : rien',
+  (SELECT jsonb_array_length(public.notifications_tache('Lille', 'l_v', '{franchise:Franchisé Test}', '00000000-0000-0000-0000-00000000000c'))), 0);
+SELECT pg_temp.attendre('Tâche : rien si l''auteur ne voit pas le magasin',
+  (SELECT jsonb_array_length(public.notifications_tache('Lille', 'l_n', '{franchise:Franchisé Test}', '00000000-0000-0000-0000-000000000000'))), 0);
+SELECT pg_temp.attendre('Tâche inconnue : rien',
+  (SELECT jsonb_array_length(public.notifications_tache('Lille', 'inconnue', '{franchise:Franchisé Test}', '00000000-0000-0000-0000-00000000000c'))), 0);
+SELECT pg_temp.attendre('À la une par le Directeur : une notification pour le franchisé',
+  (SELECT jsonb_array_length(public.notifications_une(ARRAY[:annonce]::bigint[], '00000000-0000-0000-0000-00000000000d'))), 1);
+SELECT pg_temp.attendre('À la une : rien si l''auteur annoncé est un Coach',
+  (SELECT jsonb_array_length(public.notifications_une(ARRAY[:annonce]::bigint[], '00000000-0000-0000-0000-00000000000c'))), 0);
+RESET ROLE;
+UPDATE public.communications SET a_la_une = NULL WHERE id = :annonce;
+SET ROLE service_role;
+SELECT pg_temp.attendre('Plus à la une : rien',
+  (SELECT jsonb_array_length(public.notifications_une(ARRAY[:annonce]::bigint[], '00000000-0000-0000-0000-00000000000d'))), 0);
+RESET ROLE;

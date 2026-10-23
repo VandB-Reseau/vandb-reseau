@@ -23,7 +23,9 @@ import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import { useReseau } from '../data/ReseauContext'
 import { useAuth } from '../auth/AuthContext'
 import { enregistrerActionLibre, marquerActions, supprimerActionLibre } from '../data/chargement'
-import { echeanceDate, enRetard, joindrePorteurs, porteursDe, porteursDu, type ActionSuivie } from '../data/actions'
+import { clesDesPorteurs, echeanceDate, enRetard, joindrePorteurs, porteursDe, porteursDu, type ActionSuivie } from '../data/actions'
+import { mesCles } from '../data/messagerie'
+import { notifierTache } from '../lib/notifications'
 import { ajouterActionFranchise, ErreurAction, marquerActionFranchise } from '../data/espaceFranchise'
 import type { ActionLibre, Reseau } from '../data/modele'
 import { dateCourte, lienFiche } from '../lib/format'
@@ -194,7 +196,8 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', de
           return 'Tâche ajoutée.'
         }
         const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), ...(a?.fil ?? (depuis?.equipe ? 'equipe' : undefined) ? { fil: 'equipe' as const } : {}), ...(a?.message ?? depuis?.message ? { message: a?.message ?? depuis?.message } : {}) }
-        await enregistrerActionLibre(magasin, l)
+        const id = await enregistrerActionLibre(magasin, l)
+        if (!a) notifierTache(magasin, id, clesDesPorteurs(reseau, magasin, porteursDe(l)).filter((c) => !mesCles(profil).includes(c)))
         return a ? 'Tâche mise à jour.' : 'Tâche ajoutée.'
       }}
       supprimer={a ? async () => { await supprimerActionLibre(magasin, a.id); return 'Tâche supprimée.' } : undefined}

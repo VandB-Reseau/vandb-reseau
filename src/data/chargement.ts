@@ -445,15 +445,18 @@ function modifierActionsLibres(changer: (t: Record<string, ActionLibre[]>) => vo
     await ecrireSuivi('actions', t, lu)
   })
 }
-export function enregistrerActionLibre(magasin: string, a: Omit<ActionLibre, 'id'> & { id?: string }) {
-  return modifierActionsLibres((t) => {
+// Renvoie l'identifiant de la tâche (créé pour une nouvelle)
+export async function enregistrerActionLibre(magasin: string, a: Omit<ActionLibre, 'id'> & { id?: string }): Promise<string> {
+  const id = a.id || `l_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`
+  await modifierActionsLibres((t) => {
     const l = t[magasin] ?? (t[magasin] = [])
     const i = a.id ? l.findIndex((x) => x.id === a.id) : -1
-    const propre: ActionLibre = { ...a, id: a.id || `l_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}` }
+    const propre: ActionLibre = { ...a, id }
     if (!propre.faite) { delete propre.faite; delete propre.faitePar }
     if (i >= 0) l[i] = propre
     else l.push(propre)
   })
+  return id
 }
 export function supprimerActionLibre(magasin: string, id: string) {
   return modifierActionsLibres((t) => { t[magasin] = (t[magasin] ?? []).filter((x) => x.id !== id) })
