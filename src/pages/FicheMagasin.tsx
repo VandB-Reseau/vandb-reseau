@@ -65,8 +65,8 @@ import AddOutlined from '@mui/icons-material/AddOutlined'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import PhoneInTalkOutlined from '@mui/icons-material/PhoneInTalkOutlined'
-import { ContenuLeviers } from '../components/Leviers'
-import { leviersDuMagasin, useReperesReseau } from '../data/leviers'
+import { ContenuLeviers, ListeInspirations } from '../components/Leviers'
+import { inspirationsDu, leviersDuMagasin, libellesLevier, useReperesReseau } from '../data/leviers'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
 import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, estVisite, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 
@@ -411,7 +411,19 @@ function SectionLeviers({ reseau, m }: { reseau: Reseau; m: Magasin }) {
   if (reperes === undefined) return null
   const lev = leviersDuMagasin(reseau, m.nom, reperes)
   if (!lev) return null
-  return <Section titre={`Leviers · ${libelleMois(lev.mois)}`}><ContenuLeviers lev={lev} /></Section>
+  const insp = lev.levier ? inspirationsDu(reseau, m, lev.levier, lev.mois) : null
+  return (
+    <>
+      <Section titre={`Leviers · ${libelleMois(lev.mois)}`}><ContenuLeviers lev={lev} /></Section>
+      {/* S'inspirer d'un magasin qui réussit (sprint 22, A1) : équipe seule, la fiche n'existe pas pour le franchisé */}
+      {lev.levier && insp && (
+        <Section titre={`S’inspirer de · ${libellesLevier[lev.levier].toLowerCase()}`}
+          action={<Typography variant="body2" color="text.secondary">{insp.portee === 'region' && m.rr ? m.rr.nom : 'Réseau'} · 3 mois</Typography>}>
+          <ListeInspirations reseau={reseau} levier={lev.levier} insp={insp} />
+        </Section>
+      )}
+    </>
+  )
 }
 
 function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Magasin; saisir: (mois?: string) => void; appeler: () => void }) {

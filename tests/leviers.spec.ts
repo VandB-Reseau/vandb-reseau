@@ -60,3 +60,33 @@ test('sans repères du réseau, la fiche compare au moins à N-1', async ({ page
   await expect(page.getByText('Levier : flux cave')).toBeVisible()
   await expect(page.getByText('vs réseau')).toHaveCount(0)
 })
+
+// S'inspirer d'un magasin qui réussit (sprint 22, A1) : Lyon perd du flux cave ; Nantes, seule de sa région devant
+// lui, ne suffit pas, la liste prend donc tout le réseau visible (Annecy stable, Nantes −7 %)
+test('la fiche propose les magasins qui réussissent le levier en retrait', async ({ page }, info) => {
+  await seConnecter(page, { reperesEquipe })
+  await page.goto('#/magasins/Lyon%20Test?vue=chiffres')
+  const titre = page.getByRole('heading', { name: 'S’inspirer de · flux cave' })
+  await expect(titre).toBeVisible()
+  await expect(page.getByText('Réseau · 3 mois')).toBeVisible()
+  const lignes = page.getByRole('list', { name: 'Magasins qui réussissent ce levier' }).getByRole('listitem')
+  await expect(lignes).toHaveCount(2)
+  await expect(lignes.nth(0)).toContainText('Annecy Test')
+  await expect(lignes.nth(0)).toContainText('0,0 % vs N-1')
+  await expect(lignes.nth(1)).toContainText('Nantes Test')
+  await expect(lignes.nth(1)).toContainText('−7,0 % vs N-1')
+  await expect(lignes.nth(0).getByRole('link', { name: 'Écrire à Paul MULTI' })).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  await titre.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: `captures/${info.project.name}-inspirer.png` })
+  await lignes.nth(0).getByRole('link', { name: 'Écrire à Paul MULTI' }).click()
+  await expect(page).toHaveURL(/echanges\/personne\/franchise%3APaul%20MULTI/)
+})
+
+// Annecy : panier bar sous le réseau, mais aucun magasin visible ne fait mieux que ses 12 €
+test('sans magasin plus fort sur le levier, la fiche ne propose personne', async ({ page }) => {
+  await seConnecter(page, { reperesEquipe })
+  await page.goto('#/magasins/Annecy%20Test?vue=chiffres')
+  await expect(page.getByText('Levier : panier bar')).toBeVisible()
+  await expect(page.getByRole('heading', { name: /S’inspirer de/ })).toHaveCount(0)
+})

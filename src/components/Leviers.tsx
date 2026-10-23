@@ -2,8 +2,15 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { alpha, useTheme } from '@mui/material/styles'
 import { brand } from '../theme/theme'
+import IconButton from '@mui/material/IconButton'
+import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
+import { Link as RouterLink } from 'react-router-dom'
 import { formatPourcent, formatValeur } from '../data/chiffres'
-import { libellesLevier, type LeviersMagasin, type PositionLevier } from '../data/leviers'
+import { libellesLevier, type Inspirations, type Levier, type LeviersMagasin, type PositionLevier } from '../data/leviers'
+import type { Reseau } from '../data/modele'
+import { participants, lienPersonne } from '../data/messagerie'
+import { lienFiche } from '../lib/format'
+import { Initiales, LigneCompacte } from './Social'
 
 // Position d'un indicateur : bande = moitié centrale du réseau, trait fin = médiane, rond = le magasin
 function Barre({ p }: { p: PositionLevier }) {
@@ -45,6 +52,32 @@ export function ContenuLeviers({ lev }: { lev: LeviersMagasin }) {
           </Box>
         ))}
       </Box>
+    </Box>
+  )
+}
+
+// Magasins forts sur le levier en retrait : leur fiche, leur franchisé à qui écrire, leurs bonnes pratiques
+export function ListeInspirations({ reseau, levier, insp }: { reseau: Reseau; levier: Levier; insp: Inspirations }) {
+  const flux = levier === 'fluxCave' || levier === 'fluxBar'
+  return (
+    <Box component="ul" aria-label="Magasins qui réussissent ce levier" sx={{ listStyle: 'none', m: 0, mx: -2, p: 0 }}>
+      {insp.liste.map(({ magasin, score, pratiques }) => {
+        const franchise = participants(reseau, magasin).find((p) => p.cle.startsWith('franchise:'))
+        const detail = [franchise?.nom, pratiques ? `${pratiques} bonne${pratiques > 1 ? 's' : ''} pratique${pratiques > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')
+        const valeur = flux ? `${formatPourcent(score)} vs N-1` : formatValeur(levier, score)
+        return (
+          <Box component="li" key={magasin.nom}>
+            <LigneCompacte lien={lienFiche(magasin.nom)} label={`${magasin.nom} : ${libellesLevier[levier].toLowerCase()} ${valeur}`}
+              avatar={<Initiales nom={magasin.nom} taille={40} />} titre={magasin.nom} detail={detail || undefined}
+              fin={<Typography variant="body2" sx={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{valeur}</Typography>}
+              actions={franchise ? (
+                <IconButton component={RouterLink} to={lienPersonne(franchise.cle)} aria-label={`Écrire à ${franchise.nom}`} sx={{ width: 48, height: 48 }}>
+                  <ChatBubbleOutlineOutlined />
+                </IconButton>
+              ) : undefined} />
+          </Box>
+        )
+      })}
     </Box>
   )
 }
