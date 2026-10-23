@@ -53,6 +53,7 @@ import { associesEnPlace, mandatActuel } from '../data/associes'
 import { lienCompteRendu, visitesDuMagasin } from '../data/visites'
 import { libelleTypeVisite, nomsVisiteurs, statutLibelle, visiteFaite, type Magasin, type Personne, type Reseau } from '../data/modele'
 import type { IndicateurRepere } from '../data/espaceFranchise'
+import { Blason } from '../components/Blason'
 
 const couleurExecution: Record<Execution, 'success' | 'warning' | 'error' | 'default'> = { fait: 'success', partiel: 'warning', non: 'error', aConstater: 'default' }
 const pastille = { fontSize: 12, fontWeight: 600 }
@@ -383,7 +384,7 @@ export function MagasinsFranchise() {
               {reseau.magasins.map((m) => {
                 const a = analyser(reseau, m.nom)
                 return (
-                  <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} label={m.nom} avatar={<Initiales nom={m.nom} />}
+                  <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} label={m.nom} avatar={<Blason magasin={m} />}
                     titre={<Box component="span" role="heading" aria-level={2}>{m.nom}</Box>}
                     detail={[m.ville, m.coach && `Coach ${m.coach}`].filter(Boolean).join(' · ')}
                     fin={a ? (

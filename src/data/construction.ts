@@ -2,7 +2,7 @@ import { grillesParDefaut } from './grilles'
 import { seuilsParDefaut } from './chiffres'
 import { couleurAuto } from './zones'
 import { delaisVisiteParDefaut, grilleParDefaut } from './sante'
-import type { AffectationCoach, Coach, Magasin, Personne, Reseau, ResponsableRegional, Statut } from './modele'
+import type { AffectationCoach, Coach, Magasin, Personne, Reseau, ResponsableRegional, Statut, Topographie } from './modele'
 
 // Lignes brutes telles que stockées par l'ancienne app
 export interface MagasinBrut {
@@ -11,8 +11,10 @@ export interface MagasinBrut {
   addr?: string; cp?: string; ville?: string; pays?: string; franchise?: boolean; rr?: string
   lat?: number; lon?: number; geo?: string
 }
+const estTopographie = (t: unknown): t is Topographie => t === 'littoral' || t === 'montagne' || t === 'terres'
+
 export interface SurchargeMagasin extends Partial<Record<keyof MagasinBrut, unknown>> {
-  store_name: string; email_mag?: string; open_date?: string
+  store_name: string; email_mag?: string; open_date?: string; topographie?: string | null // forme du blason (0031)
 }
 export interface AffectationBrute { store: string; cs: string; date: string; note?: string; type?: string }
 export interface RRBrut { id: string; name: string; tel?: string; email?: string; color?: string; role?: string; birth?: string; entry?: string }
@@ -148,6 +150,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       responsable: personne(v('resp'), v('tel_resp'), v('email_resp')),
       responsableARecruter: /recrutement/i.test(texte(v('resp'))),
       lat, lon, positionApprochee,
+      topographie: estTopographie(s?.topographie) ? s.topographie : '',
       historiqueCoach: historique,
     }
   })

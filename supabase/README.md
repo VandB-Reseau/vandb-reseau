@@ -35,6 +35,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0028_challenges` | Challenge du mois : table `challenges` fermée, classement calculé par la base (`classement_challenge`), fonctions `creer_challenge`, `supprimer_challenge`, `challenges_equipe`, `challenges_franchise` | 23/10/2026 |
 | `0029_sondages` | Sondages de 1 à 5 questions pour les franchisés, l'équipe ou les deux : colonnes `questions`, `cible`, `auteur_role` et `valeurs`, fonctions `publier_sondage`, `questions_equipe`, `repondre_sondage` ; `resultats_questions` compte et relance aussi l'équipe | 23/10/2026 |
 | `0030_animation_reseau` | Formations : colonnes `events.heure` et `events.html`, `reunions_franchise` les renvoie ; notifications d'un nouveau sondage, d'une réunion ou formation, d'une communication, d'une bonne pratique ou d'une campagne : table `notifications_envoyees` fermée, fonctions `comptes_concernes` et `notifications_animation` (fonction « notifier » seule) ; puis redéployer la fonction Supabase `notifier` | 23/10/2026 |
+| `0031_topographie_magasins` | Colonne `store_overrides.topographie` (littoral, montagne ou terres) pour la forme du blason de ville | 23/10/2026 |
 
 ## Règles
 

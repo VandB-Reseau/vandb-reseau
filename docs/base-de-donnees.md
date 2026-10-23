@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 23/10/2026 (migration `0030`).
+Mis à jour le 23/10/2026 (migration `0031`).
 
 ## Principes
 
@@ -32,7 +32,7 @@ Mis à jour le 23/10/2026 (migration `0030`).
 | Table | Contenu | Clé |
 | --- | --- | --- |
 | `app_config` | Réglages et référentiels en clé / valeur, `value` = texte JSON (détail plus bas) | `key` |
-| `store_overrides` | Fiche de chaque magasin : coordonnées, adresse, `franchise` (vrai = franchisé), `rr` (RR en direct), position | `store_name` |
+| `store_overrides` | Fiche de chaque magasin : coordonnées, adresse, `franchise` (vrai = franchisé), `rr` (RR en direct), position, `topographie` du blason de ville (`littoral`, `montagne` ou `terres` ; vide = déduite du département), 0031 | `store_name` |
 | `reassigns` | Coach de chaque magasin à partir d'une date (effet le 1er du mois ; `date` en texte AAAA-MM-JJ) | `id` ; `store`, `cs`, `date` |
 | `cs_overrides` | Coachs : téléphone, courriel, ville, couleur, `tech` (Technicien) | `cs_name` |
 | `recruits` | Recrues à venir ou fictives (simulation de charge) | `id` |

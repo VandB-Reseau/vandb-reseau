@@ -40,6 +40,9 @@ export interface AffectationCoach {
   note: string
 }
 
+// Forme du blason de ville (charte V and B) : ville littorale, de montagne ou dans les terres
+export type Topographie = 'littoral' | 'montagne' | 'terres'
+
 export interface Magasin {
   nom: string
   code: string
@@ -62,6 +65,7 @@ export interface Magasin {
   lat: number | null
   lon: number | null
   positionApprochee: boolean // posé au centre de son département (import Excel) ou jamais trouvé : à géolocaliser
+  topographie: Topographie | '' // forme du blason de ville, choisie dans la fiche ; vide = déduite du département
   historiqueCoach: AffectationCoach[]
 }
 

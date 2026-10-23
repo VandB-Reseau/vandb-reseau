@@ -349,7 +349,7 @@ const magasins: Referentiel = {
         franchise: (l.statut ?? STATUTS[0]) === STATUTS[0], telephone: l.telephone ?? '', email: l.email ?? '',
         adresse: l.adresse ?? '', codePostal: l.codePostal ?? '', ville: l.ville ?? '', pays: l.pays ?? '',
         responsable: m?.responsable?.nom ?? '', telResponsable: m?.responsable?.telephone ?? '', emailResponsable: m?.responsable?.email ?? '',
-        rrDirect: m?.rrEnDirect && m.rr ? m.rr.id : '',
+        rrDirect: m?.rrEnDirect && m.rr ? m.rr.id : '', topographie: m?.topographie ?? '',
       }
       await enregistrerMagasin(f, m ? m.nom : null)
     }
