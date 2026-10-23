@@ -352,3 +352,30 @@ SELECT pg_temp.attendre('RR : ne supprime pas la question du Directeur', (SELECT
 RESET ROLE;
 SELECT pg_temp.attendre('Question du Directeur toujours là', (SELECT count(*) FROM public.questions_eclair WHERE id = :q_anonyme), 1);
 SELECT pg_temp.attendre('Anonymat en base : ni nom ni magasin', (SELECT count(*) FROM public.questions_reponses WHERE question = :q_anonyme AND (franchise IS NOT NULL OR magasins <> '{}')), 0);
+
+-- Bonnes pratiques proposées par les franchisés (0027) : proposées par fonction, relues par l'équipe du magasin
+SELECT pg_temp.attendre('Journal : 0027 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0027'), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT public.proposer_pratique('Lille', 'Dégustation du samedi', 'Trois vins ouverts chaque samedi.') AS proposition \gset
+SELECT pg_temp.attendre('Franchisé : ne propose pas pour un autre magasin', pg_temp.refuse('SELECT public.proposer_pratique(''Nice'', ''Intrus'', '''')'), 1);
+SELECT pg_temp.attendre('Franchisé : suit sa proposition', (SELECT count(*) FROM jsonb_array_elements(public.mes_propositions()) e WHERE e->>'statut' = 'proposee'), 1);
+SELECT pg_temp.attendre('Franchisé : ne relit pas', pg_temp.refuse('SELECT public.propositions_pratiques()'), 1);
+SELECT pg_temp.attendre('Franchisé : ne publie pas lui-même', pg_temp.refuse('SELECT public.traiter_proposition(' || :proposition || ', ''publiee'', ''bp_x'')'), 1);
+SELECT pg_temp.attendre('Franchisé : aucun accès direct aux propositions', pg_temp.refuse('SELECT count(*) FROM public.pratiques_proposees'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : voit la proposition de son magasin', (SELECT jsonb_array_length(public.propositions_pratiques())), 1);
+SELECT pg_temp.attendre('Coach : publier demande la bonne pratique', pg_temp.refuse('SELECT public.traiter_proposition(' || :proposition || ', ''publiee'')'), 1);
+SELECT pg_temp.attendre('Coach : la note publiée', pg_temp.refuse('SELECT public.traiter_proposition(' || :proposition || ', ''publiee'', ''bp_samedi'')'), 0);
+SELECT pg_temp.attendre('Coach : déjà traitée', pg_temp.refuse('SELECT public.traiter_proposition(' || :proposition || ', ''refusee'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Franchisé : voit sa proposition publiée', (SELECT count(*) FROM jsonb_array_elements(public.mes_propositions()) e WHERE e->>'statut' = 'publiee' AND e->>'pratique' = 'bp_samedi'), 1);
+RESET ROLE;
+INSERT INTO public.pratiques_proposees (franchise, magasin, titre) VALUES ('Nina NICE', 'Nice', 'Vitrine') RETURNING id AS nice_prop \gset
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : ne voit pas la proposition d''un autre magasin', (SELECT jsonb_array_length(public.propositions_pratiques())), 0);
+SELECT pg_temp.attendre('Coach : ne traite pas la proposition d''un autre magasin', pg_temp.refuse('SELECT public.traiter_proposition(' || :nice_prop || ', ''refusee'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT pg_temp.attendre('Directeur : voit toutes les propositions', (SELECT jsonb_array_length(public.propositions_pratiques())), 1);
+RESET ROLE;

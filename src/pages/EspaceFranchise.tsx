@@ -43,6 +43,7 @@ import { Contact, Ligne, Section } from '../components/Section'
 import { useApercu } from '../auth/Apercu'
 import { SectionReunionsFranchise } from '../components/Reunions'
 import { SectionQuestionsFranchise } from '../components/Questions'
+import { MesPropositions } from '../components/Propositions'
 import { dateCourte, dateLongue, lienFiche, telLien } from '../lib/format'
 import { actionsDes, echeanceDate, enRetard } from '../data/actions'
 import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEuros, formatKEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, type ChampChiffre } from '../data/chiffres'
@@ -555,11 +556,16 @@ export function FicheMagasinFranchise() {
   )
 }
 
+function PratiquesEtPropositions({ reseau }: { reseau: Reseau }) {
+  const { apercu } = useApercu()
+  return <>{!apercu && <MesPropositions reseau={reseau} />}<VuePratiques reseau={reseau} /></>
+}
+
 export function PratiquesFranchise() {
   return (
     <>
       <PageHeader titre="Bonnes pratiques" />
-      <AvecReseau>{(reseau) => <VuePratiques reseau={reseau} />}</AvecReseau>
+      <AvecReseau>{(reseau) => <PratiquesEtPropositions reseau={reseau} />}</AvecReseau>
     </>
   )
 }

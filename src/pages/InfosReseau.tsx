@@ -23,6 +23,7 @@ import type { Reseau } from '../data/modele'
 import { noterReseauVu } from '../data/echanges'
 import { noterPratiquesVues } from '../data/infosVues'
 import { SectionQuestions } from '../components/Questions'
+import { PropositionsARelire } from '../components/Propositions'
 import { useAuth } from '../auth/AuthContext'
 import QuizOutlined from '@mui/icons-material/QuizOutlined'
 
@@ -68,8 +69,11 @@ function Contenu({ reseau }: { reseau: Reseau }) {
   const effacer = () => { setRecherche(''); setMagasins([]); setThemes([]); setPeriode('tout') }
 
   const communications = <PageCommunications integre filtre={filtreCommunication} />
-  const pratiques = <VuePratiques integre reseau={reseau} filtre={filtrePratique} modifier={setPratique}
-    actions={<BoutonAction libelle="Ajouter une bonne pratique" onClick={() => setPratique(null)} />} />
+  const pratiques = <>
+    <PropositionsARelire reseau={reseau} signaler={setMessage} />
+    <VuePratiques integre reseau={reseau} filtre={filtrePratique} modifier={setPratique}
+      actions={<BoutonAction libelle="Ajouter une bonne pratique" onClick={() => setPratique(null)} />} />
+  </>
   return (
     <>
       <PageHeader titre="Infos réseau" />
