@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
@@ -28,7 +28,6 @@ import { lienFiche, lienPreparation } from '../lib/format'
 import type { Reseau, Visite } from '../data/modele'
 
 const jourCourt = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
-const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 
 // Coachs que la personne connectée peut suivre : elle-même pour un Coach, ceux de son périmètre sinon
 function coachsSuivis(reseau: Reseau, profil: ReturnType<typeof useAuth>['profil']): string[] {
@@ -36,6 +35,17 @@ function coachsSuivis(reseau: Reseau, profil: ReturnType<typeof useAuth>['profil
   if (p?.type === 'coach') return [p.nom]
   const noms = new Set(magasinsDu(reseau, p ?? { type: 'reseau' }).map((m) => coachA(m, reseau.jour)).filter(Boolean))
   return reseau.equipe.filter((c) => !c.fictif && noms.has(c.nom)).map((c) => c.nom).sort((a, b) => a.localeCompare(b, 'fr'))
+}
+
+// Une case du résumé : le chiffre, ce qu'il compte, un signal éventuel
+function Chiffre({ valeur, libelle, detail }: { valeur: ReactNode; libelle: string; detail?: ReactNode }) {
+  return (
+    <Card sx={{ border: 0, px: 1.5, py: 1.25, minWidth: 0 }}>
+      <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{valeur}</Typography>
+      <Typography variant="body2" color="text.secondary">{libelle}</Typography>
+      {detail && <Box sx={{ mt: 0.5 }}>{detail}</Box>}
+    </Card>
+  )
 }
 
 export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC: boolean; onMessage: (m: string) => void }) {
@@ -86,21 +96,16 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
         onFermer={(m) => { setPlanif(null); if (m) onMessage(m) }} />}
       {compteRendu && <DialogVisite reseau={reseau} visite={compteRendu} onFermer={(m) => { setCompteRendu(null); if (m) onMessage(m) }} />}
       {barre}
-      <Card sx={{ mb: 2, border: 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 2, py: 1.5 }}>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
-              <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2 }}>{s.lignes.length}</Typography>
-              <Typography variant="body2" color="text.secondary">{s.lignes.length > 1 ? 'magasins' : 'magasin'} à voir d’ici le {jourCourt(s.fin)}</Typography>
-            </Box>
-            <Typography variant="body2" color="text.secondary">
-              {[!unSeul && coach, pluriel(prevues.length, 'visite') + ` prévue${prevues.length > 1 ? 's' : ''}`,
-                s.tournee.etapes > 0 && `trajets ${s.tournee.complete ? '' : 'd’au moins '}${duree(s.tournee.minutes)} · ${Math.round(s.tournee.km)} km`].filter(Boolean).join(' · ')}
-            </Typography>
-          </Box>
-          {signales > 0 ? <Pastille ton="orange">{`${signales} pas vu${signales > 1 ? 's' : ''} depuis longtemps`}</Pastille> : s.lignes.length > 0 && !s.aPlanifier.length ? <Pastille ton="vert">Planifiée</Pastille> : null}
-        </Box>
-      </Card>
+      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700, mb: 1 }}>
+        {[!unSeul && coach, `jusqu’au ${jourCourt(s.fin)}`].filter(Boolean).join(' · ')}
+      </Typography>
+      <Box role="group" aria-label="Résumé de la semaine" sx={{ display: 'grid', gridTemplateColumns: `repeat(${s.tournee.etapes > 0 ? 3 : 2}, minmax(0, 1fr))`, gap: 1, mb: 2 }}>
+        <Chiffre valeur={s.lignes.length} libelle="à voir"
+          detail={signales > 0 ? <Pastille ton="orange">{`${signales} pas vu${signales > 1 ? 's' : ''}`}</Pastille> : null} />
+        <Chiffre valeur={prevues.length} libelle={prevues.length > 1 ? 'prévues' : 'prévue'}
+          detail={s.lignes.length > 0 && !s.aPlanifier.length ? <Pastille ton="vert">Planifiée</Pastille> : null} />
+        {s.tournee.etapes > 0 && <Chiffre valeur={`${s.tournee.complete ? '' : '≥ '}${duree(s.tournee.minutes)}`} libelle="de route" detail={<Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{`${Math.round(s.tournee.km).toLocaleString('fr-FR')} km`}</Typography>} />}
+      </Box>
       {!s.lignes.length ? (
         <EmptyState icone={<EventAvailableOutlined />} titre="Semaine libre" texte={`Aucune urgence d’ici le ${jourCourt(s.fin)}. Une bonne occasion de passer dire bonjour.`} />
       ) : (
