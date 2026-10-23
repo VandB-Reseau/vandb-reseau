@@ -35,6 +35,8 @@ import { useReseau } from '../data/ReseauContext'
 import type { Evenement, Reseau } from '../data/modele'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { BandeCollante } from '../components/Collant'
+import { ChampInvites, PresencesReunion } from '../components/Reunions'
+import { useAuth } from '../auth/AuthContext'
 import { ajouterJours, ecartJours, elementsDuMois, iso, jourLong, jourUTC, nomMois, type Categorie, type Element } from '../data/agenda'
 
 const categories: { id: Categorie; libelle: string; couleur: string; icone: ReactElement }[] = [
@@ -52,10 +54,13 @@ export function DialogEvenement({ reseau, evenement, jourInitial, onFermer }: { 
   const [fin, setFin] = useState(evenement?.fin ?? jourInitial ?? reseau.jour)
   const [notes, setNotes] = useState(evenement?.notes ?? '')
   const [couleur, setCouleur] = useState(evenement?.couleur ?? COULEURS_EV[0])
+  const [invites, setInvites] = useState<string[]>(evenement?.invites ?? [])
+  const { profil } = useAuth()
+  const invite = profil?.role === 'directeur' || profil?.role === 'rr'
   const ordre = debut && fin && fin >= debut
   return (
     <Fenetre titre={evenement ? `Modifier ${evenement.titre}` : 'Ajouter un événement'} ouvert onFermer={onFermer} valide={!!titre.trim() && !!ordre}
-      enregistrer={async () => { await enregistrerEvenement({ id: evenement?.id ?? null, titre: titre.trim(), type: evenement?.type ?? 'event', debut, fin, notes: notes.trim(), couleur }); return 'Événement enregistré.' }}
+      enregistrer={async () => { await enregistrerEvenement({ id: evenement?.id ?? null, titre: titre.trim(), type: evenement?.type ?? 'event', debut, fin, notes: notes.trim(), couleur, ...(invite && (invites.length || evenement?.invites) ? { invites } : {}) }); return 'Événement enregistré.' }}
       supprimer={evenement?.id ? async () => { await supprimerEvenement(evenement.id!); return 'Événement supprimé.' } : undefined}
       libelleSuppression={evenement ? `Supprimer « ${evenement.titre} » ?` : undefined}>
       <TextField label="Titre" value={titre} onChange={(e) => setTitre(e.target.value)} autoFocus placeholder="Par exemple : séminaire des Coachs" />
@@ -67,6 +72,8 @@ export function DialogEvenement({ reseau, evenement, jourInitial, onFermer }: { 
       <Box sx={{ display: 'flex', gap: 1 }} role="radiogroup" aria-label="Couleur">
         {COULEURS_EV.map((c) => <Box key={c} component="button" type="button" role="radio" aria-checked={couleur === c} aria-label={`Couleur ${c}`} onClick={() => setCouleur(c)} sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: c, cursor: 'pointer', border: '3px solid', borderColor: couleur === c ? 'text.primary' : 'transparent' }} />)}
       </Box>
+      {invite && <ChampInvites reseau={reseau} valeur={invites} changer={setInvites} />}
+      {evenement?.invites && <PresencesReunion reseau={reseau} e={evenement} />}
     </Fenetre>
   )
 }

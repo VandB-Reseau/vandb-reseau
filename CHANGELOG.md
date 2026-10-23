@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Réunions et formations (sprint 22, A2) : un événement de l'agenda invite des magasins (tout le réseau, une région ou
+  une liste ; Directeur et RR seulement). Le franchisé répond Présent ou Absent depuis son accueil ; après la date,
+  l'équipe pointe les présents dans l'événement. Fiche magasin, onglet Visites : réunions de l'année, « Présent à X sur
+  Y ». La présence aux réunions s'ajoute aux repères d'engagement du franchisé. **Migration à passer :
+  `0025_reunions.sql`.**
 - Engagement du franchisé (sprint 22, A5), équipe seule : dans Équipe > Franchisés et en tête de sa fiche, trois repères
   sur 90 jours affichés tels quels, sans note : communications lues (Directeur et RR), tâches tenues dans les délais,
   dernier message écrit. Filtre « Peu engagés » (au moins deux repères en retrait : moins d'une communication sur deux

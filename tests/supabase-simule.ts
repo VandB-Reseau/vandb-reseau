@@ -38,7 +38,9 @@ export interface CommunicationSimulee {
 // « J'aime » et commentaires des bonnes pratiques (script 0010_pratiques_reactions.sql), rangés par pratique
 export interface ReactionsPratiquesSimulees { pouces?: Record<string, { user_id: string; nom: string }[]>; commentaires?: Record<string, { id: number; auteur: string; auteur_nom: string; auteur_role: string; texte: string; cree_le: string }[]> }
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
-export interface OptionsSimulation { reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null }
+// Réunions et formations (script 0025_reunions.sql) : événements avec invités, réponses et présences ; absent = base d'avant 0025
+export interface ReunionsSimulees { evenements: { id: number; title: string; type?: string; start_date: string; end_date?: string | null; color?: string; notes?: string | null; invites?: string[] | null }[]; presences: { event: number; magasin: string; reponse: 'present' | 'absent' | null; present: boolean | null }[] }
+export interface OptionsSimulation { reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -151,6 +153,29 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
           if (!l.lus.includes(acces.franchise ?? '')) l.lus.push(acces.franchise ?? '')
         }
         return route.fulfill({ status: 200, json: null })
+      }
+      if (['presences_reunions', 'pointer_presence', 'reunions_franchise', 'repondre_reunion'].includes(fn)) {
+        const r = options.reunions
+        if (!r) return absente()
+        const refus = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const ligne = (ev: number, m: string) => r.presences.find((p) => p.event === ev && p.magasin === m) ?? (r.presences.push({ event: ev, magasin: m, reponse: null, present: null }), r.presences.at(-1)!)
+        if (fn === 'presences_reunions') return acces.role === 'franchise' ? refus() : route.fulfill({ json: r.presences })
+        if (fn === 'pointer_presence') {
+          if (acces.role === 'franchise') return refus()
+          ligne(Number(corps.p_id), String(corps.p_magasin)).present = corps.p_present as boolean | null
+          return route.fulfill({ status: 200, json: null })
+        }
+        if (acces.role !== 'franchise') return refus()
+        const miens = acces.magasins ?? []
+        if (fn === 'repondre_reunion') {
+          const e = r.evenements.find((x) => x.id === Number(corps.p_id))
+          for (const m of (e?.invites ?? []).filter((x) => miens.includes(x))) ligne(e!.id, m).reponse = corps.p_reponse as 'present' | 'absent'
+          return route.fulfill({ status: 200, json: null })
+        }
+        return route.fulfill({ json: r.evenements.filter((e) => e.invites?.some((m) => miens.includes(m))).map((e) => {
+          const p = r.presences.filter((x) => x.event === e.id && miens.includes(x.magasin))
+          return { id: e.id, titre: e.title, debut: e.start_date, fin: e.end_date ?? e.start_date, notes: e.notes ?? '', magasins: e.invites!.filter((m) => miens.includes(m)), reponse: p.find((x) => x.reponse)?.reponse ?? null, present: p.some((x) => x.present) || null }
+        }) })
       }
       if (fn === 'mon_acces') return route.fulfill({ json: { role: acces.role, coach: acces.coach ?? null, rr: acces.rr ?? null, franchise: acces.franchise ?? null, magasins: acces.magasins ?? [] } })
       if (fn === 'espace_franchise') {
@@ -457,7 +482,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
     if (table === 'cs_overrides') return route.fulfill({ json: filtrer(coachsFictifs) })
     if (table === 'visits') return route.fulfill({ json: filtrer(visitesFictives) })
     if (table === 'leaves') return route.fulfill({ json: filtrer(congesFictifs) })
-    if (table === 'events') return route.fulfill({ json: filtrer(evenementsFictifs) })
+    if (table === 'events') return route.fulfill({ json: filtrer(options.reunions?.evenements ?? evenementsFictifs) })
     if (table === 'store_finance') return route.fulfill({ json: filtrer(chiffresFictifs) })
     if (table === 'recruits') return route.fulfill({ json: filtrer(recruesFictives) })
     return route.fulfill({ json: [] })

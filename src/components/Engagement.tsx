@@ -14,6 +14,7 @@ export function resumeEngagement(e: Engagement, jour: string): string {
     e.communications && `Lu ${ratio(e.communications)}`,
     e.taches && `Tâches tenues ${ratio(e.taches)}`,
     s === null ? 'Aucun message' : `Écrit ${ilYA(s)}`,
+    e.reunions && `Réunions ${ratio(e.reunions)}`,
   ].filter(Boolean).join(' · ')
 }
 
@@ -34,6 +35,11 @@ export function SectionEngagement({ e, jour, lectures }: { e: Engagement; jour: 
       <Ligne libelle="Tâches tenues dans les délais">
         {e.taches ? <Valeur texte={ratio(e.taches)} retrait={r.taches} /> : 'Aucune tâche arrivée à échéance'}
       </Ligne>
+      {e.reunions && (
+        <Ligne libelle="Présent aux réunions">
+          <Valeur texte={ratio(e.reunions)} retrait={r.reunions} />
+        </Ligne>
+      )}
       <Ligne libelle="Dernier message écrit">
         <Valeur texte={s === null ? 'Aucun message' : `${ilYA(s)} (${dateCourte(e.dernierMessage!.slice(0, 10))})`} retrait={r.messages} />
       </Ligne>

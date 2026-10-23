@@ -41,6 +41,7 @@ import { GraphiqueCA } from '../components/Chiffres'
 import { VuePratiques } from '../components/BonnesPratiques'
 import { Contact, Ligne, Section } from '../components/Section'
 import { useApercu } from '../auth/Apercu'
+import { SectionReunionsFranchise } from '../components/Reunions'
 import { dateCourte, dateLongue, lienFiche, telLien } from '../lib/format'
 import { actionsDes, echeanceDate, enRetard } from '../data/actions'
 import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEuros, formatKEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, type ChampChiffre } from '../data/chiffres'
@@ -316,6 +317,7 @@ export function TableauFranchise() {
 }
 
 function AccueilFranchise({ reseau }: { reseau: Reseau }) {
+  const { apercu } = useApercu()
   const [choix, setChoix] = useState('')
   const tous = reseau.magasins
   const magasins = choix ? tous.filter((m) => m.nom === choix) : tous
@@ -335,6 +337,7 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
           <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          {!apercu && <SectionReunionsFranchise jour={reseau.jour} />}
           <SectionTaches reseau={reseau} magasins={magasins} />
           <SectionVisitesAudits reseau={reseau} magasins={magasins} />
           <SectionCampagnesEnCours reseau={reseau} magasins={magasins} />

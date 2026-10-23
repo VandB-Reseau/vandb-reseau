@@ -271,3 +271,40 @@ SET ROLE service_role;
 SELECT pg_temp.attendre('Plus à la une : rien',
   (SELECT jsonb_array_length(public.notifications_une(ARRAY[:annonce]::bigint[], '00000000-0000-0000-0000-00000000000d'))), 0);
 RESET ROLE;
+
+-- Réunions et formations (0025) : invités posés par le Directeur ou un RR, réponse du franchisé, pointage par l'équipe
+SELECT pg_temp.attendre('Journal : 0025 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0025'), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : n''invite pas de magasins', pg_temp.refuse('INSERT INTO public.events (title, start_date, invites) VALUES (''Intrus'', current_date, ''{Lille}'')'), 1);
+SELECT pg_temp.attendre('Coach : ajoute un événement sans invités', pg_temp.refuse('INSERT INTO public.events (title, start_date) VALUES (''Point Coachs'', current_date)'), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+INSERT INTO public.events (title, start_date, invites) VALUES ('Réunion régionale', current_date + 3, '{Lille,Nice}') RETURNING id AS reunion \gset
+INSERT INTO public.events (title, start_date, invites) VALUES ('Formation vente', current_date - 2, '{Lille,Nice}') RETURNING id AS formation \gset
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : ne change pas les invités', pg_temp.refuse('UPDATE public.events SET invites = ''{Lille}'' WHERE id = ' || :reunion), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Franchisé : voit les deux réunions de son magasin', (SELECT jsonb_array_length(public.reunions_franchise())), 2);
+SELECT pg_temp.attendre('Franchisé : ne voit que son magasin parmi les invités',
+  (SELECT count(*) FROM jsonb_array_elements(public.reunions_franchise()) e, jsonb_array_elements_text(e->'magasins') m WHERE m = 'Nice'), 0);
+SELECT pg_temp.attendre('Franchisé : répond à une réunion à venir', pg_temp.refuse('SELECT public.repondre_reunion(' || :reunion || ', ''present'')'), 0);
+SELECT pg_temp.attendre('Franchisé : ne répond plus après la date', pg_temp.refuse('SELECT public.repondre_reunion(' || :formation || ', ''absent'')'), 1);
+SELECT pg_temp.attendre('Franchisé : ne pointe pas', pg_temp.refuse('SELECT public.pointer_presence(' || :formation || ', ''Lille'', true)'), 1);
+SELECT pg_temp.attendre('Franchisé : ne lit pas les présences de l''équipe', pg_temp.refuse('SELECT public.presences_reunions()'), 1);
+SELECT pg_temp.attendre('Franchisé : aucun accès direct aux présences', pg_temp.refuse('SELECT count(*) FROM public.reunions_presences'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : pointe son magasin après la date', pg_temp.refuse('SELECT public.pointer_presence(' || :formation || ', ''Lille'', true)'), 0);
+SELECT pg_temp.attendre('Coach : ne pointe pas un autre magasin', pg_temp.refuse('SELECT public.pointer_presence(' || :formation || ', ''Nice'', true)'), 1);
+SELECT pg_temp.attendre('Coach : ne pointe pas avant la date', pg_temp.refuse('SELECT public.pointer_presence(' || :reunion || ', ''Lille'', true)'), 1);
+SELECT pg_temp.attendre('Coach : lit réponse et présence de son magasin', (SELECT jsonb_array_length(public.presences_reunions())), 2);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT public.pointer_presence(:formation, 'Nice', false);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : ne lit pas les présences d''un autre magasin',
+  (SELECT count(*) FROM jsonb_array_elements(public.presences_reunions()) e WHERE e->>'magasin' = 'Nice'), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Franchisé : voit qu''il a été pointé présent',
+  (SELECT count(*) FROM jsonb_array_elements(public.reunions_franchise()) e WHERE (e->>'id')::bigint = :formation AND (e->>'present')::boolean), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-000000000000';
+SELECT pg_temp.attendre('Sans rôle : aucune réunion', pg_temp.refuse('SELECT public.reunions_franchise()'), 1);
+RESET ROLE;

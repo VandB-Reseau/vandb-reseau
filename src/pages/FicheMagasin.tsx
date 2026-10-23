@@ -64,6 +64,7 @@ import { ContenuLeviers, ListeInspirations } from '../components/Leviers'
 import { inspirationsDu, leviersDuMagasin, libellesLevier, useReperesReseau } from '../data/leviers'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
 import { Contact, Ligne, Section } from '../components/Section'
+import { SectionReunionsMagasin } from '../components/Reunions'
 import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, estVisite, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 
 // Plus de fil, redondant avec les onglets (Joseph, 22/10/2026) ; le journal et les bonnes pratiques ont chacun leur onglet
@@ -165,6 +166,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <SectionAudits reseau={reseau} m={m} />
             <SectionVisites reseau={reseau} m={m} saisir={saisirVisite} modifier={setVisite} />
+            <SectionReunionsMagasin reseau={reseau} magasin={m.nom} />
           </Box>
         )}
 
