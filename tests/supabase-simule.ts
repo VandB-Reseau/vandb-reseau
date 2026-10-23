@@ -40,8 +40,8 @@ export interface ReactionsPratiquesSimulees { pouces?: Record<string, { user_id:
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
 // Réunions et formations (script 0025_reunions.sql) : événements avec invités, réponses et présences ; absent = base d'avant 0025
 export interface ReunionsSimulees { evenements: { id: number; title: string; type?: string; start_date: string; end_date?: string | null; color?: string; notes?: string | null; invites?: string[] | null }[]; presences: { event: number; magasin: string; reponse: 'present' | 'absent' | null; present: boolean | null }[] }
-// Questions éclair (script 0026_questions_eclair.sql) : résultats vus par le Directeur et le RR, questions ouvertes du franchisé
-export interface QuestionsSimulees { resultats: Record<string, unknown>[]; franchise: Record<string, unknown>[] }
+// Sondages (scripts 0026_questions_eclair.sql et 0029_sondages.sql) : résultats vus par le Directeur et le RR, sondages ouverts du franchisé et de l'équipe
+export interface QuestionsSimulees { resultats: Record<string, unknown>[]; franchise: Record<string, unknown>[]; equipe?: Record<string, unknown>[] }
 // Bonnes pratiques proposées par les franchisés (script 0027_pratiques_proposees.sql)
 export interface PropositionsSimulees { equipe: Record<string, unknown>[]; miennes: Record<string, unknown>[] }
 // Challenges (script 0028_challenges.sql), au format renvoyé par la base
@@ -183,22 +183,23 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
           return { id: e.id, titre: e.title, debut: e.start_date, fin: e.end_date ?? e.start_date, notes: e.notes ?? '', magasins: e.invites!.filter((m) => miens.includes(m)), reponse: p.find((x) => x.reponse)?.reponse ?? null, present: p.some((x) => x.present) || null }
         }) })
       }
-      if (['resultats_questions', 'publier_question', 'supprimer_question', 'questions_franchise', 'repondre_question'].includes(fn)) {
+      if (['resultats_questions', 'publier_sondage', 'supprimer_question', 'questions_franchise', 'questions_equipe', 'repondre_sondage'].includes(fn)) {
         const q = options.questions
         if (!q) return absente()
         const refus = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
-        const equipe = ['directeur', 'rr'].includes(acces.role)
-        if (fn === 'resultats_questions') return equipe ? route.fulfill({ json: q.resultats }) : refus()
-        if (fn === 'publier_question') {
-          if (!equipe) return refus()
+        const poseur = ['directeur', 'rr'].includes(acces.role)
+        if (fn === 'resultats_questions') return poseur ? route.fulfill({ json: q.resultats }) : refus()
+        if (fn === 'publier_sondage') {
+          if (!poseur) return refus()
           const id = Math.max(0, ...q.resultats.map((x) => Number(x.id))) + 1
-          q.resultats.unshift({ id, titre: corps.p_titre, genre: corps.p_genre, choix: corps.p_choix, anonyme: corps.p_anonyme, magasins: corps.p_magasins, jusqu_au: corps.p_jusqu_au, auteur: MOI, auteur_nom: 'Dominique DIRECTION', cree_le: new Date().toISOString(), reponses: [], sans_reponse: [], concernes: 0 })
+          q.resultats.unshift({ id, titre: corps.p_titre, questions: corps.p_questions, cible: corps.p_cible, anonyme: corps.p_anonyme, magasins: corps.p_magasins, jusqu_au: corps.p_jusqu_au, auteur: MOI, auteur_nom: 'Dominique DIRECTION', cree_le: new Date().toISOString(), reponses: [], sans_reponse: [], concernes: 0 })
           return route.fulfill({ json: id })
         }
         if (fn === 'supprimer_question') { q.resultats = q.resultats.filter((x) => x.id !== corps.p_id); return route.fulfill({ status: 200, json: null }) }
-        if (acces.role !== 'franchise') return refus()
-        if (fn === 'questions_franchise') return route.fulfill({ json: q.franchise })
-        const x = q.franchise.find((y) => y.id === corps.p_id)
+        const franchise = acces.role === 'franchise'
+        if (fn === 'questions_franchise') return franchise ? route.fulfill({ json: q.franchise }) : refus()
+        if (fn === 'questions_equipe') return franchise ? refus() : route.fulfill({ json: q.equipe ?? [] })
+        const x = (franchise ? q.franchise : q.equipe ?? []).find((y) => y.id === corps.p_id)
         if (!x || x.repondu) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'deja_repondu' } })
         x.repondu = true
         return route.fulfill({ status: 200, json: null })

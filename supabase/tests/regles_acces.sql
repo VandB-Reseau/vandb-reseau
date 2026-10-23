@@ -353,6 +353,54 @@ RESET ROLE;
 SELECT pg_temp.attendre('Question du Directeur toujours là', (SELECT count(*) FROM public.questions_eclair WHERE id = :q_anonyme), 1);
 SELECT pg_temp.attendre('Anonymat en base : ni nom ni magasin', (SELECT count(*) FROM public.questions_reponses WHERE question = :q_anonyme AND (franchise IS NOT NULL OR magasins <> '{}')), 0);
 
+-- Sondages (0029) : 1 à 5 questions, pour les franchisés, l'équipe ou les deux ; l'ordre inverse a remis 0026 en dernier
+\ir ../migrations/0029_sondages.sql
+SELECT pg_temp.attendre('Journal : 0029 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0029'), 1);
+SELECT pg_temp.attendre('Questions éclair d''avant : un sondage d''une question', (SELECT count(*) FROM public.questions_eclair WHERE jsonb_array_length(questions) <> 1), 0);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT public.publier_sondage('Point formation', '[{"titre":"Utile ?","genre":"oui_non"},{"titre":"Note","genre":"note"},{"titre":"Format","genre":"choix","choix":["Salle","Visio"]}]',
+  'equipe', false, '{Lille}', current_date + 7) AS s_equipe \gset
+SELECT public.publier_sondage('Ressenti', '[{"titre":"Charge de travail","genre":"note"}]', 'equipe', true, NULL, current_date + 7) AS s_anonyme \gset
+SELECT pg_temp.attendre('Directeur : six questions refusées', pg_temp.refuse('SELECT public.publier_sondage(''Trop'', ''[{"titre":"1","genre":"note"},{"titre":"2","genre":"note"},{"titre":"3","genre":"note"},{"titre":"4","genre":"note"},{"titre":"5","genre":"note"},{"titre":"6","genre":"note"}]'', ''tous'', false, NULL, current_date + 3)'), 1);
+SELECT pg_temp.attendre('Directeur : destinataires inconnus refusés', pg_temp.refuse('SELECT public.publier_sondage(''X'', ''[{"titre":"1","genre":"note"}]'', ''partout'', false, NULL, current_date + 3)'), 1);
+SELECT pg_temp.attendre('Directeur : ne répond pas à son propre sondage', pg_temp.refuse('SELECT public.repondre_sondage(' || :s_equipe || ', ''{oui,4,Salle}'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : voit les sondages de l''équipe', (SELECT count(*) FROM jsonb_array_elements(public.questions_equipe()) e WHERE (e->>'id')::bigint IN (:s_equipe, :s_anonyme)), 2);
+SELECT pg_temp.attendre('Coach : ne voit pas les questions des franchisés', (SELECT count(*) FROM jsonb_array_elements(public.questions_equipe()) e WHERE (e->>'id')::bigint = :q_anonyme), 0);
+SELECT pg_temp.attendre('Coach : une réponse par question', pg_temp.refuse('SELECT public.repondre_sondage(' || :s_equipe || ', ''{oui,4}'')'), 1);
+SELECT pg_temp.attendre('Coach : réponse hors des choix refusée', pg_temp.refuse('SELECT public.repondre_sondage(' || :s_equipe || ', ''{oui,4,Bureau}'')'), 1);
+SELECT pg_temp.attendre('Coach : répond au sondage', pg_temp.refuse('SELECT public.repondre_sondage(' || :s_equipe || ', ''{oui,4,Salle}'')'), 0);
+SELECT pg_temp.attendre('Coach : une seule fois', pg_temp.refuse('SELECT public.repondre_sondage(' || :s_equipe || ', ''{non,2,Visio}'')'), 1);
+SELECT pg_temp.attendre('Coach : répond au sondage anonyme', pg_temp.refuse('SELECT public.repondre_sondage(' || :s_anonyme || ', ''{3}'')'), 0);
+SELECT pg_temp.attendre('Coach : ne pose pas de sondage', pg_temp.refuse('SELECT public.publier_sondage(''X'', ''[{"titre":"1","genre":"note"}]'', ''tous'', false, NULL, current_date + 3)'), 1);
+SELECT pg_temp.attendre('Coach : ne lit pas les résultats', pg_temp.refuse('SELECT public.resultats_questions()'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000e';
+SELECT pg_temp.attendre('RR : voit le sondage d''équipe du Directeur', (SELECT count(*) FROM jsonb_array_elements(public.questions_equipe()) e WHERE (e->>'id')::bigint = :s_equipe), 1);
+SELECT public.publier_sondage('Vitrines', '[{"titre":"Vitrine refaite ?","genre":"oui_non"}]', 'tous', false, NULL, current_date + 7) AS s_rr \gset
+SELECT pg_temp.attendre('RR : ne répond pas à son propre sondage', (SELECT count(*) FROM jsonb_array_elements(public.questions_equipe()) e WHERE (e->>'id')::bigint = :s_rr), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Franchisé : ne voit pas un sondage de l''équipe', (SELECT count(*) FROM jsonb_array_elements(public.questions_franchise()) e WHERE (e->>'id')::bigint IN (:s_equipe, :s_anonyme)), 0);
+SELECT pg_temp.attendre('Franchisé : voit un sondage pour tous', (SELECT count(*) FROM jsonb_array_elements(public.questions_franchise()) e WHERE (e->>'id')::bigint = :s_rr), 1);
+SELECT pg_temp.attendre('Franchisé : ne répond pas à un sondage de l''équipe', pg_temp.refuse('SELECT public.repondre_sondage(' || :s_equipe || ', ''{oui,4,Salle}'')'), 1);
+SELECT pg_temp.attendre('Franchisé : ne lit pas les sondages de l''équipe', pg_temp.refuse('SELECT public.questions_equipe()'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : voit le sondage pour tous du RR', (SELECT count(*) FROM jsonb_array_elements(public.questions_equipe()) e WHERE (e->>'id')::bigint = :s_rr), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT pg_temp.attendre('Directeur : la réponse du Coach porte son nom et ses trois valeurs',
+  (SELECT count(*) FROM jsonb_array_elements(public.resultats_questions()) e, jsonb_array_elements(e->'reponses') r
+   WHERE (e->>'id')::bigint = :s_equipe AND r->>'franchise' = 'Coach Nord' AND r->>'role' = 'coach' AND r->'valeurs' = '["oui","4","Salle"]'::jsonb), 1);
+SELECT pg_temp.attendre('Directeur : Coach et RR sont destinataires', (SELECT (e->>'concernes')::bigint FROM jsonb_array_elements(public.resultats_questions()) e WHERE (e->>'id')::bigint = :s_equipe), 2);
+SELECT pg_temp.attendre('Directeur : le RR est à relancer, pas le Coach',
+  (SELECT count(*) FROM jsonb_array_elements(public.resultats_questions()) e WHERE (e->>'id')::bigint = :s_equipe AND e->'sans_reponse' = '["rr1"]'::jsonb), 1);
+SELECT pg_temp.attendre('Directeur : la réponse anonyme du Coach est sans nom',
+  (SELECT count(*) FROM jsonb_array_elements(public.resultats_questions()) e, jsonb_array_elements(e->'reponses') r
+   WHERE (e->>'id')::bigint = :s_anonyme AND r->'franchise' = 'null'::jsonb), 1);
+RESET ROLE;
+SELECT pg_temp.attendre('Sondages : fonctions internes fermées', (SELECT count(*) FROM information_schema.routine_privileges
+  WHERE routine_schema = 'public' AND grantee IN ('anon', 'authenticated', 'PUBLIC')
+    AND routine_name IN ('nom_rr', 'destinataire_sondage', 'question_valable', 'reponse_valable', 'sondages_pour_moi', 'destinataires_sondage')), 0);
+
 -- Bonnes pratiques proposées par les franchisés (0027) : proposées par fonction, relues par l'équipe du magasin
 SELECT pg_temp.attendre('Journal : 0027 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0027'), 1);
 SET ROLE authenticated;

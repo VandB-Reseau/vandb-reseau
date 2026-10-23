@@ -42,7 +42,7 @@ import { VuePratiques } from '../components/BonnesPratiques'
 import { Contact, Ligne, Section } from '../components/Section'
 import { useApercu } from '../auth/Apercu'
 import { SectionReunionsFranchise } from '../components/Reunions'
-import { SectionQuestionsFranchise } from '../components/Questions'
+import { SondagesARepondre } from '../components/Questions'
 import { MesPropositions } from '../components/Propositions'
 import { SectionChallengesFranchise } from '../components/Challenges'
 import { dateCourte, dateLongue, lienFiche, telLien } from '../lib/format'
@@ -341,7 +341,7 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           {!apercu && <SectionChallengesFranchise />}
-          {!apercu && <SectionQuestionsFranchise />}
+          {!apercu && <SondagesARepondre />}
           {!apercu && <SectionReunionsFranchise jour={reseau.jour} />}
           <SectionTaches reseau={reseau} magasins={magasins} />
           <SectionVisitesAudits reseau={reseau} magasins={magasins} />

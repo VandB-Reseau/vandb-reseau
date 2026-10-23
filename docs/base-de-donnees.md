@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 23/10/2026 (migration `0028`).
+Mis à jour le 23/10/2026 (migration `0029`).
 
 ## Principes
 
@@ -108,9 +108,9 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 | `communications_lectures` | Première lecture d'une communication par chaque compte franchisé |
 | `pratiques_lectures` | Première fois qu'un compte franchisé voit une bonne pratique (identifiant de la pratique dans `bonnes_pratiques`), 0023. Aucun accès direct |
 | `reunions_presences` | Réponse du franchisé (`present`/`absent`) et pointage de l'équipe pour chaque magasin invité à un événement, 0025. Aucun accès direct |
-| `questions_eclair` | Questions éclair posées aux franchisés (oui/non, choix, note), cible (`magasins`, vide = tout le réseau), date de fin, anonymat, 0026. Aucun accès direct |
-| `questions_participations` | Qui a répondu à une question (compte), sans la réponse ni l'heure, 0026. Aucun accès direct |
-| `questions_reponses` | Réponses : valeur, régions des magasins du répondant ; nom et magasins seulement pour une question nominative ; identifiant tiré au hasard, 0026. Aucun accès direct |
+| `questions_eclair` | Sondages : de 1 à 5 questions (`questions`, chacune oui/non, choix ou note ; 0029), destinataires (`cible` : `franchises`, `equipe`, `tous` ; 0029), magasins visés (vide = tout le réseau), date de fin, anonymat, rôle de l'auteur, 0026. Aucun accès direct |
+| `questions_participations` | Qui a répondu à un sondage (compte), sans la réponse ni l'heure, 0026. Aucun accès direct |
+| `questions_reponses` | Réponses : une valeur par question (`valeurs`, 0029), rôle du répondant, régions ; nom et magasins seulement pour une question nominative ; identifiant tiré au hasard, 0026. Aucun accès direct |
 | `pratiques_proposees` | Bonnes pratiques proposées par un franchisé (magasin, titre, texte), état (`proposee`, `publiee`, `refusee`) et pratique publiée, 0027. Aucun accès direct |
 | `challenges` | Challenges du mois : indicateur (`ca`, `pm_cave`, `pm_bar`), mois, magasins en compétition, rang montré ou non aux franchisés, 0028. Aucun accès direct |
 | `pratiques_pouces`, `pratiques_commentaires` | J'aime et commentaires des bonnes pratiques |
@@ -174,7 +174,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Comptes rendus de visite | `reactions_visites`, `visite_visible`, `basculer_pouce_visite`, `commenter_visite`, `supprimer_commentaire_visite` | 0022 |
 | « Vu par » des bonnes pratiques | `lire_pratiques` (franchisé, pratiques existantes seulement), `lectures_pratiques` (Directeur, Responsable Régional pour les franchisés de ses magasins), `pratiques_existantes` (interne) | 0023 |
 | Réunions et formations | `reunions_franchise`, `repondre_reunion` (franchisé, ses magasins invités, réponse jusqu'au dernier jour) ; `presences_reunions`, `pointer_presence` (équipe, ses magasins, pointage dès le premier jour) | 0025 |
-| Questions éclair | `publier_question`, `supprimer_question`, `resultats_questions` (Directeur ; RR pour ses magasins et ses régions) ; `questions_franchise`, `repondre_question` (franchisé, une réponse) ; `magasins_questions` (interne) | 0026 |
+| Sondages | `publier_sondage` (Directeur ; RR sur ses magasins), `supprimer_question`, `resultats_questions` (Directeur ; RR pour ses magasins et sa région, relance des franchisés, Coachs et RR) ; `questions_franchise` (franchisé), `questions_equipe` (Coach ; RR pour les sondages du Directeur), `repondre_sondage` (une réponse par compte, à toutes les questions) ; `publier_question`, `repondre_question` (anciennes écritures d'une question seule) ; `magasins_questions`, `nom_rr`, `destinataire_sondage`, `destinataires_sondage`, `sondages_pour_moi`, `question_valable`, `reponse_valable` (internes) | 0026, 0029 |
 | Propositions de bonnes pratiques | `proposer_pratique`, `mes_propositions` (franchisé, ses magasins) ; `propositions_pratiques`, `traiter_proposition` (équipe, ses magasins ; Directeur, tous) | 0027 |
 | Challenges | `creer_challenge`, `supprimer_challenge` (Directeur ; RR sur ses magasins) ; `challenges_equipe` (équipe, chiffre de ses seuls magasins) ; `challenges_franchise` (rang et podium sans chiffre) ; `classement_challenge` (interne) | 0028 |
 | Campagnes régionales | `campagne_region_permise` | 0005 |
