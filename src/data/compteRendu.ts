@@ -36,4 +36,3 @@ export function texteCompteRendu(v: { magasin: string; date: string; parties: st
   if (actions.length) l.push('', "PLAN D'ACTION", ...actions.map((a) => `- ${a.action.trim()}${[a.porteur, a.echeance].filter(Boolean).length ? ` (${[a.porteur, a.echeance].filter(Boolean).join(' · ')})` : ''}${a.faite ? ' : faite' : ''}`))
   return l.join('\n')
 }
-
