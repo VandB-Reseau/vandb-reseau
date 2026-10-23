@@ -23,7 +23,7 @@ import type { Photo } from '../data/grilles'
 // Briques visuelles communes « façon app » : avatars à initiales, lignes compactes, une seule pastille par ligne,
 // puces de filtre. Validées sur la maquette du 20/10/2026.
 
-const TEINTES = [brand.or, brand.bleu, brand.orange, '#7a7a80', '#2e7d32', '#7c3aed']
+const TEINTES = [brand.or, brand.vert, brand.orange, brand.beige, brand.brique, brand.anthracite]
 
 function teinte(nom: string): string {
   let h = 0
@@ -57,7 +57,7 @@ const signaux: Record<Exclude<Ton, 'rouge' | 'gris'>, CouleurSignal> = { orange:
 // les autres tons sont un texte coloré précédé d'un point, pour que les alertes ressortent.
 export function Pastille({ ton, children }: { ton: Ton; children: ReactNode }) {
   const forme = { flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 0.75, borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap' } as const
-  if (ton === 'rouge') return <Box component="span" sx={{ ...forme, px: 1.25, py: 0.5, bgcolor: '#c62828', color: '#ffffff' }}>{children}</Box>
+  if (ton === 'rouge') return <Box component="span" sx={{ ...forme, px: 1.25, py: 0.5, bgcolor: '#c24119', color: '#ffffff' }}>{children}</Box>
   if (ton === 'gris') return <Box component="span" sx={{ ...forme, py: 0.5, color: 'text.secondary' }}>{children}</Box>
   return <Box component="span" sx={(t) => ({ ...forme, py: 0.5, ...styleSignal(t, signaux[ton]) })}>{children}</Box>
 }
@@ -102,7 +102,7 @@ export function CarteLignes({ children, label }: { children: ReactNode; label?: 
 export function TitreSection({ children, nombre, action }: { children: ReactNode; nombre?: number; action?: ReactNode }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, mb: 1, minHeight: 40 }}>
-      <Typography component="h2" sx={{ flex: 1, fontSize: '0.8125rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'text.secondary' }}>{children}</Typography>
+      <Box sx={{ flex: 1 }}><Typography component="h2" sx={{ display: 'inline-block', px: 1, py: 0.25, bgcolor: '#1d1d1b', color: '#ffffff', fontSize: '0.8125rem', fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', transform: 'rotate(-1.5deg)' }}>{children}</Typography></Box>
       {nombre !== undefined && <Typography sx={{ fontWeight: 600 }}>{nombre}</Typography>}
       {action}
     </Box>

@@ -28,7 +28,7 @@ const DialogEvenement = chargementDiffere(() => import('../pages/Agenda').then((
 const choixCreer: { id: Choix | 'message'; libelle: string; icone: ReactElement; fond: string; texte: string }[] = [
   { id: 'visite', libelle: 'Visite', icone: <EventNoteOutlined fontSize="small" />, fond: brand.noir, texte: '#ffffff' },
   { id: 'tache', libelle: 'Tâche', icone: <TaskAltOutlined fontSize="small" />, fond: brand.or, texte: brand.noir },
-  { id: 'message', libelle: 'Message', icone: <ChatBubbleOutlineOutlined fontSize="small" />, fond: brand.bleu, texte: '#ffffff' },
+  { id: 'message', libelle: 'Message', icone: <ChatBubbleOutlineOutlined fontSize="small" />, fond: brand.vertFonce, texte: '#ffffff' },
   { id: 'pratique', libelle: 'Bonne pratique', icone: <PhotoCameraOutlined fontSize="small" />, fond: brand.orange, texte: brand.noir },
   { id: 'evenement', libelle: 'Événement', icone: <EventOutlined fontSize="small" />, fond: '#7c3aed', texte: '#ffffff' },
 ]
