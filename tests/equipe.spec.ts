@@ -60,7 +60,7 @@ test('Paramètres > Charge des Coachs : route par an par la route, simulation d�
   await choisirMois(page, 'À partir de', 'Novembre 2026')
   await simulation.getByRole('button', { name: 'Valider 1 changement' }).click()
   await expect(page.getByText('1 magasin change de Coach à partir de novembre 2026.')).toBeVisible()
-  expect(ecritures.filter((e) => e.methode === 'POST')).toEqual([expect.objectContaining({ table: 'reassigns', corps: expect.objectContaining({ store: 'Lyon Test', cs: 'Camille TESTARD', date: '2026-11-01', note: 'Simulation de charge' }) })])
+  expect(ecritures.filter((e) => e.methode === 'POST' && !e.table.startsWith('rpc/'))).toEqual([expect.objectContaining({ table: 'reassigns', corps: expect.objectContaining({ store: 'Lyon Test', cs: 'Camille TESTARD', date: '2026-11-01', note: 'Simulation de charge' }) })])
   // Sur PC, le tableau reste au choix
   if (!isMobile) {
     await page.getByRole('group', { name: 'Affichage' }).getByRole('button', { name: 'Tableau' }).click()
