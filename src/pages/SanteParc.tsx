@@ -47,6 +47,8 @@ import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
 import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
+import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined'
+import { VueChallenges } from '../components/Challenges'
 import { VueCampagnes } from '../components/Campagnes'
 import { FiltreMenu, type Option } from '../components/FiltreMenu'
 import InputAdornment from '@mui/material/InputAdornment'
@@ -681,7 +683,7 @@ export function SanteParc() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [params, setParams] = useSearchParams()
-  const vue = ['evaluer', 'deploiements', 'campagnes', 'chiffres'].includes(params.get('vue') ?? '') ? params.get('vue')! : 'ninebox'
+  const vue = ['evaluer', 'deploiements', 'campagnes', 'challenges', 'chiffres'].includes(params.get('vue') ?? '') ? params.get('vue')! : 'ninebox'
   return (
     <AvecReseau>
       {(reseau) => <Contenu reseau={reseau} vue={vue} surPC={surPC} aller={(v) => setParams({ vue: v }, { replace: true })} />}
@@ -704,12 +706,14 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
         { vue: 'evaluer', libelle: 'Évaluer', icone: <FactCheckOutlined /> },
         { vue: 'deploiements', libelle: 'Déploiements', icone: <RocketLaunchOutlined /> },
         { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
+        { vue: 'challenges', libelle: 'Challenges', icone: <EmojiEventsOutlined /> },
         { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
       ]} />
       {vue === 'ninebox' && <VueNineBox reseau={reseau} evaluer={() => aller('evaluer')} surPC={surPC} />}
       {vue === 'evaluer' && <VueEvaluer reseau={reseau} saisie={saisie} surPC={surPC} date={champDate} />}
       {vue === 'deploiements' && <VueDeploiements reseau={reseau} saisie={saisie} surPC={surPC} date={champDate} />}
       {vue === 'campagnes' && <VueCampagnes reseau={reseau} />}
+      {vue === 'challenges' && <VueChallenges reseau={reseau} />}
       {vue === 'chiffres' && <VueChiffres reseau={reseau} surPC={surPC} />}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </>

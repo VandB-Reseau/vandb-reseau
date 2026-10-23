@@ -44,7 +44,9 @@ export interface ReunionsSimulees { evenements: { id: number; title: string; typ
 export interface QuestionsSimulees { resultats: Record<string, unknown>[]; franchise: Record<string, unknown>[] }
 // Bonnes pratiques proposées par les franchisés (script 0027_pratiques_proposees.sql)
 export interface PropositionsSimulees { equipe: Record<string, unknown>[]; miennes: Record<string, unknown>[] }
-export interface OptionsSimulation { propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null }
+// Challenges (script 0028_challenges.sql), au format renvoyé par la base
+export interface ChallengesSimules { equipe: Record<string, unknown>[]; franchise: Record<string, unknown>[] }
+export interface OptionsSimulation { challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -212,6 +214,19 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         if (fn === 'mes_propositions') return route.fulfill({ json: pr.miennes })
         const id = Math.max(0, ...pr.miennes.map((x) => Number(x.id))) + 1
         pr.miennes.unshift({ id, magasin: corps.p_magasin, titre: corps.p_titre, texte: corps.p_texte, propose_le: new Date().toISOString(), statut: 'proposee' })
+        return route.fulfill({ json: id })
+      }
+      if (['challenges_equipe', 'challenges_franchise', 'creer_challenge', 'supprimer_challenge'].includes(fn)) {
+        const ch = options.challenges
+        if (!ch) return absente()
+        const refus = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        if (fn === 'challenges_franchise') return acces.role === 'franchise' ? route.fulfill({ json: ch.franchise }) : refus()
+        if (acces.role === 'franchise') return refus()
+        if (fn === 'challenges_equipe') return route.fulfill({ json: ch.equipe })
+        if (!['directeur', 'rr'].includes(acces.role)) return refus()
+        if (fn === 'supprimer_challenge') { ch.equipe = ch.equipe.filter((x) => x.id !== corps.p_id); return route.fulfill({ status: 200, json: null }) }
+        const id = Math.max(0, ...ch.equipe.map((x) => Number(x.id))) + 1
+        ch.equipe.unshift({ id, titre: corps.p_titre, indicateur: corps.p_indicateur, mois: corps.p_mois, magasins: corps.p_magasins, franchises: corps.p_franchises, auteur: MOI, auteur_nom: 'Dominique DIRECTION', classement: [] })
         return route.fulfill({ json: id })
       }
       if (fn === 'mon_acces') return route.fulfill({ json: { role: acces.role, coach: acces.coach ?? null, rr: acces.rr ?? null, franchise: acces.franchise ?? null, magasins: acces.magasins ?? [] } })

@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Challenge du mois (sprint 22, A6) : Santé du parc > Challenges. Le Directeur (réseau, région, liste) ou un RR (ses
+  magasins) lance un challenge sur un mois : progression du CA, du panier moyen cave ou bar face au même mois de l'an
+  dernier. Classement calculé par la base ; l'équipe voit le chiffre de ses seuls magasins. Si le challenge le prévoit,
+  le franchisé voit sur son accueil son rang et le podium, sans aucun chiffre. **Migration à passer : `0028_challenges.sql`.**
 - Bonnes pratiques proposées par les franchisés (sprint 22, A4) : dans son onglet Bonnes pratiques, le franchisé propose
   une pratique (titre, texte dicté ou écrit) et suit son état (En relecture, Publiée, Non retenue). Dans Infos réseau,
   l'équipe du magasin relit, complète (photos, thème) et publie au nom du franchisé, ou ne retient pas. Photos ajoutées
