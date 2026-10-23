@@ -243,7 +243,7 @@ export function PageCommunications({ lectureSeule = false, entete, filtre, integ
             : <RechercheFiltres recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une communication" />}
               actions={peutPublier ? <BoutonAction libelle="Publier" onClick={() => setEdition({ c: null })} /> : undefined} />}
           {etat === undefined ? <Typography variant="body2" color="text.secondary">Chargement…</Typography>
-            : !liste.length ? <EmptyState icone={<CampaignOutlined />} titre="Aucune communication" texte={n ? 'Aucune communication ne correspond à ces critères.' : 'Les annonces du réseau aux franchisés apparaîtront ici.'} />
+            : !liste.length ? <EmptyState icone={<CampaignOutlined />} titre={n ? 'Aucune communication' : 'Rien à annoncer'} texte={n ? 'Aucune communication ne correspond à ces critères.' : 'La prochaine nouvelle du réseau arrivera ici.'} />
             : (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxWidth: 720 }}>
                 {visibles.map((c) => carte(c, etat.moi))}

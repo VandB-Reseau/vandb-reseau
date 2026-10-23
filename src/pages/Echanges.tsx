@@ -199,7 +199,7 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
           {affichees.map((l) => <LigneEchange key={l.cle} c={l} mg={mg} actif={l.cle === actif} ouvrir={() => ouvrir(l.lien)} epingle={epingles.includes(l.cle)} />)}
         </List>
         {!affichees.length && (q || nonLus) && (
-          <EmptyState icone={<ForumOutlined />} titre={q ? 'Aucun résultat' : 'Tout est lu'} texte={q ? 'Vérifie l’orthographe du nom.' : 'Aucun message en attente.'} />
+          <EmptyState icone={<ForumOutlined />} titre={q ? 'Aucun résultat' : 'Tout est lu'} texte={q ? 'Vérifie l’orthographe du nom.' : 'Le calme avant la prochaine visite.'} />
         )}
       </Box>
     </Box>

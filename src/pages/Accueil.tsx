@@ -241,7 +241,7 @@ function BlocMesTaches({ reseau, taches, compact = false }: { reseau: Reseau; ta
       detail={[x.magasin, echeanceDate(x.a) && `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · ')}
       fin={enRetard(x.a, reseau.jour) ? <Pastille ton="rouge">En retard</Pastille> : undefined} />
   ))
-  const vide = <LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur={brand.vertFonce} />} titre="Aucune tâche en cours" />
+  const vide = <LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur={brand.vertFonce} />} titre="Liste vide" detail="Tout est fait, chapeau." />
   const toutes = '/taches'
   return (
     <Box component="section" aria-label="Mes tâches" sx={{ mt: compact ? 0 : 2 }}>

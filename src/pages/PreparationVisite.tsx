@@ -9,7 +9,7 @@ import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
-import { Logo } from '../components/Logo'
+import { EnTeteLettre, PiedLettre } from '../components/Lettre'
 import { dateCourte, dateLongue } from '../lib/format'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Reseau } from '../data/modele'
 import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAlerte, libelleAudit, libelleMois, type ChampChiffre } from '../data/chiffres'
@@ -23,7 +23,6 @@ import { ecarts } from '../data/grilles'
 import { horodatage, messagesDu } from '../data/messagerie'
 import { useMessagerie } from '../data/MessagerieContext'
 import { chargerReperesEquipe, type IndicateurRepere, type Reperes } from '../data/espaceFranchise'
-import { brandStripe } from '../theme/theme'
 
 // Fiche avant visite : tout ce qu'il faut savoir d'un magasin sur une page, lisible au téléphone
 // et téléchargeable en PDF (même feuille que le compte rendu de visite)
@@ -153,15 +152,9 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
         <Button variant="contained" startIcon={<PictureAsPdfOutlined />} onClick={() => window.print()} sx={{ minHeight: 48 }}>Télécharger en PDF</Button>
       </Box>
       <Box className="feuille" sx={{ bgcolor: '#fff', color: NOIR, maxWidth: 820, mx: 'auto', borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
-        <Box sx={{ bgcolor: NOIR, px: { xs: 2, sm: 4 }, py: 2.5, display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Logo size={24} />
-          <Box sx={{ flex: 1 }} />
-          <Typography sx={{ color: '#fff', fontWeight: 600 }}>Fiche avant visite</Typography>
-        </Box>
-        <Box sx={{ height: 4, background: brandStripe }} />
+        <EnTeteLettre objet="Objet : fiche avant visite" date={`${m.franchise ? 'Franchisé' : 'Intégré'} · préparée le ${dateLongue(reseau.jour)}`} />
         <Box sx={{ p: { xs: 2, sm: 4 } }}>
-          <Typography variant="h2" component="h1" sx={{ color: NOIR }}>{m.nom}</Typography>
-          <Typography sx={{ color: GRIS, mb: 2 }}>{m.franchise ? 'Franchisé' : 'Intégré'} · préparée le {dateLongue(reseau.jour)}</Typography>
+          <Typography variant="h2" component="h1" sx={{ color: NOIR, mb: 2 }}>{m.nom}</Typography>
 
           <Bloc titre="En bref">
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 4 }}>
@@ -231,6 +224,7 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
             ))}
           </Bloc>
         </Box>
+        <PiedLettre />
       </Box>
     </>
   )

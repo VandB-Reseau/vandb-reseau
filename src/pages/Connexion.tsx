@@ -37,7 +37,7 @@ export function Connexion() {
         <Card component="form" onSubmit={valider} sx={{ width: '100%', maxWidth: 400, p: { xs: 3, sm: 4 } }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}><Box sx={{ bgcolor: '#1d1d1b', px: 2, py: 1.5, borderRadius: 2 }}><Logo size={30} /></Box></Box>
           <Typography variant="h2" component="h1" align="center">Réseau V and B</Typography>
-          <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 1, mb: 3 }}>Connecte-toi pour accéder au pilotage du réseau.</Typography>
+          <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 1, mb: 3 }}>Content de te revoir. Ton réseau t’attend.</Typography>
           {!supabaseConfigured && <Alert severity="warning" sx={{ mb: 2 }}>La connexion n’est pas encore configurée sur cette adresse.</Alert>}
           {erreur && <Alert severity="error" sx={{ mb: 2 }}>{erreur}</Alert>}
           <TextField label="Email" type="email" autoComplete="email" required fullWidth value={email} onChange={(e) => setEmail(e.target.value)} sx={{ mb: 2 }} />

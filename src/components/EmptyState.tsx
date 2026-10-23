@@ -12,9 +12,9 @@ import visites from '../assets/illustrations/visites.png'
 const ILLUSTRATIONS: [RegExp, string][] = [
   [/visite|semaine|prévu|agenda/i, visites],
   [/message|conversation|lu$/i, messages],
-  [/communication|campagne|challenge|pratique/i, infos],
+  [/communication|annoncer|campagne|challenge|pratique/i, infos],
   [/tâche/i, taches],
-  [/magasin/i, magasins],
+  [/magasin|adresse/i, magasins],
 ]
 
 export function EmptyState({ titre, texte, action }: { icone?: ReactElement; titre: string; texte: string; action?: ReactNode }) {

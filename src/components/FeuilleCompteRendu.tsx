@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import { RangeePhotos } from './GrilleAudit'
-import { Logo } from './Logo'
+import { EnTeteLettre, IntertitreLettre, PiedLettre } from './Lettre'
 import { dateLongue } from '../lib/format'
 import { coachA } from '../data/charge'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Reseau, type Visite } from '../data/modele'
@@ -18,9 +18,7 @@ function Champ({ libelle, children }: { libelle: string; children: ReactNode }) 
   )
 }
 
-function Titre({ children }: { children: ReactNode }) {
-  return <Typography variant="h4" component="h2" sx={{ color: '#1d1d1b', borderBottom: '2px solid #eaa400', pb: 0.5, mb: 1.5 }}>{children}</Typography>
-}
+const Titre = IntertitreLettre
 
 // La feuille du compte rendu : sur sa page (imprimable en PDF) et dans la fenêtre ouverte depuis le fil d'actualité
 export function FeuilleCompteRendu({ reseau, v }: { reseau: Reseau; v: Visite }) {
@@ -29,15 +27,10 @@ export function FeuilleCompteRendu({ reseau, v }: { reseau: Reseau; v: Visite })
   const redigees = PARTIES.map((_p, i) => i).filter((i) => v.parties[i]?.trim())
   return (
     <Box className="feuille" sx={{ bgcolor: '#fff', color: '#1d1d1b', maxWidth: 820, mx: 'auto', borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
-      <Box sx={{ bgcolor: '#1d1d1b', px: 4, py: 2.5, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Logo size={24} />
-        <Box sx={{ flex: 1 }} />
-        <Typography sx={{ color: '#fff', fontWeight: 600 }}>{v.signatureRequise ? 'Compte rendu de visite contractuelle' : 'Compte rendu de visite'}</Typography>
-      </Box>
-      <Box sx={{ height: 4, background: 'linear-gradient(90deg, #f6c544, #ef7d00, #1b6fce)' }} />
-      <Box sx={{ p: 4 }}>
-        <Typography variant="h2" component="h1" sx={{ color: '#1d1d1b' }}>{v.magasin}</Typography>
-        <Typography sx={{ color: '#5f5f66', mb: 3 }}>{libelleTypeVisite(v.type)} · {dateLongue(v.date)}</Typography>
+      <EnTeteLettre objet={`Objet : ${v.signatureRequise ? 'compte rendu de visite contractuelle' : 'compte rendu de visite'}`}
+        date={`${libelleTypeVisite(v.type)} du ${dateLongue(v.date)}`} />
+      <Box sx={{ p: { xs: 2, sm: 4 } }}>
+        <Typography variant="h2" component="h1" sx={{ color: '#1d1d1b', mb: 2 }}>{v.magasin}</Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 4, mb: 3 }}>
           <Champ libelle="Visité par">{nomsVisiteurs(v)}</Champ>
           <Champ libelle="Coach du magasin">{coach}</Champ>
@@ -92,7 +85,9 @@ export function FeuilleCompteRendu({ reseau, v }: { reseau: Reseau; v: Visite })
         </Box>
         )}
         {v.signatureRequise && v.dateSignature && <Typography variant="body2" sx={{ color: '#5f5f66', mt: 2 }}>Signé le {dateLongue(v.dateSignature)}.</Typography>}
+        {!v.signatureRequise && nomsVisiteurs(v) && <Typography sx={{ color: '#1d1d1b', fontWeight: 700, textAlign: 'right', mt: 4 }}>{nomsVisiteurs(v)}</Typography>}
       </Box>
+      <PiedLettre />
     </Box>
   )
 }

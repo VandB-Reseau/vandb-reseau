@@ -102,7 +102,7 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
         </Box>
       </Card>
       {!s.lignes.length ? (
-        <EmptyState icone={<EventAvailableOutlined />} titre="Semaine libre" texte={`Aucun magasin à voir en priorité d’ici le ${jourCourt(s.fin)}.`} />
+        <EmptyState icone={<EventAvailableOutlined />} titre="Semaine libre" texte={`Aucune urgence d’ici le ${jourCourt(s.fin)}. Une bonne occasion de passer dire bonjour.`} />
       ) : (
         <>
           {s.aPlanifier.length > 0 && <>
