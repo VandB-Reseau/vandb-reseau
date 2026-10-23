@@ -542,7 +542,7 @@ function ProfilFranchise({ reseau, m, message, retour }: { reseau: Reseau; m: Ma
   const retard = ouvertes.filter((x) => enRetard(x.a, reseau.jour)).length
   const coach = m.coach ? reseau.coachs[m.coach] ?? { nom: m.coach } : null
   return (
-    <ProfilPersonne nom={m.nom} retour={retour}
+    <ProfilPersonne nom={m.nom} retour={retour} avatar={(taille) => <Blason magasin={m} taille={taille} />}
       lignes={[[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · '), [m.coach && `Coach ${m.coach}`, m.rr?.nom].filter(Boolean).join(' · ')]}
       pastille={retard ? { ton: 'rouge', libelle: `${retard} tâche${retard > 1 ? 's' : ''} en retard` } : m.statut !== 'ouvert' ? { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] } : null}
       compteurs={[
