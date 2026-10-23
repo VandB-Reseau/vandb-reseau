@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { ouvrirOnglet, seConnecter, textesTropPetits } from './supabase-simule'
 
-// L3 (Joseph, 21/10/2026) : fiche magasin en six onglets ; le journal dans le fil, la santé avec les chiffres,
-// les campagnes avec les tâches ; les anciens liens ouvrent l'onglet qui les accueille
+// L3 (Joseph, 21/10/2026) : fiche magasin en onglets regroupés ; la santé avec les chiffres, les campagnes avec les tâches,
+// journal et bonnes pratiques chacun dans leur onglet (Joseph, 22/10/2026) ; les anciens liens ouvrent l'onglet qui les accueille
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -17,7 +17,7 @@ const largeurTenue = (page: import('@playwright/test').Page) => page.evaluate(()
 
 test('chaque onglet regroupé montre ses deux parties, sans déborder de l’écran', async ({ page }, info) => {
   await seConnecter(page)
-  await page.goto('./#/magasins/Lyon%20Test')
+  await page.goto('./#/magasins/Lyon%20Test?vue=journal')
   await expect(page.getByRole('region', { name: 'Journal' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Journal' }).getByText('Classé Cœur de réseau')).toBeVisible()
   expect(await largeurTenue(page)).toBe(true)
@@ -33,24 +33,22 @@ test('chaque onglet regroupé montre ses deux parties, sans déborder de l’éc
 
 for (const { ancienne, onglet, vu } of [
   { ancienne: 'sante', onglet: /^Chiffres/, vu: /En recul depuis le 1 oct\. 2026/ },
-  { ancienne: 'journal', onglet: /^Fiche$/, vu: 'Classé Cœur de réseau' },
-  { ancienne: 'fil', onglet: /^Fiche$/, vu: 'Équipe' },
+  { ancienne: 'fil', onglet: /^Journal/, vu: 'Classé Cœur de réseau' },
 ]) {
   test(`un ancien lien ?vue=${ancienne} ouvre l’onglet qui l’accueille`, async ({ page, isMobile }) => {
     await seConnecter(page)
     await page.goto(`./#/magasins/Lyon%20Test?vue=${ancienne}`)
-    if (!isMobile || ancienne !== 'sante') await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab', { name: onglet, selected: true })).toBeVisible()
+    if (!isMobile) await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab', { name: onglet, selected: true })).toBeVisible()
     await expect(page.getByText(vu).first()).toBeInViewport()
   })
 }
 
-test('grand téléphone : les cinq onglets tiennent sans « Plus » et sans déborder', async ({ page, isMobile }) => {
+test('grand téléphone : les onglets tiennent sans déborder, le reste sous « Plus »', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'téléphone seulement')
   await page.setViewportSize({ width: 430, height: 900 })
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
-  await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab')).toHaveText(['Fiche', 'Tâches', 'Messages', 'Visites', 'Chiffres'])
-  await expect(page.getByRole('tab', { name: 'Autres rubriques' })).toHaveCount(0)
+  await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab')).toHaveText(['Fiche', 'Tâches', 'Messages', 'Plus'])
   const droite = await page.evaluate(() => Math.max(...[...document.querySelectorAll('.onglets-fiche [role=tab]')].map((t) => t.getBoundingClientRect().right)))
   expect(droite).toBeLessThanOrEqual(430 - 16)
 })

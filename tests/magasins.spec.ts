@@ -56,7 +56,8 @@ test('la fiche magasin regroupe équipe, coordonnées et historique', async ({ p
   expect((await carte.boundingBox())!.height).toBeGreaterThanOrEqual(290)
   await expect(page.frameLocator('iframe[title="Carte Google de Lyon Test"]').getByText('Carte simulée')).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-fiche.png`, fullPage: true })
-  // Le journal est dans la fiche
+  // Le journal a son onglet
+  await ouvrirOnglet(page, 'Journal')
   await expect(page.getByRole('region', { name: 'Journal' }).getByText('Réaffectation').first()).toBeVisible()
   await page.getByRole('button', { name: 'Magasins' }).first().click()
   await expect(page.getByRole('heading', { level: 1, name: 'Magasins' })).toBeVisible()

@@ -30,6 +30,8 @@ import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
+import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
+import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import { PastilleCase, PastilleTendance } from '../components/Sante'
 import { journalDansLeFil, useEditionJournal } from '../components/Journal'
 import { ANCIENNE_NOTE_FRANCHISE, caseDe, couleurTon, criteresAxe, historiqueSante, libelleAncienneNote, libelleAxe, libelleNote, niveauAxe, nineBox, scoreAxe, tendance, tonDe, type Axe, type Ton as TonDeploiement } from '../data/sante'
@@ -108,18 +110,20 @@ export function Contact({ role, p, sousTitre, lien }: { role: string; p: Personn
   )
 }
 
-// Cinq onglets : plus de fil, redondant avec les onglets (Joseph, 22/10/2026) ; le journal et les bonnes pratiques
-// vont dans la Fiche, la santé avec les chiffres, les campagnes avec les tâches
-type VueFiche = 'fiche' | 'actions' | 'messages' | 'visites' | 'chiffres'
+// Plus de fil, redondant avec les onglets (Joseph, 22/10/2026) ; le journal et les bonnes pratiques ont chacun leur onglet
+// (Joseph, 22/10/2026), la santé va avec les chiffres, les campagnes avec les tâches
+type VueFiche = 'fiche' | 'actions' | 'messages' | 'visites' | 'chiffres' | 'journal' | 'pratiques'
 const rubriquesFiche: Rubrique<VueFiche>[] = [
   { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
   { vue: 'actions', libelle: 'Tâches et campagnes', court: 'Tâches', icone: <TaskAltOutlined /> },
   { vue: 'messages', libelle: 'Messages', icone: <ForumOutlined /> },
   { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres et santé', court: 'Chiffres', icone: <QueryStatsOutlined /> },
+  { vue: 'journal', libelle: 'Journal', icone: <HistoryOutlined /> },
+  { vue: 'pratiques', libelle: 'Bonnes pratiques', court: 'Pratiques', icone: <TipsAndUpdatesOutlined /> },
 ]
 // Anciens liens vers un onglet regroupé : l'onglet qui l'accueille, ouvert sur sa partie
-const anciennesVues: Record<string, VueFiche> = { sante: 'chiffres', campagnes: 'actions', journal: 'fiche', fil: 'fiche' }
+const anciennesVues: Record<string, VueFiche> = { sante: 'chiffres', campagnes: 'actions', fil: 'journal' }
 
 function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const naviguer = useNavigate()
@@ -183,10 +187,6 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
               <Ligne libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
               <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
             </Section>
-            <Box id="partie-journal" sx={{ gridColumn: { lg: 'span 2' }, display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)', scrollMarginTop: 160 }}>
-              <JournalMagasin reseau={reseau} m={m} signaler={setConfirmation} />
-              <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />
-            </Box>
             {lieuCarte && (
               <Card sx={{ gridColumn: { lg: 'span 2' }, overflow: 'hidden' }}>
                 <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
@@ -213,6 +213,10 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             <SectionVisites reseau={reseau} m={m} saisir={saisirVisite} modifier={setVisite} />
           </Box>
         )}
+
+        {vue === 'journal' && <JournalMagasin reseau={reseau} m={m} signaler={setConfirmation} />}
+
+        {vue === 'pratiques' && <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />}
 
         {vue === 'chiffres' && (
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
