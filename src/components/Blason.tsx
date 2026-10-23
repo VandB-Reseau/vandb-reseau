@@ -5,9 +5,11 @@ import terres from '../assets/blasons/terres.png'
 import { brand } from '../theme/theme'
 import type { Magasin, Topographie } from '../data/modele'
 import { Initiales } from './Social'
+import { figureDeduite, figures } from './FiguresBlason'
 
 // Blason de ville (charte V and B) : la forme dit la topographie de la ville (littoral, montagne, terres),
-// la couleur sa région (Nord vert, Sud orange, Est crème, Ouest noir, Centre jaune ; deux moitiés pour Nord-Est, Sud-Ouest…).
+// la couleur sa région (Nord vert, Sud orange, Est crème, Ouest noir, Centre jaune ; deux moitiés pour Nord-Est, Sud-Ouest…),
+// la figure au centre un élément local (choisi dans la fiche, sinon proposé selon le département).
 // Il prend exactement la place du rond à initiales qu'il remplace (Joseph, 23/10/2026).
 
 export const libellesTopographie: Record<Topographie, string> = { littoral: 'Littoral', montagne: 'Montagne', terres: 'Terres' }
@@ -42,16 +44,27 @@ export function couleursBlason(departement: string): string[] {
   return (regionDe.get(dep(departement)) ?? ['C']).map((p) => couleurs[p])
 }
 
+// Place de la figure dans chaque forme (en % du blason) : la montagne se resserre vers le bas, le littoral garde ses vagues
+const placeFigure: Record<Topographie, { haut: number; cote: number }> = { littoral: { haut: 26, cote: 50 }, montagne: { haut: 22, cote: 46 }, terres: { haut: 26, cote: 52 } }
+const CLAIRES: string[] = [brand.creme, brand.jaune]
+
 export function Blason({ magasin, nom, taille = 44 }: { magasin: Magasin | undefined; nom?: string; taille?: number }) {
   if (!magasin) return <Initiales nom={nom ?? ''} taille={taille} />
   const topo = magasin.topographie || topographieDeduite(magasin.departement)
   const forme = formes[topo]
   const [a, b] = couleursBlason(magasin.departement)
+  const figure = magasin.figure || figureDeduite(magasin.departement, topo)
+  // Figure en blanc (charte) ; en noir sur le jaune et le crème, comme le blason de Loches
+  const encre = CLAIRES.includes(a) || (b && CLAIRES.includes(b)) ? brand.noir : '#ffffff'
+  const { haut, cote } = placeFigure[topo]
   const masque = { WebkitMaskImage: `url(${forme})`, maskImage: `url(${forme})`, WebkitMaskSize: 'contain', maskSize: 'contain', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center' } as const
   return (
     // Un liseré discret garde visible la teinte crème de l'Est sur fond clair
-    <Box aria-hidden data-blason={topo} sx={{ width: taille, height: taille, flexShrink: 0, filter: 'drop-shadow(0 0 0.75px rgba(49, 46, 46, 0.55))' }}>
+    <Box aria-hidden data-blason={topo} data-figure={figure} sx={{ width: taille, height: taille, flexShrink: 0, position: 'relative', filter: 'drop-shadow(0 0 0.75px rgba(49, 46, 46, 0.55))' }}>
       <Box sx={{ width: '100%', height: '100%', ...masque, background: b ? `linear-gradient(90deg, ${a} 0 50%, ${b} 50% 100%)` : a }} />
+      <Box component="svg" viewBox="0 0 24 24" sx={{ position: 'absolute', top: `${haut}%`, left: `${(100 - cote) / 2}%`, width: `${cote}%`, height: `${cote}%`, filter: 'none' }}>
+        {figures[figure].dessin(encre)}
+      </Box>
     </Box>
   )
 }
