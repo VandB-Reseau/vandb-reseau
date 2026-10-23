@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import { assembler, eclater, estSuivie, rubriques, type CleSuivie } from '../src/data/suivi'
 import { affectationsFictives, coachsFictifs, congesFictifs, evenementsFictifs, recruesFictives, visitesFictives, configRRFictive, magasinsFictifs, santeFictive, deploiementsFictifs, fichesFictives, notesMagasinsFictives, chiffresFictifs, auditsFictifs } from './donnees-fictives'
 
@@ -502,8 +502,11 @@ export async function seConnecter(page: Page, options: OptionsSimulation = {}) {
 export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page = page) {
   const nomComplet = new RegExp(`^${nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( et .+)?$`)
   const onglet = dans.getByRole('tab', { name: nomComplet })
+  const plus = dans.getByRole('tab', { name: /autres rubriques$/i })
+  // Les écrans se chargent à la demande : attendre que la rangée d'onglets soit là
+  await expect(onglet.or(plus).first()).toBeVisible()
   if (await onglet.isVisible()) return onglet.click()
-  await dans.getByRole('tab', { name: /autres rubriques$/i }).click()
+  await plus.click()
   await page.getByRole('dialog').getByRole('button', { name: nomComplet }).click()
 }
 

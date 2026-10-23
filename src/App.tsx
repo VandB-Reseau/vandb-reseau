@@ -1,12 +1,3 @@
-import { Equipe } from './pages/Equipe'
-import { FicheCoach } from './pages/FicheCoach'
-import { FicheDirecteur, FicheFranchise, FicheRR } from './pages/FichePersonne'
-import { Visites } from './pages/Visites'
-import { Agenda } from './pages/Agenda'
-import { SanteParc } from './pages/SanteParc'
-import { CanalPratiques, CanalReseau, Echanges } from './pages/Echanges'
-import { PageTaches } from './pages/Taches'
-import { InfosReseau } from './pages/InfosReseau'
 import { HashRouter, Navigate, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -18,9 +9,6 @@ import { BandeauApercuEquipe } from './components/AccesEquipe'
 import { Accueil } from './pages/Accueil'
 import { Connexion } from './pages/Connexion'
 import { Plus } from './pages/Plus'
-import { Magasins } from './pages/Magasins'
-import { FicheMagasin } from './pages/FicheMagasin'
-import { PreparationVisite } from './pages/PreparationVisite'
 import { ReseauProvider } from './data/ReseauContext'
 import { MessagerieProvider } from './data/MessagerieContext'
 import { RetourEnHaut } from './navigation/RetourEnHaut'
@@ -37,7 +25,6 @@ import Skeleton from '@mui/material/Skeleton'
 import { chargementDiffere } from './lib/chargementDiffere'
 import { chargerEspaceFranchise } from './data/espaceFranchise'
 import { espaceFranchise } from './navigation/destinations'
-import { BandeauApercu, FicheMagasinFranchise, MagasinsFranchise, PratiquesFranchise, TableauFranchise } from './pages/EspaceFranchise'
 
 // Écrans plus rares chargés à la demande : l'ouverture de l'app télécharge moins (Joseph, 21/10/2026).
 // Ils sont préchargés en tâche de fond une fois l'accueil affiché, pour s'ouvrir sans attente.
@@ -47,12 +34,48 @@ const chargeurs = {
   donnees: () => import('./pages/Donnees').then((m) => ({ default: m.Donnees })),
   compteRendu: () => import('./pages/CompteRendu').then((m) => ({ default: m.CompteRendu })),
   evolution: () => import('./pages/Evolution').then((m) => ({ default: m.Evolution })),
+  // Sprint 22 (F1) : chaque grand écran a son fichier, seul l'accueil part avec l'app
+  magasins: () => import('./pages/Magasins').then((m) => ({ default: m.Magasins })),
+  ficheMagasin: () => import('./pages/FicheMagasin').then((m) => ({ default: m.FicheMagasin })),
+  preparation: () => import('./pages/PreparationVisite').then((m) => ({ default: m.PreparationVisite })),
+  equipe: () => import('./pages/Equipe').then((m) => ({ default: m.Equipe })),
+  ficheCoach: () => import('./pages/FicheCoach').then((m) => ({ default: m.FicheCoach })),
+  personnes: () => import('./pages/FichePersonne'),
+  visites: () => import('./pages/Visites').then((m) => ({ default: m.Visites })),
+  agenda: () => import('./pages/Agenda').then((m) => ({ default: m.Agenda })),
+  sante: () => import('./pages/SanteParc').then((m) => ({ default: m.SanteParc })),
+  echanges: () => import('./pages/Echanges'),
+  taches: () => import('./pages/Taches').then((m) => ({ default: m.PageTaches })),
+  infos: () => import('./pages/InfosReseau').then((m) => ({ default: m.InfosReseau })),
 }
+// Espace franchisé : un seul fichier, jamais préchargé pour l'équipe
+const espace = () => import('./pages/EspaceFranchise')
 const Direction = chargementDiffere(chargeurs.direction)
 const ChargeCoachs = chargementDiffere(chargeurs.charge)
 const Donnees = chargementDiffere(chargeurs.donnees)
 const CompteRendu = chargementDiffere(chargeurs.compteRendu)
 const Evolution = chargementDiffere(chargeurs.evolution)
+const Magasins = chargementDiffere(chargeurs.magasins)
+const FicheMagasin = chargementDiffere(chargeurs.ficheMagasin)
+const PreparationVisite = chargementDiffere(chargeurs.preparation)
+const Equipe = chargementDiffere(chargeurs.equipe)
+const FicheCoach = chargementDiffere(chargeurs.ficheCoach)
+const FicheRR = chargementDiffere(() => chargeurs.personnes().then((m) => ({ default: m.FicheRR })))
+const FicheDirecteur = chargementDiffere(() => chargeurs.personnes().then((m) => ({ default: m.FicheDirecteur })))
+const FicheFranchise = chargementDiffere(() => chargeurs.personnes().then((m) => ({ default: m.FicheFranchise })))
+const Visites = chargementDiffere(chargeurs.visites)
+const Agenda = chargementDiffere(chargeurs.agenda)
+const SanteParc = chargementDiffere(chargeurs.sante)
+const Echanges = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.Echanges })))
+const CanalReseau = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.CanalReseau })))
+const CanalPratiques = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.CanalPratiques })))
+const PageTaches = chargementDiffere(chargeurs.taches)
+const InfosReseau = chargementDiffere(chargeurs.infos)
+const BandeauApercu = chargementDiffere(() => espace().then((m) => ({ default: m.BandeauApercu })))
+const TableauFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.TableauFranchise })))
+const MagasinsFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.MagasinsFranchise })))
+const FicheMagasinFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.FicheMagasinFranchise })))
+const PratiquesFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.PratiquesFranchise })))
 
 function usePrechargement() {
   useEffect(() => {
@@ -151,7 +174,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
 function RoutesFranchise({ apercu }: { apercu: boolean }) {
   const { pathname } = useLocation()
   return (
-    <AppShell franchise={espaceFranchise} bandeau={apercu ? <BandeauApercu /> : undefined} sansCompteur={apercu}>
+    <AppShell franchise={espaceFranchise} bandeau={apercu ? <Suspense fallback={null}><BandeauApercu /></Suspense> : undefined} sansCompteur={apercu}>
       <RetourEnHaut />
       <ErreurEcran key={pathname}>
       <Suspense fallback={<SilhouetteEcran />}>

@@ -60,6 +60,7 @@ test('magasins : les lettres se rangent sous les onglets et la recherche', async
   await seConnecter(page)
   await page.goto('./#/magasins')
   const onglets = page.getByRole('tablist', { name: 'Affichage' })
+  await expect(onglets).toBeVisible()
   await defiler(page, 600)
   const lettres = page.locator('[id^="lettre-"]')
   await expect(lettres.first()).toBeAttached()

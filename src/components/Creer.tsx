@@ -1,4 +1,4 @@
-import { useState, type MouseEvent, type ReactElement } from 'react'
+import { Suspense, useState, type MouseEvent, type ReactElement } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -13,15 +13,18 @@ import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutl
 import PhotoCameraOutlined from '@mui/icons-material/PhotoCameraOutlined'
 import EventOutlined from '@mui/icons-material/EventOutlined'
 import { brand } from '../theme/theme'
-import { useReseau } from '../data/ReseauContext'
 import { DialogVisite } from './DialogVisite'
 import { DialogAction } from './Actions'
 import { DialogPratique } from './BonnesPratiques'
-import { DialogEvenement } from '../pages/Agenda'
+import { useReseau } from '../data/ReseauContext'
+import { chargementDiffere } from '../lib/chargementDiffere'
 
 type Choix = 'visite' | 'tache' | 'pratique' | 'evenement'
 
 // Absences retirées de l'app (Joseph, 22/10/2026)
+// Fenêtre d'événement : chargée avec l'Agenda, seulement quand on la demande
+const DialogEvenement = chargementDiffere(() => import('../pages/Agenda').then((m) => ({ default: m.DialogEvenement })))
+
 const choixCreer: { id: Choix | 'message'; libelle: string; icone: ReactElement; fond: string; texte: string }[] = [
   { id: 'visite', libelle: 'Visite', icone: <EventNoteOutlined fontSize="small" />, fond: brand.noir, texte: '#ffffff' },
   { id: 'tache', libelle: 'Tâche', icone: <TaskAltOutlined fontSize="small" />, fond: brand.or, texte: brand.noir },
@@ -69,7 +72,7 @@ export function BoutonCreer({ entete = false }: { entete?: boolean }) {
       {reseau && choix === 'visite' && <DialogVisite reseau={reseau} visite={null} onFermer={fermer} />}
       {reseau && choix === 'tache' && <DialogAction reseau={reseau} magasins={reseau.magasins.map((m) => m.nom)} action={null} onFermer={fermer} />}
       {reseau && choix === 'pratique' && <DialogPratique reseau={reseau} pratique={null} onFermer={fermer} />}
-      {reseau && choix === 'evenement' && <DialogEvenement reseau={reseau} evenement={null} onFermer={fermer} />}
+      {reseau && choix === 'evenement' && <Suspense fallback={null}><DialogEvenement reseau={reseau} evenement={null} onFermer={fermer} /></Suspense>}
       <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
     </>
   )

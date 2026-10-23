@@ -57,11 +57,13 @@ test('une fiche s’ouvre en haut et le retour retrouve la liste où on l’avai
 test('changer d’onglet ou de rubrique ramène en haut', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/equipe?vue=organisation&forme=liste')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
   await expect.poll(() => hauteur(page)).toBeGreaterThan(100)
   await page.evaluate(() => document.querySelector<HTMLElement>('[role="tab"]:not([aria-selected="true"])')!.click())
   await expect.poll(() => hauteur(page)).toBe(0)
   await page.goto('./#/magasins?vue=liste')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
   await expect.poll(() => hauteur(page)).toBeGreaterThan(100)
   await page.evaluate(() => (location.hash = '#/visites'))
