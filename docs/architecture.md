@@ -9,10 +9,11 @@ Navigateur (PC, téléphone)
             ├─ Auth : comptes connectés seulement, inscriptions fermées
             ├─ PostgreSQL : tables + règles d'accès + fonctions (supabase/migrations/)
             ├─ Storage : espaces privés « photos » et « pieces »
-            └─ Edge Function « notifier » : envoi des notifications sur le téléphone (supabase/functions/)
+            ├─ Edge Function « notifier » : envoi des notifications sur le téléphone (supabase/functions/)
+            └─ Edge Function « comptes » : création et suppression des comptes des franchisés, Directeur seul
 ```
 
-Pas de serveur à nous (hormis la petite fonction « notifier » hébergée par Supabase) : l'app parle directement à Supabase avec la clé publique (« anon »). La sécurité repose
+Pas de serveur à nous (hormis les petites fonctions « notifier » et « comptes » hébergées par Supabase) : l'app parle directement à Supabase avec la clé publique (« anon »). La sécurité repose
 entièrement sur la connexion et les règles de la base, jamais sur l'écran. Voir [base-de-donnees.md](base-de-donnees.md).
 
 Services externes appelés depuis le navigateur, tous gratuits : Google Maps intégré (fiche magasin),
@@ -43,6 +44,7 @@ itinéraires routiers OSRM (charge des Coachs, tournées), géocodage geo.api.go
 | `src/lib/` | Outils techniques : client Supabase, photos, pièces jointes, dictée, cache, formats |
 | `supabase/migrations/` | Schéma de la base, une migration numérotée par changement |
 | `supabase/functions/notifier/` | Fonction Supabase d'envoi des notifications, à coller dans Edge Functions |
+| `supabase/functions/comptes/` | Fonction Supabase de création, réinitialisation et suppression des comptes des franchisés (Directeur seul) |
 | `public/sw.js` | Service worker : affiche les notifications reçues et ouvre l'écran visé (aucun cache) |
 | `supabase/tests/` | Rejoue les migrations sur un PostgreSQL vide et contrôle les règles d'accès |
 | `tests/` | Tests Playwright ; `supabase-simule.ts` simule la base, `donnees-fictives.ts` le réseau de test |

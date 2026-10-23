@@ -40,6 +40,7 @@ export interface AccesFranchise { userId: string; email: string; franchise: stri
 export class ErreurAcces extends Error {}
 const messages: Record<string, string> = {
   compte_introuvable: 'Aucun compte n’existe avec cet email. Crée-le d’abord dans Supabase.',
+  format: 'Cet email n’est pas valide.',
   compte_equipe: 'Ce compte appartient à l’équipe V and B : il ne peut pas devenir un accès franchisé.',
   compte_deja_pris: 'Ce compte est déjà l’accès d’un autre franchisé.',
   sans_magasin: 'Ce franchisé n’a aucun magasin en place.',
@@ -72,6 +73,37 @@ export async function couperAcces(userId: string) {
   if (error) erreur(error)
 }
 
+// ── Comptes des franchisés, créés et supprimés par la fonction Supabase « comptes » (supabase/functions/comptes) ──
+// null : fonction pas encore déployée (on garde alors le compte créé à la main dans Supabase)
+async function appelComptes(corps: Record<string, unknown>): Promise<Ligne | null> {
+  const { data, error } = await supabase.functions.invoke('comptes', { body: corps })
+  if (!error) return (data ?? {}) as Ligne
+  const contexte = (error as { context?: unknown }).context
+  if (!(contexte instanceof Response)) return null // fonction injoignable : pas encore déployée
+  const lu = await contexte.json().catch(() => ({})) as { erreur?: string }
+  if (lu.erreur && lu.erreur in messages) throw new ErreurAcces(messages[lu.erreur])
+  if (lu.erreur) throw new ErreurAcces('Enregistrement impossible pour le moment. Réessaie dans un instant.')
+  return null // réponse qui ne vient pas de notre fonction (absente, ou modèle de Supabase pas encore remplacé)
+}
+
+// Ouvre l'accès en créant le compte s'il n'existe pas. Mot de passe provisoire : null si le compte avait déjà le sien
+export async function creerEtOuvrirAcces(email: string, franchise: string, magasins: string[]): Promise<string | null> {
+  const compte = await appelComptes({ action: 'creer', email: email.trim() })
+  await ouvrirAcces(email, franchise, magasins)
+  return typeof compte?.mot_de_passe === 'string' ? compte.mot_de_passe : null
+}
+
+export async function nouveauMotDePasse(userId: string): Promise<string> {
+  const compte = await appelComptes({ action: 'reinitialiser', user: userId })
+  if (typeof compte?.mot_de_passe !== 'string') throw new ErreurAcces('La création des comptes depuis l’app n’est pas encore activée dans Supabase.')
+  return compte.mot_de_passe
+}
+
+// Supprime le compte ; sans la fonction, l'accès est seulement coupé
+export async function supprimerCompte(userId: string) {
+  if (!(await appelComptes({ action: 'supprimer', user: userId }))) await couperAcces(userId)
+}
+
 async function majAcces(userId: string, franchise: string, magasins: string[]) {
   const { error } = await supabase.rpc('maj_acces_franchise', { p_user: userId, p_franchise: franchise, p_magasins: magasins })
   if (error) erreur(error)
@@ -100,9 +132,9 @@ export async function renommerAcces(ancien: string, nouveau: string, magasins: s
   for (const a of liste ?? []) if (a.franchise === ancien) await majAcces(a.userId, nouveau, magasins.length ? magasins : a.magasins).catch(() => undefined)
 }
 
-// Franchisé supprimé : son accès est coupé
-export async function couperAccesDe(nom: string) {
-  for (const a of (await listerAcces()) ?? []) if (a.franchise === nom) await couperAcces(a.userId)
+// Franchisé supprimé : son compte est supprimé (ou son accès coupé, tant que la fonction « comptes » n'est pas déployée)
+export async function supprimerComptesDe(nom: string) {
+  for (const a of (await listerAcces()) ?? []) if (a.franchise === nom) await supprimerCompte(a.userId)
 }
 
 // Repères réseau d'un magasin pour l'équipe (fiche avant visite). null : pas assez de chiffres,
