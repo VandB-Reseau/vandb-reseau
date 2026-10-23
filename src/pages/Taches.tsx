@@ -85,7 +85,7 @@ function porteeParFranchise(reseau: Reseau, x: ActionSuivie, cache: Map<string, 
   return porteursDe(x.a).some((n) => ensemble.has(n))
 }
 
-function Liste({ reseau, noms, porteur, signaler, choixPorteur, autreListe, ajout }: { reseau: Reseau; noms: string[]; porteur: string; signaler: (m: string) => void; choixPorteur?: ReactNode; autreListe?: boolean; ajout?: ReactNode }) {
+function Liste({ reseau, noms, porteur, signaler, choixPorteur, autreListe, ajout, ajoutVide }: { reseau: Reseau; noms: string[]; porteur: string; signaler: (m: string) => void; choixPorteur?: ReactNode; autreListe?: boolean; ajout?: ReactNode; ajoutVide?: ReactNode }) {
   const { recharger } = useReseau()
   const ecriture = useEcritureActions(reseau)
   const [recherche, setRecherche] = useState('')
@@ -143,7 +143,9 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, autreListe, ajou
             ? <Box component="ul" aria-label="Tâches à faire" sx={{ listStyle: 'none', m: 0, p: 0, '& > li:not([role=presentation])': { px: 1 } }}>
                 {parGroupe.flatMap((g) => [<Intertitre key={g.g} titre={g.titre} nombre={g.lignes.length} />, ...g.lignes.map(ligne)])}
               </Box>
-            : <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>{q ? 'Aucune tâche ne correspond à la recherche.' : faites.length ? 'Toutes tes tâches sont faites.' : 'Aucune tâche attribuée pour le moment.'}</Typography>}
+            : q || faites.length
+              ? <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>{q ? 'Aucune tâche ne correspond à la recherche.' : 'Toutes tes tâches sont faites.'}</Typography>
+              : <EmptyState icone={<TaskAltOutlined />} titre="Aucune tâche en cours" texte="Les tâches confiées à cette liste arriveront ici." action={ajoutVide} />}
         </CarteLignes>
         {faites.length > 0 && (
           <Box>
@@ -187,7 +189,8 @@ export function PageTaches() {
       <AvecReseau>{(r) => (
         <Liste reseau={r} noms={noms} porteur={porteur} signaler={setMessage} autreListe={porteur !== moi}
           choixPorteur={choixPossible ? <ChoixPorteur reseau={r} moi={moi} valeur={porteur} directeur={!impose} onChange={changer} /> : undefined}
-          ajout={<BoutonAjouterAction barre reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} signaler={setMessage} />} />
+          ajout={<BoutonAjouterAction barre reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} signaler={setMessage} />}
+          ajoutVide={<BoutonAjouterAction plein libelle="Nouvelle tâche" reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} signaler={setMessage} />} />
       )}</AvecReseau>
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>

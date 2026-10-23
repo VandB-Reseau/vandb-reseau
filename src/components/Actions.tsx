@@ -137,15 +137,14 @@ export function ListeActions({ reseau, actions, avecMagasin, signaler, libelle, 
 // Bouton « Ajouter une tâche » et sa fenêtre, pour l'en-tête d'une section
 // porteur : proposé d'office (liste d'une personne)
 // barre : action d'une barre d'outils (bouton rond sur téléphone)
-export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false, barre = false, porteur }: { reseau: Reseau; magasins: string[]; signaler: (m: string) => void; plein?: boolean; barre?: boolean; porteur?: string }) {
+export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false, barre = false, porteur, libelle = 'Ajouter une tâche' }: { reseau: Reseau; magasins: string[]; signaler: (m: string) => void; plein?: boolean; barre?: boolean; porteur?: string; libelle?: string }) {
   const [ouvert, setOuvert] = useState(false)
   if (useEcritureActions(reseau).lectureSeule || !magasins.length) return null
-  const libelle = 'Ajouter une tâche'
   return (
     <>
       {barre
         ? <BoutonAction libelle={libelle} onClick={() => setOuvert(true)} />
-        : <Button variant={plein ? 'contained' : 'text'} startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>{libelle}</Button>}
+        : <Button variant={plein ? 'contained' : 'text'} startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48, ...(plein && { borderRadius: 999, px: 3 }) }}>{libelle}</Button>}
       {ouvert && <DialogAction reseau={reseau} magasins={magasins} action={null} porteurInitial={porteur} onFermer={(msg) => { setOuvert(false); if (msg) signaler(msg) }} />}
     </>
   )
