@@ -379,3 +379,40 @@ SELECT pg_temp.attendre('Coach : ne traite pas la proposition d''un autre magasi
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
 SELECT pg_temp.attendre('Directeur : voit toutes les propositions', (SELECT jsonb_array_length(public.propositions_pratiques())), 1);
 RESET ROLE;
+
+-- Challenge du mois (0028) : classement calculé par la base ; l'équipe voit les chiffres de ses magasins seulement,
+-- le franchisé son rang et le podium, sans chiffre
+SELECT pg_temp.attendre('Journal : 0028 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0028'), 1);
+SELECT (date_trunc('month', current_date) - interval '1 month')::date AS mois_ch \gset
+INSERT INTO public.store_finance (store_name, month, ca_cave, pm_bar) VALUES
+  ('Lille', :'mois_ch', 120, 10), ('Lille', (:'mois_ch'::date - interval '1 year')::date, 100, 10),
+  ('Nice', :'mois_ch', 110, 10), ('Nice', (:'mois_ch'::date - interval '1 year')::date, 100, 10)
+ON CONFLICT (store_name, month) DO UPDATE SET ca_cave = excluded.ca_cave, pm_bar = excluded.pm_bar;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : ne crée pas de challenge', pg_temp.refuse('SELECT public.creer_challenge(''CA'', ''ca'', ''' || :'mois_ch' || ''', ''{Lille,Nice}'', true)'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT public.creer_challenge('Challenge CA', 'ca', :'mois_ch', '{Lille,Nice}', true) AS ch \gset
+SELECT public.creer_challenge('Challenge caché', 'pm_bar', :'mois_ch', '{Lille,Nice}', false) AS ch_cache \gset
+SELECT pg_temp.attendre('Directeur : un challenge demande deux magasins', pg_temp.refuse('SELECT public.creer_challenge(''Seul'', ''ca'', ''' || :'mois_ch' || ''', ''{Lille}'', true)'), 1);
+SELECT pg_temp.attendre('Directeur : Lille premier, avec sa progression',
+  (SELECT count(*) FROM jsonb_array_elements(public.challenges_equipe()) e, jsonb_array_elements(e->'classement') k
+   WHERE (e->>'id')::bigint = :ch AND k->>'magasin' = 'Lille' AND (k->>'rang')::int = 1 AND (k->>'valeur')::numeric = 20), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000e';
+SELECT pg_temp.attendre('RR : ne lance pas un challenge hors de ses magasins', pg_temp.refuse('SELECT public.creer_challenge(''Nice'', ''ca'', ''' || :'mois_ch' || ''', ''{Nice,Lille}'', true)'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Coach : voit le rang de Nice sans son chiffre',
+  (SELECT count(*) FROM jsonb_array_elements(public.challenges_equipe()) e, jsonb_array_elements(e->'classement') k
+   WHERE (e->>'id')::bigint = :ch AND k->>'magasin' = 'Nice' AND (k->>'rang')::int = 2 AND k->'valeur' = 'null'::jsonb), 1);
+SELECT pg_temp.attendre('Coach : voit le chiffre de son magasin',
+  (SELECT count(*) FROM jsonb_array_elements(public.challenges_equipe()) e, jsonb_array_elements(e->'classement') k
+   WHERE (e->>'id')::bigint = :ch AND k->>'magasin' = 'Lille' AND k->'valeur' <> 'null'::jsonb), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Franchisé : voit son rang', (SELECT count(*) FROM jsonb_array_elements(public.challenges_franchise()) e, jsonb_array_elements(e->'mes_rangs') k
+   WHERE (e->>'id')::bigint = :ch AND k->>'magasin' = 'Lille' AND (k->>'rang')::int = 1), 1);
+SELECT pg_temp.attendre('Franchisé : aucun chiffre', (SELECT count(*) FROM jsonb_array_elements(public.challenges_franchise()) e WHERE e::text LIKE '%valeur%'), 0);
+SELECT pg_temp.attendre('Franchisé : pas de challenge fermé aux franchisés', (SELECT count(*) FROM jsonb_array_elements(public.challenges_franchise()) e WHERE (e->>'id')::bigint = :ch_cache), 0);
+SELECT pg_temp.attendre('Franchisé : ne lit pas le classement de l''équipe', pg_temp.refuse('SELECT public.challenges_equipe()'), 1);
+SELECT pg_temp.attendre('Franchisé : n''appelle pas le calcul du classement', pg_temp.refuse('SELECT count(*) FROM public.classement_challenge(' || :ch || ')'), 1);
+SELECT pg_temp.attendre('Franchisé : aucun accès direct aux challenges', pg_temp.refuse('SELECT count(*) FROM public.challenges'), 1);
+RESET ROLE;
