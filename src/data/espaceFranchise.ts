@@ -82,8 +82,8 @@ async function appelComptes(corps: Record<string, unknown>): Promise<Ligne | nul
   if (!(contexte instanceof Response)) return null // fonction injoignable : pas encore déployée
   const lu = await contexte.json().catch(() => ({})) as { erreur?: string }
   if (lu.erreur && lu.erreur in messages) throw new ErreurAcces(messages[lu.erreur])
-  if (contexte.status === 404) return null
-  throw new ErreurAcces('Enregistrement impossible pour le moment. Réessaie dans un instant.')
+  if (lu.erreur) throw new ErreurAcces('Enregistrement impossible pour le moment. Réessaie dans un instant.')
+  return null // réponse qui ne vient pas de notre fonction (absente, ou modèle de Supabase pas encore remplacé)
 }
 
 // Ouvre l'accès en créant le compte s'il n'existe pas. Mot de passe provisoire : null si le compte avait déjà le sien
