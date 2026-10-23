@@ -1,6 +1,7 @@
 // Onglet Infos réseau (Joseph, 22/10/2026) : toutes les communications et toutes les bonnes pratiques réunies,
 // avec une recherche et des filtres communs. PC : deux colonnes côte à côte ; téléphone : deux onglets.
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Snackbar from '@mui/material/Snackbar'
@@ -34,7 +35,8 @@ type Vue = 'communications' | 'pratiques'
 
 function Contenu({ reseau }: { reseau: Reseau }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
-  const [vue, setVue] = useState<Vue>('communications')
+  const [params] = useSearchParams()
+  const [vue, setVue] = useState<Vue>(params.get('vue') === 'pratiques' ? 'pratiques' : 'communications')
   const [recherche, setRecherche] = useState('')
   const [magasins, setMagasins] = useState<string[]>([])
   const [themes, setThemes] = useState<string[]>([])

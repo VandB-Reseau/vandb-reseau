@@ -251,7 +251,7 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
 export function Visites() {
   const [params] = useSearchParams()
   if (params.get('vue') === 'campagnes') return <Navigate to={`/plus/sante?${params.toString()}`} replace />
-  if (params.get('vue') === 'pratiques') return <Navigate to="/echanges/pratiques" replace />
+  if (params.get('vue') === 'pratiques') return <Navigate to="/infos?vue=pratiques" replace />
   return <ContenuVisites />
 }
 

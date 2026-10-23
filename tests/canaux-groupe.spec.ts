@@ -1,9 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
-import { seConnecter, textesTropPetits, type CommunicationSimulee, type Ecriture } from './supabase-simule'
+import { seConnecter, type CommunicationSimulee } from './supabase-simule'
 
-// Canaux « Réseau V and B » et « Bonnes pratiques » présentés comme un groupe (Joseph, 22/10/2026) :
-// les publications défilent comme des messages, la plus récente en bas ; seuls ceux qui publient ont le bouton,
-// tout le monde aime et commente
+// Canal « Réseau V and B » du franchisé présenté comme un groupe (Joseph, 22/10/2026) : les publications défilent
+// comme des messages, la plus récente en bas ; le franchisé aime et commente
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -26,27 +25,16 @@ const pratiques = [
 ]
 const publications = (page: Page, canal: string) => page.getByRole('list', { name: `Publications de ${canal}` }).getByRole('article')
 
-test('le canal Réseau V and B défile comme un groupe, le Directeur publie en bas', async ({ page, isMobile }, info) => {
-  const ecritures: Ecriture[] = []
-  await seConnecter(page, { communications: communications(), ecritures })
+// Pour l'équipe, communications et bonnes pratiques ne sont plus que dans Infos réseau (sprint 22, S1)
+test('pour l’équipe, les anciens canaux mènent à Infos réseau', async ({ page }) => {
+  await seConnecter(page, { communications: communications(), config: { bonnes_pratiques: pratiques } })
   await page.goto('./#/echanges/reseau')
-  await expect(page.getByRole('heading', { name: 'Réseau V and B' })).toBeVisible()
-  // La plus ancienne en haut, la plus récente en bas, à l'écran
-  await expect(publications(page, 'Réseau V and B')).toHaveText([/Bilan de l’été/, /Coffrets de Noël/])
-  await expect(page.getByRole('article', { name: 'Coffrets de Noël' })).toBeInViewport()
-  const publier = page.getByRole('button', { name: 'Publier' })
-  await expect(publier).toBeInViewport()
-  const bas = (await publier.boundingBox())!
-  expect(bas.y + bas.height).toBeGreaterThan(page.viewportSize()!.height - 120)
-  expect(bas.height).toBeGreaterThanOrEqual(48)
-  if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeHidden()
-  else await expect(page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /^Réseau V and B/ })).toHaveClass(/Mui-selected/)
-  expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-canal-reseau.png` })
-  await page.getByRole('article', { name: 'Coffrets de Noël' }).getByRole('button', { name: /^J’aime/ }).click()
-  await expect.poll(() => ecritures.some((e) => e.table === 'rpc/basculer_pouce_communication')).toBe(true)
-  await publier.click()
-  await expect(page.getByRole('dialog', { name: 'Nouvelle communication' })).toBeVisible()
+  await expect(page).toHaveURL(/#\/infos$/)
+  await expect(page.getByRole('article', { name: 'Coffrets de Noël' })).toBeVisible()
+  await page.goto('./#/echanges/pratiques')
+  await expect(page).toHaveURL(/#\/infos\?vue=pratiques$/)
+  await page.goto('./#/echanges')
+  await expect(page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /^(Réseau V and B|Bonnes pratiques)/ })).toHaveCount(0)
 })
 
 test('un franchisé lit le canal sans pouvoir publier, mais aime et commente', async ({ page }) => {
@@ -58,16 +46,4 @@ test('un franchisé lit le canal sans pouvoir publier, mais aime et commente', a
   await expect(carte.getByRole('button', { name: /^J’aime/ })).toBeEnabled()
   await carte.getByRole('button', { name: /^Commenter/ }).click()
   await expect(carte.getByRole('textbox', { name: 'Commentaire sur Coffrets de Noël' })).toBeVisible()
-})
-
-test('le canal Bonnes pratiques défile comme un groupe, avec l’ajout en bas', async ({ page }, info) => {
-  await seConnecter(page, { config: { bonnes_pratiques: pratiques } })
-  await page.goto('./#/echanges/pratiques')
-  await expect(page.getByRole('heading', { name: 'Bonnes pratiques' })).toBeVisible()
-  await expect(publications(page, 'Bonnes pratiques')).toHaveText([/Accord mets et vins/, /Dégustation du samedi/])
-  const ajouter = page.getByRole('button', { name: 'Ajouter une bonne pratique' })
-  await expect(ajouter).toBeInViewport()
-  await page.screenshot({ path: `captures/${info.project.name}-canal-pratiques.png` })
-  await ajouter.click()
-  await expect(page.getByRole('dialog', { name: 'Nouvelle bonne pratique' })).toBeVisible()
 })

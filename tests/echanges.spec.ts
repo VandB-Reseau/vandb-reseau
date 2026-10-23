@@ -30,7 +30,8 @@ test('onglet Messages : groupe du magasin à deux fils, réponse du Coach', asyn
   await page.goto('./#/echanges')
   await expect(page.getByRole('heading', { name: 'Messages', level: 1 })).toBeVisible()
   const liste = page.getByRole('list', { name: 'Conversations' })
-  await expect(liste.getByRole('button', { name: 'Réseau V and B' })).toBeVisible()
+  // Communications et bonnes pratiques sont dans Infos réseau (sprint 22, S1)
+  await expect(liste.getByRole('button', { name: /^Réseau V and B/ })).toHaveCount(0)
   // Téléphone : la liste d'abord ; PC : la conversation la plus récente s'ouvre à côté
   if (info.project.name === 'telephone') await liste.getByRole('button', { name: /^Annecy Test : 2 messages non lus/ }).click()
   await expect(page).toHaveURL(/#\/echanges\/magasin\/Annecy%20Test/)
@@ -147,7 +148,7 @@ test('anciennes adresses redirigées vers Messages et Tâches', async ({ page })
   await page.goto('./#/messages')
   await expect(page).toHaveURL(/#\/echanges/)
   await page.goto('./#/communications')
-  await expect(page).toHaveURL(/#\/echanges\/reseau/)
+  await expect(page).toHaveURL(/#\/infos$/)
   await page.goto('./#/actions')
   await expect(page).toHaveURL(/#\/taches$/)
   await page.goto('./#/echanges?vue=taches')
@@ -211,7 +212,7 @@ test('quitter un groupe : il disparaît de la liste', async ({ page }) => {
   await expect(page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /Coachs du Nord/ })).toHaveCount(0)
 })
 
-test('épingler une conversation : elle passe en tête, sous les canaux du réseau, et y reste', async ({ page, isMobile }) => {
+test('épingler une conversation : elle passe en tête et y reste', async ({ page, isMobile }) => {
   await seConnecter(page, { messagerie: { messages: [
     msg(1, 'Annecy Test', 'Paul MULTI', 'franchise', 'La vitrine est installée.', {}, 10),
     msg(2, 'Rennes Test', 'Paul MULTI', 'franchise', 'Stock reçu.', {}, 60),
@@ -223,9 +224,8 @@ test('épingler une conversation : elle passe en tête, sous les canaux du rése
   await page.goto(isMobile ? './#/echanges' : './#/echanges/magasin/Annecy%20Test')
   const liste = page.getByRole('list', { name: 'Conversations' })
   const lignes = liste.getByRole('button')
-  await expect(lignes.nth(0)).toHaveAccessibleName(/^Réseau V and B/)
-  await expect(lignes.nth(2)).toHaveAccessibleName(/^Rennes Test/)
-  await expect(lignes.nth(2).getByLabel('Épinglée')).toBeVisible()
+  await expect(lignes.nth(0)).toHaveAccessibleName(/^Rennes Test/)
+  await expect(lignes.nth(0).getByLabel('Épinglée')).toBeVisible()
   await page.reload()
-  await expect(liste.getByRole('button').nth(2)).toHaveAccessibleName(/^Rennes Test/)
+  await expect(liste.getByRole('button').nth(0)).toHaveAccessibleName(/^Rennes Test/)
 })

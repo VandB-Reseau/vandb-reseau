@@ -510,6 +510,16 @@ export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page
   await page.getByRole('dialog').getByRole('button', { name: nomComplet }).click()
 }
 
+// Infos réseau (seul endroit des communications et bonnes pratiques pour l'équipe, sprint 22 S1) ;
+// sur téléphone, la partie voulue est un onglet
+export async function ouvrirInfos(page: Page, partie: 'Communications' | 'Bonnes pratiques') {
+  await page.goto('./#/infos')
+  await expect(page.getByRole('region', { name: /^(Communications|Bonnes pratiques)$/ }).first()).toBeVisible()
+  const onglet = page.getByRole('tab', { name: partie })
+  if (await onglet.isVisible()) await onglet.click()
+  return page.getByRole('region', { name: partie })
+}
+
 // Liste les textes visibles plus petits que min px
 export async function textesTropPetits(page: Page, min = 12): Promise<string[]> {
   return page.evaluate((min) => {

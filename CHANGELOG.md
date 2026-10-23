@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Infos réseau, seul endroit des communications et bonnes pratiques pour l'équipe (sprint 22, S1) : les canaux
+  « Réseau V and B » et « Bonnes pratiques » quittent Messages, qui ne garde que les conversations ; leurs anciennes
+  adresses mènent à Infos réseau, comme les liens du fil vers une bonne pratique. Un seul compteur de nouveautés,
+  celui de l'icône Infos réseau. Le franchisé garde le canal Réseau dans ses Messages et son onglet Bonnes pratiques.
+  Sans migration.
 - Ouverture plus rapide (sprint 22, F1) : chaque grand écran (Magasins, fiches, Visites, Agenda, Santé du parc, Messages,
   Tâches, Infos réseau, Équipe, espace franchisé) a son propre fichier, chargé à la demande puis préchargé en tâche de
   fond ; carte, ligne et contact des fiches dans `src/components/Section.tsx`, calculs de l'agenda dans

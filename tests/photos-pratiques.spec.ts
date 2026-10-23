@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { PNG, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { PNG, seConnecter, textesTropPetits, type Ecriture, ouvrirInfos } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -46,18 +46,15 @@ test('ajouter des photos à une visite terrain', async ({ page, isMobile }, info
 
 test('les bonnes pratiques : liste, filtre par thème, fiche magasin', async ({ page, isMobile }, info) => {
   await seConnecter(page, { config: { bonnes_pratiques: pratiques } })
-  await page.goto('./#/echanges/pratiques')
-  await expect(page.getByRole('heading', { name: 'Bonnes pratiques' })).toBeVisible()
-  await expect(page.getByRole('list', { name: 'Publications de Bonnes pratiques' }).getByRole('article')).toHaveCount(2)
+  const region = await ouvrirInfos(page, 'Bonnes pratiques')
+  await expect(region.getByRole('article')).toHaveCount(2)
   const carte = page.getByRole('article', { name: 'Dégustation du samedi' })
   await expect(carte.getByText('Trois vins ouverts chaque samedi après-midi.')).toBeVisible()
   await expect(carte.getByRole('img', { name: 'Photo 1' })).toBeVisible()
   await expect(carte.getByRole('link', { name: 'Nantes Test' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-bonnes-pratiques.png`, fullPage: !isMobile })
-  // Le filtre par thème est dans Infos réseau
-  await page.goto('./#/infos')
-  if (isMobile) await page.getByRole('tab', { name: 'Bonnes pratiques' }).click()
+  // Le filtre par thème
   if (isMobile) await page.getByRole('button', { name: /^Filtres/ }).click()
   await page.getByRole('button', { name: 'Filtre Thème' }).click()
   await page.getByRole('menuitem', { name: 'Fidélité' }).click()
@@ -100,7 +97,7 @@ test('ajouter une bonne pratique avec une photo et un magasin qui la reprend', a
 test('une bonne pratique avec une photo d’en-tête, affichée en grand au-dessus du titre', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, config: { bonnes_pratiques: pratiques } })
-  await page.goto('./#/echanges/pratiques')
+  await ouvrirInfos(page, 'Bonnes pratiques')
   await page.getByRole('button', { name: 'Modifier la bonne pratique Carte fidélité proposée à chaque passage' }).click()
   const d = page.getByRole('dialog', { name: 'Modifier la bonne pratique' })
   await d.getByLabel('Photo d’en-tête').setInputFiles(photo)
@@ -118,7 +115,7 @@ test('une bonne pratique avec une photo d’en-tête, affichée en grand au-dess
 test('la photo d’en-tête n’est pas répétée dans les vignettes', async ({ page }, info) => {
   const avecEntete = [{ ...pratiques[0], photos: [{ chemin: 'pratiques/entete.jpg', taille: 1 }, ...pratiques[0].photos], entete: 'pratiques/entete.jpg' }, pratiques[1]]
   await seConnecter(page, { config: { bonnes_pratiques: avecEntete } })
-  await page.goto('./#/echanges/pratiques')
+  await ouvrirInfos(page, 'Bonnes pratiques')
   const carte = page.getByRole('article', { name: 'Dégustation du samedi' })
   await expect(carte.getByRole('img', { name: 'Photo d’en-tête de Dégustation du samedi' })).toBeVisible()
   await expect(carte.getByRole('button', { name: /^Agrandir la photo/ })).toHaveCount(1)

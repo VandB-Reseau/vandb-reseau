@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture, ouvrirInfos } from './supabase-simule'
 
 // « Vu par » des bonnes pratiques (Joseph, 22/10/2026) : comme pour les communications, le Directeur et les
 // Responsables Régionaux voient quels franchisés ont vu chaque pratique ; un franchisé qui les affiche les a vues
@@ -20,7 +20,7 @@ const pratiques = [
 
 test('le Directeur voit quels franchisés ont vu une bonne pratique', async ({ page }, info) => {
   await seConnecter(page, { config: { bonnes_pratiques: pratiques }, lecturesPratiques: { bp_1: { lus: ['Paul MULTI'], non_lus: ['Nina NICE', 'Léa SUD'] } } })
-  await page.goto('./#/echanges/pratiques')
+  await ouvrirInfos(page, 'Bonnes pratiques')
   const carte = page.getByRole('article', { name: 'Dégustation du samedi' })
   const ligne = carte.getByRole('button', { name: /^Vue par 1 franchisé sur 3/ })
   await expect(ligne).toBeVisible()
@@ -34,7 +34,7 @@ test('le Directeur voit quels franchisés ont vu une bonne pratique', async ({ p
 
 test('un Coach ne voit pas qui a vu les bonnes pratiques', async ({ page }) => {
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Noé MODELE' }, config: { bonnes_pratiques: pratiques }, lecturesPratiques: { bp_1: { lus: ['Paul MULTI'], non_lus: [] } } })
-  await page.goto('./#/echanges/pratiques')
+  await ouvrirInfos(page, 'Bonnes pratiques')
   await expect(page.getByRole('article', { name: 'Dégustation du samedi' })).toBeVisible()
   await expect(page.getByRole('button', { name: /^Vue par/ })).toHaveCount(0)
 })
@@ -50,7 +50,7 @@ test('un franchisé qui affiche les bonnes pratiques les a vues', async ({ page 
 
 test('tant que le script n’est pas passé, rien ne change à l’écran', async ({ page }) => {
   await seConnecter(page, { config: { bonnes_pratiques: pratiques }, lecturesPratiques: null })
-  await page.goto('./#/echanges/pratiques')
+  await ouvrirInfos(page, 'Bonnes pratiques')
   await expect(page.getByRole('article', { name: 'Dégustation du samedi' })).toBeVisible()
   await expect(page.getByRole('button', { name: /^Vue par/ })).toHaveCount(0)
 })
