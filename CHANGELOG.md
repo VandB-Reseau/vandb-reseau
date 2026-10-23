@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Titres de section en cartouche noir partout (Joseph, 23/10/2026) : cartes des fiches magasin, Coach, RR et franchisé
+  (vues aussi par le franchisé), Équipe, Évolution du parc, Données, plan d'affectation, charge des Coachs, imports,
+  Messages, réglages du Directeur. Carte : la bulle des magasins grandit avec le zoom. Visages de la charte au choix
+  dans la fiche de chaque personne, à la place de ses initiales (initiales tant que rien n'est choisi ; pas encore
+  visibles dans l'espace franchisé).
 - Carte des magasins : bulles deux fois plus petites, à la taille des anciens points, pour revoir la carte sous un réseau
   de 300 magasins (Joseph, 23/10/2026).
 - Blason de ville : une figure au centre, comme dans la charte (voilier, hermine, sapin, sommet, château, beffroi, lavande,

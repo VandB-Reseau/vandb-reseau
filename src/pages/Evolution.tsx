@@ -14,7 +14,7 @@ import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import CalendarTodayOutlined from '@mui/icons-material/CalendarTodayOutlined'
-import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, useAffichage } from '../components/Social'
+import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, useAffichage, cartouche } from '../components/Social'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { lienFiche } from '../lib/format'
@@ -49,7 +49,7 @@ function Contenu({ reseau }: { reseau: Reseau }) {
       <Alert severity="info" sx={{ mb: 3 }}>Les fermetures ne sont pas encore enregistrées : seules les ouvertures sont comptées.{sansDate ? ` ${sansDate} magasin${sansDate > 1 ? 's' : ''} sans date d’ouverture ne ${sansDate > 1 ? 'sont' : 'est'} pas compté${sansDate > 1 ? 's' : ''}.` : ''}</Alert>
       <Card sx={{ mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
-          <Typography variant="h3" component="h2" sx={{ mb: 2 }}>Ouvertures par année</Typography>
+          <Typography component="h2" sx={[cartouche, { mb: 2 }]}>Ouvertures par année</Typography>
           <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: { xs: 1, md: 2 }, height: 220 }} role="img" aria-label={`Ouvertures : ${recentes.map((x) => `${x.a} ${x.ouvertures.length}`).join(', ')}`}>
             {recentes.map((x) => (
               <Box key={x.a} sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>

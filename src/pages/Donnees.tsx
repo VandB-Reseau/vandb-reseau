@@ -23,6 +23,7 @@ import {
   type Analyse, type Referentiel,
 } from '../data/referentiels'
 import { dateCourte } from '../lib/format'
+import { cartouche } from '../components/Social'
 
 // Sans accents : certains navigateurs remplacent sinon le nom du fichier téléchargé par « download »
 const nomFichier = (libelle: string, jour: string, ext: string) => `V and B - ${libelle} - ${jour}.${ext}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -49,7 +50,7 @@ function Sauvegarde({ reseau, signaler }: { reseau: Reseau; signaler: (m: string
   return (
     <Card sx={{ mb: 3 }}>
       <CardContent sx={{ p: 3 }}>
-        <Typography variant="h3" component="h2">Sauvegarde</Typography>
+        <Typography component="h2" sx={cartouche}>Sauvegarde</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           {reseau.derniereSauvegarde ? `Dernière sauvegarde complète : ${dateCourte(reseau.derniereSauvegarde)}` : 'Aucune sauvegarde complète téléchargée'}
         </Typography>
@@ -201,7 +202,7 @@ export function Donnees() {
             <RetourParametres />
             <PageHeader titre="Import et export" />
             <Sauvegarde reseau={reseau} signaler={setMessage} />
-            <Typography variant="h3" component="h2" sx={{ mb: 2 }}>Référentiels</Typography>
+            <Typography component="h2" sx={[cartouche, { mb: 2 }]}>Référentiels</Typography>
             <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' } }}>
               {liste.map((r) => <CarteReferentiel key={r.id} reseau={reseau} r={r} importer={() => setImporter(r.id)} signaler={setMessage} />)}
             </Box>

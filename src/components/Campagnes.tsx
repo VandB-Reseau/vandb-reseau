@@ -1,5 +1,5 @@
 import { useAuth } from '../auth/AuthContext'
-import { CarteLignes, Initiales, LigneCompacte, TitreSection } from './Social'
+import { CarteLignes, Initiales, LigneCompacte, TitreSection, cartouche } from './Social'
 import { useDroits } from '../auth/Droits'
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
@@ -197,7 +197,7 @@ export function VueCampagnes({ reseau }: { reseau: Reseau }) {
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>{nouvelle}</Box>
             {(['encours', 'avenir', 'terminee'] as Phase[]).map((ph) => parPhase(ph).length > 0 && (
               <Box key={ph} component="section" aria-label={libellesPhase[ph]} sx={{ mb: 3 }}>
-                <Typography variant="overline" component="h2" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 600 }}>{libellesPhase[ph]}</Typography>
+                <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>{libellesPhase[ph]}</Typography>
                 <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr', xl: 'repeat(3, 1fr)' } }}>
                   {parPhase(ph).map((c) => <CarteCampagne key={c.id} reseau={reseau} c={c} ouvrir={() => ouvrir(c.id)} />)}
                 </Box>

@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react'
-import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, useAffichage } from '../components/Social'
+import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, useAffichage, cartouche } from '../components/Social'
 import { Link as RouterLink } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -208,7 +208,7 @@ export function VueCharge({ reseau, versRepartition }: { reseau: Reseau; versRep
       {simulation.size > 0 && (
         <Card component="section" aria-label="Simulation" sx={{ mb: 2, borderColor: 'primary.main' }}>
           <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-            <Typography variant="h3" component="h2" sx={{ mb: 1 }}>Simulation : {simulation.size} magasin{simulation.size > 1 ? 's changent' : ' change'} de Coach</Typography>
+            <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>Simulation : {simulation.size} magasin{simulation.size > 1 ? 's changent' : ' change'} de Coach</Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
               {[...simulation].map(([nom, vers]) => (
                 <Chip key={nom} label={`${nom} : ${coachA(calcul.magasin.get(nom)!, jour) || 'aucun Coach'} → ${vers}`} onDelete={() => simuler(nom, '')} sx={{ minHeight: 40 }} />

@@ -21,6 +21,7 @@ import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
 import type { Magasin, Reseau } from '../data/modele'
 import { dateCourte, lienFranchise, telLien } from '../lib/format'
+import { cartouche } from './Social'
 
 const periode = (m: Mandat) => (m.debut && m.fin ? `du ${dateCourte(m.debut)} au ${dateCourte(m.fin)}` : m.debut ? `depuis le ${dateCourte(m.debut)}` : `jusqu’au ${dateCourte(m.fin)}`)
 
@@ -62,7 +63,7 @@ export function ListeAssocies({ reseau, m, signaler }: { reseau: Reseau; m: Maga
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-        <Typography variant="h4" component="h3" sx={{ flex: 1 }}>{libelleAssocies(m)}</Typography>
+        <Typography component="h3" sx={[cartouche, { mr: 'auto' }]}>{libelleAssocies(m)}</Typography>
         {referentiels && <Button startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }} aria-label="Ajouter un associé">Ajouter</Button>}
       </Box>
       {!m.franchise && <Box sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider' }}><Typography variant="body1" sx={{ fontWeight: 500 }}>V and B</Typography></Box>}

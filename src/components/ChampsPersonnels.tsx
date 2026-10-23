@@ -1,9 +1,14 @@
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
+import { initialesDe } from './Social'
+import { visages } from './Visages'
 import { codePostalValide, departementDepuisCP, estFrance, libelleDepartement, type FichePersonnelle } from '../data/personnes'
 
+const nomAffiche = (f: FichePersonnelle) => `${f.prenom} ${f.nom}`.trim()
 const PAYS = ['France', 'Belgique', 'Luxembourg', 'Suisse', 'Espagne', 'Italie', 'Allemagne', 'Monaco', 'Andorre']
 export const emailValide = (e: string) => !e.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())
 
@@ -44,6 +49,14 @@ export function ChampsPersonnels({ f, onChange, doublon, aideNom, libelleArrivee
           error={!emailValide(f.email)} helperText={emailValide(f.email) ? ' ' : 'Adresse email incomplète.'} />
         <TextField label="Téléphone" type="tel" value={f.telephone} onChange={(e) => maj({ telephone: e.target.value })} />
       </Box>
+      <Typography variant="subtitle2" component="h3" id="choix-visage" sx={{ mt: 2.5, mb: 1 }}>Visage</Typography>
+      <ToggleButtonGroup exclusive value={f.visage || ''} onChange={(_e, v) => v !== null && maj({ visage: v })} aria-labelledby="choix-visage"
+        sx={{ flexWrap: 'wrap', gap: 1, '& .MuiToggleButton-root': { width: 56, height: 56, p: 0.5, borderRadius: '50% !important', border: '2px solid', borderColor: 'divider', bgcolor: '#ffffff', '&.Mui-selected': { borderColor: 'text.primary', bgcolor: '#ffffff' } } }}>
+        <ToggleButton value="" aria-label="Initiales" sx={{ fontWeight: 700, color: 'text.primary' }}>{initialesDe(nomAffiche(f)) || '—'}</ToggleButton>
+        {Object.entries(visages).map(([id, src], i) => (
+          <ToggleButton key={id} value={id} aria-label={`Visage ${i + 1}`}><Box component="img" src={src} alt="" sx={{ width: '100%', height: '100%', objectFit: 'contain' }} /></ToggleButton>
+        ))}
+      </ToggleButtonGroup>
     </Box>
   )
 }

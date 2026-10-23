@@ -11,7 +11,7 @@ import Typography from '@mui/material/Typography'
 import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
-import { Initiales } from './Social'
+import { Initiales, cartouche } from './Social'
 import { telLien } from '../lib/format'
 import type { Personne } from '../data/modele'
 
@@ -20,7 +20,7 @@ export function Section({ titre, children, action }: { titre: string; children: 
     <Card>
       <CardContent sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h3" component="h2" sx={{ flex: 1 }}>{titre}</Typography>
+          <Typography component="h2" sx={[cartouche, { mr: 'auto' }]}>{titre}</Typography>
           {action}
         </Box>
         {children}

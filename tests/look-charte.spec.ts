@@ -123,6 +123,18 @@ test('carte : un repère en bulle vide par magasin placé', async ({ page }, inf
   await page.screenshot({ path: `captures/${info.project.name}-look-carte.png` })
 })
 
+test('carte : la bulle grandit quand on zoome, pour garder sa place face à la carte', async ({ page }) => {
+  await seConnecter(page)
+  await page.goto('./#/magasins?vue=carte')
+  const largeur = () => page.locator('.picto-magasin svg').first().evaluate((e) => e.getBoundingClientRect().width)
+  await expect(page.locator('.picto-magasin').first()).toBeAttached()
+  const avant = await largeur()
+  await page.locator('.leaflet-control-zoom-in').click()
+  await page.waitForTimeout(400)
+  await page.locator('.leaflet-control-zoom-in').click()
+  await expect.poll(largeur).toBeGreaterThan(avant * 1.4)
+})
+
 test('le compte rendu suit la mise en page « lettre » de la charte', async ({ page }, info) => {
   await seConnecter(page)
   await page.goto('./#/visites/compte-rendu/1')
@@ -132,3 +144,26 @@ test('le compte rendu suit la mise en page « lettre » de la charte', async ({ 
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-look-compte-rendu.png`, fullPage: true })
 })
+
+test('un visage de la charte se choisit dans la fiche d’une personne et remplace ses initiales', async ({ page }, info) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, persister: true })
+  await page.goto('./#/equipe/rr/rr2')
+  await page.getByRole('button', { name: 'Modifier', exact: true }).click()
+  const d = page.getByRole('dialog', { name: 'Modifier Sam SUD' })
+  const choix = d.getByRole('group', { name: 'Visage' })
+  await expect(choix.getByRole('button', { name: 'Initiales' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(choix.getByRole('button')).toHaveCount(7)
+  for (const b of await choix.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  await choix.getByRole('button', { name: 'Visage 3' }).click()
+  await page.screenshot({ path: `captures/${info.project.name}-look-choix-visage.png` })
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText('Sam SUD est mis à jour.')).toBeVisible()
+  const fiches = ecritures.filter((e) => e.table === 'app_config' && (e.corps as { key?: string }).key === 'fiches_personnes').pop()!
+  expect(JSON.parse((fiches.corps as { value: string }).value)['rr:rr2']).toMatchObject({ visage: 'v3' })
+  // Le visage remplace les initiales partout où la personne apparaît
+  await page.goto('./#/parametres/collaborateurs')
+  await expect(page.getByRole('link', { name: 'Sam SUD' }).locator('[data-visage="v3"]')).toBeVisible()
+  await page.screenshot({ path: `captures/${info.project.name}-look-visage-equipe.png` })
+})
+

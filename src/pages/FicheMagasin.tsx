@@ -67,6 +67,7 @@ import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../c
 import { Contact, Ligne, Section } from '../components/Section'
 import { SectionReunionsMagasin } from '../components/Reunions'
 import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, estVisite, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
+import { cartouche } from '../components/Social'
 
 // Plus de fil, redondant avec les onglets (Joseph, 22/10/2026) ; le journal et les bonnes pratiques ont chacun leur onglet
 // (Joseph, 22/10/2026), la santé va avec les chiffres, les campagnes avec les tâches. Plus d'onglet Messages (sprint 22,
@@ -271,7 +272,7 @@ function SectionSante({ reseau, m, modifier }: { reseau: Reseau; m: Magasin; mod
         return (
           <Box key={axe} sx={{ mb: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-              <Typography variant="h4" component="h3" sx={{ flex: 1 }}>{libelleAxe(axe, !m.franchise)}</Typography>
+              <Typography component="h3" sx={[cartouche, { mr: 'auto' }]}>{libelleAxe(axe, !m.franchise)}</Typography>
               {niveau && <Chip size="small" label={libelleNote[niveau]} color={couleurNoteChip[niveau]} sx={{ fontSize: 12 }} />}
             </Box>
             {criteresAxe(axe).map((k) => {
@@ -293,7 +294,7 @@ function EvolutionCases({ points }: { points: { date: string; caseId: string }[]
   if (changements.length < 2) return null
   return (
     <Box sx={{ mt: 2 }}>
-      <Typography variant="h4" component="h3" sx={{ mb: 1 }}>Évolution</Typography>
+      <Box><Typography component="h3" sx={[cartouche, { mb: 1 }]}>Évolution</Typography></Box>
       {[...changements].reverse().map((p) => (
         <Box key={p.date + p.caseId} sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 0.75 }}>
           <Typography variant="body2" color="text.secondary" sx={{ width: 110, flexShrink: 0 }}>{dateCourte(p.date)}</Typography>

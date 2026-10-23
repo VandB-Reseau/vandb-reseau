@@ -24,7 +24,7 @@ import { VuePersonnes } from './VuePersonnes'
 import { VuePortefeuilles } from '../components/Portefeuille'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import { PageHeader } from '../components/PageHeader'
-import { CarteLignes, Initiales, LigneCompacte } from '../components/Social'
+import { CarteLignes, Initiales, LigneCompacte, cartouche } from '../components/Social'
 import { Onglets } from '../components/Onglets'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
@@ -189,7 +189,7 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
             <AccountTreeOutlined color="action" />
             <Box sx={{ flex: 1, minWidth: 200 }}>
-              <Typography variant="h3" component="h2">Organigramme</Typography>
+              <Typography component="h2" sx={cartouche}>Organigramme</Typography>
             </Box>
             <ToggleButtonGroup exclusive size="small" value={forme} onChange={(_e, v) => v && changerForme(v)} aria-label="Forme de l’organigramme">
               <ToggleButton value="pyramide" sx={{ minHeight: 48, px: 2, gap: 1 }}><AccountTreeOutlined fontSize="small" />Pyramide</ToggleButton>
@@ -202,7 +202,7 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
       {forme === 'liste' && <Box sx={{ mt: 2 }}><ListeEquipe reseau={reseau} groupes={groupes} /></Box>}
       {reseau.techniciens.length > 0 && (
         <Box sx={{ mt: 3 }}>
-          <Typography variant="h3" component="h2" sx={{ mb: 0.5 }}>Techniciens et formateurs</Typography>
+          <Typography component="h2" sx={[cartouche, { mb: 1 }]}>Techniciens et formateurs</Typography>
           <Card>
             {reseau.techniciens.map((t) => (
               <Box key={t.nom} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, minHeight: 56, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
@@ -228,7 +228,7 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
   const Bloc = ({ titre, aide, children }: { titre: string; aide: string; children: ReactNode }) => (
     <Card sx={{ mb: 2 }}>
       <CardContent sx={{ p: 3 }}>
-        <Typography variant="h3" component="h2">{titre}</Typography>
+        <Box><Typography component="h2" sx={[cartouche, { mb: 0.5 }]}>{titre}</Typography></Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{aide}</Typography>
         {children}
       </CardContent>
