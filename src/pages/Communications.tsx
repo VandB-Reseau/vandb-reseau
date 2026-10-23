@@ -33,6 +33,7 @@ import {
   aLaUneDabord, basculerPouce, chargerCommunications, chargerLectures, commenter, communicationsConnues, mettreALaUne, noterLues, messageCommunication, publierCommunication, retenirCommunications, supprimerCommentaire, supprimerCommunication,
   type Communication, type Communications, type Lecture,
 } from '../data/communications'
+import { notifier } from '../lib/notifications'
 
 const aujourdhui = () => new Date().toLocaleDateString('sv-SE')
 const roles: Record<string, string> = { directeur: 'Directeur de réseau', rr: 'Responsable Régional', coach: 'Coach', franchise: 'Franchisé' }
@@ -79,7 +80,11 @@ function DialogCommunication({ edition: { c, brouillon, erreur }, auteur, publie
     publier(b, async () => {
       const r = await publierCommunication(c?.id ?? null, b.titre, brut, toutes, b.html, b.entete) as { id?: number } | null
       const id = c?.id ?? r?.id
-      if (id && une !== (c?.aLaUne ?? '')) await mettreALaUne(id, une || null)
+      if (id && une !== (c?.aLaUne ?? '')) {
+        await mettreALaUne(id, une || null)
+        // Première mise à la une : les franchisés visés sont prévenus sur leur téléphone
+        if (une && !c?.aLaUne) notifier('une', [id])
+      }
     })
     return ''
   }

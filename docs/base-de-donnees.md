@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 22/10/2026 (migration `0023`).
+Mis à jour le 23/10/2026 (migration `0024`).
 
 ## Principes
 
@@ -122,6 +122,10 @@ Supabase « notifier » (`supabase/functions/notifier/index.ts`, clé `service_r
 appelle `notifications_a_envoyer` : destinataire d'un message privé de moins de 10 minutes écrit par l'appelant ;
 groupe d'un magasin (0018) : franchisés (sauf « Équipe seule ») et Coach du magasin, plus le RR ou le Directeur s'ils sont cités ou ont déjà écrit dans le fil ; groupe libre : tous ses membres ;
 franchisés du magasin pour un compte rendu de visite des 7 derniers jours saisi par l'équipe (pas les appels).
+`notifications_tache` (0024) : porteurs d'une tâche non faite, créée aujourd'hui ou hier, par un auteur qui voit le
+magasin ; chaque porteur doit voir le magasin (une tâche « Équipe seule » ne part jamais vers un franchisé).
+`notifications_une` (0024) : franchisés des magasins visés par une communication encore à la une, quand l'appelant est
+le Directeur ou le RR qui l'a écrite.
 
 ## Clés d'`app_config`
 
@@ -165,7 +169,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | « Vu par » des bonnes pratiques | `lire_pratiques` (franchisé, pratiques existantes seulement), `lectures_pratiques` (Directeur, Responsable Régional pour les franchisés de ses magasins), `pratiques_existantes` (interne) | 0023 |
 | Campagnes régionales | `campagne_region_permise` | 0005 |
 | Fichiers | `photo_visible`, `piece_visible` (fichiers d'une tâche de l'équipe seule refusés au franchisé, 0019) | 0004, 0009, 0019 |
-| Notifications | `abonner_appareil`, `desabonner_appareil` (compte connecté) ; `comptes_de_cle`, `notifications_a_envoyer` (fonction « notifier » seule) | 0016 |
+| Notifications | `abonner_appareil`, `desabonner_appareil` (compte connecté) ; `comptes_de_cle`, `notifications_a_envoyer`, `notifications_tache`, `notifications_une` (fonction « notifier » seule) | 0016, 0024 |
 | Outil | `json_sur` (lit un texte JSON sans jamais échouer) | 0004 |
 
 ## Fichiers (Supabase Storage)
