@@ -60,6 +60,16 @@ qui rouvrait tout), puis une fois dans l'ordre inverse, et contrôle les règles
 des comptes fictifs (`tests/regles_acces.sql`) : Directeur, Coach, franchisé, compte sans rôle. Lancé aussi
 par GitHub Actions avant chaque publication.
 
+## Fonctions Supabase (Edge Functions)
+
+| Fonction | Rôle | Déployer |
+| --- | --- | --- |
+| `notifier` | Notifications sur le téléphone | Après 0016 ; redéployer après 0024 |
+| `comptes` | Comptes des franchisés créés, réinitialisés et supprimés depuis l'app (Directeur seul) | Sans migration (23/10/2026) |
+
+Supabase > Edge Functions > Deploy a new function > Via Editor : nommer la fonction, coller `supabase/functions/<nom>/index.ts`,
+Deploy. Laisser « Verify JWT » activé. La clé `service_role` est fournie par Supabase à la fonction, jamais à l'app.
+
 ## Passer une migration en ligne
 
 Ne jamais repasser les anciens scripts hors dépôt (« Setup COMPLET », « verrouillage ») : ils remplacent toutes

@@ -11,7 +11,7 @@ import { normaliserPratiques, type BonnePratique } from './bonnesPratiques'
 import { normaliserCampagnes, type Campagne, type Campagnes } from './campagnes'
 import { associesEnPlace, normaliserAssocies, type Associe, type Associes } from './associes'
 import { normaliserActionsLibres } from './actions'
-import { couperAccesDe, renommerAcces } from './espaceFranchise'
+import { renommerAcces, supprimerComptesDe } from './espaceFranchise'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 import { configDepuisSuivi, eclater, assembler, rubriques, type CleSuivie } from './suivi'
 
@@ -537,7 +537,7 @@ export async function supprimerFranchise(nom: string, magasins: string[], reseau
   }
   await modifierAssocies((a) => { for (const k of Object.keys(a)) a[k] = a[k].filter((x) => x.nom !== nom) })
   await supprimerFichePersonne({ type: 'franchise', cle: nom })
-  await couperAccesDe(nom).catch(() => undefined)
+  await supprimerComptesDe(nom).catch(() => undefined)
 }
 
 // ── Magasins ──

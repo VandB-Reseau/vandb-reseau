@@ -203,7 +203,7 @@ function PageFranchise({ reseau, nom }: { reseau: Reseau; nom: string }) {
       <Box sx={{ mb: 2, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
         {engagement && <SectionEngagement e={engagement(nom, f.magasins.map((m) => m.nom))} jour={reseau.jour} lectures={profil?.role !== 'coach'} />}
         <SectionFichePersonnelle reseau={reseau} r={{ type: 'franchise', cle: nom }} />
-        {profil?.role === 'directeur' && referentiels && <SectionAcces nom={nom} magasins={f.magasins.map((m) => m.nom)} signaler={setMessage} />}
+        {profil?.role === 'directeur' && referentiels && <SectionAcces nom={nom} magasins={f.magasins.map((m) => m.nom)} emailFiche={fichePersonne(reseau, { type: 'franchise', cle: nom }).email} signaler={setMessage} />}
       </Box>
       {f.magasins.some((m) => m.franchise) && (
         <Box sx={{ mb: 2 }}>
