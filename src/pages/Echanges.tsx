@@ -201,6 +201,10 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
         {!affichees.length && (q || nonLus) && (
           <EmptyState icone={<ForumOutlined />} titre={q ? 'Aucun résultat' : 'Tout est lu'} texte={q ? 'Vérifie l’orthographe du nom.' : 'Le calme avant la prochaine visite.'} />
         )}
+        {!affichees.length && !q && !nonLus && (
+          <EmptyState icone={<ForumOutlined />} titre="Aucune conversation en cours" texte="Tes échanges avec les franchisés et l’équipe arriveront ici."
+            action={ecrire && <Button variant="contained" onClick={() => setNouveau('personne')} startIcon={<EditOutlined />} sx={{ minHeight: 48, borderRadius: 999, px: 3 }}>Nouveau message</Button>} />
+        )}
       </Box>
     </Box>
   )

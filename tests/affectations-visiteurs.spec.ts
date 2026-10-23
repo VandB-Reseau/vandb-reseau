@@ -35,6 +35,7 @@ test('une visite a plusieurs participants, le Coach du magasin d’abord', async
   await page.goto('./#/visites')
   await page.getByRole('button', { name: 'Saisir une visite pour Lyon Test' }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  await d.getByRole('region', { name: 'Visite' }).getByRole('button', { name: 'Modifier' }).click()
   const participants = d.getByLabel('Visité par')
   await expect(d.getByRole('button', { name: 'Noé MODELE' })).toBeVisible()
   await participants.fill('Alex')

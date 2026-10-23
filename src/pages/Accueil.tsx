@@ -2,6 +2,9 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
+import CheckOutlined from '@mui/icons-material/CheckOutlined'
 import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import Typography from '@mui/material/Typography'
@@ -37,7 +40,8 @@ import { useReseau } from '../data/ReseauContext'
 import { messageErreur } from '../components/EditionEquipe'
 import { magasinsDu, perimetreDuProfil, personnesDu, type Perimetre } from '../data/perimetre'
 import { PageHeader } from '../components/PageHeader'
-import { actionsDes, actionsEnCours, echeanceDate, enRetard, monNomPorteur, portePar } from '../data/actions'
+import { actionsDes, actionsEnCours, echeanceDate, enRetard, monNomPorteur, portePar, type ActionSuivie } from '../data/actions'
+import { useEcritureActions } from '../components/Actions'
 import { libellesEtatMandat, mandatsARenouveler } from '../data/associes'
 import { bilan, magasinsConcernes, phase } from '../data/campagnes'
 import { filDu, quand, type ElementFil, type GenreFil } from '../data/fil'
@@ -70,7 +74,7 @@ function avatarATraiter(reseau: Reseau, x: ATraiter) {
   return m ? <Blason magasin={m} /> : <Initiales nom={x.avatar} icone={x.icone} />
 }
 
-interface ATraiter { cle: string; titre: string; detail: string; lien: string; avatar: string; icone?: ReactNode; pastille?: { ton: Ton; libelle: string }; visite?: Visite }
+interface ATraiter { cle: string; titre: string; detail: string; lien: string; avatar: string; icone?: ReactNode; pastille?: { ton: Ton; libelle: string }; visite?: Visite; tache?: ActionSuivie }
 
 function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATraiter[] {
   const j = reseau.jour
@@ -96,7 +100,7 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
   for (const x of actionsEnCours(reseau, noms).filter((x) => echeanceDate(x.a) && echeanceDate(x.a) <= dans15j).sort((x, y) => echeanceDate(x.a).localeCompare(echeanceDate(y.a)))) {
     const retard = enRetard(x.a, j)
     items.push({ cle: `t-${x.cle}`, titre: x.a.action, avatar: x.a.action, icone: <TaskAltOutlined />, lien: `${lienFiche(x.magasin)}?vue=actions`,
-      detail: [x.magasin, x.a.porteur, `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · '), pastille: retard ? { ton: 'rouge', libelle: 'En retard' } : undefined })
+      detail: [x.magasin, x.a.porteur, `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · '), pastille: retard ? { ton: 'rouge', libelle: 'En retard' } : undefined, tache: x })
   }
   // Visites planifiées dont la date est passée sans compte rendu : faites ou à reporter
   for (const v of reseau.visites.filter((v) => v.prevue && v.date < j && v.id !== null && noms.has(v.magasin) && estVisite(v)).sort((x, y) => x.date.localeCompare(y.date))) {
@@ -151,11 +155,41 @@ type GroupeATraiter = 'urgent' | 'suivi' | 'visite'
 const groupeDe = (x: ATraiter): GroupeATraiter => (x.pastille?.ton === 'rouge' ? 'urgent' : x.cle.startsWith('v-') ? 'visite' : 'suivi')
 const GROUPES: { v: GroupeATraiter; libelle: string }[] = [{ v: 'urgent', libelle: 'Urgent' }, { v: 'suivi', libelle: 'Suivi' }, { v: 'visite', libelle: 'À voir' }]
 
+// Cocher une tâche sans quitter l'accueil ; « Annuler » la remet en cours
+function useCocherTache(reseau: Reseau) {
+  const { recharger } = useReseau()
+  const { cocher, lectureSeule } = useEcritureActions(reseau)
+  const [fait, setFait] = useState<ActionSuivie | null>(null)
+  const [erreur, setErreur] = useState('')
+  const basculer = async (x: ActionSuivie, faite: boolean) => {
+    try { await cocher(x, faite); await recharger(); setFait(faite ? x : null) } catch { setFait(null); setErreur('La tâche n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.') }
+  }
+  const bandeau = (
+    <>
+      <Snackbar open={!!fait} autoHideDuration={5000} onClose={() => setFait(null)} message={fait ? `Tâche faite : ${fait.a.action}` : ''}
+        action={fait && <Button color="inherit" onClick={() => basculer(fait, false)} sx={{ minHeight: 48, color: brand.or, fontWeight: 700 }}>Annuler</Button>} />
+      <Snackbar open={!!erreur} autoHideDuration={5000} onClose={() => setErreur('')} message={erreur} />
+    </>
+  )
+  return { cocher: lectureSeule ? null : (x: ActionSuivie) => basculer(x, true), bandeau }
+}
+
+function LigneTache({ x, cocher, titre, detail, lien, fin }: { x: ActionSuivie; cocher: ((x: ActionSuivie) => void) | null; titre: string; detail: string; lien: string; fin?: ReactNode }) {
+  if (!cocher) return <LigneCompacte lien={lien} avatar={<Initiales nom={titre} icone={<TaskAltOutlined />} />} titre={titre} detail={detail} fin={fin} />
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', pl: 1 }}>
+      <Tooltip title="Faite"><IconButton onClick={() => cocher(x)} aria-label={`Tâche faite : ${titre}`} sx={{ width: 48, height: 48, flex: 'none', border: '2px solid', borderColor: 'text.primary', ml: 0.5 }}><CheckOutlined /></IconButton></Tooltip>
+      <Box sx={{ flex: 1, minWidth: 0, display: 'flex' }}><LigneCompacte lien={lien} titre={titre} detail={detail} fin={fin} /></Box>
+    </Box>
+  )
+}
+
 function BlocATraiter({ reseau, items, compact = false }: { reseau: Reseau; items: ATraiter[]; compact?: boolean }) {
   const { recharger } = useReseau()
   const [compteRendu, setCompteRendu] = useState<Visite | null>(null)
   const [reporter, setReporter] = useState<Visite | null>(null)
   const [message, setMessage] = useState('')
+  const taches = useCocherTache(reseau)
   const faite = async (v: Visite) => {
     try { await marquerVisiteFaite(v.id!); await recharger(); setMessage(`Visite de ${v.magasin} comptée faite.`) } catch (e) { setMessage(messageErreur(e)) }
   }
@@ -182,7 +216,9 @@ function BlocATraiter({ reseau, items, compact = false }: { reseau: Reseau; item
                 <Button onClick={() => faite(x.visite!)} aria-label={`Visite de ${x.titre} faite`} sx={{ minHeight: 48, minWidth: 0, px: 1.25 }}>Faite</Button>
                 <Button onClick={() => setReporter(x.visite!)} aria-label={`Reporter la visite de ${x.titre}`} sx={{ minHeight: 48, minWidth: 0, px: 1.25 }}>Reporter</Button>
               </Box>} />
-            : <LigneCompacte key={x.cle} lien={x.lien} avatar={avatarATraiter(reseau, x)} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />)}
+            : x.tache
+              ? <LigneTache key={x.cle} x={x.tache} cocher={taches.cocher} lien={x.lien} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />
+              : <LigneCompacte key={x.cle} lien={x.lien} avatar={avatarATraiter(reseau, x)} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />)}
           {filtres.length > apercu && (
             <ButtonBase onClick={() => setTout((v) => !v)} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{tout ? 'Afficher moins' : `Voir les ${filtres.length}`}</ButtonBase>
           )}
@@ -191,6 +227,7 @@ function BlocATraiter({ reseau, items, compact = false }: { reseau: Reseau; item
       {compteRendu && <DialogVisite reseau={reseau} visite={compteRendu} onFermer={(m) => { setCompteRendu(null); if (m) setMessage(m) }} />}
       {reporter && <DialogPlanifier reseau={reseau} magasins={[reporter.magasin]} dateInitiale={reseau.jour} visite={reporter} onFermer={(m) => { setReporter(null); if (m) setMessage(m) }} />}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
+      {taches.bandeau}
     </Box>
   )
 }
@@ -236,8 +273,9 @@ function mesTaches(reseau: Reseau, p: Perimetre, moi: string) {
 }
 
 function BlocMesTaches({ reseau, taches, compact = false }: { reseau: Reseau; taches: ReturnType<typeof mesTaches>; compact?: boolean }) {
+  const cocher = useCocherTache(reseau)
   const lignes = taches.slice(0, compact ? APERCU_COMPACT : 4).map((x) => (
-    <LigneCompacte key={x.cle} lien={`${lienFiche(x.magasin)}?vue=actions`} avatar={<Initiales nom={x.a.action} icone={<TaskAltOutlined />} />} titre={x.a.action}
+    <LigneTache key={x.cle} x={x} cocher={cocher.cocher} lien={`${lienFiche(x.magasin)}?vue=actions`} titre={x.a.action}
       detail={[x.magasin, echeanceDate(x.a) && `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · ')}
       fin={enRetard(x.a, reseau.jour) ? <Pastille ton="rouge">En retard</Pastille> : undefined} />
   ))
@@ -250,6 +288,7 @@ function BlocMesTaches({ reseau, taches, compact = false }: { reseau: Reseau; ta
         {taches.length ? lignes : vide}
         {compact && taches.length > APERCU_COMPACT && <ButtonBase component={RouterLink} to={toutes} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{`Voir les ${taches.length}`}</ButtonBase>}
       </CarteLignes>
+      {cocher.bandeau}
     </Box>
   )
 }

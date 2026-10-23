@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Sprint 23, retouches du quotidien (Joseph, 23/10/2026) : saisir une visite depuis la fiche d'un magasin (ou le compte
+  rendu d'une visite prévue) n'affiche plus les champs déjà connus, magasin, date, type et visiteurs tiennent sur une
+  ligne avec « Modifier » ; Ma semaine se résume en trois cases (à voir, prévues, route) ; dans Visites > Rythme, la
+  ligne de chaque Coach dit « x visites sur y » avec une jauge, sans texte coupé ; une tâche se coche depuis « À
+  traiter » et « Mes tâches » de l'accueil, avec « Annuler » pendant 5 secondes ; Messages sans conversation en cours
+  et Tâches sans tâche proposent « Nouveau message » et « Nouvelle tâche », franchisé compris (test `sprint23.spec.ts`).
+  Sans migration.
 - Titres de section en cartouche noir partout (Joseph, 23/10/2026) : cartes des fiches magasin, Coach, RR et franchisé
   (vues aussi par le franchisé), Équipe, Évolution du parc, Données, plan d'affectation, charge des Coachs, imports,
   Messages, réglages du Directeur. Carte : la bulle des magasins grandit avec le zoom. Visages de la charte au choix
