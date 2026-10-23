@@ -46,7 +46,9 @@ export interface QuestionsSimulees { resultats: Record<string, unknown>[]; franc
 export interface PropositionsSimulees { equipe: Record<string, unknown>[]; miennes: Record<string, unknown>[] }
 // Challenges (script 0028_challenges.sql), au format renvoyé par la base
 export interface ChallengesSimules { equipe: Record<string, unknown>[]; franchise: Record<string, unknown>[] }
-export interface OptionsSimulation { challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null }
+// Fonction Supabase « comptes » (supabase/functions/comptes) : absente = pas encore déployée
+export interface ComptesSimules { equipe?: string[] }
+export interface OptionsSimulation { comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -126,9 +128,23 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       return route.fulfill({
         json: {
           access_token: 'jeton-test', token_type: 'bearer', expires_in: 3600, expires_at: maintenant + 3600, refresh_token: 'rafraichissement-test',
-          user: { id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: COMPTE.email, app_metadata: options.appMetadata ?? {}, user_metadata: {}, created_at: '2026-10-14T00:00:00Z' },
+          user: { id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: COMPTE.email, app_metadata: options.appMetadata ?? {}, user_metadata: options.userMetadata ?? {}, created_at: '2026-10-14T00:00:00Z' },
         },
       })
+    }
+    if (url.pathname === '/functions/v1/comptes') {
+      if (req.method() === 'OPTIONS') return route.fulfill({ status: 200, body: 'ok' })
+      if (!options.comptes) return route.fulfill({ status: 404, json: { code: 'NOT_FOUND', message: 'Requested function was not found' } })
+      const corps = req.postDataJSON() as { action: string; email?: string; user?: string }
+      options.ecritures?.push({ methode: 'POST', table: 'functions/comptes', corps, filtre: '' })
+      if (corps.action === 'creer') {
+        if (options.comptes.equipe?.includes(String(corps.email))) return route.fulfill({ status: 409, json: { erreur: 'compte_equipe' } })
+        return route.fulfill({ json: { user_id: 'u-nouveau', email: corps.email, mot_de_passe: 'Abcd-Efgh-Jk23' } })
+      }
+      if (corps.action === 'reinitialiser') return route.fulfill({ json: { user_id: corps.user, mot_de_passe: 'Mnop-Qrst-Uv45' } })
+      // Le compte supprimé emporte son accès (clé étrangère ON DELETE CASCADE)
+      options.accesFranchises = (options.accesFranchises ?? []).filter((a) => a.user_id !== corps.user)
+      return route.fulfill({ json: { supprime: true } })
     }
     if (url.pathname === '/auth/v1/logout') return route.fulfill({ status: 204, body: '' })
     if (url.pathname === '/auth/v1/user' && req.method() === 'PUT') {

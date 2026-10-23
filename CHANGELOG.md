@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Comptes des franchisés créés depuis l'app : dans la fiche du franchisé, « Ouvrir l'accès » crée le compte (email de
+  la fiche prérempli) et affiche un mot de passe provisoire à copier ou envoyer par email ; le franchisé choisit son mot
+  de passe à la première connexion. « Nouveau mot de passe » remplace la réinitialisation dans Supabase. Retirer un
+  franchisé, ou « Supprimer le compte », supprime son compte. Sans migration. **À déployer : fonction Supabase `comptes`
+  (`supabase/functions/comptes/index.ts`)** ; tant qu'elle ne l'est pas, l'app garde l'ancien fonctionnement.
 - Résumé automatique des comptes rendus dans le fil d'actualité : en tête de carte, la phrase clé (Synthèse, sinon
   notes, sinon première partie remplie) puis les faits (case nine box notée le jour de la visite, actions au plan,
   actions précédentes faites, sujets abordés). Construit par règles, sans IA ; pas de santé pour le franchisé. Sans migration.

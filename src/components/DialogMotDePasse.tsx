@@ -12,7 +12,8 @@ import { supabase } from '../lib/supabase'
 
 const LONGUEUR_MINI = 8
 
-export function DialogMotDePasse({ onFermer }: { onFermer: (message?: string) => void }) {
+// premiere : compte créé depuis l'app avec un mot de passe provisoire, à remplacer avant d'aller plus loin
+export function DialogMotDePasse({ onFermer, premiere }: { onFermer: (message?: string) => void; premiere?: boolean }) {
   const pleinEcran = useMediaQuery(useTheme().breakpoints.down('sm'))
   const [nouveau, setNouveau] = useState('')
   const [confirmation, setConfirmation] = useState('')
@@ -25,7 +26,7 @@ export function DialogMotDePasse({ onFermer }: { onFermer: (message?: string) =>
     setEnvoi(true)
     setErreur('')
     try {
-      const { error } = await supabase.auth.updateUser({ password: nouveau })
+      const { error } = await supabase.auth.updateUser(premiere ? { password: nouveau, data: { mot_de_passe_provisoire: false } } : { password: nouveau })
       if (error) setErreur(/different|same/i.test(error.message) ? 'Choisis un mot de passe différent de l’actuel.' : 'Changement impossible pour le moment. Réessaie dans un instant.')
       else onFermer('Mot de passe changé.')
     } catch {
@@ -35,8 +36,8 @@ export function DialogMotDePasse({ onFermer }: { onFermer: (message?: string) =>
     }
   }
   return (
-    <Dialog open onClose={() => onFermer()} fullScreen={pleinEcran} fullWidth maxWidth="xs" aria-labelledby="titre-mot-de-passe">
-      <DialogTitle id="titre-mot-de-passe">Changer mon mot de passe</DialogTitle>
+    <Dialog open onClose={premiere ? undefined : () => onFermer()} fullScreen={pleinEcran} fullWidth maxWidth="xs" aria-labelledby="titre-mot-de-passe">
+      <DialogTitle id="titre-mot-de-passe">{premiere ? 'Choisis ton mot de passe' : 'Changer mon mot de passe'}</DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
         <TextField label="Nouveau mot de passe" type="password" autoComplete="new-password" value={nouveau} onChange={(e) => setNouveau(e.target.value)}
           error={tropCourt} helperText={tropCourt ? `${LONGUEUR_MINI} caractères au moins` : ' '} autoFocus />
@@ -45,7 +46,7 @@ export function DialogMotDePasse({ onFermer }: { onFermer: (message?: string) =>
         {erreur && <Alert severity="error">{erreur}</Alert>}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={() => onFermer()} sx={{ minHeight: 48 }}>Annuler</Button>
+        {!premiere && <Button onClick={() => onFermer()} sx={{ minHeight: 48 }}>Annuler</Button>}
         <Button variant="contained" disabled={!valide || envoi} onClick={enregistrer} sx={{ minHeight: 48 }}>Enregistrer</Button>
       </DialogActions>
     </Dialog>

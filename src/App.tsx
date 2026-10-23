@@ -8,6 +8,7 @@ import { DroitsProvider } from './auth/Droits'
 import { BandeauApercuEquipe } from './components/AccesEquipe'
 import { Accueil } from './pages/Accueil'
 import { Connexion } from './pages/Connexion'
+import { DialogMotDePasse } from './components/DialogMotDePasse'
 import { Plus } from './pages/Plus'
 import { ReseauProvider } from './data/ReseauContext'
 import { MessagerieProvider } from './data/MessagerieContext'
@@ -242,5 +243,12 @@ export default function App() {
   if (chargement) {
     return <Box sx={{ minHeight: '100dvh', display: 'grid', placeItems: 'center' }}><CircularProgress color="secondary" aria-label="Chargement" /></Box>
   }
-  return <HashRouter>{session ? <ApercuProvider><Espace /></ApercuProvider> : <Connexion />}</HashRouter>
+  // Compte créé depuis l'app : le mot de passe provisoire est remplacé à la première connexion
+  const provisoire = session?.user.user_metadata?.mot_de_passe_provisoire === true
+  return (
+    <HashRouter>
+      {session ? <ApercuProvider><Espace /></ApercuProvider> : <Connexion />}
+      {provisoire && <DialogMotDePasse premiere onFermer={() => undefined} />}
+    </HashRouter>
+  )
 }
