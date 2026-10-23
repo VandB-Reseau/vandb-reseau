@@ -67,14 +67,12 @@ const Visites = chargementDiffere(chargeurs.visites)
 const Agenda = chargementDiffere(chargeurs.agenda)
 const SanteParc = chargementDiffere(chargeurs.sante)
 const Echanges = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.Echanges })))
-const CanalReseau = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.CanalReseau })))
 const PageTaches = chargementDiffere(chargeurs.taches)
 const InfosReseau = chargementDiffere(chargeurs.infos)
 const BandeauApercu = chargementDiffere(() => espace().then((m) => ({ default: m.BandeauApercu })))
 const TableauFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.TableauFranchise })))
 const MagasinsFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.MagasinsFranchise })))
 const FicheMagasinFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.FicheMagasinFranchise })))
-const PratiquesFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.PratiquesFranchise })))
 
 function usePrechargement() {
   useEffect(() => {
@@ -111,7 +109,7 @@ const avec = (chemin: string, r: URLSearchParams, ajout: Record<string, string> 
 }
 const anciensLiens = [
   <Route key="a" path="/actions" element={<Vers cible={(_p, r) => avec('/taches', r)} />} />,
-  <Route key="c" path="/communications" element={<Vers cible={(_p, r) => avec('/echanges/reseau', r)} />} />,
+  <Route key="c" path="/communications" element={<Vers cible={(_p, r) => avec('/infos', r)} />} />,
   <Route key="m" path="/messages" element={<Navigate to="/echanges" replace />} />,
   <Route key="mp" path="/messages/personne/:cle" element={<Vers cible={(p) => `/echanges/personne/${encodeURIComponent(p.cle ?? '')}`} />} />,
   <Route key="mm" path="/messages/:nom" element={<Vers cible={(p) => `/echanges/magasin/${encodeURIComponent(p.nom ?? '')}`} />} />,
@@ -151,8 +149,8 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/echanges" element={<Echanges />} />
         <Route path="/taches" element={<PageTaches />} />
         <Route path="/infos" element={<InfosReseau />} />
-        {/* Communications et bonnes pratiques : Infos réseau seulement pour l'équipe (sprint 22, S1) */}
-        <Route path="/echanges/reseau" element={<Navigate to="/infos" replace />} />
+        {/* Communications et bonnes pratiques : Infos réseau seulement, pour l'équipe (sprint 22, S1) comme pour le franchisé */}
+        <Route path="/echanges/reseau" element={<Vers cible={(_p, r) => avec('/infos', r)} />} />
         <Route path="/echanges/pratiques" element={<Navigate to="/infos?vue=pratiques" replace />} />
         <Route path="/echanges/:genre/:valeur" element={<Echanges />} />
         {anciensLiens}
@@ -183,10 +181,11 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
         <Route path="/magasins" element={<MagasinsFranchise />} />
         <Route path="/magasins/:nom" element={<FicheMagasinFranchise />} />
         <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
-        <Route path="/bonnes-pratiques" element={<PratiquesFranchise />} />
+        <Route path="/infos" element={<InfosReseau />} />
+        <Route path="/bonnes-pratiques" element={<Navigate to="/infos?vue=pratiques" replace />} />
         <Route path="/echanges" element={<Echanges lectureSeule={apercu} />} />
         <Route path="/taches" element={<PageTaches />} />
-        <Route path="/echanges/reseau" element={<CanalReseau lectureSeule={apercu} />} />
+        <Route path="/echanges/reseau" element={<Vers cible={(_p, r) => avec('/infos', r)} />} />
         <Route path="/echanges/:genre/:valeur" element={<Echanges lectureSeule={apercu} />} />
         {anciensLiens}
         <Route path="*" element={<Navigate to="/" replace />} />

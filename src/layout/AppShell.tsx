@@ -118,11 +118,12 @@ function MenuCompte({ liens = [] }: { liens?: { titre?: string; destinations: De
   )
 }
 
-// Icône d'une destination ; Messages porte le nombre de nouveautés, Tâches celui des tâches en retard ou nouvelles
-interface Compteurs { messages: number; taches: number }
-const compteDe = (d: Destination, c: Compteurs) => (d.chemin === '/echanges' ? c.messages : d.chemin === '/taches' ? c.taches : 0)
-function useCompteurs(sansCompteur?: boolean): Compteurs {
-  return { messages: useTotalEchanges(sansCompteur), taches: useCompteurTaches(sansCompteur) }
+// Icône d'une destination ; Messages porte le nombre de nouveautés, Tâches celui des tâches en retard ou nouvelles,
+// Infos réseau (franchisé) celui des communications et bonnes pratiques pas encore vues
+interface Compteurs { messages: number; taches: number; infos: number }
+const compteDe = (d: Destination, c: Compteurs) => (d.chemin === '/echanges' ? c.messages : d.chemin === '/taches' ? c.taches : d.chemin === '/infos' ? c.infos : 0)
+function useCompteurs(sansCompteur?: boolean, franchise?: boolean): Compteurs {
+  return { messages: useTotalEchanges(sansCompteur), taches: useCompteurTaches(sansCompteur), infos: useNouveautesInfos(sansCompteur || !franchise) }
 }
 function Icone({ d, actif, c }: { d: Destination; actif: boolean; c: Compteurs }) {
   const icone = actif ? d.iconeActive ?? d.icone : d.icone
@@ -139,7 +140,7 @@ const libelleAccessible = (d: Destination, c: Compteurs) => {
 function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: Destination[]; sansParametres?: boolean; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
-  const c = useCompteurs(sansCompteur)
+  const c = useCompteurs(sansCompteur, !!franchise)
   const item = (d: Destination) => {
     const actif = estActive(d, pathname)
     return (
@@ -189,7 +190,7 @@ const HAUTEUR_BARRE = 64
 function BarreBasse({ franchise, sansCompteur }: { franchise?: Destination[]; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
-  const c = useCompteurs(sansCompteur)
+  const c = useCompteurs(sansCompteur, !!franchise)
   const item = (d: Destination) => {
     const actif = estActive(d, pathname)
     return (

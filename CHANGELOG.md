@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Espace franchisé aligné sur celui de l'équipe (Joseph, 23/10/2026) : onglet Infos réseau à la place de Bonnes
+  pratiques (communications et bonnes pratiques réunies, recherche et filtres, ses propositions), avec le nombre de
+  nouveautés ; le canal Réseau V and B quitte ses Messages (ancienne adresse et lien du fil menant à Infos réseau, la
+  communication citée gardée). Fiche magasin sans onglet Messages : le picto message ouvre le groupe du magasin, les
+  bonnes pratiques du magasin ont leur onglet. Un franchisé d'un seul magasin arrive sur sa fiche par Mes magasins.
+  Accueil : Mes chiffres et Repères réseau en tuiles, comme l'accueil de l'équipe. Sans migration.
 - Résumé automatique des comptes rendus dans le fil d'actualité : en tête de carte, la phrase clé (Synthèse, sinon
   notes, sinon première partie remplie) puis les faits (case nine box notée le jour de la visite, actions au plan,
   actions précédentes faites, sujets abordés). Construit par règles, sans IA ; pas de santé pour le franchisé. Sans migration.

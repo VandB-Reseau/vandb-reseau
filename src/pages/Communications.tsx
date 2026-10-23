@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
 import Snackbar from '@mui/material/Snackbar'
@@ -10,8 +9,6 @@ import Typography from '@mui/material/Typography'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import PushPinOutlined from '@mui/icons-material/PushPinOutlined'
-import AddOutlined from '@mui/icons-material/AddOutlined'
-import { FilCanal } from '../components/FilCanal'
 import { LigneLecture } from '../components/LigneLecture'
 import { PageHeader } from '../components/PageHeader'
 import { Reactions } from '../components/Reactions'
@@ -163,8 +160,7 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
 // lectureSeule : aperçu de l'espace d'un franchisé par le Directeur
 // entete : en-tête fourni par l'onglet Messages (canal « Réseau V and B »)
 // filtre et integre : colonne de l'onglet Infos réseau, qui porte la recherche et les filtres communs
-// enFil : canal « Réseau V and B » des Messages, les publications défilent comme dans un groupe
-export function PageCommunications({ lectureSeule = false, entete, filtre, integre = false, enFil = false }: { lectureSeule?: boolean; entete?: ReactNode; filtre?: (c: Communication) => boolean; integre?: boolean; enFil?: boolean }) {
+export function PageCommunications({ lectureSeule = false, entete, filtre, integre = false }: { lectureSeule?: boolean; entete?: ReactNode; filtre?: (c: Communication) => boolean; integre?: boolean }) {
   const { profil } = useAuth()
   const { reseau } = useReseau()
   const suitLectures = !lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')
@@ -230,19 +226,6 @@ export function PageCommunications({ lectureSeule = false, entete, filtre, integ
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </>
   )
-  if (enFil) {
-    return (
-      <>
-        {etat === null
-          ? <EmptyState icone={<CampaignOutlined />} titre="Communications pas encore activées" texte="Les communications du réseau apparaîtront ici dès leur activation dans la base." />
-          : <FilCanal libelle="Réseau V and B" publications={(etat?.liste ?? []).map((c) => ({ cle: String(c.id), instant: c.creeLe, contenu: carte(c, etat!.moi) }))}
-            vide={etat === undefined ? <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>Chargement…</Typography>
-              : <EmptyState icone={<CampaignOutlined />} titre="Aucune communication" texte="Les annonces du réseau aux franchisés apparaîtront ici." />}
-            pied={peutPublier && <Button variant="contained" fullWidth startIcon={<AddOutlined />} onClick={() => setEdition({ c: null })} sx={{ minHeight: 48, maxWidth: 640 }}>Publier</Button>} />}
-        {fenetres}
-      </>
-    )
-  }
   return (
     <>
       {integre ? null : entete ?? <PageHeader titre="Communications" sousTitre={etat ? `${n} communication${n > 1 ? 's' : ''}` : undefined} />}

@@ -46,11 +46,10 @@ test('un franchisé lit les communications de ses magasins, met un pouce et comm
   const ecritures: Ecriture[] = []
   await seConnecter(page, { acces: PAUL, ecritures, communications: communications() })
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await nav.getByRole('button', { name: /^Messages/ }).click()
-  await page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /^Réseau V and B/ }).click()
-  await expect(page.getByRole('heading', { name: 'Réseau V and B' })).toBeVisible()
+  await nav.getByRole('button', { name: /^Infos/ }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Infos réseau')
   // Celle du Sud ne concerne pas ses magasins
-  await expect(page.getByRole('article')).toHaveCount(1)
+  await expect(page.getByRole('region', { name: 'Communications' }).getByRole('article')).toHaveCount(1)
   await expect(page.getByRole('button', { name: 'Publier' })).toHaveCount(0)
   const carte = page.getByRole('article', { name: 'Lancement des coffrets de Noël' })
   await expect(carte.getByText('Bien reçu, je relaie en visite.')).toBeVisible()
@@ -194,28 +193,28 @@ test('une communication stockée piégée est nettoyée à l’affichage', async
   expect(await page.evaluate(() => (window as unknown as { pirate?: number }).pirate)).toBeUndefined()
 })
 
-test('le franchisé retrouve le canal Réseau V and B en tête de Messages, avec ses nouveautés', async ({ page, isMobile }, info) => {
+test('le franchisé voit ses nouveautés sur l’onglet Infos réseau, plus de canal dans Messages', async ({ page, isMobile }, info) => {
   const liste: CommunicationSimulee[] = [
     { id: 1, titre: 'V and B Day : J-7', texte: 'Ne tardez plus à confirmer votre présence !', magasins: null, auteur: AUTRE, auteur_nom: 'Joseph PERREAU', auteur_role: 'rr', cree_le: new Date(Date.now() - 3_600_000).toISOString() },
   ]
-  // Canal ouvert hier sur cet appareil (la première fois, rien d'ancien n'est signalé)
+  // Infos réseau ouvert hier sur cet appareil (la première fois, rien d'ancien n'est signalé)
   await page.addInitScript(() => { if (!localStorage.getItem('vandb-reseau-vu')) localStorage.setItem('vandb-reseau-vu', new Date(Date.now() - 86_400_000).toISOString()) })
   await seConnecter(page, { acces: PAUL, communications: liste, messagerie: {} })
   await page.goto('./#/echanges')
-  const reseau = page.getByRole('list', { name: 'Conversations' }).getByRole('button').first()
-  await expect(reseau).toHaveAccessibleName('Réseau V and B : 1 nouvelle communication')
-  await expect(reseau).toContainText('V and B Day : J-7')
+  await expect(page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /^Réseau V and B/ })).toHaveCount(0)
+  const nav = page.getByRole('navigation', { name: 'Navigation principale' })
+  const infos = nav.getByRole('button', { name: /^Infos/ })
+  await expect(infos).toHaveAccessibleName('Infos réseau : 1 nouveauté')
   expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-canal-reseau.png`, fullPage: !isMobile })
-  await reseau.click()
-  await expect(page).toHaveURL(/#\/echanges\/reseau$/)
+  await page.screenshot({ path: `captures/${info.project.name}-franchise-infos-compteur.png`, fullPage: !isMobile })
+  await infos.click()
+  await expect(page).toHaveURL(/#\/infos$/)
   await expect(page.getByRole('article', { name: 'V and B Day : J-7' })).toBeVisible()
-  // Vue : plus de nouveauté au retour
-  await page.goto('./#/echanges')
-  await expect(page.getByRole('list', { name: 'Conversations' }).getByRole('button').first()).toHaveAccessibleName('Réseau V and B')
+  // Vue : plus de nouveauté
+  await expect(infos).not.toHaveAccessibleName(/nouveauté/)
 })
 
-test('le franchisé ne voit dans le canal Réseau que les communications qui le concernent', async ({ page }) => {
+test('le franchisé ne voit dans Infos réseau que les communications qui le concernent', async ({ page }) => {
   await seConnecter(page, { acces: PAUL, communications: [
     { id: 1, titre: 'V and B Day : J-7', texte: 'Ne tardez plus.', magasins: null, auteur: AUTRE, auteur_nom: 'Joseph PERREAU', auteur_role: 'directeur', cree_le: ilYa(1) },
     { id: 2, titre: 'Réunion des franchisés du Sud', texte: 'Rendez-vous à Marseille.', magasins: ['Nice Test'], auteur: AUTRE, auteur_nom: 'Sam SUD', auteur_role: 'rr', cree_le: ilYa(2) },
