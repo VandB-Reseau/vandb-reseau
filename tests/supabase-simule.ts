@@ -40,7 +40,9 @@ export interface ReactionsPratiquesSimulees { pouces?: Record<string, { user_id:
 export interface PerimetreRecu { magasin: string; coach: string; rrs: string[] }
 // Réunions et formations (script 0025_reunions.sql) : événements avec invités, réponses et présences ; absent = base d'avant 0025
 export interface ReunionsSimulees { evenements: { id: number; title: string; type?: string; start_date: string; end_date?: string | null; color?: string; notes?: string | null; invites?: string[] | null }[]; presences: { event: number; magasin: string; reponse: 'present' | 'absent' | null; present: boolean | null }[] }
-export interface OptionsSimulation { reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null }
+// Questions éclair (script 0026_questions_eclair.sql) : résultats vus par le Directeur et le RR, questions ouvertes du franchisé
+export interface QuestionsSimulees { resultats: Record<string, unknown>[]; franchise: Record<string, unknown>[] }
+export interface OptionsSimulation { questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -176,6 +178,26 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
           const p = r.presences.filter((x) => x.event === e.id && miens.includes(x.magasin))
           return { id: e.id, titre: e.title, debut: e.start_date, fin: e.end_date ?? e.start_date, notes: e.notes ?? '', magasins: e.invites!.filter((m) => miens.includes(m)), reponse: p.find((x) => x.reponse)?.reponse ?? null, present: p.some((x) => x.present) || null }
         }) })
+      }
+      if (['resultats_questions', 'publier_question', 'supprimer_question', 'questions_franchise', 'repondre_question'].includes(fn)) {
+        const q = options.questions
+        if (!q) return absente()
+        const refus = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const equipe = ['directeur', 'rr'].includes(acces.role)
+        if (fn === 'resultats_questions') return equipe ? route.fulfill({ json: q.resultats }) : refus()
+        if (fn === 'publier_question') {
+          if (!equipe) return refus()
+          const id = Math.max(0, ...q.resultats.map((x) => Number(x.id))) + 1
+          q.resultats.unshift({ id, titre: corps.p_titre, genre: corps.p_genre, choix: corps.p_choix, anonyme: corps.p_anonyme, magasins: corps.p_magasins, jusqu_au: corps.p_jusqu_au, auteur: MOI, auteur_nom: 'Dominique DIRECTION', cree_le: new Date().toISOString(), reponses: [], sans_reponse: [], concernes: 0 })
+          return route.fulfill({ json: id })
+        }
+        if (fn === 'supprimer_question') { q.resultats = q.resultats.filter((x) => x.id !== corps.p_id); return route.fulfill({ status: 200, json: null }) }
+        if (acces.role !== 'franchise') return refus()
+        if (fn === 'questions_franchise') return route.fulfill({ json: q.franchise })
+        const x = q.franchise.find((y) => y.id === corps.p_id)
+        if (!x || x.repondu) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'deja_repondu' } })
+        x.repondu = true
+        return route.fulfill({ status: 200, json: null })
       }
       if (fn === 'mon_acces') return route.fulfill({ json: { role: acces.role, coach: acces.coach ?? null, rr: acces.rr ?? null, franchise: acces.franchise ?? null, magasins: acces.magasins ?? [] } })
       if (fn === 'espace_franchise') {

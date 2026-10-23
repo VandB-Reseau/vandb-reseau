@@ -22,6 +22,9 @@ import type { Communication } from '../data/communications'
 import type { Reseau } from '../data/modele'
 import { noterReseauVu } from '../data/echanges'
 import { noterPratiquesVues } from '../data/infosVues'
+import { SectionQuestions } from '../components/Questions'
+import { useAuth } from '../auth/AuthContext'
+import QuizOutlined from '@mui/icons-material/QuizOutlined'
 
 const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr')
 type Periode = 'tout' | '3' | '12'
@@ -31,12 +34,15 @@ const depuis = (p: Periode) => {
   const d = new Date(); d.setMonth(d.getMonth() - Number(p))
   return d.toISOString().slice(0, 10)
 }
-type Vue = 'communications' | 'pratiques'
+type Vue = 'communications' | 'pratiques' | 'questions'
 
 function Contenu({ reseau }: { reseau: Reseau }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const [params] = useSearchParams()
   const [vue, setVue] = useState<Vue>(params.get('vue') === 'pratiques' ? 'pratiques' : 'communications')
+  // Questions éclair (sprint 22, A3) : Directeur et RR
+  const { profil } = useAuth()
+  const questions = profil?.role === 'directeur' || profil?.role === 'rr'
   const [recherche, setRecherche] = useState('')
   const [magasins, setMagasins] = useState<string[]>([])
   const [themes, setThemes] = useState<string[]>([])
@@ -70,6 +76,7 @@ function Contenu({ reseau }: { reseau: Reseau }) {
       {!surPC && <Onglets valeur={vue} onChange={setVue} libelle="Infos réseau" rubriques={[
         { vue: 'communications', libelle: 'Communications', icone: <CampaignOutlined /> },
         { vue: 'pratiques', libelle: 'Bonnes pratiques', icone: <TipsAndUpdatesOutlined /> },
+        ...(questions ? [{ vue: 'questions' as const, libelle: 'Questions', icone: <QuizOutlined /> }] : []),
       ]} />}
       <RechercheFiltres actifs={actifs} recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Titre, texte, magasin, auteur" libelle="Rechercher une communication ou une pratique" />}>
         <FiltreMenu libelle="Magasin" choisis={magasins} onChange={setMagasins} options={optionsMagasins} />
@@ -77,13 +84,15 @@ function Contenu({ reseau }: { reseau: Reseau }) {
         <FiltreMenu libelle="Période" unique choisis={[periode]} onChange={(v) => setPeriode((v[0] as Periode) ?? 'tout')} options={periodes} />
         {(actifs > 0 || recherche) && <Button onClick={effacer} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
       </RechercheFiltres>
+      {surPC && questions && <Box sx={{ mb: 3 }}><SectionQuestions reseau={reseau} /></Box>}
       {surPC ? (
         <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 3, alignItems: 'start' }}>
           <Box component="section" aria-label="Communications" sx={{ minWidth: 0 }}>{communications}</Box>
           <Box component="section" aria-label="Bonnes pratiques" sx={{ minWidth: 0 }}>{pratiques}</Box>
         </Box>
       ) : (
-        <Box component="section" aria-label={vue === 'communications' ? 'Communications' : 'Bonnes pratiques'}>{vue === 'communications' ? communications : pratiques}</Box>
+        vue === 'questions' ? <SectionQuestions reseau={reseau} />
+          : <Box component="section" aria-label={vue === 'communications' ? 'Communications' : 'Bonnes pratiques'}>{vue === 'communications' ? communications : pratiques}</Box>
       )}
       {pratique !== undefined && <DialogPratique reseau={reseau} pratique={pratique} onFermer={(m) => { setPratique(undefined); if (m) setMessage(m) }} />}
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
