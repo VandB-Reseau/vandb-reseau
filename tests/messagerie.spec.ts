@@ -164,10 +164,9 @@ test('échanges à deux : non lus, magasins cités avec #, saisie en bas sur té
   })
   await page.goto('./#/echanges')
   const liste = page.getByRole('list', { name: 'Conversations' })
-  // Les canaux Réseau et Bonnes pratiques épinglés, puis la conversation la plus récente
-  await expect(liste.getByRole('button').nth(0)).toHaveAccessibleName(/^Réseau V and B/)
-  await expect(liste.getByRole('button').nth(1)).toHaveAccessibleName('Bonnes pratiques')
-  await expect(liste.getByRole('button').nth(2)).toHaveText(/Paul MULTI.*Oui, à 9 h\./)
+  // Plus de canaux Réseau ni Bonnes pratiques (Infos réseau, sprint 22) : la conversation la plus récente en tête
+  await expect(liste.getByRole('button', { name: /^Réseau V and B/ })).toHaveCount(0)
+  await expect(liste.getByRole('button').nth(0)).toHaveText(/Paul MULTI.*Oui, à 9 h\./)
 
   if (isMobile) {
     await expect(liste.getByRole('button', { name: 'Paul MULTI : 1 message non lu' })).toBeVisible()

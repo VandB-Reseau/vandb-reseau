@@ -68,7 +68,6 @@ const Agenda = chargementDiffere(chargeurs.agenda)
 const SanteParc = chargementDiffere(chargeurs.sante)
 const Echanges = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.Echanges })))
 const CanalReseau = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.CanalReseau })))
-const CanalPratiques = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.CanalPratiques })))
 const PageTaches = chargementDiffere(chargeurs.taches)
 const InfosReseau = chargementDiffere(chargeurs.infos)
 const BandeauApercu = chargementDiffere(() => espace().then((m) => ({ default: m.BandeauApercu })))
@@ -152,8 +151,9 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/echanges" element={<Echanges />} />
         <Route path="/taches" element={<PageTaches />} />
         <Route path="/infos" element={<InfosReseau />} />
-        <Route path="/echanges/reseau" element={<CanalReseau />} />
-        <Route path="/echanges/pratiques" element={<CanalPratiques />} />
+        {/* Communications et bonnes pratiques : Infos réseau seulement pour l'équipe (sprint 22, S1) */}
+        <Route path="/echanges/reseau" element={<Navigate to="/infos" replace />} />
+        <Route path="/echanges/pratiques" element={<Navigate to="/infos?vue=pratiques" replace />} />
         <Route path="/echanges/:genre/:valeur" element={<Echanges />} />
         {anciensLiens}
         <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />

@@ -21,10 +21,9 @@ const communications = (): CommunicationSimulee[] => [
 test('le Directeur publie une communication pour tout le réseau', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, communications: [] })
-  // Les communications sont le canal « Réseau V and B » des Échanges (Joseph, 21/10/2026)
+  // Pour l'équipe, les communications sont dans Infos réseau (sprint 22, S1)
   await page.goto('./#/communications')
-  await expect(page).toHaveURL(/#\/echanges\/reseau$/)
-  await expect(page.getByRole('heading', { name: 'Réseau V and B' })).toBeVisible()
+  await expect(page).toHaveURL(/#\/infos$/)
   await expect(page.getByText('Aucune communication')).toBeVisible()
   await page.getByRole('button', { name: 'Publier' }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle communication' })
@@ -91,7 +90,6 @@ test('la recherche filtre les communications et un Responsable Régional publie 
   await expect(page.getByRole('region', { name: 'Communications' }).getByRole('article')).toHaveCount(1)
   await expect(page.getByRole('article', { name: 'Réunion des franchisés du Sud' })).toBeVisible()
   await recherche.fill('')
-  await page.goto('./#/echanges/reseau')
   await page.getByRole('button', { name: 'Publier' }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle communication' })
   await d.getByLabel('Titre').fill('Point rentrée')
@@ -196,13 +194,13 @@ test('une communication stockée piégée est nettoyée à l’affichage', async
   expect(await page.evaluate(() => (window as unknown as { pirate?: number }).pirate)).toBeUndefined()
 })
 
-test('le canal Réseau V and B est épinglé en tête des Échanges, avec ses nouveautés', async ({ page, isMobile }, info) => {
+test('le franchisé retrouve le canal Réseau V and B en tête de Messages, avec ses nouveautés', async ({ page, isMobile }, info) => {
   const liste: CommunicationSimulee[] = [
     { id: 1, titre: 'V and B Day : J-7', texte: 'Ne tardez plus à confirmer votre présence !', magasins: null, auteur: AUTRE, auteur_nom: 'Joseph PERREAU', auteur_role: 'rr', cree_le: new Date(Date.now() - 3_600_000).toISOString() },
   ]
   // Canal ouvert hier sur cet appareil (la première fois, rien d'ancien n'est signalé)
   await page.addInitScript(() => { if (!localStorage.getItem('vandb-reseau-vu')) localStorage.setItem('vandb-reseau-vu', new Date(Date.now() - 86_400_000).toISOString()) })
-  await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Hugo FICTIF' }, communications: liste, messagerie: {} })
+  await seConnecter(page, { acces: PAUL, communications: liste, messagerie: {} })
   await page.goto('./#/echanges')
   const reseau = page.getByRole('list', { name: 'Conversations' }).getByRole('button').first()
   await expect(reseau).toHaveAccessibleName('Réseau V and B : 1 nouvelle communication')

@@ -33,10 +33,6 @@ import MoreVert from '@mui/icons-material/MoreVert'
 import PersonOutlined from '@mui/icons-material/PersonOutlined'
 import PushPinOutlined from '@mui/icons-material/PushPinOutlined'
 import PushPin from '@mui/icons-material/PushPin'
-import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
-import AddOutlined from '@mui/icons-material/AddOutlined'
-import { DialogPratique, VuePratiques } from '../components/BonnesPratiques'
-import type { BonnePratique } from '../data/bonnesPratiques'
 import { useAuth } from '../auth/AuthContext'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
@@ -118,25 +114,6 @@ function LigneReseau({ actif, ouvrir, nonVues, dernier }: { actif: boolean; ouvr
   )
 }
 
-// Canal « Bonnes pratiques » épinglé sous le Réseau : les initiatives réussies de tout le réseau (équipe seulement)
-function LignePratiques({ actif, ouvrir, derniere }: { actif: boolean; ouvrir: () => void; derniere?: BonnePratique }) {
-  return (
-    <ListItemButton selected={actif} onClick={ouvrir} aria-label="Bonnes pratiques"
-      sx={{ borderRadius: 3, mx: 1, mb: 0.25, minHeight: 72, gap: 1.5, alignItems: 'center', bgcolor: actif ? undefined : 'action.hover' }}>
-      <Avatar variant="rounded" sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: '#8bc34a', color: '#1b1b1f' }}><TipsAndUpdatesOutlined /></Avatar>
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-          <Typography variant="body1" sx={{ fontWeight: 600 }}>Bonnes pratiques</Typography>
-          <PushPinOutlined aria-label="Épinglé" sx={{ fontSize: 16, color: 'text.secondary' }} />
-        </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {derniere ? `${derniere.titre} · ${derniere.magasin}` : 'Initiatives réussies des magasins'}
-        </Typography>
-      </Box>
-    </ListItemButton>
-  )
-}
-
 // Personnes qu'on peut ajouter à un groupe libre : l'équipe, et les franchisés de ses magasins
 function invitables(reseau: Reseau, magasins: Reseau['magasins'], moi: string[]): Participant[] {
   const l = new Map<string, Participant>()
@@ -209,8 +186,8 @@ function NouveauMessage({ lignes, ouvrir, fermer }: { lignes: Conversation[]; ou
 
 const PETITE_LISTE = 30
 
-function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreerGroupe, magasins, signaler, pratiques }: {
-  reseau: Reseau; lignes: Conversation[]; mg: Messagerie; actif?: string; ouvrir: (lien: string) => void; ecrire: boolean; peutCreerGroupe: boolean; magasins: Reseau['magasins']; signaler: (m: string) => void; pratiques: boolean
+function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreerGroupe, magasins, signaler, canalReseau }: {
+  reseau: Reseau; lignes: Conversation[]; mg: Messagerie; actif?: string; ouvrir: (lien: string) => void; ecrire: boolean; peutCreerGroupe: boolean; magasins: Reseau['magasins']; signaler: (m: string) => void; canalReseau: boolean
 }) {
   const [recherche, setRecherche] = useState('')
   const [nonLus, setNonLus] = useState(false)
@@ -246,9 +223,8 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
       {nouveau === 'groupe' && <DialogGroupe reseau={reseau} magasins={magasins} groupe={null} onFermer={(msg, id) => { setNouveau(null); if (msg) signaler(msg); if (id) ouvrir(`/echanges/groupe/${id}`) }} />}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: { md: 'auto' }, mx: { xs: -1, md: 0 }, pb: 1 }}>
         <List aria-label="Conversations" disablePadding>
-          {!q && !nonLus && <LigneReseau actif={actif === 'reseau'} ouvrir={() => ouvrir('/echanges/reseau')} nonVues={nonVues} dernier={dernier} />}
-          {!q && nonLus && nonVues > 0 && <LigneReseau actif={actif === 'reseau'} ouvrir={() => ouvrir('/echanges/reseau')} nonVues={nonVues} dernier={dernier} />}
-          {!q && !nonLus && pratiques && <LignePratiques actif={actif === 'pratiques'} ouvrir={() => ouvrir('/echanges/pratiques')} derniere={reseau.pratiques.reduce<BonnePratique | undefined>((d, p) => (!d || p.date > d.date ? p : d), undefined)} />}
+          {/* L'équipe retrouve communications et bonnes pratiques dans Infos réseau (sprint 22, S1) ; le franchisé garde le canal */}
+          {canalReseau && !q && (!nonLus || nonVues > 0) && <LigneReseau actif={actif === 'reseau'} ouvrir={() => ouvrir('/echanges/reseau')} nonVues={nonVues} dernier={dernier} />}
           {affichees.map((l) => <LigneEchange key={l.cle} c={l} mg={mg} actif={l.cle === actif} ouvrir={() => ouvrir(l.lien)} epingle={epingles.includes(l.cle)} />)}
         </List>
         {!affichees.length && (q || nonLus) && (
@@ -332,11 +308,9 @@ function filDeAdresse(genre: string | undefined, valeur: string | undefined, equ
   return null
 }
 
-type Canal = 'reseau' | 'pratiques'
-const canaux: Record<Canal, { titre: string; detail: string; fond: string; icone: ReactNode }> = {
-  reseau: { titre: 'Réseau V and B', detail: 'Communications du réseau', fond: '#ef7d00', icone: <CampaignOutlined /> },
-  pratiques: { titre: 'Bonnes pratiques', detail: 'Initiatives des magasins', fond: '#8bc34a', icone: <TipsAndUpdatesOutlined /> },
-}
+// Canal « Réseau V and B » du franchisé, présenté comme un groupe ; l'équipe passe par Infos réseau (sprint 22, S1)
+type Canal = 'reseau'
+const canalReseau = { titre: 'Réseau V and B', detail: 'Communications du réseau', fond: '#ef7d00', icone: <CampaignOutlined /> }
 
 function Contenu({ reseau, lectureSeule, canal }: { reseau: Reseau; lectureSeule: boolean; canal?: Canal }) {
   const { genre, valeur } = useParams()
@@ -359,16 +333,11 @@ function Contenu({ reseau, lectureSeule, canal }: { reseau: Reseau; lectureSeule
   const ouvrir = (lien: string) => naviguer(lien, { replace: surPC && !!fil })
   const retour = () => (window.history.length > 1 ? naviguer(-1) : naviguer('/echanges'))
   const message = <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
-  // Canaux du réseau présentés comme un groupe (Joseph, 22/10/2026) : seuls ceux qui publient ont le bouton en pied
-  const [pratique, setPratique] = useState<BonnePratique | null | undefined>(undefined)
   useEffect(() => { if (canal === 'reseau') noterReseauVu() }, [canal])
   if (canal) {
-    const c = canaux[canal]
+    const c = canalReseau
     const avatar = <Avatar variant="rounded" sx={{ width: 40, height: 40, borderRadius: 3, bgcolor: c.fond, color: '#1b1b1f' }}>{c.icone}</Avatar>
-    const corps = canal === 'reseau' ? <PageCommunications enFil lectureSeule={lectureSeule} />
-      : <VuePratiques enFil reseau={reseau} modifier={setPratique} actions={lectureSeule ? undefined
-        : <Button variant="contained" fullWidth startIcon={<AddOutlined />} onClick={() => setPratique(null)} sx={{ minHeight: 48, maxWidth: 640 }}>Ajouter une bonne pratique</Button>} />
-    const fenetre = pratique !== undefined && <DialogPratique reseau={reseau} pratique={pratique} onFermer={(m) => { setPratique(undefined); if (m) setConfirmation(m) }} />
+    const corps = <PageCommunications enFil lectureSeule={lectureSeule} />
     if (!surPC) {
       return (
         <ConversationTelephone>
@@ -376,7 +345,6 @@ function Contenu({ reseau, lectureSeule, canal }: { reseau: Reseau; lectureSeule
             <EnTete titre={c.titre} detail={c.detail} niveau="h1" retour={retour} avatar={avatar} />
           </Box>
           <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>{corps}</Box>
-          {fenetre}
           {message}
         </ConversationTelephone>
       )
@@ -386,7 +354,7 @@ function Contenu({ reseau, lectureSeule, canal }: { reseau: Reseau; lectureSeule
         <PageHeader titre="Messages" />
         <Box sx={{ display: 'grid', gridTemplateColumns: messagerie ? '340px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 2, height: 'calc(100dvh - 72px - 64px - 84px)', minHeight: 480 }}>
           {messagerie && <Card sx={{ minHeight: 0 }}>
-            <ListeDiscussions reseau={reseau} lignes={lignes} mg={messagerie} actif={canal} ouvrir={(lien) => naviguer(lien, { replace: true })} ecrire={!lectureSeule} magasins={magasins} signaler={setConfirmation} pratiques={!franchise}
+            <ListeDiscussions reseau={reseau} lignes={lignes} mg={messagerie} actif={canal} ouvrir={(lien) => naviguer(lien, { replace: true })} ecrire={!lectureSeule} magasins={magasins} signaler={setConfirmation} canalReseau={franchise}
               peutCreerGroupe={!lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')} />
           </Card>}
           <Card sx={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -396,7 +364,6 @@ function Contenu({ reseau, lectureSeule, canal }: { reseau: Reseau; lectureSeule
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>{corps}</Box>
           </Card>
         </Box>
-        {fenetre}
         {message}
       </>
     )
@@ -440,7 +407,7 @@ function Contenu({ reseau, lectureSeule, canal }: { reseau: Reseau; lectureSeule
     <FilMessages key={conv.cle + (fil.genre === 'magasin' && fil.equipe ? '|equipe' : '')} reseau={reseau} fil={fil} contact={conv.contact} signaler={setConfirmation} lectureSeule={lectureSeule} basculer={basculer}
       cadre={cadre} aLaFin={!cadre} fond={cadre ? 'background.paper' : 'background.default'} />
   )
-  const liste = <ListeDiscussions reseau={reseau} lignes={lignes} mg={messagerie} actif={conv?.cle} ouvrir={ouvrir} ecrire={!lectureSeule} magasins={magasins} signaler={setConfirmation} pratiques={!franchise}
+  const liste = <ListeDiscussions reseau={reseau} lignes={lignes} mg={messagerie} actif={conv?.cle} ouvrir={ouvrir} ecrire={!lectureSeule} magasins={magasins} signaler={setConfirmation} canalReseau={franchise}
     peutCreerGroupe={!lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')} />
   const dialogue = edition && <DialogGroupe reseau={reseau} magasins={magasins} groupe={edition} onFermer={(msg) => { setEdition(null); if (msg) setConfirmation(msg); if (msg === 'Groupe supprimé.') naviguer('/echanges') }} />
 
@@ -528,5 +495,3 @@ export function Echanges({ lectureSeule = false, canal }: { lectureSeule?: boole
 
 // Canal « Réseau V and B » : les communications du réseau, vues dès l'ouverture
 export const CanalReseau = ({ lectureSeule = false }: { lectureSeule?: boolean }) => <Echanges canal="reseau" lectureSeule={lectureSeule} />
-// Canal « Bonnes pratiques » : les initiatives réussies de tout le réseau ; chacun ajoute celles de ses magasins
-export const CanalPratiques = () => <Echanges canal="pratiques" />

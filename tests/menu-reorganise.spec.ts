@@ -37,7 +37,7 @@ test('Collaborateurs et Franchisés sont des onglets de l’Équipe ; les ancien
   await expect(page).toHaveURL(/#\/equipe\?vue=collaborateurs/)
 })
 
-test('Campagnes passent dans Santé du parc, Bonnes pratiques dans Échanges', async ({ page, isMobile }, info) => {
+test('Campagnes passent dans Santé du parc, Bonnes pratiques dans Infos réseau', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/visites')
   const onglets = page.getByRole('tablist', { name: 'Rubriques des visites' })
@@ -46,16 +46,10 @@ test('Campagnes passent dans Santé du parc, Bonnes pratiques dans Échanges', a
   await page.goto('./#/visites?vue=campagnes')
   await expect(page).toHaveURL(/#\/plus\/sante\?vue=campagnes/)
   await expect(page.getByRole('tablist', { name: 'Rubriques de la santé du parc' })).toContainText('Campagnes')
+  // Bonnes pratiques : Infos réseau (sprint 22, S1)
   await page.goto('./#/visites?vue=pratiques')
-  await expect(page).toHaveURL(/#\/echanges\/pratiques/)
-  await expect(page.getByRole('heading', { name: 'Bonnes pratiques' })).toBeVisible()
-  await page.goto('./#/echanges')
-  const epingle = page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: 'Bonnes pratiques' })
-  await expect(epingle).toBeVisible()
-  expect((await epingle.boundingBox())!.height).toBeGreaterThanOrEqual(48)
-  await epingle.click()
-  await expect(page).toHaveURL(/#\/echanges\/pratiques/)
-  await expect(page.getByRole('button', { name: 'Ajouter une bonne pratique' })).toBeVisible()
+  await expect(page).toHaveURL(/#\/infos\?vue=pratiques$/)
+  await expect(page.getByRole('heading', { name: 'Infos réseau', level: 1 })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-echanges-pratiques.png`, fullPage: !isMobile })
 })
