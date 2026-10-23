@@ -63,14 +63,15 @@ function htmlPicto(type: TypePicto, couleur: string, taille: number) {
 // à la couleur de son Coach ou de son RR ; cerclée de noir quand un plan d'affectation la modifie
 function htmlBulle(couleur: string, modifie: boolean, avenir: boolean, l: number) {
   const h = Math.round(l * 0.8)
-  return `<svg viewBox="0 0 25 20" width="${l}" height="${h}" aria-hidden="true" style="display:block;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4));opacity:${avenir ? 0.55 : 1}">`
-    + `<path d="M1 1.5 L24 0 L23 13.5 L8.5 14.5 L1.5 19.5 L4 14 L2 13.8 Z" fill="${couleurSure(couleur)}" stroke="${modifie ? '#1d1d1b' : '#ffffff'}" stroke-width="${modifie ? 2.5 : 1.5}" stroke-linejoin="round"${avenir ? ' stroke-dasharray="2.5 2"' : ''}/></svg>`
+  return `<svg viewBox="0 0 25 20" width="${l}" height="${h}" aria-hidden="true" style="display:block;overflow:visible;filter:drop-shadow(0 0.5px 1px rgba(0,0,0,.35));opacity:${avenir ? 0.55 : 1}">`
+    + `<path d="M1 1.5 L24 0 L23 13.5 L8.5 14.5 L1.5 19.5 L4 14 L2 13.8 Z" fill="${couleurSure(couleur)}" stroke="${modifie ? '#1d1d1b' : '#ffffff'}" stroke-width="${modifie ? 3.5 : 2}" stroke-linejoin="round"${avenir ? ' stroke-dasharray="2.5 2"' : ''}/></svg>`
 }
 const bulles = new Map<string, ReturnType<typeof divIcon>>()
 const iconeBulle = (couleur: string, modifie: boolean, avenir: boolean, petit: boolean) => {
   const cle = `${couleur}${modifie}${avenir}${petit}`
   if (!bulles.has(cle)) {
-    const l = modifie ? 28 : petit ? 20 : 23
+    // Petite bulle, à la taille des anciens points : la carte reste lisible sous 300 magasins (Joseph, 23/10/2026)
+    const l = modifie ? 15 : petit ? 9 : 11
     bulles.set(cle, divIcon({ html: htmlBulle(couleur, modifie, avenir, l), className: 'picto-magasin', iconSize: [l, Math.round(l * 0.8)], iconAnchor: [Math.round(l * 0.06), Math.round(l * 0.78)], popupAnchor: [Math.round(l * 0.45), -Math.round(l * 0.7)] }))
   }
   return bulles.get(cle)!
