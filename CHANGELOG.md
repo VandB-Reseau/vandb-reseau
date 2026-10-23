@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Ouverture plus rapide (sprint 22, F1) : chaque grand écran (Magasins, fiches, Visites, Agenda, Santé du parc, Messages,
+  Tâches, Infos réseau, Équipe, espace franchisé) a son propre fichier, chargé à la demande puis préchargé en tâche de
+  fond ; carte, ligne et contact des fiches dans `src/components/Section.tsx`, calculs de l'agenda dans
+  `src/data/agenda.ts`. Fichiers téléchargés avant l'accueil : 442 → 386 ko compressés (−13 %). Sans migration.
 - Fiche magasin sans onglet Messages (sprint 22, S2) : le picto message de l'en-tête ouvre le groupe du magasin dans
   Messages ; six onglets, Visites passe dans ceux visibles sur téléphone. Les anciens liens `?vue=messages` mènent au
   groupe. La fiche du franchisé garde son onglet Messages. Sans migration.

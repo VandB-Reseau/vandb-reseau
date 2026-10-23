@@ -32,7 +32,7 @@ import { DialogDirecteur, DialogFranchise, DialogRR } from '../components/Editio
 import { PastilleCharge } from '../components/Charge'
 import { PastilleStatut } from '../components/Pastilles'
 import { ListeMagasins } from '../components/ListeMagasins'
-import { Ligne, Section } from './FicheMagasin'
+import { Ligne, Section } from '../components/Section'
 import { chargeA, magasinsDuCoach } from '../data/charge'
 import { ageDepuis, estFrance, fichePersonne, franchises, libelleDepartement, libelleRole, type RefPersonne } from '../data/personnes'
 import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienRR, telLien } from '../lib/format'

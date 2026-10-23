@@ -2,7 +2,7 @@ import { EcartsAudit, RangeePhotos } from '../components/GrilleAudit'
 import { CartePratique, DialogPratique } from '../components/BonnesPratiques'
 import { useReactionsPratiques } from '../data/reactionsPratiques'
 import type { BonnePratique } from '../data/bonnesPratiques'
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import StarOutlined from '@mui/icons-material/StarOutlined'
 import StarBorderOutlined from '@mui/icons-material/StarBorderOutlined'
 import { basculerFavori, noterRecent, useSuivis } from '../lib/suivis'
@@ -11,7 +11,7 @@ import MenuItem from '@mui/material/MenuItem'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
-import { Initiales, type Ton } from '../components/Social'
+import type { Ton } from '../components/Social'
 import { ProfilPersonne, rond } from '../components/Portefeuille'
 import { FilActivite } from './Accueil'
 import { statutLibelle } from '../data/modele'
@@ -19,15 +19,12 @@ import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'rea
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import ArrowBack from '@mui/icons-material/ArrowBack'
-import CallOutlined from '@mui/icons-material/CallOutlined'
-import MailOutlined from '@mui/icons-material/MailOutlined'
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
@@ -43,7 +40,7 @@ import { EmptyState } from '../components/EmptyState'
 import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienPreparation, lienRR, telLien } from '../lib/format'
 import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
-import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Personne, type Reseau, type Visite } from '../data/modele'
+import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
 import { EnvoyerCompteRendu } from '../components/EnvoyerCompteRendu'
 import { DialogPlanifier } from '../components/DialogPlanifier'
@@ -61,53 +58,13 @@ import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import { lienFil } from '../data/messagerie'
 import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
-import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import PhoneInTalkOutlined from '@mui/icons-material/PhoneInTalkOutlined'
 import { ContenuLeviers, ListeInspirations } from '../components/Leviers'
 import { inspirationsDu, leviersDuMagasin, libellesLevier, useReperesReseau } from '../data/leviers'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
+import { Contact, Ligne, Section } from '../components/Section'
 import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, estVisite, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
-
-export function Section({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
-  return (
-    <Card>
-      <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h3" component="h2" sx={{ flex: 1 }}>{titre}</Typography>
-          {action}
-        </Box>
-        {children}
-      </CardContent>
-    </Card>
-  )
-}
-
-export function Ligne({ libelle, children }: { libelle: string; children: ReactNode }) {
-  return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '180px 1fr' }, gap: { xs: 0.25, sm: 2 }, py: 1.25, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
-      <Typography variant="body2" color="text.secondary">{libelle}</Typography>
-      <Box sx={{ typography: 'body1', minWidth: 0, overflowWrap: 'anywhere' }}>{children || <Typography color="text.secondary" variant="body2">Non renseigné</Typography>}</Box>
-    </Box>
-  )
-}
-
-// Ligne de contact à initiales, comme dans Magasins : le nom (vers sa fiche), le rôle dessous, les pictos à droite
-export function Contact({ role, p, sousTitre, lien }: { role: string; p: Personne | null; sousTitre?: string; lien?: string }) {
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
-      <Initiales nom={p?.nom ?? role} taille={40} icone={p ? undefined : <PersonOutlineOutlined />} couleur={p ? undefined : '#9e9e9e'} />
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        {p && lien
-          ? <Link component={RouterLink} to={lien} variant="body1" color="inherit" underline="hover" sx={{ fontWeight: 600, display: 'inline-flex', minHeight: 32, alignItems: 'center' }}>{p.nom}</Link>
-          : <Typography variant="body1" sx={{ fontWeight: 600, color: p ? undefined : 'text.secondary' }}>{p?.nom ?? 'Non renseigné'}</Typography>}
-        <Typography variant="body2" color="text.secondary" noWrap>{[role, sousTitre].filter(Boolean).join(' · ')}</Typography>
-      </Box>
-      {p?.telephone && <Tooltip title={p.telephone}><IconButton href={telLien(p.telephone)} aria-label={`Appeler ${p.nom}`} sx={{ width: 48, height: 48 }}><CallOutlined /></IconButton></Tooltip>}
-      {p?.email && <Tooltip title={p.email}><IconButton href={`mailto:${p.email}`} aria-label={`Écrire à ${p.nom}`} sx={{ width: 48, height: 48 }}><MailOutlined /></IconButton></Tooltip>}
-    </Box>
-  )
-}
 
 // Plus de fil, redondant avec les onglets (Joseph, 22/10/2026) ; le journal et les bonnes pratiques ont chacun leur onglet
 // (Joseph, 22/10/2026), la santé va avec les chiffres, les campagnes avec les tâches. Plus d'onglet Messages (sprint 22,
