@@ -116,6 +116,7 @@ test('le Coach remplit un sondage depuis son accueil, sans voir les résultats',
   await sondage.getByRole('group', { name: 'Répondre : Format de la réunion' }).getByRole('button', { name: 'Visio' }).click()
   await expect(sondage.getByRole('group', { name: 'Répondre : Format de la réunion' }).getByRole('button', { name: 'Visio' })).toHaveAttribute('aria-pressed', 'true')
   await sondage.getByRole('group', { name: 'Répondre : Besoin d’aide ?' }).getByRole('button', { name: 'Non' }).click()
+  await expect(sondage.getByRole('group', { name: 'Répondre : Charge de travail' }).getByRole('button', { name: '4' })).toHaveAttribute('aria-pressed', 'true')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-sondage-coach.png`, fullPage: !isMobile })
   await envoyer.click()

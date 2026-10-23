@@ -178,9 +178,13 @@ export function SectionSondages({ reseau }: { reseau: Reseau }) {
   )
 }
 
+// Réponses en cours, gardées si la page se recharge (données du réseau relues) avant l'envoi
+const enCours = new Map<number, string[]>()
+
 // Un sondage à remplir : une question se répond d'un geste, plusieurs se répondent puis s'envoient ensemble
 function SondageAFaire({ s, envoyer }: { s: SondageARepondre; envoyer: (valeurs: string[]) => Promise<void> }) {
-  const [valeurs, setValeurs] = useState<string[]>([])
+  const [valeurs, setValeursLocales] = useState<string[]>(() => enCours.get(s.id) ?? [])
+  const setValeurs = (f: (l: string[]) => string[]) => setValeursLocales((l) => { const n = f(l); enCours.set(s.id, n); return n })
   const seule = s.questions.length === 1
   const complet = s.questions.every((_q, i) => !!valeurs[i])
   return (
