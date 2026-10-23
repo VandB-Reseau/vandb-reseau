@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- S'inspirer d'un magasin qui réussit (sprint 22, A1) : dans Chiffres et santé de la fiche magasin, sous les leviers,
+  les 3 magasins les plus forts sur le levier en retrait sur les 3 derniers mois (panier : valeur moyenne ; flux :
+  évolution vs N-1), de la même région d'abord, sinon de tous les magasins visibles du compte ; leur franchisé, leurs
+  bonnes pratiques, et un bouton pour lui écrire. Équipe seule (`inspirationsDu` dans `src/data/leviers.ts`,
+  test `leviers.spec.ts`). Sans migration.
 - Fiche magasin : Journal et Bonnes pratiques ont chacun leur onglet (Joseph, 22/10/2026), au lieu d'être sous la Fiche.
   Les liens du fil vers une bonne pratique ouvrent l'onglet Bonnes pratiques. Sans migration.
 - Compte rendu dans le fil d'actualité (Joseph, 22/10/2026) : une vignette carrée « Compte rendu », comme une photo, ouvre le
