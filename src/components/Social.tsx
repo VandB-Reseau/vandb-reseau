@@ -109,7 +109,7 @@ export const cartouche = (theme: Theme) => ({
 export function TitreSection({ children, nombre, action }: { children: ReactNode; nombre?: number; action?: ReactNode }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, mb: 1, minHeight: 40 }}>
-      <Box sx={{ flex: 1 }}><Typography component="h2" sx={cartouche}>{children}</Typography></Box>
+      <Typography component="h2" sx={cartouche}>{children}</Typography><Box sx={{ flex: 1 }} />
       {nombre !== undefined && <Typography sx={{ fontWeight: 600 }}>{nombre}</Typography>}
       {action}
     </Box>

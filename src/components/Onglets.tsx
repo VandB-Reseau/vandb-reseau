@@ -26,7 +26,7 @@ export interface Rubrique<V extends string> { vue: V; libelle: string; court?: s
 const PLUS = '__plus'
 const VISIBLES_TELEPHONE = 3
 const ECART = 0 // puces bord à bord, l'espace est dessiné dans la zone tactile
-const MARGE_PUCE = 28 // px de chaque côté (14) d'une puce sur téléphone
+const MARGE_PUCE = 24 // px de chaque côté (12) d'une puce sur téléphone (Lato est plus large que l'ancienne police)
 const MARGE_PLUS = 46 // 14 à gauche, 10 à droite, flèche de 20 et son écart
 
 let pinceau: CanvasRenderingContext2D | null | undefined
@@ -53,7 +53,7 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const [panneau, setPanneau] = useState(false)
   const publierBande = useBande('--onglets', !libres)
-  const [place, setPlace] = useState<{ largeur: number; police: string } | null>(null)
+  const [place, setPlace] = useState<{ largeur: number; police: string; polices: boolean } | null>(null)
   const suivi = useRef<ResizeObserver | null>(null)
   const bande = useCallback((e: HTMLElement | null) => {
     publierBande(e)
@@ -63,9 +63,12 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
     const mesurer = () => {
       const st = getComputedStyle(e)
       const largeur = e.clientWidth - parseFloat(st.paddingLeft) - parseFloat(st.paddingRight)
-      setPlace((p) => (p && p.largeur === largeur ? p : { largeur, police: `600 14px ${st.fontFamily}` }))
+      // Les largeurs se mesurent avec la police embarquée : nouvelle mesure une fois les polices chargées
+      const polices = document.fonts?.status !== 'loading'
+      setPlace((p) => (p && p.largeur === largeur && p.polices === polices ? p : { largeur, police: `600 14px ${st.fontFamily}`, polices }))
     }
     mesurer()
+    document.fonts?.ready.then(mesurer)
     suivi.current = new ResizeObserver(mesurer)
     suivi.current.observe(e)
   }, [publierBande])
@@ -125,7 +128,7 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
 
 // Puce de 40 px dessinée dans la zone tactile de 48 px
 const styleOnglet = {
-  minHeight: 48, minWidth: 0, px: { xs: 1.75, md: 2 }, py: 0, gap: 0.75, position: 'relative', zIndex: 0, color: 'text.primary', opacity: 1,
+  minHeight: 48, minWidth: 0, px: { xs: 1.5, md: 2 }, py: 0, gap: 0.75, position: 'relative', zIndex: 0, color: 'text.primary', opacity: 1,
   fontSize: '0.875rem', fontWeight: 500,
   '& .MuiTab-icon': { mb: 0, mr: 0, fontSize: 20 },
   '&::before': { content: '""', position: 'absolute', inset: '4px 0', borderRadius: 999, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', zIndex: -1 },

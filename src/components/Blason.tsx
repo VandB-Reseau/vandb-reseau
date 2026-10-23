@@ -44,12 +44,13 @@ export function couleursBlason(departement: string): string[] {
 
 export function Blason({ magasin, nom, taille = 44 }: { magasin: Magasin | undefined; nom?: string; taille?: number }) {
   if (!magasin) return <Initiales nom={nom ?? ''} taille={taille} />
-  const forme = formes[magasin.topographie || topographieDeduite(magasin.departement)]
+  const topo = magasin.topographie || topographieDeduite(magasin.departement)
+  const forme = formes[topo]
   const [a, b] = couleursBlason(magasin.departement)
   const masque = { WebkitMaskImage: `url(${forme})`, maskImage: `url(${forme})`, WebkitMaskSize: 'contain', maskSize: 'contain', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center' } as const
   return (
     // Un liseré discret garde visible la teinte crème de l'Est sur fond clair
-    <Box aria-hidden sx={{ width: taille, height: taille, flexShrink: 0, filter: 'drop-shadow(0 0 0.75px rgba(49, 46, 46, 0.55))' }}>
+    <Box aria-hidden data-blason={topo} sx={{ width: taille, height: taille, flexShrink: 0, filter: 'drop-shadow(0 0 0.75px rgba(49, 46, 46, 0.55))' }}>
       <Box sx={{ width: '100%', height: '100%', ...masque, background: b ? `linear-gradient(90deg, ${a} 0 50%, ${b} 50% 100%)` : a }} />
     </Box>
   )
