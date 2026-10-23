@@ -8,10 +8,19 @@ import Card from '@mui/material/Card'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
+import ArticleOutlined from '@mui/icons-material/ArticleOutlined'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
+import { ContenuMisEnForme } from './MiseEnForme'
+import { heureLisible } from '../data/agenda'
 import { Puces, LigneCompacte, Initiales, CarteLignes, TitreSection } from './Social'
 import { Section } from './Section'
 import { useAuth } from '../auth/AuthContext'
-import type { Evenement, Reseau } from '../data/modele'
+import { libellesTypeEvenement, type Evenement, type Reseau } from '../data/modele'
 import { chargerReunionsFranchise, pointerPresence, repondreReunion, reunionsDuMagasin, tauxPresence, usePresences, type Presence, type Reponse, type ReunionFranchise } from '../data/reunions'
 import { dateCourte } from '../lib/format'
 
@@ -91,6 +100,18 @@ export function PresencesReunion({ reseau, e }: { reseau: Reseau; e: Evenement }
   )
 }
 
+// Contenu mis en forme d'une formation ou d'une réunion, en lecture
+export function FenetreContenu({ titre, html, onFermer }: { titre: string; html: string; onFermer: () => void }) {
+  const pleinEcran = useMediaQuery(useTheme().breakpoints.down('sm'))
+  return (
+    <Dialog open onClose={onFermer} fullScreen={pleinEcran} fullWidth maxWidth="md" aria-labelledby="titre-contenu">
+      <DialogTitle id="titre-contenu">{titre}</DialogTitle>
+      <DialogContent><ContenuMisEnForme html={html} /></DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}><Button onClick={onFermer} sx={{ minHeight: 48 }}>Fermer</Button></DialogActions>
+    </Dialog>
+  )
+}
+
 // Fiche magasin : réunions et formations de l'année, présent à X sur Y
 export function SectionReunionsMagasin({ reseau, magasin }: { reseau: Reseau; magasin: string }) {
   const { presences } = usePresences()
@@ -115,6 +136,7 @@ export function SectionReunionsMagasin({ reseau, magasin }: { reseau: Reseau; ma
 export function SectionReunionsFranchise({ jour }: { jour: string }) {
   const [liste, setListe] = useState<ReunionFranchise[] | null>(null)
   const [erreur, setErreur] = useState('')
+  const [contenu, setContenu] = useState<ReunionFranchise | null>(null)
   const relire = () => chargerReunionsFranchise().then(setListe).catch(() => setListe(null))
   useEffect(() => { void relire() }, [])
   const a_venir = (liste ?? []).filter((r) => r.fin >= jour)
@@ -130,7 +152,10 @@ export function SectionReunionsFranchise({ jour }: { jour: string }) {
         {a_venir.map((r) => (
           <Box component="li" key={r.id} sx={{ px: 2, py: 1.5 }}>
             <Typography sx={{ fontWeight: 600 }}>{r.titre}</Typography>
-            <Typography variant="body2" color="text.secondary">{[r.debut === r.fin ? dateCourte(r.debut) : `${dateCourte(r.debut)} au ${dateCourte(r.fin)}`, r.notes].filter(Boolean).join(' · ')}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {[libellesTypeEvenement[r.type], r.debut === r.fin ? dateCourte(r.debut) : `${dateCourte(r.debut)} au ${dateCourte(r.fin)}`, r.heure && `à ${heureLisible(r.heure)}`, r.notes].filter(Boolean).join(' · ')}
+            </Typography>
+            {r.html && <Button startIcon={<ArticleOutlined />} onClick={() => setContenu(r)} sx={{ minHeight: 48, mt: 0.5, ml: -1 }}>Voir le contenu</Button>}
             <Box role="group" aria-label={`Ma réponse : ${r.titre}`} sx={{ display: 'flex', gap: 1, mt: 1 }}>
               {(['present', 'absent'] as const).map((v) => (
                 <Button key={v} variant={r.reponse === v ? 'contained' : 'outlined'} color={v === 'present' ? 'success' : 'inherit'} aria-pressed={r.reponse === v}
@@ -141,6 +166,7 @@ export function SectionReunionsFranchise({ jour }: { jour: string }) {
         ))}
       </Card>
       {erreur && <Typography color="error" sx={{ mt: 1 }}>{erreur}</Typography>}
+      {contenu && <FenetreContenu titre={contenu.titre} html={contenu.html} onFermer={() => setContenu(null)} />}
     </Box>
   )
 }

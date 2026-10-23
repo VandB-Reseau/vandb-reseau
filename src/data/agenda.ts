@@ -2,9 +2,9 @@
 import { lienFiche } from '../lib/format'
 import { libellePerimetre, magasinsConcernes } from './campagnes'
 import { estVisite } from './chiffres'
-import { libelleTypeVisite, nomsVisiteurs, type Evenement, type Reseau, type Visite } from './modele'
+import { libelleTypeVisite, libellesTypeEvenement, nomsVisiteurs, typeEvenement, type Evenement, type Reseau, type Visite } from './modele'
 
-export type Categorie = 'visite' | 'campagne' | 'ouverture' | 'anniversaire' | 'evenement'
+export type Categorie = 'visite' | 'campagne' | 'ouverture' | 'anniversaire' | 'evenement' | 'formation'
 export interface Element { cle: string; categorie: Categorie; debut: string; fin: string; titre: string; detail: string; lien?: string; evenement?: Evenement; visite?: Visite; couleur: string; magasin?: string }
 
 export const iso = (d: Date) => d.toISOString().slice(0, 10)
@@ -12,6 +12,8 @@ export const jourUTC = (s: string) => new Date(`${s}T00:00:00Z`)
 export const ajouterJours = (s: string, n: number) => { const d = jourUTC(s); d.setUTCDate(d.getUTCDate() + n); return iso(d) }
 export const nomMois = (s: string) => jourUTC(s).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 export const ecartJours = (a: string, b: string) => Math.round((jourUTC(b).getTime() - jourUTC(a).getTime()) / 86400000)
+// 14:30 → 14 h 30 (heure de Paris, telle que saisie)
+export const heureLisible = (h: string) => h.replace(':', ' h ')
 export const jourLong = (s: string) => jourUTC(s).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
 
 export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Element[] {
@@ -28,7 +30,12 @@ export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Elem
   for (const m of reseau.magasins) {
     if (m.ouvertureConnue && m.ouverture >= debut && m.ouverture <= fin) el.push({ cle: `o-${m.nom}`, categorie: 'ouverture', debut: m.ouverture, fin: m.ouverture, titre: `Ouverture ${m.nom}`, detail: m.coach ? `Coach ${m.coach}` : 'Sans Coach', lien: lienFiche(m.nom), couleur: '#ef7d00' })
   }
-  for (const e of reseau.evenements) if (e.debut <= fin && e.fin >= debut) el.push({ cle: `e-${e.id}`, categorie: 'evenement', debut: e.debut, fin: e.fin, titre: e.titre, detail: e.notes, evenement: e, couleur: e.couleur })
+  // Formations à part (23/10/2026) ; une réunion reste un événement
+  for (const e of reseau.evenements) if (e.debut <= fin && e.fin >= debut) {
+    const t = typeEvenement(e)
+    el.push({ cle: `e-${e.id}`, categorie: t === 'formation' ? 'formation' : 'evenement', debut: e.debut, fin: e.fin, titre: e.titre,
+      detail: [t !== 'event' && libellesTypeEvenement[t], e.heure && `à ${heureLisible(e.heure)}`, e.notes].filter(Boolean).join(' · '), evenement: e, couleur: e.couleur })
+  }
   const annee = debut.slice(0, 4)
   for (const a of reseau.anniversaires) {
     const jour = `${annee}-${a.date.slice(5)}`

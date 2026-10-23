@@ -35,6 +35,7 @@ import { RechercheFiltres } from './RechercheFiltres'
 import { EmptyState } from './EmptyState'
 import { visiteurs } from './DialogVisite'
 import { basculerJaime, enregistrerPratique } from '../data/chargement'
+import { notifierContenu } from '../lib/notifications'
 import { themesConnus, type BonnePratique } from '../data/bonnesPratiques'
 import { nouvelId, type Photo } from '../data/grilles'
 import { envoyerPhoto, lienPhoto, messagePhoto, supprimerPhotos } from '../lib/photos'
@@ -69,6 +70,8 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', depart, 
         const gardees = new Set(toutes.map((p) => p.chemin))
         await supprimerPhotos([...new Set([...retirees, ...(pratique?.photos ?? []).map((p) => p.chemin)])].filter((c) => !gardees.has(c)))
         if (apres) await apres(id)
+        // Nouvelle bonne pratique : tout le réseau est prévenu
+        if (!pratique) notifierContenu('pratique', id)
         return pratique ? 'Bonne pratique mise à jour.' : depart ? 'Bonne pratique publiée.' : 'Bonne pratique enregistrée.'
       }}
       supprimer={pratique ? async () => {

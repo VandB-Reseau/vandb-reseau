@@ -30,7 +30,7 @@ import {
   aLaUneDabord, basculerPouce, chargerCommunications, chargerLectures, commenter, communicationsConnues, mettreALaUne, noterLues, messageCommunication, publierCommunication, retenirCommunications, supprimerCommentaire, supprimerCommunication,
   type Communication, type Communications, type Lecture,
 } from '../data/communications'
-import { notifier } from '../lib/notifications'
+import { notifier, notifierContenu } from '../lib/notifications'
 
 const aujourdhui = () => new Date().toLocaleDateString('sv-SE')
 const roles: Record<string, string> = { directeur: 'Directeur de réseau', rr: 'Responsable Régional', coach: 'Coach', franchise: 'Franchisé' }
@@ -79,9 +79,11 @@ function DialogCommunication({ edition: { c, brouillon, erreur }, auteur, publie
       const id = c?.id ?? r?.id
       if (id && une !== (c?.aLaUne ?? '')) {
         await mettreALaUne(id, une || null)
-        // Première mise à la une : les franchisés visés sont prévenus sur leur téléphone
-        if (une && !c?.aLaUne) notifier('une', [id])
+        // Première mise à la une d'une communication déjà publiée : les franchisés visés sont prévenus sur leur téléphone
+        if (une && c && !c.aLaUne) notifier('une', [id])
       }
+      // Nouvelle communication : les personnes concernées sont prévenues, à la une ou non
+      if (id && !c) notifierContenu('communication', id)
     })
     return ''
   }
@@ -199,6 +201,9 @@ export function PageCommunications({ lectureSeule = false, entete, filtre, integ
   const [params] = useSearchParams()
   const cible = params.get('c')
   const pret = etat !== undefined
+  // Arrivée depuis l'onglet Animation réseau : la fenêtre de publication s'ouvre
+  const aPublier = params.get('publier') === '1' && !lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')
+  useEffect(() => { if (pret && etat && aPublier) setEdition({ c: null }) }, [pret, aPublier]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (pret && cible) document.getElementById(`communication-${cible}`)?.scrollIntoView({ block: 'start' }) }, [pret, cible])
   const peutPublier = !lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')
   const jour = aujourdhui()

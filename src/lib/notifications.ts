@@ -61,6 +61,13 @@ export function notifierTache(magasin: string, tache: string, cles: string[]) {
   void supabase.functions.invoke('notifier', { body: { type: 'tache', magasin, tache, cles } }).catch(() => { /* la tâche reste dans l'app */ })
 }
 
+// Nouveau contenu (migration 0030) : la base retrouve les personnes concernées et ne l'envoie qu'une fois.
+// magasins : pour une campagne, les magasins qu'elle concerne
+export type GenreContenu = 'sondage' | 'evenement' | 'communication' | 'pratique' | 'campagne'
+export function notifierContenu(genre: GenreContenu, id: string | number, magasins: string[] = []) {
+  void supabase.functions.invoke('notifier', { body: { type: 'contenu', genre, id: String(id), ...(magasins.length ? { magasins } : {}) } }).catch(() => { /* le contenu reste dans l'app */ })
+}
+
 export function useNotificationsAppareil() {
   const [etat, setEtat] = useState<EtatNotifications>('indisponible')
   const relire = useCallback(() => { void lireEtat().then(setEtat) }, [])

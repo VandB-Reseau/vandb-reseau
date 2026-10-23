@@ -22,6 +22,7 @@ import {
   type Cible, type Genre, type QuestionSondage, type Sondage, type SondageARepondre,
 } from '../data/questions'
 import { dateCourte } from '../lib/format'
+import { notifierContenu } from '../lib/notifications'
 
 const MAX_QUESTIONS = 5
 const plusJours = (jour: string, n: number) => { const d = new Date(`${jour}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
@@ -51,10 +52,11 @@ export function DialogSondage({ reseau, onFermer }: { reseau: Reseau; onFermer: 
     <Fenetre titre="Nouveau sondage" ouvert onFermer={onFermer} valide={valide} sansRechargement
       enregistrer={async () => {
         const magasins = !directeur || !region ? null : reseau.magasins.filter((m) => m.rr?.id === region).map((m) => m.nom)
-        await publierSondage({
+        const id = await publierSondage({
           titre: plusieurs ? titre.trim() : questions[0].titre.trim(), cible, anonyme: anonyme === 'anonyme', magasins, jusquAu,
           questions: questions.map((b) => ({ titre: b.titre.trim(), genre: b.genre, choix: b.genre === 'choix' ? optionsDe(b) : [] })),
         })
+        if (id) notifierContenu('sondage', id)
         return 'Sondage envoyé.'
       }}>
       {plusieurs && <TextField label="Titre du sondage" value={titre} onChange={(e) => setTitre(e.target.value)} slotProps={{ htmlInput: { maxLength: 300 } }} />}
@@ -119,7 +121,7 @@ function ResultatQuestion({ reseau, s, q, n }: { reseau: Reseau; s: Sondage; q: 
   )
 }
 
-function CarteSondage({ reseau, s, jour, moi, directeur, retirer }: { reseau: Reseau; s: Sondage; jour: string; moi: string; directeur: boolean; retirer: () => void }) {
+export function CarteSondage({ reseau, s, jour, moi, directeur, retirer }: { reseau: Reseau; s: Sondage; jour: string; moi: string; directeur: boolean; retirer: () => void }) {
   const [relance, setRelance] = useState(false)
   const [noms, setNoms] = useState(false)
   const total = s.reponses.length

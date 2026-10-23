@@ -24,6 +24,7 @@ import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
+import SchoolOutlined from '@mui/icons-material/SchoolOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
@@ -32,7 +33,11 @@ import { DialogVisite } from '../components/DialogVisite'
 import { DialogPlanifier } from '../components/DialogPlanifier'
 import { deplacerVisite, enregistrerEvenement, supprimerEvenement } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
-import type { Evenement, Reseau } from '../data/modele'
+import { libellesTypeEvenement, typeEvenement, type Evenement, type Reseau, type TypeEvenement } from '../data/modele'
+import { Puces } from '../components/Social'
+import { AlerteTaille, ChampCodeHtml, EditeurMiseEnForme } from '../components/MiseEnForme'
+import { HTML_MAX, nettoyerHtml } from '../lib/html'
+import { notifierContenu } from '../lib/notifications'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { BandeCollante } from '../components/Collant'
 import { ChampInvites, PresencesReunion } from '../components/Reunions'
@@ -44,31 +49,72 @@ const categories: { id: Categorie; libelle: string; couleur: string; icone: Reac
   { id: 'campagne', libelle: 'Campagnes', couleur: '#a15c00', icone: <CampaignOutlined fontSize="small" /> },
   { id: 'ouverture', libelle: 'Ouvertures', couleur: '#ef7d00', icone: <StorefrontOutlined fontSize="small" /> },
   { id: 'evenement', libelle: 'Événements', couleur: '#7c3aed', icone: <EventOutlined fontSize="small" /> },
+  { id: 'formation', libelle: 'Formations', couleur: '#2e7d32', icone: <SchoolOutlined fontSize="small" /> },
   { id: 'anniversaire', libelle: 'Anniversaires', couleur: '#c2185b', icone: <CakeOutlined fontSize="small" /> },
 ]
 
 const COULEURS_EV = ['#7c3aed', '#1b6fce', '#ef7d00', '#2e7d32', '#c2185b']
-export function DialogEvenement({ reseau, evenement, jourInitial, onFermer }: { reseau: Reseau; evenement: Evenement | null; jourInitial?: string; onFermer: (m?: string) => void }) {
+// Couleur proposée pour chaque type, tant que la personne n'en a pas choisi une autre
+const COULEUR_TYPE: Record<TypeEvenement, string> = { event: '#7c3aed', reunion: '#1b6fce', formation: '#2e7d32' }
+type FormatContenu = 'aucun' | 'forme' | 'code'
+const formatsContenu: { v: FormatContenu; libelle: string }[] = [{ v: 'aucun', libelle: 'Aucun' }, { v: 'forme', libelle: 'Mise en forme' }, { v: 'code', libelle: 'Code HTML' }]
+const titreAjout: Record<TypeEvenement, string> = { event: 'Ajouter un événement', reunion: 'Ajouter une réunion', formation: 'Ajouter une formation' }
+
+export function DialogEvenement({ reseau, evenement, jourInitial, typeInitial = 'event', onFermer }: { reseau: Reseau; evenement: Evenement | null; jourInitial?: string; typeInitial?: TypeEvenement; onFermer: (m?: string) => void }) {
+  const [type, setType] = useState<TypeEvenement>(evenement ? typeEvenement(evenement) : typeInitial)
   const [titre, setTitre] = useState(evenement?.titre ?? '')
   const [debut, setDebut] = useState(evenement?.debut ?? jourInitial ?? reseau.jour)
   const [fin, setFin] = useState(evenement?.fin ?? jourInitial ?? reseau.jour)
+  const [heure, setHeure] = useState(evenement?.heure ?? '')
   const [notes, setNotes] = useState(evenement?.notes ?? '')
-  const [couleur, setCouleur] = useState(evenement?.couleur ?? COULEURS_EV[0])
+  const [couleur, setCouleur] = useState(evenement?.couleur ?? COULEUR_TYPE[typeInitial])
   const [invites, setInvites] = useState<string[]>(evenement?.invites ?? [])
+  const [format, setFormat] = useState<FormatContenu>(evenement?.html ? 'forme' : 'aucun')
+  const [html, setHtml] = useState(evenement?.html ?? '')
   const { profil } = useAuth()
   const invite = profil?.role === 'directeur' || profil?.role === 'rr'
   const ordre = debut && fin && fin >= debut
+  const avecContenu = type !== 'event'
+  const propre = avecContenu && format !== 'aucun' ? nettoyerHtml(html) : ''
+  const tropLourd = propre.length > HTML_MAX
+  const changerType = (t: TypeEvenement) => {
+    if (couleur === COULEUR_TYPE[type]) setCouleur(COULEUR_TYPE[t])
+    setType(t)
+  }
+  const enregistrer = async () => {
+    const avant = evenement?.invites?.length ?? 0
+    const id = await enregistrerEvenement({
+      id: evenement?.id ?? null, titre: titre.trim(), type, debut, fin, notes: notes.trim(), couleur,
+      ...(invite && (invites.length || evenement?.invites) ? { invites } : {}),
+      // Heure et contenu envoyés seulement s'ils servent : un événement simple s'enregistre aussi sur une base d'avant 0030
+      ...(avecContenu && heure || evenement?.heure ? { heure: avecContenu ? heure : '' } : {}),
+      ...(propre || evenement?.html ? { html: propre } : {}),
+    })
+    // Première invitation de magasins : franchisés et Coachs invités sont prévenus
+    if (id && invite && invites.length && !avant) notifierContenu('evenement', id)
+    return type === 'formation' ? 'Formation enregistrée.' : type === 'reunion' ? 'Réunion enregistrée.' : 'Événement enregistré.'
+  }
   return (
-    <Fenetre titre={evenement ? `Modifier ${evenement.titre}` : 'Ajouter un événement'} ouvert onFermer={onFermer} valide={!!titre.trim() && !!ordre}
-      enregistrer={async () => { await enregistrerEvenement({ id: evenement?.id ?? null, titre: titre.trim(), type: evenement?.type ?? 'event', debut, fin, notes: notes.trim(), couleur, ...(invite && (invites.length || evenement?.invites) ? { invites } : {}) }); return 'Événement enregistré.' }}
+    <Fenetre titre={evenement ? `Modifier ${evenement.titre}` : titreAjout[type]} ouvert onFermer={onFermer} valide={!!titre.trim() && !!ordre && !tropLourd} large={avecContenu && format !== 'aucun'}
+      enregistrer={enregistrer}
       supprimer={evenement?.id ? async () => { await supprimerEvenement(evenement.id!); return 'Événement supprimé.' } : undefined}
       libelleSuppression={evenement ? `Supprimer « ${evenement.titre} » ?` : undefined}>
-      <TextField label="Titre" value={titre} onChange={(e) => setTitre(e.target.value)} autoFocus placeholder="Par exemple : séminaire des Coachs" />
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: '1fr 1fr' }}>
+      <Puces label="Type" valeur={type} onChange={changerType} options={(['event', 'reunion', 'formation'] as const).map((v) => ({ v, libelle: libellesTypeEvenement[v] }))} />
+      <TextField label="Titre" value={titre} onChange={(e) => setTitre(e.target.value)} autoFocus placeholder={type === 'formation' ? 'Par exemple : accords mets et vins' : 'Par exemple : séminaire des Coachs'} />
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: avecContenu ? { xs: '1fr 1fr', sm: '1fr 1fr 1fr' } : '1fr 1fr' }}>
         <TextField type="date" label="Du" value={debut} onChange={(e) => setDebut(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
         <TextField type="date" label="Au" value={fin} onChange={(e) => setFin(e.target.value)} error={!ordre} helperText={ordre ? ' ' : 'La fin doit suivre le début.'} slotProps={{ inputLabel: { shrink: true } }} />
+        {avecContenu && <TextField type="time" label="Heure (facultatif)" value={heure} onChange={(e) => setHeure(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { step: 300 } }} />}
       </Box>
-      <TextField label="Détails (facultatif)" value={notes} onChange={(e) => setNotes(e.target.value)} multiline minRows={2} />
+      <TextField label={avecContenu ? 'Lieu ou détails (facultatif)' : 'Détails (facultatif)'} value={notes} onChange={(e) => setNotes(e.target.value)} multiline minRows={2} />
+      {avecContenu && (
+        <Box>
+          <Puces label={type === 'formation' ? 'Contenu de la formation' : 'Contenu de la réunion'} valeur={format} options={formatsContenu} onChange={setFormat} />
+          {format === 'forme' && <EditeurMiseEnForme html={html} changer={setHtml} libelle={type === 'formation' ? 'Contenu de la formation' : 'Contenu de la réunion'} />}
+          {format === 'code' && <ChampCodeHtml html={html} changer={setHtml} />}
+          <AlerteTaille visible={tropLourd} />
+        </Box>
+      )}
       <Box sx={{ display: 'flex', gap: 1 }} role="radiogroup" aria-label="Couleur">
         {COULEURS_EV.map((c) => <Box key={c} component="button" type="button" role="radio" aria-checked={couleur === c} aria-label={`Couleur ${c}`} onClick={() => setCouleur(c)} sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: c, cursor: 'pointer', border: '3px solid', borderColor: couleur === c ? 'text.primary' : 'transparent' }} />)}
       </Box>
@@ -90,7 +136,7 @@ const datesApres = (g: Glisse): Dates => {
   const n = ecartJours(g.depart, g.cible)
   return { debut: ajouterJours(g.e.debut, n), fin: ajouterJours(g.e.fin, n) }
 }
-type Ajout = 'visite' | 'evenement'
+type Ajout = 'visite' | 'evenement' | 'formation'
 interface Ancre { jour: string; x: number; y: number }
 
 function Pastille({ e, onClick, glissement, poignee, actif }: { e: Element; onClick?: () => void; glissement?: (ev: EvenementPointeur, mode: Mode) => void; poignee?: boolean; actif?: boolean }) {
@@ -114,6 +160,7 @@ function MenuAjout({ ancre, onChoisir, onFermer }: { ancre: Ancre | null; onChoi
   const choix: { id: Ajout; libelle: string; icone: ReactElement }[] = [
     { id: 'visite', libelle: 'Visite', icone: <EventNoteOutlined fontSize="small" /> },
     { id: 'evenement', libelle: 'Événement', icone: <EventOutlined fontSize="small" /> },
+    { id: 'formation', libelle: 'Formation', icone: <SchoolOutlined fontSize="small" /> },
   ]
   return (
     <Menu open={!!ancre} onClose={onFermer} anchorReference="anchorPosition" anchorPosition={ancre ? { top: ancre.y, left: ancre.x } : undefined}
@@ -133,7 +180,7 @@ export function Agenda() {
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const { recharger } = useReseau()
   const [params, setParams] = useSearchParams()
-  const [actives, setActives] = useState<Set<Categorie>>(new Set(['visite', 'campagne', 'ouverture', 'evenement', 'anniversaire']))
+  const [actives, setActives] = useState<Set<Categorie>>(new Set(['visite', 'campagne', 'ouverture', 'evenement', 'formation', 'anniversaire']))
   const [evenement, setEvenement] = useState<Evenement | null | undefined>(undefined)
   const [ancre, setAncre] = useState<Ancre | null>(null)
   const [ajout, setAjout] = useState<{ type: Ajout; jour: string } | null>(null)
@@ -164,7 +211,7 @@ export function Agenda() {
         const changerMois = (n: number) => { const d = new Date(Date.UTC(Number(mois.slice(0, 4)), Number(mois.slice(5, 7)) - 1 + n, 1)); setParams({ mois: iso(d).slice(0, 7) }, { replace: true }) }
         return (
           <>
-            <PageHeader titre="Agenda" sousTitre="Visites, campagnes et événements" />
+            <PageHeader titre="Agenda" sousTitre="Visites, campagnes, formations et événements" />
             {/* Le mois et les catégories restent sous la barre du haut quand la page défile */}
             <BandeCollante>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0, sm: 1 }, flexWrap: { sm: 'wrap' }, mb: 0.5 }}>
@@ -191,7 +238,7 @@ export function Agenda() {
               ajouter={setAncre} deplacer={(e, d) => void deplacer(reseau, e, d)} />
             <MenuAjout ancre={ancre} onFermer={() => setAncre(null)} onChoisir={(type, jour) => { setAncre(null); setAjout({ type, jour }) }} />
             {evenement !== undefined && <DialogEvenement reseau={reseau} evenement={evenement} onFermer={fermer} />}
-            {ajout?.type === 'evenement' && <DialogEvenement reseau={reseau} evenement={null} jourInitial={ajout.jour} onFermer={fermer} />}
+            {(ajout?.type === 'evenement' || ajout?.type === 'formation') && <DialogEvenement reseau={reseau} evenement={null} jourInitial={ajout.jour} typeInitial={ajout.type === 'formation' ? 'formation' : 'event'} onFermer={fermer} />}
             {/* Visite à venir : on la planifie ; visite passée : on en saisit le compte rendu */}
             {ajout?.type === 'visite' && (ajout.jour >= reseau.jour
               ? <DialogPlanifier reseau={reseau} magasins={[]} dateInitiale={ajout.jour} onFermer={fermer} />

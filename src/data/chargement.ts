@@ -151,6 +151,7 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   reseau.evenements = (evenements as L[]).map((e) => ({
     id: Number(e.id) || null, titre: t(e.title), type: t(e.type) || 'event', debut: t(e.start_date).slice(0, 10), fin: t(e.end_date).slice(0, 10) || t(e.start_date).slice(0, 10), notes: t(e.notes), couleur: t(e.color) || '#7c3aed',
     ...(Array.isArray(e.invites) && e.invites.length ? { invites: (e.invites as unknown[]).map(String) } : {}),
+    ...(t(e.heure) ? { heure: t(e.heure) } : {}), ...(t(e.html) ? { html: t(e.html) } : {}),
   }))
   // Anniversaires : naissance (fiches Coach et RR) et arrivée (recrues)
   const ann: Reseau['anniversaires'] = []
@@ -706,10 +707,18 @@ export async function marquerActions(lot: ({ visite: number; index: number; fait
 }
 export async function supprimerVisite(id: number) { verifier(await supabase.from('visits').delete().eq('id', id)) }
 
-export async function enregistrerEvenement(e: Evenement) {
-  // invites seulement s'il est donné : un événement simple s'enregistre aussi sur une base d'avant 0025
-  const l = { title: e.titre, type: e.type, start_date: e.debut, end_date: e.fin || null, notes: e.notes || null, color: e.couleur, ...(e.invites ? { invites: e.invites.length ? e.invites : null } : {}) }
-  verifier(e.id !== null ? await supabase.from('events').update(l).eq('id', e.id) : await supabase.from('events').insert(l))
+// Renvoie le numéro de l'événement (null si la base ne le donne pas)
+export async function enregistrerEvenement(e: Evenement): Promise<number | null> {
+  // invites, heure et contenu seulement s'ils sont donnés : un événement simple s'enregistre aussi sur une base d'avant 0025 ou 0030
+  const l = {
+    title: e.titre, type: e.type, start_date: e.debut, end_date: e.fin || null, notes: e.notes || null, color: e.couleur,
+    ...(e.invites ? { invites: e.invites.length ? e.invites : null } : {}),
+    ...(e.heure !== undefined ? { heure: e.heure || null } : {}), ...(e.html !== undefined ? { html: e.html || null } : {}),
+  }
+  if (e.id !== null) { verifier(await supabase.from('events').update(l).eq('id', e.id)); return e.id }
+  const r = await supabase.from('events').insert(l).select('id')
+  verifier(r)
+  return Number((r.data as { id?: unknown }[] | null)?.[0]?.id) || null
 }
 export async function supprimerEvenement(id: number) { verifier(await supabase.from('events').delete().eq('id', id)) }
 // Visite prévue glissée à une autre date dans l'agenda : seule la date change

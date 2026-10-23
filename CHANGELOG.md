@@ -9,6 +9,14 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Animation du réseau : nouvel onglet Animation réseau (Directeur et RR) pour créer et suivre au même endroit
+  communications, bonnes pratiques, sondages, formations, réunions et campagnes : quatre repères (lecture, réponses aux
+  sondages, réponses aux invitations, exécution des campagnes), une ligne par contenu avec son taux, et le détail (qui n'a
+  pas lu, qui a répondu, présences, exécution). Agenda : type Formation (catégorie à part), heure de début et contenu
+  mis en forme ou en code HTML, nettoyé à chaque affichage ; le franchisé ouvre ce contenu depuis son accueil.
+  Notifications sur le téléphone de chaque nouveau sondage, réunion ou formation, communication, bonne pratique et
+  campagne, aux personnes concernées, une seule fois. **Migration à passer : `0030_animation_reseau.sql`, puis
+  redéployer la fonction Supabase `notifier`.**
 - Espace franchisé aligné sur celui de l'équipe (Joseph, 23/10/2026) : onglet Infos réseau à la place de Bonnes
   pratiques (communications et bonnes pratiques réunies, recherche et filtres, ses propositions), avec le nombre de
   nouveautés ; le canal Réseau V and B quitte ses Messages (ancienne adresse et lien du fil menant à Infos réseau, la

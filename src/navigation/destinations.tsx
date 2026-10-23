@@ -19,6 +19,8 @@ import Forum from '@mui/icons-material/Forum'
 import MonitorHeart from '@mui/icons-material/MonitorHeart'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import TaskAlt from '@mui/icons-material/TaskAlt'
+import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
+import Insights from '@mui/icons-material/Insights'
 
 export interface Destination {
   chemin: string
@@ -28,6 +30,7 @@ export interface Destination {
   icone: ReactElement
   iconeActive?: ReactElement
   sprint: string
+  roles?: string[] // réservé à ces rôles ; absent = tous les rôles de l'équipe
 }
 
 const messages: Destination = { chemin: '/echanges', libelle: 'Messages', description: 'Groupes des magasins, échanges à deux et communications', icone: <ForumOutlined />, iconeActive: <Forum />, sprint: 'Échanges' }
@@ -47,9 +50,12 @@ export const principales: Destination[] = [
 export const barreTelephone = principales.filter((d) => d !== magasins)
 
 // Suite de la partie classique : sous les principales dans le menu PC, dans « Plus » sur téléphone
+// Animation réseau (Joseph, 23/10/2026) : Directeur et Responsables Régionaux, qui créent ces contenus
 export const secondaires: Destination[] = [
-  { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
+  { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes, formations et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
+  { chemin: '/animation', libelle: 'Animation réseau', court: 'Animation', description: 'Communications, bonnes pratiques, sondages, formations, réunions et campagnes, avec leur suivi', icone: <InsightsOutlined />, iconeActive: <Insights />, sprint: 'Animation', roles: ['directeur', 'rr'] },
 ]
+export const pourRole = (liste: Destination[], role: string | undefined) => liste.filter((d) => !d.roles || (!!role && d.roles.includes(role)))
 
 // Partie « Paramètres » : trois entrées (sprint 21). Collaborateurs et Franchisés sont des onglets d'Équipe ;
 // Charge des Coachs et Import et export sont des rubriques de Paramètres
