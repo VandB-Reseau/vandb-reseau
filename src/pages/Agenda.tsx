@@ -47,7 +47,7 @@ import { ajouterJours, ecartJours, elementsDuMois, iso, jourLong, jourUTC, nomMo
 const categories: { id: Categorie; libelle: string; couleur: string; icone: ReactElement }[] = [
   { id: 'visite', libelle: 'Visites', couleur: '#307672', icone: <EventAvailableOutlined fontSize="small" /> },
   { id: 'campagne', libelle: 'Campagnes', couleur: '#312e2e', icone: <CampaignOutlined fontSize="small" /> },
-  { id: 'ouverture', libelle: 'Ouvertures', couleur: '#ea6029', icone: <StorefrontOutlined fontSize="small" /> },
+  { id: 'ouverture', libelle: 'Vie des magasins', couleur: '#ea6029', icone: <StorefrontOutlined fontSize="small" /> },
   { id: 'evenement', libelle: 'Événements', couleur: '#f8bb09', icone: <EventOutlined fontSize="small" /> },
   { id: 'formation', libelle: 'Formations', couleur: '#c24119', icone: <SchoolOutlined fontSize="small" /> },
   { id: 'anniversaire', libelle: 'Anniversaires', couleur: '#3a8f8d', icone: <CakeOutlined fontSize="small" /> },

@@ -29,6 +29,13 @@ export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Elem
   }
   for (const m of reseau.magasins) {
     if (m.ouvertureConnue && m.ouverture >= debut && m.ouverture <= fin) el.push({ cle: `o-${m.nom}`, categorie: 'ouverture', debut: m.ouverture, fin: m.ouverture, titre: `Ouverture ${m.nom}`, detail: m.coach ? `Coach ${m.coach}` : 'Sans Coach', lien: lienFiche(m.nom), couleur: '#ea6029' })
+    // Soirées d'inauguration et fermetures provisoires (situations, 0033)
+    for (const x of m.situations) {
+      const f = x.fin ?? x.date
+      if (x.date > fin || f < debut) continue
+      if (x.type === 'inauguration') el.push({ cle: `i-${m.nom}-${x.date}`, categorie: 'ouverture', debut: x.date, fin: x.date, titre: `Inauguration ${m.nom}`, detail: x.motif || 'Soirée d’inauguration', lien: lienFiche(m.nom), couleur: '#ea6029', magasin: m.nom })
+      else if (x.type === 'travaux') el.push({ cle: `t-${m.nom}-${x.date}`, categorie: 'ouverture', debut: x.date, fin: f, titre: `${m.nom} fermé`, detail: x.motif || 'Fermeture provisoire', lien: lienFiche(m.nom), couleur: '#5f5f66', magasin: m.nom })
+    }
   }
   // Formations à part (23/10/2026) ; une réunion reste un événement
   for (const e of reseau.evenements) if (e.debut <= fin && e.fin >= debut) {

@@ -2,6 +2,7 @@ import { visiteFaite, type Magasin, type Reseau, type Visite } from './modele'
 import { coachA } from './charge'
 import { caseDe, delaiVisite, historiqueSante, joursParVisite, nineBox, visitesParAn, type CaseNineBox } from './sante'
 import { estVisite, typesContact } from './chiffres'
+import { enTravaux } from './situations'
 
 // Semestres de l'année (janvier → décembre) : S1 = janvier → juin, S2 = juillet → décembre
 export interface Semestre { cle: string; debut: string; fin: string; libelle: string; court: string }
@@ -117,7 +118,8 @@ export function suiviRythme(reseau: Reseau, a: Annee): LigneRythme[] {
       const contact = contacts.get(m.nom) ?? null
       return {
         magasin: m, coach: coachA(m, reference), case: c, reference: ref, faites, delai, depuis,
-        alerte: depuis === null || depuis > delai, echeance: depart ? isoDe(jourNum(depart) + delai + 1) : null,
+        // Pas d'alerte pendant une fermeture provisoire
+        alerte: !enTravaux(m, reference) && (depuis === null || depuis > delai), echeance: depart ? isoDe(jourNum(depart) + delai + 1) : null,
         jours: ref * joursParVisite(c), derniere,
         dernierContact: contact && contact.date <= reference && (!derniere || contact.date > derniere.date) ? contact : null,
       }

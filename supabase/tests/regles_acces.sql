@@ -519,8 +519,8 @@ RESET ROLE;
 SELECT pg_temp.attendre('Animation : fonctions d''envoi fermées aux comptes', (SELECT count(*) FROM information_schema.routine_privileges
   WHERE routine_schema = 'public' AND grantee IN ('anon', 'authenticated', 'PUBLIC') AND routine_name IN ('comptes_concernes', 'notifications_animation')), 0);
 
--- ── 0033 : fermetures et cessions (colonnes de store_overrides, règles inchangées)
+-- ── 0033 : situation des magasins (une colonne de store_overrides, règles inchangées)
 SELECT pg_temp.attendre('Journal : 0033 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0033'), 1);
-SELECT pg_temp.attendre('Fermeture : quatre colonnes ajoutées', (SELECT count(*) FROM information_schema.columns
-  WHERE table_schema = 'public' AND table_name = 'store_overrides' AND column_name IN ('ferme_le', 'fermeture', 'fermeture_motif', 'repreneur')), 4);
-SELECT pg_temp.attendre('Fermeture : un type sans date est refusé', (SELECT count(*) FROM pg_constraint WHERE conname = 'store_overrides_fermeture'), 1);
+SELECT pg_temp.attendre('Situations : colonne jsonb ajoutée', (SELECT count(*) FROM information_schema.columns
+  WHERE table_schema = 'public' AND table_name = 'store_overrides' AND column_name = 'situations' AND data_type = 'jsonb'), 1);
+SELECT pg_temp.attendre('Situations : une liste seulement', (SELECT count(*) FROM pg_constraint WHERE conname = 'store_overrides_situations'), 1);

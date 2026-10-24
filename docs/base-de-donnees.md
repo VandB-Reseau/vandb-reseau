@@ -32,7 +32,7 @@ Mis à jour le 24/10/2026 (migration `0033`).
 | Table | Contenu | Clé |
 | --- | --- | --- |
 | `app_config` | Réglages et référentiels en clé / valeur, `value` = texte JSON (détail plus bas) | `key` |
-| `store_overrides` | Fiche de chaque magasin : coordonnées, adresse, `franchise` (vrai = franchisé), `rr` (RR en direct), position, `topographie` du blason de ville (`littoral`, `montagne` ou `terres` ; vide = déduite du département), 0031 ; `figure` au centre du blason (voilier, sapin, château… ; vide = proposée selon le département), 0032 ; fermeture ou cession hors réseau : `ferme_le`, `fermeture` (`fermeture` ou `cession`), `fermeture_motif`, `repreneur` (à cette date le magasin sort des listes, sa fiche reste), 0033 | `store_name` |
+| `store_overrides` | Fiche de chaque magasin : coordonnées, adresse, `franchise` (vrai = franchisé), `rr` (RR en direct), position, `topographie` du blason de ville (`littoral`, `montagne` ou `terres` ; vide = déduite du département), 0031 ; `figure` au centre du blason (voilier, sapin, château… ; vide = proposée selon le département), 0032 ; `situations` (jsonb, liste datée : fermeture provisoire `travaux` du … au …, passage `integre` ou `franchise`, `sortie` du réseau — fermeture, liquidation, tombée d'enseigne ou cession avec repreneur — et soirée d'`inauguration` ; à la date d'une sortie le magasin quitte les listes, sa fiche reste), 0033 | `store_name` |
 | `reassigns` | Coach de chaque magasin à partir d'une date (effet le 1er du mois ; `date` en texte AAAA-MM-JJ) | `id` ; `store`, `cs`, `date` |
 | `cs_overrides` | Coachs : téléphone, courriel, ville, couleur, `tech` (Technicien) | `cs_name` |
 | `recruits` | Recrues à venir ou fictives (simulation de charge) | `id` |

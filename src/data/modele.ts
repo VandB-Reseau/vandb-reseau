@@ -71,13 +71,24 @@ export interface Magasin {
   topographie: Topographie | '' // forme du blason de ville, choisie dans la fiche ; vide = déduite du département
   figure: Figure | '' // figure au centre du blason, choisie dans la fiche ; vide = proposée selon le département
   historiqueCoach: AffectationCoach[]
-  fermeture: Fermeture | null // fermeture ou cession hors réseau, passée ou prévue (0033)
+  fermeture: Fermeture | null // sortie du réseau, passée ou prévue (situations, 0033)
+  travaux: Travaux | null // fermeture provisoire en cours ou à venir
+  situations: Situation[] // changements de situation datés, du plus ancien au plus récent
 }
 
-// Fermeture ou cession hors réseau (le magasin quitte V and B) ; une cession à un autre franchisé n'en est pas une
-export type TypeFermeture = 'fermeture' | 'cession'
+// Changements de situation d'un magasin, datés, saisis par le Directeur (Joseph, 24/10/2026) : simple, pas un outil
+// de développement immobilier. Une reprise par un autre franchisé se gère avec les associés (entrée, sortie, mandats).
+//  - travaux : fermeture provisoire (travaux, lifting…), du … au …, le magasin reste dans le réseau
+//  - integre / franchise : le magasin passe intégré ou franchisé à cette date
+//  - sortie : le magasin quitte le réseau (fermeture, liquidation, tombée d'enseigne, cession hors réseau)
+//  - inauguration : soirée d'inauguration, souvent quelques jours après une ouverture ou une reprise (dans l'agenda)
+export type TypeSituation = 'travaux' | 'integre' | 'franchise' | 'sortie' | 'inauguration'
+export type TypeFermeture = 'fermeture' | 'liquidation' | 'enseigne' | 'cession'
+export interface Situation { date: string; type: TypeSituation; fin?: string; sortie?: TypeFermeture; motif?: string; repreneur?: string }
 export interface Fermeture { date: string; type: TypeFermeture; motif: string; repreneur: string }
-export const libelleFermeture: Record<TypeFermeture, string> = { fermeture: 'Fermeture', cession: 'Cession hors réseau' }
+export interface Travaux { debut: string; fin: string; motif: string }
+export const libelleFermeture: Record<TypeFermeture, string> = { fermeture: 'Fermeture', liquidation: 'Liquidation', enseigne: 'Tombée d’enseigne', cession: 'Cession hors réseau' }
+export const libelleSituation: Record<TypeSituation, string> = { travaux: 'Fermeture provisoire', integre: 'Passage en intégré', franchise: 'Passage en franchisé', sortie: 'Sortie du réseau', inauguration: 'Soirée d’inauguration' }
 
 export interface Coach extends Personne {
   rr: ResponsableRegional | null

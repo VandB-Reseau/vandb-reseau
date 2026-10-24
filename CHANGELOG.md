@@ -16,12 +16,15 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   Évolution du parc montre toutes les années, même sans ouverture (S4) ; sur téléphone, à moins de 300 m d'un de ses
   magasins, l'accueil propose « Saisir la visite », « Préparer » et la fiche, position lue avec l'accord du téléphone et
   jamais enregistrée (F1) ; dictée dans les tâches, messages, notes de visite et de préparation, notes du journal et
-  commentaires (F2) ; fermetures et cessions hors réseau saisies par le Directeur dans la fiche du magasin (menu
-  « … »), le magasin sort des listes, de la carte, du rythme et des repères à la date choisie, sa fiche reste avec un
-  bandeau, Évolution du parc compte ouvertures, sorties et solde (F3) ; Équipe > Revue du mois : la revue du réseau,
-  une ligne par Responsable Régional puis le détail, téléchargeable en PDF (F4) (test `sprint24.spec.ts`).
-  **Migration à passer : `0033_fermetures_magasins.sql`** (sans elle, tout s'affiche, une fermeture ne peut pas être
-  enregistrée).
+  commentaires (F2) ; situation du magasin saisie par le Directeur dans la fiche (menu « … », « Changer la situation ») :
+  fermeture provisoire du … au … (pastille « Fermé jusqu'au … », pas d'alerte de visite, dans l'agenda), passage en
+  intégré ou en franchisé daté, sortie du réseau (fermeture, liquidation, tombée d'enseigne, cession hors réseau) qui
+  retire le magasin des listes, de la carte, du rythme et des repères à sa date en gardant sa fiche, soirée
+  d'inauguration dans l'agenda ; Évolution du parc compte ouvertures, sorties et solde, et liste ce qui vient sur
+  12 mois (ouvertures, inaugurations, fins de mandat, passages, sorties, fermetures provisoires) (F3) ; Équipe > Revue
+  du mois : la revue du réseau, une ligne par Responsable Régional puis le détail, téléchargeable en PDF (F4) (test
+  `sprint24.spec.ts`). **Migration à passer : `0033_situations_magasins.sql`** (sans elle, tout s'affiche, une
+  situation ne peut pas être enregistrée).
 - Sprint 23, retouches du quotidien (Joseph, 23/10/2026) : saisir une visite depuis la fiche d'un magasin (ou le compte
   rendu d'une visite prévue) n'affiche plus les champs déjà connus, magasin, date, type et visiteurs tiennent sur une
   ligne avec « Modifier » ; Ma semaine se résume en trois cases (à voir, prévues, route) ; dans Visites > Rythme, la

@@ -3,7 +3,7 @@ import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 // Sprint 24 (Joseph, 24/10/2026) : Préparer depuis Ma semaine sur téléphone (S1), fiche avant visite en tuiles (S2,
 // sprint13.spec.ts), nine box en noms courts (S3, priorites-ecrans.spec.ts), années sans ouverture (S4), « Je suis
-// au magasin » (F1), dictée partout (F2), fermetures et cessions (F3), revue du réseau (F4)
+// au magasin » (F1), dictée partout (F2), situation des magasins (F3), revue du réseau (F4)
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -15,7 +15,8 @@ test.afterEach(async ({ page }) => {
 })
 
 // Brest Test cédé hors réseau en 2025
-const cession = [{ store_name: 'Brest Test', ferme_le: '2025-06-30', fermeture: 'cession', fermeture_motif: 'Départ en retraite', repreneur: 'Société Exemple' }]
+const cession = [{ store_name: 'Brest Test', situations: [{ date: '2025-06-30', type: 'sortie', sortie: 'cession', motif: 'Départ en retraite', repreneur: 'Société Exemple' }] }]
+const decale = (j: number) => { const d = new Date(); d.setDate(d.getDate() + j); return d.toLocaleDateString('sv-SE') }
 
 test('S1 : chaque magasin de Ma semaine propose Préparer et Planifier', async ({ page, isMobile }, info) => {
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Inès EXEMPLE' } })
@@ -69,29 +70,56 @@ test('F3 : un magasin cédé sort des listes, garde sa fiche et compte dans Évo
   await expect(page.getByText('Cédé', { exact: true })).toBeVisible()
 })
 
-test('F3 : le Directeur enregistre une fermeture depuis la fiche', async ({ page }) => {
+test('F3 : le Directeur enregistre une liquidation depuis la fiche', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test')
   await page.getByRole('button', { name: 'Autres actions' }).click()
-  await page.getByRole('menuitem', { name: 'Fermer ou céder le magasin' }).click()
-  const d = page.getByRole('dialog', { name: 'Fermer ou céder Lyon Test' })
-  await d.getByRole('button', { name: 'Fermeture', exact: true }).click()
-  await d.getByLabel('Date de fermeture').fill('2026-12-31')
-  await d.getByLabel('Motif').fill('Fin de bail')
+  await page.getByRole('menuitem', { name: 'Changer la situation' }).click()
+  const d = page.getByRole('dialog', { name: 'Situation de Lyon Test' })
+  await d.getByRole('combobox', { name: 'Ajouter' }).click()
+  await page.getByRole('option', { name: 'Sortie du réseau' }).click()
+  await d.getByRole('combobox', { name: 'Motif de sortie' }).click()
+  await page.getByRole('option', { name: 'Liquidation' }).click()
+  await d.getByLabel('Date', { exact: true }).fill('2026-12-31')
+  await d.getByLabel('Précision').fill('Jugement du tribunal')
   await expect(d.getByLabel('Repreneur')).toHaveCount(0)
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toHaveCount(0)
-  await expect.poll(() => ecritures.find((e) => e.table === 'store_overrides' && JSON.stringify(e.corps).includes('ferme_le'))?.corps)
-    .toMatchObject({ ferme_le: '2026-12-31', fermeture: 'fermeture', fermeture_motif: 'Fin de bail', repreneur: null })
+  await expect.poll(() => ecritures.find((e) => e.table === 'store_overrides' && JSON.stringify(e.corps).includes('situations'))?.corps)
+    .toMatchObject({ situations: [{ date: '2026-12-31', type: 'sortie', sortie: 'liquidation', motif: 'Jugement du tribunal' }] })
 })
 
-test('F3 : un Coach ne peut pas fermer un magasin', async ({ page }) => {
+test('F3 : fermeture provisoire, passage et inauguration se voient sur la fiche, dans l’agenda et dans ce qui vient', async ({ page }, info) => {
+  await seConnecter(page, { surchargesMagasins: [
+    { store_name: 'Lyon Test', situations: [{ date: decale(-2), type: 'travaux', fin: decale(10), motif: 'Lifting' }, { date: decale(20), type: 'inauguration' }] },
+    { store_name: 'Nantes Test', situations: [{ date: decale(40), type: 'integre', motif: 'Fin de mandat' }] },
+  ] })
+  await page.goto('./#/magasins/Lyon%20Test')
+  await expect(page.getByText(/^Fermé jusqu’au /)).toBeVisible()
+  await expect(page.getByRole('alert').filter({ hasText: 'Fermeture provisoire du' })).toContainText('Lifting')
+  await expect(page.getByRole('alert').filter({ hasText: 'Soirée d’inauguration le' })).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-situation-travaux.png` })
+
+  await page.goto('./#/parametres/evolution')
+  const prochains = page.getByRole('region', { name: 'À venir sur 12 mois' })
+  await expect(prochains).toContainText('Fermeture provisoire du')
+  await expect(prochains).toContainText('Soirée d’inauguration le')
+  await expect(prochains).toContainText('Passage en intégré le')
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-evolution-a-venir.png`, fullPage: true })
+
+  await page.goto('./#/plus/agenda')
+  await expect(page.getByText('Lyon Test fermé').first()).toBeVisible()
+})
+
+test('F3 : un Coach ne change pas la situation d’un magasin', async ({ page }) => {
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Noé MODELE' } })
   await page.goto('./#/magasins/Lyon%20Test')
   await page.getByRole('button', { name: 'Autres actions' }).click()
   await expect(page.getByRole('menuitem', { name: 'Préparer la visite' })).toBeVisible()
-  await expect(page.getByRole('menuitem', { name: 'Fermer ou céder le magasin' })).toHaveCount(0)
+  await expect(page.getByRole('menuitem', { name: 'Changer la situation' })).toHaveCount(0)
 })
 
 test('F1 : au magasin, l’accueil propose de saisir la visite', async ({ page, context, isMobile }, info) => {
