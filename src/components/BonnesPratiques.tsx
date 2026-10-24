@@ -43,8 +43,9 @@ import { dateCourte, lienFiche } from '../lib/format'
 import type { Reseau } from '../data/modele'
 
 // depart : proposition d'un franchisé reprise pour relecture ; apres : appelé avec l'identifiant de la pratique enregistrée
-export function DialogPratique({ reseau, pratique, magasinInitial = '', depart, apres, onFermer }: {
+export function DialogPratique({ reseau, pratique, magasinInitial = '', depart, photosInitiales = [], apres, onFermer }: {
   reseau: Reseau; pratique: BonnePratique | null; magasinInitial?: string; depart?: { magasin: string; titre: string; texte: string; par: string }
+  photosInitiales?: Photo[] // photos partagées depuis le téléphone (sprint 25, F5) : la première en tête
   apres?: (id: string) => Promise<void>; onFermer: (m?: string) => void
 }) {
   const [magasin, setMagasin] = useState(pratique?.magasin ?? depart?.magasin ?? magasinInitial)
@@ -54,8 +55,8 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', depart, 
   const [texte, setTexte] = useState(pratique?.texte ?? depart?.texte ?? '')
   const [par, setPar] = useState(pratique?.par ?? depart?.par ?? reseau.directeur.nom)
   // La photo d'en-tête est rangée avec les photos (les franchisés voient ainsi les mêmes), en tête de liste
-  const [entete, setEntete] = useState<Photo | null>(pratique?.photos.find((ph) => ph.chemin === pratique.entete) ?? null)
-  const [photos, setPhotos] = useState<Photo[]>(pratique?.photos.filter((ph) => ph.chemin !== pratique.entete) ?? [])
+  const [entete, setEntete] = useState<Photo | null>(pratique?.photos.find((ph) => ph.chemin === pratique.entete) ?? photosInitiales[0] ?? null)
+  const [photos, setPhotos] = useState<Photo[]>(pratique?.photos.filter((ph) => ph.chemin !== pratique.entete) ?? photosInitiales.slice(1))
   const [reprises, setReprises] = useState<string[]>(pratique?.reprises ?? [])
   const [retirees, setRetirees] = useState<string[]>([])
   const noms = reseau.magasins.map((m) => m.nom)

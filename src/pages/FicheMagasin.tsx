@@ -56,6 +56,8 @@ import { ListeAssocies } from '../components/Associes'
 import { useDroits } from '../auth/Droits'
 import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
 import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
+import { SectionOuverture } from '../components/Ouverture'
+import { aOuvrir } from '../data/ouvertures'
 import { actionsDuMagasin, enRetard } from '../data/actions'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
@@ -137,6 +139,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 
         {vue === 'fiche' && (
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
+            {aOuvrir(m, reseau.jour) && <SectionOuverture reseau={reseau} m={m} signaler={setConfirmation} />}
             <Section titre="Équipe" action={referentiels ? <Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button> : undefined}>
               <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
               <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />

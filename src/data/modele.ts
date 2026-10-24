@@ -129,6 +129,7 @@ export interface Reseau {
   grilleNineBox: import('./sante').GrilleNineBox
   notesMagasins: Record<string, NoteMagasin[]>
   preparations: Record<string, PreparationVisite> // notes de la prochaine visite, par magasin (jamais montrées au franchisé)
+  ouvertures: Record<string, SuiviOuverture> // étapes des ouvertures à venir, par magasin (sprint 25, F3, migration 0035)
   deploiements: import('./sante').Deploiements
   chiffres: Record<string, import('./chiffres').ChiffreMois[]> // par magasin, du plus ancien au plus récent
   audits: import('./chiffres').Audits
@@ -197,6 +198,16 @@ export const visiteFaite = (v: Visite, jour: string) => v.date <= jour && !v.pre
 
 export interface NoteMagasin { id: string; date: string; texte: string; par: string }
 export interface PreparationVisite { notes: string; heure: string; par: string; maj: string }
+
+// Ouverture suivie par étapes (sprint 25, F3) : date prévue et date faite de chaque étape ; la dernière étape,
+// l'ouverture, est la date d'ouverture du magasin
+export type IdEtape = 'contrat' | 'local' | 'travaux' | 'recrutement' | 'formation'
+export const etapesOuverture: { id: IdEtape; libelle: string }[] = [
+  { id: 'contrat', libelle: 'Contrat signé' }, { id: 'local', libelle: 'Local' }, { id: 'travaux', libelle: 'Travaux' },
+  { id: 'recrutement', libelle: 'Recrutement de l’équipe' }, { id: 'formation', libelle: 'Formation du franchisé' },
+]
+export interface EtapeOuverture { prevu: string; fait: string }
+export interface SuiviOuverture { etapes: Partial<Record<IdEtape, EtapeOuverture>>; par: string; maj: string }
 
 // invites : magasins invités à une réunion ou une formation (script 0025_reunions.sql) ; absent = événement sans invités
 // type : event, reunion ou formation ; heure (HH:MM, heure de Paris) et html (contenu mis en forme) : script 0030_animation_reseau.sql

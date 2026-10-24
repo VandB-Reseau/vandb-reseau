@@ -139,7 +139,7 @@ test('le menu a deux parties : la partie classique et Paramètres', async ({ pag
   if (isMobile) {
     await page.getByRole('button', { name: 'Mon compte' }).click()
     const menu = page.getByRole('menu')
-    await expect(menu.getByRole('menuitem', { name: 'Agenda' })).toBeVisible()
+    await expect(menu.getByRole('menuitem', { name: 'Agenda', exact: true })).toBeVisible()
     await expect(menu.getByText('Paramètres', { exact: true }).first()).toBeVisible()
     return
   }

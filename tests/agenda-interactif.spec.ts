@@ -103,6 +103,12 @@ test.describe('sur téléphone', () => {
     const ecritures: Ecriture[] = []
     await seConnecter(page, { ecritures, config: { campagnes } })
     await page.goto(`./#/plus/agenda?mois=${moisSeminaire}`)
+    // L'agenda s'ouvre sur aujourd'hui : une campagne déjà finie est sous « Plus tôt ce mois »
+    const plusTot = page.getByRole('button', { name: /Plus tôt ce mois/ })
+    if (moisSeminaire === aujourdhui.slice(0, 7)) {
+      await expect(page.getByRole('heading', { name: /^Aujourd’hui · / })).toBeVisible()
+      if (await plusTot.isVisible()) await plusTot.click()
+    }
     await expect(page.getByRole('link', { name: /Vitrine de Noël/ })).toBeVisible()
 
     // Le bouton d'ajout du jour du séminaire propose visite et événement

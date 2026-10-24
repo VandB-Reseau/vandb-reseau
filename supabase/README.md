@@ -38,6 +38,8 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0031_topographie_magasins` | Colonne `store_overrides.topographie` (littoral, montagne ou terres) pour la forme du blason de ville | 23/10/2026 |
 | `0032_figure_blason` | Colonne `store_overrides.figure` (vingt figures possibles) pour la figure au centre du blason de ville | 23/10/2026 |
 | `0033_situations_magasins` | Colonne `store_overrides.situations` (jsonb) : fermetures provisoires, passages intégré ou franchisé, sorties du réseau, soirées d'inauguration | 24/10/2026 |
+| `0034_agenda_abonne` | Agenda dans Google Agenda : table `agenda_jetons` fermée (un lien secret par personne de l'équipe), fonctions `mon_agenda` (équipe) et `agenda_du_jeton` (fonction « agenda » seulement) | 24/10/2026 |
+| `0035_ouvertures_etapes` | Rubrique `ouverture` de `suivi_magasins` : étapes d'une ouverture (contrat, local, travaux, recrutement, formation), prévu et fait | 24/10/2026 |
 
 ## Règles
 
@@ -70,9 +72,10 @@ par GitHub Actions avant chaque publication.
 | --- | --- | --- |
 | `notifier` | Notifications sur le téléphone | Après 0016 ; redéployer après 0024 |
 | `comptes` | Comptes des franchisés créés, réinitialisés et supprimés depuis l'app (Directeur seul) | Sans migration (23/10/2026) |
+| `agenda` | Agenda au format .ics relu par Google Agenda, lien secret par personne | Après 0034 ; **décocher « Verify JWT »** (Google appelle le lien sans compte) |
 
 Supabase > Edge Functions > Deploy a new function > Via Editor : nommer la fonction, coller `supabase/functions/<nom>/index.ts`,
-Deploy. Laisser « Verify JWT » activé. La clé `service_role` est fournie par Supabase à la fonction, jamais à l'app.
+Deploy. Laisser « Verify JWT » activé, sauf pour « agenda ». La clé `service_role` est fournie par Supabase à la fonction, jamais à l'app.
 
 ## Passer une migration en ligne
 
