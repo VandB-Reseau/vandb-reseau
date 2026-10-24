@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { chargerReseau } from './chargement'
+import { attribuerCodes, chargerReseau } from './chargement'
 import { synchroniserAcces } from './espaceFranchise'
 import { corrigerDomicilesCoachs, corrigerPositions } from './geolocalisation'
 import type { Reseau } from './modele'
@@ -79,6 +79,19 @@ export function ReseauProvider({ children, charger = chargerReseau, lectureSeule
     synchroniserAcces(reseau).catch(() => { /* nouvel essai au prochain chargement */ })
     synchroniserPerimetre(reseau).catch(() => { /* nouvel essai au prochain chargement */ })
   }, [reseau, accesFranchises])
+
+  // Code magasin à 3 chiffres posé par l'app du Directeur sur tout magasin qui n'en a pas : 001 pour la plus ancienne
+  // ouverture, puis par date d'ouverture (à date égale, par nom) ; un magasin sorti du réseau garde le sien
+  const codesPoses = useRef(false)
+  useEffect(() => {
+    if (!reseau || !frais.current || !accesFranchises || codesPoses.current) return
+    const tous = [...reseau.magasins, ...reseau.fermes]
+    const manquants = tous.filter((m) => !m.code.trim()).sort((a, b) => a.ouverture.localeCompare(b.ouverture) || a.nom.localeCompare(b.nom, 'fr'))
+    if (!manquants.length) return
+    codesPoses.current = true
+    attribuerCodes(manquants.map((m) => m.nom), tous.map((m) => m.code))
+      .then((n) => { if (n) recharger() }).catch(() => { codesPoses.current = false })
+  }, [reseau, accesFranchises, recharger])
 
   const vue = useMemo(() => (reseau && perimetre ? restreindre(reseau, perimetre) : reseau), [reseau, perimetre])
 

@@ -9,6 +9,17 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Tout exporter et réimporter par Excel (Joseph, 24/10/2026) : chaque magasin reçoit un code à 3 chiffres (001 pour la
+  plus ancienne ouverture, puis par date d'ouverture ; un nouveau magasin prend le suivant, un code n'est jamais
+  réutilisé), posé une fois par l'app du Directeur, visible dans la fiche et modifiable dans « Modifier ». Paramètres >
+  Import et export passe de 11 à 19 jeux de données, rangés en Référentiels, Suivi des magasins et Animation du réseau :
+  le code magasin remplace le nom comme clé partout ; un N° par ligne pour les mouvements (visites, tâches des plans
+  d'action et hors visite, journal, agenda, bonnes pratiques), vide pour ajouter ; code + mois ou date pour les données
+  uniques par période (chiffres, historique des Coachs, historique des RR des Coachs, historique de la nine box, notes
+  d'audit, situations) ; nouveaux : situations, notes d'audit, tâches, journal, campagnes, constats, agenda, bonnes
+  pratiques ; visites avec « Prévue » et les parties du compte rendu ; renommer un magasin par Excel garde son code.
+  Les lignes absentes du fichier ne sont supprimées que si la case « Supprimer les lignes absentes du fichier » est
+  cochée. Bouton « Tout exporter en Excel » (test `import-export.spec.ts`). Sans migration.
 - Sprint 24, fluidité et fonctionnalités (Joseph, 24/10/2026) : Ma semaine sur téléphone propose « Préparer » et
   « Planifier » (ou « Compte rendu ») en mots sous chaque magasin, « Tournée » et « Visite » en haut (S1) ; la fiche
   avant visite montre sur téléphone le dernier mois en tuiles et les deux précédents en lignes, le tableau reste pour le

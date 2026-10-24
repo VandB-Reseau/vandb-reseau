@@ -7,7 +7,7 @@ export const magasinsFictifs = villes.map((v, i) => ({
   n: `${v} Test`,
   dept: depts[i],
   open: i < 24 ? `20${18 + (i % 7)}-0${1 + (i % 9)}-15` : i < 27 ? '2026-08-20' : i < 29 ? '2026-11-20' : '2027-01-01',
-  code: `T${100 + i}`,
+  code: String(i + 1).padStart(3, '0'),
   tel: `+33 4 00 00 0${i % 10} 0${i % 10}`,
   email_mag: `magasin${i}@exemple.test`,
   resp: i % 5 === 0 ? 'En cours de recrutement' : i === 1 || i === 3 ? 'Paul MULTI' : `Franchisé ${i}`,

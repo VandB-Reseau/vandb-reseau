@@ -145,6 +145,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
               <ListeAssocies reseau={reseau} m={m} signaler={setConfirmation} />
             </Section>
             <Section titre="Magasin">
+              <Ligne libelle="Code magasin">{m.code || null}</Ligne>
               <Ligne libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
               <Ligne libelle="Adresse">
                 {adresseComplete && (
