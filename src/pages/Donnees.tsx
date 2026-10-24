@@ -4,7 +4,9 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
+import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import Snackbar from '@mui/material/Snackbar'
 import Typography from '@mui/material/Typography'
 import DownloadOutlined from '@mui/icons-material/DownloadOutlined'
@@ -20,7 +22,7 @@ import { lireSauvegarde, noterSauvegarde } from '../data/chargement'
 import type { Reseau } from '../data/modele'
 import {
   afficher, analyserReferentiel, appliquerImport, choisirFeuille, feuilleExport, lireClasseur, referentiels, telechargerBlob, telechargerClasseur,
-  type Analyse, type Referentiel,
+  type Analyse, type GroupeReferentiel, type Referentiel,
 } from '../data/referentiels'
 import { dateCourte } from '../lib/format'
 import { cartouche } from '../components/Social'
@@ -36,8 +38,8 @@ function Sauvegarde({ reseau, signaler }: { reseau: Reseau; signaler: (m: string
     setEnvoi(quoi); setErreur(false)
     try {
       if (quoi === 'excel') {
-        await telechargerClasseur(referentiels(reseau).map((r) => feuilleExport(r, reseau)), nomFichier('Référentiels', reseau.jour, 'xlsx'))
-        signaler('Référentiels exportés.')
+        await telechargerClasseur(referentiels(reseau).map((r) => feuilleExport(r, reseau)), nomFichier('Toutes les données', reseau.jour, 'xlsx'))
+        signaler('Toutes les données exportées.')
       } else {
         const tables = await lireSauvegarde()
         telechargerBlob(new Blob([JSON.stringify({ application: 'V and B Réseau', date: new Date().toISOString(), tables }, null, 1)], { type: 'application/json' }), nomFichier('Sauvegarde complète', reseau.jour, 'json'))
@@ -60,7 +62,7 @@ function Sauvegarde({ reseau, signaler }: { reseau: Reseau; signaler: (m: string
             {envoi === 'complete' ? 'Préparation…' : 'Télécharger la sauvegarde complète'}
           </Button>
           <Button variant="outlined" startIcon={<DownloadOutlined />} disabled={!!envoi} onClick={() => agir('excel')} sx={{ minHeight: 48 }}>
-            {envoi === 'excel' ? 'Préparation…' : 'Exporter tous les référentiels'}
+            {envoi === 'excel' ? 'Préparation…' : 'Tout exporter en Excel'}
           </Button>
         </Box>
       </CardContent>
@@ -92,27 +94,35 @@ function CarteReferentiel({ reseau, r, importer, signaler }: { reseau: Reseau; r
   )
 }
 
+const groupes: GroupeReferentiel[] = ['Référentiels', 'Suivi des magasins', 'Animation du réseau']
+
 const MAX_APERCU = 60
 
-function Apercu({ ref_, a }: { ref_: Referentiel; a: Analyse }) {
+// Lignes absentes du fichier : supprimées seulement si la case est cochée (un fichier partiel ne vide rien)
+function Apercu({ ref_, a, supprimer, setSupprimer }: { ref_: Referentiel; a: Analyse; supprimer: boolean; setSupprimer: (b: boolean) => void }) {
   const col = (id: string) => ref_.colonnes.find((c) => c.id === id)!
   const ajouts = a.changements.filter((c) => c.type === 'ajout').length
   const suppressions = a.changements.filter((c) => c.type === 'suppression').length
   const modifs = a.changements.length - ajouts - suppressions
+  const retenus = a.changements.filter((c) => supprimer || c.type !== 'suppression')
   const resume = [
     ajouts && `${ajouts} ajout${ajouts > 1 ? 's' : ''}`,
     modifs && `${modifs} ligne${modifs > 1 ? 's' : ''} modifiée${modifs > 1 ? 's' : ''}`,
-    suppressions && `${suppressions} suppression${suppressions > 1 ? 's' : ''}`,
+    supprimer && suppressions && `${suppressions} suppression${suppressions > 1 ? 's' : ''}`,
     a.inchangees && `${a.inchangees} inchangée${a.inchangees > 1 ? 's' : ''}`,
   ].filter(Boolean).join(' · ')
   return (
     <>
-      <Alert severity={a.changements.length ? 'success' : 'info'}>
-        {a.changements.length ? resume : `Aucun changement par rapport aux données de l’app${a.inchangees ? ` (${a.inchangees} ligne${a.inchangees > 1 ? 's' : ''} identique${a.inchangees > 1 ? 's' : ''})` : ''}.`}
+      <Alert severity={retenus.length ? 'success' : 'info'}>
+        {retenus.length ? resume : `Aucun changement par rapport aux données de l’app${a.inchangees ? ` (${a.inchangees} ligne${a.inchangees > 1 ? 's' : ''} identique${a.inchangees > 1 ? 's' : ''})` : ''}.`}
       </Alert>
       {suppressions > 0 && (
-        <Alert severity="error">
-          {suppressions} ligne{suppressions > 1 ? 's' : ''} absente{suppressions > 1 ? 's' : ''} du fichier {suppressions > 1 ? 'seront supprimées' : 'sera supprimée'} de l’app.
+        <Alert severity={supprimer ? 'error' : 'warning'} icon={false} sx={{ py: 0 }}>
+          <FormControlLabel
+            control={<Checkbox checked={supprimer} onChange={(e) => setSupprimer(e.target.checked)} color="error" />}
+            label={suppressions > 1 ? `Supprimer les ${suppressions} lignes absentes du fichier` : 'Supprimer la ligne absente du fichier'}
+            sx={{ minHeight: 48 }}
+          />
         </Alert>
       )}
       {a.erreurs.length > 0 && (
@@ -125,9 +135,9 @@ function Apercu({ ref_, a }: { ref_: Referentiel; a: Analyse }) {
         </Alert>
       )}
       {a.ignorees.length > 0 && <Typography variant="body2" color="text.secondary">Colonnes ignorées : {a.ignorees.join(', ')}</Typography>}
-      {a.changements.length > 0 && (
+      {retenus.length > 0 && (
         <Box component="ul" aria-label="Changements" sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {[...a.changements].sort((x, y) => Number(y.type === 'suppression') - Number(x.type === 'suppression')).slice(0, MAX_APERCU).map((ch) => (
+          {[...retenus].sort((x, y) => Number(y.type === 'suppression') - Number(x.type === 'suppression')).slice(0, MAX_APERCU).map((ch) => (
             <Box component="li" key={ch.cle} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', mb: 0.5 }}>
                 <Typography variant="body1" sx={{ fontWeight: 600 }}>{ch.libelle}</Typography>
@@ -142,7 +152,7 @@ function Apercu({ ref_, a }: { ref_: Referentiel; a: Analyse }) {
               ))}
             </Box>
           ))}
-          {a.changements.length > MAX_APERCU && <Typography component="li" variant="body2" color="text.secondary">et {a.changements.length - MAX_APERCU} autres changements</Typography>}
+          {retenus.length > MAX_APERCU && <Typography component="li" variant="body2" color="text.secondary">et {retenus.length - MAX_APERCU} autres changements</Typography>}
         </Box>
       )}
     </>
@@ -160,9 +170,10 @@ function DialogImport({ reseau, r, onFermer }: { reseau: Reseau; r: Referentiel;
   const [nom, setNom] = useState('')
   const [erreur, setErreur] = useState('')
   const [autre, setAutre] = useState<File | null>(null)
+  const [supprimer, setSupprimer] = useState(false)
   const choisir = async (f: File | undefined) => {
     if (!f) return
-    setNom(f.name); setErreur(''); setAnalyse(null)
+    setNom(f.name); setErreur(''); setAnalyse(null); setSupprimer(false)
     try {
       const feuilles = await lireClasseur(f)
       if (autresFormats[r.id] && !estExportApp(feuilles)) { setAutre(f); return }
@@ -172,19 +183,20 @@ function DialogImport({ reseau, r, onFermer }: { reseau: Reseau; r: Referentiel;
       else setAnalyse(a)
     } catch { setErreur('Ce fichier ne peut pas être lu. Enregistre-le au format Excel (.xlsx) ou CSV puis réessaie.') }
   }
-  const n = analyse?.changements.length ?? 0
+  const retenus = analyse?.changements.filter((c) => supprimer || c.type !== 'suppression') ?? []
+  const n = retenus.length
   if (autre && r.id === 'visites') return <DialogImportVisites reseau={reseau} fichier={autre} onFermer={onFermer} />
   if (autre && r.id === 'chiffres') return <DialogImportChiffres reseau={reseau} fichier={autre} onFermer={onFermer} />
   if (autre) return <DialogImportSante reseau={reseau} date={reseau.jour} fichier={autre} onFermer={onFermer} />
   return (
     <Fenetre large titre={`Importer : ${r.libelle}`} ouvert onFermer={onFermer} valide={n > 0}
-      enregistrer={async () => { await appliquerImport(r, reseau, analyse!.changements); return `${n} ligne${n > 1 ? 's' : ''} mise${n > 1 ? 's' : ''} à jour` }}>
+      enregistrer={async () => { await appliquerImport(r, reseau, retenus); return `${n} ligne${n > 1 ? 's' : ''} mise${n > 1 ? 's' : ''} à jour` }}>
       <Button variant="outlined" component="label" startIcon={<UploadFileOutlined />} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
         {nom || 'Choisir un fichier'}
         <input type="file" hidden accept=".xlsx,.csv,.txt" aria-label={`Fichier ${r.libelle} à importer`} onChange={(e) => choisir(e.target.files?.[0])} />
       </Button>
       {erreur && <Alert severity="warning">{erreur}</Alert>}
-      {analyse && <Apercu ref_={r} a={analyse} />}
+      {analyse && <Apercu ref_={r} a={analyse} supprimer={supprimer} setSupprimer={setSupprimer} />}
     </Fenetre>
   )
 }
@@ -202,10 +214,14 @@ export function Donnees() {
             <RetourParametres />
             <PageHeader titre="Import et export" />
             <Sauvegarde reseau={reseau} signaler={setMessage} />
-            <Typography component="h2" sx={[cartouche, { mb: 2 }]}>Référentiels</Typography>
-            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' } }}>
-              {liste.map((r) => <CarteReferentiel key={r.id} reseau={reseau} r={r} importer={() => setImporter(r.id)} signaler={setMessage} />)}
-            </Box>
+            {groupes.map((g) => (
+              <Box key={g} component="section" aria-label={g} sx={{ mb: 3 }}>
+                <Typography component="h2" sx={[cartouche, { mb: 2 }]}>{g}</Typography>
+                <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' } }}>
+                  {liste.filter((r) => r.groupe === g).map((r) => <CarteReferentiel key={r.id} reseau={reseau} r={r} importer={() => setImporter(r.id)} signaler={setMessage} />)}
+                </Box>
+              </Box>
+            ))}
             {choisi && <DialogImport reseau={reseau} r={choisi} onFermer={(m) => { setImporter(null); if (m) setMessage(m) }} />}
             <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
           </>
