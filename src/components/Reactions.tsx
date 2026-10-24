@@ -12,6 +12,7 @@ import ThumbUp from '@mui/icons-material/ThumbUp'
 import ThumbUpOutlined from '@mui/icons-material/ThumbUpOutlined'
 import { Initiales } from './Social'
 import { quand } from '../data/fil'
+import { BoutonDictee } from './Dictee'
 
 export interface Pouce { userId: string; nom: string }
 export interface Commentaire { id: number; auteur: string; auteurNom: string; auteurRole: string; texte: string; creeLe: string }
@@ -87,7 +88,7 @@ export function Reactions({ titre, pouces: initiaux, commentaires: tous, autres 
           {ouvert && !lectureSeule && (
             <Box component="form" onSubmit={(e) => { e.preventDefault(); envoyer() }} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
               <TextField size="small" fullWidth multiline maxRows={4} placeholder="Écrire un commentaire" value={texte} onChange={(e) => setTexte(e.target.value)}
-                slotProps={{ htmlInput: { 'aria-label': `Commentaire sur ${titre}`, maxLength: 2000 } }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, minHeight: 48 } }} />
+                slotProps={{ htmlInput: { 'aria-label': `Commentaire sur ${titre}`, maxLength: 2000 }, input: { endAdornment: <BoutonDictee libelle="Commentaire" changer={setTexte} /> } }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, minHeight: 48 } }} />
               <IconButton type="submit" disabled={!texte.trim() || envoi} aria-label="Envoyer le commentaire" sx={{ width: 48, height: 48 }}><SendOutlined /></IconButton>
             </Box>
           )}

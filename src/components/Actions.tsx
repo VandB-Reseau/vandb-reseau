@@ -31,6 +31,7 @@ import type { ActionLibre, Reseau } from '../data/modele'
 import { dateCourte, lienFiche } from '../lib/format'
 import { lienCompteRendu } from '../data/visites'
 import { Fenetre } from './EditionEquipe'
+import { TexteDicte } from './Dictee'
 
 // Écriture des actions : l'équipe écrit directement ; un franchisé passe par les fonctions de la base ;
 // l'aperçu de l'espace d'un franchisé ne modifie rien
@@ -205,7 +206,7 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', de
         <Autocomplete options={magasins} value={magasin || null} onChange={(_e, v) => setMagasin(v ?? '')}
           renderInput={(p) => <TextField {...p} label="Magasin" />} />
       )}
-      <TextField label="Tâche" value={texte} onChange={(e) => setTexte(e.target.value)} autoFocus={!a} multiline minRows={2} />
+      <TexteDicte label="Tâche" libelleDictee="Tâche" valeur={texte} changer={setTexte} autoFocus={!a} multiline minRows={2} />
       <ChampPorteur reseau={reseau} magasin={magasin} valeur={porteur} changer={setPorteur} />
       <TextField type="date" label="Échéance" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       <Box role="group" aria-label="Échéance rapide" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: -1 }}>

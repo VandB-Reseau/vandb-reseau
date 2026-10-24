@@ -2,7 +2,7 @@ import { grillesParDefaut } from './grilles'
 import { seuilsParDefaut } from './chiffres'
 import { COULEURS_AUTO, estCouleurCharte } from './zones'
 import { delaisVisiteParDefaut, grilleParDefaut } from './sante'
-import type { AffectationCoach, Coach, Magasin, Personne, Reseau, ResponsableRegional, Statut, Topographie } from './modele'
+import type { AffectationCoach, Coach, Fermeture, Magasin, Personne, Reseau, ResponsableRegional, Statut, Topographie } from './modele'
 import { estFigure } from '../components/FiguresBlason'
 
 // Lignes brutes telles que stockées par l'ancienne app
@@ -12,10 +12,16 @@ export interface MagasinBrut {
   addr?: string; cp?: string; ville?: string; pays?: string; franchise?: boolean; rr?: string
   lat?: number; lon?: number; geo?: string
 }
+function fermetureDe(s: SurchargeMagasin | undefined): Fermeture | null {
+  const date = texte(s?.ferme_le).slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null
+  return { date, type: s?.fermeture === 'cession' ? 'cession' : 'fermeture', motif: texte(s?.fermeture_motif), repreneur: texte(s?.repreneur) }
+}
 const estTopographie = (t: unknown): t is Topographie => t === 'littoral' || t === 'montagne' || t === 'terres'
 
 export interface SurchargeMagasin extends Partial<Record<keyof MagasinBrut, unknown>> {
   store_name: string; email_mag?: string; open_date?: string; topographie?: string | null; figure?: string | null // forme (0031) et figure (0032) du blason
+  ferme_le?: string | null; fermeture?: string | null; fermeture_motif?: string | null; repreneur?: string | null // fermeture ou cession (0033)
 }
 export interface AffectationBrute { store: string; cs: string; date: string; note?: string; type?: string }
 export interface RRBrut { id: string; name: string; tel?: string; email?: string; color?: string; role?: string; birth?: string; entry?: string }
@@ -118,7 +124,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
     parMagasin.set(a.store, l)
   })
 
-  const magasins: Magasin[] = bruts.map((b) => {
+  const tous: Magasin[] = bruts.map((b) => {
     const s = surcharges.get(b.n)
     const v = (cle: keyof MagasinBrut) => (s && s[cle] !== null && s[cle] !== undefined ? s[cle] : b[cle])
     const ouverture = texte(s?.open_date) || texte(b.open) || '2020-01-01'
@@ -156,9 +162,14 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       topographie: estTopographie(s?.topographie) ? s.topographie : '',
       figure: estFigure(s?.figure) ? s.figure : '',
       historiqueCoach: historique,
+      fermeture: fermetureDe(s),
     }
   })
-  magasins.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+  tous.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+  // Fermé ou cédé à la date du jour : hors des listes, de la carte, du rythme et des repères ; fiche gardée
+  const estFerme = (m: Magasin) => !!m.fermeture && m.fermeture.date <= jour
+  const magasins = tous.filter((m) => !estFerme(m))
+  const fermes = tous.filter(estFerme)
 
   // 5) Équipe : tout Coach présent dans les affectations ou fiches, hors techniciens
   const nomsTech = new Set([...techniciens.map((t) => t.nom), ...(d.coachsSupprimes ?? [])])
@@ -194,5 +205,5 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
   }
   const dir = d.configRR.directeur
   const directeur = { nom: dir?.name || 'Direction du réseau', titre: dir?.titre || 'Directeur de réseau', telephone: dir?.tel || undefined, email: dir?.email || undefined, naissance: texte(dir?.birth).slice(0, 10), arrivee: texte(dir?.entry).slice(0, 10) }
-  return { personnes: {}, evaluations: {}, grilleNineBox: grilleParDefaut, notesMagasins: {}, preparations: {}, chiffres: {}, audits: {}, grilles: grillesParDefaut, pratiques: [], campagnes: { liste: [], constats: {} }, associes: {}, actionsLibres: {}, derniereSauvegarde: '', seuils: { ...seuilsParDefaut }, delaisVisite: { ...delaisVisiteParDefaut }, deploiements: { thematiques: [], valeurs: {} }, visites: [], evenements: [], anniversaires: [], magasins, coachs, equipe, techniciens, directeur, rrs, parametres, jour, chargeLe: new Date().toISOString() }
+  return { personnes: {}, evaluations: {}, grilleNineBox: grilleParDefaut, notesMagasins: {}, preparations: {}, chiffres: {}, audits: {}, grilles: grillesParDefaut, pratiques: [], campagnes: { liste: [], constats: {} }, associes: {}, actionsLibres: {}, derniereSauvegarde: '', seuils: { ...seuilsParDefaut }, delaisVisite: { ...delaisVisiteParDefaut }, deploiements: { thematiques: [], valeurs: {} }, visites: [], evenements: [], anniversaires: [], magasins, fermes, coachs, equipe, techniciens, directeur, rrs, parametres, jour, chargeLe: new Date().toISOString() }
 }

@@ -36,12 +36,15 @@ import { ANCIENNE_NOTE_FRANCHISE, caseDe, couleurTon, criteresAxe, historiqueSan
 import { AvecReseau } from '../components/EtatDonnees'
 import { ReaffecterDialog } from '../components/ReaffecterDialog'
 import Snackbar from '@mui/material/Snackbar'
+import Alert from '@mui/material/Alert'
+import DoNotDisturbOnOutlined from '@mui/icons-material/DoNotDisturbOnOutlined'
+import { DialogFermeture } from '../components/DialogFermeture'
 import SwapHoriz from '@mui/icons-material/SwapHoriz'
 import { EmptyState } from '../components/EmptyState'
 import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienPreparation, lienRR, telLien } from '../lib/format'
 import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
-import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Reseau, type Visite } from '../data/modele'
+import { libelleFermeture, libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
 import { EnvoyerCompteRendu } from '../components/EnvoyerCompteRendu'
 import { DialogPlanifier } from '../components/DialogPlanifier'
@@ -100,6 +103,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const [typeVisite, setTypeVisite] = useState('terrain')
   const [saisieChiffres, setSaisieChiffres] = useState<string | null | undefined>(undefined)
   const [confirmation, setConfirmation] = useState('')
+  const [fermeture, setFermeture] = useState(false)
   useEffect(() => { noterRecent(m.nom) }, [m.nom])
   const coach = m.coach ? reseau.coachs[m.coach] ?? { nom: m.coach } : null
   const adresseComplete = [m.adresse || [m.codePostal, m.ville].filter(Boolean).join(' '), m.pays].filter(Boolean).join(', ')
@@ -120,7 +124,14 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
       <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Magasins</Button>
       <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} alerteVisite={rythme?.alerte ? libellePasVu(rythme) : ''}
         appeler={m.telephone || m.responsable?.telephone || ''} message={() => naviguer(lienFil({ genre: 'magasin', magasin: m.nom, equipe: false }))} visite={saisirVisite} planifier={() => setPlanifier(true)}
-        modifier={referentiels ? () => setEdition(true) : undefined} />
+        modifier={referentiels ? () => setEdition(true) : undefined} fermer={referentiels ? () => setFermeture(true) : undefined} />
+      {m.fermeture && (
+        <Alert severity={m.fermeture.date <= reseau.jour ? 'warning' : 'info'} sx={{ mb: 2 }}
+          action={referentiels ? <Button color="inherit" onClick={() => setFermeture(true)} sx={{ minHeight: 48 }}>Modifier</Button> : undefined}>
+          {libelleFermeture[m.fermeture.type]} {m.fermeture.date <= reseau.jour ? 'le' : 'prévue le'} {dateLongue(m.fermeture.date)}
+          {m.fermeture.repreneur ? ` · repris par ${m.fermeture.repreneur}` : ''}{m.fermeture.motif ? ` · ${m.fermeture.motif}` : ''}
+        </Alert>
+      )}
       <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesFiche} libelle={`Rubriques de ${m.nom}`} fiche />
       <ContenuOnglet>
 
@@ -187,6 +198,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           </Box>
         )}
 
+        {fermeture && <DialogFermeture magasin={m} jour={reseau.jour} onFermer={(msg) => { setFermeture(false); if (msg) setConfirmation(msg) }} />}
         {reaffectation && <ReaffecterDialog reseau={reseau} magasin={m} ouvert onFermer={(fait) => { setReaffectation(false); if (fait) setConfirmation(`${m.nom} est confié à ${fait}.`) }} />}
         {edition && <DialogMagasin reseau={reseau} magasin={m} onFermer={(msg, nom) => {
           setEdition(false)
@@ -244,7 +256,7 @@ export function FicheMagasin() {
   return (
     <AvecReseau>
       {(reseau) => {
-        const m = reseau.magasins.find((x) => x.nom === nom)
+        const m = reseau.magasins.find((x) => x.nom === nom) ?? reseau.fermes.find((x) => x.nom === nom)
         if (!m) {
           return <EmptyState icone={<StorefrontOutlined />} titre="Magasin introuvable" texte={`Aucun magasin ne s’appelle « ${nom} ». Il a peut-être été renommé.`} action={<Button variant="contained" onClick={() => naviguer('/magasins')}>Voir tous les magasins</Button>} />
         }
@@ -460,13 +472,15 @@ function SectionPratiques({ reseau, m, signaler }: { reseau: Reseau; m: Magasin;
 }
 
 // Haut de fiche façon profil : initiales, nom, trois compteurs, puis Appeler, Message, Visite
-function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, appeler, message, visite, planifier, modifier, retour }: {
+function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, appeler, message, visite, planifier, modifier, fermer, retour }: {
   m: Magasin; reseau: Reseau; alerte: ReturnType<typeof analyser>; enRetardNb: number; ouvertes: number; alerteVisite: string
-  appeler: string; message: () => void; visite: () => void; planifier: () => void; modifier?: () => void; retour: { libelle: string; aller: () => void }
+  appeler: string; message: () => void; visite: () => void; planifier: () => void; modifier?: () => void; fermer?: () => void; retour: { libelle: string; aller: () => void }
 }) {
   const c = caseDe(reseau.evaluations[m.nom])
   // Une seule pastille : la plus grave
-  const pastille: { ton: Ton; libelle: string } | null = alerte?.statut === 'decroche' ? { ton: 'rouge', libelle: 'Décroche' }
+  const ferme = !!m.fermeture && m.fermeture.date <= reseau.jour
+  const pastille: { ton: Ton; libelle: string } | null = ferme ? { ton: 'gris', libelle: m.fermeture?.type === 'cession' ? 'Cédé' : 'Fermé' }
+    : alerte?.statut === 'decroche' ? { ton: 'rouge', libelle: 'Décroche' }
     : enRetardNb ? { ton: 'rouge', libelle: `${enRetardNb} tâche${enRetardNb > 1 ? 's' : ''} en retard` }
     : alerte?.statut === 'surveiller' ? { ton: 'orange', libelle: 'À surveiller' }
     : alerteVisite ? { ton: 'orange', libelle: alerteVisite }
@@ -483,7 +497,7 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
       ]}
       detail={c && <><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} par an</>}
       telephone={appeler}
-      icones={<AutresActions nom={m.nom} planifier={planifier} preparer={lienPreparation(m.nom)} modifier={modifier} />}
+      icones={<AutresActions nom={m.nom} planifier={planifier} preparer={lienPreparation(m.nom)} modifier={modifier} fermer={fermer} />}
       actions={<>
         <Tooltip title="Message"><IconButton onClick={message} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Tooltip>
         <Tooltip title="Saisir une visite"><IconButton onClick={visite} aria-label="Saisir une visite" sx={rond}><AddOutlined /></IconButton></Tooltip>
@@ -492,7 +506,7 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
 }
 
 // Planifier, Préparer et Modifier dans un menu « ⋯ » : trois pictos seulement à côté du nom (Joseph, 21/10/2026)
-function AutresActions({ nom, planifier, preparer, modifier }: { nom: string; planifier: () => void; preparer: string; modifier?: () => void }) {
+function AutresActions({ nom, planifier, preparer, modifier, fermer: fermerMagasin }: { nom: string; planifier: () => void; preparer: string; modifier?: () => void; fermer?: () => void }) {
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const favori = useSuivis().favoris.includes(nom)
   const fermer = () => setAncre(null)
@@ -504,6 +518,7 @@ function AutresActions({ nom, planifier, preparer, modifier }: { nom: string; pl
         <MenuItem component={RouterLink} to={preparer} onClick={fermer} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><AssignmentOutlined /></ListItemIcon>Préparer la visite</MenuItem>
         <MenuItem onClick={() => { fermer(); basculerFavori(nom) }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon>{favori ? <StarOutlined /> : <StarBorderOutlined />}</ListItemIcon>{favori ? 'Retirer des favoris' : 'Ajouter aux favoris'}</MenuItem>
         {modifier && <MenuItem onClick={() => { fermer(); modifier() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><EditOutlined /></ListItemIcon>Modifier la fiche</MenuItem>}
+        {fermerMagasin && <MenuItem onClick={() => { fermer(); fermerMagasin() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><DoNotDisturbOnOutlined /></ListItemIcon>Fermer ou céder le magasin</MenuItem>}
       </Menu>
     </>
   )

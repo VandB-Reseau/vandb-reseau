@@ -2,7 +2,7 @@ import { renommerAccesCoach } from './accesEquipe'
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { avecPoint, definirGrille, delaisVisiteParDefaut, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
-import type { ActionLibre, ActionPlan, Evenement, Figure, NoteMagasin, PreparationVisite, Reseau, Topographie, Visite } from './modele'
+import type { ActionLibre, ActionPlan, Evenement, Fermeture, Figure, NoteMagasin, PreparationVisite, Reseau, Topographie, Visite } from './modele'
 import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
 import { normaliserParties, normaliserPlan } from './compteRendu'
@@ -434,6 +434,17 @@ async function surchargerMagasin(magasin: string, champs: Record<string, unknown
   verifier(ex.data?.length
     ? await supabase.from('store_overrides').update(l).eq('store_name', magasin)
     : await supabase.from('store_overrides').insert({ store_name: magasin, ...l }))
+}
+
+// Fermeture ou cession hors réseau (Directeur seul, règles de store_overrides) ; null la retire.
+// Base sans les colonnes (0033 pas passée) : « base » pour un message qui le dit sans erreur technique
+export async function enregistrerFermeture(magasin: string, f: Fermeture | null): Promise<'ok' | 'base' | 'echec'> {
+  try {
+    await surchargerMagasin(magasin, { ferme_le: f?.date ?? null, fermeture: f?.type ?? null, fermeture_motif: f?.motif || null, repreneur: f?.type === 'cession' ? f.repreneur || null : null })
+    return 'ok'
+  } catch (e) {
+    return e instanceof ErreurEnregistrement && /ferme_le|fermeture|repreneur|column/i.test(e.message) ? 'base' : 'echec'
+  }
 }
 
 // Actions hors visite : relues puis réécrites (une liste par magasin)

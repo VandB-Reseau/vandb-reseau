@@ -78,7 +78,7 @@ test('un message devient une tâche, affichée dans le fil', async ({ page }) =>
   await bulle.getByText('Il manque les affiches').click()
   await bulle.getByRole('button', { name: 'En faire une tâche' }).click()
   const fenetre = page.getByRole('dialog', { name: 'Ajouter une tâche' })
-  await expect(fenetre.getByLabel('Tâche')).toHaveValue('Il manque les affiches de la campagne.')
+  await expect(fenetre.getByLabel('Tâche', { exact: true })).toHaveValue('Il manque les affiches de la campagne.')
   await fenetre.getByRole('button', { name: 'Demain' }).click()
   await fenetre.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(fenetre).toHaveCount(0)

@@ -39,6 +39,7 @@ import { marquerVisiteFaite } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
 import { messageErreur } from '../components/EditionEquipe'
 import { magasinsDu, perimetreDuProfil, personnesDu, type Perimetre } from '../data/perimetre'
+import { AuMagasin } from '../components/AuMagasin'
 import { PageHeader } from '../components/PageHeader'
 import { actionsDes, actionsEnCours, echeanceDate, enRetard, monNomPorteur, portePar, type ActionSuivie } from '../data/actions'
 import { useEcritureActions } from '../components/Actions'
@@ -495,6 +496,7 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
   if (!surPC) {
     return (
       <>
+        <AuMagasin reseau={reseau} p={p} />
         <Indicateurs reseau={reseau} p={p} />
         <PointCompact reseau={reseau} p={p} items={items} taches={taches} />
         <SondagesARepondre equipe aFaire titre="Sondages à remplir" />

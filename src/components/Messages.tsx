@@ -37,6 +37,7 @@ import { BoutonJoindre, ListePieces, PiecesEnAttente } from './Pieces'
 import { DialogAction, useEcritureActions } from './Actions'
 import type { Piece } from '../lib/pieces'
 import { cartouche } from './Social'
+import { BoutonDictee } from './Dictee'
 
 const MAXI = 40
 const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr')
@@ -216,7 +217,7 @@ function Saisie({ citables, mentionnables, envoyer, fond, collante, joindre, sig
         <TextField placeholder={placeholder} multiline maxRows={6} fullWidth value={texte} inputRef={champ}
           onChange={(e) => { setTexte(e.target.value); setCurseur(e.target.selectionStart ?? e.target.value.length); setMasque(false) }}
           onSelect={(e) => setCurseur((e.target as HTMLTextAreaElement).selectionStart ?? 0)} onKeyDown={touche}
-          slotProps={{ htmlInput: { maxLength: 4000, 'aria-label': 'Message' } }}
+          slotProps={{ htmlInput: { maxLength: 4000, 'aria-label': 'Message' }, input: { endAdornment: <BoutonDictee libelle="Message" changer={setTexte} signaler={signaler} /> } }}
           sx={{ '& .MuiOutlinedInput-root': { borderRadius: '24px', minHeight: 48, py: 1.25, px: 2, bgcolor: 'action.hover' }, '& fieldset': { borderColor: 'transparent' } }} />
         {bascule && <PictoFil b={bascule} changer={() => { garderBrouillon(bascule.magasin, texte); bascule.changer(!bascule.equipe) }} />}
         <Bulle titre="Envoyer">

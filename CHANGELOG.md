@@ -9,6 +9,19 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Sprint 24, fluidité et fonctionnalités (Joseph, 24/10/2026) : Ma semaine sur téléphone propose « Préparer » et
+  « Planifier » (ou « Compte rendu ») en mots sous chaque magasin, « Tournée » et « Visite » en haut (S1) ; la fiche
+  avant visite montre sur téléphone le dernier mois en tuiles et les deux précédents en lignes, le tableau reste pour le
+  PC et le PDF (S2) ; la nine box nomme les Coachs en prénom et initiale (« Noé M. ») au lieu des initiales (S3) ;
+  Évolution du parc montre toutes les années, même sans ouverture (S4) ; sur téléphone, à moins de 300 m d'un de ses
+  magasins, l'accueil propose « Saisir la visite », « Préparer » et la fiche, position lue avec l'accord du téléphone et
+  jamais enregistrée (F1) ; dictée dans les tâches, messages, notes de visite et de préparation, notes du journal et
+  commentaires (F2) ; fermetures et cessions hors réseau saisies par le Directeur dans la fiche du magasin (menu
+  « … »), le magasin sort des listes, de la carte, du rythme et des repères à la date choisie, sa fiche reste avec un
+  bandeau, Évolution du parc compte ouvertures, sorties et solde (F3) ; Équipe > Revue du mois : la revue du réseau,
+  une ligne par Responsable Régional puis le détail, téléchargeable en PDF (F4) (test `sprint24.spec.ts`).
+  **Migration à passer : `0033_fermetures_magasins.sql`** (sans elle, tout s'affiche, une fermeture ne peut pas être
+  enregistrée).
 - Sprint 23, retouches du quotidien (Joseph, 23/10/2026) : saisir une visite depuis la fiche d'un magasin (ou le compte
   rendu d'une visite prévue) n'affiche plus les champs déjà connus, magasin, date, type et visiteurs tiennent sur une
   ligne avec « Modifier » ; Ma semaine se résume en trois cases (à voir, prévues, route) ; dans Visites > Rythme, la

@@ -33,8 +33,10 @@ import { chargeA, magasinsDuCoach, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienDirecteur, lienFiche, lienRR, telLien } from '../lib/format'
 import type { Personne, Reseau, ResponsableRegional } from '../data/modele'
 import { sousBandes } from '../components/Collant'
+import { RevueRR } from '../components/RevueRR'
+import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 
-type Vue = 'organisation' | 'portefeuilles' | 'collaborateurs' | 'franchises' | 'charge' | 'postes' | 'plan'
+type Vue = 'organisation' | 'portefeuilles' | 'revue' | 'collaborateurs' | 'franchises' | 'charge' | 'postes' | 'plan'
 
 function BoutonsContact({ p }: { p: Personne }) {
   return (
@@ -274,6 +276,7 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
 const rubriques: { vue: Vue; libelle: string; court: string; icone: ReactElement }[] = [
   { vue: 'organisation', libelle: 'Organisation', court: 'Organisation', icone: <AccountTreeOutlined /> },
   { vue: 'portefeuilles', libelle: 'Portefeuilles', court: 'Portefeuilles', icone: <InsightsOutlined /> },
+  { vue: 'revue', libelle: 'Revue du mois', court: 'Revue', icone: <EventNoteOutlined /> },
   { vue: 'postes', libelle: 'Postes à pourvoir', court: 'Postes', icone: <WorkOutlineOutlined /> },
   { vue: 'collaborateurs', libelle: 'Collaborateurs', court: 'Collaborateurs', icone: <BadgeOutlined /> },
   { vue: 'franchises', libelle: 'Franchisés', court: 'Franchisés', icone: <HandshakeOutlined /> },
@@ -294,6 +297,7 @@ export function Equipe() {
           <PageHeader titre="Équipe" sousTitre={`${reseau.equipe.length} Coachs · ${reseau.rrs.length} Responsables Régionaux · ${reseau.techniciens.length} technicien${reseau.techniciens.length > 1 ? 's' : ''}`} />
           <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle="Rubriques de l’équipe" />
           {vue === 'collaborateurs' || vue === 'franchises' ? <VuePersonnes key={vue} perimetre={vue} reseau={reseau} />
+            : vue === 'revue' ? <RevueRR reseau={reseau} nom="réseau" magasins={reseau.magasins} parRR />
             : vue === 'portefeuilles' ? <VuePortefeuilles reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
         </>
       )}

@@ -71,7 +71,13 @@ export interface Magasin {
   topographie: Topographie | '' // forme du blason de ville, choisie dans la fiche ; vide = déduite du département
   figure: Figure | '' // figure au centre du blason, choisie dans la fiche ; vide = proposée selon le département
   historiqueCoach: AffectationCoach[]
+  fermeture: Fermeture | null // fermeture ou cession hors réseau, passée ou prévue (0033)
 }
+
+// Fermeture ou cession hors réseau (le magasin quitte V and B) ; une cession à un autre franchisé n'en est pas une
+export type TypeFermeture = 'fermeture' | 'cession'
+export interface Fermeture { date: string; type: TypeFermeture; motif: string; repreneur: string }
+export const libelleFermeture: Record<TypeFermeture, string> = { fermeture: 'Fermeture', cession: 'Cession hors réseau' }
 
 export interface Coach extends Personne {
   rr: ResponsableRegional | null
@@ -98,7 +104,8 @@ export interface ParametresReseau {
 }
 
 export interface Reseau {
-  magasins: Magasin[]
+  magasins: Magasin[] // magasins du réseau à la date du jour (fermés et cédés retirés)
+  fermes: Magasin[] // magasins fermés ou cédés hors réseau : sortis des listes, fiche et historique gardés
   coachs: Record<string, Personne>
   equipe: Coach[] // Coachs pilotant des magasins (hors techniciens)
   techniciens: Personne[]

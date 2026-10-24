@@ -119,7 +119,9 @@ test('fiche avant visite : tout le magasin sur une page, téléchargeable en PDF
   }
   // Septembre 2026 à 70 000 € contre 100 000 € un an plus tôt
   await expect(page.getByText(/^Décroche · CA de septembre 2026/)).toBeVisible()
-  await expect(page.getByRole('table', { name: 'Chiffres de Lyon Test' })).toContainText('septembre 2026')
+  // Téléphone : dernier mois en tuiles, le tableau reste pour le PC et le PDF (sprint 24, S2)
+  if (isMobile) await expect(page.getByRole('group', { name: 'Chiffres de septembre 2026' })).toContainText('−30,0 % vs N-1')
+  else await expect(page.getByRole('table', { name: 'Chiffres de Lyon Test' })).toContainText('septembre 2026')
   await expect(page.getByRole('table', { name: 'Repères réseau' })).toContainText('Évolution du CA vs N-1')
   await expect(page.getByText('Vitrine de Noël')).toBeVisible()
   await expect(page.getByText('La livraison de coffrets est arrivée.')).toBeVisible()

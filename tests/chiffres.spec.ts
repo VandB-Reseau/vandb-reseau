@@ -76,7 +76,7 @@ test('saisir un appel : il ne compte pas comme visite', async ({ page }) => {
   await expect(d.getByRole('region', { name: 'Visite' })).toContainText('Appel · ')
   // Pas de compte rendu ni de signature pour un appel
   await expect(d.getByText('Visite contractuelle, à faire signer')).toHaveCount(0)
-  await d.getByLabel('Notes').fill('Point sur la baisse de septembre.')
+  await d.getByLabel('Notes', { exact: true }).fill('Point sur la baisse de septembre.')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
   const visite = ecritures.find((e) => e.table === 'visits')!

@@ -77,13 +77,14 @@ test('Visites : trois compteurs sur une ligne, « pas vus » filtre la liste', a
   await page.screenshot({ path: `captures/${info.project.name}-visites-compteurs.png`, fullPage: !isMobile })
 })
 
-test('nine box : cases vides discrètes, Coachs en initiales sans chevauchement', async ({ page, isMobile }, info) => {
+test('nine box : cases vides discrètes, Coachs en nom court sans chevauchement', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/plus/sante?vue=ninebox')
   const grille = page.getByRole('table', { name: 'Nine box' })
   await expect(grille).toBeVisible()
-  // Les Coachs en initiales sous le chiffre
-  await expect(grille.getByText(/^[A-Z]{2} \d+$/).first()).toBeVisible()
+  // Les Coachs en prénom et initiale du nom sous le chiffre (sprint 24, S3), plus d'initiales seules
+  await expect(grille.getByText(/^\S+ [A-Z]\. \d+$/).first()).toBeVisible()
+  await expect(grille.getByText(/^[A-Z]{2} \d+$/)).toHaveCount(0)
   for (const cellule of await grille.getByRole('cell').all()) {
     const libelle = (await cellule.getAttribute('aria-label'))!
     if (libelle.endsWith(': 0 magasin')) {

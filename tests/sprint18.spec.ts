@@ -67,7 +67,7 @@ test('un Coach arrive sur sa semaine, prépare et planifie un magasin pas vu dep
   const demain = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
   await d.getByLabel('Date').fill(demain)
   await expect(d.getByLabel('Heure')).toHaveCount(0)
-  await d.getByLabel('Notes de préparation').fill('Revoir la vitrine et le corner épicerie')
+  await d.getByLabel('Notes de préparation', { exact: true }).fill('Revoir la vitrine et le corner épicerie')
   await expect(d.getByRole('switch', { name: 'Ajouter à Google Agenda' })).toBeChecked()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-planifier-visite.png` })
@@ -119,7 +119,7 @@ test('un Coach planifie une visite en plus, même pour un magasin qui n’est pa
   const nom = (await options.last().textContent())!
   await options.last().click()
   await page.keyboard.press('Escape')
-  await d.getByLabel(`Notes de préparation`).fill('Point sur la fidélité')
+  await d.getByLabel('Notes de préparation', { exact: true }).fill('Point sur la fidélité')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText(/^Visite planifiée le /)).toBeVisible()
   const visite = ecritures.find((e) => e.table === 'visits' && e.methode === 'POST')!

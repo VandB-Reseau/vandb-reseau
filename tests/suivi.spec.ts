@@ -34,7 +34,7 @@ test('ajouter, modifier et supprimer une note du journal', async ({ page }) => {
   await page.goto('./#/magasins/Lyon%20Test?vue=journal')
   await page.getByRole('button', { name: 'Note', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle note' })
-  await d.getByLabel('Note').fill('Franchisé motivé par la terrasse.')
+  await d.getByLabel('Note', { exact: true }).fill('Franchisé motivé par la terrasse.')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Note enregistrée.')).toBeVisible()
   const ajout = ecritures.filter((e) => e.table === 'app_config').at(-1)!
