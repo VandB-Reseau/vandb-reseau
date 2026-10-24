@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Nine box : l’axe vertical (Franchisé faible, moyen, fort) s’affiche aussi au téléphone, en colonne étroite à
+  gauche des cases (Joseph, 24/10/2026). Sans SQL.
 - Sprint 24, fluidité et fonctionnalités (Joseph, 24/10/2026) : Ma semaine sur téléphone propose « Préparer » et
   « Planifier » (ou « Compte rendu ») en mots sous chaque magasin, « Tournée » et « Visite » en haut (S1) ; la fiche
   avant visite montre sur téléphone le dernier mois en tuiles et les deux précédents en lignes, le tableau reste pour le
