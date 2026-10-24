@@ -524,3 +524,59 @@ SELECT pg_temp.attendre('Journal : 0033 notée', (SELECT count(*) FROM public.jo
 SELECT pg_temp.attendre('Situations : colonne jsonb ajoutée', (SELECT count(*) FROM information_schema.columns
   WHERE table_schema = 'public' AND table_name = 'store_overrides' AND column_name = 'situations' AND data_type = 'jsonb'), 1);
 SELECT pg_temp.attendre('Situations : une liste seulement', (SELECT count(*) FROM pg_constraint WHERE conname = 'store_overrides_situations'), 1);
+
+-- ── 0034 : agenda dans Google Agenda (lien secret par compte de l'équipe, lu par la fonction « agenda » seule)
+SELECT pg_temp.attendre('Journal : 0034 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0034'), 1);
+INSERT INTO public.visits (store, visit_date, visitor, prevue) VALUES
+  ('Lille', current_date + 2, 'Coach Nord', true), ('Nice', current_date + 3, 'Coach Nord', true), ('Lille', current_date + 4, 'Autre COACH', true);
+INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES ('Lille', 'preparation', '{"heure":"09:30","notes":""}')
+ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur;
+INSERT INTO public.events (title, start_date) VALUES ('Séminaire 0034', current_date + 5);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT public.mon_agenda('Coach Nord') AS jeton_coach \gset
+SELECT pg_temp.attendre('Agenda : même lien au second appel', (SELECT count(*) FROM (SELECT public.mon_agenda('Coach Nord') AS j) x WHERE j = :'jeton_coach'), 1);
+SELECT pg_temp.attendre('Agenda : lien de 64 caractères', length(:'jeton_coach'), 64);
+SELECT pg_temp.attendre('Agenda : aucun accès direct aux liens', pg_temp.refuse('SELECT count(*) FROM public.agenda_jetons'), 1);
+SELECT pg_temp.attendre('Agenda : un compte ne lit pas l''agenda d''un lien', pg_temp.refuse('SELECT public.agenda_du_jeton(''' || :'jeton_coach' || ''')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Agenda : refusé au franchisé', pg_temp.refuse('SELECT public.mon_agenda(''Franchisé'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-000000000000';
+SELECT pg_temp.attendre('Agenda : refusé au compte sans rôle', pg_temp.refuse('SELECT public.mon_agenda(''Personne'')'), 1);
+RESET ROLE;
+SET ROLE anon;
+SELECT pg_temp.attendre('Agenda : rien sans compte', pg_temp.refuse('SELECT public.agenda_du_jeton(''' || :'jeton_coach' || ''')'), 1);
+RESET ROLE;
+SET ROLE service_role;
+SELECT pg_temp.attendre('Agenda du Coach : ses visites, sur ses magasins seulement',
+  (SELECT jsonb_array_length(public.agenda_du_jeton(:'jeton_coach')->'visites')), 1);
+SELECT pg_temp.attendre('Agenda du Coach : l''heure préparée de la visite prévue',
+  (SELECT count(*) FROM jsonb_array_elements(public.agenda_du_jeton(:'jeton_coach')->'visites') v WHERE v->>'heure' = '09:30'), 1);
+SELECT pg_temp.attendre('Agenda : les événements du réseau',
+  (SELECT count(*) FROM jsonb_array_elements(public.agenda_du_jeton(:'jeton_coach')->'evenements') e WHERE e->>'titre' = 'Séminaire 0034'), 1);
+SELECT pg_temp.attendre('Agenda : lien inconnu, rien', (SELECT count(*) FROM (SELECT public.agenda_du_jeton(repeat('0', 64)) AS a) x WHERE a IS NULL), 1);
+RESET ROLE;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Agenda : un nouveau lien remplace l''ancien', (SELECT count(*) FROM (SELECT public.mon_agenda('Coach Nord', true) AS j) x WHERE j <> :'jeton_coach'), 1);
+RESET ROLE;
+SET ROLE service_role;
+SELECT pg_temp.attendre('Agenda : l''ancien lien ne marche plus', (SELECT count(*) FROM (SELECT public.agenda_du_jeton(:'jeton_coach') AS a) x WHERE a IS NULL), 1);
+RESET ROLE;
+SELECT pg_temp.attendre('Agenda : fonction de lecture fermée aux comptes', (SELECT count(*) FROM information_schema.routine_privileges
+  WHERE routine_schema = 'public' AND grantee IN ('anon', 'authenticated', 'PUBLIC') AND routine_name = 'agenda_du_jeton'), 0);
+
+-- ── 0035 : ouvertures par étapes, rubrique « ouverture » de suivi_magasins (rejouée ici : l'ordre inverse a remis 0011 en dernier)
+\ir ../migrations/0035_ouvertures_etapes.sql
+SELECT pg_temp.attendre('Journal : 0035 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0035'), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Ouverture : le Coach écrit les étapes de son magasin',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''ouverture'', ''{"etapes":{}}'')'), 0);
+SELECT pg_temp.attendre('Ouverture : pas sur un magasin d''un autre Coach',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Nice'', ''ouverture'', ''{"etapes":{}}'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Ouverture : rien pour le franchisé', (SELECT count(*) FROM public.suivi_magasins), 0);
+RESET ROLE;
+SELECT pg_temp.attendre('Ouverture : rubrique inconnue refusée',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''inconnue'', ''{}'')'), 1);

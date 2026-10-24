@@ -7,7 +7,7 @@
 export const rubriques = {
   sante_parc: 'sante', sante_parc_sauvegarde: 'sante_sauvegarde', notes_magasins: 'notes', audits: 'audits',
   associes: 'associes', actions: 'actions', deploiements: 'deploiements', campagnes: 'constats',
-  preparations_visites: 'preparation',
+  preparations_visites: 'preparation', ouvertures_magasins: 'ouverture',
 } as const
 export type CleSuivie = keyof typeof rubriques
 export const estSuivie = (cle: string): cle is CleSuivie => cle in rubriques

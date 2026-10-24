@@ -9,6 +9,16 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Sprint 25, fluidité et fonctionnalités (Joseph, 24/10/2026) : l'agenda s'ouvre sur aujourd'hui, les jours passés du
+  mois repliés sous « Plus tôt ce mois », sans sous-titre (S1) ; « Mon agenda dans Google Agenda » dans le menu du compte :
+  un lien secret par personne, ses visites et les événements, réunions et formations du réseau, lien remplaçable (F2) ;
+  ouvertures suivies en 6 étapes (contrat, local, travaux, recrutement, formation, ouverture) dans la fiche et dans
+  « À venir », saisies par le Directeur et les RR, retard signalé (F3) ; effet d'une thématique sur le chiffre dans la
+  santé du parc : évolution sur 3 mois après déploiement face à N-1, magasins déployés contre non déployés, écart
+  donné à partir de 10 magasins par groupe (F4) ; partager des photos depuis la galerie d'Android vers l'app, rangées
+  en bonne pratique, message ou tâche d'un magasin (F5). Base : passer `0034_agenda_abonne` et
+  `0035_ouvertures_etapes`, puis déployer la fonction « agenda » sans « Verify JWT ».
+
 - Sprint 24, fluidité et fonctionnalités (Joseph, 24/10/2026) : Ma semaine sur téléphone propose « Préparer » et
   « Planifier » (ou « Compte rendu ») en mots sous chaque magasin, « Tournée » et « Visite » en haut (S1) ; la fiche
   avant visite montre sur téléphone le dernier mois en tuiles et les deux précédents en lignes, le tableau reste pour le

@@ -232,3 +232,53 @@ export function avancement(reseau: Reseau, t: Thematique) {
   const v = actifs.map((m) => tonDe(t, reseau.deploiements.valeurs[m.nom]?.[t.id]))
   return { total: actifs.length, positif: v.filter((x) => x === 'positif').length, partiel: v.filter((x) => x === 'partiel').length, negatif: v.filter((x) => x === 'negatif').length, inconnu: v.filter((x) => x === null).length }
 }
+
+// ── Effet d'un déploiement sur le chiffre (sprint 25, F4) ──
+// Pour chaque magasin déployé dont la date de mise en place est connue : CA des 3 mois qui suivent, comparé aux mêmes mois
+// un an plus tôt. Témoin : les magasins qui ne l'ont pas (ton négatif), sur les mêmes mois. Un écart n'est affiché qu'à
+// partir de 10 magasins dans chaque groupe ; c'est une comparaison, pas une preuve.
+export const EFFET_MOIS = 3
+export const EFFET_MINIMUM = 10
+export interface EffetDeploiement { deployes: number; temoins: number; evolDeployes: number | null; evolTemoins: number | null; ecart: number | null; assez: boolean }
+
+const decaler = (mois: string, n: number) => { const d = new Date(Date.UTC(Number(mois.slice(0, 4)), Number(mois.slice(5, 7)) - 1 + n, 1)); return d.toISOString().slice(0, 7) }
+const caMois = (reseau: Reseau, nom: string, mois: string): number | null => {
+  const c = reseau.chiffres[nom]?.find((x) => x.mois === mois)
+  return !c || (c.caCave === null && c.caBar === null && c.caExt === null) ? null : (c.caCave ?? 0) + (c.caBar ?? 0) + (c.caExt ?? 0)
+}
+// CA sur des mois et les mêmes mois un an plus tôt, seulement si tout est saisi
+const paire = (reseau: Reseau, nom: string, mois: string[]): [number, number] | null => {
+  let n = 0, a = 0
+  for (const m of mois) {
+    const x = caMois(reseau, nom, m), y = caMois(reseau, nom, decaler(m, -12))
+    if (x === null || y === null || y <= 0) return null
+    n += x; a += y
+  }
+  return [n, a]
+}
+
+export function effetDeploiement(reseau: Reseau, t: Thematique): EffetDeploiement {
+  const moisCourant = reseau.jour.slice(0, 7)
+  const actifs = reseau.magasins.filter((m) => m.statut !== 'avenir')
+  const temoinsNoms = actifs.filter((m) => tonDe(t, reseau.deploiements.valeurs[m.nom]?.[t.id]) === 'negatif').map((m) => m.nom)
+  const evols: number[] = [], evolsTemoins: number[] = []
+  const temoinsVus = new Set<string>()
+  for (const m of actifs) {
+    if (tonDe(t, reseau.deploiements.valeurs[m.nom]?.[t.id]) !== 'positif') continue
+    const depuis = depuisDeploiement(reseau.deploiements, m.nom, t.id)
+    if (!depuis) continue
+    const mois = Array.from({ length: EFFET_MOIS }, (_, i) => decaler(depuis.slice(0, 7), i + 1))
+    if (mois[mois.length - 1] >= moisCourant) continue // fenêtre pas encore close
+    const p = paire(reseau, m.nom, mois)
+    if (!p) continue
+    // Témoins sur les mêmes mois
+    let n = 0, a = 0
+    for (const nom of temoinsNoms) { const q = paire(reseau, nom, mois); if (q) { n += q[0]; a += q[1]; temoinsVus.add(nom) } }
+    evols.push(p[0] / p[1] - 1)
+    if (a > 0) evolsTemoins.push(n / a - 1)
+  }
+  const moyenne = (l: number[]) => (l.length ? (l.reduce((s, x) => s + x, 0) / l.length) * 100 : null)
+  const evolDeployes = moyenne(evols), evolTemoins = moyenne(evolsTemoins)
+  const assez = evols.length >= EFFET_MINIMUM && temoinsVus.size >= EFFET_MINIMUM
+  return { deployes: evols.length, temoins: temoinsVus.size, evolDeployes, evolTemoins, ecart: assez && evolDeployes !== null && evolTemoins !== null ? evolDeployes - evolTemoins : null, assez }
+}

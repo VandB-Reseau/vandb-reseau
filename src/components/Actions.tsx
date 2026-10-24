@@ -174,8 +174,9 @@ function echeancesRapides(jour: string): { libelle: string; date: string }[] {
 }
 
 // depuis : tâche née d'un message (texte proposé, fil « Équipe seule » ou non, message d'origine)
-export function DialogAction({ reseau, magasins, action, porteurInitial = '', depuis, onFermer }: {
-  reseau: Reseau; magasins: string[]; action: ActionSuivie | null; porteurInitial?: string; depuis?: { texte: string; equipe: boolean; message: number }; onFermer: (msg?: string) => void
+export function DialogAction({ reseau, magasins, action, porteurInitial = '', depuis, piecesInitiales = [], onFermer }: {
+  reseau: Reseau; magasins: string[]; action: ActionSuivie | null; porteurInitial?: string; depuis?: { texte: string; equipe: boolean; message: number }
+  piecesInitiales?: Piece[]; onFermer: (msg?: string) => void
 }) {
   const { profil } = useAuth()
   const { franchise } = useEcritureActions(reseau)
@@ -184,7 +185,7 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', de
   const [texte, setTexte] = useState(a?.action ?? depuis?.texte ?? '')
   const [porteur, setPorteur] = useState(a?.porteur ?? porteurInitial)
   const [echeance, setEcheance] = useState(a ? echeanceDate(a) : '')
-  const [pieces, setPieces] = useState<Piece[]>(a?.pieces ?? [])
+  const [pieces, setPieces] = useState<Piece[]>(a?.pieces ?? piecesInitiales)
   const [alerte, setAlerte] = useState('')
   const propre = texte.trim().replace(/\s+/g, ' ')
   return (

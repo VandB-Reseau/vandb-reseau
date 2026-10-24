@@ -211,7 +211,7 @@ export function Agenda() {
         const changerMois = (n: number) => { const d = new Date(Date.UTC(Number(mois.slice(0, 4)), Number(mois.slice(5, 7)) - 1 + n, 1)); setParams({ mois: iso(d).slice(0, 7) }, { replace: true }) }
         return (
           <>
-            <PageHeader titre="Agenda" sousTitre="Visites, campagnes, formations et événements" />
+            <PageHeader titre="Agenda" />
             {/* Le mois et les catégories restent sous la barre du haut quand la page défile */}
             <BandeCollante>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0, sm: 1 }, flexWrap: { sm: 'wrap' }, mb: 0.5 }}>
@@ -256,6 +256,7 @@ function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, ouvrir, ajout
   ouvrir: (e: Element) => void; ajouter: (a: Ancre) => void; deplacer: (e: Element, d: Dates) => void
 }) {
   const [glisse, setGlisse] = useState<Glisse | null>(null)
+  const [voirPasses, setVoirPasses] = useState(false)
   const enCours = useRef<{ g: Glisse; x: number; y: number; bouge: boolean } | null>(null)
   const ignorerClic = useRef(false)
   const nettoyer = useRef<() => void>(() => {})
@@ -326,7 +327,9 @@ function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, ouvrir, ajout
       </Card>
     )
   }
-  const premierJour = (e: Element) => (e.debut < debut ? debut : e.debut)
+  const moisEnCours = reseau.jour >= debut && reseau.jour <= fin
+  // Un élément commencé avant et encore en cours se range sous aujourd'hui dans le mois en cours
+  const premierJour = (e: Element) => { const d = e.debut < debut ? debut : e.debut; return moisEnCours && d < reseau.jour && e.fin >= reseau.jour ? reseau.jour : d }
   const jours = [...new Set(elements.map(premierJour))].sort()
   const boutonAjout = (j: string) => (
     <IconButton aria-label={`Ajouter le ${jourLong(j)}`} onClick={(ev) => ajouter(ancreDe(j, ev.currentTarget))} sx={{ width: 48, height: 48, my: -1.5 }}><AddOutlined /></IconButton>
@@ -341,7 +344,7 @@ function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, ouvrir, ajout
         const occupe = jours.includes(j), aujourdhui = j === reseau.jour
         return (
           <ButtonBase key={j} aria-label={jourLong(j)} aria-current={aujourdhui ? 'date' : undefined}
-            onClick={(ev) => { if (occupe) document.getElementById(`jour-${j}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }); else ajouter(ancreDe(j, ev.currentTarget)) }}
+            onClick={(ev) => { if (occupe) { if (j < reseau.jour) setVoirPasses(true); setTimeout(() => document.getElementById(`jour-${j}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 0) } else ajouter(ancreDe(j, ev.currentTarget)) }}
             sx={{ flexShrink: 0, width: 48, minHeight: 64, scrollSnapAlign: 'center', flexDirection: 'column', gap: 0.25, fontFamily: 'inherit', borderRadius: 3, bgcolor: aujourdhui ? 'text.primary' : undefined, color: aujourdhui ? 'background.paper' : occupe ? 'text.primary' : 'text.secondary' }}>
             <Box component="span" sx={{ fontSize: '0.75rem', textTransform: 'capitalize' }}>{jourUTC(j).toLocaleDateString('fr-FR', { weekday: 'short', timeZone: 'UTC' }).slice(0, 3)}</Box>
             <Box component="span" sx={{ fontWeight: 700 }}>{Number(j.slice(8))}</Box>
@@ -351,17 +354,23 @@ function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, ouvrir, ajout
       })}
     </Box>
   )
-  if (!jours.length) return <>{bande}<EmptyState icone={<CalendarMonthOutlined />} titre="Rien de prévu ce mois-ci" texte="Ajoute une visite ou un événement, ou passe au mois suivant." /></>
+  // Mois en cours (sprint 25, S1) : la liste part d'aujourd'hui, toujours affiché même vide ; les jours passés se replient
+  const passes = moisEnCours ? jours.filter((j) => j < reseau.jour) : []
+  const aVenir = moisEnCours ? [...new Set([reseau.jour, ...jours.filter((j) => j >= reseau.jour)])].sort() : jours
+  if (!jours.length && !moisEnCours) return <>{bande}<EmptyState icone={<CalendarMonthOutlined />} titre="Rien de prévu ce mois-ci" texte="Ajoute une visite ou un événement, ou passe au mois suivant." /></>
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {bande}
-      {jours.map((j) => (
+      {passes.length > 0 && !voirPasses && (
+        <Button variant="outlined" onClick={() => setVoirPasses(true)} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>Plus tôt ce mois · {passes.length}</Button>
+      )}
+      {[...(voirPasses ? passes : []), ...aVenir].map((j) => (
         <Box key={j} id={`jour-${j}`} sx={{ scrollMarginTop: 72 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="subtitle2" component="h3" sx={{ textTransform: 'capitalize', color: j === reseau.jour ? 'primary.main' : 'text.primary' }}>{jourLong(j)}</Typography>
+            <Typography variant="subtitle2" component="h3" sx={{ textTransform: 'capitalize', color: j === reseau.jour ? 'primary.main' : 'text.primary' }}>{j === reseau.jour ? `Aujourd’hui · ${jourLong(j)}` : jourLong(j)}</Typography>
             {boutonAjout(j)}
           </Box>
-          <Card>
+          {!elements.some((e) => premierJour(e) === j) ? <Card><Typography color="text.secondary" sx={{ px: 2, py: 1.5 }}>Rien de prévu</Typography></Card> : <Card>
             {elements.filter((e) => premierJour(e) === j).map((e) => (
               <Box key={e.cle} component={e.lien ? RouterLink : 'button'} {...(e.lien ? { to: e.lien } : { type: 'button', onClick: () => ouvrir(e) })}
                 sx={{ display: 'flex', gap: 1.5, alignItems: 'center', width: '100%', textAlign: 'left', px: 2, py: 1.5, minHeight: 56, border: 0, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'transparent', color: 'text.primary', textDecoration: 'none', font: 'inherit', cursor: 'pointer' }}>
@@ -372,7 +381,7 @@ function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, ouvrir, ajout
                 </Box>
               </Box>
             ))}
-          </Card>
+          </Card>}
         </Box>
       ))}
     </Box>
