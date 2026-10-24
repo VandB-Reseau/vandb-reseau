@@ -2,7 +2,7 @@ import { renommerAccesCoach } from './accesEquipe'
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { avecPoint, definirGrille, delaisVisiteParDefaut, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
-import type { ActionLibre, ActionPlan, Evenement, Figure, NoteMagasin, PreparationVisite, Reseau, Topographie, Visite } from './modele'
+import type { ActionLibre, ActionPlan, Evenement, Situation, Figure, NoteMagasin, PreparationVisite, Reseau, Topographie, Visite } from './modele'
 import { SEPARATEUR_VISITEURS, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
 import { normaliserParties, normaliserPlan } from './compteRendu'
@@ -434,6 +434,17 @@ async function surchargerMagasin(magasin: string, champs: Record<string, unknown
   verifier(ex.data?.length
     ? await supabase.from('store_overrides').update(l).eq('store_name', magasin)
     : await supabase.from('store_overrides').insert({ store_name: magasin, ...l }))
+}
+
+// Situations datées du magasin (Directeur seul, règles de store_overrides) : la liste entière est réécrite.
+// Base sans la colonne (0033 pas passée) : « base » pour un message qui le dit sans erreur technique
+export async function enregistrerSituations(magasin: string, situations: Situation[]): Promise<'ok' | 'base' | 'echec'> {
+  try {
+    await surchargerMagasin(magasin, { situations })
+    return 'ok'
+  } catch (e) {
+    return e instanceof ErreurEnregistrement && /situations|column/i.test(e.message) ? 'base' : 'echec'
+  }
 }
 
 // Actions hors visite : relues puis réécrites (une liste par magasin)

@@ -109,8 +109,13 @@ const SOLIDES = ['locomotive', 'grandir', 'potentiel']
 
 // Nine box : chaque case donne un nombre, une part du parc et la répartition par Coach ;
 // un clic ouvre la liste des magasins de la case, regroupés par Coach (lisible même avec des centaines de magasins)
-// Initiales d'un Coach (« Inès EXEMPLE » → « IE »), « SC » sans Coach
-const initialesCoach = (nom: string) => (nom ? nom.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('') : 'SC')
+// Coach en prénom et initiale du nom (« Inès EXEMPLE » → « Inès E. ») : les initiales seules ne parlaient à personne
+// (Joseph, sprint 24) ; nom complet si deux Coachs ont le même nom court
+export function nomCourtCoach(nom: string, tous: string[] = []): string {
+  if (!nom) return 'Sans Coach'
+  const court = (n: string) => { const [p, ...r] = n.trim().split(/\s+/); return r.length ? `${p} ${r[0][0].toUpperCase()}.` : p }
+  return tous.some((x) => x !== nom && court(x) === court(nom)) ? nom : court(nom)
+}
 
 function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () => void; surPC: boolean }) {
   const theme = useTheme()
@@ -119,6 +124,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
   const [cherche, setCherche] = useState('')
   const classes = useMemo(() => magasins.map((m) => ({ m, c: caseDe(reseau.evaluations[m.nom]), coach: coachA(m, reseau.jour) })), [magasins, reseau])
   const couleurs = couleursCoachs(reseau.magasins.map((m) => coachA(m, reseau.jour)).filter(Boolean))
+  const nomsCoachs = [...couleurs.keys()]
   const nbClasses = classes.filter((x) => x.c).length
   const compte = (ids: string[]) => classes.filter((x) => x.c && ids.includes(x.c.id)).length
   const nonClasses = classes.length - nbClasses
@@ -185,12 +191,12 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
                           : <Typography sx={{ fontSize: { xs: 16, md: 20 }, fontWeight: 600, lineHeight: 1, color: 'text.secondary' }}>0</Typography>}
                         <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>{liste.length ? `${pct(liste.length)} % des classés` : 'aucun magasin'}</Typography>
                       </Box>
-                      {/* Coachs en initiales sous le chiffre (plus de barre ni de bulle qui recouvrait le libellé au téléphone) */}
+                      {/* Coachs en nom court sous le chiffre (plus de barre ni de bulle qui recouvrait le libellé au téléphone) */}
                       {liste.length > 0 && couleurs.size > 1 && (
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1, rowGap: 0.25 }}>
                           {parCoach.slice(0, 3).map(([k, n]) => (
-                            <Typography key={k} component="span" title={`${k || 'Sans Coach'} : ${n}`} sx={{ fontSize: 12, fontWeight: 700, color: k ? couleurs.get(k) : 'text.secondary', whiteSpace: 'nowrap' }}>
-                              {initialesCoach(k)} {n}
+                            <Typography key={k} component="span" title={`${k || 'Sans Coach'} : ${n}`} sx={{ fontSize: 12, fontWeight: 700, color: 'text.primary', bgcolor: 'background.paper', borderRadius: 99, px: 0.75, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 0.5, '&::before': { content: '""', width: 6, height: 6, borderRadius: '50%', bgcolor: k ? couleurs.get(k) : 'text.secondary', flexShrink: 0 } }}>
+                              {nomCourtCoach(k, nomsCoachs)} {n}
                             </Typography>
                           ))}
                           {parCoach.length > 3 && <Typography component="span" sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary' }}>+{parCoach.length - 3}</Typography>}

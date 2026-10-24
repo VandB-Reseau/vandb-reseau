@@ -177,12 +177,12 @@ test('l’accueil donne les priorités du jour', async ({ page, isMobile }, info
 test('l’évolution compte les ouvertures par année', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/parametres/evolution')
-  await expect(page.getByText('Les fermetures ne sont pas encore enregistrées')).toBeVisible()
+  await expect(page.getByText('Les fermetures ne sont pas encore enregistrées')).toHaveCount(0)
   const annees = page.getByRole('region', { name: 'Évolution par année' })
   await expect(annees.locator('> div').filter({ hasText: '2026 (en cours)' })).toContainText('dont 2 prévues · 29 au total')
   if (!isMobile) {
     await page.getByRole('group', { name: 'Affichage' }).getByRole('button', { name: 'Tableau' }).click()
-    await expect(page.getByRole('row', { name: /2026 \(en cours\)/ })).toContainText('dont 2 prévues29')
+    await expect(page.getByRole('row', { name: /2026 \(en cours\)/ })).toContainText('(dont 2 prévues)29')
   }
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-evolution.png`, fullPage: !isMobile })

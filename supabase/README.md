@@ -37,6 +37,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0030_animation_reseau` | Formations : colonnes `events.heure` et `events.html`, `reunions_franchise` les renvoie ; notifications d'un nouveau sondage, d'une réunion ou formation, d'une communication, d'une bonne pratique ou d'une campagne : table `notifications_envoyees` fermée, fonctions `comptes_concernes` et `notifications_animation` (fonction « notifier » seule) ; puis redéployer la fonction Supabase `notifier` | 23/10/2026 |
 | `0031_topographie_magasins` | Colonne `store_overrides.topographie` (littoral, montagne ou terres) pour la forme du blason de ville | 23/10/2026 |
 | `0032_figure_blason` | Colonne `store_overrides.figure` (vingt figures possibles) pour la figure au centre du blason de ville | 23/10/2026 |
+| `0033_situations_magasins` | Colonne `store_overrides.situations` (jsonb) : fermetures provisoires, passages intégré ou franchisé, sorties du réseau, soirées d'inauguration | 24/10/2026 |
 
 ## Règles
 

@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
@@ -59,8 +60,10 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
   const [compteRendu, setCompteRendu] = useState<Visite | null>(null)
   const unSeul = coachs.length <= 1
   const actions = s && <>
-    {s.aPlanifier.length > 1 && <BoutonAction secondaire libelle="Planifier la tournée" icone={<RouteOutlined />} onClick={() => planifier(s.aPlanifier.map((x) => x.l.magasin.nom), reseau.jour)} />}
-    <BoutonAction libelle="Planifier une visite" icone={<EventAvailableOutlined />} onClick={() => planifier([], reseau.jour)} />
+    {s.aPlanifier.length > 1 && (surPC ? <BoutonAction secondaire libelle="Planifier la tournée" icone={<RouteOutlined />} onClick={() => planifier(s.aPlanifier.map((x) => x.l.magasin.nom), reseau.jour)} />
+      : <Button variant="outlined" startIcon={<RouteOutlined />} onClick={() => planifier(s.aPlanifier.map((x) => x.l.magasin.nom), reseau.jour)} aria-label="Planifier la tournée" sx={{ minHeight: 48, flexShrink: 0 }}>Tournée</Button>)}
+    {surPC ? <BoutonAction libelle="Planifier une visite" icone={<EventAvailableOutlined />} onClick={() => planifier([], reseau.jour)} />
+      : <Button variant="contained" startIcon={<EventAvailableOutlined />} onClick={() => planifier([], reseau.jour)} aria-label="Planifier une visite" sx={{ minHeight: 48, flexShrink: 0 }}>Visite</Button>}
   </>
   const barre = (
     <RechercheFiltres actions={actions}
@@ -78,15 +81,34 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
       l.dernierContact ? `appel le ${jourCourt(l.dernierContact.date)}` : null,
       preparationDe(reseau, l.magasin.nom)?.notes ? 'préparée' : null,
     ].filter(Boolean).join(' · ')
+    const planifierCe = () => planifier([l.magasin.nom], prevue?.date ?? jourPropose(reseau, l), prevue)
+    // Téléphone : Préparer, Planifier et Compte rendu en mots sous le magasin (sprint 24, S1) ; PC : pictos en bout de ligne
+    if (!surPC) {
+      const bouton = { minHeight: 48, px: 1.5, bgcolor: 'background.paper' } as const
+      return (
+        <Box key={l.magasin.nom}>
+          <LigneCompacte lien={lienFiche(l.magasin.nom)} label={l.magasin.nom}
+            avatar={<Initiales nom={l.magasin.nom} icone={i !== null ? <Typography component="span" sx={{ fontWeight: 700 }}>{i + 1}</Typography> : <EventAvailableOutlined />} />}
+            titre={l.magasin.nom} detail={detail}
+            fin={prevue ? <Pastille ton="bleu">{jourCourt(prevue.date)}</Pastille> : l.alerte ? <Pastille ton="orange">{libellePasVu(l)}</Pastille> : undefined} />
+          <Box role="group" aria-label={`Actions pour ${l.magasin.nom}`} sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, pl: 8.5, pr: 2, pb: 1.5, mt: -0.5 }}>
+            <Button variant="outlined" size="small" component={RouterLink} to={lienPreparation(l.magasin.nom)} startIcon={<AssignmentOutlined />} aria-label={`Préparer la visite de ${l.magasin.nom}`} sx={bouton}>Préparer</Button>
+            {prevue && prevue.date <= reseau.jour
+              ? <Button variant="outlined" size="small" onClick={() => setCompteRendu(prevue)} startIcon={<RateReviewOutlined />} aria-label={`Faire le compte rendu de ${l.magasin.nom}`} sx={bouton}>Compte rendu</Button>
+              : <Button variant="outlined" size="small" onClick={planifierCe} startIcon={prevue ? <EditCalendarOutlined /> : <EventAvailableOutlined />} aria-label={`Planifier la visite de ${l.magasin.nom}`} sx={bouton}>{prevue ? 'Déplacer' : 'Planifier'}</Button>}
+          </Box>
+        </Box>
+      )
+    }
     return (
       <LigneCompacte key={l.magasin.nom} lien={lienFiche(l.magasin.nom)} label={l.magasin.nom}
         avatar={<Initiales nom={l.magasin.nom} icone={i !== null ? <Typography component="span" sx={{ fontWeight: 700 }}>{i + 1}</Typography> : <EventAvailableOutlined />} />}
         titre={l.magasin.nom} detail={detail}
         fin={prevue ? <Pastille ton="bleu">{jourCourt(prevue.date)}</Pastille> : l.alerte ? <Pastille ton="orange">{libellePasVu(l)}</Pastille> : undefined}
         actions={<>
-          {surPC && <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(l.magasin.nom)} aria-label={`Préparer la visite de ${l.magasin.nom}`}><AssignmentOutlined /></IconButton></Tooltip>}
+          <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(l.magasin.nom)} aria-label={`Préparer la visite de ${l.magasin.nom}`}><AssignmentOutlined /></IconButton></Tooltip>
           {prevue && prevue.date <= reseau.jour && <Tooltip title="Faire le compte rendu"><IconButton onClick={() => setCompteRendu(prevue)} aria-label={`Faire le compte rendu de ${l.magasin.nom}`} sx={{ width: 48, height: 48 }}><RateReviewOutlined /></IconButton></Tooltip>}
-          <Tooltip title="Planifier la visite"><IconButton onClick={() => planifier([l.magasin.nom], prevue?.date ?? jourPropose(reseau, l), prevue)} aria-label={`Planifier la visite de ${l.magasin.nom}`} sx={{ width: 48, height: 48 }}>{prevue ? <EditCalendarOutlined /> : <EventAvailableOutlined />}</IconButton></Tooltip>
+          <Tooltip title="Planifier la visite"><IconButton onClick={planifierCe} aria-label={`Planifier la visite de ${l.magasin.nom}`} sx={{ width: 48, height: 48 }}>{prevue ? <EditCalendarOutlined /> : <EventAvailableOutlined />}</IconButton></Tooltip>
         </>} />
     )
   }

@@ -79,7 +79,31 @@ function Chiffres({ reseau, m }: { reseau: Reseau; m: Magasin }) {
           {libelleAlerte[a.statut]} · CA de {libelleMois(a.mois)} {formatPourcent(a.ecart)} vs {libelleMois(a.reference)}
         </Typography>
       )}
-      <Box component="table" sx={tableau} aria-label={`Chiffres de ${m.nom}`}>
+      {/* Téléphone : le dernier mois en tuiles, les deux précédents en lignes (sprint 24, S2) ; PC et PDF : le tableau */}
+      <Box sx={{ display: { xs: 'block', sm: 'none' }, '@media print': { display: 'none' } }} role="group" aria-label={`Chiffres de ${libelleMois(a.mois)}`}>
+        <Typography variant="body1" sx={{ color: NOIR, fontWeight: 700, mb: 1 }}>{libelleMois(a.mois)}</Typography>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1, mb: 1.5 }}>
+          {[
+            { libelle: 'CA cumulé', valeur: formatEuros(caDe(du(a.mois))), detail: ecart(a.mois) !== null ? `${formatPourcent(ecart(a.mois))} vs N-1` : '', rouge: (ecart(a.mois) ?? 0) < 0 },
+            { libelle: 'Marge', valeur: formatValeur('marge', du(a.mois)?.marge ?? null), detail: '' },
+            { libelle: 'Panier moyen HT cave', valeur: formatValeur('pmCave', du(a.mois)?.pmCave ?? null), detail: du(a.mois)?.fluxCave != null ? `flux ${formatValeur('fluxCave', du(a.mois)!.fluxCave)}` : '' },
+            { libelle: 'Panier moyen HT bar', valeur: formatValeur('pmBar', du(a.mois)?.pmBar ?? null), detail: du(a.mois)?.fluxBar != null ? `flux ${formatValeur('fluxBar', du(a.mois)!.fluxBar)}` : '' },
+          ].map((t) => (
+            <Box key={t.libelle} sx={{ border: `1px solid ${FILET}`, borderRadius: 2, p: 1.25, minWidth: 0 }}>
+              <Typography variant="body2" sx={{ color: GRIS }}>{t.libelle}</Typography>
+              <Typography sx={{ color: NOIR, fontWeight: 800, fontSize: 22, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{t.valeur}</Typography>
+              {t.detail && <Typography variant="body2" sx={{ color: t.rouge ? ROUGE : GRIS, fontWeight: t.rouge ? 700 : 400 }}>{t.detail}</Typography>}
+            </Box>
+          ))}
+        </Box>
+        {mois.slice(0, 2).reverse().map((mo) => (
+          <Box key={mo} sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, py: 1, borderTop: `1px solid ${FILET}` }}>
+            <Typography variant="body1" sx={{ color: NOIR, fontWeight: 600 }}>{libelleMois(mo)}</Typography>
+            <Typography variant="body1" sx={{ color: NOIR, whiteSpace: 'nowrap' }}>{formatEuros(caDe(du(mo)))} · {formatPourcent(ecart(mo))}</Typography>
+          </Box>
+        ))}
+      </Box>
+      <Box component="table" sx={{ ...tableau, display: { xs: 'none', sm: 'table' }, '@media print': { display: 'table' } }} aria-label={`Chiffres de ${m.nom}`}>
         <thead><tr><th /> {mois.map((mo) => <th key={mo} className="nombre">{libelleMois(mo)}</th>)}</tr></thead>
         <tbody>{lignes.map((l) => <tr key={l.libelle}><td>{l.libelle}</td>{mois.map((mo) => <td key={mo} className="nombre">{l.valeur(mo)}</td>)}</tr>)}</tbody>
       </Box>

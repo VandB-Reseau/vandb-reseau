@@ -2,7 +2,7 @@ import { grillesParDefaut } from './grilles'
 import { seuilsParDefaut } from './chiffres'
 import { COULEURS_AUTO, estCouleurCharte } from './zones'
 import { delaisVisiteParDefaut, grilleParDefaut } from './sante'
-import type { AffectationCoach, Coach, Magasin, Personne, Reseau, ResponsableRegional, Statut, Topographie } from './modele'
+import type { AffectationCoach, Coach, Fermeture, Magasin, Situation, Travaux, Personne, Reseau, ResponsableRegional, Statut, Topographie } from './modele'
 import { estFigure } from '../components/FiguresBlason'
 
 // Lignes brutes telles que stockées par l'ancienne app
@@ -12,10 +12,35 @@ export interface MagasinBrut {
   addr?: string; cp?: string; ville?: string; pays?: string; franchise?: boolean; rr?: string
   lat?: number; lon?: number; geo?: string
 }
+const DATE = /^\d{4}-\d{2}-\d{2}$/
+const TYPES_SITUATION = ['travaux', 'integre', 'franchise', 'sortie', 'inauguration']
+const TYPES_SORTIE = ['fermeture', 'liquidation', 'enseigne', 'cession']
+export function normaliserSituations(brut: unknown): Situation[] {
+  if (!Array.isArray(brut)) return []
+  return brut.filter((x) => x && typeof x === 'object' && DATE.test(String(x.date)) && TYPES_SITUATION.includes(x.type)).map((x): Situation => ({
+    date: x.date, type: x.type,
+    ...(x.type === 'travaux' && DATE.test(String(x.fin)) && x.fin >= x.date ? { fin: x.fin } : {}),
+    ...(x.type === 'sortie' ? { sortie: TYPES_SORTIE.includes(x.sortie) ? x.sortie : 'fermeture' } : {}),
+    ...(texte(x.motif) ? { motif: texte(x.motif).slice(0, 200) } : {}),
+    ...(x.type === 'sortie' && texte(x.repreneur) ? { repreneur: texte(x.repreneur).slice(0, 120) } : {}),
+  })).sort((a, b) => a.date.localeCompare(b.date))
+}
+// Sortie du réseau (la dernière saisie), fermeture provisoire en cours ou la prochaine, statut franchisé à la date du jour
+function situationA(l: Situation[], jour: string, franchise: boolean): { fermeture: Fermeture | null; travaux: Travaux | null; franchise: boolean } {
+  const s = [...l].reverse().find((x) => x.type === 'sortie')
+  const t = l.filter((x) => x.type === 'travaux' && (x.fin ?? x.date) >= jour)[0]
+  const passage = [...l].reverse().find((x) => (x.type === 'integre' || x.type === 'franchise') && x.date <= jour)
+  return {
+    fermeture: s ? { date: s.date, type: s.sortie ?? 'fermeture', motif: s.motif ?? '', repreneur: s.repreneur ?? '' } : null,
+    travaux: t ? { debut: t.date, fin: t.fin ?? t.date, motif: t.motif ?? '' } : null,
+    franchise: passage ? passage.type === 'franchise' : franchise,
+  }
+}
 const estTopographie = (t: unknown): t is Topographie => t === 'littoral' || t === 'montagne' || t === 'terres'
 
 export interface SurchargeMagasin extends Partial<Record<keyof MagasinBrut, unknown>> {
   store_name: string; email_mag?: string; open_date?: string; topographie?: string | null; figure?: string | null // forme (0031) et figure (0032) du blason
+  situations?: unknown // changements de situation datés (0033)
 }
 export interface AffectationBrute { store: string; cs: string; date: string; note?: string; type?: string }
 export interface RRBrut { id: string; name: string; tel?: string; email?: string; color?: string; role?: string; birth?: string; entry?: string }
@@ -118,10 +143,11 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
     parMagasin.set(a.store, l)
   })
 
-  const magasins: Magasin[] = bruts.map((b) => {
+  const tous: Magasin[] = bruts.map((b) => {
     const s = surcharges.get(b.n)
     const v = (cle: keyof MagasinBrut) => (s && s[cle] !== null && s[cle] !== undefined ? s[cle] : b[cle])
     const ouverture = texte(s?.open_date) || texte(b.open) || '2020-01-01'
+    const situations = normaliserSituations(s?.situations)
     const historique = parMagasin.get(b.n) ?? []
     const actuelles = historique.filter((h) => h.date <= jour)
     const coach = actuelles.length ? actuelles[actuelles.length - 1].coach : ''
@@ -144,7 +170,8 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       ouverture,
       ouvertureConnue: !DATES_INCONNUES.has(ouverture),
       statut: statutA(ouverture, jour, d.parametres),
-      franchise: v('franchise') !== false,
+      ...((sit) => ({ franchise: sit.franchise, fermeture: sit.fermeture, travaux: sit.travaux }))(situationA(situations, jour, v('franchise') !== false)),
+      situations,
       telephone: texte(v('tel')),
       email: texte(v('email_mag')),
       coach,
@@ -158,7 +185,11 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       historiqueCoach: historique,
     }
   })
-  magasins.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+  tous.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+  // Fermé ou cédé à la date du jour : hors des listes, de la carte, du rythme et des repères ; fiche gardée
+  const estFerme = (m: Magasin) => !!m.fermeture && m.fermeture.date <= jour
+  const magasins = tous.filter((m) => !estFerme(m))
+  const fermes = tous.filter(estFerme)
 
   // 5) Équipe : tout Coach présent dans les affectations ou fiches, hors techniciens
   const nomsTech = new Set([...techniciens.map((t) => t.nom), ...(d.coachsSupprimes ?? [])])
@@ -194,5 +225,5 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
   }
   const dir = d.configRR.directeur
   const directeur = { nom: dir?.name || 'Direction du réseau', titre: dir?.titre || 'Directeur de réseau', telephone: dir?.tel || undefined, email: dir?.email || undefined, naissance: texte(dir?.birth).slice(0, 10), arrivee: texte(dir?.entry).slice(0, 10) }
-  return { personnes: {}, evaluations: {}, grilleNineBox: grilleParDefaut, notesMagasins: {}, preparations: {}, chiffres: {}, audits: {}, grilles: grillesParDefaut, pratiques: [], campagnes: { liste: [], constats: {} }, associes: {}, actionsLibres: {}, derniereSauvegarde: '', seuils: { ...seuilsParDefaut }, delaisVisite: { ...delaisVisiteParDefaut }, deploiements: { thematiques: [], valeurs: {} }, visites: [], evenements: [], anniversaires: [], magasins, coachs, equipe, techniciens, directeur, rrs, parametres, jour, chargeLe: new Date().toISOString() }
+  return { personnes: {}, evaluations: {}, grilleNineBox: grilleParDefaut, notesMagasins: {}, preparations: {}, chiffres: {}, audits: {}, grilles: grillesParDefaut, pratiques: [], campagnes: { liste: [], constats: {} }, associes: {}, actionsLibres: {}, derniereSauvegarde: '', seuils: { ...seuilsParDefaut }, delaisVisite: { ...delaisVisiteParDefaut }, deploiements: { thematiques: [], valeurs: {} }, visites: [], evenements: [], anniversaires: [], magasins, fermes, coachs, equipe, techniciens, directeur, rrs, parametres, jour, chargeLe: new Date().toISOString() }
 }

@@ -16,7 +16,7 @@ import { PastilleCase } from './Sante'
 import { formatPourcent, libelleAlerte, libelleMois } from '../data/chiffres'
 import { moisDeRevue, moisParDefaut, revueDu } from '../data/revue'
 import { porteursDe, echeanceDate } from '../data/actions'
-import { dateCourte, lienCoach, lienFiche } from '../lib/format'
+import { dateCourte, lienCoach, lienFiche, lienRR } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
 
 // À l'impression, seule la revue sort
@@ -49,7 +49,8 @@ function Compteur({ valeur, libelle }: { valeur: string | number; libelle: strin
   )
 }
 
-export function RevueRR({ reseau, nom, magasins }: { reseau: Reseau; nom: string; magasins: Magasin[] }) {
+// parRR : revue du réseau entier pour le Directeur (sprint 24, F4), une ligne par Responsable Régional en tête
+export function RevueRR({ reseau, nom, magasins, parRR = false }: { reseau: Reseau; nom: string; magasins: Magasin[]; parRR?: boolean }) {
   const [params, setParams] = useSearchParams()
   const options = moisDeRevue(reseau.jour)
   const mois = options.includes(params.get('mois') ?? '') ? params.get('mois')! : moisParDefaut(reseau.jour)
@@ -58,6 +59,14 @@ export function RevueRR({ reseau, nom, magasins }: { reseau: Reseau; nom: string
   const decroche = r.decrochages.filter((d) => d.analyse.statut === 'decroche').length
   const faites = r.coachs.reduce((s, c) => s + c.faites, 0)
   const reference = Math.round(r.coachs.reduce((s, c) => s + c.reference, 0))
+  const regions = useMemo(() => !parRR ? [] : reseau.rrs.map((rr) => {
+    const x = revueDu(reseau, magasins.filter((m) => m.rr?.id === rr.id), mois)
+    return {
+      rr, decroche: x.decrochages.filter((d) => d.analyse.statut === 'decroche').length, chiffres: x.chiffresSaisis,
+      faites: x.coachs.reduce((s, c) => s + c.faites, 0), reference: Math.round(x.coachs.reduce((s, c) => s + c.reference, 0)),
+      retards: x.retards.length, changements: x.changements.length,
+    }
+  }).filter((x) => x.reference > 0 || x.decroche || x.retards), [parRR, reseau, magasins, mois])
 
   return (
     <Box className="revue" sx={{ display: 'grid', gap: 2 }}>
@@ -76,6 +85,25 @@ export function RevueRR({ reseau, nom, magasins }: { reseau: Reseau; nom: string
         <Box role="listitem"><Compteur valeur={r.retards.length} libelle={r.retards.length > 1 ? 'tâches en retard' : 'tâche en retard'} /></Box>
         <Box role="listitem"><Compteur valeur={r.changements.length} libelle={r.changements.length > 1 ? 'changements de case' : 'changement de case'} /></Box>
       </Box>
+
+      {parRR && (
+        <Box component="section" aria-label="Par Responsable Régional">
+          <Section titre="Par Responsable Régional">
+            {!regions.length ? <Vide>Aucun magasin rattaché à un Responsable Régional.</Vide> : regions.map((x) => (
+              <Rangee key={x.rr.id}>
+                <Box sx={{ flex: 1, minWidth: 200 }}>
+                  <Link component={RouterLink} to={`${lienRR(x.rr.id)}?vue=revue&mois=${mois}`} sx={{ fontWeight: 500, py: 1 }}>{x.rr.nom}</Link>
+                  <Typography variant="body2" color="text.secondary">
+                    {[x.chiffres ? `${x.decroche} en Décroche` : null, `visites ${x.faites} / ${x.reference}`, pluriel(x.retards, 'tâche') + ' en retard', x.changements ? pluriel(x.changements, 'changement') + ' de case' : null].filter(Boolean).join(' · ')}
+                  </Typography>
+                </Box>
+                {x.decroche > 0 && <Pastille ton="rouge">{`${x.decroche} Décroche`}</Pastille>}
+                {x.faites < x.reference - 1 && <Pastille ton="orange">Visites en dessous</Pastille>}
+              </Rangee>
+            ))}
+          </Section>
+        </Box>
+      )}
 
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
         <Box component="section" aria-label="Magasins qui décrochent">

@@ -14,6 +14,7 @@ import { preparationDe } from '../data/semaine'
 import { lienGoogleAgenda } from '../lib/agenda'
 import { dateCourte } from '../lib/format'
 import type { Reseau, Visite } from '../data/modele'
+import { TexteDicte } from './Dictee'
 
 // Planifier une visite (ou une tournée le même jour) : date, notes de préparation, puis Google Agenda prérempli.
 // Sans magasin donné, la personne choisit parmi les siens, dus ou non
@@ -57,8 +58,8 @@ export function DialogPlanifier({ reseau, magasins: initiaux, coach: coachDonne,
       )}
       <TextField type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: reseau.jour } }} error={!!date && date < reseau.jour} />
       {magasins.map((m) => (
-        <TextField key={m.nom} multiline minRows={unSeul ? 5 : 2} label={unSeul ? 'Notes de préparation' : `Notes · ${m.nom}`} value={notes[m.nom] ?? ''}
-          onChange={(e) => setNotes((x) => ({ ...x, [m.nom]: e.target.value }))} />
+        <TexteDicte key={m.nom} multiline minRows={unSeul ? 5 : 2} label={unSeul ? 'Notes de préparation' : `Notes · ${m.nom}`} libelleDictee={unSeul ? 'Notes de préparation' : `Notes · ${m.nom}`}
+          valeur={notes[m.nom] ?? ''} changer={(f) => setNotes((x) => ({ ...x, [m.nom]: f(x[m.nom] ?? '') }))} />
       ))}
       <FormControlLabel control={<Switch checked={agenda} onChange={(e) => setAgenda(e.target.checked)} />} label="Ajouter à Google Agenda" sx={{ minHeight: 48 }} />
     </Fenetre>

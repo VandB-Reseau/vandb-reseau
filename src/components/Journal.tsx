@@ -9,6 +9,7 @@ import { caseDe, historiqueSante, type IdCritere, type Note } from '../data/sant
 import { NotesParAxe, PastilleCase } from './Sante'
 import { dateCourte, lienFiche } from '../lib/format'
 import type { Magasin, NoteMagasin, Reseau } from '../data/modele'
+import { TexteDicte } from './Dictee'
 
 // Journal du magasin repris dans son fil : notes, santé, déploiements, Coachs, ouverture
 // (les visites y sont déjà). Une note ou un classement s'ouvre pour être modifié.
@@ -55,7 +56,7 @@ function DialogNote({ magasin, note, onFermer }: { magasin: string; note: NoteMa
       supprimer={note.id ? async () => { await supprimerNoteMagasin(magasin, note.id); return 'Note supprimée.' } : undefined}
       libelleSuppression="Supprimer cette note du journal ?">
       <TextField type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-      <TextField label="Note" value={texte} onChange={(e) => setTexte(e.target.value)} multiline minRows={4} autoFocus />
+      <TexteDicte label="Note" libelleDictee="Note" valeur={texte} changer={setTexte} multiline minRows={4} autoFocus />
     </Fenetre>
   )
 }

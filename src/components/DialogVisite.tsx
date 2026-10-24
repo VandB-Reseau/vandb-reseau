@@ -26,6 +26,7 @@ import { effacerBrouillon, garderBrouillon, lireBrouillon } from '../lib/brouill
 import { preparationDe } from '../data/semaine'
 import { dateCourte, dateHeure } from '../lib/format'
 import { libelleTypeVisite, typesVisite, type ActionPlan, type Document, type Reseau, type Visite } from '../data/modele'
+import { TexteDicte } from './Dictee'
 
 // Personnes qui peuvent visiter : Coachs, RR, Directeur
 export function visiteursGroupes(reseau: Reseau): { nom: string; groupe: string }[] {
@@ -193,7 +194,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         </Box>
       )}
       {contact
-        ? <TextField label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} multiline minRows={3} />
+        ? <TexteDicte label="Notes" libelleDictee="Notes" valeur={notes} changer={setNotes} multiline minRows={3} />
         : <SaisieCompteRendu
           reseau={reseau} visite={visite} tournee={!unSeul} magasin={magasins[0] ?? ''}
           notes={notes} setNotes={setNotes} parties={parties} setParties={setParties} plan={plan} setPlan={setPlan} faites={faites} setFaites={setFaites}
