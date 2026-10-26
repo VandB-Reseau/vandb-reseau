@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture, actionFiche } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -150,24 +150,27 @@ test('la fiche magasin montre la santé et les déploiements dans deux blocs', a
   await page.screenshot({ path: `captures/${info.project.name}-fiche-sante.png` })
 })
 
-test('modifier la fiche magasin change aussi les notes et les déploiements', async ({ page }, info) => {
+test('depuis la fiche magasin, Modifier ouvre la saisie de la santé puis des déploiements du magasin', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Rennes%20Test')
-  await actionFiche(page, 'Modifier la fiche')
-  const d = page.getByRole('dialog', { name: 'Modifier Rennes Test' })
-  await d.getByRole('button', { name: 'Non concerné : Panier moyen bar' }).click()
-  await d.getByRole('button', { name: 'Fort : CA marché extérieur' }).click()
+  await page.goto('./#/magasins/Rennes%20Test?vue=sante')
+  await page.getByRole('button', { name: 'Modifier la santé' }).click()
+  await expect(page).toHaveURL(/plus\/sante\?vue=evaluer&magasin=Rennes/)
+  let d = page.getByRole('dialog', { name: 'Rennes Test' })
+  await d.getByRole('button', { name: 'Non concerné : Panier moyen bar de Rennes Test' }).click()
+  await d.getByRole('button', { name: 'Fort : CA marché extérieur de Rennes Test' }).click()
   await d.getByRole('button', { name: /^Fort : Gestion/ }).click()
   await expect(d.getByText('Locomotive')).toBeVisible()
-  await d.getByRole('button', { name: 'Oui : Terrasse' }).click()
   await page.screenshot({ path: `captures/${info.project.name}-fiche-modifier-sante.png` })
-  await d.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect(d).toBeHidden()
+  await page.goBack()
+  await page.getByRole('button', { name: 'Modifier les déploiements' }).click()
+  await expect(page).toHaveURL(/plus\/sante\?vue=deploiements&magasin=Rennes/)
+  d = page.getByRole('dialog', { name: 'Rennes Test' })
+  await d.getByRole('button', { name: 'Oui : Terrasse de Rennes Test' }).click()
+  await expect.poll(() => JSON.stringify(ecritures.filter((e) => e.table === 'app_config').map((e) => e.corps))).toContain('terrasse')
   const config = JSON.stringify(ecritures.filter((e) => e.table === 'app_config').map((e) => e.corps))
   expect(config).toContain('locomotive')
   expect(config).toContain('\\"panierBar\\":0')
-  expect(config).toContain('terrasse')
 })
 test('l’accueil donne les priorités du jour', async ({ page, isMobile }, info) => {
   // Heure figée sur l'instant présent : le séminaire fictif (demain) reste dans les sept prochains jours

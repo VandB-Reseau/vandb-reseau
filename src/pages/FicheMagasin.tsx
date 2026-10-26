@@ -46,6 +46,7 @@ import { EmptyState } from '../components/EmptyState'
 import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienBilan, lienPreparation, lienRR, telLien } from '../lib/format'
 import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
+import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
 import { EnvoyerCompteRendu } from '../components/EnvoyerCompteRendu'
@@ -199,8 +200,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
             <SectionLeviers reseau={reseau} m={m} />
             <Box id="partie-sante" sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start', scrollMarginTop: 160 }}>
-              <SectionSante reseau={reseau} m={m} modifier={() => setEdition(true)} />
-              <SectionDeploiements reseau={reseau} m={m} modifier={() => setEdition(true)} />
+              <SectionSante reseau={reseau} m={m} modifier={() => naviguer(`/plus/sante?vue=evaluer&magasin=${encodeURIComponent(m.nom)}`)} />
+              <SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/plus/sante?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} />
             </Box>
           </Box>
         )}
@@ -518,8 +519,11 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
     : alerte?.statut === 'surveiller' ? { ton: 'orange', libelle: 'À surveiller' }
     : alerteVisite ? { ton: 'orange', libelle: alerteVisite }
     : m.statut !== 'ouvert' ? { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] } : null
+  const concept = etatConcept20(reseau, m.nom)
   return (
-    <ProfilPersonne nom={m.nom} retour={retour} avatar={(taille) => <Blason magasin={m} taille={taille} />}
+    <ProfilPersonne nom={m.nom} retour={retour}
+      insigne={concept && <Chip size="small" icon={<AutoAwesomeOutlined />} label={concept === 'fait' ? 'Concept 2.0' : 'Concept 2.0 en cours'}
+        color={concept === 'fait' ? 'primary' : 'default'} variant={concept === 'fait' ? 'filled' : 'outlined'} sx={{ fontSize: 12, fontWeight: 700, flexShrink: 0 }} />} avatar={(taille) => <Blason magasin={m} taille={taille} />}
       lignes={[[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · '), [m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')]}
       pastille={pastille}
       compteurs={[
@@ -536,6 +540,14 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
         <Tooltip title="Saisir une visite"><IconButton onClick={visite} aria-label="Saisir une visite" sx={rond}><AddOutlined /></IconButton></Tooltip>
       </>} />
   )
+}
+
+// Concept 2.0 (Joseph, 26/10/2026) : passage au nouveau concept, montré à côté du nom ; suivi dans les déploiements
+function etatConcept20(reseau: Reseau, magasin: string): 'fait' | 'enCours' | null {
+  const t = reseau.deploiements.thematiques.find((x) => x.id === 'concept20') ?? reseau.deploiements.thematiques.find((x) => /2\.0/.test(x.libelle))
+  if (!t) return null
+  const ton = tonDe(t, reseau.deploiements.valeurs[magasin]?.[t.id])
+  return ton === 'positif' ? 'fait' : ton === 'partiel' ? 'enCours' : null
 }
 
 // Planifier, Préparer, Bilan de l'année (sprint 26, F1) et Modifier dans un menu « ⋯ » : trois pictos seulement à côté du nom (Joseph, 21/10/2026)

@@ -9,9 +9,7 @@ import Autocomplete from '@mui/material/Autocomplete'
 import { Fenetre, RECRUTEMENT } from './EditionEquipe'
 import { departementDepuisCP, estFrance, fichePersonne, franchises } from '../data/personnes'
 import { enregistrerPosition, geolocaliser } from '../data/geolocalisation'
-import { enregistrerDeploiements, enregistrerEvaluations, enregistrerMagasin, supprimerMagasin, type FicheMagasin } from '../data/chargement'
-import { BoutonsOption, NotesParAxe, PastilleCase } from './Sante'
-import { caseDe, depuisDeploiement, type Evaluation, type IdCritere, type Note } from '../data/sante'
+import { enregistrerMagasin, supprimerMagasin, type FicheMagasin } from '../data/chargement'
 import { libelleResponsable, type Figure, type Magasin, type Reseau, type Topographie } from '../data/modele'
 import { libellesTopographie, topographieDeduite } from './Blason'
 import { figureDeduite, figures } from './FiguresBlason'
@@ -52,19 +50,6 @@ function Choix<T extends string>({ label, value, libelles, onChange }: { label: 
 
 export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; magasin: Magasin | null; onFermer: (message?: string, nom?: string) => void }) {
   const [f, setF] = useState<FicheMagasin>(() => depuisMagasin(magasin))
-  const notesInitiales = (magasin && reseau.evaluations[magasin.nom]?.notes) || {}
-  const depsInitiaux = (magasin && reseau.deploiements.valeurs[magasin.nom]) || {}
-  const [notes, setNotes] = useState<Partial<Record<IdCritere, Note>>>(() => ({ ...notesInitiales }))
-  const [deps, setDeps] = useState<Record<string, string>>(() => ({ ...depsInitiaux }))
-  const [dateChangement, setDateChangement] = useState(reseau.jour)
-  // Chaque déploiement a sa date : celle depuis laquelle l'état est en place, celle du jour dès qu'il change
-  const datesInitiales = Object.fromEntries(reseau.deploiements.thematiques.map((t) => [t.id, magasin ? depuisDeploiement(reseau.deploiements, magasin.nom, t.id) : '']))
-  const [datesDeps, setDatesDeps] = useState<Record<string, string>>(() => ({ ...datesInitiales }))
-  const noter = (c: IdCritere, n: Note | null) => setNotes((x) => { const y = { ...x }; if (n === null) delete y[c]; else y[c] = n; return y })
-  const deployer = (t: string, v: string | null) => {
-    setDeps((x) => { const y = { ...x }; if (v) y[t] = v; else delete y[t]; return y })
-    setDatesDeps((x) => (x[t] === datesInitiales[t] ? { ...x, [t]: reseau.jour } : x))
-  }
   const champ = (cle: keyof FicheMagasin, libelle: string, extra: Record<string, unknown> = {}) => (
     <TextField label={libelle} value={f[cle] as string} onChange={(e) => setF((x) => ({ ...x, [cle]: e.target.value }))} {...extra} />
   )
@@ -101,15 +86,6 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
         if (!magasin || adresse(f) !== adresse(magasin)) {
           const p = await geolocaliser(f)
           if (p) await enregistrerPosition(nom, p)
-        }
-        if (magasin) {
-          if (JSON.stringify(notes) !== JSON.stringify(notesInitiales)) {
-            const e: Evaluation = { notes, date: dateChangement, par: reseau.directeur.nom }
-            await enregistrerEvaluations([{ magasin: nom, e }])
-          }
-          // État changé, ou date seule reprise (l'état en place remonte à cette date)
-          const changes = reseau.deploiements.thematiques.filter((t) => (deps[t.id] ?? '') !== (depsInitiaux[t.id] ?? '') || (deps[t.id] && datesDeps[t.id] !== datesInitiales[t.id]))
-          if (changes.length) await enregistrerDeploiements(changes.map((t) => ({ magasin: nom, thematique: t.id, etat: deps[t.id] ?? '', date: datesDeps[t.id] || reseau.jour })), reseau.jour)
         }
         return magasin ? (renomme ? `${magasin.nom} s’appelle désormais ${nom}.` : `${nom} est mis à jour.`) : `${nom} est ajouté au réseau.`
       }}
@@ -173,34 +149,6 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
           )
         })}
       </Groupe>
-      {magasin && (
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-            <Typography variant="subtitle2" component="h3" sx={{ flex: 1 }}>Santé (nine box)</Typography>
-            <PastilleCase c={caseDe({ notes, date: '', par: '' })} />
-          </Box>
-          <TextField type="date" label="Date du classement" value={dateChangement} onChange={(e) => setDateChangement(e.target.value || reseau.jour)}
-            slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: reseau.jour } }} sx={{ mb: 2, minWidth: 280 }} />
-          <NotesParAxe integre={!f.franchise} notes={notes} noter={noter} />
-        </Box>
-      )}
-      {magasin && (
-        <Box>
-          <Typography variant="subtitle2" component="h3" sx={{ mb: 1.5 }}>Déploiements</Typography>
-          <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
-            {reseau.deploiements.thematiques.map((t) => (
-              <Box key={t.id} sx={{ overflowX: 'auto' }}>
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{t.libelle}</Typography>
-                <BoutonsOption t={t} libelle={t.libelle} valeur={deps[t.id] ?? ''} onChange={(v) => deployer(t.id, v)} />
-                {deps[t.id] && (
-                  <Box><TextField type="date" size="small" label={`Date : ${t.libelle}`} value={datesDeps[t.id] ?? ''} onChange={(e) => { const v = e.target.value; setDatesDeps((x) => ({ ...x, [t.id]: v })) }}
-                    slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: reseau.jour } }} sx={{ mt: 1.5, minWidth: 200, '& .MuiInputBase-root': { minHeight: 48 } }} /></Box>
-                )}
-              </Box>
-            ))}
-          </Box>
-        </Box>
-      )}
     </Fenetre>
   )
 }
