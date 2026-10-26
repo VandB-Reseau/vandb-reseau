@@ -23,8 +23,9 @@ async function importer(page: Page, referentiel: string, fichier: string | { nam
 
 // Situations, campagne avec constats et bonne pratique, pour que chaque feuille ait des lignes
 const donneesCompletes = {
-  surchargesMagasins: [{ store_name: 'Tours Test', situations: [{ date: '2026-12-01', type: 'travaux', fin: '2026-12-15', motif: 'Lifting' }, { date: '2018-07-15', type: 'franchise' }] }],
+  surchargesMagasins: [{ store_name: 'Tours Test', situations: [{ date: '2026-12-01', type: 'travaux', fin: '2026-12-15', motif: 'Lifting' }, { date: '2018-07-15', type: 'franchise' }], implantation: '2019-02-01', licence: '4', horaires: { lundi: '10:00-19:30', samedi: '09:30-12:30, 14:00-20:00' } }],
   config: {
+    associes: { 'Lyon Test': [{ id: 'as1', nom: 'Alix ASSOCIEE', entree: '2024-03-01', sortie: '', mandats: [] }] },
     campagnes: {
       liste: [{ id: 'c1', nom: 'Beaujolais 2026', debut: '2026-11-01', fin: '2026-11-30', perimetre: 'tous', magasins: [], points: [{ id: 'p1', libelle: 'Vitrine Beaujolais' }, { id: 'p2', libelle: 'Dégustation' }] }],
       constats: { c1: { 'Lyon Test': { p1: { fait: true, date: '2026-11-03', par: 'Noé MODELE' } }, 'Annecy Test': { p2: { fait: false, date: '2026-11-04', par: 'Hugo FICTIF' } } } },
@@ -49,7 +50,7 @@ test('exporter les magasins puis réimporter le fichier modifié', async ({ page
   const [feuille] = await lireExcel(readFileSync(chemin))
   expect(feuille.sheet).toBe('Magasins')
   const [entetes, ...lignes] = feuille.data as unknown[][]
-  expect(entetes).toEqual(['Code magasin (clé)', 'Magasin', 'Statut', 'Date d’ouverture', 'Adresse', 'Code postal', 'Ville', 'Département', 'Pays', 'Téléphone', 'Email', 'Date d’implantation', 'Typologie', 'Zone de chalandise', 'Licence', 'Instagram'])
+  expect(entetes).toEqual(['Code magasin (clé)', 'Magasin', 'Statut', 'Date d’ouverture', 'Adresse', 'Code postal', 'Ville', 'Département', 'Pays', 'Téléphone', 'Email', 'Implantation des produits', 'Typologie', 'Zone de chalandise', 'Licence', 'Instagram', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche', 'Fin de contrat'])
   expect(lignes).toHaveLength(30)
   const lyon = lignes.find((l) => l[1] === 'Lyon Test')!
   expect(lyon.slice(0, 3)).toEqual(['001', 'Lyon Test', 'Intégré'])
@@ -235,7 +236,7 @@ test('télécharger la sauvegarde complète et tous les référentiels', async (
   expect(feuilles.filter((f) => (f.data as unknown[][]).length < 2).map((f) => f.sheet)).toEqual([])
   // Le classeur complet sert aussi à l'import : la bonne feuille est retrouvée par son nom
   // Chaque jeu de données réimporté tel quel : aucun changement
-  for (const r of ['Magasins', 'Franchisés', 'Mandats des franchisés', 'Coachs', 'Responsables Régionaux', 'Coach des magasins', 'Responsable Régional des Coachs', 'Situations des magasins', 'Étapes d’ouverture', 'Chiffres mensuels', 'Nine box', 'Notes d’audit', 'Déploiements', 'Visites', 'Tâches', 'Journal des magasins', 'Campagnes', 'Constats de campagne', 'Agenda', 'Bonnes pratiques']) {
+  for (const r of ['Magasins', 'Franchisés', 'Associés et mandats', 'Coachs', 'Responsables Régionaux', 'Coach des magasins', 'Responsable Régional des Coachs', 'Situations des magasins', 'Étapes d’ouverture', 'Chiffres mensuels', 'Nine box', 'Notes d’audit', 'Déploiements', 'Visites', 'Tâches', 'Journal des magasins', 'Campagnes', 'Constats de campagne', 'Agenda', 'Bonnes pratiques']) {
     const d = await importer(page, r, tous.chemin)
     await expect(d.getByText('Aucun changement par rapport aux données de l’app', { exact: false }), r).toBeVisible()
     await expect(d.getByText('laissée', { exact: false }), r).toHaveCount(0)
@@ -282,6 +283,26 @@ test('mouvements par N° et données datées par code magasin : visites, situati
   await expect(d).toBeHidden()
   const ouv = ecritures.filter((e) => e.table === 'app_config').map((e) => (e.corps as { value?: string }).value ?? '').find((v) => v.includes('"travaux"'))!
   expect(JSON.parse(ouv)['Vichy Test'].etapes).toEqual({ travaux: { prevu: '2026-12-01', fait: '' } })
+
+  // Implantation des produits (étape tirée de la fiche du magasin), horaires et associé d'un intégré
+  d = await importer(page, 'Étapes d’ouverture', csv('implantation.csv', 'Code magasin;Étape;Prévue le\n030;Implantation des produits;10/12/2026\n'))
+  await expect(d.getByText(/^1 ajout$/)).toBeVisible()
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  expect(ecritures.find((e) => e.table === 'store_overrides' && (e.corps as { store_name?: string }).store_name === 'Vichy Test')!.corps).toEqual(expect.objectContaining({ implantation: '2026-12-10' }))
+  d = await importer(page, 'Magasins', csv('horaires.csv', 'Code magasin;Magasin;Lundi;Samedi\n002;Annecy Test;10:00-19:30;9h30-12:30, 14:00-20:00\n003;Nantes Test;tous les jours;\n'))
+  await expect(d.getByText(/^1 ligne modifiée$/)).toBeVisible()
+  await expect(d.getByText(/Ligne 3 : horaires du lundi/)).toBeVisible()
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  expect(ecritures.find((e) => e.table === 'store_overrides' && (e.corps as { store_name?: string }).store_name === 'Annecy Test')!.corps)
+    .toEqual(expect.objectContaining({ horaires: { lundi: '10:00-19:30', samedi: '9h30-12:30, 14:00-20:00' } }))
+  d = await importer(page, 'Associés et mandats', csv('associes.csv', 'Code magasin;Franchisé ou associé;Entrée;Début du mandat\n001;Alix ASSOCIEE;01/03/2024;\n'))
+  await expect(d.getByText(/^1 ajout$/)).toBeVisible()
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  const asso = ecritures.filter((e) => e.table === 'app_config').map((e) => (e.corps as { value?: string }).value ?? '').find((v) => v.includes('Alix ASSOCIEE'))!
+  expect(JSON.parse(asso)['Lyon Test']).toEqual([expect.objectContaining({ nom: 'Alix ASSOCIEE', entree: '2024-03-01' })])
 
   // Tâche d'un plan d'action marquée faite par son N°
   const ta = await telecharger(page, 'Exporter Tâches')

@@ -11,7 +11,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 - Étapes d'ouverture dans l'import et export Excel (Joseph, 26/10/2026) : une ligne par magasin et par étape (code
   magasin + étape), dates prévue et faite ; les magasins à ouvrir ont leurs étapes exportées vides, à remplir dans le
-  fichier (test `import-export.spec.ts`). Sans migration.
+  fichier (test `import-export.spec.ts`). Avec les nouveautés du 26/10 : « Implantation des produits » parmi les étapes
+  (écrite dans la fiche du magasin), horaires par jour et fin de contrat (lecture) dans la feuille Magasins, en-tête
+  « Implantation des produits » (l'ancien « Date d'implantation » reste lu) ; la feuille Mandats devient « Associés et
+  mandats » : associés des intégrés compris, date d'entrée, associé sans mandat. Déploiements : les 14 thématiques de la
+  base, sans changement de code. Sans migration.
 - Implantation des produits (Joseph, 26/10/2026) : la date d'implantation est celle de la mise en place des produits
   pendant la pré-ouverture ; libellé corrigé, rangée avec l'ouverture dans la fiche, et ajoutée comme étape (avant
   l'ouverture) au suivi des ouvertures à venir. Sans SQL.

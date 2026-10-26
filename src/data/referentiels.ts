@@ -15,12 +15,12 @@ import {
   supprimerAffectation, supprimerChiffres, supprimerCoach, supprimerEvaluation, supprimerEvenement, supprimerFranchise, supprimerMagasin,
   supprimerNoteMagasin, supprimerRattachement, supprimerRR, supprimerVisite, modifierAssociesMagasin, type FicheMagasin,
 } from './chargement'
-import { associesDu, type Associe } from './associes'
+import { associesDu, finDeContrat, type Associe } from './associes'
 import { PARTIES } from './compteRendu'
 import { MAX_POINTS, perimetres } from './campagnes'
 import { themesPratiques, type BonnePratique } from './bonnesPratiques'
 import { aOuvrir } from './ouvertures'
-import { exploitationVide, libellesLicence, libellesTypologie, libellesZone } from './exploitation'
+import { JOURS, exploitationVide, libellesJour, libellesLicence, libellesTypologie, libellesZone, plageValide } from './exploitation'
 
 export type TypeColonne = 'texte' | 'date' | 'mois' | 'nombre' | 'ouiNon' | 'choix' | 'liste'
 
@@ -30,12 +30,14 @@ export interface Colonne {
   type?: TypeColonne
   choix?: string[] // valeurs possibles d'une colonne « choix »
   cle?: boolean // identifie la ligne
+  cleVide?: boolean // clé qui peut rester vide (associé sans mandat)
   // Date (ou mois) depuis laquelle les valeurs de ces colonnes sont en place : vide ou inchangée, un changement prend la date du jour ;
   // une date plus ancienne seule fait remonter les valeurs en place à cette date
   depuis?: string[]
   nouveau?: boolean // un nom inconnu de l'app crée une nouvelle ligne au lieu d'être refusé
   largeur?: number
   lecture?: boolean // exportée pour lire le fichier (nom du magasin à côté de son code), jamais relue à l'import
+  ancien?: string // ancien en-tête encore reconnu à l'import (fichiers exportés avant un changement de libellé)
   // Noms reconnus (magasins, Coachs…) : la valeur lue est remplacée par le nom exact de l'app
   reference?: (r: Reseau) => (v: string) => string | null
 }
@@ -145,11 +147,12 @@ export interface Analyse {
 
 // « Magasin (clé) » et « Magasin » désignent la même colonne
 const mots = (s: string) => normaliser(s).replace(/ d /g, ' ').replace(/ cle$/, '').trim()
+const estEntete = (c: Colonne, e: string) => mots(c.entete) === mots(e) || (!!c.ancien && mots(c.ancien) === mots(e))
 
 function ligneEntete(lignes: unknown[][], ref: Referentiel): number {
   let meilleure = -1, max = 0
   lignes.slice(0, 15).forEach((l, i) => {
-    const n = l.filter((x) => ref.colonnes.some((c) => mots(c.entete) === mots(String(x ?? '')))).length
+    const n = l.filter((x) => ref.colonnes.some((c) => estEntete(c, String(x ?? '')))).length
     if (n > max) { max = n; meilleure = i }
   })
   return meilleure
@@ -159,7 +162,7 @@ function ligneEntete(lignes: unknown[][], ref: Referentiel): number {
 export function choisirFeuille(feuilles: { nom: string; lignes: unknown[][] }[], ref: Referentiel) {
   const parNom = feuilles.find((f) => normaliser(f.nom) === normaliser(ref.feuille))
   if (parNom) return parNom
-  const score = (f: { lignes: unknown[][] }) => { const i = ligneEntete(f.lignes, ref); return i < 0 ? 0 : f.lignes[i].filter((x) => ref.colonnes.some((c) => mots(c.entete) === mots(String(x ?? '')))).length }
+  const score = (f: { lignes: unknown[][] }) => { const i = ligneEntete(f.lignes, ref); return i < 0 ? 0 : f.lignes[i].filter((x) => ref.colonnes.some((c) => estEntete(c, String(x ?? '')))).length }
   return [...feuilles].sort((a, b) => score(b) - score(a))[0]
 }
 
@@ -172,7 +175,7 @@ export function analyserReferentiel(ref: Referentiel, feuille: { nom: string; li
   const ignorees: string[] = []
   entetes.forEach((e, i) => {
     if (!e) return
-    const c = ref.colonnes.find((x) => mots(x.entete) === mots(e))
+    const c = ref.colonnes.find((x) => estEntete(x, e))
     if (c?.lecture) return
     if (c && !index.has(c.id)) index.set(c.id, i); else ignorees.push(e)
   })
@@ -188,7 +191,7 @@ export function analyserReferentiel(ref: Referentiel, feuille: { nom: string; li
   const nomDe = new Map(tousMagasins(reseau).map((m) => [m.code, m.nom]))
   const libelleDe = (l: Ligne) => [...cles.filter((c) => l[c.id]).map((c) => (c.id === 'id' ? `N° ${l[c.id]}` : afficher(c, l[c.id]))), (l.code && nomDe.get(l.code)) || (ref.id === 'magasins' ? l.magasin : ''), cles.some((c) => c.id === 'date') ? '' : l.date ? afficher({ id: 'date', entete: '', type: 'date' }, l.date) : '']
     .filter(Boolean).join(' · ')
-  const existantes = new Map(ref.lignes(reseau).filter((l) => !ref.aCompleter?.(l) && cles.every((c) => l[c.id])).map((l) => [cleDe(l), l]))
+  const existantes = new Map(ref.lignes(reseau).filter((l) => !ref.aCompleter?.(l) && cles.every((c) => l[c.id] || c.cleVide)).map((l) => [cleDe(l), l]))
   const vues = new Map<string, Changement>()
   const changements: Changement[] = [], erreurs: Analyse['erreurs'] = []
   const citees = new Set<string>() // lignes de l'app présentes dans le fichier, même illisibles : jamais supprimées
@@ -218,7 +221,7 @@ export function analyserReferentiel(ref: Referentiel, feuille: { nom: string; li
       } else lue[c.id] = v
     }
     if (ref.aCompleter?.(lue)) { inchangees++; return }
-    const sansCle = cles.some((c) => !lue[c.id])
+    const sansCle = cles.some((c) => !lue[c.id] && !c.cleVide)
     const cle = sansCle ? `nouvelle-${numero}` : cleDe(lue)
     if (!sansCle) citees.add(cle)
     if (problemes.length) { erreurs.push({ ligne: numero, message: problemes.join(' ; ') }); return }
@@ -373,23 +376,28 @@ const magasins: Referentiel = {
     { id: 'pays', entete: 'Pays' },
     { id: 'telephone', entete: 'Téléphone', largeur: 16 },
     { id: 'email', entete: 'Email', largeur: 30 },
-    { id: 'implantation', entete: 'Date d’implantation', type: 'date', largeur: 16 },
+    { id: 'implantation', entete: 'Implantation des produits', ancien: 'Date d’implantation', type: 'date', largeur: 16 },
     { id: 'typologie', entete: 'Typologie', type: 'choix', choix: Object.values(libellesTypologie) },
     { id: 'zone', entete: 'Zone de chalandise', type: 'choix', choix: Object.values(libellesZone), largeur: 30 },
     { id: 'licence', entete: 'Licence', type: 'choix', choix: Object.values(libellesLicence) },
     { id: 'instagram', entete: 'Instagram', largeur: 30 },
+    ...JOURS.map((j): Colonne => ({ id: `h:${j}`, entete: libellesJour[j], largeur: 16 })),
+    { id: 'finContrat', entete: 'Fin de contrat', type: 'date', lecture: true, largeur: 16 },
   ],
   lignes: (r) => tousMagasins(r).map((m) => ({
     code: m.code, magasin: m.nom, statut: m.franchise ? STATUTS[0] : STATUTS[1], ouverture: m.ouvertureConnue ? m.ouverture : '',
     adresse: m.adresse, codePostal: m.codePostal, ville: m.ville, departement: m.departement, pays: m.pays, telephone: m.telephone, email: m.email,
     implantation: m.exploitation.implantation, typologie: m.exploitation.typologie ? libellesTypologie[m.exploitation.typologie] : '',
     zone: m.exploitation.zoneChalandise ? libellesZone[m.exploitation.zoneChalandise] : '', licence: m.exploitation.licence ? libellesLicence[m.exploitation.licence] : '',
-    instagram: m.exploitation.instagram,
+    instagram: m.exploitation.instagram, ...Object.fromEntries(JOURS.map((j) => [`h:${j}`, m.exploitation.horaires[j] ?? ''])),
+    finContrat: finDeContrat(r, m)?.fin ?? '',
   })),
   ajout: { obligatoires: ['magasin'] },
   ajoutSansCle: true,
   controler(l, avant, r) {
     if (!avant && l.code && !/^\d{3,}$/.test(l.code)) return `code ${l.code} : 3 chiffres attendus, ou laisse-le vide`
+    const jour = JOURS.find((j) => l[`h:${j}`] && !plageValide(l[`h:${j}`]))
+    if (jour) return `horaires du ${jour} « ${l[`h:${jour}`]} » : 10:00-20:00 attendu, plusieurs plages séparées par une virgule`
     const autre = tousMagasins(r).find((m) => normaliser(m.nom) === normaliser(l.magasin) && m.code !== avant?.code)
     return autre ? `${l.magasin} existe déjà (code ${autre.code || 'à venir'})` : null
   },
@@ -410,6 +418,7 @@ const magasins: Referentiel = {
           ...(l.zone !== undefined ? { zoneChalandise: cleDe(libellesZone, l.zone) } : {}),
           ...(l.licence !== undefined ? { licence: cleDe(libellesLicence, l.licence) } : {}),
           ...(l.instagram !== undefined ? { instagram: l.instagram } : {}),
+          ...(JOURS.some((j) => l[`h:${j}`] !== undefined) ? { horaires: Object.fromEntries(JOURS.map((j) => [j, l[`h:${j}`] ?? m?.exploitation.horaires[j] ?? '']).filter(([, v]) => v)) } : {}),
         },
       }
       await enregistrerMagasin(f, m ? m.nom : null)
@@ -438,20 +447,21 @@ const franchisesRef: Referentiel = {
   async supprimer(r, suppressions) { for (const ch of suppressions) await supprimerFranchise(ch.cle, nomsDesCodes(r, ch.avant!.codes), r) },
 }
 
-// Une ligne par mandat (ou par associé sans mandat) des magasins franchisés
+// Une ligne par mandat (ou par associé sans mandat) : franchisés associés d'un franchisé, associés d'un intégré
 const mandats: Referentiel = {
-  id: 'mandats', libelle: 'Mandats des franchisés', groupe: 'Référentiels', feuille: 'Mandats',
+  id: 'mandats', libelle: 'Associés et mandats', groupe: 'Référentiels', feuille: 'Mandats',
   colonnes: [
     colCode(), colNomMagasin,
-    { id: 'nom', entete: 'Franchisé', cle: true, nouveau: true, largeur: 26, reference: refFranchise },
-    { id: 'debut', entete: 'Début du mandat', type: 'date', cle: true, largeur: 16 },
+    { id: 'nom', entete: 'Franchisé ou associé', ancien: 'Franchisé', cle: true, nouveau: true, largeur: 26, reference: refFranchise },
+    { id: 'entree', entete: 'Entrée', type: 'date', largeur: 16 },
+    { id: 'debut', entete: 'Début du mandat', type: 'date', cle: true, cleVide: true, largeur: 16 },
     { id: 'fin', entete: 'Fin du mandat', type: 'date', largeur: 16 },
     { id: 'sortie', entete: 'Date de sortie', type: 'date', largeur: 16 },
   ],
-  lignes: (r) => r.magasins.filter((m) => m.franchise && m.code).flatMap((m) => associesDu(r, m).filter((a) => !/recrutement/i.test(a.nom)).flatMap((a) =>
-    (a.mandats.length ? a.mandats : [{ debut: '', fin: '' }]).map((x) => ({ ...leMagasin(r, m.nom), nom: a.nom, debut: x.debut, fin: x.fin, sortie: a.sortie })))),
+  lignes: (r) => r.magasins.filter((m) => m.code).flatMap((m) => associesDu(r, m).filter((a) => !/recrutement/i.test(a.nom)).flatMap((a) =>
+    (a.mandats.length ? a.mandats : [{ debut: '', fin: '' }]).map((x) => ({ ...leMagasin(r, m.nom), nom: a.nom, entree: a.entree, debut: x.debut, fin: x.fin, sortie: a.sortie })))),
   ajout: { obligatoires: ['code', 'nom'] },
-  aCompleter: (l) => !!l.code && !!l.nom && !l.debut && !l.fin && !l.sortie,
+  aCompleter: (l) => !!l.code && !!l.nom && !l.entree && !l.debut && !l.fin && !l.sortie,
   async appliquer(r, changements) {
     for (const code of parCode(changements)) {
       await modifierAssociesMagasin(r, nomDuCode(r, code), (liste) => {
@@ -460,6 +470,7 @@ const mandats: Referentiel = {
           let a = l.find((x) => x.nom === ch.apres.nom)
           if (!a) { a = { id: '', nom: ch.apres.nom, entree: '', sortie: '', mandats: [] } as Associe; l.push(a) }
           if (ch.apres.sortie !== undefined && (ch.type === 'ajout' || ch.champs.includes('sortie'))) a.sortie = ch.apres.sortie
+          if (ch.apres.entree !== undefined && (ch.type === 'ajout' || ch.champs.includes('entree'))) a.entree = ch.apres.entree
           const ancien = ch.avant ? a.mandats.findIndex((x) => x.debut === ch.avant!.debut) : -1
           const fin = ch.apres.fin ?? (ancien >= 0 ? a.mandats[ancien].fin : '')
           if (!ch.apres.debut && !fin) continue
@@ -940,24 +951,44 @@ const pratiques: Referentiel = {
 }
 
 // Étapes d'une ouverture : une ligne par magasin et par étape ; les magasins à ouvrir ont leurs étapes exportées vides, à remplir
+// Implantation des produits (PR #142) : date unique de la fiche du magasin, faite une fois passée ; s'écrit dans la fiche
+const IMPLANTATION = 'Implantation des produits'
+function implantation(r: Reseau, m: { nom: string; exploitation: { implantation: string } }) {
+  const d = m.exploitation.implantation
+  return { ...leMagasin(r, m.nom), etape: IMPLANTATION, prevu: d, fait: d && d <= r.jour ? d : '' }
+}
 const etapes: Referentiel = {
   id: 'ouvertures', libelle: 'Étapes d’ouverture', groupe: 'Suivi des magasins', feuille: 'Étapes d’ouverture',
   colonnes: [
     colCode(), colNomMagasin,
-    { id: 'etape', entete: 'Étape', type: 'choix', choix: etapesOuverture.map((e) => e.libelle), cle: true, largeur: 26 },
+    { id: 'etape', entete: 'Étape', type: 'choix', choix: [...etapesOuverture.map((e) => e.libelle), IMPLANTATION], cle: true, largeur: 26 },
     { id: 'prevu', entete: 'Prévue le', type: 'date' },
     { id: 'fait', entete: 'Faite le', type: 'date' },
   ],
-  lignes: (r) => tousMagasins(r).filter((m) => m.code && (r.ouvertures[m.nom] || aOuvrir(m, r.jour))).flatMap((m) => etapesOuverture.map((e) => {
+  lignes: (r) => tousMagasins(r).filter((m) => m.code && (r.ouvertures[m.nom] || aOuvrir(m, r.jour))).flatMap((m) => [...etapesOuverture.map((e) => {
     const x = r.ouvertures[m.nom]?.etapes[e.id]
     return { ...leMagasin(r, m.nom), etape: e.libelle, prevu: x?.prevu ?? '', fait: x?.fait ?? '' }
-  })),
+  }), implantation(r, m)]),
   ajout: { obligatoires: ['code', 'etape'] },
   aCompleter: (l) => !l.prevu && !l.fait,
   async appliquer(r, changements) { await ecrireEtapes(r, changements, []) },
   async supprimer(r, suppressions) { await ecrireEtapes(r, [], suppressions) },
 }
 async function ecrireEtapes(r: Reseau, changements: Changement[], suppressions: Changement[]) {
+  const date = (ch: Changement, l: Ligne) => (ch.champs.includes('prevu') ? l.prevu : ch.champs.includes('fait') ? l.fait : l.prevu || l.fait) ?? ''
+  const fiches = [
+    ...changements.filter((ch) => ch.apres.etape === IMPLANTATION).map((ch) => ({ code: ch.apres.code, date: date(ch, ch.apres) })),
+    ...suppressions.filter((ch) => ch.avant!.etape === IMPLANTATION).map((ch) => ({ code: ch.avant!.code, date: '' })),
+  ]
+  if (fiches.length) {
+    const actuelles = magasins.lignes(r)
+    await magasins.appliquer!(r, fiches.flatMap(({ code, date }) => {
+      const avant = actuelles.find((l) => l.code === code)
+      return avant ? [{ type: 'modif' as const, cle: code, libelle: code, avant, apres: { ...avant, implantation: date }, champs: ['implantation'] }] : []
+    }))
+  }
+  changements = changements.filter((ch) => ch.apres.etape !== IMPLANTATION)
+  suppressions = suppressions.filter((ch) => ch.avant!.etape !== IMPLANTATION)
   const id = (libelle: string) => etapesOuverture.find((e) => e.libelle === libelle)!.id
   for (const code of parCode([...changements, ...suppressions])) {
     const nom = nomDuCode(r, code)
