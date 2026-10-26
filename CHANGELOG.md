@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Exploitation du magasin (Joseph, 26/10/2026) : la fiche montre et modifie la typologie (T1 à T3), la zone de
+  chalandise, la licence (3 ou 4), la date d'implantation, le compte Instagram et les horaires d'ouverture par jour
+  (jours aux mêmes heures regroupés) ; colonnes ajoutées à l'export et à l'import Excel des magasins. Un magasin intégré
+  n'affiche plus de « Responsable du magasin » vide : ses associés autres que V and B suffisent. Données reprises du
+  référentiel V and B. Base : passer `0037_exploitation_magasins`. « Modifier la fiche » ne garde que le référentiel :
+  la santé (nine box) et les déploiements se modifient dans Santé du parc, où mènent les boutons Modifier de la fiche,
+  panneau du magasin ouvert. Le Concept 2.0 (fait ou en cours) apparaît en pastille à côté du nom du magasin.
 - Sprint 26, fluidité et fonctionnalités (Joseph, 26/10/2026) : la recherche de Visites > Historique lit tout le compte
   rendu (six parties et plan d'action), sans tenir compte des accents, et montre le passage trouvé (S1) ; « La dernière
   fois » dans la fiche avant visite : note, parties remplies et plan d'action du dernier compte rendu, PDF compris (S2) ;

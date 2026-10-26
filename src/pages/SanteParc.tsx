@@ -71,7 +71,8 @@ import type { Magasin, Reseau } from '../data/modele'
 function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
   const [rrs, setRRs] = useState<string[]>([])
   const [coachsChoisis, setCoachs] = useState<string[]>([])
-  const [recherche, setRecherche] = useState('')
+  const [params] = useSearchParams()
+  const [recherche, setRecherche] = useState(() => params.get('magasin') ?? '') // ouverture depuis la fiche d'un magasin
   const magasins = useMemo(() => reseau.magasins
     .filter((m) => m.statut !== 'avenir')
     .filter((m) => (!rrs.length || rrs.includes(m.rr?.id ?? '__aucun__')) && (!coachsChoisis.length || coachsChoisis.includes(coachA(m, reseau.jour) || '__aucun__'))
@@ -475,6 +476,14 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
   const filtresActifs = Object.values(filtres).some((f) => f.length > 0)
   const { visibles, suite } = useParTranches(liste, `${etat}|${liste.length}|${magasins.map((m) => m.nom).join(',').length}|${tableauVisible ? JSON.stringify(filtres) : ''}`)
   const ouvrir = useCallback((nom: string) => { setFigee(liste); setOuvert(nom) }, [liste])
+  // Ouverture depuis la fiche d'un magasin : son panneau de saisie s'ouvre directement
+  const [params] = useSearchParams()
+  const depart = useRef(params.get('magasin'))
+  useEffect(() => {
+    const nom = depart.current
+    depart.current = null
+    if (nom && liste.some((m) => m.nom === nom)) ouvrir(nom)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const entete: EnTete = (id, contenu, sx) => {
     const col = toutes.find((c) => c.id === id)
     if (!col) return <TableCell key={id} sx={sx}>{contenu}</TableCell>

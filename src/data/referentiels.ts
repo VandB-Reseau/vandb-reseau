@@ -19,6 +19,7 @@ import { associesDu, type Associe } from './associes'
 import { PARTIES } from './compteRendu'
 import { MAX_POINTS, perimetres } from './campagnes'
 import { themesPratiques, type BonnePratique } from './bonnesPratiques'
+import { exploitationVide, libellesLicence, libellesTypologie, libellesZone } from './exploitation'
 
 export type TypeColonne = 'texte' | 'date' | 'mois' | 'nombre' | 'ouiNon' | 'choix' | 'liste'
 
@@ -353,6 +354,8 @@ function ficheDepuis(reseau: Reseau, ref: RefPersonne | null, nom: string, l: Li
 }
 
 const STATUTS = ['Franchisé', 'Intégré']
+// Clé d'un libellé de liste (vide si absent)
+const cleDe = <T extends string>(libelles: Record<T, string>, v: string): T | '' => (Object.keys(libelles) as T[]).find((k) => libelles[k] === v) ?? ''
 
 // Code magasin modifiable dans le fichier seulement pour un magasin ajouté (vide = code suivant)
 const magasins: Referentiel = {
@@ -369,10 +372,18 @@ const magasins: Referentiel = {
     { id: 'pays', entete: 'Pays' },
     { id: 'telephone', entete: 'Téléphone', largeur: 16 },
     { id: 'email', entete: 'Email', largeur: 30 },
+    { id: 'implantation', entete: 'Date d’implantation', type: 'date', largeur: 16 },
+    { id: 'typologie', entete: 'Typologie', type: 'choix', choix: Object.values(libellesTypologie) },
+    { id: 'zone', entete: 'Zone de chalandise', type: 'choix', choix: Object.values(libellesZone), largeur: 30 },
+    { id: 'licence', entete: 'Licence', type: 'choix', choix: Object.values(libellesLicence) },
+    { id: 'instagram', entete: 'Instagram', largeur: 30 },
   ],
   lignes: (r) => tousMagasins(r).map((m) => ({
     code: m.code, magasin: m.nom, statut: m.franchise ? STATUTS[0] : STATUTS[1], ouverture: m.ouvertureConnue ? m.ouverture : '',
     adresse: m.adresse, codePostal: m.codePostal, ville: m.ville, departement: m.departement, pays: m.pays, telephone: m.telephone, email: m.email,
+    implantation: m.exploitation.implantation, typologie: m.exploitation.typologie ? libellesTypologie[m.exploitation.typologie] : '',
+    zone: m.exploitation.zoneChalandise ? libellesZone[m.exploitation.zoneChalandise] : '', licence: m.exploitation.licence ? libellesLicence[m.exploitation.licence] : '',
+    instagram: m.exploitation.instagram,
   })),
   ajout: { obligatoires: ['magasin'] },
   ajoutSansCle: true,
@@ -391,6 +402,14 @@ const magasins: Referentiel = {
         adresse: l.adresse ?? '', codePostal: l.codePostal ?? '', ville: l.ville ?? '', pays: l.pays ?? '',
         responsable: m?.responsable?.nom ?? '', telResponsable: m?.responsable?.telephone ?? '', emailResponsable: m?.responsable?.email ?? '',
         rrDirect: m?.rrEnDirect && m.rr ? m.rr.id : '', topographie: m?.topographie ?? '', figure: m?.figure ?? '',
+        exploitation: {
+          ...(m?.exploitation ?? exploitationVide()),
+          ...(l.implantation !== undefined ? { implantation: l.implantation } : {}),
+          ...(l.typologie !== undefined ? { typologie: cleDe(libellesTypologie, l.typologie) } : {}),
+          ...(l.zone !== undefined ? { zoneChalandise: cleDe(libellesZone, l.zone) } : {}),
+          ...(l.licence !== undefined ? { licence: cleDe(libellesLicence, l.licence) } : {}),
+          ...(l.instagram !== undefined ? { instagram: l.instagram } : {}),
+        },
       }
       await enregistrerMagasin(f, m ? m.nom : null)
     }

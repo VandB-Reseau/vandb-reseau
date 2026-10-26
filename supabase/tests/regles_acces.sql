@@ -610,3 +610,16 @@ RESET ROLE;
 SELECT pg_temp.attendre('Historique : la rubrique « preparation » n''est pas notée', (SELECT count(*) FROM public.historique_modifications WHERE rubrique = 'preparation'), 0);
 SELECT pg_temp.attendre('Historique : table fermée aux comptes', (SELECT count(*) FROM information_schema.table_privileges
   WHERE table_schema = 'public' AND table_name = 'historique_modifications' AND grantee IN ('anon', 'authenticated', 'PUBLIC')), 0);
+
+-- ── 0037 : exploitation des magasins (colonnes de store_overrides, règles inchangées)
+SELECT pg_temp.attendre('Journal : 0037 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0037'), 1);
+SELECT pg_temp.attendre('Exploitation : six colonnes ajoutées', (SELECT count(*) FROM information_schema.columns
+  WHERE table_schema = 'public' AND table_name = 'store_overrides' AND column_name IN ('implantation', 'typologie', 'zone_chalandise', 'licence', 'horaires', 'instagram')), 6);
+SELECT pg_temp.attendre('Exploitation : valeurs contrôlées', (SELECT count(*) FROM pg_constraint WHERE conname IN
+  ('store_overrides_implantation', 'store_overrides_typologie', 'store_overrides_zone_chalandise', 'store_overrides_licence', 'store_overrides_horaires')), 5);
+UPDATE public.store_overrides SET typologie = 'T2', licence = '4', zone_chalandise = 'plus_100000', horaires = '{"lundi":"14:00-20:00"}' WHERE store_name = 'Lille';
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+UPDATE public.store_overrides SET licence = '3' WHERE store_name = 'Lille';
+RESET ROLE;
+SELECT pg_temp.attendre('Exploitation : le Coach ne change pas la fiche', (SELECT count(*) FROM public.store_overrides WHERE store_name = 'Lille' AND licence = '4'), 1);

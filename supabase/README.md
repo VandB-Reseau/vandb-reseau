@@ -41,6 +41,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0034_agenda_abonne` | Agenda dans Google Agenda : table `agenda_jetons` fermée (un lien secret par personne de l'équipe), fonctions `mon_agenda` (équipe) et `agenda_du_jeton` (fonction « agenda » seulement) | 24/10/2026 |
 | `0035_ouvertures_etapes` | Rubrique `ouverture` de `suivi_magasins` : étapes d'une ouverture (contrat, local, travaux, recrutement, formation), prévu et fait | 24/10/2026 |
 | `0036_historique_modifications` | Table `historique_modifications` (fermée) et déclencheurs sur visites, chiffres, suivi, fiches et affectations ; lecture et remise d'une suppression par le Directeur | 26/10/2026 |
+| `0037_exploitation_magasins` | Colonnes d'exploitation de `store_overrides` : implantation, typologie, zone de chalandise, licence, horaires, Instagram (règles inchangées) | 26/10/2026 |
 
 ## Règles
 

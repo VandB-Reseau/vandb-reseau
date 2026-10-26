@@ -14,6 +14,7 @@ import { normaliserActionsLibres } from './actions'
 import { renommerAcces, supprimerComptesDe } from './espaceFranchise'
 import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 import { configDepuisSuivi, eclater, assembler, rubriques, type CleSuivie } from './suivi'
+import { COLONNES_EXPLOITATION, colonnesExploitation, type Exploitation } from './exploitation'
 
 function json<T>(valeur: unknown, defaut: T): T {
   if (valeur === null || valeur === undefined) return defaut
@@ -572,6 +573,7 @@ export interface FicheMagasin {
   rrDirect: string
   topographie: Topographie | ''
   figure: Figure | ''
+  exploitation?: Exploitation // absente : les valeurs en base restent intactes
 }
 
 function ligneSurcharge(f: FicheMagasin) {
@@ -583,6 +585,7 @@ function ligneSurcharge(f: FicheMagasin) {
     addr: v(f.adresse), code: v(f.code), updated_at: new Date().toISOString(),
     cp: v(f.codePostal), ville: v(f.ville), franchise: f.franchise, rr: v(f.rrDirect), pays: v(f.pays),
     topographie: f.topographie || null, figure: f.figure || null,
+    ...(f.exploitation ? colonnesExploitation(f.exploitation) : {}),
   }
 }
 
@@ -635,6 +638,12 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
     ? supabase.from('store_overrides').update(l).eq('store_name', f.nom)
     : supabase.from('store_overrides').insert(l)
   let res = await ecrire(ligne)
+  if (res.error && f.exploitation) {
+    // Base sans les colonnes d'exploitation (migration 0037 pas encore passée) : le reste de la fiche est enregistré
+    const sansExploitation = { ...ligne } as Record<string, unknown>
+    for (const c of COLONNES_EXPLOITATION) delete sansExploitation[c]
+    res = await ecrire(sansExploitation as typeof ligne)
+  }
   if (res.error) {
     // Base sans la figure du blason (migration 0032 pas encore passée) : la forme et le reste de la fiche sont enregistrés
     const { figure: _fg, ...sansFigure } = ligne
