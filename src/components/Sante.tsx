@@ -173,7 +173,7 @@ export function LibelleCritere({ c, gras }: { c: CritereGrille; gras?: boolean }
   )
 }
 
-// Saisie des notes rangée par axe (Résultats, puis Franchisé ou Responsable du magasin)
+// Saisie des notes rangée par axe (Résultats, puis Franchisé ou Associés d'un intégré)
 export function NotesParAxe({ integre, notes, noter, libelleMagasin, colonnes = 2 }: { integre: boolean; notes: Partial<Record<IdCritere, Note>> | undefined; noter: (id: IdCritere, n: Note | null) => void; libelleMagasin?: string; colonnes?: 1 | 2 }) {
   return (
     <>

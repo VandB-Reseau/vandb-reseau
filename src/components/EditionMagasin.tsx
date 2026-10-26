@@ -97,12 +97,12 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
         {champ('code', 'Code magasin', { error: !codeOk, helperText: codePris ? `Déjà pris par ${codePris.nom}.` : !codeOk ? '3 chiffres.' : ' ', slotProps: { htmlInput: { inputMode: 'numeric' } } })}
         {champ('ouverture', 'Date d’ouverture', { type: 'date', slotProps: { inputLabel: { shrink: true } }, helperText: 'Laisse vide si elle n’est pas encore connue.' })}
         <FormControlLabel control={<Switch checked={f.franchise} onChange={(e) => setF((x) => ({ ...x, franchise: e.target.checked }))} />} label={f.franchise ? 'Magasin franchisé' : 'Magasin intégré'} sx={{ minHeight: 48 }} />
-        <Autocomplete
+        {f.franchise && <Autocomplete
           freeSolo options={[...connus.map((x) => x.nom), RECRUTEMENT]} value={f.responsable} inputValue={f.responsable}
           onInputChange={(_e, v) => setF((x) => ({ ...x, responsable: v }))}
           renderInput={(p) => <TextField {...p} label={libelleResponsable(f)}
             helperText={!responsable ? undefined : existant || /recrutement/i.test(responsable) ? 'Ses coordonnées se modifient sur sa fiche personnelle.' : 'Nouvelle personne : complète sa fiche ensuite (téléphone, email…).'} />}
-        />
+        />}
         <TextField select label="Géré en direct par" value={f.rrDirect} onChange={(e) => setF((x) => ({ ...x, rrDirect: e.target.value }))} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
           <MenuItem value="">Personne (suivi par son Coach)</MenuItem>
           {reseau.rrs.filter((r) => !r.integres).map((r) => <MenuItem key={r.id} value={r.id}>{r.nom}</MenuItem>)}

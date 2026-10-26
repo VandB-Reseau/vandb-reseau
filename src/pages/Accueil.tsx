@@ -31,7 +31,7 @@ import { anneeDe, suiviRythme, type LigneRythme } from '../data/visites'
 import { chargeA, coachA, niveauCharge } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
 import { ajouterJours, elementsDuMois, jourLong } from '../data/agenda'
-import { libelleResponsable, nomsVisiteurs, type Magasin, type Reseau, type Visite } from '../data/modele'
+import { nomsVisiteurs, type Magasin, type Reseau, type Visite } from '../data/modele'
 import { estVisite } from '../data/chiffres'
 import { DialogVisite } from '../components/DialogVisite'
 import { DialogPlanifier } from '../components/DialogPlanifier'
@@ -126,8 +126,9 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
   }
   if (p.type !== 'coach') {
     for (const x of mandatsARenouveler(reseau, perimetre)) {
-      items.push({ cle: `m-${x.m.nom}-${x.a.id}`, titre: `${x.a.nom} · ${x.m.nom}`, avatar: x.m.nom, icone: <HandshakeOutlined />, lien: lienFiche(x.m.nom), detail: `Fin du mandat le ${dateCourte(x.mandat.fin)}`,
-        pastille: x.etat === 'echu' ? { ton: 'rouge', libelle: libellesEtatMandat[x.etat] } : { ton: 'orange', libelle: 'Mandat' } })
+      items.push({ cle: `m-${x.m.nom}-${x.a?.id ?? 'contrat'}`, titre: x.a ? `${x.a.nom} · ${x.m.nom}` : x.m.nom, avatar: x.m.nom, icone: <HandshakeOutlined />, lien: lienFiche(x.m.nom),
+        detail: `${x.a ? 'Fin du mandat' : 'Fin de contrat'} le ${dateCourte(x.mandat.fin)}`,
+        pastille: x.etat === 'echu' ? { ton: 'rouge', libelle: libellesEtatMandat[x.etat] } : { ton: 'orange', libelle: x.a ? 'Mandat' : 'Contrat' } })
     }
     const coachsVus = reseau.equipe.filter((c) => p.type === 'reseau' || (p.type === 'rr' && c.rr?.id === p.id))
     for (const x of coachsVus.filter((c) => !c.fictif).map((c) => ({ c, charge: chargeA(reseau, c.nom) })).filter((x) => ['depassement', 'complet'].includes(niveauCharge(reseau, x.charge))).sort((a, b) => b.charge - a.charge)) {
@@ -138,7 +139,7 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
   }
   const dans6mois = ajouterJours(j, 183)
   for (const m of perimetre.filter((m) => m.ouverture > j && m.ouverture <= dans6mois).sort((a, b) => a.ouverture.localeCompare(b.ouverture))) {
-    const manque = [!coachA(m, j) && 'Coach', !m.responsable && libelleResponsable(m), !m.ouvertureConnue && 'date confirmée'].filter(Boolean) as string[]
+    const manque = [!coachA(m, j) && 'Coach', m.franchise && !m.responsable && 'Franchisé', !m.ouvertureConnue && 'date confirmée'].filter(Boolean) as string[]
     if (!manque.length) continue
     items.push({ cle: `o-${m.nom}`, titre: m.nom, avatar: m.nom, icone: <StorefrontOutlined />, lien: lienFiche(m.nom), detail: `Ouvre le ${dateCourte(m.ouverture)} · manque : ${manque.join(', ')}`, pastille: { ton: 'bleu', libelle: 'Ouverture' } })
   }

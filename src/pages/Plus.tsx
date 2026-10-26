@@ -20,7 +20,7 @@ export function Plus() {
   const sansParametres = !!perimetreDuProfil(profil)
   // Libellés seuls (Joseph, 21/10/2026), avec un compteur quand il est utile
   const { reseau } = useReseau()
-  const aPourvoir = reseau ? reseau.equipe.filter((c) => c.fictif).length + reseau.magasins.filter((m) => m.statut !== 'avenir' && m.responsableARecruter).length : 0
+  const aPourvoir = reseau ? reseau.equipe.filter((c) => c.fictif).length + reseau.magasins.filter((m) => m.franchise && m.statut !== 'avenir' && m.responsableARecruter).length : 0
   const compteurs: Record<string, string> = aPourvoir ? { '/equipe': `${aPourvoir} poste${aPourvoir > 1 ? 's' : ''} à pourvoir` } : {}
   const groupe = (titre: string | null, liste: Destination[]) => (
     <>

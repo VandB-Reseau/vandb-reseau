@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fin de contrat (Joseph, 26/10/2026) : la fiche magasin donne la fin du contrat, 5 ans renouvelés par périodes de
+  5 ans, comptés depuis la dernière reprise (entrée des franchisés ou associés en place, passage en intégré ou en
+  franchisé), sinon depuis l'ouverture ; un mandat saisi l'emporte. Échéance à moins d'un an dans « À traiter » de
+  l'accueil et dans Évolution. Plus de « Responsable du magasin » nulle part : un intégré a ses associés (fiche, fiche
+  avant visite, compte rendu, nine box, tâches) ; les postes à pourvoir ne comptent que les franchisés. Sans SQL.
 - Exploitation du magasin (Joseph, 26/10/2026) : la fiche montre et modifie la typologie (T1 à T3), la zone de
   chalandise, la licence (3 ou 4), la date d'implantation, le compte Instagram et les horaires d'ouverture par jour
   (jours aux mêmes heures regroupés) ; colonnes ajoutées à l'export et à l'import Excel des magasins. Un magasin intégré

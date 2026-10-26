@@ -87,7 +87,8 @@ test('un magasin franchisé a plusieurs associés avec leurs mandats', async ({ 
   await page.goto('./#/magasins/Brest%20Test?vue=fiche')
   await expect(page.getByRole('heading', { name: 'Franchisés associés' })).toBeVisible()
   await expect(page.getByText('Mandat du 1 janv. 2022 au 31 mars 2027 · 2 mandats')).toBeVisible()
-  await expect(page.getByText('Fin dans moins d’un an')).toBeVisible()
+  // Le mandat saisi se retrouve aussi en fin de contrat du magasin
+  await expect(page.getByText('Fin dans moins d’un an')).toHaveCount(2)
   await expect(page.getByText('Anciens associés')).toBeVisible()
   await page.getByRole('button', { name: 'Ajouter un associé' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter un associé' })

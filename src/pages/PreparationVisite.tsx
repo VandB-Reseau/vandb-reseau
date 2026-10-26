@@ -12,7 +12,7 @@ import { EmptyState } from '../components/EmptyState'
 import { EnTeteLettre, PiedLettre } from '../components/Lettre'
 import { Bloc, Champ, FILET, GRIS, NOIR, ORANGE, ROUGE, VERT, Vide, styleImpression, tableau } from '../components/Feuille'
 import { dateCourte, dateLongue } from '../lib/format'
-import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, visiteFaite, type Magasin, type Reseau, type Visite } from '../data/modele'
+import { libelleTypeVisite, nomsVisiteurs, visiteFaite, type Magasin, type Reseau, type Visite } from '../data/modele'
 import { PARTIES } from '../data/compteRendu'
 import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAlerte, libelleAudit, libelleMois, type ChampChiffre } from '../data/chiffres'
 import { caseDe } from '../data/sante'
@@ -154,7 +154,7 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
 
           <Bloc titre="En bref">
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 4 }}>
-              <Champ libelle={m.franchise ? 'Franchisés associés' : libelleResponsable(m)}>{m.franchise ? associes.join(', ') : m.responsable?.nom}</Champ>
+              <Champ libelle={m.franchise ? 'Franchisés associés' : 'Associés'}>{associes.join(', ')}</Champ>
               <Champ libelle="Coach">{m.coach}</Champ>
               <Champ libelle={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'}>{m.rr?.nom}</Champ>
               <Champ libelle="Nine box">{c ? `${c.libelle} · ${c.rythme}` : 'Non classé'}</Champ>
