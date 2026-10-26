@@ -19,7 +19,8 @@ export const statutAide: Record<Statut, string> = {
 }
 
 // Libellé de la personne qui tient le magasin
-export const libelleResponsable = (m: { franchise: boolean }) => (m.franchise ? 'Franchisé' : 'Responsable du magasin')
+// Pas de responsable de magasin suivi dans l'app (Joseph, 26/10/2026) : franchisés, ou associés d'un intégré
+export const libelleResponsable = (m: { franchise: boolean }) => (m.franchise ? 'Franchisé' : 'Associé')
 
 export interface Personne {
   nom: string

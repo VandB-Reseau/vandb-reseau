@@ -73,7 +73,7 @@ function aVenir(reseau: Reseau) {
     }
   }
   for (const x of mandatsARenouveler(reseau, reseau.magasins)) {
-    if (x.mandat.fin >= reseau.jour) l.push({ date: x.mandat.fin, genre: 'mandat', m: x.m, texte: `Fin de mandat de ${x.a.nom} le ${dateLongue(x.mandat.fin)}` })
+    if (x.mandat.fin >= reseau.jour) l.push({ date: x.mandat.fin, genre: 'mandat', m: x.m, texte: x.a ? `Fin de mandat de ${x.a.nom} le ${dateLongue(x.mandat.fin)}` : `Fin de contrat le ${dateLongue(x.mandat.fin)}` })
   }
   return l.sort((a, b) => a.date.localeCompare(b.date) || a.m.nom.localeCompare(b.m.nom, 'fr'))
 }

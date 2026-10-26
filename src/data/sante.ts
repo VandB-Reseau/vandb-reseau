@@ -59,7 +59,7 @@ export function definirGrille(g: GrilleNineBox) {
 }
 export const criteresAxe = (axe: Axe, g: GrilleNineBox = grilleActive) => g.criteres.filter((c) => c.axe === axe)
 export const libelleCritere = (id: IdCritere) => (id === ANCIENNE_NOTE_FRANCHISE ? libelleAncienneNote : tousCriteres.find((c) => c.id === id)?.libelle ?? id)
-export const libelleAxe = (axe: Axe, integre = false) => (axe === 'resultats' ? 'Résultats' : integre ? 'Responsable du magasin' : 'Franchisé')
+export const libelleAxe = (axe: Axe, integre = false) => (axe === 'resultats' ? 'Résultats' : integre ? 'Associés' : 'Franchisé')
 
 export const libelleNote: Record<Note, string> = { 0: 'Non concerné', 1: 'Faible', 2: 'Moyen', 3: 'Fort' }
 

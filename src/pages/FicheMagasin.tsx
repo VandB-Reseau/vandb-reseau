@@ -43,7 +43,7 @@ import { DialogSituation } from '../components/DialogSituation'
 import { enTravaux, etatSortie, situationsAffichees, texteSituation } from '../data/situations'
 import SwapHoriz from '@mui/icons-material/SwapHoriz'
 import { EmptyState } from '../components/EmptyState'
-import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienBilan, lienPreparation, lienRR, telLien } from '../lib/format'
+import { dateCourte, dateLongue, lienCoach, lienFiche, lienBilan, lienPreparation, lienRR, telLien } from '../lib/format'
 import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
@@ -74,6 +74,7 @@ import { ContenuLeviers, ListeInspirations } from '../components/Leviers'
 import { inspirationsDu, leviersDuMagasin, libellesLevier, useReperesReseau } from '../data/leviers'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
 import { Contact, Ligne, Section } from '../components/Section'
+import { finDeContrat, libellesEtatMandat, libellesOrigineContrat } from '../data/associes'
 import { SectionReunionsMagasin } from '../components/Reunions'
 import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, estVisite, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 import { cartouche } from '../components/Social'
@@ -146,13 +147,13 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             <Section titre="Équipe" action={referentiels ? <Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button> : undefined}>
               <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
               <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
-              {!m.franchise && m.responsable && <Contact role={libelleResponsable(m)} p={m.responsable} lien={m.responsable ? lienFranchise(m.responsable.nom) : undefined} sousTitre={m.responsable ? undefined : m.responsableARecruter ? 'En cours de recrutement' : undefined} />}
               {m.franchise && m.responsableARecruter && <Contact role={libelleResponsable(m)} p={null} sousTitre="En cours de recrutement" />}
               <ListeAssocies reseau={reseau} m={m} signaler={setConfirmation} />
             </Section>
             <Section titre="Magasin">
               <Ligne libelle="Code magasin">{m.code || null}</Ligne>
               <Ligne libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
+              <Ligne libelle="Fin de contrat"><FinContrat reseau={reseau} m={m} /></Ligne>
               <Ligne libelle="Adresse">
                 {adresseComplete && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -228,6 +229,20 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 
 // Rythme de visite de l'année et toutes les visites du magasin, de la plus récente à la plus ancienne
 // Exploitation (0037) : typologie, zone de chalandise, licence, implantation, Instagram et horaires
+// Fin de contrat : 5 ans renouvelés par 5 ans depuis la reprise ou l'ouverture, ou mandat saisi (Joseph, 26/10/2026)
+function FinContrat({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+  const f = finDeContrat(reseau, m)
+  if (!f) return null
+  const c = f.contrat
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+      <span>{dateLongue(f.fin)}</span>
+      {c && <Typography variant="body2" color="text.secondary" component="span">{c.numero === 1 ? '1er contrat' : `${c.numero}e contrat`} · depuis {libellesOrigineContrat[c.origine]} du {dateCourte(c.depart)}</Typography>}
+      {f.etat && f.etat !== 'enCours' && <Chip size="small" color={f.etat === 'echu' ? 'error' : 'warning'} label={libellesEtatMandat[f.etat]} sx={{ fontSize: 12, fontWeight: 600 }} />}
+    </Box>
+  )
+}
+
 function SectionExploitation({ m }: { m: Magasin }) {
   const e = m.exploitation
   const horaires = resumeHoraires(e.horaires)
