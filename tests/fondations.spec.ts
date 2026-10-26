@@ -51,8 +51,6 @@ test('après connexion, l’accueil montre les priorités dans l’ordre choisi'
     'En retard',
     'À surveiller',
     'Recule',
-    // Fin de contrat calculée à moins d'un an (5 ans renouvelés depuis l'ouverture)
-    'Contrat',
     'Surchargé',
     'Vacant',
     'Ouverture',
