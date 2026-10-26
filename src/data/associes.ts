@@ -95,10 +95,3 @@ export function mandatsARenouveler(reseau: Reseau, magasins: Magasin[]): { m: Ma
   }
   return l.sort((x, y) => x.mandat.fin.localeCompare(y.mandat.fin) || x.m.nom.localeCompare(y.m.nom, 'fr'))
 }
-
-// Fin de mandat la plus proche parmi les associés en place (colonne « Fin de contrat » de l'export des magasins)
-export function finDeContrat(reseau: Reseau, m: Magasin): { fin: string; etat: EtatMandat | null } | null {
-  const l = associesEnPlace(reseau, m).map((a) => mandatEffectif(reseau, m, a)).filter((x): x is MandatEffectif => !!x?.mandat.fin)
-    .sort((x, y) => x.mandat.fin.localeCompare(y.mandat.fin))
-  return l.length ? { fin: l[0].mandat.fin, etat: l[0].etat } : null
-}

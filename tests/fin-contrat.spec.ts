@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import lireExcel from 'read-excel-file/node'
 import { seConnecter, textesTropPetits } from './supabase-simule'
 import { dateCourte } from '../src/lib/format'
 
@@ -65,4 +67,28 @@ test('un mandat saisi l’emporte sur le calcul', async ({ page }) => {
   await page.goto('./#/magasins/Brest%20Test')
   await expect(associe(page, 'Franchisé 11')).toContainText(`Mandat du ${dateCourte('2022-01-01')} au ${dateCourte('2030-03-31')}`)
   await expect(associe(page, 'Franchisé 11')).not.toContainText('1er mandat')
+})
+
+test('l’export des mandats donne le mandat en cours de chaque associé, plus de fin de contrat par magasin', async ({ page }) => {
+  await seConnecter(page)
+  await page.goto('./#/parametres/donnees')
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Exporter Associés et mandats' }).click()])
+  const chemin = test.info().outputPath(dl.suggestedFilename())
+  await dl.saveAs(chemin)
+  const [feuille] = await lireExcel(readFileSync(chemin))
+  const [entetes, ...lignes] = feuille.data as unknown[][]
+  const col = (nom: string) => entetes.findIndex((e) => String(e).replace(' (clé)', '') === nom)
+  const ligne = lignes.find((l) => l[col('Magasin')] === 'Nantes Test' && l[col('Franchisé ou associé')] === 'Franchisé 2')!
+  const a = attendu('2020-03-15')
+  const iso = (v: unknown) => v instanceof Date ? v.toISOString().slice(0, 10) : String(v ?? '')
+  expect(iso(ligne[col('Début du mandat')])).toBe('')
+  expect(iso(ligne[col('Mandat en cours : début')])).toBe(a.debut)
+  expect(iso(ligne[col('Mandat en cours : fin')])).toBe(a.fin)
+  expect(String(ligne[col('N° du mandat en cours')])).toBe(a.numero.replace(/\D/g, ''))
+
+  const [dm] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Exporter Magasins' }).click()])
+  const cm = test.info().outputPath(dm.suggestedFilename())
+  await dm.saveAs(cm)
+  const [fm] = await lireExcel(readFileSync(cm))
+  expect((fm.data as unknown[][])[0]).not.toContain('Fin de contrat')
 })
