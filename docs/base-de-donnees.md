@@ -22,6 +22,10 @@ Mis à jour le 24/10/2026 (migration `0033`).
 - **Un magasin est identifié par son nom** (`store`, `store_name`), un Coach par son nom (`cs`, `coach`),
   un RR par son identifiant (`rr`). Renommer un magasin ou un Coach réécrit ces valeurs (l'app et les
   fonctions `renommer_*`).
+- **Code magasin à 3 chiffres** (24/10/2026) : `code` de chaque magasin dans `store_adds` (une valeur dans
+  `store_overrides.code` l'emporte). Posé par l'app du Directeur sur tout magasin qui n'en a pas (001 pour la plus
+  ancienne ouverture, puis par date d'ouverture), jamais réutilisé. C'est la clé des imports et exports Excel
+  (Paramètres > Import et export) ; les tables gardent le nom comme lien.
 - **Noms internes hérités de l'ancienne app**, gardés tels quels : `cs` = Coach, `dr` = Responsable Régional,
   `store` = magasin, `*_overrides` = fiche complétée à la main.
 
@@ -156,7 +160,7 @@ Aucun e-mail n'est envoyé par Supabase : le Directeur transmet les identifiants
 
 | Clé | Contenu | Forme |
 | --- | --- | --- |
-| `store_adds` | **Liste des magasins** (nom `n`, département, ouverture, adresse, position…) | tableau |
+| `store_adds` | **Liste des magasins** (nom `n`, `code` à 3 chiffres, département, ouverture, adresse, position…) | tableau |
 | `store_renames` | Renommages : ancien nom → nouveau nom | objet |
 | `store_deletes` | Magasins retirés (fichier de base de l'ancienne app seulement) | tableau de noms |
 | `drs_data` | Directeur (`directeur`), RR (`drs`), RR de chaque Coach (`cs_dr`) et ses changements datés (`dr_assigns`) | objet |
