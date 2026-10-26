@@ -580,3 +580,33 @@ SELECT pg_temp.attendre('Ouverture : rien pour le franchisé', (SELECT count(*) 
 RESET ROLE;
 SELECT pg_temp.attendre('Ouverture : rubrique inconnue refusée',
   pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''inconnue'', ''{}'')'), 1);
+
+-- ── 0036 : historique des modifications, lu et remis par le Directeur seul
+SELECT pg_temp.attendre('Journal : 0036 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0036'), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT min(id) AS visite_0036 FROM public.visits WHERE store = 'Lille' \gset
+UPDATE public.visits SET notes = 'Note du Coach 0036' WHERE id = :visite_0036;
+UPDATE public.visits SET notes = 'Note du Coach 0036' WHERE id = :visite_0036;
+DELETE FROM public.visits WHERE id = :visite_0036;
+SELECT pg_temp.attendre('Historique : aucun accès direct pour l''équipe', pg_temp.refuse('SELECT count(*) FROM public.historique_modifications'), 1);
+SELECT pg_temp.attendre('Historique : lecture refusée au Coach', pg_temp.refuse('SELECT public.historique_modifications()'), 1);
+SELECT pg_temp.attendre('Historique : le Coach ne remet rien', pg_temp.refuse('SELECT public.remettre_modification(1)'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Historique : lecture refusée au franchisé', pg_temp.refuse('SELECT public.historique_modifications()'), 1);
+SELECT pg_temp.attendre('Historique : aucun accès direct pour le franchisé', pg_temp.refuse('SELECT count(*) FROM public.historique_modifications'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT pg_temp.attendre('Historique : le changement du Coach, noté une seule fois avec son nom',
+  (SELECT count(*) FROM jsonb_array_elements(public.historique_modifications()) h
+   WHERE h->>'table_nom' = 'visits' AND h->>'operation' = 'changement' AND h->>'auteur' = 'Coach Nord' AND h->>'magasin' = 'Lille' AND h->'apres'->>'notes' = 'Note du Coach 0036'), 1);
+SELECT pg_temp.attendre('Historique : l''identifiant du compte n''est pas renvoyé',
+  (SELECT count(*) FROM jsonb_array_elements(public.historique_modifications()) h WHERE h ? 'user_id'), 0);
+SELECT h->>'id' AS suppression FROM jsonb_array_elements(public.historique_modifications()) h
+WHERE h->>'table_nom' = 'visits' AND h->>'operation' = 'suppression' AND h->>'magasin' = 'Lille' LIMIT 1 \gset
+SELECT pg_temp.attendre('Historique : le Directeur remet la visite supprimée', (SELECT count(*) FROM (SELECT public.remettre_modification(:suppression) AS r) x WHERE r), 1);
+SELECT pg_temp.attendre('Historique : la visite est revenue', (SELECT count(*) FROM public.visits WHERE store = 'Lille' AND notes = 'Note du Coach 0036'), 1);
+SELECT pg_temp.attendre('Historique : remise une seule fois', (SELECT count(*) FROM (SELECT public.remettre_modification(:suppression) AS r) x WHERE NOT r), 1);
+RESET ROLE;
+SELECT pg_temp.attendre('Historique : la rubrique « preparation » n''est pas notée', (SELECT count(*) FROM public.historique_modifications WHERE rubrique = 'preparation'), 0);
+SELECT pg_temp.attendre('Historique : table fermée aux comptes', (SELECT count(*) FROM information_schema.table_privileges
+  WHERE table_schema = 'public' AND table_name = 'historique_modifications' AND grantee IN ('anon', 'authenticated', 'PUBLIC')), 0);

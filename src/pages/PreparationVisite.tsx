@@ -1,8 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import GlobalStyles from '@mui/material/GlobalStyles'
+import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import ArrowBack from '@mui/icons-material/ArrowBack'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
@@ -10,11 +10,13 @@ import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { EnTeteLettre, PiedLettre } from '../components/Lettre'
+import { Bloc, Champ, FILET, GRIS, NOIR, ORANGE, ROUGE, VERT, Vide, styleImpression, tableau } from '../components/Feuille'
 import { dateCourte, dateLongue } from '../lib/format'
-import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Reseau } from '../data/modele'
+import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, visiteFaite, type Magasin, type Reseau, type Visite } from '../data/modele'
+import { PARTIES } from '../data/compteRendu'
 import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAlerte, libelleAudit, libelleMois, type ChampChiffre } from '../data/chiffres'
 import { caseDe } from '../data/sante'
-import { anneeDe, libellePasVu, suiviRythme } from '../data/visites'
+import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme } from '../data/visites'
 import { preparationDe } from '../data/semaine'
 import { actionsDuMagasin, echeanceDate, enRetard } from '../data/actions'
 import { campagnesDuMagasin } from '../data/campagnes'
@@ -26,36 +28,6 @@ import { chargerReperesEquipe, type IndicateurRepere, type Reperes } from '../da
 
 // Fiche avant visite : tout ce qu'il faut savoir d'un magasin sur une page, lisible au téléphone
 // et téléchargeable en PDF (même feuille que le compte rendu de visite)
-const styleImpression = (
-  <GlobalStyles styles={{
-    '@media print': {
-      'header, nav, .MuiDrawer-root, .MuiBottomNavigation-root, .sans-impression, [aria-label="Aperçu"]': { display: 'none !important' },
-      'body, main': { background: '#fff !important', padding: '0 !important', margin: '0 !important' },
-      '.feuille': { boxShadow: 'none !important', border: '0 !important', margin: '0 !important', maxWidth: 'none !important' },
-      '@page': { size: 'A4', margin: '12mm' },
-    },
-  }} />
-)
-
-const NOIR = '#1d1d1b', GRIS = '#5f5f66', FILET = '#e0e0e0'
-const ROUGE = '#c24119', ORANGE = '#b84a1e', VERT = '#307672'
-
-function Titre({ children }: { children: ReactNode }) {
-  return <Typography variant="h4" component="h2" sx={{ color: NOIR, borderBottom: '2px solid #f8bb09', pb: 0.5, mb: 1.5 }}>{children}</Typography>
-}
-function Bloc({ titre, children }: { titre: string; children: ReactNode }) {
-  return <Box component="section" aria-label={titre} sx={{ mb: 3, breakInside: 'avoid' }}><Titre>{titre}</Titre>{children}</Box>
-}
-function Champ({ libelle, children }: { libelle: string; children: ReactNode }) {
-  return (
-    <Box sx={{ py: 0.75 }}>
-      <Typography variant="caption" sx={{ color: GRIS, display: 'block' }}>{libelle}</Typography>
-      <Typography variant="body1" sx={{ color: NOIR }}>{children || 'Non renseigné'}</Typography>
-    </Box>
-  )
-}
-const Vide = ({ children }: { children: ReactNode }) => <Typography variant="body1" sx={{ color: GRIS }}>{children}</Typography>
-const tableau = { width: '100%', borderCollapse: 'collapse', color: NOIR, '& th, & td': { textAlign: 'left', p: 1, borderBottom: `1px solid ${FILET}`, fontSize: 14, verticalAlign: 'top' }, '& th': { color: GRIS, fontWeight: 600 }, '& td.nombre, & th.nombre': { textAlign: 'right', whiteSpace: 'nowrap' } } as const
 const couleurStatut = { decroche: ROUGE, surveiller: ORANGE, ok: VERT } as const
 
 // Trois derniers mois connus : une ligne par indicateur, une colonne par mois (lisible à 390 px)
@@ -194,6 +166,8 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
             </Box>
           </Bloc>
 
+          <DerniereFois reseau={reseau} m={m} />
+
           {preparation?.notes && (
             <Bloc titre="Notes de préparation">
               <Typography variant="body1" sx={{ color: NOIR, whiteSpace: 'pre-wrap' }}>{preparation.notes}</Typography>
@@ -251,6 +225,41 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
         <PiedLettre />
       </Box>
     </>
+  )
+}
+
+// Ce qui s'est dit à la dernière visite (sprint 26, S2) : note, parties remplies et plan d'action du dernier compte
+// rendu ; trois lignes par partie à l'écran, tout dans le PDF
+const troisLignes = { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', '@media print': { display: 'block', overflow: 'visible' } } as const
+function DerniereFois({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+  const v = reseau.visites
+    .filter((x) => x.magasin === m.nom && visiteFaite(x, reseau.jour) && (x.notes.trim() || x.parties.some((p) => p.trim()) || x.plan.length))
+    .reduce<Visite | null>((d, x) => (!d || x.date > d.date ? x : d), null)
+  if (!v) return null
+  const parties = PARTIES.map((p, i) => ({ titre: p.titre, texte: v.parties[i]?.trim() ?? '' })).filter((p) => p.texte)
+  return (
+    <Bloc titre="La dernière fois">
+      <Typography variant="body2" sx={{ color: GRIS }}>{[dateCourte(v.date), libelleTypeVisite(v.type), nomsVisiteurs(v)].filter(Boolean).join(' · ')}</Typography>
+      {v.notes.trim() && <Typography variant="body1" sx={{ color: NOIR, mt: 0.5, whiteSpace: 'pre-wrap', ...troisLignes }}>{v.notes}</Typography>}
+      {parties.map((p) => (
+        <Box key={p.titre} sx={{ mt: 1.5 }}>
+          <Typography variant="caption" sx={{ color: GRIS, display: 'block' }}>{p.titre}</Typography>
+          <Typography variant="body1" sx={{ color: NOIR, whiteSpace: 'pre-wrap', ...troisLignes }}>{p.texte}</Typography>
+        </Box>
+      ))}
+      {!!v.plan.length && (
+        <Box sx={{ mt: 1.5 }}>
+          <Typography variant="caption" sx={{ color: GRIS, display: 'block' }}>Plan d’action</Typography>
+          {v.plan.map((a, i) => (
+            <Typography key={a.id ?? i} variant="body1" sx={{ color: NOIR }}>
+              {[a.action, a.porteur, a.echeance && (echeanceDate(a) ? dateCourte(echeanceDate(a)) : a.echeance)].filter(Boolean).join(' · ')}
+              <Box component="span" sx={{ color: a.faite ? VERT : GRIS, fontWeight: 600 }}>{a.faite ? ` · faite le ${dateCourte(a.faite)}` : ' · en cours'}</Box>
+            </Typography>
+          ))}
+        </Box>
+      )}
+      <Link component={RouterLink} to={lienCompteRendu(v)} className="sans-impression" sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 48, fontWeight: 600 }}>Ouvrir le compte rendu</Link>
+    </Bloc>
   )
 }
 

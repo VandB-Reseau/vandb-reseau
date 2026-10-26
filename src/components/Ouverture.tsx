@@ -26,17 +26,22 @@ export function BarreEtapes({ e }: { e: EtatOuverture }) {
   )
 }
 
-// Où en est l'ouverture, en une ligne
-export function resumeOuverture(e: EtatOuverture): { texte: string; retard: boolean } {
+// Où en est l'ouverture, en une ligne : l'étape qui vient est dite « prochaine » (sprint 26, S3) ; à moins de 60 jours
+// de l'ouverture sans aucune étape faite, la ligne passe en alerte
+export function resumeOuverture(e: EtatOuverture, jour: string, ouverture: string): { texte: string; retard: boolean } {
   if (e.retard) return { texte: `${e.retard.libelle} en retard (prévu le ${dateCourte(e.retard.prevu)})`, retard: true }
-  const suite = e.prochaine && e.prochaine.libelle !== 'Ouverture' ? ` · ${e.prochaine.libelle}${e.prochaine.prevu ? ` le ${dateCourte(e.prochaine.prevu)}` : ''}` : ''
-  return { texte: `${e.faites} étape${e.faites > 1 ? 's' : ''} sur ${e.total}${suite}`, retard: false }
+  const p = e.prochaine
+  const suite = p && p.libelle !== 'Ouverture' ? ` · prochaine : ${p.libelle.charAt(0).toLowerCase()}${p.libelle.slice(1)}${p.prevu ? ` le ${dateCourte(p.prevu)}` : ''}` : ''
+  const proche = !!ouverture && ouverture > jour && joursEntre(jour, ouverture) < 60
+  return { texte: `${e.faites} étape${e.faites > 1 ? 's' : ''} sur ${e.total}${suite}`, retard: proche && e.faites === 0 }
 }
+
+const joursEntre = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000)
 
 // Ligne de « À venir sur 12 mois » pour une ouverture
 export function LigneOuverture({ reseau, m, lien, avatar }: { reseau: Reseau; m: Magasin; lien: string; avatar: ReactNode }) {
   const e = etatOuverture(reseau, m)
-  const r = resumeOuverture(e)
+  const r = resumeOuverture(e, reseau.jour, m.ouverture)
   return (
     <ButtonBase component={RouterLink} to={lien} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1, minHeight: 64, width: '100%', textAlign: 'left', justifyContent: 'flex-start', color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
       {avatar}

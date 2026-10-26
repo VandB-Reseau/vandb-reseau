@@ -45,24 +45,38 @@ function messageParDefaut(v: Visite, noms: string[]): string {
 }
 
 export function EnvoyerCompteRendu({ reseau, visite, icone = false }: { reseau: Reseau; visite: Visite; icone?: boolean }) {
+  return (
+    <EnvoyerAuFranchise reseau={reseau} magasin={visite.magasin} icone={icone} titreFenetre="Envoyer le compte rendu"
+      libelleIcone={`Envoyer au franchisé le compte rendu du ${dateCourte(visite.date)}`}
+      sousTitre={`${visite.magasin} · visite du ${dateLongue(visite.date)}`}
+      titre={`Compte rendu de visite · ${visite.magasin} · ${dateCourte(visite.date)}`}
+      messageParDefaut={(noms) => messageParDefaut(visite, noms)}
+      annexe={texteCompteRendu(visite, dateLongue(visite.date), nomsVisiteurs(visite))} />
+  )
+}
+
+// Envoi d'un document au franchisé d'un magasin (compte rendu, bilan de l'année) : dans l'app, par e-mail ou partagé
+export function EnvoyerAuFranchise({ reseau, magasin, icone = false, titreFenetre, libelleIcone, sousTitre, titre, messageParDefaut, annexe }: {
+  reseau: Reseau; magasin: string; icone?: boolean; titreFenetre: string; libelleIcone: string; sousTitre: string; titre: string
+  messageParDefaut: (noms: string[]) => string; annexe: string
+}) {
   const theme = useTheme()
   const pleinEcran = useMediaQuery(theme.breakpoints.down('sm'))
   const { profil } = useAuth()
   const { envoyer } = useMessagerie()
   const [ouvert, setOuvert] = useState(false)
-  const m = reseau.magasins.find((x) => x.nom === visite.magasin)
+  const m = reseau.magasins.find((x) => x.nom === magasin)
   const franchises: Destinataire[] = m ? participants(reseau, m).filter((p) => p.cle.startsWith('franchise:'))
     .map((p) => ({ cle: p.cle, nom: p.nom, email: fichePersonne(reseau, { type: 'franchise', cle: p.nom }).email.trim() })) : []
   const [choisis, setChoisis] = useState<Set<string>>(() => new Set(franchises.map((f) => f.cle)))
-  const [texte, setTexte] = useState(() => messageParDefaut(visite, franchises.map((f) => f.nom)))
+  const [texte, setTexte] = useState(() => messageParDefaut(franchises.map((f) => f.nom)))
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState(false)
   const [message, setMessage] = useState('')
   if (!profil || profil.role === 'franchise') return null
 
   const retenus = franchises.filter((f) => choisis.has(f.cle))
-  const titre = `Compte rendu de visite · ${visite.magasin} · ${dateCourte(visite.date)}`
-  const complet = `${texte.trim()}\n\n---\n\n${texteCompteRendu(visite, dateLongue(visite.date), nomsVisiteurs(visite))}`
+  const complet = `${texte.trim()}\n\n---\n\n${annexe}`
   const emails = retenus.map((f) => f.email).filter(Boolean)
   const mailto = `mailto:${emails.map(encodeURIComponent).join(',')}?subject=${encodeURIComponent(titre)}&body=${encodeURIComponent(complet)}`
   const partage = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
@@ -70,9 +84,9 @@ export function EnvoyerCompteRendu({ reseau, visite, icone = false }: { reseau: 
   const dansLApp = async () => {
     setEnvoi(true); setErreur(false)
     try {
-      for (const f of retenus) await envoyer(f.cle, texte.trim(), [visite.magasin], visite.magasin)
+      for (const f of retenus) await envoyer(f.cle, texte.trim(), [magasin], magasin)
       setOuvert(false)
-      setMessage(`Compte rendu envoyé à ${retenus.map((f) => f.nom).join(', ')} dans la messagerie.`)
+      setMessage(`${titreFenetre.replace(/^Envoyer l[ea] /, '').replace(/^./, (c) => c.toUpperCase())} envoyé à ${retenus.map((f) => f.nom).join(', ')} dans la messagerie.`)
     } catch { setErreur(true) } finally { setEnvoi(false) }
   }
   const partager = async () => {
@@ -82,14 +96,14 @@ export function EnvoyerCompteRendu({ reseau, visite, icone = false }: { reseau: 
   return (
     <>
       {icone
-        ? <Tooltip title="Envoyer au franchisé"><IconButton onClick={() => setOuvert(true)} aria-label={`Envoyer au franchisé le compte rendu du ${dateCourte(visite.date)}`}><SendOutlined /></IconButton></Tooltip>
+        ? <Tooltip title="Envoyer au franchisé"><IconButton onClick={() => setOuvert(true)} aria-label={libelleIcone}><SendOutlined /></IconButton></Tooltip>
         : <Button variant="outlined" startIcon={<SendOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>Envoyer au franchisé</Button>}
       <Dialog open={ouvert} onClose={() => !envoi && setOuvert(false)} fullScreen={pleinEcran} fullWidth maxWidth="sm" aria-labelledby="titre-envoyer-cr">
-        <DialogTitle id="titre-envoyer-cr">Envoyer le compte rendu</DialogTitle>
+        <DialogTitle id="titre-envoyer-cr">{titreFenetre}</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{visite.magasin} · visite du {dateLongue(visite.date)}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{sousTitre}</Typography>
           {franchises.length === 0 ? (
-            <Alert severity="info" sx={{ mb: 2 }}>Aucun franchisé n’est rattaché à {visite.magasin}. Ajoute-le sur la fiche du magasin pour lui envoyer ses comptes rendus.</Alert>
+            <Alert severity="info" sx={{ mb: 2 }}>Aucun franchisé n’est rattaché à {magasin}. Ajoute-le sur la fiche du magasin pour pouvoir lui écrire.</Alert>
           ) : (
             <Box role="group" aria-label="Destinataires" sx={{ display: 'flex', flexDirection: 'column', mb: 1.5 }}>
               {franchises.map((f) => (
