@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Mandats (Joseph, 26/10/2026) : la durée du contrat passe sur les mandats de chaque associé (franchisé ou associé d'un
+  intégré) : sans mandat saisi, mandat de 5 ans renouvelé par 5 ans depuis son entrée (ou le passage en intégré ou en
+  franchisé, sinon l'ouverture), avec son numéro ; plus de ligne « Fin de contrat » sur le magasin. Accueil : bloc
+  « Contrats » dans la colonne de droite (onglet sur téléphone) avec les mandats échus ou qui finissent dans les 6 mois,
+  sortis de « À traiter » ; alerte ramenée de 12 à 6 mois. Sans SQL.
 - Implantation des produits (Joseph, 26/10/2026) : la date d'implantation est celle de la mise en place des produits
   pendant la pré-ouverture ; libellé corrigé, rangée avec l'ouverture dans la fiche, et ajoutée comme étape (avant
   l'ouverture) au suivi des ouvertures à venir. Sans SQL.

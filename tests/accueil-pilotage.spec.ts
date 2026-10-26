@@ -30,7 +30,7 @@ test('PC : actualités à gauche, À traiter, Mes tâches et Cette semaine à dr
   test.skip(isMobile, 'Disposition du PC')
   await seConnecter(page)
   const actualites = page.getByRole('region', { name: 'Actualités' })
-  const colonne = page.getByRole('complementary', { name: 'À traiter, mes tâches et cette semaine' })
+  const colonne = page.getByRole('complementary', { name: 'À traiter, mes tâches, cette semaine et contrats' })
   await expect(actualites).toBeVisible()
   await expect(colonne.getByRole('region', { name: 'À traiter' })).toBeVisible()
   await expect(colonne.getByRole('region', { name: 'Mes tâches' })).toBeVisible()
@@ -61,7 +61,7 @@ test('téléphone : repères en 2 × 2, un bloc court à onglets, puis les actua
   expect(await pilotage.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   const onglets = page.getByRole('tablist', { name: 'Mon point' }).getByRole('tab')
-  await expect(onglets).toHaveText([/^À traiter/, /^Tâches/, 'Semaine'])
+  await expect(onglets).toHaveText([/^À traiter/, /^Tâches/, 'Semaine', /^Contrats/])
   for (const o of await onglets.all()) expect((await o.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   // Deux lignes seulement, les actualités juste en dessous
   await expect(page.getByRole('region', { name: 'À traiter' }).getByRole('link')).toHaveCount(2)

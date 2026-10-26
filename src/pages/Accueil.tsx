@@ -125,11 +125,6 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
     items.push({ cle: `c-${m.nom}`, titre: m.nom, avatar: m.nom, lien: lienFiche(m.nom), detail: `${dateCourte(t!.depuis)} · ${t!.precedente!.libelle} vers ${t!.actuelle.libelle}`, pastille: { ton: 'gris', libelle: 'Recule' } })
   }
   if (p.type !== 'coach') {
-    for (const x of mandatsARenouveler(reseau, perimetre)) {
-      items.push({ cle: `m-${x.m.nom}-${x.a?.id ?? 'contrat'}`, titre: x.a ? `${x.a.nom} · ${x.m.nom}` : x.m.nom, avatar: x.m.nom, icone: <HandshakeOutlined />, lien: lienFiche(x.m.nom),
-        detail: `${x.a ? 'Fin du mandat' : 'Fin de contrat'} le ${dateCourte(x.mandat.fin)}`,
-        pastille: x.etat === 'echu' ? { ton: 'rouge', libelle: libellesEtatMandat[x.etat] } : { ton: 'orange', libelle: x.a ? 'Mandat' : 'Contrat' } })
-    }
     const coachsVus = reseau.equipe.filter((c) => p.type === 'reseau' || (p.type === 'rr' && c.rr?.id === p.id))
     for (const x of coachsVus.filter((c) => !c.fictif).map((c) => ({ c, charge: chargeA(reseau, c.nom) })).filter((x) => ['depassement', 'complet'].includes(niveauCharge(reseau, x.charge))).sort((a, b) => b.charge - a.charge)) {
       items.push({ cle: `ch-${x.c.nom}`, titre: x.c.nom, avatar: x.c.nom, lien: lienCoach(x.c.nom), detail: `Charge ${x.charge} sur ${reseau.parametres.maxUnits}`, pastille: { ton: 'orange', libelle: 'Surchargé' } })
@@ -266,6 +261,40 @@ function BlocSemaine({ reseau, p, compact = false }: { reseau: Reseau; p: Perime
   )
 }
 
+// Contrats (Joseph, 26/10/2026) : mandats des associés échus ou qui finissent dans les 6 mois, Directeur et RR
+function contratsDu(reseau: Reseau, p: Perimetre) {
+  return p.type === 'coach' ? [] : mandatsARenouveler(reseau, magasinsDu(reseau, p))
+}
+
+function BlocContrats({ reseau, contrats, compact = false }: { reseau: Reseau; contrats: ReturnType<typeof contratsDu>; compact?: boolean }) {
+  const [tout, setTout] = useState(false)
+  const apercu = compact ? APERCU_COMPACT : APERCU
+  const vus = tout ? contrats : contrats.slice(0, apercu)
+  const lignes = vus.map((x) => (
+    <LigneCompacte key={`${x.m.nom}-${x.a.id}`} lien={lienFiche(x.m.nom)} avatar={<Initiales nom={x.m.nom} icone={<HandshakeOutlined />} />} titre={`${x.a.nom} · ${x.m.nom}`}
+      detail={`Fin le ${dateCourte(x.mandat.fin)} · ${x.numero === 1 ? '1er' : `${x.numero}e`} mandat`}
+      fin={x.etat === 'echu' ? <Pastille ton="rouge">{libellesEtatMandat.echu}</Pastille> : <Pastille ton="orange">{joursAvant(reseau.jour, x.mandat.fin)}</Pastille>} />
+  ))
+  if (!contrats.length && !compact) return null
+  return (
+    <Box component="section" aria-label="Contrats" sx={{ mt: compact ? 0 : 2 }}>
+      {!compact && <TitreSection nombre={contrats.length}>Contrats</TitreSection>}
+      <CarteLignes>
+        {contrats.length ? lignes : <LigneCompacte avatar={<Initiales nom="contrats" icone={<HandshakeOutlined />} />} titre="Aucune fin de mandat dans les 6 mois" />}
+        {contrats.length > apercu && (
+          <ButtonBase onClick={() => setTout((v) => !v)} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{tout ? 'Afficher moins' : `Voir les ${contrats.length}`}</ButtonBase>
+        )}
+      </CarteLignes>
+    </Box>
+  )
+}
+
+// « Dans 3 mois », « Dans 12 jours »
+function joursAvant(jour: string, fin: string) {
+  const j = Math.round((Date.parse(`${fin}T00:00:00Z`) - Date.parse(`${jour}T00:00:00Z`)) / 86400000)
+  return j > 45 ? `Dans ${Math.round(j / 30.4)} mois` : j > 1 ? `Dans ${j} jours` : j === 1 ? 'Demain' : 'Aujourd’hui'
+}
+
 // Mes tâches : celles dont je suis le porteur, les plus pressées d'abord
 function mesTaches(reseau: Reseau, p: Perimetre, moi: string) {
   if (!moi) return []
@@ -347,13 +376,14 @@ function Indicateurs({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
 }
 
 // Téléphone : À traiter, tâches et semaine dans une seule carte à onglets, courte (Joseph, 22/10/2026)
-type Onglet = 'traiter' | 'taches' | 'semaine'
-function PointCompact({ reseau, p, items, taches }: { reseau: Reseau; p: Perimetre; items: ATraiter[]; taches: ReturnType<typeof mesTaches> }) {
+type Onglet = 'traiter' | 'taches' | 'semaine' | 'contrats'
+function PointCompact({ reseau, p, items, taches, contrats }: { reseau: Reseau; p: Perimetre; items: ATraiter[]; taches: ReturnType<typeof mesTaches>; contrats: ReturnType<typeof contratsDu> }) {
   const [onglet, setOnglet] = useState<Onglet>('traiter')
   const options: { v: Onglet; libelle: string }[] = [
     { v: 'traiter', libelle: items.length ? `À traiter · ${items.length}` : 'À traiter' },
     { v: 'taches', libelle: taches.length ? `Tâches · ${taches.length}` : 'Tâches' },
     { v: 'semaine', libelle: 'Semaine' },
+    ...(p.type === 'coach' ? [] : [{ v: 'contrats' as const, libelle: contrats.length ? `Contrats · ${contrats.length}` : 'Contrats' }]),
   ]
   return (
     <Box sx={{ mb: 2, '& .MuiCard-root .MuiButtonBase-root': { minHeight: 56, py: 0.5 } }}>
@@ -369,6 +399,7 @@ function PointCompact({ reseau, p, items, taches }: { reseau: Reseau; p: Perimet
         {onglet === 'traiter' && <BlocATraiter reseau={reseau} items={items} compact />}
         {onglet === 'taches' && <BlocMesTaches reseau={reseau} taches={taches} compact />}
         {onglet === 'semaine' && <BlocSemaine reseau={reseau} p={p} compact />}
+        {onglet === 'contrats' && <BlocContrats reseau={reseau} contrats={contrats} compact />}
       </Box>
     </Box>
   )
@@ -488,6 +519,7 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const items = aTraiter(reseau, p, sansParametres)
   const taches = mesTaches(reseau, p, monNomPorteur(reseau, profil))
+  const contrats = useMemo(() => contratsDu(reseau, p), [reseau, p])
   const noms = useMemo(() => new Set(magasinsDu(reseau, p).map((m) => m.nom)), [reseau, p])
   const communications = useCommunicationsDuFil()
   const reactionsPratiques = useReactionsPratiques()
@@ -499,7 +531,7 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
       <>
         <AuMagasin reseau={reseau} p={p} />
         <Indicateurs reseau={reseau} p={p} />
-        <PointCompact reseau={reseau} p={p} items={items} taches={taches} />
+        <PointCompact reseau={reseau} p={p} items={items} taches={taches} contrats={contrats} />
         <SondagesARepondre equipe aFaire titre="Sondages à remplir" />
         {actualites}
       </>
@@ -511,10 +543,11 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
       <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: 'minmax(0, 1fr) 400px', alignItems: 'start' }}>
         <Box sx={{ minWidth: 0 }}><SondagesARepondre equipe aFaire titre="Sondages à remplir" />{actualites}</Box>
         {/* La colonne reste visible pendant qu'on fait défiler les actualités, et défile seule si elle dépasse l'écran */}
-        <Box component="aside" aria-label="À traiter, mes tâches et cette semaine" sx={{ position: 'sticky', top: 88, maxHeight: 'calc(100vh - 104px)', overflowY: 'auto', overscrollBehavior: 'contain', scrollbarWidth: 'thin', mx: -1, px: 1, pb: 1 }}>
+        <Box component="aside" aria-label="À traiter, mes tâches, cette semaine et contrats" sx={{ position: 'sticky', top: 88, maxHeight: 'calc(100vh - 104px)', overflowY: 'auto', overscrollBehavior: 'contain', scrollbarWidth: 'thin', mx: -1, px: 1, pb: 1 }}>
           <BlocATraiter reseau={reseau} items={items} />
           <BlocMesTaches reseau={reseau} taches={taches} />
           <BlocSemaine reseau={reseau} p={p} />
+          <BlocContrats reseau={reseau} contrats={contrats} />
         </Box>
       </Box>
     </>
