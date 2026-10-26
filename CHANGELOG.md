@@ -21,6 +21,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   référentiel V and B. Base : passer `0037_exploitation_magasins`. « Modifier la fiche » ne garde que le référentiel :
   la santé (nine box) et les déploiements se modifient dans Santé du parc, où mènent les boutons Modifier de la fiche,
   panneau du magasin ouvert. Le Concept 2.0 (fait ou en cours) apparaît en pastille à côté du nom du magasin.
+- Parc en fin d'année (Joseph, 26/10/2026) : Évolution du parc montre au-dessus des barres d'ouvertures et de sorties
+  la courbe du nombre de magasins dans le réseau à la fin de chaque année (pointillés pour les années à venir). Une date
+  d'ouverture posée par défaut à l'import (1er janvier 2027 ou 2020 pour un projet sans date) n'est plus comptée comme
+  une ouverture : le magasin est signalé « sans date d'ouverture ». Sans SQL.
 - Sprint 26, fluidité et fonctionnalités (Joseph, 26/10/2026) : la recherche de Visites > Historique lit tout le compte
   rendu (six parties et plan d'action), sans tenir compte des accents, et montre le passage trouvé (S1) ; « La dernière
   fois » dans la fiche avant visite : note, parties remplies et plan d'action du dernier compte rendu, PDF compris (S2) ;

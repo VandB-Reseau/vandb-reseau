@@ -274,3 +274,26 @@ test('sur téléphone, la nine box apparaît sans faire défiler et les filtres 
   await page.getByRole('button', { name: 'Filtres' }).click()
   await expect(page.getByRole('button', { name: 'Filtre Coach' })).toBeVisible()
 })
+
+// Parc cumulé en fin d'année (Joseph, 26/10/2026) ; une date d'ouverture posée par défaut (projet sans date) n'est pas comptée
+test('l’évolution montre le parc en fin d’année au-dessus des ouvertures', async ({ page }, info) => {
+  await seConnecter(page)
+  await page.goto('./#/parametres/evolution')
+  const parc = page.getByRole('img', { name: /^Parc en fin d’année/ })
+  await expect(parc).toHaveAttribute('aria-label', 'Parc en fin d’année : 2019 8 ; 2020 12 ; 2021 15 ; 2022 18 ; 2023 21 ; 2024 24 ; 2025 24 ; 2026 29')
+  await expect(page.getByRole('img', { name: /Ouvertures : / })).not.toHaveAttribute('aria-label', /2027/)
+  await expect(page.getByText('1 magasin sans date d’ouverture ne est pas compté.')).toHaveCount(0)
+  await expect(page.getByText('1 magasin sans date d’ouverture n’est pas compté.')).toBeVisible()
+  // Chaque chiffre du parc reste au-dessus de sa barre et dans la carte
+  const carte = (await parc.boundingBox())!
+  const chiffres = parc.getByText(/^\d+$/)
+  await expect(chiffres).toHaveCount(8)
+  for (const c of await chiffres.all()) {
+    const b = (await c.boundingBox())!
+    expect(b.y).toBeGreaterThanOrEqual(carte.y - 1)
+    expect(b.x).toBeGreaterThanOrEqual(0)
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  expect(await textesTropPetits(page)).toEqual([])
+  await parc.locator('..').screenshot({ path: `captures/${info.project.name}-evolution-parc.png` })
+})
