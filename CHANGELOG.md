@@ -12,6 +12,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 - Étapes d'ouverture dans l'import et export Excel (Joseph, 26/10/2026) : une ligne par magasin et par étape (code
   magasin + étape), dates prévue et faite ; les magasins à ouvrir ont leurs étapes exportées vides, à remplir dans le
   fichier (test `import-export.spec.ts`). Sans migration.
+- Implantation des produits (Joseph, 26/10/2026) : la date d'implantation est celle de la mise en place des produits
+  pendant la pré-ouverture ; libellé corrigé, rangée avec l'ouverture dans la fiche, et ajoutée comme étape (avant
+  l'ouverture) au suivi des ouvertures à venir. Sans SQL.
 - Fin de contrat (Joseph, 26/10/2026) : la fiche magasin donne la fin du contrat, 5 ans renouvelés par périodes de
   5 ans, comptés depuis la dernière reprise (entrée des franchisés ou associés en place, passage en intégré ou en
   franchisé), sinon depuis l'ouverture ; un mandat saisi l'emporte. Échéance à moins d'un an dans « À traiter » de

@@ -136,7 +136,7 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
         <Choix label="Typologie" value={ex.typologie} libelles={libellesTypologie} onChange={(v) => exploiter({ typologie: v as Typologie | '' })} />
         <Choix label="Zone de chalandise" value={ex.zoneChalandise} libelles={libellesZone} onChange={(v) => exploiter({ zoneChalandise: v as ZoneChalandise | '' })} />
         <Choix label="Licence" value={ex.licence} libelles={libellesLicence} onChange={(v) => exploiter({ licence: v as Licence | '' })} />
-        <TextField type="date" label="Date d’implantation" value={ex.implantation} onChange={(e) => exploiter({ implantation: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+        <TextField type="date" label="Implantation des produits" value={ex.implantation} onChange={(e) => exploiter({ implantation: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
         <TextField label="Instagram" value={ex.instagram} onChange={(e) => exploiter({ instagram: e.target.value })} placeholder="https://www.instagram.com/…" />
       </Groupe>
       <Groupe titre="Horaires d’ouverture">
