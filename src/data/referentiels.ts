@@ -1,19 +1,24 @@
-// Référentiels exportés en Excel pré-rempli puis réimportés pour mise à jour.
+// Données exportées en Excel pré-rempli puis réimportées pour ajouter, mettre à jour ou supprimer ligne par ligne.
 // Règles communes : une cellule vide ne change rien, une ligne inconnue est ajoutée quand le référentiel le permet,
-// une ligne absente du fichier est supprimée quand le référentiel le permet (magasins, personnes, chiffres, visites).
-import type { Reseau } from './modele'
-import { libelleTypeVisite, lireVisiteurs, typesVisite } from './modele'
+// une ligne absente du fichier est supprimée quand le référentiel le permet.
+import type { ActionLibre, Reseau, Situation, TypeEvenement, TypeFermeture, TypeSituation, Visite } from './modele'
+import { libelleFermeture, libelleSituation, libellesTypeEvenement, libelleTypeVisite, lireVisiteurs, typeEvenement, typesVisite } from './modele'
 import { champsSaisis, completerChiffres, libellesChiffres, lireNombre, type ChampChiffre } from './chiffres'
 import { lireMois } from './importChiffres'
-import { lireCSV, lireDate, normaliser, trouveurMagasin } from './import'
-import { depuisDeploiement, historiqueSante, libelleNote, tousCriteres, type Evaluation, type IdCritere, type Note } from './sante'
+import { lireCSV, lireDate, normaliser } from './import'
+import { depuisDeploiement, historiqueSante, libelleNote, tousCriteres, type IdCritere, type Note } from './sante'
 import { departementDepuisCP, fichePersonne, ficheVide, franchises, separerNom, type FichePersonnelle, type RefPersonne } from './personnes'
 import {
-  enregistrerChiffres, enregistrerCoach, enregistrerDeploiements, enregistrerFichePersonne, enregistrerFranchise, enregistrerMagasin,
-  enregistrerRR, enregistrerVisites, importerHistorique, importerVisites, rattacherCoach, reaffecter, supprimerChiffres, supprimerCoach,
-  supprimerFranchise, supprimerMagasin, supprimerRR, supprimerVisite, modifierAssociesMagasin, type FicheMagasin,
+  enregistrerAudit, enregistrerCampagne, enregistrerChiffres, enregistrerCoach, enregistrerConstats, enregistrerDeploiements, enregistrerEvenement,
+  enregistrerFichePersonne, enregistrerFranchise, enregistrerMagasin, enregistrerNoteMagasin, enregistrerPratique, enregistrerActionLibre,
+  enregistrerRR, enregistrerSituations, enregistrerVisites, importerHistorique, modifierPlanVisite, rattacherCoach, reaffecter, supprimerActionLibre,
+  supprimerAffectation, supprimerChiffres, supprimerCoach, supprimerEvaluation, supprimerEvenement, supprimerFranchise, supprimerMagasin,
+  supprimerNoteMagasin, supprimerRattachement, supprimerRR, supprimerVisite, modifierAssociesMagasin, type FicheMagasin,
 } from './chargement'
 import { associesDu, type Associe } from './associes'
+import { PARTIES } from './compteRendu'
+import { MAX_POINTS, perimetres } from './campagnes'
+import { themesPratiques, type BonnePratique } from './bonnesPratiques'
 
 export type TypeColonne = 'texte' | 'date' | 'mois' | 'nombre' | 'ouiNon' | 'choix' | 'liste'
 
@@ -28,6 +33,7 @@ export interface Colonne {
   depuis?: string[]
   nouveau?: boolean // un nom inconnu de l'app crée une nouvelle ligne au lieu d'être refusé
   largeur?: number
+  lecture?: boolean // exportée pour lire le fichier (nom du magasin à côté de son code), jamais relue à l'import
   // Noms reconnus (magasins, Coachs…) : la valeur lue est remplacée par le nom exact de l'app
   reference?: (r: Reseau) => (v: string) => string | null
 }
@@ -43,9 +49,12 @@ export interface Changement {
   champs: string[] // colonnes modifiées (toutes les colonnes remplies pour un ajout, aucune pour une suppression)
 }
 
+export type GroupeReferentiel = 'Référentiels' | 'Suivi des magasins' | 'Animation du réseau'
+
 export interface Referentiel {
   id: string
   libelle: string
+  groupe: GroupeReferentiel
   feuille: string // 31 caractères au plus (limite d'Excel)
   colonnes: Colonne[]
   lignes: (r: Reseau) => Ligne[]
@@ -55,6 +64,10 @@ export interface Referentiel {
   supprimer?: (r: Reseau, suppressions: Changement[]) => Promise<void>
   // Ligne exportée vide, à compléter dans le fichier : laissée telle quelle sans erreur
   aCompleter?: (l: Ligne) => boolean
+  // Une ligne sans clé (N° vide) est une nouvelle ligne : le N° est donné par l'app
+  ajoutSansCle?: boolean
+  // Contrôle d'une ligne ajoutée ou modifiée (valeurs finales) : message si elle ne peut pas être enregistrée
+  controler?: (l: Ligne, avant: Ligne | null, r: Reseau) => string | null
 }
 
 // Suppressions d'abord : un Franchisé remplacé libère ses magasins avant que le nouveau les reprenne
@@ -88,6 +101,7 @@ export function lireValeur(c: Colonne, v: unknown): string | null {
     default: {
       // Un numéro de téléphone retapé dans Excel perd son 0 de tête
       const t = String(v).trim()
+      if (c.id === 'code') return codeLu(t)
       return c.id === 'telephone' && /^[1-9]\d{8}$/.test(t) ? `0${t}` : t
     }
   }
@@ -157,18 +171,22 @@ export function analyserReferentiel(ref: Referentiel, feuille: { nom: string; li
   entetes.forEach((e, i) => {
     if (!e) return
     const c = ref.colonnes.find((x) => mots(x.entete) === mots(e))
+    if (c?.lecture) return
     if (c && !index.has(c.id)) index.set(c.id, i); else ignorees.push(e)
   })
   const cles = ref.colonnes.filter((c) => c.cle)
-  // N° de visite : une ligne sans numéro est une nouvelle visite, la colonne peut donc manquer
-  const manquantes = cles.filter((c) => !index.has(c.id) && !(ref.ajout && ref.id === 'visites')).map((c) => c.entete)
+  // N° : une ligne sans numéro est une nouvelle ligne, la colonne peut donc manquer
+  const manquantes = cles.filter((c) => !index.has(c.id) && !ref.ajoutSansCle).map((c) => c.entete)
   const colonnes = ref.colonnes.filter((c) => index.has(c.id))
   if (manquantes.length) return { ...vide, colonnes, ignorees, manquantes }
 
   const resolveurs = new Map(ref.colonnes.filter((c) => c.reference).map((c) => [c.id, c.reference!(reseau)]))
   const cleDe = (l: Ligne) => cles.map((c) => l[c.id] ?? '').join(' · ')
-  const libelleDe = (l: Ligne) => cles.map((c) => afficher(c, l[c.id] ?? '')).join(' · ')
-  const existantes = new Map(ref.lignes(reseau).filter((l) => !ref.aCompleter?.(l)).map((l) => [cleDe(l), l]))
+  // Clé lisible, suivie du nom du magasin quand la ligne porte un code
+  const nomDe = new Map(tousMagasins(reseau).map((m) => [m.code, m.nom]))
+  const libelleDe = (l: Ligne) => [...cles.filter((c) => l[c.id]).map((c) => (c.id === 'id' ? `N° ${l[c.id]}` : afficher(c, l[c.id]))), (l.code && nomDe.get(l.code)) || (ref.id === 'magasins' ? l.magasin : ''), cles.some((c) => c.id === 'date') ? '' : l.date ? afficher({ id: 'date', entete: '', type: 'date' }, l.date) : '']
+    .filter(Boolean).join(' · ')
+  const existantes = new Map(ref.lignes(reseau).filter((l) => !ref.aCompleter?.(l) && cles.every((c) => l[c.id])).map((l) => [cleDe(l), l]))
   const vues = new Map<string, Changement>()
   const changements: Changement[] = [], erreurs: Analyse['erreurs'] = []
   const citees = new Set<string>() // lignes de l'app présentes dans le fichier, même illisibles : jamais supprimées
@@ -218,19 +236,23 @@ export function analyserReferentiel(ref: Referentiel, feuille: { nom: string; li
       }
       const modifiees = [...champs, ...Object.keys(depuis).filter((id) => depuis[id] !== avant[id])]
       if (!modifiees.length) { inchangees++; return }
-      const ch: Changement = { type: 'modif', cle, libelle: ref.id === 'visites' ? `Visite n° ${cle} · ${avant.magasin}` : libelleDe(avant), avant, apres: { ...avant, ...Object.fromEntries(champs.map((id) => [id, lue[id]])), ...depuis }, champs: modifiees }
+      const ch: Changement = { type: 'modif', cle, libelle: libelleDe(avant), avant, apres: { ...avant, ...Object.fromEntries(champs.map((id) => [id, lue[id]])), ...depuis }, champs: modifiees }
+      const refus = ref.controler?.(ch.apres, avant, reseau)
+      if (refus) { erreurs.push({ ligne: numero, message: refus }); return }
       // Deux lignes pour la même clé : la dernière l'emporte
       if (vues.has(cle)) changements.splice(changements.indexOf(vues.get(cle)!), 1)
       vues.set(cle, ch); changements.push(ch)
       return
     }
     if (!ref.ajout) { erreurs.push({ ligne: numero, message: sansCle ? 'ligne sans identifiant' : `${cle} introuvable` }); return }
-    if (sansCle && ref.id !== 'visites') { erreurs.push({ ligne: numero, message: `${cles.map((c) => c.entete).join(', ')} à remplir` }); return }
-    if (!sansCle && ref.id === 'visites') { erreurs.push({ ligne: numero, message: `visite n° ${cle} introuvable` }); return }
+    if (sansCle && !ref.ajoutSansCle) { erreurs.push({ ligne: numero, message: `${cles.filter((c) => !lue[c.id]).map((c) => c.entete).join(', ')} à remplir` }); return }
+    if (!sansCle && ref.ajoutSansCle && !cles.some((c) => c.nouveau)) { erreurs.push({ ligne: numero, message: `N° ${cle} introuvable : laisse le N° vide pour ajouter une ligne` }); return }
     const manque = ref.ajout.obligatoires.filter((id) => !lue[id])
     if (manque.length) { erreurs.push({ ligne: numero, message: `${manque.map((id) => ref.colonnes.find((c) => c.id === id)!.entete).join(', ')} à remplir pour un ajout` }); return }
     const apres = { ...lue, ...Object.fromEntries(dates.map((d) => [d.id, lue[d.id] || parDefaut(d)])) }
-    const ch: Changement = { type: 'ajout', cle, libelle: sansCle ? `${lue.magasin ?? ''} · ${afficher({ id: 'date', entete: '', type: 'date' }, lue.date ?? '')}` : libelleDe(lue), avant: null, apres, champs: colonnes.filter((c) => !c.cle && apres[c.id]).map((c) => c.id) }
+    const refus = ref.controler?.(apres, null, reseau)
+    if (refus) { erreurs.push({ ligne: numero, message: refus }); return }
+    const ch: Changement = { type: 'ajout', cle, libelle: libelleDe(apres) || `Ligne ${numero}`, avant: null, apres, champs: colonnes.filter((c) => !c.cle && apres[c.id]).map((c) => c.id) }
     if (vues.has(cle)) changements.splice(changements.indexOf(vues.get(cle)!), 1)
     vues.set(cle, ch); changements.push(ch)
   })
@@ -239,7 +261,7 @@ export function analyserReferentiel(ref: Referentiel, feuille: { nom: string; li
   if (ref.supprimer && lues && cles.every((c) => index.has(c.id))) {
     for (const [cle, l] of existantes) {
       if (citees.has(cle)) continue
-      changements.push({ type: 'suppression', cle, libelle: ref.id === 'visites' ? `Visite n° ${cle} · ${l.magasin} · ${afficher({ id: 'date', entete: '', type: 'date' }, l.date ?? '')}` : libelleDe(l), avant: l, apres: l, champs: [] })
+      changements.push({ type: 'suppression', cle, libelle: libelleDe(l), avant: l, apres: l, champs: [] })
     }
   }
   return { feuille: feuille.nom, colonnes, ignorees, manquantes: [], changements, inchangees, erreurs }
@@ -284,23 +306,35 @@ export function telechargerBlob(blob: Blob, nomFichier: string) {
 }
 
 // ── Les référentiels ──
+// Clés (Joseph, 24/10/2026) : un magasin par son code à 3 chiffres (jamais par son nom) ; un mouvement (visite, tâche,
+// note, événement, bonne pratique) par son N°, vide pour une nouvelle ligne ; une donnée unique par magasin et par période
+// (chiffres, Coach, nine box, audits, situations) par code + mois ou date ; une personne par son nom.
 
-const refMagasin = (r: Reseau) => { const t = trouveurMagasin(r); return (v: string) => t(v) }
+export const tousMagasins = (r: Reseau) => [...r.magasins, ...r.fermes]
+// Code retapé dans Excel : 12 et « 12 » valent « 012 »
+export const codeLu = (v: string) => (/^\d{1,2}$/.test(v) ? v.padStart(3, '0') : v)
+const annuaire = (r: Reseau) => {
+  const tous = tousMagasins(r)
+  return { nomDe: new Map(tous.map((m) => [m.code, m.nom])), codeDe: new Map(tous.map((m) => [m.nom, m.code])) }
+}
+const refCode = (r: Reseau) => { const codes = new Set(tousMagasins(r).map((m) => m.code).filter(Boolean)); return (v: string) => (codes.has(codeLu(v)) ? codeLu(v) : null) }
 const parNom = (noms: string[]) => (v: string) => noms.find((n) => normaliser(n) === normaliser(v)) ?? null
 const refCoach = (r: Reseau) => parNom(r.equipe.map((c) => c.nom))
 const refRR = (r: Reseau) => parNom(r.rrs.filter((x) => !x.integres).map((x) => x.nom))
+const refFranchise = (r: Reseau) => parNom(franchises(r).map((f) => f.nom))
 
-const colMagasin = (nouveau = false): Colonne => ({ id: 'magasin', entete: 'Magasin', cle: true, largeur: 28, reference: refMagasin, nouveau })
-const colMoisDepuis = (valeur: string): Colonne => ({ id: 'depuis', entete: 'À partir du mois', type: 'mois', depuis: [valeur], largeur: 18 })
+const colCode = (cle = true): Colonne => ({ id: 'code', entete: 'Code magasin', cle, largeur: 14, reference: refCode })
+const colNomMagasin: Colonne = { id: 'nom_magasin', entete: 'Magasin', lecture: true, largeur: 28 }
+const colN = (type: TypeColonne = 'texte'): Colonne => ({ id: 'id', entete: 'N°', type, cle: true, largeur: 12 })
+const listeCodes = (r: Reseau, noms: string[]) => { const { codeDe } = annuaire(r); return noms.map((n) => codeDe.get(n) ?? '').filter(Boolean).join(' ; ') }
+const listeNoms = (r: Reseau, noms: string[]) => noms.filter((n) => annuaire(r).codeDe.get(n)).join(' ; ')
+const nomsDesCodes = (r: Reseau, codes: string) => { const { nomDe } = annuaire(r); return elementsListe(codes).map((c) => nomDe.get(c) ?? '').filter(Boolean) }
+// Ligne d'un magasin : son code et son nom (pour lire)
+const leMagasin = (r: Reseau, nom: string): { code: string; nom_magasin: string } => ({ code: annuaire(r).codeDe.get(nom) ?? '', nom_magasin: nom })
+const nomDuCode = (r: Reseau, code: string) => annuaire(r).nomDe.get(code) ?? ''
+const parCode = <T extends { apres: Ligne }>(changements: T[], cle: (c: T) => string = (c) => c.apres.code) => [...new Set(changements.map(cle))]
+const nouvelId = (prefixe: string) => `${prefixe}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`
 
-// Début de la dernière période où la valeur est restée la même, dans un historique rangé par date
-function debutPeriode<T>(historique: T[], valeur: (x: T) => string, date: (x: T) => string): string {
-  let i = historique.length - 1
-  if (i < 0) return ''
-  const v = valeur(historique[i])
-  while (i > 0 && valeur(historique[i - 1]) === v) i--
-  return date(historique[i])
-}
 const colsPersonne: Colonne[] = [
   { id: 'telephone', entete: 'Téléphone', largeur: 16 },
   { id: 'email', entete: 'Email', largeur: 30 },
@@ -320,11 +354,12 @@ function ficheDepuis(reseau: Reseau, ref: RefPersonne | null, nom: string, l: Li
 
 const STATUTS = ['Franchisé', 'Intégré']
 
+// Code magasin modifiable dans le fichier seulement pour un magasin ajouté (vide = code suivant)
 const magasins: Referentiel = {
-  id: 'magasins', libelle: 'Magasins', feuille: 'Magasins',
+  id: 'magasins', libelle: 'Magasins', groupe: 'Référentiels', feuille: 'Magasins',
   colonnes: [
-    colMagasin(true),
-    { id: 'code', entete: 'Code' },
+    { id: 'code', entete: 'Code magasin', cle: true, nouveau: true, largeur: 14 },
+    { id: 'magasin', entete: 'Magasin', largeur: 28 },
     { id: 'statut', entete: 'Statut', type: 'choix', choix: STATUTS },
     { id: 'ouverture', entete: 'Date d’ouverture', type: 'date', largeur: 16 },
     { id: 'adresse', entete: 'Adresse', largeur: 32 },
@@ -335,14 +370,20 @@ const magasins: Referentiel = {
     { id: 'telephone', entete: 'Téléphone', largeur: 16 },
     { id: 'email', entete: 'Email', largeur: 30 },
   ],
-  lignes: (r) => r.magasins.map((m) => ({
-    magasin: m.nom, code: m.code, statut: m.franchise ? STATUTS[0] : STATUTS[1], ouverture: m.ouvertureConnue ? m.ouverture : '',
+  lignes: (r) => tousMagasins(r).map((m) => ({
+    code: m.code, magasin: m.nom, statut: m.franchise ? STATUTS[0] : STATUTS[1], ouverture: m.ouvertureConnue ? m.ouverture : '',
     adresse: m.adresse, codePostal: m.codePostal, ville: m.ville, departement: m.departement, pays: m.pays, telephone: m.telephone, email: m.email,
   })),
   ajout: { obligatoires: ['magasin'] },
+  ajoutSansCle: true,
+  controler(l, avant, r) {
+    if (!avant && l.code && !/^\d{3,}$/.test(l.code)) return `code ${l.code} : 3 chiffres attendus, ou laisse-le vide`
+    const autre = tousMagasins(r).find((m) => normaliser(m.nom) === normaliser(l.magasin) && m.code !== avant?.code)
+    return autre ? `${l.magasin} existe déjà (code ${autre.code || 'à venir'})` : null
+  },
   async appliquer(r, changements) {
     for (const ch of changements) {
-      const m = r.magasins.find((x) => x.nom === ch.cle)
+      const m = ch.avant ? tousMagasins(r).find((x) => x.code === ch.avant!.code) : undefined
       const l = ch.apres
       const f: FicheMagasin = {
         nom: l.magasin, code: l.code ?? '', departement: l.departement || departementDepuisCP(l.codePostal ?? ''), ouverture: l.ouverture ?? '',
@@ -354,47 +395,48 @@ const magasins: Referentiel = {
       await enregistrerMagasin(f, m ? m.nom : null)
     }
   },
-  async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerMagasin(ch.cle) },
+  async supprimer(r, suppressions) { for (const ch of suppressions) await supprimerMagasin(nomDuCode(r, ch.avant!.code)) },
 }
 
 const franchisesRef: Referentiel = {
-  id: 'franchises', libelle: 'Franchisés', feuille: 'Franchisés',
+  id: 'franchises', libelle: 'Franchisés', groupe: 'Référentiels', feuille: 'Franchisés',
   colonnes: [
-    { id: 'nom', entete: 'Franchisé', cle: true, nouveau: true, largeur: 26, reference: (r) => parNom(franchises(r).map((f) => f.nom)) },
-    { id: 'magasins', entete: 'Magasins', type: 'liste', largeur: 40, reference: refMagasin },
+    { id: 'nom', entete: 'Franchisé', cle: true, nouveau: true, largeur: 26, reference: refFranchise },
+    { id: 'codes', entete: 'Codes magasins', type: 'liste', largeur: 20, reference: refCode },
+    { id: 'noms', entete: 'Magasins', lecture: true, largeur: 40 },
     ...colsPersonne,
   ],
-  lignes: (r) => franchises(r).map((f) => ({ nom: f.nom, magasins: f.magasins.map((m) => m.nom).join(' ; '), ...ligneFiche(fichePersonne(r, { type: 'franchise', cle: f.nom })) })),
-  ajout: { obligatoires: ['nom', 'magasins'] },
+  lignes: (r) => franchises(r).map((f) => ({ nom: f.nom, codes: listeCodes(r, f.magasins.map((m) => m.nom)), noms: listeNoms(r, f.magasins.map((m) => m.nom)), ...ligneFiche(fichePersonne(r, { type: 'franchise', cle: f.nom })) })),
+  ajout: { obligatoires: ['nom', 'codes'] },
   async appliquer(r, changements) {
     for (const ch of changements) {
       const nom = ch.apres.nom
-      const anciens = ch.avant ? elementsListe(ch.avant.magasins) : []
-      await enregistrerFranchise(nom, ch.avant ? nom : null, elementsListe(ch.apres.magasins), anciens, ficheDepuis(r, ch.avant ? { type: 'franchise', cle: nom } : null, nom, ch.apres), r)
+      const anciens = ch.avant ? nomsDesCodes(r, ch.avant.codes) : []
+      await enregistrerFranchise(nom, ch.avant ? nom : null, nomsDesCodes(r, ch.apres.codes), anciens, ficheDepuis(r, ch.avant ? { type: 'franchise', cle: nom } : null, nom, ch.apres), r)
     }
   },
-  async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerFranchise(ch.cle, elementsListe(ch.avant!.magasins), _r) },
+  async supprimer(r, suppressions) { for (const ch of suppressions) await supprimerFranchise(ch.cle, nomsDesCodes(r, ch.avant!.codes), r) },
 }
 
 // Une ligne par mandat (ou par associé sans mandat) des magasins franchisés
 const mandats: Referentiel = {
-  id: 'mandats', libelle: 'Mandats des franchisés', feuille: 'Mandats',
+  id: 'mandats', libelle: 'Mandats des franchisés', groupe: 'Référentiels', feuille: 'Mandats',
   colonnes: [
-    { ...colMagasin(), nouveau: false },
-    { id: 'nom', entete: 'Franchisé', cle: true, nouveau: true, largeur: 26, reference: (r) => parNom(franchises(r).map((f) => f.nom)) },
+    colCode(), colNomMagasin,
+    { id: 'nom', entete: 'Franchisé', cle: true, nouveau: true, largeur: 26, reference: refFranchise },
     { id: 'debut', entete: 'Début du mandat', type: 'date', cle: true, largeur: 16 },
     { id: 'fin', entete: 'Fin du mandat', type: 'date', largeur: 16 },
     { id: 'sortie', entete: 'Date de sortie', type: 'date', largeur: 16 },
   ],
-  lignes: (r) => r.magasins.filter((m) => m.franchise).flatMap((m) => associesDu(r, m).filter((a) => !/recrutement/i.test(a.nom)).flatMap((a) =>
-    (a.mandats.length ? a.mandats : [{ debut: '', fin: '' }]).map((x) => ({ magasin: m.nom, nom: a.nom, debut: x.debut, fin: x.fin, sortie: a.sortie })))),
-  ajout: { obligatoires: ['magasin', 'nom'] },
-  aCompleter: (l) => !!l.magasin && !!l.nom && !l.debut && !l.fin && !l.sortie,
+  lignes: (r) => r.magasins.filter((m) => m.franchise && m.code).flatMap((m) => associesDu(r, m).filter((a) => !/recrutement/i.test(a.nom)).flatMap((a) =>
+    (a.mandats.length ? a.mandats : [{ debut: '', fin: '' }]).map((x) => ({ ...leMagasin(r, m.nom), nom: a.nom, debut: x.debut, fin: x.fin, sortie: a.sortie })))),
+  ajout: { obligatoires: ['code', 'nom'] },
+  aCompleter: (l) => !!l.code && !!l.nom && !l.debut && !l.fin && !l.sortie,
   async appliquer(r, changements) {
-    for (const magasin of [...new Set(changements.map((c) => c.apres.magasin))]) {
-      await modifierAssociesMagasin(r, magasin, (liste) => {
+    for (const code of parCode(changements)) {
+      await modifierAssociesMagasin(r, nomDuCode(r, code), (liste) => {
         const l = liste.map((a) => ({ ...a, mandats: [...a.mandats] }))
-        for (const ch of changements.filter((c) => c.apres.magasin === magasin)) {
+        for (const ch of changements.filter((c) => c.apres.code === code)) {
           let a = l.find((x) => x.nom === ch.apres.nom)
           if (!a) { a = { id: '', nom: ch.apres.nom, entree: '', sortie: '', mandats: [] } as Associe; l.push(a) }
           if (ch.apres.sortie !== undefined && (ch.type === 'ajout' || ch.champs.includes('sortie'))) a.sortie = ch.apres.sortie
@@ -410,11 +452,11 @@ const mandats: Referentiel = {
     }
   },
   async supprimer(r, suppressions) {
-    for (const magasin of [...new Set(suppressions.map((c) => c.avant!.magasin))]) {
-      await modifierAssociesMagasin(r, magasin, (liste) => {
+    for (const code of parCode(suppressions)) {
+      await modifierAssociesMagasin(r, nomDuCode(r, code), (liste) => {
         // Seuls les mandats sont retirés : un associé quitte le magasin depuis sa fiche ou avec une date de sortie
         const l = liste.map((a) => ({ ...a, mandats: [...a.mandats] }))
-        for (const ch of suppressions.filter((c) => c.avant!.magasin === magasin)) {
+        for (const ch of suppressions.filter((c) => c.apres.code === code)) {
           const a = l.find((x) => x.nom === ch.avant!.nom)
           if (a) a.mandats = a.mandats.filter((x) => x.debut !== ch.avant!.debut)
         }
@@ -425,7 +467,7 @@ const mandats: Referentiel = {
 }
 
 const coachs: Referentiel = {
-  id: 'coachs', libelle: 'Coachs', feuille: 'Coachs',
+  id: 'coachs', libelle: 'Coachs', groupe: 'Référentiels', feuille: 'Coachs',
   colonnes: [
     { id: 'nom', entete: 'Coach', cle: true, nouveau: true, largeur: 24, reference: refCoach },
     { id: 'fictif', entete: 'Poste à pourvoir', type: 'ouiNon' },
@@ -446,7 +488,7 @@ const coachs: Referentiel = {
 
 const COULEURS_RR = ['#307672', '#ea6029', '#1d1d1b', '#f8bb09', '#c24119', '#3a8f8d', '#f7d802', '#312e2e']
 const rrs: Referentiel = {
-  id: 'rrs', libelle: 'Responsables Régionaux', feuille: 'Responsables Régionaux',
+  id: 'rrs', libelle: 'Responsables Régionaux', groupe: 'Référentiels', feuille: 'Responsables Régionaux',
   colonnes: [
     { id: 'nom', entete: 'Responsable Régional', cle: true, nouveau: true, largeur: 24, reference: (r) => parNom(r.rrs.map((x) => x.nom)) },
     { id: 'integres', entete: 'Responsable des magasins intégrés', type: 'ouiNon' },
@@ -468,72 +510,148 @@ const rrs: Referentiel = {
   async supprimer(r, suppressions) { for (const ch of suppressions) await supprimerRR(r.rrs.find((x) => x.nom === ch.cle)!.id) },
 }
 
+// Historique : une ligne par changement de Coach (effet le 1er du mois)
 const affectations: Referentiel = {
-  id: 'affectations', libelle: 'Coach des magasins', feuille: 'Coach des magasins',
-  colonnes: [colMagasin(), { id: 'coach', entete: 'Coach', largeur: 24, reference: refCoach }, colMoisDepuis('coach')],
-  lignes: (r) => r.magasins.map((m) => {
-    const enPlace = m.historiqueCoach.filter((a) => a.date <= r.jour)
-    const h = enPlace.length ? enPlace : m.historiqueCoach.slice(-1)
-    return { magasin: m.nom, coach: h.at(-1)?.coach ?? '', depuis: debutPeriode(h, (a) => a.coach, (a) => a.date).slice(0, 7) }
+  id: 'affectations', libelle: 'Coach des magasins', groupe: 'Référentiels', feuille: 'Coach des magasins',
+  colonnes: [colCode(), colNomMagasin, { id: 'mois', entete: 'À partir du mois', type: 'mois', cle: true, largeur: 18 }, { id: 'coach', entete: 'Coach', largeur: 24, reference: refCoach }],
+  lignes: (r) => tousMagasins(r).filter((m) => m.code).flatMap((m) => {
+    // Un seul changement par mois : le dernier du mois
+    const parMois = new Map(m.historiqueCoach.map((a) => [a.date.slice(0, 7), a.coach]))
+    return [...parMois].map(([mois, coach]) => ({ ...leMagasin(r, m.nom), mois, coach }))
   }),
-  async appliquer(_r, changements) {
-    for (const ch of changements) await reaffecter(ch.apres.magasin, ch.apres.coach, `${ch.apres.depuis}-01`, 'Import Excel')
+  ajout: { obligatoires: ['code', 'mois', 'coach'] },
+  async appliquer(r, changements) {
+    for (const ch of changements) await reaffecter(nomDuCode(r, ch.apres.code), ch.apres.coach, `${ch.apres.mois}-01`, 'Import Excel')
   },
+  async supprimer(r, suppressions) { for (const ch of suppressions) await supprimerAffectation(nomDuCode(r, ch.avant!.code), ch.avant!.mois) },
 }
 
+// Historique : une ligne par rattachement d'un Coach à un Responsable Régional (effet le 1er du mois)
 const rattachements: Referentiel = {
-  id: 'rattachements', libelle: 'Responsable Régional des Coachs', feuille: 'RR des Coachs',
-  colonnes: [{ id: 'coach', entete: 'Coach', cle: true, largeur: 24, reference: refCoach }, { id: 'rr', entete: 'Responsable Régional', largeur: 24, reference: refRR }, colMoisDepuis('rr')],
-  lignes: (r) => r.equipe.map((c) => {
-    const h = c.historiqueRR.filter((a) => a.date <= r.jour)
-    return { coach: c.nom, rr: c.rr?.nom ?? '', depuis: h.at(-1)?.rr?.id === c.rr?.id ? debutPeriode(h, (a) => a.rr?.id ?? '', (a) => a.date).slice(0, 7) : '' }
+  id: 'rattachements', libelle: 'Responsable Régional des Coachs', groupe: 'Référentiels', feuille: 'RR des Coachs',
+  colonnes: [{ id: 'coach', entete: 'Coach', cle: true, largeur: 24, reference: refCoach }, { id: 'mois', entete: 'À partir du mois', type: 'mois', cle: true, largeur: 18 }, { id: 'rr', entete: 'Responsable Régional', largeur: 24, reference: refRR }],
+  lignes: (r) => r.equipe.flatMap((c) => {
+    const parMois = new Map(c.historiqueRR.map((a) => [a.date.slice(0, 7), a.rr?.nom ?? '']))
+    if (!parMois.size && c.rr) return [{ coach: c.nom, mois: '', rr: c.rr.nom }]
+    return [...parMois].map(([mois, rr]) => ({ coach: c.nom, mois, rr }))
   }),
+  ajout: { obligatoires: ['coach', 'mois', 'rr'] },
+  // Rattachement d'avant l'historique daté : le mois est à remplir pour le reprendre
+  aCompleter: (l) => !!l.coach && !l.mois,
   async appliquer(r, changements) {
-    for (const ch of changements) await rattacherCoach(ch.apres.coach, r.rrs.find((x) => x.nom === ch.apres.rr)!.id, `${ch.apres.depuis}-01`)
+    for (const ch of changements) await rattacherCoach(ch.apres.coach, r.rrs.find((x) => x.nom === ch.apres.rr)!.id, `${ch.apres.mois}-01`)
   },
+  async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerRattachement(ch.avant!.coach, ch.avant!.mois) },
+}
+
+const TYPES_SITUATION = Object.values(libelleSituation)
+const TYPES_SORTIE = Object.values(libelleFermeture)
+const idSituation = (s: string) => (Object.entries(libelleSituation).find(([, v]) => v === s)?.[0] ?? 'travaux') as TypeSituation
+const idSortie = (s: string) => (Object.entries(libelleFermeture).find(([, v]) => v === s)?.[0] ?? 'fermeture') as TypeFermeture
+const situations: Referentiel = {
+  id: 'situations', libelle: 'Situations des magasins', groupe: 'Suivi des magasins', feuille: 'Situations',
+  colonnes: [
+    colCode(), colNomMagasin,
+    { id: 'date', entete: 'Date', type: 'date', cle: true },
+    { id: 'type', entete: 'Situation', type: 'choix', choix: TYPES_SITUATION, cle: true, largeur: 24 },
+    { id: 'fin', entete: 'Fin', type: 'date' },
+    { id: 'sortie', entete: 'Type de sortie', type: 'choix', choix: TYPES_SORTIE, largeur: 20 },
+    { id: 'motif', entete: 'Motif', largeur: 30 },
+    { id: 'repreneur', entete: 'Repreneur', largeur: 24 },
+  ],
+  lignes: (r) => tousMagasins(r).filter((m) => m.code).flatMap((m) => m.situations.map((s) => ({
+    ...leMagasin(r, m.nom), date: s.date, type: libelleSituation[s.type], fin: s.fin ?? '', sortie: s.sortie ? libelleFermeture[s.sortie] : '', motif: s.motif ?? '', repreneur: s.repreneur ?? '',
+  }))),
+  ajout: { obligatoires: ['code', 'date', 'type'] },
+  controler: (l) => (idSituation(l.type) === 'travaux' && l.fin && l.fin < l.date ? 'fin avant la date de début' : null),
+  async appliquer(r, changements) { await ecrireSituations(r, changements, []) },
+  async supprimer(r, suppressions) { await ecrireSituations(r, [], suppressions) },
+}
+async function ecrireSituations(r: Reseau, changements: Changement[], suppressions: Changement[]) {
+  for (const code of parCode([...changements, ...suppressions])) {
+    const m = tousMagasins(r).find((x) => x.code === code)!
+    const meme = (s: Situation, l: Ligne) => s.date === l.date && s.type === idSituation(l.type)
+    let liste = m.situations.filter((s) => !suppressions.some((c) => c.apres.code === code && meme(s, c.avant!)))
+    for (const ch of changements.filter((c) => c.apres.code === code)) {
+      const l = ch.apres, type = idSituation(l.type)
+      const s: Situation = { date: l.date, type, ...(type === 'travaux' && l.fin ? { fin: l.fin } : {}), ...(type === 'sortie' ? { sortie: idSortie(l.sortie ?? '') } : {}), ...(l.motif ? { motif: l.motif } : {}), ...(type === 'sortie' && l.repreneur ? { repreneur: l.repreneur } : {}) }
+      liste = [...liste.filter((x) => !meme(x, l)), s]
+    }
+    liste.sort((a, b) => a.date.localeCompare(b.date))
+    const res = await enregistrerSituations(m.nom, liste)
+    if (res !== 'ok') throw new Error('situations')
+  }
 }
 
 const chiffres: Referentiel = {
-  id: 'chiffres', libelle: 'Chiffres mensuels', feuille: 'Chiffres mensuels',
-  colonnes: [colMagasin(), { id: 'mois', entete: 'Mois', type: 'mois', cle: true }, ...champsSaisis.map((c) => ({ id: c, entete: `${libellesChiffres[c].libelle}${libellesChiffres[c].unite ? ` (${libellesChiffres[c].unite})` : ''}`, type: 'nombre' as const, largeur: 20 }))],
-  lignes: (r) => Object.values(r.chiffres).flat().map((c) => ({ magasin: c.magasin, mois: c.mois, ...Object.fromEntries(champsSaisis.map((k) => [k, c[k] === null ? '' : String(c[k])])) })),
-  ajout: { obligatoires: ['magasin', 'mois'] },
+  id: 'chiffres', libelle: 'Chiffres mensuels', groupe: 'Suivi des magasins', feuille: 'Chiffres mensuels',
+  colonnes: [colCode(), colNomMagasin, { id: 'mois', entete: 'Mois', type: 'mois', cle: true }, ...champsSaisis.map((c) => ({ id: c, entete: `${libellesChiffres[c].libelle}${libellesChiffres[c].unite ? ` (${libellesChiffres[c].unite})` : ''}`, type: 'nombre' as const, largeur: 20 }))],
+  lignes: (r) => Object.values(r.chiffres).flat().map((c) => ({ ...leMagasin(r, c.magasin), mois: c.mois, ...Object.fromEntries(champsSaisis.map((k) => [k, c[k] === null ? '' : String(c[k])])) })),
+  ajout: { obligatoires: ['code', 'mois'] },
   async appliquer(r, changements) {
     await enregistrerChiffres(changements.map((ch) => {
-      const l = { magasin: ch.apres.magasin, mois: ch.apres.mois, ...Object.fromEntries(ch.champs.map((k) => [k, Number(ch.apres[k])])) } as { magasin: string; mois: string } & Partial<Record<ChampChiffre, number>>
-      return completerChiffres(l, r.chiffres[l.magasin]?.find((c) => c.mois === l.mois))
+      const magasin = nomDuCode(r, ch.apres.code)
+      const l = { magasin, mois: ch.apres.mois, ...Object.fromEntries(ch.champs.map((k) => [k, Number(ch.apres[k])])) } as { magasin: string; mois: string } & Partial<Record<ChampChiffre, number>>
+      return completerChiffres(l, r.chiffres[magasin]?.find((c) => c.mois === l.mois))
     }))
   },
-  async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerChiffres(ch.avant!.magasin, ch.avant!.mois) },
+  async supprimer(r, suppressions) { for (const ch of suppressions) await supprimerChiffres(nomDuCode(r, ch.avant!.code), ch.avant!.mois) },
 }
 
 const NOTES = [libelleNote[1], libelleNote[2], libelleNote[3], libelleNote[0]]
 const noteDe = (s: string) => Number(Object.entries(libelleNote).find(([, v]) => v === s)?.[0] ?? '') as Note
-// Une ligne par magasin : une colonne par critère de la grille en vigueur et la date depuis laquelle ce classement est en place
+// Historique : une ligne par classement daté, une colonne par critère de la grille en vigueur
 function ninebox(reseau: Reseau | null): Referentiel {
   const criteres = reseau?.grilleNineBox.criteres ?? tousCriteres
   return {
-    id: 'ninebox', libelle: 'Nine box', feuille: 'Nine box',
+    id: 'ninebox', libelle: 'Nine box', groupe: 'Suivi des magasins', feuille: 'Nine box',
     colonnes: [
-      colMagasin(),
+      colCode(), colNomMagasin,
+      { id: 'date', entete: 'Date du classement', type: 'date', cle: true, largeur: 18 },
       ...criteres.map((c) => ({ id: c.id, entete: c.libelle, type: 'choix' as const, choix: NOTES, largeur: 18 })),
-      { id: 'date', entete: 'Date du classement', type: 'date', depuis: criteres.map((c) => c.id), largeur: 18 },
     ],
-    lignes: (r) => r.magasins.map((m) => {
-      const e = r.evaluations[m.nom]
-      const points = historiqueSante(r.evaluations, m.nom).filter((p) => p.notes)
-      const cle = (n: Evaluation['notes']) => JSON.stringify(criteres.map((c) => n[c.id] ?? null))
-      const date = !e ? '' : points.length && cle(points.at(-1)!.notes!) === cle(e.notes) ? debutPeriode(points, (p) => cle(p.notes!), (p) => p.date) : e.date
-      return { magasin: m.nom, ...Object.fromEntries(criteres.map((c) => { const n = e?.notes[c.id]; return [c.id, n === undefined ? '' : libelleNote[n]] })), date }
-    }),
+    lignes: (r) => tousMagasins(r).filter((m) => m.code).flatMap((m) => historiqueSante(r.evaluations, m.nom).filter((p) => p.notes).map((p) => ({
+      ...leMagasin(r, m.nom), date: p.date, ...Object.fromEntries(criteres.map((c) => { const n = p.notes![c.id]; return [c.id, n === undefined ? '' : libelleNote[n]] })),
+    }))),
+    ajout: { obligatoires: ['code', 'date'] },
     async appliquer(r, changements) {
       await importerHistorique(changements.map((ch) => ({
-        magasin: ch.apres.magasin, date: ch.apres.date,
-        // Date seule reprise : le classement en place est daté à nouveau en entier
-        notes: Object.fromEntries(criteres.filter((c) => ch.apres[c.id] && (ch.champs.includes(c.id) || ch.champs.includes('date'))).map((c) => [c.id, noteDe(ch.apres[c.id])])) as Partial<Record<IdCritere, Note>>,
+        magasin: nomDuCode(r, ch.apres.code), date: ch.apres.date,
+        notes: Object.fromEntries(criteres.filter((c) => ch.apres[c.id]).map((c) => [c.id, noteDe(ch.apres[c.id])])) as Partial<Record<IdCritere, Note>>,
       })), r.directeur.nom)
     },
+    async supprimer(r, suppressions) { for (const ch of suppressions) await supprimerEvaluation(nomDuCode(r, ch.avant!.code), ch.avant!.date) },
   }
+}
+
+const TYPES_AUDIT: Record<string, string> = { hygiene: 'Audit hygiène', excellence: 'Audit excellence' }
+const audits: Referentiel = {
+  id: 'audits', libelle: 'Notes d’audit', groupe: 'Suivi des magasins', feuille: 'Notes d’audit',
+  colonnes: [
+    colCode(), colNomMagasin,
+    { id: 'date', entete: 'Date', type: 'date', cle: true },
+    { id: 'type', entete: 'Audit', type: 'choix', choix: Object.values(TYPES_AUDIT), cle: true, largeur: 18 },
+    { id: 'score', entete: 'Note (%)', type: 'nombre' },
+    { id: 'conforme', entete: 'Conforme', type: 'ouiNon' },
+  ],
+  lignes: (r) => Object.entries(r.audits).flatMap(([nom, liste]) => liste.filter((a) => TYPES_AUDIT[a.type]).map((a) => ({
+    ...leMagasin(r, nom), date: a.date, type: TYPES_AUDIT[a.type], score: a.score === null ? '' : String(a.score), conforme: a.conforme === null ? '' : ouiNon(a.conforme),
+  }))).filter((l) => l.code),
+  ajout: { obligatoires: ['code', 'date', 'type'] },
+  async appliquer(r, changements) {
+    for (const ch of changements) {
+      const nom = nomDuCode(r, ch.apres.code)
+      const type = Object.keys(TYPES_AUDIT).find((k) => TYPES_AUDIT[k] === ch.apres.type)!
+      const avant = r.audits[nom]?.find((a) => a.date === ch.apres.date && a.type === type)
+      await enregistrerAudit(nom, null, { ...avant, date: ch.apres.date, type, score: ch.apres.score ? Number(ch.apres.score) : null, conforme: ch.apres.conforme ? ch.apres.conforme === OUI : null })
+    }
+  },
+  async supprimer(r, suppressions) {
+    for (const ch of suppressions) {
+      const type = Object.keys(TYPES_AUDIT).find((k) => TYPES_AUDIT[k] === ch.avant!.type)!
+      await enregistrerAudit(nomDuCode(r, ch.avant!.code), { date: ch.avant!.date, type }, null)
+    }
+  },
 }
 
 // Une ligne par magasin : pour chaque thématique, l'état et la date depuis laquelle il est en place.
@@ -541,48 +659,270 @@ function ninebox(reseau: Reseau | null): Referentiel {
 function deploiements(reseau: Reseau | null): Referentiel {
   const ths = reseau?.deploiements.thematiques ?? []
   return {
-    id: 'deploiements', libelle: 'Déploiements', feuille: 'Déploiements',
-    colonnes: [colMagasin(), ...ths.flatMap((t): Colonne[] => [
+    id: 'deploiements', libelle: 'Déploiements', groupe: 'Suivi des magasins', feuille: 'Déploiements',
+    colonnes: [colCode(), colNomMagasin, ...ths.flatMap((t): Colonne[] => [
       { id: `t:${t.id}`, entete: t.libelle, type: 'choix', choix: t.options.map((o) => o.libelle), largeur: 18 },
       { id: `d:${t.id}`, entete: `${t.libelle} : date`, type: 'date', depuis: [`t:${t.id}`], largeur: 16 },
     ])],
-    lignes: (r) => r.magasins.map((m) => ({ magasin: m.nom, ...Object.fromEntries(ths.flatMap((t) => {
+    lignes: (r) => r.magasins.filter((m) => m.code).map((m) => ({ ...leMagasin(r, m.nom), ...Object.fromEntries(ths.flatMap((t) => {
       return [[`t:${t.id}`, r.deploiements.valeurs[m.nom]?.[t.id] ?? ''], [`d:${t.id}`, depuisDeploiement(r.deploiements, m.nom, t.id)]]
     })) })),
     async appliquer(r, changements) {
       await enregistrerDeploiements(changements.flatMap((ch) => ths
         .filter((t) => ch.apres[`t:${t.id}`] && (ch.champs.includes(`t:${t.id}`) || ch.champs.includes(`d:${t.id}`)))
-        .map((t) => ({ magasin: ch.apres.magasin, thematique: t.id, etat: ch.apres[`t:${t.id}`], date: ch.apres[`d:${t.id}`] }))), r.jour)
+        .map((t) => ({ magasin: nomDuCode(r, ch.apres.code), thematique: t.id, etat: ch.apres[`t:${t.id}`], date: ch.apres[`d:${t.id}`] }))), r.jour)
     },
   }
 }
 
 const TYPES = typesVisite.map((t) => t.libelle)
+const typeDe = (s: string) => typesVisite.find((t) => t.libelle === s)?.id ?? 'terrain'
+// Le N° est celui de la base : changer la date ou le magasin d'une visite garde son compte rendu
 const visites: Referentiel = {
-  id: 'visites', libelle: 'Visites', feuille: 'Visites',
+  id: 'visites', libelle: 'Visites', groupe: 'Suivi des magasins', feuille: 'Visites',
   colonnes: [
-    { id: 'id', entete: 'N°', type: 'nombre', cle: true, largeur: 8 },
-    { id: 'magasin', entete: 'Magasin', largeur: 28, reference: refMagasin },
+    colN('nombre'),
+    colCode(false), colNomMagasin,
     { id: 'date', entete: 'Date', type: 'date' },
     { id: 'type', entete: 'Type', type: 'choix', choix: TYPES, largeur: 22 },
+    { id: 'prevue', entete: 'Prévue', type: 'ouiNon' },
     { id: 'visiteurs', entete: 'Participants', largeur: 30 },
     { id: 'notes', entete: 'Notes', largeur: 50 },
+    ...PARTIES.map((p, i): Colonne => ({ id: `p${i}`, entete: p.titre, largeur: 40 })),
   ],
-  lignes: (r) => r.visites.filter((v) => v.id !== null).map((v) => ({ id: String(v.id), magasin: v.magasin, date: v.date, type: libelleTypeVisite(v.type), visiteurs: v.visiteurs.join(', '), notes: v.notes })),
-  ajout: { obligatoires: ['magasin', 'date'] },
+  lignes: (r) => r.visites.filter((v) => v.id !== null).map((v) => ({
+    id: String(v.id), ...leMagasin(r, v.magasin), date: v.date, type: libelleTypeVisite(v.type), prevue: ouiNon(!!v.prevue), visiteurs: v.visiteurs.join(', '), notes: v.notes,
+    ...Object.fromEntries(PARTIES.map((_p, i) => [`p${i}`, v.parties[i] ?? ''])),
+  })),
+  ajout: { obligatoires: ['code', 'date'] },
+  ajoutSansCle: true,
   async appliquer(r, changements) {
-    const typeDe = (s: string) => typesVisite.find((t) => t.libelle === s)?.id ?? 'terrain'
-    const nouvelles = changements.filter((c) => c.type === 'ajout')
-    for (const ch of changements.filter((c) => c.type === 'modif')) {
-      const v = r.visites.find((x) => String(x.id) === ch.cle)!
-      const { id: _id, magasin: _m, ...base } = v
-      await enregistrerVisites({ ...base, date: ch.apres.date, type: typeDe(ch.apres.type), visiteurs: lireVisiteurs(ch.apres.visiteurs), notes: ch.apres.notes }, [ch.apres.magasin], v.id)
+    const parties = (l: Ligne, avant?: string[]) => PARTIES.map((_p, i) => l[`p${i}`] ?? avant?.[i] ?? '')
+    for (const ch of changements) {
+      const l = ch.apres
+      const v = ch.avant ? r.visites.find((x) => String(x.id) === ch.cle)! : null
+      const base: Omit<Visite, 'magasin' | 'id'> = v
+        ? (({ id: _id, magasin: _m, ...b }) => b)(v)
+        : { groupe: '', date: '', type: 'terrain', visiteurs: [], signatureRequise: false, lienSigne: '', dateSignature: '', documents: [], notes: '', parties: [], plan: [] }
+      await enregistrerVisites({
+        ...base, date: l.date, type: typeDe(l.type ?? ''), visiteurs: lireVisiteurs(l.visiteurs ?? ''), notes: l.notes ?? '', prevue: l.prevue === OUI, parties: parties(l, v?.parties),
+      }, [nomDuCode(r, l.code) || v!.magasin], v?.id ?? null)
     }
-    if (nouvelles.length) await importerVisites(nouvelles.map((ch) => ({ magasin: ch.apres.magasin, date: ch.apres.date, visiteurs: lireVisiteurs(ch.apres.visiteurs ?? ''), notes: ch.apres.notes ?? '', type: typeDe(ch.apres.type ?? '') })), [], r.jour)
   },
   async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerVisite(Number(ch.cle)) },
 }
 
+// Tâches hors visite (N° = identifiant de la tâche) et tâches des plans d'action (N° = V + numéro de la visite + rang)
+const ORIGINE_LIBRE = 'Hors visite'
+const taches: Referentiel = {
+  id: 'taches', libelle: 'Tâches', groupe: 'Suivi des magasins', feuille: 'Tâches',
+  colonnes: [
+    colN(), colCode(false), colNomMagasin,
+    { id: 'origine', entete: 'Origine', lecture: true, largeur: 22 },
+    { id: 'creeLe', entete: 'Créée le', type: 'date', lecture: true },
+    { id: 'action', entete: 'Tâche', largeur: 50 },
+    { id: 'porteur', entete: 'Porteurs', largeur: 30 },
+    { id: 'echeance', entete: 'Échéance', type: 'date' },
+    { id: 'faite', entete: 'Faite le', type: 'date' },
+    { id: 'equipe', entete: 'Équipe seule', type: 'ouiNon' },
+  ],
+  lignes: (r) => {
+    const iso = (d: string) => (/^\d{4}-\d{2}-\d{2}$/.test(d ?? '') ? d : '')
+    const libres = Object.entries(r.actionsLibres).flatMap(([nom, l]) => l.map((a) => ({
+      id: a.id, ...leMagasin(r, nom), origine: ORIGINE_LIBRE, creeLe: iso(a.creeLe), action: a.action, porteur: a.porteur, echeance: iso(a.echeance), faite: iso(a.faite ?? ''), equipe: ouiNon(a.fil === 'equipe'),
+    })))
+    const plans = r.visites.filter((v) => v.id !== null).flatMap((v) => v.plan.map((a, i) => ({
+      id: `V${v.id}-${i + 1}`, ...leMagasin(r, v.magasin), origine: `Visite n° ${v.id}`, creeLe: v.date, action: a.action, porteur: a.porteur, echeance: iso(a.echeance), faite: iso(a.faite ?? ''), equipe: NON,
+    })))
+    return [...libres, ...plans].filter((l) => l.code)
+  },
+  ajout: { obligatoires: ['code', 'action'] },
+  ajoutSansCle: true,
+  controler: (l, avant) => {
+    if (avant?.id.startsWith('V') && l.code !== avant.code) return 'le magasin d’une tâche de visite se change dans la visite'
+    if (avant?.id.startsWith('V') && l.equipe === OUI) return 'une tâche de visite est vue par le franchisé'
+    return null
+  },
+  async appliquer(r, changements) {
+    const enPlan = changements.filter((c) => c.avant?.id.startsWith('V'))
+    await ecrirePlans(r, enPlan, [])
+    for (const ch of changements.filter((c) => !enPlan.includes(c))) {
+      const l = ch.apres, nom = nomDuCode(r, l.code)
+      const ancienNom = ch.avant ? nomDuCode(r, ch.avant.code) : ''
+      const a = ch.avant ? r.actionsLibres[ancienNom]?.find((x) => x.id === ch.cle) : undefined
+      const t: ActionLibre = { ...(a ?? { id: '', creeLe: r.jour, auteur: r.directeur.nom }), action: l.action, porteur: l.porteur ?? '', echeance: l.echeance || a?.echeance || '', faite: l.faite ?? '' }
+      if (l.equipe === OUI) t.fil = 'equipe'; else delete t.fil
+      if (a && ancienNom !== nom) await supprimerActionLibre(ancienNom, a.id)
+      await enregistrerActionLibre(nom, a && ancienNom === nom ? t : { ...t, id: a?.id ?? nouvelId('l') })
+    }
+  },
+  async supprimer(r, suppressions) {
+    const enPlan = suppressions.filter((c) => c.cle.startsWith('V'))
+    await ecrirePlans(r, [], enPlan)
+    for (const ch of suppressions.filter((c) => !enPlan.includes(c))) await supprimerActionLibre(nomDuCode(r, ch.avant!.code), ch.cle)
+  },
+}
+// Plans d'action : chaque visite concernée réécrite une fois, rangs comptés sur le plan en place
+async function ecrirePlans(r: Reseau, changements: Changement[], suppressions: Changement[]) {
+  const rang = (cle: string) => { const [v, i] = cle.slice(1).split('-'); return { visite: Number(v), index: Number(i) - 1 } }
+  for (const id of [...new Set([...changements, ...suppressions].map((c) => rang(c.cle).visite))]) {
+    const v = r.visites.find((x) => x.id === id)
+    if (!v) continue
+    const plan = v.plan.map((a) => ({ ...a }))
+    for (const ch of changements.filter((c) => rang(c.cle).visite === id)) {
+      const a = plan[rang(ch.cle).index]
+      if (!a) continue
+      Object.assign(a, { action: ch.apres.action, porteur: ch.apres.porteur ?? '', echeance: ch.apres.echeance || a.echeance })
+      if (ch.apres.faite) a.faite = ch.apres.faite
+    }
+    const retires = new Set(suppressions.filter((c) => rang(c.cle).visite === id).map((c) => rang(c.cle).index))
+    await modifierPlanVisite(id, plan.filter((_a, i) => !retires.has(i)))
+  }
+}
+
+const journal: Referentiel = {
+  id: 'journal', libelle: 'Journal des magasins', groupe: 'Suivi des magasins', feuille: 'Journal',
+  colonnes: [colN(), colCode(false), colNomMagasin, { id: 'date', entete: 'Date', type: 'date' }, { id: 'par', entete: 'Auteur', largeur: 24 }, { id: 'texte', entete: 'Note', largeur: 60 }],
+  lignes: (r) => Object.entries(r.notesMagasins).flatMap(([nom, l]) => l.map((n) => ({ id: n.id, ...leMagasin(r, nom), date: n.date, par: n.par, texte: n.texte }))).filter((l) => l.code),
+  ajout: { obligatoires: ['code', 'date', 'texte'] },
+  ajoutSansCle: true,
+  async appliquer(r, changements) {
+    for (const ch of changements) {
+      const l = ch.apres, nom = nomDuCode(r, l.code)
+      if (ch.avant && ch.avant.code !== l.code) await supprimerNoteMagasin(nomDuCode(r, ch.avant.code), ch.cle)
+      await enregistrerNoteMagasin(nom, { id: ch.avant ? ch.cle : nouvelId('n'), date: l.date, texte: l.texte, par: l.par || r.directeur.nom })
+    }
+  },
+  async supprimer(r, suppressions) { for (const ch of suppressions) await supprimerNoteMagasin(nomDuCode(r, ch.avant!.code), ch.cle) },
+}
+
+// Campagnes nationales (les campagnes régionales restent tenues par leur Responsable Régional)
+const PERIMETRES = perimetres.map((p) => p.libelle)
+const campagnes: Referentiel = {
+  id: 'campagnes', libelle: 'Campagnes', groupe: 'Animation du réseau', feuille: 'Campagnes',
+  colonnes: [
+    { id: 'nom', entete: 'Campagne', cle: true, nouveau: true, largeur: 28 },
+    { id: 'debut', entete: 'Début', type: 'date' },
+    { id: 'fin', entete: 'Fin', type: 'date' },
+    { id: 'perimetre', entete: 'Magasins concernés', type: 'choix', choix: PERIMETRES, largeur: 26 },
+    { id: 'codes', entete: 'Codes magasins choisis', type: 'liste', largeur: 24, reference: refCode },
+    { id: 'points', entete: 'Points à constater', type: 'liste', largeur: 60 },
+  ],
+  lignes: (r) => r.campagnes.liste.filter((c) => !c.rr).map((c) => ({
+    nom: c.nom, debut: c.debut, fin: c.fin, perimetre: perimetres.find((p) => p.id === c.perimetre)?.libelle ?? '', codes: listeCodes(r, c.magasins), points: c.points.map((p) => p.libelle).join(' ; '),
+  })),
+  ajout: { obligatoires: ['nom', 'debut', 'fin', 'points'] },
+  controler: (l) => (l.fin < l.debut ? 'fin avant le début' : elementsListe(l.points).length > MAX_POINTS ? `${MAX_POINTS} points au plus` : null),
+  async appliquer(r, changements) {
+    for (const ch of changements) {
+      const ex = r.campagnes.liste.find((c) => !c.rr && c.nom === ch.cle)
+      const l = ch.apres
+      const points = elementsListe(l.points).map((libelle, i) => ex?.points.find((p) => p.libelle === libelle) ?? { id: `p${Date.now().toString(36)}${i}`, libelle })
+      const id = ex?.id ?? nouvelId('c')
+      await enregistrerCampagne(id, {
+        id, nom: l.nom, debut: l.debut, fin: l.fin, points, perimetre: perimetres.find((p) => p.libelle === l.perimetre)?.id ?? 'tous', magasins: nomsDesCodes(r, l.codes ?? ''),
+      })
+    }
+  },
+  async supprimer(r, suppressions) { for (const ch of suppressions) await enregistrerCampagne(r.campagnes.liste.find((c) => !c.rr && c.nom === ch.cle)!.id, null) },
+}
+
+// Un point constaté (ou non) dans un magasin pour une campagne ; retirer la ligne remet le point « à constater »
+const constats: Referentiel = {
+  id: 'constats', libelle: 'Constats de campagne', groupe: 'Animation du réseau', feuille: 'Constats',
+  colonnes: [
+    { id: 'campagne', entete: 'Campagne', cle: true, largeur: 28, reference: (r) => parNom(r.campagnes.liste.map((c) => c.nom)) },
+    colCode(), colNomMagasin,
+    { id: 'point', entete: 'Point', cle: true, largeur: 40 },
+    { id: 'fait', entete: 'Fait', type: 'ouiNon' },
+    { id: 'date', entete: 'Date du constat', type: 'date' },
+    { id: 'par', entete: 'Constaté par', largeur: 24 },
+  ],
+  lignes: (r) => r.campagnes.liste.flatMap((c) => Object.entries(r.campagnes.constats[c.id] ?? {}).flatMap(([nom, k]) => Object.entries(k).map(([point, x]) => ({
+    campagne: c.nom, ...leMagasin(r, nom), point: c.points.find((p) => p.id === point)?.libelle ?? '', fait: ouiNon(x.fait), date: x.date, par: x.par,
+  })))).filter((l) => l.code && l.point),
+  ajout: { obligatoires: ['campagne', 'code', 'point', 'fait'] },
+  controler: (l, _a, r) => (r.campagnes.liste.find((c) => c.nom === l.campagne)?.points.some((p) => p.libelle === l.point) ? null : `point « ${l.point} » absent de la campagne`),
+  async appliquer(r, changements) {
+    await enregistrerConstats(changements.map((ch) => {
+      const c = r.campagnes.liste.find((x) => x.nom === ch.apres.campagne)!
+      return { campagne: c.id, magasin: nomDuCode(r, ch.apres.code), point: c.points.find((p) => p.libelle === ch.apres.point)!.id, fait: ch.apres.fait === OUI, date: ch.apres.date || r.jour, par: ch.apres.par || r.directeur.nom }
+    }))
+  },
+  async supprimer(r, suppressions) {
+    await enregistrerConstats(suppressions.map((ch) => {
+      const c = r.campagnes.liste.find((x) => x.nom === ch.avant!.campagne)!
+      return { campagne: c.id, magasin: nomDuCode(r, ch.avant!.code), point: c.points.find((p) => p.libelle === ch.avant!.point)!.id, fait: null, date: '', par: '' }
+    }))
+  },
+}
+
+const TYPES_EVENEMENT = Object.values(libellesTypeEvenement)
+const agenda: Referentiel = {
+  id: 'agenda', libelle: 'Agenda', groupe: 'Animation du réseau', feuille: 'Agenda',
+  colonnes: [
+    colN('nombre'),
+    { id: 'titre', entete: 'Titre', largeur: 32 },
+    { id: 'type', entete: 'Type', type: 'choix', choix: TYPES_EVENEMENT },
+    { id: 'debut', entete: 'Début', type: 'date' },
+    { id: 'fin', entete: 'Fin', type: 'date' },
+    { id: 'heure', entete: 'Heure' },
+    { id: 'notes', entete: 'Notes', largeur: 50 },
+    { id: 'invites', entete: 'Codes magasins invités', type: 'liste', largeur: 24, reference: refCode },
+  ],
+  lignes: (r) => r.evenements.filter((e) => e.id !== null).map((e) => ({
+    id: String(e.id), titre: e.titre, type: libellesTypeEvenement[typeEvenement(e)], debut: e.debut, fin: e.fin, heure: e.heure ?? '', notes: e.notes, invites: listeCodes(r, e.invites ?? []),
+  })),
+  ajout: { obligatoires: ['titre', 'debut'] },
+  ajoutSansCle: true,
+  controler: (l) => (l.heure && !/^\d{1,2}[:h]\d{2}$/.test(l.heure) ? `heure ${l.heure} : écris-la 09:30` : l.fin && l.fin < l.debut ? 'fin avant le début' : null),
+  async appliquer(r, changements) {
+    for (const ch of changements) {
+      const l = ch.apres
+      const e = ch.avant ? r.evenements.find((x) => String(x.id) === ch.cle) : undefined
+      const type = (Object.entries(libellesTypeEvenement).find(([, v]) => v === l.type)?.[0] ?? 'event') as TypeEvenement
+      await enregistrerEvenement({
+        ...(e ?? { id: null, couleur: '#307672', notes: '', fin: '' }), titre: l.titre, type, debut: l.debut, fin: l.fin ?? '', notes: l.notes ?? '',
+        heure: l.heure ? l.heure.replace('h', ':').padStart(5, '0') : '', invites: type === 'event' ? [] : nomsDesCodes(r, l.invites ?? ''),
+      })
+    }
+  },
+  async supprimer(_r, suppressions) { for (const ch of suppressions) await supprimerEvenement(Number(ch.cle)) },
+}
+
+// Texte des bonnes pratiques ; photos et J'aime gardés tels quels
+const pratiques: Referentiel = {
+  id: 'pratiques', libelle: 'Bonnes pratiques', groupe: 'Animation du réseau', feuille: 'Bonnes pratiques',
+  colonnes: [
+    colN(), colCode(false), colNomMagasin,
+    { id: 'date', entete: 'Date', type: 'date' },
+    { id: 'titre', entete: 'Titre', largeur: 32 },
+    { id: 'theme', entete: 'Thème', type: 'choix', choix: themesPratiques, largeur: 22 },
+    { id: 'texte', entete: 'Texte', largeur: 60 },
+    { id: 'par', entete: 'Remontée par', largeur: 24 },
+    { id: 'reprises', entete: 'Codes magasins qui l’appliquent', type: 'liste', largeur: 24, reference: refCode },
+  ],
+  lignes: (r) => r.pratiques.map((p) => ({ id: p.id, ...leMagasin(r, p.magasin), date: p.date, titre: p.titre, theme: themesPratiques.includes(p.theme) ? p.theme : '', texte: p.texte, par: p.par, reprises: listeCodes(r, p.reprises) })),
+  ajout: { obligatoires: ['titre', 'date'] },
+  ajoutSansCle: true,
+  async appliquer(r, changements) {
+    for (const ch of changements) {
+      const l = ch.apres
+      const p = ch.avant ? r.pratiques.find((x) => x.id === ch.cle) : undefined
+      const base: BonnePratique = p ?? { id: nouvelId('bp'), magasin: '', date: '', titre: '', theme: '', texte: '', par: r.directeur.nom, photos: [], entete: '', reprises: [], jaime: [] }
+      await enregistrerPratique(base.id, {
+        ...base, magasin: l.code ? nomDuCode(r, l.code) : base.magasin, date: l.date, titre: l.titre, theme: l.theme ?? base.theme, texte: l.texte ?? '', par: l.par ?? base.par,
+        reprises: l.reprises !== undefined ? nomsDesCodes(r, l.reprises) : base.reprises,
+      })
+    }
+  },
+  async supprimer(_r, suppressions) { for (const ch of suppressions) await enregistrerPratique(ch.cle, null) },
+}
+
 export function referentiels(reseau: Reseau | null): Referentiel[] {
-  return [magasins, franchisesRef, mandats, coachs, rrs, affectations, rattachements, chiffres, ninebox(reseau), deploiements(reseau), visites]
+  return [
+    magasins, franchisesRef, mandats, coachs, rrs, affectations, rattachements,
+    situations, chiffres, ninebox(reseau), audits, deploiements(reseau), visites, taches, journal,
+    campagnes, constats, agenda, pratiques,
+  ]
 }

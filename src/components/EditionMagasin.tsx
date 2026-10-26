@@ -59,6 +59,10 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
   const nom = f.nom.trim().replace(/\s+/g, ' ')
   const doublon = nom !== magasin?.nom && reseau.magasins.some((m) => m.nom.toLowerCase() === nom.toLowerCase())
   const emailsOk = emailValide(f.email)
+  // Code à 3 chiffres, propre à chaque magasin (vide : le suivant est donné à l'enregistrement)
+  const code = f.code.trim()
+  const codePris = !!code && [...reseau.magasins, ...reseau.fermes].find((m) => m.code === code && m.nom !== magasin?.nom)
+  const codeOk = (!code || /^\d{3,}$/.test(code)) && !codePris
   const connus = franchises(reseau)
   const responsable = f.responsable.trim().replace(/\s+/g, ' ')
   const existant = connus.find((x) => x.nom === responsable)
@@ -74,9 +78,9 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
     <Fenetre
       titre={magasin ? `Modifier ${magasin.nom}` : 'Ajouter un magasin'} ouvert large
       onFermer={(m) => onFermer(m, m ? nom : undefined)}
-      valide={!!nom && !doublon && emailsOk}
+      valide={!!nom && !doublon && emailsOk && codeOk}
       enregistrer={async () => {
-        await enregistrerMagasin({ ...f, nom, responsable, ...coordonnees() }, magasin?.nom ?? null)
+        await enregistrerMagasin({ ...f, code, nom, responsable, ...coordonnees() }, magasin?.nom ?? null)
         // Nouvelle adresse : le point sur la carte suit
         const adresse = (x: { adresse: string; codePostal: string; ville: string; pays: string }) => [x.adresse, x.codePostal, x.ville, x.pays].map((v) => v.trim()).join('|')
         if (!magasin || adresse(f) !== adresse(magasin)) {
@@ -99,7 +103,7 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
     >
       <Groupe titre="Magasin">
         {champ('nom', 'Nom du magasin', { required: true, autoFocus: !magasin, error: doublon, helperText: doublon ? 'Un magasin porte déjà ce nom.' : renomme ? 'Le nouveau nom sera repris partout : Coachs, visites, chiffres.' : ' ' })}
-        {champ('code', 'Code magasin')}
+        {champ('code', 'Code magasin', { error: !codeOk, helperText: codePris ? `Déjà pris par ${codePris.nom}.` : !codeOk ? '3 chiffres.' : ' ', slotProps: { htmlInput: { inputMode: 'numeric' } } })}
         {champ('ouverture', 'Date d’ouverture', { type: 'date', slotProps: { inputLabel: { shrink: true } }, helperText: 'Laisse vide si elle n’est pas encore connue.' })}
         <FormControlLabel control={<Switch checked={f.franchise} onChange={(e) => setF((x) => ({ ...x, franchise: e.target.checked }))} />} label={f.franchise ? 'Magasin franchisé' : 'Magasin intégré'} sx={{ minHeight: 48 }} />
         <Autocomplete

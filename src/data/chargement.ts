@@ -202,6 +202,12 @@ export async function reaffecter(magasin: string, coach: string, mois: string, n
 }
 
 // Met à jour quelques paramètres en conservant tous les autres réglages de l'ancienne app
+// Changement de Coach d'un mois retiré de l'historique du magasin
+export async function supprimerAffectation(magasin: string, mois: string) {
+  const date = premierDuMois(mois)
+  verifier(await supabase.from('reassigns').delete().eq('store', magasin).gte('date', date).lt('date', moisSuivant(date)))
+}
+
 export async function enregistrerParametres(changements: Record<string, number>): Promise<void> {
   const lu = await supabase.from('app_config').select('value').eq('key', 'params')
   if (lu.error) throw new ErreurEnregistrement(lu.error.message)
@@ -307,6 +313,10 @@ export async function rattacherCoach(coach: string, rrId: string, mois: string) 
     // Rattachement « actuel » lu par l'ancienne app : seulement si le changement a déjà pris effet
     if (date <= new Date().toISOString().slice(0, 10)) c.cs_dr = { ...(c.cs_dr ?? {}), [coach]: rrId }
   })
+}
+
+export async function supprimerRattachement(coach: string, mois: string) {
+  await modifierConfigRR((c) => { c.dr_assigns = (c.dr_assigns ?? []).filter((a) => !(a.cs === coach && a.date?.slice(0, 7) === mois.slice(0, 7))) })
 }
 
 export interface FicheCoach { nom: string; telephone: string; email: string; ville: string; fictif: boolean; arrivee: string }
@@ -581,7 +591,8 @@ type MagasinStocke = Record<string, unknown> & { n: string }
 export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | null) {
   const adds = await lireCle<MagasinStocke[]>('store_adds', [])
   if (ancienNom === null) {
-    // Création : le magasin rejoint la liste partagée avec l'ancienne app
+    // Création : le magasin rejoint la liste partagée avec l'ancienne app, avec le code suivant s'il n'en a pas
+    if (!f.code.trim()) f = { ...f, code: prochainCode(adds.valeur.map((x) => String(x.code ?? ''))) }
     adds.valeur.push({ n: f.nom, open: f.ouverture || '2027-01-01', dept: f.departement, franchise: f.franchise, ville: f.ville, cp: f.codePostal, addr: f.adresse, code: f.code })
     await ecrireCle('store_adds', adds.valeur, adds.existe)
   } else if (ancienNom !== f.nom) {
@@ -640,6 +651,36 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
     res = await ecrire(essentiel)
   }
   if (res.error) throw new ErreurEnregistrement(res.error.message)
+}
+
+// Code magasin sur 3 chiffres (Joseph, 24/10/2026) : clé des imports et exports à la place du nom.
+// Jamais réutilisé : le suivant prend le plus grand code numérique connu + 1
+export const formatCode = (n: number) => String(n).padStart(3, '0')
+export function prochainCode(codes: string[]) {
+  const max = Math.max(0, ...codes.filter((c) => /^\d+$/.test(c)).map(Number))
+  return formatCode(max + 1)
+}
+
+// Magasins sans code (noms à jour, dans l'ordre d'attribution voulu) : codes suivants, écrits dans la liste des magasins.
+// Relue juste avant l'écriture : un code posé entre-temps par un autre appareil est gardé. Renvoie le nombre de codes posés
+export async function attribuerCodes(manquants: string[], codesPris: string[]): Promise<number> {
+  if (!manquants.length) return 0
+  return enFile(async () => {
+    const adds = await lireCle<MagasinStocke[]>('store_adds', [])
+    const renommages = (await lireCle<Record<string, string>>('store_renames', {})).valeur
+    const nomActuel = (n: string) => renommages[n] || n
+    const codes = [...codesPris, ...adds.valeur.map((x) => String(x.code ?? ''))]
+    let n = 0
+    for (const nom of manquants) {
+      const m = adds.valeur.find((x) => nomActuel(x.n) === nom || x.n === nom)
+      if (!m || String(m.code ?? '').trim()) continue
+      m.code = prochainCode(codes)
+      codes.push(String(m.code))
+      n++
+    }
+    if (n) await ecrireCle('store_adds', adds.valeur, adds.existe)
+    return n
+  })
 }
 
 export async function supprimerMagasin(nom: string) {
@@ -730,6 +771,8 @@ export async function marquerActions(lot: ({ visite: number; index: number; fait
     verifier(await supabase.from('visits').update({ action_plan: plan }).eq('id', id))
   }
 }
+// Plan d'action d'une visite réécrit en entier (import Excel des tâches)
+export async function modifierPlanVisite(id: number, plan: ActionPlan[]) { verifier(await supabase.from('visits').update({ action_plan: plan }).eq('id', id)) }
 export async function supprimerVisite(id: number) { verifier(await supabase.from('visits').delete().eq('id', id)) }
 
 // Renvoie le numéro de l'événement (null si la base ne le donne pas)
