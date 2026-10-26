@@ -162,6 +162,11 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       const acces: AccesSimule = options.acces ?? (meta.role === 'coach' || meta.role === 'rr' ? { role: String(meta.role), coach: meta.coach as string, rr: meta.rr as string } : { role: 'directeur' })
       if (fn === 'maj_perimetre_equipe') options.perimetreRecu = corps.p_lignes as PerimetreRecu[]
       if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie', 'communications', 'lectures_communications', 'a_la_une', 'reactions_pratiques', 'reactions_visites', 'lectures_pratiques', 'questions_equipe'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
+      // Lien de l'agenda dans Google Agenda (script 0034_agenda_abonne.sql) : refusé au franchisé
+      if (fn === 'mon_agenda') {
+        if (!['directeur', 'rr', 'coach'].includes(acces.role)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        return route.fulfill({ json: (corps.p_nouveau ? 'b' : 'a').repeat(64) })
+      }
       // « Vu par » des bonnes pratiques (script 0023_lectures_pratiques.sql)
       if (fn === 'lectures_pratiques' || fn === 'lire_pratiques') {
         if (options.lecturesPratiques === null) return absente()

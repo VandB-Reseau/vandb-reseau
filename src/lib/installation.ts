@@ -20,3 +20,9 @@ export function useInstallation(): (() => void) | null {
   const p = proposition
   return () => { void p.prompt().finally(() => { proposition = null; prevenir() }) }
 }
+
+// Service de l'app enregistré dès l'ouverture (sprint 25, F5) : il reçoit les photos partagées depuis la galerie
+// du téléphone. Pas pendant les tests automatiques, qui simulent la base dans la page.
+if (typeof window !== 'undefined' && import.meta.env.PROD && 'serviceWorker' in navigator && !navigator.webdriver) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL }).catch(() => undefined) })
+}

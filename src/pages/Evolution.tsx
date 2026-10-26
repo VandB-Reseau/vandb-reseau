@@ -22,6 +22,7 @@ import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import SwapHorizOutlined from '@mui/icons-material/SwapHorizOutlined'
 import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, useAffichage, cartouche } from '../components/Social'
+import { LigneOuverture } from '../components/Ouverture'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { dateLongue, lienFiche } from '../lib/format'
@@ -102,10 +103,10 @@ function Contenu({ reseau }: { reseau: Reseau }) {
         <Box sx={{ mb: 3 }}>
           <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>À venir sur 12 mois</Typography>
           <CarteLignes label="À venir sur 12 mois">
-            {prochains.map((x) => (
-              <LigneCompacte key={`${x.genre}-${x.m.nom}-${x.date}-${x.texte}`} lien={lienFiche(x.m.nom)} avatar={<Initiales nom={x.m.nom} icone={icones[x.genre]} />}
-                titre={x.m.nom} detail={x.texte} />
-            ))}
+            {prochains.map((x) => x.genre === 'ouverture'
+              ? <LigneOuverture key={`${x.genre}-${x.m.nom}-${x.date}`} reseau={reseau} m={x.m} lien={lienFiche(x.m.nom)} avatar={<Initiales nom={x.m.nom} icone={icones[x.genre]} />} />
+              : <LigneCompacte key={`${x.genre}-${x.m.nom}-${x.date}-${x.texte}`} lien={lienFiche(x.m.nom)} avatar={<Initiales nom={x.m.nom} icone={icones[x.genre]} />}
+                titre={x.m.nom} detail={x.texte} />)}
           </CarteLignes>
         </Box>
       )}

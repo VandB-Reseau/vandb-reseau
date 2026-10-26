@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 24/10/2026 (migration `0033`).
+Mis à jour le 24/10/2026 (migration `0035`).
 
 ## Principes
 
@@ -80,6 +80,7 @@ Rubriques de `suivi_magasins` (contrainte `suivi_magasins_cle_check`) :
 | `deploiements` | État et journal des thématiques déployées | `deploiements` (partie magasin) |
 | `constats` | Constats de campagne | `campagnes` (partie constats) |
 | `preparation` | Prochaine visite : date, heure, notes | `preparations_visites` |
+| `ouverture` | Étapes d'une ouverture (`contrat`, `local`, `travaux`, `recrutement`, `formation`), chacune `prevu` et `fait` (AAAA-MM-JJ), `par`, `maj` ; la dernière étape reste la date d'ouverture du magasin (0035). Saisie par le Directeur et les RR dans l'app | `ouvertures_magasins` |
 
 Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011_preparation_visites.sql`).
 
@@ -89,6 +90,18 @@ Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011
 | --- | --- |
 | `events` | Événements : réunions, séminaires, formations ; `type` = `event`, `reunion` ou `formation` ; `invites` = magasins invités (0025, posés par le Directeur ou un RR seulement, contrôle `garde_invites`) ; `heure` (HH:MM, heure de Paris) et `html` (contenu mis en forme, 200 000 caractères au plus, nettoyé par l'app à chaque affichage), 0030 |
 | `leaves` | Congés d'un Coach (`role` = `cs`) ou d'un RR (`dr`). Plus lue par l'app depuis le 22/10/2026 (absences retirées) ; gardée en base et dans la sauvegarde |
+
+### Agenda dans Google Agenda (aucun accès direct, 0034)
+
+| Table | Contenu | Clé |
+| --- | --- | --- |
+| `agenda_jetons` | Lien secret de chaque personne de l'équipe (`jeton`, 64 caractères) et son nom tel qu'écrit dans les visiteurs | `user_id` |
+
+`mon_agenda(p_nom, p_nouveau)` (équipe seulement) crée ou renvoie le jeton du compte ; `p_nouveau` le remplace, l'ancien
+lien ne marche plus. `agenda_du_jeton(p_jeton)` (rôle `service_role` seulement, appelée par la fonction Supabase
+« agenda ») renvoie de 30 jours avant à un an après : les visites où la personne est visiteur, sur ses magasins (tous
+pour le Directeur), sans les appels, points et feuilles, avec l'heure de la préparation ; les événements, réunions et
+formations du réseau.
 
 ### Accès et périmètre
 

@@ -8,7 +8,9 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Checkbox from '@mui/material/Checkbox'
+import Dialog from '@mui/material/Dialog'
 import Drawer from '@mui/material/Drawer'
+import ButtonBase from '@mui/material/ButtonBase'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import ListItemText from '@mui/material/ListItemText'
@@ -55,7 +57,8 @@ import InputAdornment from '@mui/material/InputAdornment'
 import SearchIcon from '@mui/icons-material/Search'
 import { BoutonsNote, BoutonsOption, LibelleCritere, NotesParAxe, PastilleCase, couleursCoachs, texteSur, useSaisieSante, type Saisie } from '../components/Sante'
 import { coachA } from '../data/charge'
-import { avancement, caseDe, couleurTon, criteresAxe, libelleAxe, libelleNote, nineBox, tonDe, tousCriteres, type Evaluation, type IdCritere, type Thematique } from '../data/sante'
+import { avancement, caseDe, effetDeploiement, EFFET_MINIMUM, EFFET_MOIS, couleurTon, criteresAxe, libelleAxe, libelleNote, nineBox, tonDe, tousCriteres, type Evaluation, type IdCritere, type Thematique } from '../data/sante'
+import { useAuth } from '../auth/AuthContext'
 import { lienFiche } from '../lib/format'
 import { PastilleAlerte } from '../components/Chiffres'
 import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, MiniCourbe, Pastille, Puces, TitreSection, useAffichage, useParTranches } from '../components/Social'
@@ -636,23 +639,80 @@ function VueDeploiements({ reseau, saisie, surPC, date }: { reseau: Reseau; sais
   )
 }
 
-// Une ligne par thématique : nombre de magasins déployés et barre d'avancement
-function Avancement({ reseau, t }: { reseau: Reseau; t: Thematique }) {
+// Une ligne par thématique : nombre de magasins déployés et barre d'avancement ; Directeur et RR l'ouvrent pour voir
+// l'effet sur le chiffre (sprint 25, F4)
+function Avancement({ reseau, t, ouvrir }: { reseau: Reseau; t: Thematique; ouvrir?: () => void }) {
   const a = avancement(reseau, t)
   const pct = (n: number) => (a.total ? (n / a.total) * 100 : 0)
-  return (
-    <Box sx={{ px: 2, py: 1.5 }}>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.75 }}>
+  const contenu = (
+    <>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.75, width: '100%' }}>
         <Typography sx={{ fontWeight: 600, flex: 1, minWidth: 0 }} noWrap>{t.libelle}</Typography>
         <Typography sx={{ fontWeight: 700 }}>{a.total ? Math.round(pct(a.positif)) : 0} %</Typography>
       </Box>
-      <Box sx={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', bgcolor: 'action.hover' }} role="img" aria-label={`${t.libelle} : ${a.positif} magasins sur ${a.total}`}>
+      <Box sx={{ display: 'flex', height: 8, width: '100%', borderRadius: 4, overflow: 'hidden', bgcolor: 'action.hover' }} role="img" aria-label={`${t.libelle} : ${a.positif} magasins sur ${a.total}`}>
         <Box sx={{ width: `${pct(a.positif)}%`, bgcolor: 'success.main' }} />
         <Box sx={{ width: `${pct(a.partiel)}%`, bgcolor: 'warning.main' }} />
         <Box sx={{ width: `${pct(a.negatif)}%`, bgcolor: 'error.light' }} />
       </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{a.positif} sur {a.total} · {a.partiel} en partie · {a.inconnu} non renseigné{a.inconnu > 1 ? 's' : ''}</Typography>
-    </Box>
+    </>
+  )
+  if (!ouvrir) return <Box sx={{ px: 2, py: 1.5 }}>{contenu}</Box>
+  return (
+    <ButtonBase onClick={ouvrir} aria-label={`Effet de ${t.libelle} sur le chiffre`} sx={{ px: 2, py: 1.5, display: 'block', textAlign: 'left', width: '100%', fontFamily: 'inherit', '&:hover': { bgcolor: 'action.hover' } }}>
+      {contenu}
+    </ButtonBase>
+  )
+}
+
+// Effet d'une thématique sur le chiffre : magasins déployés face à ceux qui ne l'ont pas, mêmes mois (sprint 25, F4)
+function EffetThematique({ reseau, t, fermer }: { reseau: Reseau; t: Thematique; fermer: () => void }) {
+  const theme = useTheme()
+  const plein = useMediaQuery(theme.breakpoints.down('sm'))
+  const e = useMemo(() => effetDeploiement(reseau, t), [reseau, t])
+  const max = Math.max(Math.abs(e.evolDeployes ?? 0), Math.abs(e.evolTemoins ?? 0), 1)
+  const ligne = (libelle: string, v: number | null, couleur: string) => (
+    <>
+      <Typography sx={{ fontWeight: 600 }}>{libelle}</Typography>
+      <Box sx={{ height: 12, borderRadius: 6, bgcolor: 'action.hover', overflow: 'hidden' }}><Box sx={{ height: '100%', width: `${v === null ? 0 : (Math.abs(v) / max) * 100}%`, bgcolor: couleur, borderRadius: 6 }} /></Box>
+      <Typography sx={{ fontWeight: 700, textAlign: 'right', color: v !== null && v < 0 ? 'error.main' : 'text.primary' }}>{formatPourcent(v)}</Typography>
+    </>
+  )
+  return (
+    <Dialog open onClose={fermer} fullScreen={plein} fullWidth maxWidth="sm" slotProps={{ paper: { 'aria-label': `Effet de ${t.libelle}` } }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, pt: 2 }}>
+        <Typography variant="h3" component="h2" sx={{ flex: 1, minWidth: 0 }}>{t.libelle}</Typography>
+        <IconButton aria-label="Fermer" onClick={fermer} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
+      </Box>
+      <Box sx={{ px: 2, pb: 3, display: 'grid', gap: 2 }}>
+        <Typography color="text.secondary">CA par rapport à l’an dernier, les {EFFET_MOIS} mois qui suivent la mise en place</Typography>
+        {e.assez ? (
+          <>
+            <Card variant="outlined" sx={{ p: 2 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', gap: 1.5, alignItems: 'center' }} role="group" aria-label="Comparaison">
+                {ligne('Déployée', e.evolDeployes, theme.palette.success.main)}
+                {ligne('Pas déployée', e.evolTemoins, theme.palette.text.secondary)}
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>{e.deployes} magasins déployés · {e.temoins} non déployés</Typography>
+            </Card>
+            <Card variant="outlined" sx={{ p: 2 }}>
+              <Typography sx={{ fontWeight: 700, color: (e.ecart ?? 0) >= 0 ? 'success.main' : 'error.main' }}>
+                Écart : {(e.ecart ?? 0) >= 0 ? '+' : '−'}{Math.abs(e.ecart ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} point{Math.abs(e.ecart ?? 0) >= 2 ? 's' : ''}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">Mêmes mois pour les deux groupes. Un magasin qui va bien déploie souvent plus vite : l’écart n’est pas une preuve.</Typography>
+            </Card>
+          </>
+        ) : (
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Typography sx={{ fontWeight: 700 }}>Pas encore assez de magasins pour conclure</Typography>
+            <Typography color="text.secondary">
+              {e.deployes} déployé{e.deployes > 1 ? 's' : ''} et {e.temoins} non déployé{e.temoins > 1 ? 's' : ''} comparables ; il en faut {EFFET_MINIMUM} de chaque côté, avec la date de mise en place et les chiffres des {EFFET_MOIS} mois suivants et de l’an dernier.
+            </Typography>
+          </Card>
+        )}
+      </Box>
+    </Dialog>
   )
 }
 
@@ -660,13 +720,16 @@ function Avancement({ reseau, t }: { reseau: Reseau; t: Thematique }) {
 const AVANCEMENT_TELEPHONE = 5
 function AvancementThematiques({ reseau, ths, surPC }: { reseau: Reseau; ths: Thematique[]; surPC: boolean }) {
   const [tout, setTout] = useState(false)
+  const [effet, setEffet] = useState<Thematique | null>(null)
+  const { profil } = useAuth()
+  const pilote = profil?.role === 'directeur' || profil?.role === 'rr'
   const visibles = surPC || tout ? ths : ths.slice(0, AVANCEMENT_TELEPHONE)
   return (
     <>
       <TitreSection nombre={ths.length}>Avancement</TitreSection>
       <Card component="section" aria-label="Avancement des déploiements" sx={{ overflow: 'hidden', border: 0 }}>
         <Box sx={{ mt: '-1px', '& > *': { borderTop: '1px solid', borderColor: 'divider' }, display: 'grid', columnGap: 2, gridTemplateColumns: { xs: '1fr', md: ths.length > 4 ? 'repeat(2, 1fr)' : '1fr', xl: ths.length > 8 ? 'repeat(3, 1fr)' : ths.length > 4 ? 'repeat(2, 1fr)' : '1fr' } }}>
-          {visibles.map((t) => <Avancement key={t.id} reseau={reseau} t={t} />)}
+          {visibles.map((t) => <Avancement key={t.id} reseau={reseau} t={t} ouvrir={pilote ? () => setEffet(t) : undefined} />)}
         </Box>
         {visibles.length < ths.length && (
           <Button fullWidth onClick={() => setTout(true)} endIcon={<ExpandMoreOutlined />} sx={{ minHeight: 48, borderTop: '1px solid', borderColor: 'divider', borderRadius: 0 }}>
@@ -674,6 +737,7 @@ function AvancementThematiques({ reseau, ths, surPC }: { reseau: Reseau; ths: Th
           </Button>
         )}
       </Card>
+      {effet && <EffetThematique reseau={reseau} t={effet} fermer={() => setEffet(null)} />}
     </>
   )
 }

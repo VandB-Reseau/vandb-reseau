@@ -49,6 +49,7 @@ const chargeurs = {
   taches: () => import('./pages/Taches').then((m) => ({ default: m.PageTaches })),
   infos: () => import('./pages/InfosReseau').then((m) => ({ default: m.InfosReseau })),
   animation: () => import('./pages/Animation').then((m) => ({ default: m.Animation })),
+  partage: () => import('./pages/Partage').then((m) => ({ default: m.Partage })),
 }
 // Espace franchisé : un seul fichier, jamais préchargé pour l'équipe
 const espace = () => import('./pages/EspaceFranchise')
@@ -58,6 +59,7 @@ const Donnees = chargementDiffere(chargeurs.donnees)
 const CompteRendu = chargementDiffere(chargeurs.compteRendu)
 const Evolution = chargementDiffere(chargeurs.evolution)
 const Magasins = chargementDiffere(chargeurs.magasins)
+const Partage = chargementDiffere(chargeurs.partage)
 const FicheMagasin = chargementDiffere(chargeurs.ficheMagasin)
 const PreparationVisite = chargementDiffere(chargeurs.preparation)
 const Equipe = chargementDiffere(chargeurs.equipe)
@@ -169,6 +171,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/parametres/evolution" element={<Evolution />} />
         <Route path="/plus/evolution" element={<Navigate to="/parametres/evolution" replace />} />
         <Route path="/plus" element={<Plus />} />
+        <Route path="/partage" element={<Partage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>

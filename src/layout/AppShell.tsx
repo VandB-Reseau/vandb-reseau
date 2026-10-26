@@ -24,6 +24,9 @@ import KeyOutlined from '@mui/icons-material/KeyOutlined'
 import InstallMobileOutlined from '@mui/icons-material/InstallMobileOutlined'
 import Snackbar from '@mui/material/Snackbar'
 import { DialogMotDePasse } from '../components/DialogMotDePasse'
+import { DialogAgendaAbonne } from '../components/AgendaAbonne'
+import { useApercu } from '../auth/Apercu'
+import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { Logo } from '../components/Logo'
 import { RechercheGlobale } from '../components/RechercheGlobale'
 import Badge from '@mui/material/Badge'
@@ -57,6 +60,8 @@ function MenuCompte({ liens = [] }: { liens?: { titre?: string; destinations: De
   const installation = useInstallation()
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const [motDePasse, setMotDePasse] = useState(false)
+  const [agenda, setAgenda] = useState(false)
+  const { apercu, equipe } = useApercu()
   const [confirmation, setConfirmation] = useState('')
   const notifications = useNotificationsAppareil()
   const basculerNotifications = async () => {
@@ -103,6 +108,12 @@ function MenuCompte({ liens = [] }: { liens?: { titre?: string; destinations: De
             {notifications.etat === 'actif' ? 'Couper les notifications sur cet appareil' : notifications.etat === 'bloque' ? 'Notifications bloquées sur cet appareil' : 'Recevoir les notifications sur cet appareil'}
           </MenuItem>
         )}
+        {['directeur', 'rr', 'coach'].includes(profil.role) && !apercu && !equipe && (
+          <MenuItem onClick={() => { setAncre(null); setAgenda(true) }} sx={{ minHeight: { xs: 48, sm: 48 } }}>
+            <ListItemIcon><EventAvailableOutlined fontSize="small" /></ListItemIcon>
+            Mon agenda dans Google Agenda
+          </MenuItem>
+        )}
         <MenuItem onClick={() => { setAncre(null); setMotDePasse(true) }}>
           <ListItemIcon><KeyOutlined fontSize="small" /></ListItemIcon>
           Changer mon mot de passe
@@ -112,6 +123,7 @@ function MenuCompte({ liens = [] }: { liens?: { titre?: string; destinations: De
           Se déconnecter
         </MenuItem>
       </Menu>
+      {agenda && <DialogAgendaAbonne onFermer={(msg) => { setAgenda(false); if (msg) setConfirmation(msg) }} />}
       {motDePasse && <DialogMotDePasse onFermer={(msg) => { setMotDePasse(false); if (msg) setConfirmation(msg) }} />}
       <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
     </>

@@ -45,6 +45,7 @@ itinéraires routiers OSRM (charge des Coachs, tournées), géocodage geo.api.go
 | `supabase/migrations/` | Schéma de la base, une migration numérotée par changement |
 | `supabase/functions/notifier/` | Fonction Supabase d'envoi des notifications, à coller dans Edge Functions |
 | `supabase/functions/comptes/` | Fonction Supabase de création, réinitialisation et suppression des comptes des franchisés (Directeur seul) |
+| `supabase/functions/agenda/` | Fonction Supabase publique (sans « Verify JWT ») : agenda .ics relu par Google Agenda, lu par lien secret |
 | `public/sw.js` | Service worker : affiche les notifications reçues et ouvre l'écran visé (aucun cache) |
 | `supabase/tests/` | Rejoue les migrations sur un PostgreSQL vide et contrôle les règles d'accès |
 | `tests/` | Tests Playwright ; `supabase-simule.ts` simule la base, `donnees-fictives.ts` le réseau de test |
