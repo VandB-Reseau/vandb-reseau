@@ -230,12 +230,12 @@ test('télécharger la sauvegarde complète et tous les référentiels', async (
   const tous = await telecharger(page, 'Tout exporter en Excel')
   expect(tous.nom).toMatch(/^V and B - Toutes les donnees - \d{4}-\d{2}-\d{2}\.xlsx$/)
   const feuilles = await lireExcel(readFileSync(tous.chemin))
-  expect(feuilles.map((f) => f.sheet)).toEqual(['Magasins', 'Franchisés', 'Mandats', 'Coachs', 'Responsables Régionaux', 'Coach des magasins', 'RR des Coachs', 'Situations', 'Chiffres mensuels', 'Nine box', 'Notes d’audit', 'Déploiements', 'Visites', 'Tâches', 'Journal', 'Campagnes', 'Constats', 'Agenda', 'Bonnes pratiques'])
+  expect(feuilles.map((f) => f.sheet)).toEqual(['Magasins', 'Franchisés', 'Mandats', 'Coachs', 'Responsables Régionaux', 'Coach des magasins', 'RR des Coachs', 'Situations', 'Étapes d’ouverture', 'Chiffres mensuels', 'Nine box', 'Notes d’audit', 'Déploiements', 'Visites', 'Tâches', 'Journal', 'Campagnes', 'Constats', 'Agenda', 'Bonnes pratiques'])
   // Chaque feuille a des lignes à exporter dans le réseau fictif
   expect(feuilles.filter((f) => (f.data as unknown[][]).length < 2).map((f) => f.sheet)).toEqual([])
   // Le classeur complet sert aussi à l'import : la bonne feuille est retrouvée par son nom
   // Chaque jeu de données réimporté tel quel : aucun changement
-  for (const r of ['Magasins', 'Franchisés', 'Mandats des franchisés', 'Coachs', 'Responsables Régionaux', 'Coach des magasins', 'Responsable Régional des Coachs', 'Situations des magasins', 'Chiffres mensuels', 'Nine box', 'Notes d’audit', 'Déploiements', 'Visites', 'Tâches', 'Journal des magasins', 'Campagnes', 'Constats de campagne', 'Agenda', 'Bonnes pratiques']) {
+  for (const r of ['Magasins', 'Franchisés', 'Mandats des franchisés', 'Coachs', 'Responsables Régionaux', 'Coach des magasins', 'Responsable Régional des Coachs', 'Situations des magasins', 'Étapes d’ouverture', 'Chiffres mensuels', 'Nine box', 'Notes d’audit', 'Déploiements', 'Visites', 'Tâches', 'Journal des magasins', 'Campagnes', 'Constats de campagne', 'Agenda', 'Bonnes pratiques']) {
     const d = await importer(page, r, tous.chemin)
     await expect(d.getByText('Aucun changement par rapport aux données de l’app', { exact: false }), r).toBeVisible()
     await expect(d.getByText('laissée', { exact: false }), r).toHaveCount(0)
@@ -274,6 +274,14 @@ test('mouvements par N° et données datées par code magasin : visites, situati
   await expect(d).toBeHidden()
   const sit = ecritures.find((e) => e.table === 'store_overrides' && (e.corps as { situations?: unknown }).situations)!
   expect((sit.corps as { situations: unknown[] }).situations).toEqual([{ date: '2027-02-01', type: 'travaux', fin: '2027-02-15', motif: 'Travaux' }])
+
+  // Étape d'ouverture d'un magasin à venir : ligne exportée vide, remplie dans le fichier
+  d = await importer(page, 'Étapes d’ouverture', csv('etapes.csv', 'Code magasin;Étape;Prévue le\n030;Travaux;01/12/2026\n'))
+  await expect(d.getByText(/^1 ajout$/)).toBeVisible()
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  const ouv = ecritures.filter((e) => e.table === 'app_config').map((e) => (e.corps as { value?: string }).value ?? '').find((v) => v.includes('"travaux"'))!
+  expect(JSON.parse(ouv)['Vichy Test'].etapes).toEqual({ travaux: { prevu: '2026-12-01', fait: '' } })
 
   // Tâche d'un plan d'action marquée faite par son N°
   const ta = await telecharger(page, 'Exporter Tâches')

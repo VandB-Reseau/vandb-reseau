@@ -1,8 +1,8 @@
 // Données exportées en Excel pré-rempli puis réimportées pour ajouter, mettre à jour ou supprimer ligne par ligne.
 // Règles communes : une cellule vide ne change rien, une ligne inconnue est ajoutée quand le référentiel le permet,
 // une ligne absente du fichier est supprimée quand le référentiel le permet.
-import type { ActionLibre, Reseau, Situation, TypeEvenement, TypeFermeture, TypeSituation, Visite } from './modele'
-import { libelleFermeture, libelleSituation, libellesTypeEvenement, libelleTypeVisite, lireVisiteurs, typeEvenement, typesVisite } from './modele'
+import type { ActionLibre, Reseau, Situation, SuiviOuverture, TypeEvenement, TypeFermeture, TypeSituation, Visite } from './modele'
+import { etapesOuverture, libelleFermeture, libelleSituation, libellesTypeEvenement, libelleTypeVisite, lireVisiteurs, typeEvenement, typesVisite } from './modele'
 import { champsSaisis, completerChiffres, libellesChiffres, lireNombre, type ChampChiffre } from './chiffres'
 import { lireMois } from './importChiffres'
 import { lireCSV, lireDate, normaliser } from './import'
@@ -10,7 +10,7 @@ import { depuisDeploiement, historiqueSante, libelleNote, tousCriteres, type IdC
 import { departementDepuisCP, fichePersonne, ficheVide, franchises, separerNom, type FichePersonnelle, type RefPersonne } from './personnes'
 import {
   enregistrerAudit, enregistrerCampagne, enregistrerChiffres, enregistrerCoach, enregistrerConstats, enregistrerDeploiements, enregistrerEvenement,
-  enregistrerFichePersonne, enregistrerFranchise, enregistrerMagasin, enregistrerNoteMagasin, enregistrerPratique, enregistrerActionLibre,
+  enregistrerFichePersonne, enregistrerFranchise, enregistrerOuverture, enregistrerMagasin, enregistrerNoteMagasin, enregistrerPratique, enregistrerActionLibre,
   enregistrerRR, enregistrerSituations, enregistrerVisites, importerHistorique, modifierPlanVisite, rattacherCoach, reaffecter, supprimerActionLibre,
   supprimerAffectation, supprimerChiffres, supprimerCoach, supprimerEvaluation, supprimerEvenement, supprimerFranchise, supprimerMagasin,
   supprimerNoteMagasin, supprimerRattachement, supprimerRR, supprimerVisite, modifierAssociesMagasin, type FicheMagasin,
@@ -19,6 +19,7 @@ import { associesDu, type Associe } from './associes'
 import { PARTIES } from './compteRendu'
 import { MAX_POINTS, perimetres } from './campagnes'
 import { themesPratiques, type BonnePratique } from './bonnesPratiques'
+import { aOuvrir } from './ouvertures'
 
 export type TypeColonne = 'texte' | 'date' | 'mois' | 'nombre' | 'ouiNon' | 'choix' | 'liste'
 
@@ -919,10 +920,39 @@ const pratiques: Referentiel = {
   async supprimer(_r, suppressions) { for (const ch of suppressions) await enregistrerPratique(ch.cle, null) },
 }
 
+// Étapes d'une ouverture : une ligne par magasin et par étape ; les magasins à ouvrir ont leurs étapes exportées vides, à remplir
+const etapes: Referentiel = {
+  id: 'ouvertures', libelle: 'Étapes d’ouverture', groupe: 'Suivi des magasins', feuille: 'Étapes d’ouverture',
+  colonnes: [
+    colCode(), colNomMagasin,
+    { id: 'etape', entete: 'Étape', type: 'choix', choix: etapesOuverture.map((e) => e.libelle), cle: true, largeur: 26 },
+    { id: 'prevu', entete: 'Prévue le', type: 'date' },
+    { id: 'fait', entete: 'Faite le', type: 'date' },
+  ],
+  lignes: (r) => tousMagasins(r).filter((m) => m.code && (r.ouvertures[m.nom] || aOuvrir(m, r.jour))).flatMap((m) => etapesOuverture.map((e) => {
+    const x = r.ouvertures[m.nom]?.etapes[e.id]
+    return { ...leMagasin(r, m.nom), etape: e.libelle, prevu: x?.prevu ?? '', fait: x?.fait ?? '' }
+  })),
+  ajout: { obligatoires: ['code', 'etape'] },
+  aCompleter: (l) => !l.prevu && !l.fait,
+  async appliquer(r, changements) { await ecrireEtapes(r, changements, []) },
+  async supprimer(r, suppressions) { await ecrireEtapes(r, [], suppressions) },
+}
+async function ecrireEtapes(r: Reseau, changements: Changement[], suppressions: Changement[]) {
+  const id = (libelle: string) => etapesOuverture.find((e) => e.libelle === libelle)!.id
+  for (const code of parCode([...changements, ...suppressions])) {
+    const nom = nomDuCode(r, code)
+    const suivi: SuiviOuverture = { etapes: { ...(r.ouvertures[nom]?.etapes ?? {}) }, par: r.directeur.nom, maj: r.jour }
+    for (const ch of suppressions.filter((c) => c.apres.code === code)) delete suivi.etapes[id(ch.avant!.etape)]
+    for (const ch of changements.filter((c) => c.apres.code === code)) suivi.etapes[id(ch.apres.etape)] = { prevu: ch.apres.prevu ?? '', fait: ch.apres.fait ?? '' }
+    await enregistrerOuverture(nom, suivi)
+  }
+}
+
 export function referentiels(reseau: Reseau | null): Referentiel[] {
   return [
     magasins, franchisesRef, mandats, coachs, rrs, affectations, rattachements,
-    situations, chiffres, ninebox(reseau), audits, deploiements(reseau), visites, taches, journal,
+    situations, etapes, chiffres, ninebox(reseau), audits, deploiements(reseau), visites, taches, journal,
     campagnes, constats, agenda, pratiques,
   ]
 }

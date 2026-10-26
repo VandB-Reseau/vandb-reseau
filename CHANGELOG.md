@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Étapes d'ouverture dans l'import et export Excel (Joseph, 26/10/2026) : une ligne par magasin et par étape (code
+  magasin + étape), dates prévue et faite ; les magasins à ouvrir ont leurs étapes exportées vides, à remplir dans le
+  fichier (test `import-export.spec.ts`). Sans migration.
 - Sprint 25, fluidité et fonctionnalités (Joseph, 24/10/2026) : l'agenda s'ouvre sur aujourd'hui, les jours passés du
   mois repliés sous « Plus tôt ce mois », sans sous-titre (S1) ; « Mon agenda dans Google Agenda » dans le menu du compte :
   un lien secret par personne, ses visites et les événements, réunions et formations du réseau, lien remplaçable (F2) ;
