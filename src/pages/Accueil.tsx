@@ -28,7 +28,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useMessagerie } from '../data/MessagerieContext'
 import { caseDe, nineBox, tendance } from '../data/sante'
 import { anneeDe, suiviRythme, type LigneRythme } from '../data/visites'
-import { chargeA, coachA, niveauCharge } from '../data/charge'
+import { chargeA, coachA, libelleSuivi, niveauCharge, suivi } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
 import { ajouterJours, elementsDuMois, jourLong } from '../data/agenda'
 import { nomsVisiteurs, type Magasin, type Reseau, type Visite } from '../data/modele'
@@ -83,7 +83,7 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
   const noms = new Set(perimetre.map((m) => m.nom))
   const actifs = perimetre.filter((m) => m.statut !== 'avenir')
   const avecCoach = p.type !== 'coach'
-  const coachDe = (m: Magasin) => (avecCoach ? `${coachA(m, j) || 'Sans Coach'} · ` : '')
+  const coachDe = (m: Magasin) => (avecCoach ? `${libelleSuivi(m, coachA(m, j))} · ` : '')
   const items: ATraiter[] = []
   const vus = new Set<string>()
   // Démarche coach : les magasins qui décrochent d'abord (appel en retard en tête), puis ceux à surveiller
@@ -113,7 +113,7 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
   const ecart = (l: LigneRythme) => (l.depuis === null ? Infinity : l.depuis - l.delai)
   for (const l of suiviRythme(reseau, a).filter((l) => l.alerte && noms.has(l.magasin.nom)).sort((x, y) => ecart(y) - ecart(x))) {
     items.push({ cle: `v-${l.magasin.nom}`, titre: l.magasin.nom, avatar: l.magasin.nom, lien: lienFiche(l.magasin.nom),
-      detail: (avecCoach ? `${l.coach || 'Sans Coach'} · ` : '') + [l.case?.libelle ?? 'Non classé', l.derniere ? `pas vu depuis ${l.depuis} j` : 'jamais visité', l.dernierContact && `appel le ${dateCourte(l.dernierContact.date)}`].filter(Boolean).join(' · '), pastille: { ton: 'orange', libelle: 'Visite' } })
+      detail: (avecCoach ? `${libelleSuivi(l.magasin, l.coach)} · ` : '') + [l.case?.libelle ?? 'Non classé', l.derniere ? `pas vu depuis ${l.depuis} j` : 'jamais visité', l.dernierContact && `appel le ${dateCourte(l.dernierContact.date)}`].filter(Boolean).join(' · '), pastille: { ton: 'orange', libelle: 'Visite' } })
   }
   for (const { m, c } of actifs.map((m) => ({ m, c: caseDe(reseau.evaluations[m.nom]) })).filter((x) => x.c && PRIORITAIRES.includes(x.c.id) && !vus.has(x.m.nom))
     .sort((x, y) => PRIORITAIRES.indexOf(x.c!.id) - PRIORITAIRES.indexOf(y.c!.id))) {
@@ -130,7 +130,7 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
       items.push({ cle: `ch-${x.c.nom}`, titre: x.c.nom, avatar: x.c.nom, lien: lienCoach(x.c.nom), detail: `Charge ${x.charge} sur ${reseau.parametres.maxUnits}`, pastille: { ton: 'orange', libelle: 'Surchargé' } })
     }
     for (const c of coachsVus.filter((c) => c.fictif)) items.push({ cle: `pv-${c.nom}`, titre: c.nom, avatar: c.nom, icone: <PersonSearchOutlined />, lien: lienCoach(c.nom), detail: 'Poste de Coach à pourvoir', pastille: { ton: 'gris', libelle: 'Vacant' } })
-    for (const m of actifs.filter((m) => !coachA(m, j))) items.push({ cle: `sc-${m.nom}`, titre: m.nom, avatar: m.nom, lien: lienFiche(m.nom), detail: 'Magasin sans Coach', pastille: { ton: 'gris', libelle: 'Sans Coach' } })
+    for (const m of actifs.filter((m) => !suivi(m, coachA(m, j)))) items.push({ cle: `sc-${m.nom}`, titre: m.nom, avatar: m.nom, lien: lienFiche(m.nom), detail: 'Magasin sans Coach', pastille: { ton: 'gris', libelle: 'Sans Coach' } })
   }
   const dans6mois = ajouterJours(j, 183)
   for (const m of perimetre.filter((m) => m.ouverture > j && m.ouverture <= dans6mois).sort((a, b) => a.ouverture.localeCompare(b.ouverture))) {

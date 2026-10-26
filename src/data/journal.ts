@@ -28,7 +28,7 @@ export function journalMagasin(reseau: Reseau, m: Magasin): EvenementJournal[] {
   if (m.ouvertureConnue && m.ouverture <= reseau.jour) ev.push({ cle: 'ouverture', date: m.ouverture, type: 'ouverture', titre: 'Ouverture du magasin', detail: '' })
 
   m.historiqueCoach.filter((h) => h.date <= reseau.jour).forEach((h, i) => ev.push({
-    cle: `coach-${i}`, date: h.date, type: 'coach', titre: h.coach ? `Coach : ${h.coach}` : 'Sans Coach', detail: h.note,
+    cle: `coach-${i}`, date: h.date, type: 'coach', titre: h.coach ? `Coach : ${h.coach}` : m.rrEnDirect && m.rr ? `Géré en direct · ${m.rr.nom}` : 'Sans Coach', detail: h.note,
   }))
 
   reseau.visites.filter((v) => v.magasin === m.nom && visiteFaite(v, reseau.jour)).forEach((v) => {

@@ -1,13 +1,14 @@
 // Revue mensuelle d'un Responsable Régional : chiffres, visites, tâches et santé de ses magasins sur un mois
 import { analyserAu, chiffresDuMagasin, decalerMois, estVisite, type Analyse } from './chiffres'
 import { actionsDes, echeanceDate, type ActionSuivie } from './actions'
-import { coachA } from './charge'
+import { coachA, enDirect, suivi } from './charge'
 import { historiqueSante, nineBox, type CaseNineBox } from './sante'
 import { anneeDe, suiviRythme } from './visites'
 import type { Magasin, Reseau } from './modele'
 
 export interface LigneDecrochage { magasin: Magasin; coach: string; analyse: Analyse }
-export interface LigneCoach { coach: string; magasins: number; faites: number; reference: number }
+// coach : le Coach, « Géré en direct · RR » (rrDirect = id du RR) ou vide
+export interface LigneCoach { coach: string; rrDirect: string | null; magasins: number; faites: number; reference: number }
 export interface ChangementCase { magasin: Magasin; date: string; avant: CaseNineBox | null; apres: CaseNineBox | null }
 export interface Revue {
   mois: string; fin: string
@@ -52,19 +53,21 @@ export function revueDu(reseau: Reseau, magasins: Magasin[], mois: string): Revu
   // Visites du mois par Coach, face au douzième de la référence annuelle de ses magasins
   const rythme = new Map(suiviRythme(reseau, anneeDe(arret)).map((l) => [l.magasin.nom, l]))
   const parCoach = new Map<string, LigneCoach>()
-  const ligne = (coach: string) => {
-    let l = parCoach.get(coach)
-    if (!l) parCoach.set(coach, (l = { coach, magasins: 0, faites: 0, reference: 0 }))
+  const ligne = (m: Magasin, coach: string) => {
+    const cle = suivi(m, coach)
+    let l = parCoach.get(cle)
+    if (!l) parCoach.set(cle, (l = { coach: cle, rrDirect: enDirect(m, coach) ? m.rr!.id : null, magasins: 0, faites: 0, reference: 0 }))
     return l
   }
   for (const m of ouverts) {
-    const l = ligne(coachA(m, arret))
+    const l = ligne(m, coachA(m, arret))
     l.magasins++
     l.reference += (rythme.get(m.nom)?.reference ?? 0) / 12
   }
   for (const v of reseau.visites) {
     if (!noms.has(v.magasin) || !estVisite(v) || v.prevue || v.date < `${mois}-01` || v.date > arret) continue
-    ligne(coachA(ouverts.find((m) => m.nom === v.magasin)!, v.date)).faites++
+    const m = ouverts.find((x) => x.nom === v.magasin)!
+    ligne(m, coachA(m, v.date)).faites++
   }
   const coachs = [...parCoach.values()].map((l) => ({ ...l, reference: Math.round(l.reference * 10) / 10 }))
     .sort((a, b) => (a.coach ? 0 : 1) - (b.coach ? 0 : 1) || a.coach.localeCompare(b.coach, 'fr'))

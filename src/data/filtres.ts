@@ -1,4 +1,5 @@
 import type { Magasin, Statut } from './modele'
+import { cleFiltreCoach } from './charge'
 import { libellesLevier, type Levier } from './leviers'
 
 export interface Filtres {
@@ -30,7 +31,7 @@ export function filtrer(magasins: Magasin[], f: Filtres, alertesDe: (nom: string
     }
     if (f.statuts.length && !f.statuts.includes(m.statut)) return false
     if (f.types.length && !f.types.includes(m.franchise ? 'franchise' : 'integre')) return false
-    if (f.coachs.length && !f.coachs.includes(m.coach || '__aucun__')) return false
+    if (f.coachs.length && !f.coachs.includes(cleFiltreCoach(m))) return false
     if (f.rrs.length && !f.rrs.includes(m.rr?.id ?? '__aucun__')) return false
     if (f.alertes.length && !alertesDe(m.nom).some((a) => f.alertes.includes(a))) return false
     if (f.leviers.length && !f.leviers.includes(levierDe(m.nom) as Levier)) return false

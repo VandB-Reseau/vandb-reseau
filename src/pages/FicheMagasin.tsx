@@ -1,4 +1,5 @@
 import { EcartsAudit, RangeePhotos } from '../components/GrilleAudit'
+import { suiviEtRR } from '../data/charge'
 import { CartePratique, DialogPratique } from '../components/BonnesPratiques'
 import { useReactionsPratiques } from '../data/reactionsPratiques'
 import type { BonnePratique } from '../data/bonnesPratiques'
@@ -523,7 +524,7 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
     <ProfilPersonne nom={m.nom} retour={retour}
       insigne={concept && <Chip size="small" icon={<AutoAwesomeOutlined />} label={concept === 'fait' ? 'Concept 2.0' : 'Concept 2.0 en cours'}
         color={concept === 'fait' ? 'primary' : 'default'} variant={concept === 'fait' ? 'filled' : 'outlined'} sx={{ fontSize: 12, fontWeight: 700, flexShrink: 0 }} />} avatar={(taille) => <Blason magasin={m} taille={taille} />}
-      lignes={[[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · '), [m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')]}
+      lignes={[[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · '), suiviEtRR(m)]}
       pastille={pastille}
       compteurs={[
         // Compteurs sans valeur retirés plutôt qu'affichés en tiret

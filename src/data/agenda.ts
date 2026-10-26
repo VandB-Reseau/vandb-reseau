@@ -1,5 +1,6 @@
 // Éléments de l'agenda (visites, campagnes, ouvertures, événements, anniversaires) et calculs de dates, partagés avec l'Accueil
 import { lienFiche } from '../lib/format'
+import { libelleSuivi } from './charge'
 import { libellePerimetre, magasinsConcernes } from './campagnes'
 import { estVisite } from './chiffres'
 import { libelleTypeVisite, libellesTypeEvenement, nomsVisiteurs, typeEvenement, type Evenement, type Reseau, type Visite } from './modele'
@@ -28,7 +29,7 @@ export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Elem
     if (d && d <= fin && f >= debut && magasinsConcernes(reseau, c).length) el.push({ cle: `cp-${c.id}`, categorie: 'campagne', debut: d, fin: f, titre: c.nom, detail: ['Campagne', libellePerimetre(c)].filter(Boolean).join(' · '), lien: `/plus/sante?vue=campagnes&campagne=${encodeURIComponent(c.id)}`, couleur: '#312e2e' })
   }
   for (const m of reseau.magasins) {
-    if (m.ouvertureConnue && m.ouverture >= debut && m.ouverture <= fin) el.push({ cle: `o-${m.nom}`, categorie: 'ouverture', debut: m.ouverture, fin: m.ouverture, titre: `Ouverture ${m.nom}`, detail: m.coach ? `Coach ${m.coach}` : 'Sans Coach', lien: lienFiche(m.nom), couleur: '#ea6029' })
+    if (m.ouvertureConnue && m.ouverture >= debut && m.ouverture <= fin) el.push({ cle: `o-${m.nom}`, categorie: 'ouverture', debut: m.ouverture, fin: m.ouverture, titre: `Ouverture ${m.nom}`, detail: m.coach ? `Coach ${m.coach}` : libelleSuivi(m), lien: lienFiche(m.nom), couleur: '#ea6029' })
     // Soirées d'inauguration et fermetures provisoires (situations, 0033)
     for (const x of m.situations) {
       const f = x.fin ?? x.date

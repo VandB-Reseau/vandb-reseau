@@ -42,7 +42,8 @@ import { nineBox } from '../data/sante'
 import { PastilleCase } from '../components/Sante'
 import { FiltreMenu } from '../components/FiltreMenu'
 import Chip from '@mui/material/Chip'
-import { dateCourte, lienCoach, lienFiche, lienPreparation } from '../lib/format'
+import { dateCourte, lienCoach, lienFiche, lienPreparation, lienRR } from '../lib/format'
+import { cleFiltreCoach, enDirect, libelleSuivi, optionsFiltreCoach, suivi } from '../data/charge'
 import { libelleTypeVisite, nomsVisiteurs, typesVisite, type Reseau, type Visite } from '../data/modele'
 import { chercherDansVisite, type Trouvaille } from '../data/compteRendu'
 import { sousBandes } from '../components/Collant'
@@ -79,18 +80,17 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
   const toutes = useMemo(() => suiviRythme(reseau, a), [reseau, a])
   const t = texte.trim().toLowerCase()
   const lignes = toutes
-    .filter((l) => !coachs.length || coachs.includes(l.coach || '__aucun__'))
+    .filter((l) => !coachs.length || coachs.includes(cleFiltreCoach(l.magasin, l.coach)))
     .filter((l) => !cases.length || cases.includes(l.case?.id ?? '__aucune__'))
     .filter((l) => !etats.length || etats.includes(l.alerte ? 'alerte' : 'delai'))
-    .filter((l) => !t || `${l.magasin.nom} ${l.magasin.ville} ${l.magasin.departement} ${l.coach}`.toLowerCase().includes(t))
+    .filter((l) => !t || `${l.magasin.nom} ${l.magasin.ville} ${l.magasin.departement} ${suivi(l.magasin, l.coach)}`.toLowerCase().includes(t))
     .sort((x, y) => Number(y.alerte) - Number(x.alerte) || ecart(y) - ecart(x) || x.magasin.nom.localeCompare(y.magasin.nom, 'fr'))
   const faites = lignes.reduce((n, l) => n + l.faites, 0)
   const referenceTotale = lignes.reduce((n, l) => n + l.reference, 0)
   const signales = lignes.filter((l) => l.alerte)
-  const listeCoachs = [...new Set(toutes.map((l) => l.coach).filter(Boolean))].sort((x, y) => x.localeCompare(y, 'fr'))
-  const parCoach = [...new Set(lignes.map((l) => l.coach))].map((c) => {
-    const ls = lignes.filter((l) => l.coach === c)
-    return { coach: c, ls, faites: ls.reduce((n, l) => n + l.faites, 0), reference: ls.reduce((n, l) => n + l.reference, 0), jours: ls.reduce((n, l) => n + l.jours, 0), signales: ls.filter((l) => l.alerte) }
+  const parCoach = [...new Set(lignes.map((l) => suivi(l.magasin, l.coach)))].map((c) => {
+    const ls = lignes.filter((l) => suivi(l.magasin, l.coach) === c)
+    return { coach: c, lien: ls[0].coach ? lienCoach(c) : enDirect(ls[0].magasin, ls[0].coach) ? lienRR(ls[0].magasin.rr!.id) : undefined, ls, faites: ls.reduce((n, l) => n + l.faites, 0), reference: ls.reduce((n, l) => n + l.reference, 0), jours: ls.reduce((n, l) => n + l.jours, 0), signales: ls.filter((l) => l.alerte) }
   }).sort((x, y) => y.signales.length - x.signales.length || x.coach.localeCompare(y.coach, 'fr'))
   const actifs = coachs.length + cases.length + etats.length
   const mag = (p: (l: LigneRythme) => boolean) => { const n = toutes.filter(p).length; return `${n} magasin${n > 1 ? 's' : ''}` }
@@ -105,7 +105,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
         recherche={<ChampRecherche valeur={texte} onChange={setTexte} placeholder="Magasin, ville, Coach…" />}>
         <FiltreMenu unique libelle="Année" choisis={[a.cle]} onChange={(v) => setCle(v[0])} options={annees.map((x) => ({ valeur: x.cle, libelle: x.court }))} />
         <FiltreMenu libelle="Coach" choisis={coachs} onChange={setCoachs}
-          options={[...listeCoachs.map((c) => ({ valeur: c, libelle: c, detail: `${mag((l) => l.coach === c)}` })), { valeur: '__aucun__', libelle: 'Sans Coach', detail: `${mag((l) => !l.coach)}` }]} />
+          options={optionsFiltreCoach(toutes.map((l) => cleFiltreCoach(l.magasin, l.coach)), (n) => `${n} magasin${n > 1 ? 's' : ''}`)} />
         <FiltreMenu libelle="Nine box" choisis={cases} onChange={setCases}
           options={[...nineBox.map((c) => ({ valeur: c.id, libelle: c.libelle, detail: `${c.rythme} · ${mag((l) => l.case?.id === c.id)}` })), { valeur: '__aucune__', libelle: 'Non classé', detail: `2 visites · ${mag((l) => !l.case)}` }]} />
         <FiltreMenu libelle="Dernière visite" choisis={etats} onChange={setEtats}
@@ -129,7 +129,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
             <TitreSection nombre={parCoach.length}>Par Coach</TitreSection>
             <CarteLignes label="Visites par Coach">
               {parCoach.map((g) => (
-                <LigneCompacte key={g.coach} lien={g.coach ? lienCoach(g.coach) : undefined} avatar={<Initiales nom={g.coach || 'Sans Coach'} />} titre={g.coach || 'Sans Coach'}
+                <LigneCompacte key={g.coach} lien={g.lien} avatar={<Initiales nom={g.coach || 'Sans Coach'} />} titre={g.coach || 'Sans Coach'}
                   detail={<Box component="span" sx={{ display: 'block', whiteSpace: 'normal' }}>
                     {`${pluriel(g.faites, 'visite')} sur ${g.reference} · ${jours(g.jours)} par an`}
                     <Box component="span" role="meter" aria-label={`Visites de ${g.coach || 'Sans Coach'}`} aria-valuemin={0} aria-valuemax={g.reference} aria-valuenow={Math.min(g.faites, g.reference)}
@@ -156,7 +156,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
                     {visibles.map((l) => (
                       <TableRow key={l.magasin.nom} hover>
                         <TableCell><Link component={RouterLink} to={lienFiche(l.magasin.nom)} sx={{ fontWeight: 600 }}>{l.magasin.nom}</Link></TableCell>
-                        <TableCell>{l.coach || <Typography variant="body2" color="text.secondary">Sans Coach</Typography>}</TableCell>
+                        <TableCell>{suivi(l.magasin, l.coach) || <Typography variant="body2" color="text.secondary">Sans Coach</Typography>}</TableCell>
                         <TableCell><PastilleCase c={l.case} /></TableCell>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}>{visites(l)}</TableCell>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}>{l.derniere ? dateCourte(l.derniere.date) : <Typography variant="body2" color="text.secondary">Jamais visité</Typography>}</TableCell>
@@ -172,7 +172,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
             <CarteLignes label="Rythme de visite par magasin">
               {visibles.map((l) => (
                 <LigneCompacte key={l.magasin.nom} lien={lienFiche(l.magasin.nom)} avatar={<Blason magasin={l.magasin} />} titre={l.magasin.nom}
-                  detail={[l.coach || 'Sans Coach', `${visites(l)} en ${a.court}`, l.derniere ? `dernière le ${dateCourte(l.derniere.date)}` : l.alerte ? null : 'jamais visité', l.dernierContact && `appel le ${dateCourte(l.dernierContact.date)}`].filter(Boolean).join(' · ')}
+                  detail={[libelleSuivi(l.magasin, l.coach), `${visites(l)} en ${a.court}`, l.derniere ? `dernière le ${dateCourte(l.derniere.date)}` : l.alerte ? null : 'jamais visité', l.dernierContact && `appel le ${dateCourte(l.dernierContact.date)}`].filter(Boolean).join(' · ')}
                   fin={l.alerte ? <Pastille ton="orange">{libellePasVu(l)}</Pastille> : undefined}
                   actions={<>
                     {surPC && <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(l.magasin.nom)} aria-label={`Préparer la visite de ${l.magasin.nom}`}><AssignmentOutlined /></IconButton></Tooltip>}

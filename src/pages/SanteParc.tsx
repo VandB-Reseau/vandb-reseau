@@ -56,7 +56,7 @@ import { FiltreMenu, type Option } from '../components/FiltreMenu'
 import InputAdornment from '@mui/material/InputAdornment'
 import SearchIcon from '@mui/icons-material/Search'
 import { BoutonsNote, BoutonsOption, LibelleCritere, NotesParAxe, PastilleCase, couleursCoachs, texteSur, useSaisieSante, type Saisie } from '../components/Sante'
-import { coachA } from '../data/charge'
+import { EN_DIRECT, cleFiltreCoach, coachA, libelleSuivi, optionsFiltreCoach, suivi } from '../data/charge'
 import { avancement, caseDe, effetDeploiement, EFFET_MINIMUM, EFFET_MOIS, couleurTon, criteresAxe, libelleAxe, libelleNote, nineBox, tonDe, tousCriteres, type Evaluation, type IdCritere, type Thematique } from '../data/sante'
 import { useAuth } from '../auth/AuthContext'
 import { lienFiche } from '../lib/format'
@@ -75,13 +75,12 @@ function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
   const [recherche, setRecherche] = useState(() => params.get('magasin') ?? '') // ouverture depuis la fiche d'un magasin
   const magasins = useMemo(() => reseau.magasins
     .filter((m) => m.statut !== 'avenir')
-    .filter((m) => (!rrs.length || rrs.includes(m.rr?.id ?? '__aucun__')) && (!coachsChoisis.length || coachsChoisis.includes(coachA(m, reseau.jour) || '__aucun__'))
-      && (!recherche || `${m.nom} ${m.ville} ${coachA(m, reseau.jour)}`.toLowerCase().includes(recherche.toLowerCase())))
+    .filter((m) => (!rrs.length || rrs.includes(m.rr?.id ?? '__aucun__')) && (!coachsChoisis.length || coachsChoisis.includes(cleFiltreCoach(m, coachA(m, reseau.jour))))
+      && (!recherche || `${m.nom} ${m.ville} ${suivi(m, coachA(m, reseau.jour))}`.toLowerCase().includes(recherche.toLowerCase())))
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr')), [reseau, rrs, coachsChoisis, recherche])
   const actifsMag = reseau.magasins.filter((m) => m.statut !== 'avenir')
-  const coachs = [...new Set(actifsMag.map((m) => coachA(m, reseau.jour)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'))
   // Propositions : les magasins, rangés par Coach
-  const options = useMemo(() => reseau.magasins.filter((m) => m.statut !== 'avenir').map((m) => ({ nom: m.nom, coach: coachA(m, reseau.jour) }))
+  const options = useMemo(() => reseau.magasins.filter((m) => m.statut !== 'avenir').map((m) => ({ nom: m.nom, coach: suivi(m, coachA(m, reseau.jour)) }))
     .sort((a, b) => (a.coach || '~').localeCompare(b.coach || '~', 'fr') || a.nom.localeCompare(b.nom, 'fr')), [reseau])
   const champ = (
       <Autocomplete freeSolo options={options} groupBy={(o) => o.coach || 'Sans Coach'} getOptionLabel={(o) => (typeof o === 'string' ? o : o.nom)}
@@ -99,7 +98,7 @@ function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
       <FiltreMenu libelle="Responsable Régional" choisis={rrs} onChange={setRRs}
         options={[...reseau.rrs.map((r) => ({ valeur: r.id, libelle: r.nom, detail: compter((m) => m.rr?.id === r.id) })), { valeur: '__aucun__', libelle: 'Sans RR', detail: compter((m) => !m.rr) }]} />
       <FiltreMenu libelle="Coach" choisis={coachsChoisis} onChange={setCoachs}
-        options={[...coachs.map((c) => ({ valeur: c, libelle: c, detail: compter((m) => coachA(m, reseau.jour) === c) })), { valeur: '__aucun__', libelle: 'Sans Coach', detail: compter((m) => !coachA(m, reseau.jour)) }]} />
+        options={optionsFiltreCoach(actifsMag.map((m) => cleFiltreCoach(m, coachA(m, reseau.jour))), (n) => `${n} magasins`)} />
       {enPlus}
       {(rrs.length > 0 || coachsChoisis.length > 0 || recherche) && <Button onClick={() => { setRRs([]); setCoachs([]); setRecherche('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
     </RechercheFiltres>
@@ -117,6 +116,8 @@ const SOLIDES = ['locomotive', 'grandir', 'potentiel']
 // (Joseph, sprint 24) ; nom complet si deux Coachs ont le même nom court
 export function nomCourtCoach(nom: string, tous: string[] = []): string {
   if (!nom) return 'Sans Coach'
+  // Magasins gérés en direct : le Responsable Régional, en nom court comme un Coach
+  if (nom.startsWith(EN_DIRECT)) return nomCourtCoach(nom.slice(EN_DIRECT.length), tous)
   const court = (n: string) => { const [p, ...r] = n.trim().split(/\s+/); return r.length ? `${p} ${r[0][0].toUpperCase()}.` : p }
   return tous.some((x) => x !== nom && court(x) === court(nom)) ? nom : court(nom)
 }
@@ -126,7 +127,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
   const { magasins, barre } = useFiltres(reseau)
   const [ouverte, setOuverte] = useState<string | null>(null)
   const [cherche, setCherche] = useState('')
-  const classes = useMemo(() => magasins.map((m) => ({ m, c: caseDe(reseau.evaluations[m.nom]), coach: coachA(m, reseau.jour) })), [magasins, reseau])
+  const classes = useMemo(() => magasins.map((m) => ({ m, c: caseDe(reseau.evaluations[m.nom]), coach: suivi(m, coachA(m, reseau.jour)) })), [magasins, reseau])
   const couleurs = couleursCoachs(reseau.magasins.map((m) => coachA(m, reseau.jour)).filter(Boolean))
   const nomsCoachs = [...couleurs.keys()]
   const nbClasses = classes.filter((x) => x.c).length
@@ -140,7 +141,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
     { titre: 'Non classés', n: nonClasses, detail: 'Il manque des notes', couleur: theme.palette.text.secondary, action: nonClasses > 0 },
   ]
   const caseOuverte = nineBox.find((c) => c.id === ouverte)
-  const dansCase = caseOuverte ? classes.filter((x) => x.c?.id === caseOuverte.id && (!cherche || normaliser(`${x.m.nom} ${x.m.ville} ${coachA(x.m, reseau.jour)}`).includes(normaliser(cherche)))) : []
+  const dansCase = caseOuverte ? classes.filter((x) => x.c?.id === caseOuverte.id && (!cherche || normaliser(`${x.m.nom} ${x.m.ville} ${x.coach}`).includes(normaliser(cherche)))) : []
   const groupes = [...dansCase.reduce((g, x) => g.set(x.coach || '', [...(g.get(x.coach || '') ?? []), x.m]), new Map<string, Magasin[]>())].sort((a, b) => b[1].length - a[1].length)
 
   return (
@@ -422,7 +423,7 @@ function PanneauSaisie({ reseau, liste, nom, aller, fermer, saisie, partie, surP
             <Initiales nom={m.nom} />
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Link component={RouterLink} to={lienFiche(m.nom)} color="inherit" sx={{ fontWeight: 600, display: 'block' }} noWrap>{m.nom}</Link>
-              <Typography variant="body2" color="text.secondary" noWrap>{coachA(m, reseau.jour) || 'Sans Coach'} · {i + 1} sur {liste.length}</Typography>
+              <Typography variant="body2" color="text.secondary" noWrap>{libelleSuivi(m, coachA(m, reseau.jour))} · {i + 1} sur {liste.length}</Typography>
             </Box>
             {partie === 'notes' && <PastilleCase c={caseDe(e)} />}
             <IconButton onClick={fermer} aria-label="Fermer" sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
@@ -569,7 +570,7 @@ function VueEvaluer({ reseau, saisie, surPC, date }: { reseau: Reseau; saisie: S
           const n = tousCriteres.filter((c) => e?.notes[c.id] !== undefined).length
           const c = caseDe(e)
           return {
-            detail: [coachA(m, reseau.jour) || 'Sans Coach', `${n} note${n > 1 ? 's' : ''} sur ${tousCriteres.length}`].join(' · '),
+            detail: [libelleSuivi(m, coachA(m, reseau.jour)), `${n} note${n > 1 ? 's' : ''} sur ${tousCriteres.length}`].join(' · '),
             fin: <>
               <Points label={`${n} notes sur ${tousCriteres.length}`} couleurs={tousCriteres.map((x) => { const v = e?.notes[x.id]; return v === undefined ? null : couleurNotePoint[v] })} />
               {c ? <Box component="span" sx={{ flexShrink: 0, px: 1.25, py: 0.5, borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', bgcolor: c.couleur, color: texteSur(c.couleur) }}>{c.libelle}</Box> : <Pastille ton="gris">Non classé</Pastille>}
@@ -624,7 +625,7 @@ function VueDeploiements({ reseau, saisie, surPC, date }: { reseau: Reseau; sais
           const tonsM = ths.map((t) => tonDe(t, v?.[t.id]))
           const faits = tonsM.filter((x) => x === 'positif').length
           return {
-            detail: [coachA(m, reseau.jour) || 'Sans Coach', `${faits} sur ${ths.length} déployé${faits > 1 ? 's' : ''}`].join(' · '),
+            detail: [libelleSuivi(m, coachA(m, reseau.jour)), `${faits} sur ${ths.length} déployé${faits > 1 ? 's' : ''}`].join(' · '),
             fin: <Points label={`${faits} thématiques déployées sur ${ths.length}`} couleurs={tonsM.map((x) => (x ? `${couleurTon[x]}.main` : null))} />,
           }
         }}
@@ -808,7 +809,7 @@ function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
   const { magasins, barreDe } = useFiltres(reseau)
   const [statuts, setStatuts] = useState<string[]>([])
   const [affichage, setAffichage] = useAffichage('chiffres')
-  const lignes = useMemo(() => magasins.map((m) => ({ m, a: analyserCA(reseau, m.nom), coach: coachA(m, reseau.jour), hygiene: dernierAudit(reseau, m.nom, 'hygiene'), excellence: dernierAudit(reseau, m.nom, 'excellence') }))
+  const lignes = useMemo(() => magasins.map((m) => ({ m, a: analyserCA(reseau, m.nom), coach: suivi(m, coachA(m, reseau.jour)), hygiene: dernierAudit(reseau, m.nom, 'hygiene'), excellence: dernierAudit(reseau, m.nom, 'excellence') }))
     .sort((x, y) => ordreAlerte.indexOf(x.a?.statut ?? null) - ordreAlerte.indexOf(y.a?.statut ?? null) || (x.a?.ecart ?? 0) - (y.a?.ecart ?? 0) || x.m.nom.localeCompare(y.m.nom, 'fr')), [magasins, reseau])
   const compte = (st: StatutAlerte | null) => lignes.filter((l) => (l.a?.statut ?? null) === st).length
   const visibles = lignes.filter((l) => !statuts.length || statuts.includes(l.a?.statut ?? 'sans'))
