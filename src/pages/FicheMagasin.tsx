@@ -152,6 +152,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             </Section>
             <Section titre="Magasin">
               <Ligne libelle="Code magasin">{m.code || null}</Ligne>
+              <Ligne libelle="Implantation des produits">{m.exploitation.implantation ? dateLongue(m.exploitation.implantation) : null}</Ligne>
               <Ligne libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
               <Ligne libelle="Fin de contrat"><FinContrat reseau={reseau} m={m} /></Ligne>
               <Ligne libelle="Adresse">
@@ -228,7 +229,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 }
 
 // Rythme de visite de l'année et toutes les visites du magasin, de la plus récente à la plus ancienne
-// Exploitation (0037) : typologie, zone de chalandise, licence, implantation, Instagram et horaires
+// Exploitation (0037) : typologie, zone de chalandise, licence, Instagram et horaires ; l'implantation des produits est avec l'ouverture
 // Fin de contrat : 5 ans renouvelés par 5 ans depuis la reprise ou l'ouverture, ou mandat saisi (Joseph, 26/10/2026)
 function FinContrat({ reseau, m }: { reseau: Reseau; m: Magasin }) {
   const f = finDeContrat(reseau, m)
@@ -251,7 +252,6 @@ function SectionExploitation({ m }: { m: Magasin }) {
       <Ligne libelle="Typologie">{e.typologie ? libellesTypologie[e.typologie] : null}</Ligne>
       <Ligne libelle="Zone de chalandise">{e.zoneChalandise ? libellesZone[e.zoneChalandise] : null}</Ligne>
       <Ligne libelle="Licence">{e.licence ? libellesLicence[e.licence] : null}</Ligne>
-      <Ligne libelle="Implantation">{e.implantation ? dateLongue(e.implantation) : null}</Ligne>
       <Ligne libelle="Instagram">{e.instagram && <Link href={lienInstagram(e.instagram)} target="_blank" rel="noopener">{compteInstagram(e.instagram)}</Link>}</Ligne>
       <Ligne libelle="Horaires">
         {horaires.length > 0 && (
