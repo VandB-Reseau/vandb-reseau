@@ -4,6 +4,7 @@ import { COULEURS_AUTO, estCouleurCharte } from './zones'
 import { delaisVisiteParDefaut, grilleParDefaut } from './sante'
 import type { AffectationCoach, Coach, Fermeture, Magasin, Situation, Travaux, Personne, Reseau, ResponsableRegional, Statut, Topographie } from './modele'
 import { estFigure } from '../components/FiguresBlason'
+import { lireExploitation } from './exploitation'
 
 // Lignes brutes telles que stockées par l'ancienne app
 export interface MagasinBrut {
@@ -182,6 +183,7 @@ export function construireReseau(d: DonneesBrutes, jour: string): Reseau {
       lat, lon, positionApprochee,
       topographie: estTopographie(s?.topographie) ? s.topographie : '',
       figure: estFigure(s?.figure) ? s.figure : '',
+      exploitation: lireExploitation(s as Record<string, unknown> | undefined),
       historiqueCoach: historique,
     }
   })

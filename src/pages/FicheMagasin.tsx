@@ -58,6 +58,7 @@ import { useDroits } from '../auth/Droits'
 import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
 import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { SectionOuverture } from '../components/Ouverture'
+import { compteInstagram, libellesLicence, libellesTypologie, libellesZone, lienInstagram, resumeHoraires } from '../data/exploitation'
 import { aOuvrir } from '../data/ouvertures'
 import { actionsDuMagasin, enRetard } from '../data/actions'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
@@ -144,7 +145,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             <Section titre="Équipe" action={referentiels ? <Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button> : undefined}>
               <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
               <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
-              {!m.franchise && <Contact role={libelleResponsable(m)} p={m.responsable} lien={m.responsable ? lienFranchise(m.responsable.nom) : undefined} sousTitre={m.responsable ? undefined : m.responsableARecruter ? 'En cours de recrutement' : undefined} />}
+              {!m.franchise && m.responsable && <Contact role={libelleResponsable(m)} p={m.responsable} lien={m.responsable ? lienFranchise(m.responsable.nom) : undefined} sousTitre={m.responsable ? undefined : m.responsableARecruter ? 'En cours de recrutement' : undefined} />}
               {m.franchise && m.responsableARecruter && <Contact role={libelleResponsable(m)} p={null} sousTitre="En cours de recrutement" />}
               <ListeAssocies reseau={reseau} m={m} signaler={setConfirmation} />
             </Section>
@@ -162,6 +163,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
               <Ligne libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
               <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
             </Section>
+            <SectionExploitation m={m} />
             {lieuCarte && (
               <Card sx={{ gridColumn: { lg: 'span 2' }, overflow: 'hidden' }}>
                 <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
@@ -224,6 +226,31 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 }
 
 // Rythme de visite de l'année et toutes les visites du magasin, de la plus récente à la plus ancienne
+// Exploitation (0037) : typologie, zone de chalandise, licence, implantation, Instagram et horaires
+function SectionExploitation({ m }: { m: Magasin }) {
+  const e = m.exploitation
+  const horaires = resumeHoraires(e.horaires)
+  return (
+    <Section titre="Exploitation">
+      <Ligne libelle="Typologie">{e.typologie ? libellesTypologie[e.typologie] : null}</Ligne>
+      <Ligne libelle="Zone de chalandise">{e.zoneChalandise ? libellesZone[e.zoneChalandise] : null}</Ligne>
+      <Ligne libelle="Licence">{e.licence ? libellesLicence[e.licence] : null}</Ligne>
+      <Ligne libelle="Implantation">{e.implantation ? dateLongue(e.implantation) : null}</Ligne>
+      <Ligne libelle="Instagram">{e.instagram && <Link href={lienInstagram(e.instagram)} target="_blank" rel="noopener">{compteInstagram(e.instagram)}</Link>}</Ligne>
+      <Ligne libelle="Horaires">
+        {horaires.length > 0 && (
+          <Box component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 2, rowGap: 0.25 }}>
+            {horaires.map((h) => [
+              <Box component="dt" key={`j${h.jours}`} sx={{ color: 'text.secondary' }}>{h.jours}</Box>,
+              <Box component="dd" key={`h${h.jours}`} sx={{ m: 0 }}>{h.heures}</Box>,
+            ])}
+          </Box>
+        )}
+      </Ligne>
+    </Section>
+  )
+}
+
 function SectionVisites({ reseau, m, saisir, modifier }: { reseau: Reseau; m: Magasin; saisir: () => void; modifier: (v: Visite) => void }) {
   const [toutes, setToutes] = useState(false)
   const vs = visitesDuMagasin(reseau, m.nom)

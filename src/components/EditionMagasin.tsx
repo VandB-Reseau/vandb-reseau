@@ -15,6 +15,7 @@ import { caseDe, depuisDeploiement, type Evaluation, type IdCritere, type Note }
 import { libelleResponsable, type Figure, type Magasin, type Reseau, type Topographie } from '../data/modele'
 import { libellesTopographie, topographieDeduite } from './Blason'
 import { figureDeduite, figures } from './FiguresBlason'
+import { JOURS, exploitationVide, libellesJour, libellesLicence, libellesTypologie, libellesZone, plageValide, type Exploitation, type Licence, type Typologie, type ZoneChalandise } from '../data/exploitation'
 
 const emailValide = (e: string) => !e.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())
 
@@ -35,7 +36,18 @@ function depuisMagasin(m: Magasin | null): FicheMagasin {
     responsable: m?.responsable?.nom ?? (m?.responsableARecruter ? RECRUTEMENT : ''),
     telResponsable: m?.responsable?.telephone ?? '', emailResponsable: m?.responsable?.email ?? '',
     rrDirect: m?.rrEnDirect && m.rr ? m.rr.id : '', topographie: m?.topographie ?? '', figure: m?.figure ?? '',
+    exploitation: m?.exploitation ?? exploitationVide(),
   }
+}
+
+// Liste à choix avec une option vide
+function Choix<T extends string>({ label, value, libelles, onChange }: { label: string; value: T | ''; libelles: Record<T, string>; onChange: (v: T | '') => void }) {
+  return (
+    <TextField select label={label} value={value} onChange={(e) => onChange(e.target.value as T | '')} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
+      <MenuItem value="">Non renseigné</MenuItem>
+      {(Object.keys(libelles) as T[]).map((k) => <MenuItem key={k} value={k}>{libelles[k]}</MenuItem>)}
+    </TextField>
+  )
 }
 
 export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; magasin: Magasin | null; onFermer: (message?: string, nom?: string) => void }) {
@@ -74,11 +86,14 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
     return { telResponsable: p?.telephone ?? '', emailResponsable: p?.email ?? '' }
   }
   const renomme = !!magasin && nom !== magasin.nom
+  const ex = f.exploitation ?? exploitationVide()
+  const exploiter = (x: Partial<Exploitation>) => setF((y) => ({ ...y, exploitation: { ...(y.exploitation ?? exploitationVide()), ...x } }))
+  const horairesOk = JOURS.every((j) => plageValide(ex.horaires[j] ?? ''))
   return (
     <Fenetre
       titre={magasin ? `Modifier ${magasin.nom}` : 'Ajouter un magasin'} ouvert large
       onFermer={(m) => onFermer(m, m ? nom : undefined)}
-      valide={!!nom && !doublon && emailsOk && codeOk}
+      valide={!!nom && !doublon && emailsOk && codeOk && horairesOk}
       enregistrer={async () => {
         await enregistrerMagasin({ ...f, code, nom, responsable, ...coordonnees() }, magasin?.nom ?? null)
         // Nouvelle adresse : le point sur la carte suit
@@ -140,6 +155,23 @@ export function DialogMagasin({ reseau, magasin, onFermer }: { reseau: Reseau; m
             </MenuItem>
           ))}
         </TextField>
+      </Groupe>
+      <Groupe titre="Exploitation">
+        <Choix label="Typologie" value={ex.typologie} libelles={libellesTypologie} onChange={(v) => exploiter({ typologie: v as Typologie | '' })} />
+        <Choix label="Zone de chalandise" value={ex.zoneChalandise} libelles={libellesZone} onChange={(v) => exploiter({ zoneChalandise: v as ZoneChalandise | '' })} />
+        <Choix label="Licence" value={ex.licence} libelles={libellesLicence} onChange={(v) => exploiter({ licence: v as Licence | '' })} />
+        <TextField type="date" label="Date d’implantation" value={ex.implantation} onChange={(e) => exploiter({ implantation: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+        <TextField label="Instagram" value={ex.instagram} onChange={(e) => exploiter({ instagram: e.target.value })} placeholder="https://www.instagram.com/…" />
+      </Groupe>
+      <Groupe titre="Horaires d’ouverture">
+        {JOURS.map((j) => {
+          const v = ex.horaires[j] ?? ''
+          return (
+            <TextField key={j} label={libellesJour[j]} value={v} placeholder="Fermé" error={!plageValide(v)}
+              helperText={plageValide(v) ? ' ' : 'Par exemple 10:00-20:00, ou 10:00-13:00, 15:00-20:00.'}
+              onChange={(e) => { const h = { ...ex.horaires }; if (e.target.value.trim()) h[j] = e.target.value; else delete h[j]; exploiter({ horaires: h }) }} />
+          )
+        })}
       </Groupe>
       {magasin && (
         <Box>

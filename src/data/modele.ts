@@ -1,5 +1,6 @@
 // Modèle métier lisible, construit à partir des tables Supabase de l'ancienne app.
 import type { Piece } from '../lib/pieces'
+import type { Exploitation } from './exploitation'
 
 export type Statut = 'avenir' | 'preouverture' | 'nouveau' | 'ouvert'
 
@@ -70,6 +71,7 @@ export interface Magasin {
   positionApprochee: boolean // posé au centre de son département (import Excel) ou jamais trouvé : à géolocaliser
   topographie: Topographie | '' // forme du blason de ville, choisie dans la fiche ; vide = déduite du département
   figure: Figure | '' // figure au centre du blason, choisie dans la fiche ; vide = proposée selon le département
+  exploitation: Exploitation // typologie, zone de chalandise, licence, horaires… (0037)
   historiqueCoach: AffectationCoach[]
   fermeture: Fermeture | null // sortie du réseau, passée ou prévue (situations, 0033)
   travaux: Travaux | null // fermeture provisoire en cours ou à venir
