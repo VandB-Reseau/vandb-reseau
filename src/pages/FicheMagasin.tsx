@@ -8,6 +8,7 @@ import StarBorderOutlined from '@mui/icons-material/StarBorderOutlined'
 import { basculerFavori, noterRecent, useSuivis } from '../lib/suivis'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
+import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
@@ -42,9 +43,10 @@ import { DialogSituation } from '../components/DialogSituation'
 import { enTravaux, etatSortie, situationsAffichees, texteSituation } from '../data/situations'
 import SwapHoriz from '@mui/icons-material/SwapHoriz'
 import { EmptyState } from '../components/EmptyState'
-import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienPreparation, lienRR, telLien } from '../lib/format'
+import { dateCourte, dateLongue, lienCoach, lienFiche, lienBilan, lienPreparation, lienRR, telLien } from '../lib/format'
 import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
+import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
 import { EnvoyerCompteRendu } from '../components/EnvoyerCompteRendu'
@@ -57,6 +59,7 @@ import { useDroits } from '../auth/Droits'
 import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
 import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { SectionOuverture } from '../components/Ouverture'
+import { compteInstagram, libellesLicence, libellesTypologie, libellesZone, lienInstagram, resumeHoraires } from '../data/exploitation'
 import { aOuvrir } from '../data/ouvertures'
 import { actionsDuMagasin, enRetard } from '../data/actions'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
@@ -71,6 +74,7 @@ import { ContenuLeviers, ListeInspirations } from '../components/Leviers'
 import { inspirationsDu, leviersDuMagasin, libellesLevier, useReperesReseau } from '../data/leviers'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
 import { Contact, Ligne, Section } from '../components/Section'
+import { finDeContrat, libellesEtatMandat, libellesOrigineContrat } from '../data/associes'
 import { SectionReunionsMagasin } from '../components/Reunions'
 import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, estVisite, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 import { cartouche } from '../components/Social'
@@ -143,13 +147,13 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             <Section titre="Équipe" action={referentiels ? <Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button> : undefined}>
               <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
               <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
-              {!m.franchise && <Contact role={libelleResponsable(m)} p={m.responsable} lien={m.responsable ? lienFranchise(m.responsable.nom) : undefined} sousTitre={m.responsable ? undefined : m.responsableARecruter ? 'En cours de recrutement' : undefined} />}
               {m.franchise && m.responsableARecruter && <Contact role={libelleResponsable(m)} p={null} sousTitre="En cours de recrutement" />}
               <ListeAssocies reseau={reseau} m={m} signaler={setConfirmation} />
             </Section>
             <Section titre="Magasin">
               <Ligne libelle="Code magasin">{m.code || null}</Ligne>
               <Ligne libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
+              <Ligne libelle="Fin de contrat"><FinContrat reseau={reseau} m={m} /></Ligne>
               <Ligne libelle="Adresse">
                 {adresseComplete && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -161,6 +165,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
               <Ligne libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
               <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
             </Section>
+            <SectionExploitation m={m} />
             {lieuCarte && (
               <Card sx={{ gridColumn: { lg: 'span 2' }, overflow: 'hidden' }}>
                 <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
@@ -196,8 +201,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
             <SectionLeviers reseau={reseau} m={m} />
             <Box id="partie-sante" sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start', scrollMarginTop: 160 }}>
-              <SectionSante reseau={reseau} m={m} modifier={() => setEdition(true)} />
-              <SectionDeploiements reseau={reseau} m={m} modifier={() => setEdition(true)} />
+              <SectionSante reseau={reseau} m={m} modifier={() => naviguer(`/plus/sante?vue=evaluer&magasin=${encodeURIComponent(m.nom)}`)} />
+              <SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/plus/sante?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} />
             </Box>
           </Box>
         )}
@@ -223,6 +228,45 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 }
 
 // Rythme de visite de l'année et toutes les visites du magasin, de la plus récente à la plus ancienne
+// Exploitation (0037) : typologie, zone de chalandise, licence, implantation, Instagram et horaires
+// Fin de contrat : 5 ans renouvelés par 5 ans depuis la reprise ou l'ouverture, ou mandat saisi (Joseph, 26/10/2026)
+function FinContrat({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+  const f = finDeContrat(reseau, m)
+  if (!f) return null
+  const c = f.contrat
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+      <span>{dateLongue(f.fin)}</span>
+      {c && <Typography variant="body2" color="text.secondary" component="span">{c.numero === 1 ? '1er contrat' : `${c.numero}e contrat`} · depuis {libellesOrigineContrat[c.origine]} du {dateCourte(c.depart)}</Typography>}
+      {f.etat && f.etat !== 'enCours' && <Chip size="small" color={f.etat === 'echu' ? 'error' : 'warning'} label={libellesEtatMandat[f.etat]} sx={{ fontSize: 12, fontWeight: 600 }} />}
+    </Box>
+  )
+}
+
+function SectionExploitation({ m }: { m: Magasin }) {
+  const e = m.exploitation
+  const horaires = resumeHoraires(e.horaires)
+  return (
+    <Section titre="Exploitation">
+      <Ligne libelle="Typologie">{e.typologie ? libellesTypologie[e.typologie] : null}</Ligne>
+      <Ligne libelle="Zone de chalandise">{e.zoneChalandise ? libellesZone[e.zoneChalandise] : null}</Ligne>
+      <Ligne libelle="Licence">{e.licence ? libellesLicence[e.licence] : null}</Ligne>
+      <Ligne libelle="Implantation">{e.implantation ? dateLongue(e.implantation) : null}</Ligne>
+      <Ligne libelle="Instagram">{e.instagram && <Link href={lienInstagram(e.instagram)} target="_blank" rel="noopener">{compteInstagram(e.instagram)}</Link>}</Ligne>
+      <Ligne libelle="Horaires">
+        {horaires.length > 0 && (
+          <Box component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 2, rowGap: 0.25 }}>
+            {horaires.map((h) => [
+              <Box component="dt" key={`j${h.jours}`} sx={{ color: 'text.secondary' }}>{h.jours}</Box>,
+              <Box component="dd" key={`h${h.jours}`} sx={{ m: 0 }}>{h.heures}</Box>,
+            ])}
+          </Box>
+        )}
+      </Ligne>
+    </Section>
+  )
+}
+
 function SectionVisites({ reseau, m, saisir, modifier }: { reseau: Reseau; m: Magasin; saisir: () => void; modifier: (v: Visite) => void }) {
   const [toutes, setToutes] = useState(false)
   const vs = visitesDuMagasin(reseau, m.nom)
@@ -490,8 +534,11 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
     : alerte?.statut === 'surveiller' ? { ton: 'orange', libelle: 'À surveiller' }
     : alerteVisite ? { ton: 'orange', libelle: alerteVisite }
     : m.statut !== 'ouvert' ? { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] } : null
+  const concept = etatConcept20(reseau, m.nom)
   return (
-    <ProfilPersonne nom={m.nom} retour={retour} avatar={(taille) => <Blason magasin={m} taille={taille} />}
+    <ProfilPersonne nom={m.nom} retour={retour}
+      insigne={concept && <Chip size="small" icon={<AutoAwesomeOutlined />} label={concept === 'fait' ? 'Concept 2.0' : 'Concept 2.0 en cours'}
+        color={concept === 'fait' ? 'primary' : 'default'} variant={concept === 'fait' ? 'filled' : 'outlined'} sx={{ fontSize: 12, fontWeight: 700, flexShrink: 0 }} />} avatar={(taille) => <Blason magasin={m} taille={taille} />}
       lignes={[[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · '), [m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')]}
       pastille={pastille}
       compteurs={[
@@ -510,7 +557,15 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
   )
 }
 
-// Planifier, Préparer et Modifier dans un menu « ⋯ » : trois pictos seulement à côté du nom (Joseph, 21/10/2026)
+// Concept 2.0 (Joseph, 26/10/2026) : passage au nouveau concept, montré à côté du nom ; suivi dans les déploiements
+function etatConcept20(reseau: Reseau, magasin: string): 'fait' | 'enCours' | null {
+  const t = reseau.deploiements.thematiques.find((x) => x.id === 'concept20') ?? reseau.deploiements.thematiques.find((x) => /2\.0/.test(x.libelle))
+  if (!t) return null
+  const ton = tonDe(t, reseau.deploiements.valeurs[magasin]?.[t.id])
+  return ton === 'positif' ? 'fait' : ton === 'partiel' ? 'enCours' : null
+}
+
+// Planifier, Préparer, Bilan de l'année (sprint 26, F1) et Modifier dans un menu « ⋯ » : trois pictos seulement à côté du nom (Joseph, 21/10/2026)
 function AutresActions({ nom, planifier, preparer, modifier, fermer: fermerMagasin }: { nom: string; planifier: () => void; preparer: string; modifier?: () => void; fermer?: () => void }) {
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const favori = useSuivis().favoris.includes(nom)
@@ -521,6 +576,7 @@ function AutresActions({ nom, planifier, preparer, modifier, fermer: fermerMagas
       <Menu anchorEl={ancre} open={!!ancre} onClose={fermer} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <MenuItem onClick={() => { fermer(); planifier() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><EventAvailableOutlined /></ListItemIcon>Planifier la visite</MenuItem>
         <MenuItem component={RouterLink} to={preparer} onClick={fermer} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><AssignmentOutlined /></ListItemIcon>Préparer la visite</MenuItem>
+        <MenuItem component={RouterLink} to={lienBilan(nom)} onClick={fermer} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><InsightsOutlined /></ListItemIcon>Bilan de l’année</MenuItem>
         <MenuItem onClick={() => { fermer(); basculerFavori(nom) }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon>{favori ? <StarOutlined /> : <StarBorderOutlined />}</ListItemIcon>{favori ? 'Retirer des favoris' : 'Ajouter aux favoris'}</MenuItem>
         {modifier && <MenuItem onClick={() => { fermer(); modifier() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><EditOutlined /></ListItemIcon>Modifier la fiche</MenuItem>}
         {fermerMagasin && <MenuItem onClick={() => { fermer(); fermerMagasin() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><SwapHorizOutlined /></ListItemIcon>Changer la situation</MenuItem>}

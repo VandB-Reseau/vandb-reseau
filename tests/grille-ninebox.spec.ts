@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { caseDe, grilleParDefaut, niveauAxe, normaliserGrille, type GrilleNineBox } from '../src/data/sante'
-import { seConnecter, textesTropPetits, type Ecriture, actionFiche } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -59,20 +59,19 @@ test.describe('calcul de la grille', () => {
 test('la saisie affiche le détail du franchisé, rangé par axe', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Rennes%20Test')
-  await actionFiche(page, 'Modifier la fiche')
-  const d = page.getByRole('dialog', { name: 'Modifier Rennes Test' })
+  await page.goto('./#/plus/sante?vue=evaluer&magasin=Rennes%20Test')
+  const d = page.getByRole('dialog', { name: 'Rennes Test' })
   await expect(d.getByRole('heading', { name: 'Résultats' })).toBeVisible()
   await expect(d.getByRole('heading', { name: 'Franchisé' })).toBeVisible()
   for (const c of ['Gestion', 'Management de l’équipe', 'Animation commerciale', 'Tenue du magasin', 'Relation au réseau']) {
-    await expect(d.getByRole('button', { name: `Fort : ${c}`, exact: true })).toBeVisible()
+    await expect(d.getByRole('button', { name: `Fort : ${c} de Rennes Test`, exact: true })).toBeVisible()
   }
   await expect(d.getByRole('button', { name: /^Gestion : Suit ses chiffres/ })).toBeVisible()
-  await d.getByRole('button', { name: 'Fort : CA marché extérieur', exact: true }).click()
-  for (const c of ['Gestion', 'Management de l’équipe', 'Animation commerciale', 'Relation au réseau']) await d.getByRole('button', { name: `Fort : ${c}`, exact: true }).click()
+  await d.getByRole('button', { name: 'Fort : CA marché extérieur de Rennes Test', exact: true }).click()
+  for (const c of ['Gestion', 'Management de l’équipe', 'Animation commerciale', 'Relation au réseau']) await d.getByRole('button', { name: `Fort : ${c} de Rennes Test`, exact: true }).click()
   await expect(d.getByText('Locomotive')).toBeVisible()
   // Tenue du magasin est bloquante : Faible fait tomber le franchisé en Faible
-  await d.getByRole('button', { name: 'Faible : Tenue du magasin', exact: true }).click()
+  await d.getByRole('button', { name: 'Faible : Tenue du magasin de Rennes Test', exact: true }).click()
   await expect(d.getByText('Performance fragile')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${test.info().project.name}-ninebox-saisie-detail.png` })
@@ -142,12 +141,11 @@ test('une grille enregistrée change les colonnes de la saisie et la case des ma
     ],
   }
   await seConnecter(page, { config: { grille_ninebox: grille } })
-  await page.goto('./#/magasins/Rennes%20Test')
-  await actionFiche(page, 'Modifier la fiche')
-  const d = page.getByRole('dialog', { name: 'Modifier Rennes Test' })
-  await expect(d.getByRole('button', { name: 'Fort : Digital', exact: true })).toBeVisible()
-  await expect(d.getByRole('button', { name: 'Fort : Panier moyen cave', exact: true })).toHaveCount(0)
-  await d.getByRole('button', { name: 'Faible : CA marché extérieur', exact: true }).click()
-  await d.getByRole('button', { name: 'Fort : Digital', exact: true }).click()
+  await page.goto('./#/plus/sante?vue=evaluer&magasin=Rennes%20Test')
+  const d = page.getByRole('dialog', { name: 'Rennes Test' })
+  await expect(d.getByRole('button', { name: 'Fort : Digital de Rennes Test', exact: true })).toBeVisible()
+  await expect(d.getByRole('button', { name: 'Fort : Panier moyen cave de Rennes Test', exact: true })).toHaveCount(0)
+  await d.getByRole('button', { name: 'Faible : CA marché extérieur de Rennes Test', exact: true }).click()
+  await d.getByRole('button', { name: 'Fort : Digital de Rennes Test', exact: true }).click()
   await expect(d.getByText('Diagnostic marché')).toBeVisible()
 })

@@ -138,7 +138,7 @@ export function ListeActions({ reseau, actions, avecMagasin, signaler, libelle, 
 // Bouton « Ajouter une tâche » et sa fenêtre, pour l'en-tête d'une section
 // porteur : proposé d'office (liste d'une personne)
 // barre : action d'une barre d'outils (bouton rond sur téléphone)
-export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false, barre = false, porteur, libelle = 'Ajouter une tâche' }: { reseau: Reseau; magasins: string[]; signaler: (m: string) => void; plein?: boolean; barre?: boolean; porteur?: string; libelle?: string }) {
+export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false, barre = false, porteur, libelle = 'Ajouter une tâche', echeance }: { reseau: Reseau; magasins: string[]; signaler: (m: string) => void; plein?: boolean; barre?: boolean; porteur?: string; libelle?: string; echeance?: string }) {
   const [ouvert, setOuvert] = useState(false)
   if (useEcritureActions(reseau).lectureSeule || !magasins.length) return null
   return (
@@ -146,7 +146,7 @@ export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false,
       {barre
         ? <BoutonAction libelle={libelle} onClick={() => setOuvert(true)} />
         : <Button variant={plein ? 'contained' : 'text'} startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48, ...(plein && { borderRadius: 999, px: 3 }) }}>{libelle}</Button>}
-      {ouvert && <DialogAction reseau={reseau} magasins={magasins} action={null} porteurInitial={porteur} onFermer={(msg) => { setOuvert(false); if (msg) signaler(msg) }} />}
+      {ouvert && <DialogAction reseau={reseau} magasins={magasins} action={null} porteurInitial={porteur} echeanceInitiale={echeance} onFermer={(msg) => { setOuvert(false); if (msg) signaler(msg) }} />}
     </>
   )
 }
@@ -174,8 +174,8 @@ function echeancesRapides(jour: string): { libelle: string; date: string }[] {
 }
 
 // depuis : tâche née d'un message (texte proposé, fil « Équipe seule » ou non, message d'origine)
-export function DialogAction({ reseau, magasins, action, porteurInitial = '', depuis, piecesInitiales = [], onFermer }: {
-  reseau: Reseau; magasins: string[]; action: ActionSuivie | null; porteurInitial?: string; depuis?: { texte: string; equipe: boolean; message: number }
+export function DialogAction({ reseau, magasins, action, porteurInitial = '', echeanceInitiale = '', depuis, piecesInitiales = [], onFermer }: {
+  reseau: Reseau; magasins: string[]; action: ActionSuivie | null; porteurInitial?: string; echeanceInitiale?: string; depuis?: { texte: string; equipe: boolean; message: number }
   piecesInitiales?: Piece[]; onFermer: (msg?: string) => void
 }) {
   const { profil } = useAuth()
@@ -184,7 +184,7 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', de
   const [magasin, setMagasin] = useState(action?.magasin ?? (magasins.length === 1 ? magasins[0] : ''))
   const [texte, setTexte] = useState(a?.action ?? depuis?.texte ?? '')
   const [porteur, setPorteur] = useState(a?.porteur ?? porteurInitial)
-  const [echeance, setEcheance] = useState(a ? echeanceDate(a) : '')
+  const [echeance, setEcheance] = useState(a ? echeanceDate(a) : echeanceInitiale)
   const [pieces, setPieces] = useState<Piece[]>(a?.pieces ?? piecesInitiales)
   const [alerte, setAlerte] = useState('')
   const propre = texte.trim().replace(/\s+/g, ' ')

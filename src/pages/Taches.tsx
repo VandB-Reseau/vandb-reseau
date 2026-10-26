@@ -71,14 +71,14 @@ function ChoixPorteur({ reseau, moi, valeur, directeur, onChange }: { reseau: Re
   )
 }
 
-// La tâche est-elle portée par un franchisé (ou le responsable) de son magasin ?
+// La tâche est-elle portée par un franchisé (ou un associé d'un intégré) de son magasin ?
 function porteeParFranchise(reseau: Reseau, x: ActionSuivie, cache: Map<string, Set<string>>): boolean {
   if (!x.a.porteur) return false
   let noms = cache.get(x.magasin)
   if (!noms) {
     const m = reseau.magasins.find((y) => y.nom === x.magasin)
     noms = new Set(m ? porteursDu(reseau, x.magasin).filter((p) => p.role === libelleResponsable(m)).map((p) => p.nom) : [])
-    noms.add('Franchisé').add('Responsable du magasin')
+    noms.add('Franchisé').add('Associé').add('Responsable du magasin')
     cache.set(x.magasin, noms)
   }
   const ensemble = noms

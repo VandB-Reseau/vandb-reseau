@@ -38,8 +38,8 @@ export interface Compteur { valeur: ReactNode; libelle: string; couleur?: string
 // PC : grande pastille, compteurs en colonnes. Téléphone : en-tête bas (petite pastille, lignes sur une ligne,
 // compteurs en texte, flèche de retour à la place de la pastille) pour laisser la place aux onglets.
 // À côté du nom, en pictos : Appeler, Message, puis actions et icones (boutons ronds), puis Modifier ; detail : ligne en plus.
-export function ProfilPersonne({ nom, avatar, lignes, pastille, compteurs, telephone, libelleAppel = 'Appeler', lienMessage, modifier, actions, icones, detail, retour }: {
-  nom: string; avatar?: (taille: number) => ReactNode; lignes: string[]; pastille?: { ton: Ton; libelle: string } | null; compteurs: Compteur[]
+export function ProfilPersonne({ nom, insigne, avatar, lignes, pastille, compteurs, telephone, libelleAppel = 'Appeler', lienMessage, modifier, actions, icones, detail, retour }: {
+  nom: string; insigne?: ReactNode; avatar?: (taille: number) => ReactNode; lignes: string[]; pastille?: { ton: Ton; libelle: string } | null; compteurs: Compteur[]
   telephone?: string; libelleAppel?: string; lienMessage?: string; modifier?: () => void; actions?: ReactNode; icones?: ReactNode; detail?: ReactNode
   retour?: { libelle: string; aller: () => void }
 }) {
@@ -54,7 +54,14 @@ export function ProfilPersonne({ nom, avatar, lignes, pastille, compteurs, telep
           ? <IconButton onClick={retour.aller} aria-label={retour.libelle} sx={{ width: 48, height: 48, ml: -1, mr: -1, flexShrink: 0 }}><ArrowBack /></IconButton>
           : avatar ? avatar(surPC ? 56 : 44) : <Initiales nom={nom} taille={surPC ? 56 : 44} />}
         <Box sx={{ flex: '1 1 140px', minWidth: 0 }}>
-          <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.5rem' }, ...uneLigne }}>{nom}</Typography>
+          {insigne
+            ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.5rem' }, minWidth: 0, ...uneLigne }}>{nom}</Typography>
+                {insigne}
+              </Box>
+            )
+            : <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.5rem' }, ...uneLigne }}>{nom}</Typography>}
           {lignes.filter(Boolean).map((l) => <Typography key={l} variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8125rem', md: undefined }, ...uneLigne }}>{l}</Typography>)}
           {surPC && (pastille || detail) && (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.5, rowGap: 0.5, mt: 0.5 }}>

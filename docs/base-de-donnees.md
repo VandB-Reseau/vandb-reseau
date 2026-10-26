@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 24/10/2026 (migration `0035`).
+Mis à jour le 26/10/2026 (migration `0037`).
 
 ## Principes
 
@@ -36,7 +36,7 @@ Mis à jour le 24/10/2026 (migration `0035`).
 | Table | Contenu | Clé |
 | --- | --- | --- |
 | `app_config` | Réglages et référentiels en clé / valeur, `value` = texte JSON (détail plus bas) | `key` |
-| `store_overrides` | Fiche de chaque magasin : coordonnées, adresse, `franchise` (vrai = franchisé), `rr` (RR en direct), position, `topographie` du blason de ville (`littoral`, `montagne` ou `terres` ; vide = déduite du département), 0031 ; `figure` au centre du blason (voilier, sapin, château… ; vide = proposée selon le département), 0032 ; `situations` (jsonb, liste datée : fermeture provisoire `travaux` du … au …, passage `integre` ou `franchise`, `sortie` du réseau — fermeture, liquidation, tombée d'enseigne ou cession avec repreneur — et soirée d'`inauguration` ; à la date d'une sortie le magasin quitte les listes, sa fiche reste), 0033 | `store_name` |
+| `store_overrides` | Fiche de chaque magasin : coordonnées, adresse, `franchise` (vrai = franchisé), `rr` (RR en direct), position, `topographie` du blason de ville (`littoral`, `montagne` ou `terres` ; vide = déduite du département), 0031 ; `figure` au centre du blason (voilier, sapin, château… ; vide = proposée selon le département), 0032 ; `situations` (jsonb, liste datée : fermeture provisoire `travaux` du … au …, passage `integre` ou `franchise`, `sortie` du réseau — fermeture, liquidation, tombée d'enseigne ou cession avec repreneur — et soirée d'`inauguration` ; à la date d'une sortie le magasin quitte les listes, sa fiche reste), 0033 ; exploitation : `implantation` (AAAA-MM-JJ), `typologie` (`T1`, `T2`, `T3`), `zone_chalandise` (`moins_10000`, `10000_35000`, `35000_100000`, `plus_100000`), `licence` (`3` ou `4`), `horaires` (jsonb `{ "lundi": "10:00-20:00", … }`, jour absent = fermé), `instagram`, 0037 | `store_name` |
 | `reassigns` | Coach de chaque magasin à partir d'une date (effet le 1er du mois ; `date` en texte AAAA-MM-JJ) | `id` ; `store`, `cs`, `date` |
 | `cs_overrides` | Coachs : téléphone, courriel, ville, couleur, `tech` (Technicien) | `cs_name` |
 | `recruits` | Recrues à venir ou fictives (simulation de charge) | `id` |
@@ -160,6 +160,15 @@ franchisés, Coachs et RR des magasins concernés envoyés par l'app, recoupés 
 | --- | --- | --- |
 | `notifications_envoyees` | Contenus déjà notifiés (`genre` : sondage, evenement, communication, pratique, campagne ; `cle` : son identifiant), 0030 | `genre`, `cle` |
 
+### Historique des modifications (aucun accès direct, 0036)
+
+| Table | Contenu | Clé |
+| --- | --- | --- |
+| `historique_modifications` | Une ligne par ajout, changement ou suppression dans `visits`, `store_finance`, `suivi_magasins` (sauf rubriques `preparation` et `sante_sauvegarde`), `store_overrides` et `reassigns` : quand (`le`), compte, rôle, auteur (nom du Coach, identifiant du RR, nom du franchisé ; vide pour le Directeur), table, opération, magasin, rubrique (clé de suivi ou mois des chiffres), ligne `avant` et `apres` en jsonb, `remis_le`. Un enregistrement qui ne change que la date de mise à jour n'est pas noté. Gardé 12 mois | `id` |
+
+Écrite par le déclencheur `noter_modification` (posé sur les cinq tables, y compris quand l'écriture vient d'une
+fonction). Lue par `historique_modifications` et remise par `remettre_modification`, Directeur seul.
+
 ### Comptes des franchisés (fonction « comptes », 23/10/2026)
 
 La fonction Supabase « comptes » (`supabase/functions/comptes/index.ts`, clé `service_role` côté Supabase seulement)
@@ -213,6 +222,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Sondages | `publier_sondage` (Directeur ; RR sur ses magasins), `supprimer_question`, `resultats_questions` (Directeur ; RR pour ses magasins et sa région, relance des franchisés, Coachs et RR) ; `questions_franchise` (franchisé), `questions_equipe` (Coach ; RR pour les sondages du Directeur), `repondre_sondage` (une réponse par compte, à toutes les questions) ; `publier_question`, `repondre_question` (anciennes écritures d'une question seule) ; `magasins_questions`, `nom_rr`, `destinataire_sondage`, `destinataires_sondage`, `sondages_pour_moi`, `question_valable`, `reponse_valable` (internes) | 0026, 0029 |
 | Propositions de bonnes pratiques | `proposer_pratique`, `mes_propositions` (franchisé, ses magasins) ; `propositions_pratiques`, `traiter_proposition` (équipe, ses magasins ; Directeur, tous) | 0027 |
 | Challenges | `creer_challenge`, `supprimer_challenge` (Directeur ; RR sur ses magasins) ; `challenges_equipe` (équipe, chiffre de ses seuls magasins) ; `challenges_franchise` (rang et podium sans chiffre) ; `classement_challenge` (interne) | 0028 |
+| Historique des modifications | `historique_modifications(p_depuis, p_limite)` (Directeur, 90 jours par défaut, sans l'identifiant du compte) ; `remettre_modification(p_id)` (Directeur, une suppression, si rien n'a pris sa place) ; `noter_modification` (déclencheur) | 0036 |
 | Campagnes régionales | `campagne_region_permise` | 0005 |
 | Fichiers | `photo_visible`, `piece_visible` (fichiers d'une tâche de l'équipe seule refusés au franchisé, 0019) | 0004, 0009, 0019 |
 | Notifications | `abonner_appareil`, `desabonner_appareil` (compte connecté) ; `comptes_de_cle`, `notifications_a_envoyer`, `notifications_tache`, `notifications_une`, `notifications_animation`, `comptes_concernes` (fonction « notifier » seule) | 0016, 0024, 0030 |

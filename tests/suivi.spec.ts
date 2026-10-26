@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ouvrirOnglet, seConnecter, textesTropPetits, type Ecriture, actionFiche } from './supabase-simule'
+import { ouvrirOnglet, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -67,12 +67,9 @@ test('l’accueil signale les magasins pas vus depuis longtemps et les changemen
 test('noter un magasin garde l’historique daté', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Lyon%20Test')
-  await actionFiche(page, 'Modifier la fiche')
-  const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
-  await d.getByRole('button', { name: /^Fort : Gestion/ }).click()
-  await d.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect(d).toBeHidden()
+  await page.goto('./#/plus/sante?vue=evaluer&magasin=Lyon%20Test')
+  await page.getByRole('dialog', { name: 'Lyon Test' }).getByRole('button', { name: /^Fort : Gestion/ }).click()
+  await expect.poll(() => ecritures.filter((e) => e.table === 'app_config' && JSON.stringify(e.corps).includes('historique')).length).toBeGreaterThan(0)
   const sante = ecritures.filter((e) => e.table === 'app_config' && JSON.stringify(e.corps).includes('historique')).at(-1)!
   const valeur = JSON.parse((sante.corps as { value: string }).value)
   expect(valeur['Lyon Test'].historique.map((p: { caseId: string }) => p.caseId)).toEqual(['coeur', 'redressement', 'diagnostic'])

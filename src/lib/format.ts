@@ -12,6 +12,7 @@ export function lienFiche(nom: string): string {
   return `/magasins/${encodeURIComponent(nom)}`
 }
 export const lienPreparation = (nom: string) => `${lienFiche(nom)}/preparer`
+export const lienBilan = (nom: string) => `${lienFiche(nom)}/bilan`
 
 export function telLien(tel: string): string {
   return `tel:${tel.replace(/[^\d+]/g, '')}`

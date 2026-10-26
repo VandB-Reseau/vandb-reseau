@@ -6,6 +6,7 @@ import { RangeePhotos } from './GrilleAudit'
 import { EnTeteLettre, IntertitreLettre, PiedLettre } from './Lettre'
 import { dateLongue } from '../lib/format'
 import { coachA } from '../data/charge'
+import { associesEnPlace } from '../data/associes'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Reseau, type Visite } from '../data/modele'
 import { PARTIES } from '../data/compteRendu'
 
@@ -34,7 +35,7 @@ export function FeuilleCompteRendu({ reseau, v }: { reseau: Reseau; v: Visite })
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 4, mb: 3 }}>
           <Champ libelle="Visité par">{nomsVisiteurs(v)}</Champ>
           <Champ libelle="Coach du magasin">{coach}</Champ>
-          <Champ libelle={m ? libelleResponsable(m) : 'Franchisé'}>{m?.responsable?.nom}</Champ>
+          <Champ libelle={m && !m.franchise ? 'Associés' : 'Franchisé'}>{m && !m.franchise ? associesEnPlace(reseau, m).map((a) => a.nom).join(', ') : m?.responsable?.nom}</Champ>
           <Champ libelle="Responsable Régional">{m?.rr?.nom}</Champ>
           <Champ libelle="Adresse">{[m?.adresse, m?.pays].filter(Boolean).join(', ')}</Champ>
           <Champ libelle="Code magasin">{m?.code}</Champ>

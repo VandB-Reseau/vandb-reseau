@@ -1,5 +1,6 @@
 // Modèle métier lisible, construit à partir des tables Supabase de l'ancienne app.
 import type { Piece } from '../lib/pieces'
+import type { Exploitation } from './exploitation'
 
 export type Statut = 'avenir' | 'preouverture' | 'nouveau' | 'ouvert'
 
@@ -18,7 +19,8 @@ export const statutAide: Record<Statut, string> = {
 }
 
 // Libellé de la personne qui tient le magasin
-export const libelleResponsable = (m: { franchise: boolean }) => (m.franchise ? 'Franchisé' : 'Responsable du magasin')
+// Pas de responsable de magasin suivi dans l'app (Joseph, 26/10/2026) : franchisés, ou associés d'un intégré
+export const libelleResponsable = (m: { franchise: boolean }) => (m.franchise ? 'Franchisé' : 'Associé')
 
 export interface Personne {
   nom: string
@@ -70,6 +72,7 @@ export interface Magasin {
   positionApprochee: boolean // posé au centre de son département (import Excel) ou jamais trouvé : à géolocaliser
   topographie: Topographie | '' // forme du blason de ville, choisie dans la fiche ; vide = déduite du département
   figure: Figure | '' // figure au centre du blason, choisie dans la fiche ; vide = proposée selon le département
+  exploitation: Exploitation // typologie, zone de chalandise, licence, horaires… (0037)
   historiqueCoach: AffectationCoach[]
   fermeture: Fermeture | null // sortie du réseau, passée ou prévue (situations, 0033)
   travaux: Travaux | null // fermeture provisoire en cours ou à venir
@@ -203,7 +206,7 @@ export interface PreparationVisite { notes: string; heure: string; par: string; 
 // l'ouverture, est la date d'ouverture du magasin
 export type IdEtape = 'contrat' | 'local' | 'travaux' | 'recrutement' | 'formation'
 export const etapesOuverture: { id: IdEtape; libelle: string }[] = [
-  { id: 'contrat', libelle: 'Contrat signé' }, { id: 'local', libelle: 'Local' }, { id: 'travaux', libelle: 'Travaux' },
+  { id: 'contrat', libelle: 'Contrat' }, { id: 'local', libelle: 'Local' }, { id: 'travaux', libelle: 'Travaux' },
   { id: 'recrutement', libelle: 'Recrutement de l’équipe' }, { id: 'formation', libelle: 'Formation du franchisé' },
 ]
 export interface EtapeOuverture { prevu: string; fait: string }

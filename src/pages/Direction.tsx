@@ -14,6 +14,7 @@ import GridViewOutlined from '@mui/icons-material/GridViewOutlined'
 import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined'
 import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
 import PhotoLibraryOutlined from '@mui/icons-material/PhotoLibraryOutlined'
+import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
 import { CarteLignes, Initiales, LigneCompacte, cartouche } from '../components/Social'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -26,6 +27,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { PageHeader } from '../components/PageHeader'
 import { EspacePhotos, GrillesAudit } from '../components/EditeurGrilles'
+import { HistoriqueModifications } from '../components/HistoriqueModifications'
 import { EditeurGrilleNineBox } from '../components/EditeurGrilleNineBox'
 import { CarteEffacerNotes, CarteThematiques } from '../components/ImportsSuivi'
 import { AvecReseau } from '../components/EtatDonnees'
@@ -221,7 +223,7 @@ function RegleVisite({ reseau }: { reseau: Reseau }) {
 
 // Sommaire puis une rubrique par écran, comme les réglages d'un téléphone (Joseph, 21/10/2026).
 // Sur PC, le sommaire reste à gauche et la rubrique s'affiche à droite.
-type Rubrique = 'charge' | 'chiffres' | 'visite' | 'ninebox' | 'thematiques' | 'audits' | 'photos'
+type Rubrique = 'charge' | 'chiffres' | 'visite' | 'ninebox' | 'thematiques' | 'audits' | 'photos' | 'historique'
 function rubriques(reseau: Reseau): { id: Rubrique; libelle: string; detail: string; icone: ReactNode }[] {
   const p = reseau.parametres, s = reseau.seuils
   const premiere = casesDelai[0]
@@ -234,6 +236,7 @@ function rubriques(reseau: Reseau): { id: Rubrique; libelle: string; detail: str
     { id: 'thematiques', libelle: 'Thématiques de déploiement', detail: ths ? `${ths} thématique${ths > 1 ? 's' : ''}` : 'Aucune thématique', icone: <RocketLaunchOutlined /> },
     { id: 'audits', libelle: 'Grilles d’audit', detail: 'Critères et seuils de conformité', icone: <FactCheckOutlined /> },
     { id: 'photos', libelle: 'Espace photos', detail: 'Place occupée', icone: <PhotoLibraryOutlined /> },
+    { id: 'historique', libelle: 'Historique des modifications', detail: 'Qui a changé quoi, 90 derniers jours', icone: <HistoryOutlined /> },
   ]
 }
 
@@ -248,6 +251,7 @@ function ContenuRubrique({ id, reseau, signaler }: { id: Rubrique; reseau: Resea
       {id === 'thematiques' && <CarteThematiques reseau={reseau} signaler={signaler} />}
       {id === 'audits' && <GrillesAudit reseau={reseau} />}
       {id === 'photos' && <EspacePhotos reseau={reseau} />}
+      {id === 'historique' && <HistoriqueModifications reseau={reseau} />}
     </Box>
   )
 }

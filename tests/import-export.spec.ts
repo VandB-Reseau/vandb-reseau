@@ -49,7 +49,7 @@ test('exporter les magasins puis réimporter le fichier modifié', async ({ page
   const [feuille] = await lireExcel(readFileSync(chemin))
   expect(feuille.sheet).toBe('Magasins')
   const [entetes, ...lignes] = feuille.data as unknown[][]
-  expect(entetes).toEqual(['Code magasin (clé)', 'Magasin', 'Statut', 'Date d’ouverture', 'Adresse', 'Code postal', 'Ville', 'Département', 'Pays', 'Téléphone', 'Email'])
+  expect(entetes).toEqual(['Code magasin (clé)', 'Magasin', 'Statut', 'Date d’ouverture', 'Adresse', 'Code postal', 'Ville', 'Département', 'Pays', 'Téléphone', 'Email', 'Date d’implantation', 'Typologie', 'Zone de chalandise', 'Licence', 'Instagram'])
   expect(lignes).toHaveLength(30)
   const lyon = lignes.find((l) => l[1] === 'Lyon Test')!
   expect(lyon.slice(0, 3)).toEqual(['001', 'Lyon Test', 'Intégré'])

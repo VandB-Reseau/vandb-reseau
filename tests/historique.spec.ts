@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test'
-import { seConnecter, type Ecriture, actionFiche } from './supabase-simule'
+import { expect, test, type Page } from '@playwright/test'
+import { seConnecter, type Ecriture } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -15,37 +15,39 @@ const derniereSante = (ecritures: Ecriture[]) => {
   return JSON.parse((e.corps as { value: string }).value)
 }
 
-test('changer le classement à une date choisie, un seul changement par jour', async ({ page }) => {
+// La santé se note dans Santé du parc (plus dans « Modifier la fiche », Joseph, 26/10/2026), à la date des changements choisie
+async function noter(page: Page, ecritures: Ecriture[], isMobile: boolean, date: string, bouton: RegExp, vue = 'evaluer') {
+  await page.goto(`./#/plus/sante?vue=${vue}`)
+  await expect(page.getByRole('button', { name: 'Saisir Lyon Test' })).toBeVisible()
+  if (isMobile && !(await page.getByLabel('Date des changements').isVisible())) await page.getByRole('button', { name: 'Filtres' }).click()
+  await page.getByLabel('Date des changements').fill(date)
+  await page.getByRole('button', { name: 'Saisir Lyon Test' }).click()
+  const avant = ecritures.length
+  const d = page.getByRole('dialog', { name: 'Lyon Test' })
+  await d.getByRole('button', { name: bouton }).click()
+  await expect.poll(() => ecritures.length).toBeGreaterThan(avant)
+  await d.getByRole('button', { name: 'Fermer' }).click()
+  await expect(d).toBeHidden()
+}
+
+test('changer le classement à une date choisie, un seul changement par jour', async ({ page, isMobile }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Lyon%20Test')
-  await actionFiche(page, 'Modifier la fiche')
-  const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
-  await d.getByLabel('Date du classement', { exact: true }).fill('2026-08-15')
-  await d.getByRole('button', { name: /^Moyen : Gestion/ }).click()
-  await d.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect(d).toBeHidden()
+  await noter(page, ecritures, isMobile, '2026-08-15', /^Moyen : Gestion/)
   const v = derniereSante(ecritures)['Lyon Test']
-  // Inséré à sa date entre les deux points existants ; le classement actuel reste le plus récent
-  expect(v.historique.map((p: { date: string; caseId: string }) => `${p.date} ${p.caseId}`)).toEqual(['2026-06-01 coeur', '2026-08-15 relance', '2026-10-01 redressement'])
+  // Inséré à sa date entre les deux points existants, à partir des notes en place ce jour-là ; le classement actuel reste le plus récent
+  expect(v.historique.map((p: { date: string; caseId: string }) => `${p.date} ${p.caseId}`)).toEqual(['2026-06-01 coeur', '2026-08-15 coeur', '2026-10-01 redressement'])
   expect(v.date).toBe('2026-10-01')
   expect(v.notes.gestion).toBeUndefined()
 })
 
-test('noter le même jour remplace la ligne du jour', async ({ page }) => {
+test('noter le même jour remplace la ligne du jour', async ({ page, isMobile }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Lyon%20Test')
-  await actionFiche(page, 'Modifier la fiche')
-  let d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
-  await d.getByLabel('Date du classement', { exact: true }).fill('2026-10-01')
-  await d.getByRole('button', { name: /^Fort : Gestion/ }).click()
-  await d.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect(d).toBeHidden()
+  await noter(page, ecritures, isMobile, '2026-10-01', /^Fort : Gestion/)
   const v = derniereSante(ecritures)['Lyon Test']
   expect(v.historique.map((p: { date: string; caseId: string }) => `${p.date} ${p.caseId}`)).toEqual(['2026-06-01 coeur', '2026-10-01 diagnostic'])
   expect(v.notes.gestion).toBe(3)
-  d = page.getByRole('dialog')
 })
 
 test('la date des changements s’applique aux notes saisies dans Santé du parc', async ({ page, isMobile }) => {
@@ -91,27 +93,20 @@ test('l’import avec une colonne Date remplit l’historique, une ligne par jou
   expect(dv.valeurs['Rennes Test'].terrasse).toBe('Oui')
 })
 
-test('deux changements de case le même jour : le second remplace le premier, même après rechargement', async ({ page }) => {
+test('deux changements de case le même jour : le second remplace le premier, même après rechargement', async ({ page, isMobile }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, persister: true })
-  await page.goto('./#/magasins/Lyon%20Test?vue=journal')
-  for (const note of ['Moyen', 'Fort']) {
-    await actionFiche(page, 'Modifier la fiche')
-    const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
-    await d.getByLabel('Date du classement', { exact: true }).fill('2026-10-14')
-    await d.getByRole('button', { name: new RegExp(`^${note} : Gestion`) }).click()
-    await d.getByRole('button', { name: 'Enregistrer' }).click()
-    await expect(d).toBeHidden()
-  }
+  for (const note of ['Moyen', 'Fort']) await noter(page, ecritures, isMobile, '2026-10-14', new RegExp(`^${note} : Gestion`))
   const v = derniereSante(ecritures)['Lyon Test']
   expect(v.historique.map((p: { date: string; caseId: string }) => `${p.date} ${p.caseId}`)).toEqual(['2026-06-01 coeur', '2026-10-01 redressement', '2026-10-14 diagnostic'])
+  await page.goto('./#/magasins/Lyon%20Test?vue=journal')
   await page.reload()
   const journal = page.getByRole('region', { name: 'Journal' })
   await expect(journal.getByText('Passe en Diagnostic marché')).toHaveCount(1)
   await expect(journal.getByText('Passe en Relance commerciale')).toHaveCount(0)
 })
 
-test('les doublons du même jour déjà enregistrés n’apparaissent qu’une fois et disparaissent à la saisie suivante', async ({ page }) => {
+test('les doublons du même jour déjà enregistrés n’apparaissent qu’une fois et disparaissent à la saisie suivante', async ({ page, isMobile }) => {
   const ecritures: Ecriture[] = []
   const notes = (r: number, f: number) => ({ caExterieur: r, panierCave: r, panierBar: r, fluxCave: r, fluxBar: r, franchise: f })
   // Saisies empilées par l'ancienne règle : trois cases le 1er octobre, la dernière est la bonne
@@ -134,12 +129,7 @@ test('les doublons du même jour déjà enregistrés n’apparaissent qu’une f
   await expect(journal.getByText('Concept 2.0 : Fait')).toHaveCount(1)
   await expect(journal.getByText('Concept 2.0 : En cours')).toHaveCount(0)
 
-  await actionFiche(page, 'Modifier la fiche')
-  const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
-  await d.getByLabel('Date du classement', { exact: true }).fill('2026-10-10')
-  await d.getByRole('button', { name: /^Moyen : Gestion/ }).click()
-  await d.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect(d).toBeHidden()
+  await noter(page, ecritures, isMobile, '2026-10-10', /^Moyen : Gestion/)
   const v = derniereSante(ecritures)['Lyon Test']
   expect(v.historique.map((p: { date: string; caseId: string }) => `${p.date} ${p.caseId}`)).toEqual(['2026-06-01 coeur', '2026-10-01 redressement', '2026-10-10 relance'])
 })
@@ -203,31 +193,11 @@ test('effacer toutes les notes nine box en une fois, avec une copie de sauvegard
   expect(JSON.parse(config.at(-2)!.value)['Lyon Test'].date).toBe('2026-10-01')
 })
 
-test('chaque déploiement a sa date dans la fiche magasin', async ({ page }, info) => {
+test('un déploiement prend la date des changements choisie dans Santé du parc', async ({ page, isMobile }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Lyon%20Test')
-  await actionFiche(page, 'Modifier la fiche')
-  const d = page.getByRole('dialog', { name: 'Modifier Lyon Test' })
-  await expect(d.getByLabel('Date : Concept 2.0')).toHaveValue('2026-05-04')
-  await expect(d.getByLabel('Date : Terrasse')).toHaveValue('')
-  await expect(d.getByLabel('Date : Offre 5+1')).toHaveCount(0)
-  // Date reprise seule : la terrasse est en place depuis le 1er mars
-  await d.getByLabel('Date : Terrasse').fill('2026-03-01')
-  // Nouvel état : daté du jour, puis daté à la main
-  await d.getByRole('button', { name: 'Oui : Offre 5+1' }).click()
-  const jour = new Date().toISOString().slice(0, 10)
-  await expect(d.getByLabel('Date : Offre 5+1')).toHaveValue(jour)
-  await d.getByLabel('Date : Offre 5+1').fill('2026-09-01')
-  await d.getByLabel('Date : Offre 5+1').scrollIntoViewIfNeeded()
-  await page.screenshot({ path: `captures/${info.project.name}-dates-deploiements.png` })
-  await d.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect(d).toBeHidden()
+  await noter(page, ecritures, isMobile, '2026-09-01', /^Oui : Offre 5\+1/, 'deploiements')
   const e = ecritures.filter((x) => x.table === 'app_config' && JSON.stringify(x.corps).includes('journal')).at(-1)!
   const dv = JSON.parse((e.corps as { value: string }).value)
-  expect(dv.journal['Lyon Test']).toEqual([
-    { date: '2026-03-01', thematique: 'terrasse', etat: 'Oui' },
-    { date: '2026-05-04', thematique: 'concept20', etat: 'Fait' },
-    { date: '2026-09-01', thematique: 'offre5plus1', etat: 'Oui' },
-  ])
+  expect(dv.journal['Lyon Test']).toContainEqual({ date: '2026-09-01', thematique: 'offre5plus1', etat: 'Oui' })
 })

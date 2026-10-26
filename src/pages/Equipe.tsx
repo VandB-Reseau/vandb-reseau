@@ -170,7 +170,7 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
   const sansRR = lignes.filter((l) => !l.coach.rr)
   const depassements = lignes.filter((l) => niveauCharge(reseau, l.charge) === 'depassement').length
   const sansCoach = reseau.magasins.filter((m) => m.statut !== 'avenir' && !m.coach).length
-  const aPourvoir = reseau.equipe.filter((c) => c.fictif).length + reseau.magasins.filter((m) => m.statut !== 'avenir' && m.responsableARecruter).length
+  const aPourvoir = reseau.equipe.filter((c) => c.fictif).length + reseau.magasins.filter((m) => m.franchise && m.statut !== 'avenir' && m.responsableARecruter).length
 
   const groupes: Groupe[] = [
     ...reseau.rrs.map((r) => ({ cle: `r:${r.id}`, titre: r.nom, role: r.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional', couleur: r.couleur, personne: r as Personne | null, rr: r, coachs: lignes.filter((l) => l.coach.rr?.id === r.id), direct: reseau.magasins.filter((m) => m.rr?.id === r.id && m.rrEnDirect).length })),
@@ -224,7 +224,7 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
   const lignes = lignesCoachs(reseau)
   const coachsARecruter = lignes.filter((l) => l.coach.fictif)
   const arrivees = reseau.equipe.filter((c) => !c.fictif && c.arrivee > reseau.jour).sort((a, b) => a.arrivee.localeCompare(b.arrivee))
-  const responsables = reseau.magasins.filter((m) => m.statut !== 'avenir' && m.responsableARecruter)
+  const responsables = reseau.magasins.filter((m) => m.franchise && m.statut !== 'avenir' && m.responsableARecruter)
   const rien = !coachsARecruter.length && !arrivees.length && !responsables.length
   if (rien) return <EmptyState icone={<WorkOutlineOutlined />} titre="Aucun poste à pourvoir" texte="Tous les postes de Coach sont pourvus et chaque magasin a son franchisé. Un Coach marqué « non recruté » dans l’ancienne application apparaîtra ici." />
   const Bloc = ({ titre, aide, children }: { titre: string; aide: string; children: ReactNode }) => (
