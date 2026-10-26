@@ -14,6 +14,21 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   santé du parc, chiffres, campagnes, revue du mois, carte, agenda, journal de la fiche), sort de « À traiter » et
   de l'alerte « magasins sans Coach » de l'équipe, et a son propre choix « Géré en direct » dans le filtre Coach.
   Sans SQL.
+- Export des mandats (26/10/2026) : l'onglet « Associés et mandats » donne le mandat en cours de chaque associé
+  (début, fin, numéro, saisi ou calculé sur 5 ans, en lecture seule) ; plus de colonne « Fin de contrat » dans l'onglet
+  Magasins. Sans SQL.
+- Mandats (Joseph, 26/10/2026) : la durée du contrat passe sur les mandats de chaque associé (franchisé ou associé d'un
+  intégré) : sans mandat saisi, mandat de 5 ans renouvelé par 5 ans depuis son entrée (ou le passage en intégré ou en
+  franchisé, sinon l'ouverture), avec son numéro ; plus de ligne « Fin de contrat » sur le magasin. Accueil : bloc
+  « Contrats » dans la colonne de droite (onglet sur téléphone) avec les mandats échus ou qui finissent dans les 6 mois,
+  sortis de « À traiter » ; alerte ramenée de 12 à 6 mois. Sans SQL.
+- Étapes d'ouverture dans l'import et export Excel (Joseph, 26/10/2026) : une ligne par magasin et par étape (code
+  magasin + étape), dates prévue et faite ; les magasins à ouvrir ont leurs étapes exportées vides, à remplir dans le
+  fichier (test `import-export.spec.ts`). Avec les nouveautés du 26/10 : « Implantation des produits » parmi les étapes
+  (écrite dans la fiche du magasin), horaires par jour et fin de contrat (lecture) dans la feuille Magasins, en-tête
+  « Implantation des produits » (l'ancien « Date d'implantation » reste lu) ; la feuille Mandats devient « Associés et
+  mandats » : associés des intégrés compris, date d'entrée, associé sans mandat. Déploiements : les 14 thématiques de la
+  base, sans changement de code. Sans migration.
 - Implantation des produits (Joseph, 26/10/2026) : la date d'implantation est celle de la mise en place des produits
   pendant la pré-ouverture ; libellé corrigé, rangée avec l'ouverture dans la fiche, et ajoutée comme étape (avant
   l'ouverture) au suivi des ouvertures à venir. Sans SQL.

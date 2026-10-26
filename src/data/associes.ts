@@ -44,8 +44,8 @@ export function mandatActuel(a: Associe, jour: string): Mandat | null {
 }
 
 export type EtatMandat = 'enCours' | 'aRenouveler' | 'echu'
-export const libellesEtatMandat: Record<EtatMandat, string> = { enCours: 'En cours', aRenouveler: 'Fin dans moins d’un an', echu: 'Mandat échu' }
-export const MOIS_ALERTE = 12
+export const libellesEtatMandat: Record<EtatMandat, string> = { enCours: 'En cours', aRenouveler: 'Fin dans moins de 6 mois', echu: 'Mandat échu' }
+export const MOIS_ALERTE = 6
 
 export function etatMandat(m: Mandat | null, jour: string): EtatMandat | null {
   if (!m?.fin) return m ? 'enCours' : null
@@ -55,58 +55,43 @@ export function etatMandat(m: Mandat | null, jour: string): EtatMandat | null {
   return m.fin <= d.toISOString().slice(0, 10) ? 'aRenouveler' : 'enCours'
 }
 
-// Contrat du magasin (Joseph, 26/10/2026) : franchise comme intégré, signé pour 5 ans puis renouvelé par périodes de
-// 5 ans (6 ans d'ancienneté = 2e contrat, 11 ans = 3e). Départ : la dernière reprise (entrée des franchisés ou associés
-// en place, passage en intégré ou en franchisé), sinon l'ouverture. Un mandat saisi sur un franchisé l'emporte.
-export const DUREE_CONTRAT = 5
-export type OrigineContrat = 'ouverture' | 'reprise' | 'integration' | 'franchise'
-export interface Contrat { depart: string; origine: OrigineContrat; debut: string; fin: string; numero: number }
-export const libellesOrigineContrat: Record<OrigineContrat, string> = { ouverture: 'l’ouverture', reprise: 'la reprise', integration: 'le passage en intégré', franchise: 'le passage en franchisé' }
+// Mandat de chaque associé (Joseph, 26/10/2026) : franchise comme intégré, 5 ans renouvelés par périodes de 5 ans
+// (6 ans d'ancienneté = 2e mandat, 11 ans = 3e). Départ : l'entrée de l'associé, ou plus tard le passage du magasin en
+// intégré ou en franchisé, sinon l'ouverture. Les mandats saisis sur l'associé l'emportent sur ce calcul.
+export const DUREE_MANDAT = 5
+export interface MandatEffectif { mandat: Mandat; numero: number; calcule: boolean; etat: EtatMandat | null }
 
 const plusAns = (iso: string, n: number) => {
   const [a, m, j] = iso.split('-').map(Number)
   return new Date(Date.UTC(a + n, m - 1, j)).toISOString().slice(0, 10)
 }
 
-export function contratCalcule(reseau: Reseau, m: Magasin): Contrat | null {
+export function mandatEffectif(reseau: Reseau, m: Magasin, a: Associe): MandatEffectif | null {
   const jour = reseau.jour
-  if (!m.ouvertureConnue || m.ouverture > jour || (m.fermeture && m.fermeture.date <= jour)) return null
-  let depart: { date: string; origine: OrigineContrat } = { date: m.ouverture, origine: 'ouverture' }
-  const plusTard = (date: string, origine: OrigineContrat) => { if (date && date <= jour && date > depart.date) depart = { date, origine } }
-  for (const s of m.situations) if (s.type === 'integre' || s.type === 'franchise') plusTard(s.date, s.type === 'integre' ? 'integration' : 'franchise')
-  for (const a of associesEnPlace(reseau, m)) plusTard(a.entree, 'reprise')
-  let n = 1
-  while (plusAns(depart.date, DUREE_CONTRAT * n) <= jour) n++
-  return { depart: depart.date, origine: depart.origine, debut: plusAns(depart.date, DUREE_CONTRAT * (n - 1)), fin: plusAns(depart.date, DUREE_CONTRAT * n), numero: n }
-}
-
-// Mandat saisi en cours sur un franchisé en place (avec sa fin), sinon null
-const mandatsSaisis = (reseau: Reseau, m: Magasin) => (m.franchise ? associesEnPlace(reseau, m) : [])
-  .map((a) => ({ a, mandat: mandatActuel(a, reseau.jour) })).filter((x): x is { a: Associe; mandat: Mandat } => !!x.mandat?.fin)
-
-// Fin de contrat retenue pour le magasin : mandat saisi le plus proche, sinon le contrat calculé
-export function finDeContrat(reseau: Reseau, m: Magasin): { fin: string; contrat: Contrat | null; etat: EtatMandat | null } | null {
-  const saisis = mandatsSaisis(reseau, m).sort((x, y) => x.mandat.fin.localeCompare(y.mandat.fin))
-  if (saisis.length) return { fin: saisis[0].mandat.fin, contrat: null, etat: etatMandat(saisis[0].mandat, reseau.jour) }
-  const c = contratCalcule(reseau, m)
-  return c ? { fin: c.fin, contrat: c, etat: etatMandat({ debut: c.debut, fin: c.fin }, reseau.jour) } : null
-}
-
-// Mandats échus ou qui finissent dans l'année, des associés encore en place ; sans mandat saisi, le contrat calculé
-// du magasin (a vide) ; la fin la plus proche d'abord
-export function mandatsARenouveler(reseau: Reseau, magasins: Magasin[]): { m: Magasin; a: Associe | null; mandat: Mandat; etat: EtatMandat }[] {
-  const l: { m: Magasin; a: Associe | null; mandat: Mandat; etat: EtatMandat }[] = []
-  for (const m of magasins) {
-    const saisis = mandatsSaisis(reseau, m)
-    for (const { a, mandat } of saisis) {
-      const etat = etatMandat(mandat, reseau.jour)
-      if (etat === 'echu' || etat === 'aRenouveler') l.push({ m, a, mandat, etat })
-    }
-    if (saisis.length) continue
-    const c = contratCalcule(reseau, m)
-    const mandat = c && { debut: c.debut, fin: c.fin }
-    const etat = etatMandat(mandat, reseau.jour)
-    if (mandat && etat === 'aRenouveler') l.push({ m, a: null, mandat, etat })
+  if (a.mandats.length) {
+    const mandat = mandatActuel(a, jour)!
+    return { mandat, numero: a.mandats.indexOf(mandat) + 1, calcule: false, etat: etatMandat(mandat, jour) }
   }
-  return l.sort((x, y) => x.mandat.fin.localeCompare(y.mandat.fin))
+  if (!enPlace(a, jour) || (m.fermeture && m.fermeture.date <= jour)) return null
+  let depart = m.ouvertureConnue && m.ouverture <= jour ? m.ouverture : ''
+  const plusTard = (date: string) => { if (date && date <= jour && date > depart) depart = date }
+  for (const s of m.situations) if (s.type === 'integre' || s.type === 'franchise') plusTard(s.date)
+  plusTard(a.entree)
+  if (!depart) return null
+  let n = 1
+  while (plusAns(depart, DUREE_MANDAT * n) <= jour) n++
+  const mandat = { debut: plusAns(depart, DUREE_MANDAT * (n - 1)), fin: plusAns(depart, DUREE_MANDAT * n) }
+  return { mandat, numero: n, calcule: true, etat: etatMandat(mandat, jour) }
+}
+
+// Mandats échus ou qui finissent dans les 6 mois, des associés encore en place ; la fin la plus proche d'abord
+export function mandatsARenouveler(reseau: Reseau, magasins: Magasin[]): { m: Magasin; a: Associe; mandat: Mandat; etat: EtatMandat; numero: number }[] {
+  const l: { m: Magasin; a: Associe; mandat: Mandat; etat: EtatMandat; numero: number }[] = []
+  for (const m of magasins) {
+    for (const a of associesEnPlace(reseau, m)) {
+      const x = mandatEffectif(reseau, m, a)
+      if (x && (x.etat === 'echu' || x.etat === 'aRenouveler')) l.push({ m, a, mandat: x.mandat, etat: x.etat, numero: x.numero })
+    }
+  }
+  return l.sort((x, y) => x.mandat.fin.localeCompare(y.mandat.fin) || x.m.nom.localeCompare(y.m.nom, 'fr'))
 }

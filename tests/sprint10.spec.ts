@@ -86,9 +86,8 @@ test('un magasin franchisé a plusieurs associés avec leurs mandats', async ({ 
   await seConnecter(page, { ecritures, config: { associes } })
   await page.goto('./#/magasins/Brest%20Test?vue=fiche')
   await expect(page.getByRole('heading', { name: 'Franchisés associés' })).toBeVisible()
-  await expect(page.getByText('Mandat du 1 janv. 2022 au 31 mars 2027 · 2 mandats')).toBeVisible()
-  // Le mandat saisi se retrouve aussi en fin de contrat du magasin
-  await expect(page.getByText('Fin dans moins d’un an')).toHaveCount(2)
+  await expect(page.getByText('Mandat du 1 janv. 2022 au 31 mars 2027 · 2e mandat')).toBeVisible()
+  await expect(page.getByText('Fin dans moins de 6 mois')).toBeVisible()
   await expect(page.getByText('Anciens associés')).toBeVisible()
   await page.getByRole('button', { name: 'Ajouter un associé' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter un associé' })
@@ -131,13 +130,16 @@ test('un magasin intégré associe V and B à des particuliers', async ({ page }
   expect(ecritures.filter((e) => e.table === 'store_overrides')).toEqual([])
 })
 
-test('les mandats à renouveler remontent à l’accueil et sur la fiche du franchisé', async ({ page }) => {
+test('les mandats à renouveler remontent à l’accueil et sur la fiche du franchisé', async ({ page, isMobile }) => {
   const associes = { 'Brest Test': [{ id: 'x1', nom: 'Franchisé 11', entree: '', sortie: '', mandats: [{ debut: '2016-01-01', fin: '2026-06-30' }] }] }
   await seConnecter(page, { config: { associes } })
-  const bloc = page.getByRole('region', { name: 'À traiter' })
-  await voirTout(page)
+  await page.goto('./#/')
+  if (isMobile) await page.getByRole('tab', { name: /^Contrats/ }).click()
+  const bloc = page.getByRole('region', { name: 'Contrats' })
+  const voir = bloc.getByRole('button', { name: /^Voir les \d+$/ })
+  if (await voir.count()) await voir.click()
   const mandat = bloc.getByRole('link', { name: /^Franchisé 11 · Brest Test/ })
-  await expect(mandat).toContainText('Fin du mandat le')
+  await expect(mandat).toContainText('Fin le 30 juin 2026 · 1er mandat')
   await expect(mandat).toContainText('Mandat échu')
   await page.goto('./#/equipe/franchise/Franchis%C3%A9%2011')
   await expect(page.getByRole('heading', { name: 'Mandats' })).toBeVisible()

@@ -1,5 +1,5 @@
 import { useDroits } from '../auth/Droits'
-import { associesDu, mandatActuel } from '../data/associes'
+import { associesDu, mandatEffectif } from '../data/associes'
 import { SectionAcces } from '../components/AccesFranchise'
 import { SectionAccesEquipe } from '../components/AccesEquipe'
 import { useAuth } from '../auth/AuthContext'
@@ -211,18 +211,19 @@ function PageFranchise({ reseau, nom }: { reseau: Reseau; nom: string }) {
           <Section titre="Mandats">
             {f.magasins.filter((m) => m.franchise).map((m) => {
               const a = associesDu(reseau, m).find((x) => x.nom === nom)
-              const mandat = a ? mandatActuel(a, reseau.jour) : null
+              const x = a ? mandatEffectif(reseau, m, a) : null
+              const mandat = x?.mandat ?? null
               return (
                 <Rangee key={m.nom}>
                   <Box sx={{ flex: 1, minWidth: 0, py: 1 }}>
                     <Link component={RouterLink} to={lienFiche(m.nom)} sx={{ fontWeight: 500 }}>{m.nom}</Link>
                     <Typography variant="body2" color="text.secondary">
-                      {[mandat ? `Mandat ${periode(mandat)}` : 'Mandat non renseigné', a && a.mandats.length > 1 && `${a.mandats.length} mandats depuis le ${dateCourte(a.mandats[0].debut || a.mandats[0].fin)}`].filter(Boolean).join(' · ')}
+                      {[mandat ? `Mandat ${periode(mandat)}` : 'Mandat non renseigné', x?.calcule && (x.numero === 1 ? '1er mandat' : `${x.numero}e mandat`), a && a.mandats.length > 1 && `${a.mandats.length} mandats depuis le ${dateCourte(a.mandats[0].debut || a.mandats[0].fin)}`].filter(Boolean).join(' · ')}
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     <PastilleCase c={caseDe(reseau.evaluations[m.nom])} />
-                    <PastilleMandat m={mandat} jour={reseau.jour} />
+                    <PastilleMandat e={x?.etat ?? null} />
                   </Box>
                 </Rangee>
               )

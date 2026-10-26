@@ -15,7 +15,7 @@ import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { Fenetre } from './EditionEquipe'
 import { enregistrerAssocies } from '../data/chargement'
-import { associesDu, enPlace, etatMandat, libelleAssocies, libellesEtatMandat, mandatActuel, type Associe, type Mandat } from '../data/associes'
+import { associesDu, enPlace, libelleAssocies, libellesEtatMandat, mandatEffectif, type Associe, type EtatMandat, type Mandat } from '../data/associes'
 import { fichePersonne, franchises } from '../data/personnes'
 import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
@@ -25,17 +25,21 @@ import { cartouche } from './Social'
 
 const periode = (m: Mandat) => (m.debut && m.fin ? `du ${dateCourte(m.debut)} au ${dateCourte(m.fin)}` : m.debut ? `depuis le ${dateCourte(m.debut)}` : `jusqu’au ${dateCourte(m.fin)}`)
 
-function PastilleMandat({ m, jour }: { m: Mandat | null; jour: string }) {
-  const e = etatMandat(m, jour)
+function PastilleMandat({ e }: { e: EtatMandat | null }) {
   if (!e || e === 'enCours') return null
   return <Chip size="small" color={e === 'echu' ? 'error' : 'warning'} label={libellesEtatMandat[e]} sx={{ fontSize: 12, fontWeight: 600 }} />
 }
 
 function LigneAssocie({ reseau, m, a, modifier }: { reseau: Reseau; m: Magasin; a: Associe; modifier?: () => void }) {
-  const mandat = mandatActuel(a, reseau.jour)
-  const detail = m.franchise
-    ? [mandat ? `Mandat ${periode(mandat)}` : 'Mandat non renseigné', a.mandats.length > 1 && `${a.mandats.length} mandats`, a.sortie && `sorti le ${dateCourte(a.sortie)}`]
-    : [a.entree && `Associé depuis le ${dateCourte(a.entree)}`, a.sortie && `sorti le ${dateCourte(a.sortie)}`]
+  // Mandat saisi, sinon calculé : 5 ans renouvelés depuis l'entrée (Joseph, 26/10/2026)
+  const x = mandatEffectif(reseau, m, a)
+  const numero = x && (x.numero === 1 ? '1er mandat' : `${x.numero}e mandat`)
+  const detail = [
+    !m.franchise && a.entree && `Associé depuis le ${dateCourte(a.entree)}`,
+    x ? `Mandat ${periode(x.mandat)}` : m.franchise && 'Mandat non renseigné',
+    x && (x.calcule || a.mandats.length > 1) && numero,
+    a.sortie && `sorti le ${dateCourte(a.sortie)}`,
+  ]
   const fiche = m.franchise && franchises(reseau).some((f) => f.nom === a.nom)
   const p = fiche ? fichePersonne(reseau, { type: 'franchise', cle: a.nom }) : null
   return (
@@ -45,7 +49,7 @@ function LigneAssocie({ reseau, m, a, modifier }: { reseau: Reseau; m: Magasin; 
           : <Typography variant="body1" sx={{ fontWeight: 500 }}>{a.nom}</Typography>}
         {detail.some(Boolean) && <Typography variant="body2" color="text.secondary">{detail.filter(Boolean).join(' · ')}</Typography>}
       </Box>
-      {m.franchise && enPlace(a, reseau.jour) && <PastilleMandat m={mandat} jour={reseau.jour} />}
+      {enPlace(a, reseau.jour) && <PastilleMandat e={x?.etat ?? null} />}
       {p?.telephone && <Tooltip title={p.telephone}><IconButton href={telLien(p.telephone)} aria-label={`Appeler ${a.nom}`}><CallOutlined /></IconButton></Tooltip>}
       {p?.email && <Tooltip title={p.email}><IconButton href={`mailto:${p.email}`} aria-label={`Écrire à ${a.nom}`}><MailOutlined /></IconButton></Tooltip>}
       {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier l’associé ${a.nom}`}><EditOutlined /></IconButton></Tooltip>}

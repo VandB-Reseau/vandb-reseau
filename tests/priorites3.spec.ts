@@ -16,7 +16,7 @@ test.afterEach(async ({ page }) => {
 test('accueil sur PC : « À traiter » reste visible pendant qu’on fait défiler les actualités', async ({ page, isMobile }) => {
   test.skip(isMobile, 'Colonne de droite du PC')
   await seConnecter(page)
-  const colonne = page.getByRole('complementary', { name: 'À traiter, mes tâches et cette semaine' })
+  const colonne = page.getByRole('complementary', { name: 'À traiter, mes tâches, cette semaine et contrats' })
   await expect(colonne).toBeVisible()
   // Fil court depuis qu'il ne garde que comptes rendus et communications : la page doit dépasser l'écran
   await page.evaluate(() => { (document.querySelector('[aria-label="Actualités"]') as HTMLElement).style.paddingBottom = '1500px' })

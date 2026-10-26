@@ -75,7 +75,6 @@ import { ContenuLeviers, ListeInspirations } from '../components/Leviers'
 import { inspirationsDu, leviersDuMagasin, libellesLevier, useReperesReseau } from '../data/leviers'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
 import { Contact, Ligne, Section } from '../components/Section'
-import { finDeContrat, libellesEtatMandat, libellesOrigineContrat } from '../data/associes'
 import { SectionReunionsMagasin } from '../components/Reunions'
 import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, estVisite, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 import { cartouche } from '../components/Social'
@@ -155,7 +154,6 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
               <Ligne libelle="Code magasin">{m.code || null}</Ligne>
               <Ligne libelle="Implantation des produits">{m.exploitation.implantation ? dateLongue(m.exploitation.implantation) : null}</Ligne>
               <Ligne libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
-              <Ligne libelle="Fin de contrat"><FinContrat reseau={reseau} m={m} /></Ligne>
               <Ligne libelle="Adresse">
                 {adresseComplete && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -231,20 +229,6 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 
 // Rythme de visite de l'année et toutes les visites du magasin, de la plus récente à la plus ancienne
 // Exploitation (0037) : typologie, zone de chalandise, licence, Instagram et horaires ; l'implantation des produits est avec l'ouverture
-// Fin de contrat : 5 ans renouvelés par 5 ans depuis la reprise ou l'ouverture, ou mandat saisi (Joseph, 26/10/2026)
-function FinContrat({ reseau, m }: { reseau: Reseau; m: Magasin }) {
-  const f = finDeContrat(reseau, m)
-  if (!f) return null
-  const c = f.contrat
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-      <span>{dateLongue(f.fin)}</span>
-      {c && <Typography variant="body2" color="text.secondary" component="span">{c.numero === 1 ? '1er contrat' : `${c.numero}e contrat`} · depuis {libellesOrigineContrat[c.origine]} du {dateCourte(c.depart)}</Typography>}
-      {f.etat && f.etat !== 'enCours' && <Chip size="small" color={f.etat === 'echu' ? 'error' : 'warning'} label={libellesEtatMandat[f.etat]} sx={{ fontSize: 12, fontWeight: 600 }} />}
-    </Box>
-  )
-}
-
 function SectionExploitation({ m }: { m: Magasin }) {
   const e = m.exploitation
   const horaires = resumeHoraires(e.horaires)
