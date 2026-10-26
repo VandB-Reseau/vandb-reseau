@@ -23,6 +23,18 @@ test('la nine box classe les magasins évalués', async ({ page, isMobile }, inf
   await panneau.getByRole('button', { name: 'Fermer' }).click()
   await expect(panneau).toBeHidden()
   await expect(page.getByText('Non classés')).toBeVisible()
+  // Les deux axes sont lisibles, téléphone compris : Franchisé (vertical) et Résultats (horizontal)
+  for (const n of ['fort', 'moyen', 'faible']) {
+    const axe = page.getByText(`Franchisé ${n}`, { exact: true })
+    await expect(axe).toBeVisible()
+    await axe.scrollIntoViewIfNeeded()
+    await expect(axe).toBeInViewport({ ratio: 0.95 })
+  }
+  await expect(page.getByText('Résultats faibles', { exact: true })).toBeVisible()
+  // Le libellé vertical ne déborde pas de sa ligne
+  const ligne = await page.getByRole('row').first().getByRole('cell').first().boundingBox()
+  const libelle = await page.getByText('Franchisé moyen', { exact: true }).boundingBox()
+  expect(libelle!.height).toBeLessThanOrEqual(ligne!.height)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-sante-ninebox.png`, fullPage: !isMobile })
 })

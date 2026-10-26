@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Nine box : l’axe vertical (Franchisé faible, moyen, fort) s’affiche aussi au téléphone, en colonne étroite à
+  gauche des cases (Joseph, 24/10/2026). Sans SQL.
 - Tout exporter et réimporter par Excel (Joseph, 24/10/2026) : chaque magasin reçoit un code à 3 chiffres (001 pour la
   plus ancienne ouverture, puis par date d'ouverture ; un nouveau magasin prend le suivant, un code n'est jamais
   réutilisé), posé une fois par l'app du Directeur, visible dans la fiche et modifiable dans « Modifier ». Paramètres >

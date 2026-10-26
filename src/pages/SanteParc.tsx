@@ -165,11 +165,12 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
         ))}
       </Box>
       <Card sx={{ p: { xs: 1.5, md: 3 } }}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(3, 1fr)', md: '28px repeat(3, 1fr)' }, gap: { xs: 1, md: 2 } }} role="table" aria-label="Nine box">
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '16px repeat(3, minmax(0, 1fr))', md: '28px repeat(3, 1fr)' }, gap: { xs: 1, md: 2 } }} role="table" aria-label="Nine box">
           {[3, 2, 1].map((mg) => (
             <Box key={mg} sx={{ display: 'contents' }} role="row">
-              <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', justifyContent: 'center' }}>
-                <Typography variant="body2" color="text.secondary" sx={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontWeight: 600, letterSpacing: 0.5 }}>Franchisé {niveaux[mg - 1]}</Typography>
+              {/* Axe vertical affiché aussi au téléphone (Joseph, 24/10) : colonne étroite, texte vertical */}
+              <Box role="rowheader" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontWeight: 600, letterSpacing: { md: 0.5 }, fontSize: { xs: 12, md: 14 }, whiteSpace: 'nowrap', lineHeight: 1 }}>Franchisé {niveaux[mg - 1]}</Typography>
               </Box>
               {[1, 2, 3].map((rs) => {
                 const c = nineBox.find((x) => x.resultats === rs && x.management === mg)!
@@ -212,7 +213,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
               })}
             </Box>
           ))}
-          <Box sx={{ display: { xs: 'none', md: 'block' } }} />
+          <Box />
           {niveaux.map((n) => <Typography key={n} variant="body2" color="text.secondary" sx={{ textAlign: 'center', fontWeight: 600, fontSize: { xs: 12, md: 14 } }}>Résultats {n}s</Typography>)}
         </Box>
       </Card>
