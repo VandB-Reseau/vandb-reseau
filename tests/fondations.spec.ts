@@ -70,8 +70,10 @@ test('chaque destination est accessible depuis la navigation', async ({ page, is
     if (isMobile && !court) continue
     // Messages et Tâches peuvent porter leur compteur (« Messages : 2 nouveautés »)
     await nav.getByRole('button', { name: new RegExp(`^${isMobile ? court : nom}( :.*)?$`) }).click()
-    await expect(page.getByRole('heading', { level: 1, name: nom, exact: true })).toBeAttached()
-    if (nom !== 'Accueil') await expect(page.getByRole('heading', { level: 1, name: nom, exact: true })).toBeVisible()
+    // Tâches peut s'ouvrir sur la liste des franchisés (« Tâches des franchisés », sprint 27)
+    const titre = page.getByRole('heading', { level: 1, name: nom === 'Tâches' ? /^Tâches( des franchisés)?$/ : nom, exact: true })
+    await expect(titre).toBeAttached()
+    if (nom !== 'Accueil') await expect(titre).toBeVisible()
   }
   for (const nom of isMobile ? ['Magasins', ...secondaires] : secondaires) {
     if (isMobile) {

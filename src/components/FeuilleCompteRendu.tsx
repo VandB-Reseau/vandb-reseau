@@ -9,6 +9,7 @@ import { coachA } from '../data/charge'
 import { associesEnPlace } from '../data/associes'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Reseau, type Visite } from '../data/modele'
 import { PARTIES } from '../data/compteRendu'
+import { motDe, partiesMot } from '../data/motFranchise'
 
 function Champ({ libelle, children }: { libelle: string; children: ReactNode }) {
   return (
@@ -26,6 +27,7 @@ export function FeuilleCompteRendu({ reseau, v }: { reseau: Reseau; v: Visite })
   const m = reseau.magasins.find((x) => x.nom === v.magasin)
   const coach = m ? coachA(m, v.date) : ''
   const redigees = PARTIES.map((_p, i) => i).filter((i) => v.parties[i]?.trim())
+  const mot = motDe(reseau, v.magasin, v.id)
   return (
     <Box className="feuille" sx={{ bgcolor: '#fff', color: '#1d1d1b', maxWidth: 820, mx: 'auto', borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
       <EnTeteLettre objet={`Objet : ${v.signatureRequise ? 'compte rendu de visite contractuelle' : 'compte rendu de visite'}`}
@@ -40,6 +42,17 @@ export function FeuilleCompteRendu({ reseau, v }: { reseau: Reseau; v: Visite })
           <Champ libelle="Adresse">{[m?.adresse, m?.pays].filter(Boolean).join(', ')}</Champ>
           <Champ libelle="Code magasin">{m?.code}</Champ>
         </Box>
+        {mot && (
+          <Box component="section" aria-label="Le mot du franchisé" sx={{ mb: 3, breakInside: 'avoid' }}>
+            <Titre>Le mot du franchisé</Titre>
+            {partiesMot.filter((p) => mot[p.cle]).map((p) => (
+              <Box key={p.cle} sx={{ mb: 1 }}>
+                <Typography variant="body2" sx={{ color: '#5f5f66' }}>{p.libelle}</Typography>
+                <Typography sx={{ whiteSpace: 'pre-wrap', color: '#1d1d1b' }}>{mot[p.cle]}</Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
         {redigees.map((i) => (
           <Box key={i} sx={{ mb: 3, breakInside: 'avoid' }}>
             <Titre>{`${i + 1}. ${PARTIES[i].titre}`}</Titre>

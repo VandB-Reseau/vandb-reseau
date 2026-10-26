@@ -9,6 +9,18 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Sprint 27 (Joseph, 26/10/2026), migration `0038_concurrents_mot_franchise` à passer :
+  - S1 Tâches : les listes sont des puces visibles avec leur nombre de tâches à faire (« Mes tâches », « Franchisés »,
+    et pour le Directeur « Équipe » qui ouvre la liste d'un RR ou d'un Coach) ; quand sa propre liste est vide et que
+    celle des franchisés ne l'est pas, Tâches s'ouvre sur celle des franchisés.
+  - S3 Même nombre de magasins partout : « 27 ouverts · 3 à venir » sur Magasins et Équipe, santé du parc comptée
+    sur les magasins ouverts.
+  - F3 Concurrents à 2 km sur la fiche magasin et la fiche avant visite : cavistes et caves lus sur OpenStreetMap
+    (gratuit, gardés 30 jours sur l'appareil, magasins V and B écartés), complétés par l'équipe (ajout, note, retrait).
+    Rubrique `concurrence`, jamais montrée au franchisé.
+  - F4 Le mot du franchisé : avant une visite prévue, le franchisé écrit dans son accueil ce qui marche, ce qui bloque
+    et ce dont il a besoin ; l'équipe le lit dans la fiche avant visite, le compte rendu et « Ma semaine ». Rubrique
+    `mot_franchise`, fonction `ecrire_mot_franchise`. Pas de notification : le Coach le voit en préparant sa visite.
 - Gestion directe par le Responsable Régional (Joseph, 26/10/2026) : un magasin sans Coach géré en direct par son RR
   n'est plus une anomalie. Il affiche « Géré en direct · nom du RR » à la place du Coach (listes, accueil, visites,
   santé du parc, chiffres, campagnes, revue du mois, carte, agenda, journal de la fiche), sort de « À traiter » et

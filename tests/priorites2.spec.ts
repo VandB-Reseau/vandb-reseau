@@ -17,7 +17,7 @@ test('en-tête : sur téléphone, le compteur passe à droite du titre', async (
   await seConnecter(page)
   await page.goto('./#/magasins')
   const h1 = page.getByRole('heading', { level: 1, name: 'Magasins' })
-  const compteur = page.getByText(/^\d+ magasins?/).first()
+  const compteur = page.getByText(/^\d+ ouverts?/).first()
   const [t, c] = [(await h1.boundingBox())!, (await compteur.boundingBox())!]
   if (isMobile) {
     expect(c.x).toBeGreaterThan(t.x + t.width)

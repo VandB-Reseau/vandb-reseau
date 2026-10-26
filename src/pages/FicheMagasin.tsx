@@ -76,6 +76,7 @@ import { inspirationsDu, leviersDuMagasin, libellesLevier, useReperesReseau } fr
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
 import { Contact, Ligne, Section } from '../components/Section'
 import { SectionReunionsMagasin } from '../components/Reunions'
+import { SectionConcurrents } from '../components/Concurrents'
 import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, estVisite, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 import { cartouche } from '../components/Social'
 
@@ -166,6 +167,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
               <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
             </Section>
             <SectionExploitation m={m} />
+            <SectionConcurrents reseau={reseau} m={m} signaler={setConfirmation} />
             {lieuCarte && (
               <Card sx={{ gridColumn: { lg: 'span 2' }, overflow: 'hidden' }}>
                 <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}

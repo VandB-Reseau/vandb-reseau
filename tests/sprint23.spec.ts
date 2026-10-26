@@ -97,6 +97,7 @@ test('S5 : Messages et Tâches vides proposent d’écrire ou de créer', async 
   await expect(page.getByRole('dialog', { name: 'Message à une personne' })).toBeVisible()
   await page.keyboard.press('Escape')
   await page.goto('./#/taches')
+  await page.getByRole('group', { name: 'Liste de tâches' }).getByRole('button', { name: /^Mes tâches/ }).click()
   await expect(page.getByText('Aucune tâche en cours')).toBeVisible()
   await page.getByRole('button', { name: 'Nouvelle tâche' }).click()
   await expect(page.getByRole('dialog')).toBeVisible()

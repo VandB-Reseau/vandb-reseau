@@ -623,3 +623,47 @@ SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 UPDATE public.store_overrides SET licence = '3' WHERE store_name = 'Lille';
 RESET ROLE;
 SELECT pg_temp.attendre('Exploitation : le Coach ne change pas la fiche', (SELECT count(*) FROM public.store_overrides WHERE store_name = 'Lille' AND licence = '4'), 1);
+
+-- ── 0038 : concurrents (équipe) et mot du franchisé (par sa fonction seulement), rejouée ici après l'ordre inverse
+\ir ../migrations/0038_concurrents_mot_franchise.sql
+SELECT pg_temp.attendre('Journal : 0038 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0038'), 1);
+INSERT INTO public.visits (store, visit_date) VALUES ('Lille', (now() AT TIME ZONE 'Europe/Paris')::date + 7) RETURNING id AS visite_a_venir \gset
+INSERT INTO public.visits (store, visit_date) VALUES ('Lille', '2026-01-05') RETURNING id AS visite_passee \gset
+INSERT INTO public.visits (store, visit_date) VALUES ('Nice', (now() AT TIME ZONE 'Europe/Paris')::date + 7) RETURNING id AS visite_nice \gset
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Concurrence : le Coach note les concurrents de son magasin',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''concurrence'', ''{"ajoutes":[]}'')'), 0);
+SELECT pg_temp.attendre('Concurrence : pas sur un magasin d''un autre Coach',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Nice'', ''concurrence'', ''{"ajoutes":[]}'')'), 1);
+SELECT pg_temp.attendre('Mot du franchisé : le Coach ne l''écrit pas à sa place',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''mot_franchise'', ''[]'')'), 1);
+SELECT pg_temp.attendre('Mot du franchisé : le Coach n''appelle pas la fonction du franchisé',
+  pg_temp.refuse(format('SELECT public.ecrire_mot_franchise(%L, %s, %L)', 'Lille', :visite_a_venir, 'Faux mot')), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Mot du franchisé : écrit avant une visite à venir de son magasin',
+  pg_temp.refuse(format('SELECT public.ecrire_mot_franchise(%L, %s, %L, %L, %L)', 'Lille', :visite_a_venir, 'Le bar', 'Les livraisons', 'Une formation')), 0);
+SELECT pg_temp.attendre('Mot du franchisé : pas sur une visite passée',
+  pg_temp.refuse(format('SELECT public.ecrire_mot_franchise(%L, %s, %L)', 'Lille', :visite_passee, 'Trop tard')), 1);
+SELECT pg_temp.attendre('Mot du franchisé : pas sur le magasin d''un autre',
+  pg_temp.refuse(format('SELECT public.ecrire_mot_franchise(%L, %s, %L)', 'Nice', :visite_nice, 'Intrus')), 1);
+SELECT pg_temp.attendre('Mot du franchisé : pas de visite d''un autre magasin sous le sien',
+  pg_temp.refuse(format('SELECT public.ecrire_mot_franchise(%L, %s, %L)', 'Lille', :visite_nice, 'Intrus')), 1);
+SELECT pg_temp.attendre('Mot du franchisé : relu dans son espace, avec son nom posé par la base',
+  (SELECT count(*) FROM jsonb_array_elements(public.espace_franchise()->'app_config') c, jsonb_array_elements(c->'value'->'Lille') m
+   WHERE c->>'key' = 'mots_franchise' AND m->>'marche' = 'Le bar' AND m->>'par' = 'Franchisé Test'), 1);
+SELECT pg_temp.attendre('Concurrence : jamais renvoyée au franchisé',
+  (SELECT count(*) FROM jsonb_array_elements(public.espace_franchise()->'app_config') c WHERE c->>'key' = 'concurrence' OR c->>'key' = 'concurrents_magasins'), 0);
+SELECT pg_temp.attendre('Mot du franchisé : toujours aucun accès direct au suivi', (SELECT count(*) FROM public.suivi_magasins), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Mot du franchisé : lu par le Coach du magasin', (SELECT count(*) FROM public.suivi_magasins WHERE store_name = 'Lille' AND cle = 'mot_franchise'), 1);
+SELECT pg_temp.attendre('Mot du franchisé : le Coach ne le modifie pas',
+  pg_temp.refuse('UPDATE public.suivi_magasins SET valeur = ''[]'' WHERE store_name = ''Lille'' AND cle = ''mot_franchise'''), 1);
+SELECT pg_temp.attendre('Mot du franchisé : le Coach ne l''efface pas',
+  pg_temp.refuse('DELETE FROM public.suivi_magasins WHERE store_name = ''Lille'' AND cle = ''mot_franchise'''), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT pg_temp.attendre('Mot du franchisé : le Directeur garde la main',
+  pg_temp.refuse('UPDATE public.suivi_magasins SET maj_le = now() WHERE store_name = ''Lille'' AND cle = ''mot_franchise'''), 0);
+RESET ROLE;
+SELECT pg_temp.attendre('Mot du franchisé : garde fermée aux comptes', (SELECT count(*) FROM information_schema.routine_privileges
+  WHERE routine_schema = 'public' AND grantee IN ('anon', 'authenticated', 'PUBLIC') AND routine_name = 'garde_mot_franchise'), 0);

@@ -33,7 +33,7 @@ test('enregistrer une vue, la retrouver en un toucher, la retirer', async ({ pag
   // Gardée sur l'appareil : retrouvée sans filtre, après rechargement
   await page.goto('./#/magasins?vue=liste')
   await page.reload()
-  await expect(page.getByText(/^\d+ magasins( dans le réseau)?$/)).toBeVisible()
+  await expect(page.getByText(/^\d+ ouverts · \d+ à venir$/)).toBeVisible()
   await vues.getByRole('button', { name: 'À voir cette semaine', pressed: false }).click()
   await expect(page).toHaveURL(/alerte=visite/)
   await expect(page).toHaveURL(/tri=visite/)
@@ -46,7 +46,7 @@ test('enregistrer une vue, la retrouver en un toucher, la retirer', async ({ pag
 test('sans vue ni filtre, rien n’est ajouté au-dessus de la liste', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/magasins?vue=liste')
-  await expect(page.getByText(/^\d+ magasins( dans le réseau)?$/)).toBeVisible()
+  await expect(page.getByText(/^\d+ ouverts · \d+ à venir$/)).toBeVisible()
   await expect(page.getByRole('group', { name: 'Vues enregistrées' })).toHaveCount(0)
 })
 

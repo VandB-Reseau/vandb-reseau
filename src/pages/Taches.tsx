@@ -1,6 +1,6 @@
 // Tâches : actions attribuées à la personne connectée (son nom en porteur), à faire puis faites,
 // avec qui les a faites et quand. Le Directeur peut ouvrir la liste d'un RR ou d'un Coach.
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
@@ -8,6 +8,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Snackbar from '@mui/material/Snackbar'
 import TextField from '@mui/material/TextField'
+import Menu from '@mui/material/Menu'
 import Typography from '@mui/material/Typography'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import { PageHeader } from '../components/PageHeader'
@@ -57,17 +58,31 @@ function Intertitre({ titre, nombre }: { titre: string; nombre: number }) {
 // Liste des tâches des franchisés des magasins affichés
 const FRANCHISES = '@franchises'
 
-// L'équipe ouvre sa liste ou celle des franchisés de ses magasins ; le Directeur aussi celle d'un RR ou d'un Coach
-function ChoixPorteur({ reseau, moi, valeur, directeur, onChange }: { reseau: Reseau; moi: string; valeur: string; directeur: boolean; onChange: (nom: string) => void }) {
+// L'équipe passe de sa liste à celle des franchisés de ses magasins ; le Directeur ouvre aussi celle d'un RR ou d'un
+// Coach (« Équipe »). Listes en puces visibles avec leur nombre de tâches à faire (sprint 27, S1)
+function ChoixPorteur({ reseau, noms, moi, valeur, directeur, onChange }: { reseau: Reseau; noms: string[]; moi: string; valeur: string; directeur: boolean; onChange: (nom: string) => void }) {
+  const [ancre, setAncre] = useState<HTMLElement | null>(null)
+  const n = (porteur: string) => aFaireDe(reseau, noms, porteur).length
+  const coachs = reseau.equipe.filter((c) => !c.fictif).map((c) => c.nom)
+  const membre = valeur !== moi && valeur !== FRANCHISES ? valeur : null
+  const puce = (libelle: string, actif: boolean, onClick: (e: MouseEvent<HTMLElement>) => void, menu?: boolean) => (
+    <Chip label={libelle} onClick={onClick} aria-pressed={actif} aria-haspopup={menu ? 'menu' : undefined} color={actif ? 'primary' : 'default'} variant={actif ? 'filled' : 'outlined'}
+      sx={{ minHeight: 48, borderRadius: 999, fontWeight: 700, '& .MuiChip-label': { px: 2 } }} />
+  )
   return (
-    <TextField select size="small" label="Liste de" value={valeur} onChange={(e) => onChange(e.target.value)} sx={{ minWidth: 240, '& .MuiInputBase-root': { minHeight: 48 } }}>
-      <MenuItem value={moi}>Mes tâches</MenuItem>
-      <MenuItem value={FRANCHISES}>{directeur ? 'Franchisés du réseau' : 'Franchisés de mes magasins'}</MenuItem>
-      {directeur && <ListSubheader>Responsables Régionaux</ListSubheader>}
-      {directeur && reseau.rrs.map((r) => <MenuItem key={r.id} value={r.nom}>{r.nom}</MenuItem>)}
-      {directeur && <ListSubheader>Coachs</ListSubheader>}
-      {directeur && reseau.equipe.filter((c) => !c.fictif).map((c) => <MenuItem key={c.nom} value={c.nom}>{c.nom}</MenuItem>)}
-    </TextField>
+    <Box role="group" aria-label="Liste de tâches" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+      {puce(`Mes tâches · ${n(moi)}`, valeur === moi, () => onChange(moi))}
+      {puce(`Franchisés · ${n(FRANCHISES)}`, valeur === FRANCHISES, () => onChange(FRANCHISES))}
+      {directeur && puce(membre ? `Équipe · ${membre}` : 'Équipe', !!membre, (e) => setAncre(e.currentTarget), true)}
+      {directeur && (
+        <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)}>
+          <ListSubheader>Responsables Régionaux</ListSubheader>
+          {reseau.rrs.map((r) => <MenuItem key={r.id} selected={valeur === r.nom} onClick={() => { setAncre(null); onChange(r.nom) }} sx={{ minHeight: 48 }}>{r.nom} · {n(r.nom)}</MenuItem>)}
+          <ListSubheader>Coachs</ListSubheader>
+          {coachs.map((c) => <MenuItem key={c} selected={valeur === c} onClick={() => { setAncre(null); onChange(c) }} sx={{ minHeight: 48 }}>{c} · {n(c)}</MenuItem>)}
+        </Menu>
+      )}
+    </Box>
   )
 }
 
@@ -85,7 +100,14 @@ function porteeParFranchise(reseau: Reseau, x: ActionSuivie, cache: Map<string, 
   return porteursDe(x.a).some((n) => ensemble.has(n))
 }
 
-function Liste({ reseau, noms, porteur, signaler, choixPorteur, autreListe, ajout, ajoutVide }: { reseau: Reseau; noms: string[]; porteur: string; signaler: (m: string) => void; choixPorteur?: ReactNode; autreListe?: boolean; ajout?: ReactNode; ajoutVide?: ReactNode }) {
+// Tâches à faire d'une liste (porteur, ou franchisés des magasins)
+function tachesDe(reseau: Reseau, noms: string[], porteur: string): ActionSuivie[] {
+  const cache = new Map<string, Set<string>>()
+  return actionsDes(reseau, new Set(noms)).filter((x) => (porteur === FRANCHISES ? porteeParFranchise(reseau, x, cache) : portePar(x.a, porteur)))
+}
+const aFaireDe = (reseau: Reseau, noms: string[], porteur: string) => tachesDe(reseau, noms, porteur).filter((x) => !x.a.faite)
+
+function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajout, ajoutVide }: { reseau: Reseau; noms: string[]; porteur: string; signaler: (m: string) => void; choixPorteur?: ReactNode; ajout?: ReactNode; ajoutVide?: ReactNode }) {
   const { recharger } = useReseau()
   const ecriture = useEcritureActions(reseau)
   const [recherche, setRecherche] = useState('')
@@ -94,10 +116,8 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, autreListe, ajou
   const [toutesFaites, setToutesFaites] = useState(false)
   const [edition, setEdition] = useState<ActionSuivie | null>(null)
   const choix = magasin && noms.includes(magasin) ? magasin : null
-  const cache = new Map<string, Set<string>>()
   const q = sansAccents(recherche.trim())
-  const actions = actionsDes(reseau, new Set(choix ? [choix] : noms))
-    .filter((x) => (porteur === FRANCHISES ? porteeParFranchise(reseau, x, cache) : portePar(x.a, porteur)))
+  const actions = tachesDe(reseau, choix ? [choix] : noms, porteur)
     .filter((x) => !q || sansAccents(`${x.a.action} ${x.magasin} ${x.a.porteur ?? ''}`).includes(q))
   const aFaire = actions.filter((x) => !x.a.faite)
   const faites = actions.filter((x) => x.a.faite)
@@ -130,12 +150,12 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, autreListe, ajou
       <Autocomplete options={[...noms].sort((a, b) => a.localeCompare(b, 'fr'))} value={choix} onChange={(_e, v) => setMagasin(v)} sx={{ width: { xs: '100%', sm: 280 } }}
         renderInput={(params) => <TextField {...params} size="small" label="Magasin" placeholder="Tous les magasins" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }} />} />
     ))
-  const filtres = choixPorteur || filtreMagasin ? <>{choixPorteur}{filtreMagasin}</> : undefined
   return (
     <>
-      <RechercheFiltres actifs={(choix ? 1 : 0) + (autreListe ? 1 : 0)} actions={ajout}
+      {choixPorteur}
+      <RechercheFiltres actifs={choix ? 1 : 0} actions={ajout}
         recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Tâche, magasin, porteur" libelle="Rechercher une tâche" />}>
-        {filtres}
+        {filtreMagasin || undefined}
       </RechercheFiltres>
       <Box sx={{ display: 'grid', gap: 2 }}>
         <CarteLignes label="À faire">
@@ -179,6 +199,15 @@ export function PageTaches() {
   const porteur = (demande && (!impose || demande === FRANCHISES) ? demande : '') || moi
   const changer = (nom: string) => setParams((x) => { const n = new URLSearchParams(x); if (nom === moi) n.delete('de'); else n.set('de', nom); return n }, { replace: true })
   useMarquerTachesVues(!!moi && porteur === moi)
+  // Sans liste demandée : la sienne si elle a des tâches à faire, sinon celle des franchisés si elle en a (une seule fois)
+  const choisi = useRef(false)
+  useEffect(() => {
+    if (choisi.current || !reseau || !choixPossible) return
+    choisi.current = true
+    if (params.get('de')) return
+    const ns = (impose ? magasinsDu(reseau, impose) : reseau.magasins).map((m) => m.nom)
+    if (!aFaireDe(reseau, ns, moi).length && aFaireDe(reseau, ns, FRANCHISES).length) changer(FRANCHISES)
+  })
   const noms = reseau ? (impose ? magasinsDu(reseau, impose) : reseau.magasins).map((m) => m.nom).sort((a, b) => a.localeCompare(b, 'fr')) : []
   return (
     <>
@@ -187,8 +216,8 @@ export function PageTaches() {
         return <PageHeader titre={autre ?? 'Tâches'} />
       })()}
       <AvecReseau>{(r) => (
-        <Liste reseau={r} noms={noms} porteur={porteur} signaler={setMessage} autreListe={porteur !== moi}
-          choixPorteur={choixPossible ? <ChoixPorteur reseau={r} moi={moi} valeur={porteur} directeur={!impose} onChange={changer} /> : undefined}
+        <Liste reseau={r} noms={noms} porteur={porteur} signaler={setMessage}
+          choixPorteur={choixPossible ? <ChoixPorteur reseau={r} noms={noms} moi={moi} valeur={porteur} directeur={!impose} onChange={changer} /> : undefined}
           ajout={<BoutonAjouterAction barre reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} signaler={setMessage} />}
           ajoutVide={<BoutonAjouterAction plein libelle="Nouvelle tâche" reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} signaler={setMessage} />} />
       )}</AvecReseau>

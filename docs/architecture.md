@@ -17,7 +17,8 @@ Pas de serveur à nous (hormis les petites fonctions « notifier » et « compte
 entièrement sur la connexion et les règles de la base, jamais sur l'écran. Voir [base-de-donnees.md](base-de-donnees.md).
 
 Services externes appelés depuis le navigateur, tous gratuits : Google Maps intégré (fiche magasin),
-itinéraires routiers OSRM (charge des Coachs, tournées), géocodage geo.api.gouv.fr, dictée du navigateur.
+itinéraires routiers OSRM (charge des Coachs, tournées), géocodage geo.api.gouv.fr, commerces OpenStreetMap (service Overpass, concurrents à 2 km, gardés 30 jours
+sur l’appareil), dictée du navigateur.
 
 ## Pile
 

@@ -11,6 +11,15 @@ export const statutLibelle: Record<Statut, string> = {
   ouvert: 'Ouvert',
 }
 
+// Taille du parc dite de la même façon sur chaque écran (sprint 27, S3) : magasins ouverts (dont nouvelles ouvertures),
+// puis ceux à venir (à venir et en pré-ouverture) à part
+export const estOuvert = (m: { statut: Statut }) => m.statut === 'ouvert' || m.statut === 'nouveau'
+export function libelleParc(magasins: { statut: Statut }[]): string {
+  const ouverts = magasins.filter(estOuvert).length
+  const aVenir = magasins.length - ouverts
+  return `${ouverts} ouvert${ouverts > 1 ? 's' : ''}${aVenir ? ` · ${aVenir} à venir` : ''}`
+}
+
 export const statutAide: Record<Statut, string> = {
   avenir: 'Ouverture prévue, préparation pas encore commencée',
   preouverture: 'Dans les mois qui précèdent l’ouverture',
@@ -133,6 +142,8 @@ export interface Reseau {
   notesMagasins: Record<string, NoteMagasin[]>
   preparations: Record<string, PreparationVisite> // notes de la prochaine visite, par magasin (jamais montrées au franchisé)
   ouvertures: Record<string, SuiviOuverture> // étapes des ouvertures à venir, par magasin (sprint 25, F3, migration 0035)
+  concurrence: Record<string, import('./concurrence').SuiviConcurrence> // concurrents ajoutés, retirés ou notés, par magasin (sprint 27, F3, 0038)
+  motsFranchise: Record<string, import('./motFranchise').MotFranchise[]> // mots du franchisé avant ses visites, par magasin (sprint 27, F4, 0038)
   deploiements: import('./sante').Deploiements
   chiffres: Record<string, import('./chiffres').ChiffreMois[]> // par magasin, du plus ancien au plus récent
   audits: import('./chiffres').Audits

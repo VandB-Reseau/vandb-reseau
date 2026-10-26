@@ -25,6 +25,7 @@ import { magasinsDu, perimetreDuProfil } from '../data/perimetre'
 import { jourPropose, preparationDe, semaineDu, type LigneSemaine } from '../data/semaine'
 import { duree } from '../data/tournee'
 import { libellePasVu } from '../data/visites'
+import { motDe } from '../data/motFranchise'
 import { lienFiche, lienPreparation } from '../lib/format'
 import type { Reseau, Visite } from '../data/modele'
 
@@ -80,6 +81,7 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
       prevue || l.alerte || !l.echeance ? null : `alerte le ${jourCourt(l.echeance)}`,
       l.dernierContact ? `appel le ${jourCourt(l.dernierContact.date)}` : null,
       preparationDe(reseau, l.magasin.nom)?.notes ? 'préparée' : null,
+      prevue && motDe(reseau, l.magasin.nom, prevue.id) ? 'mot du franchisé reçu' : null,
     ].filter(Boolean).join(' · ')
     const planifierCe = () => planifier([l.magasin.nom], prevue?.date ?? jourPropose(reseau, l), prevue)
     // Téléphone : Préparer, Planifier et Compte rendu en mots sous le magasin (sprint 24, S1) ; PC : pictos en bout de ligne
