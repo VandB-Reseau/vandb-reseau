@@ -15,7 +15,7 @@ import {
   supprimerAffectation, supprimerChiffres, supprimerCoach, supprimerEvaluation, supprimerEvenement, supprimerFranchise, supprimerMagasin,
   supprimerNoteMagasin, supprimerRattachement, supprimerRR, supprimerVisite, modifierAssociesMagasin, type FicheMagasin,
 } from './chargement'
-import { associesDu, finDeContrat, type Associe } from './associes'
+import { associesDu, mandatEffectif, type Associe } from './associes'
 import { PARTIES } from './compteRendu'
 import { MAX_POINTS, perimetres } from './campagnes'
 import { themesPratiques, type BonnePratique } from './bonnesPratiques'
@@ -382,7 +382,6 @@ const magasins: Referentiel = {
     { id: 'licence', entete: 'Licence', type: 'choix', choix: Object.values(libellesLicence) },
     { id: 'instagram', entete: 'Instagram', largeur: 30 },
     ...JOURS.map((j): Colonne => ({ id: `h:${j}`, entete: libellesJour[j], largeur: 16 })),
-    { id: 'finContrat', entete: 'Fin de contrat', type: 'date', lecture: true, largeur: 16 },
   ],
   lignes: (r) => tousMagasins(r).map((m) => ({
     code: m.code, magasin: m.nom, statut: m.franchise ? STATUTS[0] : STATUTS[1], ouverture: m.ouvertureConnue ? m.ouverture : '',
@@ -390,7 +389,6 @@ const magasins: Referentiel = {
     implantation: m.exploitation.implantation, typologie: m.exploitation.typologie ? libellesTypologie[m.exploitation.typologie] : '',
     zone: m.exploitation.zoneChalandise ? libellesZone[m.exploitation.zoneChalandise] : '', licence: m.exploitation.licence ? libellesLicence[m.exploitation.licence] : '',
     instagram: m.exploitation.instagram, ...Object.fromEntries(JOURS.map((j) => [`h:${j}`, m.exploitation.horaires[j] ?? ''])),
-    finContrat: finDeContrat(r, m)?.fin ?? '',
   })),
   ajout: { obligatoires: ['magasin'] },
   ajoutSansCle: true,
@@ -457,9 +455,19 @@ const mandats: Referentiel = {
     { id: 'debut', entete: 'Début du mandat', type: 'date', cle: true, cleVide: true, largeur: 16 },
     { id: 'fin', entete: 'Fin du mandat', type: 'date', largeur: 16 },
     { id: 'sortie', entete: 'Date de sortie', type: 'date', largeur: 16 },
+    { id: 'enCoursDebut', entete: 'Mandat en cours : début', type: 'date', lecture: true, largeur: 16 },
+    { id: 'enCoursFin', entete: 'Mandat en cours : fin', type: 'date', lecture: true, largeur: 16 },
+    { id: 'enCoursNumero', entete: 'N° du mandat en cours', lecture: true, largeur: 12 },
   ],
-  lignes: (r) => r.magasins.filter((m) => m.code).flatMap((m) => associesDu(r, m).filter((a) => !/recrutement/i.test(a.nom)).flatMap((a) =>
-    (a.mandats.length ? a.mandats : [{ debut: '', fin: '' }]).map((x) => ({ ...leMagasin(r, m.nom), nom: a.nom, entree: a.entree, debut: x.debut, fin: x.fin, sortie: a.sortie })))),
+  // Mandat en cours (saisi ou calculé sur 5 ans) sur la ligne du mandat saisi correspondant, ou sur la ligne sans mandat
+  lignes: (r) => r.magasins.filter((m) => m.code).flatMap((m) => associesDu(r, m).filter((a) => !/recrutement/i.test(a.nom)).flatMap((a) => {
+    const e = mandatEffectif(r, m, a)
+    return (a.mandats.length ? a.mandats : [{ debut: '', fin: '' }]).map((x) => {
+      const courant = e && (e.calcule || x === e.mandat)
+      return { ...leMagasin(r, m.nom), nom: a.nom, entree: a.entree, debut: x.debut, fin: x.fin, sortie: a.sortie,
+        enCoursDebut: courant ? e.mandat.debut : '', enCoursFin: courant ? e.mandat.fin : '', enCoursNumero: courant ? String(e.numero) : '' }
+    })
+  })),
   ajout: { obligatoires: ['code', 'nom'] },
   aCompleter: (l) => !!l.code && !!l.nom && !l.entree && !l.debut && !l.fin && !l.sortie,
   async appliquer(r, changements) {

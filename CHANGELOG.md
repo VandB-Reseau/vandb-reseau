@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Export des mandats (26/10/2026) : l'onglet « Associés et mandats » donne le mandat en cours de chaque associé
+  (début, fin, numéro, saisi ou calculé sur 5 ans, en lecture seule) ; plus de colonne « Fin de contrat » dans l'onglet
+  Magasins. Sans SQL.
 - Mandats (Joseph, 26/10/2026) : la durée du contrat passe sur les mandats de chaque associé (franchisé ou associé d'un
   intégré) : sans mandat saisi, mandat de 5 ans renouvelé par 5 ans depuis son entrée (ou le passage en intégré ou en
   franchisé, sinon l'ouverture), avec son numéro ; plus de ligne « Fin de contrat » sur le magasin. Accueil : bloc
