@@ -9,6 +9,14 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Sprint 26, fluidité et fonctionnalités (Joseph, 26/10/2026) : la recherche de Visites > Historique lit tout le compte
+  rendu (six parties et plan d'action), sans tenir compte des accents, et montre le passage trouvé (S1) ; « La dernière
+  fois » dans la fiche avant visite : note, parties remplies et plan d'action du dernier compte rendu, PDF compris (S2) ;
+  ouvertures : « N étapes sur 6 · prochaine : contrat », étape renommée « Contrat », en rouge à moins de 60 jours sans
+  étape faite (S3) ; « Bilan de l'année » d'un magasin depuis le menu de la fiche : chiffres face à N-1, santé, visites,
+  tâches tenues, réunions, thématiques et priorités de l'an prochain, en PDF et envoyable au franchisé (F1) ;
+  Paramètres > Historique des modifications : qui a changé quoi sur 90 jours, Directeur seul, et « Remettre » une
+  suppression (visite, chiffres, tâche, affectation…) (F3). Base : passer `0036_historique_modifications`.
 - Sprint 25, fluidité et fonctionnalités (Joseph, 24/10/2026) : l'agenda s'ouvre sur aujourd'hui, les jours passés du
   mois repliés sous « Plus tôt ce mois », sans sous-titre (S1) ; « Mon agenda dans Google Agenda » dans le menu du compte :
   un lien secret par personne, ses visites et les événements, réunions et formations du réseau, lien remplaçable (F2) ;

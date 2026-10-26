@@ -203,7 +203,7 @@ export interface PreparationVisite { notes: string; heure: string; par: string; 
 // l'ouverture, est la date d'ouverture du magasin
 export type IdEtape = 'contrat' | 'local' | 'travaux' | 'recrutement' | 'formation'
 export const etapesOuverture: { id: IdEtape; libelle: string }[] = [
-  { id: 'contrat', libelle: 'Contrat signé' }, { id: 'local', libelle: 'Local' }, { id: 'travaux', libelle: 'Travaux' },
+  { id: 'contrat', libelle: 'Contrat' }, { id: 'local', libelle: 'Local' }, { id: 'travaux', libelle: 'Travaux' },
   { id: 'recrutement', libelle: 'Recrutement de l’équipe' }, { id: 'formation', libelle: 'Formation du franchisé' },
 ]
 export interface EtapeOuverture { prevu: string; fait: string }

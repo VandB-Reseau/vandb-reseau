@@ -8,6 +8,7 @@ import StarBorderOutlined from '@mui/icons-material/StarBorderOutlined'
 import { basculerFavori, noterRecent, useSuivis } from '../lib/suivis'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
+import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
@@ -42,7 +43,7 @@ import { DialogSituation } from '../components/DialogSituation'
 import { enTravaux, etatSortie, situationsAffichees, texteSituation } from '../data/situations'
 import SwapHoriz from '@mui/icons-material/SwapHoriz'
 import { EmptyState } from '../components/EmptyState'
-import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienPreparation, lienRR, telLien } from '../lib/format'
+import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienBilan, lienPreparation, lienRR, telLien } from '../lib/format'
 import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Reseau, type Visite } from '../data/modele'
@@ -510,7 +511,7 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
   )
 }
 
-// Planifier, Préparer et Modifier dans un menu « ⋯ » : trois pictos seulement à côté du nom (Joseph, 21/10/2026)
+// Planifier, Préparer, Bilan de l'année (sprint 26, F1) et Modifier dans un menu « ⋯ » : trois pictos seulement à côté du nom (Joseph, 21/10/2026)
 function AutresActions({ nom, planifier, preparer, modifier, fermer: fermerMagasin }: { nom: string; planifier: () => void; preparer: string; modifier?: () => void; fermer?: () => void }) {
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const favori = useSuivis().favoris.includes(nom)
@@ -521,6 +522,7 @@ function AutresActions({ nom, planifier, preparer, modifier, fermer: fermerMagas
       <Menu anchorEl={ancre} open={!!ancre} onClose={fermer} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <MenuItem onClick={() => { fermer(); planifier() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><EventAvailableOutlined /></ListItemIcon>Planifier la visite</MenuItem>
         <MenuItem component={RouterLink} to={preparer} onClick={fermer} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><AssignmentOutlined /></ListItemIcon>Préparer la visite</MenuItem>
+        <MenuItem component={RouterLink} to={lienBilan(nom)} onClick={fermer} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><InsightsOutlined /></ListItemIcon>Bilan de l’année</MenuItem>
         <MenuItem onClick={() => { fermer(); basculerFavori(nom) }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon>{favori ? <StarOutlined /> : <StarBorderOutlined />}</ListItemIcon>{favori ? 'Retirer des favoris' : 'Ajouter aux favoris'}</MenuItem>
         {modifier && <MenuItem onClick={() => { fermer(); modifier() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><EditOutlined /></ListItemIcon>Modifier la fiche</MenuItem>}
         {fermerMagasin && <MenuItem onClick={() => { fermer(); fermerMagasin() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><SwapHorizOutlined /></ListItemIcon>Changer la situation</MenuItem>}

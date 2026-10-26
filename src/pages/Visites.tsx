@@ -44,6 +44,7 @@ import { FiltreMenu } from '../components/FiltreMenu'
 import Chip from '@mui/material/Chip'
 import { dateCourte, lienCoach, lienFiche, lienPreparation } from '../lib/format'
 import { libelleTypeVisite, nomsVisiteurs, typesVisite, type Reseau, type Visite } from '../data/modele'
+import { chercherDansVisite, type Trouvaille } from '../data/compteRendu'
 import { sousBandes } from '../components/Collant'
 import { Blason } from '../components/Blason'
 
@@ -198,6 +199,18 @@ const parMois = (vs: Visite[]) => [...vs.reduce((m, v) => m.set(v.date.slice(0, 
 const nbDuMois = (vs: Visite[], mois: string) => vs.filter((v) => v.date.startsWith(mois)).length
 const libelleMoisAnnee = (mois: string) => new Date(`${mois}-15T12:00:00`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
 
+function detailVisite(v: Visite, t: Trouvaille | null | false | undefined): ReactNode {
+  const tete = [dateCourte(v.date), libelleTypeVisite(v.type), nomsVisiteurs(v)].filter(Boolean).join(' · ')
+  if (!t) return [tete, v.notes].filter(Boolean).join(' · ')
+  // Le passage trouvé passe à la ligne (trois lignes au plus), pour rester lisible au téléphone
+  return (
+    <>
+      <Box component="span" sx={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'normal', color: 'text.primary' }}>{t.ou} : « {t.passage} »</Box>
+      <Box component="span" sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tete}</Box>
+    </>
+  )
+}
+
 function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier: (v: Visite) => void; actions: ReactNode }) {
   const semestres = useMemo(() => semestresDisponibles(reseau), [reseau])
   const [cle, setCle] = useState('')
@@ -205,10 +218,12 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
   const [visiteur, setVisiteur] = useState('')
   const [recherche, setRecherche] = useState('')
   const s = useMemo(() => semestres.find((x) => x.cle === cle), [semestres, cle])
+  // La recherche lit tout le compte rendu (sprint 26, S1) ; le passage trouvé remplace la note sur la ligne
+  const trouvailles = useMemo(() => new Map(reseau.visites.map((v) => [v, chercherDansVisite(v, recherche)] as const)), [reseau, recherche])
   const liste = useMemo(() => reseau.visites
     .filter((v) => (!s || (v.date >= s.debut && v.date <= s.fin)) && (!type || v.type === type) && (!visiteur || v.visiteurs.includes(visiteur))
-      && (!recherche || `${v.magasin} ${v.notes}`.toLowerCase().includes(recherche.toLowerCase())))
-    .sort((a, b) => b.date.localeCompare(a.date)), [reseau, s, type, visiteur, recherche])
+      && trouvailles.get(v) !== false)
+    .sort((a, b) => b.date.localeCompare(a.date)), [reseau, s, type, visiteur, trouvailles])
   const { visibles, suite } = useParTranches(liste, JSON.stringify([cle, type, visiteur, recherche]))
   const Actions = ({ v }: { v: Visite }) => (
     <Box sx={{ display: 'flex' }}>
@@ -219,7 +234,7 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
   return (
     <>
       <RechercheFiltres actifs={(cle ? 1 : 0) + (type ? 1 : 0) + (visiteur ? 1 : 0)} actions={actions}
-        recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher un magasin ou une note" />}>
+        recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Magasin, mot du compte rendu…" />}>
         <FiltreMenu libelle="Période" choisis={cle ? [cle] : []} onChange={(v) => setCle(v.at(-1) ?? '')} options={semestres.map((x) => ({ valeur: x.cle, libelle: x.court }))} />
         <FiltreMenu libelle="Type" choisis={type ? [type] : []} onChange={(v) => setType(v.at(-1) ?? '')} options={typesVisite.map((t) => ({ valeur: t.id, libelle: t.libelle }))} />
         <FiltreMenu libelle="Visité par" choisis={visiteur ? [visiteur] : []} onChange={(v) => setVisiteur(v.at(-1) ?? '')} options={visiteurs(reseau).map((n) => ({ valeur: n, libelle: n }))} />
@@ -241,7 +256,7 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
               <CarteLignes>
                 {vs.map((v) => (
                   <LigneCompacte key={v.id ?? `${v.magasin}-${v.date}`} lien={lienFiche(v.magasin)} avatar={<Blason magasin={reseau.magasins.find((x) => x.nom === v.magasin)} nom={v.magasin} />} titre={v.magasin}
-                    detail={[dateCourte(v.date), libelleTypeVisite(v.type), nomsVisiteurs(v), v.notes].filter(Boolean).join(' · ')}
+                    detail={detailVisite(v, trouvailles.get(v))}
                     fin={v.prevue ? <Pastille ton="bleu">Prévue</Pastille> : v.signatureRequise ? <PastilleSignature requise signe={!!v.lienSigne} /> : <MiniPhotos photos={v.photos} />}
                     actions={<Actions v={v} />} />
                 ))}
