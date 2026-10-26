@@ -3,7 +3,7 @@ import { etapesOuverture, type IdEtape, type Magasin, type Reseau } from './mode
 // Ouverture suivie par étapes (sprint 25, F3) : cinq étapes saisies puis l'ouverture elle-même (date du magasin)
 export type EtatEtape = 'faite' | 'retard' | 'prevue' | 'vide'
 export interface EtatOuverture {
-  etapes: { id: IdEtape | 'ouverture'; libelle: string; prevu: string; fait: string; etat: EtatEtape }[]
+  etapes: { id: IdEtape | 'implantation' | 'ouverture'; libelle: string; prevu: string; fait: string; etat: EtatEtape }[]
   faites: number
   total: number
   retard: { libelle: string; prevu: string } | null
@@ -19,6 +19,10 @@ export function etatOuverture(reseau: Reseau, m: Magasin): EtatOuverture {
     const x = suivi[e.id] ?? { prevu: '', fait: '' }
     return { id: e.id, libelle: e.libelle, prevu: x.prevu, fait: x.fait, etat: etat(x.prevu, x.fait) }
   })
+  // Implantation des produits (Joseph, 26/10/2026) : mise en rayon pendant la pré-ouverture, date de la fiche du magasin
+  const imp = m.exploitation.implantation
+  const implantee = !!imp && imp <= reseau.jour
+  etapes.push({ id: 'implantation', libelle: 'Implantation des produits', prevu: imp, fait: implantee ? imp : '', etat: implantee ? 'faite' : imp ? 'prevue' : 'vide' })
   const ouverte = !!m.ouverture && m.ouverture <= reseau.jour
   etapes.push({ id: 'ouverture', libelle: 'Ouverture', prevu: m.ouverture, fait: ouverte ? m.ouverture : '', etat: ouverte ? 'faite' : m.ouverture ? 'prevue' : 'vide' })
   const enRetard = etapes.find((e) => e.etat === 'retard')
