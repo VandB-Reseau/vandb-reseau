@@ -280,7 +280,7 @@ export function CarteMagasins({ magasins, rrs, equipe = [], personnes = {}, rest
                 <Popup>
                   <Typography variant="subtitle2" component="div">{m.nom}</Typography>
                   <Typography variant="body2" component="div">{statutLibelle[statut]} · {m.franchise ? 'Franchisé' : 'Intégré'}</Typography>
-                  <Typography variant="body2" component="div">Coach : {coach || (m.rrEnDirect ? 'aucun, géré en direct par le Responsable Régional' : 'aucun')}</Typography>
+                  <Typography variant="body2" component="div">{coach ? `Coach : ${coach}` : m.rrEnDirect && m.rr ? `Géré en direct · ${m.rr.nom}` : 'Coach : aucun'}</Typography>
                   {avant !== undefined && <Typography variant="body2" component="div">Proposé dans le plan, avant : {avant || 'aucun Coach'}</Typography>}
                   {(!ouvrables || ouvrables.has(m.nom)) && <Link component={RouterLink} to={lienFiche(m.nom)} variant="body2" sx={{ color: 'text.primary', fontWeight: 700, textDecoration: 'underline' }}>Ouvrir la fiche</Link>}
                 </Popup>

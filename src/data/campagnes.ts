@@ -2,7 +2,7 @@
 // Stockées dans app_config (clé campagnes) : la liste des campagnes et les constats par magasin.
 // Campagnes régionales : créées par un Responsable Régional pour ses magasins (table campagnes_regions).
 import type { Magasin, Reseau } from './modele'
-import { coachA } from './charge'
+import { coachA, libelleSuivi } from './charge'
 import { magasinsDu } from './perimetre'
 
 export interface PointCampagne { id: string; libelle: string }
@@ -109,7 +109,7 @@ export function bilan(campagnes: Campagnes, c: Campagne, magasins: Magasin[]): B
 export function bilanPar(reseau: Reseau, c: Campagne, magasins: Magasin[], par: 'coach' | 'rr'): { nom: string; b: Bilan }[] {
   const groupes = new Map<string, Magasin[]>()
   for (const m of magasins) {
-    const nom = par === 'coach' ? coachA(m, reseau.jour) || 'Sans Coach' : m.rr?.nom ?? 'Sans Responsable Régional'
+    const nom = par === 'coach' ? libelleSuivi(m, coachA(m, reseau.jour)) : m.rr?.nom ?? 'Sans Responsable Régional'
     groupes.set(nom, [...(groupes.get(nom) ?? []), m])
   }
   return [...groupes].map(([nom, ms]) => ({ nom, b: bilan(reseau.campagnes, c, ms) })).sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))

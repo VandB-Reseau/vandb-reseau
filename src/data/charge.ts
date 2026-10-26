@@ -13,6 +13,42 @@ export function coachA(m: Magasin, jour: string): string {
   return h.length ? h[h.length - 1].coach : ''
 }
 
+// Magasin sans Coach géré en direct par son Responsable Régional : un choix d'organisation, pas un manque.
+// Le RR y tient le rôle du Coach. `coach` = le Coach à la date voulue (par défaut celui du jour).
+export function enDirect(m: Magasin, coach = m.coach): boolean {
+  return !coach && m.rrEnDirect && !!m.rr
+}
+
+export const EN_DIRECT = 'Géré en direct · '
+
+// Qui suit le magasin : son Coach, « Géré en direct · RR », ou vide s'il n'a vraiment personne
+export function suivi(m: Magasin, coach = m.coach): string {
+  return coach || (enDirect(m, coach) ? `${EN_DIRECT}${m.rr!.nom}` : '')
+}
+
+export function libelleSuivi(m: Magasin, coach = m.coach): string {
+  return suivi(m, coach) || 'Sans Coach'
+}
+
+// « Coach · RR », « Géré en direct · RR » ou « Sans Coach · RR »
+export function suiviEtRR(m: Magasin, coach = m.coach): string {
+  return (enDirect(m, coach) ? [suivi(m, coach)] : [libelleSuivi(m, coach), m.rr?.nom]).filter(Boolean).join(' · ')
+}
+
+// Clé de filtre « Coach » : le Coach, « __direct__ » (géré en direct) ou « __aucun__ »
+export function cleFiltreCoach(m: Magasin, coach = m.coach): string {
+  return coach || (enDirect(m, coach) ? '__direct__' : '__aucun__')
+}
+
+export const libelleCleCoach = (c: string): string => (c === '__aucun__' ? 'Sans Coach' : c === '__direct__' ? 'Géré en direct' : c)
+
+// Options du filtre « Coach » à partir des clés des magasins : les Coachs, « Géré en direct » s'il y en a, « Sans Coach »
+export function optionsFiltreCoach<D>(cles: string[], detail: (n: number) => D): { valeur: string; libelle: string; detail: D }[] {
+  const n = (c: string) => cles.filter((x) => x === c).length
+  const coachs = [...new Set(cles)].filter((c) => !c.startsWith('__')).sort((a, b) => a.localeCompare(b, 'fr'))
+  return [...coachs, ...(n('__direct__') ? ['__direct__'] : []), '__aucun__'].map((c) => ({ valeur: c, libelle: libelleCleCoach(c), detail: detail(n(c)) }))
+}
+
 export function magasinsDuCoach(reseau: Reseau, coach: string, jour = reseau.jour): Magasin[] {
   return reseau.magasins.filter((m) => coachA(m, jour) === coach)
 }

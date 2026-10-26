@@ -39,7 +39,7 @@ import { RechercheFiltres } from './RechercheFiltres'
 import { BoutonAction, ChampRecherche } from './Outils'
 import { useReseau } from '../data/ReseauContext'
 import { enregistrerCampagne, enregistrerConstats } from '../data/chargement'
-import { coachA } from '../data/charge'
+import { coachA, libelleSuivi } from '../data/charge'
 import {
   MAX_POINTS, bilan, bilanPar, campagnesDuMagasin, executionMagasin, libellePerimetre, libellesExecution, libellesPhase, magasinsConcernes, perimetres, perimetresRegion, phase,
   type Bilan, type Campagne, type Execution, type Perimetre, type Phase,
@@ -315,7 +315,7 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Link component={RouterLink} to={lienFiche(m.nom)} sx={{ fontWeight: 600 }}>{m.nom}</Link>
-                        <Typography variant="body2" color="text.secondary">{coachA(m, reseau.jour) || 'Sans Coach'}</Typography>
+                        <Typography variant="body2" color="text.secondary">{libelleSuivi(m, coachA(m, reseau.jour))}</Typography>
                       </Box>
                       <Chip size="small" color={couleursExecution[e]} variant="outlined" label={libellesExecution[e]} sx={{ fontSize: 13 }} />
                     </Box>

@@ -130,7 +130,7 @@ export function RevueRR({ reseau, nom, magasins, parRR = false }: { reseau: Rese
               return (
                 <Rangee key={c.coach || 'aucun'}>
                   <Box sx={{ flex: 1, minWidth: 160 }}>
-                    {c.coach ? <Link component={RouterLink} to={lienCoach(c.coach)} sx={{ fontWeight: 500, py: 1 }}>{c.coach}</Link> : <Typography sx={{ fontWeight: 500 }}>Sans Coach</Typography>}
+                    {c.coach ? <Link component={RouterLink} to={c.rrDirect ? lienRR(c.rrDirect) : lienCoach(c.coach)} sx={{ fontWeight: 500, py: 1 }}>{c.coach}</Link> : <Typography sx={{ fontWeight: 500 }}>Sans Coach</Typography>}
                     <Typography variant="body2" color="text.secondary">{pluriel(c.magasins, 'magasin')}</Typography>
                   </Box>
                   <Typography variant="body2" sx={{ fontWeight: 600 }} aria-label={`${pluriel(c.faites, 'visite')} pour une référence de ${c.reference.toLocaleString('fr-FR')}`}>

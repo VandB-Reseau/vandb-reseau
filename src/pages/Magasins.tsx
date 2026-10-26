@@ -2,6 +2,7 @@ import { Suspense, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { DialogMagasin } from '../components/EditionMagasin'
 import { lienFiche } from '../lib/format'
+import { libelleCleCoach } from '../data/charge'
 import { chargementDiffere } from '../lib/chargementDiffere'
 import Box from '@mui/material/Box'
 import Skeleton from '@mui/material/Skeleton'
@@ -78,7 +79,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
         // Nom proposé pour enregistrer la vue : ses filtres mis bout à bout
         const nomPropose = [filtres.texte, ...filtres.alertes.map((a) => libellesAlerte[a]), ...filtres.leviers.map((l) => libellesLevier[l]), ...filtres.statuts.map((s) => statutLibelle[s]),
           ...filtres.types.map((t) => (t === 'franchise' ? 'Franchisés' : 'Intégrés')), ...filtres.rrs.map((r) => reseau.rrs.find((x) => x.id === r)?.nom ?? 'Sans RR'),
-          ...filtres.coachs.map((c) => (c === '__aucun__' ? 'Sans Coach' : c))].filter(Boolean).join(' · ').slice(0, 40)
+          ...filtres.coachs.map(libelleCleCoach)].filter(Boolean).join(' · ').slice(0, 40)
         const total = reseau.magasins.length
         const parNom = new Map(reseau.magasins.map((m) => [m.nom, m]))
         const s = magasinsSuivis(suivis, new Set(parNom.keys()))

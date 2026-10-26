@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { suiviEtRR } from '../data/charge'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
@@ -100,12 +101,12 @@ export function ListeMagasins({ magasins, tri = 'nom', suivis, trier }: { magasi
     )
   }
   const ligne = (m: Magasin) => {
-    if (large) return <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Blason magasin={m} />} titre={m.nom} detail={[m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')} fin={colonnesDe(m)} />
+    if (large) return <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Blason magasin={m} />} titre={m.nom} detail={suiviEtRR(m)} fin={colonnesDe(m)} />
     const p = pastilles.get(m.nom)
     const e = tri === 'ca' && reseau ? analyser(reseau, m.nom)?.ecart : undefined
     return (
       <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Blason magasin={m} />} titre={m.nom}
-        detail={[m.coach || 'Sans Coach', m.rr?.nom].filter(Boolean).join(' · ')}
+        detail={suiviEtRR(m)}
         fin={e !== undefined && e !== null && p?.ton !== 'rouge' ? <Pastille ton={e < 0 ? 'orange' : 'gris'}>{`${e > 0 ? '+' : ''}${String(e.toFixed(1)).replace('.', ',')} %`}</Pastille> : p && <Pastille ton={p.ton}>{p.libelle}</Pastille>} />
     )
   }

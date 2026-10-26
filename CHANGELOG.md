@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Gestion directe par le Responsable Régional (Joseph, 26/10/2026) : un magasin sans Coach géré en direct par son RR
+  n'est plus une anomalie. Il affiche « Géré en direct · nom du RR » à la place du Coach (listes, accueil, visites,
+  santé du parc, chiffres, campagnes, revue du mois, carte, agenda, journal de la fiche), sort de « À traiter » et
+  de l'alerte « magasins sans Coach » de l'équipe, et a son propre choix « Géré en direct » dans le filtre Coach.
+  Sans SQL.
 - Implantation des produits (Joseph, 26/10/2026) : la date d'implantation est celle de la mise en place des produits
   pendant la pré-ouverture ; libellé corrigé, rangée avec l'ouverture dans la fiche, et ajoutée comme étape (avant
   l'ouverture) au suivi des ouvertures à venir. Sans SQL.

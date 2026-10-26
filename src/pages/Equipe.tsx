@@ -29,7 +29,7 @@ import { Onglets } from '../components/Onglets'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { PastilleCharge } from '../components/Charge'
-import { chargeA, magasinsDuCoach, niveauCharge } from '../data/charge'
+import { chargeA, libelleSuivi, magasinsDuCoach, niveauCharge, suivi } from '../data/charge'
 import { dateCourte, lienCoach, lienDirecteur, lienFiche, lienRR, telLien } from '../lib/format'
 import type { Personne, Reseau, ResponsableRegional } from '../data/modele'
 import { sousBandes } from '../components/Collant'
@@ -169,7 +169,7 @@ function VueOrganisation({ reseau }: { reseau: Reseau }) {
   const lignes = lignesCoachs(reseau)
   const sansRR = lignes.filter((l) => !l.coach.rr)
   const depassements = lignes.filter((l) => niveauCharge(reseau, l.charge) === 'depassement').length
-  const sansCoach = reseau.magasins.filter((m) => m.statut !== 'avenir' && !m.coach).length
+  const sansCoach = reseau.magasins.filter((m) => m.statut !== 'avenir' && !suivi(m)).length
   const aPourvoir = reseau.equipe.filter((c) => c.fictif).length + reseau.magasins.filter((m) => m.franchise && m.statut !== 'avenir' && m.responsableARecruter).length
 
   const groupes: Groupe[] = [
@@ -264,7 +264,7 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
           {responsables.map((m) => (
             <Rangee key={m.nom}>
               <Link component={RouterLink} to={lienFiche(m.nom)} sx={{ flex: 1, minWidth: 160, py: 1.5, fontWeight: 500 }}>{m.nom}</Link>
-              <Typography variant="body2" color="text.secondary">{m.coach ? `Coach ${m.coach}` : 'Sans Coach'}</Typography>
+              <Typography variant="body2" color="text.secondary">{m.coach ? `Coach ${m.coach}` : libelleSuivi(m)}</Typography>
             </Rangee>
           ))}
         </Bloc>
