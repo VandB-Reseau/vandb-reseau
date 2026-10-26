@@ -234,7 +234,7 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
   return (
     <>
       <RechercheFiltres actifs={(cle ? 1 : 0) + (type ? 1 : 0) + (visiteur ? 1 : 0)} actions={actions}
-        recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Magasin, mot du compte rendu…" />}>
+        recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Magasin, mot du compte rendu…" libelle="Rechercher dans les visites" />}>
         <FiltreMenu libelle="Période" choisis={cle ? [cle] : []} onChange={(v) => setCle(v.at(-1) ?? '')} options={semestres.map((x) => ({ valeur: x.cle, libelle: x.court }))} />
         <FiltreMenu libelle="Type" choisis={type ? [type] : []} onChange={(v) => setType(v.at(-1) ?? '')} options={typesVisite.map((t) => ({ valeur: t.id, libelle: t.libelle }))} />
         <FiltreMenu libelle="Visité par" choisis={visiteur ? [visiteur] : []} onChange={(v) => setVisiteur(v.at(-1) ?? '')} options={visiteurs(reseau).map((n) => ({ valeur: n, libelle: n }))} />

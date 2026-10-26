@@ -5,7 +5,7 @@ import { seConnecter, textesTropPetits } from './supabase-simule'
 const pages = [
   { url: '/magasins?vue=liste', recherche: 'Rechercher dans les magasins', action: 'Ajouter un magasin' },
   { url: '/visites', recherche: 'Magasin, ville, Coach…', action: 'Saisir une visite' },
-  { url: '/visites?vue=historique', recherche: 'Rechercher un magasin ou une note', action: 'Saisir une visite' },
+  { url: '/visites?vue=historique', recherche: 'Rechercher dans les visites', action: 'Saisir une visite' },
   { url: '/parametres/collaborateurs', recherche: 'Rechercher une personne', action: 'Ajouter un collaborateur' },
   { url: '/parametres/franchises', recherche: 'Rechercher une personne', action: 'Ajouter un franchisé' },
 ]
