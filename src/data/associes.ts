@@ -66,22 +66,27 @@ const plusAns = (iso: string, n: number) => {
   return new Date(Date.UTC(a + n, m - 1, j)).toISOString().slice(0, 10)
 }
 
-export function mandatEffectif(reseau: Reseau, m: Magasin, a: Associe): MandatEffectif | null {
+// Mandats successifs calculés (le premier depuis le départ, le dernier en cours) ; vide si aucune date de départ
+export function mandatsCalcules(reseau: Reseau, m: Magasin, a: Associe): Mandat[] {
   const jour = reseau.jour
-  if (a.mandats.length) {
-    const mandat = mandatActuel(a, jour)!
-    return { mandat, numero: a.mandats.indexOf(mandat) + 1, calcule: false, etat: etatMandat(mandat, jour) }
-  }
-  if (!enPlace(a, jour) || (m.fermeture && m.fermeture.date <= jour)) return null
+  if (!enPlace(a, jour) || (m.fermeture && m.fermeture.date <= jour)) return []
   let depart = m.ouvertureConnue && m.ouverture <= jour ? m.ouverture : ''
   const plusTard = (date: string) => { if (date && date <= jour && date > depart) depart = date }
   for (const s of m.situations) if (s.type === 'integre' || s.type === 'franchise') plusTard(s.date)
   plusTard(a.entree)
-  if (!depart) return null
-  let n = 1
-  while (plusAns(depart, DUREE_MANDAT * n) <= jour) n++
-  const mandat = { debut: plusAns(depart, DUREE_MANDAT * (n - 1)), fin: plusAns(depart, DUREE_MANDAT * n) }
-  return { mandat, numero: n, calcule: true, etat: etatMandat(mandat, jour) }
+  if (!depart) return []
+  const l: Mandat[] = []
+  for (let n = 1; !l.length || l.at(-1)!.fin <= jour; n++) l.push({ debut: plusAns(depart, DUREE_MANDAT * (n - 1)), fin: plusAns(depart, DUREE_MANDAT * n) })
+  return l
+}
+
+export function mandatEffectif(reseau: Reseau, m: Magasin, a: Associe): MandatEffectif | null {
+  const jour = reseau.jour
+  const calcule = !a.mandats.length
+  const l = calcule ? mandatsCalcules(reseau, m, a) : a.mandats
+  if (!l.length) return null
+  const mandat = calcule ? l.at(-1)! : mandatActuel(a, jour)!
+  return { mandat, numero: l.indexOf(mandat) + 1, calcule, etat: etatMandat(mandat, jour) }
 }
 
 // Mandats échus ou qui finissent dans les 6 mois, des associés encore en place ; la fin la plus proche d'abord

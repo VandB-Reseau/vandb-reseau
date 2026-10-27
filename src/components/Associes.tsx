@@ -15,7 +15,7 @@ import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { Fenetre } from './EditionEquipe'
 import { enregistrerAssocies } from '../data/chargement'
-import { associesDu, enPlace, libelleAssocies, libellesEtatMandat, mandatEffectif, type Associe, type EtatMandat, type Mandat } from '../data/associes'
+import { associesDu, enPlace, libelleAssocies, libellesEtatMandat, mandatEffectif, mandatsCalcules, type Associe, type EtatMandat, type Mandat } from '../data/associes'
 import { fichePersonne, franchises } from '../data/personnes'
 import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
@@ -91,7 +91,9 @@ function DialogAssocie({ reseau, m, associe, onFermer }: { reseau: Reseau; m: Ma
   const [nom, setNom] = useState(associe?.nom ?? '')
   const [entree, setEntree] = useState(associe?.entree ?? '')
   const [sortie, setSortie] = useState(associe?.sortie ?? '')
-  const [mandats, setMandats] = useState<Mandat[]>(associe?.mandats.length ? associe.mandats : m.franchise ? [{ debut: '', fin: '' }] : [])
+  // Sans mandat saisi, les mandats calculés (5 ans renouvelés) sont proposés ; enregistrés tels quels, ils restent calculés
+  const [calcules] = useState(() => (associe && !associe.mandats.length ? mandatsCalcules(reseau, m, associe) : []))
+  const [mandats, setMandats] = useState<Mandat[]>(associe?.mandats.length ? associe.mandats : calcules.length ? calcules : m.franchise ? [{ debut: '', fin: '' }] : [])
   const n = nom.trim().replace(/\s+/g, ' ')
   const doublon = tous.some((a) => a !== associe && a.nom.toLowerCase() === n.toLowerCase())
   const mandatsValides = mandats.every((x) => dateValide(x.debut) && dateValide(x.fin) && (!x.debut || !x.fin || x.debut <= x.fin))
@@ -102,7 +104,9 @@ function DialogAssocie({ reseau, m, associe, onFermer }: { reseau: Reseau; m: Ma
     <Fenetre titre={associe ? `Modifier ${associe.nom}` : 'Ajouter un associé'} ouvert large onFermer={onFermer}
       valide={!!n && !doublon && mandatsValides && dateValide(entree) && dateValide(sortie)}
       enregistrer={async () => {
-        const propre: Associe = { id: associe?.id ?? '', nom: n, entree: m.franchise ? '' : entree, sortie, mandats: mandats.filter((x) => x.debut || x.fin).sort((x, y) => (x.debut || x.fin).localeCompare(y.debut || y.fin)) }
+        const saisis = mandats.filter((x) => x.debut || x.fin).sort((x, y) => (x.debut || x.fin).localeCompare(y.debut || y.fin))
+        const inchanges = calcules.length > 0 && JSON.stringify(saisis) === JSON.stringify(calcules)
+        const propre: Associe = { id: associe?.id ?? '', nom: n, entree, sortie, mandats: inchanges ? [] : saisis }
         await ecrire(associe ? tous.map((a) => (a === associe ? propre : a)) : [...tous, propre])
         return associe ? `${n} est mis à jour.` : `${n} est ajouté aux associés.`
       }}
