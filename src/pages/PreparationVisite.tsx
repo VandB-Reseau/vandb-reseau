@@ -25,6 +25,8 @@ import { ecarts } from '../data/grilles'
 import { horodatage, messagesDu } from '../data/messagerie'
 import { useMessagerie } from '../data/MessagerieContext'
 import { chargerReperesEquipe, type IndicateurRepere, type Reperes } from '../data/espaceFranchise'
+import { motDe, partiesMot, prochaineVisite } from '../data/motFranchise'
+import { libelleDistance, lignesConcurrents, suiviVide, useCommercesProches } from '../data/concurrence'
 
 // Fiche avant visite : tout ce qu'il faut savoir d'un magasin sur une page, lisible au téléphone
 // et téléchargeable en PDF (même feuille que le compte rendu de visite)
@@ -89,6 +91,38 @@ const libellesReperes: Record<IndicateurRepere, string> = {
 }
 const ordreReperes: IndicateurRepere[] = ['evolution', 'pmCave', 'pmBar', 'fluxCave', 'fluxBar', 'panier', 'marge']
 const formatRepere = (i: IndicateurRepere, n: number | null) => (i === 'evolution' ? formatPourcent(n) : formatValeur(i as ChampChiffre, n))
+
+// Mot du franchisé pour la prochaine visite (sprint 27, F4)
+function MotDuFranchise({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+  const v = prochaineVisite(reseau, m.nom)
+  const mot = v ? motDe(reseau, m.nom, v.id) : undefined
+  if (!v || !mot) return null
+  return (
+    <Bloc titre="Le mot du franchisé">
+      <Typography variant="body2" sx={{ color: GRIS, mb: 1 }}>{[`Pour la visite du ${dateCourte(v.date)}`, mot.par, mot.le && `écrit le ${dateCourte(mot.le.slice(0, 10))}`].filter(Boolean).join(' · ')}</Typography>
+      {partiesMot.filter((p) => mot[p.cle]).map((p) => (
+        <Box key={p.cle} sx={{ mb: 1.5 }}>
+          <Typography variant="body2" sx={{ color: GRIS }}>{p.libelle}</Typography>
+          <Typography variant="body1" sx={{ color: NOIR, whiteSpace: 'pre-wrap' }}>{mot[p.cle]}</Typography>
+        </Box>
+      ))}
+    </Bloc>
+  )
+}
+
+// Concurrents à moins de 2 km (sprint 27, F3) : les six plus proches, puis ceux ajoutés par l'équipe
+function Concurrents({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+  const { commerces } = useCommercesProches(m)
+  const lignes = lignesConcurrents(commerces.etat === 'pret' ? commerces.liste : [], reseau.concurrence[m.nom] ?? suiviVide())
+  const vus = [...lignes.filter((l) => !l.ajoute).slice(0, 6), ...lignes.filter((l) => l.ajoute)]
+  if (!vus.length) return <Vide>{commerces.etat === 'chargement' ? 'Recherche des commerces alentour…' : 'Aucun concurrent connu à moins de 2 km.'}</Vide>
+  return (
+    <Box component="table" sx={tableau} aria-label="Concurrents à 2 km">
+      <thead><tr><th>Commerce</th><th>Note</th><th className="nombre">Distance</th></tr></thead>
+      <tbody>{vus.map((l) => <tr key={l.id}><td><strong>{l.nom}</strong>{l.detail ? <><br />{l.detail}</> : null}</td><td>{l.note}</td><td className="nombre" style={{ whiteSpace: 'nowrap' }}>{l.distance === null ? '' : libelleDistance(l.distance)}</td></tr>)}</tbody>
+    </Box>
+  )
+}
 
 function Reperes({ reseau, m, r }: { reseau: Reseau; m: Magasin; r: Reperes | null | undefined }) {
   if (r === undefined) return <Vide>Chargement des repères…</Vide>
@@ -166,6 +200,7 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
             </Box>
           </Bloc>
 
+          <MotDuFranchise reseau={reseau} m={m} />
           <DerniereFois reseau={reseau} m={m} />
 
           {preparation?.notes && (
@@ -177,6 +212,7 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
 
           <Bloc titre="Chiffres"><Chiffres reseau={reseau} m={m} /></Bloc>
           <Bloc titre="Repères réseau"><Reperes reseau={reseau} m={m} r={reperes} /></Bloc>
+          <Bloc titre="Concurrents à 2 km"><Concurrents reseau={reseau} m={m} /></Bloc>
 
           <Bloc titre={`Tâches en cours (${actions.length})`}>
             {!actions.length ? <Vide>Aucune tâche en cours.</Vide> : (

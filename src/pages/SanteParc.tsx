@@ -65,7 +65,7 @@ import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, MiniCourbe, Past
 import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
 import { analyser as analyserCA, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, libelleMoisCourt, courbeCA, formatKEuros, type StatutAlerte } from '../data/chiffres'
-import type { Magasin, Reseau } from '../data/modele'
+import { estOuvert, type Magasin, type Reseau } from '../data/modele'
 
 // Filtres communs : recherche, Responsable Régional, Coach
 function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
@@ -777,11 +777,12 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
   const [date, setDate] = useState(reseau.jour)
   const saisie = useSaisieSante(reseau, setMessage, date)
   const actifs = reseau.magasins.filter((m) => m.statut !== 'avenir')
-  const classes = actifs.filter((m) => caseDe(reseau.evaluations[m.nom])).length
+  const ouverts = actifs.filter(estOuvert)
+  const classes = ouverts.filter((m) => caseDe(reseau.evaluations[m.nom])).length
   const champDate = <ChampDate valeur={date} max={reseau.jour} onChange={setDate} />
   return (
     <>
-      <PageHeader titre="Santé du parc" sousTitre={`${classes} magasin${classes > 1 ? 's' : ''} classé${classes > 1 ? 's' : ''} sur ${actifs.length}`} />
+      <PageHeader titre="Santé du parc" sousTitre={`${classes} classé${classes > 1 ? 's' : ''} sur ${ouverts.length} ouvert${ouverts.length > 1 ? 's' : ''}`} />
       <Onglets valeur={vue} onChange={aller} libelle="Rubriques de la santé du parc" rubriques={[
         { vue: 'ninebox', libelle: 'Nine box', icone: <GridViewOutlined /> },
         { vue: 'evaluer', libelle: 'Évaluer', icone: <FactCheckOutlined /> },

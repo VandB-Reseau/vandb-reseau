@@ -4,7 +4,7 @@ Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est enti
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
 
-Mis à jour le 26/10/2026 (migration `0037`).
+Mis à jour le 26/10/2026 (migration `0038`).
 
 ## Principes
 
@@ -81,6 +81,8 @@ Rubriques de `suivi_magasins` (contrainte `suivi_magasins_cle_check`) :
 | `constats` | Constats de campagne | `campagnes` (partie constats) |
 | `preparation` | Prochaine visite : date, heure, notes | `preparations_visites` |
 | `ouverture` | Étapes d'une ouverture (`contrat`, `local`, `travaux`, `recrutement`, `formation`), chacune `prevu` et `fait` (AAAA-MM-JJ), `par`, `maj` ; la dernière étape reste la date d'ouverture du magasin (0035). Saisie par le Directeur et les RR dans l'app | `ouvertures_magasins` |
+| `concurrence` | Concurrents à 2 km complétés par l'équipe (0038) : `ajoutes` (nom, précision, note, auteur, date), `masques` (commerces OpenStreetMap retirés, `node/…`, `way/…`), `notes` par commerce OpenStreetMap. La liste elle-même est lue par l'app sur OpenStreetMap (service Overpass, gratuit), jamais rangée en base. Jamais renvoyée au franchisé | `concurrents_magasins` |
+| `mot_franchise` | Le mot du franchisé avant une visite à venir (0038) : liste de `{ visite, date, marche, bloque, besoin, par, le }`, une entrée par visite, 12 au plus. Écrit par le franchisé avec `ecrire_mot_franchise` ; l'équipe le lit dans son périmètre, seul le Directeur peut le corriger ou l'effacer (contrôle `garde_mot_franchise`) | `mots_franchise` |
 
 Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011_preparation_visites.sql`).
 
@@ -208,8 +210,9 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Périmètre | `magasins_visibles`, `maj_perimetre_equipe`, `magasins_messagerie`, `peut_ecrire_magasin`, `franchise_de_mes_magasins` | 0005, 0006, 0015 |
 | Accès franchisés | `ouvrir_acces_franchise`, `maj_acces_franchise`, `couper_acces_franchise`, `liste_acces_franchises` | 0004 |
 | Accès de l'équipe | `ouvrir_acces_equipe`, `couper_acces_equipe`, `renommer_acces_coach`, `liste_acces_equipe` | 0005 |
-| Espace franchisé | `espace_franchise` (sans les tâches de l'équipe seule depuis 0019), `reperes_reseau` (interne : médiane, quart supérieur et, depuis 0020, quart inférieur `quartBas`), `reperes_equipe` | 0004, 0005, 0019, 0020 |
+| Espace franchisé | `espace_franchise` (sans les tâches de l'équipe seule depuis 0019, avec `mots_franchise` depuis 0038), `reperes_reseau` (interne : médiane, quart supérieur et, depuis 0020, quart inférieur `quartBas`), `reperes_equipe` | 0004, 0005, 0019, 0020, 0038 |
 | Actions du franchisé | `franchise_du_magasin`, `ajouter_action_franchise`, `marquer_action_franchise` (tâche de l'équipe seule introuvable, 0019) | 0007, 0019 |
+| Mot avant la visite | `ecrire_mot_franchise` (franchisé, visite à venir de son magasin, hors appels et points) ; `espace_franchise` renvoie la clé `mots_franchise` depuis 0038 | 0038 |
 | Messagerie | `messagerie`, `envoyer_message`, `envoyer_a`, `marquer_lu`, `marquer_lu_personne`, `supprimer_message`, `renommer_magasin_messages`, `pieces_propres` | 0006 |
 | Échanges en groupe | `peut_inviter`, `creer_groupe`, `modifier_groupe`, `supprimer_groupe`, `quitter_groupe`, `peut_ecrire_fil`, `envoyer_fil`, `marquer_lu_fil`, `compte_lit_magasin` (interne) ; `messagerie` renvoie aussi les groupes (version 4) | 0018 |
 | Communications | `communications`, `communication_visible`, `publier_communication`, `supprimer_communication`, `basculer_pouce_communication`, `commenter_communication`, `supprimer_commentaire_communication` | 0008 |

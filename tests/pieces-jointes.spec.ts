@@ -20,6 +20,7 @@ test('le Directeur joint une photo et un document à une tâche', async ({ page 
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, persister: true })
   await page.goto('./#/taches')
+  await page.getByRole('group', { name: 'Liste de tâches' }).getByRole('button', { name: /^Mes tâches/ }).click()
   await page.getByRole('button', { name: 'Ajouter une tâche' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une tâche' })
   await d.getByLabel('Magasin').click()
@@ -101,6 +102,7 @@ test('message avec une photo seule, document reçu ouvert par lien', async ({ pa
 test('espace fichiers pas encore activé : un message clair, rien ne casse', async ({ page }) => {
   await seConnecter(page, { sansPhotos: true })
   await page.goto('./#/taches')
+  await page.getByRole('group', { name: 'Liste de tâches' }).getByRole('button', { name: /^Mes tâches/ }).click()
   await page.getByRole('button', { name: 'Ajouter une tâche' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une tâche' })
   await d.getByLabel('Fichiers à joindre').setInputFiles(devis)
@@ -111,6 +113,7 @@ test('espace fichiers pas encore activé : un message clair, rien ne casse', asy
 test('un fichier qui n’est ni une photo ni un document est refusé', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/taches')
+  await page.getByRole('group', { name: 'Liste de tâches' }).getByRole('button', { name: /^Mes tâches/ }).click()
   await page.getByRole('button', { name: 'Ajouter une tâche' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une tâche' })
   await d.getByLabel('Fichiers à joindre').setInputFiles({ name: 'outil.exe', mimeType: 'application/x-msdownload', buffer: Buffer.from('MZ') })

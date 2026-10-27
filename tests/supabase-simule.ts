@@ -11,7 +11,7 @@ export interface Ecriture { methode: string; table: string; corps: unknown; filt
 export interface AccesSimule { role: string; franchise?: string; magasins?: string[]; coach?: string; rr?: string }
 export interface AccesFranchiseSimule { user_id: string; email: string; franchise: string; magasins: string[]; ouvert_le?: string; derniere_connexion?: string | null }
 export interface AccesEquipeSimule { user_id: string; email: string; role: 'coach' | 'rr'; nom: string; derniere_connexion?: string | null }
-export interface EspaceSimule { actions?: Record<string, Record<string, unknown>[]>; visites?: Record<string, unknown>[]; reperes?: unknown; campagnes?: unknown; pratiques?: unknown[] }
+export interface EspaceSimule { actions?: Record<string, Record<string, unknown>[]>; mots?: Record<string, Record<string, unknown>[]>; visites?: Record<string, unknown>[]; reperes?: unknown; campagnes?: unknown; pratiques?: unknown[] }
 // Messagerie (script supabase/migrations/0006_messagerie.sql) : null = pas encore activée
 // destinataire : échange à deux (clé de la personne), avec auteur_cle et magasins cités ; sinon ancien message par magasin (store)
 export interface MessageSimule {
@@ -49,7 +49,7 @@ export interface PropositionsSimulees { equipe: Record<string, unknown>[]; mienn
 export interface ChallengesSimules { equipe: Record<string, unknown>[]; franchise: Record<string, unknown>[] }
 // Fonction Supabase « comptes » (supabase/functions/comptes) : absente = pas encore déployée
 export interface ComptesSimules { equipe?: string[] }
-export interface OptionsSimulation { surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null }
+export interface OptionsSimulation { surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -116,6 +116,19 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
     return r.fulfill({ json: { features: [{ geometry: { coordinates: [-2.0 + Number(cp.slice(0, 2)) / 100, 47.65] }, properties: { score: 0.9, postcode: cp } }] } })
   })
   await page.route('https://nominatim.openstreetmap.org/**', (r) => r.fulfill({ json: [] }))
+  // Concurrents à 2 km (OpenStreetMap, service Overpass) : deux commerces fictifs autour du point demandé, plus un V and B écarté
+  await page.route('https://overpass-api.de/**', (r) => {
+    if (options.overpass === 'panne') return r.fulfill({ status: 504, body: '' })
+    const q = decodeURIComponent(new URL(r.request().url()).searchParams.get('data') ?? '')
+    const [lat, lon] = (/around:\d+,([-\d.]+),([-\d.]+)/.exec(q) ?? []).slice(1).map(Number)
+    if (options.overpass === 'vide' || !Number.isFinite(lat)) return r.fulfill({ json: { elements: [] } })
+    return r.fulfill({ json: { elements: [
+      { type: 'node', id: 11, lat: lat + 0.003, lon, tags: { shop: 'wine', name: 'Cave Fictive du Centre', 'addr:housenumber': '4', 'addr:street': 'rue des Essais' } },
+      { type: 'way', id: 12, center: { lat: lat - 0.014, lon }, tags: { shop: 'alcohol', name: 'Spiritueux Simulés' } },
+      { type: 'node', id: 13, lat: lat + 0.001, lon, tags: { shop: 'alcohol', name: 'V and B Ailleurs' } },
+      { type: 'node', id: 14, lat: lat + 0.05, lon, tags: { shop: 'wine', name: 'Trop Loin' } },
+    ] } })
+  })
   await page.route(/^https:\/\/www\.google\.com\/maps/, (r) => r.fulfill({ contentType: 'text/html; charset=utf-8', body: '<!doctype html><title>Carte</title><p>Carte simulée</p>' }))
   await page.route('https://supabase.test/**', async (route) => {
     const req = route.request()
@@ -424,6 +437,21 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         c.commentaires = [...(c.commentaires ?? []), { id: Math.max(0, ...tous.map((k) => k.id)) + 1, auteur: MOI, auteur_nom: nom ?? '', auteur_role: acces.role, texte, cree_le: new Date().toISOString() }]
         return route.fulfill({ json: { id: c.commentaires.length } })
       }
+      // Mot du franchisé avant une visite planifiée (script 0038) : visite à venir de son magasin, une entrée par visite
+      if (fn === 'ecrire_mot_franchise') {
+        const st = String(corps.p_store ?? '')
+        if (acces.role !== 'franchise' || !(acces.magasins ?? []).includes(st)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const e = (options.espace ??= {})
+        const jour = new Date().toISOString().slice(0, 10)
+        const v = [...visitesFictives, ...(e.visites ?? [])].find((x) => x.id === corps.p_visite && x.store === st)
+        if (!v || String(v.visit_date) < jour || ['appel', 'point'].includes(String(v.type))) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'visite_introuvable' } })
+        const mots = (e.mots ??= {})
+        const autres = (mots[st] ?? []).filter((x) => x.visite !== corps.p_visite)
+        const t = (k: string) => String(corps[k] ?? '').trim()
+        const vide = !t('p_marche') && !t('p_bloque') && !t('p_besoin')
+        mots[st] = vide ? autres : [...autres, { visite: corps.p_visite, date: v.visit_date, marche: t('p_marche'), bloque: t('p_bloque'), besoin: t('p_besoin'), par: acces.franchise, le: new Date().toISOString() }]
+        return route.fulfill({ status: 200, json: null })
+      }
       // Actions du franchisé (script 0007_actions_franchise.sql) : la base pose son nom et la date
       if (fn === 'ajouter_action_franchise' || fn === 'marquer_action_franchise') {
         const st = String(corps.p_store ?? '')
@@ -593,6 +621,7 @@ function espaceSimule(franchise: string, magasins: string[], e: EspaceSimule) {
       { key: 'campagnes', value: e.campagnes ?? { liste: [], constats: {} } },
       { key: 'bonnes_pratiques', value: e.pratiques ?? [] },
       { key: 'actions', value: Object.fromEntries(Object.entries(e.actions ?? {}).filter(([k]) => dans(k))) },
+      { key: 'mots_franchise', value: Object.fromEntries(Object.entries(e.mots ?? {}).filter(([k]) => dans(k))) },
     ],
     store_overrides: [],
     reassigns: affectationsFictives.filter((a) => a && dans(a.store)),

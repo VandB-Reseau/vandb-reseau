@@ -54,6 +54,10 @@ import { lienCompteRendu, visitesDuMagasin } from '../data/visites'
 import { libelleTypeVisite, nomsVisiteurs, statutLibelle, visiteFaite, type Magasin, type Personne, type Reseau } from '../data/modele'
 import type { IndicateurRepere } from '../data/espaceFranchise'
 import { Blason } from '../components/Blason'
+import { Fenetre } from '../components/EditionEquipe'
+import { TexteDicte } from '../components/Dictee'
+import { ErreurAction } from '../data/espaceFranchise'
+import { ecrireMotFranchise, ErreurMot, motDe, partiesMot, prochaineVisite, type ContenuMot } from '../data/motFranchise'
 
 const couleurExecution: Record<Execution, 'success' | 'warning' | 'error' | 'default'> = { fait: 'success', partiel: 'warning', non: 'error', aConstater: 'default' }
 const pastille = { fontSize: 12, fontWeight: 600 }
@@ -281,6 +285,54 @@ function SectionVisitesAudits({ reseau, magasins }: { reseau: Reseau; magasins: 
   )
 }
 
+// ── Le mot du franchisé avant la visite (sprint 27, F4) : ce qui marche, ce qui bloque, ce dont il a besoin ──
+function SectionMotAvantVisite({ reseau, magasins, signaler }: { reseau: Reseau; magasins: Magasin[]; signaler: (msg: string) => void }) {
+  const { apercu } = useApercu()
+  const [edition, setEdition] = useState<{ m: Magasin; visite: number } | null>(null)
+  const lignes = magasins.flatMap((m) => { const v = prochaineVisite(reseau, m.nom); return v && v.id !== null ? [{ m, v, mot: motDe(reseau, m.nom, v.id) }] : [] })
+  if (!lignes.length) return null
+  return (
+    <Box component="section" aria-label="Avant la visite">
+      <TitreSection>Avant la visite</TitreSection>
+      <Box sx={{ display: 'grid', gap: 1 }}>
+        {lignes.map(({ m, v, mot }) => (
+          <Card key={m.nom} sx={{ p: 2 }}>
+            <Typography sx={{ fontWeight: 700 }}>{`${nomsVisiteurs(v) || 'L’équipe V and B'} · ${dateLongue(v.date)}`}</Typography>
+            {magasins.length > 1 && <Typography variant="body2" color="text.secondary">{m.nom}</Typography>}
+            {mot ? partiesMot.filter((p) => mot[p.cle]).map((p) => (
+              <Box key={p.cle} sx={{ mt: 1 }}>
+                <Typography variant="body2" color="text.secondary">{p.libelle}</Typography>
+                <Typography sx={{ whiteSpace: 'pre-wrap' }}>{mot[p.cle]}</Typography>
+              </Box>
+            )) : null}
+            {!apercu && <Button variant={mot ? 'text' : 'contained'} onClick={() => setEdition({ m, visite: v.id! })} sx={{ minHeight: 48, mt: 1, ...(mot ? { ml: -1 } : {}) }}>{mot ? 'Modifier mon mot' : 'Écrire mon mot'}</Button>}
+          </Card>
+        ))}
+      </Box>
+      {edition && <DialogMot reseau={reseau} m={edition.m} visite={edition.visite} onFermer={(msg) => { setEdition(null); if (msg) signaler(msg) }} />}
+    </Box>
+  )
+}
+
+function DialogMot({ reseau, m, visite, onFermer }: { reseau: Reseau; m: Magasin; visite: number; onFermer: (msg?: string) => void }) {
+  const ancien = motDe(reseau, m.nom, visite)
+  const [mot, setMot] = useState<ContenuMot>({ marche: ancien?.marche ?? '', bloque: ancien?.bloque ?? '', besoin: ancien?.besoin ?? '' })
+  const envoyer = async (contenu: ContenuMot) => {
+    try { await ecrireMotFranchise(m.nom, visite, contenu) } catch (e) { throw e instanceof ErreurMot ? new ErreurAction(e.message) : e }
+  }
+  return (
+    <Fenetre titre="Mon mot avant la visite" ouvert onFermer={onFermer} valide={partiesMot.some((p) => mot[p.cle].trim())}
+      enregistrer={async () => { await envoyer(mot); return 'Ton mot est envoyé à l’équipe.' }}
+      supprimer={ancien ? async () => { await envoyer({ marche: '', bloque: '', besoin: '' }); return 'Ton mot est retiré.' } : undefined}
+      libelleSuppression="Retirer ton mot pour cette visite ?">
+      {partiesMot.map((p) => (
+        <TexteDicte key={p.cle} label={p.libelle} libelleDictee={p.libelle} valeur={mot[p.cle]} multiline minRows={2} fullWidth
+          changer={(f) => setMot((x) => ({ ...x, [p.cle]: f(x[p.cle]) }))} slotProps={{ htmlInput: { maxLength: 2000 } }} />
+      ))}
+    </Fenetre>
+  )
+}
+
 const tonExecution: Record<Execution, Ton> = { fait: 'vert', partiel: 'orange', non: 'rouge', aConstater: 'gris' }
 
 function SectionCampagnesEnCours({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
@@ -346,6 +398,7 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
   const reactionsPratiques = useReactionsPratiques()
   const reactionsVisites = useReactionsVisites()
   const fil = useFilFranchise(reseau, magasins.map((m) => m.nom), 120, communications.liste, true, true)
+  const [message, setMessage] = useState('')
   if (!tous.length) return <><PageHeader titre="Accueil" /><EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." /></>
   return (
     <>
@@ -361,12 +414,14 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
           {!apercu && <SectionChallengesFranchise />}
           {!apercu && <SondagesARepondre />}
           {!apercu && <SectionReunionsFranchise jour={reseau.jour} />}
+          <SectionMotAvantVisite reseau={reseau} magasins={magasins} signaler={setMessage} />
           <SectionTaches reseau={reseau} magasins={magasins} />
           <SectionVisitesAudits reseau={reseau} magasins={magasins} />
           <SectionCampagnesEnCours reseau={reseau} magasins={magasins} />
           <SectionContacts reseau={reseau} magasins={magasins} />
         </Box>
       </Box>
+      <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>
   )
 }

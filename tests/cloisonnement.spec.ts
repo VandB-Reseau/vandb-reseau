@@ -40,7 +40,7 @@ test('un Coach ne voit que ses magasins dans la liste, les visites et la santé 
   await expect(page.getByText('Rennes Test').first()).toBeVisible()
   await expect(page.getByText('Nantes Test')).toHaveCount(0)
   await expect(page.getByText('Annecy Test')).toHaveCount(0)
-  await expect(page.getByText(/^8 magasins$/)).toBeVisible()
+  await expect(page.getByText('7 ouverts · 1 à venir')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-coach-magasins.png`, fullPage: !isMobile })
   // Fiche d'un magasin hors de son périmètre
@@ -59,7 +59,7 @@ test('un Coach ne voit que ses magasins dans la liste, les visites et la santé 
 test('un Coach voit toute la carte et les bonnes pratiques de tout le réseau', async ({ page, isMobile }, info) => {
   await seConnecter(page, { ...NOE, config: { bonnes_pratiques: pratiques } })
   await page.goto('./#/magasins?vue=carte')
-  await expect(page.getByText('30 magasins dans le réseau')).toBeVisible()
+  await expect(page.getByText(/^Tout le réseau : \d+ ouverts/)).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-coach-carte.png` })
   await expect((await ouvrirInfos(page, 'Bonnes pratiques')).getByRole('article')).toHaveCount(2)
   const annecy = page.getByRole('article', { name: 'Dégustation du samedi' })

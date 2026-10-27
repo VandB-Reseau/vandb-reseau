@@ -13,7 +13,7 @@ test.afterEach(async ({ page }) => {
 test('la liste affiche tous les magasins et se filtre', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins')
-  await expect(page.getByText('30 magasins dans le réseau')).toBeVisible()
+  await expect(page.getByText('27 ouverts · 3 à venir')).toBeVisible()
   await page.getByLabel('Rechercher dans les magasins').fill('nantes')
   await expect(page.getByText('1 sur 30 magasins')).toBeVisible()
   await page.getByLabel('Rechercher dans les magasins').fill('')
@@ -28,7 +28,7 @@ test('la liste affiche tous les magasins et se filtre', async ({ page, isMobile 
   await expect(page.getByText(/sur 30 magasins/)).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-magasins-filtres.png`, fullPage: !isMobile })
   await page.getByRole('button', { name: 'Effacer les filtres' }).click()
-  await expect(page.getByText('30 magasins dans le réseau')).toBeVisible()
+  await expect(page.getByText('27 ouverts · 3 à venir')).toBeVisible()
 })
 
 test('les filtres restent dans l’adresse', async ({ page }) => {
@@ -175,7 +175,7 @@ test('« Tous » coche toutes les options d’un filtre, puis on en exclut une',
   if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
   await page.getByLabel('Filtre Type').click()
   await page.getByRole('menuitem', { name: 'Tous' }).click()
-  await expect(page.getByText(/^30 (sur 30 )?magasins/)).toBeVisible()
+  await expect(page.getByText('27 ouverts · 3 à venir')).toBeVisible()
   await page.getByRole('menuitem', { name: /Intégré/ }).click()
   await page.keyboard.press('Escape')
   await expect(page.getByText('25 sur 30 magasins')).toBeVisible()

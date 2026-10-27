@@ -162,6 +162,7 @@ test('F2 : le micro est proposé dans une tâche, un message et les notes de pr�
   })
   await seConnecter(page)
   await page.goto('./#/taches')
+  await page.getByRole('group', { name: 'Liste de tâches' }).getByRole('button', { name: /^Mes tâches/ }).click()
   await page.getByRole('button', { name: /Nouvelle tâche/ }).first().click()
   await page.getByRole('button', { name: 'Dicter : Tâche' }).click()
   await expect(page.getByLabel('Tâche', { exact: true })).toHaveValue('vitrine à refaire')

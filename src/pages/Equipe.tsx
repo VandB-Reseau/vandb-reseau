@@ -31,7 +31,7 @@ import { EmptyState } from '../components/EmptyState'
 import { PastilleCharge } from '../components/Charge'
 import { chargeA, libelleSuivi, magasinsDuCoach, niveauCharge, suivi } from '../data/charge'
 import { dateCourte, lienCoach, lienDirecteur, lienFiche, lienRR, telLien } from '../lib/format'
-import type { Personne, Reseau, ResponsableRegional } from '../data/modele'
+import { libelleParc, type Personne, type Reseau, type ResponsableRegional } from '../data/modele'
 import { sousBandes } from '../components/Collant'
 import { RevueRR } from '../components/RevueRR'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
@@ -69,7 +69,7 @@ function ListeEquipe({ reseau, groupes }: { reseau: Reseau; groupes: Groupe[] })
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <CarteLignes label="Direction">
         <LigneCompacte lien={lienDirecteur()} avatar={<Initiales nom={reseau.directeur.nom} />} titre={reseau.directeur.nom}
-          detail={`${reseau.directeur.titre} · ${reseau.equipe.length} Coachs · ${reseau.magasins.length} magasins`} />
+          detail={`${reseau.directeur.titre} · ${reseau.equipe.length} Coachs · ${libelleParc(reseau.magasins)}`} />
       </CarteLignes>
       {groupes.map((g) => (
         <Box key={g.cle} component="section" aria-label={g.titre}>
@@ -116,7 +116,7 @@ function Pyramide({ reseau, groupes }: { reseau: Reseau; groupes: Groupe[] }) {
         <Boite lien={lienDirecteur()}>
           <Typography variant="body2" color="text.secondary">{reseau.directeur.titre}</Typography>
           <Typography variant="h4" component="p">{reseau.directeur.nom}</Typography>
-          <Typography variant="body2" color="text.secondary">{reseau.equipe.length} Coachs · {reseau.magasins.length} magasins</Typography>
+          <Typography variant="body2" color="text.secondary">{reseau.equipe.length} Coachs · {libelleParc(reseau.magasins)}</Typography>
         </Boite>
         <Box sx={{ width: 0, height: 24, borderLeft: trait }} />
         <Box sx={{ display: 'flex', width: '100%' }}>

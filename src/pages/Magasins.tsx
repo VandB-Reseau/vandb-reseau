@@ -24,7 +24,7 @@ import { filtrer, filtresDepuisUrl, filtresVersUrl, libellesAlerte, type Alerte,
 import { VuesMagasins } from '../components/VuesMagasins'
 import { analyser } from '../data/chiffres'
 import { anneeDe, suiviRythme } from '../data/visites'
-import { statutLibelle, type Reseau } from '../data/modele'
+import { libelleParc, statutLibelle, type Reseau } from '../data/modele'
 import { leviersDuMagasin, libellesLevier, useReperesReseau, type Levier } from '../data/leviers'
 
 // Alertes de chaque magasin : chiffres (décroche, à surveiller) et visite attendue
@@ -89,7 +89,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
           <>
             <PageHeader
               titre="Magasins"
-              sousTitre={resultats.length === total ? `${total} magasins${reseau === complet ? ' dans le réseau' : ''}` : `${resultats.length} sur ${total} magasins`}
+              sousTitre={resultats.length === total ? `${restreint ? 'Tout le réseau : ' : ''}${libelleParc(reseau.magasins)}` : `${resultats.length} sur ${total} magasins`}
             />
             <Onglets valeur={vue} onChange={changerVue} libelle="Affichage" rubriques={[
               { vue: 'liste', libelle: 'Liste', icone: <TableRowsOutlined /> },

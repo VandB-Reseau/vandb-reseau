@@ -70,7 +70,7 @@ test('le Directeur ouvre l’accès d’un Coach puis voit l’app comme lui', a
   await expect(page.getByText('Paramètres', { exact: true })).toHaveCount(0)
   await page.screenshot({ path: `captures/${info.project.name}-voir-comme-coach.png` })
   await page.goto('./#/magasins?vue=liste')
-  await expect(page.getByText(/^8 magasins$/)).toBeVisible()
+  await expect(page.getByText('7 ouverts · 1 à venir')).toBeVisible()
   await expect(page.getByText('Nantes Test')).toHaveCount(0)
   await page.goto('./#/magasins/Lyon%20Test')
   await expect(page.getByRole('button', { name: 'Réaffecter' })).toHaveCount(0)
