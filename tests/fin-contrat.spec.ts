@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import lireExcel from 'read-excel-file/node'
-import { seConnecter, textesTropPetits } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { dateCourte } from '../src/lib/format'
 
 // Mandats (Joseph, 26/10/2026) : 5 ans renouvelés par 5 ans, calculés sur chaque associé (entrée, sinon ouverture) quand
@@ -23,6 +23,10 @@ function attendu(depart: string) {
   let n = 1
   while (plusAns(depart, 5 * n) <= jour) n++
   return { debut: plusAns(depart, 5 * (n - 1)), fin: plusAns(depart, 5 * n), numero: n === 1 ? '1er mandat' : `${n}e mandat` }
+}
+const derniere = (ecritures: Ecriture[], cle: string) => {
+  const e = ecritures.filter((x) => x.table === 'app_config' && ((x.corps as { key?: string }).key === cle || x.filtre.includes(`key=eq.${cle}`))).at(-1)
+  return e ? JSON.parse((e.corps as { value: string }).value) : undefined
 }
 const associe = (page: Page, nom: string) => page.getByText(nom, { exact: true }).locator('..')
 
@@ -91,4 +95,34 @@ test('l’export des mandats donne le mandat en cours de chaque associé, plus d
   await dm.saveAs(cm)
   const [fm] = await lireExcel(readFileSync(cm))
   expect((fm.data as unknown[][])[0]).not.toContain('Fin de contrat')
+})
+
+test('la fenêtre de modification montre les mandats calculés ; enregistrés tels quels, ils restent calculés', async ({ page }, info) => {
+  const ecritures: Ecriture[] = []
+  const entree = '2020-06-02'
+  const associes = { 'Nantes Test': [{ id: 'x1', nom: 'Franchisé 2', entree, sortie: '', mandats: [] }] }
+  await seConnecter(page, { ecritures, config: { associes } })
+  await page.goto('./#/magasins/Nantes%20Test?vue=fiche')
+  await page.getByRole('button', { name: 'Modifier l’associé Franchisé 2' }).click()
+  const d = page.getByRole('dialog', { name: 'Modifier Franchisé 2' })
+  const a = attendu(entree)
+  const n = Number(a.numero.replace(/\D/g, ''))
+  await expect(d.getByLabel('Début du mandat')).toHaveCount(n)
+  await expect(d.getByLabel('Début du mandat').first()).toHaveValue(entree)
+  await expect(d.getByLabel('Début du mandat').last()).toHaveValue(a.debut)
+  await expect(d.getByLabel('Fin du mandat').last()).toHaveValue(a.fin)
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-modifier-mandats-calcules.png` })
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText('Franchisé 2 est mis à jour.')).toBeVisible()
+  expect(derniere(ecritures, 'associes')?.['Nantes Test']?.[0]?.mandats ?? []).toEqual([])
+  // Une date changée fige les mandats saisis
+  await page.getByRole('button', { name: 'Modifier l’associé Franchisé 2' }).click()
+  await d.getByLabel('Fin du mandat').last().fill('2031-12-31')
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText('Franchisé 2 est mis à jour.')).toBeVisible()
+  const v = derniere(ecritures, 'associes')['Nantes Test'][0]
+  expect(v).toMatchObject({ entree })
+  expect(v.mandats).toHaveLength(n)
+  expect(v.mandats.at(-1)).toEqual({ debut: a.debut, fin: '2031-12-31' })
 })

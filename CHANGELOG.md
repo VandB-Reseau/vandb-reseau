@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Mandats dans la fenêtre « Modifier » d'un franchisé (Joseph, 26/10/2026) : sans mandat saisi, les mandats calculés
+  (5 ans renouvelés) y sont proposés, du premier au mandat en cours. Enregistrés sans changement, ils restent calculés
+  (la reconduction se fait seule) ; une date modifiée les fige comme mandats saisis. Corrige aussi l'effacement de la
+  date d'entrée du franchisé à l'enregistrement. Sans SQL.
 - Gestion directe par le Responsable Régional (Joseph, 26/10/2026) : un magasin sans Coach géré en direct par son RR
   n'est plus une anomalie. Il affiche « Géré en direct · nom du RR » à la place du Coach (listes, accueil, visites,
   santé du parc, chiffres, campagnes, revue du mois, carte, agenda, journal de la fiche), sort de « À traiter » et
