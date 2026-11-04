@@ -9,6 +9,7 @@ export interface Profil {
   role: Role
   parametreur?: boolean      // Directeur ou contrôle de gestion : modifie les paramètres réseau (lot 39)
   controleGestion?: boolean  // compte du contrôle de gestion, désigné par le Directeur dans le pilotage
+  apercu?: boolean           // « Voir comme » du Directeur : lecture seule
 }
 
 export const roleLibelle: Record<Role, string> = {

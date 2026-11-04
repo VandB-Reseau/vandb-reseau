@@ -38,7 +38,9 @@ React 19 + TypeScript + MUI 9 (thème `src/theme/theme.ts`), react-router (HashR
   médianes et comparaisons du réseau ne lui arrivent jamais (`budgets_du_compte()` les retire).
 - Une seule liste de tâches (04/11/2026) : le plan d'action du budget lit et crée des tâches du réseau (`suivi_magasins`,
   rubrique `actions`, champ `budget` pour la mesure), via `src/pilotage/data/taches.ts` ; `pilotage.actions` n'est plus écrite.
-- « Voir comme » ne montre pas le budget (les chiffres viendraient des droits du Directeur) : écran « pas en aperçu ».
+- « Voir comme » (04/11/2026) : le budget se lit avec les droits du Directeur, limité aux magasins de la personne vue, avec
+  son rôle et en lecture seule : en aperçu, `pilotage()` (`src/pilotage/lib/supabase.ts`) refuse toute écriture, les
+  tâches aussi ; boutons de saisie retirés (`profil.apercu`).
 - Tests navigateur dans `tests/pilotage/` : `simulerPilotage` (schéma `pilotage`) s'appelle après `simulerSupabase`.
 
 ## Documentation

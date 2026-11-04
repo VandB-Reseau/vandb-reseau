@@ -1,6 +1,7 @@
 import type { RubriqueFEC } from '../moteur/fec'
 import type { Role } from '../auth/roles'
 import { pilotage } from '../lib/supabase'
+import { visibleEnApercu } from '../lib/apercu'
 import { notifier } from '../../lib/notifications'
 import { changerStatutTache, creerTache, lireTaches, retirerTache } from './taches'
 import { annees, anneeSuivi } from './annees'
@@ -98,7 +99,7 @@ async function lireBudgets(annee: number): Promise<DonneesBudgets> {
   const lignes = data.magasins as { magasin: string; statut: Statut | null; base: unknown; ajustements: unknown; hypotheses: unknown; maj_le: string | null; groupe_id: number | null; parametres?: unknown; ajustements_siege?: unknown; envoye_le?: string | null }[]
   return {
     annee, ouvertures,
-    magasins: lignes.map((l) => ({
+    magasins: lignes.filter((l) => visibleEnApercu(l.magasin)).map((l) => ({
       magasin: l.magasin, statut: l.statut,
       base: hypothesesValides(l.base) ? l.base : null,
       ajustements: objet(l.ajustements) ? (l.ajustements as Cibles) : {},
@@ -348,6 +349,7 @@ async function lireReelDuCompte(annee: number): Promise<ReelDuCompte> {
   const magasins: ReelDuCompte['magasins'] = {}
   type Ligne = { magasin: string; mois: string; ca: unknown; marge: unknown; ca_marge: unknown; ttc: unknown; tickets: unknown; ttc_cave?: unknown; ttc_bar?: unknown; tickets_cave?: unknown; tickets_bar?: unknown }
   for (const l of data.mois as Ligne[]) {
+    if (!visibleEnApercu(l.magasin)) continue
     const a = Number(l.mois.slice(0, 4)), m = Number(l.mois.slice(5, 7))
     if ((a !== annee && a !== annee - 1) || m < 1 || m > 12) continue
     const r = (magasins[l.magasin] ??= { n: douze(), n1: douze() })

@@ -1096,21 +1096,31 @@ export function enregistrerConstats(lot: { campagne: string; magasin: string; po
 // ── Sauvegarde complète : toutes les tables lues telles quelles ──
 export const tablesSauvegardees = ['app_config', 'suivi_magasins', 'fiches_personnes', 'store_overrides', 'reassigns', 'cs_overrides', 'recruits', 'visits', 'leaves', 'events', 'store_finance', 'campagnes_regions'] as const
 
+// Budgets (schéma pilotage, fusion du 03/11/2026) : rangés dans la même sauvegarde sous « pilotage.<table> »
+export const tablesPilotageSauvegardees = ['annees', 'budgets', 'versions_budget', 'versions_nommees', 'parametres_reseau', 'journal_parametres', 'cibles_reseau', 'cibles_groupe',
+  'groupes', 'groupe_magasins', 'equipe', 'frais', 'frais_archives', 'emprunts', 'ouvertures', 'stocks', 'quadrimestres', 'parts_realisees', 'reel_mensuel', 'reel_tickets',
+  'codes_caisse', 'correspondances_fec', 'echanges_budget', 'actions', 'controle_gestion', 'journal_migrations'] as const
+
+async function lireTable(lire: (de: number, a: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>): Promise<unknown[] | null> {
+  const lignes: unknown[] = []
+  // Lecture par pages de 1 000 lignes (limite d'une réponse Supabase)
+  for (let debut = 0; ; debut += 1000) {
+    const r = await lire(debut, debut + 999)
+    if (r.error) {
+      if (/does not exist|schema cache|Invalid schema/i.test(r.error.message)) return null // table jamais créée : rien à sauvegarder
+      throw new ErreurEnregistrement(r.error.message)
+    }
+    lignes.push(...(r.data ?? []))
+    if ((r.data ?? []).length < 1000) return lignes
+  }
+}
+
 export async function lireSauvegarde(): Promise<Record<string, unknown[]>> {
   const tables: Record<string, unknown[]> = {}
-  for (const t of tablesSauvegardees) {
-    const lignes: unknown[] = []
-    // Lecture par pages de 1 000 lignes (limite d'une réponse Supabase)
-    for (let debut = 0; ; debut += 1000) {
-      const r = await supabase.from(t).select('*').range(debut, debut + 999)
-      if (r.error) {
-        if (/does not exist|schema cache/i.test(r.error.message)) break // table jamais créée : rien à sauvegarder
-        throw new ErreurEnregistrement(r.error.message)
-      }
-      lignes.push(...(r.data ?? []))
-      if ((r.data ?? []).length < 1000) break
-    }
-    tables[t] = lignes
+  for (const t of tablesSauvegardees) tables[t] = (await lireTable((de, a) => supabase.from(t).select('*').range(de, a))) ?? []
+  for (const t of tablesPilotageSauvegardees) {
+    const l = await lireTable((de, a) => supabase.schema('pilotage').from(t).select('*').range(de, a))
+    if (l) tables[`pilotage.${t}`] = l
   }
   return tables
 }

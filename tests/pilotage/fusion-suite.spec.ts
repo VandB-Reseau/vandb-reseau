@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 import { COMPTE, ouvrirOnglet, simulerSupabase, textesTropPetits, type OptionsSimulation } from '../supabase-simule'
 import { magasinFictif } from './donnees-fictives'
 import { simulerPilotage, zonesTropPetites, type MagasinSimule, type OptionsSimulation as OptionsPilotage } from './supabase-simule'
@@ -145,7 +146,7 @@ test('une action ajoutée au plan du budget devient une tâche du magasin, avec 
 
 test('le plan du budget lit les tâches du magasin avec leur mesure ; une action déjà reprise ne se voit qu’une fois', async ({ page }, info) => {
   const ecritures: NonNullable<OptionsSimulation['ecritures']> = []
-  await connecter(page, { ecritures, persister: true, config: { actions: { 'Annecy Test': [tacheBudget, { id: 'l_x', action: 'Refaire la vitrine', porteur: '', echeance: '', creeLe: '2026-10-02' }] } } },
+  await connecter(page, { ecritures, persister: true, config: { actions: { 'Annecy Test': [structuredClone(tacheBudget), { id: 'l_x', action: 'Refaire la vitrine', porteur: '', echeance: '', creeLe: '2026-10-02' }] } } },
     { actions: [ancienne(7, 'Relancer la vente additionnelle'), ancienne(8, 'Revoir le planning')] })
   await page.goto('./#/magasins/Annecy%20Test?vue=budget')
   const plan = page.getByRole('region', { name: 'Plan d’action' })
@@ -165,7 +166,7 @@ test('le plan du budget lit les tâches du magasin avec leur mesure ; une action
 
 test('le franchisé coche la tâche du budget faite, sans pouvoir l’abandonner', async ({ page }) => {
   const ecritures: NonNullable<OptionsSimulation['ecritures']> = []
-  await connecter(page, { ecritures, acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, espace: { actions: { 'Annecy Test': [tacheBudget] } } },
+  await connecter(page, { ecritures, acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, espace: { actions: { 'Annecy Test': [structuredClone(tacheBudget)] } } },
     { role: 'franchise', magasins: [magasins[0]] })
   await page.goto('./#/magasins/Annecy%20Test?vue=budget')
   const plan = page.getByRole('region', { name: 'Plan d’action' })
@@ -174,4 +175,40 @@ test('le franchisé coche la tâche du budget faite, sans pouvoir l’abandonner
   await expect(plan.getByRole('button', { name: /^Retirer/ })).toHaveCount(0)
   await plan.getByRole('button', { name: 'Faite : Relancer la vente additionnelle' }).click()
   await expect.poll(() => ecritures.find((e) => e.table === 'rpc/marquer_action_franchise')?.corps).toEqual({ p_store: 'Annecy Test', p_faite: true, p_libre: 'b_7' })
+})
+
+// Fin de la fusion (Joseph, 04/11/2026, « on continue sur le reste »)
+test('la sauvegarde complète emporte aussi les budgets', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'même fichier que sur PC')
+  await connecter(page, {}, {})
+  await page.goto('./#/parametres/donnees')
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Télécharger la sauvegarde complète' }).click()])
+  const chemin = test.info().outputPath(dl.suggestedFilename())
+  await dl.saveAs(chemin)
+  const { tables } = JSON.parse(readFileSync(chemin, 'utf8')) as { tables: Record<string, unknown[]> }
+  expect(Object.keys(tables)).toEqual(expect.arrayContaining(['store_finance', 'pilotage.budgets', 'pilotage.groupes', 'pilotage.groupe_magasins', 'pilotage.echanges_budget', 'pilotage.reel_mensuel']))
+  expect(tables['pilotage.groupes']).toHaveLength(2)
+})
+
+test('Voir comme un franchisé : son budget, en lecture seule, sans rien enregistrer', async ({ page }) => {
+  const ecritures = await connecter(page, { espace: { actions: { 'Annecy Test': [structuredClone(tacheBudget)] } }, config: { actions: { 'Annecy Test': [structuredClone(tacheBudget)] } } }, {})
+  await page.evaluate(() => sessionStorage.setItem('apercu-franchise', JSON.stringify({ franchise: 'Paul MULTI', magasins: ['Annecy Test'] })))
+  await page.reload()
+  await expect(page.getByRole('region', { name: 'Aperçu' })).toBeVisible()
+  await page.goto('./#/magasins/Annecy%20Test?vue=budget')
+  await expect(page.getByText('Le budget ne se voit pas en aperçu')).toHaveCount(0)
+  const plan = page.getByRole('region', { name: 'Plan d’action' })
+  await expect(plan.getByText('Relancer la vente additionnelle')).toBeVisible()
+  await expect(plan.getByRole('button', { name: /^(Faite|Abandonner|Rouvrir|Retirer|Ajouter une action)/ })).toHaveCount(0)
+  expect(ecritures.filter((e) => e.methode !== 'GET')).toEqual([])
+})
+
+test('Voir comme un Coach : les budgets de son périmètre seulement', async ({ page }) => {
+  await connecter(page, {}, {})
+  await page.evaluate(() => sessionStorage.setItem('apercu-equipe', JSON.stringify({ role: 'coach', cle: 'Hugo FICTIF', nom: 'Hugo FICTIF' })))
+  await page.reload()
+  await page.goto('./#/budgets')
+  await expect(page.getByRole('link', { name: 'Annecy Test' }).first()).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Lyon Test' })).toHaveCount(0)
+  await expect(page.getByRole('navigation', { name: 'Pages des budgets' }).getByRole('tab', { name: 'Paramètres réseau' })).toHaveCount(0)
 })

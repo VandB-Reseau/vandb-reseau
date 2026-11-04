@@ -524,6 +524,8 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       return route.fulfill({ json: { Key: chemin, Id: 'photo-test' } })
     }
     if (options.panne && url.pathname.startsWith('/rest/')) return route.fulfill({ status: 500, json: { message: 'indisponible' } })
+    // Schéma du budget sans son simulateur (tests/pilotage/supabase-simule.ts) : schéma pas exposé
+    if ((req.headers()['accept-profile'] ?? req.headers()['content-profile']) === 'pilotage') return route.fulfill({ status: 406, json: { code: 'PGRST106', message: 'Invalid schema: pilotage' } })
     const table = url.pathname.replace('/rest/v1/', '')
     if (table === 'suivi_magasins' && options.suiviEnConfig) return route.fulfill({ status: 404, json: { code: '42P01', message: 'relation "public.suivi_magasins" does not exist' } })
     if (table === 'fiches_personnes' && options.fichesEnConfig) return route.fulfill({ status: 404, json: { code: '42P01', message: 'relation "public.fiches_personnes" does not exist' } })
