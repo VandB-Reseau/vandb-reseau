@@ -198,7 +198,7 @@ test('le franchisé voit ses nouveautés sur l’onglet Infos réseau, plus de c
     { id: 1, titre: 'V and B Day : J-7', texte: 'Ne tardez plus à confirmer votre présence !', magasins: null, auteur: AUTRE, auteur_nom: 'Joseph PERREAU', auteur_role: 'rr', cree_le: new Date(Date.now() - 3_600_000).toISOString() },
   ]
   // Infos réseau ouvert hier sur cet appareil (la première fois, rien d'ancien n'est signalé)
-  await page.addInitScript(() => { if (!localStorage.getItem('vandb-reseau-vu')) localStorage.setItem('vandb-reseau-vu', new Date(Date.now() - 86_400_000).toISOString()) })
+  await page.addInitScript((vu: string) => { if (!localStorage.getItem('vandb-reseau-vu')) localStorage.setItem('vandb-reseau-vu', vu) }, new Date(Date.now() - 86_400_000).toISOString())
   await seConnecter(page, { acces: PAUL, communications: liste, messagerie: {} })
   await page.goto('./#/echanges')
   await expect(page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /^Réseau V and B/ })).toHaveCount(0)

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
+import { OngletBudget } from '../components/OngletBudget'
 import { Link as RouterLink, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -460,11 +462,13 @@ export function MagasinsFranchise() {
 // ── Fiche magasin du franchisé : lecture seule ; plus de fil, redondant avec les onglets (Joseph, 22/10/2026) ;
 // comme pour l'équipe (Joseph, 23/10/2026), plus d'onglet Messages : le picto message ouvre le groupe du magasin dans
 // Messages ; les bonnes pratiques du magasin ont leur onglet
-type VueFiche = 'fiche' | 'chiffres' | 'visites' | 'campagnes' | 'pratiques'
+type VueFiche = 'fiche' | 'chiffres' | 'budget' | 'visites' | 'campagnes' | 'pratiques'
 const rubriques: Rubrique<VueFiche>[] = [
   { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
   { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
+  // Fusion avec le pilotage (Joseph, 03/11/2026) : le budget du magasin, son suivi et ses saisies
+  { vue: 'budget', libelle: 'Budget', icone: <RequestQuoteOutlined /> },
   { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
   { vue: 'pratiques', libelle: 'Bonnes pratiques', court: 'Pratiques', icone: <TipsAndUpdatesOutlined /> },
 ]
@@ -642,6 +646,7 @@ export function FicheMagasinFranchise() {
             <ContenuOnglet>
               {vue === 'fiche' && <OngletFiche reseau={reseau} m={m} />}
               {vue === 'chiffres' && <OngletChiffres reseau={reseau} m={m} />}
+              {vue === 'budget' && <OngletBudget nom={m.nom} />}
               {vue === 'visites' && <><LireVisites magasin={m.nom} /><OngletVisites reseau={reseau} m={m} /></>}
               {vue === 'campagnes' && <OngletCampagnes reseau={reseau} m={m} />}
               {vue === 'pratiques' && <OngletPratiques reseau={reseau} m={m} signaler={setConfirmation} />}

@@ -19,10 +19,25 @@ React 19 + TypeScript + MUI 9 (thème `src/theme/theme.ts`), react-router (HashR
 - Base de données : tout changement (table, colonne, règle, fonction, rubrique de `suivi_magasins`) = une **nouvelle** migration `supabase/migrations/NNNN_sujet.sql`, réexécutable, sans jamais rouvrir un accès si elle est rejouée seule ; on ne modifie pas une migration déjà passée en ligne. Dans la même demande de fusion : `docs/base-de-donnees.md` à jour, contrôle ajouté dans `supabase/tests/regles_acces.sql` si un accès change, `npm run test:base` vert. Aucune règle « tout compte connecté » (`USING (true)`). Chaque migration ajoute sa ligne dans `journal_migrations`. Ne jamais faire repasser les anciens scripts hors dépôt (« Setup COMPLET », « verrouillage »).
 - Journal : chaque demande de fusion ajoute sa ligne dans `CHANGELOG.md` (section « À venir », puis rangée sous son sprint), avec la migration à passer s'il y en a une.
 - Chaque fonctionnalité livrée a ses tests Playwright sur les projets `pc` et `telephone`, avec Supabase simulé (`tests/supabase-simule.ts`).
+- Date des tests figée au 27/10/2026 à 10 h (`tests/horloge.ts`), côté test et dans la page : les données fictives ne vieillissent plus. Une date posée par `addInitScript` se calcule côté test et se passe en argument.
 
 - Dépôt **public** (choix de Joseph, 14/10/2026) : aucune donnée réelle ni clé dans le dépôt. Tests avec données fictives uniquement. Clé Supabase fournie par le secret GitHub `VITE_SUPABASE_ANON_KEY`.
 
 - Charte graphique officielle V and B : `/mnt/project-files/charte/V_and_B_Guideline_charte.pdf` (hors dépôt).
+
+## Pilotage financier (`src/pilotage/`, fusion du 03/11/2026)
+- Venu de l'app « V and B Pilotage » (dépôt `VandB-Reseau/vandb-pilotage`, figé à la fusion). Menu « Budgets », onglet
+  « Budget » de la fiche magasin (équipe et franchisé), espace du contrôle de gestion. Ses données sont dans le schéma
+  `pilotage` de la même base ; ses migrations restent pour l'instant dans le dépôt du pilotage (`supabase/migrations/`).
+- Règles propres : montants HT dans tous les calculs (TTC pour la trésorerie et les paniers saisis) ; redevance 2 % et
+  publicité 1 % du CA HT, au-dessus de l'EBE ; tout calcul financier passe par le moteur pur `src/pilotage/moteur/`,
+  testé dans `tests/pilotage/moteur/` (projet Playwright `moteur`). L'aide s'ouvre seulement par l'icône (i)
+  (`src/pilotage/components/Aide.tsx`, textes dans `src/pilotage/lib/aide.ts`).
+- Accès du franchisé (exception écrite à la règle d'`espace_franchise()`) : dans le schéma `pilotage`, il lit et écrit
+  les lignes de ses magasins (`pilotage.mes_magasins()`), chaque règle contrôlée dans les tests de la base du pilotage ;
+  médianes et comparaisons du réseau ne lui arrivent jamais (`budgets_du_compte()` les retire).
+- « Voir comme » ne montre pas le budget (les chiffres viendraient des droits du Directeur) : écran « pas en aperçu ».
+- Tests navigateur dans `tests/pilotage/` : `simulerPilotage` (schéma `pilotage`) s'appelle après `simulerSupabase`.
 
 ## Documentation
 - `docs/architecture.md` (pile, dossiers, flux, rôles), `docs/base-de-donnees.md` (schéma), `supabase/README.md` (migrations), `CHANGELOG.md` (sprints). Les lire avant de toucher à la base.

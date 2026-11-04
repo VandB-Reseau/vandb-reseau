@@ -1,5 +1,7 @@
+import './horloge'
 import { expect, type Locator, type Page } from '@playwright/test'
 import { assembler, eclater, estSuivie, rubriques, type CleSuivie } from '../src/data/suivi'
+import { decalerHorloge } from './horloge'
 import { affectationsFictives, coachsFictifs, congesFictifs, evenementsFictifs, recruesFictives, visitesFictives, configRRFictive, magasinsFictifs, santeFictive, deploiementsFictifs, fichesFictives, notesMagasinsFictives, chiffresFictifs, auditsFictifs } from './donnees-fictives'
 
 export const COMPTE = { email: 'joseph@vandb.test', motDePasse: 'bon-mot-de-passe' }
@@ -54,6 +56,7 @@ export interface OptionsSimulation { surchargesMagasins?: Record<string, unknown
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
 export async function simulerSupabase(page: Page, options: OptionsSimulation = {}) {
+  await decalerHorloge(page)
   // « config » remplace des clés d'app_config ; avec « persister », les clés réécrites sont relues telles qu'enregistrées
   const configEcrite = new Map<string, string>(Object.entries(options.config ?? {}).map(([k, v]) => [k, JSON.stringify(v)]))
   // Suivi rangé par magasin (table suivi_magasins) : données fictives et clés fournies par le test, éclatées par magasin.

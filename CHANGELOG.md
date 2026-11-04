@@ -9,6 +9,18 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fusion avec le pilotage financier (Joseph, 03/11/2026, option A ; bascule pendant la campagne des budgets 2027) :
+  - Menu « Budgets » sous Santé du parc : budgets de l'année, suivi face au réel, hypothèses du réseau, imports de
+    caisse et paramètres réseau, en onglets selon le rôle.
+  - Fiche du magasin : onglet « Budget » (suivi, budget et saisies du magasin), pour l'équipe comme pour le franchisé,
+    qui a aussi « Mon budget » dans son menu.
+  - Contrôle de gestion : un compte sans rôle dans le réseau, désigné dans les paramètres des budgets, ouvre un espace
+    réduit aux budgets.
+  - « Voir comme » ne montre pas le budget pour l'instant. Pas de migration dans ce dépôt : le schéma `pilotage` reste
+    tenu par le dépôt du pilotage (dernière migration : `0029_controle_gestion_chiffres`).
+  - Tests : date figée au 27/10/2026 (`tests/horloge.ts`) ; depuis novembre, une dizaine de tests échouaient avec le
+    calendrier et bloquaient la mise en ligne.
+
 - Sprint 27 (Joseph, 26/10/2026), migration `0038_concurrents_mot_franchise` à passer :
   - S1 Tâches : les listes sont des puces visibles avec leur nombre de tâches à faire (« Mes tâches », « Franchisés »,
     et pour le Directeur « Équipe » qui ouvre la liste d'un RR ou d'un Coach) ; quand sa propre liste est vide et que

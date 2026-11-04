@@ -43,6 +43,7 @@ sur l’appareil), dictée du navigateur.
 | `src/auth/` | Connexion, rôles (`roles.ts`), droits d'écriture (`Droits.tsx`), « Voir comme » (`Apercu.tsx`) |
 | `src/data/` | Accès aux données et règles métier (voir ci-dessous) |
 | `src/lib/` | Outils techniques : client Supabase, photos, pièces jointes, dictée, cache, formats |
+| `src/pilotage/` | Pilotage financier des magasins (budget, suivi, saisies, imports de caisse, paramètres), venu de l'app de pilotage à la fusion (03/11/2026) : entrée « Budgets » (`/budgets/*`), onglet « Budget » de la fiche magasin (`?vue=budget&partie=…`), espace du contrôle de gestion. Moteur de calcul pur dans `src/pilotage/moteur/`, testé dans `tests/pilotage/moteur/` |
 | `supabase/migrations/` | Schéma de la base, une migration numérotée par changement |
 | `supabase/functions/notifier/` | Fonction Supabase d'envoi des notifications, à coller dans Edge Functions |
 | `supabase/functions/comptes/` | Fonction Supabase de création, réinitialisation et suppression des comptes des franchisés (Directeur seul) |
@@ -74,7 +75,8 @@ sur l’appareil), dictée du navigateur.
 | Directeur de réseau | tout | tout, dont les référentiels et Paramètres |
 | Responsable Régional | carte et référentiels de tout le réseau ; visites, chiffres, suivi des magasins de ses Coachs et de ceux qu'il gère en direct | visites, chiffres, suivi de ses magasins, campagnes régionales, communications à ses magasins, agenda, messages |
 | Coach | idem, pour ses magasins | visites, chiffres, suivi de ses magasins, bonnes pratiques, agenda, messages |
-| Franchisé | ses magasins seulement, par `espace_franchise()` | ses actions, messages à l'équipe, J'aime et commentaires |
+| Franchisé | ses magasins seulement, par `espace_franchise()` ; dans le schéma `pilotage`, les lignes de ses magasins | ses actions, messages à l'équipe, J'aime et commentaires ; ses hypothèses de budget, son réel, ses frais, son équipe, ses prêts, ses quadrimestres et son stock |
+| Contrôle de gestion | compte sans rôle dans le réseau, désigné dans les paramètres des budgets : les budgets seulement (paramètres du réseau, chiffres) | les paramètres du réseau des budgets |
 
 ## Ajouter quelque chose
 
