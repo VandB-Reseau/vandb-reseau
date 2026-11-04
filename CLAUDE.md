@@ -36,6 +36,8 @@ React 19 + TypeScript + MUI 9 (thème `src/theme/theme.ts`), react-router (HashR
 - Accès du franchisé (exception écrite à la règle d'`espace_franchise()`) : dans le schéma `pilotage`, il lit et écrit
   les lignes de ses magasins (`pilotage.mes_magasins()`), chaque règle contrôlée dans les tests de la base du pilotage ;
   médianes et comparaisons du réseau ne lui arrivent jamais (`budgets_du_compte()` les retire).
+- Une seule liste de tâches (04/11/2026) : le plan d'action du budget lit et crée des tâches du réseau (`suivi_magasins`,
+  rubrique `actions`, champ `budget` pour la mesure), via `src/pilotage/data/taches.ts` ; `pilotage.actions` n'est plus écrite.
 - « Voir comme » ne montre pas le budget (les chiffres viendraient des droits du Directeur) : écran « pas en aperçu ».
 - Tests navigateur dans `tests/pilotage/` : `simulerPilotage` (schéma `pilotage`) s'appelle après `simulerSupabase`.
 

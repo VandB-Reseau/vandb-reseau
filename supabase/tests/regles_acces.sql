@@ -667,3 +667,134 @@ SELECT pg_temp.attendre('Mot du franchisé : le Directeur garde la main',
 RESET ROLE;
 SELECT pg_temp.attendre('Mot du franchisé : garde fermée aux comptes', (SELECT count(*) FROM information_schema.routine_privileges
   WHERE routine_schema = 'public' AND grantee IN ('anon', 'authenticated', 'PUBLIC') AND routine_name = 'garde_mot_franchise'), 0);
+
+-- Chiffres de la caisse (0039). Les migrations viennent d'être rejouées dans l'ordre inverse : on repasse 0039 pour
+-- tester ses versions de reperes_reseau, classement_challenge et espace_franchise.
+\ir ../migrations/0039_fusion_caisse_budgets.sql
+SELECT pg_temp.attendre('Journal : 0039 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0039'), 1);
+SELECT count(*) AS nb_saisis FROM public.store_finance \gset
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT pg_temp.attendre('Chiffres sans le schéma pilotage : ceux saisis, tous pour le Directeur', (SELECT count(*) FROM public.chiffres_mensuels() WHERE source = 'saisie'), :nb_saisis);
+SELECT pg_temp.attendre('Chiffres : aucun appel direct à la fonction interne', pg_temp.refuse('SELECT * FROM public.chiffres_mensuels_internes(NULL)'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Chiffres : le Coach ne lit que ses magasins', (SELECT count(*) FROM public.chiffres_mensuels() WHERE store_name <> 'Lille'), 0);
+SELECT pg_temp.attendre('Chiffres : le Coach lit ceux de Lille', (SELECT least(count(*), 1) FROM public.chiffres_mensuels() WHERE store_name = 'Lille'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Chiffres : rien en direct pour le franchisé', (SELECT count(*) FROM public.chiffres_mensuels()), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-000000000000';
+SELECT pg_temp.attendre('Chiffres : rien pour un compte sans rôle', (SELECT count(*) FROM public.chiffres_mensuels()), 0);
+RESET ROLE;
+
+-- Schéma pilotage fictif (tables du dépôt vandb-pilotage, colonnes utiles seulement) : la caisse passe devant la saisie
+CREATE SCHEMA IF NOT EXISTS pilotage;
+CREATE TABLE IF NOT EXISTS pilotage.reel_mensuel (store_name text, mois date, univers text, famille text, ca_ht numeric, marge_ht numeric,
+  tickets integer, importe_le timestamptz DEFAULT now(), PRIMARY KEY (store_name, mois, univers, famille));
+CREATE TABLE IF NOT EXISTS pilotage.reel_tickets (store_name text, mois date, univers text, tickets integer, importe_le timestamptz DEFAULT now(),
+  PRIMARY KEY (store_name, mois, univers));
+-- Lille, mois du challenge : cave 150 (marge 60) + 50 (marge 15), bar 30 (marge 21), extérieur 20, 10 tickets cave, 6 bar
+INSERT INTO pilotage.reel_mensuel (store_name, mois, univers, famille, ca_ht, marge_ht) VALUES
+  ('Lille', :'mois_ch', 'cave', 'vins', 150, 60), ('Lille', :'mois_ch', 'cave', 'bieres', 50, 15),
+  ('Lille', :'mois_ch', 'bar', 'bar', 30, 21), ('Lille', :'mois_ch', 'exterieur', 'marche', 20, NULL),
+  ('Rodez', :'mois_ch', 'cave', 'vins', 80, 30);
+INSERT INTO pilotage.reel_tickets (store_name, mois, univers, tickets) VALUES ('Lille', :'mois_ch', 'cave', 10), ('Lille', :'mois_ch', 'bar', 6);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+-- Vérifié à la main : CA cave 200, bar 30, extérieur 20 ; panier cave 200/10 = 20, bar 30/6 = 5 ; tickets 16 ;
+-- panier 230/16 = 14,38 ; marge (60+15+21)/(150+50+30) = 96/230 = 41,7 %
+SELECT pg_temp.attendre('Caisse : le mois de Lille vient de la caisse, calculs vérifiés',
+  (SELECT count(*) FROM public.chiffres_mensuels() WHERE store_name = 'Lille' AND month = :'mois_ch' AND source = 'caisse'
+     AND ca_cave = 200 AND ca_bar = 30 AND ca_ext = 20 AND pm_cave = 20 AND pm_bar = 5 AND freq = 16 AND panier = 14.38 AND marge = 41.7), 1);
+SELECT pg_temp.attendre('Caisse : un mois sans caisse garde la saisie',
+  (SELECT count(*) FROM public.chiffres_mensuels() WHERE store_name = 'Lille' AND month = (:'mois_ch'::date - interval '1 year')::date AND source = 'saisie' AND ca_cave = 100), 1);
+SELECT pg_temp.attendre('Caisse : un magasin connu de la seule caisse apparaît', (SELECT count(*) FROM public.chiffres_mensuels() WHERE store_name = 'Rodez' AND source = 'caisse'), 1);
+SELECT pg_temp.attendre('Caisse : une seule ligne par magasin et par mois', (SELECT count(*) FROM (SELECT store_name, month FROM public.chiffres_mensuels() GROUP BY 1, 2 HAVING count(*) > 1) d), 0);
+-- Challenge CA : Lille 250 (caisse) face à 100 un an plus tôt = +150 % ; Nice +10 % : Lille reste premier
+SELECT pg_temp.attendre('Caisse : le challenge se classe sur la caisse',
+  (SELECT count(*) FROM jsonb_array_elements(public.challenges_equipe()) e, jsonb_array_elements(e->'classement') k
+   WHERE (e->>'id')::bigint = :ch AND k->>'magasin' = 'Lille' AND (k->>'rang')::int = 1 AND (k->>'valeur')::numeric = 150), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Caisse : le Coach ne voit pas un magasin hors de son périmètre', (SELECT count(*) FROM public.chiffres_mensuels() WHERE store_name = 'Rodez'), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Caisse : le franchisé reçoit le mois de la caisse dans son espace',
+  (SELECT count(*) FROM jsonb_array_elements(public.espace_franchise()->'store_finance') f WHERE f->>'store_name' = 'Lille' AND f->>'source' = 'caisse' AND (f->>'ca_cave')::numeric = 200), 1);
+SELECT pg_temp.attendre('Caisse : rien d''un autre magasin dans son espace',
+  (SELECT count(*) FROM jsonb_array_elements(public.espace_franchise()->'store_finance') f WHERE f->>'store_name' <> 'Lille'), 0);
+SELECT pg_temp.attendre('Caisse : toujours aucun accès direct aux tables du pilotage', pg_temp.refuse('SELECT count(*) FROM pilotage.reel_mensuel'), 1);
+RESET ROLE;
+
+-- Commentaires de budget (0039) : notification vers les comptes du magasin, jamais vers l'auteur ni hors du magasin
+CREATE TABLE IF NOT EXISTS pilotage.echanges_budget (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, store_name text, annee integer,
+  texte text, auteur uuid, auteur_role text, auteur_nom text, cree_le timestamptz NOT NULL DEFAULT now());
+INSERT INTO pilotage.echanges_budget (store_name, annee, texte, auteur, auteur_nom) VALUES
+  ('Lille', 2027, 'Panier bar trop haut ?', '00000000-0000-0000-0000-00000000000c', 'Coach Nord') RETURNING id AS com \gset
+INSERT INTO pilotage.echanges_budget (store_name, annee, texte, auteur, auteur_nom, cree_le) VALUES
+  ('Lille', 2027, 'Ancien', '00000000-0000-0000-0000-00000000000c', 'Coach Nord', now() - interval '3 days') RETURNING id AS com_ancien \gset
+INSERT INTO pilotage.echanges_budget (store_name, annee, texte, auteur, auteur_nom) VALUES
+  ('Nice', 2027, 'Hors périmètre', '00000000-0000-0000-0000-00000000000c', 'Coach Nord') RETURNING id AS com_nice \gset
+SELECT pg_temp.attendre('Budget : le commentaire du Coach part vers les autres comptes de Lille (franchisé, RR, Directeur)',
+  (SELECT count(*) FROM jsonb_array_elements(public.notifications_budget(ARRAY[:com]::bigint[], '00000000-0000-0000-0000-00000000000c')) n
+   WHERE n->>'titre' = 'Budget · Lille' AND n->>'lien' = '#/magasins/Lille?vue=budget'),
+  (SELECT count(*) FROM public.abonnements_push a WHERE a.user_id <> '00000000-0000-0000-0000-00000000000c' AND public.compte_lit_magasin(a.user_id, 'Lille', false)));
+SELECT pg_temp.attendre('Budget : le Directeur en fait partie',
+  (SELECT count(*) FROM jsonb_array_elements(public.notifications_budget(ARRAY[:com]::bigint[], '00000000-0000-0000-0000-00000000000c')) n
+   WHERE n->>'endpoint' = 'https://push.exemple.fr/directeur'), 1);
+SELECT pg_temp.attendre('Budget : aucune notification vers l''auteur',
+  (SELECT count(*) FROM jsonb_array_elements(public.notifications_budget(ARRAY[:com]::bigint[], '00000000-0000-0000-0000-00000000000c')) n
+   WHERE n->>'endpoint' IN (SELECT endpoint FROM public.abonnements_push WHERE user_id = '00000000-0000-0000-0000-00000000000c')), 0);
+SELECT pg_temp.attendre('Budget : rien pour un commentaire de plus d''un jour', jsonb_array_length(public.notifications_budget(ARRAY[:com_ancien]::bigint[], '00000000-0000-0000-0000-00000000000c')), 0);
+SELECT pg_temp.attendre('Budget : rien si l''auteur demandé n''est pas l''auteur', jsonb_array_length(public.notifications_budget(ARRAY[:com]::bigint[], '00000000-0000-0000-0000-00000000000d')), 0);
+SELECT pg_temp.attendre('Budget : rien pour un magasin hors du périmètre de l''auteur', jsonb_array_length(public.notifications_budget(ARRAY[:com_nice]::bigint[], '00000000-0000-0000-0000-00000000000c')), 0);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Budget : un compte n''appelle pas l''envoi des notifications', pg_temp.refuse('SELECT public.notifications_budget(ARRAY[1]::bigint[], ''00000000-0000-0000-0000-00000000000c'')'), 1);
+RESET ROLE;
+
+-- Une seule liste de tâches (0039) : les actions du budget sont reprises en tâches du réseau avec leur mesure, une seule fois
+CREATE TABLE IF NOT EXISTS pilotage.actions (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, store_name text NOT NULL, type_alerte text NOT NULL,
+  intitule text NOT NULL, responsable text NOT NULL, echeance date, statut text NOT NULL DEFAULT 'a_faire', annee integer NOT NULL, depart numeric,
+  mois_depart integer, cree_par uuid, cree_par_role text, cree_par_nom text, cree_le timestamptz NOT NULL DEFAULT now(),
+  maj_le timestamptz NOT NULL DEFAULT now(), faite_le timestamptz);
+GRANT SELECT, INSERT, UPDATE, DELETE ON pilotage.actions TO authenticated;
+INSERT INTO public.reassigns (store, cs, date) VALUES ('Lille', 'Ancien Coach', '2025-01-01'), ('Lille', 'Coach Nord', '2026-01-01'), ('Lille', 'Futur Coach', '2099-01-01');
+INSERT INTO public.app_config (key, value) VALUES ('drs_data', '{"directeur":{"name":"Diane DIRECTRICE"},"drs":[{"id":"rr1","name":"Rémi RR"}],"cs_dr":{"Coach Nord":"rr1"}}')
+ON CONFLICT (key) DO UPDATE SET value = excluded.value;
+INSERT INTO pilotage.actions (store_name, type_alerte, intitule, responsable, echeance, statut, annee, depart, mois_depart, cree_par_role, cree_par_nom, faite_le) VALUES
+  ('Lille', 'ca', 'Relancer la vente additionnelle', 'franchise', '2026-11-30', 'a_faire', 2026, -6.5, 9, 'coach', 'Coach Nord', NULL),
+  ('Lille', 'marge', 'Revoir les prix bar', 'coach', NULL, 'abandonnee', 2026, 1.2, 8, 'directeur', 'Diane DIRECTRICE', NULL),
+  ('Lille', 'autre', 'Point stock', 'rr', NULL, 'faite', 2026, NULL, NULL, 'rr', 'Rémi RR', '2026-10-15 10:00+02'),
+  ('Rodez', 'tresorerie', 'Étaler les achats de Noël', 'directeur', NULL, 'a_faire', 2026, -1200, 10, 'directeur', 'Diane DIRECTRICE', NULL);
+SELECT count(*) AS taches_avant FROM public.suivi_magasins s, jsonb_array_elements(s.valeur) e WHERE s.store_name = 'Lille' AND s.cle = 'actions' AND e->'budget' IS NULL \gset
+\ir ../migrations/0039_fusion_caisse_budgets.sql
+\ir ../migrations/0039_fusion_caisse_budgets.sql
+CREATE OR REPLACE FUNCTION pg_temp.tache(p_store text, p_intitule text) RETURNS jsonb LANGUAGE sql AS $$
+  SELECT e FROM public.suivi_magasins s, jsonb_array_elements(s.valeur) e WHERE s.store_name = p_store AND s.cle = 'actions' AND e->>'action' = p_intitule
+$$;
+SELECT pg_temp.attendre('Tâches : chaque action du budget reprise une seule fois, même rejouée',
+  (SELECT count(*) FROM public.suivi_magasins s, jsonb_array_elements(s.valeur) e WHERE s.cle = 'actions' AND e ? 'budget'), 4);
+SELECT pg_temp.attendre('Tâches : les tâches déjà là sont gardées',
+  (SELECT count(*) FROM public.suivi_magasins s, jsonb_array_elements(s.valeur) e WHERE s.store_name = 'Lille' AND s.cle = 'actions' AND e->'budget' IS NULL), :taches_avant);
+SELECT pg_temp.attendre('Tâches : franchisé porteur, échéance, mesure de départ et auteur gardés',
+  (SELECT count(*) FROM pg_temp.tache('Lille', 'Relancer la vente additionnelle') t WHERE t->>'porteur' = 'Paul LILLE' AND t->>'echeance' = '2026-11-30'
+     AND t->>'auteur' = 'Coach Nord' AND t->'budget'->>'type' = 'ca' AND (t->'budget'->'depart'->>'valeur')::numeric = -6.5 AND t->'budget'->'depart'->>'mois' = '9'
+     AND t->'budget'->>'responsable' = 'franchise' AND t->'budget'->>'role' = 'coach' AND NOT t ? 'faite' AND t->>'id' LIKE 'b\_%'), 1);
+SELECT pg_temp.attendre('Tâches : le Coach du jour porte la sienne, abandonnée = fermée avec la mention',
+  (SELECT count(*) FROM pg_temp.tache('Lille', 'Revoir les prix bar') t WHERE t->>'porteur' = 'Coach Nord' AND t ? 'faite' AND t->'budget'->>'abandonnee' = 'true'), 1);
+SELECT pg_temp.attendre('Tâches : le RR de ce Coach, faite à sa date',
+  (SELECT count(*) FROM pg_temp.tache('Lille', 'Point stock') t WHERE t->>'porteur' = 'Rémi RR' AND t->>'faite' = '2026-10-15' AND NOT t->'budget' ? 'depart'), 1);
+SELECT pg_temp.attendre('Tâches : le Directeur, sur un magasin sans tâche jusque-là',
+  (SELECT count(*) FROM pg_temp.tache('Rodez', 'Étaler les achats de Noël') t WHERE t->>'porteur' = 'Diane DIRECTRICE'), 1);
+SELECT pg_temp.tache('Lille', 'Relancer la vente additionnelle')->>'id' AS tache_ca \gset
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT pg_temp.attendre('Tâches : l''ancienne liste du budget n''est plus écrite',
+  pg_temp.refuse('INSERT INTO pilotage.actions (store_name, type_alerte, intitule, responsable, annee) VALUES (''Lille'', ''ca'', ''x'', ''coach'', 2026)'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Tâches : le franchisé retrouve la tâche du budget dans son espace',
+  (SELECT count(*) FROM jsonb_array_elements(public.json_sur((SELECT c->>'value' FROM jsonb_array_elements(public.espace_franchise()->'app_config') c WHERE c->>'key' = 'actions'))->'Lille') e
+   WHERE e->'budget'->>'type' = 'ca'), 1);
+SELECT pg_temp.attendre('Tâches : il la coche faite, la mesure reste',
+  pg_temp.refuse(format('SELECT public.marquer_action_franchise(%L, true, %L)', 'Lille', :'tache_ca')), 0);
+RESET ROLE;
+SELECT pg_temp.attendre('Tâches : faite par le franchisé, mesure gardée',
+  (SELECT count(*) FROM pg_temp.tache('Lille', 'Relancer la vente additionnelle') t WHERE t ? 'faite' AND t->'budget'->>'type' = 'ca'), 1);

@@ -109,6 +109,10 @@ export function ProfilVu({ profil, children }: { profil: Profil; children: React
   return <AuthContext.Provider value={{ ...ctx, profil }}>{children}</AuthContext.Provider>
 }
 
+// Hors de l'app (tests isolés) : null au lieu d'une erreur
+// eslint-disable-next-line react-refresh/only-export-components
+export const useAuthSiDispo = () => useContext(AuthContext)
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthState {
   const ctx = useContext(AuthContext)

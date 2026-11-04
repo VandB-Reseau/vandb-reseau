@@ -9,6 +9,16 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fusion, suite (Joseph, 04/11/2026), migration `0039_fusion_caisse_budgets` à passer, puis redéployer la fonction `notifier` :
+  - Le CA vient de la caisse : un mois importé de la caisse passe devant les chiffres saisis, partout (fiche, santé,
+    repères du réseau, challenges, espace du franchisé). Il ne se saisit plus à la main ni ne s'importe par fichier ;
+    un mois sans caisse garde la saisie. `store_finance` reste en secours jusqu'à son archive.
+  - Commentaires posés sur un budget : notification sur le téléphone des autres comptes du magasin.
+  - Fiche du magasin : groupe budgétaire (choisi par le Directeur, lu par l'équipe).
+  - Une seule liste de tâches : une action du plan d'action du budget est une tâche du magasin (porteur selon le rôle
+    choisi, notification), qui garde l'alerte et la valeur de départ pour mesurer l'effet ; marquée « Budget » dans les
+    tâches. Les anciennes actions du budget sont reprises par 0039, puis leur table n'est plus écrite.
+
 - Fusion avec le pilotage financier (Joseph, 03/11/2026, option A ; bascule pendant la campagne des budgets 2027) :
   - Menu « Budgets » sous Santé du parc : budgets de l'année, suivi face au réel, hypothèses du réseau, imports de
     caisse et paramètres réseau, en onglets selon le rôle.

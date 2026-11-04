@@ -3,6 +3,7 @@
 // Aucune clé à créer : la paire de clés d'envoi est générée au premier appel et rangée dans cles_push.
 //   { action: 'cle' }                       → clé publique, pour abonner un appareil
 //   { type: 'message' | 'visite', ids: [] } → envoie les notifications de ces messages ou comptes rendus
+//   { type: 'budget', ids: [] }             → commentaires posés sur un budget, vers les comptes du magasin (fusion, 0039)
 //   { type: 'une', ids: [] }                → communications mises à la une, vers les franchisés visés (sprint 22, F2)
 //   { type: 'tache', magasin, tache, cles } → tâche confiée, vers ses porteurs (sprint 22, F2)
 //   { type: 'contenu', genre, id, magasins } → nouveau sondage, réunion ou formation, communication, bonne pratique ou campagne,
@@ -53,6 +54,9 @@ Deno.serve(async (req) => {
       if (typeof corps.genre !== 'string' || !['sondage', 'evenement', 'communication', 'pratique', 'campagne'].includes(corps.genre)
         || (typeof corps.id !== 'string' && typeof corps.id !== 'number')) return reponse({ erreur: 'format' }, 400)
       lu = await base.rpc('notifications_animation', { p_genre: corps.genre, p_id: String(corps.id), p_magasins: magasins.length ? magasins : null, p_auteur: auteur })
+    } else if (corps.type === 'budget' && ids.length) {
+      // Commentaire posé sur un budget (migration 0039) : vers les comptes du magasin, sauf l'auteur
+      lu = await base.rpc('notifications_budget', { p_ids: ids, p_auteur: auteur })
     } else if (corps.type === 'une' && ids.length) {
       lu = await base.rpc('notifications_une', { p_ids: ids, p_auteur: auteur })
     } else if (['message', 'visite'].includes(String(corps.type)) && ids.length) {

@@ -6,6 +6,7 @@ import type { BonnePratique } from '../data/bonnesPratiques'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
 import { OngletBudget } from '../components/OngletBudget'
+import { GroupeBudgetaire } from '../components/GroupeBudgetaire'
 import StarOutlined from '@mui/icons-material/StarOutlined'
 import StarBorderOutlined from '@mui/icons-material/StarBorderOutlined'
 import { basculerFavori, noterRecent, useSuivis } from '../lib/suivis'
@@ -159,6 +160,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
               <Ligne libelle="Code magasin">{m.code || null}</Ligne>
               <Ligne libelle="Implantation des produits">{m.exploitation.implantation ? dateLongue(m.exploitation.implantation) : null}</Ligne>
               <Ligne libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
+              <GroupeBudgetaire magasin={m.nom} modifiable={referentiels} />
               <Ligne libelle="Adresse">
                 {adresseComplete && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>

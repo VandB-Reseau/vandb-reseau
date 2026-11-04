@@ -43,6 +43,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0036_historique_modifications` | Table `historique_modifications` (fermée) et déclencheurs sur visites, chiffres, suivi, fiches et affectations ; lecture et remise d'une suppression par le Directeur | 26/10/2026 |
 | `0037_exploitation_magasins` | Colonnes d'exploitation de `store_overrides` : implantation, typologie, zone de chalandise, licence, horaires, Instagram (règles inchangées) | 26/10/2026 |
 | `0038_concurrents_mot_franchise` | Rubriques `concurrence` et `mot_franchise` de `suivi_magasins` ; fonction `ecrire_mot_franchise` (franchisé, visite à venir) et contrôle `garde_mot_franchise` ; `espace_franchise` renvoie `mots_franchise` | 26/10/2026 |
+| `0039_fusion_caisse_budgets` | Chiffres mensuels lus de la caisse (schéma `pilotage`) avant la saisie : `chiffres_mensuels`, `chiffres_mensuels_internes` ; repères, challenges et espace du franchisé réécrits dessus ; `notifications_budget` (commentaires de budget) ; actions du budget (`pilotage.actions`) reprises en tâches du réseau, table fermée en écriture ; puis redéployer la fonction Supabase `notifier` | 04/11/2026 |
 
 ## Règles
 

@@ -39,6 +39,13 @@ const absente = (message: string) => /does not exist|schema cache|Could not find
 
 // Une réponse Supabase compte au plus 1 000 lignes : les grandes tables se lisent par pages
 type Requete = { range: (debut: number, fin: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }> }
+// Chiffres mensuels : ceux de la caisse d'abord (0039), sinon la table des chiffres saisis
+async function lireChiffres() {
+  const r = await toutLire(() => supabase.rpc('chiffres_mensuels') as unknown as Requete)
+  if (!r.error || !absente(r.error.message)) return r
+  return toutLire(() => supabase.from('store_finance').select('*').order('month').order('store_name'))
+}
+
 async function toutLire(requete: () => Requete): Promise<{ data: Ligne[]; error: { message: string } | null }> {
   const data: Ligne[] = []
   for (let debut = 0; ; debut += 1000) {
@@ -64,7 +71,7 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
     supabase.from('recruits').select('*'),
     toutLire(() => supabase.from('visits').select('*').order('visit_date', { ascending: false }).order('id')),
     supabase.from('events').select('*').order('start_date'),
-    toutLire(() => supabase.from('store_finance').select('*').order('month').order('store_name')),
+    lireChiffres(),
     toutLire(() => supabase.from('suivi_magasins').select('store_name,cle,valeur').order('store_name').order('cle')),
     supabase.from('campagnes_regions').select('id,rr,valeur').order('id'),
     toutLire(() => supabase.from('fiches_personnes').select('cle,fiche').order('cle')),
@@ -149,7 +156,7 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   const nb = (v: unknown) => (v === null || v === undefined || v === '' || isNaN(Number(v)) ? null : Number(v))
   reseau.chiffres = {}
   for (const f of finances as L[]) {
-    const c = { magasin: t(f.store_name), mois: t(f.month).slice(0, 7), ...Object.fromEntries(Object.entries(colonnesChiffres).map(([id, col]) => [id, nb(f[col])])) } as ChiffreMois
+    const c = { magasin: t(f.store_name), mois: t(f.month).slice(0, 7), ...Object.fromEntries(Object.entries(colonnesChiffres).map(([id, col]) => [id, nb(f[col])])), ...(f.source === 'caisse' ? { source: 'caisse' } : {}) } as ChiffreMois
     if (!c.magasin || !/^\d{4}-\d{2}$/.test(c.mois)) continue
     ;(reseau.chiffres[c.magasin] ??= []).push(c)
   }
@@ -473,6 +480,10 @@ function modifierActionsLibres(changer: (t: Record<string, ActionLibre[]>) => vo
     for (const k of Object.keys(t)) if (!t[k].length) delete t[k]
     await ecrireSuivi('actions', t, lu)
   })
+}
+// Tâches hors visite de tous les magasins lisibles par le compte (budget : tâches nées d'une alerte)
+export async function lireActionsLibres(): Promise<Record<string, ActionLibre[]>> {
+  return normaliserActionsLibres((await lireSuivi<unknown>('actions', {})).valeur)
 }
 // Renvoie l'identifiant de la tâche (créé pour une nouvelle)
 export async function enregistrerActionLibre(magasin: string, a: Omit<ActionLibre, 'id'> & { id?: string }): Promise<string> {

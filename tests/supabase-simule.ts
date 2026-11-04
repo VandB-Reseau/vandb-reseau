@@ -51,7 +51,7 @@ export interface PropositionsSimulees { equipe: Record<string, unknown>[]; mienn
 export interface ChallengesSimules { equipe: Record<string, unknown>[]; franchise: Record<string, unknown>[] }
 // Fonction Supabase « comptes » (supabase/functions/comptes) : absente = pas encore déployée
 export interface ComptesSimules { equipe?: string[] }
-export interface OptionsSimulation { surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' }
+export interface OptionsSimulation { chiffresCaisse?: Record<string, unknown>[] | null; surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -177,7 +177,16 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       const meta = options.appMetadata ?? {}
       const acces: AccesSimule = options.acces ?? (meta.role === 'coach' || meta.role === 'rr' ? { role: String(meta.role), coach: meta.coach as string, rr: meta.rr as string } : { role: 'directeur' })
       if (fn === 'maj_perimetre_equipe') options.perimetreRecu = corps.p_lignes as PerimetreRecu[]
-      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie', 'communications', 'lectures_communications', 'a_la_une', 'reactions_pratiques', 'reactions_visites', 'lectures_pratiques', 'questions_equipe'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
+      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie', 'communications', 'lectures_communications', 'a_la_une', 'reactions_pratiques', 'reactions_visites', 'lectures_pratiques', 'questions_equipe', 'chiffres_mensuels'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
+      // Chiffres mensuels (script 0039_chiffres_caisse.sql) : la caisse passe devant la saisie, mois par mois
+      if (fn === 'chiffres_mensuels') {
+        if (options.chiffresCaisse === null) return absente()
+        if (!['directeur', 'rr', 'coach'].includes(acces.role)) return route.fulfill({ json: [] })
+        const caisse = options.chiffresCaisse ?? []
+        const cle = (l: Record<string, unknown>) => `${l.store_name}|${String(l.month).slice(0, 7)}`
+        const deCaisse = new Set(caisse.map(cle))
+        return route.fulfill({ json: [...chiffresFictifs.filter((l) => !deCaisse.has(cle(l))).map((l) => ({ ...l, source: 'saisie' })), ...caisse.map((l) => ({ ...l, source: 'caisse' }))] })
+      }
       // Lien de l'agenda dans Google Agenda (script 0034_agenda_abonne.sql) : refusé au franchisé
       if (fn === 'mon_agenda') {
         if (!['directeur', 'rr', 'coach'].includes(acces.role)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })

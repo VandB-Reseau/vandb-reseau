@@ -64,7 +64,7 @@ compte franchisé porte sur l'un d'eux. Seul le Directeur écrit.
 | Table | Contenu | Clé |
 | --- | --- | --- |
 | `visits` | Visites, appels, audits. `visitor` = participants séparés par « , » ; `sections` = compte rendu en 10 parties ; `action_plan` = plan d'action ; `docs` = photos et liens ; `group_id` relie une tournée ; `prevue` = planifiée, pas encore faite (0017) : ne compte ni dans le rythme ni dans « pas vu depuis » | `id` |
-| `store_finance` | Chiffres mensuels : `pm_cave`, `flux_cave`, `pm_bar`, `flux_bar`, `ca_ext`, `marge` saisis ; `ca_cave`, `ca_bar`, `panier`, `freq`, `ebitda` hérités | `store_name`, `month` |
+| `store_finance` | Chiffres mensuels saisis à la main : `pm_cave`, `flux_cave`, `pm_bar`, `flux_bar`, `ca_ext`, `marge` saisis ; `ca_cave`, `ca_bar`, `panier`, `freq`, `ebitda` hérités. Depuis 0039, un mois importé de la caisse (schéma `pilotage`, tables `reel_mensuel` et `reel_tickets`) passe devant : l'app lit `chiffres_mensuels()`. Table gardée en secours jusqu'à son archive | `store_name`, `month` |
 | `suivi_magasins` | Suivi par magasin, une ligne par rubrique (`cle`, liste ci-dessous), `valeur` en JSON | `store_name`, `cle` |
 
 Rubriques de `suivi_magasins` (contrainte `suivi_magasins_cle_check`) :
@@ -76,7 +76,7 @@ Rubriques de `suivi_magasins` (contrainte `suivi_magasins_cle_check`) :
 | `notes` | Journal du magasin | `notes_magasins` |
 | `audits` | Résultats consolidés des audits | `audits` |
 | `associes` | Associés et mandats | `associes` |
-| `actions` | Tâches hors visite ; `fil` = `equipe` pour une tâche née dans « Équipe seule », jamais renvoyée au franchisé (0019) | `actions` |
+| `actions` | Tâches hors visite ; `fil` = `equipe` pour une tâche née dans « Équipe seule », jamais renvoyée au franchisé (0019) ; `budget` = tâche née du plan d'action du budget (type d'alerte, année, responsable, valeur de départ, `abandonnee`, `origine` = numéro de l'ancienne action reprise par 0039) | `actions` |
 | `deploiements` | État et journal des thématiques déployées | `deploiements` (partie magasin) |
 | `constats` | Constats de campagne | `campagnes` (partie constats) |
 | `preparation` | Prochaine visite : date, heure, notes | `preparations_visites` |
@@ -228,7 +228,8 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Historique des modifications | `historique_modifications(p_depuis, p_limite)` (Directeur, 90 jours par défaut, sans l'identifiant du compte) ; `remettre_modification(p_id)` (Directeur, une suppression, si rien n'a pris sa place) ; `noter_modification` (déclencheur) | 0036 |
 | Campagnes régionales | `campagne_region_permise` | 0005 |
 | Fichiers | `photo_visible`, `piece_visible` (fichiers d'une tâche de l'équipe seule refusés au franchisé, 0019) | 0004, 0009, 0019 |
-| Notifications | `abonner_appareil`, `desabonner_appareil` (compte connecté) ; `comptes_de_cle`, `notifications_a_envoyer`, `notifications_tache`, `notifications_une`, `notifications_animation`, `comptes_concernes` (fonction « notifier » seule) | 0016, 0024, 0030 |
+| Notifications | `abonner_appareil`, `desabonner_appareil` (compte connecté) ; `comptes_de_cle`, `notifications_a_envoyer`, `notifications_tache`, `notifications_une`, `notifications_animation`, `notifications_budget`, `comptes_concernes` (fonction « notifier » seule) | 0016, 0024, 0030, 0039 |
+| Chiffres mensuels | `chiffres_mensuels()` (équipe : ses magasins, tous pour le Directeur ; rien pour les autres comptes) ; `chiffres_mensuels_internes` (interne : repères, challenges, espace du franchisé). La caisse passe devant la saisie, mois par mois | 0039 |
 | Outil | `json_sur` (lit un texte JSON sans jamais échouer) | 0004 |
 
 ## Fichiers (Supabase Storage)

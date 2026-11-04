@@ -1,6 +1,6 @@
 // Actions suivies sur un magasin : celles des plans de visite et celles ajoutées hors visite.
 // Elles s'accumulent de visite en visite, jusqu'à être faites.
-import { libelleResponsable, type ActionLibre, type ActionPlan, type Reseau, type Visite } from './modele'
+import { libelleResponsable, type ActionLibre, type TacheBudget, type ActionPlan, type Reseau, type Visite } from './modele'
 import type { Profil } from '../auth/roles'
 import { normaliserPieces } from '../lib/pieces'
 import { associesEnPlace } from './associes'
@@ -19,6 +19,16 @@ export const porteursDe = (a: Pick<ActionPlan, 'porteur'>) => [...new Set(String
 export const joindrePorteurs = (noms: string[]) => [...new Set(noms.map((n) => n.trim()).filter(Boolean))].join(', ')
 export const portePar = (a: Pick<ActionPlan, 'porteur'>, nom: string) => !!nom && porteursDe(a).includes(nom)
 
+// Mesure d'une tâche née d'une alerte du budget, relue sans rien inventer
+export function tacheBudget(v: unknown): TacheBudget | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const b = v as Record<string, unknown>
+  if (typeof b.type !== 'string' || !b.type) return null
+  const d = b.depart && typeof b.depart === 'object' ? b.depart as Record<string, unknown> : null
+  const depart = d && Number.isFinite(Number(d.valeur)) && d.valeur !== null ? { valeur: Number(d.valeur), mois: Number(d.mois) >= 1 && Number(d.mois) <= 12 ? Number(d.mois) : null } : null
+  return { type: b.type, annee: Number(b.annee) || 0, responsable: String(b.responsable ?? ''), depart, ...(b.abandonnee ? { abandonnee: true } : {}), ...(Number(b.origine) > 0 ? { origine: Number(b.origine) } : {}), ...(typeof b.role === 'string' && b.role ? { role: b.role } : {}) }
+}
+
 // Relit les actions hors visite enregistrées (une liste par magasin)
 export function normaliserActionsLibres(v: unknown): Record<string, ActionLibre[]> {
   const r: Record<string, ActionLibre[]> = {}
@@ -28,7 +38,7 @@ export function normaliserActionsLibres(v: unknown): Record<string, ActionLibre[
     const liste = l.filter((a) => a && typeof a === 'object' && (a as ActionLibre).id && String((a as ActionLibre).action ?? '').trim()).map((x) => {
       const a = x as Record<string, unknown>
       return { id: String(a.id), action: String(a.action), porteur: String(a.porteur ?? ''), echeance: String(a.echeance ?? ''), creeLe: String(a.creeLe ?? ''),
-        ...(a.faite ? { faite: String(a.faite) } : {}), ...(a.faite && a.faitePar ? { faitePar: String(a.faitePar) } : {}), ...(Array.isArray(a.pieces) && a.pieces.length ? { pieces: normaliserPieces(a.pieces) } : {}), ...(a.auteur ? { auteur: String(a.auteur) } : {}), ...(a.fil === 'equipe' ? { fil: 'equipe' as const } : {}), ...(Number(a.message) > 0 ? { message: Number(a.message) } : {}) }
+        ...(a.faite ? { faite: String(a.faite) } : {}), ...(a.faite && a.faitePar ? { faitePar: String(a.faitePar) } : {}), ...(Array.isArray(a.pieces) && a.pieces.length ? { pieces: normaliserPieces(a.pieces) } : {}), ...(a.auteur ? { auteur: String(a.auteur) } : {}), ...(a.fil === 'equipe' ? { fil: 'equipe' as const } : {}), ...(Number(a.message) > 0 ? { message: Number(a.message) } : {}), ...(tacheBudget(a.budget) ? { budget: tacheBudget(a.budget)! } : {}) }
     })
     if (liste.length) r[magasin] = liste
   }

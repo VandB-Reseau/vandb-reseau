@@ -65,7 +65,7 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
     : x.date ? `ajoutée le ${dateCourte(x.date)}${auteur}` : 'hors visite'
   // Échéance : à droite sur PC, sous le texte sur téléphone pour laisser la largeur au libellé
   const pastille = !x.a.faite && echeance && <Chip size="small" color={retard ? 'error' : 'default'} variant={retard ? 'filled' : 'outlined'} label={retard ? `En retard · ${echeance}` : echeance} sx={{ fontSize: 12, fontWeight: 600 }} />
-  const faite = x.a.faite ? `faite le ${dateCourte(x.a.faite)}${x.a.faitePar ? ` par ${x.a.faitePar}` : ''}` : null
+  const faite = x.a.faite ? `${x.libre?.budget?.abandonnee ? 'abandonnée' : 'faite'} le ${dateCourte(x.a.faite)}${x.a.faitePar ? ` par ${x.a.faitePar}` : ''}` : null
   return (
     <Box component="li" sx={{ borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
     <Glisser libelle="Faite" icone={<CheckCircle />} actif={!!cocher && !x.a.faite && !enCours} onGlisser={() => cocher?.(true)}>
@@ -84,6 +84,7 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
           {((avecPorteur && x.a.porteur) || faite) && ' · '}
           {origine}
           {x.libre?.fil === 'equipe' && ' · Équipe seule'}
+          {x.libre?.budget && ' · Budget'}
         </Typography>
         {pastille && <Box sx={{ display: { xs: 'block', sm: 'none' }, mt: 0.75 }}>{pastille}</Box>}
         {x.a.pieces && <ListePieces pieces={x.a.pieces} />}
@@ -196,7 +197,7 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
           await ajouterActionFranchise(magasin, propre, porteur.trim(), echeance, pieces)
           return 'Tâche ajoutée.'
         }
-        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), ...(a?.fil ?? (depuis?.equipe ? 'equipe' : undefined) ? { fil: 'equipe' as const } : {}), ...(a?.message ?? depuis?.message ? { message: a?.message ?? depuis?.message } : {}) }
+        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), ...(a?.fil ?? (depuis?.equipe ? 'equipe' : undefined) ? { fil: 'equipe' as const } : {}), ...(a?.message ?? depuis?.message ? { message: a?.message ?? depuis?.message } : {}), ...(a?.budget ? { budget: a.budget } : {}) }
         const id = await enregistrerActionLibre(magasin, l)
         if (!a) notifierTache(magasin, id, clesDesPorteurs(reseau, magasin, porteursDe(l)).filter((c) => !mesCles(profil).includes(c)))
         return a ? 'Tâche mise à jour.' : 'Tâche ajoutée.'

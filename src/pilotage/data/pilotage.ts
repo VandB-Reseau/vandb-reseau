@@ -1,6 +1,8 @@
 import type { RubriqueFEC } from '../moteur/fec'
 import type { Role } from '../auth/roles'
 import { pilotage } from '../lib/supabase'
+import { notifier } from '../../lib/notifications'
+import { changerStatutTache, creerTache, lireTaches, retirerTache } from './taches'
 import { annees, anneeSuivi } from './annees'
 import { calculerBudget } from '../moteur/budget'
 import { appliquerCibles, niveauxReseau, type Cibles, type NiveauCibles, type Provenance } from '../moteur/cibles'
@@ -771,9 +773,13 @@ export async function chargerCommentairesOuverts(annee: number): Promise<Record<
   return n
 }
 export async function envoyerCommentaire(magasin: string, annee: number, c: { ancre: string; libelle: string; texte: string; parent?: number }) {
-  verifier(await pilotage().from('echanges_budget').insert({
+  const r = await pilotage().from('echanges_budget').insert({
     store_name: magasin, annee, texte: c.texte.trim(), ...(c.parent ? { parent: c.parent } : { ancre: c.ancre, ancre_libelle: c.libelle.slice(0, 160) }),
-  }))
+  }).select('id')
+  verifier(r)
+  // Notification sur le téléphone des autres comptes du magasin (fusion, Joseph 03/11/2026, décision 4)
+  const id = Number((r.data as { id?: unknown }[] | null)?.[0]?.id)
+  if (Number.isInteger(id) && id > 0) notifier('budget', [id])
 }
 export async function resoudreCommentaire(id: number, resolu: boolean) {
   verifier(await pilotage().rpc('resoudre_commentaire', { p_id: id, p_resolu: resolu }))
@@ -796,15 +802,19 @@ export async function retirerVersionNommee(id: number) {
   verifier(await pilotage().from('versions_nommees').delete().eq('id', id))
 }
 
-// Plan d'action (lot 21) : auteur posé par la base ; le franchisé ne change que le statut
+// Plan d'action (lot 21) : depuis la fusion (04/11/2026), chaque action est une tâche du réseau qui garde sa mesure
+// (src/pilotage/data/taches.ts). Les anciennes lignes de pilotage.actions pas encore reprises (migration 0039 pas passée)
+// restent lues et modifiables là où elles sont ; id texte : tâche du réseau, id nombre : ancienne action.
 export type StatutAction = 'a_faire' | 'faite' | 'abandonnee'
 export type Responsable = 'franchise' | 'coach' | 'rr' | 'directeur'
 export interface Action {
-  id: number; magasin: string; type: TypeAction; intitule: string; responsable: Responsable; echeance: string | null; statut: StatutAction
+  id: number | string; magasin: string; type: TypeAction; intitule: string; responsable: Responsable; echeance: string | null; statut: StatutAction
   annee: number; depart: Mesure | null; creeParRole: Role | null; creeParNom: string | null; creeLe: string; faiteLe: string | null
 }
 export interface NouvelleAction { magasin: string; type: TypeAction; intitule: string; responsable: Responsable; echeance: string | null; annee: number; depart: Mesure | null }
-export async function chargerActions(): Promise<Action[]> {
+const responsables: Responsable[] = ['franchise', 'coach', 'rr', 'directeur']
+const roles: Role[] = ['directeur', 'rr', 'coach', 'franchise']
+async function anciennesActions(): Promise<Action[]> {
   const lignes = await toutesLesLignes<{
     id: number; store_name: string; type_alerte: TypeAction; intitule: string; responsable: Responsable; echeance: string | null; statut: StatutAction
     annee: number; depart: number | null; mois_depart: number | null; cree_par_role: Role | null; cree_par_nom: string | null; cree_le: string; faite_le: string | null
@@ -815,17 +825,39 @@ export async function chargerActions(): Promise<Action[]> {
     creeLe: l.cree_le, faiteLe: l.faite_le,
   }))
 }
-export async function creerAction(a: NouvelleAction) {
-  verifier(await pilotage().from('actions').insert({
-    store_name: a.magasin, type_alerte: a.type, intitule: a.intitule.trim(), responsable: a.responsable, echeance: a.echeance, annee: a.annee,
-    depart: a.depart?.valeur ?? null, mois_depart: a.depart?.mois ?? null,
-  }))
+export async function chargerActions(): Promise<Action[]> {
+  const [taches, anciennes] = await Promise.all([lireTaches().catch(() => ({})), anciennesActions().catch(() => [] as Action[])])
+  const reprises = new Set<number>()
+  const duReseau: Action[] = []
+  for (const [magasin, liste] of Object.entries(taches)) {
+    for (const t of liste) {
+      const b = t.budget
+      if (!b) continue
+      if (b.origine) reprises.add(b.origine)
+      duReseau.push({
+        id: t.id, magasin, type: b.type as TypeAction, intitule: t.action,
+        responsable: responsables.includes(b.responsable as Responsable) ? b.responsable as Responsable : 'franchise',
+        echeance: /^\d{4}-\d{2}-\d{2}$/.test(t.echeance) ? t.echeance : null, statut: t.faite ? (b.abandonnee ? 'abandonnee' : 'faite') : 'a_faire',
+        annee: b.annee, depart: b.depart, creeParRole: roles.includes(b.role as Role) ? b.role as Role : null, creeParNom: t.auteur ?? null,
+        creeLe: t.creeLe, faiteLe: t.faite ?? null,
+      })
+    }
+  }
+  return [...anciennes.filter((a) => !reprises.has(a.id as number)), ...duReseau].sort((a, b) => a.creeLe.localeCompare(b.creeLe))
 }
-export async function changerStatutAction(id: number, statut: StatutAction) {
-  verifier(await pilotage().from('actions').update({ statut }).eq('id', id))
+export async function creerAction(a: NouvelleAction, role: Role | null = null) {
+  await creerTache({
+    magasin: a.magasin, intitule: a.intitule, echeance: a.echeance,
+    budget: { type: a.type, annee: a.annee, responsable: a.responsable, depart: a.depart ? { valeur: a.depart.valeur, mois: a.depart.mois } : null, ...(role ? { role } : {}) },
+  })
 }
-export async function retirerAction(id: number) {
-  verifier(await pilotage().from('actions').delete().eq('id', id))
+export async function changerStatutAction(a: Pick<Action, 'id' | 'magasin'>, statut: StatutAction) {
+  if (typeof a.id === 'string') return changerStatutTache(a.magasin, a.id, statut)
+  verifier(await pilotage().from('actions').update({ statut }).eq('id', a.id))
+}
+export async function retirerAction(a: Pick<Action, 'id' | 'magasin'>) {
+  if (typeof a.id === 'string') return retirerTache(a.magasin, a.id)
+  verifier(await pilotage().from('actions').delete().eq('id', a.id))
 }
 
 // Valeur du stock en fin de mois (migration 0023, 03/11/2026) : Cave et Bar au prix d'achat HT, saisis chaque mois.
