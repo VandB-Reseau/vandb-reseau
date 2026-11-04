@@ -23,6 +23,7 @@ import { ecartPts, ecartTaux, montant, MOIS_LONGS } from '../lib/format'
 import { universLibelle } from '../moteur/types'
 import { effetAction, mesureDeAlerte, type Alerte, type Mesure, type TypeAction, type TypeAlerte } from '../moteur/alertes'
 import { anneeSuivi } from '../data/annees'
+import { useAuth } from '../auth/AuthContext'
 
 const RESPONSABLES: Responsable[] = ['franchise', 'coach', 'rr', 'directeur']
 export const typeActionLibelle: Record<TypeAction, string> = { ...typeAlerteLibelle, autre: 'Autre' }
@@ -84,6 +85,7 @@ function PlanAction({ magasin, equipe, alertes, actions, mesures, recharger, dep
   setDepuis: (a: Alerte | 'autre' | null) => void
   intituleInitial: string
 }) {
+  const { profil } = useAuth()
   const [voirFaites, setVoirFaites] = useState(false)
   const [occupe, setOccupe] = useState(false)
   const [probleme, setProbleme] = useState<string | null>(null)
@@ -121,14 +123,14 @@ function PlanAction({ magasin, equipe, alertes, actions, mesures, recharger, dep
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           {a.statut === 'a_faire' ? (
             <>
-              <Button variant="outlined" startIcon={<CheckOutlined />} disabled={occupe} onClick={() => void agir(() => changerStatutAction(a.id, 'faite'))} sx={{ minHeight: 48 }} aria-label={`Faite : ${a.intitule}`}>Faite</Button>
-              <Button disabled={occupe} onClick={() => void agir(() => changerStatutAction(a.id, 'abandonnee'))} sx={{ minHeight: 48 }} aria-label={`Abandonner : ${a.intitule}`}>Abandonner</Button>
+              <Button variant="outlined" startIcon={<CheckOutlined />} disabled={occupe} onClick={() => void agir(() => changerStatutAction(a, 'faite'))} sx={{ minHeight: 48 }} aria-label={`Faite : ${a.intitule}`}>Faite</Button>
+              {(equipe || typeof a.id === 'number') && <Button disabled={occupe} onClick={() => void agir(() => changerStatutAction(a, 'abandonnee'))} sx={{ minHeight: 48 }} aria-label={`Abandonner : ${a.intitule}`}>Abandonner</Button>}
             </>
           ) : (
-            <Button startIcon={<ReplayOutlined />} disabled={occupe} onClick={() => void agir(() => changerStatutAction(a.id, 'a_faire' as StatutAction))} sx={{ minHeight: 48 }} aria-label={`Rouvrir : ${a.intitule}`}>Rouvrir</Button>
+            <Button startIcon={<ReplayOutlined />} disabled={occupe} onClick={() => void agir(() => changerStatutAction(a, 'a_faire' as StatutAction))} sx={{ minHeight: 48 }} aria-label={`Rouvrir : ${a.intitule}`}>Rouvrir</Button>
           )}
           {equipe && (
-            <IconButton disabled={occupe} onClick={() => void agir(() => retirerAction(a.id))} sx={{ width: 48, height: 48 }} aria-label={`Retirer : ${a.intitule}`}><DeleteOutlined /></IconButton>
+            <IconButton disabled={occupe} onClick={() => void agir(() => retirerAction(a))} sx={{ width: 48, height: 48 }} aria-label={`Retirer : ${a.intitule}`}><DeleteOutlined /></IconButton>
           )}
         </Box>
       </Box>
@@ -148,7 +150,7 @@ function PlanAction({ magasin, equipe, alertes, actions, mesures, recharger, dep
         <NouvelleActionForm
           key={depuis === 'autre' ? `autre-${intituleInitial}` : `${depuis.type}-${texteAlerte(depuis)}`}
           magasin={magasin} alertes={alertes} depuis={depuis} occupe={occupe} intituleInitial={intituleInitial}
-          valider={(a) => void agir(async () => { await creerAction(a); setDepuis(null) })}
+          valider={(a) => void agir(async () => { await creerAction(a, profil?.role ?? null); setDepuis(null) })}
           annuler={() => setDepuis(null)}
         />
       )}

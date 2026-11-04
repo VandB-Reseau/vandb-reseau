@@ -114,6 +114,10 @@ export function useReseau(): EtatReseau {
   return c
 }
 
+// Réseau du compte quand l'écran est sous ReseauProvider (budget dans la fiche), sinon null (espace du contrôle de gestion)
+// eslint-disable-next-line react-refresh/only-export-components
+export const useReseauSiDispo = () => useContext(Ctx)
+
 // Visage choisi pour une personne, hors du réseau (écran de connexion, tests) : aucun
 // eslint-disable-next-line react-refresh/only-export-components
 export const useVisage = (nom: string) => useContext(Ctx)?.visages.get(nom)

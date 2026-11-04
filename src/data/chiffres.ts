@@ -17,8 +17,10 @@ export interface ChiffreMois {
   tickets: number | null // flux cumulé
   panier: number | null
   marge: number | null // en %
+  // Fusion avec le pilotage (Joseph, 03/11/2026) : un mois importé de la caisse ne se saisit plus à la main
+  source?: 'caisse' | 'saisie'
 }
-export type ChampChiffre = Exclude<keyof ChiffreMois, 'magasin' | 'mois'>
+export type ChampChiffre = Exclude<keyof ChiffreMois, 'magasin' | 'mois' | 'source'>
 export const colonnesChiffres: Record<ChampChiffre, string> = {
   caExt: 'ca_ext', pmCave: 'pm_cave', fluxCave: 'flux_cave', pmBar: 'pm_bar', fluxBar: 'flux_bar',
   caCave: 'ca_cave', caBar: 'ca_bar', tickets: 'freq', panier: 'panier', marge: 'marge',

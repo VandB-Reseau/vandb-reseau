@@ -50,7 +50,7 @@ export async function couperNotifications() {
 }
 
 // Envoi après un message, un compte rendu ou une mise à la une : sans effet si la fonction n'est pas en place
-export function notifier(type: 'message' | 'visite' | 'une', ids: number[]) {
+export function notifier(type: 'message' | 'visite' | 'une' | 'budget', ids: number[]) {
   if (!ids.length) return
   void supabase.functions.invoke('notifier', { body: { type, ids } }).catch(() => { /* la notification dans l'app reste */ })
 }

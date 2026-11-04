@@ -346,10 +346,14 @@ export async function simulerPilotage(page: Page, options: OptionsSimulation = {
         const id = new URLSearchParams(filtre).get('user_id')?.replace(/^eq\./, '')
         controleGestion = controleGestion.filter((c) => c.user_id !== id)
       }
+      if (table === 'echanges_budget' && req.method() === 'POST') return route.fulfill({ status: 201, json: [{ id: messages.at(-1)?.id }] })
       if (table === 'groupe_magasins' && m) m.groupe_id = req.method() === 'DELETE' ? null : (corps as { groupe_id: number }).groupe_id
       return route.fulfill({ status: 204, body: '' })
     }
     if (table === 'reel_mensuel' || table === 'reel_tickets') return route.fulfill({ json: filtrer(reel[table], url.searchParams) })
+    // Groupe budgétaire d'un magasin, lu par sa fiche (fusion, 0039)
+    if (table === 'groupes') return route.fulfill({ json: groupes.map((g) => ({ id: g.id, nom: g.nom })).sort((a, b) => a.nom.localeCompare(b.nom)) })
+    if (table === 'groupe_magasins') return route.fulfill({ json: filtrer(magasins.filter((x) => x.groupe_id !== null).map((x) => ({ store_name: x.magasin, groupe_id: x.groupe_id })), url.searchParams) })
     // Pages de 1 000 lignes au plus, comme l'API
     const page = <T,>(l: T[]) => { const de = Number(url.searchParams.get('offset') ?? 0); return l.slice(de, de + Math.min(1000, Number(url.searchParams.get('limit') ?? 1000))) }
     if (table === 'equipe') return route.fulfill({ json: page(equipe) })

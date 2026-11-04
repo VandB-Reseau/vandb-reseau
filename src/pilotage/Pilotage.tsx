@@ -7,6 +7,11 @@ import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import { ThemeProvider } from '@mui/material/styles'
 import { useApercu } from '../auth/Apercu'
+import { useAuthSiDispo } from '../auth/AuthContext'
+import { useReseauSiDispo } from '../data/ReseauContext'
+import { monNomPorteur } from '../data/actions'
+import { mesCles } from '../data/messagerie'
+import { pont } from './data/taches'
 import { PilotageAuthProvider, useAuth } from './auth/AuthContext'
 import { estDirecteur, estEquipe, voitParametres, type Profil } from './auth/roles'
 import { GardeSaisie } from './components/GardeSaisie'
@@ -78,7 +83,20 @@ function SansApercu({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+// Le budget crée et lit ses tâches dans la liste du réseau : réseau et compte de l'app posés avant les écrans
+// (posés pendant le rendu, car les écrans enfants chargent leurs données avant les effets du parent)
+function usePontReseau() {
+  const etat = useReseauSiDispo()
+  const auth = useAuthSiDispo()
+  const profil = auth?.profil ?? null
+  pont.courant = {
+    reseau: etat?.complet ?? etat?.reseau ?? null, franchise: profil?.role === 'franchise', mesCles: mesCles(profil),
+    nom: etat?.reseau ? monNomPorteur(etat.reseau, profil) || profil?.nom || '' : profil?.nom ?? '', recharger: etat?.recharger ?? null,
+  }
+}
+
 export function ZonePilotage({ children }: { children: (p: Profil) => ReactNode }) {
+  usePontReseau()
   return (
     <ThemeProvider theme={theme}>
       <GlobalStyles styles={impression} />

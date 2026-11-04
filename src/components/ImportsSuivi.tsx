@@ -104,12 +104,16 @@ export function DialogImportChiffres({ reseau, fichier, onFermer }: { reseau: Re
   }
   // Fichier déjà choisi depuis la carte du référentiel
   useEffect(() => { if (fichier) void choisir(fichier) }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  const total = res?.lignes.length ?? 0
-  const mois = res ? [...new Set(res.lignes.map((l) => l.mois))].sort() : []
-  const nbMag = res ? new Set(res.lignes.map((l) => l.magasin)).size : 0
+  // Les mois déjà importés de la caisse ne sont pas remplacés (fusion avec le pilotage, Joseph 03/11/2026)
+  const deCaisse = (l: { magasin: string; mois: string }) => reseau.chiffres[l.magasin]?.find((c) => c.mois === l.mois)?.source === 'caisse'
+  const lignes = res ? res.lignes.filter((l) => !deCaisse(l)) : []
+  const ecartees = (res?.lignes.length ?? 0) - lignes.length
+  const total = lignes.length
+  const mois = [...new Set(lignes.map((l) => l.mois))].sort()
+  const nbMag = new Set(lignes.map((l) => l.magasin)).size
   return (
     <Fenetre large titre="Importer les chiffres mensuels" ouvert onFermer={onFermer} valide={total > 0}
-      enregistrer={async () => { await enregistrerChiffres(res!.lignes.map((l) => completerChiffres(l, reseau.chiffres[l.magasin]?.find((c) => c.mois === l.mois)))); return `${total} mois de chiffres importé${total > 1 ? 's' : ''}` }}>
+      enregistrer={async () => { await enregistrerChiffres(lignes.map((l) => completerChiffres(l, reseau.chiffres[l.magasin]?.find((c) => c.mois === l.mois)))); return `${total} mois de chiffres importé${total > 1 ? 's' : ''}` }}>
       <Button variant="outlined" component="label" startIcon={<UploadFileOutlined />} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>
         {nomFichier || 'Choisir un fichier'}
         <input type="file" hidden accept=".xlsx,.csv,.txt" aria-label="Fichier de chiffres à importer" onChange={(e) => choisir(e.target.files?.[0])} />
@@ -126,6 +130,7 @@ export function DialogImportChiffres({ reseau, fichier, onFermer }: { reseau: Re
             </Box>
           )}
           {res.ignorees.length > 0 && <Typography variant="body2" color="text.secondary">Colonnes ignorées : {res.ignorees.join(', ')}.</Typography>}
+          {ecartees > 0 && <Typography variant="body2" color="text.secondary">{ecartees} mois déjà importé{ecartees > 1 ? 's' : ''} de la caisse, laissé{ecartees > 1 ? 's' : ''} tel{ecartees > 1 ? 's' : ''} quel{ecartees > 1 ? 's' : ''}.</Typography>}
           {res.inconnus.length > 0 && <Typography variant="body2" color="text.secondary">Magasins non trouvés ({res.inconnus.length}) : {res.inconnus.slice(0, 12).join(', ')}{res.inconnus.length > 12 ? '…' : ''}</Typography>}
           {res.illisibles > 0 && <Typography variant="body2" color="text.secondary">{res.illisibles} case{res.illisibles > 1 ? 's' : ''} avec une valeur non reconnue, laissée{res.illisibles > 1 ? 's' : ''} de côté.</Typography>}
         </>

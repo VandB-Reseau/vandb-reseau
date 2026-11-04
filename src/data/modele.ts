@@ -186,7 +186,10 @@ export interface Document { label: string; url: string }
 export interface ActionPlan { id?: string; action: string; porteur: string; echeance: string; faite?: string; faitePar?: string; pieces?: Piece[] }
 // Action ajoutée hors visite, sur un magasin (app_config, clé actions, par magasin)
 // fil : tâche née dans « Équipe seule » (sa carte s'affiche dans ce fil) ; message : message d'où elle vient
-export interface ActionLibre extends ActionPlan { id: string; creeLe: string; auteur?: string; fil?: 'equipe'; message?: number }
+// Tâche née d'une alerte du budget (fusion du 04/11/2026) : type d'alerte, année, responsable et valeur de départ
+// gardés pour mesurer l'effet ; origine : numéro de l'action du pilotage reprise
+export interface TacheBudget { type: string; annee: number; responsable: string; depart: { valeur: number; mois: number | null } | null; abandonnee?: boolean; origine?: number; role?: string }
+export interface ActionLibre extends ActionPlan { id: string; creeLe: string; auteur?: string; fil?: 'equipe'; message?: number; budget?: TacheBudget }
 
 export interface Visite {
   id: number | null
