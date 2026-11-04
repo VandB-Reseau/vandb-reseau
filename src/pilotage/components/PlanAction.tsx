@@ -120,7 +120,7 @@ function PlanAction({ magasin, equipe, alertes, actions, mesures, recharger, dep
             </Typography>
           )}
         </Box>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        {!profil?.apercu && <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           {a.statut === 'a_faire' ? (
             <>
               <Button variant="outlined" startIcon={<CheckOutlined />} disabled={occupe} onClick={() => void agir(() => changerStatutAction(a, 'faite'))} sx={{ minHeight: 48 }} aria-label={`Faite : ${a.intitule}`}>Faite</Button>
@@ -132,7 +132,7 @@ function PlanAction({ magasin, equipe, alertes, actions, mesures, recharger, dep
           {equipe && (
             <IconButton disabled={occupe} onClick={() => void agir(() => retirerAction(a))} sx={{ width: 48, height: 48 }} aria-label={`Retirer : ${a.intitule}`}><DeleteOutlined /></IconButton>
           )}
-        </Box>
+        </Box>}
       </Box>
     )
   }

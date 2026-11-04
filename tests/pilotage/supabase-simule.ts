@@ -380,6 +380,9 @@ export async function simulerPilotage(page: Page, options: OptionsSimulation = {
       if (objet) return lignes.length ? route.fulfill({ json: lignes[0] }) : route.fulfill({ status: 406, json: { code: 'PGRST116', message: 'no rows' } })
       return route.fulfill({ json: lignes })
     }
+    if (req.method() === 'GET' && table === 'annees') return route.fulfill({ status: 404, json: { code: '42P01', message: 'relation "pilotage.annees" does not exist' } })
+    // Autres tables du budget (lues entières par la sauvegarde complète) : vides dans le réseau fictif
+    if (req.method() === 'GET' && ['budgets', 'cibles_reseau', 'cibles_groupe', 'frais_archives', 'reel_mensuel', 'reel_tickets', 'journal_migrations'].includes(table)) return route.fulfill({ json: [] })
     return route.fulfill({ status: 404, json: { message: 'inconnu' } })
   })
   return ecritures

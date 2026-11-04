@@ -12,10 +12,10 @@ import { useReseauSiDispo } from '../data/ReseauContext'
 import { monNomPorteur } from '../data/actions'
 import { mesCles } from '../data/messagerie'
 import { pont } from './data/taches'
+import { apercuPilotage } from './lib/apercu'
 import { PilotageAuthProvider, useAuth } from './auth/AuthContext'
 import { estDirecteur, estEquipe, voitParametres, type Profil } from './auth/roles'
 import { GardeSaisie } from './components/GardeSaisie'
-import { EtatVide } from './components/EtatVide'
 import { anneeSuivi, chargerAnnees, ecouterAnnees } from './data/annees'
 import { anneeBudget, oublier } from './data/pilotage'
 import { Hypotheses } from './pages/Hypotheses'
@@ -75,11 +75,16 @@ function Chargeur({ children }: { children: (p: Profil) => ReactNode }) {
   return <>{children(profil)}</>
 }
 
-// Le budget se lit avec les droits du compte connecté : un aperçu « Voir comme » montrerait les chiffres du Directeur
-// sous le profil d'un autre (Joseph, 03/11/2026 : « Voir comme » sur le budget viendra plus tard)
-function SansApercu({ children }: { children: ReactNode }) {
+// « Voir comme » (Joseph, 04/11/2026) : le budget se lit avec les droits du Directeur, limité aux magasins de la personne
+// vue (ceux du franchisé, ou le périmètre du Coach ou du RR) et en lecture seule (src/pilotage/lib/supabase.ts)
+function PerimetreApercu({ children }: { children: ReactNode }) {
   const { apercu, equipe } = useApercu()
-  if (apercu || equipe) return <EtatVide titre="Le budget ne se voit pas en aperçu" texte="Quitte l’aperçu pour retrouver les budgets et le suivi avec ton propre compte." />
+  const etat = useReseauSiDispo()
+  const noms = apercu ? apercu.magasins : equipe ? etat?.reseau?.magasins.map((m) => m.nom) ?? null : null
+  if (equipe && !noms) return <Box sx={{ py: 8, display: 'grid', placeItems: 'center' }}><CircularProgress aria-label="Chargement du budget" /></Box>
+  const cle = apercu ? `franchise|${apercu.franchise}|${noms!.join(',')}` : equipe ? `equipe|${equipe.cle}|${noms!.join(',')}` : ''
+  // Changement de personne vue : les lectures gardées en mémoire étaient celles d'un autre périmètre
+  if (cle !== apercuPilotage.cle) { apercuPilotage.cle = cle; apercuPilotage.magasins = cle ? new Set(noms) : null; oublier() }
   return <>{children}</>
 }
 
@@ -100,13 +105,13 @@ export function ZonePilotage({ children }: { children: (p: Profil) => ReactNode 
   return (
     <ThemeProvider theme={theme}>
       <GlobalStyles styles={impression} />
-      <SansApercu>
+      <PerimetreApercu>
         <PilotageAuthProvider>
           <GardeSaisie>
             <Chargeur>{children}</Chargeur>
           </GardeSaisie>
         </PilotageAuthProvider>
-      </SansApercu>
+      </PerimetreApercu>
     </ThemeProvider>
   )
 }

@@ -6,6 +6,7 @@ import { clesDesPorteurs, porteursDu } from '../../data/actions'
 import { chargerEspaceFranchise, marquerActionFranchise } from '../../data/espaceFranchise'
 import type { ActionLibre, Reseau } from '../../data/modele'
 import { notifierTache } from '../../lib/notifications'
+import { dansApercu } from '../lib/apercu'
 
 // Réseau du compte, posé par la zone du budget quand elle est dans l'app (fiche, menu Budgets) ; absent pour le contrôle de gestion
 export interface PontReseau { reseau: Reseau | null; franchise: boolean; mesCles: string[]; nom: string; recharger: (() => Promise<void>) | null }
@@ -32,6 +33,7 @@ export function porteurPour(magasin: string, responsable: string): string {
 
 export interface NouvelleTache { magasin: string; intitule: string; echeance: string | null; budget: NonNullable<ActionLibre['budget']> }
 export async function creerTache(t: NouvelleTache) {
+  if (dansApercu()) throw new Error('apercu')
   const porteur = porteurPour(t.magasin, t.budget.responsable)
   const id = await enregistrerActionLibre(t.magasin, {
     action: t.intitule.trim(), porteur, echeance: t.echeance ?? '', creeLe: aujourdhui(),
@@ -44,6 +46,7 @@ export async function creerTache(t: NouvelleTache) {
 
 // Faite, rouverte ou abandonnée (abandonnée = fermée avec la mention) ; le franchisé ne fait que cocher ou décocher
 export async function changerStatutTache(magasin: string, id: string, statut: 'a_faire' | 'faite' | 'abandonnee') {
+  if (dansApercu()) throw new Error('apercu')
   if (pont.courant?.franchise) {
     await marquerActionFranchise(magasin, statut !== 'a_faire', { libre: id })
   } else {
@@ -58,6 +61,7 @@ export async function changerStatutTache(magasin: string, id: string, statut: 'a
 }
 
 export async function retirerTache(magasin: string, id: string) {
+  if (dansApercu()) throw new Error('apercu')
   await supprimerActionLibre(magasin, id)
   rafraichirReseau()
 }

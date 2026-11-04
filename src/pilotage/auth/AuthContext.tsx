@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useAuth as useAuthReseau } from '../../auth/AuthContext'
+import { useApercu } from '../../auth/Apercu'
 import { pilotage } from '../lib/supabase'
 import type { Profil } from './roles'
 
@@ -21,6 +22,7 @@ export async function lireDroits(): Promise<{ parametreur: boolean; controleGest
 
 export function PilotageAuthProvider({ children }: { children: ReactNode }) {
   const { profil } = useAuthReseau()
+  const { apercu, equipe } = useApercu()
   const [droits, setDroits] = useState<{ id: string; parametreur: boolean; controleGestion: boolean } | null>(null)
   const id = profil?.id ?? null
   useEffect(() => {
@@ -32,7 +34,11 @@ export function PilotageAuthProvider({ children }: { children: ReactNode }) {
   const pret = !!profil && droits?.id === profil.id
   const valeur: EtatPilotage = {
     pret,
-    profil: profil && pret ? { id: profil.id, email: profil.email, nom: profil.nom, role: profil.role, parametreur: droits!.parametreur, controleGestion: droits!.controleGestion } : null,
+    // « Voir comme » : le rôle de la personne vue, sans les droits propres du Directeur (paramètres, contrôle de gestion)
+    profil: !profil || !pret ? null
+      : apercu ? { id: profil.id, email: profil.email, nom: apercu.franchise, role: 'franchise', apercu: true }
+      : equipe ? { id: profil.id, email: profil.email, nom: profil.nom, role: profil.role, apercu: true }
+      : { id: profil.id, email: profil.email, nom: profil.nom, role: profil.role, parametreur: droits!.parametreur, controleGestion: droits!.controleGestion },
   }
   return <Ctx.Provider value={valeur}>{children}</Ctx.Provider>
 }

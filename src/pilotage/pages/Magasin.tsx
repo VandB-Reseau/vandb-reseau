@@ -217,7 +217,7 @@ export function Magasin({ nom }: { nom: string }) {
   const resolu = hypothesesDe(ligne, d, brouillon)
   const b = resolu ? calculerBudget(resolu.hypotheses, parametres) : null
   const modifie = JSON.stringify(brouillon) !== JSON.stringify(ligne.ajustements)
-  const peutAjuster = (directeur || profil?.role === 'franchise') && !!ligne.base && ligne.statut !== 'valide'
+  const peutAjuster = (directeur || profil?.role === 'franchise') && !profil?.apercu && !!ligne.base && ligne.statut !== 'valide'
   const nbEcarts = resolu ? ecarts(resolu.provenance).length : 0
   // Lot 35 : frais du budget à partir des frais de l'année en cours ; inflation des frais pour les lignes sans choix
   const baseFrais = ligne.base ? avecEquipeEtFrais(ligne.base, d.equipes[ligne.magasin], d.frais[ligne.magasin], d.comptes?.[ligne.magasin], d.prets?.[ligne.magasin]) : null
@@ -511,7 +511,7 @@ export function Magasin({ nom }: { nom: string }) {
                 budget={{ annee, statut: ligne.statut, avant: campagneDe(parametres, annee).validation }} aEquipe={!!d.equipes[ligne.magasin]?.length} aFrais={!!d.frais[ligne.magasin]?.length}
               />
             )}
-            <AlertesEtActions key={`alertes-${ligne.magasin}`} magasin={ligne.magasin} equipe={!franchise && profil?.role !== 'aucun'} proposition={proposition} />
+            <AlertesEtActions key={`alertes-${ligne.magasin}`} magasin={ligne.magasin} equipe={!franchise && profil?.role !== 'aucun' && !profil?.apercu} proposition={proposition} />
           </>}
           conclusion={<SuiviBudget key={`conclusion-${ligne.magasin}`} magasin={ligne.magasin} annee={anneeEnCours} allerA={aller} vue="conclusion" />}
           detail={<>

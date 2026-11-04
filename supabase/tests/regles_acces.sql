@@ -798,3 +798,24 @@ SELECT pg_temp.attendre('Tâches : il la coche faite, la mesure reste',
 RESET ROLE;
 SELECT pg_temp.attendre('Tâches : faite par le franchisé, mesure gardée',
   (SELECT count(*) FROM pg_temp.tache('Lille', 'Relancer la vente additionnelle') t WHERE t ? 'faite' AND t->'budget'->>'type' = 'ca'), 1);
+
+-- Archive des chiffres saisis (0040) : copie complète, aucun accès depuis l'app, bilan pour le Directeur seul
+RESET request.jwt.claim.sub;
+\ir ../migrations/0040_archive_store_finance.sql
+SELECT pg_temp.attendre('Archive : chaque ligne saisie est copiée', (SELECT count(*) FROM public.archive_store_finance), (SELECT count(*) FROM public.store_finance));
+SELECT pg_temp.attendre('Archive : la ligne entière est gardée',
+  (SELECT count(*) FROM public.archive_store_finance a JOIN public.store_finance f USING (store_name, month) WHERE a.ligne = to_jsonb(f)), (SELECT count(*) FROM public.store_finance));
+SELECT pg_temp.attendre('Archive : rien n''est supprimé de store_finance', (SELECT count(*) FROM public.store_finance WHERE store_name IN ('Lille', 'Nice') AND month = '2026-09-01'), 2);
+SELECT pg_temp.attendre('Bilan : un mois couvert par la caisse est compté couvert',
+  (SELECT count(*) FROM public.couverture_caisse() b WHERE b.store_name = 'Lille' AND b.mois_couverts >= 1), 1);
+SELECT pg_temp.attendre('Bilan : septembre 2026 de Nice n''a pas de caisse',
+  (SELECT count(*) FROM public.couverture_caisse() b WHERE b.store_name = 'Nice' AND '2026-09' = ANY(b.mois_sans_caisse)), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT pg_temp.attendre('Bilan : le Directeur le lit', pg_temp.refuse('SELECT count(*) FROM public.couverture_caisse()'), 0);
+SELECT pg_temp.attendre('Archive : le Directeur ne lit pas la table depuis l''app', pg_temp.refuse('SELECT count(*) FROM public.archive_store_finance'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Bilan : le Coach ne le lit pas', pg_temp.refuse('SELECT count(*) FROM public.couverture_caisse()'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Bilan : le franchisé ne le lit pas', pg_temp.refuse('SELECT count(*) FROM public.couverture_caisse()'), 1);
+RESET ROLE;

@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fin de la fusion (Joseph, 04/11/2026), migration `0040_archive_store_finance` à passer :
+  - Chiffres saisis à la main : copie complète dans `archive_store_finance` et bilan des mois couverts ou non par la
+    caisse (`couverture_caisse()`, affiché à la fin du script). Rien n'est supprimé avant le feu vert de Joseph.
+  - Sauvegarde complète : les tables du budget y sont (« pilotage.<table> »).
+  - « Voir comme » : le budget se voit en aperçu, limité aux magasins de la personne vue, en lecture seule.
+
 - Fusion, suite (Joseph, 04/11/2026), migration `0039_fusion_caisse_budgets` à passer, puis redéployer la fonction `notifier` :
   - Le CA vient de la caisse : un mois importé de la caisse passe devant les chiffres saisis, partout (fiche, santé,
     repères du réseau, challenges, espace du franchisé). Il ne se saisit plus à la main ni ne s'importe par fichier ;
