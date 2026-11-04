@@ -1,4 +1,5 @@
 // Réseau fictif pour les tests (aucune donnée réelle : dépôt public)
+import './horloge'
 const villes = ['Lyon', 'Annecy', 'Nantes', 'Rennes', 'Bordeaux', 'Toulouse', 'Lille', 'Metz', 'Nice', 'Dijon', 'Tours', 'Brest', 'Pau', 'Reims', 'Caen', 'Nîmes', 'Angers', 'Vannes', 'Gap', 'Albi', 'Sète', 'Agen', 'Laval', 'Niort', 'Blois', 'Arles', 'Auch', 'Dax', 'Rodez', 'Vichy']
 const depts = ['69', '74', '44', '35', '33', '31', '59', '57', '06', '21', '37', '29', '64', '51', '14', '30', '49', '56', '05', '81', '34', '47', '53', '79', '41', '13', '32', '40', '12', '03']
 export const COACHS = ['Camille TESTARD', 'Hugo FICTIF', 'Inès EXEMPLE', 'Noé MODELE']

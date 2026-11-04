@@ -17,7 +17,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   - Contrôle de gestion : un compte sans rôle dans le réseau, désigné dans les paramètres des budgets, ouvre un espace
     réduit aux budgets.
   - « Voir comme » ne montre pas le budget pour l'instant. Pas de migration dans ce dépôt : le schéma `pilotage` reste
-    tenu par le dépôt du pilotage (dernière migration : `0028_preparation_fusion`).
+    tenu par le dépôt du pilotage (dernière migration : `0029_controle_gestion_chiffres`).
+  - Tests : date figée au 27/10/2026 (`tests/horloge.ts`) ; depuis novembre, une dizaine de tests échouaient avec le
+    calendrier et bloquaient la mise en ligne.
 
 - Sprint 27 (Joseph, 26/10/2026), migration `0038_concurrents_mot_franchise` à passer :
   - S1 Tâches : les listes sont des puces visibles avec leur nombre de tâches à faire (« Mes tâches », « Franchisés »,

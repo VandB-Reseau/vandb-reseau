@@ -19,6 +19,7 @@ React 19 + TypeScript + MUI 9 (thème `src/theme/theme.ts`), react-router (HashR
 - Base de données : tout changement (table, colonne, règle, fonction, rubrique de `suivi_magasins`) = une **nouvelle** migration `supabase/migrations/NNNN_sujet.sql`, réexécutable, sans jamais rouvrir un accès si elle est rejouée seule ; on ne modifie pas une migration déjà passée en ligne. Dans la même demande de fusion : `docs/base-de-donnees.md` à jour, contrôle ajouté dans `supabase/tests/regles_acces.sql` si un accès change, `npm run test:base` vert. Aucune règle « tout compte connecté » (`USING (true)`). Chaque migration ajoute sa ligne dans `journal_migrations`. Ne jamais faire repasser les anciens scripts hors dépôt (« Setup COMPLET », « verrouillage »).
 - Journal : chaque demande de fusion ajoute sa ligne dans `CHANGELOG.md` (section « À venir », puis rangée sous son sprint), avec la migration à passer s'il y en a une.
 - Chaque fonctionnalité livrée a ses tests Playwright sur les projets `pc` et `telephone`, avec Supabase simulé (`tests/supabase-simule.ts`).
+- Date des tests figée au 27/10/2026 à 10 h (`tests/horloge.ts`), côté test et dans la page : les données fictives ne vieillissent plus. Une date posée par `addInitScript` se calcule côté test et se passe en argument.
 
 - Dépôt **public** (choix de Joseph, 14/10/2026) : aucune donnée réelle ni clé dans le dépôt. Tests avec données fictives uniquement. Clé Supabase fournie par le secret GitHub `VITE_SUPABASE_ANON_KEY`.
 

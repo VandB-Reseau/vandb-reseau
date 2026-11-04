@@ -72,12 +72,13 @@ test('communications et bonnes pratiques réunies, filtrées ensemble', async ({
 
 test('le picto compte les communications et bonnes pratiques pas encore vues, puis retombe à zéro', async ({ page, isMobile }, info) => {
   // Appareil où l'onglet a déjà été ouvert, avant ces publications
-  await page.addInitScript(() => {
+  // Date calculée côté test : l'horloge des tests (tests/horloge.ts) vaut aussi pour la page
+  await page.addInitScript((vu: string) => {
     if (sessionStorage.getItem('pose')) return
-    localStorage.setItem('vandb-reseau-vu', new Date(Date.now() - 7 * 86_400_000).toISOString())
+    localStorage.setItem('vandb-reseau-vu', vu)
     localStorage.setItem('vandb-pratiques-vues', JSON.stringify(['bp_2']))
     sessionStorage.setItem('pose', '1')
-  })
+  }, new Date(Date.now() - 7 * 86_400_000).toISOString())
   await seConnecter(page, { communications, config: { bonnes_pratiques: pratiques } })
   // Coffrets de Noël (5 jours) et Dégustation du samedi
   await expect(infos(page)).toHaveAccessibleName('Infos réseau : 2 nouveautés')
