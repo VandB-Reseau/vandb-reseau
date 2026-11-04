@@ -24,6 +24,20 @@ React 19 + TypeScript + MUI 9 (thème `src/theme/theme.ts`), react-router (HashR
 
 - Charte graphique officielle V and B : `/mnt/project-files/charte/V_and_B_Guideline_charte.pdf` (hors dépôt).
 
+## Pilotage financier (`src/pilotage/`, fusion du 03/11/2026)
+- Venu de l'app « V and B Pilotage » (dépôt `VandB-Reseau/vandb-pilotage`, figé à la fusion). Menu « Budgets », onglet
+  « Budget » de la fiche magasin (équipe et franchisé), espace du contrôle de gestion. Ses données sont dans le schéma
+  `pilotage` de la même base ; ses migrations restent pour l'instant dans le dépôt du pilotage (`supabase/migrations/`).
+- Règles propres : montants HT dans tous les calculs (TTC pour la trésorerie et les paniers saisis) ; redevance 2 % et
+  publicité 1 % du CA HT, au-dessus de l'EBE ; tout calcul financier passe par le moteur pur `src/pilotage/moteur/`,
+  testé dans `tests/pilotage/moteur/` (projet Playwright `moteur`). L'aide s'ouvre seulement par l'icône (i)
+  (`src/pilotage/components/Aide.tsx`, textes dans `src/pilotage/lib/aide.ts`).
+- Accès du franchisé (exception écrite à la règle d'`espace_franchise()`) : dans le schéma `pilotage`, il lit et écrit
+  les lignes de ses magasins (`pilotage.mes_magasins()`), chaque règle contrôlée dans les tests de la base du pilotage ;
+  médianes et comparaisons du réseau ne lui arrivent jamais (`budgets_du_compte()` les retire).
+- « Voir comme » ne montre pas le budget (les chiffres viendraient des droits du Directeur) : écran « pas en aperçu ».
+- Tests navigateur dans `tests/pilotage/` : `simulerPilotage` (schéma `pilotage`) s'appelle après `simulerSupabase`.
+
 ## Documentation
 - `docs/architecture.md` (pile, dossiers, flux, rôles), `docs/base-de-donnees.md` (schéma), `supabase/README.md` (migrations), `CHANGELOG.md` (sprints). Les lire avant de toucher à la base.
 

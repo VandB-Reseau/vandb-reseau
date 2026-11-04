@@ -54,6 +54,10 @@ const chargeurs = {
 }
 // Espace franchisé : un seul fichier, jamais préchargé pour l'équipe
 const espace = () => import('./pages/EspaceFranchise')
+// Pilotage financier (budgets, suivi, saisies), venu de l'app de pilotage à la fusion : chargé à la demande
+const pilotage = () => import('./pilotage/Pilotage')
+const PagesBudgets = chargementDiffere(() => pilotage().then((m) => ({ default: m.PagesBudgets })))
+const SelonControleGestion = chargementDiffere(() => import('./pilotage/ControleGestion').then((m) => ({ default: m.SelonControleGestion })))
 const Direction = chargementDiffere(chargeurs.direction)
 const ChargeCoachs = chargementDiffere(chargeurs.charge)
 const Donnees = chargementDiffere(chargeurs.donnees)
@@ -175,6 +179,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/plus/evolution" element={<Navigate to="/parametres/evolution" replace />} />
         <Route path="/plus" element={<Plus />} />
         <Route path="/partage" element={<Partage />} />
+        <Route path="/budgets/*" element={<PagesBudgets />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>
@@ -200,6 +205,7 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
         <Route path="/bonnes-pratiques" element={<Navigate to="/infos?vue=pratiques" replace />} />
         <Route path="/echanges" element={<Echanges lectureSeule={apercu} />} />
         <Route path="/taches" element={<PageTaches />} />
+        <Route path="/budgets/*" element={<PagesBudgets />} />
         <Route path="/echanges/reseau" element={<Vers cible={(_p, r) => avec('/infos', r)} />} />
         <Route path="/echanges/:genre/:valeur" element={<Echanges lectureSeule={apercu} />} />
         {anciensLiens}
@@ -246,7 +252,9 @@ function EspaceDe({ bandeau }: { bandeau?: ReactNode }) {
   // Favoris, vues et canal Réseau du compte de l'équipe connecté, repris de la base (migration 0021)
   const equipe = !!profil && profil.role !== 'franchise' && profil.role !== 'aucun'
   useEffect(() => { if (equipe) chargerPreferences().catch(() => { /* table absente : l'appareil suffit */ }) }, [equipe])
-  if (!profil || profil.role === 'aucun') return <AccesFerme />
+  if (!profil) return <AccesFerme />
+  // Contrôle de gestion : compte sans rôle dans le réseau, désigné dans les paramètres des budgets
+  if (profil.role === 'aucun') return <Suspense fallback={null}><SelonControleGestion sinon={<AccesFerme />} /></Suspense>
   if (franchise || vueApercu) return <MessagerieProvider><ReseauProvider key={apercu?.franchise ?? 'franchise'} charger={charger} lectureSeule cache={vueApercu ? undefined : `${profil.id}:franchise`}><RoutesFranchise apercu={vueApercu} /></ReseauProvider></MessagerieProvider>
   return <MessagerieProvider><ReseauProvider key={cle ?? 'reseau'} accesFranchises={directeur} lectureSeule={!directeur} perimetre={perimetre} cache={`${profil.id}:reseau`}><Routes_ equipeSeule={!!perimetre} bandeau={bandeau} /></ReseauProvider></MessagerieProvider>
 }

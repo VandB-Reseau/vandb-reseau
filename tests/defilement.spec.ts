@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { seConnecter } from './supabase-simule'
 
 // Barre de défilement visible, comme sur un PC Windows (le navigateur de test la masque par défaut)
-test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } })
+test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'], ...(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {}) } })
 
 test('ouvrir un filtre ne décale pas la page', async ({ page, isMobile }) => {
   test.skip(isMobile, 'La barre de défilement ne concerne que le PC')

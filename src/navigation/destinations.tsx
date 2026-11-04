@@ -20,6 +20,8 @@ import MonitorHeart from '@mui/icons-material/MonitorHeart'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import TaskAlt from '@mui/icons-material/TaskAlt'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
+import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
+import RequestQuote from '@mui/icons-material/RequestQuote'
 import Insights from '@mui/icons-material/Insights'
 
 export interface Destination {
@@ -51,7 +53,11 @@ export const barreTelephone = principales.filter((d) => d !== magasins)
 
 // Suite de la partie classique : sous les principales dans le menu PC, dans « Plus » sur téléphone
 // Animation réseau (Joseph, 23/10/2026) : Directeur et Responsables Régionaux, qui créent ces contenus
+// Budgets (fusion avec le pilotage, Joseph 03/11/2026, option A) : sous Santé du parc ; budget et suivi d'un magasin
+// dans l'onglet « Budget » de sa fiche
+export const budgets: Destination = { chemin: '/budgets', libelle: 'Budgets', description: 'Budgets de l’année, suivi face au réel, hypothèses, imports de caisse', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Fusion' }
 export const secondaires: Destination[] = [
+  budgets,
   { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes, formations et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
   { chemin: '/animation', libelle: 'Animation réseau', court: 'Animation', description: 'Communications, bonnes pratiques, sondages, formations, réunions et campagnes, avec leur suivi', icone: <InsightsOutlined />, iconeActive: <Insights />, sprint: 'Animation', roles: ['directeur', 'rr'] },
 ]
@@ -69,6 +75,7 @@ export const parametres: Destination[] = [
 export const espaceFranchise: Destination[] = [
   { chemin: '/', libelle: 'Accueil', description: 'Mes chiffres, mes tâches, mes visites', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 11' },
   { chemin: '/magasins', libelle: 'Mes magasins', description: 'Fiche, chiffres, visites et campagnes', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 11' },
+  { chemin: '/budgets', libelle: 'Mon budget', court: 'Budget', description: 'Budget de l’année, suivi face au réel et saisies', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Fusion' },
   { ...messages, description: 'Mes magasins et mon équipe' },
   taches,
   // Communications et bonnes pratiques réunies, comme pour l'équipe (Joseph, 23/10/2026)

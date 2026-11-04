@@ -4,6 +4,8 @@ import { CartePratique, DialogPratique } from '../components/BonnesPratiques'
 import { useReactionsPratiques } from '../data/reactionsPratiques'
 import type { BonnePratique } from '../data/bonnesPratiques'
 import { Fragment, useEffect, useMemo, useState } from 'react'
+import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
+import { OngletBudget } from '../components/OngletBudget'
 import StarOutlined from '@mui/icons-material/StarOutlined'
 import StarBorderOutlined from '@mui/icons-material/StarBorderOutlined'
 import { basculerFavori, noterRecent, useSuivis } from '../lib/suivis'
@@ -83,12 +85,14 @@ import { cartouche } from '../components/Social'
 // Plus de fil, redondant avec les onglets (Joseph, 22/10/2026) ; le journal et les bonnes pratiques ont chacun leur onglet
 // (Joseph, 22/10/2026), la santé va avec les chiffres, les campagnes avec les tâches. Plus d'onglet Messages (sprint 22,
 // S2) : le picto message de l'en-tête ouvre le groupe du magasin dans Messages
-type VueFiche = 'fiche' | 'actions' | 'visites' | 'chiffres' | 'journal' | 'pratiques'
+type VueFiche = 'fiche' | 'actions' | 'visites' | 'chiffres' | 'budget' | 'journal' | 'pratiques'
 const rubriquesFiche: Rubrique<VueFiche>[] = [
   { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
   { vue: 'actions', libelle: 'Tâches et campagnes', court: 'Tâches', icone: <TaskAltOutlined /> },
   { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres et santé', court: 'Chiffres', icone: <QueryStatsOutlined /> },
+  // Fusion avec le pilotage (Joseph, 03/11/2026, option A) : suivi, budget et saisies du magasin
+  { vue: 'budget', libelle: 'Budget', icone: <RequestQuoteOutlined /> },
   { vue: 'journal', libelle: 'Journal', icone: <HistoryOutlined /> },
   { vue: 'pratiques', libelle: 'Bonnes pratiques', court: 'Pratiques', icone: <TipsAndUpdatesOutlined /> },
 ]
@@ -193,6 +197,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             <SectionReunionsMagasin reseau={reseau} magasin={m.nom} />
           </Box>
         )}
+
+        {vue === 'budget' && <OngletBudget nom={m.nom} />}
 
         {vue === 'journal' && <JournalMagasin reseau={reseau} m={m} signaler={setConfirmation} />}
 
