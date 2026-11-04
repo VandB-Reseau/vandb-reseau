@@ -64,7 +64,7 @@ compte franchisé porte sur l'un d'eux. Seul le Directeur écrit.
 | Table | Contenu | Clé |
 | --- | --- | --- |
 | `visits` | Visites, appels, audits. `visitor` = participants séparés par « , » ; `sections` = compte rendu en 10 parties ; `action_plan` = plan d'action ; `docs` = photos et liens ; `group_id` relie une tournée ; `prevue` = planifiée, pas encore faite (0017) : ne compte ni dans le rythme ni dans « pas vu depuis » | `id` |
-| `store_finance` | Chiffres mensuels saisis à la main : `pm_cave`, `flux_cave`, `pm_bar`, `flux_bar`, `ca_ext`, `marge` saisis ; `ca_cave`, `ca_bar`, `panier`, `freq`, `ebitda` hérités. Depuis 0039, un mois importé de la caisse (schéma `pilotage`, tables `reel_mensuel` et `reel_tickets`) passe devant : l'app lit `chiffres_mensuels()`. Table gardée en secours ; copie complète dans `archive_store_finance` depuis 0040 (aucun accès depuis l'app) | `store_name`, `month` |
+| `store_finance` | Chiffres mensuels saisis à la main : `pm_cave`, `flux_cave`, `pm_bar`, `flux_bar`, `ca_ext`, `marge` saisis ; `ca_cave`, `ca_bar`, `panier`, `freq`, `ebitda` hérités. Depuis 0039, un mois importé de la caisse (schéma `pilotage`, tables `reel_mensuel` et `reel_tickets`) passe devant : l'app lit `chiffres_mensuels()`. Table gardée en secours ; copie complète dans `archive_store_finance` depuis 0040 (aucun accès depuis l'app). Vidée et fermée en écriture par 0041 (déclencheur `store_finance_fermee`, `saisie_chiffres_fermee()` pour l'app) | `store_name`, `month` |
 | `suivi_magasins` | Suivi par magasin, une ligne par rubrique (`cle`, liste ci-dessous), `valeur` en JSON | `store_name`, `cle` |
 
 Rubriques de `suivi_magasins` (contrainte `suivi_magasins_cle_check`) :

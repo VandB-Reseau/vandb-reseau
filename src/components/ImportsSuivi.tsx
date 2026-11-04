@@ -106,7 +106,7 @@ export function DialogImportChiffres({ reseau, fichier, onFermer }: { reseau: Re
   useEffect(() => { if (fichier) void choisir(fichier) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // Les mois déjà importés de la caisse ne sont pas remplacés (fusion avec le pilotage, Joseph 03/11/2026)
   const deCaisse = (l: { magasin: string; mois: string }) => reseau.chiffres[l.magasin]?.find((c) => c.mois === l.mois)?.source === 'caisse'
-  const lignes = res ? res.lignes.filter((l) => !deCaisse(l)) : []
+  const lignes = res && !reseau.chiffresFermes ? res.lignes.filter((l) => !deCaisse(l)) : []
   const ecartees = (res?.lignes.length ?? 0) - lignes.length
   const total = lignes.length
   const mois = [...new Set(lignes.map((l) => l.mois))].sort()
@@ -130,7 +130,8 @@ export function DialogImportChiffres({ reseau, fichier, onFermer }: { reseau: Re
             </Box>
           )}
           {res.ignorees.length > 0 && <Typography variant="body2" color="text.secondary">Colonnes ignorées : {res.ignorees.join(', ')}.</Typography>}
-          {ecartees > 0 && <Typography variant="body2" color="text.secondary">{ecartees} mois déjà importé{ecartees > 1 ? 's' : ''} de la caisse, laissé{ecartees > 1 ? 's' : ''} tel{ecartees > 1 ? 's' : ''} quel{ecartees > 1 ? 's' : ''}.</Typography>}
+          {reseau.chiffresFermes && <Typography variant="body2" color="text.secondary">Les chiffres viennent de la caisse : ils ne s’importent plus par fichier.</Typography>}
+          {ecartees > 0 && !reseau.chiffresFermes && <Typography variant="body2" color="text.secondary">{ecartees} mois déjà importé{ecartees > 1 ? 's' : ''} de la caisse, laissé{ecartees > 1 ? 's' : ''} tel{ecartees > 1 ? 's' : ''} quel{ecartees > 1 ? 's' : ''}.</Typography>}
           {res.inconnus.length > 0 && <Typography variant="body2" color="text.secondary">Magasins non trouvés ({res.inconnus.length}) : {res.inconnus.slice(0, 12).join(', ')}{res.inconnus.length > 12 ? '…' : ''}</Typography>}
           {res.illisibles > 0 && <Typography variant="body2" color="text.secondary">{res.illisibles} case{res.illisibles > 1 ? 's' : ''} avec une valeur non reconnue, laissée{res.illisibles > 1 ? 's' : ''} de côté.</Typography>}
         </>

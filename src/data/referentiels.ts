@@ -627,6 +627,8 @@ const chiffres: Referentiel = {
   colonnes: [colCode(), colNomMagasin, { id: 'mois', entete: 'Mois', type: 'mois', cle: true }, ...champsSaisis.map((c) => ({ id: c, entete: `${libellesChiffres[c].libelle}${libellesChiffres[c].unite ? ` (${libellesChiffres[c].unite})` : ''}`, type: 'nombre' as const, largeur: 20 }))],
   lignes: (r) => Object.values(r.chiffres).flat().map((c) => ({ ...leMagasin(r, c.magasin), mois: c.mois, ...Object.fromEntries(champsSaisis.map((k) => [k, c[k] === null ? '' : String(c[k])])) })),
   ajout: { obligatoires: ['code', 'mois'] },
+  // 0041 : chiffres saisis supprimés, la caisse seule fait foi
+  controler: (_l, _avant, r) => (r.chiffresFermes ? 'Les chiffres viennent de la caisse : ils ne s’importent plus par fichier.' : null),
   async appliquer(r, changements) {
     await enregistrerChiffres(changements.map((ch) => {
       const magasin = nomDuCode(r, ch.apres.code)

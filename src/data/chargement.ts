@@ -63,7 +63,7 @@ let fichesEnTable: boolean | null = null
 
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
-  const [config, surcharges, affectations, coachs, recrues, visites, evenements, finances, suivi, regions, fiches] = await Promise.all([
+  const [config, surcharges, affectations, coachs, recrues, visites, evenements, finances, suivi, regions, fiches, fermes] = await Promise.all([
     supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
@@ -75,6 +75,8 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
     toutLire(() => supabase.from('suivi_magasins').select('store_name,cle,valeur').order('store_name').order('cle')),
     supabase.from('campagnes_regions').select('id,rr,valeur').order('id'),
     toutLire(() => supabase.from('fiches_personnes').select('cle,fiche').order('cle')),
+    // 0041 : saisie à la main des chiffres fermée (fonction absente : encore ouverte)
+    Promise.resolve(supabase.rpc('saisie_chiffres_fermee')).then((r) => r.data === true, () => false),
   ])
   const erreur = config.error ?? surcharges.error ?? affectations.error ?? coachs.error ?? (suivi.error && !absente(suivi.error.message) ? suivi.error : null)
   if (erreur) throw new ErreurChargement(erreur.message)
@@ -86,12 +88,14 @@ export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)
   const lignesConfig = fichesEnTable
     ? [...(config.data ?? []).filter((l) => l.key !== 'fiches_personnes'), { key: 'fiches_personnes', value: JSON.stringify(Object.fromEntries(fiches.data.map((l) => [String(l.cle), l.fiche]))) }]
     : config.data ?? []
-  return assemblerReseau({
+  const reseau = assemblerReseau({
     config: suiviEnTable ? configDepuisSuivi(lignesConfig, suivi.data as { store_name: string; cle: string; valeur: unknown }[]) : lignesConfig,
     surcharges: surcharges.data ?? [], affectations: affectations.data ?? [], coachs: coachs.data ?? [],
     recrues: facultative(recrues), visites: facultative(visites), evenements: facultative(evenements), finances: facultative(finances),
     campagnesRegions: facultative(regions),
   }, jour)
+  if (fermes) reseau.chiffresFermes = true
+  return reseau
 }
 
 // Construit le réseau à partir des tables lues
