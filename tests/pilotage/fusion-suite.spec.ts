@@ -212,3 +212,13 @@ test('Voir comme un Coach : les budgets de son périmètre seulement', async ({ 
   await expect(page.getByRole('link', { name: 'Lyon Test' })).toHaveCount(0)
   await expect(page.getByRole('navigation', { name: 'Pages des budgets' }).getByRole('tab', { name: 'Paramètres réseau' })).toHaveCount(0)
 })
+
+test('chiffres saisis supprimés (0041) : la fiche ne propose plus de saisie, les chiffres de la caisse restent', async ({ page }) => {
+  const ecritures: NonNullable<OptionsSimulation['ecritures']> = []
+  await connecter(page, { ecritures, chiffresFermes: true, chiffresCaisse: [{ store_name: 'Annecy Test', month: '2026-09-01', ca_cave: 81000, ca_bar: 9000, ca_ext: 0, pm_cave: 45, flux_cave: 1800, pm_bar: 15, flux_bar: 600, freq: 2400, panier: 37.5, marge: 41.2 }] }, {})
+  await page.goto('./#/magasins/Annecy%20Test?vue=chiffres')
+  await expect(page.getByText('Mois enregistrés')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Saisir les chiffres' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^Modifier les chiffres de / })).toHaveCount(0)
+  expect(ecritures.filter((e) => e.table === 'store_finance')).toEqual([])
+})

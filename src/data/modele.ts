@@ -153,6 +153,7 @@ export interface Reseau {
   associes: import('./associes').Associes // par magasin
   actionsLibres: Record<string, ActionLibre[]> // par magasin
   derniereSauvegarde: string // date de la dernière sauvegarde complète téléchargée
+  chiffresFermes?: boolean // 0041 : chiffres saisis à la main supprimés, la caisse seule fait foi
   seuils: import('./chiffres').SeuilsAlerte
   delaisVisite: Record<string, number> // jours sans visite avant l'alerte, par case de la nine box
   rrs: ResponsableRegional[]

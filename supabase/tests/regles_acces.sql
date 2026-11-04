@@ -13,6 +13,8 @@ INSERT INTO public.acces_franchises (user_id, email, franchise, magasins)
 VALUES ('00000000-0000-0000-0000-00000000000f', 'franchise@exemple.fr', 'Franchisé Test', '{Lille}') ON CONFLICT DO NOTHING;
 INSERT INTO public.perimetre_equipe (store_name, coach, rrs) VALUES ('Lille', 'Coach Nord', '{}'), ('Nice', 'Coach Sud', '{}') ON CONFLICT DO NOTHING;
 INSERT INTO public.visits (store, visit_date) VALUES ('Lille', '2026-10-01'), ('Nice', '2026-10-02');
+-- Chiffres saisis fermés depuis 0041 : rouverts le temps des contrôles qui en ont besoin (refermés à la fin)
+ALTER TABLE public.store_finance DISABLE TRIGGER store_finance_fermee;
 INSERT INTO public.store_finance (store_name, month, ca_cave) VALUES ('Lille', '2026-09-01', 1), ('Nice', '2026-09-01', 1) ON CONFLICT DO NOTHING;
 INSERT INTO public.app_config (key, value) VALUES ('params', '{}') ON CONFLICT DO NOTHING;
 INSERT INTO public.app_config (key, value) VALUES ('bonnes_pratiques', '[{"id":"bp_t","titre":"Dégustation","magasin":"Lille"}]') ON CONFLICT DO NOTHING;
@@ -818,4 +820,27 @@ SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 SELECT pg_temp.attendre('Bilan : le Coach ne le lit pas', pg_temp.refuse('SELECT count(*) FROM public.couverture_caisse()'), 1);
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
 SELECT pg_temp.attendre('Bilan : le franchisé ne le lit pas', pg_temp.refuse('SELECT count(*) FROM public.couverture_caisse()'), 1);
+RESET ROLE;
+
+-- Suppression des chiffres saisis (0041) : seulement si l'archive est complète ; table vidée puis fermée
+INSERT INTO public.store_finance (store_name, month, ca_cave) VALUES ('Lille', '2020-01-01', 5);
+SELECT pg_temp.attendre('Suppression : une ligne pas archivée bloque le script', public.lignes_hors_archive(), 1);
+RESET request.jwt.claim.sub;
+\ir ../migrations/0040_archive_store_finance.sql
+SELECT pg_temp.attendre('Suppression : archive complète après 0040', public.lignes_hors_archive(), 0);
+SELECT count(*) AS archivees_avant FROM public.archive_store_finance \gset
+\ir ../migrations/0041_suppression_store_finance.sql
+\ir ../migrations/0041_suppression_store_finance.sql
+SELECT pg_temp.attendre('Suppression : store_finance vide', (SELECT count(*) FROM public.store_finance), 0);
+SELECT pg_temp.attendre('Suppression : archive intacte', (SELECT count(*) FROM public.archive_store_finance), :archivees_avant);
+SELECT pg_temp.attendre('Suppression : aucune ligne notée dans l''historique',
+  (SELECT count(*) FROM public.historique_modifications WHERE table_nom = 'store_finance' AND operation = 'suppression'), 0);
+SELECT pg_temp.attendre('Suppression : plus aucune écriture, même pour le Directeur',
+  pg_temp.refuse('INSERT INTO public.store_finance (store_name, month, ca_cave) VALUES (''Lille'', ''2026-10-01'', 1)'), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT pg_temp.attendre('Suppression : l''app sait que la saisie est fermée', (SELECT public.saisie_chiffres_fermee())::int, 1);
+SELECT pg_temp.attendre('Suppression : le Directeur ne lance pas le contrôle d''archive', pg_temp.refuse('SELECT public.lignes_hors_archive()'), 1);
+SELECT pg_temp.attendre('Suppression : un renommage passe toujours (aucune ligne)', pg_temp.refuse('UPDATE public.store_finance SET store_name = ''X'' WHERE store_name = ''Lille'''), 0);
+SELECT pg_temp.attendre('Suppression : le CA de la caisse reste lu', ((SELECT count(*) FROM public.chiffres_mensuels() WHERE source = 'caisse') > 0)::int, 1);
 RESET ROLE;

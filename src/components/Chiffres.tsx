@@ -49,10 +49,12 @@ export function useSaisieChiffres(reseau: Reseau, magasin: string, moisInitial: 
   const avant = versTexte(lu(mois))
   // Un mois importé de la caisse ne se saisit plus à la main (fusion avec le pilotage, Joseph 03/11/2026)
   const caisse = lu(mois)?.source === 'caisse'
-  const modifie = !caisse && /^\d{4}-\d{2}$/.test(mois) && champsSaisis.some((k) => lireNombre(valeurs[k]) !== lireNombre(avant[k]))
+  // Chiffres saisis supprimés (0041, Joseph 04/11/2026) : plus rien ne se saisit à la main
+  const ferme = !!reseau.chiffresFermes
+  const modifie = !caisse && !ferme && /^\d{4}-\d{2}$/.test(mois) && champsSaisis.some((k) => lireNombre(valeurs[k]) !== lireNombre(avant[k]))
   // Les chiffres saisis, complétés des CA, flux cumulé et panier moyen calculés
   const ligne = () => completerChiffres({ magasin, mois, ...Object.fromEntries(champsSaisis.map((k) => [k, lireNombre(valeurs[k])])) }, lu(mois))
-  return { mois, setMois, valeurs, setValeurs, invalides, modifie, ligne, caisse, valide: invalides.length === 0 }
+  return { mois, setMois, valeurs, setValeurs, invalides, modifie, ligne, caisse, ferme, valide: invalides.length === 0 }
 }
 export type SaisieChiffres = ReturnType<typeof useSaisieChiffres>
 
@@ -67,16 +69,16 @@ export function ChampsChiffres({ s, reseau, titre }: { s: SaisieChiffres; reseau
         <TextField select label="Mois" value={s.mois} onChange={(e) => s.setMois(e.target.value)} sx={{ gridColumn: { xs: 'span 2', sm: 'auto' } }}>
           {options.map((m) => <MenuItem key={m} value={m}>{libelleMois(m)}</MenuItem>)}
         </TextField>
-        {s.caisse && (
+        {(s.caisse || s.ferme) && (
           <Typography role="status" variant="body2" sx={{ gridColumn: 'span 2', p: 1.5, borderRadius: 2, bgcolor: 'action.hover' }}>
-            {`Chiffres de ${libelleMois(s.mois)} importés de la caisse : ils ne se modifient pas ici.`}
+            {s.caisse ? `Chiffres de ${libelleMois(s.mois)} importés de la caisse : ils ne se modifient pas ici.` : 'Les chiffres viennent de la caisse : ils ne se saisissent plus à la main.'}
           </Typography>
         )}
         {champsSaisis.map((k) => {
           const { libelle, unite } = libellesChiffres[k]
           return (
             <TextField
-              key={k} label={unite ? `${libelle} (${unite})` : libelle} value={s.valeurs[k] ?? ''} inputMode="decimal" disabled={s.caisse}
+              key={k} label={unite ? `${libelle} (${unite})` : libelle} value={s.valeurs[k] ?? ''} inputMode="decimal" disabled={s.caisse || s.ferme}
               sx={k === 'caExt' ? { gridColumn: { xs: 'span 2', sm: 'auto' } } : undefined}
               onChange={(e) => s.setValeurs((v) => ({ ...v, [k]: e.target.value }))}
               error={s.invalides.includes(k)} helperText={s.invalides.includes(k) ? 'Nombre attendu' : undefined}
@@ -113,7 +115,7 @@ function Calcules({ s }: { s: SaisieChiffres }) {
 
 export function DialogChiffres({ reseau, magasin, mois, onFermer }: { reseau: Reseau; magasin: string; mois?: string; onFermer: (m?: string) => void }) {
   const s = useSaisieChiffres(reseau, magasin, mois ?? moisPrecedent(reseau.jour))
-  const existe = chiffresDuMagasin(reseau, magasin).some((c) => c.mois === s.mois && c.source !== 'caisse')
+  const existe = !s.ferme && chiffresDuMagasin(reseau, magasin).some((c) => c.mois === s.mois && c.source !== 'caisse')
   return (
     <Fenetre titre={`Chiffres de ${magasin}`} ouvert onFermer={onFermer} valide={s.valide && s.modifie}
       enregistrer={async () => { await enregistrerChiffres([s.ligne()]); return `Chiffres de ${libelleMois(s.mois)} enregistrés.` }}
