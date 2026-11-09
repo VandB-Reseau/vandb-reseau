@@ -73,7 +73,7 @@ export interface OptionsSimulation {
   orphelins?: { store_name: string; lignes: number; nouveau_nom: string | null }[]
   annees?: { annee: number; etat: 'campagne' | 'suivi' | 'close'; campagne_le?: string | null; suivi_le?: string | null; close_le?: string | null }[]
 }
-export type StockSimule = { store_name: string; annee: number; mois: number; cave: number | null; bar: number | null }
+export type StockSimule = { store_name: string; annee: number; mois: number; cave: number | null; bar: number | null; exterieur?: number | null }
 export type JournalSimule = { id: number; annee: number; rubrique: string; avant: unknown; apres: unknown; par_email: string | null; le: string }
 
 export type VersionNommeeSimulee = { id: number; store_name: string; annee: number; nom: string; base: unknown; ajustements: Record<string, unknown>; auteur: string | null; auteur_role: string | null; auteur_nom: string | null; cree_le: string }

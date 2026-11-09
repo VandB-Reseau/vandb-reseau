@@ -55,7 +55,7 @@ export function StockMagasin({ magasin, annee, peutSaisir }: { magasin: string; 
     ]).then(([p, reel, reelN1, secours, stocks, budgetsSuivants, pSuivants, stocksN1]) => ({ parametres: p.parametres, reel, reelN1, secours, stocks, budgetsSuivants, pSuivants, decembre: stocksN1?.[11] ?? null })),
     [magasin, annee])
   const [mois, setMois] = useState<number | null>(null)
-  const [champs, setChamps] = useState({ cave: '', bar: '' })
+  const [champs, setChamps] = useState({ cave: '', bar: '', exterieur: '' })
   const [initial, setInitial] = useState('')
   const [erreurSaisie, setErreurSaisie] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -77,7 +77,8 @@ export function StockMagasin({ magasin, annee, peutSaisir }: { magasin: string; 
 
   const ouvrir = (m: number) => {
     const s = saisies[m - 1]
-    const depart = { cave: s?.cave != null ? enChiffres(s.cave) : '', bar: s?.bar != null ? enChiffres(s.bar) : '' }
+    const texte = (v: number | null | undefined) => (v != null ? enChiffres(v) : '')
+    const depart = { cave: texte(s?.cave), bar: texte(s?.bar), exterieur: texte(s?.exterieur) }
     setMois(m)
     setChamps(depart)
     setInitial(JSON.stringify(depart))
@@ -92,15 +93,16 @@ export function StockMagasin({ magasin, annee, peutSaisir }: { magasin: string; 
   const enregistrer = async () => {
     if (mois === null) return
     const lire = (t: string) => (t.trim() === '' ? null : nombre(t))
-    const s: StockSaisi = { cave: lire(champs.cave), bar: lire(champs.bar) }
-    if ((champs.cave.trim() && s.cave === null) || (champs.bar.trim() && s.bar === null) || (s.cave ?? 0) < 0 || (s.bar ?? 0) < 0) {
+    const s: StockSaisi = { cave: lire(champs.cave), bar: lire(champs.bar), exterieur: lire(champs.exterieur) }
+    const cles = ['cave', 'bar', 'exterieur'] as const
+    if (cles.some((k) => (champs[k].trim() && s[k] === null) || (s[k] ?? 0) < 0)) {
       setErreurSaisie('Saisis des montants en euros, sans signe moins (par exemple 85 000).')
       return
     }
     setOccupe(true)
     try {
       await enregistrerStock(magasin, annee, mois, s)
-      setMessage(s.cave === null && s.bar === null ? `Stock de fin ${MOIS_LONGS[mois - 1]} ${annee} effacé.` : `Stock de fin ${MOIS_LONGS[mois - 1]} ${annee} enregistré.`)
+      setMessage(cles.every((k) => s[k] === null) ? `Stock de fin ${MOIS_LONGS[mois - 1]} ${annee} effacé.` : `Stock de fin ${MOIS_LONGS[mois - 1]} ${annee} enregistré.`)
       setMois(null)
       recharger()
     } catch {
@@ -126,6 +128,10 @@ export function StockMagasin({ magasin, annee, peutSaisir }: { magasin: string; 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography sx={{ minWidth: 48 }}>Bar</Typography>
           <ChampNombre libelle="Stock du Bar" valeur={champs.bar} onChange={(v) => setChamps((c) => ({ ...c, bar: v }))} />
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography sx={{ minWidth: 48 }}>Extérieur</Typography>
+          <ChampNombre libelle="Stock de l’Extérieur" valeur={champs.exterieur} onChange={(v) => setChamps((c) => ({ ...c, exterieur: v }))} />
         </Box>
       </Stack>
       <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -160,7 +166,9 @@ export function StockMagasin({ magasin, annee, peutSaisir }: { magasin: string; 
     </TableCell>
   )
   const d = s.dernier
-  const reglage = `Cave ${reglageMois.format(parametresStock.mois.cave)} mois, Bar ${reglageMois.format(parametresStock.mois.bar)} mois d’achats à venir`
+  const reglage = `Cave ${reglageMois.format(parametresStock.mois.cave)} mois, Bar ${reglageMois.format(parametresStock.mois.bar)} mois, Extérieur ${reglageMois.format(parametresStock.mois.exterieur ?? 0)} mois d’achats à venir`
+  // L'Extérieur n'apparaît que s'il a une cible ou un stock saisi : un magasin sans marchés extérieurs garde Cave et Bar
+  const avecExterieur = s.mois.some((m) => m.cibleUnivers.exterieur > 0 || m.reelUnivers.exterieur !== null)
   // Sans stock saisi : la cible du dernier mois de ventes connu
   const moisRepere = Math.max(1, Math.min(12, atterri.moisRealises))
 
@@ -172,7 +180,7 @@ export function StockMagasin({ magasin, annee, peutSaisir }: { magasin: string; 
       <Stack direction="row" useFlexGap spacing={2} sx={{ flexWrap: 'wrap' }} component="section" aria-label={`Stock ${annee} en chiffres`}>
         {d ? (<>
           <Indicateur libelle={`Stock fin ${MOIS_LONGS[d.mois - 1]}`} valeur={montant(d.reel!)}
-            detail={`Cave ${milliers(d.reelUnivers.cave ?? 0)} · Bar ${milliers(d.reelUnivers.bar ?? 0)}, au prix d’achat`} />
+            detail={`Cave ${milliers(d.reelUnivers.cave ?? 0)} · Bar ${milliers(d.reelUnivers.bar ?? 0)}${avecExterieur ? ` · Extérieur ${milliers(d.reelUnivers.exterieur ?? 0)}` : ''}, au prix d’achat`} />
           <Indicateur libelle="Cible" aide="stockCible" valeur={montant(d.cible)} detail={reglage}
             info={d.etat ? <Chip size="small" color={ETAT[d.etat].puce} label={ETAT[d.etat].libelle} sx={{ ml: 1, fontWeight: 700 }} /> : undefined} />
           <Indicateur libelle={d.etat === 'haut' ? 'Argent immobilisé en trop' : d.etat === 'bas' ? 'À racheter pour être dans la cible' : 'Écart à la cible'}
@@ -227,6 +235,12 @@ export function StockMagasin({ magasin, annee, peutSaisir }: { magasin: string; 
                 <TableCell>Stock Bar</TableCell>
                 {s.mois.map((m, i) => caseStock(m.reelUnivers.bar, complet[i].bar, m.mois))}
               </TableRow>
+              {avecExterieur && (
+                <TableRow>
+                  <TableCell>Stock Extérieur</TableCell>
+                  {s.mois.map((m, i) => caseStock(m.reelUnivers.exterieur, complet[i].exterieur, m.mois))}
+                </TableRow>
+              )}
               <TableRow className="ligne-forte" sx={{ '& td': { fontWeight: 700 } }}>
                 <TableCell>Stock total</TableCell>
                 {s.mois.map((m, i) => caseStock(m.reel, m.reel ?? complet[i].total, m.mois))}
@@ -247,6 +261,12 @@ export function StockMagasin({ magasin, annee, peutSaisir }: { magasin: string; 
                 <TableCell>Couverture Bar</TableCell>
                 {s.mois.map((m) => <TableCell key={m.mois} align="right">{m.couverture.bar === null ? '' : enMois(m.couverture.bar)}</TableCell>)}
               </TableRow>
+              {avecExterieur && (
+                <TableRow>
+                  <TableCell>Couverture Extérieur</TableCell>
+                  {s.mois.map((m) => <TableCell key={m.mois} align="right">{m.couverture.exterieur === null ? '' : enMois(m.couverture.exterieur)}</TableCell>)}
+                </TableRow>
+              )}
               <TableRow>
                 <TableCell>État</TableCell>
                 {s.mois.map((m) => <TableCell key={m.mois} align="right">{m.etat ? <Chip size="small" color={ETAT[m.etat].puce} label={ETAT[m.etat].libelle} sx={{ fontWeight: 700 }} /> : ''}</TableCell>)}

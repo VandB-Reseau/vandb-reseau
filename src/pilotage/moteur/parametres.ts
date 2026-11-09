@@ -13,6 +13,9 @@ export const chargesParDefaut: ParametresCharges = {
   taux: { employe: 0.35, agent_maitrise: 0.35, cadre: 0.365, apprenti: 0.35, gerant_tns: 0.33 },
   reduction: { smicAnnuel: 21_876.4, tmin: 0.02, tdelta: 0.3781, puissance: 1.75, horsReduction: 0.0123 },
 }
+// Congés payés (Joseph, 04/11/2026) : provision d'environ 10 % du salaire de base, proposée pour une année dont les
+// paramètres n'ont jamais été enregistrés ; ceux déjà enregistrés sans elle gardent 0 jusqu'à ce que le Directeur la règle
+export const CONGES_PAYES_PROPOSES = 0.1
 
 export const parametresParDefaut: ParametresReseau = {
   tauxRedevance: 0.02,

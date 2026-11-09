@@ -108,3 +108,17 @@ test('compte de résultat : impôt et résultat net du mois, capital remboursé,
   proche(ligne('tresorerie').mois[0]!, ligne('net').mois[0]! + 2_000 - 2_500)
   proche(ligne('tresorerie').total, b.tresorerieDegagee)
 })
+
+// Stock cible de l'Extérieur dans le BFR (Joseph, 04/11/2026) : fin décembre, 1 mois des achats de l'Extérieur de janvier
+test('BFR : le stock cible de l’Extérieur s’ajoute à celui de la Cave et du Bar', () => {
+  const u = (cave: number, bar: number, exterieur: number) => ({
+    cave: { ca: 0, achats: cave, achatsTempsForts: 0 }, bar: { ca: 0, achats: bar, achatsTempsForts: 0 }, exterieur: { ca: 0, achats: exterieur, achatsTempsForts: 0 },
+  })
+  // Cave 4 000, Bar 1 000, Extérieur 1 000 d'achats par mois
+  const b = { ...budget, mois: budget.mois.map((m) => ({ ...m, univers: u(4_000, 1_000, 1_000) })) } as unknown as Budget
+  const avec = tresorerieBudget(b, h, p, tresorerieParDefaut).bfr
+  proche(avec.stock, 4_000 * 2.5 + 1_000 * 1 + 1_000 * 1)   // 12 000
+  const sans = tresorerieBudget(b, h, p, { ...tresorerieParDefaut, stock: { mois: { cave: 2.5, bar: 1, exterieur: 0 }, tolerance: 0.1 } }).bfr
+  proche(sans.stock, 11_000)
+  proche(avec.total - sans.total, 1_000)
+})

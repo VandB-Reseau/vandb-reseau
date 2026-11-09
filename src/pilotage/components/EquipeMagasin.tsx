@@ -410,6 +410,19 @@ export function EquipeMagasin({ magasin, equipe, annee, anneeBudget, hausse, cha
                     ]
                   })}
                   {fiche && !fiche.id && ligneFormulaire('fiche-nouveau')}
+                  {(n.congesPayes > 0 || n1.congesPayes > 0) && (
+                    <TableRow>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>dont congés payés<Aide sujet="congesPayes" /></Box>
+                      </TableCell>
+                      <TableCell colSpan={6} sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                        {taux(charges.congesPayes ?? 0) === taux(chargesBudget.congesPayes ?? 0) ? `Provision de ${taux(charges.congesPayes ?? 0)} du salaire de base, chargée` : `Provision de ${taux(charges.congesPayes ?? 0)} en ${annee}, ${taux(chargesBudget.congesPayes ?? 0)} en ${anneeBudget}, chargée`}
+                      </TableCell>
+                      <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>{montant(n.congesPayes)}</TableCell>
+                      <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>{montant(n1.congesPayes)}</TableCell>
+                      {peutSaisir && <TableCell />}
+                    </TableRow>
+                  )}
                   <TableRow>
                     <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
                     <TableCell colSpan={6} />

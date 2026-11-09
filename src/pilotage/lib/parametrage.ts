@@ -25,7 +25,7 @@ const LIBELLES: Record<string, string> = {
   tauxReduit: 'taux réduit', plafondTauxReduit: 'plafond du taux réduit', tauxNormal: 'taux normal',
   cave: 'Cave', bar: 'Bar', exterieur: 'Extérieur',
   ...Object.fromEntries(Object.entries(categorieLibelle).map(([k, v]) => [k, v])),
-  smicAnnuel: 'SMIC annuel', tmin: 'taux minimal', tdelta: 'taux dégressif', puissance: 'puissance', horsReduction: 'part hors réduction',
+  smicAnnuel: 'SMIC annuel', tmin: 'taux minimal', tdelta: 'taux dégressif', puissance: 'puissance', horsReduction: 'part hors réduction', congesPayes: 'congés payés',
   delaiFournisseurs: 'paiement des fournisseurs (mois)', avanceLivraison: 'livraison avant la vente (mois)', delaiRedevance: 'paiement de la redevance (mois)',
   tvaVentes: 'TVA sur les ventes', tvaAchats: 'TVA sur les achats', tvaFrais: 'TVA sur les frais', tvaTrimestrielle: 'TVA trimestrielle',
   partCotisations: 'personnel payé le mois suivant', stockJours: 'stock (jours)', stock: 'stock cible', mois: 'mois de stock', tolerance: 'écart toléré du stock', avanceExterieur: 'achats de l’Extérieur payés avant (mois)',
