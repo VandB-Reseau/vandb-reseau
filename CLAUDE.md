@@ -42,6 +42,8 @@ React 19 + TypeScript + MUI 9 (thème `src/theme/theme.ts`), react-router (HashR
   son rôle et en lecture seule : en aperçu, `pilotage()` (`src/pilotage/lib/supabase.ts`) refuse toute écriture, les
   tâches aussi ; boutons de saisie retirés (`profil.apercu`).
 - Tests navigateur dans `tests/pilotage/` : `simulerPilotage` (schéma `pilotage`) s'appelle après `simulerSupabase`.
+  Tests d'écran repris de l'ancien pilotage dans `tests/pilotage/ecrans/` : `seConnecter` (`ecrans/outils.ts`) branche les
+  deux simulations, ajoute leurs magasins au réseau fictif et arrive sur « Budgets » ; `ouvrir`, `allerVers` suivent les onglets.
 
 ## Documentation
 - `docs/architecture.md` (pile, dossiers, flux, rôles), `docs/base-de-donnees.md` (schéma), `supabase/README.md` (migrations), `CHANGELOG.md` (sprints). Les lire avant de toucher à la base.

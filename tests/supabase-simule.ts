@@ -51,7 +51,7 @@ export interface PropositionsSimulees { equipe: Record<string, unknown>[]; mienn
 export interface ChallengesSimules { equipe: Record<string, unknown>[]; franchise: Record<string, unknown>[] }
 // Fonction Supabase « comptes » (supabase/functions/comptes) : absente = pas encore déployée
 export interface ComptesSimules { equipe?: string[] }
-export interface OptionsSimulation { chiffresFermes?: boolean; chiffresCaisse?: Record<string, unknown>[] | null; surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' }
+export interface OptionsSimulation { magasinsEnPlus?: (typeof magasinsFictifs)[number][]; chiffresFermes?: boolean; chiffresCaisse?: Record<string, unknown>[] | null; surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -297,7 +297,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         if (apercu ? acces.role !== 'directeur' : acces.role !== 'franchise') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
         options.ecritures?.push({ methode: 'POST', table: 'rpc/espace_franchise', corps, filtre: '' })
         const magasins = apercu ? (corps.p_magasins as string[]) : acces.magasins ?? []
-        return route.fulfill({ json: espaceSimule(apercu ? String(corps.p_franchise) : acces.franchise ?? '', magasins, options.espace ?? {}) })
+        return route.fulfill({ json: espaceSimule(apercu ? String(corps.p_franchise) : acces.franchise ?? '', magasins, options.espace ?? {}, options.magasinsEnPlus) })
       }
       if (['messagerie', 'envoyer_message', 'envoyer_a', 'marquer_lu', 'marquer_lu_personne', 'supprimer_message', 'renommer_magasin_messages', 'envoyer_fil', 'marquer_lu_fil', 'creer_groupe', 'modifier_groupe', 'quitter_groupe', 'supprimer_groupe'].includes(fn)) {
         if (options.messagerie === null) return absente()
@@ -400,7 +400,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         if (options.communications === null) return absente()
         const liste = (options.communications ??= [])
         const refus = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
-        const mesMagasins = acces.role === 'franchise' ? acces.magasins ?? [] : acces.role === 'directeur' ? null : magasinsFictifs.map((m) => String(m.n))
+        const mesMagasins = acces.role === 'franchise' ? acces.magasins ?? [] : acces.role === 'directeur' ? null : [...magasinsFictifs, ...(options.magasinsEnPlus ?? [])].map((m) => String(m.n))
         const visible = (c: CommunicationSimulee) => c.magasins === null || c.auteur === MOI || mesMagasins === null || c.magasins.some((m) => mesMagasins.includes(m))
         const nom = acces.role === 'franchise' ? acces.franchise : acces.role === 'coach' ? acces.coach : acces.role === 'rr' ? configRRFictive.drs.find((d) => d.id === acces.rr)?.name : configRRFictive.directeur.name
         const id = Number(corps.p_id)
@@ -595,7 +595,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
     if (table === 'app_config') {
       const enTable = (k: string) => !options.suiviEnConfig && estSuivie(k)
       return route.fulfill({ json: filtrer([
-        { key: 'store_adds', value: JSON.stringify(magasinsFictifs) },
+        { key: 'store_adds', value: JSON.stringify([...magasinsFictifs, ...(options.magasinsEnPlus ?? [])]) },
         { key: 'drs_data', value: JSON.stringify(configRRFictive) },
         { key: 'sante_parc', value: JSON.stringify(santeFictive) },
         { key: 'deploiements', value: JSON.stringify(deploiementsFictifs) },
@@ -623,13 +623,13 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
 }
 
 // Ce que la base renvoie à un franchisé : ses magasins seulement, au format des tables
-function espaceSimule(franchise: string, magasins: string[], e: EspaceSimule) {
+function espaceSimule(franchise: string, magasins: string[], e: EspaceSimule, enPlus: (typeof magasinsFictifs)[number][] = []) {
   const dans = (n: unknown) => magasins.includes(String(n))
   const coachs = new Set(affectationsFictives.filter((a) => a && dans(a.store)).map((a) => a!.cs))
   return {
     franchise, magasins,
     app_config: [
-      { key: 'store_adds', value: magasinsFictifs.filter((m) => dans(m.n)) },
+      { key: 'store_adds', value: [...magasinsFictifs, ...enPlus].filter((m) => dans(m.n)) },
       { key: 'drs_data', value: { directeur: { name: configRRFictive.directeur.name, titre: configRRFictive.directeur.titre }, drs: configRRFictive.drs, dr_assigns: configRRFictive.dr_assigns.filter((a) => coachs.has(a.cs)) } },
       { key: 'params', value: { prepDuration: 2, postDuration: 4 } },
       { key: 'audits', value: Object.fromEntries(Object.entries(auditsFictifs).filter(([k]) => dans(k))) },

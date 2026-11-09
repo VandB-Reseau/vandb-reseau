@@ -24,7 +24,9 @@ export function BarreEnregistrement({ changements, effets = [], onAnnuler, onEnr
     const html = document.documentElement
     const el = ref.current
     if (!el || typeof ResizeObserver === 'undefined') return
-    const observateur = new ResizeObserver(() => { html.style.scrollPaddingBottom = `calc(var(--barre-basse, 0px) + ${el.offsetHeight + 24}px)` })
+    // --barre-basse est posé par l'AppShell de l'app réseau sur un parent, pas sur <html> : on le lit sur la barre
+    const basse = () => getComputedStyle(el).getPropertyValue('--barre-basse').trim() || '0px'
+    const observateur = new ResizeObserver(() => { html.style.scrollPaddingBottom = `calc(${basse()} + ${el.offsetHeight + 24}px)` })
     observateur.observe(el)
     return () => { observateur.disconnect(); html.style.scrollPaddingBottom = '' }
   }, [])

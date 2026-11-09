@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useLocation, useNavigationType } from 'react-router-dom'
 
-// Paramètres d'adresse qui changent d'écran (onglets, formes d'affichage) ; les filtres gardent la position
-const PARAMETRES_ECRAN = ['vue', 'forme']
+// Paramètres d'adresse qui changent d'écran (onglets, formes d'affichage, pages du budget) ; les filtres gardent la position
+const PARAMETRES_ECRAN = ['vue', 'forme', 'partie']
 
 function cleEcran(pathname: string, search: string): string {
   const params = new URLSearchParams(search)
