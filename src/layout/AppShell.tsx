@@ -190,7 +190,7 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
         <Box sx={{ bgcolor: '#000000', borderRadius: 1.5, px: 0.75, py: 0.5, display: 'flex' }}><Logo size={14} /></Box>
         <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.9375rem' }}>{franchise ? 'Espace franchisé' : 'Réseau'}</Typography>
       </Box>
-      <Box aria-hidden sx={{ height: 3, mx: 2, mb: 1.5, borderRadius: 2, background: brandStripe }} />
+      <Box aria-hidden data-filet="" sx={{ height: 3, mx: 2, mb: 1.5, borderRadius: 2, background: brandStripe }} />
       {!franchise && <Box sx={{ px: 1.5, pb: 1 }}><RechercheGlobale menu /></Box>}
       <Box component="nav" aria-label="Navigation principale" sx={{ px: 1, flex: 1, overflowY: 'auto' }}>
         {franchise

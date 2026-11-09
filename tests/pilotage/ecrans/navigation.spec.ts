@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { allerVers, ongletEspace, ouvrir, ouvrirSection, partiesAffichees, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, partieAffichee } from './outils'
+import { allerVers, ongletEspace, ouvrir, ouvrirSection, partiesAffichees, saisiesAffichees, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, partieAffichee } from './outils'
 
 // Option A de la maquette de navigation (Joseph, 03/11/2026) : la fiche du magasin a trois onglets, « Suivi <année> »
 // (une seule page, atterrissage, trésorerie et stock en sections repliées), « Budget <année suivante> » (les étapes en
@@ -18,15 +18,17 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs, 'aucune erreur JavaScript').toEqual([])
 })
 
-test('fiche : trois onglets Suivi, Budget, Saisies ; dans la fiche de l’app réseau', async ({ page, isMobile }, info) => {
+// Refonte (Joseph, 09/11/2026, 3A) : dans la fiche de l'app réseau, l'onglet Chiffres (suivi, santé, saisies en puces)
+// et l'onglet Budget (étapes en frise) ; deux niveaux au plus, les saisies en bascule
+test('fiche : onglets Chiffres et Budget de l’app réseau, suivi et saisies en puces', async ({ page, isMobile }, info) => {
   const autre: MagasinSimule = { ...propose, magasin: MAGASINS[1] }
   await seConnecter(page, { magasins: [propose, autre] })
   await page.getByText(MAGASINS[0], { exact: true }).last().click()
   await expect(page).toHaveURL(/[?&]partie=synthese$/)
   const pages = page.getByRole('navigation', { name: 'Pages du magasin' })
-  await expect(pages.getByRole('tablist', { name: 'Espaces du magasin' }).getByRole('tab')).toHaveText([new RegExp(`^Suivi ${annee}`), new RegExp(`^Budget ${annee + 1}`), /^Saisies/])
-  // Le Suivi en puces (09/11/2026)
-  await expect(partiesAffichees(page)).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', `Atterrissage ${annee}`, 'Stock', 'Analyse'])
+  await expect(pages.getByRole('tablist', { name: 'Espaces du magasin' })).toHaveCount(0)
+  await expect(ongletEspace(page, 'Suivi')).toHaveAttribute('aria-selected', 'true')
+  await expect(partiesAffichees(page)).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', `Atterrissage ${annee}`, 'Stock', 'Analyse', /^Santé et leviers/, /^Saisies/])
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-navigation-suivi.png`, fullPage: true })
@@ -41,10 +43,10 @@ test('fiche : trois onglets Suivi, Budget, Saisies ; dans la fiche de l’app r�
   await page.screenshot({ path: `captures/${info.project.name}-navigation-budget.png` })
 
   // Saisies : le réel du mois, le stock, les comptes du quadrimestre, les frais
-  await ongletEspace(page, 'Saisies').click()
+  await ouvrir(page, 'Réel')
   await expect(page).toHaveURL(/[?&]partie=reel$/)
-  await expect(partiesAffichees(page)).toHaveText([/^Réel du mois/, /^Stock de fin de mois/, /^Comptes du quadrimestre/, /^Frais \d{4}/])
-  await partiesAffichees(page).filter({ hasText: /^Stock de fin de mois/ }).click()
+  await expect(saisiesAffichees(page)).toHaveText([/^Réel du mois/, /^Stock de fin de mois/, /^Comptes du quadrimestre/, /^Frais \d{4}/])
+  await saisiesAffichees(page).filter({ hasText: /^Stock de fin de mois/ }).click()
   await expect(page).toHaveURL(/[?&]partie=saisieStock$/)
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-navigation-saisies.png` })

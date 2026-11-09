@@ -1,6 +1,7 @@
 import { expect, type Page } from '@playwright/test'
 import type { Hypotheses } from '../../src/pilotage/moteur/types'
 import { MAGASINS, magasinFictif } from './donnees-fictives'
+import { ouvrirOnglet } from '../supabase-simule'
 
 export const COMPTE = { email: 'joseph@vandb.test', motDePasse: 'bon-mot-de-passe' }
 
@@ -460,21 +461,44 @@ export async function ouvrir(page: Page, partie: string) {
   const cible = PARTIES.find(([k]) => partie.startsWith(k))?.[1]
   if (!cible) throw new Error(`Partie inconnue : ${partie}`)
   await page.waitForURL(/#\/magasins\//)
-  // Joseph (03/11/2026) : l'espace, puis la page, en onglets dans la fiche du magasin (PC et téléphone)
   const pages = page.getByRole('navigation', { name: 'Pages du magasin' })
-  const bouton = pages.getByRole('tablist', { name: 'Espaces du magasin' }).getByRole('tab', { name: new RegExp(`^${cible.espace}`) })
-  const lien = cible.libelle ? pages.getByRole('tab', { name: cible.libelle }) : null
   // Juste après l'ouverture de la fiche, le premier clic peut partir avant la fin du chargement : on recommence alors
   for (let essai = 0; ; essai++) {
+    const delai = essai < 2 ? 5_000 : undefined
     try {
-      if ((await bouton.getAttribute('aria-selected', { timeout: essai < 2 ? 5_000 : undefined })) !== 'true') await bouton.click()
-      if (lien) await lien.click({ timeout: essai < 2 ? 5_000 : undefined })
-      else await expect(bouton).toHaveAttribute('aria-selected', 'true', { timeout: essai < 2 ? 5_000 : undefined })
+      await ouvrirEspace(page, cible.espace, delai)
+      if (cible.libelle) {
+        // Refonte (09/11/2026) : les saisies se choisissent par une bascule sous la puce « Saisies »
+        const saisie = cible.espace === 'Saisies' && !(await espacesEnOnglets(page))
+        const lien = saisie ? pages.getByRole('group', { name: 'Saisies du magasin' }).getByRole('button', { name: cible.libelle }) : pages.getByRole('tab', { name: cible.libelle })
+        await lien.click({ timeout: delai })
+      }
       break
     } catch (e) { if (essai >= 2) throw e }
   }
   if (cible.theme) await page.locator('main').getByRole('region', { name: cible.theme, exact: true }).getByRole('link').click()
   if (cible.section) await ouvrirSection(page, cible.section)
+}
+// Espace du contrôle de gestion : les trois espaces en onglets ; fiche de l'app réseau (refonte 09/11/2026) : onglets Chiffres
+// (suivi, santé et saisies en puces) et Budget de la fiche
+async function espacesEnOnglets(page: Page) {
+  return (await page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist', { name: 'Espaces du magasin' }).count()) > 0
+}
+async function ouvrirEspace(page: Page, espace: string, timeout?: number) {
+  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).or(page.getByRole('tablist', { name: /^Rubriques de / })).first()).toBeVisible({ timeout })
+  const selectionner = async (onglet: ReturnType<typeof ongletEspace>) => {
+    if ((await onglet.getAttribute('aria-selected', { timeout })) !== 'true') await onglet.click({ timeout })
+    await expect(onglet).toHaveAttribute('aria-selected', 'true', { timeout })
+  }
+  if (await espacesEnOnglets(page)) return selectionner(ongletEspace(page, espace))
+  const nom = espace === 'Budget' ? 'Budget' : 'Chiffres'
+  if (!(await ongletFicheVisible(page, nom))) await ouvrirOnglet(page, nom)
+  await expect(ongletEspace(page, nom === 'Budget' ? 'Budget' : 'Suivi')).toHaveAttribute('aria-selected', 'true', { timeout })
+  if (espace === 'Saisies') await selectionner(ongletEspace(page, 'Saisies'))
+}
+async function ongletFicheVisible(page: Page, nom: string) {
+  const onglet = page.getByRole('tablist', { name: /^Rubriques de / }).getByRole('tab', { name: new RegExp(`^${nom}(, autres rubriques)?$`) })
+  return (await onglet.count()) > 0 && (await onglet.first().getAttribute('aria-selected')) === 'true'
 }
 // Partie du Suivi (09/11/2026 : puces, plus de sections repliées) ; la trésorerie est avec les comptes
 export async function ouvrirSection(page: Page, nom: RegExp) {
@@ -483,16 +507,27 @@ export async function ouvrirSection(page: Page, nom: RegExp) {
   if ((await puce.getAttribute('aria-selected')) !== 'true') await puce.click()
 }
 
-// Onglet d'un espace (Suivi, Budget, Saisies) de la fiche du magasin
-export const ongletEspace = (page: Page, nom: string) =>
-  page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist', { name: 'Espaces du magasin' }).getByRole('tab', { name: new RegExp(`^${nom}`) })
+// Onglet d'un espace : Suivi, Budget, Saisies dans l'espace du contrôle de gestion ; dans la fiche de l'app réseau
+// (refonte 09/11/2026), Suivi = onglet Chiffres, Budget = onglet Budget, Saisies = puce « Saisies » des chiffres
+export const ongletEspace = (page: Page, nom: string) => {
+  const pages = page.getByRole('navigation', { name: 'Pages du magasin' })
+  const ancien = pages.getByRole('tablist', { name: 'Espaces du magasin' }).getByRole('tab', { name: new RegExp(`^${nom}`) })
+  const fiche = page.getByRole('tablist', { name: /^Rubriques de / })
+  const nouveau = nom.startsWith('Saisies') ? pages.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: /^Saisies/ })
+    : fiche.getByRole('tab', { name: new RegExp(`^${nom.startsWith('Budget') ? 'Budget' : 'Chiffres'}(, autres rubriques)?$`) })
+  return ancien.or(nouveau)
+}
 // Page affichée : l'onglet sélectionné de la fiche du magasin
 export function partieAffichee(page: Page, nom: RegExp) {
   return expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: nom })).toHaveAttribute('aria-selected', 'true')
 }
-// Pages de l'espace affiché : la seconde rangée d'onglets de la fiche
+// Pages de l'espace affiché : la rangée d'onglets sous les espaces (étapes du budget, parties du suivi ou des chiffres)
 export function partiesAffichees(page: Page) {
-  return page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist').nth(1).getByRole('tab')
+  return page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist', { name: /^(Étapes du budget|Parties du suivi|Saisies du magasin|Parties des chiffres)/ }).getByRole('tab')
+}
+// Saisies du magasin : sous la puce « Saisies » de l'onglet Chiffres, une bascule (refonte 09/11/2026)
+export function saisiesAffichees(page: Page) {
+  return page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('group', { name: 'Saisies du magasin' }).getByRole('button')
 }
 // Année du budget affichée dans l'en-tête de la fiche (lot 38)
 export async function anneeEnTete(page: Page) {

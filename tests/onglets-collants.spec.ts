@@ -8,8 +8,9 @@ const bas = (l: Locator) => l.evaluate((e) => Math.round(e.getBoundingClientRect
 const visible = (l: Locator) => l.evaluate((e) => {
   const r = e.getBoundingClientRect()
   const x = Math.min(r.left + 40, window.innerWidth - 4)
-  const dessus = document.elementFromPoint(x, r.bottom - 3)
-  return !!dessus && (e === dessus || e.contains(dessus))
+  // Au-dessus du trait jaune de l'onglet ouvert (3 px), qui appartient à la bande des onglets
+  const dessus = document.elementFromPoint(x, r.bottom - 6)
+  return !!dessus && (e === dessus || e.contains(dessus) || !!e.parentElement?.contains(dessus))
 })
 // Écran assez long pour défiler, même avec peu de données fictives
 const allonger = (l: Locator) => l.evaluate((e) => {
@@ -27,7 +28,6 @@ const sousBarreBasse = async (page: Page, l: Locator, telephone: boolean) => {
 const ecrans = [
   { titre: 'visites', adresse: './#/visites?vue=rythme', onglets: 'Rubriques des visites', filtres: true },
   { titre: 'visites-historique', adresse: './#/visites?vue=historique', onglets: 'Rubriques des visites', filtres: true },
-  { titre: 'magasins', adresse: './#/magasins', onglets: 'Affichage', filtres: true },
   { titre: 'equipe', adresse: './#/equipe?vue=organisation&forme=liste', onglets: 'Rubriques de l’équipe', filtres: false },
   { titre: 'sante', adresse: './#/plus/sante?vue=evaluer', onglets: 'Rubriques de la santé du parc', filtres: false },
   { titre: 'charge', adresse: './#/parametres/charge', onglets: 'Rubriques de la charge', filtres: false },
@@ -39,7 +39,7 @@ for (const e of ecrans) {
     await page.goto(e.adresse)
     const onglets = page.getByRole('tablist', { name: e.onglets })
     await expect(onglets).toBeVisible()
-    const entete = isMobile ? 64 : 72
+    const entete = isMobile ? 64 : 0 // refonte (09/11/2026, 1A) : plus de barre du haut sur PC
     await allonger(onglets)
     await defiler(page)
     await expect.poll(() => haut(onglets)).toBe(entete)
@@ -56,11 +56,24 @@ for (const e of ecrans) {
   })
 }
 
-test('magasins : les lettres se rangent sous les onglets et la recherche', async ({ page }, info) => {
+// Refonte (09/11/2026) : Liste et Carte se choisissent dans l'en-tête ; la recherche reste collée en haut
+test('magasins : la recherche reste sous la barre du haut', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./#/magasins')
-  const onglets = page.getByRole('tablist', { name: 'Affichage' })
-  await expect(onglets).toBeVisible()
+  const recherche = page.getByRole('main').getByRole('textbox').first()
+  await expect(recherche).toBeVisible()
+  await allonger(recherche)
+  await defiler(page)
+  await expect.poll(async () => (await recherche.boundingBox())!.y).toBeLessThan((isMobile ? 64 : 0) + 24)
+  expect(await visible(recherche)).toBe(true)
+})
+
+// Sur téléphone, la liste des magasins garde ses lettres ; sur PC, un tableau
+test('magasins : les lettres se rangent sous la recherche', async ({ page, isMobile }, info) => {
+  test.skip(!isMobile, 'sur PC, les magasins sont en tableau')
+  await seConnecter(page)
+  await page.goto('./#/magasins')
+  await expect(page.getByRole('main').getByRole('textbox').first()).toBeVisible()
   await defiler(page, 600)
   const lettres = page.locator('[id^="lettre-"]')
   await expect(lettres.first()).toBeAttached()
@@ -72,17 +85,15 @@ test('magasins : les lettres se rangent sous les onglets et la recherche', async
   })
   const position = await lettres.first().evaluate((e) => Math.round(parseFloat(getComputedStyle(e).top)))
   expect(Math.abs(position - basBarre)).toBeLessThanOrEqual(1)
-  expect(await visible(onglets)).toBe(true)
   await page.screenshot({ path: `captures/${info.project.name}-collant-magasins-lettres.png` })
 })
 
-test('carte : la carte passe sous les onglets et la recherche', async ({ page, isMobile }, info) => {
+test('carte : la carte passe sous la recherche', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins?vue=carte')
-  const onglets = page.getByRole('tablist', { name: 'Affichage' })
   await expect(page.locator('.leaflet-container')).toBeVisible()
   await defiler(page, 300)
-  expect(await visible(onglets)).toBe(true)
+  expect(await visible(page.getByRole('main').getByRole('textbox').first())).toBe(true)
   if (!isMobile) await page.screenshot({ path: `captures/${info.project.name}-collant-carte.png` })
 })
 
@@ -93,7 +104,7 @@ test('agenda et notifications : le mois et les puces restent en haut', async ({ 
   await expect(mois).toBeVisible()
   await allonger(page.getByRole('group', { name: 'Catégories affichées' }))
   await defiler(page)
-  await expect.poll(async () => (await mois.boundingBox())!.y).toBeLessThan((isMobile ? 64 : 72) + 24)
+  await expect.poll(async () => (await mois.boundingBox())!.y).toBeLessThan((isMobile ? 64 : 0) + 24)
   await expect(page.getByRole('group', { name: 'Catégories affichées' })).toBeInViewport()
   await page.screenshot({ path: `captures/${info.project.name}-collant-agenda.png` })
 })

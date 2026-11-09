@@ -20,15 +20,16 @@ test('ouvrir un filtre ne décale pas la page', async ({ page, isMobile }) => {
   expect(await largeur()).toBe(avant)
 })
 
-test('ouvrir la fenêtre Créer ne décale pas la page', async ({ page, isMobile }) => {
+// Sur PC, plus de bouton Créer (refonte 09/11/2026) : le menu du compte, en bas du menu latéral, sert de témoin
+test('ouvrir un menu ne décale pas la page', async ({ page, isMobile }) => {
   test.skip(isMobile, 'La barre de défilement ne concerne que le PC')
   await seConnecter(page)
   await page.goto('./#/magasins?vue=liste')
   const largeur = () => page.evaluate(() => document.querySelector('main')!.getBoundingClientRect().width)
   const gauche = () => page.evaluate(() => document.querySelector('main')!.getBoundingClientRect().left)
   const [l, g] = [await largeur(), await gauche()]
-  await page.getByRole('button', { name: 'Créer', exact: true }).click()
-  await expect(page.getByRole('menu', { name: 'Créer' })).toBeVisible()
+  await page.getByRole('button', { name: 'Mon compte' }).click()
+  await expect(page.getByRole('menu')).toBeVisible()
   const style = await page.evaluate(() => `${document.documentElement.getAttribute('style') ?? ''}${document.body.getAttribute('style') ?? ''}`)
   expect(style).not.toContain('padding-right')
   expect(await largeur()).toBe(l)
@@ -64,6 +65,9 @@ test('changer d’onglet ou de rubrique ramène en haut', async ({ page }) => {
   await expect.poll(() => hauteur(page)).toBe(0)
   await page.goto('./#/magasins?vue=liste')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Liste des magasins' })).toBeVisible()
+  // Le tableau du PC (refonte 09/11/2026) tient presque dans l'écran : la page est allongée pour défiler
+  await page.evaluate(() => { const d = document.createElement('div'); d.style.height = '2000px'; document.querySelector('main')!.appendChild(d) })
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
   await expect.poll(() => hauteur(page)).toBeGreaterThan(100)
   await page.evaluate(() => (location.hash = '#/visites'))

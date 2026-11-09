@@ -33,7 +33,8 @@ test('écran de connexion jaune, polices et ton de la charte', async ({ page }, 
 
 test('filet en aplats jaune-or et vert canard, intitulés en cartouche noir', async ({ page }, info) => {
   await seConnecter(page)
-  const filet = await page.locator('header [aria-hidden]').last().evaluate((e) => getComputedStyle(e).backgroundImage)
+  // Sur PC, le filet est en tête du menu latéral (refonte 09/11/2026) ; sur téléphone, sous la barre du haut
+  const filet = await page.locator('[data-filet]:visible, header [aria-hidden]:visible').last().evaluate((e) => getComputedStyle(e).backgroundImage)
   expect(filet).toContain('rgb(248, 187, 9)')
   expect(filet).toContain('rgb(58, 143, 141)')
   expect(filet).not.toContain('27, 111, 206')
@@ -44,16 +45,17 @@ test('filet en aplats jaune-or et vert canard, intitulés en cartouche noir', as
   await page.screenshot({ path: `captures/${info.project.name}-look-accueil.png` })
 })
 
-test('les magasins ont leur blason de ville, à la place et à la taille du rond à initiales', async ({ page }, info) => {
+// Sur PC, le tableau des magasins (refonte 09/11/2026) : le blason en tête de ligne, en plus petit (28 px)
+test('les magasins ont leur blason de ville, à la place et à la taille du rond à initiales', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins')
-  const ligne = (nom: string) => page.getByRole('link', { name: new RegExp(`^${nom}`) }).first()
+  const ligne = (nom: string) => isMobile ? page.getByRole('link', { name: new RegExp(`^${nom}`) }).first() : page.getByRole('row').filter({ has: page.getByRole('link', { name: nom, exact: true }) })
   await expect(ligne('Nantes Test').locator('[data-blason="littoral"]')).toBeAttached()
   await expect(ligne('Annecy Test').locator('[data-blason="montagne"]')).toBeAttached()
   await expect(ligne('Lyon Test').locator('[data-blason="terres"]')).toBeAttached()
   const boite = (await ligne('Lyon Test').locator('[data-blason]').boundingBox())!
-  expect(Math.round(boite.width)).toBe(44)
-  expect(Math.round(boite.height)).toBe(44)
+  expect(Math.round(boite.width)).toBe(isMobile ? 44 : 28)
+  expect(Math.round(boite.height)).toBe(isMobile ? 44 : 28)
   await page.screenshot({ path: `captures/${info.project.name}-look-blasons.png` })
 })
 
@@ -71,10 +73,10 @@ test('la forme du blason se choisit dans la fiche du magasin', async ({ page }) 
   expect(ecritures).toContainEqual(expect.objectContaining({ table: 'store_overrides', corps: expect.objectContaining({ topographie: 'montagne' }) }))
 })
 
-test('chaque blason porte une figure locale au centre, proposée selon le département', async ({ page }, info) => {
+test('chaque blason porte une figure locale au centre, proposée selon le département', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins')
-  const blason = (nom: string) => page.getByRole('link', { name: new RegExp(`^${nom}`) }).first().locator('[data-blason]')
+  const blason = (nom: string) => (isMobile ? page.getByRole('link', { name: new RegExp(`^${nom}`) }).first() : page.getByRole('row').filter({ has: page.getByRole('link', { name: nom, exact: true }) })).locator('[data-blason]')
   await expect(blason('Nantes Test')).toHaveAttribute('data-figure', 'voile')
   await expect(blason('Annecy Test')).toHaveAttribute('data-figure', 'sommet')
   await expect(blason('Lyon Test')).toHaveAttribute('data-figure', 'clocher')

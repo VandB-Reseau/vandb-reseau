@@ -24,9 +24,9 @@ const pratiques = [
   { id: 'bp_2', magasin: 'Nice Test', date: ilYa(20).slice(0, 10), titre: 'Accord mets et vins', theme: 'Vente additionnelle', texte: 'Une fiche par plat.', par: 'Sam SUD', photos: [], reprises: [], jaime: [] },
 ]
 
-const infos = (page: Page) => page.getByRole('banner').getByRole('button', { name: /^Infos réseau/ })
+// Téléphone : dans l'en-tête, à droite du « + » ; PC : en bas du menu latéral (refonte 09/11/2026)
+const infos = (page: Page) => page.getByRole('button', { name: /^Infos réseau/ }).filter({ visible: true }).first()
 const ouvrir = async (page: Page) => {
-  // En-tête, à droite du « + », sur PC comme sur téléphone
   await infos(page).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Infos réseau' })).toBeVisible()
 }

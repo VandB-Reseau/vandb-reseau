@@ -44,9 +44,10 @@ test.afterEach(async ({ page }) => {
 test('le Suivi se lit en puces, une partie à la fois, sans liste du plan d’action', async ({ page, isMobile }, info) => {
   await connecter(page)
   await page.goto(`./#/magasins/${encodeURIComponent(M)}`)
-  await ouvrirOnglet(page, 'Budget')
-  const puces = page.getByRole('tablist', { name: 'Parties du suivi 2026' })
-  await expect(puces.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', 'Atterrissage 2026', 'Stock', 'Analyse'])
+  // Refonte (09/11/2026, 3A) : le suivi est dans l'onglet Chiffres, avec la santé et les saisies
+  await ouvrirOnglet(page, 'Chiffres')
+  const puces = page.getByRole('tablist', { name: 'Parties des chiffres' })
+  await expect(puces.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', 'Atterrissage 2026', 'Stock', 'Analyse', /^Santé et leviers/, /^Saisies/])
   await expect(puces.getByRole('tab', { name: 'Vue d’ensemble' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('region', { name: 'Santé du magasin à fin septembre' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Plan d’action' })).toHaveCount(0)
@@ -107,10 +108,10 @@ test('l’Impact et la bande de résultat restent sous les onglets de la fiche, 
   await page.goto(partie('budget'))
   const impact = page.getByRole('complementary', { name: 'Impact des changements' })
   await expect(impact).toBeVisible()
-  // Statut, commentaires, export et impression sur la ligne des onglets Suivi, Budget, Saisies
-  const onglet = await page.getByRole('tab', { name: /^Budget 2027/ }).boundingBox()
+  // Statut, commentaires, export et impression sur une ligne, au-dessus des étapes du budget
+  const etapes = await page.getByRole('tablist', { name: 'Étapes du budget 2027' }).boundingBox()
   const exporter = await page.getByRole('button', { name: 'Exporter en Excel' }).boundingBox()
-  expect(Math.abs(onglet!.y + onglet!.height / 2 - (exporter!.y + exporter!.height / 2))).toBeLessThan(12)
+  expect(exporter!.y + exporter!.height).toBeLessThanOrEqual(etapes!.y)
   await page.mouse.wheel(0, 900)
   await page.waitForTimeout(300)
   const bande = await page.locator('.onglets-fiche').boundingBox()

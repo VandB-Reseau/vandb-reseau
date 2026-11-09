@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { creerDepuisMenu, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 // Sprint 23 (Joseph, 23/10/2026) : retouches du quotidien. Saisie d'une visite sans champs déjà connus (S1),
 // Ma semaine en trois chiffres (S2), rythme par Coach lisible en entier (S3), tâche cochée depuis l'accueil
@@ -35,8 +35,7 @@ test('S1 : depuis la fiche, magasin, date, type et visiteur tiennent sur une lig
 test('S1 : saisie libre (bouton Créer), tous les champs restent ouverts', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/visites')
-  await page.getByRole('button', { name: 'Créer' }).first().click()
-  await page.getByRole('menuitem', { name: 'Visite' }).click()
+  await creerDepuisMenu(page, 'Visite')
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
   await expect(d.getByLabel('Magasins visités')).toBeVisible()
   await expect(d.getByRole('region', { name: 'Visite' })).toHaveCount(0)

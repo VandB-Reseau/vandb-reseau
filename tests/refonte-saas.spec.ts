@@ -74,7 +74,7 @@ test('PC : Ctrl K place le curseur dans la recherche, qui propose de créer et o
   await expect(fenetre).toBeVisible()
   // Panneau collé au bord droit, sur toute la hauteur
   const b = (await fenetre.boundingBox())!
-  const largeur = page.viewportSize()!.width
+  const largeur = await page.evaluate(() => document.documentElement.clientWidth)
   expect(Math.abs(b.x + b.width - largeur)).toBeLessThanOrEqual(2)
   expect(b.height).toBeGreaterThan(page.viewportSize()!.height - 4)
   await page.screenshot({ path: `captures/${info.project.name}-refonte-panneau.png` })
@@ -126,9 +126,9 @@ test('PC : les magasins en tableau, une ligne ouvre l’aperçu ; téléphone : 
   const tableau = page.getByRole('table', { name: 'Tableau des magasins' })
   await expect(tableau).toBeVisible()
   await expect(tableau.getByRole('columnheader')).toContainText(['Magasin', 'Coach', 'Responsable Régional', 'CA du mois', 'vs N-1', 'Nine box', 'Dernière visite', 'Tâches'])
-  // Plus de lignes qu'avant à l'écran : au moins 14 magasins visibles sans défiler
+  // Plus de lignes qu'avant à l'écran (9 avant la refonte) : au moins 12 magasins visibles sans défiler
   const visibles = await tableau.locator('tbody tr').evaluateAll((l) => l.filter((r) => r.getBoundingClientRect().bottom <= window.innerHeight).length)
-  expect(visibles).toBeGreaterThanOrEqual(14)
+  expect(visibles).toBeGreaterThanOrEqual(12)
   await expect(page.getByRole('group', { name: 'Vues enregistrées' }).getByRole('button', { name: /^Tous/ })).toHaveAttribute('aria-pressed', 'true')
   await tableau.getByRole('row').filter({ hasText: M }).getByRole('cell').nth(5).click()
   const apercu = page.getByRole('complementary', { name: `Aperçu de ${M}` })

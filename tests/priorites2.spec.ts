@@ -59,14 +59,16 @@ test('Visites : plus de bouton de tournée par Coach, la tournée reste dans Sem
 test('fiche magasin : contacts à initiales, rôle sous le nom, pictos de 48 px', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
-  await page.getByRole('tab', { name: 'Fiche' }).click()
+  await page.getByRole('tab', { name: 'Vue d’ensemble' }).click()
   await expect(page.getByText(/^Coach( · .*)?$/).first()).toBeVisible()
   for (const b of await page.getByRole('main').getByRole('link', { name: /^(Appeler|Écrire à) / }).all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-contacts.png`, fullPage: !isMobile })
 })
 
+// Sur PC, un tableau trié par ses colonnes (refonte 09/11/2026, tests/magasins-colonnes.spec.ts) ; les lettres restent sur téléphone
 test('Magasins : tri au choix, intertitres par lettre sans rangée de lettres', async ({ page, isMobile }, info) => {
+  test.skip(!isMobile, 'sur PC, le tableau des magasins')
   await seConnecter(page)
   await page.goto('./#/magasins')
   await expect(page.getByRole('region', { name: /^Magasins en [A-Z#]$/ }).first()).toBeVisible()

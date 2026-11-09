@@ -55,20 +55,23 @@ test('le Directeur ouvre les budgets depuis le menu, passe au suivi et aux param
   await expect(page.getByRole('heading', { level: 1, name: 'Paramètres réseau' })).toBeVisible()
 })
 
-test('la fiche du magasin a un onglet Budget : suivi, budget et saisies, sans quitter la fiche', async ({ page, isMobile }, info) => {
+// Refonte (Joseph, 09/11/2026, 3A) : le suivi et les saisies dans l'onglet Chiffres, les étapes du budget dans l'onglet Budget
+test('la fiche du magasin a ses onglets Chiffres et Budget : suivi, saisies et budget, sans quitter la fiche', async ({ page, isMobile }, info) => {
   await connecter(page, {}, {})
   await page.getByRole('heading', { level: 1, name: /^Accueil$|Bonjour|Bonsoir/ }).waitFor()
   await page.goto(`./#/magasins/${encodeURIComponent('Annecy Test')}`)
-  await ouvrirOnglet(page, 'Budget')
+  await ouvrirOnglet(page, 'Chiffres')
   const pagesMagasin = page.getByRole('navigation', { name: 'Pages du magasin' })
-  await expect(pagesMagasin.getByRole('tab', { name: `Suivi ${N}` })).toBeVisible()
-  await expect(pagesMagasin.getByRole('tab', { name: 'Saisies' })).toBeVisible()
-  await pagesMagasin.getByRole('tab', { name: 'Saisies' }).click()
-  await expect(page).toHaveURL(/#\/magasins\/Annecy%20Test\?vue=budget&partie=/)
-  await expect(page.getByRole('tab', { name: 'Réel du mois' })).toBeVisible()
+  await expect(pagesMagasin.getByRole('tab', { name: 'Vue d’ensemble' })).toBeVisible()
+  await pagesMagasin.getByRole('tab', { name: /^Saisies/ }).click()
+  await expect(page).toHaveURL(/#\/magasins\/Annecy%20Test\?vue=chiffres&partie=/)
+  await expect(pagesMagasin.getByRole('group', { name: 'Saisies du magasin' }).getByRole('button', { name: 'Réel du mois' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-budget.png`, fullPage: true })
+  await ouvrirOnglet(page, 'Budget')
+  await expect(page).toHaveURL(/vue=budget/)
+  await expect(pagesMagasin.getByRole('tablist', { name: /^Étapes du budget/ })).toBeVisible()
 })
 
 test('le franchisé d’un seul magasin arrive par « Mon budget » sur l’onglet Budget de sa fiche', async ({ page, isMobile }) => {
@@ -76,9 +79,10 @@ test('le franchisé d’un seul magasin arrive par « Mon budget » sur l’ongl
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   // Depuis son menu : « Mon budget » sur PC, « Budget » dans la barre du téléphone
   await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: isMobile ? 'Budget' : 'Mon budget', exact: true }).click()
-  await expect(page).toHaveURL(/#\/magasins\/Annecy%20Test\?vue=budget/)
+  // Le suivi du budget face au réel, dans l'onglet Chiffres de sa fiche (refonte 09/11/2026)
+  await expect(page).toHaveURL(/#\/magasins\/Annecy%20Test\?vue=chiffres/)
   await expect(page.getByRole('heading', { level: 1, name: 'Annecy Test' })).toBeVisible()
-  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: `Suivi ${N}` })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: 'Vue d’ensemble' })).toBeVisible()
   // Rien du réseau : ni suivi, ni hypothèses, ni paramètres
   await expect(page.getByRole('navigation', { name: 'Pages des budgets' })).toHaveCount(0)
 })

@@ -64,8 +64,9 @@ test('après connexion, l’accueil montre les priorités dans l’ordre choisi'
 test('chaque destination est accessible depuis la navigation', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  // Téléphone : « + » dans l'en-tête ; PC : en tête du menu latéral
-  await expect(page.getByRole('button', { name: 'Créer', exact: true })).toBeVisible()
+  // Téléphone : « + » dans l'en-tête ; PC : la recherche (Ctrl K) en tête du menu latéral (refonte 09/11/2026)
+  if (isMobile) await expect(page.getByRole('button', { name: 'Créer', exact: true })).toBeVisible()
+  else await expect(page.getByRole('combobox', { name: 'Recherche globale' })).toBeVisible()
   for (const { nom, court } of principales) {
     if (isMobile && !court) continue
     // Messages et Tâches peuvent porter leur compteur (« Messages : 2 nouveautés »)
@@ -83,7 +84,7 @@ test('chaque destination est accessible depuis la navigation', async ({ page, is
     } else {
       await nav.getByRole('button', { name: nom, exact: true }).click()
     }
-    await expect(page.getByRole('heading', { level: 1, name: nom, exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: new RegExp(`^${nom}( \\d{4})?$`) })).toBeVisible()
   }
   if (isMobile) {
     await page.getByRole('button', { name: 'Mon compte' }).click()
@@ -153,17 +154,18 @@ test('le menu a deux parties : la partie classique et Paramètres', async ({ pag
   await expect(page).toHaveURL(/#\/equipe\?vue=franchises/)
 })
 
-test('Équipe ouvre le groupe Paramètres', async ({ page, isMobile }) => {
+// Refonte (Joseph, 09/11/2026, 2A) : le groupe s'appelle Réglages (Équipe, Paramètres)
+test('Équipe ouvre le groupe Réglages', async ({ page, isMobile }) => {
   await seConnecter(page)
   if (isMobile) {
     await page.getByRole('button', { name: 'Mon compte' }).click()
     const menu = page.getByRole('menu')
-    // Juste sous le titre « Paramètres » ; la partie classique (au-dessus) ne le contient pas
-    const titre = menu.locator('li', { hasText: /^Paramètres$/ }).first()
+    // Juste sous le titre « Réglages » ; la partie classique (au-dessus) ne le contient pas
+    const titre = menu.locator('li', { hasText: /^Réglages$/ }).first()
     await expect(titre.locator('xpath=following-sibling::*[1]')).toHaveText('Équipe')
     await expect(menu.getByRole('menuitem').first()).toHaveText('Magasins')
   } else {
-    const groupe = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('list').filter({ hasText: 'Paramètres' }).last()
+    const groupe = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('list').filter({ hasText: 'Réglages' }).last()
     await expect(groupe.getByRole('button').first()).toHaveText('Équipe')
     const classique = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('list').first()
     await expect(classique.getByRole('button', { name: 'Équipe' })).toHaveCount(0)

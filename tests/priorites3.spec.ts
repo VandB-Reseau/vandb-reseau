@@ -13,13 +13,14 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
 })
 
-test('accueil sur PC : « À traiter » reste visible pendant qu’on fait défiler les actualités', async ({ page, isMobile }) => {
+// Refonte (Joseph, 09/11/2026, 7A) : « À traiter » au centre ; la colonne des actualités, à droite, reste à l'écran
+test('accueil sur PC : les actualités restent visibles pendant qu’on fait défiler « À traiter »', async ({ page, isMobile }) => {
   test.skip(isMobile, 'Colonne de droite du PC')
   await seConnecter(page)
-  const colonne = page.getByRole('complementary', { name: 'À traiter, mes tâches, cette semaine et contrats' })
+  const colonne = page.getByRole('complementary', { name: 'Actualités du réseau' })
   await expect(colonne).toBeVisible()
-  // Fil court depuis qu'il ne garde que comptes rendus et communications : la page doit dépasser l'écran
-  await page.evaluate(() => { (document.querySelector('[aria-label="Actualités"]') as HTMLElement).style.paddingBottom = '1500px' })
+  // La page doit dépasser l'écran
+  await page.evaluate(() => { (document.querySelector('[aria-label="À traiter"]') as HTMLElement).style.paddingBottom = '1500px' })
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200)
   const b = (await colonne.boundingBox())!

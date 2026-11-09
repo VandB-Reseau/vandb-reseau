@@ -262,8 +262,8 @@ export function GrillePhotos({ photos, max = 3, colonnes = 3, avant }: { photos:
 export type Affichage = 'lignes' | 'tableau'
 export function useAffichage(ecran: string): [Affichage, (a: Affichage) => void] {
   const cle = `vandb-affichage-${ecran}`
-  // Refonte (Joseph, 09/11/2026, 5A) : sur PC, le tableau d'office ; les lignes restent au choix (et sur téléphone)
-  const [a, setA] = useState<Affichage>(() => { try { return localStorage.getItem(cle) === 'lignes' ? 'lignes' : 'tableau' } catch { return 'tableau' } })
+  // Les lignes d'office : elles portent les actions de chaque magasin (Saisir, Voir plus) ; le tableau reste au choix
+  const [a, setA] = useState<Affichage>(() => { try { return localStorage.getItem(cle) === 'tableau' ? 'tableau' : 'lignes' } catch { return 'lignes' } })
   return [a, (v) => { setA(v); try { localStorage.setItem(cle, v) } catch { /* stockage indisponible */ } }]
 }
 

@@ -78,7 +78,7 @@ test('noter un magasin garde l’historique daté', async ({ page }) => {
 test('Magasins s’ouvre sur la liste', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/magasins')
-  await expect(page.getByRole('tab', { name: 'Liste', selected: true })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Affichage' }).getByRole('button', { name: 'Liste' })).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('l’icône de l’app est le logo V and B', async ({ page, request }) => {

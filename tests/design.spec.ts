@@ -16,11 +16,11 @@ const DIRECTEUR = 'Dominique DIRECTION'
 const sansDebordement = (l: Locator) => l.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
 test('le bouton Créer ouvre sous lui un menu : visite, tâche, message, bonne pratique, événement', async ({ page, isMobile }, info) => {
+  // Refonte (Joseph, 09/11/2026, 9A) : sur PC, plus de bouton Créer ; Ctrl K et le bouton de chaque page (tests/refonte-saas.spec.ts)
+  test.skip(!isMobile, 'téléphone seulement')
   await seConnecter(page)
   // Téléphone : « + » dans l'en-tête, la barre du bas garde cinq onglets (Joseph, 21/10/2026)
-  const creer = isMobile
-    ? page.getByRole('banner').getByRole('button', { name: 'Créer' })
-    : page.getByRole('button', { name: 'Créer', exact: true })
+  const creer = page.getByRole('banner').getByRole('button', { name: 'Créer' })
   if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Visites', /Messages$/, /Tâches$/, /^Santé/])
   const bouton = (await creer.boundingBox())!
   await creer.click()
@@ -44,13 +44,13 @@ test('le bouton Créer ouvre sous lui un menu : visite, tâche, message, bonne p
   await expect(page).toHaveURL(/#\/echanges/)
 })
 
-test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ouvre sur l’onglet Fiche', async ({ page }, info) => {
+test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ouvre sur sa vue d’ensemble', async ({ page }, info) => {
   await seConnecter(page)
   await expect(page.getByRole('region', { name: 'À traiter' })).toBeVisible()
   expect(await sansDebordement(page.locator('body'))).toBe(true)
   await page.goto('./#/magasins/Lyon%20Test')
   await expect(page.getByRole('heading', { name: 'Lyon Test', level: 1 })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'Fiche', selected: true })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Vue d’ensemble', selected: true })).toBeVisible()
   const bref = page.getByRole('group', { name: 'En bref' })
   await expect(bref).toContainText('70 k€')
   await expect(bref).toContainText('−30,0 %')

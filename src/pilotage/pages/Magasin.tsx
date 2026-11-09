@@ -210,7 +210,8 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
   }) : {}
 
   if (chargement && !donnees) return <Box>{retour}<Skeleton variant="rounded" height={160} /></Box>
-  if (erreur) return <Box>{retour}<Panne quoi="Les chiffres du magasin" recharger={recharger} /></Box>
+  // Onglet Chiffres de la fiche : la santé du magasin (données du réseau) reste lisible même si le suivi financier ne se charge pas
+  if (erreur) return <Box>{retour}<Panne quoi="Les chiffres du magasin" recharger={recharger} />{mode === 'chiffres' && sante && <Box sx={{ mt: 3 }}>{sante}</Box>}</Box>
   if (!donnees || !ligne) {
     return <Box>{retour}<EtatVide titre="Ce magasin n’est pas dans ton périmètre" texte="Il n’apparaît pas parmi les magasins rattachés à ton compte. Reviens à la liste pour choisir un de tes magasins." /></Box>
   }

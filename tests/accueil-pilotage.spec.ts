@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { seConnecter, textesTropPetits } from './supabase-simule'
 
-// Accueil de pilotage (maquette A, Joseph 22/10/2026) : quatre repères, actualités en colonne principale,
-// À traiter, Mes tâches et Cette semaine à droite ; sur téléphone, ces trois blocs en onglets courts au-dessus des actualités
+// Accueil de pilotage (maquette A, Joseph 22/10/2026, revue le 09/11/2026) : quatre repères, À traiter, Mes tâches et
+// Cette semaine au centre, actualités à droite ; sur téléphone, ces trois blocs en onglets courts au-dessus des actualités
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -26,21 +26,25 @@ test('quatre repères de pilotage en tête de l’accueil, chacun mène à son d
   await expect(page.getByRole('heading', { level: 1, name: 'Santé du parc' })).toBeVisible()
 })
 
-test('PC : actualités à gauche, À traiter, Mes tâches et Cette semaine à droite', async ({ page, isMobile }, info) => {
+// Refonte (Joseph, 09/11/2026, 7A) : « À traiter » au centre, les actualités à droite, visibles dès l'arrivée
+test('PC : À traiter, Mes tâches et Cette semaine au centre, actualités à droite dès l’arrivée', async ({ page, isMobile }, info) => {
   test.skip(isMobile, 'Disposition du PC')
   await seConnecter(page)
-  const actualites = page.getByRole('region', { name: 'Actualités' })
-  const colonne = page.getByRole('complementary', { name: 'À traiter, mes tâches, cette semaine et contrats' })
+  const colonne = page.getByRole('complementary', { name: 'Actualités du réseau' })
+  const actualites = colonne.getByRole('region', { name: 'Actualités' })
   await expect(actualites).toBeVisible()
-  await expect(colonne.getByRole('region', { name: 'À traiter' })).toBeVisible()
-  await expect(colonne.getByRole('region', { name: 'Mes tâches' })).toBeVisible()
-  await expect(colonne.getByRole('link', { name: 'Toutes' })).toHaveAttribute('href', '#/taches')
-  const a = (await actualites.boundingBox())!
+  await expect(actualites).toBeInViewport()
+  const traiter = page.getByRole('region', { name: 'À traiter' })
+  await expect(traiter).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Mes tâches' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Mes tâches' }).getByRole('link', { name: 'Toutes' })).toHaveAttribute('href', '#/taches')
+  const t = (await traiter.boundingBox())!
   const c = (await colonne.boundingBox())!
-  expect(a.x + a.width).toBeLessThanOrEqual(c.x)
+  expect(t.x + t.width).toBeLessThanOrEqual(c.x)
+  expect(c.y).toBeLessThan(page.viewportSize()!.height / 2)
   // Les repères au-dessus des deux colonnes
   const p = (await page.getByRole('region', { name: 'Pilotage' }).boundingBox())!
-  expect(p.y + p.height).toBeLessThanOrEqual(a.y)
+  expect(p.y + p.height).toBeLessThanOrEqual(t.y)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-accueil-pilotage.png` })
 })

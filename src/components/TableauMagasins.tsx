@@ -64,6 +64,27 @@ const colonnes: { v: TriMagasins | null; libelle: string; droite?: boolean; larg
 
 const PAS = 100
 
+// Favoris et fiches consultées récemment : une rangée de liens au-dessus du tableau, comme les lignes du téléphone
+export function MagasinsSuivis({ suivis }: { suivis?: { favoris: Magasin[]; recents: Magasin[] } }) {
+  const groupes = suivis ? [{ titre: 'Favoris', ms: suivis.favoris }, { titre: 'Consultés récemment', ms: suivis.recents }].filter((g) => g.ms.length) : []
+  if (!groupes.length) return null
+  return (
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 4, rowGap: 1, mb: 1.5 }}>
+      {groupes.map((g) => (
+        <Box key={g.titre} component="section" aria-label={g.titre} sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 1.5, rowGap: 0.5 }}>
+          <Typography component="h2" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.875rem' }}>{g.titre}</Typography>
+          {g.ms.map((m) => (
+            <Link key={m.nom} component={RouterLink} to={lienFiche(m.nom)} color="inherit" underline="hover"
+              sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, minHeight: 36, fontWeight: 600, fontSize: '0.875rem' }}>
+              <Blason magasin={m} taille={22} />{m.nom}
+            </Link>
+          ))}
+        </Box>
+      ))}
+    </Box>
+  )
+}
+
 export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[]; tri: TriMagasins; trier: (t: TriMagasins) => void }) {
   const { reseau } = useReseau()
   const naviguer = useNavigate()
@@ -97,7 +118,7 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
   const clavier = (e: KeyboardEvent, nom: string) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ouvrir(nom) } }
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: apercu ? 'minmax(0, 1fr) 320px' : 'minmax(0, 1fr)', gap: 2, alignItems: 'start' }}>
-      <Card sx={{ overflow: 'hidden' }}>
+      <Card component="section" aria-label="Liste des magasins" sx={{ overflow: 'hidden' }}>
         <TableContainer>
           <Table size="small" aria-label="Tableau des magasins" sx={{ '& td, & th': { py: 0.75, px: 1.5, fontSize: '0.875rem' }, '& tbody tr': { height: 44, cursor: 'pointer' }, '& tbody tr:hover': { bgcolor: 'action.hover' } }}>
             <TableHead>

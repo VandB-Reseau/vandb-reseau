@@ -3,7 +3,7 @@ import { suiviEtRR } from '../data/charge'
 import { CartePratique, DialogPratique } from '../components/BonnesPratiques'
 import { useReactionsPratiques } from '../data/reactionsPratiques'
 import type { BonnePratique } from '../data/bonnesPratiques'
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
 import { OngletBudget } from '../components/OngletBudget'
 import { GroupeBudgetaire } from '../components/GroupeBudgetaire'
@@ -123,6 +123,20 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const versMessages = demandee === 'messages'
   useEffect(() => { if (versMessages) naviguer(lienFil({ genre: 'magasin', magasin: m.nom, equipe: false }), { replace: true }) }, [versMessages, naviguer, m.nom])
   useEffect(() => { if (anciennesVues[demandee] && demandee !== 'sante') document.getElementById(`partie-${demandee}`)?.scrollIntoView({ block: 'start' }) }, [demandee])
+  // Ancien lien « ?vue=sante » : la santé s'affiche une fois le suivi chargé, la page descend alors jusqu'à elle
+  const versSante = useRef(demandee === 'sante')
+  useEffect(() => {
+    if (!versSante.current) return
+    let essais = 0
+    const minuterie = window.setInterval(() => {
+      const e = document.getElementById('partie-sante')
+      if (!e && ++essais < 50) return
+      window.clearInterval(minuterie)
+      versSante.current = false
+      e?.scrollIntoView({ block: 'start' })
+    }, 100)
+    return () => window.clearInterval(minuterie)
+  }, [])
   const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); n.delete('partie'); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const changerOnglet = (o: OngletFiche) => changerVue(o === 'activite' ? 'actions' : o)
   const [reaffectation, setReaffectation] = useState(false)

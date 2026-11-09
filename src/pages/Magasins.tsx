@@ -20,7 +20,7 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Button from '@mui/material/Button'
 import TimelineOutlined from '@mui/icons-material/TimelineOutlined'
-import { TableauMagasins } from '../components/TableauMagasins'
+import { MagasinsSuivis, TableauMagasins } from '../components/TableauMagasins'
 import { perimetreDuProfil } from '../data/perimetre'
 import { useAuth } from '../auth/AuthContext'
 import { ListeMagasins, trisColonnes, type TriMagasins } from '../components/ListeMagasins'
@@ -125,7 +125,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
               </Suspense>
             ) : (
               <>
-                {surPC ? <TableauMagasins magasins={resultats} tri={tri} trier={trier} /> : <ListeMagasins magasins={resultats} tri={tri} suivis={enTete} trier={trier} />}
+                {surPC ? <><MagasinsSuivis suivis={enTete} /><TableauMagasins magasins={resultats} tri={tri} trier={trier} /></> : <ListeMagasins magasins={resultats} tri={tri} suivis={enTete} trier={trier} />}
               </>
             )}
           </>

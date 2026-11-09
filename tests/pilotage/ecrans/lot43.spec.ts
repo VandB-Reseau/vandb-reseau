@@ -188,7 +188,7 @@ test('étapes du budget : l’état de chaque étape selon qui regarde', async (
   // 03/11/2026 : dans les onglets de la fiche, sur PC comme sur téléphone
   const menu = page.getByRole('navigation', { name: 'Pages du magasin' })
   // Trois étapes (03/11/2026) : le point de départ est une carte de Construire
-  await expect(menu.getByRole('tab')).toHaveText([/^Suivi/, /^Budget/, /^Saisies/, /^1 · Construire/, /^2 · Visualiser/, /^3 · Envoyer et valider/])
+  await expect(menu.getByRole('tab')).toHaveText([/^1 · Construire/, /^2 · Visualiser/, /^3 · Envoyer et valider/])
   await expect(menu.getByRole('tab', { name: /^1 · Construire/ })).toContainText('À relire')
   await expect(menu.getByRole('tab', { name: /^3 · Envoyer et valider/ })).toContainText('À envoyer')
   await page.getByLabel('Évolution du nombre de tickets : Cave').fill('5')

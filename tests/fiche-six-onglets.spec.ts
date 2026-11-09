@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { ouvrirOnglet, seConnecter, textesTropPetits } from './supabase-simule'
 
+// Refonte (Joseph, 09/11/2026, 3A) : 5 onglets, Vue d'ensemble, Activité (tâches, visites, journal), Chiffres (suivi, santé,
+// saisies), Budget, Ressources ; les anciens noms d'onglets passent par ouvrirOnglet.
 // L3 (Joseph, 21/10/2026) : fiche magasin en onglets regroupés ; la santé avec les chiffres, les campagnes avec les tâches,
 // journal et bonnes pratiques chacun dans leur onglet (Joseph, 22/10/2026) ; les anciens liens ouvrent l'onglet qui les accueille
 
@@ -21,7 +23,7 @@ test('chaque onglet regroupé montre ses deux parties, sans déborder de l’éc
   await expect(page.getByRole('region', { name: 'Journal' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Journal' }).getByText('Classé Cœur de réseau')).toBeVisible()
   expect(await largeurTenue(page)).toBe(true)
-  await ouvrirOnglet(page, 'Chiffres')
+  await ouvrirOnglet(page, 'Chiffres et santé')
   await expect(page.getByText(/En recul depuis le 1 oct\. 2026/)).toBeVisible()
   expect(await largeurTenue(page)).toBe(true)
   expect(await textesTropPetits(page)).toEqual([])
@@ -33,7 +35,7 @@ test('chaque onglet regroupé montre ses deux parties, sans déborder de l’éc
 
 for (const { ancienne, onglet, vu } of [
   { ancienne: 'sante', onglet: /^Chiffres/, vu: /En recul depuis le 1 oct\. 2026/ },
-  { ancienne: 'fil', onglet: /^Journal/, vu: 'Classé Cœur de réseau' },
+  { ancienne: 'fil', onglet: /^Activité/, vu: 'Classé Cœur de réseau' },
 ]) {
   test(`un ancien lien ?vue=${ancienne} ouvre l’onglet qui l’accueille`, async ({ page, isMobile }) => {
     await seConnecter(page)
@@ -48,7 +50,7 @@ test('grand téléphone : les onglets tiennent sans déborder, le reste sous « 
   await page.setViewportSize({ width: 430, height: 900 })
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
-  await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab')).toHaveText(['Fiche', 'Tâches', 'Visites', 'Chiffres', 'Plus'])
+  await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Plus'])
   const droite = await page.evaluate(() => Math.max(...[...document.querySelectorAll('.onglets-fiche [role=tab]')].map((t) => t.getBoundingClientRect().right)))
   expect(droite).toBeLessThanOrEqual(430 - 16)
 })

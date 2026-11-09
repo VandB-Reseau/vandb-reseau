@@ -658,12 +658,30 @@ export async function seConnecter(page: Page, options: OptionsSimulation = {}) {
 
 // Ouvre une rubrique à onglets : sur téléphone, au-delà de 4 rubriques, les dernières sont derrière « Plus »
 // Un onglet regroupé (« Chiffres et santé ») s'ouvre aussi par son nom court (« Chiffres »)
+// Refonte (Joseph, 09/11/2026, 3A) : fiche du magasin en 5 onglets ; les anciens noms d'onglets des tests y mènent encore
+const ANCIENS_ONGLETS_FICHE: Record<string, [string, string?]> = {
+  'Fiche': ['Vue d’ensemble'], 'Chiffres et santé': ['Chiffres', 'Santé et leviers'], 'Bonnes pratiques': ['Ressources'],
+  'Tâches et campagnes': ['Activité', 'Tâches et campagnes'], 'Tâches': ['Activité', 'Tâches et campagnes'], 'Visites': ['Activité', 'Visites'], 'Journal': ['Activité', 'Journal'], 'Campagnes': ['Activité', 'Campagnes'],
+}
 export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page = page) {
   const nomComplet = new RegExp(`^${nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( et .+)?$`)
   const onglet = dans.getByRole('tab', { name: nomComplet })
   const plus = dans.getByRole('tab', { name: /autres rubriques$/i })
+  const ensemble = dans.getByRole('tab', { name: 'Vue d’ensemble' })
   // Les écrans se chargent à la demande : attendre que la rangée d'onglets soit là
-  await expect(onglet.or(plus).first()).toBeVisible()
+  await expect(onglet.or(plus).or(ensemble).first()).toBeVisible()
+  const ancien = ANCIENS_ONGLETS_FICHE[nom]
+  if (ancien && (await ensemble.count()) > 0) {
+    if (ancien[0] !== nom) await ouvrirOnglet(page, ancien[0], dans)
+    // Santé et leviers : une puce de l'onglet Chiffres, absente quand le suivi financier ne se charge pas (la santé s'affiche alors seule)
+    if (ancien[1] === 'Santé et leviers') {
+      const puce = page.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: /^Santé et leviers/ })
+      const panne = page.getByRole('button', { name: 'Réessayer' })
+      await expect(puce.or(panne).first()).toBeVisible()
+      if (await puce.isVisible()) await puce.click()
+    } else if (ancien[1]) await page.getByRole('tablist', { name: 'Parties de l’activité' }).getByRole('tab', { name: ancien[1] }).click()
+    if (ancien[0] !== nom) return
+  }
   if (await onglet.isVisible()) return onglet.click()
   await plus.click()
   await page.getByRole('dialog').getByRole('button', { name: nomComplet }).click()
@@ -718,4 +736,18 @@ export async function deplierATraiter(page: Page) {
   if (page.viewportSize()!.width >= 900) return
   const voir = bloc.getByRole('button', { name: /^Voir les \d+$/ })
   if (await voir.count()) await voir.click()
+}
+
+// Refonte (Joseph, 09/11/2026, 9A) : sur téléphone, le « + » de l'en-tête ; sur PC, plus de bouton Créer, la recherche
+// (Ctrl K) propose les mêmes créations
+const ACTIONS_CREER = { 'Visite': 'Saisir une visite', 'Tâche': 'Ajouter une tâche', 'Message': 'Écrire un message', 'Bonne pratique': 'Partager une bonne pratique', 'Événement': 'Ajouter un événement' }
+export async function creerDepuisMenu(page: Page, nom: keyof typeof ACTIONS_CREER) {
+  if ((page.viewportSize()?.width ?? 1440) < 900) {
+    await page.getByRole('banner').getByRole('button', { name: 'Créer' }).click()
+    await page.getByRole('menu', { name: 'Créer' }).getByRole('menuitem', { name: nom, exact: true }).click()
+    return
+  }
+  await page.keyboard.press('Control+k')
+  await page.getByRole('combobox', { name: 'Recherche globale' }).fill(ACTIONS_CREER[nom])
+  await page.getByRole('option', { name: ACTIONS_CREER[nom], exact: true }).click()
 }

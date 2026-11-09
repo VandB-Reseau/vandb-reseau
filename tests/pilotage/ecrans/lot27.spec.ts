@@ -16,7 +16,7 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs, 'aucune erreur JavaScript').toEqual([])
 })
 
-test('fiche en trois espaces ; la barre d’enregistrement montre l’effet avant → après et se retire à l’annulation', async ({ page, isMobile }, info) => {
+test('fiche : onglets Chiffres et Budget ; la barre d’enregistrement montre l’effet avant → après et se retire à l’annulation', async ({ page, isMobile }, info) => {
   await seConnecter(page, { role: 'franchise', magasins: [propose] })
   // Lot 36 : la fiche s'ouvre sur le suivi ; le budget est un espace à part, en 3 étapes (03/11/2026)
   await expect(page).toHaveURL(/[?&]partie=synthese$/)
