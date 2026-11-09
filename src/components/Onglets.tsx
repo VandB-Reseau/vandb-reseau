@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import Typography from '@mui/material/Typography'
 import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -49,8 +50,19 @@ export function combienVisibles(noms: string[], largeur: number, mesure: (t: str
   return Math.min(VISIBLES_TELEPHONE, noms.length)
 }
 
-export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle, fiche, libres }: { valeur: V; onChange: (v: V) => void; rubriques: Rubrique<V>[]; libelle: string; fiche?: boolean; libres?: boolean }) {
+// titre (refonte vague 2, 11A) : sur PC, le nom de la fiche s'affiche dans la bande collante dès que l'en-tête est sorti de l'écran
+export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle, fiche, libres, titre }: { valeur: V; onChange: (v: V) => void; rubriques: Rubrique<V>[]; libelle: string; fiche?: boolean; libres?: boolean; titre?: ReactNode }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
+  const avecTitre = !!titre && surPC && !libres
+  const repere = useRef<HTMLDivElement | null>(null)
+  const [colle, setColle] = useState(false)
+  useEffect(() => {
+    const e = repere.current
+    if (!avecTitre || !e || typeof IntersectionObserver === 'undefined') return
+    const o = new IntersectionObserver(([x]) => setColle(!x.isIntersecting && x.boundingClientRect.top < 0))
+    o.observe(e)
+    return () => o.disconnect()
+  }, [avecTitre])
   const [panneau, setPanneau] = useState(false)
   const publierBande = useBande('--onglets', !libres)
   const [place, setPlace] = useState<{ largeur: number; police: string; polices: boolean } | null>(null)
@@ -83,16 +95,14 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
   const autres = replier ? rubriques.slice(nbVisibles) : []
   const ouverteAilleurs = autres.find((r) => r.vue === valeur)
   const pastilleAutres = autres.reduce((n, r) => n + (r.pastille ?? 0), 0)
-  return (
-    <>
-    {fiche && <Box className="onglets-repere" aria-hidden />}
-    <Tabs ref={bande} className={fiche ? 'onglets-fiche' : undefined} value={ouverteAilleurs ? PLUS : valeur} onChange={(_e, v) => { if (v !== PLUS) onChange(v as V) }} variant="scrollable" scrollButtons={false} aria-label={libelle}
+  const onglets = (dansBande: boolean) => (
+    <Tabs ref={dansBande ? undefined : bande} className={fiche ? 'onglets-fiche' : undefined} value={ouverteAilleurs ? PLUS : valeur} onChange={(_e, v) => { if (v !== PLUS) onChange(v as V) }} variant="scrollable" scrollButtons={false} aria-label={libelle}
       slotProps={{ indicator: { sx: { bgcolor: 'secondary.main', height: 3, borderRadius: '3px 3px 0 0' } } }}
       sx={{
-        mb: { xs: 1.5, md: 2.5 }, minHeight: 48, mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, '& .MuiTabs-flexContainer, & .MuiTabs-list': { gap: { xs: 0.5, md: 3 } },
-        boxShadow: (t) => `inset 0 -1px 0 ${t.palette.divider}`,
+        mb: dansBande ? 0 : { xs: 1.5, md: 2.5 }, minHeight: 48, ...(dansBande ? { flex: 1, minWidth: 0 } : {}), mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, '& .MuiTabs-flexContainer, & .MuiTabs-list': { gap: { xs: 0.5, md: 3 } },
+        boxShadow: dansBande ? 'none' : (t) => `inset 0 -1px 0 ${t.palette.divider}`,
         // Sous la barre du haut (64 px téléphone, 72 px PC), sur le fond de la page
-        ...(libres ? {} : { position: 'sticky', top: sousBandes(), zIndex: 4, bgcolor: 'background.default' }),
+        ...(libres || dansBande ? {} : { position: 'sticky', top: sousBandes(), zIndex: 4, bgcolor: 'background.default' }),
       }}>
       {visibles.map((r) => (
         <Tab key={r.vue} value={r.vue} aria-label={r.libelle} disableRipple
@@ -106,6 +116,16 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
           sx={{ ...styleOnglet, gap: 0.25, pl: 1.75, pr: 1.25, '& .MuiTab-icon': { mb: 0, ml: 0, fontSize: 20 } }} />
       )}
     </Tabs>
+  )
+  return (
+    <>
+    {(fiche || avecTitre) && <Box ref={repere} className="onglets-repere" aria-hidden />}
+    {avecTitre ? (
+      <Box ref={bande} sx={{ position: 'sticky', top: sousBandes(), zIndex: 4, bgcolor: 'background.default', display: 'flex', alignItems: 'center', gap: 3, mb: 2.5, boxShadow: (t) => `inset 0 -1px 0 ${t.palette.divider}` }}>
+        {colle && <Typography component="p" aria-hidden sx={{ fontFamily: (t) => t.typography.h1.fontFamily, fontWeight: 700, fontSize: '1.125rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }}>{titre}</Typography>}
+        {onglets(true)}
+      </Box>
+    ) : onglets(false)}
     {replier && (
       <Dialog open={panneau} onClose={() => setPanneau(false)} aria-labelledby="titre-autres-rubriques" fullWidth>
         <DialogTitle id="titre-autres-rubriques" sx={{ pb: 1 }}>{libelle}</DialogTitle>

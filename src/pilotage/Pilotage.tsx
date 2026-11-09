@@ -19,8 +19,6 @@ import { estDirecteur, estEquipe, voitParametres, type Profil } from './auth/rol
 import { GardeSaisie } from './components/GardeSaisie'
 import { anneeSuivi, chargerAnnees, ecouterAnnees } from './data/annees'
 import { anneeBudget, oublier } from './data/pilotage'
-import { Hypotheses } from './pages/Hypotheses'
-import { Imports } from './pages/Imports'
 import { Magasin } from './pages/Magasin'
 import { Magasins } from './pages/Magasins'
 import { Parametres } from './pages/Parametres'
@@ -125,8 +123,9 @@ function OngletsBudgets({ profil }: { profil: Profil }) {
   const pages = [
     { chemin: '/budgets', nom: `Budgets ${anneeBudget()}` },
     ...(estEquipe(profil) ? [{ chemin: '/budgets/suivi', nom: `Suivi ${anneeSuivi()}` }] : []),
-    ...(estDirecteur(profil) ? [{ chemin: '/budgets/hypotheses', nom: 'Hypothèses du réseau' }, { chemin: '/budgets/imports', nom: 'Imports de caisse' }] : []),
-    ...(voitParametres(profil) ? [{ chemin: '/budgets/parametres', nom: 'Paramètres réseau' }] : []),
+    // Refonte vague 2 (14A) : le Directeur règle les budgets dans Paramètres ; le contrôle de gestion, qui n'a pas
+    // Paramètres, garde ses paramètres ici
+    ...(voitParametres(profil) && !estDirecteur(profil) ? [{ chemin: '/budgets/parametres', nom: 'Paramètres réseau' }] : []),
   ]
   if (pages.length < 2) return null
   const actif = pages.slice().reverse().find((p) => pathname === p.chemin || pathname.startsWith(`${p.chemin}/`))?.chemin ?? '/budgets'
@@ -148,9 +147,10 @@ export function PagesBudgets() {
           <Routes>
             <Route index element={<Magasins />} />
             {estEquipe(profil) && <Route path="suivi" element={<Reseau />} />}
-            {estDirecteur(profil) && <Route path="hypotheses" element={<Hypotheses />} />}
-            {estDirecteur(profil) && <Route path="imports" element={<Imports />} />}
-            {voitParametres(profil) && <Route path="parametres" element={<Parametres />} />}
+            {estDirecteur(profil) && <Route path="hypotheses" element={<Navigate to="/parametres/reglages?rubrique=hypotheses" replace />} />}
+            {estDirecteur(profil) && <Route path="imports" element={<Navigate to="/parametres/reglages?rubrique=imports" replace />} />}
+            {estDirecteur(profil) && <Route path="parametres" element={<Navigate to="/parametres/reglages?rubrique=budget" replace />} />}
+            {voitParametres(profil) && !estDirecteur(profil) && <Route path="parametres" element={<Parametres />} />}
             <Route path="*" element={<Navigate to="/budgets" replace />} />
           </Routes>
         </>

@@ -130,6 +130,8 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
   const navigate = useNavigate()
   // Panneau Impact (03/11/2026) : à droite dès que l'écran laisse la place au tableau des hypothèses à côté
   const impactACote = useMediaQuery('(min-width:1280px)')
+  // Refonte vague 2 (11A) : sur PC, statut et étapes du budget sur une seule ligne
+  const etapesEnLigne = useMediaQuery('(min-width:1100px)')
   const { profil } = useAuth()
   const annee = anneeBudget()
   const { donnees, erreur, chargement, recharger } = useChargement(
@@ -428,6 +430,29 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
     </Stack>
   ) : null
 
+  const etapes = (enLigne: boolean) => (
+          <Tabs value={etapeDe(onglet)} onChange={(_, v: string) => allerEtape(v)} variant="scrollable" scrollButtons={false} className="pas-a-l-impression"
+            aria-label={`Étapes du budget ${annee}`}
+            sx={{ mt: enLigne ? 0 : 2, minHeight: enLigne ? 48 : 56, flex: enLigne ? '0 1 auto' : undefined, mr: enLigne ? 'auto' : undefined, '& .MuiTabs-indicator': { display: 'none' }, '& .MuiTabs-flexContainer': { gap: 0 },
+              '& .MuiTab-root': { minHeight: enLigne ? 48 : 56, px: 1, py: 0.5, alignItems: 'center', textAlign: 'left', color: 'text.primary', opacity: 1, fontWeight: 400, textTransform: 'none',
+                flexDirection: 'row', gap: 1.25, '&:not(:last-of-type)::after': { content: '""', width: { xs: 16, md: 40 }, height: 2, bgcolor: 'divider', ml: { xs: 0.5, md: 1.5 } } },
+              '& .MuiTab-root.Mui-selected': { fontWeight: 800, color: 'text.primary' },
+              '& .rond-etape': { width: enLigne ? 26 : 32, height: enLigne ? 26 : 32, fontSize: enLigne ? '0.8125rem' : undefined, borderRadius: '50%', display: 'grid', placeItems: 'center', flexShrink: 0, fontWeight: 800, border: 2, borderColor: 'divider', bgcolor: 'background.paper' },
+              '& .Mui-selected .rond-etape': { borderColor: 'text.primary', bgcolor: 'text.primary', color: 'background.paper' } }}>
+            {parties.map((x) => {
+              const [numero, nomEtape] = x.libelle.split(' · ')
+              return (
+                <Tab key={x.cle} value={x.cle} aria-current={etapeDe(onglet) === x.cle ? 'step' : undefined}
+                  onClick={themeOuvert && x.cle === 'budget' ? () => (onglet === 'equipe' ? garde(() => aller('budget')) : aller('budget')) : undefined}
+                  label={<>
+                    <Box component="span" className="rond-etape">{numero}<Box component="span" sx={visuellementCache}> · </Box></Box>
+                    <LibelleOnglet texte={nomEtape ?? x.libelle} manque={!!manques[x.cle]} detail={manques[x.cle]?.detail ?? ''} marque={marquesMenu[x.cle]} />
+                  </>} />
+              )
+            })}
+          </Tabs>
+  )
+
   return (
     <Box>
       {retour}
@@ -448,7 +473,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         {/* Lot 38 (D2) : un en-tête unique, budget et son statut, actions ; le statut ne se répète plus dans la page */}
         <Box component="header" sx={{ flex: '1 1 auto', display: 'flex', alignItems: 'center', justifyContent: { md: 'flex-end' }, columnGap: 1.5, rowGap: 1, flexWrap: 'wrap', py: { md: 0.75 } }}>
           {statutEntete && (
-            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mr: { md: 'auto' }, ml: { md: 1 } }}>
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mr: { md: espace === 'budget' && etapesEnLigne ? 1 : 'auto' }, ml: { md: 1 } }}>
               <Typography variant="body1" color="text.secondary" component="span">Budget {statutEntete.annee}</Typography>
               <PastilleStatut statut={statutEntete.statut} />
               {espace === 'budget' && ligne.base && (
@@ -459,32 +484,12 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
               )}
             </Box>
           )}
+          {espace === 'budget' && etapesEnLigne && etapes(true)}
           {espace === 'budget' && <BoutonCommentaires />}
           {actionsEntete}
         </Box>
         </Box>
-        {espace === 'budget' && (
-          <Tabs value={etapeDe(onglet)} onChange={(_, v: string) => allerEtape(v)} variant="scrollable" scrollButtons={false} className="pas-a-l-impression"
-            aria-label={`Étapes du budget ${annee}`}
-            sx={{ mt: 2, minHeight: 56, '& .MuiTabs-indicator': { display: 'none' }, '& .MuiTabs-flexContainer': { gap: 0 },
-              '& .MuiTab-root': { minHeight: 56, px: 1, py: 0.5, alignItems: 'center', textAlign: 'left', color: 'text.primary', opacity: 1, fontWeight: 400, textTransform: 'none',
-                flexDirection: 'row', gap: 1.25, '&:not(:last-of-type)::after': { content: '""', width: { xs: 16, md: 40 }, height: 2, bgcolor: 'divider', ml: { xs: 0.5, md: 1.5 } } },
-              '& .MuiTab-root.Mui-selected': { fontWeight: 800, color: 'text.primary' },
-              '& .rond-etape': { width: 32, height: 32, borderRadius: '50%', display: 'grid', placeItems: 'center', flexShrink: 0, fontWeight: 800, border: 2, borderColor: 'divider', bgcolor: 'background.paper' },
-              '& .Mui-selected .rond-etape': { borderColor: 'text.primary', bgcolor: 'text.primary', color: 'background.paper' } }}>
-            {parties.map((x) => {
-              const [numero, nomEtape] = x.libelle.split(' · ')
-              return (
-                <Tab key={x.cle} value={x.cle} aria-current={etapeDe(onglet) === x.cle ? 'step' : undefined}
-                  onClick={themeOuvert && x.cle === 'budget' ? () => (onglet === 'equipe' ? garde(() => aller('budget')) : aller('budget')) : undefined}
-                  label={<>
-                    <Box component="span" className="rond-etape">{numero}<Box component="span" sx={visuellementCache}> · </Box></Box>
-                    <LibelleOnglet texte={nomEtape ?? x.libelle} manque={!!manques[x.cle]} detail={manques[x.cle]?.detail ?? ''} marque={marquesMenu[x.cle]} />
-                  </>} />
-              )
-            })}
-          </Tabs>
-        )}
+        {espace === 'budget' && !etapesEnLigne && etapes(false)}
         {(espace === 'donnees' || espace === 'suivi') && (() => {
           // Onglet Chiffres de la fiche : le suivi, la santé et les saisies en une seule sous-navigation (2 niveaux au plus)
           const puces = mode === 'chiffres'

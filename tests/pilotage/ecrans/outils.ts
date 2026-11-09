@@ -51,7 +51,15 @@ export async function ouvrir(page: Page, partie: string) {
 }
 
 // Ancien menu du pilotage : les onglets de la page « Budgets » de l'app réseau
+// Refonte vague 2 (14A) : pour le Directeur, les réglages des budgets sont dans Paramètres ; l'ancienne adresse y mène
+const REGLAGES_BUDGETS: Record<string, string> = { 'Hypothèses du réseau': 'hypotheses', 'Imports de caisse': 'imports', 'Paramètres réseau': 'parametres' }
 export async function allerVers(page: Page, nom: string) {
+  const reglage = Object.entries(REGLAGES_BUDGETS).find(([k]) => nom.startsWith(k))?.[1]
+  if (reglage && !(await page.getByRole('navigation', { name: 'Pages des budgets' }).getByRole('tab', { name: new RegExp(`^${nom}`) }).count())) {
+    await page.goto(`./#/budgets/${reglage}`)
+    await page.getByRole('heading', { level: 1 }).first().waitFor()
+    return
+  }
   if (!/#\/budgets/.test(page.url())) {
     await page.goto('./#/budgets')
     await page.getByRole('heading', { level: 1 }).first().waitFor()
