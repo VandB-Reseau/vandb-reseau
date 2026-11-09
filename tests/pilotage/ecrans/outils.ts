@@ -43,11 +43,10 @@ export async function seConnecter(page: Page, options: OptionsSimulation = {}, r
   return ecritures
 }
 
-// Fiche du magasin : l'onglet « Budget » de l'app réseau, puis l'espace et la page du budget
+// Fiche du magasin : l'onglet Chiffres ou Budget de l'app réseau, puis la page
 export async function ouvrir(page: Page, partie: string) {
   await page.waitForURL(/#\/magasins\//)
   await fermerCommentairesSurTelephone(page)
-  if (!/[?&]vue=budget/.test(page.url())) await ouvrirOnglet(page, 'Budget')
   await ouvrirDansFiche(page, partie)
 }
 

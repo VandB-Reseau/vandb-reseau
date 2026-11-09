@@ -3,11 +3,11 @@ import { ouvrirOnglet, seConnecter } from './supabase-simule'
 
 const hauteur = (page: Page) => page.evaluate(() => window.scrollY)
 const bande = (page: Page, nom: string) => page.getByRole('tablist', { name: `Rubriques de ${nom}` })
-// Haut de la bande d'onglets par rapport à l'écran (64 px sous la barre du haut sur téléphone, 72 px sur PC)
+// Haut de la bande d'onglets par rapport à l'écran (64 px sous la barre du haut sur téléphone, tout en haut sur PC)
 const hautBande = (page: Page, nom: string) => bande(page, nom).evaluate((e) => Math.round(e.getBoundingClientRect().top))
 
 for (const fiche of [
-  { titre: 'magasin', adresse: './#/magasins/Brest%20Test', nom: 'Brest Test', onglet: 'Chiffres', retour: 'Fiche' },
+  { titre: 'magasin', adresse: './#/magasins/Brest%20Test', nom: 'Brest Test', onglet: 'Chiffres', retour: 'Vue d’ensemble' },
   { titre: 'Coach', adresse: './#/equipe/coach/In%C3%A8s%20EXEMPLE?vue=magasins', nom: 'Inès EXEMPLE', onglet: 'Visites', retour: 'Portefeuille' },
 ]) {
   test(`fiche ${fiche.titre} : changer d’onglet garde les onglets à l’écran au lieu de remonter tout en haut`, async ({ page, isMobile }, info) => {
@@ -15,7 +15,7 @@ for (const fiche of [
     await seConnecter(page)
     await page.goto(fiche.adresse)
     await expect(bande(page, fiche.nom)).toBeVisible()
-    const haut = isMobile ? 64 : 72
+    const haut = isMobile ? 64 : 0 // refonte (09/11/2026) : plus de barre du haut sur PC
     // Téléphone : en-tête bas, les onglets commencent avant 300 px
     if (isMobile) expect(await hautBande(page, fiche.nom)).toBeLessThan(300)
     // En haut de la fiche : changer d'onglet ne bouge pas la page

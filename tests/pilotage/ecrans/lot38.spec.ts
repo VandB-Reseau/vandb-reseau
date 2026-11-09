@@ -20,8 +20,8 @@ test('budget : une seule navigation, l’étape suivante en bas de page, un en-t
   await seConnecter(page, { magasins: [propose] })
   await page.getByText(MAGASINS[0], { exact: true }).last().click()
   await ouvrir(page, 'Cartes des hypothèses')
-  // D1, revu le 03/11/2026 : une seule navigation, en onglets dans la fiche (espaces, puis étapes), PC et téléphone
-  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist')).toHaveCount(2)
+  // D1, revu le 09/11/2026 : une seule navigation, l'onglet Budget de la fiche puis les étapes, PC et téléphone
+  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist')).toHaveCount(1)
   // D2 : nom, budget et statut une seule fois, actions dans l'en-tête
   const entete = page.locator('main header')
   await expect(page.getByRole('heading', { level: 1, name: MAGASINS[0] })).toHaveCount(1)

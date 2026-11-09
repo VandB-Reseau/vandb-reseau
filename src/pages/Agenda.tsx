@@ -42,6 +42,8 @@ import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { BandeCollante } from '../components/Collant'
 import { ChampInvites, PresencesReunion } from '../components/Reunions'
 import { useAuth } from '../auth/AuthContext'
+import { useCreer } from '../components/Creer'
+import { BoutonAction } from '../components/Outils'
 import { ajouterJours, ecartJours, elementsDuMois, iso, jourLong, jourUTC, nomMois, type Categorie, type Element } from '../data/agenda'
 
 const categories: { id: Categorie; libelle: string; couleur: string; icone: ReactElement }[] = [
@@ -179,6 +181,8 @@ export function Agenda() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const { recharger } = useReseau()
+  const { profil: moi } = useAuth()
+  const creer = useCreer()
   const [params, setParams] = useSearchParams()
   const [actives, setActives] = useState<Set<Categorie>>(new Set(['visite', 'campagne', 'ouverture', 'evenement', 'formation', 'anniversaire']))
   const [evenement, setEvenement] = useState<Evenement | null | undefined>(undefined)
@@ -211,7 +215,8 @@ export function Agenda() {
         const changerMois = (n: number) => { const d = new Date(Date.UTC(Number(mois.slice(0, 4)), Number(mois.slice(5, 7)) - 1 + n, 1)); setParams({ mois: iso(d).slice(0, 7) }, { replace: true }) }
         return (
           <>
-            <PageHeader titre="Agenda" />
+            {/* Refonte (Joseph, 09/11/2026, 9A) : sur PC, plus de bouton Créer dans le menu ; le bouton de la page ouvre le panneau de droite */}
+            <PageHeader titre="Agenda" actions={surPC && moi?.role !== 'franchise' ? <BoutonAction libelle="Ajouter un événement" onClick={() => creer('evenement')} /> : undefined} />
             {/* Le mois et les catégories restent sous la barre du haut quand la page défile */}
             <BandeCollante>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0, sm: 1 }, flexWrap: { sm: 'wrap' }, mb: 0.5 }}>
@@ -226,7 +231,7 @@ export function Agenda() {
                 const actif = actives.has(c.id)
                 return (
                   <ButtonBase key={c.id} aria-pressed={actif} onClick={() => setActives((a) => { const n = new Set(a); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n })}
-                    sx={{ flexShrink: 0, minHeight: 48, fontFamily: 'inherit', '& > span': { display: 'flex', alignItems: 'center', gap: 0.75, px: 1.5, height: 36, borderRadius: 999, border: '1px solid', borderColor: actif ? 'text.primary' : 'divider', bgcolor: actif ? 'action.selected' : 'background.paper', color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.875rem', fontWeight: actif ? 600 : 500 } }}>
+                    sx={{ flexShrink: 0, minHeight: 48, fontFamily: 'inherit', '& > span': { display: 'flex', alignItems: 'center', gap: 0.75, px: 1.5, height: 36, borderRadius: 2, border: '1px solid', borderColor: actif ? 'text.primary' : 'divider', bgcolor: actif ? 'action.selected' : 'background.paper', color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.875rem', fontWeight: actif ? 600 : 500 } }}>
                     <span><Box component="i" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: c.couleur, opacity: actif ? 1 : 0.4 }} />{c.libelle}</span>
                   </ButtonBase>
                 )

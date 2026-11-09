@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { allerVers, ongletEspace, ongletParametres, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, ouvrirSection } from './outils'
+import { allerVers, anneeEnTete, ongletEspace, ongletParametres, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, ouvrirSection } from './outils'
 
 // Passage d'année (Joseph, 03/11/2026, options A et 2 de la maquette) : le menu a deux portes, « Suivi <année> » et
 // « Budgets <année> » ; le Directeur ouvre la campagne, démarre le suivi et clôt l'année dans Paramètres.
@@ -28,11 +28,12 @@ test('menu : Suivi et Budgets avec l’année de la base, pas celle du calendrie
   await expect(page.getByText('Campagne 2027 ouverte')).toBeVisible()
   await expect(menu(page).getByRole('tab', { name: 'Suivi 2026' })).toBeVisible()
   await expect(menu(page).getByRole('tab', { name: 'Budgets 2027' })).toBeVisible()
-  // Pendant la campagne, un magasin de la liste s'ouvre sur son budget ; ses onglets disent Suivi 2026 et Budget 2027
+  // Pendant la campagne, un magasin de la liste s'ouvre sur son budget 2027
   await page.locator('main').getByText(MAGASINS[0], { exact: true }).last().click()
   await expect(page).toHaveURL(/[?&]partie=budget$/)
-  await expect(ongletEspace(page, 'Suivi 2026')).toBeVisible()
+  // Refonte (09/11/2026) : l'onglet Budget de la fiche ; l'année du budget dans son en-tête
   await expect(ongletEspace(page, 'Budget 2027')).toHaveAttribute('aria-selected', 'true')
+  expect(await anneeEnTete(page)).toBe(2027)
   // La porte « Suivi » ouvre le suivi du réseau de l'année suivie
   await allerVers(page, 'Suivi 2026')
   await expect(page.getByRole('heading', { level: 1, name: 'Suivi 2026' })).toBeVisible()
@@ -81,7 +82,6 @@ test('suivi 2027 démarré : budget 2027 provisoire signalé, 2026 à clore cons
   await page.locator('main').getByText(MAGASINS[1], { exact: true }).last().click()
   await expect(page).toHaveURL(/[?&]partie=synthese$/)
   await expect(ongletEspace(page, 'Suivi 2027')).toHaveAttribute('aria-selected', 'true')
-  await expect(ongletEspace(page, 'Budget 2027')).toBeVisible()
   await expect(page.getByText('Budget 2027 provisoire : pas encore validé, le suivi le compare à sa dernière version.').first()).toBeVisible()
   // L'année à clore reste consultable dans le Suivi
   await ouvrirSection(page, /^Années passées$/)

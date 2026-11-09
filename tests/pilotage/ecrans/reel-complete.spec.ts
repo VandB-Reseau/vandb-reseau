@@ -30,9 +30,9 @@ test('suivi du budget : premier quadrimestre réparti, mai estimé, EBE à date'
   await ouvrir(page, 'Suivi du budget')
   // EBE des quatre mois répartis : 240 000 − 100 000 − 40 000 − 4 000 − 60 000 = 36 000, plus mai estimé
   const chiffres = page.getByRole('region', { name: 'Santé du magasin à fin mai' })
-  await expect(chiffres).toContainText('EBE à fin mai')
+  // Refonte (09/11/2026, 6A) : « estimé » écrit en toutes lettres plutôt qu'un « ≈ »
+  await expect(chiffres).toContainText('EBE estimé à fin mai')
   await expect(chiffres).toContainText('4 mois des comptes, 1 estimé')
-  await expect(chiffres).toContainText('≈')
 
   await ouvrirSection(page, /^Mois par mois$/)
   const tableau = page.getByRole('table', { name: `Réel face au budget ${N} mois par mois` })

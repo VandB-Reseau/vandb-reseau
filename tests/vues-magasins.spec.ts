@@ -43,11 +43,14 @@ test('enregistrer une vue, la retrouver en un toucher, la retirer', async ({ pag
   await expect(vues.getByRole('button', { name: 'Enregistrer la vue' })).toBeVisible()
 })
 
-test('sans vue ni filtre, rien n’est ajouté au-dessus de la liste', async ({ page }) => {
+// Refonte (Joseph, 09/11/2026, 5A) : trois vues prêtes à l'emploi, toujours là, avec leur nombre de magasins
+test('sans vue ni filtre, seules les vues prêtes sont au-dessus de la liste, « Tous » choisie', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/magasins?vue=liste')
   await expect(page.getByText(/^\d+ ouverts · \d+ à venir$/)).toBeVisible()
-  await expect(page.getByRole('group', { name: 'Vues enregistrées' })).toHaveCount(0)
+  const vues = page.getByRole('group', { name: 'Vues enregistrées' })
+  await expect(vues.getByRole('button', { name: /^(Tous|À surveiller|Visite en retard) : \d+$/ })).toHaveCount(3)
+  await expect(vues.getByRole('button', { name: /^Tous : / })).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('le filtre Alerte garde les magasins qui décrochent', async ({ page, isMobile }) => {

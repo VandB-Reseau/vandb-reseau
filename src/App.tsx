@@ -27,6 +27,12 @@ import { chargementDiffere } from './lib/chargementDiffere'
 import { chargerEspaceFranchise } from './data/espaceFranchise'
 import { espaceFranchise } from './navigation/destinations'
 
+// Écrans qui communiquent (Accueil, Infos réseau, compte rendu) : style de la charte, cartouches et capitales
+// (refonte, Joseph 09/11/2026, choix 8C) ; les écrans de travail restent sobres
+function Marque({ children }: { children: React.ReactNode }) {
+  return <div className="marque">{children}</div>
+}
+
 // Écrans plus rares chargés à la demande : l'ouverture de l'app télécharge moins (Joseph, 21/10/2026).
 // Ils sont préchargés en tâche de fond une fois l'accueil affiché, pour s'ouvrir sans attente.
 const chargeurs = {
@@ -144,7 +150,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
       <ErreurEcran key={pathname}>
       <Suspense fallback={<SilhouetteEcran />}>
       <Routes>
-        <Route path="/" element={<Accueil />} />
+        <Route path="/" element={<Marque><Accueil /></Marque>} />
         <Route path="/magasins" element={<Magasins />} />
         <Route path="/magasins/:nom" element={<FicheMagasin />} />
         <Route path="/magasins/:nom/preparer" element={<PreparationVisite />} />
@@ -165,13 +171,13 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/visites" element={<Visites />} />
         <Route path="/echanges" element={<Echanges />} />
         <Route path="/taches" element={<PageTaches />} />
-        <Route path="/infos" element={<InfosReseau />} />
+        <Route path="/infos" element={<Marque><InfosReseau /></Marque>} />
         {/* Communications et bonnes pratiques : Infos réseau seulement, pour l'équipe (sprint 22, S1) comme pour le franchisé */}
         <Route path="/echanges/reseau" element={<Vers cible={(_p, r) => avec('/infos', r)} />} />
         <Route path="/echanges/pratiques" element={<Navigate to="/infos?vue=pratiques" replace />} />
         <Route path="/echanges/:genre/:valeur" element={<Echanges />} />
         {anciensLiens}
-        <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
+        <Route path="/visites/compte-rendu/:id" element={<Marque><CompteRendu /></Marque>} />
         <Route path="/plus/agenda" element={<Agenda />} />
         <Route path="/animation" element={<Animation />} />
         <Route path="/plus/sante" element={<SanteParc />} />
@@ -197,11 +203,11 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
       <ErreurEcran key={pathname}>
       <Suspense fallback={<SilhouetteEcran />}>
       <Routes>
-        <Route path="/" element={<TableauFranchise />} />
+        <Route path="/" element={<Marque><TableauFranchise /></Marque>} />
         <Route path="/magasins" element={<MagasinsFranchise />} />
         <Route path="/magasins/:nom" element={<FicheMagasinFranchise />} />
-        <Route path="/visites/compte-rendu/:id" element={<CompteRendu />} />
-        <Route path="/infos" element={<InfosReseau />} />
+        <Route path="/visites/compte-rendu/:id" element={<Marque><CompteRendu /></Marque>} />
+        <Route path="/infos" element={<Marque><InfosReseau /></Marque>} />
         <Route path="/bonnes-pratiques" element={<Navigate to="/infos?vue=pratiques" replace />} />
         <Route path="/echanges" element={<Echanges lectureSeule={apercu} />} />
         <Route path="/taches" element={<PageTaches />} />

@@ -1,5 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
@@ -23,7 +25,7 @@ import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { FenetreCompteRendu, useOuvrirCompteRendu, VignetteCompteRendu } from '../components/ApercuCompteRendu'
 import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, Pastille, Puces, TitreSection, type Ton } from '../components/Social'
-import { analyser, decalerMois, formatPourcent, libelleMoisCourt, suiviAlerte } from '../data/chiffres'
+import { analyser, caDe, chiffresDuMagasin, decalerMois, formatKEuros, formatPourcent, libelleMoisCourt, suiviAlerte } from '../data/chiffres'
 import { useAuth } from '../auth/AuthContext'
 import { useMessagerie } from '../data/MessagerieContext'
 import { caseDe, nineBox, tendance } from '../data/sante'
@@ -325,17 +327,27 @@ function BlocMesTaches({ reseau, taches, compact = false }: { reseau: Reseau; ta
 }
 
 // Quatre repères de pilotage, calculés sur le périmètre de la personne (Joseph, 22/10/2026)
-function Indicateurs({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
+// Refonte (Joseph, 09/11/2026, 6A) : la période (mois ou cumul de l'année) se choisit en haut de l'écran ;
+// le CA s'affiche en montant, l'écart en pastille avec sa référence écrite (N-1)
+export type Periode = 'mois' | 'cumul'
+function Indicateurs({ reseau, p, periode = 'mois' }: { reseau: Reseau; p: Perimetre; periode?: Periode }) {
   const theme = useTheme()
   const j = reseau.jour
   const actifs = magasinsDu(reseau, p).filter((m) => m.statut !== 'avenir')
   const noms = new Set(actifs.map((m) => m.nom))
-  const analyses = actifs.map((m) => analyser(reseau, m.nom)).filter((a) => !!a)
+  const analysesParNom = actifs.map((m) => analyser(reseau, m.nom))
+  const analyses = analysesParNom.filter((a) => !!a)
   // CA : le dernier mois connu, comparé sur les magasins qui ont les deux mois
   const mois = analyses.reduce((max, a) => (a.mois > max ? a.mois : max), '')
   const comparables = analyses.filter((a) => a.mois === mois && a.ca !== null && a.caReference)
-  const ca = comparables.reduce((t, a) => t + a.ca!, 0)
-  const caRef = comparables.reduce((t, a) => t + a.caReference!, 0)
+  // Cumul : de janvier au dernier mois connu, face aux mêmes mois de l'an dernier, sur les mêmes magasins
+  const cumul = (nom: string, fin: string) => {
+    const debut = `${fin.slice(0, 4)}-01`
+    return chiffresDuMagasin(reseau, nom).filter((c) => c.mois >= debut && c.mois <= fin).reduce((t, c) => t + (caDe(c) ?? 0), 0)
+  }
+  const nomsComparables = actifs.map((m) => m.nom).filter((_n, i) => { const a = analysesParNom[i]; return !!a && a.mois === mois && a.ca !== null && !!a.caReference })
+  const ca = periode === 'cumul' ? nomsComparables.reduce((t, n) => t + cumul(n, mois), 0) : comparables.reduce((t, a) => t + a.ca!, 0)
+  const caRef = periode === 'cumul' ? nomsComparables.reduce((t, n) => t + cumul(n, decalerMois(mois, -12)), 0) : comparables.reduce((t, a) => t + a.caReference!, 0)
   const ecart = caRef ? ((ca - caRef) / caRef) * 100 : null
   const reference = comparables[0]?.reference
   const decrochent = analyses.filter((a) => a.statut === 'decroche').length
@@ -347,10 +359,10 @@ function Indicateurs({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
   const cases = actifs.map((m) => caseDe(reseau.evaluations[m.nom])).filter((c) => !!c)
   const prioritaires = cases.filter((c) => PRIORITAIRES.includes(c.id)).length
   const repartition = nineBox.map((c) => ({ c, n: cases.filter((x) => x.id === c.id).length })).filter((x) => x.n)
-  const tuiles: { cle: string; libelle: string; valeur: string; detail: string; lien: string; couleur?: string; barre?: ReactNode }[] = [
-    { cle: 'ca', libelle: mois ? `CA de ${libelleMoisCourt(mois)}` : 'CA du mois', valeur: ecart === null ? '—' : formatPourcent(ecart),
-      detail: ecart === null ? 'Pas encore de chiffres' : reference === decalerMois(mois, -12) ? 'vs N-1' : `vs ${libelleMoisCourt(reference!)}`, lien: '/plus/sante?vue=chiffres',
-      couleur: ecart === null ? undefined : ecart < 0 ? theme.palette.error.main : theme.palette.success.dark },
+  const tuiles: { cle: string; libelle: string; valeur: string; detail: string; lien: string; couleur?: string; couleurDetail?: string; barre?: ReactNode }[] = [
+    { cle: 'ca', libelle: mois ? (periode === 'cumul' ? `CA cumulé à fin ${libelleMoisCourt(mois)}` : `CA de ${libelleMoisCourt(mois)}`) : 'CA du mois', valeur: ecart === null ? '—' : formatKEuros(ca),
+      detail: ecart === null ? 'Pas encore de chiffres' : `${formatPourcent(ecart)} ${reference === decalerMois(mois, -12) || periode === 'cumul' ? 'vs N-1' : `vs ${libelleMoisCourt(reference!)}`}`, lien: '/plus/sante?vue=chiffres',
+      couleurDetail: ecart === null ? undefined : ecart < 0 ? theme.palette.error.main : theme.palette.success.dark },
     { cle: 'decroche', libelle: 'Décrochent', valeur: String(decrochent), detail: surveiller ? `${surveiller} à surveiller` : 'aucun à surveiller', lien: '/plus/sante?vue=chiffres', couleur: decrochent ? theme.palette.error.main : undefined },
     { cle: 'visites', libelle: 'Visites de l’année', valeur: tauxVisites === null ? '—' : `${tauxVisites} %`, detail: `${faites} sur ${Math.round(refVisites)} de référence`, lien: '/visites?vue=rythme',
       barre: tauxVisites === null ? undefined : <Box sx={{ height: 6, borderRadius: 3, bgcolor: 'action.hover', mt: 0.75 }}><Box sx={{ width: `${Math.min(100, tauxVisites)}%`, height: 6, borderRadius: 3, bgcolor: 'warning.main' }} /></Box> },
@@ -367,7 +379,7 @@ function Indicateurs({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
             '@media (hover: hover)': { '&:hover': { bgcolor: 'action.hover' } } }}>
           <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}>{t.libelle}</Typography>
           <Typography sx={{ fontSize: { xs: '1.25rem', md: '1.75rem' }, fontWeight: 700, lineHeight: 1.3, color: t.couleur }}>{t.valeur}</Typography>
-          <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>{t.detail}</Typography>
+          <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' }, ...(t.couleurDetail ? { color: t.couleurDetail, fontWeight: 700 } : {}) }}>{t.detail}</Typography>
           {t.barre && <Box aria-hidden>{t.barre}</Box>}
         </ButtonBase>
       ))}
@@ -513,7 +525,7 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actu
 
 // Accueil (maquette A, Joseph 22/10/2026) : quatre repères en tête, les actualités en colonne principale,
 // À traiter, Mes tâches et Cette semaine à droite ; sur téléphone, ces trois blocs en onglets au-dessus des actualités
-function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Perimetre; sansParametres?: boolean }) {
+function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Reseau; p: Perimetre; sansParametres?: boolean; periode: Periode }) {
   const { profil } = useAuth()
   const { messagerie } = useMessagerie()
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
@@ -530,24 +542,28 @@ function Tableau({ reseau, p, sansParametres = false }: { reseau: Reseau; p: Per
     return (
       <>
         <AuMagasin reseau={reseau} p={p} />
-        <Indicateurs reseau={reseau} p={p} />
+        <Indicateurs reseau={reseau} p={p} periode={periode} />
         <PointCompact reseau={reseau} p={p} items={items} taches={taches} contrats={contrats} />
         <SondagesARepondre equipe aFaire titre="Sondages à remplir" />
         {actualites}
       </>
     )
   }
+  // Refonte (Joseph, 09/11/2026, 7A) : « Aujourd'hui » d'abord. À traiter, mes tâches, la semaine et les contrats en
+  // colonne principale ; les actualités à droite, visibles dès l'arrivée, et qui défilent seules
   return (
     <>
-      <Indicateurs reseau={reseau} p={p} />
-      <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: 'minmax(0, 1fr) 400px', alignItems: 'start' }}>
-        <Box sx={{ minWidth: 0 }}><SondagesARepondre equipe aFaire titre="Sondages à remplir" />{actualites}</Box>
-        {/* La colonne reste visible pendant qu'on fait défiler les actualités, et défile seule si elle dépasse l'écran */}
-        <Box component="aside" aria-label="À traiter, mes tâches, cette semaine et contrats" sx={{ position: 'sticky', top: 88, maxHeight: 'calc(100vh - 104px)', overflowY: 'auto', overscrollBehavior: 'contain', scrollbarWidth: 'thin', mx: -1, px: 1, pb: 1 }}>
+      <Indicateurs reseau={reseau} p={p} periode={periode} />
+      <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: 'minmax(0, 1fr) minmax(360px, 420px)', alignItems: 'start' }}>
+        <Box sx={{ minWidth: 0 }}>
+          <SondagesARepondre equipe aFaire titre="Sondages à remplir" />
           <BlocATraiter reseau={reseau} items={items} />
           <BlocMesTaches reseau={reseau} taches={taches} />
           <BlocSemaine reseau={reseau} p={p} />
           <BlocContrats reseau={reseau} contrats={contrats} />
+        </Box>
+        <Box component="aside" aria-label="Actualités du réseau" sx={{ position: 'sticky', top: 16, maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', overscrollBehavior: 'contain', scrollbarWidth: 'thin', mx: -1, px: 1, pb: 1 }}>
+          {actualites}
         </Box>
       </Box>
     </>
@@ -558,10 +574,22 @@ export function Accueil() {
   const { profil } = useAuth()
   // Le Directeur voit tout le réseau ; un Coach ou un RR, ses magasins
   const p = perimetreDuProfil(profil) ?? { type: 'reseau' as const }
+  const [params, setParams] = useSearchParams()
+  const periode: Periode = params.get('periode') === 'cumul' ? 'cumul' : 'mois'
+  const choisir = (v: Periode | null) => { if (!v) return; const n = new URLSearchParams(params); if (v === 'mois') n.delete('periode'); else n.set('periode', v); setParams(n, { replace: true }) }
   return (
     <>
-      <PageHeader titre="Accueil" />
-      <AvecReseau>{(r) => <Tableau reseau={r} p={p} sansParametres={p.type !== 'reseau'} />}</AvecReseau>
+      <PageHeader titre="Accueil" actions={
+        <Box role="group" aria-label="Période des chiffres" sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>Comparé à N-1</Typography>
+          <ToggleButtonGroup exclusive size="small" value={periode} onChange={(_e, v: Periode | null) => choisir(v)} aria-label="Période"
+            sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, md: 36 }, px: 1.5, textTransform: 'none', fontWeight: 600 } }}>
+            <ToggleButton value="mois">Mois</ToggleButton>
+            <ToggleButton value="cumul">Cumul</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+      } />
+      <AvecReseau>{(r) => <Tableau reseau={r} p={p} sansParametres={p.type !== 'reseau'} periode={periode} />}</AvecReseau>
     </>
   )
 }

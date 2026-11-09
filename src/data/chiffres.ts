@@ -190,7 +190,8 @@ export const formatKEuros = (n: number | null) => {
   if (n === null) return '—'
   const a = Math.abs(n)
   if (a >= 1_000_000) return `${(n / 1_000_000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M€`
-  if (a >= 1000) return `${(n / 1000).toLocaleString('fr-FR', { maximumFractionDigits: a >= 100_000 ? 0 : 1 })} k€`
+  // Refonte (Joseph, 09/11/2026, 6A) : à partir de 10 000 €, en k€ sans décimale ; en dessous, à l'euro
+  if (a >= 10_000) return `${Math.round(n / 1000).toLocaleString('fr-FR')} k€`
   return formatEuros(n)
 }
 

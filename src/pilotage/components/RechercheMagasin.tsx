@@ -113,7 +113,7 @@ export function RechercheMagasin({ telephone }: { telephone: boolean }) {
             '& .MuiInputBase-root': { py: '0 !important', bgcolor: '#ffffff', borderRadius: 2 },
             '& input': { height: 48, boxSizing: 'border-box' },
           } : {
-            '& .MuiInputBase-root': { py: '0 !important', px: 2, height: 44, bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 999, color: '#ffffff', fontSize: '0.875rem' },
+            '& .MuiInputBase-root': { py: '0 !important', px: 2, height: 44, bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 2, color: '#ffffff', fontSize: '0.875rem' },
             '& .MuiOutlinedInput-notchedOutline': { border: 0 },
             '& .MuiInputAdornment-root, & .MuiSvgIcon-root': { color: '#ffffff' },
             '& input': { height: 44, boxSizing: 'border-box' },

@@ -286,9 +286,9 @@ export function Magasins() {
               return (
                 <Chip
                   key={f.cle} label={`${f.libelle} · ${n}`} clickable aria-pressed={choisi}
-                  color={choisi ? 'primary' : 'default'} variant={choisi ? 'filled' : 'outlined'}
+                  variant="outlined"
                   onClick={() => changer('filtre', f.cle === 'tous' ? null : f.cle)}
-                  sx={{ height: { xs: 48, md: 36 }, fontSize: '0.875rem' }}
+                  sx={{ height: { xs: 48, md: 36 }, fontSize: '0.875rem', borderRadius: 2, fontWeight: choisi ? 700 : 500, ...(choisi && { borderColor: 'text.primary', bgcolor: 'action.selected' }) }}
                 />
               )
             })}

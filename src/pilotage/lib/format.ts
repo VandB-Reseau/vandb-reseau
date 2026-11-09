@@ -22,7 +22,10 @@ export const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin'
 
 // Fiche d'un magasin, à une partie précise si demandée (lot 36 : chaque partie a son adresse)
 // Fusion avec l'app réseau : le budget et le suivi d'un magasin sont l'onglet « Budget » de sa fiche
-export const lienMagasin = (nom: string, partie = 'synthese') => `/magasins/${encodeURIComponent(nom)}?vue=budget&partie=${encodeURIComponent(partie)}`
+// Refonte (Joseph, 09/11/2026, 3A) : le suivi et les saisies sont dans l'onglet Chiffres de la fiche, le budget dans l'onglet Budget
+// (liste recopiée de lib/navigation pour garder ce fichier sans dépendance : le moteur le lit hors navigateur)
+const PARTIES_BUDGET = ['budget', 'visualiser', 'echanges', 'depart', 'ventes', 'calendrier', 'investissements', 'equipe', 'fraisBudget', 'resultat', 'tresoBudget', 'travaux']
+export const lienMagasin = (nom: string, partie = 'synthese') => `/magasins/${encodeURIComponent(nom)}?vue=${PARTIES_BUDGET.includes(partie) ? 'budget' : 'chiffres'}&partie=${encodeURIComponent(partie)}`
 
 // Instant ISO en heure locale : « 21/10 à 14h32 »
 export function dateHeure(iso: string): string {

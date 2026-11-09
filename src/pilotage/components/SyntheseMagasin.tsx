@@ -201,7 +201,8 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
           detail={equipe?.length ? `${milliers(b.personnel)} de masse salariale sur l’année` : 'Équipe non renseignée'}
         />
         {ebeADate && rc ? <Indicateur
-          libelle={`EBE à fin ${ebeADate.fin}`} aide="reelComplete" valeur={`${ebeADate.source === 'estime' ? '≈ ' : ''}${milliers(ebeADate.valeur)}`}
+          // Refonte (6A) : une valeur estimée le dit en toutes lettres, sans signe « ≈ »
+          libelle={`EBE ${ebeADate.source === 'estime' ? 'estimé ' : ''}à fin ${ebeADate.fin}`} aide="reelComplete" valeur={milliers(ebeADate.valeur)}
           ecart={{ texte: `${milliers(Math.abs(ebeADate.valeur - ebeADate.budget))} face au budget`, hausse: ebeADate.valeur >= ebeADate.budget, favorable: ebeADate.valeur >= ebeADate.budget }}
           detail={`${rc.moisEstimes === 0 ? 'Tout vient des comptes' : rc.moisRepartis === 0 ? 'Charges du budget en attendant le quadrimestre' : `${rc.moisRepartis} mois des comptes, ${rc.moisEstimes} estimé${rc.moisEstimes > 1 ? 's' : ''}`} · Attendu ${annee} : ${milliers(b.ebe)}`}
         /> : <Indicateur

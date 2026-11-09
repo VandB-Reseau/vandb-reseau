@@ -107,11 +107,15 @@ export function CarteLignes({ children, label }: { children: ReactNode; label?: 
   )
 }
 
-// Intitulé en cartouche noir, lettres blanches en capitales, légèrement penché, comme les intitulés de la charte V and B
-// En mode sombre, le cartouche passe en jaune-or, lettres noires, pour rester visible sur le fond noir
+// Titre de section. Refonte (Joseph, 09/11/2026, choix 8C) : sobre dans les écrans de travail (gras, casse normale) ;
+// le cartouche de la charte (noir, capitales, penché) reste dans les écrans qui communiquent, marqués « marque »
+// (Accueil, Infos réseau, compte rendu de visite). En mode sombre, le cartouche passe en jaune-or.
 export const cartouche = (theme: Theme) => ({
-  display: 'inline-block', px: 1, py: 0.25, bgcolor: '#1d1d1b', color: '#ffffff', fontSize: '0.8125rem', fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', transform: 'rotate(-1.5deg)',
-  ...theme.applyStyles('dark', { bgcolor: brand.or, color: '#1d1d1b' }),
+  display: 'inline-block', fontSize: '1rem', fontWeight: 700, lineHeight: 1.4, color: 'text.primary',
+  '.marque &': {
+    px: 1, py: 0.25, bgcolor: '#1d1d1b', color: '#ffffff', fontSize: '0.8125rem', fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', transform: 'rotate(-1.5deg)',
+    ...theme.applyStyles('dark', { bgcolor: brand.or, color: '#1d1d1b' }),
+  },
 })
 
 // Titre de section en cartouche, avec un nombre à droite
@@ -133,7 +137,7 @@ export function Puces<V extends string>({ valeur, options, onChange, label }: { 
         const actif = o.v === valeur
         return (
           <ButtonBase key={o.v} onClick={() => onChange(o.v)} aria-pressed={actif}
-            sx={{ flexShrink: 0, minHeight: 48, px: 0.25, fontFamily: 'inherit', '& > span': { px: 1.75, height: 40, display: 'flex', alignItems: 'center', borderRadius: 999, border: '1px solid', fontSize: '0.875rem', fontWeight: actif ? 600 : 500, borderColor: actif ? 'primary.main' : 'divider', bgcolor: actif ? 'primary.main' : 'background.paper', color: actif ? 'primary.contrastText' : 'text.primary' } }}>
+            sx={{ flexShrink: 0, minHeight: 48, px: 0.25, fontFamily: 'inherit', '& > span': { px: 1.5, height: 36, display: 'flex', alignItems: 'center', borderRadius: 2, border: '1px solid', fontSize: '0.875rem', fontWeight: actif ? 700 : 500, borderColor: actif ? 'text.primary' : 'divider', bgcolor: actif ? 'action.selected' : 'background.paper', color: 'text.primary' } }}>
             <span>{o.libelle}</span>
           </ButtonBase>
         )
@@ -258,6 +262,7 @@ export function GrillePhotos({ photos, max = 3, colonnes = 3, avant }: { photos:
 export type Affichage = 'lignes' | 'tableau'
 export function useAffichage(ecran: string): [Affichage, (a: Affichage) => void] {
   const cle = `vandb-affichage-${ecran}`
+  // Les lignes d'office : elles portent les actions de chaque magasin (Saisir, Voir plus) ; le tableau reste au choix
   const [a, setA] = useState<Affichage>(() => { try { return localStorage.getItem(cle) === 'tableau' ? 'tableau' : 'lignes' } catch { return 'lignes' } })
   return [a, (v) => { setA(v); try { localStorage.setItem(cle, v) } catch { /* stockage indisponible */ } }]
 }

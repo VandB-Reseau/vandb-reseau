@@ -30,11 +30,19 @@ for (const p of pages) test(`barre d’outils alignée : ${p.url}`, async ({ pag
   await page.screenshot({ path: `captures/${info.project.name}-barre${p.url.replace(/[\/?=]/g, '-')}.png` })
 })
 
-test('l’événement se crée depuis le bouton Créer, plus depuis l’en-tête de l’Agenda ; plus d’absence', async ({ page }) => {
+// Refonte (09/11/2026, 9A) : sur PC, plus de bouton Créer dans le menu ; l'Agenda a son bouton, qui ouvre le panneau de droite
+test('l’événement se crée depuis l’en-tête de l’Agenda sur PC, depuis Créer sur téléphone ; plus d’absence', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./#/plus/agenda')
   await expect(page.getByRole('heading', { level: 1, name: 'Agenda' })).toBeVisible()
   await expect(page.getByRole('main').getByRole('button', { name: /^(Absence|Événement)$/ })).toHaveCount(0)
+  if (!isMobile) {
+    await expect(page.getByRole('button', { name: 'Créer', exact: true })).toHaveCount(0)
+    await page.getByRole('main').getByRole('button', { name: 'Ajouter un événement' }).click()
+    await expect(page.getByRole('dialog', { name: 'Ajouter un événement' })).toBeVisible()
+    return
+  }
+  await expect(page.getByRole('main').getByRole('button', { name: 'Ajouter un événement' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Créer', exact: true }).click()
   const creer = page.getByRole('menu', { name: 'Créer' })
   await expect(creer.getByRole('menuitem', { name: 'Absence' })).toHaveCount(0)
@@ -46,7 +54,8 @@ test('l’événement se crée depuis le bouton Créer, plus depuis l’en-tête
 test('les bandes d’onglets ont la même hauteur sur toutes les pages, 48 px sur téléphone', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   const hauteurs: number[] = []
-  for (const [url, nom] of [['/equipe', 'Rubriques de l’équipe'], ['/magasins?vue=liste', 'Affichage'], ['/visites', 'Rubriques des visites'], ['/plus/sante', 'Rubriques de la santé du parc']]) {
+  // Magasins : Liste et Carte en bascule dans l'en-tête depuis la refonte (09/11/2026), plus en onglets
+  for (const [url, nom] of [['/equipe', 'Rubriques de l’équipe'], ['/visites', 'Rubriques des visites'], ['/plus/sante', 'Rubriques de la santé du parc']]) {
     await page.goto('./#' + url)
     const bande = page.getByRole('tablist', { name: nom })
     await expect(bande).toBeVisible()

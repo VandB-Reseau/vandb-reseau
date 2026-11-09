@@ -10,12 +10,14 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
 })
 
-test('Paramètres en trois entrées : Équipe, Évolution du parc, Paramètres', async ({ page, isMobile }, info) => {
+// Refonte (Joseph, 09/11/2026, 2A) : la rubrique Réglages tient Équipe et Paramètres ; l'Évolution du parc est une vue de Magasins
+test('Réglages en deux entrées : Équipe, Paramètres', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/parametres/reglages')
   if (!isMobile) {
     const menu = page.getByRole('navigation', { name: 'Navigation principale' })
-    for (const l of ['Équipe', 'Évolution du parc', 'Paramètres']) await expect(menu.getByRole('button', { name: l, exact: true })).toBeVisible()
+    for (const l of ['Équipe', 'Paramètres']) await expect(menu.getByRole('button', { name: l, exact: true })).toBeVisible()
+    await expect(menu.getByRole('button', { name: 'Évolution du parc', exact: true })).toHaveCount(0)
     for (const l of ['Charge des Coachs', 'Collaborateurs', 'Franchisés', 'Import et export']) await expect(menu.getByRole('button', { name: l, exact: true })).toHaveCount(0)
   }
   const sommaire = page.getByRole('region', { name: 'Rubriques des paramètres' })

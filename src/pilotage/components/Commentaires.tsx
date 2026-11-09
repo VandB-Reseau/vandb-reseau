@@ -94,7 +94,7 @@ export function CommentairesBudget({ magasin, annee, moi, children }: {
   // Volet sans fond grisé : la page reste lisible et défile pendant qu'on écrit
   const panneau = (
     <Drawer variant="persistent" anchor="right" open={volet} className="pas-a-l-impression"
-      slotProps={{ paper: { role: 'complementary', 'aria-label': 'Volet des commentaires', sx: { top: { xs: 64, md: 72 }, height: { xs: 'calc(100% - 64px - var(--barre-basse, 0px))', md: 'calc(100% - 72px)' }, width: { xs: '100%', sm: 400 }, bgcolor: 'background.default', borderLeft: 1, borderColor: 'divider', boxShadow: 6, p: 1.5 } } }}>
+      slotProps={{ paper: { role: 'complementary', 'aria-label': 'Volet des commentaires', sx: { top: { xs: 64, md: 0 }, height: { xs: 'calc(100% - 64px - var(--barre-basse, 0px))', md: '100%' }, width: { xs: '100%', sm: 400 }, bgcolor: 'background.default', borderLeft: 1, borderColor: 'divider', boxShadow: 6, p: 1.5 } } }}>
       {volet && (
         <PanneauCommentaires key={`commentaires-${magasin}`} magasin={magasin} annee={annee} moi={moi} fils={fils} panne={!!erreur && !donnees} recharger={recharger}
           point={point} demande={demande} onPoint={setPoint} onFermer={() => setVolet(false)} />

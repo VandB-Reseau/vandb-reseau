@@ -25,6 +25,7 @@ import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
 import FlagOutlined from '@mui/icons-material/FlagOutlined'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import { PageHeader } from '../components/PageHeader'
+import { OngletsMessages } from '../components/OngletsMessages'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { ChampRecherche } from '../components/Outils'
@@ -304,9 +305,11 @@ function PageAnimation({ reseau }: { reseau: Reseau }) {
   const typeCree: TypeEvenement = creation === 'formation' ? 'formation' : 'reunion'
   return (
     <>
-      <PageHeader titre="Animation réseau" actions={
+      <PageHeader titre="Messages" />
+      <OngletsMessages />
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
         <Button variant="contained" startIcon={<AddOutlined />} aria-haspopup="menu" aria-expanded={!!ancre} onClick={ouvrirMenu} sx={{ minHeight: 48 }}>Créer</Button>
-      } />
+      </Box>
       <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         slotProps={{ list: { 'aria-label': 'Créer un contenu' }, paper: { sx: { mt: 0.5, minWidth: 220, borderRadius: 3 } } }}>
         {genres.map((g) => (

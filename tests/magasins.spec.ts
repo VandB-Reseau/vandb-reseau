@@ -40,9 +40,11 @@ test('les filtres restent dans l’adresse', async ({ page }) => {
 test('la fiche magasin regroupe équipe, coordonnées et historique', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins?vue=liste')
-  await page.getByRole('region', { name: 'Liste des magasins' }).getByRole('link', { name: /^Lyon Test/ }).click()
+  // Sur PC, le tableau des magasins (refonte 09/11/2026) ; sur téléphone, la liste
+  const liste = isMobile ? page.getByRole('region', { name: 'Liste des magasins' }) : page.getByRole('table', { name: 'Tableau des magasins' })
+  await liste.getByRole('link', { name: /^Lyon Test/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()
-  await page.getByRole('tab', { name: 'Fiche' }).click()
+  await page.getByRole('tab', { name: 'Vue d’ensemble' }).click()
   await expect(page.getByText('Noé MODELE').first()).toBeVisible()
   await expect(page.getByRole('link', { name: 'Sam SUD', exact: true })).toBeVisible()
   await expect(page.getByText(/^Intégré · Lyon/)).toBeVisible()
@@ -69,17 +71,19 @@ test('un magasin inconnu affiche un message clair', async ({ page }) => {
   await expect(page.getByText('Magasin introuvable')).toBeVisible()
 })
 
-test('la recherche globale ouvre une fiche magasin ou une fiche Coach', async ({ page }, info) => {
+test('la recherche globale ouvre une fiche magasin ou une fiche Coach', async ({ page, isMobile }, info) => {
   await seConnecter(page)
-  // Le champ est affiché d'emblée dans la bande noire, sans bouton à toucher
+  // Le champ est affiché d'emblée, sans bouton à toucher : dans la barre du haut sur téléphone, en tête du menu sur PC
   const champ = page.getByLabel('Recherche globale')
   await expect(champ).toBeVisible()
   await expect(page.getByRole('button', { name: 'Rechercher' })).toHaveCount(0)
-  const bande = await page.locator('header').boundingBox()
   const zone = await champ.boundingBox()
-  expect(zone!.y + zone!.height).toBeLessThanOrEqual(bande!.y + bande!.height)
-  // Sur la ligne des icônes : la bande garde sa hauteur
-  expect(bande!.height).toBeLessThanOrEqual(info.project.name === 'telephone' ? 64 : 72)
+  if (isMobile) {
+    const bande = await page.locator('header').boundingBox()
+    expect(zone!.y + zone!.height).toBeLessThanOrEqual(bande!.y + bande!.height)
+    // Sur la ligne des icônes : la bande garde sa hauteur
+    expect(bande!.height).toBeLessThanOrEqual(64)
+  } else expect(zone!.y).toBeLessThan(120)
   expect(zone!.width).toBeGreaterThanOrEqual(60)
   await page.screenshot({ path: `captures/recherche-bande/${info.project.name}-recherche-bande.png` })
   await champ.fill('bordeaux')
@@ -119,7 +123,7 @@ test('la recherche d’un nom propose la fiche de la personne avant ses magasins
 test('la carte affiche les magasins et leur légende', async ({ page }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins?vue=carte')
-  await expect(page.getByRole('tab', { name: 'Carte', selected: true })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Affichage' }).getByRole('button', { name: 'Carte' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.locator('.picto-magasin')).toHaveCount(30)
   // Zones des Coachs affichées par défaut, légende par Coach
   await expect(page.getByLabel('Légende de la carte').getByText('Camille TESTARD')).toBeVisible()
@@ -144,7 +148,7 @@ test('la carte passe en plein écran et le titre ne bouge pas entre Liste et Car
   const titre = page.getByRole('heading', { name: 'Magasins', level: 1 })
   const recherche = page.getByRole('textbox').first()
   const avant = [await titre.boundingBox(), await recherche.boundingBox()]
-  await page.getByRole('tab', { name: 'Carte' }).click()
+  await page.getByRole('group', { name: 'Affichage' }).getByRole('button', { name: 'Carte' }).click()
   await expect(page.locator('.leaflet-container')).toBeVisible()
   // Sur téléphone, la recherche s'élargit en vue Carte (pas de bouton d'ajout) mais ne bouge pas
   const sansLargeur = (b: { x: number, y: number, width: number, height: number } | null) => isMobile && b ? { ...b, width: 0 } : b

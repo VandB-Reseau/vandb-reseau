@@ -16,7 +16,13 @@ import { EmptyState } from '../components/EmptyState'
 import { AvecReseau } from '../components/EtatDonnees'
 import { BarreFiltres } from '../components/BarreFiltres'
 import { BoutonAction } from '../components/Outils'
-import { Onglets } from '../components/Onglets'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import Button from '@mui/material/Button'
+import TimelineOutlined from '@mui/icons-material/TimelineOutlined'
+import { MagasinsSuivis, TableauMagasins } from '../components/TableauMagasins'
+import { perimetreDuProfil } from '../data/perimetre'
+import { useAuth } from '../auth/AuthContext'
 import { ListeMagasins, trisColonnes, type TriMagasins } from '../components/ListeMagasins'
 import { useReseau } from '../data/ReseauContext'
 import { magasinsSuivis, useSuivis } from '../lib/suivis'
@@ -65,6 +71,8 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
   const alertesDe = (r: Reseau) => { let a = memo.get(r); if (!a) { a = alertesDuReseau(r); memo.set(r, a) } return a }
   const trier = (v: TriMagasins) => { const p = new URLSearchParams(params); if (v === 'nom') p.delete('tri'); else p.set('tri', v); setParams(p, { replace: true }) }
   const changerVue = (v: 'liste' | 'carte') => { const p = new URLSearchParams(params); p.set('vue', v); setParams(p, { replace: true }) }
+  const { profil } = useAuth()
+  const voitEvolution = !perimetreDuProfil(profil)
 
   return (
     <AvecReseau>
@@ -90,14 +98,23 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
             <PageHeader
               titre="Magasins"
               sousTitre={resultats.length === total ? `${restreint ? 'Tout le réseau : ' : ''}${libelleParc(reseau.magasins)}` : `${resultats.length} sur ${total} magasins`}
+              actions={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
+                {/* Bascule de vue (refonte, 4A) : même contenu, autre présentation ; Évolution du parc rangée ici (2A) */}
+                {voitEvolution && surPC && <Button startIcon={<TimelineOutlined />} onClick={() => naviguer('/parametres/evolution')}>Évolution du parc</Button>}
+                <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_e, v: 'liste' | 'carte' | null) => { if (v) changerVue(v) }} aria-label="Affichage"
+                  sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, md: 40 }, px: 1.5, gap: 0.75, textTransform: 'none', fontWeight: 600 } }}>
+                  <ToggleButton value="liste" aria-label="Liste"><TableRowsOutlined fontSize="small" />{surPC ? 'Tableau' : 'Liste'}</ToggleButton>
+                  <ToggleButton value="carte" aria-label="Carte"><MapOutlined fontSize="small" />Carte</ToggleButton>
+                </ToggleButtonGroup>
+              </Box>}
             />
-            <Onglets valeur={vue} onChange={changerVue} libelle="Affichage" rubriques={[
-              { vue: 'liste', libelle: 'Liste', icone: <TableRowsOutlined /> },
-              { vue: 'carte', libelle: 'Carte', icone: <MapOutlined /> },
-            ]} />
             <BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres} alertesDe={parAlerte} levierDe={parLevier}
               actions={vue === 'carte' ? <Box ref={setEmplacementBoutons} sx={{ display: 'flex' }} /> : <BoutonAction libelle="Ajouter un magasin" onClick={() => setAjout(true)} />} />
-            <VuesMagasins params={params} appliquer={(p) => setParams(p, { replace: true })} nomPropose={nomPropose} />
+            <VuesMagasins params={params} appliquer={(p) => setParams(p, { replace: true })} nomPropose={nomPropose} pretes={vue === 'carte' ? [] : [
+              { nom: 'Tous', adresse: '', nombre: total },
+              { nom: 'À surveiller', adresse: 'alerte=decroche%7Csurveiller', nombre: reseau.magasins.filter((m) => parAlerte(m.nom).some((a) => a !== 'visite')).length },
+              { nom: 'Visite en retard', adresse: 'alerte=visite', nombre: reseau.magasins.filter((m) => parAlerte(m.nom).includes('visite')).length },
+            ]} />
             {ajout && <DialogMagasin reseau={reseau} magasin={null} onFermer={(msg, nom) => { setAjout(false); if (msg && nom) naviguer(lienFiche(nom)) }} />}
             {resultats.length === 0 ? (
               <EmptyState icone={<SearchOff />} titre="Personne à cette adresse" texte="Essaie un autre nom ou retire un filtre." />
@@ -108,7 +125,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
               </Suspense>
             ) : (
               <>
-                <ListeMagasins magasins={resultats} tri={tri} suivis={enTete} trier={trier} />
+                {surPC ? <><MagasinsSuivis suivis={enTete} /><TableauMagasins magasins={resultats} tri={tri} trier={trier} /></> : <ListeMagasins magasins={resultats} tri={tri} suivis={enTete} trier={trier} />}
               </>
             )}
           </>

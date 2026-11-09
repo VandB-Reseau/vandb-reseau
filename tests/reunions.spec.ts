@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture, type ReunionsSimulees } from './supabase-simule'
+import { creerDepuisMenu, seConnecter, textesTropPetits, type Ecriture, type ReunionsSimulees } from './supabase-simule'
 
 // Sprint 22, A2 : réunions et formations avec magasins invités, réponse du franchisé, pointage des présents
 test.beforeEach(async ({ page }) => {
@@ -27,8 +27,7 @@ const reunions = (): ReunionsSimulees => ({
 test('le Directeur invite les magasins d’une région à une réunion', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.getByRole('button', { name: 'Créer' }).click()
-  await page.getByRole('menuitem', { name: 'Événement' }).click()
+  await creerDepuisMenu(page, 'Événement')
   const d = page.getByRole('dialog', { name: 'Ajouter un événement' })
   await d.getByLabel('Titre').fill('Réunion régionale')
   const invites = d.getByRole('group', { name: 'Magasins invités' })
@@ -48,8 +47,7 @@ test('le Directeur invite les magasins d’une région à une réunion', async (
 test('un événement sans invités s’enregistre comme avant', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.getByRole('button', { name: 'Créer' }).click()
-  await page.getByRole('menuitem', { name: 'Événement' }).click()
+  await creerDepuisMenu(page, 'Événement')
   const d = page.getByRole('dialog', { name: 'Ajouter un événement' })
   await d.getByLabel('Titre').fill('Séminaire')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
@@ -59,8 +57,7 @@ test('un événement sans invités s’enregistre comme avant', async ({ page })
 
 test('le Coach ne pose pas d’invités', async ({ page }) => {
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Noé MODELE' } })
-  await page.getByRole('button', { name: 'Créer' }).click()
-  await page.getByRole('menuitem', { name: 'Événement' }).click()
+  await creerDepuisMenu(page, 'Événement')
   await expect(page.getByRole('dialog', { name: 'Ajouter un événement' }).getByLabel('Titre')).toBeVisible()
   await expect(page.getByRole('group', { name: 'Magasins invités' })).toHaveCount(0)
 })

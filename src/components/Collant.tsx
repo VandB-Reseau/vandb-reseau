@@ -8,7 +8,8 @@ import type { SxProps, Theme } from '@mui/material/styles'
 // (mois, lettres, régions) se rangent dessous au lieu de passer dessous.
 export type Bande = '--onglets' | '--filtres'
 
-export const hautEntete = { xs: 64, md: 72 }
+// Refonte (Joseph, 09/11/2026, 1A) : plus de barre du haut sur PC, le haut de l'écran est libre
+export const hautEntete = { xs: 64, md: 0 }
 
 // Position collante sous la barre du haut et sous les bandes nommées
 export function sousBandes(...bandes: Bande[]) {

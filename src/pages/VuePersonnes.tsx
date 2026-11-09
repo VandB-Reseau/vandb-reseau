@@ -88,7 +88,7 @@ export function VuePersonnes({ reseau, perimetre }: { reseau: Reseau; perimetre:
           : <BoutonAction libelle="Ajouter un collaborateur" icone={<PersonAddAlt1Outlined />} onClick={(e) => setMenu(e.currentTarget)} />}>
         {perimetre === 'collaborateurs' && <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }} role="group" aria-label="Filtrer par rôle">
           {FILTRES.map((f) => (
-            <Chip key={f.id} label={`${f.libelle} (${compte(f.id)})`} onClick={() => changerFiltre(f.id)} color={filtre === f.id ? 'secondary' : 'default'} variant={filtre === f.id ? 'filled' : 'outlined'} aria-pressed={filtre === f.id} sx={{ height: 36, fontSize: '0.875rem', fontWeight: 500, borderRadius: 2 }} />
+            <Chip key={f.id} label={`${f.libelle} (${compte(f.id)})`} onClick={() => changerFiltre(f.id)} variant="outlined" aria-pressed={filtre === f.id} sx={{ height: 36, fontSize: '0.875rem', fontWeight: filtre === f.id ? 700 : 500, borderRadius: 2, ...(filtre === f.id && { borderColor: 'text.primary', bgcolor: 'action.selected' }) }} />
           ))}
         </Box>}
         {perimetre === 'franchises' && calcul && (

@@ -89,7 +89,7 @@ function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
         sx={{ width: { xs: '100%', sm: 320 } }}
         renderInput={(p) => <TextField {...p} placeholder="Rechercher un magasin ou un Coach"
           slotProps={{ ...p.slotProps, htmlInput: { ...p.slotProps.htmlInput, 'aria-label': 'Rechercher un magasin ou un Coach' }, input: { ...p.slotProps.input, startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> } }}
-          sx={{ '& .MuiOutlinedInput-root': { borderRadius: 999, minHeight: 48 } }} />} />
+          sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, minHeight: 48 } }} />} />
   )
   const compter = (p: (m: Reseau['magasins'][number]) => boolean) => `${actifsMag.filter(p).length} magasins`
   // enPlus : filtres propres à l'onglet, posés juste après le Coach ; actions : à droite de la barre
@@ -224,7 +224,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
       </Card>
 
       <Drawer anchor={surPC ? 'right' : 'bottom'} open={!!caseOuverte} onClose={() => setOuverte(null)} sx={{ zIndex: (t) => t.zIndex.appBar + 10 }}
-        slotProps={{ paper: { sx: { width: surPC ? 440 : '100%', top: surPC ? 72 : undefined, height: surPC ? 'calc(100% - 72px)' : undefined, maxHeight: surPC ? undefined : '85dvh', borderRadius: surPC ? '16px 0 0 16px' : '16px 16px 0 0' } } }}>
+        slotProps={{ paper: { sx: { width: surPC ? 440 : '100%', top: surPC ? 0 : undefined, height: surPC ? '100%' : undefined, maxHeight: surPC ? undefined : '85dvh', borderRadius: surPC ? 0 : '16px 16px 0 0' } } }}>
         {caseOuverte && (
           <Box role="dialog" aria-label={caseOuverte.libelle} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Box sx={{ p: 2.5, bgcolor: alpha(caseOuverte.couleur, 0.18), display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -416,7 +416,7 @@ function PanneauSaisie({ reseau, liste, nom, aller, fermer, saisie, partie, surP
   const e = m ? reseau.evaluations[m.nom] : undefined
   return (
     <Drawer anchor={surPC ? 'right' : 'bottom'} open={!!m} onClose={fermer} sx={{ zIndex: (t) => t.zIndex.appBar + 10 }}
-      slotProps={{ paper: { sx: { width: surPC ? 520 : '100%', top: surPC ? 72 : undefined, height: surPC ? 'calc(100% - 72px)' : undefined, maxHeight: surPC ? undefined : '90dvh', borderRadius: surPC ? '16px 0 0 16px' : '16px 16px 0 0' } } }}>
+      slotProps={{ paper: { sx: { width: surPC ? 520 : '100%', top: surPC ? 0 : undefined, height: surPC ? '100%' : undefined, maxHeight: surPC ? undefined : '90dvh', borderRadius: surPC ? 0 : '16px 16px 0 0' } } }}>
       {m && (
         <Box role="dialog" aria-label={m.nom} sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>

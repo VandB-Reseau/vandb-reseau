@@ -76,7 +76,8 @@ test('Magasins : plus de puces de tri au-dessus de la liste', async ({ page }) =
   await seConnecter(page)
   await page.setViewportSize({ width: 1000, height: 800 })
   await page.goto('./#/magasins')
-  await expect(page.getByRole('region', { name: /^Magasins en [A-Z#]$/ }).first()).toBeVisible()
+  // À 1000 px, le tableau des magasins (refonte 09/11/2026) : le tri passe par le titre des colonnes
+  await expect(page.getByRole('table', { name: 'Tableau des magasins' })).toBeVisible()
   await expect(page.getByRole('group', { name: 'Trier par', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Dernière visite', exact: true })).toHaveCount(0)
 })

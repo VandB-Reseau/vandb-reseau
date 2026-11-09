@@ -3,7 +3,7 @@ import { suiviEtRR } from '../data/charge'
 import { CartePratique, DialogPratique } from '../components/BonnesPratiques'
 import { useReactionsPratiques } from '../data/reactionsPratiques'
 import type { BonnePratique } from '../data/bonnesPratiques'
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
 import { OngletBudget } from '../components/OngletBudget'
 import { GroupeBudgetaire } from '../components/GroupeBudgetaire'
@@ -33,7 +33,6 @@ import Typography from '@mui/material/Typography'
 import ArrowBack from '@mui/icons-material/ArrowBack'
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
-import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import { PastilleCase, PastilleTendance } from '../components/Sante'
 import { journalDansLeFil, useEditionJournal } from '../components/Journal'
@@ -61,13 +60,14 @@ import { BoutonAjouterAction, ListeActions } from '../components/Actions'
 import { ListeAssocies } from '../components/Associes'
 import { useDroits } from '../auth/Droits'
 import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
-import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
+import { ContenuOnglet, Onglets, styleSousNavigation, type Rubrique } from '../components/Onglets'
+import Tab from '@mui/material/Tab'
+import Tabs from '@mui/material/Tabs'
 import { SectionOuverture } from '../components/Ouverture'
 import { compteInstagram, libellesLicence, libellesTypologie, libellesZone, lienInstagram, resumeHoraires } from '../data/exploitation'
 import { aOuvrir } from '../data/ouvertures'
 import { actionsDuMagasin, enRetard } from '../data/actions'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
-import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import { lienFil } from '../data/messagerie'
 import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
@@ -83,32 +83,64 @@ import { SectionConcurrents } from '../components/Concurrents'
 import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, estVisite, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 import { cartouche } from '../components/Social'
 
-// Plus de fil, redondant avec les onglets (Joseph, 22/10/2026) ; le journal et les bonnes pratiques ont chacun leur onglet
-// (Joseph, 22/10/2026), la santé va avec les chiffres, les campagnes avec les tâches. Plus d'onglet Messages (sprint 22,
-// S2) : le picto message de l'en-tête ouvre le groupe du magasin dans Messages
-type VueFiche = 'fiche' | 'actions' | 'visites' | 'chiffres' | 'budget' | 'journal' | 'pratiques'
-const rubriquesFiche: Rubrique<VueFiche>[] = [
-  { vue: 'fiche', libelle: 'Fiche', icone: <StorefrontOutlined /> },
-  { vue: 'actions', libelle: 'Tâches et campagnes', court: 'Tâches', icone: <TaskAltOutlined /> },
-  { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
-  { vue: 'chiffres', libelle: 'Chiffres et santé', court: 'Chiffres', icone: <QueryStatsOutlined /> },
-  // Fusion avec le pilotage (Joseph, 03/11/2026, option A) : suivi, budget et saisies du magasin
+// Refonte (Joseph, 09/11/2026, choix 3A) : cinq onglets, jamais plus de deux niveaux. Activité regroupe tâches et campagnes,
+// visites et journal ; Chiffres regroupe le suivi face au budget, la santé, les leviers et les saisies (une seule source,
+// la caisse) ; Budget ne garde que les étapes du budget ; Ressources accueille les bonnes pratiques.
+type VueFiche = 'fiche' | 'actions' | 'visites' | 'journal' | 'chiffres' | 'budget' | 'pratiques'
+type OngletFiche = 'fiche' | 'activite' | 'chiffres' | 'budget' | 'pratiques'
+const rubriquesFiche: Rubrique<OngletFiche>[] = [
+  { vue: 'fiche', libelle: 'Vue d’ensemble', court: 'Aperçu', icone: <StorefrontOutlined /> },
+  { vue: 'activite', libelle: 'Activité', icone: <TaskAltOutlined /> },
+  { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
   { vue: 'budget', libelle: 'Budget', icone: <RequestQuoteOutlined /> },
-  { vue: 'journal', libelle: 'Journal', icone: <HistoryOutlined /> },
-  { vue: 'pratiques', libelle: 'Bonnes pratiques', court: 'Pratiques', icone: <TipsAndUpdatesOutlined /> },
+  { vue: 'pratiques', libelle: 'Ressources', icone: <TipsAndUpdatesOutlined /> },
 ]
+const partiesActivite: { vue: VueFiche; libelle: string }[] = [
+  { vue: 'actions', libelle: 'Tâches et campagnes' },
+  { vue: 'visites', libelle: 'Visites' },
+  { vue: 'journal', libelle: 'Journal' },
+]
+const ongletDe = (v: VueFiche): OngletFiche => (v === 'actions' || v === 'visites' || v === 'journal' ? 'activite' : v)
+const VUES: VueFiche[] = ['fiche', 'actions', 'visites', 'journal', 'chiffres', 'budget', 'pratiques']
 // Anciens liens vers un onglet regroupé : l'onglet qui l'accueille, ouvert sur sa partie
-const anciennesVues: Record<string, VueFiche> = { sante: 'chiffres', campagnes: 'actions', fil: 'journal' }
+const anciennesVues: Record<string, VueFiche> = { sante: 'chiffres', campagnes: 'actions', fil: 'journal', activite: 'actions' }
+// Parties du pilotage rangées dans l'onglet Budget ; toutes les autres (suivi, santé, saisies) sont dans Chiffres
+const PARTIES_BUDGET = ['budget', 'visualiser', 'echanges', 'depart', 'ventes', 'calendrier', 'investissements', 'equipe', 'fraisBudget', 'resultat', 'tresoBudget', 'travaux']
 
 function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const naviguer = useNavigate()
   const [params, setParams] = useSearchParams()
   const demandee = params.get('vue') ?? ''
-  const vue = (anciennesVues[demandee] ?? rubriquesFiche.find((r) => r.vue === demandee)?.vue ?? 'fiche') as VueFiche
+  const partie = params.get('partie')
+  const brute = (anciennesVues[demandee] ?? VUES.find((v) => v === demandee) ?? 'fiche') as VueFiche
+  // Une partie du budget ouverte depuis Chiffres (ou l'inverse, anciens liens « vue=budget ») : l'onglet qui la porte
+  const vue: VueFiche = (brute === 'budget' || brute === 'chiffres') && partie ? (PARTIES_BUDGET.includes(partie) ? 'budget' : 'chiffres')
+    : demandee === 'sante' ? 'chiffres' : brute
+  useEffect(() => {
+    // Adresse lue au moment même : le suivi a pu la réécrire juste avant (ancienne partie, « tresorerie » → « comptes »)
+    const actuelle = () => new URLSearchParams(window.location.hash.split('?')[1] ?? '')
+    if ((brute === 'budget' || brute === 'chiffres') && vue !== brute) setParams(() => { const n = actuelle(); n.set('vue', vue); return n }, { replace: true })
+    if (demandee === 'sante' && !partie) setParams(() => { const n = actuelle(); n.set('vue', 'chiffres'); n.set('partie', 'sante'); return n }, { replace: true })
+  }, [brute, vue, demandee, partie, setParams])
   const versMessages = demandee === 'messages'
   useEffect(() => { if (versMessages) naviguer(lienFil({ genre: 'magasin', magasin: m.nom, equipe: false }), { replace: true }) }, [versMessages, naviguer, m.nom])
-  useEffect(() => { if (anciennesVues[demandee]) document.getElementById(`partie-${demandee}`)?.scrollIntoView({ block: 'start' }) }, [demandee])
-  const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
+  useEffect(() => { if (anciennesVues[demandee] && demandee !== 'sante') document.getElementById(`partie-${demandee}`)?.scrollIntoView({ block: 'start' }) }, [demandee])
+  // Ancien lien « ?vue=sante » : la santé s'affiche une fois le suivi chargé, la page descend alors jusqu'à elle
+  const versSante = useRef(demandee === 'sante')
+  useEffect(() => {
+    if (!versSante.current) return
+    let essais = 0
+    const minuterie = window.setInterval(() => {
+      const e = document.getElementById('partie-sante')
+      if (!e && ++essais < 50) return
+      window.clearInterval(minuterie)
+      versSante.current = false
+      e?.scrollIntoView({ block: 'start' })
+    }, 100)
+    return () => window.clearInterval(minuterie)
+  }, [])
+  const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); n.delete('partie'); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
+  const changerOnglet = (o: OngletFiche) => changerVue(o === 'activite' ? 'actions' : o)
   const [reaffectation, setReaffectation] = useState(false)
   const [edition, setEdition] = useState(false)
   const [visite, setVisite] = useState<Visite | null | undefined>(undefined)
@@ -144,8 +176,13 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           {texteSituation(s)}
         </Alert>
       ))}
-      <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesFiche} libelle={`Rubriques de ${m.nom}`} fiche />
+      <Onglets valeur={ongletDe(vue)} onChange={changerOnglet} rubriques={rubriquesFiche} libelle={`Rubriques de ${m.nom}`} fiche />
       <ContenuOnglet>
+        {ongletDe(vue) === 'activite' && (
+          <Tabs value={vue} onChange={(_e, v: VueFiche) => changerVue(v)} variant="scrollable" scrollButtons={false} aria-label="Parties de l’activité" sx={{ mb: 2, ...styleSousNavigation }}>
+            {partiesActivite.map((x) => <Tab key={x.vue} value={x.vue} label={x.libelle} aria-current={vue === x.vue ? 'page' : undefined} />)}
+          </Tabs>
+        )}
 
         {vue === 'fiche' && (
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
@@ -200,13 +237,13 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           </Box>
         )}
 
-        {vue === 'budget' && <OngletBudget nom={m.nom} />}
+        {vue === 'budget' && <OngletBudget nom={m.nom} mode="budget" />}
 
         {vue === 'journal' && <JournalMagasin reseau={reseau} m={m} signaler={setConfirmation} />}
 
         {vue === 'pratiques' && <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />}
 
-        {vue === 'chiffres' && (
+        {vue === 'chiffres' && <OngletBudget nom={m.nom} mode="chiffres" sante={
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
             <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
             <SectionLeviers reseau={reseau} m={m} />
@@ -215,7 +252,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
               <SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/plus/sante?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} />
             </Box>
           </Box>
-        )}
+        } />}
 
         {situation && <DialogSituation magasin={m} jour={reseau.jour} onFermer={(msg) => { setSituation(false); if (msg) setConfirmation(msg) }} />}
         {reaffectation && <ReaffecterDialog reseau={reseau} magasin={m} ouvert onFermer={(fait) => { setReaffectation(false); if (fait) setConfirmation(`${m.nom} est confié à ${fait}.`) }} />}

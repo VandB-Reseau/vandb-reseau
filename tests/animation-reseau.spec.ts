@@ -51,19 +51,17 @@ async function fonctionSimulee(page: Page) {
   return appels
 }
 
-async function ouvrirAnimation(page: Page, isMobile: boolean) {
-  if (isMobile) {
-    await page.getByRole('button', { name: 'Mon compte' }).click()
-    await page.getByRole('menuitem', { name: 'Animation réseau' }).click()
-  } else {
-    await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Animation réseau' }).click()
-  }
-  await expect(page.getByRole('heading', { level: 1, name: 'Animation réseau' })).toBeVisible()
+// Refonte (Joseph, 09/11/2026, 2A) : l'animation réseau est un onglet de Messages, pour le Directeur et les RR
+const ongletAnimation = (page: Page) => page.getByRole('tablist', { name: 'Messages et animation' }).getByRole('tab', { name: 'Animation réseau' })
+async function ouvrirAnimation(page: Page) {
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^Messages/ }).click()
+  await ongletAnimation(page).click()
+  await expect(ongletAnimation(page)).toHaveAttribute('aria-selected', 'true')
 }
 
 test('le Directeur suit lectures, réponses, présences et exécution au même endroit', async ({ page, isMobile }, info) => {
   await seConnecter(page, tout())
-  await ouvrirAnimation(page, isMobile)
+  await ouvrirAnimation(page)
   const contenus = page.getByRole('region', { name: 'Contenus' })
   await expect(contenus.getByRole('button', { name: 'Communication Nouvelle gamme de Noël : 3 lues sur 4' })).toBeVisible()
   await expect(contenus.getByRole('button', { name: 'Bonne pratique Dégustation du samedi : 1 vue sur 4' })).toBeVisible()
@@ -103,7 +101,7 @@ test('le Directeur crée une formation avec un contenu en HTML : les invités so
   await seConnecter(page, { ...tout(), ecritures })
   const appels = await fonctionSimulee(page)
   await page.goto('./#/animation')
-  await expect(page.getByRole('heading', { level: 1, name: 'Animation réseau' })).toBeVisible()
+  await expect(ongletAnimation(page)).toHaveAttribute('aria-selected', 'true')
   await page.getByRole('button', { name: 'Créer' }).last().click()
   await page.getByRole('menu', { name: 'Créer un contenu' }).getByRole('menuitem', { name: 'Formation' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une formation' })
@@ -145,7 +143,7 @@ test('un nouveau sondage, une nouvelle communication, bonne pratique ou campagne
   await seConnecter(page, { ...tout(), communications: [] })
   const appels = await fonctionSimulee(page)
   await page.goto('./#/animation')
-  await expect(page.getByRole('heading', { level: 1, name: 'Animation réseau' })).toBeVisible()
+  await expect(ongletAnimation(page)).toHaveAttribute('aria-selected', 'true')
   const creer = async (nom: string) => {
     await page.getByRole('button', { name: 'Créer' }).last().click()
     await page.getByRole('menu', { name: 'Créer un contenu' }).getByRole('menuitem', { name: nom }).click()
@@ -199,18 +197,18 @@ test('le franchisé voit l’heure de la formation et en ouvre le contenu, sans 
   await page.screenshot({ path: `captures/${info.project.name}-franchise-formation.png`, fullPage: !isMobile })
 })
 
-test('le Responsable Régional a l’onglet', async ({ page, isMobile }) => {
+test('le Responsable Régional a l’onglet', async ({ page }) => {
   await seConnecter(page, { ...tout(), appMetadata: { role: 'rr', rr: 'rr1' } })
-  await ouvrirAnimation(page, isMobile)
+  await ouvrirAnimation(page)
   await expect(page.getByRole('region', { name: 'Contenus' })).toBeVisible()
 })
 
-test('le Coach n’a pas l’onglet', async ({ page, isMobile }) => {
+test('le Coach n’a pas l’onglet', async ({ page }) => {
   await seConnecter(page, { ...tout(), appMetadata: { role: 'coach', coach: 'Noé MODELE' } })
-  if (isMobile) await page.getByRole('button', { name: 'Mon compte' }).click()
-  await expect(page.getByRole(isMobile ? 'menuitem' : 'button', { name: 'Animation réseau' })).toHaveCount(0)
-  if (isMobile) await page.keyboard.press('Escape')
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^Messages/ }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Messages' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Animation réseau' })).toHaveCount(0)
   await page.goto('./#/animation')
   await expect(page.getByRole('heading', { level: 1, name: /^Accueil$|Bonjour|Bonsoir/ })).toBeVisible()
-  await expect(page.getByRole('heading', { level: 1, name: 'Animation réseau' })).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Animation réseau' })).toHaveCount(0)
 })

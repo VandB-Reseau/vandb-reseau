@@ -87,14 +87,15 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
     <>
     {fiche && <Box className="onglets-repere" aria-hidden />}
     <Tabs ref={bande} className={fiche ? 'onglets-fiche' : undefined} value={ouverteAilleurs ? PLUS : valeur} onChange={(_e, v) => { if (v !== PLUS) onChange(v as V) }} variant="scrollable" scrollButtons={false} aria-label={libelle}
-      slotProps={{ indicator: { sx: { display: 'none' } } }}
+      slotProps={{ indicator: { sx: { bgcolor: 'secondary.main', height: 3, borderRadius: '3px 3px 0 0' } } }}
       sx={{
-        mb: { xs: 1.5, md: 2.5 }, minHeight: 48, mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, '& .MuiTabs-flexContainer': { gap: 1 },
+        mb: { xs: 1.5, md: 2.5 }, minHeight: 48, mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, '& .MuiTabs-flexContainer, & .MuiTabs-list': { gap: { xs: 0.5, md: 3 } },
+        boxShadow: (t) => `inset 0 -1px 0 ${t.palette.divider}`,
         // Sous la barre du haut (64 px téléphone, 72 px PC), sur le fond de la page
         ...(libres ? {} : { position: 'sticky', top: sousBandes(), zIndex: 4, bgcolor: 'background.default' }),
       }}>
       {visibles.map((r) => (
-        <Tab key={r.vue} value={r.vue} icon={surPC ? r.icone : undefined} iconPosition="start" aria-label={r.libelle} disableRipple
+        <Tab key={r.vue} value={r.vue} aria-label={r.libelle} disableRipple
           label={r.pastille ? <Badge color="error" badgeContent={r.pastille} sx={{ '& .MuiBadge-badge': { position: 'static', transform: 'none', ml: 0.75, fontSize: '0.75rem' } }}>{surPC ? r.libelle : r.court ?? r.libelle}</Badge> : surPC ? r.libelle : r.court ?? r.libelle}
           sx={styleOnglet} />
       ))}
@@ -126,19 +127,29 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
   )
 }
 
-// Puce de 40 px dessinée dans la zone tactile de 48 px
+// Onglet souligné (refonte, Joseph 09/11/2026, choix 4A) : un seul style pour changer de partie d'une page ;
+// le soulignement jaune-or marque l'onglet ouvert. Zone tactile de 48 px.
 const styleOnglet = {
-  minHeight: 48, minWidth: 0, px: { xs: 1.75, md: 2 }, py: 0, gap: 0.75, position: 'relative', zIndex: 0, color: 'text.primary', opacity: 1,
-  fontSize: '0.875rem', fontWeight: 500,
+  minHeight: 48, minWidth: 0, px: { xs: 1.25, md: 0 }, py: 0, gap: 0.75, color: 'text.secondary', opacity: 1,
+  fontSize: { xs: '0.875rem', md: '0.9375rem' }, fontWeight: 600,
   '& .MuiTab-icon': { mb: 0, mr: 0, fontSize: 20 },
-  '&::before': { content: '""', position: 'absolute', inset: '4px 0', borderRadius: 999, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', zIndex: -1 },
-  '&.Mui-selected': { color: 'primary.contrastText', fontWeight: 600 },
-  '&.Mui-selected::before': { bgcolor: 'primary.main', borderColor: 'primary.main' },
-  '&.Mui-focusVisible::before': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 1 },
+  '&.Mui-selected': { color: 'text.primary', fontWeight: 700 },
+  '&:hover': { color: 'text.primary' },
+  '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: -2 },
+} as const
+
+// Sous-navigation légère (2e et dernier niveau d'une page) : libellés sur fond clair, l'ouvert sur fond sélectionné.
+// Jamais de 3e niveau (refonte, 4A).
+export const styleSousNavigation = {
+  minHeight: 40, '& .MuiTabs-indicator': { display: 'none' }, '& .MuiTabs-flexContainer, & .MuiTabs-list': { gap: 0.5 },
+  '& .MuiTab-root': { minHeight: 40, minWidth: 0, px: 1.5, py: 0.5, borderRadius: 2, color: 'text.secondary', fontWeight: 600, fontSize: '0.875rem', opacity: 1, textTransform: 'none' },
+  '& .MuiTab-root:hover': { color: 'text.primary', bgcolor: 'action.hover' },
+  '& .MuiTab-root.Mui-selected': { color: 'text.primary', bgcolor: 'action.selected' },
+  '@media (max-width: 899.95px)': { minHeight: 48, '& .MuiTab-root': { minHeight: 48 } },
 } as const
 
 // Contenu sous des onglets collants : toujours assez haut pour que les onglets restent en haut
 // de l'écran quand l'onglet ouvert est court (sinon la page remonte et l'en-tête réapparaît)
 export function ContenuOnglet({ children }: { children: ReactNode }) {
-  return <Box sx={{ minHeight: { xs: 'calc(100dvh - 216px)', md: 'calc(100dvh - 168px)' } }}>{children}</Box>
+  return <Box sx={{ minHeight: { xs: 'calc(100dvh - 216px)', md: 'calc(100dvh - 96px)' } }}>{children}</Box>
 }

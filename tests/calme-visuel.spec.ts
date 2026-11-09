@@ -37,10 +37,11 @@ test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur PC,
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   if (!isMobile) {
-    await expect(onglets.getByRole('tab')).toHaveText(['Fiche', 'Tâches et campagnes', 'Visites', 'Chiffres et santé', 'Budget', 'Journal', 'Bonnes pratiques'])
+    // Refonte (Joseph, 09/11/2026, 3A) : 5 onglets
+    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Ressources'])
     return
   }
-  await expect(onglets.getByRole('tab')).toHaveText(['Fiche', 'Tâches', 'Visites', 'Plus'])
+  await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Plus'])
   // Aucun onglet coupé au bord de l'écran
   const largeur = page.viewportSize()!.width
   for (const t of await onglets.getByRole('tab').all()) {
@@ -50,18 +51,18 @@ test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur PC,
   }
   await onglets.getByRole('tab', { name: 'Autres rubriques' }).click()
   const panneau = page.getByRole('dialog', { name: 'Rubriques de Brest Test' })
-  await expect(panneau.getByRole('button')).toHaveText(['Chiffres et santé', 'Budget', 'Journal', 'Bonnes pratiques'])
+  await expect(panneau.getByRole('button')).toHaveText(['Budget', 'Ressources'])
   for (const b of await panneau.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-onglets-plus.png` })
-  await panneau.getByRole('button', { name: 'Chiffres et santé' }).click()
-  await expect(page).toHaveURL(/vue=chiffres/)
-  // L'onglet « Plus » prend le nom court de la rubrique ouverte
-  const plus = onglets.getByRole('tab', { name: 'Chiffres et santé, autres rubriques' })
-  await expect(plus).toHaveText('Chiffres')
+  await panneau.getByRole('button', { name: 'Ressources' }).click()
+  await expect(page).toHaveURL(/vue=pratiques/)
+  // L'onglet « Plus » prend le nom de la rubrique ouverte
+  const plus = onglets.getByRole('tab', { name: 'Ressources, autres rubriques' })
+  await expect(plus).toHaveText('Ressources')
   await expect(plus).toHaveAttribute('aria-selected', 'true')
   await page.screenshot({ path: `captures/${info.project.name}-onglet-journal.png` })
-  await onglets.getByRole('tab', { name: 'Fiche' }).click()
+  await onglets.getByRole('tab', { name: 'Vue d’ensemble' }).click()
   await expect(onglets.getByRole('tab', { name: 'Autres rubriques' })).toHaveText('Plus')
 })
 

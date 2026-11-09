@@ -66,8 +66,9 @@ function ChoixPorteur({ reseau, noms, moi, valeur, directeur, onChange }: { rese
   const coachs = reseau.equipe.filter((c) => !c.fictif).map((c) => c.nom)
   const membre = valeur !== moi && valeur !== FRANCHISES ? valeur : null
   const puce = (libelle: string, actif: boolean, onClick: (e: MouseEvent<HTMLElement>) => void, menu?: boolean) => (
-    <Chip label={libelle} onClick={onClick} aria-pressed={actif} aria-haspopup={menu ? 'menu' : undefined} color={actif ? 'primary' : 'default'} variant={actif ? 'filled' : 'outlined'}
-      sx={{ minHeight: 48, borderRadius: 999, fontWeight: 700, '& .MuiChip-label': { px: 2 } }} />
+    <Chip label={libelle} onClick={onClick} aria-pressed={actif} aria-haspopup={menu ? 'menu' : undefined} variant="outlined"
+      // Filtre léger (refonte 09/11/2026, 4A) : le choix actif cerclé de noir sur fond gris clair, plus de pilule noire
+      sx={{ minHeight: 48, borderRadius: 2, fontWeight: actif ? 700 : 500, '& .MuiChip-label': { px: 2 }, ...(actif && { borderColor: 'text.primary', bgcolor: 'action.selected' }) }} />
   )
   return (
     <Box role="group" aria-label="Liste de tâches" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>

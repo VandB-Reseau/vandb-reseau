@@ -30,8 +30,8 @@ test('une saisie en cours n’est jamais perdue sans confirmation', async ({ pag
   await page.getByRole('button', { name: 'Partir des lignes courantes' }).click()
   await page.getByLabel('Locations immobilières', { exact: true }).fill('48000')
 
-  // Changer d'espace : on reste, la saisie est intacte (Équipe et Frais sont dans l'année en cours depuis le 29/10/2026)
-  await ongletEspace(page, 'Budget').click()
+  // Changer d'onglet de la fiche : on reste, la saisie est intacte (Équipe et Frais sont dans l'année en cours depuis le 29/10/2026)
+  await page.getByRole('tablist', { name: `Rubriques de ${MAGASINS[0]}` }).getByRole('tab', { name: 'Activité' }).click()
   const garde = page.getByRole('dialog', { name: 'Modifications non enregistrées' })
   await expect(garde).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
@@ -41,9 +41,9 @@ test('une saisie en cours n’est jamais perdue sans confirmation', async ({ pag
   await expect(page.getByLabel('Locations immobilières', { exact: true })).toHaveValue('48 000')
 
   // Quitter le budget pour une autre rubrique de la fiche (app réseau) : on quitte sans enregistrer
-  await page.getByRole('tablist', { name: `Rubriques de ${MAGASINS[0]}` }).getByRole('tab', { name: 'Fiche' }).click()
+  await page.getByRole('tablist', { name: `Rubriques de ${MAGASINS[0]}` }).getByRole('tab', { name: 'Vue d’ensemble' }).click()
   await garde.getByRole('button', { name: 'Quitter sans enregistrer' }).click()
-  await expect(page).not.toHaveURL(/vue=budget/)
+  await expect(page).not.toHaveURL(/vue=(budget|chiffres)/)
 
   // Sans modification, aucune question
   await ouvrir(page, 'Équipe')
@@ -94,8 +94,7 @@ test('les onglets signalent ce qui manque', async ({ page, isMobile }) => {
   // Directeur : budget à proposer, dit par l'étape Construire et signalé sur l'atterrissage, dans le Suivi
   await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: /^1 · Construire/ })).toContainText('À proposer')
   await ongletEspace(page, 'Suivi').click()
-  // Option A (03/11/2026) : l'atterrissage est une section du Suivi ; l'onglet Suivi porte la pastille
-  await signale(/^Suivi \d{4} \(budget à proposer\)/)
+  // L'atterrissage est une puce du suivi, dans l'onglet Chiffres de la fiche (refonte 09/11/2026) : elle porte la pastille
   await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: /^Atterrissage \d{4} \(budget à proposer\)/ })).toBeVisible()
 })
 

@@ -34,8 +34,8 @@ test('Magasins : la dernière visite à droite, le rouge réservé au décrochag
   await seConnecter(page)
   await page.goto('./#/magasins')
   const liste = page.getByRole('region', { name: 'Liste des magasins' })
-  // Sur PC, la dernière visite a sa colonne « Vu »
-  const vu = isMobile ? /^vu il y a \d+ j$/ : /^\d+ j$/
+  // Sur PC, la dernière visite a sa colonne dans le tableau (refonte 09/11/2026)
+  const vu = isMobile ? /^vu il y a \d+ j$/ : /^il y a \d+ j$/
   await expect(liste.getByText(vu).first()).toBeVisible()
   await expect(liste.getByText('Visite', { exact: true })).toHaveCount(0)
   const fond = (t: string) => liste.getByText(t, { exact: true }).first().evaluate((e) => getComputedStyle(e).backgroundColor)

@@ -9,6 +9,18 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Refonte façon SaaS (Joseph, 09/11/2026, choix 1A 2A 3A 4A 5A 6A 7A 8C 9A), sans migration. Coquille : plus de barre
+  noire sur PC, menu clair en quatre rubriques (Mon travail, Réseau, Finances, Réglages), recherche et compte dans le menu ;
+  Évolution du parc devient une vue de Magasins, Animation réseau un onglet de Messages. Fiche magasin (équipe et
+  franchisé) en cinq onglets et deux niveaux au plus : Vue d'ensemble, Activité (tâches et campagnes, visites, journal),
+  Chiffres (suivi face au budget, santé et leviers, saisies), Budget (les trois étapes), Ressources. Un composant par
+  geste : onglets soulignés, sous-navigation légère, bascule de vue, filtres. Magasins sur PC en tableau triable avec
+  vues toutes prêtes et aperçu à droite (téléphone inchangé) ; tableaux d'office ailleurs sur PC. Accueil : période
+  Mois / Cumul en tête, CA en montant avec l'écart vs N-1, À traiter au centre et actualités à droite dès l'arrivée.
+  Chiffres : k€ sans décimale à partir de 10 000 €, « EBE estimé » au lieu de « ≈ ». Style sobre (titres en casse
+  normale, boutons et puces à coins de 8 px, sans cartouche) sauf Accueil, Infos réseau et compte rendu. Ctrl K cherche
+  et crée (visite, tâche, message…) ; créer ou modifier s'ouvre en panneau à droite sur PC.
+
 - Tests d'écran de l'ancien pilotage repris dans l'app réseau (`tests/pilotage/ecrans/`, 48 fichiers, PC et téléphone),
   sans migration. Six tests de la navigation propre à l'ancien pilotage (menu, fil d'Ariane, magasin suivant, recherche)
   sont retirés : l'app réseau a les siens. Deux défauts de la fusion corrigés au passage : une saisie du budget non

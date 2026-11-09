@@ -39,6 +39,7 @@ import { Fenetre } from '../components/EditionEquipe'
 import { FilMessages } from '../components/Messages'
 import { BoutonOutil, Bulle, ChampRecherche } from '../components/Outils'
 import { PageHeader } from '../components/PageHeader'
+import { OngletsMessages } from '../components/OngletsMessages'
 import { initialesDe } from '../components/Social'
 import { useMessagerie } from '../data/MessagerieContext'
 import { actionsDuMagasin } from '../data/actions'
@@ -184,7 +185,7 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
           <ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Magasin, personne, groupe" />
         </Box>
         <Chip label={aLire ? `Non lus · ${aLire}` : 'Non lus'} onClick={() => setNonLus((v) => !v)} aria-pressed={nonLus}
-          color={nonLus ? 'primary' : 'default'} variant={nonLus ? 'filled' : 'outlined'} sx={{ height: 48, borderRadius: 999, fontSize: '0.875rem' }} />
+          color={nonLus ? 'primary' : 'default'} variant={nonLus ? 'filled' : 'outlined'} sx={{ height: 48, borderRadius: 2, fontSize: '0.875rem' }} />
         {ecrire && <BoutonOutil libelle="Nouvelle conversation" icone={<EditOutlined />} onClick={(e) => (peutCreerGroupe ? setMenu(e.currentTarget) : setNouveau('personne'))} plein />}
       </Box>
       <Menu anchorEl={menu} open={!!menu} onClose={() => setMenu(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
@@ -203,7 +204,7 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
         )}
         {!affichees.length && !q && !nonLus && (
           <EmptyState icone={<ForumOutlined />} titre="Aucune conversation en cours" texte="Tes échanges avec les franchisés et l’équipe arriveront ici."
-            action={ecrire && <Button variant="contained" onClick={() => setNouveau('personne')} startIcon={<EditOutlined />} sx={{ minHeight: 48, borderRadius: 999, px: 3 }}>Nouveau message</Button>} />
+            action={ecrire && <Button variant="contained" onClick={() => setNouveau('personne')} startIcon={<EditOutlined />} sx={{ minHeight: 48, borderRadius: 2, px: 3 }}>Nouveau message</Button>} />
         )}
       </Box>
     </Box>
@@ -348,7 +349,7 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
   const dialogue = edition && <DialogGroupe reseau={reseau} magasins={magasins} groupe={edition} onFermer={(msg) => { setEdition(null); if (msg) setConfirmation(msg); if (msg === 'Groupe supprimé.') naviguer('/echanges') }} />
 
   if (!surPC) {
-    if (!fil || !conv) return <><PageHeader titre="Messages" />{liste}{message}</>
+    if (!fil || !conv) return <><PageHeader titre="Messages" /><OngletsMessages />{liste}{message}</>
     // Conversation en plein écran, calée sur la partie visible (clavier compris) : l'en-tête reste en haut,
     // la saisie tout en bas, seuls les messages défilent (Joseph, 22/10/2026)
     return (
@@ -372,7 +373,8 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
   return (
     <>
       <PageHeader titre="Messages" />
-      <Box sx={{ display: 'grid', gridTemplateColumns: { md: '340px minmax(0, 1fr)', lg: fil && membres.length ? '340px minmax(0, 1fr) 260px' : '340px minmax(0, 1fr)' }, gap: 2, height: 'calc(100dvh - 72px - 64px - 84px)', minHeight: 480 }}>
+      <OngletsMessages />
+      <Box sx={{ display: 'grid', gridTemplateColumns: { md: '340px minmax(0, 1fr)', lg: fil && membres.length ? '340px minmax(0, 1fr) 260px' : '340px minmax(0, 1fr)' }, gap: 2, height: 'calc(100dvh - 64px - 84px)', minHeight: 480 }}>
         <Card sx={{ minHeight: 0 }}>{liste}</Card>
         <Card sx={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {fil && conv
