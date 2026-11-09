@@ -6,7 +6,7 @@ import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
-import Snackbar from '@mui/material/Snackbar'
+import { useMessageAnnulable } from '../components/Annulable'
 import TextField from '@mui/material/TextField'
 import Menu from '@mui/material/Menu'
 import Typography from '@mui/material/Typography'
@@ -108,7 +108,7 @@ function tachesDe(reseau: Reseau, noms: string[], porteur: string): ActionSuivie
 }
 const aFaireDe = (reseau: Reseau, noms: string[], porteur: string) => tachesDe(reseau, noms, porteur).filter((x) => !x.a.faite)
 
-function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajout, ajoutVide }: { reseau: Reseau; noms: string[]; porteur: string; signaler: (m: string) => void; choixPorteur?: ReactNode; ajout?: ReactNode; ajoutVide?: ReactNode }) {
+function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajout, ajoutVide }: { reseau: Reseau; noms: string[]; porteur: string; signaler: (m: string, annuler?: () => void) => void; choixPorteur?: ReactNode; ajout?: ReactNode; ajoutVide?: ReactNode }) {
   const { recharger } = useReseau()
   const ecriture = useEcritureActions(reseau)
   const [recherche, setRecherche] = useState('')
@@ -127,7 +127,7 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajout, ajoutVide
     try {
       await ecriture.cocher(x, faite)
       await recharger()
-      signaler(faite ? 'Tâche marquée faite.' : 'Tâche remise à faire.')
+      signaler(faite ? 'Tâche marquée faite.' : 'Tâche remise à faire.', () => void cocher(x, !faite))
     } catch (e) { signaler(e instanceof ErreurAction ? e.message : 'La tâche n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.') }
     finally { setEnCours(null) }
   }
@@ -190,7 +190,7 @@ export function PageTaches() {
   const { profil } = useAuth()
   const { reseau } = useReseau()
   const [params, setParams] = useSearchParams()
-  const [message, setMessage] = useState('')
+  const { signaler, bandeau } = useMessageAnnulable()
   const impose = perimetreDuProfil(profil)
   const franchise = !!reseau?.espace
   const moi = reseau ? monNomPorteur(reseau, profil) : ''
@@ -217,12 +217,12 @@ export function PageTaches() {
         return <PageHeader titre={autre ?? 'Tâches'} />
       })()}
       <AvecReseau>{(r) => (
-        <Liste reseau={r} noms={noms} porteur={porteur} signaler={setMessage}
+        <Liste reseau={r} noms={noms} porteur={porteur} signaler={signaler}
           choixPorteur={choixPossible ? <ChoixPorteur reseau={r} noms={noms} moi={moi} valeur={porteur} directeur={!impose} onChange={changer} /> : undefined}
-          ajout={<BoutonAjouterAction barre reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} signaler={setMessage} />}
-          ajoutVide={<BoutonAjouterAction plein libelle="Nouvelle tâche" reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} signaler={setMessage} />} />
+          ajout={<BoutonAjouterAction barre reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} signaler={signaler} />}
+          ajoutVide={<BoutonAjouterAction plein libelle="Nouvelle tâche" reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} signaler={signaler} />} />
       )}</AvecReseau>
-      <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
+      {bandeau}
     </>
   )
 }

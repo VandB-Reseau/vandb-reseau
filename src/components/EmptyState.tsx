@@ -14,7 +14,7 @@ const ILLUSTRATIONS: [RegExp, string][] = [
   [/message|conversation|lu$/i, messages],
   [/communication|annoncer|campagne|challenge|pratique/i, infos],
   [/tâche/i, taches],
-  [/magasin|adresse/i, magasins],
+  [/magasin|adresse|budget/i, magasins],
 ]
 
 export function EmptyState({ titre, texte, action }: { icone?: ReactElement; titre: string; texte: string; action?: ReactNode }) {

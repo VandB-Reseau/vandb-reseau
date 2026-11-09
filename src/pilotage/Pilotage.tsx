@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link as RouterLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
+import Skeleton from '@mui/material/Skeleton'
 import GlobalStyles from '@mui/material/GlobalStyles'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
@@ -55,6 +55,19 @@ const impression = {
   },
 }
 
+// Refonte vague 2 (17A) : pendant le chargement, la forme de la page en gris plutôt qu'un rond qui tourne
+function SilhouetteBudget() {
+  return (
+    <Box role="progressbar" aria-label="Chargement du budget" sx={{ display: 'grid', gap: 1.5 }}>
+      <Skeleton variant="rounded" height={88} />
+      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
+        {[0, 1, 2].map((i) => <Skeleton key={i} variant="rounded" height={140} />)}
+      </Box>
+      <Skeleton variant="rounded" height={220} />
+    </Box>
+  )
+}
+
 // Charge le profil du pilotage et ses années (0027) avant d'afficher ; quand le Directeur ouvre une campagne ou démarre
 // un suivi, tout se redessine avec les nouvelles années
 function Chargeur({ children }: { children: (p: Profil) => ReactNode }) {
@@ -69,7 +82,7 @@ function Chargeur({ children }: { children: (p: Profil) => ReactNode }) {
     chargerAnnees().finally(() => actif && setLu(compte))
     return () => { actif = false }
   }, [compte])
-  if (!profil || lu !== compte) return <Box sx={{ py: 8, display: 'grid', placeItems: 'center' }}><CircularProgress aria-label="Chargement du budget" /></Box>
+  if (!profil || lu !== compte) return <SilhouetteBudget />
   return <>{children(profil)}</>
 }
 
@@ -79,7 +92,7 @@ function PerimetreApercu({ children }: { children: ReactNode }) {
   const { apercu, equipe } = useApercu()
   const etat = useReseauSiDispo()
   const noms = apercu ? apercu.magasins : equipe ? etat?.reseau?.magasins.map((m) => m.nom) ?? null : null
-  if (equipe && !noms) return <Box sx={{ py: 8, display: 'grid', placeItems: 'center' }}><CircularProgress aria-label="Chargement du budget" /></Box>
+  if (equipe && !noms) return <SilhouetteBudget />
   const cle = apercu ? `franchise|${apercu.franchise}|${noms!.join(',')}` : equipe ? `equipe|${equipe.cle}|${noms!.join(',')}` : ''
   // Changement de personne vue : les lectures gardées en mémoire étaient celles d'un autre périmètre
   if (cle !== apercuPilotage.cle) { apercuPilotage.cle = cle; apercuPilotage.magasins = cle ? new Set(noms) : null; oublier() }
