@@ -46,7 +46,7 @@ test('le franchisé saisit son stock de fin de mois et le voit face à la cible'
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.getByRole('button', { name: 'Enregistrer le stock' }).click()
   await expect(page.getByText(`Stock de fin septembre ${N} enregistré.`)).toBeVisible()
-  expect(ecritures.find((e) => e.table === 'stocks' && e.methode === 'POST')?.corps).toEqual({ store_name: MAGASINS[0], annee: N, mois: 9, cave: 60_000, bar: 3_000 })
+  expect(ecritures.find((e) => e.table === 'stocks' && e.methode === 'POST')?.corps).toEqual({ store_name: MAGASINS[0], annee: N, mois: 9, cave: 60_000, bar: 3_000, exterieur: null })
 
   // 63 000 € pour 77 500 € : sous la fourchette (69 750 à 85 250) ; 14 500 € à racheter pour revenir à la cible
   const chiffres = page.getByRole('region', { name: `Stock ${N} en chiffres` })
@@ -94,5 +94,5 @@ test('paramètres réseau : le Directeur règle les mois de stock de la Cave et 
   await section.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText(/Paramètres de trésorerie \d{4} enregistrés\./)).toBeVisible()
   const envoi = ecritures.find((e) => e.table === 'parametres_reseau')?.corps as { valeur: { tresorerie: { stock: unknown } } }
-  expect(envoi.valeur.tresorerie.stock).toEqual({ mois: { cave: 3, bar: 1.5, exterieur: 0 }, tolerance: 0.15 })
+  expect(envoi.valeur.tresorerie.stock).toEqual({ mois: { cave: 3, bar: 1.5, exterieur: 1 }, tolerance: 0.15 })
 })

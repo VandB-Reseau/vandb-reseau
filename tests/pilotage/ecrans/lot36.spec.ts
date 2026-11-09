@@ -33,8 +33,8 @@ test('trois espaces : le magasin ouvert reste le même, chaque espace a ses page
   await page.screenshot({ path: `captures/${info.project.name}-espace-donnees.png`, fullPage: true })
 
   await ongletEspace(page, 'Suivi').click()
-  // Option A (03/11/2026) : le Suivi tient sur une page, sans seconde rangée d'onglets
-  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist')).toHaveCount(1)
+  // Le Suivi en puces (09/11/2026) : une seconde rangée d'onglets, comme les saisies
+  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist')).toHaveCount(2)
   await expect(page).toHaveURL(/[?&]partie=synthese$/)
 })
 
@@ -81,7 +81,7 @@ test('téléphone : les trois espaces en onglets de la fiche', async ({ page, is
   expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-espaces.png` })
   await ouvrirSection(page, /^Trésorerie$/)
-  await expect(page).toHaveURL(/[?&]partie=synthese$/)
+  await expect(page).toHaveURL(/[?&]partie=comptes$/)
   await allerVers(page, 'Suivi ')
   await expect(page.getByRole('heading', { level: 1, name: /^Suivi \d{4}$/ })).toBeVisible()
 })

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { allerVers, ongletEspace, ouvrir, ouvrirSection, partiesAffichees, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule } from './outils'
+import { allerVers, ongletEspace, ouvrir, ouvrirSection, partiesAffichees, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, partieAffichee } from './outils'
 
 // Option A de la maquette de navigation (Joseph, 03/11/2026) : la fiche du magasin a trois onglets, « Suivi <année> »
 // (une seule page, atterrissage, trésorerie et stock en sections repliées), « Budget <année suivante> » (les étapes en
@@ -25,11 +25,8 @@ test('fiche : trois onglets Suivi, Budget, Saisies ; dans la fiche de l’app r�
   await expect(page).toHaveURL(/[?&]partie=synthese$/)
   const pages = page.getByRole('navigation', { name: 'Pages du magasin' })
   await expect(pages.getByRole('tablist', { name: 'Espaces du magasin' }).getByRole('tab')).toHaveText([new RegExp(`^Suivi ${annee}`), new RegExp(`^Budget ${annee + 1}`), /^Saisies/])
-  // Le Suivi tient sur une page : pas de seconde rangée d'onglets, les sections sont repliées
-  await expect(pages.getByRole('tablist')).toHaveCount(1)
-  for (const nom of [`Atterrissage ${annee}`, 'Trésorerie', 'Stock']) {
-    await expect(page.locator('main').getByRole('region', { name: nom, exact: true }).getByRole('button', { name: nom, exact: true })).toHaveAttribute('aria-expanded', 'false')
-  }
+  // Le Suivi en puces (09/11/2026)
+  await expect(partiesAffichees(page)).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', `Atterrissage ${annee}`, 'Stock', 'Analyse'])
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-navigation-suivi.png`, fullPage: true })
@@ -53,14 +50,13 @@ test('fiche : trois onglets Suivi, Budget, Saisies ; dans la fiche de l’app r�
   await page.screenshot({ path: `captures/${info.project.name}-navigation-saisies.png` })
 })
 
-test('les anciennes adresses de l’atterrissage, de la trésorerie et du stock ouvrent leur section du Suivi', async ({ page }) => {
+test('les anciennes adresses de l’atterrissage et de la trésorerie ouvrent leur puce du Suivi', async ({ page }) => {
   await seConnecter(page, { magasins: [propose] })
   await page.getByText(MAGASINS[0], { exact: true }).last().click()
   await page.goto(`./#/magasins/${encodeURIComponent(MAGASINS[0])}?vue=budget&partie=tresorerie`)
-  await expect(page).toHaveURL(/[?&]partie=synthese$/)
-  const tresorerie = page.locator('main').getByRole('region', { name: 'Trésorerie', exact: true })
-  await expect(tresorerie.getByRole('button', { name: 'Trésorerie', exact: true })).toHaveAttribute('aria-expanded', 'true')
-  await ouvrirSection(page, new RegExp(`^Atterrissage ${annee}$`))
-  await expect(page.locator('main').getByRole('region', { name: `Atterrissage ${annee}`, exact: true }).getByRole('button', { name: `Atterrissage ${annee}`, exact: true })).toHaveAttribute('aria-expanded', 'true')
+  await expect(page).toHaveURL(/[?&]partie=comptes$/)
+  await expect(page.getByRole('heading', { name: 'Trésorerie', exact: true })).toBeVisible()
+  await page.goto(`./#/magasins/${encodeURIComponent(MAGASINS[0])}?vue=budget&partie=atterrissage`)
+  await partieAffichee(page, new RegExp(`^Atterrissage ${annee}`))
 })
 

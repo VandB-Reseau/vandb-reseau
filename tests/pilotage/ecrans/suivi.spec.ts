@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { MAGASINS } from '../donnees-fictives'
-import { ouvrir, plusLoin, seConnecter, textesTropPetits, zonesTropPetites, type TicketsSimules, type VenteSimulee, allerVers } from './outils'
+import { ouvrir, plusLoin, seConnecter, textesTropPetits, zonesTropPetites, type TicketsSimules, type VenteSimulee, allerVers, ouvrirSection } from './outils'
 
 // Réel face au budget sur la fiche magasin, et vue réseau. Données fictives uniquement : dépôt public.
 // Budget du magasin fictif (tests/donnees-fictives.ts) : 640 000 € de CA, 48 000 € en janvier et en février, marge 57,4 %.
@@ -41,7 +41,7 @@ test('fiche magasin : le réel face au budget, mois par mois', async ({ page, is
   // Le détail mois par mois est replié
   const tableau = page.getByRole('table', { name: `Réel face au budget ${N} mois par mois` })
   await expect(tableau).toBeHidden()
-  await page.getByRole('button', { name: 'Mois par mois', expanded: false }).click()
+  await ouvrirSection(page, /^Mois par mois$/)
   const ligne = (nom: string) => tableau.getByRole('row').filter({ has: page.getByRole('cell', { name: nom, exact: true }) })
   // Refonte T2 : une case = le réel, sa pastille, le budget dessous (janvier au-dessus du budget, février à −8,3 %)
   await expect(ligne('CA HT')).toContainText(/50\s000\s*prévu 48\s000, au prévu ou mieux.*44\s000\s*prévu 48\s000, nettement en dessous du prévu.*94\s000\s*prévu 96\s000/)
@@ -55,7 +55,8 @@ test('fiche magasin : le réel face au budget, mois par mois', async ({ page, is
   await page.getByRole('button', { name: 'Légende des pastilles' }).first().click()
   await expect(page.getByRole('dialog', { name: 'Légende des pastilles' })).toContainText('jusqu’à 5 % en dessous')
   await page.keyboard.press('Escape')
-  // R4 : jauge du CA face au budget
+  // R4 : jauge du CA face au budget, dans la vue d'ensemble
+  await ouvrirSection(page, /^Vue d’ensemble$/)
   await expect(page.getByRole('meter', { name: 'CA réel face au budget à fin février' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
@@ -71,6 +72,7 @@ test('fiche magasin : sans budget de l’année, le suivi le dit', async ({ page
   await seConnecter(page, { reel })
   await page.getByText(MAGASINS[2], { exact: true }).last().click()
   await ouvrir(page, 'Suivi du budget')
+  await ouvrirSection(page, /^Mois par mois$/)
   await expect(page.getByText(`Pas de budget ${N} à suivre`)).toBeVisible()
 })
 

@@ -3,7 +3,7 @@ import { calculerBudget } from '../../../src/pilotage/moteur/budget'
 import { joursHorsDimanche } from '../../../src/pilotage/moteur/objectifs'
 import { parametresParDefaut } from '../../../src/pilotage/moteur/parametres'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { ouvrir, partieAffichee, plusLoin, seConnecter, textesTropPetits, zonesTropPetites, type VenteSimulee, ficheBudget } from './outils'
+import { ouvrir, partieAffichee, plusLoin, seConnecter, textesTropPetits, zonesTropPetites, type VenteSimulee } from './outils'
 
 // Lot 30 : fiche en 6 onglets, synthèse en 3 blocs, objectifs du mois pour l'équipe. Données fictives : dépôt public.
 const N = new Date().getFullYear()
@@ -31,29 +31,23 @@ test('fiche (lot 36) : le réel et les quadrimestres dans Données, l’atterris
   await ouvrir(page, 'Quadrimestres')
   await expect(page).toHaveURL(/[?&]partie=quadrimestres$/)
   await expect(page.getByRole('heading', { name: 'Quadrimestres comptables' })).toBeVisible()
-  // Option A (03/11/2026) : l'atterrissage est une section de la page Suivi ; son ancienne adresse l'ouvre
+  // Le Suivi en puces (09/11/2026) : l'atterrissage a la sienne, à son adresse
   await page.goto(`./#/magasins/${encodeURIComponent(MAGASINS[0])}?vue=budget&partie=atterrissage`)
-  await expect(page).toHaveURL(/[?&]partie=synthese$/)
-  await partieAffichee(page, /^Suivi \d{4}/)
-  await expect(page.locator('main').getByRole('region', { name: /^Atterrissage \d{4}$/ }).getByRole('button', { name: /^Atterrissage \d{4}$/ })).toHaveAttribute('aria-expanded', 'true')
+  await partieAffichee(page, /^Atterrissage \d{4}/)
 })
 
-test('synthèse en 3 blocs : les chiffres, quoi faire, et le détail replié', async ({ page, isMobile }, info) => {
+test('synthèse en 3 blocs : les chiffres, quoi faire, et le détail dans l’analyse', async ({ page, isMobile }, info) => {
   await seConnecter(page, { reel })
   await page.getByText(MAGASINS[0], { exact: true }).last().click()
   await expect(page.getByRole('region', { name: /^Santé du magasin/ })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Leviers commerciaux' })).toHaveCount(0)
-  const plus = page.getByRole('region', { name: 'Pour aller plus loin' })
-  await expect(plus.getByRole('button')).toHaveAttribute('aria-expanded', 'false')
-  await expect(plus).toContainText('(graphique, leviers, face au réseau)')
+  // Le détail (graphique, leviers, face au réseau) a sa puce « Analyse » depuis le 09/11/2026
+  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: 'Analyse' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-synthese-3-blocs.png`, fullPage: true })
   await plusLoin(page)
   await expect(page.getByRole('region', { name: 'Leviers commerciaux' })).toBeVisible()
-  // Le choix reste d'un magasin à l'autre
-  await page.goto(ficheBudget(MAGASINS[1]))
-  await expect(page.getByRole('region', { name: 'Pour aller plus loin' }).getByRole('button', { name: /^Pour aller plus loin/ })).toHaveAttribute('aria-expanded', 'true')
 })
 
 test('objectifs du mois : clients par jour et panier visés pour la Cave, à imprimer pour l’équipe', async ({ page, isMobile }, info) => {

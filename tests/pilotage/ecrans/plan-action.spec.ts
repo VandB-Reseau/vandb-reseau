@@ -31,12 +31,12 @@ test('le Directeur rattache une action à l’alerte de marge et en suit la mesu
   const taches: NonNullable<OptionsReseau['ecritures']> = []
   const ecritures = await seConnecter(page, { reel }, { ecritures: taches, persister: true })
   await page.getByText(MAGASINS[0], { exact: true }).last().click()
-  const plan = page.getByRole('region', { name: 'Plan d’action' })
-  await expect(plan).toContainText('Aucune action en cours.')
+  // 09/11/2026 : pour l'équipe, la liste des actions est dans l'onglet « Tâches et campagnes » de la fiche ; ici, le formulaire
+  await expect(page.getByRole('region', { name: 'Plan d’action' })).toHaveCount(0)
   const alertes = page.getByRole('region', { name: 'Alertes' })
   await alertes.getByRole('button', { name: /^Agir : Taux de marge de 36,0/ }).click()
 
-  const form = plan.getByRole('form', { name: 'Nouvelle action' })
+  const form = page.getByRole('form', { name: 'Nouvelle action' })
   await expect(form.getByRole('combobox', { name: 'Répond à' })).toContainText('Taux de marge de 36,0')
   await expect(form.getByRole('button', { name: 'Ajouter au plan' })).toBeDisabled()
   await form.getByRole('textbox', { name: 'Action' }).fill('Revoir le mix des familles avec le franchisé')
@@ -47,11 +47,6 @@ test('le Directeur rattache une action à l’alerte de marge et en suit la mesu
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await form.getByRole('button', { name: 'Ajouter au plan' }).click()
 
-  const enCours = plan.getByRole('list', { name: 'Actions en cours' }).getByRole('listitem')
-  await expect(enCours).toHaveCount(1)
-  await expect(enCours.first()).toContainText('Revoir le mix des familles avec le franchisé')
-  await expect(enCours.first()).toContainText(`Marge en baisse · Coach · pour le 31/01/${N + 1}`)
-  await expect(enCours.first()).toContainText(/Au départ : [-−]4,0 pt sur l’an dernier.*aujourd’hui : [-−]4,0 pt sur l’an dernier/)
   await expect(alertes.getByRole('listitem').filter({ hasText: 'Taux de marge' })).toContainText('Action en cours')
   // Une seule liste de tâches (04/11/2026) : l'action est une tâche du magasin, avec sa mesure ; pilotage.actions n'est plus écrite
   const ecrites = taches.filter((e) => e.methode === 'SUIVI' && (e.corps as { key: string }).key === 'actions')
@@ -61,9 +56,9 @@ test('le Directeur rattache une action à l’alerte de marge et en suit la mesu
   expect(tache.budget.depart.valeur).toBeCloseTo(-0.04, 9)
   expect(ecritures.some((e) => e.table === 'actions')).toBe(false)
   await page.screenshot({ path: `captures/${info.project.name}-plan-action.png`, fullPage: true })
-
-  await enCours.first().getByRole('button', { name: /^Retirer :/ }).click()
-  await expect(plan).toContainText('Aucune action en cours.')
+  // La même action, dans les tâches du magasin
+  await page.goto(`./#/magasins/${encodeURIComponent(MAGASINS[0])}?vue=actions`)
+  await expect(page.getByRole('list', { name: `Tâches en cours de ${MAGASINS[0]}` }).getByText('Revoir le mix des familles avec le franchisé')).toBeVisible()
 })
 
 test('le franchisé voit l’action qui lui est confiée, la marque faite, sans rien créer ni retirer', async ({ page }) => {

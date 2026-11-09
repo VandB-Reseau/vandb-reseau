@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { MAGASINS } from '../donnees-fictives'
-import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type FraisSimule, type PartSimulee, type TicketsSimules, type VenteSimulee, plusLoin } from './outils'
+import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type FraisSimule, type PartSimulee, type TicketsSimules, type VenteSimulee, plusLoin, ouvrirSection } from './outils'
 
 // Frais ligne par ligne et atterrissage de l'année en cours ; le Directeur en tire le budget de l'an prochain.
 // Données fictives uniquement : dépôt public. Mêmes chiffres que tests/moteur/atterrissage.spec.ts, vérifiés à la main.
@@ -178,7 +178,7 @@ test('sans réel de l’année, l’atterrissage renvoie vers le réel', async (
   await seConnecter(page, { role: 'franchise' })
   await page.getByText(MAGASINS[0], { exact: true }).last().click()
   await ouvrir(page, 'Atterrissage')
-  const atterrissage = page.locator('main').getByRole('region', { name: `Atterrissage ${N}`, exact: true })
+  const atterrissage = page.locator('main')
   await expect(atterrissage.getByText(`Pas encore de réel ${N}`)).toBeVisible()
   await atterrissage.getByRole('button', { name: 'Voir le réel' }).click()
   await expect(page.getByRole('group', { name: 'Année du réel' }).getByRole('button', { name: String(N), exact: true })).toHaveAttribute('aria-pressed', 'true')
@@ -192,7 +192,7 @@ test('atterrissage sans carte « Saisonnalité » : projection automatique, part
   await seConnecter(page, { role: 'franchise', reel })
   await page.getByText(MAGASINS[0], { exact: true }).last().click()
   await ouvrir(page, 'Atterrissage')
-  const atterrissage = page.locator('main').getByRole('region', { name: `Atterrissage ${N}`, exact: true })
+  const atterrissage = page.locator('main')
   // Sans part ni réseau : la moyenne, 80 000 × 12 / 8 = 120 000
   await expect(atterrissage.getByRole('region', { name: `Atterrissage ${N} en chiffres` })).toContainText(/120\s?k€/)
   await expect(atterrissage.getByRole('region', { name: 'Saisonnalité', exact: true })).toHaveCount(0)

@@ -29,6 +29,8 @@ export async function seConnecter(page: Page, options: OptionsSimulation = {}, r
   await simulerSupabase(page, { acces: accesDuRole(options), magasinsEnPlus: nomsDuTest(options).map(magasinReseau),
     affectationsEnPlus: nomsDuTest(options).map((store) => ({ store, cs: 'Camille TESTARD', date: '2018-01-01', note: 'Affectation initiale', type: 'pre' })), ...reseau })
   const ecritures = await simulerPilotage(page, options)
+  // Le compte de résultat est en k€ d'office depuis le 09/11/2026 ; ces tests lisent les montants en euros
+  await page.addInitScript(() => { try { if (!localStorage.getItem('pilotage.compte.unite')) localStorage.setItem('pilotage.compte.unite', 'euros') } catch { /* rien */ } })
   await page.goto('./')
   await page.getByLabel('Email').fill(COMPTE.email)
   await page.getByLabel('Mot de passe').fill(COMPTE.motDePasse)
@@ -44,6 +46,7 @@ export async function seConnecter(page: Page, options: OptionsSimulation = {}, r
 // Fiche du magasin : l'onglet « Budget » de l'app réseau, puis l'espace et la page du budget
 export async function ouvrir(page: Page, partie: string) {
   await page.waitForURL(/#\/magasins\//)
+  await fermerCommentairesSurTelephone(page)
   if (!/[?&]vue=budget/.test(page.url())) await ouvrirOnglet(page, 'Budget')
   await ouvrirDansFiche(page, partie)
 }
@@ -56,6 +59,20 @@ export async function allerVers(page: Page, nom: string) {
   }
   const echappe = nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   await page.getByRole('navigation', { name: 'Pages des budgets' }).getByRole('tab', { name: new RegExp(`^${echappe}`) }).click()
+}
+
+// Commentaires du budget (09/11/2026) : dans un volet ouvert à la demande par le bouton de l'en-tête
+export async function ouvrirCommentaires(page: Page) {
+  const bouton = page.getByRole('button', { name: /^Commentaires( \(\d+ ouverts?\))?$/ })
+  if ((await bouton.getAttribute('aria-expanded')) !== 'true') await bouton.click()
+  return page.getByRole('complementary', { name: 'Volet des commentaires' }).getByRole('region', { name: 'Commentaires', exact: true })
+}
+
+// Sur téléphone, le volet des commentaires couvre l'écran : on le ferme avant de toucher la page dessous
+export async function fermerCommentairesSurTelephone(page: Page) {
+  if ((page.viewportSize()?.width ?? 1440) >= 600) return
+  const fermer = page.getByRole('complementary', { name: 'Volet des commentaires' }).getByRole('button', { name: 'Fermer les commentaires' })
+  if (await fermer.isVisible()) await fermer.click()
 }
 
 // Adresse d'une fiche de magasin dans l'app réseau, sur l'onglet du budget

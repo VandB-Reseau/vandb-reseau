@@ -36,8 +36,9 @@ test('équipe du budget : une hausse de salaire datée s’ajoute depuis les cha
   const envoi = ecritures.find((e) => e.table === 'equipe' && e.methode === 'PATCH')?.corps as { hausses: unknown }
   const annee = Number((await changements.getAttribute('aria-label'))!.slice(-4))
   expect(envoi.hausses).toEqual([{ mois: `${annee}-01`, taux: 0.05 }])
-  // Cadre à 6 000 € : au-dessus de 3 SMIC, pas de réduction ; 5 % × 72 000 € × 1,365 = 4 914 €
-  await expect(changements.getByRole('row', { name: /Responsable : hausse de 5,0\s%/ })).toContainText(/\+4\s914\s€/)
+  // Cadre à 6 000 € : au-dessus de 3 SMIC, pas de réduction ; congés payés à 10 % (09/11/2026) :
+  // 5 % × 72 000 € × 1,1 × 1,365 = 5 405 €
+  await expect(changements.getByRole('row', { name: /Responsable : hausse de 5,0\s%/ })).toContainText(/\+5\s405\s€/)
   await page.screenshot({ path: `captures/${info.project.name}-equipe-changements.png`, fullPage: true })
 })
 

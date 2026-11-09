@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule } from './outils'
+import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, ouvrirSection } from './outils'
 
 // Lot 43 (Joseph, 03/11/2026) : campagne des budgets selon le rôle, bandeau unique de la liste des magasins, trésorerie
 // au 1er janvier au point de départ, hausse des salaires et inflation des frais à un seul endroit, état des étapes dans
@@ -178,9 +178,8 @@ test('budget pas encore proposé : Construire renvoie à l’atterrissage, dans 
   await expect(page.locator('main')).toContainText(`Pas encore de budget ${N + 1}`)
   await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: /^1 · Construire/ })).toContainText('À proposer')
   await page.getByRole('button', { name: `Voir l’atterrissage ${N}` }).click()
-  // Option A (03/11/2026) : l'atterrissage est une section du Suivi, ouverte d'office
-  await expect(page).toHaveURL(/[?&]partie=synthese$/)
-  await expect(page.locator('main').getByRole('region', { name: `Atterrissage ${N}`, exact: true }).getByRole('button', { name: `Atterrissage ${N}`, exact: true })).toHaveAttribute('aria-expanded', 'true')
+  // Le Suivi en puces (09/11/2026) : la puce de l'atterrissage
+  await expect(page).toHaveURL(/[?&]partie=atterrissage$/)
 })
 
 test('étapes du budget : l’état de chaque étape selon qui regarde', async ({ page }) => {

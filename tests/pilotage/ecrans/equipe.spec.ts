@@ -43,14 +43,15 @@ test('le franchisé ajoute un vendeur au SMIC : coût chargé, réduction géné
   expect(ecritures.find((e) => e.table === 'equipe')?.corps).toEqual({
     store_name: MAGASINS[0], poste: 'Vendeur 1', categorie: 'employe', heures_hebdo: 35, heures_saisie: 'semaine', enveloppe: false, brut_mensuel: 1823.03, primes: [], hausses: [], entree: null, sortie: null,
   })
-  // Au SMIC, la réduction couvre 33,77 points sur 35 : 21 876,36 × 1,0123 ; l'an prochain, + 2 % de salaires
+  // Au SMIC, la réduction couvre 33,77 points sur 35 ; congés payés proposés à 10 % (09/11/2026) :
+  // 21 876,36 × 1,1 × 1,0123 = 24 360 € ; l'an prochain, + 2 % de salaires : 24 847 €
   const ligne = page.getByRole('table', { name: 'Postes et coût chargé' }).getByRole('row', { name: /Vendeur 1/ })
   await expect(ligne).toContainText(/1,2\s%/)
-  await expect(ligne).toContainText(/22\s145\s€/)
-  await expect(ligne).toContainText(/22\s588\s€/)
+  await expect(ligne).toContainText(/24\s360\s€/)
+  await expect(ligne).toContainText(/24\s847\s€/)
   await expect(page.getByRole('region', { name: 'Masse salariale en chiffres' })).toContainText('Hausse des salaires : 2,0')
   await ouvrir(page, 'Résultat et trésorerie')
-  await expect(page.getByRole('table', { name: 'Budget 2027 mois par mois' }).getByRole('row', { name: /^Frais de personnel/ })).toContainText(/22\s588\s€/)
+  await expect(page.getByRole('table', { name: 'Budget 2027 mois par mois' }).getByRole('row', { name: /^Frais de personnel/ })).toContainText(/24\s847\s€/)
 })
 
 test('le Directeur prévoit une prime et un départ, retire un poste ; le tableau suit', async ({ page, isMobile }, info) => {

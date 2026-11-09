@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { MAGASINS, magasinFictif } from '../donnees-fictives'
-import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type QuadrimestreSimule, type StockSimule, type VenteSimulee } from './outils'
+import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type QuadrimestreSimule, type StockSimule, type VenteSimulee, ouvrirSection } from './outils'
 
 // Réel complété mois par mois (Joseph, 03/11/2026) : quadrimestre réparti (« Q1 »), mois estimés (« ≈ ») dans le suivi du
 // budget, stock des mois non saisis retrouvé entre deux saisies. Données fictives : dépôt public.
@@ -34,7 +34,7 @@ test('suivi du budget : premier quadrimestre réparti, mai estimé, EBE à date'
   await expect(chiffres).toContainText('4 mois des comptes, 1 estimé')
   await expect(chiffres).toContainText('≈')
 
-  await page.getByRole('button', { name: 'Mois par mois', expanded: false }).click()
+  await ouvrirSection(page, /^Mois par mois$/)
   const tableau = page.getByRole('table', { name: `Réel face au budget ${N} mois par mois` })
   await expect(tableau.getByRole('columnheader', { name: 'Janv. (réel + Q1)' })).toBeVisible()
   await expect(tableau.getByRole('columnheader', { name: 'Mai (réel + ≈)' })).toBeVisible()

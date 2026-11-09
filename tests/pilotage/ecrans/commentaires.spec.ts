@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, type MessageSimule, type VersionSimulee } from './outils'
+import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, type MessageSimule, type VersionSimulee, ouvrirCommentaires, fermerCommentairesSurTelephone } from './outils'
 
 // Commentaires sur le budget (Joseph, 03/11/2026) : posés sur un point précis comme dans un document partagé, avec des
 // réponses et « Résolu », présents sur les trois étapes ; l'historique des versions reste à l'étape 3. Données fictives.
@@ -32,7 +32,7 @@ test.afterEach(async ({ page }) => {
 test('le franchisé commente une hypothèse, le siège répond, le point est résolu ; l’ancien message reste', async ({ page, isMobile }, info) => {
   const ecritures = await seConnecter(page, { role: 'franchise', magasins: [magasin], messages: [ancien], versions })
   await ouvrir(page, 'Ventes')
-  const panneau = page.getByRole('region', { name: 'Commentaires', exact: true })
+  const panneau = await ouvrirCommentaires(page)
   // L'ancien message : un commentaire ouvert sur le budget en général
   await expect(panneau).toContainText('1 ouvert')
   const fils = panneau.getByRole('listitem').filter({ hasText: 'Proposition : +5 %' })
@@ -42,6 +42,7 @@ test('le franchisé commente une hypothèse, le siège répond, le point est ré
 
   // La bulle de la ligne « tickets » de la Cave : le panneau se règle sur ce point
   const ligne = page.getByRole('row').filter({ has: page.getByLabel('Évolution du nombre de tickets : Cave', { exact: true }) })
+  await fermerCommentairesSurTelephone(page)
   await ligne.getByRole('button', { name: 'Commenter cette ligne' }).click()
   await expect(panneau).toContainText('Sur : Évolution du nombre de tickets : Cave')
   await expect(panneau).toContainText('Aucun commentaire sur ce point.')
@@ -87,7 +88,9 @@ test('les commentaires suivent les trois étapes ; à l’étape 3, l’historiq
   const panneau = page.getByRole('region', { name: 'Commentaires', exact: true })
   // Sur une carte de « Construire »
   await ouvrir(page, 'Construire')
+  await ouvrirCommentaires(page)
   await expect(panneau).toBeVisible()
+  await fermerCommentairesSurTelephone(page)
   await page.getByRole('region', { name: 'Investissements & Financements', exact: true }).getByRole('button', { name: 'Commenter : Investissements & Financements' }).click()
   await expect(panneau).toContainText('Sur : Investissements & Financements')
   // Sur « Visualiser »
@@ -99,6 +102,7 @@ test('les commentaires suivent les trois étapes ; à l’étape 3, l’historiq
 
   // Étape 3 : versions de la plus récente à la plus ancienne, avertissement des commentaires ouverts, validation possible
   await ouvrir(page, 'Envoyer et valider')
+  await ouvrirCommentaires(page)
   await expect(panneau).toContainText('2 ouverts')
   const lignes = page.getByRole('table', { name: `Versions du budget ${B}` }).getByRole('row')
   await expect(lignes).toHaveCount(3)
@@ -110,6 +114,7 @@ test('les commentaires suivent les trois étapes ; à l’étape 3, l’historiq
   await expect(page.getByRole('region', { name: 'Échanges sur le budget' })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  await fermerCommentairesSurTelephone(page)
   await revue.getByRole('button', { name: 'Valider le budget' }).click()
   await expect(page.getByText(`Budget ${B} validé.`)).toBeVisible()
 })
@@ -119,7 +124,7 @@ test('le Coach commente aussi ; sans commentaire, le panneau dit comment faire ;
   await page.getByText(MAGASINS[0], { exact: true }).last().click()
   await expect(page.getByRole('region', { name: 'Commentaires', exact: true })).toHaveCount(0)   // Suivi
   await ouvrir(page, 'Envoyer et valider')
-  const panneau = page.getByRole('region', { name: 'Commentaires', exact: true })
+  const panneau = await ouvrirCommentaires(page)
   await expect(panneau).toContainText('Aucun commentaire. Pour commenter un point précis, clique sur la bulle à côté de lui.')
   await expect(page.getByRole('region', { name: 'Historique du budget' })).toHaveCount(0)
   await panneau.getByRole('textbox', { name: 'Commenter : Le budget en général' }).fill('On en parle à ma visite de jeudi.')

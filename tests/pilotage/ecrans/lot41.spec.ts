@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { allerVers, ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type TicketsSimules, type VenteSimulee } from './outils'
+import { allerVers, ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type TicketsSimules, type VenteSimulee, ouvrirCommentaires, fermerCommentairesSurTelephone } from './outils'
 
 // Lot 41 « budget plus fluide » (Joseph, 02/11/2026) : proposer en série, fiche prête, envoi au siège et revue des
 // changements, validation à l'étape 3, objectif d'EBE, « Où en est le magasin », magasins à appeler, grille du réseau.
@@ -93,13 +93,14 @@ test('le franchisé envoie ses changements au siège ; le Directeur les relit et
   await expect(revue.getByRole('row', { name: /^EBE/ })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Valider le budget' })).toHaveCount(0)
   // Le mot pour le siège est un commentaire, posé avant l'envoi
-  const commentaires = page.getByRole('region', { name: 'Commentaires', exact: true })
+  const commentaires = await ouvrirCommentaires(page)
   await commentaires.getByRole('textbox', { name: 'Commenter : Le budget en général' }).fill('Le panier monte avec la nouvelle gamme.')
   await commentaires.getByRole('button', { name: 'Commenter', exact: true }).click()
   await expect(commentaires.getByRole('listitem')).toHaveCount(1)
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-lot41-envoi.png`, fullPage: true })
+  await fermerCommentairesSurTelephone(page)
   await revue.getByRole('button', { name: 'Envoyer au siège' }).click()
   await expect(page.getByText('Budget envoyé au siège : il est en discussion.')).toBeVisible()
   const envoi = ecritures.find((e) => e.table === 'budgets' && e.methode === 'PATCH')?.corps as { statut: string; envoye_le?: string }
@@ -155,8 +156,8 @@ test('« Où en est le magasin » : l’écart au budget expliqué par les ticke
   await expect(ca).toContainText('Tickets Cave')
   await expect(ca).toContainText('Panier moyen Cave')
   await expect(ecart.getByRole('list', { name: 'Écart de marge par effet' })).toContainText('Effet du taux de marge')
-  // Le suivi mois par mois est sur la même page, replié
-  await expect(page.getByRole('region', { name: `Réel et budget ${N} mois par mois` })).toBeVisible()
+  // Le suivi mois par mois a sa puce (09/11/2026)
+  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: 'Mois par mois' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-lot41-ou-en-est.png`, fullPage: true })

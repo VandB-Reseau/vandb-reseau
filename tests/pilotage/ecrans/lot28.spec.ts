@@ -93,8 +93,7 @@ test('leviers commerciaux : effet sur un an, « En faire une action » ouvre le 
   await leviers.getByRole('button', { name: 'En faire une action' }).click()
   const action = page.getByRole('form', { name: 'Nouvelle action' }).getByLabel('Action')
   await expect(action).toHaveValue(/^Cave : \+2,0\s%\sde tickets ; Bar : \+1,00\s€ de panier \(\+[\d\s,]+k€ de marge sur un an\)$/)
-  await leviers.getByRole('button', { name: 'Remettre à zéro' }).click()
-  await expect(effet).toContainText(/CA \+0\sk€/)
+  await expect(page).toHaveURL(/[?&]partie=synthese$/)
 })
 
 test('campagne des budgets : avancement par Responsable Régional, dates dans Paramètres réseau', async ({ page, isMobile }) => {

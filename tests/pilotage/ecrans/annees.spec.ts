@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { allerVers, ongletEspace, ongletParametres, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule } from './outils'
+import { allerVers, ongletEspace, ongletParametres, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, ouvrirSection } from './outils'
 
 // Passage d'année (Joseph, 03/11/2026, options A et 2 de la maquette) : le menu a deux portes, « Suivi <année> » et
 // « Budgets <année> » ; le Directeur ouvre la campagne, démarre le suivi et clôt l'année dans Paramètres.
@@ -84,9 +84,10 @@ test('suivi 2027 démarré : budget 2027 provisoire signalé, 2026 à clore cons
   await expect(ongletEspace(page, 'Budget 2027')).toBeVisible()
   await expect(page.getByText('Budget 2027 provisoire : pas encore validé, le suivi le compare à sa dernière version.').first()).toBeVisible()
   // L'année à clore reste consultable dans le Suivi
+  await ouvrirSection(page, /^Années passées$/)
   await expect(page.locator('main').getByRole('region', { name: 'Suivi 2026' })).toContainText('À clore')
   // Hors campagne, l'atterrissage ne propose pas de budget
-  await page.locator('main').getByRole('button', { name: /^Atterrissage 2027/ }).click()
+  await ouvrirSection(page, /^Atterrissage 2027/)
   await expect(page.locator('main').getByRole('button', { name: /^(Proposer|Mettre à jour la proposition)/ })).toHaveCount(0)
   // Saisies : 2027 et 2026 encore à clore
   await ongletEspace(page, 'Saisies').click()

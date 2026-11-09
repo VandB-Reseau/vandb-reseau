@@ -96,7 +96,7 @@ test('les onglets signalent ce qui manque', async ({ page, isMobile }) => {
   await ongletEspace(page, 'Suivi').click()
   // Option A (03/11/2026) : l'atterrissage est une section du Suivi ; l'onglet Suivi porte la pastille
   await signale(/^Suivi \d{4} \(budget à proposer\)/)
-  await expect(page.locator('main').getByRole('region', { name: /^Atterrissage \d{4}$/ })).toContainText('Budget à proposer')
+  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: /^Atterrissage \d{4} \(budget à proposer\)/ })).toBeVisible()
 })
 
 test('un franchisé avec un seul magasin arrive sur sa fiche', async ({ page }) => {

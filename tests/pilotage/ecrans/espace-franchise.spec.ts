@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { seConnecter, textesTropPetits, zonesTropPetites, type FraisSimule, type MagasinSimule, type PersonneSimulee, type QuadrimestreSimule, type VenteSimulee, plusLoin, ouvrir } from './outils'
+import { seConnecter, textesTropPetits, zonesTropPetites, type FraisSimule, type MagasinSimule, type PersonneSimulee, type QuadrimestreSimule, type VenteSimulee, plusLoin, ouvrir, ouvrirSection } from './outils'
 
 // Espace franchisé : en tête de la fiche, ce qu'il a à faire, chaque ligne mène à l'onglet. Données fictives : dépôt public.
 // Le jour est figé au 15 octobre : réel de septembre attendu, quadrimestres de janvier à avril et de mai à août.
@@ -43,6 +43,7 @@ test('le franchisé voit ce qu’il a à faire et y va en un clic, sans la compa
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-espace-franchise.png`, fullPage: true })
 
+  await ouvrirSection(page, /^Vue d’ensemble$/)
   await liste.getByRole('button', { name: `Saisir : Quadrimestre mai à août ${N} à saisir` }).click()
   // Lot 36 : les quadrimestres ont leur page dans l'espace Données
   await expect(page).toHaveURL(/[?&]partie=quadrimestres$/)
