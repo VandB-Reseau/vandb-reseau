@@ -54,11 +54,11 @@ function infosDe(reseau: Reseau | null): Map<string, Infos> {
 const colonnes: { v: TriMagasins | null; libelle: string; droite?: boolean; largeur?: number }[] = [
   { v: 'nom', libelle: 'Magasin' },
   { v: null, libelle: 'Coach' },
-  { v: null, libelle: 'Responsable Régional' },
+  { v: null, libelle: 'Responsable Régional', largeur: 150 },
   { v: null, libelle: 'CA du mois', droite: true, largeur: 104 },
   { v: 'ca', libelle: 'vs N-1', droite: true, largeur: 88 },
-  { v: 'case', libelle: 'Nine box', largeur: 168 },
-  { v: 'visite', libelle: 'Dernière visite', droite: true, largeur: 120 },
+  { v: 'case', libelle: 'Nine box', largeur: 150 },
+  { v: 'visite', libelle: 'Dernière visite', droite: true, largeur: 112 },
   { v: 'taches', libelle: 'Tâches', droite: true, largeur: 76 },
 ]
 
@@ -121,7 +121,7 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
                 return (
                   <TableRow key={m.nom} selected={actif} hover tabIndex={0} aria-selected={actif} onClick={() => ouvrir(m.nom)} onDoubleClick={() => naviguer(lienFiche(m.nom))} onKeyDown={(e) => clavier(e, m.nom)}>
                     <TableCell sx={{ minWidth: 200 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', columnGap: 1.25, rowGap: 0.25, flexWrap: 'wrap' }}>
                         <Blason magasin={m} taille={28} />
                         <Link component={RouterLink} to={lienFiche(m.nom)} color="inherit" underline="hover" onClick={(e) => e.stopPropagation()} sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{m.nom}</Link>
                         {x?.alerte === 'decroche' && <Pastille ton="rouge">Décroche</Pastille>}
@@ -130,7 +130,7 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
                       </Box>
                     </TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap', color: 'text.secondary' }}>{libelleSuivi(m) || '—'}</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap', color: 'text.secondary' }}>{m.rr?.nom ?? '—'}</TableCell>
+                    <TableCell sx={{ color: 'text.secondary' }}>{m.rr?.nom ?? '—'}</TableCell>
                     <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{x?.ca !== null && x?.ca !== undefined ? formatKEuros(x.ca) : '—'}</TableCell>
                     <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: x?.ecart === null || x?.ecart === undefined ? 'text.secondary' : x.ecart <= -5 ? 'error.main' : x.ecart < 0 ? 'warning.dark' : 'success.dark' }}>
                       {x?.ecart === null || x?.ecart === undefined ? '—' : formatPourcent(x.ecart)}

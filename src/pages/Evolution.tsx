@@ -1,3 +1,6 @@
+import { useNavigate } from 'react-router-dom'
+import Button from '@mui/material/Button'
+import ArrowBack from '@mui/icons-material/ArrowBack'
 import type { ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
@@ -127,9 +130,12 @@ function Contenu({ reseau }: { reseau: Reseau }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const [affichage, setAffichage] = useAffichage('evolution')
   const prochains = aVenir(reseau)
+  const naviguer = useNavigate()
   const prevues = (x: ReturnType<typeof lignes>[number]) => (x.prevues ? `dont ${x.prevues} prévue${x.prevues > 1 ? 's' : ''} · ` : '')
   return (
     <>
+      {/* Refonte (2A) : une vue de Magasins, on y revient d'un clic */}
+      <Button startIcon={<ArrowBack />} onClick={() => naviguer('/magasins')} sx={{ mb: 1, ml: -1 }}>Magasins</Button>
       <PageHeader titre="Évolution du parc" sousTitre={`${ouverts} magasins ouverts aujourd’hui`} />
       {sansDate > 0 && <Alert severity="info" sx={{ mb: 3 }}>{`${sansDate} magasin${sansDate > 1 ? 's' : ''} sans date d’ouverture ${sansDate > 1 ? 'ne sont' : 'n’est'} pas compté${sansDate > 1 ? 's' : ''}.`}</Alert>}
       {prochains.length > 0 && (

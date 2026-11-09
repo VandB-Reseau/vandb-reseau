@@ -13,6 +13,12 @@ React 19 + TypeScript + MUI 9 (thème `src/theme/theme.ts`), react-router (HashR
 - Aucune erreur technique à l'écran : messages humains, états vides qui expliquent et proposent l'action.
 - Aucune ressource externe bloquante (polices et icônes embarquées).
 - PC = usage principal (menu latéral, tableaux complets) ; téléphone soigné (barre basse).
+- Refonte SaaS (Joseph, 09/11/2026) : sur PC, pas de barre du haut, menu clair en rubriques (`rubriquesMenu`) ; jamais
+  plus de deux niveaux de navigation dans une page. Un composant par geste : onglets soulignés (`Onglets`) pour changer de
+  partie, `styleSousNavigation` pour le 2e niveau, `ToggleButtonGroup` pour basculer de vue, puces pour filtrer.
+  Listes en tableau sur PC, lignes sur téléphone. Titres sobres (`cartouche` sans fond) sauf dans les écrans « marque »
+  (Accueil, Infos réseau, compte rendu, `className="marque"`). Créer ou modifier : panneau à droite sur PC (thème des
+  Dialog, les fenêtres `maxWidth="xs"` restent au centre) ; créations ouvertes par `useCreer()`.
 - Rôles (`src/auth/roles.ts`) : directeur, rr, coach (l'équipe) et franchise. Le rôle est lu dans la base (`mon_acces`), pas seulement dans le jeton. Un franchisé ne lit aucune table : la fonction `espace_franchise()` lui renvoie ses magasins (migrations `0004_acces_franchises.sql` et `0005_cloisonnement_equipe.sql`). Tout nouvel écran de l'équipe reste invisible au franchisé ; toute nouvelle donnée à lui montrer passe par cette fonction.
 - Coach et RR : la base ne leur renvoie que les visites, chiffres et suivi de leurs magasins (table `perimetre_equipe` tenue par l'app du Directeur, script `supabase/migrations/0005_cloisonnement_equipe.sql`). Toute nouvelle donnée rangée par magasin va dans `suivi_magasins` (une ligne par magasin et par rubrique), jamais dans une clé d'`app_config`. Pas de Paramètres pour eux.
 - Référentiels (liste des magasins, affectations, équipe, fiches des personnes, campagnes, thématiques, grilles, réglages) : écrits par le Directeur seul, en base comme à l'écran (`useDroits().referentiels`, `src/auth/Droits.tsx`). Le Coach et le RR écrivent visites, chiffres, suivi de leurs magasins (santé comprise), bonnes pratiques, agenda et messages. Accès de l'équipe ouverts depuis la fiche du Coach ou du RR ; « Voir comme » reprend le profil de la personne (`ProfilVu`).
