@@ -300,7 +300,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
     <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'background.default', '--barre-basse': sansBarre ? '0px' : 'calc(80px + env(safe-area-inset-bottom))' }}>
       {/* Téléphone : barre du haut claire (logo, recherche, « + », infos, compte). PC : plus de barre du haut, tout est dans le menu */}
       {!surPC && (
-        <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1, bgcolor: 'background.paper', color: 'text.primary', borderBottom: '1px solid', borderColor: 'divider' }}>
+        <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1, bgcolor: 'background.paper', color: 'text.primary' }}>
           <Toolbar sx={{ minHeight: 60, gap: 0.5, px: { xs: 1.5, sm: 2 } }}>
             <Box sx={{ bgcolor: '#000000', borderRadius: 1.5, px: 0.75, py: 0.5, display: 'flex', flexShrink: 0 }}><Logo size={14} /></Box>
             <Box sx={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center', px: 0.5 }}>
@@ -311,6 +311,8 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
             {!franchise && <BoutonInfos />}
             <MenuCompte liens={franchise ? [] : [{ destinations: [magasins, ...pourRole(secondaires, profil?.role)] }, ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }])]} />
           </Toolbar>
+          {/* Filet de la charte sous la barre (60 + 4 = 64 px) */}
+          <Box aria-hidden data-filet="" sx={{ height: 4, background: brandStripe }} />
         </AppBar>
       )}
 

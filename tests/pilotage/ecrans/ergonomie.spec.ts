@@ -30,8 +30,8 @@ test('une saisie en cours n’est jamais perdue sans confirmation', async ({ pag
   await page.getByRole('button', { name: 'Partir des lignes courantes' }).click()
   await page.getByLabel('Locations immobilières', { exact: true }).fill('48000')
 
-  // Changer d'espace : on reste, la saisie est intacte (Équipe et Frais sont dans l'année en cours depuis le 29/10/2026)
-  await ongletEspace(page, 'Budget').click()
+  // Changer d'onglet de la fiche : on reste, la saisie est intacte (Équipe et Frais sont dans l'année en cours depuis le 29/10/2026)
+  await page.getByRole('tablist', { name: `Rubriques de ${MAGASINS[0]}` }).getByRole('tab', { name: 'Activité' }).click()
   const garde = page.getByRole('dialog', { name: 'Modifications non enregistrées' })
   await expect(garde).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])

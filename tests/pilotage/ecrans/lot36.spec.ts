@@ -74,11 +74,13 @@ test('d’une étape du budget à l’autre, les ajustements en cours restent sa
   await expect(page.getByLabel('Évolution du nombre de tickets : Cave')).toHaveValue('')
 })
 
-test('téléphone : les trois espaces en onglets de la fiche', async ({ page, isMobile }, info) => {
+// Refonte (09/11/2026) : sur téléphone aussi, le suivi est dans l'onglet Chiffres de la fiche, ses parties en puces
+test('téléphone : le suivi dans l’onglet Chiffres de la fiche, ses parties en puces', async ({ page, isMobile }, info) => {
   test.skip(!isMobile, 'téléphone seulement')
   await seConnecter(page, { magasins: [propose] })
   await page.getByText(MAGASINS[0], { exact: true }).last().click()
-  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist', { name: 'Espaces du magasin' }).getByRole('tab')).toHaveText([/^Suivi \d{4}/, /^Budget \d{4}/, /^Saisies/])
+  await expect(page.getByRole('tablist', { name: `Rubriques de ${MAGASINS[0]}` }).getByRole('tab', { name: 'Chiffres' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist', { name: 'Espaces du magasin' })).toHaveCount(0)
   await expect(page.getByRole('navigation', { name: 'Espaces du pilotage' })).toHaveCount(0)
   expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-espaces.png` })

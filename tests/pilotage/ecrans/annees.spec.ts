@@ -82,7 +82,6 @@ test('suivi 2027 démarré : budget 2027 provisoire signalé, 2026 à clore cons
   await page.locator('main').getByText(MAGASINS[1], { exact: true }).last().click()
   await expect(page).toHaveURL(/[?&]partie=synthese$/)
   await expect(ongletEspace(page, 'Suivi 2027')).toHaveAttribute('aria-selected', 'true')
-  await expect(ongletEspace(page, 'Budget 2027')).toBeVisible()
   await expect(page.getByText('Budget 2027 provisoire : pas encore validé, le suivi le compare à sa dernière version.').first()).toBeVisible()
   // L'année à clore reste consultable dans le Suivi
   await ouvrirSection(page, /^Années passées$/)

@@ -145,7 +145,7 @@ export const styleSousNavigation = {
   '& .MuiTab-root': { minHeight: 40, minWidth: 0, px: 1.5, py: 0.5, borderRadius: 2, color: 'text.secondary', fontWeight: 600, fontSize: '0.875rem', opacity: 1, textTransform: 'none' },
   '& .MuiTab-root:hover': { color: 'text.primary', bgcolor: 'action.hover' },
   '& .MuiTab-root.Mui-selected': { color: 'text.primary', bgcolor: 'action.selected' },
-  '@media (pointer: coarse)': { minHeight: 48, '& .MuiTab-root': { minHeight: 48 } },
+  '@media (max-width: 899.95px)': { minHeight: 48, '& .MuiTab-root': { minHeight: 48 } },
 } as const
 
 // Contenu sous des onglets collants : toujours assez haut pour que les onglets restent en haut

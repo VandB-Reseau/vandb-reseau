@@ -505,7 +505,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         })()}
         {mode === 'chiffres' && espace === 'donnees' && (
           <ToggleButtonGroup exclusive value={onglet} onChange={(_, v: string | null) => { if (v) aller(v) }} aria-label="Saisies du magasin" size="small" className="pas-a-l-impression"
-            sx={{ mt: 1.5, flexWrap: 'wrap', '& .MuiToggleButton-root': { minHeight: 40, px: 1.75, textTransform: 'none', fontWeight: 600, '@media (pointer: coarse)': { minHeight: 48 } } }}>
+            sx={{ mt: 1.5, flexWrap: 'wrap', '& .MuiToggleButton-root': { minHeight: 40, px: 1.75, textTransform: 'none', fontWeight: 600, '@media (max-width: 899.95px)': { minHeight: 48 } } }}>
             {partiesDe('donnees', anneeEnCours).map((x) => <ToggleButton key={x.cle} value={x.cle}>{x.libelle}</ToggleButton>)}
           </ToggleButtonGroup>
         )}

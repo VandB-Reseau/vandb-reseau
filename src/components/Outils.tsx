@@ -42,7 +42,7 @@ export function ChampRecherche({ valeur, onChange, placeholder, libelle }: { val
       sx={champRechercheSx} />
   )
 }
-export const champRechercheSx: SxProps<Theme> = { width: { xs: '100%', sm: 320 }, '& .MuiOutlinedInput-root': { borderRadius: 2, minHeight: 48 } }
+export const champRechercheSx: SxProps<Theme> = { width: { xs: '100%', sm: 320 }, '& .MuiOutlinedInput-root': { borderRadius: 2, minHeight: 48 }, '& .MuiOutlinedInput-input': { py: '12.5px' } }
 
 export function BoutonOutil({ libelle, icone, onClick, plein, actif, badge, attributs }: {
   libelle: string; icone: ReactNode; onClick: (e: MouseEvent<HTMLElement>) => void; plein?: boolean; actif?: boolean; badge?: number

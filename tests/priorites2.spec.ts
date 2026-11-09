@@ -15,9 +15,10 @@ test.afterEach(async ({ page }) => {
 
 test('en-tête : sur téléphone, le compteur passe à droite du titre', async ({ page, isMobile }) => {
   await seConnecter(page)
-  await page.goto('./#/magasins')
-  const h1 = page.getByRole('heading', { level: 1, name: 'Magasins' })
-  const compteur = page.getByText(/^\d+ ouverts?/).first()
+  // Magasins a désormais Liste et Carte dans son en-tête (refonte 09/11/2026) : Visites sert de témoin
+  await page.goto('./#/visites')
+  const h1 = page.getByRole('heading', { level: 1, name: 'Visites' })
+  const compteur = page.getByText(/^\d+ visites? enregistrées?$/).first()
   const [t, c] = [(await h1.boundingBox())!, (await compteur.boundingBox())!]
   if (isMobile) {
     expect(c.x).toBeGreaterThan(t.x + t.width)
