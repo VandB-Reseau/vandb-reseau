@@ -13,6 +13,7 @@ import { monNomPorteur } from '../data/actions'
 import { mesCles } from '../data/messagerie'
 import { pont } from './data/taches'
 import { apercuPilotage } from './lib/apercu'
+import { installerChampSuivant } from './lib/champSuivant'
 import { PilotageAuthProvider, useAuth } from './auth/AuthContext'
 import { estDirecteur, estEquipe, voitParametres, type Profil } from './auth/roles'
 import { GardeSaisie } from './components/GardeSaisie'
@@ -102,6 +103,8 @@ function usePontReseau() {
 
 export function ZonePilotage({ children }: { children: (p: Profil) => ReactNode }) {
   usePontReseau()
+  // Entrée dans un montant : champ suivant (saisie rapide de l'ancien pilotage, perdue à la fusion)
+  useEffect(installerChampSuivant, [])
   return (
     <ThemeProvider theme={theme}>
       <GlobalStyles styles={impression} />

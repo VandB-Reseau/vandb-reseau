@@ -1,0 +1,122 @@
+import { expect, test } from '@playwright/test'
+import { magasinFictif, MAGASINS } from '../donnees-fictives'
+import { ongletEspace, ouvrir, partiesAffichees, seConnecter, textesTropPetits, zonesTropPetites, type FraisSimule, type MagasinSimule, type PersonneSimulee, ficheBudget } from './outils'
+
+// Ergonomie : saisie jamais perdue, filtres de l'accueil, magasin précédent et suivant, pastilles, saisie rapide.
+// Données fictives uniquement : dépôt public.
+
+const loyer = (magasin: string): FraisSimule => ({ store_name: magasin, code: 'loyer', libelle: 'Locations immobilières', rubrique: 'immobilier', annuel: 60_000, taux_ca: null })
+const vendeur = (id: number, magasin: string): PersonneSimulee => ({ id, store_name: magasin, poste: 'Vendeur 1', categorie: 'employe', heures_hebdo: 35, brut_mensuel: 1900, primes: [], entree: null, sortie: null })
+// Sept magasins : la recherche apparaît au-delà de cinq
+const sept: MagasinSimule[] = [
+  { magasin: MAGASINS[0], statut: 'valide', hypotheses: magasinFictif, base: magasinFictif, maj_le: '2026-10-20T09:30:00Z' },
+  { magasin: MAGASINS[1], statut: 'en_discussion', hypotheses: magasinFictif, base: magasinFictif, maj_le: '2026-10-22T16:05:00Z' },
+  ...[MAGASINS[2], 'Port-Navalo', 'Les Ormes', 'Val-d’Azur', 'Montclair'].map((magasin) => ({ magasin, statut: null, hypotheses: null, maj_le: null })),
+]
+
+test.beforeEach(async ({ page }) => {
+  const erreurs: string[] = []
+  page.on('pageerror', (e) => erreurs.push(e.message))
+  ;(page as unknown as { erreurs: string[] }).erreurs = erreurs
+})
+test.afterEach(async ({ page }) => {
+  expect((page as unknown as { erreurs: string[] }).erreurs, 'aucune erreur JavaScript').toEqual([])
+})
+
+test('une saisie en cours n’est jamais perdue sans confirmation', async ({ page, isMobile }, info) => {
+  await seConnecter(page, { role: 'coach' })
+  await page.getByText(MAGASINS[0], { exact: true }).last().click()
+  await ouvrir(page, 'Frais')
+  await page.getByRole('button', { name: 'Partir des lignes courantes' }).click()
+  await page.getByLabel('Locations immobilières', { exact: true }).fill('48000')
+
+  // Changer d'espace : on reste, la saisie est intacte (Équipe et Frais sont dans l'année en cours depuis le 29/10/2026)
+  await ongletEspace(page, 'Budget').click()
+  const garde = page.getByRole('dialog', { name: 'Modifications non enregistrées' })
+  await expect(garde).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-garde-saisie.png` })
+  await garde.getByRole('button', { name: 'Rester' }).click()
+  await expect(page.getByLabel('Locations immobilières', { exact: true })).toHaveValue('48 000')
+
+  // Quitter le budget pour une autre rubrique de la fiche (app réseau) : on quitte sans enregistrer
+  await page.getByRole('tablist', { name: `Rubriques de ${MAGASINS[0]}` }).getByRole('tab', { name: 'Fiche' }).click()
+  await garde.getByRole('button', { name: 'Quitter sans enregistrer' }).click()
+  await expect(page).not.toHaveURL(/vue=budget/)
+
+  // Sans modification, aucune question
+  await ouvrir(page, 'Équipe')
+  await expect(garde).toHaveCount(0)
+})
+
+test('l’accueil filtre les magasins, la recherche ignore les accents, le retour garde le filtre', async ({ page, isMobile }, info) => {
+  await seConnecter(page, { magasins: sept, frais: [loyer(MAGASINS[0]), loyer('Port-Navalo')], equipe: [vendeur(1, MAGASINS[0])] })
+  const filtres = page.getByRole('group', { name: 'Filtres' })
+  const tableau = page.getByRole('table', { name: /Budgets .* par magasin/ })
+  const cartes = page.locator('main').getByRole('heading', { level: 2 }).filter({ hasNotText: 'À traiter' }).filter({ hasNotText: 'Campagne des budgets' }).filter({ hasNotText: 'Proposer en série' })
+  const lignes = isMobile ? cartes : tableau.getByRole('row').filter({ has: page.getByRole('link') })
+  await expect(filtres.getByRole('button', { name: 'Tous · 7' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(filtres.getByRole('button', { name: 'À proposer · 5' })).toBeVisible()
+  await expect(filtres.getByRole('button', { name: 'Équipe à renseigner · 6' })).toBeVisible()
+  await expect(filtres.getByRole('button', { name: /Chez le franchisé/ })).toHaveCount(0)
+
+  await filtres.getByRole('button', { name: 'Frais à renseigner · 5' }).click()
+  await expect(lignes).toHaveCount(5)
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-accueil-filtres.png`, fullPage: true })
+
+  await page.getByLabel('Filtrer la liste des magasins').fill('val d azur')
+  await expect(lignes).toHaveCount(0)
+  await page.getByLabel('Filtrer la liste des magasins').fill('azur')
+  await expect(lignes).toHaveCount(1)
+  await page.getByText('Val-d’Azur', { exact: true }).click()
+  // Retour du navigateur jusqu'à la liste (la fiche de l'app réseau change d'onglet sans ajouter de page)
+  while (!/#\/budgets/.test(page.url())) await page.goBack()
+  await expect(page.getByLabel('Filtrer la liste des magasins')).toHaveValue('azur')
+  await expect(filtres.getByRole('button', { name: 'Frais à renseigner · 5' })).toHaveAttribute('aria-pressed', 'true')
+
+  await page.getByLabel('Filtrer la liste des magasins').fill('zzz')
+  await expect(page.getByText('Aucun magasin ne correspond')).toBeVisible()
+})
+
+test('les onglets signalent ce qui manque', async ({ page, isMobile }) => {
+  await seConnecter(page, { magasins: sept, frais: [loyer(MAGASINS[0])] })
+  await page.getByText(MAGASINS[0], { exact: true }).last().click()
+  await ouvrir(page, 'Hypothèses')
+  // Budget en 3 étapes (03/11/2026) ; l'équipe manquante est signalée sur l'étape des hypothèses
+  await expect(partiesAffichees(page)).toHaveText([/^1 · Construire/, /^2 · Visualiser/, /^3 · Envoyer et valider/])
+  // La pastille et son détail dans l'onglet de l'étape (03/11/2026 : sur PC comme sur téléphone)
+  const signale = (nom: RegExp) => expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: nom }).locator('.MuiBadge-dot:not(.MuiBadge-invisible)')).toBeVisible()
+  await signale(/^1 · Construire \(équipe à renseigner\)/)
+  await page.goto(`${ficheBudget(MAGASINS[2])}&partie=budget`)
+  // Directeur : budget à proposer, dit par l'étape Construire et signalé sur l'atterrissage, dans le Suivi
+  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: /^1 · Construire/ })).toContainText('À proposer')
+  await ongletEspace(page, 'Suivi').click()
+  // Option A (03/11/2026) : l'atterrissage est une section du Suivi ; l'onglet Suivi porte la pastille
+  await signale(/^Suivi \d{4} \(budget à proposer\)/)
+  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: /^Atterrissage \d{4} \(budget à proposer\)/ })).toBeVisible()
+})
+
+test('un franchisé avec un seul magasin arrive sur sa fiche', async ({ page }) => {
+  await seConnecter(page, { role: 'franchise', magasins: [sept[0]] })
+  await expect(page.getByRole('heading', { level: 1, name: MAGASINS[0] })).toBeVisible()
+  await expect(page.getByRole('link', { name: /^Budgets \d{4}$/ }).and(page.locator('main a'))).toHaveCount(0)
+})
+
+test('saisie rapide : Entrée passe au montant suivant, les milliers s’affichent', async ({ page }) => {
+  await seConnecter(page, { role: 'franchise' })
+  await page.getByText(MAGASINS[0], { exact: true }).last().click()
+  await ouvrir(page, 'Frais')
+  await page.getByRole('button', { name: 'Partir des lignes courantes' }).click()
+  const loyerChamp = page.getByLabel('Locations immobilières', { exact: true })
+  await loyerChamp.fill('60000')
+  await loyerChamp.press('Enter')
+  await expect(page.getByLabel('Charges locatives', { exact: true })).toBeFocused()
+  await expect(loyerChamp).toHaveValue('60 000')
+  await page.keyboard.type('2400,5')
+  await page.keyboard.press('Enter')
+  await expect(page.getByLabel('Charges locatives', { exact: true })).toHaveValue('2 400,5')
+  await expect(page.getByRole('region', { name: 'Frais en chiffres' })).toContainText(/62\sk€/)
+})

@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Tests d'écran de l'ancien pilotage repris dans l'app réseau (`tests/pilotage/ecrans/`, 48 fichiers, PC et téléphone),
+  sans migration. Six tests de la navigation propre à l'ancien pilotage (menu, fil d'Ariane, magasin suivant, recherche)
+  sont retirés : l'app réseau a les siens. Deux défauts de la fusion corrigés au passage : une saisie du budget non
+  enregistrée se perdait sans question en passant par le menu ou les rubriques de la fiche ; la touche Entrée ne
+  passait plus au montant suivant. Sur téléphone, ce qu'on fait défiler ne se cache plus sous la barre du bas ; passer
+  d'une page du budget à l'autre ramène en haut de la page (onglets visibles), comme dans l'ancien pilotage.
+
 - Budget sur ordinateur (Joseph, 09/11/2026), sans migration : le Suivi en puces (Vue d'ensemble, Mois par mois, Comptes
   et trésorerie, Atterrissage, Stock, Analyse) ; plus de liste du plan d'action pour l'équipe (elle est dans les tâches
   du magasin, « Agir » ouvre toujours le formulaire) ; commentaires dans un volet à la demande ; Impact et bande de

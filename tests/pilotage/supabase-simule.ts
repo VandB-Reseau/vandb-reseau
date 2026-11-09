@@ -426,18 +426,19 @@ export async function zonesTropPetites(page: Page, min = 48): Promise<string[]> 
 const PARTIES: [string, { espace: string; libelle?: RegExp; theme?: string; section?: RegExp }][] = [
   ['Réel', { espace: 'Saisies', libelle: /^Réel du mois/ }],
   ['Quadrimestres', { espace: 'Saisies', libelle: /^Comptes du quadrimestre/ }],
-  ['Comptes du quadrimestre', { espace: 'Suivi' }],
+  // Joseph (09/11/2026) : le Suivi en puces (Vue d'ensemble, Mois par mois, Comptes et trésorerie, Atterrissage, Stock, Analyse)
+  ['Comptes du quadrimestre', { espace: 'Suivi', libelle: /^Comptes et trésorerie/ }],
   ['Frais du budget', { espace: 'Budget', libelle: /^1 · Construire/, theme: 'Frais' }],
   ['Frais', { espace: 'Saisies', libelle: /^Frais \d{4}/ }],
-  ['Suivi du budget', { espace: 'Suivi' }],
-  ['Où on va', { espace: 'Suivi' }],
-  ['Synthèse', { espace: 'Suivi' }],
-  ['Où en est le magasin', { espace: 'Suivi' }],
+  ['Suivi du budget', { espace: 'Suivi', libelle: /^Vue d’ensemble/ }],
+  ['Où on va', { espace: 'Suivi', libelle: /^Vue d’ensemble/ }],
+  ['Synthèse', { espace: 'Suivi', libelle: /^Vue d’ensemble/ }],
+  ['Où en est le magasin', { espace: 'Suivi', libelle: /^Vue d’ensemble/ }],
   ['Trésorerie du budget', { espace: 'Budget', libelle: /^1 · Construire/, theme: 'Point de départ' }],
-  ['Trésorerie', { espace: 'Suivi', section: /^Trésorerie$/ }],
+  ['Trésorerie', { espace: 'Suivi', libelle: /^Comptes et trésorerie/ }],
   ['Stock', { espace: 'Saisies', libelle: /^Stock de fin de mois/ }],
   // Joseph (03/11/2026) : l'atterrissage de l'année en cours passe dans Suivi ; le point de départ devient une carte
-  ['Atterrissage', { espace: 'Suivi', section: /^Atterrissage \d{4}$/ }],
+  ['Atterrissage', { espace: 'Suivi', libelle: /^Atterrissage \d{4}/ }],
   ['Point de départ', { espace: 'Budget', libelle: /^1 · Construire/, theme: 'Point de départ' }],
   // Lot 42 : hypothèses, ventes et résultat sur la page « 1 · Construire »
   ['Cartes des hypothèses', { espace: 'Budget', libelle: /^1 · Construire/ }],
@@ -475,10 +476,11 @@ export async function ouvrir(page: Page, partie: string) {
   if (cible.theme) await page.locator('main').getByRole('region', { name: cible.theme, exact: true }).getByRole('link').click()
   if (cible.section) await ouvrirSection(page, cible.section)
 }
-// Section repliée de la page Suivi (atterrissage, trésorerie, stock) : ouverte si elle ne l'est pas
+// Partie du Suivi (09/11/2026 : puces, plus de sections repliées) ; la trésorerie est avec les comptes
 export async function ouvrirSection(page: Page, nom: RegExp) {
-  const titre = page.locator('main').getByRole('region', { name: nom }).getByRole('button', { name: nom })
-  if ((await titre.getAttribute('aria-expanded')) !== 'true') await titre.click()
+  const cible = nom.test('Trésorerie') ? /^Comptes et trésorerie/ : nom
+  const puce = page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: cible })
+  if ((await puce.getAttribute('aria-selected')) !== 'true') await puce.click()
 }
 
 // Onglet d'un espace (Suivi, Budget, Saisies) de la fiche du magasin
@@ -504,10 +506,9 @@ export async function allerVers(page: Page, nom: string) {
   await page.getByRole('navigation', { name: 'Menu principal' }).getByRole('link', { name: nom }).click()
 }
 
-// Synthèse du magasin (lot 30) : déplie « Pour aller plus loin » (graphique, leviers, face au réseau, familles)
+// Analyse du magasin (graphique, leviers, face au réseau, familles) : sa puce du Suivi depuis le 09/11/2026
 export async function plusLoin(page: Page) {
-  const bouton = page.getByRole('region', { name: 'Pour aller plus loin' }).getByRole('button', { name: /^Pour aller plus loin/ })
-  if ((await bouton.getAttribute('aria-expanded')) !== 'true') await bouton.click()
+  await ouvrirSection(page, /^Analyse$/)
 }
 
 // Paramètres réseau (lot 39) : un onglet par rubrique

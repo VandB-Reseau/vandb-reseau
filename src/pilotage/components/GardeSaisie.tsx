@@ -11,6 +11,7 @@ import Typography from '@mui/material/Typography'
 // Lot 43 : une saisie « forte » (qui ne vit que dans son écran) est gardée même entre deux étapes du budget, où les
 // ajustements en cours restent en mémoire
 interface Garde { signaler: (id: string, modifie: boolean, fort?: boolean) => void; demander: (action: () => void, entreEtapes?: boolean) => void }
+const SORTIES_RESEAU = 'nav[aria-label="Navigation principale"] .MuiButtonBase-root, [role="tablist"][aria-label^="Rubriques de "] [role="tab"]:not([aria-selected="true"]), [aria-labelledby="titre-autres-rubriques"] .MuiButtonBase-root:not([aria-current="page"])'
 const Contexte = createContext<Garde>({ signaler: () => {}, demander: (a) => a() })
 
 export function GardeSaisie({ children }: { children: ReactNode }) {
@@ -36,6 +37,15 @@ export function GardeSaisie({ children }: { children: ReactNode }) {
     // Liens internes (menu, retour, magasin suivant) : interceptés avant la navigation
     const clic = (e: MouseEvent) => {
       if (!enCours.current.size || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return
+      // App réseau (fusion) : son menu et les rubriques de la fiche du magasin sont des boutons, pas des liens ; après
+      // confirmation, le clic est rejoué
+      const sortie = (e.target as HTMLElement | null)?.closest<HTMLElement>(SORTIES_RESEAU)
+      if (sortie) {
+        e.preventDefault()
+        e.stopPropagation()
+        setAttente(() => () => sortie.click())
+        return
+      }
       const lien = (e.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a[href^="#/"]')
       // Lot 36 : lien marqué « sans garde » (étape suivante du budget) : les ajustements en cours restent en mémoire
       if (!lien || (lien.hasAttribute('data-sans-garde') && !forts.current.size)) return
