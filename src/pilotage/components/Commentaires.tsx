@@ -5,6 +5,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import Chip from '@mui/material/Chip'
+import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
@@ -19,15 +20,17 @@ import { chargerCommentaires, envoyerCommentaire, resoudreCommentaire, retirerMe
 import { useChargement } from '../data/useChargement'
 
 // Joseph (03/11/2026) : les échanges deviennent des commentaires comme dans un document partagé. On commente un point
-// précis (une carte, une ligne d'hypothèse, un investissement…), on répond dessous, on marque « Résolu ». La liste suit le
-// budget sur ses trois étapes, sous le panneau Impact. Ce n'est pas une messagerie : pas de fil général, pas de sujet.
+// précis (une carte, une ligne d'hypothèse, un investissement…), on répond dessous, on marque « Résolu ». Ce n'est pas une
+// messagerie : pas de fil général, pas de sujet.
+// Joseph (09/11/2026) : la colonne des commentaires mangeait la largeur du compte de résultat ; ils s'ouvrent à la demande
+// dans un volet à droite (bouton « Commentaires » de l'en-tête du budget, ou bulle d'un point), qui laisse la page défiler.
 
 export const ANCRE_BUDGET = { ancre: 'budget', libelle: 'Le budget en général' }
 const MAX_TEXTE = 2000
 const quand = (d: string) => new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 const qui = (role: Role | null, nom: string | null) => [nom, role ? roleLibelle[role] : null].filter(Boolean).join(', ') || 'Compte retiré'
 
-interface Contexte { ouverts: (ancre: string) => number; ouvrir: (ancre: string, libelle: string) => void }
+interface Contexte { ouverts: (ancre: string) => number; ouvrir: (ancre: string, libelle: string) => void; total: number; ouvrirTout: () => void; volet: boolean }
 const Ctx = createContext<Contexte | null>(null)
 
 // Bouton « Commenter » d'un point : la bulle porte le nombre de commentaires ouverts sur ce point
@@ -49,6 +52,19 @@ export function BoutonCommenter({ ancre, libelle, compact, ligne }: { ancre: str
   )
 }
 
+// Bouton de l'en-tête du budget : ouvre (ou ferme) le volet avec tous les commentaires, et porte le nombre d'ouverts
+export function BoutonCommentaires() {
+  const c = useContext(Ctx)
+  if (!c) return null
+  return (
+    <Button variant={c.volet ? 'contained' : 'outlined'} color={c.total ? 'warning' : 'inherit'} onClick={c.ouvrirTout} aria-expanded={c.volet} className="pas-a-l-impression"
+      startIcon={<Badge badgeContent={c.total} color="warning" invisible={!c.total || c.volet}><ChatBubbleOutlineOutlined /></Badge>}
+      aria-label={c.total ? `Commentaires (${c.total} ouvert${c.total > 1 ? 's' : ''})` : 'Commentaires'} sx={{ minHeight: 48, borderColor: 'divider' }}>
+      Commentaires
+    </Button>
+  )
+}
+
 type Fil = Commentaire & { reponses: Commentaire[] }
 export function filsDe(l: Commentaire[]): Fil[] {
   const racines = l.filter((c) => c.parent === null)
@@ -66,22 +82,32 @@ export function CommentairesBudget({ magasin, annee, moi, children }: {
   const { donnees, erreur, recharger } = useChargement(() => chargerCommentaires(magasin, annee), [magasin, annee])
   const [point, setPoint] = useState<{ ancre: string; libelle: string } | null>(null)
   const [demande, setDemande] = useState(0)
+  const [volet, setVolet] = useState(false)
   const fils = filsDe(donnees ?? [])
   const ouverts = fils.filter((f) => !f.resoluLe)
   const ctx: Contexte = {
     ouverts: (ancre) => ouverts.filter((f) => f.ancre === ancre).length,
-    ouvrir: (ancre, libelle) => { setPoint({ ancre, libelle }); setDemande((n) => n + 1) },
+    ouvrir: (ancre, libelle) => { setPoint({ ancre, libelle }); setVolet(true); setDemande((n) => n + 1) },
+    total: ouverts.length, volet,
+    ouvrirTout: () => { setPoint(null); setVolet((v) => !v) },
   }
+  // Volet sans fond grisé : la page reste lisible et défile pendant qu'on écrit
   const panneau = (
-    <PanneauCommentaires key={`commentaires-${magasin}`} magasin={magasin} annee={annee} moi={moi} fils={fils} panne={!!erreur && !donnees} recharger={recharger}
-      point={point} demande={demande} onPoint={setPoint} />
+    <Drawer variant="persistent" anchor="right" open={volet} className="pas-a-l-impression"
+      slotProps={{ paper: { role: 'complementary', 'aria-label': 'Volet des commentaires', sx: { top: { xs: 64, md: 72 }, height: { xs: 'calc(100% - 64px - var(--barre-basse, 0px))', md: 'calc(100% - 72px)' }, width: { xs: '100%', sm: 400 }, bgcolor: 'background.default', borderLeft: 1, borderColor: 'divider', boxShadow: 6, p: 1.5 } } }}>
+      {volet && (
+        <PanneauCommentaires key={`commentaires-${magasin}`} magasin={magasin} annee={annee} moi={moi} fils={fils} panne={!!erreur && !donnees} recharger={recharger}
+          point={point} demande={demande} onPoint={setPoint} onFermer={() => setVolet(false)} />
+      )}
+    </Drawer>
   )
   return <Ctx.Provider value={ctx}>{children(panneau, ouverts.length)}</Ctx.Provider>
 }
 
-function PanneauCommentaires({ magasin, annee, moi, fils, panne, recharger, point, demande, onPoint }: {
+function PanneauCommentaires({ magasin, annee, moi, fils, panne, recharger, point, demande, onPoint, onFermer }: {
   magasin: string; annee: number; moi: Profil | null; fils: Fil[]; panne: boolean; recharger: () => void
   point: { ancre: string; libelle: string } | null; demande: number; onPoint: (p: { ancre: string; libelle: string } | null) => void
+  onFermer: () => void
 }) {
   const [texte, setTexte] = useState('')
   const [reponse, setReponse] = useState<{ id: number; texte: string } | null>(null)
@@ -94,9 +120,13 @@ function PanneauCommentaires({ magasin, annee, moi, fils, panne, recharger, poin
   // Un point demandé depuis sa bulle : le panneau vient à l'écran, le champ prend la main
   useEffect(() => {
     if (!demande) return
-    boite.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
     champ.current?.focus({ preventScroll: true })
   }, [demande])
+  useEffect(() => {
+    const echap = (e: KeyboardEvent) => { if (e.key === 'Escape') onFermer() }
+    window.addEventListener('keydown', echap)
+    return () => window.removeEventListener('keydown', echap)
+  }, [onFermer])
 
   const agir = async (f: () => Promise<void>, apres?: () => void) => {
     setOccupe(true); setProbleme(null)
@@ -156,6 +186,7 @@ function PanneauCommentaires({ magasin, annee, moi, fils, panne, recharger, poin
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Typography variant="h2" sx={{ fontSize: '1.125rem', flex: 1 }}>Commentaires</Typography>
         {total > 0 && <Chip size="small" color="warning" label={total > 1 ? `${total} ouverts` : '1 ouvert'} />}
+        <Tooltip title="Fermer"><IconButton aria-label="Fermer les commentaires" onClick={onFermer} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton></Tooltip>
       </Box>
       {panne && <Alert severity="warning">Les commentaires ne se chargent pas pour l’instant. Réessaie dans un moment.</Alert>}
       {point && (

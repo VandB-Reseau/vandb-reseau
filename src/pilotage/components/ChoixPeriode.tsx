@@ -10,9 +10,9 @@ const UNITES: readonly Unite[] = ['euros', 'milliers']
 const libellePeriode: Record<Periode, string> = { mois: 'Mois', quadrimestre: 'Quadrimestres', annee: 'Année' }
 
 // Période et unité d'un tableau sur 12 mois (lot 27), gardées dans ce navigateur pour tous les tableaux du même genre
-export function usePeriode(cle: string) {
+export function usePeriode(cle: string, uniteParDefaut: Unite = 'euros') {
   const [periode, setPeriode] = usePreference<Periode>(`${cle}.periode`, 'mois', PERIODES)
-  const [unite, setUnite] = usePreference<Unite>(`${cle}.unite`, 'euros', UNITES)
+  const [unite, setUnite] = usePreference<Unite>(`${cle}.unite`, uniteParDefaut, UNITES)
   return { periode, setPeriode, unite, setUnite }
 }
 

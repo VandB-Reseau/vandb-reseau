@@ -47,7 +47,8 @@ export function CompteResultatMois({ lignes, titre, libelleTableau, projeteA, en
   moisEnCours?: number | null       // refonte T1 : colonne du mois en cours surlignée (vue par mois)
 }) {
   const [ouvertes, setOuvertes] = useState<Set<string>>(new Set())
-  const choix = usePeriode('compte')
+  // Joseph (09/11/2026) : en k€ d'office, pour lire les douze mois et le total sans défiler sur un écran d'ordinateur
+  const choix = usePeriode('compte', 'milliers')
   const { periode, unite } = choix
   const colonnes = COLONNES[periode]
   const enTete = (c: number[]) => (periode === 'mois' ? MOIS[c[0]] : QUADRIMESTRES_COURTS[c[0] / 4])

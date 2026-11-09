@@ -122,8 +122,8 @@ test('stock complet : Cave et Bar séparés, mois marqué estimé', () => {
   s[1] = { cave: 30_000, bar: null }
   s[2] = { cave: 30_000, bar: 4_000 }
   const c = stockComplete(cout, s)
-  expect(c[0]).toEqual({ cave: 30_000, bar: 4_000, total: 34_000, estime: true })
-  expect(c[1]).toEqual({ cave: 30_000, bar: 4_000, total: 34_000, estime: true })   // Bar estimé
-  expect(c[2]).toEqual({ cave: 30_000, bar: 4_000, total: 34_000, estime: false })
-  expect(c[3]).toEqual({ cave: null, bar: null, total: null, estime: false })
+  expect(c[0]).toEqual({ cave: 30_000, bar: 4_000, exterieur: null, total: 34_000, estime: true })
+  expect(c[1]).toEqual({ cave: 30_000, bar: 4_000, exterieur: null, total: 34_000, estime: true })   // Bar estimé
+  expect(c[2]).toEqual({ cave: 30_000, bar: 4_000, exterieur: null, total: 34_000, estime: false })
+  expect(c[3]).toEqual({ cave: null, bar: null, exterieur: null, total: null, estime: false })
 })

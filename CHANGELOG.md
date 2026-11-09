@@ -16,6 +16,21 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   passait plus au montant suivant. Sur téléphone, ce qu'on fait défiler ne se cache plus sous la barre du bas ; passer
   d'une page du budget à l'autre ramène en haut de la page (onglets visibles), comme dans l'ancien pilotage.
 
+- Budget sur ordinateur (Joseph, 09/11/2026), sans migration : le Suivi en puces (Vue d'ensemble, Mois par mois, Comptes
+  et trésorerie, Atterrissage, Stock, Analyse) ; plus de liste du plan d'action pour l'équipe (elle est dans les tâches
+  du magasin, « Agir » ouvre toujours le formulaire) ; commentaires dans un volet à la demande ; Impact et bande de
+  résultat collés sous les onglets de la fiche ; statut et actions sur la ligne des onglets ; compte de résultat en k€
+  d'office ; 1re et dernière échéance dans le tableau des prêts.
+
+- Budgets : stock de l'Extérieur et congés payés (Joseph, 04/11/2026), migration du pilotage `0030_stock_exterieur` à
+  passer (dépôt `vandb-pilotage`) :
+  - Stock cible de l'Extérieur en fin de mois, en mois d'achats des ventes à venir au prix d'achat (1 mois proposé),
+    réglé dans Paramètres réseau > Trésorerie ; il compte dans le graphique du stock et le fonds de roulement, et le
+    stock de l'Extérieur se saisit avec la Cave et le Bar. Les paramètres déjà enregistrés gardent 0 jusqu'au réglage.
+  - Provision des congés payés dans la masse salariale (10 % proposé), réglée dans Paramètres réseau > Équipe :
+    salaire de base des salariés × taux, chargée ; ni gérant TNS, ni extras, ni primes. Ligne « dont congés payés »
+    dans l'équipe. Les paramètres déjà enregistrés gardent 0 : aucun budget ne bouge avant le réglage du Directeur.
+
 - Suppression des chiffres saisis à la main (feu vert de Joseph, 04/11/2026), migration `0041_suppression_store_finance`
   à passer après 0040 : elle s'arrête si l'archive n'est pas complète, vide `store_finance` puis la ferme. L'app retire
   la saisie, la modification et l'import des chiffres ; la caisse seule fait foi.

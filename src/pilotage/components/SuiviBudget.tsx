@@ -37,7 +37,7 @@ import { CaseComplete, CaseReelPrevu, COULEUR_BARRE, EnTeteMois, LegendePastille
 // dernier en trait (R1) ou trajectoire cumulée jusqu'à l'atterrissage (R2), tableau à cases réel / prévu (T1, T2).
 // Lot 41 (proposition 5) : dans « Où en est le magasin », la conclusion se lit en haut (vue « conclusion ») et le
 // graphique avec le détail mois par mois plus bas (vue « detail ») ; sans budget à suivre, le détail le dit, la conclusion se tait.
-export function SuiviBudget({ magasin, annee, allerA, muetSansReel, vue: partie = 'complet' }: { magasin: string; annee: number; allerA: (onglet: string) => void; muetSansReel?: boolean; vue?: 'complet' | 'conclusion' | 'detail' }) {
+export function SuiviBudget({ magasin, annee, allerA, muetSansReel, vue: partie = 'complet', ouvert = false }: { magasin: string; annee: number; allerA: (onglet: string) => void; muetSansReel?: boolean; vue?: 'complet' | 'conclusion' | 'detail'; ouvert?: boolean }) {
   const { donnees, erreur, chargement, recharger } = useChargement(
     () => Promise.all([chargerBudgets(annee), chargerParametres(annee), chargerReel(magasin, annee), chargerReel(magasin, annee - 1), chargerSecours(magasin, annee).catch(() => undefined),
       chargerQuadrimestres(annee).catch((): SaisiesQuadrimestres => ({}))])
@@ -168,7 +168,7 @@ export function SuiviBudget({ magasin, annee, allerA, muetSansReel, vue: partie 
         )}
       </Card>}
 
-      <Repliable titre="Mois par mois" nom={`Réel et budget ${annee} mois par mois`} droite={<LegendePastilles seuil={seuil} />}>
+      <Repliable titre="Mois par mois" nom={`Réel et budget ${annee} mois par mois`} ouvert={ouvert} droite={<LegendePastilles seuil={seuil} />}>
         <TableContainer>
           <Table size="small" className="colonne-fixe" aria-label={`Réel face au budget ${annee} mois par mois`} sx={styleTableau}>
             <TableHead>

@@ -7,11 +7,14 @@ import { Aide } from './Aide'
 import { milliers, MOIS_LONGS, taux } from '../lib/format'
 import type { Tresorerie } from '../moteur/tresorerie'
 import type { Budget } from '../moteur/types'
+import { hautEntete } from '../../components/Collant'
 
 // Lot 42 (Joseph, 02/11/2026, proposition 4) : le résultat du budget reste en vue pendant qu'on change les hypothèses ;
 // chaque frappe le recalcule. Sur PC, la bande reste collée en haut de l'écran ; sur téléphone, elle est en tête de page.
-export function ResultatDirect({ budget: b, ebeSiege, tresorerie, annee, infos = {} }: {
-  budget: Budget; ebeSiege: number | null; tresorerie: Tresorerie | null; annee: number
+// Joseph (09/11/2026) : collée sous les onglets de la fiche, jamais par-dessus ; pas collée sur « Visualiser », où le compte
+// de résultat a besoin de toute la hauteur
+export function ResultatDirect({ budget: b, ebeSiege, tresorerie, annee, infos = {}, collant = true }: {
+  budget: Budget; ebeSiege: number | null; tresorerie: Tresorerie | null; annee: number; collant?: boolean
   infos?: Partial<Record<'ca' | 'marge' | 'ebe', ReactNode>> // calcul détaillé derrière l'icône (i)
 }) {
   const ecart = ebeSiege === null ? null : b.ebe - ebeSiege
@@ -32,7 +35,7 @@ export function ResultatDirect({ budget: b, ebeSiege, tresorerie, annee, infos =
   ]
   return (
     <Card component="section" aria-label="Indicateurs clés" data-annee={annee}
-      sx={{ position: { md: 'sticky' }, top: { md: 76 }, zIndex: 6, px: 2.5, py: 1.5, boxShadow: { md: 3 } }}>
+      sx={{ ...(collant ? { position: { md: 'sticky' }, top: { md: `calc(${hautEntete.md}px + var(--onglets, 0px) + 8px)` }, zIndex: 3, boxShadow: { md: 3 } } : {}), px: 2.5, py: 1.5 }}>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', lg: `repeat(${cases.length}, minmax(0, 1fr))` }, columnGap: 3, rowGap: 1.5 }}>
         {cases.map((c) => (
           <Box key={c.libelle} sx={{ minWidth: 0 }}>

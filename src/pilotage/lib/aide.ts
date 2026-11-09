@@ -261,7 +261,12 @@ export const AIDE = {
   masseChargee: {
     titre: 'Masse salariale chargée',
     quoi: 'Le coût complet de l’équipe sur l’année.',
-    calcul: 'Somme des postes : brut annuel + charges patronales − réduction générale + primes chargées. L’année du budget reprend l’équipe avec la hausse des salaires.',
+    calcul: 'Somme des postes : brut annuel + charges patronales − réduction générale + primes chargées + provision des congés payés (taux réglé dans les Paramètres réseau, sur le salaire de base des salariés, chargée ; ni gérant TNS, ni extras). L’année du budget reprend l’équipe avec la hausse des salaires.',
+  },
+  congesPayes: {
+    titre: 'Congés payés',
+    quoi: 'Le coût des congés acquis par les salariés : environ un dixième de leur salaire, provisionné chaque mois.',
+    calcul: 'Salaire de base du mois × taux des congés payés × (1 + charges patronales − réduction générale). Ni le gérant TNS, ni les extras (congés compris dans leur taux horaire), ni les primes.',
   },
   chargesPatronales: {
     titre: 'Charges patronales',
@@ -306,7 +311,7 @@ export const AIDE = {
   bfr: {
     titre: 'Besoin en fonds de roulement',
     quoi: 'L’argent immobilisé par l’exploitation au 31 décembre : ce que le magasin a payé d’avance (stock, consignes) moins ce qu’il doit encore (fournisseurs, TVA, cotisations, redevance). Négatif : l’exploitation finance la trésorerie.',
-    calcul: 'Stock (achats HT de l’année × jours de stock ÷ 365, jours réglés dans Paramètres réseau) + consignes pas encore remboursées − achats TTC pas encore payés (délai des fournisseurs) − TVA due − cotisations de décembre − redevance et publicité dues. Les ventes sont encaissées le mois même.',
+    calcul: 'Stock cible de fin décembre (achats HT des ventes de janvier et des mois suivants : mois de stock de la Cave, du Bar et de l’Extérieur réglés dans les Paramètres réseau) + consignes pas encore remboursées − achats TTC pas encore payés (délai des fournisseurs) − TVA due − cotisations de décembre − redevance et publicité dues. Les ventes sont encaissées le mois même.',
   },
   consignesAvancees: {
     titre: 'Consignes avancées aux fournisseurs',
@@ -432,8 +437,8 @@ export const AIDE = {
   stockCible: {
     titre: 'Stock cible',
     quoi: 'Ce que le stock doit valoir en fin de mois, au prix d’achat, pour un magasin bien achalandé sans argent qui dort.',
-    remplir: 'Chaque mois, la valeur du stock au prix d’achat HT au dernier jour du mois, Cave et Bar séparés, lue dans le logiciel de caisse ou issue d’un inventaire.',
-    calcul: 'Cible = achats des ventes des mois à venir (2,5 mois pour la Cave, 1 mois pour le Bar, réglables dans les Paramètres réseau), d’après les ventes de l’année et le budget suivant. Écart affiché au-delà de la tolérance.',
+    remplir: 'Chaque mois, la valeur du stock au prix d’achat HT au dernier jour du mois, Cave, Bar et Extérieur séparés, lue dans le logiciel de caisse ou issue d’un inventaire.',
+    calcul: 'Cible = achats des ventes des mois à venir (2,5 mois pour la Cave, 1 mois pour le Bar et l’Extérieur, réglables dans les Paramètres réseau), d’après les ventes de l’année et le budget suivant. Écart affiché au-delà de la tolérance.',
   },
   // Joseph (03/11/2026) : un (i) sur toute ligne qui n'est pas saisie, totaux compris
   chiffreAffaires: {

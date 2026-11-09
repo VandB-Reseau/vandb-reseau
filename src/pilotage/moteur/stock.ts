@@ -4,14 +4,15 @@ import { UNIVERS, type Budget, type Univers } from './types'
 // 2,5 mois d'achats pour la Cave et 1 mois pour le Bar. Les « mois d'achats » sont ceux des ventes à venir, au prix
 // d'achat (coût d'achat des marchandises vendues) : fin octobre, le stock de la Cave couvre novembre, décembre et la
 // moitié de janvier. La cible suit ainsi la saison toute seule (on remplit avant Noël, on allège en janvier).
-// Extérieur : marchandise achetée pour l'événement, pas de stock (0 mois). Tolérance : 10 % de part et d'autre de la
-// cible avant d'afficher un écart (hypothèse, modifiable dans les Paramètres réseau).
+// Extérieur (Joseph, 04/11/2026) : sa cible se règle comme celle de la Cave et du Bar ; 1 mois par défaut, cohérent avec
+// ses achats payés un mois avant la vente (trésorerie). Les paramètres déjà enregistrés gardent leur valeur (0 avant).
+// Tolérance : 10 % de part et d'autre de la cible avant d'afficher un écart (hypothèse, modifiable dans les Paramètres réseau).
 
 export interface ParametresStock {
   mois: Record<Univers, number>   // mois d'achats des ventes à venir à garder en stock
   tolerance: number               // écart toléré autour de la cible, en part de la cible
 }
-export const stockParDefaut: ParametresStock = { mois: { cave: 2.5, bar: 1, exterieur: 0 }, tolerance: 0.1 }
+export const stockParDefaut: ParametresStock = { mois: { cave: 2.5, bar: 1, exterieur: 1 }, tolerance: 0.1 }
 
 // Coût d'achat des ventes (achats consommés) par univers et par mois, sur au moins 12 mois à partir de janvier de
 // l'année suivie ; au-delà de ce qui est fourni, l'année recommence (régime établi).
@@ -52,17 +53,20 @@ export type EtatStock = 'bas' | 'ok' | 'haut'
 export const etatStock = (valeur: number, cible: number, tolerance: number): EtatStock =>
   valeur < cible * (1 - tolerance) - 1e-9 ? 'bas' : valeur > cible * (1 + tolerance) + 1e-9 ? 'haut' : 'ok'
 
-export interface StockSaisi { cave: number | null; bar: number | null }
+// exterieur absent ou null : non saisi (saisies d'avant le 09/11/2026), compté pour 0 comme un univers vide
+export interface StockSaisi { cave: number | null; bar: number | null; exterieur?: number | null }
+export type UniversStock = 'cave' | 'bar' | 'exterieur'
+const saisi = (s: StockSaisi | null | undefined, u: UniversStock) => s?.[u] ?? null
 export interface MoisStock {
   mois: number                        // 1 à 12
   cible: number; mini: number; maxi: number
-  cibleUnivers: Record<'cave' | 'bar', number>
-  reel: number | null                 // Cave + Bar saisis (null si rien n'est saisi)
-  reelUnivers: StockSaisi
+  cibleUnivers: Record<UniversStock, number>
+  reel: number | null                 // Cave + Bar + Extérieur saisis (null si rien n'est saisi)
+  reelUnivers: Record<UniversStock, number | null>
   ecart: number | null                // réel − cible
   etat: EtatStock | null
   // Mois d'achats à venir couverts, par univers (null sans saisie ou sans achats à venir)
-  couverture: Record<'cave' | 'bar', number | null>
+  couverture: Record<UniversStock, number | null>
 }
 export interface SuiviStock {
   mois: MoisStock[]
@@ -76,19 +80,19 @@ export function suiviStock(cout: CoutVentes, saisies: (StockSaisi | null)[], p: 
     const c = cibleStock(cout, i, p)
     const cible = c.cave + c.bar + c.exterieur
     const s = saisies[i] ?? null
-    const vide = !s || (s.cave === null && s.bar === null)
-    const reel = vide ? null : (s!.cave ?? 0) + (s!.bar ?? 0)
-    const couvre = (u: 'cave' | 'bar') => {
-      const v = s?.[u]
-      return v === null || v === undefined || !(p.mois[u] > 0) ? null : moisCouverts(cout[u] ?? [], i, v)
+    const vide = UNIVERS.every((u) => saisi(s, u) === null)
+    const reel = vide ? null : UNIVERS.reduce((t, u) => t + (saisi(s, u) ?? 0), 0)
+    const couvre = (u: UniversStock) => {
+      const v = saisi(s, u)
+      return v === null || !(p.mois[u] > 0) ? null : moisCouverts(cout[u] ?? [], i, v)
     }
     return {
       mois: i + 1, cible, mini: cible * (1 - p.tolerance), maxi: cible * (1 + p.tolerance),
-      cibleUnivers: { cave: c.cave, bar: c.bar },
-      reel, reelUnivers: { cave: s?.cave ?? null, bar: s?.bar ?? null },
+      cibleUnivers: { cave: c.cave, bar: c.bar, exterieur: c.exterieur },
+      reel, reelUnivers: { cave: saisi(s, 'cave'), bar: saisi(s, 'bar'), exterieur: saisi(s, 'exterieur') },
       ecart: reel === null ? null : reel - cible,
       etat: reel === null ? null : etatStock(reel, cible, p.tolerance),
-      couverture: { cave: couvre('cave'), bar: couvre('bar') },
+      couverture: { cave: couvre('cave'), bar: couvre('bar'), exterieur: couvre('exterieur') },
     }
   })
   const saisisMois = mois.filter((m) => m.reel !== null)
@@ -125,18 +129,18 @@ export function stockEstime(l: number[], saisies: (number | null)[], decembre: n
   })
 }
 
-// Stock de chaque mois, saisi ou estimé, Cave et Bar séparés
-export interface StockComplete { cave: number | null; bar: number | null; total: number | null; estime: boolean }
+// Stock de chaque mois, saisi ou estimé, par univers
+export interface StockComplete { cave: number | null; bar: number | null; exterieur: number | null; total: number | null; estime: boolean }
 export function stockComplete(cout: CoutVentes, saisies: (StockSaisi | null)[], decembre: StockSaisi | null = null): StockComplete[] {
-  const u = (k: 'cave' | 'bar') => {
-    const s = saisies.map((x) => x?.[k] ?? null)
-    const e = stockEstime(cout[k] ?? [], s, decembre?.[k] ?? null)
+  const parUnivers = (k: UniversStock) => {
+    const s = saisies.map((x) => saisi(x, k))
+    const e = stockEstime(cout[k] ?? [], s, saisi(decembre, k))
     return s.map((v, i) => ({ v: v ?? e[i], estime: v === null && e[i] !== null }))
   }
-  const cave = u('cave'), bar = u('bar')
+  const cave = parUnivers('cave'), bar = parUnivers('bar'), ext = parUnivers('exterieur')
   return cave.map((c, i) => {
-    const b = bar[i]
-    const total = c.v === null && b.v === null ? null : (c.v ?? 0) + (b.v ?? 0)
-    return { cave: c.v, bar: b.v, total, estime: c.estime || b.estime }
+    const l = [c, bar[i], ext[i]]
+    const total = l.every((x) => x.v === null) ? null : l.reduce((t, x) => t + (x.v ?? 0), 0)
+    return { cave: c.v, bar: bar[i].v, exterieur: ext[i].v, total, estime: l.some((x) => x.estime) }
   })
 }

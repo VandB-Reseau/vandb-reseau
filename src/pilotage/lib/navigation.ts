@@ -37,18 +37,21 @@ export function partiesDe(espace: Espace, annee: number = anneeSuivi()): Partie[
       { cle: 'echanges', libelle: '3 · Envoyer et valider' },
     ]
   }
-  // Option A (03/11/2026) : le Suivi tient sur une page ; l'atterrissage, la trésorerie et le stock en sont des sections
-  return []
+  // Joseph (09/11/2026) : le Suivi ne se déroule plus sur une seule page ; chaque partie a sa puce, comme les saisies
+  return PARTIES_SUIVI(annee)
 }
 
-// Sections repliables de la page Suivi, sous « Où en est le magasin » (chacune garde son adresse)
-export const SECTIONS_SUIVI = (annee: number = anneeSuivi()): Partie[] => [
+// Parties du Suivi, dans l'ordre de lecture : la vue d'ensemble d'abord, l'analyse (graphique, leviers, réseau) en dernier
+export const PARTIES_SUIVI = (annee: number = anneeSuivi()): Partie[] => [
+  { cle: 'synthese', libelle: 'Vue d’ensemble' },
+  { cle: 'mois', libelle: 'Mois par mois' },
+  { cle: 'comptes', libelle: 'Comptes et trésorerie' },
   { cle: 'atterrissage', libelle: `Atterrissage ${annee}` },
-  { cle: 'tresorerie', libelle: 'Trésorerie' },
   { cle: 'stock', libelle: 'Stock' },
+  { cle: 'analyse', libelle: 'Analyse' },
 ]
-const CLES_SECTIONS_SUIVI = ['atterrissage', 'tresorerie', 'stock']
-export const estSectionSuivi = (cle: string | null | undefined) => !!cle && CLES_SECTIONS_SUIVI.includes(cle)
+const CLES_SUIVI = ['synthese', 'mois', 'comptes', 'atterrissage', 'stock', 'analyse', 'passees']
+
 
 // Lot 37 (Joseph, 02/11/2026) : les hypothèses du budget se lisent en cartes par thème ; chaque carte ouvre un tableau
 // court du thème. Ces thèmes ont leur adresse mais restent sous l'étape « 1 · Hypothèses ».
@@ -73,9 +76,11 @@ export const PARTIE_PAR_DEFAUT: Record<Espace, string> = { donnees: 'reel', budg
 
 // Anciennes clés (liens, alertes, « à faire ») : la partie qui les montre désormais, et la section où défiler
 // Lot 43 : l'ancien thème « Trésorerie » du budget est au point de départ ; le résultat a sa page (03/11/2026)
-const ANCIENNES: Record<string, string> = { atterrissage: 'synthese', tresorerie: 'synthese', stock: 'synthese', tresoBudget: 'depart', plan: 'synthese', suivi: 'synthese', resultat: 'visualiser', travaux: 'investissements' }
+// Joseph (09/11/2026) : l'atterrissage et le stock ont leur puce, la trésorerie est avec les comptes ; le plan d'action est
+// dans les tâches du magasin
+const ANCIENNES: Record<string, string> = { tresorerie: 'comptes', tresoBudget: 'depart', plan: 'synthese', suivi: 'synthese', resultat: 'visualiser', travaux: 'investissements' }
 export const partieDe = (cle: string) => ANCIENNES[cle] ?? cle
-export const sectionDe = (cle: string) => (ANCIENNES[cle] && cle !== 'travaux' ? cle : null)
+export const sectionDe = (cle: string) => (ANCIENNES[cle] && !['travaux', 'tresorerie', 'plan', 'suivi'].includes(cle) ? cle : null)
 
 const DONNEES = ['reel', 'saisieStock', 'quadrimestres', 'frais']
 const BUDGET = ['budget', 'visualiser', 'echanges', ...CLES_THEMES]
@@ -83,7 +88,7 @@ export function espaceDe(cle: string): Espace {
   const p = partieDe(cle)
   return DONNEES.includes(p) ? 'donnees' : BUDGET.includes(p) ? 'budget' : 'suivi'
 }
-export const partieConnue = (cle: string) => [...DONNEES, ...BUDGET, 'synthese'].includes(partieDe(cle))
+export const partieConnue = (cle: string) => [...DONNEES, ...BUDGET, ...CLES_SUIVI].includes(partieDe(cle))
 
 // Magasin et partie lus dans l'adresse
 export function magasinDeChemin(chemin: string): { nom: string; partie: string | null } | null {
