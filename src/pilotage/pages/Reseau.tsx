@@ -74,7 +74,8 @@ const surPC = { display: { xs: 'none', md: 'table-cell' } }
 const simple = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
 
 // Vue réseau : chaque magasin à la fin de son dernier mois réalisé, face à l'an dernier, à son budget et au total du réseau
-export function Reseau() {
+// integre : vue « Écarts au budget » de la page Performance (refonte vague 2, 15A), titre de niveau 2
+export function Reseau({ integre }: { integre?: boolean } = {}) {
   const annee = anneeSuivi()
   const { donnees, erreur, chargement, recharger } = useChargement(async () => {
     const [d, { parametres }, reel, alertes, actions, quadrimestres] = await Promise.all([chargerBudgets(annee), chargerParametres(annee), chargerReelDuCompte(annee), chargerAlertes(), chargerActions().catch(() => []), chargerQuadrimestres(annee).catch(() => ({} as SaisiesQuadrimestres))])
@@ -151,7 +152,7 @@ export function Reseau() {
   const titre = (actions?: React.ReactNode) => (
     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, flexWrap: 'wrap', mb: 3 }}>
       <Box sx={{ flex: 1, minWidth: 240 }}>
-        <Typography variant="h1">{`Suivi ${annee}`}</Typography>
+        <Typography variant={integre ? 'h2' : 'h1'}>{`Suivi ${annee}`}</Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
           Réel {annee}, magasin par magasin<Box component="span" className="impression-seule"> · {selection} · imprimé le {new Date().toLocaleDateString('fr-FR')}</Box>
         </Typography>

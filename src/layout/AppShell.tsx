@@ -52,7 +52,7 @@ function estActive(d: Destination, pathname: string): boolean {
   // Charge des Coachs et Import et export sont des rubriques de Paramètres
   if (d.chemin === '/parametres/reglages' && /^\/parametres\/(charge|donnees)/.test(pathname)) return true
   // Évolution du parc est une vue de Magasins, Animation réseau un onglet de Messages (refonte, Joseph 09/11/2026)
-  if (d.chemin === '/magasins' && pathname.startsWith('/parametres/evolution')) return true
+  // Les anciennes adresses de l'évolution du parc mènent à Performance (vague 2, 15A)
   if (d.chemin === '/echanges' && pathname.startsWith('/animation')) return true
   return d.chemin === '/' ? pathname === '/' : pathname.startsWith(d.chemin)
 }
