@@ -36,7 +36,7 @@ export function Cloche() {
   return (
     <>
       <Tooltip title="Notifications">
-        <IconButton aria-label={n ? `Notifications, ${n} non lue${n > 1 ? 's' : ''}` : 'Notifications'} onClick={() => setOuvert(true)} sx={{ width: 44, height: 44, flexShrink: 0 }}>
+        <IconButton aria-label={n ? `Notifications, ${n} non lue${n > 1 ? 's' : ''}` : 'Notifications'} onClick={() => setOuvert(true)} sx={{ width: { xs: 48, md: 44 }, height: { xs: 48, md: 44 }, flexShrink: 0 }}>
           <Badge color="error" badgeContent={n} max={99}><NotificationsNoneOutlined /></Badge>
         </IconButton>
       </Tooltip>
