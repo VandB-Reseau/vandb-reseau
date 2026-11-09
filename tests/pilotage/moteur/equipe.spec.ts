@@ -126,3 +126,40 @@ test('extras : heures moyennes au mois × taux horaire, réduction générale su
   // Plusieurs extras additionnés : au-delà de 70 h par semaine accepté, jusqu'à 150
   expect(lirePersonne({ ...nouveauxExtras(), heures: '400', tauxHoraire: '12' }).erreurs).toEqual([])
 })
+
+// Congés payés (Joseph, 04/11/2026) : provision de 10 % du salaire de base, chargée au taux effectif de la personne,
+// ajoutée à la masse salariale ; ni gérant TNS, ni extras, ni primes d'équipe, ni primes annuelles.
+test('congés payés : 10 % du salaire de base chargé, pour les salariés seulement', () => {
+  const c = { ...chargesParDefaut, congesPayes: 0.1 }
+  // Cadre à 6 000 € par mois (plus de 3 SMIC : pas de réduction), prime de 1 000 € en décembre
+  // Provision : 6 000 × 12 × 10 % × 1,365 = 9 828 ; coût : 73 000 × 1,365 + 9 828 = 109 473
+  const cadre = coutPersonne(vendeur({ poste: 'Responsable', categorie: 'cadre', brutMensuel: 6_000, primes: [{ mois: 12, montant: 1_000 }] }), c, 2027)
+  expect(cadre.coefficient).toBe(0)
+  proche(cadre.congesPayesAnnuel, 9_828)
+  proche(cadre.congesPayes[11], 819)            // la prime de décembre n'y entre pas : 6 000 × 10 % × 1,365
+  proche(cadre.coutAnnuel, 109_473)
+  proche(cadre.brutAnnuel, 73_000)              // le brut reste celui versé
+  // Vendeur au SMIC : charges effectives 1,23 % ; provision SMIC × 10 % × 1,0123
+  const smic = coutPersonne(vendeur({}), c, 2026)
+  proche(smic.congesPayesAnnuel, SMIC * 0.1 * 1.0123)
+  proche(smic.coutAnnuel, SMIC * 1.0123 * 1.1)
+  // Entré en juillet : 6 mois de provision
+  proche(coutPersonne(vendeur({ entree: '2026-07' }), c, 2026).congesPayesAnnuel, SMIC / 2 * 0.1 * 1.0123)
+  // Gérant TNS, extras (congés dans le taux horaire), primes d'équipe : rien
+  expect(coutPersonne(vendeur({ poste: 'Gérant', categorie: 'gerant_tns', brutMensuel: 3_000 }), c, 2026).congesPayesAnnuel).toBe(0)
+  expect(coutPersonne(vendeur({ poste: 'Extras', tauxHoraire: 12, heuresHebdo: 10, brutMensuel: 12 * 10 * 52 / 12 }), c, 2026).congesPayesAnnuel).toBe(0)
+  expect(coutPersonne(vendeur({ poste: 'Primes d’équipe', enveloppe: true, heuresHebdo: 0, brutMensuel: 0, primes: [{ mois: 6, montant: 2_000 }] }), c, 2026).congesPayesAnnuel).toBe(0)
+  // Sans taux (paramètres enregistrés avant) : aucun changement
+  proche(coutPersonne(vendeur({ poste: 'Responsable', categorie: 'cadre', brutMensuel: 6_000 }), chargesParDefaut, 2027).coutAnnuel, 98_280)
+})
+
+test('congés payés : dans la masse salariale et le personnel du budget', () => {
+  const c = { ...chargesParDefaut, congesPayes: 0.1 }
+  const equipe = [vendeur({}), vendeur({ poste: 'Gérant', categorie: 'gerant_tns', brutMensuel: 3_000 })]
+  const m = masseSalariale(equipe, c, 2027)
+  proche(m.congesPayes, SMIC * 0.1 * 1.0123)
+  proche(m.cout, SMIC * 1.0123 * 1.1 + 47_880)
+  proche(m.parMois[0].congesPayes, SMIC / 12 * 0.1 * 1.0123)
+  const b = calculerBudget({ ...magasinFictif, annee: 2027, equipe }, { ...parametresParDefaut, charges: c })
+  proche(b.personnel, m.cout)
+})

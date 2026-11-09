@@ -49,7 +49,7 @@ import { CATEGORIES, categorieLibelle } from '../moteur/equipe'
 import { useChargement } from '../data/useChargement'
 import type { ParametresAlertes } from '../moteur/alertes'
 import { campagneDe, type Campagne } from '../moteur/campagne'
-import { parametresParDefaut } from '../moteur/parametres'
+import { CONGES_PAYES_PROPOSES, parametresParDefaut } from '../moteur/parametres'
 import type { ParametresReseau } from '../moteur/types'
 import type { OperationReseau, ParametresTresorerie } from '../moteur/tresorerie'
 import { stockParDefaut } from '../moteur/stock'
@@ -109,7 +109,7 @@ export function Parametres() {
   const [occupe, setOccupe] = useState(false)
   // Trésorerie : délais en mois gardés en texte pendant la frappe
   const [treso, setTreso] = useState<ParametresTresorerie | null>(null)
-  const [delais, setDelais] = useState({ fournisseurs: '', livraison: '', redevance: '', ecoulement: '', remboursement: '', exterieur: '', stockCave: '', stockBar: '' })
+  const [delais, setDelais] = useState({ fournisseurs: '', livraison: '', redevance: '', ecoulement: '', remboursement: '', exterieur: '', stockCave: '', stockBar: '', stockExterieur: '' })
   const [messageTreso, setMessageTreso] = useState<{ gravite: 'success' | 'error'; texte: string } | null>(null)
   // Seuils des alertes : textes pendant la frappe, sauf l'écart de CA (pourcentage)
   const [ecartCA, setEcartCA] = useState<number | undefined>(undefined)
@@ -134,6 +134,7 @@ export function Parametres() {
       fournisseurs: String(p.tresorerie.delaiFournisseurs), livraison: String(p.tresorerie.avanceLivraison ?? 1), redevance: String(p.tresorerie.delaiRedevance),
       ecoulement: String(p.tresorerie.consignes?.ecoulement ?? 0), remboursement: String(p.tresorerie.consignes?.remboursement ?? 0),
       exterieur: String(p.tresorerie.avanceExterieur ?? 0), stockCave: enChiffresMois((p.tresorerie.stock ?? stockParDefaut).mois.cave), stockBar: enChiffresMois((p.tresorerie.stock ?? stockParDefaut).mois.bar),
+      stockExterieur: enChiffresMois((p.tresorerie.stock ?? stockParDefaut).mois.exterieur ?? 0),
     })
     setCharges(p.charges)
     setSmic(String(p.charges.reduction.smicAnnuel).replace('.', ','))
@@ -191,11 +192,11 @@ export function Parametres() {
   const delaisConsignes = { ecoulement: delai(delais.ecoulement, 6), remboursement: delai(delais.remboursement, 6) }
   // Stock cible en mois d'achats à venir (03/11/2026) : décimales permises (2,5), 12 mois au plus
   const moisStock = (t: string) => { const n = nombre(t); return n !== null && n >= 0 && n <= 12 ? n : null }
-  const stockLu = { cave: moisStock(delais.stockCave), bar: moisStock(delais.stockBar) }
+  const stockLu = { cave: moisStock(delais.stockCave), bar: moisStock(delais.stockBar), exterieur: moisStock(delais.stockExterieur) }
   const tresoValide = Object.values({ ...delaisLus, ...delaisConsignes, ...stockLu }).every((v) => v !== null)
   const tresoLue = (t: ParametresTresorerie): ParametresTresorerie => ({
     ...t, delaiFournisseurs: delaisLus.delaiFournisseurs ?? 0, avanceLivraison: delaisLus.avanceLivraison ?? 0, delaiRedevance: delaisLus.delaiRedevance ?? 0, avanceExterieur: delaisLus.avanceExterieur ?? 0,
-    stock: { ...(t.stock ?? stockParDefaut), mois: { ...(t.stock ?? stockParDefaut).mois, cave: stockLu.cave ?? 0, bar: stockLu.bar ?? 0 } },
+    stock: { ...(t.stock ?? stockParDefaut), mois: { ...(t.stock ?? stockParDefaut).mois, cave: stockLu.cave ?? 0, bar: stockLu.bar ?? 0, exterieur: stockLu.exterieur ?? 0 } },
     consignes: t.consignes && { ...t.consignes, ecoulement: delaisConsignes.ecoulement ?? 0, remboursement: delaisConsignes.remboursement ?? 0 },
   })
   const tresoModifiee = !!p && !!treso && JSON.stringify(tresoLue(treso)) !== JSON.stringify(p.tresorerie)
@@ -350,7 +351,7 @@ export function Parametres() {
         )}
 
         {onglet === 'equipe' && charges && (
-          <SectionParametres nom="Charges sociales" titre={`Charges sociales ${annee}`} parDefaut={egal(p.charges, parametresParDefaut.charges)}
+          <SectionParametres nom="Charges sociales" titre={`Charges sociales ${annee}`} parDefaut={egal(p.charges, { ...parametresParDefaut.charges, congesPayes: CONGES_PAYES_PROPOSES })}
             action={enregistrerBouton(!valides || !chargesModifiees, enregistrer)}>
             <Retour message={message} fermer={() => setMessage(null)} />
             <Table aria-label={`Charges sociales ${annee}`}>
@@ -380,6 +381,10 @@ export function Parametres() {
                 <TableRow>
                   <TableCell>Part des charges hors réduction (formation, taxe d’apprentissage)</TableCell>
                   <TableCell align="right"><ChampTaux libelle="Part des charges hors réduction" valeur={charges.reduction.horsReduction} onChange={(v) => reduction('horsReduction', v)} /></TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Provision des congés payés, en part du salaire de base des salariés (ni gérant TNS, ni extras)</TableCell>
+                  <TableCell align="right"><ChampTaux libelle="Provision des congés payés" valeur={charges.congesPayes ?? 0} onChange={(v) => setCharges((c) => (c ? { ...c, congesPayes: v ?? 0 } : c))} /></TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -495,6 +500,10 @@ export function Parametres() {
                 <TableRow>
                   <TableCell>Stock cible du Bar en fin de mois, en mois d’achats des ventes à venir, au prix d’achat</TableCell>
                   <TableCell align="right"><ChampNombre libelle="Stock cible du Bar en mois" valeur={delais.stockBar} unite="mois" largeur={120} onChange={(v) => setDelais((d) => ({ ...d, stockBar: v }))} /></TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Stock cible de l’Extérieur en fin de mois, en mois d’achats des ventes à venir, au prix d’achat</TableCell>
+                  <TableCell align="right"><ChampNombre libelle="Stock cible de l’Extérieur en mois" valeur={delais.stockExterieur} unite="mois" largeur={120} onChange={(v) => setDelais((d) => ({ ...d, stockExterieur: v }))} /></TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>Écart toléré autour du stock cible avant de le signaler</TableCell>

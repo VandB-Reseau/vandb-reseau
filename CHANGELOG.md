@@ -9,6 +9,15 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Budgets : stock de l'Extérieur et congés payés (Joseph, 04/11/2026), migration du pilotage `0030_stock_exterieur` à
+  passer (dépôt `vandb-pilotage`) :
+  - Stock cible de l'Extérieur en fin de mois, en mois d'achats des ventes à venir au prix d'achat (1 mois proposé),
+    réglé dans Paramètres réseau > Trésorerie ; il compte dans le graphique du stock et le fonds de roulement, et le
+    stock de l'Extérieur se saisit avec la Cave et le Bar. Les paramètres déjà enregistrés gardent 0 jusqu'au réglage.
+  - Provision des congés payés dans la masse salariale (10 % proposé), réglée dans Paramètres réseau > Équipe :
+    salaire de base des salariés × taux, chargée ; ni gérant TNS, ni extras, ni primes. Ligne « dont congés payés »
+    dans l'équipe. Les paramètres déjà enregistrés gardent 0 : aucun budget ne bouge avant le réglage du Directeur.
+
 - Suppression des chiffres saisis à la main (feu vert de Joseph, 04/11/2026), migration `0041_suppression_store_finance`
   à passer après 0040 : elle s'arrête si l'archive n'est pas complète, vide `store_finance` puis la ferme. L'app retire
   la saisie, la modification et l'import des chiffres ; la caisse seule fait foi.

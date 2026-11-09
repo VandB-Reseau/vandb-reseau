@@ -6,7 +6,12 @@
 // - primes d'équipe (lot 26) : une enveloppe sans heures ni salaire, chargée au taux de sa catégorie, sans réduction
 //   (la réduction dépend du salaire de chaque bénéficiaire, inconnu ici : le coût n'est pas sous-estimé) ;
 // - extras (Joseph, 29/10/2026) : un poste comme un autre, heures moyennes par semaine ou par mois × taux horaire brut,
-//   congés payés compris ; ils remplacent les extras de personnel des temps forts.
+//   congés payés compris ; ils remplacent les extras de personnel des temps forts ;
+// - congés payés (Joseph, 04/11/2026) : provision d'environ 10 % du salaire de base (règle du dixième), chargée au taux
+//   effectif de la personne (charges moins réduction générale, sans recalcul de la réduction), ajoutée à la masse
+//   salariale chargée. Ni pour le gérant TNS, ni pour les extras (congés déjà dans leur taux horaire), ni pour les primes
+//   d'équipe ; les primes annuelles n'y entrent pas. Taux réglé dans les Paramètres réseau, 0 pour les paramètres
+//   enregistrés avant (les budgets déjà calculés ne bougent pas tant que le Directeur ne l'a pas saisi).
 // Fonction pure, testée dans tests/moteur/equipe.spec.ts.
 
 export type Categorie = 'employe' | 'agent_maitrise' | 'cadre' | 'apprenti' | 'gerant_tns'
@@ -46,17 +51,19 @@ export interface ParametresCharges {
     puissance: number
     horsReduction: number           // part du taux que la réduction ne couvre pas (formation, taxe d'apprentissage)
   }
+  congesPayes?: number              // provision des congés payés, en part du salaire de base (absent : 0)
 }
 
 export interface CoutPersonne {
   personne: Personne
   brut: number[]; charges: number[]; reduction: number[]; cout: number[]; heures: number[]  // 12 mois
-  brutAnnuel: number; coutAnnuel: number; coefficient: number; tauxEffectif: number; etp: number
+  congesPayes: number[]             // provision chargée des congés payés, comprise dans cout (12 mois)
+  brutAnnuel: number; coutAnnuel: number; congesPayesAnnuel: number; coefficient: number; tauxEffectif: number; etp: number
 }
 export interface MasseSalariale {
   personnes: CoutPersonne[]
-  parMois: { brut: number; charges: number; reduction: number; cout: number; heures: number }[]
-  brut: number; charges: number; reduction: number; cout: number; etp: number; tauxEffectif: number
+  parMois: { brut: number; charges: number; reduction: number; congesPayes: number; cout: number; heures: number }[]
+  brut: number; charges: number; reduction: number; congesPayes: number; cout: number; etp: number; tauxEffectif: number
 }
 
 const DUREE_LEGALE = 35
@@ -84,10 +91,14 @@ export function facteurHausses(p: Pick<Personne, 'hausses'>, mois: string): numb
   return (p.hausses ?? []).filter((h) => h.mois <= mois).reduce((f, h) => f * (1 + h.taux), 1)
 }
 
+// Les congés payés se provisionnent pour les salariés : ni gérant TNS, ni extras, ni primes d'équipe
+export const avecCongesPayes = (p: Personne) => p.categorie !== 'gerant_tns' && !p.enveloppe && !p.tauxHoraire
+
 export function coutPersonne(p: Personne, c: ParametresCharges, annee: number, hausse = 0): CoutPersonne {
   const presents = moisPresents(p, annee)
   const nbMois = presents.filter(Boolean).length
-  const brut = presents.map((ok, i) => (ok ? p.brutMensuel * (1 + hausse) * facteurHausses(p, `${annee}-${deux(i + 1)}`) + somme(p.primes.filter((x) => x.mois === i + 1).map((x) => x.montant)) : 0))
+  const base = presents.map((ok, i) => (ok ? p.brutMensuel * (1 + hausse) * facteurHausses(p, `${annee}-${deux(i + 1)}`) : 0))
+  const brut = base.map((b, i) => b + (presents[i] ? somme(p.primes.filter((x) => x.mois === i + 1).map((x) => x.montant)) : 0))
   const brutAnnuel = somme(brut)
   const taux = c.taux[p.categorie] ?? 0
   const smicReference = c.reduction.smicAnnuel * (p.heuresHebdo / DUREE_LEGALE) * (nbMois / 12)
@@ -96,10 +107,12 @@ export function coutPersonne(p: Personne, c: ParametresCharges, annee: number, h
     : Math.min(coefficientReduction(brutAnnuel, smicReference, c.reduction), Math.max(0, taux - c.reduction.horsReduction))
   const charges = brut.map((b) => b * taux)
   const reduction = brut.map((b) => b * coefficient)
-  const cout = brut.map((b, i) => b + charges[i] - reduction[i])
+  const tauxCP = avecCongesPayes(p) ? c.congesPayes ?? 0 : 0
+  const congesPayes = base.map((b) => b * tauxCP * (1 + taux - coefficient))
+  const cout = brut.map((b, i) => b + charges[i] - reduction[i] + congesPayes[i])
   const heures = presents.map((ok) => (ok ? p.heuresHebdo * SEMAINES_PAR_MOIS : 0))
   return {
-    personne: p, brut, charges, reduction, cout, heures, brutAnnuel, coutAnnuel: somme(cout), coefficient,
+    personne: p, brut, charges, reduction, congesPayes, cout, heures, brutAnnuel, coutAnnuel: somme(cout), congesPayesAnnuel: somme(congesPayes), coefficient,
     tauxEffectif: taux - coefficient, etp: (p.heuresHebdo / DUREE_LEGALE) * (nbMois / 12),
   }
 }
@@ -111,14 +124,16 @@ export function masseSalariale(equipe: Personne[], c: ParametresCharges, annee: 
     brut: somme(personnes.map((x) => x.brut[i])),
     charges: somme(personnes.map((x) => x.charges[i])),
     reduction: somme(personnes.map((x) => x.reduction[i])),
+    congesPayes: somme(personnes.map((x) => x.congesPayes[i])),
     cout: somme(personnes.map((x) => x.cout[i])),
     heures: somme(personnes.map((x) => x.heures[i])),
   }))
   const brut = somme(parMois.map((m) => m.brut))
   const charges = somme(parMois.map((m) => m.charges))
   const reduction = somme(parMois.map((m) => m.reduction))
+  const congesPayes = somme(parMois.map((m) => m.congesPayes))
   return {
-    personnes, parMois, brut, charges, reduction, cout: brut + charges - reduction,
+    personnes, parMois, brut, charges, reduction, congesPayes, cout: brut + charges - reduction + congesPayes,
     etp: somme(personnes.map((x) => x.etp)), tauxEffectif: brut ? (charges - reduction) / brut : 0,
   }
 }

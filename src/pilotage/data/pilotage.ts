@@ -8,7 +8,7 @@ import { annees, anneeSuivi } from './annees'
 import { calculerBudget } from '../moteur/budget'
 import { appliquerCibles, niveauxReseau, type Cibles, type NiveauCibles, type Provenance } from '../moteur/cibles'
 import { trancheMillesime, type Ouverture } from '../moteur/projection'
-import { alignerSurGrille, completerGrille, grilleDe, lignesFrais, parametresParDefaut } from '../moteur/parametres'
+import { alignerSurGrille, completerGrille, CONGES_PAYES_PROPOSES, grilleDe, lignesFrais, parametresParDefaut } from '../moteur/parametres'
 import { reglesDe, reglesParDefaut } from '../moteur/regles'
 import type { TicketsMois, VenteMois } from '../import/caisse'
 import { autresInterets, baseDepuisReel, fraisDepuisLignes, saisonnaliteMediane, type LigneFraisMagasin, type ReelAnnees, type SecoursAtterrissage } from '../moteur/atterrissage'
@@ -260,12 +260,15 @@ export function completerParametres(v: Partial<ParametresReseau>): ParametresRes
     tresorerie: {
       ...parametresParDefaut.tresorerie, ...v.tresorerie,
       consignes: { ...parametresParDefaut.tresorerie.consignes!, ...v.tresorerie?.consignes },
-      stock: { ...parametresParDefaut.tresorerie.stock!, ...v.tresorerie?.stock, mois: { ...parametresParDefaut.tresorerie.stock!.mois, ...v.tresorerie?.stock?.mois } },
+      // Stock de l'Extérieur et congés payés (09/11/2026) : des paramètres déjà enregistrés sans eux gardent 0, pour
+      // qu'un budget calculé ou validé ne bouge pas tant que le Directeur ne les a pas réglés
+      stock: { ...parametresParDefaut.tresorerie.stock!, ...v.tresorerie?.stock, mois: { ...parametresParDefaut.tresorerie.stock!.mois, ...(v.tresorerie ? { exterieur: 0 } : {}), ...v.tresorerie?.stock?.mois } },
     },
     alertes: { ...parametresParDefaut.alertes, ...v.alertes },
     charges: {
       taux: { ...parametresParDefaut.charges.taux, ...v.charges?.taux },
       reduction: { ...parametresParDefaut.charges.reduction, ...v.charges?.reduction },
+      congesPayes: v.charges ? v.charges.congesPayes ?? 0 : CONGES_PAYES_PROPOSES,
     },
   }
 }
@@ -862,17 +865,23 @@ export async function retirerAction(a: Pick<Action, 'id' | 'magasin'>) {
   verifier(await pilotage().from('actions').delete().eq('id', a.id))
 }
 
-// Valeur du stock en fin de mois (migration 0023, 03/11/2026) : Cave et Bar au prix d'achat HT, saisis chaque mois.
-// Sans la table (migration pas encore passée) : aucun mois saisi.
+// Valeur du stock en fin de mois (migration 0023, 03/11/2026) : Cave, Bar et Extérieur (migration 0030, 09/11/2026) au
+// prix d'achat HT, saisis chaque mois. Sans la colonne de l'Extérieur (0030 pas encore passée) : Cave et Bar seuls ;
+// sans la table : aucun mois saisi.
 export const chargerStocks = (magasin: string, annee: number): Promise<(StockSaisi | null)[]> => memo(`stocks|${magasin}|${annee}`, async () => {
   const mois: (StockSaisi | null)[] = Array(12).fill(null)
-  const { data, error } = await pilotage().from('stocks').select('mois, cave, bar').eq('store_name', magasin).eq('annee', annee)
+  const lire = (colonnes: string) => pilotage().from('stocks').select(colonnes).eq('store_name', magasin).eq('annee', annee)
+  let { data, error } = await lire('mois, cave, bar, exterieur')
+  if (error) ({ data, error } = await lire('mois, cave, bar'))
   if (error || !Array.isArray(data)) return mois
   const num = (x: unknown) => (x === null || x === undefined ? null : Number(x))
-  for (const l of data as { mois: number; cave: unknown; bar: unknown }[]) if (l.mois >= 1 && l.mois <= 12) mois[l.mois - 1] = { cave: num(l.cave), bar: num(l.bar) }
+  for (const l of data as unknown as { mois: number; cave: unknown; bar: unknown; exterieur?: unknown }[]) {
+    if (l.mois >= 1 && l.mois <= 12) mois[l.mois - 1] = { cave: num(l.cave), bar: num(l.bar), exterieur: num(l.exterieur) }
+  }
   return mois
 })
 export async function enregistrerStock(magasin: string, annee: number, mois: number, s: StockSaisi) {
-  if (s.cave === null && s.bar === null) verifier(await pilotage().from('stocks').delete().eq('store_name', magasin).eq('annee', annee).eq('mois', mois))
-  else verifier(await pilotage().from('stocks').upsert({ store_name: magasin, annee, mois, cave: s.cave, bar: s.bar }))
+  const exterieur = s.exterieur ?? null
+  if (s.cave === null && s.bar === null && exterieur === null) verifier(await pilotage().from('stocks').delete().eq('store_name', magasin).eq('annee', annee).eq('mois', mois))
+  else verifier(await pilotage().from('stocks').upsert({ store_name: magasin, annee, mois, cave: s.cave, bar: s.bar, exterieur }))
 }
