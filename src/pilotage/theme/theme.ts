@@ -38,6 +38,7 @@ export function styleSignal(theme: Theme, couleur: CouleurSignal) {
   }
 }
 const telephone = base.breakpoints.down('sm')
+const ordinateur = base.breakpoints.up('md')
 
 export const theme = createTheme({
   // Aucune animation (choix de Joseph, 20/10/2026) : chaque écran, menu et fenêtre s'affiche aussitôt
@@ -79,8 +80,8 @@ export const theme = createTheme({
     fontFamily,
     // Aucune taille sous 12 px dans l'app
     // Titres de page compacts sur téléphone, pour laisser la place au contenu
-    // Joseph (03/11/2026) : titres, fond, filets et cartes repris à l'identique de l'app réseau, pour une fusion sans écart
-    h1: { fontFamily: titres, fontSize: '2rem', fontWeight: 800, letterSpacing: '0.01em', textTransform: 'uppercase', [telephone]: { fontSize: '1.375rem' } },
+    // Joseph (03/11/2026) : titres, fond, filets et cartes repris à l'identique de l'app réseau (refonte du 09/11/2026 comprise)
+    h1: { fontFamily: titres, fontSize: '1.875rem', fontWeight: 800, letterSpacing: '0.005em', [telephone]: { fontSize: '1.375rem' } },
     h2: { fontFamily: titres, fontSize: '1.5rem', fontWeight: 700 },
     h3: { fontFamily: titres, fontSize: '1.25rem', fontWeight: 700 },
     h4: { fontSize: '1.125rem', fontWeight: 700 },
@@ -119,8 +120,19 @@ export const theme = createTheme({
     MuiDialog: {
       defaultProps: { disableScrollLock: true },
       styleOverrides: {
-        container: { [telephone]: { alignItems: 'flex-end' } },
-        paper: { [telephone]: { margin: 0, width: '100%', maxWidth: '100%', maxHeight: 'calc(100% - 24px)', borderRadius: '24px 24px 0 0' } },
+        // Refonte (Joseph, 09/11/2026, 9A) : sur ordinateur, créer ou modifier s'ouvre en panneau à droite, l'écran reste
+        // visible ; les petites fenêtres de confirmation (largeur « xs ») restent au centre
+        container: {
+          [telephone]: { alignItems: 'flex-end' },
+          [ordinateur]: { justifyContent: 'flex-end', alignItems: 'stretch', '&:has(> .MuiDialog-paperWidthXs), &:has(> .MuiDialog-paperFullScreen)': { justifyContent: 'center', alignItems: 'center' } },
+        },
+        paper: {
+          [telephone]: { margin: 0, width: '100%', maxWidth: '100%', maxHeight: 'calc(100% - 24px)', borderRadius: '24px 24px 0 0' },
+          [ordinateur]: {
+            '&:not(.MuiDialog-paperWidthXs):not(.MuiDialog-paperFullScreen)': { margin: 0, height: '100%', maxHeight: '100%', borderRadius: 0, width: 560, maxWidth: '100%', borderLeft: '1px solid', borderColor: 'var(--mui-palette-divider)' },
+            '&.MuiDialog-paperWidthMd:not(.MuiDialog-paperFullScreen), &.MuiDialog-paperWidthLg:not(.MuiDialog-paperFullScreen), &.MuiDialog-paperWidthXl:not(.MuiDialog-paperFullScreen)': { width: 'min(960px, 100%)' },
+          },
+        },
         paperFullScreen: { [telephone]: { height: 'auto', maxHeight: 'calc(100% - 24px)', borderRadius: '24px 24px 0 0' } },
       },
     },
@@ -165,14 +177,14 @@ export const theme = createTheme({
     MuiMenu: { defaultProps: { disableScrollLock: true } },
     MuiButton: {
       defaultProps: { disableElevation: true },
-      styleOverrides: { root: { borderRadius: 999, minHeight: 40, paddingInline: 20 } },
+      styleOverrides: { root: { borderRadius: 8, minHeight: 40, paddingInline: 16 } },
     },
     MuiAppBar: { defaultProps: { elevation: 0, color: 'inherit' } },
     MuiPaper: { defaultProps: { elevation: 0 } },
-    // Cartes à bord fin, coins de 16 px, comme l'app réseau (Joseph, 03/11/2026)
+    // Cartes à bord fin, mêmes coins que l'app réseau (refonte du 09/11/2026 : 10 px)
     MuiCard: {
       defaultProps: { variant: 'outlined' },
-      styleOverrides: { root: { borderRadius: 16 } },
+      styleOverrides: { root: { borderRadius: 10 } },
     },
     // Tableaux aérés : titres de colonnes discrets, lignes séparées d'un filet léger
     MuiTableCell: {
@@ -181,7 +193,7 @@ export const theme = createTheme({
         head: ({ theme }) => ({ color: theme.palette.text.secondary, fontWeight: 600, fontSize: '0.8125rem', whiteSpace: 'nowrap' }),
       },
     },
-    MuiListItemButton: { styleOverrides: { root: { borderRadius: 999 } } },
+    MuiListItemButton: { styleOverrides: { root: { borderRadius: 8 } } },
     MuiBottomNavigationAction: {
       styleOverrides: { label: { fontSize: '0.75rem', '&.Mui-selected': { fontSize: '0.75rem' } } },
     },

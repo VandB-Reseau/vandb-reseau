@@ -35,7 +35,8 @@ import { useTotalEchanges } from '../data/echanges'
 import { BoutonCreer } from '../components/Creer'
 import { useInstallation } from '../lib/installation'
 import { brandStripe } from '../theme/theme'
-import { barreTelephone, magasins, parametres, pourRole, principales, secondaires, type Destination } from '../navigation/destinations'
+import { barreTelephone, magasins, parametres, pourRole, rubriquesMenu, secondaires, type Destination } from '../navigation/destinations'
+import { CreerProvider } from '../components/Creer'
 import { useCompteurTaches } from '../data/tachesVues'
 import { useNouveautesInfos } from '../data/infosVues'
 import NewspaperOutlined from '@mui/icons-material/NewspaperOutlined'
@@ -45,16 +46,19 @@ import NotificationsActiveOutlined from '@mui/icons-material/NotificationsActive
 import NotificationsOffOutlined from '@mui/icons-material/NotificationsOffOutlined'
 import { activerNotifications, couperNotifications, ErreurNotifications, useNotificationsAppareil } from '../lib/notifications'
 
-const LARGEUR_MENU = 264
+const LARGEUR_MENU = 248
 
 function estActive(d: Destination, pathname: string): boolean {
   // Charge des Coachs et Import et export sont des rubriques de Paramètres
   if (d.chemin === '/parametres/reglages' && /^\/parametres\/(charge|donnees)/.test(pathname)) return true
+  // Évolution du parc est une vue de Magasins, Animation réseau un onglet de Messages (refonte, Joseph 09/11/2026)
+  if (d.chemin === '/magasins' && pathname.startsWith('/parametres/evolution')) return true
+  if (d.chemin === '/echanges' && pathname.startsWith('/animation')) return true
   return d.chemin === '/' ? pathname === '/' : pathname.startsWith(d.chemin)
 }
 
 // liens : sur téléphone, les écrans hors de la barre du bas (agenda, équipe, paramètres)
-function MenuCompte({ liens = [] }: { liens?: { titre?: string; destinations: Destination[] }[] }) {
+function MenuCompte({ liens = [], ligne = false }: { liens?: { titre?: string; destinations: Destination[] }[]; ligne?: boolean }) {
   const { profil, deconnexion } = useAuth()
   const naviguer = useNavigate()
   const installation = useInstallation()
@@ -77,10 +81,21 @@ function MenuCompte({ liens = [] }: { liens?: { titre?: string; destinations: De
   const initiale = profil.nom.slice(0, 1).toUpperCase()
   return (
     <>
-      <IconButton aria-label="Mon compte" onClick={(e) => setAncre(e.currentTarget)} sx={{ p: 0.5 }}>
-        <Avatar sx={{ width: 36, height: 36, bgcolor: 'secondary.main', color: 'secondary.contrastText', fontWeight: 600 }}>{initiale}</Avatar>
-      </IconButton>
-      <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
+      {ligne ? (
+        // PC : le compte en bas du menu, comme dans les apps de gestion (refonte, choix 1A)
+        <ButtonBase aria-label="Mon compte" onClick={(e) => setAncre(e.currentTarget)} sx={{ width: '100%', minHeight: 56, px: 1.5, gap: 1.5, borderRadius: 2, justifyContent: 'flex-start', textAlign: 'left', '&:hover': { bgcolor: 'action.hover' } }}>
+          <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main', color: 'secondary.contrastText', fontWeight: 600, fontSize: '0.875rem' }}>{initiale}</Avatar>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>{profil.nom}</Typography>
+            <Typography variant="caption" color="text.secondary" noWrap component="div">{roleLibelle[profil.role]}</Typography>
+          </Box>
+        </ButtonBase>
+      ) : (
+        <IconButton aria-label="Mon compte" onClick={(e) => setAncre(e.currentTarget)} sx={{ p: 0.5 }}>
+          <Avatar sx={{ width: 36, height: 36, bgcolor: 'secondary.main', color: 'secondary.contrastText', fontWeight: 600 }}>{initiale}</Avatar>
+        </IconButton>
+      )}
+      <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} anchorOrigin={ligne ? { vertical: 'top', horizontal: 'left' } : { vertical: 'bottom', horizontal: 'right' }} transformOrigin={ligne ? { vertical: 'bottom', horizontal: 'left' } : { vertical: 'top', horizontal: 'right' }}>
         <Box sx={{ px: 2, py: 1 }}>
           <Typography variant="subtitle2">{profil.email}</Typography>
           <Typography variant="caption" color="text.secondary">{roleLibelle[profil.role]}</Typography>
@@ -149,49 +164,66 @@ const libelleAccessible = (d: Destination, c: Compteurs) => {
   return d.chemin === '/taches' ? `${d.libelle} : ${n} en retard ou nouvelle${n > 1 ? 's' : ''}` : `${d.libelle} : ${n} nouveauté${n > 1 ? 's' : ''}`
 }
 
+// Menu latéral clair (refonte, Joseph 09/11/2026, choix 1A et 2A) : logo et recherche en haut, quatre rubriques titrées,
+// Infos réseau et le compte en bas. Plus de barre noire au-dessus des pages.
+const titreRubrique = { bgcolor: 'transparent', px: 1.5, lineHeight: '32px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary' } as const
 function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: Destination[]; sansParametres?: boolean; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
   const c = useCompteurs(sansCompteur, !!franchise)
-  const { profil } = useAuth()
   const item = (d: Destination) => {
     const actif = estActive(d, pathname)
     return (
-      <ListItemButton key={d.chemin} selected={actif} onClick={() => naviguer(d.chemin)} aria-label={libelleAccessible(d, c)} sx={{ mx: 1.5, mb: 0.5, minHeight: 48 }}>
-        <ListItemIcon sx={{ minWidth: 40, color: actif ? 'text.primary' : 'text.secondary' }}><Icone d={d} actif={actif} c={c} /></ListItemIcon>
-        <ListItemText primary={d.libelle} slotProps={{ primary: { sx: { fontWeight: actif ? 600 : 500, fontSize: '0.9375rem' } } }} />
+      <ListItemButton key={d.chemin} selected={actif} onClick={() => naviguer(d.chemin)} aria-label={libelleAccessible(d, c)} aria-current={actif ? 'page' : undefined}
+        sx={{ mb: 0.25, minHeight: 40, px: 1.5, borderRadius: 2, '&.Mui-selected': { bgcolor: 'action.selected', boxShadow: (t) => `inset 3px 0 0 ${t.palette.secondary.main}` } }}>
+        <ListItemIcon sx={{ minWidth: 34, color: actif ? 'text.primary' : 'text.secondary', '& svg': { fontSize: 20 } }}><Icone d={d} actif={actif} c={c} /></ListItemIcon>
+        <ListItemText primary={d.libelle} slotProps={{ primary: { sx: { fontWeight: actif ? 700 : 500, fontSize: '0.875rem' } } }} />
       </ListItemButton>
     )
   }
   return (
     <Drawer
       variant="permanent"
-      sx={{ width: LARGEUR_MENU, flexShrink: 0, '& .MuiDrawer-paper': { width: LARGEUR_MENU, boxSizing: 'border-box', borderRight: '1px solid', borderColor: 'divider', bgcolor: 'background.default' } }}
+      sx={{ width: LARGEUR_MENU, flexShrink: 0, '& .MuiDrawer-paper': { width: LARGEUR_MENU, boxSizing: 'border-box', borderRight: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', display: 'flex', flexDirection: 'column' } }}
     >
-      <Toolbar sx={{ minHeight: 68 }} />
-      <Box component="nav" aria-label="Navigation principale" sx={{ pt: 2 }}>
-        {!franchise && <Box sx={{ px: 1.5, pb: 2 }}><BoutonCreer /></Box>}
-        <List disablePadding>{(franchise ?? [...principales, ...pourRole(secondaires, profil?.role)]).map(item)}</List>
-        {!franchise && !sansParametres && <>
-          <Divider sx={{ my: 1.5, mx: 3 }} />
-          <List disablePadding subheader={<ListSubheader sx={{ bgcolor: 'transparent', px: 4, lineHeight: '36px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Paramètres</ListSubheader>}>
-            {parametres.map(item)}
-          </List>
-        </>}
+      <Box sx={{ px: 2, pt: 2, pb: 1.5, display: 'flex', alignItems: 'center', gap: 1.25 }}>
+        <Box sx={{ bgcolor: '#000000', borderRadius: 1.5, px: 0.75, py: 0.5, display: 'flex' }}><Logo size={14} /></Box>
+        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.9375rem' }}>{franchise ? 'Espace franchisé' : 'Réseau'}</Typography>
+      </Box>
+      <Box aria-hidden sx={{ height: 3, mx: 2, mb: 1.5, borderRadius: 2, background: brandStripe }} />
+      {!franchise && <Box sx={{ px: 1.5, pb: 1 }}><RechercheGlobale menu /></Box>}
+      <Box component="nav" aria-label="Navigation principale" sx={{ px: 1, flex: 1, overflowY: 'auto' }}>
+        {franchise
+          ? <List disablePadding>{franchise.map(item)}</List>
+          : rubriquesMenu(!!sansParametres).map((r) => (
+            <List key={r.titre} disablePadding sx={{ mb: 1 }} subheader={<ListSubheader disableSticky sx={titreRubrique}>{r.titre}</ListSubheader>}>
+              {r.destinations.map(item)}
+            </List>
+          ))}
+      </Box>
+      <Box sx={{ px: 1, pb: 1.5, pt: 1, borderTop: '1px solid', borderColor: 'divider', display: 'grid', gap: 0.5 }}>
+        {!franchise && <BoutonInfos ligne />}
+        <MenuCompte ligne />
       </Box>
     </Drawer>
   )
 }
 
 // Infos réseau, à droite du « + » : communications et bonnes pratiques, avec le nombre de nouveautés pas encore vues
-function BoutonInfos() {
+function BoutonInfos({ ligne = false }: { ligne?: boolean }) {
   const naviguer = useNavigate()
   const { pathname } = useLocation()
   const n = useNouveautesInfos()
   const libelle = n ? `Infos réseau : ${n} nouveauté${n > 1 ? 's' : ''}` : 'Infos réseau'
+  if (ligne) return (
+    <ListItemButton selected={pathname === '/infos'} onClick={() => naviguer('/infos')} aria-label={libelle} aria-current={pathname === '/infos' ? 'page' : undefined} sx={{ minHeight: 40, px: 1.5, borderRadius: 2 }}>
+      <ListItemIcon sx={{ minWidth: 34, color: 'text.secondary', '& svg': { fontSize: 20 } }}><Badge color="error" badgeContent={n} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><NewspaperOutlined /></Badge></ListItemIcon>
+      <ListItemText primary="Infos réseau" slotProps={{ primary: { sx: { fontWeight: 500, fontSize: '0.875rem' } } }} />
+    </ListItemButton>
+  )
   return (
     <Tooltip title="Infos réseau">
-      <IconButton aria-label={libelle} aria-current={pathname === '/infos' ? 'page' : undefined} onClick={() => naviguer('/infos')} sx={{ width: 48, height: 48, flexShrink: 0, color: '#ffffff' }}>
+      <IconButton aria-label={libelle} aria-current={pathname === '/infos' ? 'page' : undefined} onClick={() => naviguer('/infos')} sx={{ width: 48, height: 48, flexShrink: 0, color: 'text.primary' }}>
         <Badge color="error" badgeContent={n} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><NewspaperOutlined /></Badge>
       </IconButton>
     </Tooltip>
@@ -264,31 +296,33 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
   const sansBarre = surPC || saisie || conversation
 
   return (
+    <CreerProvider>
     <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'background.default', '--barre-basse': sansBarre ? '0px' : 'calc(80px + env(safe-area-inset-bottom))' }}>
-      <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1, bgcolor: '#000000', color: '#ffffff' }}>
-        <Toolbar sx={{ minHeight: { xs: 60, md: 68 }, gap: { xs: 0.5, sm: 2 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: surPC ? LARGEUR_MENU - 24 : 'auto' }}>
-            <Logo size={surPC ? 22 : 20} />
-            <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'inline' } }}>{franchise ? 'Espace franchisé' : 'Réseau'}</Typography>
-          </Box>
-          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center' }}>
-            {!franchise && <RechercheGlobale surFonce court={!surPC} />}
-          </Box>
-          {!franchise && !surPC && <BoutonCreer entete />}
-          {!franchise && <BoutonInfos />}
-          <MenuCompte liens={surPC || franchise ? [] : [{ destinations: [magasins, ...pourRole(secondaires, profil?.role)] }, ...(sansParametres ? [] : [{ titre: 'Paramètres', destinations: parametres }])]} />
-        </Toolbar>
-        <Box aria-hidden sx={{ height: 4, background: brandStripe }} />
-      </AppBar>
+      {/* Téléphone : barre du haut claire (logo, recherche, « + », infos, compte). PC : plus de barre du haut, tout est dans le menu */}
+      {!surPC && (
+        <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1, bgcolor: 'background.paper', color: 'text.primary', borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Toolbar sx={{ minHeight: 60, gap: 0.5, px: { xs: 1.5, sm: 2 } }}>
+            <Box sx={{ bgcolor: '#000000', borderRadius: 1.5, px: 0.75, py: 0.5, display: 'flex', flexShrink: 0 }}><Logo size={14} /></Box>
+            <Box sx={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center', px: 0.5 }}>
+              {!franchise && <RechercheGlobale court />}
+              {franchise && <Typography component="span" sx={{ fontWeight: 700, mr: 'auto', ml: 1 }}>Espace franchisé</Typography>}
+            </Box>
+            {!franchise && <BoutonCreer entete />}
+            {!franchise && <BoutonInfos />}
+            <MenuCompte liens={franchise ? [] : [{ destinations: [magasins, ...pourRole(secondaires, profil?.role)] }, ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }])]} />
+          </Toolbar>
+        </AppBar>
+      )}
 
       {surPC && <MenuLateral franchise={franchise} sansParametres={sansParametres} sansCompteur={sansCompteur} />}
 
-      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: '72px' }, pb: surPC ? 4 : conversation ? 0 : 'calc(96px + env(safe-area-inset-bottom))' }}>
+      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: 0 }, pb: surPC ? 4 : conversation ? 0 : 'calc(96px + env(safe-area-inset-bottom))' }}>
         {bandeau}
-        <Box sx={{ maxWidth: 1280, mx: 'auto', px: { xs: 2, sm: 3, md: 5 }, pt: { xs: 1.5, md: 3 } }}>{children}</Box>
+        <Box sx={{ maxWidth: 1360, mx: 'auto', px: { xs: 2, sm: 3, md: 4 }, pt: { xs: 1.5, md: 3 } }}>{children}</Box>
       </Box>
 
       {!sansBarre && <BarreBasse franchise={franchise} sansCompteur={sansCompteur} />}
     </Box>
+    </CreerProvider>
   )
 }

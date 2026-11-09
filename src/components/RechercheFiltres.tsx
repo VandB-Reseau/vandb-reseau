@@ -18,7 +18,7 @@ export function PucesFiltresActifs({ filtres }: { filtres: FiltreActif[] }) {
     <Box role="group" aria-label="Filtres actifs" sx={{ display: 'flex', gap: 1, overflowX: 'auto', mx: -2, px: 2, mt: 0.5, scrollbarWidth: 'none' }}>
       {filtres.map((f) => (
         <ButtonBase key={f.cle} onClick={f.retirer} aria-label={`Retirer le filtre ${f.libelle}`}
-          sx={{ flexShrink: 0, minHeight: 48, px: 0.25, fontFamily: 'inherit', '& > span': { pl: 1.5, pr: 1, height: 36, display: 'flex', alignItems: 'center', gap: 0.5, borderRadius: 999, bgcolor: 'action.selected', fontSize: '0.875rem', fontWeight: 500, color: 'text.primary' } }}>
+          sx={{ flexShrink: 0, minHeight: 48, px: 0.25, fontFamily: 'inherit', '& > span': { pl: 1.5, pr: 1, height: 36, display: 'flex', alignItems: 'center', gap: 0.5, borderRadius: 2, bgcolor: 'action.selected', fontSize: '0.875rem', fontWeight: 500, color: 'text.primary' } }}>
           <span>{f.libelle}<CloseOutlined sx={{ fontSize: 18 }} /></span>
         </ButtonBase>
       ))}

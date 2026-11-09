@@ -39,37 +39,38 @@ const messages: Destination = { chemin: '/echanges', libelle: 'Messages', descri
 const taches: Destination = { chemin: '/taches', libelle: 'Tâches', description: 'Mes tâches à faire et faites', icone: <TaskAltOutlined />, iconeActive: <TaskAlt />, sprint: 'Échanges' }
 export const magasins: Destination = { chemin: '/magasins', libelle: 'Magasins', description: 'Tous les magasins, leur fiche complète et la carte', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 1' }
 
-// Destinations principales : haut du menu latéral sur PC ; barre du bas sur téléphone sans Magasins, qui passe derrière
-// la photo du compte et reste dans la recherche (Joseph, 22/10/2026 : Messages et Tâches séparés).
-export const principales: Destination[] = [
-  { chemin: '/', libelle: 'Accueil', description: 'Ce qui demande ton attention aujourd’hui', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 4' },
-  magasins,
-  { chemin: '/visites', libelle: 'Visites', description: 'Visites terrain, audits et couverture du semestre', icone: <EventNoteOutlined />, iconeActive: <EventNote />, sprint: 'Sprint 3' },
-  messages,
-  taches,
-  { chemin: '/plus/sante', libelle: 'Santé du parc', court: 'Santé', description: 'Nine box des magasins et suivi des déploiements', icone: <MonitorHeartOutlined />, iconeActive: <MonitorHeart />, sprint: 'Sprint 4' },
-]
+// Destinations principales : barre du bas sur téléphone (Accueil, Visites, Messages, Tâches, Santé)
+const accueil: Destination = { chemin: '/', libelle: 'Accueil', description: 'Ce qui demande ton attention aujourd’hui', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 4' }
+const visites: Destination = { chemin: '/visites', libelle: 'Visites', description: 'Visites terrain, audits et couverture du semestre', icone: <EventNoteOutlined />, iconeActive: <EventNote />, sprint: 'Sprint 3' }
+const sante: Destination = { chemin: '/plus/sante', libelle: 'Santé du parc', court: 'Santé', description: 'Nine box des magasins et suivi des déploiements', icone: <MonitorHeartOutlined />, iconeActive: <MonitorHeart />, sprint: 'Sprint 4' }
+export const principales: Destination[] = [accueil, magasins, visites, messages, taches, sante]
 export const barreTelephone = principales.filter((d) => d !== magasins)
 
-// Suite de la partie classique : sous les principales dans le menu PC, dans « Plus » sur téléphone
-// Animation réseau (Joseph, 23/10/2026) : Directeur et Responsables Régionaux, qui créent ces contenus
-// Budgets (fusion avec le pilotage, Joseph 03/11/2026, option A) : sous Santé du parc ; budget et suivi d'un magasin
-// dans l'onglet « Budget » de sa fiche
+// Budgets (fusion avec le pilotage, Joseph 03/11/2026, option A) : budget et suivi d'un magasin dans sa fiche
 export const budgets: Destination = { chemin: '/budgets', libelle: 'Budgets', description: 'Budgets de l’année, suivi face au réel, hypothèses, imports de caisse', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Fusion' }
-export const secondaires: Destination[] = [
-  budgets,
-  { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes, formations et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' },
-  { chemin: '/animation', libelle: 'Animation réseau', court: 'Animation', description: 'Communications, bonnes pratiques, sondages, formations, réunions et campagnes, avec leur suivi', icone: <InsightsOutlined />, iconeActive: <Insights />, sprint: 'Animation', roles: ['directeur', 'rr'] },
-]
+export const agenda: Destination = { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes, formations et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' }
+// Animation réseau (Directeur et Responsables Régionaux) : un onglet de Messages depuis la refonte (Joseph, 09/11/2026, 2A)
+export const animation: Destination = { chemin: '/animation', libelle: 'Animation réseau', court: 'Animation', description: 'Communications, bonnes pratiques, sondages, formations, réunions et campagnes, avec leur suivi', icone: <InsightsOutlined />, iconeActive: <Insights />, sprint: 'Animation', roles: ['directeur', 'rr'] }
+export const secondaires: Destination[] = [budgets, agenda]
 export const pourRole = (liste: Destination[], role: string | undefined) => liste.filter((d) => !d.roles || (!!role && d.roles.includes(role)))
 
-// Partie « Paramètres » : trois entrées (sprint 21). Collaborateurs et Franchisés sont des onglets d'Équipe ;
-// Charge des Coachs et Import et export sont des rubriques de Paramètres
+// Réglages : Équipe et Paramètres. Évolution du parc est une vue de Magasins depuis la refonte (Joseph, 09/11/2026, 2A)
+export const evolution: Destination = { chemin: '/parametres/evolution', libelle: 'Évolution du parc', description: 'Ouvertures par année', icone: <TimelineOutlined />, sprint: 'Sprint 4' }
 export const parametres: Destination[] = [
   { chemin: '/equipe', libelle: 'Équipe', description: 'Organisation, portefeuilles, postes à pourvoir, collaborateurs, franchisés', icone: <GroupsOutlined />, iconeActive: <Groups />, sprint: 'Sprint 2' },
-  { chemin: '/parametres/evolution', libelle: 'Évolution du parc', description: 'Ouvertures par année', icone: <TimelineOutlined />, sprint: 'Sprint 4' },
   { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Charge des Coachs, import et export, alertes, nine box, audits', icone: <SettingsOutlined />, sprint: 'Sprint 5' },
 ]
+
+// Menu latéral sur PC, en quatre rubriques titrées (Joseph, 09/11/2026, choix 2A de la refonte)
+export interface Rubrique { titre: string; destinations: Destination[] }
+export function rubriquesMenu(sansParametres: boolean): Rubrique[] {
+  return [
+    { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
+    { titre: 'Réseau', destinations: [magasins, visites, sante] },
+    { titre: 'Finances', destinations: [budgets] },
+    ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }]),
+  ]
+}
 
 // Espace d'un franchisé : ses magasins seulement, sans Paramètres
 export const espaceFranchise: Destination[] = [
@@ -87,8 +88,8 @@ export const plus: Destination = {
 }
 
 export function destinationCourante(pathname: string): Destination {
-  const toutes = [...secondaires, ...parametres, ...principales.slice(1)]
+  const toutes = [...secondaires, animation, evolution, ...parametres, ...principales.slice(1)]
   // Rubriques de Paramètres ouvertes sur leur propre écran
-  if (pathname.startsWith('/parametres/charge') || pathname.startsWith('/parametres/donnees')) return parametres[2]
+  if (pathname.startsWith('/parametres/charge') || pathname.startsWith('/parametres/donnees')) return parametres[1]
   return toutes.find((d) => pathname.startsWith(d.chemin)) ?? (pathname.startsWith('/plus') || pathname.startsWith('/parametres') ? plus : principales[0])
 }

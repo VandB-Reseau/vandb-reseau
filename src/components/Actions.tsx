@@ -146,7 +146,7 @@ export function BoutonAjouterAction({ reseau, magasins, signaler, plein = false,
     <>
       {barre
         ? <BoutonAction libelle={libelle} onClick={() => setOuvert(true)} />
-        : <Button variant={plein ? 'contained' : 'text'} startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48, ...(plein && { borderRadius: 999, px: 3 }) }}>{libelle}</Button>}
+        : <Button variant={plein ? 'contained' : 'text'} startIcon={<AddOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48, ...(plein && { borderRadius: 2, px: 3 }) }}>{libelle}</Button>}
       {ouvert && <DialogAction reseau={reseau} magasins={magasins} action={null} porteurInitial={porteur} echeanceInitiale={echeance} onFermer={(msg) => { setOuvert(false); if (msg) signaler(msg) }} />}
     </>
   )
@@ -214,7 +214,7 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
       <Box role="group" aria-label="Échéance rapide" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: -1 }}>
         {echeancesRapides(reseau.jour).map((x) => (
           <Chip key={x.libelle} label={x.libelle} onClick={() => setEcheance(x.date)} aria-pressed={echeance === x.date}
-            color={echeance === x.date ? 'primary' : 'default'} variant={echeance === x.date ? 'filled' : 'outlined'} sx={{ minHeight: 48, borderRadius: 999 }} />
+            color={echeance === x.date ? 'primary' : 'default'} variant={echeance === x.date ? 'filled' : 'outlined'} sx={{ minHeight: 48, borderRadius: 2 }} />
         ))}
       </Box>
       <ChampPieces pieces={pieces} changer={(p) => { setPieces(p); setAlerte('') }} signaler={setAlerte} />

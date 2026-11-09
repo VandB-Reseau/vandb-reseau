@@ -82,6 +82,7 @@ import { useChargement } from '../data/useChargement'
 import { nombreChangements, reelEnRetard } from '../lib/aFaire'
 import { feuillesBudget } from '../lib/exports'
 import { lienMagasin, milliers, MOIS_LONGS, taux } from '../lib/format'
+import { styleSousNavigation } from '../../components/Onglets'
 import { ESPACES, PARTIE_PAR_DEFAUT, espaceDe, estTheme, etapeDe, libelleEspace, partieConnue, partieDe, partiesDe, sectionDe, THEMES, type Espace } from '../lib/navigation'
 import { classeur, nomFichier, telecharger } from '../lib/xlsx'
 import { syntheseReel } from '../moteur/reel'
@@ -119,7 +120,10 @@ type Message = { gravite: 'success' | 'error' | 'warning'; texte: string; detail
 
 // Fusion avec l'app réseau : le budget et le suivi d'un magasin sont l'onglet « Budget » de sa fiche ; la partie
 // affichée est dans l'adresse (?vue=budget&partie=…). La fiche porte déjà le nom du magasin et son fil d'Ariane.
-export function Magasin({ nom }: { nom: string }) {
+// Refonte (Joseph, 09/11/2026, 3A) : dans la fiche du magasin, mode « chiffres » (suivi, santé et saisies, onglet Chiffres)
+// ou « budget » (étapes du budget, onglet Budget) ; sans mode (espace du contrôle de gestion), les trois espaces en onglets.
+// sante : santé, leviers et chiffres du réseau, fournis par la fiche, affichés dans la puce « Santé et leviers »
+export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }: { nom: string; mode?: 'chiffres' | 'budget'; sante?: ReactNode; santeLibelle?: string }) {
   const [params] = useSearchParams()
   const partieUrl = params.get('partie') ?? undefined
   const location = useLocation()
@@ -141,8 +145,9 @@ export function Magasin({ nom }: { nom: string }) {
   const anneeEnCours = anneeSuivi()
   // Lot 36 : la partie affichée vient de l'adresse ; un ancien lien (sans partie, ou par l'état « onglet ») est réécrit
   const etatLien = location.state as { onglet?: string; section?: string } | null
-  const voulu = partieUrl ?? etatLien?.onglet ?? 'synthese'
-  const onglet = partieConnue(voulu) ? partieDe(voulu) : 'synthese'
+  const defaut = mode === 'budget' ? 'budget' : 'synthese'
+  const voulu = partieUrl ?? etatLien?.onglet ?? defaut
+  const onglet = partieConnue(voulu) && (voulu !== 'sante' || !!sante) ? partieDe(voulu) : defaut
   useEffect(() => {
     if (partieUrl === onglet) return
     const { onglet: _o, ...reste } = etatLien ?? {}
@@ -432,13 +437,13 @@ export function Magasin({ nom }: { nom: string }) {
           même ligne que les onglets, pour gagner de la hauteur */}
       <Box component="nav" aria-label="Pages du magasin" sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', columnGap: 2, rowGap: 1, flexWrap: 'wrap', borderBottom: 1, borderColor: 'divider', pb: { xs: 1, md: 0 } }}>
-        <Tabs value={espace} onChange={(_, v: Espace) => garde(() => aller(PARTIE_PAR_DEFAUT[v]), v === espace)} variant="scrollable" scrollButtons={false} className="pas-a-l-impression"
+        {!mode && <Tabs value={espace} onChange={(_, v: Espace) => garde(() => aller(PARTIE_PAR_DEFAUT[v]), v === espace)} variant="scrollable" scrollButtons={false} className="pas-a-l-impression"
           aria-label="Espaces du magasin" sx={{ flex: '0 1 auto', mb: '-1px', '& .MuiTab-root': { minHeight: 48, fontWeight: 700, fontSize: '1rem', px: { xs: 2, md: 3 } } }}>
           {ESPACES.map((e) => {
             const manque = ESPACE_MANQUES[e.cle].map((k) => manques[k]).find(Boolean)
             return <Tab key={e.cle} value={e.cle} label={<LibelleOnglet texte={libelleEspace(e.cle, anneeEnCours, annee)} manque={!!manque} detail={manque?.detail ?? ''} />} />
           })}
-        </Tabs>
+        </Tabs>}
         {/* Lot 38 (D2) : un en-tête unique, budget et son statut, actions ; le statut ne se répète plus dans la page */}
         <Box component="header" sx={{ flex: '1 1 auto', display: 'flex', alignItems: 'center', justifyContent: { md: 'flex-end' }, columnGap: 1.5, rowGap: 1, flexWrap: 'wrap', py: { md: 0.75 } }}>
           {statutEntete && (
@@ -479,16 +484,29 @@ export function Magasin({ nom }: { nom: string }) {
             })}
           </Tabs>
         )}
-        {(espace === 'donnees' || espace === 'suivi') && (
-          <Tabs value={onglet} onChange={(_, v: string) => allerEtape(v)} variant="scrollable" scrollButtons="auto" className="pas-a-l-impression" aria-label={espace === 'suivi' ? `Parties du suivi ${anneeEnCours}` : 'Saisies du magasin'}
-            sx={{ mt: 1.5, minHeight: 48, '& .MuiTabs-indicator': { display: 'none' }, '& .MuiTabs-flexContainer': { gap: 1 },
-              '& .MuiTab-root': { minHeight: 48, borderRadius: 999, px: 2, py: 0.75, alignItems: 'flex-start', textAlign: 'left', color: 'text.primary', border: 1, borderColor: 'divider', bgcolor: 'background.paper' },
-              '& .MuiTab-root.Mui-selected': { bgcolor: 'text.primary', color: 'background.paper', borderColor: 'text.primary' } }}>
-            {parties.map((x) => (
-              <Tab key={x.cle} value={x.cle} aria-current={onglet === x.cle ? 'page' : undefined}
-                label={<LibelleOnglet texte={x.libelle} manque={!!manques[x.cle]} detail={manques[x.cle]?.detail ?? ''} />} />
-            ))}
-          </Tabs>
+        {(espace === 'donnees' || espace === 'suivi') && (() => {
+          // Onglet Chiffres de la fiche : le suivi, la santé et les saisies en une seule sous-navigation (2 niveaux au plus)
+          const puces = mode === 'chiffres'
+            ? [...partiesDe('suivi', anneeEnCours), ...(anneesPassees.length ? [{ cle: 'passees', libelle: 'Années passées' }] : []), ...(sante ? [{ cle: 'sante', libelle: santeLibelle }] : []), { cle: 'reel', libelle: 'Saisies' }]
+            : parties
+          const valeur = mode === 'chiffres' && espace === 'donnees' ? 'reel' : onglet
+          const manqueSaisies = mode === 'chiffres' && (manques.reel || manques.frais)
+          return (
+            <Tabs value={valeur} onChange={(_, v: string) => allerEtape(v)} variant="scrollable" scrollButtons="auto" className="pas-a-l-impression"
+              aria-label={mode === 'chiffres' ? 'Parties des chiffres' : espace === 'suivi' ? `Parties du suivi ${anneeEnCours}` : 'Saisies du magasin'}
+              sx={{ mt: mode ? 0 : 1.5, ...styleSousNavigation }}>
+              {puces.map((x) => (
+                <Tab key={x.cle} value={x.cle} aria-current={valeur === x.cle ? 'page' : undefined}
+                  label={<LibelleOnglet texte={x.libelle} manque={x.cle === 'reel' && mode === 'chiffres' ? !!manqueSaisies : !!manques[x.cle]} detail={x.cle === 'reel' && mode === 'chiffres' ? (manques.reel?.detail ?? manques.frais?.detail ?? '') : manques[x.cle]?.detail ?? ''} />} />
+              ))}
+            </Tabs>
+          )
+        })()}
+        {mode === 'chiffres' && espace === 'donnees' && (
+          <ToggleButtonGroup exclusive value={onglet} onChange={(_, v: string | null) => { if (v) aller(v) }} aria-label="Saisies du magasin" size="small" className="pas-a-l-impression"
+            sx={{ mt: 1.5, flexWrap: 'wrap', '& .MuiToggleButton-root': { minHeight: 40, px: 1.75, textTransform: 'none', fontWeight: 600, '@media (pointer: coarse)': { minHeight: 48 } } }}>
+            {partiesDe('donnees', anneeEnCours).map((x) => <ToggleButton key={x.cle} value={x.cle}>{x.libelle}</ToggleButton>)}
+          </ToggleButtonGroup>
         )}
       </Box>
       {commentaires}
@@ -554,6 +572,7 @@ export function Magasin({ nom }: { nom: string }) {
             <StockMagasin key={`${ligne.magasin}-${anneeReel}`} magasin={ligne.magasin} annee={anneeReel} peutSaisir={false} />
           </>
         )}
+        {onglet === 'sante' && sante}
         {/* Passage d'année (0027) : les années encore à clore et les années closes, réel face au budget, en lecture */}
         {onglet === 'passees' && anneesPassees.map((a) => (
           <Stack key={`passee-${a}`} spacing={2} component="section" aria-label={`Suivi ${a}`}>

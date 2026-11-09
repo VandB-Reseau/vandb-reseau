@@ -128,7 +128,7 @@ function CarteTache({ reseau, x, signaler }: { reseau: Reseau; x: ActionSuivie; 
         </Box>
         {!ecriture.lectureSeule && (
           <Button variant={faite ? 'text' : 'outlined'} onClick={() => void cocher()} disabled={enCours} startIcon={faite ? <CheckCircle /> : <RadioButtonUnchecked />}
-            aria-label={faite ? `Remettre à faire : ${x.a.action}` : `Marquer faite : ${x.a.action}`} sx={{ minHeight: 48, borderRadius: 999, flexShrink: 0 }}>
+            aria-label={faite ? `Remettre à faire : ${x.a.action}` : `Marquer faite : ${x.a.action}`} sx={{ minHeight: 48, borderRadius: 2, flexShrink: 0 }}>
             {faite ? 'Faite' : 'Fait'}
           </Button>
         )}
@@ -137,7 +137,7 @@ function CarteTache({ reseau, x, signaler }: { reseau: Reseau; x: ActionSuivie; 
   )
 }
 
-const puce = { height: { xs: 48, sm: 40 }, borderRadius: 999, fontSize: '0.875rem' }
+const puce = { height: { xs: 48, sm: 40 }, borderRadius: 2, fontSize: '0.875rem' }
 const bande = { display: 'flex', gap: 1, overflowX: 'auto', pb: 1, scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }
 
 // Saisie d'un message : champ arrondi et envoi sur une ligne.
@@ -321,7 +321,7 @@ export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = fal
       {[null, ...cites].map((n) => (
         <Chip key={n ?? ''} label={n ?? 'Tous'} onClick={() => setFiltre(n)} aria-pressed={filtre === n}
           color={filtre === n ? 'primary' : 'default'} variant={filtre === n ? 'filled' : 'outlined'}
-          sx={{ flexShrink: 0, height: { xs: 48, sm: 36 }, borderRadius: 999, fontSize: '0.875rem' }} />
+          sx={{ flexShrink: 0, height: { xs: 48, sm: 36 }, borderRadius: 2, fontSize: '0.875rem' }} />
       ))}
     </Box>
   )

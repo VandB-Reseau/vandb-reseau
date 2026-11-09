@@ -226,7 +226,7 @@ export function Agenda() {
                 const actif = actives.has(c.id)
                 return (
                   <ButtonBase key={c.id} aria-pressed={actif} onClick={() => setActives((a) => { const n = new Set(a); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n })}
-                    sx={{ flexShrink: 0, minHeight: 48, fontFamily: 'inherit', '& > span': { display: 'flex', alignItems: 'center', gap: 0.75, px: 1.5, height: 36, borderRadius: 999, border: '1px solid', borderColor: actif ? 'text.primary' : 'divider', bgcolor: actif ? 'action.selected' : 'background.paper', color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.875rem', fontWeight: actif ? 600 : 500 } }}>
+                    sx={{ flexShrink: 0, minHeight: 48, fontFamily: 'inherit', '& > span': { display: 'flex', alignItems: 'center', gap: 0.75, px: 1.5, height: 36, borderRadius: 2, border: '1px solid', borderColor: actif ? 'text.primary' : 'divider', bgcolor: actif ? 'action.selected' : 'background.paper', color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.875rem', fontWeight: actif ? 600 : 500 } }}>
                     <span><Box component="i" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: c.couleur, opacity: actif ? 1 : 0.4 }} />{c.libelle}</span>
                   </ButtonBase>
                 )

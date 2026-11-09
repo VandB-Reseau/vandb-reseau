@@ -16,7 +16,7 @@ import AddOutlined from '@mui/icons-material/AddOutlined'
 
 export const useTelephone = () => !useMediaQuery(useTheme().breakpoints.up('sm'), { noSsr: true })
 
-export const groupeSx: SxProps<Theme> = { display: 'flex', flexShrink: 0, bgcolor: 'background.paper', borderRadius: 999, overflow: 'hidden', outline: '1px solid', outlineColor: 'divider', outlineOffset: -1 }
+export const groupeSx: SxProps<Theme> = { display: 'flex', flexShrink: 0, bgcolor: 'background.paper', borderRadius: 2, overflow: 'hidden', outline: '1px solid', outlineColor: 'divider', outlineOffset: -1 }
 export const boutonGroupeSx: SxProps<Theme> = {
   width: 48, height: 48, minWidth: 48, p: 0, border: 0, borderRadius: 0, color: 'text.secondary',
   '& + &': { borderLeft: '1px solid', borderLeftColor: 'divider' },
@@ -42,7 +42,7 @@ export function ChampRecherche({ valeur, onChange, placeholder, libelle }: { val
       sx={champRechercheSx} />
   )
 }
-export const champRechercheSx: SxProps<Theme> = { width: { xs: '100%', sm: 320 }, '& .MuiOutlinedInput-root': { borderRadius: 999, minHeight: 48 } }
+export const champRechercheSx: SxProps<Theme> = { width: { xs: '100%', sm: 320 }, '& .MuiOutlinedInput-root': { borderRadius: 2, minHeight: 48 } }
 
 export function BoutonOutil({ libelle, icone, onClick, plein, actif, badge, attributs }: {
   libelle: string; icone: ReactNode; onClick: (e: MouseEvent<HTMLElement>) => void; plein?: boolean; actif?: boolean; badge?: number

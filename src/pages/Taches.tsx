@@ -67,7 +67,7 @@ function ChoixPorteur({ reseau, noms, moi, valeur, directeur, onChange }: { rese
   const membre = valeur !== moi && valeur !== FRANCHISES ? valeur : null
   const puce = (libelle: string, actif: boolean, onClick: (e: MouseEvent<HTMLElement>) => void, menu?: boolean) => (
     <Chip label={libelle} onClick={onClick} aria-pressed={actif} aria-haspopup={menu ? 'menu' : undefined} color={actif ? 'primary' : 'default'} variant={actif ? 'filled' : 'outlined'}
-      sx={{ minHeight: 48, borderRadius: 999, fontWeight: 700, '& .MuiChip-label': { px: 2 } }} />
+      sx={{ minHeight: 48, borderRadius: 2, fontWeight: 700, '& .MuiChip-label': { px: 2 } }} />
   )
   return (
     <Box role="group" aria-label="Liste de tâches" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
