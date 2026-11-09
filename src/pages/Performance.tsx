@@ -4,6 +4,8 @@ import { useTheme } from '@mui/material/styles'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
 import TimelineOutlined from '@mui/icons-material/TimelineOutlined'
+import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
+import { Clotures } from '../pilotage/pages/Clotures'
 import { PageHeader } from '../components/PageHeader'
 import { Onglets, type Rubrique } from '../components/Onglets'
 import { AvecReseau } from '../components/EtatDonnees'
@@ -18,7 +20,7 @@ import { Reseau as SuiviBudgets } from '../pilotage/pages/Reseau'
 // Réunit les chiffres des magasins (ancien onglet Chiffres de Santé du parc), le suivi face au budget (ancien onglet
 // « Suivi » de Budgets) et l'évolution du parc (ancienne vue de Magasins). Santé du parc garde le qualitatif.
 // Le franchisé ne la voit jamais : médianes et comparaisons du réseau ne lui arrivent pas.
-type Vue = 'magasins' | 'budget' | 'evolution'
+type Vue = 'magasins' | 'budget' | 'clotures' | 'evolution'
 
 export function Performance() {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
@@ -29,6 +31,8 @@ export function Performance() {
   const rubriques: Rubrique<Vue>[] = [
     { vue: 'magasins', libelle: 'Chiffres des magasins', court: 'Magasins', icone: <QueryStatsOutlined /> },
     { vue: 'budget', libelle: 'Face au budget', court: 'Budget', icone: <RequestQuoteOutlined /> },
+    // 12A : avancement des saisies du mois, magasin par magasin
+    { vue: 'clotures', libelle: 'Clôtures du mois', court: 'Clôtures', icone: <EventAvailableOutlined /> },
     ...(voitEvolution ? [{ vue: 'evolution' as const, libelle: 'Évolution du parc', court: 'Évolution', icone: <TimelineOutlined /> }] : []),
   ]
   const demandee = params.get('vue') as Vue | null
@@ -39,6 +43,7 @@ export function Performance() {
       <Onglets valeur={vue} onChange={(v) => setParams({ vue: v }, { replace: true })} libelle="Parties de la performance" rubriques={rubriques} />
       {vue === 'magasins' && <AvecReseau>{(reseau) => <VueChiffres reseau={reseau} surPC={surPC} />}</AvecReseau>}
       {vue === 'budget' && <ZonePilotage>{() => <SuiviBudgets integre />}</ZonePilotage>}
+      {vue === 'clotures' && <ZonePilotage>{() => <Clotures />}</ZonePilotage>}
       {vue === 'evolution' && <Evolution integre />}
     </>
   )
