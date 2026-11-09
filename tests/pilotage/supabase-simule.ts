@@ -468,9 +468,11 @@ export async function ouvrir(page: Page, partie: string) {
     try {
       await ouvrirEspace(page, cible.espace, delai)
       if (cible.libelle) {
-        // Refonte (09/11/2026) : les saisies se choisissent par une bascule sous la puce « Saisies »
+        // Refonte vague 2 (09/11/2026, 12A) : les saisies s'ouvrent depuis la clôture du mois (puce « Clôture du mois »)
         const saisie = cible.espace === 'Saisies' && !(await espacesEnOnglets(page))
-        const lien = saisie ? pages.getByRole('group', { name: 'Saisies du magasin' }).getByRole('button', { name: cible.libelle }) : pages.getByRole('tab', { name: cible.libelle })
+        const cloture = page.getByRole('region', { name: 'Clôture du mois' })
+        if (saisie && !(await cloture.isVisible())) await pages.getByRole('button', { name: 'Clôture du mois' }).click({ timeout: delai })
+        const lien = saisie ? cloture.getByRole('button', { name: cible.libelle }) : pages.getByRole('tab', { name: cible.libelle })
         await lien.click({ timeout: delai })
       }
       break
@@ -513,7 +515,7 @@ export const ongletEspace = (page: Page, nom: string) => {
   const pages = page.getByRole('navigation', { name: 'Pages du magasin' })
   const ancien = pages.getByRole('tablist', { name: 'Espaces du magasin' }).getByRole('tab', { name: new RegExp(`^${nom}`) })
   const fiche = page.getByRole('tablist', { name: /^Rubriques de / })
-  const nouveau = nom.startsWith('Saisies') ? pages.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: /^Saisies/ })
+  const nouveau = nom.startsWith('Saisies') ? pages.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: /^Clôture du mois/ })
     : fiche.getByRole('tab', { name: new RegExp(`^${nom.startsWith('Budget') ? 'Budget' : 'Chiffres'}(, autres rubriques)?$`) })
   return ancien.or(nouveau)
 }

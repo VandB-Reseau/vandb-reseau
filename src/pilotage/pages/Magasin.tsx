@@ -16,6 +16,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import ArrowBack from '@mui/icons-material/ArrowBack'
+import { ClotureMois } from '../components/ClotureMois'
 import ChevronLeftOutlined from '@mui/icons-material/ChevronLeftOutlined'
 import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
 import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined'
@@ -493,9 +494,9 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         {(espace === 'donnees' || espace === 'suivi') && (() => {
           // Onglet Chiffres de la fiche : le suivi, la santé et les saisies en une seule sous-navigation (2 niveaux au plus)
           const puces = mode === 'chiffres'
-            ? [...partiesDe('suivi', anneeEnCours), ...(anneesPassees.length ? [{ cle: 'passees', libelle: 'Années passées' }] : []), ...(sante ? [{ cle: 'sante', libelle: santeLibelle }] : []), { cle: 'reel', libelle: 'Saisies' }]
+            ? [...partiesDe('suivi', anneeEnCours), ...(anneesPassees.length ? [{ cle: 'passees', libelle: 'Années passées' }] : []), ...(sante ? [{ cle: 'sante', libelle: santeLibelle }] : []), { cle: 'cloture', libelle: 'Clôture du mois' }]
             : parties
-          const valeur = mode === 'chiffres' && espace === 'donnees' ? 'reel' : onglet
+          const valeur = mode === 'chiffres' && espace === 'donnees' ? 'cloture' : onglet
           const manqueSaisies = mode === 'chiffres' && (manques.reel || manques.frais)
           return (
             <Tabs value={valeur} onChange={(_, v: string) => allerEtape(v)} variant="scrollable" scrollButtons="auto" className="pas-a-l-impression"
@@ -503,16 +504,14 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
               sx={{ mt: mode ? 0 : 1.5, ...styleSousNavigation }}>
               {puces.map((x) => (
                 <Tab key={x.cle} value={x.cle} aria-current={valeur === x.cle ? 'page' : undefined}
-                  label={<LibelleOnglet texte={x.libelle} manque={x.cle === 'reel' && mode === 'chiffres' ? !!manqueSaisies : !!manques[x.cle]} detail={x.cle === 'reel' && mode === 'chiffres' ? (manques.reel?.detail ?? manques.frais?.detail ?? '') : manques[x.cle]?.detail ?? ''} />} />
+                  label={<LibelleOnglet texte={x.libelle} manque={x.cle === 'cloture' && mode === 'chiffres' ? !!manqueSaisies : !!manques[x.cle]} detail={x.cle === 'cloture' && mode === 'chiffres' ? (manques.reel?.detail ?? manques.frais?.detail ?? '') : manques[x.cle]?.detail ?? ''} />} />
               ))}
             </Tabs>
           )
         })()}
-        {mode === 'chiffres' && espace === 'donnees' && (
-          <ToggleButtonGroup exclusive value={onglet} onChange={(_, v: string | null) => { if (v) aller(v) }} aria-label="Saisies du magasin" size="small" className="pas-a-l-impression"
-            sx={{ mt: 1.5, flexWrap: 'wrap', '& .MuiToggleButton-root': { minHeight: 40, px: 1.75, textTransform: 'none', fontWeight: 600, '@media (max-width: 899.95px)': { minHeight: 48 } } }}>
-            {partiesDe('donnees', anneeEnCours).map((x) => <ToggleButton key={x.cle} value={x.cle}>{x.libelle}</ToggleButton>)}
-          </ToggleButtonGroup>
+        {/* Refonte vague 2 (12A) : une saisie s'ouvre depuis la clôture du mois et y revient ; plus de 3e niveau */}
+        {mode === 'chiffres' && espace === 'donnees' && onglet !== 'cloture' && (
+          <Button startIcon={<ArrowBack />} onClick={() => garde(() => aller('cloture'))} className="pas-a-l-impression" sx={{ mt: 1, minHeight: 48 }}>Clôture du mois</Button>
         )}
       </Box>
       {commentaires}
@@ -591,6 +590,10 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         ))}
         {alerteMessage}
         </Stack>
+      ) : onglet === 'cloture' ? (
+        <ClotureMois key={`${ligne.magasin}-cloture`} magasin={ligne.magasin} annee={anneeEnCours} aller={aller}
+          reelMois={reel.donnees ? syntheseReel(reel.donnees.lignes, reel.donnees.tickets).parMois.filter((x) => x.caHT > 0).map((x) => x.mois) : []}
+          fraisRenseignes={!!d.frais[ligne.magasin]?.length} quadrimestres={d.comptes?.[ligne.magasin]?.quadrimestres ?? []} />
       ) : onglet === 'saisieStock' ? (
         <Stack spacing={2}>
           {anneeChoix(anneeReel, (v) => setAnneeReel(v), 'Année du stock')}
