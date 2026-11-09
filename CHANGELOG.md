@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Suppression des chiffres saisis à la main (feu vert de Joseph, 04/11/2026), migration `0041_suppression_store_finance`
+  à passer après 0040 : elle s'arrête si l'archive n'est pas complète, vide `store_finance` puis la ferme. L'app retire
+  la saisie, la modification et l'import des chiffres ; la caisse seule fait foi.
+
 - Fin de la fusion (Joseph, 04/11/2026), migration `0040_archive_store_finance` à passer :
   - Chiffres saisis à la main : copie complète dans `archive_store_finance` et bilan des mois couverts ou non par la
     caisse (`couverture_caisse()`, affiché à la fin du script). Rien n'est supprimé avant le feu vert de Joseph.
