@@ -19,6 +19,10 @@ React 19 + TypeScript + MUI 9 (thème `src/theme/theme.ts`), react-router (HashR
   Listes en tableau sur PC, lignes sur téléphone. Titres sobres (`cartouche` sans fond) sauf dans les écrans « marque »
   (Accueil, Infos réseau, compte rendu, `className="marque"`). Créer ou modifier : panneau à droite sur PC (thème des
   Dialog, les fenêtres `maxWidth="xs"` restent au centre) ; créations ouvertes par `useCreer()`.
+  Vague 2 (09/11/2026) : actions en masse par cases à cocher (`useSelection`, `BarreSelection` de
+  `src/components/Selection.tsx`, PC seulement) ; après une action qui se défait, `useMessageAnnulable()` (« Annuler ») ;
+  chargements en silhouettes (`Skeleton`), jamais de rond qui tourne seul ; notifications dans la cloche
+  (`src/data/notificationsApp.ts`), état « lu » rangé dans les préférences du compte.
 - Rôles (`src/auth/roles.ts`) : directeur, rr, coach (l'équipe) et franchise. Le rôle est lu dans la base (`mon_acces`), pas seulement dans le jeton. Un franchisé ne lit aucune table : la fonction `espace_franchise()` lui renvoie ses magasins (migrations `0004_acces_franchises.sql` et `0005_cloisonnement_equipe.sql`). Tout nouvel écran de l'équipe reste invisible au franchisé ; toute nouvelle donnée à lui montrer passe par cette fonction.
 - Coach et RR : la base ne leur renvoie que les visites, chiffres et suivi de leurs magasins (table `perimetre_equipe` tenue par l'app du Directeur, script `supabase/migrations/0005_cloisonnement_equipe.sql`). Toute nouvelle donnée rangée par magasin va dans `suivi_magasins` (une ligne par magasin et par rubrique), jamais dans une clé d'`app_config`. Pas de Paramètres pour eux.
 - Référentiels (liste des magasins, affectations, équipe, fiches des personnes, campagnes, thématiques, grilles, réglages) : écrits par le Directeur seul, en base comme à l'écran (`useDroits().referentiels`, `src/auth/Droits.tsx`). Le Coach et le RR écrivent visites, chiffres, suivi de leurs magasins (santé comprise), bonnes pratiques, agenda et messages. Accès de l'équipe ouverts depuis la fiche du Coach ou du RR ; « Voir comme » reprend le profil de la personne (`ProfilVu`).

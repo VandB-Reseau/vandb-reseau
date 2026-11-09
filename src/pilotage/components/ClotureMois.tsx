@@ -61,7 +61,7 @@ export function ClotureMois({ magasin, annee, reelMois, fraisRenseignes, quadrim
           {complet ? 'Mois complet' : `${faits} sur ${etapes.length} fait${faits > 1 ? 's' : ''}`}
         </Typography>
       </Box>
-      <Card component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
+      <Card component="ul" aria-label="Saisies du mois" sx={{ listStyle: 'none', m: 0, p: 0 }}>
         {etapes.map((e, i) => (
           <Box component="li" key={e.cle} sx={{ borderTop: i ? 1 : 0, borderColor: 'divider' }}>
             <ButtonBase onClick={() => aller(e.cle)} aria-label={e.libelle}

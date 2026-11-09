@@ -79,7 +79,7 @@ test('fiche magasin : sans budget de l’année, le suivi le dit', async ({ page
 test('vue réseau : classement, total, tri, filtre par Coach et retour', async ({ page, isMobile }, info) => {
   await seConnecter(page, { reel, tickets, coachs })
   await allerVers(page, 'Suivi ')
-  await expect(page.getByRole('heading', { level: 1, name: /^Suivi \d{4}$/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: /^Suivi \d{4}$/ })).toBeVisible()
   const chiffres = page.getByRole('region', { name: `Réseau ${N} en chiffres` })
   await expect(chiffres).toContainText(/124\sk€/)
   await expect(chiffres).toContainText('2 magasins sous le budget sur 2')
@@ -97,7 +97,7 @@ test('vue réseau : classement, total, tri, filtre par Coach et retour', async (
   // Vue « Clients » (03/11/2026) : paniers et tickets
   const vues = page.getByRole('group', { name: 'Vue du classement' })
   await vues.getByRole('button', { name: 'Clients' }).click()
-  expect(page.url()).toContain('vue=clients')
+  expect(page.url()).toContain('classement=clients')
   await expect(lignes.nth(3)).toContainText(/18,00\s€/)                // panier Cave : 36 000 € TTC / 2 000 tickets (janvier), le Bar à part
   await expect(lignes.nth(3)).toContainText(/\+25,0\s%/)              // tickets Cave : 2 000 / 1 600 l'an dernier − 1
   await vues.getByRole('button', { name: 'Ventes' }).click()
@@ -119,7 +119,7 @@ test('vue réseau : classement, total, tri, filtre par Coach et retour', async (
   await tableau.getByRole('link', { name: MAGASINS[0] }).click()
   await expect(page.getByRole('heading', { level: 1, name: MAGASINS[0] })).toBeVisible()
   await page.goBack()
-  await expect(page.getByRole('heading', { level: 1, name: /^Suivi \d{4}$/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: /^Suivi \d{4}$/ })).toBeVisible()
   await expect(lignes).toHaveCount(4)
 })
 

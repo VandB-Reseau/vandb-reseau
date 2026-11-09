@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { allerVers, anneeEnTete, ongletEspace, ongletParametres, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, ouvrirSection } from './outils'
+import { allerVers, anneeEnTete, ongletEspace, ongletParametres, saisiesAffichees, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, ouvrirSection } from './outils'
 
 // Passage d'année (Joseph, 03/11/2026, options A et 2 de la maquette) : le menu a deux portes, « Suivi <année> » et
 // « Budgets <année> » ; le Directeur ouvre la campagne, démarre le suivi et clôt l'année dans Paramètres.
@@ -9,8 +9,7 @@ import { allerVers, anneeEnTete, ongletEspace, ongletParametres, seConnecter, te
 const valide: MagasinSimule = { magasin: MAGASINS[0], statut: 'valide', hypotheses: magasinFictif, base: magasinFictif, ajustements: {}, maj_le: '2026-12-10T09:00:00Z' }
 const enDiscussion: MagasinSimule = { magasin: MAGASINS[1], statut: 'en_discussion', hypotheses: magasinFictif, base: magasinFictif, ajustements: {}, maj_le: '2026-12-10T09:00:00Z' }
 const depart = [{ annee: 2026, etat: 'suivi' as const, suivi_le: '2026-01-02T08:00:00Z' }, { annee: 2027, etat: 'campagne' as const, campagne_le: '2026-11-03T08:00:00Z' }]
-// Dans l'app réseau, les « portes » Suivi et Budgets sont les onglets de la page Budgets
-const menu = (page: import('@playwright/test').Page) => page.getByRole('navigation', { name: 'Pages des budgets' })
+// Refonte vague 2 : la page Budgets n'a plus d'onglets ; Budgets <année> est son titre, le suivi est dans Performance
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date(2027, 2, 15, 10))
@@ -26,8 +25,6 @@ test('menu : Suivi et Budgets avec l’année de la base, pas celle du calendrie
   await seConnecter(page, { magasins: [valide, enDiscussion], annees: depart })
   await expect(page.getByRole('heading', { level: 1, name: 'Budgets 2027' })).toBeVisible()
   await expect(page.getByText('Campagne 2027 ouverte')).toBeVisible()
-  await expect(menu(page).getByRole('tab', { name: 'Suivi 2026' })).toBeVisible()
-  await expect(menu(page).getByRole('tab', { name: 'Budgets 2027' })).toBeVisible()
   // Pendant la campagne, un magasin de la liste s'ouvre sur son budget 2027
   await page.locator('main').getByText(MAGASINS[0], { exact: true }).last().click()
   await expect(page).toHaveURL(/[?&]partie=budget$/)
@@ -36,7 +33,7 @@ test('menu : Suivi et Budgets avec l’année de la base, pas celle du calendrie
   expect(await anneeEnTete(page)).toBe(2027)
   // La porte « Suivi » ouvre le suivi du réseau de l'année suivie
   await allerVers(page, 'Suivi 2026')
-  await expect(page.getByRole('heading', { level: 1, name: 'Suivi 2026' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: 'Suivi 2026' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 })
@@ -57,8 +54,6 @@ test('Directeur : démarrer le suivi 2027, clore 2026, ouvrir la campagne 2028',
   await expect(carte.getByText('Suivi 2027 démarré.')).toBeVisible()
   expect(ecritures.filter((e) => e.table === 'rpc/demarrer_suivi').map((e) => e.corps)).toEqual([{ p_annee: 2027 }])
   await expect(carte.getByText('Suivi 2027 · 2026 à clore')).toBeVisible()
-  await expect(menu(page).getByRole('tab', { name: 'Suivi 2027' })).toBeVisible()
-  await expect(menu(page).getByRole('tab', { name: 'Budgets 2027' })).toBeVisible()
 
   // 2. Clore 2026, puis 3. ouvrir la campagne 2028
   await carte.getByRole('button', { name: 'Clore 2026' }).click()
@@ -68,7 +63,11 @@ test('Directeur : démarrer le suivi 2027, clore 2026, ouvrir la campagne 2028',
   await page.getByRole('dialog', { name: 'Ouvrir la campagne des budgets 2028 ?' }).getByRole('button', { name: 'Ouvrir la campagne 2028' }).click()
   await expect(carte.getByText('Campagne 2028 ouverte : l’onglet Budget 2028 est visible de tous.')).toBeVisible()
   await expect(carte.getByRole('row')).toHaveText([/Année/, /^2028Campagne des budgets/, /^2027Suivie/, /^2026Close/])
-  await expect(menu(page).getByRole('tab', { name: 'Budgets 2028' })).toBeVisible()
+  // Les « portes » suivent la base : Budgets 2028, suivi 2027 dans Performance
+  await page.goto('./#/budgets')
+  await expect(page.getByRole('heading', { level: 1, name: 'Budgets 2028' })).toBeVisible()
+  await allerVers(page, 'Suivi ')
+  await expect(page.getByRole('heading', { level: 2, name: 'Suivi 2027' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 })
@@ -91,6 +90,7 @@ test('suivi 2027 démarré : budget 2027 provisoire signalé, 2026 à clore cons
   await expect(page.locator('main').getByRole('button', { name: /^(Proposer|Mettre à jour la proposition)/ })).toHaveCount(0)
   // Saisies : 2027 et 2026 encore à clore
   await ongletEspace(page, 'Saisies').click()
+  await (await saisiesAffichees(page)).filter({ hasText: /^Réel du mois/ }).click()
   await expect(page.getByRole('group', { name: 'Année du réel' }).getByRole('button')).toHaveText(['2027', '2026'])
 })
 

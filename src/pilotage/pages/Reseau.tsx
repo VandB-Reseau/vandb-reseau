@@ -114,7 +114,9 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
   const groupe = params.get('groupe') ? Number(params.get('groupe')) : null
   const coach = params.get('coach') ?? ''
   const rr = params.get('rr') ?? ''
-  const vue = VUES.find((v) => v.cle === params.get('vue')) ?? VUES[0]
+  // Dans Performance, « vue » choisit l'onglet de la page : le classement prend son propre paramètre
+  const PARAM_VUE = integre ? 'classement' : 'vue'
+  const vue = VUES.find((v) => v.cle === params.get(PARAM_VUE)) ?? VUES[0]
   const colonnes = COLONNES.filter((c) => vue.colonnes.includes(c.cle))
   const tri = ([...COLONNES.map((c) => c.cle), 'magasin'] as string[]).includes(params.get('tri') ?? '') ? params.get('tri') as Cle : 'ca'
   const sens = params.get('sens') === 'asc' ? 'asc' : params.get('sens') === 'desc' ? 'desc' : tri === 'magasin' ? 'asc' : 'desc'
@@ -253,7 +255,7 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
         <Typography variant="h2" sx={{ flex: 1 }}>Tous les magasins</Typography>
-        <ToggleButtonGroup exclusive size="small" value={vue.cle} onChange={(_, v: Vue | null) => v && changer({ vue: v === 'ventes' ? null : v })} aria-label="Vue du classement"
+        <ToggleButtonGroup exclusive size="small" value={vue.cle} onChange={(_, v: Vue | null) => v && changer({ [PARAM_VUE]: v === 'ventes' ? null : v })} aria-label="Vue du classement"
           className="pas-a-l-impression">
           {VUES.map((v) => <ToggleButton key={v.cle} value={v.cle} sx={{ minHeight: 48, px: 2 }}>{v.libelle}</ToggleButton>)}
         </ToggleButtonGroup>

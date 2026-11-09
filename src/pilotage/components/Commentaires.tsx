@@ -54,14 +54,24 @@ export function BoutonCommenter({ ancre, libelle, compact, ligne }: { ancre: str
   )
 }
 
-// Bouton de l'en-tête du budget : ouvre (ou ferme) le volet avec tous les commentaires, et porte le nombre d'ouverts
-export function BoutonCommentaires() {
+// Bouton de l'en-tête du budget : ouvre (ou ferme) le volet avec tous les commentaires, et porte le nombre d'ouverts.
+// compact (refonte vague 2, 11A : étapes dans la ligne d'en-tête) : le picto seul, le nom en infobulle
+export function BoutonCommentaires({ compact }: { compact?: boolean } = {}) {
   const c = useContext(Ctx)
   if (!c) return null
+  const nom = c.total ? `Commentaires (${c.total} ouvert${c.total > 1 ? 's' : ''})` : 'Commentaires'
+  if (compact) return (
+    <Tooltip title={nom}>
+      <IconButton onClick={c.ouvrirTout} aria-expanded={c.volet} aria-label={nom} className="pas-a-l-impression"
+        sx={{ width: 48, height: 48, border: 1, borderColor: c.total ? 'warning.main' : 'divider', borderRadius: 2, color: c.total ? 'warning.dark' : 'text.secondary', bgcolor: c.volet ? 'action.selected' : undefined }}>
+        <Badge badgeContent={c.total} color="warning" invisible={!c.total}><ChatBubbleOutlineOutlined /></Badge>
+      </IconButton>
+    </Tooltip>
+  )
   return (
     <Button variant={c.volet ? 'contained' : 'outlined'} color={c.total ? 'warning' : 'inherit'} onClick={c.ouvrirTout} aria-expanded={c.volet} className="pas-a-l-impression"
       startIcon={<Badge badgeContent={c.total} color="warning" invisible={!c.total || c.volet}><ChatBubbleOutlineOutlined /></Badge>}
-      aria-label={c.total ? `Commentaires (${c.total} ouvert${c.total > 1 ? 's' : ''})` : 'Commentaires'} sx={{ minHeight: 48, borderColor: 'divider' }}>
+      aria-label={nom} sx={{ minHeight: 48, borderColor: 'divider' }}>
       Commentaires
     </Button>
   )
@@ -193,7 +203,7 @@ function PanneauCommentaires({ magasin, annee, moi, fils, panne, recharger, poin
         <Tooltip title="Fermer"><IconButton aria-label="Fermer les commentaires" onClick={onFermer} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton></Tooltip>
       </Box>
       <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_, v) => v && setVue(v)} aria-label="Afficher" sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, lg: 36 }, px: 1.5, textTransform: 'none' } }}>
-        <ToggleButton value="commentaires">Commentaires</ToggleButton>
+        <ToggleButton value="commentaires">Commentaires seuls</ToggleButton>
         <ToggleButton value="tout">Tout</ToggleButton>
       </ToggleButtonGroup>
       {vue === 'tout' ? <Activite magasin={magasin} annee={annee} fils={fils} /> : <>

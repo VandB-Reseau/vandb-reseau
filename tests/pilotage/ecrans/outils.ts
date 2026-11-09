@@ -60,6 +60,17 @@ export async function allerVers(page: Page, nom: string) {
     await page.getByRole('heading', { level: 1 }).first().waitFor()
     return
   }
+  // Refonte vague 2 (15A) : le suivi du réseau face au budget est une vue de Performance
+  if (nom.startsWith('Budgets')) {
+    await page.goto('./#/budgets')
+    await page.getByRole('heading', { level: 1, name: /^Budgets \d{4}$/ }).waitFor()
+    return
+  }
+  if (nom.startsWith('Suivi')) {
+    await page.goto('./#/performance?vue=budget')
+    await page.getByRole('heading', { name: /^Suivi \d{4}$/ }).waitFor()
+    return
+  }
   if (!/#\/budgets/.test(page.url())) {
     await page.goto('./#/budgets')
     await page.getByRole('heading', { level: 1 }).first().waitFor()

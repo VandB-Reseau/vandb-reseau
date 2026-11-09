@@ -473,6 +473,11 @@ export async function ouvrir(page: Page, partie: string) {
         const cloture = page.getByRole('region', { name: 'Clôture du mois' })
         if (saisie && !(await cloture.isVisible())) await pages.getByRole('button', { name: 'Clôture du mois' }).click({ timeout: delai })
         const lien = saisie ? cloture.getByRole('button', { name: cible.libelle }) : pages.getByRole('tab', { name: cible.libelle })
+        // Les comptes du quadrimestre ne sont dans la clôture qu'en avril, août et décembre : on remonte jusqu'au dernier
+        if (saisie) {
+          await cloture.getByRole('list').waitFor({ timeout: delai })
+          for (let n = 0; n < 4 && !(await lien.count()); n++) await cloture.getByRole('button', { name: 'Mois précédent' }).click({ timeout: delai })
+        }
         await lien.click({ timeout: delai })
       }
       break
@@ -525,11 +530,16 @@ export function partieAffichee(page: Page, nom: RegExp) {
 }
 // Pages de l'espace affiché : la rangée d'onglets sous les espaces (étapes du budget, parties du suivi ou des chiffres)
 export function partiesAffichees(page: Page) {
-  return page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist', { name: /^(Étapes du budget|Parties du suivi|Saisies du magasin|Parties des chiffres)/ }).getByRole('tab')
+  return page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist', { name: /^(Étapes du budget|Parties du suivi|Parties des chiffres)/ }).getByRole('tab')
 }
-// Saisies du magasin : sous la puce « Saisies » de l'onglet Chiffres, une bascule (refonte 09/11/2026)
-export function saisiesAffichees(page: Page) {
-  return page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('group', { name: 'Saisies du magasin' }).getByRole('button')
+// Saisies du magasin : la liste de la clôture du mois, sous la puce « Clôture du mois » de l'onglet Chiffres (vague 2, 12A).
+// Depuis une saisie, le bouton « Clôture du mois » y ramène.
+export async function saisiesAffichees(page: Page) {
+  const region = page.getByRole('region', { name: 'Clôture du mois' })
+  const retour = page.getByRole('button', { name: 'Clôture du mois', exact: true })
+  await region.or(retour).first().waitFor()
+  if (await retour.isVisible()) await retour.click()
+  return region.getByRole('list').getByRole('button')
 }
 // Année du budget affichée dans l'en-tête de la fiche (lot 38)
 export async function anneeEnTete(page: Page) {

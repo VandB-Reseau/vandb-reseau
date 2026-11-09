@@ -103,6 +103,6 @@ test('le volet du budget montre aussi l’activité : commentaires et enregistre
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-activite-budget.png` })
-  await volet.getByRole('button', { name: 'Commentaires', exact: true }).click()
+  await volet.getByRole('button', { name: 'Commentaires seuls' }).click()
   await expect(volet.getByRole('region', { name: 'Commentaires', exact: true })).toContainText('Le loyer augmente')
 })

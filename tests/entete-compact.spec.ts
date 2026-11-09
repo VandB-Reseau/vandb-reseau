@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { seConnecter, textesTropPetits } from './supabase-simule'
 
-// En-tête des fiches : sur PC, les compteurs sont sur la ligne du nom, entre les infos et les pictos
+// En-tête des fiches : compact, les compteurs « En bref » sous le nom (refonte vague 2, 11A)
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -19,7 +19,7 @@ const fiches = [
 ]
 
 for (const f of fiches) {
-  test(`fiche ${f.nom} : en-tête compact, compteurs sur la ligne du nom`, async ({ page, isMobile }, info) => {
+  test(`fiche ${f.nom} : en-tête compact, compteurs sous le nom`, async ({ page, isMobile }, info) => {
     await seConnecter(page)
     await page.goto(f.url)
     const titre = page.getByRole('main').getByRole('heading', { level: 1, ...(f.titre ? { name: f.titre } : {}) })
@@ -29,14 +29,9 @@ for (const f of fiches) {
     const t = (await titre.boundingBox())!, b = (await bref.boundingBox())!
     const appel = (await page.getByRole('main').getByRole('button', { name: /^Appeler/ }).or(page.getByRole('main').getByRole('link', { name: /^Appeler/ })).first().boundingBox())!
     const carte = (await bref.locator('xpath=ancestor::div[contains(@class,"MuiCard-root")][1]').boundingBox())!
-    if (isMobile) {
-      // Téléphone : compteurs sous le nom, comme avant
-      expect(b.y).toBeGreaterThan(t.y + t.height - 1)
-    } else {
-      // PC : même ligne que le nom, à droite des infos et à gauche des pictos
-      expect(b.y).toBeLessThan(appel.y + appel.height)
-      expect(b.y + b.height).toBeGreaterThan(t.y)
-      expect(b.x).toBeGreaterThan(t.x)
+    // Refonte vague 2 (11A) : compteurs sous le nom, sur PC comme sur téléphone ; sur PC, l'en-tête reste bas
+    expect(b.y).toBeGreaterThan(t.y + t.height - 1)
+    if (!isMobile) {
       expect(b.x + b.width).toBeLessThanOrEqual(appel.x + 1)
       expect(carte.height).toBeLessThan(170)
     }

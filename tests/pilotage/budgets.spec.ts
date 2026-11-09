@@ -40,19 +40,19 @@ test('le Directeur ouvre les budgets depuis le menu, passe au suivi et aux param
     await page.goto('./#/budgets')
   }
   await expect(page.getByRole('heading', { level: 1, name: /^Budgets \d{4}$/ })).toBeVisible()
-  const pages = page.getByRole('navigation', { name: 'Pages des budgets' })
-  for (const nom of [/^Budgets \d{4}$/, /^Suivi \d{4}$/, 'Hypothèses du réseau', 'Imports de caisse', 'Paramètres réseau']) {
-    await expect(pages.getByRole('tab', { name: nom })).toBeVisible()
-  }
+  // Refonte vague 2 (14A, 15A) : plus d'onglets sous Budgets pour le Directeur ; le suivi est dans Performance, les
+  // réglages dans Paramètres
+  await expect(page.getByRole('navigation', { name: 'Pages des budgets' })).toHaveCount(0)
   await expect(page.getByText('Annecy Test').first()).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-budgets.png`, fullPage: true })
 
-  await pages.getByRole('tab', { name: /^Suivi \d{4}$/ }).click()
-  await expect(page.getByRole('heading', { level: 1, name: /^Suivi \d{4}$/ })).toBeVisible()
-  await pages.getByRole('tab', { name: 'Paramètres réseau' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Paramètres réseau' })).toBeVisible()
+  await page.goto('./#/budgets/suivi')
+  await expect(page).toHaveURL(/#\/performance\?vue=budget/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Performance' })).toBeVisible()
+  await page.goto('./#/budgets/parametres')
+  await expect(page).toHaveURL(/#\/parametres\/reglages\?rubrique=budget/)
 })
 
 // Refonte (Joseph, 09/11/2026, 3A) : le suivi et les saisies dans l'onglet Chiffres, les étapes du budget dans l'onglet Budget
@@ -63,9 +63,9 @@ test('la fiche du magasin a ses onglets Chiffres et Budget : suivi, saisies et b
   await ouvrirOnglet(page, 'Chiffres')
   const pagesMagasin = page.getByRole('navigation', { name: 'Pages du magasin' })
   await expect(pagesMagasin.getByRole('tab', { name: 'Vue d’ensemble' })).toBeVisible()
-  await pagesMagasin.getByRole('tab', { name: /^Saisies/ }).click()
+  await pagesMagasin.getByRole('tab', { name: /^Clôture du mois/ }).click()
   await expect(page).toHaveURL(/#\/magasins\/Annecy%20Test\?vue=chiffres&partie=/)
-  await expect(pagesMagasin.getByRole('group', { name: 'Saisies du magasin' }).getByRole('button', { name: 'Réel du mois' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Clôture du mois' }).getByRole('button', { name: 'Réel du mois' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-budget.png`, fullPage: true })

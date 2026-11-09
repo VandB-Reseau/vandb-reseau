@@ -228,7 +228,9 @@ test('chacun peut changer son mot de passe', async ({ page }) => {
 test('la connexion d’un franchisé n’affiche jamais l’app de l’équipe, même un instant', async ({ page }) => {
   await simulerSupabase(page, { acces: PAUL, espace })
   const vus: string[] = []
-  page.on('request', (r) => { if (r.url().includes('/rest/v1/') && !r.url().includes('/rpc/')) vus.push(r.url()) })
+  // Exception écrite (CLAUDE.md) : le schéma pilotage, où il lit les lignes de ses magasins (commentaires de son budget
+  // pour la cloche, vague 2)
+  page.on('request', (r) => { if (r.url().includes('/rest/v1/') && !r.url().includes('/rpc/') && r.headers()['accept-profile'] !== 'pilotage') vus.push(r.url()) })
   await page.goto('./')
   await page.getByLabel('Email').fill(COMPTE.email)
   await page.getByLabel('Mot de passe').fill(COMPTE.motDePasse)

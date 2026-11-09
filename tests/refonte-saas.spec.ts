@@ -49,8 +49,8 @@ test('PC : menu clair en quatre rubriques, sans barre noire ; téléphone : barr
     await expect(page.getByRole('banner')).toHaveCount(0)
     const menu = page.getByRole('navigation', { name: 'Navigation principale' })
     for (const r of ['Mon travail', 'Réseau', 'Finances', 'Réglages']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
-    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Santé du parc', 'Budgets', 'Équipe', 'Paramètres'])
-    // Animation réseau et Évolution du parc ne sont plus dans le menu : onglet de Messages, vue de Magasins
+    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Santé du parc', 'Budgets', 'Performance', 'Équipe', 'Paramètres'])
+    // Animation réseau et Évolution du parc ne sont plus dans le menu : onglet de Messages, vue de Performance (vague 2)
     await expect(menu.getByRole('button', { name: 'Animation réseau' })).toHaveCount(0)
     await page.goto('./#/animation')
     await expect(page.getByRole('tablist', { name: 'Messages et animation' }).getByRole('tab', { name: 'Animation réseau' })).toHaveAttribute('aria-selected', 'true')
@@ -102,9 +102,9 @@ test('la fiche du magasin tient en cinq onglets et deux niveaux ; le suivi, la s
   await page.goto(fiche('?vue=sante'))
   await expect(page.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: 'Santé et leviers' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('heading', { name: 'Santé', exact: true })).toBeVisible()
-  // Saisies : une bascule entre les quatre saisies, pas un troisième rang d'onglets
-  await page.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: /^Saisies/ }).click()
-  await expect(page.getByRole('group', { name: 'Saisies du magasin' }).getByRole('button')).toHaveText(['Réel du mois', 'Stock de fin de mois', 'Comptes du quadrimestre', /^Frais/])
+  // Saisies : la liste de la clôture du mois, pas un troisième rang d'onglets (vague 2, 12A)
+  await page.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: /^Clôture du mois/ }).click()
+  await expect(page.getByRole('region', { name: 'Clôture du mois' }).getByRole('list').getByRole('button')).toHaveText([/^Réel du mois/, /^Stock de fin de mois/, /^Frais/])
   // Ancien lien vers une partie du suivi depuis Budget : l'onglet Chiffres
   await page.goto(fiche('?vue=budget&partie=mois'))
   await expect(page).toHaveURL(/vue=chiffres/)

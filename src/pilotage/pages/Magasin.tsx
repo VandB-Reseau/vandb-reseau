@@ -132,7 +132,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
   // Panneau Impact (03/11/2026) : à droite dès que l'écran laisse la place au tableau des hypothèses à côté
   const impactACote = useMediaQuery('(min-width:1280px)')
   // Refonte vague 2 (11A) : sur PC, statut et étapes du budget sur une seule ligne
-  const etapesEnLigne = useMediaQuery('(min-width:1100px)')
+  const etapesEnLigne = useMediaQuery('(min-width:1360px)')
   const { profil } = useAuth()
   const annee = anneeBudget()
   const { donnees, erreur, chargement, recharger } = useChargement(
@@ -436,7 +436,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
             aria-label={`Étapes du budget ${annee}`}
             sx={{ mt: enLigne ? 0 : 2, minHeight: enLigne ? 48 : 56, flex: enLigne ? '0 1 auto' : undefined, mr: enLigne ? 'auto' : undefined, '& .MuiTabs-indicator': { display: 'none' }, '& .MuiTabs-flexContainer': { gap: 0 },
               '& .MuiTab-root': { minHeight: enLigne ? 48 : 56, px: 1, py: 0.5, alignItems: 'center', textAlign: 'left', color: 'text.primary', opacity: 1, fontWeight: 400, textTransform: 'none',
-                flexDirection: 'row', gap: 1.25, '&:not(:last-of-type)::after': { content: '""', width: { xs: 16, md: 40 }, height: 2, bgcolor: 'divider', ml: { xs: 0.5, md: 1.5 } } },
+                flexDirection: 'row', gap: 1.25, '&:not(:last-of-type)::after': { content: '""', width: { xs: 16, md: enLigne ? 20 : 40 }, height: 2, bgcolor: 'divider', ml: { xs: 0.5, md: enLigne ? 1 : 1.5 } } },
               '& .MuiTab-root.Mui-selected': { fontWeight: 800, color: 'text.primary' },
               '& .rond-etape': { width: enLigne ? 26 : 32, height: enLigne ? 26 : 32, fontSize: enLigne ? '0.8125rem' : undefined, borderRadius: '50%', display: 'grid', placeItems: 'center', flexShrink: 0, fontWeight: 800, border: 2, borderColor: 'divider', bgcolor: 'background.paper' },
               '& .Mui-selected .rond-etape': { borderColor: 'text.primary', bgcolor: 'text.primary', color: 'background.paper' } }}>
@@ -479,14 +479,14 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
               <PastilleStatut statut={statutEntete.statut} />
               {espace === 'budget' && ligne.base && (
                 <Typography variant="body2" color="text.secondary" component="span">
-                  {`· ${nbEcarts === 0 ? 'aucun écart' : nbEcarts === 1 ? '1 écart' : `${nbEcarts} écarts`} aux cibles du siège`}
+                  {`· ${nbEcarts === 0 ? 'aucun écart' : nbEcarts === 1 ? '1 écart' : `${nbEcarts} écarts`} aux cibles${etapesEnLigne ? '' : ' du siège'}`}
                   <Box component="span" className="impression-seule"> · imprimé le {new Date().toLocaleDateString('fr-FR')}</Box>
                 </Typography>
               )}
             </Box>
           )}
           {espace === 'budget' && etapesEnLigne && etapes(true)}
-          {espace === 'budget' && <BoutonCommentaires />}
+          {espace === 'budget' && <BoutonCommentaires compact={etapesEnLigne} />}
           {actionsEntete}
         </Box>
         </Box>
