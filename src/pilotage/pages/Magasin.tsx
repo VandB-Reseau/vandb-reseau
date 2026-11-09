@@ -518,9 +518,10 @@ export function Magasin({ nom }: { nom: string }) {
                   budget={{ annee, statut: ligne.statut, avant: campagneDe(parametres, annee).validation }} aEquipe={!!d.equipes[ligne.magasin]?.length} aFrais={!!d.frais[ligne.magasin]?.length}
                 />
               )}
-              {/* Joseph (09/11/2026) : la liste des actions est dans l'onglet « Tâches et campagnes » de la fiche ; ici, les
-                  alertes et le formulaire d'action qu'elles ouvrent */}
-              <AlertesEtActions key={`alertes-${ligne.magasin}`} magasin={ligne.magasin} equipe={!franchise && profil?.role !== 'aucun' && !profil?.apercu} proposition={proposition} sansListe />
+              {/* Joseph (09/11/2026) : pour l'équipe, la liste des actions est dans l'onglet « Tâches et campagnes » de la fiche ;
+                  ici, les alertes et le formulaire d'action qu'elles ouvrent. La fiche du franchisé n'a pas cet onglet : il
+                  garde son plan d'action ici */}
+              <AlertesEtActions key={`alertes-${ligne.magasin}`} magasin={ligne.magasin} equipe={!franchise && profil?.role !== 'aucun' && !profil?.apercu} proposition={proposition} sansListe={!franchise && !profil?.apercu} />
             </>}
             conclusion={<SuiviBudget key={`conclusion-${ligne.magasin}`} magasin={ligne.magasin} annee={anneeEnCours} allerA={aller} vue="conclusion" />}
             plusLoin={franchise ? undefined : <>
