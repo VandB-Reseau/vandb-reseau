@@ -1,3 +1,7 @@
+import Snackbar from '@mui/material/Snackbar'
+import { BarreSelection, CaseEntete, CaseLigne, useSelection } from '../../components/Selection'
+import { apresRelances, relancerFranchise } from '../data/taches'
+import NotificationsActiveOutlined from '@mui/icons-material/NotificationsActiveOutlined'
 import { useMemo, useState } from 'react'
 import { Navigate, Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -166,6 +170,22 @@ export function Magasins() {
       return (sens === 'asc' ? c : -c) || a.magasin.localeCompare(b.magasin, 'fr')
     })
   }, [tous, filtre, recherche, groupe, responsable, tri, sens, alertesDe])
+  // Refonte vague 2 (16A) : sélection de plusieurs budgets, pour l'équipe sur PC
+  const surPCSel = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
+  const avecSelection = estEquipe(profil) && surPCSel && !profil?.apercu
+  const clesSel = useMemo(() => visibles.map((m) => m.magasin), [visibles])
+  const sel = useSelection(clesSel)
+  const [relance, setRelance] = useState(false)
+  const [messageSel, setMessageSel] = useState('')
+  const relancer = async () => {
+    setRelance(true)
+    let n = 0
+    for (const m of sel.liste) { try { await relancerFranchise(m, `Relire et renvoyer le budget ${annee}`, ''); n++ } catch { /* suivant */ } }
+    apresRelances()
+    setRelance(false)
+    sel.vider()
+    setMessageSel(n ? `${n} relance${n > 1 ? 's' : ''} envoyée${n > 1 ? 's' : ''} : une tâche pour chaque franchisé.` : 'Les relances n’ont pas pu partir. Réessaie dans un instant.')
+  }
   const trier = (cle: Tri) => setParams((p) => {
     const n = new URLSearchParams(p)
     n.set('tri', cle)
@@ -242,7 +262,7 @@ export function Magasins() {
           {/* Lot 41 (proposition 1) : le Directeur propose et met à jour les budgets de la liste affichée en une fois */}
           {panneau === 'proposer' && estDirecteur(profil) && (
             <Box sx={{ mb: 3 }} className="pas-a-l-impression">
-              <PropositionsSerie annee={annee} magasins={visibles.map((m) => m.magasin)} apres={recharger} />
+              <PropositionsSerie annee={annee} magasins={sel.liste.length ? sel.liste : visibles.map((m) => m.magasin)} apres={recharger} />
             </Box>
           )}
           {/* Lot 43 : les chiffres des budgets sont dans le bandeau de la campagne ; le franchisé à plusieurs magasins les garde */}
@@ -332,6 +352,7 @@ export function Magasins() {
                     <TableRow>
                       {ENTETES.filter((c) => avecGroupe || c.cle !== 'groupe').map((c) => (
                         <TableCell key={c.cle} align={'droite' in c ? 'right' : 'left'} sortDirection={tri === c.cle ? sens : false} sx={{ verticalAlign: 'bottom' }}>
+                          {c.cle === ENTETES[0].cle && avecSelection && <Box component="span" sx={{ mr: 1.5, display: 'inline-flex' }}><CaseEntete s={sel} /></Box>}
                           <TableSortLabel active={tri === c.cle} direction={tri === c.cle ? sens : SENS_DEFAUT[c.cle]} onClick={() => trier(c.cle)} sx={{ minHeight: 36 }}>
                             {c.cle === 'statut' ? `Budget ${annee}` : c.libelle}
                           </TableSortLabel>
@@ -355,7 +376,10 @@ export function Magasins() {
                       const alertes = alertesDe.get(m.magasin) ?? []
                       return (
                         <TableRow key={m.magasin} hover onClick={() => navigate(lienMagasin(m.magasin, ongletListe), { state: etat })} sx={{ cursor: 'pointer' }}>
-                          <TableCell><Link component={RouterLink} to={lienMagasin(m.magasin, ongletListe)} state={etat} sx={{ fontWeight: 600, display: 'inline-flex', minHeight: 48, alignItems: 'center' }}>{m.magasin}</Link></TableCell>
+                          <TableCell>
+                            {avecSelection && <Box component="span" sx={{ mr: 1.5, display: 'inline-flex', verticalAlign: 'middle' }}><CaseLigne s={sel} cle={m.magasin} nom={m.magasin} /></Box>}
+                            <Link component={RouterLink} to={lienMagasin(m.magasin, ongletListe)} state={etat} onClick={(e) => e.stopPropagation()} sx={{ fontWeight: 600, display: 'inline-flex', minHeight: 48, alignItems: 'center' }}>{m.magasin}</Link>
+                          </TableCell>
                           {avecGroupe && <TableCell>{m.groupe}</TableCell>}
                           <TableCell><PastilleStatut statut={m.statut} /></TableCell>
                           <TableCell align="right">{m.budget ? milliers(m.budget.ca) : ''}</TableCell>
@@ -373,6 +397,14 @@ export function Magasins() {
               </TableContainer>
             </Card>
           )}
+          {/* Refonte vague 2 (16A) : agir sur les budgets cochés */}
+          {avecSelection && (
+            <BarreSelection s={sel} quoi="budget">
+              {estDirecteur(profil) && <Button variant="outlined" startIcon={<PlaylistAddCheckOutlined />} onClick={() => { setPanneau('proposer'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Proposer le budget</Button>}
+              <Button variant="outlined" startIcon={<NotificationsActiveOutlined />} disabled={relance} onClick={() => void relancer()}>Relancer les franchisés</Button>
+            </BarreSelection>
+          )}
+          <Snackbar open={!!messageSel} autoHideDuration={5000} onClose={() => setMessageSel('')} message={messageSel} />
         </>
       )}
     </Box>
