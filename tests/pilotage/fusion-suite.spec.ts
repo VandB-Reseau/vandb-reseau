@@ -123,18 +123,24 @@ const tachesEcrites = (ecritures: NonNullable<OptionsSimulation['ecritures']>) =
 
 test('une action ajoutée au plan du budget devient une tâche du magasin, avec son porteur', async ({ page, isMobile }) => {
   const ecritures: NonNullable<OptionsSimulation['ecritures']> = []
-  const pilotage = await connecter(page, { ecritures, persister: true }, {})
+  // Réel bien sous le budget : une alerte de CA, avec son bouton « Agir »
+  const reel = Array.from({ length: 9 }, (_, i) => ({ store_name: 'Annecy Test', mois: `2026-${String(i + 1).padStart(2, '0')}-01`, univers: 'cave', famille: 'Vin', ca_ht: 20_000, ca_ttc: 24_000, marge_ht: 8_000 }))
+  const pilotage = await connecter(page, { ecritures, persister: true }, { reel })
   await page.goto('./#/magasins/Annecy%20Test?vue=budget')
+  // Joseph (09/11/2026) : plus de liste du plan dans le Suivi (elle est dans les tâches du magasin) ; « Agir » sur une alerte
+  // ouvre le formulaire, l'action part dans les tâches
+  await expect(page.getByRole('region', { name: 'Plan d’action' })).toHaveCount(0)
+  await page.getByRole('button', { name: /^Agir : / }).first().click()
   const plan = page.getByRole('region', { name: 'Plan d’action' })
-  await plan.getByRole('button', { name: 'Ajouter une action' }).click()
   const form = plan.getByRole('form', { name: 'Nouvelle action' })
   await form.getByLabel('Action').fill('Former l’équipe au conseil')
   await form.getByLabel('Qui').click()
   await page.getByRole('option', { name: 'Coach' }).click()
   await form.getByRole('button', { name: 'Ajouter au plan' }).click()
-  await expect(plan.getByRole('list', { name: 'Actions en cours' }).getByText('Former l’équipe au conseil')).toBeVisible()
+  await expect(page.getByRole('alert').filter({ hasText: 'Action ajoutée aux tâches du magasin' })).toBeVisible()
+  await expect(plan).toHaveCount(0)
   const tache = tachesEcrites(ecritures).at(-1)?.['Annecy Test']?.find((t) => t.action === 'Former l’équipe au conseil')
-  expect(tache).toMatchObject({ porteur: 'Hugo FICTIF', echeance: '', budget: { type: 'autre', responsable: 'coach', depart: null, role: 'directeur' } })
+  expect(tache).toMatchObject({ porteur: 'Hugo FICTIF', echeance: '', budget: { responsable: 'coach', role: 'directeur' } })
   expect(pilotage.some((e) => e.table === 'actions')).toBe(false)
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   // La même tâche, dans la liste des tâches du magasin
@@ -144,10 +150,22 @@ test('une action ajoutée au plan du budget devient une tâche du magasin, avec 
   await expect(liste.getByText(/Hugo FICTIF · .* · Budget/)).toBeVisible()
 })
 
-test('le plan du budget lit les tâches du magasin avec leur mesure ; une action déjà reprise ne se voit qu’une fois', async ({ page }, info) => {
+test('l’équipe ne voit plus la liste du plan dans le budget : elle est dans les tâches du magasin', async ({ page }) => {
   const ecritures: NonNullable<OptionsSimulation['ecritures']> = []
   await connecter(page, { ecritures, persister: true, config: { actions: { 'Annecy Test': [structuredClone(tacheBudget), { id: 'l_x', action: 'Refaire la vitrine', porteur: '', echeance: '', creeLe: '2026-10-02' }] } } },
     { actions: [ancienne(7, 'Relancer la vente additionnelle'), ancienne(8, 'Revoir le planning')] })
+  await page.goto('./#/magasins/Annecy%20Test?vue=budget')
+  // Joseph (09/11/2026) : l'équipe lit le plan dans l'onglet « Tâches et campagnes » ; le franchisé, dont la fiche n'a pas cet
+  // onglet, le garde dans son budget (test suivant). Lecture contrôlée ici avec le composant, en franchisé
+  await expect(page.getByRole('region', { name: 'Plan d’action' })).toHaveCount(0)
+  await page.goto('./#/magasins/Annecy%20Test?vue=actions')
+  await expect(page.getByRole('list', { name: 'Tâches en cours de Annecy Test' }).getByText('Relancer la vente additionnelle')).toBeVisible()
+})
+
+test('le franchisé lit le plan du budget avec la mesure de chaque tâche ; une action déjà reprise ne se voit qu’une fois', async ({ page }, info) => {
+  const ecritures: NonNullable<OptionsSimulation['ecritures']> = []
+  await connecter(page, { ecritures, acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, espace: { actions: { 'Annecy Test': [structuredClone(tacheBudget), { id: 'l_x', action: 'Refaire la vitrine', porteur: '', echeance: '', creeLe: '2026-10-02' }] } } },
+    { role: 'franchise', magasins: [magasins[0]], actions: [ancienne(7, 'Relancer la vente additionnelle'), ancienne(8, 'Revoir le planning')] })
   await page.goto('./#/magasins/Annecy%20Test?vue=budget')
   const plan = page.getByRole('region', { name: 'Plan d’action' })
   const enCours = plan.getByRole('list', { name: 'Actions en cours' })
@@ -156,12 +174,6 @@ test('le plan du budget lit les tâches du magasin avec leur mesure ; une action
   await expect(enCours.getByText('Refaire la vitrine')).toHaveCount(0)
   await expect(plan.getByText(/Au départ : /)).toBeVisible()
   await plan.screenshot({ path: `captures/${info.project.name}-plan-action-taches.png` })
-  await plan.getByRole('button', { name: 'Abandonner : Relancer la vente additionnelle' }).click()
-  await expect(enCours.getByText('Relancer la vente additionnelle')).toHaveCount(0)
-  const t = tachesEcrites(ecritures).at(-1)?.['Annecy Test']?.find((x) => x.id === 'b_7')
-  expect(t).toMatchObject({ faite: '2026-10-27', budget: { abandonnee: true, depart: { valeur: -6.5, mois: 9 } } })
-  await plan.getByRole('button', { name: /Actions closes/ }).click()
-  await expect(plan.getByRole('list', { name: 'Actions closes' }).getByText('abandonnée')).toBeVisible()
 })
 
 test('le franchisé coche la tâche du budget faite, sans pouvoir l’abandonner', async ({ page }) => {

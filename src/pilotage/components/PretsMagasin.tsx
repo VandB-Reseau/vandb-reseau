@@ -174,7 +174,8 @@ export function PretsMagasin({ magasin, prets, annee, peutSaisir, apresEnregistr
                 <TableCell>Prêt</TableCell>
                 <TableCell align="right" sx={{ maxWidth: 130 }}>{`Restant dû au 1er janvier ${annee}`}</TableCell>
                 <TableCell align="right">Mensualité</TableCell>
-                <TableCell sx={{ maxWidth: 100 }}>Dernière échéance</TableCell>
+                {/* Joseph (09/11/2026) : la date de la 1re échéance se lit dans le tableau, pas seulement dans la fiche du prêt */}
+                <TableCell sx={{ maxWidth: 150 }}>Échéances</TableCell>
                 <TableCell align="right">{`Intérêts ${annee}`}</TableCell>
                 <TableCell align="right">{`Capital ${annee}`}</TableCell>
                 <TableCell />
@@ -189,13 +190,16 @@ export function PretsMagasin({ magasin, prets, annee, peutSaisir, apresEnregistr
                     <TableCell sx={{ whiteSpace: 'normal', minWidth: 160 }}>
                       <Box component="span" sx={{ display: 'block', fontWeight: 600 }}>{p.libelle}</Box>
                       <Box component="span" sx={{ display: 'block', fontSize: '0.8125rem', color: 'text.secondary' }}>
-                        {nouveau ? `Nouveau : ${montant(a.nouveaux.montant)}, 1re échéance en ${enMois(p.debut)}`
+                        {nouveau ? `Nouveau : ${montant(a.nouveaux.montant)} à ${taux(p.taux)}`
                           : p.mode === 'initial' ? `${montant(p.montant)} empruntés à ${taux(p.taux)}` : 'Saisi par son capital restant dû'}
                       </Box>
                     </TableCell>
                     <TableCell align="right">{nouveau ? '—' : montant(restantDu(p, annee))}</TableCell>
                     <TableCell align="right">{panier(mensualitePret(p))}</TableCell>
-                    <TableCell>{enMois(finPret(p))}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'normal', minWidth: 150 }}>
+                      <Box component="span" sx={{ display: 'block' }}>{`${p.mode === 'initial' ? '1re' : 'Prochaine'} : ${enMois(p.debut)}`}</Box>
+                      <Box component="span" sx={{ display: 'block', color: 'text.secondary' }}>{`Dernière : ${enMois(finPret(p))}`}</Box>
+                    </TableCell>
                     <TableCell align="right">{montant(a.enCours.interets + a.nouveaux.interets)}</TableCell>
                     <TableCell align="right">{montant(a.enCours.capital + a.nouveaux.capital)}</TableCell>
                     <TableCell align="right" sx={{ width: 96 }}>

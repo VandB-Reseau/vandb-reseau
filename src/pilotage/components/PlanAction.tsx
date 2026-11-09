@@ -44,7 +44,9 @@ export function texteMesure(type: TypeAlerte, m: Mesure): string {
 
 // En tête de la synthèse d'un magasin : ses alertes, et le plan d'action qui y répond
 // proposition : action préparée ailleurs sur la fiche (leviers commerciaux, fiche de visite, lot 28), le formulaire s'ouvre pré-rempli
-export function AlertesEtActions({ magasin, equipe, proposition }: { magasin: string; equipe: boolean; proposition?: { intitule: string; n: number } | null }) {
+// sansListe (Joseph, 09/11/2026) : la liste des actions est dans l'onglet « Tâches et campagnes » de la fiche ; restent les
+// alertes et le formulaire qu'elles ouvrent (« Agir », « En faire une action »)
+export function AlertesEtActions({ magasin, equipe, proposition, sansListe = false }: { magasin: string; equipe: boolean; proposition?: { intitule: string; n: number } | null; sansListe?: boolean }) {
   const alertes = useChargement(() => chargerAlertes(), [])
   // Sans la table des actions (migration pas encore passée), pas de plan : les alertes restent
   const plan = useChargement(() => Promise.all([chargerActions(), chargerMesures()]).catch(() => null), [])
@@ -68,13 +70,14 @@ export function AlertesEtActions({ magasin, equipe, proposition }: { magasin: st
       )}
       {plan.donnees && actions && (
         <PlanAction magasin={magasin} equipe={equipe} alertes={duMagasin} actions={actions} mesures={plan.donnees[1][magasin] ?? {}}
-          recharger={plan.recharger} depuis={depuis} setDepuis={setDepuis} intituleInitial={intituleInitial} />
+          recharger={plan.recharger} depuis={depuis} setDepuis={setDepuis} intituleInitial={intituleInitial} sansListe={sansListe} />
       )}
     </>
   )
 }
 
-function PlanAction({ magasin, equipe, alertes, actions, mesures, recharger, depuis, setDepuis, intituleInitial }: {
+function PlanAction({ magasin, equipe, alertes, actions, mesures, recharger, depuis, setDepuis, intituleInitial, sansListe }: {
+  sansListe: boolean
   magasin: string
   equipe: boolean
   alertes: Alerte[]
@@ -89,10 +92,16 @@ function PlanAction({ magasin, equipe, alertes, actions, mesures, recharger, dep
   const [voirFaites, setVoirFaites] = useState(false)
   const [occupe, setOccupe] = useState(false)
   const [probleme, setProbleme] = useState<string | null>(null)
+  const [ajoutee, setAjoutee] = useState(false)
 
   const enCours = actions.filter((a) => a.statut === 'a_faire').sort((a, b) => (a.echeance ?? '9999').localeCompare(b.echeance ?? '9999'))
   const closes = actions.filter((a) => a.statut !== 'a_faire').reverse()
   if (!equipe && !actions.length) return null
+  if (sansListe && depuis === null) {
+    return ajoutee ? <Alert severity="success" onClose={() => setAjoutee(false)} closeText="Fermer" slotProps={{ closeButton: { sx: { width: 48, height: 48 } } }} sx={{ mb: 3 }}>
+      Action ajoutée aux tâches du magasin (onglet « Tâches et campagnes »).
+    </Alert> : null
+  }
 
   const agir = async (f: () => Promise<void>) => {
     setOccupe(true)
@@ -140,7 +149,7 @@ function PlanAction({ magasin, equipe, alertes, actions, mesures, recharger, dep
   return (
     <Card component="section" aria-label="Plan d’action" id="plan-action" sx={{ mb: 3 }}>
       <Box sx={{ px: 2.5, pt: 2, pb: 1, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Typography variant="h2" sx={{ flex: 1 }}>Plan d’action</Typography>
+        <Typography variant="h2" sx={{ flex: 1 }}>{sansListe ? 'Nouvelle action' : 'Plan d’action'}</Typography>
         {equipe && depuis === null && (
           <Button variant="outlined" startIcon={<AddOutlined />} onClick={() => setDepuis('autre')} sx={{ minHeight: 48 }}>Ajouter une action</Button>
         )}
@@ -150,15 +159,15 @@ function PlanAction({ magasin, equipe, alertes, actions, mesures, recharger, dep
         <NouvelleActionForm
           key={depuis === 'autre' ? `autre-${intituleInitial}` : `${depuis.type}-${texteAlerte(depuis)}`}
           magasin={magasin} alertes={alertes} depuis={depuis} occupe={occupe} intituleInitial={intituleInitial}
-          valider={(a) => void agir(async () => { await creerAction(a, profil?.role ?? null); setDepuis(null) })}
+          valider={(a) => void agir(async () => { await creerAction(a, profil?.role ?? null); setDepuis(null); setAjoutee(true) })}
           annuler={() => setDepuis(null)}
         />
       )}
-      {enCours.length === 0 && depuis === null && (
+      {!sansListe && enCours.length === 0 && depuis === null && (
         <Typography color="text.secondary" sx={{ px: 2.5, pb: 2 }}>Aucune action en cours.</Typography>
       )}
-      {enCours.length > 0 && <Stack component="ul" aria-label="Actions en cours" sx={{ listStyle: 'none', m: 0, p: 0 }}>{enCours.map(ligne)}</Stack>}
-      {closes.length > 0 && (
+      {!sansListe && enCours.length > 0 && <Stack component="ul" aria-label="Actions en cours" sx={{ listStyle: 'none', m: 0, p: 0 }}>{enCours.map(ligne)}</Stack>}
+      {!sansListe && closes.length > 0 && (
         <>
           <Box sx={{ px: 1.5, py: 0.5, borderTop: 1, borderColor: 'divider' }}>
             <Button onClick={() => setVoirFaites((v) => !v)} aria-expanded={voirFaites} sx={{ minHeight: 48 }}>

@@ -37,7 +37,7 @@ import { EcartExpliqueCarte } from './EcartExpliqueCarte'
 // Santé du magasin en un coup d'œil : cumul de l'année face au budget de l'année (lot 27) et à l'an dernier, marge,
 // masse salariale, résultat attendu ; CA cumulé ou mois par mois. Lot 30 (E2) : trois blocs, où on en est (les chiffres),
 // quoi faire (À faire, alertes, plan d'action) et, replié, pour aller plus loin (graphique, leviers, face au réseau)
-export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteEtActions, proposerAction, quoiFaire, plusLoin, conclusion, detail }: {
+export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteEtActions, proposerAction, quoiFaire, plusLoin, conclusion, detail, partie = 'tout' }: {
   magasin: string
   d: DonneesBudgets
   annee: number
@@ -49,6 +49,9 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
   plusLoin?: ReactNode                          // face au réseau, familles : seulement pour le siège
   conclusion?: ReactNode                        // lot 41 : la phrase du suivi face au budget, en tête
   detail?: ReactNode                            // lot 41 : graphique et mois par mois face au budget, comptes du quadrimestre
+  // Joseph (09/11/2026) : le Suivi en puces ; « ensemble » = conclusion, indicateurs, écart, tendance et alertes ;
+  // « analyse » = graphique du CA, leviers commerciaux et comparaisons au réseau, sans repli
+  partie?: 'tout' | 'ensemble' | 'analyse'
 }) {
   const { donnees, erreur, chargement, recharger } = useChargement(
     () => Promise.all([chargerReel(magasin, annee), chargerReel(magasin, annee - 1), chargerSecours(magasin, annee), chargerBudgets(annee).catch(() => null),
@@ -59,8 +62,9 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
   const [objectifs, setObjectifs] = useState(false)
 
   const contenu = plusLoin ? '(graphique, leviers, face au réseau)' : '(graphique, leviers)'
-  if (chargement && !donnees) return <Stack spacing={3}><Skeleton variant="rounded" height={320} />{quoiFaire}</Stack>
-  if (erreur || !donnees) return <Stack spacing={3}><Panne quoi={`Les chiffres réels ${annee}`} recharger={recharger} />{quoiFaire}</Stack>
+  const analyse = partie === 'analyse', ensemble = partie === 'ensemble'
+  if (chargement && !donnees) return <Stack spacing={3}><Skeleton variant="rounded" height={320} />{!analyse && quoiFaire}</Stack>
+  if (erreur || !donnees) return <Stack spacing={3}><Panne quoi={`Les chiffres réels ${annee}`} recharger={recharger} />{!analyse && quoiFaire}</Stack>
 
   const equipe = d.equipes[magasin]
   const frais = d.frais[magasin]
@@ -74,9 +78,9 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
           texte={`La synthèse du magasin part des chiffres réels ${annee}, importés chaque mois ou saisis à la main.`}
           action={<Button variant="contained" onClick={() => allerA('reel')} sx={{ minHeight: 48 }}>Voir le réel</Button>}
         />
-        {quoiFaire}
-        {detail}
-        {plusLoin && <PlusLoin contenu="(face au réseau)">{plusLoin}</PlusLoin>}
+        {!analyse && quoiFaire}
+        {!analyse && detail}
+        {analyse ? plusLoin : !ensemble && plusLoin && <PlusLoin contenu="(face au réseau)">{plusLoin}</PlusLoin>}
       </Stack>
     )
   }
@@ -118,6 +122,48 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
   ]
   const finAtterri = cumulApres(s.serieN, s.projection)[11]
   const explique = suivi && budgetN ? ecartExplique(donnees.n.lignes, donnees.n.tickets, budgetN, suivi) : null
+  const graphiqueEtLeviers = (
+    <>
+      <Card component="section" aria-label={`Chiffre d’affaires ${annee}`} sx={{ p: { xs: 2, md: 3 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
+          <Typography variant="h2" sx={{ flex: 1, minWidth: 200 }}>Chiffre d’affaires {annee}</Typography>
+          <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_, v: 'cumul' | 'mois' | null) => v && setVue(v)} aria-label="Affichage du chiffre d’affaires" className="pas-a-l-impression">
+            <ToggleButton value="cumul" sx={{ minHeight: 48, textTransform: 'none', px: 2 }}>Cumulé</ToggleButton>
+            <ToggleButton value="mois" sx={{ minHeight: 48, textTransform: 'none', px: 2 }}>Mois par mois</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+        {vue === 'cumul' ? (
+          <GraphiqueMois
+            titre={`Chiffre d’affaires ${annee} cumulé : réel jusqu’à ${finMois}, projection ensuite${budgetN ? ', comparé au budget' : ''} et à ${annee - 1}`}
+            format={montant} formatAxe={milliers} moisEnCours={enCours}
+            note={finAtterri == null ? undefined : `Atterrissage ${annee} : ${milliers(finAtterri)}${budgetN ? `, ${ecartMilliers(finAtterri - budgetN.ca)} face au budget de ${milliers(budgetN.ca)}` : ''}`}
+            series={[
+              ...(budgetN ? [{ nom: `Budget ${annee}`, valeurs: cumul(budgetN.mois.map((m) => m.ca)), forme: 'ligne' as const, couleur: brand.orange }] : []),
+              { nom: `Réel ${annee - 1}`, valeurs: cumul(s.serieN1), forme: 'ligne', couleur: brand.vert },
+              { nom: 'Projection', valeurs: cumulApres(s.serieN, s.projection), forme: 'ligne', couleur: 'var(--mui-palette-text-secondary)', pointille: true },
+              { nom: `Réel ${annee}`, valeurs: cumul(s.serieN), forme: 'ligne', couleur: 'var(--mui-palette-text-primary)' },
+            ]}
+          />
+        ) : (
+          <GraphiqueMois
+            titre={`Chiffre d’affaires ${annee} : réel jusqu’à ${finMois}${budgetN ? ' dans le contour du budget' : ''}, projection ensuite, comparé à ${annee - 1}`}
+            format={montant} formatAxe={milliers} moisEnCours={enCours}
+            series={[
+              { nom: `Réel ${annee}`, valeurs: s.serieN, forme: 'barre', couleur: brand.vert,
+                couleurs: budgetN ? s.serieN.map((v, i) => { const niv = niveauEcart(v, budgetN.mois[i].ca, seuil); return niv ? COULEUR_BARRE[niv] : null }) : undefined },
+              { nom: 'Projection', valeurs: s.projection, forme: 'barre', couleur: brand.beige },
+              ...(budgetN ? [{ nom: `Budget ${annee}`, valeurs: budgetN.mois.map((m) => m.ca), forme: 'contour' as const, couleur: 'var(--mui-palette-text-secondary)' }] : []),
+              { nom: `Réel ${annee - 1}`, valeurs: s.serieN1, forme: 'ligne', couleur: brand.or },
+            ]}
+          />
+        )}
+      </Card>
+
+      <LeviersCommerciaux budget={b} annee={annee} parametres={parametres} proposerAction={proposerAction} />
+        {plusLoin}
+    </>
+  )
+  if (analyse) return <Stack spacing={3}>{graphiqueEtLeviers}</Stack>
   return (
     <Stack spacing={3}>
       {(visiteEtActions || budgetN) && (
@@ -165,11 +211,19 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
         />}
       </Box>
 
-      {manques.map((m) => (
-        <Alert key={m.onglet} severity="info" action={<Button color="inherit" onClick={() => allerA(m.onglet)} sx={{ minHeight: 48 }}>{m.action}</Button>} sx={{ alignItems: 'center' }}>
-          {m.texte}
+      {/* Joseph (09/11/2026) : ce qui manque sur un seul bandeau, pour raccourcir la page */}
+      {manques.length > 0 && (
+        <Alert severity="info" sx={{ alignItems: 'center', '& .MuiAlert-message': { flex: 1 } }}>
+          <Box sx={{ display: 'grid', gap: 0.5 }}>
+            {manques.map((m) => (
+              <Box key={m.onglet} sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <Box component="span" sx={{ flex: 1, minWidth: 220 }}>{m.texte}</Box>
+                <Button color="inherit" onClick={() => allerA(m.onglet)} sx={{ minHeight: 48 }}>{m.action}</Button>
+              </Box>
+            ))}
+          </Box>
         </Alert>
-      ))}
+      )}
 
       {explique && <EcartExpliqueCarte e={explique} />}
 
@@ -179,45 +233,7 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
 
       {detail}
 
-      <PlusLoin contenu={contenu}>
-      <Card component="section" aria-label={`Chiffre d’affaires ${annee}`} sx={{ p: { xs: 2, md: 3 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
-          <Typography variant="h2" sx={{ flex: 1, minWidth: 200 }}>Chiffre d’affaires {annee}</Typography>
-          <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_, v: 'cumul' | 'mois' | null) => v && setVue(v)} aria-label="Affichage du chiffre d’affaires" className="pas-a-l-impression">
-            <ToggleButton value="cumul" sx={{ minHeight: 48, textTransform: 'none', px: 2 }}>Cumulé</ToggleButton>
-            <ToggleButton value="mois" sx={{ minHeight: 48, textTransform: 'none', px: 2 }}>Mois par mois</ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-        {vue === 'cumul' ? (
-          <GraphiqueMois
-            titre={`Chiffre d’affaires ${annee} cumulé : réel jusqu’à ${finMois}, projection ensuite${budgetN ? ', comparé au budget' : ''} et à ${annee - 1}`}
-            format={montant} formatAxe={milliers} moisEnCours={enCours}
-            note={finAtterri == null ? undefined : `Atterrissage ${annee} : ${milliers(finAtterri)}${budgetN ? `, ${ecartMilliers(finAtterri - budgetN.ca)} face au budget de ${milliers(budgetN.ca)}` : ''}`}
-            series={[
-              ...(budgetN ? [{ nom: `Budget ${annee}`, valeurs: cumul(budgetN.mois.map((m) => m.ca)), forme: 'ligne' as const, couleur: brand.orange }] : []),
-              { nom: `Réel ${annee - 1}`, valeurs: cumul(s.serieN1), forme: 'ligne', couleur: brand.vert },
-              { nom: 'Projection', valeurs: cumulApres(s.serieN, s.projection), forme: 'ligne', couleur: 'var(--mui-palette-text-secondary)', pointille: true },
-              { nom: `Réel ${annee}`, valeurs: cumul(s.serieN), forme: 'ligne', couleur: 'var(--mui-palette-text-primary)' },
-            ]}
-          />
-        ) : (
-          <GraphiqueMois
-            titre={`Chiffre d’affaires ${annee} : réel jusqu’à ${finMois}${budgetN ? ' dans le contour du budget' : ''}, projection ensuite, comparé à ${annee - 1}`}
-            format={montant} formatAxe={milliers} moisEnCours={enCours}
-            series={[
-              { nom: `Réel ${annee}`, valeurs: s.serieN, forme: 'barre', couleur: brand.vert,
-                couleurs: budgetN ? s.serieN.map((v, i) => { const niv = niveauEcart(v, budgetN.mois[i].ca, seuil); return niv ? COULEUR_BARRE[niv] : null }) : undefined },
-              { nom: 'Projection', valeurs: s.projection, forme: 'barre', couleur: brand.beige },
-              ...(budgetN ? [{ nom: `Budget ${annee}`, valeurs: budgetN.mois.map((m) => m.ca), forme: 'contour' as const, couleur: 'var(--mui-palette-text-secondary)' }] : []),
-              { nom: `Réel ${annee - 1}`, valeurs: s.serieN1, forme: 'ligne', couleur: brand.or },
-            ]}
-          />
-        )}
-      </Card>
-
-      <LeviersCommerciaux budget={b} annee={annee} parametres={parametres} proposerAction={proposerAction} />
-        {plusLoin}
-      </PlusLoin>
+      {!ensemble && <PlusLoin contenu={contenu}>{graphiqueEtLeviers}</PlusLoin>}
     </Stack>
   )
 }
