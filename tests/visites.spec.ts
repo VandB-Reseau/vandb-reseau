@@ -151,7 +151,7 @@ test('un grand réseau s’affiche par tranches sans bloquer les onglets', async
   await expect(parMagasin).toHaveCount(100)
   // Seules les 50 visites les plus récentes sont dessinées à l'ouverture de l'onglet
   await page.getByRole('tab', { name: /Historique/ }).click()
-  await expect(page.getByText('3000 visites')).toBeVisible()
+  await expect(page.getByText('3000 visites').first()).toBeVisible()
   const historique = page.getByRole('region', { name: 'Visites' }).getByRole('link', { name: /^Grand\d+ Test/ })
   await expect(historique).toHaveCount(50)
   await page.getByRole('button', { name: 'Voir plus (2950)' }).click()

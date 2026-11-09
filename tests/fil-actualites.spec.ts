@@ -55,7 +55,8 @@ test('le franchisé aime et commente le compte rendu de son Coach ; pas les appe
   await expect(fil.getByText('Appel de suivi.')).toHaveCount(0)
   await compteRendu.getByRole('button', { name: 'J’aime · 1' }).click()
   await expect(compteRendu.getByRole('button', { name: 'J’aime · 2' })).toBeVisible()
-  expect(ecritures.find((e) => e.table === 'rpc/basculer_pouce_visite')!.corps).toEqual({ p_id: 50 })
+  // L'écran se met à jour avant la réponse de la base : on attend l'écriture
+  await expect.poll(() => ecritures.find((e) => e.table === 'rpc/basculer_pouce_visite')?.corps).toEqual({ p_id: 50 })
   await compteRendu.getByRole('button', { name: 'Commenter' }).click()
   await compteRendu.getByRole('textbox', { name: 'Commentaire sur le compte rendu de Annecy Test' }).fill('Merci Hugo, on lance la dégustation.')
   await compteRendu.getByRole('button', { name: 'Envoyer le commentaire' }).click()

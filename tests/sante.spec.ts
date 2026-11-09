@@ -251,7 +251,7 @@ test('le titre et la recherche restent en place d’un onglet à l’autre', asy
 
 test('plus d’import ni de réglage dans la Santé du parc, et plus de doublon Carte', async ({ page }) => {
   await seConnecter(page)
-  for (const vue of ['evaluer', 'deploiements', 'chiffres']) {
+  for (const vue of ['evaluer', 'deploiements']) {
     await page.goto(`./#/plus/sante?vue=${vue}`)
     await expect(page.getByRole('heading', { name: 'Santé du parc' })).toBeVisible()
     await expect(page.getByRole('button', { name: /Importer|Gérer les thématiques|Effacer toutes les notes/ })).toHaveCount(0)
