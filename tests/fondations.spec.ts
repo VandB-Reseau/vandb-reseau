@@ -12,7 +12,8 @@ const principales = [
   { nom: 'Santé du parc', court: 'Santé' },
 ]
 // Hors de la barre du bas : dans le menu du compte sur téléphone
-const secondaires = ['Agenda', 'Équipe', 'Évolution du parc', 'Paramètres']
+// Refonte (09/11/2026, 2A) : l'Évolution du parc est une vue de Magasins, plus une entrée du menu
+const secondaires = ['Agenda', 'Équipe', 'Paramètres']
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []

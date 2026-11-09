@@ -117,8 +117,10 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const vue: VueFiche = (brute === 'budget' || brute === 'chiffres') && partie ? (PARTIES_BUDGET.includes(partie) ? 'budget' : 'chiffres')
     : demandee === 'sante' ? 'chiffres' : brute
   useEffect(() => {
-    if ((brute === 'budget' || brute === 'chiffres') && vue !== brute) setParams((p) => { const n = new URLSearchParams(p); n.set('vue', vue); return n }, { replace: true })
-    if (demandee === 'sante' && !partie) setParams((p) => { const n = new URLSearchParams(p); n.set('vue', 'chiffres'); n.set('partie', 'sante'); return n }, { replace: true })
+    // Adresse lue au moment même : le suivi a pu la réécrire juste avant (ancienne partie, « tresorerie » → « comptes »)
+    const actuelle = () => new URLSearchParams(window.location.hash.split('?')[1] ?? '')
+    if ((brute === 'budget' || brute === 'chiffres') && vue !== brute) setParams(() => { const n = actuelle(); n.set('vue', vue); return n }, { replace: true })
+    if (demandee === 'sante' && !partie) setParams(() => { const n = actuelle(); n.set('vue', 'chiffres'); n.set('partie', 'sante'); return n }, { replace: true })
   }, [brute, vue, demandee, partie, setParams])
   const versMessages = demandee === 'messages'
   useEffect(() => { if (versMessages) naviguer(lienFil({ genre: 'magasin', magasin: m.nom, equipe: false }), { replace: true }) }, [versMessages, naviguer, m.nom])

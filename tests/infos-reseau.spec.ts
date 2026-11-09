@@ -25,7 +25,7 @@ const pratiques = [
 ]
 
 // Téléphone : dans l'en-tête, à droite du « + » ; PC : en bas du menu latéral (refonte 09/11/2026)
-const infos = (page: Page) => page.getByRole('button', { name: /^Infos réseau/ }).filter({ visible: true }).first()
+const infos = (page: Page) => page.locator('header, .MuiDrawer-paper').getByRole('button', { name: /^Infos réseau/ }).filter({ visible: true }).first()
 const ouvrir = async (page: Page) => {
   await infos(page).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Infos réseau' })).toBeVisible()
@@ -99,7 +99,9 @@ test('le picto compte les communications et bonnes pratiques pas encore vues, pu
 
 test('le franchisé n’a pas l’onglet Infos réseau', async ({ page }) => {
   await seConnecter(page, { appMetadata: { role: 'franchise' }, acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, espace: {} })
-  await expect(infos(page)).toHaveCount(0)
+  // Pas de picto « Infos réseau » hors de son menu (son entrée de menu reste, Joseph 23/10/2026)
+  await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
+  expect(await page.evaluate(() => [...document.querySelectorAll('button[aria-label^="Infos réseau"]')].filter((b) => !b.closest('nav') && (b as HTMLElement).offsetParent).length)).toBe(0)
   await page.goto('./#/infos')
   await expect(page.getByRole('heading', { level: 1, name: 'Infos réseau' })).toHaveCount(0)
 })

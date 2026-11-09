@@ -38,10 +38,12 @@ test('ouvrir un menu ne décale pas la page', async ({ page, isMobile }) => {
 
 const hauteur = (page: import('@playwright/test').Page) => page.evaluate(() => window.scrollY)
 
-test('une fiche s’ouvre en haut et le retour retrouve la liste où on l’avait laissée', async ({ page }) => {
+// Sur PC, le tableau des magasins défile dans sa carte, titres de colonnes figés (refonte 09/11/2026) : la page ne bouge pas
+test('une fiche s’ouvre en haut et le retour retrouve la liste où on l’avait laissée', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'sur PC, le tableau défile dans sa carte')
   await seConnecter(page)
   await page.goto('./#/magasins?vue=liste')
-  // Liste en lignes (un lien par magasin) : la page défile, sur PC comme sur téléphone
+  // Liste en lignes (un lien par magasin) : la page défile
   const dernier = page.getByRole('region', { name: 'Liste des magasins' }).getByRole('link').last()
   const lu = () => hauteur(page)
   await dernier.scrollIntoViewIfNeeded()

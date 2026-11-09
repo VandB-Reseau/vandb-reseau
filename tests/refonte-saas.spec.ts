@@ -74,7 +74,8 @@ test('PC : Ctrl K place le curseur dans la recherche, qui propose de créer et o
   await expect(fenetre).toBeVisible()
   // Panneau collé au bord droit, sur toute la hauteur
   const b = (await fenetre.boundingBox())!
-  const largeur = await page.evaluate(() => document.documentElement.clientWidth)
+  // Bord droit de la zone d'affichage (hors gouttière de la barre de défilement, réservée par la page)
+  const largeur = await page.locator('.MuiDialog-root').evaluate((e) => e.getBoundingClientRect().right)
   expect(Math.abs(b.x + b.width - largeur)).toBeLessThanOrEqual(2)
   expect(b.height).toBeGreaterThan(page.viewportSize()!.height - 4)
   await page.screenshot({ path: `captures/${info.project.name}-refonte-panneau.png` })

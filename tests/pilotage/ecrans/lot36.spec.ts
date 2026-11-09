@@ -32,7 +32,7 @@ test('Chiffres et Budget : le magasin ouvert reste le même, chaque espace a ses
   await expect(saisiesAffichees(page)).toHaveText([/^Réel du mois/, /^Stock de fin de mois/, /^Comptes du quadrimestre/, /^Frais/])
   await page.screenshot({ path: `captures/${info.project.name}-espace-donnees.png`, fullPage: true })
 
-  await ongletEspace(page, 'Suivi').click()
+  await page.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: 'Vue d’ensemble' }).click()
   // Refonte (09/11/2026) : sous l'onglet Chiffres de la fiche, une seule rangée de puces (suivi, santé, saisies)
   await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist')).toHaveCount(1)
   await expect(page).toHaveURL(/[?&]partie=synthese$/)
