@@ -18,16 +18,16 @@ test.afterEach(async ({ page }) => {
 const cession = [{ store_name: 'Brest Test', situations: [{ date: '2025-06-30', type: 'sortie', sortie: 'cession', motif: 'Départ en retraite', repreneur: 'Société Exemple' }] }]
 const decale = (j: number) => { const d = new Date(); d.setDate(d.getDate() + j); return d.toLocaleDateString('sv-SE') }
 
-test('S1 : chaque magasin de Ma semaine propose Préparer et Planifier', async ({ page, isMobile }, info) => {
+// Vague 7 (79A) : un seul bouton Visite par magasin de Ma semaine, libellé par la prochaine étape
+test('S1 : chaque magasin de Ma semaine propose son bouton Visite', async ({ page, isMobile }, info) => {
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Inès EXEMPLE' } })
   await page.goto('./#/plus/agenda?vue=semaine')
   const liste = page.getByRole('region', { name: 'Visites à planifier' })
-  const preparer = liste.getByRole('link', { name: 'Préparer la visite de Nantes Test' })
-  await expect(preparer).toBeVisible()
-  await expect(liste.getByRole('button', { name: 'Planifier la visite de Nantes Test' })).toBeVisible()
+  const visite = liste.getByRole('link', { name: 'Planifier la visite : Nantes Test' })
+  await expect(visite).toBeVisible()
   if (isMobile) {
     // En mots sur téléphone, plus de pictos seuls
-    await expect(preparer).toHaveText('Préparer')
+    await expect(visite).toHaveText('Planifier')
     await expect(page.getByRole('button', { name: 'Planifier la tournée' })).toHaveText('Tournée')
     for (const b of await liste.getByRole('group').first().locator('a, button').all()) {
       expect(Math.round((await b.boundingBox())!.height)).toBeGreaterThanOrEqual(48)
@@ -36,8 +36,8 @@ test('S1 : chaque magasin de Ma semaine propose Préparer et Planifier', async (
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-semaine-preparer.png` })
-  await preparer.click()
-  await expect(page).toHaveURL(/#\/magasins\/Nantes%20Test\/preparer$/)
+  await visite.click()
+  await expect(page).toHaveURL(/#\/magasins\/Nantes%20Test\/visite\?etape=preparer/)
 })
 
 test('S4 : Évolution du parc montre les années sans ouverture', async ({ page }) => {
@@ -118,7 +118,6 @@ test('F3 : un Coach ne change pas la situation d’un magasin', async ({ page })
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Noé MODELE' } })
   await page.goto('./#/magasins/Lyon%20Test')
   await page.getByRole('button', { name: 'Autres actions' }).click()
-  await expect(page.getByRole('menuitem', { name: 'Préparer la visite' })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'Changer la situation' })).toHaveCount(0)
 })
 
@@ -136,7 +135,7 @@ test('F1 : au magasin, l’accueil propose de saisir la visite', async ({ page, 
   await expect(bandeau).toContainText('Nantes Test')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-au-magasin.png` })
-  await bandeau.getByRole('button', { name: 'Saisir la visite' }).click()
+  await bandeau.getByRole('button', { name: 'Commencer la visite' }).click()
   const d = page.getByRole('dialog', { name: 'Saisir une visite' })
   await expect(d.getByRole('region', { name: 'Visite' })).toContainText('Nantes Test')
 })
@@ -172,8 +171,7 @@ test('F2 : le micro est proposé dans une tâche, un message et les notes de pr�
   await expect(page.getByRole('button', { name: 'Dicter : Message' })).toBeVisible()
 
   await page.goto('./#/magasins/Lyon%20Test')
-  await page.getByRole('button', { name: 'Autres actions' }).click()
-  await page.getByRole('menuitem', { name: 'Planifier la visite' }).click()
+  await page.getByRole('link', { name: 'Planifier la visite : Lyon Test' }).click()
   await expect(page.getByRole('button', { name: 'Dicter : Notes de préparation' })).toBeVisible()
 })
 

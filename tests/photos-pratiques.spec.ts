@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { PNG, seConnecter, textesTropPetits, type Ecriture, ouvrirInfos } from './supabase-simule'
+import { PNG, saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture, ouvrirInfos } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -20,10 +20,8 @@ const pratiques = [
 test('ajouter des photos à une visite terrain', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Annecy%20Test?vue=visites')
-  await page.getByRole('button', { name: 'Saisir', exact: true }).click()
-  const d = page.getByRole('dialog', { name: 'Saisir une visite' })
-  const zone = d.getByRole('region', { name: 'Photos' })
+  const d = await saisirVisiteNonPrevue(page, 'Annecy Test')
+  const zone = d.getByRole('region', { name: 'Photos, documents et signature' })
   await d.getByTestId('photos-libres').setInputFiles([photo, { ...photo, name: 'rayon.png' }])
   await expect(zone.getByRole('img', { name: 'Photo 2' })).toBeVisible()
   await zone.scrollIntoViewIfNeeded()

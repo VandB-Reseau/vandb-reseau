@@ -4,21 +4,24 @@
 import type { ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
+import ButtonBase from '@mui/material/ButtonBase'
+import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
+import AccountBalanceWalletOutlined from '@mui/icons-material/AccountBalanceWalletOutlined'
+import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
+import { iconeEtape } from './BoutonVisite'
+import { prochaineEtape } from '../data/ordreDuJour'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
-import { DansCarte, Section } from './Section'
+import { Section } from './Section'
 import { Indicateur as CarteIndicateur } from './Indicateur'
 import { useTheme } from '@mui/material/styles'
 import { ParcoursIntegration } from './ParcoursIntegration'
 import { analyser, estVisite, formatEuros, formatKEuros, formatPourcent, libelleMois } from '../data/chiffres'
 import { libelleTypeVisite, nomsVisiteurs, visiteFaite, type Magasin, type Reseau } from '../data/modele'
 import { actionsDuMagasin, enRetard } from '../data/actions'
-import { anneeDe, libellePasVu, lienCompteRendu, lienVisite, suiviRythme } from '../data/visites'
+import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme } from '../data/visites'
 import { resumeCompteRendu } from '../data/resumeCompteRendu'
-import { dateCourte, dateLongue, lienFiche } from '../lib/format'
+import { dateCourte, lienFiche } from '../lib/format'
 
 // Vague 5 (53A) : la carte d'indicateur commune ; ton : couleur de l'écart
 export function Indicateur({ libelle, valeur, detail, ton }: { libelle: string; valeur: string; detail?: string; ton?: 'bon' | 'mauvais' }) {
@@ -26,22 +29,28 @@ export function Indicateur({ libelle, valeur, detail, ton }: { libelle: string; 
   return <CarteIndicateur libelle={libelle} valeur={valeur} detail={detail} couleurDetail={ton === 'bon' ? theme.palette.success.dark : ton === 'mauvais' ? theme.palette.error.main : undefined} />
 }
 
-function Etape({ libelle, valeur, action }: { libelle: string; valeur: ReactNode; action?: ReactNode }) {
+// Vague 7 (90A et retour de Joseph, 10/11/2026) : les prochaines étapes en tuiles cliquables, au lieu d'un tableau
+function Tuile({ libelle, valeur, detail, lien, icone, alerte }: { libelle: string; valeur: string; detail?: string; lien: string; icone: ReactNode; alerte?: boolean }) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minHeight: 48, py: 0.5, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
-      <Typography variant="body2" color="text.secondary" sx={{ width: { xs: 96, sm: 150 }, flexShrink: 0 }}>{libelle}</Typography>
-      <Box sx={{ flex: 1, minWidth: 0, typography: 'body2', fontWeight: 600 }}>{valeur}</Box>
-      {action}
-    </Box>
+    <ButtonBase component={RouterLink} to={lien} aria-label={`${libelle} : ${valeur}${detail ? `, ${detail}` : ''}`}
+      sx={{ display: 'grid', gridTemplateColumns: '24px minmax(0, 1fr)', columnGap: 1.25, alignItems: 'start', justifyItems: 'start', textAlign: 'left', p: 1.75, minHeight: 88,
+        bgcolor: 'background.paper', border: '1px solid', borderColor: alerte ? 'error.light' : 'divider', borderRadius: 2, fontFamily: 'inherit', '&:hover': { borderColor: 'text.primary' } }}>
+      <Box sx={{ color: alerte ? 'error.main' : 'text.secondary', mt: 0.25, display: 'flex' }}>{icone}</Box>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography variant="body2" color="text.secondary">{libelle}</Typography>
+        <Typography sx={{ fontWeight: 700, lineHeight: 1.3 }}>{valeur}</Typography>
+        {detail && <Typography variant="body2" sx={{ color: alerte ? 'error.main' : 'text.secondary' }}>{detail}</Typography>}
+      </Box>
+    </ButtonBase>
   )
 }
 
-export function SituationMagasin({ reseau, m, planifier, objectifs }: { reseau: Reseau; m: Magasin; planifier: () => void; objectifs?: ReactNode }) {
+export function SituationMagasin({ reseau, m, objectifs }: { reseau: Reseau; m: Magasin; objectifs?: ReactNode }) {
   const a = analyser(reseau, m.nom)
   const c = a?.chiffre
   const mois = a ? libelleMois(a.mois) : ''
   const rythme = suiviRythme(reseau, anneeDe(reseau.jour)).find((l) => l.magasin.nom === m.nom)
-  const prevue = reseau.visites.filter((v) => v.magasin === m.nom && v.date > reseau.jour && estVisite(v)).sort((x, y) => x.date.localeCompare(y.date))[0]
+  const etape = prochaineEtape(reseau, m.nom)
   const ouvertes = actionsDuMagasin(reseau, m.nom).filter((x) => !x.a.faite)
   const retards = ouvertes.filter((x) => enRetard(x.a, reseau.jour)).length
   const derniere = reseau.visites.filter((v) => v.magasin === m.nom && visiteFaite(v, reseau.jour) && estVisite(v)).sort((x, y) => y.date.localeCompare(x.date))[0]
@@ -56,23 +65,14 @@ export function SituationMagasin({ reseau, m, planifier, objectifs }: { reseau: 
         <Indicateur libelle="Panier moyen HT" valeur={c?.panier != null ? formatEuros(c.panier) : '—'} detail={c?.pmCave != null ? `Cave ${formatEuros(c.pmCave)}` : undefined} />
         <Indicateur libelle="Taux de marge" valeur={c?.marge != null ? `${c.marge.toLocaleString('fr-FR')} %` : '—'} />
       </Box>
-      {/* Vague 5 (55A) : une seule carte « Plan » : prochaines étapes, parcours des 6 premiers mois, priorités, objectifs */}
-      <Card component="section" aria-label="Plan"><CardContent sx={{ p: 3 }}>
-        <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem', mb: 1 }}>Plan</Typography>
-        <DansCarte.Provider value>
-      <Section titre="Prochaines étapes">
-        <Etape libelle="Visite" valeur={prevue ? `${dateLongue(prevue.date)} · ${libelleTypeVisite(prevue.type)}${prevue.visiteurs.length ? ` · ${nomsVisiteurs(prevue)}` : ''}`
-          : <Box component="span" sx={{ color: rythme?.alerte ? 'error.main' : 'text.secondary' }}>{rythme?.alerte ? `${libellePasVu(rythme)} · à planifier` : 'Pas de visite prévue'}</Box>}
-          action={!prevue ? <Button onClick={planifier} sx={{ minHeight: 48, flexShrink: 0 }}>Planifier</Button> : <Button component={RouterLink} to={lienVisite(prevue)} sx={{ minHeight: 48, flexShrink: 0 }}>Ouvrir</Button>} />
-        <Etape libelle="Tâches ouvertes" valeur={ouvertes.length ? <>{ouvertes.length}{retards ? <Box component="span" sx={{ color: 'error.main' }}>{` · ${retards} en retard`}</Box> : null}</> : 'Aucune'}
-          action={<Button component={RouterLink} to={`${lien}?vue=activite`} sx={{ minHeight: 48 }}>Voir</Button>} />
-        <Etape libelle="Budget" valeur="Construire, relire, valider" action={<Button component={RouterLink} to={`${lien}?vue=budget`} sx={{ minHeight: 48 }}>Ouvrir</Button>} />
-        <Etape libelle="Clôture du mois" valeur="Réel, stock, frais" action={<Button component={RouterLink} to={`${lien}?vue=chiffres&partie=cloture`} sx={{ minHeight: 48 }}>Ouvrir</Button>} />
-      </Section>
+      <Box component="section" aria-label="Prochaines étapes" sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' } }}>
+        <Tuile libelle="Visite" valeur={etape.libelle} detail={etape.etape === 'planifier' && rythme?.alerte ? libellePasVu(rythme) : etape.detail} lien={etape.lien} icone={iconeEtape[etape.etape]} alerte={etape.etape === 'planifier' && !!rythme?.alerte} />
+        <Tuile libelle="Tâches" valeur={ouvertes.length ? `${ouvertes.length} en cours` : 'Aucune en cours'} detail={retards ? `${retards} en retard` : undefined} lien={`${lien}?vue=activite`} icone={<TaskAltOutlined />} alerte={retards > 0} />
+        <Tuile libelle="Budget" valeur="Construire, relire, valider" lien={`${lien}?vue=budget`} icone={<AccountBalanceWalletOutlined />} />
+        <Tuile libelle="Clôture du mois" valeur="Réel, stock, frais" lien={`${lien}?vue=chiffres&partie=cloture`} icone={<FactCheckOutlined />} />
+      </Box>
       <ParcoursIntegration reseau={reseau} m={m} />
       {objectifs}
-        </DansCarte.Provider>
-      </CardContent></Card>
       <Section titre="Dernier compte rendu">
         {!derniere ? <Typography variant="body2" color="text.secondary">Aucune visite enregistrée.</Typography> : (
           <Box sx={{ display: 'grid', gap: 0.5 }}>

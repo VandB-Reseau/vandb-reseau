@@ -48,7 +48,7 @@ test('22A et 23A : vue d’ensemble du magasin et activité en un seul fil', asy
   const indicateurs = page.getByRole('region', { name: 'Indicateurs du magasin' })
   await expect(indicateurs.getByText('CA de septembre 2026')).toBeVisible()
   await expect(indicateurs.getByText('Panier moyen HT')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Prochaines étapes' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Prochaines étapes' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Dernier compte rendu' })).toBeVisible()
   await expect(page.getByText('Vitrine refaite, stock à revoir.').first()).toBeVisible()
   // Activité : plus de sous-onglets, « À venir » en tête et des filtres en puces
@@ -65,17 +65,16 @@ test('22A et 23A : vue d’ensemble du magasin et activité en un seul fil', asy
   await lisible(page, isMobile, false)
 })
 
-test('24A : la visite en quatre étapes, son étape dans l’historique', async ({ page, isMobile }) => {
+test('24A : la visite en trois étapes (vague 7), son étape dans l’historique', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test/visite?id=1')
   await expect(page.getByRole('heading', { level: 1, name: 'Visite de Lyon Test' })).toBeVisible()
   const frise = page.getByRole('navigation', { name: 'Étapes de la visite' })
-  await expect(frise.getByRole('button')).toHaveCount(4)
+  await expect(frise.getByRole('button')).toHaveCount(3)
   // Visite faite, compte rendu à signer : la frise ouvre l'étape en cours
-  await expect(frise.getByRole('button', { name: /^3 Compte rendu : Signature attendue/ })).toHaveAttribute('aria-current', 'step')
-  await frise.getByRole('button', { name: /^4 Suivi/ }).click()
-  await expect(page.getByText('Refaire la tête de gondole Beaujolais')).toBeVisible()
-  await frise.getByRole('button', { name: /^2 Sur place/ }).click()
+  await expect(frise.getByRole('button', { name: /^3 Après : Signature attendue/ })).toHaveAttribute('aria-current', 'step')
+  await expect(page.getByText('Refaire la tête de gondole Beaujolais').first()).toBeVisible()
+  await frise.getByRole('button', { name: /^2 Visite/ }).click()
   await expect(page.getByText('Tête de gondole à reprendre.')).toBeVisible()
   await lisible(page, isMobile)
   // Préparer : la fiche avant visite dans le parcours
@@ -129,7 +128,7 @@ test('26A : fixer un objectif chiffré, suivi dans la fiche et la préparation',
   await expect(page.getByText('Départ, septembre 2026 : 40,00 €')).toBeVisible()
   await page.getByLabel('Valeur visée').fill('45')
   await page.getByLabel('Échéance').fill('2027-01')
-  await page.getByLabel('Refaire la tête de gondole Beaujolais').check()
+  await page.getByRole('dialog').getByRole('checkbox', { name: 'Refaire la tête de gondole Beaujolais' }).check()
   await page.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Objectif fixé.')).toBeVisible()
   await expect(page.getByText('Panier moyen HT Cave : 40,00 € → 45,00 € d’ici janvier 2027')).toBeVisible()

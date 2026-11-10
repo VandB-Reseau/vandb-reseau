@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 // L8 (Joseph, 21/10/2026) : notifications sur le téléphone. Le navigateur de test n'a pas de service d'envoi :
 // l'abonnement de l'appareil est simulé, la fonction Supabase « notifier » aussi.
@@ -102,9 +102,7 @@ test('une visite saisie part en notification vers le franchisé du magasin', asy
   await seConnecter(page)
   const appels = await fonctionSimulee(page)
   await page.route('https://supabase.test/rest/v1/visits*', (r) => r.request().method() === 'POST' ? r.fulfill({ status: 201, json: [{ id: 42 }] }) : r.fallback())
-  await page.goto('./#/visites')
-  await page.getByRole('button', { name: 'Saisir une visite pour Lyon Test' }).click()
-  await page.getByRole('dialog', { name: 'Saisir une visite' }).getByRole('button', { name: 'Enregistrer' }).click()
+  await (await saisirVisiteNonPrevue(page, 'Lyon Test')).getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Visite enregistrée.')).toBeVisible()
   await expect.poll(() => appels).toContainEqual({ type: 'visite', ids: [42] })
 })

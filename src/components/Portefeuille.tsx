@@ -39,9 +39,10 @@ export interface Compteur { valeur: ReactNode; libelle: string; couleur?: string
 // PC : grande pastille, compteurs en colonnes. Téléphone : en-tête bas (petite pastille, lignes sur une ligne,
 // compteurs en texte, flèche de retour à la place de la pastille) pour laisser la place aux onglets.
 // À côté du nom, en pictos : Appeler, Message, puis actions et icones (boutons ronds), puis Modifier ; detail : ligne en plus.
-export function ProfilPersonne({ nom, insigne, avatar, lignes, pastille, compteurs, telephone, libelleAppel = 'Appeler', lienMessage, modifier, actions, icones, detail, retour }: {
+export function ProfilPersonne({ nom, insigne, avatar, lignes, pastille, compteurs, telephone, libelleAppel = 'Appeler', lienMessage, modifier, actions, icones, detail, retour, principal }: {
   nom: string; insigne?: ReactNode; avatar?: (taille: number) => ReactNode; lignes: string[]; pastille?: { ton: Ton; libelle: string } | null; compteurs: Compteur[]
   telephone?: string; libelleAppel?: string; lienMessage?: string; modifier?: () => void; actions?: ReactNode; icones?: ReactNode; detail?: ReactNode
+  principal?: ReactNode // vague 7 (79A) : l'action principale (le bouton « Visite »), à droite sur PC, en pleine largeur sur téléphone
   retour?: { libelle: string; aller: () => void }
 }) {
   const appel = libelleAppel === 'Appeler' ? 'Appeler' : `Appeler ${libelleAppel === 'Coach' ? 'mon Coach' : libelleAppel}`
@@ -80,7 +81,8 @@ export function ProfilPersonne({ nom, insigne, avatar, lignes, pastille, compteu
             </Box>
           )}
         </Box>
-        <Box sx={{ display: 'flex', flexShrink: 0, alignSelf: { xs: 'flex-start', md: 'center' }, ml: 'auto', mr: { xs: -1, md: 0 } }}>
+        <Box sx={{ display: 'flex', flexShrink: 0, alignSelf: { xs: 'flex-start', md: 'center' }, alignItems: 'center', ml: 'auto', mr: { xs: -1, md: 0 } }}>
+          {surPC && principal && <Box sx={{ mr: 1 }}>{principal}</Box>}
           <Bulle titre={telephone ? `${appel} · ${telephone}` : appel}>
             {telephone
               ? <IconButton href={telLien(telephone)} aria-label={appel} sx={rond}><CallOutlined /></IconButton>
@@ -103,6 +105,7 @@ export function ProfilPersonne({ nom, insigne, avatar, lignes, pastille, compteu
           {detail && <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>{detail}</Typography>}
         </Box>
       )}
+      {!surPC && principal && <Box sx={{ mt: 1.5, display: 'grid', '& > *': { width: '100%' } }}>{principal}</Box>}
     </Card>
   )
 }

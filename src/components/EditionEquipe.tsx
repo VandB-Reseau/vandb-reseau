@@ -41,8 +41,8 @@ export function messageErreur(e: unknown): string {
 // Squelette commun : titre, champs, suppression avec confirmation, enregistrement avec message humain
 // sansRechargement : l'enregistrement ne touche pas au réseau, la fenêtre se ferme sans le relire ;
 // erreurInitiale : fenêtre rouverte après un envoi refusé par la base
-export function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer, supprimer, suppressionBloquee, libelleSuppression, large, sansRechargement, erreurInitiale }: {
-  large?: boolean; titre: string; ouvert: boolean; onFermer: (message?: string) => void; children: ReactNode; valide: boolean
+export function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer, supprimer, suppressionBloquee, libelleSuppression, large, pleinePage, entete, sansRechargement, erreurInitiale }: {
+  large?: boolean; pleinePage?: boolean; entete?: ReactNode; titre: string; ouvert: boolean; onFermer: (message?: string) => void; children: ReactNode; valide: boolean
   enregistrer: () => Promise<string>; supprimer?: () => Promise<string>; suppressionBloquee?: string; libelleSuppression?: string
   sansRechargement?: boolean; erreurInitiale?: string
 }) {
@@ -57,10 +57,13 @@ export function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer
     try { const message = await action(); if (!sansRechargement) await recharger(); onFermer(message) } catch (e) { setErreur(messageErreur(e)) } finally { setEnvoi(false) }
   }
   return (
-    <Dialog open={ouvert} onClose={() => onFermer()} fullScreen={pleinEcran} fullWidth maxWidth={large ? "md" : "sm"} aria-labelledby="titre-edition">
-      <DialogTitle id="titre-edition">{titre}</DialogTitle>
+    <Dialog open={ouvert} onClose={() => onFermer()} fullScreen={pleinEcran || pleinePage} fullWidth maxWidth={large ? "md" : "sm"} aria-labelledby="titre-edition"
+      // Vague 7 (83A) : la saisie d'une visite s'ouvre en pleine page, colonne de lecture centrée
+      sx={pleinePage ? { '& .MuiDialog-paper': { m: 0, width: '100%', maxWidth: '100%', height: '100%', maxHeight: '100%', borderRadius: 0 } } : undefined}>
+      <DialogTitle id="titre-edition" sx={pleinePage ? { width: '100%', maxWidth: 960, mx: 'auto' } : undefined}>{titre}</DialogTitle>
+      {entete && <Box sx={{ width: '100%', maxWidth: 960, mx: 'auto', px: 3 }}>{entete}</Box>}
       <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>{children}</Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1, ...(pleinePage ? { maxWidth: 960, mx: 'auto' } : {}) }}>{children}</Box>
         {confirmer && (
           <Alert severity="warning" sx={{ mt: 2 }} action={<Button color="inherit" onClick={() => supprimer && agir(supprimer)} disabled={envoi} sx={{ minHeight: 48 }}>Supprimer</Button>}>
             {libelleSuppression}
@@ -68,7 +71,7 @@ export function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer
         )}
         {erreur && <Alert severity="error" sx={{ mt: 2 }}>{erreur}</Alert>}
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1 }}>
+      <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1, ...(pleinePage ? { width: '100%', maxWidth: 960 + 48, mx: 'auto', borderTop: '1px solid', borderColor: 'divider', pt: 1.5 } : {}) }}>
         {supprimer && (
           suppressionBloquee
             ? <Typography variant="body2" color="text.secondary" sx={{ flex: 1, minWidth: 200 }}>{suppressionBloquee}</Typography>

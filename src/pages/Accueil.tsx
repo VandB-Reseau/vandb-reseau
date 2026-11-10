@@ -32,7 +32,7 @@ import { analyser, caDe, chiffresDuMagasin, decalerMois, formatKEuros, formatPou
 import { useAuth } from '../auth/AuthContext'
 import { useMessagerie } from '../data/MessagerieContext'
 import { caseDe, nineBox, tendance } from '../data/sante'
-import { anneeDe, suiviRythme, type LigneRythme } from '../data/visites'
+import { anneeDe, suiviRythme, type LigneRythme, lienVisite } from '../data/visites'
 import { chargeA, coachA, libelleSuivi, niveauCharge, suivi } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche } from '../lib/format'
 import { ajouterJours, elementsDuMois, jourLong } from '../data/agenda'
@@ -57,6 +57,9 @@ import { libelleMois } from '../data/chiffres'
 import type { Profil } from '../auth/roles'
 import { libelleTypeVisite } from '../data/modele'
 import { PageHeader } from '../components/PageHeader'
+import { rappelsVisites } from '../data/ordreDuJour'
+import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
+import RateReviewOutlined from '@mui/icons-material/RateReviewOutlined'
 import { actionsDes, actionsEnCours, echeanceDate, enRetard, monNomPorteur, portePar, type ActionSuivie } from '../data/actions'
 import { useEcritureActions } from '../components/Actions'
 import { libellesEtatMandat, mandatsARenouveler } from '../data/associes'
@@ -99,7 +102,7 @@ function avatarATraiter(reseau: Reseau, x: ATraiter) {
 
 interface ATraiter { cle: string; titre: string; detail: string; lien: string; avatar: string; icone?: ReactNode; pastille?: { ton: Ton; libelle: string }; visite?: Visite; tache?: ActionSuivie }
 
-function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATraiter[] {
+function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean, moi = ''): ATraiter[] {
   const j = reseau.jour
   const perimetre = magasinsDu(reseau, p)
   const noms = new Set(perimetre.map((m) => m.nom))
@@ -135,6 +138,14 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
   for (const v of reseau.visites.filter((v) => v.prevue && v.date < j && v.id !== null && noms.has(v.magasin) && estVisite(v)).sort((x, y) => x.date.localeCompare(y.date))) {
     items.push({ cle: `vp-${v.id}`, titre: v.magasin, avatar: v.magasin, icone: <EventAvailableOutlined />, lien: '', visite: v,
       detail: [`Prévue le ${dateCourte(v.date)}`, nomsVisiteurs(v)].filter(Boolean).join(' · '), pastille: { ton: 'bleu', libelle: 'À confirmer' } })
+  }
+  // Vague 7 (85A) : mes visites à préparer (3 jours avant), compte rendu à écrire, signature attendue
+  if (moi) {
+    for (const r of rappelsVisites(reseau, noms, moi)) {
+      items.push({ cle: r.cle, titre: r.magasin, avatar: r.magasin, icone: r.genre === 'preparer' ? <AssignmentOutlined /> : <RateReviewOutlined />,
+        lien: `${lienVisite(r.visite).split('?')[0]}?id=${r.visite.id}&etape=${r.genre === 'preparer' ? 'preparer' : r.genre === 'signature' ? 'suivi' : 'surplace'}`, detail: r.detail,
+        pastille: r.genre === 'preparer' ? { ton: 'bleu', libelle: 'Préparer' } : r.genre === 'compterendu' ? { ton: 'orange', libelle: 'Compte rendu' } : { ton: 'gris', libelle: 'Signature' } })
+    }
   }
   const a = anneeDe(j)
   // Magasins pas vus depuis plus longtemps que le délai de leur case : les plus en dépassement d'abord
@@ -640,7 +651,7 @@ function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Resea
   // 38B : une chose n'apparaît qu'une fois ; mes propres tâches vivent dans « Mes tâches »
   const items = useMemo(() => {
     const miennes = new Set(taches.map((x) => x.cle))
-    return [...aTraiter(reseau, p, sansParametres).filter((i) => !i.tache || !miennes.has(i.tache.cle)), ...aTraiterAnimation(reseau, p, profil, demandes, entretiens),
+    return [...aTraiter(reseau, p, sansParametres, monNomPorteur(reseau, profil)).filter((i) => !i.tache || !miennes.has(i.tache.cle)), ...aTraiterAnimation(reseau, p, profil, demandes, entretiens),
       ...aTraiterVague5(reseau, p, communications.liste, connaissances)]
   }, [reseau, p, sansParametres, profil, demandes, entretiens, taches, communications.liste, connaissances])
   const contrats = useMemo(() => contratsDu(reseau, p), [reseau, p])

@@ -18,7 +18,12 @@ import { LigneAction, useChangerStatut } from './Actions'
 import { useAuth } from '../auth/AuthContext'
 import { useReseau } from '../data/ReseauContext'
 import { enregistrerPlan, rattacherTaches, type CibleTache } from '../data/chargement'
-import { actionsDuMagasin, type ActionSuivie } from '../data/actions'
+import { actionsDuMagasin, echeanceDate, enRetard, type ActionSuivie } from '../data/actions'
+import IconButton from '@mui/material/IconButton'
+import Menu from '@mui/material/Menu'
+import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
+import { Link as RouterLink } from 'react-router-dom'
+import { lienFiche } from '../lib/format'
 import { avancement, libelleStatut, objectifsDu, phraseObjectif } from '../data/objectifs'
 import { PRIORITES_MAX, libelleStatutPriorite, nouvelIdPriorite, prioritesDu, tachesDeLaPriorite, type Priorite, type StatutPriorite } from '../data/planAction'
 import { dateCourte } from '../lib/format'
@@ -46,7 +51,7 @@ function BlocPriorite({ reseau, m, p, rang, actions, equipe, modifier, signaler 
         </Typography>
         {taches.length > 0 && (
           <Box component="ul" aria-label={`Tâches de la priorité ${p.titre}`} sx={{ listStyle: 'none', m: 0, mt: 0.5, p: 0 }}>
-            {taches.map((x) => <LigneAction key={x.cle} reseau={reseau} x={x} avecPorteur changerStatut={changerStatut?.(x)} />)}
+            {taches.map((x) => <LigneAction key={x.cle} reseau={reseau} x={x} avecPorteur sansPriorite changerStatut={changerStatut?.(x)} />)}
           </Box>
         )}
       </Box>
@@ -76,14 +81,15 @@ export function SectionPlan({ reseau, m, signaler, equipe = true, lecture = fals
     <Section titre={actives.length ? `Plan d’action · ${actives.length}` : 'Plan d’action'}
       action={modifiable && actives.length < PRIORITES_MAX ? <Button startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }}>Ajouter une priorité</Button> : undefined}>
       {actives.length === 0
-        ? <Typography variant="body2" color="text.secondary">{equipe ? `Aucune priorité en cours. Un plan tient en ${PRIORITES_MAX} priorités au plus, chacune avec son objectif chiffré et ses tâches.` : 'Aucune priorité en cours.'}</Typography>
+        ? <Typography variant="body2" color="text.secondary">Aucune priorité en cours.</Typography>
         : <Box component="ol" aria-label="Priorités du plan d’action" sx={{ listStyle: 'none', m: 0, p: 0 }}>
             {actives.map((p, i) => <BlocPriorite key={p.id} reseau={reseau} m={m} p={p} rang={i + 1} actions={actions} equipe={equipe} signaler={signaler} modifier={modifiable ? () => setEdition(p) : undefined} />)}
           </Box>}
+      {equipe && <AutresTaches reseau={reseau} m={m} actions={actions.filter((x) => !x.a.faite && !actives.some((p) => p.id === x.a.priorite))} signaler={signaler} avecTitre={actives.length > 0} />}
       {(actives.length > 0 || closes.length > 0) && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1, pt: 1, borderTop: actives.length ? '1px solid' : 0, borderColor: 'divider' }}>
           {actives.length > 0 && <Typography variant="body2" color="text.secondary" sx={{ mr: 'auto' }}>{revue ? `Revu le ${dateCourte(revue)}` : 'Pas encore revu'}</Typography>}
-          {modifiable && actives.length > 0 && <Button onClick={() => void marquerRevu()} sx={{ minHeight: 48 }}>Marquer revu aujourd’hui</Button>}
+          {modifiable && actives.length > 0 && <MenuRevue marquer={() => void marquerRevu()} />}
           {closes.length > 0 && <Button onClick={() => setVoirCloses((v) => !v)} sx={{ minHeight: 48 }}>{voirCloses ? 'Masquer l’historique' : `Historique · ${closes.length}`}</Button>}
         </Box>
       )}
@@ -99,6 +105,37 @@ export function SectionPlan({ reseau, m, signaler, equipe = true, lecture = fals
       )}
       {edition !== undefined && <DialogPriorite reseau={reseau} m={m} priorite={edition} actions={actions} onFermer={(msg) => { setEdition(undefined); if (msg) signaler(msg) }} />}
     </Section>
+  )
+}
+
+// Vague 7 (90A) : la visite marque le plan revu ; le geste à la main reste dans le menu « ⋯ »
+function MenuRevue({ marquer }: { marquer: () => void }) {
+  const [ancre, setAncre] = useState<HTMLElement | null>(null)
+  return (
+    <>
+      <IconButton onClick={(e) => setAncre(e.currentTarget)} aria-label="Autres actions du plan" aria-haspopup="menu" sx={{ width: 48, height: 48 }}><MoreHorizOutlined /></IconButton>
+      <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)}>
+        <MenuItem onClick={() => { setAncre(null); marquer() }} sx={{ minHeight: 48 }}>Marquer revu aujourd’hui</MenuItem>
+      </Menu>
+    </>
+  )
+}
+
+// Vague 7 (90A) : les tâches ouvertes sans priorité, sous le plan ; les cinq plus urgentes, le reste dans Activité
+function AutresTaches({ reseau, m, actions, signaler, avecTitre }: { reseau: Reseau; m: Magasin; actions: ActionSuivie[]; signaler: (msg: string) => void; avecTitre: boolean }) {
+  const changerStatut = useChangerStatut(reseau, signaler)
+  if (!actions.length) return null
+  const tries = [...actions].sort((x, y) => Number(enRetard(y.a, reseau.jour)) - Number(enRetard(x.a, reseau.jour)) || (echeanceDate(x.a) || '9999').localeCompare(echeanceDate(y.a) || '9999'))
+  return (
+    <Box sx={{ mt: 1.5, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 48 }}>
+        <Typography component="h3" sx={{ fontWeight: 700, fontSize: '0.9375rem', mr: 'auto' }}>{avecTitre ? `Autres tâches · ${actions.length}` : `Tâches en cours · ${actions.length}`}</Typography>
+        {actions.length > 5 && <Button component={RouterLink} to={`${lienFiche(m.nom)}?vue=activite`} sx={{ minHeight: 48 }}>Tout voir</Button>}
+      </Box>
+      <Box component="ul" aria-label={avecTitre ? 'Autres tâches' : 'Tâches en cours'} sx={{ listStyle: 'none', m: 0, p: 0 }}>
+        {tries.slice(0, 5).map((x) => <LigneAction key={x.cle} reseau={reseau} x={x} avecPorteur changerStatut={changerStatut?.(x)} />)}
+      </Box>
+    </Box>
   )
 }
 

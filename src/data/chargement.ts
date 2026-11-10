@@ -862,6 +862,27 @@ export async function changerStatutTache(cible: CibleTache, statut: '' | StatutT
   if (plan[cible.index]) poser(plan[cible.index])
   verifier(await supabase.from('visits').update({ action_plan: plan }).eq('id', cible.visite))
 }
+// Revue des tâches pendant une visite (vague 7, 87A) : faite, en cours, bloquée (raison), à faire, ou reportée (nouvelle échéance)
+export type RevueTache = { statut: 'faite' | 'en_cours' | 'bloquee' | 'a_faire' | 'reportee'; raison?: string; echeance?: string }
+export async function revoirTaches(lot: { cible: CibleTache; revue: RevueTache }[], jour: string, par = '') {
+  const poser = (a: ActionPlan, r: RevueTache) => {
+    if (r.statut === 'faite') { a.faite = jour; if (par) a.faitePar = par; else delete a.faitePar; return }
+    delete a.faite; delete a.faitePar
+    if (r.statut === 'en_cours' || r.statut === 'bloquee') a.statut = r.statut; else delete a.statut
+    if (r.statut === 'bloquee' && r.raison?.trim()) a.raison = r.raison.trim().slice(0, 300); else delete a.raison
+    if (r.statut === 'reportee' && r.echeance && /^\d{4}-\d{2}-\d{2}$/.test(r.echeance)) a.echeance = r.echeance
+  }
+  const libres = lot.filter((l): l is { cible: { libre: string; magasin: string }; revue: RevueTache } => 'libre' in l.cible)
+  if (libres.length) await modifierActionsLibres((t) => { for (const l of libres) { const a = t[l.cible.magasin]?.find((x) => x.id === l.cible.libre); if (a) poser(a, l.revue) } })
+  const plans = lot.filter((l): l is { cible: { visite: number; index: number }; revue: RevueTache } => 'visite' in l.cible)
+  for (const id of [...new Set(plans.map((l) => l.cible.visite))]) {
+    const lu = await supabase.from('visits').select('id,action_plan').eq('id', id)
+    if (lu.error) throw new ErreurEnregistrement(lu.error.message)
+    const plan = normaliserPlan(lu.data?.[0]?.action_plan)
+    for (const l of plans.filter((x) => x.cible.visite === id)) if (plan[l.cible.index]) poser(plan[l.cible.index], l.revue)
+    verifier(await supabase.from('visits').update({ action_plan: plan }).eq('id', id))
+  }
+}
 // Rattache des tâches à une priorité du plan d'action (vague 4, 31A) ; priorite vide = détache
 export async function rattacherTaches(lot: CibleTache[], priorite: string) {
   const poser = (a: ActionPlan) => { if (priorite) a.priorite = priorite; else delete a.priorite }
@@ -1024,7 +1045,13 @@ export function enregistrerPreparation(magasin: string, preparation: Preparation
   return enFile(async () => {
     const lu = await lireSuivi<Record<string, PreparationVisite>>('preparations_visites', {})
     const { valeur } = lu
-    if (preparation && (preparation.notes.trim() || preparation.heure)) valeur[magasin] = { ...preparation, notes: preparation.notes.trim() }
+    const libres = (preparation?.libres ?? []).map((t) => t.trim().slice(0, 200)).filter(Boolean)
+    const sujets = [...new Set(preparation?.sujets ?? [])].slice(0, 40)
+    if (preparation && (preparation.notes.trim() || preparation.heure || sujets.length || libres.length)) {
+      const { sujets: _s, libres: _l, ...reste } = preparation
+      void _s; void _l
+      valeur[magasin] = { ...reste, notes: preparation.notes.trim(), ...(sujets.length ? { sujets } : {}), ...(libres.length ? { libres } : {}) }
+    }
     else delete valeur[magasin]
     await ecrireSuivi('preparations_visites', valeur, lu)
   })

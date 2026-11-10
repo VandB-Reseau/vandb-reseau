@@ -141,7 +141,8 @@ test('50A et 55A : le parcours d’intégration se règle dans Paramètres et se
   await expect(page.getByLabel('Étape').first()).toHaveValue('Visite de la première semaine')
   // Arles Test a ouvert le 20/08/2026 : jour 68 de son intégration
   await page.goto('./#/magasins/Arles%20Test')
-  const plan = page.getByRole('region', { name: 'Plan' })
+  // Vague 7 : la carte Plan est défaite, l'intégration a sa propre carte
+  const plan = page.getByRole('main')
   await expect(plan.getByRole('heading', { name: /^Intégration · jour 68 · 0 sur 9$/ })).toBeVisible()
   await expect(plan.getByRole('region', { name: 'Prochaines étapes' })).toBeVisible()
   await plan.getByRole('checkbox', { name: 'Visite du premier mois faite' }).click()

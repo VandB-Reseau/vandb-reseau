@@ -18,6 +18,7 @@ import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
 import { Onglets, type Rubrique } from '../components/Onglets'
 import Typography from '@mui/material/Typography'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
+import FlagOutlined from '@mui/icons-material/FlagOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { ChampRecherche } from '../components/Outils'
 import { RechercheFiltres } from '../components/RechercheFiltres'
@@ -38,7 +39,7 @@ const FAITES_VISIBLES = 10
 const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr')
 
 // Regroupement des tâches à faire (vague 4, 32A) : par échéance (d'office), par magasin ou par personne
-type Regroupement = 'echeance' | 'magasin' | 'personne'
+type Regroupement = 'echeance' | 'magasin' | 'personne' | 'priorite'
 
 // Tâches à faire rangées par échéance ; une échéance écrite en toutes lettres (« novembre ») va dans « Plus tard »
 type Groupe = 'retard' | 'semaine' | 'tard' | 'sans'
@@ -127,10 +128,14 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajoutVide }: { r
   const [toutesFaites, setToutesFaites] = useState(false)
   const [edition, setEdition] = useState<ActionSuivie | null>(null)
   const [regroupement, setRegroupement] = useState<Regroupement>('echeance')
+  // Vague 7 (89A) : filtre « Sans priorité » et regroupement par priorité du plan d'action
+  const [sansPrio, setSansPrio] = useState(false)
+  const prioriteDe = (x: ActionSuivie) => (x.a.priorite ? reseau.plans?.[x.magasin]?.find((p) => p.id === x.a.priorite && p.statut === 'active') : undefined)
   const choix = magasin && noms.includes(magasin) ? magasin : null
   const q = sansAccents(recherche.trim())
   const actions = tachesDe(reseau, choix ? [choix] : noms, porteur)
     .filter((x) => !q || sansAccents(`${x.a.action} ${x.magasin} ${x.a.porteur ?? ''}`).includes(q))
+    .filter((x) => !sansPrio || !prioriteDe(x))
   const aFaire = actions.filter((x) => !x.a.faite)
   const faites = actions.filter((x) => x.a.faite)
   const cocher = async (x: ActionSuivie, faite: boolean) => {
@@ -158,12 +163,14 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajoutVide }: { r
   }
   const parGroupe = regroupement === 'magasin' ? parCle((x) => [x.magasin])
     : regroupement === 'personne' ? parCle((x) => (porteursDe(x.a).length ? porteursDe(x.a) : ['Sans porteur']))
+    : regroupement === 'priorite' ? parCle((x) => { const p = prioriteDe(x); return [p ? `${noms.length > 1 && !choix ? `${x.magasin} · ` : ''}${p.titre}` : '~Sans priorité'] }).map((g) => ({ ...g, titre: g.titre.replace(/^~/, '') }))
     : groupes.map((g) => ({ ...g, lignes: aFaire.filter((x) => groupeDe(x, reseau.jour, dansUneSemaine) === g.g) })).filter((g) => g.lignes.length)
   const bascule = (
     <ToggleButtonGroup exclusive size="small" value={regroupement} onChange={(_e, v: Regroupement | null) => v && setRegroupement(v)} aria-label="Regrouper les tâches" sx={{ display: { xs: 'none', md: 'inline-flex' } }}>
       <ToggleButton value="echeance" sx={{ minHeight: 40, px: 1.5 }}>Par échéance</ToggleButton>
       {noms.length > 1 && <ToggleButton value="magasin" sx={{ minHeight: 40, px: 1.5 }}>Par magasin</ToggleButton>}
       <ToggleButton value="personne" sx={{ minHeight: 40, px: 1.5 }}>Par personne</ToggleButton>
+      <ToggleButton value="priorite" sx={{ minHeight: 40, px: 1.5 }}>Par priorité</ToggleButton>
     </ToggleButtonGroup>
   )
   const filtreMagasin = noms.length > 1 && (noms.length <= 6
@@ -180,9 +187,12 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajoutVide }: { r
   return (
     <>
       {choixPorteur}
-      <RechercheFiltres actifs={choix ? 1 : 0} actions={bascule}
+      <RechercheFiltres actifs={(choix ? 1 : 0) + (sansPrio ? 1 : 0)} actions={bascule}
         recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Tâche, magasin, porteur" libelle="Rechercher une tâche" />}>
-        {filtreMagasin || undefined}
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          {filtreMagasin || null}
+          <Chip label="Sans priorité" icon={<FlagOutlined />} color={sansPrio ? 'primary' : 'default'} variant={sansPrio ? 'filled' : 'outlined'} onClick={() => setSansPrio((v) => !v)} aria-pressed={sansPrio} sx={{ minHeight: 48 }} />
+        </Box>
       </RechercheFiltres>
       <Box sx={{ display: 'grid', gap: 2 }}>
         <CarteLignes label="À faire">

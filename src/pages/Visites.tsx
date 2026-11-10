@@ -19,8 +19,6 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
-import AddOutlined from '@mui/icons-material/AddOutlined'
-import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
@@ -30,6 +28,7 @@ import EventRepeatOutlined from '@mui/icons-material/EventRepeatOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
 import { BoutonAction, ChampRecherche } from '../components/Outils'
 import { PageHeader } from '../components/PageHeader'
+import { BoutonVisite } from '../components/BoutonVisite'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { DialogVisite, visiteurs } from '../components/DialogVisite'
@@ -40,7 +39,7 @@ import { nineBox } from '../data/sante'
 import { PastilleCase } from '../components/Sante'
 import { FiltreMenu } from '../components/FiltreMenu'
 import Chip from '@mui/material/Chip'
-import { dateCourte, lienCoach, lienFiche, lienPreparation, lienRR } from '../lib/format'
+import { dateCourte, lienCoach, lienFiche, lienRR } from '../lib/format'
 import { cleFiltreCoach, enDirect, libelleSuivi, optionsFiltreCoach, suivi } from '../data/charge'
 import { libelleTypeVisite, nomsVisiteurs, typesVisite, type Reseau, type Visite } from '../data/modele'
 import { chercherDansVisite, type Trouvaille } from '../data/compteRendu'
@@ -78,7 +77,7 @@ const colonnesRythme: ColonneTri<LigneRythme>[] = [
   { cle: 'alerte', libelle: 'Alerte', valeur: (l) => (l.alerte ? l.depuis ?? 0 : null), texte: (l) => (l.alerte ? 'Pas vu à temps' : 'Dans les délais'), filtre: 'liste', premier: 'desc' },
 ]
 
-function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir: (magasins: string[]) => void; surPC: boolean; actions: ReactNode }) {
+function VueRythme({ reseau, surPC, actions }: { reseau: Reseau; surPC: boolean; actions: ReactNode }) {
   const annees = useMemo(() => anneesDisponibles(reseau), [reseau])
   const [cle, setCle] = useState(anneeDe(reseau.jour).cle)
   const [texte, setTexte] = useState('')
@@ -174,7 +173,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
                         <TableCell sx={{ whiteSpace: 'nowrap' }}>{visites(l)}</TableCell>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}>{l.derniere ? dateCourte(l.derniere.date) : <Typography variant="body2" color="text.secondary">Jamais visité</Typography>}</TableCell>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}><AlerteVisite l={l} /></TableCell>
-                        <TableCell sx={{ py: 0, whiteSpace: 'nowrap' }}><Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(l.magasin.nom)} aria-label={`Préparer la visite de ${l.magasin.nom}`}><AssignmentOutlined /></IconButton></Tooltip><Tooltip title="Saisir une visite"><IconButton aria-label={`Saisir une visite pour ${l.magasin.nom}`} onClick={() => saisir([l.magasin.nom])}><AddOutlined /></IconButton></Tooltip></TableCell>
+                        <TableCell sx={{ py: 0.5, whiteSpace: 'nowrap' }}><BoutonVisite reseau={reseau} magasin={l.magasin.nom} forme="court" sx={{ minHeight: 40 }} /></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -187,10 +186,7 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
                 <LigneCompacte key={l.magasin.nom} lien={lienFiche(l.magasin.nom)} avatar={<Blason magasin={l.magasin} />} titre={l.magasin.nom}
                   detail={[libelleSuivi(l.magasin, l.coach), `${visites(l)} en ${a.court}`, l.derniere ? `dernière le ${dateCourte(l.derniere.date)}` : l.alerte ? null : 'jamais visité', l.dernierContact && `appel le ${dateCourte(l.dernierContact.date)}`].filter(Boolean).join(' · ')}
                   fin={l.alerte ? <Pastille ton="orange">{libellePasVu(l)}</Pastille> : undefined}
-                  actions={<>
-                    {surPC && <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(l.magasin.nom)} aria-label={`Préparer la visite de ${l.magasin.nom}`}><AssignmentOutlined /></IconButton></Tooltip>}
-                    <Tooltip title="Saisir une visite"><IconButton aria-label={`Saisir une visite pour ${l.magasin.nom}`} onClick={() => saisir([l.magasin.nom])}><AddOutlined /></IconButton></Tooltip>
-                  </>} />
+                  actions={<BoutonVisite reseau={reseau} magasin={l.magasin.nom} forme="icone" />} />
               ))}
             </CarteLignes>
           )}
@@ -326,7 +322,7 @@ function ContenuVisites() {
           ]} />
           {vue === 'historique'
             ? <VueHistorique reseau={reseau} actions={null} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
-            : <VueRythme reseau={reseau} surPC={surPC} actions={null} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
+            : <VueRythme reseau={reseau} surPC={surPC} actions={null} />}
           {edition && <DialogVisite reseau={reseau} visite={edition.visite} magasinsInitiaux={edition.magasins} dateInitiale={edition.date} onFermer={(m) => { setEdition(null); if (m) setMessage(m) }} />}
           <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
         </>

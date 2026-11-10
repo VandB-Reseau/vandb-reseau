@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture, deplierATraiter } from './supabase-simule'
+import { saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture, deplierATraiter } from './supabase-simule'
 import { visitesFictives } from './donnees-fictives'
 
 // L1 (Joseph, 21/10/2026) : une visite planifiée ne compte qu'une fois faite (compte rendu ou « Faite ») ;
@@ -64,8 +64,10 @@ test('le jour de la visite, Ma semaine propose le compte rendu, qui la compte fa
   await avecVisites(page, [{ id: 51, store: 'Nantes Test', visit_date: jour(), type: 'terrain', visitor: 'Inès EXEMPLE', docs: [], prevue: true }])
   await page.goto('./#/visites?vue=semaine')
   await page.reload()
-  await page.getByRole('button', { name: 'Faire le compte rendu de Nantes Test' }).click()
-  const d = page.getByRole('dialog', { name: 'Compte rendu · Nantes Test' })
+  // Vague 7 (79A) : le bouton Visite du jour ouvre l'étape Visite
+  await page.getByRole('link', { name: 'Commencer la visite : Nantes Test' }).first().click()
+  await page.getByRole('main').getByRole('button', { name: 'Commencer la visite' }).click()
+  const d = page.getByRole('dialog', { name: 'Visite de Nantes Test' })
   await expect(d).toBeVisible()
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
@@ -79,8 +81,9 @@ test('une visite planifiée depuis Ma semaine est enregistrée comme prévue', a
   await page.addInitScript(() => { window.open = () => null })
   await seConnecter(page, { ecritures, appMetadata: { role: 'coach', coach: 'Inès EXEMPLE' } })
   await page.goto('./#/visites?vue=semaine')
-  await page.getByRole('button', { name: 'Planifier la visite de Nantes Test' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Enregistrer' }).click()
+  await page.getByRole('link', { name: 'Planifier la visite : Nantes Test' }).first().click()
+  await page.getByLabel('Date', { exact: true }).fill('2026-11-05')
+  await page.getByRole('button', { name: 'Planifier la visite' }).click()
   await expect(page.getByText(/^Visite planifiée le /)).toBeVisible()
   expect((ecritures.find((e) => e.table === 'visits' && e.methode === 'POST')!.corps as Record<string, unknown>[])[0]).toMatchObject({ store: 'Nantes Test', prevue: true })
 })
@@ -88,22 +91,18 @@ test('une visite planifiée depuis Ma semaine est enregistrée comme prévue', a
 test('le compte rendu commencé est gardé sur l’appareil et repris à la réouverture', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/visites')
-  await page.getByRole('button', { name: 'Saisir une visite pour Lyon Test' }).click()
-  let d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  let d = await saisirVisiteNonPrevue(page, 'Lyon Test')
   await d.getByRole('textbox', { name: /^1\. / }).fill('Vitrine à refaire avant Noël')
   // L'app est fermée sans enregistrer
   await page.reload()
-  await page.getByRole('button', { name: 'Saisir une visite pour Lyon Test' }).click()
-  d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  d = await saisirVisiteNonPrevue(page, 'Lyon Test')
   await expect(d.getByText(/^Brouillon repris du /)).toBeVisible()
   await expect(d.getByRole('textbox', { name: /^1\. / })).toHaveValue('Vitrine à refaire avant Noël')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Visite enregistrée.')).toBeVisible()
   expect((ecritures.find((e) => e.table === 'visits' && e.methode === 'POST')!.corps as Record<string, unknown>[])[0]).toMatchObject({ sections: expect.arrayContaining(['Vitrine à refaire avant Noël']), prevue: false })
   // Enregistré : plus de brouillon
-  await page.getByRole('button', { name: 'Saisir une visite pour Lyon Test' }).click()
-  d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  d = await saisirVisiteNonPrevue(page, 'Lyon Test')
   await expect(d.getByText(/^Brouillon repris du /)).toHaveCount(0)
   await expect(d.getByRole('textbox', { name: /^1\. / })).toHaveValue('')
 })
@@ -118,9 +117,7 @@ test('base pas encore passée en 0017 : la visite s’enregistre sans la colonne
     if ('prevue' in (r.request().postDataJSON() as Record<string, unknown>[])[0]) return r.fulfill({ status: 400, json: { code: 'PGRST204', message: "Could not find the 'prevue' column of 'visits' in the schema cache" } })
     return r.fulfill({ status: 201, json: [{ id: 77 }] })
   })
-  await page.goto('./#/visites')
-  await page.getByRole('button', { name: 'Saisir une visite pour Lyon Test' }).click()
-  await page.getByRole('dialog', { name: 'Saisir une visite' }).getByRole('button', { name: 'Enregistrer' }).click()
+  await (await saisirVisiteNonPrevue(page, 'Lyon Test')).getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Visite enregistrée.')).toBeVisible()
   expect(essais).toBe(2)
 })

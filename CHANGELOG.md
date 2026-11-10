@@ -28,6 +28,21 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   campagnes, Budgets par magasin, Suivi par magasin, Clôture du mois, Ma semaine, Campagne des budgets. Les tableaux
   financiers gardent l'ordre de leurs lignes, sans tri ni filtre ; ceux qui avaient leur propre style prennent celui du
   compte de résultat. Sans migration.
+- Visites et tâches, vague 7 (Joseph, 10/11/2026, choix 79A à 91A). Un seul bouton « Visite » partout (fiche, Visites,
+  Ma semaine) dont le libellé dit la prochaine étape : Planifier, Préparer, Commencer, Écrire le compte rendu. Page de la
+  visite en trois étapes, Préparer, Visite, Après. Préparer : la date se pose sur la page, ordre du jour proposé à
+  cocher (priorités du plan, tâches ouvertes, campagnes, mot du franchisé, objectifs et chiffres pour l'équipe seule),
+  sujets libres, notes, envoi de l'ordre du jour au franchisé. Saisie en pleine page avec sommaire et parties
+  repliables : sujets traités ou reportés (les reportés restent pour la prochaine visite), revue du plan d'action
+  (statut de chaque tâche, priorité toujours d'actualité, atteinte ou abandonnée avec son bilan, tâches ajoutées sous
+  chaque priorité ; la visite marque le plan revu), constats, chiffres, photos. Une saisie nouvelle reprend la visite
+  planifiée du magasin à 7 jours près. À traiter : visite à préparer 3 jours avant, compte rendu à écrire, signature
+  attendue. Compte rendu : plan d'action rangé par priorité, avec ce qui est fait depuis la dernière visite. Tâches :
+  priorité en puce, regroupement « Par priorité », filtre « Sans priorité », statut dans la fenêtre de la tâche. Fiche
+  du magasin : prochaines étapes en tuiles, plan d'action avec ses autres tâches, un seul jeu d'actions dans l'en-tête
+  (Visite, Appeler, Message, « + » pour une tâche, une visite non prévue, un appel ou une note). Espace franchisé : ses
+  tâches rangées sous les priorités. Sans migration (sujets de l'ordre du jour rangés dans la rubrique `preparation`).
+
 - Lancement manuel limité de la mise en ligne (Joseph, 10/11/2026) : « Run workflow » de « Tester et publier » prend
   une liste de tests à repasser seulement ; vide, toute la suite. Sans migration.
 - Refonte façon SaaS, vague 6 : messagerie, budget et suivi (Joseph, 10/11/2026, choix 57 à 78 sauf 59, 61, 65, 66, 67,

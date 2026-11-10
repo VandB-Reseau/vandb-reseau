@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture, deplierATraiter } from './supabase-simule'
+import { seConnecter, textesTropPetits, type Ecriture, deplierATraiter, revoirTache, saisirVisiteNonPrevue } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -20,7 +20,9 @@ test('ajouter une action hors visite, la cocher faite, puis la modifier et la su
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, persister: true })
   await page.goto('./#/magasins/Brest%20Test?vue=actions')
-  await page.getByRole('button', { name: 'Ajouter une tâche' }).click()
+  // Vague 7 : la tâche s'ajoute par le « + » de la fiche
+  await page.getByRole('main').getByRole('button', { name: 'Ajouter', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Tâche' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une tâche' })
   await d.getByLabel('Tâche', { exact: true }).fill('Relancer la commande de coffrets')
   await d.getByLabel('Porteurs').click()
@@ -77,13 +79,11 @@ test('une action hors visite se coche faite pendant la visite suivante et appara
   await page.goto('./#/')
   await deplierATraiter(page)
   await expect(page.getByRole('region', { name: 'À traiter' }).getByRole('link', { name: /^Commander la nouvelle PLV/ })).toBeVisible()
-  await page.goto('./#/magasins/Brest%20Test?vue=visites')
-  await page.getByRole('button', { name: 'Saisir', exact: true }).click()
-  const d = page.getByRole('dialog', { name: 'Saisir une visite' })
-  const enCours = d.getByRole('group', { name: 'Tâches en cours' })
+  const d = await saisirVisiteNonPrevue(page, 'Brest Test')
+  const enCours = d.getByRole('region', { name: 'Plan d’action et tâches' })
   await expect(enCours).toContainText('Commander la nouvelle PLV')
   await expect(enCours).toContainText('depuis le 25 sept. 2026')
-  await enCours.getByText('Commander la nouvelle PLV').click()
+  await revoirTache(page, d, 'Commander la nouvelle PLV', 'Faite')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Visite enregistrée.')).toBeVisible()
   expect(derniere(ecritures)!['Brest Test'][0].faite).toBe(new Date().toISOString().slice(0, 10))

@@ -12,8 +12,16 @@ import Typography from '@mui/material/Typography'
 import AddLinkOutlined from '@mui/icons-material/AddLinkOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import { Fenetre } from './EditionEquipe'
-import { SaisieCompteRendu } from './SaisieCompteRendu'
-import { enregistrerAudit, enregistrerChiffres, enregistrerConstats, enregistrerVisites, marquerActions, supprimerVisite } from '../data/chargement'
+import { ConstatsVisite, OrdreDuJourSaisie, RevuePlan, type EtatSujet, type RevuesPriorites, type RevuesTaches } from './SaisieCompteRendu'
+import Alert from '@mui/material/Alert'
+import Chip from '@mui/material/Chip'
+import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
+import type { ReactNode } from 'react'
+import { ordreDuJour, visitePlanifieeProche } from '../data/ordreDuJour'
+import { actionsEnCours } from '../data/actions'
+import { prioritesDu } from '../data/planAction'
+import { enregistrerAudit, enregistrerChiffres, enregistrerConstats, enregistrerPlan, enregistrerPreparation, enregistrerVisites, revoirTaches, supprimerVisite, type CibleTache } from '../data/chargement'
 import { ChampsChiffres, useSaisieChiffres } from './Chiffres'
 import { auditDe, lireNombre, moisPrecedent, typesAudit, typesContact } from '../data/chiffres'
 import { partiesVides } from '../data/compteRendu'
@@ -42,7 +50,23 @@ export function visiteurs(reseau: Reseau): string[] { return visiteursGroupes(re
 // Ce que garde le brouillon du compte rendu (photos exceptées)
 interface Brouillon {
   magasins: string[]; date: string; type: string; participants: string[]; signatureRequise: boolean; lienSigne: string; dateSignature: string
-  documents: Document[]; notes: string; parties: string[]; plan: ActionPlan[]; faites: Record<string, boolean>; mois: string; chiffres: Record<string, string>
+  documents: Document[]; notes: string; parties: string[]; plan: ActionPlan[]; faites?: Record<string, boolean>; mois: string; chiffres: Record<string, string>
+  revues?: RevuesTaches; priorites?: RevuesPriorites; sujets?: Record<string, EtatSujet>
+}
+
+// Une partie de la saisie, repliable, avec son ancre pour le sommaire (vague 7, 83A)
+function BlocSaisie({ id, titre, detail, children }: { id: string; titre: string; detail?: string; children: ReactNode }) {
+  const [ouvert, setOuvert] = useState(true)
+  return (
+    <Box component="section" id={id} aria-label={titre} sx={{ scrollMarginTop: 72, borderTop: '1px solid', borderColor: 'divider', pt: 1 }}>
+      <Button onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert} endIcon={ouvert ? <ExpandLessOutlined /> : <ExpandMoreOutlined />}
+        sx={{ minHeight: 48, px: 0, color: 'text.primary', justifyContent: 'flex-start', width: '100%', '& .MuiButton-endIcon': { ml: 'auto' } }}>
+        <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1.0625rem' }}>{titre}</Typography>
+        {detail && <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>{detail}</Typography>}
+      </Button>
+      <Collapse in={ouvert}><Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1, pb: 1 }}>{children}</Box></Collapse>
+    </Box>
+  )
 }
 
 export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitial = 'terrain', dateInitiale, onFermer }: { reseau: Reseau; visite: Visite | null; magasinsInitiaux?: string[]; typeInitial?: string; dateInitiale?: string; onFermer: (m?: string) => void }) {
@@ -68,7 +92,10 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const [notes, setNotes] = useState(b?.notes ?? (visite?.notes || (visite?.prevue ? preparationDe(reseau, visite.magasin)?.notes ?? '' : '')))
   const [parties, setParties] = useState<string[]>(b?.parties ?? visite?.parties ?? partiesVides())
   const [plan, setPlan] = useState<ActionPlan[]>(b?.plan ?? visite?.plan ?? [])
-  const [faites, setFaites] = useState<Record<string, boolean>>(b?.faites ?? {})
+  // Revue du plan (87A) : statut des tâches ouvertes, statut des priorités ; anciens brouillons : « faites »
+  const [revues, setRevues] = useState<RevuesTaches>(() => b?.revues ?? Object.fromEntries(Object.entries(b?.faites ?? {}).filter(([, v]) => v).map(([k]) => [k, { statut: 'faite' as const }])))
+  const [revuesPriorites, setRevuesPriorites] = useState<RevuesPriorites>(b?.priorites ?? {})
+  const [etatsSujets, setEtatsSujets] = useState<Record<string, EtatSujet>>(b?.sujets ?? {})
   const unSeul = magasins.length <= 1
   const contact = typesContact.includes(type)
   const audit = typesAudit.includes(type) && unSeul
@@ -90,33 +117,68 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const [chiffresRepris, setChiffresRepris] = useState(!b?.chiffres)
   if (!chiffresRepris) { setChiffresRepris(true); chiffres.setValeurs(b!.chiffres) }
   // Toute saisie est gardée sur l'appareil ; rien n'est gardé tant que rien n'a changé
-  const courant: Brouillon = { magasins, date, type, participants, signatureRequise, lienSigne, dateSignature, documents, notes, parties, plan, faites, mois: chiffres.mois, chiffres: chiffres.valeurs as Record<string, string> }
+  const courant: Brouillon = { magasins, date, type, participants, signatureRequise, lienSigne, dateSignature, documents, notes, parties, plan, revues, priorites: revuesPriorites, sujets: etatsSujets, mois: chiffres.mois, chiffres: chiffres.valeurs as Record<string, string> }
   const [depart] = useState(() => JSON.stringify(courant))
   const texte = JSON.stringify(courant)
   useEffect(() => { if (texte !== depart) garderBrouillon(cleBrouillon, JSON.parse(texte)) }, [texte, depart, cleBrouillon])
   // Campagnes en cours à la date de la visite : constatées sur place, rangées à cette date
   const campagnes = useSaisieCampagnes(reseau, unSeul ? magasins[0] ?? '' : '', date)
+  // Anti-doublon (84A) : une saisie nouvelle reprend la visite planifiée du magasin à 7 jours près
+  const reprise = !visite && magasins.length === 1 ? visitePlanifieeProche(reseau, magasins[0], date) : null
+  const cible = visite ?? reprise
+  const sujets = unSeul && !contact && magasins[0] && (!visite || visite.prevue || visite.date >= reseau.jour) ? ordreDuJour(reseau, magasins[0]) : []
+  const avecPlan = unSeul && !contact && !!magasins[0]
+  const nbOuvertes = avecPlan ? actionsEnCours(reseau, new Set([magasins[0]])).filter((x) => !x.visite || x.visite.id !== (visite?.id ?? null)).length : 0
   const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date) && (!unSeul || chiffres.valide) && !(audit && !grilleRemplie && scoreInvalide)
   const noms = reseau.magasins.map((m) => m.nom)
   // Depuis un magasin (ou le compte rendu d'une visite prévue) : magasin, date, type et visiteurs déjà connus, sur une ligne
   const [details, setDetails] = useState(() => !((visite?.prevue || (!visite && magasinsInitiaux.length === 1)) && participants.length > 0))
+  const prioritesActivesNb = avecPlan ? prioritesDu(reseau, magasins[0]).filter((p) => p.statut === 'active').length : 0
+  const sommaire = contact ? [] : [
+    ...(sujets.length ? [{ id: 'saisie-ordre', titre: 'Ordre du jour' }] : []), ...(avecPlan ? [{ id: 'saisie-plan', titre: 'Plan d’action' }] : []),
+    { id: 'saisie-constats', titre: 'Constats' }, ...(audit || unSeul ? [{ id: 'saisie-chiffres', titre: audit ? 'Grille et chiffres' : 'Chiffres' }] : []), { id: 'saisie-documents', titre: 'Photos et documents' },
+  ]
   const quand = date === reseau.jour ? 'aujourd’hui' : /^\d{4}-\d{2}-\d{2}$/.test(date) ? `le ${dateCourte(date)}` : ''
   return (
     <Fenetre
-      large titre={visite?.prevue ? `Compte rendu · ${visite.magasin}` : visite ? `Modifier la visite de ${visite.magasin}` : 'Saisir une visite'} ouvert onFermer={onFermer} valide={valide}
+      large pleinePage titre={visite?.prevue ? `Visite de ${visite.magasin}` : visite ? `Modifier la visite de ${visite.magasin}` : 'Saisir une visite'} ouvert onFermer={onFermer} valide={valide}
+      entete={sommaire.length > 1 ? (
+        <Box component="nav" aria-label="Sommaire de la saisie" sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 1 }}>
+          {sommaire.map((x) => <Chip key={x.id} label={x.titre} onClick={() => document.getElementById(x.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} variant="outlined" sx={{ minHeight: 48, borderRadius: 2, flexShrink: 0 }} />)}
+        </Box>
+      ) : undefined}
       enregistrer={async () => {
-        const groupe = visite?.groupe || (magasins.length > 1 ? `g_${Date.now()}` : '')
+        const groupe = cible?.groupe || (magasins.length > 1 ? `g_${Date.now()}` : '')
         const signe = signatureRequise && !contact
-        const ids = await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, photos: unSeul && !contact ? photos : [], notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [], prevue: date > reseau.jour }, magasins, visite?.id ?? null)
+        const ids = await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, photos: unSeul && !contact ? photos : [], notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [], prevue: date > reseau.jour }, magasins, cible?.id ?? null)
         effacerBrouillon(cleBrouillon)
         // Franchisé prévenu sur son téléphone d'un nouveau compte rendu (visite faite, pas un appel ni une visite planifiée)
-        const sansCompteRendu = !visite || (!visite.notes.trim() && !visite.parties.some((x) => x.trim()))
+        const sansCompteRendu = !cible || (!cible.notes.trim() && !cible.parties.some((x) => x.trim()))
         if (!contact && sansCompteRendu && date <= reseau.jour) notifier('visite', ids)
-        // Clés « visite:index » (plan d'une visite) ou « l:id » (action hors visite)
-        const cles = unSeul && !contact ? Object.entries(faites).filter(([, v]) => v).map(([k]) => k) : []
-        const lot = cles.map((k) => k.startsWith('l:') ? { libre: k.slice(2), magasin: magasins[0], faite: date } : { visite: Number(k.split(':')[0]), index: Number(k.split(':')[1]), faite: date })
-          .filter((l) => 'libre' in l || l.visite)
-        if (lot.length) await marquerActions(lot, participants[0] ?? '')
+        const m0 = magasins[0]
+        // Revue du plan (87A) : clés « visite:index » (plan d'une visite) ou « l:id » (tâche hors visite)
+        if (avecPlan) {
+          const lot = Object.entries(revues).map(([k, r]) => ({ cible: (k.startsWith('l:') ? { libre: k.slice(2), magasin: m0 } : { visite: Number(k.split(':')[0]), index: Number(k.split(':')[1]) }) as CibleTache, revue: r }))
+            .filter((l) => 'libre' in l.cible || l.cible.visite)
+          if (lot.length) await revoirTaches(lot, date, participants[0] ?? '')
+          // Priorités : statut et bilan posés sur place ; une visite faite marque le plan revu
+          const tout = prioritesDu(reseau, m0)
+          const fait = date <= reseau.jour
+          if (tout.length && (fait || Object.keys(revuesPriorites).length)) {
+            await enregistrerPlan(m0, tout.map((p) => {
+              if (p.statut !== 'active') return p
+              const r = revuesPriorites[p.id]
+              if (r && r.statut !== 'active') return { ...p, statut: r.statut, bilan: r.bilan.trim().slice(0, 300), closLe: date, revueLe: date }
+              return fait ? { ...p, revueLe: date } : p
+            }))
+          }
+          // Ordre du jour : les sujets reportés restent pour la prochaine visite
+          if (fait && sujets.length) {
+            const prep = reseau.preparations[m0]
+            const reportes = sujets.filter((x) => etatsSujets[x.id] === 'reporte')
+            await enregistrerPreparation(m0, reportes.length ? { notes: '', heure: '', par: prep?.par ?? '', maj: date, sujets: reportes.filter((x) => x.genre !== 'libre').map((x) => x.id), libres: reportes.filter((x) => x.genre === 'libre').map((x) => x.titre) } : null)
+          }
+        }
         if (unSeul && chiffres.modifie) await enregistrerChiffres([chiffres.ligne()])
         const constats = unSeul ? campagnes.lot(date, participants[0] ?? reseau.directeur.nom) : []
         if (constats.length) await enregistrerConstats(constats)
@@ -127,7 +189,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         // Photos retirées ou d'un audit remplacé : effacées de l'espace photos une fois l'audit enregistré
         const gardees = new Set([...photosDe(resultat?.reponses), ...(unSeul && !contact ? photos : [])].map((p) => p.chemin))
         await supprimerPhotos([...new Set([...photosRetirees, ...photosDe(auditAvant?.reponses).map((p) => p.chemin), ...(visite?.photos ?? []).map((p) => p.chemin)])].filter((c) => !gardees.has(c)))
-        return visite ? 'Visite mise à jour.' : magasins.length > 1 ? `${magasins.length} visites enregistrées.` : 'Visite enregistrée.'
+        return visite || reprise ? 'Visite mise à jour.' : magasins.length > 1 ? `${magasins.length} visites enregistrées.` : 'Visite enregistrée.'
       }}
       supprimer={visite?.id ? async () => {
         await supprimerVisite(visite.id!)
@@ -180,6 +242,28 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         noOptionsText="Aucune personne ne correspond"
       />
       </Box></Collapse>
+      {reprise && (
+        <Alert severity="info">{`Une visite est prévue le ${dateCourte(reprise.date)} à ${reprise.magasin} : cette saisie la complète, sans créer de doublon.`}</Alert>
+      )}
+      {contact
+        ? <TexteDicte label="Notes" libelleDictee="Notes" valeur={notes} changer={setNotes} multiline minRows={3} />
+        : <>
+          {sujets.length > 0 && (
+            <BlocSaisie id="saisie-ordre" titre="Ordre du jour" detail={`${sujets.length} sujet${sujets.length > 1 ? 's' : ''}`}>
+              <OrdreDuJourSaisie sujets={sujets} etats={etatsSujets} setEtats={setEtatsSujets} />
+            </BlocSaisie>
+          )}
+          {avecPlan && (
+            <BlocSaisie id="saisie-plan" titre="Plan d’action et tâches" detail={[prioritesActivesNb && `${prioritesActivesNb} priorité${prioritesActivesNb > 1 ? 's' : ''}`, nbOuvertes && `${nbOuvertes} tâche${nbOuvertes > 1 ? 's' : ''} en cours`].filter(Boolean).join(' · ')}>
+              <RevuePlan reseau={reseau} visite={visite} magasin={magasins[0]} plan={plan} setPlan={setPlan} revues={revues} setRevues={setRevues} priorites={revuesPriorites} setPriorites={setRevuesPriorites} />
+            </BlocSaisie>
+          )}
+          <BlocSaisie id="saisie-constats" titre="Constats">
+            <ConstatsVisite tournee={!unSeul} notes={notes} setNotes={setNotes} parties={parties} setParties={setParties} />
+          </BlocSaisie>
+        </>}
+      {(audit || unSeul) && (
+        <BlocSaisie id="saisie-chiffres" titre={audit ? 'Grille, campagnes et chiffres' : 'Campagnes et chiffres'}>
       {grille && grille.themes.length > 0 && (
         <SaisieGrille titre={`Grille ${libellesGrilles[type]?.toLowerCase() ?? ''}`} reponses={reponses} setReponses={setReponses} seuil={grille.seuil} onRetirerPhoto={(c) => setPhotosRetirees((x) => [...x, c])} />
       )}
@@ -193,15 +277,12 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
           <TextField label="Score de l’audit (%)" value={score} onChange={(e) => setScore(e.target.value)} error={scoreInvalide} helperText={scoreInvalide ? 'Entre 0 et 100' : undefined} slotProps={{ htmlInput: { inputMode: 'decimal' } }} />
         </Box>
       )}
-      {contact
-        ? <TexteDicte label="Notes" libelleDictee="Notes" valeur={notes} changer={setNotes} multiline minRows={3} />
-        : <SaisieCompteRendu
-          reseau={reseau} visite={visite} tournee={!unSeul} magasin={magasins[0] ?? ''}
-          notes={notes} setNotes={setNotes} parties={parties} setParties={setParties} plan={plan} setPlan={setPlan} faites={faites} setFaites={setFaites}
-        />}
       {unSeul && magasins[0] && <ChampsChiffres s={chiffres} reseau={reseau} titre="Chiffres du mois" />}
       {unSeul && <SaisieCampagnes s={campagnes} />}
-      {!contact && <>
+        </BlocSaisie>
+      )}
+      {!contact && (
+        <BlocSaisie id="saisie-documents" titre="Photos, documents et signature">
       <Box>
         <FormControlLabel control={<Switch checked={signatureRequise} onChange={(e) => setSignatureRequise(e.target.checked)} />} label="Visite contractuelle, à faire signer" sx={{ minHeight: 48 }} />
         <Collapse in={signatureRequise}>
@@ -223,7 +304,8 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         ))}
         <Button startIcon={<AddLinkOutlined />} onClick={() => setDocuments((x) => [...x, { label: '', url: '' }])} sx={{ minHeight: 48 }}>Ajouter un document</Button>
       </Box>
-      </>}
+        </BlocSaisie>
+      )}
     </Fenetre>
   )
 }
