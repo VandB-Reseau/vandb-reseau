@@ -168,7 +168,7 @@ const libelleAccessible = (d: Destination, c: Compteurs) => {
 
 // Menu latéral clair (refonte, Joseph 09/11/2026, choix 1A et 2A) : logo et recherche en haut, quatre rubriques titrées,
 // le compte en bas. Plus de barre noire au-dessus des pages.
-const titreRubrique = { bgcolor: 'transparent', px: 1.5, lineHeight: '32px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary' } as const
+const titreRubrique = { bgcolor: 'transparent', px: 1.5, lineHeight: '28px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary' } as const
 function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: Destination[]; sansParametres?: boolean; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
@@ -177,7 +177,7 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
     const actif = estActive(d, pathname)
     return (
       <ListItemButton key={d.chemin} selected={actif} onClick={() => naviguer(d.chemin)} aria-label={libelleAccessible(d, c)} aria-current={actif ? 'page' : undefined}
-        sx={{ mb: 0.25, minHeight: 40, px: 1.5, borderRadius: 2, '&.Mui-selected': { bgcolor: 'action.selected', boxShadow: (t) => `inset 3px 0 0 ${t.palette.secondary.main}` } }}>
+        sx={{ mb: 0.25, minHeight: 36, px: 1.5, borderRadius: 2, '&.Mui-selected': { bgcolor: 'action.selected', boxShadow: (t) => `inset 3px 0 0 ${t.palette.secondary.main}` } }}>
         <ListItemIcon sx={{ minWidth: 34, color: actif ? 'text.primary' : 'text.secondary', '& svg': { fontSize: 20 } }}><Icone d={d} actif={actif} c={c} /></ListItemIcon>
         <ListItemText primary={d.libelle} slotProps={{ primary: { sx: { fontWeight: actif ? 700 : 500, fontSize: '0.875rem' } } }} />
       </ListItemButton>
@@ -204,7 +204,7 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
         {franchise
           ? <List disablePadding>{franchise.map(item)}</List>
           : rubriquesMenu(!!sansParametres).map((r) => (
-            <List key={r.titre} disablePadding sx={{ mb: 1 }} subheader={<ListSubheader disableSticky sx={titreRubrique}>{r.titre}</ListSubheader>}>
+            <List key={r.titre} disablePadding sx={{ mb: 0.5 }} subheader={<ListSubheader disableSticky sx={titreRubrique}>{r.titre}</ListSubheader>}>
               {r.destinations.map(item)}
             </List>
           ))}

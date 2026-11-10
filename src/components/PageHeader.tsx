@@ -35,7 +35,7 @@ function Titre({ titre }: { titre: string }) {
   return (
     <Box sx={{ flex: 1, minWidth: 0, minHeight: { xs: 40, md: 48 }, display: 'flex', alignItems: 'center', gap: 1.5 }}>
       <Typography variant="h1" sx={{ minWidth: 0 }}>{titre}</Typography>
-      {etiquette && <Chip variant="outlined" label={`${etiquette.libelle} · ${etiquette.nombre}`} onDelete={etiquette.revenir} deleteIcon={<CloseOutlined aria-label="Revenir à tout le périmètre" />} sx={{ display: { xs: 'none', md: 'inline-flex' }, fontWeight: 700, fontSize: '0.8125rem' }} />}
+      {etiquette && <Chip variant="outlined" label={etiquette.libelle} onDelete={etiquette.revenir} deleteIcon={<CloseOutlined aria-label="Revenir à tout le périmètre" />} sx={{ display: { xs: 'none', md: 'inline-flex' }, fontWeight: 700, fontSize: '0.8125rem' }} />}
     </Box>
   )
 }

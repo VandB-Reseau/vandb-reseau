@@ -20,6 +20,9 @@ import type { Ton } from '../components/Social'
 import { ProfilPersonne, rond } from '../components/Portefeuille'
 import { Blason } from '../components/Blason'
 import { FilActivite } from './Accueil'
+import { filDu } from '../data/fil'
+import { Puces } from '../components/Social'
+import { SituationMagasin } from '../components/SyntheseMagasin'
 import { statutLibelle } from '../data/modele'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -60,9 +63,7 @@ import { BoutonAjouterAction, ListeActions } from '../components/Actions'
 import { ListeAssocies } from '../components/Associes'
 import { useDroits } from '../auth/Droits'
 import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
-import { ContenuOnglet, Onglets, styleSousNavigation, type Rubrique } from '../components/Onglets'
-import Tab from '@mui/material/Tab'
-import Tabs from '@mui/material/Tabs'
+import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { SectionOuverture } from '../components/Ouverture'
 import { compteInstagram, libellesLicence, libellesTypologie, libellesZone, lienInstagram, resumeHoraires } from '../data/exploitation'
 import { aOuvrir } from '../data/ouvertures'
@@ -86,7 +87,7 @@ import { cartouche } from '../components/Social'
 // Refonte (Joseph, 09/11/2026, choix 3A) : cinq onglets, jamais plus de deux niveaux. Activité regroupe tâches et campagnes,
 // visites et journal ; Chiffres regroupe le suivi face au budget, la santé, les leviers et les saisies (une seule source,
 // la caisse) ; Budget ne garde que les étapes du budget ; Ressources accueille les bonnes pratiques.
-type VueFiche = 'fiche' | 'actions' | 'visites' | 'journal' | 'chiffres' | 'budget' | 'pratiques'
+type VueFiche = 'fiche' | 'activite' | 'actions' | 'visites' | 'journal' | 'chiffres' | 'budget' | 'pratiques'
 type OngletFiche = 'fiche' | 'activite' | 'chiffres' | 'budget' | 'pratiques'
 const rubriquesFiche: Rubrique<OngletFiche>[] = [
   { vue: 'fiche', libelle: 'Vue d’ensemble', court: 'Aperçu', icone: <StorefrontOutlined /> },
@@ -95,15 +96,14 @@ const rubriquesFiche: Rubrique<OngletFiche>[] = [
   { vue: 'budget', libelle: 'Budget', icone: <RequestQuoteOutlined /> },
   { vue: 'pratiques', libelle: 'Ressources', icone: <TipsAndUpdatesOutlined /> },
 ]
-const partiesActivite: { vue: VueFiche; libelle: string }[] = [
-  { vue: 'actions', libelle: 'Tâches et campagnes' },
-  { vue: 'visites', libelle: 'Visites' },
-  { vue: 'journal', libelle: 'Journal' },
-]
-const ongletDe = (v: VueFiche): OngletFiche => (v === 'actions' || v === 'visites' || v === 'journal' ? 'activite' : v)
-const VUES: VueFiche[] = ['fiche', 'actions', 'visites', 'journal', 'chiffres', 'budget', 'pratiques']
+// Vague 3 (23A) : plus de sous-onglets dans Activité ; les anciennes adresses (actions, visites, journal) ouvrent le fil
+// sur le bon filtre
+const ongletDe = (v: VueFiche): OngletFiche => (v === 'actions' || v === 'visites' || v === 'journal' || v === 'activite' ? 'activite' : v)
+const VUES: VueFiche[] = ['fiche', 'activite', 'actions', 'visites', 'journal', 'chiffres', 'budget', 'pratiques']
 // Anciens liens vers un onglet regroupé : l'onglet qui l'accueille, ouvert sur sa partie
-const anciennesVues: Record<string, VueFiche> = { sante: 'chiffres', campagnes: 'actions', fil: 'journal', activite: 'actions' }
+const anciennesVues: Record<string, VueFiche> = { sante: 'chiffres', campagnes: 'actions', fil: 'journal' }
+const filtreActivite = (v: VueFiche, fil: string | null): FiltreActivite =>
+  (FILTRES_ACTIVITE.some((f) => f.v === fil) ? fil as FiltreActivite : v === 'visites' ? 'visites' : v === 'journal' ? 'journal' : 'tout')
 // Parties du pilotage rangées dans l'onglet Budget ; toutes les autres (suivi, santé, saisies) sont dans Chiffres
 const PARTIES_BUDGET = ['budget', 'visualiser', 'echanges', 'depart', 'ventes', 'calendrier', 'investissements', 'equipe', 'fraisBudget', 'resultat', 'tresoBudget', 'travaux']
 
@@ -139,8 +139,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
     }, 100)
     return () => window.clearInterval(minuterie)
   }, [])
-  const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); n.delete('partie'); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
-  const changerOnglet = (o: OngletFiche) => changerVue(o === 'activite' ? 'actions' : o)
+  const changerOnglet = (o: OngletFiche) => setParams((p) => { const n = new URLSearchParams(p); n.delete('partie'); n.delete('fil'); if (o === 'fiche') n.delete('vue'); else n.set('vue', o); return n }, { replace: true })
   const [reaffectation, setReaffectation] = useState(false)
   const [edition, setEdition] = useState(false)
   const [visite, setVisite] = useState<Visite | null | undefined>(undefined)
@@ -164,6 +163,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const alerte = analyser(reseau, m.nom)
   const saisirVisite = () => { setTypeVisite('terrain'); setVisite(null) }
   const { referentiels } = useDroits()
+  const ex = m.exploitation
+  const manquants = [m.code, ex.implantation, m.ouvertureConnue, adresseComplete, m.telephone, m.email, ex.typologie, ex.zoneChalandise, ex.licence, ex.instagram, resumeHoraires(ex.horaires).length].filter((x) => !x).length
   return (
     <>
       <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Magasins</Button>
@@ -178,68 +179,58 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
       ))}
       <Onglets valeur={ongletDe(vue)} onChange={changerOnglet} rubriques={rubriquesFiche} libelle={`Rubriques de ${m.nom}`} fiche titre={m.nom} />
       <ContenuOnglet>
-        {ongletDe(vue) === 'activite' && (
-          <Tabs value={vue} onChange={(_e, v: VueFiche) => changerVue(v)} variant="scrollable" scrollButtons={false} aria-label="Parties de l’activité" sx={{ mb: 2, ...styleSousNavigation }}>
-            {partiesActivite.map((x) => <Tab key={x.vue} value={x.vue} label={x.libelle} aria-current={vue === x.vue ? 'page' : undefined} />)}
-          </Tabs>
-        )}
 
+        {/* Vague 3 (22A) : les informations du magasin à gauche, où en est le magasin au centre */}
         {vue === 'fiche' && (
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-            {aOuvrir(m, reseau.jour) && <SectionOuverture reseau={reseau} m={m} signaler={setConfirmation} />}
-            <Section titre="Équipe" action={referentiels ? <Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button> : undefined}>
-              <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
-              <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
-              {m.franchise && m.responsableARecruter && <Contact role={libelleResponsable(m)} p={null} sousTitre="En cours de recrutement" />}
-              <ListeAssocies reseau={reseau} m={m} signaler={setConfirmation} />
-            </Section>
-            <Section titre="Magasin">
-              <Ligne libelle="Code magasin">{m.code || null}</Ligne>
-              <Ligne libelle="Implantation des produits">{m.exploitation.implantation ? dateLongue(m.exploitation.implantation) : null}</Ligne>
-              <Ligne libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
-              <GroupeBudgetaire magasin={m.nom} modifiable={referentiels} />
-              <Ligne libelle="Adresse">
-                {adresseComplete && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                    <span>{adresseComplete}</span>
-                    {lienPlan && <Chip icon={<PlaceOutlined />} label="Itinéraire" size="small" component="a" href={lienPlan} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />}
-                  </Box>
-                )}
-              </Ligne>
-              <Ligne libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
-              <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
-            </Section>
-            <SectionExploitation m={m} />
-            <SectionConcurrents reseau={reseau} m={m} signaler={setConfirmation} />
-            {lieuCarte && (
-              <Card sx={{ gridColumn: { lg: 'span 2' }, overflow: 'hidden' }}>
-                <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
-                  loading="lazy" referrerPolicy="no-referrer-when-downgrade" sx={{ display: 'block', width: '100%', height: 300, border: 0 }} />
-              </Card>
-            )}
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '360px minmax(0, 1fr)' }, alignItems: 'start' }}>
+            <Box sx={{ display: 'grid', gap: 2, minWidth: 0, order: { xs: 2, lg: 1 } }}>
+              <Section titre="Équipe" action={referentiels ? <Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button> : undefined}>
+                <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
+                <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
+                {m.franchise && m.responsableARecruter && <Contact role={libelleResponsable(m)} p={null} sousTitre="En cours de recrutement" />}
+                <ListeAssocies reseau={reseau} m={m} signaler={setConfirmation} />
+              </Section>
+              <Section titre="Magasin">
+                <Ligne compacte libelle="Code magasin">{m.code || null}</Ligne>
+                <Ligne compacte libelle="Implantation">{m.exploitation.implantation ? dateLongue(m.exploitation.implantation) : null}</Ligne>
+                <Ligne compacte libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
+                <GroupeBudgetaire magasin={m.nom} modifiable={referentiels} />
+                <Ligne compacte libelle="Adresse">
+                  {adresseComplete && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                      <span>{adresseComplete}</span>
+                      {lienPlan && <Chip icon={<PlaceOutlined />} label="Itinéraire" size="small" component="a" href={lienPlan} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />}
+                    </Box>
+                  )}
+                </Ligne>
+                <Ligne compacte libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
+                <Ligne compacte libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
+              </Section>
+              <SectionExploitation m={m} />
+              {manquants > 0 && <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 700, px: 1 }}>{manquants} information{manquants > 1 ? 's' : ''} à compléter{referentiels ? '' : ' par le Directeur de réseau'}
+                {referentiels && <Button onClick={() => setEdition(true)} sx={{ minHeight: 48, ml: 1 }}>Compléter</Button>}</Typography>}
+              <SectionConcurrents reseau={reseau} m={m} signaler={setConfirmation} />
+            </Box>
+            <Box sx={{ display: 'grid', gap: 2, minWidth: 0, order: { xs: 1, lg: 2 } }}>
+              {aOuvrir(m, reseau.jour) && <SectionOuverture reseau={reseau} m={m} signaler={setConfirmation} />}
+              <SituationMagasin reseau={reseau} m={m} planifier={() => setPlanifier(true)} />
+              {lieuCarte && (
+                <Card sx={{ overflow: 'hidden' }}>
+                  <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
+                    loading="lazy" referrerPolicy="no-referrer-when-downgrade" sx={{ display: 'block', width: '100%', height: 260, border: 0 }} />
+                </Card>
+              )}
+            </Box>
           </Box>
         )}
 
-        {vue === 'actions' && (
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-            <Section titre="Tâches en cours" action={<BoutonAjouterAction reseau={reseau} magasins={[m.nom]} signaler={setConfirmation} />}>
-              <ListeActions reseau={reseau} actions={actions} signaler={setConfirmation} libelle={`Tâches en cours de ${m.nom}`} magasins={[m.nom]} />
-            </Section>
-            <Box id="partie-campagnes" sx={{ scrollMarginTop: 160 }}><Section titre="Campagnes"><CampagnesMagasin reseau={reseau} magasin={m.nom} signaler={setConfirmation} /></Section></Box>
-          </Box>
-        )}
-
-        {vue === 'visites' && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <SectionAudits reseau={reseau} m={m} />
-            <SectionVisites reseau={reseau} m={m} saisir={saisirVisite} modifier={setVisite} />
-            <SectionReunionsMagasin reseau={reseau} magasin={m.nom} />
-          </Box>
+        {/* Vague 3 (23A) : l'activité du magasin en un seul fil, « À venir » en tête */}
+        {ongletDe(vue) === 'activite' && (
+          <ActiviteMagasin reseau={reseau} m={m} filtre={filtreActivite(vue, params.get('fil'))} filtrer={(f) => setParams((p) => { const n = new URLSearchParams(p); n.set('vue', 'activite'); if (f === 'tout') n.delete('fil'); else n.set('fil', f); return n }, { replace: true })}
+            actions={actions} signaler={setConfirmation} saisirVisite={saisirVisite} modifierVisite={setVisite} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
         )}
 
         {vue === 'budget' && <OngletBudget nom={m.nom} mode="budget" />}
-
-        {vue === 'journal' && <JournalMagasin reseau={reseau} m={m} signaler={setConfirmation} />}
 
         {vue === 'pratiques' && <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />}
 
@@ -279,13 +270,15 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 function SectionExploitation({ m }: { m: Magasin }) {
   const e = m.exploitation
   const horaires = resumeHoraires(e.horaires)
+  // Vague 3 (22A) : rien de renseigné, la carte ne s'affiche pas (les champs comptent dans « informations à compléter »)
+  if (!e.typologie && !e.zoneChalandise && !e.licence && !e.instagram && !horaires.length) return null
   return (
     <Section titre="Exploitation">
-      <Ligne libelle="Typologie">{e.typologie ? libellesTypologie[e.typologie] : null}</Ligne>
-      <Ligne libelle="Zone de chalandise">{e.zoneChalandise ? libellesZone[e.zoneChalandise] : null}</Ligne>
-      <Ligne libelle="Licence">{e.licence ? libellesLicence[e.licence] : null}</Ligne>
-      <Ligne libelle="Instagram">{e.instagram && <Link href={lienInstagram(e.instagram)} target="_blank" rel="noopener">{compteInstagram(e.instagram)}</Link>}</Ligne>
-      <Ligne libelle="Horaires">
+      <Ligne compacte libelle="Typologie">{e.typologie ? libellesTypologie[e.typologie] : null}</Ligne>
+      <Ligne compacte libelle="Zone de chalandise">{e.zoneChalandise ? libellesZone[e.zoneChalandise] : null}</Ligne>
+      <Ligne compacte libelle="Licence">{e.licence ? libellesLicence[e.licence] : null}</Ligne>
+      <Ligne compacte libelle="Instagram">{e.instagram && <Link href={lienInstagram(e.instagram)} target="_blank" rel="noopener">{compteInstagram(e.instagram)}</Link>}</Ligne>
+      <Ligne compacte libelle="Horaires">
         {horaires.length > 0 && (
           <Box component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 2, rowGap: 0.25 }}>
             {horaires.map((h) => [
@@ -617,16 +610,62 @@ function AutresActions({ nom, planifier, preparer, modifier, fermer: fermerMagas
   )
 }
 
-// Journal du magasin : notes, santé, déploiements, Coachs et ouverture, du plus récent au plus ancien
-// (visites, tâches, messages et chiffres ont leurs onglets)
-function JournalMagasin({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (message: string) => void }) {
-  const elements = useMemo(() => journalDansLeFil(reseau, m)
-    .sort((a, b) => (b.instant.length === 10 ? `${b.instant}T00:00:00` : b.instant).localeCompare(a.instant.length === 10 ? `${a.instant}T00:00:00` : a.instant)), [reseau, m])
+// Activité du magasin (refonte vague 3, Joseph 09/11/2026, 23A) : un seul fil, « À venir » en tête (visite prévue,
+// tâches ouvertes, campagnes), puis le passé du plus récent au plus ancien : visites et comptes rendus, tâches, chiffres,
+// bonnes pratiques et journal (notes, santé, déploiements, Coachs, ouverture). Filtres en puces ; « Visites » montre le
+// détail des visites et audits (modifier, compte rendu, envoi).
+type FiltreActivite = 'tout' | 'visites' | 'taches' | 'chiffres' | 'journal'
+const FILTRES_ACTIVITE: { v: FiltreActivite; libelle: string; genres: string[] }[] = [
+  { v: 'tout', libelle: 'Tout', genres: [] },
+  { v: 'visites', libelle: 'Visites', genres: ['visite'] },
+  { v: 'taches', libelle: 'Tâches', genres: ['tache'] },
+  { v: 'chiffres', libelle: 'Chiffres', genres: ['chiffres'] },
+  { v: 'journal', libelle: 'Journal', genres: ['journal', 'pratique'] },
+]
+function ActiviteMagasin({ reseau, m, filtre, filtrer, actions, signaler, saisirVisite, modifierVisite, appeler }: {
+  reseau: Reseau; m: Magasin; filtre: FiltreActivite; filtrer: (f: FiltreActivite) => void; actions: ReturnType<typeof actionsDuMagasin>
+  signaler: (message: string) => void; saisirVisite: () => void; modifierVisite: (v: Visite) => void; appeler: () => void
+}) {
   const edition = useEditionJournal(reseau, m, signaler)
+  const tous = useMemo(() => [...filDu(reseau, new Set([m.nom]), null, 3650), ...journalDansLeFil(reseau, m)]
+    .sort((a, b) => (b.instant.length === 10 ? `${b.instant}T00:00:00` : b.instant).localeCompare(a.instant.length === 10 ? `${a.instant}T00:00:00` : a.instant)), [reseau, m])
+  const genres = FILTRES_ACTIVITE.find((f) => f.v === filtre)!.genres
+  const elements = genres.length ? tous.filter((e) => genres.includes(e.genre)) : tous
+  const prevues = reseau.visites.filter((v) => v.magasin === m.nom && v.date > reseau.jour).sort((a, b) => a.date.localeCompare(b.date))
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <FilActivite elements={elements} jour={reseau.jour} sansMagasin titre="Journal" ouvrirJournal={edition.ouvrir}
-        action={<Button startIcon={<AddOutlined />} onClick={edition.nouvelleNote} sx={{ minHeight: 48 }}>Note</Button>} />
+    <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+        <BoutonAjouterAction reseau={reseau} magasins={[m.nom]} signaler={signaler} />
+        <Button startIcon={<AddOutlined />} onClick={saisirVisite} sx={{ minHeight: 48 }}>Visite</Button>
+        <Button startIcon={<PhoneInTalkOutlined />} onClick={appeler} sx={{ minHeight: 48 }}>Appel</Button>
+        <Button startIcon={<EditOutlined />} onClick={edition.nouvelleNote} sx={{ minHeight: 48 }}>Note</Button>
+      </Box>
+      <Section titre="À venir">
+        {prevues.map((v) => (
+          <Box key={v.id ?? v.date} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 48, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <EventAvailableOutlined sx={{ color: 'text.secondary' }} />
+            <Typography sx={{ flex: 1, minWidth: 0 }}><b>{libelleTypeVisite(v.type)} prévue</b> · {dateLongue(v.date)}{v.visiteurs.length ? ` · ${nomsVisiteurs(v)}` : ''}</Typography>
+            <Button onClick={() => modifierVisite(v)} sx={{ minHeight: 48 }}>Modifier</Button>
+          </Box>
+        ))}
+        <ListeActions reseau={reseau} actions={actions} signaler={signaler} libelle={`Tâches en cours de ${m.nom}`} magasins={[m.nom]} />
+        <Box id="partie-campagnes" sx={{ mt: 2, scrollMarginTop: 160 }}>
+          <Typography component="h3" sx={{ fontWeight: 700, mb: 1 }}>Campagnes</Typography>
+          <CampagnesMagasin reseau={reseau} magasin={m.nom} signaler={signaler} />
+        </Box>
+      </Section>
+      <Box>
+        <Puces label="Filtrer l’activité" valeur={filtre} onChange={filtrer} options={FILTRES_ACTIVITE.map((f) => ({ v: f.v, libelle: f.libelle }))} />
+      </Box>
+      {filtre === 'visites'
+        ? <>
+          <SectionAudits reseau={reseau} m={m} />
+          <SectionVisites reseau={reseau} m={m} saisir={saisirVisite} modifier={modifierVisite} />
+          <SectionReunionsMagasin reseau={reseau} magasin={m.nom} />
+        </>
+        : elements.length
+          ? <FilActivite elements={elements} jour={reseau.jour} sansMagasin sansFiltre titre="Fil d’activité" ouvrirJournal={edition.ouvrir} />
+          : <Typography variant="body2" color="text.secondary">Rien pour l’instant dans ce filtre.</Typography>}
       {edition.fenetres}
     </Box>
   )

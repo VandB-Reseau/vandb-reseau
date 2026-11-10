@@ -29,7 +29,18 @@ export function Section({ titre, children, action }: { titre: string; children: 
   )
 }
 
-export function Ligne({ libelle, children }: { libelle: string; children: ReactNode }) {
+// compacte (vague 3, 22A) : colonne des informations de la fiche magasin ; un champ vide n'y prend pas de place
+// (il compte dans « informations à compléter »)
+export function Ligne({ libelle, children, compacte = false }: { libelle: string; children: ReactNode; compacte?: boolean }) {
+  if (compacte) {
+    if (!children) return null
+    return (
+      <Box sx={{ display: 'grid', gridTemplateColumns: '120px minmax(0, 1fr)', gap: 1.5, py: 0.75, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+        <Typography variant="body2" color="text.secondary">{libelle}</Typography>
+        <Box sx={{ typography: 'body2', minWidth: 0, overflowWrap: 'anywhere' }}>{children}</Box>
+      </Box>
+    )
+  }
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '180px 1fr' }, gap: { xs: 0.25, sm: 2 }, py: 1.25, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
       <Typography variant="body2" color="text.secondary">{libelle}</Typography>
