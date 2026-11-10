@@ -70,6 +70,7 @@ export function EnvoyerAuFranchise({ reseau, magasin, icone = false, titreFenetr
     .map((p) => ({ cle: p.cle, nom: p.nom, email: fichePersonne(reseau, { type: 'franchise', cle: p.nom }).email.trim() })) : []
   const [choisis, setChoisis] = useState<Set<string>>(() => new Set(franchises.map((f) => f.cle)))
   const [texte, setTexte] = useState(() => messageParDefaut(franchises.map((f) => f.nom)))
+  const [edite, setEdite] = useState(false)
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState(false)
   const [message, setMessage] = useState('')
@@ -89,6 +90,8 @@ export function EnvoyerAuFranchise({ reseau, magasin, icone = false, titreFenetr
       setMessage(`${titreFenetre.replace(/^Envoyer (l[ea] |l’)/, '').replace(/^./, (c) => c.toUpperCase())} envoyé à ${retenus.map((f) => f.nom).join(', ')} dans la messagerie.`)
     } catch { setErreur(true) } finally { setEnvoi(false) }
   }
+  // Le message suit ce qui a changé depuis (ordre du jour coché après coup) : recomposé à l'ouverture tant qu'il n'est pas retouché
+  const ouvrir = () => { if (!edite) setTexte(messageParDefaut(franchises.map((f) => f.nom))); setOuvert(true) }
   const partager = async () => {
     try { await navigator.share({ title: titre, text: complet }); setOuvert(false) } catch { /* partage annulé */ }
   }
@@ -96,8 +99,8 @@ export function EnvoyerAuFranchise({ reseau, magasin, icone = false, titreFenetr
   return (
     <>
       {icone
-        ? <Tooltip title="Envoyer au franchisé"><IconButton onClick={() => setOuvert(true)} aria-label={libelleIcone}><SendOutlined /></IconButton></Tooltip>
-        : <Button variant="outlined" startIcon={<SendOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>{libelleBouton}</Button>}
+        ? <Tooltip title="Envoyer au franchisé"><IconButton onClick={ouvrir} aria-label={libelleIcone}><SendOutlined /></IconButton></Tooltip>
+        : <Button variant="outlined" startIcon={<SendOutlined />} onClick={ouvrir} sx={{ minHeight: 48 }}>{libelleBouton}</Button>}
       <Dialog open={ouvert} onClose={() => !envoi && setOuvert(false)} fullScreen={pleinEcran} fullWidth maxWidth="sm" aria-labelledby="titre-envoyer-cr">
         <DialogTitle id="titre-envoyer-cr">{titreFenetre}</DialogTitle>
         <DialogContent>
@@ -113,7 +116,7 @@ export function EnvoyerAuFranchise({ reseau, magasin, icone = false, titreFenetr
               ))}
             </Box>
           )}
-          <TextField label="Message" value={texte} onChange={(e) => setTexte(e.target.value)} multiline minRows={6} fullWidth />
+          <TextField label="Message" value={texte} onChange={(e) => { setTexte(e.target.value); setEdite(true) }} multiline minRows={6} fullWidth />
           {erreur && <Alert severity="error" sx={{ mt: 2 }}>Le message n’a pas pu partir. Vérifie ta connexion et réessaie.</Alert>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1 }}>

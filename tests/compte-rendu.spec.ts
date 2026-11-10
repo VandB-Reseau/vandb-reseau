@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -29,11 +29,9 @@ test.afterEach(async ({ page }) => {
 test('dicter chaque partie, reprendre les actions en cours, puis enregistrer', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Lyon%20Test?vue=visites')
-  await page.getByRole('button', { name: 'Saisir', exact: true }).click()
-  const d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  const d = await saisirVisiteNonPrevue(page, 'Lyon Test')
   // Les actions en cours des visites précédentes sont rappelées
-  const enCours = d.getByRole('group', { name: 'Tâches en cours' })
+  const enCours = d.getByRole('region', { name: 'Plan d’action et tâches' })
   await expect(enCours.getByText('Refaire la tête de gondole Beaujolais')).toBeVisible()
   await expect(enCours.getByText(/^Franchisé · échéance novembre · depuis le/)).toBeVisible()
   // Une partie dictée, une partie tapée, les autres laissées vides
@@ -59,9 +57,7 @@ test('dicter chaque partie, reprendre les actions en cours, puis enregistrer', a
 
 test('une tournée garde des notes communes dictées, sans parties', async ({ page }) => {
   await seConnecter(page)
-  await page.goto('./#/visites')
-  await page.getByRole('button', { name: 'Saisir une visite pour Nantes Test' }).click()
-  const d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  const d = await saisirVisiteNonPrevue(page, 'Nantes Test')
   await expect(d.getByLabel('1. Chiffres et gestion', { exact: true })).toBeVisible()
   await d.getByRole('region', { name: 'Visite' }).getByRole('button', { name: 'Modifier' }).click()
   await d.getByLabel('Magasins visités').fill('Rennes')

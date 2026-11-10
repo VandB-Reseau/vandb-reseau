@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { choisirMois, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { choisirMois, saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { visitesFictives } from './donnees-fictives'
 
 test.beforeEach(async ({ page }) => {
@@ -32,9 +32,7 @@ test('le rattachement d’un Coach à un Responsable Régional se fait au mois e
 test('une visite a plusieurs participants, le Coach du magasin d’abord', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/visites')
-  await page.getByRole('button', { name: 'Saisir une visite pour Lyon Test' }).click()
-  const d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  const d = await saisirVisiteNonPrevue(page, 'Lyon Test')
   await d.getByRole('region', { name: 'Visite' }).getByRole('button', { name: 'Modifier' }).click()
   const participants = d.getByLabel('Visité par')
   await expect(d.getByRole('button', { name: 'Noé MODELE' })).toBeVisible()

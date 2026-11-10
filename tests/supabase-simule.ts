@@ -922,3 +922,17 @@ export async function creerDepuisMenu(page: Page, nom: keyof typeof ACTIONS_CREE
   await page.getByRole('combobox', { name: 'Recherche globale' }).fill(ACTIONS_CREER[nom])
   await page.getByRole('option', { name: ACTIONS_CREER[nom], exact: true }).click()
 }
+
+// Vague 7 (79A, Joseph 10/11/2026) : une visite non prévue se saisit depuis le « + » de la fiche du magasin
+export async function saisirVisiteNonPrevue(page: Page, magasin: string) {
+  await page.goto(`./#/magasins/${encodeURIComponent(magasin)}`)
+  await page.getByRole('main').getByRole('button', { name: 'Ajouter', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Visite non prévue' }).click()
+  return page.getByRole('dialog', { name: 'Saisir une visite' })
+}
+
+// Vague 7 (87A) : dans la saisie, l'état d'une tâche en cours se choisit (Faite, En cours, Bloquée, Reportée)
+export async function revoirTache(page: Page, dialogue: Locator, tache: string, etat: string) {
+  await dialogue.getByRole('region', { name: 'Plan d’action et tâches' }).getByRole('listitem').filter({ hasText: tache }).getByRole('combobox').click()
+  await page.getByRole('option', { name: etat, exact: true }).click()
+}

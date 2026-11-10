@@ -35,7 +35,7 @@ const ORDRE: GenreSujet[] = ['priorite', 'tache', 'campagne', 'mot', 'objectif',
 export function texteOrdreDuJour(m: Magasin, v: Visite | null, sujets: Sujet[], noms: string[]): string {
   const prenoms = noms.map((n) => n.split(' ')[0]).join(', ')
   return [
-    `Bonjour ${prenoms},`, '',
+    prenoms ? `Bonjour ${prenoms},` : 'Bonjour,', '',
     v ? `Pour notre visite du ${dateLongue(v.date)} à ${m.nom}, voici les sujets que je te propose :` : `Pour notre prochaine visite à ${m.nom}, voici les sujets que je te propose :`,
     ...sujets.filter((s) => !s.equipe).map((s) => `- ${s.titre}`),
     '', 'Dis-moi si tu veux en ajouter. À bientôt,',
@@ -93,6 +93,7 @@ export function PreparerVisite({ reseau, m, v, signaler }: { reseau: Reseau; m: 
         {v && <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{`Prévue le ${dateLongue(v.date)}${v.visiteurs.length ? ` · ${v.visiteurs.join(', ')}` : ''}`}</Typography>}
       </Section>
 
+      <Box component="section" aria-label="Ordre du jour">
       <Section titre="Ordre du jour" action={!lecture && retenus.some((s) => !s.equipe) ? (
         <EnvoyerAuFranchise reseau={reseau} magasin={m.nom} titreFenetre="Envoyer l’ordre du jour" libelleBouton="Envoyer l’ordre du jour"
           libelleIcone={`Envoyer l’ordre du jour à ${m.nom}`} sousTitre={`${m.nom}${v ? ` · visite du ${dateLongue(v.date)}` : ''}`}
@@ -130,6 +131,7 @@ export function PreparerVisite({ reseau, m, v, signaler }: { reseau: Reseau; m: 
           {!lecture && <Button startIcon={<AddOutlined />} onClick={() => setLibres((l) => [...l, ''])} sx={{ minHeight: 48, justifySelf: 'start' }}>Ajouter un sujet</Button>}
         </Box>
       </Section>
+      </Box>
 
       <Section titre="Notes de préparation">
         <TexteDicte label="Notes de préparation" libelleDictee="Notes de préparation" valeur={notes} changer={(f) => setNotes((x) => f(x))} multiline minRows={4} disabled={lecture} fullWidth />

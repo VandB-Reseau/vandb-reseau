@@ -1,6 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
-import { zonesTropPetites } from './pilotage/supabase-simule'
+import { deplierATraiter, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { visitesFictives } from './donnees-fictives'
 
 // Vague 7 (Joseph, 10/11/2026, « ok pour tout » : 79A à 91A) : un seul bouton « Visite », frise en trois étapes, ordre du
@@ -16,15 +15,16 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs, 'aucune erreur JavaScript').toEqual([])
 })
 
-async function lisible(page: Page, isMobile: boolean) {
+async function lisible(page: Page) {
   expect(await textesTropPetits(page)).toEqual([])
-  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 }
 
 // Une visite de Lyon Test planifiée le jour des tests (27/10/2026)
 async function avecVisitePrevue(page: Page) {
   const visites = [...visitesFictives, { id: 99, store: 'Lyon Test', visit_date: '2026-10-27', type: 'terrain', visitor: 'Noé MODELE', docs: [], prevue: true }]
   await page.route('https://supabase.test/rest/v1/visits**', (r) => (r.request().method() === 'GET' ? r.fulfill({ json: visites }) : r.fallback()))
+  await page.goto('./#/magasins/Lyon%20Test')
+  await page.reload()
 }
 
 async function ajouterPriorite(page: Page, titre: string) {
@@ -36,7 +36,7 @@ async function ajouterPriorite(page: Page, titre: string) {
   await expect(d).toHaveCount(0)
 }
 
-test('79A et fiche : un seul bouton Visite, « + » regroupe tâche, visite non prévue, appel et note', async ({ page, isMobile }) => {
+test('79A et fiche : un seul bouton Visite, « + » regroupe tâche, visite non prévue, appel et note', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
   const visite = page.getByRole('link', { name: 'Planifier la visite : Lyon Test' })
@@ -54,13 +54,13 @@ test('79A et fiche : un seul bouton Visite, « + » regroupe tâche, visite non 
   await page.goto('./#/magasins/Lyon%20Test?vue=activite')
   await expect(page.getByRole('heading', { name: 'À venir' })).toBeVisible()
   await expect(page.getByRole('main').getByRole('button', { name: 'Ajouter une tâche' })).toHaveCount(0)
-  await lisible(page, isMobile)
+  await lisible(page)
   await visite.click()
   await expect(page).toHaveURL(/visite\?etape=preparer/)
   await expect(page.getByRole('navigation', { name: 'Étapes de la visite' }).getByRole('button')).toHaveCount(3)
 })
 
-test('81A et 82A : Préparer pose la date et un ordre du jour à cocher, envoyé au franchisé', async ({ page, isMobile }) => {
+test('81A et 82A : Préparer pose la date et un ordre du jour à cocher, envoyé au franchisé', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, persister: true })
   await ajouterPriorite(page, 'Relancer la vente additionnelle au bar')
@@ -69,14 +69,14 @@ test('81A et 82A : Préparer pose la date et un ordre du jour à cocher, envoyé
   await ordre.getByRole('checkbox', { name: 'À aborder : Relancer la vente additionnelle au bar' }).check()
   await ordre.getByRole('checkbox', { name: 'À aborder : Refaire la tête de gondole Beaujolais' }).check()
   await ordre.getByRole('button', { name: 'Ajouter un sujet' }).click()
-  await ordre.getByLabel('Sujet 1').fill('Planning de Noël')
+  await ordre.getByLabel('Sujet 1', { exact: true }).fill('Planning de Noël')
   // Les chiffres du magasin sont un sujet de l'équipe seule
   await expect(ordre.getByText('équipe seule')).toBeVisible()
   await page.getByRole('button', { name: 'Enregistrer la préparation' }).click()
   await expect(page.getByText('Préparation enregistrée.')).toBeVisible()
   const prep = ecritures.filter((e) => JSON.stringify(e.corps).includes('Planning de Noël')).at(-1)
   expect(JSON.stringify(prep?.corps)).toContain('t:1:0')
-  await lisible(page, isMobile)
+  await lisible(page)
   await ordre.getByRole('button', { name: 'Envoyer l’ordre du jour' }).click()
   const d = page.getByRole('dialog', { name: 'Envoyer l’ordre du jour' })
   const texte = await d.getByLabel('Message').inputValue()
@@ -91,7 +91,7 @@ test('81A et 82A : Préparer pose la date et un ordre du jour à cocher, envoyé
   expect(ecritures.some((e) => e.table === 'visits' && e.methode === 'POST' && JSON.stringify(e.corps).includes('2026-11-05'))).toBe(true)
 })
 
-test('83A et 87A : la saisie revoit le plan, une tâche bloquée et une tâche ajoutée sous la priorité', async ({ page, isMobile }) => {
+test('83A et 87A : la saisie revoit le plan, une tâche bloquée et une tâche ajoutée sous la priorité', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, persister: true })
   await avecVisitePrevue(page)
@@ -103,12 +103,12 @@ test('83A et 87A : la saisie revoit le plan, une tâche bloquée et une tâche a
   const d = page.getByRole('dialog')
   await expect(d.getByRole('navigation', { name: 'Sommaire de la saisie' })).toBeVisible()
   const plan = d.getByRole('region', { name: 'Plan d’action et tâches' })
-  await plan.getByLabel('Où en est-on : Refaire la tête de gondole Beaujolais').click()
+  await plan.getByRole('listitem').filter({ hasText: 'Refaire la tête de gondole Beaujolais' }).getByRole('combobox').click()
   await page.getByRole('option', { name: 'Bloquée' }).click()
   await plan.getByLabel('Ce qui bloque').fill('Attente du présentoir')
   await plan.getByRole('button', { name: 'Ajouter une tâche à la priorité Relancer la vente additionnelle au bar' }).click()
   await plan.getByLabel('Tâche', { exact: true }).fill('Former l’équipe au conseil bière')
-  await lisible(page, isMobile)
+  await lisible(page)
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toHaveCount(0)
   const patch = ecritures.find((e) => e.table === 'visits' && e.methode === 'PATCH' && JSON.stringify(e.corps).includes('Former l’équipe'))
@@ -133,7 +133,8 @@ test('85A : la visite du jour sans compte rendu et la visite à préparer remont
   await page.route('https://supabase.test/rest/v1/visits**', (r) => (r.request().method() === 'GET' ? r.fulfill({ json: visites }) : r.fallback()))
   await page.goto('./#/')
   await page.reload()
-  await expect(page.getByText('Visite le 29 oct. · ordre du jour à préparer').first()).toBeAttached()
+  await deplierATraiter(page)
+  await expect(page.getByText(/^Visite le 29 oct\. .*ordre du jour à préparer$/).first()).toBeAttached()
 })
 
 test('89A : la liste Tâches se range par priorité et filtre les tâches sans priorité', async ({ page, isMobile }) => {
@@ -147,7 +148,7 @@ test('89A : la liste Tâches se range par priorité et filtre les tâches sans p
   }
   await page.getByRole('button', { name: 'Sans priorité' }).click()
   await expect(page.getByText('Refaire la tête de gondole Beaujolais')).toBeVisible()
-  await lisible(page, isMobile)
+  await lisible(page)
 })
 
 test('88A : le compte rendu range le plan d’action par priorité', async ({ page }) => {

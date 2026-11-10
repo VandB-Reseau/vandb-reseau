@@ -88,7 +88,7 @@ function TacheRevue({ reseau, x, revue, changer }: { reseau: Reseau; x: ActionSu
         </Typography>
       </Box>
       <TextField select size="small" label="Où en est-on ?" value={statut} onChange={(e) => poser({ statut: e.target.value as RevueTache['statut'], raison: revue?.raison ?? x.a.raison ?? '', echeance: revue?.echeance ?? '' })}
-        slotProps={{ htmlInput: { 'aria-label': `Où en est-on : ${x.a.action}` } }} sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
+        sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
         {STATUTS_REVUE.map((s) => <MenuItem key={s.v} value={s.v} sx={{ minHeight: 48 }}>{s.libelle}</MenuItem>)}
       </TextField>
       {statut === 'bloquee' && <TextField size="small" label="Ce qui bloque" value={revue?.raison ?? x.a.raison ?? ''} onChange={(e) => changer({ statut: 'bloquee', raison: e.target.value })} sx={{ gridColumn: '1 / -1' }} />}
