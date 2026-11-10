@@ -2,9 +2,10 @@ import { renommerAccesCoach } from './accesEquipe'
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { avecPoint, definirGrille, delaisVisiteParDefaut, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
-import type { ActionLibre, ActionPlan, Evenement, Situation, Figure, NoteMagasin, PreparationVisite, Reseau, SuiviOuverture, Topographie, Visite } from './modele'
+import type { ActionLibre, ActionPlan, StatutTache, Evenement, Situation, Figure, NoteMagasin, PreparationVisite, Reseau, SuiviOuverture, Topographie, Visite } from './modele'
 import { normaliserConcurrence, suiviEstVide, type SuiviConcurrence } from './concurrence'
 import { normaliserObjectifs, type Objectif } from './objectifs'
+import { normaliserPlans, type Priorite } from './planAction'
 import { normaliserMots } from './motFranchise'
 import { SEPARATEUR_VISITEURS, etapesOuverture, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
@@ -65,7 +66,7 @@ let fichesEnTable: boolean | null = null
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, evenements, finances, suivi, regions, fiches, fermes] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -133,6 +134,7 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   reseau.ouvertures = normaliserOuvertures(json<unknown>(cle('ouvertures_magasins'), {}))
   reseau.concurrence = normaliserConcurrence(json<unknown>(cle('concurrents_magasins'), {}))
   reseau.objectifs = normaliserObjectifs(json<unknown>(cle('objectifs_magasins'), {}))
+  reseau.plans = normaliserPlans(json<unknown>(cle('plans_magasins'), {}))
   reseau.motsFranchise = normaliserMots(json<unknown>(cle('mots_franchise'), {}))
   reseau.audits = json<Audits>(cle('audits'), {})
   reseau.grilles = normaliserGrilles(json<unknown>(cle('grilles_audit'), {}))
@@ -644,7 +646,7 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
       const v = l.valeur as Campagne | null
       if (v?.magasins?.includes(ancienNom)) verifier(await supabase.from('campagnes_regions').update({ valeur: { ...v, magasins: v.magasins.map((n) => (n === ancienNom ? f.nom : n)) } }).eq('id', l.id))
     }
-    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes', 'actions', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins'] as const) {
+    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes', 'actions', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins'] as const) {
       const lu = await lireSuivi<Record<string, unknown>>(cleConfig, {})
       const cibles = (cleConfig === 'deploiements' ? [lu.valeur.valeurs, lu.valeur.journal] : [lu.valeur]) as (Record<string, unknown> | undefined)[]
       let change = false
@@ -798,6 +800,37 @@ export async function marquerActions(lot: ({ visite: number; index: number; fait
       const a = plan[l.index]
       if (a) marquer(a, l.faite)
     }
+    verifier(await supabase.from('visits').update({ action_plan: plan }).eq('id', id))
+  }
+}
+// Statut d'une tâche (vague 4, 32A) : '' = à faire, en cours, ou bloquée avec sa raison ; « faite » reste à part
+export type CibleTache = { visite: number; index: number } | { libre: string; magasin: string }
+export async function changerStatutTache(cible: CibleTache, statut: '' | StatutTache, raison = '') {
+  const poser = (a: ActionPlan) => {
+    if (statut) a.statut = statut; else delete a.statut
+    if (statut === 'bloquee' && raison.trim()) a.raison = raison.trim().slice(0, 300); else delete a.raison
+  }
+  if ('libre' in cible) {
+    await modifierActionsLibres((t) => { const a = t[cible.magasin]?.find((x) => x.id === cible.libre); if (a) poser(a) })
+    return
+  }
+  const lu = await supabase.from('visits').select('id,action_plan').eq('id', cible.visite)
+  if (lu.error) throw new ErreurEnregistrement(lu.error.message)
+  const plan = normaliserPlan(lu.data?.[0]?.action_plan)
+  if (plan[cible.index]) poser(plan[cible.index])
+  verifier(await supabase.from('visits').update({ action_plan: plan }).eq('id', cible.visite))
+}
+// Rattache des tâches à une priorité du plan d'action (vague 4, 31A) ; priorite vide = détache
+export async function rattacherTaches(lot: CibleTache[], priorite: string) {
+  const poser = (a: ActionPlan) => { if (priorite) a.priorite = priorite; else delete a.priorite }
+  const libres = lot.filter((l): l is { libre: string; magasin: string } => 'libre' in l)
+  if (libres.length) await modifierActionsLibres((t) => { for (const l of libres) { const a = t[l.magasin]?.find((x) => x.id === l.libre); if (a) poser(a) } })
+  const plans = lot.filter((l): l is { visite: number; index: number } => 'visite' in l)
+  for (const id of [...new Set(plans.map((l) => l.visite))]) {
+    const lu = await supabase.from('visits').select('id,action_plan').eq('id', id)
+    if (lu.error) throw new ErreurEnregistrement(lu.error.message)
+    const plan = normaliserPlan(lu.data?.[0]?.action_plan)
+    for (const l of plans.filter((x) => x.visite === id)) if (plan[l.index]) poser(plan[l.index])
     verifier(await supabase.from('visits').update({ action_plan: plan }).eq('id', id))
   }
 }
@@ -999,6 +1032,17 @@ export function enregistrerObjectifs(magasin: string, liste: Objectif[]) {
     if (liste.length) valeur[magasin] = liste
     else delete valeur[magasin]
     await ecrireSuivi('objectifs_magasins', valeur, lu)
+  })
+}
+
+// Plan d'action d'un magasin (refonte vague 4, 31A, 0043) : la liste entière du magasin est réécrite
+export function enregistrerPlan(magasin: string, liste: Priorite[]) {
+  return enFile(async () => {
+    const lu = await lireSuivi<Record<string, Priorite[]>>('plans_magasins', {})
+    const { valeur } = lu
+    if (liste.length) valeur[magasin] = liste
+    else delete valeur[magasin]
+    await ecrireSuivi('plans_magasins', valeur, lu)
   })
 }
 

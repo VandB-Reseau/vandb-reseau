@@ -5,6 +5,7 @@ import type { Profil } from '../auth/roles'
 import { normaliserPieces } from '../lib/pieces'
 import { associesEnPlace } from './associes'
 import { coachA } from './charge'
+import { champsSuivi } from './compteRendu'
 
 export interface ActionSuivie { visite: Visite | null; libre: ActionLibre | null; magasin: string; date: string; index: number; a: ActionPlan; cle: string }
 
@@ -38,7 +39,7 @@ export function normaliserActionsLibres(v: unknown): Record<string, ActionLibre[
     const liste = l.filter((a) => a && typeof a === 'object' && (a as ActionLibre).id && String((a as ActionLibre).action ?? '').trim()).map((x) => {
       const a = x as Record<string, unknown>
       return { id: String(a.id), action: String(a.action), porteur: String(a.porteur ?? ''), echeance: String(a.echeance ?? ''), creeLe: String(a.creeLe ?? ''),
-        ...(a.faite ? { faite: String(a.faite) } : {}), ...(a.faite && a.faitePar ? { faitePar: String(a.faitePar) } : {}), ...(Array.isArray(a.pieces) && a.pieces.length ? { pieces: normaliserPieces(a.pieces) } : {}), ...(a.auteur ? { auteur: String(a.auteur) } : {}), ...(a.fil === 'equipe' ? { fil: 'equipe' as const } : {}), ...(Number(a.message) > 0 ? { message: Number(a.message) } : {}), ...(tacheBudget(a.budget) ? { budget: tacheBudget(a.budget)! } : {}) }
+        ...(a.faite ? { faite: String(a.faite) } : {}), ...(a.faite && a.faitePar ? { faitePar: String(a.faitePar) } : {}), ...(Array.isArray(a.pieces) && a.pieces.length ? { pieces: normaliserPieces(a.pieces) } : {}), ...(a.auteur ? { auteur: String(a.auteur) } : {}), ...(a.fil === 'equipe' ? { fil: 'equipe' as const } : {}), ...(Number(a.message) > 0 ? { message: Number(a.message) } : {}), ...(tacheBudget(a.budget) ? { budget: tacheBudget(a.budget)! } : {}), ...champsSuivi(a) }
     })
     if (liste.length) r[magasin] = liste
   }

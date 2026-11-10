@@ -1,5 +1,6 @@
 // Page d'une visite (refonte vague 3, Joseph 09/11/2026, 24A) : une frise en quatre étapes, Préparer, Sur place,
 // Compte rendu, Suivi. Les écrans existaient (fiche avant visite, saisie, compte rendu, tâches) : ils changent de cadre.
+import { RemarquesInternes } from '../components/RemarquesInternes'
 import { useState, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -90,9 +91,13 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
       <EmptyState icone={<EventAvailableOutlined />} titre="Visite à planifier" texte="Pose la date de la visite : la saisie sur place s’ouvrira ici le jour venu."
         action={<Button variant="contained" onClick={() => setPlanif(true)} sx={{ minHeight: 48 }}>Planifier la visite</Button>} />
     ) : !faite ? (
-      <EmptyState icone={<EventNoteOutlined />} titre={`Visite prévue le ${dateLongue(v.date)}`} texte="Le jour de la visite, saisis la grille, tes notes et tes photos depuis le magasin."
-        action={<Button variant="contained" startIcon={<RateReviewOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>Saisir la visite</Button>} />
+      <Box sx={{ display: 'grid', gap: 2 }}>
+        <EmptyState icone={<EventNoteOutlined />} titre={`Visite prévue le ${dateLongue(v.date)}`} texte="Le jour de la visite, saisis la grille, tes notes et tes photos depuis le magasin."
+          action={<Button variant="contained" startIcon={<RateReviewOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>Saisir la visite</Button>} />
+        <RemarquesInternes reseau={reseau} magasin={m.nom} visite={v} signaler={setMessage} />
+      </Box>
     ) : (
+      <Box sx={{ display: 'grid', gap: 2 }}>
       <Section titre="Ce qui a été noté sur place" action={<Button startIcon={<EditOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>Modifier</Button>}>
         <Box sx={{ display: 'grid', gap: 1.5 }}>
           {v.notes.trim() ? <Typography sx={{ whiteSpace: 'pre-wrap' }}>{v.notes}</Typography> : <Typography color="text.secondary">Aucune note générale.</Typography>}
@@ -105,6 +110,8 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
           {!!v.photos?.length && <Typography variant="body2" color="text.secondary">{`${v.photos.length} photo${v.photos.length > 1 ? 's' : ''}`}</Typography>}
         </Box>
       </Section>
+      <RemarquesInternes reseau={reseau} magasin={m.nom} visite={v} signaler={setMessage} />
+      </Box>
     )
   } else if (etape === 'compterendu') {
     contenu = !v || !faite || v.id === null ? (

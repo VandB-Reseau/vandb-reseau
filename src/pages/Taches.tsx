@@ -17,7 +17,7 @@ import { RechercheFiltres } from '../components/RechercheFiltres'
 import { CarteLignes, TitreSection, cartouche } from '../components/Social'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
-import { BoutonAjouterAction, DialogAction, LigneAction, useEcritureActions } from '../components/Actions'
+import { BoutonAjouterAction, DialogAction, LigneAction, useChangerStatut, useEcritureActions } from '../components/Actions'
 import MenuItem from '@mui/material/MenuItem'
 import ListSubheader from '@mui/material/ListSubheader'
 import { useAuth } from '../auth/AuthContext'
@@ -131,8 +131,9 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajout, ajoutVide
     } catch (e) { signaler(e instanceof ErreurAction ? e.message : 'La tâche n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.') }
     finally { setEnCours(null) }
   }
+  const changerStatut = useChangerStatut(reseau, signaler)
   const ligne = (x: ActionSuivie) => (
-    <LigneAction key={x.cle} reseau={reseau} x={x} avecMagasin={!choix && noms.length > 1} avecPorteur={porteur === FRANCHISES} enCours={enCours === x.cle}
+    <LigneAction key={x.cle} reseau={reseau} x={x} avecMagasin={!choix && noms.length > 1} avecPorteur={porteur === FRANCHISES} enCours={enCours === x.cle} changerStatut={changerStatut?.(x)}
       cocher={ecriture.lectureSeule ? undefined : (f) => void cocher(x, f)}
       modifier={x.libre && !ecriture.franchise ? () => setEdition(x) : undefined} />
   )
