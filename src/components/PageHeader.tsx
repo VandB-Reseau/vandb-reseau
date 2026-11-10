@@ -1,4 +1,7 @@
 import type { ReactNode } from 'react'
+import Chip from '@mui/material/Chip'
+import CloseOutlined from '@mui/icons-material/CloseOutlined'
+import { useEtiquettePerimetre } from '../data/perimetreChoisi'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 
@@ -26,10 +29,13 @@ export function PageHeader({ titre, sousTitre, actions }: { titre: string; sousT
 }
 
 // Le titre dans une case de hauteur fixe : il reste à la même place quelle que soit la hauteur des actions
+// Vague 3 (21A) : sur PC, le périmètre choisi se rappelle à côté du titre, et se retire d'un clic
 function Titre({ titre }: { titre: string }) {
+  const etiquette = useEtiquettePerimetre()
   return (
-    <Box sx={{ flex: 1, minWidth: 0, minHeight: { xs: 40, md: 48 }, display: 'flex', alignItems: 'center' }}>
+    <Box sx={{ flex: 1, minWidth: 0, minHeight: { xs: 40, md: 48 }, display: 'flex', alignItems: 'center', gap: 1.5 }}>
       <Typography variant="h1" sx={{ minWidth: 0 }}>{titre}</Typography>
+      {etiquette && <Chip variant="outlined" label={`${etiquette.libelle} · ${etiquette.nombre}`} onDelete={etiquette.revenir} deleteIcon={<CloseOutlined aria-label="Revenir à tout le périmètre" />} sx={{ display: { xs: 'none', md: 'inline-flex' }, fontWeight: 700, fontSize: '0.8125rem' }} />}
     </Box>
   )
 }

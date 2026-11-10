@@ -1,3 +1,4 @@
+import { useNomsPerimetre } from '../../data/perimetreChoisi'
 import { useMemo } from 'react'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -121,9 +122,11 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
   const tri = ([...COLONNES.map((c) => c.cle), 'magasin'] as string[]).includes(params.get('tri') ?? '') ? params.get('tri') as Cle : 'ca'
   const sens = params.get('sens') === 'asc' ? 'asc' : params.get('sens') === 'desc' ? 'desc' : tri === 'magasin' ? 'asc' : 'desc'
 
+  // Vague 3 (21A) : le périmètre choisi dans le menu
+  const noms = useNomsPerimetre()
   const visibles = useMemo(() => {
     const q = simple(recherche)
-    const l = (donnees?.magasins ?? []).filter((m) => (groupe === null || m.groupeId === groupe) && (!coach || m.coach === coach) && (!rr || m.rrs.includes(rr)) && (!q || simple(m.magasin).includes(q)))
+    const l = (donnees?.magasins ?? []).filter((m) => (!noms || noms.has(m.magasin)) && (groupe === null || m.groupeId === groupe) && (!coach || m.coach === coach) && (!rr || m.rrs.includes(rr)) && (!q || simple(m.magasin).includes(q)))
     // Valeur absente toujours en bas, quel que soit le sens
     return [...l].sort((a, b) => {
       if (tri === 'magasin') return (sens === 'asc' ? 1 : -1) * a.magasin.localeCompare(b.magasin, 'fr')
@@ -131,7 +134,7 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
       if (x === null || y === null) return x === null ? (y === null ? 0 : 1) : -1
       return sens === 'asc' ? x - y : y - x
     })
-  }, [donnees, recherche, groupe, coach, rr, tri, sens])
+  }, [donnees, noms, recherche, groupe, coach, rr, tri, sens])
   const total = totalReseau(visibles)
   // Médiane de la sélection : un groupe filtré donne la médiane du groupe
   const mediane = medianes(visibles.filter((m) => m.moisRealises > 0).map(ratiosDuReel))

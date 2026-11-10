@@ -1,3 +1,4 @@
+import { useNomsPerimetre } from '../../data/perimetreChoisi'
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -57,15 +58,17 @@ export function Clotures() {
     const [d, reel, quadris, stocks] = await Promise.all([chargerBudgets(annee), chargerReelDuCompte(annee), chargerQuadrimestres(annee).catch(() => ({})), stocksDuReseau(annee)])
     return { d, reel, quadris: quadris as Record<string, Record<number, unknown>>, stocks }
   }, [annee])
+  // Vague 3 (21A) : le périmètre choisi dans le menu
+  const noms = useNomsPerimetre()
   const lignes = useMemo(() => {
     if (!donnees) return []
-    return donnees.d.magasins.map((l) => {
+    return donnees.d.magasins.filter((l) => !noms || noms.has(l.magasin)).map((l) => {
       const reelMois = (donnees.reel.magasins[l.magasin]?.n ?? []).map((x, i) => (x.caHT > 0 ? i + 1 : 0)).filter(Boolean)
       const etapes = etapesCloture({ mois, annee, reelMois, stockSaisi: (donnees.stocks[l.magasin] ?? []).includes(mois), fraisRenseignes: !!donnees.d.frais[l.magasin]?.length,
         quadrimestres: Object.keys(donnees.quadris[l.magasin] ?? {}).map(Number) })
       return { magasin: l.magasin, coach: donnees.reel.coachs[l.magasin] ?? '', etapes, faits: etapes.filter((e) => e.fait).length }
     }).sort((a, b) => a.faits - b.faits || a.magasin.localeCompare(b.magasin, 'fr'))
-  }, [donnees, mois, annee])
+  }, [donnees, noms, mois, annee])
   const cles = useMemo(() => lignes.map((l) => l.magasin), [lignes])
   const s = useSelection(cles)
   const nomMois = `${MOIS[mois - 1]} ${annee}`

@@ -38,6 +38,7 @@ import { useInstallation } from '../lib/installation'
 import { brandStripe } from '../theme/theme'
 import { barreTelephone, magasins, parametres, pourRole, rubriquesMenu, secondaires, type Destination } from '../navigation/destinations'
 import { CreerProvider } from '../components/Creer'
+import { SelecteurPerimetre } from '../components/SelecteurPerimetre'
 import { useCompteurTaches } from '../data/tachesVues'
 import { useNouveautesInfos } from '../data/infosVues'
 import NewspaperOutlined from '@mui/icons-material/NewspaperOutlined'
@@ -198,6 +199,7 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
         {franchise && <Box sx={{ flex: 1 }} />}
         <Cloche />
       </Box>
+      {!franchise && <Box sx={{ px: 1.5, pb: 1 }}><SelecteurPerimetre /></Box>}
       <Box component="nav" aria-label="Navigation principale" sx={{ px: 1, flex: 1, overflowY: 'auto' }}>
         {franchise
           ? <List disablePadding>{franchise.map(item)}</List>

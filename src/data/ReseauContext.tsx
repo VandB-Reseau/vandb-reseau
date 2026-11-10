@@ -101,7 +101,9 @@ export function ReseauProvider({ children, charger = chargerReseau, lectureSeule
 
 // Magasins du périmètre et leurs visites. Les bonnes pratiques restent celles de tout le réseau ;
 // les données rangées par magasin (notes, chiffres…) restent entières pour ne rien perdre à l'enregistrement.
-function restreindre(reseau: Reseau, p: Perimetre): Reseau {
+// Vague 3 (21A) : aussi pour le périmètre choisi par le Directeur ou le RR (AvecReseau)
+// eslint-disable-next-line react-refresh/only-export-components
+export function restreindre(reseau: Reseau, p: Perimetre): Reseau {
   const magasins = magasinsDu(reseau, p)
   const noms = new Set(magasins.map((m) => m.nom))
   return { ...reseau, magasins, visites: reseau.visites.filter((v) => noms.has(v.magasin)) }
