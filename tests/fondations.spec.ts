@@ -82,7 +82,7 @@ test('chaque destination est accessible depuis la navigation', async ({ page, is
     await expect(titre).toBeAttached()
     if (nom !== 'Accueil') await expect(titre).toBeVisible()
   }
-  for (const nom of isMobile ? ['Visites', 'Santé du parc', ...secondaires] : secondaires) {
+  for (const nom of isMobile ? ['Visites', ...secondaires] : secondaires) {
     // Vague 5 (51A) : Équipe et Paramètres sont dans le menu du compte, sur PC aussi
     await expect(nav.getByRole('button', { name: nom, exact: true })).toHaveCount(0)
     await page.getByRole('button', { name: 'Mon compte' }).click()

@@ -80,7 +80,11 @@ test('le franchisé d’un seul magasin arrive par « Mon budget » sur l’ongl
   await connecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] } }, { role: 'franchise', magasins: [magasins[0]] })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   // Depuis son menu : « Mon budget » sur PC, « Budget » dans la barre du téléphone
-  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: isMobile ? 'Budget' : 'Mon budget', exact: true }).click()
+  // Vague 5 (56A) : sur téléphone, « Mon budget » est sous « Plus »
+  if (isMobile) {
+    await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^Plus/ }).click()
+    await page.getByRole('menu').getByRole('menuitem', { name: /^Mon budget/ }).click()
+  } else await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Mon budget', exact: true }).click()
   // Le suivi du budget face au réel, dans l'onglet Chiffres de sa fiche (refonte 09/11/2026)
   await expect(page).toHaveURL(/#\/magasins\/Annecy%20Test\?vue=chiffres/)
   await expect(page.getByRole('heading', { level: 1, name: 'Annecy Test' })).toBeVisible()

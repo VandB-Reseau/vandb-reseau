@@ -81,7 +81,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
                   <ToggleButton value="liste" aria-label="Liste"><TableRowsOutlined fontSize="small" />{surPC ? 'Tableau' : 'Liste'}</ToggleButton>
                   <ToggleButton value="carte" aria-label="Carte"><MapOutlined fontSize="small" />Carte</ToggleButton>
                   {/* Refonte vague 5 (51A) : la santé du parc est une vue des magasins */}
-                  <ToggleButton value="sante" aria-label="Santé du parc" onClick={() => naviguer('/plus/sante')}><MonitorHeartOutlined fontSize="small" />Santé</ToggleButton>
+                  <ToggleButton value="sante" aria-label="Santé du parc" onClick={() => naviguer('/plus/sante')}><MonitorHeartOutlined fontSize="small" />{surPC && 'Santé'}</ToggleButton>
                 </ToggleButtonGroup>
   )
 

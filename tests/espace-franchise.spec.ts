@@ -84,7 +84,7 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
 
 test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu complet', async ({ page, isMobile }, info) => {
   await seConnecterFranchise(page)
-  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Mes magasins' }).click()
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: isMobile ? 'Magasin' : 'Mes magasins', exact: true }).click()
   await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Annecy Test', 'Rennes Test'])
   await page.getByRole('link', { name: /Annecy Test/ }).click()
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
@@ -117,10 +117,10 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await expect(page).toHaveURL(/#\/echanges\/magasin\/Annecy%20Test$/)
 })
 
-test('un franchisé d’un seul magasin arrive sur sa fiche par l’onglet Mes magasins ; ses bonnes pratiques ont leur onglet', async ({ page }, info) => {
+test('un franchisé d’un seul magasin arrive sur sa fiche par l’onglet Mes magasins ; ses bonnes pratiques ont leur onglet', async ({ page, isMobile }, info) => {
   await seConnecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, espace: { ...espace, pratiques: [...espace.pratiques,
     { id: 'bp2', magasin: 'Annecy Test', date: '2026-09-20', titre: 'Coffrets à composer', theme: 'Vente additionnelle', texte: 'Le client choisit trois bouteilles.', par: 'Hugo FICTIF', photos: [], reprises: [] }] } })
-  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Mes magasins' }).click()
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: isMobile ? 'Magasin' : 'Mes magasins', exact: true }).click()
   await expect(page).toHaveURL(/#\/magasins\/Annecy%20Test$/)
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
   await expect(onglets).toBeVisible()
