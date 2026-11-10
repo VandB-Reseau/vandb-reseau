@@ -63,7 +63,7 @@ export function Cloche() {
                   sx={{ width: '100%', minHeight: 56, px: 2, py: 1.25, gap: 1.5, alignItems: 'flex-start', justifyContent: 'flex-start', textAlign: 'left', fontFamily: 'inherit', borderTop: 1, borderColor: 'divider', '&:hover': { bgcolor: 'action.hover' } }}>
                   <Box aria-hidden sx={{ width: 8, height: 8, mt: 0.9, borderRadius: '50%', flexShrink: 0, bgcolor: lue ? 'transparent' : 'secondary.main' }} />
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="body2" sx={{ fontWeight: lue ? 600 : 700 }}>{x.titre}{!lue && <Box component="span" sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}> (non lue)</Box>}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: lue ? 600 : 700 }}>{x.titre}{!lue && <Box component="span" sx={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)' }}> (non lue)</Box>}</Typography>
                     <Typography variant="body2" color="text.secondary">{x.detail}</Typography>
                   </Box>
                   <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}>{dateCourte(x.quand)}</Typography>

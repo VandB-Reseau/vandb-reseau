@@ -9,6 +9,14 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Budget prévisionnel lisible sur PC (Joseph, 10/11/2026) : chaque carte de « Construire » (ventes, frais, investissements,
+  équipe…) s'ouvre de la même façon, sur toute la largeur, avec l'Impact en bande collante en haut ; plus de panneau à
+  droite. Les tableaux des thèmes tiennent dans la page dès 1 280 px sans défiler vers la droite (un texte caché élargissait
+  le tableau des frais à 1 800 px, le bouton « reprendre » recouvrait la valeur 2027) ; le tableau des frais ne défile plus
+  dans sa carte. Les budgets quittent l'onglet de Chiffres pour une entrée « Budget prévisionnel » du menu (l'ancienne
+  adresse y mène). Budget communication : préconisation du siège (2,5 % du CA), pas une redevance ; dans le budget,
+  chaque magasin la règle en % du CA ou en montant et peut revenir à la préconisation (le suivi des frais le permettait
+  déjà, « € par an » ou « % du CA »). Sans migration.
 - Carte des commerces (concurrents à 2 km) réparée (Joseph, 10/11/2026) : le serveur principal d'OpenStreetMap
   (Overpass) étant souvent saturé, la recherche essaie deux miroirs publics, garde la dernière liste lue si aucun ne répond
   et ne lance qu'une recherche à la fois par magasin. Sans migration.

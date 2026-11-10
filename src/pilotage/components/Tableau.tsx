@@ -13,7 +13,7 @@ import { brand } from '../theme/theme'
 
 // Briques communes des tableaux (refonte visuelle, 2/11/2026). Le texte réservé aux lecteurs d'écran reste dans un bloc en
 // position relative : sinon, placé hors du tableau qui défile, il élargit la page sur téléphone.
-const cache = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
+const cache = { position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
 
 // Couleur de la pastille : vert au prévu ou mieux, jaune-or dans le seuil, brique au-delà
 export const COULEUR_NIVEAU: Record<NiveauEcart, string> = { favorable: 'success.main', leger: brand.or, fort: 'error.main' }

@@ -486,9 +486,9 @@ export async function ouvrir(page: Page, partie: string) {
       break
     } catch (e) { if (essai >= 2) throw e }
   }
-  // Refonte vague 2 (13B) : en revenant aux cartes, le panneau du thème se ferme et l'impact reprend sa colonne ;
-  // on attend la fin de ce passage avant d'agir dans l'impact
-  if (!cible.theme && cible.espace === 'Budget') await expect(page.getByRole('region', { name: /^Détail : / })).toHaveCount(0)
+  // En revenant aux cartes (10/11/2026 : le thème ouvert en pleine largeur se ferme), l'impact quitte sa bande du haut
+  // pour sa colonne ; on attend la fin de ce passage avant d'agir dans l'impact
+  if (!cible.theme && cible.espace === 'Budget') await expect(page.getByRole('link', { name: 'Toutes les hypothèses' })).toHaveCount(0)
   if (cible.theme) await page.locator('main').getByRole('region', { name: cible.theme, exact: true }).getByRole('link').click()
   if (cible.section) await ouvrirSection(page, cible.section)
 }
