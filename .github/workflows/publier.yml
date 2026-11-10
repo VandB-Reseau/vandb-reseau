@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      tests:
+        description: "Tests à repasser seulement (ex. tests/sprint23.spec.ts:89 tests/pilotage/ecrans/lot40.spec.ts:21). Vide = toute la suite."
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -32,9 +37,11 @@ jobs:
         env:
           VITE_SUPABASE_URL: https://aipodcpbakywbrrilaud.supabase.co
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      - run: npx playwright test
+      # Lancement manuel limité (Joseph, 10/11/2026) : seuls les tests demandés repassent avant la mise en ligne
+      - run: npx playwright test $TESTS
         env:
           CI: 'true'
+          TESTS: ${{ inputs.tests }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

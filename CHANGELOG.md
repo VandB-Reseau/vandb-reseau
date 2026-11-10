@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Lancement manuel limité de la mise en ligne (Joseph, 10/11/2026) : « Run workflow » de « Tester et publier » prend
+  une liste de tests à repasser seulement ; vide, toute la suite. Sans migration.
 - Refonte façon SaaS, vague 5 : l'actualité au cœur des accueils (Joseph, 10/11/2026, choix 43A à 56A sauf 47).
   Accueil de l'équipe : À la une en tête, le fil du réseau au centre, « Aujourd'hui » (ma journée, À traiter, mes
   tâches, la semaine, les contrats) à droite. Accueil du franchisé : À la une, le fil au centre ; mon magasin, À faire
