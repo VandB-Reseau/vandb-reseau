@@ -30,11 +30,13 @@ export function PageHeader({ titre, sousTitre, actions }: { titre: string; sousT
   }
   return (
     <Box sx={{ mb: { xs: 1, md: 2 } }}>
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', alignItems: { xs: 'center', md: 'flex-start' }, gap: { xs: 1.5, md: 2 }, flexWrap: { xs: 'nowrap', md: 'wrap' } }}>
         <Titre titre={titre} />
+        {/* Téléphone : le compteur reste à droite du titre, avant l'action (vague 4, 39A) */}
+        {!surPC && sousTitre && <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto', textAlign: 'right', minWidth: 0 }}>{sousTitre}</Typography>}
         {actions}
       </Box>
-      {sousTitre && <Typography variant="body2" color="text.secondary">{sousTitre}</Typography>}
+      {surPC && sousTitre && <Typography variant="body2" color="text.secondary">{sousTitre}</Typography>}
       {selecteur}
     </Box>
   )

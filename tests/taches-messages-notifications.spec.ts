@@ -39,9 +39,9 @@ test('les tâches sont rangées par échéance, sous la barre de recherche commu
     await expect(ajouter).toHaveText('')
     const b = (await ajouter.boundingBox())!
     expect(b.height).toBeGreaterThanOrEqual(48)
-    // Recherche, Filtres et Ajouter sur une seule ligne
-    const r = (await page.getByRole('textbox', { name: 'Rechercher une tâche' }).boundingBox())!
-    expect(Math.abs(r.y + r.height / 2 - (b.y + b.height / 2))).toBeLessThanOrEqual(2)
+    // Vague 4 (39A) : l'action principale à droite du titre de la page
+    const r = (await page.getByRole('heading', { level: 1 }).boundingBox())!
+    expect(Math.abs(r.y + r.height / 2 - (b.y + b.height / 2))).toBeLessThanOrEqual(24)
   } else await expect(ajouter).toHaveText('Ajouter une tâche')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-taches-groupes.png`, fullPage: !isMobile })

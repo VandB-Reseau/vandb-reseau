@@ -23,7 +23,7 @@ for (const schema of ['light', 'dark'] as const) {
       expect(await nav.evaluate((n) => getComputedStyle(n).position)).not.toBe('fixed')
       return
     }
-    await page.goto('./#/agenda')
+    await page.goto('./#/plus/agenda')
     await expect(nav.getByRole('button', { name: 'Agenda' })).toHaveAttribute('aria-current', 'page')
     const style = await nav.evaluate((n) => {
       const s = getComputedStyle(n)

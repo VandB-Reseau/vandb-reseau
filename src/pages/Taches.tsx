@@ -239,7 +239,7 @@ export function PageTaches() {
   return (
     <>
       <PageHeader titre="Tâches" sousTitre={porteur && porteur !== moi && !SPECIALES.includes(porteur) ? `Tâches de ${porteur}` : undefined}
-        actions={reseau ? <BoutonAjouterAction plein reseau={reseau} magasins={noms} porteur={SPECIALES.includes(porteur) ? '' : porteur} signaler={signaler} /> : undefined} />
+        actions={reseau ? <BoutonAjouterAction barre reseau={reseau} magasins={noms} porteur={SPECIALES.includes(porteur) ? '' : porteur} signaler={signaler} /> : undefined} />
       <AvecReseau>{(r) => (
         <Liste reseau={r} noms={noms} porteur={porteur} signaler={signaler}
           choixPorteur={choixPossible ? <ChoixPorteur reseau={r} noms={noms} moi={moi} valeur={porteur} directeur={!impose} onChange={changer} /> : undefined}
