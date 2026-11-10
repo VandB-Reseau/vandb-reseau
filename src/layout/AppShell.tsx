@@ -54,7 +54,7 @@ function estActive(d: Destination, pathname: string): boolean {
   if (d.chemin === '/parametres/reglages' && /^\/parametres\/(charge|donnees)/.test(pathname)) return true
   // Évolution du parc est une vue de Magasins, Animation réseau un onglet de Messages (refonte, Joseph 09/11/2026)
   // Les anciennes adresses de l'évolution du parc mènent à Performance (vague 2, 15A)
-  if (d.chemin === '/echanges' && pathname.startsWith('/animation')) return true
+  if (d.chemin === '/campagnes' && pathname.startsWith('/animation')) return true
   return d.chemin === '/' ? pathname === '/' : pathname.startsWith(d.chemin)
 }
 
@@ -166,7 +166,7 @@ const libelleAccessible = (d: Destination, c: Compteurs) => {
 }
 
 // Menu latéral clair (refonte, Joseph 09/11/2026, choix 1A et 2A) : logo et recherche en haut, quatre rubriques titrées,
-// Infos réseau et le compte en bas. Plus de barre noire au-dessus des pages.
+// le compte en bas. Plus de barre noire au-dessus des pages.
 const titreRubrique = { bgcolor: 'transparent', px: 1.5, lineHeight: '32px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary' } as const
 function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: Destination[]; sansParametres?: boolean; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
@@ -208,25 +208,18 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
           ))}
       </Box>
       <Box sx={{ px: 1, pb: 1.5, pt: 1, borderTop: '1px solid', borderColor: 'divider', display: 'grid', gap: 0.5 }}>
-        {!franchise && <BoutonInfos ligne />}
         <MenuCompte ligne />
       </Box>
     </Drawer>
   )
 }
 
-// Infos réseau, à droite du « + » : communications et bonnes pratiques, avec le nombre de nouveautés pas encore vues
-function BoutonInfos({ ligne = false }: { ligne?: boolean }) {
+// Téléphone : Infos réseau, à droite du « + » (sur PC, une entrée de la rubrique Animation, vague 3, 27A) : communications et bonnes pratiques, avec le nombre de nouveautés pas encore vues
+function BoutonInfos() {
   const naviguer = useNavigate()
   const { pathname } = useLocation()
   const n = useNouveautesInfos()
   const libelle = n ? `Infos réseau : ${n} nouveauté${n > 1 ? 's' : ''}` : 'Infos réseau'
-  if (ligne) return (
-    <ListItemButton selected={pathname === '/infos'} onClick={() => naviguer('/infos')} aria-label={libelle} aria-current={pathname === '/infos' ? 'page' : undefined} sx={{ minHeight: 40, px: 1.5, borderRadius: 2 }}>
-      <ListItemIcon sx={{ minWidth: 34, color: 'text.secondary', '& svg': { fontSize: 20 } }}><Badge color="error" badgeContent={n} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><NewspaperOutlined /></Badge></ListItemIcon>
-      <ListItemText primary="Infos réseau" slotProps={{ primary: { sx: { fontWeight: 500, fontSize: '0.875rem' } } }} />
-    </ListItemButton>
-  )
   return (
     <Tooltip title="Infos réseau">
       <IconButton aria-label={libelle} aria-current={pathname === '/infos' ? 'page' : undefined} onClick={() => naviguer('/infos')} sx={{ width: 48, height: 48, flexShrink: 0, color: 'text.primary' }}>

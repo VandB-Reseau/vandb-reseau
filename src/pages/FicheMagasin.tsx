@@ -249,7 +249,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             <SectionLeviers reseau={reseau} m={m} />
             <Box id="partie-sante" sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start', scrollMarginTop: 160 }}>
               <SectionSante reseau={reseau} m={m} modifier={() => naviguer(`/plus/sante?vue=evaluer&magasin=${encodeURIComponent(m.nom)}`)} />
-              <SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/plus/sante?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} />
+              <SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/campagnes?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} />
             </Box>
           </Box>
         } />}

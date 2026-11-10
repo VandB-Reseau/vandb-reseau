@@ -39,7 +39,6 @@ import { Fenetre } from '../components/EditionEquipe'
 import { FilMessages } from '../components/Messages'
 import { BoutonOutil, Bulle, ChampRecherche } from '../components/Outils'
 import { PageHeader } from '../components/PageHeader'
-import { OngletsMessages } from '../components/OngletsMessages'
 import { initialesDe } from '../components/Social'
 import { useMessagerie } from '../data/MessagerieContext'
 import { actionsDuMagasin } from '../data/actions'
@@ -349,7 +348,7 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
   const dialogue = edition && <DialogGroupe reseau={reseau} magasins={magasins} groupe={edition} onFermer={(msg) => { setEdition(null); if (msg) setConfirmation(msg); if (msg === 'Groupe supprimé.') naviguer('/echanges') }} />
 
   if (!surPC) {
-    if (!fil || !conv) return <><PageHeader titre="Messages" /><OngletsMessages />{liste}{message}</>
+    if (!fil || !conv) return <><PageHeader titre="Messages" />{liste}{message}</>
     // Conversation en plein écran, calée sur la partie visible (clavier compris) : l'en-tête reste en haut,
     // la saisie tout en bas, seuls les messages défilent (Joseph, 22/10/2026)
     return (
@@ -373,7 +372,6 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
   return (
     <>
       <PageHeader titre="Messages" />
-      <OngletsMessages />
       <Box sx={{ display: 'grid', gridTemplateColumns: { md: '340px minmax(0, 1fr)', lg: fil && membres.length ? '340px minmax(0, 1fr) 260px' : '340px minmax(0, 1fr)' }, gap: 2, height: 'calc(100dvh - 64px - 84px)', minHeight: 480 }}>
         <Card sx={{ minHeight: 0 }}>{liste}</Card>
         <Card sx={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>

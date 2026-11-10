@@ -44,7 +44,7 @@ export const magasins: Destination = { chemin: '/magasins', libelle: 'Magasins',
 // Destinations principales : barre du bas sur téléphone (Accueil, Visites, Messages, Tâches, Santé)
 const accueil: Destination = { chemin: '/', libelle: 'Accueil', description: 'Ce qui demande ton attention aujourd’hui', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 4' }
 const visites: Destination = { chemin: '/visites', libelle: 'Visites', description: 'Visites terrain, audits et couverture du semestre', icone: <EventNoteOutlined />, iconeActive: <EventNote />, sprint: 'Sprint 3' }
-const sante: Destination = { chemin: '/plus/sante', libelle: 'Santé du parc', court: 'Santé', description: 'Nine box des magasins et suivi des déploiements', icone: <MonitorHeartOutlined />, iconeActive: <MonitorHeart />, sprint: 'Sprint 4' }
+const sante: Destination = { chemin: '/plus/sante', libelle: 'Santé du parc', court: 'Santé', description: 'Nine box et évaluation des magasins', icone: <MonitorHeartOutlined />, iconeActive: <MonitorHeart />, sprint: 'Sprint 4' }
 export const principales: Destination[] = [accueil, magasins, visites, messages, taches, sante]
 export const barreTelephone = principales.filter((d) => d !== magasins)
 
@@ -53,9 +53,12 @@ export const budgets: Destination = { chemin: '/budgets', libelle: 'Budgets', de
 // Performance (refonte vague 2, Joseph 09/11/2026, 15A) : les chiffres du réseau en une page
 export const performance: Destination = { chemin: '/performance', libelle: 'Performance', description: 'Chiffres des magasins, écarts au budget, évolution du parc', icone: <QueryStatsOutlined />, iconeActive: <QueryStats />, sprint: 'Refonte' }
 export const agenda: Destination = { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes, formations et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' }
-// Animation réseau (Directeur et Responsables Régionaux) : un onglet de Messages depuis la refonte (Joseph, 09/11/2026, 2A)
-export const animation: Destination = { chemin: '/animation', libelle: 'Animation réseau', court: 'Animation', description: 'Communications, bonnes pratiques, sondages, formations, réunions et campagnes, avec leur suivi', icone: <InsightsOutlined />, iconeActive: <Insights />, sprint: 'Animation', roles: ['directeur', 'rr'] }
-export const secondaires: Destination[] = [budgets, performance, agenda]
+// Rubrique Animation (refonte vague 3, Joseph 09/11/2026, 27A) : Infos réseau et Campagnes (campagnes, déploiements,
+// challenges, et pour le Directeur et les RR le suivi des sondages, formations et réunions, ancien onglet de Messages)
+export const infosReseau: Destination = { chemin: '/infos', libelle: 'Infos réseau', court: 'Infos', description: 'Communications et bonnes pratiques du réseau', icone: <NewspaperOutlined />, iconeActive: <Newspaper />, sprint: 'Sprint 22' }
+export const campagnes: Destination = { chemin: '/campagnes', libelle: 'Campagnes', description: 'Campagnes, déploiements, challenges, sondages, formations et réunions, avec leur suivi', icone: <InsightsOutlined />, iconeActive: <Insights />, sprint: 'Refonte' }
+export const animation = campagnes
+export const secondaires: Destination[] = [campagnes, budgets, performance, agenda]
 export const pourRole = (liste: Destination[], role: string | undefined) => liste.filter((d) => !d.roles || (!!role && d.roles.includes(role)))
 
 // Réglages : Équipe et Paramètres. Évolution du parc est une vue de Magasins depuis la refonte (Joseph, 09/11/2026, 2A)
@@ -65,12 +68,13 @@ export const parametres: Destination[] = [
   { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Charge des Coachs, import et export, alertes, nine box, audits', icone: <SettingsOutlined />, sprint: 'Sprint 5' },
 ]
 
-// Menu latéral sur PC, en quatre rubriques titrées (Joseph, 09/11/2026, choix 2A de la refonte)
+// Menu latéral sur PC, en rubriques titrées (Joseph, 09/11/2026, choix 2A de la refonte ; Animation : vague 3, 27A)
 export interface Rubrique { titre: string; destinations: Destination[] }
 export function rubriquesMenu(sansParametres: boolean): Rubrique[] {
   return [
     { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
     { titre: 'Réseau', destinations: [magasins, visites, sante] },
+    { titre: 'Animation', destinations: [infosReseau, campagnes] },
     { titre: 'Finances', destinations: [budgets, performance] },
     ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }]),
   ]
@@ -84,7 +88,7 @@ export const espaceFranchise: Destination[] = [
   { ...messages, description: 'Mes magasins et mon équipe' },
   taches,
   // Communications et bonnes pratiques réunies, comme pour l'équipe (Joseph, 23/10/2026)
-  { chemin: '/infos', libelle: 'Infos réseau', court: 'Infos', description: 'Communications et bonnes pratiques du réseau', icone: <NewspaperOutlined />, iconeActive: <Newspaper />, sprint: 'Sprint 22' },
+  infosReseau,
 ]
 
 export const plus: Destination = {

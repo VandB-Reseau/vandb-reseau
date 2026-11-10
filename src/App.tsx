@@ -55,7 +55,7 @@ const chargeurs = {
   echanges: () => import('./pages/Echanges'),
   taches: () => import('./pages/Taches').then((m) => ({ default: m.PageTaches })),
   infos: () => import('./pages/InfosReseau').then((m) => ({ default: m.InfosReseau })),
-  animation: () => import('./pages/Animation').then((m) => ({ default: m.Animation })),
+  campagnes: () => import('./pages/SanteParc').then((m) => ({ default: m.CampagnesReseau })),
   partage: () => import('./pages/Partage').then((m) => ({ default: m.Partage })),
 }
 // Espace franchisé : un seul fichier, jamais préchargé pour l'équipe
@@ -81,12 +81,8 @@ const FicheDirecteur = chargementDiffere(() => chargeurs.personnes().then((m) =>
 const FicheFranchise = chargementDiffere(() => chargeurs.personnes().then((m) => ({ default: m.FicheFranchise })))
 const Visites = chargementDiffere(chargeurs.visites)
 const Agenda = chargementDiffere(chargeurs.agenda)
-const PageAnimation = chargementDiffere(chargeurs.animation)
-// Animation réseau : Directeur et Responsables Régionaux seulement
-function Animation() {
-  const { profil } = useAuth()
-  return profil?.role === 'directeur' || profil?.role === 'rr' ? <PageAnimation /> : <Navigate to="/" replace />
-}
+// Campagnes (vague 3, 27A) : campagnes, déploiements, challenges ; l'ancienne Animation réseau en est un onglet
+const Campagnes = chargementDiffere(chargeurs.campagnes)
 const SanteParc = chargementDiffere(chargeurs.sante)
 const Echanges = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.Echanges })))
 const PageTaches = chargementDiffere(chargeurs.taches)
@@ -179,7 +175,8 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         {anciensLiens}
         <Route path="/visites/compte-rendu/:id" element={<Marque><CompteRendu /></Marque>} />
         <Route path="/plus/agenda" element={<Agenda />} />
-        <Route path="/animation" element={<Animation />} />
+        <Route path="/animation" element={<Navigate to="/campagnes?vue=suivi" replace />} />
+        <Route path="/campagnes" element={<Campagnes />} />
         <Route path="/plus/sante" element={<SanteParc />} />
         <Route path="/performance" element={<Performance />} />
         <Route path="/parametres/evolution" element={<Navigate to="/performance?vue=evolution" replace />} />
