@@ -938,3 +938,43 @@ SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
 SELECT pg_temp.attendre('Demande : le franchisé la complète', pg_temp.refuse('SELECT public.completer_demande(' || :demande || ', ''Merci'')'), 0);
 RESET ROLE;
 RESET request.jwt.claim.sub;
+
+-- ── 0044 : actualités, vague 5 (prise de connaissance, temps forts, parcours d'intégration)
+\ir ../migrations/0044_actualites_vague5.sql
+SELECT pg_temp.attendre('Journal : 0044 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0044'), 1);
+INSERT INTO public.communications (titre, auteur, auteur_nom, auteur_role) VALUES ('Loi Évin : affichage', '00000000-0000-0000-0000-00000000000d', 'Directeur', 'directeur') RETURNING id AS evin \gset
+INSERT INTO public.communications (titre, auteur, auteur_nom, auteur_role) VALUES ('Simple info', '00000000-0000-0000-0000-00000000000d', 'Directeur', 'directeur') RETURNING id AS info \gset
+INSERT INTO public.app_config (key, value) VALUES ('temps_forts', '[{"id":"tf1","nom":"Noël","debut":"2026-12-01","fin":"2026-12-31"}]') ON CONFLICT (key) DO UPDATE SET value = excluded.value;
+SET ROLE authenticated;
+-- Prise de connaissance : demandée par le Directeur, pas par un Coach
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Connaissance : un Coach ne la demande pas', pg_temp.refuse('SELECT public.demander_connaissance(' || :evin || ', true)'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT pg_temp.attendre('Connaissance : le Directeur la demande', pg_temp.refuse('SELECT public.demander_connaissance(' || :evin || ', true)'), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Connaissance : pas sur une communication qui ne la demande pas', pg_temp.refuse('SELECT public.prendre_connaissance(' || :info || ')'), 1);
+SELECT pg_temp.attendre('Connaissance : le franchisé la donne', pg_temp.refuse('SELECT public.prendre_connaissance(' || :evin || ')'), 0);
+SELECT pg_temp.attendre('Connaissance : deux fois sans erreur', pg_temp.refuse('SELECT public.prendre_connaissance(' || :evin || ')'), 0);
+SELECT pg_temp.attendre('Connaissance : le franchisé lit sa date', (SELECT count(*) FROM jsonb_array_elements(public.connaissances()) e WHERE (e->>'id')::bigint = :evin AND e->>'moi' IS NOT NULL), 1);
+SELECT pg_temp.attendre('Connaissance : jamais la liste des autres', (SELECT count(*) FROM jsonb_array_elements(public.connaissances()) e WHERE jsonb_array_length(e->'pris') + jsonb_array_length(e->'manquants') > 0), 0);
+SELECT pg_temp.attendre('Connaissance : table fermée', pg_temp.refuse('SELECT count(*) FROM public.communications_connaissances'), 1);
+SELECT pg_temp.attendre('Connaissance : vaut lecture', (SELECT count(*) FROM jsonb_array_elements(public.communications()->'liste') e WHERE (e->>'id')::bigint = :evin), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Connaissance : le Coach du magasin voit qui l''a donnée',
+  (SELECT count(*) FROM jsonb_array_elements(public.connaissances()) e, jsonb_array_elements(e->'pris') p WHERE (e->>'id')::bigint = :evin AND p->>'franchise' = 'Franchisé Test'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c2';
+SELECT pg_temp.attendre('Connaissance : un Coach d''autres magasins ne voit pas ce franchisé',
+  (SELECT count(*) FROM jsonb_array_elements(public.connaissances()) e, jsonb_array_elements(e->'pris') p WHERE p->>'franchise' = 'Franchisé Test'), 0);
+-- Parcours d'intégration : le Coach suit son magasin ; le franchisé lit le sien par animation_franchise()
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Intégration : le Coach suit le parcours de son magasin',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''integration'', ''{"etapes":{"v7":{"faite":"2026-11-10"}}}'') ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur'), 0);
+SELECT pg_temp.attendre('Intégration : pas sur un magasin d''un autre Coach',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Nice'', ''integration'', ''{}'')'), 1);
+SELECT pg_temp.attendre('Intégration : animation_franchise refusée à l''équipe', pg_temp.refuse('SELECT public.animation_franchise()'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Intégration : le franchisé lit le suivi de son magasin', (SELECT count(*) FROM jsonb_object_keys(public.animation_franchise()->'integration') k WHERE k = 'Lille'), 1);
+SELECT pg_temp.attendre('Temps forts : le franchisé les lit', (SELECT jsonb_array_length(public.animation_franchise()->'temps_forts')), 1);
+SELECT pg_temp.attendre('Intégration : pas de lecture directe', (SELECT count(*) FROM public.suivi_magasins WHERE cle = 'integration'), 0);
+RESET ROLE;
+RESET request.jwt.claim.sub;

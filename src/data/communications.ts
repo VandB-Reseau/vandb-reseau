@@ -116,3 +116,32 @@ export function useCommunicationsDuFil(): CommunicationsDuFil {
   }, [])
   return useMemo(() => ({ liste: etat?.liste ?? [], moi: etat?.moi ?? '', recharger }), [etat, recharger])
 }
+
+// ── Prise de connaissance (refonte vague 5, 46A, script 0044_actualites_vague5.sql) ──
+// Une communication peut demander « J'ai pris connaissance ». Le franchisé reçoit sa propre date ; l'équipe, les
+// franchisés de ses magasins qui l'ont donnée et ceux qui manquent. null : base d'avant 0044.
+export interface Connaissance { id: number; moi: string | null; pris: { franchise: string; le: string }[]; manquants: string[] }
+export async function chargerConnaissances(): Promise<Map<number, Connaissance> | null> {
+  const { data, error } = await supabase.rpc('connaissances')
+  if (error || !Array.isArray(data)) return null
+  return new Map(lignes(data).map((c) => [Number(c.id), {
+    id: Number(c.id), moi: c.moi ? t(c.moi) : null,
+    pris: lignes(c.pris).map((p) => ({ franchise: t(p.franchise), le: t(p.le) })),
+    manquants: Array.isArray(c.manquants) ? c.manquants.map(String) : [],
+  }] as const))
+}
+export const prendreConnaissance = (id: number) => appeler('prendre_connaissance', { p_id: id })
+export const demanderConnaissance = (id: number, oui: boolean) => appeler('demander_connaissance', { p_id: id, p_oui: oui })
+// Garde-fou (46A) : au-delà de 2 par mois, le bandeau devient du bruit
+export const MAX_CONNAISSANCES_MOIS = 2
+
+export function useConnaissances() {
+  const [etat, setEtat] = useState<Map<number, Connaissance> | null>(null)
+  const recharger = useCallback(async () => { setEtat(await chargerConnaissances()) }, [])
+  useEffect(() => {
+    let actif = true
+    void chargerConnaissances().then((c) => { if (actif) setEtat(c) })
+    return () => { actif = false }
+  }, [])
+  return { connaissances: etat, recharger }
+}
