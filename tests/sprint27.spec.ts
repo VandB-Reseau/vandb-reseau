@@ -130,6 +130,14 @@ test('F3 : la carte des commerces ne répond pas', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Réessayer' })).toBeVisible()
 })
 
+test('F3 : serveur principal saturé, la liste vient d’un miroir', async ({ page }) => {
+  await seConnecter(page, { overpass: 'principalSature' })
+  await page.goto('./#/magasins/Lyon%20Test')
+  const liste = page.getByRole('list', { name: 'Concurrents de Lyon Test' })
+  await expect(liste.getByRole('listitem')).toHaveCount(2)
+  await expect(page.getByText('La carte des commerces ne répond pas pour le moment.')).toHaveCount(0)
+})
+
 test('F4 : le franchisé écrit son mot avant la visite prévue', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   const visite = { id: 51, store: 'Annecy Test', visit_date: jour(5), type: 'terrain', visitor: 'Hugo FICTIF', signed_required: false, docs: [], prevue: true }

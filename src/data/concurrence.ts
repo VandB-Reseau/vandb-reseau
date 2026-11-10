@@ -4,7 +4,14 @@ import type { Magasin } from './modele'
 // Concurrents autour du magasin (sprint 27, F3, migration 0038). Les cavistes et caves à moins de 2 km sont lus sur
 // OpenStreetMap (service Overpass, gratuit, sans clé) et gardés 30 jours dans le navigateur ; l'équipe complète la liste
 // à la main, retire un commerce qui n'est pas un concurrent et note une remarque (rubrique « concurrence »).
-const SERVICE = 'https://overpass-api.de/api/interpreter'
+// Le serveur principal d'Overpass est souvent saturé (refus 429 ou 504) : on essaie ses miroirs publics l'un après l'autre,
+// et, si aucun ne répond, on garde la dernière liste lue même si elle a plus de 30 jours (10/11/2026).
+export const SERVICES = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+]
+const ATTENTE_SERVICE = 12000
 const STOCKAGE = 'vandb-concurrents'
 const RAYON = 2000
 const GARDE_JOURS = 30
@@ -60,11 +67,11 @@ export function lireReponse(j: { elements?: Element[] }, depuis: { lat: number; 
   }).filter((c) => c.distance <= RAYON).sort((a, b) => a.distance - b.distance)
 }
 
-function lireCache(cle: string): CommerceProche[] | null {
+function lireCache(cle: string, perime = false): CommerceProche[] | null {
   try {
     const tout = JSON.parse(localStorage.getItem(STOCKAGE) ?? '{}') as Record<string, { le: number; liste: CommerceProche[] }>
     const x = tout[cle]
-    return x && Date.now() - x.le < GARDE_JOURS * 86400000 && Array.isArray(x.liste) ? x.liste : null
+    return x && Array.isArray(x.liste) && (perime || Date.now() - x.le < GARDE_JOURS * 86400000) ? x.liste : null
   } catch { return null }
 }
 function ecrireCache(cle: string, liste: CommerceProche[]) {
@@ -75,20 +82,42 @@ function ecrireCache(cle: string, liste: CommerceProche[]) {
   } catch { /* stockage indisponible : relu la prochaine fois */ }
 }
 
-export async function chargerCommercesProches(lat: number, lon: number): Promise<CommerceProche[]> {
+async function interroger(service: string, requete: string): Promise<{ elements?: Element[] }> {
+  const ctrl = new AbortController()
+  const minuterie = setTimeout(() => ctrl.abort(), ATTENTE_SERVICE)
+  try {
+    const r = await fetch(`${service}?data=${encodeURIComponent(requete)}`, { signal: ctrl.signal })
+    if (!r.ok) throw new Error(String(r.status))
+    const j = await r.json() as { elements?: Element[]; remark?: string }
+    // Overpass répond parfois 200 avec une remarque « runtime error » et une liste vide : c'est un échec, pas « aucun commerce »
+    if (!Array.isArray(j.elements) || (!j.elements.length && /error|timed out/i.test(j.remark ?? ''))) throw new Error('réponse illisible')
+    return j
+  } finally { clearTimeout(minuterie) }
+}
+
+// Une seule recherche à la fois par position, même si la fiche et la préparation de visite la demandent ensemble
+const enCours = new Map<string, Promise<CommerceProche[]>>()
+export function chargerCommercesProches(lat: number, lon: number): Promise<CommerceProche[]> {
   const cle = `${lat.toFixed(4)},${lon.toFixed(4)}`
   const garde = lireCache(cle)
-  if (garde) return garde
-  const requete = `[out:json][timeout:20];nwr(around:${RAYON},${lat},${lon})[shop~"^(wine|alcohol|beverages)$"];out center tags 80;`
-  const ctrl = new AbortController()
-  const minuterie = setTimeout(() => ctrl.abort(), 20000)
-  try {
-    const r = await fetch(`${SERVICE}?data=${encodeURIComponent(requete)}`, { signal: ctrl.signal })
-    if (!r.ok) throw new Error(String(r.status))
-    const liste = lireReponse(await r.json(), { lat, lon })
-    ecrireCache(cle, liste)
-    return liste
-  } finally { clearTimeout(minuterie) }
+  if (garde) return Promise.resolve(garde)
+  const deja = enCours.get(cle)
+  if (deja) return deja
+  const requete = `[out:json][timeout:15];nwr(around:${RAYON},${lat},${lon})[shop~"^(wine|alcohol|beverages)$"];out center tags 80;`
+  const p = (async () => {
+    for (const service of SERVICES) {
+      try {
+        const liste = lireReponse(await interroger(service, requete), { lat, lon })
+        ecrireCache(cle, liste)
+        return liste
+      } catch { /* serveur saturé ou injoignable : miroir suivant */ }
+    }
+    const ancienne = lireCache(cle, true)
+    if (ancienne) return ancienne
+    throw new Error('carte des commerces injoignable')
+  })().finally(() => enCours.delete(cle))
+  enCours.set(cle, p)
+  return p
 }
 
 export type EtatCommerces = { etat: 'chargement' } | { etat: 'erreur' } | { etat: 'sansPosition' } | { etat: 'pret'; liste: CommerceProche[] }

@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Carte des commerces (concurrents à 2 km) réparée (Joseph, 10/11/2026) : le serveur principal d'OpenStreetMap
+  (Overpass) étant souvent saturé, la recherche essaie deux miroirs publics, garde la dernière liste lue si aucun ne répond
+  et ne lance qu'une recherche à la fois par magasin. Sans migration.
 - Tableaux harmonisés (Joseph, 10/11/2026) : toutes les listes en tableau prennent le rendu de la liste des magasins
   (titres en gras collés en haut, lignes de 44 px, première colonne figée au défilement, avec la case à cocher quand il y
   en a une). Chaque colonne se trie d'un clic sur son titre (flèche) et se filtre par l'entonnoir qui apparaît au survol :
