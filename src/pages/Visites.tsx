@@ -295,6 +295,7 @@ function ContenuVisites() {
   const vue = (['rythme', 'historique'] as const).find((v) => v === params.get('vue')) ?? 'rythme'
   const [edition, setEdition] = useState<Edition>(null)
   const [message, setMessage] = useState('')
+  // Refonte vague 4 (39A) : l'action principale à droite du titre
   const actions = <BoutonAction libelle="Saisir une visite" onClick={() => setEdition({ visite: null, magasins: [] })} />
   return (
     <AvecReseau>
@@ -303,14 +304,15 @@ function ContenuVisites() {
           <PageHeader
             titre="Visites"
             sousTitre={`${reseau.visites.length} visite${reseau.visites.length > 1 ? 's' : ''} enregistrée${reseau.visites.length > 1 ? 's' : ''}`}
+            actions={actions}
           />
           <Onglets valeur={vue} onChange={(v) => setParams({ vue: v }, { replace: true })} libelle="Rubriques des visites" rubriques={[
             { vue: 'rythme', libelle: 'Rythme de visite', court: 'Rythme', icone: <EventRepeatOutlined /> },
             { vue: 'historique', libelle: 'Historique', icone: <HistoryOutlined /> },
           ]} />
           {vue === 'historique'
-            ? <VueHistorique reseau={reseau} actions={actions} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
-            : <VueRythme reseau={reseau} surPC={surPC} actions={actions} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
+            ? <VueHistorique reseau={reseau} actions={null} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
+            : <VueRythme reseau={reseau} surPC={surPC} actions={null} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
           {edition && <DialogVisite reseau={reseau} visite={edition.visite} magasinsInitiaux={edition.magasins} dateInitiale={edition.date} onFermer={(m) => { setEdition(null); if (m) setMessage(m) }} />}
           <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
         </>

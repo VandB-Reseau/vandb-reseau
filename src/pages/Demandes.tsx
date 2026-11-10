@@ -2,7 +2,6 @@
 // statut, avec le délai médian de première réponse et les demandes ouvertes depuis plus de 5 jours. Franchisé : ses
 // demandes, une nouvelle en trois champs, la conversation avec le siège.
 import { useMemo, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -23,6 +22,7 @@ import { useTheme } from '@mui/material/styles'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import SupportAgentOutlined from '@mui/icons-material/SupportAgentOutlined'
 import { PageHeader } from '../components/PageHeader'
+import { NomMagasin, Personne } from '../components/Entites'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { Fenetre } from '../components/EditionEquipe'
@@ -35,7 +35,7 @@ import {
   aTraiterParLeSiege, completerDemande, creerDemande, delaiMedian, enAttenteLongue, libelleStatutDemande, libelleTheme, ouverteDepuis, repondreDemande,
   themesDemande, useDemandes, useMesDemandes, type Demande, type StatutDemande, type ThemeDemande,
 } from '../data/demandes'
-import { dateHeure, dateRelative, lienFiche } from '../lib/format'
+import { dateHeure, dateRelative } from '../lib/format'
 import type { Reseau } from '../data/modele'
 
 const tonStatut: Record<StatutDemande, object> = {
@@ -117,9 +117,9 @@ function DemandesEquipe({ reseau }: { reseau: Reseau }) {
               {visibles.map((d) => (
                 <TableRow key={d.id} hover onClick={() => setOuverte(d)} sx={{ cursor: 'pointer' }}>
                   <TableCell><Link component="button" onClick={(e) => { e.stopPropagation(); setOuverte(d) }} sx={{ fontWeight: 600, textAlign: 'left' }}>{d.titre}</Link></TableCell>
-                  <TableCell><Link component={RouterLink} to={lienFiche(d.magasin)} onClick={(e) => e.stopPropagation()}>{d.magasin}</Link></TableCell>
+                  <TableCell><NomMagasin reseau={reseau} nom={d.magasin} /></TableCell>
                   <TableCell>{libelleTheme(d.theme)}</TableCell>
-                  <TableCell>{interlocuteur(d) || '—'}</TableCell>
+                  <TableCell>{interlocuteur(d) ? <Personne reseau={reseau} nom={interlocuteur(d)} /> : '—'}</TableCell>
                   <TableCell sx={{ color: enAttenteLongue(d, instant) ? 'error.main' : undefined, fontWeight: enAttenteLongue(d, instant) ? 700 : undefined }}>{dateRelative(d.ouverteLe, reseau.jour)}</TableCell>
                   <TableCell><PuceDemande statut={d.statut} /></TableCell>
                 </TableRow>

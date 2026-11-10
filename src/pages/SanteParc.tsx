@@ -1,3 +1,4 @@
+import { Blason } from '../components/Blason'
 import type { ReactNode } from 'react'
 import { normaliser } from '../data/filtres'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -397,7 +398,7 @@ const LigneSaisie = memo(function LigneSaisie({ m, detail, fin, coche, basculer,
     <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: coche ? 'action.selected' : undefined }}>
       {selection && <Checkbox checked={coche} onChange={() => basculer(m.nom)} sx={{ ml: 0.5, width: 48, height: 48 }} slotProps={{ input: { 'aria-label': `Sélectionner ${m.nom}` } }} />}
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex' }}>
-        <LigneCompacte onClick={() => ouvrir(m.nom)} label={`Saisir ${m.nom}`} avatar={<Initiales nom={m.nom} />} titre={m.nom} detail={detail} fin={fin} />
+        <LigneCompacte onClick={() => ouvrir(m.nom)} label={`Saisir ${m.nom}`} avatar={<Blason magasin={m} />} titre={m.nom} detail={detail} fin={fin} />
       </Box>
     </Box>
   )
@@ -414,7 +415,7 @@ function PanneauSaisie({ reseau, liste, nom, aller, fermer, saisie, partie, surP
       {m && (
         <Box role="dialog" aria-label={m.nom} sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Initiales nom={m.nom} />
+            <Blason magasin={m} />
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Link component={RouterLink} to={lienFiche(m.nom)} color="inherit" sx={{ fontWeight: 600, display: 'block' }} noWrap>{m.nom}</Link>
               <Typography variant="body2" color="text.secondary" noWrap>{libelleSuivi(m, coachA(m, reseau.jour))} · {i + 1} sur {liste.length}</Typography>
@@ -912,7 +913,7 @@ function LignesChiffres({ reseau, lignes }: { reseau: Reseau; lignes: { m: Magas
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <CarteLignes label="Chiffres des magasins">
         {avec.slice(0, nb).map(({ m, a, coach }) => (
-          <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Initiales nom={m.nom} />} titre={m.nom}
+          <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Blason magasin={m} />} titre={m.nom}
             detail={[coach || 'Sans Coach', libelleMois(a!.mois)].join(' · ')}
             fin={<>
               <Box sx={{ display: { xs: 'none', sm: 'block' } }}><MiniCourbe valeurs={courbeCA(reseau, m.nom, a!.mois)} couleur={couleur(a!)} label={`Chiffre d'affaires de ${m.nom} sur 12 mois`} /></Box>
@@ -928,7 +929,7 @@ function LignesChiffres({ reseau, lignes }: { reseau: Reseau; lignes: { m: Magas
             titre={`${sans.length} magasin${sans.length > 1 ? 's' : ''} sans chiffres`} fin={ouvert ? <ExpandLessOutlined /> : <ExpandMoreOutlined />} />
         )}
         {ouvert && sans.map(({ m, coach }) => (
-          <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Initiales nom={m.nom} />} titre={m.nom} detail={coach || 'Sans Coach'} />
+          <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Blason magasin={m} />} titre={m.nom} detail={coach || 'Sans Coach'} />
         ))}
       </CarteLignes>
       {nb < avec.length && <Button variant="outlined" onClick={() => setNb(nb + 50)} sx={{ alignSelf: 'center', minHeight: 48 }}>Afficher {Math.min(50, avec.length - nb)} magasins de plus</Button>}

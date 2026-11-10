@@ -571,7 +571,7 @@ function MaJournee({ reseau, p, moi }: { reseau: Reseau; p: Perimetre; moi: stri
       {du.length > 0 && (
         <CarteLignes>
           {du.map((v) => (
-            <LigneCompacte key={v.id ?? v.magasin} lien={v.prevue ? `${lienFiche(v.magasin)}/visite` : lienFiche(v.magasin)} avatar={<Initiales nom={v.magasin} icone={<EventAvailableOutlined />} />}
+            <LigneCompacte key={v.id ?? v.magasin} lien={v.prevue ? `${lienFiche(v.magasin)}/visite` : lienFiche(v.magasin)} avatar={<Blason magasin={reseau.magasins.find((m) => m.nom === v.magasin)} nom={v.magasin} />}
               titre={v.magasin} detail={[libelleTypeVisite(v.type), v.prevue ? 'prévue' : 'faite'].join(' · ')} />
           ))}
         </CarteLignes>
