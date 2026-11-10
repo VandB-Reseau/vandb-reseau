@@ -1,3 +1,5 @@
+import { normaliserRituels, type Rituel } from './rituels'
+import { normaliserInterlocuteurs } from './demandes'
 import { renommerAccesCoach } from './accesEquipe'
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
@@ -66,7 +68,7 @@ let fichesEnTable: boolean | null = null
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, evenements, finances, suivi, regions, fiches, fermes] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins', 'rituels', 'demandes_themes']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -135,6 +137,8 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   reseau.concurrence = normaliserConcurrence(json<unknown>(cle('concurrents_magasins'), {}))
   reseau.objectifs = normaliserObjectifs(json<unknown>(cle('objectifs_magasins'), {}))
   reseau.plans = normaliserPlans(json<unknown>(cle('plans_magasins'), {}))
+  reseau.rituels = normaliserRituels(json<unknown>(cle('rituels'), null))
+  reseau.interlocuteursDemandes = normaliserInterlocuteurs(json<unknown>(cle('demandes_themes'), {}))
   reseau.motsFranchise = normaliserMots(json<unknown>(cle('mots_franchise'), {}))
   reseau.audits = json<Audits>(cle('audits'), {})
   reseau.grilles = normaliserGrilles(json<unknown>(cle('grilles_audit'), {}))
@@ -237,6 +241,16 @@ export async function enregistrerParametres(changements: Record<string, number>)
     ? await supabase.from('app_config').update({ value }).eq('key', 'params')
     : await supabase.from('app_config').insert({ key: 'params', value })
   if (res.error) throw new ErreurEnregistrement(res.error.message)
+}
+
+// Rituels d'animation et interlocuteurs des demandes (vague 4, 33A et 37A) : réglages du Directeur
+export async function enregistrerRituels(rituels: Rituel[]) {
+  const { existe } = await lireCle<unknown>('rituels', null)
+  await ecrireCle('rituels', rituels, existe)
+}
+export async function enregistrerInterlocuteurs(v: Record<string, string>) {
+  const { existe } = await lireCle<unknown>('demandes_themes', null)
+  await ecrireCle('demandes_themes', v, existe)
 }
 
 // ── Équipe : Directeur, Responsables Régionaux, Coachs ──

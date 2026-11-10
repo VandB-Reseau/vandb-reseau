@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { Section } from '../components/Section'
+import { libelleTaux, useTauxRituels } from '../components/TenueRituels'
 import { Indicateur } from '../components/SyntheseMagasin'
 import { styleImpression } from '../components/Feuille'
 import { useEtiquettePerimetre, useNomsPerimetre } from '../data/perimetreChoisi'
@@ -60,6 +61,7 @@ function EcartBudget() {
 function Rapport({ reseau }: { reseau: Reseau }) {
   const r = rapportDuMois(reseau)
   const etiquette = useEtiquettePerimetre()
+  const taux = useTauxRituels(reseau)
   const enRetard = r.objectifs.filter((x) => x.statut === 'retard' || x.statut === 'manque')
   const surLaVoie = r.objectifs.filter((x) => x.statut === 'voie' || x.statut === 'atteint').length
   return (
@@ -88,6 +90,16 @@ function Rapport({ reseau }: { reseau: Reseau }) {
         <Section titre={`Tâches en retard · ${r.totalRetards}`}>
           <Liste vide="Aucune tâche en retard." lignes={r.retards.map((x) => ({ cle: x.magasin, magasin: x.magasin, detail: `${x.nombre} en retard`, rouge: true }))} />
         </Section>
+        {!!taux?.length && (
+          <Section titre="Tenue des rituels">
+            {taux.map((t) => (
+              <Box key={t.rituel.type} sx={{ display: 'flex', gap: 1, py: 0.75, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+                <Typography variant="body2" sx={{ flex: 1 }}>{t.rituel.libelle}</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>{libelleTaux(t)}</Typography>
+              </Box>
+            ))}
+          </Section>
+        )}
         <Section titre={`Objectifs en retard · ${enRetard.length}`}>
           <Liste vide={r.objectifs.length ? 'Tous les objectifs avancent au rythme prévu.' : 'Aucun objectif chiffré fixé sur le périmètre.'} lignes={enRetard.map((x) => ({ cle: `${x.magasin}:${x.o.id}`, magasin: x.magasin, detail: `${phraseObjectif(x.o)} · ${libelleStatut[x.statut].toLowerCase()}`, rouge: true }))} />
         </Section>

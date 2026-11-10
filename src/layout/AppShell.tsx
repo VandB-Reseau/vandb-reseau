@@ -36,7 +36,7 @@ import { useTotalEchanges } from '../data/echanges'
 import { BoutonCreer } from '../components/Creer'
 import { useInstallation } from '../lib/installation'
 import { brandStripe } from '../theme/theme'
-import { barreTelephone, magasins, parametres, pourRole, rubriquesMenu, secondaires, type Destination } from '../navigation/destinations'
+import { barreTelephone, demandesFranchise, menuTelephone, parametres, rubriquesMenu, type Destination } from '../navigation/destinations'
 import { CreerProvider } from '../components/Creer'
 import { SelecteurPerimetre } from '../components/SelecteurPerimetre'
 import { useCompteurTaches } from '../data/tachesVues'
@@ -267,7 +267,7 @@ function BarreBasse({ franchise, sansCompteur }: { franchise?: Destination[]; sa
         }),
       })}>
       <Box sx={{ display: 'flex', height: HAUTEUR_BARRE }}>
-        {(franchise ?? barreTelephone).map(item)}
+        {(franchise?.filter((d) => d !== demandesFranchise) ?? barreTelephone).map(item)}
       </Box>
     </Paper>
   )
@@ -311,7 +311,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
             {!franchise && <BoutonCreer entete />}
             {!franchise && <BoutonInfos />}
             <Cloche />
-            <MenuCompte liens={franchise ? [] : [{ destinations: [magasins, ...pourRole(secondaires, profil?.role)] }, ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }])]} />
+            <MenuCompte liens={franchise ? (franchise.includes(demandesFranchise) ? [{ destinations: [demandesFranchise] }] : []) : [{ destinations: menuTelephone(profil?.role) }, ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }])]} />
           </Toolbar>
           {/* Filet de la charte sous la barre (60 + 4 = 64 px) */}
           <Box aria-hidden data-filet="" sx={{ height: 4, background: brandStripe }} />

@@ -29,6 +29,8 @@ import { BoutonAjouterAction, ListeActions } from '../components/Actions'
 import { BilanCampagnes } from '../components/Campagnes'
 import { actionsDes, enRetard } from '../data/actions'
 import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme, type LigneRythme } from '../data/visites'
+import ForumOutlined from '@mui/icons-material/ForumOutlined'
+import { OngletEntretiens } from '../components/Entretiens'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import { BlocPortefeuille, ProfilPersonne } from '../components/Portefeuille'
 import { portefeuilleDe } from '../data/portefeuille'
@@ -37,11 +39,12 @@ import { fichePersonne } from '../data/personnes'
 
 // Vague 3 (Joseph, 09/11/2026, 28A) : fiche d'une personne au gabarit de la fiche magasin, trois onglets.
 // Les anciennes adresses (?vue=portefeuille|fiche|visites|actions|campagnes) mènent au bon onglet.
-type VueCoach = 'ensemble' | 'magasins' | 'activite'
+type VueCoach = 'ensemble' | 'magasins' | 'activite' | 'entretiens'
 const rubriquesCoach: Rubrique<VueCoach>[] = [
   { vue: 'ensemble', libelle: 'Vue d’ensemble', icone: <InsightsOutlined /> },
   { vue: 'magasins', libelle: 'Magasins', icone: <StorefrontOutlined /> },
   { vue: 'activite', libelle: 'Activité', icone: <EventNoteOutlined /> },
+  { vue: 'entretiens', libelle: 'Entretiens', icone: <ForumOutlined /> },
 ]
 const anciennesVues: Record<string, VueCoach> = { portefeuille: 'ensemble', fiche: 'ensemble', visites: 'activite', actions: 'activite', campagnes: 'activite' }
 
@@ -130,6 +133,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
           </Box>
           <Section titre="Campagnes"><BilanCampagnes reseau={reseau} magasins={magasins} /></Section>
         </Box>}
+        {vue === 'entretiens' && <OngletEntretiens reseau={reseau} coach={coach} signaler={setMessage} />}
         {edition && <DialogCoach reseau={reseau} coach={coach} onFermer={(m, nom) => { setEdition(false); if (m?.includes('retiré')) naviguer('/equipe'); else if (m) { setMessage(m); if (nom && nom !== coach.nom) naviguer(lienCoach(nom), { replace: true }) } }} />}
         <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
       </ContenuOnglet>

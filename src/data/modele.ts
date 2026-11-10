@@ -143,6 +143,8 @@ export interface Reseau {
   preparations: Record<string, PreparationVisite> // notes de la prochaine visite, par magasin (jamais montrées au franchisé)
   ouvertures: Record<string, SuiviOuverture> // étapes des ouvertures à venir, par magasin (sprint 25, F3, migration 0035)
   objectifs?: Record<string, import('./objectifs').Objectif[]> // objectifs chiffrés par magasin (refonte vague 3, 26A, 0042)
+  rituels?: import('./rituels').Rituel[] // rituels d'animation (vague 4, 33A), clé rituels d'app_config
+  interlocuteursDemandes?: Record<string, string> // thème de demande → interlocuteur (vague 4, 37A), clé demandes_themes
   plans?: Record<string, import('./planAction').Priorite[]> // plan d'action par magasin (refonte vague 4, 31A, 0043)
   concurrence: Record<string, import('./concurrence').SuiviConcurrence> // concurrents ajoutés, retirés ou notés, par magasin (sprint 27, F3, 0038)
   motsFranchise: Record<string, import('./motFranchise').MotFranchise[]> // mots du franchisé avant ses visites, par magasin (sprint 27, F4, 0038)
