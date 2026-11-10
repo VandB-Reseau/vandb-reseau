@@ -19,15 +19,17 @@ import { useAuth } from '../auth/AuthContext'
 import type { Reseau } from '../data/modele'
 import {
   chargerSondages, chargerSondagesARepondre, decompte, libelleValeur, publierSondage, repondreSondage, supprimerSondage, valeursDe,
-  type Cible, type Genre, type QuestionSondage, type Sondage, type SondageARepondre,
+  reponseLibre, type Cible, type Genre, type QuestionSondage, type Sondage, type SondageARepondre,
 } from '../data/questions'
 import { dateCourte } from '../lib/format'
 import { notifierContenu } from '../lib/notifications'
 
 const MAX_QUESTIONS = 5
+const chiffreValide = (v: string) => /^-?\d{1,12}([.,]\d{1,4})?$/.test(v.trim().replace(/\s/g, ''))
 const plusJours = (jour: string, n: number) => { const d = new Date(`${jour}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
 const pourcent = (n: number, total: number) => (total ? Math.round((n / total) * 100) : 0)
 const virgule = (x: number) => x.toFixed(1).replace('.', ',')
+const nombre = (x: number) => x.toLocaleString('fr-FR', { maximumFractionDigits: 2 })
 const libelleCible: Record<Cible, string> = { franchises: 'franchisés', equipe: 'équipe', tous: 'franchisés et équipe' }
 
 interface Brouillon { titre: string; genre: Genre; choix: string }
@@ -35,11 +37,13 @@ const nouvelle = (): Brouillon => ({ titre: '', genre: 'oui_non', choix: '' })
 const optionsDe = (b: Brouillon) => b.choix.split('\n').map((c) => c.trim()).filter(Boolean)
 const brouillonValide = (b: Brouillon) => !!b.titre.trim() && (b.genre !== 'choix' || (optionsDe(b).length >= 2 && optionsDe(b).length <= 6))
 
-export function DialogSondage({ reseau, onFermer }: { reseau: Reseau; onFermer: (m?: string) => void }) {
+// remontee : questions à réponse libre (chiffre ou texte), toujours avec le nom (refonte vague 4, 36A)
+export function DialogSondage({ reseau, onFermer, remontee = false }: { reseau: Reseau; onFermer: (m?: string) => void; remontee?: boolean }) {
   const { profil } = useAuth()
   const directeur = profil?.role === 'directeur'
   const [titre, setTitre] = useState('')
-  const [questions, setQuestions] = useState<Brouillon[]>([nouvelle()])
+  const nouvelleQ = (): Brouillon => (remontee ? { titre: '', genre: 'chiffre', choix: '' } : nouvelle())
+  const [questions, setQuestions] = useState<Brouillon[]>(() => [nouvelleQ()])
   const [cible, setCible] = useState<Cible>('franchises')
   const [anonyme, setAnonyme] = useState<'nominative' | 'anonyme'>('nominative')
   const regions = reseau.rrs.filter((r) => !r.integres)
@@ -49,15 +53,15 @@ export function DialogSondage({ reseau, onFermer }: { reseau: Reseau; onFermer: 
   const valide = (!plusieurs || !!titre.trim()) && questions.every(brouillonValide) && jusquAu >= reseau.jour
   const changer = (i: number, b: Partial<Brouillon>) => setQuestions((l) => l.map((x, j) => (j === i ? { ...x, ...b } : x)))
   return (
-    <Fenetre titre="Nouveau sondage" ouvert onFermer={onFermer} valide={valide} sansRechargement
+    <Fenetre titre={remontee ? 'Nouvelle remontée' : 'Nouveau sondage'} ouvert onFermer={onFermer} valide={valide} sansRechargement
       enregistrer={async () => {
         const magasins = !directeur || !region ? null : reseau.magasins.filter((m) => m.rr?.id === region).map((m) => m.nom)
         const id = await publierSondage({
-          titre: plusieurs ? titre.trim() : questions[0].titre.trim(), cible, anonyme: anonyme === 'anonyme', magasins, jusquAu,
+          titre: plusieurs ? titre.trim() : questions[0].titre.trim(), cible, anonyme: !remontee && anonyme === 'anonyme', magasins, jusquAu,
           questions: questions.map((b) => ({ titre: b.titre.trim(), genre: b.genre, choix: b.genre === 'choix' ? optionsDe(b) : [] })),
         })
         if (id) notifierContenu('sondage', id)
-        return 'Sondage envoyé.'
+        return remontee ? 'Remontée envoyée.' : 'Sondage envoyé.'
       }}>
       {plusieurs && <TextField label="Titre du sondage" value={titre} onChange={(e) => setTitre(e.target.value)} slotProps={{ htmlInput: { maxLength: 300 } }} />}
       {questions.map((b, i) => {
@@ -69,17 +73,17 @@ export function DialogSondage({ reseau, onFermer }: { reseau: Reseau; onFermer: 
               <TextField label={nom} value={b.titre} onChange={(e) => changer(i, { titre: e.target.value })} autoFocus={i === questions.length - 1} multiline fullWidth slotProps={{ htmlInput: { maxLength: 300 } }} />
               {plusieurs && <Tooltip title="Retirer la question"><IconButton aria-label={`Retirer la question ${i + 1}`} onClick={() => setQuestions((l) => l.filter((_x, j) => j !== i))} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton></Tooltip>}
             </Box>
-            <Puces label={`Type de réponse, ${nom.toLowerCase()}`} valeur={b.genre} onChange={(g) => changer(i, { genre: g })} options={[{ v: 'oui_non', libelle: 'Oui ou non' }, { v: 'choix', libelle: 'Choix' }, { v: 'note', libelle: 'Note de 1 à 5' }]} />
+            <Puces label={`Type de réponse, ${nom.toLowerCase()}`} valeur={b.genre} onChange={(g) => changer(i, { genre: g })} options={remontee ? [{ v: 'chiffre', libelle: 'Un chiffre' }, { v: 'texte', libelle: 'Un texte' }] : [{ v: 'oui_non', libelle: 'Oui ou non' }, { v: 'choix', libelle: 'Choix' }, { v: 'note', libelle: 'Note de 1 à 5' }]} />
             {b.genre === 'choix' && <TextField label={`Réponses possibles, une par ligne (${nom.toLowerCase()})`} value={b.choix} onChange={(e) => changer(i, { choix: e.target.value })} multiline minRows={3}
               error={!!b.choix && (options.length < 2 || options.length > 6)} helperText={options.length > 6 ? '6 réponses au plus.' : ' '} />}
           </Box>
         )
       })}
-      {questions.length < MAX_QUESTIONS && <Button startIcon={<AddOutlined />} onClick={() => setQuestions((l) => [...l, nouvelle()])} sx={{ minHeight: 48, justifySelf: 'start' }}>Ajouter une question</Button>}
+      {questions.length < MAX_QUESTIONS && <Button startIcon={<AddOutlined />} onClick={() => setQuestions((l) => [...l, nouvelleQ()])} sx={{ minHeight: 48, justifySelf: 'start' }}>Ajouter une question</Button>}
       <Puces label="Destinataires" valeur={cible} onChange={setCible} options={[
         { v: 'franchises', libelle: 'Franchisés' }, { v: 'equipe', libelle: directeur ? 'Coachs et RR' : 'Coachs' }, { v: 'tous', libelle: 'Les deux' },
       ]} />
-      <Puces label="Réponses" valeur={anonyme} onChange={setAnonyme} options={[{ v: 'nominative', libelle: 'Avec le nom' }, { v: 'anonyme', libelle: 'Anonymes' }]} />
+      {!remontee && <Puces label="Réponses" valeur={anonyme} onChange={setAnonyme} options={[{ v: 'nominative', libelle: 'Avec le nom' }, { v: 'anonyme', libelle: 'Anonymes' }]} />}
       {directeur
         ? <Puces label="Magasins concernés" valeur={region} onChange={setRegion} options={[{ v: '', libelle: 'Tout le réseau' }, ...regions.map((r) => ({ v: r.id, libelle: `Région ${r.nom}` }))]} />
         : <Typography variant="body2" color="text.secondary">Tes magasins</Typography>}
@@ -107,7 +111,11 @@ function ResultatQuestion({ reseau, s, q, n }: { reseau: Reseau; s: Sondage; q: 
   return (
     <Box sx={{ mt: 1 }}>
       {s.questions.length > 1 && <Typography sx={{ fontWeight: 600 }}>{n + 1}. {q.titre}</Typography>}
-      {d.moyenne !== null && <Typography sx={{ fontWeight: 600, mb: 0.5 }}>Moyenne {virgule(d.moyenne)} sur 5</Typography>}
+      {d.moyenne !== null && q.genre === 'note' && <Typography sx={{ fontWeight: 600, mb: 0.5 }}>Moyenne {virgule(d.moyenne)} sur 5</Typography>}
+      {q.genre === 'chiffre' && <Typography sx={{ fontWeight: 600, mb: 0.5 }}>{d.total ? `Total ${nombre(d.somme ?? 0)} · moyenne ${nombre(d.moyenne ?? 0)} · ${d.total} réponse${d.total > 1 ? 's' : ''}` : 'Aucune réponse'}</Typography>}
+      {reponseLibre(q.genre) && s.reponses.filter((r) => r.valeurs[n]).map((r, i) => (
+        <Typography key={i} variant="body2" sx={{ py: 0.25 }}><Box component="span" sx={{ fontWeight: 600 }}>{r.franchise ?? 'Équipe'}</Box> : {r.valeurs[n]}</Typography>
+      ))}
       {d.parValeur.map((x) => <Barre key={x.v} libelle={libelleValeur(q, x.v)} n={x.n} total={d.total} />)}
       {regions.length > 1 && regions.map((r) => {
         const dr = decompte(q, n, s.reponses.filter((x) => x.regions.includes(r.id)))
@@ -188,7 +196,8 @@ function SondageAFaire({ s, envoyer }: { s: SondageARepondre; envoyer: (valeurs:
   const [valeurs, setValeursLocales] = useState<string[]>(() => enCours.get(s.id) ?? [])
   const setValeurs = (f: (l: string[]) => string[]) => setValeursLocales((l) => { const n = f(l); enCours.set(s.id, n); return n })
   const seule = s.questions.length === 1
-  const complet = s.questions.every((_q, i) => !!valeurs[i])
+  const libre = s.questions.some((q) => reponseLibre(q.genre))
+  const complet = s.questions.every((q, i) => !!valeurs[i]?.trim() && (q.genre !== 'chiffre' || chiffreValide(valeurs[i])))
   return (
     <Box component="li" aria-label={s.titre} sx={{ px: 2, py: 1.5 }}>
       <Typography sx={{ fontWeight: 600 }}>{s.titre}</Typography>
@@ -199,16 +208,23 @@ function SondageAFaire({ s, envoyer }: { s: SondageARepondre; envoyer: (valeurs:
             {s.questions.map((q, i) => (
               <Box key={i} sx={{ mt: 1 }}>
                 {!seule && <Typography variant="body2" sx={{ fontWeight: 600 }}>{i + 1}. {q.titre}</Typography>}
+                {reponseLibre(q.genre) ? (
+                  <TextField size="small" fullWidth label={q.genre === 'chiffre' ? 'Ma réponse (chiffre)' : 'Ma réponse'} value={valeurs[i] ?? ''} sx={{ mt: 0.5 }}
+                    onChange={(e) => { const v = e.target.value; setValeurs((l) => { const n = [...l]; n[i] = v; return n }) }}
+                    error={q.genre === 'chiffre' && !!valeurs[i] && !chiffreValide(valeurs[i])}
+                    slotProps={{ htmlInput: { maxLength: q.genre === 'chiffre' ? 18 : 2000, inputMode: q.genre === 'chiffre' ? 'decimal' : undefined, 'aria-label': `Répondre : ${q.titre}` } }} multiline={q.genre === 'texte'} />
+                ) : (
                 <Box role="group" aria-label={`Répondre : ${q.titre}`} sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
                   {valeursDe(q).map((v) => (
-                    <Button key={v} variant={valeurs[i] === v ? 'contained' : 'outlined'} aria-pressed={seule ? undefined : valeurs[i] === v}
-                      onClick={() => { if (seule) void envoyer([v]); else setValeurs((l) => { const n = [...l]; n[i] = v; return n }) }}
+                    <Button key={v} variant={valeurs[i] === v ? 'contained' : 'outlined'} aria-pressed={seule && !libre ? undefined : valeurs[i] === v}
+                      onClick={() => { if (seule && !libre) void envoyer([v]); else setValeurs((l) => { const n = [...l]; n[i] = v; return n }) }}
                       sx={{ minHeight: 48, minWidth: 48, flex: q.genre === 'oui_non' ? 1 : undefined }}>{libelleValeur(q, v)}</Button>
                   ))}
                 </Box>
+                )}
               </Box>
             ))}
-            {!seule && <Button variant="contained" disabled={!complet} onClick={() => void envoyer(s.questions.map((_q, i) => valeurs[i]))} sx={{ mt: 1.5, minHeight: 48 }}>Envoyer mes réponses</Button>}
+            {(!seule || libre) && <Button variant="contained" disabled={!complet} onClick={() => void envoyer(s.questions.map((q, i) => (q.genre === 'chiffre' ? valeurs[i].replace(/\s/g, '') : valeurs[i].trim())))} sx={{ mt: 1.5, minHeight: 48 }}>Envoyer mes réponses</Button>}
           </>}
     </Box>
   )

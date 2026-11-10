@@ -1,3 +1,4 @@
+import Autocomplete from '@mui/material/Autocomplete'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
@@ -44,17 +45,20 @@ export function useEditionJournal(reseau: Reseau, m: Magasin, signaler: (message
   return { ouvrir, nouvelleNote, fenetres }
 }
 
-function DialogNote({ magasin, note, onFermer }: { magasin: string; note: NoteMagasin; onFermer: (message?: string) => void }) {
+// magasins : note créée depuis le « + » (refonte vague 4, 42A), le magasin se choisit dans la fenêtre
+export function DialogNote({ magasin: initial, note, magasins, onFermer }: { magasin: string; note: NoteMagasin; magasins?: string[]; onFermer: (message?: string) => void }) {
   const [date, setDate] = useState(note.date)
   const [texte, setTexte] = useState(note.texte)
+  const [magasin, setMagasin] = useState(initial)
   return (
-    <Fenetre titre={note.id ? 'Modifier la note' : 'Nouvelle note'} ouvert onFermer={onFermer} valide={!!texte.trim() && !!date}
+    <Fenetre titre={note.id ? 'Modifier la note' : 'Nouvelle note'} ouvert onFermer={onFermer} valide={!!texte.trim() && !!date && !!magasin}
       enregistrer={async () => {
         await enregistrerNoteMagasin(magasin, { ...note, id: note.id || `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, date, texte: texte.trim() })
         return 'Note enregistrée.'
       }}
       supprimer={note.id ? async () => { await supprimerNoteMagasin(magasin, note.id); return 'Note supprimée.' } : undefined}
       libelleSuppression="Supprimer cette note du journal ?">
+      {magasins && <Autocomplete options={magasins} value={magasin || null} onChange={(_, v) => setMagasin(v ?? '')} renderInput={(p) => <TextField {...p} label="Magasin" />} />}
       <TextField type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       <TexteDicte label="Note" libelleDictee="Note" valeur={texte} changer={setTexte} multiline minRows={4} autoFocus />
     </Fenetre>

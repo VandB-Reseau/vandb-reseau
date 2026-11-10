@@ -3,7 +3,10 @@
 // chacun répond une fois, à tout d'un coup. Anonymat tenu par la base.
 import { supabase } from '../lib/supabase'
 
-export type Genre = 'oui_non' | 'choix' | 'note'
+// Remontée (refonte vague 4, 36A, migration 0043) : réponse libre en chiffre ou en texte, jamais anonyme
+export type Genre = 'oui_non' | 'choix' | 'note' | 'chiffre' | 'texte'
+export const reponseLibre = (g: Genre) => g === 'chiffre' || g === 'texte'
+export const estRemontee = (s: { questions: Pick<QuestionSondage, 'genre'>[] }) => s.questions.some((q) => reponseLibre(q.genre))
 export type Cible = 'franchises' | 'equipe' | 'tous'
 export interface QuestionSondage { titre: string; genre: Genre; choix: string[] }
 export interface ReponseSondage { valeurs: string[]; role: string; franchise: string | null; regions: string[] }
@@ -16,7 +19,7 @@ export interface SondageARepondre { id: number; titre: string; questions: Questi
 type Ligne = Record<string, unknown>
 const lignes = (v: unknown) => (Array.isArray(v) ? (v as Ligne[]).filter((x) => x && typeof x === 'object') : [])
 const textes = (v: unknown) => (Array.isArray(v) ? v.map(String) : [])
-const genre = (v: unknown): Genre => (v === 'choix' || v === 'note' ? v : 'oui_non')
+const genre = (v: unknown): Genre => (v === 'choix' || v === 'note' || v === 'chiffre' || v === 'texte' ? v : 'oui_non')
 const cible = (v: unknown): Cible => (v === 'equipe' || v === 'tous' ? v : 'franchises')
 // Une question éclair d'avant 0029 n'a pas de liste de questions : elle en est une à elle seule
 const questionsDe = (l: Ligne): QuestionSondage[] => {
@@ -74,13 +77,16 @@ export async function repondreSondage(id: number, valeurs: string[]) {
 }
 
 // Valeurs possibles d'une question, dans l'ordre d'affichage
-export const valeursDe = (q: Pick<QuestionSondage, 'genre' | 'choix'>) => (q.genre === 'oui_non' ? ['oui', 'non'] : q.genre === 'note' ? ['1', '2', '3', '4', '5'] : q.choix)
+export const valeursDe = (q: Pick<QuestionSondage, 'genre' | 'choix'>) => (q.genre === 'oui_non' ? ['oui', 'non'] : q.genre === 'note' ? ['1', '2', '3', '4', '5'] : reponseLibre(q.genre) ? [] : q.choix)
 export const libelleValeur = (q: Pick<QuestionSondage, 'genre'>, v: string) => (q.genre === 'oui_non' ? (v === 'oui' ? 'Oui' : 'Non') : v)
 
 // Décompte de la question n par valeur, moyenne pour une note
 export function decompte(q: QuestionSondage, n: number, reponses: ReponseSondage[]) {
   const valeurs = reponses.map((r) => r.valeurs[n]).filter((v): v is string => !!v)
   const parValeur = valeursDe(q).map((v) => ({ v, n: valeurs.filter((x) => x === v).length }))
-  const moyenne = q.genre === 'note' && valeurs.length ? valeurs.reduce((s, v) => s + Number(v), 0) / valeurs.length : null
-  return { parValeur, moyenne, total: valeurs.length }
+  const nombres = q.genre === 'chiffre' ? valeurs.map((v) => Number(v.replace(',', '.'))).filter((x) => Number.isFinite(x)) : []
+  const moyenne = q.genre === 'note' && valeurs.length ? valeurs.reduce((s, v) => s + Number(v), 0) / valeurs.length
+    : nombres.length ? nombres.reduce((s, x) => s + x, 0) / nombres.length : null
+  const somme = q.genre === 'chiffre' && nombres.length ? nombres.reduce((s, x) => s + x, 0) : null
+  return { parValeur, moyenne, somme, total: valeurs.length }
 }
