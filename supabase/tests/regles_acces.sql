@@ -978,3 +978,50 @@ SELECT pg_temp.attendre('Temps forts : le franchisé les lit', (SELECT jsonb_arr
 SELECT pg_temp.attendre('Intégration : pas de lecture directe', (SELECT count(*) FROM public.suivi_magasins WHERE cle = 'integration'), 0);
 RESET ROLE;
 RESET request.jwt.claim.sub;
+
+-- ── 0045 : messagerie, vague 6 (réponses, réactions, modification, épingle, demande née d'un message, envoi à plusieurs magasins)
+\ir ../migrations/0045_messagerie_vague6.sql
+SELECT pg_temp.attendre('Journal : 0045 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0045'), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT (public.envoyer_fil('magasin:Lille', 'Le livreur Bar n''est pas passé')->>'id')::bigint AS m_fr \gset
+SELECT pg_temp.attendre('Vague 6 : la messagerie passe en version 5', (public.messagerie()->>'version')::bigint, 5);
+SELECT pg_temp.attendre('Vague 6 : réactions fermées', pg_temp.refuse('SELECT count(*) FROM public.messages_reactions'), 1);
+SELECT pg_temp.attendre('Vague 6 : le franchisé réagit à un message de son magasin', pg_temp.refuse('SELECT public.reagir_message(' || :m_fr || ', ''vu'')'), 0);
+SELECT pg_temp.attendre('Vague 6 : réaction inconnue refusée', pg_temp.refuse('SELECT public.reagir_message(' || :m_fr || ', ''bravo'')'), 1);
+SELECT pg_temp.attendre('Vague 6 : le franchisé modifie son message', pg_temp.refuse('SELECT public.modifier_message(' || :m_fr || ', ''Le livreur Bar n''''est toujours pas passé'')'), 0);
+SELECT pg_temp.attendre('Vague 6 : le franchisé ne crée pas de demande depuis un message', pg_temp.refuse('SELECT public.demande_depuis_message(' || :m_fr || ', ''achats'', ''Livraison Bar'')'), 1);
+SELECT pg_temp.attendre('Vague 6 : le franchisé n''écrit pas à plusieurs magasins', pg_temp.refuse('SELECT public.ecrire_magasins(''{Lille}'', ''Bonjour'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT (public.envoyer_fil('equipe:Lille', 'Marge Bar en baisse')->>'id')::bigint AS m_eq \gset
+SELECT pg_temp.attendre('Vague 6 : le Coach ne modifie pas le message d''un autre', pg_temp.refuse('SELECT public.modifier_message(' || :m_fr || ', ''x'')'), 1);
+SELECT (public.ecrire_fil('magasin:Lille', 'Je regarde', '{}', '[]', :m_fr)->>'id')::bigint AS m_rep \gset
+SELECT (public.ecrire_fil('equipe:Lille', 'Vu', '{}', '[]', :m_fr)->>'id')::bigint AS m_autre \gset
+SELECT pg_temp.attendre('Vague 6 : la citation est posée', (SELECT count(*) FROM jsonb_array_elements(public.messagerie()->'messages') e WHERE (e->>'id')::bigint = :m_rep AND (e->>'repond_a')::bigint = :m_fr), 1);
+SELECT pg_temp.attendre('Vague 6 : pas de citation d''un autre fil', (SELECT count(*) FROM jsonb_array_elements(public.messagerie()->'messages') e WHERE (e->>'id')::bigint = :m_autre AND e->>'repond_a' IS NOT NULL), 0);
+SELECT pg_temp.attendre('Vague 6 : le Coach épingle', pg_temp.refuse('SELECT public.epingler_message(' || :m_fr || ', true)'), 0);
+SELECT pg_temp.attendre('Vague 6 : demande née d''un message', pg_temp.refuse('SELECT public.demande_depuis_message(' || :m_fr || ', ''achats'', ''Livraison Bar'')'), 0);
+SELECT pg_temp.attendre('Vague 6 : la demande est au nom du franchisé', (SELECT count(*) FROM public.demandes WHERE titre = 'Livraison Bar' AND franchise = 'Franchisé Test' AND magasin = 'Lille'), 1);
+SELECT pg_temp.attendre('Vague 6 : pas de demande depuis « Équipe seule »', pg_temp.refuse('SELECT public.demande_depuis_message(' || :m_eq || ', ''achats'', ''Interne'')'), 1);
+SELECT pg_temp.attendre('Vague 6 : le Coach écrit à ses magasins', pg_temp.refuse('SELECT public.ecrire_magasins(''{Lille}'', ''Bonjour {prénom}, pensez à la clôture.'')'), 0);
+SELECT pg_temp.attendre('Vague 6 : le prénom du franchisé est posé', (SELECT count(*) FROM jsonb_array_elements(public.messagerie()->'messages') e
+  WHERE e->>'texte' = 'Bonjour Franchisé, pensez à la clôture.' AND e->>'lot' IS NOT NULL), 1);
+SELECT pg_temp.attendre('Vague 6 : pas à un magasin d''un autre Coach', pg_temp.refuse('SELECT public.ecrire_magasins(''{Lille,Nice}'', ''Bonjour'')'), 1);
+SELECT pg_temp.attendre('Vague 6 : prénom du franchisé non appelable', pg_temp.refuse('SELECT public.prenom_franchise(''Lille'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c2';
+SELECT pg_temp.attendre('Vague 6 : un Coach d''autres magasins ne réagit pas', pg_temp.refuse('SELECT public.reagir_message(' || :m_fr || ', ''vu'')'), 1);
+SELECT pg_temp.attendre('Vague 6 : ni n''épingle', pg_temp.refuse('SELECT public.epingler_message(' || :m_fr || ', false)'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Vague 6 : le franchisé ne réagit pas dans « Équipe seule »', pg_temp.refuse('SELECT public.reagir_message(' || :m_eq || ', ''vu'')'), 1);
+SELECT pg_temp.attendre('Vague 6 : le franchisé lit sa réaction', (SELECT count(*) FROM jsonb_array_elements(public.messagerie()->'messages') e, jsonb_array_elements(e->'reactions') r
+  WHERE (e->>'id')::bigint = :m_fr AND (r->>'moi')::boolean), 1);
+SELECT pg_temp.attendre('Vague 6 : le franchisé voit le lien vers la demande', (SELECT count(*) FROM jsonb_array_elements(public.messagerie()->'messages') e
+  WHERE (e->>'id')::bigint = :m_fr AND e->>'demande' IS NOT NULL), 1);
+RESET ROLE;
+-- Modification refusée au-delà de 15 minutes
+UPDATE public.messages SET cree_le = now() - interval '1 hour' WHERE id = :m_fr;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Vague 6 : plus de modification après 15 minutes', pg_temp.refuse('SELECT public.modifier_message(' || :m_fr || ', ''Trop tard'')'), 1);
+RESET ROLE;
+RESET request.jwt.claim.sub;
