@@ -101,7 +101,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
               actions={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
                 {/* Refonte vague 4 (39A) : l'action principale à droite du titre, la bascule de vue au bout de la barre */}
                 {voitEvolution && surPC && <Button startIcon={<TimelineOutlined />} onClick={() => naviguer('/performance?vue=evolution')}>Évolution du parc</Button>}
-                <BoutonAction libelle="Ajouter un magasin" onClick={() => setAjout(true)} />
+                {vue === 'liste' && <BoutonAction libelle="Ajouter un magasin" onClick={() => setAjout(true)} />}
               </Box>}
             />
             <BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres} alertesDe={parAlerte} levierDe={parLevier}

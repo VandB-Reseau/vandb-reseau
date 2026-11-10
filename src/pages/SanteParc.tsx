@@ -398,7 +398,7 @@ const LigneSaisie = memo(function LigneSaisie({ m, detail, fin, coche, basculer,
     <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: coche ? 'action.selected' : undefined }}>
       {selection && <Checkbox checked={coche} onChange={() => basculer(m.nom)} sx={{ ml: 0.5, width: 48, height: 48 }} slotProps={{ input: { 'aria-label': `Sélectionner ${m.nom}` } }} />}
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex' }}>
-        <LigneCompacte onClick={() => ouvrir(m.nom)} label={`Saisir ${m.nom}`} avatar={<Blason magasin={m} />} titre={m.nom} detail={detail} fin={fin} />
+        <LigneCompacte onClick={() => ouvrir(m.nom)} label={`Saisir ${m.nom}`} avatar={<Initiales nom={m.nom} />} titre={m.nom} detail={detail} fin={fin} />
       </Box>
     </Box>
   )
@@ -415,7 +415,7 @@ function PanneauSaisie({ reseau, liste, nom, aller, fermer, saisie, partie, surP
       {m && (
         <Box role="dialog" aria-label={m.nom} sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Blason magasin={m} />
+            <Initiales nom={m.nom} />
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Link component={RouterLink} to={lienFiche(m.nom)} color="inherit" sx={{ fontWeight: 600, display: 'block' }} noWrap>{m.nom}</Link>
               <Typography variant="body2" color="text.secondary" noWrap>{libelleSuivi(m, coachA(m, reseau.jour))} · {i + 1} sur {liste.length}</Typography>
