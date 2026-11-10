@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Carte des commerces (concurrents à 2 km) réparée (Joseph, 10/11/2026) : le serveur principal d'OpenStreetMap
+  (Overpass) étant souvent saturé, la recherche essaie deux miroirs publics, garde la dernière liste lue si aucun ne répond
+  et ne lance qu'une recherche à la fois par magasin. Sans migration.
 - Lancement manuel limité de la mise en ligne (Joseph, 10/11/2026) : « Run workflow » de « Tester et publier » prend
   une liste de tests à repasser seulement ; vide, toute la suite. Sans migration.
 - Refonte façon SaaS, vague 6 : messagerie, budget et suivi (Joseph, 10/11/2026, choix 57 à 78 sauf 59, 61, 65, 66, 67,
