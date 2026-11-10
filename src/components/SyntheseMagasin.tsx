@@ -13,7 +13,7 @@ import { Section } from './Section'
 import { analyser, estVisite, formatEuros, formatKEuros, formatPourcent, libelleMois } from '../data/chiffres'
 import { libelleTypeVisite, nomsVisiteurs, visiteFaite, type Magasin, type Reseau } from '../data/modele'
 import { actionsDuMagasin, enRetard } from '../data/actions'
-import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme } from '../data/visites'
+import { anneeDe, libellePasVu, lienCompteRendu, lienVisite, suiviRythme } from '../data/visites'
 import { resumeCompteRendu } from '../data/resumeCompteRendu'
 import { dateCourte, dateLongue, lienFiche } from '../lib/format'
 
@@ -62,7 +62,7 @@ export function SituationMagasin({ reseau, m, planifier, objectifs }: { reseau: 
       <Section titre="Prochaines étapes">
         <Etape libelle="Visite" valeur={prevue ? `${dateLongue(prevue.date)} · ${libelleTypeVisite(prevue.type)}${prevue.visiteurs.length ? ` · ${nomsVisiteurs(prevue)}` : ''}`
           : <Box component="span" sx={{ color: rythme?.alerte ? 'error.main' : 'text.secondary' }}>{rythme?.alerte ? `${libellePasVu(rythme)} · à planifier` : 'Pas de visite prévue'}</Box>}
-          action={!prevue ? <Button onClick={planifier} sx={{ minHeight: 48, flexShrink: 0 }}>Planifier</Button> : undefined} />
+          action={!prevue ? <Button onClick={planifier} sx={{ minHeight: 48, flexShrink: 0 }}>Planifier</Button> : <Button component={RouterLink} to={lienVisite(prevue)} sx={{ minHeight: 48, flexShrink: 0 }}>Ouvrir</Button>} />
         <Etape libelle="Tâches ouvertes" valeur={ouvertes.length ? <>{ouvertes.length}{retards ? <Box component="span" sx={{ color: 'error.main' }}>{` · ${retards} en retard`}</Box> : null}</> : 'Aucune'}
           action={<Button component={RouterLink} to={`${lien}?vue=activite`} sx={{ minHeight: 48 }}>Voir</Button>} />
         <Etape libelle="Budget" valeur="Construire, relire, valider" action={<Button component={RouterLink} to={`${lien}?vue=budget`} sx={{ minHeight: 48 }}>Ouvrir</Button>} />

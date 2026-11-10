@@ -34,7 +34,7 @@ import { EmptyState } from '../components/EmptyState'
 import { DialogVisite, visiteurs } from '../components/DialogVisite'
 import { PastilleSignature } from '../components/PastilleVisite'
 import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, MiniPhotos, Pastille, TitreSection, useAffichage, useParTranches } from '../components/Social'
-import { anneeDe, anneesDisponibles, libellePasVu, lienCompteRendu, semestresDisponibles, suiviRythme, type LigneRythme } from '../data/visites'
+import { anneeDe, anneesDisponibles, libelleEtapeVisite, libellePasVu, lienCompteRendu, lienVisite, semestresDisponibles, suiviRythme, type LigneRythme } from '../data/visites'
 import { nineBox } from '../data/sante'
 import { PastilleCase } from '../components/Sante'
 import { FiltreMenu } from '../components/FiltreMenu'
@@ -45,6 +45,8 @@ import { libelleTypeVisite, nomsVisiteurs, typesVisite, type Reseau, type Visite
 import { chercherDansVisite, type Trouvaille } from '../data/compteRendu'
 import { sousBandes } from '../components/Collant'
 import { Blason } from '../components/Blason'
+import { preparationDe } from '../data/semaine'
+import { estVisite } from '../data/chiffres'
 
 type Edition = { visite: Visite | null; magasins: string[]; date?: string } | null
 
@@ -192,6 +194,15 @@ function AlerteVisite({ l }: { l: LigneRythme }) {
     : <Typography variant="body2" color="text.secondary" component="span">{l.echeance ? `le ${dateCourte(l.echeance)}` : ''}</Typography>
 }
 
+// Étape de la visite dans son parcours (refonte vague 3, 24A) ; une visite faite sans suite garde ses photos
+function EtapeVisite({ reseau, v }: { reseau: Reseau; v: Visite }) {
+  const e = libelleEtapeVisite(v, reseau.jour, v.prevue ? preparationDe(reseau, v.magasin) : null)
+  if (e === 'Faite') return v.signatureRequise ? <PastilleSignature requise signe={!!v.lienSigne} /> : <MiniPhotos photos={v.photos} />
+  if (e === 'Signature attendue') return <PastilleSignature requise signe={false} />
+  const finies = /^Actions (\d+) sur (\d+)$/.exec(e)
+  return <Pastille ton={v.prevue ? 'bleu' : finies ? (finies[1] === finies[2] ? 'vert' : 'gris') : 'orange'}>{e}</Pastille>
+}
+
 const parMois = (vs: Visite[]) => [...vs.reduce((m, v) => m.set(v.date.slice(0, 7), [...(m.get(v.date.slice(0, 7)) ?? []), v]), new Map<string, Visite[]>())]
 const nbDuMois = (vs: Visite[], mois: string) => vs.filter((v) => v.date.startsWith(mois)).length
 const libelleMoisAnnee = (mois: string) => new Date(`${mois}-15T12:00:00`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
@@ -252,9 +263,9 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
               </Box>
               <CarteLignes>
                 {vs.map((v) => (
-                  <LigneCompacte key={v.id ?? `${v.magasin}-${v.date}`} lien={lienFiche(v.magasin)} avatar={<Blason magasin={reseau.magasins.find((x) => x.nom === v.magasin)} nom={v.magasin} />} titre={v.magasin}
+                  <LigneCompacte key={v.id ?? `${v.magasin}-${v.date}`} lien={estVisite(v) ? lienVisite(v) : lienFiche(v.magasin)} avatar={<Blason magasin={reseau.magasins.find((x) => x.nom === v.magasin)} nom={v.magasin} />} titre={v.magasin}
                     detail={detailVisite(v, trouvailles.get(v))}
-                    fin={v.prevue ? <Pastille ton="bleu">Prévue</Pastille> : v.signatureRequise ? <PastilleSignature requise signe={!!v.lienSigne} /> : <MiniPhotos photos={v.photos} />}
+                    fin={<EtapeVisite reseau={reseau} v={v} />}
                     actions={<Actions v={v} />} />
                 ))}
               </CarteLignes>

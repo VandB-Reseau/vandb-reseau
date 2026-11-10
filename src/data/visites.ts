@@ -128,3 +128,35 @@ export function suiviRythme(reseau: Reseau, a: Annee): LigneRythme[] {
 
 // Libellé de l'alerte : « pas vu depuis 95 j » ou « jamais visité »
 export const libellePasVu = (l: LigneRythme) => (l.derniere ? `Pas vu depuis ${l.depuis} j` : 'Jamais visité')
+
+// Parcours d'une visite (refonte vague 3, Joseph 09/11/2026, 24A) : Préparer, Sur place, Compte rendu, Suivi.
+// Chaque étape dit si elle est faite ; l'étape de la visite est la première qui ne l'est pas.
+export type IdEtapeVisite = 'preparer' | 'surplace' | 'compterendu' | 'suivi'
+export interface EtatEtape { id: IdEtapeVisite; libelle: string; faite: boolean; detail: string }
+export const ETAPES_VISITE: { id: IdEtapeVisite; libelle: string }[] = [
+  { id: 'preparer', libelle: 'Préparer' }, { id: 'surplace', libelle: 'Sur place' }, { id: 'compterendu', libelle: 'Compte rendu' }, { id: 'suivi', libelle: 'Suivi' },
+]
+const jourMois = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+
+export function etapesVisite(v: Visite | null, jour: string, preparee: { maj: string } | null): EtatEtape[] {
+  const faite = !!v && v.date <= jour && !v.prevue
+  const ecrit = faite && (!!v.notes.trim() || v.parties.some((p) => p.trim()) || v.plan.length > 0)
+  const signe = !!v?.lienSigne
+  const nb = v?.plan.length ?? 0, finies = v?.plan.filter((a) => a.faite).length ?? 0
+  return [
+    { id: 'preparer', libelle: 'Préparer', faite: faite || !!preparee, detail: preparee ? `Fait le ${jourMois(preparee.maj.slice(0, 10))}` : faite ? 'Passée' : 'À faire' },
+    { id: 'surplace', libelle: 'Sur place', faite, detail: faite ? `Le ${jourMois(v!.date)}` : v ? `Prévue le ${jourMois(v.date)}` : 'À planifier' },
+    { id: 'compterendu', libelle: 'Compte rendu', faite: ecrit && (!v!.signatureRequise || signe), detail: !faite ? '—' : !ecrit ? 'À écrire' : v!.signatureRequise ? (signe ? 'Signé' : 'Signature attendue') : 'Écrit' },
+    { id: 'suivi', libelle: 'Suivi', faite: faite && nb > 0 && finies === nb, detail: !faite ? '—' : nb ? `Actions : ${finies} sur ${nb}` : 'Aucune action' },
+  ]
+}
+
+// Étape affichée dans les listes de visites : « Prévue », « Préparée », « Compte rendu à écrire », « Actions 1 sur 3 »…
+export function libelleEtapeVisite(v: Visite, jour: string, preparee: { maj: string } | null): string {
+  const e = etapesVisite(v, jour, preparee)
+  if (!e[1].faite) return e[0].faite && preparee ? 'Préparée' : 'Prévue'
+  if (!e[2].faite) return e[2].detail === 'À écrire' ? 'Compte rendu à écrire' : e[2].detail
+  const nb = v.plan.length
+  return nb ? `Actions ${v.plan.filter((a) => a.faite).length} sur ${nb}` : 'Faite'
+}
+export const lienVisite = (v: Visite) => `/magasins/${encodeURIComponent(v.magasin)}/visite${v.id !== null ? `?id=${v.id}` : ''}`

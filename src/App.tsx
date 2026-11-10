@@ -44,7 +44,7 @@ const chargeurs = {
   // Sprint 22 (F1) : chaque grand écran a son fichier, seul l'accueil part avec l'app
   magasins: () => import('./pages/Magasins').then((m) => ({ default: m.Magasins })),
   ficheMagasin: () => import('./pages/FicheMagasin').then((m) => ({ default: m.FicheMagasin })),
-  preparation: () => import('./pages/PreparationVisite').then((m) => ({ default: m.PreparationVisite })),
+  visite: () => import('./pages/Visite').then((m) => ({ default: m.PageVisite })),
   bilan: () => import('./pages/BilanAnnee').then((m) => ({ default: m.BilanAnnee })),
   equipe: () => import('./pages/Equipe').then((m) => ({ default: m.Equipe })),
   ficheCoach: () => import('./pages/FicheCoach').then((m) => ({ default: m.FicheCoach })),
@@ -72,7 +72,7 @@ const Performance = chargementDiffere(chargeurs.performance)
 const Magasins = chargementDiffere(chargeurs.magasins)
 const Partage = chargementDiffere(chargeurs.partage)
 const FicheMagasin = chargementDiffere(chargeurs.ficheMagasin)
-const PreparationVisite = chargementDiffere(chargeurs.preparation)
+const PageVisite = chargementDiffere(chargeurs.visite)
 const BilanAnnee = chargementDiffere(chargeurs.bilan)
 const Equipe = chargementDiffere(chargeurs.equipe)
 const FicheCoach = chargementDiffere(chargeurs.ficheCoach)
@@ -149,7 +149,8 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/" element={<Marque><Accueil /></Marque>} />
         <Route path="/magasins" element={<Magasins />} />
         <Route path="/magasins/:nom" element={<FicheMagasin />} />
-        <Route path="/magasins/:nom/preparer" element={<PreparationVisite />} />
+        <Route path="/magasins/:nom/preparer" element={<PageVisite etapeParDefaut="preparer" />} />
+        <Route path="/magasins/:nom/visite" element={<PageVisite />} />
         <Route path="/magasins/:nom/bilan" element={<BilanAnnee />} />
         <Route path="/plus/carte" element={<Navigate to="/magasins?vue=carte" replace />} />
         <Route path="/equipe" element={<Equipe />} />

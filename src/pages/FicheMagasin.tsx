@@ -71,7 +71,7 @@ import { actionsDuMagasin, enRetard } from '../data/actions'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import { lienFil } from '../data/messagerie'
-import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
+import { anneeDe, libellePasVu, lienCompteRendu, lienVisite, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import PhoneInTalkOutlined from '@mui/icons-material/PhoneInTalkOutlined'
@@ -645,7 +645,7 @@ function ActiviteMagasin({ reseau, m, filtre, filtrer, actions, signaler, saisir
           <Box key={v.id ?? v.date} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 48, borderBottom: '1px solid', borderColor: 'divider' }}>
             <EventAvailableOutlined sx={{ color: 'text.secondary' }} />
             <Typography sx={{ flex: 1, minWidth: 0 }}><b>{libelleTypeVisite(v.type)} prévue</b> · {dateLongue(v.date)}{v.visiteurs.length ? ` · ${nomsVisiteurs(v)}` : ''}</Typography>
-            <Button onClick={() => modifierVisite(v)} sx={{ minHeight: 48 }}>Modifier</Button>
+            <Button component={RouterLink} to={lienVisite(v)} sx={{ minHeight: 48 }}>Ouvrir</Button>
           </Box>
         ))}
         <ListeActions reseau={reseau} actions={actions} signaler={signaler} libelle={`Tâches en cours de ${m.nom}`} magasins={[m.nom]} />

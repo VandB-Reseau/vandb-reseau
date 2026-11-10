@@ -150,7 +150,7 @@ function Reperes({ reseau, m, r }: { reseau: Reseau; m: Magasin; r: Reperes | nu
   )
 }
 
-function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+export function Fiche({ reseau, m, integre = false }: { reseau: Reseau; m: Magasin; integre?: boolean }) {
   const naviguer = useNavigate()
   const { messagerie } = useMessagerie()
   const [reperes, setReperes] = useState<Reperes | null | undefined>(undefined)
@@ -177,9 +177,9 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
     <>
       {styleImpression}
       <Box className="sans-impression" sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-        <Button startIcon={<ArrowBack />} onClick={() => naviguer(-1)} sx={{ ml: -1, minHeight: 48 }}>Retour</Button>
+        {!integre && <Button startIcon={<ArrowBack />} onClick={() => naviguer(-1)} sx={{ ml: -1, minHeight: 48 }}>Retour</Button>}
         <Box sx={{ flex: 1 }} />
-        <Button variant="contained" startIcon={<PictureAsPdfOutlined />} onClick={() => window.print()} sx={{ minHeight: 48 }}>Télécharger en PDF</Button>
+        <Button variant={integre ? 'outlined' : 'contained'} startIcon={<PictureAsPdfOutlined />} onClick={() => window.print()} sx={{ minHeight: 48 }}>Télécharger en PDF</Button>
       </Box>
       <Box className="feuille" sx={{ bgcolor: '#fff', color: NOIR, maxWidth: 820, mx: 'auto', borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
         <EnTeteLettre objet="Objet : fiche avant visite" date={`${m.franchise ? 'Franchisé' : 'Intégré'} · préparée le ${dateLongue(reseau.jour)}`} />
