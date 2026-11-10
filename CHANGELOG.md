@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Lancement manuel limité de la mise en ligne (Joseph, 10/11/2026) : « Run workflow » de « Tester et publier » prend
+  une liste de tests à repasser seulement ; vide, toute la suite. Sans migration.
 - Refonte façon SaaS, vague 6 : messagerie, budget et suivi (Joseph, 10/11/2026, choix 57 à 78 sauf 59, 61, 65, 66, 67,
   69, 70, 78). Messages : deux fils en onglets (Avec le franchisé, Équipe seule) avec « Visible par » au-dessus de la
   saisie ; répondre en citant, réactions Vu / Merci / D'accord, modification par l'auteur dans les 15 minutes, messages
