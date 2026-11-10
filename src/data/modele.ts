@@ -143,6 +143,9 @@ export interface Reseau {
   preparations: Record<string, PreparationVisite> // notes de la prochaine visite, par magasin (jamais montrées au franchisé)
   ouvertures: Record<string, SuiviOuverture> // étapes des ouvertures à venir, par magasin (sprint 25, F3, migration 0035)
   objectifs?: Record<string, import('./objectifs').Objectif[]> // objectifs chiffrés par magasin (refonte vague 3, 26A, 0042)
+  rituels?: import('./rituels').Rituel[] // rituels d'animation (vague 4, 33A), clé rituels d'app_config
+  interlocuteursDemandes?: Record<string, string> // thème de demande → interlocuteur (vague 4, 37A), clé demandes_themes
+  plans?: Record<string, import('./planAction').Priorite[]> // plan d'action par magasin (refonte vague 4, 31A, 0043)
   concurrence: Record<string, import('./concurrence').SuiviConcurrence> // concurrents ajoutés, retirés ou notés, par magasin (sprint 27, F3, 0038)
   motsFranchise: Record<string, import('./motFranchise').MotFranchise[]> // mots du franchisé avant ses visites, par magasin (sprint 27, F4, 0038)
   deploiements: import('./sante').Deploiements
@@ -185,7 +188,10 @@ export const libelleTypeVisite = (t: string) => typesVisite.find((x) => x.id ===
 export interface Document { label: string; url: string }
 // echeance : AAAA-MM-JJ (texte libre pour les plans saisis avant) ; faite : date de réalisation, vide tant qu'elle est en cours
 // faitePar : qui l'a cochée faite ; pieces : photos et fichiers joints
-export interface ActionPlan { id?: string; action: string; porteur: string; echeance: string; faite?: string; faitePar?: string; pieces?: Piece[] }
+// statut (vague 4, 32A) : en cours ou bloquée (avec sa raison) ; absent = à faire, « faite » reste à part
+// priorite : priorité du plan d'action du magasin (vague 4, 31A) à laquelle la tâche se rattache
+export type StatutTache = 'en_cours' | 'bloquee'
+export interface ActionPlan { id?: string; action: string; porteur: string; echeance: string; faite?: string; faitePar?: string; pieces?: Piece[]; statut?: StatutTache; raison?: string; priorite?: string }
 // Action ajoutée hors visite, sur un magasin (app_config, clé actions, par magasin)
 // fil : tâche née dans « Équipe seule » (sa carte s'affiche dans ce fil) ; message : message d'où elle vient
 // Tâche née d'une alerte du budget (fusion du 04/11/2026) : type d'alerte, année, responsable et valeur de départ
@@ -215,7 +221,10 @@ export interface Visite {
 // Visite faite à ce jour : une visite planifiée ne compte qu'une fois confirmée
 export const visiteFaite = (v: Visite, jour: string) => v.date <= jour && !v.prevue
 
-export interface NoteMagasin { id: string; date: string; texte: string; par: string }
+// visite / appreciation (Joseph 10/11/2026) : remarque interne prise pendant une visite, avec une appréciation ;
+// comme tout le journal, jamais renvoyée au franchisé (espace_franchise() ne lit pas la rubrique « notes »)
+export type Appreciation = 'satisfaisante' | 'mitigee' | 'preoccupante'
+export interface NoteMagasin { id: string; date: string; texte: string; par: string; visite?: number; appreciation?: Appreciation }
 export interface PreparationVisite { notes: string; heure: string; par: string; maj: string }
 
 // Ouverture suivie par étapes (sprint 25, F3) : date prévue et date faite de chaque étape ; la dernière étape,

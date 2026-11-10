@@ -13,7 +13,7 @@ export interface Ecriture { methode: string; table: string; corps: unknown; filt
 export interface AccesSimule { role: string; franchise?: string; magasins?: string[]; coach?: string; rr?: string }
 export interface AccesFranchiseSimule { user_id: string; email: string; franchise: string; magasins: string[]; ouvert_le?: string; derniere_connexion?: string | null }
 export interface AccesEquipeSimule { user_id: string; email: string; role: 'coach' | 'rr'; nom: string; derniere_connexion?: string | null }
-export interface EspaceSimule { actions?: Record<string, Record<string, unknown>[]>; mots?: Record<string, Record<string, unknown>[]>; visites?: Record<string, unknown>[]; reperes?: unknown; campagnes?: unknown; pratiques?: unknown[] }
+export interface EspaceSimule { plans?: Record<string, Record<string, unknown>[]>; actions?: Record<string, Record<string, unknown>[]>; mots?: Record<string, Record<string, unknown>[]>; visites?: Record<string, unknown>[]; reperes?: unknown; campagnes?: unknown; pratiques?: unknown[] }
 // Messagerie (script supabase/migrations/0006_messagerie.sql) : null = pas encore activée
 // destinataire : échange à deux (clé de la personne), avec auteur_cle et magasins cités ; sinon ancien message par magasin (store)
 export interface MessageSimule {
@@ -51,7 +51,8 @@ export interface PropositionsSimulees { equipe: Record<string, unknown>[]; mienn
 export interface ChallengesSimules { equipe: Record<string, unknown>[]; franchise: Record<string, unknown>[] }
 // Fonction Supabase « comptes » (supabase/functions/comptes) : absente = pas encore déployée
 export interface ComptesSimules { equipe?: string[] }
-export interface OptionsSimulation { magasinsEnPlus?: (typeof magasinsFictifs)[number][]; chiffresFermes?: boolean; chiffresCaisse?: Record<string, unknown>[] | null; surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' }
+// Refonte vague 4 (migration 0043) : entretiens RR–Coach et demandes des franchisés ; null = table absente
+export interface OptionsSimulation { entretiens?: Record<string, unknown>[] | null; demandes?: Record<string, unknown>[] | null; magasinsEnPlus?: (typeof magasinsFictifs)[number][]; chiffresFermes?: boolean; chiffresCaisse?: Record<string, unknown>[] | null; surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -465,6 +466,52 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         mots[st] = vide ? autres : [...autres, { visite: corps.p_visite, date: v.visit_date, marche: t('p_marche'), bloque: t('p_bloque'), besoin: t('p_besoin'), par: acces.franchise, le: new Date().toISOString() }]
         return route.fulfill({ status: 200, json: null })
       }
+      // Refonte vague 4 (migration 0043) : plan d'action vu du franchisé, statut d'une tâche, demandes, remarques d'entretien
+      if (fn === 'plans_franchise') {
+        if (acces.role !== 'franchise') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const plans = options.espace?.plans ?? {}
+        return route.fulfill({ json: Object.fromEntries(Object.entries(plans).filter(([k]) => (acces.magasins ?? []).includes(k)).map(([k, l]) => [k, l.map(({ objectif: _o, ...x }) => x)])) })
+      }
+      if (fn === 'statut_action_franchise') {
+        const st = String(corps.p_store ?? '')
+        if (acces.role !== 'franchise' || !(acces.magasins ?? []).includes(st)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const a = options.espace?.actions?.[st]?.find((x) => x.id === corps.p_libre)
+        if (!a) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'action_introuvable' } })
+        if (corps.p_statut === 'a_faire') { delete a.statut; delete a.raison } else Object.assign(a, { statut: corps.p_statut, ...(corps.p_statut === 'bloquee' ? { raison: corps.p_raison } : {}) })
+        return route.fulfill({ status: 200, json: null })
+      }
+      if (['creer_demande', 'mes_demandes', 'completer_demande', 'repondre_demande'].includes(fn)) {
+        if (options.demandes === null) return absente()
+        const liste = (options.demandes ??= [])
+        const maintenant = new Date().toISOString()
+        if (fn === 'mes_demandes') return route.fulfill({ json: liste.filter((d) => (acces.magasins ?? []).includes(String(d.magasin))) })
+        if (fn === 'creer_demande') {
+          if (acces.role !== 'franchise' || !(acces.magasins ?? []).includes(String(corps.p_store))) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+          const id = liste.length + 1
+          liste.unshift({ id, magasin: corps.p_store, franchise: acces.franchise, theme: corps.p_theme, titre: corps.p_titre, statut: 'nouvelle', ouverte_le: maintenant, premiere_reponse_le: null, resolue_le: null, maj_le: maintenant,
+            echanges: corps.p_texte ? [{ par: acces.franchise, role: 'franchise', texte: corps.p_texte, le: maintenant }] : [] })
+          return route.fulfill({ json: id })
+        }
+        const d = liste.find((x) => x.id === corps.p_id)
+        if (!d) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'demande_introuvable' } })
+        if (fn === 'completer_demande') {
+          d.echanges = [...(d.echanges as unknown[]), { par: acces.franchise, role: 'franchise', texte: corps.p_texte, le: maintenant }]
+          if (d.statut === 'attente' || d.statut === 'resolue') d.statut = 'en_cours'
+        } else {
+          if (acces.role === 'franchise') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+          if (corps.p_texte) d.echanges = [...(d.echanges as unknown[]), { par: 'Noé MODELE', role: 'equipe', texte: corps.p_texte, le: maintenant }]
+          if (!d.premiere_reponse_le) d.premiere_reponse_le = maintenant
+          d.statut = corps.p_statut
+          d.resolue_le = corps.p_statut === 'resolue' ? maintenant : null
+        }
+        return route.fulfill({ status: 200, json: null })
+      }
+      if (fn === 'remarque_entretien') {
+        const e = (options.entretiens ?? []).find((x) => x.id === corps.p_id)
+        if (!e || acces.role !== 'coach' || e.coach !== acces.coach) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        e.remarques = corps.p_texte
+        return route.fulfill({ status: 200, json: null })
+      }
       // Actions du franchisé (script 0007_actions_franchise.sql) : la base pose son nom et la date
       if (fn === 'ajouter_action_franchise' || fn === 'marquer_action_franchise') {
         const st = String(corps.p_store ?? '')
@@ -562,6 +609,15 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         noterSuivi(rubrique)
         return route.fulfill({ status: 201, json: [] })
       }
+      if (table === 'entretiens' && options.entretiens !== null) {
+        const liste = (options.entretiens ??= [])
+        const l = req.postDataJSON() as Record<string, unknown>
+        const id = url.searchParams.get('id')?.replace(/^eq\./, '')
+        const e = id ? liste.find((x) => String(x.id) === id) : liste.find((x) => x.coach === l.coach && x.mois === l.mois)
+        if (e) Object.assign(e, l)
+        else liste.push({ id: liste.length + 1, remarques: '', ...l })
+        return route.fulfill({ status: 201, json: [] })
+      }
       // Nouvel événement : la base renvoie son numéro (demandé par l'app pour prévenir les invités)
       if (table === 'events' && req.method() === 'POST') return route.fulfill({ status: 201, json: [{ id: 900 + (options.ecritures?.filter((e) => e.table === 'events' && e.methode === 'POST').length ?? 0) }] })
       const cle = url.searchParams.get('key')?.replace(/^eq\./, '') ?? (table === 'app_config' && req.method() === 'POST' ? (req.postDataJSON() as { key?: string }).key : undefined)
@@ -618,6 +674,11 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
     if (table === 'events') return route.fulfill({ json: filtrer(options.reunions?.evenements ?? evenementsFictifs) })
     if (table === 'store_finance') return route.fulfill({ json: filtrer(chiffresFictifs) })
     if (table === 'recruits') return route.fulfill({ json: filtrer(recruesFictives) })
+    if (table === 'entretiens' || table === 'demandes') {
+      const l = table === 'entretiens' ? options.entretiens : options.demandes
+      if (l === null) return route.fulfill({ status: 404, json: { code: '42P01', message: `relation "public.${table}" does not exist` } })
+      return route.fulfill({ json: filtrer(structuredClone(l ?? [])) })
+    }
     return route.fulfill({ json: [] })
   })
 }

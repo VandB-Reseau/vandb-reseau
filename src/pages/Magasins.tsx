@@ -73,6 +73,14 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
   const changerVue = (v: 'liste' | 'carte') => { const p = new URLSearchParams(params); p.set('vue', v); setParams(p, { replace: true }) }
   const { profil } = useAuth()
   const voitEvolution = !perimetreDuProfil(profil)
+  // Bascule de vue : au bout de la barre de filtres sur PC (vague 4, 39A), dans l'en-tête sur téléphone (la recherche reste collée)
+  const bascule = (
+    <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_e, v: 'liste' | 'carte' | null) => { if (v) changerVue(v) }} aria-label="Affichage"
+                  sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, md: 40 }, px: 1.5, gap: 0.75, textTransform: 'none', fontWeight: 600 } }}>
+                  <ToggleButton value="liste" aria-label="Liste"><TableRowsOutlined fontSize="small" />{surPC ? 'Tableau' : 'Liste'}</ToggleButton>
+                  <ToggleButton value="carte" aria-label="Carte"><MapOutlined fontSize="small" />Carte</ToggleButton>
+                </ToggleButtonGroup>
+  )
 
   return (
     <AvecReseau>
@@ -99,21 +107,19 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
               titre="Magasins"
               sousTitre={resultats.length === total ? `${restreint ? 'Tout le réseau : ' : ''}${libelleParc(reseau.magasins)}` : `${resultats.length} sur ${total} magasins`}
               actions={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
-                {/* Bascule de vue (refonte, 4A) : même contenu, autre présentation ; Évolution du parc rangée ici (2A) */}
+                {/* Refonte vague 4 (39A) : l'action principale à droite du titre, la bascule de vue au bout de la barre */}
                 {voitEvolution && surPC && <Button startIcon={<TimelineOutlined />} onClick={() => naviguer('/performance?vue=evolution')}>Évolution du parc</Button>}
-                <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_e, v: 'liste' | 'carte' | null) => { if (v) changerVue(v) }} aria-label="Affichage"
-                  sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, md: 40 }, px: 1.5, gap: 0.75, textTransform: 'none', fontWeight: 600 } }}>
-                  <ToggleButton value="liste" aria-label="Liste"><TableRowsOutlined fontSize="small" />{surPC ? 'Tableau' : 'Liste'}</ToggleButton>
-                  <ToggleButton value="carte" aria-label="Carte"><MapOutlined fontSize="small" />Carte</ToggleButton>
-                </ToggleButtonGroup>
+                {vue === 'liste' && <BoutonAction libelle="Ajouter un magasin" onClick={() => setAjout(true)} />}
+                {!surPC && bascule}
               </Box>}
             />
             <BarreFiltres reseau={reseau} filtres={filtres} onChange={changerFiltres} alertesDe={parAlerte} levierDe={parLevier}
-              actions={vue === 'carte' ? <Box ref={setEmplacementBoutons} sx={{ display: 'flex' }} /> : <BoutonAction libelle="Ajouter un magasin" onClick={() => setAjout(true)} />} />
+              actions={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>{vue === 'carte' && <Box ref={setEmplacementBoutons} sx={{ display: 'flex' }} />}
+{surPC && bascule}</Box>} />
             <VuesMagasins params={params} appliquer={(p) => setParams(p, { replace: true })} nomPropose={nomPropose} pretes={vue === 'carte' ? [] : [
               { nom: 'Tous', adresse: '', nombre: total },
               { nom: 'À surveiller', adresse: 'alerte=decroche%7Csurveiller', nombre: reseau.magasins.filter((m) => parAlerte(m.nom).some((a) => a !== 'visite')).length },
-              { nom: 'Visite en retard', adresse: 'alerte=visite', nombre: reseau.magasins.filter((m) => parAlerte(m.nom).includes('visite')).length },
+              { nom: 'À voir', adresse: 'alerte=visite', nombre: reseau.magasins.filter((m) => parAlerte(m.nom).includes('visite')).length },
             ]} />
             {ajout && <DialogMagasin reseau={reseau} magasin={null} onFermer={(msg, nom) => { setAjout(false); if (msg && nom) naviguer(lienFiche(nom)) }} />}
             {resultats.length === 0 ? (

@@ -860,3 +860,81 @@ SELECT pg_temp.attendre('Objectifs : jamais renvoyés au franchisé',
   (SELECT count(*) FROM jsonb_array_elements(public.espace_franchise()->'app_config') c WHERE c->>'key' IN ('objectifs', 'objectifs_magasins')), 0);
 RESET ROLE;
 RESET request.jwt.claim.sub;
+
+-- ── 0043 : animation du réseau, vague 4 (plan d'action, statut des tâches, entretiens RR–Coach, remontées, demandes)
+\ir ../migrations/0043_animation_vague4.sql
+SELECT pg_temp.attendre('Journal : 0043 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0043'), 1);
+INSERT INTO auth.users (id, email, raw_app_meta_data) VALUES
+  ('00000000-0000-0000-0000-00000000000e', 'rr@exemple.fr', '{"role":"rr","rr":"rr1"}'),
+  ('00000000-0000-0000-0000-0000000000c2', 'coach2@exemple.fr', '{"role":"coach","coach":"Coach Sud"}')
+ON CONFLICT (id) DO NOTHING;
+UPDATE public.perimetre_equipe SET rrs = '{rr1}' WHERE store_name = 'Lille';
+SET ROLE authenticated;
+-- Plan d'action : le Coach écrit celui de son magasin ; le franchisé lit titres et statuts, jamais l'objectif
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Plan : le Coach pose le plan de son magasin',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''plan'', ''[{"id":"p1","titre":"Relancer la Cave","objectif":"o1","statut":"active"}]'') ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur'), 0);
+SELECT pg_temp.attendre('Plan : pas sur un magasin d''un autre Coach',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Nice'', ''plan'', ''[]'')'), 1);
+SELECT pg_temp.attendre('Plan : plans_franchise refusé à l''équipe', pg_temp.refuse('SELECT public.plans_franchise()'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Plan : le franchisé lit le titre de sa priorité',
+  (SELECT count(*) FROM jsonb_array_elements(public.plans_franchise()->'Lille') e WHERE e->>'titre' = 'Relancer la Cave'), 1);
+SELECT pg_temp.attendre('Plan : jamais l''objectif chiffré',
+  (SELECT count(*) FROM jsonb_array_elements(public.plans_franchise()->'Lille') e WHERE e ? 'objectif'), 0);
+SELECT pg_temp.attendre('Plan : le franchisé ne lit pas la rubrique directement', (SELECT count(*) FROM public.suivi_magasins WHERE cle = 'plan'), 0);
+-- Statut d'une tâche : le franchisé la met en cours ou bloquée sur son magasin, pas une tâche « Équipe seule »
+SELECT pg_temp.attendre('Statut : le franchisé bloque une tâche de son magasin',
+  pg_temp.refuse('SELECT public.statut_action_franchise(''Lille'', ''bloquee'', ''Attente PLV'', ''l_a'')'), 0);
+SELECT pg_temp.attendre('Statut : pas une tâche de l''équipe seule',
+  pg_temp.refuse('SELECT public.statut_action_franchise(''Lille'', ''en_cours'', '''', ''l_e'')'), 1);
+SELECT pg_temp.attendre('Statut : pas un statut inconnu',
+  pg_temp.refuse('SELECT public.statut_action_franchise(''Lille'', ''perdue'', '''', ''l_a'')'), 1);
+SELECT pg_temp.attendre('Statut : pas sur un autre magasin',
+  pg_temp.refuse('SELECT public.statut_action_franchise(''Nice'', ''en_cours'', '''', ''l_a'')'), 1);
+RESET ROLE;
+SELECT pg_temp.attendre('Statut : bloquée avec sa raison',
+  (SELECT count(*) FROM public.suivi_magasins s, jsonb_array_elements(s.valeur) e WHERE s.store_name = 'Lille' AND s.cle = 'actions' AND e->>'id' = 'l_a' AND e->>'statut' = 'bloquee' AND e->>'raison' = 'Attente PLV'), 1);
+SET ROLE authenticated;
+-- Entretiens : le RR avec les Coachs de ses magasins ; le Coach lit les siens et ajoute ses remarques
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000e';
+SELECT pg_temp.attendre('Entretien : le RR prépare celui d''un de ses Coachs',
+  pg_temp.refuse('INSERT INTO public.entretiens (coach, mois, notes) VALUES (''Coach Nord'', ''2026-11'', ''Point visites'')'), 0);
+SELECT pg_temp.attendre('Entretien : pas avec un Coach d''une autre région',
+  pg_temp.refuse('INSERT INTO public.entretiens (coach, mois) VALUES (''Coach Sud'', ''2026-11'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+INSERT INTO public.entretiens (coach, mois) VALUES ('Coach Sud', '2026-11');
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Entretien : le Coach lit les siens seulement', (SELECT count(*) FROM public.entretiens), 1);
+WITH m AS (UPDATE public.entretiens SET notes = 'Réécrit' RETURNING 1)
+SELECT pg_temp.attendre('Entretien : le Coach ne réécrit pas les notes', (SELECT count(*) FROM m), 0);
+SELECT pg_temp.attendre('Entretien : le Coach ajoute ses remarques',
+  pg_temp.refuse('SELECT public.remarque_entretien((SELECT id FROM public.entretiens WHERE coach = ''Coach Nord''), ''D''''accord'')'), 0);
+SELECT pg_temp.attendre('Entretien : pas sur l''entretien d''un autre Coach',
+  pg_temp.refuse('SELECT public.remarque_entretien((SELECT max(id) FROM public.entretiens) + 1, ''Intrus'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Entretien : le franchisé n''en lit aucun', (SELECT count(*) FROM public.entretiens), 0);
+-- Remontées : une question « chiffre » ou « texte » dans un sondage
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT public.publier_sondage('Stock Beaujolais', '[{"titre":"Bouteilles en stock","genre":"chiffre"},{"titre":"Remarque","genre":"texte"}]', 'franchises', false, NULL, current_date + 7) AS remontee \gset
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Remontée : un texte à la place d''un chiffre refusé', pg_temp.refuse('SELECT public.repondre_sondage(' || :remontee || ', ''{beaucoup,ok}'')'), 1);
+SELECT pg_temp.attendre('Remontée : le franchisé répond', pg_temp.refuse('SELECT public.repondre_sondage(' || :remontee || ', ''{120,"Livraison jeudi"}'')'), 0);
+-- Demandes : le franchisé crée sur son magasin ; l'équipe lit celles de ses magasins et répond
+SELECT public.creer_demande('Lille', 'marketing', 'PLV Beaujolais pas reçue', 'Rien reçu au 10/11') AS demande \gset
+SELECT pg_temp.attendre('Demande : pas sur un autre magasin', pg_temp.refuse('SELECT public.creer_demande(''Nice'', ''autre'', ''Intrus'', '''')'), 1);
+SELECT pg_temp.attendre('Demande : thème inconnu refusé', pg_temp.refuse('SELECT public.creer_demande(''Lille'', ''cuisine'', ''X'', '''')'), 1);
+SELECT pg_temp.attendre('Demande : le franchisé ne lit pas la table', (SELECT count(*) FROM public.demandes), 0);
+SELECT pg_temp.attendre('Demande : il retrouve la sienne', (SELECT jsonb_array_length(public.mes_demandes())), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c2';
+SELECT pg_temp.attendre('Demande : un Coach d''un autre magasin ne la voit pas', (SELECT count(*) FROM public.demandes), 0);
+SELECT pg_temp.attendre('Demande : ni ne répond', pg_temp.refuse('SELECT public.repondre_demande(' || :demande || ', ''Intrus'', ''resolue'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Demande : le Coach du magasin la voit', (SELECT count(*) FROM public.demandes), 1);
+SELECT pg_temp.attendre('Demande : aucune écriture directe', pg_temp.refuse('UPDATE public.demandes SET statut = ''resolue'''), 1);
+SELECT pg_temp.attendre('Demande : le Coach répond', pg_temp.refuse('SELECT public.repondre_demande(' || :demande || ', ''Relancé le service marketing'', ''en_cours'')'), 0);
+SELECT pg_temp.attendre('Demande : date de première réponse posée', (SELECT count(*) FROM public.demandes WHERE premiere_reponse_le IS NOT NULL), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Demande : le franchisé la complète', pg_temp.refuse('SELECT public.completer_demande(' || :demande || ', ''Merci'')'), 0);
+RESET ROLE;
+RESET request.jwt.claim.sub;

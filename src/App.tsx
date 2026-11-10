@@ -54,6 +54,7 @@ const chargeurs = {
   sante: () => import('./pages/SanteParc').then((m) => ({ default: m.SanteParc })),
   echanges: () => import('./pages/Echanges'),
   taches: () => import('./pages/Taches').then((m) => ({ default: m.PageTaches })),
+  demandes: () => import('./pages/Demandes').then((m) => ({ default: m.Demandes })),
   infos: () => import('./pages/InfosReseau').then((m) => ({ default: m.InfosReseau })),
   campagnes: () => import('./pages/SanteParc').then((m) => ({ default: m.CampagnesReseau })),
   partage: () => import('./pages/Partage').then((m) => ({ default: m.Partage })),
@@ -86,6 +87,7 @@ const Campagnes = chargementDiffere(chargeurs.campagnes)
 const SanteParc = chargementDiffere(chargeurs.sante)
 const Echanges = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.Echanges })))
 const PageTaches = chargementDiffere(chargeurs.taches)
+const PageDemandes = chargementDiffere(chargeurs.demandes)
 const InfosReseau = chargementDiffere(chargeurs.infos)
 const BandeauApercu = chargementDiffere(() => espace().then((m) => ({ default: m.BandeauApercu })))
 const TableauFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.TableauFranchise })))
@@ -168,6 +170,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/visites" element={<Visites />} />
         <Route path="/echanges" element={<Echanges />} />
         <Route path="/taches" element={<PageTaches />} />
+        <Route path="/demandes" element={<PageDemandes />} />
         <Route path="/infos" element={<Marque><InfosReseau /></Marque>} />
         {/* Communications et bonnes pratiques : Infos réseau seulement, pour l'équipe (sprint 22, S1) comme pour le franchisé */}
         <Route path="/echanges/reseau" element={<Vers cible={(_p, r) => avec('/infos', r)} />} />
@@ -210,6 +213,7 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
         <Route path="/bonnes-pratiques" element={<Navigate to="/infos?vue=pratiques" replace />} />
         <Route path="/echanges" element={<Echanges lectureSeule={apercu} />} />
         <Route path="/taches" element={<PageTaches />} />
+        <Route path="/demandes" element={<PageDemandes />} />
         <Route path="/budgets/*" element={<PagesBudgets />} />
         <Route path="/echanges/reseau" element={<Vers cible={(_p, r) => avec('/infos', r)} />} />
         <Route path="/echanges/:genre/:valeur" element={<Echanges lectureSeule={apercu} />} />

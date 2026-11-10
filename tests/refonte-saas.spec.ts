@@ -43,13 +43,13 @@ test('PC : menu clair en quatre rubriques, sans barre noire ; téléphone : barr
   if (isMobile) {
     const fond = await page.getByRole('banner').evaluate((e) => getComputedStyle(e).backgroundColor)
     expect(fond).not.toBe('rgb(0, 0, 0)')
-    await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Visites', /Messages$/, /Tâches$/, /^Santé/])
+    await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
     expect(await zonesTropPetites(page)).toEqual([])
   } else {
     await expect(page.getByRole('banner')).toHaveCount(0)
     const menu = page.getByRole('navigation', { name: 'Navigation principale' })
     for (const r of ['Mon travail', 'Réseau', 'Animation', 'Finances', 'Réglages']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
-    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Santé du parc', /^Infos réseau/, 'Campagnes', 'Budgets', 'Performance', 'Équipe', 'Paramètres'])
+    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Santé du parc', /^Infos réseau/, 'Campagnes', /^Demandes/, 'Budgets', 'Performance', 'Équipe', 'Paramètres'])
     // Vague 3 (27A) : sondages, formations et réunions dans Campagnes › Sondages et rendez-vous
     await expect(menu.getByRole('button', { name: 'Animation réseau' })).toHaveCount(0)
     await page.goto('./#/animation')
@@ -137,7 +137,7 @@ test('PC : les magasins en tableau, une ligne ouvre l’aperçu ; téléphone : 
   await expect(apercu).toBeVisible()
   await expect(apercu.getByRole('button', { name: 'Ouvrir la fiche' })).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-refonte-magasins.png` })
-  await page.getByRole('group', { name: 'Vues enregistrées' }).getByRole('button', { name: /^Visite en retard/ }).click()
+  await page.getByRole('group', { name: 'Vues enregistrées' }).getByRole('button', { name: /^À voir/ }).click()
   await expect(page).toHaveURL(/alerte=visite/)
   await apercu.getByRole('button', { name: 'Ouvrir la fiche' }).click()
   await expect(page).toHaveURL(new RegExp(`/magasins/${encodeURIComponent(M)}`))

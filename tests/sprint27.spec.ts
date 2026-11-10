@@ -27,32 +27,36 @@ const suiviEcrit = (ecritures: Ecriture[], cle: string) => {
   return e ? JSON.parse((e.corps as { value: string }).value) : undefined
 }
 
-test('S1 : les listes de tâches sont des puces avec leur nombre, ouverture sur une liste qui a du contenu', async ({ page }, info) => {
+test('S1 : les listes de tâches sont des puces avec leur nombre, ouverture sur une liste qui a du contenu', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/taches')
-  const puces = page.getByRole('group', { name: 'Liste de tâches' })
-  await expect(puces.getByRole('button')).toHaveText([/^Mes tâches · \d+$/, /^Franchisés · \d+$/, 'Équipe'])
-  for (const b of await puces.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  const vues = page.getByRole('tablist', { name: 'Liste de tâches' })
+  for (const v of [/^Mes tâches · \d+$/, /^Franchisés · \d+$/]) await expect(vues.getByRole('tab', { name: v })).toBeVisible()
+  for (const b of await vues.getByRole('tab').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   // Le Directeur n'a rien à faire à son nom : la liste des franchisés s'ouvre
-  await expect(puces.getByRole('button', { name: /^Mes tâches · 0$/ })).toBeVisible()
-  await expect(puces.getByRole('button', { name: /^Franchisés/ })).toHaveAttribute('aria-pressed', 'true')
+  await expect(vues.getByRole('tab', { name: /^Mes tâches · 0$/ })).toBeVisible()
+  await expect(vues.getByRole('tab', { name: /^Franchisés/ })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('list', { name: 'Tâches à faire' })).toContainText('Refaire la vitrine')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-s27-taches-puces.png` })
-  // Liste d'un membre de l'équipe
-  await puces.getByRole('button', { name: 'Équipe' }).click()
-  await page.getByRole('menuitem', { name: /^Noé MODELE · \d+$/ }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches de Noé MODELE')
-  await expect(puces.getByRole('button', { name: 'Équipe · Noé MODELE' })).toHaveAttribute('aria-pressed', 'true')
+  // Liste d'un membre de l'équipe (onglet « Une personne », sur PC ; derrière « Plus » sur téléphone)
+  if (!isMobile) {
+    await vues.getByRole('tab', { name: 'Une personne' }).click()
+    await page.getByRole('combobox', { name: 'Personne' }).click()
+    await page.getByRole('option', { name: 'Noé MODELE', exact: true }).click()
+    await expect(page.getByText('Tâches de Noé MODELE', { exact: true })).toBeVisible()
+    await expect(vues.getByRole('tab', { name: 'Une personne' })).toHaveAttribute('aria-selected', 'true')
+  }
   // Retour à sa liste, même vide
-  await puces.getByRole('button', { name: /^Mes tâches/ }).click()
+  await vues.getByRole('tab', { name: /^Mes tâches/ }).click()
+  await expect(page.getByText('Tâches de Noé MODELE', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches')
 })
 
 test('S1 : une liste demandée par lien reste ouverte', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/taches?de=No%C3%A9%20MODELE')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches de Noé MODELE')
+  await expect(page.getByText('Tâches de Noé MODELE', { exact: true })).toBeVisible()
 })
 
 test('S3 : le même nombre de magasins ouverts sur la liste et la santé du parc', async ({ page }) => {

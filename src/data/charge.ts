@@ -60,7 +60,7 @@ export function chargeA(reseau: Reseau, coach: string, jour = reseau.jour): numb
 export type NiveauCharge = 'vide' | 'ok' | 'attention' | 'complet' | 'depassement'
 
 export const niveauLibelle: Record<NiveauCharge, string> = {
-  vide: 'Sans magasin', ok: 'Charge correcte', attention: 'À surveiller', complet: 'Au maximum', depassement: 'Dépassement',
+  vide: 'Sans magasin', ok: 'Correcte', attention: 'Presque pleine', complet: 'Au maximum', depassement: 'Dépassement',
 }
 
 export function niveauCharge(reseau: Reseau, charge: number): NiveauCharge {

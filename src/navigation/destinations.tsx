@@ -25,6 +25,8 @@ import RequestQuote from '@mui/icons-material/RequestQuote'
 import Insights from '@mui/icons-material/Insights'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import QueryStats from '@mui/icons-material/QueryStats'
+import SupportAgentOutlined from '@mui/icons-material/SupportAgentOutlined'
+import SupportAgent from '@mui/icons-material/SupportAgent'
 
 export interface Destination {
   chemin: string
@@ -41,24 +43,27 @@ const messages: Destination = { chemin: '/echanges', libelle: 'Messages', descri
 const taches: Destination = { chemin: '/taches', libelle: 'Tâches', description: 'Mes tâches à faire et faites', icone: <TaskAltOutlined />, iconeActive: <TaskAlt />, sprint: 'Échanges' }
 export const magasins: Destination = { chemin: '/magasins', libelle: 'Magasins', description: 'Tous les magasins, leur fiche complète et la carte', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 1' }
 
-// Destinations principales : barre du bas sur téléphone (Accueil, Visites, Messages, Tâches, Santé)
+// Destinations principales. Barre du bas sur téléphone (refonte vague 4, Joseph 10/11/2026, 42A) : Accueil, Agenda,
+// Magasins, Tâches, Messages ; Visites et Santé du parc passent au menu.
 const accueil: Destination = { chemin: '/', libelle: 'Accueil', description: 'Ce qui demande ton attention aujourd’hui', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 4' }
-const visites: Destination = { chemin: '/visites', libelle: 'Visites', description: 'Visites terrain, audits et couverture du semestre', icone: <EventNoteOutlined />, iconeActive: <EventNote />, sprint: 'Sprint 3' }
-const sante: Destination = { chemin: '/plus/sante', libelle: 'Santé du parc', court: 'Santé', description: 'Nine box et évaluation des magasins', icone: <MonitorHeartOutlined />, iconeActive: <MonitorHeart />, sprint: 'Sprint 4' }
+export const visites: Destination = { chemin: '/visites', libelle: 'Visites', description: 'Visites terrain, audits et couverture du semestre', icone: <EventNoteOutlined />, iconeActive: <EventNote />, sprint: 'Sprint 3' }
+export const sante: Destination = { chemin: '/plus/sante', libelle: 'Santé du parc', court: 'Santé', description: 'Nine box et évaluation des magasins', icone: <MonitorHeartOutlined />, iconeActive: <MonitorHeart />, sprint: 'Sprint 4' }
 export const principales: Destination[] = [accueil, magasins, visites, messages, taches, sante]
-export const barreTelephone = principales.filter((d) => d !== magasins)
 
 // Budgets (fusion avec le pilotage, Joseph 03/11/2026, option A) : budget et suivi d'un magasin dans sa fiche
 export const budgets: Destination = { chemin: '/budgets', libelle: 'Budgets', description: 'Budgets de l’année, suivi face au réel, hypothèses, imports de caisse', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Fusion' }
 // Performance (refonte vague 2, Joseph 09/11/2026, 15A) : les chiffres du réseau en une page
 export const performance: Destination = { chemin: '/performance', libelle: 'Performance', description: 'Chiffres des magasins, écarts au budget, évolution du parc', icone: <QueryStatsOutlined />, iconeActive: <QueryStats />, sprint: 'Refonte' }
 export const agenda: Destination = { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes, formations et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' }
+export const barreTelephone: Destination[] = [accueil, agenda, magasins, taches, messages]
+// Demandes des franchisés au siège (refonte vague 4, Joseph 10/11/2026, 37A)
+export const demandes: Destination = { chemin: '/demandes', libelle: 'Demandes', description: 'Demandes des franchisés au siège, par thème, avec leur délai de réponse', icone: <SupportAgentOutlined />, iconeActive: <SupportAgent />, sprint: 'Refonte' }
 // Rubrique Animation (refonte vague 3, Joseph 09/11/2026, 27A) : Infos réseau et Campagnes (campagnes, déploiements,
 // challenges, et pour le Directeur et les RR le suivi des sondages, formations et réunions, ancien onglet de Messages)
 export const infosReseau: Destination = { chemin: '/infos', libelle: 'Infos réseau', court: 'Infos', description: 'Communications et bonnes pratiques du réseau', icone: <NewspaperOutlined />, iconeActive: <Newspaper />, sprint: 'Sprint 22' }
 export const campagnes: Destination = { chemin: '/campagnes', libelle: 'Campagnes', description: 'Campagnes, déploiements, challenges, sondages, formations et réunions, avec leur suivi', icone: <InsightsOutlined />, iconeActive: <Insights />, sprint: 'Refonte' }
 export const animation = campagnes
-export const secondaires: Destination[] = [campagnes, budgets, performance, agenda]
+export const secondaires: Destination[] = [campagnes, demandes, budgets, performance, agenda]
 export const pourRole = (liste: Destination[], role: string | undefined) => liste.filter((d) => !d.roles || (!!role && d.roles.includes(role)))
 
 // Réglages : Équipe et Paramètres. Évolution du parc est une vue de Magasins depuis la refonte (Joseph, 09/11/2026, 2A)
@@ -74,11 +79,15 @@ export function rubriquesMenu(sansParametres: boolean): Rubrique[] {
   return [
     { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
     { titre: 'Réseau', destinations: [magasins, visites, sante] },
-    { titre: 'Animation', destinations: [infosReseau, campagnes] },
+    { titre: 'Animation', destinations: [infosReseau, campagnes, demandes] },
     { titre: 'Finances', destinations: [budgets, performance] },
     ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }]),
   ]
 }
+
+export const demandesFranchise: Destination = { ...demandes, libelle: 'Mes demandes', court: 'Demandes', description: 'Mes questions au siège et leurs réponses' }
+// Menu du compte sur téléphone : ce que la barre du bas ne montre pas
+export const menuTelephone = (role: string | undefined) => [visites, sante, ...pourRole(secondaires, role).filter((d) => d !== agenda)]
 
 // Espace d'un franchisé : ses magasins seulement, sans Paramètres
 export const espaceFranchise: Destination[] = [
@@ -87,6 +96,7 @@ export const espaceFranchise: Destination[] = [
   { chemin: '/budgets', libelle: 'Mon budget', court: 'Budget', description: 'Budget de l’année, suivi face au réel et saisies', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Fusion' },
   { ...messages, description: 'Mes magasins et mon équipe' },
   taches,
+  demandesFranchise,
   // Communications et bonnes pratiques réunies, comme pour l'équipe (Joseph, 23/10/2026)
   infosReseau,
 ]

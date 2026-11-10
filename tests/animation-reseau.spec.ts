@@ -64,7 +64,7 @@ test('le Directeur suit lectures, réponses, présences et exécution au même e
   await seConnecter(page, tout())
   await ouvrirAnimation(page)
   const contenus = page.getByRole('region', { name: 'Contenus' })
-  await expect(contenus.getByRole('button', { name: 'Communication Nouvelle gamme de Noël : 3 lues sur 4' })).toBeVisible()
+  await expect(contenus.getByRole('button', { name: 'Information Nouvelle gamme de Noël : 3 lues sur 4' })).toBeVisible()
   await expect(contenus.getByRole('button', { name: 'Bonne pratique Dégustation du samedi : 1 vue sur 4' })).toBeVisible()
   await expect(contenus.getByRole('button', { name: 'Sondage Besoin de formation ? : 1 réponse sur 4' })).toBeVisible()
   await expect(contenus.getByRole('button', { name: 'Formation Formation accords mets et vins : 1 réponse sur 2' })).toBeVisible()
@@ -76,16 +76,16 @@ test('le Directeur suit lectures, réponses, présences et exécution au même e
   await page.screenshot({ path: `captures/${info.project.name}-animation-reseau.png`, fullPage: !isMobile })
 
   // Filtre par type, puis le détail : qui n'a pas lu, qui a répondu
-  await page.getByRole('group', { name: 'Type de contenu' }).getByRole('button', { name: 'Communications (1)' }).click()
+  await page.getByRole('group', { name: 'Type de contenu' }).getByRole('button', { name: 'Informations (1)' }).click()
   await expect(contenus.getByRole('button')).toHaveCount(1)
-  await contenus.getByRole('button', { name: /^Communication Nouvelle gamme/ }).click()
+  await contenus.getByRole('button', { name: /^Information Nouvelle gamme/ }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle gamme de Noël' })
   await expect(d).toContainText('Lue par 3 franchisés sur 4')
   await expect(d).toContainText('Pas encore lue (1)')
   await expect(d).toContainText('Franchisé 6')
   await d.getByRole('button', { name: 'Fermer' }).click()
 
-  await page.getByRole('group', { name: 'Type de contenu' }).getByRole('button', { name: 'Formations (1)' }).click()
+  await page.getByRole('group', { name: 'Type de contenu' }).getByRole('button', { name: 'Formations (1)', exact: true }).click()
   await contenus.getByRole('button', { name: /^Formation Formation accords/ }).click()
   const f = page.getByRole('dialog', { name: 'Formation accords mets et vins' })
   await expect(f).toContainText('à 14 h 30')
@@ -103,8 +103,8 @@ test('le Directeur crée une formation avec un contenu en HTML : les invités so
   const appels = await fonctionSimulee(page)
   await page.goto('./#/animation')
   await expect(ongletAnimation(page)).toHaveAttribute('aria-selected', 'true')
-  await page.getByRole('button', { name: 'Créer' }).last().click()
-  await page.getByRole('menu', { name: 'Créer un contenu' }).getByRole('menuitem', { name: 'Formation' }).click()
+  await page.getByRole('button', { name: 'Envoyer au réseau' }).last().click()
+  await page.getByRole('menu', { name: 'Envoyer au réseau' }).getByRole('menuitem', { name: 'Formation', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une formation' })
   await expect(d.getByRole('group', { name: 'Type' }).getByRole('button', { name: 'Formation' })).toHaveAttribute('aria-pressed', 'true')
   await d.getByLabel('Titre').fill('Vente additionnelle au bar')
@@ -135,7 +135,7 @@ test('l’agenda range les formations à part et en ajoute une depuis un jour', 
   await page.getByRole('group', { name: 'Catégories affichées' }).getByRole('button', { name: 'Formations' }).click()
   await expect(page.getByRole('button', { name: 'Formation accords mets et vins' })).toHaveCount(0)
   await page.getByRole('button', { name: /^Ajouter le / }).first().click()
-  await page.getByRole('menuitem', { name: 'Formation' }).click()
+  await page.getByRole('menuitem', { name: 'Formation', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Ajouter une formation' })).toBeVisible()
   if (!isMobile) await expect(page.getByRole('dialog').getByLabel('Heure (facultatif)')).toBeVisible()
 })
@@ -146,8 +146,8 @@ test('un nouveau sondage, une nouvelle communication, bonne pratique ou campagne
   await page.goto('./#/animation')
   await expect(ongletAnimation(page)).toHaveAttribute('aria-selected', 'true')
   const creer = async (nom: string) => {
-    await page.getByRole('button', { name: 'Créer' }).last().click()
-    await page.getByRole('menu', { name: 'Créer un contenu' }).getByRole('menuitem', { name: nom }).click()
+    await page.getByRole('button', { name: 'Envoyer au réseau' }).last().click()
+    await page.getByRole('menu', { name: 'Envoyer au réseau' }).getByRole('menuitem', { name: nom }).click()
   }
   await creer('Sondage')
   const s = page.getByRole('dialog', { name: 'Nouveau sondage' })
@@ -177,7 +177,7 @@ test('un nouveau sondage, une nouvelle communication, bonne pratique ou campagne
   expect((appels[2].magasins as string[]).length).toBeGreaterThan(1)
 
   // Communication : l'onglet ouvre Infos réseau avec la fenêtre de publication
-  await creer('Communication')
+  await creer('Information')
   const c = page.getByRole('dialog', { name: 'Nouvelle communication' })
   await c.getByLabel('Titre').fill('Arrivage de Noël')
   await c.getByRole('button', { name: 'Enregistrer' }).click()

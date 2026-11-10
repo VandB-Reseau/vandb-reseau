@@ -42,7 +42,7 @@ test('le Directeur ne voit que les tâches qui lui sont attribuées, les coche e
   await seConnecter(page, { ecritures, persister: true, config: { actions } })
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
   // Messages et Tâches sont deux onglets ; la tâche en retard est comptée sur le picto
-  if (isMobile) await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Visites', /Messages$/, /Tâches$/, /^Santé/])
+  if (isMobile) await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
   await expect(nav.getByRole('button', { name: 'Tâches : 1 en retard ou nouvelle' })).toBeVisible()
   await ouvrirTaches(page)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches')
@@ -80,9 +80,8 @@ test('le Directeur ne voit que les tâches qui lui sont attribuées, les coche e
   await expect(aFaire.getByRole('listitem').filter({ hasText: 'Mettre en avant les coffrets de Noël' })).toContainText('Lyon Test')
 
   // Il ouvre la liste d'un Coach
-  await page.getByRole('group', { name: 'Liste de tâches' }).getByRole('button', { name: 'Équipe' }).click()
-  await page.getByRole('menuitem', { name: /^Noé MODELE · / }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches de Noé MODELE')
+  await page.goto('./#/taches?de=No%C3%A9%20MODELE')
+  await expect(page.getByText('Tâches de Noé MODELE', { exact: true })).toBeVisible()
   await expect(aFaire).toContainText('Relancer le fournisseur')
   await expect(aFaire).toContainText('Former l’équipe à la vente additionnelle')
   await expect(page.getByText('Commander la nouvelle PLV')).toHaveCount(0)
@@ -110,7 +109,10 @@ test('un Coach ne voit que les tâches qui lui sont attribuées', async ({ page 
   await ouvrirTaches(page)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches')
   // Sa liste ou celle de ses franchisés, jamais celle d'un autre Coach
-  await expect(page.getByRole('group', { name: 'Liste de tâches' }).getByRole('button')).toHaveText([/^Mes tâches · \d+$/, /^Franchisés · \d+$/])
+  const vues = page.getByRole('tablist', { name: 'Liste de tâches' })
+  await expect(vues.getByRole('tab', { name: /^Mes tâches · \d+$/ })).toBeVisible()
+  await expect(vues.getByRole('tab', { name: /^Franchisés · \d+$/ })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Une personne' })).toHaveCount(0)
   const aFaire = page.getByRole('list', { name: 'Tâches à faire' })
   await expect(aFaire).toContainText('Commander la nouvelle PLV')
   await expect(aFaire).toContainText('Former l’équipe à la vente additionnelle')
@@ -125,7 +127,7 @@ test('une tâche à plusieurs porteurs figure dans la liste de chacun', async ({
   await ouvrirTaches(page)
   const aFaire = page.getByRole('list', { name: 'Tâches à faire' })
   await expect(aFaire).toContainText('Préparer la soirée dégustation')
-  await page.getByRole('group', { name: 'Liste de tâches' }).getByRole('button', { name: /^Franchisés · / }).click()
+  await page.getByRole('tablist', { name: 'Liste de tâches' }).getByRole('tab', { name: /^Franchisés · / }).click()
   await expect(aFaire.getByRole('listitem').filter({ hasText: 'Préparer la soirée dégustation' })).toContainText('Franchisé 11, Noé MODELE')
 })
 
@@ -136,8 +138,8 @@ test('le Coach ouvre la liste des tâches des franchisés de ses magasins', asyn
   }
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Noé MODELE' }, config: { actions } })
   await ouvrirTaches(page)
-  await page.getByRole('group', { name: 'Liste de tâches' }).getByRole('button', { name: /^Franchisés · / }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches des franchisés')
+  await page.getByRole('tablist', { name: 'Liste de tâches' }).getByRole('tab', { name: /^Franchisés · / }).click()
+  await expect(page.getByRole('tab', { name: /^Franchisés · / })).toHaveAttribute('aria-selected', 'true')
   const aFaire = page.getByRole('list', { name: 'Tâches à faire' })
   // Le porteur est affiché ; les tâches du Coach n'y sont pas
   await expect(aFaire.getByRole('listitem').filter({ hasText: 'Refaire la vitrine' })).toContainText('Franchisé 11')

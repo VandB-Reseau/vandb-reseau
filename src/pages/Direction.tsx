@@ -47,11 +47,13 @@ import { Hypotheses } from '../pilotage/pages/Hypotheses'
 import { Imports } from '../pilotage/pages/Imports'
 import { Parametres as ParametresBudget } from '../pilotage/pages/Parametres'
 import { anneeBudget } from '../pilotage/data/pilotage'
+import SupportAgentOutlined from '@mui/icons-material/SupportAgentOutlined'
+import { RegleInterlocuteurs, RegleRituels } from '../components/ReglagesAnimation'
 
 type Cle = keyof ParametresReseau
 const champs: { cle: Cle; libelle: string; aide: string; min: number; max: number }[] = [
   { cle: 'maxUnits', libelle: 'Charge maximale d’un Coach', aide: 'Au-delà, le Coach est en dépassement.', min: 1, max: 30 },
-  { cle: 'alertThreshold', libelle: 'Seuil d’attention', aide: 'À partir de cette charge, le Coach est à surveiller.', min: 1, max: 30 },
+  { cle: 'alertThreshold', libelle: 'Seuil d’attention', aide: 'À partir de cette charge, elle est presque pleine.', min: 1, max: 30 },
   { cle: 'poidsOuvert', libelle: 'Unités pour un magasin ouvert', aide: 'Magasin en activité courante.', min: 0, max: 5 },
   { cle: 'poidsRenforce', libelle: 'Unités pour un magasin en accompagnement renforcé', aide: 'Magasin en pré-ouverture ou ouvert depuis peu.', min: 0, max: 5 },
   { cle: 'prepDuration', libelle: 'Mois de pré-ouverture', aide: 'Le Coach prend en charge le magasin ce nombre de mois avant l’ouverture.', min: 0, max: 12 },
@@ -233,10 +235,10 @@ function RegleVisite({ reseau }: { reseau: Reseau }) {
 // Sur PC, le sommaire reste à gauche et la rubrique s'affiche à droite.
 // Refonte vague 2 (Joseph, 09/11/2026, 14A) : un seul endroit pour régler l'outil, en 4 groupes ; les réglages des budgets
 // (hypothèses du réseau, paramètres de l'année, imports de caisse) quittent la page Budgets pour venir ici
-export type Rubrique = 'charge' | 'chiffres' | 'visite' | 'ninebox' | 'thematiques' | 'audits' | 'photos' | 'historique' | 'hypotheses' | 'budget' | 'imports'
-type Groupe = 'Visites et suivi' | 'Budgets' | 'Données' | 'Historique'
-const GROUPES: Groupe[] = ['Visites et suivi', 'Budgets', 'Données', 'Historique']
-const GROUPE: Record<Rubrique, Groupe> = { charge: 'Visites et suivi', chiffres: 'Visites et suivi', visite: 'Visites et suivi', ninebox: 'Visites et suivi', thematiques: 'Visites et suivi', audits: 'Visites et suivi',
+export type Rubrique = 'rituels' | 'interlocuteurs' | 'charge' | 'chiffres' | 'visite' | 'ninebox' | 'thematiques' | 'audits' | 'photos' | 'historique' | 'hypotheses' | 'budget' | 'imports'
+type Groupe = 'Visites et suivi' | 'Animation' | 'Budgets' | 'Données' | 'Historique'
+const GROUPES: Groupe[] = ['Visites et suivi', 'Animation', 'Budgets', 'Données', 'Historique']
+const GROUPE: Record<Rubrique, Groupe> = { rituels: 'Animation', interlocuteurs: 'Animation', charge: 'Visites et suivi', chiffres: 'Visites et suivi', visite: 'Visites et suivi', ninebox: 'Visites et suivi', thematiques: 'Visites et suivi', audits: 'Visites et suivi',
   hypotheses: 'Budgets', budget: 'Budgets', imports: 'Données', photos: 'Données', historique: 'Historique' }
 function rubriques(reseau: Reseau): { id: Rubrique; libelle: string; detail: string; icone: ReactNode }[] {
   const p = reseau.parametres, s = reseau.seuils
@@ -249,6 +251,8 @@ function rubriques(reseau: Reseau): { id: Rubrique; libelle: string; detail: str
     { id: 'ninebox', libelle: 'Nine box', detail: 'Grille de notation, notes des magasins', icone: <GridViewOutlined /> },
     { id: 'thematiques', libelle: 'Thématiques de déploiement', detail: ths ? `${ths} thématique${ths > 1 ? 's' : ''}` : 'Aucune thématique', icone: <RocketLaunchOutlined /> },
     { id: 'audits', libelle: 'Grilles d’audit', detail: 'Critères et seuils de conformité', icone: <FactCheckOutlined /> },
+    { id: 'rituels', libelle: 'Rituels d’animation', detail: `${(reseau.rituels ?? []).filter((r) => r.actif).length} rituels suivis`, icone: <EventRepeatOutlined /> },
+    { id: 'interlocuteurs', libelle: 'Demandes des franchisés', detail: `${Object.keys(reseau.interlocuteursDemandes ?? {}).length} thème${Object.keys(reseau.interlocuteursDemandes ?? {}).length > 1 ? 's' : ''} avec un interlocuteur`, icone: <SupportAgentOutlined /> },
     { id: 'hypotheses', libelle: 'Hypothèses du réseau', detail: 'Cibles par univers et par famille', icone: <TuneOutlined /> },
     { id: 'budget', libelle: `Paramètres ${anneeBudget()}`, detail: 'Redevance, publicité, stock cible, congés payés, campagne', icone: <CalculateOutlined /> },
     { id: 'imports', libelle: 'Imports de caisse', detail: 'Fichiers de la caisse, codes des magasins', icone: <UploadFileOutlined /> },
@@ -261,6 +265,8 @@ function ContenuRubrique({ id, reseau, signaler }: { id: Rubrique; reseau: Resea
   return (
     // Les cartes gardent leur propre marge haute quand elles s'enchaînent ; la première colle au sommaire ou au retour
     <Box sx={{ '& > .MuiCard-root:first-of-type': { mt: 0 } }}>
+      {id === 'rituels' && <RegleRituels reseau={reseau} signaler={signaler} />}
+      {id === 'interlocuteurs' && <RegleInterlocuteurs reseau={reseau} signaler={signaler} />}
       {id === 'charge' && <RegleCharge reseau={reseau} />}
       {id === 'chiffres' && <RegleAlerte reseau={reseau} />}
       {id === 'visite' && <RegleVisite reseau={reseau} />}

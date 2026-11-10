@@ -30,11 +30,14 @@ export function PageHeader({ titre, sousTitre, actions }: { titre: string; sousT
   }
   return (
     <Box sx={{ mb: { xs: 1, md: 2 } }}>
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
-        <Titre titre={titre} />
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 1.5, md: 2 }, flexWrap: { xs: 'nowrap', md: 'wrap' } }}>
+        <Titre titre={titre} fixe={!surPC && !!sousTitre} />
+        {/* Téléphone : le compteur reste à droite du titre, avant l'action (vague 4, 39A) ; le titre garde sa largeur */}
+        {!surPC && sousTitre && <Typography variant="body2" color="text.secondary" sx={{ flex: 1, minWidth: 0, minHeight: 40, maxHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', textAlign: 'right', overflow: 'hidden' }}>
+          <Box component="span" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sousTitre}</Box></Typography>}
         {actions}
       </Box>
-      {sousTitre && <Typography variant="body2" color="text.secondary">{sousTitre}</Typography>}
+      {surPC && sousTitre && <Typography variant="body2" color="text.secondary">{sousTitre}</Typography>}
       {selecteur}
     </Box>
   )
@@ -42,10 +45,10 @@ export function PageHeader({ titre, sousTitre, actions }: { titre: string; sousT
 
 // Le titre dans une case de hauteur fixe : il reste à la même place quelle que soit la hauteur des actions
 // Vague 3 (21A) : sur PC, le périmètre choisi se rappelle à côté du titre, et se retire d'un clic
-function Titre({ titre }: { titre: string }) {
+function Titre({ titre, fixe = false }: { titre: string; fixe?: boolean }) {
   const etiquette = useEtiquettePerimetre()
   return (
-    <Box sx={{ flex: 1, minWidth: 0, minHeight: { xs: 40, md: 48 }, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+    <Box sx={{ flex: fixe ? '0 0 auto' : 1, minWidth: 0, minHeight: { xs: 40, md: 48 }, display: 'flex', alignItems: 'center', gap: 1.5 }}>
       <Typography variant="h1" sx={{ minWidth: 0 }}>{titre}</Typography>
       {etiquette && <Chip variant="outlined" label={etiquette.libelle} onDelete={etiquette.revenir} deleteIcon={<CloseOutlined aria-label="Revenir à tout le périmètre" />} sx={{ display: { xs: 'none', md: 'inline-flex' }, fontWeight: 700, fontSize: '0.8125rem' }} />}
     </Box>

@@ -1,3 +1,4 @@
+import { Blason } from '../components/Blason'
 import type { ReactNode } from 'react'
 import { normaliser } from '../data/filtres'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -58,7 +59,7 @@ import { FiltreMenu, type Option } from '../components/FiltreMenu'
 import InputAdornment from '@mui/material/InputAdornment'
 import SearchIcon from '@mui/icons-material/Search'
 import { BoutonsNote, BoutonsOption, LibelleCritere, NotesParAxe, PastilleCase, couleursCoachs, texteSur, useSaisieSante, type Saisie } from '../components/Sante'
-import { EN_DIRECT, cleFiltreCoach, coachA, libelleSuivi, optionsFiltreCoach, suivi } from '../data/charge'
+import { EN_DIRECT, coachA, libelleSuivi, suivi } from '../data/charge'
 import { avancement, caseDe, effetDeploiement, EFFET_MINIMUM, EFFET_MOIS, couleurTon, criteresAxe, libelleAxe, libelleNote, nineBox, tonDe, tousCriteres, type Evaluation, type IdCritere, type Thematique } from '../data/sante'
 import { useAuth } from '../auth/AuthContext'
 import { lienFiche } from '../lib/format'
@@ -69,18 +70,14 @@ import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
 import { analyser as analyserCA, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, libelleMoisCourt, courbeCA, formatKEuros, type StatutAlerte } from '../data/chiffres'
 import { estOuvert, type Magasin, type Reseau } from '../data/modele'
 
-// Filtres communs : recherche, Responsable Régional, Coach
+// Filtres communs : la recherche (Responsable Régional et Coach : le périmètre choisi)
 function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
-  const [rrs, setRRs] = useState<string[]>([])
-  const [coachsChoisis, setCoachs] = useState<string[]>([])
   const [params] = useSearchParams()
   const [recherche, setRecherche] = useState(() => params.get('magasin') ?? '') // ouverture depuis la fiche d'un magasin
   const magasins = useMemo(() => reseau.magasins
     .filter((m) => m.statut !== 'avenir')
-    .filter((m) => (!rrs.length || rrs.includes(m.rr?.id ?? '__aucun__')) && (!coachsChoisis.length || coachsChoisis.includes(cleFiltreCoach(m, coachA(m, reseau.jour))))
-      && (!recherche || `${m.nom} ${m.ville} ${suivi(m, coachA(m, reseau.jour))}`.toLowerCase().includes(recherche.toLowerCase())))
-    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr')), [reseau, rrs, coachsChoisis, recherche])
-  const actifsMag = reseau.magasins.filter((m) => m.statut !== 'avenir')
+    .filter((m) => (!recherche || `${m.nom} ${m.ville} ${suivi(m, coachA(m, reseau.jour))}`.toLowerCase().includes(recherche.toLowerCase())))
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr')), [reseau, recherche])
   // Propositions : les magasins, rangés par Coach
   const options = useMemo(() => reseau.magasins.filter((m) => m.statut !== 'avenir').map((m) => ({ nom: m.nom, coach: suivi(m, coachA(m, reseau.jour)) }))
     .sort((a, b) => (a.coach || '~').localeCompare(b.coach || '~', 'fr') || a.nom.localeCompare(b.nom, 'fr')), [reseau])
@@ -93,16 +90,12 @@ function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
           slotProps={{ ...p.slotProps, htmlInput: { ...p.slotProps.htmlInput, 'aria-label': 'Rechercher un magasin ou un Coach' }, input: { ...p.slotProps.input, startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> } }}
           sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, minHeight: 48 } }} />} />
   )
-  const compter = (p: (m: Reseau['magasins'][number]) => boolean) => `${actifsMag.filter(p).length} magasins`
   // enPlus : filtres propres à l'onglet, posés juste après le Coach ; actions : à droite de la barre
   const barreDe = (enPlus?: ReactNode, actifsEnPlus = 0, actions?: ReactNode) => (
-    <RechercheFiltres recherche={champ} actifs={rrs.length + coachsChoisis.length + actifsEnPlus} actions={actions}>
-      <FiltreMenu libelle="Responsable Régional" choisis={rrs} onChange={setRRs}
-        options={[...reseau.rrs.map((r) => ({ valeur: r.id, libelle: r.nom, detail: compter((m) => m.rr?.id === r.id) })), { valeur: '__aucun__', libelle: 'Sans RR', detail: compter((m) => !m.rr) }]} />
-      <FiltreMenu libelle="Coach" choisis={coachsChoisis} onChange={setCoachs}
-        options={optionsFiltreCoach(actifsMag.map((m) => cleFiltreCoach(m, coachA(m, reseau.jour))), (n) => `${n} magasins`)} />
+    <RechercheFiltres recherche={champ} actifs={actifsEnPlus} actions={actions}>
+      {/* Refonte vague 4 (39A) : Responsable Régional et Coach se choisissent dans le périmètre, plus de filtre ici */}
       {enPlus}
-      {(rrs.length > 0 || coachsChoisis.length > 0 || recherche) && <Button onClick={() => { setRRs([]); setCoachs([]); setRecherche('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
+      {recherche && <Button onClick={() => setRecherche('')} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
     </RechercheFiltres>
   )
   return { magasins, barre: barreDe(enPlus), barreDe }
@@ -138,7 +131,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
   const pct = (n: number, total = nbClasses) => (total ? Math.round((n / total) * 100) : 0)
   const maxCase = Math.max(1, ...nineBox.map((c) => compte([c.id])))
   const tuiles = [
-    { titre: 'À surveiller', n: compte(SURVEILLER), detail: 'Redressement, relance, management à renforcer', couleur: theme.palette.error.main },
+    { titre: 'Prioritaires', n: compte(SURVEILLER), detail: 'Redressement, relance, management à renforcer', couleur: theme.palette.error.main },
     { titre: 'Solides', n: compte(SOLIDES), detail: 'Locomotive, à faire grandir, potentiel à activer', couleur: theme.palette.success.main },
     { titre: 'Non classés', n: nonClasses, detail: 'Il manque des notes', couleur: theme.palette.text.secondary, action: nonClasses > 0 },
   ]
@@ -851,8 +844,8 @@ export function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean 
   const tuiles = [
     { id: 'decroche', titre: 'Décroche', n: compte('decroche'), couleur: theme.palette.error.main, detail: `CA sous −${seuilDecroche} %` },
     { id: 'surveiller', titre: 'À surveiller', n: compte('surveiller'), couleur: theme.palette.warning.main, detail: `CA sous −${seuilSurveiller} %` },
-    { id: 'ok', titre: 'OK', n: compte('ok'), couleur: theme.palette.success.main, detail: `CA au-dessus de −${seuilSurveiller} %` },
-    { id: 'sans', titre: 'Sans comparaison', n: compte(null), couleur: theme.palette.text.secondary, detail: sansChiffres ? `Dont ${sansChiffres} sans chiffres` : 'Mois de comparaison manquant' },
+    { id: 'ok', titre: 'Dans la norme', n: compte('ok'), couleur: theme.palette.success.main, detail: `CA au-dessus de −${seuilSurveiller} %` },
+    { id: 'sans', titre: 'Sans chiffres', n: compte(null), couleur: theme.palette.text.secondary, detail: sansChiffres ? `Dont ${sansChiffres} sans chiffres` : 'Mois de comparaison manquant' },
   ]
   const reference = moisReference === 1 ? 'mois précédent' : 'même mois l’an dernier'
   const enTetes = ['Magasin', 'Coach', 'Mois', 'CA cumulé', `Écart vs ${reference}`, 'Flux cumulé', 'Panier moyen', 'Marge', 'CA marché extérieur', 'Alerte', 'Audits']
@@ -920,7 +913,7 @@ function LignesChiffres({ reseau, lignes }: { reseau: Reseau; lignes: { m: Magas
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <CarteLignes label="Chiffres des magasins">
         {avec.slice(0, nb).map(({ m, a, coach }) => (
-          <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Initiales nom={m.nom} />} titre={m.nom}
+          <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Blason magasin={m} />} titre={m.nom}
             detail={[coach || 'Sans Coach', libelleMois(a!.mois)].join(' · ')}
             fin={<>
               <Box sx={{ display: { xs: 'none', sm: 'block' } }}><MiniCourbe valeurs={courbeCA(reseau, m.nom, a!.mois)} couleur={couleur(a!)} label={`Chiffre d'affaires de ${m.nom} sur 12 mois`} /></Box>
@@ -936,7 +929,7 @@ function LignesChiffres({ reseau, lignes }: { reseau: Reseau; lignes: { m: Magas
             titre={`${sans.length} magasin${sans.length > 1 ? 's' : ''} sans chiffres`} fin={ouvert ? <ExpandLessOutlined /> : <ExpandMoreOutlined />} />
         )}
         {ouvert && sans.map(({ m, coach }) => (
-          <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Initiales nom={m.nom} />} titre={m.nom} detail={coach || 'Sans Coach'} />
+          <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Blason magasin={m} />} titre={m.nom} detail={coach || 'Sans Coach'} />
         ))}
       </CarteLignes>
       {nb < avec.length && <Button variant="outlined" onClick={() => setNb(nb + 50)} sx={{ alignSelf: 'center', minHeight: 48 }}>Afficher {Math.min(50, avec.length - nb)} magasins de plus</Button>}

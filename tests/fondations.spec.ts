@@ -1,19 +1,20 @@
 import { expect, test } from '@playwright/test'
 import { COMPTE, seConnecter, simulerSupabase, textesTropPetits } from './supabase-simule'
 
-// Barre du bas sur téléphone : libellé court ; menu latéral sur PC : libellé long. Magasins n'est pas dans la barre du bas
-// (Joseph, 22/10/2026 : Accueil, Visites, Messages, Tâches, Santé)
+// Barre du bas sur téléphone : libellé court ; menu latéral sur PC : libellé long. Refonte vague 4 (Joseph, 10/11/2026,
+// 36A) : Accueil, Agenda, Magasins, Tâches, Messages dans la barre du bas ; Visites et Santé passent dans le menu du compte
 const principales = [
   { nom: 'Accueil', court: 'Accueil' },
-  { nom: 'Magasins', court: '' },
-  { nom: 'Visites', court: 'Visites' },
+  { nom: 'Agenda', court: 'Agenda' },
+  { nom: 'Magasins', court: 'Magasins' },
+  { nom: 'Visites', court: '' },
   { nom: 'Messages', court: 'Messages' },
   { nom: 'Tâches', court: 'Tâches' },
-  { nom: 'Santé du parc', court: 'Santé' },
+  { nom: 'Santé du parc', court: '' },
 ]
 // Hors de la barre du bas : dans le menu du compte sur téléphone
 // Refonte (09/11/2026, 2A) : l'Évolution du parc est une vue de Magasins, plus une entrée du menu
-const secondaires = ['Agenda', 'Équipe', 'Paramètres']
+const secondaires = ['Équipe', 'Paramètres']
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -73,11 +74,11 @@ test('chaque destination est accessible depuis la navigation', async ({ page, is
     // Messages et Tâches peuvent porter leur compteur (« Messages : 2 nouveautés »)
     await nav.getByRole('button', { name: new RegExp(`^${isMobile ? court : nom}( :.*)?$`) }).click()
     // Tâches peut s'ouvrir sur la liste des franchisés (« Tâches des franchisés », sprint 27)
-    const titre = page.getByRole('heading', { level: 1, name: nom === 'Tâches' ? /^Tâches( des franchisés)?$/ : nom, exact: true })
+    const titre = page.getByRole('heading', { level: 1, name: nom, exact: true })
     await expect(titre).toBeAttached()
     if (nom !== 'Accueil') await expect(titre).toBeVisible()
   }
-  for (const nom of isMobile ? ['Magasins', ...secondaires] : secondaires) {
+  for (const nom of isMobile ? ['Visites', 'Santé du parc', ...secondaires] : secondaires) {
     if (isMobile) {
       await expect(nav.getByRole('button', { name: nom, exact: true })).toHaveCount(0)
       await page.getByRole('button', { name: 'Mon compte' }).click()
@@ -112,8 +113,8 @@ test('zones tactiles d’au moins 48 px sur téléphone', async ({ page, isMobil
   await seConnecter(page)
   const boutons = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')
   await expect(boutons).toHaveCount(5)
-  await expect(boutons.nth(2)).toHaveAccessibleName(/^Messages/)
   await expect(boutons.nth(3)).toHaveAccessibleName(/^Tâches/)
+  await expect(boutons.nth(4)).toHaveAccessibleName(/^Messages/)
   const creer = (await page.getByRole('banner').getByRole('button', { name: 'Créer' }).boundingBox())!
   expect(creer.height).toBeGreaterThanOrEqual(48)
   for (const b of await boutons.all()) {
@@ -143,7 +144,7 @@ test('le menu a deux parties : la partie classique et Paramètres', async ({ pag
   if (isMobile) {
     await page.getByRole('button', { name: 'Mon compte' }).click()
     const menu = page.getByRole('menu')
-    await expect(menu.getByRole('menuitem', { name: 'Agenda', exact: true })).toBeVisible()
+    await expect(menu.getByRole('menuitem', { name: 'Visites', exact: true })).toBeVisible()
     await expect(menu.getByText('Paramètres', { exact: true }).first()).toBeVisible()
     return
   }
@@ -164,7 +165,7 @@ test('Équipe ouvre le groupe Réglages', async ({ page, isMobile }) => {
     // Juste sous le titre « Réglages » ; la partie classique (au-dessus) ne le contient pas
     const titre = menu.locator('li', { hasText: /^Réglages$/ }).first()
     await expect(titre.locator('xpath=following-sibling::*[1]')).toHaveText('Équipe')
-    await expect(menu.getByRole('menuitem').first()).toHaveText('Magasins')
+    await expect(menu.getByRole('menuitem').first()).toHaveText('Visites')
   } else {
     const groupe = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('list').filter({ hasText: 'Réglages' }).last()
     await expect(groupe.getByRole('button').first()).toHaveText('Équipe')

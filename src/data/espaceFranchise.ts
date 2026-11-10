@@ -1,5 +1,6 @@
 // Espace d'un franchisé : la base ne lui renvoie que ses magasins (fonction espace_franchise),
 // dans le format des tables ; l'app le lit comme le réseau complet.
+import { normaliserPlans, type Priorite } from './planAction'
 import { supabase } from '../lib/supabase'
 import { assemblerReseau, ErreurChargement, type Tables } from './chargement'
 import { franchises } from './personnes'
@@ -31,7 +32,20 @@ export async function chargerEspaceFranchise(apercu: Apercu | null, jour = new D
   reseau.espace = { franchise: d.franchise ?? apercu?.franchise ?? '', reperes: d.reperes && typeof d.reperes === 'object' ? d.reperes : null }
   // Tâches nées dans « Équipe seule » : la base ne les renvoie plus (0019) ; écartées aussi ici
   reseau.actionsLibres = Object.fromEntries(Object.entries(reseau.actionsLibres).map(([m, l]) => [m, l.filter((a) => a.fil !== 'equipe')]))
+  reseau.plans = await chargerPlansFranchise(apercu)
   return reseau
+}
+
+// Plan d'action de ses magasins (0043) : titres et statuts, jamais l'objectif chiffré. En aperçu, le Directeur lit la
+// rubrique et l'app retire l'objectif. Base d'avant 0043 : aucun plan, sans erreur.
+async function chargerPlansFranchise(apercu: Apercu | null): Promise<Record<string, Priorite[]>> {
+  if (apercu) {
+    const { data, error } = await supabase.from('suivi_magasins').select('store_name,valeur').eq('cle', 'plan').in('store_name', apercu.magasins)
+    if (error) return {}
+    return Object.fromEntries(Object.entries(normaliserPlans(Object.fromEntries((data ?? []).map((l) => [l.store_name, l.valeur])))).map(([m, l]) => [m, l.map((p) => ({ ...p, objectif: '' }))]))
+  }
+  const { data, error } = await supabase.rpc('plans_franchise')
+  return error ? {} : normaliserPlans(data)
 }
 
 // ── Accès des franchisés, gérés par le Directeur de réseau ──
@@ -159,6 +173,12 @@ export async function ajouterActionFranchise(magasin: string, action: string, po
 }
 
 // Action hors visite (libre) ou action du plan d'une visite (visite, index, texte vérifié par la base)
+// Statut d'une tâche posé par le franchisé (0043) : à faire, en cours, bloquée avec sa raison
+export async function statutActionFranchise(magasin: string, statut: '' | 'en_cours' | 'bloquee', raison: string, cible: { libre: string } | { visite: number; index: number; texte: string }) {
+  const base = { p_store: magasin, p_statut: statut || 'a_faire', p_raison: raison }
+  const { error } = await supabase.rpc('statut_action_franchise', 'libre' in cible ? { ...base, p_libre: cible.libre } : { ...base, p_visite: cible.visite, p_index: cible.index, p_texte: cible.texte })
+  if (error) erreurAction(error)
+}
 export async function marquerActionFranchise(magasin: string, faite: boolean, cible: { libre: string } | { visite: number; index: number; texte: string }) {
   const { error } = await supabase.rpc('marquer_action_franchise', 'libre' in cible
     ? { p_store: magasin, p_faite: faite, p_libre: cible.libre }

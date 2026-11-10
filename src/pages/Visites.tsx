@@ -108,15 +108,15 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
         <FiltreMenu libelle="Nine box" choisis={cases} onChange={setCases}
           options={[...nineBox.map((c) => ({ valeur: c.id, libelle: c.libelle, detail: `${c.rythme} · ${mag((l) => l.case?.id === c.id)}` })), { valeur: '__aucune__', libelle: 'Non classé', detail: `2 visites · ${mag((l) => !l.case)}` }]} />
         <FiltreMenu libelle="Dernière visite" choisis={etats} onChange={setEtats}
-          options={[{ valeur: 'alerte' satisfies Etat, libelle: 'Pas vus depuis longtemps', detail: `${mag((l) => l.alerte)}` }, { valeur: 'delai' satisfies Etat, libelle: 'Vus récemment', detail: `${mag((l) => !l.alerte)}` }]} />
+          options={[{ valeur: 'alerte' satisfies Etat, libelle: 'À voir', detail: `${mag((l) => l.alerte)}` }, { valeur: 'delai' satisfies Etat, libelle: 'À jour', detail: `${mag((l) => !l.alerte)}` }]} />
         {(actifs > 0 || texte) && <Button onClick={() => { setCoachs([]); setCases([]); setEtats([]); setTexte('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
       </RechercheFiltres>
 
-      {/* Trois compteurs sur une ligne, comme l'en-tête des fiches ; « pas vus » filtre la liste */}
+      {/* Trois compteurs sur une ligne, comme l'en-tête des fiches ; « à voir » filtre la liste */}
       <Card aria-label={`Visites ${a.court}`} component="section" sx={{ mb: 2, border: 0, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
         <Compteur valeur={faites} libelle={faites > 1 ? 'faites' : 'faite'} />
         <Compteur valeur={referenceTotale} libelle="référence" />
-        <Compteur valeur={signales.length} libelle="pas vus" signal actif={etats.length === 1 && etats[0] === 'alerte'}
+        <Compteur valeur={signales.length} libelle="à voir" signal actif={etats.length === 1 && etats[0] === 'alerte'}
           onClick={() => setEtats(etats.length === 1 && etats[0] === 'alerte' ? [] : ['alerte'])} />
       </Card>
 
@@ -295,6 +295,7 @@ function ContenuVisites() {
   const vue = (['rythme', 'historique'] as const).find((v) => v === params.get('vue')) ?? 'rythme'
   const [edition, setEdition] = useState<Edition>(null)
   const [message, setMessage] = useState('')
+  // Refonte vague 4 (39A) : l'action principale à droite du titre
   const actions = <BoutonAction libelle="Saisir une visite" onClick={() => setEdition({ visite: null, magasins: [] })} />
   return (
     <AvecReseau>
@@ -303,14 +304,15 @@ function ContenuVisites() {
           <PageHeader
             titre="Visites"
             sousTitre={`${reseau.visites.length} visite${reseau.visites.length > 1 ? 's' : ''} enregistrée${reseau.visites.length > 1 ? 's' : ''}`}
+            actions={actions}
           />
           <Onglets valeur={vue} onChange={(v) => setParams({ vue: v }, { replace: true })} libelle="Rubriques des visites" rubriques={[
             { vue: 'rythme', libelle: 'Rythme de visite', court: 'Rythme', icone: <EventRepeatOutlined /> },
             { vue: 'historique', libelle: 'Historique', icone: <HistoryOutlined /> },
           ]} />
           {vue === 'historique'
-            ? <VueHistorique reseau={reseau} actions={actions} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
-            : <VueRythme reseau={reseau} surPC={surPC} actions={actions} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
+            ? <VueHistorique reseau={reseau} actions={null} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
+            : <VueRythme reseau={reseau} surPC={surPC} actions={null} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
           {edition && <DialogVisite reseau={reseau} visite={edition.visite} magasinsInitiaux={edition.magasins} dateInitiale={edition.date} onFermer={(m) => { setEdition(null); if (m) setMessage(m) }} />}
           <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
         </>

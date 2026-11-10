@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test'
 import { seConnecter, textesTropPetits } from './supabase-simule'
 
-// Même barre d'outils partout : recherche, filtres puis actions sur une seule ligne
+// Même barre d'outils partout : recherche, filtres puis actions sur une seule ligne. Refonte vague 4 (39A) : l'action
+// principale d'une liste passe à droite du titre de la page (enTitre)
 const pages = [
-  { url: '/magasins?vue=liste', recherche: 'Rechercher dans les magasins', action: 'Ajouter un magasin' },
-  { url: '/visites', recherche: 'Magasin, ville, Coach…', action: 'Saisir une visite' },
-  { url: '/visites?vue=historique', recherche: 'Rechercher dans les visites', action: 'Saisir une visite' },
+  { url: '/magasins?vue=liste', recherche: 'Rechercher dans les magasins', action: 'Ajouter un magasin', enTitre: true },
+  { url: '/visites', recherche: 'Magasin, ville, Coach…', action: 'Saisir une visite', enTitre: true },
+  { url: '/visites?vue=historique', recherche: 'Rechercher dans les visites', action: 'Saisir une visite', enTitre: true },
   { url: '/parametres/collaborateurs', recherche: 'Rechercher une personne', action: 'Ajouter un collaborateur' },
   { url: '/parametres/franchises', recherche: 'Rechercher une personne', action: 'Ajouter un franchisé' },
 ]
@@ -13,13 +14,13 @@ const pages = [
 for (const p of pages) test(`barre d’outils alignée : ${p.url}`, async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#' + p.url)
-  const recherche = page.getByLabel(p.recherche)
-  const action = page.getByRole('button', { name: p.action, exact: true })
+  const recherche = 'enTitre' in p ? page.getByRole('heading', { level: 1 }) : page.getByLabel(p.recherche)
+  const action = page.getByRole('button', { name: p.action, exact: true }).first()
   await expect(action).toBeVisible()
   const r = (await recherche.boundingBox())!
   const a = (await action.boundingBox())!
-  // Même ligne que la recherche, 48 px de haut au moins
-  expect(Math.abs((a.y + a.height / 2) - (r.y + r.height / 2))).toBeLessThanOrEqual(6)
+  // Même ligne que la recherche (ou que le titre), 48 px de haut au moins
+  expect(Math.abs((a.y + a.height / 2) - (r.y + r.height / 2))).toBeLessThanOrEqual('enTitre' in p ? 24 : 6)
   expect(a.height).toBeGreaterThanOrEqual(48)
   if (isMobile) {
     // Sur téléphone, l'action est un bouton rond sans texte

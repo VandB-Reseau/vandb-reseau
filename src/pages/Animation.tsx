@@ -19,6 +19,7 @@ import { useTheme } from '@mui/material/styles'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
+import AssignmentReturnOutlined from '@mui/icons-material/AssignmentReturnOutlined'
 import QuizOutlined from '@mui/icons-material/QuizOutlined'
 import SchoolOutlined from '@mui/icons-material/SchoolOutlined'
 import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
@@ -35,7 +36,7 @@ import { FenetreContenu, PresencesReunion } from '../components/Reunions'
 import { useAuth } from '../auth/AuthContext'
 import { chargerCommunications, chargerLectures, type Communication, type Lecture } from '../data/communications'
 import { useLecturesPratiques, useReactionsPratiques } from '../data/reactionsPratiques'
-import { chargerSondages, supprimerSondage, type Sondage } from '../data/questions'
+import { chargerSondages, estRemontee, supprimerSondage, type Sondage } from '../data/questions'
 import { usePresences, type Presence } from '../data/reunions'
 import { bilan, magasinsConcernes, phase, type Bilan, type Campagne } from '../data/campagnes'
 import { magasinsDu, perimetreDuProfil } from '../data/perimetre'
@@ -47,14 +48,17 @@ import { chargementDiffere } from '../lib/chargementDiffere'
 
 const DialogEvenement = chargementDiffere(() => import('./Agenda').then((m) => ({ default: m.DialogEvenement })))
 
-export type Genre = 'communication' | 'pratique' | 'sondage' | 'formation' | 'reunion' | 'campagne'
+export type Genre = 'communication' | 'pratique' | 'sondage' | 'remontee' | 'formation' | 'reunion' | 'campagne'
+// Refonte vague 4 (Joseph 10/11/2026, 36A) : « Envoyer au réseau », un seul panneau dans cet ordre ; la remontée est un
+// sondage à réponse libre (chiffre ou texte), avec le nom
 const genres: { v: Genre; libelle: string; pluriel: string; icone: ReactElement; couleur: string }[] = [
-  { v: 'communication', libelle: 'Communication', pluriel: 'Communications', icone: <CampaignOutlined />, couleur: '#307672' },
-  { v: 'pratique', libelle: 'Bonne pratique', pluriel: 'Bonnes pratiques', icone: <TipsAndUpdatesOutlined />, couleur: '#ea6029' },
-  { v: 'sondage', libelle: 'Sondage', pluriel: 'Sondages', icone: <QuizOutlined />, couleur: '#312e2e' },
-  { v: 'formation', libelle: 'Formation', pluriel: 'Formations', icone: <SchoolOutlined />, couleur: '#c24119' },
-  { v: 'reunion', libelle: 'Réunion', pluriel: 'Réunions', icone: <GroupsOutlined />, couleur: '#1d1d1b' },
+  { v: 'communication', libelle: 'Information', pluriel: 'Informations', icone: <CampaignOutlined />, couleur: '#307672' },
   { v: 'campagne', libelle: 'Campagne', pluriel: 'Campagnes', icone: <FlagOutlined />, couleur: '#a15c00' },
+  { v: 'sondage', libelle: 'Sondage', pluriel: 'Sondages', icone: <QuizOutlined />, couleur: '#312e2e' },
+  { v: 'remontee', libelle: 'Remontée', pluriel: 'Remontées', icone: <AssignmentReturnOutlined />, couleur: '#5b4b8a' },
+  { v: 'reunion', libelle: 'Réunion', pluriel: 'Réunions', icone: <GroupsOutlined />, couleur: '#1d1d1b' },
+  { v: 'formation', libelle: 'Formation', pluriel: 'Formations', icone: <SchoolOutlined />, couleur: '#c24119' },
+  { v: 'pratique', libelle: 'Bonne pratique', pluriel: 'Bonnes pratiques', icone: <TipsAndUpdatesOutlined />, couleur: '#ea6029' },
 ]
 const genreDe = (g: Genre) => genres.find((x) => x.v === g)!
 
@@ -101,7 +105,7 @@ function contenus(reseau: Reseau, magasinsSuivis: Set<string> | null, d: {
   }
   for (const s of d.sondages) {
     liste.push({
-      cle: `s-${s.id}`, genre: 'sondage', titre: s.titre, date: s.creeLe.slice(0, 10), recherche: `${s.titre} ${s.auteurNom}`,
+      cle: `s-${s.id}`, genre: estRemontee(s) ? 'remontee' : 'sondage', titre: s.titre, date: s.creeLe.slice(0, 10), recherche: `${s.titre} ${s.auteurNom}`,
       detail: [dateCourte(s.creeLe.slice(0, 10)), s.auteurNom, s.jusquAu >= reseau.jour ? `ouvert jusqu’au ${dateCourte(s.jusquAu)}` : 'clos'].filter(Boolean).join(' · '),
       suivi: { n: s.reponses.length, total: s.concernes, libelle: 'réponse' }, ouvert: { genre: 'sondage', s },
     })
@@ -260,7 +264,7 @@ function FenetreSuivi({ reseau, x, onFermer, relireSondages, modifierEvenement }
   )
 }
 
-type Creation = 'communication' | 'pratique' | 'sondage' | 'formation' | 'reunion' | 'campagne'
+type Creation = Genre
 
 // integre : dans la page Campagnes, sans son propre titre
 export function PageAnimation({ reseau, integre }: { reseau: Reseau; integre?: boolean }) {
@@ -306,10 +310,10 @@ export function PageAnimation({ reseau, integre }: { reseau: Reseau; integre?: b
     <>
       {!integre && <PageHeader titre="Campagnes" />}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-        <Button variant="contained" startIcon={<AddOutlined />} aria-haspopup="menu" aria-expanded={!!ancre} onClick={ouvrirMenu} sx={{ minHeight: 48 }}>Créer</Button>
+        <Button variant="contained" startIcon={<AddOutlined />} aria-haspopup="menu" aria-expanded={!!ancre} onClick={ouvrirMenu} sx={{ minHeight: 48 }}>Envoyer au réseau</Button>
       </Box>
       <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{ list: { 'aria-label': 'Créer un contenu' }, paper: { sx: { mt: 0.5, minWidth: 220, borderRadius: 3 } } }}>
+        slotProps={{ list: { 'aria-label': 'Envoyer au réseau' }, paper: { sx: { mt: 0.5, minWidth: 220, borderRadius: 3 } } }}>
         {genres.map((g) => (
           <MenuItem key={g.v} onClick={() => creer(g.v)} sx={{ '&&': { minHeight: 52 }, gap: 1.5, fontWeight: 600 }}>
             <Box component="span" sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: g.couleur, color: '#ffffff', display: 'grid', placeItems: 'center', flexShrink: 0, '& svg': { fontSize: 18 } }}>{g.icone}</Box>
@@ -326,7 +330,7 @@ export function PageAnimation({ reseau, integre }: { reseau: Reseau; integre?: b
       {!liste.length
         ? <EmptyState icone={<InsightsOutlined />} titre={tous.length ? 'Aucun contenu ne correspond' : 'Aucun contenu pour l’instant'}
             texte={tous.length ? 'Change de type ou de recherche.' : 'Les communications, sondages, formations et campagnes apparaîtront ici avec leur suivi.'}
-            action={<Button variant="contained" startIcon={<AddOutlined />} onClick={ouvrirMenu} sx={{ minHeight: 48 }}>Créer</Button>} />
+            action={<Button variant="contained" startIcon={<AddOutlined />} onClick={ouvrirMenu} sx={{ minHeight: 48 }}>Envoyer au réseau</Button>} />
         : (
           <CarteLignes label="Contenus">
             {visibles.map((c) => {
@@ -342,7 +346,7 @@ export function PageAnimation({ reseau, integre }: { reseau: Reseau; integre?: b
       {suite}
       {ouvert && <FenetreSuivi reseau={reseau} x={ouvert} onFermer={() => setOuvert(null)} relireSondages={relireSondages} modifierEvenement={setEvenement} />}
       {creation === 'pratique' && <DialogPratique reseau={reseau} pratique={null} onFermer={fermer} />}
-      {creation === 'sondage' && <DialogSondage reseau={reseau} onFermer={(m) => { fermer(m); if (m) relireSondages() }} />}
+      {(creation === 'sondage' || creation === 'remontee') && <DialogSondage reseau={reseau} remontee={creation === 'remontee'} onFermer={(m) => { fermer(m); if (m) relireSondages() }} />}
       {creation === 'campagne' && <DialogCampagne reseau={reseau} campagne={null} onFermer={(m) => fermer(m)} />}
       {(creation === 'formation' || creation === 'reunion' || evenement) && (
         <Suspense fallback={null}>

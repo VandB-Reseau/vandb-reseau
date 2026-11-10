@@ -1,6 +1,6 @@
 // Tâches : actions attribuées à la personne connectée (son nom en porteur), à faire puis faites,
 // avec qui les a faites et quand. Le Directeur peut ouvrir la liste d'un RR ou d'un Coach.
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
@@ -8,7 +8,14 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import { useMessageAnnulable } from '../components/Annulable'
 import TextField from '@mui/material/TextField'
-import Menu from '@mui/material/Menu'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import PersonOutlined from '@mui/icons-material/PersonOutlined'
+import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
+import ScheduleOutlined from '@mui/icons-material/ScheduleOutlined'
+import BlockOutlined from '@mui/icons-material/BlockOutlined'
+import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
+import { Onglets, type Rubrique } from '../components/Onglets'
 import Typography from '@mui/material/Typography'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import { PageHeader } from '../components/PageHeader'
@@ -17,9 +24,7 @@ import { RechercheFiltres } from '../components/RechercheFiltres'
 import { CarteLignes, TitreSection, cartouche } from '../components/Social'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
-import { BoutonAjouterAction, DialogAction, LigneAction, useEcritureActions } from '../components/Actions'
-import MenuItem from '@mui/material/MenuItem'
-import ListSubheader from '@mui/material/ListSubheader'
+import { BoutonAjouterAction, DialogAction, LigneAction, useChangerStatut, useEcritureActions } from '../components/Actions'
 import { useAuth } from '../auth/AuthContext'
 import { useReseau } from '../data/ReseauContext'
 import { actionsDes, echeanceDate, enRetard, monNomPorteur, portePar, porteursDe, porteursDu, type ActionSuivie } from '../data/actions'
@@ -31,6 +36,9 @@ import { useMarquerTachesVues } from '../data/tachesVues'
 const FAITES_VISIBLES = 10
 
 const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr')
+
+// Regroupement des tâches à faire (vague 4, 32A) : par échéance (d'office), par magasin ou par personne
+type Regroupement = 'echeance' | 'magasin' | 'personne'
 
 // Tâches à faire rangées par échéance ; une échéance écrite en toutes lettres (« novembre ») va dans « Plus tard »
 type Groupe = 'retard' | 'semaine' | 'tard' | 'sans'
@@ -55,33 +63,32 @@ function Intertitre({ titre, nombre }: { titre: string; nombre: number }) {
   )
 }
 
-// Liste des tâches des franchisés des magasins affichés
+// Liste des tâches des franchisés des magasins affichés ; vague 4 (32A) : toutes les tâches en retard, toutes les bloquées
 const FRANCHISES = '@franchises'
+const RETARD = '@retard'
+const BLOQUEES = '@bloquees'
+const PERSONNE = '@personne'
+const SPECIALES = [FRANCHISES, RETARD, BLOQUEES]
 
-// L'équipe passe de sa liste à celle des franchisés de ses magasins ; le Directeur ouvre aussi celle d'un RR ou d'un
-// Coach (« Équipe »). Listes en puces visibles avec leur nombre de tâches à faire (sprint 27, S1)
+// Listes de tâches en onglets soulignés (refonte vague 4, 32A et 39A) : Mes tâches, Franchisés, En retard, Bloquées ;
+// le Directeur ouvre aussi celle d'une personne de l'équipe (onglet « Une personne », choix de la personne dessous)
 function ChoixPorteur({ reseau, noms, moi, valeur, directeur, onChange }: { reseau: Reseau; noms: string[]; moi: string; valeur: string; directeur: boolean; onChange: (nom: string) => void }) {
-  const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const n = (porteur: string) => aFaireDe(reseau, noms, porteur).length
-  const coachs = reseau.equipe.filter((c) => !c.fictif).map((c) => c.nom)
-  const membre = valeur !== moi && valeur !== FRANCHISES ? valeur : null
-  const puce = (libelle: string, actif: boolean, onClick: (e: MouseEvent<HTMLElement>) => void, menu?: boolean) => (
-    <Chip label={libelle} onClick={onClick} aria-pressed={actif} aria-haspopup={menu ? 'menu' : undefined} variant="outlined"
-      // Filtre léger (refonte 09/11/2026, 4A) : le choix actif cerclé de noir sur fond gris clair, plus de pilule noire
-      sx={{ minHeight: 48, borderRadius: 2, fontWeight: actif ? 700 : 500, '& .MuiChip-label': { px: 2 }, ...(actif && { borderColor: 'text.primary', bgcolor: 'action.selected' }) }} />
-  )
+  const membre = valeur !== moi && !SPECIALES.includes(valeur) ? valeur : null
+  const rubriques: Rubrique<string>[] = [
+    { vue: moi, libelle: `Mes tâches · ${n(moi)}`, court: `Mes tâches · ${n(moi)}`, icone: <PersonOutlined /> },
+    { vue: FRANCHISES, libelle: `Franchisés · ${n(FRANCHISES)}`, court: `Franchisés · ${n(FRANCHISES)}`, icone: <StorefrontOutlined /> },
+    { vue: RETARD, libelle: `En retard · ${n(RETARD)}`, court: `En retard · ${n(RETARD)}`, icone: <ScheduleOutlined /> },
+    { vue: BLOQUEES, libelle: `Bloquées · ${n(BLOQUEES)}`, court: `Bloquées · ${n(BLOQUEES)}`, icone: <BlockOutlined /> },
+    ...(directeur ? [{ vue: PERSONNE, libelle: 'Une personne', court: 'Une personne', icone: <GroupsOutlined /> }] : []),
+  ]
+  const personnes = [...reseau.rrs.map((r) => r.nom), ...reseau.equipe.filter((c) => !c.fictif).map((c) => c.nom)].filter((x, i, l) => x && x !== moi && l.indexOf(x) === i)
   return (
-    <Box role="group" aria-label="Liste de tâches" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-      {puce(`Mes tâches · ${n(moi)}`, valeur === moi, () => onChange(moi))}
-      {puce(`Franchisés · ${n(FRANCHISES)}`, valeur === FRANCHISES, () => onChange(FRANCHISES))}
-      {directeur && puce(membre ? `Équipe · ${membre}` : 'Équipe', !!membre, (e) => setAncre(e.currentTarget), true)}
-      {directeur && (
-        <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)}>
-          <ListSubheader>Responsables Régionaux</ListSubheader>
-          {reseau.rrs.map((r) => <MenuItem key={r.id} selected={valeur === r.nom} onClick={() => { setAncre(null); onChange(r.nom) }} sx={{ minHeight: 48 }}>{r.nom} · {n(r.nom)}</MenuItem>)}
-          <ListSubheader>Coachs</ListSubheader>
-          {coachs.map((c) => <MenuItem key={c} selected={valeur === c} onClick={() => { setAncre(null); onChange(c) }} sx={{ minHeight: 48 }}>{c} · {n(c)}</MenuItem>)}
-        </Menu>
+    <Box sx={{ mb: 2 }}>
+      <Onglets valeur={membre ? PERSONNE : valeur} onChange={(v) => onChange(v === PERSONNE ? (membre ?? personnes[0] ?? moi) : v)} rubriques={rubriques} libelle="Liste de tâches" />
+      {membre && (
+        <Autocomplete options={personnes} value={membre} onChange={(_e, v) => v && onChange(v)} disableClearable sx={{ width: { xs: '100%', sm: 320 }, mt: 2 }}
+          renderInput={(params) => <TextField {...params} size="small" label="Personne" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }} />} />
       )}
     </Box>
   )
@@ -104,11 +111,14 @@ function porteeParFranchise(reseau: Reseau, x: ActionSuivie, cache: Map<string, 
 // Tâches à faire d'une liste (porteur, ou franchisés des magasins)
 function tachesDe(reseau: Reseau, noms: string[], porteur: string): ActionSuivie[] {
   const cache = new Map<string, Set<string>>()
-  return actionsDes(reseau, new Set(noms)).filter((x) => (porteur === FRANCHISES ? porteeParFranchise(reseau, x, cache) : portePar(x.a, porteur)))
+  const toutes = actionsDes(reseau, new Set(noms))
+  if (porteur === RETARD) return toutes.filter((x) => enRetard(x.a, reseau.jour))
+  if (porteur === BLOQUEES) return toutes.filter((x) => !x.a.faite && x.a.statut === 'bloquee')
+  return toutes.filter((x) => (porteur === FRANCHISES ? porteeParFranchise(reseau, x, cache) : portePar(x.a, porteur)))
 }
 const aFaireDe = (reseau: Reseau, noms: string[], porteur: string) => tachesDe(reseau, noms, porteur).filter((x) => !x.a.faite)
 
-function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajout, ajoutVide }: { reseau: Reseau; noms: string[]; porteur: string; signaler: (m: string, annuler?: () => void) => void; choixPorteur?: ReactNode; ajout?: ReactNode; ajoutVide?: ReactNode }) {
+function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajoutVide }: { reseau: Reseau; noms: string[]; porteur: string; signaler: (m: string, annuler?: () => void) => void; choixPorteur?: ReactNode; ajoutVide?: ReactNode }) {
   const { recharger } = useReseau()
   const ecriture = useEcritureActions(reseau)
   const [recherche, setRecherche] = useState('')
@@ -116,6 +126,7 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajout, ajoutVide
   const [enCours, setEnCours] = useState<string | null>(null)
   const [toutesFaites, setToutesFaites] = useState(false)
   const [edition, setEdition] = useState<ActionSuivie | null>(null)
+  const [regroupement, setRegroupement] = useState<Regroupement>('echeance')
   const choix = magasin && noms.includes(magasin) ? magasin : null
   const q = sansAccents(recherche.trim())
   const actions = tachesDe(reseau, choix ? [choix] : noms, porteur)
@@ -131,15 +142,30 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajout, ajoutVide
     } catch (e) { signaler(e instanceof ErreurAction ? e.message : 'La tâche n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.') }
     finally { setEnCours(null) }
   }
+  const changerStatut = useChangerStatut(reseau, signaler)
   const ligne = (x: ActionSuivie) => (
-    <LigneAction key={x.cle} reseau={reseau} x={x} avecMagasin={!choix && noms.length > 1} avecPorteur={porteur === FRANCHISES} enCours={enCours === x.cle}
+    <LigneAction key={x.cle} reseau={reseau} x={x} avecMagasin={!choix && noms.length > 1} avecPorteur={porteur === FRANCHISES} enCours={enCours === x.cle} changerStatut={changerStatut?.(x)}
       cocher={ecriture.lectureSeule ? undefined : (f) => void cocher(x, f)}
       modifier={x.libre && !ecriture.franchise ? () => setEdition(x) : undefined} />
   )
   if (!noms.length) return <EmptyState icone={<TaskAltOutlined />} titre="Aucun magasin" texte="Aucun magasin n’est rattaché à ton accès pour le moment." />
   if (!porteur) return <EmptyState icone={<TaskAltOutlined />} titre="Aucune liste" texte="Ton nom n’est pas encore relié à ton accès. Contacte la direction du réseau." />
   const dansUneSemaine = plusSept(reseau.jour)
-  const parGroupe = groupes.map((g) => ({ ...g, lignes: aFaire.filter((x) => groupeDe(x, reseau.jour, dansUneSemaine) === g.g) })).filter((g) => g.lignes.length)
+  const parCle = (cle: (x: ActionSuivie) => string[]) => {
+    const m = new Map<string, ActionSuivie[]>()
+    for (const x of aFaire) for (const k of cle(x)) m.set(k, [...(m.get(k) ?? []), x])
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0], 'fr')).map(([k, lignes]) => ({ g: k, titre: k, lignes }))
+  }
+  const parGroupe = regroupement === 'magasin' ? parCle((x) => [x.magasin])
+    : regroupement === 'personne' ? parCle((x) => (porteursDe(x.a).length ? porteursDe(x.a) : ['Sans porteur']))
+    : groupes.map((g) => ({ ...g, lignes: aFaire.filter((x) => groupeDe(x, reseau.jour, dansUneSemaine) === g.g) })).filter((g) => g.lignes.length)
+  const bascule = (
+    <ToggleButtonGroup exclusive size="small" value={regroupement} onChange={(_e, v: Regroupement | null) => v && setRegroupement(v)} aria-label="Regrouper les tâches" sx={{ display: { xs: 'none', md: 'inline-flex' } }}>
+      <ToggleButton value="echeance" sx={{ minHeight: 40, px: 1.5 }}>Par échéance</ToggleButton>
+      {noms.length > 1 && <ToggleButton value="magasin" sx={{ minHeight: 40, px: 1.5 }}>Par magasin</ToggleButton>}
+      <ToggleButton value="personne" sx={{ minHeight: 40, px: 1.5 }}>Par personne</ToggleButton>
+    </ToggleButtonGroup>
+  )
   const filtreMagasin = noms.length > 1 && (noms.length <= 6
     ? (
       <Box role="group" aria-label="Magasins affichés" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -154,7 +180,7 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajout, ajoutVide
   return (
     <>
       {choixPorteur}
-      <RechercheFiltres actifs={choix ? 1 : 0} actions={ajout}
+      <RechercheFiltres actifs={choix ? 1 : 0} actions={bascule}
         recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Tâche, magasin, porteur" libelle="Rechercher une tâche" />}>
         {filtreMagasin || undefined}
       </RechercheFiltres>
@@ -162,7 +188,7 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajout, ajoutVide
         <CarteLignes label="À faire">
           {aFaire.length
             ? <Box component="ul" aria-label="Tâches à faire" sx={{ listStyle: 'none', m: 0, p: 0, '& > li:not([role=presentation])': { px: 1 } }}>
-                {parGroupe.flatMap((g) => [<Intertitre key={g.g} titre={g.titre} nombre={g.lignes.length} />, ...g.lignes.map(ligne)])}
+                {parGroupe.flatMap((g) => [<Intertitre key={`t-${g.g}`} titre={g.titre} nombre={g.lignes.length} />, ...g.lignes.map((x) => <Fragment key={`${g.g}-${x.cle}`}>{ligne(x)}</Fragment>)])}
               </Box>
             : q || faites.length
               ? <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>{q ? 'Aucune tâche ne correspond à la recherche.' : 'Toutes tes tâches sont faites.'}</Typography>
@@ -197,7 +223,7 @@ export function PageTaches() {
   // Franchisé : sa liste ; l'équipe ajoute celle des franchisés, le Directeur celle de chacun
   const choixPossible = !!reseau && !franchise && !!moi
   const demande = choixPossible ? params.get('de') : null
-  const porteur = (demande && (!impose || demande === FRANCHISES) ? demande : '') || moi
+  const porteur = (demande && (!impose || SPECIALES.includes(demande)) ? demande : '') || moi
   const changer = (nom: string) => setParams((x) => { const n = new URLSearchParams(x); if (nom === moi) n.delete('de'); else n.set('de', nom); return n }, { replace: true })
   useMarquerTachesVues(!!moi && porteur === moi)
   // Sans liste demandée : la sienne si elle a des tâches à faire, sinon celle des franchisés si elle en a (une seule fois)
@@ -212,15 +238,12 @@ export function PageTaches() {
   const noms = reseau ? (impose ? magasinsDu(reseau, impose) : reseau.magasins).map((m) => m.nom).sort((a, b) => a.localeCompare(b, 'fr')) : []
   return (
     <>
-      {(() => {
-        const autre = !porteur || porteur === moi ? null : porteur === FRANCHISES ? 'Tâches des franchisés' : `Tâches de ${porteur}`
-        return <PageHeader titre={autre ?? 'Tâches'} />
-      })()}
+      <PageHeader titre="Tâches" sousTitre={porteur && porteur !== moi && !SPECIALES.includes(porteur) ? `Tâches de ${porteur}` : undefined}
+        actions={reseau ? <BoutonAjouterAction barre reseau={reseau} magasins={noms} porteur={SPECIALES.includes(porteur) ? '' : porteur} signaler={signaler} /> : undefined} />
       <AvecReseau>{(r) => (
         <Liste reseau={r} noms={noms} porteur={porteur} signaler={signaler}
           choixPorteur={choixPossible ? <ChoixPorteur reseau={r} noms={noms} moi={moi} valeur={porteur} directeur={!impose} onChange={changer} /> : undefined}
-          ajout={<BoutonAjouterAction barre reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} signaler={signaler} />}
-          ajoutVide={<BoutonAjouterAction plein libelle="Nouvelle tâche" reseau={r} magasins={noms} porteur={porteur === FRANCHISES ? '' : porteur} signaler={signaler} />} />
+          ajoutVide={<BoutonAjouterAction plein libelle="Nouvelle tâche" reseau={r} magasins={noms} porteur={SPECIALES.includes(porteur) ? '' : porteur} signaler={signaler} />} />
       )}</AvecReseau>
       {bandeau}
     </>

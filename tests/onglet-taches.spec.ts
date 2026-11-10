@@ -53,16 +53,17 @@ test('ouvrir la liste d’un autre porteur ne marque pas mes tâches comme vues'
   await dejaOuvert(page)
   await seConnecter(page, { config: { actions } })
   await page.goto('./#/taches?de=No%C3%A9%20MODELE')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches de Noé MODELE')
+  await expect(page.getByText('Tâches de Noé MODELE', { exact: true })).toBeVisible()
   await expect(picto(page)).toHaveAccessibleName('Tâches : 2 en retard ou nouvelles')
 })
 
-test('téléphone : Magasins quitte la barre du bas et reste dans le menu du compte', async ({ page, isMobile }) => {
+// Refonte vague 4 (Joseph 10/11/2026, 36A) : Agenda et Magasins dans la barre du bas, Visites et Santé dans le menu du compte
+test('téléphone : Visites quitte la barre du bas et reste dans le menu du compte', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'Barre du bas du téléphone')
   await seConnecter(page)
   const barre = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(barre.getByRole('button')).toHaveText(['Accueil', 'Visites', /Messages$/, /Tâches$/, 'Santé'])
+  await expect(barre.getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
   await page.getByRole('button', { name: 'Mon compte' }).click()
-  await page.getByRole('menu').getByRole('menuitem', { name: 'Magasins', exact: true }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Magasins' })).toBeVisible()
+  await page.getByRole('menu').getByRole('menuitem', { name: 'Visites', exact: true }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Visites' })).toBeVisible()
 })

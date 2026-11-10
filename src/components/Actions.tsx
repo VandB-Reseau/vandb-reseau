@@ -13,6 +13,7 @@ import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
+import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
@@ -22,14 +23,16 @@ import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import { useReseau } from '../data/ReseauContext'
 import { useAuth } from '../auth/AuthContext'
-import { enregistrerActionLibre, marquerActions, supprimerActionLibre } from '../data/chargement'
+import { changerStatutTache, enregistrerActionLibre, marquerActions, supprimerActionLibre } from '../data/chargement'
 import { clesDesPorteurs, echeanceDate, enRetard, joindrePorteurs, porteursDe, porteursDu, type ActionSuivie } from '../data/actions'
 import { mesCles } from '../data/messagerie'
 import { notifierTache } from '../lib/notifications'
-import { ajouterActionFranchise, ErreurAction, marquerActionFranchise } from '../data/espaceFranchise'
-import type { ActionLibre, Reseau } from '../data/modele'
+import { ajouterActionFranchise, ErreurAction, marquerActionFranchise, statutActionFranchise } from '../data/espaceFranchise'
+import { PuceStatut } from './StatutTache'
+import type { ActionLibre, Reseau, StatutTache } from '../data/modele'
 import { dateCourte, lienFiche } from '../lib/format'
 import { lienCompteRendu } from '../data/visites'
+import { prioritesActives } from '../data/planAction'
 import { Fenetre } from './EditionEquipe'
 import { TexteDicte } from './Dictee'
 
@@ -50,13 +53,38 @@ export function useEcritureActions(reseau: Reseau) {
     const cible = x.libre ? { libre: x.libre.id, magasin: x.magasin, faite: jour } : x.visite?.id != null ? { visite: x.visite.id, index: x.index, faite: jour } : null
     if (cible) await marquerActions([cible], profil?.nom ?? '')
   }
-  return { franchise, lectureSeule, cocher }
+  // Statut (vague 4, 32A) : à faire, en cours, bloquée ; le franchisé passe par la base (0043)
+  const statut = async (x: ActionSuivie, s: '' | StatutTache, raison: string) => {
+    if (franchise) {
+      if (x.libre) return statutActionFranchise(x.magasin, s, raison, { libre: x.libre.id })
+      if (x.visite?.id != null) return statutActionFranchise(x.magasin, s, raison, { visite: x.visite.id, index: x.index, texte: x.a.action })
+      return
+    }
+    const cible = x.libre ? { libre: x.libre.id, magasin: x.magasin } : x.visite?.id != null ? { visite: x.visite.id, index: x.index } : null
+    if (cible) await changerStatutTache(cible, s, raison)
+  }
+  return { franchise, lectureSeule, cocher, statut }
+}
+
+// Statut changé depuis une liste : enregistré, liste rechargée, message affiché
+// eslint-disable-next-line react-refresh/only-export-components
+export function useChangerStatut(reseau: Reseau, signaler: (m: string) => void) {
+  const { recharger } = useReseau()
+  const ecriture = useEcritureActions(reseau)
+  if (ecriture.lectureSeule) return undefined
+  return (x: ActionSuivie) => async (s: '' | StatutTache, raison: string) => {
+    try {
+      await ecriture.statut(x, s, raison)
+      await recharger()
+      signaler(s === 'bloquee' ? 'Tâche marquée bloquée.' : s === 'en_cours' ? 'Tâche en cours.' : 'Tâche remise à faire.')
+    } catch (e) { signaler(messageErreur(e)) }
+  }
 }
 
 const messageErreur = (e: unknown) => (e instanceof ErreurAction ? e.message : 'La tâche n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.')
 
 // Ligne d'une action ; sans « cocher », lecture seule
-export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher, enCours = false, modifier }: { reseau: Reseau; x: ActionSuivie; avecMagasin?: boolean; avecPorteur?: boolean; cocher?: (faite: boolean) => void; enCours?: boolean; modifier?: () => void }) {
+export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher, enCours = false, modifier, changerStatut }: { reseau: Reseau; x: ActionSuivie; avecMagasin?: boolean; avecPorteur?: boolean; cocher?: (faite: boolean) => void; enCours?: boolean; modifier?: () => void; changerStatut?: (s: '' | StatutTache, raison: string) => Promise<void> }) {
   const retard = enRetard(x.a, reseau.jour)
   const echeance = x.a.echeance && (echeanceDate(x.a) ? dateCourte(x.a.echeance) : x.a.echeance)
   const auteur = x.libre?.auteur ? ` par ${x.libre.auteur}` : ''
@@ -66,6 +94,8 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
   // Échéance : à droite sur PC, sous le texte sur téléphone pour laisser la largeur au libellé
   const pastille = !x.a.faite && echeance && <Chip size="small" color={retard ? 'error' : 'default'} variant={retard ? 'filled' : 'outlined'} label={retard ? `En retard · ${echeance}` : echeance} sx={{ fontSize: 12, fontWeight: 600 }} />
   const faite = x.a.faite ? `${x.libre?.budget?.abandonnee ? 'abandonnée' : 'faite'} le ${dateCourte(x.a.faite)}${x.a.faitePar ? ` par ${x.a.faitePar}` : ''}` : null
+  const priorite = x.a.priorite ? reseau.plans?.[x.magasin]?.find((p) => p.id === x.a.priorite) : undefined
+  const statut = !x.a.faite && (x.a.statut || changerStatut) ? <PuceStatut a={x.a} titre={x.a.action} changer={changerStatut} /> : null
   return (
     <Box component="li" sx={{ borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
     <Glisser libelle="Faite" icone={<CheckCircle />} actif={!!cocher && !x.a.faite && !enCours} onGlisser={() => cocher?.(true)}>
@@ -86,10 +116,12 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
           {x.libre?.fil === 'equipe' && ' · Équipe seule'}
           {x.libre?.budget && ' · Budget'}
         </Typography>
-        {pastille && <Box sx={{ display: { xs: 'block', sm: 'none' }, mt: 0.75 }}>{pastille}</Box>}
+        {priorite && <Typography variant="body2" color="text.secondary">Priorité : {priorite.titre}</Typography>}
+        {x.a.statut === 'bloquee' && x.a.raison && !x.a.faite && <Typography variant="body2" sx={{ color: 'error.dark' }}>Bloquée : {x.a.raison}</Typography>}
+        {(pastille || statut) && <Box sx={{ display: { xs: 'flex', sm: 'none' }, gap: 1, flexWrap: 'wrap', alignItems: 'center', mt: 0.75 }}>{statut}{pastille}</Box>}
         {x.a.pieces && <ListePieces pieces={x.a.pieces} />}
       </Box>
-      {pastille && <Box sx={{ display: { xs: 'none', sm: 'block' }, mt: 1.5, flexShrink: 0 }}>{pastille}</Box>}
+      {(pastille || statut) && <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1, alignItems: 'center', mt: 1.5, flexShrink: 0 }}>{statut}{pastille}</Box>}
       {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la tâche ${x.a.action}`}><EditOutlined /></IconButton></Tooltip>}
     </Box>
     </Glisser>
@@ -116,8 +148,9 @@ export function ListeActions({ reseau, actions, avecMagasin, signaler, libelle, 
     } catch (e) { signaler(messageErreur(e)) }
     finally { setEnCours(null) }
   }
+  const changerStatut = useChangerStatut(reseau, signaler)
   const ligne = (x: ActionSuivie) => <LigneAction key={x.cle} reseau={reseau} x={x} avecMagasin={avecMagasin} enCours={enCours === x.cle}
-    cocher={ecriture.lectureSeule ? undefined : (f) => void cocher(x, f)}
+    cocher={ecriture.lectureSeule ? undefined : (f) => void cocher(x, f)} changerStatut={changerStatut?.(x)}
     modifier={x.libre && magasins.length && !ecriture.franchise ? () => setEdition(x) : undefined} />
   return (
     <>
@@ -187,6 +220,8 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
   const [porteur, setPorteur] = useState(a?.porteur ?? porteurInitial)
   const [echeance, setEcheance] = useState(a ? echeanceDate(a) : echeanceInitiale)
   const [pieces, setPieces] = useState<Piece[]>(a?.pieces ?? piecesInitiales)
+  const [priorite, setPriorite] = useState(a?.priorite ?? '')
+  const priorites = franchise ? [] : prioritesActives(reseau, magasin)
   const [alerte, setAlerte] = useState('')
   const propre = texte.trim().replace(/\s+/g, ' ')
   return (
@@ -197,7 +232,7 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
           await ajouterActionFranchise(magasin, propre, porteur.trim(), echeance, pieces)
           return 'Tâche ajoutée.'
         }
-        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), ...(a?.fil ?? (depuis?.equipe ? 'equipe' : undefined) ? { fil: 'equipe' as const } : {}), ...(a?.message ?? depuis?.message ? { message: a?.message ?? depuis?.message } : {}), ...(a?.budget ? { budget: a.budget } : {}) }
+        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), ...(a?.fil ?? (depuis?.equipe ? 'equipe' : undefined) ? { fil: 'equipe' as const } : {}), ...(a?.message ?? depuis?.message ? { message: a?.message ?? depuis?.message } : {}), ...(a?.budget ? { budget: a.budget } : {}), ...(a?.statut ? { statut: a.statut } : {}), ...(a?.raison ? { raison: a.raison } : {}), ...(priorite && priorites.some((p) => p.id === priorite) ? { priorite } : {}) }
         const id = await enregistrerActionLibre(magasin, l)
         if (!a) notifierTache(magasin, id, clesDesPorteurs(reseau, magasin, porteursDe(l)).filter((c) => !mesCles(profil).includes(c)))
         return a ? 'Tâche mise à jour.' : 'Tâche ajoutée.'
@@ -210,6 +245,12 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
       )}
       <TexteDicte label="Tâche" libelleDictee="Tâche" valeur={texte} changer={setTexte} autoFocus={!a} multiline minRows={2} />
       <ChampPorteur reseau={reseau} magasin={magasin} valeur={porteur} changer={setPorteur} />
+      {priorites.length > 0 && (
+        <TextField select label="Priorité du plan d’action" value={priorites.some((p) => p.id === priorite) ? priorite : ''} onChange={(e) => setPriorite(e.target.value)}>
+          <MenuItem value="" sx={{ minHeight: 48 }}>Aucune</MenuItem>
+          {priorites.map((p) => <MenuItem key={p.id} value={p.id} sx={{ minHeight: 48 }}>{p.titre}</MenuItem>)}
+        </TextField>
+      )}
       <TextField type="date" label="Échéance" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       <Box role="group" aria-label="Échéance rapide" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: -1 }}>
         {echeancesRapides(reseau.jour).map((x) => (

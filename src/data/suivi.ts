@@ -9,6 +9,7 @@ export const rubriques = {
   associes: 'associes', actions: 'actions', deploiements: 'deploiements', campagnes: 'constats',
   preparations_visites: 'preparation', ouvertures_magasins: 'ouverture',
   concurrents_magasins: 'concurrence', mots_franchise: 'mot_franchise', objectifs_magasins: 'objectifs',
+  plans_magasins: 'plan',
 } as const
 export type CleSuivie = keyof typeof rubriques
 export const estSuivie = (cle: string): cle is CleSuivie => cle in rubriques

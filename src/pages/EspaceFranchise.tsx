@@ -1,3 +1,4 @@
+import { SectionPlan } from '../components/PlanAction'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
 import InventoryOutlined from '@mui/icons-material/Inventory2Outlined'
@@ -511,11 +512,12 @@ const VUES_F: VueFiche[] = ['fiche', 'chiffres', 'budget', 'visites', 'campagnes
 const ongletDeF = (v: VueFiche): OngletFicheF => (v === 'visites' || v === 'campagnes' ? 'activite' : v)
 const PARTIES_BUDGET_F = ['budget', 'visualiser', 'echanges', 'depart', 'ventes', 'calendrier', 'investissements', 'equipe', 'fraisBudget', 'resultat', 'tresoBudget', 'travaux']
 
-function OngletFiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+function OngletFiche({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (msg: string) => void }) {
   const adresse = [m.adresse || [m.codePostal, m.ville].filter(Boolean).join(' '), m.pays].filter(Boolean).join(', ')
   const associes = associesEnPlace(reseau, m)
   return (
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
+      {!!reseau.plans?.[m.nom]?.length && <Box sx={{ gridColumn: '1 / -1' }}><SectionPlan reseau={reseau} m={m} equipe={false} signaler={signaler} /></Box>}
       <Section titre="Mon équipe V and B">
         {contacts(reseau, [m]).map((x) => <Contact key={x.role} role={x.role} p={x.p} />)}
         {!m.coach && <Contact role="Coach" p={null} sousTitre="Aucun Coach affecté à ce jour" />}
@@ -693,7 +695,7 @@ export function FicheMagasinFranchise() {
                   {partiesActiviteF.map((x) => <Tab key={x.vue} value={x.vue} label={x.libelle} aria-current={vue === x.vue ? 'page' : undefined} />)}
                 </Tabs>
               )}
-              {vue === 'fiche' && <OngletFiche reseau={reseau} m={m} />}
+              {vue === 'fiche' && <OngletFiche reseau={reseau} m={m} signaler={setConfirmation} />}
               {vue === 'chiffres' && <OngletBudget nom={m.nom} mode="chiffres" santeLibelle="Chiffres du mois" sante={<OngletChiffres reseau={reseau} m={m} />} />}
               {vue === 'budget' && <OngletBudget nom={m.nom} mode="budget" />}
               {vue === 'visites' && <><LireVisites magasin={m.nom} /><OngletVisites reseau={reseau} m={m} /></>}

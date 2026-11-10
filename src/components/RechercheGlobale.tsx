@@ -30,6 +30,8 @@ const ordreTypes: Resultat['type'][] = ['Coachs', 'Responsables Régionaux', 'Di
 // Actions proposées par la recherche (refonte, Joseph 09/11/2026, choix 9A) : créer sans quitter l'écran
 const ACTIONS: { choix: Choix | 'message'; libelle: string; avecMagasin: string; mots: string }[] = [
   { choix: 'visite', libelle: 'Saisir une visite', avecMagasin: 'Saisir une visite à', mots: 'visite compte rendu planifier' },
+  { choix: 'appel', libelle: 'Noter un appel', avecMagasin: 'Noter un appel à', mots: 'appel téléphone telephone' },
+  { choix: 'note', libelle: 'Écrire une note', avecMagasin: 'Écrire une note sur', mots: 'note journal remarque' },
   { choix: 'tache', libelle: 'Ajouter une tâche', avecMagasin: 'Ajouter une tâche à', mots: 'tâche tache action' },
   { choix: 'message', libelle: 'Écrire un message', avecMagasin: 'Écrire à', mots: 'message écrire ecrire' },
   { choix: 'pratique', libelle: 'Partager une bonne pratique', avecMagasin: '', mots: 'bonne pratique photo' },

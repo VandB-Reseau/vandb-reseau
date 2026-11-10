@@ -9,6 +9,24 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Refonte façon SaaS, vague 4 : animation du réseau et cohérence (Joseph, 10/11/2026, choix 31A à 42A sauf 35, 38B).
+  Plan d'action du magasin : 3 priorités au plus, chacune avec son objectif chiffré et ses tâches, revu en visite ; le
+  franchisé voit titres et statuts, jamais l'objectif. Tâches à quatre statuts (À faire, En cours, Bloquée avec sa
+  raison, Faite) ; page Tâches en vues soulignées (Mes tâches, Franchisés, En retard, Bloquées) et regroupement par
+  échéance, magasin ou personne. Remarques internes et appréciation pendant une visite, jamais montrées au franchisé.
+  Entretien mensuel RR–Coach dans la fiche du Coach (ordre du jour préparé, notes, 3 engagements repris le mois
+  suivant, remarques du Coach). Rituels d'animation réglés dans Paramètres › Animation, taux de tenue dans Équipe ›
+  Rituels et le rapport du mois. « Envoyer au réseau » : un seul panneau (Information, Campagne, Sondage, Remontée,
+  Réunion, Formation, Bonne pratique) ; la remontée demande un chiffre ou un texte, avec le nom. Demandes des
+  franchisés au siège (Mes demandes ; Animation › Demandes : statuts, interlocuteur par thème, délai médian de
+  réponse, ouvertes depuis plus de 5 jours). Cloche = ce qui s'est passé, À traiter = ce que je dois faire (demandes,
+  tâches bloquées, entretiens du mois), une chose une seule fois. Action principale à droite du titre ; Santé du parc
+  sans filtres RR et Coach (le périmètre les choisit). Vocabulaire réservé (Dans la norme, Sans chiffres, Prioritaires,
+  À voir, Presque pleine…) et « Vocabulaire de l'app » dans le menu du compte. Magasins avec leur blason et un aperçu
+  au survol, personnes avec leurs initiales, dates relatives dans les nouvelles listes. Téléphone : barre Accueil,
+  Agenda, Magasins, Tâches, Messages ; « + » dans l'ordre Visite, Appel, Note, Tâche, Photo ; le Coach commence par
+  « Ma journée ». — Base : `0043_animation_vague4`
+
 - Refonte façon SaaS, vague 3 (Joseph, 09/11/2026, choix 21A à 29A ; 30 écarté). Périmètre choisi une fois dans le
   menu (Tout le réseau, une région, les magasins d'un Coach), suivi par l'accueil, les listes, l'agenda, Performance et
   Budgets, rappelé à côté du titre. Fiche magasin : vue d'ensemble avec les informations à gauche et la situation au

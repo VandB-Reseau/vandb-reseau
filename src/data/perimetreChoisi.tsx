@@ -71,7 +71,7 @@ export function libellePerimetre(reseau: Reseau, p: Perimetre): string {
 
 // Écrans de liste qui suivent le périmètre choisi ; une fiche (magasin, personne) s'ouvre toujours en entier
 export function suitLePerimetre(pathname: string): boolean {
-  return pathname === '/' || pathname === '/magasins' || pathname === '/budgets' || /^\/(visites|taches|plus\/sante|plus\/agenda|performance|campagnes)(\/|$)/.test(pathname)
+  return pathname === '/' || pathname === '/magasins' || pathname === '/budgets' || /^\/(visites|taches|plus\/sante|plus\/agenda|performance|campagnes|demandes)(\/|$)/.test(pathname)
 }
 
 // Rappel du périmètre à côté du titre de la page (PageHeader)

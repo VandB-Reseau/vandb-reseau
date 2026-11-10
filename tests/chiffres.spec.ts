@@ -164,7 +164,7 @@ test('l’onglet Chiffres donne les indicateurs et la liste des magasins', async
   // Filtre sur l'alerte, à côté du Coach (repliés derrière « Filtres » sur téléphone)
   if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
   await page.getByRole('button', { name: /Filtre Alerte/ }).click()
-  await page.getByRole('menuitem', { name: /^OK/ }).click()
+  await page.getByRole('menuitem', { name: /^Dans la norme/ }).click()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('link', { name: /Lyon Test/ })).toHaveCount(0)
   await expect(page.getByRole('link', { name: /Annecy Test/ }).first()).toBeVisible()
