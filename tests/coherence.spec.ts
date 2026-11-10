@@ -16,6 +16,8 @@ for (const p of pages) test(`barre d’outils alignée : ${p.url}`, async ({ pag
   await page.goto('./#' + p.url)
   const recherche = 'enTitre' in p ? page.getByRole('heading', { level: 1 }) : page.getByLabel(p.recherche)
   const action = page.getByRole('button', { name: p.action, exact: true }).first()
+  // Vague 6 (retour de Joseph, 10/11/2026) : sur téléphone, un seul « + », celui de l'en-tête ; l'ajout d'un magasin reste sur PC
+  if (isMobile && p.url.startsWith('/magasins')) { await expect(page.getByRole('heading', { name: 'Magasins', level: 1 })).toBeVisible(); await expect(action).toHaveCount(0); return }
   await expect(action).toBeVisible()
   const r = (await recherche.boundingBox())!
   const a = (await action.boundingBox())!

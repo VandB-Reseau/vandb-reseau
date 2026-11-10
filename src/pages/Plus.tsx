@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Card from '@mui/material/Card'
 import List from '@mui/material/List'
@@ -8,7 +9,7 @@ import ChevronRight from '@mui/icons-material/ChevronRight'
 import { PageHeader } from '../components/PageHeader'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import { menuTelephone, parametres, type Destination } from '../navigation/destinations'
+import { menuTelephoneRubriques, parametres, type Destination } from '../navigation/destinations'
 import { useAuth } from '../auth/AuthContext'
 import { perimetreDuProfil } from '../data/perimetre'
 import { useReseau } from '../data/ReseauContext'
@@ -42,7 +43,7 @@ export function Plus() {
   return (
     <>
       <PageHeader titre="Plus" />
-      {groupe(null, menuTelephone(profil?.role))}
+      {menuTelephoneRubriques(profil?.role).map((r) => <Fragment key={r.titre}>{groupe(r.titre, r.destinations)}</Fragment>)}
       {!sansParametres && groupe('Paramètres', parametres)}
     </>
   )

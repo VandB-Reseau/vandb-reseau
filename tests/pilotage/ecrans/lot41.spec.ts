@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { allerVers, ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type TicketsSimules, type VenteSimulee, ouvrirCommentaires, fermerCommentairesSurTelephone } from './outils'
+import { allerVers, ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type TicketsSimules, type VenteSimulee, ouvrirCommentaires, fermerCommentairesSurTelephone, justifierPointsAttention } from './outils'
 
 // Lot 41 « budget plus fluide » (Joseph, 02/11/2026) : proposer en série, fiche prête, envoi au siège et revue des
 // changements, validation à l'étape 3, objectif d'EBE, « Où en est le magasin », magasins à appeler, grille du réseau.
@@ -101,6 +101,7 @@ test('le franchisé envoie ses changements au siège ; le Directeur les relit et
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-lot41-envoi.png`, fullPage: true })
   await fermerCommentairesSurTelephone(page)
+  await justifierPointsAttention(page)
   await revue.getByRole('button', { name: 'Envoyer au siège' }).click()
   await expect(page.getByText('Budget envoyé au siège : il est en discussion.')).toBeVisible()
   const envoi = ecritures.find((e) => e.table === 'budgets' && e.methode === 'PATCH')?.corps as { statut: string; envoye_le?: string }

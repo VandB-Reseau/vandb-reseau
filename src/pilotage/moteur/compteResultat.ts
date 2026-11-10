@@ -1,6 +1,7 @@
 import { financementDe } from './financement'
 import { blocDe, grilleDe, LIGNES_SUR_CA, rangDans, rubriqueLibelle, THEMES_FRAIS } from './parametres'
 import type { LigneGrille } from './types'
+import { fraisResolus } from './communication'
 import { UNIVERS, universLibelle, type Budget, type Hypotheses } from './types'
 
 // Compte de résultat sur 12 mois, ligne par ligne, prêt à afficher : rubriques dépliables (détail par univers ou par ligne de frais).
@@ -21,7 +22,8 @@ export interface LigneCompte {
 const somme = (l: number[]) => l.reduce((a, b) => a + b, 0)
 const negatif = (l: number[]) => l.map((v) => -v)
 
-export function compteResultat(b: Budget, h: Hypotheses, p: { tauxRedevance: number; tauxPublicite: number; grilleFrais?: LigneGrille[] }): LigneCompte[] {
+export function compteResultat(b: Budget, h0: Hypotheses, p: { tauxRedevance: number; tauxPublicite: number; grilleFrais?: LigneGrille[]; tauxCommunication?: number }): LigneCompte[] {
+  const h = { ...h0, frais: fraisResolus(h0.frais, p) }
   const grille = grilleDe(p)
   const ca = b.mois.map((m) => m.ca)
   const ligne = (cle: string, libelle: string, mois: number[], o: Partial<LigneCompte> = {}): LigneCompte => ({ cle, libelle, mois, total: somme(mois), ...o })

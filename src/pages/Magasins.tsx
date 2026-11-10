@@ -112,7 +112,8 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
               actions={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
                 {/* Refonte vague 4 (39A) : l'action principale à droite du titre, la bascule de vue au bout de la barre */}
                 {voitEvolution && surPC && <Button startIcon={<TimelineOutlined />} onClick={() => naviguer('/performance?vue=evolution')}>Évolution du parc</Button>}
-                {vue === 'liste' && <BoutonAction libelle="Ajouter un magasin" onClick={() => setAjout(true)} />}
+                {/* Vague 6 (Joseph, 10/11/2026) : sur téléphone, un seul « + », celui de l'en-tête ; l'ajout d'un magasin se fait sur PC */}
+                {vue === 'liste' && surPC && <BoutonAction libelle="Ajouter un magasin" onClick={() => setAjout(true)} />}
                 {!surPC && bascule}
               </Box>}
             />

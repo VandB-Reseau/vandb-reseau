@@ -1,7 +1,8 @@
 // Demandes des franchisés au siège (refonte vague 4, Joseph 10/11/2026, 37A). Équipe : guichet de ses magasins, filtré par
 // statut, avec le délai médian de première réponse et les demandes ouvertes depuis plus de 5 jours. Franchisé : ses
 // demandes, une nouvelle en trois champs, la conversation avec le siège.
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -69,13 +70,27 @@ export function Demandes() {
   return <AvecReseau>{(reseau) => (profil?.role === 'franchise' ? <DemandesFranchise reseau={reseau} /> : <DemandesEquipe reseau={reseau} />)}</AvecReseau>
 }
 
+// Lien vers une demande précise (Messages, vague 6, 57A) : elle s'ouvre une fois la liste chargée
+function useDemandeDemandee(liste: Demande[] | null | undefined, ouvrir: (d: Demande) => void) {
+  const [params] = useSearchParams()
+  const id = Number(params.get('demande'))
+  const [fait, setFait] = useState(false)
+  useEffect(() => {
+    if (fait || !id || !liste) return
+    const d = liste.find((x) => x.id === id)
+    if (d) { setFait(true); ouvrir(d) }
+  }, [fait, id, liste, ouvrir])
+}
+
 type Filtre = 'traiter' | 'attente' | 'resolue' | 'toutes'
 function DemandesEquipe({ reseau }: { reseau: Reseau }) {
   const voirComme = !!useApercu().equipe
   const { liste, recharger } = useDemandes()
-  const [filtre, setFiltre] = useState<Filtre>('traiter')
-  const [recherche, setRecherche] = useState('')
+  const [params] = useSearchParams()
+  const [filtre, setFiltre] = useState<Filtre>(params.get('q') || params.get('demande') ? 'toutes' : 'traiter')
+  const [recherche, setRecherche] = useState(params.get('q') ?? '')
   const [ouverte, setOuverte] = useState<Demande | null>(null)
+  useDemandeDemandee(liste, setOuverte)
   const [message, setMessage] = useState('')
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   // Le réseau reçu suit déjà le périmètre choisi
@@ -166,6 +181,7 @@ function DemandesFranchise({ reseau }: { reseau: Reseau }) {
   const { liste, recharger } = useMesDemandes(apercu)
   const [nouvelle, setNouvelle] = useState(false)
   const [ouverte, setOuverte] = useState<Demande | null>(null)
+  useDemandeDemandee(liste, setOuverte)
   const [message, setMessage] = useState('')
   const magasins = reseau.magasins.filter((m) => m.statut !== 'avenir').map((m) => m.nom)
   const fermer = (m?: string) => { setNouvelle(false); setOuverte(null); if (m) { setMessage(m); void recharger() } }

@@ -90,7 +90,12 @@ export function rubriquesMenu(_sansParametres?: boolean): Rubrique[] {
 
 export const demandesFranchise: Destination = { ...demandes, libelle: 'Mes demandes', court: 'Demandes', description: 'Mes questions au siège et leurs réponses' }
 // Menu du compte sur téléphone : ce que la barre du bas ne montre pas
-export const menuTelephone = (role: string | undefined) => [visites, ...pourRole(secondaires, role).filter((d) => d !== agenda)]
+export const menuTelephone = (role: string | undefined) => menuTelephoneRubriques(role).flatMap((r) => r.destinations)
+// Vague 6 (Joseph, 10/11/2026) : le menu du compte sur téléphone rangé comme le menu du PC, en rubriques
+export const menuTelephoneRubriques = (role: string | undefined): Rubrique[] => [
+  { titre: 'Réseau', destinations: pourRole([visites, chiffres], role) },
+  { titre: 'Animation', destinations: pourRole([infosReseau, campagnes, demandes], role) },
+].filter((r) => r.destinations.length)
 
 // Espace d'un franchisé : ses magasins seulement, sans Paramètres
 export const espaceFranchise: Destination[] = [

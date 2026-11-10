@@ -39,6 +39,15 @@ const GROUPES: { titre: string; regles: { cle: Cle; libelle: string; unite: stri
     ],
   },
   {
+    titre: 'Points d’attention avant l’envoi du budget',
+    regles: [
+      { cle: 'attentionMarge', libelle: 'Taux de marge sous celui proposé par le siège de plus de', unite: 'points' },
+      { cle: 'attentionFPMin', libelle: '% FP (frais de personnel ÷ CA HT) sous', unite: '%' },
+      { cle: 'attentionFPMax', libelle: '% FP (frais de personnel ÷ CA HT) au-dessus de', unite: '%' },
+      { cle: 'attentionCA', libelle: 'CA du budget au-dessus de l’atterrissage de plus de', unite: '%' },
+    ],
+  },
+  {
     titre: 'Alertes',
     regles: [{ cle: 'moisCommerciaux', libelle: 'Tickets et panier comparés à l’an dernier sur les derniers', unite: 'mois' }],
   },

@@ -1,9 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Chip from '@mui/material/Chip'
-import Badge from '@mui/material/Badge'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
@@ -14,8 +14,12 @@ import AlternateEmail from '@mui/icons-material/AlternateEmail'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
-import LockOpenOutlined from '@mui/icons-material/LockOpenOutlined'
+import EditOutlined from '@mui/icons-material/EditOutlined'
 import LockOutlined from '@mui/icons-material/LockOutlined'
+import PushPin from '@mui/icons-material/PushPin'
+import PushPinOutlined from '@mui/icons-material/PushPinOutlined'
+import ReplyOutlined from '@mui/icons-material/ReplyOutlined'
+import SupportAgentOutlined from '@mui/icons-material/SupportAgentOutlined'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import SendOutlined from '@mui/icons-material/SendOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
@@ -25,9 +29,13 @@ import { useAuth } from '../auth/AuthContext'
 import { useMessagerie } from '../data/MessagerieContext'
 import { useReseau } from '../data/ReseauContext'
 import {
-  estNouveau, heure, horodatage, jourDuFil, libelleAuteur, magasinsCites, messagesDu, messagesDuFil, mesCles, participants,
-  membresDuFil, sansPrives, type Contact, type Fil, type Message, type Participant,
+  cleFil, epinglerMessage, estNouveau, heure, horodatage, jourDuFil, libelleAuteur, libelleReaction, magasinsCites, messageDeNumero, messagesDu, messagesDuFil, mesCles, modifiable, participants,
+  membresDuFil, reagirMessage, sansPrives, type Contact, type Fil, type GenreReaction, type Message, type Participant,
 } from '../data/messagerie'
+import { brouillonDe, garderBrouillon } from '../data/brouillons'
+import type { Demande } from '../data/demandes'
+import { BandeEpingles, Citation, DialogDemande, DialogModifier, iconeReaction, LigneReactions, PuceDemande, ReponseEnCours } from './MessagesGestes'
+import { Onglets } from './Onglets'
 import { actionsDuMagasin, echeanceDate, enRetard, type ActionSuivie } from '../data/actions'
 import { type Magasin, type Reseau } from '../data/modele'
 import { dateCourte } from '../lib/format'
@@ -56,10 +64,17 @@ const ECART_GROUPE = 10 * 60_000
 const memeGroupe = (a: Message | undefined, b: Message | undefined) =>
   !!a && !!b && a.auteur === b.auteur && jourDuFil(a.creeLe) === jourDuFil(b.creeLe) && Math.abs(Date.parse(b.creeLe) - Date.parse(a.creeLe)) < ECART_GROUPE
 
-// contexte : magasins cités (échange à deux) ; choisi : l'heure complète et les actions du message sont affichées
-function BulleMessage({ msg, moi, noms, premier, dernier, choisi, contexte, choisir, supprimer, enTache }: {
+// Gestes possibles sur un message choisi (refonte vague 6, 60A), selon les droits et la version de la base
+export interface GestesMessage {
+  repondre?: () => void; reagir?: (r: GenreReaction) => void; modifier?: () => void; epingler?: () => void
+  enTache?: () => void; enDemande?: () => void; supprimer?: () => void
+}
+
+// contexte : magasins cités (échange à deux) ; choisi : l'heure complète et les actions du message sont affichées.
+// cite : message auquel celui-ci répond ; demande : demande au siège née de ce message
+function BulleMessage({ msg, moi, noms, premier, dernier, choisi, contexte, choisir, gestes, cite, allerA, demande }: {
   msg: Message; moi: boolean; noms: string[]; premier: boolean; dernier: boolean; choisi: boolean; contexte: string
-  choisir?: () => void; supprimer?: () => void; enTache?: () => void
+  choisir?: () => void; gestes: GestesMessage; cite?: { x: Message | undefined }; allerA: (id: number) => void; demande?: { id: number; d: Demande | undefined }
 }) {
   const rayon = 18
   // Coins resserrés côté auteur entre deux messages d'un même groupe
@@ -72,16 +87,22 @@ function BulleMessage({ msg, moi, noms, premier, dernier, choisi, contexte, choi
           <StorefrontOutlined sx={{ fontSize: 14 }} />{contexte}
         </Typography>
       )}
+      {cite && <Citation cite={cite.x} clair={moi} aller={cite.x ? () => allerA(cite.x!.id) : undefined} />}
       {msg.texte && <Typography variant="body1" component="span" sx={{ display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}><Texte texte={msg.texte} noms={noms} /></Typography>}
       {msg.pieces.length > 0 && <ListePieces pieces={msg.pieces} clair={moi} />}
     </>
   )
   const bulleSx: SxProps<Theme> = {
-    display: 'block', textAlign: 'left', maxWidth: { xs: '85%', md: '70%' }, minWidth: 0, px: 1.75, py: 1, borderRadius: `${rayon}px`, ...(coins as object),
+    display: 'block', textAlign: 'left', maxWidth: { xs: '85%', md: '70%' }, minWidth: 0, px: 1.75, py: 1, ...(choisir ? { minHeight: { xs: 48, md: 0 }, py: { xs: 1.5, md: 1 } } : {}), borderRadius: `${rayon}px`, ...(coins as object),
     bgcolor: moi ? 'primary.main' : 'action.hover', color: moi ? 'primary.contrastText' : 'text.primary',
+    ...(msg.epingleLe ? { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 1 } : {}),
   }
+  const g = gestes
+  const bouton = (libelle: string, icone: ReactNode, agir: () => void, etiquette?: string, presse?: boolean) => (
+    <Button size="small" startIcon={icone} onClick={agir} aria-label={etiquette} aria-pressed={presse} sx={{ minHeight: { xs: 48, md: 40 } }}>{libelle}</Button>
+  )
   return (
-    <Box component="li" aria-label={`Message de ${msg.auteurNom}`} sx={{ display: 'flex', flexDirection: 'column', alignItems: moi ? 'flex-end' : 'flex-start', mt: premier ? 1.5 : 0.25 }}>
+    <Box component="li" id={`message-${msg.id}`} aria-label={`Message de ${msg.auteurNom}`} sx={{ display: 'flex', flexDirection: 'column', alignItems: moi ? 'flex-end' : 'flex-start', mt: premier ? 1.5 : 0.25, scrollMarginTop: 96 }}>
       {!moi && premier && (
         <Typography variant="caption" color="text.secondary" sx={{ px: 1.75, mb: 0.25 }}>
           <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>{msg.auteurNom}</Box>{libelleAuteur[msg.auteurRole] ? ` · ${libelleAuteur[msg.auteurRole]}` : ''}
@@ -90,11 +111,28 @@ function BulleMessage({ msg, moi, noms, premier, dernier, choisi, contexte, choi
       {choisir
         ? <ButtonBase component="div" onClick={choisir} aria-expanded={choisi} sx={bulleSx}>{contenu}</ButtonBase>
         : <Box sx={bulleSx}>{contenu}</Box>}
-      {(dernier || choisi) && (
+      <LigneReactions x={msg} droite={moi} reagir={g.reagir} />
+      {demande && <Box sx={{ mt: 0.5, px: 0.5 }}><PuceDemande id={demande.id} d={demande.d} /></Box>}
+      {(dernier || choisi || msg.modifieLe) && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, mt: 0.25, flexWrap: 'wrap', justifyContent: moi ? 'flex-end' : 'flex-start' }}>
-          <Typography variant="caption" color="text.secondary">{choisi ? horodatage(msg.creeLe) : heure(msg.creeLe)}</Typography>
-          {choisi && enTache && <Button size="small" startIcon={<TaskAltOutlined />} onClick={enTache} sx={{ minHeight: 40 }}>En faire une tâche</Button>}
-          {choisi && supprimer && <Button size="small" color="error" startIcon={<DeleteOutlined />} onClick={supprimer} aria-label={`Supprimer mon message du ${horodatage(msg.creeLe)}`} sx={{ minHeight: 40 }}>Supprimer</Button>}
+          {(dernier || choisi) && <Typography variant="caption" color="text.secondary">{choisi ? horodatage(msg.creeLe) : heure(msg.creeLe)}</Typography>}
+          {msg.modifieLe && <Typography variant="caption" color="text.secondary">· modifié</Typography>}
+          {msg.epingleLe && <Typography variant="caption" color="text.secondary">· épinglé</Typography>}
+        </Box>
+      )}
+      {choisi && (
+        <Box role="group" aria-label="Actions du message" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 0.5, mt: 0.25, flexWrap: 'wrap', justifyContent: moi ? 'flex-end' : 'flex-start', maxWidth: '100%' }}>
+          {g.repondre && bouton('Répondre', <ReplyOutlined />, g.repondre)}
+          {g.reagir && (['vu', 'merci', 'accord'] as GenreReaction[]).map((r) => {
+            const Icone = iconeReaction[r]
+            const mienne = msg.reactions.some((x) => x.reaction === r && x.moi)
+            return <Fragment key={r}>{bouton(libelleReaction[r], <Icone />, () => g.reagir!(r), mienne ? `Retirer « ${libelleReaction[r]} »` : `Réagir : ${libelleReaction[r]}`, mienne)}</Fragment>
+          })}
+          {g.modifier && bouton('Modifier', <EditOutlined />, g.modifier)}
+          {g.epingler && bouton(msg.epingleLe ? 'Retirer l’épingle' : 'Épingler', msg.epingleLe ? <PushPin /> : <PushPinOutlined />, g.epingler)}
+          {g.enTache && bouton('En faire une tâche', <TaskAltOutlined />, g.enTache)}
+          {g.enDemande && bouton('Transformer en demande', <SupportAgentOutlined />, g.enDemande)}
+          {g.supprimer && <Button size="small" color="error" startIcon={<DeleteOutlined />} onClick={g.supprimer} aria-label={`Supprimer mon message du ${horodatage(msg.creeLe)}`} sx={{ minHeight: { xs: 48, md: 40 } }}>Supprimer</Button>}
         </Box>
       )}
     </Box>
@@ -143,13 +181,15 @@ const bande = { display: 'flex', gap: 1, overflowX: 'auto', pb: 1, scrollbarWidt
 // Saisie d'un message : champ arrondi et envoi sur une ligne.
 // citables : magasins à citer avec « # » ; mentionnables : personnes à citer avec « @ » (proposées en puces au-dessus du champ).
 // joindre : photos et fichiers possibles (base à jour)
-// bascule : groupe d'un magasin, picto « Avec le franchisé » / « Équipe seule » juste avant l'envoi ; le texte en cours suit le changement de fil
-function Saisie({ citables, mentionnables, envoyer, fond, collante, joindre, signaler, placeholder, bascule }: {
+// brouillon : clé du brouillon gardé sur l'appareil (72A) ; reponse : message cité (60A) ;
+// visibilite : qui lira le message, dans le groupe d'un magasin (58A) : cadre bleu-vert avec le franchisé, jaune en équipe seule
+function Saisie({ citables, mentionnables, envoyer, fond, collante, joindre, signaler, placeholder, brouillon, reponse, visibilite }: {
   citables: Magasin[]; mentionnables: Participant[]
   envoyer: (texte: string, pieces: Piece[]) => Promise<boolean>; fond: string; collante: boolean; joindre: boolean; signaler: (m: string) => void; placeholder: string
-  bascule?: Bascule
+  brouillon: string; reponse?: { x: Message; annuler: () => void }; visibilite?: { texte: string; equipe: boolean }
 }) {
-  const [texte, setTexte] = useState(() => reprendreBrouillon(bascule?.magasin))
+  const [texte, setTexteBrut] = useState(() => brouillonDe(brouillon))
+  const setTexte = (v: string | ((avant: string) => string)) => setTexteBrut((avant) => { const n = typeof v === 'function' ? v(avant) : v; garderBrouillon(brouillon, n); return n })
   const [pieces, setPieces] = useState<Piece[]>([])
   const [curseur, setCurseur] = useState(0)
   const [envoi, setEnvoi] = useState(false)
@@ -179,6 +219,7 @@ function Saisie({ citables, mentionnables, envoyer, fond, collante, joindre, sig
     if (!pret) return
     setEnvoi(true)
     if (await envoyer(texte.trim(), pieces)) { setTexte(''); setCurseur(0); setPieces([]) }
+    else garderBrouillon(brouillon, texte)
     setEnvoi(false)
   }
   const premiere = personnes[0] ? () => inserer('@', personnes[0].nom, rechercheNom!.length) : suggestions[0] ? () => inserer('#', suggestions[0].nom, recherche!.length) : null
@@ -210,6 +251,12 @@ function Saisie({ citables, mentionnables, envoyer, fond, collante, joindre, sig
         </Box>
       )}
       {pieces.length > 0 && <Box sx={{ pb: 1 }}><PiecesEnAttente pieces={pieces} changer={setPieces} /></Box>}
+      {reponse && <ReponseEnCours x={reponse.x} annuler={reponse.annuler} />}
+      {visibilite && (
+        <Typography variant="caption" component="p" sx={{ px: 1, pb: 0.5, m: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5, color: visibilite.equipe ? 'warning.dark' : 'info.dark' }}>
+          {visibilite.equipe ? <LockOutlined sx={{ fontSize: 16 }} /> : <StorefrontOutlined sx={{ fontSize: 16 }} />}{visibilite.texte}
+        </Typography>
+      )}
       <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 0.5 }}>
         {joindre && <BoutonJoindre pieces={pieces} changer={setPieces} signaler={signaler} />}
         {mentionnables.length > 0 && <Bulle titre="Citer une personne"><IconButton onClick={() => signe('@')} aria-label="Citer une personne" sx={{ width: 48, height: 48, flexShrink: 0 }}><AlternateEmail /></IconButton></Bulle>}
@@ -218,8 +265,8 @@ function Saisie({ citables, mentionnables, envoyer, fond, collante, joindre, sig
           onChange={(e) => { setTexte(e.target.value); setCurseur(e.target.selectionStart ?? e.target.value.length); setMasque(false) }}
           onSelect={(e) => setCurseur((e.target as HTMLTextAreaElement).selectionStart ?? 0)} onKeyDown={touche}
           slotProps={{ htmlInput: { maxLength: 4000, 'aria-label': 'Message' }, input: { endAdornment: <BoutonDictee libelle="Message" changer={setTexte} signaler={signaler} /> } }}
-          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '24px', minHeight: 48, py: 1.25, px: 2, bgcolor: 'action.hover' }, '& fieldset': { borderColor: 'transparent' } }} />
-        {bascule && <PictoFil b={bascule} changer={() => { garderBrouillon(bascule.magasin, texte); bascule.changer(!bascule.equipe) }} />}
+          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '24px', minHeight: 48, py: 1.25, px: 2, bgcolor: 'action.hover' },
+            '& fieldset': visibilite ? { borderColor: visibilite.equipe ? 'warning.main' : 'info.main', borderWidth: 2 } : { borderColor: 'transparent' } }} />
         <Bulle titre="Envoyer">
           <span>
             <IconButton onClick={() => void valider()} disabled={!pret} aria-label="Envoyer"
@@ -239,18 +286,35 @@ type Element = { genre: 'message'; x: Message; instant: string } | { genre: 'tac
 // cadre : le fil défile dans son cadre (PC) ; sinon la page défile et la saisie reste collée en bas.
 // aLaFin : la page s'ouvre sur les derniers messages (téléphone).
 // lectureSeule : aperçu de l'espace d'un franchisé par le Directeur de réseau.
-export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = false, cadre = false, aLaFin = false, fond = 'background.paper', basculer }: {
+// basculer : groupe d'un magasin vu par l'équipe, onglets « Avec le franchisé » / « Équipe seule » en tête (58A).
+// demandes : demandes au siège connues, pour la puce d'un message devenu demande (57A).
+export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = false, cadre = false, aLaFin = false, fond = 'background.paper', basculer, demandes = [] }: {
   reseau: Reseau; fil: Fil; contact?: Contact; signaler: (msg: string) => void; lectureSeule?: boolean; cadre?: boolean; aLaFin?: boolean; fond?: string
-  basculer?: (equipe: boolean) => void
+  basculer?: (equipe: boolean) => void; demandes?: Demande[]
 }) {
   const { profil } = useAuth()
-  const { messagerie: brute, charge, envoyer, envoyerFil, supprimer, lireFil } = useMessagerie()
+  const { messagerie: brute, charge, envoyer, envoyerFil, supprimer, lireFil, signalerChangement } = useMessagerie()
+  const [params] = useSearchParams()
+  const [reponse, setReponse] = useState<Message | null>(null)
+  const [aModifier, setAModifier] = useState<Message | null>(null)
+  const [enDemande, setEnDemande] = useState<Message | null>(null)
+  const [surligne, setSurligne] = useState<number | null>(null)
   const messagerie = useMemo(() => (brute && lectureSeule ? sansPrives(brute) : brute), [brute, lectureSeule])
   const [filtre, setFiltre] = useState<string | null>(null)
   const [tous, setTous] = useState(false)
   const [choisi, setChoisi] = useState<number | null>(null)
   const [tache, setTache] = useState<Message | null>(null)
   const zone = useRef<HTMLDivElement | null>(null)
+  // Aller à un message (citation, épingle, résultat de recherche) : tout le fil s'affiche, le message est mis en évidence
+  const allerA = (id: number) => {
+    setTous(true); setSurligne(id)
+    window.setTimeout(() => {
+      document.getElementById(`message-${id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      window.setTimeout(() => setSurligne((s) => (s === id ? null : s)), 2500)
+    }, 60)
+  }
+  const demandeParam = Number(params.get('message'))
+  const dejaAlle = useRef(false)
   const m = fil.genre === 'magasin' ? reseau.magasins.find((x) => x.nom === fil.magasin) : undefined
   const groupe = fil.genre === 'groupe' ? messagerie?.groupes.find((g) => g.id === fil.id) : undefined
   const complet = useMemo(() => messagesDuFil(messagerie, fil), [messagerie, fil])
@@ -297,6 +361,15 @@ export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = fal
     return () => cancelAnimationFrame(id)
   }, [charge, nombre, cadre, aLaFin])
 
+  // Lien vers un message précis (recherche) : on y va une fois les messages chargés
+  useEffect(() => {
+    if (!charge || dejaAlle.current || !demandeParam || !complet.some((x) => x.id === demandeParam)) return
+    dejaAlle.current = true
+    const id = demandeParam
+    const t = window.setTimeout(() => allerA(id), 200)
+    return () => window.clearTimeout(t)
+  }, [charge, demandeParam, complet]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!charge) return <Typography variant="body2" color="text.secondary">Chargement des messages…</Typography>
   if (!messagerie) return <EmptyState icone={<ForumOutlined />} titre="Messagerie pas encore activée" texte="Les messages apparaîtront ici dès son activation dans la base." />
 
@@ -304,13 +377,31 @@ export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = fal
     try {
       if (fil.genre === 'personne') {
         const magasins = [...new Set([...(filtre ? [filtre] : []), ...magasinsCites(texte, citables)])]
-        await envoyer(fil.cle, texte, magasins, magasins[0] ?? contact?.magasins[0]?.nom ?? null, pieces)
+        await envoyer(fil.cle, texte, magasins, magasins[0] ?? contact?.magasins[0]?.nom ?? null, pieces, reponse?.id ?? null)
       } else {
         const bas = texte.toLocaleLowerCase('fr')
-        await envoyerFil(fil, texte, mentionnables.filter((p) => bas.includes(`@${p.nom.toLocaleLowerCase('fr')}`)).map((p) => p.cle), pieces)
+        await envoyerFil(fil, texte, mentionnables.filter((p) => bas.includes(`@${p.nom.toLocaleLowerCase('fr')}`)).map((p) => p.cle), pieces, reponse?.id ?? null)
       }
+      setReponse(null)
       return true
     } catch { signaler('Message non envoyé. Réessaie dans un instant.'); return false }
+  }
+  const ecrirePossible = !lectureSeule && (fil.genre !== 'magasin' || !!m) && (fil.genre !== 'groupe' || !!groupe)
+  // Gestes sur un message (60A) : base en version 5 pour répondre en citant, réagir, modifier, épingler, créer une demande
+  const v5 = messagerie.version >= 5 && !lectureSeule
+  const equipeDuReseau = profil?.role !== 'franchise' && !reseau.espace
+  const gestesDe = (x: Message, deMoi: boolean): GestesMessage => {
+    const fermer = () => setChoisi(null)
+    const echec = () => signaler('Action impossible pour le moment. Réessaie dans un instant.')
+    return {
+      repondre: v5 && ecrirePossible ? () => { fermer(); setReponse(x) } : undefined,
+      reagir: v5 ? (r) => { reagirMessage(x.id, r).then(() => signalerChangement(), echec) } : undefined,
+      modifier: v5 && modifiable(x, messagerie.moi) ? () => { fermer(); setAModifier(x) } : undefined,
+      epingler: v5 && !x.lot ? () => { fermer(); epinglerMessage(x.id, !x.epingleLe).then(() => { void signalerChangement(); signaler(x.epingleLe ? 'Épingle retirée.' : 'Message épinglé en tête de la conversation.') }, echec) } : undefined,
+      enTache: !lectureSeule && fil.genre === 'magasin' ? () => { fermer(); setTache(x) } : undefined,
+      enDemande: v5 && equipeDuReseau && fil.genre === 'magasin' && !fil.equipe && x.demande === null && x.auteurRole === 'franchise' ? () => { fermer(); setEnDemande(x) } : undefined,
+      supprimer: deMoi && !lectureSeule ? () => { supprimer(x.id).then(() => { fermer(); signaler('Message supprimé.') }, () => signaler('Suppression impossible pour le moment. Réessaie dans un instant.')) } : undefined,
+    }
   }
   const affiches = tous ? elements : elements.slice(-MAXI)
   const msgAffiches = affiches.flatMap((e) => (e.genre === 'message' ? [e.x] : []))
@@ -333,7 +424,8 @@ export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = fal
       {!elements.length
         ? <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>{vide}</Typography>
         : (
-          <Box component="ul" aria-label={`Messages de ${titreFil}`} sx={{ listStyle: 'none', m: 0, p: 0, pb: 1 }}>
+          <Box component="ul" aria-label={`Messages de ${titreFil}`} sx={{ listStyle: 'none', m: 0, p: 0, pb: 1,
+            ...(surligne ? { [`& #message-${surligne} > .MuiButtonBase-root, & #message-${surligne} > div:first-of-type`]: { boxShadow: (t) => `0 0 0 3px ${t.palette.secondary.main}` } } : {}) }}>
             {affiches.map((e, i) => {
               const precedent = affiches[i - 1]
               const nouveauJour = !precedent || jourDuFil(precedent.instant) !== jourDuFil(e.instant)
@@ -355,8 +447,9 @@ export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = fal
                   <BulleMessage msg={x} moi={deMoi} noms={noms} premier={premier} dernier={suivant === premierNouveau || !memeContexte(x, suivant)}
                     contexte={premier ? contexteDe(x) : ''}
                     choisi={choisi === x.id} choisir={!lectureSeule ? () => setChoisi((c) => (c === x.id ? null : x.id)) : undefined}
-                    enTache={fil.genre === 'magasin' ? () => { setChoisi(null); setTache(x) } : undefined}
-                    supprimer={deMoi && !lectureSeule ? () => { supprimer(x.id).then(() => { setChoisi(null); signaler('Message supprimé.') }, () => signaler('Suppression impossible pour le moment. Réessaie dans un instant.')) } : undefined} />
+                    cite={x.repondA !== null ? { x: messageDeNumero(complet, x.repondA) } : undefined} allerA={allerA}
+                    demande={x.demande !== null ? { id: x.demande, d: demandes.find((d) => d.id === x.demande) } : undefined}
+                    gestes={gestesDe(x, deMoi)} />
                 </Fragment>
               )
             })}
@@ -367,18 +460,32 @@ export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = fal
           porteurInitial={tache.auteur !== messagerie.moi && !fil.equipe && tache.auteurRole === 'franchise' ? tache.auteurNom : ''}
           onFermer={(msg) => { setTache(null); if (msg) signaler(msg) }} />
       )}
+      {aModifier && <DialogModifier x={aModifier} fermer={() => setAModifier(null)} signaler={signaler} />}
+      {enDemande && <DialogDemande x={enDemande} fermer={() => setEnDemande(null)} signaler={signaler} />}
     </>
   )
-  const ecrirePossible = !lectureSeule && (fil.genre !== 'magasin' || !!m) && (fil.genre !== 'groupe' || !!groupe)
+  // 58A : qui lira le message, dans le groupe d'un magasin vu par l'équipe
+  const franchisesDuMagasin = m ? participants(reseau, m).filter((p) => p.cle.startsWith('franchise:')).map((p) => p.nom) : []
+  const visibilite = fil.genre === 'magasin' && basculer
+    ? fil.equipe ? { texte: 'Invisible du franchisé : équipe seule', equipe: true }
+      : { texte: franchisesDuMagasin.length ? `Visible par ${franchisesDuMagasin.join(', ')} (franchisé)` : 'Visible par le franchisé', equipe: false }
+    : undefined
+  const ongletsFil = fil.genre === 'magasin' && basculer && (
+    <OngletsFil magasin={fil.magasin} equipe={fil.equipe} changer={basculer} />
+  )
+  const epingles = v5 || lectureSeule ? <BandeEpingles messages={complet} aller={(x) => allerA(x.id)} retirer={v5 ? (x) => { epinglerMessage(x.id, false).then(() => signalerChangement(), () => signaler('Action impossible pour le moment. Réessaie dans un instant.')) } : undefined} /> : null
   const placeholder = fil.genre === 'personne' ? `Message à ${contact?.nom ?? ''}` : fil.genre === 'magasin' && fil.equipe ? 'Message à l’équipe' : 'Message au groupe'
   const saisie = ecrirePossible && (
     <Saisie citables={citables} mentionnables={mentionnables} envoyer={ecrire} fond={fond} collante={!cadre}
       joindre={fil.genre === 'personne' ? messagerie.version >= 3 : messagerie.version >= 4} signaler={signaler} placeholder={placeholder}
-      bascule={basculer && fil.genre === 'magasin' ? { magasin: fil.magasin, equipe: fil.equipe, changer: basculer } : undefined} />
+      brouillon={`${messagerie.cle}|${fil.genre === 'magasin' ? `magasin:${fil.magasin}` : cleFil(fil)}`} reponse={reponse ? { x: reponse, annuler: () => setReponse(null) } : undefined}
+      visibilite={visibilite} />
   )
   if (cadre) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+        {ongletsFil && <Box sx={{ px: 2 }}>{ongletsFil}</Box>}
+        {epingles && <Box sx={{ px: 2 }}>{epingles}</Box>}
         {filtres && <Box sx={{ px: 2 }}>{filtres}</Box>}
         <Box ref={zone} sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 2 }}>{corps}</Box>
         {saisie && <Box sx={{ px: 1, pb: 1, borderTop: '1px solid', borderColor: 'divider' }}>{saisie}</Box>}
@@ -386,34 +493,19 @@ export function FilMessages({ reseau, fil, contact, signaler, lectureSeule = fal
     )
   }
   // Conversation sur téléphone : la saisie reste au bas de l'écran même quand le fil est court
-  if (aLaFin) return <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh - 64px - 130px)' }}>{filtres}<Box sx={{ flex: 1 }}>{corps}</Box>{saisie}</Box>
-  return <Box>{filtres}{corps}{saisie}</Box>
+  if (aLaFin) return <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh - 64px - 130px)' }}>{ongletsFil}{epingles}{filtres}<Box sx={{ flex: 1 }}>{corps}</Box>{saisie}</Box>
+  return <Box>{ongletsFil}{epingles}{filtres}{corps}{saisie}</Box>
 }
 
-// Fil d'un magasin, choisi par un picto à côté de l'envoi (Joseph, 22/10/2026) : cadenas ouvert = avec le franchisé, fermé = équipe seule.
-// La pastille compte les non lus de l'autre fil.
-export interface Bascule { magasin: string; equipe: boolean; changer: (equipe: boolean) => void }
-let brouillon: { magasin: string; texte: string } | null = null
-const garderBrouillon = (magasin: string, texte: string) => { brouillon = texte.trim() ? { magasin, texte } : null }
-function reprendreBrouillon(magasin?: string) {
-  const b = brouillon
-  brouillon = null
-  return b && b.magasin === magasin ? b.texte : ''
-}
-
-function PictoFil({ b, changer }: { b: Bascule; changer: () => void }) {
-  const nonLus = useNonLusFils(b.magasin)
-  const autre = b.equipe ? nonLus.avec : nonLus.equipe
-  const titre = b.equipe ? 'Équipe seule' : 'Avec le franchisé'
+// 58A : les deux fils du groupe d'un magasin en onglets soulignés, avec les non lus de chacun
+function OngletsFil({ magasin, equipe, changer }: { magasin: string; equipe: boolean; changer: (equipe: boolean) => void }) {
+  const n = useNonLusFils(magasin)
   return (
-    <Bulle titre={titre}>
-      <IconButton onClick={changer} aria-label="Équipe seule" aria-pressed={b.equipe}
-        sx={{ width: 48, height: 48, flexShrink: 0, ...(b.equipe ? { bgcolor: 'warning.light', color: 'warning.contrastText', '&:hover': { bgcolor: 'warning.main' } } : {}) }}>
-        <Badge badgeContent={autre} color="error" aria-label={autre ? `${autre} non lu${autre > 1 ? 's' : ''} ${b.equipe ? 'avec le franchisé' : 'en équipe seule'}` : undefined}>
-          {b.equipe ? <LockOutlined /> : <LockOpenOutlined />}
-        </Badge>
-      </IconButton>
-    </Bulle>
+    <Onglets libres libelle={`Fils de ${magasin}`} valeur={equipe ? 'equipe' : 'avec'} onChange={(v) => changer(v === 'equipe')}
+      rubriques={[
+        { vue: 'avec', libelle: 'Avec le franchisé', court: 'Avec le franchisé', icone: <StorefrontOutlined />, pastille: equipe ? n.avec : 0 },
+        { vue: 'equipe', libelle: 'Équipe seule', court: 'Équipe seule', icone: <LockOutlined />, pastille: equipe ? 0 : n.equipe },
+      ]} />
   )
 }
 
@@ -431,7 +523,7 @@ export function useNonLusMagasin(magasin: string): number {
   return n.avec + n.equipe
 }
 
-// Groupe d'un magasin dans sa fiche : le fil, et pour l'équipe le picto du fil à côté de l'envoi
+// Groupe d'un magasin dans sa fiche ou dans un volet : le fil, et pour l'équipe les onglets des deux fils
 export function SectionMessages({ reseau, m, signaler, lectureSeule = false, entete }: { reseau: Reseau; m: Magasin; signaler: (msg: string) => void; lectureSeule?: boolean; entete?: ReactNode }) {
   const { profil } = useAuth()
   const equipePossible = profil?.role !== 'franchise' && !lectureSeule

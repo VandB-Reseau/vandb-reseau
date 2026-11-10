@@ -1,6 +1,7 @@
 import { financementDe } from './financement'
 import { cibleStock, coutVentesDe, stockParDefaut, type ParametresStock } from './stock'
 import { UNIVERS, type Budget, type Hypotheses, type Univers } from './types'
+import { fraisResolus } from './communication'
 
 // Trésorerie mois par mois du budget : ce qui entre et sort de la banque, TVA comprise, avec les délais de paiement.
 // Hypothèse de régime établi : ce qui se paie en début d'année au titre de l'année précédente (achats de décembre,
@@ -153,7 +154,8 @@ export function paiementsAchats(b: Budget, t: ParametresTresorerie): number[] {
   return paiements
 }
 
-export function tresorerieBudget(b: Budget, h: Hypotheses, p: { tauxRedevance: number; tauxPublicite: number }, t: ParametresTresorerie, debut = 0): Tresorerie {
+export function tresorerieBudget(b: Budget, h0: Hypotheses, p: { tauxRedevance: number; tauxPublicite: number; tauxCommunication?: number }, t: ParametresTresorerie, debut = 0): Tresorerie {
+  const h = { ...h0, frais: fraisResolus(h0.frais, p) }
   const ca = b.mois.map((m) => m.ca)
   const livraisons = livraisonsAchats(b, t)
   const paiements = paiementsAchats(b, t)

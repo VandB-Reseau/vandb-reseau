@@ -11,6 +11,7 @@ import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
+import DialogActions from '@mui/material/DialogActions'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
@@ -32,6 +33,12 @@ import MoreVert from '@mui/icons-material/MoreVert'
 import PersonOutlined from '@mui/icons-material/PersonOutlined'
 import PushPinOutlined from '@mui/icons-material/PushPinOutlined'
 import PushPin from '@mui/icons-material/PushPin'
+import PeopleOutlined from '@mui/icons-material/PeopleOutlined'
+import AttachFileOutlined from '@mui/icons-material/AttachFileOutlined'
+import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
+import InfoOutlined from '@mui/icons-material/InfoOutlined'
+import OutboxOutlined from '@mui/icons-material/OutboxOutlined'
+import SupportAgentOutlined from '@mui/icons-material/SupportAgentOutlined'
 import { useAuth } from '../auth/AuthContext'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
@@ -45,9 +52,13 @@ import { actionsDuMagasin } from '../data/actions'
 import { basculerEpingle, useEpingles } from '../data/epingles'
 import { magasinsDesEchanges } from '../data/echanges'
 import {
-  apercuDe, conversations, creerGroupe, heureCourte, mesCles, modifierGroupe, nomDe, participants, quitterGroupe, roleDeCle, sansPrives, supprimerGroupe,
-  type Conversation, type Fil, type Groupe, type Messagerie, type Participant,
+  apercuDe, cleFil, conversations, creerGroupe, filDe, heureCourte, lienFil, mesCles, messagesDuFil, modifierGroupe, nomDe, participants, quitterGroupe, roleDeCle, sansPrives, supprimerGroupe,
+  type Conversation, type Fil, type Groupe, type Message, type Messagerie, type Participant,
 } from '../data/messagerie'
+import { useBrouillons } from '../data/brouillons'
+import { libelleStatutDemande, useDemandes, useMesDemandes, type Demande } from '../data/demandes'
+import { useApercu } from '../auth/Apercu'
+import { ContexteMagasin, DialogEnvois, DialogFichiers, DialogMembres, DialogPlusieursMagasins } from '../components/MessagesGestes'
 import type { Reseau } from '../data/modele'
 import { dateCourte, lienFiche } from '../lib/format'
 
@@ -64,10 +75,10 @@ function Pastille({ n, fort }: { n: number; fort: boolean }) {
   return <Box aria-hidden sx={{ flexShrink: 0, minWidth: 22, height: 22, px: 0.75, borderRadius: 999, bgcolor: fort ? 'error.main' : 'action.selected', color: fort ? 'error.contrastText' : 'text.primary', fontSize: '0.75rem', fontWeight: 700, display: 'grid', placeItems: 'center' }}>{n > 99 ? '99+' : n}</Box>
 }
 
-function LigneEchange({ c, mg, actif, ouvrir, epingle }: { c: Conversation; mg: Messagerie; actif: boolean; ouvrir: () => void; epingle?: boolean }) {
+function LigneEchange({ c, mg, actif, ouvrir, epingle, brouillon }: { c: Conversation; mg: Messagerie; actif: boolean; ouvrir: () => void; epingle?: boolean; brouillon?: string }) {
   const d = c.dernier
   const qui = d ? (d.auteur === mg.moi ? 'Moi : ' : c.genre === 'personne' ? '' : `${d.auteurNom.split(' ')[0]} : `) : ''
-  const apercu = d ? `${d.equipe ? 'Équipe · ' : ''}${qui}${apercuDe(d)}` : c.detail
+  const apercu = brouillon && !actif ? `Brouillon : ${brouillon.replace(/\s+/g, ' ')}` : d ? `${d.equipe ? 'Équipe · ' : ''}${qui}${apercuDe(d)}` : c.detail
   const fort = c.nonLus > 0
   return (
     <ListItemButton selected={actif} onClick={ouvrir} aria-current={actif ? 'true' : undefined}
@@ -82,7 +93,7 @@ function LigneEchange({ c, mg, actif, ouvrir, epingle }: { c: Conversation; mg: 
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {c.mention && <AlternateEmail aria-label="On te cite" sx={{ fontSize: 18, color: 'error.main' }} />}
-          <Typography variant="body2" color={fort ? 'text.primary' : 'text.secondary'} sx={{ flex: 1, minWidth: 0, fontWeight: fort ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{apercu}</Typography>
+          <Typography variant="body2" color={brouillon && !actif ? 'error.main' : fort ? 'text.primary' : 'text.secondary'} sx={{ flex: 1, minWidth: 0, fontWeight: fort ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{apercu}</Typography>
           {fort && <Pastille n={c.nonLus} fort={c.pourMoi > 0} />}
         </Box>
       </Box>
@@ -161,53 +172,163 @@ function NouveauMessage({ lignes, ouvrir, fermer }: { lignes: Conversation[]; ou
 }
 
 const PETITE_LISTE = 30
+type Vue = 'tout' | 'nonLus' | 'mentions' | 'demandes'
 
-function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreerGroupe, magasins, signaler }: {
+// Recherche dans le texte des messages (63A) : extrait autour du mot trouvé
+function extraitAutour(texte: string, q: string): string {
+  const t = texte.replace(/\s+/g, ' ')
+  const i = sansAccents(t).indexOf(q)
+  if (i < 0) return t.slice(0, 120)
+  const debut = Math.max(0, i - 40)
+  return `${debut > 0 ? '…' : ''}${t.slice(debut, i + q.length + 80)}${i + q.length + 80 < t.length ? '…' : ''}`
+}
+const lienVersMessage = (lien: string, id: number) => `${lien}${lien.includes('?') ? '&' : '?'}message=${id}`
+
+// Liste des conversations (vague 6, 71A) : vues en tête (Tout, Non lus, Mentions, Demandes), sections Magasins /
+// Groupes / Personnes, résultats dans le texte des messages, brouillons annoncés. Alt + flèches pour passer d'une
+// conversation à l'autre sur PC (72A).
+function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreerGroupe, magasins, signaler, demandes, equipe }: {
   reseau: Reseau; lignes: Conversation[]; mg: Messagerie; actif?: string; ouvrir: (lien: string) => void; ecrire: boolean; peutCreerGroupe: boolean; magasins: Reseau['magasins']; signaler: (m: string) => void
+  demandes: Demande[] | null | undefined; equipe: boolean
 }) {
   const [recherche, setRecherche] = useState('')
-  const [nonLus, setNonLus] = useState(false)
+  const [vue, setVue] = useState<Vue>('tout')
   const [menu, setMenu] = useState<HTMLElement | null>(null)
-  const [nouveau, setNouveau] = useState<'personne' | 'groupe' | null>(null)
+  const [nouveau, setNouveau] = useState<'personne' | 'groupe' | 'plusieurs' | 'envois' | null>(null)
+  const naviguer = useNavigate()
+  const brouillon = useBrouillons()
   const q = sansAccents(recherche.trim())
   // Sans recherche : les conversations en cours (tout quand la liste est courte) ; avec recherche : tout, pour en démarrer une
   const toutes = lignes.length <= PETITE_LISTE
-  // Conversations épinglées juste sous les canaux du réseau, puis les autres par dernier message
   const epingles = useEpingles()
-  const affichees = lignes.filter((l) => (q ? sansAccents(l.recherche).includes(q) : toutes || !!l.dernier || l.genre === 'groupe' || epingles.includes(l.cle)) && (!nonLus || l.nonLus > 0))
+  const affichees = lignes.filter((l) => (q ? sansAccents(l.recherche).includes(q) : toutes || !!l.dernier || l.genre === 'groupe' || epingles.includes(l.cle))
+    && (vue !== 'nonLus' || l.nonLus > 0) && (vue !== 'mentions' || l.mention))
     .sort((a, b) => Number(epingles.includes(b.cle)) - Number(epingles.includes(a.cle)))
   const aLire = lignes.filter((l) => l.nonLus > 0).length
+  const mentions = lignes.filter((l) => l.mention).length
+  const v5 = mg.version >= 5
+  const ouvertes = (demandes ?? []).filter((d) => d.statut !== 'resolue')
+  const plusieurs = ecrire && equipe && v5
+  // Messages dont le texte contient la recherche (3 lettres au moins), 20 au plus, du plus récent au plus ancien
+  const trouves = useMemo(() => {
+    if (q.length < 3 || vue === 'demandes') return []
+    const r: { x: Message; c: Conversation }[] = []
+    for (const x of [...mg.messages].reverse()) {
+      if (!x.texte || !sansAccents(x.texte).includes(q)) continue
+      const f = filDe(x, mg)
+      const cle = f ? (f.genre === 'magasin' ? `magasin:${f.magasin}` : f.genre === 'groupe' ? `groupe:${f.id}` : `personne:${f.cle}`) : ''
+      const c = lignes.find((l) => l.cle === cle)
+      if (c && f) r.push({ x, c: { ...c, lien: lienFil(f) } })
+      if (r.length >= 20) break
+    }
+    return r
+  }, [q, vue, mg, lignes])
+  // Sections : magasins, groupes, personnes (sans recherche ni vue particulière)
+  const sections = vue === 'tout' && !q
+    ? ([['Magasins', 'magasin'], ['Groupes', 'groupe'], ['Personnes', 'personne']] as const).map(([titre, genre]) => ({ titre, l: affichees.filter((c) => c.genre === genre) })).filter((x) => x.l.length)
+    : [{ titre: '', l: affichees }]
+  const ordre = sections.flatMap((x) => x.l)
+  // Alt + flèche haut / bas : conversation précédente / suivante
+  useEffect(() => {
+    const touche = (e: KeyboardEvent) => {
+      if (!e.altKey || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || !ordre.length) return
+      e.preventDefault()
+      const i = ordre.findIndex((c) => c.cle === actif)
+      const j = e.key === 'ArrowDown' ? Math.min(ordre.length - 1, i + 1) : Math.max(0, i - 1)
+      if (ordre[j] && ordre[j].cle !== actif) ouvrir(ordre[j].lien)
+    }
+    window.addEventListener('keydown', touche)
+    return () => window.removeEventListener('keydown', touche)
+  }, [ordre, actif, ouvrir])
+  const vues: { v: Vue; libelle: string }[] = [
+    { v: 'tout', libelle: 'Tout' },
+    { v: 'nonLus', libelle: aLire ? `Non lus · ${aLire}` : 'Non lus' },
+    { v: 'mentions', libelle: mentions ? `Mentions · ${mentions}` : 'Mentions' },
+    ...(demandes ? [{ v: 'demandes' as Vue, libelle: ouvertes.length ? `Demandes · ${ouvertes.length}` : 'Demandes' }] : []),
+  ]
+  const lignesDemandes = (demandes ?? []).filter((d) => !q || sansAccents(`${d.titre} ${d.magasin} ${d.franchise}`).includes(q))
+    .sort((a, b) => Number(a.statut === 'resolue') - Number(b.statut === 'resolue') || b.majLe.localeCompare(a.majLe))
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
-      <Box sx={{ px: { xs: 0, md: 2 }, pt: { xs: 0, md: 2 }, pb: 1.5, display: 'flex', gap: 1, alignItems: 'center' }}>
+      <Box sx={{ px: { xs: 0, md: 2 }, pt: { xs: 0, md: 2 }, pb: 1, display: 'flex', gap: 1, alignItems: 'center' }}>
         <Box sx={{ flex: 1, minWidth: 0, '& .MuiTextField-root': { width: '100%' } }}>
-          <ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Magasin, personne, groupe" />
+          <ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Magasin, personne, message" />
         </Box>
-        <Chip label={aLire ? `Non lus · ${aLire}` : 'Non lus'} onClick={() => setNonLus((v) => !v)} aria-pressed={nonLus}
-          color={nonLus ? 'primary' : 'default'} variant={nonLus ? 'filled' : 'outlined'} sx={{ height: 48, borderRadius: 2, fontSize: '0.875rem' }} />
-        {ecrire && <BoutonOutil libelle="Nouvelle conversation" icone={<EditOutlined />} onClick={(e) => (peutCreerGroupe ? setMenu(e.currentTarget) : setNouveau('personne'))} plein />}
+        {ecrire && <BoutonOutil libelle="Nouvelle conversation" icone={<EditOutlined />} onClick={(e) => (peutCreerGroupe || plusieurs ? setMenu(e.currentTarget) : setNouveau('personne'))} plein />}
+      </Box>
+      <Box role="group" aria-label="Vues des conversations" sx={{ px: { xs: 0, md: 2 }, pb: 1, display: 'flex', gap: 1, overflowX: 'auto', scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
+        {vues.map((x) => (
+          <Chip key={x.v} label={x.libelle} onClick={() => setVue(x.v)} aria-pressed={vue === x.v} color={vue === x.v ? 'primary' : 'default'} variant={vue === x.v ? 'filled' : 'outlined'}
+            sx={{ flexShrink: 0, height: { xs: 48, md: 36 }, borderRadius: 2, fontSize: '0.875rem' }} />
+        ))}
       </Box>
       <Menu anchorEl={menu} open={!!menu} onClose={() => setMenu(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <MenuItem onClick={() => { setMenu(null); setNouveau('personne') }} sx={{ minHeight: 48 }}><ListItemIcon><PersonOutlined /></ListItemIcon>Message à une personne</MenuItem>
-        <MenuItem onClick={() => { setMenu(null); setNouveau('groupe') }} sx={{ minHeight: 48 }}><ListItemIcon><GroupsOutlined /></ListItemIcon>Nouveau groupe</MenuItem>
+        {peutCreerGroupe && <MenuItem onClick={() => { setMenu(null); setNouveau('groupe') }} sx={{ minHeight: 48 }}><ListItemIcon><GroupsOutlined /></ListItemIcon>Nouveau groupe</MenuItem>}
+        {plusieurs && <MenuItem onClick={() => { setMenu(null); setNouveau('plusieurs') }} sx={{ minHeight: 48 }}><ListItemIcon><CampaignOutlined /></ListItemIcon>Message à plusieurs magasins</MenuItem>}
+        {plusieurs && <MenuItem onClick={() => { setMenu(null); setNouveau('envois') }} sx={{ minHeight: 48 }}><ListItemIcon><OutboxOutlined /></ListItemIcon>Mes envois à plusieurs magasins</MenuItem>}
       </Menu>
       {nouveau === 'personne' && <NouveauMessage lignes={lignes} ouvrir={ouvrir} fermer={() => setNouveau(null)} />}
       {nouveau === 'groupe' && <DialogGroupe reseau={reseau} magasins={magasins} groupe={null} onFermer={(msg, id) => { setNouveau(null); if (msg) signaler(msg); if (id) ouvrir(`/echanges/groupe/${id}`) }} />}
+      {nouveau === 'plusieurs' && <DialogPlusieursMagasins magasins={magasins} fermer={() => setNouveau(null)} signaler={signaler} />}
+      {nouveau === 'envois' && <DialogEnvois magasins={magasins} fermer={() => setNouveau(null)} signaler={signaler} />}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: { md: 'auto' }, mx: { xs: -1, md: 0 }, pb: 1 }}>
-        <List aria-label="Conversations" disablePadding>
-          {/* Communications et bonnes pratiques : dans Infos réseau, pour l'équipe comme pour le franchisé */}
-          {affichees.map((l) => <LigneEchange key={l.cle} c={l} mg={mg} actif={l.cle === actif} ouvrir={() => ouvrir(l.lien)} epingle={epingles.includes(l.cle)} />)}
-        </List>
-        {!affichees.length && (q || nonLus) && (
-          <EmptyState icone={<ForumOutlined />} titre={q ? 'Aucun résultat' : 'Tout est lu'} texte={q ? 'Vérifie l’orthographe du nom.' : 'Le calme avant la prochaine visite.'} />
+        {vue === 'demandes' ? (
+          lignesDemandes.length ? (
+            <List aria-label="Demandes au siège" disablePadding>
+              {lignesDemandes.map((d) => (
+                <ListItemButton key={d.id} onClick={() => naviguer(`/demandes?demande=${d.id}`)} sx={{ borderRadius: 3, mx: 1, mb: 0.25, minHeight: 64, gap: 1.5 }}>
+                  <Avatar sx={{ width: 40, height: 40, bgcolor: 'action.selected', color: 'text.primary' }}><SupportAgentOutlined /></Avatar>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography sx={{ fontWeight: d.statut === 'resolue' ? 500 : 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.titre}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.magasin} · {libelleStatutDemande[d.statut]}</Typography>
+                  </Box>
+                </ListItemButton>
+              ))}
+            </List>
+          ) : <EmptyState icone={<SupportAgentOutlined />} titre="Aucune demande" texte={equipe ? 'Un message du franchisé peut devenir une demande au siège : « Transformer en demande » sur le message.' : 'Tes questions au siège et leurs réponses arriveront ici.'} />
+        ) : (
+          <>
+            <List aria-label="Conversations" disablePadding>
+              {sections.map((sec) => [
+                sec.titre && <Box component="li" key={`titre-${sec.titre}`} role="presentation"><Typography variant="caption" component="h3" sx={{ display: 'block', px: 3, pt: 1.5, pb: 0.5, fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{sec.titre}</Typography></Box>,
+                ...sec.l.map((l) => <LigneEchange key={l.cle} c={l} mg={mg} actif={l.cle === actif} ouvrir={() => ouvrir(l.lien)} epingle={epingles.includes(l.cle)} brouillon={brouillonPour(brouillon, mg, l)} />),
+              ])}
+            </List>
+            {trouves.length > 0 && (
+              <Box>
+                <Typography variant="caption" component="h3" sx={{ display: 'block', px: 3, pt: 1.5, pb: 0.5, fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Messages</Typography>
+                <List aria-label="Messages trouvés" disablePadding>
+                  {trouves.map(({ x, c }) => (
+                    <ListItemButton key={x.id} onClick={() => ouvrir(lienVersMessage(c.lien, x.id))} sx={{ borderRadius: 3, mx: 1, mb: 0.25, minHeight: 64, display: 'block' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{c.titre} <Box component="span" sx={{ fontWeight: 400, color: 'text.secondary' }}>· {x.auteurNom} · {heureCourte(x.creeLe)}</Box></Typography>
+                      <Typography variant="body2" color="text.secondary">{extraitAutour(x.texte, q)}</Typography>
+                    </ListItemButton>
+                  ))}
+                </List>
+              </Box>
+            )}
+          </>
         )}
-        {!affichees.length && !q && !nonLus && (
+        {vue !== 'demandes' && !affichees.length && !trouves.length && (q || vue !== 'tout') && (
+          <EmptyState icone={<ForumOutlined />} titre={q ? 'Aucun résultat' : vue === 'mentions' ? 'Personne ne te cite' : 'Tout est lu'} texte={q ? 'Vérifie l’orthographe du nom ou du mot cherché.' : 'Le calme avant la prochaine visite.'} />
+        )}
+        {vue === 'tout' && !affichees.length && !q && (
           <EmptyState icone={<ForumOutlined />} titre="Aucune conversation en cours" texte="Tes échanges avec les franchisés et l’équipe arriveront ici."
             action={ecrire && <Button variant="contained" onClick={() => setNouveau('personne')} startIcon={<EditOutlined />} sx={{ minHeight: 48, borderRadius: 2, px: 3 }}>Nouveau message</Button>} />
         )}
       </Box>
     </Box>
   )
+}
+
+// Brouillon d'une conversation (les deux fils d'un magasin)
+function brouillonPour(lire: (cle: string) => string, mg: Messagerie, c: Conversation): string {
+  const fils: Fil[] = c.genre === 'magasin' && c.magasin ? [{ genre: 'magasin', magasin: c.magasin.nom, equipe: false }, { genre: 'magasin', magasin: c.magasin.nom, equipe: true }]
+    : c.genre === 'groupe' && c.groupe ? [{ genre: 'groupe', id: c.groupe.id }]
+    : c.contact ? [{ genre: 'personne', cle: c.contact.cle }] : []
+  for (const f of fils) { const b = lire(`${mg.cle}|${cleFil(f)}`); if (b.trim()) return b }
+  return ''
 }
 
 function EnTete({ titre, detail, retour, niveau, avatar, action }: { titre: string; detail: string; retour?: () => void; niveau: 'h1' | 'h2'; avatar?: ReactNode; action?: ReactNode }) {
@@ -299,6 +420,11 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
   const magasins = useMemo(() => magasinsDesEchanges(reseau, profil), [reseau, profil])
   const lignes = useMemo(() => (messagerie ? conversations(reseau, messagerie, profil, magasins) : []), [reseau, messagerie, profil, magasins])
   const franchise = profil?.role === 'franchise' || !!reseau.espace
+  const { apercu } = useApercu()
+  const { liste: demEquipe } = useDemandes(!franchise)
+  const { liste: demFranchise } = useMesDemandes(apercu, franchise)
+  const demandes = (franchise ? demFranchise : demEquipe) ?? []
+  const [voir, setVoir] = useState<'' | 'fichiers' | 'membres' | 'raccourcis'>('')
   const fil = filDeAdresse(genre, valeur, !franchise && params.get('fil') === 'equipe')
   const conv = fil ? lignes.find((l) => l.cle === (fil.genre === 'magasin' ? `magasin:${fil.magasin}` : fil.genre === 'groupe' ? `groupe:${fil.id}` : `personne:${fil.cle}`)) : undefined
   const ouvrir = (lien: string) => naviguer(lien, { replace: surPC && !!fil })
@@ -328,8 +454,21 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
     quitter={() => { quitterGroupe(g.id).then(async () => { await recharger(); naviguer('/echanges', { replace: true, state: { confirmation: 'Tu as quitté le groupe.' } }) }, () => setConfirmation('Impossible de quitter le groupe pour le moment.')) }} />
     : fil?.genre === 'magasin' && !franchise ? <Button component={RouterLink} to={lienFiche(fil.magasin)} sx={{ minHeight: 48, display: { xs: 'none', sm: 'inline-flex' } }}>Fiche</Button> : undefined
   const epinglee = !!conv && epingles.includes(conv.cle)
-  const actionEnTete = conv && (
+  const actionEnTete = conv && fil && (
     <>
+      <Bulle titre="Fichiers et photos">
+        <IconButton aria-label="Fichiers et photos" onClick={() => setVoir('fichiers')} sx={{ width: 48, height: 48 }}><AttachFileOutlined /></IconButton>
+      </Bulle>
+      {membres.length > 0 && (
+        <Bulle titre="Membres">
+          <IconButton aria-label="Membres de la conversation" onClick={() => setVoir('membres')} sx={{ width: 48, height: 48, display: { lg: fil.genre === 'groupe' ? 'none' : 'inline-flex' } }}><PeopleOutlined /></IconButton>
+        </Bulle>
+      )}
+      {surPC && (
+        <Bulle titre="Raccourcis clavier">
+          <IconButton aria-label="Raccourcis clavier" onClick={() => setVoir('raccourcis')} sx={{ width: 48, height: 48 }}><InfoOutlined /></IconButton>
+        </Bulle>
+      )}
       <Bulle titre={epinglee ? 'Retirer l’épingle' : 'Épingler en tête'}>
         <IconButton aria-label={epinglee ? 'Retirer l’épingle' : 'Épingler la conversation'} aria-pressed={epinglee} onClick={() => basculerEpingle(conv.cle)} sx={{ width: 48, height: 48 }}>
           {epinglee ? <PushPin /> : <PushPinOutlined />}
@@ -341,11 +480,17 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
   const detail = conv ? (fil?.genre === 'groupe' ? `${membres.length} membres` : conv.detail) : ''
   const filAffiche = (cadre: boolean) => fil && conv && (
     <FilMessages key={conv.cle + (fil.genre === 'magasin' && fil.equipe ? '|equipe' : '')} reseau={reseau} fil={fil} contact={conv.contact} signaler={setConfirmation} lectureSeule={lectureSeule} basculer={basculer}
-      cadre={cadre} aLaFin={!cadre} fond={cadre ? 'background.paper' : 'background.default'} />
+      cadre={cadre} aLaFin={!cadre} fond={cadre ? 'background.paper' : 'background.default'} demandes={demandes} />
   )
   const liste = <ListeDiscussions reseau={reseau} lignes={lignes} mg={messagerie} actif={conv?.cle} ouvrir={ouvrir} ecrire={!lectureSeule} magasins={magasins} signaler={setConfirmation}
-    peutCreerGroupe={!lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')} />
-  const dialogue = edition && <DialogGroupe reseau={reseau} magasins={magasins} groupe={edition} onFermer={(msg) => { setEdition(null); if (msg) setConfirmation(msg); if (msg === 'Groupe supprimé.') naviguer('/echanges') }} />
+    peutCreerGroupe={!lectureSeule && (profil?.role === 'directeur' || profil?.role === 'rr')} demandes={demandes} equipe={!franchise} />
+  const dialogue = <>
+    {edition && <DialogGroupe reseau={reseau} magasins={magasins} groupe={edition} onFermer={(msg) => { setEdition(null); if (msg) setConfirmation(msg); if (msg === 'Groupe supprimé.') naviguer('/echanges') }} />}
+    {voir === 'fichiers' && fil && <DialogFichiers messages={messagesDuFil(messagerie, fil)} fermer={() => setVoir('')} />}
+    {voir === 'membres' && <DialogMembres membres={membres} fermer={() => setVoir('')} />}
+    {voir === 'raccourcis' && <DialogRaccourcis fermer={() => setVoir('')} />}
+  </>
+  const magasinFil = fil?.genre === 'magasin' ? reseau.magasins.find((m) => m.nom === fil.magasin) : undefined
 
   if (!surPC) {
     if (!fil || !conv) return <><PageHeader titre="Messages" />{liste}{message}</>
@@ -358,7 +503,7 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
         </Box>
         <Box sx={{ flex: 1, minHeight: 0 }}>
           <FilMessages key={conv.cle + (fil.genre === 'magasin' && fil.equipe ? '|equipe' : '')} reseau={reseau} fil={fil} contact={conv.contact} signaler={setConfirmation} lectureSeule={lectureSeule} basculer={basculer}
-            cadre fond="background.default" />
+            cadre fond="background.default" demandes={demandes} />
         </Box>
         {dialogue}
         {message}
@@ -372,7 +517,7 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
   return (
     <>
       <PageHeader titre="Messages" />
-      <Box sx={{ display: 'grid', gridTemplateColumns: { md: '340px minmax(0, 1fr)', lg: fil && membres.length ? '340px minmax(0, 1fr) 260px' : '340px minmax(0, 1fr)' }, gap: 2, height: 'calc(100dvh - 64px - 84px)', minHeight: 480 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { md: '340px minmax(0, 1fr)', lg: fil && (magasinFil || membres.length) ? '340px minmax(0, 1fr) 280px' : '340px minmax(0, 1fr)' }, gap: 2, height: 'calc(100dvh - 64px - 84px)', minHeight: 480 }}>
         <Card sx={{ minHeight: 0 }}>{liste}</Card>
         <Card sx={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {fil && conv
@@ -384,11 +529,39 @@ function Contenu({ reseau, lectureSeule }: { reseau: Reseau; lectureSeule: boole
             </>
             : <EmptyState icone={<ForumOutlined />} titre="Aucune conversation" texte="Choisis un magasin, un groupe ou une personne pour écrire." />}
         </Card>
-        {fil && membres.length > 0 && <Panneau reseau={reseau} fil={fil} membres={membres} />}
+        {magasinFil ? <ContexteMagasin reseau={reseau} m={magasinFil} demandes={demandes} equipe={!franchise} />
+          : fil && membres.length > 0 && <Panneau reseau={reseau} fil={fil} membres={membres} />}
       </Box>
       {dialogue}
       {message}
     </>
+  )
+}
+
+// Raccourcis de la messagerie sur PC, à la demande (63A)
+function DialogRaccourcis({ fermer }: { fermer: () => void }) {
+  const lignes: [string, string][] = [
+    ['Alt + flèche haut ou bas', 'Conversation précédente ou suivante'],
+    ['Entrée', 'Envoyer le message'],
+    ['Maj + Entrée', 'Aller à la ligne'],
+    ['Ctrl + K', 'Chercher un magasin, une personne, un message'],
+    ['Échap', 'Fermer une fenêtre'],
+  ]
+  return (
+    <Dialog open onClose={fermer} fullWidth maxWidth="xs" aria-labelledby="titre-raccourcis">
+      <DialogTitle id="titre-raccourcis">Raccourcis clavier</DialogTitle>
+      <DialogContent>
+        <Box component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 2, rowGap: 1.5 }}>
+          {lignes.map(([t, d]) => (
+            <Box key={t} sx={{ display: 'contents' }}>
+              <Typography component="dt" variant="body2" sx={{ fontWeight: 700 }}>{t}</Typography>
+              <Typography component="dd" variant="body2" sx={{ m: 0 }}>{d}</Typography>
+            </Box>
+          ))}
+        </Box>
+      </DialogContent>
+      <DialogActions><Button onClick={fermer} sx={{ minHeight: 48 }}>Fermer</Button></DialogActions>
+    </Dialog>
   )
 }
 

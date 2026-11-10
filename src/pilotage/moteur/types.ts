@@ -28,7 +28,8 @@ export interface Flux { realise: number; evolution: number; panierCibleTTC: numb
 export type Rubrique = 'immobilier' | 'energies' | 'entretien' | 'honoraires' | 'communication' | 'deplacements' | 'banque_assurances' | 'autres' | 'impots_taxes'
 
 // Une ligne de frais : montant annuel réparti par douzième, ou pourcentage du CA du mois
-export interface LigneFrais { code: string; libelle: string; rubrique: Rubrique; annuel?: number; tauxCA?: number }
+// communicationReseau : budget communication sans choix du magasin, au taux du réseau quand il est réglé (10/11/2026)
+export interface LigneFrais { code: string; libelle: string; rubrique: Rubrique; annuel?: number; tauxCA?: number; communicationReseau?: boolean }
 
 // Grille des frais du réseau (lot 23, modifiable depuis Paramètres réseau au lot 40) : une ligne de l'onglet FFBUD, son
 // bloc, ses comptes du plan comptable (racines) pour l'import FEC. Courante : proposée d'office à une première saisie.
@@ -46,6 +47,11 @@ export interface ReglesCalcul {
   magasinsCalage: number        // magasins pour publier les valeurs par ancienneté (8)
   magasinsFamille: number       // magasins pour publier les médianes des familles (3)
   moisCommerciaux: number       // mois comparés à l'an dernier pour les alertes tickets et panier (3)
+  // Points d'attention avant l'envoi du budget (vague 6, 74A), réglés par le Directeur
+  attentionMarge: number        // taux de marge sous celui proposé par le siège de plus de (1 pt)
+  attentionFPMin: number        // % FP sous (10 %)
+  attentionFPMax: number        // % FP au-dessus de (30 %)
+  attentionCA: number           // CA du budget au-dessus de l'atterrissage de plus de (10 %)
 }
 
 export interface Personnel {
@@ -152,6 +158,7 @@ export interface Travaux { activite: number[]; gain: number; investissement: num
 export interface ParametresReseau {
   tauxRedevance: number   // 2 % du CA HT, charge externe au-dessus de l'EBE
   tauxPublicite: number   // 1 % du CA HT, charge externe au-dessus de l'EBE
+  tauxCommunication?: number // budget communication du magasin en part du CA HT (2,5 % proposé) ; absent : pas de règle
   impot: { tauxReduit: number; plafondTauxReduit: number; tauxNormal: number }
   tvaPanier: Record<'cave' | 'bar', number> // TVA moyenne pour passer d'un panier TTC à un CA HT
   charges: ParametresCharges

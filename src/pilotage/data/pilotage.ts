@@ -885,3 +885,17 @@ export async function enregistrerStock(magasin: string, annee: number, mois: num
   if (s.cave === null && s.bar === null && exterieur === null) verifier(await pilotage().from('stocks').delete().eq('store_name', magasin).eq('annee', annee).eq('mois', mois))
   else verifier(await pilotage().from('stocks').upsert({ store_name: magasin, annee, mois, cave: s.cave, bar: s.bar, exterieur }))
 }
+
+// Vague 6 (77A) : réel, réel de l'an passé et budget de l'année suivie d'un magasin, avec les seuils d'alerte, pour les
+// écarts à expliquer à la clôture du mois
+export async function chargerEcartsMagasin(magasin: string, aujourdhui = new Date()) {
+  const { entrees, seuils } = await entreesAlertes(aujourdhui)
+  const e = entrees.find((x) => x.magasin === magasin)
+  return e ? { n: e.n, n1: e.n1, budget: e.budget, seuils } : null
+}
+// Explications des écarts de tous les magasins du compte, pour la lecture du réseau
+export async function chargerExplicationsEcarts(annee: number): Promise<{ magasin: string; ancre: string; texte: string; parent: number | null }[]> {
+  const { data, error } = await pilotage().from('echanges_budget').select('store_name, ancre, texte, parent').eq('annee', annee).like('ancre', 'ecart/%').order('cree_le')
+  if (error) return []
+  return (data as { store_name: string; ancre: string; texte: string; parent: number | null }[]).map((x) => ({ magasin: x.store_name, ancre: x.ancre, texte: x.texte, parent: x.parent }))
+}

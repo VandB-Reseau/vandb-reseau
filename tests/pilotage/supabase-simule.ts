@@ -499,9 +499,11 @@ async function espacesEnOnglets(page: Page) {
 }
 async function ouvrirEspace(page: Page, espace: string, timeout?: number) {
   await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).or(page.getByRole('tablist', { name: /^Rubriques de / })).first()).toBeVisible({ timeout })
+  // Onglet sélectionné, ou bouton « Clôturer <mois> » de la page affichée (vague 6, 76A)
+  const actif = (o: ReturnType<typeof ongletEspace>) => o.evaluate((e) => e.getAttribute('aria-selected') === 'true' || e.getAttribute('aria-current') === 'page', undefined, { timeout })
   const selectionner = async (onglet: ReturnType<typeof ongletEspace>) => {
-    if ((await onglet.getAttribute('aria-selected', { timeout })) !== 'true') await onglet.click({ timeout })
-    await expect(onglet).toHaveAttribute('aria-selected', 'true', { timeout })
+    if (!(await actif(onglet))) await onglet.click({ timeout })
+    await expect.poll(() => actif(onglet), { timeout }).toBe(true)
   }
   if (await espacesEnOnglets(page)) return selectionner(ongletEspace(page, espace))
   const nom = espace === 'Budget' ? 'Budget' : 'Chiffres'
@@ -526,7 +528,7 @@ export const ongletEspace = (page: Page, nom: string) => {
   const pages = page.getByRole('navigation', { name: 'Pages du magasin' })
   const ancien = pages.getByRole('tablist', { name: 'Espaces du magasin' }).getByRole('tab', { name: new RegExp(`^${nom}`) })
   const fiche = page.getByRole('tablist', { name: /^Rubriques de / })
-  const nouveau = nom.startsWith('Saisies') ? pages.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: /^Clôture du mois/ })
+  const nouveau = nom.startsWith('Saisies') ? pages.getByRole('button', { name: /^Clôturer / })
     : fiche.getByRole('tab', { name: new RegExp(`^${nom.startsWith('Budget') ? 'Budget' : 'Chiffres'}(, autres rubriques)?$`) })
   return ancien.or(nouveau)
 }
@@ -575,4 +577,17 @@ export async function plusLoin(page: Page) {
 // Paramètres réseau (lot 39) : un onglet par rubrique
 export async function ongletParametres(page: Page, nom: 'Années' | 'Franchise et impôts' | 'Équipe' | 'Trésorerie' | 'Alertes et campagne' | 'Grille des frais' | 'Règles de calcul' | 'Journal' | 'Accès') {
   await page.getByRole('tablist', { name: 'Rubriques des paramètres' }).getByRole('tab', { name: nom }).click()
+}
+
+// Points d'attention du budget (vague 6, 74A) : chacun se justifie en une phrase avant l'envoi au siège
+export async function justifierPointsAttention(page: Page, texte = 'Choix assumé, vu avec le Coach.') {
+  const zone = page.getByRole('region', { name: 'Points d’attention' })
+  if (!(await zone.count())) return
+  const champs = zone.getByRole('textbox', { name: 'Pourquoi ce point reste' })
+  for (let n = await champs.count(); n > 0; n--) {
+    await champs.first().fill(texte)
+    await zone.getByRole('button', { name: 'Justifier' }).first().click()
+    await expect(champs).toHaveCount(n - 1)
+  }
+  await expect(zone).toContainText('Tous justifiés')
 }

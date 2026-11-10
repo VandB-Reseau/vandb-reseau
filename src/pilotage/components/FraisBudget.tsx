@@ -39,7 +39,7 @@ export function FraisBudget({ base, choix, inflation, annee, anneeEnCours, lectu
   annee: number
   anneeEnCours: number
   lectureSeule: boolean
-  tauxSurCA: { publicite: number; redevance: number }
+  tauxSurCA: { publicite: number; redevance: number; communication?: number }
   onChange: (c: Record<string, ChoixFrais> | undefined) => void
   grille?: LigneGrille[]  // grille des frais de l'année (lot 40)
   prets?: PretsDeuxAnnees | null  // prêts du magasin : intérêts et capital des deux années
@@ -48,7 +48,7 @@ export function FraisBudget({ base, choix, inflation, annee, anneeEnCours, lectu
   // Texte en cours de saisie, par ligne : gardé tant qu'il n'est pas un nombre lisible
   const [textes, setTextes] = useState<Record<string, string>>({})
   const [ajout, setAjout] = useState<{ ancre: HTMLElement; theme: string } | null>(null)
-  const lignes = avecPretsBudget(lignesFraisBudget(base, choix, inflation, grille), prets)
+  const lignes = avecPretsBudget(lignesFraisBudget(base, choix, inflation, grille, tauxSurCA.communication ?? 0), prets)
   const basculer = (cle: string) => setReplies((o) => { const n = new Set(o); if (n.has(cle)) n.delete(cle); else n.add(cle); return n })
 
   const ecrire = (code: string, c: ChoixFrais | null) => {

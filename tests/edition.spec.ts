@@ -45,7 +45,9 @@ test('modifier et renommer un magasin met à jour toutes les tables', async ({ p
   expect(ecrituresSur(ecritures, 'store_overrides').at(-1)!.corps).not.toHaveProperty('plat')
 })
 
-test('ajouter puis supprimer un magasin', async ({ page }) => {
+test('ajouter puis supprimer un magasin', async ({ page, isMobile }) => {
+  // Sur téléphone, un seul « + » (celui de l'en-tête) : l'ajout d'un magasin se fait sur PC (vague 6)
+  test.skip(!!isMobile, 'Ajout d’un magasin : PC seulement')
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins?vue=carte')

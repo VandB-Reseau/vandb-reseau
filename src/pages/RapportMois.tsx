@@ -22,6 +22,9 @@ import { useChargement } from '../pilotage/data/useChargement'
 import { anneeSuivi } from '../pilotage/data/annees'
 import { chargerSuiviReseau } from '../pilotage/pages/Reseau'
 import { totalReseau } from '../pilotage/moteur/suivi'
+import { chargerExplicationsEcarts } from '../pilotage/data/pilotage'
+import { causesDuMois, lireAncreEcart } from '../pilotage/moteur/causesEcarts'
+import { MOIS_LONGS } from '../pilotage/lib/format'
 import type { Reseau } from '../data/modele'
 
 const MAX = 8
@@ -46,14 +49,20 @@ function EcartBudget() {
   const annee = anneeSuivi()
   const noms = useNomsPerimetre()
   const { donnees, chargement } = useChargement(() => chargerSuiviReseau(annee).catch(() => null), [annee])
+  // Vague 6 (77A) : les causes données par les magasins pour leurs écarts du dernier mois expliqué
+  const explications = useChargement(() => chargerExplicationsEcarts(annee), [annee])
   if (chargement) return <Skeleton variant="rounded" height={104} aria-label="Lecture du budget" />
+  const expl = (explications.donnees ?? []).filter((c) => !noms || noms.has(c.magasin))
+  const dernier = Math.max(0, ...expl.map((c) => lireAncreEcart(c.ancre)?.mois ?? 0))
+  const causes = dernier ? causesDuMois(expl, annee, dernier) : []
+  const premiere = causes[0] ? ` · écarts de ${MOIS_LONGS[dernier - 1]} : ${causes.map((x) => `${x.libelle} ${x.n}`).slice(0, 3).join(', ')}` : ''
   const lignes = (donnees?.magasins ?? []).filter((m) => !noms || noms.has(m.magasin))
   const total = lignes.length ? totalReseau(lignes) : null
   const sous = lignes.filter((m) => m.ecartBudget !== null && m.ecartBudget < 0).length
   const avec = lignes.filter((m) => m.ecartBudget !== null).length
   return (
     <Indicateur libelle={`Face au budget ${annee}`} valeur={total?.ecartBudget != null ? formatPourcent(total.ecartBudget * 100) : '—'}
-      detail={avec ? `${sous} magasin${sous > 1 ? 's' : ''} sous le budget sur ${avec}` : 'Pas de budget dans l’app'}
+      detail={avec ? `${sous} magasin${sous > 1 ? 's' : ''} sous le budget sur ${avec}${premiere}` : 'Pas de budget dans l’app'}
       ton={total?.ecartBudget != null ? (total.ecartBudget >= 0 ? 'bon' : 'mauvais') : undefined} />
   )
 }

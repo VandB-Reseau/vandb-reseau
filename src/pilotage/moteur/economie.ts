@@ -1,5 +1,6 @@
 import { masseSalariale } from './equipe'
 import type { Budget, Hypotheses, ParametresReseau } from './types'
+import { fraisResolus } from './communication'
 
 // Économie du franchisé (lot 29, 28/10/2026) : à partir de quel CA le magasin gagne de l'argent, et ce qu'il reste.
 // Coûts variables : achats (la marge les retire), redevance, publicité et frais saisis en part du CA.
@@ -24,8 +25,8 @@ export function coutGerant(h: Hypotheses, p: Pick<ParametresReseau, 'charges'>):
   return h.personnel.remunerationGerance * 12 * (1 + h.personnel.tauxCotisationsGerance)
 }
 
-export function economieFranchise(b: Budget, h: Hypotheses, p: Pick<ParametresReseau, 'charges'>): EconomieFranchise {
-  const tauxFrais = h.frais.reduce((a, l) => a + (l.tauxCA ?? 0), 0)
+export function economieFranchise(b: Budget, h: Hypotheses, p: Pick<ParametresReseau, 'charges' | 'tauxCommunication'>): EconomieFranchise {
+  const tauxFrais = fraisResolus(h.frais, p).reduce((a, l) => a + (l.tauxCA ?? 0), 0)
   const mcv = b.marge - b.redevance - b.publicite - tauxFrais * b.ca
   const tauxMCV = b.ca > 0 ? mcv / b.ca : 0
   const fixes = mcv - b.resultatAvantImpot

@@ -138,6 +138,16 @@ export const AIDE = {
     remplir: 'Un magasin est à appeler s’il a une alerte, une action en retard ou au moins 1 000 € de marge en jeu depuis janvier. Les autres sont dans les clous, repliés.',
     calcul: 'Marge en jeu : la somme des trois sujets de la fiche de visite (CA sous le budget, points de marge perdus, tickets et panier en baisse face à l’an dernier).',
   },
+  pointsAttention: {
+    titre: 'Points d’attention',
+    quoi: 'Ce qu’un budget ne devrait pas laisser passer sans un mot : trésorerie sous zéro, EBE négatif, marge sous la proposition du siège, % FP hors de la fourchette, échéances au-dessus de la capacité d’autofinancement, CA très au-dessus de l’atterrissage.',
+    calcul: 'Seuils réglés par le Directeur dans Paramètres, règles de calcul. Un point qui reste se justifie en une phrase avant l’envoi au siège ; la phrase est gardée dans les commentaires du budget.',
+  },
+  causesEcarts: {
+    titre: 'Causes des écarts du mois',
+    quoi: 'À la clôture du mois, chaque écart au-delà du seuil d’alerte reçoit une cause et, si besoin, une phrase.',
+    calcul: 'CA du mois sous le budget du mois de plus du seuil d’alerte (5 % par défaut) ; taux de marge du mois sous celui du même mois l’an dernier de plus du seuil (1 point par défaut).',
+  },
   ecartExplique: {
     titre: 'D’où vient l’écart au budget',
     quoi: 'L’écart de CA et de marge à date, découpé en ce qui l’explique.',

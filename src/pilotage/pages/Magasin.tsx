@@ -17,7 +17,8 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import ArrowBack from '@mui/icons-material/ArrowBack'
-import { ClotureMois } from '../components/ClotureMois'
+import { ClotureMois, dernierMoisClos } from '../components/ClotureMois'
+import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import ChevronLeftOutlined from '@mui/icons-material/ChevronLeftOutlined'
 import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
 import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined'
@@ -93,6 +94,11 @@ import { campagneDe } from '../moteur/campagne'
 import { compteResultat } from '../moteur/compteResultat'
 import { grilleDe } from '../moteur/parametres'
 import { reglesDe } from '../moteur/regles'
+import { pointsAttention } from '../moteur/attention'
+import { PointsAttention } from '../components/PointsAttention'
+import { ExplicationsEcarts } from '../components/CausesEcarts'
+import Chip from '@mui/material/Chip'
+import ReportProblemOutlined from '@mui/icons-material/ReportProblemOutlined'
 import { tresorerieBudget } from '../moteur/tresorerie'
 import { copieParThemes, ecarts, ecrireCible, valeurHeritee, type Cibles, type ThemeCopie } from '../moteur/cibles'
 import { trancheMillesime } from '../moteur/projection'
@@ -143,6 +149,8 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
   const [message, setMessage] = useState<Message | null>(null)
   const [occupe, setOccupe] = useState(false)
   const [copie, setCopie] = useState(false)
+  // Vague 6 (74A) : points d'attention encore sans justification, qui retiennent l'envoi au siège
+  const [bloquants, setBloquants] = useState(0)
   // Action préparée depuis les leviers commerciaux de la synthèse (lot 28) : le plan d'action s'ouvre pré-rempli
   const [proposition, setProposition] = useState<{ intitule: string; n: number } | null>(null)
   // Budget de l'an prochain, réel de l'année en cours et de la précédente
@@ -245,6 +253,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
   const bSiege = auSiege ? calculerBudget(auSiege.hypotheses, parametres) : null
   const ebeSiege = bSiege ? bSiege.ebe : null
   const tresoSiege = bSiege && auSiege ? tresorerieBudget(bSiege, auSiege.hypotheses, parametres, parametres.tresorerie, departDe(ligne.siege ?? {})) : null
+  const attention = b && ligne.base ? pointsAttention({ budget: b, pointBas: tresorerie?.pointBas ?? null, tauxMargeSiege: bSiege && ligne.siege ? bSiege.tauxMarge : null, regles: reglesDe(parametres) }, MOIS_LONGS) : []
   const sansTravaux = resolu?.hypotheses.travaux ? calculerBudget({ ...resolu.hypotheses, travaux: undefined }, parametres) : null
   // Lot 42 (proposition 3) : copie thème par thème vers les magasins dont le budget est proposé ou en discussion
   const groupesNoms = new Map(d.groupes.map((g) => [g.id, g.nom]))
@@ -482,6 +491,13 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mr: { md: espace === 'budget' && etapesEnLigne ? 1 : 'auto' }, ml: { md: 1 } }}>
               <Typography variant="body1" color="text.secondary" component="span">Budget {statutEntete.annee}</Typography>
               <PastilleStatut statut={statutEntete.statut} />
+              {espace === 'budget' && attention.length > 0 && (
+                <Tooltip title="Points d’attention avant l’envoi">
+                  <Chip color="warning" variant="outlined" icon={<ReportProblemOutlined />} clickable onClick={() => allerEtape('echanges')}
+                    aria-label={attention.length > 1 ? `${attention.length} points d’attention` : '1 point d’attention'}
+                    label={etapesEnLigne ? String(attention.length) : attention.length > 1 ? `${attention.length} points d’attention` : '1 point d’attention'} sx={{ height: { xs: 48, md: 32 }, fontWeight: 700 }} className="pas-a-l-impression" />
+                </Tooltip>
+              )}
               {espace === 'budget' && ligne.base && (
                 <Typography variant="body2" color="text.secondary" component="span">
                   {`· ${nbEcarts === 0 ? 'aucun écart' : nbEcarts === 1 ? '1 écart' : `${nbEcarts} écarts`} aux cibles${etapesEnLigne ? '' : ' du siège'}`}
@@ -497,21 +513,36 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         </Box>
         {espace === 'budget' && !etapesEnLigne && etapes(false)}
         {(espace === 'donnees' || espace === 'suivi') && (() => {
-          // Onglet Chiffres de la fiche : le suivi, la santé et les saisies en une seule sous-navigation (2 niveaux au plus)
+          // Onglet Chiffres de la fiche : le suivi et la santé en une seule sous-navigation (2 niveaux au plus).
+          // Vague 6 (76A) : cinq puces ; le stock va avec les comptes, la santé avec l'analyse ; la clôture du mois est une
+          // action, à droite
           const puces = mode === 'chiffres'
-            ? [...partiesDe('suivi', anneeEnCours), ...(anneesPassees.length ? [{ cle: 'passees', libelle: 'Années passées' }] : []), ...(sante ? [{ cle: 'sante', libelle: santeLibelle }] : []), { cle: 'cloture', libelle: 'Clôture du mois' }]
+            ? [...partiesDe('suivi', anneeEnCours).filter((x) => x.cle !== 'stock'), ...(anneesPassees.length ? [{ cle: 'passees', libelle: 'Années passées' }] : [])]
             : parties
-          const valeur = mode === 'chiffres' && espace === 'donnees' ? 'cloture' : onglet
+          const valeur = mode === 'chiffres' ? (espace === 'donnees' ? false : onglet === 'stock' ? 'comptes' : onglet === 'sante' ? 'analyse' : onglet) : onglet
           const manqueSaisies = mode === 'chiffres' && (manques.reel || manques.frais)
-          return (
+          const moisClos = Math.max(1, dernierMoisClos(anneeEnCours))
+          const onglets = (
             <Tabs value={valeur} onChange={(_, v: string) => allerEtape(v)} variant="scrollable" scrollButtons="auto" className="pas-a-l-impression"
               aria-label={mode === 'chiffres' ? 'Parties des chiffres' : espace === 'suivi' ? `Parties du suivi ${anneeEnCours}` : 'Saisies du magasin'}
-              sx={{ mt: mode ? 0 : 1.5, ...styleSousNavigation }}>
+              sx={{ mt: mode ? 0 : 1.5, ...styleSousNavigation, ...(mode === 'chiffres' ? { flex: '1 1 auto', minWidth: 0 } : {}) }}>
               {puces.map((x) => (
                 <Tab key={x.cle} value={x.cle} aria-current={valeur === x.cle ? 'page' : undefined}
-                  label={<LibelleOnglet texte={x.libelle} manque={x.cle === 'cloture' && mode === 'chiffres' ? !!manqueSaisies : !!manques[x.cle]} detail={x.cle === 'cloture' && mode === 'chiffres' ? (manques.reel?.detail ?? manques.frais?.detail ?? '') : manques[x.cle]?.detail ?? ''} />} />
+                  label={<LibelleOnglet texte={x.libelle} manque={!!manques[x.cle]} detail={manques[x.cle]?.detail ?? ''} />} />
               ))}
             </Tabs>
+          )
+          if (mode !== 'chiffres') return onglets
+          return (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              {onglets}
+              <Badge color="warning" variant="dot" invisible={!manqueSaisies} overlap="rectangular" className="pas-a-l-impression">
+                <Button variant={espace === 'donnees' ? 'contained' : 'outlined'} startIcon={<TaskAltOutlined />} onClick={() => allerEtape('cloture')} aria-current={espace === 'donnees' ? 'page' : undefined}
+                  aria-label={`Clôturer ${MOIS_LONGS[moisClos - 1]}${manqueSaisies ? ` : ${manques.reel?.detail ?? manques.frais?.detail ?? 'à faire'}` : ''}`} sx={{ minHeight: 48 }}>
+                  Clôturer {MOIS_LONGS[moisClos - 1]}
+                </Button>
+              </Badge>
+            </Box>
           )
         })()}
         {/* Refonte vague 2 (12A) : une saisie s'ouvre depuis la clôture du mois et y revient ; plus de 3e niveau */}
@@ -558,8 +589,9 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
             </>}
           />
         )}
+        {onglet === 'synthese' && <ExplicationsEcarts key={`explications-${ligne.magasin}`} magasin={ligne.magasin} annee={anneeEnCours} />}
         {onglet === 'mois' && <SuiviBudget key={`detail-${ligne.magasin}`} magasin={ligne.magasin} annee={anneeEnCours} allerA={aller} vue="detail" ouvert />}
-        {onglet === 'comptes' && (
+        {(onglet === 'comptes' || (mode === 'chiffres' && onglet === 'stock')) && (
           <>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
               <Typography variant="h2" sx={{ flex: 1 }}>Comptes du quadrimestre</Typography>
@@ -568,6 +600,15 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
             <QuadrimestresMagasin key={`${ligne.magasin}-${anneeQuadri}-compte`} magasin={ligne.magasin} annee={anneeQuadri} peutSaisir={peutSaisir} vue="compte" />
             <Typography variant="h2" id="partie-tresorerie" sx={{ scrollMarginTop: 200 }}>Trésorerie</Typography>
             <QuadrimestresMagasin key={`${ligne.magasin}-${anneeQuadri}-tresorerie`} magasin={ligne.magasin} annee={anneeQuadri} peutSaisir={peutSaisir} vue="tresorerie" />
+            {mode === 'chiffres' && (
+              <Stack spacing={2} id="partie-stock" sx={{ scrollMarginTop: 200 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                  <Typography variant="h2" sx={{ flex: 1 }}>Stock</Typography>
+                  {anneeChoix(anneeReel, (v) => setAnneeReel(v), 'Année du stock')}
+                </Box>
+                <StockMagasin key={`${ligne.magasin}-${anneeReel}`} magasin={ligne.magasin} annee={anneeReel} peutSaisir={false} />
+              </Stack>
+            )}
           </>
         )}
         {onglet === 'atterrissage' && (
@@ -576,13 +617,19 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
             directeur={directeur && annees().campagne} peutSaisir={peutSaisir} allerA={aller} apresProposition={recharger} repartition={ligne.ajustements.poidsMois}
           />
         )}
-        {onglet === 'stock' && (
+        {onglet === 'stock' && mode !== 'chiffres' && (
           <>
             {anneeChoix(anneeReel, (v) => setAnneeReel(v), 'Année du stock')}
             <StockMagasin key={`${ligne.magasin}-${anneeReel}`} magasin={ligne.magasin} annee={anneeReel} peutSaisir={false} />
           </>
         )}
         {onglet === 'sante' && sante}
+        {mode === 'chiffres' && onglet === 'analyse' && sante && (
+          <Stack spacing={2} component="section" aria-label={santeLibelle} id="partie-sante" sx={{ scrollMarginTop: 200 }}>
+            <Typography variant="h2">{santeLibelle}</Typography>
+            {sante}
+          </Stack>
+        )}
         {/* Passage d'année (0027) : les années encore à clore et les années closes, réel face au budget, en lecture */}
         {onglet === 'passees' && anneesPassees.map((a) => (
           <Stack key={`passee-${a}`} spacing={2} component="section" aria-label={`Suivi ${a}`}>
@@ -596,7 +643,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         {alerteMessage}
         </Stack>
       ) : onglet === 'cloture' ? (
-        <ClotureMois key={`${ligne.magasin}-cloture`} magasin={ligne.magasin} annee={anneeEnCours} aller={aller}
+        <ClotureMois key={`${ligne.magasin}-cloture`} magasin={ligne.magasin} annee={anneeEnCours} aller={aller} peutSaisir={peutSaisir && !profil?.apercu}
           reelMois={reel.donnees ? syntheseReel(reel.donnees.lignes, reel.donnees.tickets).parMois.filter((x) => x.caHT > 0).map((x) => x.mois) : []}
           fraisRenseignes={!!d.frais[ligne.magasin]?.length} quadrimestres={d.comptes?.[ligne.magasin]?.quadrimestres ?? []} />
       ) : onglet === 'saisieStock' ? (
@@ -685,10 +732,15 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
 
       {onglet === 'echanges' ? (
         <>
+          {attention.length > 0 && (
+            <PointsAttention key={`attention-${ligne.magasin}`} magasin={ligne.magasin} annee={annee} points={attention} peutJustifier={!profil?.apercu && ligne.statut !== 'valide' && peutSaisir}
+              aller={(partie) => allerEtape(partie)} onBloquants={setBloquants} />
+          )}
           {revue && (
             <RevueChangements
               franchise={franchise} themes={revue.themes} total={revue.total} ebeSiege={revue.ebeSiege} ebeMagasin={revue.ebeMagasin}
               envoyeLe={ligne.envoyeLe} statut={ligne.statut} occupe={occupe} onEnvoyer={franchise && peutAjuster ? envoyer : undefined}
+              envoiBloque={attention.length && bloquants ? (bloquants > 1 ? `${bloquants} points d’attention à justifier avant l’envoi.` : 'Un point d’attention à justifier avant l’envoi.') : undefined}
               validation={boutonValider ? {
                 points: pointsAvantValidation({ tresorerieDepart: brouillon.tresorerieDepart, estimee: estimee ? milliers(estimee.montant) : undefined, pointBas: tresorerie?.pointBas ?? null, changementsNonEnvoyes: ligne.statut === 'propose' && revue.effets.length > 0, commentairesOuverts: ouvertsC }, MOIS_LONGS),
                 bouton: boutonValider,
@@ -721,6 +773,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
               <HypothesesCartes magasin={ligne.magasin} annee={annee} budget={b} cibles={brouillon} hausseSalaires={resolu.hypotheses.hausseSalaires ?? 0}
                 inflation={inflation} sansEquipe={!d.equipes[ligne.magasin]?.length} sansFrais={!baseFrais?.frais.length} lectureSeule={!peutAjuster}
                 reprise={resolu.hypotheses.reprise} accord={accordTheme ?? undefined} etroit={themeEnPanneau}
+                ventesPrete={franchise ? (brouillon.accords ?? []).includes('ventes') || themesChanges.has('ventes') : undefined}
                 depart={{ annee: anneeEnCours, tresorerie: brouillon.tresorerieDepart ?? estimee?.montant ?? null, estimee: brouillon.tresorerieDepart === undefined && !!estimee, saisonnalite: !!brouillon.poidsMois }} />
             </Box>
           )}
@@ -800,22 +853,25 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
                 </Card>
               )}
               <FraisBudget base={baseFrais} choix={brouillon.fraisBudget} inflation={inflation} annee={annee} anneeEnCours={anneeEnCours} lectureSeule={!peutAjuster}
-                tauxSurCA={{ publicite: parametres.tauxPublicite, redevance: parametres.tauxRedevance }} grille={grilleDe(parametres)}
+                tauxSurCA={{ publicite: parametres.tauxPublicite, redevance: parametres.tauxRedevance, communication: parametres.tauxCommunication }} grille={grilleDe(parametres)}
                 prets={pretsDeuxAnnees(d.prets?.[ligne.magasin], anneeEnCours, annee)}
                 onChange={(c) => setBrouillon(({ fraisBudget: _, ...reste }) => (c ? { ...reste, fraisBudget: c } : reste))} />
             </Stack>
           )}
           </PanneauTheme>
           </ColonnesTheme>
-          <Stack spacing={3} className={partie('visualiser')} id="partie-resultat" sx={{ scrollMarginTop: 200 }}>
+          <Box className={partie('visualiser')} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', rowGap: 2 }}>
+          {/* Vague 6 (75A) : un sommaire collant sur PC (en haut : le compte de résultat garde toute la largeur), le reste inchangé */}
+          <SommaireVisualiser avecEconomie={!!resolu} avecTresorerie={!!tresorerie} />
+          <Stack spacing={3} id="partie-resultat" sx={{ scrollMarginTop: 200, minWidth: 0 }}>
             {/* Joseph (03/11/2026) : le résultat et la trésorerie ont leur étape, « 2 · Visualiser » */}
             <Box className="pas-a-l-impression" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="h2">Résultat et trésorerie {annee}</Typography>
               <BoutonCommenter ancre="visualiser" libelle={`Résultat et trésorerie ${annee}`} />
             </Box>
-            {resolu && <CompteResultatMois lignes={compteResultat(b, resolu.hypotheses, parametres)} titre={`Compte de résultat ${annee}`} libelleTableau={`Budget ${annee} mois par mois`} />}
-            <CapaciteAutofinancement budget={b} annee={annee} />
-            {resolu && b && <EconomieFranchise budget={b} hypotheses={resolu.hypotheses} parametres={parametres} annee={annee} />}
+            {resolu && <Box id="visualiser-resultat" sx={{ scrollMarginTop: 160 }}><CompteResultatMois lignes={compteResultat(b, resolu.hypotheses, parametres)} titre={`Compte de résultat ${annee}`} libelleTableau={`Budget ${annee} mois par mois`} /></Box>}
+            <Box id="visualiser-caf" sx={{ scrollMarginTop: 160 }}><CapaciteAutofinancement budget={b} annee={annee} /></Box>
+            {resolu && b && <Box id="visualiser-economie" sx={{ scrollMarginTop: 160 }}><EconomieFranchise budget={b} hypotheses={resolu.hypotheses} parametres={parametres} annee={annee} /></Box>}
             {/* Lot 41 (proposition 4), puis Joseph (03/11/2026) : un EBE ou une rémunération du gérant visés, et ce qu'il faudrait */}
             {resolu && b && (
               <Box className="pas-a-l-impression">
@@ -826,10 +882,13 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
               </Box>
             )}
             {tresorerie && (
-              <TresorerieBudget key={ligne.magasin} tresorerie={tresorerie} annee={annee} depart={brouillon.tresorerieDepart} estimee={estimee} replie={franchise}
-                versDepart={() => allerEtape('depart')} />
+              <Box id="visualiser-tresorerie" sx={{ scrollMarginTop: 160 }}>
+                <TresorerieBudget key={ligne.magasin} tresorerie={tresorerie} annee={annee} depart={brouillon.tresorerieDepart} estimee={estimee} replie
+                  versDepart={() => allerEtape('depart')} />
+              </Box>
             )}
           </Stack>
+          </Box>
         </>
       )}
 
@@ -839,6 +898,25 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
       {piedEtapes}
       </>)}
       </AvecCommentaires>
+    </Box>
+  )
+}
+
+// Sommaire de l'étape Visualiser (vague 6, 75A) : sur PC, reste en vue en haut et mène à chaque partie
+function SommaireVisualiser({ avecEconomie, avecTresorerie }: { avecEconomie: boolean; avecTresorerie: boolean }) {
+  const parties = [
+    { id: 'visualiser-resultat', libelle: 'Résultat' },
+    { id: 'visualiser-caf', libelle: 'Capacité d’autofinancement' },
+    ...(avecEconomie ? [{ id: 'visualiser-economie', libelle: 'Économie du franchisé' }] : []),
+    ...(avecTresorerie ? [{ id: 'visualiser-tresorerie', libelle: 'Trésorerie' }] : []),
+  ]
+  return (
+    <Box component="nav" aria-label="Sommaire du budget" className="pas-a-l-impression"
+      sx={{ display: { xs: 'none', lg: 'flex' }, gap: 0.5, flexWrap: 'wrap', position: 'sticky', zIndex: 2, top: `calc(${hautEntete.md}px + var(--onglets, 0px))`, bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider', py: 0.5 }}>
+      {parties.map((p) => (
+        <Button key={p.id} onClick={() => document.getElementById(p.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          sx={{ minHeight: 48, color: 'text.primary', fontWeight: 600 }}>{p.libelle}</Button>
+      ))}
     </Box>
   )
 }

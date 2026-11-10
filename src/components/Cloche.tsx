@@ -40,7 +40,7 @@ export function Cloche() {
           <Badge color="error" badgeContent={n} max={99}><NotificationsNoneOutlined /></Badge>
         </IconButton>
       </Tooltip>
-      <Drawer anchor="right" open={ouvert} onClose={() => setOuvert(false)}
+      <Drawer anchor="right" open={ouvert} onClose={() => setOuvert(false)} sx={{ zIndex: (t) => t.zIndex.modal }}
         slotProps={{ paper: { component: 'aside', 'aria-label': 'Notifications', sx: { width: { xs: '100%', sm: 380 }, display: 'flex', flexDirection: 'column' } } as never }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, pt: 'calc(12px + env(safe-area-inset-top, 0px))', pb: 1 }}>
           <Typography variant="h2" component="h2" sx={{ flex: 1, fontSize: '1.25rem' }}>Notifications</Typography>

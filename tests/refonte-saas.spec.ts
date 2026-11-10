@@ -95,16 +95,17 @@ test('la fiche du magasin tient en cinq onglets et deux niveaux ; le suivi, la s
   await page.goto(fiche('?vue=chiffres'))
   const parties = page.getByRole('tablist', { name: 'Parties des chiffres' })
   await expect(parties.getByRole('tab', { name: 'Vue d’ensemble' })).toHaveAttribute('aria-selected', 'true')
-  await expect(parties.getByRole('tab', { name: 'Santé et leviers' })).toBeVisible()
+  // Vague 6 (76A) : cinq puces, la santé dans l'Analyse
+  await expect(parties.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', /^Atterrissage/, 'Analyse'])
   await expect(page.getByRole('tablist', { name: 'Espaces du magasin' })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-refonte-chiffres.png` })
-  // Ancien lien vers la santé : Chiffres, puce Santé et leviers
+  // Ancien lien vers la santé : Chiffres, puce Analyse
   await page.goto(fiche('?vue=sante'))
-  await expect(page.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: 'Santé et leviers' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: 'Analyse' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('heading', { name: 'Santé', exact: true })).toBeVisible()
   // Saisies : la liste de la clôture du mois, pas un troisième rang d'onglets (vague 2, 12A)
-  await page.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: /^Clôture du mois/ }).click()
+  await page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('button', { name: /^Clôturer / }).click()
   await expect(page.getByRole('region', { name: 'Clôture du mois' }).getByRole('list').getByRole('button')).toHaveText([/^Réel du mois/, /^Stock de fin de mois/, /^Frais/])
   // Ancien lien vers une partie du suivi depuis Budget : l'onglet Chiffres
   await page.goto(fiche('?vue=budget&partie=mois'))

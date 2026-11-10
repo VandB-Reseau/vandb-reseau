@@ -41,7 +41,7 @@ test('la clôture du mois guide les saisies du magasin, étape par étape', asyn
   await connecter(page)
   await page.goto(`./#/magasins/${encodeURIComponent(M)}`)
   await ouvrirOnglet(page, 'Chiffres')
-  await page.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: /^Clôture du mois/ }).click()
+  await page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('button', { name: /^Clôturer / }).click()
   const cloture = page.getByRole('region', { name: 'Clôture du mois' })
   // Au 27/10/2026, le dernier mois clos est septembre ; le réel de septembre est arrivé
   await expect(cloture.getByRole('heading', { level: 2 })).toHaveText('Septembre 2026')

@@ -71,6 +71,7 @@ import { actionsDuMagasin, enRetard } from '../data/actions'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import { lienFil } from '../data/messagerie'
+import { useConversationLaterale } from '../components/ConversationLaterale'
 import { anneeDe, libellePasVu, lienCompteRendu, lienVisite, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
@@ -166,13 +167,15 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const saisirVisite = () => { setTypeVisite('terrain'); setVisite(null) }
   const { referentiels } = useDroits()
   const ex = m.exploitation
+  const conversation = useConversationLaterale(reseau, m.nom)
   const manquants = [m.code, ex.implantation, m.ouvertureConnue, adresseComplete, m.telephone, m.email, ex.typologie, ex.zoneChalandise, ex.licence, ex.instagram, resumeHoraires(ex.horaires).length].filter((x) => !x).length
   return (
     <>
       <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Magasins</Button>
       <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} alerteVisite={rythme?.alerte ? libellePasVu(rythme) : ''}
-        appeler={m.telephone || m.responsable?.telephone || ''} message={() => naviguer(lienFil({ genre: 'magasin', magasin: m.nom, equipe: false }))} visite={saisirVisite} planifier={() => setPlanifier(true)}
+        appeler={m.telephone || m.responsable?.telephone || ''} message={conversation.ouvrir} visite={saisirVisite} planifier={() => setPlanifier(true)}
         modifier={referentiels ? () => setEdition(true) : undefined} fermer={referentiels ? () => setSituation(true) : undefined} />
+      {conversation.panneau}
       {situationsAffichees(m, reseau.jour).map((s) => (
         <Alert key={`${s.type}-${s.date}`} severity={s.type === 'sortie' || (s.type === 'travaux' && s.date <= reseau.jour) ? 'warning' : 'info'} sx={{ mb: 2 }}
           action={referentiels ? <Button color="inherit" onClick={() => setSituation(true)} sx={{ minHeight: 48 }}>Modifier</Button> : undefined}>
