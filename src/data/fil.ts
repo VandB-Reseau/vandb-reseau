@@ -12,10 +12,12 @@ import type { Communication } from './communications'
 import type { BonnePratique } from './bonnesPratiques'
 import { estImage, type Piece } from '../lib/pieces'
 import { premiereImage } from '../lib/html'
+import { dateAnnonce } from './tempsForts'
+import { magasinsConcernes } from './campagnes'
 
 // Fil d'activité des magasins suivis : visites, tâches, messages, chiffres, bonnes pratiques et communications du réseau,
 // du plus récent au plus ancien
-export type GenreFil = 'visite' | 'tache' | 'message' | 'chiffres' | 'pratique' | 'communication' | 'journal'
+export type GenreFil = 'visite' | 'tache' | 'message' | 'chiffres' | 'pratique' | 'communication' | 'journal' | 'animation'
 
 export interface ElementFil {
   cle: string
@@ -94,6 +96,21 @@ export function filDu(reseau: Reseau, noms: Set<string>, mg: Messagerie | null, 
       cible: c.magasins === null ? 'Tout le réseau' : `${c.magasins.length} magasin${c.magasins.length > 1 ? 's' : ''}`,
       titre: c.titre, texte: c.texte, lien: `/communications?c=${c.id}`, visuel: visuelDe(c), communication: c,
     })
+  }
+  // Refonte vague 5 (45A, 48A) : le fil devient le journal du réseau. Annonce des temps forts et lancement des campagnes
+  if (actualites) {
+    for (const t of reseau.tempsForts ?? []) {
+      const le = dateAnnonce(t)
+      if (le < depuis || le > reseau.jour || t.fin < reseau.jour) continue
+      const du = new Date(`${t.debut}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+      res.push({ cle: `tf|${t.id}`, genre: 'animation', instant: le, auteur: '', action: 'temps fort à préparer', magasin: '', cible: 'Tout le réseau',
+        titre: `${t.nom} : à partir du ${du}`, texte: t.detail || undefined, lien: '/campagnes?vue=campagnes' })
+    }
+    for (const c of reseau.campagnes.liste) {
+      if (!c.debut || c.debut < depuis || c.debut > reseau.jour || !magasinsConcernes(reseau, c).some((m) => noms.has(m.nom))) continue
+      res.push({ cle: `ca|${c.id}`, genre: 'animation', instant: c.debut, auteur: '', action: 'campagne lancée', magasin: '', cible: 'Campagne',
+        titre: c.nom, texte: c.points.map((x) => x.libelle).join(' · ') || undefined, lien: `/campagnes?vue=campagnes&campagne=${encodeURIComponent(c.id)}` })
+    }
   }
   return res.sort((a, b) => instantDe(b.instant).localeCompare(instantDe(a.instant)))
 }

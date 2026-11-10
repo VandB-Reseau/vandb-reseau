@@ -9,7 +9,10 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
-import { Section } from './Section'
+import { DansCarte, Section } from './Section'
+import { Indicateur as CarteIndicateur } from './Indicateur'
+import { useTheme } from '@mui/material/styles'
+import { ParcoursIntegration } from './ParcoursIntegration'
 import { analyser, estVisite, formatEuros, formatKEuros, formatPourcent, libelleMois } from '../data/chiffres'
 import { libelleTypeVisite, nomsVisiteurs, visiteFaite, type Magasin, type Reseau } from '../data/modele'
 import { actionsDuMagasin, enRetard } from '../data/actions'
@@ -17,16 +20,10 @@ import { anneeDe, libellePasVu, lienCompteRendu, lienVisite, suiviRythme } from 
 import { resumeCompteRendu } from '../data/resumeCompteRendu'
 import { dateCourte, dateLongue, lienFiche } from '../lib/format'
 
+// Vague 5 (53A) : la carte d'indicateur commune ; ton : couleur de l'écart
 export function Indicateur({ libelle, valeur, detail, ton }: { libelle: string; valeur: string; detail?: string; ton?: 'bon' | 'mauvais' }) {
-  return (
-    <Card sx={{ minWidth: 0 }}>
-      <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-        <Typography variant="body2" color="text.secondary">{libelle}</Typography>
-        <Typography sx={{ fontSize: '1.375rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1.3 }}>{valeur}</Typography>
-        {detail && <Typography variant="body2" sx={{ color: ton === 'bon' ? 'success.main' : ton === 'mauvais' ? 'error.main' : 'text.secondary', fontWeight: ton ? 700 : 400 }}>{detail}</Typography>}
-      </CardContent>
-    </Card>
-  )
+  const theme = useTheme()
+  return <CarteIndicateur libelle={libelle} valeur={valeur} detail={detail} couleurDetail={ton === 'bon' ? theme.palette.success.dark : ton === 'mauvais' ? theme.palette.error.main : undefined} />
 }
 
 function Etape({ libelle, valeur, action }: { libelle: string; valeur: ReactNode; action?: ReactNode }) {
@@ -59,6 +56,10 @@ export function SituationMagasin({ reseau, m, planifier, objectifs }: { reseau: 
         <Indicateur libelle="Panier moyen HT" valeur={c?.panier != null ? formatEuros(c.panier) : '—'} detail={c?.pmCave != null ? `Cave ${formatEuros(c.pmCave)}` : undefined} />
         <Indicateur libelle="Taux de marge" valeur={c?.marge != null ? `${c.marge.toLocaleString('fr-FR')} %` : '—'} />
       </Box>
+      {/* Vague 5 (55A) : une seule carte « Plan » : prochaines étapes, parcours des 6 premiers mois, priorités, objectifs */}
+      <Card component="section" aria-label="Plan"><CardContent sx={{ p: 3 }}>
+        <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem', mb: 1 }}>Plan</Typography>
+        <DansCarte.Provider value>
       <Section titre="Prochaines étapes">
         <Etape libelle="Visite" valeur={prevue ? `${dateLongue(prevue.date)} · ${libelleTypeVisite(prevue.type)}${prevue.visiteurs.length ? ` · ${nomsVisiteurs(prevue)}` : ''}`
           : <Box component="span" sx={{ color: rythme?.alerte ? 'error.main' : 'text.secondary' }}>{rythme?.alerte ? `${libellePasVu(rythme)} · à planifier` : 'Pas de visite prévue'}</Box>}
@@ -68,7 +69,10 @@ export function SituationMagasin({ reseau, m, planifier, objectifs }: { reseau: 
         <Etape libelle="Budget" valeur="Construire, relire, valider" action={<Button component={RouterLink} to={`${lien}?vue=budget`} sx={{ minHeight: 48 }}>Ouvrir</Button>} />
         <Etape libelle="Clôture du mois" valeur="Réel, stock, frais" action={<Button component={RouterLink} to={`${lien}?vue=chiffres&partie=cloture`} sx={{ minHeight: 48 }}>Ouvrir</Button>} />
       </Section>
+      <ParcoursIntegration reseau={reseau} m={m} />
       {objectifs}
+        </DansCarte.Provider>
+      </CardContent></Card>
       <Section titre="Dernier compte rendu">
         {!derniere ? <Typography variant="body2" color="text.secondary">Aucune visite enregistrée.</Typography> : (
           <Box sx={{ display: 'grid', gap: 0.5 }}>

@@ -38,7 +38,7 @@ import { useTotalEchanges } from '../data/echanges'
 import { BoutonCreer } from '../components/Creer'
 import { useInstallation } from '../lib/installation'
 import { brandStripe } from '../theme/theme'
-import { barreTelephone, demandesFranchise, menuTelephone, parametres, rubriquesMenu, type Destination } from '../navigation/destinations'
+import { barreFranchise, barreTelephone, menuTelephone, parametres, plusFranchise, rubriquesMenu, type Destination } from '../navigation/destinations'
 import { CreerProvider } from '../components/Creer'
 import { SelecteurPerimetre } from '../components/SelecteurPerimetre'
 import { useCompteurTaches } from '../data/tachesVues'
@@ -48,6 +48,7 @@ import { useAuth } from '../auth/AuthContext'
 import { roleLibelle } from '../auth/roles'
 import NotificationsActiveOutlined from '@mui/icons-material/NotificationsActiveOutlined'
 import NotificationsOffOutlined from '@mui/icons-material/NotificationsOffOutlined'
+import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
 import { activerNotifications, couperNotifications, ErreurNotifications, useNotificationsAppareil } from '../lib/notifications'
 
 const LARGEUR_MENU = 248
@@ -58,6 +59,9 @@ function estActive(d: Destination, pathname: string): boolean {
   // Évolution du parc est une vue de Magasins, Animation réseau un onglet de Messages (refonte, Joseph 09/11/2026)
   // Les anciennes adresses de l'évolution du parc mènent à Performance (vague 2, 15A)
   if (d.chemin === '/campagnes' && pathname.startsWith('/animation')) return true
+  // Vague 5 (51A) : Chiffres réunit Performance et Budgets ; la santé du parc est une vue des Magasins
+  if (d.chemin === '/performance' && d.libelle === 'Chiffres' && pathname.startsWith('/budgets')) return true
+  if (d.chemin === '/magasins' && pathname.startsWith('/plus/sante')) return true
   return d.chemin === '/' ? pathname === '/' : pathname.startsWith(d.chemin)
 }
 
@@ -220,7 +224,7 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
           ))}
       </Box>
       <Box sx={{ px: 1, pb: 1.5, pt: 1, borderTop: '1px solid', borderColor: 'divider', display: 'grid', gap: 0.5 }}>
-        <MenuCompte ligne />
+        <MenuCompte ligne liens={franchise || sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }]} />
       </Box>
     </Drawer>
   )
@@ -231,9 +235,9 @@ function BoutonInfos() {
   const naviguer = useNavigate()
   const { pathname } = useLocation()
   const n = useNouveautesInfos()
-  const libelle = n ? `Infos réseau : ${n} nouveauté${n > 1 ? 's' : ''}` : 'Infos réseau'
+  const libelle = n ? `Actualités : ${n} nouveauté${n > 1 ? 's' : ''}` : 'Actualités'
   return (
-    <Tooltip title="Infos réseau">
+    <Tooltip title="Actualités">
       <IconButton aria-label={libelle} aria-current={pathname === '/infos' ? 'page' : undefined} onClick={() => naviguer('/infos')} sx={{ width: 48, height: 48, flexShrink: 0, color: 'text.primary' }}>
         <Badge color="error" badgeContent={n} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><NewspaperOutlined /></Badge>
       </IconButton>
@@ -242,6 +246,32 @@ function BoutonInfos() {
 }
 
 const HAUTEUR_BARRE = 64
+
+// « Plus » de la barre du franchisé (56A) : Mon budget, Mes demandes, Actualités
+function BoutonPlusFranchise({ liste }: { liste: Destination[] }) {
+  const { pathname } = useLocation()
+  const naviguer = useNavigate()
+  const [ancre, setAncre] = useState<HTMLElement | null>(null)
+  const actif = liste.some((d) => estActive(d, pathname))
+  return (
+    <>
+      <ButtonBase onClick={(e) => setAncre(e.currentTarget)} aria-label="Plus" aria-haspopup="menu" aria-current={actif ? 'page' : undefined}
+        sx={{ flex: 1, minWidth: 0, height: HAUTEUR_BARRE, borderRadius: 999, color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.75rem', fontWeight: actif ? 600 : 500 }}>
+        <Box sx={{ width: '100%', height: HAUTEUR_BARRE - 10, borderRadius: 999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.25, ...(actif ? { bgcolor: 'action.selected' } : {}) }}>
+          <MoreHorizOutlined />
+          <Box component="span">Plus</Box>
+        </Box>
+      </ButtonBase>
+      <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} anchorOrigin={{ vertical: 'top', horizontal: 'right' }} transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+        {liste.map((d) => (
+          <MenuItem key={d.chemin} selected={estActive(d, pathname)} onClick={() => { setAncre(null); naviguer(d.chemin) }} sx={{ minHeight: 48 }}>
+            <ListItemIcon>{d.icone}</ListItemIcon>{d.libelle}
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
+  )
+}
 
 function BarreBasse({ franchise, sansCompteur }: { franchise?: Destination[]; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
@@ -277,7 +307,8 @@ function BarreBasse({ franchise, sansCompteur }: { franchise?: Destination[]; sa
         }),
       })}>
       <Box sx={{ display: 'flex', height: HAUTEUR_BARRE }}>
-        {(franchise?.filter((d) => d !== demandesFranchise) ?? barreTelephone).map(item)}
+        {(franchise ? barreFranchise(franchise) : barreTelephone).map(item)}
+        {franchise && <BoutonPlusFranchise liste={plusFranchise(franchise)} />}
       </Box>
     </Paper>
   )
@@ -321,7 +352,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
             {!franchise && <BoutonCreer entete />}
             {!franchise && <BoutonInfos />}
             <Cloche />
-            <MenuCompte liens={franchise ? (franchise.includes(demandesFranchise) ? [{ destinations: [demandesFranchise] }] : []) : [{ destinations: menuTelephone(profil?.role) }, ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }])]} />
+            <MenuCompte liens={franchise ? [] : [{ destinations: menuTelephone(profil?.role) }, ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }])]} />
           </Toolbar>
           {/* Filet de la charte sous la barre (60 + 4 = 64 px) */}
           <Box aria-hidden data-filet="" sx={{ height: 4, background: brandStripe }} />

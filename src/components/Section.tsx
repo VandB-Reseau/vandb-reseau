@@ -1,5 +1,5 @@
 // Carte à titre, ligne libellé / valeur et ligne de contact des fiches (magasin, Coach, RR, franchisé)
-import type { ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
@@ -15,7 +15,22 @@ import { Initiales, cartouche } from './Social'
 import { telLien } from '../lib/format'
 import type { Personne } from '../data/modele'
 
+// Vague 5 (55A) : une section posée dans une carte qui en réunit plusieurs (la carte « Plan » de la fiche magasin)
+// perd sa propre carte et devient une partie, titrée en h3
+export const DansCarte = createContext(false)
 export function Section({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
+  const dansCarte = useContext(DansCarte)
+  if (dansCarte) {
+    return (
+      <Box component="section" aria-label={titre} sx={{ pt: 2, mt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, minHeight: 48 }}>
+          <Typography component="h3" sx={{ fontWeight: 700, fontSize: '0.9375rem', mr: 'auto' }}>{titre}</Typography>
+          {action}
+        </Box>
+        {children}
+      </Box>
+    )
+  }
   return (
     <Card>
       <CardContent sx={{ p: 3 }}>

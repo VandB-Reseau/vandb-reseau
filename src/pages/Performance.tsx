@@ -1,4 +1,5 @@
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import EditNoteOutlined from '@mui/icons-material/EditNoteOutlined'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
@@ -22,12 +23,13 @@ import { Reseau as SuiviBudgets } from '../pilotage/pages/Reseau'
 // Réunit les chiffres des magasins (ancien onglet Chiffres de Santé du parc), le suivi face au budget (ancien onglet
 // « Suivi » de Budgets) et l'évolution du parc (ancienne vue de Magasins). Santé du parc garde le qualitatif.
 // Le franchisé ne la voit jamais : médianes et comparaisons du réseau ne lui arrivent pas.
-type Vue = 'rapports' | 'magasins' | 'budget' | 'clotures' | 'evolution'
+type Vue = 'rapports' | 'magasins' | 'budget' | 'clotures' | 'evolution' | 'budgets'
 
 export function Performance() {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const { profil } = useAuth()
   const [params, setParams] = useSearchParams()
+  const naviguer = useNavigate()
   if (profil?.role === 'franchise') return <Navigate to="/" replace />
   const voitEvolution = !perimetreDuProfil(profil)
   const rubriques: Rubrique<Vue>[] = [
@@ -38,13 +40,15 @@ export function Performance() {
     // Vague 3 (29A) : le rapport du mois sur le périmètre choisi
     { vue: 'rapports', libelle: 'Rapport du mois', court: 'Rapport', icone: <SummarizeOutlined /> },
     ...(voitEvolution ? [{ vue: 'evolution' as const, libelle: 'Évolution du parc', court: 'Évolution', icone: <TimelineOutlined /> }] : []),
+    // Vague 5 (51A) : les budgets de l'année, sous la même entrée « Chiffres »
+    { vue: 'budgets', libelle: 'Budgets de l’année', court: 'Budgets', icone: <EditNoteOutlined /> },
   ]
   const demandee = params.get('vue') as Vue | null
-  const vue: Vue = rubriques.some((r) => r.vue === demandee) ? demandee! : 'magasins'
+  const vue: Vue = rubriques.some((r) => r.vue === demandee && r.vue !== 'budgets') ? demandee! : 'magasins'
   return (
     <>
-      <PageHeader titre="Performance" />
-      <Onglets valeur={vue} onChange={(v) => setParams({ vue: v }, { replace: true })} libelle="Parties de la performance" rubriques={rubriques} />
+      <PageHeader titre="Chiffres" />
+      <Onglets valeur={vue} onChange={(v) => (v === 'budgets' ? naviguer('/budgets') : setParams({ vue: v }, { replace: true }))} libelle="Parties des chiffres" rubriques={rubriques} />
       {vue === 'magasins' && <AvecReseau>{(reseau) => <VueChiffres reseau={reseau} surPC={surPC} />}</AvecReseau>}
       {vue === 'budget' && <ZonePilotage>{() => <SuiviBudgets integre />}</ZonePilotage>}
       {vue === 'clotures' && <ZonePilotage>{() => <Clotures />}</ZonePilotage>}

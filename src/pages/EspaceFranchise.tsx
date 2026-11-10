@@ -8,7 +8,6 @@ import { OngletBudget } from '../components/OngletBudget'
 import { Link as RouterLink, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
@@ -33,7 +32,14 @@ import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, MiniCourbe, Pastil
 import { ProfilPersonne, rond } from '../components/Portefeuille'
 import { FilActivite } from './Accueil'
 import { filDu, type ElementFil } from '../data/fil'
-import { useCommunicationsDuFil, type Communication } from '../data/communications'
+import { useCommunicationsDuFil, useConnaissances, type Communication } from '../data/communications'
+import { ALaUne, aLaUneDuJour } from '../components/ALaUne'
+import { EvolutionPendantCampagne } from '../components/Campagnes'
+import { jalonsAVenir, libelleJalon, annonce as tempsFortAnnonce } from '../data/tempsForts'
+import { libellesEtat, libellesResponsable, parcoursDu, type EtatEtape } from '../data/integration'
+import FlagOutlined from '@mui/icons-material/FlagOutlined'
+import CelebrationOutlined from '@mui/icons-material/CelebrationOutlined'
+import EventOutlined from '@mui/icons-material/EventOutlined'
 import { useReactionsPratiques } from '../data/reactionsPratiques'
 import { useReactionsVisites } from '../data/reactionsVisites'
 import { brand } from '../theme/theme'
@@ -62,6 +68,7 @@ import { lienCompteRendu, visitesDuMagasin } from '../data/visites'
 import { libelleTypeVisite, nomsVisiteurs, statutLibelle, visiteFaite, type Magasin, type Personne, type Reseau } from '../data/modele'
 import type { IndicateurRepere } from '../data/espaceFranchise'
 import { Blason } from '../components/Blason'
+import { grilleIndicateurs, Indicateur } from '../components/Indicateur'
 import { Fenetre } from '../components/EditionEquipe'
 import { TexteDicte } from '../components/Dictee'
 import { ErreurAction } from '../data/espaceFranchise'
@@ -141,31 +148,9 @@ function Position({ v, mediane, quartHaut }: { v: number | null; mediane: number
   return <Pastille ton={ton}>{libelle}</Pastille>
 }
 
-// Tuiles carrées comme sur l'accueil de l'équipe (Joseph, 23/10/2026) : deux par ligne sur téléphone, quatre sur PC
-const grilleTuiles = { display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 1, md: 1.5 } } as const
-// large : toute la largeur ; largeTelephone : toute la largeur sur téléphone seulement
-function Tuile({ libelle, valeur, detail, couleur, lien, large = false, largeTelephone = false, fin, children }: {
-  libelle: string; valeur: ReactNode; detail?: ReactNode; couleur?: string; lien?: string; large?: boolean; largeTelephone?: boolean; fin?: ReactNode; children?: ReactNode
-}) {
-  const sx = { display: 'block', minWidth: 0, textAlign: 'left', px: { xs: 1.5, md: 2 }, py: { xs: 1.25, md: 1.75 }, borderRadius: '14px', bgcolor: 'background.paper', color: 'text.primary', fontFamily: 'inherit', textDecoration: 'none',
-    ...(large ? { gridColumn: '1 / -1' } : largeTelephone ? { gridColumn: { xs: '1 / -1', md: 'auto' } } : {}), ...(lien ? { '@media (hover: hover)': { '&:hover': { bgcolor: 'action.hover' } } } : {}) } as const
-  const contenu = (
-    <>
-      <Typography color="text.secondary" sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' }, lineHeight: 1.35 }}>{libelle}</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1 }}>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: large ? { xs: '1.75rem', md: '2rem' } : { xs: '1.25rem', md: '1.5rem' }, fontWeight: 700, lineHeight: 1.25, color: couleur }}>{valeur}</Typography>
-          {detail && <Typography color="text.secondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>{detail}</Typography>}
-        </Box>
-        {fin}
-      </Box>
-      {children}
-    </>
-  )
-  return lien
-    ? <ButtonBase component={RouterLink} to={lien} sx={sx}>{contenu}</ButtonBase>
-    : <Box role="group" aria-label={libelle} sx={sx}>{contenu}</Box>
-}
+// Tuiles : la carte d'indicateur commune (vague 5, 53A)
+const grilleTuiles = grilleIndicateurs
+const Tuile = Indicateur
 
 // Refonte vague 2 (19A) : sur l'accueil du franchisé, les repères sont repliés en bas de page
 function SectionReperes({ reseau, magasins, repliable }: { reseau: Reseau; magasins: Magasin[]; repliable?: boolean }) {
@@ -251,6 +236,9 @@ function SectionChiffresDuMois({ reseau, magasins }: { reseau: Reseau; magasins:
 // ── À faire (refonte vague 2, 19A) : ce que le magasin doit saisir ou relire, chaque ligne mène à sa page ──
 function SectionAFaire({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
   const mois = moisPrecedent(reseau.jour)
+  const noms = new Set(magasins.map((m) => m.nom))
+  const jalons = jalonsAVenir(reseau.campagnes.liste.filter((c) => magasinsConcernes(reseau, c).some((m) => noms.has(m.nom))), reseau.jour, 14)
+  const tempsForts = (reseau.tempsForts ?? []).filter((t) => tempsFortAnnonce(t, reseau.jour) && t.debut >= reseau.jour)
   const plusieurs = magasins.length > 1
   return (
     <Box component="section" aria-label="À faire">
@@ -262,6 +250,15 @@ function SectionAFaire({ reseau, magasins }: { reseau: Reseau; magasins: Magasin
           <LigneCompacte key={`b-${m.nom}`} lien={`${lienFiche(m.nom)}?vue=budget`} avatar={<Initiales nom="budget" icone={<RequestQuoteOutlined />} />}
             titre="Relire mon budget" detail={[plusieurs && m.nom, 'Hypothèses, commentaires et validation'].filter(Boolean).join(' · ')} />,
         ])}
+        {/* Refonte vague 5 (48A) : dates clés des campagnes dans les 14 jours, temps forts annoncés */}
+        {jalons.map(({ c, j }) => (
+          <LigneCompacte key={`j-${c.id}-${j.id}`} lien={`${lienFiche(magasins[0].nom)}?vue=campagnes`} avatar={<Initiales nom="jalon" icone={<EventOutlined />} />}
+            titre={`${libelleJalon(j)} ${dateCourte(j.date)}`} detail={c.nom} fin={j.date < reseau.jour ? <Pastille ton="gris">Passée</Pastille> : undefined} />
+        ))}
+        {tempsForts.map((t) => (
+          <LigneCompacte key={`tf-${t.id}`} avatar={<Initiales nom="temps fort" icone={<CelebrationOutlined />} />} titre={`Préparer ${t.nom}`}
+            detail={[`à partir du ${dateCourte(t.debut)}`, t.detail].filter(Boolean).join(' · ')} />
+        ))}
       </CarteLignes>
     </Box>
   )
@@ -405,12 +402,38 @@ function SectionContacts({ reseau, magasins }: { reseau: Reseau; magasins: Magas
   )
 }
 
+// ── Mes 6 premiers mois (refonte vague 5, 50A) : le parcours d'intégration d'un magasin qui vient d'ouvrir ──
+const tonEtat: Record<EtatEtape, Ton> = { faite: 'vert', retard: 'rouge', bientot: 'bleu', avenir: 'gris' }
+function SectionIntegration({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
+  const parcours = magasins.map((m) => parcoursDu(reseau, m)).filter((x) => !!x)
+  if (!parcours.length) return null
+  return (
+    <Box component="section" aria-label="Mes 6 premiers mois">
+      <TitreSection>Mes 6 premiers mois</TitreSection>
+      {parcours.map((pc) => {
+        const suivantes = pc.etapes.filter((x) => x.etat !== 'faite').slice(0, 3)
+        return (
+          <CarteLignes key={pc.m.nom}>
+            <LigneCompacte avatar={<Initiales nom="integration" icone={<FlagOutlined />} />} titre={`${magasins.length > 1 ? `${pc.m.nom} · ` : ''}Jour ${pc.jourParcours} depuis l’ouverture`}
+              detail={`${pc.faites} étape${pc.faites > 1 ? 's' : ''} faite${pc.faites > 1 ? 's' : ''} sur ${pc.etapes.length}`} />
+            {suivantes.map((x) => (
+              <LigneCompacte key={x.e.id} titre={x.e.libelle} detail={`${dateCourte(x.echeance)} · ${libellesResponsable[x.e.responsable]}`}
+                fin={<Pastille ton={tonEtat[x.etat]}>{libellesEtat[x.etat]}</Pastille>} />
+            ))}
+          </CarteLignes>
+        )
+      })}
+    </Box>
+  )
+}
+
 // Fil des magasins du franchisé : les liens restent dans son espace
 function useFilFranchise(reseau: Reseau, noms: string[], jours = 120, communications: Communication[] = [], pratiquesReseau = false, actualites = false): ElementFil[] {
   const { messagerie } = useMessagerie()
   const cle = noms.join('|')
   return useMemo(() => filDu(reseau, new Set(cle.split('|')), messagerie, jours, communications, pratiquesReseau, actualites)
-    .map((e) => (e.genre === 'tache' ? { ...e, lien: '/taches' } : e.genre === 'pratique' ? { ...e, lien: '/infos?vue=pratiques' } : e)), [reseau, cle, messagerie, jours, communications, pratiquesReseau, actualites])
+    .map((e) => (e.genre === 'tache' ? { ...e, lien: '/taches' } : e.genre === 'pratique' ? { ...e, lien: '/infos?vue=pratiques' }
+      : e.genre === 'animation' ? { ...e, lien: noms.length ? `${lienFiche(noms[0])}?vue=campagnes` : '/' } : e)), [reseau, cle, messagerie, jours, communications, pratiquesReseau, actualites, noms])
 }
 
 // ── Accueil du franchisé ──
@@ -430,29 +453,37 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
   const communications = useCommunicationsDuFil()
   const reactionsPratiques = useReactionsPratiques()
   const reactionsVisites = useReactionsVisites()
-  const fil = useFilFranchise(reseau, magasins.map((m) => m.nom), 120, communications.liste, true, true)
+  const nomsAffiches = useMemo(() => magasins.map((m) => m.nom), [magasins])
+  const filComplet = useFilFranchise(reseau, nomsAffiches, 120, communications.liste, true, true)
+  const { connaissances, recharger: rechargerConnaissances } = useConnaissances()
+  // Les communications à la une sont dans le bandeau : le fil ne les répète pas
+  const unes = new Set(aLaUneDuJour(communications.liste, reseau.jour).map((c) => c.id))
+  const fil = filComplet.filter((e) => !e.communication || !unes.has(e.communication.id))
   const [message, setMessage] = useState('')
   if (!tous.length) return <><PageHeader titre="Accueil" /><EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." /></>
   return (
     <>
       <PageHeader titre="Accueil" sousTitre={tous.length === 1 ? tous[0].nom : `${tous.length} magasins`} />
       {tous.length > 1 && <Puces label="Magasins affichés" valeur={choix} onChange={setChoix} options={[{ v: '', libelle: 'Tous mes magasins' }, ...tous.map((m) => ({ v: m.nom, libelle: m.nom }))]} />}
-      {/* Refonte vague 2 (19A) : le tableau de bord du magasin. Chiffres en haut, ce qui est à faire au centre, la
-          relation avec l'équipe à droite, les repères du réseau repliés en bas */}
+      {/* Refonte vague 5 (44A) : l'actualité du réseau au centre (À la une, puis le fil) ; à droite, mon magasin,
+          ce que j'ai à faire et mon équipe V and B. Chiffres du mois en tête, repères du réseau repliés en bas */}
+      <ALaUne liste={communications.liste} jour={reseau.jour} connaissances={connaissances} franchise lectureSeule={!!apercu} apres={() => void rechargerConnaissances()}
+        lien={(c) => `/infos?vue=communications&c=${c.id}`} />
       <SectionChiffresDuMois reseau={reseau} magasins={magasins} />
       <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, mt: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start' }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, maxWidth: 760, order: { xs: 2, md: 1 } }}>
+          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
+        </Box>
+        <Box component="aside" aria-label="Mon magasin" sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, order: { xs: 1, md: 2 } }}>
+          <SectionIntegration reseau={reseau} magasins={magasins} />
           <SectionAFaire reseau={reseau} magasins={magasins} />
           <SectionMotAvantVisite reseau={reseau} magasins={magasins} signaler={setMessage} />
           <SectionTaches reseau={reseau} magasins={magasins} />
           {!apercu && <SondagesARepondre />}
           {!apercu && <SectionChallengesFranchise />}
           <SectionCampagnesEnCours reseau={reseau} magasins={magasins} />
-        </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           <SectionVisitesAudits reseau={reseau} magasins={magasins} />
           {!apercu && <SectionReunionsFranchise jour={reseau.jour} />}
-          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
           <SectionContacts reseau={reseau} magasins={magasins} />
         </Box>
       </Box>
@@ -611,7 +642,8 @@ function OngletPratiques({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; 
 }
 
 function OngletCampagnes({ reseau, m }: { reseau: Reseau; m: Magasin }) {
-  const liste = reseau.campagnes.liste.filter((c) => phase(c, reseau.jour) !== 'avenir' && magasinsConcernes(reseau, c).some((x) => x.nom === m.nom))
+  // Vague 5 (48A) : les campagnes à venir aussi, pour leurs dates de commande
+  const liste = reseau.campagnes.liste.filter((c) => magasinsConcernes(reseau, c).some((x) => x.nom === m.nom))
     .sort((a, b) => b.debut.localeCompare(a.debut))
   if (!liste.length) return <Section titre="Campagnes"><Vide>Aucune campagne ne concerne ce magasin.</Vide></Section>
   return (
@@ -627,6 +659,8 @@ function OngletCampagnes({ reseau, m }: { reseau: Reseau; m: Magasin }) {
               return <LigneSimple key={p.id} titre={p.libelle} detail={x?.date ? `Constaté le ${dateCourte(x.date)}` : undefined}
                 fin={<Chip size="small" variant={x ? 'filled' : 'outlined'} color={!x ? 'default' : x.fait ? 'success' : 'error'} label={!x ? 'À constater' : x.fait ? 'Fait' : 'Pas fait'} sx={pastille} />} />
             })}
+            {(c.jalons ?? []).map((j) => <LigneSimple key={j.id} titre={libelleJalon(j)} detail={dateCourte(j.date)} />)}
+            <EvolutionPendantCampagne reseau={reseau} c={c} magasin={m.nom} />
           </Section>
         )
       })}

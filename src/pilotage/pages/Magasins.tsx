@@ -204,6 +204,8 @@ export function Magasins() {
 
   const entete = (
     <>
+      {/* Vague 5 (51A) : les budgets sont un onglet de « Chiffres » pour l'équipe */}
+      {profil?.role !== 'franchise' && <Link component={RouterLink} to="/performance" sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 48, fontWeight: 600 }}>Chiffres</Link>}
       <Typography variant="h1">{`Budgets ${annee}`}</Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5, mb: 3 }}>{campagne ? `Campagne ${annee} ouverte` : `Budgets ${annee} de l’année suivie`}</Typography>
     </>
