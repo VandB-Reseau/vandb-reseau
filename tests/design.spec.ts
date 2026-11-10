@@ -44,7 +44,7 @@ test('le bouton Créer ouvre sous lui un menu : visite, tâche, message, bonne p
   await expect(page).toHaveURL(/#\/echanges/)
 })
 
-test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ouvre sur sa vue d’ensemble', async ({ page }, info) => {
+test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ouvre sur sa vue d’ensemble', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await expect(page.getByRole('region', { name: 'À traiter' })).toBeVisible()
   expect(await sansDebordement(page.locator('body'))).toBe(true)
@@ -61,7 +61,9 @@ test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ou
   await page.screenshot({ path: `captures/${info.project.name}-fiche-profil.png`, fullPage: true })
   await expect(page.getByRole('tab', { name: 'Messages' })).toHaveCount(0)
   await page.getByRole('main').getByRole('button', { name: 'Écrire un message', exact: true }).or(page.getByRole('main').getByRole('link', { name: 'Écrire un message', exact: true })).click()
-  await expect(page).toHaveURL(/#\/echanges\/magasin\/Lyon%20Test$/)
+  // Vague 6 (68A) : sur PC, la conversation s'ouvre sur le côté ; sur téléphone, dans Messages
+  if (isMobile) await expect(page).toHaveURL(/#\/echanges\/magasin\/Lyon%20Test$/)
+  else await expect(page.getByRole('dialog', { name: 'Conversation : Lyon Test' })).toBeVisible()
 })
 
 test('Santé > Chiffres en lignes, tableau au choix sur PC, magasins sans chiffres repliés', async ({ page, isMobile }, info) => {
