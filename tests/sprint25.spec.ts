@@ -82,7 +82,7 @@ test('F3 : le Directeur saisit les étapes depuis la fiche du magasin', async ({
   const carte = page.getByRole('list', { name: 'Étapes de l’ouverture' })
   await expect(carte.getByRole('listitem').filter({ hasText: 'Contrat' })).toContainText('Fait le 2 mars 2026')
   await expect(carte.getByRole('listitem').filter({ hasText: 'Travaux' })).toContainText('En retard')
-  await page.getByRole('button', { name: 'Modifier' }).first().click()
+  await page.getByRole('heading', { level: 2, name: 'Ouverture' }).locator('..').getByRole('button', { name: 'Modifier' }).click()
   const d = page.getByRole('dialog', { name: 'Ouverture de Rodez Test' })
   await d.getByRole('group', { name: 'Travaux' }).getByLabel('Fait le').fill(decale(-1))
   await d.getByRole('button', { name: 'Enregistrer' }).click()

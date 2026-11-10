@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
@@ -9,7 +9,7 @@ import { useLocation } from 'react-router-dom'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import { useAuth } from '../auth/AuthContext'
-import { choisirPerimetre, EtiquettePerimetreCtx, libellePerimetre, perimetreRetenu, suitLePerimetre, useCleChoisie } from '../data/perimetreChoisi'
+import { choisirPerimetre, EtiquettePerimetreCtx, libellePerimetre, ReclamerSelecteurCtx, perimetreRetenu, suitLePerimetre, useCleChoisie } from '../data/perimetreChoisi'
 import { SelecteurPerimetre } from './SelecteurPerimetre'
 import type { Reseau } from '../data/modele'
 
@@ -24,6 +24,8 @@ export function AvecReseau({ children }: { children: (r: Reseau) => ReactNode })
   const suit = suitLePerimetre(pathname)
   const p = useMemo(() => (tout && suit ? perimetreRetenu(tout, profil, cle) : null), [tout, suit, profil, cle])
   const reseau = useMemo(() => (tout && p ? restreindre(tout, p) : tout), [tout, p])
+  const [reclame, setReclame] = useState(0)
+  const reclamer = useCallback(() => { setReclame((n) => n + 1); return () => setReclame((n) => n - 1) }, [])
   if (erreur && !reseau) {
     return (
       <EmptyState
@@ -45,8 +47,10 @@ export function AvecReseau({ children }: { children: (r: Reseau) => ReactNode })
   const etiquette = p && tout ? { libelle: libellePerimetre(tout, p), nombre: reseau.magasins.filter((m) => m.statut !== 'avenir').length, revenir: () => choisirPerimetre('reseau') } : null
   return (
     <EtiquettePerimetreCtx.Provider value={etiquette}>
-      {suit && !surPC && <Box sx={{ mb: 1.5 }}><SelecteurPerimetre /></Box>}
-      {children(reseau)}
+      <ReclamerSelecteurCtx.Provider value={suit && !surPC ? reclamer : null}>
+        {suit && !surPC && !reclame && <Box sx={{ mb: 1.5 }}><SelecteurPerimetre /></Box>}
+        {children(reseau)}
+      </ReclamerSelecteurCtx.Provider>
     </EtiquettePerimetreCtx.Provider>
   )
 }

@@ -24,11 +24,10 @@ test('l’organigramme ne modifie plus rien : chaque personne s’ouvre sur sa f
   await page.getByRole('link', { name: 'Alex NORD', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Alex NORD', level: 1 })).toBeVisible()
   await expect(page.getByRole('group', { name: 'En bref' })).toContainText(/3 ?Coachs/)
-  await page.getByRole('tab', { name: 'Coachs' }).click()
+  // Vague 3 (28A) : Coachs et magasins dans un onglet, la fiche personnelle dans la Vue d'ensemble
+  await page.getByRole('tab', { name: /^(Coachs et magasins|Magasins)$/ }).click()
   await expect(page.getByRole('link', { name: 'Camille TESTARD', exact: true })).toBeVisible()
-  // Sur téléphone, la Fiche est derrière « Plus »
-  if (isMobile) await page.goto('./#/equipe/rr/rr1?vue=fiche')
-  else await page.getByRole('tab', { name: 'Fiche' }).click()
+  await page.getByRole('tab', { name: 'Vue d’ensemble' }).click()
   await expect(page.getByText(/12 avril 1980 · \d+ ans/)).toBeVisible()
   await expect(page.getByText('59 · Nord')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])

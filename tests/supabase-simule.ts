@@ -680,7 +680,11 @@ export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page
       const panne = page.getByRole('button', { name: 'Réessayer' })
       await expect(puce.or(panne).first()).toBeVisible()
       if (await puce.isVisible()) await puce.click()
-    } else if (ancien[1]) await page.getByRole('group', { name: 'Filtrer l’activité' }).getByRole('button', { name: ancien[1], exact: true }).click()
+    } else if (ancien[1]) {
+      // Fiches Coach et RR : l'Activité n'a pas de puces
+      const filtres = page.getByRole('group', { name: 'Filtrer l’activité' })
+      if (await filtres.count()) await filtres.getByRole('button', { name: ancien[1], exact: true }).click()
+    }
     if (ancien[0] !== nom) return
   }
   if (await onglet.isVisible()) return onglet.click()

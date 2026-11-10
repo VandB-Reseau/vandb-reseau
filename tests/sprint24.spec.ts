@@ -20,7 +20,7 @@ const decale = (j: number) => { const d = new Date(); d.setDate(d.getDate() + j)
 
 test('S1 : chaque magasin de Ma semaine propose Préparer et Planifier', async ({ page, isMobile }, info) => {
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Inès EXEMPLE' } })
-  await page.goto('./#/visites')
+  await page.goto('./#/plus/agenda?vue=semaine')
   const liste = page.getByRole('region', { name: 'Visites à planifier' })
   const preparer = liste.getByRole('link', { name: 'Préparer la visite de Nantes Test' })
   await expect(preparer).toBeVisible()

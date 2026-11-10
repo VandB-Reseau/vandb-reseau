@@ -160,8 +160,8 @@ test('une tâche en retard de l’accueil mène aux actions du magasin', async (
   await ligne.click()
   await expect(page).toHaveURL(/#\/magasins\/Brest%20Test\?vue=actions$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Brest Test' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: /^Tâches/, selected: true })).toBeVisible()
-  await expect(page.getByText('Commander la nouvelle PLV')).toBeVisible()
+  await expect(page.getByRole('tab', { name: /^Activité/, selected: true })).toBeVisible()
+  await expect(page.getByText('Commander la nouvelle PLV').first()).toBeVisible()
 })
 
 // Paul MULTI, franchisé fictif d'Annecy Test et de Rennes Test

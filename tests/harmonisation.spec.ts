@@ -20,7 +20,7 @@ test('le titre de chaque onglet est à la même place, sans grand blanc au-dessu
     await expect(h1).toBeVisible()
     positions.push(Math.round((await h1.boundingBox())!.y))
   }
-  expect(new Set(positions).size).toBe(1)
+  expect(positions, 'positions des titres').toEqual(positions.map(() => positions[0]))
   expect(positions[0]).toBeLessThan(140)
 })
 

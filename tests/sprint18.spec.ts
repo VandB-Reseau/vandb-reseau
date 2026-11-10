@@ -29,7 +29,7 @@ test('la fiche RR est un profil avec portefeuille, Coachs, magasins et fiche', a
   await seConnecter(page)
   await page.goto('./#/equipe/rr/rr1')
   await expect(page.getByRole('heading', { name: 'Alex NORD', level: 1 })).toBeVisible()
-  await expect(page.getByRole('tablist', { name: 'Rubriques de Alex NORD' }).getByRole('tab')).toHaveText(isMobile ? ['Portefeuille', 'Revue', 'Coachs', 'Plus'] : ['Portefeuille', 'Revue', 'Coachs', 'Magasins', 'Fiche'])
+  await expect(page.getByRole('tablist', { name: 'Rubriques de Alex NORD' }).getByRole('tab')).toHaveText(isMobile ? ['Vue d’ensemble', 'Magasins', 'Revue'] : ['Vue d’ensemble', 'Coachs et magasins', 'Revue du mois'])
   await expect(page.getByRole('region', { name: 'Portefeuille' })).toContainText('En Décroche')
   await page.screenshot({ path: `captures/${info.project.name}-fiche-rr-portefeuille.png`, fullPage: !isMobile })
 })
@@ -54,8 +54,9 @@ test('un Coach arrive sur sa semaine, prépare et planifie un magasin pas vu dep
   const ecritures: Ecriture[] = []
   await page.addInitScript(() => { (window as unknown as { ouverts: string[] }).ouverts = []; window.open = (u?: string | URL) => { (window as unknown as { ouverts: string[] }).ouverts.push(String(u)); return null } })
   await seConnecter(page, { ecritures, appMetadata: { role: 'coach', coach: 'Inès EXEMPLE' } })
-  await page.goto('./#/visites')
-  await expect(page.getByRole('tab', { name: isMobile ? 'Semaine' : 'Ma semaine', selected: true })).toBeVisible()
+  // Vague 3 (25A) : la semaine du Coach est dans l'Agenda
+  await page.goto('./#/plus/agenda')
+  await expect(page.getByRole('button', { name: 'Semaine', pressed: true })).toBeVisible()
   const aPlanifier = page.getByRole('region', { name: 'Visites à planifier' })
   const nantes = aPlanifier.getByRole('link', { name: 'Nantes Test', exact: true })
   await expect(nantes).toContainText(/Pas vu depuis \d+ j/)

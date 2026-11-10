@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react'
+import { useContext, useLayoutEffect, type ReactNode } from 'react'
 import Chip from '@mui/material/Chip'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
-import { useEtiquettePerimetre } from '../data/perimetreChoisi'
+import { ReclamerSelecteurCtx, useEtiquettePerimetre } from '../data/perimetreChoisi'
+import { SelecteurPerimetre } from './SelecteurPerimetre'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 
@@ -9,11 +10,18 @@ import Typography from '@mui/material/Typography'
 // le sous-titre dessous, peu d'espace avant le contenu. Sur téléphone, sans action, le sous-titre (un compteur)
 // passe à droite du titre : le contenu remonte d'une ligne (Joseph, 21/10/2026).
 export function PageHeader({ titre, sousTitre, actions }: { titre: string; sousTitre?: string; actions?: ReactNode }) {
+  // Téléphone (vague 3, 21A) : le périmètre sous le titre, qui garde sa place d'une page à l'autre
+  const reclamer = useContext(ReclamerSelecteurCtx)
+  useLayoutEffect(() => (reclamer ? reclamer() : undefined), [reclamer])
+  const selecteur = reclamer ? <Box sx={{ mt: 1 }}><SelecteurPerimetre /></Box> : null
   if (!actions && sousTitre) {
     return (
-      <Box sx={{ mb: { xs: 1, md: 2 }, display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr) auto', md: 'minmax(0, 1fr)' }, alignItems: 'center', columnGap: 2 }}>
-        <Titre titre={titre} />
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: { xs: 'right', md: 'left' }, maxWidth: { xs: '45vw', md: 'none' } }}>{sousTitre}</Typography>
+      <Box sx={{ mb: { xs: 1.5, md: 2 } }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr) auto', md: 'minmax(0, 1fr)' }, alignItems: 'center', columnGap: 2 }}>
+          <Titre titre={titre} />
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: { xs: 'right', md: 'left' }, maxWidth: { xs: '45vw', md: 'none' } }}>{sousTitre}</Typography>
+        </Box>
+        {selecteur}
       </Box>
     )
   }
@@ -24,6 +32,7 @@ export function PageHeader({ titre, sousTitre, actions }: { titre: string; sousT
         {actions}
       </Box>
       {sousTitre && <Typography variant="body2" color="text.secondary">{sousTitre}</Typography>}
+      {selecteur}
     </Box>
   )
 }

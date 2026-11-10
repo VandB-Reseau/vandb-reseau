@@ -55,7 +55,7 @@ test('la page Performance réunit les chiffres, le budget, les clôtures et l’
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Performance')
   const onglets = page.getByRole('tablist', { name: 'Parties de la performance' })
   // Vague 3 (29A) : un cinquième onglet, le rapport du mois
-  await expect(onglets.getByRole('tab')).toHaveCount(5)
+  await expect(onglets.getByRole('tab')).toHaveCount(isMobile ? 4 : 5)
   await expect(onglets.getByRole('tab', { selected: true })).toContainText(isMobile ? 'Magasins' : 'Chiffres des magasins')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-performance.png`, fullPage: !isMobile })
