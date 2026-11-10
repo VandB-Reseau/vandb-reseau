@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
@@ -6,11 +6,8 @@ import CloudOffOutlined from '@mui/icons-material/CloudOffOutlined'
 import { EmptyState } from './EmptyState'
 import { restreindre, useReseau } from '../data/ReseauContext'
 import { useLocation } from 'react-router-dom'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import { useAuth } from '../auth/AuthContext'
-import { choisirPerimetre, EtiquettePerimetreCtx, libellePerimetre, ReclamerSelecteurCtx, perimetreRetenu, suitLePerimetre, useCleChoisie } from '../data/perimetreChoisi'
-import { SelecteurPerimetre } from './SelecteurPerimetre'
+import { choisirPerimetre, EtiquettePerimetreCtx, libellePerimetre, perimetreRetenu, suitLePerimetre, useCleChoisie } from '../data/perimetreChoisi'
 import type { Reseau } from '../data/modele'
 
 // Affiche chargement / erreur de manière lisible, puis le contenu une fois les données prêtes
@@ -20,12 +17,9 @@ export function AvecReseau({ children }: { children: (r: Reseau) => ReactNode })
   const { pathname } = useLocation()
   const { profil } = useAuth()
   const cle = useCleChoisie()
-  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const suit = suitLePerimetre(pathname)
   const p = useMemo(() => (tout && suit ? perimetreRetenu(tout, profil, cle) : null), [tout, suit, profil, cle])
   const reseau = useMemo(() => (tout && p ? restreindre(tout, p) : tout), [tout, p])
-  const [reclame, setReclame] = useState(0)
-  const reclamer = useCallback(() => { setReclame((n) => n + 1); return () => setReclame((n) => n - 1) }, [])
   if (erreur && !reseau) {
     return (
       <EmptyState
@@ -47,10 +41,7 @@ export function AvecReseau({ children }: { children: (r: Reseau) => ReactNode })
   const etiquette = p && tout ? { libelle: libellePerimetre(tout, p), nombre: reseau.magasins.filter((m) => m.statut !== 'avenir').length, revenir: () => choisirPerimetre('reseau') } : null
   return (
     <EtiquettePerimetreCtx.Provider value={etiquette}>
-      <ReclamerSelecteurCtx.Provider value={suit && !surPC ? reclamer : null}>
-        {suit && !surPC && !reclame && <Box sx={{ mb: 1.5 }}><SelecteurPerimetre /></Box>}
-        {children(reseau)}
-      </ReclamerSelecteurCtx.Provider>
+      {children(reseau)}
     </EtiquettePerimetreCtx.Provider>
   )
 }

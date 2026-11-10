@@ -77,8 +77,6 @@ export function suitLePerimetre(pathname: string): boolean {
 // Rappel du périmètre à côté du titre de la page (PageHeader)
 export const EtiquettePerimetreCtx = createContext<{ libelle: string; nombre: number; revenir: () => void } | null>(null)
 export const useEtiquettePerimetre = () => useContext(EtiquettePerimetreCtx)
-// Téléphone : le choix du périmètre se place sous le titre de la page (PageHeader le réclame), sinon en haut du contenu
-export const ReclamerSelecteurCtx = createContext<(() => () => void) | null>(null)
 
 // Écrans du pilotage (Budgets, Performance › Face au budget et Clôtures), qui chargent leurs propres données :
 // les noms des magasins du périmètre choisi, ou null pour tout ce que le compte voit

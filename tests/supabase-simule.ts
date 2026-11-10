@@ -681,9 +681,13 @@ export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page
       await expect(puce.or(panne).first()).toBeVisible()
       if (await puce.isVisible()) await puce.click()
     } else if (ancien[1]) {
-      // Fiches Coach et RR : l'Activité n'a pas de puces
+      // Fiche magasin : des puces ; fiche du franchisé : des sous-onglets ; fiches Coach et RR : ni l'un ni l'autre
       const filtres = page.getByRole('group', { name: 'Filtrer l’activité' })
+      const sousOnglet = page.getByRole('tablist').filter({ hasNot: page.getByRole('tab', { name: 'Activité' }) }).getByRole('tab', { name: nom, exact: true })
+      const coach = page.getByRole('heading', { name: 'Tâches en cours de ses magasins' })
+      await expect(filtres.or(sousOnglet).or(coach).first()).toBeVisible()
       if (await filtres.count()) await filtres.getByRole('button', { name: ancien[1], exact: true }).click()
+      else if (await sousOnglet.count()) await sousOnglet.click()
     }
     if (ancien[0] !== nom) return
   }
