@@ -35,9 +35,8 @@ test('le Directeur ouvre les budgets depuis le menu, passe au suivi et aux param
   await connecter(page, {}, {})
   await page.getByRole('heading', { level: 1, name: /^Accueil$|Bonjour|Bonsoir/ }).waitFor()
   if (!isMobile) {
-    // Vague 5 (51A) : les budgets sont un onglet de Chiffres
-    await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Chiffres', exact: true }).click()
-    await page.getByRole('tab', { name: 'Budgets de l’année' }).click()
+    // Joseph (10/11/2026) : les budgets ont leur entrée « Budget prévisionnel », à côté de Chiffres
+    await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^Budget prévisionnel/ }).click()
   } else {
     await page.goto('./#/budgets')
   }

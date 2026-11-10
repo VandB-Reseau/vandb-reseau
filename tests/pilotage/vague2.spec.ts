@@ -107,28 +107,7 @@ test('le volet du budget montre aussi l’activité : commentaires et enregistre
   await expect(volet.getByRole('region', { name: 'Commentaires', exact: true })).toContainText('Le loyer augmente')
 })
 
-test('PC : le détail d’une carte du budget s’ouvre à droite, les cartes restent visibles', async ({ page, isMobile }, info) => {
-  test.skip(isMobile, 'Panneau de détail sur grand écran')
-  await connecter(page)
-  await page.goto(`./#/magasins/${encodeURIComponent(M)}?vue=budget&partie=budget`)
-  const cartes = page.getByRole('region', { name: 'Hypothèses 2027 en cartes' })
-  await cartes.getByRole('link', { name: /^Frais : / }).click()
-  const detail = page.getByRole('region', { name: 'Détail : Frais 2027' })
-  await expect(detail).toBeVisible()
-  await expect(cartes).toBeVisible()
-  const [c, d] = await Promise.all([cartes, detail].map(async (l) => (await l.boundingBox())!))
-  expect(d.x).toBeGreaterThanOrEqual(c.x + c.width)
-  // Les étapes du budget restent cliquables, panneau ouvert
-  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: /^2 · Visualiser/ })).toBeInViewport()
-  expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-budget-panneau-detail.png` })
-  // Une autre carte remplace le détail ; Échap ferme
-  await cartes.getByRole('link', { name: /^Investissements & Financements : / }).click()
-  await expect(page.getByRole('region', { name: 'Détail : Investissements & Financements 2027' })).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(page.getByRole('region', { name: /^Détail : / })).toHaveCount(0)
-  await expect(cartes).toBeVisible()
-})
+// Le panneau de détail à droite (13B) a laissé place à la pleine largeur le 10/11/2026 : voir budget-pleine-largeur.spec.ts
 
 test('téléphone : le compte de résultat se lit mois par mois, les indicateurs défilent en bande', async ({ page, isMobile }, info) => {
   test.skip(!isMobile, 'Lecture sur téléphone')

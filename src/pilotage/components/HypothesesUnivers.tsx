@@ -51,14 +51,16 @@ function Ligne({ nom, aide, avant, origine, champ, reprendre, apres, effet, ancr
   return (
     <TableRow>
       <TableCell component="th" scope="row" sx={{ fontWeight: 600 }}>
-        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>{nom}{aide && <Aide sujet={aide} compact />}{ancre && <BoutonCommenter compact ligne {...ancre} />}</Box>
+        {/* Joseph (10/11/2026) : les pictos passent sous le nom plutôt que de le chevaucher */}
+        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap' }}>{nom}<Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>{aide && <Aide sujet={aide} compact />}{ancre && <BoutonCommenter compact ligne {...ancre} />}</Box></Box>
       </TableCell>
       {/* Proposition 2 (Joseph, 03/11/2026) : l'année en cours et la proposition du siège dans une seule colonne */}
       <TableCell sx={{ lineHeight: 1.3 }}>
         <Box component="span" sx={{ display: 'block', fontVariantNumeric: 'tabular-nums' }}>{avant ?? '–'}</Box>
         <Box component="span" sx={{ display: 'block', fontSize: '0.8125rem', ...gris }}>{origine}</Box>
       </TableCell>
-      <TableCell sx={{ py: 0.5 }}><Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>{champ}{reprendre}</Box></TableCell>
+      {/* Le bouton « reprendre » reste dans sa colonne : il ne recouvre plus la valeur de l'an prochain */}
+      <TableCell sx={{ py: 0.5 }}><Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexWrap: 'wrap', minWidth: 0 }}>{champ}{reprendre}</Box></TableCell>
       <TableCell align="right" sx={{ fontWeight: 600 }}>{apres ?? '–'}</TableCell>
       {effet !== undefined && <TableCell align="right" className="effet">{effet}</TableCell>}
     </TableRow>
@@ -100,7 +102,7 @@ export function TableauHypotheses({ titre, annee, effet, children }: { titre: st
         // Téléphone : sans le point de départ (la proposition du siège est grisée dans le champ) ni l'effet, le tableau tient dans l'écran
         '& tr > *:nth-child(2), & tr > *:nth-child(5)': { display: { xs: 'none', md: 'table-cell' } }, '& td, & th:not([scope=row])': { px: { xs: 0.5, md: 1.25 } }, '& th[scope=row]': { pl: { xs: 1.5, md: 2.5 } },
       }}>
-        <Box component="colgroup" sx={{ display: { xs: 'none', md: 'table-column-group' } }}>{(effet ? ['19%', '22%', '25%', '14%', '20%'] : ['24%', '26%', '26%', '24%']).map((l, i) => <col key={i} style={{ width: l }} />)}</Box>
+        <Box component="colgroup" sx={{ display: { xs: 'none', md: 'table-column-group' } }}>{(effet ? ['17%', '18%', '31%', '15%', '19%'] : ['22%', '24%', '32%', '22%']).map((l, i) => <col key={i} style={{ width: l }} />)}</Box>
         <TableHead>
           <TableRow>
             <TableCell>Hypothèse</TableCell>

@@ -59,8 +59,7 @@ function estActive(d: Destination, pathname: string): boolean {
   // Évolution du parc est une vue de Magasins, Animation réseau un onglet de Messages (refonte, Joseph 09/11/2026)
   // Les anciennes adresses de l'évolution du parc mènent à Performance (vague 2, 15A)
   if (d.chemin === '/campagnes' && pathname.startsWith('/animation')) return true
-  // Vague 5 (51A) : Chiffres réunit Performance et Budgets ; la santé du parc est une vue des Magasins
-  if (d.chemin === '/performance' && d.libelle === 'Chiffres' && pathname.startsWith('/budgets')) return true
+  // La santé du parc est une vue des Magasins ; le Budget prévisionnel a son entrée depuis le 10/11/2026
   if (d.chemin === '/magasins' && pathname.startsWith('/plus/sante')) return true
   return d.chemin === '/' ? pathname === '/' : pathname.startsWith(d.chemin)
 }

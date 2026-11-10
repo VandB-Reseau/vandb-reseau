@@ -50,8 +50,6 @@ export const visites: Destination = { chemin: '/visites', libelle: 'Visites', de
 export const sante: Destination = { chemin: '/plus/sante', libelle: 'Santé du parc', court: 'Santé', description: 'Nine box et évaluation des magasins', icone: <MonitorHeartOutlined />, iconeActive: <MonitorHeart />, sprint: 'Sprint 4' }
 export const principales: Destination[] = [accueil, magasins, visites, messages, taches, sante]
 
-// Budgets (fusion avec le pilotage, Joseph 03/11/2026, option A) : budget et suivi d'un magasin dans sa fiche
-export const budgets: Destination = { chemin: '/budgets', libelle: 'Budgets', description: 'Budgets de l’année, suivi face au réel, hypothèses, imports de caisse', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Fusion' }
 // Performance (refonte vague 2, Joseph 09/11/2026, 15A) : les chiffres du réseau en une page
 export const performance: Destination = { chemin: '/performance', libelle: 'Performance', description: 'Chiffres des magasins, écarts au budget, évolution du parc', icone: <QueryStatsOutlined />, iconeActive: <QueryStats />, sprint: 'Refonte' }
 export const agenda: Destination = { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes, formations et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' }
@@ -65,8 +63,10 @@ export const infosReseau: Destination = { chemin: '/infos', libelle: 'Actualité
 export const campagnes: Destination = { chemin: '/campagnes', libelle: 'Campagnes', description: 'Campagnes, déploiements, challenges, sondages, formations et réunions, avec leur suivi', icone: <InsightsOutlined />, iconeActive: <Insights />, sprint: 'Refonte' }
 export const animation = campagnes
 // Chiffres (refonte vague 5, 51A) : Performance et Budgets réunis sous une entrée, en onglets
-export const chiffres: Destination = { chemin: '/performance', libelle: 'Chiffres', description: 'Performance des magasins, écarts au budget, budgets de l’année', icone: <QueryStatsOutlined />, iconeActive: <QueryStats />, sprint: 'Refonte' }
-export const secondaires: Destination[] = [campagnes, demandes, chiffres, agenda]
+export const chiffres: Destination = { chemin: '/performance', libelle: 'Chiffres', description: 'Performance des magasins, écarts au budget, clôtures et rapport du mois', icone: <QueryStatsOutlined />, iconeActive: <QueryStats />, sprint: 'Refonte' }
+// Budget prévisionnel (Joseph, 10/11/2026) : les budgets de l'année ont leur entrée du menu, à côté de Chiffres
+export const budgetPrevisionnel: Destination = { chemin: '/budgets', libelle: 'Budget prévisionnel', court: 'Budget', description: 'Budgets de l’année des magasins : construire, envoyer et valider', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Refonte' }
+export const secondaires: Destination[] = [campagnes, demandes, chiffres, budgetPrevisionnel, agenda]
 export const pourRole = (liste: Destination[], role: string | undefined) => liste.filter((d) => !d.roles || (!!role && d.roles.includes(role)))
 
 // Réglages : Équipe et Paramètres. Évolution du parc est une vue de Magasins depuis la refonte (Joseph, 09/11/2026, 2A)
@@ -78,12 +78,12 @@ export const parametres: Destination[] = [
 
 // Menu latéral sur PC, en rubriques titrées (Joseph, 09/11/2026, choix 2A de la refonte ; Animation : vague 3, 27A).
 // Vague 5 (51A) : dix entrées. La santé du parc devient une vue des Magasins, Budgets et Performance deviennent Chiffres,
-// Équipe et Paramètres passent au menu du compte.
+// Équipe et Paramètres passent au menu du compte. Joseph (10/11/2026) : le Budget prévisionnel ressort de Chiffres.
 export interface Rubrique { titre: string; destinations: Destination[] }
 export function rubriquesMenu(_sansParametres?: boolean): Rubrique[] {
   return [
     { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
-    { titre: 'Réseau', destinations: [magasins, visites, chiffres] },
+    { titre: 'Réseau', destinations: [magasins, visites, chiffres, budgetPrevisionnel] },
     { titre: 'Animation', destinations: [infosReseau, campagnes, demandes] },
   ]
 }
@@ -93,7 +93,7 @@ export const demandesFranchise: Destination = { ...demandes, libelle: 'Mes deman
 export const menuTelephone = (role: string | undefined) => menuTelephoneRubriques(role).flatMap((r) => r.destinations)
 // Vague 6 (Joseph, 10/11/2026) : le menu du compte sur téléphone rangé comme le menu du PC, en rubriques
 export const menuTelephoneRubriques = (role: string | undefined): Rubrique[] => [
-  { titre: 'Réseau', destinations: pourRole([visites, chiffres], role) },
+  { titre: 'Réseau', destinations: pourRole([visites, chiffres, budgetPrevisionnel], role) },
   { titre: 'Animation', destinations: pourRole([infosReseau, campagnes, demandes], role) },
 ].filter((r) => r.destinations.length)
 
@@ -118,7 +118,7 @@ export const plus: Destination = {
 }
 
 export function destinationCourante(pathname: string): Destination {
-  const toutes = [...secondaires, budgets, performance, sante, infosReseau, animation, evolution, ...parametres, ...principales.slice(1)]
+  const toutes = [...secondaires, performance, sante, infosReseau, animation, evolution, ...parametres, ...principales.slice(1)]
   // Rubriques de Paramètres ouvertes sur leur propre écran
   if (pathname.startsWith('/parametres/charge') || pathname.startsWith('/parametres/donnees')) return parametres[1]
   return toutes.find((d) => pathname.startsWith(d.chemin)) ?? (pathname.startsWith('/plus') || pathname.startsWith('/parametres') ? plus : principales[0])

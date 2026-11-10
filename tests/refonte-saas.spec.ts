@@ -49,7 +49,7 @@ test('PC : menu clair en quatre rubriques, sans barre noire ; téléphone : barr
     await expect(page.getByRole('banner')).toHaveCount(0)
     const menu = page.getByRole('navigation', { name: 'Navigation principale' })
     for (const r of ['Mon travail', 'Réseau', 'Animation']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
-    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Chiffres', /^Actualités/, 'Campagnes', /^Demandes/])
+    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Chiffres', 'Budget prévisionnel', /^Actualités/, 'Campagnes', /^Demandes/])
     // Vague 3 (27A) : sondages, formations et réunions dans Campagnes › Sondages et rendez-vous
     await expect(menu.getByRole('button', { name: 'Animation réseau' })).toHaveCount(0)
     await page.goto('./#/animation')
