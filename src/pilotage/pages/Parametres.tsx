@@ -1,3 +1,4 @@
+import { styleListe } from '../../components/TableauTri'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useSaisieEnCours } from '../components/GardeSaisie'
 import Alert from '@mui/material/Alert'
@@ -544,7 +545,7 @@ export function Parametres() {
             <Typography variant="h3" sx={{ px: 2, pt: 3, pb: 1 }}>Opérations du réseau</Typography>
             {(treso.operations ?? []).length > 0 && (
               <TableContainer>
-                <Table size="small" aria-label="Opérations du réseau" sx={{ '& td, & th': { px: 1, whiteSpace: 'nowrap' }, '& td:first-of-type, & th:first-of-type': { pl: 2 } }}>
+                <Table size="small" className="colonne-fixe" aria-label="Opérations du réseau" sx={{ ...styleListe, '& td, & th': { ...styleListe['& td, & th'], whiteSpace: 'nowrap' }, '& td:first-of-type, & th:first-of-type': { pl: 2 } }}>
                   <TableHead>
                     <TableRow>
                       <TableCell>Opération</TableCell>

@@ -1,3 +1,4 @@
+import { styleTableau } from '../theme/tableau'
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -89,7 +90,7 @@ export function ImportFEC({ magasin, annee, fichier, caCaisse, libelles, peutGar
   )
   const tableComptes = (comptes: CompteFEC[], titre: string) => (
     <TableContainer>
-      <Table size="small" aria-label={titre} sx={{ '& td, & th': { whiteSpace: 'nowrap' } }}>
+      <Table size="small" className="colonne-fixe" aria-label={titre} sx={styleTableau}>
         <TableHead>
           <TableRow>
             <TableCell>Compte</TableCell>
@@ -150,7 +151,7 @@ export function ImportFEC({ magasin, annee, fichier, caCaisse, libelles, peutGar
         </>
       )}
       <TableContainer>
-        <Table size="small" aria-label={`Montants du FEC : ${quadrimestreLibelle[q].toLowerCase()} ${annee}`} sx={{ maxWidth: 560, '& td': { whiteSpace: 'nowrap' } }}>
+        <Table size="small" aria-label={`Montants du FEC : ${quadrimestreLibelle[q].toLowerCase()} ${annee}`} className="colonne-fixe" sx={{ ...styleTableau, maxWidth: 560 }}>
           <TableBody>
             {(Object.keys(libelles) as (keyof SaisieQuadrimestre)[]).map((k) => (
               <TableRow key={k}>

@@ -22,13 +22,13 @@ export type Selection = ReturnType<typeof useSelection>
 export function CaseLigne({ s, cle, nom }: { s: Selection; cle: string; nom: string }) {
   return (
     <Checkbox checked={s.choisis.has(cle)} onChange={() => s.basculer(cle)} onClick={(e) => e.stopPropagation()}
-      slotProps={{ input: { 'aria-label': `Sélectionner ${nom}` } }} sx={{ width: 40, height: 40, m: -1 }} />
+      slotProps={{ input: { 'aria-label': `Sélectionner ${nom}` } }} sx={{ width: { xs: 48, md: 40 }, height: { xs: 48, md: 40 }, m: -1 }} />
   )
 }
 export function CaseEntete({ s }: { s: Selection }) {
   return (
     <Checkbox checked={s.tous} indeterminate={s.certains} onChange={s.toutBasculer}
-      slotProps={{ input: { 'aria-label': s.tous ? 'Tout désélectionner' : 'Tout sélectionner' } }} sx={{ width: 40, height: 40, m: -1 }} />
+      slotProps={{ input: { 'aria-label': s.tous ? 'Tout désélectionner' : 'Tout sélectionner' } }} sx={{ width: { xs: 48, md: 40 }, height: { xs: 48, md: 40 }, m: -1 }} />
   )
 }
 

@@ -1,3 +1,4 @@
+import { Entete, LigneSansResultat, useTableau, type ColonneTri } from './TableauTri'
 import { useAuth } from '../auth/AuthContext'
 import { CarteLignes, Initiales, LigneCompacte, TitreSection, cartouche } from './Social'
 import { useDroits } from '../auth/Droits'
@@ -293,30 +294,7 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
       </RechercheFiltres>
       {!visibles.length ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." />
         : surPC ? (
-          <TableContainer component={Card}>
-            <Table size="small" className="colonne-fixe" aria-label={`Constats de la campagne ${c.nom}`}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Magasin</TableCell><TableCell>Coach</TableCell>
-                  {c.points.map((p) => <TableCell key={p.id}>{p.libelle}</TableCell>)}
-                  <TableCell>Exécution</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {visibles.map((m) => {
-                  const e = executionMagasin(reseau.campagnes, c, m.nom)
-                  return (
-                    <TableRow key={m.nom}>
-                      <TableCell><Link component={RouterLink} to={lienFiche(m.nom)}>{m.nom}</Link></TableCell>
-                      <TableCell>{coachA(m, reseau.jour) || '—'}</TableCell>
-                      {c.points.map((p) => <TableCell key={p.id}><ChoixConstat libelle={`${m.nom}, ${p.libelle}`} valeur={d.valeur(c, m.nom, p.id)} onChange={(v) => d.changer(c, m.nom, p.id, v)} /></TableCell>)}
-                      <TableCell><Chip size="small" color={couleursExecution[e]} variant="outlined" label={libellesExecution[e]} sx={{ fontSize: 13 }} /></TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <TableauConstats reseau={reseau} c={c} magasins={visibles} d={d} />
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
             {visibles.map((m) => {
@@ -348,6 +326,41 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
 }
 
 // Dates clés d'une campagne (vague 5, 48A) : commande, réception, mise en place, facturation
+// Constats de la campagne sur PC : chaque colonne se trie et se filtre (harmonisation des tableaux, 10/11/2026)
+function TableauConstats({ reseau, c, magasins, d }: { reseau: Reseau; c: Campagne; magasins: Magasin[]; d: ReturnType<typeof useConstatsDirects> }) {
+  const constat = (v: boolean | null) => (v === true ? 'Oui' : v === false ? 'Non' : null)
+  const colonnes = useMemo<ColonneTri<Magasin>[]>(() => [
+    { cle: 'magasin', libelle: 'Magasin', valeur: (m) => m.nom },
+    { cle: 'coach', libelle: 'Coach', valeur: (m) => coachA(m, reseau.jour) || null },
+    ...c.points.map((p): ColonneTri<Magasin> => ({ cle: `p:${p.id}`, libelle: p.libelle, valeur: (m) => constat(d.valeur(c, m.nom, p.id)), texte: (m) => constat(d.valeur(c, m.nom, p.id)) ?? 'Pas encore vu' })),
+    { cle: 'execution', libelle: 'Exécution', valeur: (m) => ordreExecution.indexOf(executionMagasin(reseau.campagnes, c, m.nom)), texte: (m) => libellesExecution[executionMagasin(reseau.campagnes, c, m.nom)], filtre: 'liste', premier: 'asc' },
+  ], [reseau, c, d])
+  const t = useTableau(magasins, colonnes, { memoire: `constats:${c.id}` })
+  return (
+    <TableContainer component={Card}>
+      <Table size="small" aria-label={`Constats de la campagne ${c.nom}`}>
+        <TableHead>
+          <TableRow>{colonnes.map((x) => <Entete key={x.cle} t={t} cle={x.cle} />)}</TableRow>
+        </TableHead>
+        <TableBody>
+          <LigneSansResultat t={t} colSpan={colonnes.length} quoi="Aucun magasin ne correspond" />
+          {t.lignes.map((m) => {
+            const e = executionMagasin(reseau.campagnes, c, m.nom)
+            return (
+              <TableRow key={m.nom} hover>
+                <TableCell><Link component={RouterLink} to={lienFiche(m.nom)}>{m.nom}</Link></TableCell>
+                <TableCell>{coachA(m, reseau.jour) || '—'}</TableCell>
+                {c.points.map((p) => <TableCell key={p.id}><ChoixConstat libelle={`${m.nom}, ${p.libelle}`} valeur={d.valeur(c, m.nom, p.id)} onChange={(v) => d.changer(c, m.nom, p.id, v)} /></TableCell>)}
+                <TableCell><Chip size="small" color={couleursExecution[e]} variant="outlined" label={libellesExecution[e]} sx={{ fontSize: 13 }} /></TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  )
+}
+
 export function DatesCles({ c, jour }: { c: Campagne; jour: string }) {
   return (
     <Box component="section" aria-label="Dates clés">

@@ -1,3 +1,4 @@
+import { styleTableau } from '../theme/tableau'
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -85,7 +86,7 @@ export function BaseCAMagasin({ magasin, budget, annee, ouverture, rythme, onRyt
       )}
       {univers.length ? (
         <TableContainer>
-          <Table size="small" aria-label={`Base du CA ${annee}`} sx={{ '& td, & th': { px: 1.25, whiteSpace: 'nowrap' }, '& td:first-of-type, & th:first-of-type': { pl: 2.5 } }}>
+          <Table size="small" className="colonne-fixe" aria-label={`Base du CA ${annee}`} sx={styleTableau}>
             <TableHead>
               <TableRow>
                 <TableCell>Univers</TableCell>

@@ -1,3 +1,4 @@
+import { styleListe } from '../../components/TableauTri'
 import { useRef, useState } from 'react'
 import { useSaisieEnCours } from '../components/GardeSaisie'
 import Alert from '@mui/material/Alert'
@@ -278,7 +279,7 @@ export function Imports() {
             <Box sx={{ px: 2, pb: 2 }}><Alert severity="info">Aucun code caisse rattaché pour l’instant. Chaque magasin doit avoir le sien pour que ses ventes soient importées.</Alert></Box>
           ) : (
             <TableContainer>
-              <Table size="small" aria-label="Codes caisse rattachés">
+              <Table size="small" className="colonne-fixe" aria-label="Codes caisse rattachés" sx={styleListe}>
                 <TableHead>
                   <TableRow>
                     <TableCell>Code</TableCell>

@@ -97,13 +97,13 @@ test('liste des magasins : tri par colonne, ligne Total, alertes, sans colonne G
   // Allègement (03/11/2026) : six colonnes, la marge, le % FP, l'EBE et la date sont dans la fiche
   await expect(tableau.getByRole('columnheader', { name: 'Mis à jour' })).toHaveCount(0)
 
-  await tableau.getByRole('button', { name: 'CA HT' }).click()
+  await tableau.getByRole('button', { name: 'Trier par CA HT' }).click()
   expect(page.url()).toContain('tri=ca')
   expect(page.url()).toContain('sens=desc')
   await expect(lignes.nth(4)).toContainText(MAGASINS[2])                    // sans budget : toujours en bas
-  await tableau.getByRole('button', { name: 'Magasin' }).click()
+  await tableau.getByRole('button', { name: 'Trier par Magasin' }).click()
   await expect(lignes.nth(2)).toContainText([...MAGASINS].slice(0, 3).sort((a, b) => a.localeCompare(b, 'fr'))[0])
-  await tableau.getByRole('button', { name: 'Magasin' }).click()
+  await tableau.getByRole('button', { name: 'Trier par Magasin' }).click()
   await expect(lignes.nth(4)).toContainText([...MAGASINS].slice(0, 3).sort((a, b) => a.localeCompare(b, 'fr'))[0])
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-liste-magasins.png`, fullPage: true })

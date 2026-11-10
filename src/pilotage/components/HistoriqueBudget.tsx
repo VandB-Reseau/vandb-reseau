@@ -1,3 +1,4 @@
+import { styleTableau } from '../theme/tableau'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -53,7 +54,7 @@ export function HistoriqueBudget({ ligne, d, annee, parametres }: {
         <Card component="section" aria-label="Historique du budget">
           <Typography variant="h2" sx={{ px: 2.5, pt: 2, pb: 1 }}>Historique du budget {annee}</Typography>
           <TableContainer>
-            <Table size="small" aria-label={`Versions du budget ${annee}`} sx={{ '& td, & th': { whiteSpace: 'nowrap' }, '& td:first-of-type, & th:first-of-type': { pl: 2.5 } }}>
+            <Table size="small" className="colonne-fixe" aria-label={`Versions du budget ${annee}`} sx={styleTableau}>
               <TableHead>
                 <TableRow>
                   <TableCell>Date</TableCell>

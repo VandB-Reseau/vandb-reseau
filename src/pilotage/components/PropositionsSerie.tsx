@@ -1,3 +1,4 @@
+import { styleListe } from '../../components/TableauTri'
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -110,7 +111,7 @@ export function PropositionsSerie({ annee, magasins, apres }: { annee: number; m
             <Typography sx={{ mt: 2 }}>Aucun magasin de la liste n’a encore de réel cette année : il n’y a rien à proposer.</Typography>
           ) : (
             <TableContainer sx={{ mt: 2 }}>
-              <Table size="small" aria-label="Propositions préparées" sx={styleTableau}>
+              <Table size="small" className="colonne-fixe" aria-label="Propositions préparées" sx={[styleTableau, styleListe]}>
                 <TableHead>
                   <TableRow>
                     <TableCell padding="checkbox">

@@ -1,3 +1,4 @@
+import { Entete, LigneSansResultat, useTableau, type ColonneTri } from './TableauTri'
 import { useMemo, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -167,6 +168,49 @@ export function BlocPortefeuille({ reseau, p }: { reseau: Reseau; p: Portefeuill
 // ── Tous les portefeuilles côte à côte (onglet de la page Équipe) ──
 interface LignePortefeuille { cle: string; nom: string; lien: string; detail: string; p: Portefeuille }
 
+// Tableau des portefeuilles (PC) : la ligne du réseau reste en tête, chaque colonne se trie et se filtre
+const colonnesPortefeuille: ColonneTri<LignePortefeuille>[] = [
+  { cle: 'nom', libelle: 'Nom', valeur: (l) => l.nom },
+  { cle: 'magasins', libelle: 'Magasins', valeur: (l) => l.p.magasins },
+  ...indicateurs.map((i): ColonneTri<LignePortefeuille> => ({ cle: i.id, libelle: i.libelle, valeur: (l) => i.valeur(l.p), filtre: 'nombre' })),
+]
+function TableauPortefeuilles({ titre, liste, reference: ref }: { titre: string; liste: LignePortefeuille[]; reference: ReturnType<typeof useReference> }) {
+  const t = useTableau(liste, colonnesPortefeuille, { memoire: `portefeuilles:${titre}` })
+  return (
+    <Card>
+      <TableContainer>
+        <Table size="small" aria-label={titre}>
+          <TableHead>
+            <TableRow>
+              <Entete t={t} cle="nom" /><Entete t={t} cle="magasins" align="right" />
+              {indicateurs.map((i) => <Entete key={i.id} t={t} cle={i.id} align="right" />)}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {ref && (
+              <TableRow sx={{ '& td': { fontWeight: 600, bgcolor: 'action.hover' } }}>
+                <TableCell>{ref.libelle === 'réseau' ? 'Réseau' : 'Région'}</TableCell><TableCell align="right">{ref.p.magasins}</TableCell>
+                {indicateurs.map((i) => <TableCell key={i.id} align="right">{i.affiche(ref.p)}</TableCell>)}
+              </TableRow>
+            )}
+            <LigneSansResultat t={t} colSpan={indicateurs.length + 2} />
+            {t.lignes.map((l) => (
+              <TableRow key={l.cle} hover>
+                <TableCell><Link component={RouterLink} to={l.lien} sx={{ fontWeight: 600 }}>{l.nom}</Link></TableCell>
+                <TableCell align="right">{l.p.magasins}</TableCell>
+                {indicateurs.map((i) => {
+                  const ton = ref ? tonEcart(i.valeur(l.p), i.valeur(ref.p), i.sens, i.seuil) : null
+                  return <TableCell key={i.id} align="right" sx={{ fontWeight: ton && ton !== 'egal' ? 600 : undefined, color: ton ? couleurTon[ton] : undefined }}>{i.affiche(l.p)}</TableCell>
+                })}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Card>
+  )
+}
+
 export function VuePortefeuilles({ reseau }: { reseau: Reseau }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
@@ -187,36 +231,7 @@ export function VuePortefeuilles({ reseau }: { reseau: Reseau }) {
     <Box sx={{ mb: 3 }}>
       <TitreSection nombre={liste.length} action={avecChoix && surPC ? <ChoixAffichage valeur={affichage} onChange={setAffichage} /> : undefined}>{titre}</TitreSection>
       {surPC && affichage === 'tableau' ? (
-        <Card>
-          <TableContainer>
-            <Table size="small" aria-label={titre} className="colonne-fixe">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Nom</TableCell><TableCell align="right">Magasins</TableCell>
-                  {indicateurs.map((i) => <TableCell key={i.id} align="right">{i.libelle}</TableCell>)}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {ref && (
-                  <TableRow sx={{ '& td': { fontWeight: 600, bgcolor: 'action.hover' } }}>
-                    <TableCell>{ref.libelle === 'réseau' ? 'Réseau' : 'Région'}</TableCell><TableCell align="right">{ref.p.magasins}</TableCell>
-                    {indicateurs.map((i) => <TableCell key={i.id} align="right">{i.affiche(ref.p)}</TableCell>)}
-                  </TableRow>
-                )}
-                {tries(liste).map((l) => (
-                  <TableRow key={l.cle} hover>
-                    <TableCell><Link component={RouterLink} to={l.lien} sx={{ fontWeight: 600 }}>{l.nom}</Link></TableCell>
-                    <TableCell align="right">{l.p.magasins}</TableCell>
-                    {indicateurs.map((i) => {
-                      const ton = ref ? tonEcart(i.valeur(l.p), i.valeur(ref.p), i.sens, i.seuil) : null
-                      return <TableCell key={i.id} align="right" sx={{ fontWeight: ton && ton !== 'egal' ? 600 : undefined, color: ton ? couleurTon[ton] : undefined }}>{i.affiche(l.p)}</TableCell>
-                    })}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
+        <TableauPortefeuilles titre={titre} liste={tries(liste)} reference={ref} />
       ) : (
         <CarteLignes label={titre}>
           {tries(liste).map((l) => {

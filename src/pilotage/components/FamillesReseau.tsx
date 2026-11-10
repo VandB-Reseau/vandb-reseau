@@ -1,3 +1,4 @@
+import { styleTableau } from '../theme/tableau'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -39,7 +40,7 @@ export function FamillesReseau({ magasin, directeur }: { magasin: string; direct
         </Typography>
       </Box>
       <TableContainer>
-        <Table size="small" aria-label={`Familles de ${magasin} face au réseau`} sx={{ '& td, & th': { whiteSpace: 'nowrap', px: 1.25 }, '& td:first-of-type, & th:first-of-type': { pl: 2.5 } }}>
+        <Table size="small" className="colonne-fixe" aria-label={`Familles de ${magasin} face au réseau`} sx={styleTableau}>
           <TableHead>
             <TableRow>
               <TableCell>Famille</TableCell>
