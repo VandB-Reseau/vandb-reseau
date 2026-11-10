@@ -33,7 +33,8 @@ export function PageHeader({ titre, sousTitre, actions }: { titre: string; sousT
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 1.5, md: 2 }, flexWrap: { xs: 'nowrap', md: 'wrap' } }}>
         <Titre titre={titre} fixe={!surPC && !!sousTitre} />
         {/* Téléphone : le compteur reste à droite du titre, avant l'action (vague 4, 39A) ; le titre garde sa largeur */}
-        {!surPC && sousTitre && <Typography variant="body2" color="text.secondary" sx={{ flex: 1, minWidth: 0, minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', textAlign: 'right' }}>{sousTitre}</Typography>}
+        {!surPC && sousTitre && <Typography variant="body2" color="text.secondary" sx={{ flex: 1, minWidth: 0, minHeight: 40, maxHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', textAlign: 'right', overflow: 'hidden' }}>
+          <Box component="span" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sousTitre}</Box></Typography>}
         {actions}
       </Box>
       {surPC && sousTitre && <Typography variant="body2" color="text.secondary">{sousTitre}</Typography>}
