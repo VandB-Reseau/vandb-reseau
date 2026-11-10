@@ -34,9 +34,6 @@ import { EmptyState } from '../components/EmptyState'
 import { DialogVisite, visiteurs } from '../components/DialogVisite'
 import { PastilleSignature } from '../components/PastilleVisite'
 import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, MiniPhotos, Pastille, TitreSection, useAffichage, useParTranches } from '../components/Social'
-import DateRangeOutlined from '@mui/icons-material/DateRangeOutlined'
-import { VueSemaine } from '../components/Semaine'
-import { useAuth } from '../auth/AuthContext'
 import { anneeDe, anneesDisponibles, libellePasVu, lienCompteRendu, semestresDisponibles, suiviRythme, type LigneRythme } from '../data/visites'
 import { nineBox } from '../data/sante'
 import { PastilleCase } from '../components/Sante'
@@ -273,8 +270,10 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
 // Campagnes et Bonnes pratiques ont quitté les Visites (sprint 21) : les anciennes adresses y mènent
 export function Visites() {
   const [params] = useSearchParams()
-  if (params.get('vue') === 'campagnes') return <Navigate to={`/plus/sante?${params.toString()}`} replace />
+  if (params.get('vue') === 'campagnes') return <Navigate to={`/campagnes?${params.toString()}`} replace />
   if (params.get('vue') === 'pratiques') return <Navigate to="/infos?vue=pratiques" replace />
+  // La semaine du Coach est passée dans l'Agenda (refonte vague 3, 25A)
+  if (params.get('vue') === 'semaine') return <Navigate to="/plus/agenda?vue=semaine" replace />
   return <ContenuVisites />
 }
 
@@ -282,9 +281,7 @@ function ContenuVisites() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [params, setParams] = useSearchParams()
-  const { profil } = useAuth()
-  // Le Coach arrive sur sa semaine ; les autres sur le rythme de visite
-  const vue = (['semaine', 'rythme', 'historique'] as const).find((v) => v === params.get('vue')) ?? (profil?.role === 'coach' ? 'semaine' : 'rythme')
+  const vue = (['rythme', 'historique'] as const).find((v) => v === params.get('vue')) ?? 'rythme'
   const [edition, setEdition] = useState<Edition>(null)
   const [message, setMessage] = useState('')
   const actions = <BoutonAction libelle="Saisir une visite" onClick={() => setEdition({ visite: null, magasins: [] })} />
@@ -297,13 +294,10 @@ function ContenuVisites() {
             sousTitre={`${reseau.visites.length} visite${reseau.visites.length > 1 ? 's' : ''} enregistrée${reseau.visites.length > 1 ? 's' : ''}`}
           />
           <Onglets valeur={vue} onChange={(v) => setParams({ vue: v }, { replace: true })} libelle="Rubriques des visites" rubriques={[
-            { vue: 'semaine', libelle: profil?.role === 'coach' ? 'Ma semaine' : 'Semaine', court: 'Semaine', icone: <DateRangeOutlined /> },
             { vue: 'rythme', libelle: 'Rythme de visite', court: 'Rythme', icone: <EventRepeatOutlined /> },
             { vue: 'historique', libelle: 'Historique', icone: <HistoryOutlined /> },
           ]} />
-          {vue === 'semaine'
-            ? <VueSemaine reseau={reseau} surPC={surPC} onMessage={setMessage} />
-            : vue === 'historique'
+          {vue === 'historique'
             ? <VueHistorique reseau={reseau} actions={actions} modifier={(v) => setEdition({ visite: v, magasins: [v.magasin] })} />
             : <VueRythme reseau={reseau} surPC={surPC} actions={actions} saisir={(m) => setEdition({ visite: null, magasins: m })} />}
           {edition && <DialogVisite reseau={reseau} visite={edition.visite} magasinsInitiaux={edition.magasins} dateInitiale={edition.date} onFermer={(m) => { setEdition(null); if (m) setMessage(m) }} />}
