@@ -6,10 +6,11 @@ import type { Reseau } from './modele'
 import type { Profil } from '../auth/roles'
 import { actionsDes, enRetard, monNomPorteur, portePar } from './actions'
 import { lienCompteRendu, visitesDuMagasin } from './visites'
+import { caDe, decalerMois, libelleMois } from './chiffres'
 import { brancher, preferenceChangee } from '../lib/preferences'
 import { pilotage } from '../pilotage/lib/supabase'
 
-export type GenreNotification = 'commentaire' | 'tache' | 'retard' | 'compteRendu'
+export type GenreNotification = 'commentaire' | 'tache' | 'retard' | 'compteRendu' | 'rapport'
 export interface NotificationApp { id: string; genre: GenreNotification; titre: string; detail: string; quand: string; lien: string }
 
 const CLE = 'vandb-notifications-lues'
@@ -64,6 +65,9 @@ export function notificationsDuReseau(reseau: Reseau, profil: Profil | null): No
     }
   }
   if (profil?.role !== 'franchise') {
+    // Vague 3 (29A) : un nouveau mois de caisse, un nouveau rapport du mois
+    const mois = Object.values(reseau.chiffres).map((l) => l.filter((c) => caDe(c) !== null).at(-1)?.mois ?? '').sort().at(-1)
+    if (mois) r.push({ id: `rapport:${mois}`, genre: 'rapport', titre: `Rapport de ${libelleMois(mois)}`, detail: 'Chiffres, visites, tâches et objectifs du mois sur ton périmètre', quand: `${decalerMois(mois, 1)}-01`, lien: '/performance?vue=rapports' })
     for (const m of reseau.magasins) {
       for (const v of visitesDuMagasin(reseau, m.nom)) {
         if (!v.id || v.prevue || v.date < depuis || v.date > reseau.jour || (moi && v.visiteurs.includes(moi))) continue

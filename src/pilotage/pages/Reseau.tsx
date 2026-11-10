@@ -74,34 +74,37 @@ const douze = (): MoisReel[] => Array.from({ length: 12 }, () => ({ caHT: 0, mar
 const surPC = { display: { xs: 'none', md: 'table-cell' } }
 const simple = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
 
+// Chaque magasin à la fin de son dernier mois réalisé, face à l'an dernier et à son budget (aussi lu par le rapport du mois, 29A)
+export async function chargerSuiviReseau(annee: number) {
+  const [d, { parametres }, reel, alertes, actions, quadrimestres] = await Promise.all([chargerBudgets(annee), chargerParametres(annee), chargerReelDuCompte(annee), chargerAlertes(), chargerActions().catch(() => []), chargerQuadrimestres(annee).catch(() => ({} as SaisiesQuadrimestres))])
+  const groupes = new Map(d.groupes.map((g) => [g.id, g.nom]))
+  const p = { tauxRedevance: parametres.tauxRedevance, tauxPublicite: parametres.tauxPublicite, charges: parametres.charges, annee }
+  const magasins = d.magasins.map((l) => {
+    const h = l.statut ? hypothesesDe(l, d) : null
+    const frais = d.frais[l.magasin]
+    const n = reel.magasins[l.magasin]?.n ?? douze(), n1 = reel.magasins[l.magasin]?.n1 ?? douze()
+    const budget = h ? calculerBudget(h.hypotheses, parametresDuBudget(l, parametres)) : null
+    return {
+      // Fiche de visite du magasin (lot 28), pour « Ma semaine » (lot 29)
+      fiche: ficheVisite({ n, n1, budget }, parametres.tvaPanier),
+      ...ligneReseau({
+        magasin: l.magasin, n, n1,
+        budget,
+        equipe: d.equipes[l.magasin], frais: frais?.length ? fraisDepuisLignes(frais).frais : undefined,
+        quadrimestres: quadrimestres[l.magasin] ?? {},
+      }, p),
+      groupeId: l.groupeId, groupe: l.groupeId ? groupes.get(l.groupeId) ?? '' : '', coach: reel.coachs[l.magasin] ?? '', rrs: reel.rrs[l.magasin] ?? [],
+    }
+  })
+  const trie = (l: string[]) => [...new Set(l)].sort((a, b) => a.localeCompare(b, 'fr'))
+  return { magasins, alertes, actions, seuil: parametres.alertes.ecartCA, groupes: d.groupes, coachs: trie(Object.values(reel.coachs)), rrs: trie(Object.values(reel.rrs).flat()) }
+}
+
 // Vue réseau : chaque magasin à la fin de son dernier mois réalisé, face à l'an dernier, à son budget et au total du réseau
 // integre : vue « Écarts au budget » de la page Performance (refonte vague 2, 15A), titre de niveau 2
 export function Reseau({ integre }: { integre?: boolean } = {}) {
   const annee = anneeSuivi()
-  const { donnees, erreur, chargement, recharger } = useChargement(async () => {
-    const [d, { parametres }, reel, alertes, actions, quadrimestres] = await Promise.all([chargerBudgets(annee), chargerParametres(annee), chargerReelDuCompte(annee), chargerAlertes(), chargerActions().catch(() => []), chargerQuadrimestres(annee).catch(() => ({} as SaisiesQuadrimestres))])
-    const groupes = new Map(d.groupes.map((g) => [g.id, g.nom]))
-    const p = { tauxRedevance: parametres.tauxRedevance, tauxPublicite: parametres.tauxPublicite, charges: parametres.charges, annee }
-    const magasins = d.magasins.map((l) => {
-      const h = l.statut ? hypothesesDe(l, d) : null
-      const frais = d.frais[l.magasin]
-      const n = reel.magasins[l.magasin]?.n ?? douze(), n1 = reel.magasins[l.magasin]?.n1 ?? douze()
-      const budget = h ? calculerBudget(h.hypotheses, parametresDuBudget(l, parametres)) : null
-      return {
-        // Fiche de visite du magasin (lot 28), pour « Ma semaine » (lot 29)
-        fiche: ficheVisite({ n, n1, budget }, parametres.tvaPanier),
-        ...ligneReseau({
-          magasin: l.magasin, n, n1,
-          budget,
-          equipe: d.equipes[l.magasin], frais: frais?.length ? fraisDepuisLignes(frais).frais : undefined,
-          quadrimestres: quadrimestres[l.magasin] ?? {},
-        }, p),
-        groupeId: l.groupeId, groupe: l.groupeId ? groupes.get(l.groupeId) ?? '' : '', coach: reel.coachs[l.magasin] ?? '', rrs: reel.rrs[l.magasin] ?? [],
-      }
-    })
-    const trie = (l: string[]) => [...new Set(l)].sort((a, b) => a.localeCompare(b, 'fr'))
-    return { magasins, alertes, actions, seuil: parametres.alertes.ecartCA, groupes: d.groupes, coachs: trie(Object.values(reel.coachs)), rrs: trie(Object.values(reel.rrs).flat()) }
-  }, [annee])
+  const { donnees, erreur, chargement, recharger } = useChargement(() => chargerSuiviReseau(annee), [annee])
 
   // Filtres et tri gardés dans l'adresse : le retour depuis une fiche les retrouve
   const [params, setParams] = useSearchParams()

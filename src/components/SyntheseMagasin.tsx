@@ -17,7 +17,7 @@ import { anneeDe, libellePasVu, lienCompteRendu, lienVisite, suiviRythme } from 
 import { resumeCompteRendu } from '../data/resumeCompteRendu'
 import { dateCourte, dateLongue, lienFiche } from '../lib/format'
 
-function Indicateur({ libelle, valeur, detail, ton }: { libelle: string; valeur: string; detail?: string; ton?: 'bon' | 'mauvais' }) {
+export function Indicateur({ libelle, valeur, detail, ton }: { libelle: string; valeur: string; detail?: string; ton?: 'bon' | 'mauvais' }) {
   return (
     <Card sx={{ minWidth: 0 }}>
       <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
