@@ -1,3 +1,4 @@
+import { Entete, LigneSansResultat, useTableau, type ColonneTri } from '../components/TableauTri'
 import { Blason } from '../components/Blason'
 import type { ReactNode } from 'react'
 import { normaliser } from '../data/filtres'
@@ -25,16 +26,14 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import TableSortLabel from '@mui/material/TableSortLabel'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { alpha, useTheme, type SxProps, type Theme } from '@mui/material/styles'
-import ArrowDownwardOutlined from '@mui/icons-material/ArrowDownwardOutlined'
-import ArrowUpwardOutlined from '@mui/icons-material/ArrowUpwardOutlined'
 import FilterAlt from '@mui/icons-material/FilterAlt'
 import FilterAltOutlined from '@mui/icons-material/FilterAltOutlined'
-import SwapVertOutlined from '@mui/icons-material/SwapVertOutlined'
 import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined'
 import ArrowForwardOutlined from '@mui/icons-material/ArrowForwardOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
@@ -326,16 +325,18 @@ function EnTeteColonne({ col, sens, trier, filtre, filtrer, compte, children }: 
   const options = q ? col.options.filter((o) => normaliser(o.libelle).includes(normaliser(q))) : col.options
   const titreTri = col.alpha ? (sens === 'asc' ? 'De A à Z' : sens === 'desc' ? 'De Z à A' : 'Trier') : sens === 'desc' ? 'Du plus haut au plus bas' : sens === 'asc' ? 'Du plus bas au plus haut' : 'Trier'
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-      <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+    // Même rendu que les autres tableaux (10/11/2026) : flèche de tri à côté du titre, entonnoir au survol
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, width: '100%', '&:hover .filtre-colonne, & .filtre-colonne:focus-visible': { opacity: 1 }, '@media (hover: none)': { '& .filtre-colonne': { opacity: 1 } } }}>
       <Tooltip title={titreTri}>
-        <IconButton aria-label={`Trier par ${col.libelle}`} onClick={trier} color={sens ? 'secondary' : 'default'} sx={{ width: 40, height: 40, my: -1 }}>
-          {sens === 'asc' ? <ArrowUpwardOutlined fontSize="small" /> : sens === 'desc' ? <ArrowDownwardOutlined fontSize="small" /> : <SwapVertOutlined fontSize="small" />}
-        </IconButton>
+        <TableSortLabel active={!!sens} direction={sens ?? (col.alpha ? 'asc' : 'desc')} onClick={trier} aria-label={`Trier par ${col.libelle}`}
+          sx={{ '&.MuiTableSortLabel-root': { color: sens ? 'text.primary' : 'inherit' }, '& .MuiTableSortLabel-icon': { mx: 0.5 } }}>
+          {children}
+        </TableSortLabel>
       </Tooltip>
       <Tooltip title="Filtrer">
-        <IconButton aria-label={`Filtrer ${col.libelle}`} onClick={(e) => setAncre(e.currentTarget)} color={actif ? 'secondary' : 'default'} sx={{ width: 40, height: 40, my: -1 }}>
-          {actif ? <FilterAlt fontSize="small" /> : <FilterAltOutlined fontSize="small" />}
+        <IconButton className="filtre-colonne pas-a-l-impression" aria-label={`Filtrer ${col.libelle}`} onClick={(e) => setAncre(e.currentTarget)}
+          sx={{ width: 28, height: 28, my: -1, color: actif ? 'text.primary' : 'text.secondary', opacity: actif || ancre ? 1 : 0, transition: 'opacity 120ms' }}>
+          {actif ? <FilterAlt sx={{ fontSize: 18 }} /> : <FilterAltOutlined sx={{ fontSize: 18 }} />}
         </IconButton>
       </Tooltip>
       <Menu anchorEl={ancre} open={!!ancre} onClose={() => { setAncre(null); setQ('') }} autoFocus={!col.recherche} slotProps={{ paper: { sx: { maxHeight: 420, minWidth: 240 } } }}>
@@ -487,7 +488,7 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
     if (!col) return <TableCell key={id} sx={sx}>{contenu}</TableCell>
     const sens = tri?.id === id ? tri.sens : null
     return (
-      <TableCell key={id} sx={sx} aria-sort={sens === 'desc' ? 'descending' : sens === 'asc' ? 'ascending' : undefined}>
+      <TableCell key={id} sx={sx} aria-label={col.libelle} aria-sort={sens === 'desc' ? 'descending' : sens === 'asc' ? 'ascending' : undefined}>
         <EnTeteColonne col={col} sens={sens} trier={() => { const premier = col.alpha ? 'asc' : 'desc'; setTri(sens === null ? { id, sens: premier } : sens === premier ? { id, sens: premier === 'asc' ? 'desc' : 'asc' } : null) }}
           filtre={filtres[id] ?? []} filtrer={(v) => setFiltres((f) => ({ ...f, [id]: v }))} compte={(v) => base.filter((m) => col.valeur(m) === v).length}>
           {contenu}
@@ -867,36 +868,54 @@ export function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean 
         {`Audits conformes : ${audits.length ? `${conformes} sur ${audits.length} (${Math.round((conformes / audits.length) * 100)} %)` : 'aucun résultat saisi'}`}
       </Typography>
       {visibles.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." /> : surPC && affichage === 'tableau' ? (
-        <TableContainer component={Paper}>
-          <Table size="small" className="colonne-fixe" aria-label="Chiffres des magasins">
-            <TableHead>
-              <TableRow>
-                {enTetes.map((h) => <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>)}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {visibles.map(({ m, a, coach, hygiene, excellence }) => (
-                <TableRow key={m.nom} hover>
-                  <TableCell><Link component={RouterLink} to={lienFiche(m.nom)} sx={{ fontWeight: 600 }}>{m.nom}</Link></TableCell>
-                  <TableCell>{coach || 'Sans Coach'}</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{a ? libelleMoisCourt(a.mois) : '—'}</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatEuros(a?.ca ?? null)}</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{a?.ecart === null || !a ? '—' : <Tooltip title={`${libelleMois(a.reference)} : ${formatEuros(a.caReference)}`}><span>{formatPourcent(a.ecart)}</span></Tooltip>}</TableCell>
-                  <TableCell>{formatValeur('tickets', a?.chiffre.tickets ?? null)}</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatValeur('panier', a?.chiffre.panier ?? null)}</TableCell>
-                  <TableCell>{formatValeur('marge', a?.chiffre.marge ?? null)}</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatEuros(a?.chiffre.caExt ?? null)}</TableCell>
-                  <TableCell><PastilleAlerte statut={a?.statut ?? null} /></TableCell>
-                  <TableCell>{[hygiene && `Hygiène : ${libelleAudit(hygiene)}`, excellence && `Excellence : ${libelleAudit(excellence)}`].filter(Boolean).join(' · ') || '—'}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <TableauChiffres lignes={visibles} enTetes={enTetes} />
       ) : (
         <LignesChiffres reseau={reseau} lignes={visibles} />
       )}
     </>
+  )
+}
+
+// Chiffres des magasins sur PC : chaque colonne se trie et se filtre (harmonisation des tableaux, 10/11/2026)
+type LigneChiffre = { m: Magasin; a: ReturnType<typeof analyserCA>; coach: string; hygiene: ReturnType<typeof dernierAudit>; excellence: ReturnType<typeof dernierAudit> }
+const LIBELLES_ALERTE: Record<string, string> = { decroche: 'Décroche', surveiller: 'À surveiller', ok: 'Dans la norme' }
+function TableauChiffres({ lignes, enTetes }: { lignes: LigneChiffre[]; enTetes: string[] }) {
+  const colonnes = useMemo<ColonneTri<LigneChiffre>[]>(() => {
+    const v: ((l: LigneChiffre) => string | number | null | undefined)[] = [
+      (l) => l.m.nom, (l) => l.coach || 'Sans Coach', (l) => l.a?.mois ?? null, (l) => l.a?.ca ?? null, (l) => l.a?.ecart ?? null,
+      (l) => l.a?.chiffre.tickets ?? null, (l) => l.a?.chiffre.panier ?? null, (l) => l.a?.chiffre.marge ?? null, (l) => l.a?.chiffre.caExt ?? null,
+      (l) => (l.a?.statut ? LIBELLES_ALERTE[l.a.statut] ?? null : null), (l) => [l.hygiene && `Hygiène : ${libelleAudit(l.hygiene)}`, l.excellence && `Excellence : ${libelleAudit(l.excellence)}`].filter(Boolean).join(' · ') || null,
+    ]
+    return enTetes.map((h, i) => ({ cle: String(i), libelle: h, valeur: v[i], ...(i === 2 ? { texte: (l: LigneChiffre) => (l.a ? libelleMoisCourt(l.a.mois) : '') } : {}),
+      ...(i === 3 || i === 8 ? { nombre: (l: LigneChiffre) => { const x = v[i](l); return typeof x === 'number' ? x / 1000 : null }, unite: 'k€' } : {}), ...(i === 4 ? { unite: '%', premier: 'asc' as const } : {}) }))
+  }, [enTetes])
+  const t = useTableau(lignes, colonnes, { memoire: 'sante-chiffres' })
+  return (
+    <TableContainer component={Paper}>
+      <Table size="small" aria-label="Chiffres des magasins">
+        <TableHead>
+          <TableRow>{colonnes.map((c) => <Entete key={c.cle} t={t} cle={c.cle} />)}</TableRow>
+        </TableHead>
+        <TableBody>
+          <LigneSansResultat t={t} colSpan={colonnes.length} quoi="Aucun magasin ne correspond" />
+          {t.lignes.map(({ m, a, coach, hygiene, excellence }) => (
+            <TableRow key={m.nom} hover>
+              <TableCell><Link component={RouterLink} to={lienFiche(m.nom)} sx={{ fontWeight: 600 }}>{m.nom}</Link></TableCell>
+              <TableCell>{coach || 'Sans Coach'}</TableCell>
+              <TableCell sx={{ whiteSpace: 'nowrap' }}>{a ? libelleMoisCourt(a.mois) : '—'}</TableCell>
+              <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatEuros(a?.ca ?? null)}</TableCell>
+              <TableCell sx={{ whiteSpace: 'nowrap' }}>{a?.ecart === null || !a ? '—' : <Tooltip title={`${libelleMois(a.reference)} : ${formatEuros(a.caReference)}`}><span>{formatPourcent(a.ecart)}</span></Tooltip>}</TableCell>
+              <TableCell>{formatValeur('tickets', a?.chiffre.tickets ?? null)}</TableCell>
+              <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatValeur('panier', a?.chiffre.panier ?? null)}</TableCell>
+              <TableCell>{formatValeur('marge', a?.chiffre.marge ?? null)}</TableCell>
+              <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatEuros(a?.chiffre.caExt ?? null)}</TableCell>
+              <TableCell><PastilleAlerte statut={a?.statut ?? null} /></TableCell>
+              <TableCell>{[hygiene && `Hygiène : ${libelleAudit(hygiene)}`, excellence && `Excellence : ${libelleAudit(excellence)}`].filter(Boolean).join(' · ') || '—'}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   )
 }
 

@@ -1,3 +1,4 @@
+import { styleTableau } from '../theme/tableau'
 import { useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -92,7 +93,7 @@ export function FicheVisite({ ouverte, fermer, magasin, annee, n, n1, budget, tv
         ) : (
           <>
             {titre(`Depuis le 1er janvier, à fin ${fin}`)}
-            <Table size="small" aria-label="Chiffres à date" sx={{ '& td, & th': { px: 1, whiteSpace: 'nowrap' } }}>
+            <Table size="small" className="colonne-fixe" aria-label="Chiffres à date" sx={styleTableau}>
               <TableHead>
                 <TableRow>
                   <TableCell />

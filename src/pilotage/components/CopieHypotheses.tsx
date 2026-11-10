@@ -1,3 +1,4 @@
+import { styleListe } from '../../components/TableauTri'
 import { useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -81,7 +82,7 @@ export function CopieHypotheses({ source, destinations, ebe, occupe, onCopier, o
         <Typography variant="body2" sx={{ py: 1 }}>Aucun magasin ne correspond à ces filtres.</Typography>
       ) : (
         <TableContainer sx={{ maxHeight: 420 }}>
-          <Table size="small" stickyHeader aria-label="Magasins visés et effet sur l’EBE" sx={styleTableau}>
+          <Table size="small" stickyHeader className="deux-colonnes-fixes" aria-label="Magasins visés et effet sur l’EBE" sx={[styleTableau, styleListe]}>
             <TableHead>
               <TableRow>
                 <TableCell padding="checkbox">

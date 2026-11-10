@@ -107,8 +107,8 @@ test('vue réseau : classement, total, tri, filtre par Coach et retour', async (
   await page.screenshot({ path: `captures/${info.project.name}-reseau.png`, fullPage: true })
 
   // Tri par écart au budget, du plus bas au plus haut : le magasin sans budget reste en bas
-  await tableau.getByRole('button', { name: 'Écart au budget' }).click()
-  await tableau.getByRole('button', { name: 'Écart au budget' }).click()
+  await tableau.getByRole('button', { name: 'Trier par Écart au budget' }).click()
+  await tableau.getByRole('button', { name: 'Trier par Écart au budget' }).click()
   await expect(lignes.nth(3)).toContainText(MAGASINS[1])
   await expect(lignes.nth(5)).toContainText(MAGASINS[2])
 

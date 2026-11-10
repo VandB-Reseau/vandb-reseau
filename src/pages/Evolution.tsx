@@ -1,3 +1,4 @@
+import { styleListe } from '../components/TableauTri'
 import { useNavigate } from 'react-router-dom'
 import Button from '@mui/material/Button'
 import ArrowBack from '@mui/icons-material/ArrowBack'
@@ -191,7 +192,7 @@ function Contenu({ reseau, integre }: { reseau: Reseau; integre?: boolean }) {
         </CarteLignes>
       ) : (
       <TableContainer component={Card}>
-        <Table aria-label="Évolution par année">
+        <Table size="small" aria-label="Évolution par année" sx={styleListe}>
           <TableHead>
             <TableRow>
               <TableCell>Année</TableCell>

@@ -1,3 +1,4 @@
+import { Entete, LigneSansResultat, useTableau, type ColonneTri } from '../components/TableauTri'
 import { Fragment, useMemo, useState } from 'react'
 import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, useAffichage, cartouche } from '../components/Social'
 import { Link as RouterLink } from 'react-router-dom'
@@ -45,6 +46,16 @@ import type { Coach, Magasin, Reseau } from '../data/modele'
 interface Changement { date: string; texte: string; magasin: string; sens: '+' | '-' | 'o' }
 interface Ligne { coach: Coach; magasins: Magasin[]; charge: number; chargeDans1an: number; route: RouteAnnuelle; changements: Changement[] }
 interface Avant { charge: number; route: RouteAnnuelle; magasins: number }
+
+const colonnesCharge: ColonneTri<Ligne>[] = [
+  { cle: 'coach', libelle: 'Coach', valeur: (l) => l.coach.nom },
+  { cle: 'rr', libelle: 'Responsable Régional', valeur: (l) => l.coach.rr?.nom ?? null, texte: (l) => l.coach.rr?.nom ?? 'Aucun' },
+  { cle: 'magasins', libelle: 'Magasins', valeur: (l) => l.magasins.length },
+  { cle: 'charge', libelle: 'Charge', valeur: (l) => l.charge, unite: '%' },
+  { cle: 'route', libelle: 'Route par an', valeur: (l) => l.route.minutes, nombre: (l) => Math.round(l.route.minutes / 60), unite: 'h' },
+  { cle: 'loin', libelle: 'Magasin le plus loin', valeur: (l) => l.route.acces[0]?.minutes ?? null, texte: (l) => l.route.acces[0]?.magasin.nom ?? 'Aucun', filtre: 'liste', premier: 'desc' },
+  { cle: 'annee', libelle: 'Dans l’année', valeur: (l) => l.changements.length, texte: (l) => (l.changements.length ? 'Avec changements' : 'Aucun changement'), filtre: 'liste', premier: 'desc' },
+]
 
 function changementsDuCoach(reseau: Reseau, coach: string, fin: string): Changement[] {
   const res: Changement[] = []
@@ -114,6 +125,7 @@ export function VueCharge({ reseau, versRepartition }: { reseau: Reseau; versRep
   }
   const base = useMemo(() => calculer(new Map()), [calcul, fin]) // eslint-disable-line react-hooks/exhaustive-deps
   const lignes = useMemo(() => (simulation.size ? calculer(simulation) : base), [simulation, base]) // eslint-disable-line react-hooks/exhaustive-deps
+  const tab = useTableau(lignes, colonnesCharge, { memoire: 'charge-coachs' })
   const avantDe = useMemo(() => new Map<string, Avant>(base.map((l) => [l.coach.nom, { charge: l.charge, route: l.route, magasins: l.magasins.length }])), [base])
   const touches = new Set(simulation.size ? [...simulation].flatMap(([nom, vers]) => [coachA(calcul.magasin.get(nom)!, jour), vers]) : [])
 
@@ -249,25 +261,26 @@ export function VueCharge({ reseau, versRepartition }: { reseau: Reseau; versRep
             <Table className="colonne-fixe" aria-label="Charge par Coach">
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ width: 48 }} />
-                  <TableCell>Coach</TableCell>
-                  <TableCell>Responsable Régional</TableCell>
-                  <TableCell align="right">Magasins</TableCell>
-                  <TableCell align="center">Charge</TableCell>
-                  <TableCell>Route par an</TableCell>
-                  <TableCell>Magasin le plus loin</TableCell>
-                  <TableCell>Dans l’année</TableCell>
+                  <TableCell padding="checkbox" sx={{ width: 48 }} />
+                  <Entete t={tab} cle="coach" />
+                  <Entete t={tab} cle="rr" />
+                  <Entete t={tab} cle="magasins" align="right" />
+                  <Entete t={tab} cle="charge" align="center" />
+                  <Entete t={tab} cle="route" />
+                  <Entete t={tab} cle="loin" />
+                  <Entete t={tab} cle="annee" />
                 </TableRow>
               </TableHead>
               <TableBody>
-                {lignes.map((l) => {
+                <LigneSansResultat t={tab} colSpan={8} quoi="Aucun Coach ne correspond" />
+                {tab.lignes.map((l) => {
                   const ouvert = ouverts.has(l.coach.nom)
                   const plus = l.changements.filter((c) => c.sens !== '-').length, moins = l.changements.filter((c) => c.sens === '-').length
                   const loin = l.route.acces[0]
                   return (
                     <Fragment key={l.coach.nom}>
                       <TableRow hover onClick={() => basculer(l.coach.nom)} sx={{ cursor: 'pointer', '& > td': { borderBottom: ouvert ? 0 : undefined } }}>
-                        <TableCell sx={{ px: 0 }}>
+                        <TableCell padding="checkbox" sx={{ px: 0 }}>
                           <IconButton onClick={(e) => { e.stopPropagation(); basculer(l.coach.nom) }} aria-label={`${ouvert ? 'Replier' : 'Déplier'} ${l.coach.nom}`} aria-expanded={ouvert}>{ouvert ? <ExpandMore /> : <ChevronRight />}</IconButton>
                         </TableCell>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}><Link component={RouterLink} to={lienCoach(l.coach.nom)} onClick={(e) => e.stopPropagation()} sx={{ fontWeight: 600 }}>{l.coach.nom}</Link></TableCell>

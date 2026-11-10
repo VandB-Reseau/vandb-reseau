@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Entete, LigneSansResultat, styleListe, useTableau, type ColonneTri } from '../../components/TableauTri'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -21,6 +22,14 @@ import { lienMagasin, milliers } from '../lib/format'
 import type { LigneSemaine } from '../moteur/semaine'
 
 const PREMIERS = 10
+const colonnes: ColonneTri<LigneSemaine<Alerte>>[] = [
+  { cle: 'magasin', libelle: 'Magasin', valeur: (l) => l.magasin },
+  { cle: 'coach', libelle: 'Coach', valeur: (l) => l.coach || null },
+  { cle: 'enJeu', libelle: 'Marge en jeu', valeur: (l) => (l.enJeu > 0 ? l.enJeu : null), nombre: (l) => (l.enJeu > 0 ? l.enJeu / 1000 : null), unite: 'k€' },
+  { cle: 'sujet', libelle: 'Premier sujet', valeur: (l) => (l.sujet ? texteSujet(l.sujet).constat : 'Rien ne recule') },
+  { cle: 'alertes', libelle: 'Alertes', valeur: (l) => l.alertes.length, filtre: 'nombre' },
+  { cle: 'retard', libelle: 'Actions en retard', valeur: (l) => l.actionsEnRetard },
+]
 // Pastille d'une alerte : le type, et l'univers pour les tickets et le panier ; le détail au survol
 const libelleCourt = (a: Alerte) => ('univers' in a ? `${typeAlerteLibelle[a.type]} ${a.univers === 'cave' ? 'Cave' : 'Bar'}` : typeAlerteLibelle[a.type])
 const rouge = (v: number) => (v > 0 ? { color: 'error.main', fontWeight: 700 } : undefined)
@@ -32,34 +41,37 @@ const rouge = (v: number) => (v > 0 ? { color: 'error.main', fontWeight: 700 } :
 export function MaSemaine({ lignes, avecCoachs, etat }: { lignes: LigneSemaine<Alerte>[]; avecCoachs: boolean; etat?: object }) {
   const [tout, setTout] = useState(false)
   const [clous, setClous] = useState(false)
-  if (!lignes.length) return null
   const aAppeler = lignes.filter((l) => l.aAppeler)
   const dansLesClous = lignes.length - aAppeler.length
-  const liste = clous ? lignes : aAppeler
+  // Harmonisation des tableaux (10/11/2026) : chaque colonne se trie et se filtre, avant les dix premiers
+  const t = useTableau(clous ? lignes : aAppeler, colonnes, { memoire: 'ma-semaine' })
+  if (!lignes.length) return null
+  const liste = t.lignes
   const vues = tout ? liste : liste.slice(0, PREMIERS)
-  const tableau = { '& td, & th': { whiteSpace: 'nowrap', px: 1.25 }, '& td:first-of-type, & th:first-of-type': { pl: 2.5 } }
+  const tableau = { ...styleListe, '& td, & th': { ...styleListe['& td, & th'], whiteSpace: 'nowrap' }, '& td:first-of-type, & th:first-of-type': { pl: 2.5 } }
   return (
     <Card component="section" aria-label="Ma semaine" sx={{ mb: 4 }}>
       <Box sx={{ px: 2.5, pt: 2, pb: 1 }}>
         <Typography variant="h2">Ma semaine : {aAppeler.length ? `${aAppeler.length === 1 ? '1 magasin' : `${aAppeler.length} magasins`} à appeler` : 'rien d’urgent'} <Aide sujet="semaine" /></Typography>
       </Box>
-      {liste.length === 0 ? (
+      {t.total === 0 ? (
         <Typography color="text.secondary" sx={{ px: 2.5, pb: 1 }}>Tous les magasins de la sélection sont dans les clous : pas d’alerte, pas d’action en retard, moins de 1 000 € de marge en jeu.</Typography>
       ) : <TableContainer>
-        <Table size="small" aria-label="Magasins par marge en jeu" sx={tableau}>
+        <Table size="small" className="colonne-fixe" aria-label="Magasins par marge en jeu" sx={tableau}>
           <TableHead>
             <TableRow>
-              <TableCell>Magasin</TableCell>
-              {avecCoachs && <TableCell>Coach</TableCell>}
-              <TableCell align="right">Marge en jeu</TableCell>
-              <TableCell>Premier sujet</TableCell>
-              <TableCell>Alertes</TableCell>
-              <TableCell align="right">Actions en retard</TableCell>
+              <Entete t={t} cle="magasin" />
+              {avecCoachs && <Entete t={t} cle="coach" />}
+              <Entete t={t} cle="enJeu" align="right" />
+              <Entete t={t} cle="sujet" />
+              <Entete t={t} cle="alertes" />
+              <Entete t={t} cle="retard" align="right" />
             </TableRow>
           </TableHead>
           <TableBody>
+            <LigneSansResultat t={t} colSpan={avecCoachs ? 6 : 5} quoi="Aucun magasin ne correspond" />
             {vues.map((l) => (
-              <TableRow key={l.magasin}>
+              <TableRow key={l.magasin} hover>
                 <TableCell><Link component={RouterLink} to={lienMagasin(l.magasin)} state={etat} sx={{ fontWeight: 600, display: 'inline-flex', minHeight: 48, alignItems: 'center' }}>{l.magasin}</Link></TableCell>
                 {avecCoachs && <TableCell>{l.coach}</TableCell>}
                 <TableCell align="right" sx={{ fontWeight: 700 }}>{l.enJeu > 0 ? milliers(l.enJeu) : '–'}</TableCell>
