@@ -86,7 +86,21 @@ Rubriques de `suivi_magasins` (contrainte `suivi_magasins_cle_check`) :
 
 | `objectifs` | Objectifs chiffrés du magasin (0042, refonte vague 3) : liste de `{ id, indicateur, mode, depart, moisDepart, cible, echeance, taches, par, creeLe, visite, clos }`. `indicateur` = `pmCave`, `fluxCave`, `caCave`, `pmBar`, `fluxBar`, `caBar`, `caExt` ou `marge` ; `mode` = `valeur` (chiffre du mois) ou `evolution` (écart en % avec le même mois un an plus tôt) ; `taches` = clés des tâches rattachées. L'avancement n'est pas rangé : l'app le calcule sur les chiffres de la caisse. Équipe seulement, jamais renvoyé au franchisé | `objectifs_magasins` |
 
+| `plan` | Plan d'action du magasin (0043, refonte vague 4) : 3 priorités au plus, liste de `{ id, titre, objectif, statut, bilan, creeLe, par, closLe, revueLe }` ; `objectif` = numéro d'un objectif chiffré du magasin ; `statut` = `active`, `atteinte` ou `abandonnee`. Les tâches s'y rattachent par leur champ `priorite`. Le franchisé lit titres et statuts par `plans_franchise()`, jamais l'objectif | `plans_magasins` |
+
+Champs ajoutés aux tâches (rubrique `actions` et plans d'action des visites, sans migration de structure, 0043) : `statut`
+(`en_cours`, `bloquee` ; absent = à faire), `raison` (ce qui bloque, 300 caractères), `priorite` (numéro d'une priorité
+du plan). Remarques internes d'une visite (Joseph, 10/11/2026) : rubrique `notes`, champs `visite` (numéro de la visite)
+et `appreciation` (`satisfaisante`, `mitigee`, `preoccupante`) ; jamais dans le compte rendu ni renvoyées au franchisé.
+
 Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011_preparation_visites.sql`).
+
+### Animation de l'équipe et demandes des franchisés (0043, refonte vague 4)
+
+| Table | Contenu | Clé |
+| --- | --- | --- |
+| `entretiens` | Entretien mensuel RR–Coach : `coach`, `mois` (AAAA-MM), `notes`, `engagements` (`[{ id, texte, echeance, tenu }]`, 3 au plus), `remarques` (du Coach), `fait_le`, `par`, `maj_le`. Lecture : Directeur, RR des Coachs qu'il encadre (`coachs_encadres()`), le Coach pour les siens (`mon_coach()`). Écriture : Directeur et RR encadrant ; le Coach écrit seulement ses remarques par `remarque_entretien` | `id` ; unique `coach`, `mois` |
+| `demandes` | Demandes des franchisés au siège : `magasin`, `franchise`, `theme` (`achats`, `travaux`, `marketing`, `caisse`, `juridique`, `autre`), `titre`, `statut` (`nouvelle`, `en_cours`, `attente`, `resolue`), `echanges` (`[{ par, role, texte, le }]`), `ouverte_le`, `premiere_reponse_le`, `resolue_le`, `maj_le`. Lecture : Directeur et équipe sur ses magasins ; aucune écriture directe, tout passe par les fonctions | `id` |
 
 ### Agenda (toute l'équipe lit et écrit)
 
@@ -198,6 +212,8 @@ Aucun e-mail n'est envoyé par Supabase : le Directeur transmet les identifiants
 | `campagnes` | Liste des campagnes nationales (constats dans `suivi_magasins`) | objet `{ liste }` |
 | `deploiements` | Thématiques suivies (état par magasin dans `suivi_magasins`) | objet `{ thematiques }` |
 | `derniere_sauvegarde` | Date de la dernière sauvegarde complète | texte |
+| `rituels` | Rituels d'animation suivis (vague 4, 33A) : `[{ type, actif, libelle }]`, `type` = `visite`, `entretien`, `reunion` ; réglés par le Directeur, sans migration | tableau |
+| `demandes_themes` | Interlocuteur de chaque thème des demandes des franchisés (vague 4, 37A) : thème → personne ou service ; réglé par le Directeur, sans migration | objet |
 
 Clés de l'ancienne app encore en base (constaté le 21/10/2026) mais plus lues : `contacts`, `col_state`,
 `cs_arrivees`, `initial_reassign_done`, `initial_reassign_v2`.
@@ -213,7 +229,10 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Accès franchisés | `ouvrir_acces_franchise`, `maj_acces_franchise`, `couper_acces_franchise`, `liste_acces_franchises` | 0004 |
 | Accès de l'équipe | `ouvrir_acces_equipe`, `couper_acces_equipe`, `renommer_acces_coach`, `liste_acces_equipe` | 0005 |
 | Espace franchisé | `espace_franchise` (sans les tâches de l'équipe seule depuis 0019, avec `mots_franchise` depuis 0038), `reperes_reseau` (interne : médiane, quart supérieur et, depuis 0020, quart inférieur `quartBas`), `reperes_equipe` | 0004, 0005, 0019, 0020, 0038 |
-| Actions du franchisé | `franchise_du_magasin`, `ajouter_action_franchise`, `marquer_action_franchise` (tâche de l'équipe seule introuvable, 0019) | 0007, 0019 |
+| Actions du franchisé | `franchise_du_magasin`, `ajouter_action_franchise`, `marquer_action_franchise` (tâche de l'équipe seule introuvable, 0019), `statut_action_franchise` (À faire, En cours, Bloquée avec sa raison, 0043) | 0007, 0019, 0043 |
+| Plan d'action du magasin | `plans_franchise()` (franchisé : titres, statuts et bilans des priorités de ses magasins, sans l'objectif chiffré) | 0043 |
+| Entretiens RR–Coach | `coachs_encadres()`, `mon_coach()` (internes) ; `remarque_entretien(p_id, p_texte)` (le Coach, ses entretiens) | 0043 |
+| Demandes des franchisés | `creer_demande`, `mes_demandes`, `completer_demande` (franchisé, ses magasins, 20 demandes par jour au plus) ; `repondre_demande` (équipe, ses magasins ; la base pose l'auteur, la première réponse et la résolution) | 0043 |
 | Mot avant la visite | `ecrire_mot_franchise` (franchisé, visite à venir de son magasin, hors appels et points) ; `espace_franchise` renvoie la clé `mots_franchise` depuis 0038 | 0038 |
 | Messagerie | `messagerie`, `envoyer_message`, `envoyer_a`, `marquer_lu`, `marquer_lu_personne`, `supprimer_message`, `renommer_magasin_messages`, `pieces_propres` | 0006 |
 | Échanges en groupe | `peut_inviter`, `creer_groupe`, `modifier_groupe`, `supprimer_groupe`, `quitter_groupe`, `peut_ecrire_fil`, `envoyer_fil`, `marquer_lu_fil`, `compte_lit_magasin` (interne) ; `messagerie` renvoie aussi les groupes (version 4) | 0018 |
@@ -224,7 +243,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Comptes rendus de visite | `reactions_visites`, `visite_visible`, `basculer_pouce_visite`, `commenter_visite`, `supprimer_commentaire_visite` | 0022 |
 | « Vu par » des bonnes pratiques | `lire_pratiques` (franchisé, pratiques existantes seulement), `lectures_pratiques` (Directeur, Responsable Régional pour les franchisés de ses magasins), `pratiques_existantes` (interne) | 0023 |
 | Réunions et formations | `reunions_franchise` (avec type, heure et contenu depuis 0030), `repondre_reunion` (franchisé, ses magasins invités, réponse jusqu'au dernier jour) ; `presences_reunions`, `pointer_presence` (équipe, ses magasins, pointage dès le premier jour) | 0025, 0030 |
-| Sondages | `publier_sondage` (Directeur ; RR sur ses magasins), `supprimer_question`, `resultats_questions` (Directeur ; RR pour ses magasins et sa région, relance des franchisés, Coachs et RR) ; `questions_franchise` (franchisé), `questions_equipe` (Coach ; RR pour les sondages du Directeur), `repondre_sondage` (une réponse par compte, à toutes les questions) ; `publier_question`, `repondre_question` (anciennes écritures d'une question seule) ; `magasins_questions`, `nom_rr`, `destinataire_sondage`, `destinataires_sondage`, `sondages_pour_moi`, `question_valable`, `reponse_valable` (internes) | 0026, 0029 |
+| Sondages | `publier_sondage` (Directeur ; RR sur ses magasins), `supprimer_question`, `resultats_questions` (Directeur ; RR pour ses magasins et sa région, relance des franchisés, Coachs et RR) ; `questions_franchise` (franchisé), `questions_equipe` (Coach ; RR pour les sondages du Directeur), `repondre_sondage` (une réponse par compte, à toutes les questions) ; `publier_question`, `repondre_question` (anciennes écritures d'une question seule) ; `magasins_questions`, `nom_rr`, `destinataire_sondage`, `destinataires_sondage`, `sondages_pour_moi`, `question_valable`, `reponse_valable` (internes ; réponses libres `chiffre` et `texte` des remontées depuis 0043) | 0026, 0029, 0043 |
 | Propositions de bonnes pratiques | `proposer_pratique`, `mes_propositions` (franchisé, ses magasins) ; `propositions_pratiques`, `traiter_proposition` (équipe, ses magasins ; Directeur, tous) | 0027 |
 | Challenges | `creer_challenge`, `supprimer_challenge` (Directeur ; RR sur ses magasins) ; `challenges_equipe` (équipe, chiffre de ses seuls magasins) ; `challenges_franchise` (rang et podium sans chiffre) ; `classement_challenge` (interne) | 0028 |
 | Historique des modifications | `historique_modifications(p_depuis, p_limite)` (Directeur, 90 jours par défaut, sans l'identifiant du compte) ; `remettre_modification(p_id)` (Directeur, une suppression, si rien n'a pris sa place) ; `noter_modification` (déclencheur) | 0036 |

@@ -32,7 +32,7 @@ import { RechercheFiltres } from '../components/RechercheFiltres'
 import { useAuth } from '../auth/AuthContext'
 import { useApercu } from '../auth/Apercu'
 import {
-  aTraiterParLeSiege, completerDemande, creerDemande, delaiMedian, enAttenteLongue, libelleStatutDemande, libelleTheme, ouverteDepuis, repondreDemande,
+  aTraiterParLeSiege, completerDemande, creerDemande, delaiMedian, enAttenteLongue, libelleStatutDemande, libelleTheme, repondreDemande,
   themesDemande, useDemandes, useMesDemandes, type Demande, type StatutDemande, type ThemeDemande,
 } from '../data/demandes'
 import { dateHeure, dateRelative } from '../lib/format'
@@ -226,6 +226,3 @@ function DialogCompleter({ d, lecture, onFermer }: { d: Demande; lecture: boolea
     </Fenetre>
   )
 }
-
-// Nombre de demandes que le siège doit traiter, ouvertes depuis plus de 5 jours ou non (pour À traiter)
-export const demandesATraiter = (liste: Demande[] | null | undefined, jour: string) => (liste ?? []).filter(aTraiterParLeSiege).map((d) => ({ d, longue: ouverteDepuis(d, `${jour}T12:00:00Z`) > 5 }))
