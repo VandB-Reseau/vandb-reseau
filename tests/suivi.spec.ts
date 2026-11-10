@@ -16,7 +16,7 @@ test('la fiche magasin montre l’évolution de la santé et le journal du magas
   await expect(page.getByText(/En recul depuis le 1 oct\. 2026 · avant : Cœur de réseau/)).toBeVisible()
   await ouvrirOnglet(page, 'Journal')
   // Le journal (santé, déploiements, Coachs, notes) dans son onglet ; les visites restent dans le leur
-  const journal = page.getByRole('region', { name: 'Journal' })
+  const journal = page.getByRole('region', { name: 'Fil d’activité' })
   await expect(journal.getByText('Passe en Redressement urgent')).toBeVisible()
   await expect(journal.getByText('Classé Cœur de réseau')).toBeVisible()
   await expect(journal.getByText('Concept 2.0 : Fait')).toBeVisible()

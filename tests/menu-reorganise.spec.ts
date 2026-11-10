@@ -46,8 +46,9 @@ test('Campagnes passent dans Santé du parc, Bonnes pratiques dans Infos réseau
   await expect(onglets).not.toContainText('Campagnes')
   await expect(onglets).not.toContainText('Pratiques')
   await page.goto('./#/visites?vue=campagnes')
-  await expect(page).toHaveURL(/#\/plus\/sante\?vue=campagnes/)
-  await expect(page.getByRole('tablist', { name: 'Rubriques de la santé du parc' })).toContainText('Campagnes')
+  // Vague 3 (27A) : les campagnes ont leur page, dans la rubrique Animation
+  await expect(page).toHaveURL(/#\/campagnes\?vue=campagnes/)
+  await expect(page.getByRole('heading', { name: 'Campagnes', level: 1 })).toBeVisible()
   // Bonnes pratiques : Infos réseau (sprint 22, S1)
   await page.goto('./#/visites?vue=pratiques')
   await expect(page).toHaveURL(/#\/infos\?vue=pratiques$/)

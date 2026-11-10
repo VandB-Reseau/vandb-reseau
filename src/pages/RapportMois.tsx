@@ -31,7 +31,7 @@ function Liste({ lignes, vide }: { lignes: { cle: string; magasin: string; detai
     <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
       {lignes.slice(0, MAX).map((l) => (
         <Box component="li" key={l.cle} sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, py: 1, minHeight: 48, alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
-          <Link component={RouterLink} to={lienFiche(l.magasin)} sx={{ fontWeight: 600 }}>{l.magasin}</Link>
+          <Link component={RouterLink} to={lienFiche(l.magasin)} sx={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', minHeight: 48 }}>{l.magasin}</Link>
           <Typography variant="body2" sx={{ textAlign: 'right', color: l.rouge ? 'error.main' : 'text.secondary', fontWeight: l.rouge ? 700 : 400 }}>{l.detail}</Typography>
         </Box>
       ))}

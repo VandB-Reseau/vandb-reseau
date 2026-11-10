@@ -76,7 +76,7 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
     contenu = (
       <>
         {!faite && (
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+          <Box className="sans-impression" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
             <Button variant="outlined" startIcon={v ? <EditOutlined /> : <EventAvailableOutlined />} onClick={() => setPlanif(true)} sx={{ minHeight: 48 }}>
               {v ? (preparee?.notes ? 'Modifier mes notes' : 'Écrire mes notes de préparation') : 'Planifier la visite'}
             </Button>

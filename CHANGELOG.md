@@ -9,6 +9,18 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Refonte façon SaaS, vague 3 (Joseph, 09/11/2026, choix 21A à 29A ; 30 écarté). Périmètre choisi une fois dans le
+  menu (Tout le réseau, une région, les magasins d'un Coach), suivi par l'accueil, les listes, l'agenda, Performance et
+  Budgets, rappelé à côté du titre. Fiche magasin : vue d'ensemble avec les informations à gauche et la situation au
+  centre (quatre indicateurs de la caisse, prochaines étapes, objectifs, dernier compte rendu) ; Activité en un seul fil,
+  « À venir » en tête et filtres en puces. Page Visite en quatre étapes (Préparer, Sur place, Compte rendu, Suivi),
+  l'étape affichée dans l'historique. Agenda à la semaine (le Coach y arrive), magasins à planifier à glisser sur un
+  jour ; Visites garde Rythme de visite et Historique. Objectifs chiffrés par magasin (panier, tickets, CA par univers,
+  marge ; valeur ou évolution vs N-1), avancement lu dans la caisse, tâches rattachées. Rubrique Animation (Infos réseau,
+  Campagnes) ; Santé du parc garde Nine box et Évaluer ; Messages ne garde que les conversations. Équipe en trois
+  onglets (Organisation, Personnes, Revue du mois), fiches des Coachs et des RR en trois onglets. Performance › Rapport
+  du mois, annoncé dans la cloche. — Base : `0042_objectifs_magasins`
+
 - Refonte façon SaaS, vague 2, lot A (Joseph, 09/11/2026, choix 10A 11A 12A 14A 15A 16A 17A 20A), sans migration.
   Cloche en haut de l'app et volet des notifications (tâches confiées ou en retard, comptes rendus, commentaires de
   budget), l'état « lu » suivant le compte. En-tête de fiche compact, le nom repris dans la bande collante des onglets

@@ -20,8 +20,8 @@ const largeurTenue = (page: import('@playwright/test').Page) => page.evaluate(()
 test('chaque onglet regroupé montre ses deux parties, sans déborder de l’écran', async ({ page }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test?vue=journal')
-  await expect(page.getByRole('region', { name: 'Journal' })).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Journal' }).getByText('Classé Cœur de réseau')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Fil d’activité' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Fil d’activité' }).getByText('Classé Cœur de réseau')).toBeVisible()
   expect(await largeurTenue(page)).toBe(true)
   await ouvrirOnglet(page, 'Chiffres et santé')
   await expect(page.getByText(/En recul depuis le 1 oct\. 2026/)).toBeVisible()
@@ -41,7 +41,8 @@ for (const { ancienne, onglet, vu } of [
     await seConnecter(page)
     await page.goto(`./#/magasins/Lyon%20Test?vue=${ancienne}`)
     if (!isMobile) await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab', { name: onglet, selected: true })).toBeVisible()
-    await expect(page.getByText(vu).first()).toBeInViewport()
+    // Vague 3 (23A) : l'activité commence par « À venir », le fil suit
+    await expect(page.getByText(vu).first()).toBeVisible()
   })
 }
 

@@ -661,7 +661,8 @@ export async function seConnecter(page: Page, options: OptionsSimulation = {}) {
 // Refonte (Joseph, 09/11/2026, 3A) : fiche du magasin en 5 onglets ; les anciens noms d'onglets des tests y mènent encore
 const ANCIENS_ONGLETS_FICHE: Record<string, [string, string?]> = {
   'Fiche': ['Vue d’ensemble'], 'Chiffres et santé': ['Chiffres', 'Santé et leviers'], 'Bonnes pratiques': ['Ressources'],
-  'Tâches et campagnes': ['Activité', 'Tâches et campagnes'], 'Tâches': ['Activité', 'Tâches et campagnes'], 'Visites': ['Activité', 'Visites'], 'Journal': ['Activité', 'Journal'], 'Campagnes': ['Activité', 'Campagnes'],
+  // Vague 3 (23A) : l'activité est un seul fil, « À venir » en tête (tâches, campagnes) et filtres en puces
+  'Tâches et campagnes': ['Activité', 'Tout'], 'Tâches': ['Activité', 'Tout'], 'Visites': ['Activité', 'Visites'], 'Journal': ['Activité', 'Journal'], 'Campagnes': ['Activité', 'Tout'],
 }
 export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page = page) {
   const nomComplet = new RegExp(`^${nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( et .+)?$`)
@@ -679,7 +680,7 @@ export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page
       const panne = page.getByRole('button', { name: 'Réessayer' })
       await expect(puce.or(panne).first()).toBeVisible()
       if (await puce.isVisible()) await puce.click()
-    } else if (ancien[1]) await page.getByRole('tablist', { name: 'Parties de l’activité' }).getByRole('tab', { name: ancien[1] }).click()
+    } else if (ancien[1]) await page.getByRole('group', { name: 'Filtrer l’activité' }).getByRole('button', { name: ancien[1], exact: true }).click()
     if (ancien[0] !== nom) return
   }
   if (await onglet.isVisible()) return onglet.click()

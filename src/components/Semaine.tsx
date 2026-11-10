@@ -50,7 +50,9 @@ function Chiffre({ valeur, libelle, detail }: { valeur: ReactNode; libelle: stri
   )
 }
 
-export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC: boolean; onMessage: (m: string) => void }) {
+// panneau : colonne de droite de l'Agenda › Semaine sur PC (refonte vague 3, Joseph 09/11/2026, 25A). Les magasins se
+// glissent sur un jour de la semaine ; le lâcher ouvre la planification à cette date.
+export function VueSemaine({ reseau, surPC, onMessage, panneau = false, survoler }: { reseau: Reseau; surPC: boolean; onMessage: (m: string) => void; panneau?: boolean; survoler?: (jour: string | null) => void }) {
   const { profil } = useAuth()
   const coachs = useMemo(() => coachsSuivis(reseau, profil), [reseau, profil])
   const [choisi, setChoisi] = useState('')
@@ -59,6 +61,38 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
   const [planif, setPlanif] = useState<{ magasins: string[]; date: string; visite: Visite | null } | null>(null)
   const planifier = (magasins: string[], date: string, visite: Visite | null = null) => setPlanif({ magasins, date, visite })
   const [compteRendu, setCompteRendu] = useState<Visite | null>(null)
+  const [fantome, setFantome] = useState<{ nom: string; x: number; y: number } | null>(null)
+  const nettoyer = useRef<() => void>(() => {})
+  useEffect(() => () => nettoyer.current(), [])
+  const glisser = (ev: EvenementPointeur, nom: string, visite: Visite | null) => {
+    if (ev.button !== 0 || ev.pointerType !== 'mouse') return
+    const depart = { x: ev.clientX, y: ev.clientY }
+    let bouge = false
+    let cible: string | null = null
+    const bouger = (m: PointerEvent) => {
+      if (!bouge && Math.hypot(m.clientX - depart.x, m.clientY - depart.y) < 6) return
+      if (!bouge) window.getSelection()?.removeAllRanges()
+      bouge = true
+      const jour = document.elementFromPoint(m.clientX, m.clientY)?.closest<HTMLElement>('[data-jour]')?.dataset.jour ?? null
+      cible = jour && jour >= reseau.jour ? jour : null
+      survoler?.(cible)
+      setFantome({ nom, x: m.clientX, y: m.clientY })
+    }
+    // Après un glisser, le clic qui suit (lien du magasin) n'ouvre rien
+    const bloquer = (c: MouseEvent) => { c.preventDefault(); c.stopPropagation() }
+    const lacher = () => {
+      nettoyer.current()
+      if (!bouge) return
+      window.addEventListener('click', bloquer, { capture: true, once: true })
+      setTimeout(() => window.removeEventListener('click', bloquer, { capture: true }), 0)
+      if (cible) planifier([nom], cible, visite)
+    }
+    nettoyer.current = () => {
+      window.removeEventListener('pointermove', bouger); window.removeEventListener('pointerup', lacher); window.removeEventListener('pointercancel', lacher)
+      setFantome(null); survoler?.(null)
+    }
+    window.addEventListener('pointermove', bouger); window.addEventListener('pointerup', lacher); window.addEventListener('pointercancel', lacher)
+  }
   const unSeul = coachs.length <= 1
   const actions = s && <>
     {s.aPlanifier.length > 1 && (surPC ? <BoutonAction secondaire libelle="Planifier la tournée" icone={<RouteOutlined />} onClick={() => planifier(s.aPlanifier.map((x) => x.l.magasin.nom), reseau.jour)} />
@@ -88,7 +122,7 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
     if (!surPC) {
       const bouton = { minHeight: 48, px: 1.5, bgcolor: 'background.paper' } as const
       return (
-        <Box key={l.magasin.nom}>
+        <Box key={l.magasin.nom} {...(panneau && (!prevue || prevue.date >= reseau.jour) ? { onPointerDown: (ev: EvenementPointeur) => glisser(ev, l.magasin.nom, prevue), 'data-glissable': '', sx: { cursor: 'grab', userSelect: 'none', '& a': { WebkitUserDrag: 'none' } } } : {})}>
           <LigneCompacte lien={lienFiche(l.magasin.nom)} label={l.magasin.nom}
             avatar={<Initiales nom={l.magasin.nom} icone={i !== null ? <Typography component="span" sx={{ fontWeight: 700 }}>{i + 1}</Typography> : <EventAvailableOutlined />} />}
             titre={l.magasin.nom} detail={detail}
@@ -120,6 +154,7 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
         onFermer={(m) => { setPlanif(null); if (m) onMessage(m) }} />}
       {compteRendu && <DialogVisite reseau={reseau} visite={compteRendu} onFermer={(m) => { setCompteRendu(null); if (m) onMessage(m) }} />}
       {barre}
+      {fantome && <Box aria-hidden sx={{ position: 'fixed', left: fantome.x + 8, top: fantome.y + 8, zIndex: 2000, pointerEvents: 'none', px: 1.5, py: 0.75, borderRadius: 1, bgcolor: '#307672', color: '#fff', fontSize: '0.875rem', fontWeight: 600, boxShadow: 3 }}>{fantome.nom}</Box>}
       <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700, mb: 1 }}>
         {[!unSeul && coach, `jusqu’au ${jourCourt(s.fin)}`].filter(Boolean).join(' · ')}
       </Typography>
@@ -145,76 +180,5 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
         </>
       )}
     </>
-  )
-}
-
-// Agenda › Semaine sur PC (refonte vague 3, Joseph 09/11/2026, 25A) : les magasins à voir d'ici sept jours, à faire
-// glisser sur un jour de la semaine ; le lâcher ouvre la planification à cette date (un toucher la propose au jour conseillé)
-export function PanneauAPlanifier({ reseau, onMessage, survoler }: { reseau: Reseau; onMessage: (m: string) => void; survoler: (jour: string | null) => void }) {
-  const { profil } = useAuth()
-  const coachs = useMemo(() => coachsSuivis(reseau, profil), [reseau, profil])
-  const [choisi, setChoisi] = useState('')
-  const coach = coachs.includes(choisi) ? choisi : coachs[0] ?? ''
-  const s = useMemo(() => (coach ? semaineDu(reseau, coach) : null), [reseau, coach])
-  const [planif, setPlanif] = useState<{ magasins: string[]; date: string } | null>(null)
-  const [fantome, setFantome] = useState<{ nom: string; x: number; y: number } | null>(null)
-  const nettoyer = useRef<() => void>(() => {})
-  useEffect(() => () => nettoyer.current(), [])
-  const glisser = (ev: EvenementPointeur, l: LigneSemaine['l']) => {
-    if (ev.button !== 0) return
-    ev.preventDefault()
-    const depart = { x: ev.clientX, y: ev.clientY }
-    let bouge = false
-    let cible: string | null = null
-    const bouger = (m: PointerEvent) => {
-      if (!bouge && Math.hypot(m.clientX - depart.x, m.clientY - depart.y) < 5) return
-      bouge = true
-      const jour = document.elementFromPoint(m.clientX, m.clientY)?.closest<HTMLElement>('[data-jour]')?.dataset.jour ?? null
-      cible = jour && jour >= reseau.jour ? jour : null
-      survoler(cible)
-      setFantome({ nom: l.magasin.nom, x: m.clientX, y: m.clientY })
-    }
-    const lacher = () => {
-      nettoyer.current()
-      if (!bouge) setPlanif({ magasins: [l.magasin.nom], date: jourPropose(reseau, l) })
-      else if (cible) setPlanif({ magasins: [l.magasin.nom], date: cible })
-    }
-    nettoyer.current = () => {
-      window.removeEventListener('pointermove', bouger); window.removeEventListener('pointerup', lacher); window.removeEventListener('pointercancel', lacher)
-      setFantome(null); survoler(null)
-    }
-    window.addEventListener('pointermove', bouger); window.addEventListener('pointerup', lacher); window.addEventListener('pointercancel', lacher)
-  }
-  return (
-    <Box component="aside" aria-label="À planifier" sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-      {planif && <DialogPlanifier reseau={reseau} coach={coach} magasins={planif.magasins} dateInitiale={planif.date} onFermer={(m) => { setPlanif(null); if (m) onMessage(m) }} />}
-      <TitreSection nombre={s?.aPlanifier.length}>À planifier</TitreSection>
-      {coachs.length > 1 && <FiltreMenu unique libelle="Coach" choisis={[coach]} onChange={(v) => setChoisi(v[0])} options={coachs.map((c) => ({ valeur: c, libelle: c }))} />}
-      {!s || !s.aPlanifier.length ? (
-        <Card sx={{ p: 2 }}><Typography variant="body2" color="text.secondary">{s ? `Rien d’urgent d’ici le ${jourCourt(s.fin)}.` : 'Aucun Coach n’a de magasin à suivre.'}</Typography></Card>
-      ) : (
-        <>
-          <CarteLignes label="Magasins à planifier">
-            {s.aPlanifier.map(({ l }) => (
-              <Box key={l.magasin.nom} role="button" tabIndex={0} aria-label={`Planifier la visite de ${l.magasin.nom}`}
-                onPointerDown={(ev) => glisser(ev, l)}
-                onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setPlanif({ magasins: [l.magasin.nom], date: jourPropose(reseau, l) }) } }}
-                sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1, minHeight: 56, cursor: 'grab', userSelect: 'none', touchAction: 'none', borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 }, '&:hover': { bgcolor: 'action.hover' }, '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main' } }}>
-                <Box sx={{ width: 6, alignSelf: 'stretch', borderRadius: 3, bgcolor: l.alerte ? 'warning.main' : 'divider', flexShrink: 0 }} />
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.magasin.nom}</Typography>
-                  <Typography variant="body2" color={l.alerte ? 'warning.dark' : 'text.secondary'}>{l.alerte ? libellePasVu(l) : l.echeance ? `À voir avant le ${jourCourt(l.echeance)}` : 'À voir'}</Typography>
-                </Box>
-                <Tooltip title="Préparer la visite"><IconButton component={RouterLink} to={lienPreparation(l.magasin.nom)} aria-label={`Préparer la visite de ${l.magasin.nom}`} onPointerDown={(ev) => ev.stopPropagation()}><AssignmentOutlined /></IconButton></Tooltip>
-              </Box>
-            ))}
-          </CarteLignes>
-          {s.aPlanifier.length > 1 && <Button variant="outlined" startIcon={<RouteOutlined />} onClick={() => setPlanif({ magasins: s.aPlanifier.map((x) => x.l.magasin.nom), date: reseau.jour })} sx={{ minHeight: 48, alignSelf: 'flex-start' }}>
-            {s.tournee.etapes > 0 ? `Planifier la tournée · ${s.tournee.complete ? '' : '≥ '}${duree(s.tournee.minutes)}` : 'Planifier la tournée'}
-          </Button>}
-        </>
-      )}
-      {fantome && <Box aria-hidden sx={{ position: 'fixed', left: fantome.x + 8, top: fantome.y + 8, zIndex: 2000, pointerEvents: 'none', px: 1.5, py: 0.75, borderRadius: 1, bgcolor: '#307672', color: '#fff', fontSize: '0.875rem', fontWeight: 600, boxShadow: 3 }}>{fantome.nom}</Box>}
-    </Box>
   )
 }

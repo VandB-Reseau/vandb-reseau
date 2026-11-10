@@ -193,7 +193,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
               </Section>
               <Section titre="Magasin">
                 <Ligne compacte libelle="Code magasin">{m.code || null}</Ligne>
-                <Ligne compacte libelle="Implantation">{m.exploitation.implantation ? dateLongue(m.exploitation.implantation) : null}</Ligne>
+                <Ligne compacte libelle="Implantation des produits">{m.exploitation.implantation ? dateLongue(m.exploitation.implantation) : null}</Ligne>
                 <Ligne compacte libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
                 <GroupeBudgetaire magasin={m.nom} modifiable={referentiels} />
                 <Ligne compacte libelle="Adresse">

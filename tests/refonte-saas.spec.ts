@@ -48,13 +48,13 @@ test('PC : menu clair en quatre rubriques, sans barre noire ; téléphone : barr
   } else {
     await expect(page.getByRole('banner')).toHaveCount(0)
     const menu = page.getByRole('navigation', { name: 'Navigation principale' })
-    for (const r of ['Mon travail', 'Réseau', 'Finances', 'Réglages']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
-    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Santé du parc', 'Budgets', 'Performance', 'Équipe', 'Paramètres'])
-    // Animation réseau et Évolution du parc ne sont plus dans le menu : onglet de Messages, vue de Performance (vague 2)
+    for (const r of ['Mon travail', 'Réseau', 'Animation', 'Finances', 'Réglages']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
+    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Santé du parc', /^Infos réseau/, 'Campagnes', 'Budgets', 'Performance', 'Équipe', 'Paramètres'])
+    // Vague 3 (27A) : sondages, formations et réunions dans Campagnes › Sondages et rendez-vous
     await expect(menu.getByRole('button', { name: 'Animation réseau' })).toHaveCount(0)
     await page.goto('./#/animation')
-    await expect(page.getByRole('tablist', { name: 'Messages et animation' }).getByRole('tab', { name: 'Animation réseau' })).toHaveAttribute('aria-selected', 'true')
-    await expect(menu.getByRole('button', { name: /^Messages/ })).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('tab', { name: 'Sondages et rendez-vous' })).toHaveAttribute('aria-selected', 'true')
+    await expect(menu.getByRole('button', { name: 'Campagnes' })).toHaveAttribute('aria-current', 'page')
   }
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-refonte-coquille.png` })
@@ -86,10 +86,11 @@ test('la fiche du magasin tient en cinq onglets et deux niveaux ; le suivi, la s
   await page.goto(fiche())
   const onglets = page.getByRole('tablist', { name: `Rubriques de ${M}` })
   if (!isMobile) await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Ressources'])
-  // Activité : tâches et campagnes, visites, journal
+  // Activité : un seul fil, filtré par des puces (vague 3, 23A)
   await page.goto(fiche('?vue=visites'))
-  await expect(page.getByRole('tablist', { name: 'Parties de l’activité' }).getByRole('tab')).toHaveText(['Tâches et campagnes', 'Visites', 'Journal'])
-  await expect(page.getByRole('tablist', { name: 'Parties de l’activité' }).getByRole('tab', { name: 'Visites' })).toHaveAttribute('aria-selected', 'true')
+  const filtres = page.getByRole('group', { name: 'Filtrer l’activité' })
+  await expect(filtres.getByRole('button')).toHaveText(['Tout', 'Visites', 'Tâches', 'Chiffres', 'Journal'])
+  await expect(filtres.getByRole('button', { name: 'Visites' })).toHaveAttribute('aria-pressed', 'true')
   // Chiffres : une seule sous-navigation
   await page.goto(fiche('?vue=chiffres'))
   const parties = page.getByRole('tablist', { name: 'Parties des chiffres' })

@@ -63,7 +63,9 @@ sur l’appareil), dictée du navigateur.
    `Reseau` (`src/data/modele.ts`) : magasins avec renommages et fiches appliqués, Coach et RR à date, visites,
    chiffres, santé, suivi.
 4. **Écrans** : lisent le réseau via `ReseauContext` ; le périmètre affiché suit le profil
-   (`src/data/perimetre.ts`).
+   (`src/data/perimetre.ts`). Le Directeur et le RR choisissent en plus un périmètre de lecture dans le menu
+   (`src/data/perimetreChoisi.tsx`, vague 3) : `AvecReseau` restreint le réseau des pages de liste
+   (`suitLePerimetre`), `useNomsPerimetre` filtre les écrans du pilotage. Ce n'est jamais un droit.
 5. **Écritures** : fonctions de `chargement.ts` (une par geste) ; celles d'`app_config` et du suivi passent une par
    une pour qu'une saisie rapide n'en écrase pas une autre. Messagerie, communications, réactions et actions du franchisé passent
    par des fonctions de la base.

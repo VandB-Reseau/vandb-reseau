@@ -52,9 +52,10 @@ async function fonctionSimulee(page: Page) {
 }
 
 // Refonte (Joseph, 09/11/2026, 2A) : l'animation réseau est un onglet de Messages, pour le Directeur et les RR
-const ongletAnimation = (page: Page) => page.getByRole('tablist', { name: 'Messages et animation' }).getByRole('tab', { name: 'Animation réseau' })
+// Vague 3 (27A) : sondages, formations et réunions sont dans Campagnes › Sondages et rendez-vous
+const ongletAnimation = (page: Page) => page.getByRole('tab', { name: /^(Sondages et rendez-vous|Suivi)$/ })
 async function ouvrirAnimation(page: Page) {
-  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^Messages/ }).click()
+  await page.goto('./#/campagnes')
   await ongletAnimation(page).click()
   await expect(ongletAnimation(page)).toHaveAttribute('aria-selected', 'true')
 }
@@ -205,10 +206,8 @@ test('le Responsable Régional a l’onglet', async ({ page }) => {
 
 test('le Coach n’a pas l’onglet', async ({ page }) => {
   await seConnecter(page, { ...tout(), appMetadata: { role: 'coach', coach: 'Noé MODELE' } })
-  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^Messages/ }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Messages' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'Animation réseau' })).toHaveCount(0)
   await page.goto('./#/animation')
-  await expect(page.getByRole('heading', { level: 1, name: /^Accueil$|Bonjour|Bonsoir/ })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'Animation réseau' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { level: 1, name: 'Campagnes' })).toBeVisible()
+  await expect(ongletAnimation(page)).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Contenus' })).toHaveCount(0)
 })

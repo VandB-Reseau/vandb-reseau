@@ -35,7 +35,7 @@ import { deplacerVisite, enregistrerEvenement, supprimerEvenement } from '../dat
 import { useReseau } from '../data/ReseauContext'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
-import { PanneauAPlanifier, VueSemaine } from '../components/Semaine'
+import { VueSemaine } from '../components/Semaine'
 import { libellesTypeEvenement, typeEvenement, type Evenement, type Reseau, type TypeEvenement } from '../data/modele'
 import { Puces } from '../components/Social'
 import { AlerteTaille, ChampCodeHtml, EditeurMiseEnForme } from '../components/MiseEnForme'
@@ -238,12 +238,12 @@ export function Agenda() {
             {/* La période et les catégories restent sous la barre du haut quand la page défile */}
             <BandeCollante>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0, sm: 1 }, flexWrap: 'wrap', mb: 0.5 }}>
-              <IconButton onClick={() => changer(-1)} aria-label={vue === 'semaine' ? 'Semaine précédente' : 'Mois précédent'}><ChevronLeft /></IconButton>
+              <IconButton onClick={() => changer(-1)} sx={{ width: 48, height: 48 }} aria-label={vue === 'semaine' ? 'Semaine précédente' : 'Mois précédent'}><ChevronLeft /></IconButton>
               <Typography variant="h3" component="h2" sx={{ minWidth: { sm: 200 }, flex: { xs: 1, sm: 'none' }, textAlign: 'center', '&::first-letter': { textTransform: 'uppercase' } }}>{titrePeriode}</Typography>
-              <IconButton onClick={() => changer(1)} aria-label={vue === 'semaine' ? 'Semaine suivante' : 'Mois suivant'}><ChevronRight /></IconButton>
+              <IconButton onClick={() => changer(1)} sx={{ width: 48, height: 48 }} aria-label={vue === 'semaine' ? 'Semaine suivante' : 'Mois suivant'}><ChevronRight /></IconButton>
               <Button onClick={() => setParams({ vue }, { replace: true })} sx={{ minHeight: 48 }}>Aujourd’hui</Button>
-              <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_e, v: 'semaine' | 'mois' | null) => v && setParams({ vue: v }, { replace: true })} aria-label="Affichage de l’agenda"
-                sx={{ ml: { sm: 'auto' }, width: { xs: '100%', sm: 'auto' }, mb: { xs: 1, sm: 0 }, '& .MuiToggleButton-root': { minHeight: 40, px: 2, flex: { xs: 1, sm: 'none' }, textTransform: 'none', fontWeight: 600 } }}>
+              <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_e, v: 'semaine' | 'mois' | null) => { if (v && v !== vue) setParams(v === 'mois' ? { vue: v, mois: ajouterJours(semaine, 3).slice(0, 7) } : mois === reseau.jour.slice(0, 7) ? { vue: v } : { vue: v, semaine: `${mois}-01` }, { replace: true }) }} aria-label="Affichage de l’agenda"
+                sx={{ ml: { sm: 'auto' }, width: { xs: '100%', sm: 'auto' }, mb: { xs: 1, sm: 0 }, '& .MuiToggleButton-root': { minHeight: { xs: 48, sm: 40 }, px: 2, flex: { xs: 1, sm: 'none' }, textTransform: 'none', fontWeight: 600 } }}>
                 <ToggleButton value="semaine">Semaine</ToggleButton>
                 <ToggleButton value="mois">Mois</ToggleButton>
               </ToggleButtonGroup>
@@ -263,7 +263,7 @@ export function Agenda() {
             </BandeCollante>
             {vue === 'semaine' && equipe
               ? surPC
-                ? <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 2, alignItems: 'start' }}>{contenu}<PanneauAPlanifier reseau={reseau} onMessage={setMessage} survoler={setSurvol} /></Box>
+                ? <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 2, alignItems: 'start' }}>{contenu}<Box component="aside" aria-label="Ma semaine" sx={{ minWidth: 0 }}><VueSemaine reseau={reseau} surPC={false} panneau survoler={setSurvol} onMessage={setMessage} /></Box></Box>
                 : <><VueSemaine reseau={reseau} surPC={false} onMessage={setMessage} /><Box sx={{ mt: 3 }}>{contenu}</Box></>
               : contenu}
             <MenuAjout ancre={ancre} onFermer={() => setAncre(null)} onChoisir={(type, jour) => { setAncre(null); setAjout({ type, jour }) }} />

@@ -164,7 +164,7 @@ test('depuis la fiche magasin, Modifier ouvre la saisie de la santé puis des d�
   await page.screenshot({ path: `captures/${info.project.name}-fiche-modifier-sante.png` })
   await page.goBack()
   await page.getByRole('button', { name: 'Modifier les déploiements' }).click()
-  await expect(page).toHaveURL(/plus\/sante\?vue=deploiements&magasin=Rennes/)
+  await expect(page).toHaveURL(/campagnes\?vue=deploiements&magasin=Rennes/)
   d = page.getByRole('dialog', { name: 'Rennes Test' })
   await d.getByRole('button', { name: 'Oui : Terrasse de Rennes Test' }).click()
   await expect.poll(() => JSON.stringify(ecritures.filter((e) => e.table === 'app_config').map((e) => e.corps))).toContain('terrasse')
@@ -243,7 +243,8 @@ test('le titre et la recherche restent en place d’un onglet à l’autre', asy
   const titre = page.getByRole('heading', { name: 'Santé du parc', level: 1 })
   const champ = page.getByRole('combobox', { name: 'Rechercher un magasin ou un Coach' })
   const ref = [await titre.boundingBox(), await champ.boundingBox()]
-  for (const onglet of ['Évaluer', 'Déploiements', 'Nine box']) {
+  // Vague 3 (27A) : Santé du parc garde Nine box et Évaluer
+  for (const onglet of ['Évaluer', 'Nine box']) {
     await page.getByRole('tab', { name: onglet }).click()
     await expect.poll(async () => [await titre.boundingBox(), await champ.boundingBox()]).toEqual(ref)
   }
@@ -251,9 +252,9 @@ test('le titre et la recherche restent en place d’un onglet à l’autre', asy
 
 test('plus d’import ni de réglage dans la Santé du parc, et plus de doublon Carte', async ({ page }) => {
   await seConnecter(page)
-  for (const vue of ['evaluer', 'deploiements']) {
+  for (const [vue, titre] of [['evaluer', 'Santé du parc'], ['deploiements', 'Campagnes']]) {
     await page.goto(`./#/plus/sante?vue=${vue}`)
-    await expect(page.getByRole('heading', { name: 'Santé du parc' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: titre, level: 1 })).toBeVisible()
     await expect(page.getByRole('button', { name: /Importer|Gérer les thématiques|Effacer toutes les notes/ })).toHaveCount(0)
   }
   await page.goto('./#/plus/carte')
