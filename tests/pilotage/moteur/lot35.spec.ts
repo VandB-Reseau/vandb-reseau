@@ -79,7 +79,9 @@ test('frais du budget : même montant, hausse en %, nouveau montant ; inflation 
   proche(de('amortissements').apres, 24_000)          // sous l'EBE : même montant par défaut
   proche(de('remboursementCapital').apres, 36_000)
   const f = fraisDuBudget(magasinFictif, choix, 0.02)
-  expect(f.frais.map((x) => x.code)).toEqual(['loyer', 'energie', 'honoraires_comptables', 'cfe', 'telecom'])
+  expect(f.frais.map((x) => x.code)).toEqual(['loyer', 'energie', 'honoraires_comptables', 'cfe', 'telecom', 'budget_communication'])
+  // Budget communication (10/11/2026) : ligne ajoutée à 0 €, au taux du réseau dès qu'il est réglé
+  expect(f.frais.at(-1)).toEqual({ code: 'budget_communication', libelle: 'Budget communication annuel', rubrique: 'communication', annuel: 0, communicationReseau: true })
   proche(f.frais.reduce((a, x) => a + (x.annuel ?? 0), 0), 60_000 + 6_600 + 3_060 + 900) // 70 560 €
   proche(f.remboursementCapital, 36_000)
   proche(f.interets, 1_200)

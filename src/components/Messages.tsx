@@ -99,7 +99,7 @@ function BulleMessage({ msg, moi, noms, premier, dernier, choisi, contexte, choi
   }
   const g = gestes
   const bouton = (libelle: string, icone: ReactNode, agir: () => void, etiquette?: string, presse?: boolean) => (
-    <Button size="small" startIcon={icone} onClick={agir} aria-label={etiquette} aria-pressed={presse} sx={{ minHeight: 40 }}>{libelle}</Button>
+    <Button size="small" startIcon={icone} onClick={agir} aria-label={etiquette} aria-pressed={presse} sx={{ minHeight: { xs: 48, md: 40 } }}>{libelle}</Button>
   )
   return (
     <Box component="li" id={`message-${msg.id}`} aria-label={`Message de ${msg.auteurNom}`} sx={{ display: 'flex', flexDirection: 'column', alignItems: moi ? 'flex-end' : 'flex-start', mt: premier ? 1.5 : 0.25, scrollMarginTop: 96 }}>
@@ -132,7 +132,7 @@ function BulleMessage({ msg, moi, noms, premier, dernier, choisi, contexte, choi
           {g.epingler && bouton(msg.epingleLe ? 'Retirer l’épingle' : 'Épingler', msg.epingleLe ? <PushPin /> : <PushPinOutlined />, g.epingler)}
           {g.enTache && bouton('En faire une tâche', <TaskAltOutlined />, g.enTache)}
           {g.enDemande && bouton('Transformer en demande', <SupportAgentOutlined />, g.enDemande)}
-          {g.supprimer && <Button size="small" color="error" startIcon={<DeleteOutlined />} onClick={g.supprimer} aria-label={`Supprimer mon message du ${horodatage(msg.creeLe)}`} sx={{ minHeight: 40 }}>Supprimer</Button>}
+          {g.supprimer && <Button size="small" color="error" startIcon={<DeleteOutlined />} onClick={g.supprimer} aria-label={`Supprimer mon message du ${horodatage(msg.creeLe)}`} sx={{ minHeight: { xs: 48, md: 40 } }}>Supprimer</Button>}
         </Box>
       )}
     </Box>

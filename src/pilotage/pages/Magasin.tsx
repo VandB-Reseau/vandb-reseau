@@ -853,7 +853,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
                 </Card>
               )}
               <FraisBudget base={baseFrais} choix={brouillon.fraisBudget} inflation={inflation} annee={annee} anneeEnCours={anneeEnCours} lectureSeule={!peutAjuster}
-                tauxSurCA={{ publicite: parametres.tauxPublicite, redevance: parametres.tauxRedevance }} grille={grilleDe(parametres)}
+                tauxSurCA={{ publicite: parametres.tauxPublicite, redevance: parametres.tauxRedevance, communication: parametres.tauxCommunication }} grille={grilleDe(parametres)}
                 prets={pretsDeuxAnnees(d.prets?.[ligne.magasin], anneeEnCours, annee)}
                 onChange={(c) => setBrouillon(({ fraisBudget: _, ...reste }) => (c ? { ...reste, fraisBudget: c } : reste))} />
             </Stack>

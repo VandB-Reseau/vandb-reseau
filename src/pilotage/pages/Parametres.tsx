@@ -75,8 +75,9 @@ const ONGLETS: { cle: Onglet; libelle: string }[] = [
   { cle: 'journal', libelle: 'Journal' }, { cle: 'acces', libelle: 'Accès' },
 ]
 // Franchise et impôts (lot 39) : bornes de saisie
-type Franchise = Pick<ParametresReseau, 'tauxRedevance' | 'tauxPublicite' | 'impot' | 'tvaPanier'>
-const franchiseDe = (p: ParametresReseau): Franchise => ({ tauxRedevance: p.tauxRedevance, tauxPublicite: p.tauxPublicite, impot: p.impot, tvaPanier: p.tvaPanier })
+type Franchise = Pick<ParametresReseau, 'tauxRedevance' | 'tauxPublicite' | 'impot' | 'tvaPanier'> & { tauxCommunication: number }
+// Budget communication (Joseph, 10/11/2026) : 0 tant que le Directeur ne le règle pas, aucun budget ne bouge seul
+const franchiseDe = (p: ParametresReseau): Franchise => ({ tauxRedevance: p.tauxRedevance, tauxPublicite: p.tauxPublicite, tauxCommunication: p.tauxCommunication ?? 0, impot: p.impot, tvaPanier: p.tvaPanier })
 const dans = (v: number, min: number, max: number) => Number.isFinite(v) && v >= min && v <= max
 
 function Retour({ message, fermer }: { message: Message; fermer: () => void }) {
@@ -142,7 +143,7 @@ export function Parametres() {
   }, [p])
   const plafondLu = nombre(plafond)
   const franchiseLue: Franchise | null = franchise && plafondLu !== null && dans(plafondLu, 0, 10_000_000)
-    && dans(franchise.tauxRedevance, 0, 0.1) && dans(franchise.tauxPublicite, 0, 0.1)
+    && dans(franchise.tauxRedevance, 0, 0.1) && dans(franchise.tauxPublicite, 0, 0.1) && dans(franchise.tauxCommunication, 0, 0.1)
     && dans(franchise.impot.tauxReduit, 0, 0.5) && dans(franchise.impot.tauxNormal, 0, 0.5)
     && dans(franchise.tvaPanier.cave, 0, 0.3) && dans(franchise.tvaPanier.bar, 0, 0.3)
     ? { ...franchise, impot: { ...franchise.impot, plafondTauxReduit: plafondLu } } : null
@@ -340,6 +341,7 @@ export function Parametres() {
               <TableBody>
                 <Ligne libelle="Redevance franchise, en part du CA HT"><ChampTaux libelle="Redevance franchise" valeur={franchise.tauxRedevance} onChange={(v) => champFranchise('tauxRedevance', v ?? 0)} /></Ligne>
                 <Ligne libelle="Publicité franchise, en part du CA HT"><ChampTaux libelle="Publicité franchise" valeur={franchise.tauxPublicite} onChange={(v) => champFranchise('tauxPublicite', v ?? 0)} /></Ligne>
+                <Ligne libelle="Budget communication du magasin proposé, en part du CA HT (0 : montant de l’année en cours)"><ChampTaux libelle="Budget communication du magasin" valeur={franchise.tauxCommunication} onChange={(v) => champFranchise('tauxCommunication', v ?? 0)} /></Ligne>
                 <Ligne libelle="Impôt sur les sociétés : taux réduit"><ChampTaux libelle="Impôt : taux réduit" valeur={franchise.impot.tauxReduit} onChange={(v) => champFranchise('impot', { ...franchise.impot, tauxReduit: v ?? 0 })} /></Ligne>
                 <Ligne libelle="Impôt sur les sociétés : taux réduit jusqu’à ce bénéfice"><ChampNombre libelle="Plafond du taux réduit" valeur={plafond} largeur={160} onChange={setPlafond} /></Ligne>
                 <Ligne libelle="Impôt sur les sociétés : taux normal"><ChampTaux libelle="Impôt : taux normal" valeur={franchise.impot.tauxNormal} onChange={(v) => champFranchise('impot', { ...franchise.impot, tauxNormal: v ?? 0 })} /></Ligne>

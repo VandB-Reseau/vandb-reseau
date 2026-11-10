@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test'
 import { ancreAttention, pointsAttention, pointsSansJustification } from '../../../src/pilotage/moteur/attention'
 import { ancreEcart, causesDuMois, ecartsDuMois, ecrireExplication, lireAncreEcart, lireExplication } from '../../../src/pilotage/moteur/causesEcarts'
 import { reglesParDefaut } from '../../../src/pilotage/moteur/regles'
+import { fraisResolus } from '../../../src/pilotage/moteur/communication'
+import { fraisDuBudget } from '../../../src/pilotage/moteur/fraisBudget'
 import type { MoisReel } from '../../../src/pilotage/moteur/suivi'
 
 // Vague 6 (Joseph, 10/11/2026) : points d'attention avant l'envoi du budget (74) et causes des écarts du mois (77).
@@ -84,4 +86,26 @@ test('explications rangées en commentaires et comptées pour le réseau', () =>
     { magasin: 'Brionne', ancre: 'ecart/2026-08/ca', texte: 'Météo' },            // autre mois
   ]
   expect(causesDuMois(l, 2026, 9)).toEqual([{ cause: 'rupture', libelle: 'Rupture', n: 2 }, { cause: 'prix', libelle: 'Prix', n: 1 }])
+})
+
+test('budget communication : 2,5 % du CA quand le Directeur le règle, le choix du magasin reste le sien', () => {
+  const base = { frais: [
+    { code: 'loyer', libelle: 'Loyer', rubrique: 'immobilier' as const, annuel: 36_000 },
+    { code: 'budget_communication', libelle: 'Budget communication annuel', rubrique: 'communication' as const, annuel: 6_000 },
+  ], amortissements: 0, interets: 0, remboursementCapital: 0 }
+  // Sans choix : la ligne suit le réseau ; sans taux réglé, ses 6 000 € (+ 2 % d'inflation = 6 120 €) restent
+  const sansChoix = fraisDuBudget(base, undefined, 0.02).frais
+  expect(sansChoix[1]).toEqual({ code: 'budget_communication', libelle: 'Budget communication annuel', rubrique: 'communication', annuel: 6_120, communicationReseau: true })
+  expect(fraisResolus(sansChoix, {})).toEqual(sansChoix)
+  // Taux réglé à 2,5 % : la ligne passe en part du CA (600 000 € de CA : 15 000 €)
+  const regle = fraisResolus(sansChoix, { tauxCommunication: 0.025 })
+  expect(regle[1]).toEqual({ code: 'budget_communication', libelle: 'Budget communication annuel', rubrique: 'communication', tauxCA: 0.025, communicationReseau: true })
+  expect(regle[0]).toEqual(sansChoix[0])
+  // Montant choisi par le magasin : il le garde
+  const choisi = fraisDuBudget(base, { budget_communication: { mode: 'montant', valeur: 9_000 } }, 0.02).frais
+  expect(fraisResolus(choisi, { tauxCommunication: 0.025 })[1]).toEqual({ code: 'budget_communication', libelle: 'Budget communication annuel', rubrique: 'communication', annuel: 9_000 })
+  // Magasin sans budget communication : ligne à 0 €, retirée tant que le taux n'est pas réglé
+  const sansLigne = fraisDuBudget({ ...base, frais: [base.frais[0]] }, undefined, 0).frais
+  expect(fraisResolus(sansLigne, {}).map((l) => l.code)).toEqual(['loyer'])
+  expect(fraisResolus(sansLigne, { tauxCommunication: 0.025 })[1]).toMatchObject({ code: 'budget_communication', tauxCA: 0.025 })
 })

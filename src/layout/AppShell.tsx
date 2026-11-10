@@ -38,7 +38,7 @@ import { useTotalEchanges } from '../data/echanges'
 import { BoutonCreer } from '../components/Creer'
 import { useInstallation } from '../lib/installation'
 import { brandStripe } from '../theme/theme'
-import { barreFranchise, barreTelephone, menuTelephone, parametres, plusFranchise, rubriquesMenu, type Destination } from '../navigation/destinations'
+import { barreFranchise, barreTelephone, menuTelephoneRubriques, parametres, plusFranchise, rubriquesMenu, type Destination } from '../navigation/destinations'
 import { CreerProvider } from '../components/Creer'
 import { SelecteurPerimetre } from '../components/SelecteurPerimetre'
 import { useCompteurTaches } from '../data/tachesVues'
@@ -354,7 +354,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
             {!franchise && <BoutonCreer entete />}
             {!franchise && <BoutonInfos />}
             <Cloche />
-            <MenuCompte liens={franchise ? [] : [{ destinations: menuTelephone(profil?.role) }, ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }])]} />
+            <MenuCompte liens={franchise ? [] : [...menuTelephoneRubriques(profil?.role), ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }])]} />
           </Toolbar>
           {/* Filet de la charte sous la barre (60 + 4 = 64 px) */}
           <Box aria-hidden data-filet="" sx={{ height: 4, background: brandStripe }} />

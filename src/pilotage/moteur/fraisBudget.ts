@@ -1,4 +1,5 @@
 import { lignesFrais, type LigneGrille } from './parametres'
+import { CODE_COMMUNICATION, LIBELLE_COMMUNICATION } from './communication'
 import type { Hypotheses, LigneFrais, Rubrique } from './types'
 
 // Lot 35 (Joseph, 02/11/2026) : frais du budget ligne par ligne, à partir des frais de l'année en cours. Pour chaque
@@ -29,9 +30,12 @@ function montantApres(avant: number, c: ChoixFrais): number {
   return avant
 }
 
-export function lignesFraisBudget(base: Base, choix: Record<string, ChoixFrais> | undefined, inflation: number, grille: LigneGrille[] = lignesFrais): LigneFraisBudget[] {
+export function lignesFraisBudget(base: Base, choix: Record<string, ChoixFrais> | undefined, inflation: number, grille: LigneGrille[] = lignesFrais, tauxCommunication = 0): LigneFraisBudget[] {
   const ch = choix ?? {}
+  // Budget communication sans choix du magasin : au taux du réseau quand il est réglé (10/11/2026)
+  const communication = (code: string) => code === CODE_COMMUNICATION && tauxCommunication > 0 && !ch[code]
   const lignes: LigneFraisBudget[] = base.frais.map((l) => {
+    if (communication(l.code)) return { code: l.code, libelle: l.libelle, rubrique: l.rubrique, avant: l.annuel ?? 0, tauxCA: tauxCommunication, choix: { mode: 'meme' }, parDefaut: true, apres: 0 }
     if (defini(l.tauxCA) && ch[l.code]?.mode !== 'montant') {
       return { code: l.code, libelle: l.libelle, rubrique: l.rubrique, avant: 0, tauxCA: l.tauxCA, choix: { mode: 'meme' }, parDefaut: true, apres: 0 }
     }
@@ -39,6 +43,9 @@ export function lignesFraisBudget(base: Base, choix: Record<string, ChoixFrais> 
     const c = ch[l.code] ?? { mode: 'taux' as const, valeur: inflation }
     return { code: l.code, libelle: l.libelle, rubrique: l.rubrique, avant, choix: c, parDefaut: !ch[l.code], apres: montantApres(avant, c) }
   })
+  if (communication(CODE_COMMUNICATION) && !base.frais.some((l) => l.code === CODE_COMMUNICATION)) {
+    lignes.push({ code: CODE_COMMUNICATION, libelle: LIBELLE_COMMUNICATION, rubrique: 'communication', avant: 0, tauxCA: tauxCommunication, choix: { mode: 'meme' }, parDefaut: true, apres: 0 })
+  }
   // Ligne nouvelle au budget : absente de l'année en cours, avec un montant
   for (const [code, c] of Object.entries(ch)) {
     if (c.mode !== 'montant' || !defini(c.valeur) || base.frais.some((l) => l.code === code) || code in FINANCES_BUDGET) continue
@@ -58,9 +65,14 @@ export function fraisDuBudget(base: Base, choix: Record<string, ChoixFrais> | un
   const l = lignesFraisBudget(base, choix, inflation)
   const fin = (k: CleFinance) => l.find((x) => x.code === k)!.apres
   return {
-    frais: l.filter((x) => x.rubrique !== 'finances').map((x): LigneFrais => ({
-      code: x.code, libelle: x.libelle, rubrique: x.rubrique as Rubrique, ...(defini(x.tauxCA) ? { tauxCA: x.tauxCA } : { annuel: x.apres }),
-    })),
+    frais: [
+      ...l.filter((x) => x.rubrique !== 'finances').map((x): LigneFrais => ({
+        code: x.code, libelle: x.libelle, rubrique: x.rubrique as Rubrique, ...(defini(x.tauxCA) ? { tauxCA: x.tauxCA } : { annuel: x.apres }),
+        ...(x.code === CODE_COMMUNICATION && x.parDefaut && !defini(x.tauxCA) ? { communicationReseau: true } : {}),
+      })),
+      // Sans budget communication dans les frais de l'année : la ligne suit le taux du réseau, 0 tant qu'il n'est pas réglé
+      ...(l.some((x) => x.code === CODE_COMMUNICATION) ? [] : [{ code: CODE_COMMUNICATION, libelle: LIBELLE_COMMUNICATION, rubrique: 'communication' as Rubrique, annuel: 0, communicationReseau: true }]),
+    ],
     amortissements: fin('amortissements'), interets: fin('interets'), remboursementCapital: fin('remboursementCapital'),
   }
 }

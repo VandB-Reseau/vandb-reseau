@@ -28,7 +28,8 @@ export interface Flux { realise: number; evolution: number; panierCibleTTC: numb
 export type Rubrique = 'immobilier' | 'energies' | 'entretien' | 'honoraires' | 'communication' | 'deplacements' | 'banque_assurances' | 'autres' | 'impots_taxes'
 
 // Une ligne de frais : montant annuel réparti par douzième, ou pourcentage du CA du mois
-export interface LigneFrais { code: string; libelle: string; rubrique: Rubrique; annuel?: number; tauxCA?: number }
+// communicationReseau : budget communication sans choix du magasin, au taux du réseau quand il est réglé (10/11/2026)
+export interface LigneFrais { code: string; libelle: string; rubrique: Rubrique; annuel?: number; tauxCA?: number; communicationReseau?: boolean }
 
 // Grille des frais du réseau (lot 23, modifiable depuis Paramètres réseau au lot 40) : une ligne de l'onglet FFBUD, son
 // bloc, ses comptes du plan comptable (racines) pour l'import FEC. Courante : proposée d'office à une première saisie.
@@ -157,6 +158,7 @@ export interface Travaux { activite: number[]; gain: number; investissement: num
 export interface ParametresReseau {
   tauxRedevance: number   // 2 % du CA HT, charge externe au-dessus de l'EBE
   tauxPublicite: number   // 1 % du CA HT, charge externe au-dessus de l'EBE
+  tauxCommunication?: number // budget communication du magasin en part du CA HT (2,5 % proposé) ; absent : pas de règle
   impot: { tauxReduit: number; plafondTauxReduit: number; tauxNormal: number }
   tvaPanier: Record<'cave' | 'bar', number> // TVA moyenne pour passer d'un panier TTC à un CA HT
   charges: ParametresCharges

@@ -1,6 +1,7 @@
 import { masseSalariale } from './equipe'
 import { avecCAF, financementDe } from './financement'
 import { reglesDe } from './regles'
+import { fraisResolus } from './communication'
 import { UNIVERS, type AjustementCA, type Budget, type DetailCAUnivers, type Hypotheses, type Mois, type ParametresReseau, type ResultatFamille, type RythmeSortie, type TempsFort, type Travaux, type Univers } from './types'
 
 // Moteur du budget annuel d'un magasin. Fonction pure : le même calcul sert à l'écran, au simulateur et aux tests.
@@ -72,6 +73,7 @@ export const faceAnPasse = (a: AjustementCA) => Number.isFinite(a.ca) || Number.
 const tempsFortsValides = (l: TempsFort[] | undefined) => (l ?? []).filter((t) => moisValide(t.mois) && UNIVERS.includes(t.univers))
 
 export function calculerBudget(h: Hypotheses, p: ParametresReseau): Budget {
+  const frais = fraisResolus(h.frais, p)
   const partDefaut = partRealiseeReference(h.caMensuelReference, h.moisRealises)
   const partRealisee = Object.fromEntries(UNIVERS.map((u) => [u, h.partRealisee?.[u] || partDefaut])) as Record<Univers, number>
 
@@ -211,7 +213,7 @@ export function calculerBudget(h: Hypotheses, p: ParametresReseau): Budget {
     const demarqueConsignes = ca > 0 ? consignesAn * caMois / ca : 0
     let externes = caMois * (p.tauxRedevance + p.tauxPublicite) + autresChargesTempsForts + demarqueConsignes
     let impots = 0
-    for (const l of h.frais) {
+    for (const l of frais) {
       const montant = (l.annuel ?? 0) / 12 + caMois * (l.tauxCA ?? 0)
       if (l.rubrique === 'impots_taxes') impots += montant
       else externes += montant
