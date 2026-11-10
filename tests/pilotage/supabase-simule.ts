@@ -543,9 +543,17 @@ export function partiesAffichees(page: Page) {
 export async function saisiesAffichees(page: Page) {
   const region = page.getByRole('region', { name: 'Clôture du mois' })
   const retour = page.getByRole('button', { name: 'Clôture du mois', exact: true })
-  await region.or(retour).first().waitFor()
-  if (await retour.isVisible()) await retour.click()
-  return region.getByRole('list').getByRole('button')
+  const boutons = region.getByRole('list').getByRole('button')
+  // Une saisie ouverte (adresse « partie=reel », « saisieStock »…) : l'adresse change avant l'écran, et la clôture encore
+  // affichée un instant disparaît ensuite ; on attend donc le bouton de retour de la saisie plutôt que la clôture
+  const partie = new URL(page.url()).hash.match(/[?&]partie=([^&]+)/)?.[1]
+  if (partie && partie !== 'cloture') await retour.click()
+  else {
+    await region.or(retour).first().waitFor()
+    if (await retour.isVisible()) await retour.click()
+  }
+  await expect(boutons.first()).toBeVisible()
+  return boutons
 }
 // Année du budget affichée dans l'en-tête de la fiche (lot 38)
 export async function anneeEnTete(page: Page) {
