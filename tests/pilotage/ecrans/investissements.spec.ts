@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule } from './outils'
+import { ouvrir, revenirAuxHypotheses, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule } from './outils'
 
 // Investissements & Financements (Joseph, 03/11/2026) : travaux, achats amortis, prêts du magasin, apport, emprunts en cours,
 // capacité d'autofinancement ; le résultat et la trésorerie à l'étape « Visualiser ». Données fictives : dépôt public.
@@ -71,7 +71,7 @@ test('le franchisé prévoit un achat, un emprunt et la fin d’un prêt en cour
   await page.screenshot({ path: `captures/${info.project.name}-investissements.png`, fullPage: true })
 
   // Construire : la carte du thème résume la CAF
-  await page.getByRole('link', { name: 'Toutes les hypothèses' }).click()
+  await revenirAuxHypotheses(page)
   const carte = page.getByRole('region', { name: 'Investissements & Financements', exact: true })
   await expect(carte).toContainText('Capacité d’autofinancement')
   await expect(carte).toContainText('Échéances ÷ CAF')

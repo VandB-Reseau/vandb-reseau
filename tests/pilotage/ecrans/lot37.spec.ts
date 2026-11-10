@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { ouvrir, partieAffichee, partiesAffichees, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule } from './outils'
+import { ouvrir, revenirAuxHypotheses, partieAffichee, partiesAffichees, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule } from './outils'
 
 // Lot 37 (Joseph, 02/11/2026) : budget en 4 étapes ; toutes les hypothèses sur une page en cartes par thème (H2), chaque
 // carte ouvre un tableau court (année en cours, siège, choix du magasin, année du budget) ; la trésorerie de l'année et
@@ -62,7 +62,7 @@ test('hypothèses en cartes : chaque carte ouvre son tableau, les changements re
 
   // Lot 42 : le résultat a suivi (tickets Cave + 5 %) ; puis Frais : pas de question, le changement reste
   await expect(page.getByRole('dialog', { name: 'Modifications non enregistrées' })).toHaveCount(0)
-  await page.getByRole('link', { name: 'Toutes les hypothèses' }).click()
+  await revenirAuxHypotheses(page)
   await main.getByRole('region', { name: 'Frais', exact: true }).getByRole('link').click()
   await expect(page).toHaveURL(/[?&]partie=fraisBudget$/)
   // Joseph (03/11/2026) : avec les cartes, l'inflation des frais se règle dans le thème Frais

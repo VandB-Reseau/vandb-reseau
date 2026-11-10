@@ -7,6 +7,7 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
+import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Tab from '@mui/material/Tab'
@@ -397,6 +398,10 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
     />
   ) : null
 
+  // Refonte vague 2 (Joseph, 09/11/2026, 13B) : sur grand écran, le détail d'une carte s'ouvre dans un panneau à droite ;
+  // les cartes de « Construire » restent visibles à gauche, l'impact passe en haut du panneau
+  const themeEnPanneau = !!themeOuvert && impactACote && !!b && onglet !== 'equipe' // l'équipe garde sa pleine page (grands tableaux de postes)
+
   // Lot 38 (D1) : passer d'une étape du budget à la suivante sans remonter en haut de page
   // Lot 43 : du point de départ aussi (la trésorerie au 1er janvier y est un ajustement) ; seules les parts de l'année
   // saisies au point de départ, et la fiche de l'équipe, demandent confirmation
@@ -515,7 +520,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         )}
       </Box>
       {commentaires}
-      {themeOuvert && (
+      {themeOuvert && !themeEnPanneau && (
         <Box className="pas-a-l-impression" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
           <Button component={RouterLink} to={lienMagasin(ligne.magasin, 'budget')} data-sans-garde={onglet === 'equipe' ? undefined : ''} startIcon={<ArrowBack />} sx={{ minHeight: 48 }}>
             Toutes les hypothèses
@@ -525,7 +530,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         </Box>
       )}
 
-      <AvecImpact panneau={panneau} cote={impactACote}>
+      <AvecImpact panneau={themeEnPanneau ? null : panneau} cote={impactACote}>
       {espace === 'suivi' ? (
         <Stack spacing={3}>
         {/* Joseph (09/11/2026) : le Suivi en puces, une partie à la fois, au lieu d'une longue page à dérouler */}
@@ -710,14 +715,18 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
       ) : (
         <>
           {/* Joseph (03/11/2026) : sur « Construire », toutes les hypothèses en cartes, les ventes de chaque univers comprises */}
-          {onglet === 'budget' && resolu && (
-            <Box className="pas-a-l-impression">
+          <ColonnesTheme ouvert={themeEnPanneau}>
+          {(onglet === 'budget' || themeEnPanneau) && resolu && (
+            <Box className="pas-a-l-impression" sx={themeEnPanneau ? { position: 'sticky', top: `calc(${hautEntete.md}px + var(--onglets, 0px) + 8px)` } : undefined}>
               <HypothesesCartes magasin={ligne.magasin} annee={annee} budget={b} cibles={brouillon} hausseSalaires={resolu.hypotheses.hausseSalaires ?? 0}
                 inflation={inflation} sansEquipe={!d.equipes[ligne.magasin]?.length} sansFrais={!baseFrais?.frais.length} lectureSeule={!peutAjuster}
-                reprise={resolu.hypotheses.reprise} accord={accordTheme ?? undefined}
+                reprise={resolu.hypotheses.reprise} accord={accordTheme ?? undefined} etroit={themeEnPanneau}
                 depart={{ annee: anneeEnCours, tresorerie: brouillon.tresorerieDepart ?? estimee?.montant ?? null, estimee: brouillon.tresorerieDepart === undefined && !!estimee, saisonnalite: !!brouillon.poidsMois }} />
             </Box>
           )}
+          <PanneauTheme ouvert={themeEnPanneau} titre={themeOuvert ? `${themeOuvert.libelle} ${annee}` : ''} impact={panneau}
+            commenter={themeOuvert ? <BoutonCommenter ancre={`theme/${themeOuvert.cle}`} libelle={themeOuvert.libelle} /> : null}
+            onFermer={() => garde(() => aller('budget'), onglet !== 'equipe')}>
           <Stack spacing={3} className={partie('ventes')} id="partie-ventes" sx={{ scrollMarginTop: 200 }}>
             {communHypotheses && (
               <Card component="section" aria-label="Hypothèses du magasin">
@@ -796,6 +805,8 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
                 onChange={(c) => setBrouillon(({ fraisBudget: _, ...reste }) => (c ? { ...reste, fraisBudget: c } : reste))} />
             </Stack>
           )}
+          </PanneauTheme>
+          </ColonnesTheme>
           <Stack spacing={3} className={partie('visualiser')} id="partie-resultat" sx={{ scrollMarginTop: 200 }}>
             {/* Joseph (03/11/2026) : le résultat et la trésorerie ont leur étape, « 2 · Visualiser » */}
             <Box className="pas-a-l-impression" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -828,6 +839,44 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
       {piedEtapes}
       </>)}
       </AvecCommentaires>
+    </Box>
+  )
+}
+
+// Détail d'une carte de « Construire » (refonte vague 2, 13B) : panneau à droite sans fond grisé, la page reste utilisable ;
+// sur un écran plus étroit, le détail reste dans la page
+const LARGEUR_PANNEAU_THEME = 640
+// Les cartes à gauche, le détail du thème ouvert à droite, côte à côte : le panneau ne recouvre ni l'en-tête ni les étapes
+function ColonnesTheme({ ouvert, children }: { ouvert: boolean; children: ReactNode }) {
+  if (!ouvert) return <>{children}</>
+  return <Box sx={{ display: 'grid', gridTemplateColumns: `minmax(0, 1fr) ${LARGEUR_PANNEAU_THEME}px`, columnGap: 3, alignItems: 'start' }}>{children}</Box>
+}
+
+function PanneauTheme({ ouvert, titre, impact, commenter, onFermer, children }: {
+  ouvert: boolean; titre: string; impact: ReactNode; commenter: ReactNode; onFermer: () => void; children: ReactNode
+}) {
+  const fermer = useRef(onFermer)
+  fermer.current = onFermer
+  useEffect(() => {
+    if (!ouvert) return
+    const echap = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.MuiDialog-root, .MuiPopover-root')) fermer.current() }
+    window.addEventListener('keydown', echap)
+    return () => window.removeEventListener('keydown', echap)
+  }, [ouvert])
+  if (!ouvert) return <>{children}</>
+  const haut = `calc(${hautEntete.md}px + var(--onglets, 0px) + 8px)`
+  return (
+    <Box component="section" aria-label={`Détail : ${titre}`}
+      sx={{ position: 'sticky', top: haut, maxHeight: `calc(100vh - ${hautEntete.md}px - var(--onglets, 0px) - 16px)`, overflowY: 'auto', minWidth: 0, bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 3, zIndex: 3 }}>
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 2, bgcolor: 'background.paper', px: 2.5, py: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography variant="h2" sx={{ flex: 1, fontSize: '1.25rem' }}>{titre}</Typography>
+        {commenter}
+        <Tooltip title="Fermer"><IconButton aria-label="Fermer le détail" onClick={onFermer} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton></Tooltip>
+      </Box>
+      <Box sx={{ px: 2.5, py: 2, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2 }}>
+        {impact}
+        <Box sx={{ minWidth: 0, overflowX: 'auto' }}>{children}</Box>
+      </Box>
     </Box>
   )
 }

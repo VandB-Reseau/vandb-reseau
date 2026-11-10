@@ -37,6 +37,8 @@ export interface PersonneSimulee { id: number; store_name: string; poste: string
 export interface FraisSimule { store_name: string; code: string; libelle: string; rubrique: string; annuel: number | null; taux_ca: number | null }
 export interface GroupeSimule { id: number; nom: string; cibles: Record<string, unknown> | null }
 export interface OptionsSimulation {
+  // Téléphone : le compte de résultat s'ouvre mois par mois (18A) ; les anciens tests lisent le tableau complet
+  compteParMois?: boolean
   role?: 'directeur' | 'rr' | 'coach' | 'franchise' | 'aucun'
   magasins?: MagasinSimule[]
   reseau?: Record<string, unknown> | null
@@ -92,6 +94,7 @@ export const magasinsParDefaut: MagasinSimule[] = [
 // Base du pilotage (schéma « pilotage ») : à appeler APRÈS simulerSupabase de l'app réseau, qui répond au reste
 export async function simulerPilotage(page: Page, options: OptionsSimulation = {}): Promise<Ecriture[]> {
   const ecritures: Ecriture[] = []
+  if (!options.compteParMois) await page.addInitScript(() => { try { if (!localStorage.getItem('pilotage.compteTelephone')) localStorage.setItem('pilotage.compteTelephone', 'tableau') } catch { /* rien */ } })
   // État de la base simulée : les écritures sont relues au chargement suivant
   const magasins = structuredClone(options.magasins ?? magasinsParDefaut).map((m) => ({ ajustements: {}, base: null, groupe_id: null, ...m }))
   const groupes = structuredClone(options.groupes ?? [])

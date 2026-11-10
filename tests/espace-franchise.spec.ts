@@ -63,6 +63,9 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   await expect(chiffres.getByRole('group', { name: 'CA cumulé' })).toContainText('vs septembre 2025')
   await expect(chiffres.getByRole('group')).toHaveCount(5)
   const reperes = page.getByRole('region', { name: 'Repères réseau' })
+  // Refonte vague 2 (19A) : repères repliés en bas de l'accueil
+  await expect(reperes.getByRole('group')).toHaveCount(0)
+  await reperes.getByRole('button', { name: 'Afficher' }).click()
   const panier = reperes.getByRole('group', { name: 'Panier moyen HT cave' })
   await expect(panier).toContainText('Médiane 38,00 €')
   await expect(panier).toContainText('Au-dessus de la médiane')
@@ -237,4 +240,22 @@ test('la connexion d’un franchisé n’affiche jamais l’app de l’équipe, 
   await page.getByRole('button', { name: 'Se connecter' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   expect(vus).toEqual([])
+})
+
+test('l’accueil du franchisé est le tableau de bord de son magasin : à faire au centre, visites à droite', async ({ page, isMobile }, info) => {
+  await seConnecterFranchise(page)
+  await page.getByRole('button', { name: 'Annecy Test', exact: true }).click()
+  const aFaire = page.getByRole('region', { name: 'À faire' })
+  await expect(aFaire.getByRole('link')).toHaveText([/Clôturer septembre 2026/, /Relire mon budget/])
+  if (!isMobile) {
+    // Chiffres au-dessus, à faire à gauche, visites à droite
+    const [chiffres, gauche, droite] = await Promise.all([page.getByRole('region', { name: 'Mes chiffres' }), aFaire, page.getByRole('region', { name: 'Visites et audits' })].map(async (l) => (await l.boundingBox())!))
+    expect(chiffres.y + chiffres.height).toBeLessThanOrEqual(gauche.y)
+    expect(droite.x).toBeGreaterThan(gauche.x + gauche.width)
+  } else for (const l of await aFaire.getByRole('link').all()) expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-franchise-tableau-de-bord.png`, fullPage: true })
+  await aFaire.getByRole('link', { name: /Clôturer/ }).click()
+  await expect(page).toHaveURL(/vue=chiffres&partie=cloture/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Annecy Test')
 })

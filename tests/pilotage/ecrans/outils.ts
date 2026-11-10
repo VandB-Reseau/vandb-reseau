@@ -95,3 +95,9 @@ export async function fermerCommentairesSurTelephone(page: Page) {
 
 // Adresse d'une fiche de magasin dans l'app réseau, sur l'onglet du budget
 export const ficheBudget = (magasin: string) => `./#/magasins/${encodeURIComponent(magasin)}?vue=budget`
+
+// Refonte vague 2 (13B) : sur grand écran, le détail d'un thème s'ouvre dans un panneau à droite des cartes ; on revient
+// aux hypothèses en le fermant (le lien « Toutes les hypothèses » reste sur les écrans plus étroits)
+export async function revenirAuxHypotheses(page: Page) {
+  await page.getByRole('link', { name: 'Toutes les hypothèses' }).or(page.getByRole('button', { name: 'Fermer le détail' })).first().click()
+}

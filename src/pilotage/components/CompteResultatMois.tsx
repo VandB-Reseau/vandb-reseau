@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -10,7 +10,11 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
+import TableChartOutlined from '@mui/icons-material/TableChartOutlined'
+import ViewAgendaOutlined from '@mui/icons-material/ViewAgendaOutlined'
 import { enChiffres, enMilliers, montant, MOIS, QUADRIMESTRES_COURTS, taux } from '../lib/format'
 import type { LigneCompte } from '../moteur/compteResultat'
 import { COLONNES, regrouperCompte } from '../moteur/periodes'
@@ -47,6 +51,12 @@ export function CompteResultatMois({ lignes, titre, libelleTableau, projeteA, en
   moisEnCours?: number | null       // refonte T1 : colonne du mois en cours surlignée (vue par mois)
 }) {
   const [ouvertes, setOuvertes] = useState<Set<string>>(new Set())
+  // Refonte vague 2 (Joseph, 09/11/2026, 18A) : sur téléphone, le compte de résultat se lit mois par mois
+  const telephone = useMediaQuery(useTheme().breakpoints.down('md'), { noSsr: true })
+  const [moisLu, setMoisLu] = useState<number | null>(moisEnCours ?? 0)
+  // Le tableau complet reste à portée (« Tableau »), choix gardé sur l'appareil
+  const [vueTelephone, setVueTelephone] = useState<'mois' | 'tableau'>(() => { try { return localStorage.getItem(CLE_VUE) === 'tableau' ? 'tableau' : 'mois' } catch { return 'mois' } })
+  const changerVue = (v: 'mois' | 'tableau') => { setVueTelephone(v); try { localStorage.setItem(CLE_VUE, v) } catch { /* appareil sans stockage */ } }
   // Joseph (09/11/2026) : en k€ d'office, pour lire les douze mois et le total sans défiler sur un écran d'ordinateur
   const choix = usePeriode('compte', 'milliers')
   const { periode, unite } = choix
@@ -65,12 +75,21 @@ export function CompteResultatMois({ lignes, titre, libelleTableau, projeteA, en
   const projete = (c: number[]) => projeteA !== undefined && c[0] >= projeteA
   const enCours = (c: number[]) => (periode === 'mois' && moisEnCours != null && c[0] === moisEnCours ? 'en-cours' : undefined)
 
+  const basculerVue = telephone ? (
+    <Button size="small" onClick={() => changerVue(vueTelephone === 'mois' ? 'tableau' : 'mois')} startIcon={vueTelephone === 'mois' ? <TableChartOutlined /> : <ViewAgendaOutlined />} sx={{ minHeight: 48, ml: 'auto' }}>
+      {vueTelephone === 'mois' ? 'Tableau' : 'Mois par mois'}
+    </Button>
+  ) : null
+  if (telephone && vueTelephone === 'mois') return (
+    <MoisParMois lignes={lignes} titre={titre} libelleTableau={libelleTableau} mois={moisLu} onMois={setMoisLu} projeteA={projeteA} ca={ca} basculerVue={basculerVue} />
+  )
   return (
     <Card component="section" aria-label={titre}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', px: 2.5, pt: 2, pb: 1 }}>
         <Typography variant="h2" sx={{ flex: 1 }}>{titre}</Typography>
         {entete}
         <ChoixPeriode quoi={titre} {...choix} />
+        {basculerVue}
         {parents.size > 0 && (
           <Button size="small" className="pas-a-l-impression" onClick={() => setOuvertes(toutOuvert ? new Set() : new Set(parents))} sx={{ minHeight: { xs: 48, md: 36 } }}>
             {toutOuvert ? 'Tout replier' : 'Tout détailler'}
@@ -121,6 +140,57 @@ export function CompteResultatMois({ lignes, titre, libelleTableau, projeteA, en
           </TableBody>
         </Table>
       </TableContainer>
+    </Card>
+  )
+}
+
+// Téléphone (18A) : une rangée de mois qui défile, puis les rubriques en liste (libellé, montant, part du CA) ;
+// « Année » donne le total. Le détail des rubriques reste sur ordinateur.
+const MOIS_PUCES = ['Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.']
+const CLE_VUE = 'pilotage.compteTelephone'
+function MoisParMois({ lignes, titre, libelleTableau, mois, onMois, projeteA, ca, basculerVue }: {
+  lignes: LigneCompte[]; titre: string; libelleTableau: string; mois: number | null; onMois: (m: number | null) => void; projeteA?: number; ca: number; basculerVue: ReactNode
+}) {
+  const rubriques = lignes.filter((l) => !l.parent)
+  const valeur = (l: LigneCompte) => (mois === null ? l.total : l.mois[mois])
+  const caLu = mois === null ? ca : lignes.find((l) => l.cle === 'ca')?.mois[mois] ?? 0
+  const puce = (m: number | null, libelle: string) => {
+    const choisi = mois === m
+    return (
+      <ButtonBase key={libelle} onClick={() => onMois(m)} aria-pressed={choisi}
+        sx={{ flex: '0 0 auto', minHeight: 48, minWidth: 56, px: 1.5, borderRadius: 2, border: 1, borderColor: choisi ? 'text.primary' : 'divider', fontWeight: 700, fontSize: '0.875rem',
+          bgcolor: choisi ? 'text.primary' : 'background.paper', color: choisi ? 'background.paper' : m !== null && projeteA !== undefined && m >= projeteA ? 'text.secondary' : 'text.primary', scrollSnapAlign: 'start' }}>
+        {libelle}
+      </ButtonBase>
+    )
+  }
+  return (
+    <Card component="section" aria-label={titre}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, pt: 1, pb: 0.5 }}>
+        <Typography variant="h2">{titre}</Typography>
+        {basculerVue}
+      </Box>
+      <Box role="group" aria-label="Mois affiché" sx={{ display: 'flex', gap: 1, overflowX: 'auto', px: 2, pb: 1.5, scrollSnapType: 'x proximity', scrollPaddingInline: 16 }}>
+        {MOIS_PUCES.map((m, i) => puce(i, m))}
+        {puce(null, 'Année')}
+      </Box>
+      <Box component="ul" aria-label={`${libelleTableau}, ${mois === null ? 'année' : MOIS[mois]}`} sx={{ listStyle: 'none', m: 0, p: 0 }}>
+        {rubriques.map((l) => {
+          const v = valeur(l)
+          return (
+            <Box component="li" key={l.cle} className={classeLigne(l.cle, l.fort)}
+              sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, px: 2, py: 1.25, borderTop: 1, borderColor: 'divider', fontWeight: l.fort ? 700 : 400 }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>{l.libelle}</Box>
+              <Box sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(v !== null && v < 0 && l.fort ? { color: 'error.main' } : {}) }}>
+                {v === null ? '–' : l.heures ? `${enChiffres(Math.round(v))} h` : l.indicateur ? enChiffres(Math.round(v) || 0) : `${enMilliers(v)} k€`}
+              </Box>
+              <Box sx={{ width: 56, textAlign: 'right', color: 'text.secondary', fontWeight: 400, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
+                {l.indicateur || l.heures || v === null || !caLu ? '' : taux(v / caLu)}
+              </Box>
+            </Box>
+          )
+        })}
+      </Box>
     </Card>
   )
 }

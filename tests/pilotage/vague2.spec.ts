@@ -18,9 +18,9 @@ for (const a of [2025, 2026]) for (let m = 1; m <= (a === 2026 ? 9 : 12); m++) {
 }
 const messages = [{ id: 1, store_name: M, annee: 2027, texte: 'Le loyer augmente de 4 % en avril.', auteur: 'x', auteur_role: 'franchise', auteur_nom: 'Hugo FICTIF', cree_le: '2026-11-08T09:00:00Z', ancre: 'theme/fraisBudget', ancre_libelle: 'Frais', parent: null }]
 
-async function connecter(page: Page) {
+async function connecter(page: Page, compteParMois = false) {
   await simulerSupabase(page, {})
-  await simulerPilotage(page, { magasins, reel, tickets, messages })
+  await simulerPilotage(page, { magasins, reel, tickets, messages, compteParMois })
   await page.goto('./')
   await page.getByLabel('Email').fill(COMPTE.email)
   await page.getByLabel('Mot de passe').fill(COMPTE.motDePasse)
@@ -105,4 +105,51 @@ test('le volet du budget montre aussi l’activité : commentaires et enregistre
   await page.screenshot({ path: `captures/${info.project.name}-activite-budget.png` })
   await volet.getByRole('button', { name: 'Commentaires seuls' }).click()
   await expect(volet.getByRole('region', { name: 'Commentaires', exact: true })).toContainText('Le loyer augmente')
+})
+
+test('PC : le détail d’une carte du budget s’ouvre à droite, les cartes restent visibles', async ({ page, isMobile }, info) => {
+  test.skip(isMobile, 'Panneau de détail sur grand écran')
+  await connecter(page)
+  await page.goto(`./#/magasins/${encodeURIComponent(M)}?vue=budget&partie=budget`)
+  const cartes = page.getByRole('region', { name: 'Hypothèses 2027 en cartes' })
+  await cartes.getByRole('link', { name: /^Frais : / }).click()
+  const detail = page.getByRole('region', { name: 'Détail : Frais 2027' })
+  await expect(detail).toBeVisible()
+  await expect(cartes).toBeVisible()
+  const [c, d] = await Promise.all([cartes, detail].map(async (l) => (await l.boundingBox())!))
+  expect(d.x).toBeGreaterThanOrEqual(c.x + c.width)
+  // Les étapes du budget restent cliquables, panneau ouvert
+  await expect(page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tab', { name: /^2 · Visualiser/ })).toBeInViewport()
+  expect(await textesTropPetits(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-budget-panneau-detail.png` })
+  // Une autre carte remplace le détail ; Échap ferme
+  await cartes.getByRole('link', { name: /^Investissements & Financements : / }).click()
+  await expect(page.getByRole('region', { name: 'Détail : Investissements & Financements 2027' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('region', { name: /^Détail : / })).toHaveCount(0)
+  await expect(cartes).toBeVisible()
+})
+
+test('téléphone : le compte de résultat se lit mois par mois, les indicateurs défilent en bande', async ({ page, isMobile }, info) => {
+  test.skip(!isMobile, 'Lecture sur téléphone')
+  await connecter(page, true)
+  await page.goto(`./#/magasins/${encodeURIComponent(M)}?vue=budget&partie=visualiser`)
+  const mois = page.getByRole('group', { name: 'Mois affiché' }).first()
+  await expect(mois.getByRole('button')).toHaveCount(13)
+  await mois.getByRole('button', { name: 'Mars' }).click()
+  await expect(mois.getByRole('button', { name: 'Mars' })).toHaveAttribute('aria-pressed', 'true')
+  const liste = page.getByRole('list', { name: /mois par mois, Mars$/i }).first()
+  await expect(liste.getByRole('listitem').filter({ hasText: 'Chiffre d’affaires HT' })).toContainText('k€')
+  for (const b of await mois.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  // Bande des indicateurs : défile de côté, sans déborder de la page
+  const largeur = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  expect(largeur).toBeLessThanOrEqual(0)
+  expect(await textesTropPetits(page)).toEqual([])
+  expect(await zonesTropPetites(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-budget-mois-par-mois.png`, fullPage: true })
+  // Le tableau complet reste à portée, et le choix est gardé
+  await page.getByRole('button', { name: 'Tableau' }).first().click()
+  await expect(page.getByRole('table', { name: /mois par mois/ }).first()).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('table', { name: /mois par mois/ }).first()).toBeVisible()
 })

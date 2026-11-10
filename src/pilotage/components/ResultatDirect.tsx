@@ -35,10 +35,12 @@ export function ResultatDirect({ budget: b, ebeSiege, tresorerie, annee, infos =
   ]
   return (
     <Card component="section" aria-label="Indicateurs clés" data-annee={annee}
-      sx={{ ...(collant ? { position: { md: 'sticky' }, top: { md: `calc(${hautEntete.md}px + var(--onglets, 0px) + 8px)` }, zIndex: 3, boxShadow: { md: 3 } } : {}), px: 2.5, py: 1.5 }}>
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', lg: `repeat(${cases.length}, minmax(0, 1fr))` }, columnGap: 3, rowGap: 1.5 }}>
+      sx={{ ...(collant ? { position: { md: 'sticky' }, top: { md: `calc(${hautEntete.md}px + var(--onglets, 0px) + 8px)` }, zIndex: 3, boxShadow: { md: 3 } } : {}), px: { xs: 0, sm: 2.5 }, py: 1.5 }}>
+      {/* Refonte vague 2 (18A) : sur téléphone, les indicateurs tiennent en une bande qui défile de côté */}
+      <Box sx={{ display: { xs: 'flex', sm: 'grid' }, overflowX: { xs: 'auto', sm: 'visible' }, scrollSnapType: { xs: 'x mandatory', sm: 'none' }, px: { xs: 2, sm: 0 }, scrollPaddingInline: 16,
+        gridTemplateColumns: { sm: 'repeat(3, minmax(0, 1fr))', lg: `repeat(${cases.length}, minmax(0, 1fr))` }, columnGap: 3, rowGap: 1.5 }}>
         {cases.map((c) => (
-          <Box key={c.libelle} sx={{ minWidth: 0 }}>
+          <Box key={c.libelle} sx={{ minWidth: { xs: 140, sm: 0 }, flex: { xs: '0 0 auto' }, scrollSnapAlign: 'start' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, minHeight: 24 }}>
               <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem' }}>{c.libelle}</Typography>
               {c.aide && <Aide sujet={c.aide} />}

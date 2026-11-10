@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, ouvrirSection } from './outils'
+import { ouvrir, revenirAuxHypotheses, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, ouvrirSection } from './outils'
 
 // Lot 43 (Joseph, 03/11/2026) : campagne des budgets selon le rôle, bandeau unique de la liste des magasins, trésorerie
 // au 1er janvier au point de départ, hausse des salaires et inflation des frais à un seul endroit, état des étapes dans
@@ -163,7 +163,7 @@ test('trésorerie au 1er janvier au point de départ ; hausse des salaires et in
   const sal = page.locator('main').getByRole('table', { name: `Hypothèses ${N + 1} : salaires` })
   await expect(sal.getByRole('row', { name: /^Hausse générale des salaires/ })).toBeVisible()
   if (!isMobile) await expect(sal.getByRole('columnheader', { name: 'Effet' })).toBeVisible()
-  await main.getByRole('link', { name: 'Toutes les hypothèses' }).click()
+  await revenirAuxHypotheses(page)
   await main.getByRole('region', { name: 'Frais', exact: true }).getByRole('link').click()
   await expect(page.locator('main').getByRole('table', { name: `Hypothèses ${N + 1} : frais` }).getByRole('row', { name: /^Inflation des frais/ })).toBeVisible()
   // L'ancienne adresse du thème Trésorerie mène au point de départ
