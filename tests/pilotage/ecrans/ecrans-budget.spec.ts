@@ -34,7 +34,10 @@ test('Construire : toutes les hypothèses en cartes, chacune dit ce qu’il rest
   await expect(cartes.getByRole('region', { name: 'Ventes Cave' })).toContainText('Marge visée')
   // 03/11/2026 : « Évènements & Temps forts » et « Investissements & Financements », le point de départ en carte
   await expect(cartes.getByRole('region').first()).toHaveAccessibleName('Point de départ')
-  await expect(cartes.getByRole('region').last()).toHaveAccessibleName('Frais')
+  // Vague 6 (73A) : dans l'ordre de saisie, la prochaine étape en tête
+  await expect(cartes.getByRole('region').last()).toHaveAccessibleName('Évènements & Temps forts')
+  await expect(cartes).toContainText(/\d thèmes? prêts? sur 6/)
+  await expect(cartes.getByRole('link', { name: /^Prochaine étape : / })).toBeVisible()
   await expect(cartes.getByRole('region', { name: 'Investissements & Financements', exact: true })).toContainText('Capacité d’autofinancement')
   const calendrier = cartes.getByRole('region', { name: 'Évènements & Temps forts', exact: true })
   await expect(calendrier).toContainText('À faire')
@@ -129,8 +132,8 @@ test('un (i) sur les totaux : décaissements, variation du mois, chiffre d’aff
   await page.getByText(MAGASINS[0], { exact: true }).last().click()
   await ouvrir(page, 'Résultat')
   const treso = page.getByRole('region', { name: `Trésorerie ${B}` })
-  const detail = treso.getByRole('button', { name: /Voir le détail|Détail/ })
-  if (await detail.count()) await detail.first().click()
+  // Vague 6 (75A) : le détail mois par mois s'ouvre replié
+  await treso.getByRole('button', { name: 'Voir le détail mois par mois' }).click()
   await expect(treso.getByRole('button', { name: 'Aide : Total des décaissements' })).toBeVisible()
   await expect(treso.getByRole('button', { name: 'Aide : Variation du mois' })).toBeVisible()
   await expect(treso.getByRole('button', { name: 'Aide : Trésorerie en fin de mois' })).toBeVisible()

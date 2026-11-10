@@ -65,7 +65,7 @@ test('la fiche du magasin a ses onglets Chiffres et Budget : suivi, saisies et b
   await ouvrirOnglet(page, 'Chiffres')
   const pagesMagasin = page.getByRole('navigation', { name: 'Pages du magasin' })
   await expect(pagesMagasin.getByRole('tab', { name: 'Vue d’ensemble' })).toBeVisible()
-  await pagesMagasin.getByRole('tab', { name: /^Clôture du mois/ }).click()
+  await pagesMagasin.getByRole('button', { name: /^Clôturer / }).click()
   await expect(page).toHaveURL(/#\/magasins\/Annecy%20Test\?vue=chiffres&partie=/)
   await expect(page.getByRole('region', { name: 'Clôture du mois' }).getByRole('button', { name: 'Réel du mois' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])

@@ -63,11 +63,11 @@ export function CausesEcartsMois({ magasin, annee, mois, peutSaisir }: { magasin
                   <Box role="radiogroup" aria-label={`Cause : ${e.libelle}`} sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                     {CAUSES_ECART.map((x) => (
                       <Chip key={x.cle} role="radio" aria-checked={c.cause === x.cle} label={x.libelle} clickable color={c.cause === x.cle ? 'primary' : 'default'} variant={c.cause === x.cle ? 'filled' : 'outlined'}
-                        onClick={() => setChoix((o) => ({ ...o, [ancre]: { ...c, cause: x.cle } }))} sx={{ height: 40, minWidth: 48 }} />
+                        onClick={() => setChoix((o) => ({ ...o, [ancre]: { ...c, cause: x.cle } }))} sx={{ height: 48, minWidth: 48 }} />
                     ))}
                   </Box>
                   <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
-                    <TextField size="small" fullWidth label="En une phrase (facultatif)" value={c.phrase} onChange={(ev) => setChoix((o) => ({ ...o, [ancre]: { ...c, phrase: ev.target.value } }))}
+                    <TextField fullWidth label="En une phrase (facultatif)" value={c.phrase} onChange={(ev) => setChoix((o) => ({ ...o, [ancre]: { ...c, phrase: ev.target.value } }))}
                       slotProps={{ htmlInput: { maxLength: 300 } }} />
                     <Button variant="outlined" disabled={!c.cause || occupe === ancre} onClick={() => void enregistrer(e)} sx={{ minHeight: 48, flexShrink: 0 }}>Enregistrer</Button>
                   </Box>

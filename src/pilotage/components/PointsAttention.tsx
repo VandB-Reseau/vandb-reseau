@@ -62,7 +62,7 @@ export function PointsAttention({ magasin, annee, points, peutJustifier, aller, 
                 </Typography>
               ) : peutJustifier ? (
                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
-                  <TextField size="small" fullWidth label="Pourquoi ce point reste" value={textes[p.cle] ?? ''} onChange={(e) => setTextes((t) => ({ ...t, [p.cle]: e.target.value }))}
+                  <TextField fullWidth label="Pourquoi ce point reste" value={textes[p.cle] ?? ''} onChange={(e) => setTextes((t) => ({ ...t, [p.cle]: e.target.value }))}
                     slotProps={{ htmlInput: { maxLength: 500 } }} />
                   <Button variant="outlined" disabled={!(textes[p.cle] ?? '').trim() || occupe === p.cle} onClick={() => void justifier(p)} sx={{ minHeight: 48, flexShrink: 0 }}>Justifier</Button>
                 </Box>

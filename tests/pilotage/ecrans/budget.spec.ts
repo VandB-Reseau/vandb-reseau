@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, allerVers } from './outils'
+import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, allerVers, justifierPointsAttention } from './outils'
 
 // Construire le budget : cibles du réseau et des groupes, ajustements du magasin, validation.
 // Données fictives uniquement (magasin fictif) : dépôt public.
@@ -97,6 +97,7 @@ test('le franchisé s’écarte d’une cible : le budget passe en discussion, i
   const revue = page.getByRole('region', { name: 'Mes changements par rapport au siège' })
   await revue.getByRole('button', { name: 'Voir le détail : Ventes et marge' }).click()
   await expect(revue.getByRole('row', { name: /^Panier moyen Cave/ })).toContainText('2,0')
+  await justifierPointsAttention(page)
   await revue.getByRole('button', { name: 'Envoyer au siège' }).click()
   await expect(page.getByText('Budget envoyé au siège : il est en discussion.')).toBeVisible()
   await expect(page.getByText('En discussion', { exact: true })).toBeVisible()

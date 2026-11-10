@@ -53,6 +53,7 @@ export function ClotureMois({ magasin, annee, reelMois, fraisRenseignes, quadrim
   const faits = etapes.filter((e) => e.fait).length
   const complet = faits === etapes.length
   return (
+    <Box sx={{ display: 'grid', gap: 3 }}>
     <Box component="section" aria-label="Clôture du mois" sx={{ display: 'grid', gap: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <IconButton aria-label="Mois précédent" disabled={mois <= 1} onClick={() => setMois(mois - 1)} sx={{ width: 48, height: 48 }}><ChevronLeftOutlined /></IconButton>
@@ -78,6 +79,7 @@ export function ClotureMois({ magasin, annee, reelMois, fraisRenseignes, quadrim
           </Box>
         ))}
       </Card>
+    </Box>
       <CausesEcartsMois key={`${annee}-${mois}`} magasin={magasin} annee={annee} mois={mois} peutSaisir={peutSaisir} />
     </Box>
   )

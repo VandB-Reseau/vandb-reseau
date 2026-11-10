@@ -492,8 +492,11 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
               <Typography variant="body1" color="text.secondary" component="span">Budget {statutEntete.annee}</Typography>
               <PastilleStatut statut={statutEntete.statut} />
               {espace === 'budget' && attention.length > 0 && (
-                <Chip color="warning" variant="outlined" icon={<ReportProblemOutlined />} clickable onClick={() => allerEtape('echanges')}
-                  label={attention.length > 1 ? `${attention.length} points d’attention` : '1 point d’attention'} sx={{ height: 32, fontWeight: 700 }} className="pas-a-l-impression" />
+                <Tooltip title="Points d’attention avant l’envoi">
+                  <Chip color="warning" variant="outlined" icon={<ReportProblemOutlined />} clickable onClick={() => allerEtape('echanges')}
+                    aria-label={attention.length > 1 ? `${attention.length} points d’attention` : '1 point d’attention'}
+                    label={etapesEnLigne ? String(attention.length) : attention.length > 1 ? `${attention.length} points d’attention` : '1 point d’attention'} sx={{ height: { xs: 48, md: 32 }, fontWeight: 700 }} className="pas-a-l-impression" />
+                </Tooltip>
               )}
               {espace === 'budget' && ligne.base && (
                 <Typography variant="body2" color="text.secondary" component="span">
@@ -857,8 +860,8 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
           )}
           </PanneauTheme>
           </ColonnesTheme>
-          <Box className={partie('visualiser')} sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: '200px minmax(0, 1fr)' }, columnGap: 3, alignItems: 'start' }}>
-          {/* Vague 6 (75A) : un sommaire collant à gauche sur PC, le reste de la page inchangé */}
+          <Box className={partie('visualiser')} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', rowGap: 2 }}>
+          {/* Vague 6 (75A) : un sommaire collant sur PC (en haut : le compte de résultat garde toute la largeur), le reste inchangé */}
           <SommaireVisualiser avecEconomie={!!resolu} avecTresorerie={!!tresorerie} />
           <Stack spacing={3} id="partie-resultat" sx={{ scrollMarginTop: 200, minWidth: 0 }}>
             {/* Joseph (03/11/2026) : le résultat et la trésorerie ont leur étape, « 2 · Visualiser » */}
@@ -899,7 +902,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
   )
 }
 
-// Sommaire de l'étape Visualiser (vague 6, 75A) : sur PC, colle à gauche et mène à chaque partie
+// Sommaire de l'étape Visualiser (vague 6, 75A) : sur PC, reste en vue en haut et mène à chaque partie
 function SommaireVisualiser({ avecEconomie, avecTresorerie }: { avecEconomie: boolean; avecTresorerie: boolean }) {
   const parties = [
     { id: 'visualiser-resultat', libelle: 'Résultat' },
@@ -909,10 +912,10 @@ function SommaireVisualiser({ avecEconomie, avecTresorerie }: { avecEconomie: bo
   ]
   return (
     <Box component="nav" aria-label="Sommaire du budget" className="pas-a-l-impression"
-      sx={{ display: { xs: 'none', lg: 'grid' }, gap: 0.5, position: 'sticky', top: `calc(${hautEntete.md}px + var(--onglets, 0px) + 16px)`, pt: 6 }}>
+      sx={{ display: { xs: 'none', lg: 'flex' }, gap: 0.5, flexWrap: 'wrap', position: 'sticky', zIndex: 2, top: `calc(${hautEntete.md}px + var(--onglets, 0px))`, bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider', py: 0.5 }}>
       {parties.map((p) => (
         <Button key={p.id} onClick={() => document.getElementById(p.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          sx={{ justifyContent: 'flex-start', textAlign: 'left', minHeight: 48, color: 'text.primary', fontWeight: 600 }}>{p.libelle}</Button>
+          sx={{ minHeight: 48, color: 'text.primary', fontWeight: 600 }}>{p.libelle}</Button>
       ))}
     </Box>
   )

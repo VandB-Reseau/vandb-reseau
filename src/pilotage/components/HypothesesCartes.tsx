@@ -148,7 +148,7 @@ export function HypothesesCartes({ magasin, annee, budget: b, cibles, hausseSala
   return (
     <Box component="section" aria-label={`Hypothèses ${annee} en cartes`} sx={{ display: 'grid', gap: 2 }}>
       {!lectureSeule && (
-        <Card component="section" aria-label="Avancement du budget" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Card sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
           <Box sx={{ flex: '1 1 220px', minWidth: 0 }}>
             <Typography sx={{ fontWeight: 700 }}>{prets} {prets > 1 ? 'thèmes prêts' : 'thème prêt'} sur {themes.length}</Typography>
             <LinearProgress variant="determinate" value={themes.length ? (prets / themes.length) * 100 : 0} aria-label={`${prets} thèmes prêts sur ${themes.length}`}
