@@ -95,7 +95,7 @@ test('PC : les budgets se cochent pour proposer ou relancer en une fois', async 
 test('le volet du budget montre aussi l’activité : commentaires et enregistrements', async ({ page, isMobile }, info) => {
   await connecter(page)
   await page.goto(`./#/magasins/${encodeURIComponent(M)}?vue=budget&partie=budget`)
-  await page.getByRole('button', { name: /^Commentaires/ }).click()
+  await page.getByRole('button', { name: /^Commentaires( \(|$)/ }).click()
   const volet = page.getByRole('complementary', { name: 'Volet des commentaires' })
   await volet.getByRole('button', { name: 'Tout' }).click()
   const activite = volet.getByRole('list', { name: 'Activité du budget' })
