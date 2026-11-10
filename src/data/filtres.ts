@@ -14,7 +14,7 @@ export interface Filtres {
 
 // Alertes d'un magasin : chiffres qui décrochent ou à surveiller, visite attendue depuis plus longtemps que sa case
 export type Alerte = 'decroche' | 'surveiller' | 'visite'
-export const libellesAlerte: Record<Alerte, string> = { decroche: 'Décroche', surveiller: 'À surveiller', visite: 'Pas vu depuis longtemps' }
+export const libellesAlerte: Record<Alerte, string> = { decroche: 'Décroche', surveiller: 'À surveiller', visite: 'À voir' }
 
 export const filtresVides: Filtres = { texte: '', statuts: [], types: [], coachs: [], rrs: [], alertes: [], leviers: [] }
 

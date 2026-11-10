@@ -19,18 +19,14 @@ const valeurs = Object.fromEntries(thematiques.slice(0, 14).map((t, i) => [t.id,
 const config = { deploiements: { thematiques, valeurs: { 'Lyon Test': valeurs, 'Annecy Test': { th1: 'Oui' } }, journal: {} } }
 const sansDefilementHorizontal = (page: import('@playwright/test').Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)
 
-test('Santé du parc, Chiffres : le filtre Alerte est juste à côté du filtre Coach', async ({ page, isMobile }, info) => {
+test('Santé du parc, Chiffres : le filtre Alerte, sans filtre Coach ni RR (le périmètre les choisit)', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/plus/sante?vue=chiffres')
   if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
-  const coach = page.getByRole('button', { name: 'Filtre Coach' })
   const alerte = page.getByRole('button', { name: 'Filtre Alerte' })
   await expect(alerte).toBeVisible()
-  const c = (await coach.boundingBox())!, a = (await alerte.boundingBox())!
-  if (!isMobile) {
-    expect(Math.abs(c.y - a.y)).toBeLessThan(4)
-    expect(a.x - (c.x + c.width)).toBeLessThan(16)
-  }
+  await expect(page.getByRole('button', { name: 'Filtre Coach' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Filtre Responsable Régional' })).toHaveCount(0)
   await alerte.click()
   await page.getByRole('menuitem', { name: /Décroche/ }).click()
   await page.keyboard.press('Escape')

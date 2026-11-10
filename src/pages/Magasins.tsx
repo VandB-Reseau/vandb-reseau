@@ -113,7 +113,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
             <VuesMagasins params={params} appliquer={(p) => setParams(p, { replace: true })} nomPropose={nomPropose} pretes={vue === 'carte' ? [] : [
               { nom: 'Tous', adresse: '', nombre: total },
               { nom: 'À surveiller', adresse: 'alerte=decroche%7Csurveiller', nombre: reseau.magasins.filter((m) => parAlerte(m.nom).some((a) => a !== 'visite')).length },
-              { nom: 'Visite en retard', adresse: 'alerte=visite', nombre: reseau.magasins.filter((m) => parAlerte(m.nom).includes('visite')).length },
+              { nom: 'À voir', adresse: 'alerte=visite', nombre: reseau.magasins.filter((m) => parAlerte(m.nom).includes('visite')).length },
             ]} />
             {ajout && <DialogMagasin reseau={reseau} magasin={null} onFermer={(msg, nom) => { setAjout(false); if (msg && nom) naviguer(lienFiche(nom)) }} />}
             {resultats.length === 0 ? (

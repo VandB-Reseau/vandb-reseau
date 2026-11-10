@@ -22,7 +22,7 @@ test('enregistrer une vue, la retrouver en un toucher, la retirer', async ({ pag
   const vues = page.getByRole('group', { name: 'Vues enregistrées' })
   await vues.getByRole('button', { name: 'Enregistrer la vue' }).click()
   const d = page.getByRole('dialog', { name: 'Enregistrer la vue' })
-  await expect(d.getByLabel('Nom de la vue')).toHaveValue('Pas vu depuis longtemps')
+  await expect(d.getByLabel('Nom de la vue')).toHaveValue('À voir')
   await d.getByLabel('Nom de la vue').fill('À voir cette semaine')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(vues.getByRole('button', { name: 'À voir cette semaine', pressed: true })).toBeVisible()
@@ -49,7 +49,7 @@ test('sans vue ni filtre, seules les vues prêtes sont au-dessus de la liste, «
   await page.goto('./#/magasins?vue=liste')
   await expect(page.getByText(/^\d+ ouverts · \d+ à venir$/)).toBeVisible()
   const vues = page.getByRole('group', { name: 'Vues enregistrées' })
-  await expect(vues.getByRole('button', { name: /^(Tous|À surveiller|Visite en retard) : \d+$/ })).toHaveCount(3)
+  await expect(vues.getByRole('button', { name: /^(Tous|À surveiller|À voir) : \d+$/ })).toHaveCount(3)
   await expect(vues.getByRole('button', { name: /^Tous : / })).toHaveAttribute('aria-pressed', 'true')
 })
 

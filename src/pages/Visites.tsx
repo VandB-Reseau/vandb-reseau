@@ -108,15 +108,15 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
         <FiltreMenu libelle="Nine box" choisis={cases} onChange={setCases}
           options={[...nineBox.map((c) => ({ valeur: c.id, libelle: c.libelle, detail: `${c.rythme} · ${mag((l) => l.case?.id === c.id)}` })), { valeur: '__aucune__', libelle: 'Non classé', detail: `2 visites · ${mag((l) => !l.case)}` }]} />
         <FiltreMenu libelle="Dernière visite" choisis={etats} onChange={setEtats}
-          options={[{ valeur: 'alerte' satisfies Etat, libelle: 'Pas vus depuis longtemps', detail: `${mag((l) => l.alerte)}` }, { valeur: 'delai' satisfies Etat, libelle: 'Vus récemment', detail: `${mag((l) => !l.alerte)}` }]} />
+          options={[{ valeur: 'alerte' satisfies Etat, libelle: 'À voir', detail: `${mag((l) => l.alerte)}` }, { valeur: 'delai' satisfies Etat, libelle: 'À jour', detail: `${mag((l) => !l.alerte)}` }]} />
         {(actifs > 0 || texte) && <Button onClick={() => { setCoachs([]); setCases([]); setEtats([]); setTexte('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
       </RechercheFiltres>
 
-      {/* Trois compteurs sur une ligne, comme l'en-tête des fiches ; « pas vus » filtre la liste */}
+      {/* Trois compteurs sur une ligne, comme l'en-tête des fiches ; « à voir » filtre la liste */}
       <Card aria-label={`Visites ${a.court}`} component="section" sx={{ mb: 2, border: 0, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
         <Compteur valeur={faites} libelle={faites > 1 ? 'faites' : 'faite'} />
         <Compteur valeur={referenceTotale} libelle="référence" />
-        <Compteur valeur={signales.length} libelle="pas vus" signal actif={etats.length === 1 && etats[0] === 'alerte'}
+        <Compteur valeur={signales.length} libelle="à voir" signal actif={etats.length === 1 && etats[0] === 'alerte'}
           onClick={() => setEtats(etats.length === 1 && etats[0] === 'alerte' ? [] : ['alerte'])} />
       </Card>
 

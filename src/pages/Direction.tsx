@@ -53,7 +53,7 @@ import { RegleInterlocuteurs, RegleRituels } from '../components/ReglagesAnimati
 type Cle = keyof ParametresReseau
 const champs: { cle: Cle; libelle: string; aide: string; min: number; max: number }[] = [
   { cle: 'maxUnits', libelle: 'Charge maximale d’un Coach', aide: 'Au-delà, le Coach est en dépassement.', min: 1, max: 30 },
-  { cle: 'alertThreshold', libelle: 'Seuil d’attention', aide: 'À partir de cette charge, le Coach est à surveiller.', min: 1, max: 30 },
+  { cle: 'alertThreshold', libelle: 'Seuil d’attention', aide: 'À partir de cette charge, elle est presque pleine.', min: 1, max: 30 },
   { cle: 'poidsOuvert', libelle: 'Unités pour un magasin ouvert', aide: 'Magasin en activité courante.', min: 0, max: 5 },
   { cle: 'poidsRenforce', libelle: 'Unités pour un magasin en accompagnement renforcé', aide: 'Magasin en pré-ouverture ou ouvert depuis peu.', min: 0, max: 5 },
   { cle: 'prepDuration', libelle: 'Mois de pré-ouverture', aide: 'Le Coach prend en charge le magasin ce nombre de mois avant l’ouverture.', min: 0, max: 12 },

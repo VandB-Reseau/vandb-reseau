@@ -30,6 +30,8 @@ import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { Logo } from '../components/Logo'
 import { RechercheGlobale } from '../components/RechercheGlobale'
 import { Cloche } from '../components/Cloche'
+import { DialogGlossaire } from '../components/Glossaire'
+import MenuBookOutlined from '@mui/icons-material/MenuBookOutlined'
 import Badge from '@mui/material/Badge'
 import Tooltip from '@mui/material/Tooltip'
 import { useTotalEchanges } from '../data/echanges'
@@ -67,6 +69,7 @@ function MenuCompte({ liens = [], ligne = false }: { liens?: { titre?: string; d
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const [motDePasse, setMotDePasse] = useState(false)
   const [agenda, setAgenda] = useState(false)
+  const [glossaire, setGlossaire] = useState(false)
   const { apercu, equipe } = useApercu()
   const [confirmation, setConfirmation] = useState('')
   const notifications = useNotificationsAppareil()
@@ -131,6 +134,12 @@ function MenuCompte({ liens = [], ligne = false }: { liens?: { titre?: string; d
             Mon agenda dans Google Agenda
           </MenuItem>
         )}
+        {profil.role !== 'franchise' && (
+          <MenuItem onClick={() => { setAncre(null); setGlossaire(true) }} sx={{ minHeight: { xs: 48, sm: 48 } }}>
+            <ListItemIcon><MenuBookOutlined fontSize="small" /></ListItemIcon>
+            Vocabulaire de l’app
+          </MenuItem>
+        )}
         <MenuItem onClick={() => { setAncre(null); setMotDePasse(true) }}>
           <ListItemIcon><KeyOutlined fontSize="small" /></ListItemIcon>
           Changer mon mot de passe
@@ -141,6 +150,7 @@ function MenuCompte({ liens = [], ligne = false }: { liens?: { titre?: string; d
         </MenuItem>
       </Menu>
       {agenda && <DialogAgendaAbonne onFermer={(msg) => { setAgenda(false); if (msg) setConfirmation(msg) }} />}
+      {glossaire && <DialogGlossaire onFermer={() => setGlossaire(false)} />}
       {motDePasse && <DialogMotDePasse onFermer={(msg) => { setMotDePasse(false); if (msg) setConfirmation(msg) }} />}
       <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
     </>

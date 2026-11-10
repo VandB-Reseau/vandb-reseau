@@ -27,7 +27,7 @@ test('le rythme de visite est indicatif et signale les magasins pas vus depuis l
   // Filtres : seulement les magasins pas vus depuis longtemps, puis une case de la nine box
   if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
   await page.getByRole('button', { name: 'Filtre Dernière visite' }).click()
-  await page.getByRole('menuitem', { name: /Pas vus depuis longtemps/ }).click()
+  await page.getByRole('menuitem', { name: /^À voir/ }).click()
   await page.keyboard.press('Escape')
   await expect(lyon).toHaveCount(0)
   await expect(nantes).toBeVisible()

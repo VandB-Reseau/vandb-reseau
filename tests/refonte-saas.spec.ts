@@ -137,7 +137,7 @@ test('PC : les magasins en tableau, une ligne ouvre l’aperçu ; téléphone : 
   await expect(apercu).toBeVisible()
   await expect(apercu.getByRole('button', { name: 'Ouvrir la fiche' })).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-refonte-magasins.png` })
-  await page.getByRole('group', { name: 'Vues enregistrées' }).getByRole('button', { name: /^Visite en retard/ }).click()
+  await page.getByRole('group', { name: 'Vues enregistrées' }).getByRole('button', { name: /^À voir/ }).click()
   await expect(page).toHaveURL(/alerte=visite/)
   await apercu.getByRole('button', { name: 'Ouvrir la fiche' }).click()
   await expect(page).toHaveURL(new RegExp(`/magasins/${encodeURIComponent(M)}`))

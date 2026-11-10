@@ -70,7 +70,7 @@ export const referencesPossibles = [
 ]
 
 export type StatutAlerte = 'decroche' | 'surveiller' | 'ok'
-export const libelleAlerte: Record<StatutAlerte, string> = { decroche: 'Décroche', surveiller: 'À surveiller', ok: 'OK' }
+export const libelleAlerte: Record<StatutAlerte, string> = { decroche: 'Décroche', surveiller: 'À surveiller', ok: 'Dans la norme' }
 export const couleurAlerte: Record<StatutAlerte, 'error' | 'warning' | 'success'> = { decroche: 'error', surveiller: 'warning', ok: 'success' }
 
 const moisNoms = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']

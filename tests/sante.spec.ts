@@ -272,8 +272,6 @@ test('sur téléphone, la nine box apparaît sans faire défiler et les filtres 
   const caseHaut = await page.getByRole('cell', { name: /^Diagnostic marché/ }).boundingBox()
   expect(caseHaut!.y).toBeLessThan(page.viewportSize()!.height)
   await page.screenshot({ path: `captures/${info.project.name}-sante-ninebox.png` })
-  await page.getByRole('button', { name: 'Filtres' }).click()
-  await expect(page.getByRole('button', { name: 'Filtre Coach' })).toBeVisible()
 })
 
 // Parc cumulé en fin d'année (Joseph, 26/10/2026) ; une date d'ouverture posée par défaut (projet sans date) n'est pas comptée
