@@ -93,7 +93,7 @@ function BulleMessage({ msg, moi, noms, premier, dernier, choisi, contexte, choi
     </>
   )
   const bulleSx: SxProps<Theme> = {
-    display: 'block', textAlign: 'left', maxWidth: { xs: '85%', md: '70%' }, minWidth: 0, px: 1.75, py: 1, borderRadius: `${rayon}px`, ...(coins as object),
+    display: 'block', textAlign: 'left', maxWidth: { xs: '85%', md: '70%' }, minWidth: 0, px: 1.75, py: 1, ...(choisir ? { minHeight: { xs: 48, md: 0 }, py: { xs: 1.5, md: 1 } } : {}), borderRadius: `${rayon}px`, ...(coins as object),
     bgcolor: moi ? 'primary.main' : 'action.hover', color: moi ? 'primary.contrastText' : 'text.primary',
     ...(msg.epingleLe ? { outline: '2px solid', outlineColor: 'secondary.main', outlineOffset: 1 } : {}),
   }

@@ -68,7 +68,7 @@ export function LigneReactions({ x, droite, reagir }: { x: Message; droite: bool
           <Chip key={g} size="small" icon={<Icone sx={{ fontSize: 16 }} />} label={`${libelleReaction[g]} · ${l.length}`} title={l.map((r) => r.nom).join(', ')}
             aria-label={`${libelleReaction[g]} : ${l.map((r) => r.nom).join(', ')}`} aria-pressed={reagir ? moi : undefined}
             onClick={reagir ? () => reagir(g) : undefined} variant={moi ? 'filled' : 'outlined'} color={moi ? 'secondary' : 'default'}
-            sx={{ height: 32, fontSize: '0.75rem', bgcolor: moi ? undefined : 'background.paper' }} />
+            sx={{ height: reagir ? { xs: 48, md: 32 } : 32, fontSize: '0.75rem', bgcolor: moi ? undefined : 'background.paper' }} />
         )
       })}
     </Box>
