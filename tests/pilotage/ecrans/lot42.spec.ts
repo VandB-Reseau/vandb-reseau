@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type QuadrimestreSimule } from './outils'
+import { ouvrir, revenirAuxHypotheses, seConnecter, textesTropPetits, zonesTropPetites, type QuadrimestreSimule } from './outils'
 
 // Lot 42 (Joseph, 02/11/2026) : magasin dans la barre du haut, budget sur une page, équipe, frais et trésorerie de départ
 // repris des comptes, « D'accord » par thème, validation en série. Données fictives uniquement : dépôt public.
@@ -61,7 +61,7 @@ test('budget sur une page : le résultat suit chaque changement ; « D’accord 
   // Le thème changé le dit ; un autre thème s'accepte d'un clic
   await expect(page.getByLabel('Ventes et marge : changé par le magasin')).toBeVisible()
   // Les autres thèmes s'acceptent depuis leur carte, sur la page Construire
-  await page.getByRole('link', { name: 'Toutes les hypothèses' }).click()
+  await revenirAuxHypotheses(page)
   await expect(page.getByRole('region', { name: `Hypothèses ${N + 1} en cartes` })).toBeVisible()
   const calendrier = page.getByRole('button', { name: 'Évènements & Temps forts : d’accord avec le siège' })
   await calendrier.click()

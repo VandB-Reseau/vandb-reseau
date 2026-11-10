@@ -74,7 +74,8 @@ const surPC = { display: { xs: 'none', md: 'table-cell' } }
 const simple = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
 
 // Vue réseau : chaque magasin à la fin de son dernier mois réalisé, face à l'an dernier, à son budget et au total du réseau
-export function Reseau() {
+// integre : vue « Écarts au budget » de la page Performance (refonte vague 2, 15A), titre de niveau 2
+export function Reseau({ integre }: { integre?: boolean } = {}) {
   const annee = anneeSuivi()
   const { donnees, erreur, chargement, recharger } = useChargement(async () => {
     const [d, { parametres }, reel, alertes, actions, quadrimestres] = await Promise.all([chargerBudgets(annee), chargerParametres(annee), chargerReelDuCompte(annee), chargerAlertes(), chargerActions().catch(() => []), chargerQuadrimestres(annee).catch(() => ({} as SaisiesQuadrimestres))])
@@ -113,7 +114,9 @@ export function Reseau() {
   const groupe = params.get('groupe') ? Number(params.get('groupe')) : null
   const coach = params.get('coach') ?? ''
   const rr = params.get('rr') ?? ''
-  const vue = VUES.find((v) => v.cle === params.get('vue')) ?? VUES[0]
+  // Dans Performance, « vue » choisit l'onglet de la page : le classement prend son propre paramètre
+  const PARAM_VUE = integre ? 'classement' : 'vue'
+  const vue = VUES.find((v) => v.cle === params.get(PARAM_VUE)) ?? VUES[0]
   const colonnes = COLONNES.filter((c) => vue.colonnes.includes(c.cle))
   const tri = ([...COLONNES.map((c) => c.cle), 'magasin'] as string[]).includes(params.get('tri') ?? '') ? params.get('tri') as Cle : 'ca'
   const sens = params.get('sens') === 'asc' ? 'asc' : params.get('sens') === 'desc' ? 'desc' : tri === 'magasin' ? 'asc' : 'desc'
@@ -151,7 +154,7 @@ export function Reseau() {
   const titre = (actions?: React.ReactNode) => (
     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, flexWrap: 'wrap', mb: 3 }}>
       <Box sx={{ flex: 1, minWidth: 240 }}>
-        <Typography variant="h1">{`Suivi ${annee}`}</Typography>
+        <Typography variant={integre ? 'h2' : 'h1'}>{`Suivi ${annee}`}</Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
           Réel {annee}, magasin par magasin<Box component="span" className="impression-seule"> · {selection} · imprimé le {new Date().toLocaleDateString('fr-FR')}</Box>
         </Typography>
@@ -252,7 +255,7 @@ export function Reseau() {
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
         <Typography variant="h2" sx={{ flex: 1 }}>Tous les magasins</Typography>
-        <ToggleButtonGroup exclusive size="small" value={vue.cle} onChange={(_, v: Vue | null) => v && changer({ vue: v === 'ventes' ? null : v })} aria-label="Vue du classement"
+        <ToggleButtonGroup exclusive size="small" value={vue.cle} onChange={(_, v: Vue | null) => v && changer({ [PARAM_VUE]: v === 'ventes' ? null : v })} aria-label="Vue du classement"
           className="pas-a-l-impression">
           {VUES.map((v) => <ToggleButton key={v.cle} value={v.cle} sx={{ minHeight: 48, px: 2 }}>{v.libelle}</ToggleButton>)}
         </ToggleButtonGroup>

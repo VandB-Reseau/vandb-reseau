@@ -29,7 +29,7 @@ test('Chiffres et Budget : le magasin ouvert reste le même, chaque espace a ses
 
   await ouvrir(page, 'Réel')
   await expect(page.getByRole('heading', { level: 1, name: MAGASINS[0] })).toBeVisible()
-  await expect(saisiesAffichees(page)).toHaveText([/^Réel du mois/, /^Stock de fin de mois/, /^Comptes du quadrimestre/, /^Frais/])
+  await expect(await saisiesAffichees(page)).toHaveText([/^Réel du mois/, /^Stock de fin de mois/, /^Frais/])
   await page.screenshot({ path: `captures/${info.project.name}-espace-donnees.png`, fullPage: true })
 
   await page.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: 'Vue d’ensemble' }).click()
@@ -87,5 +87,5 @@ test('téléphone : le suivi dans l’onglet Chiffres de la fiche, ses parties e
   await ouvrirSection(page, /^Trésorerie$/)
   await expect(page).toHaveURL(/[?&]partie=comptes$/)
   await allerVers(page, 'Suivi ')
-  await expect(page.getByRole('heading', { level: 1, name: /^Suivi \d{4}$/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: /^Suivi \d{4}$/ })).toBeVisible()
 })

@@ -37,6 +37,8 @@ export interface PersonneSimulee { id: number; store_name: string; poste: string
 export interface FraisSimule { store_name: string; code: string; libelle: string; rubrique: string; annuel: number | null; taux_ca: number | null }
 export interface GroupeSimule { id: number; nom: string; cibles: Record<string, unknown> | null }
 export interface OptionsSimulation {
+  // Téléphone : le compte de résultat s'ouvre mois par mois (18A) ; les anciens tests lisent le tableau complet
+  compteParMois?: boolean
   role?: 'directeur' | 'rr' | 'coach' | 'franchise' | 'aucun'
   magasins?: MagasinSimule[]
   reseau?: Record<string, unknown> | null
@@ -92,6 +94,7 @@ export const magasinsParDefaut: MagasinSimule[] = [
 // Base du pilotage (schéma « pilotage ») : à appeler APRÈS simulerSupabase de l'app réseau, qui répond au reste
 export async function simulerPilotage(page: Page, options: OptionsSimulation = {}): Promise<Ecriture[]> {
   const ecritures: Ecriture[] = []
+  if (!options.compteParMois) await page.addInitScript(() => { try { if (!localStorage.getItem('pilotage.compteTelephone')) localStorage.setItem('pilotage.compteTelephone', 'tableau') } catch { /* rien */ } })
   // État de la base simulée : les écritures sont relues au chargement suivant
   const magasins = structuredClone(options.magasins ?? magasinsParDefaut).map((m) => ({ ajustements: {}, base: null, groupe_id: null, ...m }))
   const groupes = structuredClone(options.groupes ?? [])
@@ -468,14 +471,24 @@ export async function ouvrir(page: Page, partie: string) {
     try {
       await ouvrirEspace(page, cible.espace, delai)
       if (cible.libelle) {
-        // Refonte (09/11/2026) : les saisies se choisissent par une bascule sous la puce « Saisies »
+        // Refonte vague 2 (09/11/2026, 12A) : les saisies s'ouvrent depuis la clôture du mois (puce « Clôture du mois »)
         const saisie = cible.espace === 'Saisies' && !(await espacesEnOnglets(page))
-        const lien = saisie ? pages.getByRole('group', { name: 'Saisies du magasin' }).getByRole('button', { name: cible.libelle }) : pages.getByRole('tab', { name: cible.libelle })
+        const cloture = page.getByRole('region', { name: 'Clôture du mois' })
+        if (saisie && !(await cloture.isVisible())) await pages.getByRole('button', { name: 'Clôture du mois' }).click({ timeout: delai })
+        const lien = saisie ? cloture.getByRole('button', { name: cible.libelle }) : pages.getByRole('tab', { name: cible.libelle })
+        // Les comptes du quadrimestre ne sont dans la clôture qu'en avril, août et décembre : on remonte jusqu'au dernier
+        if (saisie) {
+          await cloture.getByRole('list').waitFor({ timeout: delai })
+          for (let n = 0; n < 4 && !(await lien.count()); n++) await cloture.getByRole('button', { name: 'Mois précédent' }).click({ timeout: delai })
+        }
         await lien.click({ timeout: delai })
       }
       break
     } catch (e) { if (essai >= 2) throw e }
   }
+  // Refonte vague 2 (13B) : en revenant aux cartes, le panneau du thème se ferme et l'impact reprend sa colonne ;
+  // on attend la fin de ce passage avant d'agir dans l'impact
+  if (!cible.theme && cible.espace === 'Budget') await expect(page.getByRole('region', { name: /^Détail : / })).toHaveCount(0)
   if (cible.theme) await page.locator('main').getByRole('region', { name: cible.theme, exact: true }).getByRole('link').click()
   if (cible.section) await ouvrirSection(page, cible.section)
 }
@@ -513,7 +526,7 @@ export const ongletEspace = (page: Page, nom: string) => {
   const pages = page.getByRole('navigation', { name: 'Pages du magasin' })
   const ancien = pages.getByRole('tablist', { name: 'Espaces du magasin' }).getByRole('tab', { name: new RegExp(`^${nom}`) })
   const fiche = page.getByRole('tablist', { name: /^Rubriques de / })
-  const nouveau = nom.startsWith('Saisies') ? pages.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: /^Saisies/ })
+  const nouveau = nom.startsWith('Saisies') ? pages.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: /^Clôture du mois/ })
     : fiche.getByRole('tab', { name: new RegExp(`^${nom.startsWith('Budget') ? 'Budget' : 'Chiffres'}(, autres rubriques)?$`) })
   return ancien.or(nouveau)
 }
@@ -523,11 +536,24 @@ export function partieAffichee(page: Page, nom: RegExp) {
 }
 // Pages de l'espace affiché : la rangée d'onglets sous les espaces (étapes du budget, parties du suivi ou des chiffres)
 export function partiesAffichees(page: Page) {
-  return page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist', { name: /^(Étapes du budget|Parties du suivi|Saisies du magasin|Parties des chiffres)/ }).getByRole('tab')
+  return page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('tablist', { name: /^(Étapes du budget|Parties du suivi|Parties des chiffres)/ }).getByRole('tab')
 }
-// Saisies du magasin : sous la puce « Saisies » de l'onglet Chiffres, une bascule (refonte 09/11/2026)
-export function saisiesAffichees(page: Page) {
-  return page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('group', { name: 'Saisies du magasin' }).getByRole('button')
+// Saisies du magasin : la liste de la clôture du mois, sous la puce « Clôture du mois » de l'onglet Chiffres (vague 2, 12A).
+// Depuis une saisie, le bouton « Clôture du mois » y ramène.
+export async function saisiesAffichees(page: Page) {
+  const region = page.getByRole('region', { name: 'Clôture du mois' })
+  const retour = page.getByRole('button', { name: 'Clôture du mois', exact: true })
+  const boutons = region.getByRole('list').getByRole('button')
+  // Une saisie ouverte (adresse « partie=reel », « saisieStock »…) : l'adresse change avant l'écran, et la clôture encore
+  // affichée un instant disparaît ensuite ; on attend donc le bouton de retour de la saisie plutôt que la clôture
+  const partie = new URL(page.url()).hash.match(/[?&]partie=([^&]+)/)?.[1]
+  if (partie && partie !== 'cloture') await retour.click()
+  else {
+    await region.or(retour).first().waitFor()
+    if (await retour.isVisible()) await retour.click()
+  }
+  await expect(boutons.first()).toBeVisible()
+  return boutons
 }
 // Année du budget affichée dans l'en-tête de la fiche (lot 38)
 export async function anneeEnTete(page: Page) {

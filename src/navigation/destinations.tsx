@@ -23,6 +23,8 @@ import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
 import RequestQuote from '@mui/icons-material/RequestQuote'
 import Insights from '@mui/icons-material/Insights'
+import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
+import QueryStats from '@mui/icons-material/QueryStats'
 
 export interface Destination {
   chemin: string
@@ -48,14 +50,16 @@ export const barreTelephone = principales.filter((d) => d !== magasins)
 
 // Budgets (fusion avec le pilotage, Joseph 03/11/2026, option A) : budget et suivi d'un magasin dans sa fiche
 export const budgets: Destination = { chemin: '/budgets', libelle: 'Budgets', description: 'Budgets de l’année, suivi face au réel, hypothèses, imports de caisse', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Fusion' }
+// Performance (refonte vague 2, Joseph 09/11/2026, 15A) : les chiffres du réseau en une page
+export const performance: Destination = { chemin: '/performance', libelle: 'Performance', description: 'Chiffres des magasins, écarts au budget, évolution du parc', icone: <QueryStatsOutlined />, iconeActive: <QueryStats />, sprint: 'Refonte' }
 export const agenda: Destination = { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes, formations et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' }
 // Animation réseau (Directeur et Responsables Régionaux) : un onglet de Messages depuis la refonte (Joseph, 09/11/2026, 2A)
 export const animation: Destination = { chemin: '/animation', libelle: 'Animation réseau', court: 'Animation', description: 'Communications, bonnes pratiques, sondages, formations, réunions et campagnes, avec leur suivi', icone: <InsightsOutlined />, iconeActive: <Insights />, sprint: 'Animation', roles: ['directeur', 'rr'] }
-export const secondaires: Destination[] = [budgets, agenda]
+export const secondaires: Destination[] = [budgets, performance, agenda]
 export const pourRole = (liste: Destination[], role: string | undefined) => liste.filter((d) => !d.roles || (!!role && d.roles.includes(role)))
 
 // Réglages : Équipe et Paramètres. Évolution du parc est une vue de Magasins depuis la refonte (Joseph, 09/11/2026, 2A)
-export const evolution: Destination = { chemin: '/parametres/evolution', libelle: 'Évolution du parc', description: 'Ouvertures par année', icone: <TimelineOutlined />, sprint: 'Sprint 4' }
+export const evolution: Destination = { chemin: '/performance?vue=evolution', libelle: 'Évolution du parc', description: 'Ouvertures par année', icone: <TimelineOutlined />, sprint: 'Sprint 4' }
 export const parametres: Destination[] = [
   { chemin: '/equipe', libelle: 'Équipe', description: 'Organisation, portefeuilles, postes à pourvoir, collaborateurs, franchisés', icone: <GroupsOutlined />, iconeActive: <Groups />, sprint: 'Sprint 2' },
   { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Charge des Coachs, import et export, alertes, nine box, audits', icone: <SettingsOutlined />, sprint: 'Sprint 5' },
@@ -67,7 +71,7 @@ export function rubriquesMenu(sansParametres: boolean): Rubrique[] {
   return [
     { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
     { titre: 'Réseau', destinations: [magasins, visites, sante] },
-    { titre: 'Finances', destinations: [budgets] },
+    { titre: 'Finances', destinations: [budgets, performance] },
     ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }]),
   ]
 }

@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
+import InventoryOutlined from '@mui/icons-material/Inventory2Outlined'
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
+import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
 import { OngletBudget } from '../components/OngletBudget'
 import { Link as RouterLink, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -51,7 +54,7 @@ import { SondagesARepondre } from '../components/Questions'
 import { SectionChallengesFranchise } from '../components/Challenges'
 import { dateCourte, dateLongue, lienFiche, telLien } from '../lib/format'
 import { actionsDes, echeanceDate, enRetard } from '../data/actions'
-import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEuros, formatKEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, type ChampChiffre } from '../data/chiffres'
+import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEuros, formatKEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, moisPrecedent, type ChampChiffre } from '../data/chiffres'
 import { campagnesDuMagasin, executionMagasin, libellesExecution, magasinsConcernes, phase, libellesPhase, type Execution } from '../data/campagnes'
 import { associesEnPlace, mandatActuel } from '../data/associes'
 import { lienCompteRendu, visitesDuMagasin } from '../data/visites'
@@ -163,14 +166,20 @@ function Tuile({ libelle, valeur, detail, couleur, lien, large = false, largeTel
     : <Box role="group" aria-label={libelle} sx={sx}>{contenu}</Box>
 }
 
-function SectionReperes({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
+// Refonte vague 2 (19A) : sur l'accueil du franchisé, les repères sont repliés en bas de page
+function SectionReperes({ reseau, magasins, repliable }: { reseau: Reseau; magasins: Magasin[]; repliable?: boolean }) {
+  const [ouvert, setOuvert] = useState(!repliable)
   const r = reseau.espace?.reperes
   const indicateurs = r ? ordreReperes.filter((i) => r.indicateurs[i]) : []
   const seul = magasins.length === 1
   return (
     <Box component="section" aria-label="Repères réseau">
-      <TitreSection>{r ? `Repères réseau · ${libelleMois(r.mois)}` : 'Repères réseau'}</TitreSection>
-      {!indicateurs.length ? <Vide>Pas encore assez de magasins avec des chiffres ce mois-ci pour comparer.</Vide> : (
+      <TitreSection action={repliable ? (
+        <Button onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert} endIcon={ouvert ? <ExpandLessOutlined /> : <ExpandMoreOutlined />} sx={{ minHeight: 48 }}>
+          {ouvert ? 'Masquer' : 'Afficher'}
+        </Button>
+      ) : undefined}>{r ? `Repères réseau · ${libelleMois(r.mois)}` : 'Repères réseau'}</TitreSection>
+      {!ouvert ? null : !indicateurs.length ? <Vide>Pas encore assez de magasins avec des chiffres ce mois-ci pour comparer.</Vide> : (
         <Box sx={grilleTuiles}>
           {indicateurs.map((i) => {
             const x = r!.indicateurs[i]!
@@ -234,6 +243,25 @@ function SectionChiffresDuMois({ reseau, magasins }: { reseau: Reseau; magasins:
           fin={<MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.vertFonce} largeur={120} hauteur={48} label="CA des douze derniers mois" />} />
         {tuiles.map(([l, v, d]) => <Tuile key={l} libelle={l} valeur={v} detail={d} />)}
       </Box>
+    </Box>
+  )
+}
+
+// ── À faire (refonte vague 2, 19A) : ce que le magasin doit saisir ou relire, chaque ligne mène à sa page ──
+function SectionAFaire({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
+  const mois = moisPrecedent(reseau.jour)
+  const plusieurs = magasins.length > 1
+  return (
+    <Box component="section" aria-label="À faire">
+      <TitreSection>À faire</TitreSection>
+      <CarteLignes label="Saisies et budget">
+        {magasins.flatMap((m) => [
+          <LigneCompacte key={`c-${m.nom}`} lien={`${lienFiche(m.nom)}?vue=chiffres&partie=cloture`} avatar={<Initiales nom="cloture" icone={<InventoryOutlined />} />}
+            titre={`Clôturer ${libelleMois(mois).toLowerCase()}`} detail={[plusieurs && m.nom, 'Réel, stock de fin de mois et comptes'].filter(Boolean).join(' · ')} />,
+          <LigneCompacte key={`b-${m.nom}`} lien={`${lienFiche(m.nom)}?vue=budget`} avatar={<Initiales nom="budget" icone={<RequestQuoteOutlined />} />}
+            titre="Relire mon budget" detail={[plusieurs && m.nom, 'Hypothèses, commentaires et validation'].filter(Boolean).join(' · ')} />,
+        ])}
+      </CarteLignes>
     </Box>
   )
 }
@@ -408,23 +436,26 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
     <>
       <PageHeader titre="Accueil" sousTitre={tous.length === 1 ? tous[0].nom : `${tous.length} magasins`} />
       {tous.length > 1 && <Puces label="Magasins affichés" valeur={choix} onChange={setChoix} options={[{ v: '', libelle: 'Tous mes magasins' }, ...tous.map((m) => ({ v: m.nom, libelle: m.nom }))]} />}
-      <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start' }}>
+      {/* Refonte vague 2 (19A) : le tableau de bord du magasin. Chiffres en haut, ce qui est à faire au centre, la
+          relation avec l'équipe à droite, les repères du réseau repliés en bas */}
+      <SectionChiffresDuMois reseau={reseau} magasins={magasins} />
+      <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, mt: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start' }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-          <SectionChiffresDuMois reseau={reseau} magasins={magasins} />
-          <SectionReperes reseau={reseau} magasins={magasins} />
-          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
-        </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-          {!apercu && <SectionChallengesFranchise />}
-          {!apercu && <SondagesARepondre />}
-          {!apercu && <SectionReunionsFranchise jour={reseau.jour} />}
+          <SectionAFaire reseau={reseau} magasins={magasins} />
           <SectionMotAvantVisite reseau={reseau} magasins={magasins} signaler={setMessage} />
           <SectionTaches reseau={reseau} magasins={magasins} />
-          <SectionVisitesAudits reseau={reseau} magasins={magasins} />
+          {!apercu && <SondagesARepondre />}
+          {!apercu && <SectionChallengesFranchise />}
           <SectionCampagnesEnCours reseau={reseau} magasins={magasins} />
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          <SectionVisitesAudits reseau={reseau} magasins={magasins} />
+          {!apercu && <SectionReunionsFranchise jour={reseau.jour} />}
+          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
           <SectionContacts reseau={reseau} magasins={magasins} />
         </Box>
       </Box>
+      <Box sx={{ mt: 2 }}><SectionReperes reseau={reseau} magasins={magasins} repliable /></Box>
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>
   )

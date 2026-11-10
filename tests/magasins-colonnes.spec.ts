@@ -19,7 +19,7 @@ test('PC : un tableau des magasins, trié par le titre des colonnes', async ({ p
   await seConnecter(page)
   await page.goto('./#/magasins?vue=liste')
   const tableau = page.getByRole('table', { name: 'Tableau des magasins' })
-  await expect(tableau.getByRole('columnheader')).toHaveText(['Magasin', 'Coach', 'Responsable Régional', 'CA du mois', 'vs N-1', 'Nine box', 'Dernière visite', 'Tâches'])
+  await expect(tableau.getByRole('columnheader')).toHaveText(['', 'Magasin', 'Coach', 'Responsable Régional', 'CA du mois', 'vs N-1', 'Nine box', 'Dernière visite', 'Tâches'])
   const lyon = tableau.getByRole('row').filter({ has: page.getByRole('link', { name: 'Lyon Test', exact: true }) })
   await expect(lyon).toContainText('−30,0 %')
   await expect(lyon).toContainText('Redressement urgent')

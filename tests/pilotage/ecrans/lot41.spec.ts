@@ -192,7 +192,9 @@ test('hypothèses du réseau en une grille : tous les magasins, puis par ancienn
   await expect(page.getByLabel('Part de la famille dans son univers : Bière (Cave)')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-lot41-grille.png`, fullPage: true })
+  // Pas de capture pleine page ici : Chromium change un instant la taille de la page, l'écran passe en mise en page
+  // téléphone et la saisie en cours repart de zéro (le test dépassait son temps sur GitHub)
+  await page.screenshot({ path: `captures/${info.project.name}-lot41-grille.png` })
   await page.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Cibles enregistrées.')).toBeVisible()
   expect(ecritures.find((e) => e.table === 'cibles_reseau')?.corps).toEqual({ annee: 2027, valeur: { hausseTarifaire: 0.02, inflationFrais: 0.015, millesimes: { 1: { evolutionFlux: { cave: 0.1 } } } } })

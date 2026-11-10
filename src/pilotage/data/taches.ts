@@ -65,3 +65,13 @@ export async function retirerTache(magasin: string, id: string) {
   await supprimerActionLibre(magasin, id)
   rafraichirReseau()
 }
+
+// Relance (refonte vague 2, 16A) : une tâche pour le franchisé du magasin, créée depuis une sélection de magasins
+export async function relancerFranchise(magasin: string, intitule: string, echeance: string) {
+  if (dansApercu()) throw new Error('apercu')
+  const porteur = porteurPour(magasin, 'franchise')
+  const id = await enregistrerActionLibre(magasin, { action: intitule, porteur, echeance, creeLe: aujourdhui(), ...(pont.courant?.nom ? { auteur: pont.courant.nom } : {}) })
+  const r = pont.courant?.reseau
+  if (r && porteur) notifierTache(magasin, id, clesDesPorteurs(r, magasin, [porteur]).filter((c) => !pont.courant!.mesCles.includes(c)))
+}
+export const apresRelances = rafraichirReseau

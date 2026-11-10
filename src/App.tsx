@@ -40,7 +40,7 @@ const chargeurs = {
   charge: () => import('./pages/ChargeCoachs').then((m) => ({ default: m.ChargeCoachs })),
   donnees: () => import('./pages/Donnees').then((m) => ({ default: m.Donnees })),
   compteRendu: () => import('./pages/CompteRendu').then((m) => ({ default: m.CompteRendu })),
-  evolution: () => import('./pages/Evolution').then((m) => ({ default: m.Evolution })),
+  performance: () => import('./pages/Performance').then((m) => ({ default: m.Performance })),
   // Sprint 22 (F1) : chaque grand écran a son fichier, seul l'accueil part avec l'app
   magasins: () => import('./pages/Magasins').then((m) => ({ default: m.Magasins })),
   ficheMagasin: () => import('./pages/FicheMagasin').then((m) => ({ default: m.FicheMagasin })),
@@ -68,7 +68,7 @@ const Direction = chargementDiffere(chargeurs.direction)
 const ChargeCoachs = chargementDiffere(chargeurs.charge)
 const Donnees = chargementDiffere(chargeurs.donnees)
 const CompteRendu = chargementDiffere(chargeurs.compteRendu)
-const Evolution = chargementDiffere(chargeurs.evolution)
+const Performance = chargementDiffere(chargeurs.performance)
 const Magasins = chargementDiffere(chargeurs.magasins)
 const Partage = chargementDiffere(chargeurs.partage)
 const FicheMagasin = chargementDiffere(chargeurs.ficheMagasin)
@@ -181,8 +181,9 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/plus/agenda" element={<Agenda />} />
         <Route path="/animation" element={<Animation />} />
         <Route path="/plus/sante" element={<SanteParc />} />
-        <Route path="/parametres/evolution" element={<Evolution />} />
-        <Route path="/plus/evolution" element={<Navigate to="/parametres/evolution" replace />} />
+        <Route path="/performance" element={<Performance />} />
+        <Route path="/parametres/evolution" element={<Navigate to="/performance?vue=evolution" replace />} />
+        <Route path="/plus/evolution" element={<Navigate to="/performance?vue=evolution" replace />} />
         <Route path="/plus" element={<Plus />} />
         <Route path="/partage" element={<Partage />} />
         <Route path="/budgets/*" element={<PagesBudgets />} />

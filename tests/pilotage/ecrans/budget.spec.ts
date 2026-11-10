@@ -72,7 +72,7 @@ test('le franchisé s’écarte d’une cible : le budget passe en discussion, i
   // Cibles du réseau : 200 000 × 1,03 + 300 000 × 1,03 + 100 000
   await expect(resultat.getByRole('row', { name: /^Chiffre d’affaires HT/ })).toContainText(/615\s000\s€/)
   await ouvrir(page, 'Hypothèses')
-  await expect(page.getByText('aucun écart aux cibles du siège', { exact: false })).toBeVisible()
+  await expect(page.getByText('aucun écart aux cibles', { exact: false })).toBeVisible()
   const hypotheses = page.getByRole('region', { name: 'Hypothèses du magasin' })
   await expect(hypotheses.getByRole('region', { name: 'Cave' }).getByRole('row', { name: /^Tickets/ })).toContainText('Réseau')
   await expect(hypotheses.getByRole('region', { name: 'Cave' }).getByRole('row', { name: /^Tickets/ })).toContainText(/10\s300/)   // 10 000 attendus sur l'année × 1,03
@@ -83,7 +83,7 @@ test('le franchisé s’écarte d’une cible : le budget passe en discussion, i
   await expect(resultat.getByRole('row', { name: /^Chiffre d’affaires HT/ })).toContainText(/619\s120\s€/)
   await ouvrir(page, 'Hypothèses')
   await expect(hypotheses.getByRole('region', { name: 'Cave' }).getByRole('row', { name: /^Panier moyen TTC/ })).toContainText(/24,48\s€/)
-  await expect(page.getByText('1 écart aux cibles du siège', { exact: false })).toBeVisible()
+  await expect(page.getByText('1 écart aux cibles', { exact: false })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Valider le budget' })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])

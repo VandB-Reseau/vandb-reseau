@@ -72,7 +72,8 @@ const LIBELLES_QUESTIONS: Record<QuestionCalendrier, { libelle: string; un: stri
 // 1er janvier (saisie ou estimée), saisonnalité du magasin ou de l'an passé
 export interface ResumeDepart { annee: number; tresorerie: number | null; estimee: boolean; saisonnalite: boolean }
 
-export function HypothesesCartes({ magasin, annee, budget: b, cibles, hausseSalaires, inflation, sansEquipe, sansFrais, lectureSeule, reprise, accord, depart }: {
+export function HypothesesCartes({ magasin, annee, budget: b, cibles, hausseSalaires, inflation, sansEquipe, sansFrais, lectureSeule, reprise, accord, depart, etroit }: {
+  etroit?: boolean   // refonte vague 2 (13B) : le détail d'une carte est ouvert à droite, deux colonnes de cartes
   magasin: string
   annee: number
   budget: Budget
@@ -96,7 +97,7 @@ export function HypothesesCartes({ magasin, annee, budget: b, cibles, hausseSala
   const ecartEvenements = (b.tempsForts?.ajoute ?? 0) - (b.tempsForts?.retire ?? 0) + (b.tempsForts?.ajustements ?? 0)
   return (
     <Box component="section" aria-label={`Hypothèses ${annee} en cartes`}
-      sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' }, gap: 2 }}>
+      sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: etroit ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))' }, gap: 2 }}>
       <Carte magasin={magasin} titre="Point de départ" vers="depart" etat={depart.tresorerie === null || depart.estimee ? 'aVerifier' : 'fait'} lectureSeule={lectureSeule}
         accord={accord?.('tresoBudget', 'Point de départ')} lignes={[
           { libelle: `CA atterri ${depart.annee}`, valeur: milliers(b.atterrissage) },

@@ -47,12 +47,14 @@ export function ProfilPersonne({ nom, insigne, avatar, lignes, pastille, compteu
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const uneLigne = surPC ? {} : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const
   return (
-    <Card sx={{ border: 0, p: { xs: 1.5, md: 2 }, mb: { xs: 1.5, md: 2 } }}>
+    // Refonte vague 2 (Joseph, 09/11/2026, 11A) : sur PC, une bande compacte sans carte (nom, une ligne d'infos, pastille et
+    // compteurs en ligne, actions à droite) ; les onglets collants reprennent le nom quand la bande sort de l'écran
+    <Card className="profil-entete" sx={{ border: 0, p: { xs: 1.5, md: 0 }, mb: { xs: 1.5, md: 1.5 }, bgcolor: { md: 'transparent' }, boxShadow: { md: 'none' }, overflow: 'visible' }}>
       {/* Sur PC, les compteurs se rangent sur la ligne du nom, entre les infos et les pictos ; les pictos passent dessous quand la ligne est trop étroite */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: { xs: 1.5, md: 2 }, rowGap: { xs: 0, md: 1 }, alignItems: 'center' }}>
         {!surPC && retour
           ? <IconButton onClick={retour.aller} aria-label={retour.libelle} sx={{ width: 48, height: 48, ml: -1, mr: -1, flexShrink: 0 }}><ArrowBack /></IconButton>
-          : avatar ? avatar(surPC ? 56 : 44) : <Initiales nom={nom} taille={surPC ? 56 : 44} />}
+          : avatar ? avatar(surPC ? 44 : 44) : <Initiales nom={nom} taille={44} />}
         <Box sx={{ flex: '1 1 140px', minWidth: 0 }}>
           {insigne
             ? (
@@ -62,24 +64,21 @@ export function ProfilPersonne({ nom, insigne, avatar, lignes, pastille, compteu
               </Box>
             )
             : <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.5rem' }, ...uneLigne }}>{nom}</Typography>}
-          {lignes.filter(Boolean).map((l) => <Typography key={l} variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8125rem', md: undefined }, ...uneLigne }}>{l}</Typography>)}
-          {surPC && (pastille || detail) && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1.5, rowGap: 0.5, mt: 0.5 }}>
+          {surPC
+            ? <Typography variant="body2" color="text.secondary">{lignes.filter(Boolean).join(' · ')}</Typography>
+            : lignes.filter(Boolean).map((l) => <Typography key={l} variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem', ...uneLigne }}>{l}</Typography>)}
+          {surPC && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2, rowGap: 0.25, mt: 0.25 }} role="group" aria-label="En bref">
               {pastille && <Pastille ton={pastille.ton}>{pastille.libelle}</Pastille>}
+              {compteurs.map((c) => (
+                <Typography key={c.libelle} variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                  <Box component="b" sx={{ color: c.couleur ?? 'text.primary', fontVariantNumeric: 'tabular-nums' }}>{c.valeur}</Box> {c.libelle}
+                </Typography>
+              ))}
               {detail && <Typography variant="body2">{detail}</Typography>}
             </Box>
           )}
         </Box>
-        {surPC && (
-          <Box sx={{ display: 'flex', flexShrink: 0, '& > * + *': { borderLeft: '1px solid', borderColor: 'divider' } }} role="group" aria-label="En bref">
-            {compteurs.map((c) => (
-              <Box key={c.libelle} sx={{ width: 120, textAlign: 'center', px: 1 }}>
-                <Typography sx={{ fontSize: '1.25rem', fontWeight: 700, lineHeight: 1.2, color: c.couleur, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.valeur}</Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.libelle}</Typography>
-              </Box>
-            ))}
-          </Box>
-        )}
         <Box sx={{ display: 'flex', flexShrink: 0, alignSelf: { xs: 'flex-start', md: 'center' }, ml: 'auto', mr: { xs: -1, md: 0 } }}>
           <Bulle titre={telephone ? `${appel} · ${telephone}` : appel}>
             {telephone

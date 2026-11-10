@@ -51,7 +51,26 @@ export async function ouvrir(page: Page, partie: string) {
 }
 
 // Ancien menu du pilotage : les onglets de la page « Budgets » de l'app réseau
+// Refonte vague 2 (14A) : pour le Directeur, les réglages des budgets sont dans Paramètres ; l'ancienne adresse y mène
+const REGLAGES_BUDGETS: Record<string, string> = { 'Hypothèses du réseau': 'hypotheses', 'Imports de caisse': 'imports', 'Paramètres réseau': 'parametres' }
 export async function allerVers(page: Page, nom: string) {
+  const reglage = Object.entries(REGLAGES_BUDGETS).find(([k]) => nom.startsWith(k))?.[1]
+  if (reglage && !(await page.getByRole('navigation', { name: 'Pages des budgets' }).getByRole('tab', { name: new RegExp(`^${nom}`) }).count())) {
+    await page.goto(`./#/budgets/${reglage}`)
+    await page.getByRole('heading', { level: 1 }).first().waitFor()
+    return
+  }
+  // Refonte vague 2 (15A) : le suivi du réseau face au budget est une vue de Performance
+  if (nom.startsWith('Budgets')) {
+    await page.goto('./#/budgets')
+    await page.getByRole('heading', { level: 1, name: /^Budgets \d{4}$/ }).waitFor()
+    return
+  }
+  if (nom.startsWith('Suivi')) {
+    await page.goto('./#/performance?vue=budget')
+    await page.getByRole('heading', { name: /^Suivi \d{4}$/ }).waitFor()
+    return
+  }
   if (!/#\/budgets/.test(page.url())) {
     await page.goto('./#/budgets')
     await page.getByRole('heading', { level: 1 }).first().waitFor()
@@ -76,3 +95,9 @@ export async function fermerCommentairesSurTelephone(page: Page) {
 
 // Adresse d'une fiche de magasin dans l'app réseau, sur l'onglet du budget
 export const ficheBudget = (magasin: string) => `./#/magasins/${encodeURIComponent(magasin)}?vue=budget`
+
+// Refonte vague 2 (13B) : sur grand écran, le détail d'un thème s'ouvre dans un panneau à droite des cartes ; on revient
+// aux hypothèses en le fermant (le lien « Toutes les hypothèses » reste sur les écrans plus étroits)
+export async function revenirAuxHypotheses(page: Page) {
+  await page.getByRole('link', { name: 'Toutes les hypothèses' }).or(page.getByRole('button', { name: 'Fermer le détail' })).first().click()
+}

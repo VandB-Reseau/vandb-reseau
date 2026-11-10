@@ -21,6 +21,8 @@ export function libelleEspace(cle: Espace, anneeEnCours: number, anneeBudget: nu
 export function partiesDe(espace: Espace, annee: number = anneeSuivi()): Partie[] {
   if (espace === 'donnees') {
     return [
+      // Refonte vague 2 (Joseph, 09/11/2026, 12A) : la clôture du mois guide les saisies
+      { cle: 'cloture', libelle: 'Clôture du mois' },
       { cle: 'reel', libelle: 'Réel du mois' },
       // Option A (03/11/2026) : la saisie du stock rejoint les autres saisies ; sa lecture reste dans le Suivi
       { cle: 'saisieStock', libelle: 'Stock de fin de mois' },
@@ -73,7 +75,8 @@ export const estTheme = (cle: string) => CLES_THEMES.includes(cle)
 // Étape ou partie du menu à mettre en avant pour une partie (un thème : l'étape des hypothèses)
 export const etapeDe = (cle: string) => (estTheme(cle) ? 'budget' : cle)
 
-export const PARTIE_PAR_DEFAUT: Record<Espace, string> = { donnees: 'reel', budget: 'budget', suivi: 'synthese' }
+// Refonte vague 2 (12A) : les saisies s'ouvrent sur la clôture du mois
+export const PARTIE_PAR_DEFAUT: Record<Espace, string> = { donnees: 'cloture', budget: 'budget', suivi: 'synthese' }
 
 // Anciennes clés (liens, alertes, « à faire ») : la partie qui les montre désormais, et la section où défiler
 // Lot 43 : l'ancien thème « Trésorerie » du budget est au point de départ ; le résultat a sa page (03/11/2026)
@@ -83,7 +86,7 @@ const ANCIENNES: Record<string, string> = { tresorerie: 'comptes', tresoBudget: 
 export const partieDe = (cle: string) => ANCIENNES[cle] ?? cle
 export const sectionDe = (cle: string) => (ANCIENNES[cle] && !['travaux', 'tresorerie', 'plan', 'suivi'].includes(cle) ? cle : null)
 
-const DONNEES = ['reel', 'saisieStock', 'quadrimestres', 'frais']
+const DONNEES = ['cloture', 'reel', 'saisieStock', 'quadrimestres', 'frais']
 const BUDGET = ['budget', 'visualiser', 'echanges', ...CLES_THEMES]
 export function espaceDe(cle: string): Espace {
   const p = partieDe(cle)

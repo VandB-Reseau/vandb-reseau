@@ -176,7 +176,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           {texteSituation(s)}
         </Alert>
       ))}
-      <Onglets valeur={ongletDe(vue)} onChange={changerOnglet} rubriques={rubriquesFiche} libelle={`Rubriques de ${m.nom}`} fiche />
+      <Onglets valeur={ongletDe(vue)} onChange={changerOnglet} rubriques={rubriquesFiche} libelle={`Rubriques de ${m.nom}`} fiche titre={m.nom} />
       <ContenuOnglet>
         {ongletDe(vue) === 'activite' && (
           <Tabs value={vue} onChange={(_e, v: VueFiche) => changerVue(v)} variant="scrollable" scrollButtons={false} aria-label="Parties de l’activité" sx={{ mb: 2, ...styleSousNavigation }}>

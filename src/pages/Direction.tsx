@@ -39,6 +39,14 @@ import { analyser, referencesPossibles, type SeuilsAlerte } from '../data/chiffr
 import { NON_CLASSE, nineBox } from '../data/sante'
 import { anneeDe, suiviRythme } from '../data/visites'
 import { hautEntete, sousBandes } from '../components/Collant'
+import TuneOutlined from '@mui/icons-material/TuneOutlined'
+import CalculateOutlined from '@mui/icons-material/CalculateOutlined'
+import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined'
+import { ZonePilotage } from '../pilotage/Pilotage'
+import { Hypotheses } from '../pilotage/pages/Hypotheses'
+import { Imports } from '../pilotage/pages/Imports'
+import { Parametres as ParametresBudget } from '../pilotage/pages/Parametres'
+import { anneeBudget } from '../pilotage/data/pilotage'
 
 type Cle = keyof ParametresReseau
 const champs: { cle: Cle; libelle: string; aide: string; min: number; max: number }[] = [
@@ -223,7 +231,13 @@ function RegleVisite({ reseau }: { reseau: Reseau }) {
 
 // Sommaire puis une rubrique par écran, comme les réglages d'un téléphone (Joseph, 21/10/2026).
 // Sur PC, le sommaire reste à gauche et la rubrique s'affiche à droite.
-type Rubrique = 'charge' | 'chiffres' | 'visite' | 'ninebox' | 'thematiques' | 'audits' | 'photos' | 'historique'
+// Refonte vague 2 (Joseph, 09/11/2026, 14A) : un seul endroit pour régler l'outil, en 4 groupes ; les réglages des budgets
+// (hypothèses du réseau, paramètres de l'année, imports de caisse) quittent la page Budgets pour venir ici
+export type Rubrique = 'charge' | 'chiffres' | 'visite' | 'ninebox' | 'thematiques' | 'audits' | 'photos' | 'historique' | 'hypotheses' | 'budget' | 'imports'
+type Groupe = 'Visites et suivi' | 'Budgets' | 'Données' | 'Historique'
+const GROUPES: Groupe[] = ['Visites et suivi', 'Budgets', 'Données', 'Historique']
+const GROUPE: Record<Rubrique, Groupe> = { charge: 'Visites et suivi', chiffres: 'Visites et suivi', visite: 'Visites et suivi', ninebox: 'Visites et suivi', thematiques: 'Visites et suivi', audits: 'Visites et suivi',
+  hypotheses: 'Budgets', budget: 'Budgets', imports: 'Données', photos: 'Données', historique: 'Historique' }
 function rubriques(reseau: Reseau): { id: Rubrique; libelle: string; detail: string; icone: ReactNode }[] {
   const p = reseau.parametres, s = reseau.seuils
   const premiere = casesDelai[0]
@@ -235,6 +249,9 @@ function rubriques(reseau: Reseau): { id: Rubrique; libelle: string; detail: str
     { id: 'ninebox', libelle: 'Nine box', detail: 'Grille de notation, notes des magasins', icone: <GridViewOutlined /> },
     { id: 'thematiques', libelle: 'Thématiques de déploiement', detail: ths ? `${ths} thématique${ths > 1 ? 's' : ''}` : 'Aucune thématique', icone: <RocketLaunchOutlined /> },
     { id: 'audits', libelle: 'Grilles d’audit', detail: 'Critères et seuils de conformité', icone: <FactCheckOutlined /> },
+    { id: 'hypotheses', libelle: 'Hypothèses du réseau', detail: 'Cibles par univers et par famille', icone: <TuneOutlined /> },
+    { id: 'budget', libelle: `Paramètres ${anneeBudget()}`, detail: 'Redevance, publicité, stock cible, congés payés, campagne', icone: <CalculateOutlined /> },
+    { id: 'imports', libelle: 'Imports de caisse', detail: 'Fichiers de la caisse, codes des magasins', icone: <UploadFileOutlined /> },
     { id: 'photos', libelle: 'Espace photos', detail: 'Place occupée', icone: <PhotoLibraryOutlined /> },
     { id: 'historique', libelle: 'Historique des modifications', detail: 'Qui a changé quoi, 90 derniers jours', icone: <HistoryOutlined /> },
   ]
@@ -252,6 +269,9 @@ function ContenuRubrique({ id, reseau, signaler }: { id: Rubrique; reseau: Resea
       {id === 'audits' && <GrillesAudit reseau={reseau} />}
       {id === 'photos' && <EspacePhotos reseau={reseau} />}
       {id === 'historique' && <HistoriqueModifications reseau={reseau} />}
+      {id === 'hypotheses' && <ZonePilotage>{() => <Hypotheses />}</ZonePilotage>}
+      {id === 'budget' && <ZonePilotage>{() => <ParametresBudget />}</ZonePilotage>}
+      {id === 'imports' && <ZonePilotage>{() => <Imports />}</ZonePilotage>}
     </Box>
   )
 }
@@ -266,18 +286,31 @@ export function Direction() {
       {(reseau) => {
         const liste = rubriques(reseau)
         const choisie = liste.find((r) => r.id === params.get('rubrique')) ?? (surPC ? liste[0] : null)
+        const ligne = (r: (typeof liste)[number]) => (
+          <Box key={r.id} sx={{ bgcolor: surPC && choisie?.id === r.id ? 'action.selected' : undefined }}>
+            <LigneCompacte onClick={() => ouvrir(r.id)} label={r.libelle} avatar={<Initiales nom={r.libelle} icone={r.icone} />} titre={r.libelle} detail={r.detail}
+              fin={!surPC && <ChevronRightOutlined color="action" />} />
+          </Box>
+        )
+        const titreGroupe = (g: Groupe) => (
+          <Typography component="h2" sx={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'text.secondary', px: 2, pt: 2, pb: 0.5 }}>{g}</Typography>
+        )
         const sommaire = (
           <CarteLignes label="Rubriques des paramètres">
-            <LigneCompacte lien="/parametres/charge" label="Charge des Coachs" avatar={<Initiales nom="Charge des Coachs" icone={<GroupsOutlined />} />} titre="Charge des Coachs"
-              detail={`${reseau.equipe.filter((c) => !c.fictif).length} Coachs · simulation et répartition`} fin={<ChevronRightOutlined color="action" />} />
-            {liste.map((r) => (
-              <Box key={r.id} sx={{ bgcolor: surPC && choisie?.id === r.id ? 'action.selected' : undefined }}>
-                <LigneCompacte onClick={() => ouvrir(r.id)} label={r.libelle} avatar={<Initiales nom={r.libelle} icone={r.icone} />} titre={r.libelle} detail={r.detail}
-                  fin={!surPC && <ChevronRightOutlined color="action" />} />
+            {GROUPES.map((g) => (
+              <Box key={g} role="group" aria-label={g}>
+                {titreGroupe(g)}
+                {g === 'Visites et suivi' && (
+                  <LigneCompacte lien="/parametres/charge" label="Charge des Coachs" avatar={<Initiales nom="Charge des Coachs" icone={<GroupsOutlined />} />} titre="Charge des Coachs"
+                    detail={`${reseau.equipe.filter((c) => !c.fictif).length} Coachs · simulation et répartition`} fin={<ChevronRightOutlined color="action" />} />
+                )}
+                {liste.filter((r) => GROUPE[r.id] === g).map(ligne)}
+                {g === 'Données' && (
+                  <LigneCompacte lien="/parametres/donnees" label="Import et export" avatar={<Initiales nom="Import et export" icone={<ImportExportOutlined />} />} titre="Import et export"
+                    detail={reseau.derniereSauvegarde ? `Dernière sauvegarde ${dateCourte(reseau.derniereSauvegarde)}` : 'Référentiels en Excel, sauvegarde complète'} fin={<ChevronRightOutlined color="action" />} />
+                )}
               </Box>
             ))}
-            <LigneCompacte lien="/parametres/donnees" label="Import et export" avatar={<Initiales nom="Import et export" icone={<ImportExportOutlined />} />} titre="Import et export"
-              detail={reseau.derniereSauvegarde ? `Dernière sauvegarde ${dateCourte(reseau.derniereSauvegarde)}` : 'Référentiels en Excel, sauvegarde complète'} fin={<ChevronRightOutlined color="action" />} />
           </CarteLignes>
         )
         return (

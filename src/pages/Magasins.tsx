@@ -100,7 +100,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
               sousTitre={resultats.length === total ? `${restreint ? 'Tout le réseau : ' : ''}${libelleParc(reseau.magasins)}` : `${resultats.length} sur ${total} magasins`}
               actions={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
                 {/* Bascule de vue (refonte, 4A) : même contenu, autre présentation ; Évolution du parc rangée ici (2A) */}
-                {voitEvolution && surPC && <Button startIcon={<TimelineOutlined />} onClick={() => naviguer('/parametres/evolution')}>Évolution du parc</Button>}
+                {voitEvolution && surPC && <Button startIcon={<TimelineOutlined />} onClick={() => naviguer('/performance?vue=evolution')}>Évolution du parc</Button>}
                 <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_e, v: 'liste' | 'carte' | null) => { if (v) changerVue(v) }} aria-label="Affichage"
                   sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, md: 40 }, px: 1.5, gap: 0.75, textTransform: 'none', fontWeight: 600 } }}>
                   <ToggleButton value="liste" aria-label="Liste"><TableRowsOutlined fontSize="small" />{surPC ? 'Tableau' : 'Liste'}</ToggleButton>

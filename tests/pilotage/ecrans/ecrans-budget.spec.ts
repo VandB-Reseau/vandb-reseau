@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, type VenteSimulee } from './outils'
+import { ouvrir, revenirAuxHypotheses, seConnecter, textesTropPetits, zonesTropPetites, type MagasinSimule, type VenteSimulee } from './outils'
 
 // Écrans du budget clarifiés (Joseph, 03/11/2026) : cartes qui disent quoi remplir, questions du Calendrier, saisonnalité
 // au point de départ, simulateur unique, (i) sur les lignes calculées, date d'ouverture de la fiche magasin réseau,
@@ -73,7 +73,7 @@ test('Évènements & Temps forts : deux questions, « Rien de prévu » répond,
   await questions.getByRole('button', { name: 'Oui, saisir : temps forts' }).click()
   await page.getByRole('button', { name: 'Ajouter un temps fort' }).click()
   await expect(questions).toContainText('Oui, 1 temps fort prévu')
-  await page.getByRole('link', { name: 'Toutes les hypothèses' }).click()
+  await revenirAuxHypotheses(page)
   await expect(page.getByRole('region', { name: 'Évènements & Temps forts', exact: true })).toContainText('Fait')
 })
 

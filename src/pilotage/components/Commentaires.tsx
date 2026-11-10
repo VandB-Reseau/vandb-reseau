@@ -6,8 +6,11 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import Chip from '@mui/material/Chip'
 import Drawer from '@mui/material/Drawer'
+import GlobalStyles from '@mui/material/GlobalStyles'
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AddCommentOutlined from '@mui/icons-material/AddCommentOutlined'
@@ -16,7 +19,7 @@ import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import { roleLibelle, type Profil, type Role } from '../auth/roles'
-import { chargerCommentaires, envoyerCommentaire, resoudreCommentaire, retirerMessage, type Commentaire } from '../data/pilotage'
+import { chargerCommentaires, chargerEchanges, envoyerCommentaire, resoudreCommentaire, retirerMessage, statutLibelle, type Commentaire } from '../data/pilotage'
 import { useChargement } from '../data/useChargement'
 
 // Joseph (03/11/2026) : les échanges deviennent des commentaires comme dans un document partagé. On commente un point
@@ -52,14 +55,24 @@ export function BoutonCommenter({ ancre, libelle, compact, ligne }: { ancre: str
   )
 }
 
-// Bouton de l'en-tête du budget : ouvre (ou ferme) le volet avec tous les commentaires, et porte le nombre d'ouverts
-export function BoutonCommentaires() {
+// Bouton de l'en-tête du budget : ouvre (ou ferme) le volet avec tous les commentaires, et porte le nombre d'ouverts.
+// compact (refonte vague 2, 11A : étapes dans la ligne d'en-tête) : le picto seul, le nom en infobulle
+export function BoutonCommentaires({ compact }: { compact?: boolean } = {}) {
   const c = useContext(Ctx)
   if (!c) return null
+  const nom = c.total ? `Commentaires (${c.total} ouvert${c.total > 1 ? 's' : ''})` : 'Commentaires'
+  if (compact) return (
+    <Tooltip title={nom}>
+      <IconButton onClick={c.ouvrirTout} aria-expanded={c.volet} aria-label={nom} className="pas-a-l-impression"
+        sx={{ width: 48, height: 48, border: 1, borderColor: c.total ? 'warning.main' : 'divider', borderRadius: 2, color: c.total ? 'warning.dark' : 'text.secondary', bgcolor: c.volet ? 'action.selected' : undefined }}>
+        <Badge badgeContent={c.total} color="warning" invisible={!c.total}><ChatBubbleOutlineOutlined /></Badge>
+      </IconButton>
+    </Tooltip>
+  )
   return (
     <Button variant={c.volet ? 'contained' : 'outlined'} color={c.total ? 'warning' : 'inherit'} onClick={c.ouvrirTout} aria-expanded={c.volet} className="pas-a-l-impression"
       startIcon={<Badge badgeContent={c.total} color="warning" invisible={!c.total || c.volet}><ChatBubbleOutlineOutlined /></Badge>}
-      aria-label={c.total ? `Commentaires (${c.total} ouvert${c.total > 1 ? 's' : ''})` : 'Commentaires'} sx={{ minHeight: 48, borderColor: 'divider' }}>
+      aria-label={nom} sx={{ minHeight: 48, borderColor: 'divider' }}>
       Commentaires
     </Button>
   )
@@ -95,6 +108,8 @@ export function CommentairesBudget({ magasin, annee, moi, children }: {
   const panneau = (
     <Drawer variant="persistent" anchor="right" open={volet} className="pas-a-l-impression"
       slotProps={{ paper: { role: 'complementary', 'aria-label': 'Volet des commentaires', sx: { top: { xs: 64, md: 0 }, height: { xs: 'calc(100% - 64px - var(--barre-basse, 0px))', md: '100%' }, width: { xs: '100%', sm: 400 }, bgcolor: 'background.default', borderLeft: 1, borderColor: 'divider', boxShadow: 6, p: 1.5 } } }}>
+      {/* Sur PC, la page se pousse à gauche du volet ouvert : il ne recouvre ni les étapes ni les boutons de l'en-tête */}
+      {volet && <GlobalStyles styles={{ '@media (min-width: 900px)': { main: { paddingRight: '424px !important' } } }} />}
       {volet && (
         <PanneauCommentaires key={`commentaires-${magasin}`} magasin={magasin} annee={annee} moi={moi} fils={fils} panne={!!erreur && !donnees} recharger={recharger}
           point={point} demande={demande} onPoint={setPoint} onFermer={() => setVolet(false)} />
@@ -112,6 +127,8 @@ function PanneauCommentaires({ magasin, annee, moi, fils, panne, recharger, poin
   const [texte, setTexte] = useState('')
   const [reponse, setReponse] = useState<{ id: number; texte: string } | null>(null)
   const [voirResolus, setVoirResolus] = useState(false)
+  // Refonte vague 2 (Joseph, 09/11/2026, 20A) : le volet montre aussi ce qui a changé dans le budget (versions enregistrées)
+  const [vue, setVue] = useState<'commentaires' | 'tout'>('commentaires')
   const [occupe, setOccupe] = useState(false)
   const [probleme, setProbleme] = useState<string | null>(null)
   const boite = useRef<HTMLDivElement>(null)
@@ -188,6 +205,11 @@ function PanneauCommentaires({ magasin, annee, moi, fils, panne, recharger, poin
         {total > 0 && <Chip size="small" color="warning" label={total > 1 ? `${total} ouverts` : '1 ouvert'} />}
         <Tooltip title="Fermer"><IconButton aria-label="Fermer les commentaires" onClick={onFermer} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton></Tooltip>
       </Box>
+      <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_, v) => v && setVue(v)} aria-label="Afficher" sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, lg: 36 }, px: 1.5, textTransform: 'none' } }}>
+        <ToggleButton value="commentaires">Commentaires seuls</ToggleButton>
+        <ToggleButton value="tout">Tout</ToggleButton>
+      </ToggleButtonGroup>
+      {vue === 'tout' ? <Activite magasin={magasin} annee={annee} fils={fils} /> : <>
       {panne && <Alert severity="warning">Les commentaires ne se chargent pas pour l’instant. Réessaie dans un moment.</Alert>}
       {point && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
@@ -220,7 +242,43 @@ function PanneauCommentaires({ magasin, annee, moi, fils, panne, recharger, poin
           </Button>
         </Box>
       )}
+      </>}
     </Card>
+  )
+}
+
+// Fil d'activité : commentaires, réponses, points résolus et versions enregistrées du budget, du plus récent au plus ancien
+function Activite({ magasin, annee, fils }: { magasin: string; annee: number; fils: Fil[] }) {
+  const { donnees, erreur } = useChargement(() => chargerEchanges(magasin, annee), [magasin, annee])
+  type Evt = { cle: string; quand: string; titre: string; detail?: string }
+  const evts: Evt[] = []
+  for (const f of fils) {
+    const sur = f.ancreLibelle ?? ANCRE_BUDGET.libelle
+    evts.push({ cle: `c${f.id}`, quand: f.creeLe, titre: `${qui(f.auteurRole, f.auteurNom)} a commenté : ${sur}`, detail: f.texte })
+    for (const r of f.reponses) evts.push({ cle: `c${r.id}`, quand: r.creeLe, titre: `${qui(r.auteurRole, r.auteurNom)} a répondu : ${sur}`, detail: r.texte })
+    if (f.resoluLe) evts.push({ cle: `r${f.id}`, quand: f.resoluLe, titre: `${qui(f.resoluParRole, f.resoluParNom)} a marqué résolu : ${sur}` })
+  }
+  for (const v of donnees?.versions ?? []) {
+    evts.push({ cle: `v${v.id}`, quand: v.creeLe, titre: `${qui(v.auteurRole, v.auteurNom)} a enregistré le budget`, detail: `Statut : ${statutLibelle[v.statut] ?? v.statut}` })
+  }
+  evts.sort((a, b) => (a.quand < b.quand ? 1 : -1))
+  return (
+    <>
+      {erreur && !donnees && <Alert severity="warning">Les modifications du budget ne se chargent pas pour l’instant. Les commentaires restent affichés.</Alert>}
+      {evts.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">Rien pour l’instant : les commentaires et les enregistrements du budget s’afficheront ici.</Typography>
+      ) : (
+        <Box component="ol" aria-label="Activité du budget" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>
+          {evts.map((e) => (
+            <Box key={e.cle} component="li" sx={{ borderLeft: 3, borderColor: e.cle.startsWith('v') ? 'primary.main' : 'warning.main', pl: 1.25, py: 0.25 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{e.titre}</Typography>
+              {e.detail && <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{e.detail}</Typography>}
+              <Typography variant="body2" color="text.secondary">{quand(e.quand)}</Typography>
+            </Box>
+          ))}
+        </Box>
+      )}
+    </>
   )
 }
 

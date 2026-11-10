@@ -120,7 +120,7 @@ const detailAnnee = (x: ReturnType<typeof lignes>[number]) => [
   x.sorties.length ? `${x.sorties.length > 1 ? 'Sortis' : 'Sorti'} : ${x.sorties.map((m) => m.nom).join(', ')}` : '',
 ].filter(Boolean).join(' · ') || 'Aucune ouverture'
 
-function Contenu({ reseau }: { reseau: Reseau }) {
+function Contenu({ reseau, integre }: { reseau: Reseau; integre?: boolean }) {
   const l = lignes(reseau)
   const max = Math.max(1, ...l.map((x) => Math.max(x.ouvertures.length, x.sorties.length)))
   const recentes = l.slice(-8)
@@ -135,8 +135,10 @@ function Contenu({ reseau }: { reseau: Reseau }) {
   return (
     <>
       {/* Refonte (2A) : une vue de Magasins, on y revient d'un clic */}
-      <Button startIcon={<ArrowBack />} onClick={() => naviguer('/magasins')} sx={{ mb: 1, ml: -1 }}>Magasins</Button>
-      <PageHeader titre="Évolution du parc" sousTitre={`${ouverts} magasins ouverts aujourd’hui`} />
+      {integre
+        ? <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{`${ouverts} magasins ouverts aujourd’hui`}</Typography>
+        : <><Button startIcon={<ArrowBack />} onClick={() => naviguer('/magasins')} sx={{ mb: 1, ml: -1 }}>Magasins</Button>
+          <PageHeader titre="Évolution du parc" sousTitre={`${ouverts} magasins ouverts aujourd’hui`} /></>}
       {sansDate > 0 && <Alert severity="info" sx={{ mb: 3 }}>{`${sansDate} magasin${sansDate > 1 ? 's' : ''} sans date d’ouverture ${sansDate > 1 ? 'ne sont' : 'n’est'} pas compté${sansDate > 1 ? 's' : ''}.`}</Alert>}
       {prochains.length > 0 && (
         <Box sx={{ mb: 3 }}>
@@ -222,6 +224,7 @@ function Contenu({ reseau }: { reseau: Reseau }) {
   )
 }
 
-export function Evolution() {
-  return <AvecReseau>{(reseau) => <Contenu reseau={reseau} />}</AvecReseau>
+// integre : vue de la page Performance (refonte vague 2, 15A), sans titre ni retour
+export function Evolution({ integre }: { integre?: boolean } = {}) {
+  return <AvecReseau>{(reseau) => <Contenu reseau={reseau} integre={integre} />}</AvecReseau>
 }

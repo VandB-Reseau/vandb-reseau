@@ -3,7 +3,7 @@
 // sur le PC comme sur le téléphone. Équipe seulement ; sans la table, rien ne change.
 import { supabase } from './supabase'
 
-export type ClePreference = 'suivis' | 'vues' | 'reseauVu' | 'tachesVues' | 'epingles' | 'pratiquesVues'
+export type ClePreference = 'suivis' | 'vues' | 'reseauVu' | 'tachesVues' | 'epingles' | 'pratiquesVues' | 'notificationsLues'
 interface Branche { lire: () => unknown; appliquer: (v: unknown) => void; vide?: () => boolean }
 const branches = new Map<ClePreference, Branche>()
 

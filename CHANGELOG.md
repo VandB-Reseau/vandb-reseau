@@ -9,6 +9,22 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Refonte façon SaaS, vague 2, lot A (Joseph, 09/11/2026, choix 10A 11A 12A 14A 15A 16A 17A 20A), sans migration.
+  Cloche en haut de l'app et volet des notifications (tâches confiées ou en retard, comptes rendus, commentaires de
+  budget), l'état « lu » suivant le compte. En-tête de fiche compact, le nom repris dans la bande collante des onglets
+  sur PC. « Clôture du mois » : liste des saisies du mois dans la fiche (réel, stock, frais, comptes du quadrimestre) et
+  vue du réseau avec relance des franchisés. Paramètres en quatre groupes (Visites et suivi, Budgets, Données,
+  Historique), les réglages des budgets compris. Page Performance sous Finances : chiffres des magasins, face au budget,
+  clôtures, évolution du parc. Cases à cocher et barre d'actions en masse (magasins, budgets, clôtures). Silhouettes de
+  chargement, « Annuler » après avoir coché une tâche, écrans vides unifiés. Volet du budget : bascule Commentaires /
+  Tout, qui mêle commentaires et enregistrements du budget.
+  Lot B (Joseph, 09/11/2026, choix 13B 18A 19A), dans la même demande : sur grand écran, le détail d'une carte de
+  « Construire » s'ouvre dans un panneau à droite, les cartes restant visibles (l'équipe garde sa pleine page). Sur
+  téléphone, le compte de résultat se lit mois par mois (puces des mois, « Année »), le tableau complet à un bouton, et
+  les indicateurs du budget défilent en bande. Accueil du franchisé en tableau de bord du magasin : chiffres en haut,
+  « À faire » au centre (clôture du mois, budget, mot avant la visite, tâches), visites et actualités à droite, repères
+  du réseau repliés en bas. Le volet des commentaires pousse la page sur PC au lieu de recouvrir les étapes du budget.
+
 - Refonte façon SaaS (Joseph, 09/11/2026, choix 1A 2A 3A 4A 5A 6A 7A 8C 9A), sans migration. Coquille : plus de barre
   noire sur PC, menu clair en quatre rubriques (Mon travail, Réseau, Finances, Réglages), recherche et compte dans le menu ;
   Évolution du parc devient une vue de Magasins, Animation réseau un onglet de Messages. Fiche magasin (équipe et

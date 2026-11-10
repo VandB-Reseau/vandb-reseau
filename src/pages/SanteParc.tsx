@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { normaliser } from '../data/filtres'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link as RouterLink, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, Navigate, useSearchParams } from 'react-router-dom'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -764,7 +764,9 @@ export function SanteParc() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [params, setParams] = useSearchParams()
-  const vue = ['evaluer', 'deploiements', 'campagnes', 'challenges', 'chiffres'].includes(params.get('vue') ?? '') ? params.get('vue')! : 'ninebox'
+  // Refonte vague 2 (15A) : les chiffres des magasins sont dans Performance
+  if (params.get('vue') === 'chiffres') return <Navigate to="/performance" replace />
+  const vue = ['evaluer', 'deploiements', 'campagnes', 'challenges'].includes(params.get('vue') ?? '') ? params.get('vue')! : 'ninebox'
   return (
     <AvecReseau>
       {(reseau) => <Contenu reseau={reseau} vue={vue} surPC={surPC} aller={(v) => setParams({ vue: v }, { replace: true })} />}
@@ -789,14 +791,12 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
         { vue: 'deploiements', libelle: 'Déploiements', icone: <RocketLaunchOutlined /> },
         { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
         { vue: 'challenges', libelle: 'Challenges', icone: <EmojiEventsOutlined /> },
-        { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
       ]} />
       {vue === 'ninebox' && <VueNineBox reseau={reseau} evaluer={() => aller('evaluer')} surPC={surPC} />}
       {vue === 'evaluer' && <VueEvaluer reseau={reseau} saisie={saisie} surPC={surPC} date={champDate} />}
       {vue === 'deploiements' && <VueDeploiements reseau={reseau} saisie={saisie} surPC={surPC} date={champDate} />}
       {vue === 'campagnes' && <VueCampagnes reseau={reseau} />}
       {vue === 'challenges' && <VueChallenges reseau={reseau} />}
-      {vue === 'chiffres' && <VueChiffres reseau={reseau} surPC={surPC} />}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </>
   )
@@ -805,7 +805,7 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
 // ── Chiffres : les chiffres de la fiche magasin et l'alerte de décrochage ──
 const ordreAlerte: (StatutAlerte | null)[] = ['decroche', 'surveiller', 'ok', null]
 
-function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
+export function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean }) {
   const theme = useTheme()
   const { magasins, barreDe } = useFiltres(reseau)
   const [statuts, setStatuts] = useState<string[]>([])

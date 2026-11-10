@@ -1,3 +1,8 @@
+import { useApercu } from '../auth/Apercu'
+import { BarreSelection, CaseEntete, CaseLigne, useSelection } from './Selection'
+import { TacheEnSerie } from './TacheEnSerie'
+import AddTaskOutlined from '@mui/icons-material/AddTaskOutlined'
+import Snackbar from '@mui/material/Snackbar'
 import { useMemo, useState, type KeyboardEvent } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -115,6 +120,13 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
     return { ca: n ? ca : null, ecart: ref ? ((ca - ref) / ref) * 100 : null }
   }, [magasins, infos])
   const ouvrir = (nom: string) => setChoisi((c) => (c === nom ? null : nom))
+  // Refonte vague 2 (16A) : cocher plusieurs magasins et leur créer une même tâche
+  const { apercu: voirComme, equipe: voirEquipe } = useApercu()
+  const avecSelection = !voirComme && !voirEquipe
+  const cles = useMemo(() => tries.map((m) => m.nom), [tries])
+  const sel = useSelection(cles)
+  const [tacheSerie, setTacheSerie] = useState(false)
+  const [message, setMessage] = useState('')
   const clavier = (e: KeyboardEvent, nom: string) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ouvrir(nom) } }
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: apercu ? 'minmax(0, 1fr) 320px' : 'minmax(0, 1fr)', gap: 2, alignItems: 'start' }}>
@@ -123,6 +135,7 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
           <Table size="small" aria-label="Tableau des magasins" sx={{ '& td, & th': { py: 0.75, px: 1.5, fontSize: '0.875rem' }, '& tbody tr': { height: 44, cursor: 'pointer' }, '& tbody tr:hover': { bgcolor: 'action.hover' } }}>
             <TableHead>
               <TableRow>
+                {avecSelection && <TableCell padding="checkbox" sx={{ width: 44, '&&': { pl: 1.5, pr: 0 } }}><CaseEntete s={sel} /></TableCell>}
                 {colonnes.map((c) => (
                   <TableCell key={c.libelle} align={c.droite ? 'right' : 'left'} sx={{ width: c.largeur, fontWeight: 700, color: 'text.secondary', whiteSpace: 'nowrap' }}
                     sortDirection={c.v && tri === c.v ? (c.v === 'nom' ? 'asc' : 'desc') : false}>
@@ -141,6 +154,7 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
                 const actif = choisi === m.nom
                 return (
                   <TableRow key={m.nom} selected={actif} hover tabIndex={0} aria-selected={actif} onClick={() => ouvrir(m.nom)} onDoubleClick={() => naviguer(lienFiche(m.nom))} onKeyDown={(e) => clavier(e, m.nom)}>
+                    {avecSelection && <TableCell padding="checkbox" sx={{ '&&': { pl: 1.5, pr: 0 } }}><CaseLigne s={sel} cle={m.nom} nom={m.nom} /></TableCell>}
                     <TableCell sx={{ minWidth: 200 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', columnGap: 1.25, rowGap: 0.25, flexWrap: 'wrap' }}>
                         <Blason magasin={m} taille={28} />
@@ -165,7 +179,7 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
                 )
               })}
               <TableRow sx={{ '&&': { cursor: 'default', height: 44 }, '&&:hover': { bgcolor: 'transparent' }, '& td': { borderBottom: 0, fontWeight: 700 } }}>
-                <TableCell colSpan={3} sx={{ color: 'text.secondary' }}>{magasins.length} magasin{magasins.length > 1 ? 's' : ''}</TableCell>
+                <TableCell colSpan={avecSelection ? 4 : 3} sx={{ color: 'text.secondary' }}>{magasins.length} magasin{magasins.length > 1 ? 's' : ''}</TableCell>
                 <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{formatKEuros(total.ca)}</TableCell>
                 <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{total.ecart === null ? '—' : formatPourcent(total.ecart)}</TableCell>
                 <TableCell colSpan={3} />
@@ -178,7 +192,12 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
             <Button variant="outlined" onClick={() => setNb(nb + PAS)}>Afficher {Math.min(PAS, tries.length - nb)} magasins de plus</Button>
           </Box>
         )}
+        <BarreSelection s={sel} quoi="magasin">
+          <Button variant="outlined" startIcon={<AddTaskOutlined />} onClick={() => setTacheSerie(true)}>Créer une tâche pour chacun</Button>
+        </BarreSelection>
       </Card>
+      {tacheSerie && <TacheEnSerie magasins={sel.liste} onFermer={(msg) => { setTacheSerie(false); if (msg) { setMessage(msg); sel.vider() } }} />}
+      <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
       {apercu && <Apercu m={apercu} infos={infos.get(apercu.nom)} fermer={() => setChoisi(null)} />}
     </Box>
   )

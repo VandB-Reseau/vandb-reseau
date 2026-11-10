@@ -7,6 +7,7 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
+import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Tab from '@mui/material/Tab'
@@ -16,6 +17,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import ArrowBack from '@mui/icons-material/ArrowBack'
+import { ClotureMois } from '../components/ClotureMois'
 import ChevronLeftOutlined from '@mui/icons-material/ChevronLeftOutlined'
 import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
 import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined'
@@ -130,6 +132,8 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
   const navigate = useNavigate()
   // Panneau Impact (03/11/2026) : à droite dès que l'écran laisse la place au tableau des hypothèses à côté
   const impactACote = useMediaQuery('(min-width:1280px)')
+  // Refonte vague 2 (11A) : sur PC, statut et étapes du budget sur une seule ligne
+  const etapesEnLigne = useMediaQuery('(min-width:1360px)')
   const { profil } = useAuth()
   const annee = anneeBudget()
   const { donnees, erreur, chargement, recharger } = useChargement(
@@ -394,6 +398,10 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
     />
   ) : null
 
+  // Refonte vague 2 (Joseph, 09/11/2026, 13B) : sur grand écran, le détail d'une carte s'ouvre dans un panneau à droite ;
+  // les cartes de « Construire » restent visibles à gauche, l'impact passe en haut du panneau
+  const themeEnPanneau = !!themeOuvert && impactACote && !!b && onglet !== 'equipe' // l'équipe garde sa pleine page (grands tableaux de postes)
+
   // Lot 38 (D1) : passer d'une étape du budget à la suivante sans remonter en haut de page
   // Lot 43 : du point de départ aussi (la trésorerie au 1er janvier y est un ajustement) ; seules les parts de l'année
   // saisies au point de départ, et la fiche de l'équipe, demandent confirmation
@@ -428,6 +436,29 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
     </Stack>
   ) : null
 
+  const etapes = (enLigne: boolean) => (
+          <Tabs value={etapeDe(onglet)} onChange={(_, v: string) => allerEtape(v)} variant="scrollable" scrollButtons={false} className="pas-a-l-impression"
+            aria-label={`Étapes du budget ${annee}`}
+            sx={{ mt: enLigne ? 0 : 2, minHeight: enLigne ? 48 : 56, flex: enLigne ? '0 1 auto' : undefined, mr: enLigne ? 'auto' : undefined, '& .MuiTabs-indicator': { display: 'none' }, '& .MuiTabs-flexContainer': { gap: 0 },
+              '& .MuiTab-root': { minHeight: enLigne ? 48 : 56, px: 1, py: 0.5, alignItems: 'center', textAlign: 'left', color: 'text.primary', opacity: 1, fontWeight: 400, textTransform: 'none',
+                flexDirection: 'row', gap: 1.25, '&:not(:last-of-type)::after': { content: '""', width: { xs: 16, md: enLigne ? 20 : 40 }, height: 2, bgcolor: 'divider', ml: { xs: 0.5, md: enLigne ? 1 : 1.5 } } },
+              '& .MuiTab-root.Mui-selected': { fontWeight: 800, color: 'text.primary' },
+              '& .rond-etape': { width: enLigne ? 26 : 32, height: enLigne ? 26 : 32, fontSize: enLigne ? '0.8125rem' : undefined, borderRadius: '50%', display: 'grid', placeItems: 'center', flexShrink: 0, fontWeight: 800, border: 2, borderColor: 'divider', bgcolor: 'background.paper' },
+              '& .Mui-selected .rond-etape': { borderColor: 'text.primary', bgcolor: 'text.primary', color: 'background.paper' } }}>
+            {parties.map((x) => {
+              const [numero, nomEtape] = x.libelle.split(' · ')
+              return (
+                <Tab key={x.cle} value={x.cle} aria-current={etapeDe(onglet) === x.cle ? 'step' : undefined}
+                  onClick={themeOuvert && x.cle === 'budget' ? () => (onglet === 'equipe' ? garde(() => aller('budget')) : aller('budget')) : undefined}
+                  label={<>
+                    <Box component="span" className="rond-etape">{numero}<Box component="span" sx={visuellementCache}> · </Box></Box>
+                    <LibelleOnglet texte={nomEtape ?? x.libelle} manque={!!manques[x.cle]} detail={manques[x.cle]?.detail ?? ''} marque={marquesMenu[x.cle]} />
+                  </>} />
+              )
+            })}
+          </Tabs>
+  )
+
   return (
     <Box>
       {retour}
@@ -448,49 +479,29 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         {/* Lot 38 (D2) : un en-tête unique, budget et son statut, actions ; le statut ne se répète plus dans la page */}
         <Box component="header" sx={{ flex: '1 1 auto', display: 'flex', alignItems: 'center', justifyContent: { md: 'flex-end' }, columnGap: 1.5, rowGap: 1, flexWrap: 'wrap', py: { md: 0.75 } }}>
           {statutEntete && (
-            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mr: { md: 'auto' }, ml: { md: 1 } }}>
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mr: { md: espace === 'budget' && etapesEnLigne ? 1 : 'auto' }, ml: { md: 1 } }}>
               <Typography variant="body1" color="text.secondary" component="span">Budget {statutEntete.annee}</Typography>
               <PastilleStatut statut={statutEntete.statut} />
               {espace === 'budget' && ligne.base && (
                 <Typography variant="body2" color="text.secondary" component="span">
-                  {`· ${nbEcarts === 0 ? 'aucun écart' : nbEcarts === 1 ? '1 écart' : `${nbEcarts} écarts`} aux cibles du siège`}
+                  {`· ${nbEcarts === 0 ? 'aucun écart' : nbEcarts === 1 ? '1 écart' : `${nbEcarts} écarts`} aux cibles${etapesEnLigne ? '' : ' du siège'}`}
                   <Box component="span" className="impression-seule"> · imprimé le {new Date().toLocaleDateString('fr-FR')}</Box>
                 </Typography>
               )}
             </Box>
           )}
-          {espace === 'budget' && <BoutonCommentaires />}
+          {espace === 'budget' && etapesEnLigne && etapes(true)}
+          {espace === 'budget' && <BoutonCommentaires compact={etapesEnLigne} />}
           {actionsEntete}
         </Box>
         </Box>
-        {espace === 'budget' && (
-          <Tabs value={etapeDe(onglet)} onChange={(_, v: string) => allerEtape(v)} variant="scrollable" scrollButtons={false} className="pas-a-l-impression"
-            aria-label={`Étapes du budget ${annee}`}
-            sx={{ mt: 2, minHeight: 56, '& .MuiTabs-indicator': { display: 'none' }, '& .MuiTabs-flexContainer': { gap: 0 },
-              '& .MuiTab-root': { minHeight: 56, px: 1, py: 0.5, alignItems: 'center', textAlign: 'left', color: 'text.primary', opacity: 1, fontWeight: 400, textTransform: 'none',
-                flexDirection: 'row', gap: 1.25, '&:not(:last-of-type)::after': { content: '""', width: { xs: 16, md: 40 }, height: 2, bgcolor: 'divider', ml: { xs: 0.5, md: 1.5 } } },
-              '& .MuiTab-root.Mui-selected': { fontWeight: 800, color: 'text.primary' },
-              '& .rond-etape': { width: 32, height: 32, borderRadius: '50%', display: 'grid', placeItems: 'center', flexShrink: 0, fontWeight: 800, border: 2, borderColor: 'divider', bgcolor: 'background.paper' },
-              '& .Mui-selected .rond-etape': { borderColor: 'text.primary', bgcolor: 'text.primary', color: 'background.paper' } }}>
-            {parties.map((x) => {
-              const [numero, nomEtape] = x.libelle.split(' · ')
-              return (
-                <Tab key={x.cle} value={x.cle} aria-current={etapeDe(onglet) === x.cle ? 'step' : undefined}
-                  onClick={themeOuvert && x.cle === 'budget' ? () => (onglet === 'equipe' ? garde(() => aller('budget')) : aller('budget')) : undefined}
-                  label={<>
-                    <Box component="span" className="rond-etape">{numero}<Box component="span" sx={visuellementCache}> · </Box></Box>
-                    <LibelleOnglet texte={nomEtape ?? x.libelle} manque={!!manques[x.cle]} detail={manques[x.cle]?.detail ?? ''} marque={marquesMenu[x.cle]} />
-                  </>} />
-              )
-            })}
-          </Tabs>
-        )}
+        {espace === 'budget' && !etapesEnLigne && etapes(false)}
         {(espace === 'donnees' || espace === 'suivi') && (() => {
           // Onglet Chiffres de la fiche : le suivi, la santé et les saisies en une seule sous-navigation (2 niveaux au plus)
           const puces = mode === 'chiffres'
-            ? [...partiesDe('suivi', anneeEnCours), ...(anneesPassees.length ? [{ cle: 'passees', libelle: 'Années passées' }] : []), ...(sante ? [{ cle: 'sante', libelle: santeLibelle }] : []), { cle: 'reel', libelle: 'Saisies' }]
+            ? [...partiesDe('suivi', anneeEnCours), ...(anneesPassees.length ? [{ cle: 'passees', libelle: 'Années passées' }] : []), ...(sante ? [{ cle: 'sante', libelle: santeLibelle }] : []), { cle: 'cloture', libelle: 'Clôture du mois' }]
             : parties
-          const valeur = mode === 'chiffres' && espace === 'donnees' ? 'reel' : onglet
+          const valeur = mode === 'chiffres' && espace === 'donnees' ? 'cloture' : onglet
           const manqueSaisies = mode === 'chiffres' && (manques.reel || manques.frais)
           return (
             <Tabs value={valeur} onChange={(_, v: string) => allerEtape(v)} variant="scrollable" scrollButtons="auto" className="pas-a-l-impression"
@@ -498,20 +509,18 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
               sx={{ mt: mode ? 0 : 1.5, ...styleSousNavigation }}>
               {puces.map((x) => (
                 <Tab key={x.cle} value={x.cle} aria-current={valeur === x.cle ? 'page' : undefined}
-                  label={<LibelleOnglet texte={x.libelle} manque={x.cle === 'reel' && mode === 'chiffres' ? !!manqueSaisies : !!manques[x.cle]} detail={x.cle === 'reel' && mode === 'chiffres' ? (manques.reel?.detail ?? manques.frais?.detail ?? '') : manques[x.cle]?.detail ?? ''} />} />
+                  label={<LibelleOnglet texte={x.libelle} manque={x.cle === 'cloture' && mode === 'chiffres' ? !!manqueSaisies : !!manques[x.cle]} detail={x.cle === 'cloture' && mode === 'chiffres' ? (manques.reel?.detail ?? manques.frais?.detail ?? '') : manques[x.cle]?.detail ?? ''} />} />
               ))}
             </Tabs>
           )
         })()}
-        {mode === 'chiffres' && espace === 'donnees' && (
-          <ToggleButtonGroup exclusive value={onglet} onChange={(_, v: string | null) => { if (v) aller(v) }} aria-label="Saisies du magasin" size="small" className="pas-a-l-impression"
-            sx={{ mt: 1.5, flexWrap: 'wrap', '& .MuiToggleButton-root': { minHeight: 40, px: 1.75, textTransform: 'none', fontWeight: 600, '@media (max-width: 899.95px)': { minHeight: 48 } } }}>
-            {partiesDe('donnees', anneeEnCours).map((x) => <ToggleButton key={x.cle} value={x.cle}>{x.libelle}</ToggleButton>)}
-          </ToggleButtonGroup>
+        {/* Refonte vague 2 (12A) : une saisie s'ouvre depuis la clôture du mois et y revient ; plus de 3e niveau */}
+        {mode === 'chiffres' && espace === 'donnees' && onglet !== 'cloture' && (
+          <Button startIcon={<ArrowBack />} onClick={() => garde(() => aller('cloture'))} className="pas-a-l-impression" sx={{ mt: 1, minHeight: 48 }}>Clôture du mois</Button>
         )}
       </Box>
       {commentaires}
-      {themeOuvert && (
+      {themeOuvert && !themeEnPanneau && (
         <Box className="pas-a-l-impression" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
           <Button component={RouterLink} to={lienMagasin(ligne.magasin, 'budget')} data-sans-garde={onglet === 'equipe' ? undefined : ''} startIcon={<ArrowBack />} sx={{ minHeight: 48 }}>
             Toutes les hypothèses
@@ -521,7 +530,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         </Box>
       )}
 
-      <AvecImpact panneau={panneau} cote={impactACote}>
+      <AvecImpact panneau={themeEnPanneau ? null : panneau} cote={impactACote}>
       {espace === 'suivi' ? (
         <Stack spacing={3}>
         {/* Joseph (09/11/2026) : le Suivi en puces, une partie à la fois, au lieu d'une longue page à dérouler */}
@@ -586,6 +595,10 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         ))}
         {alerteMessage}
         </Stack>
+      ) : onglet === 'cloture' ? (
+        <ClotureMois key={`${ligne.magasin}-cloture`} magasin={ligne.magasin} annee={anneeEnCours} aller={aller}
+          reelMois={reel.donnees ? syntheseReel(reel.donnees.lignes, reel.donnees.tickets).parMois.filter((x) => x.caHT > 0).map((x) => x.mois) : []}
+          fraisRenseignes={!!d.frais[ligne.magasin]?.length} quadrimestres={d.comptes?.[ligne.magasin]?.quadrimestres ?? []} />
       ) : onglet === 'saisieStock' ? (
         <Stack spacing={2}>
           {anneeChoix(anneeReel, (v) => setAnneeReel(v), 'Année du stock')}
@@ -702,14 +715,18 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
       ) : (
         <>
           {/* Joseph (03/11/2026) : sur « Construire », toutes les hypothèses en cartes, les ventes de chaque univers comprises */}
-          {onglet === 'budget' && resolu && (
-            <Box className="pas-a-l-impression">
+          <ColonnesTheme ouvert={themeEnPanneau}>
+          {(onglet === 'budget' || themeEnPanneau) && resolu && (
+            <Box className="pas-a-l-impression" sx={themeEnPanneau ? { position: 'sticky', top: `calc(${hautEntete.md}px + var(--onglets, 0px) + 8px)` } : undefined}>
               <HypothesesCartes magasin={ligne.magasin} annee={annee} budget={b} cibles={brouillon} hausseSalaires={resolu.hypotheses.hausseSalaires ?? 0}
                 inflation={inflation} sansEquipe={!d.equipes[ligne.magasin]?.length} sansFrais={!baseFrais?.frais.length} lectureSeule={!peutAjuster}
-                reprise={resolu.hypotheses.reprise} accord={accordTheme ?? undefined}
+                reprise={resolu.hypotheses.reprise} accord={accordTheme ?? undefined} etroit={themeEnPanneau}
                 depart={{ annee: anneeEnCours, tresorerie: brouillon.tresorerieDepart ?? estimee?.montant ?? null, estimee: brouillon.tresorerieDepart === undefined && !!estimee, saisonnalite: !!brouillon.poidsMois }} />
             </Box>
           )}
+          <PanneauTheme ouvert={themeEnPanneau} titre={themeOuvert ? `${themeOuvert.libelle} ${annee}` : ''} impact={panneau}
+            commenter={themeOuvert ? <BoutonCommenter ancre={`theme/${themeOuvert.cle}`} libelle={themeOuvert.libelle} /> : null}
+            onFermer={() => garde(() => aller('budget'), onglet !== 'equipe')}>
           <Stack spacing={3} className={partie('ventes')} id="partie-ventes" sx={{ scrollMarginTop: 200 }}>
             {communHypotheses && (
               <Card component="section" aria-label="Hypothèses du magasin">
@@ -788,6 +805,8 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
                 onChange={(c) => setBrouillon(({ fraisBudget: _, ...reste }) => (c ? { ...reste, fraisBudget: c } : reste))} />
             </Stack>
           )}
+          </PanneauTheme>
+          </ColonnesTheme>
           <Stack spacing={3} className={partie('visualiser')} id="partie-resultat" sx={{ scrollMarginTop: 200 }}>
             {/* Joseph (03/11/2026) : le résultat et la trésorerie ont leur étape, « 2 · Visualiser » */}
             <Box className="pas-a-l-impression" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -820,6 +839,44 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
       {piedEtapes}
       </>)}
       </AvecCommentaires>
+    </Box>
+  )
+}
+
+// Détail d'une carte de « Construire » (refonte vague 2, 13B) : panneau à droite sans fond grisé, la page reste utilisable ;
+// sur un écran plus étroit, le détail reste dans la page
+const LARGEUR_PANNEAU_THEME = 640
+// Les cartes à gauche, le détail du thème ouvert à droite, côte à côte : le panneau ne recouvre ni l'en-tête ni les étapes
+function ColonnesTheme({ ouvert, children }: { ouvert: boolean; children: ReactNode }) {
+  if (!ouvert) return <>{children}</>
+  return <Box sx={{ display: 'grid', gridTemplateColumns: `minmax(0, 1fr) ${LARGEUR_PANNEAU_THEME}px`, columnGap: 3, alignItems: 'start' }}>{children}</Box>
+}
+
+function PanneauTheme({ ouvert, titre, impact, commenter, onFermer, children }: {
+  ouvert: boolean; titre: string; impact: ReactNode; commenter: ReactNode; onFermer: () => void; children: ReactNode
+}) {
+  const fermer = useRef(onFermer)
+  fermer.current = onFermer
+  useEffect(() => {
+    if (!ouvert) return
+    const echap = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.MuiDialog-root, .MuiPopover-root')) fermer.current() }
+    window.addEventListener('keydown', echap)
+    return () => window.removeEventListener('keydown', echap)
+  }, [ouvert])
+  if (!ouvert) return <>{children}</>
+  const haut = `calc(${hautEntete.md}px + var(--onglets, 0px) + 8px)`
+  return (
+    <Box component="section" aria-label={`Détail : ${titre}`}
+      sx={{ position: 'sticky', top: haut, maxHeight: `calc(100vh - ${hautEntete.md}px - var(--onglets, 0px) - 16px)`, overflowY: 'auto', minWidth: 0, bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 3, zIndex: 3 }}>
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 2, bgcolor: 'background.paper', px: 2.5, py: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography variant="h2" sx={{ flex: 1, fontSize: '1.25rem' }}>{titre}</Typography>
+        {commenter}
+        <Tooltip title="Fermer"><IconButton aria-label="Fermer le détail" onClick={onFermer} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton></Tooltip>
+      </Box>
+      <Box sx={{ px: 2.5, py: 2, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2 }}>
+        {impact}
+        <Box sx={{ minWidth: 0, overflowX: 'auto' }}>{children}</Box>
+      </Box>
     </Box>
   )
 }
