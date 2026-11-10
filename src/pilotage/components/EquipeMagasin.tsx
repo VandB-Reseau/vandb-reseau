@@ -369,7 +369,9 @@ export function EquipeMagasin({ magasin, equipe, annee, anneeBudget, hausse, cha
           <Card component="section" aria-label="Équipe du magasin">
             <Typography variant="h2" sx={{ p: 2, pb: 0 }}>Équipe</Typography>
             <TableContainer>
-              <Table size="small" className="colonne-fixe" aria-label="Postes et coût chargé" sx={styleTableau}>
+              <Table size="small" className="colonne-fixe" aria-label="Postes et coût chargé"
+                // Joseph (10/11/2026) : titres, postes, catégories et heures vont à la ligne, le tableau tient sans défiler à droite
+                sx={{ ...styleTableau, '& th': { whiteSpace: 'normal' } }}>
                 <TableHead>
                   <TableRow>
                     <TableCell>Poste</TableCell>
@@ -390,9 +392,9 @@ export function EquipeMagasin({ magasin, equipe, annee, anneeBudget, hausse, cha
                     const primes = p.primes.reduce((a, y) => a + y.montant, 0)
                     return [
                       <TableRow key={p.id ?? i}>
-                        <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 600 }}>{p.poste}</TableCell>
-                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{categorieLibelle[p.categorie]}</TableCell>
-                        <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>{heuresDe(p)}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'normal !important', minWidth: 110, fontWeight: 600 }}>{p.poste}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'normal !important', minWidth: 90 }}>{categorieLibelle[p.categorie]}</TableCell>
+                        <TableCell align="right" sx={{ whiteSpace: 'normal !important', minWidth: 80 }}>{heuresDe(p)}</TableCell>
                         <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>{p.enveloppe ? '–' : p.tauxHoraire ? `${montant(p.brutMensuel)} (${panier(p.tauxHoraire)} de l’heure)` : montant(p.brutMensuel)}</TableCell>
                         <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>{primes ? montant(primes) : ''}</TableCell>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}>{presence(p)}</TableCell>
