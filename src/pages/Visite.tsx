@@ -33,6 +33,8 @@ import { ETAPES_VISITE, etapesVisite, type IdEtapeVisite } from '../data/visites
 import { libelleTypeVisite, nomsVisiteurs, visiteFaite, type Magasin, type Reseau, type Visite } from '../data/modele'
 import { PARTIES } from '../data/compteRendu'
 import { dateLongue, lienFiche } from '../lib/format'
+import { useConversationLaterale } from '../components/ConversationLaterale'
+import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 
 // La visite ouverte : celle demandée, sinon la prochaine prévue, sinon la dernière faite
 function visiteChoisie(reseau: Reseau, nom: string, id: string | null): Visite | null {
@@ -60,6 +62,7 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
   const naviguer = useNavigate()
   const [params, setParams] = useSearchParams()
   const [message, setMessage] = useState('')
+  const conversation = useConversationLaterale(reseau, m.nom)
   const [saisie, setSaisie] = useState(false)
   const [planif, setPlanif] = useState(false)
   const v = visiteChoisie(reseau, m.nom, params.get('id'))
@@ -141,7 +144,11 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
     <>
       <Box className="sans-impression">
         <Button startIcon={<ArrowBack />} onClick={() => naviguer(lienFiche(m.nom))} sx={{ mb: 1, ml: -1, minHeight: 48 }}>{m.nom}</Button>
-        <Typography variant="h2" component="h1" sx={{ mb: 0.5 }}>{`Visite de ${m.nom}`}</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="h2" component="h1" sx={{ mb: 0.5, flex: 1, minWidth: 0 }}>{`Visite de ${m.nom}`}</Typography>
+          <Button startIcon={<ChatBubbleOutlineOutlined />} onClick={conversation.ouvrir} sx={{ minHeight: 48 }}>Conversation</Button>
+        </Box>
+        {conversation.panneau}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{meta}</Typography>
         <Box component="nav" aria-label="Étapes de la visite" sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden', bgcolor: 'background.paper' }}>
           {etats.map((e, i) => {

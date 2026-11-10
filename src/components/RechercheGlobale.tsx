@@ -20,10 +20,14 @@ import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOu
 import StarOutlined from '@mui/icons-material/StarOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
 import { magasinsSuivis, useSuivis } from '../lib/suivis'
+import ForumOutlined from '@mui/icons-material/ForumOutlined'
+import { useMessagerie } from '../data/MessagerieContext'
+import { filDe, lienFil, nomDe } from '../data/messagerie'
+import { useApercu } from '../auth/Apercu'
 
-interface Resultat { type: 'Actions' | 'Favoris' | 'Consultés récemment' | 'Magasins' | 'Coachs' | 'Responsables Régionaux' | 'Franchisés' | 'Direction'; libelle: string; detail: string; cible: string; cle: string; faire?: { choix: Choix | 'message'; magasin?: string } }
+interface Resultat { type: 'Messages' | 'Actions' | 'Favoris' | 'Consultés récemment' | 'Magasins' | 'Coachs' | 'Responsables Régionaux' | 'Franchisés' | 'Direction'; libelle: string; detail: string; cible: string; cle: string; faire?: { choix: Choix | 'message'; magasin?: string } }
 
-const icones = { Actions: <AddOutlined />, Favoris: <StarOutlined />, 'Consultés récemment': <HistoryOutlined />, Magasins: <StorefrontOutlined />, Coachs: <PersonOutline />, 'Responsables Régionaux': <SupervisorAccountOutlined />, Franchisés: <HandshakeOutlined />, Direction: <AdminPanelSettingsOutlined /> }
+const icones = { Messages: <ForumOutlined />, Actions: <AddOutlined />, Favoris: <StarOutlined />, 'Consultés récemment': <HistoryOutlined />, Magasins: <StorefrontOutlined />, Coachs: <PersonOutline />, 'Responsables Régionaux': <SupervisorAccountOutlined />, Franchisés: <HandshakeOutlined />, Direction: <AdminPanelSettingsOutlined /> }
 
 const ordreTypes: Resultat['type'][] = ['Coachs', 'Responsables Régionaux', 'Direction', 'Franchisés', 'Magasins']
 
@@ -47,6 +51,10 @@ export function RechercheGlobale({ surFonce, court, menu }: { surFonce?: boolean
   const { profil } = useAuth()
   const avecActions = !!profil && profil.role !== 'franchise'
   const champ = useRef<HTMLInputElement | null>(null)
+  // Messages retrouvés par leur texte (63A) ; en « Voir comme », jamais les échanges privés
+  const { messagerie } = useMessagerie()
+  const apercu = useApercu()
+  const enApercu = !!apercu.apercu || !!apercu.equipe
   useEffect(() => {
     if (!menu) return
     const raccourci = (e: KeyboardEvent) => {
@@ -100,7 +108,20 @@ export function RechercheGlobale({ surFonce, court, menu }: { surFonce?: boolean
         const premier = tries.find((o) => o.type === 'Magasins')
         const surMagasin: Resultat[] = avecActions && premier ? ACTIONS.filter((a) => a.avecMagasin)
           .map((a) => ({ type: 'Actions' as const, libelle: `${a.avecMagasin} ${premier.libelle}`, detail: '', cible: '', cle: `a-${a.choix}-${premier.libelle}`, faire: { choix: a.choix, magasin: premier.libelle } })) : []
-        return [...tries, ...surMagasin, ...actions]
+        const messages: Resultat[] = []
+        if (reseau && messagerie && t.length >= 3) {
+          for (const x of [...messagerie.messages].reverse()) {
+            if (!x.texte || (enApercu && x.destinataire) || !normaliser(x.texte).includes(t)) continue
+            const f = filDe(x, messagerie)
+            if (!f) continue
+            const titre = f.genre === 'magasin' ? f.magasin : f.genre === 'groupe' ? (messagerie.groupes.find((g) => g.id === f.id)?.nom ?? 'Groupe') : nomDe(reseau, f.cle)
+            const lien = lienFil(f)
+            const texte = x.texte.replace(/\s+/g, ' ')
+            messages.push({ type: 'Messages', libelle: texte.length > 90 ? `${texte.slice(0, 90)}…` : texte, detail: `${titre} · ${x.auteurNom}`, cible: `${lien}${lien.includes('?') ? '&' : '?'}message=${x.id}`, cle: `msg-${x.id}` })
+            if (messages.length >= 5) break
+          }
+        }
+        return [...tries, ...surMagasin, ...messages, ...actions]
       }}
       noOptionsText="Aucun résultat"
       value={null}

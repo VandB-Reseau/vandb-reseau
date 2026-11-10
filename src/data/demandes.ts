@@ -56,10 +56,11 @@ export function useDemandes(actif = true) {
 }
 
 // Franchisé : ses demandes ; en aperçu (« Voir comme »), le Directeur lit la table pour les magasins vus
-export function useMesDemandes(apercu: Apercu | null) {
+export function useMesDemandes(apercu: Apercu | null, actif = true) {
   const [liste, setListe] = useState<Demande[] | null | undefined>(undefined)
-  const cle = apercu ? apercu.magasins.join('|') : ''
+  const cle = (actif ? '1' : '0') + (apercu ? apercu.magasins.join('|') : '')
   const charger = useCallback(async () => {
+    if (!actif) return
     const r = apercu
       ? await supabase.from('demandes').select('*').in('magasin', apercu.magasins).order('ouverte_le', { ascending: false })
       : await supabase.rpc('mes_demandes')

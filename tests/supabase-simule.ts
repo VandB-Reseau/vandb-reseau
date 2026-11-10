@@ -20,6 +20,9 @@ export interface MessageSimule {
   id: number; store?: string | null; auteur: string; auteur_nom: string; auteur_role: string; texte: string; mentions: string[]; cree_le: string
   equipe?: boolean; lot?: string | null; destinataire?: string | null; auteur_cle?: string | null; magasins?: string[]; pieces?: { chemin: string; nom: string; taille: number; type: string }[]
   groupe?: number | null // groupe libre (script 0018_echanges_groupes.sql)
+  // Vague 6 (0045) : citation, modification, épingle, demande née du message, réactions (par = clé de la personne)
+  repond_a?: number | null; modifie_le?: string | null; epingle_le?: string | null; epingle_par?: string | null; demande?: number | null
+  reactions?: { reaction: string; nom: string; par: string }[]
 }
 // Groupe libre (script 0018_echanges_groupes.sql) : membres = clés des personnes
 export interface GroupeSimule { id: number; nom: string; membres: string[]; cree_par: string }
@@ -302,7 +305,8 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         const magasins = apercu ? (corps.p_magasins as string[]) : acces.magasins ?? []
         return route.fulfill({ json: espaceSimule(apercu ? String(corps.p_franchise) : acces.franchise ?? '', magasins, options.espace ?? {}, options.magasinsEnPlus) })
       }
-      if (['messagerie', 'envoyer_message', 'envoyer_a', 'marquer_lu', 'marquer_lu_personne', 'supprimer_message', 'renommer_magasin_messages', 'envoyer_fil', 'marquer_lu_fil', 'creer_groupe', 'modifier_groupe', 'quitter_groupe', 'supprimer_groupe'].includes(fn)) {
+      if (['messagerie', 'envoyer_message', 'envoyer_a', 'marquer_lu', 'marquer_lu_personne', 'supprimer_message', 'renommer_magasin_messages', 'envoyer_fil', 'marquer_lu_fil', 'creer_groupe', 'modifier_groupe', 'quitter_groupe', 'supprimer_groupe',
+        'ecrire_fil', 'ecrire_a', 'ecrire_magasins', 'modifier_message', 'epingler_message', 'reagir_message', 'demande_depuis_message'].includes(fn)) {
         if (options.messagerie === null) return absente()
         const mg = (options.messagerie ??= {})
         mg.messages ??= []; mg.lus ??= {}; mg.groupes ??= []
@@ -311,11 +315,81 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         const version = mg.version ?? 4
         const refus = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
         const nom = acces.role === 'franchise' ? acces.franchise : acces.role === 'coach' ? acces.coach : acces.role === 'rr' ? configRRFictive.drs.find((d) => d.id === acces.rr)?.name : configRRFictive.directeur.name
+        const mesGroupes = version >= 4 ? mg.groupes.filter((g) => g.membres.includes(cle)) : []
+        const lisible = (m: MessageSimule) => (m.groupe ? version >= 4 && mesGroupes.some((g) => g.id === m.groupe) : m.destinataire ? m.auteur === MOI || m.destinataire === cle : visibles(String(m.store)) && !(m.equipe && acces.role === 'franchise'))
         if (fn === 'messagerie') {
           if (!['directeur', 'rr', 'coach', 'franchise'].includes(acces.role)) return refus()
-          const mesGroupes = version >= 4 ? mg.groupes.filter((g) => g.membres.includes(cle)) : []
           return route.fulfill({ json: { moi: MOI, ...(version >= 2 ? { version } : {}), ...(version >= 3 ? { cle } : {}), ...(version >= 4 ? { groupes: mesGroupes } : {}), reference: mg.reference ?? null, lus: mg.lus,
-            messages: mg.messages.filter((m) => (m.groupe ? version >= 4 && mesGroupes.some((g) => g.id === m.groupe) : m.destinataire ? m.auteur === MOI || m.destinataire === cle : visibles(String(m.store)) && !(m.equipe && acces.role === 'franchise'))) } })
+            messages: mg.messages.filter(lisible).map((m) => (version >= 5 ? { ...m, reactions: (m.reactions ?? []).map((r) => ({ reaction: r.reaction, nom: r.nom, moi: r.par === cle })) } : m)) } })
+        }
+        // Vague 6 (0045)
+        if (['ecrire_fil', 'ecrire_a', 'ecrire_magasins', 'modifier_message', 'epingler_message', 'reagir_message', 'demande_depuis_message'].includes(fn)) {
+          if (version < 5) return absente()
+          options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
+          const cible = mg.messages.find((m) => m.id === Number(corps.p_id))
+          if (fn === 'modifier_message') {
+            if (!cible || cible.auteur !== MOI) return refus()
+            cible.texte = String(corps.p_texte ?? '').trim(); cible.modifie_le = new Date().toISOString()
+            return route.fulfill({ status: 200, json: null })
+          }
+          if (fn === 'epingler_message') {
+            if (!cible || !lisible(cible)) return refus()
+            cible.epingle_le = corps.p_epingle ? new Date().toISOString() : null; cible.epingle_par = corps.p_epingle ? nom ?? '' : null
+            return route.fulfill({ status: 200, json: null })
+          }
+          if (fn === 'reagir_message') {
+            if (!cible || !lisible(cible)) return refus()
+            const l = (cible.reactions ??= [])
+            const i = l.findIndex((r) => r.par === cle && r.reaction === corps.p_reaction)
+            if (i >= 0) l.splice(i, 1); else l.push({ reaction: String(corps.p_reaction), nom: nom ?? '', par: cle })
+            return route.fulfill({ json: i < 0 })
+          }
+          if (fn === 'demande_depuis_message') {
+            if (acces.role === 'franchise' || !cible || !cible.store || cible.equipe || cible.destinataire || !visibles(String(cible.store))) return refus()
+            const liste = (options.demandes ??= [])
+            const id = Math.max(0, ...liste.map((d) => Number(d.id))) + 1
+            const le = new Date().toISOString()
+            liste.push({ id, magasin: cible.store, franchise: cible.auteur_role === 'franchise' ? cible.auteur_nom : '', theme: corps.p_theme, titre: corps.p_titre, statut: 'nouvelle',
+              echanges: [{ par: cible.auteur_nom, role: cible.auteur_role === 'franchise' ? 'franchise' : 'equipe', texte: cible.texte, le: cible.cree_le }], ouverte_le: le, maj_le: le })
+            cible.demande = id
+            return route.fulfill({ json: id })
+          }
+          const maintenant = new Date().toISOString()
+          const prochain = () => Math.max(0, ...mg.messages!.map((m) => m.id)) + 1
+          if (fn === 'ecrire_magasins') {
+            const liste = [...new Set((corps.p_magasins as string[]) ?? [])]
+            if (acces.role === 'franchise' || !liste.length || !liste.every(visibles)) return refus()
+            const lot = `lot-${prochain()}`
+            const ids: number[] = []
+            for (const st of liste) {
+              const prenom = (magasinsFictifs.find((x) => x.n === st) as { resp?: string } | undefined)?.resp?.split(' ')[0] ?? ''
+              const id = prochain()
+              mg.messages.push({ id, store: st, destinataire: null, groupe: null, auteur: MOI, auteur_nom: nom ?? 'joseph', auteur_role: acces.role, auteur_cle: cle,
+                texte: String(corps.p_texte ?? '').replace(/\{pr[ée]nom\}/gi, prenom).trim(), mentions: [], cree_le: maintenant, equipe: false, lot, pieces: [] })
+              mg.lus[`${st}|messages`] = maintenant
+              ids.push(id)
+            }
+            return route.fulfill({ json: { lot, ids } })
+          }
+          const cite = Number(corps.p_repond_a) || null
+          if (fn === 'ecrire_a') {
+            const dest = String(corps.p_destinataire ?? '')
+            if (!/^(directeur|rr:.+|coach:.+|franchise:.+)$/.test(dest) || dest === cle) return refus()
+            const id = prochain()
+            mg.messages.push({ id, store: null, auteur: MOI, auteur_nom: nom ?? 'joseph', auteur_role: acces.role, texte: String(corps.p_texte).trim(), mentions: [dest], cree_le: maintenant, destinataire: dest, auteur_cle: cle, magasins: (corps.p_magasins as string[]) ?? [], pieces: piecesPropres(corps.p_pieces), repond_a: cite })
+            mg.lus[`personne:${dest}|messages`] = maintenant
+            return route.fulfill({ json: { id, cree_le: maintenant } })
+          }
+          // ecrire_fil
+          const fil = String(corps.p_fil ?? '')
+          const genre = fil.split(':')[0], valeur = fil.slice(genre.length + 1)
+          const groupe = genre === 'groupe' ? mg.groupes.find((x) => x.id === Number(valeur)) : undefined
+          const permis = genre === 'magasin' ? visibles(valeur) : genre === 'equipe' ? acces.role !== 'franchise' && visibles(valeur) : !!groupe?.membres.includes(cle)
+          if (!valeur || !permis) return refus()
+          const id = prochain()
+          mg.messages.push({ id, store: groupe ? null : valeur, destinataire: groupe ? fil : null, groupe: groupe?.id ?? null, auteur: MOI, auteur_nom: nom ?? 'joseph', auteur_role: acces.role, auteur_cle: cle, texte: String(corps.p_texte ?? '').trim(), mentions: (corps.p_mentions as string[]) ?? [], cree_le: maintenant, equipe: genre === 'equipe', pieces: piecesPropres(corps.p_pieces), repond_a: cite })
+          mg.lus[genre === 'groupe' ? `${fil}|messages` : `${valeur}|${genre === 'equipe' ? 'equipe' : 'messages'}`] = maintenant
+          return route.fulfill({ json: { id, cree_le: maintenant } })
         }
         // Groupes et fils (script 0018_echanges_groupes.sql) : magasin:<nom>, equipe:<nom>, groupe:<id>
         if (['envoyer_fil', 'marquer_lu_fil', 'creer_groupe', 'modifier_groupe', 'quitter_groupe', 'supprimer_groupe'].includes(fn)) {

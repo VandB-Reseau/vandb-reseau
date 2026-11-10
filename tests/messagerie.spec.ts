@@ -114,7 +114,7 @@ test('le franchisé est prévenu des messages et des nouveaux comptes rendus, et
   const fil = page.getByRole('list', { name: /^Messages de / })
   await expect(fil).toContainText('Pense au plan de Noël.')
   // Le franchisé n'a qu'un fil : pas de choix « Équipe seule »
-  await expect(page.getByRole('button', { name: 'Équipe seule', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: /Équipe seule/ })).toHaveCount(0)
   await page.getByLabel('Message', { exact: true }).fill('C’est noté, merci.')
   await page.getByRole('button', { name: 'Envoyer' }).click()
   await expect(fil.getByRole('listitem', { name: 'Message de Paul MULTI' })).toContainText('C’est noté, merci.')
@@ -248,7 +248,7 @@ test('anciens messages « Confidentiel » : rangés dans « Équipe seule »', a
   const fil = page.getByRole('list', { name: /^Messages de / })
   await expect(fil).toContainText('Bonjour Paul !')
   await expect(fil).not.toContainText('Entre nous')
-  await page.getByRole('button', { name: 'Équipe seule', exact: true }).click()
+  await page.getByRole('tab', { name: /Équipe seule/ }).click()
   await expect(fil).toContainText('Entre nous : à surveiller.')
 })
 

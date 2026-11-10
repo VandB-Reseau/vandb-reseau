@@ -15,7 +15,12 @@ import { notifier } from '../lib/notifications'
 export interface Message {
   id: number; auteur: string; auteurNom: string; auteurRole: string; auteurCle: string | null; destinataire: string | null
   texte: string; mentions: string[]; creeLe: string; equipe: boolean; magasins: string[]; pieces: Piece[]; groupe: number | null
+  // Vague 6 (0045) : message cité, modification, épingle, demande née du message, réactions, envoi à plusieurs magasins (lot)
+  repondA: number | null; autresIds?: number[]; modifieLe: string; epingleLe: string; epinglePar: string; demande: number | null; reactions: Reaction[]; lot: string
 }
+export type GenreReaction = 'vu' | 'merci' | 'accord'
+export interface Reaction { reaction: GenreReaction; nom: string; moi: boolean }
+export const libelleReaction: Record<GenreReaction, string> = { vu: 'Vu', merci: 'Merci', accord: 'D’accord' }
 export type Sujet = 'messages' | 'visites' | 'equipe'
 // Groupe libre : membres = clés des personnes ; creePar : compte qui l'a créé (il le renomme et change ses membres)
 export interface Groupe { id: number; nom: string; membres: string[]; creePar: string }
@@ -58,10 +63,13 @@ export async function chargerMessagerie(): Promise<Messagerie | null> {
     const magasins = destinataire ? (Array.isArray(m.magasins) ? m.magasins.map(String) : []) : m.store ? [t(m.store)] : []
     const lot = !destinataire && m.lot ? t(m.lot) : ''
     const deja = lot ? lots.get(lot) : undefined
-    if (deja) { deja.magasins.push(...magasins); continue }
+    if (deja) { deja.magasins.push(...magasins); (deja.autresIds ??= []).push(Number(m.id)); continue }
     const x: Message = {
       id: Number(m.id), auteur: t(m.auteur), auteurNom: t(m.auteur_nom), auteurRole: t(m.auteur_role), auteurCle: m.auteur_cle ? t(m.auteur_cle) : null,
       destinataire, texte: t(m.texte), mentions: Array.isArray(m.mentions) ? m.mentions.map(String) : [], creeLe: t(m.cree_le), equipe: m.equipe === true, magasins: groupe === null ? magasins : [], pieces: normaliserPieces(m.pieces), groupe,
+      repondA: m.repond_a === null || m.repond_a === undefined ? null : Number(m.repond_a), modifieLe: t(m.modifie_le), epingleLe: t(m.epingle_le), epinglePar: t(m.epingle_par),
+      demande: m.demande === null || m.demande === undefined ? null : Number(m.demande), lot,
+      reactions: (Array.isArray(m.reactions) ? m.reactions as Ligne[] : []).flatMap((r): Reaction[] => (['vu', 'merci', 'accord'].includes(String(r.reaction)) ? [{ reaction: r.reaction as GenreReaction, nom: t(r.nom), moi: r.moi === true }] : [])),
     }
     if (lot) lots.set(lot, x)
     messages.push(x)
@@ -75,9 +83,11 @@ export async function chargerMessagerie(): Promise<Messagerie | null> {
 
 // Message dans le groupe d'un magasin ou un groupe libre ; mentions : clés des personnes citées par « @ ».
 // Base d'avant 0018 : le groupe d'un magasin passe par l'ancien envoi (sans pièces jointes).
-export async function envoyerDansFil(f: Fil, texte: string, mentions: string[], pieces: Piece[], version: number) {
+export async function envoyerDansFil(f: Fil, texte: string, mentions: string[], pieces: Piece[], version: number, repondA: number | null = null) {
   if (f.genre === 'personne') throw new ErreurMessage('fil')
-  const { data, error } = version >= 4
+  const { data, error } = version >= 5 && repondA
+    ? await supabase.rpc('ecrire_fil', { p_fil: cleFil(f), p_texte: texte, p_mentions: mentions, p_pieces: pieces, p_repond_a: repondA })
+    : version >= 4
     ? await supabase.rpc('envoyer_fil', { p_fil: cleFil(f), p_texte: texte, p_mentions: mentions, ...(pieces.length ? { p_pieces: pieces } : {}) })
     : f.genre === 'magasin'
       ? await supabase.rpc('envoyer_message', { p_store: f.magasin, p_texte: texte, p_mentions: mentions, p_equipe: f.equipe })
@@ -115,8 +125,10 @@ export async function supprimerGroupe(id: number) {
 // Message privé à une personne. Base pas encore mise à jour (avant la version 3) : ancien message sur un magasin
 // (le premier cité, sinon « repli »), la personne mentionnée pour être notifiée.
 // pieces : photos et fichiers joints (échanges à deux seulement)
-export async function envoyerMessage(destinataire: string, texte: string, magasins: string[], version: number, repli: string | null, pieces: Piece[] = []) {
-  const { data, error } = version >= 3
+export async function envoyerMessage(destinataire: string, texte: string, magasins: string[], version: number, repli: string | null, pieces: Piece[] = [], repondA: number | null = null) {
+  const { data, error } = version >= 5 && repondA
+    ? await supabase.rpc('ecrire_a', { p_destinataire: destinataire, p_texte: texte, p_magasins: magasins, p_pieces: pieces, p_repond_a: repondA })
+    : version >= 3
     ? await supabase.rpc('envoyer_a', { p_destinataire: destinataire, p_texte: texte, p_magasins: magasins, ...(pieces.length ? { p_pieces: pieces } : {}) })
     : await supabase.rpc('envoyer_message', { p_store: magasins[0] ?? repli, p_texte: texte, p_mentions: [destinataire] })
   if (error) throw new ErreurMessage(error.message)
@@ -135,6 +147,49 @@ export async function marquerLuPersonne(cle: string) {
 export async function supprimerMessage(id: number) {
   const { error } = await supabase.rpc('supprimer_message', { p_id: id })
   if (error) throw new ErreurMessage(error.message)
+}
+
+// Vague 6 (0045) : gestes sur un message
+// Message d'un fil désigné par son numéro (un envoi à plusieurs magasins est réuni en un seul message)
+export const messageDeNumero = (l: Message[], id: number | null) => (id === null ? undefined : l.find((x) => x.id === id || x.autresIds?.includes(id)))
+export const MODIFIABLE_MINUTES = 15
+export const modifiable = (x: Message, moi: string, maintenant = Date.now()) => x.auteur === moi && !x.lot && maintenant - Date.parse(x.creeLe) < MODIFIABLE_MINUTES * 60_000
+export async function modifierMessage(id: number, texte: string) {
+  const { error } = await supabase.rpc('modifier_message', { p_id: id, p_texte: texte })
+  if (error) throw new ErreurMessage(error.message)
+}
+export async function epinglerMessage(id: number, epingle: boolean) {
+  const { error } = await supabase.rpc('epingler_message', { p_id: id, p_epingle: epingle })
+  if (error) throw new ErreurMessage(error.message)
+}
+export async function reagirMessage(id: number, reaction: GenreReaction) {
+  const { error } = await supabase.rpc('reagir_message', { p_id: id, p_reaction: reaction })
+  if (error) throw new ErreurMessage(error.message)
+}
+export async function demandeDepuisMessage(id: number, theme: string, titre: string): Promise<number> {
+  const { data, error } = await supabase.rpc('demande_depuis_message', { p_id: id, p_theme: theme, p_titre: titre })
+  if (error) throw new ErreurMessage(error.message)
+  return Number(data)
+}
+// Message à plusieurs magasins (62) : un message par magasin, « {prénom} » remplacé par la base
+export async function envoyerAuxMagasins(magasins: string[], texte: string, pieces: Piece[] = []): Promise<number[]> {
+  const { data, error } = await supabase.rpc('ecrire_magasins', { p_magasins: magasins, p_texte: texte, p_pieces: pieces })
+  if (error) throw new ErreurMessage(error.message)
+  const ids = Array.isArray((data as { ids?: unknown } | null)?.ids) ? ((data as { ids: unknown[] }).ids).map(Number) : []
+  if (ids.length) notifier('message', ids)
+  return ids
+}
+
+// Suivi d'un envoi à plusieurs magasins : magasins dont le franchisé a écrit après l'envoi
+export interface SuiviEnvoi { lot: string; message: Message; magasins: string[]; repondu: string[] }
+export function envoisAPlusieurs(mg: Messagerie): SuiviEnvoi[] {
+  return mg.messages.filter((x) => x.lot && x.auteur === mg.moi && x.magasins.length > 0 && !x.destinataire && x.groupe === null)
+    .map((x) => {
+      const repondu = x.magasins.filter((n) => mg.messages.some((y) => !y.destinataire && y.groupe === null && !y.equipe && y.magasins.includes(n)
+        && y.auteurRole === 'franchise' && y.creeLe > x.creeLe))
+      return { lot: x.lot, message: x, magasins: [...x.magasins].sort((a, b) => a.localeCompare(b, 'fr')), repondu }
+    })
+    .sort((a, b) => b.message.creeLe.localeCompare(a.message.creeLe))
 }
 
 export const libelleAuteur: Record<string, string> = { directeur: 'Directeur de réseau', rr: 'Responsable Régional', coach: 'Coach', franchise: 'Franchisé' }
