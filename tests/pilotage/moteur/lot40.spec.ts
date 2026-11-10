@@ -124,7 +124,8 @@ const cave = (ca: Record<number, number>): LigneReel[] => Object.entries(ca).map
 const plat = cave(Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, 10_000])))
 
 test('règles par défaut : celles en service jusqu’ici ; bornes de saisie', () => {
-  expect(reglesParDefaut).toEqual({ jeuneMagasin: 18, moisRythme: 4, ecartRythme: 0.15, seuilRythme: 0.15, magasinsSaisonnalite: 3, magasinsCalage: 8, magasinsFamille: 3, moisCommerciaux: 3 })
+  expect(reglesParDefaut).toEqual({ jeuneMagasin: 18, moisRythme: 4, ecartRythme: 0.15, seuilRythme: 0.15, magasinsSaisonnalite: 3, magasinsCalage: 8, magasinsFamille: 3, moisCommerciaux: 3,
+    attentionMarge: 0.01, attentionFPMin: 0.1, attentionFPMax: 0.3, attentionCA: 0.1 })
   expect(reglesDe({ regles: { jeuneMagasin: 24 } as never })).toEqual({ ...reglesParDefaut, jeuneMagasin: 24 })
   expect(reglesHorsBornes(reglesParDefaut)).toEqual([])
   expect(reglesHorsBornes({ ...reglesParDefaut, jeuneMagasin: 40, moisRythme: 2.5, ecartRythme: 0.6 })).toEqual(['jeuneMagasin', 'moisRythme', 'ecartRythme'])

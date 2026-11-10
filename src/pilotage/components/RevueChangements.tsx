@@ -27,7 +27,8 @@ function valeur(v: unknown, nature: Nature, cote: 'avant' | 'apres', autre: unkn
 }
 
 // Joseph (03/11/2026) : une ligne par thème, le détail se déplie ; le mot pour le siège passe par les commentaires
-export function RevueChangements({ franchise, themes, total, ebeSiege, ebeMagasin, envoyeLe, statut, occupe, onEnvoyer, validation }: {
+export function RevueChangements({ franchise, themes, total, ebeSiege, ebeMagasin, envoyeLe, statut, occupe, onEnvoyer, validation, envoiBloque }: {
+  envoiBloque?: string // vague 6 (74A) : points d'attention encore sans justification
   franchise: boolean
   themes: ThemeChange[]
   total: number
@@ -104,11 +105,11 @@ export function RevueChangements({ franchise, themes, total, ebeSiege, ebeMagasi
       )}
       {franchise && onEnvoyer && statut !== 'valide' && (
         <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-          <Button variant="contained" startIcon={<SendOutlined />} disabled={occupe} onClick={() => onEnvoyer()} sx={{ minHeight: 48 }}>
+          <Button variant="contained" startIcon={<SendOutlined />} disabled={occupe || !!envoiBloque} onClick={() => onEnvoyer()} sx={{ minHeight: 48 }}>
             {statut === 'en_discussion' ? 'Envoyer de nouveau au siège' : 'Envoyer au siège'}
           </Button>
-          <Typography variant="body2" color="text.secondary">
-            {nombre ? 'Le budget passe en discussion : le siège voit ce tableau. Un mot à ajouter ? Laisse un commentaire sur le point concerné.' : 'Sans changement, l’envoi dit au siège que le budget te convient.'}
+          <Typography variant="body2" color={envoiBloque ? 'warning.dark' : 'text.secondary'}>
+            {envoiBloque ?? (nombre ? 'Le budget passe en discussion : le siège voit ce tableau. Un mot à ajouter ? Laisse un commentaire sur le point concerné.' : 'Sans changement, l’envoi dit au siège que le budget te convient.')}
           </Typography>
         </Box>
       )}

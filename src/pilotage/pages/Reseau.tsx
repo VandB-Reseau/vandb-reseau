@@ -1,3 +1,4 @@
+import { CausesEcartsReseau } from '../components/CausesEcarts'
 import { useNomsPerimetre } from '../../data/perimetreChoisi'
 import { useMemo } from 'react'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
@@ -214,6 +215,8 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
         />
       </Box>
 
+      {/* Vague 6 (77A) : les causes données par les magasins pour leurs écarts du dernier mois expliqué */}
+      <CausesEcartsReseau annee={annee} />
       {/* Lot 41 (proposition 6) : les filtres (Coach, RR, groupe) s'appliquent aussi aux magasins à appeler */}
       <Stack direction="row" spacing={2} useFlexGap className="pas-a-l-impression" sx={{ mb: 2, flexWrap: 'wrap' }}>
         <TextField

@@ -3,7 +3,9 @@ import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import CardActionArea from '@mui/material/CardActionArea'
+import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import LinearProgress from '@mui/material/LinearProgress'
 import Typography from '@mui/material/Typography'
 import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
 import { BoutonCommenter } from './Commentaires'
@@ -72,7 +74,7 @@ const LIBELLES_QUESTIONS: Record<QuestionCalendrier, { libelle: string; un: stri
 // 1er janvier (saisie ou estimée), saisonnalité du magasin ou de l'an passé
 export interface ResumeDepart { annee: number; tresorerie: number | null; estimee: boolean; saisonnalite: boolean }
 
-export function HypothesesCartes({ magasin, annee, budget: b, cibles, hausseSalaires, inflation, sansEquipe, sansFrais, lectureSeule, reprise, accord, depart, etroit }: {
+export function HypothesesCartes({ magasin, annee, budget: b, cibles, hausseSalaires, inflation, sansEquipe, sansFrais, lectureSeule, reprise, accord, depart, etroit, ventesPrete }: {
   etroit?: boolean   // refonte vague 2 (13B) : le détail d'une carte est ouvert à droite, deux colonnes de cartes
   magasin: string
   annee: number
@@ -86,6 +88,7 @@ export function HypothesesCartes({ magasin, annee, budget: b, cibles, hausseSala
   reprise?: Hypotheses['reprise']
   accord?: (theme: ThemeAccord, nom: string) => ReactNode
   depart: ResumeDepart
+  ventesPrete?: boolean   // vague 6 (73A) : franchisé, ventes acceptées ou changées ; absent pour les autres rôles
 }) {
   const frais = b.chargesExternes + b.impotsTaxes - b.redevance - b.publicite
   const lignesFrais = Object.keys(cibles.fraisBudget ?? {}).length
@@ -95,45 +98,77 @@ export function HypothesesCartes({ magasin, annee, budget: b, cibles, hausseSala
   }
   const f = b.financement
   const ecartEvenements = (b.tempsForts?.ajoute ?? 0) - (b.tempsForts?.retire ?? 0) + (b.tempsForts?.ajustements ?? 0)
+  // Vague 6 (73A) : dans l'ordre de saisie, le statut au même endroit ; en tête, l'avancement et la prochaine étape.
+  // Une carte terminée se replie à son chiffre clé.
+  type Desc = { cle: string; titre: string; vers: string; ancre?: string; etat?: EtatCarte; sousTitre?: ReactNode; lignes: Ligne[]; accord?: ReactNode }
+  const ventesPretes = !!ventesPrete
+  const cartes: Desc[] = [
+    { cle: 'depart', titre: 'Point de départ', vers: 'depart', etat: depart.tresorerie === null || depart.estimee ? 'aVerifier' : 'fait', accord: accord?.('tresoBudget', 'Point de départ'), lignes: [
+      { libelle: 'Trésorerie au 1er janvier', valeur: depart.tresorerie === null ? 'À saisir' : `${milliers(depart.tresorerie)}${depart.estimee ? ' (estimée)' : ''}`, signal: depart.tresorerie === null || depart.estimee },
+      { libelle: `CA atterri ${depart.annee}`, valeur: milliers(b.atterrissage) },
+      { libelle: 'Saisonnalité', valeur: depart.saisonnalite ? 'Propre au magasin' : `Celle de ${depart.annee}` },
+    ] },
+    ...resumeUnivers(b).map((r): Desc => ({
+      cle: `ventes-${r.univers}`, titre: `Ventes ${universLibelle[r.univers]}`, vers: 'ventes', ancre: `ventes/${r.univers}`,
+      etat: ventesPrete === undefined ? undefined : ventesPretes ? 'fait' : 'aVerifier',
+      sousTitre: <><Box component="span" sx={{ color: 'text.secondary' }}>{milliers(r.depart)} → </Box><b>{milliers(r.ca)}</b>{r.ecart !== null && <Box component="span" sx={{ color: 'text.secondary' }}>{` (${ecartTaux(r.ecart)})`}</Box>}</>,
+      lignes: [
+        ...(r.tickets !== undefined ? [{ libelle: 'Tickets', valeur: ecartTaux(r.tickets) }, { libelle: 'Panier moyen', valeur: ecartTaux(r.panier ?? 0) }]
+          : [{ libelle: 'Évolution du CA', valeur: ecartTaux(r.evolution ?? 0) }]),
+        { libelle: 'Marge visée', valeur: r.marge === null ? '–' : taux(r.marge) },
+      ],
+    })),
+    { cle: 'equipe', titre: 'Équipe', vers: 'equipe', etat: etatEquipe(sansEquipe, !!reprise?.personnel), accord: accord?.('equipe', 'Équipe'), lignes: [
+      { libelle: 'Masse salariale', valeur: milliers(b.personnel) },
+      ...(reprise?.personnel ? [{ libelle: 'Équipe', valeur: `Comptes ${reprise.annee} (${reprise.mois} mois)` }]
+        : sansEquipe ? [{ libelle: 'Équipe', valeur: 'À renseigner', signal: true }] : []),
+      { libelle: 'Hausse générale des salaires', valeur: taux(hausseSalaires) },
+      { libelle: '% FP', valeur: taux(b.ratios.pctFP) },
+    ] },
+    { cle: 'frais', titre: 'Frais', vers: 'fraisBudget', etat: etatFrais(sansFrais, !!reprise?.frais), accord: accord?.('fraisBudget', 'Frais'), lignes: [
+      { libelle: `Frais ${annee}`, valeur: milliers(frais) },
+      ...(reprise?.frais ? [{ libelle: 'Frais de départ', valeur: `Comptes ${reprise.annee} (${reprise.mois} mois)` }] : []),
+      { libelle: 'Inflation des frais', valeur: taux(inflation) },
+      { libelle: 'Lignes choisies une à une', valeur: lignesFrais === 0 ? 'Aucune' : String(lignesFrais) },
+    ] },
+    { cle: 'investissements', titre: 'Investissements & Financements', vers: 'investissements', etat: etatInvestissements(cibles), accord: accord?.('investissements', 'Investissements & Financements'), lignes: [
+      { libelle: 'Capacité d’autofinancement', valeur: milliers(b.capaciteAutofinancement) },
+      ...QUESTIONS_INVESTISSEMENTS.map(question),
+      ...(f.echeancesSurCAF !== null && f.echeances > 0 ? [{ libelle: 'Échéances ÷ CAF', valeur: taux(f.echeancesSurCAF) }] : []),
+    ] },
+    { cle: 'calendrier', titre: 'Évènements & Temps forts', vers: 'calendrier', etat: etatCalendrier(cibles), accord: accord?.('calendrier', 'Évènements & Temps forts'), lignes: [
+      ...(ecartEvenements ? [{ libelle: `Écart face à ${depart.annee}`, valeur: ecartMilliers(ecartEvenements) }] : []),
+      ...QUESTIONS_CALENDRIER.map(question),
+    ] },
+  ]
+  // Les ventes comptent pour un seul thème, quel que soit le nombre d'univers
+  const themes = cartes.filter((c) => c.etat && !(c.cle.startsWith('ventes-') && c.cle !== cartes.find((x) => x.cle.startsWith('ventes-'))?.cle))
+  const prets = themes.filter((c) => c.etat === 'fait').length
+  const suivante = themes.find((c) => c.etat !== 'fait')
   return (
-    <Box component="section" aria-label={`Hypothèses ${annee} en cartes`}
-      sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: etroit ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))' }, gap: 2 }}>
-      <Carte magasin={magasin} titre="Point de départ" vers="depart" etat={depart.tresorerie === null || depart.estimee ? 'aVerifier' : 'fait'} lectureSeule={lectureSeule}
-        accord={accord?.('tresoBudget', 'Point de départ')} lignes={[
-          { libelle: `CA atterri ${depart.annee}`, valeur: milliers(b.atterrissage) },
-          { libelle: 'Trésorerie au 1er janvier', valeur: depart.tresorerie === null ? 'À saisir' : `${milliers(depart.tresorerie)}${depart.estimee ? ' (estimée)' : ''}`, signal: depart.tresorerie === null || depart.estimee },
-          { libelle: 'Saisonnalité', valeur: depart.saisonnalite ? 'Propre au magasin' : `Celle de ${depart.annee}` },
-        ]} />
-      {resumeUnivers(b).map((r) => (
-        <Carte key={r.univers} magasin={magasin} titre={`Ventes ${universLibelle[r.univers]}`} vers="ventes" ancre={`ventes/${r.univers}`} lectureSeule={lectureSeule}
-          sousTitre={<><Box component="span" sx={{ color: 'text.secondary' }}>{milliers(r.depart)} → </Box><b>{milliers(r.ca)}</b>{r.ecart !== null && <Box component="span" sx={{ color: 'text.secondary' }}>{` (${ecartTaux(r.ecart)})`}</Box>}</>}
-          lignes={[
-            ...(r.tickets !== undefined ? [{ libelle: 'Tickets', valeur: ecartTaux(r.tickets) }, { libelle: 'Panier moyen', valeur: ecartTaux(r.panier ?? 0) }]
-              : [{ libelle: 'Évolution du CA', valeur: ecartTaux(r.evolution ?? 0) }]),
-            { libelle: 'Marge visée', valeur: r.marge === null ? '–' : taux(r.marge) },
-          ]} />
-      ))}
-      <Carte magasin={magasin} titre="Évènements & Temps forts" vers="calendrier" etat={etatCalendrier(cibles)} lectureSeule={lectureSeule} accord={accord?.('calendrier', 'Évènements & Temps forts')}
-        lignes={[...QUESTIONS_CALENDRIER.map(question), ...(ecartEvenements ? [{ libelle: `Écart face à ${depart.annee}`, valeur: ecartMilliers(ecartEvenements) }] : [])]} />
-      <Carte magasin={magasin} titre="Investissements & Financements" vers="investissements" etat={etatInvestissements(cibles)} lectureSeule={lectureSeule} accord={accord?.('investissements', 'Investissements & Financements')}
-        lignes={[
-          ...QUESTIONS_INVESTISSEMENTS.map(question),
-          { libelle: 'Capacité d’autofinancement', valeur: milliers(b.capaciteAutofinancement) },
-          ...(f.echeancesSurCAF !== null && f.echeances > 0 ? [{ libelle: 'Échéances ÷ CAF', valeur: taux(f.echeancesSurCAF) }] : []),
-        ]} />
-      <Carte magasin={magasin} titre="Équipe" vers="equipe" etat={etatEquipe(sansEquipe, !!reprise?.personnel)} lectureSeule={lectureSeule} accord={accord?.('equipe', 'Équipe')} lignes={[
-        ...(reprise?.personnel ? [{ libelle: 'Équipe', valeur: `Comptes ${reprise.annee} (${reprise.mois} mois)` }]
-          : sansEquipe ? [{ libelle: 'Équipe', valeur: 'À renseigner', signal: true }] : []),
-        { libelle: 'Hausse générale des salaires', valeur: taux(hausseSalaires) },
-        { libelle: 'Masse salariale', valeur: milliers(b.personnel) },
-        { libelle: '% FP', valeur: taux(b.ratios.pctFP) },
-      ]} />
-      <Carte magasin={magasin} titre="Frais" vers="fraisBudget" etat={etatFrais(sansFrais, !!reprise?.frais)} lectureSeule={lectureSeule} accord={accord?.('fraisBudget', 'Frais')} lignes={[
-        ...(reprise?.frais ? [{ libelle: 'Frais de départ', valeur: `Comptes ${reprise.annee} (${reprise.mois} mois)` }] : []),
-        { libelle: 'Inflation des frais', valeur: taux(inflation) },
-        { libelle: 'Lignes choisies une à une', valeur: lignesFrais === 0 ? 'Aucune' : String(lignesFrais) },
-        { libelle: `Frais ${annee}`, valeur: milliers(frais) },
-      ]} />
+    <Box component="section" aria-label={`Hypothèses ${annee} en cartes`} sx={{ display: 'grid', gap: 2 }}>
+      {!lectureSeule && (
+        <Card component="section" aria-label="Avancement du budget" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: '1 1 220px', minWidth: 0 }}>
+            <Typography sx={{ fontWeight: 700 }}>{prets} {prets > 1 ? 'thèmes prêts' : 'thème prêt'} sur {themes.length}</Typography>
+            <LinearProgress variant="determinate" value={themes.length ? (prets / themes.length) * 100 : 0} aria-label={`${prets} thèmes prêts sur ${themes.length}`}
+              color={prets === themes.length ? 'success' : 'primary'} sx={{ mt: 1, height: 8, borderRadius: 4 }} />
+          </Box>
+          {suivante
+            ? <Button variant="contained" component={RouterLink} to={lienMagasin(magasin, suivante.vers)} data-sans-garde="" endIcon={<ChevronRightOutlined />} sx={{ minHeight: 48 }}>
+              Prochaine étape : {suivante.cle.startsWith('ventes-') ? 'Ventes' : suivante.titre}
+            </Button>
+            : <Button variant="contained" color="success" component={RouterLink} to={lienMagasin(magasin, 'visualiser')} data-sans-garde="" endIcon={<ChevronRightOutlined />} sx={{ minHeight: 48 }}>
+              Tout est prêt : visualiser
+            </Button>}
+        </Card>
+      )}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: etroit ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))' }, gap: 2 }}>
+        {cartes.map((c) => (
+          <Carte key={c.cle} magasin={magasin} titre={c.titre} vers={c.vers} ancre={c.ancre} etat={c.etat} lectureSeule={lectureSeule} accord={c.accord}
+            sousTitre={c.sousTitre} lignes={c.etat === 'fait' && !lectureSeule ? c.lignes.slice(0, 1) : c.lignes} />
+        ))}
+      </Box>
     </Box>
   )
 }

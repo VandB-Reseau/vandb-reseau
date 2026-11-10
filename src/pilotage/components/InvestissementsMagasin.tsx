@@ -239,7 +239,7 @@ export function CapaciteAutofinancement({ budget: b, annee, titre = true }: { bu
             {lignes.map((l) => (
               <TableRow key={l.libelle} className={l.fort ? 'ligne-cle' : undefined}>
                 <TableCell sx={{ whiteSpace: 'normal', fontWeight: l.fort ? 700 : 400, color: l.detail ? 'text.secondary' : 'text.primary', pl: l.detail ? 4 : undefined }}>{l.libelle}</TableCell>
-                <TableCell align="right" sx={{ fontWeight: l.fort ? 700 : 400 }}>{montant(l.valeur)}</TableCell>
+                <TableCell align="right" sx={{ fontWeight: l.fort ? 700 : 400 }}>{milliers(l.valeur)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

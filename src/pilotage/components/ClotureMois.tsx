@@ -9,6 +9,7 @@ import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUncheckedOutlined from '@mui/icons-material/RadioButtonUncheckedOutlined'
 import { chargerStocks } from '../data/pilotage'
+import { CausesEcartsMois } from './CausesEcarts'
 
 // Clôture du mois (refonte vague 2, Joseph 09/11/2026, 12A) : les saisies d'un mois en liste de contrôle, au lieu de
 // quatre écrans en puces. Chaque ligne dit si c'est fait et ouvre la saisie ; un mois est complet quand tout est fait.
@@ -37,8 +38,8 @@ export function etapesCloture({ mois, annee, reelMois, stockSaisi, fraisRenseign
   ]
 }
 
-export function ClotureMois({ magasin, annee, reelMois, fraisRenseignes, quadrimestres, aller }: {
-  magasin: string; annee: number; reelMois: number[]; fraisRenseignes: boolean; quadrimestres: number[]; aller: (cle: string) => void
+export function ClotureMois({ magasin, annee, reelMois, fraisRenseignes, quadrimestres, aller, peutSaisir = false }: {
+  magasin: string; annee: number; reelMois: number[]; fraisRenseignes: boolean; quadrimestres: number[]; aller: (cle: string) => void; peutSaisir?: boolean
 }) {
   const dernier = Math.max(1, dernierMoisClos(annee))
   const [mois, setMois] = useState(dernier)
@@ -77,6 +78,7 @@ export function ClotureMois({ magasin, annee, reelMois, fraisRenseignes, quadrim
           </Box>
         ))}
       </Card>
+      <CausesEcartsMois key={`${annee}-${mois}`} magasin={magasin} annee={annee} mois={mois} peutSaisir={peutSaisir} />
     </Box>
   )
 }

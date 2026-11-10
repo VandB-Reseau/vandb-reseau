@@ -46,6 +46,11 @@ export interface ReglesCalcul {
   magasinsCalage: number        // magasins pour publier les valeurs par ancienneté (8)
   magasinsFamille: number       // magasins pour publier les médianes des familles (3)
   moisCommerciaux: number       // mois comparés à l'an dernier pour les alertes tickets et panier (3)
+  // Points d'attention avant l'envoi du budget (vague 6, 74A), réglés par le Directeur
+  attentionMarge: number        // taux de marge sous celui proposé par le siège de plus de (1 pt)
+  attentionFPMin: number        // % FP sous (10 %)
+  attentionFPMax: number        // % FP au-dessus de (30 %)
+  attentionCA: number           // CA du budget au-dessus de l'atterrissage de plus de (10 %)
 }
 
 export interface Personnel {

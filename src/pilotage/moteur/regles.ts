@@ -5,6 +5,7 @@ import type { ReglesCalcul } from './types'
 export const reglesParDefaut: ReglesCalcul = {
   jeuneMagasin: 18, moisRythme: 4, ecartRythme: 0.15, seuilRythme: 0.15,
   magasinsSaisonnalite: 3, magasinsCalage: 8, magasinsFamille: 3, moisCommerciaux: 3,
+  attentionMarge: 0.01, attentionFPMin: 0.1, attentionFPMax: 0.3, attentionCA: 0.1,
 }
 
 // Bornes de saisie : nombres entiers (mois, magasins) ou taux. Hors bornes, l'enregistrement est refusé.
@@ -17,6 +18,10 @@ export const BORNES_REGLES: Record<keyof ReglesCalcul, { min: number; max: numbe
   magasinsCalage: { min: 3, max: 50 },
   magasinsFamille: { min: 2, max: 30 },
   moisCommerciaux: { min: 1, max: 6 },
+  attentionMarge: { min: 0, max: 0.1, taux: true },
+  attentionFPMin: { min: 0, max: 0.5, taux: true },
+  attentionFPMax: { min: 0.1, max: 0.8, taux: true },
+  attentionCA: { min: 0, max: 0.5, taux: true },
 }
 
 // Règles d'une année : celles enregistrées, complétées par les valeurs par défaut
