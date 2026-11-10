@@ -50,7 +50,10 @@ type Vue = 'fil' | 'communications' | 'pratiques' | 'questions'
 function Contenu({ reseau }: { reseau: Reseau }) {
   const [params] = useSearchParams()
   const demandee = params.get('vue')
-  const [vue, setVue] = useState<Vue>(demandee === 'pratiques' ? 'pratiques' : demandee === 'sondages' ? 'questions' : demandee === 'communications' || params.get('c') ? 'communications' : 'fil')
+  const vueDemandee: Vue = demandee === 'pratiques' ? 'pratiques' : demandee === 'sondages' ? 'questions' : demandee === 'communications' || params.get('c') ? 'communications' : 'fil'
+  const [vue, setVue] = useState<Vue>(vueDemandee)
+  // Un lien vers une autre partie (notification, fil) change l'onglet même si la page est déjà ouverte
+  useEffect(() => { setVue(vueDemandee) }, [vueDemandee])
   // Sondages (sprint 22, A3, puis 23/10/2026) : toute l'équipe y répond, le Directeur et les RR en posent
   const { profil } = useAuth()
   const poseSondages = profil?.role === 'directeur' || profil?.role === 'rr'

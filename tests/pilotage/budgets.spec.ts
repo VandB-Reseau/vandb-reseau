@@ -35,7 +35,9 @@ test('le Directeur ouvre les budgets depuis le menu, passe au suivi et aux param
   await connecter(page, {}, {})
   await page.getByRole('heading', { level: 1, name: /^Accueil$|Bonjour|Bonsoir/ }).waitFor()
   if (!isMobile) {
-    await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Budgets', exact: true }).click()
+    // Vague 5 (51A) : les budgets sont un onglet de Chiffres
+    await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Chiffres', exact: true }).click()
+    await page.getByRole('tab', { name: 'Budgets de l’année' }).click()
   } else {
     await page.goto('./#/budgets')
   }
@@ -50,7 +52,7 @@ test('le Directeur ouvre les budgets depuis le menu, passe au suivi et aux param
 
   await page.goto('./#/budgets/suivi')
   await expect(page).toHaveURL(/#\/performance\?vue=budget/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Performance' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Chiffres' })).toBeVisible()
   await page.goto('./#/budgets/parametres')
   await expect(page).toHaveURL(/#\/parametres\/reglages\?rubrique=budget/)
 })

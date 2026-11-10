@@ -248,24 +248,26 @@ function BoutonInfos() {
 const HAUTEUR_BARRE = 64
 
 // « Plus » de la barre du franchisé (56A) : Mon budget, Mes demandes, Actualités
-function BoutonPlusFranchise({ liste }: { liste: Destination[] }) {
+function BoutonPlusFranchise({ liste, sansCompteur }: { liste: Destination[]; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
+  const c = useCompteurs(sansCompteur)
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const actif = liste.some((d) => estActive(d, pathname))
+  const n = liste.reduce((t, d) => t + compteDe(d, c), 0)
   return (
     <>
-      <ButtonBase onClick={(e) => setAncre(e.currentTarget)} aria-label="Plus" aria-haspopup="menu" aria-current={actif ? 'page' : undefined}
+      <ButtonBase onClick={(e) => setAncre(e.currentTarget)} aria-label={n ? `Plus : ${n} nouveauté${n > 1 ? 's' : ''}` : 'Plus'} aria-haspopup="menu" aria-current={actif ? 'page' : undefined}
         sx={{ flex: 1, minWidth: 0, height: HAUTEUR_BARRE, borderRadius: 999, color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.75rem', fontWeight: actif ? 600 : 500 }}>
         <Box sx={{ width: '100%', height: HAUTEUR_BARRE - 10, borderRadius: 999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.25, ...(actif ? { bgcolor: 'action.selected' } : {}) }}>
-          <MoreHorizOutlined />
+          {n ? <Badge color="error" badgeContent={n} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><MoreHorizOutlined /></Badge> : <MoreHorizOutlined />}
           <Box component="span">Plus</Box>
         </Box>
       </ButtonBase>
       <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} anchorOrigin={{ vertical: 'top', horizontal: 'right' }} transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
         {liste.map((d) => (
-          <MenuItem key={d.chemin} selected={estActive(d, pathname)} onClick={() => { setAncre(null); naviguer(d.chemin) }} sx={{ minHeight: 48 }}>
-            <ListItemIcon>{d.icone}</ListItemIcon>{d.libelle}
+          <MenuItem key={d.chemin} selected={estActive(d, pathname)} aria-label={libelleAccessible(d, c)} onClick={() => { setAncre(null); naviguer(d.chemin) }} sx={{ minHeight: 48 }}>
+            <ListItemIcon><Icone d={d} actif={false} c={c} /></ListItemIcon>{d.libelle}
           </MenuItem>
         ))}
       </Menu>
@@ -308,7 +310,7 @@ function BarreBasse({ franchise, sansCompteur }: { franchise?: Destination[]; sa
       })}>
       <Box sx={{ display: 'flex', height: HAUTEUR_BARRE }}>
         {(franchise ? barreFranchise(franchise) : barreTelephone).map(item)}
-        {franchise && <BoutonPlusFranchise liste={plusFranchise(franchise)} />}
+        {franchise && <BoutonPlusFranchise liste={plusFranchise(franchise)} sansCompteur={sansCompteur} />}
       </Box>
     </Paper>
   )

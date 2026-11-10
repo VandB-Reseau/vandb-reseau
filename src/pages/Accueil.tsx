@@ -202,13 +202,15 @@ function aTraiterVague5(reseau: Reseau, p: Perimetre, communications: Communicat
     items.push({ cle: `pc-${c.id}`, titre: c.titre, avatar: c.titre, icone: <CampaignOutlined />, lien: `/infos?vue=communications&c=${c.id}`,
       detail: `${k.manquants.length} franchisé${k.manquants.length > 1 ? 's' : ''} sans prise de connaissance : ${k.manquants.join(', ')}`, pastille: { ton: 'orange', libelle: 'À relancer' } })
   }
+  // Une ligne par magasin : la prochaine étape due, et le nombre d'étapes en retard
   for (const m of magasinsDu(reseau, p)) {
-    const pc = parcoursDu(reseau, m)
-    for (const x of pc?.etapes.filter((x) => x.etat === 'retard' || x.etat === 'bientot') ?? []) {
-      items.push({ cle: `in-${m.nom}-${x.e.id}`, titre: `${m.nom} · ${x.e.libelle}`, avatar: m.nom, icone: <FlagOutlined />, lien: `${lienFiche(m.nom)}?vue=fiche`,
-        detail: [`Jour ${x.e.jour} de l’intégration`, libellesResponsable[x.e.responsable], `pour le ${dateCourte(x.echeance)}`].join(' · '),
-        pastille: x.etat === 'retard' ? { ton: 'rouge', libelle: 'En retard' } : { ton: 'bleu', libelle: 'Intégration' } })
-    }
+    const dues = parcoursDu(reseau, m)?.etapes.filter((x) => x.etat === 'retard' || x.etat === 'bientot') ?? []
+    if (!dues.length) continue
+    const retard = dues.filter((x) => x.etat === 'retard').length
+    const x = dues[0]
+    items.push({ cle: `in-${m.nom}`, titre: `${m.nom} · ${x.e.libelle}`, avatar: m.nom, icone: <FlagOutlined />, lien: `${lienFiche(m.nom)}?vue=fiche`,
+      detail: [`Intégration, jour ${x.e.jour}`, libellesResponsable[x.e.responsable], retard > 1 ? `${retard} étapes en retard` : `pour le ${dateCourte(x.echeance)}`].join(' · '),
+      pastille: retard ? { ton: 'orange', libelle: 'Intégration en retard' } : { ton: 'bleu', libelle: 'Intégration' } })
   }
   return items
 }

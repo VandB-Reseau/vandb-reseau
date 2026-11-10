@@ -26,22 +26,22 @@ test('quatre repères de pilotage en tête de l’accueil, chacun mène à son d
   await expect(page.getByRole('heading', { level: 1, name: 'Santé du parc' })).toBeVisible()
 })
 
-// Refonte (Joseph, 09/11/2026, 7A) : « À traiter » au centre, les actualités à droite, visibles dès l'arrivée
-test('PC : À traiter, Mes tâches et Cette semaine au centre, actualités à droite dès l’arrivée', async ({ page, isMobile }, info) => {
+// Refonte vague 5 (Joseph, 10/11/2026, 43A, revient sur 7A) : les actualités au centre, « Aujourd'hui » à droite
+test('PC : les actualités au centre, À traiter, Mes tâches et Cette semaine à droite dès l’arrivée', async ({ page, isMobile }, info) => {
   test.skip(isMobile, 'Disposition du PC')
   await seConnecter(page)
-  const colonne = page.getByRole('complementary', { name: 'Actualités du réseau' })
-  const actualites = colonne.getByRole('region', { name: 'Actualités' })
+  const actualites = page.getByRole('region', { name: 'Actualités' })
   await expect(actualites).toBeVisible()
   await expect(actualites).toBeInViewport()
-  const traiter = page.getByRole('region', { name: 'À traiter' })
+  const colonne = page.getByRole('complementary', { name: 'Aujourd’hui' })
+  const traiter = colonne.getByRole('region', { name: 'À traiter' })
   await expect(traiter).toBeVisible()
   await expect(page.getByRole('region', { name: 'Mes tâches' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Mes tâches' }).getByRole('link', { name: 'Toutes' })).toHaveAttribute('href', '#/taches')
+  const a = (await actualites.boundingBox())!
   const t = (await traiter.boundingBox())!
-  const c = (await colonne.boundingBox())!
-  expect(t.x + t.width).toBeLessThanOrEqual(c.x)
-  expect(c.y).toBeLessThan(page.viewportSize()!.height / 2)
+  expect(a.x + a.width).toBeLessThanOrEqual(t.x)
+  expect(t.y).toBeLessThan(page.viewportSize()!.height / 2)
   // Les repères au-dessus des deux colonnes
   const p = (await page.getByRole('region', { name: 'Pilotage' }).boundingBox())!
   expect(p.y + p.height).toBeLessThanOrEqual(t.y)

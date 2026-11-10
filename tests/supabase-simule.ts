@@ -786,10 +786,9 @@ export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page
 // Infos réseau (seul endroit des communications et bonnes pratiques pour l'équipe, sprint 22 S1) ;
 // sur téléphone, la partie voulue est un onglet
 export async function ouvrirInfos(page: Page, partie: 'Communications' | 'Bonnes pratiques') {
-  await page.goto('./#/infos')
-  await expect(page.getByRole('region', { name: /^(Communications|Bonnes pratiques)$/ }).first()).toBeVisible()
-  const onglet = page.getByRole('tab', { name: partie })
-  if (await onglet.isVisible()) await onglet.click()
+  // Vague 5 (45A) : Actualités s'ouvre sur le Fil ; chaque partie a son onglet, sur PC comme sur téléphone
+  await page.goto(`./#/infos?vue=${partie === 'Communications' ? 'communications' : 'pratiques'}`)
+  await expect(page.getByRole('tab', { name: partie })).toHaveAttribute('aria-selected', 'true')
   return page.getByRole('region', { name: partie })
 }
 

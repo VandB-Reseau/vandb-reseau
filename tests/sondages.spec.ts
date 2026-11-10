@@ -33,8 +33,8 @@ const sondages = (): QuestionsSimulees => ({
 })
 
 async function ouvrirSondages(page: import('@playwright/test').Page, isMobile: boolean) {
-  await page.goto('./#/infos')
-  if (isMobile) await page.getByRole('tab', { name: 'Sondages' }).click()
+  void isMobile
+  await page.goto('./#/infos?vue=sondages')
   return page.getByRole('region', { name: 'Sondages posés' })
 }
 
@@ -122,8 +122,7 @@ test('le Coach remplit un sondage depuis son accueil, sans voir les résultats',
   await envoyer.click()
   await expect(sondage).toContainText('Réponse envoyée, merci.')
   expect(ecritures.filter((e) => e.table === 'rpc/repondre_sondage').map((e) => e.corps)).toEqual([{ p_id: 4, p_valeurs: ['4', 'Visio', 'non'] }])
-  await page.goto('./#/infos')
-  if (isMobile) await page.getByRole('tab', { name: 'Sondages' }).click()
+  await page.goto('./#/infos?vue=sondages')
   await expect(page.getByRole('region', { name: 'Sondages à remplir' })).toContainText('Réponse envoyée, merci.')
   await expect(page.getByRole('region', { name: 'Sondages posés' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Nouveau sondage' })).toHaveCount(0)

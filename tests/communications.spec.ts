@@ -18,12 +18,19 @@ const communications = (): CommunicationSimulee[] => [
   { id: 2, titre: 'Réunion des franchisés du Sud', texte: 'Rendez-vous à Marseille.', magasins: ['Nice Test'], auteur: AUTRE, auteur_nom: 'Sam SUD', auteur_role: 'rr', cree_le: '2026-10-18T09:00:00Z' },
 ]
 
+// Vague 5 (56A) : sur téléphone, Actualités du franchisé est derrière « Plus »
+async function versActualites(page: import('@playwright/test').Page, isMobile: boolean) {
+  const nav = page.getByRole('navigation', { name: 'Navigation principale' })
+  if (isMobile) { await nav.getByRole('button', { name: /^Plus/ }).click(); await page.getByRole('menuitem', { name: /^Actualités/ }).click() }
+  else await nav.getByRole('button', { name: /^Actualités/ }).click()
+}
+
 test('le Directeur publie une communication pour tout le réseau', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, communications: [] })
   // Pour l'équipe, les communications sont dans Infos réseau (sprint 22, S1)
   await page.goto('./#/communications')
-  await expect(page).toHaveURL(/#\/infos$/)
+  await expect(page).toHaveURL(/#\/infos\?vue=communications$/)
   await expect(page.getByText('Rien à annoncer')).toBeVisible()
   await page.getByRole('button', { name: 'Publier' }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle communication' })
@@ -45,9 +52,9 @@ test('le Directeur publie une communication pour tout le réseau', async ({ page
 test('un franchisé lit les communications de ses magasins, met un pouce et commente', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { acces: PAUL, ecritures, communications: communications() })
-  const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await nav.getByRole('button', { name: /^Infos/ }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Infos réseau')
+  await versActualites(page, isMobile)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Actualités')
+  await page.getByRole('tab', { name: 'Communications' }).click()
   // Celle du Sud ne concerne pas ses magasins
   await expect(page.getByRole('region', { name: 'Communications' }).getByRole('article')).toHaveCount(1)
   await expect(page.getByRole('button', { name: 'Publier' })).toHaveCount(0)
@@ -83,8 +90,8 @@ test('la recherche filtre les communications et un Responsable Régional publie 
   const liste = communications()
   await seConnecter(page, { appMetadata: { role: 'rr', rr: 'rr1' }, communications: liste })
   // La recherche est dans Infos réseau ; le canal des Messages défile comme un groupe
-  await page.goto('./#/infos')
-  const recherche = page.getByRole('textbox', { name: /Rechercher une communication ou une pratique/ })
+  await page.goto('./#/infos?vue=communications')
+  const recherche = page.getByRole('textbox', { name: /Rechercher une communication/ })
   await recherche.fill('Marseille')
   await expect(page.getByRole('region', { name: 'Communications' }).getByRole('article')).toHaveCount(1)
   await expect(page.getByRole('article', { name: 'Réunion des franchisés du Sud' })).toBeVisible()
@@ -203,13 +210,13 @@ test('le franchisé voit ses nouveautés sur l’onglet Infos réseau, plus de c
   await page.goto('./#/echanges')
   await expect(page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /^Réseau V and B/ })).toHaveCount(0)
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  const infos = nav.getByRole('button', { name: /^Infos/ })
-  await expect(infos).toHaveAccessibleName('Infos réseau : 1 nouveauté')
+  const infos = nav.getByRole('button', { name: isMobile ? /^Plus/ : /^Actualités/ })
+  await expect(infos).toHaveAccessibleName(isMobile ? 'Plus : 1 nouveauté' : 'Actualités : 1 nouveauté')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-franchise-infos-compteur.png`, fullPage: !isMobile })
-  await infos.click()
+  await versActualites(page, isMobile)
   await expect(page).toHaveURL(/#\/infos$/)
-  await expect(page.getByRole('article', { name: 'V and B Day : J-7' })).toBeVisible()
+  await expect(page.getByRole('article', { name: 'V and B Day : J-7' }).first()).toBeVisible()
   // Vue : plus de nouveauté
   await expect(infos).not.toHaveAccessibleName(/nouveauté/)
 })

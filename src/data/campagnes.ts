@@ -61,8 +61,9 @@ function normaliserCampagne(c: Partial<Campagne>, rr = ''): Campagne {
     magasins: Array.isArray(c.magasins) ? c.magasins.map(t).filter(Boolean) : [],
     ...(rr ? { rr } : {}),
     ...(t(c.tempsFort) ? { tempsFort: t(c.tempsFort) } : {}),
-    jalons: normaliserJalons(c.jalons),
-    univers: c.univers === 'cave' || c.univers === 'bar' ? c.univers : 'tout',
+    // Valeurs par défaut omises : une campagne ancienne relue telle quelle n'est jamais réécrite pour rien
+    ...(normaliserJalons(c.jalons).length ? { jalons: normaliserJalons(c.jalons) } : {}),
+    ...(c.univers === 'cave' || c.univers === 'bar' ? { univers: c.univers } : {}),
   }
 }
 

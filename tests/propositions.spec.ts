@@ -20,8 +20,8 @@ const propositions = (): PropositionsSimulees => ({
 })
 
 async function ouvrirPratiques(page: import('@playwright/test').Page, isMobile: boolean) {
-  await page.goto('./#/infos')
-  if (isMobile) await page.getByRole('tab', { name: 'Bonnes pratiques' }).click()
+  void isMobile
+  await page.goto('./#/infos?vue=pratiques')
   return page.getByRole('region', { name: 'Propositions des franchisés' })
 }
 

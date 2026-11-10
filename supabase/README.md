@@ -48,6 +48,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0041_suppression_store_finance` | Contrôle de l'archive (`lignes_hors_archive`), `store_finance` vidée puis fermée (déclencheur `store_finance_fermee`) ; `saisie_chiffres_fermee()` pour l'app | 04/11/2026 |
 | `0042_objectifs_magasins` | Rubrique `objectifs` dans `suivi_magasins` (objectifs chiffrés par magasin, équipe seulement) | 10/11/2026 |
 | `0043_animation_vague4` | Rubrique `plan` de `suivi_magasins` et `plans_franchise()` ; `statut_action_franchise` ; table `entretiens` (RR–Coach) et `remarque_entretien` ; sondages à réponse libre (`chiffre`, `texte`) pour les remontées ; table `demandes` fermée et ses fonctions (`creer_demande`, `mes_demandes`, `completer_demande`, `repondre_demande`) | 10/11/2026 |
+| `0044_actualites_vague5` | Prise de connaissance des communications (colonne `connaissance`, table `communications_connaissances` fermée, `demander_connaissance`, `prendre_connaissance`, `connaissances`) ; rubrique `integration` de `suivi_magasins` ; `animation_franchise()` (temps forts, parcours et suivi d'intégration du franchisé) | 10/11/2026 |
 
 ## Règles
 

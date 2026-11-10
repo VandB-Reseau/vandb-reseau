@@ -22,7 +22,8 @@ export function FriseTempsForts({ reseau, campagnes, ouvrir }: { reseau: Reseau;
   const fin = mois[MOIS - 1]
   const tempsForts = (reseau.tempsForts ?? []).filter((t) => t.fin.slice(0, 7) >= debut && t.debut.slice(0, 7) <= fin)
   const lesCampagnes = campagnes.filter((c) => c.fin.slice(0, 7) >= debut && c.debut.slice(0, 7) <= fin)
-  if (!tempsForts.length && !lesCampagnes.length) return null
+  // La frise n'apparaît qu'une fois des temps forts réglés dans Paramètres
+  if (!tempsForts.length) return null
   // Position en colonnes de mois (1 à 12) d'une période
   const colonnes = (d: string, f: string) => {
     const a = Math.max(0, mois.indexOf(d.slice(0, 7) < debut ? debut : d.slice(0, 7)))
@@ -65,7 +66,7 @@ export function FriseTempsForts({ reseau, campagnes, ouvrir }: { reseau: Reseau;
             </Box>
           ))}
           {lesCampagnes.map((c) => (
-            <ButtonBase key={c.id} onClick={() => ouvrir(c.id)} aria-label={`Ouvrir la campagne ${c.nom}`}
+            <ButtonBase key={c.id} onClick={() => ouvrir(c.id)}
               sx={{ ...colonnes(c.debut, c.fin), justifyContent: 'flex-start', bgcolor: 'action.selected', borderRadius: 1, px: 1, minHeight: 36, fontFamily: 'inherit', fontSize: '0.8125rem', fontWeight: 600, overflow: 'hidden', whiteSpace: 'nowrap' }}>
               {c.nom}
             </ButtonBase>

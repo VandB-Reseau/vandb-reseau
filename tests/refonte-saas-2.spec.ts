@@ -50,13 +50,13 @@ test('la page Performance réunit les chiffres, le budget, les clôtures et l’
   await seConnecter(page)
   if (!isMobile) {
     const menu = page.getByRole('navigation', { name: 'Navigation principale' })
-    await menu.getByRole('button', { name: 'Performance' }).click()
+    await menu.getByRole('button', { name: 'Chiffres' }).click()
   } else await page.goto('./#/performance')
   await expect(page).toHaveURL(/#\/performance/)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Performance')
-  const onglets = page.getByRole('tablist', { name: 'Parties de la performance' })
-  // Vague 3 (29A) : un cinquième onglet, le rapport du mois
-  await expect(onglets.getByRole('tab')).toHaveCount(isMobile ? 4 : 5)
+  // Vague 5 (51A) : Performance devient Chiffres, avec un onglet vers les budgets de l'année
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Chiffres')
+  const onglets = page.getByRole('tablist', { name: 'Parties des chiffres' })
+  await expect(onglets.getByRole('tab')).toHaveCount(isMobile ? 5 : 6)
   await expect(onglets.getByRole('tab', { selected: true })).toContainText(isMobile ? 'Magasins' : 'Chiffres des magasins')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-performance.png`, fullPage: !isMobile })

@@ -48,8 +48,8 @@ test('PC : menu clair en quatre rubriques, sans barre noire ; téléphone : barr
   } else {
     await expect(page.getByRole('banner')).toHaveCount(0)
     const menu = page.getByRole('navigation', { name: 'Navigation principale' })
-    for (const r of ['Mon travail', 'Réseau', 'Animation', 'Finances', 'Réglages']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
-    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Santé du parc', /^Infos réseau/, 'Campagnes', /^Demandes/, 'Budgets', 'Performance', 'Équipe', 'Paramètres'])
+    for (const r of ['Mon travail', 'Réseau', 'Animation']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
+    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Chiffres', /^Actualités/, 'Campagnes', /^Demandes/])
     // Vague 3 (27A) : sondages, formations et réunions dans Campagnes › Sondages et rendez-vous
     await expect(menu.getByRole('button', { name: 'Animation réseau' })).toHaveCount(0)
     await page.goto('./#/animation')
@@ -151,13 +151,13 @@ test('accueil : période en tête, actualités visibles dès l’arrivée sur PC
   await page.getByRole('group', { name: 'Période des chiffres' }).getByRole('button', { name: 'Cumul' }).click()
   await expect(page.getByRole('link', { name: /^CA cumulé à fin / })).toBeVisible()
   if (!isMobile) {
-    const actualites = page.getByRole('complementary', { name: 'Actualités du réseau' })
+    const actualites = page.getByRole('region', { name: 'Actualités' })
     const b = (await actualites.boundingBox())!
     expect(b.y).toBeLessThan(page.viewportSize()!.height / 2)
   }
-  // Accueil : titre en capitales (écran « marque ») ; Magasins : casse normale
+  // Vague 5 (52A) : l'accueil reprend la casse normale des autres écrans
   const casse = () => page.getByRole('heading', { level: 1 }).first().evaluate((e) => getComputedStyle(e).textTransform)
-  expect(await casse()).toBe('uppercase')
+  expect(await casse()).toBe('none')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-refonte-accueil.png` })
   await page.goto('./#/magasins')

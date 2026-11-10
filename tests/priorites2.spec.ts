@@ -122,13 +122,13 @@ test('une communication à la une passe en tête, sur le canal Réseau V and B c
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-communication-a-la-une.png`, fullPage: !isMobile })
   await page.goto('./#/')
-  await expect(page.getByText(/^À la une jusqu’au/).first()).toBeVisible()
+  await expect(page.getByRole('article', { name: 'À la une : Foire aux vins' })).toBeVisible()
 })
 
 test('le Directeur met une communication à la une jusqu’à une date', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { communications: communications(), ecritures })
-  await page.goto('./#/infos')
+  await page.goto('./#/infos?vue=communications')
   await page.getByRole('button', { name: 'Modifier la communication Nouvelle gamme' }).click()
   const fenetre = page.getByRole('dialog')
   const jour = new Date(Date.now() + 7 * 86400000).toLocaleDateString('sv-SE')

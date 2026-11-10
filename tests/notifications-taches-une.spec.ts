@@ -48,7 +48,7 @@ test('une communication mise à la une prévient les franchisés, une seule fois
   ]
   await seConnecter(page, { communications })
   const appels = await fonctionSimulee(page)
-  await page.goto('./#/infos')
+  await page.goto('./#/infos?vue=communications')
   await page.getByRole('button', { name: 'Modifier la communication Nouvelle gamme' }).click()
   const jour = new Date(Date.now() + 7 * 86400000).toLocaleDateString('sv-SE')
   await page.getByRole('dialog').getByLabel('À la une jusqu’au').fill(jour)

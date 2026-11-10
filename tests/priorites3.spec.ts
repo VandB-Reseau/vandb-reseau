@@ -13,21 +13,7 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
 })
 
-// Refonte (Joseph, 09/11/2026, 7A) : « À traiter » au centre ; la colonne des actualités, à droite, reste à l'écran
-test('accueil sur PC : les actualités restent visibles pendant qu’on fait défiler « À traiter »', async ({ page, isMobile }) => {
-  test.skip(isMobile, 'Colonne de droite du PC')
-  await seConnecter(page)
-  const colonne = page.getByRole('complementary', { name: 'Actualités du réseau' })
-  await expect(colonne).toBeVisible()
-  // La page doit dépasser l'écran
-  await page.evaluate(() => { (document.querySelector('[aria-label="À traiter"]') as HTMLElement).style.paddingBottom = '1500px' })
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200)
-  const b = (await colonne.boundingBox())!
-  expect(b.y).toBeGreaterThanOrEqual(0)
-  expect(b.y).toBeLessThan(120)
-  expect(b.y + b.height).toBeLessThanOrEqual(page.viewportSize()!.height)
-})
+// Refonte vague 5 (43A) : le fil des actualités repasse au centre ; la colonne collante des actualités (7A) n'existe plus
 
 test('Magasins sur téléphone : les filtres actifs restent visibles en puces, une croix pour chacun', async ({ page, isMobile }, info) => {
   test.skip(!isMobile, 'Les filtres sont repliés sur téléphone')

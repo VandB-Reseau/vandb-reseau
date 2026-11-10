@@ -16,7 +16,10 @@ test('Réglages en deux entrées : Équipe, Paramètres', async ({ page, isMobil
   await page.goto('./#/parametres/reglages')
   if (!isMobile) {
     const menu = page.getByRole('navigation', { name: 'Navigation principale' })
-    for (const l of ['Équipe', 'Paramètres']) await expect(menu.getByRole('button', { name: l, exact: true })).toBeVisible()
+    // Vague 5 (51A) : Équipe et Paramètres dans le menu du compte
+    await page.getByRole('button', { name: 'Mon compte' }).click()
+    for (const l of ['Équipe', 'Paramètres']) await expect(page.getByRole('menuitem', { name: l, exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
     await expect(menu.getByRole('button', { name: 'Évolution du parc', exact: true })).toHaveCount(0)
     for (const l of ['Charge des Coachs', 'Collaborateurs', 'Franchisés', 'Import et export']) await expect(menu.getByRole('button', { name: l, exact: true })).toHaveCount(0)
   }
@@ -52,7 +55,7 @@ test('Campagnes passent dans Santé du parc, Bonnes pratiques dans Infos réseau
   // Bonnes pratiques : Infos réseau (sprint 22, S1)
   await page.goto('./#/visites?vue=pratiques')
   await expect(page).toHaveURL(/#\/infos\?vue=pratiques$/)
-  await expect(page.getByRole('heading', { name: 'Infos réseau', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Actualités', level: 1 })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-echanges-pratiques.png`, fullPage: !isMobile })
 })
