@@ -14,13 +14,13 @@ const pages = [
 for (const p of pages) test(`barre d’outils alignée : ${p.url}`, async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#' + p.url)
-  const recherche = 'enTitre' in p && !isMobile ? page.getByRole('heading', { level: 1 }) : page.getByLabel(p.recherche)
+  const recherche = 'enTitre' in p ? page.getByRole('heading', { level: 1 }) : page.getByLabel(p.recherche)
   const action = page.getByRole('button', { name: p.action, exact: true }).first()
   await expect(action).toBeVisible()
   const r = (await recherche.boundingBox())!
   const a = (await action.boundingBox())!
   // Même ligne que la recherche (ou que le titre), 48 px de haut au moins
-  expect(Math.abs((a.y + a.height / 2) - (r.y + r.height / 2))).toBeLessThanOrEqual('enTitre' in p && !isMobile ? 24 : 6)
+  expect(Math.abs((a.y + a.height / 2) - (r.y + r.height / 2))).toBeLessThanOrEqual('enTitre' in p ? 24 : 6)
   expect(a.height).toBeGreaterThanOrEqual(48)
   if (isMobile) {
     // Sur téléphone, l'action est un bouton rond sans texte

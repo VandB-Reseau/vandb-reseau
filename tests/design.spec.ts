@@ -21,11 +21,11 @@ test('le bouton Créer ouvre sous lui un menu : visite, tâche, message, bonne p
   await seConnecter(page)
   // Téléphone : « + » dans l'en-tête, la barre du bas garde cinq onglets (Joseph, 21/10/2026)
   const creer = page.getByRole('banner').getByRole('button', { name: 'Créer' })
-  if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Visites', /Messages$/, /Tâches$/, /^Santé/])
+  if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
   const bouton = (await creer.boundingBox())!
   await creer.click()
   const d = page.getByRole('menu', { name: 'Créer' })
-  await expect(d.getByRole('menuitem')).toHaveText(['Visite', 'Tâche', 'Message', 'Bonne pratique', 'Événement'])
+  await expect(d.getByRole('menuitem')).toHaveText(['Visite', 'Appel', 'Note', 'Tâche', 'Photo', 'Message', 'Événement'])
   // Menu déroulant collé sous le bouton, pas de fenêtre au centre (Joseph, 22/10/2026)
   await expect(page.getByRole('dialog')).toHaveCount(0)
   const menu = (await d.boundingBox())!

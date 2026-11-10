@@ -7,8 +7,9 @@ import { zonesTropPetites } from './pilotage/supabase-simule'
 // et actions en masse (16A), « Annuler » après une action (17A). Données fictives uniquement.
 
 const DIRECTEUR = 'Dominique DIRECTION'
+// Vague 4 (38B) : plus de notification « en retard », la tâche confiée récemment reste dans la cloche
 const actions = { 'Brest Test': [
-  { id: 'l1', action: 'Commander la nouvelle PLV', porteur: DIRECTEUR, echeance: '2026-10-01', creeLe: '2026-09-25', auteur: 'Noé MODELE' },
+  { id: 'l1', action: 'Commander la nouvelle PLV', porteur: DIRECTEUR, echeance: '2026-10-01', creeLe: '2026-10-20', auteur: 'Noé MODELE' },
 ] }
 
 test.beforeEach(async ({ page }) => {
