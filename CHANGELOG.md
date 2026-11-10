@@ -9,6 +9,21 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Refonte façon SaaS, vague 6 : messagerie, budget et suivi (Joseph, 10/11/2026, choix 57 à 78 sauf 59, 61, 65, 66, 67,
+  69, 70, 78). Messages : deux fils en onglets (Avec le franchisé, Équipe seule) avec « Visible par » au-dessus de la
+  saisie ; répondre en citant, réactions Vu / Merci / D'accord, modification par l'auteur dans les 15 minutes, messages
+  épinglés ; un message du franchisé devient une demande au siège suivie dans Demandes ; message à plusieurs magasins
+  avec le prénom du franchisé inséré ; vues Tout, Non lus, Mentions, Demandes et recherche dans les messages (aussi par
+  Ctrl K) ; contexte du magasin à droite, fichiers et photos, membres, raccourcis clavier ; brouillon gardé par
+  conversation ; la conversation d'un magasin s'ouvre sur le côté depuis la fiche et la visite. Budget : points
+  d'attention à justifier avant l'envoi (trésorerie, EBE, marge face à la proposition du siège, frais de personnel hors
+  fourchette, échéances, CA), seuils réglables dans Paramètres ; avancement des thèmes et prochaine étape ; sommaire de
+  Visualiser ; Budget communication annuel proposé en part du CA HT (taux du réseau dans Paramètres, 0 par défaut :
+  aucun budget ne bouge seul). Chiffres en cinq puces et « Clôturer le mois » en action ; causes des écarts du mois
+  (météo, travaux, rupture, prix, personnel, événement, autre) saisies à la clôture, lues dans la synthèse, le rapport
+  du mois et la vue du réseau. Téléphone : la cloche se referme, un seul « + » sur Magasins, menu du compte en
+  rubriques. — Base : `0045_messagerie_vague6`
+
 - Refonte façon SaaS, vague 5 : l'actualité au cœur des accueils (Joseph, 10/11/2026, choix 43A à 56A sauf 47).
   Accueil de l'équipe : À la une en tête, le fil du réseau au centre, « Aujourd'hui » (ma journée, À traiter, mes
   tâches, la semaine, les contrats) à droite. Accueil du franchisé : À la une, le fil au centre ; mon magasin, À faire

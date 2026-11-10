@@ -137,7 +137,8 @@ formations du réseau.
 
 | Table | Contenu |
 | --- | --- |
-| `messages` | Messages : à deux (`destinataire`) ; groupe d'un magasin (`store`, avec `equipe` = fil « Équipe seule », jamais lu par le franchisé) ; groupe libre (`groupe`, et `destinataire` = `groupe:<id>` pour qu'une ancienne version de `messagerie` ne le montre qu'à son auteur, 0018) ; `pieces` = fichiers joints |
+| `messages` | Messages : à deux (`destinataire`) ; groupe d'un magasin (`store`, avec `equipe` = fil « Équipe seule », jamais lu par le franchisé) ; groupe libre (`groupe`, et `destinataire` = `groupe:<id>` pour qu'une ancienne version de `messagerie` ne le montre qu'à son auteur, 0018) ; `pieces` = fichiers joints ; depuis 0045 : `repond_a` (message cité, même fil), `modifie_le` (modification par l'auteur dans les 15 minutes), `epingle_le` et `epingle_par` (épingle de la conversation), `demande` (demande au siège née du message), `lot` partagé par un envoi à plusieurs magasins |
+| `messages_reactions` | Réactions courtes (0045) : message, compte, nom, `vu`, `merci` ou `accord` ; une par compte et par réaction. Aucun accès direct |
 | `messages_lus` | Dernière lecture de chaque compte, par magasin, personne ou groupe (`groupe:<id>`) et par sujet (`messages`, `visites`, `equipe` pour « Équipe seule ») |
 | `groupes` | Groupes libres (0018) : nom, `membres` (clés des personnes : `directeur`, `rr:<id>`, `coach:<nom>`, `franchise:<nom>`), créateur. Créés par le Directeur ou un RR ; un RR n'invite que l'équipe et les franchisés de ses magasins |
 | `communications` | Communications du réseau ; `magasins` vide = tout le réseau ; `html` = version mise en forme ; `a_la_une` = en tête jusqu'à ce jour inclus (0014) |
@@ -244,6 +245,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Mot avant la visite | `ecrire_mot_franchise` (franchisé, visite à venir de son magasin, hors appels et points) ; `espace_franchise` renvoie la clé `mots_franchise` depuis 0038 | 0038 |
 | Messagerie | `messagerie`, `envoyer_message`, `envoyer_a`, `marquer_lu`, `marquer_lu_personne`, `supprimer_message`, `renommer_magasin_messages`, `pieces_propres` | 0006 |
 | Échanges en groupe | `peut_inviter`, `creer_groupe`, `modifier_groupe`, `supprimer_groupe`, `quitter_groupe`, `peut_ecrire_fil`, `envoyer_fil`, `marquer_lu_fil`, `compte_lit_magasin` (interne) ; `messagerie` renvoie aussi les groupes (version 4) | 0018 |
+| Gestes sur les messages | `ecrire_fil`, `ecrire_a` (envoi avec citation `p_repond_a`, mêmes contrôles qu'`envoyer_fil` et `envoyer_a`), `modifier_message` (auteur, 15 minutes), `epingler_message` (toute personne qui lit le message), `reagir_message`, `peut_lire_message` et `prenom_franchise` (internes) ; `demande_depuis_message` (équipe, message d'un magasin de son périmètre) ; `ecrire_magasins` (équipe, ses magasins, « {prénom} » remplacé) ; `messagerie` en version 5 (nouvelles colonnes et réactions) | 0045 |
 | Communications | `communications`, `communication_visible`, `publier_communication`, `supprimer_communication`, `basculer_pouce_communication`, `commenter_communication`, `supprimer_commentaire_communication` | 0008 |
 | Lecture des communications | `lire_communications` (franchisé), `lectures_communications` (Directeur, Responsable Régional pour ses magasins) | 0013 |
 | Communication à la une | `mettre_a_la_une` (auteur ou Directeur, date entre aujourd'hui et un an), `a_la_une` (communications visibles encore à la une) | 0014 |
