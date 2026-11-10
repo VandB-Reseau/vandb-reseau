@@ -88,6 +88,8 @@ Rubriques de `suivi_magasins` (contrainte `suivi_magasins_cle_check`) :
 
 | `plan` | Plan d'action du magasin (0043, refonte vague 4) : 3 priorités au plus, liste de `{ id, titre, objectif, statut, bilan, creeLe, par, closLe, revueLe }` ; `objectif` = numéro d'un objectif chiffré du magasin ; `statut` = `active`, `atteinte` ou `abandonnee`. Les tâches s'y rattachent par leur champ `priorite`. Le franchisé lit titres et statuts par `plans_franchise()`, jamais l'objectif | `plans_magasins` |
 
+| `integration` | Parcours d'intégration du magasin (0044, refonte vague 5) : `{ etapes: { <id d'étape>: { faite, par } } }`, `faite` = AAAA-MM-JJ. Les étapes elles-mêmes sont la clé `parcours_integration` d'`app_config`. Le franchisé le lit par `animation_franchise()` | `integration_magasins` |
+
 Champs ajoutés aux tâches (rubrique `actions` et plans d'action des visites, sans migration de structure, 0043) : `statut`
 (`en_cours`, `bloquee` ; absent = à faire), `raison` (ce qui bloque, 300 caractères), `priorite` (numéro d'une priorité
 du plan). Remarques internes d'une visite (Joseph, 10/11/2026) : rubrique `notes`, champs `visite` (numéro de la visite)
@@ -141,6 +143,7 @@ formations du réseau.
 | `communications` | Communications du réseau ; `magasins` vide = tout le réseau ; `html` = version mise en forme ; `a_la_une` = en tête jusqu'à ce jour inclus (0014) |
 | `communications_pouces`, `communications_commentaires` | J'aime et commentaires des communications |
 | `communications_lectures` | Première lecture d'une communication par chaque compte franchisé |
+| `communications_connaissances` | « J'ai pris connaissance » (0044) : communication, compte franchisé, date ; une seule fois. Demandée par la colonne `communications.connaissance` (posée par l'auteur ou le Directeur). Aucun accès direct |
 | `pratiques_lectures` | Première fois qu'un compte franchisé voit une bonne pratique (identifiant de la pratique dans `bonnes_pratiques`), 0023. Aucun accès direct |
 | `reunions_presences` | Réponse du franchisé (`present`/`absent`) et pointage de l'équipe pour chaque magasin invité à un événement, 0025. Aucun accès direct |
 | `questions_eclair` | Sondages : de 1 à 5 questions (`questions`, chacune oui/non, choix ou note ; 0029), destinataires (`cible` : `franchises`, `equipe`, `tous` ; 0029), magasins visés (vide = tout le réseau), date de fin, anonymat, rôle de l'auteur, 0026. Aucun accès direct |
@@ -213,6 +216,9 @@ Aucun e-mail n'est envoyé par Supabase : le Directeur transmet les identifiants
 | `deploiements` | Thématiques suivies (état par magasin dans `suivi_magasins`) | objet `{ thematiques }` |
 | `derniere_sauvegarde` | Date de la dernière sauvegarde complète | texte |
 | `rituels` | Rituels d'animation suivis (vague 4, 33A) : `[{ type, actif, libelle }]`, `type` = `visite`, `entretien`, `reunion` ; réglés par le Directeur, sans migration | tableau |
+| `temps_forts` | Temps forts de l'année (vague 5, 48A) : `[{ id, nom, debut, fin, annonce, detail }]`, `annonce` = jours avant le début (45 par défaut) ; réglés par le Directeur ; le franchisé les lit par `animation_franchise()` (0044) | tableau |
+| `parcours_integration` | Étapes du parcours des 6 premiers mois (vague 5, 50A) : `[{ id, libelle, jour, responsable }]`, `jour` = J+N après l'ouverture, `responsable` = `coach`, `rr`, `directeur`, `franchise` ; absent = parcours par défaut de l'app ; réglé par le Directeur | tableau |
+| `campagnes` (champs ajoutés, vague 5) | Chaque campagne peut porter `tempsFort` (identifiant d'un temps fort), `jalons` (`[{ id, type, libelle, date }]`, `type` = `commande_debut`, `commande_fin`, `reception`, `installation`, `facturation`, `autre`) et `univers` (`cave`, `bar` ; absent = tout le magasin) mesuré par l'effet en caisse ; sans migration | — |
 | `demandes_themes` | Interlocuteur de chaque thème des demandes des franchisés (vague 4, 37A) : thème → personne ou service ; réglé par le Directeur, sans migration | objet |
 
 Clés de l'ancienne app encore en base (constaté le 21/10/2026) mais plus lues : `contacts`, `col_state`,
@@ -230,6 +236,8 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Accès de l'équipe | `ouvrir_acces_equipe`, `couper_acces_equipe`, `renommer_acces_coach`, `liste_acces_equipe` | 0005 |
 | Espace franchisé | `espace_franchise` (sans les tâches de l'équipe seule depuis 0019, avec `mots_franchise` depuis 0038), `reperes_reseau` (interne : médiane, quart supérieur et, depuis 0020, quart inférieur `quartBas`), `reperes_equipe` | 0004, 0005, 0019, 0020, 0038 |
 | Actions du franchisé | `franchise_du_magasin`, `ajouter_action_franchise`, `marquer_action_franchise` (tâche de l'équipe seule introuvable, 0019), `statut_action_franchise` (À faire, En cours, Bloquée avec sa raison, 0043) | 0007, 0019, 0043 |
+| Prise de connaissance | `demander_connaissance(p_id, p_oui)` (Directeur, ou RR auteur), `prendre_connaissance(p_id)` (franchisé, communication visible qui la demande ; vaut lecture), `connaissances()` (franchisé : sa propre date ; équipe : franchisés de ses magasins qui l'ont donnée et ceux qui manquent ; Directeur : tous) | 0044 |
+| Animation du franchisé | `animation_franchise()` (franchisé : temps forts, parcours d'intégration et son suivi pour ses magasins) | 0044 |
 | Plan d'action du magasin | `plans_franchise()` (franchisé : titres, statuts et bilans des priorités de ses magasins, sans l'objectif chiffré) | 0043 |
 | Entretiens RR–Coach | `coachs_encadres()`, `mon_coach()` (internes) ; `remarque_entretien(p_id, p_texte)` (le Coach, ses entretiens) | 0043 |
 | Demandes des franchisés | `creer_demande`, `mes_demandes`, `completer_demande` (franchisé, ses magasins, 20 demandes par jour au plus) ; `repondre_demande` (équipe, ses magasins ; la base pose l'auteur, la première réponse et la résolution) | 0043 |

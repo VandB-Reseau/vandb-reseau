@@ -1,5 +1,6 @@
-// Onglet Infos réseau (Joseph, 22/10/2026) : toutes les communications et toutes les bonnes pratiques réunies,
-// avec une recherche et des filtres communs. PC : deux colonnes côte à côte ; téléphone : deux onglets.
+// Actualités (refonte vague 5, Joseph 10/11/2026, 45A ; avant « Infos réseau ») : un seul fil typé (visites, bonnes
+// pratiques, communications, temps forts et campagnes) avec ses filtres, puis les communications, la bibliothèque des
+// bonnes pratiques et, pour l'équipe, les sondages. Mêmes onglets sur PC et sur téléphone.
 // Même onglet pour le franchisé (Joseph, 23/10/2026), en lecture : il aime, commente et propose ses bonnes pratiques ;
 // ses sondages restent sur son accueil.
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -7,8 +8,6 @@ import { useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Snackbar from '@mui/material/Snackbar'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import { PageHeader } from '../components/PageHeader'
@@ -29,6 +28,14 @@ import { MesPropositions, PropositionsARelire } from '../components/Propositions
 import { useApercu } from '../auth/Apercu'
 import { useAuth } from '../auth/AuthContext'
 import QuizOutlined from '@mui/icons-material/QuizOutlined'
+import DynamicFeedOutlined from '@mui/icons-material/DynamicFeedOutlined'
+import { FilActivite } from './Accueil'
+import { filDu } from '../data/fil'
+import { useCommunicationsDuFil } from '../data/communications'
+import { useReactionsPratiques } from '../data/reactionsPratiques'
+import { useReactionsVisites } from '../data/reactionsVisites'
+import { magasinsDu, perimetreDuProfil } from '../data/perimetre'
+import { lienFiche } from '../lib/format'
 
 const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr')
 type Periode = 'tout' | '3' | '12'
@@ -38,12 +45,15 @@ const depuis = (p: Periode) => {
   const d = new Date(); d.setMonth(d.getMonth() - Number(p))
   return d.toISOString().slice(0, 10)
 }
-type Vue = 'communications' | 'pratiques' | 'questions'
+type Vue = 'fil' | 'communications' | 'pratiques' | 'questions'
 
 function Contenu({ reseau }: { reseau: Reseau }) {
-  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const [params] = useSearchParams()
-  const [vue, setVue] = useState<Vue>(params.get('vue') === 'pratiques' ? 'pratiques' : params.get('vue') === 'sondages' ? 'questions' : 'communications')
+  const demandee = params.get('vue')
+  const vueDemandee: Vue = demandee === 'pratiques' ? 'pratiques' : demandee === 'sondages' ? 'questions' : demandee === 'communications' || params.get('c') ? 'communications' : 'fil'
+  const [vue, setVue] = useState<Vue>(vueDemandee)
+  // Un lien vers une autre partie (notification, fil) change l'onglet même si la page est déjà ouverte
+  useEffect(() => { setVue(vueDemandee) }, [vueDemandee])
   // Sondages (sprint 22, A3, puis 23/10/2026) : toute l'équipe y répond, le Directeur et les RR en posent
   const { profil } = useAuth()
   const poseSondages = profil?.role === 'directeur' || profil?.role === 'rr'
@@ -80,6 +90,17 @@ function Contenu({ reseau }: { reseau: Reseau }) {
   const effacer = () => { setRecherche(''); setMagasins([]); setThemes([]); setPeriode('tout') }
 
   const communications = <PageCommunications integre filtre={filtreCommunication} lectureSeule={!!apercu} />
+  // Le fil : les magasins suivis (le franchisé, les siens), les liens restent dans son espace
+  const duFil = useCommunicationsDuFil()
+  const reactionsPratiques = useReactionsPratiques()
+  const reactionsVisites = useReactionsVisites()
+  const elements = useMemo(() => {
+    const suivis = franchise ? reseau.magasins : magasinsDu(reseau, perimetreDuProfil(profil) ?? { type: 'reseau' as const })
+    const l = filDu(reseau, new Set(suivis.map((m) => m.nom)), null, 120, duFil.liste, true, true, !franchise)
+    return franchise ? l.map((e) => (e.genre === 'pratique' ? { ...e, lien: '/infos?vue=pratiques' } : e.genre === 'animation' ? { ...e, lien: suivis[0] ? `${lienFiche(suivis[0].nom)}?vue=campagnes` : '/' } : e)) : l
+  }, [reseau, franchise, profil, duFil.liste])
+  const fil = <FilActivite elements={elements} jour={reseau.jour} sansMagasin={franchise && reseau.magasins.length === 1} titre="Fil du réseau" communications={duFil}
+    reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
   const pratiques = franchise ? <>
     {!apercu && <MesPropositions reseau={reseau} />}
     <VuePratiques integre reseau={reseau} filtre={filtrePratique} />
@@ -90,28 +111,27 @@ function Contenu({ reseau }: { reseau: Reseau }) {
   </>
   return (
     <>
-      <PageHeader titre="Infos réseau" />
-      {!surPC && <Onglets valeur={vue} onChange={setVue} libelle="Infos réseau" rubriques={[
+      <PageHeader titre="Actualités" />
+      <Onglets valeur={vue} onChange={setVue} libelle="Actualités" rubriques={[
+        { vue: 'fil', libelle: 'Fil', icone: <DynamicFeedOutlined /> },
         { vue: 'communications', libelle: 'Communications', icone: <CampaignOutlined /> },
         { vue: 'pratiques', libelle: 'Bonnes pratiques', icone: <TipsAndUpdatesOutlined /> },
         ...(franchise ? [] : [{ vue: 'questions' as const, libelle: 'Sondages', icone: <QuizOutlined /> }]),
-      ]} />}
-      <RechercheFiltres actifs={actifs} recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Titre, texte, magasin, auteur" libelle="Rechercher une communication ou une pratique" />}>
-        <FiltreMenu libelle="Magasin" choisis={magasins} onChange={setMagasins} options={optionsMagasins} />
-        <FiltreMenu libelle="Thème" choisis={themes} onChange={setThemes} options={optionsThemes} />
-        <FiltreMenu libelle="Période" unique choisis={[periode]} onChange={(v) => setPeriode((v[0] as Periode) ?? 'tout')} options={periodes} />
-        {(actifs > 0 || recherche) && <Button onClick={effacer} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
-      </RechercheFiltres>
-      {surPC && !franchise && <Box sx={{ mb: 3 }}>{sondages}</Box>}
-      {surPC ? (
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 3, alignItems: 'start' }}>
-          <Box component="section" aria-label="Communications" sx={{ minWidth: 0 }}>{communications}</Box>
-          <Box component="section" aria-label="Bonnes pratiques" sx={{ minWidth: 0 }}>{pratiques}</Box>
-        </Box>
-      ) : (
-        vue === 'questions' && !franchise ? sondages
-          : <Box component="section" aria-label={vue === 'communications' ? 'Communications' : 'Bonnes pratiques'}>{vue === 'communications' ? communications : pratiques}</Box>
+      ]} />
+      {(vue === 'communications' || vue === 'pratiques') && (
+        <RechercheFiltres actifs={actifs} recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Titre, texte, magasin, auteur" libelle={vue === 'communications' ? 'Rechercher une communication' : 'Rechercher une bonne pratique'} />}>
+          <FiltreMenu libelle="Magasin" choisis={magasins} onChange={setMagasins} options={optionsMagasins} />
+          {vue === 'pratiques' && <FiltreMenu libelle="Thème" choisis={themes} onChange={setThemes} options={optionsThemes} />}
+          <FiltreMenu libelle="Période" unique choisis={[periode]} onChange={(v) => setPeriode((v[0] as Periode) ?? 'tout')} options={periodes} />
+          {(actifs > 0 || recherche) && <Button onClick={effacer} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
+        </RechercheFiltres>
       )}
+      <Box sx={{ maxWidth: 760 }}>
+        {vue === 'fil' && fil}
+        {vue === 'questions' && !franchise && sondages}
+        {vue === 'communications' && <Box component="section" aria-label="Communications">{communications}</Box>}
+        {vue === 'pratiques' && <Box component="section" aria-label="Bonnes pratiques">{pratiques}</Box>}
+      </Box>
       {pratique !== undefined && <DialogPratique reseau={reseau} pratique={pratique} onFermer={(m) => { setPratique(undefined); if (m) setMessage(m) }} />}
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>

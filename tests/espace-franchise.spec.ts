@@ -32,7 +32,7 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   await seConnecterFranchise(page, { ecritures })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Mes magasins', 'Budget', /Messages$/, /Tâches$/, /Infos$/] : ['Accueil', 'Mes magasins', 'Mon budget', /Messages$/, /Tâches$/, /Mes demandes$/, /Infos réseau$/])
+  await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Magasin', /Messages$/, /Tâches$/, /Plus$/] : ['Accueil', 'Mes magasins', 'Mon budget', /Messages$/, /Tâches$/, /Mes demandes$/, /Actualités$/])
   await expect(page.getByText('Paramètres')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Rechercher' })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button')).toHaveText(['Tous mes magasins', 'Annecy Test', 'Rennes Test'])
@@ -84,7 +84,7 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
 
 test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu complet', async ({ page, isMobile }, info) => {
   await seConnecterFranchise(page)
-  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Mes magasins' }).click()
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: isMobile ? 'Magasin' : 'Mes magasins', exact: true }).click()
   await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Annecy Test', 'Rennes Test'])
   await page.getByRole('link', { name: /Annecy Test/ }).click()
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
@@ -117,10 +117,10 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await expect(page).toHaveURL(/#\/echanges\/magasin\/Annecy%20Test$/)
 })
 
-test('un franchisé d’un seul magasin arrive sur sa fiche par l’onglet Mes magasins ; ses bonnes pratiques ont leur onglet', async ({ page }, info) => {
+test('un franchisé d’un seul magasin arrive sur sa fiche par l’onglet Mes magasins ; ses bonnes pratiques ont leur onglet', async ({ page, isMobile }, info) => {
   await seConnecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, espace: { ...espace, pratiques: [...espace.pratiques,
     { id: 'bp2', magasin: 'Annecy Test', date: '2026-09-20', titre: 'Coffrets à composer', theme: 'Vente additionnelle', texte: 'Le client choisit trois bouteilles.', par: 'Hugo FICTIF', photos: [], reprises: [] }] } })
-  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Mes magasins' }).click()
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: isMobile ? 'Magasin' : 'Mes magasins', exact: true }).click()
   await expect(page).toHaveURL(/#\/magasins\/Annecy%20Test$/)
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
   await expect(onglets).toBeVisible()
@@ -139,8 +139,8 @@ test('un franchisé ne peut ouvrir ni un autre magasin ni les écrans de l’éq
     await page.goto(`./#${ecran}`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   }
-  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^Infos( réseau)?$/ }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Infos réseau')
+  await page.goto('./#/infos')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Actualités')
   await ouvrirInfos(page, 'Bonnes pratiques')
   await expect(page.getByRole('heading', { name: 'Dégustation du vendredi' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Modifier|Ajouter/ })).toHaveCount(0)
@@ -242,14 +242,14 @@ test('la connexion d’un franchisé n’affiche jamais l’app de l’équipe, 
   expect(vus).toEqual([])
 })
 
-test('l’accueil du franchisé est le tableau de bord de son magasin : à faire au centre, visites à droite', async ({ page, isMobile }, info) => {
+test('l’accueil du franchisé : le fil au centre, à faire et visites à droite', async ({ page, isMobile }, info) => {
   await seConnecterFranchise(page)
   await page.getByRole('button', { name: 'Annecy Test', exact: true }).click()
   const aFaire = page.getByRole('region', { name: 'À faire' })
   await expect(aFaire.getByRole('link')).toHaveText([/Clôturer septembre 2026/, /Relire mon budget/])
   if (!isMobile) {
-    // Chiffres au-dessus, à faire à gauche, visites à droite
-    const [chiffres, gauche, droite] = await Promise.all([page.getByRole('region', { name: 'Mes chiffres' }), aFaire, page.getByRole('region', { name: 'Visites et audits' })].map(async (l) => (await l.boundingBox())!))
+    // Vague 5 (44A) : chiffres au-dessus, le fil à gauche, à faire à droite
+    const [chiffres, gauche, droite] = await Promise.all([page.getByRole('region', { name: 'Mes chiffres' }), page.getByRole('region', { name: 'Actualités' }), aFaire].map(async (l) => (await l.boundingBox())!))
     expect(chiffres.y + chiffres.height).toBeLessThanOrEqual(gauche.y)
     expect(droite.x).toBeGreaterThan(gauche.x + gauche.width)
   } else for (const l of await aFaire.getByRole('link').all()) expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(48)

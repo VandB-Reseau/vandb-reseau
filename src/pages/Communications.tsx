@@ -4,6 +4,10 @@ import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
 import Snackbar from '@mui/material/Snackbar'
 import TextField from '@mui/material/TextField'
+import Button from '@mui/material/Button'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Switch from '@mui/material/Switch'
+import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
@@ -27,8 +31,8 @@ import { estImage, type Piece } from '../lib/pieces'
 import { HTML_MAX, nettoyerHtml, texteDuHtml } from '../lib/html'
 import { useSearchParams } from 'react-router-dom'
 import {
-  aLaUneDabord, basculerPouce, chargerCommunications, chargerLectures, commenter, communicationsConnues, mettreALaUne, noterLues, messageCommunication, publierCommunication, retenirCommunications, supprimerCommentaire, supprimerCommunication,
-  type Communication, type Communications, type Lecture,
+  aLaUneDabord, basculerPouce, demanderConnaissance, prendreConnaissance, useConnaissances, MAX_CONNAISSANCES_MOIS, chargerCommunications, chargerLectures, commenter, communicationsConnues, mettreALaUne, noterLues, messageCommunication, publierCommunication, retenirCommunications, supprimerCommentaire, supprimerCommunication,
+  type Communication, type Communications, type Lecture, type Connaissance,
 } from '../data/communications'
 import { notifier, notifierContenu } from '../lib/notifications'
 
@@ -45,8 +49,8 @@ interface Edition { c: Communication | null; brouillon?: Communication; erreur?:
 
 // La fenêtre se ferme dès l'enregistrement : la page affiche le résultat et l'envoie à la base ;
 // si la base refuse, la fenêtre revient avec ce qui avait été saisi
-function DialogCommunication({ edition: { c, brouillon, erreur }, auteur, publier, retirer, onFermer }: {
-  edition: Edition; auteur: Auteur; onFermer: () => void
+function DialogCommunication({ edition: { c, brouillon, erreur }, auteur, publier, retirer, onFermer, demande = false, demandesDuMois = 0 }: {
+  edition: Edition; auteur: Auteur; onFermer: () => void; demande?: boolean; demandesDuMois?: number
   publier: (b: Communication, envoyer: () => Promise<void>) => void; retirer: (c: Communication) => void
 }) {
   const depart = brouillon ?? c
@@ -58,6 +62,7 @@ function DialogCommunication({ edition: { c, brouillon, erreur }, auteur, publie
   const [pieces, setPieces] = useState<Piece[]>(depart?.pieces.filter((p) => p.chemin !== depart.entete) ?? [])
   const [alerte, setAlerte] = useState('')
   const [une, setUne] = useState(depart?.aLaUne ?? '')
+  const [connaissance, setConnaissance] = useState(demande)
   const changerMode = (m: Mode) => {
     if (m === mode) return
     // Le texte simple devient des paragraphes ; la mise en forme redevient du texte simple
@@ -84,6 +89,7 @@ function DialogCommunication({ edition: { c, brouillon, erreur }, auteur, publie
       }
       // Nouvelle communication : les personnes concernées sont prévenues, à la une ou non
       if (id && !c) notifierContenu('communication', id)
+      if (id && connaissance !== demande) await demanderConnaissance(id, connaissance)
     })
     return ''
   }
@@ -104,6 +110,12 @@ function DialogCommunication({ edition: { c, brouillon, erreur }, auteur, publie
       <ChampPieces pieces={pieces} changer={setPieces} signaler={setAlerte} />
       <TextField type="date" label="À la une jusqu’au" value={une} onChange={(e) => setUne(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: aujourdhui() } }}
         helperText={une ? 'Reste en tête du fil des franchisés jusqu’à ce jour.' : ' '} />
+      <Box>
+        <FormControlLabel control={<Switch checked={connaissance} onChange={(e) => setConnaissance(e.target.checked)} />} label="Demander « J’ai pris connaissance »" sx={{ minHeight: 48 }} />
+        {connaissance && !demande && demandesDuMois >= MAX_CONNAISSANCES_MOIS && (
+          <Typography variant="body2" color="warning.dark">Déjà {demandesDuMois} demandes ce mois-ci : au-delà de {MAX_CONNAISSANCES_MOIS}, les franchisés y prêtent moins attention.</Typography>
+        )}
+      </Box>
       {alerte && <Typography color="error" variant="body2">{alerte}</Typography>}
     </Fenetre>
   )
@@ -129,8 +141,9 @@ export function MarqueUne({ jusquAu }: { jusquAu: string }) {
 }
 
 // Une publication : auteur, titre, texte, pièces jointes, « J'aime » et commentaires
-function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signaler, lecture }: {
+function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signaler, lecture, connaissance, franchise = false, prendre }: {
   c: Communication; moi: string; jour: string; lectureSeule: boolean; modifier?: () => void; apres: () => Promise<void>; signaler: (m: string) => void; lecture?: Lecture
+  connaissance?: Connaissance; franchise?: boolean; prendre?: () => void
 }) {
   const entete = c.entete ? c.pieces.find((p) => p.chemin === c.entete && estImage(p)) ?? null : null
   const cible = c.magasins === null ? 'Tout le réseau' : `${c.magasins.length} magasin${c.magasins.length > 1 ? 's' : ''}`
@@ -152,9 +165,23 @@ function CarteCommunication({ c, moi, jour, lectureSeule, modifier, apres, signa
           : c.texte && <Typography sx={{ mt: 0.5, whiteSpace: 'pre-line' }}>{c.texte}</Typography>}
         <ListePieces pieces={c.pieces.filter((p) => p !== entete)} />
       </Box>
+      {connaissance && franchise && <PriseDeConnaissance k={connaissance} lectureSeule={lectureSeule} prendre={prendre} />}
+      {connaissance && !franchise && <LigneLecture l={{ lus: connaissance.pris.map((p) => p.franchise), nonLus: connaissance.manquants }} verbe={['Prise de connaissance :', 'Pas encore']} icone={<TaskAltOutlined fontSize="small" />} />}
       {lecture && <LigneLecture l={lecture} />}
       <ReactionsCommunication c={c} moi={moi} jour={jour} lectureSeule={lectureSeule} apres={apres} signaler={signaler} />
     </Card>
+  )
+}
+
+// Le franchisé confirme qu'il a pris connaissance (une seule fois, daté)
+export function PriseDeConnaissance({ k, lectureSeule, prendre }: { k: Connaissance; lectureSeule: boolean; prendre?: () => void }) {
+  return (
+    <Box sx={{ px: 2, pt: 1 }}>
+      {k.moi
+        ? <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, minHeight: 48, color: 'success.dark', fontWeight: 600 }}>
+          <TaskAltOutlined fontSize="small" />Pris connaissance le {new Date(k.moi).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}</Typography>
+        : <Button variant="contained" startIcon={<TaskAltOutlined />} disabled={lectureSeule || !prendre} onClick={prendre} sx={{ minHeight: 48 }}>J’ai pris connaissance</Button>}
+    </Box>
   )
 }
 
@@ -177,6 +204,11 @@ export function PageCommunications({ lectureSeule = false, entete, filtre, integ
     setEtat(c); setLectures(l)
   }, [suitLectures])
   useEffect(() => { void charger() }, [charger])
+  const { connaissances, recharger: rechargerConnaissances } = useConnaissances()
+  const estFranchise = profil?.role === 'franchise'
+  const prendre = (id: number) => prendreConnaissance(id).then(() => { setMessage('C’est noté, merci.'); void rechargerConnaissances() }, () => setMessage('La confirmation n’a pas pu partir. Réessayez dans un instant.'))
+  const moisEnCours = new Date().toISOString().slice(0, 7)
+  const demandesDuMois = (etat?.liste ?? []).filter((c) => connaissances?.has(c.id) && c.creeLe.slice(0, 7) === moisEnCours).length
   const changerListe = (f: (l: Communication[]) => Communication[]) => setEtat((e) => {
     if (!e) return e
     const n = { ...e, liste: f(e.liste) }
@@ -187,7 +219,7 @@ export function PageCommunications({ lectureSeule = false, entete, filtre, integ
   const publier = (origine: Communication | null, b: Communication, envoyer: () => Promise<void>) => {
     changerListe((l) => (origine ? l.map((x) => (x.id === origine.id ? b : x)) : [b, ...l]))
     setEdition(null)
-    envoyer().then(() => { setMessage(origine ? 'Communication mise à jour.' : 'Communication publiée.'); void charger() }, (e) => {
+    envoyer().then(() => { setMessage(origine ? 'Communication mise à jour.' : 'Communication publiée.'); void charger(); void rechargerConnaissances() }, (e) => {
       if (origine) remettre(origine); else changerListe((l) => l.filter((x) => x.id !== b.id))
       setEdition({ c: origine, brouillon: b, erreur: messageCommunication(e) })
     })
@@ -219,6 +251,7 @@ export function PageCommunications({ lectureSeule = false, entete, filtre, integ
   const carte = (c: Communication, moi: string) => (
     // Une publication pas encore enregistrée (numéro provisoire) ne se commente ni ne se modifie
     <CarteCommunication key={c.id} c={c} moi={moi} jour={jour} lectureSeule={lectureSeule || c.id < 0} apres={charger} signaler={setMessage} lecture={lectures?.get(c.id)}
+      connaissance={connaissances?.get(c.id)} franchise={estFranchise} prendre={() => prendre(c.id)}
       modifier={peutPublier && c.auteur === moi && c.id > 0 ? () => setEdition({ c }) : undefined} />
   )
   const fenetres = (
@@ -226,7 +259,8 @@ export function PageCommunications({ lectureSeule = false, entete, filtre, integ
       {edition && etat && (
         <DialogCommunication key={edition.brouillon?.id ?? edition.c?.id ?? 0} edition={edition} onFermer={() => setEdition(null)}
           auteur={{ moi: etat.moi, role: etat.role || profil?.role || '', nom: etat.liste.find((x) => x.auteur === etat.moi)?.auteurNom || profil?.nom || '', magasins: profil?.role === 'rr' ? (reseau?.magasins ?? []).map((m) => m.nom) : null }}
-          publier={(b, envoyer) => publier(edition.c, b, envoyer)} retirer={retirer} />
+          publier={(b, envoyer) => publier(edition.c, b, envoyer)} retirer={retirer}
+          demande={!!edition.c && !!connaissances?.has(edition.c.id)} demandesDuMois={demandesDuMois} />
       )}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </>

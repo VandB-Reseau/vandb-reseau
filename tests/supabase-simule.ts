@@ -36,6 +36,8 @@ export interface CommunicationSimulee {
   // Franchisés concernés qui l'ont lue ou pas (script 0013_lectures_communications.sql)
   lus?: string[]; non_lus?: string[]
   a_la_une?: string | null // AAAA-MM-JJ (script 0014_communications_a_la_une.sql)
+  // Prise de connaissance (script 0044_actualites_vague5.sql) : demandée ou non, qui l'a donnée, qui est attendu
+  connaissance?: boolean; pris?: { franchise: string; le: string }[]; attendus?: string[]
 }
 // « J'aime » et commentaires des bonnes pratiques (script 0010_pratiques_reactions.sql), rangés par pratique
 export interface ReactionsPratiquesSimulees { pouces?: Record<string, { user_id: string; nom: string }[]>; commentaires?: Record<string, { id: number; auteur: string; auteur_nom: string; auteur_role: string; texte: string; cree_le: string }[]> }
@@ -178,7 +180,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       const meta = options.appMetadata ?? {}
       const acces: AccesSimule = options.acces ?? (meta.role === 'coach' || meta.role === 'rr' ? { role: String(meta.role), coach: meta.coach as string, rr: meta.rr as string } : { role: 'directeur' })
       if (fn === 'maj_perimetre_equipe') options.perimetreRecu = corps.p_lignes as PerimetreRecu[]
-      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie', 'communications', 'lectures_communications', 'a_la_une', 'reactions_pratiques', 'reactions_visites', 'lectures_pratiques', 'questions_equipe', 'chiffres_mensuels', 'saisie_chiffres_fermee'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
+      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie', 'communications', 'lectures_communications', 'a_la_une', 'reactions_pratiques', 'reactions_visites', 'lectures_pratiques', 'questions_equipe', 'chiffres_mensuels', 'saisie_chiffres_fermee', 'connaissances', 'animation_franchise'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
       // Chiffres mensuels (script 0039_chiffres_caisse.sql) : la caisse passe devant la saisie, mois par mois
       if (fn === 'saisie_chiffres_fermee') return options.chiffresFermes === undefined ? route.fulfill({ status: 404, json: { code: 'PGRST202', message: 'Could not find the function public.saisie_chiffres_fermee' } }) : route.fulfill({ json: options.chiffresFermes })
       if (fn === 'chiffres_mensuels') {
@@ -397,7 +399,14 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         return route.fulfill({ json: { id: tous.length + 1 } })
       }
       // Communications du réseau (script 0008_communications.sql) : le Directeur pour tout le réseau, un RR pour ses magasins
-      if (['communications', 'publier_communication', 'supprimer_communication', 'basculer_pouce_communication', 'commenter_communication', 'supprimer_commentaire_communication', 'lectures_communications', 'lire_communications', 'a_la_une', 'mettre_a_la_une'].includes(fn)) {
+      // Temps forts, parcours et suivi d'intégration des magasins du franchisé (script 0044_actualites_vague5.sql)
+      if (fn === 'animation_franchise') {
+        if (acces.role !== 'franchise') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const lire = (k: string) => (configEcrite.has(k) ? JSON.parse(configEcrite.get(k)!) : undefined)
+        const integration = Object.fromEntries(suiviCourant.filter((l) => l.cle === 'integration' && (acces.magasins ?? []).includes(l.store_name)).map((l) => [l.store_name, l.valeur]))
+        return route.fulfill({ json: { temps_forts: lire('temps_forts') ?? [], parcours_integration: lire('parcours_integration') ?? null, integration } })
+      }
+      if (['communications', 'publier_communication', 'supprimer_communication', 'basculer_pouce_communication', 'commenter_communication', 'supprimer_commentaire_communication', 'lectures_communications', 'lire_communications', 'a_la_une', 'mettre_a_la_une', 'connaissances', 'prendre_connaissance', 'demander_connaissance'].includes(fn)) {
         if (options.communications === null) return absente()
         const liste = (options.communications ??= [])
         const refus = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
@@ -406,10 +415,27 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         const nom = acces.role === 'franchise' ? acces.franchise : acces.role === 'coach' ? acces.coach : acces.role === 'rr' ? configRRFictive.drs.find((d) => d.id === acces.rr)?.name : configRRFictive.directeur.name
         const id = Number(corps.p_id)
         const c = liste.find((x) => x.id === id)
-        if (fn === 'communications') return route.fulfill({ json: { moi: MOI, role: acces.role, liste: structuredClone(liste.filter(visible)).sort((a, b) => b.cree_le.localeCompare(a.cree_le)).map((x) => ({ pouces: [], commentaires: [], pieces: [], ...x, lus: undefined, non_lus: undefined, a_la_une: undefined })) } })
+        if (fn === 'communications') return route.fulfill({ json: { moi: MOI, role: acces.role, liste: structuredClone(liste.filter(visible)).sort((a, b) => b.cree_le.localeCompare(a.cree_le)).map((x) => ({ pouces: [], commentaires: [], pieces: [], ...x, lus: undefined, non_lus: undefined, a_la_une: undefined, connaissance: undefined, pris: undefined, attendus: undefined })) } })
         if (fn === 'a_la_une') {
           const jour = new Date().toLocaleDateString('sv-SE')
           return route.fulfill({ json: liste.filter((x) => visible(x) && x.a_la_une && x.a_la_une >= jour).map((x) => ({ id: x.id, jusqu_au: x.a_la_une })) })
+        }
+        if (fn === 'connaissances') {
+          return route.fulfill({ json: liste.filter((x) => visible(x) && x.connaissance).map((x) => {
+            const moi = (x.pris ?? []).find((k) => k.franchise === acces.franchise)?.le ?? null
+            if (acces.role === 'franchise') return { id: x.id, moi, pris: [], manquants: [] }
+            return { id: x.id, moi: null, pris: x.pris ?? [], manquants: (x.attendus ?? []).filter((n) => !(x.pris ?? []).some((k) => k.franchise === n)) }
+          }) })
+        }
+        if (fn === 'demander_connaissance') {
+          if (!['directeur', 'rr'].includes(acces.role) || !c || !(c.auteur === MOI || acces.role === 'directeur')) return refus()
+          c.connaissance = !!corps.p_oui
+          return route.fulfill({ status: 200, json: null })
+        }
+        if (fn === 'prendre_connaissance') {
+          if (acces.role !== 'franchise' || !c || !visible(c) || !c.connaissance) return refus()
+          if (!(c.pris ?? []).some((k) => k.franchise === acces.franchise)) c.pris = [...(c.pris ?? []), { franchise: acces.franchise ?? '', le: new Date().toISOString() }]
+          return route.fulfill({ status: 200, json: null })
         }
         if (fn === 'mettre_a_la_une') {
           if (!['directeur', 'rr'].includes(acces.role) || !c || !(c.auteur === MOI || acces.role === 'directeur')) return refus()
@@ -760,10 +786,9 @@ export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page
 // Infos réseau (seul endroit des communications et bonnes pratiques pour l'équipe, sprint 22 S1) ;
 // sur téléphone, la partie voulue est un onglet
 export async function ouvrirInfos(page: Page, partie: 'Communications' | 'Bonnes pratiques') {
-  await page.goto('./#/infos')
-  await expect(page.getByRole('region', { name: /^(Communications|Bonnes pratiques)$/ }).first()).toBeVisible()
-  const onglet = page.getByRole('tab', { name: partie })
-  if (await onglet.isVisible()) await onglet.click()
+  // Vague 5 (45A) : Actualités s'ouvre sur le Fil ; chaque partie a son onglet, sur PC comme sur téléphone
+  await page.goto(`./#/infos?vue=${partie === 'Communications' ? 'communications' : 'pratiques'}`)
+  await expect(page.getByRole('tab', { name: partie })).toHaveAttribute('aria-selected', 'true')
   return page.getByRole('region', { name: partie })
 }
 

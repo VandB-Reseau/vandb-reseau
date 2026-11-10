@@ -41,13 +41,18 @@ import { useReseau } from '../data/ReseauContext'
 import { enregistrerCampagne, enregistrerConstats } from '../data/chargement'
 import { coachA, libelleSuivi } from '../data/charge'
 import {
-  MAX_POINTS, bilan, bilanPar, campagnesDuMagasin, executionMagasin, libellePerimetre, libellesExecution, libellesPhase, magasinsConcernes, perimetres, perimetresRegion, phase,
-  type Bilan, type Campagne, type Execution, type Perimetre, type Phase,
+  MAX_POINTS, bilan, bilanPar, campagnesDuMagasin, executionMagasin, libellePerimetre, libellesExecution, libellesPhase, libellesUnivers, magasinsConcernes, perimetres, perimetresRegion, phase,
+  type Bilan, type Campagne, type Execution, type Perimetre, type Phase, type Univers,
 } from '../data/campagnes'
 import type { Magasin, Reseau } from '../data/modele'
 import { magasinsDu } from '../data/perimetre'
 import { dateCourte, lienFiche } from '../lib/format'
 import { notifierContenu } from '../lib/notifications'
+import { libelleJalon, prochainJalon, typesJalon, type Jalon, type TypeJalon } from '../data/tempsForts'
+import { effetCampagne, evolutionMagasin, MIN_MAGASINS_EFFET } from '../data/effetCampagne'
+import { libelleMois, formatPourcent } from '../data/chiffres'
+import { FriseTempsForts } from './FriseTempsForts'
+const decalerJours = (jour: string, n: number) => new Date(Date.parse(`${jour}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10)
 
 const couleursExecution: Record<Execution, 'success' | 'warning' | 'error' | 'default'> = { fait: 'success', partiel: 'warning', non: 'error', aConstater: 'default' }
 
@@ -157,6 +162,7 @@ const resumeBilan = (b: Bilan) => `${b.fait} sur ${b.total} exécuté${b.fait > 
 
 function CarteCampagne({ reseau, c, ouvrir }: { reseau: Reseau; c: Campagne; ouvrir: () => void }) {
   const b = bilan(reseau.campagnes, c, magasinsConcernes(reseau, c))
+  const prochain = prochainJalon(c, reseau.jour)
   return (
     <Card>
       <CardActionArea onClick={ouvrir} aria-label={`Ouvrir la campagne ${c.nom}`}>
@@ -167,6 +173,7 @@ function CarteCampagne({ reseau, c, ouvrir }: { reseau: Reseau; c: Campagne; ouv
           </Box>
           <Typography variant="body2" color="text.secondary">Du {dateCourte(c.debut)} au {dateCourte(c.fin)} · {c.points.length} point{c.points.length > 1 ? 's' : ''}</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{resumeBilan(b)}</Typography>
+          {prochain && <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>{`${libelleJalon(prochain)} ${dateCourte(prochain.date)}`}</Typography>}
           {c.rr && <Chip size="small" variant="outlined" label={origine(reseau, c)} sx={{ mb: 1, fontSize: 13 }} />}
           <BarreExecution b={b} libelle={c.nom} />
         </CardContent>
@@ -195,6 +202,7 @@ export function VueCampagnes({ reseau }: { reseau: Reseau }) {
         : (
           <>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>{nouvelle}</Box>
+            <FriseTempsForts reseau={reseau} campagnes={liste} ouvrir={ouvrir} />
             {(['encours', 'avenir', 'terminee'] as Phase[]).map((ph) => parPhase(ph).length > 0 && (
               <Box key={ph} component="section" aria-label={libellesPhase[ph]} sx={{ mb: 3 }}>
                 <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>{libellesPhase[ph]}</Typography>
@@ -269,6 +277,10 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
           </Box>
         </CardContent>
       </Card>
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, mb: 2 }}>
+        {!!c.jalons?.length && <DatesCles c={c} jour={reseau.jour} />}
+        <EffetEnCaisse reseau={reseau} c={c} />
+      </Box>
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, mb: 3 }}>
         <LignesBilan titre="Responsable Régional" lignes={bilanPar(reseau, c, concernes, 'rr')} />
         <LignesBilan titre="Coach" lignes={bilanPar(reseau, c, concernes, 'coach')} />
@@ -335,6 +347,56 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
   )
 }
 
+// Dates clés d'une campagne (vague 5, 48A) : commande, réception, mise en place, facturation
+export function DatesCles({ c, jour }: { c: Campagne; jour: string }) {
+  return (
+    <Box component="section" aria-label="Dates clés">
+      <TitreSection>Dates clés</TitreSection>
+      <CarteLignes>
+        {(c.jalons ?? []).map((j) => (
+          <LigneCompacte key={j.id} titre={libelleJalon(j)} detail={dateCourte(j.date)}
+            fin={j.date < jour ? <Chip size="small" label="Passée" sx={{ fontSize: 13 }} /> : j.date <= decalerJours(jour, 7) ? <Chip size="small" color="warning" label="Cette semaine" sx={{ fontSize: 13 }} /> : undefined} />
+        ))}
+      </CarteLignes>
+    </Box>
+  )
+}
+
+// Effet en caisse (vague 5, 49A) : magasins qui ont exécuté la campagne face aux autres, évolution du CA vs N-1
+function EffetEnCaisse({ reseau, c }: { reseau: Reseau; c: Campagne }) {
+  const e = useMemo(() => effetCampagne(reseau, c), [reseau, c])
+  const periode = e.mois.length ? (e.mois.length === 1 ? libelleMois(e.mois[0]) : `${libelleMois(e.mois[0])} à ${libelleMois(e.mois.at(-1)!)}`) : ''
+  const univers = libellesUnivers[c.univers ?? 'tout'].toLowerCase()
+  return (
+    <Box component="section" aria-label="Effet en caisse">
+      <TitreSection>Effet en caisse</TitreSection>
+      <Card><CardContent>
+        {!e.mois.length ? <Typography variant="body2" color="text.secondary">La mesure arrive avec les chiffres du premier mois complet de la campagne.</Typography>
+          : !e.assez ? (
+            <Typography variant="body2" color="text.secondary">{`Pas encore assez de magasins pour comparer : ${e.participants.n} ont exécuté la campagne, ${e.autres.n} ne l’ont pas fait, il en faut au moins ${MIN_MAGASINS_EFFET} de chaque côté avec leurs chiffres de N-1.`}</Typography>
+          ) : (
+            <>
+              <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
+                <Typography variant="h2" component="p" sx={{ color: (e.ecart ?? 0) >= 0 ? 'success.dark' : 'error.main' }}>{`${(e.ecart ?? 0) >= 0 ? '+' : ''}${(e.ecart ?? 0).toLocaleString('fr-FR')} pt`}</Typography>
+                <Typography color="text.secondary">d’écart d’évolution</Typography>
+              </Box>
+              <Typography variant="body2" sx={{ mt: 1 }}>{`Ont exécuté (${e.participants.n}) : ${formatPourcent(e.participants.evolution)} vs N-1`}</Typography>
+              <Typography variant="body2">{`Les autres (${e.autres.n}) : ${formatPourcent(e.autres.evolution)} vs N-1`}</Typography>
+            </>
+          )}
+        {e.mois.length > 0 && <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{`CA ${univers}, ${periode}, mois entiers : l’écart n’est pas seulement l’effet de la campagne.`}</Typography>}
+      </CardContent></Card>
+    </Box>
+  )
+}
+
+// Pour le franchisé : sa propre évolution sur les mois de la campagne (les comparaisons du réseau ne lui arrivent pas)
+export function EvolutionPendantCampagne({ reseau, c, magasin }: { reseau: Reseau; c: Campagne; magasin: string }) {
+  const ev = evolutionMagasin(reseau, c, magasin)
+  if (ev === null) return null
+  return <Typography variant="body2" sx={{ mt: 0.5 }}>{`CA ${libellesUnivers[c.univers ?? 'tout'].toLowerCase()} pendant la campagne : ${formatPourcent(ev)} vs N-1`}</Typography>
+}
+
 // ── Créer ou modifier une campagne ──
 const SUPPRIMEE = 'Campagne supprimée.'
 
@@ -352,6 +414,17 @@ export function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau;
   const [points, setPoints] = useState(campagne?.points.length ? campagne.points.map((p) => ({ ...p })) : [{ id: 'p1', libelle: '' }])
   const [perimetre, setPerimetre] = useState<Perimetre>(campagne?.perimetre ?? choixPerimetre[0].id)
   const [magasins, setMagasins] = useState<string[]>(campagne?.magasins ?? [])
+  // Vague 5 (48A) : temps fort de rattachement, dates clés (commande, réception, facturation…) et univers mesuré (49A)
+  const [tempsFort, setTempsFort] = useState(campagne?.tempsFort ?? '')
+  const [univers, setUnivers] = useState<Univers>(campagne?.univers ?? 'tout')
+  const [jalons, setJalons] = useState<Jalon[]>(campagne?.jalons ?? [])
+  const choisirTempsFort = (v: string) => {
+    setTempsFort(v)
+    // Nouvelle campagne : elle ouvre 15 jours avant le temps fort et finit avec lui
+    const t = (reseau.tempsForts ?? []).find((x) => x.id === v)
+    if (t && !campagne) { setDebut(decalerJours(t.debut, -15) < reseau.jour ? reseau.jour : decalerJours(t.debut, -15)); setFin(t.fin); if (!nom.trim()) setNom(t.nom) }
+  }
+  const jalonsPropres = jalons.filter((j) => /^\d{4}-\d{2}-\d{2}$/.test(j.date)).map((j) => ({ ...j, libelle: j.libelle.trim() })).sort((a, b) => a.date.localeCompare(b.date))
   const datesOk = /^\d{4}-\d{2}-\d{2}$/.test(debut) && /^\d{4}-\d{2}-\d{2}$/.test(fin) && fin >= debut
   const remplis = points.filter((p) => p.libelle.trim())
   const valide = !!nom.trim() && datesOk && remplis.length > 0 && (perimetre !== 'choix' || magasins.length > 0)
@@ -361,7 +434,8 @@ export function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau;
     <Fenetre large titre={campagne ? `Modifier ${campagne.nom}` : 'Nouvelle campagne'} ouvert valide={valide}
       onFermer={(m) => onFermer(m, m === SUPPRIMEE ? null : m ? id : undefined)}
       enregistrer={async () => {
-        const c: Campagne = { id, nom: nom.trim(), debut, fin, points: remplis.map((p) => ({ id: p.id, libelle: p.libelle.trim() })), perimetre, magasins: perimetre === 'choix' ? magasins : [], ...(rr ? { rr } : {}) }
+        const c: Campagne = { id, nom: nom.trim(), debut, fin, points: remplis.map((p) => ({ id: p.id, libelle: p.libelle.trim() })), perimetre, magasins: perimetre === 'choix' ? magasins : [], ...(rr ? { rr } : {}),
+          ...(tempsFort ? { tempsFort } : {}), ...(jalonsPropres.length ? { jalons: jalonsPropres } : {}), ...(univers !== 'tout' ? { univers } : {}) }
         await enregistrerCampagne(id, c, regionale)
         // Nouvelle campagne : franchisés et équipe des magasins concernés sont prévenus
         if (!campagne) notifierContenu('campagne', id, magasinsConcernes(reseau, c).map((m) => m.nom))
@@ -370,6 +444,12 @@ export function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau;
       supprimer={campagne ? async () => { await enregistrerCampagne(id, null, regionale); return SUPPRIMEE } : undefined}
       libelleSuppression={campagne ? `Supprimer la campagne ${campagne.nom}${constats ? ` et les constats de ses ${constats} magasin${constats > 1 ? 's' : ''}` : ''} ?` : undefined}>
       <TextField label="Nom de la campagne" value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus={!campagne} />
+      {(reseau.tempsForts ?? []).length > 0 && (
+        <TextField select label="Temps fort" value={tempsFort} onChange={(e) => choisirTempsFort(e.target.value)}>
+          <MenuItem value="">Aucun</MenuItem>
+          {(reseau.tempsForts ?? []).filter((t) => t.fin >= reseau.jour || t.id === tempsFort).map((t) => <MenuItem key={t.id} value={t.id}>{`${t.nom} · ${dateCourte(t.debut)}`}</MenuItem>)}
+        </TextField>
+      )}
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
         <TextField type="date" label="Début" value={debut} onChange={(e) => setDebut(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} required />
         <TextField type="date" label="Fin" value={fin} onChange={(e) => setFin(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: debut } }} required
@@ -385,6 +465,24 @@ export function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau;
         ))}
         {points.length < MAX_POINTS && <Button startIcon={<AddOutlined />} onClick={nouveauPoint} sx={{ minHeight: 48 }}>Ajouter un point</Button>}
       </Box>
+      <Box>
+        <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>Dates clés</Typography>
+        {jalons.map((j, i) => (
+          <Box key={j.id} sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1.5, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+            <TextField select label="Date clé" value={j.type} onChange={(e) => setJalons((x) => x.map((y) => (y.id === j.id ? { ...y, type: e.target.value as TypeJalon } : y)))} sx={{ flex: 1, minWidth: 200 }}>
+              {typesJalon.map((t) => <MenuItem key={t.v} value={t.v}>{t.libelle}</MenuItem>)}
+            </TextField>
+            {j.type === 'autre' && <TextField label="Libellé" value={j.libelle} onChange={(e) => setJalons((x) => x.map((y) => (y.id === j.id ? { ...y, libelle: e.target.value } : y)))} sx={{ flex: 1, minWidth: 160 }} slotProps={{ htmlInput: { maxLength: 80 } }} />}
+            <TextField type="date" label="Le" value={j.date} onChange={(e) => setJalons((x) => x.map((y) => (y.id === j.id ? { ...y, date: e.target.value } : y)))} slotProps={{ inputLabel: { shrink: true } }} sx={{ width: 170 }} />
+            <IconButton aria-label={`Retirer la date clé ${i + 1}`} onClick={() => setJalons((x) => x.filter((y) => y.id !== j.id))} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
+          </Box>
+        ))}
+        <Button startIcon={<AddOutlined />} onClick={() => setJalons((x) => [...x, { id: `j${Date.now().toString(36)}`, type: (['commande_debut', 'commande_fin', 'reception', 'installation', 'facturation'] as TypeJalon[]).find((t) => !x.some((y) => y.type === t)) ?? 'autre', libelle: '', date: '' }])}
+          sx={{ minHeight: 48 }}>Ajouter une date clé</Button>
+      </Box>
+      <TextField select label="Univers mesuré en caisse" value={univers} onChange={(e) => setUnivers(e.target.value as Univers)}>
+        {(Object.keys(libellesUnivers) as Univers[]).map((u) => <MenuItem key={u} value={u}>{libellesUnivers[u]}</MenuItem>)}
+      </TextField>
       <TextField select label="Magasins concernés" value={perimetre} onChange={(e) => setPerimetre(e.target.value as Perimetre)}>
         {choixPerimetre.map((p) => <MenuItem key={p.id} value={p.id}>{p.libelle}</MenuItem>)}
       </TextField>

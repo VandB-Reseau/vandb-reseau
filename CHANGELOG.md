@@ -9,6 +9,24 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Refonte façon SaaS, vague 5 : l'actualité au cœur des accueils (Joseph, 10/11/2026, choix 43A à 56A sauf 47).
+  Accueil de l'équipe : À la une en tête, le fil du réseau au centre, « Aujourd'hui » (ma journée, À traiter, mes
+  tâches, la semaine, les contrats) à droite. Accueil du franchisé : À la une, le fil au centre ; mon magasin, À faire
+  (dates clés des campagnes à 14 jours, temps forts annoncés), mes 6 premiers mois et mon équipe à droite.
+  Infos réseau devient Actualités : Fil (visites, bonnes pratiques, communications, temps forts et campagnes, filtres
+  par type), Communications, Bonnes pratiques, Sondages. « J'ai pris connaissance » sur une communication : rappel au
+  franchisé au bout de 3 jours, dans À traiter de l'équipe au bout de 7 avec la liste de ceux qui manquent, garde-fou
+  au-delà de 2 demandes par mois. Temps forts de l'année réglés dans Paramètres › Animation (annonce 45 jours avant),
+  frise des douze mois dans Campagnes ; une campagne porte son temps fort, ses dates clés (commande à partir du,
+  jusqu'au, réception, mise en place, facturation, autre) et l'univers mesuré ; effet en caisse : évolution vs N-1 des
+  magasins qui l'ont exécutée face aux autres, au moins 10 de chaque côté, sur les mois entiers. Parcours d'intégration
+  de l'ouverture à J+180, étapes réglées dans Paramètres › Animation, cochées dans la carte Plan de la fiche, dues
+  dans À traiter. Menu à dix entrées : Santé du parc devient une vue des Magasins, Budgets et Performance deviennent
+  Chiffres, Équipe et Paramètres passent au menu du compte. Accueil et Actualités sans cartouches en capitales ; une
+  seule carte d'indicateur cliquable ; « Plus tard » dans À traiter (7 jours, préférences du compte) ; carte Plan
+  (prochaines étapes, intégration, plan d'action, objectifs) ; barre du franchisé sur téléphone : Accueil, Magasin,
+  Messages, Tâches, Plus. — Base : `0044_actualites_vague5`
+
 - Refonte façon SaaS, vague 4 : animation du réseau et cohérence (Joseph, 10/11/2026, choix 31A à 42A sauf 35, 38B).
   Plan d'action du magasin : 3 priorités au plus, chacune avec son objectif chiffré et ses tâches, revu en visite ; le
   franchisé voit titres et statuts, jamais l'objectif. Tâches à quatre statuts (À faire, En cours, Bloquée avec sa

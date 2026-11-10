@@ -23,7 +23,8 @@ test('écran de connexion jaune, polices et ton de la charte', async ({ page }, 
   await seConnecter(page)
   const titre = page.getByRole('heading', { level: 1, name: 'Accueil' })
   expect(await titre.evaluate((e) => getComputedStyle(e).fontFamily)).toMatch(/^"?Alegreya/)
-  expect(await titre.evaluate((e) => getComputedStyle(e).textTransform)).toBe('uppercase')
+  // Vague 5 (52A) : casse normale sur l'accueil comme ailleurs ; le cartouche reste au compte rendu de visite
+  expect(await titre.evaluate((e) => getComputedStyle(e).textTransform)).toBe('none')
   expect(await page.evaluate(() => getComputedStyle(document.body).fontFamily)).toMatch(/^"?Lato/)
   // Les deux polices sont embarquées (aucune ressource externe)
   await page.evaluate(() => document.fonts.ready)
@@ -31,7 +32,7 @@ test('écran de connexion jaune, polices et ton de la charte', async ({ page }, 
   expect(await textesTropPetits(page)).toEqual([])
 })
 
-test('filet en aplats jaune-or et vert canard, intitulés en cartouche noir', async ({ page }, info) => {
+test('filet en aplats jaune-or et vert canard, intitulés sobres sur l’accueil', async ({ page }, info) => {
   await seConnecter(page)
   // Sur PC, le filet est en tête du menu latéral (refonte 09/11/2026) ; sur téléphone, sous la barre du haut
   const filet = await page.locator('[data-filet]:visible, header [aria-hidden]:visible').last().evaluate((e) => getComputedStyle(e).backgroundImage)
@@ -40,8 +41,7 @@ test('filet en aplats jaune-or et vert canard, intitulés en cartouche noir', as
   expect(filet).not.toContain('27, 111, 206')
   const actualites = page.getByRole('heading', { level: 2, name: /^Actualités$/i })
   await expect(actualites).toBeVisible()
-  expect(await actualites.evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgb(29, 29, 27)')
-  expect(await actualites.evaluate((e) => getComputedStyle(e).color)).toBe('rgb(255, 255, 255)')
+  expect(await actualites.evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgba(0, 0, 0, 0)')
   await page.screenshot({ path: `captures/${info.project.name}-look-accueil.png` })
 })
 

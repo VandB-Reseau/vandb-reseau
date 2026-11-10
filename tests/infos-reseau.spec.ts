@@ -25,35 +25,29 @@ const pratiques = [
 ]
 
 // Téléphone : dans l'en-tête, à droite du « + » ; PC : en bas du menu latéral (refonte 09/11/2026)
-const infos = (page: Page) => page.locator('header, .MuiDrawer-paper').getByRole('button', { name: /^Infos réseau/ }).filter({ visible: true }).first()
+const infos = (page: Page) => page.locator('header, .MuiDrawer-paper').getByRole('button', { name: /^Actualités/ }).filter({ visible: true }).first()
 const ouvrir = async (page: Page) => {
   await infos(page).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Infos réseau' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Actualités' })).toBeVisible()
 }
 const titres = (page: Page, section: string) => page.getByRole('region', { name: section }).getByRole('article')
 
 test('communications et bonnes pratiques réunies, filtrées ensemble', async ({ page, isMobile }, info) => {
   await seConnecter(page, { communications, config: { bonnes_pratiques: pratiques } })
   await ouvrir(page)
+  // Vague 5 (45A) : un onglet par partie, sur PC comme sur téléphone ; les filtres restent d'un onglet à l'autre
   const voir = async (section: 'Communications' | 'Bonnes pratiques') => {
-    if (isMobile) await page.getByRole('tab', { name: section }).click()
+    await page.getByRole('tab', { name: section }).click()
   }
   await voir('Communications')
   await expect(titres(page, 'Communications')).toHaveCount(3)
-  if (!isMobile) {
-    // PC : les deux colonnes côte à côte
-    const c = (await page.getByRole('region', { name: 'Communications' }).boundingBox())!
-    const p = (await page.getByRole('region', { name: 'Bonnes pratiques' }).boundingBox())!
-    expect(c.x + c.width).toBeLessThanOrEqual(p.x)
-    await expect(titres(page, 'Bonnes pratiques')).toHaveCount(2)
-  }
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-infos-reseau.png` })
 
   // Recherche commune
-  await page.getByRole('textbox', { name: /Rechercher une communication ou une pratique/ }).fill('noel')
+  await page.getByRole('textbox', { name: /Rechercher une communication/ }).fill('noel')
   await expect(titres(page, 'Communications')).toHaveText([/Coffrets de Noël/])
-  await page.getByRole('textbox', { name: /Rechercher une communication ou une pratique/ }).fill('')
+  await page.getByRole('textbox', { name: /Rechercher une communication/ }).fill('')
 
   // Période : les 3 derniers mois écartent le bilan de l'été
   if (isMobile) await page.getByRole('button', { name: /^Filtres/ }).click()
@@ -81,7 +75,7 @@ test('le picto compte les communications et bonnes pratiques pas encore vues, pu
   }, new Date(Date.now() - 7 * 86_400_000).toISOString())
   await seConnecter(page, { communications, config: { bonnes_pratiques: pratiques } })
   // Coffrets de Noël (5 jours) et Dégustation du samedi
-  await expect(infos(page)).toHaveAccessibleName('Infos réseau : 2 nouveautés')
+  await expect(infos(page)).toHaveAccessibleName('Actualités : 2 nouveautés')
   if (isMobile) {
     // À droite du « + », sur la même ligne
     const plus = (await page.getByRole('banner').getByRole('button', { name: 'Créer' }).boundingBox())!
@@ -92,16 +86,16 @@ test('le picto compte les communications et bonnes pratiques pas encore vues, pu
   }
   await page.screenshot({ path: `captures/${info.project.name}-infos-picto.png`, clip: { x: 0, y: 0, width: page.viewportSize()!.width, height: 120 } })
   await ouvrir(page)
-  await expect(infos(page)).toHaveAccessibleName('Infos réseau')
+  await expect(infos(page)).toHaveAccessibleName('Actualités')
   await page.reload()
-  await expect(infos(page)).toHaveAccessibleName('Infos réseau')
+  await expect(infos(page)).toHaveAccessibleName('Actualités')
 })
 
 test('le franchisé n’a pas l’onglet Infos réseau', async ({ page }) => {
   await seConnecter(page, { appMetadata: { role: 'franchise' }, acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, espace: {} })
   // Pas de picto « Infos réseau » hors de son menu (son entrée de menu reste, Joseph 23/10/2026)
   await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
-  expect(await page.evaluate(() => [...document.querySelectorAll('button[aria-label^="Infos réseau"]')].filter((b) => !b.closest('nav') && (b as HTMLElement).offsetParent).length)).toBe(0)
+  expect(await page.evaluate(() => [...document.querySelectorAll('button[aria-label^="Actualités"]')].filter((b) => !b.closest('nav') && (b as HTMLElement).offsetParent).length)).toBe(0)
   await page.goto('./#/infos')
-  await expect(page.getByRole('heading', { level: 1, name: 'Infos réseau' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { level: 1, name: 'Actualités' })).toBeVisible()
 })

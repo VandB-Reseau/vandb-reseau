@@ -56,6 +56,8 @@ test('après connexion, l’accueil montre les priorités dans l’ordre choisi'
     'Surchargé',
     'Vacant',
     'Ouverture',
+    // Vague 5 (50A) : parcours d'intégration en retard
+    'Intégration en retard',
     'Visite',
   ])
   await expect(aTraiter.getByRole('link').first()).toContainText('Lyon Test')
@@ -71,6 +73,8 @@ test('chaque destination est accessible depuis la navigation', async ({ page, is
   else await expect(page.getByRole('combobox', { name: 'Recherche globale' })).toBeVisible()
   for (const { nom, court } of principales) {
     if (isMobile && !court) continue
+    // Vague 5 (51A) : la santé du parc est une vue des Magasins, plus une entrée du menu
+    if (nom === 'Santé du parc') continue
     // Messages et Tâches peuvent porter leur compteur (« Messages : 2 nouveautés »)
     await nav.getByRole('button', { name: new RegExp(`^${isMobile ? court : nom}( :.*)?$`) }).click()
     // Tâches peut s'ouvrir sur la liste des franchisés (« Tâches des franchisés », sprint 27)
@@ -78,14 +82,11 @@ test('chaque destination est accessible depuis la navigation', async ({ page, is
     await expect(titre).toBeAttached()
     if (nom !== 'Accueil') await expect(titre).toBeVisible()
   }
-  for (const nom of isMobile ? ['Visites', 'Santé du parc', ...secondaires] : secondaires) {
-    if (isMobile) {
-      await expect(nav.getByRole('button', { name: nom, exact: true })).toHaveCount(0)
-      await page.getByRole('button', { name: 'Mon compte' }).click()
-      await page.getByRole('menu').getByRole('menuitem', { name: nom, exact: true }).click()
-    } else {
-      await nav.getByRole('button', { name: nom, exact: true }).click()
-    }
+  for (const nom of isMobile ? ['Visites', ...secondaires] : secondaires) {
+    // Vague 5 (51A) : Équipe et Paramètres sont dans le menu du compte, sur PC aussi
+    await expect(nav.getByRole('button', { name: nom, exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Mon compte' }).click()
+    await page.getByRole('menu').getByRole('menuitem', { name: nom, exact: true }).click()
     await expect(page.getByRole('heading', { level: 1, name: new RegExp(`^${nom}( \\d{4})?$`) })).toBeVisible()
   }
   if (isMobile) {
@@ -150,7 +151,10 @@ test('le menu a deux parties : la partie classique et Paramètres', async ({ pag
   }
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
   await expect(nav.getByRole('button', { name: 'Accueil' })).toBeVisible()
-  await expect(nav.getByText('Paramètres', { exact: true }).first()).toBeVisible()
+  // Vague 5 (51A) : Équipe et Paramètres sont dans le menu du compte, en bas du menu latéral
+  await page.getByRole('button', { name: 'Mon compte' }).click()
+  await expect(page.getByRole('menu').getByText('Paramètres', { exact: true }).first()).toBeVisible()
+  await page.keyboard.press('Escape')
   // Franchisés est un onglet de l'Équipe, et l'ancienne adresse y mène
   await page.goto('./#/parametres/franchises')
   await expect(page).toHaveURL(/#\/equipe\?vue=franchises/)
@@ -167,9 +171,9 @@ test('Équipe ouvre le groupe Réglages', async ({ page, isMobile }) => {
     await expect(titre.locator('xpath=following-sibling::*[1]')).toHaveText('Équipe')
     await expect(menu.getByRole('menuitem').first()).toHaveText('Visites')
   } else {
-    const groupe = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('list').filter({ hasText: 'Réglages' }).last()
-    await expect(groupe.getByRole('button').first()).toHaveText('Équipe')
-    const classique = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('list').first()
-    await expect(classique.getByRole('button', { name: 'Équipe' })).toHaveCount(0)
+    // Vague 5 (51A) : le groupe Réglages est dans le menu du compte
+    await page.getByRole('button', { name: 'Mon compte' }).click()
+    await expect(page.getByRole('menu').getByRole('menuitem').first()).toHaveText('Équipe')
+    await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Équipe' })).toHaveCount(0)
   }
 })

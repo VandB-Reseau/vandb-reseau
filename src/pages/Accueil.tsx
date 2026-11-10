@@ -21,6 +21,9 @@ import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
+import CelebrationOutlined from '@mui/icons-material/CelebrationOutlined'
+import SnoozeOutlined from '@mui/icons-material/SnoozeOutlined'
+import FlagOutlined from '@mui/icons-material/FlagOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { FenetreCompteRendu, useOuvrirCompteRendu, VignetteCompteRendu } from '../components/ApercuCompteRendu'
@@ -74,6 +77,12 @@ import { useTheme } from '@mui/material/styles'
 import { SondagesARepondre } from '../components/Questions'
 import { brand } from '../theme/theme'
 import { Blason } from '../components/Blason'
+import { Indicateur } from '../components/Indicateur'
+import { ALaUne, aLaUneDuJour, connaissancesEnAttente } from '../components/ALaUne'
+import { useConnaissances, type Communication, type Connaissance } from '../data/communications'
+import { libellesResponsable, parcoursDu } from '../data/integration'
+import { misDeCote, mettrePlusTard, reprendre, usePlusTard } from '../data/plusTard'
+import { useMessageAnnulable } from '../components/Annulable'
 
 // Ordre de priorité fixé par Joseph le 14/10/2026
 const PRIORITAIRES = ['redressement', 'relance', 'renforcer']
@@ -186,6 +195,26 @@ function aTraiterAnimation(reseau: Reseau, p: Perimetre, profil: Profil | null, 
   return items
 }
 
+// Refonte vague 5 : prises de connaissance qui manquent depuis 7 jours (46A) et étapes d'intégration dues (50A)
+function aTraiterVague5(reseau: Reseau, p: Perimetre, communications: Communication[], connaissances: Map<number, Connaissance> | null): ATraiter[] {
+  const items: ATraiter[] = []
+  for (const { c, k } of connaissancesEnAttente(communications, connaissances, reseau.jour)) {
+    items.push({ cle: `pc-${c.id}`, titre: c.titre, avatar: c.titre, icone: <CampaignOutlined />, lien: `/infos?vue=communications&c=${c.id}`,
+      detail: `${k.manquants.length} franchisé${k.manquants.length > 1 ? 's' : ''} sans prise de connaissance : ${k.manquants.join(', ')}`, pastille: { ton: 'orange', libelle: 'À relancer' } })
+  }
+  // Une ligne par magasin : la prochaine étape due, et le nombre d'étapes en retard
+  for (const m of magasinsDu(reseau, p)) {
+    const dues = parcoursDu(reseau, m)?.etapes.filter((x) => x.etat === 'retard' || x.etat === 'bientot') ?? []
+    if (!dues.length) continue
+    const retard = dues.filter((x) => x.etat === 'retard').length
+    const x = dues[0]
+    items.push({ cle: `in-${m.nom}`, titre: `${m.nom} · ${x.e.libelle}`, avatar: m.nom, icone: <FlagOutlined />, lien: `${lienFiche(m.nom)}?vue=fiche`,
+      detail: [`Intégration, jour ${x.e.jour}`, libellesResponsable[x.e.responsable], retard > 1 ? `${retard} étapes en retard` : `pour le ${dateCourte(x.echeance)}`].join(' · '),
+      pastille: retard ? { ton: 'orange', libelle: 'Intégration en retard' } : { ton: 'bleu', libelle: 'Intégration' } })
+  }
+  return items
+}
+
 // Les urgences (pastille rouge) d'abord, puis le suivi, les visites à faire en dernier (Joseph, 21/10/2026)
 type GroupeATraiter = 'urgent' | 'suivi' | 'visite'
 const groupeDe = (x: ATraiter): GroupeATraiter => (x.pastille?.ton === 'rouge' ? 'urgent' : x.cle.startsWith('v-') ? 'visite' : 'suivi')
@@ -231,20 +260,28 @@ function BlocATraiter({ reseau, items, compact = false }: { reseau: Reseau; item
   }
   const [tout, setTout] = useState(false)
   const [filtre, setFiltre] = useState<GroupeATraiter | 'tout'>('tout')
-  const tries = GROUPES.flatMap((g) => items.filter((x) => groupeDe(x) === g.v))
+  // 54A : « Plus tard » met une ligne de côté 7 jours (préférences du compte) ; « Annuler » la remet
+  const deCote = usePlusTard()
+  const annulable = useMessageAnnulable()
+  const deCoteIci = items.filter((x) => misDeCote(deCote, x.cle, reseau.jour))
+  const plusTard = (x: ATraiter) => { mettrePlusTard(x.cle, reseau.jour); annulable.signaler(`« ${x.titre} » revient dans 7 jours.`, () => reprendre(x.cle)) }
+  const boutonPlusTard = (x: ATraiter) => (
+    <Tooltip title="Plus tard"><IconButton onClick={() => plusTard(x)} aria-label={`Plus tard : ${x.titre}`} sx={{ width: 48, height: 48, flex: 'none' }}><SnoozeOutlined /></IconButton></Tooltip>
+  )
+  const tries = GROUPES.flatMap((g) => items.filter((x) => groupeDe(x) === g.v && !misDeCote(deCote, x.cle, reseau.jour)))
   const presents = GROUPES.map((g) => ({ ...g, n: tries.filter((x) => groupeDe(x) === g.v).length })).filter((g) => g.n)
   const filtres = filtre === 'tout' ? tries : tries.filter((x) => groupeDe(x) === filtre)
   const apercu = compact ? APERCU_COMPACT : APERCU
   const vus = tout ? filtres : filtres.slice(0, apercu)
   return (
     <Box component="section" aria-label="À traiter">
-      {!compact && <TitreSection nombre={items.length}>À traiter</TitreSection>}
+      {!compact && <TitreSection nombre={tries.length}>À traiter</TitreSection>}
       {/* Téléphone : les puces n'apparaissent qu'une fois la liste dépliée */}
       {(!compact || tout) && presents.length > 1 && (
         <Puces label="Éléments à traiter affichés" valeur={filtre} onChange={(v) => { setFiltre(v); setTout(compact) }}
           options={[{ v: 'tout' as const, libelle: 'Tout' }, ...presents.map((g) => ({ v: g.v, libelle: `${g.libelle} · ${g.n}` }))]} />
       )}
-      {!items.length ? <CarteLignes><LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur={brand.vertFonce} />} titre="Rien d’urgent" detail="Aucun magasin ne décroche ni n’attend de visite, aucune tâche en retard." /></CarteLignes> : (
+      {!tries.length ? <CarteLignes><LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur={brand.vertFonce} />} titre="Rien d’urgent" detail="Aucun magasin ne décroche ni n’attend de visite, aucune tâche en retard." /></CarteLignes> : (
         <CarteLignes>
           {vus.map((x) => x.visite
             ? <LigneCompacte key={x.cle} onClick={() => setCompteRendu(x.visite!)} label={`Compte rendu de ${x.titre}`} avatar={avatarATraiter(reseau, x)} titre={x.titre} detail={x.detail}
@@ -254,12 +291,18 @@ function BlocATraiter({ reseau, items, compact = false }: { reseau: Reseau; item
               </Box>} />
             : x.tache
               ? <LigneTache key={x.cle} x={x.tache} cocher={taches.cocher} lien={x.lien} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />
-              : <LigneCompacte key={x.cle} lien={x.lien} avatar={avatarATraiter(reseau, x)} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />)}
+              : <LigneCompacte key={x.cle} lien={x.lien} avatar={avatarATraiter(reseau, x)} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} actions={boutonPlusTard(x)} />)}
           {filtres.length > apercu && (
             <ButtonBase onClick={() => setTout((v) => !v)} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{tout ? 'Afficher moins' : `Voir les ${filtres.length}`}</ButtonBase>
           )}
         </CarteLignes>
       )}
+      {deCoteIci.length > 0 && (
+        <Button onClick={() => deCoteIci.forEach((x) => reprendre(x.cle))} sx={{ minHeight: 48, mt: 0.5 }}>
+          {deCoteIci.length} mis de côté · Tout revoir
+        </Button>
+      )}
+      {annulable.bandeau}
       {compteRendu && <DialogVisite reseau={reseau} visite={compteRendu} onFermer={(m) => { setCompteRendu(null); if (m) setMessage(m) }} />}
       {reporter && <DialogPlanifier reseau={reseau} magasins={[reporter.magasin]} dateInitiale={reseau.jour} visite={reporter} onFermer={(m) => { setReporter(null); if (m) setMessage(m) }} />}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
@@ -398,9 +441,9 @@ function Indicateurs({ reseau, p, periode = 'mois' }: { reseau: Reseau; p: Perim
   const repartition = nineBox.map((c) => ({ c, n: cases.filter((x) => x.id === c.id).length })).filter((x) => x.n)
   const tuiles: { cle: string; libelle: string; valeur: string; detail: string; lien: string; couleur?: string; couleurDetail?: string; barre?: ReactNode }[] = [
     { cle: 'ca', libelle: mois ? (periode === 'cumul' ? `CA cumulé à fin ${libelleMoisCourt(mois)}` : `CA de ${libelleMoisCourt(mois)}`) : 'CA du mois', valeur: ecart === null ? '—' : formatKEuros(ca),
-      detail: ecart === null ? 'Pas encore de chiffres' : `${formatPourcent(ecart)} ${reference === decalerMois(mois, -12) || periode === 'cumul' ? 'vs N-1' : `vs ${libelleMoisCourt(reference!)}`}`, lien: '/plus/sante?vue=chiffres',
+      detail: ecart === null ? 'Pas encore de chiffres' : `${formatPourcent(ecart)} ${reference === decalerMois(mois, -12) || periode === 'cumul' ? 'vs N-1' : `vs ${libelleMoisCourt(reference!)}`}`, lien: '/performance',
       couleurDetail: ecart === null ? undefined : ecart < 0 ? theme.palette.error.main : theme.palette.success.dark },
-    { cle: 'decroche', libelle: 'Décrochent', valeur: String(decrochent), detail: surveiller ? `${surveiller} à surveiller` : 'aucun à surveiller', lien: '/plus/sante?vue=chiffres', couleur: decrochent ? theme.palette.error.main : undefined },
+    { cle: 'decroche', libelle: 'Décrochent', valeur: String(decrochent), detail: surveiller ? `${surveiller} à surveiller` : 'aucun à surveiller', lien: '/performance', couleur: decrochent ? theme.palette.error.main : undefined },
     { cle: 'visites', libelle: 'Visites de l’année', valeur: tauxVisites === null ? '—' : `${tauxVisites} %`, detail: `${faites} sur ${Math.round(refVisites)} de référence`, lien: '/visites?vue=rythme',
       barre: tauxVisites === null ? undefined : <Box sx={{ height: 6, borderRadius: 3, bgcolor: 'action.hover', mt: 0.75 }}><Box sx={{ width: `${Math.min(100, tauxVisites)}%`, height: 6, borderRadius: 3, bgcolor: 'warning.main' }} /></Box> },
     { cle: 'sante', libelle: 'Santé du parc', valeur: String(prioritaires), detail: `prioritaires sur ${cases.length} classés`, lien: '/plus/sante', couleur: prioritaires ? theme.palette.warning.dark : undefined,
@@ -409,17 +452,7 @@ function Indicateurs({ reseau, p, periode = 'mois' }: { reseau: Reseau; p: Perim
   return (
     // Téléphone : quatre petites cartes égales en 2 × 2, sans défilement de côté (Joseph, 22/10/2026)
     <Box component="section" aria-label="Pilotage" sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 1, md: 2 }, mb: { xs: 2, md: 3 } }}>
-      {tuiles.map((t) => (
-        <ButtonBase key={t.cle} component={RouterLink} to={t.lien} aria-label={`${t.libelle} : ${t.valeur}, ${t.detail}`}
-          sx={{ display: 'block', minWidth: 0, textAlign: 'left', px: { xs: 1.5, md: 2 }, py: { xs: 1, md: 2 }, borderRadius: '14px', bgcolor: 'background.paper', color: 'text.primary', fontFamily: 'inherit',
-            // Pas de survol sur un écran tactile : la carte touchée ne reste pas grisée
-            '@media (hover: hover)': { '&:hover': { bgcolor: 'action.hover' } } }}>
-          <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}>{t.libelle}</Typography>
-          <Typography sx={{ fontSize: { xs: '1.25rem', md: '1.75rem' }, fontWeight: 700, lineHeight: 1.3, color: t.couleur }}>{t.valeur}</Typography>
-          <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' }, ...(t.couleurDetail ? { color: t.couleurDetail, fontWeight: 700 } : {}) }}>{t.detail}</Typography>
-          {t.barre && <Box aria-hidden>{t.barre}</Box>}
-        </ButtonBase>
-      ))}
+      {tuiles.map((t) => <Indicateur key={t.cle} libelle={t.libelle} valeur={t.valeur} detail={t.detail} lien={t.lien} couleur={t.couleur} couleurDetail={t.couleurDetail}>{t.barre}</Indicateur>)}
     </Box>
   )
 }
@@ -458,18 +491,18 @@ type FiltreFil = 'tout' | GenreFil
 const filtresFil: { v: FiltreFil; libelle: string }[] = [
   { v: 'tout', libelle: 'Tout' }, { v: 'visite', libelle: 'Visites' }, { v: 'tache', libelle: 'Tâches' },
   { v: 'message', libelle: 'Messages' }, { v: 'chiffres', libelle: 'Chiffres' }, { v: 'pratique', libelle: 'Bonnes pratiques' },
-  { v: 'communication', libelle: 'Communications' }, { v: 'journal', libelle: 'Journal' },
+  { v: 'communication', libelle: 'Communications' }, { v: 'animation', libelle: 'Temps forts et campagnes' }, { v: 'journal', libelle: 'Journal' },
 ]
 const PAS_FIL = 20
 const AUCUNE: never[] = []
 
-const iconeFil: Record<GenreFil, ReactNode> = { visite: <EventNoteOutlined />, tache: <TaskAltOutlined />, message: <ChatBubbleOutlineOutlined />, chiffres: <QueryStatsOutlined />, pratique: <TipsAndUpdatesOutlined />, communication: <CampaignOutlined />, journal: <HistoryOutlined /> }
+const iconeFil: Record<GenreFil, ReactNode> = { visite: <EventNoteOutlined />, tache: <TaskAltOutlined />, message: <ChatBubbleOutlineOutlined />, chiffres: <QueryStatsOutlined />, pratique: <TipsAndUpdatesOutlined />, communication: <CampaignOutlined />, journal: <HistoryOutlined />, animation: <CelebrationOutlined /> }
 
 // Une publication du fil : qui, quoi, où, quand ; le texte et les photos en dessous
 export function PublicationFil({ e, jour, sansMagasin = false, ouvrir }: { e: ElementFil; jour: string; sansMagasin?: boolean; ouvrir?: (e: ElementFil) => void }) {
   const qui = e.genre === 'chiffres' ? '' : e.auteur
   const action = qui ? e.action : e.action.charAt(0).toUpperCase() + e.action.slice(1)
-  const ou = e.genre === 'communication' ? e.cible : sansMagasin ? '' : e.magasin
+  const ou = e.genre === 'communication' || e.genre === 'animation' ? e.cible : sansMagasin ? '' : e.magasin
   const tete = <>{qui && <><b>{qui}</b> · </>}{action}{ou ? <> · <b>{ou}</b></> : ''}</>
   // Compte rendu d'une visite : s'ouvre dans une fenêtre, le fil reste à sa place
   const ouvrirCR = useOuvrirCompteRendu()
@@ -478,7 +511,7 @@ export function PublicationFil({ e, jour, sansMagasin = false, ouvrir }: { e: El
     <Box>
       <ButtonBase {...(ouvrir ? { onClick: () => ouvrir(e), 'aria-label': e.libelleOuvrir } : cr ? { onClick: cr } : { component: RouterLink, to: e.lien })} sx={{ display: 'block', textAlign: 'left', width: '100%', p: 2, color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-          <Initiales nom={qui || e.magasin} icone={qui && e.genre !== 'communication' ? undefined : iconeFil[e.genre]} />
+          <Initiales nom={qui || e.magasin || e.genre} icone={qui && e.genre !== 'communication' ? undefined : iconeFil[e.genre]} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tete}</Typography>
             <Typography variant="body2" color="text.secondary">{quand(e.instant, jour)}</Typography>
@@ -592,30 +625,39 @@ function IndicateursRepliables({ children }: { children: ReactNode }) {
   )
 }
 
-// Accueil (maquette A, Joseph 22/10/2026) : quatre repères en tête, les actualités en colonne principale,
-// À traiter, Mes tâches et Cette semaine à droite ; sur téléphone, ces trois blocs en onglets au-dessus des actualités
+// Accueil (refonte vague 5, Joseph 10/11/2026, 43A) : l'actualité au centre. Les repères chiffrés en tête, puis À la une
+// et le fil du réseau en colonne principale ; « Aujourd'hui » (ma journée, À traiter, mes tâches, la semaine, les contrats)
+// en colonne compacte à droite. Sur téléphone : À la une, puis le point du jour, puis le fil.
 function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Reseau; p: Perimetre; sansParametres?: boolean; periode: Periode }) {
   const { profil } = useAuth()
   const { messagerie } = useMessagerie()
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const { liste: demandes } = useDemandes(profil?.role !== 'franchise')
   const { liste: entretiens } = useEntretiens()
+  const communications = useCommunicationsDuFil()
+  const { connaissances, recharger: rechargerConnaissances } = useConnaissances()
   const taches = mesTaches(reseau, p, monNomPorteur(reseau, profil))
   // 38B : une chose n'apparaît qu'une fois ; mes propres tâches vivent dans « Mes tâches »
   const items = useMemo(() => {
     const miennes = new Set(taches.map((x) => x.cle))
-    return [...aTraiter(reseau, p, sansParametres).filter((i) => !i.tache || !miennes.has(i.tache.cle)), ...aTraiterAnimation(reseau, p, profil, demandes, entretiens)]
-  }, [reseau, p, sansParametres, profil, demandes, entretiens, taches])
+    return [...aTraiter(reseau, p, sansParametres).filter((i) => !i.tache || !miennes.has(i.tache.cle)), ...aTraiterAnimation(reseau, p, profil, demandes, entretiens),
+      ...aTraiterVague5(reseau, p, communications.liste, connaissances)]
+  }, [reseau, p, sansParametres, profil, demandes, entretiens, taches, communications.liste, connaissances])
   const contrats = useMemo(() => contratsDu(reseau, p), [reseau, p])
   const noms = useMemo(() => new Set(magasinsDu(reseau, p).map((m) => m.nom)), [reseau, p])
-  const communications = useCommunicationsDuFil()
   const reactionsPratiques = useReactionsPratiques()
   const reactionsVisites = useReactionsVisites()
-  const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications.liste, true, true, true), [reseau, noms, messagerie, communications.liste])
+  // Les communications à la une sont dans le bandeau : le fil ne les répète pas
+  const unes = useMemo(() => new Set(aLaUneDuJour(communications.liste, reseau.jour).map((c) => c.id)), [communications.liste, reseau.jour])
+  const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications.liste, true, true, true).filter((e) => !e.communication || !unes.has(e.communication.id)),
+    [reseau, noms, messagerie, communications.liste, unes])
+  const aLaUne = <ALaUne liste={communications.liste} jour={reseau.jour} connaissances={connaissances} franchise={false} lectureSeule apres={() => void rechargerConnaissances()}
+    lien={(c) => `/infos?vue=communications&c=${c.id}`} />
   const actualites = <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
   if (!surPC) {
     return (
       <>
+        {aLaUne}
         {profil?.role === 'coach' ? (
           // Refonte vague 4 (42A) : le Coach commence par sa journée, puis À traiter ; les indicateurs se déplient
           <>
@@ -635,21 +677,21 @@ function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Resea
       </>
     )
   }
-  // Refonte (Joseph, 09/11/2026, 7A) : « Aujourd'hui » d'abord. À traiter, mes tâches, la semaine et les contrats en
-  // colonne principale ; les actualités à droite, visibles dès l'arrivée, et qui défilent seules
   return (
     <>
+      {aLaUne}
       <Indicateurs reseau={reseau} p={p} periode={periode} />
-      <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: 'minmax(0, 1fr) minmax(360px, 420px)', alignItems: 'start' }}>
-        <Box sx={{ minWidth: 0 }}>
+      <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: 'minmax(0, 1fr) minmax(340px, 400px)', alignItems: 'start' }}>
+        <Box sx={{ minWidth: 0, maxWidth: 760 }}>
+          {actualites}
+        </Box>
+        <Box component="aside" aria-label="Aujourd’hui" sx={{ minWidth: 0 }}>
+          {profil?.role === 'coach' && <MaJournee reseau={reseau} p={p} moi={monNomPorteur(reseau, profil)} />}
           <SondagesARepondre equipe aFaire titre="Sondages à remplir" />
           <BlocATraiter reseau={reseau} items={items} />
           <BlocMesTaches reseau={reseau} taches={taches} />
           <BlocSemaine reseau={reseau} p={p} />
           <BlocContrats reseau={reseau} contrats={contrats} />
-        </Box>
-        <Box component="aside" aria-label="Actualités du réseau" sx={{ position: 'sticky', top: 16, maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', overscrollBehavior: 'contain', scrollbarWidth: 'thin', mx: -1, px: 1, pb: 1 }}>
-          {actualites}
         </Box>
       </Box>
     </>

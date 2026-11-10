@@ -27,8 +27,8 @@ import { chargementDiffere } from './lib/chargementDiffere'
 import { chargerEspaceFranchise } from './data/espaceFranchise'
 import { espaceFranchise } from './navigation/destinations'
 
-// Écrans qui communiquent (Accueil, Infos réseau, compte rendu) : style de la charte, cartouches et capitales
-// (refonte, Joseph 09/11/2026, choix 8C) ; les écrans de travail restent sobres
+// Compte rendu de visite : style de la charte, cartouches et capitales (refonte, Joseph 09/11/2026, choix 8C).
+// Vague 5 (52A) : Accueil et Actualités reprennent la grammaire sobre des autres écrans
 function Marque({ children }: { children: React.ReactNode }) {
   return <div className="marque">{children}</div>
 }
@@ -129,7 +129,7 @@ const avec = (chemin: string, r: URLSearchParams, ajout: Record<string, string> 
 }
 const anciensLiens = [
   <Route key="a" path="/actions" element={<Vers cible={(_p, r) => avec('/taches', r)} />} />,
-  <Route key="c" path="/communications" element={<Vers cible={(_p, r) => avec('/infos', r)} />} />,
+  <Route key="c" path="/communications" element={<Vers cible={(_p, r) => avec('/infos', r, { vue: 'communications' })} />} />,
   <Route key="m" path="/messages" element={<Navigate to="/echanges" replace />} />,
   <Route key="mp" path="/messages/personne/:cle" element={<Vers cible={(p) => `/echanges/personne/${encodeURIComponent(p.cle ?? '')}`} />} />,
   <Route key="mm" path="/messages/:nom" element={<Vers cible={(p) => `/echanges/magasin/${encodeURIComponent(p.nom ?? '')}`} />} />,
@@ -148,7 +148,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
       <ErreurEcran key={pathname}>
       <Suspense fallback={<SilhouetteEcran />}>
       <Routes>
-        <Route path="/" element={<Marque><Accueil /></Marque>} />
+        <Route path="/" element={<Accueil />} />
         <Route path="/magasins" element={<Magasins />} />
         <Route path="/magasins/:nom" element={<FicheMagasin />} />
         <Route path="/magasins/:nom/preparer" element={<PageVisite etapeParDefaut="preparer" />} />
@@ -171,7 +171,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/echanges" element={<Echanges />} />
         <Route path="/taches" element={<PageTaches />} />
         <Route path="/demandes" element={<PageDemandes />} />
-        <Route path="/infos" element={<Marque><InfosReseau /></Marque>} />
+        <Route path="/infos" element={<InfosReseau />} />
         {/* Communications et bonnes pratiques : Infos réseau seulement, pour l'équipe (sprint 22, S1) comme pour le franchisé */}
         <Route path="/echanges/reseau" element={<Vers cible={(_p, r) => avec('/infos', r)} />} />
         <Route path="/echanges/pratiques" element={<Navigate to="/infos?vue=pratiques" replace />} />
@@ -205,11 +205,11 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
       <ErreurEcran key={pathname}>
       <Suspense fallback={<SilhouetteEcran />}>
       <Routes>
-        <Route path="/" element={<Marque><TableauFranchise /></Marque>} />
+        <Route path="/" element={<TableauFranchise />} />
         <Route path="/magasins" element={<MagasinsFranchise />} />
         <Route path="/magasins/:nom" element={<FicheMagasinFranchise />} />
         <Route path="/visites/compte-rendu/:id" element={<Marque><CompteRendu /></Marque>} />
-        <Route path="/infos" element={<Marque><InfosReseau /></Marque>} />
+        <Route path="/infos" element={<InfosReseau />} />
         <Route path="/bonnes-pratiques" element={<Navigate to="/infos?vue=pratiques" replace />} />
         <Route path="/echanges" element={<Echanges lectureSeule={apercu} />} />
         <Route path="/taches" element={<PageTaches />} />

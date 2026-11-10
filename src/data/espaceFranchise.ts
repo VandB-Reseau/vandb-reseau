@@ -26,7 +26,7 @@ export async function chargerEspaceFranchise(apercu: Apercu | null, jour = new D
   if (error || !data || typeof data !== 'object') throw new ErreurChargement(error?.message ?? 'espace vide')
   const d = data as Reponse
   const reseau = assemblerReseau({
-    config: d.app_config ?? [], surcharges: d.store_overrides ?? [], affectations: d.reassigns ?? [], coachs: d.cs_overrides ?? [],
+    config: [...(d.app_config ?? []), ...(await chargerAnimationFranchise(apercu))], surcharges: d.store_overrides ?? [], affectations: d.reassigns ?? [], coachs: d.cs_overrides ?? [],
     recrues: [], visites: d.visits ?? [], evenements: [], finances: d.store_finance ?? [],
   }, jour)
   reseau.espace = { franchise: d.franchise ?? apercu?.franchise ?? '', reperes: d.reperes && typeof d.reperes === 'object' ? d.reperes : null }
@@ -34,6 +34,27 @@ export async function chargerEspaceFranchise(apercu: Apercu | null, jour = new D
   reseau.actionsLibres = Object.fromEntries(Object.entries(reseau.actionsLibres).map(([m, l]) => [m, l.filter((a) => a.fil !== 'equipe')]))
   reseau.plans = await chargerPlansFranchise(apercu)
   return reseau
+}
+
+// Refonte vague 5 (0044) : temps forts de l'année, parcours d'intégration et son suivi, au format des clés d'app_config.
+// En aperçu, le Directeur lit les clés et la rubrique lui-même. Base d'avant 0044 : rien, sans erreur.
+async function chargerAnimationFranchise(apercu: Apercu | null): Promise<Tables['config']> {
+  const lignes = (v: { temps_forts?: unknown; parcours_integration?: unknown; integration?: unknown }) => [
+    { key: 'temps_forts', value: JSON.stringify(v.temps_forts ?? []) },
+    ...(v.parcours_integration ? [{ key: 'parcours_integration', value: JSON.stringify(v.parcours_integration) }] : []),
+    { key: 'integration_magasins', value: JSON.stringify(v.integration ?? {}) },
+  ]
+  if (apercu) {
+    const [config, suivi] = await Promise.all([
+      supabase.from('app_config').select('key,value').in('key', ['temps_forts', 'parcours_integration']),
+      supabase.from('suivi_magasins').select('store_name,valeur').eq('cle', 'integration').in('store_name', apercu.magasins),
+    ])
+    if (config.error) return []
+    const cle = (k: string) => { const l = (config.data ?? []).find((x) => x.key === k); try { return l ? JSON.parse(String(l.value)) : undefined } catch { return undefined } }
+    return lignes({ temps_forts: cle('temps_forts'), parcours_integration: cle('parcours_integration'), integration: suivi.error ? {} : Object.fromEntries((suivi.data ?? []).map((l) => [l.store_name, l.valeur])) })
+  }
+  const { data, error } = await supabase.rpc('animation_franchise')
+  return error || !data || typeof data !== 'object' ? [] : lignes(data as Record<string, unknown>)
 }
 
 // Plan d'action de ses magasins (0043) : titres et statuts, jamais l'objectif chiffré. En aperçu, le Directeur lit la

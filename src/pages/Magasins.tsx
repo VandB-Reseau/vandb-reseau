@@ -17,6 +17,7 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { BarreFiltres } from '../components/BarreFiltres'
 import { BoutonAction } from '../components/Outils'
 import ToggleButton from '@mui/material/ToggleButton'
+import MonitorHeartOutlined from '@mui/icons-material/MonitorHeartOutlined'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Button from '@mui/material/Button'
 import TimelineOutlined from '@mui/icons-material/TimelineOutlined'
@@ -75,10 +76,12 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
   const voitEvolution = !perimetreDuProfil(profil)
   // Bascule de vue : au bout de la barre de filtres sur PC (vague 4, 39A), dans l'en-tête sur téléphone (la recherche reste collée)
   const bascule = (
-    <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_e, v: 'liste' | 'carte' | null) => { if (v) changerVue(v) }} aria-label="Affichage"
+    <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_e, v: 'liste' | 'carte' | 'sante' | null) => { if (v === 'liste' || v === 'carte') changerVue(v) }} aria-label="Affichage"
                   sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, md: 40 }, px: 1.5, gap: 0.75, textTransform: 'none', fontWeight: 600 } }}>
                   <ToggleButton value="liste" aria-label="Liste"><TableRowsOutlined fontSize="small" />{surPC ? 'Tableau' : 'Liste'}</ToggleButton>
                   <ToggleButton value="carte" aria-label="Carte"><MapOutlined fontSize="small" />Carte</ToggleButton>
+                  {/* Refonte vague 5 (51A) : la santé du parc est une vue des magasins */}
+                  <ToggleButton value="sante" aria-label="Santé du parc" onClick={() => naviguer('/plus/sante')}><MonitorHeartOutlined fontSize="small" />{surPC && 'Santé'}</ToggleButton>
                 </ToggleButtonGroup>
   )
 

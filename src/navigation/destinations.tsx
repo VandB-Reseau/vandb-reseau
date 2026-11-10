@@ -60,10 +60,13 @@ export const barreTelephone: Destination[] = [accueil, agenda, magasins, taches,
 export const demandes: Destination = { chemin: '/demandes', libelle: 'Demandes', description: 'Demandes des franchisés au siège, par thème, avec leur délai de réponse', icone: <SupportAgentOutlined />, iconeActive: <SupportAgent />, sprint: 'Refonte' }
 // Rubrique Animation (refonte vague 3, Joseph 09/11/2026, 27A) : Infos réseau et Campagnes (campagnes, déploiements,
 // challenges, et pour le Directeur et les RR le suivi des sondages, formations et réunions, ancien onglet de Messages)
-export const infosReseau: Destination = { chemin: '/infos', libelle: 'Infos réseau', court: 'Infos', description: 'Communications et bonnes pratiques du réseau', icone: <NewspaperOutlined />, iconeActive: <Newspaper />, sprint: 'Sprint 22' }
+// Actualités (refonte vague 5, 45A) : le fil du réseau, les communications, les bonnes pratiques et les sondages
+export const infosReseau: Destination = { chemin: '/infos', libelle: 'Actualités', description: 'Fil du réseau, communications, bonnes pratiques et sondages', icone: <NewspaperOutlined />, iconeActive: <Newspaper />, sprint: 'Sprint 22' }
 export const campagnes: Destination = { chemin: '/campagnes', libelle: 'Campagnes', description: 'Campagnes, déploiements, challenges, sondages, formations et réunions, avec leur suivi', icone: <InsightsOutlined />, iconeActive: <Insights />, sprint: 'Refonte' }
 export const animation = campagnes
-export const secondaires: Destination[] = [campagnes, demandes, budgets, performance, agenda]
+// Chiffres (refonte vague 5, 51A) : Performance et Budgets réunis sous une entrée, en onglets
+export const chiffres: Destination = { chemin: '/performance', libelle: 'Chiffres', description: 'Performance des magasins, écarts au budget, budgets de l’année', icone: <QueryStatsOutlined />, iconeActive: <QueryStats />, sprint: 'Refonte' }
+export const secondaires: Destination[] = [campagnes, demandes, chiffres, agenda]
 export const pourRole = (liste: Destination[], role: string | undefined) => liste.filter((d) => !d.roles || (!!role && d.roles.includes(role)))
 
 // Réglages : Équipe et Paramètres. Évolution du parc est une vue de Magasins depuis la refonte (Joseph, 09/11/2026, 2A)
@@ -73,26 +76,26 @@ export const parametres: Destination[] = [
   { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Charge des Coachs, import et export, alertes, nine box, audits', icone: <SettingsOutlined />, sprint: 'Sprint 5' },
 ]
 
-// Menu latéral sur PC, en rubriques titrées (Joseph, 09/11/2026, choix 2A de la refonte ; Animation : vague 3, 27A)
+// Menu latéral sur PC, en rubriques titrées (Joseph, 09/11/2026, choix 2A de la refonte ; Animation : vague 3, 27A).
+// Vague 5 (51A) : dix entrées. La santé du parc devient une vue des Magasins, Budgets et Performance deviennent Chiffres,
+// Équipe et Paramètres passent au menu du compte.
 export interface Rubrique { titre: string; destinations: Destination[] }
-export function rubriquesMenu(sansParametres: boolean): Rubrique[] {
+export function rubriquesMenu(_sansParametres?: boolean): Rubrique[] {
   return [
     { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
-    { titre: 'Réseau', destinations: [magasins, visites, sante] },
+    { titre: 'Réseau', destinations: [magasins, visites, chiffres] },
     { titre: 'Animation', destinations: [infosReseau, campagnes, demandes] },
-    { titre: 'Finances', destinations: [budgets, performance] },
-    ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }]),
   ]
 }
 
 export const demandesFranchise: Destination = { ...demandes, libelle: 'Mes demandes', court: 'Demandes', description: 'Mes questions au siège et leurs réponses' }
 // Menu du compte sur téléphone : ce que la barre du bas ne montre pas
-export const menuTelephone = (role: string | undefined) => [visites, sante, ...pourRole(secondaires, role).filter((d) => d !== agenda)]
+export const menuTelephone = (role: string | undefined) => [visites, ...pourRole(secondaires, role).filter((d) => d !== agenda)]
 
 // Espace d'un franchisé : ses magasins seulement, sans Paramètres
 export const espaceFranchise: Destination[] = [
   { chemin: '/', libelle: 'Accueil', description: 'Mes chiffres, mes tâches, mes visites', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 11' },
-  { chemin: '/magasins', libelle: 'Mes magasins', description: 'Fiche, chiffres, visites et campagnes', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 11' },
+  { chemin: '/magasins', libelle: 'Mes magasins', court: 'Magasin', description: 'Fiche, chiffres, visites et campagnes', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 11' },
   { chemin: '/budgets', libelle: 'Mon budget', court: 'Budget', description: 'Budget de l’année, suivi face au réel et saisies', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Fusion' },
   { ...messages, description: 'Mes magasins et mon équipe' },
   taches,
@@ -100,13 +103,17 @@ export const espaceFranchise: Destination[] = [
   // Communications et bonnes pratiques réunies, comme pour l'équipe (Joseph, 23/10/2026)
   infosReseau,
 ]
+// Barre du bas du franchisé sur téléphone (refonte vague 5, 56A) : Accueil, Magasin, Messages, Tâches et « Plus »
+// (Mon budget, Mes demandes, Actualités)
+export const barreFranchise = (liste: Destination[]) => liste.filter((d) => ['/', '/magasins', '/echanges', '/taches'].includes(d.chemin))
+export const plusFranchise = (liste: Destination[]) => liste.filter((d) => !['/', '/magasins', '/echanges', '/taches'].includes(d.chemin))
 
 export const plus: Destination = {
   chemin: '/plus', libelle: 'Plus', description: 'Agenda, équipe et paramètres', icone: <MoreHoriz />, sprint: '',
 }
 
 export function destinationCourante(pathname: string): Destination {
-  const toutes = [...secondaires, animation, evolution, ...parametres, ...principales.slice(1)]
+  const toutes = [...secondaires, budgets, performance, sante, infosReseau, animation, evolution, ...parametres, ...principales.slice(1)]
   // Rubriques de Paramètres ouvertes sur leur propre écran
   if (pathname.startsWith('/parametres/charge') || pathname.startsWith('/parametres/donnees')) return parametres[1]
   return toutes.find((d) => pathname.startsWith(d.chemin)) ?? (pathname.startsWith('/plus') || pathname.startsWith('/parametres') ? plus : principales[0])

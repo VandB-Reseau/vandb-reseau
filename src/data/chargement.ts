@@ -1,4 +1,6 @@
 import { normaliserRituels, type Rituel } from './rituels'
+import { normaliserTempsForts, type TempsFort } from './tempsForts'
+import { normaliserIntegration, normaliserParcours, type EtapeParcours, type SuiviIntegration } from './integration'
 import { normaliserInterlocuteurs } from './demandes'
 import { renommerAccesCoach } from './accesEquipe'
 import { supabase } from '../lib/supabase'
@@ -68,7 +70,7 @@ let fichesEnTable: boolean | null = null
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, evenements, finances, suivi, regions, fiches, fermes] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins', 'rituels', 'demandes_themes']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins', 'rituels', 'demandes_themes', 'temps_forts', 'parcours_integration', 'integration_magasins']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -138,6 +140,9 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   reseau.objectifs = normaliserObjectifs(json<unknown>(cle('objectifs_magasins'), {}))
   reseau.plans = normaliserPlans(json<unknown>(cle('plans_magasins'), {}))
   reseau.rituels = normaliserRituels(json<unknown>(cle('rituels'), null))
+  reseau.tempsForts = normaliserTempsForts(json<unknown>(cle('temps_forts'), []))
+  reseau.parcoursIntegration = normaliserParcours(json<unknown>(cle('parcours_integration'), null))
+  reseau.integration = normaliserIntegration(json<unknown>(cle('integration_magasins'), {}))
   reseau.interlocuteursDemandes = normaliserInterlocuteurs(json<unknown>(cle('demandes_themes'), {}))
   reseau.motsFranchise = normaliserMots(json<unknown>(cle('mots_franchise'), {}))
   reseau.audits = json<Audits>(cle('audits'), {})
@@ -248,6 +253,29 @@ export async function enregistrerRituels(rituels: Rituel[]) {
   const { existe } = await lireCle<unknown>('rituels', null)
   await ecrireCle('rituels', rituels, existe)
 }
+// Refonte vague 5 (48A, 50A) : temps forts de l'année et étapes du parcours d'intégration, réglés par le Directeur
+export async function enregistrerTempsForts(liste: TempsFort[]) {
+  const { existe } = await lireCle<unknown>('temps_forts', null)
+  await ecrireCle('temps_forts', liste, existe)
+}
+export async function enregistrerParcours(etapes: EtapeParcours[]) {
+  const { existe } = await lireCle<unknown>('parcours_integration', null)
+  await ecrireCle('parcours_integration', etapes, existe)
+}
+// Étape du parcours d'un magasin faite (faite : date) ou à refaire (null)
+export function enregistrerEtapeIntegration(magasin: string, etape: string, faite: { faite: string; par: string } | null) {
+  return enFile(async () => {
+    const lu = await lireSuivi<Record<string, SuiviIntegration>>('integration_magasins', {})
+    const { valeur } = lu
+    const etapes = { ...(valeur[magasin]?.etapes ?? {}) }
+    if (faite) etapes[etape] = faite
+    else delete etapes[etape]
+    if (Object.keys(etapes).length) valeur[magasin] = { etapes }
+    else delete valeur[magasin]
+    await ecrireSuivi('integration_magasins', valeur, lu)
+  })
+}
+
 export async function enregistrerInterlocuteurs(v: Record<string, string>) {
   const { existe } = await lireCle<unknown>('demandes_themes', null)
   await ecrireCle('demandes_themes', v, existe)
@@ -660,7 +688,7 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
       const v = l.valeur as Campagne | null
       if (v?.magasins?.includes(ancienNom)) verifier(await supabase.from('campagnes_regions').update({ valeur: { ...v, magasins: v.magasins.map((n) => (n === ancienNom ? f.nom : n)) } }).eq('id', l.id))
     }
-    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes', 'actions', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins'] as const) {
+    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes', 'actions', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins', 'integration_magasins'] as const) {
       const lu = await lireSuivi<Record<string, unknown>>(cleConfig, {})
       const cibles = (cleConfig === 'deploiements' ? [lu.valeur.valeurs, lu.valeur.journal] : [lu.valeur]) as (Record<string, unknown> | undefined)[]
       let change = false

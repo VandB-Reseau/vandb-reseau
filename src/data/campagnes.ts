@@ -4,6 +4,7 @@
 import type { Magasin, Reseau } from './modele'
 import { coachA, libelleSuivi } from './charge'
 import { magasinsDu } from './perimetre'
+import { normaliserJalons, type Jalon } from './tempsForts'
 
 export interface PointCampagne { id: string; libelle: string }
 export type Perimetre = 'tous' | 'franchises' | 'integres' | 'choix' | 'region'
@@ -31,7 +32,14 @@ export interface Campagne {
   perimetre: Perimetre
   magasins: string[] // périmètre « choix »
   rr?: string // campagne régionale : identifiant du Responsable Régional qui la tient
+  // Refonte vague 5 (48A) : temps fort de rattachement, dates clés (commande, réception, facturation…) et univers
+  // mesuré par le bilan en caisse (49A)
+  tempsFort?: string
+  jalons?: Jalon[]
+  univers?: Univers
 }
+export type Univers = 'tout' | 'cave' | 'bar'
+export const libellesUnivers: Record<Univers, string> = { tout: 'Tout le magasin', cave: 'Cave', bar: 'Bar' }
 
 // Constat d'un point dans un magasin : fait ou non, à une date, par une personne
 export interface Constat { fait: boolean; date: string; par: string }
@@ -52,6 +60,10 @@ function normaliserCampagne(c: Partial<Campagne>, rr = ''): Campagne {
     perimetre: choix.some((p) => p.id === c.perimetre) ? c.perimetre! : choix[0].id,
     magasins: Array.isArray(c.magasins) ? c.magasins.map(t).filter(Boolean) : [],
     ...(rr ? { rr } : {}),
+    ...(t(c.tempsFort) ? { tempsFort: t(c.tempsFort) } : {}),
+    // Valeurs par défaut omises : une campagne ancienne relue telle quelle n'est jamais réécrite pour rien
+    ...(normaliserJalons(c.jalons).length ? { jalons: normaliserJalons(c.jalons) } : {}),
+    ...(c.univers === 'cave' || c.univers === 'bar' ? { univers: c.univers } : {}),
   }
 }
 

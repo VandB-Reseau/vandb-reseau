@@ -41,6 +41,8 @@ import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import EventRepeatOutlined from '@mui/icons-material/EventRepeatOutlined'
 import SearchOffOutlined from '@mui/icons-material/SearchOffOutlined'
 import { PageHeader } from '../components/PageHeader'
+import { grilleIndicateurs, Indicateur } from '../components/Indicateur'
+import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { RechercheFiltres } from '../components/RechercheFiltres'
@@ -800,7 +802,8 @@ function Contenu({ page, avecSuivi, reseau, vue, surPC, aller }: { page: 'sante'
   return (
     <>
       {page === 'sante' ? <>
-        <PageHeader titre="Santé du parc" sousTitre={`${classes} classé${classes > 1 ? 's' : ''} sur ${ouverts.length} ouvert${ouverts.length > 1 ? 's' : ''}`} />
+        <PageHeader titre="Santé du parc" sousTitre={`${classes} classé${classes > 1 ? 's' : ''} sur ${ouverts.length} ouvert${ouverts.length > 1 ? 's' : ''}`}
+          actions={<Button component={RouterLink} to="/magasins" startIcon={<StorefrontOutlined />} sx={{ minHeight: 48, ml: 'auto' }}>Tous les magasins</Button>} />
         <Onglets valeur={vue} onChange={aller} libelle="Rubriques de la santé du parc" rubriques={[
           { vue: 'ninebox', libelle: 'Nine box', icone: <GridViewOutlined /> },
           { vue: 'evaluer', libelle: 'Évaluer', icone: <FactCheckOutlined /> },
@@ -853,15 +856,11 @@ export function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean 
     <>
       {barreDe(<FiltreMenu libelle="Alerte" choisis={statuts} onChange={setStatuts} options={tuiles.map((t) => ({ valeur: t.id, libelle: t.titre, detail: `${t.n} magasins` }))} />,
         statuts.length, surPC ? <ChoixAffichage valeur={affichage} onChange={setAffichage} /> : undefined)}
-      <Box sx={{ display: 'grid', gap: { xs: 1, sm: 2 }, gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, mb: 2 }}>
+      {/* Vague 5 (53A) : la carte d'indicateur commune ; un clic filtre la liste sur cette alerte */}
+      <Box sx={{ ...grilleIndicateurs, mb: 2 }}>
         {tuiles.map((t) => (
-          <Card key={t.id} sx={{ borderTop: `4px solid ${t.couleur}` }}>
-            <CardContent sx={{ p: { xs: 1.5, md: 2 }, '&:last-child': { pb: { xs: 1.5, md: 2 } } }}>
-              <Typography sx={{ fontSize: { xs: 24, md: 32 }, fontWeight: 800, color: t.couleur, lineHeight: 1.1 }}>{t.n}</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>{t.titre}</Typography>
-              <Typography variant="body2" color="text.secondary">{t.detail}</Typography>
-            </CardContent>
-          </Card>
+          <Indicateur key={t.id} libelle={t.titre} valeur={String(t.n)} detail={t.detail} couleur={t.couleur} actif={statuts.length === 1 && statuts[0] === t.id}
+            onClick={() => setStatuts(statuts.length === 1 && statuts[0] === t.id ? [] : [t.id])} />
         ))}
       </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>

@@ -35,7 +35,9 @@ test('le Directeur ouvre les budgets depuis le menu, passe au suivi et aux param
   await connecter(page, {}, {})
   await page.getByRole('heading', { level: 1, name: /^Accueil$|Bonjour|Bonsoir/ }).waitFor()
   if (!isMobile) {
-    await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Budgets', exact: true }).click()
+    // Vague 5 (51A) : les budgets sont un onglet de Chiffres
+    await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Chiffres', exact: true }).click()
+    await page.getByRole('tab', { name: 'Budgets de l’année' }).click()
   } else {
     await page.goto('./#/budgets')
   }
@@ -50,7 +52,7 @@ test('le Directeur ouvre les budgets depuis le menu, passe au suivi et aux param
 
   await page.goto('./#/budgets/suivi')
   await expect(page).toHaveURL(/#\/performance\?vue=budget/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Performance' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Chiffres' })).toBeVisible()
   await page.goto('./#/budgets/parametres')
   await expect(page).toHaveURL(/#\/parametres\/reglages\?rubrique=budget/)
 })
@@ -78,7 +80,11 @@ test('le franchisé d’un seul magasin arrive par « Mon budget » sur l’ongl
   await connecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] } }, { role: 'franchise', magasins: [magasins[0]] })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   // Depuis son menu : « Mon budget » sur PC, « Budget » dans la barre du téléphone
-  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: isMobile ? 'Budget' : 'Mon budget', exact: true }).click()
+  // Vague 5 (56A) : sur téléphone, « Mon budget » est sous « Plus »
+  if (isMobile) {
+    await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: /^Plus/ }).click()
+    await page.getByRole('menu').getByRole('menuitem', { name: /^Mon budget/ }).click()
+  } else await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Mon budget', exact: true }).click()
   // Le suivi du budget face au réel, dans l'onglet Chiffres de sa fiche (refonte 09/11/2026)
   await expect(page).toHaveURL(/#\/magasins\/Annecy%20Test\?vue=chiffres/)
   await expect(page.getByRole('heading', { level: 1, name: 'Annecy Test' })).toBeVisible()
