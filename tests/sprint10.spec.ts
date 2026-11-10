@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { ouvrirOnglet, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { ouvrirOnglet, revoirTache, saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { magasinsFictifs } from './donnees-fictives'
 
 test.beforeEach(async ({ page }) => {
@@ -58,14 +58,12 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
 test('une nouvelle visite reprend les actions en cours et les coche faites', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/magasins/Brest%20Test?vue=visites')
-  await page.getByRole('button', { name: 'Saisir', exact: true }).click()
-  const d = page.getByRole('dialog', { name: 'Saisir une visite' })
-  const enCours = d.getByRole('group', { name: 'Tâches en cours' })
+  const d = await saisirVisiteNonPrevue(page, 'Brest Test')
+  const enCours = d.getByRole('region', { name: 'Plan d’action et tâches' })
   await expect(enCours).toContainText('Refaire la vitrine')
   await expect(enCours).toContainText('Former l’équipe à la vente additionnelle')
   await expect(enCours).not.toContainText('Changer l’enseigne')
-  await enCours.getByRole('checkbox').first().click()
+  await revoirTache(page, d, 'Refaire la vitrine', 'Faite')
   await d.getByRole('button', { name: 'Ajouter une tâche' }).click()
   await d.getByLabel('Tâche', { exact: true }).fill('Mettre en avant les coffrets')
   await d.getByLabel('Échéance', { exact: true }).fill('2026-12-15')

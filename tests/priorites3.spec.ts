@@ -34,16 +34,18 @@ test('Magasins sur téléphone : les filtres actifs restent visibles en puces, u
   await expect(puces).toHaveCount(0)
 })
 
-test('fiche magasin : trois pictos, Planifier, Préparer et Modifier dans « Autres actions »', async ({ page }, info) => {
+// Vague 7 (79A) : Planifier et Préparer quittent « Autres actions » pour le seul bouton « Visite »
+test('fiche magasin : Modifier dans « Autres actions », la visite par son seul bouton', async ({ page }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
   await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Planifier la visite' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Autres actions' }).click()
   const menu = page.getByRole('menu')
-  for (const nom of ['Planifier la visite', 'Préparer la visite', 'Modifier la fiche']) expect((await menu.getByRole('menuitem', { name: nom }).boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  expect((await menu.getByRole('menuitem', { name: 'Modifier la fiche' }).boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  await expect(menu.getByRole('menuitem', { name: 'Préparer la visite' })).toHaveCount(0)
   await page.screenshot({ path: `captures/${info.project.name}-fiche-autres-actions.png` })
-  await menu.getByRole('menuitem', { name: 'Préparer la visite' }).click()
+  await page.keyboard.press('Escape')
+  await page.getByRole('link', { name: 'Planifier la visite : Lyon Test' }).click()
   await expect(page).toHaveURL(/preparer/)
 })
 

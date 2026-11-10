@@ -21,8 +21,8 @@ test('un Coach ne voit pas les boutons des référentiels et ne les écrit pas',
   await seConnecter(page, { ...NOE, ecritures, config: { campagnes } })
   await page.goto('./#/magasins/Lyon%20Test')
   await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test', exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Planifier la visite : Lyon Test' })).toBeVisible()
   await page.getByRole('button', { name: 'Autres actions' }).click()
-  await expect(page.getByRole('menuitem', { name: 'Préparer la visite' })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'Modifier la fiche' })).toHaveCount(0)
   await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: 'Réaffecter' })).toHaveCount(0)
@@ -110,9 +110,8 @@ test('un email inconnu donne un message clair', async ({ page }) => {
 
 test('fiche avant visite : tout le magasin sur une page, téléchargeable en PDF', async ({ page, isMobile }, info) => {
   await seConnecter(page, { config: { campagnes }, messagerie })
-  await page.goto('./#/magasins/Lyon%20Test')
-  await actionFiche(page, 'Préparer la visite')
-  await expect(page).toHaveURL(/#\/magasins\/Lyon%20Test\/preparer$/)
+  // Vague 7 : la fiche avant visite garde son adresse, ouverte depuis l'étape Préparer de la visite
+  await page.goto('./#/magasins/Lyon%20Test/preparer')
   await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test', exact: true })).toBeVisible()
   for (const t of ['En bref', 'Chiffres', 'Repères réseau', 'Tâches en cours (1)', 'Audits', 'Campagnes à constater', 'Derniers messages']) {
     await expect(page.getByRole('heading', { name: t, exact: true })).toBeVisible()
@@ -135,20 +134,18 @@ test('fiche avant visite : tout le magasin sur une page, téléchargeable en PDF
   await page.emulateMedia({ media: 'screen' })
   if (!isMobile) {
     await page.goto('./#/visites')
-    await expect(page.getByRole('link', { name: 'Préparer la visite de Lyon Test' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Planifier la visite : Lyon Test' })).toBeVisible()
   }
 })
 
 test('un Coach prépare la visite d’un de ses magasins', async ({ page, isMobile }) => {
   await seConnecter(page, NOE)
   // Sur PC depuis le rythme de visite, sur téléphone depuis la fiche du magasin
-  if (isMobile) {
-    await page.goto('./#/magasins/Lyon%20Test')
-    await actionFiche(page, 'Préparer la visite')
-  } else {
-    await page.goto('./#/visites?vue=rythme')
-    await page.getByRole('link', { name: 'Préparer la visite de Lyon Test' }).first().click()
-  }
+  if (isMobile) await page.goto('./#/magasins/Lyon%20Test')
+  else await page.goto('./#/visites?vue=rythme')
+  await page.getByRole('link', { name: 'Planifier la visite : Lyon Test' }).first().click()
+  await expect(page).toHaveURL(/visite\?etape=preparer/)
+  await page.goto('./#/magasins/Lyon%20Test/preparer')
   await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test', exact: true })).toBeVisible()
   await expect(page.getByRole('table', { name: 'Repères réseau' })).toBeVisible()
   // Hors de son périmètre : introuvable

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { creerDepuisMenu, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { creerDepuisMenu, saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 // Sprint 23 (Joseph, 23/10/2026) : retouches du quotidien. Saisie d'une visite sans champs déjà connus (S1),
 // Ma semaine en trois chiffres (S2), rythme par Coach lisible en entier (S3), tâche cochée depuis l'accueil
@@ -16,14 +16,12 @@ test.afterEach(async ({ page }) => {
 
 test('S1 : depuis la fiche, magasin, date, type et visiteur tiennent sur une ligne', async ({ page }, info) => {
   await seConnecter(page)
-  await page.goto('./#/magasins/Lyon%20Test?vue=visites')
-  await page.getByRole('button', { name: 'Saisir', exact: true }).click()
-  const d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  const d = await saisirVisiteNonPrevue(page, 'Lyon Test')
   const resume = d.getByRole('region', { name: 'Visite' })
   await expect(resume).toContainText('Lyon Test · aujourd’hui')
   await expect(resume).toContainText('Visite terrain · Noé MODELE')
   await expect(d.getByLabel('Magasins visités')).toHaveCount(0)
-  await expect(d.getByRole('group', { name: 'Tâches en cours' })).toBeVisible()
+  await expect(d.getByRole('region', { name: 'Plan d’action et tâches' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-saisie-visite-resume.png` })
   await resume.getByRole('button', { name: 'Modifier' }).click()

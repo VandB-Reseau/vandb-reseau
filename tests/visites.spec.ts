@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { COMPTE, seConnecter, simulerSupabase, textesTropPetits, type Ecriture } from './supabase-simule'
+import { COMPTE, saisirVisiteNonPrevue, seConnecter, simulerSupabase, textesTropPetits, type Ecriture } from './supabase-simule'
 import { COACHS, magasinsFictifs } from './donnees-fictives'
 
 test.beforeEach(async ({ page }) => {
@@ -42,9 +42,7 @@ test('le rythme de visite est indicatif et signale les magasins pas vus depuis l
 test('saisir une tournée crée une visite par magasin', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
-  await page.goto('./#/visites')
-  await page.getByRole('button', { name: 'Saisir une visite pour Nantes Test' }).click()
-  const d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  const d = await saisirVisiteNonPrevue(page, 'Nantes Test')
   await d.getByRole('region', { name: 'Visite' }).getByRole('button', { name: 'Modifier' }).click()
   await d.getByLabel('Magasins visités').fill('Rennes')
   await page.getByRole('option', { name: 'Rennes Test' }).click()

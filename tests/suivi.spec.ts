@@ -32,7 +32,9 @@ test('ajouter, modifier et supprimer une note du journal', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test?vue=journal')
-  await page.getByRole('button', { name: 'Note', exact: true }).click()
+  // Vague 7 : la note s'ajoute par le « + » de la fiche
+  await page.getByRole('main').getByRole('button', { name: 'Ajouter', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Note', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle note' })
   await d.getByLabel('Note', { exact: true }).fill('Franchisé motivé par la terrasse.')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
