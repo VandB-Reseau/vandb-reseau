@@ -1,3 +1,4 @@
+import { styleTableau } from '../theme/tableau'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
@@ -51,7 +52,7 @@ export function ComparaisonMagasin({ magasin, directeur }: { magasin: string; di
         )}
       </Box>
       <TableContainer>
-        <Table size="small" aria-label={`${magasin} face aux médianes`} sx={{ '& td, & th': { whiteSpace: 'nowrap' }, '& td:first-of-type, & th:first-of-type': { pl: 2.5 } }}>
+        <Table size="small" className="colonne-fixe" aria-label={`${magasin} face aux médianes`} sx={styleTableau}>
           <TableHead>
             <TableRow>
               <TableCell>{base === 'reel' ? `Réel ${donnees.annee} à date` : `Budgets ${donnees.anneeBudget}`}</TableCell>

@@ -9,6 +9,14 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Tableaux harmonisés (Joseph, 10/11/2026) : toutes les listes en tableau prennent le rendu de la liste des magasins
+  (titres en gras collés en haut, lignes de 44 px, première colonne figée au défilement, avec la case à cocher quand il y
+  en a une). Chaque colonne se trie d'un clic sur son titre (flèche) et se filtre par l'entonnoir qui apparaît au survol :
+  valeurs à cocher ou bornes « au moins / au plus » pour les chiffres (`src/components/TableauTri.tsx`). Magasins,
+  Visites, Charge par Coach, Demandes, Portefeuilles, Santé du parc (Chiffres, Évaluer, Déploiements), constats des
+  campagnes, Budgets par magasin, Suivi par magasin, Clôture du mois, Ma semaine, Campagne des budgets. Les tableaux
+  financiers gardent l'ordre de leurs lignes, sans tri ni filtre ; ceux qui avaient leur propre style prennent celui du
+  compte de résultat. Sans migration.
 - Lancement manuel limité de la mise en ligne (Joseph, 10/11/2026) : « Run workflow » de « Tester et publier » prend
   une liste de tests à repasser seulement ; vide, toute la suite. Sans migration.
 - Refonte façon SaaS, vague 6 : messagerie, budget et suivi (Joseph, 10/11/2026, choix 57 à 78 sauf 59, 61, 65, 66, 67,

@@ -1,3 +1,4 @@
+import { Entete, LigneSansResultat, styleListe, useTableau, type ColonneTri } from '../../components/TableauTri'
 import { useNomsPerimetre } from '../../data/perimetreChoisi'
 import Snackbar from '@mui/material/Snackbar'
 import { BarreSelection, CaseEntete, CaseLigne, useSelection } from '../../components/Selection'
@@ -21,7 +22,6 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TableSortLabel from '@mui/material/TableSortLabel'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
@@ -37,7 +37,7 @@ import { EtatVide } from '../components/EtatVide'
 import { Indicateur } from '../components/Indicateur'
 import { Panne } from '../components/Panne'
 import { PastilleStatut } from '../components/PastilleStatut'
-import { anneeBudget, chargerActions, chargerAlertes, chargerBudgets, chargerCommentairesOuverts, chargerParametres, chargerReelDuCompte, departTresorerie, hypothesesDe, parametresDuBudget } from '../data/pilotage'
+import { anneeBudget, chargerActions, chargerAlertes, chargerBudgets, chargerCommentairesOuverts, chargerParametres, chargerReelDuCompte, departTresorerie, hypothesesDe, parametresDuBudget, statutLibelle } from '../data/pilotage'
 import { useChargement } from '../data/useChargement'
 import { aTraiter, correspond, filtrerMagasins, FILTRES, type Filtre } from '../lib/aFaire'
 import { lienMagasin, milliers, taux } from '../lib/format'
@@ -51,7 +51,6 @@ import { ValidationSerie } from '../components/ValidationSerie'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import DoneAllOutlined from '@mui/icons-material/DoneAllOutlined'
 import PlaylistAddCheckOutlined from '@mui/icons-material/PlaylistAddCheckOutlined'
-import { styleTableau } from '../theme/tableau'
 import { annees, anneeSuivi } from '../data/annees'
 
 // Liste des magasins (lot 27) : une ligne par magasin, colonnes triables, alertes et EBE / CA lisibles d'un coup d'œil
@@ -151,28 +150,29 @@ export function Magasins() {
   const sens = params.get('sens') === 'desc' ? 'desc' : params.get('sens') === 'asc' ? 'asc' : tri ? SENS_DEFAUT[tri] : 'asc'
   // Vague 3 (21A) : le périmètre choisi dans le menu
   const noms = useNomsPerimetre()
-  const visibles = useMemo(() => {
-    const l = filtrerMagasins(noms ? tous.filter((m) => noms.has(m.magasin)) : tous, filtre, recherche, groupe, responsable)
-    if (!tri) return l
-    const valeur = (m: (typeof l)[number]): number | string | null => {
-      switch (tri) {
-        case 'magasin': return m.magasin
-        case 'groupe': return m.groupe || null
-        case 'statut': return m.statut ?? null
-        case 'alertes': return (alertesDe.get(m.magasin)?.length ?? 0) + (m.aEquipe ? 0 : 1) + (m.aFrais ? 0 : 1)
-        case 'pointBas': return m.pointBas
-        case 'ca': return m.budget?.ca ?? null
-        case 'ebeSurCA': return m.budget?.ratios.ebeSurCA ?? null
-      }
-    }
-    // Valeur absente toujours en bas, quel que soit le sens
-    return [...l].sort((a, b) => {
-      const x = valeur(a), y = valeur(b)
-      if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1
-      const c = typeof x === 'string' ? x.localeCompare(String(y), 'fr') : x - (y as number)
-      return (sens === 'asc' ? c : -c) || a.magasin.localeCompare(b.magasin, 'fr')
-    })
-  }, [tous, noms, filtre, recherche, groupe, responsable, tri, sens, alertesDe])
+  const filtres = useMemo(() => {
+    return filtrerMagasins(noms ? tous.filter((m) => noms.has(m.magasin)) : tous, filtre, recherche, groupe, responsable)
+  }, [tous, noms, filtre, recherche, groupe, responsable])
+  // Harmonisation des tableaux (10/11/2026) : chaque colonne se trie et se filtre ; le tri reste dans l'adresse.
+  // Valeur absente toujours en bas, quel que soit le sens
+  const colonnesTri = useMemo<ColonneTri<(typeof filtres)[number]>[]>(() => [
+    { cle: 'magasin', libelle: 'Magasin', valeur: (m) => m.magasin },
+    { cle: 'groupe', libelle: 'Groupe', valeur: (m) => m.groupe || null },
+    { cle: 'statut', libelle: `Budget ${annee}`, valeur: (m) => m.statut ?? null, texte: (m) => (m.statut ? statutLibelle[m.statut] : 'Pas de budget') },
+    { cle: 'ca', libelle: 'CA HT', valeur: (m) => m.budget?.ca ?? null, nombre: (m) => (m.budget ? m.budget.ca / 1000 : null), unite: 'k€' },
+    { cle: 'ebeSurCA', libelle: 'EBE / CA', valeur: (m) => m.budget?.ratios.ebeSurCA ?? null, nombre: (m) => (m.budget ? m.budget.ratios.ebeSurCA * 100 : null), unite: '%' },
+    { cle: 'pointBas', libelle: 'Point bas de trésorerie', valeur: (m) => m.pointBas, nombre: (m) => (m.pointBas === null ? null : m.pointBas / 1000), unite: 'k€', premier: 'asc' },
+    { cle: 'alertes', libelle: 'À faire', valeur: (m) => (alertesDe.get(m.magasin)?.length ?? 0) + (m.aEquipe ? 0 : 1) + (m.aFrais ? 0 : 1), filtre: 'nombre' },
+  ], [annee, alertesDe])
+  const tableau = useTableau(filtres, colonnesTri, {
+    tri: null, memoire: 'budgets-magasins',
+    controle: { tri: tri ? { cle: tri, sens } : null, changer: (x) => setParams((p) => {
+      const n = new URLSearchParams(p)
+      if (x) { n.set('tri', x.cle); n.set('sens', x.sens) } else { n.delete('tri'); n.delete('sens') }
+      return n
+    }, { replace: true }) },
+  })
+  const visibles = tableau.lignes
   // Refonte vague 2 (16A) : sélection de plusieurs budgets, pour l'équipe sur PC
   const surPCSel = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const avecSelection = estEquipe(profil) && surPCSel && !profil?.apercu
@@ -189,12 +189,6 @@ export function Magasins() {
     sel.vider()
     setMessageSel(n ? `${n} relance${n > 1 ? 's' : ''} envoyée${n > 1 ? 's' : ''} : une tâche pour chaque franchisé.` : 'Les relances n’ont pas pu partir. Réessaie dans un instant.')
   }
-  const trier = (cle: Tri) => setParams((p) => {
-    const n = new URLSearchParams(p)
-    n.set('tri', cle)
-    n.set('sens', tri === cle ? (sens === 'asc' ? 'desc' : 'asc') : SENS_DEFAUT[cle])
-    return n
-  }, { replace: true })
   const avecGroupe = tous.some((m) => m.groupe)
   const total = totalBudgets(visibles.flatMap((m) => (m.budget ? [m.budget] : [])))
   const ebeMax = Math.max(0.01, ...visibles.map((m) => Math.abs(m.budget?.ratios.ebeSurCA ?? 0)))
@@ -324,7 +318,7 @@ export function Magasins() {
             )}
           </Stack>
 
-          {visibles.length === 0 && (
+          {filtres.length === 0 && (
             <EtatVide titre="Aucun magasin ne correspond" texte="Change de filtre ou de recherche pour retrouver tes magasins." />
           )}
 
@@ -349,23 +343,22 @@ export function Magasins() {
                 </Card>
               ))}
             </Stack>
-          ) : visibles.length > 0 && (
+          ) : filtres.length > 0 && (
             <Card>
               <TableContainer>
-                <Table size="small" className="colonne-fixe" aria-label={`Budgets ${annee} par magasin`} sx={styleTableau}>
+                <Table size="small" className="colonne-fixe" aria-label={`Budgets ${annee} par magasin`} sx={styleListe}>
                   <TableHead>
                     <TableRow>
                       {ENTETES.filter((c) => avecGroupe || c.cle !== 'groupe').map((c) => (
-                        <TableCell key={c.cle} align={'droite' in c ? 'right' : 'left'} sortDirection={tri === c.cle ? sens : false} sx={{ verticalAlign: 'bottom' }}>
-                          {c.cle === ENTETES[0].cle && avecSelection && <Box component="span" sx={{ mr: 1.5, display: 'inline-flex' }}><CaseEntete s={sel} /></Box>}
-                          <TableSortLabel active={tri === c.cle} direction={tri === c.cle ? sens : SENS_DEFAUT[c.cle]} onClick={() => trier(c.cle)} sx={{ minHeight: 36 }}>
-                            {c.cle === 'statut' ? `Budget ${annee}` : c.libelle}
-                          </TableSortLabel>
-                        </TableCell>
+                        <Entete key={c.cle} t={tableau} cle={c.cle} align={'droite' in c ? 'right' : 'left'} sx={{ verticalAlign: 'bottom' }}
+                          avant={c.cle === ENTETES[0].cle && avecSelection ? <Box component="span" sx={{ mr: 1.5, display: 'inline-flex' }}><CaseEntete s={sel} /></Box> : undefined}>
+                          {c.cle === 'statut' ? `Budget ${annee}` : c.libelle}
+                        </Entete>
                       ))}
                     </TableRow>
                   </TableHead>
                   <TableBody>
+                    <LigneSansResultat t={tableau} colSpan={avecGroupe ? 7 : 6} quoi="Aucun magasin ne correspond" />
                     {total.magasins > 1 && (
                       <TableRow sx={{ bgcolor: 'action.hover', '& td': { fontWeight: 700 } }}>
                         <TableCell>Total de la sélection</TableCell>

@@ -1,9 +1,11 @@
 // Demandes des franchisés au siège (refonte vague 4, Joseph 10/11/2026, 37A). Équipe : guichet de ses magasins, filtré par
 // statut, avec le délai médian de première réponse et les demandes ouvertes depuis plus de 5 jours. Franchisé : ses
 // demandes, une nouvelle en trois champs, la conversation avec le siège.
+import { Entete, LigneSansResultat, useTableau, type ColonneTri } from '../components/TableauTri'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
+import Card from '@mui/material/Card'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
@@ -125,23 +127,7 @@ function DemandesEquipe({ reseau }: { reseau: Reseau }) {
       {visibles.length === 0 ? (
         <EmptyState icone={<SupportAgentOutlined />} titre={filtre === 'traiter' ? 'Aucune demande à traiter' : 'Aucune demande'} texte={filtre === 'traiter' ? 'Les franchisés n’attendent rien du siège pour le moment.' : 'Aucune demande ne correspond.'} />
       ) : surPC ? (
-        <TableContainer>
-          <Table size="small" aria-label="Demandes des franchisés">
-            <TableHead><TableRow><TableCell>Demande</TableCell><TableCell>Magasin</TableCell><TableCell>Thème</TableCell><TableCell>Interlocuteur</TableCell><TableCell>Ouverte</TableCell><TableCell>Statut</TableCell></TableRow></TableHead>
-            <TableBody>
-              {visibles.map((d) => (
-                <TableRow key={d.id} hover onClick={() => setOuverte(d)} sx={{ cursor: 'pointer' }}>
-                  <TableCell><Link component="button" onClick={(e) => { e.stopPropagation(); setOuverte(d) }} sx={{ fontWeight: 600, textAlign: 'left' }}>{d.titre}</Link></TableCell>
-                  <TableCell><NomMagasin reseau={reseau} nom={d.magasin} /></TableCell>
-                  <TableCell>{libelleTheme(d.theme)}</TableCell>
-                  <TableCell>{interlocuteur(d) ? <Personne reseau={reseau} nom={interlocuteur(d)} /> : '—'}</TableCell>
-                  <TableCell sx={{ color: enAttenteLongue(d, instant) ? 'error.main' : undefined, fontWeight: enAttenteLongue(d, instant) ? 700 : undefined }}>{dateRelative(d.ouverteLe, reseau.jour)}</TableCell>
-                  <TableCell><PuceDemande statut={d.statut} /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <TableauDemandes reseau={reseau} demandes={visibles} instant={instant} interlocuteur={interlocuteur} ouvrir={setOuverte} />
       ) : (
         <Box component="ul" aria-label="Demandes des franchisés" sx={{ listStyle: 'none', m: 0, p: 0 }}>
           {visibles.map((d) => (
@@ -155,6 +141,41 @@ function DemandesEquipe({ reseau }: { reseau: Reseau }) {
       {ouverte && <DialogRepondre d={ouverte} interlocuteur={interlocuteur(ouverte)} lecture={voirComme} onFermer={(m) => { setOuverte(null); if (m) { setMessage(m); void recharger() } }} />}
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>
+  )
+}
+
+// Tableau des demandes sur PC : chaque colonne se trie et se filtre (harmonisation des tableaux, 10/11/2026)
+function TableauDemandes({ reseau, demandes, instant, interlocuteur, ouvrir }: { reseau: Reseau; demandes: Demande[]; instant: string; interlocuteur: (d: Demande) => string; ouvrir: (d: Demande) => void }) {
+  const colonnes = useMemo<ColonneTri<Demande>[]>(() => [
+    { cle: 'titre', libelle: 'Demande', valeur: (d) => d.titre, filtre: false },
+    { cle: 'magasin', libelle: 'Magasin', valeur: (d) => d.magasin },
+    { cle: 'theme', libelle: 'Thème', valeur: (d) => libelleTheme(d.theme) },
+    { cle: 'interlocuteur', libelle: 'Interlocuteur', valeur: (d) => interlocuteur(d) || null },
+    { cle: 'ouverte', libelle: 'Ouverte', valeur: (d) => d.ouverteLe, texte: (d) => (enAttenteLongue(d, instant) ? 'Depuis plus de 5 jours' : 'Récente'), premier: 'asc' },
+    { cle: 'statut', libelle: 'Statut', valeur: (d) => libelleStatutDemande[d.statut] },
+  ], [interlocuteur, instant])
+  const t = useTableau(demandes, colonnes, { memoire: 'demandes' })
+  return (
+    <Card>
+      <TableContainer>
+        <Table size="small" aria-label="Demandes des franchisés">
+          <TableHead><TableRow>{colonnes.map((c) => <Entete key={c.cle} t={t} cle={c.cle} />)}</TableRow></TableHead>
+          <TableBody>
+            <LigneSansResultat t={t} colSpan={6} quoi="Aucune demande ne correspond" />
+            {t.lignes.map((d) => (
+              <TableRow key={d.id} hover onClick={() => ouvrir(d)} sx={{ cursor: 'pointer' }}>
+                <TableCell><Link component="button" onClick={(e) => { e.stopPropagation(); ouvrir(d) }} sx={{ fontWeight: 600, textAlign: 'left' }}>{d.titre}</Link></TableCell>
+                <TableCell><NomMagasin reseau={reseau} nom={d.magasin} /></TableCell>
+                <TableCell>{libelleTheme(d.theme)}</TableCell>
+                <TableCell>{interlocuteur(d) ? <Personne reseau={reseau} nom={interlocuteur(d)} /> : '—'}</TableCell>
+                <TableCell sx={{ color: enAttenteLongue(d, instant) ? 'error.main' : undefined, fontWeight: enAttenteLongue(d, instant) ? 700 : undefined }}>{dateRelative(d.ouverteLe, reseau.jour)}</TableCell>
+                <TableCell><PuceDemande statut={d.statut} /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Card>
   )
 }
 

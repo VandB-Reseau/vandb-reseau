@@ -1,3 +1,4 @@
+import { Entete, LigneSansResultat, styleListe, useTableau, type ColonneTri } from '../../components/TableauTri'
 import { useNomsPerimetre } from '../../data/perimetreChoisi'
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
@@ -69,7 +70,16 @@ export function Clotures() {
       return { magasin: l.magasin, coach: donnees.reel.coachs[l.magasin] ?? '', etapes, faits: etapes.filter((e) => e.fait).length }
     }).sort((a, b) => a.faits - b.faits || a.magasin.localeCompare(b.magasin, 'fr'))
   }, [donnees, noms, mois, annee])
-  const cles = useMemo(() => lignes.map((l) => l.magasin), [lignes])
+  // Harmonisation des tableaux (10/11/2026) : chaque colonne se trie et se filtre
+  type Ligne = (typeof lignes)[number]
+  const colonnes = useMemo<ColonneTri<Ligne>[]>(() => [
+    { cle: 'magasin', libelle: 'Magasin', valeur: (l) => l.magasin },
+    { cle: 'coach', libelle: 'Coach', valeur: (l) => l.coach || null },
+    ...(lignes[0]?.etapes ?? []).map((e, i): ColonneTri<Ligne> => ({ cle: `e:${e.cle}`, libelle: e.libelle, valeur: (l) => (l.etapes[i]?.fait ? 1 : 0), texte: (l) => (l.etapes[i]?.fait ? 'Fait' : 'À faire'), filtre: 'liste', premier: 'asc' })),
+    { cle: 'faits', libelle: 'Fait', valeur: (l) => l.faits, texte: (l) => `${l.faits} sur ${l.etapes.length}`, filtre: 'liste', premier: 'asc' },
+  ], [lignes])
+  const t = useTableau(lignes, colonnes, { memoire: 'clotures' })
+  const cles = useMemo(() => t.lignes.map((l) => l.magasin), [t.lignes])
   const s = useSelection(cles)
   const nomMois = `${MOIS[mois - 1]} ${annee}`
   const relancer = async () => {
@@ -98,20 +108,21 @@ export function Clotures() {
       </Box>
       <Card>
         <TableContainer>
-          <Table size="small" aria-label={`Clôtures de ${nomMois}`}>
+          <Table size="small" className="deux-colonnes-fixes" aria-label={`Clôtures de ${nomMois}`} sx={styleListe}>
             <TableHead>
               <TableRow>
                 <TableCell padding="checkbox" sx={{ pl: 2 }}><CaseEntete s={s} /></TableCell>
-                <TableCell>Magasin</TableCell>
-                {surPC && <TableCell>Coach</TableCell>}
-                {surPC ? etapesNoms.map((n) => <TableCell key={n} align="center">{n}</TableCell>) : <TableCell>Fait</TableCell>}
+                <Entete t={t} cle="magasin" />
+                {surPC && <Entete t={t} cle="coach" />}
+                {surPC ? (lignes[0]?.etapes ?? []).map((e) => <Entete key={e.cle} t={t} cle={`e:${e.cle}`} align="center" />) : <Entete t={t} cle="faits" />}
               </TableRow>
             </TableHead>
             <TableBody>
-              {lignes.map((l) => (
+              <LigneSansResultat t={t} colSpan={surPC ? etapesNoms.length + 3 : 3} quoi="Aucun magasin ne correspond" />
+              {t.lignes.map((l) => (
                 <TableRow key={l.magasin} hover selected={s.choisis.has(l.magasin)} onClick={() => navigate(lienMagasin(l.magasin, 'cloture'))} sx={{ cursor: 'pointer' }}>
                   <TableCell padding="checkbox" sx={{ pl: 2 }}><CaseLigne s={s} cle={l.magasin} nom={l.magasin} /></TableCell>
-                  <TableCell><Link component={RouterLink} to={lienMagasin(l.magasin, 'cloture')} onClick={(e) => e.stopPropagation()} sx={{ fontWeight: 600, display: 'inline-flex', minHeight: 40, alignItems: 'center' }}>{l.magasin}</Link></TableCell>
+                  <TableCell><Link component={RouterLink} to={lienMagasin(l.magasin, 'cloture')} onClick={(e) => e.stopPropagation()} sx={{ fontWeight: 600, display: 'inline-flex', minHeight: { xs: 48, md: 40 }, alignItems: 'center' }}>{l.magasin}</Link></TableCell>
                   {surPC && <TableCell>{l.coach}</TableCell>}
                   {surPC
                     ? l.etapes.map((e) => (

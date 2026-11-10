@@ -1,3 +1,4 @@
+import { Entete, LigneSansResultat, styleListe, useTableau, type ColonneTri } from '../../components/TableauTri'
 import { CausesEcartsReseau } from '../components/CausesEcarts'
 import { useNomsPerimetre } from '../../data/perimetreChoisi'
 import { useMemo } from 'react'
@@ -16,7 +17,6 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TableSortLabel from '@mui/material/TableSortLabel'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
@@ -62,6 +62,17 @@ const COLONNES: Colonne[] = [
   { cle: 'caParHeure', libelle: 'CA par heure travaillée', texte: (v) => euros.format(v) },
   { cle: 'loyerSurCA', libelle: 'Loyer / CA', texte: taux },
   { cle: 'ebeSurCA', libelle: 'EBE / CA', texte: taux, rouge: (v) => v < 0 },
+]
+const MILLIERS = new Set(['ca']), POURCENTS = new Set(['evolution', 'ecartBudget', 'tauxMarge', 'ticketsCave', 'ticketsBar', 'pctFP', 'loyerSurCA', 'ebeSurCA'])
+const colonnesTri: ColonneTri<LigneReseau & { coach: string }>[] = [
+  { cle: 'magasin', libelle: 'Magasin', valeur: (m) => m.magasin },
+  { cle: 'coach', libelle: 'Coach', valeur: (m) => m.coach || null },
+  ...COLONNES.map((c): ColonneTri<LigneReseau & { coach: string }> => {
+    const v = (m: LigneReseau & { coach: string }) => (c.cle === 'moisRealises' ? m.moisRealises || null : m[c.cle as keyof LigneReseau] as number | null)
+    if (c.cle === 'moisRealises') return { cle: c.cle, libelle: c.libelle, valeur: v, texte: (m) => c.texte(m.moisRealises), filtre: 'liste' }
+    const echelle = MILLIERS.has(c.cle) ? 1 / 1000 : POURCENTS.has(c.cle) ? 100 : 1
+    return { cle: c.cle, libelle: c.libelle, valeur: v, filtre: 'nombre', nombre: (m) => { const x = v(m); return x === null ? null : x * echelle }, unite: MILLIERS.has(c.cle) ? 'k€' : POURCENTS.has(c.cle) ? '%' : '€' }
+  }),
 ]
 // Allègement (Joseph, 03/11/2026) : le classement se lit par vue de 4 à 5 colonnes ; l'export Excel garde tout
 type Vue = 'ventes' | 'clients' | 'equipe'
@@ -123,28 +134,27 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
   const PARAM_VUE = integre ? 'classement' : 'vue'
   const vue = VUES.find((v) => v.cle === params.get(PARAM_VUE)) ?? VUES[0]
   const colonnes = COLONNES.filter((c) => vue.colonnes.includes(c.cle))
-  const tri = ([...COLONNES.map((c) => c.cle), 'magasin'] as string[]).includes(params.get('tri') ?? '') ? params.get('tri') as Cle : 'ca'
+  const tri = ([...COLONNES.map((c) => c.cle), 'magasin', 'coach'] as string[]).includes(params.get('tri') ?? '') ? params.get('tri') as Cle : 'ca'
   const sens = params.get('sens') === 'asc' ? 'asc' : params.get('sens') === 'desc' ? 'desc' : tri === 'magasin' ? 'asc' : 'desc'
 
   // Vague 3 (21A) : le périmètre choisi dans le menu
   const noms = useNomsPerimetre()
-  const visibles = useMemo(() => {
+  const choisis = useMemo(() => {
     const q = simple(recherche)
-    const l = (donnees?.magasins ?? []).filter((m) => (!noms || noms.has(m.magasin)) && (groupe === null || m.groupeId === groupe) && (!coach || m.coach === coach) && (!rr || m.rrs.includes(rr)) && (!q || simple(m.magasin).includes(q)))
-    // Valeur absente toujours en bas, quel que soit le sens
-    return [...l].sort((a, b) => {
-      if (tri === 'magasin') return (sens === 'asc' ? 1 : -1) * a.magasin.localeCompare(b.magasin, 'fr')
-      const x = a[tri], y = b[tri]
-      if (x === null || y === null) return x === null ? (y === null ? 0 : 1) : -1
-      return sens === 'asc' ? x - y : y - x
-    })
-  }, [donnees, noms, recherche, groupe, coach, rr, tri, sens])
+    return (donnees?.magasins ?? []).filter((m) => (!noms || noms.has(m.magasin)) && (groupe === null || m.groupeId === groupe) && (!coach || m.coach === coach) && (!rr || m.rrs.includes(rr)) && (!q || simple(m.magasin).includes(q)))
+  }, [donnees, noms, recherche, groupe, coach, rr])
+  // Harmonisation des tableaux (10/11/2026) : chaque colonne se trie et se filtre ; le tri reste dans l'adresse.
+  // Valeur absente toujours en bas, quel que soit le sens ; bornes des filtres dans l'unité affichée (k€, %, €)
+  const tableau = useTableau(choisis, colonnesTri, {
+    tri: { cle: 'ca', sens: 'desc' }, memoire: 'suivi-reseau',
+    controle: { tri: { cle: tri, sens }, changer: (x) => changer({ tri: x && x.cle !== 'ca' ? x.cle : null, sens: x && !(x.cle === 'ca' && x.sens === 'desc') ? x.sens : null }) },
+  })
+  const visibles = tableau.lignes
   const total = totalReseau(visibles)
   // Médiane de la sélection : un groupe filtré donne la médiane du groupe
   const mediane = medianes(visibles.filter((m) => m.moisRealises > 0).map(ratiosDuReel))
   const filtre = visibles.length !== (donnees?.magasins.length ?? 0)
   const etat = { liste: visibles.map((m) => m.magasin), retour: params.toString(), depuis: { chemin: '/budgets/suivi', nom: `Suivi ${annee}` } }
-  const trier = (cle: Cle) => changer({ tri: cle, sens: tri === cle ? (sens === 'asc' ? 'desc' : 'asc') : cle === 'magasin' ? 'asc' : 'desc' })
   const sousBudget = visibles.filter((m) => m.ecartBudget !== null && m.ecartBudget < 0).length
   const avecBudget = visibles.filter((m) => m.ecartBudget !== null).length
   // Sélection en clair, reprise dans l'export et sur la page imprimée
@@ -270,22 +280,20 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
         </ToggleButtonGroup>
       </Box>
 
-      {visibles.length === 0 ? (
+      {choisis.length === 0 ? (
         <EtatVide titre="Aucun magasin ne correspond" texte="Change de filtre ou de recherche pour retrouver les magasins." />
       ) : (
         <Card>
           <TableContainer>
-            <Table size="small" className="colonne-fixe" aria-label={`Réel ${annee} par magasin`} sx={styleTableau}>
+            <Table size="small" className="colonne-fixe" aria-label={`Réel ${annee} par magasin`} sx={[styleTableau, styleListe]}>
               <TableHead>
                 <TableRow>
-                  <TableCell sortDirection={tri === 'magasin' ? sens : false} sx={{ minWidth: 180 }}>
-                    <TableSortLabel active={tri === 'magasin'} direction={tri === 'magasin' ? sens : 'asc'} onClick={() => trier('magasin')} sx={{ minHeight: { xs: 48, md: 36 } }}>Magasin</TableSortLabel>
-                  </TableCell>
-                  {donnees.coachs.length > 0 && <TableCell sx={surPC}>Coach</TableCell>}
+                  <Entete t={tableau} cle="magasin" sx={{ minWidth: 180 }}>Magasin</Entete>
+                  {donnees.coachs.length > 0 && <Entete t={tableau} cle="coach" sx={surPC}>Coach</Entete>}
                   {colonnes.map((c) => (
-                    <TableCell key={c.cle} align="right" sortDirection={tri === c.cle ? sens : false} sx={{ whiteSpace: 'normal', minWidth: 96, verticalAlign: 'bottom' }}>
-                      <TableSortLabel active={tri === c.cle} direction={tri === c.cle ? sens : 'desc'} onClick={() => trier(c.cle)} sx={{ minHeight: { xs: 48, md: 36 } }}>{c.cle === 'pctFP' ? <abbr title="Frais de personnel ÷ CA HT" style={{ textDecoration: 'none' }}>{c.libelle}</abbr> : c.libelle}</TableSortLabel>
-                    </TableCell>
+                    <Entete key={c.cle} t={tableau} cle={c.cle} align="right" sx={{ whiteSpace: 'normal', minWidth: 96, verticalAlign: 'bottom' }}>
+                      {c.cle === 'pctFP' ? <abbr title="Frais de personnel ÷ CA HT" style={{ textDecoration: 'none' }}>{c.libelle}</abbr> : c.libelle}
+                    </Entete>
                   ))}
                 </TableRow>
               </TableHead>
@@ -304,6 +312,7 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
                     ? cellule(c, mediane[c.cle as CleRatio])
                     : <TableCell key={c.cle} />))}
                 </TableRow>
+                <LigneSansResultat t={tableau} colSpan={colonnes.length + (donnees.coachs.length > 0 ? 2 : 1)} quoi="Aucun magasin ne correspond" />
                 {visibles.map((m) => (
                   <TableRow key={m.magasin} hover onClick={() => navigate(lienMagasin(m.magasin), { state: etat })} sx={{ cursor: 'pointer' }}>
                     <TableCell>

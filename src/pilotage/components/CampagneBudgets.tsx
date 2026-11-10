@@ -1,4 +1,5 @@
-import { Fragment, useState, type ReactNode } from 'react'
+import { Fragment, useMemo, useState, type ReactNode } from 'react'
+import { Entete, LigneSansResultat, styleListe, useTableau, type ColonneTri } from '../../components/TableauTri'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -57,6 +58,14 @@ function TableauResponsables({ titre, lignes, sansNom, filtrer, sousLignes, libe
   sousLignes?: (nom: string) => Avancement[]; libelleSous?: string
 }) {
   const [ouverts, setOuverts] = useState<Set<string>>(new Set())
+  // Harmonisation des tableaux (10/11/2026) : chaque colonne se trie et se filtre ; les lignes dépliées suivent leur responsable
+  const colonnes = useMemo<ColonneTri<Avancement>[]>(() => [
+    { cle: 'nom', libelle: titre, valeur: (l) => l.nom || sansNom },
+    { cle: 'magasins', libelle: 'Magasins', valeur: (l) => l.magasins },
+    ...COLONNES.map((c): ColonneTri<Avancement> => ({ cle: c.cle, libelle: c.libelle, valeur: (l) => l[c.cle] })),
+    { cle: 'commentaires', libelle: 'Commentaires ouverts', valeur: (l) => l.commentaires ?? 0 },
+  ], [titre, sansNom])
+  const t = useTableau(lignes, colonnes)
   const ligne = (l: Avancement, sous: boolean) => (
     <TableRow key={`${sous ? 'sous-' : ''}${l.nom}`} sx={sous ? { bgcolor: 'action.hover' } : undefined}>
       <TableCell sx={{ fontWeight: sous ? 400 : 600, pl: sous ? '40px !important' : undefined }}>
@@ -81,22 +90,63 @@ function TableauResponsables({ titre, lignes, sansNom, filtrer, sousLignes, libe
   )
   return (
     <TableContainer>
-      <Table size="small" aria-label={titre} sx={{ '& td, & th': { px: 1.25, py: 0, whiteSpace: 'nowrap', height: 48 }, '& td:first-of-type, & th:first-of-type': { pl: 2 } }}>
+      <Table size="small" className="colonne-fixe" aria-label={titre} sx={{ ...styleListe, '& td, & th': { ...styleListe['& td, & th'], py: 0, whiteSpace: 'nowrap', height: 48 }, '& td:first-of-type, & th:first-of-type': { pl: 2 } }}>
         <TableHead>
-          <TableRow>
-            <TableCell>{titre}</TableCell>
-            <TableCell align="right">Magasins</TableCell>
-            {COLONNES.map((c) => <TableCell key={c.cle} align="right">{c.libelle}</TableCell>)}
-            <TableCell align="right">Commentaires ouverts</TableCell>
-          </TableRow>
+          <TableRow>{colonnes.map((c, i) => <Entete key={c.cle} t={t} cle={c.cle} align={i ? 'right' : 'left'} />)}</TableRow>
         </TableHead>
         <TableBody>
-          {lignes.map((l) => (
+          <LigneSansResultat t={t} colSpan={colonnes.length} />
+          {t.lignes.map((l) => (
             <Fragment key={l.nom}>
               {ligne(l, false)}
               {sousLignes && ouverts.has(l.nom) && sousLignes(l.nom).map((s) => ligne(s, true))}
             </Fragment>
           ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  )
+}
+
+// Le Coach : ses magasins un par un, avec le temps d'attente ; chaque colonne se trie et se filtre
+function MesMagasinsCampagne({ magasins, campagne, aujourdhui }: { magasins: MagasinCampagneListe[]; campagne: Campagne; aujourdhui: string }) {
+  const lignes = useMemo(() => magasinsCampagne(magasins, campagne, aujourdhui), [magasins, campagne, aujourdhui])
+  const de = useMemo(() => new Map(magasins.map((m) => [m.magasin, m])), [magasins])
+  type L = (typeof lignes)[number]
+  const etapeDe = (l: L) => ETAPES_CAMPAGNE.find((e) => e.cle === l.etape)!.libelle.replace(/s$/, '')
+  const ebeFranchise = (l: L) => (l.etape === 'retour' || l.etape === 'valide' ? de.get(l.magasin)?.ebe ?? null : null)
+  const colonnes: ColonneTri<L>[] = [
+    { cle: 'magasin', libelle: 'Magasin', valeur: (l) => l.magasin },
+    { cle: 'etape', libelle: 'Étape', valeur: (l) => ETAPES_CAMPAGNE.findIndex((e) => e.cle === l.etape), texte: etapeDe, filtre: 'liste', premier: 'asc' },
+    { cle: 'depuis', libelle: 'Depuis', valeur: (l) => l.attente, unite: 'jours' },
+    { cle: 'siege', libelle: 'EBE proposé', valeur: (l) => de.get(l.magasin)?.ebeSiege ?? null, nombre: (l) => { const v = de.get(l.magasin)?.ebeSiege; return v == null ? null : v / 1000 }, unite: 'k€' },
+    { cle: 'franchise', libelle: 'EBE du franchisé', valeur: ebeFranchise, nombre: (l) => { const v = ebeFranchise(l); return v === null ? null : v / 1000 }, unite: 'k€' },
+    { cle: 'commentaires', libelle: 'Commentaires ouverts', valeur: (l) => de.get(l.magasin)?.commentaires ?? 0 },
+  ]
+  const t = useTableau(lignes, colonnes)
+  return (
+    <TableContainer>
+      <Table size="small" className="colonne-fixe" aria-label="Mes magasins" sx={{ ...styleListe, '& td, & th': { ...styleListe['& td, & th'], whiteSpace: 'nowrap' }, '& td:first-of-type, & th:first-of-type': { pl: 2 } }}>
+        <TableHead>
+          <TableRow>{colonnes.map((c, i) => <Entete key={c.cle} t={t} cle={c.cle} align={i > 1 ? 'right' : 'left'} />)}</TableRow>
+        </TableHead>
+        <TableBody>
+          <LigneSansResultat t={t} colSpan={6} quoi="Aucun magasin ne correspond" />
+          {t.lignes.map((l) => {
+            const m = de.get(l.magasin)!
+            return (
+              <TableRow key={l.magasin} hover>
+                <TableCell><Link component={RouterLink} to={lienMagasin(l.magasin, l.etape === 'a_proposer' ? 'atterrissage' : 'echanges')} sx={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', minHeight: 48 }}>{l.magasin}</Link></TableCell>
+                <TableCell>{etapeDe(l)}</TableCell>
+                <TableCell align="right" sx={l.enRetard ? { color: 'error.main', fontWeight: 700 } : undefined}>
+                  {l.attente !== null ? pluriel(l.attente, 'jour', 'jours') : l.enRetard ? 'En retard' : ''}{l.attente !== null && l.enRetard ? ', en retard' : ''}
+                </TableCell>
+                <TableCell align="right">{m.ebeSiege === null ? '' : milliers(m.ebeSiege)}</TableCell>
+                <TableCell align="right">{l.etape === 'retour' || l.etape === 'valide' ? (m.ebe === null ? '' : milliers(m.ebe)) : ''}</TableCell>
+                <TableCell align="right" sx={{ color: m.commentaires ? 'warning.dark' : 'text.secondary', fontWeight: m.commentaires ? 700 : 400 }}>{m.commentaires ?? 0}</TableCell>
+              </TableRow>
+            )
+          })}
         </TableBody>
       </Table>
     </TableContainer>
@@ -129,39 +179,7 @@ export function CampagneBudgets({ annee, campagne, magasins, aujourdhui, role, c
     : aujourdhui <= campagne.retour ? `Retours des franchisés attendus avant le ${jour(campagne.retour)}`
       : aujourdhui <= campagne.validation ? `Validations attendues avant le ${jour(campagne.validation)}` : `Campagne close depuis le ${jour(campagne.validation)}`
 
-  const detail = role === 'coach' ? (() => {
-    const lignes = magasinsCampagne(magasins, campagne, aujourdhui)
-    const de = new Map(magasins.map((m) => [m.magasin, m]))
-    return (
-      <TableContainer>
-        <Table size="small" aria-label="Mes magasins" sx={{ '& td, & th': { px: 1.25, whiteSpace: 'nowrap' }, '& td:first-of-type, & th:first-of-type': { pl: 2 } }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Magasin</TableCell><TableCell>Étape</TableCell><TableCell align="right">Depuis</TableCell>
-              <TableCell align="right">EBE proposé</TableCell><TableCell align="right">EBE du franchisé</TableCell><TableCell align="right">Commentaires ouverts</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {lignes.map((l) => {
-              const m = de.get(l.magasin)!
-              return (
-                <TableRow key={l.magasin}>
-                  <TableCell><Link component={RouterLink} to={lienMagasin(l.magasin, l.etape === 'a_proposer' ? 'atterrissage' : 'echanges')} sx={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', minHeight: 48 }}>{l.magasin}</Link></TableCell>
-                  <TableCell>{ETAPES_CAMPAGNE.find((e) => e.cle === l.etape)!.libelle.replace(/s$/, '')}</TableCell>
-                  <TableCell align="right" sx={l.enRetard ? { color: 'error.main', fontWeight: 700 } : undefined}>
-                    {l.attente !== null ? pluriel(l.attente, 'jour', 'jours') : l.enRetard ? 'En retard' : ''}{l.attente !== null && l.enRetard ? ', en retard' : ''}
-                  </TableCell>
-                  <TableCell align="right">{m.ebeSiege === null ? '' : milliers(m.ebeSiege)}</TableCell>
-                  <TableCell align="right">{l.etape === 'retour' || l.etape === 'valide' ? (m.ebe === null ? '' : milliers(m.ebe)) : ''}</TableCell>
-                  <TableCell align="right" sx={{ color: m.commentaires ? 'warning.dark' : 'text.secondary', fontWeight: m.commentaires ? 700 : 400 }}>{m.commentaires ?? 0}</TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    )
-  })() : role === 'directeur' && avecRR ? (
+  const detail = role === 'coach' ? <MesMagasinsCampagne magasins={magasins} campagne={campagne} aujourdhui={aujourdhui} /> : role === 'directeur' && avecRR ? (
     <TableauResponsables titre="Par Responsable Régional" sansNom="Sans Responsable Régional" filtrer={filtrer} libelleSous="Coachs"
       lignes={avancementParRR(magasins, campagne, aujourdhui)}
       sousLignes={avecCoach ? (nom) => avancementParRR(magasins, campagne, aujourdhui).find((l) => l.nom === nom)?.coachs ?? [] : undefined} />

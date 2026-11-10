@@ -149,6 +149,9 @@ export const theme = createTheme({
           '&.deux-colonnes-fixes tr > :first-of-type': { width: 52, minWidth: 52, maxWidth: 52 },
           '&.deux-colonnes-fixes tr > :nth-of-type(2)': { left: 52, boxShadow: `inset -1px 0 0 ${theme.palette.divider}` },
           '& thead tr > th': { zIndex: 3 },
+          // Listes en tableau (10/11/2026) : la colonne figée garde le survol et la sélection de sa ligne
+          '&.colonne-fixe tbody tr.MuiTableRow-hover:hover > :first-of-type, &.deux-colonnes-fixes tbody tr.MuiTableRow-hover:hover > :nth-of-type(-n+2)': { backgroundImage: `linear-gradient(${theme.palette.action.hover}, ${theme.palette.action.hover})` },
+          '&.colonne-fixe tbody tr.Mui-selected > :first-of-type, &.deux-colonnes-fixes tbody tr.Mui-selected > :nth-of-type(-n+2)': { backgroundImage: `linear-gradient(${theme.palette.action.selected}, ${theme.palette.action.selected})` },
         }),
       },
     },

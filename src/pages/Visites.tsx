@@ -1,3 +1,4 @@
+import { Entete, LigneSansResultat, useTableau, type ColonneTri } from '../components/TableauTri'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink, Navigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -68,6 +69,15 @@ function Compteur({ valeur, libelle, signal, actif, onClick }: { valeur: number;
   return <ButtonBase onClick={onClick} aria-pressed={!!actif} aria-label={`${valeur} ${libelle}`} sx={{ ...sx, fontFamily: 'inherit', bgcolor: actif ? 'action.selected' : undefined, '&:hover': { bgcolor: 'action.hover' } }}>{contenu}</ButtonBase>
 }
 
+const colonnesRythme: ColonneTri<LigneRythme>[] = [
+  { cle: 'magasin', libelle: 'Magasin', valeur: (l) => l.magasin.nom },
+  { cle: 'coach', libelle: 'Coach', valeur: (l) => suivi(l.magasin, l.coach) || null, texte: (l) => suivi(l.magasin, l.coach) || 'Sans Coach' },
+  { cle: 'case', libelle: 'Nine box', valeur: (l) => l.case?.libelle ?? null, texte: (l) => l.case?.libelle ?? 'Non classé' },
+  { cle: 'faites', libelle: 'Visites de l’année', valeur: (l) => l.faites },
+  { cle: 'derniere', libelle: 'Dernière visite', valeur: (l) => l.derniere?.date ?? null, texte: (l) => (l.derniere ? 'Visité' : 'Jamais visité'), premier: 'desc' },
+  { cle: 'alerte', libelle: 'Alerte', valeur: (l) => (l.alerte ? l.depuis ?? 0 : null), texte: (l) => (l.alerte ? 'Pas vu à temps' : 'Dans les délais'), filtre: 'liste', premier: 'desc' },
+]
+
 function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir: (magasins: string[]) => void; surPC: boolean; actions: ReactNode }) {
   const annees = useMemo(() => anneesDisponibles(reseau), [reseau])
   const [cle, setCle] = useState(anneeDe(reseau.jour).cle)
@@ -95,8 +105,11 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
   const mag = (p: (l: LigneRythme) => boolean) => { const n = toutes.filter(p).length; return `${n} magasin${n > 1 ? 's' : ''}` }
   const jours = (n: number) => `${String(Math.round(n * 10) / 10).replace('.', ',')} j`
   const visites = (l: LigneRythme) => `${pluriel(l.faites, 'visite')} · référence ${l.reference}`
-  const { visibles, suite } = useParTranches(lignes, JSON.stringify([a.cle, t, coachs, cases, etats]))
   const [affichage, setAffichage] = useAffichage('rythme')
+  // Tableau (PC) : chaque colonne se trie et se filtre, avant le découpage en tranches
+  const tab = useTableau(lignes, colonnesRythme, { memoire: 'visites-rythme' })
+  const enTableau = surPC && affichage === 'tableau'
+  const { visibles, suite } = useParTranches(enTableau ? tab.lignes : lignes, JSON.stringify([a.cle, t, coachs, cases, etats, enTableau && tab.tri, enTableau && tab.filtres]))
 
   return (
     <>
@@ -148,10 +161,11 @@ function VueRythme({ reseau, saisir, surPC, actions }: { reseau: Reseau; saisir:
                 <Table aria-label="Rythme de visite par magasin" size="small" className="colonne-fixe">
                   <TableHead>
                     <TableRow>
-                      <TableCell>Magasin</TableCell><TableCell>Coach</TableCell><TableCell>Nine box</TableCell><TableCell>Visites de l’année</TableCell><TableCell>Dernière visite</TableCell><TableCell>Alerte</TableCell><TableCell />
+                      <Entete t={tab} cle="magasin" /><Entete t={tab} cle="coach" /><Entete t={tab} cle="case" /><Entete t={tab} cle="faites" /><Entete t={tab} cle="derniere" /><Entete t={tab} cle="alerte" /><TableCell />
                     </TableRow>
                   </TableHead>
                   <TableBody>
+                    <LigneSansResultat t={tab} colSpan={7} quoi="Aucun magasin ne correspond" />
                     {visibles.map((l) => (
                       <TableRow key={l.magasin.nom} hover>
                         <TableCell><Link component={RouterLink} to={lienFiche(l.magasin.nom)} sx={{ fontWeight: 600 }}>{l.magasin.nom}</Link></TableCell>

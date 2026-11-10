@@ -1,4 +1,5 @@
 import { useApercu } from '../auth/Apercu'
+import { Entete, LigneSansResultat, useTableau, type ColonneTri, type Tri } from './TableauTri'
 import { BarreSelection, CaseEntete, CaseLigne, useSelection } from './Selection'
 import { TacheEnSerie } from './TacheEnSerie'
 import AddTaskOutlined from '@mui/icons-material/AddTaskOutlined'
@@ -16,7 +17,6 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TableSortLabel from '@mui/material/TableSortLabel'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
@@ -56,15 +56,20 @@ function infosDe(reseau: Reseau | null): Map<string, Infos> {
   return res
 }
 
-const colonnes: { v: TriMagasins | null; libelle: string; droite?: boolean; largeur?: number }[] = [
-  { v: 'nom', libelle: 'Magasin' },
-  { v: null, libelle: 'Coach' },
-  { v: null, libelle: 'Responsable Régional', largeur: 150 },
-  { v: null, libelle: 'CA du mois', droite: true, largeur: 104 },
-  { v: 'ca', libelle: 'vs N-1', droite: true, largeur: 88 },
-  { v: 'case', libelle: 'Nine box', largeur: 150 },
-  { v: 'visite', libelle: 'Dernière visite', droite: true, largeur: 112 },
-  { v: 'taches', libelle: 'Tâches', droite: true, largeur: 76 },
+// Harmonisation des tableaux (Joseph, 10/11/2026) : chaque colonne se trie et se filtre. Les tris historiques
+// (magasin, évolution, nine box, dernière visite, tâches) restent dans l'adresse, comme sur téléphone.
+const TRIS_ADRESSE: Record<TriMagasins, { cle: string; sens: 'asc' | 'desc' }> = {
+  nom: { cle: 'nom', sens: 'asc' }, ca: { cle: 'ecart', sens: 'asc' }, case: { cle: 'case', sens: 'desc' }, visite: { cle: 'visite', sens: 'desc' }, taches: { cle: 'taches', sens: 'desc' },
+}
+const colonnesDe = (infos: Map<string, Infos>): ColonneTri<Magasin>[] => [
+  { cle: 'nom', libelle: 'magasin', valeur: (m) => m.nom },
+  { cle: 'coach', libelle: 'Coach', valeur: (m) => libelleSuivi(m) || null },
+  { cle: 'rr', libelle: 'Responsable Régional', valeur: (m) => m.rr?.nom ?? null },
+  { cle: 'mois', libelle: 'CA du mois', valeur: (m) => infos.get(m.nom)?.ca ?? null, nombre: (m) => { const c = infos.get(m.nom)?.ca; return c == null ? null : c / 1000 }, unite: 'k€' },
+  { cle: 'ecart', libelle: 'évolution du CA', valeur: (m) => infos.get(m.nom)?.ecart ?? null, premier: 'asc', unite: '%' },
+  { cle: 'case', libelle: 'nine box', valeur: (m) => infos.get(m.nom)?.rang ?? 0, texte: (m) => infos.get(m.nom)?.caseLibelle || 'Non classé', filtre: 'liste', premier: 'desc' },
+  { cle: 'visite', libelle: 'dernière visite', valeur: (m) => infos.get(m.nom)?.depuis ?? Infinity, nombre: (m) => infos.get(m.nom)?.depuis ?? null, unite: 'jours', premier: 'desc' },
+  { cle: 'taches', libelle: 'tâches', valeur: (m) => infos.get(m.nom)?.taches ?? 0 },
 ]
 
 const PAS = 100
@@ -96,29 +101,32 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
   const infos = useMemo(() => infosDe(reseau), [reseau])
   const [choisi, setChoisi] = useState<string | null>(null)
   const [nb, setNb] = useState(PAS)
-  const tries = useMemo(() => {
-    const parNom = (x: Magasin, y: Magasin) => x.nom.localeCompare(y.nom, 'fr')
-    const i = (m: Magasin) => infos.get(m.nom)
-    const liste = [...magasins]
-    if (tri === 'visite') return liste.sort((x, y) => (i(y)?.depuis ?? Infinity) - (i(x)?.depuis ?? Infinity) || parNom(x, y))
-    if (tri === 'case') return liste.sort((x, y) => (i(y)?.rang ?? 0) - (i(x)?.rang ?? 0) || parNom(x, y))
-    if (tri === 'taches') return liste.sort((x, y) => (i(y)?.taches ?? 0) - (i(x)?.taches ?? 0) || parNom(x, y))
-    if (tri === 'ca') return liste.sort((x, y) => (i(x)?.ecart ?? Infinity) - (i(y)?.ecart ?? Infinity) || parNom(x, y))
-    return liste.sort(parNom)
-  }, [magasins, tri, infos])
+  const colonnes = useMemo(() => colonnesDe(infos), [infos])
+  const legacy = TRIS_ADRESSE[tri] ?? TRIS_ADRESSE.nom
+  const [triLibre, setTriLibre] = useState<Tri>(null)
+  const triCourant = triLibre ?? legacy
+  const t = useTableau(magasins, colonnes, {
+    tri: TRIS_ADRESSE.nom, memoire: 'magasins',
+    controle: { tri: triCourant, changer: (x) => {
+      const v = (Object.keys(TRIS_ADRESSE) as TriMagasins[]).find((k) => x && TRIS_ADRESSE[k].cle === x.cle && TRIS_ADRESSE[k].sens === x.sens)
+      setTriLibre(v ? null : x ?? TRIS_ADRESSE.nom)
+      trier(v ?? 'nom')
+    } },
+  })
+  const tries = t.lignes
   const visibles = tries.slice(0, nb)
   const apercu = choisi ? magasins.find((m) => m.nom === choisi) ?? null : null
   // Totaux en pied : CA du mois des magasins affichés et écart pondéré face à l'an dernier
   const total = useMemo(() => {
     let ca = 0, ref = 0, n = 0
-    for (const m of magasins) {
+    for (const m of tries) {
       const x = infos.get(m.nom)
       if (x?.ca === null || x?.ca === undefined) continue
       ca += x.ca; n++
       if (x.ecart !== null) ref += x.ca / (1 + x.ecart / 100)
     }
     return { ca: n ? ca : null, ecart: ref ? ((ca - ref) / ref) * 100 : null }
-  }, [magasins, infos])
+  }, [tries, infos])
   const ouvrir = (nom: string) => setChoisi((c) => (c === nom ? null : nom))
   // Refonte vague 2 (16A) : cocher plusieurs magasins et leur créer une même tâche
   const { apercu: voirComme, equipe: voirEquipe } = useApercu()
@@ -136,16 +144,14 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
             <TableHead>
               <TableRow>
                 {avecSelection && <TableCell padding="checkbox" sx={{ width: 44, '&&': { pl: 1.5, pr: 0 } }}><CaseEntete s={sel} /></TableCell>}
-                {colonnes.map((c) => (
-                  <TableCell key={c.libelle} align={c.droite ? 'right' : 'left'} sx={{ width: c.largeur, fontWeight: 700, color: 'text.secondary', whiteSpace: 'nowrap' }}
-                    sortDirection={c.v && tri === c.v ? (c.v === 'nom' ? 'asc' : 'desc') : false}>
-                    {c.v ? (
-                      <TableSortLabel active={tri === c.v} direction={c.v === 'nom' || c.v === 'ca' ? 'asc' : 'desc'} onClick={() => trier(c.v!)} aria-label={`Trier par ${c.libelle === 'vs N-1' ? 'évolution du CA' : c.libelle.toLowerCase()}`}>
-                        {c.libelle}
-                      </TableSortLabel>
-                    ) : c.libelle}
-                  </TableCell>
-                ))}
+                <Entete t={t} cle="nom" sx={{ minWidth: 200 }}>Magasin</Entete>
+                <Entete t={t} cle="coach">Coach</Entete>
+                <Entete t={t} cle="rr" sx={{ width: 150 }}>Responsable Régional</Entete>
+                <Entete t={t} cle="mois" align="right" sx={{ width: 104 }}>CA du mois</Entete>
+                <Entete t={t} cle="ecart" align="right" sx={{ width: 88 }}>vs N-1</Entete>
+                <Entete t={t} cle="case" sx={{ width: 150 }}>Nine box</Entete>
+                <Entete t={t} cle="visite" align="right" sx={{ width: 112 }}>Dernière visite</Entete>
+                <Entete t={t} cle="taches" align="right" sx={{ width: 76 }}>Tâches</Entete>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -178,8 +184,9 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
                   </TableRow>
                 )
               })}
+              <LigneSansResultat t={t} colSpan={avecSelection ? 9 : 8} quoi="Aucun magasin ne correspond" />
               <TableRow sx={{ '&&': { cursor: 'default', height: 44 }, '&&:hover': { bgcolor: 'transparent' }, '& td': { borderBottom: 0, fontWeight: 700 } }}>
-                <TableCell colSpan={avecSelection ? 4 : 3} sx={{ color: 'text.secondary' }}>{magasins.length} magasin{magasins.length > 1 ? 's' : ''}</TableCell>
+                <TableCell colSpan={avecSelection ? 4 : 3} sx={{ color: 'text.secondary' }}>{tries.length < magasins.length ? `${tries.length} sur ${magasins.length} magasins` : `${magasins.length} magasin${magasins.length > 1 ? 's' : ''}`}</TableCell>
                 <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{formatKEuros(total.ca)}</TableCell>
                 <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{total.ecart === null ? '—' : formatPourcent(total.ecart)}</TableCell>
                 <TableCell colSpan={3} />
