@@ -43,11 +43,11 @@ test('S1 : saisie libre (bouton Créer), tous les champs restent ouverts', async
 
 test('S2 : Ma semaine se résume en trois chiffres', async ({ page }, info) => {
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Inès EXEMPLE' } })
-  await page.goto('./#/visites')
+  await page.goto('./#/plus/agenda?vue=semaine')
   const resume = page.getByRole('group', { name: 'Résumé de la semaine' })
   await expect(resume).toContainText('à voir')
   await expect(resume).toContainText(/prévues?/)
-  await expect(page.getByText(/^jusqu’au /)).toBeVisible()
+  await expect(page.getByText(/^jusqu’au /).first()).toBeVisible()
   expect(await resume.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-semaine-trois-chiffres.png` })

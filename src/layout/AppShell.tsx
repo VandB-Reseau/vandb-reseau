@@ -38,6 +38,7 @@ import { useInstallation } from '../lib/installation'
 import { brandStripe } from '../theme/theme'
 import { barreTelephone, magasins, parametres, pourRole, rubriquesMenu, secondaires, type Destination } from '../navigation/destinations'
 import { CreerProvider } from '../components/Creer'
+import { SelecteurPerimetre } from '../components/SelecteurPerimetre'
 import { useCompteurTaches } from '../data/tachesVues'
 import { useNouveautesInfos } from '../data/infosVues'
 import NewspaperOutlined from '@mui/icons-material/NewspaperOutlined'
@@ -54,7 +55,7 @@ function estActive(d: Destination, pathname: string): boolean {
   if (d.chemin === '/parametres/reglages' && /^\/parametres\/(charge|donnees)/.test(pathname)) return true
   // Évolution du parc est une vue de Magasins, Animation réseau un onglet de Messages (refonte, Joseph 09/11/2026)
   // Les anciennes adresses de l'évolution du parc mènent à Performance (vague 2, 15A)
-  if (d.chemin === '/echanges' && pathname.startsWith('/animation')) return true
+  if (d.chemin === '/campagnes' && pathname.startsWith('/animation')) return true
   return d.chemin === '/' ? pathname === '/' : pathname.startsWith(d.chemin)
 }
 
@@ -147,11 +148,11 @@ function MenuCompte({ liens = [], ligne = false }: { liens?: { titre?: string; d
 }
 
 // Icône d'une destination ; Messages porte le nombre de nouveautés, Tâches celui des tâches en retard ou nouvelles,
-// Infos réseau (franchisé) celui des communications et bonnes pratiques pas encore vues
+// Infos réseau celui des communications et bonnes pratiques pas encore vues (l'équipe aussi depuis la vague 3, 27A)
 interface Compteurs { messages: number; taches: number; infos: number }
 const compteDe = (d: Destination, c: Compteurs) => (d.chemin === '/echanges' ? c.messages : d.chemin === '/taches' ? c.taches : d.chemin === '/infos' ? c.infos : 0)
-function useCompteurs(sansCompteur?: boolean, franchise?: boolean): Compteurs {
-  return { messages: useTotalEchanges(sansCompteur), taches: useCompteurTaches(sansCompteur), infos: useNouveautesInfos(sansCompteur || !franchise) }
+function useCompteurs(sansCompteur?: boolean): Compteurs {
+  return { messages: useTotalEchanges(sansCompteur), taches: useCompteurTaches(sansCompteur), infos: useNouveautesInfos(sansCompteur) }
 }
 function Icone({ d, actif, c }: { d: Destination; actif: boolean; c: Compteurs }) {
   const icone = actif ? d.iconeActive ?? d.icone : d.icone
@@ -166,17 +167,17 @@ const libelleAccessible = (d: Destination, c: Compteurs) => {
 }
 
 // Menu latéral clair (refonte, Joseph 09/11/2026, choix 1A et 2A) : logo et recherche en haut, quatre rubriques titrées,
-// Infos réseau et le compte en bas. Plus de barre noire au-dessus des pages.
-const titreRubrique = { bgcolor: 'transparent', px: 1.5, lineHeight: '32px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary' } as const
+// le compte en bas. Plus de barre noire au-dessus des pages.
+const titreRubrique = { bgcolor: 'transparent', px: 1.5, lineHeight: '28px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary' } as const
 function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: Destination[]; sansParametres?: boolean; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
-  const c = useCompteurs(sansCompteur, !!franchise)
+  const c = useCompteurs(sansCompteur)
   const item = (d: Destination) => {
     const actif = estActive(d, pathname)
     return (
       <ListItemButton key={d.chemin} selected={actif} onClick={() => naviguer(d.chemin)} aria-label={libelleAccessible(d, c)} aria-current={actif ? 'page' : undefined}
-        sx={{ mb: 0.25, minHeight: 40, px: 1.5, borderRadius: 2, '&.Mui-selected': { bgcolor: 'action.selected', boxShadow: (t) => `inset 3px 0 0 ${t.palette.secondary.main}` } }}>
+        sx={{ mb: 0.25, minHeight: 36, px: 1.5, borderRadius: 2, '&.Mui-selected': { bgcolor: 'action.selected', boxShadow: (t) => `inset 3px 0 0 ${t.palette.secondary.main}` } }}>
         <ListItemIcon sx={{ minWidth: 34, color: actif ? 'text.primary' : 'text.secondary', '& svg': { fontSize: 20 } }}><Icone d={d} actif={actif} c={c} /></ListItemIcon>
         <ListItemText primary={d.libelle} slotProps={{ primary: { sx: { fontWeight: actif ? 700 : 500, fontSize: '0.875rem' } } }} />
       </ListItemButton>
@@ -198,35 +199,29 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
         {franchise && <Box sx={{ flex: 1 }} />}
         <Cloche />
       </Box>
+      {!franchise && <Box sx={{ px: 1.5, pb: 1 }}><SelecteurPerimetre /></Box>}
       <Box component="nav" aria-label="Navigation principale" sx={{ px: 1, flex: 1, overflowY: 'auto' }}>
         {franchise
           ? <List disablePadding>{franchise.map(item)}</List>
           : rubriquesMenu(!!sansParametres).map((r) => (
-            <List key={r.titre} disablePadding sx={{ mb: 1 }} subheader={<ListSubheader disableSticky sx={titreRubrique}>{r.titre}</ListSubheader>}>
+            <List key={r.titre} disablePadding sx={{ mb: 0.5 }} subheader={<ListSubheader disableSticky sx={titreRubrique}>{r.titre}</ListSubheader>}>
               {r.destinations.map(item)}
             </List>
           ))}
       </Box>
       <Box sx={{ px: 1, pb: 1.5, pt: 1, borderTop: '1px solid', borderColor: 'divider', display: 'grid', gap: 0.5 }}>
-        {!franchise && <BoutonInfos ligne />}
         <MenuCompte ligne />
       </Box>
     </Drawer>
   )
 }
 
-// Infos réseau, à droite du « + » : communications et bonnes pratiques, avec le nombre de nouveautés pas encore vues
-function BoutonInfos({ ligne = false }: { ligne?: boolean }) {
+// Téléphone : Infos réseau, à droite du « + » (sur PC, une entrée de la rubrique Animation, vague 3, 27A) : communications et bonnes pratiques, avec le nombre de nouveautés pas encore vues
+function BoutonInfos() {
   const naviguer = useNavigate()
   const { pathname } = useLocation()
   const n = useNouveautesInfos()
   const libelle = n ? `Infos réseau : ${n} nouveauté${n > 1 ? 's' : ''}` : 'Infos réseau'
-  if (ligne) return (
-    <ListItemButton selected={pathname === '/infos'} onClick={() => naviguer('/infos')} aria-label={libelle} aria-current={pathname === '/infos' ? 'page' : undefined} sx={{ minHeight: 40, px: 1.5, borderRadius: 2 }}>
-      <ListItemIcon sx={{ minWidth: 34, color: 'text.secondary', '& svg': { fontSize: 20 } }}><Badge color="error" badgeContent={n} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><NewspaperOutlined /></Badge></ListItemIcon>
-      <ListItemText primary="Infos réseau" slotProps={{ primary: { sx: { fontWeight: 500, fontSize: '0.875rem' } } }} />
-    </ListItemButton>
-  )
   return (
     <Tooltip title="Infos réseau">
       <IconButton aria-label={libelle} aria-current={pathname === '/infos' ? 'page' : undefined} onClick={() => naviguer('/infos')} sx={{ width: 48, height: 48, flexShrink: 0, color: 'text.primary' }}>
@@ -241,7 +236,7 @@ const HAUTEUR_BARRE = 64
 function BarreBasse({ franchise, sansCompteur }: { franchise?: Destination[]; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
-  const c = useCompteurs(sansCompteur, !!franchise)
+  const c = useCompteurs(sansCompteur)
   const item = (d: Destination) => {
     const actif = estActive(d, pathname)
     return (

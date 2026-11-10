@@ -142,7 +142,7 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
   }
   for (const { c, b } of reseau.campagnes.liste.filter((c) => phase(c, j) === 'encours')
     .map((c) => ({ c, b: bilan(reseau.campagnes, c, magasinsConcernes(reseau, c).filter((m) => noms.has(m.nom))) })).filter((x) => x.b.total > 0 && x.b.aConstater > 0)) {
-    items.push({ cle: `cp-${c.id}`, titre: c.nom, avatar: c.nom, icone: <CampaignOutlined />, lien: `/plus/sante?vue=campagnes&campagne=${encodeURIComponent(c.id)}`,
+    items.push({ cle: `cp-${c.id}`, titre: c.nom, avatar: c.nom, icone: <CampaignOutlined />, lien: `/campagnes?vue=campagnes&campagne=${encodeURIComponent(c.id)}`,
       detail: `${b.fait} sur ${b.total} magasin${b.total > 1 ? 's' : ''} exécuté${b.fait > 1 ? 's' : ''} · ${b.aConstater} à constater`, pastille: { ton: 'gris', libelle: b.taux === null ? 'Campagne' : `${b.taux} %` } })
   }
   void sansParametres
@@ -464,8 +464,8 @@ export function PublicationFil({ e, jour, sansMagasin = false, ouvrir }: { e: El
   )
 }
 
-export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actualités', communications, reactionsPratiques, reactionsVisites, action, ouvrirJournal }: {
-  elements: ElementFil[]; jour: string; sansMagasin?: boolean; titre?: string; communications?: CommunicationsDuFil; reactionsPratiques?: ReactionsPratiques | null
+export function FilActivite({ elements, jour, sansMagasin = false, sansFiltre = false, titre = 'Actualités', communications, reactionsPratiques, reactionsVisites, action, ouvrirJournal }: {
+  elements: ElementFil[]; jour: string; sansMagasin?: boolean; sansFiltre?: boolean; titre?: string; communications?: CommunicationsDuFil; reactionsPratiques?: ReactionsPratiques | null
   reactionsVisites?: ReactionsVisites | null
   action?: ReactNode; ouvrirJournal?: (e: ElementFil) => void
 }) {
@@ -491,7 +491,7 @@ export function FilActivite({ elements, jour, sansMagasin = false, titre = 'Actu
   return (
     <Box component="section" aria-label={titre}>
       <TitreSection action={action}>{titre}</TitreSection>
-      {options.length > 2 && <BandeCollante><Puces valeur={filtre} options={options} onChange={(v) => { setFiltre(v); setNb(PAS_FIL) }} label="Filtrer le fil" /></BandeCollante>}
+      {!sansFiltre && options.length > 2 && <BandeCollante><Puces valeur={filtre} options={options} onChange={(v) => { setFiltre(v); setNb(PAS_FIL) }} label="Filtrer le fil" /></BandeCollante>}
       {!vus.length ? (
         <CarteLignes><LigneCompacte avatar={<Initiales nom="fil" icone={<HistoryOutlined />} />} titre="Rien de nouveau" detail="Les comptes rendus et les communications des dernières semaines s’afficheront ici." /></CarteLignes>
       ) : (

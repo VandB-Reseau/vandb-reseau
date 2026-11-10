@@ -44,7 +44,7 @@ const chargeurs = {
   // Sprint 22 (F1) : chaque grand écran a son fichier, seul l'accueil part avec l'app
   magasins: () => import('./pages/Magasins').then((m) => ({ default: m.Magasins })),
   ficheMagasin: () => import('./pages/FicheMagasin').then((m) => ({ default: m.FicheMagasin })),
-  preparation: () => import('./pages/PreparationVisite').then((m) => ({ default: m.PreparationVisite })),
+  visite: () => import('./pages/Visite').then((m) => ({ default: m.PageVisite })),
   bilan: () => import('./pages/BilanAnnee').then((m) => ({ default: m.BilanAnnee })),
   equipe: () => import('./pages/Equipe').then((m) => ({ default: m.Equipe })),
   ficheCoach: () => import('./pages/FicheCoach').then((m) => ({ default: m.FicheCoach })),
@@ -55,7 +55,7 @@ const chargeurs = {
   echanges: () => import('./pages/Echanges'),
   taches: () => import('./pages/Taches').then((m) => ({ default: m.PageTaches })),
   infos: () => import('./pages/InfosReseau').then((m) => ({ default: m.InfosReseau })),
-  animation: () => import('./pages/Animation').then((m) => ({ default: m.Animation })),
+  campagnes: () => import('./pages/SanteParc').then((m) => ({ default: m.CampagnesReseau })),
   partage: () => import('./pages/Partage').then((m) => ({ default: m.Partage })),
 }
 // Espace franchisé : un seul fichier, jamais préchargé pour l'équipe
@@ -72,7 +72,7 @@ const Performance = chargementDiffere(chargeurs.performance)
 const Magasins = chargementDiffere(chargeurs.magasins)
 const Partage = chargementDiffere(chargeurs.partage)
 const FicheMagasin = chargementDiffere(chargeurs.ficheMagasin)
-const PreparationVisite = chargementDiffere(chargeurs.preparation)
+const PageVisite = chargementDiffere(chargeurs.visite)
 const BilanAnnee = chargementDiffere(chargeurs.bilan)
 const Equipe = chargementDiffere(chargeurs.equipe)
 const FicheCoach = chargementDiffere(chargeurs.ficheCoach)
@@ -81,12 +81,8 @@ const FicheDirecteur = chargementDiffere(() => chargeurs.personnes().then((m) =>
 const FicheFranchise = chargementDiffere(() => chargeurs.personnes().then((m) => ({ default: m.FicheFranchise })))
 const Visites = chargementDiffere(chargeurs.visites)
 const Agenda = chargementDiffere(chargeurs.agenda)
-const PageAnimation = chargementDiffere(chargeurs.animation)
-// Animation réseau : Directeur et Responsables Régionaux seulement
-function Animation() {
-  const { profil } = useAuth()
-  return profil?.role === 'directeur' || profil?.role === 'rr' ? <PageAnimation /> : <Navigate to="/" replace />
-}
+// Campagnes (vague 3, 27A) : campagnes, déploiements, challenges ; l'ancienne Animation réseau en est un onglet
+const Campagnes = chargementDiffere(chargeurs.campagnes)
 const SanteParc = chargementDiffere(chargeurs.sante)
 const Echanges = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.Echanges })))
 const PageTaches = chargementDiffere(chargeurs.taches)
@@ -153,7 +149,8 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/" element={<Marque><Accueil /></Marque>} />
         <Route path="/magasins" element={<Magasins />} />
         <Route path="/magasins/:nom" element={<FicheMagasin />} />
-        <Route path="/magasins/:nom/preparer" element={<PreparationVisite />} />
+        <Route path="/magasins/:nom/preparer" element={<PageVisite etapeParDefaut="preparer" />} />
+        <Route path="/magasins/:nom/visite" element={<PageVisite />} />
         <Route path="/magasins/:nom/bilan" element={<BilanAnnee />} />
         <Route path="/plus/carte" element={<Navigate to="/magasins?vue=carte" replace />} />
         <Route path="/equipe" element={<Equipe />} />
@@ -179,7 +176,8 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         {anciensLiens}
         <Route path="/visites/compte-rendu/:id" element={<Marque><CompteRendu /></Marque>} />
         <Route path="/plus/agenda" element={<Agenda />} />
-        <Route path="/animation" element={<Animation />} />
+        <Route path="/animation" element={<Navigate to="/campagnes?vue=suivi" replace />} />
+        <Route path="/campagnes" element={<Campagnes />} />
         <Route path="/plus/sante" element={<SanteParc />} />
         <Route path="/performance" element={<Performance />} />
         <Route path="/parametres/evolution" element={<Navigate to="/performance?vue=evolution" replace />} />

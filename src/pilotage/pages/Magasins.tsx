@@ -1,3 +1,4 @@
+import { useNomsPerimetre } from '../../data/perimetreChoisi'
 import Snackbar from '@mui/material/Snackbar'
 import { BarreSelection, CaseEntete, CaseLigne, useSelection } from '../../components/Selection'
 import { apresRelances, relancerFranchise } from '../data/taches'
@@ -148,8 +149,10 @@ export function Magasins() {
   const tri = (COLONNES_TRI as readonly string[]).includes(params.get('tri') ?? '') ? params.get('tri') as Tri : null
   // Sans tri choisi, l'ordre du réseau (celui des fiches précédente et suivante)
   const sens = params.get('sens') === 'desc' ? 'desc' : params.get('sens') === 'asc' ? 'asc' : tri ? SENS_DEFAUT[tri] : 'asc'
+  // Vague 3 (21A) : le périmètre choisi dans le menu
+  const noms = useNomsPerimetre()
   const visibles = useMemo(() => {
-    const l = filtrerMagasins(tous, filtre, recherche, groupe, responsable)
+    const l = filtrerMagasins(noms ? tous.filter((m) => noms.has(m.magasin)) : tous, filtre, recherche, groupe, responsable)
     if (!tri) return l
     const valeur = (m: (typeof l)[number]): number | string | null => {
       switch (tri) {
@@ -169,7 +172,7 @@ export function Magasins() {
       const c = typeof x === 'string' ? x.localeCompare(String(y), 'fr') : x - (y as number)
       return (sens === 'asc' ? c : -c) || a.magasin.localeCompare(b.magasin, 'fr')
     })
-  }, [tous, filtre, recherche, groupe, responsable, tri, sens, alertesDe])
+  }, [tous, noms, filtre, recherche, groupe, responsable, tri, sens, alertesDe])
   // Refonte vague 2 (16A) : sélection de plusieurs budgets, pour l'équipe sur PC
   const surPCSel = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const avecSelection = estEquipe(profil) && surPCSel && !profil?.apercu

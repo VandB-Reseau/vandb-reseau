@@ -20,7 +20,7 @@ test('un Coach ne voit pas les boutons des référentiels et ne les écrit pas',
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ...NOE, ecritures, config: { campagnes } })
   await page.goto('./#/magasins/Lyon%20Test')
-  await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Autres actions' }).click()
   await expect(page.getByRole('menuitem', { name: 'Préparer la visite' })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'Modifier la fiche' })).toHaveCount(0)
@@ -35,7 +35,7 @@ test('un Coach ne voit pas les boutons des référentiels et ne les écrit pas',
   await expect(page.getByText('Noël').first()).toBeVisible()
   await expect(page.getByRole('button', { name: 'Nouvelle campagne' })).toHaveCount(0)
   await page.goto('./#/plus/sante?vue=deploiements')
-  await expect(page.getByRole('heading', { name: 'Santé du parc' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Campagnes', level: 1 })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Gérer les thématiques' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Importer Excel' })).toHaveCount(0)
   await page.goto('./#/equipe/coach/No%C3%A9%20MODELE?vue=fiche')
@@ -113,7 +113,7 @@ test('fiche avant visite : tout le magasin sur une page, téléchargeable en PDF
   await page.goto('./#/magasins/Lyon%20Test')
   await actionFiche(page, 'Préparer la visite')
   await expect(page).toHaveURL(/#\/magasins\/Lyon%20Test\/preparer$/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test', exact: true })).toBeVisible()
   for (const t of ['En bref', 'Chiffres', 'Repères réseau', 'Tâches en cours (1)', 'Audits', 'Campagnes à constater', 'Derniers messages']) {
     await expect(page.getByRole('heading', { name: t, exact: true })).toBeVisible()
   }
@@ -149,7 +149,7 @@ test('un Coach prépare la visite d’un de ses magasins', async ({ page, isMobi
     await page.goto('./#/visites?vue=rythme')
     await page.getByRole('link', { name: 'Préparer la visite de Lyon Test' }).first().click()
   }
-  await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test', exact: true })).toBeVisible()
   await expect(page.getByRole('table', { name: 'Repères réseau' })).toBeVisible()
   // Hors de son périmètre : introuvable
   await page.goto('./#/magasins/Nantes%20Test/preparer')

@@ -84,6 +84,8 @@ Rubriques de `suivi_magasins` (contrainte `suivi_magasins_cle_check`) :
 | `concurrence` | Concurrents à 2 km complétés par l'équipe (0038) : `ajoutes` (nom, précision, note, auteur, date), `masques` (commerces OpenStreetMap retirés, `node/…`, `way/…`), `notes` par commerce OpenStreetMap. La liste elle-même est lue par l'app sur OpenStreetMap (service Overpass, gratuit), jamais rangée en base. Jamais renvoyée au franchisé | `concurrents_magasins` |
 | `mot_franchise` | Le mot du franchisé avant une visite à venir (0038) : liste de `{ visite, date, marche, bloque, besoin, par, le }`, une entrée par visite, 12 au plus. Écrit par le franchisé avec `ecrire_mot_franchise` ; l'équipe le lit dans son périmètre, seul le Directeur peut le corriger ou l'effacer (contrôle `garde_mot_franchise`) | `mots_franchise` |
 
+| `objectifs` | Objectifs chiffrés du magasin (0042, refonte vague 3) : liste de `{ id, indicateur, mode, depart, moisDepart, cible, echeance, taches, par, creeLe, visite, clos }`. `indicateur` = `pmCave`, `fluxCave`, `caCave`, `pmBar`, `fluxBar`, `caBar`, `caExt` ou `marge` ; `mode` = `valeur` (chiffre du mois) ou `evolution` (écart en % avec le même mois un an plus tôt) ; `taches` = clés des tâches rattachées. L'avancement n'est pas rangé : l'app le calcule sur les chiffres de la caisse. Équipe seulement, jamais renvoyé au franchisé | `objectifs_magasins` |
+
 Ajouter une rubrique = une migration qui remplace la contrainte (modèle : `0011_preparation_visites.sql`).
 
 ### Agenda (toute l'équipe lit et écrit)

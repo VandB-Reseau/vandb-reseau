@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as EvenementPointeur, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -32,7 +32,7 @@ import type { Reseau, Visite } from '../data/modele'
 const jourCourt = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 
 // Coachs que la personne connectée peut suivre : elle-même pour un Coach, ceux de son périmètre sinon
-function coachsSuivis(reseau: Reseau, profil: ReturnType<typeof useAuth>['profil']): string[] {
+export function coachsSuivis(reseau: Reseau, profil: ReturnType<typeof useAuth>['profil']): string[] {
   const p = perimetreDuProfil(profil)
   if (p?.type === 'coach') return [p.nom]
   const noms = new Set(magasinsDu(reseau, p ?? { type: 'reseau' }).map((m) => coachA(m, reseau.jour)).filter(Boolean))
@@ -50,7 +50,9 @@ function Chiffre({ valeur, libelle, detail }: { valeur: ReactNode; libelle: stri
   )
 }
 
-export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC: boolean; onMessage: (m: string) => void }) {
+// panneau : colonne de droite de l'Agenda › Semaine sur PC (refonte vague 3, Joseph 09/11/2026, 25A). Les magasins se
+// glissent sur un jour de la semaine ; le lâcher ouvre la planification à cette date.
+export function VueSemaine({ reseau, surPC, onMessage, panneau = false, survoler }: { reseau: Reseau; surPC: boolean; onMessage: (m: string) => void; panneau?: boolean; survoler?: (jour: string | null) => void }) {
   const { profil } = useAuth()
   const coachs = useMemo(() => coachsSuivis(reseau, profil), [reseau, profil])
   const [choisi, setChoisi] = useState('')
@@ -59,6 +61,38 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
   const [planif, setPlanif] = useState<{ magasins: string[]; date: string; visite: Visite | null } | null>(null)
   const planifier = (magasins: string[], date: string, visite: Visite | null = null) => setPlanif({ magasins, date, visite })
   const [compteRendu, setCompteRendu] = useState<Visite | null>(null)
+  const [fantome, setFantome] = useState<{ nom: string; x: number; y: number } | null>(null)
+  const nettoyer = useRef<() => void>(() => {})
+  useEffect(() => () => nettoyer.current(), [])
+  const glisser = (ev: EvenementPointeur, nom: string, visite: Visite | null) => {
+    if (ev.button !== 0 || ev.pointerType !== 'mouse') return
+    const depart = { x: ev.clientX, y: ev.clientY }
+    let bouge = false
+    let cible: string | null = null
+    const bouger = (m: PointerEvent) => {
+      if (!bouge && Math.hypot(m.clientX - depart.x, m.clientY - depart.y) < 6) return
+      if (!bouge) window.getSelection()?.removeAllRanges()
+      bouge = true
+      const jour = document.elementFromPoint(m.clientX, m.clientY)?.closest<HTMLElement>('[data-jour]')?.dataset.jour ?? null
+      cible = jour && jour >= reseau.jour ? jour : null
+      survoler?.(cible)
+      setFantome({ nom, x: m.clientX, y: m.clientY })
+    }
+    // Après un glisser, le clic qui suit (lien du magasin) n'ouvre rien
+    const bloquer = (c: MouseEvent) => { c.preventDefault(); c.stopPropagation() }
+    const lacher = () => {
+      nettoyer.current()
+      if (!bouge) return
+      window.addEventListener('click', bloquer, { capture: true, once: true })
+      setTimeout(() => window.removeEventListener('click', bloquer, { capture: true }), 0)
+      if (cible) planifier([nom], cible, visite)
+    }
+    nettoyer.current = () => {
+      window.removeEventListener('pointermove', bouger); window.removeEventListener('pointerup', lacher); window.removeEventListener('pointercancel', lacher)
+      setFantome(null); survoler?.(null)
+    }
+    window.addEventListener('pointermove', bouger); window.addEventListener('pointerup', lacher); window.addEventListener('pointercancel', lacher)
+  }
   const unSeul = coachs.length <= 1
   const actions = s && <>
     {s.aPlanifier.length > 1 && (surPC ? <BoutonAction secondaire libelle="Planifier la tournée" icone={<RouteOutlined />} onClick={() => planifier(s.aPlanifier.map((x) => x.l.magasin.nom), reseau.jour)} />
@@ -88,7 +122,7 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
     if (!surPC) {
       const bouton = { minHeight: 48, px: 1.5, bgcolor: 'background.paper' } as const
       return (
-        <Box key={l.magasin.nom}>
+        <Box key={l.magasin.nom} {...(panneau && (!prevue || prevue.date >= reseau.jour) ? { onPointerDown: (ev: EvenementPointeur) => glisser(ev, l.magasin.nom, prevue), 'data-glissable': '', sx: { cursor: 'grab', userSelect: 'none', '& a': { WebkitUserDrag: 'none' } } } : {})}>
           <LigneCompacte lien={lienFiche(l.magasin.nom)} label={l.magasin.nom}
             avatar={<Initiales nom={l.magasin.nom} icone={i !== null ? <Typography component="span" sx={{ fontWeight: 700 }}>{i + 1}</Typography> : <EventAvailableOutlined />} />}
             titre={l.magasin.nom} detail={detail}
@@ -120,6 +154,7 @@ export function VueSemaine({ reseau, surPC, onMessage }: { reseau: Reseau; surPC
         onFermer={(m) => { setPlanif(null); if (m) onMessage(m) }} />}
       {compteRendu && <DialogVisite reseau={reseau} visite={compteRendu} onFermer={(m) => { setCompteRendu(null); if (m) onMessage(m) }} />}
       {barre}
+      {fantome && <Box aria-hidden sx={{ position: 'fixed', left: fantome.x + 8, top: fantome.y + 8, zIndex: 2000, pointerEvents: 'none', px: 1.5, py: 0.75, borderRadius: 1, bgcolor: '#307672', color: '#fff', fontSize: '0.875rem', fontWeight: 600, boxShadow: 3 }}>{fantome.nom}</Box>}
       <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700, mb: 1 }}>
         {[!unSeul && coach, `jusqu’au ${jourCourt(s.fin)}`].filter(Boolean).join(' · ')}
       </Typography>

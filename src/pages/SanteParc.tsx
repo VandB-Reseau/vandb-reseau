@@ -44,6 +44,8 @@ import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { RechercheFiltres } from '../components/RechercheFiltres'
 import { Onglets } from '../components/Onglets'
+import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
+import { PageAnimation } from './Animation'
 import GridViewOutlined from '@mui/icons-material/GridViewOutlined'
 import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
 import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined'
@@ -760,21 +762,41 @@ function ChampDate({ valeur, max, onChange }: { valeur: string; max: string; onC
   )
 }
 
+// Vague 3 (27A) : campagnes, déploiements et challenges passent dans la page Campagnes (rubrique Animation)
+const VUES_CAMPAGNES = ['campagnes', 'deploiements', 'challenges']
 export function SanteParc() {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const [params, setParams] = useSearchParams()
   // Refonte vague 2 (15A) : les chiffres des magasins sont dans Performance
   if (params.get('vue') === 'chiffres') return <Navigate to="/performance" replace />
-  const vue = ['evaluer', 'deploiements', 'campagnes', 'challenges'].includes(params.get('vue') ?? '') ? params.get('vue')! : 'ninebox'
+  if (VUES_CAMPAGNES.includes(params.get('vue') ?? '')) return <Navigate to={`/campagnes?${params.toString()}`} replace />
+  const vue = params.get('vue') === 'evaluer' ? 'evaluer' : 'ninebox'
   return (
     <AvecReseau>
-      {(reseau) => <Contenu reseau={reseau} vue={vue} surPC={surPC} aller={(v) => setParams({ vue: v }, { replace: true })} />}
+      {(reseau) => <Contenu page="sante" reseau={reseau} vue={vue} surPC={surPC} aller={(v) => setParams({ vue: v }, { replace: true })} />}
     </AvecReseau>
   )
 }
 
-function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; surPC: boolean; aller: (v: string) => void }) {
+// Page Campagnes (vague 3, 27A) : campagnes, déploiements, challenges ; « Suivi » (sondages, formations, réunions,
+// communications avec leurs lectures) pour le Directeur et les Responsables Régionaux, ancien onglet Animation de Messages
+export function CampagnesReseau() {
+  const theme = useTheme()
+  const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
+  const [params, setParams] = useSearchParams()
+  const { profil } = useAuth()
+  const avecSuivi = !!profil && ['directeur', 'rr'].includes(profil.role)
+  const demande = params.get('vue') ?? ''
+  const vue = VUES_CAMPAGNES.includes(demande) || (demande === 'suivi' && avecSuivi) ? demande : 'campagnes'
+  return (
+    <AvecReseau>
+      {(reseau) => <Contenu page="campagnes" avecSuivi={avecSuivi} reseau={reseau} vue={vue} surPC={surPC} aller={(v) => setParams({ vue: v }, { replace: true })} />}
+    </AvecReseau>
+  )
+}
+
+function Contenu({ page, avecSuivi, reseau, vue, surPC, aller }: { page: 'sante' | 'campagnes'; avecSuivi?: boolean; reseau: Reseau; vue: string; surPC: boolean; aller: (v: string) => void }) {
   const [message, setMessage] = useState('')
   const [date, setDate] = useState(reseau.jour)
   const saisie = useSaisieSante(reseau, setMessage, date)
@@ -784,19 +806,27 @@ function Contenu({ reseau, vue, surPC, aller }: { reseau: Reseau; vue: string; s
   const champDate = <ChampDate valeur={date} max={reseau.jour} onChange={setDate} />
   return (
     <>
-      <PageHeader titre="Santé du parc" sousTitre={`${classes} classé${classes > 1 ? 's' : ''} sur ${ouverts.length} ouvert${ouverts.length > 1 ? 's' : ''}`} />
-      <Onglets valeur={vue} onChange={aller} libelle="Rubriques de la santé du parc" rubriques={[
-        { vue: 'ninebox', libelle: 'Nine box', icone: <GridViewOutlined /> },
-        { vue: 'evaluer', libelle: 'Évaluer', icone: <FactCheckOutlined /> },
-        { vue: 'deploiements', libelle: 'Déploiements', icone: <RocketLaunchOutlined /> },
-        { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
-        { vue: 'challenges', libelle: 'Challenges', icone: <EmojiEventsOutlined /> },
-      ]} />
+      {page === 'sante' ? <>
+        <PageHeader titre="Santé du parc" sousTitre={`${classes} classé${classes > 1 ? 's' : ''} sur ${ouverts.length} ouvert${ouverts.length > 1 ? 's' : ''}`} />
+        <Onglets valeur={vue} onChange={aller} libelle="Rubriques de la santé du parc" rubriques={[
+          { vue: 'ninebox', libelle: 'Nine box', icone: <GridViewOutlined /> },
+          { vue: 'evaluer', libelle: 'Évaluer', icone: <FactCheckOutlined /> },
+        ]} />
+      </> : <>
+        <PageHeader titre="Campagnes" />
+        <Onglets valeur={vue} onChange={aller} libelle="Rubriques des campagnes" rubriques={[
+          { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
+          { vue: 'deploiements', libelle: 'Déploiements', icone: <RocketLaunchOutlined /> },
+          { vue: 'challenges', libelle: 'Challenges', icone: <EmojiEventsOutlined /> },
+          ...(avecSuivi ? [{ vue: 'suivi', libelle: 'Sondages et rendez-vous', court: 'Suivi', icone: <InsightsOutlined /> }] : []),
+        ]} />
+      </>}
       {vue === 'ninebox' && <VueNineBox reseau={reseau} evaluer={() => aller('evaluer')} surPC={surPC} />}
       {vue === 'evaluer' && <VueEvaluer reseau={reseau} saisie={saisie} surPC={surPC} date={champDate} />}
       {vue === 'deploiements' && <VueDeploiements reseau={reseau} saisie={saisie} surPC={surPC} date={champDate} />}
       {vue === 'campagnes' && <VueCampagnes reseau={reseau} />}
       {vue === 'challenges' && <VueChallenges reseau={reseau} />}
+      {vue === 'suivi' && <PageAnimation reseau={reseau} integre />}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </>
   )

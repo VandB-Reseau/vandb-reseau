@@ -1,3 +1,4 @@
+import { useNomsPerimetre } from '../../data/perimetreChoisi'
 import { useMemo } from 'react'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -73,34 +74,37 @@ const douze = (): MoisReel[] => Array.from({ length: 12 }, () => ({ caHT: 0, mar
 const surPC = { display: { xs: 'none', md: 'table-cell' } }
 const simple = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
 
+// Chaque magasin à la fin de son dernier mois réalisé, face à l'an dernier et à son budget (aussi lu par le rapport du mois, 29A)
+export async function chargerSuiviReseau(annee: number) {
+  const [d, { parametres }, reel, alertes, actions, quadrimestres] = await Promise.all([chargerBudgets(annee), chargerParametres(annee), chargerReelDuCompte(annee), chargerAlertes(), chargerActions().catch(() => []), chargerQuadrimestres(annee).catch(() => ({} as SaisiesQuadrimestres))])
+  const groupes = new Map(d.groupes.map((g) => [g.id, g.nom]))
+  const p = { tauxRedevance: parametres.tauxRedevance, tauxPublicite: parametres.tauxPublicite, charges: parametres.charges, annee }
+  const magasins = d.magasins.map((l) => {
+    const h = l.statut ? hypothesesDe(l, d) : null
+    const frais = d.frais[l.magasin]
+    const n = reel.magasins[l.magasin]?.n ?? douze(), n1 = reel.magasins[l.magasin]?.n1 ?? douze()
+    const budget = h ? calculerBudget(h.hypotheses, parametresDuBudget(l, parametres)) : null
+    return {
+      // Fiche de visite du magasin (lot 28), pour « Ma semaine » (lot 29)
+      fiche: ficheVisite({ n, n1, budget }, parametres.tvaPanier),
+      ...ligneReseau({
+        magasin: l.magasin, n, n1,
+        budget,
+        equipe: d.equipes[l.magasin], frais: frais?.length ? fraisDepuisLignes(frais).frais : undefined,
+        quadrimestres: quadrimestres[l.magasin] ?? {},
+      }, p),
+      groupeId: l.groupeId, groupe: l.groupeId ? groupes.get(l.groupeId) ?? '' : '', coach: reel.coachs[l.magasin] ?? '', rrs: reel.rrs[l.magasin] ?? [],
+    }
+  })
+  const trie = (l: string[]) => [...new Set(l)].sort((a, b) => a.localeCompare(b, 'fr'))
+  return { magasins, alertes, actions, seuil: parametres.alertes.ecartCA, groupes: d.groupes, coachs: trie(Object.values(reel.coachs)), rrs: trie(Object.values(reel.rrs).flat()) }
+}
+
 // Vue réseau : chaque magasin à la fin de son dernier mois réalisé, face à l'an dernier, à son budget et au total du réseau
 // integre : vue « Écarts au budget » de la page Performance (refonte vague 2, 15A), titre de niveau 2
 export function Reseau({ integre }: { integre?: boolean } = {}) {
   const annee = anneeSuivi()
-  const { donnees, erreur, chargement, recharger } = useChargement(async () => {
-    const [d, { parametres }, reel, alertes, actions, quadrimestres] = await Promise.all([chargerBudgets(annee), chargerParametres(annee), chargerReelDuCompte(annee), chargerAlertes(), chargerActions().catch(() => []), chargerQuadrimestres(annee).catch(() => ({} as SaisiesQuadrimestres))])
-    const groupes = new Map(d.groupes.map((g) => [g.id, g.nom]))
-    const p = { tauxRedevance: parametres.tauxRedevance, tauxPublicite: parametres.tauxPublicite, charges: parametres.charges, annee }
-    const magasins = d.magasins.map((l) => {
-      const h = l.statut ? hypothesesDe(l, d) : null
-      const frais = d.frais[l.magasin]
-      const n = reel.magasins[l.magasin]?.n ?? douze(), n1 = reel.magasins[l.magasin]?.n1 ?? douze()
-      const budget = h ? calculerBudget(h.hypotheses, parametresDuBudget(l, parametres)) : null
-      return {
-        // Fiche de visite du magasin (lot 28), pour « Ma semaine » (lot 29)
-        fiche: ficheVisite({ n, n1, budget }, parametres.tvaPanier),
-        ...ligneReseau({
-          magasin: l.magasin, n, n1,
-          budget,
-          equipe: d.equipes[l.magasin], frais: frais?.length ? fraisDepuisLignes(frais).frais : undefined,
-          quadrimestres: quadrimestres[l.magasin] ?? {},
-        }, p),
-        groupeId: l.groupeId, groupe: l.groupeId ? groupes.get(l.groupeId) ?? '' : '', coach: reel.coachs[l.magasin] ?? '', rrs: reel.rrs[l.magasin] ?? [],
-      }
-    })
-    const trie = (l: string[]) => [...new Set(l)].sort((a, b) => a.localeCompare(b, 'fr'))
-    return { magasins, alertes, actions, seuil: parametres.alertes.ecartCA, groupes: d.groupes, coachs: trie(Object.values(reel.coachs)), rrs: trie(Object.values(reel.rrs).flat()) }
-  }, [annee])
+  const { donnees, erreur, chargement, recharger } = useChargement(() => chargerSuiviReseau(annee), [annee])
 
   // Filtres et tri gardés dans l'adresse : le retour depuis une fiche les retrouve
   const [params, setParams] = useSearchParams()
@@ -121,9 +125,11 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
   const tri = ([...COLONNES.map((c) => c.cle), 'magasin'] as string[]).includes(params.get('tri') ?? '') ? params.get('tri') as Cle : 'ca'
   const sens = params.get('sens') === 'asc' ? 'asc' : params.get('sens') === 'desc' ? 'desc' : tri === 'magasin' ? 'asc' : 'desc'
 
+  // Vague 3 (21A) : le périmètre choisi dans le menu
+  const noms = useNomsPerimetre()
   const visibles = useMemo(() => {
     const q = simple(recherche)
-    const l = (donnees?.magasins ?? []).filter((m) => (groupe === null || m.groupeId === groupe) && (!coach || m.coach === coach) && (!rr || m.rrs.includes(rr)) && (!q || simple(m.magasin).includes(q)))
+    const l = (donnees?.magasins ?? []).filter((m) => (!noms || noms.has(m.magasin)) && (groupe === null || m.groupeId === groupe) && (!coach || m.coach === coach) && (!rr || m.rrs.includes(rr)) && (!q || simple(m.magasin).includes(q)))
     // Valeur absente toujours en bas, quel que soit le sens
     return [...l].sort((a, b) => {
       if (tri === 'magasin') return (sens === 'asc' ? 1 : -1) * a.magasin.localeCompare(b.magasin, 'fr')
@@ -131,7 +137,7 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
       if (x === null || y === null) return x === null ? (y === null ? 0 : 1) : -1
       return sens === 'asc' ? x - y : y - x
     })
-  }, [donnees, recherche, groupe, coach, rr, tri, sens])
+  }, [donnees, noms, recherche, groupe, coach, rr, tri, sens])
   const total = totalReseau(visibles)
   // Médiane de la sélection : un groupe filtré donne la médiane du groupe
   const mediane = medianes(visibles.filter((m) => m.moisRealises > 0).map(ratiosDuReel))

@@ -4,6 +4,7 @@ import { construireReseau, type DonneesBrutes, type Parametres } from './constru
 import { avecPoint, definirGrille, delaisVisiteParDefaut, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
 import type { ActionLibre, ActionPlan, Evenement, Situation, Figure, NoteMagasin, PreparationVisite, Reseau, SuiviOuverture, Topographie, Visite } from './modele'
 import { normaliserConcurrence, suiviEstVide, type SuiviConcurrence } from './concurrence'
+import { normaliserObjectifs, type Objectif } from './objectifs'
 import { normaliserMots } from './motFranchise'
 import { SEPARATEUR_VISITEURS, etapesOuverture, lireVisiteurs } from './modele'
 import { colonnesChiffres, seuilsParDefaut, type Audits, type ChiffreMois, type ResultatAudit, type SeuilsAlerte } from './chiffres'
@@ -64,7 +65,7 @@ let fichesEnTable: boolean | null = null
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, evenements, finances, suivi, regions, fiches, fermes] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -131,6 +132,7 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   reseau.preparations = json<Record<string, PreparationVisite>>(cle('preparations_visites'), {})
   reseau.ouvertures = normaliserOuvertures(json<unknown>(cle('ouvertures_magasins'), {}))
   reseau.concurrence = normaliserConcurrence(json<unknown>(cle('concurrents_magasins'), {}))
+  reseau.objectifs = normaliserObjectifs(json<unknown>(cle('objectifs_magasins'), {}))
   reseau.motsFranchise = normaliserMots(json<unknown>(cle('mots_franchise'), {}))
   reseau.audits = json<Audits>(cle('audits'), {})
   reseau.grilles = normaliserGrilles(json<unknown>(cle('grilles_audit'), {}))
@@ -642,7 +644,7 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
       const v = l.valeur as Campagne | null
       if (v?.magasins?.includes(ancienNom)) verifier(await supabase.from('campagnes_regions').update({ valeur: { ...v, magasins: v.magasins.map((n) => (n === ancienNom ? f.nom : n)) } }).eq('id', l.id))
     }
-    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes', 'actions', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise'] as const) {
+    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes', 'actions', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins'] as const) {
       const lu = await lireSuivi<Record<string, unknown>>(cleConfig, {})
       const cibles = (cleConfig === 'deploiements' ? [lu.valeur.valeurs, lu.valeur.journal] : [lu.valeur]) as (Record<string, unknown> | undefined)[]
       let change = false
@@ -986,6 +988,17 @@ export function enregistrerConcurrence(magasin: string, suivi: SuiviConcurrence)
     if (suiviEstVide(suivi)) delete valeur[magasin]
     else valeur[magasin] = suivi
     await ecrireSuivi('concurrents_magasins', valeur, lu)
+  })
+}
+
+// Objectifs chiffrés d'un magasin (refonte vague 3, 26A, 0042) : la liste entière du magasin est réécrite
+export function enregistrerObjectifs(magasin: string, liste: Objectif[]) {
+  return enFile(async () => {
+    const lu = await lireSuivi<Record<string, Objectif[]>>('objectifs_magasins', {})
+    const { valeur } = lu
+    if (liste.length) valeur[magasin] = liste
+    else delete valeur[magasin]
+    await ecrireSuivi('objectifs_magasins', valeur, lu)
   })
 }
 

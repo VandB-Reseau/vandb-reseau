@@ -1,4 +1,4 @@
-// Onglet Animation réseau (Joseph, 23/10/2026) : créer et suivre au même endroit communications, bonnes pratiques,
+// Suivi des contenus d'animation (Joseph, 23/10/2026), onglet « Sondages et rendez-vous » de la page Campagnes depuis la vague 3 (27A) : créer et suivre au même endroit communications, bonnes pratiques,
 // sondages, formations, réunions et campagnes. Pour chacun : lectures, réponses, présences ou exécution.
 // Directeur : tout le réseau ; Responsable Régional : ses magasins (les fonctions de la base ne lui renvoient que ceux-là).
 import { Suspense, useCallback, useEffect, useMemo, useState, type MouseEvent, type ReactElement, type ReactNode } from 'react'
@@ -25,8 +25,6 @@ import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
 import FlagOutlined from '@mui/icons-material/FlagOutlined'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import { PageHeader } from '../components/PageHeader'
-import { OngletsMessages } from '../components/OngletsMessages'
-import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { ChampRecherche } from '../components/Outils'
 import { CarteLignes, Initiales, LigneCompacte, Puces, useParTranches } from '../components/Social'
@@ -242,7 +240,7 @@ function FenetreSuivi({ reseau, x, onFermer, relireSondages, modifierEvenement }
       <Typography sx={{ fontWeight: 600 }}>{o.b.fait} exécutée{o.b.fait > 1 ? 's' : ''} sur {o.b.total} · {o.b.partiel} en partie · {o.b.aConstater} à constater</Typography>
       <BarreExecution b={o.b} libelle={o.c.nom} />
     </>
-    action = <Button variant="contained" onClick={() => aller(`/plus/sante?vue=campagnes&campagne=${encodeURIComponent(o.c.id)}`)} sx={{ minHeight: 48 }}>Ouvrir la campagne</Button>
+    action = <Button variant="contained" onClick={() => aller(`/campagnes?vue=campagnes&campagne=${encodeURIComponent(o.c.id)}`)} sx={{ minHeight: 48 }}>Ouvrir la campagne</Button>
   }
   return (
     <Dialog open onClose={onFermer} fullScreen={pleinEcran} fullWidth maxWidth="sm" aria-labelledby="titre-suivi">
@@ -264,7 +262,8 @@ function FenetreSuivi({ reseau, x, onFermer, relireSondages, modifierEvenement }
 
 type Creation = 'communication' | 'pratique' | 'sondage' | 'formation' | 'reunion' | 'campagne'
 
-function PageAnimation({ reseau }: { reseau: Reseau }) {
+// integre : dans la page Campagnes, sans son propre titre
+export function PageAnimation({ reseau, integre }: { reseau: Reseau; integre?: boolean }) {
   const { profil } = useAuth()
   const naviguer = useNavigate()
   const perimetre = perimetreDuProfil(profil)
@@ -305,8 +304,7 @@ function PageAnimation({ reseau }: { reseau: Reseau }) {
   const typeCree: TypeEvenement = creation === 'formation' ? 'formation' : 'reunion'
   return (
     <>
-      <PageHeader titre="Messages" />
-      <OngletsMessages />
+      {!integre && <PageHeader titre="Campagnes" />}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
         <Button variant="contained" startIcon={<AddOutlined />} aria-haspopup="menu" aria-expanded={!!ancre} onClick={ouvrirMenu} sx={{ minHeight: 48 }}>Créer</Button>
       </Box>
@@ -354,8 +352,4 @@ function PageAnimation({ reseau }: { reseau: Reseau }) {
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>
   )
-}
-
-export function Animation() {
-  return <AvecReseau>{(reseau) => <PageAnimation reseau={reseau} />}</AvecReseau>
 }

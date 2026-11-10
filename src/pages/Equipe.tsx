@@ -17,15 +17,15 @@ import CallOutlined from '@mui/icons-material/CallOutlined'
 import MailOutlined from '@mui/icons-material/MailOutlined'
 import BuildOutlined from '@mui/icons-material/BuildOutlined'
 import AccountTreeOutlined from '@mui/icons-material/AccountTreeOutlined'
-import WorkOutlineOutlined from '@mui/icons-material/WorkOutlineOutlined'
 import BadgeOutlined from '@mui/icons-material/BadgeOutlined'
-import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
+import WorkOutlineOutlined from '@mui/icons-material/WorkOutlineOutlined'
 import { VuePersonnes } from './VuePersonnes'
 import { VuePortefeuilles } from '../components/Portefeuille'
-import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { CarteLignes, Initiales, LigneCompacte, cartouche } from '../components/Social'
-import { Onglets } from '../components/Onglets'
+import { Onglets, styleSousNavigation } from '../components/Onglets'
+import Tab from '@mui/material/Tab'
+import Tabs from '@mui/material/Tabs'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { PastilleCharge } from '../components/Charge'
@@ -273,14 +273,21 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
   )
 }
 
-const rubriques: { vue: Vue; libelle: string; court: string; icone: ReactElement }[] = [
+// Vague 3 (Joseph, 09/11/2026, 28A) : trois onglets ; collaborateurs, franchisés, portefeuilles et postes à pourvoir
+// sont des vues de « Personnes » (sous-navigation, 2e et dernier niveau). Les anciennes adresses ?vue=… y mènent.
+type Onglet = 'organisation' | 'personnes' | 'revue'
+const rubriques: { vue: Onglet; libelle: string; court: string; icone: ReactElement }[] = [
   { vue: 'organisation', libelle: 'Organisation', court: 'Organisation', icone: <AccountTreeOutlined /> },
-  { vue: 'portefeuilles', libelle: 'Portefeuilles', court: 'Portefeuilles', icone: <InsightsOutlined /> },
+  { vue: 'personnes', libelle: 'Personnes', court: 'Personnes', icone: <BadgeOutlined /> },
   { vue: 'revue', libelle: 'Revue du mois', court: 'Revue', icone: <EventNoteOutlined /> },
-  { vue: 'postes', libelle: 'Postes à pourvoir', court: 'Postes', icone: <WorkOutlineOutlined /> },
-  { vue: 'collaborateurs', libelle: 'Collaborateurs', court: 'Collaborateurs', icone: <BadgeOutlined /> },
-  { vue: 'franchises', libelle: 'Franchisés', court: 'Franchisés', icone: <HandshakeOutlined /> },
 ]
+const vuesPersonnes: { vue: Vue; libelle: string }[] = [
+  { vue: 'collaborateurs', libelle: 'Collaborateurs' },
+  { vue: 'franchises', libelle: 'Franchisés' },
+  { vue: 'portefeuilles', libelle: 'Portefeuilles' },
+  { vue: 'postes', libelle: 'Postes à pourvoir' },
+]
+const ongletDe = (v: Vue): Onglet => (v === 'organisation' || v === 'revue' ? v : 'personnes')
 
 export function Equipe() {
   const [params, setParams] = useSearchParams()
@@ -295,7 +302,12 @@ export function Equipe() {
       {(reseau) => (
         <>
           <PageHeader titre="Équipe" sousTitre={`${reseau.equipe.length} Coachs · ${reseau.rrs.length} Responsables Régionaux · ${reseau.techniciens.length} technicien${reseau.techniciens.length > 1 ? 's' : ''}`} />
-          <Onglets valeur={vue} onChange={changerVue} rubriques={rubriques} libelle="Rubriques de l’équipe" />
+          <Onglets valeur={ongletDe(vue)} onChange={(o) => changerVue(o === 'personnes' ? 'collaborateurs' : o)} rubriques={rubriques} libelle="Rubriques de l’équipe" />
+          {ongletDe(vue) === 'personnes' && (
+            <Tabs value={vue} onChange={(_, v: Vue) => changerVue(v)} variant="scrollable" scrollButtons="auto" aria-label="Vues des personnes" sx={{ mb: 2, ...styleSousNavigation }}>
+              {vuesPersonnes.map((x) => <Tab key={x.vue} value={x.vue} label={x.libelle} aria-current={vue === x.vue ? 'page' : undefined} />)}
+            </Tabs>
+          )}
           {vue === 'collaborateurs' || vue === 'franchises' ? <VuePersonnes key={vue} perimetre={vue} reseau={reseau} />
             : vue === 'revue' ? <RevueRR reseau={reseau} nom="réseau" magasins={reseau.magasins} parRR />
             : vue === 'portefeuilles' ? <VuePortefeuilles reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : <VueOrganisation reseau={reseau} />}

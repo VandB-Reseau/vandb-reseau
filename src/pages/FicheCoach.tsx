@@ -23,9 +23,6 @@ import Link from '@mui/material/Link'
 import Tooltip from '@mui/material/Tooltip'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
-import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
-import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
-import BadgeOutlined from '@mui/icons-material/BadgeOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { BoutonAjouterAction, ListeActions } from '../components/Actions'
@@ -38,21 +35,22 @@ import { portefeuilleDe } from '../data/portefeuille'
 import { lienPersonne } from '../data/messagerie'
 import { fichePersonne } from '../data/personnes'
 
-type VueCoach = 'portefeuille' | 'magasins' | 'visites' | 'actions' | 'campagnes' | 'fiche'
+// Vague 3 (Joseph, 09/11/2026, 28A) : fiche d'une personne au gabarit de la fiche magasin, trois onglets.
+// Les anciennes adresses (?vue=portefeuille|fiche|visites|actions|campagnes) mènent au bon onglet.
+type VueCoach = 'ensemble' | 'magasins' | 'activite'
 const rubriquesCoach: Rubrique<VueCoach>[] = [
-  { vue: 'portefeuille', libelle: 'Portefeuille', icone: <InsightsOutlined /> },
+  { vue: 'ensemble', libelle: 'Vue d’ensemble', icone: <InsightsOutlined /> },
   { vue: 'magasins', libelle: 'Magasins', icone: <StorefrontOutlined /> },
-  { vue: 'visites', libelle: 'Visites', icone: <EventNoteOutlined /> },
-  { vue: 'actions', libelle: 'Tâches', icone: <TaskAltOutlined /> },
-  { vue: 'campagnes', libelle: 'Campagnes', icone: <CampaignOutlined /> },
-  { vue: 'fiche', libelle: 'Fiche', icone: <BadgeOutlined /> },
+  { vue: 'activite', libelle: 'Activité', icone: <EventNoteOutlined /> },
 ]
+const anciennesVues: Record<string, VueCoach> = { portefeuille: 'ensemble', fiche: 'ensemble', visites: 'activite', actions: 'activite', campagnes: 'activite' }
 
 function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
   const naviguer = useNavigate()
   const [params, setParams] = useSearchParams()
-  const vue = (rubriquesCoach.find((r) => r.vue === params.get('vue'))?.vue ?? 'portefeuille') as VueCoach
-  const changerVue = (v: VueCoach) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'portefeuille') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
+  const demandee = params.get('vue') ?? ''
+  const vue = (rubriquesCoach.find((r) => r.vue === demandee)?.vue ?? anciennesVues[demandee] ?? 'ensemble') as VueCoach
+  const changerVue = (v: VueCoach) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'ensemble') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const [edition, setEdition] = useState(false)
   const [message, setMessage] = useState('')
   const magasins = magasinsDuCoach(reseau, coach.nom)
@@ -84,13 +82,25 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
       <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesCoach} libelle={`Rubriques de ${coach.nom}`} fiche />
       <ContenuOnglet>
 
-        {vue === 'portefeuille' && <BlocPortefeuille reseau={reseau} p={portefeuilleDe(reseau, magasins.filter((m) => m.statut !== 'avenir'), rythme)} />}
+        {vue === 'ensemble' && (
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' }, alignItems: 'start' }}>
+            <BlocPortefeuille reseau={reseau} p={portefeuilleDe(reseau, magasins.filter((m) => m.statut !== 'avenir'), rythme)} />
+            <Box sx={{ display: 'grid', gap: 2 }}>
+              <Section titre="Rattachement">
+                <Contact role={coach.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={coach.rr} lien={coach.rr ? lienRR(coach.rr.id) : undefined} sousTitre={coach.rr ? undefined : 'Non rattaché à ce jour'} />
+              </Section>
+              <SectionFichePersonnelle reseau={reseau} r={{ type: 'coach', cle: coach.nom }} />
+              {referentiels && !coach.fictif && <SectionAccesEquipe role="coach" cle={coach.nom} nom={coach.nom} signaler={setMessage} />}
+            </Box>
+          </Box>
+        )}
 
         {vue === 'magasins' && (magasins.length === 0
           ? <Typography variant="body2" color="text.secondary">Aucun magasin affecté aujourd’hui.</Typography>
           : <ListeMagasins magasins={magasins} />)}
 
-        {vue === 'visites' && (
+        {vue === 'activite' && <Box sx={{ display: 'grid', gap: 2 }}>
+          <Section titre="Tâches en cours de ses magasins" action={<BoutonAjouterAction reseau={reseau} magasins={[...noms].sort()} signaler={setMessage} />}><ListeActions reseau={reseau} actions={actions} avecMagasin signaler={setMessage} libelle={`Tâches en cours des magasins de ${coach.nom}`} magasins={[...noms]} /></Section>
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
             <Section titre="Pas vus depuis longtemps">
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{faitesAn} visite{faitesAn > 1 ? 's' : ''} en {a.court} · référence nine box {referenceAn}</Typography>
@@ -118,21 +128,8 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
               {visites.length > 12 && <Button onClick={() => setToutes((x) => !x)} sx={{ minHeight: 48, mt: 0.5 }}>{toutes ? 'Afficher moins' : `Voir les ${visites.length} visites`}</Button>}
             </Section>
           </Box>
-        )}
-
-        {vue === 'actions' && <Section titre="Tâches en cours de ses magasins" action={<BoutonAjouterAction reseau={reseau} magasins={[...noms].sort()} signaler={setMessage} />}><ListeActions reseau={reseau} actions={actions} avecMagasin signaler={setMessage} libelle={`Tâches en cours des magasins de ${coach.nom}`} magasins={[...noms]} /></Section>}
-
-        {vue === 'campagnes' && <Section titre="Campagnes"><BilanCampagnes reseau={reseau} magasins={magasins} /></Section>}
-
-        {vue === 'fiche' && (
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-            <SectionFichePersonnelle reseau={reseau} r={{ type: 'coach', cle: coach.nom }} />
-            <Section titre="Rattachement">
-              <Contact role={coach.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={coach.rr} lien={coach.rr ? lienRR(coach.rr.id) : undefined} sousTitre={coach.rr ? undefined : 'Non rattaché à ce jour'} />
-            </Section>
-            {referentiels && !coach.fictif && <SectionAccesEquipe role="coach" cle={coach.nom} nom={coach.nom} signaler={setMessage} />}
-          </Box>
-        )}
+          <Section titre="Campagnes"><BilanCampagnes reseau={reseau} magasins={magasins} /></Section>
+        </Box>}
         {edition && <DialogCoach reseau={reseau} coach={coach} onFermer={(m, nom) => { setEdition(false); if (m?.includes('retiré')) naviguer('/equipe'); else if (m) { setMessage(m); if (nom && nom !== coach.nom) naviguer(lienCoach(nom), { replace: true }) } }} />}
         <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
       </ContenuOnglet>

@@ -8,7 +8,7 @@ const hautBande = (page: Page, nom: string) => bande(page, nom).evaluate((e) => 
 
 for (const fiche of [
   { titre: 'magasin', adresse: './#/magasins/Brest%20Test', nom: 'Brest Test', onglet: 'Chiffres', retour: 'Vue d’ensemble' },
-  { titre: 'Coach', adresse: './#/equipe/coach/In%C3%A8s%20EXEMPLE?vue=magasins', nom: 'Inès EXEMPLE', onglet: 'Visites', retour: 'Portefeuille' },
+  { titre: 'Coach', adresse: './#/equipe/coach/In%C3%A8s%20EXEMPLE?vue=magasins', nom: 'Inès EXEMPLE', onglet: 'Activité', retour: 'Vue d’ensemble' },
 ]) {
   test(`fiche ${fiche.titre} : changer d’onglet garde les onglets à l’écran au lieu de remonter tout en haut`, async ({ page, isMobile }, info) => {
     await page.setViewportSize(isMobile ? { width: 390, height: 640 } : { width: 1280, height: 640 })

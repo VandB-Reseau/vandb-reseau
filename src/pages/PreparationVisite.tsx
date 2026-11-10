@@ -18,6 +18,7 @@ import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEur
 import { caseDe } from '../data/sante'
 import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme } from '../data/visites'
 import { preparationDe } from '../data/semaine'
+import { avancement, formatIndicateur, libelleStatut, objectifsDu, phraseObjectif } from '../data/objectifs'
 import { actionsDuMagasin, echeanceDate, enRetard } from '../data/actions'
 import { campagnesDuMagasin } from '../data/campagnes'
 import { associesEnPlace } from '../data/associes'
@@ -150,7 +151,7 @@ function Reperes({ reseau, m, r }: { reseau: Reseau; m: Magasin; r: Reperes | nu
   )
 }
 
-function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+export function Fiche({ reseau, m, integre = false }: { reseau: Reseau; m: Magasin; integre?: boolean }) {
   const naviguer = useNavigate()
   const { messagerie } = useMessagerie()
   const [reperes, setReperes] = useState<Reperes | null | undefined>(undefined)
@@ -177,9 +178,9 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
     <>
       {styleImpression}
       <Box className="sans-impression" sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-        <Button startIcon={<ArrowBack />} onClick={() => naviguer(-1)} sx={{ ml: -1, minHeight: 48 }}>Retour</Button>
+        {!integre && <Button startIcon={<ArrowBack />} onClick={() => naviguer(-1)} sx={{ ml: -1, minHeight: 48 }}>Retour</Button>}
         <Box sx={{ flex: 1 }} />
-        <Button variant="contained" startIcon={<PictureAsPdfOutlined />} onClick={() => window.print()} sx={{ minHeight: 48 }}>Télécharger en PDF</Button>
+        <Button variant={integre ? 'outlined' : 'contained'} startIcon={<PictureAsPdfOutlined />} onClick={() => window.print()} sx={{ minHeight: 48 }}>Télécharger en PDF</Button>
       </Box>
       <Box className="feuille" sx={{ bgcolor: '#fff', color: NOIR, maxWidth: 820, mx: 'auto', borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
         <EnTeteLettre objet="Objet : fiche avant visite" date={`${m.franchise ? 'Franchisé' : 'Intégré'} · préparée le ${dateLongue(reseau.jour)}`} />
@@ -211,6 +212,17 @@ function Fiche({ reseau, m }: { reseau: Reseau; m: Magasin }) {
           )}
 
           <Bloc titre="Chiffres"><Chiffres reseau={reseau} m={m} /></Bloc>
+          {objectifsDu(reseau, m.nom).length > 0 && (
+            <Bloc titre="Objectifs">
+              <Box component="table" sx={tableau} aria-label="Objectifs du magasin">
+                <thead><tr><th>Objectif</th><th className="nombre">Dernier mois</th><th>Avancement</th></tr></thead>
+                <tbody>{objectifsDu(reseau, m.nom).map((o) => {
+                  const a = avancement(reseau, m.nom, o)
+                  return <tr key={o.id}><td>{phraseObjectif(o)}</td><td className="nombre">{formatIndicateur(o.indicateur, o.mode, a.actuel)}</td><td style={{ color: a.statut === 'retard' || a.statut === 'manque' ? ROUGE : a.statut === 'attente' ? GRIS : VERT, fontWeight: 600 }}>{libelleStatut[a.statut]}</td></tr>
+                })}</tbody>
+              </Box>
+            </Bloc>
+          )}
           <Bloc titre="Repères réseau"><Reperes reseau={reseau} m={m} r={reperes} /></Bloc>
           <Bloc titre="Concurrents à 2 km"><Concurrents reseau={reseau} m={m} /></Bloc>
 

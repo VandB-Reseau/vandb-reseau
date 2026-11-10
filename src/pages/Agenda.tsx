@@ -33,6 +33,9 @@ import { DialogVisite } from '../components/DialogVisite'
 import { DialogPlanifier } from '../components/DialogPlanifier'
 import { deplacerVisite, enregistrerEvenement, supprimerEvenement } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import { VueSemaine } from '../components/Semaine'
 import { libellesTypeEvenement, typeEvenement, type Evenement, type Reseau, type TypeEvenement } from '../data/modele'
 import { Puces } from '../components/Social'
 import { AlerteTaille, ChampCodeHtml, EditeurMiseEnForme } from '../components/MiseEnForme'
@@ -191,6 +194,7 @@ export function Agenda() {
   // Dates posées par glisser-déposer, montrées tant que le réseau n'a pas été relu
   const [modifs, setModifs] = useState<{ pour: Reseau | null; dates: Record<string, Dates> }>({ pour: null, dates: {} })
   const [message, setMessage] = useState('')
+  const [survol, setSurvol] = useState<string | null>(null)
   const fermer = (m?: string) => { setEvenement(undefined); setAjout(null); if (m) setMessage(m) }
   const deplacer = async (reseau: Reseau, e: Element, d: Dates) => {
     if (d.debut === e.debut && d.fin === e.fin) return
@@ -209,21 +213,40 @@ export function Agenda() {
   return (
     <AvecReseau>
       {(reseau) => {
+        // Refonte vague 3 (Joseph 09/11/2026, 25A) : Semaine ou Mois ; le Coach arrive sur sa semaine
+        const vue: 'semaine' | 'mois' = params.get('vue') === 'semaine' || params.get('vue') === 'mois' ? params.get('vue') as 'semaine' | 'mois' : params.get('mois') ? 'mois' : moi?.role === 'coach' ? 'semaine' : 'mois'
+        const lundi = (j: string) => ajouterJours(j, -((jourUTC(j).getUTCDay() + 6) % 7))
         const mois = params.get('mois') ?? reseau.jour.slice(0, 7)
-        const debut = `${mois}-01`
-        const fin = ajouterJours(iso(new Date(Date.UTC(Number(mois.slice(0, 4)), Number(mois.slice(5, 7)), 1))), -1)
-        const changerMois = (n: number) => { const d = new Date(Date.UTC(Number(mois.slice(0, 4)), Number(mois.slice(5, 7)) - 1 + n, 1)); setParams({ mois: iso(d).slice(0, 7) }, { replace: true }) }
+        const semaine = lundi(params.get('semaine') ?? reseau.jour)
+        const debut = vue === 'semaine' ? semaine : `${mois}-01`
+        const fin = vue === 'semaine' ? ajouterJours(semaine, 6) : ajouterJours(iso(new Date(Date.UTC(Number(mois.slice(0, 4)), Number(mois.slice(5, 7)), 1))), -1)
+        const changer = (n: number) => {
+          if (vue === 'semaine') { setParams({ vue, semaine: ajouterJours(semaine, 7 * n) }, { replace: true }); return }
+          const d = new Date(Date.UTC(Number(mois.slice(0, 4)), Number(mois.slice(5, 7)) - 1 + n, 1)); setParams({ vue, mois: iso(d).slice(0, 7) }, { replace: true })
+        }
+        const titrePeriode = vue === 'semaine'
+          ? `${jourUTC(debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' })} – ${jourUTC(fin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}`
+          : nomMois(debut)
+        const equipe = moi?.role !== 'franchise'
+        const contenu = <ContenuMois reseau={reseau} debut={debut} fin={fin} actives={actives} surPC={surPC} modifs={modifs.pour === reseau ? modifs.dates : {}} semaine={vue === 'semaine'} survol={survol}
+          ouvrir={(e) => { if (e.evenement) setEvenement(e.evenement) }}
+          ajouter={setAncre} deplacer={(e, d) => void deplacer(reseau, e, d)} />
         return (
           <>
             {/* Refonte (Joseph, 09/11/2026, 9A) : sur PC, plus de bouton Créer dans le menu ; le bouton de la page ouvre le panneau de droite */}
-            <PageHeader titre="Agenda" actions={surPC && moi?.role !== 'franchise' ? <BoutonAction libelle="Ajouter un événement" onClick={() => creer('evenement')} /> : undefined} />
-            {/* Le mois et les catégories restent sous la barre du haut quand la page défile */}
+            <PageHeader titre="Agenda" actions={surPC && equipe ? <BoutonAction libelle="Ajouter un événement" onClick={() => creer('evenement')} /> : undefined} />
+            {/* La période et les catégories restent sous la barre du haut quand la page défile */}
             <BandeCollante>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0, sm: 1 }, flexWrap: { sm: 'wrap' }, mb: 0.5 }}>
-              <IconButton onClick={() => changerMois(-1)} aria-label="Mois précédent"><ChevronLeft /></IconButton>
-              <Typography variant="h3" component="h2" sx={{ minWidth: { sm: 180 }, flex: { xs: 1, sm: 'none' }, textAlign: 'center', textTransform: 'capitalize' }}>{nomMois(debut)}</Typography>
-              <IconButton onClick={() => changerMois(1)} aria-label="Mois suivant"><ChevronRight /></IconButton>
-              <Button onClick={() => setParams({}, { replace: true })} sx={{ minHeight: 48 }}>Aujourd’hui</Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0, sm: 1 }, flexWrap: 'wrap', mb: 0.5 }}>
+              <IconButton onClick={() => changer(-1)} sx={{ width: 48, height: 48 }} aria-label={vue === 'semaine' ? 'Semaine précédente' : 'Mois précédent'}><ChevronLeft /></IconButton>
+              <Typography variant="h3" component="h2" sx={{ minWidth: { sm: 200 }, flex: { xs: 1, sm: 'none' }, textAlign: 'center', '&::first-letter': { textTransform: 'uppercase' } }}>{titrePeriode}</Typography>
+              <IconButton onClick={() => changer(1)} sx={{ width: 48, height: 48 }} aria-label={vue === 'semaine' ? 'Semaine suivante' : 'Mois suivant'}><ChevronRight /></IconButton>
+              <Button onClick={() => setParams({ vue }, { replace: true })} sx={{ minHeight: 48 }}>Aujourd’hui</Button>
+              <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_e, v: 'semaine' | 'mois' | null) => { if (v && v !== vue) setParams(v === 'mois' ? { vue: v, mois: ajouterJours(semaine, 3).slice(0, 7) } : mois === reseau.jour.slice(0, 7) ? { vue: v } : { vue: v, semaine: `${mois}-01` }, { replace: true }) }} aria-label="Affichage de l’agenda"
+                sx={{ ml: { sm: 'auto' }, width: { xs: '100%', sm: 'auto' }, mb: { xs: 1, sm: 0 }, '& .MuiToggleButton-root': { minHeight: { xs: 48, sm: 40 }, px: 2, flex: { xs: 1, sm: 'none' }, textTransform: 'none', fontWeight: 600 } }}>
+                <ToggleButton value="semaine">Semaine</ToggleButton>
+                <ToggleButton value="mois">Mois</ToggleButton>
+              </ToggleButtonGroup>
             </Box>
             {/* Catégories en puces neutres avec un point de couleur, sur une ligne qui défile (Joseph, 21/10/2026) */}
             <Box role="group" aria-label="Catégories affichées" sx={{ display: 'flex', gap: 1, overflowX: 'auto', mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, scrollbarWidth: 'none' }}>
@@ -238,9 +261,11 @@ export function Agenda() {
               })}
             </Box>
             </BandeCollante>
-            <ContenuMois reseau={reseau} debut={debut} fin={fin} actives={actives} surPC={surPC} modifs={modifs.pour === reseau ? modifs.dates : {}}
-              ouvrir={(e) => { if (e.evenement) setEvenement(e.evenement) }}
-              ajouter={setAncre} deplacer={(e, d) => void deplacer(reseau, e, d)} />
+            {vue === 'semaine' && equipe
+              ? surPC
+                ? <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 2, alignItems: 'start' }}>{contenu}<Box component="aside" aria-label="Ma semaine" sx={{ minWidth: 0 }}><VueSemaine reseau={reseau} surPC={false} panneau survoler={setSurvol} onMessage={setMessage} /></Box></Box>
+                : <><VueSemaine reseau={reseau} surPC={false} onMessage={setMessage} /><Box sx={{ mt: 3 }}>{contenu}</Box></>
+              : contenu}
             <MenuAjout ancre={ancre} onFermer={() => setAncre(null)} onChoisir={(type, jour) => { setAncre(null); setAjout({ type, jour }) }} />
             {evenement !== undefined && <DialogEvenement reseau={reseau} evenement={evenement} onFermer={fermer} />}
             {(ajout?.type === 'evenement' || ajout?.type === 'formation') && <DialogEvenement reseau={reseau} evenement={null} jourInitial={ajout.jour} typeInitial={ajout.type === 'formation' ? 'formation' : 'event'} onFermer={fermer} />}
@@ -256,8 +281,8 @@ export function Agenda() {
   )
 }
 
-function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, ouvrir, ajouter, deplacer }: {
-  reseau: Reseau; debut: string; fin: string; actives: Set<Categorie>; surPC: boolean; modifs: Record<string, Dates>
+function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, semaine = false, survol = null, ouvrir, ajouter, deplacer }: {
+  reseau: Reseau; debut: string; fin: string; actives: Set<Categorie>; surPC: boolean; modifs: Record<string, Dates>; semaine?: boolean; survol?: string | null
   ouvrir: (e: Element) => void; ajouter: (a: Ancre) => void; deplacer: (e: Element, d: Dates) => void
 }) {
   const [glisse, setGlisse] = useState<Glisse | null>(null)
@@ -306,16 +331,16 @@ function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, ouvrir, ajout
     for (let j = premier; j <= fin || jours.length % 7 !== 0; j = ajouterJours(j, 1)) jours.push(j)
     return (
       <Card>
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }} role="grid" aria-label="Calendrier du mois"
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }} role="grid" aria-label={semaine ? 'Calendrier de la semaine' : 'Calendrier du mois'}
           onClickCapture={(ev) => { if (ignorerClic.current) { ev.preventDefault(); ev.stopPropagation() } }}>
           {['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'].map((j) => <Typography key={j} variant="body2" color="text.secondary" sx={{ p: 1, fontWeight: 600, borderBottom: '1px solid', borderColor: 'divider' }}>{j}</Typography>)}
           {jours.map((j, i) => {
             const horsMois = j < debut || j > fin
-            const cible = glisse && (glisse.mode === 'etirer' ? j === datesApres(glisse).fin : j === glisse.cible)
+            const cible = j === survol || (glisse && (glisse.mode === 'etirer' ? j === datesApres(glisse).fin : j === glisse.cible))
             return (
               <Box key={j} role="gridcell" aria-label={jourLong(j)} data-jour={j}
                 onClick={(ev) => { if (!(ev.target as HTMLElement).closest('a,button')) ajouter({ jour: j, x: ev.clientX, y: ev.clientY }) }}
-                sx={{ position: 'relative', minHeight: 112, p: 0.75, cursor: 'pointer', borderRight: (i % 7) < 6 ? '1px solid' : 0, borderBottom: '1px solid', borderColor: 'divider', bgcolor: cible ? 'action.selected' : horsMois ? 'action.hover' : undefined, minWidth: 0, '&:hover .ajout-jour, & .ajout-jour:focus-visible': { opacity: 1 } }}>
+                sx={{ position: 'relative', minHeight: semaine ? 420 : 112, p: 0.75, cursor: 'pointer', borderRight: (i % 7) < 6 ? '1px solid' : 0, borderBottom: '1px solid', borderColor: 'divider', bgcolor: cible ? 'action.selected' : horsMois ? 'action.hover' : undefined, minWidth: 0, '&:hover .ajout-jour, & .ajout-jour:focus-visible': { opacity: 1 } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
                   <Typography variant="body2" sx={{ fontWeight: j === reseau.jour ? 800 : 500, color: horsMois ? 'text.secondary' : j === reseau.jour ? 'primary.main' : 'text.primary' }}>{Number(j.slice(8))}</Typography>
                   <IconButton className="ajout-jour" size="small" aria-label={`Ajouter le ${jourLong(j)}`} onClick={(ev) => ajouter(ancreDe(j, ev.currentTarget))} sx={{ opacity: 0, p: 0.25, m: -0.25 }}><AddOutlined fontSize="small" /></IconButton>
@@ -362,12 +387,12 @@ function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, ouvrir, ajout
   // Mois en cours (sprint 25, S1) : la liste part d'aujourd'hui, toujours affiché même vide ; les jours passés se replient
   const passes = moisEnCours ? jours.filter((j) => j < reseau.jour) : []
   const aVenir = moisEnCours ? [...new Set([reseau.jour, ...jours.filter((j) => j >= reseau.jour)])].sort() : jours
-  if (!jours.length && !moisEnCours) return <>{bande}<EmptyState icone={<CalendarMonthOutlined />} titre="Rien de prévu ce mois-ci" texte="Ajoute une visite ou un événement, ou passe au mois suivant." /></>
+  if (!jours.length && !moisEnCours) return <>{bande}<EmptyState icone={<CalendarMonthOutlined />} titre={semaine ? 'Rien de prévu cette semaine' : 'Rien de prévu ce mois-ci'} texte={semaine ? 'Ajoute une visite ou un événement, ou passe à la semaine suivante.' : 'Ajoute une visite ou un événement, ou passe au mois suivant.'} /></>
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {bande}
       {passes.length > 0 && !voirPasses && (
-        <Button variant="outlined" onClick={() => setVoirPasses(true)} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>Plus tôt ce mois · {passes.length}</Button>
+        <Button variant="outlined" onClick={() => setVoirPasses(true)} sx={{ alignSelf: 'flex-start', minHeight: 48 }}>{semaine ? 'Plus tôt cette semaine' : 'Plus tôt ce mois'} · {passes.length}</Button>
       )}
       {[...(voirPasses ? passes : []), ...aVenir].map((j) => (
         <Box key={j} id={`jour-${j}`} sx={{ scrollMarginTop: 72 }}>

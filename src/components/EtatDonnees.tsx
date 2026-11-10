@@ -1,15 +1,25 @@
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
 import CloudOffOutlined from '@mui/icons-material/CloudOffOutlined'
 import { EmptyState } from './EmptyState'
-import { useReseau } from '../data/ReseauContext'
+import { restreindre, useReseau } from '../data/ReseauContext'
+import { useLocation } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
+import { choisirPerimetre, EtiquettePerimetreCtx, libellePerimetre, perimetreRetenu, suitLePerimetre, useCleChoisie } from '../data/perimetreChoisi'
 import type { Reseau } from '../data/modele'
 
 // Affiche chargement / erreur de manière lisible, puis le contenu une fois les données prêtes
 export function AvecReseau({ children }: { children: (r: Reseau) => ReactNode }) {
-  const { reseau, chargement, erreur, recharger } = useReseau()
+  const { reseau: tout, chargement, erreur, recharger } = useReseau()
+  // Vague 3 (21A) : les listes suivent le périmètre choisi dans le menu ; les fiches s'ouvrent toujours en entier
+  const { pathname } = useLocation()
+  const { profil } = useAuth()
+  const cle = useCleChoisie()
+  const suit = suitLePerimetre(pathname)
+  const p = useMemo(() => (tout && suit ? perimetreRetenu(tout, profil, cle) : null), [tout, suit, profil, cle])
+  const reseau = useMemo(() => (tout && p ? restreindre(tout, p) : tout), [tout, p])
   if (erreur && !reseau) {
     return (
       <EmptyState
@@ -27,5 +37,11 @@ export function AvecReseau({ children }: { children: (r: Reseau) => ReactNode })
       </Box>
     )
   }
-  return <>{reseau && children(reseau)}</>
+  if (!reseau) return null
+  const etiquette = p && tout ? { libelle: libellePerimetre(tout, p), nombre: reseau.magasins.filter((m) => m.statut !== 'avenir').length, revenir: () => choisirPerimetre('reseau') } : null
+  return (
+    <EtiquettePerimetreCtx.Provider value={etiquette}>
+      {children(reseau)}
+    </EtiquettePerimetreCtx.Provider>
+  )
 }
