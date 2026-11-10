@@ -18,6 +18,7 @@ import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEur
 import { caseDe } from '../data/sante'
 import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme } from '../data/visites'
 import { preparationDe } from '../data/semaine'
+import { avancement, formatIndicateur, libelleStatut, objectifsDu, phraseObjectif } from '../data/objectifs'
 import { actionsDuMagasin, echeanceDate, enRetard } from '../data/actions'
 import { campagnesDuMagasin } from '../data/campagnes'
 import { associesEnPlace } from '../data/associes'
@@ -211,6 +212,17 @@ export function Fiche({ reseau, m, integre = false }: { reseau: Reseau; m: Magas
           )}
 
           <Bloc titre="Chiffres"><Chiffres reseau={reseau} m={m} /></Bloc>
+          {objectifsDu(reseau, m.nom).length > 0 && (
+            <Bloc titre="Objectifs">
+              <Box component="table" sx={tableau} aria-label="Objectifs du magasin">
+                <thead><tr><th>Objectif</th><th className="nombre">Dernier mois</th><th>Avancement</th></tr></thead>
+                <tbody>{objectifsDu(reseau, m.nom).map((o) => {
+                  const a = avancement(reseau, m.nom, o)
+                  return <tr key={o.id}><td>{phraseObjectif(o)}</td><td className="nombre">{formatIndicateur(o.indicateur, o.mode, a.actuel)}</td><td style={{ color: a.statut === 'retard' || a.statut === 'manque' ? ROUGE : a.statut === 'attente' ? GRIS : VERT, fontWeight: 600 }}>{libelleStatut[a.statut]}</td></tr>
+                })}</tbody>
+              </Box>
+            </Bloc>
+          )}
           <Bloc titre="Repères réseau"><Reperes reseau={reseau} m={m} r={reperes} /></Bloc>
           <Bloc titre="Concurrents à 2 km"><Concurrents reseau={reseau} m={m} /></Bloc>
 

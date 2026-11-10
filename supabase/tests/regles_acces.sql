@@ -844,3 +844,19 @@ SELECT pg_temp.attendre('Suppression : le Directeur ne lance pas le contrôle d'
 SELECT pg_temp.attendre('Suppression : un renommage passe toujours (aucune ligne)', pg_temp.refuse('UPDATE public.store_finance SET store_name = ''X'' WHERE store_name = ''Lille'''), 0);
 SELECT pg_temp.attendre('Suppression : le CA de la caisse reste lu', ((SELECT count(*) FROM public.chiffres_mensuels() WHERE source = 'caisse') > 0)::int, 1);
 RESET ROLE;
+
+-- ── 0042 : objectifs chiffrés par magasin, même cloisonnement que le reste du suivi ; jamais renvoyés au franchisé
+\ir ../migrations/0042_objectifs_magasins.sql
+SELECT pg_temp.attendre('Journal : 0042 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0042'), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Objectifs : le Coach fixe ceux de son magasin',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''objectifs'', ''[{"id":"o1","indicateur":"pmCave","cible":26,"echeance":"2027-01"}]'')'), 0);
+SELECT pg_temp.attendre('Objectifs : pas sur un magasin d''un autre Coach',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Nice'', ''objectifs'', ''[]'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Objectifs : le franchisé ne les lit pas directement', (SELECT count(*) FROM public.suivi_magasins WHERE cle = 'objectifs'), 0);
+SELECT pg_temp.attendre('Objectifs : jamais renvoyés au franchisé',
+  (SELECT count(*) FROM jsonb_array_elements(public.espace_franchise()->'app_config') c WHERE c->>'key' IN ('objectifs', 'objectifs_magasins')), 0);
+RESET ROLE;
+RESET request.jwt.claim.sub;

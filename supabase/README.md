@@ -46,6 +46,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0039_fusion_caisse_budgets` | Chiffres mensuels lus de la caisse (schéma `pilotage`) avant la saisie : `chiffres_mensuels`, `chiffres_mensuels_internes` ; repères, challenges et espace du franchisé réécrits dessus ; `notifications_budget` (commentaires de budget) ; actions du budget (`pilotage.actions`) reprises en tâches du réseau, table fermée en écriture ; puis redéployer la fonction Supabase `notifier` | 04/11/2026 |
 | `0040_archive_store_finance` | Copie complète de `store_finance` dans `archive_store_finance` (aucun accès depuis l'app) ; bilan `couverture_caisse()` (Directeur) des mois couverts par la caisse ; rien n'est supprimé | 04/11/2026 |
 | `0041_suppression_store_finance` | Contrôle de l'archive (`lignes_hors_archive`), `store_finance` vidée puis fermée (déclencheur `store_finance_fermee`) ; `saisie_chiffres_fermee()` pour l'app | 04/11/2026 |
+| `0042_objectifs_magasins` | Rubrique `objectifs` dans `suivi_magasins` (objectifs chiffrés par magasin, équipe seulement) | 10/11/2026 |
 
 ## Règles
 
