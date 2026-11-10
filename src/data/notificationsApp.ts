@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { Reseau } from './modele'
 import type { Profil } from '../auth/roles'
-import { actionsDes, enRetard, monNomPorteur, portePar } from './actions'
+import { actionsDes, monNomPorteur, portePar } from './actions'
 import { lienCompteRendu, visitesDuMagasin } from './visites'
 import { caDe, decalerMois, libelleMois } from './chiffres'
 import { brancher, preferenceChangee } from '../lib/preferences'
@@ -61,7 +61,7 @@ export function notificationsDuReseau(reseau: Reseau, profil: Profil | null): No
       const confiee = x.libre ? !!x.libre.auteur && x.libre.auteur !== moi : !x.visite?.visiteurs.includes(moi)
       const date = x.libre?.creeLe ?? x.visite?.date ?? x.date
       if (confiee && date >= depuis) r.push({ id: `t:${x.cle}`, genre: 'tache', titre: 'Tâche confiée', detail: `${x.libre?.auteur ? `${x.libre.auteur} · ` : ''}${x.a.action} · ${x.magasin}`, quand: date, lien: '/taches' })
-      if (enRetard(x.a, reseau.jour)) r.push({ id: `r:${x.cle}:${x.a.echeance}`, genre: 'retard', titre: 'Tâche en retard', detail: `${x.a.action} · ${x.magasin}`, quand: x.a.echeance, lien: '/taches' })
+      // Refonte vague 4 (38B) : la cloche dit ce qui s'est passé ; une tâche en retard est à faire, elle vit dans À traiter
     }
   }
   if (profil?.role !== 'franchise') {

@@ -42,6 +42,17 @@ import { useReseau } from '../data/ReseauContext'
 import { messageErreur } from '../components/EditionEquipe'
 import { magasinsDu, perimetreDuProfil, personnesDu, type Perimetre } from '../data/perimetre'
 import { AuMagasin } from '../components/AuMagasin'
+import SupportAgentOutlined from '@mui/icons-material/SupportAgentOutlined'
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
+import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
+import Collapse from '@mui/material/Collapse'
+import ForumOutlined from '@mui/icons-material/ForumOutlined'
+import { aTraiterParLeSiege, enAttenteLongue, libelleTheme, useDemandes, type Demande } from '../data/demandes'
+import { useEntretiens, type Entretien } from '../data/entretiens'
+import { dateRelative } from '../lib/format'
+import { libelleMois } from '../data/chiffres'
+import type { Profil } from '../auth/roles'
+import { libelleTypeVisite } from '../data/modele'
 import { PageHeader } from '../components/PageHeader'
 import { actionsDes, actionsEnCours, echeanceDate, enRetard, monNomPorteur, portePar, type ActionSuivie } from '../data/actions'
 import { useEcritureActions } from '../components/Actions'
@@ -105,6 +116,12 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
     items.push({ cle: `t-${x.cle}`, titre: x.a.action, avatar: x.a.action, icone: <TaskAltOutlined />, lien: `${lienFiche(x.magasin)}?vue=actions`,
       detail: [x.magasin, x.a.porteur, `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · '), pastille: retard ? { ton: 'rouge', libelle: 'En retard' } : undefined, tache: x })
   }
+  // Refonte vague 4 (32A) : une tâche bloquée attend qu'on la débloque, quelle que soit son échéance
+  for (const x of actionsEnCours(reseau, noms).filter((x) => x.a.statut === 'bloquee' && !items.some((i) => i.cle === `t-${x.cle}`))) {
+    items.push({ cle: `t-${x.cle}`, titre: x.a.action, avatar: x.a.action, icone: <TaskAltOutlined />, lien: `${lienFiche(x.magasin)}?vue=actions`,
+      detail: [x.magasin, x.a.porteur, x.a.raison && `bloquée : ${x.a.raison}`].filter(Boolean).join(' · '), pastille: { ton: 'orange', libelle: 'Bloquée' }, tache: x })
+  }
+  for (const i of items) if (i.tache?.a.statut === 'bloquee' && i.pastille?.libelle !== 'Bloquée' && i.pastille?.ton !== 'rouge') i.pastille = { ton: 'orange', libelle: 'Bloquée' }
   // Visites planifiées dont la date est passée sans compte rendu : faites ou à reporter
   for (const v of reseau.visites.filter((v) => v.prevue && v.date < j && v.id !== null && noms.has(v.magasin) && estVisite(v)).sort((x, y) => x.date.localeCompare(y.date))) {
     items.push({ cle: `vp-${v.id}`, titre: v.magasin, avatar: v.magasin, icone: <EventAvailableOutlined />, lien: '', visite: v,
@@ -146,6 +163,26 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean): ATrait
       detail: `${b.fait} sur ${b.total} magasin${b.total > 1 ? 's' : ''} exécuté${b.fait > 1 ? 's' : ''} · ${b.aConstater} à constater`, pastille: { ton: 'gris', libelle: b.taux === null ? 'Campagne' : `${b.taux} %` } })
   }
   void sansParametres
+  return items
+}
+
+// Refonte vague 4 (38B) : À traiter réunit ce que je dois faire. Demandes des franchisés qui attendent le siège, et pour
+// un RR les entretiens du mois pas encore faits avec ses Coachs (à partir du 15)
+function aTraiterAnimation(reseau: Reseau, p: Perimetre, profil: Profil | null, demandes: Demande[] | null | undefined, entretiens: Entretien[] | null | undefined): ATraiter[] {
+  const noms = new Set(magasinsDu(reseau, p).map((m) => m.nom))
+  const items: ATraiter[] = []
+  for (const d of (demandes ?? []).filter((d) => aTraiterParLeSiege(d) && noms.has(d.magasin))) {
+    const longue = enAttenteLongue(d, `${reseau.jour}T12:00:00Z`)
+    items.push({ cle: `dm-${d.id}`, titre: d.titre, avatar: d.titre, icone: <SupportAgentOutlined />, lien: '/demandes',
+      detail: [d.magasin, libelleTheme(d.theme), `ouverte ${dateRelative(d.ouverteLe, reseau.jour)}`].join(' · '), pastille: longue ? { ton: 'rouge', libelle: 'Plus de 5 jours' } : { ton: 'bleu', libelle: 'Demande' } })
+  }
+  const mois = reseau.jour.slice(0, 7)
+  if (profil?.role === 'rr' && entretiens && Number(reseau.jour.slice(8, 10)) >= 15) {
+    const ids = profil.perimetre.rr ?? []
+    for (const c of reseau.equipe.filter((c) => !c.fictif && c.rr && ids.includes(c.rr.id) && !entretiens.some((e) => e.coach === c.nom && e.mois === mois && e.faitLe))) {
+      items.push({ cle: `en-${c.nom}`, titre: `Entretien avec ${c.nom}`, avatar: c.nom, icone: <ForumOutlined />, lien: `${lienCoach(c.nom)}?vue=entretiens`, detail: `Entretien de ${libelleMois(mois).toLowerCase()} pas encore fait`, pastille: { ton: 'gris', libelle: 'Entretien' } })
+    }
+  }
   return items
 }
 
@@ -523,14 +560,52 @@ export function FilActivite({ elements, jour, sansMagasin = false, sansFiltre = 
   )
 }
 
+// Ma journée (refonte vague 4, 42A) : les visites prévues aujourd'hui, puis « Je suis au magasin »
+function MaJournee({ reseau, p, moi }: { reseau: Reseau; p: Perimetre; moi: string }) {
+  const noms = new Set(magasinsDu(reseau, p).map((m) => m.nom))
+  const du = reseau.visites.filter((v) => v.date === reseau.jour && noms.has(v.magasin) && (!moi || !v.visiteurs.length || v.visiteurs.includes(moi)))
+
+  return (
+    <Box component="section" aria-label="Ma journée" sx={{ mb: 2 }}>
+      <TitreSection nombre={du.length}>Ma journée</TitreSection>
+      {du.length > 0 && (
+        <CarteLignes>
+          {du.map((v) => (
+            <LigneCompacte key={v.id ?? v.magasin} lien={v.prevue ? `${lienFiche(v.magasin)}/visite` : lienFiche(v.magasin)} avatar={<Initiales nom={v.magasin} icone={<EventAvailableOutlined />} />}
+              titre={v.magasin} detail={[libelleTypeVisite(v.type), v.prevue ? 'prévue' : 'faite'].join(' · ')} />
+          ))}
+        </CarteLignes>
+      )}
+      <Box sx={{ mt: du.length ? 1.5 : 0 }}><AuMagasin reseau={reseau} p={p} /></Box>
+      {!du.length && <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Aucune visite prévue aujourd’hui.</Typography>}
+    </Box>
+  )
+}
+
+function IndicateursRepliables({ children }: { children: ReactNode }) {
+  const [ouvert, setOuvert] = useState(false)
+  return (
+    <Box sx={{ mb: 2 }}>
+      <Button onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert} endIcon={ouvert ? <ExpandLessOutlined /> : <ExpandMoreOutlined />} sx={{ minHeight: 48, px: 0 }}>Mes indicateurs</Button>
+      <Collapse in={ouvert} unmountOnExit>{children}</Collapse>
+    </Box>
+  )
+}
+
 // Accueil (maquette A, Joseph 22/10/2026) : quatre repères en tête, les actualités en colonne principale,
 // À traiter, Mes tâches et Cette semaine à droite ; sur téléphone, ces trois blocs en onglets au-dessus des actualités
 function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Reseau; p: Perimetre; sansParametres?: boolean; periode: Periode }) {
   const { profil } = useAuth()
   const { messagerie } = useMessagerie()
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
-  const items = aTraiter(reseau, p, sansParametres)
+  const { liste: demandes } = useDemandes(profil?.role !== 'franchise')
+  const { liste: entretiens } = useEntretiens()
   const taches = mesTaches(reseau, p, monNomPorteur(reseau, profil))
+  // 38B : une chose n'apparaît qu'une fois ; mes propres tâches vivent dans « Mes tâches »
+  const items = useMemo(() => {
+    const miennes = new Set(taches.map((x) => x.cle))
+    return [...aTraiter(reseau, p, sansParametres).filter((i) => !i.tache || !miennes.has(i.tache.cle)), ...aTraiterAnimation(reseau, p, profil, demandes, entretiens)]
+  }, [reseau, p, sansParametres, profil, demandes, entretiens, taches])
   const contrats = useMemo(() => contratsDu(reseau, p), [reseau, p])
   const noms = useMemo(() => new Set(magasinsDu(reseau, p).map((m) => m.nom)), [reseau, p])
   const communications = useCommunicationsDuFil()
@@ -541,9 +616,20 @@ function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Resea
   if (!surPC) {
     return (
       <>
-        <AuMagasin reseau={reseau} p={p} />
-        <Indicateurs reseau={reseau} p={p} periode={periode} />
-        <PointCompact reseau={reseau} p={p} items={items} taches={taches} contrats={contrats} />
+        {profil?.role === 'coach' ? (
+          // Refonte vague 4 (42A) : le Coach commence par sa journée, puis À traiter ; les indicateurs se déplient
+          <>
+            <MaJournee reseau={reseau} p={p} moi={monNomPorteur(reseau, profil)} />
+            <PointCompact reseau={reseau} p={p} items={items} taches={taches} contrats={contrats} />
+            <IndicateursRepliables><Indicateurs reseau={reseau} p={p} periode={periode} /></IndicateursRepliables>
+          </>
+        ) : (
+          <>
+            <AuMagasin reseau={reseau} p={p} />
+            <Indicateurs reseau={reseau} p={p} periode={periode} />
+            <PointCompact reseau={reseau} p={p} items={items} taches={taches} contrats={contrats} />
+          </>
+        )}
         <SondagesARepondre equipe aFaire titre="Sondages à remplir" />
         {actualites}
       </>
