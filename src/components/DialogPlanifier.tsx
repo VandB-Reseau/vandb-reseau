@@ -45,7 +45,7 @@ export function DialogPlanifier({ reseau, magasins: initiaux, coach: coachDonne,
           await enregistrerVisites({ groupe: magasins.length > 1 ? `g_${Date.now()}` : '', date, type: 'terrain', visiteurs: coach ? [coach] : [], signatureRequise: false, lienSigne: '', dateSignature: '', documents: [], photos: [], notes: '', parties: partiesVides(), plan: [], prevue: true }, noms, null)
         }
         const par = monNomPorteur(reseau, profil) || reseau.directeur.nom
-        for (const n of noms) await enregistrerPreparation(n, { notes: notes[n] ?? '', heure: '', par, maj: reseau.jour })
+        for (const n of noms) { const avant = preparationDe(reseau, n); await enregistrerPreparation(n, { notes: notes[n] ?? '', heure: '', par, maj: reseau.jour, sujets: avant?.sujets, libres: avant?.libres }) }
         return unSeul ? `Visite planifiée le ${dateCourte(date)}.` : `${magasins.length} visites planifiées le ${dateCourte(date)}.`
       }}
       supprimer={visite?.id ? async () => { await supprimerVisite(visite.id!); return 'Visite retirée du planning.' } : undefined}

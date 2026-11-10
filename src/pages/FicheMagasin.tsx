@@ -49,20 +49,19 @@ import { DialogSituation } from '../components/DialogSituation'
 import { enTravaux, etatSortie, situationsAffichees, texteSituation } from '../data/situations'
 import SwapHoriz from '@mui/icons-material/SwapHoriz'
 import { EmptyState } from '../components/EmptyState'
-import { dateCourte, dateLongue, lienCoach, lienFiche, lienBilan, lienPreparation, lienRR, telLien } from '../lib/format'
+import { dateCourte, dateLongue, lienCoach, lienFiche, lienBilan, lienRR, telLien } from '../lib/format'
 import { DialogMagasin } from '../components/EditionMagasin'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
 import { EnvoyerCompteRendu } from '../components/EnvoyerCompteRendu'
-import { DialogPlanifier } from '../components/DialogPlanifier'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { CampagnesMagasin } from '../components/Campagnes'
-import { BoutonAjouterAction, ListeActions } from '../components/Actions'
+import { DialogAction, ListeActions } from '../components/Actions'
+import { BoutonVisite } from '../components/BoutonVisite'
 import { ListeAssocies } from '../components/Associes'
 import { useDroits } from '../auth/Droits'
-import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
 import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { SectionOuverture } from '../components/Ouverture'
 import { compteInstagram, libellesLicence, libellesTypologie, libellesZone, lienInstagram, resumeHoraires } from '../data/exploitation'
@@ -76,6 +75,8 @@ import { anneeDe, libellePasVu, lienCompteRendu, lienVisite, suiviRythme, visite
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import PhoneInTalkOutlined from '@mui/icons-material/PhoneInTalkOutlined'
+import AddTaskOutlined from '@mui/icons-material/AddTaskOutlined'
+import RateReviewOutlined from '@mui/icons-material/RateReviewOutlined'
 import { ContenuLeviers, ListeInspirations } from '../components/Leviers'
 import { inspirationsDu, leviersDuMagasin, libellesLevier, useReperesReseau } from '../data/leviers'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
@@ -84,7 +85,7 @@ import { SectionReunionsMagasin } from '../components/Reunions'
 import { SectionConcurrents } from '../components/Concurrents'
 import { SectionObjectifs } from '../components/Objectifs'
 import { SectionPlan } from '../components/PlanAction'
-import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, estVisite, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
+import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 import { cartouche } from '../components/Social'
 
 // Refonte (Joseph, 09/11/2026, choix 3A) : cinq onglets, jamais plus de deux niveaux. Activité regroupe tâches et campagnes,
@@ -146,7 +147,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const [reaffectation, setReaffectation] = useState(false)
   const [edition, setEdition] = useState(false)
   const [visite, setVisite] = useState<Visite | null | undefined>(undefined)
-  const [planifier, setPlanifier] = useState(false)
+  const [nouvelleTache, setNouvelleTache] = useState(false)
   const [typeVisite, setTypeVisite] = useState('terrain')
   const [saisieChiffres, setSaisieChiffres] = useState<string | null | undefined>(undefined)
   const [confirmation, setConfirmation] = useState('')
@@ -168,12 +169,14 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const { referentiels } = useDroits()
   const ex = m.exploitation
   const conversation = useConversationLaterale(reseau, m.nom)
+  const journal = useEditionJournal(reseau, m, setConfirmation)
   const manquants = [m.code, ex.implantation, m.ouvertureConnue, adresseComplete, m.telephone, m.email, ex.typologie, ex.zoneChalandise, ex.licence, ex.instagram, resumeHoraires(ex.horaires).length].filter((x) => !x).length
   return (
     <>
       <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Magasins</Button>
       <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} alerteVisite={rythme?.alerte ? libellePasVu(rythme) : ''}
-        appeler={m.telephone || m.responsable?.telephone || ''} message={conversation.ouvrir} visite={saisirVisite} planifier={() => setPlanifier(true)}
+        appeler={m.telephone || m.responsable?.telephone || ''} message={conversation.ouvrir}
+        creer={{ visite: saisirVisite, tache: () => setNouvelleTache(true), appel: () => { setTypeVisite('appel'); setVisite(null) }, note: journal.nouvelleNote }}
         modifier={referentiels ? () => setEdition(true) : undefined} fermer={referentiels ? () => setSituation(true) : undefined} />
       {conversation.panneau}
       {situationsAffichees(m, reseau.jour).map((s) => (
@@ -218,7 +221,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             </Box>
             <Box sx={{ display: 'grid', gap: 2, minWidth: 0, order: { xs: 1, lg: 2 } }}>
               {aOuvrir(m, reseau.jour) && <SectionOuverture reseau={reseau} m={m} signaler={setConfirmation} />}
-              <SituationMagasin reseau={reseau} m={m} planifier={() => setPlanifier(true)} objectifs={<><SectionPlan reseau={reseau} m={m} signaler={setConfirmation} /><SectionObjectifs reseau={reseau} m={m} signaler={setConfirmation} /></>} />
+              <SituationMagasin reseau={reseau} m={m} objectifs={<><SectionPlan reseau={reseau} m={m} signaler={setConfirmation} /><SectionObjectifs reseau={reseau} m={m} signaler={setConfirmation} /></>} />
               {lieuCarte && (
                 <Card sx={{ overflow: 'hidden' }}>
                   <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
@@ -232,7 +235,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         {/* Vague 3 (23A) : l'activité du magasin en un seul fil, « À venir » en tête */}
         {ongletDe(vue) === 'activite' && (
           <ActiviteMagasin reseau={reseau} m={m} filtre={filtreActivite(vue, params.get('fil'))} filtrer={(f) => setParams((p) => { const n = new URLSearchParams(p); n.set('vue', 'activite'); if (f === 'tout') n.delete('fil'); else n.set('fil', f); return n }, { replace: true })}
-            actions={actions} signaler={setConfirmation} saisirVisite={saisirVisite} modifierVisite={setVisite} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
+            actions={actions} signaler={setConfirmation} saisirVisite={saisirVisite} modifierVisite={setVisite} />
         )}
 
         {vue === 'budget' && <OngletBudget nom={m.nom} mode="budget" />}
@@ -259,9 +262,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           setConfirmation(msg)
           if (nom && nom !== m.nom) naviguer(lienFiche(nom), { replace: true })
         }} />}
-        {planifier && <DialogPlanifier reseau={reseau} magasins={[m.nom]} dateInitiale={reseau.jour}
-          visite={reseau.visites.filter((v) => v.magasin === m.nom && v.date > reseau.jour && estVisite(v)).sort((a, b) => a.date.localeCompare(b.date))[0] ?? null}
-          onFermer={(msg) => { setPlanifier(false); if (msg) setConfirmation(msg) }} />}
+        {nouvelleTache && <DialogAction reseau={reseau} magasins={[m.nom]} action={null} onFermer={(msg) => { setNouvelleTache(false); if (msg) setConfirmation(msg) }} />}
+        {journal.fenetres}
         {visite !== undefined && <DialogVisite reseau={reseau} visite={visite} magasinsInitiaux={[m.nom]} typeInitial={typeVisite} onFermer={(msg) => { setVisite(undefined); if (msg) setConfirmation(msg) }} />}
         {saisieChiffres !== undefined && <DialogChiffres reseau={reseau} magasin={m.nom} mois={saisieChiffres ?? undefined} onFermer={(msg) => { setSaisieChiffres(undefined); if (msg) setConfirmation(msg) }} />}
         <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
@@ -550,9 +552,9 @@ function SectionPratiques({ reseau, m, signaler }: { reseau: Reseau; m: Magasin;
 }
 
 // Haut de fiche façon profil : initiales, nom, trois compteurs, puis Appeler, Message, Visite
-function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, appeler, message, visite, planifier, modifier, fermer, retour }: {
+function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, appeler, message, creer, modifier, fermer, retour }: {
   m: Magasin; reseau: Reseau; alerte: ReturnType<typeof analyser>; enRetardNb: number; ouvertes: number; alerteVisite: string
-  appeler: string; message: () => void; visite: () => void; planifier: () => void; modifier?: () => void; fermer?: () => void; retour: { libelle: string; aller: () => void }
+  appeler: string; message: () => void; creer: MenuCreer; modifier?: () => void; fermer?: () => void; retour: { libelle: string; aller: () => void }
 }) {
   const c = caseDe(reseau.evaluations[m.nom])
   // Une seule pastille : la plus grave
@@ -579,10 +581,11 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
       ]}
       detail={c && <><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} par an</>}
       telephone={appeler}
-      icones={<AutresActions nom={m.nom} planifier={planifier} preparer={lienPreparation(m.nom)} modifier={modifier} fermer={fermer} />}
+      icones={<AutresActions nom={m.nom} modifier={modifier} fermer={fermer} />}
+      principal={<BoutonVisite reseau={reseau} magasin={m.nom} principal />}
       actions={<>
         <Tooltip title="Message"><IconButton onClick={message} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Tooltip>
-        <Tooltip title="Saisir une visite"><IconButton onClick={visite} aria-label="Saisir une visite" sx={rond}><AddOutlined /></IconButton></Tooltip>
+        <MenuAjouter creer={creer} />
       </>} />
   )
 }
@@ -595,8 +598,27 @@ function etatConcept20(reseau: Reseau, magasin: string): 'fait' | 'enCours' | nu
   return ton === 'positif' ? 'fait' : ton === 'partiel' ? 'enCours' : null
 }
 
-// Planifier, Préparer, Bilan de l'année (sprint 26, F1) et Modifier dans un menu « ⋯ » : trois pictos seulement à côté du nom (Joseph, 21/10/2026)
-function AutresActions({ nom, planifier, preparer, modifier, fermer: fermerMagasin }: { nom: string; planifier: () => void; preparer: string; modifier?: () => void; fermer?: () => void }) {
+// Vague 7 (79A et retour de Joseph, 10/11/2026) : un seul jeu d'actions dans l'en-tête. Le bouton « Visite » dit la prochaine
+// étape ; « + » ajoute une visite non prévue, une tâche, un appel ou une note
+interface MenuCreer { visite: () => void; tache: () => void; appel: () => void; note: () => void }
+function MenuAjouter({ creer }: { creer: MenuCreer }) {
+  const [ancre, setAncre] = useState<HTMLElement | null>(null)
+  const choisir = (f: () => void) => () => { setAncre(null); f() }
+  return (
+    <>
+      <Tooltip title="Ajouter"><IconButton onClick={(e) => setAncre(e.currentTarget)} aria-label="Ajouter" aria-haspopup="menu" aria-expanded={!!ancre} sx={rond}><AddOutlined /></IconButton></Tooltip>
+      <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
+        <MenuItem onClick={choisir(creer.tache)} sx={{ minHeight: 48 }}><ListItemIcon><AddTaskOutlined /></ListItemIcon>Tâche</MenuItem>
+        <MenuItem onClick={choisir(creer.visite)} sx={{ minHeight: 48 }}><ListItemIcon><RateReviewOutlined /></ListItemIcon>Visite non prévue</MenuItem>
+        <MenuItem onClick={choisir(creer.appel)} sx={{ minHeight: 48 }}><ListItemIcon><PhoneInTalkOutlined /></ListItemIcon>Appel</MenuItem>
+        <MenuItem onClick={choisir(creer.note)} sx={{ minHeight: 48 }}><ListItemIcon><EditOutlined /></ListItemIcon>Note</MenuItem>
+      </Menu>
+    </>
+  )
+}
+
+// Bilan de l'année (sprint 26, F1), favoris et Modifier dans un menu « ⋯ »
+function AutresActions({ nom, modifier, fermer: fermerMagasin }: { nom: string; modifier?: () => void; fermer?: () => void }) {
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const favori = useSuivis().favoris.includes(nom)
   const fermer = () => setAncre(null)
@@ -604,8 +626,6 @@ function AutresActions({ nom, planifier, preparer, modifier, fermer: fermerMagas
     <>
       <Tooltip title="Autres actions"><IconButton onClick={(e) => setAncre(e.currentTarget)} aria-label="Autres actions" aria-haspopup="menu" aria-expanded={!!ancre} sx={{ width: 48, height: 48 }}><MoreHorizOutlined /></IconButton></Tooltip>
       <Menu anchorEl={ancre} open={!!ancre} onClose={fermer} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
-        <MenuItem onClick={() => { fermer(); planifier() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><EventAvailableOutlined /></ListItemIcon>Planifier la visite</MenuItem>
-        <MenuItem component={RouterLink} to={preparer} onClick={fermer} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><AssignmentOutlined /></ListItemIcon>Préparer la visite</MenuItem>
         <MenuItem component={RouterLink} to={lienBilan(nom)} onClick={fermer} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><InsightsOutlined /></ListItemIcon>Bilan de l’année</MenuItem>
         <MenuItem onClick={() => { fermer(); basculerFavori(nom) }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon>{favori ? <StarOutlined /> : <StarBorderOutlined />}</ListItemIcon>{favori ? 'Retirer des favoris' : 'Ajouter aux favoris'}</MenuItem>
         {modifier && <MenuItem onClick={() => { fermer(); modifier() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><EditOutlined /></ListItemIcon>Modifier la fiche</MenuItem>}
@@ -627,9 +647,9 @@ const FILTRES_ACTIVITE: { v: FiltreActivite; libelle: string; genres: string[] }
   { v: 'chiffres', libelle: 'Chiffres', genres: ['chiffres'] },
   { v: 'journal', libelle: 'Journal', genres: ['journal', 'pratique'] },
 ]
-function ActiviteMagasin({ reseau, m, filtre, filtrer, actions, signaler, saisirVisite, modifierVisite, appeler }: {
+function ActiviteMagasin({ reseau, m, filtre, filtrer, actions, signaler, saisirVisite, modifierVisite }: {
   reseau: Reseau; m: Magasin; filtre: FiltreActivite; filtrer: (f: FiltreActivite) => void; actions: ReturnType<typeof actionsDuMagasin>
-  signaler: (message: string) => void; saisirVisite: () => void; modifierVisite: (v: Visite) => void; appeler: () => void
+  signaler: (message: string) => void; saisirVisite: () => void; modifierVisite: (v: Visite) => void
 }) {
   const edition = useEditionJournal(reseau, m, signaler)
   const tous = useMemo(() => [...filDu(reseau, new Set([m.nom]), null, 3650), ...journalDansLeFil(reseau, m)]
@@ -639,12 +659,7 @@ function ActiviteMagasin({ reseau, m, filtre, filtrer, actions, signaler, saisir
   const prevues = reseau.visites.filter((v) => v.magasin === m.nom && v.date > reseau.jour).sort((a, b) => a.date.localeCompare(b.date))
   return (
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-        <BoutonAjouterAction reseau={reseau} magasins={[m.nom]} signaler={signaler} />
-        <Button startIcon={<AddOutlined />} onClick={saisirVisite} sx={{ minHeight: 48 }}>Visite</Button>
-        <Button startIcon={<PhoneInTalkOutlined />} onClick={appeler} sx={{ minHeight: 48 }}>Appel</Button>
-        <Button startIcon={<EditOutlined />} onClick={edition.nouvelleNote} sx={{ minHeight: 48 }}>Note</Button>
-      </Box>
+      {/* Vague 7 (retour de Joseph, 10/11/2026) : un seul jeu d'actions, celles de l'en-tête de la fiche */}
       <Section titre="À venir">
         {prevues.map((v) => (
           <Box key={v.id ?? v.date} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 48, borderBottom: '1px solid', borderColor: 'divider' }}>

@@ -5,13 +5,12 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import Snackbar from '@mui/material/Snackbar'
 import Typography from '@mui/material/Typography'
-import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
 import MyLocationOutlined from '@mui/icons-material/MyLocationOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { DialogVisite } from './DialogVisite'
 import { distanceKm } from '../data/charge'
 import { magasinsDu, type Perimetre } from '../data/perimetre'
-import { lienFiche, lienPreparation } from '../lib/format'
+import { lienFiche } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
 
 // « Je suis au magasin » (sprint 24, F1) : sur téléphone, à moins de 300 m d'un magasin de son périmètre,
@@ -76,10 +75,9 @@ export function AuMagasin({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
               <Typography variant="body2" sx={{ color: '#e6e1da' }}>Au magasin</Typography>
               <Typography sx={{ fontWeight: 800, fontSize: '1.125rem', color: '#f8bb09', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proche.nom}</Typography>
             </Box>
-            <Button variant="contained" onClick={() => setVisite(true)} sx={{ minHeight: 48, bgcolor: '#f8bb09', color: '#1d1d1b', flexShrink: 0, '&:hover': { bgcolor: '#e0a800' } }}>Saisir la visite</Button>
+            <Button variant="contained" onClick={() => setVisite(true)} sx={{ minHeight: 48, bgcolor: '#f8bb09', color: '#1d1d1b', flexShrink: 0, '&:hover': { bgcolor: '#e0a800' } }}>Commencer la visite</Button>
           </Box>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button component={RouterLink} to={lienPreparation(proche.nom)} startIcon={<AssignmentOutlined />} sx={{ minHeight: 48, color: '#ffffff', borderColor: '#5f5f66' }} variant="outlined">Préparer</Button>
             <Button component={RouterLink} to={lienFiche(proche.nom)} startIcon={<StorefrontOutlined />} sx={{ minHeight: 48, color: '#ffffff', borderColor: '#5f5f66' }} variant="outlined">Fiche</Button>
           </Box>
         </Card>

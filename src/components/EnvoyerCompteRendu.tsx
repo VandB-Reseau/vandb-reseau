@@ -56,9 +56,9 @@ export function EnvoyerCompteRendu({ reseau, visite, icone = false }: { reseau: 
 }
 
 // Envoi d'un document au franchisé d'un magasin (compte rendu, bilan de l'année) : dans l'app, par e-mail ou partagé
-export function EnvoyerAuFranchise({ reseau, magasin, icone = false, titreFenetre, libelleIcone, sousTitre, titre, messageParDefaut, annexe }: {
+export function EnvoyerAuFranchise({ reseau, magasin, icone = false, titreFenetre, libelleIcone, sousTitre, titre, messageParDefaut, annexe, libelleBouton = 'Envoyer au franchisé', sansAnnexe = false }: {
   reseau: Reseau; magasin: string; icone?: boolean; titreFenetre: string; libelleIcone: string; sousTitre: string; titre: string
-  messageParDefaut: (noms: string[]) => string; annexe: string
+  messageParDefaut: (noms: string[]) => string; annexe: string; libelleBouton?: string; sansAnnexe?: boolean
 }) {
   const theme = useTheme()
   const pleinEcran = useMediaQuery(theme.breakpoints.down('sm'))
@@ -76,7 +76,7 @@ export function EnvoyerAuFranchise({ reseau, magasin, icone = false, titreFenetr
   if (!profil || profil.role === 'franchise') return null
 
   const retenus = franchises.filter((f) => choisis.has(f.cle))
-  const complet = `${texte.trim()}\n\n---\n\n${annexe}`
+  const complet = sansAnnexe ? texte.trim() : `${texte.trim()}\n\n---\n\n${annexe}`
   const emails = retenus.map((f) => f.email).filter(Boolean)
   const mailto = `mailto:${emails.map(encodeURIComponent).join(',')}?subject=${encodeURIComponent(titre)}&body=${encodeURIComponent(complet)}`
   const partage = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
@@ -86,7 +86,7 @@ export function EnvoyerAuFranchise({ reseau, magasin, icone = false, titreFenetr
     try {
       for (const f of retenus) await envoyer(f.cle, texte.trim(), [magasin], magasin)
       setOuvert(false)
-      setMessage(`${titreFenetre.replace(/^Envoyer l[ea] /, '').replace(/^./, (c) => c.toUpperCase())} envoyé à ${retenus.map((f) => f.nom).join(', ')} dans la messagerie.`)
+      setMessage(`${titreFenetre.replace(/^Envoyer (l[ea] |l’)/, '').replace(/^./, (c) => c.toUpperCase())} envoyé à ${retenus.map((f) => f.nom).join(', ')} dans la messagerie.`)
     } catch { setErreur(true) } finally { setEnvoi(false) }
   }
   const partager = async () => {
@@ -97,7 +97,7 @@ export function EnvoyerAuFranchise({ reseau, magasin, icone = false, titreFenetr
     <>
       {icone
         ? <Tooltip title="Envoyer au franchisé"><IconButton onClick={() => setOuvert(true)} aria-label={libelleIcone}><SendOutlined /></IconButton></Tooltip>
-        : <Button variant="outlined" startIcon={<SendOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>Envoyer au franchisé</Button>}
+        : <Button variant="outlined" startIcon={<SendOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>{libelleBouton}</Button>}
       <Dialog open={ouvert} onClose={() => !envoi && setOuvert(false)} fullScreen={pleinEcran} fullWidth maxWidth="sm" aria-labelledby="titre-envoyer-cr">
         <DialogTitle id="titre-envoyer-cr">{titreFenetre}</DialogTitle>
         <DialogContent>

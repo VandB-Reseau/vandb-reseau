@@ -1,5 +1,5 @@
-// Page d'une visite (refonte vague 3, Joseph 09/11/2026, 24A) : une frise en quatre étapes, Préparer, Sur place,
-// Compte rendu, Suivi. Les écrans existaient (fiche avant visite, saisie, compte rendu, tâches) : ils changent de cadre.
+// Page d'une visite (refonte vague 3, 24A ; vague 7, Joseph 10/11/2026, 80A) : une frise en trois étapes, Préparer (date,
+// ordre du jour, notes, fiche avant visite), Visite (la saisie guidée) et Après (compte rendu, signature, tâches).
 import { RemarquesInternes } from '../components/RemarquesInternes'
 import { useState, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -19,7 +19,6 @@ import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { DialogVisite } from '../components/DialogVisite'
-import { DialogPlanifier } from '../components/DialogPlanifier'
 import { EnvoyerCompteRendu } from '../components/EnvoyerCompteRendu'
 import { FeuilleCompteRendu } from '../components/FeuilleCompteRendu'
 import { ListeActions } from '../components/Actions'
@@ -29,7 +28,8 @@ import { styleImpression } from '../components/Feuille'
 import { actionsDuMagasin } from '../data/actions'
 import { estVisite } from '../data/chiffres'
 import { preparationDe } from '../data/semaine'
-import { ETAPES_VISITE, etapesVisite, type IdEtapeVisite } from '../data/visites'
+import { etapeDuLien, etapesVisite, type IdEtapeVisite } from '../data/visites'
+import { PreparerVisite } from '../components/PreparerVisite'
 import { libelleTypeVisite, nomsVisiteurs, visiteFaite, type Magasin, type Reseau, type Visite } from '../data/modele'
 import { PARTIES } from '../data/compteRendu'
 import { dateLongue, lienFiche } from '../lib/format'
@@ -64,44 +64,41 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
   const [message, setMessage] = useState('')
   const conversation = useConversationLaterale(reseau, m.nom)
   const [saisie, setSaisie] = useState(false)
-  const [planif, setPlanif] = useState(false)
   const v = visiteChoisie(reseau, m.nom, params.get('id'))
   const faite = !!v && visiteFaite(v, reseau.jour)
   const preparee = faite ? null : preparationDe(reseau, m.nom)
   const etats = etapesVisite(v, reseau.jour, preparee)
   const enCours = etats.find((e) => !e.faite)?.id ?? 'suivi'
-  const etape = ETAPES_VISITE.find((e) => e.id === params.get('etape'))?.id ?? etapeParDefaut ?? enCours
+  const etape = etapeDuLien(params.get('etape')) ?? etapeParDefaut ?? enCours
   const choisir = (e: IdEtapeVisite) => setParams((p) => { const n = new URLSearchParams(p); n.set('etape', e); return n }, { replace: true })
+  const ecrit = etats[1].faite
   const actions = v?.id != null ? actionsDuMagasin(reseau, m.nom).filter((x) => x.visite?.id === v.id) : []
   const meta = v ? [dateLongue(v.date), libelleTypeVisite(v.type), nomsVisiteurs(v)].filter(Boolean).join(' · ') : 'Pas encore planifiée'
 
   let contenu: ReactNode
   if (etape === 'preparer') {
     contenu = (
-      <>
-        {!faite && (
-          <Box className="sans-impression" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-            <Button variant="outlined" startIcon={v ? <EditOutlined /> : <EventAvailableOutlined />} onClick={() => setPlanif(true)} sx={{ minHeight: 48 }}>
-              {v ? (preparee?.notes ? 'Modifier mes notes' : 'Écrire mes notes de préparation') : 'Planifier la visite'}
-            </Button>
-          </Box>
-        )}
-        <Fiche reseau={reseau} m={m} integre />
-      </>
+      <Box sx={{ display: 'grid', gap: 3 }}>
+        {!faite && <PreparerVisite key={`${v?.id ?? 'x'}-${v?.date ?? ''}`} reseau={reseau} m={m} v={v} signaler={setMessage} />}
+        <Box>
+          <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem', mb: 1 }} className="sans-impression">Fiche avant visite</Typography>
+          <Fiche reseau={reseau} m={m} integre />
+        </Box>
+      </Box>
     )
   } else if (etape === 'surplace') {
     contenu = !v ? (
-      <EmptyState icone={<EventAvailableOutlined />} titre="Visite à planifier" texte="Pose la date de la visite : la saisie sur place s’ouvrira ici le jour venu."
-        action={<Button variant="contained" onClick={() => setPlanif(true)} sx={{ minHeight: 48 }}>Planifier la visite</Button>} />
+      <EmptyState icone={<EventAvailableOutlined />} titre="Visite à planifier" texte="Pose la date dans l’étape Préparer : la saisie s’ouvrira ici le jour venu."
+        action={<Button variant="contained" onClick={() => choisir('preparer')} sx={{ minHeight: 48 }}>Préparer la visite</Button>} />
     ) : !faite ? (
       <Box sx={{ display: 'grid', gap: 2 }}>
-        <EmptyState icone={<EventNoteOutlined />} titre={`Visite prévue le ${dateLongue(v.date)}`} texte="Le jour de la visite, saisis la grille, tes notes et tes photos depuis le magasin."
-          action={<Button variant="contained" startIcon={<RateReviewOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>Saisir la visite</Button>} />
+        <EmptyState icone={<EventNoteOutlined />} titre={v.date <= reseau.jour ? 'C’est le jour de la visite' : `Visite prévue le ${dateLongue(v.date)}`} texte="La saisie suit l’ordre du jour préparé : sujets, plan d’action, constats, chiffres."
+          action={<Button variant="contained" startIcon={<RateReviewOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>Commencer la visite</Button>} />
         <RemarquesInternes reseau={reseau} magasin={m.nom} visite={v} signaler={setMessage} />
       </Box>
     ) : (
       <Box sx={{ display: 'grid', gap: 2 }}>
-      <Section titre="Ce qui a été noté sur place" action={<Button startIcon={<EditOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>Modifier</Button>}>
+      <Section titre="Ce qui a été noté pendant la visite" action={<Button startIcon={<EditOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>{ecrit ? 'Modifier' : 'Écrire le compte rendu'}</Button>}>
         <Box sx={{ display: 'grid', gap: 1.5 }}>
           {v.notes.trim() ? <Typography sx={{ whiteSpace: 'pre-wrap' }}>{v.notes}</Typography> : <Typography color="text.secondary">Aucune note générale.</Typography>}
           {PARTIES.map((p, i) => ({ titre: p.titre, texte: v.parties[i]?.trim() ?? '' })).filter((p) => p.texte).map((p) => (
@@ -116,27 +113,27 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
       <RemarquesInternes reseau={reseau} magasin={m.nom} visite={v} signaler={setMessage} />
       </Box>
     )
-  } else if (etape === 'compterendu') {
-    contenu = !v || !faite || v.id === null ? (
-      <EmptyState icone={<RateReviewOutlined />} titre="Pas encore de compte rendu" texte="Le compte rendu se prépare tout seul à partir de la saisie sur place." />
-    ) : (
-      <>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2, justifyContent: 'flex-end' }} className="sans-impression">
-          <EnvoyerCompteRendu reseau={reseau} visite={v} />
-          <Button variant="outlined" startIcon={<PictureAsPdfOutlined />} onClick={() => window.print()} sx={{ minHeight: 48 }}>Télécharger en PDF</Button>
-        </Box>
-        {styleImpression}
-        <FeuilleCompteRendu reseau={reseau} v={v} />
-      </>
-    )
   } else {
-    contenu = !v || !faite ? (
-      <EmptyState icone={<CheckOutlined />} titre="Rien à suivre pour l’instant" texte="Les actions décidées pendant la visite apparaîtront ici, avec leur avancement." />
-    ) : !actions.length ? (
-      <EmptyState icone={<CheckOutlined />} titre="Aucune action décidée" texte="Ajoute un plan d’action à la saisie de la visite pour le suivre ici."
-        action={<Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>Modifier la visite</Button>} />
+    contenu = !v || !faite || v.id === null ? (
+      <EmptyState icone={<RateReviewOutlined />} titre="Pas encore de compte rendu" texte="Le compte rendu se prépare tout seul à partir de la saisie de la visite." />
     ) : (
-      <ListeActions reseau={reseau} actions={actions} signaler={setMessage} libelle="Actions de la visite" magasins={[m.nom]} />
+      <Box sx={{ display: 'grid', gap: 3 }}>
+        <Box>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2, alignItems: 'center' }} className="sans-impression">
+            <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem', mr: 'auto' }}>Compte rendu</Typography>
+            <EnvoyerCompteRendu reseau={reseau} visite={v} />
+            <Button variant="outlined" startIcon={<PictureAsPdfOutlined />} onClick={() => window.print()} sx={{ minHeight: 48 }}>Télécharger en PDF</Button>
+          </Box>
+          {styleImpression}
+          <FeuilleCompteRendu reseau={reseau} v={v} />
+        </Box>
+        <Box className="sans-impression">
+          {actions.length
+            ? <ListeActions reseau={reseau} actions={actions} signaler={setMessage} libelle="Tâches décidées pendant la visite" magasins={[m.nom]} />
+            : <EmptyState icone={<CheckOutlined />} titre="Aucune tâche décidée" texte="Les tâches ajoutées pendant la visite se suivent ici."
+                action={<Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>Modifier la visite</Button>} />}
+        </Box>
+      </Box>
     )
   }
 
@@ -150,7 +147,7 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
         </Box>
         {conversation.panneau}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{meta}</Typography>
-        <Box component="nav" aria-label="Étapes de la visite" sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden', bgcolor: 'background.paper' }}>
+        <Box component="nav" aria-label="Étapes de la visite" sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden', bgcolor: 'background.paper' }}>
           {etats.map((e, i) => {
             const actif = e.id === etape
             return (
@@ -170,7 +167,6 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
       </Box>
       {contenu}
       {saisie && v && <DialogVisite reseau={reseau} visite={v} onFermer={(t) => { setSaisie(false); if (t) setMessage(t) }} />}
-      {planif && <DialogPlanifier reseau={reseau} magasins={[m.nom]} dateInitiale={v && v.date >= reseau.jour ? v.date : reseau.jour} visite={v && !faite ? v : null} onFermer={(t) => { setPlanif(false); if (t) setMessage(t) }} />}
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>
   )

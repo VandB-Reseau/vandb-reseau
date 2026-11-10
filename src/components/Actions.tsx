@@ -3,6 +3,7 @@ import { Glisser } from './Social'
 import { Link as RouterLink } from 'react-router-dom'
 import { BoutonAction } from './Outils'
 import { ChampPieces, ListePieces } from './Pieces'
+import FlagOutlined from '@mui/icons-material/FlagOutlined'
 import Alert from '@mui/material/Alert'
 import type { Piece } from '../lib/pieces'
 import Autocomplete from '@mui/material/Autocomplete'
@@ -84,7 +85,7 @@ export function useChangerStatut(reseau: Reseau, signaler: (m: string) => void) 
 const messageErreur = (e: unknown) => (e instanceof ErreurAction ? e.message : 'La tâche n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.')
 
 // Ligne d'une action ; sans « cocher », lecture seule
-export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher, enCours = false, modifier, changerStatut }: { reseau: Reseau; x: ActionSuivie; avecMagasin?: boolean; avecPorteur?: boolean; cocher?: (faite: boolean) => void; enCours?: boolean; modifier?: () => void; changerStatut?: (s: '' | StatutTache, raison: string) => Promise<void> }) {
+export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher, enCours = false, modifier, changerStatut, sansPriorite = false }: { reseau: Reseau; x: ActionSuivie; avecMagasin?: boolean; avecPorteur?: boolean; cocher?: (faite: boolean) => void; enCours?: boolean; modifier?: () => void; changerStatut?: (s: '' | StatutTache, raison: string) => Promise<void>; sansPriorite?: boolean }) {
   const retard = enRetard(x.a, reseau.jour)
   const echeance = x.a.echeance && (echeanceDate(x.a) ? dateCourte(x.a.echeance) : x.a.echeance)
   const auteur = x.libre?.auteur ? ` par ${x.libre.auteur}` : ''
@@ -116,7 +117,8 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
           {x.libre?.fil === 'equipe' && ' · Équipe seule'}
           {x.libre?.budget && ' · Budget'}
         </Typography>
-        {priorite && <Typography variant="body2" color="text.secondary">Priorité : {priorite.titre}</Typography>}
+        {/* Vague 7 (89A) : la priorité du plan en puce, sauf quand la tâche est déjà rangée sous sa priorité */}
+        {priorite && !sansPriorite && <Chip size="small" icon={<FlagOutlined />} label={`Priorité : ${priorite.titre}`} sx={{ mt: 0.5, fontSize: 12, fontWeight: 600, maxWidth: '100%', bgcolor: 'rgba(48,118,114,0.10)', color: '#24524f', '& .MuiChip-icon': { color: '#307672' } }} />}
         {x.a.statut === 'bloquee' && x.a.raison && !x.a.faite && <Typography variant="body2" sx={{ color: 'error.dark' }}>Bloquée : {x.a.raison}</Typography>}
         {(pastille || statut) && <Box sx={{ display: { xs: 'flex', sm: 'none' }, gap: 1, flexWrap: 'wrap', alignItems: 'center', mt: 0.75 }}>{statut}{pastille}</Box>}
         {x.a.pieces && <ListePieces pieces={x.a.pieces} />}
@@ -221,6 +223,9 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
   const [echeance, setEcheance] = useState(a ? echeanceDate(a) : echeanceInitiale)
   const [pieces, setPieces] = useState<Piece[]>(a?.pieces ?? piecesInitiales)
   const [priorite, setPriorite] = useState(a?.priorite ?? '')
+  // Vague 7 (86A) : mêmes champs partout, le statut compris (à faire, en cours, bloquée avec sa raison)
+  const [statut, setStatut] = useState<'' | StatutTache>(a?.statut ?? '')
+  const [raison, setRaison] = useState(a?.raison ?? '')
   const priorites = franchise ? [] : prioritesActives(reseau, magasin)
   const [alerte, setAlerte] = useState('')
   const propre = texte.trim().replace(/\s+/g, ' ')
@@ -232,7 +237,7 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
           await ajouterActionFranchise(magasin, propre, porteur.trim(), echeance, pieces)
           return 'Tâche ajoutée.'
         }
-        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), ...(a?.fil ?? (depuis?.equipe ? 'equipe' : undefined) ? { fil: 'equipe' as const } : {}), ...(a?.message ?? depuis?.message ? { message: a?.message ?? depuis?.message } : {}), ...(a?.budget ? { budget: a.budget } : {}), ...(a?.statut ? { statut: a.statut } : {}), ...(a?.raison ? { raison: a.raison } : {}), ...(priorite && priorites.some((p) => p.id === priorite) ? { priorite } : {}) }
+        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), ...(a?.fil ?? (depuis?.equipe ? 'equipe' : undefined) ? { fil: 'equipe' as const } : {}), ...(a?.message ?? depuis?.message ? { message: a?.message ?? depuis?.message } : {}), ...(a?.budget ? { budget: a.budget } : {}), ...(statut ? { statut } : {}), ...(statut === 'bloquee' && raison.trim() ? { raison: raison.trim().slice(0, 300) } : {}), ...(priorite && priorites.some((p) => p.id === priorite) ? { priorite } : {}) }
         const id = await enregistrerActionLibre(magasin, l)
         if (!a) notifierTache(magasin, id, clesDesPorteurs(reseau, magasin, porteursDe(l)).filter((c) => !mesCles(profil).includes(c)))
         return a ? 'Tâche mise à jour.' : 'Tâche ajoutée.'
@@ -250,6 +255,16 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
           <MenuItem value="" sx={{ minHeight: 48 }}>Aucune</MenuItem>
           {priorites.map((p) => <MenuItem key={p.id} value={p.id} sx={{ minHeight: 48 }}>{p.titre}</MenuItem>)}
         </TextField>
+      )}
+      {a && !franchise && !a.faite && (
+        <>
+          <TextField select label="Statut" value={statut} onChange={(e) => setStatut(e.target.value as '' | StatutTache)} slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}>
+            <MenuItem value="" sx={{ minHeight: 48 }}>À faire</MenuItem>
+            <MenuItem value="en_cours" sx={{ minHeight: 48 }}>En cours</MenuItem>
+            <MenuItem value="bloquee" sx={{ minHeight: 48 }}>Bloquée</MenuItem>
+          </TextField>
+          {statut === 'bloquee' && <TextField label="Ce qui bloque" value={raison} onChange={(e) => setRaison(e.target.value)} slotProps={{ htmlInput: { maxLength: 300 } }} />}
+        </>
       )}
       <TextField type="date" label="Échéance" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       <Box role="group" aria-label="Échéance rapide" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: -1 }}>

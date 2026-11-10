@@ -228,7 +228,8 @@ export const visiteFaite = (v: Visite, jour: string) => v.date <= jour && !v.pre
 // comme tout le journal, jamais renvoyée au franchisé (espace_franchise() ne lit pas la rubrique « notes »)
 export type Appreciation = 'satisfaisante' | 'mitigee' | 'preoccupante'
 export interface NoteMagasin { id: string; date: string; texte: string; par: string; visite?: number; appreciation?: Appreciation }
-export interface PreparationVisite { notes: string; heure: string; par: string; maj: string }
+// Vague 7 (81A) : sujets cochés de l'ordre du jour (identifiants de sujetsProposes) et sujets libres
+export interface PreparationVisite { notes: string; heure: string; par: string; maj: string; sujets?: string[]; libres?: string[] }
 
 // Ouverture suivie par étapes (sprint 25, F3) : date prévue et date faite de chaque étape ; la dernière étape,
 // l'ouverture, est la date d'ouverture du magasin

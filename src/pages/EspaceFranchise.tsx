@@ -264,23 +264,47 @@ function SectionAFaire({ reseau, magasins }: { reseau: Reseau; magasins: Magasin
   )
 }
 
-// ── Tâches en cours ──
+// ── Tâches en cours ── (vague 7, 91A) : rangées sous les priorités du plan d'action, « ce sur quoi on travaille ensemble »,
+// puis les autres ; le franchisé change le statut depuis la liste Tâches, il ne crée pas de priorité
 function SectionTaches({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
   const ouvertes = actionsDes(reseau, new Set(magasins.map((m) => m.nom))).filter((x) => !x.a.faite)
     .sort((x, y) => Number(enRetard(y.a, reseau.jour)) - Number(enRetard(x.a, reseau.jour)) || (echeanceDate(x.a) || '9999').localeCompare(echeanceDate(y.a) || '9999'))
+  const priorites = magasins.flatMap((m) => (reseau.plans?.[m.nom] ?? []).filter((p) => p.statut === 'active').map((p) => ({ p, magasin: m.nom })))
+  const sous = (id: string, magasin: string) => ouvertes.filter((x) => x.magasin === magasin && x.a.priorite === id)
+  const rangees = new Set(priorites.flatMap(({ p, magasin }) => sous(p.id, magasin).map((x) => x.cle)))
+  const autres = ouvertes.filter((x) => !rangees.has(x.cle))
+  const ligne = (x: (typeof ouvertes)[number]) => (
+    <Box component="li" key={x.cle}>
+      <LigneCompacte lien="/taches" avatar={<Initiales nom={x.a.action} icone={<TaskAltOutlined />} />} titre={x.a.action}
+        detail={[magasins.length > 1 && x.magasin, x.a.porteur, echeanceDate(x.a) ? `pour le ${dateCourte(echeanceDate(x.a))}` : x.a.echeance].filter(Boolean).join(' · ')}
+        fin={enRetard(x.a, reseau.jour) ? <Pastille ton="rouge">En retard</Pastille> : undefined} />
+    </Box>
+  )
+  const carte = { listStyle: 'none', m: 0, p: 0, border: 0, overflow: 'hidden', '& > li + li': { borderTop: '1px solid', borderColor: 'divider' } } as const
   return (
     <Box component="section" aria-label="Mes tâches">
       <TitreSection nombre={ouvertes.length}>Mes tâches</TitreSection>
-      {!ouvertes.length ? <Vide>Aucune tâche en cours.</Vide> : (
-        <Card component="ul" aria-label="Tâches en cours" sx={{ listStyle: 'none', m: 0, p: 0, border: 0, overflow: 'hidden', '& > li + li': { borderTop: '1px solid', borderColor: 'divider' } }}>
-          {ouvertes.map((x) => (
-            <Box component="li" key={x.cle}>
-              <LigneCompacte lien="/taches" avatar={<Initiales nom={x.a.action} icone={<TaskAltOutlined />} />} titre={x.a.action}
-                detail={[magasins.length > 1 && x.magasin, x.a.porteur, echeanceDate(x.a) ? `pour le ${dateCourte(echeanceDate(x.a))}` : x.a.echeance].filter(Boolean).join(' · ')}
-                fin={enRetard(x.a, reseau.jour) ? <Pastille ton="rouge">En retard</Pastille> : undefined} />
-            </Box>
+      {!ouvertes.length && !priorites.length ? <Vide>Aucune tâche en cours.</Vide> : (
+        <Box sx={{ display: 'grid', gap: 1.5 }}>
+          {priorites.length > 0 && <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>Ce sur quoi on travaille ensemble</Typography>}
+          {priorites.map(({ p, magasin }, i) => (
+            <Card key={`${magasin}-${p.id}`} component="section" aria-label={`Priorité ${i + 1} : ${p.titre}`} sx={{ border: 0 }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', px: 2, pt: 1.5, pb: 1 }}>
+                <FlagOutlined sx={{ color: '#307672' }} aria-hidden />
+                <Typography sx={{ fontWeight: 700, flex: 1, minWidth: 0 }}>{p.titre}{magasins.length > 1 ? ` · ${magasin}` : ''}</Typography>
+              </Box>
+              {sous(p.id, magasin).length
+                ? <Box component="ul" aria-label={`Tâches de la priorité ${p.titre}`} sx={carte}>{sous(p.id, magasin).map(ligne)}</Box>
+                : <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 1.5 }}>Aucune tâche en cours pour cette priorité.</Typography>}
+            </Card>
           ))}
-        </Card>
+          {autres.length > 0 && (
+            <>
+              {priorites.length > 0 && <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>Autres tâches</Typography>}
+              <Card component="ul" aria-label="Tâches en cours" sx={carte}>{autres.map(ligne)}</Card>
+            </>
+          )}
+        </Box>
       )}
     </Box>
   )

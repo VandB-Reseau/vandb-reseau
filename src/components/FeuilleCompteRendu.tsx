@@ -4,10 +4,13 @@ import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import { RangeePhotos } from './GrilleAudit'
 import { EnTeteLettre, IntertitreLettre, PiedLettre } from './Lettre'
-import { dateLongue } from '../lib/format'
+import { dateCourte, dateLongue } from '../lib/format'
+import { actionsDuMagasin } from '../data/actions'
+import { estVisite } from '../data/chiffres'
+import { libelleStatutPriorite } from '../data/planAction'
 import { coachA } from '../data/charge'
 import { associesEnPlace } from '../data/associes'
-import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Reseau, type Visite } from '../data/modele'
+import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, visiteFaite, type ActionPlan, type Reseau, type Visite } from '../data/modele'
 import { PARTIES } from '../data/compteRendu'
 import { motDe, partiesMot } from '../data/motFranchise'
 
@@ -21,6 +24,58 @@ function Champ({ libelle, children }: { libelle: string; children: ReactNode }) 
 }
 
 const Titre = IntertitreLettre
+
+const tableauPlan = { width: '100%', borderCollapse: 'collapse', color: '#1d1d1b', mb: 1.5, '& th, & td': { textAlign: 'left', p: 1, borderBottom: '1px solid #e0e0e0', fontSize: 14, verticalAlign: 'top' }, '& th': { color: '#5f5f66', fontWeight: 600 } } as const
+function TableauTaches({ taches }: { taches: ActionPlan[] }) {
+  return (
+    <Box component="table" sx={tableauPlan}>
+      <thead><tr><th>Tâche</th><th>Porteur</th><th>Échéance</th></tr></thead>
+      <tbody>{taches.map((a, i) => <tr key={i}><td>{a.action}</td><td>{a.porteur || 'Non précisé'}</td><td>{a.echeance ? (/^\d{4}-\d{2}-\d{2}$/.test(a.echeance) ? dateCourte(a.echeance) : a.echeance) : 'Non précisée'}</td></tr>)}</tbody>
+    </Box>
+  )
+}
+
+// Vague 7 (88A) : le plan d'action du compte rendu rangé par priorité : ce qui est fait depuis la dernière visite, puis les
+// nouvelles tâches ; jamais l'objectif chiffré (le franchisé lit ce compte rendu)
+function PlanDuCompteRendu({ reseau, v }: { reseau: Reseau; v: Visite }) {
+  const precedente = reseau.visites.filter((x) => x.magasin === v.magasin && estVisite(x) && visiteFaite(x, reseau.jour) && x.date < v.date).map((x) => x.date).sort().at(-1) ?? ''
+  const faites = actionsDuMagasin(reseau, v.magasin).filter((x) => x.a.faite && x.a.faite <= v.date && x.a.faite > precedente && x.visite?.id !== v.id)
+  const priorites = (reseau.plans?.[v.magasin] ?? []).filter((p) => (p.creeLe || '') <= v.date && (p.statut === 'active' || p.closLe >= v.date))
+  const groupes = priorites.map((p) => ({ p, nouvelles: v.plan.filter((a) => a.priorite === p.id), faites: faites.filter((x) => x.a.priorite === p.id) }))
+    .filter((g) => g.nouvelles.length || g.faites.length || g.p.revueLe === v.date || g.p.closLe === v.date)
+  const ids = new Set(groupes.map((g) => g.p.id))
+  const autresNouvelles = v.plan.filter((a) => !a.priorite || !ids.has(a.priorite))
+  const autresFaites = faites.filter((x) => !x.a.priorite || !ids.has(x.a.priorite))
+  if (!groupes.length && !autresNouvelles.length && !autresFaites.length) return null
+  const listeFaites = (l: typeof faites) => l.length > 0 && (
+    <Box sx={{ mb: 1 }}>
+      <Typography variant="body2" sx={{ color: '#5f5f66', fontWeight: 600 }}>Fait depuis la dernière visite</Typography>
+      <Box component="ul" sx={{ mt: 0.5, mb: 0, pl: 3, color: '#1d1d1b' }}>{l.map((x) => <li key={x.cle}>{x.a.action}</li>)}</Box>
+    </Box>
+  )
+  return (
+    <Box component="section" aria-label="Plan d’action" sx={{ mb: 3 }}>
+      <Titre>Plan d’action</Titre>
+      {groupes.map((g, i) => (
+        <Box key={g.p.id} sx={{ mb: 2, breakInside: 'avoid' }}>
+          <Typography sx={{ fontWeight: 700, color: '#1d1d1b', mb: 0.5 }}>
+            {`Priorité ${i + 1} : ${g.p.titre}`}{g.p.statut !== 'active' && g.p.closLe === v.date ? ` · ${libelleStatutPriorite[g.p.statut].toLowerCase()}` : ''}
+          </Typography>
+          {g.p.statut !== 'active' && g.p.closLe === v.date && g.p.bilan && <Typography variant="body2" sx={{ color: '#1d1d1b', mb: 0.5 }}>{g.p.bilan}</Typography>}
+          {listeFaites(g.faites)}
+          {g.nouvelles.length > 0 && <TableauTaches taches={g.nouvelles} />}
+        </Box>
+      ))}
+      {(autresNouvelles.length > 0 || autresFaites.length > 0) && (
+        <Box sx={{ breakInside: 'avoid' }}>
+          {groupes.length > 0 && <Typography sx={{ fontWeight: 700, color: '#1d1d1b', mb: 0.5 }}>Autres tâches</Typography>}
+          {listeFaites(autresFaites)}
+          {autresNouvelles.length > 0 && <TableauTaches taches={autresNouvelles} />}
+        </Box>
+      )}
+    </Box>
+  )
+}
 
 // La feuille du compte rendu : sur sa page (imprimable en PDF) et dans la fenêtre ouverte depuis le fil d'actualité
 export function FeuilleCompteRendu({ reseau, v }: { reseau: Reseau; v: Visite }) {
@@ -65,15 +120,7 @@ export function FeuilleCompteRendu({ reseau, v }: { reseau: Reseau; v: Visite })
             <Typography sx={{ whiteSpace: 'pre-wrap', color: '#1d1d1b', minHeight: redigees.length ? 0 : 120, mb: 3 }}>{v.notes || 'Aucune note saisie.'}</Typography>
           </>
         )}
-        {v.plan.length > 0 && (
-          <Box sx={{ mb: 3, breakInside: 'avoid' }}>
-            <Titre>Plan d’action</Titre>
-            <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', color: '#1d1d1b', '& th, & td': { textAlign: 'left', p: 1, borderBottom: '1px solid #e0e0e0', fontSize: 14, verticalAlign: 'top' }, '& th': { color: '#5f5f66', fontWeight: 600 } }}>
-              <thead><tr><th>Tâche</th><th>Porteur</th><th>Échéance</th></tr></thead>
-              <tbody>{v.plan.map((a, i) => <tr key={i}><td>{a.action}</td><td>{a.porteur || 'Non précisé'}</td><td>{a.echeance || 'Non précisée'}</td></tr>)}</tbody>
-            </Box>
-          </Box>
-        )}
+        <PlanDuCompteRendu reseau={reseau} v={v} />
         {v.documents.length > 0 && (
           <>
             <Titre>Documents</Titre>

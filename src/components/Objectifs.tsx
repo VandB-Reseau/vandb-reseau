@@ -55,7 +55,7 @@ export function SectionObjectifs({ reseau, m, signaler, lecture = false }: { res
     <Section titre={liste.length ? `Objectifs · ${liste.length}` : 'Objectifs'}
       action={lecture ? undefined : <Button startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }}>Fixer un objectif</Button>}>
       {!liste.length
-        ? <Typography variant="body2" color="text.secondary">Aucun objectif chiffré. Un objectif suit un chiffre de la caisse (panier, tickets, CA, marge) jusqu’à une échéance.</Typography>
+        ? <Typography variant="body2" color="text.secondary">Aucun objectif chiffré.</Typography>
         : <Box>{liste.map((o) => <LigneObjectif key={o.id} reseau={reseau} magasin={m.nom} o={o} onClick={lecture ? undefined : () => setEdition(o)} />)}</Box>}
       {edition !== undefined && <DialogObjectif reseau={reseau} m={m} objectif={edition} onFermer={(msg) => { setEdition(undefined); if (msg) signaler?.(msg) }} />}
     </Section>
