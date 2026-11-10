@@ -27,8 +27,9 @@ import { styleTableau } from '../theme/tableau'
 const MOIS_OPTIONS = MOIS_LONGS.map((m, i) => ({ valeur: i + 1, libelle: m.charAt(0).toUpperCase() + m.slice(1) }))
 export const typeInvestissementLibelle: Record<TypeInvestissement, string> = { equipement: 'Équipement', mobilier: 'Mobilier', informatique: 'Informatique', autre: 'Autre' }
 const somme = (l: number[]) => l.reduce((a, b) => a + b, 0)
-const sx = { ...styleTableau, '& td, & th': { px: 0.75, whiteSpace: 'nowrap' }, '& td:first-of-type, & th:first-of-type': { pl: 2.5 } }
-const champTexte = { width: 200, '& input': { height: 48, boxSizing: 'border-box', py: 0 } }
+// Joseph (10/11/2026) : champs resserrés et titres sur deux lignes, les tableaux tiennent dans la page sans défiler à droite
+const sx = { ...styleTableau, '& td, & th': { px: 0.75, whiteSpace: 'nowrap' }, '& th': { whiteSpace: 'normal' }, '& td:first-of-type, & th:first-of-type': { pl: 2.5 } }
+const champTexte = { width: 150, '& input': { height: 48, boxSizing: 'border-box', py: 0 } }
 
 function Retirer({ nom, onClick }: { nom: string; onClick: () => void }) {
   return (
@@ -80,13 +81,13 @@ export function AchatsMagasin({ cibles, onChange, lectureSeule, annee }: { cible
                         slotProps={{ htmlInput: { 'aria-label': `Nom de l’achat ${i + 1}`, maxLength: 60 } }} sx={champTexte} />
                     </TableCell>
                     <TableCell>
-                      <ChoixListe libelle={`Type : ${nom}`} valeur={x.type} desactive={lectureSeule} largeur={150}
+                      <ChoixListe libelle={`Type : ${nom}`} valeur={x.type} desactive={lectureSeule} largeur={134}
                         options={(Object.keys(typeInvestissementLibelle) as TypeInvestissement[]).map((k) => ({ valeur: k, libelle: typeInvestissementLibelle[k] }))}
                         onChange={(v) => changer(i, { type: v })} />
                     </TableCell>
-                    <TableCell align="right"><ChampMontant libelle={`Montant HT : ${nom}`} valeur={x.montant} desactive={lectureSeule} onChange={(v) => changer(i, { montant: Math.max(0, v) })} /></TableCell>
-                    <TableCell><ChoixListe libelle={`Mis en service en : ${nom}`} valeur={x.mois} options={MOIS_OPTIONS} desactive={lectureSeule} largeur={130} onChange={(v) => changer(i, { mois: v })} /></TableCell>
-                    <TableCell align="right"><ChampMontant libelle={`Durée d’amortissement : ${nom}`} valeur={x.duree} unite="ans" largeur={100} desactive={lectureSeule} onChange={(v) => changer(i, { duree: Math.max(0, v) })} /></TableCell>
+                    <TableCell align="right"><ChampMontant libelle={`Montant HT : ${nom}`} valeur={x.montant} largeur={116} desactive={lectureSeule} onChange={(v) => changer(i, { montant: Math.max(0, v) })} /></TableCell>
+                    <TableCell><ChoixListe libelle={`Mis en service en : ${nom}`} valeur={x.mois} options={MOIS_OPTIONS} desactive={lectureSeule} largeur={118} onChange={(v) => changer(i, { mois: v })} /></TableCell>
+                    <TableCell align="right"><ChampMontant libelle={`Durée d’amortissement : ${nom}`} valeur={x.duree} unite="ans" largeur={84} desactive={lectureSeule} onChange={(v) => changer(i, { duree: Math.max(0, v) })} /></TableCell>
                     <TableCell align="right">{montant(dotationInvestissement(x))}</TableCell>
                     <TableCell>{!lectureSeule && <Retirer nom={nom} onClick={() => ecrire(liste.filter((_, j) => j !== i))} />}</TableCell>
                   </TableRow>
@@ -154,10 +155,10 @@ export function FinancementsMagasin({ cibles, onChange, lectureSeule, annee, enC
                     <TextField size="small" value={e.libelle} disabled={lectureSeule} placeholder="Prêt bancaire travaux" onChange={(ev) => changer(i, { libelle: ev.target.value })}
                       slotProps={{ htmlInput: { 'aria-label': `Nom de l’emprunt ${i + 1}`, maxLength: 60 } }} sx={champTexte} />
                   </TableCell>
-                  <TableCell align="right"><ChampMontant libelle={`Montant emprunté : ${nom}`} valeur={e.montant} desactive={lectureSeule} onChange={(v) => changer(i, { montant: Math.max(0, v) })} /></TableCell>
-                  <TableCell align="right"><ChampTaux libelle={`Taux annuel : ${nom}`} valeur={e.taux} heritee={0} desactive={lectureSeule} largeur={100} onChange={(v) => changer(i, { taux: Math.max(0, v ?? 0) })} /></TableCell>
-                  <TableCell align="right"><ChampMontant libelle={`Durée : ${nom}`} valeur={e.duree} unite="ans" largeur={100} desactive={lectureSeule} onChange={(v) => changer(i, { duree: Math.max(0, v) })} /></TableCell>
-                  <TableCell><ChoixListe libelle={`Première échéance : ${nom}`} valeur={e.premiereEcheance} options={MOIS_OPTIONS} desactive={lectureSeule} largeur={130} onChange={(v) => changer(i, { premiereEcheance: v })} /></TableCell>
+                  <TableCell align="right"><ChampMontant libelle={`Montant emprunté : ${nom}`} valeur={e.montant} largeur={116} desactive={lectureSeule} onChange={(v) => changer(i, { montant: Math.max(0, v) })} /></TableCell>
+                  <TableCell align="right"><ChampTaux libelle={`Taux annuel : ${nom}`} valeur={e.taux} heritee={0} desactive={lectureSeule} largeur={92} onChange={(v) => changer(i, { taux: Math.max(0, v ?? 0) })} /></TableCell>
+                  <TableCell align="right"><ChampMontant libelle={`Durée : ${nom}`} valeur={e.duree} unite="ans" largeur={84} desactive={lectureSeule} onChange={(v) => changer(i, { duree: Math.max(0, v) })} /></TableCell>
+                  <TableCell><ChoixListe libelle={`Première échéance : ${nom}`} valeur={e.premiereEcheance} options={MOIS_OPTIONS} desactive={lectureSeule} largeur={118} onChange={(v) => changer(i, { premiereEcheance: v })} /></TableCell>
                   <TableCell align="right">{`${montant(echeanceMensuelle(e))} / mois`}</TableCell>
                   <TableCell align="right">{montant(somme(x.interets))}</TableCell>
                   <TableCell align="right">{montant(somme(x.capital))}</TableCell>
@@ -168,22 +169,22 @@ export function FinancementsMagasin({ cibles, onChange, lectureSeule, annee, enC
             {cibles.apport && (
               <TableRow>
                 <TableCell sx={{ fontWeight: 600 }}>Apport ou compte courant</TableCell>
-                <TableCell align="right"><ChampMontant libelle="Montant de l’apport" valeur={cibles.apport.montant} desactive={lectureSeule} onChange={(v) => ecrire('apport', { ...cibles.apport!, montant: Math.max(0, v) })} /></TableCell>
+                <TableCell align="right"><ChampMontant libelle="Montant de l’apport" valeur={cibles.apport.montant} largeur={116} desactive={lectureSeule} onChange={(v) => ecrire('apport', { ...cibles.apport!, montant: Math.max(0, v) })} /></TableCell>
                 <TableCell colSpan={2} sx={{ color: 'text.secondary' }}>Entre en trésorerie en</TableCell>
-                <TableCell><ChoixListe libelle="Mois de l’apport" valeur={cibles.apport.mois} options={MOIS_OPTIONS} desactive={lectureSeule} largeur={130} onChange={(v) => ecrire('apport', { ...cibles.apport!, mois: v })} /></TableCell>
+                <TableCell><ChoixListe libelle="Mois de l’apport" valeur={cibles.apport.mois} options={MOIS_OPTIONS} desactive={lectureSeule} largeur={118} onChange={(v) => ecrire('apport', { ...cibles.apport!, mois: v })} /></TableCell>
                 <TableCell colSpan={3} sx={{ color: 'text.secondary' }}>Sans effet sur le résultat</TableCell>
                 <TableCell>{!lectureSeule && <Retirer nom="l’apport" onClick={() => ecrire('apport', undefined)} />}</TableCell>
               </TableRow>
             )}
             {aEnCours && (
               <TableRow>
-                <TableCell sx={{ whiteSpace: 'normal' }}>
+                <TableCell sx={{ whiteSpace: 'normal !important', minWidth: 170 }}>
                   <Box component="span" sx={{ display: 'block', fontWeight: 600 }}>Emprunts en cours</Box>
                   <Box component="span" sx={{ display: 'block', fontSize: '0.8125rem', color: 'text.secondary' }}>Repris des frais, modifiables dans le thème Frais</Box>
                 </TableCell>
                 <TableCell colSpan={3} sx={{ color: 'text.secondary' }}>Dernière échéance</TableCell>
                 <TableCell>
-                  <ChoixListe libelle="Dernier mois des emprunts en cours" valeur={fin} desactive={lectureSeule} largeur={130}
+                  <ChoixListe libelle="Dernier mois des emprunts en cours" valeur={fin} desactive={lectureSeule} largeur={118}
                     options={MOIS_OPTIONS} onChange={(v) => ecrire('finEmpruntsEnCours', v === 12 ? undefined : v)} />
                 </TableCell>
                 <TableCell />

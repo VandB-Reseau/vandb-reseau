@@ -30,7 +30,7 @@ import { UNIVERS, universLibelle, type Univers } from '../moteur/types'
 import { styleTableau } from '../theme/tableau'
 
 // Texte lu par les lecteurs d'écran seulement
-const visuellementCache = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
+const visuellementCache = { position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
 const VIDE: ChampsVente = { caHT: '', caTTC: '', margeHT: '' }
 const nombreEntier = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 })
 const panier = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })

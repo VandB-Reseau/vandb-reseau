@@ -7,7 +7,6 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
-import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Tab from '@mui/material/Tab'
@@ -122,7 +121,7 @@ function LibelleOnglet({ texte, manque, detail, marque }: { texte: string; manqu
 // Pastille de l'onglet d'un espace : ce qui manque dans une de ses pages
 const ESPACE_MANQUES: Record<Espace, string[]> = { suivi: ['atterrissage'], budget: ['budget'], donnees: ['reel', 'frais'] }
 
-const visuellementCache = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
+const visuellementCache = { position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
 
 type Message = { gravite: 'success' | 'error' | 'warning'; texte: string; details?: string[] }
 
@@ -137,7 +136,11 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
   const location = useLocation()
   const navigate = useNavigate()
   // Panneau Impact (03/11/2026) : à droite dès que l'écran laisse la place au tableau des hypothèses à côté
-  const impactACote = useMediaQuery('(min-width:1280px)')
+  const impactACoteCartes = useMediaQuery('(min-width:1280px)')
+  // Joseph (10/11/2026) : le panneau à droite (vague 2, 13B) obligeait à faire défiler les tableaux vers la droite et
+  // l'Équipe s'ouvrait autrement. Chaque carte ouvre désormais son détail sur toute la largeur, comme l'Équipe, et
+  // l'Impact y passe en bande collante en haut : les tableaux de saisie gardent toute la largeur de la page.
+  const impactEnBandeau = useMediaQuery('(min-width:1024px)')
   // Refonte vague 2 (11A) : sur PC, statut et étapes du budget sur une seule ligne
   const etapesEnLigne = useMediaQuery('(min-width:1360px)')
   const { profil } = useAuth()
@@ -320,6 +323,8 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
   const partie = (cle: string) => (onglet === partieDe(cle) ? undefined : 'partie-cachee')
   // Lot 37 : un thème des hypothèses (ventes, calendrier, équipe, frais, trésorerie) s'ouvre depuis sa carte
   const themeOuvert = estTheme(onglet) ? THEMES.find((t) => t.cle === onglet)! : null
+  const bandeauImpact = !!themeOuvert && impactEnBandeau
+  const impactACote = !themeOuvert && impactACoteCartes
   const communHypotheses = ligne.base ? {
     cibles: brouillon, auDessus: niveauxDe(ligne, d).slice(0, -1), valeursBase: valeursSansCible(ligne.base), onChange: setBrouillon, lectureSeule: !peutAjuster,
   } : null
@@ -394,7 +399,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
   const bDernier = avantH ? calculerBudget(avantH.hypotheses, parametres) : null
   const panneau = avecImpact && b && bAvant ? (
     <PanneauImpact
-      key={`impact-${ligne.magasin}`} cote={impactACote}
+      key={`impact-${ligne.magasin}`} cote={impactACote} bandeau={bandeauImpact}
       enregistre={impactBudget(b, bAvant, tresorerie, tresoAvant)}
       siege={bSiege ? impactBudget(b, bSiege, tresorerie, tresoSiege) : null}
       referenceParDefaut={peutAjuster ? 'enregistre' : 'siege'}
@@ -407,9 +412,6 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
     />
   ) : null
 
-  // Refonte vague 2 (Joseph, 09/11/2026, 13B) : sur grand écran, le détail d'une carte s'ouvre dans un panneau à droite ;
-  // les cartes de « Construire » restent visibles à gauche, l'impact passe en haut du panneau
-  const themeEnPanneau = !!themeOuvert && impactACote && !!b && onglet !== 'equipe' // l'équipe garde sa pleine page (grands tableaux de postes)
 
   // Lot 38 (D1) : passer d'une étape du budget à la suivante sans remonter en haut de page
   // Lot 43 : du point de départ aussi (la trésorerie au 1er janvier y est un ajustement) ; seules les parts de l'année
@@ -551,7 +553,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         )}
       </Box>
       {commentaires}
-      {themeOuvert && !themeEnPanneau && (
+      {themeOuvert && (
         <Box className="pas-a-l-impression" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
           <Button component={RouterLink} to={lienMagasin(ligne.magasin, 'budget')} data-sans-garde={onglet === 'equipe' ? undefined : ''} startIcon={<ArrowBack />} sx={{ minHeight: 48 }}>
             Toutes les hypothèses
@@ -561,7 +563,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         </Box>
       )}
 
-      <AvecImpact panneau={themeEnPanneau ? null : panneau} cote={impactACote}>
+      <AvecImpact panneau={panneau} cote={impactACote} bandeau={bandeauImpact}>
       {espace === 'suivi' ? (
         <Stack spacing={3}>
         {/* Joseph (09/11/2026) : le Suivi en puces, une partie à la fois, au lieu d'une longue page à dérouler */}
@@ -767,19 +769,15 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
       ) : (
         <>
           {/* Joseph (03/11/2026) : sur « Construire », toutes les hypothèses en cartes, les ventes de chaque univers comprises */}
-          <ColonnesTheme ouvert={themeEnPanneau}>
-          {(onglet === 'budget' || themeEnPanneau) && resolu && (
-            <Box className="pas-a-l-impression" sx={themeEnPanneau ? { position: 'sticky', top: `calc(${hautEntete.md}px + var(--onglets, 0px) + 8px)` } : undefined}>
+          {onglet === 'budget' && resolu && (
+            <Box className="pas-a-l-impression">
               <HypothesesCartes magasin={ligne.magasin} annee={annee} budget={b} cibles={brouillon} hausseSalaires={resolu.hypotheses.hausseSalaires ?? 0}
                 inflation={inflation} sansEquipe={!d.equipes[ligne.magasin]?.length} sansFrais={!baseFrais?.frais.length} lectureSeule={!peutAjuster}
-                reprise={resolu.hypotheses.reprise} accord={accordTheme ?? undefined} etroit={themeEnPanneau}
+                reprise={resolu.hypotheses.reprise} accord={accordTheme ?? undefined}
                 ventesPrete={franchise ? (brouillon.accords ?? []).includes('ventes') || themesChanges.has('ventes') : undefined}
                 depart={{ annee: anneeEnCours, tresorerie: brouillon.tresorerieDepart ?? estimee?.montant ?? null, estimee: brouillon.tresorerieDepart === undefined && !!estimee, saisonnalite: !!brouillon.poidsMois }} />
             </Box>
           )}
-          <PanneauTheme ouvert={themeEnPanneau} titre={themeOuvert ? `${themeOuvert.libelle} ${annee}` : ''} impact={panneau}
-            commenter={themeOuvert ? <BoutonCommenter ancre={`theme/${themeOuvert.cle}`} libelle={themeOuvert.libelle} /> : null}
-            onFermer={() => garde(() => aller('budget'), onglet !== 'equipe')}>
           <Stack spacing={3} className={partie('ventes')} id="partie-ventes" sx={{ scrollMarginTop: 200 }}>
             {communHypotheses && (
               <Card component="section" aria-label="Hypothèses du magasin">
@@ -858,8 +856,6 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
                 onChange={(c) => setBrouillon(({ fraisBudget: _, ...reste }) => (c ? { ...reste, fraisBudget: c } : reste))} />
             </Stack>
           )}
-          </PanneauTheme>
-          </ColonnesTheme>
           <Box className={partie('visualiser')} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', rowGap: 2 }}>
           {/* Vague 6 (75A) : un sommaire collant sur PC (en haut : le compte de résultat garde toute la largeur), le reste inchangé */}
           <SommaireVisualiser avecEconomie={!!resolu} avecTresorerie={!!tresorerie} />
@@ -921,48 +917,19 @@ function SommaireVisualiser({ avecEconomie, avecTresorerie }: { avecEconomie: bo
   )
 }
 
-// Détail d'une carte de « Construire » (refonte vague 2, 13B) : panneau à droite sans fond grisé, la page reste utilisable ;
-// sur un écran plus étroit, le détail reste dans la page
-const LARGEUR_PANNEAU_THEME = 640
-// Les cartes à gauche, le détail du thème ouvert à droite, côte à côte : le panneau ne recouvre ni l'en-tête ni les étapes
-function ColonnesTheme({ ouvert, children }: { ouvert: boolean; children: ReactNode }) {
-  if (!ouvert) return <>{children}</>
-  return <Box sx={{ display: 'grid', gridTemplateColumns: `minmax(0, 1fr) ${LARGEUR_PANNEAU_THEME}px`, columnGap: 3, alignItems: 'start' }}>{children}</Box>
-}
-
-function PanneauTheme({ ouvert, titre, impact, commenter, onFermer, children }: {
-  ouvert: boolean; titre: string; impact: ReactNode; commenter: ReactNode; onFermer: () => void; children: ReactNode
-}) {
-  const fermer = useRef(onFermer)
-  fermer.current = onFermer
-  useEffect(() => {
-    if (!ouvert) return
-    const echap = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.MuiDialog-root, .MuiPopover-root')) fermer.current() }
-    window.addEventListener('keydown', echap)
-    return () => window.removeEventListener('keydown', echap)
-  }, [ouvert])
-  if (!ouvert) return <>{children}</>
-  const haut = `calc(${hautEntete.md}px + var(--onglets, 0px) + 8px)`
-  return (
-    <Box component="section" aria-label={`Détail : ${titre}`}
-      sx={{ position: 'sticky', top: haut, maxHeight: `calc(100vh - ${hautEntete.md}px - var(--onglets, 0px) - 16px)`, overflowY: 'auto', minWidth: 0, bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 3, zIndex: 3 }}>
-      <Box sx={{ position: 'sticky', top: 0, zIndex: 2, bgcolor: 'background.paper', px: 2.5, py: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography variant="h2" sx={{ flex: 1, fontSize: '1.25rem' }}>{titre}</Typography>
-        {commenter}
-        <Tooltip title="Fermer"><IconButton aria-label="Fermer le détail" onClick={onFermer} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton></Tooltip>
-      </Box>
-      <Box sx={{ px: 2.5, py: 2, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2 }}>
-        {impact}
-        <Box sx={{ minWidth: 0, overflowX: 'auto' }}>{children}</Box>
-      </Box>
-    </Box>
-  )
-}
-
 // Panneau Impact (Joseph, 03/11/2026) : colonne de droite sur grand écran, sinon en barre en bas d'écran. Joseph (09/11/2026) :
 // les commentaires n'y sont plus (volet à la demande) ; le panneau se colle sous les onglets de la fiche, sans les recouvrir
-function AvecImpact({ panneau, cote, children }: { panneau: ReactNode; cote: boolean; children: ReactNode }) {
+function AvecImpact({ panneau, cote, bandeau, children }: { panneau: ReactNode; cote: boolean; bandeau: boolean; children: ReactNode }) {
   if (!panneau) return <>{children}</>
+  // Thème ouvert sur PC (Joseph, 10/11/2026) : l'Impact en bande collante au-dessus du détail, toute la largeur pour les tableaux
+  if (bandeau) {
+    return (
+      <>
+        <Box sx={{ position: 'sticky', top: `calc(${hautEntete.md}px + var(--onglets, 0px) + 8px)`, zIndex: 4, mb: 2 }}>{panneau}</Box>
+        {children}
+      </>
+    )
+  }
   if (!cote) return <>{children}{panneau}</>
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', columnGap: 3, alignItems: 'start' }}>

@@ -42,7 +42,7 @@ import {
   type ChampFrais, type Mode, type SaisieFrais,
 } from '../moteur/saisieFrais'
 
-const visuellementCache = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
+const visuellementCache = { position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
 
 // Montant d'une ligne de frais : par an en euros, ou en part du CA
 function ChampFraisLigne({ ligne, onChange }: { ligne: ChampFrais; onChange: (l: Partial<ChampFrais>) => void }) {

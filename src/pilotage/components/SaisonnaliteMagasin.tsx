@@ -48,7 +48,7 @@ export function SaisonnaliteMagasin({ budget, poids, onChange, lectureSeule, int
       )}
       <TableContainer>
         <Table size="small" className="colonne-fixe" aria-label="Saisonnalité du budget"
-          sx={{ '& td, & th': { px: 0.5, fontSize: '0.8125rem', whiteSpace: 'nowrap' }, '& td:first-of-type, & th:first-of-type': { pl: 2.5, pr: 1.5 } }}>
+          sx={{ '& td, & th': { px: 0.25, fontSize: '0.8125rem', whiteSpace: 'nowrap' }, '& td:first-of-type, & th:first-of-type': { pl: 2.5, pr: 1 } }}>
           <TableHead>
             <TableRow>
               <TableCell />
@@ -62,7 +62,7 @@ export function SaisonnaliteMagasin({ budget, poids, onChange, lectureSeule, int
               {budget.poids.map((w, i) => (
                 <TableCell key={i} align="right" sx={{ py: 0.5 }}>
                   <ChampTaux
-                    libelle={`Part du CA en ${MOIS[i]}`} valeur={poids?.[i]} heritee={w} desactive={lectureSeule} largeur={62} sansUnite
+                    libelle={`Part du CA en ${MOIS[i]}`} valeur={poids?.[i]} heritee={w} desactive={lectureSeule} largeur={58} sansUnite
                     onChange={(v) => {
                       const p = [...(poids ?? budget.poids)]
                       p[i] = v ?? budget.poids[i]
@@ -75,7 +75,7 @@ export function SaisonnaliteMagasin({ budget, poids, onChange, lectureSeule, int
             </TableRow>
             <TableRow>
               <TableCell>CA du mois</TableCell>
-              {budget.mois.map((m, i) => <TableCell key={i} align="right" sx={{ color: 'text.secondary', pr: '12px !important' }}>{enChiffres(Math.round(m.ca))}</TableCell>)}
+              {budget.mois.map((m, i) => <TableCell key={i} align="right" sx={{ color: 'text.secondary', pr: '6px !important' }}>{enChiffres(Math.round(m.ca))}</TableCell>)}
               <TableCell align="right" sx={{ fontWeight: 700, pr: '20px !important' }}>{milliers(budget.ca)}</TableCell>
             </TableRow>
           </TableBody>

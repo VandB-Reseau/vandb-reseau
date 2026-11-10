@@ -17,6 +17,9 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
+import ReplayOutlined from '@mui/icons-material/ReplayOutlined'
+import Tooltip from '@mui/material/Tooltip'
+import { CODE_COMMUNICATION } from '../moteur/communication'
 import { ChampNombre } from './ChampNombre'
 import { Indicateur } from './Indicateur'
 import { nombre } from '../import/caisse'
@@ -26,8 +29,8 @@ import { LIGNES_SUR_CA, lignesActives, lignesFrais, rubriqueLibelle, THEMES_FRAI
 import type { Hypotheses } from '../moteur/types'
 import { styleTableau } from '../theme/tableau'
 
-const visuellementCache = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
-const enTexte = (c: ChoixFrais) => (c.valeur === undefined ? '' : enChiffres(Math.round((c.mode === 'taux' ? c.valeur * 100 : c.valeur) * 100) / 100))
+const visuellementCache = { position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
+const enTexte = (c: ChoixFrais) => (c.valeur === undefined ? '' : enChiffres(Math.round((c.mode === 'taux' || c.mode === 'partCA' ? c.valeur * 100 : c.valeur) * 100) / 100))
 
 // Lot 35 (Joseph, 02/11/2026) : frais du budget ligne par ligne, à partir des frais de l'année en cours, dans le même
 // tableau par thème que l'onglet Frais. Chaque ligne : même montant, hausse en %, ou nouveau montant ; sans choix, elle
@@ -81,7 +84,51 @@ export function FraisBudget({ base, choix, inflation, annee, anneeEnCours, lectu
   const finances = lignes.filter((l) => l.rubrique === 'finances')
   const modifiees = lignes.filter((l) => !l.parDefaut).length
 
+  // Budget communication (Joseph, 10/11/2026) : une préconisation du siège, pas une redevance ; le magasin la règle en
+  // part du CA ou en montant, et peut revenir à la préconisation
+  const preco = tauxSurCA.communication ?? 0
+  const choixCommunication = (l: LigneFraisBudget) => {
+    const mode: 'partCA' | 'montant' = l.choix.mode === 'partCA' || (l.parDefaut && l.tauxCA !== undefined) ? 'partCA' : 'montant'
+    const valeur = l.choix.mode === 'partCA' || l.choix.mode === 'montant' ? enTexte(l.choix)
+      : mode === 'partCA' ? enChiffres(Math.round((l.tauxCA ?? 0) * 10_000) / 100) : enChiffres(Math.round(l.apres))
+    if (lectureSeule) {
+      return <Typography variant="body2" color={l.parDefaut ? 'text.secondary' : 'text.primary'}>
+        {l.parDefaut ? (preco > 0 ? 'Préconisation du siège' : 'Inflation') : mode === 'partCA' ? 'Part du CA' : 'Montant choisi'}
+      </Typography>
+    }
+    const changer = (v: string) => {
+      setTextes((t) => ({ ...t, [l.code]: v }))
+      const n = nombre(v)
+      if (n === null || Number.isNaN(n)) return
+      ecrire(l.code, mode === 'partCA' ? { mode: 'partCA', valeur: Math.round(n * 100) / 10_000 } : { mode: 'montant', valeur: n })
+    }
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-end' }}>
+        {!l.parDefaut && (
+          <Tooltip title={preco > 0 ? `Reprendre la préconisation du siège : ${taux(preco)} du CA` : 'Reprendre l’inflation des frais'}>
+            <IconButton aria-label={`Reprendre la préconisation du siège : ${l.libelle}`} color="primary" onClick={() => { setTextes(({ [l.code]: _, ...r }) => r); ecrire(l.code, null) }}
+              sx={{ width: { xs: 48, md: 32 }, height: { xs: 48, md: 32 } }}><ReplayOutlined sx={{ fontSize: 18 }} /></IconButton>
+          </Tooltip>
+        )}
+        <ToggleButtonGroup exclusive size="small" value={mode} aria-label={`Choix ${annee} : ${l.libelle}`}
+          onChange={(_, m: 'partCA' | 'montant' | null) => {
+            if (!m || m === mode) return
+            setTextes(({ [l.code]: _, ...r }) => r)
+            ecrire(l.code, m === 'partCA' ? { mode: 'partCA', valeur: l.tauxCA ?? (preco || 0.025) } : { mode: 'montant', valeur: Math.round(l.tauxCA !== undefined ? l.avant : l.apres) })
+          }}>
+          <ToggleButton value="partCA" sx={{ minHeight: { xs: 48, md: 36 }, px: 1.25 }}>% du CA</ToggleButton>
+          <ToggleButton value="montant" sx={{ minHeight: { xs: 48, md: 36 }, px: 1.25 }}>Montant</ToggleButton>
+        </ToggleButtonGroup>
+        <Box sx={{ width: 112, textAlign: 'left' }}>
+          <ChampNombre libelle={mode === 'partCA' ? `Part du CA ${annee} : ${l.libelle}` : `Montant ${annee} : ${l.libelle}`}
+            valeur={textes[l.code] ?? valeur} unite={mode === 'partCA' ? '%' : '€'} largeur={112} onChange={changer} />
+        </Box>
+      </Box>
+    )
+  }
+
   const choixLigne = (l: LigneFraisBudget) => {
+    if (l.code === CODE_COMMUNICATION) return choixCommunication(l)
     if (l.tauxCA !== undefined) return <Typography variant="body2" color="text.secondary">Part du CA gardée</Typography>
     if (l.depuisPrets) return <Typography variant="body2" color="text.secondary">Calculé depuis les prêts</Typography>
     if (lectureSeule) {
@@ -97,10 +144,10 @@ export function FraisBudget({ base, choix, inflation, annee, anneeEnCours, lectu
           <ToggleButton value="taux" sx={{ minHeight: { xs: 48, md: 36 }, px: 1.25 }}>%</ToggleButton>
           <ToggleButton value="montant" sx={{ minHeight: { xs: 48, md: 36 }, px: 1.25 }}>Montant</ToggleButton>
         </ToggleButtonGroup>
-        <Box sx={{ width: 150, textAlign: 'left' }}>
+        <Box sx={{ width: 112, textAlign: 'left' }}>
           {l.choix.mode !== 'meme' && (
             <ChampNombre libelle={l.choix.mode === 'taux' ? `Hausse ${annee} : ${l.libelle}` : `Montant ${annee} : ${l.libelle}`}
-              valeur={textes[l.code] ?? enTexte(l.choix)} unite={l.choix.mode === 'taux' ? '%' : '€'} largeur={150}
+              valeur={textes[l.code] ?? enTexte(l.choix)} unite={l.choix.mode === 'taux' ? '%' : '€'} largeur={112}
               onChange={(v) => changerValeur(l, v)} />
           )}
         </Box>
@@ -109,18 +156,19 @@ export function FraisBudget({ base, choix, inflation, annee, anneeEnCours, lectu
   }
   const ligne = (l: LigneFraisBudget) => (
     <TableRow key={l.code}>
-      <TableCell sx={{ pl: '40px !important' }}>
+      <TableCell sx={{ pl: '40px !important', whiteSpace: 'normal !important', minWidth: 160 }}>
         {l.libelle}
         {l.parDefaut && l.tauxCA === undefined && l.rubrique !== 'finances' && <Box component="span" sx={{ ml: 1, color: 'text.secondary' }}>· inflation</Box>}
+        {l.code === CODE_COMMUNICATION && l.parDefaut && l.tauxCA !== undefined && <Box component="span" sx={{ ml: 1, color: 'text.secondary' }}>· préconisation du siège</Box>}
       </TableCell>
-      <TableCell align="right">{l.tauxCA !== undefined ? `${taux(l.tauxCA)} du CA` : l.avant ? montant(l.avant) : '–'}</TableCell>
+      <TableCell align="right">{l.tauxAvant !== undefined ? `${taux(l.tauxAvant)} du CA` : l.avant ? montant(l.avant) : '–'}</TableCell>
       <TableCell align="right" sx={{ py: '2px !important' }}>{choixLigne(l)}</TableCell>
       <TableCell align="right" sx={{ fontWeight: l.parDefaut ? 400 : 700 }}>{l.tauxCA !== undefined ? `${taux(l.tauxCA)} du CA` : montant(l.apres)}</TableCell>
     </TableRow>
   )
   const ligneTexte = (cle: string, libelle: string, valeur: string) => (
     <TableRow key={cle}>
-      <TableCell sx={{ pl: '40px !important' }}>{libelle}</TableCell>
+      <TableCell sx={{ pl: '40px !important', whiteSpace: 'normal !important' }}>{libelle}</TableCell>
       <TableCell align="right" sx={{ color: 'text.secondary' }}>{valeur}</TableCell>
       <TableCell align="right"><Typography variant="body2" color="text.secondary">Paramètre du réseau</Typography></TableCell>
       <TableCell align="right" sx={{ color: 'text.secondary' }}>{valeur}</TableCell>
@@ -172,7 +220,8 @@ export function FraisBudget({ base, choix, inflation, annee, anneeEnCours, lectu
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', px: 2.5, pt: 2, pb: 1 }}>
           <Typography variant="h2" sx={{ flex: 1 }}>Frais {annee}</Typography>
         </Box>
-        <TableContainer>
+        {/* Joseph (10/11/2026) : la page défile, pas le tableau dans sa carte ; il tient dans la largeur sans défiler à droite */}
+        <TableContainer sx={{ maxHeight: 'none' }}>
           <Table size="small" aria-label={`Frais ${annee} par thème`} sx={{ ...styleTableau, '& td, & th': { ...styleTableau['& td, & th'], fontSize: '0.875rem' } }}>
             <TableHead>
               <TableRow>

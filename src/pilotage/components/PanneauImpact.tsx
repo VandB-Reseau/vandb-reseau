@@ -40,9 +40,10 @@ function sousTexte(i: Indicateur): string {
 }
 
 export function PanneauImpact({
-  cote, enregistre, siege, referenceParDefaut, dernier, onAnnulerDernier, changements, onAnnuler, onEnregistrer, occupe, desactive, avertissement, infos = {},
+  cote, bandeau = false, enregistre, siege, referenceParDefaut, dernier, onAnnulerDernier, changements, onAnnuler, onEnregistrer, occupe, desactive, avertissement, infos = {},
 }: {
   cote: boolean                      // grand écran : colonne de droite ; sinon barre en bas d'écran
+  bandeau?: boolean                  // PC, thème ouvert (Joseph, 10/11/2026) : une bande en haut, les tableaux gardent toute la largeur
   enregistre: Indicateur[]           // face à ce qui est enregistré
   siege: Indicateur[] | null         // face à la proposition du siège
   referenceParDefaut: Reference
@@ -67,13 +68,13 @@ export function PanneauImpact({
   useEffect(() => {
     const html = document.documentElement
     const el = boite.current
-    if (cote || !el || typeof ResizeObserver === 'undefined') return
+    if (cote || bandeau || !el || typeof ResizeObserver === 'undefined') return
     // --barre-basse est posé par l'AppShell de l'app réseau sur un parent, pas sur <html> : on le lit sur la barre
     const basse = () => getComputedStyle(el).getPropertyValue('--barre-basse').trim() || '0px'
     const observateur = new ResizeObserver(() => { html.style.scrollPaddingBottom = `calc(${basse()} + ${el.offsetHeight + 24}px)` })
     observateur.observe(el)
     return () => { observateur.disconnect(); html.style.scrollPaddingBottom = '' }
-  }, [cote])
+  }, [cote, bandeau])
 
   const bascule = { minHeight: { xs: 48, lg: 32 }, py: { lg: 0.25 }, px: 0.75, lineHeight: 1.15, textTransform: 'none', fontWeight: 700, fontSize: '0.8125rem' } as const
   const choix = siege ? (
@@ -101,7 +102,14 @@ export function PanneauImpact({
 
   const boutons = onEnregistrer && changements > 0 && (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-      {cote ? (
+      {bandeau ? (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1.5, flexWrap: 'wrap' }}>
+          <Typography variant="body2" color="text.secondary">{changements <= 1 ? '1 changement non enregistré' : `${changements} changements non enregistrés`}</Typography>
+          {avertissement && <Typography variant="body2" sx={{ color: 'warning.dark', fontWeight: 700 }}>{avertissement}</Typography>}
+          {onAnnuler && <Button onClick={onAnnuler} disabled={occupe} aria-label="Annuler les changements" sx={{ minHeight: 40, textDecoration: 'underline', fontWeight: 700 }}>Tout annuler</Button>}
+          <Button variant="contained" startIcon={<SaveOutlined />} onClick={onEnregistrer} disabled={occupe || desactive} sx={{ minHeight: 40, whiteSpace: 'nowrap' }}>Enregistrer les ajustements</Button>
+        </Box>
+      ) : cote ? (
         // Grand écran : « Tout annuler » discret à côté du compte, « Enregistrer » sur toute la largeur
         <>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
@@ -144,6 +152,39 @@ export function PanneauImpact({
       <Typography component="span" sx={{ textAlign: 'right', fontSize: '0.8125rem', fontWeight: 700, color: couleur(i), fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{ecartTexte(i)}</Typography>
     </Box>
   )
+
+  // Bande en haut (thème ouvert sur PC, Joseph 10/11/2026) : les six indicateurs sur une ligne, « Enregistrer » à droite ;
+  // le détail du thème garde toute la largeur de la page, sans défiler vers la droite
+  if (bandeau) {
+    return (
+      <Card component="aside" aria-label="Impact des changements" className="pas-a-l-impression"
+        sx={{ px: 2, py: 1, display: 'flex', flexDirection: 'column', gap: 0.75, boxShadow: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <Typography variant="h2" sx={{ fontSize: '1.125rem', flex: 'none' }}>Impact</Typography>
+          <Box data-liste-impact sx={{ flex: '1 1 640px', minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', columnGap: 2, rowGap: 0.5 }}>
+            {lignes.map((i) => (
+              <Box key={i.cle} data-impact={i.cle} sx={{ minWidth: 0, ...(i.cle === 'ebe' ? { bgcolor: 'action.hover', borderRadius: 1.5, px: 1, mx: -1 } : {}) }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, minWidth: 0, minHeight: 24 }}>
+                  <Typography component="span" sx={{ fontSize: '0.8125rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>{COURTS[i.cle]}</Typography>
+                  {AIDES[i.cle] && <Aide sujet={AIDES[i.cle]!} compact />}
+                  {infos[i.cle]}
+                </Box>
+                <Typography component="span" sx={{ fontWeight: 900, fontSize: i.cle === 'ebe' ? '1.125rem' : '1rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: i.cle === 'pointBas' && i.valeur < 0 ? 'error.main' : 'text.primary' }}>{milliers(i.valeur)}</Typography>{' '}
+                <Typography component="span" sx={{ fontSize: '0.8125rem', fontWeight: 700, color: couleur(i), fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{ecartTexte(i)}</Typography>
+              </Box>
+            ))}
+          </Box>
+          {siege && <Box sx={{ flex: '0 0 300px' }}>{choix}</Box>}
+        </Box>
+        {(blocDernier || boutons) && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', '& > *': { flex: '1 1 320px' } }}>
+            {blocDernier}
+            {boutons}
+          </Box>
+        )}
+      </Card>
+    )
+  }
 
   if (cote) {
     return (

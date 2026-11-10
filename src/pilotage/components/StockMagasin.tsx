@@ -162,7 +162,7 @@ export function StockMagasin({ magasin, annee, peutSaisir }: { magasin: string; 
   const caseStock = (saisi: number | null, valeur: number | null, cle: number) => (
     <TableCell key={cle} align="right" data-source={saisi === null && valeur !== null ? 'estime' : undefined}
       sx={saisi === null && valeur !== null ? { fontStyle: 'italic', color: 'text.secondary', position: 'relative' } : undefined}>
-      {valeur === null ? '' : saisi === null ? <><Box component="span" sx={{ fontStyle: 'normal' }}>≈ </Box>{enChiffres(Math.round(valeur))}<Box component="span" sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}> estimé</Box></> : enChiffres(Math.round(valeur))}
+      {valeur === null ? '' : saisi === null ? <><Box component="span" sx={{ fontStyle: 'normal' }}>≈ </Box>{enChiffres(Math.round(valeur))}<Box component="span" sx={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)' }}> estimé</Box></> : enChiffres(Math.round(valeur))}
     </TableCell>
   )
   const d = s.dernier

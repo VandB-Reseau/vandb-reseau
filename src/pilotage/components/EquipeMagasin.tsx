@@ -381,7 +381,7 @@ export function EquipeMagasin({ magasin, equipe, annee, anneeBudget, hausse, cha
                     <TableCell align="right">Charges</TableCell>
                     <TableCell align="right">Coût {annee}</TableCell>
                     <TableCell align="right">Coût {anneeBudget}</TableCell>
-                    {peutSaisir && <TableCell align="right"><Box component="span" sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Actions</Box></TableCell>}
+                    {peutSaisir && <TableCell align="right"><Box component="span" sx={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Actions</Box></TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
