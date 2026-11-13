@@ -28,6 +28,9 @@ test('visite planifiée passée sans compte rendu : pas comptée, à confirmer d
   await page.goto('./#/')
   await page.reload()
   await deplierATraiter(page)
+  // Vague 8 : la liste courte de l'accueil se filtre ; la visite à confirmer est dans « Suivi »
+  const puceVisites = page.getByRole('region', { name: 'À traiter' }).getByRole('button', { name: /^Suivi · \d+$/ })
+  if (await puceVisites.count()) await puceVisites.click()
   const bloc = page.getByRole('region', { name: 'À traiter' })
   // Nantes Test reste « pas vu » : la visite prévue ne compte pas
   await expect(bloc.getByRole('button', { name: 'Visite de Nantes Test faite' })).toBeVisible()
@@ -49,6 +52,9 @@ test('reporter une visite planifiée passée : nouvelle date, toujours prévue',
   await page.goto('./#/')
   await page.reload()
   await deplierATraiter(page)
+  // Vague 8 : la liste courte de l'accueil se filtre ; la visite à confirmer est dans « Suivi »
+  const puceVisites = page.getByRole('region', { name: 'À traiter' }).getByRole('button', { name: /^Suivi · \d+$/ })
+  if (await puceVisites.count()) await puceVisites.click()
   await page.getByRole('button', { name: 'Reporter la visite de Nantes Test' }).click()
   const d = page.getByRole('dialog', { name: 'Visite de Nantes Test' })
   await d.getByLabel('Date').fill(jour(2))

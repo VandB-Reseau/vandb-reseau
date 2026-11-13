@@ -348,10 +348,11 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
         </AppBar>
       )}
 
-      {!surPC && !franchise && !saisie && !conversation && <BoutonCreer flottant />}
+      {/* Sur la fiche d'un magasin, son propre « + » suffit (99A : pas de bouton en double) */}
+      {!surPC && !franchise && !saisie && !conversation && !/^\/magasins\/[^/]+/.test(pathname) && <BoutonCreer flottant />}
       {surPC && <MenuLateral franchise={franchise} sansParametres={sansParametres} sansCompteur={sansCompteur} />}
 
-      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: 0 }, pb: surPC ? 4 : conversation ? 0 : franchise || saisie ? 'calc(96px + env(safe-area-inset-bottom))' : 'calc(160px + env(safe-area-inset-bottom))' }}>
+      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: 0 }, pb: surPC ? 4 : conversation ? 0 : 'calc(96px + env(safe-area-inset-bottom))' }}>
         {bandeau}
         <Box sx={{ maxWidth: 1360, mx: 'auto', px: { xs: 2, sm: 3, md: 4 }, pt: { xs: 1.5, md: 3 } }}>{children}</Box>
       </Box>

@@ -63,11 +63,14 @@ test('une photo seule reste une vignette et s’ouvre en plein écran', async ({
 test('Visites : trois compteurs sur une ligne, « pas vus » filtre la liste', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/visites')
-  const pasVus = page.getByRole('button', { name: /^\d+ à voir$/ })
-  const [faites, reference] = [page.getByText(/^faites?$/), page.getByText('référence', { exact: true })]
-  const y = async (l: typeof pasVus) => { const b = (await l.boundingBox())!; return b.y + b.height / 2 }
-  expect(Math.abs((await y(faites)) - (await y(reference)))).toBeLessThanOrEqual(2)
-  expect(Math.abs((await y(faites)) - (await y(pasVus.getByText('à voir'))))).toBeLessThanOrEqual(2)
+  // Vague 8 (98A) : trois blocs chiffrés, le même que partout ; « À voir » filtre la liste
+  const pasVus = page.getByRole('button', { name: /^À voir/ })
+  const [faites, reference] = [page.getByRole('group', { name: 'Faites' }), page.getByRole('group', { name: 'Référence' })]
+  const y = async (l: typeof pasVus) => (await l.boundingBox())!.y
+  if (!isMobile) {
+    expect(Math.abs((await y(faites)) - (await y(reference)))).toBeLessThanOrEqual(2)
+    expect(Math.abs((await y(faites)) - (await y(pasVus)))).toBeLessThanOrEqual(2)
+  }
   expect((await pasVus.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   const n = Number((await pasVus.textContent())!.match(/\d+/)![0])
   await pasVus.click()

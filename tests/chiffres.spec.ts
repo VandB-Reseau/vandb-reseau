@@ -27,12 +27,13 @@ test('l’accueil met en tête les magasins qui décrochent, avec l’appel en r
   await expect(lyon).toContainText(/CA −30,0 % vs septembre 2025/)
   await expect(lyon).toContainText(/appel en retard de \d+ j/)
   await expect(lyon).toContainText('Décroche')
+  // Les magasins qui décrochent passent en tête, avant ceux à surveiller
+  await expect(bloc.getByRole('link').nth(0)).toHaveAccessibleName(/^Lyon Test.*Décroche$/)
+  // Vague 8 (97A) : les tâches bloquées passent en rouge, avec les urgences ; Nantes se retrouve dans « Suivi »
+  await bloc.getByRole('button', { name: /^Suivi · \d+$/ }).click()
   const nantes = bloc.getByRole('link', { name: /^Nantes Test.*À surveiller$/ })
   await expect(nantes).toBeVisible()
   await expect(nantes).toContainText('À surveiller')
-  // Les magasins qui décrochent passent en tête, avant ceux à surveiller
-  await expect(bloc.getByRole('link').nth(0)).toHaveAccessibleName(/^Lyon Test.*Décroche$/)
-  await bloc.getByRole('button', { name: /^Suivi · \d+$/ }).click()
   await expect(bloc.getByRole('link').nth(0)).toHaveAccessibleName(/^Nantes Test.*À surveiller$/)
   await bloc.getByRole('button', { name: 'Tout' }).click()
   await expect(bloc.getByRole('link', { name: /^Annecy Test.*(Décroche|À surveiller)$/ })).toHaveCount(0)

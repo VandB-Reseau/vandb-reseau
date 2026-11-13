@@ -914,8 +914,9 @@ export async function deplierATraiter(page: Page) {
 const ACTIONS_CREER = { 'Visite': 'Saisir une visite', 'Tâche': 'Ajouter une tâche', 'Message': 'Écrire un message', 'Bonne pratique': 'Partager une bonne pratique', 'Événement': 'Ajouter un événement' }
 export async function creerDepuisMenu(page: Page, nom: keyof typeof ACTIONS_CREER) {
   if ((page.viewportSize()?.width ?? 1440) < 900) {
-    await page.locator('.MuiFab-root[aria-label="Ajouter"]').click()
-    await page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem', { name: nom, exact: true }).click()
+    // Vague 8 (110A) : le « + » flotte ; sur la fiche d'un magasin, c'est le « + » du magasin
+    await page.locator('.MuiFab-root[aria-label="Ajouter"]').or(page.getByRole('main').getByRole('button', { name: 'Ajouter', exact: true })).first().click()
+    await page.getByRole('menuitem', { name: nom === 'Visite' ? /^Visite/ : nom, exact: nom !== 'Visite' }).first().click()
     return
   }
   await page.keyboard.press('Control+k')

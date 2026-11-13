@@ -137,7 +137,7 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean, moi = '
   // Visites planifiées dont la date est passée sans compte rendu : faites ou à reporter
   for (const v of reseau.visites.filter((v) => v.prevue && v.date < j && v.id !== null && noms.has(v.magasin) && estVisite(v)).sort((x, y) => x.date.localeCompare(y.date))) {
     items.push({ cle: `vp-${v.id}`, titre: v.magasin, avatar: v.magasin, icone: <EventAvailableOutlined />, lien: '', visite: v,
-      detail: [`Prévue le ${dateCourte(v.date)}`, nomsVisiteurs(v)].filter(Boolean).join(' · '), pastille: { ton: 'gris', libelle: 'À venir' } })
+      detail: [`Prévue le ${dateCourte(v.date)}`, nomsVisiteurs(v)].filter(Boolean).join(' · '), pastille: { ton: 'orange', libelle: 'À relancer' } })
   }
   // Vague 7 (85A) : mes visites à préparer (3 jours avant), compte rendu à écrire, signature attendue
   if (moi) {

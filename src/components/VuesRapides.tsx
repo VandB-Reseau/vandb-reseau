@@ -23,7 +23,7 @@ export function VuesRapides<V extends string>({ valeur, options, onChange, label
         const nom = m ? m[1] : o.libelle
         const nombre = o.nombre ?? (m ? Number(m[2]) : undefined)
         return (
-          <ButtonBase key={o.v} onClick={() => onChange(o.v)} aria-pressed={actif} aria-label={o.nombre === undefined ? o.libelle : `${o.libelle} · ${o.nombre}`} sx={styleVue(actif)}>
+          <ButtonBase key={o.v} onClick={() => onChange(o.v)} aria-pressed={actif} aria-label={o.nombre !== undefined ? `${o.libelle} · ${o.nombre}` : m ? o.libelle : undefined} sx={styleVue(actif)}>
             <span>{o.icone}{nom}{nombre !== undefined && <Box component="span" sx={{ fontWeight: 500, color: 'text.secondary' }}>{nombre}</Box>}</span>
           </ButtonBase>
         )
