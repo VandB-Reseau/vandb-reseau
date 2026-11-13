@@ -1,3 +1,4 @@
+import { couleurEvenement, texteSur } from '../theme/theme'
 import { useEffect, useMemo, useRef, useState, type PointerEvent as EvenementPointeur, type ReactElement } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -60,7 +61,7 @@ const categories: { id: Categorie; libelle: string; couleur: string; icone: Reac
 
 const COULEURS_EV = ['#f8bb09', '#307672', '#ea6029', '#c24119', '#3a8f8d']
 // Couleur proposée pour chaque type, tant que la personne n'en a pas choisi une autre
-const COULEUR_TYPE: Record<TypeEvenement, string> = { event: '#f8bb09', reunion: '#307672', formation: '#c24119' }
+const COULEUR_TYPE: Record<TypeEvenement, string> = couleurEvenement
 type FormatContenu = 'aucun' | 'forme' | 'code'
 const formatsContenu: { v: FormatContenu; libelle: string }[] = [{ v: 'aucun', libelle: 'Aucun' }, { v: 'forme', libelle: 'Mise en forme' }, { v: 'code', libelle: 'Code HTML' }]
 const titreAjout: Record<TypeEvenement, string> = { event: 'Ajouter un événement', reunion: 'Ajouter une réunion', formation: 'Ajouter une formation' }
@@ -146,7 +147,7 @@ interface Ancre { jour: string; x: number; y: number }
 
 function Pastille({ e, onClick, glissement, poignee, actif }: { e: Element; onClick?: () => void; glissement?: (ev: EvenementPointeur, mode: Mode) => void; poignee?: boolean; actif?: boolean }) {
   const contenu = <Box component="span" sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.titre}</Box>
-  const sx = { position: 'relative' as const, display: 'block', width: '100%', textAlign: 'left' as const, fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.4, color: '#fff', bgcolor: e.couleur, borderRadius: 1, px: 0.75, pr: poignee ? 1.5 : 0.75, py: 0.25, mb: 0.5, border: 0, cursor: glissement ? 'grab' : 'pointer', textDecoration: 'none', fontFamily: 'inherit', userSelect: 'none' as const, touchAction: glissement ? 'none' : undefined, opacity: actif ? 0.7 : 1, outline: actif ? '2px solid' : 0, outlineColor: 'text.primary' }
+  const sx = { position: 'relative' as const, display: 'block', width: '100%', textAlign: 'left' as const, fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.4, color: texteSur(e.couleur), bgcolor: e.couleur, borderRadius: 1, px: 0.75, pr: poignee ? 1.5 : 0.75, py: 0.25, mb: 0.5, border: 0, cursor: glissement ? 'grab' : 'pointer', textDecoration: 'none', fontFamily: 'inherit', userSelect: 'none' as const, touchAction: glissement ? 'none' : undefined, opacity: actif ? 0.7 : 1, outline: actif ? '2px solid' : 0, outlineColor: 'text.primary' }
   const proprietes = { draggable: false, 'data-cle': e.cle, onPointerDown: glissement ? (ev: EvenementPointeur) => glissement(ev, 'deplacer') : undefined }
   const bord = poignee && glissement && (
     <Box component="span" aria-hidden onPointerDown={(ev: EvenementPointeur) => { ev.stopPropagation(); glissement(ev, 'etirer') }}

@@ -1,3 +1,4 @@
+import { rayon } from '../theme/theme'
 import { Entete, LigneSansResultat, useTableau, type ColonneTri } from '../components/TableauTri'
 import { Blason } from '../components/Blason'
 import type { ReactNode } from 'react'
@@ -8,7 +9,6 @@ import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import Checkbox from '@mui/material/Checkbox'
 import Dialog from '@mui/material/Dialog'
 import Drawer from '@mui/material/Drawer'
@@ -143,26 +143,11 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
   return (
     <>
       {barre}
-      <Box sx={{ display: 'grid', gap: { xs: 1, sm: 2 }, gridTemplateColumns: 'repeat(3, 1fr)', mb: 3 }}>
-        {tuiles.map((t) => !surPC ? (
-          <Card key={t.titre} sx={{ borderTop: `4px solid ${t.couleur}` }}>
-            <Box component={t.action ? 'button' : 'div'} type={t.action ? 'button' : undefined} onClick={t.action ? evaluer : undefined}
-              sx={{ all: 'unset', boxSizing: 'border-box', width: '100%', p: 1.5, minHeight: 48, display: 'block', textAlign: 'center', cursor: t.action ? 'pointer' : 'default' }}>
-              <Typography sx={{ fontSize: '1.75rem', fontWeight: 800, color: t.couleur, lineHeight: 1.1 }}>{t.n}</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>{t.titre}</Typography>
-            </Box>
-          </Card>
-        ) : (
-          <Card key={t.titre}>
-            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ width: 56, height: 56, borderRadius: 3, bgcolor: alpha(t.couleur, 0.12), color: t.couleur, display: 'grid', placeItems: 'center', fontSize: '1.75rem', fontWeight: 700, flexShrink: 0 }}>{t.n}</Box>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="h4" component="p">{t.titre}</Typography>
-                <Typography variant="body2" color="text.secondary">{t.action ? t.detail : `${pct(t.n)} % des magasins classés`}</Typography>
-              </Box>
-              {t.action && <Button onClick={evaluer} sx={{ minHeight: 48 }}>Évaluer</Button>}
-            </CardContent>
-          </Card>
+      {/* Vague 8 (98A) : le même bloc chiffré que l'accueil et Chiffres ; « Non classés » ouvre l'évaluation */}
+      <Box sx={{ display: 'grid', gap: { xs: 1, md: 1.5 }, gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', mb: 3 }}>
+        {tuiles.map((t) => (
+          <Indicateur key={t.titre} libelle={t.titre} valeur={String(t.n)} couleur={t.n ? t.couleur : undefined}
+            detail={t.action ? (surPC ? t.detail : 'Évaluer') : `${pct(t.n)} % des classés`} onClick={t.action ? evaluer : undefined} />
         ))}
       </Box>
       <Card sx={{ p: { xs: 1.5, md: 3 } }}>
@@ -181,7 +166,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
                 return (
                   <Box key={c.id} role="cell" aria-label={`${c.libelle} : ${liste.length} magasin${liste.length > 1 ? 's' : ''}`}>
                     <Box component="button" type="button" onClick={() => { setOuverte(c.id); setCherche('') }} disabled={!liste.length} aria-label={`Voir les ${liste.length} magasins : ${c.libelle}`}
-                      sx={{ all: 'unset', boxSizing: 'border-box', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: { xs: 0.5, md: 1 }, p: { xs: 1, md: 2 }, borderRadius: { xs: 3, md: 4 }, minHeight: { xs: 96, md: 168 }, cursor: liste.length ? 'pointer' : 'default',
+                      sx={{ all: 'unset', boxSizing: 'border-box', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: { xs: 0.5, md: 1 }, p: { xs: 1, md: 2 }, borderRadius: `${rayon.carte}px`, minHeight: { xs: 96, md: 168 }, cursor: liste.length ? 'pointer' : 'default',
                         bgcolor: liste.length ? alpha(c.couleur, 0.08 + intensite * 0.22) : 'action.hover', outline: liste.length ? `1px solid ${alpha(c.couleur, 0.45)}` : '1px solid transparent', color: liste.length ? undefined : 'text.secondary',
                         transition: 'transform .15s, box-shadow .15s', '&:hover:not(:disabled), &:focus-visible': { transform: 'translateY(-2px)', boxShadow: 4 } }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

@@ -27,6 +27,8 @@ export const rayon = { champ: 8, carte: 12, pilule: 999 } as const
 // Couleurs autorisées pour un repère choisi par quelqu'un (événement d'agenda, zone…) : la charte, rien d'autre
 export const couleursCharte = [brand.or, brand.jaune, brand.orange, brand.brique, brand.vert, brand.vertFonce, brand.anthracite, brand.noir] as const
 export const dansCharte = (c: string | null | undefined, defaut: string) => (c && (couleursCharte as readonly string[]).includes(c.toLowerCase()) ? c.toLowerCase() : defaut)
+// Couleur d'un événement d'agenda selon son type (vague 8 : plus de violet hors charte)
+export const couleurEvenement = { event: brand.or, reunion: brand.vertFonce, formation: brand.brique } as const
 // Texte lisible sur un aplat de la charte : noir sur les jaunes, blanc ailleurs
 export const texteSur = (fond: string) => ([brand.or, brand.jaune, brand.creme, brand.beige] as string[]).includes(fond.toLowerCase()) ? brand.noir : '#ffffff'
 
