@@ -96,7 +96,7 @@ test('la fiche du magasin tient en cinq onglets et deux niveaux ; le suivi, la s
   const parties = page.getByRole('tablist', { name: 'Parties des chiffres' })
   await expect(parties.getByRole('tab', { name: 'Vue d’ensemble' })).toHaveAttribute('aria-selected', 'true')
   // Vague 6 (76A) : cinq puces, la santé dans l'Analyse
-  await expect(parties.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', /^Atterrissage/, 'Analyse'])
+  await expect(parties.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', /^Atterrissage/, 'Analyse', 'Simulateurs'])
   await expect(page.getByRole('tablist', { name: 'Espaces du magasin' })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-refonte-chiffres.png` })

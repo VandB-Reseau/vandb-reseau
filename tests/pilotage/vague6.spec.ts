@@ -42,7 +42,7 @@ test('chiffres en cinq puces ; « Clôturer septembre » demande la cause de l�
   await page.goto(`./#/magasins/${encodeURIComponent(M)}`)
   await ouvrirOnglet(page, 'Chiffres')
   const pages = page.getByRole('navigation', { name: 'Pages du magasin' })
-  await expect(pages.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab')).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', /^Atterrissage/, 'Analyse'])
+  await expect(pages.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab')).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', /^Atterrissage/, 'Analyse', 'Simulateurs'])
   // Le stock est dans les comptes
   await pages.getByRole('tab', { name: 'Comptes et trésorerie' }).click()
   await expect(page.getByRole('heading', { name: 'Stock', level: 2 }).first()).toBeVisible()
