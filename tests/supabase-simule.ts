@@ -823,7 +823,7 @@ export async function seConnecter(page: Page, options: OptionsSimulation = {}) {
 // Un onglet regroupé (« Chiffres et santé ») s'ouvre aussi par son nom court (« Chiffres »)
 // Refonte (Joseph, 09/11/2026, 3A) : fiche du magasin en 5 onglets ; les anciens noms d'onglets des tests y mènent encore
 const ANCIENS_ONGLETS_FICHE: Record<string, [string, string?]> = {
-  'Fiche': ['Vue d’ensemble'], 'Chiffres et santé': ['Chiffres', 'Santé et leviers'], 'Bonnes pratiques': ['Ressources'],
+  'Fiche': ['Vue d’ensemble'], 'Chiffres et santé': ['Nine box'], 'Bonnes pratiques': ['Ressources'],
   // Vague 3 (23A) : l'activité est un seul fil, « À venir » en tête (tâches, campagnes) et filtres en puces
   'Tâches et campagnes': ['Activité', 'Tout'], 'Tâches': ['Activité', 'Tout'], 'Visites': ['Activité', 'Visites'], 'Journal': ['Activité', 'Journal'], 'Campagnes': ['Activité', 'Tout'],
 }

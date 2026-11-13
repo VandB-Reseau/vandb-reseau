@@ -123,12 +123,11 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const brute = (anciennesVues[demandee] ?? VUES.find((v) => v === demandee) ?? 'fiche') as VueFiche
   // Une partie du budget ouverte depuis Chiffres (ou l'inverse, anciens liens « vue=budget ») : l'onglet qui la porte
   const vue: VueFiche = (brute === 'budget' || brute === 'chiffres') && partie ? (PARTIES_BUDGET.includes(partie) ? 'budget' : 'chiffres')
-    : demandee === 'sante' ? 'chiffres' : brute
+    : brute
   useEffect(() => {
     // Adresse lue au moment même : le suivi a pu la réécrire juste avant (ancienne partie, « tresorerie » → « comptes »)
     const actuelle = () => new URLSearchParams(window.location.hash.split('?')[1] ?? '')
     if ((brute === 'budget' || brute === 'chiffres') && vue !== brute) setParams(() => { const n = actuelle(); n.set('vue', vue); return n }, { replace: true })
-    if (demandee === 'sante' && !partie) setParams(() => { const n = actuelle(); n.set('vue', 'chiffres'); n.set('partie', 'sante'); return n }, { replace: true })
   }, [brute, vue, demandee, partie, setParams])
   const versMessages = demandee === 'messages'
   useEffect(() => { if (versMessages) naviguer(lienFil({ genre: 'magasin', magasin: m.nom, equipe: false }), { replace: true }) }, [versMessages, naviguer, m.nom])
@@ -249,6 +248,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           <Box id="partie-sante" sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
             <GrilleMagasin reseau={reseau} m={m} />
             <SectionSante reseau={reseau} m={m} modifier={() => naviguer(`/plus/sante?vue=evaluer&magasin=${encodeURIComponent(m.nom)}`)} />
+            {/* Les déploiements des thématiques suivent la santé du magasin */}
+            <Box sx={{ gridColumn: { lg: '1 / -1' } }}><SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/campagnes?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} /></Box>
           </Box>
         )}
 
@@ -258,9 +259,6 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
             <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
             <SectionLeviers reseau={reseau} m={m} />
-            <Box id="partie-deploiements" sx={{ scrollMarginTop: 160 }}>
-              <SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/campagnes?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} />
-            </Box>
           </Box>
         } />}
 

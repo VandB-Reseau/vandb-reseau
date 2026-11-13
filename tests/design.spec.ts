@@ -26,11 +26,12 @@ test('le bouton Créer ouvre sous lui un menu : visite, tâche, message, bonne p
   await creer.click()
   const d = page.getByRole('menu', { name: 'Ajouter', exact: true })
   await expect(d.getByRole('menuitem')).toHaveText(['Visite', 'Appel', 'Note', 'Tâche', 'Photo', 'Message', 'Événement'])
-  // Menu déroulant collé sous le bouton, pas de fenêtre au centre (Joseph, 22/10/2026)
+  // Menu déroulant collé au bouton, pas de fenêtre au centre (Joseph, 22/10/2026) ; vague 8 (110A) : le « + » flotte
+  // en bas, le menu s'ouvre au-dessus de lui
   await expect(page.getByRole('dialog')).toHaveCount(0)
   const menu = (await d.boundingBox())!
-  expect(menu.y).toBeGreaterThanOrEqual(bouton.y + bouton.height - 1)
-  expect(menu.y).toBeLessThanOrEqual(bouton.y + bouton.height + 16)
+  expect(menu.y + menu.height).toBeLessThanOrEqual(bouton.y + 8)
+  expect(menu.y + menu.height).toBeGreaterThanOrEqual(bouton.y - 32)
   if (isMobile) expect(Math.abs(menu.x + menu.width - (bouton.x + bouton.width))).toBeLessThanOrEqual(20)
   else expect(Math.abs(menu.x - bouton.x)).toBeLessThanOrEqual(20)
   for (const item of await d.getByRole('menuitem').all()) expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(48)

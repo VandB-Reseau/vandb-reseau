@@ -89,7 +89,7 @@ test('la fiche du magasin tient en cinq onglets et deux niveaux ; le suivi, la s
   // Activité : un seul fil, filtré par des puces (vague 3, 23A)
   await page.goto(fiche('?vue=visites'))
   const filtres = page.getByRole('group', { name: 'Filtrer l’activité' })
-  await expect(filtres.getByRole('button')).toHaveText(['Tout', 'Visites', 'Tâches', 'Chiffres', 'Journal'])
+  await expect(filtres.getByRole('button')).toHaveText(['Tout', 'Visites', 'Tâches', 'Bonnes pratiques', 'Chiffres', 'Journal'])
   await expect(filtres.getByRole('button', { name: 'Visites' })).toHaveAttribute('aria-pressed', 'true')
   // Chiffres : une seule sous-navigation
   await page.goto(fiche('?vue=chiffres'))
@@ -100,10 +100,11 @@ test('la fiche du magasin tient en cinq onglets et deux niveaux ; le suivi, la s
   await expect(page.getByRole('tablist', { name: 'Espaces du magasin' })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-refonte-chiffres.png` })
-  // Ancien lien vers la santé : Chiffres, puce Analyse
+  // Ancien lien vers la santé : l'onglet Nine box (Joseph, 13/11/2026)
   await page.goto(fiche('?vue=sante'))
-  await expect(page.getByRole('tablist', { name: 'Parties des chiffres' }).getByRole('tab', { name: 'Analyse' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('heading', { name: 'Santé', exact: true })).toBeVisible()
+  // Saisies : depuis l'onglet Chiffres
+  await page.goto(fiche('?vue=chiffres'))
   // Saisies : la liste de la clôture du mois, pas un troisième rang d'onglets (vague 2, 12A)
   await page.getByRole('navigation', { name: 'Pages du magasin' }).getByRole('button', { name: /^Clôturer / }).click()
   await expect(page.getByRole('region', { name: 'Clôture du mois' }).getByRole('list').getByRole('button')).toHaveText([/^Réel du mois/, /^Stock de fin de mois/, /^Frais/])
@@ -146,6 +147,7 @@ test('PC : les magasins en tableau, une ligne ouvre l’aperçu ; téléphone : 
 
 test('accueil : période en tête, actualités visibles dès l’arrivée sur PC ; style de la charte gardé sur l’accueil seulement', async ({ page, isMobile }, info) => {
   await connecter(page)
+  if (isMobile) await page.getByRole('button', { name: 'Mes indicateurs' }).click()
   const ca = page.getByRole('link', { name: /^CA de / })
   await expect(ca).toContainText('k€')
   await expect(ca).toContainText('vs N-1')

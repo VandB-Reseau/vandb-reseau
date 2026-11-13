@@ -51,7 +51,7 @@ test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur PC,
   }
   await onglets.getByRole('tab', { name: 'Autres rubriques' }).click()
   const panneau = page.getByRole('dialog', { name: 'Rubriques de Brest Test' })
-  await expect(panneau.getByRole('button')).toHaveText(['Budget', 'Ressources'])
+  await expect(panneau.getByRole('button')).toHaveText(['Nine box', 'Budget', 'Ressources'])
   for (const b of await panneau.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-onglets-plus.png` })
