@@ -1,3 +1,4 @@
+import { VuesRapides } from '../components/VuesRapides'
 // Onglet Messages (Joseph, 21/10/2026, séparé des Tâches le 22/10) : groupes des magasins, groupes libres,
 // échanges à deux. Téléphone : la liste, puis la conversation en plein écran ; PC : la liste à gauche, la conversation à droite.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -7,7 +8,6 @@ import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
-import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -256,12 +256,7 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
         </Box>
         {ecrire && <BoutonOutil libelle="Nouvelle conversation" icone={<EditOutlined />} onClick={(e) => (peutCreerGroupe || plusieurs ? setMenu(e.currentTarget) : setNouveau('personne'))} plein />}
       </Box>
-      <Box role="group" aria-label="Vues des conversations" sx={{ px: { xs: 0, md: 2 }, pb: 1, display: 'flex', gap: 1, overflowX: 'auto', scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
-        {vues.map((x) => (
-          <Chip key={x.v} label={x.libelle} onClick={() => setVue(x.v)} aria-pressed={vue === x.v} color={vue === x.v ? 'primary' : 'default'} variant={vue === x.v ? 'filled' : 'outlined'}
-            sx={{ flexShrink: 0, height: { xs: 48, md: 36 }, borderRadius: 2, fontSize: '0.875rem' }} />
-        ))}
-      </Box>
+      <Box sx={{ px: { xs: 0, md: 2 } }}><VuesRapides label="Vues des conversations" valeur={vue} onChange={setVue} options={vues} sx={{ mb: 0.5 }} /></Box>
       <Menu anchorEl={menu} open={!!menu} onClose={() => setMenu(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <MenuItem onClick={() => { setMenu(null); setNouveau('personne') }} sx={{ minHeight: 48 }}><ListItemIcon><PersonOutlined /></ListItemIcon>Message à une personne</MenuItem>
         {peutCreerGroupe && <MenuItem onClick={() => { setMenu(null); setNouveau('groupe') }} sx={{ minHeight: 48 }}><ListItemIcon><GroupsOutlined /></ListItemIcon>Nouveau groupe</MenuItem>}

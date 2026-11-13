@@ -1,3 +1,5 @@
+import ButtonBase from '@mui/material/ButtonBase'
+import { styleVue } from '../components/VuesRapides'
 // Tâches : actions attribuées à la personne connectée (son nom en porteur), à faire puis faites,
 // avec qui les a faites et quand. Le Directeur peut ouvrir la liste d'un RR ou d'un Coach.
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
@@ -175,9 +177,9 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajoutVide }: { r
   )
   const filtreMagasin = noms.length > 1 && (noms.length <= 6
     ? (
-      <Box role="group" aria-label="Magasins affichés" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        <Chip label="Tous" color={choix ? 'default' : 'primary'} variant={choix ? 'outlined' : 'filled'} onClick={() => setMagasin(null)} aria-pressed={!choix} sx={{ minHeight: 48 }} />
-        {noms.map((n) => <Chip key={n} label={n} color={choix === n ? 'primary' : 'default'} variant={choix === n ? 'filled' : 'outlined'} onClick={() => setMagasin(n)} aria-pressed={choix === n} sx={{ minHeight: 48 }} />)}
+      <Box role="group" aria-label="Magasins affichés" sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+        <ButtonBase onClick={() => setMagasin(null)} aria-pressed={!choix} sx={styleVue(!choix)}><span>Tous</span></ButtonBase>
+        {noms.map((n) => <ButtonBase key={n} onClick={() => setMagasin(n)} aria-pressed={choix === n} sx={styleVue(choix === n)}><span>{n}</span></ButtonBase>)}
       </Box>
     )
     : (

@@ -1,3 +1,4 @@
+import { VuesRapides } from './VuesRapides'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Button from '@mui/material/Button'
 import ToggleButton from '@mui/material/ToggleButton'
@@ -129,21 +130,9 @@ export function TitreSection({ children, nombre, action }: { children: ReactNode
   )
 }
 
-// Puces de filtre (une seule active), zone tactile de 48 px
+// Puces de filtre (une seule active), zone tactile de 48 px. Vague 8 (96A) : même rendu que les vues rapides des listes
 export function Puces<V extends string>({ valeur, options, onChange, label }: { valeur: V; options: { v: V; libelle: string }[]; onChange: (v: V) => void; label: string }) {
-  return (
-    <Box role="group" aria-label={label} sx={{ display: 'flex', gap: 1, overflowX: 'auto', mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, mb: 1, scrollbarWidth: 'none' }}>
-      {options.map((o) => {
-        const actif = o.v === valeur
-        return (
-          <ButtonBase key={o.v} onClick={() => onChange(o.v)} aria-pressed={actif}
-            sx={{ flexShrink: 0, minHeight: 48, px: 0.25, fontFamily: 'inherit', '& > span': { px: 1.5, height: 36, display: 'flex', alignItems: 'center', borderRadius: 2, border: '1px solid', fontSize: '0.875rem', fontWeight: actif ? 700 : 500, borderColor: actif ? 'text.primary' : 'divider', bgcolor: actif ? 'action.selected' : 'background.paper', color: 'text.primary' } }}>
-            <span>{o.libelle}</span>
-          </ButtonBase>
-        )
-      })}
-    </Box>
-  )
+  return <VuesRapides valeur={valeur} options={options} onChange={onChange} label={label} />
 }
 
 // Mini-courbe (12 derniers mois par exemple), dessinée en SVG, sans axe
