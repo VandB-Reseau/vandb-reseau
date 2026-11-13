@@ -159,8 +159,10 @@ export function suiviAlerte(reseau: Reseau, nom: string, a: Analyse | null): Sui
 }
 
 export const formatPourcent = (n: number | null) => (n === null ? '—' : `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('fr-FR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} %`)
-export const formatEuros = (n: number | null) => (n === null ? '—' : `${Math.round(n).toLocaleString('fr-FR')} €`)
-export const formatValeur = (id: ChampChiffre, n: number | null) => (n === null ? '—' : ['tickets', 'fluxCave', 'fluxBar'].includes(id) ? Math.round(n).toLocaleString('fr-FR') : id === 'marge' ? `${n.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %` : ['panier', 'pmCave', 'pmBar'].includes(id) ? `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : formatEuros(n))
+// Vague 8 (103A) : signe moins typographique partout (« −13 k€ »)
+const moins = (t: string) => t.replace(/^-/, '−')
+export const formatEuros = (n: number | null) => (n === null ? '—' : moins(`${Math.round(n).toLocaleString('fr-FR')} €`))
+export const formatValeur = (id: ChampChiffre, n: number | null) => (n === null ? '—' : moins(['tickets', 'fluxCave', 'fluxBar'].includes(id) ? Math.round(n).toLocaleString('fr-FR') : id === 'marge' ? `${n.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %` : ['panier', 'pmCave', 'pmBar'].includes(id) ? `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : formatEuros(n)))
 
 // Nombre saisi ou importé : « 12 345,67 € » → 12345.67
 export function lireNombre(v: unknown): number | null {
@@ -189,9 +191,9 @@ export const libelleAudit = (a: ResultatAudit) => [a.conforme === null ? '' : a.
 export const formatKEuros = (n: number | null) => {
   if (n === null) return '—'
   const a = Math.abs(n)
-  if (a >= 1_000_000) return `${(n / 1_000_000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M€`
+  if (a >= 1_000_000) return moins(`${(n / 1_000_000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M€`)
   // Refonte (Joseph, 09/11/2026, 6A) : à partir de 10 000 €, en k€ sans décimale ; en dessous, à l'euro
-  if (a >= 10_000) return `${Math.round(n / 1000).toLocaleString('fr-FR')} k€`
+  if (a >= 10_000) return moins(`${Math.round(n / 1000).toLocaleString('fr-FR')} k€`)
   return formatEuros(n)
 }
 
