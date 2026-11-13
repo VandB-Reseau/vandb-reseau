@@ -1,3 +1,4 @@
+import { horsLigne } from '../lib/horsLigne'
 import { useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -54,7 +55,7 @@ export function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer
   const [confirmer, setConfirmer] = useState(false)
   const agir = async (action: () => Promise<string>) => {
     setEnvoi(true); setErreur(false)
-    try { const message = await action(); if (!sansRechargement) await recharger(); onFermer(message) } catch (e) { setErreur(messageErreur(e)) } finally { setEnvoi(false) }
+    try { const message = await action(); if (!sansRechargement && !horsLigne()) await recharger(); onFermer(message) } catch (e) { setErreur(messageErreur(e)) } finally { setEnvoi(false) }
   }
   return (
     <Dialog open={ouvert} onClose={() => onFermer()} fullScreen={pleinEcran || pleinePage} fullWidth maxWidth={large ? "md" : "sm"} aria-labelledby="titre-edition"

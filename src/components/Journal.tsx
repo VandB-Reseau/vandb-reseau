@@ -1,3 +1,4 @@
+import { creerOuGarder } from '../lib/horsLigne'
 import Autocomplete from '@mui/material/Autocomplete'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
@@ -53,7 +54,10 @@ export function DialogNote({ magasin: initial, note, magasins, onFermer }: { mag
   return (
     <Fenetre titre={note.id ? 'Modifier la note' : 'Nouvelle note'} ouvert onFermer={onFermer} valide={!!texte.trim() && !!date && !!magasin}
       enregistrer={async () => {
-        await enregistrerNoteMagasin(magasin, { ...note, id: note.id || `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, date, texte: texte.trim() })
+        const n = { ...note, id: note.id || `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, date, texte: texte.trim() }
+        // Choix 114 : une nouvelle note se garde sur l'appareil sans réseau
+        if (!note.id) return (await creerOuGarder('note', `Note · ${magasin}`, { magasin, note: n }, () => enregistrerNoteMagasin(magasin, n))) ? 'Note gardée sur l’appareil : elle partira seule au retour du réseau.' : 'Note enregistrée.'
+        await enregistrerNoteMagasin(magasin, n)
         return 'Note enregistrée.'
       }}
       supprimer={note.id ? async () => { await supprimerNoteMagasin(magasin, note.id); return 'Note supprimée.' } : undefined}

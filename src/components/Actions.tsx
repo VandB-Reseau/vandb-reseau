@@ -1,3 +1,4 @@
+import { creerOuGarder } from '../lib/horsLigne'
 import { useState } from 'react'
 import { Glisser } from './Social'
 import { Link as RouterLink } from 'react-router-dom'
@@ -256,9 +257,18 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
           idPriorite = p.id
         }
         const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), ...(a?.fil ?? (depuis?.equipe ? 'equipe' : undefined) ? { fil: 'equipe' as const } : {}), ...(a?.message ?? depuis?.message ? { message: a?.message ?? depuis?.message } : {}), ...(a?.budget ? { budget: a.budget } : {}), ...(statut ? { statut } : {}), ...(statut === 'bloquee' && raison.trim() ? { raison: raison.trim().slice(0, 300) } : {}), ...(idPriorite ? { priorite: idPriorite } : {}) }
-        const id = await enregistrerActionLibre(magasin, l)
-        if (!a) notifierTache(magasin, id, clesDesPorteurs(reseau, magasin, porteursDe(l)).filter((c) => !mesCles(profil).includes(c)))
-        return a ? 'Tâche mise à jour.' : 'Tâche ajoutée.'
+        if (!a) {
+          // Choix 114 : une nouvelle tâche se garde sur l'appareil sans réseau ; son identifiant est posé tout de suite
+          const nouvelle = { ...l, id: `l_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}` }
+          const cles = clesDesPorteurs(reseau, magasin, porteursDe(l)).filter((c) => !mesCles(profil).includes(c))
+          const gardee = await creerOuGarder('tache', `Tâche · ${magasin}`, { magasin, tache: nouvelle, cles }, async () => {
+            const id = await enregistrerActionLibre(magasin, nouvelle)
+            notifierTache(magasin, id, cles)
+          })
+          return gardee ? 'Tâche gardée sur l’appareil : elle partira seule au retour du réseau.' : 'Tâche ajoutée.'
+        }
+        await enregistrerActionLibre(magasin, l)
+        return 'Tâche mise à jour.'
       }}
       supprimer={a ? async () => { await supprimerActionLibre(magasin, a.id); return 'Tâche supprimée.' } : undefined}
       libelleSuppression={a ? `Supprimer la tâche « ${a.action} » ?` : undefined}>
