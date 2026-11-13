@@ -103,3 +103,30 @@ test('ma semaine : magasins par marge en jeu, actions en retard, par Coach', asy
   await lignes.nth(1).getByRole('link', { name: MAGASINS[0] }).click()
   await expect(page).toHaveURL(/\/magasins\/.+[?&]partie=synthese$/)
 })
+
+test('revue express (choix 117) : un magasin par écran dans l’ordre de Ma semaine, trois décisions en un geste', async ({ page, isMobile }, info) => {
+  const taches: string[] = []
+  page.on('request', (r) => { if (r.url().includes('suivi_magasins') && ['POST', 'PATCH'].includes(r.method())) taches.push(r.postData() ?? '') })
+  await seConnecter(page, { reel, coachs, actions: [action] })
+  await allerVers(page, 'Suivi ')
+  await page.getByRole('region', { name: 'Ma semaine' }).getByRole('button', { name: 'Revue express' }).click()
+  const revue = page.getByRole('dialog', { name: 'Revue express' })
+  await expect(revue.getByRole('heading', { name: MAGASINS[0] })).toBeVisible()
+  await expect(revue).toContainText('Coach : Coach Nord')
+  await expect(revue).toContainText(/Premier sujet : CA [-−][\d,]+\s%\sface au budget/)
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-revue-express.png` })
+  // Avancer la visite : une tâche pour le Coach du magasin
+  await revue.getByRole('button', { name: 'Avancer la visite' }).click()
+  await expect(revue.getByRole('heading', { name: MAGASINS[1] })).toBeVisible()
+  await expect.poll(() => taches.some((t) => t.includes(`Avancer la visite de ${MAGASINS[0]}`))).toBe(true)
+  await revue.getByRole('button', { name: 'Rien à signaler' }).click()
+  // Le reste passé avec Suivant, jusqu'au bilan
+  const bilan = revue.getByRole('region', { name: 'Bilan de la revue' })
+  while (!(await bilan.isVisible())) await revue.getByRole('button', { name: 'Suivant' }).click()
+  await expect(bilan).toContainText('1 rien à signaler · 1 visite à avancer · 0 tâche au Coach')
+  await expect(bilan.getByRole('list', { name: 'Décisions' })).toContainText(`${MAGASINS[0]} : Visite à avancer`)
+  await bilan.getByRole('button', { name: 'Terminer' }).click()
+  await expect(revue).toHaveCount(0)
+})

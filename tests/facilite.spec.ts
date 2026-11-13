@@ -32,7 +32,7 @@ test('116 : montrer au franchisé, les chiffres du magasin en grand et rien d’
   // La fiche reste derrière la présentation : on contrôle les textes, et la seule zone tactile de la présentation
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect((await presentation.getByRole('button', { name: 'Fermer' }).boundingBox())!.height).toBeGreaterThanOrEqual(48)
-  await page.screenshot({ path: `captures/${info.project.name}-montrer-au-franchise.png`, fullPage: true })
+  await page.screenshot({ path: `captures/${info.project.name}-montrer-au-franchise.png` })
   await presentation.getByRole('button', { name: 'Fermer' }).click()
   await expect(presentation).toHaveCount(0)
 })

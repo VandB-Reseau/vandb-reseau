@@ -25,6 +25,7 @@ import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined'
 import PrintOutlined from '@mui/icons-material/PrintOutlined'
 import FilterListOutlined from '@mui/icons-material/FilterListOutlined'
 import { MaSemaine } from '../components/MaSemaine'
+import { useAuth } from '../auth/AuthContext'
 import { EtatVide } from '../components/EtatVide'
 import { Indicateur } from '../components/Indicateur'
 import { Panne } from '../components/Panne'
@@ -115,6 +116,7 @@ export async function chargerSuiviReseau(annee: number) {
 // Vue réseau : chaque magasin à la fin de son dernier mois réalisé, face à l'an dernier, à son budget et au total du réseau
 // integre : vue « Écarts au budget » de la page Performance (refonte vague 2, 15A), titre de niveau 2
 export function Reseau({ integre }: { integre?: boolean } = {}) {
+  const { profil } = useAuth()
   const annee = anneeSuivi()
   const { donnees, erreur, chargement, recharger } = useChargement(() => chargerSuiviReseau(annee), [annee])
 
@@ -268,7 +270,7 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
       <Box className="pas-a-l-impression">
         <MaSemaine
           lignes={maSemaine(visibles.filter((m) => m.moisRealises > 0 || donnees.alertes.some((a) => a.magasin === m.magasin)), donnees.alertes, donnees.actions, aujourdhui)}
-          avecCoachs={donnees.coachs.length > 0} etat={etat}
+          avecCoachs={donnees.coachs.length > 0} etat={etat} revue={(profil?.role === 'rr' || profil?.role === 'directeur') && !profil.apercu}
         />
       </Box>
 

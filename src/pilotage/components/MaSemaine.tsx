@@ -20,6 +20,8 @@ import { texteSujet } from './FicheVisite'
 import type { Alerte } from '../moteur/alertes'
 import { lienMagasin, milliers } from '../lib/format'
 import type { LigneSemaine } from '../moteur/semaine'
+import SlideshowOutlined from '@mui/icons-material/SlideshowOutlined'
+import { RevueExpress } from './RevueExpress'
 
 const PREMIERS = 10
 const colonnes: ColonneTri<LigneSemaine<Alerte>>[] = [
@@ -38,8 +40,9 @@ const rouge = (v: number) => (v > 0 ? { color: 'error.main', fontWeight: 700 } :
 // Lot 41 (proposition 6) : en tête, les magasins à appeler (alerte, action en retard ou au moins 1 000 € de marge en jeu),
 // le plus d'euros en jeu d'abord ; les magasins dans les clous sont repliés
 // Allègement (03/11/2026) : le tableau « Par Coach » est passé dans le menu Coach de la page Réseau
-export function MaSemaine({ lignes, avecCoachs, etat }: { lignes: LigneSemaine<Alerte>[]; avecCoachs: boolean; etat?: object }) {
+export function MaSemaine({ lignes, avecCoachs, etat, revue }: { lignes: LigneSemaine<Alerte>[]; avecCoachs: boolean; etat?: object; revue?: boolean }) {
   const [tout, setTout] = useState(false)
+  const [revueOuverte, setRevueOuverte] = useState(false)
   const [clous, setClous] = useState(false)
   const aAppeler = lignes.filter((l) => l.aAppeler)
   const dansLesClous = lignes.length - aAppeler.length
@@ -51,9 +54,12 @@ export function MaSemaine({ lignes, avecCoachs, etat }: { lignes: LigneSemaine<A
   const tableau = { ...styleListe, '& td, & th': { ...styleListe['& td, & th'], whiteSpace: 'nowrap' }, '& td:first-of-type, & th:first-of-type': { pl: 2.5 } }
   return (
     <Card component="section" aria-label="Ma semaine" sx={{ mb: 4 }}>
-      <Box sx={{ px: 2.5, pt: 2, pb: 1 }}>
-        <Typography variant="h2">Ma semaine : {aAppeler.length ? `${aAppeler.length === 1 ? '1 magasin' : `${aAppeler.length} magasins`} à appeler` : 'rien d’urgent'} <Aide sujet="semaine" /></Typography>
+      <Box sx={{ px: 2.5, pt: 2, pb: 1, display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+        <Typography variant="h2" sx={{ flex: 1, minWidth: 220 }}>Ma semaine : {aAppeler.length ? `${aAppeler.length === 1 ? '1 magasin' : `${aAppeler.length} magasins`} à appeler` : 'rien d’urgent'} <Aide sujet="semaine" /></Typography>
+        {/* Choix 117 : le point du mois du RR, un magasin par écran, dans le même ordre */}
+        {revue && <Button variant="outlined" startIcon={<SlideshowOutlined />} onClick={() => setRevueOuverte(true)} sx={{ minHeight: 48 }}>Revue express</Button>}
       </Box>
+      {revueOuverte && <RevueExpress lignes={lignes} fermer={() => setRevueOuverte(false)} />}
       {t.total === 0 ? (
         <Typography color="text.secondary" sx={{ px: 2.5, pb: 1 }}>Tous les magasins de la sélection sont dans les clous : pas d’alerte, pas d’action en retard, moins de 1 000 € de marge en jeu.</Typography>
       ) : <TableContainer>

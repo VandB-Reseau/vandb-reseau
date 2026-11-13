@@ -23,7 +23,7 @@ export function MontrerAuFranchise({ reseau, magasin, fermer }: { reseau: Reseau
   const liste = chiffresDuMagasin(reseau, magasin)
   const ecartCouleur = a?.ecart == null ? 'text.primary' : a.ecart < 0 ? 'error.main' : 'success.dark'
   return (
-    <Dialog open fullScreen onClose={fermer} aria-labelledby="titre-montrer">
+    <Dialog open fullScreen onClose={fermer} aria-labelledby="titre-montrer" slotProps={{ paper: { sx: { bgcolor: 'background.default' } } }}>
       <Box sx={{ maxWidth: 1200, width: '100%', mx: 'auto', px: { xs: 2, md: 5 }, py: { xs: 2, md: 4 }, display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
           <Typography component="h2" id="titre-montrer" sx={{ flex: 1, minWidth: 200, fontSize: { xs: '1.75rem', md: '2.5rem' }, fontWeight: 700, lineHeight: 1.15 }}>{magasin}</Typography>
