@@ -38,6 +38,7 @@ import { ageDepuis, estFrance, fichePersonne, franchises, libelleDepartement, li
 import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienRR, telLien } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
 import { cartouche } from '../components/Social'
+import { FilAriane } from '../components/FilAriane'
 
 // Bloc « Fiche personnelle » commun aux quatre rôles
 export function SectionFichePersonnelle({ reseau, r, action }: { reseau: Reseau; r: RefPersonne; action?: ReactNode }) {
@@ -113,7 +114,7 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
   const p = useMemo(() => portefeuilleDe(reseau, magasins.filter((m) => m.statut !== 'avenir')), [reseau, magasins])
   return (
     <>
-      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Équipe</Button>
+      <FilAriane pcSeulement etapes={[{ libelle: 'Équipe', lien: '/equipe' }]} ici={rr.nom} />
       <ProfilPersonne retour={{ libelle: 'Équipe', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe')) }} nom={rr.nom} lignes={[role]}
         pastille={p.decroche ? { ton: 'rouge', libelle: `${p.decroche} magasin${p.decroche > 1 ? 's' : ''} en Décroche` } : null}
         compteurs={[

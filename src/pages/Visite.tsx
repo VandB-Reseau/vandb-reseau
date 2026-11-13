@@ -8,7 +8,6 @@ import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Snackbar from '@mui/material/Snackbar'
 import Typography from '@mui/material/Typography'
-import ArrowBack from '@mui/icons-material/ArrowBack'
 import CheckOutlined from '@mui/icons-material/CheckOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
@@ -35,6 +34,7 @@ import { PARTIES } from '../data/compteRendu'
 import { dateLongue, lienFiche } from '../lib/format'
 import { useConversationLaterale } from '../components/ConversationLaterale'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
+import { FilAriane } from '../components/FilAriane'
 
 // La visite ouverte : celle demandée, sinon la prochaine prévue, sinon la dernière faite
 function visiteChoisie(reseau: Reseau, nom: string, id: string | null): Visite | null {
@@ -59,7 +59,6 @@ export function PageVisite({ etapeParDefaut }: { etapeParDefaut?: IdEtapeVisite 
 }
 
 function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; etapeParDefaut?: IdEtapeVisite }) {
-  const naviguer = useNavigate()
   const [params, setParams] = useSearchParams()
   const [message, setMessage] = useState('')
   const conversation = useConversationLaterale(reseau, m.nom)
@@ -140,7 +139,7 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
   return (
     <>
       <Box className="sans-impression">
-        <Button startIcon={<ArrowBack />} onClick={() => naviguer(lienFiche(m.nom))} sx={{ mb: 1, ml: -1, minHeight: 48 }}>{m.nom}</Button>
+        <FilAriane etapes={[{ libelle: 'Magasins', lien: '/magasins' }, { libelle: m.nom, lien: lienFiche(m.nom) }]} ici="Visite" />
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="h2" component="h1" sx={{ mb: 0.5, flex: 1, minWidth: 0 }}>{`Visite de ${m.nom}`}</Typography>
           <Button startIcon={<ChatBubbleOutlineOutlined />} onClick={conversation.ouvrir} sx={{ minHeight: 48 }}>Conversation</Button>

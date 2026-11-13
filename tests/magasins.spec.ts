@@ -61,7 +61,8 @@ test('la fiche magasin regroupe équipe, coordonnées et historique', async ({ p
   // Le journal a son onglet
   await ouvrirOnglet(page, 'Journal')
   await expect(page.getByRole('region', { name: 'Fil d’activité' }).getByText('Réaffectation').first()).toBeVisible()
-  await page.getByRole('button', { name: 'Magasins' }).first().click()
+  // Vague 8 (105A) : sur PC, le fil d'Ariane ramène aux Magasins ; sur téléphone, la flèche de retour
+  await page.getByRole('navigation', { name: 'Fil d’Ariane' }).getByRole('link', { name: 'Magasins' }).or(page.getByRole('button', { name: 'Magasins' })).first().click()
   await expect(page.getByRole('heading', { level: 1, name: 'Magasins' })).toBeVisible()
 })
 
