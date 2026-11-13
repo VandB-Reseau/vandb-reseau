@@ -22,6 +22,7 @@ import MailOutlined from '@mui/icons-material/MailOutlined'
 import type { Magasin, Reseau } from '../data/modele'
 import { dateCourte, lienFranchise, telLien } from '../lib/format'
 import { cartouche } from './Social'
+import { ChampDate } from './ChampDate'
 
 const periode = (m: Mandat) => (m.debut && m.fin ? `du ${dateCourte(m.debut)} au ${dateCourte(m.fin)}` : m.debut ? `depuis le ${dateCourte(m.debut)}` : `jusqu’au ${dateCourte(m.fin)}`)
 
@@ -119,8 +120,8 @@ function DialogAssocie({ reseau, m, associe, onFermer }: { reseau: Reseau; m: Ma
           <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>Mandats</Typography>
           {mandats.map((x, i) => (
             <Box key={i} sx={{ display: 'grid', gap: 1, mb: 1.5, alignItems: 'center', gridTemplateColumns: '1fr 1fr 48px' }}>
-              <TextField type="date" label="Début du mandat" value={x.debut} onChange={(e) => changerMandat(i, 'debut', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-              <TextField type="date" label="Fin du mandat" value={x.fin} onChange={(e) => changerMandat(i, 'fin', e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
+              <ChampDate label="Début du mandat" value={x.debut} onChange={(e) => changerMandat(i, 'debut', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+              <ChampDate label="Fin du mandat" value={x.fin} onChange={(e) => changerMandat(i, 'fin', e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
                 error={!!x.debut && !!x.fin && x.fin < x.debut} />
               <IconButton aria-label={`Retirer le mandat ${i + 1}`} onClick={() => setMandats((l) => l.filter((_y, j) => j !== i))}><CloseOutlined /></IconButton>
             </Box>
@@ -132,9 +133,9 @@ function DialogAssocie({ reseau, m, associe, onFermer }: { reseau: Reseau; m: Ma
           })}>{mandats.length ? 'Ajouter une reconduction' : 'Ajouter un mandat'}</Button>
         </Box>
       ) : (
-        <TextField type="date" label="Associé depuis le" value={entree} onChange={(e) => setEntree(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        <ChampDate label="Associé depuis le" value={entree} onChange={(e) => setEntree(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       )}
-      <TextField type="date" label="Date de sortie" value={sortie} onChange={(e) => setSortie(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+      <ChampDate label="Date de sortie" value={sortie} onChange={(e) => setSortie(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
     </Fenetre>
   )
 }

@@ -41,6 +41,7 @@ import { nouvelId, type Photo } from '../data/grilles'
 import { envoyerPhoto, lienPhoto, messagePhoto, supprimerPhotos } from '../lib/photos'
 import { dateCourte, lienFiche } from '../lib/format'
 import type { Reseau } from '../data/modele'
+import { ChampDate } from './ChampDate'
 
 // depart : proposition d'un franchisé reprise pour relecture ; apres : appelé avec l'identifiant de la pratique enregistrée
 export function DialogPratique({ reseau, pratique, magasinInitial = '', depart, photosInitiales = [], apres, onFermer }: {
@@ -86,7 +87,7 @@ export function DialogPratique({ reseau, pratique, magasinInitial = '', depart, 
       <ChampEntetePhoto photo={entete} changer={(ph) => { if (entete && !ph) setRetirees((x) => [...x, entete.chemin]); setEntete(ph) }} />
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr' } }}>
         <Autocomplete options={noms} value={magasin || null} onChange={(_e, v) => setMagasin(v ?? '')} renderInput={(p) => <TextField {...p} label="Magasin" />} noOptionsText="Aucun magasin ne correspond" />
-        <TextField type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        <ChampDate label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       </Box>
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
         <Autocomplete freeSolo options={themesConnus(reseau.pratiques)} value={theme} onInputChange={(_e, v) => setTheme(v)} renderInput={(p) => <TextField {...p} label="Thème" />} />

@@ -24,6 +24,7 @@ import { universLibelle } from '../moteur/types'
 import { effetAction, mesureDeAlerte, type Alerte, type Mesure, type TypeAction, type TypeAlerte } from '../moteur/alertes'
 import { anneeSuivi } from '../data/annees'
 import { useAuth } from '../auth/AuthContext'
+import { ChampDate } from '../../components/ChampDate'
 
 const RESPONSABLES: Responsable[] = ['franchise', 'coach', 'rr', 'directeur']
 export const typeActionLibelle: Record<TypeAction, string> = { ...typeAlerteLibelle, autre: 'Autre' }
@@ -216,7 +217,7 @@ function NouvelleActionForm({ magasin, alertes, depuis, occupe, valider, annuler
           <TextField select size="small" label="Qui" value={responsable} onChange={(e) => setResponsable(e.target.value as Responsable)} sx={{ width: 240, ...champ }}>
             {RESPONSABLES.map((r) => <MenuItem key={r} value={r} sx={{ minHeight: 48 }}>{roleLibelle[r]}</MenuItem>)}
           </TextField>
-          <TextField type="date" label="Pour le" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ width: 200, ...champ }} />
+          <ChampDate label="Pour le" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ width: 200, ...champ }} />
         </Stack>
         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
           <Button type="submit" variant="contained" disabled={occupe || !intitule.trim()} sx={{ minHeight: 48 }}>Ajouter au plan</Button>

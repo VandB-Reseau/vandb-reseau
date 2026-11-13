@@ -35,6 +35,7 @@ import {
   type Communication, type Communications, type Lecture, type Connaissance,
 } from '../data/communications'
 import { notifier, notifierContenu } from '../lib/notifications'
+import { ChampDate } from '../components/ChampDate'
 
 const aujourdhui = () => new Date().toLocaleDateString('sv-SE')
 const roles: Record<string, string> = { directeur: 'Directeur de réseau', rr: 'Responsable Régional', coach: 'Coach', franchise: 'Franchisé' }
@@ -108,7 +109,7 @@ function DialogCommunication({ edition: { c, brouillon, erreur }, auteur, publie
       </Box>
       <AlerteTaille visible={tropLourd} />
       <ChampPieces pieces={pieces} changer={setPieces} signaler={setAlerte} />
-      <TextField type="date" label="À la une jusqu’au" value={une} onChange={(e) => setUne(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: aujourdhui() } }}
+      <ChampDate label="À la une jusqu’au" value={une} onChange={(e) => setUne(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: aujourdhui() } }}
         helperText={une ? 'Reste en tête du fil des franchisés jusqu’à ce jour.' : ' '} />
       <Box>
         <FormControlLabel control={<Switch checked={connaissance} onChange={(e) => setConnaissance(e.target.checked)} />} label="Demander « J’ai pris connaissance »" sx={{ minHeight: 48 }} />

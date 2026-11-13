@@ -53,6 +53,7 @@ import { libelleJalon, prochainJalon, typesJalon, type Jalon, type TypeJalon } f
 import { effetCampagne, evolutionMagasin, MIN_MAGASINS_EFFET } from '../data/effetCampagne'
 import { libelleMois, formatPourcent } from '../data/chiffres'
 import { FriseTempsForts } from './FriseTempsForts'
+import { ChampDate } from './ChampDate'
 const decalerJours = (jour: string, n: number) => new Date(Date.parse(`${jour}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10)
 
 const couleursExecution: Record<Execution, 'success' | 'warning' | 'error' | 'default'> = { fait: 'success', partiel: 'warning', non: 'error', aConstater: 'default' }
@@ -464,8 +465,8 @@ export function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau;
         </TextField>
       )}
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
-        <TextField type="date" label="Début" value={debut} onChange={(e) => setDebut(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} required />
-        <TextField type="date" label="Fin" value={fin} onChange={(e) => setFin(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: debut } }} required
+        <ChampDate label="Début" value={debut} onChange={(e) => setDebut(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} required />
+        <ChampDate label="Fin" value={fin} onChange={(e) => setFin(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: debut } }} required
           error={!!fin && fin < debut} helperText={fin && fin < debut ? 'La fin doit suivre le début.' : ' '} />
       </Box>
       <Box>
@@ -486,7 +487,7 @@ export function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau;
               {typesJalon.map((t) => <MenuItem key={t.v} value={t.v}>{t.libelle}</MenuItem>)}
             </TextField>
             {j.type === 'autre' && <TextField label="Libellé" value={j.libelle} onChange={(e) => setJalons((x) => x.map((y) => (y.id === j.id ? { ...y, libelle: e.target.value } : y)))} sx={{ flex: 1, minWidth: 160 }} slotProps={{ htmlInput: { maxLength: 80 } }} />}
-            <TextField type="date" label="Le" value={j.date} onChange={(e) => setJalons((x) => x.map((y) => (y.id === j.id ? { ...y, date: e.target.value } : y)))} slotProps={{ inputLabel: { shrink: true } }} sx={{ width: 170 }} />
+            <ChampDate label="Le" value={j.date} onChange={(e) => setJalons((x) => x.map((y) => (y.id === j.id ? { ...y, date: e.target.value } : y)))} slotProps={{ inputLabel: { shrink: true } }} sx={{ width: 170 }} />
             <IconButton aria-label={`Retirer la date clé ${i + 1}`} onClick={() => setJalons((x) => x.filter((y) => y.id !== j.id))} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
           </Box>
         ))}

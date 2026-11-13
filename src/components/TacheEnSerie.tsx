@@ -9,6 +9,7 @@ import { enregistrerActionLibre } from '../data/chargement'
 import { porteursDu } from '../data/actions'
 import { useReseau } from '../data/ReseauContext'
 import { useAuth } from '../auth/AuthContext'
+import { ChampDate } from './ChampDate'
 
 // Une même tâche pour le franchisé de chaque magasin sélectionné (refonte vague 2, 16A)
 export function TacheEnSerie({ magasins, onFermer }: { magasins: string[]; onFermer: (message?: string) => void }) {
@@ -37,7 +38,7 @@ export function TacheEnSerie({ magasins, onFermer }: { magasins: string[]; onFer
       <DialogTitle id="titre-tache-serie">{`Une tâche pour ${magasins.length} magasin${magasins.length > 1 ? 's' : ''}`}</DialogTitle>
       <DialogContent sx={{ display: 'grid', gap: 2, pt: '8px !important' }}>
         <TextField label="Tâche" value={intitule} onChange={(e) => setIntitule(e.target.value)} autoFocus fullWidth />
-        <TextField label="Échéance" type="date" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} fullWidth />
+        <ChampDate label="Échéance" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} fullWidth />
       </DialogContent>
       <DialogActions>
         <Button onClick={() => onFermer()} sx={{ minHeight: 48 }}>Annuler</Button>

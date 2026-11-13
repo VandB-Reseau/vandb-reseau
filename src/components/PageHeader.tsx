@@ -1,4 +1,10 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import IconButton from '@mui/material/IconButton'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import Tooltip from '@mui/material/Tooltip'
+import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
 import { useLocation } from 'react-router-dom'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
@@ -12,7 +18,22 @@ import Typography from '@mui/material/Typography'
 // En-tête commun à toutes les pages : le titre toujours à la même place, les actions sur sa ligne,
 // le sous-titre dessous, peu d'espace avant le contenu. Sur téléphone, sans action, le sous-titre (un compteur)
 // passe à droite du titre : le contenu remonte d'une ligne (Joseph, 21/10/2026).
-export function PageHeader({ titre, sousTitre, actions }: { titre: string; sousTitre?: string; actions?: ReactNode }) {
+// Vague 8 (104A) : gabarit de page. Le titre (= nom du menu), une ligne de résumé, UNE action principale à droite,
+// les actions secondaires dans « ⋯ » (autres). Jamais de titre de section qui répète l'onglet ouvert.
+export interface AutreAction { libelle: string; icone?: ReactNode; onClick: () => void }
+function MenuAutres({ autres }: { autres: AutreAction[] }) {
+  const [ancre, setAncre] = useState<HTMLElement | null>(null)
+  return (
+    <>
+      <Tooltip title="Autres actions"><IconButton aria-label="Autres actions" aria-haspopup="menu" aria-expanded={!!ancre} onClick={(e) => setAncre(e.currentTarget)} sx={{ width: 48, height: 48, flexShrink: 0 }}><MoreHorizOutlined /></IconButton></Tooltip>
+      <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
+        {autres.map((a) => <MenuItem key={a.libelle} onClick={() => { setAncre(null); a.onClick() }} sx={{ minHeight: 48 }}>{a.icone && <ListItemIcon>{a.icone}</ListItemIcon>}{a.libelle}</MenuItem>)}
+      </Menu>
+    </>
+  )
+}
+export function PageHeader({ titre, sousTitre, actions: principales, autres }: { titre: string; sousTitre?: string; actions?: ReactNode; autres?: AutreAction[] }) {
+  const actions = autres?.length ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 'auto' }}>{principales}<MenuAutres autres={autres} /></Box> : principales
   // Téléphone (vague 3, 21A) : le périmètre sous le titre, qui garde sa place d'une page à l'autre
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const { pathname } = useLocation()

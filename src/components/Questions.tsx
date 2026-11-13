@@ -23,6 +23,7 @@ import {
 } from '../data/questions'
 import { dateCourte } from '../lib/format'
 import { notifierContenu } from '../lib/notifications'
+import { ChampDate } from './ChampDate'
 
 const MAX_QUESTIONS = 5
 const chiffreValide = (v: string) => /^-?\d{1,12}([.,]\d{1,4})?$/.test(v.trim().replace(/\s/g, ''))
@@ -87,7 +88,7 @@ export function DialogSondage({ reseau, onFermer, remontee = false }: { reseau: 
       {directeur
         ? <Puces label="Magasins concernés" valeur={region} onChange={setRegion} options={[{ v: '', libelle: 'Tout le réseau' }, ...regions.map((r) => ({ v: r.id, libelle: `Région ${r.nom}` }))]} />
         : <Typography variant="body2" color="text.secondary">Tes magasins</Typography>}
-      <TextField type="date" label="Ouvert jusqu’au" value={jusquAu} onChange={(e) => setJusquAu(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+      <ChampDate label="Ouvert jusqu’au" value={jusquAu} onChange={(e) => setJusquAu(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
     </Fenetre>
   )
 }

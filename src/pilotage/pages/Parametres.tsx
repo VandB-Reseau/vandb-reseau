@@ -58,6 +58,7 @@ import { UNIVERS, universLibelle, type Univers } from '../moteur/types'
 import { dateHeure, ecartMontant, enChiffres, montant, MOIS_LONGS } from '../lib/format'
 import { annees as anneesPilotage, anneeSuivi, changerAnnee, chargerAnnees, lignesAnnees, RefusAnnee } from '../data/annees'
 import { etapesAnnees, type EtapeAnnee, type EtatAnnee, type LigneAnnee } from '../moteur/annees'
+import { ChampDate } from '../../components/ChampDate'
 
 // Mois de stock affichés à la française (2,5)
 const enChiffresMois = (v: number) => String(v).replace('.', ',')
@@ -447,7 +448,7 @@ export function Parametres() {
                   <TableRow key={cle}>
                     <TableCell>{libelle}</TableCell>
                     <TableCell align="right">
-                      <TextField type="date" size="small" value={campagne[cle]} onChange={(e) => setCampagne((c) => (c ? { ...c, [cle]: e.target.value } : c))}
+                      <ChampDate size="small" value={campagne[cle]} onChange={(e) => setCampagne((c) => (c ? { ...c, [cle]: e.target.value } : c))}
                         slotProps={{ htmlInput: { 'aria-label': libelle } }} sx={{ width: 190, '& input': { height: 48, boxSizing: 'border-box', py: 0 } }} />
                     </TableCell>
                   </TableRow>
