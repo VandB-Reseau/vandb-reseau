@@ -10,7 +10,7 @@ import { caDe, decalerMois, libelleMois } from './chiffres'
 import { brancher, preferenceChangee } from '../lib/preferences'
 import { pilotage } from '../pilotage/lib/supabase'
 
-export type GenreNotification = 'commentaire' | 'tache' | 'retard' | 'compteRendu' | 'rapport'
+export type GenreNotification = 'commentaire' | 'tache' | 'retard' | 'compteRendu' | 'rapport' | 'cloture'
 export interface NotificationApp { id: string; genre: GenreNotification; titre: string; detail: string; quand: string; lien: string }
 
 const CLE = 'vandb-notifications-lues'
@@ -92,16 +92,44 @@ async function commentairesRecents(depuis: string, moi: string | undefined): Pro
   } catch { return [] }
 }
 
+// Clôture du mois (choix 120, Joseph 13/11/2026) : le franchisé est prévenu le 2 du mois, puis relancé le 7, tant que le
+// stock de fin du mois précédent de son magasin n'est pas saisi
+export function rappelsCloture(jour: string, magasins: string[], stockSaisi: (magasin: string) => boolean): NotificationApp[] {
+  const j = Number(jour.slice(8, 10))
+  if (j < 2) return []
+  const mois = decalerMois(jour.slice(0, 7), -1)
+  const nomMois = libelleMois(mois).split(' ')[0]
+  return magasins.filter((m) => !stockSaisi(m)).flatMap((m) => {
+    const lien = `/magasins/${encodeURIComponent(m)}?vue=chiffres&partie=cloture`
+    const r: NotificationApp[] = [{ id: `cloture:${mois}:${m}`, genre: 'cloture', titre: `Clôture de ${nomMois} à faire`, detail: `${m} · stock de fin de mois, deux minutes sur le téléphone`, quand: `${jour.slice(0, 7)}-02`, lien }]
+    if (j >= 7) r.push({ id: `cloture-relance:${mois}:${m}`, genre: 'cloture', titre: `Relance : clôture de ${nomMois}`, detail: `${m} · le stock de fin ${nomMois} n’est pas encore saisi`, quand: `${jour.slice(0, 7)}-07`, lien })
+    return r
+  })
+}
+async function rappelsClotureFranchise(jour: string, magasins: string[]): Promise<NotificationApp[]> {
+  if (!magasins.length || Number(jour.slice(8, 10)) < 2) return []
+  const mois = decalerMois(jour.slice(0, 7), -1)
+  try {
+    const { data, error } = await pilotage().from('stocks').select('store_name').eq('annee', Number(mois.slice(0, 4))).eq('mois', Number(mois.slice(5, 7)))
+    if (error || !Array.isArray(data)) return []
+    const saisis = new Set((data as { store_name: string }[]).map((x) => x.store_name))
+    return rappelsCloture(jour, magasins, (m) => saisis.has(m))
+  } catch { return [] }
+}
+
 export function useNotificationsApp(reseau: Reseau | null, profil: Profil | null, actif: boolean) {
   const lues = useSyncExternalStore(abonner, lire, () => null)
   const [commentaires, setCommentaires] = useState<NotificationApp[] | null>(null)
   const jour = reseau?.jour
+  const franchise = profil?.role === 'franchise'
+  const sesMagasins = franchise && reseau ? reseau.magasins.filter((m) => !m.fermeture || m.fermeture.date > reseau.jour).map((m) => m.nom).join('|') : ''
   useEffect(() => {
     if (!actif || !jour) return
     let vivant = true
-    void commentairesRecents(ilYA(jour, JOURS), profil?.id).then((c) => vivant && setCommentaires(c))
+    void Promise.all([commentairesRecents(ilYA(jour, JOURS), profil?.id), sesMagasins ? rappelsClotureFranchise(jour, sesMagasins.split('|')) : Promise.resolve([])])
+      .then(([c, r]) => vivant && setCommentaires([...c, ...r]))
     return () => { vivant = false }
-  }, [actif, jour, profil?.id])
+  }, [actif, jour, profil?.id, sesMagasins])
   const toutes = useMemo(() => (reseau && actif ? [...(commentaires ?? []), ...notificationsDuReseau(reseau, profil)] : [])
     .sort((a, b) => b.quand.localeCompare(a.quand) || a.id.localeCompare(b.id)), [reseau, profil, actif, commentaires])
   // Première fois sur cet appareil : ce qui existe déjà n'est pas signalé comme nouveau

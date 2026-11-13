@@ -8,7 +8,13 @@ import ChevronLeftOutlined from '@mui/icons-material/ChevronLeftOutlined'
 import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUncheckedOutlined from '@mui/icons-material/RadioButtonUncheckedOutlined'
-import { chargerStocks } from '../data/pilotage'
+import Alert from '@mui/material/Alert'
+import Button from '@mui/material/Button'
+import TextField from '@mui/material/TextField'
+import { chargerStocks, enregistrerStock } from '../data/pilotage'
+import { nombre } from '../import/caisse'
+import { enChiffres } from '../lib/format'
+import type { StockSaisi } from '../moteur/stock'
 import { CausesEcartsMois } from './CausesEcarts'
 
 // Clôture du mois (refonte vague 2, Joseph 09/11/2026, 12A) : les saisies d'un mois en liste de contrôle, au lieu de
@@ -43,12 +49,16 @@ export function ClotureMois({ magasin, annee, reelMois, fraisRenseignes, quadrim
 }) {
   const dernier = Math.max(1, dernierMoisClos(annee))
   const [mois, setMois] = useState(dernier)
-  const [stocks, setStocks] = useState<boolean[] | null>(null)
+  const [valeurs, setValeurs] = useState<{ n: (StockSaisi | null)[]; decembre: StockSaisi | null } | null>(null)
+  const [version, setVersion] = useState(0)
   useEffect(() => {
     let actif = true
-    chargerStocks(magasin, annee).then((s) => actif && setStocks(s.map(Boolean))).catch(() => actif && setStocks(Array(12).fill(false)))
+    Promise.all([chargerStocks(magasin, annee), chargerStocks(magasin, annee - 1).catch(() => null)])
+      .then(([n, n1]) => actif && setValeurs({ n, decembre: n1?.[11] ?? null }))
+      .catch(() => actif && setValeurs({ n: Array(12).fill(null), decembre: null }))
     return () => { actif = false }
-  }, [magasin, annee])
+  }, [magasin, annee, version])
+  const stocks = valeurs?.n.map(Boolean) ?? null
   const etapes = etapesCloture({ mois, annee, reelMois, stockSaisi: !!stocks?.[mois - 1], fraisRenseignes, quadrimestres })
   const faits = etapes.filter((e) => e.fait).length
   const complet = faits === etapes.length
@@ -63,6 +73,11 @@ export function ClotureMois({ magasin, annee, reelMois, fraisRenseignes, quadrim
           {complet ? 'Mois complet' : `${faits} sur ${etapes.length} fait${faits > 1 ? 's' : ''}`}
         </Typography>
       </Box>
+      {/* Choix 120 : le stock se saisit ici même, prérempli du mois précédent */}
+      {peutSaisir && valeurs && !valeurs.n[mois - 1] && (
+        <StockRapide key={`${annee}-${mois}`} magasin={magasin} annee={annee} mois={mois} precedent={mois > 1 ? valeurs.n[mois - 2] : valeurs.decembre}
+          enregistre={() => setVersion((v) => v + 1)} />
+      )}
       <Card component="ul" aria-label="Saisies du mois" sx={{ listStyle: 'none', m: 0, p: 0 }}>
         {etapes.map((e, i) => (
           <Box component="li" key={e.cle} sx={{ borderTop: i ? 1 : 0, borderColor: 'divider' }}>
@@ -82,5 +97,57 @@ export function ClotureMois({ magasin, annee, reelMois, fraisRenseignes, quadrim
     </Box>
       <CausesEcartsMois key={`${annee}-${mois}`} magasin={magasin} annee={annee} mois={mois} peutSaisir={peutSaisir} />
     </Box>
+  )
+}
+
+// Clôture en deux minutes sur téléphone (choix 120, Joseph 13/11/2026) : Cave, Bar et Extérieur repris du mois précédent,
+// en gris tant qu'ils ne sont pas confirmés (on corrige un chiffre, ou on confirme tout d'un geste), pour ne pas valider
+// sans compter. Un champ vide au mois précédent reste vide.
+const UNIVERS = [['cave', 'Cave'], ['bar', 'Bar'], ['exterieur', 'Extérieur']] as const
+function StockRapide({ magasin, annee, mois, precedent, enregistre }: { magasin: string; annee: number; mois: number; precedent: StockSaisi | null; enregistre: () => void }) {
+  const depart = (u: typeof UNIVERS[number][0]) => (precedent?.[u] != null ? enChiffres(precedent[u]!) : '')
+  const [champs, setChamps] = useState({ cave: depart('cave'), bar: depart('bar'), exterieur: depart('exterieur') })
+  const [touches, setTouches] = useState<Set<string>>(new Set())
+  const [erreur, setErreur] = useState<string | null>(null)
+  const [occupe, setOccupe] = useState(false)
+  const nomPrecedent = mois > 1 ? MOIS[mois - 2] : `décembre ${annee - 1}`
+  const valider = async () => {
+    const lire = (t: string) => (t.trim() === '' ? null : nombre(t))
+    const s: StockSaisi = { cave: lire(champs.cave), bar: lire(champs.bar), exterieur: lire(champs.exterieur) }
+    if (UNIVERS.some(([k]) => (champs[k].trim() && s[k] === null) || (s[k] ?? 0) < 0)) { setErreur('Saisis des montants en euros, sans signe moins (par exemple 85 000).'); return }
+    if (UNIVERS.every(([k]) => s[k] === null)) { setErreur('Saisis au moins le stock d’un univers.'); return }
+    setOccupe(true)
+    try {
+      await enregistrerStock(magasin, annee, mois, s)
+      enregistre()
+    } catch {
+      setErreur('L’enregistrement n’a pas abouti. Vérifie ta connexion, puis réessaie.')
+      setOccupe(false)
+    }
+  }
+  return (
+    <Card component="section" aria-label={`Stock de fin ${MOIS[mois - 1]}`} sx={{ p: { xs: 2, md: 2.5 }, display: 'grid', gap: 1.5 }}>
+      <Box>
+        <Typography variant="h3" component="h3">Stock de fin {MOIS[mois - 1]}</Typography>
+        {precedent && <Typography variant="body2" color="text.secondary">Repris de fin {nomPrecedent}, en gris tant que non confirmé.</Typography>}
+      </Box>
+      {erreur && <Alert severity="error">{erreur}</Alert>}
+      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' } }}>
+        {UNIVERS.map(([k, l]) => {
+          const gris = !touches.has(k) && champs[k] !== ''
+          return (
+            <TextField key={k} label={`Stock ${l}`} value={champs[k]} inputMode="decimal"
+              onChange={(e) => { setChamps((c) => ({ ...c, [k]: e.target.value })); setTouches((t) => new Set(t).add(k)) }}
+              slotProps={{ htmlInput: { inputMode: 'decimal', 'data-prerempli': gris ? 'oui' : undefined }, input: { endAdornment: <Typography color="text.secondary">€</Typography> } }}
+              sx={{ '& input': { height: 48, boxSizing: 'border-box', py: 0, fontSize: '1.125rem', color: gris ? 'text.secondary' : 'text.primary', fontStyle: gris ? 'italic' : 'normal' } }} />
+          )
+        })}
+      </Box>
+      <Box>
+        <Button variant="contained" onClick={() => void valider()} disabled={occupe} sx={{ minHeight: 48, width: { xs: '100%', sm: 'auto' } }}>
+          {precedent && touches.size === 0 ? 'Confirmer ces stocks' : 'Enregistrer le stock'}
+        </Button>
+      </Box>
+    </Card>
   )
 }

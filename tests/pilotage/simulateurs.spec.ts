@@ -130,3 +130,30 @@ test('Directeur : les repères des simulateurs dans les paramètres des budgets'
   const p = ecritures.filter((e) => e.table === 'parametres_reseau').at(-1)?.corps as { valeur: { simulateurs: unknown } }
   expect(p.valeur.simulateurs).toEqual({ tauxDecouvert: 0.06, aideApprenti: 0, corner: { caParMetre: 5_000, tauxMarge: 0, demarque: 0 } })
 })
+
+test('120 : clôture en un écran, stock repris du mois précédent en gris, rappel dans la cloche', async ({ page, isMobile }, info) => {
+  // Au 27/10/2026 : septembre est le dernier mois clos ; août saisi, septembre pas encore
+  const stocks = [{ store_name: NOM, annee: 2026, mois: 8, cave: 60_000, bar: 8_000, exterieur: null }]
+  const ecritures = await connecter(page, franchise, { role: 'franchise', stocks })
+  // Rappel du 2, relance du 7 : le stock de fin septembre manque
+  await page.getByRole('button', { name: /^Notifications/ }).first().click()
+  // Premier passage sur l'appareil : ce qui existe est déjà lu, on regarde toutes les notifications
+  await page.getByRole('group', { name: 'Notifications affichées' }).getByRole('button', { name: 'Toutes' }).click()
+  await expect(page.getByText('Relance : clôture de septembre')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=chiffres&partie=cloture`)
+  const stock = page.getByRole('region', { name: 'Stock de fin septembre' })
+  await expect(stock.getByLabel('Stock Cave')).toHaveValue(/60\s000/)
+  await expect(stock.getByLabel('Stock Cave')).toHaveAttribute('data-prerempli', 'oui')
+  await expect(stock.getByLabel('Stock Extérieur')).toHaveValue('')
+  // Le Bar a bougé : corrigé, il n'est plus en gris ; la Cave reste reprise
+  await stock.getByLabel('Stock Bar').fill('9500')
+  await expect(stock.getByLabel('Stock Bar')).not.toHaveAttribute('data-prerempli', 'oui')
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  await page.screenshot({ path: `captures/${info.project.name}-cloture-rapide.png`, fullPage: true })
+  await stock.getByRole('button', { name: 'Enregistrer le stock' }).click()
+  await expect(stock).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Clôture du mois' }).getByRole('button', { name: 'Stock de fin de mois' })).toContainText('Voir')
+  expect(ecritures.find((e) => e.table === 'stocks')?.corps).toMatchObject({ store_name: NOM, annee: 2026, mois: 9, cave: 60_000, bar: 9_500, exterieur: null })
+})
