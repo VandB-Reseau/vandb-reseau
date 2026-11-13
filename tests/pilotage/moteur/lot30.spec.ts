@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { joursHorsDimanche, objectifsDuMois } from '../../../src/pilotage/moteur/objectifs'
+import { defiDuMois, joursHorsDimanche, objectifsDuMois } from '../../../src/pilotage/moteur/objectifs'
 import type { MoisReel } from '../../../src/pilotage/moteur/suivi'
 import type { Budget } from '../../../src/pilotage/moteur/types'
 
@@ -32,4 +32,18 @@ test('objectifs du mois : CA du budget → tickets par jour et panier, Cave et B
   expect(bar.panierN1).toBeNull()
   // Mois sans CA ou univers sans panier visé : pas d'objectif
   expect(objectifsDuMois(b, 1, 26, { cave: 0.2, bar: 0.15 }).univers).toEqual({})
+})
+
+test('défi de vente additionnelle du mois (choix 130) : 1 client sur 10, à 12 € TTC', () => {
+  // Novembre, Cave : 780 clients visés sur 26 jours → 78 articles, 3 par jour, 936 € TTC en plus
+  const mois = Array.from({ length: 12 }, () => ({ univers: { cave: { ca: 0 }, bar: { ca: 0 }, exterieur: { ca: 0 } } }))
+  mois[10] = { univers: { cave: { ca: 26_000 }, bar: { ca: 0 }, exterieur: { ca: 0 } } }
+  const b = { mois, flux: { cave: { panierObjectifTTC: 40 }, bar: { panierObjectifTTC: 23 } } } as unknown as Budget
+  const o = objectifsDuMois(b, 11, 26, { cave: 0.2, bar: 0.15 })
+  const d = defiDuMois(o, { univers: 'cave', unSur: 10, prixTTC: 12 })!
+  proche(d.articles, 78)
+  proche(d.articlesParJour, 3)
+  proche(d.caTTC, 936)
+  // Univers sans objectif ce mois-là : pas de défi
+  expect(defiDuMois(o, { univers: 'bar', unSur: 10, prixTTC: 12 })).toBeNull()
 })

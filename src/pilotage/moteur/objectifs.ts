@@ -36,3 +36,14 @@ export function objectifsDuMois(b: Budget, mois: number, jours: number, tva: Rec
   }
   return { mois, jours, univers }
 }
+
+// Défi de vente additionnelle (choix 130, Joseph 13/11/2026) : une simulation « Vente additionnelle » gardée devient un
+// objectif de l'équipe sur le mois. Articles du mois = clients visés du mois dans l'univers ÷ « un client sur » ;
+// par jour = ÷ jours d'ouverture ; CA TTC en plus = articles × prix TTC.
+export interface DefiVente { univers: UniversTickets; unSur: number; prixTTC: number; articles: number; articlesParJour: number; caTTC: number }
+export function defiDuMois(o: ObjectifsMois, d: { univers: UniversTickets; unSur: number; prixTTC: number }): DefiVente | null {
+  const u = o.univers[d.univers]
+  if (!u || d.unSur < 1 || d.prixTTC <= 0 || o.jours <= 0) return null
+  const articles = u.tickets / d.unSur
+  return { univers: d.univers, unSur: d.unSur, prixTTC: d.prixTTC, articles, articlesParJour: articles / o.jours, caTTC: articles * d.prixTTC }
+}
