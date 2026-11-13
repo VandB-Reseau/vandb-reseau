@@ -253,7 +253,7 @@ function SectionAFaire({ reseau, magasins }: { reseau: Reseau; magasins: Magasin
         ].map((t) => plusieurs
           ? <LigneCompacte key={t.cle} avatar={<Initiales nom={t.nom} icone={t.icone} />} titre={t.titre} detail={t.detail}
             actions={<Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'flex-end', flex: 'none', maxWidth: '50%' }}>
-              {magasins.map((m) => <Button key={m.nom} component={RouterLink} to={`${lienFiche(m.nom)}${t.suffixe}`} aria-label={`${t.titre} : ${m.nom}`} variant="outlined" size="small" sx={{ minHeight: 40, textTransform: 'none' }}>{m.nom}</Button>)}
+              {magasins.map((m) => <Button key={m.nom} component={RouterLink} to={`${lienFiche(m.nom)}${t.suffixe}`} aria-label={`${t.titre} : ${m.nom}`} variant="outlined" size="small" sx={{ minHeight: { xs: 48, md: 40 }, textTransform: 'none' }}>{m.nom}</Button>)}
             </Box>} />
           : <LigneCompacte key={t.cle} lien={`${lienFiche(magasins[0].nom)}${t.suffixe}`} avatar={<Initiales nom={t.nom} icone={t.icone} />} titre={t.titre} detail={t.detail} />)}
         {/* Refonte vague 5 (48A) : dates clés des campagnes dans les 14 jours, temps forts annoncés */}
