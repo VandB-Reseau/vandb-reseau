@@ -210,7 +210,7 @@ export function PanneauImpact({
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography component="span" sx={{ fontSize: '0.8125rem', color: 'text.secondary', display: 'block' }}>EBE</Typography>
-          <Typography component="span" sx={{ fontWeight: 900, fontSize: '1.25rem', fontVariantNumeric: 'tabular-nums' }}>{milliers(ebe.valeur)}</Typography>{' '}
+          <Typography component="span" sx={{ fontWeight: 900, fontSize: '1.125rem', fontVariantNumeric: 'tabular-nums' }}>{milliers(ebe.valeur)}</Typography>{' '}
           <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.875rem', color: couleur(ebe), fontVariantNumeric: 'tabular-nums' }}>{ecartTexte(ebe)}</Typography>
         </Box>
         <Button onClick={() => setDeplie(!deplie)} aria-expanded={deplie} endIcon={deplie ? <ExpandMoreOutlined /> : <ExpandLessOutlined />} sx={{ minHeight: 48 }}>

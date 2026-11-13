@@ -155,7 +155,7 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
                 sx={{ display: 'grid', justifyItems: 'start', alignContent: 'start', gap: 0.25, textAlign: 'left', px: { xs: 1, sm: 2 }, py: 1.25, minHeight: 64, fontFamily: 'inherit',
                   borderLeft: i ? '1px solid' : 0, borderColor: 'divider', bgcolor: e.faite ? 'rgba(48,118,114,0.10)' : e.id === enCours ? 'rgba(248,187,9,0.16)' : undefined,
                   boxShadow: actif ? 'inset 0 -3px 0 #1d1d1b' : undefined }}>
-                <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontWeight: 700, fontSize: { xs: '0.8125rem', sm: '0.9375rem' } }}>
+                <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontWeight: 700, fontSize: { xs: '0.8125rem', sm: '0.875rem' } }}>
                   {e.faite ? <CheckOutlined sx={{ fontSize: 16, color: 'success.main' }} /> : <Box component="span" sx={{ color: 'text.secondary' }}>{i + 1}</Box>}
                   {e.libelle}
                 </Box>

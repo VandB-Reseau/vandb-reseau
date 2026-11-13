@@ -101,7 +101,7 @@ export function SuiviBudget({ magasin, annee, allerA, muetSansReel, vue: partie 
   const provisoire = ligne.statut !== 'valide'
   const phrase = (
     <Stack spacing={0.75}>
-      <Box component="p" aria-label="Conclusion" sx={{ m: 0, pl: 2, py: 0.5, borderLeft: 4, borderColor: totalMarge < 0 || c.ecartCA < 0 ? 'error.main' : 'success.main', fontSize: '1.0625rem', fontWeight: 700, maxWidth: '80ch' }}>
+      <Box component="p" aria-label="Conclusion" sx={{ m: 0, pl: 2, py: 0.5, borderLeft: 4, borderColor: totalMarge < 0 || c.ecartCA < 0 ? 'error.main' : 'success.main', fontSize: '1rem', fontWeight: 700, maxWidth: '80ch' }}>
         {conclusion}
       </Box>
       {provisoire && (

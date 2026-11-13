@@ -167,7 +167,7 @@ function Reperes({ liste, jour, choisir }: { liste: Contenu[]; jour: string; cho
           sx={{ display: 'block', minWidth: 0, textAlign: 'left', px: { xs: 1.5, md: 2 }, py: { xs: 1, md: 2 }, borderRadius: '14px', bgcolor: 'background.paper', color: 'text.primary', fontFamily: 'inherit',
             '@media (hover: hover)': { '&:hover': { bgcolor: 'action.hover' } } }}>
           <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}>{t.libelle}</Typography>
-          <Typography sx={{ fontSize: { xs: '1.25rem', md: '1.75rem' }, fontWeight: 700, lineHeight: 1.3 }}>{t.valeur}</Typography>
+          <Typography sx={{ fontSize: { xs: '1.125rem', md: '1.75rem' }, fontWeight: 700, lineHeight: 1.3 }}>{t.valeur}</Typography>
           <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>{t.detail}</Typography>
         </ButtonBase>
       ))}

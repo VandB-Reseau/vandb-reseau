@@ -258,7 +258,7 @@ function Indice({ libelle, valeur, detail }: { libelle: string; valeur: ReactNod
   return (
     <Box>
       <Typography variant="body2" color="text.secondary">{libelle}</Typography>
-      <Typography sx={{ fontWeight: 800, fontSize: '1.25rem', fontVariantNumeric: 'tabular-nums' }}>{valeur}</Typography>
+      <Typography sx={{ fontWeight: 800, fontSize: '1.125rem', fontVariantNumeric: 'tabular-nums' }}>{valeur}</Typography>
       <Typography variant="body2" color="text.secondary">{detail}</Typography>
     </Box>
   )

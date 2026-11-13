@@ -129,7 +129,7 @@ function AutresTaches({ reseau, m, actions, signaler, avecTitre }: { reseau: Res
   return (
     <Box sx={{ mt: 1.5, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 48 }}>
-        <Typography component="h3" sx={{ fontWeight: 700, fontSize: '0.9375rem', mr: 'auto' }}>{avecTitre ? `Autres tâches · ${actions.length}` : `Tâches en cours · ${actions.length}`}</Typography>
+        <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem', mr: 'auto' }}>{avecTitre ? `Autres tâches · ${actions.length}` : `Tâches en cours · ${actions.length}`}</Typography>
         {actions.length > 5 && <Button component={RouterLink} to={`${lienFiche(m.nom)}?vue=activite`} sx={{ minHeight: 48 }}>Tout voir</Button>}
       </Box>
       <Box component="ul" aria-label={avecTitre ? 'Autres tâches' : 'Tâches en cours'} sx={{ listStyle: 'none', m: 0, p: 0 }}>

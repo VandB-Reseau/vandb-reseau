@@ -203,7 +203,7 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
     >
       <Box sx={{ px: 2, pt: 2, pb: 1.5, display: 'flex', alignItems: 'center', gap: 1.25 }}>
         <Box sx={{ bgcolor: '#000000', borderRadius: 1.5, px: 0.75, py: 0.5, display: 'flex' }}><Logo size={14} /></Box>
-        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.9375rem' }}>{franchise ? 'Espace franchisé' : 'Réseau'}</Typography>
+        <Typography component="span" sx={{ fontWeight: 700, fontSize: '1rem' }}>{franchise ? 'Espace franchisé' : 'Réseau'}</Typography>
       </Box>
       <Box aria-hidden data-filet="" sx={{ height: 3, mx: 2, mb: 1.5, borderRadius: 2, background: brandStripe }} />
       {/* Refonte vague 2 (10A) : la cloche des notifications à côté de la recherche */}

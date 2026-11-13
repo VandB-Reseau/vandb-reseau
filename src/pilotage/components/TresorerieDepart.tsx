@@ -43,7 +43,7 @@ export function TresorerieDepart({ annee, depart, estimee, onDepart, lectureSeul
         {onDepart ? (
           <ChampNombre libelle="Trésorerie au 1er janvier" valeur={saisie} onChange={changer} desactive={lectureSeule} largeur={180} />
         ) : (
-          <Typography sx={{ fontSize: '1.5rem', fontWeight: 700 }}>{estimee ? milliers(estimee.montant) : 'Pas encore connue'}</Typography>
+          <Typography sx={{ fontSize: '1.75rem', fontWeight: 700 }}>{estimee ? milliers(estimee.montant) : 'Pas encore connue'}</Typography>
         )}
         {tresorerie && (
           <Typography variant="body2" color="text.secondary">

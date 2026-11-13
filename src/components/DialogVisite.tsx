@@ -61,7 +61,7 @@ function BlocSaisie({ id, titre, detail, children }: { id: string; titre: string
     <Box component="section" id={id} aria-label={titre} sx={{ scrollMarginTop: 72, borderTop: '1px solid', borderColor: 'divider', pt: 1 }}>
       <Button onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert} endIcon={ouvert ? <ExpandLessOutlined /> : <ExpandMoreOutlined />}
         sx={{ minHeight: 48, px: 0, color: 'text.primary', justifyContent: 'flex-start', width: '100%', '& .MuiButton-endIcon': { ml: 'auto' } }}>
-        <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1.0625rem' }}>{titre}</Typography>
+        <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem' }}>{titre}</Typography>
         {detail && <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>{detail}</Typography>}
       </Button>
       <Collapse in={ouvert}><Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1, pb: 1 }}>{children}</Box></Collapse>

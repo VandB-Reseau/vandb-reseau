@@ -1,4 +1,4 @@
-import { createTheme, type Theme } from '@mui/material/styles'
+import { createTheme, type Theme, type ThemeOptions } from '@mui/material/styles'
 import { styleCellule, styleTable } from './tableaux'
 
 // Charte graphique V and B (guideline officielle) : couleurs en duos, aucune autre teinte, pas de bleu
@@ -18,6 +18,21 @@ export const brand = {
 
 // Filet sous l'en-tête : deux aplats jaune-or et vert canard, sans dégradé (la charte travaille en aplats)
 export const brandStripe = `linear-gradient(90deg, ${brand.or} 0 62%, ${brand.vert} 62% 100%)`
+
+// Vague 8 (Joseph, 10/11/2026, 93A) : jetons communs. Couleurs par sens (à agir, à surveiller, bon, neutre) et trois
+// arrondis seulement : 8 px champs et boutons, 12 px cartes, pilule pour les puces et la recherche.
+export const ton = { agir: brand.brique, surveiller: '#b84a1e', bon: brand.vertFonce, neutre: '#5a5550' } as const
+export type Ton = keyof typeof ton
+export const rayon = { champ: 8, carte: 12, pilule: 999 } as const
+// Couleurs autorisées pour un repère choisi par quelqu'un (événement d'agenda, zone…) : la charte, rien d'autre
+export const couleursCharte = [brand.or, brand.jaune, brand.orange, brand.brique, brand.vert, brand.vertFonce, brand.anthracite, brand.noir] as const
+export const dansCharte = (c: string | null | undefined, defaut: string) => (c && (couleursCharte as readonly string[]).includes(c.toLowerCase()) ? c.toLowerCase() : defaut)
+// Texte lisible sur un aplat de la charte : noir sur les jaunes, blanc ailleurs
+export const texteSur = (fond: string) => ([brand.or, brand.jaune, brand.creme, brand.beige] as string[]).includes(fond.toLowerCase()) ? brand.noir : '#ffffff'
+
+// Vague 8 (92A) : une échelle de texte, et rien d'autre. Titre de page 30 (22 sur téléphone), chiffre clé 28, section 18,
+// titre de carte 16, texte 14, légende 13, mention 12. Les écrans n'écrivent plus de taille en dur hors de cette échelle.
+export const echelle = { page: '1.875rem', chiffre: '1.75rem', section: '1.125rem', carte: '1rem', texte: '0.875rem', legende: '0.8125rem', mention: '0.75rem' } as const
 
 // Polices : Lato (charte) pour le texte ; Alegreya, police libre proche de Coline (titres de la charte, sans fichier web), pour les titres
 const fontFamily = '"Lato", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
@@ -41,7 +56,8 @@ export function styleSignal(theme: Theme, couleur: CouleurSignal) {
 const telephone = base.breakpoints.down('sm')
 const ordinateur = base.breakpoints.up('md')
 
-export const theme = createTheme({
+// Options du thème, reprises telles quelles par le budget (vague 8, 94A : un seul thème)
+export const optionsTheme: ThemeOptions = {
   // Aucune animation (choix de Joseph, 20/10/2026) : chaque écran, menu et fenêtre s'affiche aussitôt
   transitions: { create: () => 'none', duration: { shortest: 0, shorter: 0, short: 0, standard: 0, complex: 0, enteringScreen: 0, leavingScreen: 0 } },
   // Mode clair / sombre suivi automatiquement depuis le réglage de l'appareil
@@ -84,7 +100,7 @@ export const theme = createTheme({
     // Refonte (Joseph, 09/11/2026, 8C) : titre de page en casse normale ; capitales seulement dans les écrans « marque »
     h1: { fontFamily: titres, fontSize: '1.875rem', fontWeight: 800, letterSpacing: '0.005em', [telephone]: { fontSize: '1.375rem' } },
     h2: { fontFamily: titres, fontSize: '1.5rem', fontWeight: 700 },
-    h3: { fontFamily: titres, fontSize: '1.25rem', fontWeight: 700 },
+    h3: { fontFamily: titres, fontSize: '1.125rem', fontWeight: 700 },
     h4: { fontSize: '1.125rem', fontWeight: 700 },
     h5: { fontSize: '1rem', fontWeight: 700 },
     h6: { fontSize: '1rem', fontWeight: 700 },
@@ -97,7 +113,9 @@ export const theme = createTheme({
     overline: { fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em' },
   },
   components: {
+    // Puces : toujours en pilule (vague 8, 93A)
     MuiChip: {
+      styleOverrides: { root: { borderRadius: rayon.pilule } },
       variants: (['warning', 'info', 'success'] as const).map((couleur) => ({
         props: { variant: 'filled' as const, color: couleur },
         style: ({ theme }: { theme: Theme }) => ({ ...styleSignal(theme, couleur), '&::before': { ...styleSignal(theme, couleur)['&::before'], marginLeft: 8, marginRight: -4 } }),
@@ -163,19 +181,24 @@ export const theme = createTheme({
     MuiButton: {
       defaultProps: { disableElevation: true },
       // Boutons rectangulaires arrondis, plus de pilules (refonte, 8C)
-      styleOverrides: { root: { borderRadius: 8, minHeight: 40, paddingInline: 16 } },
+      styleOverrides: { root: { borderRadius: rayon.champ, minHeight: 40, paddingInline: 16 } },
     },
     MuiAppBar: { defaultProps: { elevation: 0, color: 'inherit' } },
     MuiPaper: { defaultProps: { elevation: 0 } },
     MuiCard: {
       defaultProps: { variant: 'outlined' },
-      styleOverrides: { root: { borderRadius: 10 } },
+      styleOverrides: { root: { borderRadius: rayon.carte } },
     },
-    MuiListItemButton: { styleOverrides: { root: { borderRadius: 8 } } },
+    MuiListItemButton: { styleOverrides: { root: { borderRadius: rayon.champ } } },
+    // Champs : un seul style, coins de 8 px (la recherche garde sa forme de pilule, posée par BarreFiltres)
+    MuiOutlinedInput: { styleOverrides: { root: { borderRadius: rayon.champ } } },
+    MuiToggleButtonGroup: { styleOverrides: { root: { borderRadius: rayon.champ } } },
     // Écrans « marque » (Accueil, Infos réseau, compte rendu) : titres en capitales de la charte
     MuiCssBaseline: { styleOverrides: { '.marque .MuiTypography-h1': { textTransform: 'uppercase', letterSpacing: '0.01em' } } },
     MuiBottomNavigationAction: {
       styleOverrides: { label: { fontSize: '0.75rem', '&.Mui-selected': { fontSize: '0.75rem' } } },
     },
   },
-})
+}
+
+export const theme = createTheme(optionsTheme)

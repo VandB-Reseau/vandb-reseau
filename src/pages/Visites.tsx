@@ -59,7 +59,7 @@ const ecart = (l: LigneRythme) => (l.depuis === null ? Infinity : l.depuis - l.d
 function Compteur({ valeur, libelle, signal, actif, onClick }: { valeur: number; libelle: string; signal?: boolean; actif?: boolean; onClick?: () => void }) {
   const contenu = (
     <>
-      <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2, color: signal && valeur > 0 ? 'warning.dark' : undefined }}>{valeur}</Typography>
+      <Typography sx={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2, color: signal && valeur > 0 ? 'warning.dark' : undefined }}>{valeur}</Typography>
       <Typography variant="body2" color="text.secondary">{libelle}</Typography>
     </>
   )

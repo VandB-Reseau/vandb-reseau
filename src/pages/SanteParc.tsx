@@ -148,14 +148,14 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
           <Card key={t.titre} sx={{ borderTop: `4px solid ${t.couleur}` }}>
             <Box component={t.action ? 'button' : 'div'} type={t.action ? 'button' : undefined} onClick={t.action ? evaluer : undefined}
               sx={{ all: 'unset', boxSizing: 'border-box', width: '100%', p: 1.5, minHeight: 48, display: 'block', textAlign: 'center', cursor: t.action ? 'pointer' : 'default' }}>
-              <Typography sx={{ fontSize: 24, fontWeight: 800, color: t.couleur, lineHeight: 1.1 }}>{t.n}</Typography>
+              <Typography sx={{ fontSize: '1.75rem', fontWeight: 800, color: t.couleur, lineHeight: 1.1 }}>{t.n}</Typography>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>{t.titre}</Typography>
             </Box>
           </Card>
         ) : (
           <Card key={t.titre}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ width: 56, height: 56, borderRadius: 3, bgcolor: alpha(t.couleur, 0.12), color: t.couleur, display: 'grid', placeItems: 'center', fontSize: 24, fontWeight: 700, flexShrink: 0 }}>{t.n}</Box>
+              <Box sx={{ width: 56, height: 56, borderRadius: 3, bgcolor: alpha(t.couleur, 0.12), color: t.couleur, display: 'grid', placeItems: 'center', fontSize: '1.75rem', fontWeight: 700, flexShrink: 0 }}>{t.n}</Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography variant="h4" component="p">{t.titre}</Typography>
                 <Typography variant="body2" color="text.secondary">{t.action ? t.detail : `${pct(t.n)} % des magasins classés`}</Typography>
@@ -186,11 +186,11 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
                         transition: 'transform .15s, box-shadow .15s', '&:hover:not(:disabled), &:focus-visible': { transform: 'translateY(-2px)', boxShadow: 4 } }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c.couleur, flexShrink: 0 }} />
-                        <Typography sx={{ fontWeight: 700, fontSize: { xs: 12, md: 15 }, flex: 1, lineHeight: 1.2 }}>{c.libelle}</Typography>
+                        <Typography sx={{ fontWeight: 700, fontSize: { xs: 12, md: 14 }, flex: 1, lineHeight: 1.2 }}>{c.libelle}</Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                        {liste.length ? <Typography sx={{ fontSize: { xs: 32, md: 40 }, fontWeight: 800, lineHeight: 1 }}>{liste.length}</Typography>
-                          : <Typography sx={{ fontSize: { xs: 16, md: 20 }, fontWeight: 600, lineHeight: 1, color: 'text.secondary' }}>0</Typography>}
+                        {liste.length ? <Typography sx={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1 }}>{liste.length}</Typography>
+                          : <Typography sx={{ fontSize: { xs: 16, md: 18 }, fontWeight: 600, lineHeight: 1, color: 'text.secondary' }}>0</Typography>}
                         <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>{liste.length ? `${pct(liste.length)} % des classés` : 'aucun magasin'}</Typography>
                       </Box>
                       {/* Coachs en nom court sous le chiffre (plus de barre ni de bulle qui recouvrait le libellé au téléphone) */}
