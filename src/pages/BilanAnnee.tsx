@@ -112,7 +112,7 @@ function Tuile({ libelle, valeur, detail, ton }: { libelle: string; valeur: stri
   return (
     <Box sx={{ border: `1px solid ${FILET}`, borderRadius: 2, p: 1.25, minWidth: 0 }}>
       <Typography variant="body2" sx={{ color: GRIS }}>{libelle}</Typography>
-      <Typography sx={{ color: NOIR, fontWeight: 800, fontSize: 22, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{valeur}</Typography>
+      <Typography sx={{ color: NOIR, fontWeight: 800, fontSize: '1.75rem', lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{valeur}</Typography>
       {detail && <Typography variant="body2" sx={{ color: ton === 'rouge' ? ROUGE : ton === 'vert' ? VERT : GRIS, fontWeight: ton ? 700 : 400 }}>{detail}</Typography>}
     </Box>
   )

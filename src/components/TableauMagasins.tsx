@@ -200,7 +200,7 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
           </Box>
         )}
         <BarreSelection s={sel} quoi="magasin">
-          <Button variant="outlined" startIcon={<AddTaskOutlined />} onClick={() => setTacheSerie(true)}>Créer une tâche pour chacun</Button>
+          <Button variant="outlined" startIcon={<AddTaskOutlined />} onClick={() => setTacheSerie(true)}>Ajouter une tâche à chacun</Button>
         </BarreSelection>
       </Card>
       {tacheSerie && <TacheEnSerie magasins={sel.liste} onFermer={(msg) => { setTacheSerie(false); if (msg) { setMessage(msg); sel.vider() } }} />}
@@ -226,7 +226,7 @@ function Apercu({ m, infos, fermer }: { m: Magasin; infos: Infos | undefined; fe
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
         <Blason magasin={m} taille={40} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="h3" component="h2" sx={{ fontSize: '1.25rem' }} noWrap>{m.nom}</Typography>
+          <Typography variant="h3" component="h2" sx={{ fontSize: '1.125rem' }} noWrap>{m.nom}</Typography>
           <Typography variant="body2" color="text.secondary" noWrap>{[m.franchise ? 'Franchisé' : 'Intégré', m.ville].filter(Boolean).join(' · ')}</Typography>
         </Box>
         <Tooltip title="Fermer l’aperçu"><IconButton onClick={fermer} aria-label="Fermer l’aperçu" sx={{ width: 40, height: 40 }}><CloseOutlined /></IconButton></Tooltip>

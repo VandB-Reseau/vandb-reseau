@@ -823,7 +823,7 @@ export async function seConnecter(page: Page, options: OptionsSimulation = {}) {
 // Un onglet regroupé (« Chiffres et santé ») s'ouvre aussi par son nom court (« Chiffres »)
 // Refonte (Joseph, 09/11/2026, 3A) : fiche du magasin en 5 onglets ; les anciens noms d'onglets des tests y mènent encore
 const ANCIENS_ONGLETS_FICHE: Record<string, [string, string?]> = {
-  'Fiche': ['Vue d’ensemble'], 'Chiffres et santé': ['Chiffres', 'Santé et leviers'], 'Bonnes pratiques': ['Ressources'],
+  'Fiche': ['Vue d’ensemble'], 'Chiffres et santé': ['Nine box'], 'Bonnes pratiques': ['Ressources'],
   // Vague 3 (23A) : l'activité est un seul fil, « À venir » en tête (tâches, campagnes) et filtres en puces
   'Tâches et campagnes': ['Activité', 'Tout'], 'Tâches': ['Activité', 'Tout'], 'Visites': ['Activité', 'Visites'], 'Journal': ['Activité', 'Journal'], 'Campagnes': ['Activité', 'Tout'],
 }
@@ -914,8 +914,9 @@ export async function deplierATraiter(page: Page) {
 const ACTIONS_CREER = { 'Visite': 'Saisir une visite', 'Tâche': 'Ajouter une tâche', 'Message': 'Écrire un message', 'Bonne pratique': 'Partager une bonne pratique', 'Événement': 'Ajouter un événement' }
 export async function creerDepuisMenu(page: Page, nom: keyof typeof ACTIONS_CREER) {
   if ((page.viewportSize()?.width ?? 1440) < 900) {
-    await page.getByRole('banner').getByRole('button', { name: 'Créer' }).click()
-    await page.getByRole('menu', { name: 'Créer' }).getByRole('menuitem', { name: nom, exact: true }).click()
+    // Vague 8 (110A) : le « + » flotte ; sur la fiche d'un magasin, c'est le « + » du magasin
+    await page.locator('.MuiFab-root[aria-label="Ajouter"]').or(page.getByRole('main').getByRole('button', { name: 'Ajouter', exact: true })).first().click()
+    await page.getByRole('menuitem', { name: nom === 'Visite' ? /^Visite/ : nom, exact: nom !== 'Visite' }).first().click()
     return
   }
   await page.keyboard.press('Control+k')

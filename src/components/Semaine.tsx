@@ -38,7 +38,7 @@ export function coachsSuivis(reseau: Reseau, profil: ReturnType<typeof useAuth>[
 function Chiffre({ valeur, libelle, detail }: { valeur: ReactNode; libelle: string; detail?: ReactNode }) {
   return (
     <Card sx={{ border: 0, px: 1.5, py: 1.25, minWidth: 0 }}>
-      <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{valeur}</Typography>
+      <Typography sx={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{valeur}</Typography>
       <Typography variant="body2" color="text.secondary">{libelle}</Typography>
       {detail && <Box sx={{ mt: 0.5 }}>{detail}</Box>}
     </Card>

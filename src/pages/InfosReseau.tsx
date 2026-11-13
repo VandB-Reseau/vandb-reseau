@@ -123,7 +123,7 @@ function Contenu({ reseau }: { reseau: Reseau }) {
           <FiltreMenu libelle="Magasin" choisis={magasins} onChange={setMagasins} options={optionsMagasins} />
           {vue === 'pratiques' && <FiltreMenu libelle="Thème" choisis={themes} onChange={setThemes} options={optionsThemes} />}
           <FiltreMenu libelle="Période" unique choisis={[periode]} onChange={(v) => setPeriode((v[0] as Periode) ?? 'tout')} options={periodes} />
-          {(actifs > 0 || recherche) && <Button onClick={effacer} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
+          {(actifs > 0 || recherche) && <Button onClick={effacer} sx={{ minHeight: 36 }}>Retirer les filtres</Button>}
         </RechercheFiltres>
       )}
       <Box sx={{ maxWidth: 760 }}>

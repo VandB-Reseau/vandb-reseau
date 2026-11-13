@@ -78,7 +78,8 @@ export function Fenetre({ titre, ouvert, onFermer, children, valide, enregistrer
             : <Button color="error" startIcon={<DeleteOutlined />} onClick={() => setConfirmer(true)} disabled={envoi || confirmer} sx={{ minHeight: 48, mr: 'auto' }}>Supprimer</Button>
         )}
         <Button onClick={() => onFermer()} sx={{ minHeight: 48 }}>Annuler</Button>
-        <Button variant="contained" disabled={!valide || envoi} onClick={() => agir(enregistrer)} sx={{ minHeight: 48 }}>{envoi ? 'Enregistrement…' : 'Enregistrer'}</Button>
+        {/* Vague 8 (100A) : jamais de bouton grisé ; tant qu'il manque une information, le bouton le dit au clic */}
+        <Button variant="contained" aria-disabled={!valide || envoi} onClick={() => { if (envoi) return; if (!valide) { setErreur('Il manque une information obligatoire : complète les champs marqués d’un astérisque.'); return } void agir(enregistrer) }} sx={{ minHeight: 48 }}>{envoi ? 'Enregistrement…' : 'Enregistrer'}</Button>
       </DialogActions>
     </Dialog>
   )

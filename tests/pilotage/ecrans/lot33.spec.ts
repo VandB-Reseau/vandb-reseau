@@ -55,7 +55,7 @@ test('résultat : impôt, résultat net et capital remboursé mois par mois ; be
   const cellules = (nom: RegExp) => compte.getByRole('row', { name: nom }).getByRole('cell')
   await expect(cellules(/^Résultat net/).nth(1)).not.toHaveText('')
   await expect(cellules(/^Impôt sur les sociétés/).nth(1)).not.toHaveText('')
-  await expect(cellules(/^Capital des emprunts remboursé/).nth(1)).toHaveText(/-2\s500/)   // 30 000 ÷ 12
+  await expect(cellules(/^Capital des emprunts remboursé/).nth(1)).toHaveText(/[-−]2\s500/)   // 30 000 ÷ 12
   await expect(cellules(/^Amortissements réintégrés/).nth(1)).toHaveText(/2\s000/)        // 24 000 ÷ 12
   await expect(page.getByRole('button', { name: 'Aide : Besoin en fonds de roulement' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])

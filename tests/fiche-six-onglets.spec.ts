@@ -34,7 +34,7 @@ test('chaque onglet regroupé montre ses deux parties, sans déborder de l’éc
 })
 
 for (const { ancienne, onglet, vu } of [
-  { ancienne: 'sante', onglet: /^Chiffres/, vu: /En recul depuis le 1 oct\. 2026/ },
+  { ancienne: 'sante', onglet: /^Nine box/, vu: /En recul depuis le 1 oct\. 2026/ },
   { ancienne: 'fil', onglet: /^Activité/, vu: 'Classé Cœur de réseau' },
 ]) {
   test(`un ancien lien ?vue=${ancienne} ouvre l’onglet qui l’accueille`, async ({ page, isMobile }) => {

@@ -6,7 +6,6 @@ import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'rea
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
-import ArrowBack from '@mui/icons-material/ArrowBack'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
@@ -36,6 +35,7 @@ import { BlocPortefeuille, ProfilPersonne } from '../components/Portefeuille'
 import { portefeuilleDe } from '../data/portefeuille'
 import { lienPersonne } from '../data/messagerie'
 import { fichePersonne } from '../data/personnes'
+import { FilAriane } from '../components/FilAriane'
 
 // Vague 3 (Joseph, 09/11/2026, 28A) : fiche d'une personne au gabarit de la fiche magasin, trois onglets.
 // Les anciennes adresses (?vue=portefeuille|fiche|visites|actions|campagnes) mènent au bon onglet.
@@ -73,7 +73,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
   const faitesAn = rythme.reduce((t, l) => t + l.faites, 0), referenceAn = rythme.reduce((t, l) => t + l.reference, 0)
   return (
     <>
-      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Équipe</Button>
+      <FilAriane pcSeulement etapes={[{ libelle: 'Équipe', lien: '/equipe' }]} ici={coach.nom} />
       <ProfilPersonne retour={{ libelle: 'Équipe', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe')) }} nom={coach.nom} lignes={[['Coach', coach.rr?.nom].filter(Boolean).join(' · ')]}
         pastille={retards ? { ton: 'rouge', libelle: `${retards} tâche${retards > 1 ? 's' : ''} en retard` } : null}
         compteurs={[

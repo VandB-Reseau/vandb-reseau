@@ -21,9 +21,9 @@ import type { ReactNode } from 'react'
 import { ordreDuJour, visitePlanifieeProche } from '../data/ordreDuJour'
 import { actionsEnCours } from '../data/actions'
 import { prioritesDu } from '../data/planAction'
-import { enregistrerAudit, enregistrerChiffres, enregistrerConstats, enregistrerPlan, enregistrerPreparation, enregistrerVisites, revoirTaches, supprimerVisite, type CibleTache } from '../data/chargement'
-import { ChampsChiffres, useSaisieChiffres } from './Chiffres'
-import { auditDe, lireNombre, moisPrecedent, typesAudit, typesContact } from '../data/chiffres'
+import { enregistrerAudit, enregistrerConstats, enregistrerPlan, enregistrerPreparation, enregistrerVisites, revoirTaches, supprimerVisite, type CibleTache } from '../data/chargement'
+import { useSaisieChiffres } from './Chiffres'
+import { analyser, auditDe, formatKEuros, formatPourcent, formatValeur, libelleMois, lireNombre, moisPrecedent, typesAudit, typesContact } from '../data/chiffres'
 import { partiesVides } from '../data/compteRendu'
 import { libellesGrilles, photosDe, reponsesPourSaisie, resultatGrille, type Reponses } from '../data/grilles'
 import { supprimerPhotos } from '../lib/photos'
@@ -61,7 +61,7 @@ function BlocSaisie({ id, titre, detail, children }: { id: string; titre: string
     <Box component="section" id={id} aria-label={titre} sx={{ scrollMarginTop: 72, borderTop: '1px solid', borderColor: 'divider', pt: 1 }}>
       <Button onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert} endIcon={ouvert ? <ExpandLessOutlined /> : <ExpandMoreOutlined />}
         sx={{ minHeight: 48, px: 0, color: 'text.primary', justifyContent: 'flex-start', width: '100%', '& .MuiButton-endIcon': { ml: 'auto' } }}>
-        <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1.0625rem' }}>{titre}</Typography>
+        <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem' }}>{titre}</Typography>
         {detail && <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>{detail}</Typography>}
       </Button>
       <Collapse in={ouvert}><Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1, pb: 1 }}>{children}</Box></Collapse>
@@ -129,7 +129,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const sujets = unSeul && !contact && magasins[0] && (!visite || visite.prevue || visite.date >= reseau.jour) ? ordreDuJour(reseau, magasins[0]) : []
   const avecPlan = unSeul && !contact && !!magasins[0]
   const nbOuvertes = avecPlan ? actionsEnCours(reseau, new Set([magasins[0]])).filter((x) => !x.visite || x.visite.id !== (visite?.id ?? null)).length : 0
-  const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date) && (!unSeul || chiffres.valide) && !(audit && !grilleRemplie && scoreInvalide)
+  const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date) && !(audit && !grilleRemplie && scoreInvalide)
   const noms = reseau.magasins.map((m) => m.nom)
   // Depuis un magasin (ou le compte rendu d'une visite prévue) : magasin, date, type et visiteurs déjà connus, sur une ligne
   const [details, setDetails] = useState(() => !((visite?.prevue || (!visite && magasinsInitiaux.length === 1)) && participants.length > 0))
@@ -179,7 +179,6 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
             await enregistrerPreparation(m0, reportes.length ? { notes: '', heure: '', par: prep?.par ?? '', maj: date, sujets: reportes.filter((x) => x.genre !== 'libre').map((x) => x.id), libres: reportes.filter((x) => x.genre === 'libre').map((x) => x.titre) } : null)
           }
         }
-        if (unSeul && chiffres.modifie) await enregistrerChiffres([chiffres.ligne()])
         const constats = unSeul ? campagnes.lot(date, participants[0] ?? reseau.directeur.nom) : []
         if (constats.length) await enregistrerConstats(constats)
         const resultat = audit && grilleRemplie && resultatG ? { date, type, conforme: resultatG.conforme, score: resultatG.score, reponses }
@@ -203,7 +202,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
       {brouillon && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', bgcolor: 'action.hover', borderRadius: 2, pl: 2, pr: 1 }}>
           <Typography variant="body2" sx={{ flex: 1, minWidth: 180 }}>{`Brouillon repris du ${dateHeure(brouillon.garde)}`}</Typography>
-          <Button onClick={() => { effacerBrouillon(cleBrouillon); setBrouillon(null); onFermer() }} sx={{ minHeight: 48 }}>Effacer le brouillon</Button>
+          <Button onClick={() => { effacerBrouillon(cleBrouillon); setBrouillon(null); onFermer() }} sx={{ minHeight: 48 }}>Supprimer le brouillon</Button>
         </Box>
       )}
       {!details && (
@@ -277,7 +276,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
           <TextField label="Score de l’audit (%)" value={score} onChange={(e) => setScore(e.target.value)} error={scoreInvalide} helperText={scoreInvalide ? 'Entre 0 et 100' : undefined} slotProps={{ htmlInput: { inputMode: 'decimal' } }} />
         </Box>
       )}
-      {unSeul && magasins[0] && <ChampsChiffres s={chiffres} reseau={reseau} titre="Chiffres du mois" />}
+      {unSeul && magasins[0] && <ChiffresCaisse reseau={reseau} magasin={magasins[0]} />}
       {unSeul && <SaisieCampagnes s={campagnes} />}
         </BlocSaisie>
       )}
@@ -307,5 +306,24 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         </BlocSaisie>
       )}
     </Fenetre>
+  )
+}
+
+// Vague 8 (Joseph, 11/11/2026, « pourquoi tu me demandes les chiffres du mois en visite alors que ça vient de la caisse ») :
+// la visite ne saisit plus de chiffres ; elle rappelle ceux de la caisse, en lecture
+function ChiffresCaisse({ reseau, magasin }: { reseau: Reseau; magasin: string }) {
+  const a = analyser(reseau, magasin)
+  return (
+    <Box component="section" aria-label="Chiffres de la caisse">
+      <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>{a ? `Chiffres de la caisse · ${libelleMois(a.mois)}` : 'Chiffres de la caisse'}</Typography>
+      {a ? (
+        <Typography variant="body2">
+          {[`CA ${formatKEuros(a.ca)}${a.ecart === null ? '' : ` (${formatPourcent(a.ecart)} vs N-1)`}`,
+            a.chiffre.tickets !== null && `${formatValeur('tickets', a.chiffre.tickets)} tickets`,
+            a.chiffre.panier !== null && `panier ${formatValeur('panier', a.chiffre.panier)}`,
+            a.chiffre.marge !== null && `marge ${formatValeur('marge', a.chiffre.marge)}`].filter(Boolean).join(' · ')}
+        </Typography>
+      ) : <Typography variant="body2" color="text.secondary">Pas encore de chiffres de caisse pour ce magasin.</Typography>}
+    </Box>
   )
 }

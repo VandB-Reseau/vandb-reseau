@@ -284,10 +284,10 @@ export function CarteEffacerNotes({ reseau }: { reseau: Reseau }) {
           <Typography component="h2" sx={cartouche}>Notes de la nine box</Typography>
           <Typography variant="body2" color="text.secondary">{nombre} magasin{nombre > 1 ? 's' : ''} noté{nombre > 1 ? 's' : ''}</Typography>
         </Box>
-        <Button color="error" startIcon={<DeleteOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>Effacer toutes les notes</Button>
+        <Button color="error" startIcon={<DeleteOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>Supprimer toutes les notes</Button>
       </CardContent>
       <Dialog open={ouvert} onClose={() => setOuvert(false)} aria-labelledby="titre-effacer-notes" maxWidth="xs" fullWidth>
-        <DialogTitle id="titre-effacer-notes">Effacer toutes les notes ?</DialogTitle>
+        <DialogTitle id="titre-effacer-notes">Supprimer toutes les notes ?</DialogTitle>
         <DialogContent>
           <Typography>Les notes nine box de {nombre} magasin{nombre > 1 ? 's' : ''}, historique compris, seront effacées. Tous les magasins redeviennent non classés. Les déploiements ne changent pas.</Typography>
           {erreur && <Alert severity="error" sx={{ mt: 2 }}>{erreur}</Alert>}

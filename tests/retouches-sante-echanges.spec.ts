@@ -36,7 +36,7 @@ test('Santé du parc, Chiffres : le filtre Alerte, sans filtre Coach ni RR (le p
 
 test('vingt déploiements restent lisibles sur la fiche magasin', async ({ page }, info) => {
   await seConnecter(page, { config })
-  await page.goto('./#/magasins/Lyon%20Test?vue=chiffres')
+  await page.goto('./#/magasins/Lyon%20Test?vue=ninebox')
   await page.getByRole('heading', { name: 'Déploiements', exact: true }).scrollIntoViewIfNeeded()
   await expect(page.getByText('sur 20 thématiques déployées')).toBeVisible()
   const pas = page.getByRole('region', { name: 'Pas déployé' })

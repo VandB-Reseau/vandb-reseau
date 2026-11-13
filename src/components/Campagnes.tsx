@@ -190,7 +190,7 @@ export function VueCampagnes({ reseau }: { reseau: Reseau }) {
   const choisie = reseau.campagnes.liste.find((c) => c.id === params.get('campagne'))
   const ouvrir = (id: string | null) => setParams((p) => { const n = new URLSearchParams(p); if (id) n.set('campagne', id); else n.delete('campagne'); return n })
   const droits = useDroitsCampagnes()
-  const nouvelle = droits.creer ? <BoutonAction libelle="Nouvelle campagne" onClick={() => setEdition(null)} /> : null
+  const nouvelle = droits.creer ? <BoutonAction libelle="Ajouter une campagne" onClick={() => setEdition(null)} /> : null
   // Hors Directeur : seules les campagnes qui touchent au moins un de ses magasins
   const liste = reseau.campagnes.liste.filter((c) => droits.referentiels || magasinsConcernes(reseau, c).length > 0)
   const parPhase = (ph: Phase) => liste.filter((c) => phase(c, reseau.jour) === ph).sort((a, b) => (ph === 'terminee' ? b.fin.localeCompare(a.fin) : a.debut.localeCompare(b.debut)))
@@ -199,7 +199,7 @@ export function VueCampagnes({ reseau }: { reseau: Reseau }) {
       {choisie
         ? <DetailCampagne reseau={reseau} c={choisie} retour={() => ouvrir(null)} modifier={() => setEdition(choisie)} signaler={setMessage} />
         : !liste.length
-        ? <EmptyState icone={<CampaignOutlined />} titre="Aucune campagne" texte="Les campagnes commerciales et leur exécution en magasin apparaîtront ici." action={droits.creer ? <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }}>Nouvelle campagne</Button> : undefined} />
+        ? <EmptyState icone={<CampaignOutlined />} titre="Aucune campagne" texte="Les campagnes commerciales et leur exécution en magasin apparaîtront ici." action={droits.creer ? <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }}>Ajouter une campagne</Button> : undefined} />
         : (
           <>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>{nouvelle}</Box>
@@ -286,11 +286,11 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
         <LignesBilan titre="Responsable Régional" lignes={bilanPar(reseau, c, concernes, 'rr')} />
         <LignesBilan titre="Coach" lignes={bilanPar(reseau, c, concernes, 'coach')} />
       </Box>
-      <RechercheFiltres actifs={actifs} recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher un magasin ou un Coach" />}>
+      <RechercheFiltres actifs={actifs} recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Magasin, ville, Coach…" libelle="Rechercher un magasin ou un Coach" />}>
         <FiltreMenu libelle="Responsable Régional" choisis={rrs} onChange={setRRs} options={reseau.rrs.filter((r) => concernes.some((m) => m.rr?.id === r.id)).map((r) => ({ valeur: r.id, libelle: r.nom }))} />
         <FiltreMenu libelle="Coach" choisis={coachs} onChange={setCoachs} options={nomsCoachs.map((n) => ({ valeur: n, libelle: n }))} />
         <FiltreMenu libelle="Exécution" choisis={etats} onChange={setEtats} options={ordreExecution.map((e) => ({ valeur: e, libelle: libellesExecution[e], detail: `${b[e]} magasins` }))} />
-        {(actifs > 0 || recherche) && <Button onClick={() => { setRRs([]); setCoachs([]); setEtats([]); setRecherche('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
+        {(actifs > 0 || recherche) && <Button onClick={() => { setRRs([]); setCoachs([]); setEtats([]); setRecherche('') }} sx={{ minHeight: 36 }}>Retirer les filtres</Button>}
       </RechercheFiltres>
       {!visibles.length ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." />
         : surPC ? (

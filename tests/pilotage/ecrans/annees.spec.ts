@@ -23,7 +23,7 @@ test.afterEach(async ({ page }) => {
 
 test('menu : Suivi et Budgets avec l’année de la base, pas celle du calendrier ; la liste des budgets mène au budget', async ({ page, isMobile }) => {
   await seConnecter(page, { magasins: [valide, enDiscussion], annees: depart })
-  await expect(page.getByRole('heading', { level: 1, name: 'Budgets 2027' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Budget prévisionnel' })).toBeVisible()
   await expect(page.getByText('Campagne 2027 ouverte')).toBeVisible()
   // Pendant la campagne, un magasin de la liste s'ouvre sur son budget 2027
   await page.locator('main').getByText(MAGASINS[0], { exact: true }).last().click()
@@ -65,7 +65,8 @@ test('Directeur : démarrer le suivi 2027, clore 2026, ouvrir la campagne 2028',
   await expect(carte.getByRole('row')).toHaveText([/Année/, /^2028Campagne des budgets/, /^2027Suivie/, /^2026Close/])
   // Les « portes » suivent la base : Budgets 2028, suivi 2027 dans Performance
   await page.goto('./#/budgets')
-  await expect(page.getByRole('heading', { level: 1, name: 'Budgets 2028' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Budget prévisionnel' })).toBeVisible()
+  await expect(page.getByText('Campagne 2028 ouverte')).toBeVisible()
   await allerVers(page, 'Suivi ')
   await expect(page.getByRole('heading', { level: 2, name: 'Suivi 2027' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
@@ -96,7 +97,7 @@ test('suivi 2027 démarré : budget 2027 provisoire signalé, 2026 à clore cons
 
 test('Responsable Régional : voit les années, sans bouton pour les changer', async ({ page }) => {
   await seConnecter(page, { role: 'rr', magasins: [valide], annees: depart })
-  await expect(page.getByRole('heading', { level: 1, name: 'Budgets 2027' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Budget prévisionnel' })).toBeVisible()
   await allerVers(page, 'Paramètres réseau')
   await ongletParametres(page, 'Années')
   const carte = page.getByRole('region', { name: 'Années du pilotage' })

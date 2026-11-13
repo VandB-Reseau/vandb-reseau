@@ -1,3 +1,4 @@
+import { VuesRapides } from '../components/VuesRapides'
 // Onglet Messages (Joseph, 21/10/2026, séparé des Tâches le 22/10) : groupes des magasins, groupes libres,
 // échanges à deux. Téléphone : la liste, puis la conversation en plein écran ; PC : la liste à gauche, la conversation à droite.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -7,7 +8,6 @@ import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
-import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -67,8 +67,8 @@ const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').to
 // Avatar d'une conversation : carré noir et or pour un magasin, icône pour un groupe libre, rond pour une personne
 function AvatarConversation({ c, taille = 48 }: { c: Pick<Conversation, 'genre' | 'titre'>; taille?: number }) {
   if (c.genre === 'groupe') return <Avatar variant="rounded" sx={{ width: taille, height: taille, borderRadius: 3, bgcolor: 'info.main', color: 'info.contrastText' }}><GroupsOutlined /></Avatar>
-  if (c.genre === 'magasin') return <Avatar variant="rounded" sx={{ width: taille, height: taille, borderRadius: 3, bgcolor: '#1d1d1b', color: '#f8bb09', fontWeight: 700, fontSize: '0.9375rem' }}>{initialesDe(c.titre)}</Avatar>
-  return <Avatar sx={{ width: taille, height: taille, bgcolor: 'action.selected', color: 'text.primary', fontWeight: 600, fontSize: '0.9375rem' }}>{initialesDe(c.titre)}</Avatar>
+  if (c.genre === 'magasin') return <Avatar variant="rounded" sx={{ width: taille, height: taille, borderRadius: 3, bgcolor: '#1d1d1b', color: '#f8bb09', fontWeight: 700, fontSize: '1rem' }}>{initialesDe(c.titre)}</Avatar>
+  return <Avatar sx={{ width: taille, height: taille, bgcolor: 'action.selected', color: 'text.primary', fontWeight: 600, fontSize: '1rem' }}>{initialesDe(c.titre)}</Avatar>
 }
 
 function Pastille({ n, fort }: { n: number; fort: boolean }) {
@@ -254,14 +254,9 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
         <Box sx={{ flex: 1, minWidth: 0, '& .MuiTextField-root': { width: '100%' } }}>
           <ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Magasin, personne, message" />
         </Box>
-        {ecrire && <BoutonOutil libelle="Nouvelle conversation" icone={<EditOutlined />} onClick={(e) => (peutCreerGroupe || plusieurs ? setMenu(e.currentTarget) : setNouveau('personne'))} plein />}
+        {ecrire && <BoutonOutil libelle="Écrire" icone={<EditOutlined />} onClick={(e) => (peutCreerGroupe || plusieurs ? setMenu(e.currentTarget) : setNouveau('personne'))} plein />}
       </Box>
-      <Box role="group" aria-label="Vues des conversations" sx={{ px: { xs: 0, md: 2 }, pb: 1, display: 'flex', gap: 1, overflowX: 'auto', scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
-        {vues.map((x) => (
-          <Chip key={x.v} label={x.libelle} onClick={() => setVue(x.v)} aria-pressed={vue === x.v} color={vue === x.v ? 'primary' : 'default'} variant={vue === x.v ? 'filled' : 'outlined'}
-            sx={{ flexShrink: 0, height: { xs: 48, md: 36 }, borderRadius: 2, fontSize: '0.875rem' }} />
-        ))}
-      </Box>
+      <Box sx={{ px: { xs: 0, md: 2 } }}><VuesRapides label="Vues des conversations" valeur={vue} onChange={setVue} options={vues} sx={{ mb: 0.5 }} /></Box>
       <Menu anchorEl={menu} open={!!menu} onClose={() => setMenu(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <MenuItem onClick={() => { setMenu(null); setNouveau('personne') }} sx={{ minHeight: 48 }}><ListItemIcon><PersonOutlined /></ListItemIcon>Message à une personne</MenuItem>
         {peutCreerGroupe && <MenuItem onClick={() => { setMenu(null); setNouveau('groupe') }} sx={{ minHeight: 48 }}><ListItemIcon><GroupsOutlined /></ListItemIcon>Nouveau groupe</MenuItem>}
@@ -314,8 +309,7 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
           <EmptyState icone={<ForumOutlined />} titre={q ? 'Aucun résultat' : vue === 'mentions' ? 'Personne ne te cite' : 'Tout est lu'} texte={q ? 'Vérifie l’orthographe du nom ou du mot cherché.' : 'Le calme avant la prochaine visite.'} />
         )}
         {vue === 'tout' && !affichees.length && !q && (
-          <EmptyState icone={<ForumOutlined />} titre="Aucune conversation en cours" texte="Tes échanges avec les franchisés et l’équipe arriveront ici."
-            action={ecrire && <Button variant="contained" onClick={() => setNouveau('personne')} startIcon={<EditOutlined />} sx={{ minHeight: 48, borderRadius: 2, px: 3 }}>Nouveau message</Button>} />
+          <EmptyState icone={<ForumOutlined />} titre="Aucune conversation en cours" texte="Tes échanges avec les franchisés et l’équipe arriveront ici." />
         )}
       </Box>
     </Box>

@@ -13,8 +13,10 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
 })
 
-test('quatre repères de pilotage en tête de l’accueil, chacun mène à son détail', async ({ page }) => {
+test('quatre repères de pilotage en tête de l’accueil, chacun mène à son détail', async ({ page, isMobile }) => {
   await seConnecter(page)
+  // Vague 8 : sur téléphone, les indicateurs se déplient sous les actualités
+  if (isMobile) await page.getByRole('button', { name: 'Mes indicateurs' }).click()
   const pilotage = page.getByRole('region', { name: 'Pilotage' })
   const tuiles = pilotage.getByRole('link')
   await expect(tuiles).toHaveCount(4)
@@ -49,9 +51,10 @@ test('PC : les actualités au centre, À traiter, Mes tâches et Cette semaine �
   await page.screenshot({ path: `captures/${info.project.name}-accueil-pilotage.png` })
 })
 
-test('téléphone : repères en 2 × 2, un bloc court à onglets, puis les actualités', async ({ page, isMobile }, info) => {
+test('téléphone : les actualités d’abord, un bloc court à onglets, repères en 2 × 2 dépliés à la demande', async ({ page, isMobile }, info) => {
   test.skip(!isMobile, 'Disposition du téléphone')
   await seConnecter(page)
+  await page.getByRole('button', { name: 'Mes indicateurs' }).click()
   const pilotage = page.getByRole('region', { name: 'Pilotage' })
   // Quatre cartes égales en 2 × 2, toutes dans l'écran, sans défilement de côté
   await expect(pilotage.getByRole('link')).toHaveCount(4)
@@ -67,11 +70,10 @@ test('téléphone : repères en 2 × 2, un bloc court à onglets, puis les actua
   const onglets = page.getByRole('tablist', { name: 'Mon point' }).getByRole('tab')
   await expect(onglets).toHaveText([/^À traiter/, /^Tâches/, 'Semaine', /^Contrats/])
   for (const o of await onglets.all()) expect((await o.boundingBox())!.height).toBeGreaterThanOrEqual(48)
-  // Deux lignes seulement, les actualités juste en dessous
+  // Vague 8 (retour de Joseph, 13/11/2026) : les actualités passent avant le bloc à onglets
   await expect(page.getByRole('region', { name: 'À traiter' }).getByRole('link')).toHaveCount(2)
   const actualites = page.getByRole('region', { name: 'Actualités' })
-  const haut = (await actualites.boundingBox())!.y
-  expect(haut).toBeLessThan(page.viewportSize()!.height * 1.1)
+  expect((await actualites.boundingBox())!.y).toBeLessThan((await page.getByRole('tablist', { name: 'Mon point' }).boundingBox())!.y)
   await onglets.nth(1).click()
   await expect(onglets.nth(1)).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('region', { name: 'Mes tâches' })).toBeVisible()

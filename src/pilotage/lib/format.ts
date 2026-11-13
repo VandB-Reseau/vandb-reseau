@@ -4,18 +4,20 @@ const centimes = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: '
 const kilo = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0, signDisplay: 'negative' })
 const pourcent = new Intl.NumberFormat('fr-FR', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1, signDisplay: 'negative' })
 
-export const montant = (v: number) => euros.format(v)
-export const panier = (v: number) => centimes.format(v) // panier moyen, au centime
+// Vague 8 (103A) : un seul format de nombre, signe moins typographique (−) et non trait d'union
+export const moins = (t: string) => t.replace(/^-/, '−').replace(/(\s|\()-(?=\d)/g, '$1−')
+export const montant = (v: number) => moins(euros.format(v))
+export const panier = (v: number) => moins(centimes.format(v)) // panier moyen, au centime
 // Lot 38 (D4) : cartes et phrases en k€, une décimale sous 10 k€ (« 7,4 k€ ») ; les tableaux restent à l'euro
 const kiloFin = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1, signDisplay: 'negative' })
 const ecartKilo = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0, signDisplay: 'exceptZero' })
 const ecartKiloFin = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1, signDisplay: 'exceptZero' })
-export const milliers = (v: number) => `${(Math.abs(v) < 9_950 ? kiloFin : kilo).format(Math.abs(v) < 9_950 ? Math.round(v / 100) / 10 : v / 1000)} k€`
-export const ecartMilliers = (v: number) => `${(Math.abs(v) < 9_950 ? ecartKiloFin : ecartKilo).format(Math.abs(v) < 9_950 ? Math.round(v / 100) / 10 : v / 1000)} k€`
-export const taux = (v: number) => pourcent.format(v)
+export const milliers = (v: number) => moins(`${(Math.abs(v) < 9_950 ? kiloFin : kilo).format(Math.abs(v) < 9_950 ? Math.round(v / 100) / 10 : v / 1000)} k€`)
+export const ecartMilliers = (v: number) => moins(`${(Math.abs(v) < 9_950 ? ecartKiloFin : ecartKilo).format(Math.abs(v) < 9_950 ? Math.round(v / 100) / 10 : v / 1000)} k€`)
+export const taux = (v: number) => moins(pourcent.format(v))
 // Seuil rond (« 15 % ») : décimale seulement si elle compte (lot 40, règles de calcul)
 const pourcentCourt = new Intl.NumberFormat('fr-FR', { style: 'percent', maximumFractionDigits: 1 })
-export const tauxCourt = (v: number) => pourcentCourt.format(v)
+export const tauxCourt = (v: number) => moins(pourcentCourt.format(v))
 
 export const MOIS = ['Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.']
 export const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']

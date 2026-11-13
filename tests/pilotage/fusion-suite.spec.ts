@@ -36,7 +36,7 @@ test.afterEach(async ({ page }) => {
 test('un mois importé de la caisse ne se saisit plus à la main ; un mois sans caisse, si', async ({ page, isMobile }, info) => {
   const ecritures: NonNullable<OptionsSimulation['ecritures']> = []
   await connecter(page, { ecritures, chiffresCaisse: [{ store_name: 'Annecy Test', month: '2026-09-01', ca_cave: 81000, ca_bar: 9000, ca_ext: 0, pm_cave: 45, flux_cave: 1800, pm_bar: 15, flux_bar: 600, freq: 2400, panier: 37.5, marge: 41.2 }] }, {})
-  await page.goto('./#/magasins/Annecy%20Test?vue=sante')
+  await page.goto('./#/magasins/Annecy%20Test?vue=chiffres&partie=sante')
   await page.getByRole('button', { name: 'Saisir les chiffres' }).click()
   const d = page.getByRole('dialog', { name: 'Chiffres de Annecy Test' })
   await expect(d.getByLabel('Mois')).toHaveText('septembre 2026')
@@ -58,7 +58,7 @@ test('un mois importé de la caisse ne se saisit plus à la main ; un mois sans 
 
 test('sans la mise à jour 0039, les chiffres saisis restent lus comme avant', async ({ page }) => {
   await connecter(page, { chiffresCaisse: null }, {})
-  await page.goto('./#/magasins/Annecy%20Test?vue=sante')
+  await page.goto('./#/magasins/Annecy%20Test?vue=chiffres&partie=sante')
   await page.getByRole('button', { name: 'Saisir les chiffres' }).click()
   const d = page.getByRole('dialog', { name: 'Chiffres de Annecy Test' })
   await expect(d.getByLabel('Panier moyen HT cave (€)')).toBeEnabled()
@@ -229,7 +229,7 @@ test('Voir comme un Coach : les budgets de son périmètre seulement', async ({ 
 test('chiffres saisis supprimés (0041) : la fiche ne propose plus de saisie, les chiffres de la caisse restent', async ({ page }) => {
   const ecritures: NonNullable<OptionsSimulation['ecritures']> = []
   await connecter(page, { ecritures, chiffresFermes: true, chiffresCaisse: [{ store_name: 'Annecy Test', month: '2026-09-01', ca_cave: 81000, ca_bar: 9000, ca_ext: 0, pm_cave: 45, flux_cave: 1800, pm_bar: 15, flux_bar: 600, freq: 2400, panier: 37.5, marge: 41.2 }] }, {})
-  await page.goto('./#/magasins/Annecy%20Test?vue=sante')
+  await page.goto('./#/magasins/Annecy%20Test?vue=chiffres&partie=sante')
   await expect(page.getByText('Mois enregistrés')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Saisir les chiffres' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: /^Modifier les chiffres de / })).toHaveCount(0)

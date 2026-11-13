@@ -52,12 +52,12 @@ test('après connexion, l’accueil montre les priorités dans l’ordre choisi'
     'Décroche',
     'En retard',
     'À surveiller',
-    'Recule',
+    // Vague 8 (97A) : lexique fermé ; « Recule » devient « En dessous », « Vacant » « Sans Coach »,
+    // l'intégration en retard se lit « En retard » (déjà plus haut)
+    'En dessous',
     'Surchargé',
-    'Vacant',
+    'Sans Coach',
     'Ouverture',
-    // Vague 5 (50A) : parcours d'intégration en retard
-    'Intégration en retard',
     'Visite',
   ])
   await expect(aTraiter.getByRole('link').first()).toContainText('Lyon Test')
@@ -69,7 +69,7 @@ test('chaque destination est accessible depuis la navigation', async ({ page, is
   await seConnecter(page)
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
   // Téléphone : « + » dans l'en-tête ; PC : la recherche (Ctrl K) en tête du menu latéral (refonte 09/11/2026)
-  if (isMobile) await expect(page.getByRole('button', { name: 'Créer', exact: true })).toBeVisible()
+  if (isMobile) await expect(page.getByRole('button', { name: 'Ajouter', exact: true })).toBeVisible()
   else await expect(page.getByRole('combobox', { name: 'Recherche globale' })).toBeVisible()
   for (const { nom, court } of principales) {
     if (isMobile && !court) continue
@@ -116,7 +116,7 @@ test('zones tactiles d’au moins 48 px sur téléphone', async ({ page, isMobil
   await expect(boutons).toHaveCount(5)
   await expect(boutons.nth(3)).toHaveAccessibleName(/^Tâches/)
   await expect(boutons.nth(4)).toHaveAccessibleName(/^Messages/)
-  const creer = (await page.getByRole('banner').getByRole('button', { name: 'Créer' }).boundingBox())!
+  const creer = (await page.locator('.MuiFab-root[aria-label="Ajouter"]').boundingBox())!
   expect(creer.height).toBeGreaterThanOrEqual(48)
   for (const b of await boutons.all()) {
     const box = await b.boundingBox()

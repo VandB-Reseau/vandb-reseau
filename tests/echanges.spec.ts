@@ -89,7 +89,7 @@ test('le Directeur crée un groupe libre et y écrit', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, messagerie: {} })
   await page.goto('./#/echanges')
-  await page.getByRole('button', { name: 'Nouvelle conversation' }).click()
+  await page.getByRole('button', { name: 'Écrire', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Nouveau groupe' }).click()
   const fenetre = page.getByRole('dialog', { name: 'Nouveau groupe' })
   await fenetre.getByLabel('Nom du groupe').fill('Coachs du Nord')
@@ -115,10 +115,10 @@ test('téléphone : barre du bas à cinq onglets, « + » dans l’en-tête', as
   const barre = barreBasse(page)
   await expect(barre.getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
   for (const l of await barre.getByRole('button').all()) expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(48)
-  const plus = page.getByRole('banner').getByRole('button', { name: 'Créer' })
+  const plus = page.locator('.MuiFab-root[aria-label="Ajouter"]')
   expect((await plus.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   await plus.click()
-  await expect(page.getByRole('menu', { name: 'Créer' })).toBeVisible()
+  await expect(page.getByRole('menu', { name: 'Ajouter', exact: true })).toBeVisible()
 })
 
 test('franchisé : le groupe de son magasin sans « Équipe seule », ni groupe libre', async ({ page }) => {

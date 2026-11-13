@@ -88,7 +88,7 @@ export function LeviersCommerciaux({ budget, annee, parametres, proposerAction }
         })}
       </Box>
       <Box sx={{ mt: 2.5, pt: 2, borderTop: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Typography component="p" sx={{ flex: 1, minWidth: 220, fontSize: '1.0625rem', fontVariantNumeric: 'tabular-nums' }} aria-label="Effet sur un an">
+        <Typography component="p" sx={{ flex: 1, minWidth: 220, fontSize: '1rem', fontVariantNumeric: 'tabular-nums' }} aria-label="Effet sur un an">
           Sur un an : CA <b>{signe(effet.ca)}</b> · marge <b>{signe(effet.marge)}</b> · EBE <b>{signe(effet.ebe)}</b>
         </Typography>
         {proposerAction && actif && (

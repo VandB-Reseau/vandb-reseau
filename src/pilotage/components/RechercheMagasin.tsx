@@ -161,7 +161,7 @@ export function SelecteurMagasin({ magasin, sombre = false }: { magasin: string;
   const titre = <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left', flex: 1 }}>{sombre ? magasin : 'Changer de magasin'}</Box>
   if (magasins.length <= 1) {
     if (!sombre) return null
-    return <Box aria-label={`Magasin ouvert : ${magasin}`} sx={{ display: 'flex', minWidth: 0, maxWidth: { xs: 160, md: 280 }, px: 1, py: 1, fontWeight: 700, fontSize: '0.9375rem' }}>{titre}</Box>
+    return <Box aria-label={`Magasin ouvert : ${magasin}`} sx={{ display: 'flex', minWidth: 0, maxWidth: { xs: 160, md: 280 }, px: 1, py: 1, fontWeight: 700, fontSize: '1rem' }}>{titre}</Box>
   }
   const choisir = (nom: string | null) => {
     if (!nom) return
@@ -173,7 +173,7 @@ export function SelecteurMagasin({ magasin, sombre = false }: { magasin: string;
     <>
       <Button onClick={() => { setTexte(''); setOuvert(true) }} aria-label={`Changer de magasin (magasin ouvert : ${magasin})`} endIcon={<UnfoldMoreOutlined />}
         sx={sombre
-          ? { minWidth: 0, maxWidth: { xs: 170, md: 280 }, minHeight: 48, px: 1.5, color: '#ffffff', fontWeight: 700, fontSize: '0.9375rem', textTransform: 'none', justifyContent: 'space-between', border: 1, borderColor: 'rgba(255,255,255,0.45)', borderRadius: 2, '&:hover': { borderColor: '#ffffff', bgcolor: 'rgba(255,255,255,0.08)' } }
+          ? { minWidth: 0, maxWidth: { xs: 170, md: 280 }, minHeight: 48, px: 1.5, color: '#ffffff', fontWeight: 700, fontSize: '1rem', textTransform: 'none', justifyContent: 'space-between', border: 1, borderColor: 'rgba(255,255,255,0.45)', borderRadius: 2, '&:hover': { borderColor: '#ffffff', bgcolor: 'rgba(255,255,255,0.08)' } }
           : { minWidth: 0, maxWidth: { xs: 220, md: 280 }, minHeight: 48, px: 1.5, color: 'text.primary', fontWeight: 600, fontSize: '0.875rem', textTransform: 'none', justifyContent: 'space-between', border: 1, borderColor: 'divider', borderRadius: 2 }}>
         {titre}
       </Button>

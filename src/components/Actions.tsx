@@ -33,7 +33,10 @@ import { PuceStatut } from './StatutTache'
 import type { ActionLibre, Reseau, StatutTache } from '../data/modele'
 import { dateCourte, lienFiche } from '../lib/format'
 import { lienCompteRendu } from '../data/visites'
-import { prioritesActives } from '../data/planAction'
+import { PRIORITES_MAX, nouvelIdPriorite, prioritesActives, type Priorite } from '../data/planAction'
+import { objectifsDu, phraseObjectif } from '../data/objectifs'
+import { enregistrerPlan } from '../data/chargement'
+import ListItemText from '@mui/material/ListItemText'
 import { Fenetre } from './EditionEquipe'
 import { TexteDicte } from './Dictee'
 
@@ -96,6 +99,10 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
   const pastille = !x.a.faite && echeance && <Chip size="small" color={retard ? 'error' : 'default'} variant={retard ? 'filled' : 'outlined'} label={retard ? `En retard · ${echeance}` : echeance} sx={{ fontSize: 12, fontWeight: 600 }} />
   const faite = x.a.faite ? `${x.libre?.budget?.abandonnee ? 'abandonnée' : 'faite'} le ${dateCourte(x.a.faite)}${x.a.faitePar ? ` par ${x.a.faitePar}` : ''}` : null
   const priorite = x.a.priorite ? reseau.plans?.[x.magasin]?.find((p) => p.id === x.a.priorite) : undefined
+  // Vague 8 (Joseph, 11/11/2026) : la tâche dit à quelle priorité et à quel objectif chiffré elle sert (objectif jamais
+  // montré au franchisé)
+  const { profil: profilLigne } = useAuth()
+  const objectifLie = priorite?.objectif && profilLigne?.role !== 'franchise' ? (reseau.objectifs?.[x.magasin] ?? []).find((o) => o.id === priorite.objectif) : undefined
   const statut = !x.a.faite && (x.a.statut || changerStatut) ? <PuceStatut a={x.a} titre={x.a.action} changer={changerStatut} /> : null
   return (
     <Box component="li" sx={{ borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
@@ -118,7 +125,7 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
           {x.libre?.budget && ' · Budget'}
         </Typography>
         {/* Vague 7 (89A) : la priorité du plan en puce, sauf quand la tâche est déjà rangée sous sa priorité */}
-        {priorite && !sansPriorite && <Chip size="small" icon={<FlagOutlined />} label={`Priorité : ${priorite.titre}`} sx={{ mt: 0.5, fontSize: 12, fontWeight: 600, maxWidth: '100%', bgcolor: 'rgba(48,118,114,0.10)', color: '#24524f', '& .MuiChip-icon': { color: '#307672' } }} />}
+        {priorite && !sansPriorite && <Chip size="small" icon={<FlagOutlined />} label={objectifLie ? `Priorité : ${priorite.titre} · Objectif : ${phraseObjectif(objectifLie)}` : `Priorité : ${priorite.titre}`} sx={{ mt: 0.5, fontSize: 12, fontWeight: 600, maxWidth: '100%', bgcolor: 'rgba(48,118,114,0.10)', color: '#24524f', '& .MuiChip-icon': { color: '#307672' } }} />}
         {x.a.statut === 'bloquee' && x.a.raison && !x.a.faite && <Typography variant="body2" sx={{ color: 'error.dark' }}>Bloquée : {x.a.raison}</Typography>}
         {(pastille || statut) && <Box sx={{ display: { xs: 'flex', sm: 'none' }, gap: 1, flexWrap: 'wrap', alignItems: 'center', mt: 0.75 }}>{statut}{pastille}</Box>}
         {x.a.pieces && <ListePieces pieces={x.a.pieces} />}
@@ -227,17 +234,28 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
   const [statut, setStatut] = useState<'' | StatutTache>(a?.statut ?? '')
   const [raison, setRaison] = useState(a?.raison ?? '')
   const priorites = franchise ? [] : prioritesActives(reseau, magasin)
+  // Vague 8 : le lien vers le plan d'action se voit toujours (même sans priorité en cours) et une priorité se crée d'ici,
+  // avec son objectif chiffré
+  const objectifs = franchise || !magasin ? [] : objectifsDu(reseau, magasin)
+  const [nouvellePriorite, setNouvellePriorite] = useState('')
+  const [objectifPriorite, setObjectifPriorite] = useState('')
   const [alerte, setAlerte] = useState('')
   const propre = texte.trim().replace(/\s+/g, ' ')
   return (
     <Fenetre titre={a ? 'Modifier la tâche' : 'Ajouter une tâche'} ouvert onFermer={onFermer}
-      valide={!!propre && !!magasin && dateValide(echeance)}
+      valide={!!propre && !!magasin && dateValide(echeance) && (priorite !== NOUVELLE || !!nouvellePriorite.trim())}
       enregistrer={async () => {
         if (franchise) {
           await ajouterActionFranchise(magasin, propre, porteur.trim(), echeance, pieces)
           return 'Tâche ajoutée.'
         }
-        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), ...(a?.fil ?? (depuis?.equipe ? 'equipe' : undefined) ? { fil: 'equipe' as const } : {}), ...(a?.message ?? depuis?.message ? { message: a?.message ?? depuis?.message } : {}), ...(a?.budget ? { budget: a.budget } : {}), ...(statut ? { statut } : {}), ...(statut === 'bloquee' && raison.trim() ? { raison: raison.trim().slice(0, 300) } : {}), ...(priorite && priorites.some((p) => p.id === priorite) ? { priorite } : {}) }
+        let idPriorite = priorite && priorites.some((p) => p.id === priorite) ? priorite : ''
+        if (priorite === NOUVELLE && nouvellePriorite.trim()) {
+          const p: Priorite = { id: nouvelIdPriorite(), titre: nouvellePriorite.trim().slice(0, 200), objectif: objectifs.some((o) => o.id === objectifPriorite) ? objectifPriorite : '', statut: 'active', bilan: '', creeLe: reseau.jour, par: profil?.nom ?? '', closLe: '', revueLe: '' }
+          await enregistrerPlan(magasin, [...(reseau.plans?.[magasin] ?? []), p])
+          idPriorite = p.id
+        }
+        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), ...(a?.fil ?? (depuis?.equipe ? 'equipe' : undefined) ? { fil: 'equipe' as const } : {}), ...(a?.message ?? depuis?.message ? { message: a?.message ?? depuis?.message } : {}), ...(a?.budget ? { budget: a.budget } : {}), ...(statut ? { statut } : {}), ...(statut === 'bloquee' && raison.trim() ? { raison: raison.trim().slice(0, 300) } : {}), ...(idPriorite ? { priorite: idPriorite } : {}) }
         const id = await enregistrerActionLibre(magasin, l)
         if (!a) notifierTache(magasin, id, clesDesPorteurs(reseau, magasin, porteursDe(l)).filter((c) => !mesCles(profil).includes(c)))
         return a ? 'Tâche mise à jour.' : 'Tâche ajoutée.'
@@ -250,11 +268,25 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
       )}
       <TexteDicte label="Tâche" libelleDictee="Tâche" valeur={texte} changer={setTexte} autoFocus={!a} multiline minRows={2} />
       <ChampPorteur reseau={reseau} magasin={magasin} valeur={porteur} changer={setPorteur} />
-      {priorites.length > 0 && (
-        <TextField select label="Priorité du plan d’action" value={priorites.some((p) => p.id === priorite) ? priorite : ''} onChange={(e) => setPriorite(e.target.value)}>
-          <MenuItem value="" sx={{ minHeight: 48 }}>Aucune</MenuItem>
-          {priorites.map((p) => <MenuItem key={p.id} value={p.id} sx={{ minHeight: 48 }}>{p.titre}</MenuItem>)}
-        </TextField>
+      {!franchise && magasin && (
+        <>
+          <TextField select label="Priorité du plan d’action" value={priorite === NOUVELLE || priorites.some((p) => p.id === priorite) ? priorite : ''} onChange={(e) => setPriorite(e.target.value)}
+            slotProps={{ select: { displayEmpty: true, renderValue: (v) => (v === NOUVELLE ? 'Nouvelle priorité' : priorites.find((p) => p.id === v)?.titre ?? 'Aucune') }, inputLabel: { shrink: true } }}>
+            <MenuItem value="" sx={{ minHeight: 48 }}>Aucune</MenuItem>
+            {priorites.map((p) => <MenuItem key={p.id} value={p.id} sx={{ minHeight: 48 }}><ListItemText primary={p.titre} secondary={libelleObjectif(objectifs, p)} /></MenuItem>)}
+            {priorites.length < PRIORITES_MAX && <MenuItem value={NOUVELLE} sx={{ minHeight: 48, fontWeight: 600 }}>Nouvelle priorité…</MenuItem>}
+          </TextField>
+          {priorite === NOUVELLE && (
+            <>
+              <TextField label="Nouvelle priorité" placeholder="Relancer la Cave" value={nouvellePriorite} onChange={(e) => setNouvellePriorite(e.target.value)} slotProps={{ htmlInput: { maxLength: 200 } }} />
+              <TextField select label="Objectif chiffré de la priorité" value={objectifs.some((o) => o.id === objectifPriorite) ? objectifPriorite : ''} onChange={(e) => setObjectifPriorite(e.target.value)}
+                slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }} helperText={objectifs.length ? 'Jamais montré au franchisé' : 'Aucun objectif fixé pour ce magasin : il se fixe dans la fiche, carte Objectifs'}>
+                <MenuItem value="" sx={{ minHeight: 48 }}>Aucun</MenuItem>
+                {objectifs.map((o) => <MenuItem key={o.id} value={o.id} sx={{ minHeight: 48 }}>{phraseObjectif(o)}</MenuItem>)}
+              </TextField>
+            </>
+          )}
+        </>
       )}
       {a && !franchise && !a.faite && (
         <>
@@ -277,4 +309,10 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
       {alerte && <Alert severity="warning">{alerte}</Alert>}
     </Fenetre>
   )
+}
+
+const NOUVELLE = '__nouvelle'
+const libelleObjectif = (objectifs: ReturnType<typeof objectifsDu>, p: Priorite) => {
+  const o = p.objectif ? objectifs.find((x) => x.id === p.objectif) : undefined
+  return o ? `Objectif : ${phraseObjectif(o)}` : 'Sans objectif chiffré'
 }

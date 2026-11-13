@@ -2,6 +2,7 @@ import { createContext, Suspense, useCallback, useContext, useState, type MouseE
 import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Fab from '@mui/material/Fab'
 import ButtonBase from '@mui/material/ButtonBase'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
@@ -75,7 +76,8 @@ export const libellesCreer = choixCreer
 
 // Bouton « + » de la barre du haut sur téléphone : visite, tâche, message, bonne pratique ou événement.
 // Sur PC, la recherche (Ctrl K) propose les mêmes actions (refonte, choix 9A).
-export function BoutonCreer({ entete = false }: { entete?: boolean }) {
+// Vague 8 (110A) : sur téléphone, le « + » flotte en bas à droite, au-dessus de la barre basse (flottant)
+export function BoutonCreer({ entete = false, flottant = false }: { entete?: boolean; flottant?: boolean }) {
   const { reseau } = useReseau()
   const creer = useCreer()
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
@@ -83,17 +85,22 @@ export function BoutonCreer({ entete = false }: { entete?: boolean }) {
   const choisir = (id: Choix | 'message') => { setAncre(null); creer(id) }
   return (
     <>
-      {entete ? (
-        <ButtonBase aria-label="Créer" aria-haspopup="menu" aria-expanded={!!ancre} onClick={ouvrir} sx={{ width: 48, height: 48, flexShrink: 0, borderRadius: '50%', display: 'grid', placeItems: 'center' }}>
+      {flottant ? (
+        <Fab color="primary" aria-label="Ajouter" aria-haspopup="menu" aria-expanded={!!ancre} onClick={ouvrir} className="sans-impression"
+          sx={{ position: 'fixed', right: 16, bottom: 'calc(var(--barre-basse, 0px) + 16px)', zIndex: (t) => t.zIndex.appBar, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)' }}>
+          <AddOutlined />
+        </Fab>
+      ) : entete ? (
+        <ButtonBase aria-label="Ajouter" aria-haspopup="menu" aria-expanded={!!ancre} onClick={ouvrir} sx={{ width: 48, height: 48, flexShrink: 0, borderRadius: '50%', display: 'grid', placeItems: 'center' }}>
           <Box sx={{ width: 34, height: 34, borderRadius: '50%', bgcolor: 'primary.main', color: 'primary.contrastText', display: 'grid', placeItems: 'center' }}><AddOutlined /></Box>
         </ButtonBase>
       ) : (
-        <Button variant="contained" aria-haspopup="menu" aria-expanded={!!ancre} startIcon={<AddOutlined />} onClick={ouvrir}>Créer</Button>
+        <Button variant="contained" aria-haspopup="menu" aria-expanded={!!ancre} startIcon={<AddOutlined />} onClick={ouvrir}>Ajouter</Button>
       )}
       <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: entete ? 'right' : 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: entete ? 'right' : 'left' }}
-        slotProps={{ list: { 'aria-label': 'Créer' }, paper: { sx: { mt: 0.5, minWidth: 220, borderRadius: 2 } } }}>
+        anchorOrigin={flottant ? { vertical: 'top', horizontal: 'right' } : { vertical: 'bottom', horizontal: entete ? 'right' : 'left' }}
+        transformOrigin={flottant ? { vertical: 'bottom', horizontal: 'right' } : { vertical: 'top', horizontal: entete ? 'right' : 'left' }}
+        slotProps={{ list: { 'aria-label': 'Ajouter' }, paper: { sx: { mt: 0.5, minWidth: 220, borderRadius: 2 } } }}>
         {choixCreer.map((c) => (
           <MenuItem key={c.id} onClick={() => choisir(c.id)} disabled={!reseau} sx={{ '&&': { minHeight: 52 }, gap: 1.5, fontWeight: 600 }}>
             <Box component="span" sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: c.fond, color: c.texte, display: 'grid', placeItems: 'center', flexShrink: 0 }}>{c.icone}</Box>

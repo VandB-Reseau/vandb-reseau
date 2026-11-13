@@ -64,7 +64,7 @@ test('le Directeur pose un sondage de trois questions à l’équipe, anonyme, s
   const ecritures: Ecriture[] = []
   await seConnecter(page, { questions: sondages(), ecritures })
   const section = await ouvrirSondages(page, isMobile)
-  await section.getByRole('button', { name: 'Nouveau sondage' }).click()
+  await section.getByRole('button', { name: 'Ajouter un sondage' }).click()
   const d = page.getByRole('dialog', { name: 'Nouveau sondage' })
   await d.getByLabel('Question', { exact: true }).fill('Charge de travail')
   await d.getByRole('group', { name: 'Type de réponse, question' }).getByRole('button', { name: 'Note de 1 à 5' }).click()
@@ -95,7 +95,7 @@ test('un sondage d’une question garde son intitulé pour titre et part aux fra
   const ecritures: Ecriture[] = []
   await seConnecter(page, { questions: sondages(), ecritures })
   const section = await ouvrirSondages(page, isMobile)
-  await section.getByRole('button', { name: 'Nouveau sondage' }).click()
+  await section.getByRole('button', { name: 'Ajouter un sondage' }).click()
   const d = page.getByRole('dialog', { name: 'Nouveau sondage' })
   await expect(d.getByLabel('Titre du sondage')).toHaveCount(0)
   await d.getByLabel('Question', { exact: true }).fill('Avez-vous reçu la PLV ?')
@@ -125,7 +125,7 @@ test('le Coach remplit un sondage depuis son accueil, sans voir les résultats',
   await page.goto('./#/infos?vue=sondages')
   await expect(page.getByRole('region', { name: 'Sondages à remplir' })).toContainText('Réponse envoyée, merci.')
   await expect(page.getByRole('region', { name: 'Sondages posés' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Nouveau sondage' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Ajouter un sondage' })).toHaveCount(0)
 })
 
 test('l’accueil de l’équipe ne montre que les sondages pas encore remplis', async ({ page }) => {

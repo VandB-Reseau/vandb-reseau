@@ -182,8 +182,8 @@ test('effacer toutes les notes nine box en une fois, avec une copie de sauvegard
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/parametres/reglages?rubrique=ninebox')
-  await page.getByRole('button', { name: 'Effacer toutes les notes' }).click()
-  const d = page.getByRole('dialog', { name: 'Effacer toutes les notes ?' })
+  await page.getByRole('button', { name: 'Supprimer toutes les notes' }).click()
+  const d = page.getByRole('dialog', { name: 'Supprimer toutes les notes ?' })
   await expect(d).toContainText('3 magasins')
   await page.screenshot({ path: `captures/suppression-ninebox/${test.info().project.name}-tout-effacer.png` })
   await d.getByRole('button', { name: 'Tout effacer' }).click()

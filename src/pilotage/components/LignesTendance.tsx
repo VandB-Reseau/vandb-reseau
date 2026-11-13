@@ -26,7 +26,7 @@ export function LignesTendance({ titre, lignes, seuil }: { titre: string; lignes
               gridTemplateColumns: { xs: '1fr auto', sm: 'minmax(150px, 1.2fr) minmax(140px, 1.6fr) 1fr 1fr' },
             }}>
               <Box>
-                <Typography sx={{ fontWeight: 700, fontSize: '0.9375rem' }}>{l.libelle}</Typography>
+                <Typography sx={{ fontWeight: 700, fontSize: '1rem' }}>{l.libelle}</Typography>
                 <Typography variant="caption" color="text.secondary">face {l.nomReference}, {t!.mois} mois</Typography>
               </Box>
               <Box sx={{ gridColumn: { xs: '1 / -1', sm: 'auto' }, order: { xs: 3, sm: 0 } }}><MiniCourbe reel={l.reel} reference={l.reference} /></Box>

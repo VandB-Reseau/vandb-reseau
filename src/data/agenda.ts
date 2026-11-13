@@ -35,7 +35,7 @@ export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Elem
       const f = x.fin ?? x.date
       if (x.date > fin || f < debut) continue
       if (x.type === 'inauguration') el.push({ cle: `i-${m.nom}-${x.date}`, categorie: 'ouverture', debut: x.date, fin: x.date, titre: `Inauguration ${m.nom}`, detail: x.motif || 'Soirée d’inauguration', lien: lienFiche(m.nom), couleur: '#ea6029', magasin: m.nom })
-      else if (x.type === 'travaux') el.push({ cle: `t-${m.nom}-${x.date}`, categorie: 'ouverture', debut: x.date, fin: f, titre: `${m.nom} fermé`, detail: x.motif || 'Fermeture provisoire', lien: lienFiche(m.nom), couleur: '#5f5f66', magasin: m.nom })
+      else if (x.type === 'travaux') el.push({ cle: `t-${m.nom}-${x.date}`, categorie: 'ouverture', debut: x.date, fin: f, titre: `${m.nom} fermé`, detail: x.motif || 'Fermeture provisoire', lien: lienFiche(m.nom), couleur: '#312e2e', magasin: m.nom })
     }
   }
   // Formations à part (23/10/2026) ; une réunion reste un événement
@@ -48,7 +48,7 @@ export function elementsDuMois(reseau: Reseau, debut: string, fin: string): Elem
   for (const a of reseau.anniversaires) {
     const jour = `${annee}-${a.date.slice(5)}`
     const ans = Number(annee) - Number(a.date.slice(0, 4))
-    if (jour >= debut && jour <= fin && ans > 0) el.push({ cle: `a-${a.nom}-${a.nature}`, categorie: 'anniversaire', debut: jour, fin: jour, titre: a.nature === 'naissance' ? `Anniversaire de ${a.nom}` : `${a.nom} : ${ans} an${ans > 1 ? 's' : ''} chez V and B`, detail: a.role, couleur: '#c2185b' })
+    if (jour >= debut && jour <= fin && ans > 0) el.push({ cle: `a-${a.nom}-${a.nature}`, categorie: 'anniversaire', debut: jour, fin: jour, titre: a.nature === 'naissance' ? `Anniversaire de ${a.nom}` : `${a.nom} : ${ans} an${ans > 1 ? 's' : ''} chez V and B`, detail: a.role, couleur: '#f7d802' })
   }
   return el.sort((a, b) => a.debut.localeCompare(b.debut) || a.titre.localeCompare(b.titre, 'fr'))
 }

@@ -21,7 +21,7 @@ export function BarreFiltres({ reseau, filtres, onChange, actions, alertesDe, le
     ...filtres.alertes.map((a) => ({ cle: `a-${a}`, libelle: libellesAlerte[a], retirer: sans('alertes', a) })),
     ...filtres.leviers.map((l) => ({ cle: `l-${l}`, libelle: `Levier : ${libellesLevier[l].toLowerCase()}`, retirer: sans('leviers', l) })),
   ]
-  const recherche = <ChampRecherche valeur={filtres.texte} onChange={(texte) => onChange({ ...filtres, texte })} placeholder="Nom, ville, département, Coach…" libelle="Rechercher dans les magasins" />
+  const recherche = <ChampRecherche valeur={filtres.texte} onChange={(texte) => onChange({ ...filtres, texte })} placeholder="Magasin, ville, Coach…" libelle="Rechercher dans les magasins" />
   return (
     <RechercheFiltres recherche={recherche} actifs={actifs} actions={actions} pucesActives={pucesActives}>
       <FiltreMenu
@@ -68,7 +68,7 @@ export function BarreFiltres({ reseau, filtres, onChange, actions, alertesDe, le
         />
       )}
       {(actifs > 0 || filtres.texte) && (
-        <Button onClick={() => onChange(filtresVides)} sx={{ minHeight: 36 }}>Effacer les filtres</Button>
+        <Button onClick={() => onChange(filtresVides)} sx={{ minHeight: 36 }}>Retirer les filtres</Button>
       )}
     </RechercheFiltres>
   )

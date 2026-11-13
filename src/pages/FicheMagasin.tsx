@@ -33,10 +33,11 @@ import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import ArrowBack from '@mui/icons-material/ArrowBack'
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
+import GridViewOutlined from '@mui/icons-material/GridViewOutlined'
+import { texteSur } from '../theme/theme'
 import { PastilleCase, PastilleTendance } from '../components/Sante'
 import { journalDansLeFil, useEditionJournal } from '../components/Journal'
 import { ANCIENNE_NOTE_FRANCHISE, caseDe, couleurTon, criteresAxe, historiqueSante, libelleAncienneNote, libelleAxe, libelleNote, niveauAxe, nineBox, scoreAxe, tendance, tonDe, type Axe, type Ton as TonDeploiement } from '../data/sante'
@@ -87,25 +88,28 @@ import { SectionObjectifs } from '../components/Objectifs'
 import { SectionPlan } from '../components/PlanAction'
 import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 import { cartouche } from '../components/Social'
+import { FilAriane } from '../components/FilAriane'
 
 // Refonte (Joseph, 09/11/2026, choix 3A) : cinq onglets, jamais plus de deux niveaux. Activité regroupe tâches et campagnes,
 // visites et journal ; Chiffres regroupe le suivi face au budget, la santé, les leviers et les saisies (une seule source,
 // la caisse) ; Budget ne garde que les étapes du budget ; Ressources accueille les bonnes pratiques.
-type VueFiche = 'fiche' | 'activite' | 'actions' | 'visites' | 'journal' | 'chiffres' | 'budget' | 'pratiques'
-type OngletFiche = 'fiche' | 'activite' | 'chiffres' | 'budget' | 'pratiques'
+type VueFiche = 'fiche' | 'activite' | 'actions' | 'visites' | 'journal' | 'chiffres' | 'ninebox' | 'budget' | 'pratiques'
+type OngletFiche = 'fiche' | 'activite' | 'chiffres' | 'ninebox' | 'budget' | 'pratiques'
 const rubriquesFiche: Rubrique<OngletFiche>[] = [
   { vue: 'fiche', libelle: 'Vue d’ensemble', court: 'Aperçu', icone: <StorefrontOutlined /> },
   { vue: 'activite', libelle: 'Activité', icone: <TaskAltOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
+  // Joseph (13/11/2026) : la nine box du magasin a son onglet, avec son évolution
+  { vue: 'ninebox', libelle: 'Nine box', icone: <GridViewOutlined /> },
   { vue: 'budget', libelle: 'Budget', icone: <RequestQuoteOutlined /> },
   { vue: 'pratiques', libelle: 'Ressources', icone: <TipsAndUpdatesOutlined /> },
 ]
 // Vague 3 (23A) : plus de sous-onglets dans Activité ; les anciennes adresses (actions, visites, journal) ouvrent le fil
 // sur le bon filtre
 const ongletDe = (v: VueFiche): OngletFiche => (v === 'actions' || v === 'visites' || v === 'journal' || v === 'activite' ? 'activite' : v)
-const VUES: VueFiche[] = ['fiche', 'activite', 'actions', 'visites', 'journal', 'chiffres', 'budget', 'pratiques']
+const VUES: VueFiche[] = ['fiche', 'activite', 'actions', 'visites', 'journal', 'chiffres', 'ninebox', 'budget', 'pratiques']
 // Anciens liens vers un onglet regroupé : l'onglet qui l'accueille, ouvert sur sa partie
-const anciennesVues: Record<string, VueFiche> = { sante: 'chiffres', campagnes: 'actions', fil: 'journal' }
+const anciennesVues: Record<string, VueFiche> = { sante: 'ninebox', campagnes: 'actions', fil: 'journal' }
 const filtreActivite = (v: VueFiche, fil: string | null): FiltreActivite =>
   (FILTRES_ACTIVITE.some((f) => f.v === fil) ? fil as FiltreActivite : v === 'visites' ? 'visites' : v === 'journal' ? 'journal' : 'tout')
 // Parties du pilotage rangées dans l'onglet Budget ; toutes les autres (suivi, santé, saisies) sont dans Chiffres
@@ -119,12 +123,11 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const brute = (anciennesVues[demandee] ?? VUES.find((v) => v === demandee) ?? 'fiche') as VueFiche
   // Une partie du budget ouverte depuis Chiffres (ou l'inverse, anciens liens « vue=budget ») : l'onglet qui la porte
   const vue: VueFiche = (brute === 'budget' || brute === 'chiffres') && partie ? (PARTIES_BUDGET.includes(partie) ? 'budget' : 'chiffres')
-    : demandee === 'sante' ? 'chiffres' : brute
+    : brute
   useEffect(() => {
     // Adresse lue au moment même : le suivi a pu la réécrire juste avant (ancienne partie, « tresorerie » → « comptes »)
     const actuelle = () => new URLSearchParams(window.location.hash.split('?')[1] ?? '')
     if ((brute === 'budget' || brute === 'chiffres') && vue !== brute) setParams(() => { const n = actuelle(); n.set('vue', vue); return n }, { replace: true })
-    if (demandee === 'sante' && !partie) setParams(() => { const n = actuelle(); n.set('vue', 'chiffres'); n.set('partie', 'sante'); return n }, { replace: true })
   }, [brute, vue, demandee, partie, setParams])
   const versMessages = demandee === 'messages'
   useEffect(() => { if (versMessages) naviguer(lienFil({ genre: 'magasin', magasin: m.nom, equipe: false }), { replace: true }) }, [versMessages, naviguer, m.nom])
@@ -148,6 +151,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const [edition, setEdition] = useState(false)
   const [visite, setVisite] = useState<Visite | null | undefined>(undefined)
   const [nouvelleTache, setNouvelleTache] = useState(false)
+  const [nouvellePratique, setNouvellePratique] = useState(false)
   const [typeVisite, setTypeVisite] = useState('terrain')
   const [saisieChiffres, setSaisieChiffres] = useState<string | null | undefined>(undefined)
   const [confirmation, setConfirmation] = useState('')
@@ -173,10 +177,10 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const manquants = [m.code, ex.implantation, m.ouvertureConnue, adresseComplete, m.telephone, m.email, ex.typologie, ex.zoneChalandise, ex.licence, ex.instagram, resumeHoraires(ex.horaires).length].filter((x) => !x).length
   return (
     <>
-      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins'))} sx={{ mb: 1, ml: -1, display: { xs: 'none', md: 'inline-flex' } }}>Magasins</Button>
+      <FilAriane pcSeulement etapes={[{ libelle: 'Magasins', lien: '/magasins' }]} ici={m.nom} />
       <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} alerteVisite={rythme?.alerte ? libellePasVu(rythme) : ''}
         appeler={m.telephone || m.responsable?.telephone || ''} message={conversation.ouvrir}
-        creer={{ visite: saisirVisite, tache: () => setNouvelleTache(true), appel: () => { setTypeVisite('appel'); setVisite(null) }, note: journal.nouvelleNote }}
+        creer={{ visite: saisirVisite, tache: () => setNouvelleTache(true), appel: () => { setTypeVisite('appel'); setVisite(null) }, note: journal.nouvelleNote, pratique: () => setNouvellePratique(true) }}
         modifier={referentiels ? () => setEdition(true) : undefined} fermer={referentiels ? () => setSituation(true) : undefined} />
       {conversation.panneau}
       {situationsAffichees(m, reseau.jour).map((s) => (
@@ -240,19 +244,25 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 
         {vue === 'budget' && <OngletBudget nom={m.nom} mode="budget" />}
 
+        {vue === 'ninebox' && (
+          <Box id="partie-sante" sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
+            <GrilleMagasin reseau={reseau} m={m} />
+            <SectionSante reseau={reseau} m={m} modifier={() => naviguer(`/plus/sante?vue=evaluer&magasin=${encodeURIComponent(m.nom)}`)} />
+            {/* Les déploiements des thématiques suivent la santé du magasin */}
+            <Box sx={{ gridColumn: { lg: '1 / -1' } }}><SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/campagnes?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} /></Box>
+          </Box>
+        )}
+
         {vue === 'pratiques' && <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />}
 
         {vue === 'chiffres' && <OngletBudget nom={m.nom} mode="chiffres" sante={
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
             <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
             <SectionLeviers reseau={reseau} m={m} />
-            <Box id="partie-sante" sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start', scrollMarginTop: 160 }}>
-              <SectionSante reseau={reseau} m={m} modifier={() => naviguer(`/plus/sante?vue=evaluer&magasin=${encodeURIComponent(m.nom)}`)} />
-              <SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/campagnes?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} />
-            </Box>
           </Box>
         } />}
 
+        {nouvellePratique && <DialogPratique reseau={reseau} pratique={null} magasinInitial={m.nom} onFermer={(msg) => { setNouvellePratique(false); if (msg) setConfirmation(msg) }} />}
         {situation && <DialogSituation magasin={m} jour={reseau.jour} onFermer={(msg) => { setSituation(false); if (msg) setConfirmation(msg) }} />}
         {reaffectation && <ReaffecterDialog reseau={reseau} magasin={m} ouvert onFermer={(fait) => { setReaffectation(false); if (fait) setConfirmation(`${m.nom} est confié à ${fait}.`) }} />}
         {edition && <DialogMagasin reseau={reseau} magasin={m} onFermer={(msg, nom) => {
@@ -380,6 +390,42 @@ function SectionSante({ reseau, m, modifier }: { reseau: Reseau; m: Magasin; mod
   )
 }
 
+// Onglet Nine box (Joseph, 13/11/2026) : la grille, la case actuelle en couleur, les cases passées numérotées
+// du plus ancien (1) au plus récent : on voit le chemin du magasin
+function GrilleMagasin({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+  const actuelle = caseDe(reseau.evaluations[m.nom])
+  const points = historiqueSante(reseau.evaluations, m.nom).filter((p) => p.caseId)
+  const chemin = points.filter((p, i) => i === 0 || p.caseId !== points[i - 1].caseId)
+  const passages = (id: string) => chemin.map((p, i) => ({ ...p, n: i + 1 })).filter((p) => p.caseId === id && !(p === chemin.at(-1) && id === actuelle?.id))
+  return (
+    <Section titre="Nine box">
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'auto repeat(3, minmax(0, 1fr))', gap: 0.75, alignItems: 'stretch' }}>
+        {[3, 2, 1].map((mg) => [
+          <Typography key={`l${mg}`} variant="caption" color="text.secondary" sx={{ alignSelf: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: '0.75rem' }}>{['Faible', 'Moyen', 'Fort'][mg - 1]}</Typography>,
+          ...[1, 2, 3].map((r) => {
+            const c = nineBox.find((x) => x.resultats === r && x.management === mg)!
+            const ici = actuelle?.id === c.id
+            const avant = passages(c.id)
+            return (
+              <Box key={c.id} role="group" aria-label={`${c.libelle}${ici ? ', case actuelle' : ''}${avant.length ? `, passé le ${avant.map((p) => dateCourte(p.date)).join(', ')}` : ''}`}
+                sx={{ minHeight: 76, p: 1, borderRadius: 2, border: '2px solid', borderColor: ici ? c.couleur : 'divider', bgcolor: ici ? c.couleur : 'transparent', color: ici ? texteSur(c.couleur) : 'text.primary', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 0.5 }}>
+                <Typography variant="body2" sx={{ fontWeight: ici ? 700 : 600, lineHeight: 1.25 }}>{c.libelle}</Typography>
+                {avant.length > 0 && <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>{avant.map((p) => (
+                  <Box key={p.date} component="span" title={dateCourte(p.date)} sx={{ minWidth: 24, height: 24, px: 0.5, borderRadius: 999, bgcolor: 'background.paper', color: 'text.primary', border: '1px solid', borderColor: 'divider', fontSize: '0.75rem', fontWeight: 700, display: 'grid', placeItems: 'center' }}>{p.n}</Box>
+                ))}</Box>}
+              </Box>
+            )
+          }),
+        ])}
+        <Box />
+        {['Faible', 'Moyen', 'Fort'].map((x) => <Typography key={x} variant="caption" color="text.secondary" sx={{ textAlign: 'center', fontSize: '0.75rem' }}>{x}</Typography>)}
+      </Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Résultats en colonnes, {m.franchise ? 'franchisé' : 'Associés'} en lignes.{chemin.length > 1 ? ' Les numéros donnent les cases passées, de la plus ancienne (1) à la plus récente.' : ''}</Typography>
+      {!actuelle && <Typography sx={{ mt: 1 }}>Magasin pas encore classé.</Typography>}
+    </Section>
+  )
+}
+
 // Cases successives, de la plus récente à la plus ancienne
 function EvolutionCases({ points }: { points: { date: string; caseId: string }[] }) {
   const changements = points.filter((p, i) => p.caseId && p.caseId !== points.slice(0, i).filter((x) => x.caseId).at(-1)?.caseId)
@@ -411,7 +457,7 @@ function SectionDeploiements({ reseau, m, modifier }: { reseau: Reseau; m: Magas
   return (
     <Section titre="Déploiements" action={<Button startIcon={<EditOutlined />} onClick={modifier} aria-label="Modifier les déploiements" sx={{ minHeight: 48 }}>Modifier</Button>}>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-        <Typography sx={{ fontSize: '1.5rem', fontWeight: 800, lineHeight: 1.1 }}>{n('positif')}</Typography>
+        <Typography sx={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1.1 }}>{n('positif')}</Typography>
         <Typography variant="body2" color="text.secondary">sur {ths.length} thématique{ths.length > 1 ? 's' : ''} déployée{n('positif') > 1 ? 's' : ''}</Typography>
       </Box>
       <Box role="img" aria-label={`${n('positif')} déployées, ${n('partiel')} en partie, ${n('negatif')} pas déployées sur ${ths.length}`}
@@ -600,7 +646,7 @@ function etatConcept20(reseau: Reseau, magasin: string): 'fait' | 'enCours' | nu
 
 // Vague 7 (79A et retour de Joseph, 10/11/2026) : un seul jeu d'actions dans l'en-tête. Le bouton « Visite » dit la prochaine
 // étape ; « + » ajoute une visite non prévue, une tâche, un appel ou une note
-interface MenuCreer { visite: () => void; tache: () => void; appel: () => void; note: () => void }
+interface MenuCreer { visite: () => void; tache: () => void; appel: () => void; note: () => void; pratique: () => void }
 function MenuAjouter({ creer }: { creer: MenuCreer }) {
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const choisir = (f: () => void) => () => { setAncre(null); f() }
@@ -612,6 +658,8 @@ function MenuAjouter({ creer }: { creer: MenuCreer }) {
         <MenuItem onClick={choisir(creer.visite)} sx={{ minHeight: 48 }}><ListItemIcon><RateReviewOutlined /></ListItemIcon>Visite non prévue</MenuItem>
         <MenuItem onClick={choisir(creer.appel)} sx={{ minHeight: 48 }}><ListItemIcon><PhoneInTalkOutlined /></ListItemIcon>Appel</MenuItem>
         <MenuItem onClick={choisir(creer.note)} sx={{ minHeight: 48 }}><ListItemIcon><EditOutlined /></ListItemIcon>Note</MenuItem>
+        {/* Joseph (13/11/2026) : la bonne pratique s'ajoute depuis le « + » du magasin */}
+        <MenuItem onClick={choisir(creer.pratique)} sx={{ minHeight: 48 }}><ListItemIcon><TipsAndUpdatesOutlined /></ListItemIcon>Bonne pratique</MenuItem>
       </Menu>
     </>
   )
@@ -639,13 +687,15 @@ function AutresActions({ nom, modifier, fermer: fermerMagasin }: { nom: string; 
 // tâches ouvertes, campagnes), puis le passé du plus récent au plus ancien : visites et comptes rendus, tâches, chiffres,
 // bonnes pratiques et journal (notes, santé, déploiements, Coachs, ouverture). Filtres en puces ; « Visites » montre le
 // détail des visites et audits (modifier, compte rendu, envoi).
-type FiltreActivite = 'tout' | 'visites' | 'taches' | 'chiffres' | 'journal'
+type FiltreActivite = 'tout' | 'visites' | 'taches' | 'pratiques' | 'chiffres' | 'journal'
 const FILTRES_ACTIVITE: { v: FiltreActivite; libelle: string; genres: string[] }[] = [
   { v: 'tout', libelle: 'Tout', genres: [] },
   { v: 'visites', libelle: 'Visites', genres: ['visite'] },
   { v: 'taches', libelle: 'Tâches', genres: ['tache'] },
+  // Joseph (13/11/2026) : les bonnes pratiques du magasin ont leur filtre dans l'activité
+  { v: 'pratiques', libelle: 'Bonnes pratiques', genres: ['pratique'] },
   { v: 'chiffres', libelle: 'Chiffres', genres: ['chiffres'] },
-  { v: 'journal', libelle: 'Journal', genres: ['journal', 'pratique'] },
+  { v: 'journal', libelle: 'Journal', genres: ['journal'] },
 ]
 function ActiviteMagasin({ reseau, m, filtre, filtrer, actions, signaler, saisirVisite, modifierVisite }: {
   reseau: Reseau; m: Magasin; filtre: FiltreActivite; filtrer: (f: FiltreActivite) => void; actions: ReturnType<typeof actionsDuMagasin>

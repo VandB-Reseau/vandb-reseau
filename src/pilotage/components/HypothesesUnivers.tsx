@@ -204,12 +204,12 @@ export function HypothesesUnivers({ familles, flux, annee, suite, surCA = 0, ...
           <Box key={u} component="section" aria-label={nomU} sx={{ pt: 2, pb: 1, borderTop: 1, borderColor: 'divider', '&:first-of-type': { borderTop: 0 } }}>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 2, rowGap: 0.5, mb: 1, px: 2.5 }}>
               <Typography variant="h3" sx={{ fontSize: '1.125rem', display: 'inline-flex', alignItems: 'center', alignSelf: 'center' }}>{nomU}<BoutonCommenter compact ancre={`ventes/${u}`} libelle={`Ventes ${nomU}`} /></Typography>
-              <Typography sx={{ fontSize: '0.9375rem' }}>
+              <Typography sx={{ fontSize: '1rem' }}>
                 <Box component="span" sx={gris}>{milliers(n)} → </Box>
                 <Box component="span" sx={{ fontWeight: 700 }}>{milliers(b)}</Box>
                 <Box component="span" sx={{ color: !n || Math.round(b) === Math.round(n) ? 'text.secondary' : b > n ? 'success.dark' : 'error.dark', fontWeight: 600 }}>{n ? ` (${b >= n ? '+' : ''}${taux(b / n - 1)})` : ''}</Box>
               </Typography>
-              <Typography sx={{ fontSize: '0.9375rem', ...gris }}>Marge {annee} : {milliers(m)}{b ? ` · ${taux(m / b)}` : ''}</Typography>
+              <Typography sx={{ fontSize: '1rem', ...gris }}>Marge {annee} : {milliers(m)}{b ? ` · ${taux(m / b)}` : ''}</Typography>
             </Box>
             <TableauHypotheses titre={`Hypothèses ${annee} : ${nomU}`} annee={annee} effet>
               {fl ? (

@@ -40,7 +40,7 @@ test('le Directeur ouvre les budgets depuis le menu, passe au suivi et aux param
   } else {
     await page.goto('./#/budgets')
   }
-  await expect(page.getByRole('heading', { level: 1, name: /^Budgets \d{4}$/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: /^(Budget prévisionnel|Mon budget)$/ })).toBeVisible()
   // Refonte vague 2 (14A, 15A) : plus d'onglets sous Budgets pour le Directeur ; le suivi est dans Performance, les
   // réglages dans Paramètres
   await expect(page.getByRole('navigation', { name: 'Pages des budgets' })).toHaveCount(0)
@@ -96,7 +96,7 @@ test('le franchisé de plusieurs magasins voit la liste de ses budgets, sans les
   await connecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test', 'Lyon Test'] } }, { role: 'franchise', magasins })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   await page.goto('./#/budgets')
-  await expect(page.getByRole('heading', { level: 1, name: /^Budgets \d{4}$/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: /^(Budget prévisionnel|Mon budget)$/ })).toBeVisible()
   await expect(page.getByText('Lyon Test').first()).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Pages des budgets' })).toHaveCount(0)
 })
@@ -104,7 +104,7 @@ test('le franchisé de plusieurs magasins voit la liste de ses budgets, sans les
 test('le contrôle de gestion, sans rôle dans le réseau, n’a que les budgets', async ({ page }) => {
   await connecter(page, { acces: { role: 'sans_acces' } }, { role: 'aucun', parametreur: true })
   await expect(page.getByText('Contrôle de gestion', { exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { level: 1, name: /^Budgets \d{4}$/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: /^(Budget prévisionnel|Mon budget)$/ })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Pages des budgets' }).getByRole('tab', { name: 'Paramètres réseau' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Visites' })).toHaveCount(0)
   // Le budget d'un magasin s'ouvre en lecture, sans la fiche de l'app réseau

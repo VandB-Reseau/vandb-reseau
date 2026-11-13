@@ -13,6 +13,17 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   téléphone) : en faisant défiler un tableau vers la droite, les titres des autres colonnes glissaient sur le titre
   figé de la première colonne, alors que les lignes, elles, restaient bien dessous. Le titre figé repasse devant, dans
   tous les tableaux de l'app (budget compris). Sans migration.
+- Refonte SaaS, vague 8 (Joseph, 10 au 13/11/2026, cohérence globale, choix 92 à 110) : échelle de texte unique (7 niveaux),
+  jetons de couleurs et d'arrondis, l'agenda dans la charte, le budget reprend le thème du réseau ; vues rapides au même
+  style partout ; un seul bloc chiffré ; statuts en 4 tons et lexique fermé de 16 mots validé par Joseph (les types en
+  étiquette neutre) ; état vide en trois tailles, sans bouton en double ; verbes fixes (Ajouter, Envoyer, Supprimer,
+  Retirer, Écrire) ; titre du budget = nom du menu ; signe moins typographique ; fil d'Ariane sur PC ; barre de période
+  commune (Mois / Cumul) qui suit d'un écran à l'autre ; bouton Enregistrer jamais grisé (il dit ce qui manque) ;
+  téléphone : en-tête allégé, « + » flottant, Actualités dans le menu du compte ; test de cohérence (tailles, verbes).
+  Retours de Joseph : actualités en tête de l'accueil, la visite rappelle les chiffres de la caisse sans les faire saisir,
+  tâche reliée à une priorité du plan et à son objectif chiffré ; fiche magasin : « Bonne pratique » dans le « + », filtre
+  Bonnes pratiques dans l'activité, onglet Nine box avec le chemin du magasin. Sans migration.
+
 - Budget prévisionnel lisible sur PC (Joseph, 10/11/2026) : chaque carte de « Construire » (ventes, frais, investissements,
   équipe…) s'ouvre de la même façon, sur toute la largeur, avec l'Impact en bande collante en haut ; plus de panneau à
   droite. Les tableaux des thèmes tiennent dans la page dès 1 280 px sans défiler vers la droite (un texte caché élargissait
