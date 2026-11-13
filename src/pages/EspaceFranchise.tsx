@@ -635,7 +635,7 @@ function OngletVisites({ reseau, m }: { reseau: Reseau; m: Magasin }) {
                   <LigneCompacte avatar={<Initiales nom={v.type} icone={avenir ? <EventAvailableOutlined /> : <EventNoteOutlined />} />}
                     titre={`${dateCourte(v.date)} · ${libelleTypeVisite(v.type)}`}
                     detail={[nomsVisiteurs(v), v.plan.length > 0 && `${v.plan.length} tâche${v.plan.length > 1 ? 's' : ''} au plan · ${faites} faite${faites > 1 ? 's' : ''}`].filter(Boolean).join(' · ')}
-                    fin={avenir ? <Pastille ton="bleu">Prévue</Pastille> : undefined}
+                    fin={avenir ? <Pastille ton="gris">À venir</Pastille> : undefined}
                     actions={!avenir && v.id !== null ? <Tooltip title="Compte rendu"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu du ${dateCourte(v.date)}`} sx={{ width: 48, height: 48 }}><PictureAsPdfOutlined /></IconButton></Tooltip> : undefined} />
                   {!!v.photos?.length && <Box sx={{ px: 2, pb: 1.5 }}><GrillePhotos photos={v.photos} /></Box>}
                 </Box>

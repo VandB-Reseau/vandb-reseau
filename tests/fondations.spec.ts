@@ -52,12 +52,12 @@ test('après connexion, l’accueil montre les priorités dans l’ordre choisi'
     'Décroche',
     'En retard',
     'À surveiller',
-    'Recule',
+    // Vague 8 (97A) : lexique fermé ; « Recule » devient « En dessous », « Vacant » « Sans Coach »,
+    // l'intégration en retard se lit « En retard » (déjà plus haut)
+    'En dessous',
     'Surchargé',
-    'Vacant',
+    'Sans Coach',
     'Ouverture',
-    // Vague 5 (50A) : parcours d'intégration en retard
-    'Intégration en retard',
     'Visite',
   ])
   await expect(aTraiter.getByRole('link').first()).toContainText('Lyon Test')

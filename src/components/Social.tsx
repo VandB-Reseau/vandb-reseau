@@ -60,8 +60,17 @@ export function Initiales({ nom, taille = 44, icone, couleur }: { nom: string; t
   )
 }
 
-export type Ton = 'rouge' | 'orange' | 'vert' | 'gris' | 'bleu'
-const signaux: Record<Exclude<Ton, 'rouge' | 'gris'>, CouleurSignal> = { orange: 'warning', bleu: 'info', vert: 'success' }
+// Vague 8 (97A, lexique validé par Joseph le 13/11/2026) : quatre tons et un lexique fermé (LEXIQUE_STATUTS).
+// rouge = agir, orange = surveiller, vert = bon, gris = neutre ; « bleu » est gardé pour l'ancien code et s'affiche en gris ;
+// « type » n'est pas un statut : étiquette grise sans point (Visite, Demande, Ouverture…).
+export type Ton = 'rouge' | 'orange' | 'vert' | 'gris' | 'bleu' | 'type'
+export const LEXIQUE_STATUTS = {
+  rouge: ['En retard', 'Décroche', 'Bloquée'],
+  orange: ['À surveiller', 'En dessous', 'À relancer', 'Surchargé'],
+  vert: ['Fait', 'Validé', 'Planifiée', 'Au-dessus'],
+  gris: ['À venir', 'En cours', 'Passée', 'Non classé', 'Sans Coach'],
+} as const
+const signaux: Record<'orange' | 'vert', CouleurSignal> = { orange: 'warning', vert: 'success' }
 
 // Pastille unique d'une ligne : la plus grave seulement. Seul le rouge est plein ;
 // les autres tons sont un texte coloré précédé d'un point, pour que les alertes ressortent.
@@ -69,8 +78,9 @@ export function Pastille({ ton, children }: { ton: Ton; children: ReactNode }) {
   const forme = { flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 0.75, borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap' } as const
   if (ton === 'rouge') return <Box component="span" sx={{ ...forme, px: 1.25, py: 0.5, bgcolor: '#c24119', color: '#ffffff' }}>{children}</Box>
   // Vague 8 (97A) : un seul composant de statut, quatre tons ; le gris garde son point comme les autres
-  if (ton === 'gris') return <Box component="span" sx={{ ...forme, py: 0.5, color: 'text.secondary', '&::before': { content: '""', width: 8, height: 8, borderRadius: '50%', bgcolor: 'currentColor', flexShrink: 0 } }}>{children}</Box>
-  return <Box component="span" sx={(t) => ({ ...forme, py: 0.5, ...styleSignal(t, signaux[ton]) })}>{children}</Box>
+  if (ton === 'type') return <Box component="span" sx={{ ...forme, px: 1, py: 0.25, color: 'text.secondary', border: '1px solid', borderColor: 'divider' }}>{children}</Box>
+  if (ton === 'gris' || ton === 'bleu') return <Box component="span" sx={{ ...forme, py: 0.5, color: 'text.secondary', '&::before': { content: '""', width: 8, height: 8, borderRadius: '50%', bgcolor: 'currentColor', flexShrink: 0 } }}>{children}</Box>
+  return <Box component="span" sx={(t) => ({ ...forme, py: 0.5, ...styleSignal(t, signaux[ton as 'orange' | 'vert']) })}>{children}</Box>
 }
 
 // Ligne compacte : avatar, titre, détail sur une ligne, puis une pastille ou une valeur à droite

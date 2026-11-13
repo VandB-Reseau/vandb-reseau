@@ -98,7 +98,7 @@ export function RevueRR({ reseau, nom, magasins, parRR = false }: { reseau: Rese
                   </Typography>
                 </Box>
                 {x.decroche > 0 && <Pastille ton="rouge">{`${x.decroche} Décroche`}</Pastille>}
-                {x.faites < x.reference - 1 && <Pastille ton="orange">Visites en dessous</Pastille>}
+                {x.faites < x.reference - 1 && <Pastille ton="orange">En dessous</Pastille>}
               </Rangee>
             ))}
           </Section>

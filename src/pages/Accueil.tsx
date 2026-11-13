@@ -131,20 +131,20 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean, moi = '
   // Refonte vague 4 (32A) : une tâche bloquée attend qu'on la débloque, quelle que soit son échéance
   for (const x of actionsEnCours(reseau, noms).filter((x) => x.a.statut === 'bloquee' && !items.some((i) => i.cle === `t-${x.cle}`))) {
     items.push({ cle: `t-${x.cle}`, titre: x.a.action, avatar: x.a.action, icone: <TaskAltOutlined />, lien: `${lienFiche(x.magasin)}?vue=actions`,
-      detail: [x.magasin, x.a.porteur, x.a.raison && `bloquée : ${x.a.raison}`].filter(Boolean).join(' · '), pastille: { ton: 'orange', libelle: 'Bloquée' }, tache: x })
+      detail: [x.magasin, x.a.porteur, x.a.raison && `bloquée : ${x.a.raison}`].filter(Boolean).join(' · '), pastille: { ton: 'rouge', libelle: 'Bloquée' }, tache: x })
   }
-  for (const i of items) if (i.tache?.a.statut === 'bloquee' && i.pastille?.libelle !== 'Bloquée' && i.pastille?.ton !== 'rouge') i.pastille = { ton: 'orange', libelle: 'Bloquée' }
+  for (const i of items) if (i.tache?.a.statut === 'bloquee' && i.pastille?.libelle !== 'Bloquée' && i.pastille?.ton !== 'rouge') i.pastille = { ton: 'rouge', libelle: 'Bloquée' }
   // Visites planifiées dont la date est passée sans compte rendu : faites ou à reporter
   for (const v of reseau.visites.filter((v) => v.prevue && v.date < j && v.id !== null && noms.has(v.magasin) && estVisite(v)).sort((x, y) => x.date.localeCompare(y.date))) {
     items.push({ cle: `vp-${v.id}`, titre: v.magasin, avatar: v.magasin, icone: <EventAvailableOutlined />, lien: '', visite: v,
-      detail: [`Prévue le ${dateCourte(v.date)}`, nomsVisiteurs(v)].filter(Boolean).join(' · '), pastille: { ton: 'bleu', libelle: 'À confirmer' } })
+      detail: [`Prévue le ${dateCourte(v.date)}`, nomsVisiteurs(v)].filter(Boolean).join(' · '), pastille: { ton: 'gris', libelle: 'À venir' } })
   }
   // Vague 7 (85A) : mes visites à préparer (3 jours avant), compte rendu à écrire, signature attendue
   if (moi) {
     for (const r of rappelsVisites(reseau, noms, moi)) {
       items.push({ cle: r.cle, titre: r.magasin, avatar: r.magasin, icone: r.genre === 'preparer' ? <AssignmentOutlined /> : <RateReviewOutlined />,
         lien: `${lienVisite(r.visite).split('?')[0]}?id=${r.visite.id}&etape=${r.genre === 'preparer' ? 'preparer' : r.genre === 'signature' ? 'suivi' : 'surplace'}`, detail: r.detail,
-        pastille: r.genre === 'preparer' ? { ton: 'bleu', libelle: 'Préparer' } : r.genre === 'compterendu' ? { ton: 'orange', libelle: 'Compte rendu' } : { ton: 'gris', libelle: 'Signature' } })
+        pastille: r.genre === 'preparer' ? { ton: 'gris', libelle: 'À venir' } : r.genre === 'compterendu' ? { ton: 'type', libelle: 'Compte rendu' } : { ton: 'type', libelle: 'Signature' } })
     }
   }
   const a = anneeDe(j)
@@ -152,7 +152,7 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean, moi = '
   const ecart = (l: LigneRythme) => (l.depuis === null ? Infinity : l.depuis - l.delai)
   for (const l of suiviRythme(reseau, a).filter((l) => l.alerte && noms.has(l.magasin.nom)).sort((x, y) => ecart(y) - ecart(x))) {
     items.push({ cle: `v-${l.magasin.nom}`, titre: l.magasin.nom, avatar: l.magasin.nom, lien: lienFiche(l.magasin.nom),
-      detail: (avecCoach ? `${libelleSuivi(l.magasin, l.coach)} · ` : '') + [l.case?.libelle ?? 'Non classé', l.derniere ? `pas vu depuis ${l.depuis} j` : 'jamais visité', l.dernierContact && `appel le ${dateCourte(l.dernierContact.date)}`].filter(Boolean).join(' · '), pastille: { ton: 'orange', libelle: 'Visite' } })
+      detail: (avecCoach ? `${libelleSuivi(l.magasin, l.coach)} · ` : '') + [l.case?.libelle ?? 'Non classé', l.derniere ? `pas vu depuis ${l.depuis} j` : 'jamais visité', l.dernierContact && `appel le ${dateCourte(l.dernierContact.date)}`].filter(Boolean).join(' · '), pastille: { ton: 'type', libelle: 'Visite' } })
   }
   for (const { m, c } of actifs.map((m) => ({ m, c: caseDe(reseau.evaluations[m.nom]) })).filter((x) => x.c && PRIORITAIRES.includes(x.c.id) && !vus.has(x.m.nom))
     .sort((x, y) => PRIORITAIRES.indexOf(x.c!.id) - PRIORITAIRES.indexOf(y.c!.id))) {
@@ -161,21 +161,21 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean, moi = '
   // Magasins qui ont reculé d'une case ces trois derniers mois
   const il3mois = ajouterJours(j, -92)
   for (const { m, t } of actifs.map((m) => ({ m, t: tendance(reseau.evaluations, m.nom) })).filter((x) => x.t?.precedente && x.t.depuis >= il3mois && x.t.sens === 'descend')) {
-    items.push({ cle: `c-${m.nom}`, titre: m.nom, avatar: m.nom, lien: lienFiche(m.nom), detail: `${dateCourte(t!.depuis)} · ${t!.precedente!.libelle} vers ${t!.actuelle.libelle}`, pastille: { ton: 'gris', libelle: 'Recule' } })
+    items.push({ cle: `c-${m.nom}`, titre: m.nom, avatar: m.nom, lien: lienFiche(m.nom), detail: `${dateCourte(t!.depuis)} · ${t!.precedente!.libelle} vers ${t!.actuelle.libelle}`, pastille: { ton: 'orange', libelle: 'En dessous' } })
   }
   if (p.type !== 'coach') {
     const coachsVus = reseau.equipe.filter((c) => p.type === 'reseau' || (p.type === 'rr' && c.rr?.id === p.id))
     for (const x of coachsVus.filter((c) => !c.fictif).map((c) => ({ c, charge: chargeA(reseau, c.nom) })).filter((x) => ['depassement', 'complet'].includes(niveauCharge(reseau, x.charge))).sort((a, b) => b.charge - a.charge)) {
       items.push({ cle: `ch-${x.c.nom}`, titre: x.c.nom, avatar: x.c.nom, lien: lienCoach(x.c.nom), detail: `Charge ${x.charge} sur ${reseau.parametres.maxUnits}`, pastille: { ton: 'orange', libelle: 'Surchargé' } })
     }
-    for (const c of coachsVus.filter((c) => c.fictif)) items.push({ cle: `pv-${c.nom}`, titre: c.nom, avatar: c.nom, icone: <PersonSearchOutlined />, lien: lienCoach(c.nom), detail: 'Poste de Coach à pourvoir', pastille: { ton: 'gris', libelle: 'Vacant' } })
+    for (const c of coachsVus.filter((c) => c.fictif)) items.push({ cle: `pv-${c.nom}`, titre: c.nom, avatar: c.nom, icone: <PersonSearchOutlined />, lien: lienCoach(c.nom), detail: 'Poste de Coach à pourvoir', pastille: { ton: 'gris', libelle: 'Sans Coach' } })
     for (const m of actifs.filter((m) => !suivi(m, coachA(m, j)))) items.push({ cle: `sc-${m.nom}`, titre: m.nom, avatar: m.nom, lien: lienFiche(m.nom), detail: 'Magasin sans Coach', pastille: { ton: 'gris', libelle: 'Sans Coach' } })
   }
   const dans6mois = ajouterJours(j, 183)
   for (const m of perimetre.filter((m) => m.ouverture > j && m.ouverture <= dans6mois).sort((a, b) => a.ouverture.localeCompare(b.ouverture))) {
     const manque = [!coachA(m, j) && 'Coach', m.franchise && !m.responsable && 'Franchisé', !m.ouvertureConnue && 'date confirmée'].filter(Boolean) as string[]
     if (!manque.length) continue
-    items.push({ cle: `o-${m.nom}`, titre: m.nom, avatar: m.nom, icone: <StorefrontOutlined />, lien: lienFiche(m.nom), detail: `Ouvre le ${dateCourte(m.ouverture)} · manque : ${manque.join(', ')}`, pastille: { ton: 'bleu', libelle: 'Ouverture' } })
+    items.push({ cle: `o-${m.nom}`, titre: m.nom, avatar: m.nom, icone: <StorefrontOutlined />, lien: lienFiche(m.nom), detail: `Ouvre le ${dateCourte(m.ouverture)} · manque : ${manque.join(', ')}`, pastille: { ton: 'type', libelle: 'Ouverture' } })
   }
   for (const { c, b } of reseau.campagnes.liste.filter((c) => phase(c, j) === 'encours')
     .map((c) => ({ c, b: bilan(reseau.campagnes, c, magasinsConcernes(reseau, c).filter((m) => noms.has(m.nom))) })).filter((x) => x.b.total > 0 && x.b.aConstater > 0)) {
@@ -194,13 +194,13 @@ function aTraiterAnimation(reseau: Reseau, p: Perimetre, profil: Profil | null, 
   for (const d of (demandes ?? []).filter((d) => aTraiterParLeSiege(d) && noms.has(d.magasin))) {
     const longue = enAttenteLongue(d, `${reseau.jour}T12:00:00Z`)
     items.push({ cle: `dm-${d.id}`, titre: d.titre, avatar: d.titre, icone: <SupportAgentOutlined />, lien: '/demandes',
-      detail: [d.magasin, libelleTheme(d.theme), `ouverte ${dateRelative(d.ouverteLe, reseau.jour)}`].join(' · '), pastille: longue ? { ton: 'rouge', libelle: 'Plus de 5 jours' } : { ton: 'bleu', libelle: 'Demande' } })
+      detail: [d.magasin, libelleTheme(d.theme), `ouverte ${dateRelative(d.ouverteLe, reseau.jour)}`].join(' · '), pastille: longue ? { ton: 'rouge', libelle: 'En retard' } : { ton: 'type', libelle: 'Demande' } })
   }
   const mois = reseau.jour.slice(0, 7)
   if (profil?.role === 'rr' && entretiens && Number(reseau.jour.slice(8, 10)) >= 15) {
     const ids = profil.perimetre.rr ?? []
     for (const c of reseau.equipe.filter((c) => !c.fictif && c.rr && ids.includes(c.rr.id) && !entretiens.some((e) => e.coach === c.nom && e.mois === mois && e.faitLe))) {
-      items.push({ cle: `en-${c.nom}`, titre: `Entretien avec ${c.nom}`, avatar: c.nom, icone: <ForumOutlined />, lien: `${lienCoach(c.nom)}?vue=entretiens`, detail: `Entretien de ${libelleMois(mois).toLowerCase()} pas encore fait`, pastille: { ton: 'gris', libelle: 'Entretien' } })
+      items.push({ cle: `en-${c.nom}`, titre: `Entretien avec ${c.nom}`, avatar: c.nom, icone: <ForumOutlined />, lien: `${lienCoach(c.nom)}?vue=entretiens`, detail: `Entretien de ${libelleMois(mois).toLowerCase()} pas encore fait`, pastille: { ton: 'type', libelle: 'Entretien' } })
     }
   }
   return items
@@ -221,7 +221,7 @@ function aTraiterVague5(reseau: Reseau, p: Perimetre, communications: Communicat
     const x = dues[0]
     items.push({ cle: `in-${m.nom}`, titre: `${m.nom} · ${x.e.libelle}`, avatar: m.nom, icone: <FlagOutlined />, lien: `${lienFiche(m.nom)}?vue=fiche`,
       detail: [`Intégration, jour ${x.e.jour}`, libellesResponsable[x.e.responsable], retard > 1 ? `${retard} étapes en retard` : `pour le ${dateCourte(x.echeance)}`].join(' · '),
-      pastille: retard ? { ton: 'orange', libelle: 'Intégration en retard' } : { ton: 'bleu', libelle: 'Intégration' } })
+      pastille: retard ? { ton: 'rouge', libelle: 'En retard' } : { ton: 'type', libelle: 'Intégration' } })
   }
   return items
 }

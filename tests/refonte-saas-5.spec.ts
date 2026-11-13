@@ -63,7 +63,7 @@ test('44A et 46A : le franchisé lit À la une, donne sa prise de connaissance, 
   const une = page.getByRole('article', { name: 'À la une : Nouvelle charte des vitrines' })
   await expect(une).toBeVisible()
   // Publiée il y a 8 jours, pas encore confirmée : rappel
-  await expect(une.getByText('Rappel')).toBeVisible()
+  await expect(une.getByText('À relancer')).toBeVisible()
   await une.getByRole('button', { name: 'J’ai pris connaissance' }).click()
   await expect(une.getByText('Pris connaissance')).toBeVisible()
   expect(ecritures.some((e) => e.table === 'rpc/prendre_connaissance' && JSON.stringify(e.corps).includes('"p_id":1'))).toBe(true)

@@ -242,7 +242,7 @@ export function VuePortefeuilles({ reseau }: { reseau: Reseau }) {
             return (
               <LigneCompacte key={l.cle} lien={l.lien} avatar={<Initiales nom={l.nom} />} titre={l.nom}
                 detail={[l.detail, `${pluriel(l.p.visitesFaites, 'visite')}`, `${l.p.decroche} en Décroche`, `CA ${formatPourcent(l.p.evolutionCA)}`, `audit ${pct(l.p.audit)}`].join(' · ')}
-                fin={ref ? (n ? <Pastille ton="orange">{`${n} sous ${ref.libelle === 'réseau' ? 'le réseau' : 'la région'}`}</Pastille> : <Pastille ton="gris">Au niveau</Pastille>) : undefined} />
+                fin={ref ? (n ? <Pastille ton="orange">{`${n} sous ${ref.libelle === 'réseau' ? 'le réseau' : 'la région'}`}</Pastille> : undefined) : undefined} />
             )
           })}
         </CarteLignes>
