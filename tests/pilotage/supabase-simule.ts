@@ -62,6 +62,7 @@ export interface OptionsSimulation {
   ouvertures?: { store_name: string; ouverture: string }[]
   ouverturesReseau?: { store_name: string; ouverture: string }[] // 0024 : fiche magasin de l'app réseau
   versionsNommees?: VersionNommeeSimulee[]
+  simulations?: SimulationSimulee[] | null   // null : table absente (migration 0031 pas encore passée)
   panne?: boolean
   panneEcriture?: boolean
   // Lot 39 : paramètres d'autres années (l'année absente reprend « parametres »), contrôle de gestion, journal
@@ -79,6 +80,7 @@ export interface OptionsSimulation {
 export type StockSimule = { store_name: string; annee: number; mois: number; cave: number | null; bar: number | null; exterieur?: number | null }
 export type JournalSimule = { id: number; annee: number; rubrique: string; avant: unknown; apres: unknown; par_email: string | null; le: string }
 
+export type SimulationSimulee = { id: number; store_name: string; type: string; nom: string; donnees: Record<string, unknown>; resume: string; auteur: string; auteur_role: string | null; auteur_nom: string | null; cree_le: string }
 export type VersionNommeeSimulee = { id: number; store_name: string; annee: number; nom: string; base: unknown; ajustements: Record<string, unknown>; auteur: string | null; auteur_role: string | null; auteur_nom: string | null; cree_le: string }
 
 // Écritures reçues par la base simulée, pour les vérifier dans les tests
@@ -113,6 +115,7 @@ export async function simulerPilotage(page: Page, options: OptionsSimulation = {
   let actions = structuredClone(options.actions ?? [])
   let ouvertures = structuredClone(options.ouvertures ?? [])
   let versionsNommees = structuredClone(options.versionsNommees ?? [])
+  let simulations = options.simulations === null ? null : structuredClone(options.simulations ?? [])
   // Auteur posé par la base, comme le déclencheur de 0011
   const nomDuRole: Record<string, string | null> = { directeur: null, coach: 'Coach Nord', rr: 'RR Nord', franchise: 'Franchise Test' }
   const parametres = options.parametres === null ? null : options.parametres ?? { tauxRedevance: 0.02, tauxPublicite: 0.01 }
@@ -322,6 +325,15 @@ export async function simulerPilotage(page: Page, options: OptionsSimulation = {
         if (req.method() === 'DELETE') { const retirer = new Set(filtrer(ouvertures, url.searchParams)); ouvertures = ouvertures.filter((l) => !retirer.has(l)) }
         else { const c = corps as { store_name: string; ouverture: string }; ouvertures = [...ouvertures.filter((x) => x.store_name !== c.store_name), c] }
       }
+      if (table === 'simulations') {
+        if (!simulations) return route.fulfill({ status: 404, json: { code: '42P01', message: 'relation does not exist' } })
+        if (req.method() === 'DELETE') { const retirer = new Set(filtrer(simulations, url.searchParams)); simulations = simulations.filter((l) => !retirer.has(l)) }
+        else {
+          // Comme le déclencheur de 0031 : auteur, rôle, nom et date posés par la base
+          const v = corps as Pick<SimulationSimulee, 'store_name' | 'type' | 'nom' | 'donnees' | 'resume'>
+          simulations.push({ ...v, id: Math.max(0, ...simulations.map((x) => x.id)) + 1, auteur: '00000000-0000-0000-0000-000000000001', auteur_role: options.role ?? 'directeur', auteur_nom: nomDuRole[options.role ?? 'directeur'] ?? null, cree_le: new Date().toISOString() })
+        }
+      }
       if (table === 'versions_nommees') {
         if (req.method() === 'DELETE') { const retirer = new Set(filtrer(versionsNommees, url.searchParams)); versionsNommees = versionsNommees.filter((l) => !retirer.has(l)) }
         else {
@@ -371,6 +383,7 @@ export async function simulerPilotage(page: Page, options: OptionsSimulation = {
     if (table === 'echanges_budget') return route.fulfill({ json: filtrer(messages, url.searchParams).sort((a, b) => a.cree_le.localeCompare(b.cree_le)) })
     if (table === 'versions_budget') return route.fulfill({ json: filtrer(versions, url.searchParams).sort((a, b) => b.cree_le.localeCompare(a.cree_le)) })
     if (table === 'ouvertures') return route.fulfill({ json: ouvertures })
+    if (table === 'simulations') return simulations ? route.fulfill({ json: filtrer(simulations, url.searchParams).sort((a, b) => b.cree_le.localeCompare(a.cree_le)) }) : route.fulfill({ status: 404, json: { code: '42P01', message: 'relation does not exist' } })
     if (table === 'versions_nommees') return route.fulfill({ json: filtrer(versionsNommees, url.searchParams).sort((a, b) => a.cree_le.localeCompare(b.cree_le)) })
     if (table === 'annees' && annees) return route.fulfill({ json: [...annees].sort((a, b) => a.annee - b.annee) })
     if (table === 'codes_caisse') return route.fulfill({ json: [...codes].sort((a, b) => a.code.localeCompare(b.code)) })

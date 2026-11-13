@@ -167,6 +167,7 @@ export interface ParametresReseau {
   campagne?: Campagne     // dates de la campagne des budgets de l'année (lot 28) ; absentes : dates d'exemple
   grilleFrais?: LigneGrille[] // lot 40 ; absente : grille par défaut (lignesFrais)
   regles?: ReglesCalcul       // lot 40 ; absentes : règles par défaut (reglesParDefaut)
+  simulateurs?: Partial<import('./simulateurs').ParametresSimulateurs> // repères des simulateurs du franchisé (choix 127 à 135)
 }
 
 export interface Mois {

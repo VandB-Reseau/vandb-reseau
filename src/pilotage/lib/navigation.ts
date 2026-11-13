@@ -51,9 +51,11 @@ export const PARTIES_SUIVI = (annee: number = anneeSuivi()): Partie[] => [
   { cle: 'atterrissage', libelle: `Atterrissage ${annee}` },
   { cle: 'stock', libelle: 'Stock' },
   { cle: 'analyse', libelle: 'Analyse' },
+  // Choix 125 (Joseph, 13/11/2026) : les simulateurs du franchisé, ouverts aussi par le Coach pendant la visite
+  { cle: 'simulateurs', libelle: 'Simulateurs' },
 ]
 // « sante » : santé, leviers et chiffres du réseau, rangés avec le suivi dans l'onglet Chiffres de la fiche (refonte, 3A)
-const CLES_SUIVI = ['synthese', 'mois', 'comptes', 'atterrissage', 'stock', 'analyse', 'passees', 'sante']
+const CLES_SUIVI = ['synthese', 'mois', 'comptes', 'atterrissage', 'stock', 'analyse', 'simulateurs', 'passees', 'sante']
 
 
 // Lot 37 (Joseph, 02/11/2026) : les hypothèses du budget se lisent en cartes par thème ; chaque carte ouvre un tableau

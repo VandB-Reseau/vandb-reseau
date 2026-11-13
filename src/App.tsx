@@ -92,6 +92,7 @@ const InfosReseau = chargementDiffere(chargeurs.infos)
 const BandeauApercu = chargementDiffere(() => espace().then((m) => ({ default: m.BandeauApercu })))
 const TableauFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.TableauFranchise })))
 const MagasinsFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.MagasinsFranchise })))
+const SimulateursFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.SimulateursFranchise })))
 const FicheMagasinFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.FicheMagasinFranchise })))
 
 function usePrechargement() {
@@ -215,6 +216,7 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
         <Route path="/taches" element={<PageTaches />} />
         <Route path="/demandes" element={<PageDemandes />} />
         <Route path="/budgets/*" element={<PagesBudgets />} />
+        <Route path="/simulateurs" element={<SimulateursFranchise />} />
         <Route path="/echanges/reseau" element={<Vers cible={(_p, r) => avec('/infos', r)} />} />
         <Route path="/echanges/:genre/:valeur" element={<Echanges lectureSeule={apercu} />} />
         {anciensLiens}

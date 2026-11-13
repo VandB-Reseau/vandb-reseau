@@ -807,6 +807,24 @@ export async function retirerVersionNommee(id: number) {
   verifier(await pilotage().from('versions_nommees').delete().eq('id', id))
 }
 
+// Simulations gardées (choix 126, migration pilotage 0031) : nommées, jamais modifiées ; auteur, rôle et nom posés par la
+// base. Avant la migration, la table n'existe pas : null, les simulateurs marchent sans « Garder ».
+export type TypeSimulation = 'embauche' | 'prix' | 'tresorerie' | 'vente_additionnelle' | 'reste_a_faire' | 'soiree' | 'achat' | 'investissement'
+export interface SimulationGardee { id: number; type: TypeSimulation; nom: string; donnees: Record<string, unknown>; resume: string; auteur: string | null; auteurRole: Role | null; auteurNom: string | null; creeLe: string }
+export async function chargerSimulations(magasin: string): Promise<SimulationGardee[] | null> {
+  const { data, error } = await pilotage().from('simulations').select('id, type, nom, donnees, resume, auteur, auteur_role, auteur_nom, cree_le')
+    .eq('store_name', magasin).order('cree_le', { ascending: false })
+  if (error) return null
+  return (data as { id: number; type: TypeSimulation; nom: string; donnees: Record<string, unknown> | null; resume: string | null; auteur: string | null; auteur_role: Role | null; auteur_nom: string | null; cree_le: string }[])
+    .map((x) => ({ id: x.id, type: x.type, nom: x.nom, donnees: x.donnees ?? {}, resume: x.resume ?? '', auteur: x.auteur, auteurRole: x.auteur_role, auteurNom: x.auteur_nom, creeLe: x.cree_le }))
+}
+export async function garderSimulation(magasin: string, type: TypeSimulation, nom: string, donnees: Record<string, unknown>, resume: string) {
+  verifier(await pilotage().from('simulations').insert({ store_name: magasin, type, nom: nom.trim().slice(0, 80), donnees, resume: resume.slice(0, 300) }))
+}
+export async function retirerSimulation(id: number) {
+  verifier(await pilotage().from('simulations').delete().eq('id', id))
+}
+
 // Plan d'action (lot 21) : depuis la fusion (04/11/2026), chaque action est une tâche du réseau qui garde sa mesure
 // (src/pilotage/data/taches.ts). Les anciennes lignes de pilotage.actions pas encore reprises (migration 0039 pas passée)
 // restent lues et modifiables là où elles sont ; id texte : tâche du réseau, id nombre : ancienne action.

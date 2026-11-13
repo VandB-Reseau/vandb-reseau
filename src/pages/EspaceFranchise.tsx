@@ -523,6 +523,17 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
 }
 
 // ── Mes magasins ── un seul magasin : sa fiche directement (Joseph, 23/10/2026)
+// Simulateurs (choix 125, Joseph 13/11/2026) : l'entrée du menu ouvre la puce Simulateurs des chiffres de son magasin
+export function SimulateursFranchise() {
+  return (
+    <AvecReseau>
+      {(reseau) => reseau.magasins.length
+        ? <Navigate to={`${lienFiche(reseau.magasins[0].nom)}?vue=chiffres&partie=simulateurs`} replace />
+        : <EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." />}
+    </AvecReseau>
+  )
+}
+
 export function MagasinsFranchise() {
   return (
     <AvecReseau>

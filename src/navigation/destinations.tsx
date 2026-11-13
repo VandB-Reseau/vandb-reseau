@@ -27,6 +27,8 @@ import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import QueryStats from '@mui/icons-material/QueryStats'
 import SupportAgentOutlined from '@mui/icons-material/SupportAgentOutlined'
 import SupportAgent from '@mui/icons-material/SupportAgent'
+import CalculateOutlined from '@mui/icons-material/CalculateOutlined'
+import Calculate from '@mui/icons-material/Calculate'
 
 export interface Destination {
   chemin: string
@@ -102,6 +104,8 @@ export const espaceFranchise: Destination[] = [
   { chemin: '/', libelle: 'Accueil', description: 'Mes chiffres, mes tâches, mes visites', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 11' },
   { chemin: '/magasins', libelle: 'Mes magasins', court: 'Magasin', description: 'Fiche, chiffres, visites et campagnes', icone: <StorefrontOutlined />, iconeActive: <Storefront />, sprint: 'Sprint 11' },
   { chemin: '/budgets', libelle: 'Mon budget', court: 'Budget', description: 'Budget de l’année, suivi face au réel et saisies', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Fusion' },
+  // Choix 125 (Joseph, 13/11/2026) : embaucher, faire une promo, investir… chiffres en main
+  { chemin: '/simulateurs', libelle: 'Simulateurs', court: 'Simuler', description: 'Embauche, promo, trésorerie, vente additionnelle, soirée, achat, investissement', icone: <CalculateOutlined />, iconeActive: <Calculate />, sprint: 'Choix 125' },
   { ...messages, description: 'Mes magasins et mon équipe' },
   taches,
   demandesFranchise,
