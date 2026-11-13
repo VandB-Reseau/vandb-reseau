@@ -1,5 +1,44 @@
 // Notifications sur le téléphone (lot L8) : affiche ce que la fonction « notifier » envoie et ouvre l'écran visé.
-// Rien n'est mis en cache : l'app ne fonctionne pas hors connexion.
+// Choix 114 et 124 (Joseph, 13/11/2026) : les fichiers de l'app (nommés par leur contenu, dans assets/) sont gardés sur
+// l'appareil à la première ouverture, puis servis tout de suite ; la page d'entrée passe toujours par le réseau (nouvelle
+// version aussitôt en ligne) et sert la copie gardée seulement sans réseau. Les données (Supabase) ne passent jamais ici.
+const CACHE_APP = 'app-v1'
+const MAX_FICHIERS = 400
+async function fichierApp(requete) {
+  const cache = await caches.open(CACHE_APP)
+  const garde = await cache.match(requete)
+  if (garde) return garde
+  const r = await fetch(requete)
+  if (r.ok) {
+    await cache.put(requete, r.clone())
+    const cles = await cache.keys()
+    // Les anciennes versions s'effacent par les plus anciennes
+    if (cles.length > MAX_FICHIERS) await Promise.all(cles.slice(0, cles.length - MAX_FICHIERS + 100).map((k) => cache.delete(k)))
+  }
+  return r
+}
+async function pageEntree(requete) {
+  const cache = await caches.open(CACHE_APP)
+  try {
+    const r = await fetch(requete)
+    if (r.ok) await cache.put('./', r.clone())
+    return r
+  } catch (e) {
+    const garde = await cache.match('./')
+    if (garde) return garde
+    throw e
+  }
+}
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()))
+self.addEventListener('fetch', (e) => {
+  const req = e.request
+  if (req.method !== 'GET') return
+  const url = new URL(req.url)
+  if (url.origin !== self.location.origin || !url.href.startsWith(self.registration.scope)) return
+  if (url.pathname.includes('/assets/')) e.respondWith(fichierApp(req))
+  else if (req.mode === 'navigate') e.respondWith(pageEntree(req))
+})
 // Partage vers l'app (sprint 25, F5, Android) : la galerie envoie ses photos à « partage » ; elles sont gardées le temps
 // que l'écran Partager les reprenne (cache « partage », vidé à chaque nouveau partage et après usage).
 const CACHE_PARTAGE = 'partage'
