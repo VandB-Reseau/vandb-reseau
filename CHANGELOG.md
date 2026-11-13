@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Titres des tableaux qui passaient par-dessus « Magasin » (Joseph, 11/11/2026, Budget > Tous les magasins sur
+  téléphone) : en faisant défiler un tableau vers la droite, les titres des autres colonnes glissaient sur le titre
+  figé de la première colonne, alors que les lignes, elles, restaient bien dessous. Le titre figé repasse devant, dans
+  tous les tableaux de l'app (budget compris). Sans migration.
 - Refonte SaaS, vague 8 (Joseph, 10 au 13/11/2026, cohérence globale, choix 92 à 110) : échelle de texte unique (7 niveaux),
   jetons de couleurs et d'arrondis, l'agenda dans la charte, le budget reprend le thème du réseau ; vues rapides au même
   style partout ; un seul bloc chiffré ; statuts en 4 tons et lexique fermé de 16 mots validé par Joseph (les types en
