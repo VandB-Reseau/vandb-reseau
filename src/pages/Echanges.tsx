@@ -254,7 +254,7 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
         <Box sx={{ flex: 1, minWidth: 0, '& .MuiTextField-root': { width: '100%' } }}>
           <ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Magasin, personne, message" />
         </Box>
-        {ecrire && <BoutonOutil libelle="Nouvelle conversation" icone={<EditOutlined />} onClick={(e) => (peutCreerGroupe || plusieurs ? setMenu(e.currentTarget) : setNouveau('personne'))} plein />}
+        {ecrire && <BoutonOutil libelle="Écrire" icone={<EditOutlined />} onClick={(e) => (peutCreerGroupe || plusieurs ? setMenu(e.currentTarget) : setNouveau('personne'))} plein />}
       </Box>
       <Box sx={{ px: { xs: 0, md: 2 } }}><VuesRapides label="Vues des conversations" valeur={vue} onChange={setVue} options={vues} sx={{ mb: 0.5 }} /></Box>
       <Menu anchorEl={menu} open={!!menu} onClose={() => setMenu(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>

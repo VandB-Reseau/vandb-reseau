@@ -90,8 +90,8 @@ test('S5 : Messages et Tâches vides proposent d’écrire ou de créer', async 
   await expect(page.getByText('Aucune conversation en cours')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-messages-vide.png` })
-  // Vague 8 (99A) : plus de second bouton dans l'état vide, on écrit depuis « Nouvelle conversation »
-  await page.getByRole('button', { name: 'Nouvelle conversation' }).click()
+  // Vague 8 (99A) : plus de second bouton dans l'état vide, on écrit depuis « Écrire »
+  await page.getByRole('button', { name: 'Écrire', exact: true }).click()
   const menu = page.getByRole('menuitem', { name: 'Message à une personne' })
   if (await menu.count()) await menu.click()
   await expect(page.getByRole('dialog', { name: 'Message à une personne' })).toBeVisible()

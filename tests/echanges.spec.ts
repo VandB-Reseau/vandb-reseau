@@ -89,7 +89,7 @@ test('le Directeur crée un groupe libre et y écrit', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, messagerie: {} })
   await page.goto('./#/echanges')
-  await page.getByRole('button', { name: 'Nouvelle conversation' }).click()
+  await page.getByRole('button', { name: 'Écrire', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Nouveau groupe' }).click()
   const fenetre = page.getByRole('dialog', { name: 'Nouveau groupe' })
   await fenetre.getByLabel('Nom du groupe').fill('Coachs du Nord')

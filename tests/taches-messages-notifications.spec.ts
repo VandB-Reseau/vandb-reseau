@@ -57,7 +57,7 @@ test('les tâches sont rangées par échéance, sous la barre de recherche commu
 test('« Message à une personne » ouvre la liste des personnes, cherchées par nom ou magasin', async ({ page, isMobile }, info) => {
   await seConnecter(page, { messagerie: { messages: [] } })
   await page.goto('./#/echanges')
-  await page.getByRole('button', { name: 'Nouvelle conversation' }).click()
+  await page.getByRole('button', { name: 'Écrire', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Message à une personne' }).click()
   const d = page.getByRole('dialog', { name: 'Message à une personne' })
   await d.getByRole('textbox', { name: 'Personne ou magasin' }).fill('camille')
