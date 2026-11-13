@@ -11,6 +11,7 @@ import { NotesParAxe, PastilleCase } from './Sante'
 import { dateCourte, lienFiche } from '../lib/format'
 import type { Magasin, NoteMagasin, Reseau } from '../data/modele'
 import { TexteDicte } from './Dictee'
+import { ChampDate } from './ChampDate'
 
 // Journal du magasin repris dans son fil : notes, santé, déploiements, Coachs, ouverture
 // (les visites y sont déjà). Une note ou un classement s'ouvre pour être modifié.
@@ -59,7 +60,7 @@ export function DialogNote({ magasin: initial, note, magasins, onFermer }: { mag
       supprimer={note.id ? async () => { await supprimerNoteMagasin(magasin, note.id); return 'Note supprimée.' } : undefined}
       libelleSuppression="Supprimer cette note du journal ?">
       {magasins && <Autocomplete options={magasins} value={magasin || null} onChange={(_, v) => setMagasin(v ?? '')} renderInput={(p) => <TextField {...p} label="Magasin" />} />}
-      <TextField type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+      <ChampDate label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       <TexteDicte label="Note" libelleDictee="Note" valeur={texte} changer={setTexte} multiline minRows={4} autoFocus />
     </Fenetre>
   )

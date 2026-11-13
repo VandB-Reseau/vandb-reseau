@@ -19,7 +19,6 @@ import { BoutonAction } from '../components/Outils'
 import ToggleButton from '@mui/material/ToggleButton'
 import MonitorHeartOutlined from '@mui/icons-material/MonitorHeartOutlined'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
-import Button from '@mui/material/Button'
 import TimelineOutlined from '@mui/icons-material/TimelineOutlined'
 import { MagasinsSuivis, TableauMagasins } from '../components/TableauMagasins'
 import { perimetreDuProfil } from '../data/perimetre'
@@ -109,9 +108,10 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
             <PageHeader
               titre="Magasins"
               sousTitre={resultats.length === total ? `${restreint ? 'Tout le réseau : ' : ''}${libelleParc(reseau.magasins)}` : `${resultats.length} sur ${total} magasins`}
+              autres={voitEvolution && surPC ? [{ libelle: 'Évolution du parc', icone: <TimelineOutlined />, onClick: () => naviguer('/performance?vue=evolution') }] : undefined}
               actions={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
-                {/* Refonte vague 4 (39A) : l'action principale à droite du titre, la bascule de vue au bout de la barre */}
-                {voitEvolution && surPC && <Button startIcon={<TimelineOutlined />} onClick={() => naviguer('/performance?vue=evolution')}>Évolution du parc</Button>}
+                {/* Refonte vague 4 (39A) : l'action principale à droite du titre, la bascule de vue au bout de la barre ;
+                    vague 8 (104A) : les actions secondaires dans « ⋯ » */}
                 {/* Vague 6 (Joseph, 10/11/2026) : sur téléphone, un seul « + », celui de l'en-tête ; l'ajout d'un magasin se fait sur PC */}
                 {vue === 'liste' && surPC && <BoutonAction libelle="Ajouter un magasin" onClick={() => setAjout(true)} />}
                 {!surPC && bascule}

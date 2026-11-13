@@ -246,12 +246,16 @@ function SectionAFaire({ reseau, magasins }: { reseau: Reseau; magasins: Magasin
     <Box component="section" aria-label="À faire">
       <TitreSection>À faire</TitreSection>
       <CarteLignes label="Saisies et budget">
-        {magasins.flatMap((m) => [
-          <LigneCompacte key={`c-${m.nom}`} lien={`${lienFiche(m.nom)}?vue=chiffres&partie=cloture`} avatar={<Initiales nom="cloture" icone={<InventoryOutlined />} />}
-            titre={`Clôturer ${libelleMois(mois).toLowerCase()}`} detail={[plusieurs && m.nom, 'Réel, stock de fin de mois et comptes'].filter(Boolean).join(' · ')} />,
-          <LigneCompacte key={`b-${m.nom}`} lien={`${lienFiche(m.nom)}?vue=budget`} avatar={<Initiales nom="budget" icone={<RequestQuoteOutlined />} />}
-            titre="Relire mon budget" detail={[plusieurs && m.nom, 'Hypothèses, commentaires et validation'].filter(Boolean).join(' · ')} />,
-        ])}
+        {/* Vague 8 (109A) : une ligne par tâche, les magasins concernés en boutons sur la ligne */}
+        {[
+          { cle: 'c', titre: `Clôturer ${libelleMois(mois).toLowerCase()}`, detail: 'Réel, stock de fin de mois et comptes', icone: <InventoryOutlined />, nom: 'cloture', suffixe: '?vue=chiffres&partie=cloture' },
+          { cle: 'b', titre: 'Relire mon budget', detail: 'Hypothèses, commentaires et validation', icone: <RequestQuoteOutlined />, nom: 'budget', suffixe: '?vue=budget' },
+        ].map((t) => plusieurs
+          ? <LigneCompacte key={t.cle} avatar={<Initiales nom={t.nom} icone={t.icone} />} titre={t.titre} detail={t.detail}
+            actions={<Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'flex-end', flex: 'none', maxWidth: '50%' }}>
+              {magasins.map((m) => <Button key={m.nom} component={RouterLink} to={`${lienFiche(m.nom)}${t.suffixe}`} aria-label={`${t.titre} : ${m.nom}`} variant="outlined" size="small" sx={{ minHeight: { xs: 48, md: 40 }, textTransform: 'none' }}>{m.nom}</Button>)}
+            </Box>} />
+          : <LigneCompacte key={t.cle} lien={`${lienFiche(magasins[0].nom)}${t.suffixe}`} avatar={<Initiales nom={t.nom} icone={t.icone} />} titre={t.titre} detail={t.detail} />)}
         {/* Refonte vague 5 (48A) : dates clés des campagnes dans les 14 jours, temps forts annoncés */}
         {jalons.map(({ c, j }) => (
           <LigneCompacte key={`j-${c.id}-${j.id}`} lien={`${lienFiche(magasins[0].nom)}?vue=campagnes`} avatar={<Initiales nom="jalon" icone={<EventOutlined />} />}
@@ -531,22 +535,32 @@ export function MagasinsFranchise() {
         {!reseau.magasins.length
           ? <EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." />
           : (
-            <CarteLignes label="Mes magasins">
+            // Vague 8 (109A) : Mes magasins en cartes, une par magasin, le chiffre du mois en grand
+            <Box component="section" aria-label="Mes magasins" sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' } }}>
               {reseau.magasins.map((m) => {
                 const a = analyser(reseau, m.nom)
                 return (
-                  <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} label={m.nom} avatar={<Blason magasin={m} />}
-                    titre={<Box component="span" role="heading" aria-level={2}>{m.nom}</Box>}
-                    detail={[m.ville, m.coach && `Coach ${m.coach}`].filter(Boolean).join(' · ')}
-                    fin={a ? (
-                      <Box sx={{ textAlign: 'right' }}>
-                        <Typography sx={{ fontWeight: 700 }}>{formatKEuros(a.ca)}</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Typography>
+                  <Card key={m.nom} sx={{ display: 'flex' }}>
+                    <Box component={RouterLink} to={lienFiche(m.nom)} aria-label={m.nom} sx={{ flex: 1, p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5, color: 'text.primary', textDecoration: 'none', '&:hover': { bgcolor: 'action.hover' } }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Blason magasin={m} />
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem' }} noWrap>{m.nom}</Typography>
+                          <Typography variant="body2" color="text.secondary" noWrap>{[m.ville, m.coach && `Coach ${m.coach}`].filter(Boolean).join(' · ')}</Typography>
+                        </Box>
                       </Box>
-                    ) : m.statut !== 'ouvert' ? <Pastille ton={m.statut === 'nouveau' ? 'bleu' : 'gris'}>{statutLibelle[m.statut]}</Pastille> : undefined} />
+                      {a ? (
+                        <Box>
+                          <Typography sx={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2 }}>{formatKEuros(a.ca)}</Typography>
+                          <Typography variant="body2" color="text.secondary"><Box component="span" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Box> · {libelleMois(a.mois)}</Typography>
+                        </Box>
+                      ) : m.statut !== 'ouvert' ? <Box><Pastille ton="gris">{statutLibelle[m.statut]}</Pastille></Box>
+                        : <Typography variant="body2" color="text.secondary">Pas encore de chiffres de caisse.</Typography>}
+                    </Box>
+                  </Card>
                 )
               })}
-            </CarteLignes>
+            </Box>
           )}
       </>}
     </AvecReseau>

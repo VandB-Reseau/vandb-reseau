@@ -29,6 +29,7 @@ import { libelleGenreSujet, sujetsProposes, type GenreSujet, type Sujet } from '
 import { lienGoogleAgenda } from '../lib/agenda'
 import { dateCourte, dateLongue } from '../lib/format'
 import type { Magasin, Reseau, Visite } from '../data/modele'
+import { ChampDate } from './ChampDate'
 
 const ORDRE: GenreSujet[] = ['priorite', 'tache', 'campagne', 'mot', 'objectif', 'chiffres']
 
@@ -82,7 +83,7 @@ export function PreparerVisite({ reseau, m, v, signaler }: { reseau: Reseau; m: 
     <Box sx={{ display: 'grid', gap: 2 }}>
       <Section titre="Date de la visite">
         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
-          <TextField type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} disabled={lecture}
+          <ChampDate label="Date" value={date} onChange={(e) => setDate(e.target.value)} disabled={lecture}
             slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: reseau.jour } }} error={!!date && date < reseau.jour} sx={{ width: { xs: '100%', sm: 220 } }} />
           {!lecture && <Button variant={v ? 'outlined' : 'contained'} startIcon={<EventAvailableOutlined />} disabled={!dateValide || envoi || (!!v && v.date === date)} onClick={planifier} sx={{ minHeight: 48 }}>
             {v ? 'Changer la date' : 'Planifier la visite'}

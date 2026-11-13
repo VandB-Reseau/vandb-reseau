@@ -3,7 +3,6 @@ import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { Section } from './Section'
@@ -13,6 +12,7 @@ import { enregistrerOuverture } from '../data/chargement'
 import { etatOuverture, type EtatEtape, type EtatOuverture } from '../data/ouvertures'
 import { etapesOuverture, type EtapeOuverture, type IdEtape, type Magasin, type Reseau } from '../data/modele'
 import { dateCourte, dateLongue } from '../lib/format'
+import { ChampDate } from './ChampDate'
 
 // Ouvertures suivies par étapes (sprint 25, F3, migration 0035) : barre des six étapes, carte de la fiche du magasin,
 // saisie par le Directeur et les Responsables Régionaux, ligne de « À venir sur 12 mois »
@@ -96,8 +96,8 @@ function DialogOuverture({ reseau, m, onFermer }: { reseau: Reseau; m: Magasin; 
         <Box key={e.id} role="group" aria-label={e.libelle}>
           <Typography sx={{ fontWeight: 600, mb: 1 }}>{e.libelle}</Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-            <TextField type="date" label="Prévu le" value={etapes[e.id]?.prevu ?? ''} onChange={(ev) => changer(e.id, 'prevu', ev.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-            <TextField type="date" label="Fait le" value={etapes[e.id]?.fait ?? ''} onChange={(ev) => changer(e.id, 'fait', ev.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+            <ChampDate label="Prévu le" value={etapes[e.id]?.prevu ?? ''} onChange={(ev) => changer(e.id, 'prevu', ev.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+            <ChampDate label="Fait le" value={etapes[e.id]?.fait ?? ''} onChange={(ev) => changer(e.id, 'fait', ev.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
           </Box>
         </Box>
       ))}
