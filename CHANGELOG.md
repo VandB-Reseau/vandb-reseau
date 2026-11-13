@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Titres des tableaux qui passaient par-dessus « Magasin » (Joseph, 11/11/2026, Budget > Tous les magasins sur
+  téléphone) : en faisant défiler un tableau vers la droite, les titres des autres colonnes glissaient sur le titre
+  figé de la première colonne, alors que les lignes, elles, restaient bien dessous. Le titre figé repasse devant, dans
+  tous les tableaux de l'app (budget compris). Sans migration.
 - Budget prévisionnel lisible sur PC (Joseph, 10/11/2026) : chaque carte de « Construire » (ventes, frais, investissements,
   équipe…) s'ouvre de la même façon, sur toute la largeur, avec l'Impact en bande collante en haut ; plus de panneau à
   droite. Les tableaux des thèmes tiennent dans la page dès 1 280 px sans défiler vers la droite (un texte caché élargissait

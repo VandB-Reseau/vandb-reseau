@@ -24,7 +24,9 @@ export function styleTable(theme: Theme) {
     '&:not(.sans-colonne-fixe) tr > .MuiTableCell-paddingCheckbox:first-of-type': { position: 'sticky', left: 0, zIndex: 2, backgroundColor: fond, width: 52, minWidth: 52, maxWidth: 52 },
     '&:not(.sans-colonne-fixe) tr > .MuiTableCell-paddingCheckbox:first-of-type + :not([colspan])': { left: 52 },
     '& thead tr > th': { zIndex: 3 },
-    '& thead tr > th:first-of-type, & thead tr > .MuiTableCell-paddingCheckbox:first-of-type + th': { zIndex: 4 },
+    // Titres figés au-dessus des autres titres, qui glissent dessous au défilement horizontal (Joseph, 11/11/2026 : ils
+    // passaient par-dessus « Magasin ») : sélecteurs plus précis que ceux qui figent la colonne (zIndex 2)
+    [`${fige.replace(/tr > /g, 'thead tr > ')}, &:not(.sans-colonne-fixe) thead tr > .MuiTableCell-paddingCheckbox:first-of-type, &.colonne-fixe thead tr > th:first-of-type, &.deux-colonnes-fixes thead tr > th:nth-of-type(-n+2)`]: { zIndex: 4 },
     '& tbody tr.MuiTableRow-hover:hover > :first-of-type, & tbody tr.MuiTableRow-hover:hover > .MuiTableCell-paddingCheckbox:first-of-type + *': { backgroundImage: survol },
     '& tbody tr.Mui-selected > :first-of-type, & tbody tr.Mui-selected > .MuiTableCell-paddingCheckbox:first-of-type + *': { backgroundImage: choisi },
     '@media print': { '& tr > *': { position: 'static !important', boxShadow: 'none !important' } },
