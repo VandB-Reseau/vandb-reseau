@@ -87,7 +87,7 @@ function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
         inputValue={recherche} onInputChange={(_e, v) => setRecherche(v)} size="small"
         filterOptions={(os, { inputValue }) => { const q = inputValue.toLowerCase(); return os.filter((o) => !q || o.nom.toLowerCase().includes(q) || o.coach.toLowerCase().includes(q)) }}
         sx={{ width: { xs: '100%', sm: 320 } }}
-        renderInput={(p) => <TextField {...p} placeholder="Rechercher un magasin ou un Coach"
+        renderInput={(p) => <TextField {...p} placeholder="Magasin, ville, Coach…"
           slotProps={{ ...p.slotProps, htmlInput: { ...p.slotProps.htmlInput, 'aria-label': 'Rechercher un magasin ou un Coach' }, input: { ...p.slotProps.input, startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> } }}
           sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, minHeight: 48 } }} />} />
   )

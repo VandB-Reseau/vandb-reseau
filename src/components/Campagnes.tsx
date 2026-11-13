@@ -286,7 +286,7 @@ function DetailCampagne({ reseau, c, retour, modifier, signaler }: { reseau: Res
         <LignesBilan titre="Responsable Régional" lignes={bilanPar(reseau, c, concernes, 'rr')} />
         <LignesBilan titre="Coach" lignes={bilanPar(reseau, c, concernes, 'coach')} />
       </Box>
-      <RechercheFiltres actifs={actifs} recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher un magasin ou un Coach" />}>
+      <RechercheFiltres actifs={actifs} recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Magasin, ville, Coach…" libelle="Rechercher un magasin ou un Coach" />}>
         <FiltreMenu libelle="Responsable Régional" choisis={rrs} onChange={setRRs} options={reseau.rrs.filter((r) => concernes.some((m) => m.rr?.id === r.id)).map((r) => ({ valeur: r.id, libelle: r.nom }))} />
         <FiltreMenu libelle="Coach" choisis={coachs} onChange={setCoachs} options={nomsCoachs.map((n) => ({ valeur: n, libelle: n }))} />
         <FiltreMenu libelle="Exécution" choisis={etats} onChange={setEtats} options={ordreExecution.map((e) => ({ valeur: e, libelle: libellesExecution[e], detail: `${b[e]} magasins` }))} />
