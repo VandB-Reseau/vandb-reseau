@@ -151,7 +151,7 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
 // le soulignement jaune-or marque l'onglet ouvert. Zone tactile de 48 px.
 const styleOnglet = {
   minHeight: 48, minWidth: 0, px: { xs: 1.25, md: 0 }, py: 0, gap: 0.75, color: 'text.secondary', opacity: 1,
-  fontSize: { xs: '0.875rem', md: '0.9375rem' }, fontWeight: 600,
+  fontSize: { xs: '0.875rem', md: '0.875rem' }, fontWeight: 600,
   '& .MuiTab-icon': { mb: 0, mr: 0, fontSize: 20 },
   '&.Mui-selected': { color: 'text.primary', fontWeight: 700 },
   '&:hover': { color: 'text.primary' },

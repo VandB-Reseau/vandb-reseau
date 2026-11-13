@@ -64,7 +64,7 @@ test('fiche magasin : le réel face au budget, mois par mois', async ({ page, is
 
   // R2 : vue cumulée, l'atterrissage chiffré face au budget de l'année
   await plusLoin(page)
-  await page.getByRole('region', { name: 'Chiffre d’affaires' }).getByRole('button', { name: 'Cumulé' }).click()
+  await page.getByRole('region', { name: 'Chiffre d’affaires' }).getByRole('button', { name: 'Cumul', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Chiffre d’affaires' })).toContainText(/Atterrissage \d{4} : .* face au budget de 640\sk€/)
 })
 
@@ -134,5 +134,5 @@ test('vue réseau : jamais montrée au franchisé', async ({ page }) => {
   await seConnecter(page, { role: 'franchise' })
   await expect(page.getByRole('link', { name: /^Suivi \d{4}$/ })).toHaveCount(0)
   await page.goto(`${page.url().split('#')[0]}#/budgets/suivi`)
-  await expect(page.getByRole('heading', { level: 1, name: /^(Mes magasins|Budgets \d{4})$/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: /^(Mes magasins|Mon budget|Budget prévisionnel)$/ })).toBeVisible()
 })

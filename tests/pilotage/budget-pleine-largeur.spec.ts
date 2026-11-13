@@ -100,7 +100,7 @@ test('le budget prévisionnel a son entrée dans le menu, à côté de Chiffres'
     await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Tâches', 'Messages', 'Agenda', 'Magasins', 'Visites', 'Chiffres', 'Budget prévisionnel', 'Actualités', 'Campagnes', 'Demandes'].map((t) => new RegExp(`^${t}`)))
     await nav.getByRole('button', { name: /^Budget prévisionnel/ }).click()
     await expect(page).toHaveURL(/#\/budgets$/)
-    await expect(page.getByRole('heading', { level: 1, name: /^Budgets \d{4}$/ })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: /^(Budget prévisionnel|Mon budget)$/ })).toBeVisible()
     await expect(nav.getByRole('button', { name: /^Budget prévisionnel/ })).toHaveAttribute('aria-current', 'page')
     await expect(nav.getByRole('button', { name: /^Chiffres/ })).not.toHaveAttribute('aria-current', 'page')
     // Chiffres n'a plus d'onglet des budgets ; l'ancienne adresse mène au Budget prévisionnel
@@ -113,7 +113,7 @@ test('le budget prévisionnel a son entrée dans le menu, à côté de Chiffres'
     await page.getByRole('button', { name: 'Mon compte' }).click()
     await page.getByRole('menuitem', { name: /Budget prévisionnel/ }).click()
     await expect(page).toHaveURL(/#\/budgets$/)
-    await expect(page.getByRole('heading', { level: 1, name: /^Budgets \d{4}$/ })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: /^(Budget prévisionnel|Mon budget)$/ })).toBeVisible()
   }
 })
 

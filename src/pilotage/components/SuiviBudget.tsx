@@ -16,10 +16,7 @@ import { Indicateur } from './Indicateur'
 import { Panne } from './Panne'
 import { atterrissageDe, chargerBudgets, chargerParametres, chargerQuadrimestres, chargerReel, chargerSecours, hypothesesDe, parametresDuBudget, type SaisiesQuadrimestres } from '../data/pilotage'
 import { useChargement } from '../data/useChargement'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { ecartChiffres, ecartMilliers, ecartMontant, ecartPts, ecartTaux, enChiffres, milliers, MOIS, MOIS_LONGS, montant, taux } from '../lib/format'
-import { usePreference } from '../lib/preferences'
 import { calculerBudget } from '../moteur/budget'
 import { cumul, cumulApres, santeMagasin } from '../moteur/sante'
 import { effetsSurLaMarge, moisDuReel, suiviBudget } from '../moteur/suivi'
@@ -30,6 +27,7 @@ import { niveauEcart } from '../moteur/visuel'
 import { brand } from '../theme/theme'
 import { styleTableau } from '../theme/tableau'
 import { CaseComplete, CaseReelPrevu, COULEUR_BARRE, EnTeteMois, LegendePastilles } from './Tableau'
+import { BarrePeriode, usePeriodeCommune } from '../../components/BarrePeriode'
 
 // Réel de l'année face à son budget, mois par mois : où le magasin décroche, et de combien. muetSansReel (lot 30) : dans
 // « Où on va », l'atterrissage dit déjà qu'il n'y a pas de réel.
@@ -43,7 +41,7 @@ export function SuiviBudget({ magasin, annee, allerA, muetSansReel, vue: partie 
       chargerQuadrimestres(annee).catch((): SaisiesQuadrimestres => ({}))])
       .then(([d, p, reel, reelN1, secours, quadrimestres]) => ({ d, parametres: p.parametres, reel, reelN1, secours, quadrimestres: quadrimestres[magasin] ?? {} })),
     [magasin, annee])
-  const [vue, setVue] = usePreference<'mois' | 'cumul'>('suivi', 'mois', ['mois', 'cumul'])
+  const [vue, setVue] = usePeriodeCommune()
 
   if (chargement && !donnees) return partie === 'complet' ? <Skeleton variant="rounded" height={320} /> : null
   if (erreur || !donnees) return partie === 'conclusion' ? null : <Panne quoi={`Le suivi du budget ${annee}`} recharger={recharger} />
@@ -101,7 +99,7 @@ export function SuiviBudget({ magasin, annee, allerA, muetSansReel, vue: partie 
   const provisoire = ligne.statut !== 'valide'
   const phrase = (
     <Stack spacing={0.75}>
-      <Box component="p" aria-label="Conclusion" sx={{ m: 0, pl: 2, py: 0.5, borderLeft: 4, borderColor: totalMarge < 0 || c.ecartCA < 0 ? 'error.main' : 'success.main', fontSize: '1.0625rem', fontWeight: 700, maxWidth: '80ch' }}>
+      <Box component="p" aria-label="Conclusion" sx={{ m: 0, pl: 2, py: 0.5, borderLeft: 4, borderColor: totalMarge < 0 || c.ecartCA < 0 ? 'error.main' : 'success.main', fontSize: '1rem', fontWeight: 700, maxWidth: '80ch' }}>
         {conclusion}
       </Box>
       {provisoire && (
@@ -139,10 +137,7 @@ export function SuiviBudget({ magasin, annee, allerA, muetSansReel, vue: partie 
       {partie === 'complet' && <Card component="section" aria-label={`Réel et budget ${annee}, graphique`} sx={{ p: { xs: 2, md: 3 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
           <Typography variant="h2" sx={{ flex: 1, minWidth: 200 }}>Chiffre d’affaires {annee} face au budget</Typography>
-          <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_, v: 'mois' | 'cumul' | null) => v && setVue(v)} aria-label="Affichage du suivi" className="pas-a-l-impression">
-            <ToggleButton value="mois" sx={{ minHeight: 48, textTransform: 'none', px: 2 }}>Mois par mois</ToggleButton>
-            <ToggleButton value="cumul" sx={{ minHeight: 48, textTransform: 'none', px: 2 }}>Cumulé</ToggleButton>
-          </ToggleButtonGroup>
+          <BarrePeriode valeur={vue} onChange={setVue} comparaison="budget" />
         </Box>
         {vue === 'mois' ? (
           <GraphiqueMois

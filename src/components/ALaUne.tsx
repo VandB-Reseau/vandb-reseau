@@ -41,9 +41,9 @@ export function ALaUne({ liste, jour, connaissances, franchise, lectureSeule, ap
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'warning.dark', fontWeight: 700, fontSize: '0.8125rem' }}>
                 <PushPinOutlined sx={{ fontSize: 18 }} />À la une
-                {rappel && <Pastille ton="orange">Rappel</Pastille>}
+                {rappel && <Pastille ton="orange">À relancer</Pastille>}
               </Box>
-              <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1.0625rem', mt: 0.5 }}>{c.titre}</Typography>
+              <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem', mt: 0.5 }}>{c.titre}</Typography>
               {c.texte && <Typography variant="body2" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.texte}</Typography>}
               {k && !franchise && total > 0 && (
                 <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600 }}>Pris connaissance : {k.pris.length} sur {total}</Typography>

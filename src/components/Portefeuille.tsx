@@ -61,11 +61,11 @@ export function ProfilPersonne({ nom, insigne, avatar, lignes, pastille, compteu
           {insigne
             ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-                <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.5rem' }, minWidth: 0, ...uneLigne }}>{nom}</Typography>
+                <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.75rem' }, minWidth: 0, ...uneLigne }}>{nom}</Typography>
                 {insigne}
               </Box>
             )
-            : <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.5rem' }, ...uneLigne }}>{nom}</Typography>}
+            : <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.75rem' }, ...uneLigne }}>{nom}</Typography>}
           {surPC
             ? <Typography variant="body2" color="text.secondary">{lignes.filter(Boolean).join(' · ')}</Typography>
             : lignes.filter(Boolean).map((l) => <Typography key={l} variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem', ...uneLigne }}>{l}</Typography>)}
@@ -242,7 +242,7 @@ export function VuePortefeuilles({ reseau }: { reseau: Reseau }) {
             return (
               <LigneCompacte key={l.cle} lien={l.lien} avatar={<Initiales nom={l.nom} />} titre={l.nom}
                 detail={[l.detail, `${pluriel(l.p.visitesFaites, 'visite')}`, `${l.p.decroche} en Décroche`, `CA ${formatPourcent(l.p.evolutionCA)}`, `audit ${pct(l.p.audit)}`].join(' · ')}
-                fin={ref ? (n ? <Pastille ton="orange">{`${n} sous ${ref.libelle === 'réseau' ? 'le réseau' : 'la région'}`}</Pastille> : <Pastille ton="gris">Au niveau</Pastille>) : undefined} />
+                fin={ref ? (n ? <Pastille ton="orange">{`${n} sous ${ref.libelle === 'réseau' ? 'le réseau' : 'la région'}`}</Pastille> : undefined) : undefined} />
             )
           })}
         </CarteLignes>

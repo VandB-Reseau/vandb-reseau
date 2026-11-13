@@ -24,7 +24,7 @@ export function Indicateur({ libelle, valeur, detail, couleur, couleurDetail, li
       <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' }, lineHeight: 1.35 }}>{libelle}</Typography>
       <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: large ? { xs: '1.75rem', md: '2rem' } : { xs: '1.25rem', md: '1.75rem' }, fontWeight: 700, lineHeight: 1.25, color: couleur }}>{valeur}</Typography>
+          <Typography sx={{ fontSize: large ? '1.75rem' : { xs: '1.125rem', md: '1.75rem' }, fontWeight: 700, lineHeight: 1.25, color: couleur }}>{valeur}</Typography>
           {detail && <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' }, ...(couleurDetail ? { color: couleurDetail, fontWeight: 700 } : {}) }}>{detail}</Typography>}
         </Box>
         {fin}

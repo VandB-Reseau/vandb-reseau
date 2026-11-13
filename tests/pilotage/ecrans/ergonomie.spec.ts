@@ -101,7 +101,7 @@ test('les onglets signalent ce qui manque', async ({ page, isMobile }) => {
 test('un franchisé avec un seul magasin arrive sur sa fiche', async ({ page }) => {
   await seConnecter(page, { role: 'franchise', magasins: [sept[0]] })
   await expect(page.getByRole('heading', { level: 1, name: MAGASINS[0] })).toBeVisible()
-  await expect(page.getByRole('link', { name: /^Budgets \d{4}$/ }).and(page.locator('main a'))).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /^(Budget prévisionnel|Mon budget)$/ }).and(page.locator('main a'))).toHaveCount(0)
 })
 
 test('saisie rapide : Entrée passe au montant suivant, les milliers s’affichent', async ({ page }) => {

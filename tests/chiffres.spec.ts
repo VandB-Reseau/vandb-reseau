@@ -27,17 +27,18 @@ test('l’accueil met en tête les magasins qui décrochent, avec l’appel en r
   await expect(lyon).toContainText(/CA −30,0 % vs septembre 2025/)
   await expect(lyon).toContainText(/appel en retard de \d+ j/)
   await expect(lyon).toContainText('Décroche')
+  // Les magasins qui décrochent passent en tête, avant ceux à surveiller
+  await expect(bloc.getByRole('link').nth(0)).toHaveAccessibleName(/^Lyon Test.*Décroche$/)
+  // Vague 8 (97A) : les tâches bloquées passent en rouge, avec les urgences ; Nantes se retrouve dans « Suivi »
+  await bloc.getByRole('button', { name: /^Suivi · \d+$/ }).click()
   const nantes = bloc.getByRole('link', { name: /^Nantes Test.*À surveiller$/ })
   await expect(nantes).toBeVisible()
   await expect(nantes).toContainText('À surveiller')
-  // Les magasins qui décrochent passent en tête, avant ceux à surveiller
-  await expect(bloc.getByRole('link').nth(0)).toHaveAccessibleName(/^Lyon Test.*Décroche$/)
-  await bloc.getByRole('button', { name: /^Suivi · \d+$/ }).click()
   await expect(bloc.getByRole('link').nth(0)).toHaveAccessibleName(/^Nantes Test.*À surveiller$/)
   await bloc.getByRole('button', { name: 'Tout' }).click()
   await expect(bloc.getByRole('link', { name: /^Annecy Test.*(Décroche|À surveiller)$/ })).toHaveCount(0)
-  // Les repères de pilotage en tête de l'accueil
-  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', 'Pilotage')
+  // Vague 8 (Joseph, 11/11/2026) : l'actualité en tête de l'accueil, comme un réseau social
+  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', 'Actualités')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-accueil-chiffres.png` })
 })
@@ -88,7 +89,7 @@ test('saisir un appel : il ne compte pas comme visite', async ({ page }) => {
   await expect(page.getByText('Appel · Inès EXEMPLE').first()).toBeVisible()
 })
 
-test('saisir les chiffres du mois pendant une visite et noter un audit', async ({ page }) => {
+test('la visite rappelle les chiffres de la caisse sans les faire saisir, et note un audit', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Annecy%20Test?vue=visites')
@@ -100,32 +101,16 @@ test('saisir les chiffres du mois pendant une visite et noter un audit', async (
   await d.getByLabel('Résultat de l’audit').click()
   await page.getByRole('option', { name: 'Non conforme', exact: true }).click()
   await d.getByLabel('Score de l’audit (%)').fill('68')
-  // Mois dernier pré-rempli avec les chiffres connus
-  await expect(d.getByLabel('Mois')).toHaveText('septembre 2026')
-  await expect(d.getByLabel('Panier moyen HT cave (€)')).toHaveValue('40')
-  await expect(d.getByLabel('Flux cave')).toHaveValue('1400')
-  await d.getByLabel('Flux cave').fill('1 500')
-  await d.getByLabel('Flux bar').fill('abc')
-  await expect(d.getByText('Nombre attendu')).toBeVisible()
-  await expect(d.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
-  await d.getByLabel('Flux bar').fill('2100')
-  await d.getByLabel('CA marché extérieur (€)').fill('3 200')
-  await d.getByLabel('Marge (%)').fill('41,5')
-  // CA et flux calculés : 40 × 1 500 + 12 × 2 100 + 3 200 de marché extérieur
-  const calcules = d.getByRole('group', { name: 'Chiffres calculés' })
-  await expect(calcules).toContainText('60 000 €')
-  await expect(calcules).toContainText('25 200 €')
-  await expect(calcules).toContainText('88 400 €')
-  await expect(calcules).toContainText('3 600')
-  await calcules.scrollIntoViewIfNeeded()
-  await page.screenshot({ path: `captures/${test.info().project.name}-saisie-chiffres.png` })
+  // Vague 8 (Joseph, 11/11/2026) : les chiffres viennent de la caisse ; la visite les rappelle, en lecture
+  const caisse = d.getByRole('region', { name: 'Chiffres de la caisse' })
+  await expect(caisse).toContainText('Chiffres de la caisse · septembre 2026')
+  await expect(caisse).toContainText('CA 80 k€')
+  await expect(d.getByLabel('Flux cave')).toHaveCount(0)
+  await caisse.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: `captures/${test.info().project.name}-visite-chiffres-caisse.png` })
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
-  const chiffres = ecritures.find((e) => e.table === 'store_finance')!
-  expect(chiffres.corps).toEqual([expect.objectContaining({
-    store_name: 'Annecy Test', month: '2026-09-01', ca_ext: 3200, pm_cave: 40, flux_cave: 1500, pm_bar: 12, flux_bar: 2100,
-    ca_cave: 60000, ca_bar: 25200, freq: 3600, panier: 23.67, marge: 41.5,
-  })])
+  expect(ecritures.some((e) => e.table === 'store_finance')).toBe(false)
   const audit = ecritures.filter((e) => e.table === 'app_config').at(-1)!
   const valeur = JSON.parse((audit.corps as { value: string }).value)
   expect(valeur['Annecy Test']).toEqual([expect.objectContaining({ type: 'hygiene', conforme: false, score: 68 })])

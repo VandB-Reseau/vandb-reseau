@@ -27,5 +27,5 @@ export function PiedLettre() {
 
 // Intertitre en capitales (sous-titres de la charte : Lato en capitales)
 export function IntertitreLettre({ children }: { children: ReactNode }) {
-  return <Typography variant="h4" component="h2" sx={{ fontFamily: 'inherit', color: brand.noir, fontSize: '0.9375rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `2px solid ${brand.or}`, pb: 0.5, mb: 1.5 }}>{children}</Typography>
+  return <Typography variant="h4" component="h2" sx={{ fontFamily: 'inherit', color: brand.noir, fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `2px solid ${brand.or}`, pb: 0.5, mb: 1.5 }}>{children}</Typography>
 }

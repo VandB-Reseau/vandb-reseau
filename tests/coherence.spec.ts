@@ -40,14 +40,14 @@ test('l’événement se crée depuis l’en-tête de l’Agenda sur PC, depuis 
   await expect(page.getByRole('heading', { level: 1, name: 'Agenda' })).toBeVisible()
   await expect(page.getByRole('main').getByRole('button', { name: /^(Absence|Événement)$/ })).toHaveCount(0)
   if (!isMobile) {
-    await expect(page.getByRole('button', { name: 'Créer', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Ajouter', exact: true })).toHaveCount(0)
     await page.getByRole('main').getByRole('button', { name: 'Ajouter un événement' }).click()
     await expect(page.getByRole('dialog', { name: 'Ajouter un événement' })).toBeVisible()
     return
   }
   await expect(page.getByRole('main').getByRole('button', { name: 'Ajouter un événement' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Créer', exact: true }).click()
-  const creer = page.getByRole('menu', { name: 'Créer' })
+  await page.getByRole('button', { name: 'Ajouter', exact: true }).click()
+  const creer = page.getByRole('menu', { name: 'Ajouter', exact: true })
   await expect(creer.getByRole('menuitem', { name: 'Absence' })).toHaveCount(0)
   expect((await creer.getByRole('menuitem', { name: 'Événement', exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(48)
   await creer.getByRole('menuitem', { name: 'Événement', exact: true }).click()

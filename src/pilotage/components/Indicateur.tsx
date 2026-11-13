@@ -26,14 +26,15 @@ export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide
   jauge?: { valeur: number; cible: number; niveau: NiveauEcart | null; libelle: string }
 }) {
   return (
-    <Card sx={{ p: 2.5, flex: '1 1 200px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+    // Vague 8 (98A) : même bloc chiffré que le reste de l'app (fond blanc sans bord, coins de 12 px, mêmes tailles)
+    <Card sx={{ px: { xs: 1.5, md: 2 }, py: { xs: 1.25, md: 1.75 }, border: 0, borderRadius: '12px', flex: '1 1 200px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', minHeight: { xs: 48, md: 32 }, my: { xs: -1, md: -0.75 } }}>
-        <Typography variant="body2" color="text.secondary">{libelle}</Typography>
+        <Typography color="text.secondary" sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}>{libelle}</Typography>
         {aide && <Aide sujet={aide} />}
         {info}
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
-        <Typography component="p" sx={{ fontSize: '1.625rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}>{valeur}</Typography>
+        <Typography component="p" sx={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}>{valeur}</Typography>
         {ecart && (
           <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, fontSize: '0.8125rem', fontWeight: 700, color: ecart.favorable ? 'success.dark' : 'error.main' }}>
             {ecart.hausse ? <ArrowUpwardOutlined sx={{ fontSize: 16 }} /> : <ArrowDownwardOutlined sx={{ fontSize: 16 }} />}
@@ -48,7 +49,7 @@ export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide
           <Box sx={{ position: 'absolute', top: -4, bottom: -4, left: 'calc(80% - 1.5px)', width: 3, borderRadius: 2, bgcolor: 'text.primary' }} />
         </Box>
       )}
-      {detail && <Typography variant="caption" color="text.secondary">{detail}</Typography>}
+      {detail && <Typography color="text.secondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>{detail}</Typography>}
       {serie && <Box sx={{ mt: 'auto', pt: 1 }}><Courbe valeurs={serie} /></Box>}
       {action}
     </Card>

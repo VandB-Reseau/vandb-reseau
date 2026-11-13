@@ -43,7 +43,7 @@ const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 function Compteur({ valeur, libelle }: { valeur: string | number; libelle: string }) {
   return (
     <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'action.hover' }}>
-      <Typography sx={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2 }}>{valeur}</Typography>
+      <Typography sx={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2 }}>{valeur}</Typography>
       <Typography variant="body2" color="text.secondary">{libelle}</Typography>
     </Box>
   )
@@ -98,7 +98,7 @@ export function RevueRR({ reseau, nom, magasins, parRR = false }: { reseau: Rese
                   </Typography>
                 </Box>
                 {x.decroche > 0 && <Pastille ton="rouge">{`${x.decroche} Décroche`}</Pastille>}
-                {x.faites < x.reference - 1 && <Pastille ton="orange">Visites en dessous</Pastille>}
+                {x.faites < x.reference - 1 && <Pastille ton="orange">En dessous</Pastille>}
               </Rangee>
             ))}
           </Section>

@@ -19,7 +19,7 @@ test('l’organigramme ne modifie plus rien : chaque personne s’ouvre sur sa f
     await page.goto(`./#/equipe?forme=${forme}`)
     await expect(page.getByRole('heading', { name: 'Organigramme' })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Modifier/ })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: /^Ajouter/ })).toHaveCount(0)
+    await expect(page.getByRole('main').getByRole('button', { name: /^Ajouter/ })).toHaveCount(0)
   }
   await page.getByRole('link', { name: 'Alex NORD', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Alex NORD', level: 1 })).toBeVisible()

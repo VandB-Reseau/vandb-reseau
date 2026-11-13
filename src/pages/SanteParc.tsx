@@ -1,3 +1,4 @@
+import { rayon } from '../theme/theme'
 import { Entete, LigneSansResultat, useTableau, type ColonneTri } from '../components/TableauTri'
 import { Blason } from '../components/Blason'
 import type { ReactNode } from 'react'
@@ -8,7 +9,6 @@ import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import Checkbox from '@mui/material/Checkbox'
 import Dialog from '@mui/material/Dialog'
 import Drawer from '@mui/material/Drawer'
@@ -87,7 +87,7 @@ function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
         inputValue={recherche} onInputChange={(_e, v) => setRecherche(v)} size="small"
         filterOptions={(os, { inputValue }) => { const q = inputValue.toLowerCase(); return os.filter((o) => !q || o.nom.toLowerCase().includes(q) || o.coach.toLowerCase().includes(q)) }}
         sx={{ width: { xs: '100%', sm: 320 } }}
-        renderInput={(p) => <TextField {...p} placeholder="Rechercher un magasin ou un Coach"
+        renderInput={(p) => <TextField {...p} placeholder="Magasin, ville, Coach…"
           slotProps={{ ...p.slotProps, htmlInput: { ...p.slotProps.htmlInput, 'aria-label': 'Rechercher un magasin ou un Coach' }, input: { ...p.slotProps.input, startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> } }}
           sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, minHeight: 48 } }} />} />
   )
@@ -96,7 +96,7 @@ function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
     <RechercheFiltres recherche={champ} actifs={actifsEnPlus} actions={actions}>
       {/* Refonte vague 4 (39A) : Responsable Régional et Coach se choisissent dans le périmètre, plus de filtre ici */}
       {enPlus}
-      {recherche && <Button onClick={() => setRecherche('')} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
+      {recherche && <Button onClick={() => setRecherche('')} sx={{ minHeight: 36 }}>Retirer les filtres</Button>}
     </RechercheFiltres>
   )
   return { magasins, barre: barreDe(enPlus), barreDe }
@@ -143,26 +143,11 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
   return (
     <>
       {barre}
-      <Box sx={{ display: 'grid', gap: { xs: 1, sm: 2 }, gridTemplateColumns: 'repeat(3, 1fr)', mb: 3 }}>
-        {tuiles.map((t) => !surPC ? (
-          <Card key={t.titre} sx={{ borderTop: `4px solid ${t.couleur}` }}>
-            <Box component={t.action ? 'button' : 'div'} type={t.action ? 'button' : undefined} onClick={t.action ? evaluer : undefined}
-              sx={{ all: 'unset', boxSizing: 'border-box', width: '100%', p: 1.5, minHeight: 48, display: 'block', textAlign: 'center', cursor: t.action ? 'pointer' : 'default' }}>
-              <Typography sx={{ fontSize: 24, fontWeight: 800, color: t.couleur, lineHeight: 1.1 }}>{t.n}</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>{t.titre}</Typography>
-            </Box>
-          </Card>
-        ) : (
-          <Card key={t.titre}>
-            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ width: 56, height: 56, borderRadius: 3, bgcolor: alpha(t.couleur, 0.12), color: t.couleur, display: 'grid', placeItems: 'center', fontSize: 24, fontWeight: 700, flexShrink: 0 }}>{t.n}</Box>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="h4" component="p">{t.titre}</Typography>
-                <Typography variant="body2" color="text.secondary">{t.action ? t.detail : `${pct(t.n)} % des magasins classés`}</Typography>
-              </Box>
-              {t.action && <Button onClick={evaluer} sx={{ minHeight: 48 }}>Évaluer</Button>}
-            </CardContent>
-          </Card>
+      {/* Vague 8 (98A) : le même bloc chiffré que l'accueil et Chiffres ; « Non classés » ouvre l'évaluation */}
+      <Box sx={{ display: 'grid', gap: { xs: 1, md: 1.5 }, gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', mb: 3 }}>
+        {tuiles.map((t) => (
+          <Indicateur key={t.titre} libelle={t.titre} valeur={String(t.n)} couleur={t.n ? t.couleur : undefined}
+            detail={t.action ? (surPC ? t.detail : 'Évaluer') : `${pct(t.n)} % des classés`} onClick={t.action ? evaluer : undefined} />
         ))}
       </Box>
       <Card sx={{ p: { xs: 1.5, md: 3 } }}>
@@ -181,16 +166,16 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
                 return (
                   <Box key={c.id} role="cell" aria-label={`${c.libelle} : ${liste.length} magasin${liste.length > 1 ? 's' : ''}`}>
                     <Box component="button" type="button" onClick={() => { setOuverte(c.id); setCherche('') }} disabled={!liste.length} aria-label={`Voir les ${liste.length} magasins : ${c.libelle}`}
-                      sx={{ all: 'unset', boxSizing: 'border-box', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: { xs: 0.5, md: 1 }, p: { xs: 1, md: 2 }, borderRadius: { xs: 3, md: 4 }, minHeight: { xs: 96, md: 168 }, cursor: liste.length ? 'pointer' : 'default',
+                      sx={{ all: 'unset', boxSizing: 'border-box', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: { xs: 0.5, md: 1 }, p: { xs: 1, md: 2 }, borderRadius: `${rayon.carte}px`, minHeight: { xs: 96, md: 168 }, cursor: liste.length ? 'pointer' : 'default',
                         bgcolor: liste.length ? alpha(c.couleur, 0.08 + intensite * 0.22) : 'action.hover', outline: liste.length ? `1px solid ${alpha(c.couleur, 0.45)}` : '1px solid transparent', color: liste.length ? undefined : 'text.secondary',
                         transition: 'transform .15s, box-shadow .15s', '&:hover:not(:disabled), &:focus-visible': { transform: 'translateY(-2px)', boxShadow: 4 } }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c.couleur, flexShrink: 0 }} />
-                        <Typography sx={{ fontWeight: 700, fontSize: { xs: 12, md: 15 }, flex: 1, lineHeight: 1.2 }}>{c.libelle}</Typography>
+                        <Typography sx={{ fontWeight: 700, fontSize: { xs: 12, md: 14 }, flex: 1, lineHeight: 1.2 }}>{c.libelle}</Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                        {liste.length ? <Typography sx={{ fontSize: { xs: 32, md: 40 }, fontWeight: 800, lineHeight: 1 }}>{liste.length}</Typography>
-                          : <Typography sx={{ fontSize: { xs: 16, md: 20 }, fontWeight: 600, lineHeight: 1, color: 'text.secondary' }}>0</Typography>}
+                        {liste.length ? <Typography sx={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1 }}>{liste.length}</Typography>
+                          : <Typography sx={{ fontSize: { xs: 16, md: 18 }, fontWeight: 600, lineHeight: 1, color: 'text.secondary' }}>0</Typography>}
                         <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>{liste.length ? `${pct(liste.length)} % des classés` : 'aucun magasin'}</Typography>
                       </Box>
                       {/* Coachs en nom court sous le chiffre (plus de barre ni de bulle qui recouvrait le libellé au téléphone) */}
@@ -512,7 +497,7 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
   const aucun = tableauVisible && base.length > 0 && liste.length === 0 && (
     <Box sx={{ p: 3, textAlign: 'center' }}>
       <Typography sx={{ mb: 1 }}>Aucun magasin ne correspond à ces filtres.</Typography>
-      <Button variant="outlined" onClick={() => setFiltres({})} sx={{ minHeight: 48 }}>Effacer les filtres</Button>
+      <Button variant="outlined" onClick={() => setFiltres({})} sx={{ minHeight: 48 }}>Retirer les filtres</Button>
     </Box>
   )
   return (
@@ -522,7 +507,7 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
         { v: 'completer', libelle: `À compléter · ${aCompleter.length}` },
       ]} />
       <TitreSection nombre={liste.length} action={<>
-        {surPC && tableauVisible && (tri || filtresActifs) && <Button onClick={() => { setTri(null); setFiltres({}) }} sx={{ minHeight: 40 }}>Effacer tri et filtres</Button>}
+        {surPC && tableauVisible && (tri || filtresActifs) && <Button onClick={() => { setTri(null); setFiltres({}) }} sx={{ minHeight: 40 }}>Retirer tri et filtres</Button>}
         {surPC && <ChoixAffichage valeur={affichage} onChange={setAffichage} />}
       </>}>Magasins</TitreSection>
       {base.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre={etat === 'completer' ? 'Rien à compléter' : 'Aucun magasin'} texte={etat === 'completer' ? 'Tous les magasins affichés sont renseignés.' : 'Aucun magasin ne correspond à ces filtres.'} />

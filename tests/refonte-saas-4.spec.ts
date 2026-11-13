@@ -138,7 +138,7 @@ test('37A : le franchisé envoie une demande, le siège la traite', async ({ pag
   await seConnecter(page, { acces: PAUL, demandes })
   await page.goto('./#/demandes')
   await expect(page.getByRole('heading', { level: 1, name: 'Mes demandes' })).toBeVisible()
-  await page.getByRole('button', { name: 'Nouvelle demande' }).first().click()
+  await page.getByRole('button', { name: 'Ajouter une demande' }).first().click()
   const d = page.getByRole('dialog', { name: 'Nouvelle demande' })
   await d.getByLabel('Thème').click()
   await page.getByRole('option', { name: 'Informatique et caisse' }).click()
@@ -208,10 +208,10 @@ test('42A : barre du téléphone et journée du Coach', async ({ page, isMobile 
   await expect(page.getByRole('region', { name: 'Ma journée' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Mes indicateurs' })).toHaveAttribute('aria-expanded', 'false')
   // Le « + » : les gestes du terrain d'abord
-  await page.getByRole('button', { name: 'Créer' }).click()
-  await expect(page.getByRole('menu', { name: 'Créer' }).getByRole('menuitem').first()).toHaveText('Visite')
-  await expect(page.getByRole('menu', { name: 'Créer' }).getByRole('menuitem').nth(1)).toHaveText('Appel')
-  await expect(page.getByRole('menu', { name: 'Créer' }).getByRole('menuitem').nth(2)).toHaveText('Note')
+  await page.getByRole('button', { name: 'Ajouter', exact: true }).click()
+  await expect(page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem').first()).toHaveText('Visite')
+  await expect(page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem').nth(1)).toHaveText('Appel')
+  await expect(page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem').nth(2)).toHaveText('Note')
   await lisible(page, isMobile, false)
 })
 

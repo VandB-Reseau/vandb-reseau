@@ -38,7 +38,7 @@ test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur PC,
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   if (!isMobile) {
     // Refonte (Joseph, 09/11/2026, 3A) : 5 onglets
-    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Ressources'])
+    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Nine box', 'Budget', 'Ressources'])
     return
   }
   await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Plus'])
@@ -51,7 +51,7 @@ test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur PC,
   }
   await onglets.getByRole('tab', { name: 'Autres rubriques' }).click()
   const panneau = page.getByRole('dialog', { name: 'Rubriques de Brest Test' })
-  await expect(panneau.getByRole('button')).toHaveText(['Budget', 'Ressources'])
+  await expect(panneau.getByRole('button')).toHaveText(['Nine box', 'Budget', 'Ressources'])
   for (const b of await panneau.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-onglets-plus.png` })

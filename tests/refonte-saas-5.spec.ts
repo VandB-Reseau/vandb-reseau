@@ -63,7 +63,7 @@ test('44A et 46A : le franchisé lit À la une, donne sa prise de connaissance, 
   const une = page.getByRole('article', { name: 'À la une : Nouvelle charte des vitrines' })
   await expect(une).toBeVisible()
   // Publiée il y a 8 jours, pas encore confirmée : rappel
-  await expect(une.getByText('Rappel')).toBeVisible()
+  await expect(une.getByText('À relancer')).toBeVisible()
   await une.getByRole('button', { name: 'J’ai pris connaissance' }).click()
   await expect(une.getByText('Pris connaissance')).toBeVisible()
   expect(ecritures.some((e) => e.table === 'rpc/prendre_connaissance' && JSON.stringify(e.corps).includes('"p_id":1'))).toBe(true)
@@ -115,7 +115,7 @@ test('48A : le Directeur règle les temps forts ; une campagne porte ses dates c
   await expect.poll(() => ecritures.some((e) => JSON.stringify(e.corps).includes('Beaujolais nouveau'))).toBe(true)
   // Une campagne rattachée à Noël, avec sa date limite de commande
   await page.goto('./#/campagnes?vue=campagnes')
-  await page.getByRole('button', { name: 'Nouvelle campagne' }).first().click()
+  await page.getByRole('button', { name: 'Ajouter une campagne' }).first().click()
   const d = page.getByRole('dialog')
   await d.getByLabel('Temps fort').click()
   await page.getByRole('option', { name: /^Noël/ }).click()
@@ -191,6 +191,8 @@ test('54A : « Plus tard » met une ligne de À traiter de côté, « Tout revoi
 test('53A : une seule carte d’indicateur, cliquable, sur l’accueil et dans Chiffres', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./#/')
+  // Vague 8 : sur téléphone, les indicateurs se déplient sous l'actualité
+  if (isMobile) await page.getByRole('button', { name: 'Mes indicateurs' }).click()
   await page.getByRole('region', { name: 'Pilotage' }).getByRole('link', { name: /^Décrochent :/ }).click()
   await expect(page).toHaveURL(/#\/performance/)
   // Dans Chiffres, la carte filtre la liste

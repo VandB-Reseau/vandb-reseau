@@ -1,3 +1,4 @@
+import { VuesRapides } from './VuesRapides'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Button from '@mui/material/Button'
 import ToggleButton from '@mui/material/ToggleButton'
@@ -59,16 +60,27 @@ export function Initiales({ nom, taille = 44, icone, couleur }: { nom: string; t
   )
 }
 
-export type Ton = 'rouge' | 'orange' | 'vert' | 'gris' | 'bleu'
-const signaux: Record<Exclude<Ton, 'rouge' | 'gris'>, CouleurSignal> = { orange: 'warning', bleu: 'info', vert: 'success' }
+// Vague 8 (97A, lexique validé par Joseph le 13/11/2026) : quatre tons et un lexique fermé (LEXIQUE_STATUTS).
+// rouge = agir, orange = surveiller, vert = bon, gris = neutre ; « bleu » est gardé pour l'ancien code et s'affiche en gris ;
+// « type » n'est pas un statut : étiquette grise sans point (Visite, Demande, Ouverture…).
+export type Ton = 'rouge' | 'orange' | 'vert' | 'gris' | 'bleu' | 'type'
+export const LEXIQUE_STATUTS = {
+  rouge: ['En retard', 'Décroche', 'Bloquée'],
+  orange: ['À surveiller', 'En dessous', 'À relancer', 'Surchargé'],
+  vert: ['Fait', 'Validé', 'Planifiée', 'Au-dessus'],
+  gris: ['À venir', 'En cours', 'Passée', 'Non classé', 'Sans Coach'],
+} as const
+const signaux: Record<'orange' | 'vert', CouleurSignal> = { orange: 'warning', vert: 'success' }
 
 // Pastille unique d'une ligne : la plus grave seulement. Seul le rouge est plein ;
 // les autres tons sont un texte coloré précédé d'un point, pour que les alertes ressortent.
 export function Pastille({ ton, children }: { ton: Ton; children: ReactNode }) {
   const forme = { flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 0.75, borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap' } as const
   if (ton === 'rouge') return <Box component="span" sx={{ ...forme, px: 1.25, py: 0.5, bgcolor: '#c24119', color: '#ffffff' }}>{children}</Box>
-  if (ton === 'gris') return <Box component="span" sx={{ ...forme, py: 0.5, color: 'text.secondary' }}>{children}</Box>
-  return <Box component="span" sx={(t) => ({ ...forme, py: 0.5, ...styleSignal(t, signaux[ton]) })}>{children}</Box>
+  // Vague 8 (97A) : un seul composant de statut, quatre tons ; le gris garde son point comme les autres
+  if (ton === 'type') return <Box component="span" sx={{ ...forme, px: 1, py: 0.25, color: 'text.secondary', border: '1px solid', borderColor: 'divider' }}>{children}</Box>
+  if (ton === 'gris' || ton === 'bleu') return <Box component="span" sx={{ ...forme, py: 0.5, color: 'text.secondary', '&::before': { content: '""', width: 8, height: 8, borderRadius: '50%', bgcolor: 'currentColor', flexShrink: 0 } }}>{children}</Box>
+  return <Box component="span" sx={(t) => ({ ...forme, py: 0.5, ...styleSignal(t, signaux[ton as 'orange' | 'vert']) })}>{children}</Box>
 }
 
 // Ligne compacte : avatar, titre, détail sur une ligne, puis une pastille ou une valeur à droite
@@ -129,21 +141,9 @@ export function TitreSection({ children, nombre, action }: { children: ReactNode
   )
 }
 
-// Puces de filtre (une seule active), zone tactile de 48 px
+// Puces de filtre (une seule active), zone tactile de 48 px. Vague 8 (96A) : même rendu que les vues rapides des listes
 export function Puces<V extends string>({ valeur, options, onChange, label }: { valeur: V; options: { v: V; libelle: string }[]; onChange: (v: V) => void; label: string }) {
-  return (
-    <Box role="group" aria-label={label} sx={{ display: 'flex', gap: 1, overflowX: 'auto', mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, mb: 1, scrollbarWidth: 'none' }}>
-      {options.map((o) => {
-        const actif = o.v === valeur
-        return (
-          <ButtonBase key={o.v} onClick={() => onChange(o.v)} aria-pressed={actif}
-            sx={{ flexShrink: 0, minHeight: 48, px: 0.25, fontFamily: 'inherit', '& > span': { px: 1.5, height: 36, display: 'flex', alignItems: 'center', borderRadius: 2, border: '1px solid', fontSize: '0.875rem', fontWeight: actif ? 700 : 500, borderColor: actif ? 'text.primary' : 'divider', bgcolor: actif ? 'action.selected' : 'background.paper', color: 'text.primary' } }}>
-            <span>{o.libelle}</span>
-          </ButtonBase>
-        )
-      })}
-    </Box>
-  )
+  return <VuesRapides valeur={valeur} options={options} onChange={onChange} label={label} />
 }
 
 // Mini-courbe (12 derniers mois par exemple), dessinée en SVG, sans axe

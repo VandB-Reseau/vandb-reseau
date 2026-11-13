@@ -120,7 +120,7 @@ test('synthèse et atterrissage : réel des mois passés, saisonnalité de l’a
   await graphique.locator('[data-mois="2"]').click()
   await expect(bulle).toContainText(new RegExp(`Réel ${N}\\s*40\\s000\\s€`))
   // Mois par mois : au survol de décembre, projection 15 000 × 4 + 5 000 = 65 000, et 4 000 l'an dernier
-  await graphique.getByRole('button', { name: 'Mois par mois' }).click()
+  await graphique.getByRole('button', { name: 'Mois', exact: true }).click()
   await graphique.locator('[data-mois="12"]').click()
   await expect(bulle).toContainText('décembre')
   await expect(bulle).toContainText(/Projection\s*65\s000\s€/)

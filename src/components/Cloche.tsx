@@ -43,7 +43,7 @@ export function Cloche() {
       <Drawer anchor="right" open={ouvert} onClose={() => setOuvert(false)} sx={{ zIndex: (t) => t.zIndex.modal }}
         slotProps={{ paper: { component: 'aside', 'aria-label': 'Notifications', sx: { width: { xs: '100%', sm: 380 }, display: 'flex', flexDirection: 'column' } } as never }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, pt: 'calc(12px + env(safe-area-inset-top, 0px))', pb: 1 }}>
-          <Typography variant="h2" component="h2" sx={{ flex: 1, fontSize: '1.25rem' }}>Notifications</Typography>
+          <Typography variant="h2" component="h2" sx={{ flex: 1, fontSize: '1.125rem' }}>Notifications</Typography>
           {n > 0 && <Button onClick={() => marquerLues(nonLues.map((x) => x.id))} sx={{ minHeight: 44 }}>Tout marquer comme lu</Button>}
           <IconButton aria-label="Fermer les notifications" onClick={() => setOuvert(false)} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
         </Box>

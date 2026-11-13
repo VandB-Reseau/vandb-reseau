@@ -206,7 +206,7 @@ function DemandesFranchise({ reseau }: { reseau: Reseau }) {
   const [message, setMessage] = useState('')
   const magasins = reseau.magasins.filter((m) => m.statut !== 'avenir').map((m) => m.nom)
   const fermer = (m?: string) => { setNouvelle(false); setOuverte(null); if (m) { setMessage(m); void recharger() } }
-  const bouton = !apercu && liste !== null ? <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setNouvelle(true)} sx={{ minHeight: 48 }}>Nouvelle demande</Button> : undefined
+  const bouton = !apercu && liste !== null ? <Button variant="contained" startIcon={<AddOutlined />} onClick={() => setNouvelle(true)} sx={{ minHeight: 48 }}>Ajouter une demande</Button> : undefined
   return (
     <>
       <PageHeader titre="Mes demandes" actions={bouton} />

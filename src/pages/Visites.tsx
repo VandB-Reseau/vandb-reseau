@@ -1,9 +1,10 @@
+import { Indicateur } from '../components/Indicateur'
+import { ton } from '../theme/theme'
 import { Entete, LigneSansResultat, useTableau, type ColonneTri } from '../components/TableauTri'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink, Navigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import { brand } from '../theme/theme'
-import ButtonBase from '@mui/material/ButtonBase'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
@@ -56,17 +57,6 @@ const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 // Jours au-delà du délai de la case (jamais visité en tête)
 const ecart = (l: LigneRythme) => (l.depuis === null ? Infinity : l.depuis - l.delai)
 
-function Compteur({ valeur, libelle, signal, actif, onClick }: { valeur: number; libelle: string; signal?: boolean; actif?: boolean; onClick?: () => void }) {
-  const contenu = (
-    <>
-      <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.2, color: signal && valeur > 0 ? 'warning.dark' : undefined }}>{valeur}</Typography>
-      <Typography variant="body2" color="text.secondary">{libelle}</Typography>
-    </>
-  )
-  const sx = { py: 1.5, px: 1, minHeight: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' } as const
-  if (!onClick) return <Box sx={sx}>{contenu}</Box>
-  return <ButtonBase onClick={onClick} aria-pressed={!!actif} aria-label={`${valeur} ${libelle}`} sx={{ ...sx, fontFamily: 'inherit', bgcolor: actif ? 'action.selected' : undefined, '&:hover': { bgcolor: 'action.hover' } }}>{contenu}</ButtonBase>
-}
 
 const colonnesRythme: ColonneTri<LigneRythme>[] = [
   { cle: 'magasin', libelle: 'Magasin', valeur: (l) => l.magasin.nom },
@@ -121,16 +111,17 @@ function VueRythme({ reseau, surPC, actions }: { reseau: Reseau; surPC: boolean;
           options={[...nineBox.map((c) => ({ valeur: c.id, libelle: c.libelle, detail: `${c.rythme} · ${mag((l) => l.case?.id === c.id)}` })), { valeur: '__aucune__', libelle: 'Non classé', detail: `2 visites · ${mag((l) => !l.case)}` }]} />
         <FiltreMenu libelle="Dernière visite" choisis={etats} onChange={setEtats}
           options={[{ valeur: 'alerte' satisfies Etat, libelle: 'À voir', detail: `${mag((l) => l.alerte)}` }, { valeur: 'delai' satisfies Etat, libelle: 'À jour', detail: `${mag((l) => !l.alerte)}` }]} />
-        {(actifs > 0 || texte) && <Button onClick={() => { setCoachs([]); setCases([]); setEtats([]); setTexte('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
+        {(actifs > 0 || texte) && <Button onClick={() => { setCoachs([]); setCases([]); setEtats([]); setTexte('') }} sx={{ minHeight: 36 }}>Retirer les filtres</Button>}
       </RechercheFiltres>
 
       {/* Trois compteurs sur une ligne, comme l'en-tête des fiches ; « à voir » filtre la liste */}
-      <Card aria-label={`Visites ${a.court}`} component="section" sx={{ mb: 2, border: 0, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-        <Compteur valeur={faites} libelle={faites > 1 ? 'faites' : 'faite'} />
-        <Compteur valeur={referenceTotale} libelle="référence" />
-        <Compteur valeur={signales.length} libelle="à voir" signal actif={etats.length === 1 && etats[0] === 'alerte'}
+      {/* Vague 8 (98A) : le même bloc chiffré que partout ; « À voir » filtre la liste */}
+      <Box component="section" aria-label={`Visites ${a.court}`} sx={{ mb: 2, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: { xs: 1, md: 1.5 } }}>
+        <Indicateur libelle="Faites" valeur={String(faites)} detail={`en ${a.court}`} />
+        <Indicateur libelle="Référence" valeur={String(Math.round(referenceTotale))} detail="d’après la nine box" />
+        <Indicateur libelle="À voir" valeur={String(signales.length)} detail="pas vus à temps" couleur={signales.length ? ton.surveiller : undefined} actif={etats.length === 1 && etats[0] === 'alerte'}
           onClick={() => setEtats(etats.length === 1 && etats[0] === 'alerte' ? [] : ['alerte'])} />
-      </Card>
+      </Box>
 
       {lignes.length === 0 ? (
         <EmptyState icone={<EventNoteOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." />
@@ -256,7 +247,7 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
         <FiltreMenu libelle="Période" choisis={cle ? [cle] : []} onChange={(v) => setCle(v.at(-1) ?? '')} options={semestres.map((x) => ({ valeur: x.cle, libelle: x.court }))} />
         <FiltreMenu libelle="Type" choisis={type ? [type] : []} onChange={(v) => setType(v.at(-1) ?? '')} options={typesVisite.map((t) => ({ valeur: t.id, libelle: t.libelle }))} />
         <FiltreMenu libelle="Visité par" choisis={visiteur ? [visiteur] : []} onChange={(v) => setVisiteur(v.at(-1) ?? '')} options={visiteurs(reseau).map((n) => ({ valeur: n, libelle: n }))} />
-        {(cle || type || visiteur || recherche) && <Button onClick={() => { setCle(''); setType(''); setVisiteur(''); setRecherche('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
+        {(cle || type || visiteur || recherche) && <Button onClick={() => { setCle(''); setType(''); setVisiteur(''); setRecherche('') }} sx={{ minHeight: 36 }}>Retirer les filtres</Button>}
       </RechercheFiltres>
       <TitreSection>{`${liste.length} visite${liste.length > 1 ? 's' : ''}`}</TitreSection>
       {liste.length === 0 ? (

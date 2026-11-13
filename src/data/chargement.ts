@@ -1,3 +1,4 @@
+import { couleurEvenement, dansCharte } from '../theme/theme'
 import { normaliserRituels, type Rituel } from './rituels'
 import { normaliserTempsForts, type TempsFort } from './tempsForts'
 import { normaliserIntegration, normaliserParcours, type EtapeParcours, type SuiviIntegration } from './integration'
@@ -179,7 +180,7 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   }
   for (const l of Object.values(reseau.chiffres)) l.sort((a, b) => a.mois.localeCompare(b.mois))
   reseau.evenements = (evenements as L[]).map((e) => ({
-    id: Number(e.id) || null, titre: t(e.title), type: t(e.type) || 'event', debut: t(e.start_date).slice(0, 10), fin: t(e.end_date).slice(0, 10) || t(e.start_date).slice(0, 10), notes: t(e.notes), couleur: t(e.color) || '#7c3aed',
+    id: Number(e.id) || null, titre: t(e.title), type: t(e.type) || 'event', debut: t(e.start_date).slice(0, 10), fin: t(e.end_date).slice(0, 10) || t(e.start_date).slice(0, 10), notes: t(e.notes), couleur: dansCharte(t(e.color), couleurEvenement[t(e.type) as keyof typeof couleurEvenement] ?? couleurEvenement.event),
     ...(Array.isArray(e.invites) && e.invites.length ? { invites: (e.invites as unknown[]).map(String) } : {}),
     ...(t(e.heure) ? { heure: t(e.heure) } : {}), ...(t(e.html) ? { html: t(e.html) } : {}),
   }))

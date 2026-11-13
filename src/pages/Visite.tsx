@@ -8,7 +8,6 @@ import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Snackbar from '@mui/material/Snackbar'
 import Typography from '@mui/material/Typography'
-import ArrowBack from '@mui/icons-material/ArrowBack'
 import CheckOutlined from '@mui/icons-material/CheckOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
@@ -35,6 +34,7 @@ import { PARTIES } from '../data/compteRendu'
 import { dateLongue, lienFiche } from '../lib/format'
 import { useConversationLaterale } from '../components/ConversationLaterale'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
+import { FilAriane } from '../components/FilAriane'
 
 // La visite ouverte : celle demandée, sinon la prochaine prévue, sinon la dernière faite
 function visiteChoisie(reseau: Reseau, nom: string, id: string | null): Visite | null {
@@ -59,7 +59,6 @@ export function PageVisite({ etapeParDefaut }: { etapeParDefaut?: IdEtapeVisite 
 }
 
 function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; etapeParDefaut?: IdEtapeVisite }) {
-  const naviguer = useNavigate()
   const [params, setParams] = useSearchParams()
   const [message, setMessage] = useState('')
   const conversation = useConversationLaterale(reseau, m.nom)
@@ -92,7 +91,7 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
         action={<Button variant="contained" onClick={() => choisir('preparer')} sx={{ minHeight: 48 }}>Préparer la visite</Button>} />
     ) : !faite ? (
       <Box sx={{ display: 'grid', gap: 2 }}>
-        <EmptyState icone={<EventNoteOutlined />} titre={v.date <= reseau.jour ? 'C’est le jour de la visite' : `Visite prévue le ${dateLongue(v.date)}`} texte="La saisie suit l’ordre du jour préparé : sujets, plan d’action, constats, chiffres."
+        <EmptyState icone={<EventNoteOutlined />} titre={v.date <= reseau.jour ? 'C’est le jour de la visite' : `Visite prévue le ${dateLongue(v.date)}`} texte="La saisie suit l’ordre du jour préparé : sujets, plan d’action, constats."
           action={<Button variant="contained" startIcon={<RateReviewOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>Commencer la visite</Button>} />
         <RemarquesInternes reseau={reseau} magasin={m.nom} visite={v} signaler={setMessage} />
       </Box>
@@ -140,7 +139,7 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
   return (
     <>
       <Box className="sans-impression">
-        <Button startIcon={<ArrowBack />} onClick={() => naviguer(lienFiche(m.nom))} sx={{ mb: 1, ml: -1, minHeight: 48 }}>{m.nom}</Button>
+        <FilAriane etapes={[{ libelle: 'Magasins', lien: '/magasins' }, { libelle: m.nom, lien: lienFiche(m.nom) }]} ici="Visite" />
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="h2" component="h1" sx={{ mb: 0.5, flex: 1, minWidth: 0 }}>{`Visite de ${m.nom}`}</Typography>
           <Button startIcon={<ChatBubbleOutlineOutlined />} onClick={conversation.ouvrir} sx={{ minHeight: 48 }}>Conversation</Button>
@@ -155,7 +154,7 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
                 sx={{ display: 'grid', justifyItems: 'start', alignContent: 'start', gap: 0.25, textAlign: 'left', px: { xs: 1, sm: 2 }, py: 1.25, minHeight: 64, fontFamily: 'inherit',
                   borderLeft: i ? '1px solid' : 0, borderColor: 'divider', bgcolor: e.faite ? 'rgba(48,118,114,0.10)' : e.id === enCours ? 'rgba(248,187,9,0.16)' : undefined,
                   boxShadow: actif ? 'inset 0 -3px 0 #1d1d1b' : undefined }}>
-                <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontWeight: 700, fontSize: { xs: '0.8125rem', sm: '0.9375rem' } }}>
+                <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontWeight: 700, fontSize: { xs: '0.8125rem', sm: '0.875rem' } }}>
                   {e.faite ? <CheckOutlined sx={{ fontSize: 16, color: 'success.main' }} /> : <Box component="span" sx={{ color: 'text.secondary' }}>{i + 1}</Box>}
                   {e.libelle}
                 </Box>

@@ -1,3 +1,4 @@
+import { VuesRapides } from '../../components/VuesRapides'
 import { Entete, LigneSansResultat, styleListe, useTableau, type ColonneTri } from '../../components/TableauTri'
 import { useNomsPerimetre } from '../../data/perimetreChoisi'
 import Snackbar from '@mui/material/Snackbar'
@@ -198,9 +199,8 @@ export function Magasins() {
 
   const entete = (
     <>
-      {/* Vague 5 (51A) : les budgets sont un onglet de « Chiffres » pour l'équipe */}
-      {profil?.role !== 'franchise' && <Link component={RouterLink} to="/performance" sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 48, fontWeight: 600 }}>Chiffres</Link>}
-      <Typography variant="h1">{`Budgets ${annee}`}</Typography>
+      {/* Vague 8 (102A) : le titre de la page est le nom du menu, plus de sur-titre « Chiffres » */}
+      <Typography variant="h1">{profil?.role === 'franchise' ? 'Mon budget' : 'Budget prévisionnel'}</Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5, mb: 3 }}>{campagne ? `Campagne ${annee} ouverte` : `Budgets ${annee} de l’année suivie`}</Typography>
     </>
   )
@@ -298,19 +298,10 @@ export function Magasins() {
           )}
 
           <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 2, flexWrap: 'wrap' }} role="group" aria-label="Filtres">
-            {FILTRES.map((f) => {
-              const n = f.cle === 'tous' ? tous.length : tous.filter((m) => correspond(m, f.cle)).length
-              if (n === 0 && f.cle !== filtre) return null
-              const choisi = f.cle === filtre
-              return (
-                <Chip
-                  key={f.cle} label={`${f.libelle} · ${n}`} clickable aria-pressed={choisi}
-                  variant="outlined"
-                  onClick={() => changer('filtre', f.cle === 'tous' ? null : f.cle)}
-                  sx={{ height: { xs: 48, md: 36 }, fontSize: '0.875rem', borderRadius: 2, fontWeight: choisi ? 700 : 500, ...(choisi && { borderColor: 'text.primary', bgcolor: 'action.selected' }) }}
-                />
-              )
-            })}
+            {/* Vague 8 (96A) : vues rapides au style commun des listes */}
+            <VuesRapides label="Vues des budgets" valeur={filtre} onChange={(v) => changer('filtre', v === 'tous' ? null : v)} sx={{ mb: 0 }}
+              options={FILTRES.map((f) => ({ f, n: f.cle === 'tous' ? tous.length : tous.filter((m) => correspond(m, f.cle)).length }))
+                .filter(({ f, n }) => n > 0 || f.cle === filtre).map(({ f, n }) => ({ v: f.cle, libelle: `${f.libelle} · ${n}` }))} />
             {/* Lot 43 : Responsable Régional ou Coach choisi dans la campagne */}
             {responsable && (
               <Chip label={responsable} onDelete={() => changer('responsable', null)} deleteIcon={<CloseOutlined aria-label={`Retirer le filtre : ${responsable}`} />}

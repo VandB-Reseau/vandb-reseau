@@ -255,7 +255,7 @@ test('plus d’import ni de réglage dans la Santé du parc, et plus de doublon 
   for (const [vue, titre] of [['evaluer', 'Santé du parc'], ['deploiements', 'Campagnes']]) {
     await page.goto(`./#/plus/sante?vue=${vue}`)
     await expect(page.getByRole('heading', { name: titre, level: 1 })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Importer|Gérer les thématiques|Effacer toutes les notes/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Importer|Gérer les thématiques|Supprimer toutes les notes/ })).toHaveCount(0)
   }
   await page.goto('./#/plus/carte')
   await expect(page).toHaveURL(/#\/magasins\?vue=carte/)

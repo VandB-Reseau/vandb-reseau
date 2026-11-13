@@ -63,7 +63,7 @@ test('l’accueil signale les magasins pas vus depuis longtemps et les changemen
   await expect(aVoir.filter({ hasText: 'Lyon Test' })).toHaveCount(0)
   const recul = aTraiter.getByRole('link').filter({ hasText: 'Cœur de réseau vers Redressement urgent' })
   await expect(recul).toBeVisible()
-  await expect(recul).toContainText('Recule')
+  await expect(recul).toContainText('En dessous')
 })
 
 test('noter un magasin garde l’historique daté', async ({ page }) => {

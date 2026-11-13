@@ -245,7 +245,7 @@ export function VuePratiques({ reseau, actions, modifier, filtre, integre = fals
       {integre ? <TitreSection nombre={liste.length} action={actions}>Bonnes pratiques</TitreSection> : <RechercheFiltres actifs={themes.length ? 1 : 0} actions={actions}
         recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une pratique ou un magasin" />}>
         <FiltreMenu libelle="Thème" choisis={themes} onChange={setThemes} options={presents.map((t) => ({ valeur: t, libelle: t }))} />
-        {(themes.length > 0 || recherche) && <Button onClick={() => { setThemes([]); setRecherche('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
+        {(themes.length > 0 || recherche) && <Button onClick={() => { setThemes([]); setRecherche('') }} sx={{ minHeight: 36 }}>Retirer les filtres</Button>}
       </RechercheFiltres>}
       {!integre && <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
         {liste.length} bonne{liste.length > 1 ? 's' : ''} pratique{liste.length > 1 ? 's' : ''}{reseau.pratiques.length ? ` · ${reprises} reprise${reprises > 1 ? 's' : ''} ailleurs` : ''}

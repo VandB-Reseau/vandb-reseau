@@ -83,7 +83,7 @@ export function HistoriqueModifications({ reseau }: { reseau: Reseau }) {
                 {lignes.slice(0, nombre).map((l) => (
                   <Box component="li" key={l.cle} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1.25 }}>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontSize: '0.9375rem' }}>
+                      <Typography sx={{ fontSize: '1rem' }}>
                         {l.modif.magasin && <><Link component={RouterLink} to={lienFiche(l.modif.magasin)} underline="hover" sx={{ fontWeight: 600, color: 'text.primary' }}>{l.modif.magasin}</Link> · </>}
                         <Box component="span" sx={{ color: l.suppression ? 'error.main' : undefined }}>{l.texte}</Box>
                       </Typography>

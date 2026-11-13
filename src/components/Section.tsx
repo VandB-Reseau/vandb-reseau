@@ -24,7 +24,7 @@ export function Section({ titre, children, action }: { titre: string; children: 
     return (
       <Box component="section" aria-label={titre} sx={{ pt: 2, mt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, minHeight: 48 }}>
-          <Typography component="h3" sx={{ fontWeight: 700, fontSize: '0.9375rem', mr: 'auto' }}>{titre}</Typography>
+          <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem', mr: 'auto' }}>{titre}</Typography>
           {action}
         </Box>
         {children}
