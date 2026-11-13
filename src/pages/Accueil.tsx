@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
+import AddOutlined from '@mui/icons-material/AddOutlined'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Box from '@mui/material/Box'
@@ -421,7 +422,7 @@ function BlocMesTaches({ reseau, taches, compact = false }: { reseau: Reseau; ta
 // Refonte (Joseph, 09/11/2026, 6A) : la période (mois ou cumul de l'année) se choisit en haut de l'écran ;
 // le CA s'affiche en montant, l'écart en pastille avec sa référence écrite (N-1)
 export type Periode = 'mois' | 'cumul'
-function Indicateurs({ reseau, p, periode = 'mois' }: { reseau: Reseau; p: Perimetre; periode?: Periode }) {
+function Indicateurs({ reseau, p, periode = 'mois', colonne = false }: { reseau: Reseau; p: Perimetre; periode?: Periode; colonne?: boolean }) {
   const theme = useTheme()
   const j = reseau.jour
   const actifs = magasinsDu(reseau, p).filter((m) => m.statut !== 'avenir')
@@ -462,7 +463,7 @@ function Indicateurs({ reseau, p, periode = 'mois' }: { reseau: Reseau; p: Perim
   ]
   return (
     // Téléphone : quatre petites cartes égales en 2 × 2, sans défilement de côté (Joseph, 22/10/2026)
-    <Box component="section" aria-label="Pilotage" sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 1, md: 2 }, mb: { xs: 2, md: 3 } }}>
+    <Box component="section" aria-label="Pilotage" sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: colonne ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 1, md: colonne ? 1.5 : 2 }, mb: { xs: 2, md: 3 } }}>
       {tuiles.map((t) => <Indicateur key={t.cle} libelle={t.libelle} valeur={t.valeur} detail={t.detail} lien={t.lien} couleur={t.couleur} couleurDetail={t.couleurDetail}>{t.barre}</Indicateur>)}
     </Box>
   )
@@ -545,15 +546,18 @@ export function PublicationFil({ e, jour, sansMagasin = false, ouvrir }: { e: El
   )
 }
 
-export function FilActivite({ elements, jour, sansMagasin = false, sansFiltre = false, titre = 'Actualités', communications, reactionsPratiques, reactionsVisites, action, ouvrirJournal }: {
+export function FilActivite({ elements, jour, sansMagasin = false, sansFiltre = false, titre = 'Actualités', communications, reactionsPratiques, reactionsVisites, action, ouvrirJournal, limite, lienTout }: {
   elements: ElementFil[]; jour: string; sansMagasin?: boolean; sansFiltre?: boolean; titre?: string; communications?: CommunicationsDuFil; reactionsPratiques?: ReactionsPratiques | null
   reactionsVisites?: ReactionsVisites | null
   action?: ReactNode; ouvrirJournal?: (e: ElementFil) => void
+  // Vague 8 (Joseph, 11/11/2026, « les actus en premier plan, comme un réseau social ») : sur téléphone, l'accueil montre
+  // les premières publications en tête, la suite dans Actualités
+  limite?: number; lienTout?: string
 }) {
   const { apercu, equipe } = useApercu()
   const [message, setMessage] = useState('')
   const [filtre, setFiltre] = useState<FiltreFil>('tout')
-  const [nb, setNb] = useState(PAS_FIL)
+  const [nb, setNb] = useState(limite ?? PAS_FIL)
   const vus = elements.filter((e) => filtre === 'tout' || e.genre === filtre)
   // Visite, photos, tâches et messages d'un même magasin le même jour : une seule carte (Joseph, 21/10/2026)
   const groupes = useMemo(() => {
@@ -595,7 +599,9 @@ export function FilActivite({ elements, jour, sansMagasin = false, sansFiltre = 
               )}
             </Card>
           ))}
-          {groupes.length > nb && <Button onClick={() => setNb(nb + PAS_FIL)} sx={{ alignSelf: 'center', minHeight: 48 }}>Voir plus</Button>}
+          {groupes.length > nb && (lienTout
+            ? <Button component={RouterLink} to={lienTout} sx={{ alignSelf: 'center', minHeight: 48 }}>Voir toutes les actualités</Button>
+            : <Button onClick={() => setNb(nb + PAS_FIL)} sx={{ alignSelf: 'center', minHeight: 48 }}>Voir plus</Button>)}
         </Box>
       )}
       <FenetreCompteRendu />
@@ -664,39 +670,34 @@ function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Resea
     [reseau, noms, messagerie, communications.liste, unes])
   const aLaUne = <ALaUne liste={communications.liste} jour={reseau.jour} connaissances={connaissances} franchise={false} lectureSeule apres={() => void rechargerConnaissances()}
     lien={(c) => `/infos?vue=communications&c=${c.id}`} />
-  const actualites = <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
+  // Vague 8 (Joseph, 11/11/2026) : l'actualité d'abord, comme un réseau social. Sur téléphone, À la une puis les
+  // dernières publications, ensuite le point du jour ; les indicateurs se déplient. Sur PC, le fil ouvre la page et les
+  // indicateurs passent en tête de la colonne « Aujourd'hui ».
+  const peutPublier = profil?.role === 'directeur' || profil?.role === 'rr'
+  const publier = peutPublier ? <Button component={RouterLink} to="/infos?vue=communications&publier=1" startIcon={<AddOutlined />} sx={{ minHeight: 48 }}>Publier</Button> : undefined
   if (!surPC) {
     return (
       <>
         {aLaUne}
-        {profil?.role === 'coach' ? (
-          // Refonte vague 4 (42A) : le Coach commence par sa journée, puis À traiter ; les indicateurs se déplient
-          <>
-            <MaJournee reseau={reseau} p={p} moi={monNomPorteur(reseau, profil)} />
-            <PointCompact reseau={reseau} p={p} items={items} taches={taches} contrats={contrats} />
-            <IndicateursRepliables><Indicateurs reseau={reseau} p={p} periode={periode} /></IndicateursRepliables>
-          </>
-        ) : (
-          <>
-            <AuMagasin reseau={reseau} p={p} />
-            <Indicateurs reseau={reseau} p={p} periode={periode} />
-            <PointCompact reseau={reseau} p={p} items={items} taches={taches} contrats={contrats} />
-          </>
-        )}
+        <Box sx={{ mb: 3 }}>
+          <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" sansFiltre limite={3} lienTout="/infos" action={publier} communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
+        </Box>
+        {profil?.role === 'coach' ? <MaJournee reseau={reseau} p={p} moi={monNomPorteur(reseau, profil)} /> : <AuMagasin reseau={reseau} p={p} />}
+        <PointCompact reseau={reseau} p={p} items={items} taches={taches} contrats={contrats} />
         <SondagesARepondre equipe aFaire titre="Sondages à remplir" />
-        {actualites}
+        <IndicateursRepliables><Indicateurs reseau={reseau} p={p} periode={periode} /></IndicateursRepliables>
       </>
     )
   }
   return (
     <>
       {aLaUne}
-      <Indicateurs reseau={reseau} p={p} periode={periode} />
       <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: 'minmax(0, 1fr) minmax(340px, 400px)', alignItems: 'start' }}>
         <Box sx={{ minWidth: 0, maxWidth: 760 }}>
-          {actualites}
+          <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" action={publier} communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
         </Box>
         <Box component="aside" aria-label="Aujourd’hui" sx={{ minWidth: 0 }}>
+          <Indicateurs reseau={reseau} p={p} periode={periode} colonne />
           {profil?.role === 'coach' && <MaJournee reseau={reseau} p={p} moi={monNomPorteur(reseau, profil)} />}
           <SondagesARepondre equipe aFaire titre="Sondages à remplir" />
           <BlocATraiter reseau={reseau} items={items} />

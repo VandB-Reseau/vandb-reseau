@@ -24,8 +24,12 @@ const couleurJauge: Record<StatutObjectif, string> = { atteint: '#307672', voie:
 
 export function LigneObjectif({ reseau, magasin, o, onClick }: { reseau: Reseau; magasin: string; o: Objectif; onClick?: () => void }) {
   const a = avancement(reseau, magasin, o)
-  const taches = actionsDuMagasin(reseau, magasin).filter((x) => o.taches.includes(x.cle))
+  // Vague 8 : les tâches d'un objectif sont aussi celles des priorités du plan qui le visent
+  const prioritesLiees = (reseau.plans?.[magasin] ?? []).filter((p) => p.objectif === o.id && p.statut === 'active')
+  const ids = new Set(prioritesLiees.map((p) => p.id))
+  const taches = actionsDuMagasin(reseau, magasin).filter((x) => o.taches.includes(x.cle) || (!!x.a.priorite && ids.has(x.a.priorite)))
   const detail = [
+    prioritesLiees.length ? `Priorité : ${prioritesLiees.map((p) => p.titre).join(', ')}` : null,
     a.mois ? `${libelleMois(a.mois)} : ${formatIndicateur(o.indicateur, o.mode, a.actuel)}` : null,
     taches.length ? `${taches.length} tâche${taches.length > 1 ? 's' : ''}${taches.some((x) => !x.a.faite) ? ` dont ${taches.filter((x) => !x.a.faite).length} ouverte${taches.filter((x) => !x.a.faite).length > 1 ? 's' : ''}` : ''}` : null,
     o.par && `fixé par ${o.par}`,

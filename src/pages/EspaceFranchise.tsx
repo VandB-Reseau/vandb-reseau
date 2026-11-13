@@ -1,3 +1,5 @@
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import { SectionPlan } from '../components/PlanAction'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
@@ -484,6 +486,7 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
   const unes = new Set(aLaUneDuJour(communications.liste, reseau.jour).map((c) => c.id))
   const fil = filComplet.filter((e) => !e.communication || !unes.has(e.communication.id))
   const [message, setMessage] = useState('')
+  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   if (!tous.length) return <><PageHeader titre="Accueil" /><EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." /></>
   return (
     <>
@@ -493,12 +496,14 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
           ce que j'ai à faire et mon équipe V and B. Chiffres du mois en tête, repères du réseau repliés en bas */}
       <ALaUne liste={communications.liste} jour={reseau.jour} connaissances={connaissances} franchise lectureSeule={!!apercu} apres={() => void rechargerConnaissances()}
         lien={(c) => `/infos?vue=communications&c=${c.id}`} />
-      <SectionChiffresDuMois reseau={reseau} magasins={magasins} />
+      {/* Vague 8 (Joseph, 11/11/2026) : l'actualité en premier plan, sur PC comme sur téléphone ; mes chiffres passent en
+          tête de la colonne de droite */}
       <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, mt: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start' }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, maxWidth: 760, order: { xs: 2, md: 1 } }}>
-          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, maxWidth: 760, order: 1 }}>
+          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" limite={surPC ? undefined : 3} lienTout="/infos" communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
         </Box>
-        <Box component="aside" aria-label="Mon magasin" sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, order: { xs: 1, md: 2 } }}>
+        <Box component="aside" aria-label="Mon magasin" sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, order: 2 }}>
+          <SectionChiffresDuMois reseau={reseau} magasins={magasins} />
           <SectionIntegration reseau={reseau} magasins={magasins} />
           <SectionAFaire reseau={reseau} magasins={magasins} />
           <SectionMotAvantVisite reseau={reseau} magasins={magasins} signaler={setMessage} />
