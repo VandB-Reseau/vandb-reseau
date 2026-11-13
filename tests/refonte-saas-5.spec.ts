@@ -191,6 +191,8 @@ test('54A : « Plus tard » met une ligne de À traiter de côté, « Tout revoi
 test('53A : une seule carte d’indicateur, cliquable, sur l’accueil et dans Chiffres', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./#/')
+  // Vague 8 : sur téléphone, les indicateurs se déplient sous l'actualité
+  if (isMobile) await page.getByRole('button', { name: 'Mes indicateurs' }).click()
   await page.getByRole('region', { name: 'Pilotage' }).getByRole('link', { name: /^Décrochent :/ }).click()
   await expect(page).toHaveURL(/#\/performance/)
   // Dans Chiffres, la carte filtre la liste

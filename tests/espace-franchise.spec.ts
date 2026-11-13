@@ -248,9 +248,10 @@ test('l’accueil du franchisé : le fil au centre, à faire et visites à droit
   const aFaire = page.getByRole('region', { name: 'À faire' })
   await expect(aFaire.getByRole('link')).toHaveText([/Clôturer septembre 2026/, /Relire mon budget/])
   if (!isMobile) {
-    // Vague 5 (44A) : chiffres au-dessus, le fil à gauche, à faire à droite
+    // Vague 8 (Joseph, 11/11/2026) : le fil en premier plan à gauche ; mes chiffres et à faire à droite
     const [chiffres, gauche, droite] = await Promise.all([page.getByRole('region', { name: 'Mes chiffres' }), page.getByRole('region', { name: 'Actualités' }), aFaire].map(async (l) => (await l.boundingBox())!))
-    expect(chiffres.y + chiffres.height).toBeLessThanOrEqual(gauche.y)
+    expect(chiffres.x).toBeGreaterThan(gauche.x + gauche.width)
+    expect(gauche.y).toBeLessThanOrEqual(chiffres.y + 1)
     expect(droite.x).toBeGreaterThan(gauche.x + gauche.width)
   } else for (const l of await aFaire.getByRole('link').all()) expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await textesTropPetits(page)).toEqual([])
