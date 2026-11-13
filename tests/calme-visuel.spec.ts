@@ -38,7 +38,7 @@ test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur PC,
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   if (!isMobile) {
     // Refonte (Joseph, 09/11/2026, 3A) : 5 onglets
-    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Ressources'])
+    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Nine box', 'Budget', 'Ressources'])
     return
   }
   await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Plus'])

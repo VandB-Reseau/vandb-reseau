@@ -55,7 +55,7 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
     () => Promise.all([chargerReel(magasin, annee), chargerReel(magasin, annee - 1), chargerSecours(magasin, annee), chargerBudgets(annee).catch(() => null),
       chargerQuadrimestres(annee).catch((): SaisiesQuadrimestres => ({}))])
       .then(([n, n1, secours, budgets, quadrimestres]) => ({ n, n1, secours, budgets, quadrimestres: quadrimestres[magasin] ?? {} })), [magasin, annee])
-  const [vue, setVue] = usePeriodeCommune()
+  const [vue, setVue] = usePeriodeCommune('cumul')
   const [visite, setVisite] = useState(false)
   const [objectifs, setObjectifs] = useState(false)
 

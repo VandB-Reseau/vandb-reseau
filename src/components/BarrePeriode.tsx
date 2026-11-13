@@ -11,19 +11,20 @@ export type PeriodeCommune = 'mois' | 'cumul'
 const CLE = 'periode-chiffres'
 const abonnes = new Set<() => void>()
 let memoire: PeriodeCommune | null = null
-function lire(): PeriodeCommune {
+function lire(): PeriodeCommune | null {
   if (memoire) return memoire
   try { const v = sessionStorage.getItem(CLE); if (v === 'mois' || v === 'cumul') return (memoire = v) } catch { /* sans mémoire : par défaut */ }
-  return 'mois'
+  return null
 }
 export function changerPeriode(v: PeriodeCommune) {
   memoire = v
   try { sessionStorage.setItem(CLE, v) } catch { /* sans mémoire : le choix vaut pour la page */ }
   abonnes.forEach((f) => f())
 }
-export function usePeriodeCommune(): [PeriodeCommune, (v: PeriodeCommune) => void] {
+// Tant que rien n'est choisi dans la session, chaque écran garde sa période d'office (la synthèse du budget : le cumul)
+export function usePeriodeCommune(defaut: PeriodeCommune = 'mois'): [PeriodeCommune, (v: PeriodeCommune) => void] {
   const v = useSyncExternalStore((f) => { abonnes.add(f); return () => { abonnes.delete(f) } }, lire, lire)
-  return [v, changerPeriode]
+  return [v ?? defaut, changerPeriode]
 }
 
 // La barre elle-même : « Comparé à N-1 » ou « au budget », puis Mois / Cumul, toujours dans cet ordre et avec ces mots

@@ -134,5 +134,5 @@ test('vue réseau : jamais montrée au franchisé', async ({ page }) => {
   await seConnecter(page, { role: 'franchise' })
   await expect(page.getByRole('link', { name: /^Suivi \d{4}$/ })).toHaveCount(0)
   await page.goto(`${page.url().split('#')[0]}#/budgets/suivi`)
-  await expect(page.getByRole('heading', { level: 1, name: /^(Mes magasins|Budgets \d{4})$/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: /^(Mes magasins|Mon budget|Budget prévisionnel)$/ })).toBeVisible()
 })

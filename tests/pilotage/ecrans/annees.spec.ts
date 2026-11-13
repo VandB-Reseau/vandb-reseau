@@ -65,7 +65,8 @@ test('Directeur : démarrer le suivi 2027, clore 2026, ouvrir la campagne 2028',
   await expect(carte.getByRole('row')).toHaveText([/Année/, /^2028Campagne des budgets/, /^2027Suivie/, /^2026Close/])
   // Les « portes » suivent la base : Budgets 2028, suivi 2027 dans Performance
   await page.goto('./#/budgets')
-  await expect(page.getByRole('heading', { level: 1, name: 'Budgets 2028' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Budget prévisionnel' })).toBeVisible()
+  await expect(page.getByText('Campagne 2028 ouverte')).toBeVisible()
   await allerVers(page, 'Suivi ')
   await expect(page.getByRole('heading', { level: 2, name: 'Suivi 2027' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
