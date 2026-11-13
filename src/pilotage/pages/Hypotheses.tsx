@@ -215,7 +215,7 @@ export function Hypotheses() {
               setNouveau(null)
               void agir(async () => { setOnglet(String(await creerGroupe(nom))) }, `Groupe « ${nom.trim()} » créé.`)
             }}>
-            Créer
+            Ajouter
           </Button>
         </DialogActions>
       </Dialog>

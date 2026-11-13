@@ -202,7 +202,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
       {brouillon && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', bgcolor: 'action.hover', borderRadius: 2, pl: 2, pr: 1 }}>
           <Typography variant="body2" sx={{ flex: 1, minWidth: 180 }}>{`Brouillon repris du ${dateHeure(brouillon.garde)}`}</Typography>
-          <Button onClick={() => { effacerBrouillon(cleBrouillon); setBrouillon(null); onFermer() }} sx={{ minHeight: 48 }}>Effacer le brouillon</Button>
+          <Button onClick={() => { effacerBrouillon(cleBrouillon); setBrouillon(null); onFermer() }} sx={{ minHeight: 48 }}>Supprimer le brouillon</Button>
         </Box>
       )}
       {!details && (

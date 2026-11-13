@@ -111,7 +111,7 @@ function VueRythme({ reseau, surPC, actions }: { reseau: Reseau; surPC: boolean;
           options={[...nineBox.map((c) => ({ valeur: c.id, libelle: c.libelle, detail: `${c.rythme} · ${mag((l) => l.case?.id === c.id)}` })), { valeur: '__aucune__', libelle: 'Non classé', detail: `2 visites · ${mag((l) => !l.case)}` }]} />
         <FiltreMenu libelle="Dernière visite" choisis={etats} onChange={setEtats}
           options={[{ valeur: 'alerte' satisfies Etat, libelle: 'À voir', detail: `${mag((l) => l.alerte)}` }, { valeur: 'delai' satisfies Etat, libelle: 'À jour', detail: `${mag((l) => !l.alerte)}` }]} />
-        {(actifs > 0 || texte) && <Button onClick={() => { setCoachs([]); setCases([]); setEtats([]); setTexte('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
+        {(actifs > 0 || texte) && <Button onClick={() => { setCoachs([]); setCases([]); setEtats([]); setTexte('') }} sx={{ minHeight: 36 }}>Retirer les filtres</Button>}
       </RechercheFiltres>
 
       {/* Trois compteurs sur une ligne, comme l'en-tête des fiches ; « à voir » filtre la liste */}
@@ -247,7 +247,7 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
         <FiltreMenu libelle="Période" choisis={cle ? [cle] : []} onChange={(v) => setCle(v.at(-1) ?? '')} options={semestres.map((x) => ({ valeur: x.cle, libelle: x.court }))} />
         <FiltreMenu libelle="Type" choisis={type ? [type] : []} onChange={(v) => setType(v.at(-1) ?? '')} options={typesVisite.map((t) => ({ valeur: t.id, libelle: t.libelle }))} />
         <FiltreMenu libelle="Visité par" choisis={visiteur ? [visiteur] : []} onChange={(v) => setVisiteur(v.at(-1) ?? '')} options={visiteurs(reseau).map((n) => ({ valeur: n, libelle: n }))} />
-        {(cle || type || visiteur || recherche) && <Button onClick={() => { setCle(''); setType(''); setVisiteur(''); setRecherche('') }} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
+        {(cle || type || visiteur || recherche) && <Button onClick={() => { setCle(''); setType(''); setVisiteur(''); setRecherche('') }} sx={{ minHeight: 36 }}>Retirer les filtres</Button>}
       </RechercheFiltres>
       <TitreSection>{`${liste.length} visite${liste.length > 1 ? 's' : ''}`}</TitreSection>
       {liste.length === 0 ? (

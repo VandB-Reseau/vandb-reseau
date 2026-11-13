@@ -115,10 +115,10 @@ test('téléphone : barre du bas à cinq onglets, « + » dans l’en-tête', as
   const barre = barreBasse(page)
   await expect(barre.getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
   for (const l of await barre.getByRole('button').all()) expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(48)
-  const plus = page.getByRole('banner').getByRole('button', { name: 'Créer' })
+  const plus = page.getByRole('banner').getByRole('button', { name: 'Ajouter', exact: true })
   expect((await plus.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   await plus.click()
-  await expect(page.getByRole('menu', { name: 'Créer' })).toBeVisible()
+  await expect(page.getByRole('menu', { name: 'Ajouter', exact: true })).toBeVisible()
 })
 
 test('franchisé : le groupe de son magasin sans « Équipe seule », ni groupe libre', async ({ page }) => {

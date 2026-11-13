@@ -20,7 +20,7 @@ test('créer une campagne et constater son exécution', async ({ page }) => {
   await seConnecter(page, { ecritures, persister: true })
   await page.goto('./#/visites?vue=campagnes')
   await expect(page.getByText('Aucune campagne')).toBeVisible()
-  await page.getByRole('button', { name: 'Nouvelle campagne' }).click()
+  await page.getByRole('button', { name: 'Ajouter une campagne' }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle campagne' })
   await d.getByLabel('Nom de la campagne').fill('Vitrine de Noël')
   await d.getByLabel('Début').fill('2026-10-01')

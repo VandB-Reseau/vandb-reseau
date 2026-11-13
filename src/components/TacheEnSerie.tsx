@@ -41,7 +41,7 @@ export function TacheEnSerie({ magasins, onFermer }: { magasins: string[]; onFer
       </DialogContent>
       <DialogActions>
         <Button onClick={() => onFermer()} sx={{ minHeight: 48 }}>Annuler</Button>
-        <Button variant="contained" disabled={!intitule.trim() || occupe} onClick={() => void creer()} sx={{ minHeight: 48 }}>Créer</Button>
+        <Button variant="contained" disabled={!intitule.trim() || occupe} onClick={() => void creer()} sx={{ minHeight: 48 }}>Ajouter</Button>
       </DialogActions>
     </Dialog>
   )

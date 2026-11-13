@@ -55,7 +55,7 @@ test('thématiques, imports et remise à zéro des notes sont dans les Paramètr
   await expect(th.getByRole('button', { name: 'Gérer les thématiques' })).toBeVisible()
   await expect(th).toContainText('Terrasse')
   await page.goto('./#/parametres/reglages?rubrique=ninebox')
-  await expect(page.getByRole('region', { name: 'Notes de la nine box' }).getByRole('button', { name: 'Effacer toutes les notes' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Notes de la nine box' }).getByRole('button', { name: 'Supprimer toutes les notes' })).toBeVisible()
   await page.goto('./#/parametres/donnees')
   // Un seul import par référentiel : les fichiers venus d'autres outils passent par la même carte (Joseph, 22/10/2026)
   await expect(page.getByRole('heading', { name: 'Fichiers de suivi' })).toHaveCount(0)

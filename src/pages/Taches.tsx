@@ -255,7 +255,7 @@ export function PageTaches() {
       <AvecReseau>{(r) => (
         <Liste reseau={r} noms={noms} porteur={porteur} signaler={signaler}
           choixPorteur={choixPossible ? <ChoixPorteur reseau={r} noms={noms} moi={moi} valeur={porteur} directeur={!impose} onChange={changer} /> : undefined}
-          ajoutVide={<BoutonAjouterAction plein libelle="Nouvelle tâche" reseau={r} magasins={noms} porteur={SPECIALES.includes(porteur) ? '' : porteur} signaler={signaler} />} />
+          /* Vague 8 (99A) : l'état vide n'a pas de second bouton, celui de l'en-tête suffit */ />
       )}</AvecReseau>
       {bandeau}
     </>

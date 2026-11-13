@@ -200,7 +200,7 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
           </Box>
         )}
         <BarreSelection s={sel} quoi="magasin">
-          <Button variant="outlined" startIcon={<AddTaskOutlined />} onClick={() => setTacheSerie(true)}>Créer une tâche pour chacun</Button>
+          <Button variant="outlined" startIcon={<AddTaskOutlined />} onClick={() => setTacheSerie(true)}>Ajouter une tâche à chacun</Button>
         </BarreSelection>
       </Card>
       {tacheSerie && <TacheEnSerie magasins={sel.liste} onFermer={(msg) => { setTacheSerie(false); if (msg) { setMessage(msg); sel.vider() } }} />}

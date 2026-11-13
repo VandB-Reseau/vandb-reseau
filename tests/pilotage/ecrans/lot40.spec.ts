@@ -39,7 +39,7 @@ test('le Directeur renomme, masque et ajoute des lignes de la grille des frais, 
   const ajout = page.getByRole('region', { name: 'Ajouter une ligne de frais' })
   await ajout.getByLabel('Libellé de la nouvelle ligne').fill('Musique d’ambiance')
   await ajout.getByLabel('Thème de la nouvelle ligne').selectOption({ label: 'Communication' })
-  await ajout.getByRole('button', { name: 'Ajouter' }).click()
+  await ajout.getByRole('button', { name: 'Ajouter', exact: true }).click()
   await expect(section.getByRole('region', { name: 'Thème : Communication' }).getByRole('group')).toHaveCount(3)
   await section.getByLabel('Comptes du plan comptable : Musique d’ambiance').fill('6237')
   // Une saisie en cours bloque le changement d'année

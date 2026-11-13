@@ -176,7 +176,7 @@ export function SectionSondages({ reseau }: { reseau: Reseau }) {
   }
   return (
     <Box component="section" aria-label="Sondages posés">
-      <TitreSection nombre={liste.filter((s) => s.jusquAu >= reseau.jour).length} action={<BoutonAction libelle="Nouveau sondage" onClick={() => setAjout(true)} />}>Sondages posés</TitreSection>
+      <TitreSection nombre={liste.filter((s) => s.jusquAu >= reseau.jour).length} action={<BoutonAction libelle="Ajouter un sondage" onClick={() => setAjout(true)} />}>Sondages posés</TitreSection>
       {!liste.length
         ? <Card sx={{ px: 2, py: 2 }}><Typography color="text.secondary">Aucun sondage pour l’instant.</Typography></Card>
         : <Card sx={{ '& > article + article': { borderTop: '1px solid', borderColor: 'divider' } }}>

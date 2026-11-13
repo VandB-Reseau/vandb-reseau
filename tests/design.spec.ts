@@ -20,11 +20,11 @@ test('le bouton Créer ouvre sous lui un menu : visite, tâche, message, bonne p
   test.skip(!isMobile, 'téléphone seulement')
   await seConnecter(page)
   // Téléphone : « + » dans l'en-tête, la barre du bas garde cinq onglets (Joseph, 21/10/2026)
-  const creer = page.getByRole('banner').getByRole('button', { name: 'Créer' })
+  const creer = page.getByRole('banner').getByRole('button', { name: 'Ajouter', exact: true })
   if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
   const bouton = (await creer.boundingBox())!
   await creer.click()
-  const d = page.getByRole('menu', { name: 'Créer' })
+  const d = page.getByRole('menu', { name: 'Ajouter', exact: true })
   await expect(d.getByRole('menuitem')).toHaveText(['Visite', 'Appel', 'Note', 'Tâche', 'Photo', 'Message', 'Événement'])
   // Menu déroulant collé sous le bouton, pas de fenêtre au centre (Joseph, 22/10/2026)
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -40,7 +40,7 @@ test('le bouton Créer ouvre sous lui un menu : visite, tâche, message, bonne p
   await expect(page.getByRole('dialog', { name: 'Ajouter une tâche' })).toBeVisible()
   await page.getByRole('dialog', { name: 'Ajouter une tâche' }).getByRole('button', { name: 'Annuler' }).click()
   await creer.click()
-  await page.getByRole('menu', { name: 'Créer' }).getByRole('menuitem', { name: 'Message' }).click()
+  await page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem', { name: 'Message' }).click()
   await expect(page).toHaveURL(/#\/echanges/)
 })
 

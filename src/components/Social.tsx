@@ -68,7 +68,8 @@ const signaux: Record<Exclude<Ton, 'rouge' | 'gris'>, CouleurSignal> = { orange:
 export function Pastille({ ton, children }: { ton: Ton; children: ReactNode }) {
   const forme = { flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 0.75, borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap' } as const
   if (ton === 'rouge') return <Box component="span" sx={{ ...forme, px: 1.25, py: 0.5, bgcolor: '#c24119', color: '#ffffff' }}>{children}</Box>
-  if (ton === 'gris') return <Box component="span" sx={{ ...forme, py: 0.5, color: 'text.secondary' }}>{children}</Box>
+  // Vague 8 (97A) : un seul composant de statut, quatre tons ; le gris garde son point comme les autres
+  if (ton === 'gris') return <Box component="span" sx={{ ...forme, py: 0.5, color: 'text.secondary', '&::before': { content: '""', width: 8, height: 8, borderRadius: '50%', bgcolor: 'currentColor', flexShrink: 0 } }}>{children}</Box>
   return <Box component="span" sx={(t) => ({ ...forme, py: 0.5, ...styleSignal(t, signaux[ton]) })}>{children}</Box>
 }
 

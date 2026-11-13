@@ -27,7 +27,7 @@ test('la liste affiche tous les magasins et se filtre', async ({ page, isMobile 
   await page.keyboard.press('Escape')
   await expect(page.getByText(/sur 30 magasins/)).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-magasins-filtres.png`, fullPage: !isMobile })
-  await page.getByRole('button', { name: 'Effacer les filtres' }).click()
+  await page.getByRole('button', { name: 'Retirer les filtres' }).click()
   await expect(page.getByText('27 ouverts · 3 à venir')).toBeVisible()
 })
 

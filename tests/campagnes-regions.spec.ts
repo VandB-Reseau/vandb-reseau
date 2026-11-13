@@ -25,7 +25,7 @@ test('un Responsable Régional crée une campagne pour sa région', async ({ pag
   await expect(page.getByText('Noël', { exact: true })).toBeVisible()
   // La campagne d'une autre région ne le concerne pas
   await expect(page.getByText('Fête du Sud')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Nouvelle campagne' }).first().click()
+  await page.getByRole('button', { name: 'Ajouter une campagne' }).first().click()
   const d = page.getByRole('dialog', { name: 'Nouvelle campagne' })
   await d.getByLabel('Nom de la campagne').fill('Salon des vins du Nord')
   await d.getByLabel('Début').fill('2026-10-01')
@@ -80,7 +80,7 @@ test('un Responsable Régional lance exceptionnellement une campagne sur tout le
   const options: OptionsSimulation = { ...ALEX, ecritures, campagnesRegions: [] }
   await seConnecter(page, options)
   await page.goto('./#/visites?vue=campagnes')
-  await page.getByRole('button', { name: 'Nouvelle campagne' }).first().click()
+  await page.getByRole('button', { name: 'Ajouter une campagne' }).first().click()
   const d = page.getByRole('dialog', { name: 'Nouvelle campagne' })
   await d.getByLabel('Nom de la campagne').fill('Foire aux vins')
   await d.getByLabel('Fin').fill('2099-01-31')

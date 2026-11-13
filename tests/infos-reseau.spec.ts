@@ -78,7 +78,7 @@ test('le picto compte les communications et bonnes pratiques pas encore vues, pu
   await expect(infos(page)).toHaveAccessibleName('Actualités : 2 nouveautés')
   if (isMobile) {
     // À droite du « + », sur la même ligne
-    const plus = (await page.getByRole('banner').getByRole('button', { name: 'Créer' }).boundingBox())!
+    const plus = (await page.getByRole('banner').getByRole('button', { name: 'Ajouter', exact: true }).boundingBox())!
     const i = (await infos(page).boundingBox())!
     expect(i.x).toBeGreaterThan(plus.x)
     expect(Math.abs(i.y - plus.y)).toBeLessThan(4)

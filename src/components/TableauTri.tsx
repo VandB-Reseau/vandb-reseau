@@ -236,14 +236,14 @@ export function LigneSansResultat<T>({ t, colSpan, quoi = 'Aucune ligne ne corre
     <TableRow>
       <TableCell colSpan={colSpan} sx={{ py: 3, textAlign: 'center', '&&': { position: 'static' } }}>
         <Typography sx={{ mb: 1 }}>{quoi} à ces filtres.</Typography>
-        <Button variant="outlined" onClick={t.effacer}>Effacer les filtres</Button>
+        <Button variant="outlined" onClick={t.effacer}>Retirer les filtres</Button>
       </TableCell>
     </TableRow>
   )
 }
 
-// Bouton « Effacer tri et filtres », visible dès qu'un tri ou un filtre a été posé
+// Bouton « Retirer tri et filtres », visible dès qu'un tri ou un filtre a été posé
 export function EffacerTriFiltres<T>({ t, sx }: { t: Tableau<T>; sx?: SxProps<Theme> }) {
   if (!t.modifie) return null
-  return <Button onClick={t.effacer} className="pas-a-l-impression" sx={[{ minHeight: 40 }, ...(Array.isArray(sx) ? sx : [sx])]}>{t.nbFiltres ? `Effacer tri et filtres (${t.nbFiltres})` : 'Effacer tri et filtres'}</Button>
+  return <Button onClick={t.effacer} className="pas-a-l-impression" sx={[{ minHeight: 40 }, ...(Array.isArray(sx) ? sx : [sx])]}>{t.nbFiltres ? `Retirer tri et filtres (${t.nbFiltres})` : 'Retirer tri et filtres'}</Button>
 }

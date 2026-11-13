@@ -158,7 +158,7 @@ export function DialogDemande({ x, fermer, signaler }: { x: Message; fermer: (cr
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={() => fermer()} sx={{ minHeight: 48 }}>Annuler</Button>
-        <Button variant="contained" onClick={() => void valider()} disabled={envoi || !theme || !titre.trim()} sx={{ minHeight: 48 }}>Créer la demande</Button>
+        <Button variant="contained" onClick={() => void valider()} disabled={envoi || !theme || !titre.trim()} sx={{ minHeight: 48 }}>Envoyer la demande</Button>
       </DialogActions>
     </Dialog>
   )

@@ -96,7 +96,7 @@ function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
     <RechercheFiltres recherche={champ} actifs={actifsEnPlus} actions={actions}>
       {/* Refonte vague 4 (39A) : Responsable Régional et Coach se choisissent dans le périmètre, plus de filtre ici */}
       {enPlus}
-      {recherche && <Button onClick={() => setRecherche('')} sx={{ minHeight: 36 }}>Effacer les filtres</Button>}
+      {recherche && <Button onClick={() => setRecherche('')} sx={{ minHeight: 36 }}>Retirer les filtres</Button>}
     </RechercheFiltres>
   )
   return { magasins, barre: barreDe(enPlus), barreDe }
@@ -497,7 +497,7 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
   const aucun = tableauVisible && base.length > 0 && liste.length === 0 && (
     <Box sx={{ p: 3, textAlign: 'center' }}>
       <Typography sx={{ mb: 1 }}>Aucun magasin ne correspond à ces filtres.</Typography>
-      <Button variant="outlined" onClick={() => setFiltres({})} sx={{ minHeight: 48 }}>Effacer les filtres</Button>
+      <Button variant="outlined" onClick={() => setFiltres({})} sx={{ minHeight: 48 }}>Retirer les filtres</Button>
     </Box>
   )
   return (
@@ -507,7 +507,7 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
         { v: 'completer', libelle: `À compléter · ${aCompleter.length}` },
       ]} />
       <TitreSection nombre={liste.length} action={<>
-        {surPC && tableauVisible && (tri || filtresActifs) && <Button onClick={() => { setTri(null); setFiltres({}) }} sx={{ minHeight: 40 }}>Effacer tri et filtres</Button>}
+        {surPC && tableauVisible && (tri || filtresActifs) && <Button onClick={() => { setTri(null); setFiltres({}) }} sx={{ minHeight: 40 }}>Retirer tri et filtres</Button>}
         {surPC && <ChoixAffichage valeur={affichage} onChange={setAffichage} />}
       </>}>Magasins</TitreSection>
       {base.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre={etat === 'completer' ? 'Rien à compléter' : 'Aucun magasin'} texte={etat === 'completer' ? 'Tous les magasins affichés sont renseignés.' : 'Aucun magasin ne correspond à ces filtres.'} />

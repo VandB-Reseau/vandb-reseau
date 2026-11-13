@@ -50,7 +50,7 @@ test('Magasins : chaque colonne se trie et se filtre, la colonne Magasin reste f
   await page.getByRole('menuitem', { name: /^Non classé/ }).click()
   await page.keyboard.press('Escape')
   await expect(page.getByText('Aucun magasin ne correspond à ces filtres.')).toBeVisible()
-  await page.getByRole('button', { name: 'Effacer les filtres' }).click()
+  await page.getByRole('button', { name: 'Retirer les filtres' }).click()
   await expect.poll(() => lignes.count()).toBe(avant)
   expect(await textesTropPetits(page)).toEqual([])
 })

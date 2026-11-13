@@ -115,7 +115,7 @@ test('48A : le Directeur règle les temps forts ; une campagne porte ses dates c
   await expect.poll(() => ecritures.some((e) => JSON.stringify(e.corps).includes('Beaujolais nouveau'))).toBe(true)
   // Une campagne rattachée à Noël, avec sa date limite de commande
   await page.goto('./#/campagnes?vue=campagnes')
-  await page.getByRole('button', { name: 'Nouvelle campagne' }).first().click()
+  await page.getByRole('button', { name: 'Ajouter une campagne' }).first().click()
   const d = page.getByRole('dialog')
   await d.getByLabel('Temps fort').click()
   await page.getByRole('option', { name: /^Noël/ }).click()

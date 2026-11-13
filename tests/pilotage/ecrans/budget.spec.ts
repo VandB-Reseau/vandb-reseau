@@ -47,7 +47,7 @@ test('le Directeur crée un groupe, y range un magasin et lui donne ses propres 
   await allerVers(page, 'Hypothèses du réseau')
   await page.getByRole('button', { name: 'Groupe' }).click()
   await page.getByLabel('Nom du groupe').fill('Centre-ville')
-  await page.getByRole('button', { name: 'Créer' }).click()
+  await page.getByRole('button', { name: 'Ajouter', exact: true }).click()
   await expect(page.getByRole('tab', { name: 'Centre-ville' })).toHaveAttribute('aria-selected', 'true')
   await page.getByLabel('Magasins du groupe Centre-ville').click()
   await page.getByRole('option', { name: MAGASINS[0] }).click()

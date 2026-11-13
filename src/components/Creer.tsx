@@ -84,16 +84,16 @@ export function BoutonCreer({ entete = false }: { entete?: boolean }) {
   return (
     <>
       {entete ? (
-        <ButtonBase aria-label="Créer" aria-haspopup="menu" aria-expanded={!!ancre} onClick={ouvrir} sx={{ width: 48, height: 48, flexShrink: 0, borderRadius: '50%', display: 'grid', placeItems: 'center' }}>
+        <ButtonBase aria-label="Ajouter" aria-haspopup="menu" aria-expanded={!!ancre} onClick={ouvrir} sx={{ width: 48, height: 48, flexShrink: 0, borderRadius: '50%', display: 'grid', placeItems: 'center' }}>
           <Box sx={{ width: 34, height: 34, borderRadius: '50%', bgcolor: 'primary.main', color: 'primary.contrastText', display: 'grid', placeItems: 'center' }}><AddOutlined /></Box>
         </ButtonBase>
       ) : (
-        <Button variant="contained" aria-haspopup="menu" aria-expanded={!!ancre} startIcon={<AddOutlined />} onClick={ouvrir}>Créer</Button>
+        <Button variant="contained" aria-haspopup="menu" aria-expanded={!!ancre} startIcon={<AddOutlined />} onClick={ouvrir}>Ajouter</Button>
       )}
       <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: entete ? 'right' : 'left' }}
         transformOrigin={{ vertical: 'top', horizontal: entete ? 'right' : 'left' }}
-        slotProps={{ list: { 'aria-label': 'Créer' }, paper: { sx: { mt: 0.5, minWidth: 220, borderRadius: 2 } } }}>
+        slotProps={{ list: { 'aria-label': 'Ajouter' }, paper: { sx: { mt: 0.5, minWidth: 220, borderRadius: 2 } } }}>
         {choixCreer.map((c) => (
           <MenuItem key={c.id} onClick={() => choisir(c.id)} disabled={!reseau} sx={{ '&&': { minHeight: 52 }, gap: 1.5, fontWeight: 600 }}>
             <Box component="span" sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: c.fond, color: c.texte, display: 'grid', placeItems: 'center', flexShrink: 0 }}>{c.icone}</Box>

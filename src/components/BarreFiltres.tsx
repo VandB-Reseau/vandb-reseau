@@ -68,7 +68,7 @@ export function BarreFiltres({ reseau, filtres, onChange, actions, alertesDe, le
         />
       )}
       {(actifs > 0 || filtres.texte) && (
-        <Button onClick={() => onChange(filtresVides)} sx={{ minHeight: 36 }}>Effacer les filtres</Button>
+        <Button onClick={() => onChange(filtresVides)} sx={{ minHeight: 36 }}>Retirer les filtres</Button>
       )}
     </RechercheFiltres>
   )
