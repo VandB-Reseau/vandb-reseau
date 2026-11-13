@@ -5,8 +5,6 @@ import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
 import FlagOutlined from '@mui/icons-material/FlagOutlined'
@@ -24,7 +22,6 @@ import { ecartMilliers, ecartPts, enChiffres, milliers, MOIS_LONGS, montant, tau
 import { niveauEcart } from '../moteur/visuel'
 import { LignesTendance, type LigneTendance } from './LignesTendance'
 import { COULEUR_BARRE } from './Tableau'
-import { usePreference } from '../lib/preferences'
 import { calculerBudget } from '../moteur/budget'
 import { cumul, cumulApres, santeMagasin } from '../moteur/sante'
 import { moisDuReel, suiviBudget } from '../moteur/suivi'
@@ -33,6 +30,7 @@ import type { ParametresReseau } from '../moteur/types'
 import { brand } from '../theme/theme'
 import { ecartExplique } from '../moteur/ecartExplique'
 import { EcartExpliqueCarte } from './EcartExpliqueCarte'
+import { BarrePeriode, usePeriodeCommune } from '../../components/BarrePeriode'
 
 // Santé du magasin en un coup d'œil : cumul de l'année face au budget de l'année (lot 27) et à l'an dernier, marge,
 // masse salariale, résultat attendu ; CA cumulé ou mois par mois. Lot 30 (E2) : trois blocs, où on en est (les chiffres),
@@ -57,7 +55,7 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
     () => Promise.all([chargerReel(magasin, annee), chargerReel(magasin, annee - 1), chargerSecours(magasin, annee), chargerBudgets(annee).catch(() => null),
       chargerQuadrimestres(annee).catch((): SaisiesQuadrimestres => ({}))])
       .then(([n, n1, secours, budgets, quadrimestres]) => ({ n, n1, secours, budgets, quadrimestres: quadrimestres[magasin] ?? {} })), [magasin, annee])
-  const [vue, setVue] = usePreference<'cumul' | 'mois'>('synthese', 'cumul', ['cumul', 'mois'])
+  const [vue, setVue] = usePeriodeCommune()
   const [visite, setVisite] = useState(false)
   const [objectifs, setObjectifs] = useState(false)
 
@@ -127,10 +125,7 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
       <Card component="section" aria-label={`Chiffre d’affaires ${annee}`} sx={{ p: { xs: 2, md: 3 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
           <Typography variant="h2" sx={{ flex: 1, minWidth: 200 }}>Chiffre d’affaires {annee}</Typography>
-          <ToggleButtonGroup exclusive size="small" value={vue} onChange={(_, v: 'cumul' | 'mois' | null) => v && setVue(v)} aria-label="Affichage du chiffre d’affaires" className="pas-a-l-impression">
-            <ToggleButton value="cumul" sx={{ minHeight: 48, textTransform: 'none', px: 2 }}>Cumulé</ToggleButton>
-            <ToggleButton value="mois" sx={{ minHeight: 48, textTransform: 'none', px: 2 }}>Mois par mois</ToggleButton>
-          </ToggleButtonGroup>
+          <BarrePeriode valeur={vue} onChange={setVue} comparaison={budgetN ? 'budget' : 'N-1'} />
         </Box>
         {vue === 'cumul' ? (
           <GraphiqueMois

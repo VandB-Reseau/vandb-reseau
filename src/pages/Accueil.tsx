@@ -1,8 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import AddOutlined from '@mui/icons-material/AddOutlined'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
@@ -87,6 +85,7 @@ import { useConnaissances, type Communication, type Connaissance } from '../data
 import { libellesResponsable, parcoursDu } from '../data/integration'
 import { misDeCote, mettrePlusTard, reprendre, usePlusTard } from '../data/plusTard'
 import { useMessageAnnulable } from '../components/Annulable'
+import { BarrePeriode, usePeriodeCommune } from '../components/BarrePeriode'
 
 // Ordre de priorité fixé par Joseph le 14/10/2026
 const PRIORITAIRES = ['redressement', 'relance', 'renforcer']
@@ -715,20 +714,14 @@ export function Accueil() {
   // Le Directeur voit tout le réseau ; un Coach ou un RR, ses magasins
   const p = perimetreDuProfil(profil) ?? { type: 'reseau' as const }
   const [params, setParams] = useSearchParams()
-  const periode: Periode = params.get('periode') === 'cumul' ? 'cumul' : 'mois'
-  const choisir = (v: Periode | null) => { if (!v) return; const n = new URLSearchParams(params); if (v === 'mois') n.delete('periode'); else n.set('periode', v); setParams(n, { replace: true }) }
+  // Vague 8 (106A) : la période choisie suit d'un écran chiffré à l'autre ; l'adresse ?periode= reste prioritaire
+  const [commune, setCommune] = usePeriodeCommune()
+  const demandee = params.get('periode')
+  const periode: Periode = demandee === 'cumul' || demandee === 'mois' ? demandee : commune
+  const choisir = (v: Periode | null) => { if (!v) return; setCommune(v); const n = new URLSearchParams(params); if (v === 'mois') n.delete('periode'); else n.set('periode', v); setParams(n, { replace: true }) }
   return (
     <>
-      <PageHeader titre="Accueil" actions={
-        <Box role="group" aria-label="Période des chiffres" sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
-          <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>Comparé à N-1</Typography>
-          <ToggleButtonGroup exclusive size="small" value={periode} onChange={(_e, v: Periode | null) => choisir(v)} aria-label="Période"
-            sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, md: 36 }, px: 1.5, textTransform: 'none', fontWeight: 600 } }}>
-            <ToggleButton value="mois">Mois</ToggleButton>
-            <ToggleButton value="cumul">Cumul</ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-      } />
+      <PageHeader titre="Accueil" actions={<BarrePeriode valeur={periode} onChange={choisir} sx={{ ml: 'auto' }} />} />
       <AvecReseau>{(r) => <Tableau reseau={r} p={p} sansParametres={p.type !== 'reseau'} periode={periode} />}</AvecReseau>
     </>
   )

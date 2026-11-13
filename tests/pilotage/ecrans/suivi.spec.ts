@@ -64,7 +64,7 @@ test('fiche magasin : le réel face au budget, mois par mois', async ({ page, is
 
   // R2 : vue cumulée, l'atterrissage chiffré face au budget de l'année
   await plusLoin(page)
-  await page.getByRole('region', { name: 'Chiffre d’affaires' }).getByRole('button', { name: 'Cumulé' }).click()
+  await page.getByRole('region', { name: 'Chiffre d’affaires' }).getByRole('button', { name: 'Cumul', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Chiffre d’affaires' })).toContainText(/Atterrissage \d{4} : .* face au budget de 640\sk€/)
 })
 
