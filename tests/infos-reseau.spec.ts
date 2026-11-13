@@ -24,10 +24,15 @@ const pratiques = [
   { id: 'bp_2', magasin: 'Nice Test', date: ilYa(20).slice(0, 10), titre: 'Accord mets et vins', theme: 'Vente additionnelle', texte: 'Une fiche par plat.', par: 'Sam SUD', photos: [], reprises: [], jaime: [] },
 ]
 
-// Téléphone : dans l'en-tête, à droite du « + » ; PC : en bas du menu latéral (refonte 09/11/2026)
-const infos = (page: Page) => page.locator('header, .MuiDrawer-paper').getByRole('button', { name: /^Actualités/ }).filter({ visible: true }).first()
+// Téléphone : dans le menu du compte (vague 8, 110A) ; PC : en bas du menu latéral (refonte 09/11/2026)
+const telephone = (page: Page) => (page.viewportSize()?.width ?? 1440) < 900
+const infos = async (page: Page) => {
+  if (!telephone(page)) return page.locator('.MuiDrawer-paper').getByRole('button', { name: /^Actualités/ }).filter({ visible: true }).first()
+  if (!(await page.getByRole('menu').count())) await page.getByRole('button', { name: /^Mon compte/ }).click()
+  return page.getByRole('menuitem', { name: /^Actualités/ })
+}
 const ouvrir = async (page: Page) => {
-  await infos(page).click()
+  await (await infos(page)).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Actualités' })).toBeVisible()
 }
 const titres = (page: Page, section: string) => page.getByRole('region', { name: section }).getByRole('article')
@@ -75,20 +80,16 @@ test('le picto compte les communications et bonnes pratiques pas encore vues, pu
   }, new Date(Date.now() - 7 * 86_400_000).toISOString())
   await seConnecter(page, { communications, config: { bonnes_pratiques: pratiques } })
   // Coffrets de Noël (5 jours) et Dégustation du samedi
-  await expect(infos(page)).toHaveAccessibleName('Actualités : 2 nouveautés')
-  if (isMobile) {
-    // À droite du « + », sur la même ligne
-    const plus = (await page.getByRole('banner').getByRole('button', { name: 'Ajouter', exact: true }).boundingBox())!
-    const i = (await infos(page).boundingBox())!
-    expect(i.x).toBeGreaterThan(plus.x)
-    expect(Math.abs(i.y - plus.y)).toBeLessThan(4)
-    expect(i.height).toBeGreaterThanOrEqual(48)
-  }
+  // Téléphone : un point rouge sur le compte signale les nouveautés
+  if (isMobile) await expect(page.getByRole('button', { name: 'Mon compte : 2 actualités à lire' })).toBeVisible()
+  await expect(await infos(page)).toHaveAccessibleName('Actualités : 2 nouveautés')
+  if (isMobile) expect((await (await infos(page)).boundingBox())!.height).toBeGreaterThanOrEqual(48)
   await page.screenshot({ path: `captures/${info.project.name}-infos-picto.png`, clip: { x: 0, y: 0, width: page.viewportSize()!.width, height: 120 } })
   await ouvrir(page)
-  await expect(infos(page)).toHaveAccessibleName('Actualités')
+  await expect(await infos(page)).toHaveAccessibleName('Actualités')
+  await page.keyboard.press('Escape')
   await page.reload()
-  await expect(infos(page)).toHaveAccessibleName('Actualités')
+  await expect(await infos(page)).toHaveAccessibleName('Actualités')
 })
 
 test('le franchisé n’a pas l’onglet Infos réseau', async ({ page }) => {

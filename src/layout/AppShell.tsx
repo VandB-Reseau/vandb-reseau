@@ -33,7 +33,6 @@ import { Cloche } from '../components/Cloche'
 import { DialogGlossaire } from '../components/Glossaire'
 import MenuBookOutlined from '@mui/icons-material/MenuBookOutlined'
 import Badge from '@mui/material/Badge'
-import Tooltip from '@mui/material/Tooltip'
 import { useTotalEchanges } from '../data/echanges'
 import { BoutonCreer } from '../components/Creer'
 import { useInstallation } from '../lib/installation'
@@ -43,7 +42,6 @@ import { CreerProvider } from '../components/Creer'
 import { SelecteurPerimetre } from '../components/SelecteurPerimetre'
 import { useCompteurTaches } from '../data/tachesVues'
 import { useNouveautesInfos } from '../data/infosVues'
-import NewspaperOutlined from '@mui/icons-material/NewspaperOutlined'
 import { useAuth } from '../auth/AuthContext'
 import { roleLibelle } from '../auth/roles'
 import NotificationsActiveOutlined from '@mui/icons-material/NotificationsActiveOutlined'
@@ -85,8 +83,10 @@ function MenuCompte({ liens = [], ligne = false }: { liens?: { titre?: string; d
     }
     notifications.relire()
   }
+  const nouveautes = useNouveautesInfos()
   if (!profil) return null
   const initiale = profil.nom.slice(0, 1).toUpperCase()
+  const actus = !ligne && liens.some((g) => g.destinations.some((d) => d.chemin === '/infos')) ? nouveautes : 0
   return (
     <>
       {ligne ? (
@@ -99,8 +99,10 @@ function MenuCompte({ liens = [], ligne = false }: { liens?: { titre?: string; d
           </Box>
         </ButtonBase>
       ) : (
-        <IconButton aria-label="Mon compte" onClick={(e) => setAncre(e.currentTarget)} sx={{ p: 0.5 }}>
-          <Avatar sx={{ width: 36, height: 36, bgcolor: 'secondary.main', color: 'secondary.contrastText', fontWeight: 600 }}>{initiale}</Avatar>
+        <IconButton aria-label={actus ? `Mon compte : ${actus} actualité${actus > 1 ? 's' : ''} à lire` : 'Mon compte'} onClick={(e) => setAncre(e.currentTarget)} sx={{ p: 0.5 }}>
+          <Badge color="error" variant="dot" invisible={!actus} overlap="circular">
+            <Avatar sx={{ width: 36, height: 36, bgcolor: 'secondary.main', color: 'secondary.contrastText', fontWeight: 600 }}>{initiale}</Avatar>
+          </Badge>
         </IconButton>
       )}
       <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} anchorOrigin={ligne ? { vertical: 'top', horizontal: 'left' } : { vertical: 'bottom', horizontal: 'right' }} transformOrigin={ligne ? { vertical: 'bottom', horizontal: 'left' } : { vertical: 'top', horizontal: 'right' }}>
@@ -112,9 +114,11 @@ function MenuCompte({ liens = [], ligne = false }: { liens?: { titre?: string; d
         {liens.flatMap((g, i) => [
           g.titre ? <ListSubheader key={`t${i}`} sx={{ lineHeight: '36px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{g.titre}</ListSubheader> : null,
           ...g.destinations.map((d) => (
-            <MenuItem key={d.chemin} onClick={() => { setAncre(null); naviguer(d.chemin) }} sx={{ minHeight: { xs: 48, sm: 48 } }}>
+            <MenuItem key={d.chemin} onClick={() => { setAncre(null); naviguer(d.chemin) }} sx={{ minHeight: { xs: 48, sm: 48 } }}
+              aria-label={d.chemin === '/infos' && actus ? `${d.libelle} : ${actus} nouveauté${actus > 1 ? 's' : ''}` : undefined}>
               <ListItemIcon>{d.icone}</ListItemIcon>
               {d.libelle}
+              {d.chemin === '/infos' && actus > 0 && <Badge color="error" badgeContent={actus} max={99} sx={{ ml: 'auto', pl: 2, '& .MuiBadge-badge': { position: 'static', transform: 'none', fontSize: '0.75rem' } }} />}
             </MenuItem>
           )),
           <Divider key={`d${i}`} />,
@@ -229,21 +233,6 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
   )
 }
 
-// Téléphone : Infos réseau, à droite du « + » (sur PC, une entrée de la rubrique Animation, vague 3, 27A) : communications et bonnes pratiques, avec le nombre de nouveautés pas encore vues
-function BoutonInfos() {
-  const naviguer = useNavigate()
-  const { pathname } = useLocation()
-  const n = useNouveautesInfos()
-  const libelle = n ? `Actualités : ${n} nouveauté${n > 1 ? 's' : ''}` : 'Actualités'
-  return (
-    <Tooltip title="Actualités">
-      <IconButton aria-label={libelle} aria-current={pathname === '/infos' ? 'page' : undefined} onClick={() => naviguer('/infos')} sx={{ width: 48, height: 48, flexShrink: 0, color: 'text.primary' }}>
-        <Badge color="error" badgeContent={n} max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.75rem' } }}><NewspaperOutlined /></Badge>
-      </IconButton>
-    </Tooltip>
-  )
-}
-
 const HAUTEUR_BARRE = 64
 
 // « Plus » de la barre du franchisé (56A) : Mon budget, Mes demandes, Actualités
@@ -350,8 +339,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
               {!franchise && <RechercheGlobale court />}
               {franchise && <Typography component="span" sx={{ fontWeight: 700, mr: 'auto', ml: 1 }}>Espace franchisé</Typography>}
             </Box>
-            {!franchise && <BoutonCreer entete />}
-            {!franchise && <BoutonInfos />}
+            {/* Vague 8 (110A) : en-tête allégé (logo, recherche, cloche, compte) ; Actualités passe au menu du compte, le « + » flotte */}
             <Cloche />
             <MenuCompte liens={franchise ? [] : [...menuTelephoneRubriques(profil?.role), ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }])]} />
           </Toolbar>
@@ -360,9 +348,10 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
         </AppBar>
       )}
 
+      {!surPC && !franchise && !saisie && !conversation && <BoutonCreer flottant />}
       {surPC && <MenuLateral franchise={franchise} sansParametres={sansParametres} sansCompteur={sansCompteur} />}
 
-      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: 0 }, pb: surPC ? 4 : conversation ? 0 : 'calc(96px + env(safe-area-inset-bottom))' }}>
+      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: 0 }, pb: surPC ? 4 : conversation ? 0 : franchise || saisie ? 'calc(96px + env(safe-area-inset-bottom))' : 'calc(160px + env(safe-area-inset-bottom))' }}>
         {bandeau}
         <Box sx={{ maxWidth: 1360, mx: 'auto', px: { xs: 2, sm: 3, md: 4 }, pt: { xs: 1.5, md: 3 } }}>{children}</Box>
       </Box>

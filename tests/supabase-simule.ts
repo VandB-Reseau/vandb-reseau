@@ -914,7 +914,7 @@ export async function deplierATraiter(page: Page) {
 const ACTIONS_CREER = { 'Visite': 'Saisir une visite', 'Tâche': 'Ajouter une tâche', 'Message': 'Écrire un message', 'Bonne pratique': 'Partager une bonne pratique', 'Événement': 'Ajouter un événement' }
 export async function creerDepuisMenu(page: Page, nom: keyof typeof ACTIONS_CREER) {
   if ((page.viewportSize()?.width ?? 1440) < 900) {
-    await page.getByRole('banner').getByRole('button', { name: 'Ajouter', exact: true }).click()
+    await page.locator('.MuiFab-root[aria-label="Ajouter"]').click()
     await page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem', { name: nom, exact: true }).click()
     return
   }

@@ -116,7 +116,7 @@ test('zones tactiles d’au moins 48 px sur téléphone', async ({ page, isMobil
   await expect(boutons).toHaveCount(5)
   await expect(boutons.nth(3)).toHaveAccessibleName(/^Tâches/)
   await expect(boutons.nth(4)).toHaveAccessibleName(/^Messages/)
-  const creer = (await page.getByRole('banner').getByRole('button', { name: 'Ajouter', exact: true }).boundingBox())!
+  const creer = (await page.locator('.MuiFab-root[aria-label="Ajouter"]').boundingBox())!
   expect(creer.height).toBeGreaterThanOrEqual(48)
   for (const b of await boutons.all()) {
     const box = await b.boundingBox()

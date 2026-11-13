@@ -91,7 +91,7 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
         action={<Button variant="contained" onClick={() => choisir('preparer')} sx={{ minHeight: 48 }}>Préparer la visite</Button>} />
     ) : !faite ? (
       <Box sx={{ display: 'grid', gap: 2 }}>
-        <EmptyState icone={<EventNoteOutlined />} titre={v.date <= reseau.jour ? 'C’est le jour de la visite' : `Visite prévue le ${dateLongue(v.date)}`} texte="La saisie suit l’ordre du jour préparé : sujets, plan d’action, constats, chiffres."
+        <EmptyState icone={<EventNoteOutlined />} titre={v.date <= reseau.jour ? 'C’est le jour de la visite' : `Visite prévue le ${dateLongue(v.date)}`} texte="La saisie suit l’ordre du jour préparé : sujets, plan d’action, constats."
           action={<Button variant="contained" startIcon={<RateReviewOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>Commencer la visite</Button>} />
         <RemarquesInternes reseau={reseau} magasin={m.nom} visite={v} signaler={setMessage} />
       </Box>
