@@ -585,7 +585,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         {/* Joseph (09/11/2026) : le Suivi en puces, une partie à la fois, au lieu d'une longue page à dérouler */}
         {(onglet === 'synthese' || onglet === 'analyse') && (
           <SyntheseMagasin key={`${ligne.magasin}-${onglet}`} magasin={ligne.magasin} d={d} annee={anneeEnCours} parametres={donnees.parametresN} allerA={aller}
-            partie={onglet === 'synthese' ? 'ensemble' : 'analyse'}
+            partie={onglet === 'synthese' ? 'ensemble' : 'analyse'} phrases={franchise}
             visiteEtActions={!franchise && profil?.role !== 'aucun'} proposerAction={!franchise && profil?.role !== 'aucun' ? (intitule) => { setProposition({ intitule, n: Date.now() }); aller('synthese') } : undefined}
             quoiFaire={<>
               {franchise && (

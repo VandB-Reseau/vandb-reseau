@@ -209,7 +209,7 @@ test('56A : la barre du franchisé sur téléphone, Accueil, Magasin, Messages, 
   const barre = page.getByRole('navigation', { name: 'Navigation principale' })
   await expect(barre.getByRole('button')).toHaveCount(5)
   await barre.getByRole('button', { name: 'Plus' }).click()
-  for (const m of ['Mon budget', 'Mes demandes', 'Actualités']) await expect(page.getByRole('menuitem', { name: m })).toBeVisible()
+  for (const m of ['Mon budget', 'Simulateurs', 'Mes demandes', 'Actualités']) await expect(page.getByRole('menuitem', { name: m })).toBeVisible()
   await page.getByRole('menuitem', { name: 'Actualités' }).click()
   await expect(page).toHaveURL(/#\/infos/)
   await lisible(page, isMobile)

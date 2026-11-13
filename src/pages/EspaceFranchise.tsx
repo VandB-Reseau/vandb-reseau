@@ -55,6 +55,7 @@ import { ContenuOnglet, Onglets, styleSousNavigation, type Rubrique } from '../c
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import { GraphiqueCA } from '../components/Chiffres'
+import { phraseCADuMois } from '../pilotage/moteur/phrases'
 import { CartePratique } from '../components/BonnesPratiques'
 import { Contact, Ligne, Section } from '../components/Section'
 import { useApercu } from '../auth/Apercu'
@@ -228,7 +229,8 @@ function SectionChiffresDuMois({ reseau, magasins }: { reseau: Reseau; magasins:
       <Box sx={grilleTuiles}>
         <Tuile large libelle="CA cumulé" valeur={formatEuros(a.ca)}
           detail={<><Box component="span" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Box> vs {libelleMois(a.reference)}</>}
-          fin={<MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.vertFonce} largeur={120} hauteur={48} label="CA des douze derniers mois" />} />
+          fin={<MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.vertFonce} largeur={120} hauteur={48} label="CA des douze derniers mois" />}
+          phrase={phraseCADuMois({ mois: libelleMois(a.mois), reference: libelleMois(a.reference), ecartPct: a.ecart })} />
         {tuiles.map(([l, v, d]) => <Tuile key={l} libelle={l} valeur={v} detail={d} />)}
       </Box>
     </Box>

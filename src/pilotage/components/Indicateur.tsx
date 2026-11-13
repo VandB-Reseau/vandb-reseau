@@ -14,7 +14,7 @@ import type { NiveauEcart } from '../moteur/visuel'
 // Lot 32 : picto (i) à côté du libellé, l'aide du calcul (aide) ou le calcul détaillé avec les chiffres du magasin (info)
 // Refonte R4 (2/11/2026) : jauge facultative, le réel rempli à la couleur de sa pastille, un trait noir au niveau du budget
 // (le budget est aux 4/5 de la jauge, pour voir aussi un dépassement)
-export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide, info, jauge }: {
+export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide, info, jauge, phrase }: {
   libelle: string
   valeur: string
   detail?: string
@@ -24,6 +24,7 @@ export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide
   aide?: SujetAide
   info?: ReactNode
   jauge?: { valeur: number; cible: number; niveau: NiveauEcart | null; libelle: string }
+  phrase?: string | null // choix 119 : le chiffre dit en clair, pour le franchisé
 }) {
   return (
     // Vague 8 (98A) : même bloc chiffré que le reste de l'app (fond blanc sans bord, coins de 12 px, mêmes tailles)
@@ -50,6 +51,7 @@ export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide
         </Box>
       )}
       {detail && <Typography color="text.secondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>{detail}</Typography>}
+      {phrase && <Typography sx={{ fontSize: '0.9375rem', fontWeight: 500, mt: 0.5 }}>{phrase}</Typography>}
       {serie && <Box sx={{ mt: 'auto', pt: 1 }}><Courbe valeurs={serie} /></Box>}
       {action}
     </Card>

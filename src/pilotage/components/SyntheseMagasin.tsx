@@ -30,12 +30,13 @@ import type { ParametresReseau } from '../moteur/types'
 import { brand } from '../theme/theme'
 import { ecartExplique } from '../moteur/ecartExplique'
 import { EcartExpliqueCarte } from './EcartExpliqueCarte'
+import { phraseCA, phraseEBE, phraseFP, phraseMarge } from '../moteur/phrases'
 import { BarrePeriode, usePeriodeCommune } from '../../components/BarrePeriode'
 
 // Santé du magasin en un coup d'œil : cumul de l'année face au budget de l'année (lot 27) et à l'an dernier, marge,
 // masse salariale, résultat attendu ; CA cumulé ou mois par mois. Lot 30 (E2) : trois blocs, où on en est (les chiffres),
 // quoi faire (À faire, alertes, plan d'action) et, replié, pour aller plus loin (graphique, leviers, face au réseau)
-export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteEtActions, proposerAction, quoiFaire, plusLoin, conclusion, detail, partie = 'tout' }: {
+export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteEtActions, proposerAction, quoiFaire, plusLoin, conclusion, detail, partie = 'tout', phrases }: {
   magasin: string
   d: DonneesBudgets
   annee: number
@@ -50,6 +51,7 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
   // Joseph (09/11/2026) : le Suivi en puces ; « ensemble » = conclusion, indicateurs, écart, tendance et alertes ;
   // « analyse » = graphique du CA, leviers commerciaux et comparaisons au réseau, sans repli
   partie?: 'tout' | 'ensemble' | 'analyse'
+  phrases?: boolean                             // choix 119 : une phrase sous chaque chiffre clé (franchisé, Montrer au franchisé)
 }) {
   const { donnees, erreur, chargement, recharger } = useChargement(
     () => Promise.all([chargerReel(magasin, annee), chargerReel(magasin, annee - 1), chargerSecours(magasin, annee), chargerBudgets(annee).catch(() => null),
@@ -120,6 +122,13 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
   ]
   const finAtterri = cumulApres(s.serieN, s.projection)[11]
   const explique = suivi && budgetN ? ecartExplique(donnees.n.lignes, donnees.n.tickets, budgetN, suivi) : null
+  const caN1ADate = s.serieN1.slice(0, s.moisRealises).reduce<number>((t, v) => t + (v ?? 0), 0)
+  const dit = phrases ? {
+    ca: phraseCA({ fin: finMois, caReel: s.caCumule, caBudget: suivi?.cumul.caBudget ?? null, caN1: caN1ADate || null, anneeN1: annee - 1, effets: explique?.ca }),
+    marge: phraseMarge({ taux: s.tauxMarge, tauxBudget: suivi?.cumul.tauxMargeBudget ?? null }),
+    fp: equipe?.length ? phraseFP(b.ratios.pctFP) : null,
+    ebe: ebeADate ? phraseEBE({ valeur: ebeADate.valeur, budget: ebeADate.budget, fin: ebeADate.fin }) : phraseEBE({ valeur: b.ebe, budget: budgetN?.ebe ?? null, fin: null }),
+  } : null
   const graphiqueEtLeviers = (
     <>
       <Card component="section" aria-label={`Chiffre d’affaires ${annee}`} sx={{ p: { xs: 2, md: 3 } }}>
@@ -183,6 +192,7 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
             : s.evolution === null ? undefined : { texte: `${taux(Math.abs(s.evolution))} sur ${annee - 1}`, hausse: s.evolution >= 0, favorable: s.evolution >= 0 }}
           jauge={suivi ? { valeur: s.caCumule, cible: suivi.cumul.caBudget, niveau: niveauEcart(s.caCumule, suivi.cumul.caBudget, seuil), libelle: `CA réel face au budget à fin ${finMois}` } : undefined}
           detail={[suivi && `Budget à date : ${milliers(suivi.cumul.caBudget)}`, suivi && evolution, `Atterrissage ${annee} : ${milliers(b.ca)}`].filter(Boolean).join(' · ')}
+          phrase={dit?.ca}
         />
         <Indicateur
           libelle="Marge commerciale" aide="margeTheorique" valeur={s.tauxMarge === null ? 'Non connue' : taux(s.tauxMarge)}
@@ -190,20 +200,24 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
           jauge={suivi && s.tauxMarge !== null ? { valeur: s.tauxMarge, cible: suivi.cumul.tauxMargeBudget, niveau: niveauEcart(s.tauxMarge, suivi.cumul.tauxMargeBudget, seuil), libelle: 'Taux de marge face au budget' } : undefined}
           detail={s.tauxMarge === null ? 'Marge absente des chiffres de caisse'
             : suivi ? `Budget : ${taux(suivi.cumul.tauxMargeBudget)} · ${milliers(s.margeCumulee)} à fin ${finMois}` : `${milliers(s.margeCumulee)} à fin ${finMois}`}
+          phrase={dit?.marge}
         />
         <Indicateur
           libelle="% FP" aide="pctFP" valeur={equipe?.length ? taux(b.ratios.pctFP) : 'À renseigner'}
           detail={equipe?.length ? `${milliers(b.personnel)} de masse salariale sur l’année` : 'Équipe non renseignée'}
+          phrase={dit?.fp}
         />
         {ebeADate && rc ? <Indicateur
           // Refonte (6A) : une valeur estimée le dit en toutes lettres, sans signe « ≈ »
           libelle={`EBE ${ebeADate.source === 'estime' ? 'estimé ' : ''}à fin ${ebeADate.fin}`} aide="reelComplete" valeur={milliers(ebeADate.valeur)}
           ecart={{ texte: `${milliers(Math.abs(ebeADate.valeur - ebeADate.budget))} face au budget`, hausse: ebeADate.valeur >= ebeADate.budget, favorable: ebeADate.valeur >= ebeADate.budget }}
           detail={`${rc.moisEstimes === 0 ? 'Tout vient des comptes' : rc.moisRepartis === 0 ? 'Charges du budget en attendant le quadrimestre' : `${rc.moisRepartis} mois des comptes, ${rc.moisEstimes} estimé${rc.moisEstimes > 1 ? 's' : ''}`} · Attendu ${annee} : ${milliers(b.ebe)}`}
+          phrase={dit?.ebe}
         /> : <Indicateur
           libelle={`EBE attendu ${annee}`} aide="ebe" valeur={milliers(b.ebe)} serie={b.mois.map((m) => m.ebe)}
           ecart={budgetN ? { texte: `${milliers(Math.abs(b.ebe - budgetN.ebe))} face au budget`, hausse: b.ebe >= budgetN.ebe, favorable: b.ebe >= budgetN.ebe } : undefined}
           detail={budgetN ? `Budget : ${milliers(budgetN.ebe)} · ${taux(b.ratios.ebeSurCA)} du CA` : `${taux(b.ratios.ebeSurCA)} du CA`}
+          phrase={dit?.ebe}
         />}
       </Box>
 
