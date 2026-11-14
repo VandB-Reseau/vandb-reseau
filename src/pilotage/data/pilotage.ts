@@ -810,6 +810,7 @@ export async function retirerVersionNommee(id: number) {
 // Simulations gardées (choix 126, migration pilotage 0031) : nommées, jamais modifiées ; auteur, rôle et nom posés par la
 // base. Avant la migration, la table n'existe pas : null, les simulateurs marchent sans « Garder ».
 export type TypeSimulation = 'embauche' | 'prix' | 'tresorerie' | 'vente_additionnelle' | 'reste_a_faire' | 'soiree' | 'achat' | 'investissement'
+  | 'exterieur' | 'tireuses' | 'pression' | 'calculette' | 'ouverture' // vague 9, migration 0032
 export interface SimulationGardee { id: number; type: TypeSimulation; nom: string; donnees: Record<string, unknown>; resume: string; auteur: string | null; auteurRole: Role | null; auteurNom: string | null; creeLe: string }
 export async function chargerSimulations(magasin: string): Promise<SimulationGardee[] | null> {
   const { data, error } = await pilotage().from('simulations').select('id, type, nom, donnees, resume, auteur, auteur_role, auteur_nom, cree_le')
@@ -818,8 +819,12 @@ export async function chargerSimulations(magasin: string): Promise<SimulationGar
   return (data as { id: number; type: TypeSimulation; nom: string; donnees: Record<string, unknown> | null; resume: string | null; auteur: string | null; auteur_role: Role | null; auteur_nom: string | null; cree_le: string }[])
     .map((x) => ({ id: x.id, type: x.type, nom: x.nom, donnees: x.donnees ?? {}, resume: x.resume ?? '', auteur: x.auteur, auteurRole: x.auteur_role, auteurNom: x.auteur_nom, creeLe: x.cree_le }))
 }
+// Base pas encore à jour (migration 0032 pas passée) : un simulateur de la vague 9 refusé par la règle de la table
+export class SimulationPasEncoreGardable extends Error {}
 export async function garderSimulation(magasin: string, type: TypeSimulation, nom: string, donnees: Record<string, unknown>, resume: string) {
-  verifier(await pilotage().from('simulations').insert({ store_name: magasin, type, nom: nom.trim().slice(0, 80), donnees, resume: resume.slice(0, 300) }))
+  const r = await pilotage().from('simulations').insert({ store_name: magasin, type, nom: nom.trim().slice(0, 80), donnees, resume: resume.slice(0, 300) })
+  if ((r.error as { code?: string } | null)?.code === '23514') { oublier(); throw new SimulationPasEncoreGardable() }
+  verifier(r)
 }
 export async function retirerSimulation(id: number) {
   verifier(await pilotage().from('simulations').delete().eq('id', id))

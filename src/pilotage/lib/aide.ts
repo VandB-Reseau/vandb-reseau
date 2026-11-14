@@ -575,6 +575,48 @@ export const AIDE = {
     remplir: 'Le coût, la durée d’amortissement, le mois de mise en service, le CA et les charges en plus, le financement. Le modèle Corner alimentaire part des repères du siège.',
     calcul: 'EBE en plus = CA × (marge − démarque) − redevance et publicité − charges. Délai de retour = coût ÷ EBE en plus. Année 1 au prorata des mois ; avec un prêt, seules les échéances sortent.',
   },
+  // Vague 9 (choix 138 à 146, Joseph 14/11/2026)
+  simExterieur: {
+    titre: 'Contrat extérieur',
+    quoi: 'Ce que rapporte un contrat avec une association ou un client extérieur : marge par fût, fûts pour être à l’équilibre, remise tenable, prix plancher d’une livraison.',
+    remplir: 'Les fûts prévus, les prix HT par fût, la tireuse (à acheter ou déjà là), les livraisons et le temps passé, le don éventuel. Le prix du kilomètre et le coût d’une heure viennent des repères du siège, modifiables.',
+    calcul: 'Net par fût = prix après remise − redevance et publicité (3 %) − achat − CO2 − gobelets. Coûts fixes = tireuse (prix ÷ durée de vie + entretien) + livraisons (km × prix du km + heures × coût horaire) + don. Équilibre = coûts fixes ÷ net par fût, au fût supérieur. Don : quand le siège le traite comme un don et que le reçu Cerfa est demandé, 60 % reviennent en réduction d’impôt (mécénat). La réduction ne vaut que si ce que le magasin reçoit en retour (visibilité, exclusivité des fûts) reste nettement inférieur au don, en pratique un quart de sa valeur au plus. Demande le reçu Cerfa à l’association. Réduction plafonnée à 20 000 € ou 0,5 % du CA HT si c’est plus. En cas de doute, vois avec ton expert-comptable.',
+  },
+  simTireuses: {
+    titre: 'Parc de tireuses',
+    quoi: 'Savoir s’il faut racheter une tireuse, ou en remplacer une qui coûte trop en réparations. Le planning reste dans la plateforme de location des tireuses.',
+    remplir: 'Les sorties et les demandes refusées de l’année, lues dans la plateforme, les fûts par sortie, le prix d’une tireuse neuve. Le net par fût vient du simulateur Contrat extérieur, modifiable.',
+    calcul: 'Occupation = sorties ÷ (tireuses × semaines) : une tireuse fait au plus une sortie par semaine. Marge perdue = refus × fûts par sortie × net par fût. Coût annuel d’une neuve = prix ÷ durée de vie + entretien. On rachète si la marge perdue le dépasse ; on remplace une tireuse dont les réparations de l’année le dépassent.',
+  },
+  simPression: {
+    titre: 'Ma carte pression',
+    quoi: 'La marge de chaque bec, le temps pour vider un fût et les fûts à commander ; et ce que rapporterait un bec ajouté ou remplacé.',
+    remplir: 'Pour chaque bec : prix du fût HT, litres, perte (mousse, purge), prix du demi et de la pinte TTC, ventes par semaine. Les prix d’achat changent : vérifie-les à chaque visite.',
+    calcul: 'Litres servis = litres × (1 − perte) ; coût du demi = prix du fût ÷ litres servis × 0,25. Marge = (prix TTC ÷ (1 + TVA) − coût) ÷ prix HT. Jours pour vider = litres servis ÷ litres vendus par jour (7 jours sur 7). Alerte au-delà du nombre de jours réglé par le siège, la bière s’abîme. Projet : marge du nouveau bec − part prise aux autres becs (à leur marge moyenne par litre) − marge du bec remplacé.',
+  },
+  simCalculette: {
+    titre: 'Prix et marge',
+    quoi: 'Le prix de vente pour une marge visée, ou la marge d’un prix : un verre, une planche, un coffret, un cocktail.',
+    remplir: 'Les composants et leur coût HT, le taux de TVA, puis la marge visée ou le prix TTC. Garde la composition pour la reprendre.',
+    calcul: 'Prix HT = coût ÷ (1 − marge) ; prix TTC = HT × (1 + TVA). Taux de marge = (prix HT − coût) ÷ prix HT. Coefficient = prix TTC ÷ coût HT. Taux de TVA réglés par le siège.',
+  },
+  simOuverture: {
+    titre: 'Dimanche ou jour férié',
+    quoi: 'Ce que rapporte une ouverture exceptionnelle, une fois l’équipe payée avec sa majoration.',
+    remplir: 'Le CA HT attendu au bar et en cave, la part qui se serait faite un autre jour, les heures payées et les frais du jour.',
+    calcul: 'Gain = marge du CA nouveau − redevance et publicité − heures × coût horaire × (1 + majoration) − frais. La majoration est réglée par le siège selon la convention collective. CA pour ne rien perdre = coûts ÷ (part nouvelle × (marge moyenne − 3 %)).',
+  },
+  productiviteCible: {
+    titre: 'Productivité cible',
+    quoi: 'Le CA par heure travaillée visé par le réseau, selon la part du bar : le service au bar prend plus de temps.',
+    calcul: 'Cible lue dans la grille du siège selon la part du bar dans le CA du budget. Heures visées = CA ÷ cible ; ETP = heures ÷ 1 607 (temps plein annuel).',
+  },
+  diagnosticMarge: {
+    titre: 'Écart de marge',
+    quoi: 'Quand la marge réelle passe sous la marge de la caisse, ce que l’écart coûte et les causes à vérifier.',
+    remplir: 'Coche les causes trouvées avec le franchisé, ajoute une phrase si besoin. L’audit de marge en magasin reste un document.',
+    calcul: 'Un point de marge = 1 % du CA HT de la période. Écart en euros = CA × (marge réelle − marge de la caisse). Alerte au seuil de marge des alertes (1 point par défaut).',
+  },
   questionsCalendrier: {
     titre: 'Questions à répondre',
     quoi: 'Ce qui change l’an prochain : temps forts et clients extérieurs, ou travaux, achats et emprunts.',
