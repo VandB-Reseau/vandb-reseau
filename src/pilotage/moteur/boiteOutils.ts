@@ -39,6 +39,8 @@ export interface ContratExterieur {
 export interface EffetExterieur {
   caParFut: number; redevanceParFut: number; netParFut: number; ca: number
   tireuseAn: number; coutLivraison: number; livraisonsAn: number; prixPlancherLivraison: number | null
+  // Détail d'une livraison (Joseph, 14/11/2026) : indemnités kilométriques, temps passé, facturé, net de l'année
+  kmLivraison: number; tempsLivraison: number; livraisonsFacturees: number; netLivraisons: number
   don: { valeur: number; reduction: number; cout: number }
   sponsoring: number; materiel: number; astreinte: number; recettes: number; recettesNettes: number
   coutFixe: number; gain: number; equilibre: number | null; remiseMax: number | null
@@ -55,13 +57,15 @@ export function simulerExterieur(x: ContratExterieur, p: Redevances, donMecenat:
   const redevanceParFut = caParFut * rp
   const netParFut = caParFut - redevanceParFut - pos(x.prixAchat) - pos(x.co2) - pos(x.gobelets) - pos(x.sponsoring?.parFut)
   const tireuseAn = (x.tireuse === 'neuve' ? (x.dureeTireuse > 0 ? pos(x.prixTireuse) / x.dureeTireuse : pos(x.prixTireuse)) : 0) + pos(x.entretien)
-  const coutLivraison = pos(x.km) * pos(x.prixKm) + pos(x.heures) * pos(x.coutHoraire)
+  const kmLivraison = pos(x.km) * pos(x.prixKm), tempsLivraison = pos(x.heures) * pos(x.coutHoraire)
+  const coutLivraison = kmLivraison + tempsLivraison
   const livraisonsAn = pos(x.livraisons) * coutLivraison
   const valeur = x.don.type === 'argent' ? pos(x.don.montant) : x.don.type === 'nature' ? pos(x.don.futs) * pos(x.prixAchat) : 0
   const reduction = donMecenat && x.don.cerfa ? valeur * TAUX_MECENAT : 0
   const don = { valeur, reduction, cout: valeur - reduction }
   const sponsoring = pos(x.sponsoring?.montant), materiel = pos(x.materiel), astreinte = pos(x.astreinte) * pos(x.coutHoraire)
-  const recettes = pos(x.livraisons) * pos(x.prixLivraison) + pos(x.locations?.nombre) * pos(x.locations?.prix)
+  const livraisonsFacturees = pos(x.livraisons) * pos(x.prixLivraison)
+  const recettes = livraisonsFacturees + pos(x.locations?.nombre) * pos(x.locations?.prix)
   const recettesNettes = recettes * (1 - rp)
   const coutFixe = tireuseAn + livraisonsAn + don.cout + sponsoring + materiel + astreinte
   const futs = pos(x.futs)
@@ -69,6 +73,7 @@ export function simulerExterieur(x: ContratExterieur, p: Redevances, donMecenat:
   const reste = coutFixe - recettesNettes
   return {
     caParFut, redevanceParFut, netParFut, ca: futs * caParFut + recettes, tireuseAn, coutLivraison, livraisonsAn,
+    kmLivraison, tempsLivraison, livraisonsFacturees, netLivraisons: livraisonsFacturees * (1 - rp) - livraisonsAn,
     prixPlancherLivraison: rp < 1 ? coutLivraison / (1 - rp) : null, don, sponsoring, materiel, astreinte, recettes, recettesNettes, coutFixe, gain,
     equilibre: reste <= 0 ? 0 : netParFut > 0 ? Math.ceil(reste / netParFut - 1e-9) : null,
     remiseMax: futs > 0 && rp < 1 ? Math.max(0, pos(x.remise) + (netParFut - reste / futs) / (1 - rp)) : null,
@@ -191,18 +196,28 @@ export function nouveauBec(becs: Bec[], nouveau: Bec, x: { cout: number; canniba
 }
 
 // 161 · Audit de la perte sur une semaine (fichier « Audit bouteilles et pressions ») : litres sortis du stock (fûts vidés
-// × litres) face aux litres vendus (25, 33, 50 cl et 1 L) et offerts. Perte = sortis − vendus − offerts. Coût de la perte
-// au prix d'achat du litre ; CA manqué au prix moyen de vente HT du litre vendu (CA de la semaine ÷ litres vendus) ;
-// sur l'année : × 52.
-export interface AuditPression { futs: number; litres: number; prixFut: number; demis: number; verres33: number; pintes: number; litresVendus1L: number; offerts: number; caTTC: number; tva: number }
-export interface EffetAudit { sortis: number; vendus: number; perte: number; taux: number | null; coutSemaine: number; caManqueSemaine: number; coutAn: number; caManqueAn: number }
+// × litres) face aux litres vendus (25, 33, 50 cl et 1 L) et offerts. Perte réelle = sortis − vendus − offerts.
+// Une part est normale (bière qu'on laisse couler à chaque service, mousse vidée à chaque fût percé, Joseph 14/11/2026) :
+// perte standard = sortis × taux standard. Seul l'écart (réelle − standard, jamais négatif) coûte : au prix d'achat
+// du litre, et en CA manqué au prix moyen de vente HT du litre vendu (CA HT de la semaine ÷ litres vendus) ; année : × 52.
+export interface AuditPression { futs: number; litres: number; prixFut: number; demis: number; verres33: number; pintes: number; litresVendus1L: number; offerts: number; caHT: number; standard: number }
+export interface EffetAudit {
+  sortis: number; vendus: number; perte: number; taux: number | null; perteStandard: number; ecart: number; tauxEcart: number | null
+  coutPerte: number; coutStandard: number; coutSemaine: number; caManqueSemaine: number; coutAn: number; caManqueAn: number
+}
 export function auditPression(x: AuditPression): EffetAudit {
   const sortis = pos(x.futs) * pos(x.litres)
   const vendus = DEMI * pos(x.demis) + VERRE33 * pos(x.verres33) + PINTE * pos(x.pintes) + pos(x.litresVendus1L)
   const perte = Math.max(0, sortis - vendus - pos(x.offerts))
+  const perteStandard = sortis * Math.min(1, pos(x.standard))
+  const ecart = Math.max(0, perte - perteStandard)
   const coutLitre = pos(x.litres) > 0 ? pos(x.prixFut) / pos(x.litres) : 0
-  const prixLitre = vendus > 0 ? pos(x.caTTC) / (1 + x.tva) / vendus : 0
-  return { sortis, vendus, perte, taux: sortis > 0 ? perte / sortis : null, coutSemaine: perte * coutLitre, caManqueSemaine: perte * prixLitre, coutAn: perte * coutLitre * 52, caManqueAn: perte * prixLitre * 52 }
+  const prixLitre = vendus > 0 ? pos(x.caHT) / vendus : 0
+  return {
+    sortis, vendus, perte, taux: sortis > 0 ? perte / sortis : null, perteStandard, ecart, tauxEcart: sortis > 0 ? ecart / sortis : null,
+    coutPerte: perte * coutLitre, coutStandard: perteStandard * coutLitre,
+    coutSemaine: ecart * coutLitre, caManqueSemaine: ecart * prixLitre, coutAn: ecart * coutLitre * 52, caManqueAn: ecart * prixLitre * 52,
+  }
 }
 
 // ── 143 · Calculette prix et marge ────────────────────────────────────────────────────────────────────────────

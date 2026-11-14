@@ -25,6 +25,14 @@ test('contrat extérieur : net par fût, coûts fixes, équilibre, remise maxima
   // Tireuse 1 500 ÷ 5 = 300 ; livraison 30 km × 0,60 + 1,5 h × 20 = 48 €, × 10 = 480 ; total 780 €
   proche(r.tireuseAn, 300)
   proche(r.coutLivraison, 48)
+  // Détail : 30 km × 0,60 = 18 € d'indemnités, 1,5 h × 20 € = 30 € de temps ; rien de facturé : net − 480 €
+  proche(r.kmLivraison, 18)
+  proche(r.tempsLivraison, 30)
+  proche(r.netLivraisons, -480)
+  // 10 livraisons facturées 40 € : 400 € − 3 % = 388 €, moins 480 € de coût = − 92 €
+  const facturee = simulerExterieur({ ...contrat, prixLivraison: 40 }, p, false)
+  proche(facturee.livraisonsFacturees, 400)
+  proche(facturee.netLivraisons, -92)
   proche(r.coutFixe, 780)
   // Équilibre : 780 ÷ 24,83 = 31,4 → 32 fûts ; à 40 fûts : 993,20 − 780 = 213,20 €
   expect(r.equilibre).toBe(32)
