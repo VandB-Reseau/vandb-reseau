@@ -92,7 +92,7 @@ test('158 : un levier sur une région, magasins sans budget à part ; PDF', asyn
 test('franchisé : pas de simulation à plusieurs magasins', async ({ page }) => {
   await connecter(page, franchise, { role: 'franchise' })
   await page.goto('./#/simulateurs?mode=plusieurs')
-  await expect(page).toHaveURL(/magasins\/Annecy%20Test\?vue=chiffres&partie=simulateurs/)
+  await expect(page).toHaveURL(/magasins\/Annecy%20Test\?vue=simulateurs/)
   await expect(page.getByRole('button', { name: 'Plusieurs magasins' })).toHaveCount(0)
 })
 

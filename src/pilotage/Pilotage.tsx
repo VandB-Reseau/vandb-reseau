@@ -178,6 +178,6 @@ export function PageSimulateurs() {
 }
 
 // Onglet « Budget » de la fiche d'un magasin : suivi, budget et saisies du magasin
-export function OngletBudget({ nom, mode, sante, santeLibelle }: { nom: string; mode?: 'chiffres' | 'budget'; sante?: ReactNode; santeLibelle?: string }) {
+export function OngletBudget({ nom, mode, sante, santeLibelle }: { nom: string; mode?: 'chiffres' | 'budget' | 'simulateurs'; sante?: ReactNode; santeLibelle?: string }) {
   return <ZonePilotage>{() => <Magasin nom={nom} mode={mode} sante={sante} santeLibelle={santeLibelle} />}</ZonePilotage>
 }

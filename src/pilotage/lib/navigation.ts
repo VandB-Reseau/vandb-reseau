@@ -51,7 +51,8 @@ export const PARTIES_SUIVI = (annee: number = anneeSuivi()): Partie[] => [
   { cle: 'atterrissage', libelle: `Atterrissage ${annee}` },
   { cle: 'stock', libelle: 'Stock' },
   { cle: 'analyse', libelle: 'Analyse' },
-  // Choix 125 (Joseph, 13/11/2026) : les simulateurs du franchisé, ouverts aussi par le Coach pendant la visite
+  // Choix 125 (Joseph, 13/11/2026) : les simulateurs du franchisé, ouverts aussi par le Coach pendant la visite.
+  // Dans la fiche du magasin, ils ont leur onglet (Joseph, 14/11/2026) et sortent des puces de Chiffres.
   { cle: 'simulateurs', libelle: 'Simulateurs' },
 ]
 // « sante » : santé, leviers et chiffres du réseau, rangés avec le suivi dans l'onglet Chiffres de la fiche (refonte, 3A)

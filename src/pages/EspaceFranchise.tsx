@@ -1,4 +1,5 @@
 import useMediaQuery from '@mui/material/useMediaQuery'
+import CalculateOutlined from '@mui/icons-material/CalculateOutlined'
 import { SectionEquipements } from '../components/Equipements'
 import { useTheme } from '@mui/material/styles'
 import { SectionPlan } from '../components/PlanAction'
@@ -534,7 +535,7 @@ export function SimulateursFranchise() {
   return (
     <AvecReseau>
       {(reseau) => reseau.magasins.length
-        ? <Navigate to={`${lienFiche(reseau.magasins[0].nom)}?vue=chiffres&partie=simulateurs`} replace />
+        ? <Navigate to={`${lienFiche(reseau.magasins[0].nom)}?vue=simulateurs`} replace />
         : <EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." />}
     </AvecReseau>
   )
@@ -586,16 +587,18 @@ export function MagasinsFranchise() {
 // Refonte (Joseph, 09/11/2026, 3A) : mêmes cinq onglets que la fiche de l'équipe, deux niveaux au plus.
 // Activité : visites, campagnes et bonnes pratiques (plus d'onglet « Ressources », Joseph 14/11/2026) ; Chiffres : suivi
 // face au budget, chiffres du mois et saisies
-type VueFiche = 'fiche' | 'chiffres' | 'budget' | 'visites' | 'campagnes' | 'pratiques'
-type OngletFicheF = 'fiche' | 'activite' | 'chiffres' | 'budget'
+type VueFiche = 'fiche' | 'chiffres' | 'budget' | 'simulateurs' | 'visites' | 'campagnes' | 'pratiques'
+type OngletFicheF = 'fiche' | 'activite' | 'chiffres' | 'budget' | 'simulateurs'
 const rubriques: Rubrique<OngletFicheF>[] = [
   { vue: 'fiche', libelle: 'Vue d’ensemble', court: 'Aperçu', icone: <StorefrontOutlined /> },
   { vue: 'activite', libelle: 'Activité', icone: <EventNoteOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
   { vue: 'budget', libelle: 'Budget', icone: <RequestQuoteOutlined /> },
+  // Joseph (14/11/2026) : les simulateurs au même niveau que Chiffres et Budget
+  { vue: 'simulateurs', libelle: 'Simulateurs', court: 'Simuler', icone: <CalculateOutlined /> },
 ]
 const partiesActiviteF: { vue: VueFiche; libelle: string }[] = [{ vue: 'visites', libelle: 'Visites' }, { vue: 'campagnes', libelle: 'Campagnes' }, { vue: 'pratiques', libelle: 'Bonnes pratiques' }]
-const VUES_F: VueFiche[] = ['fiche', 'chiffres', 'budget', 'visites', 'campagnes', 'pratiques']
+const VUES_F: VueFiche[] = ['fiche', 'chiffres', 'budget', 'simulateurs', 'visites', 'campagnes', 'pratiques']
 const ongletDeF = (v: VueFiche): OngletFicheF => (v === 'visites' || v === 'campagnes' || v === 'pratiques' ? 'activite' : v)
 const PARTIES_BUDGET_F = ['budget', 'visualiser', 'echanges', 'depart', 'ventes', 'calendrier', 'investissements', 'equipe', 'fraisBudget', 'resultat', 'tresoBudget', 'travaux']
 
@@ -761,7 +764,7 @@ export function FicheMagasinFranchise() {
   const [params, setParams] = useSearchParams()
   const brute = (VUES_F.find((v) => v === params.get('vue')) ?? 'fiche') as VueFiche
   const partie = params.get('partie')
-  const vue: VueFiche = (brute === 'budget' || brute === 'chiffres') && partie ? (PARTIES_BUDGET_F.includes(partie) ? 'budget' : 'chiffres') : brute
+  const vue: VueFiche = (brute === 'budget' || brute === 'chiffres') && partie ? (PARTIES_BUDGET_F.includes(partie) ? 'budget' : partie === 'simulateurs' ? 'simulateurs' : 'chiffres') : brute
   useEffect(() => {
     if ((brute === 'budget' || brute === 'chiffres') && vue !== brute) setParams((p) => { const n = new URLSearchParams(p); n.set('vue', vue); return n }, { replace: true })
   }, [brute, vue, setParams])
@@ -789,6 +792,7 @@ export function FicheMagasinFranchise() {
               {vue === 'fiche' && <OngletFiche reseau={reseau} m={m} signaler={setConfirmation} />}
               {vue === 'chiffres' && <OngletBudget nom={m.nom} mode="chiffres" santeLibelle="Chiffres du mois" sante={<OngletChiffres reseau={reseau} m={m} />} />}
               {vue === 'budget' && <OngletBudget nom={m.nom} mode="budget" />}
+              {vue === 'simulateurs' && <OngletBudget nom={m.nom} mode="simulateurs" />}
               {vue === 'visites' && <><LireVisites magasin={m.nom} /><OngletVisites reseau={reseau} m={m} /></>}
               {vue === 'campagnes' && <OngletCampagnes reseau={reseau} m={m} />}
               {vue === 'pratiques' && <OngletPratiques reseau={reseau} m={m} signaler={setConfirmation} />}

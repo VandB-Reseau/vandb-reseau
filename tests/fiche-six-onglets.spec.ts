@@ -46,12 +46,13 @@ for (const { ancienne, onglet, vu } of [
   })
 }
 
-test('grand téléphone : les cinq onglets tiennent sans déborder, sans « Plus »', async ({ page, isMobile }) => {
+// Avec Simulateurs (Joseph, 14/11/2026), six onglets : à 430 px, quatre et « Plus », sans déborder
+test('grand téléphone : les onglets tiennent sans déborder, le reste sous « Plus »', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'téléphone seulement')
   await page.setViewportSize({ width: 430, height: 900 })
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
-  await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Nine box', 'Budget'])
+  await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Plus'])
   const droite = await page.evaluate(() => Math.max(...[...document.querySelectorAll('.onglets-fiche [role=tab]')].map((t) => t.getBoundingClientRect().right)))
   expect(droite).toBeLessThanOrEqual(430 - 16)
 })

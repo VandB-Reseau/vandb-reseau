@@ -51,7 +51,7 @@ export function SectionEquipements({ reseau, m, signaler }: { reseau: Reseau; m:
         </Box>
       )}
       {tireuses !== null && (
-        <Button component={RouterLink} to={`/magasins/${encodeURIComponent(m.nom)}?vue=chiffres&partie=simulateurs&sim=tireuses`} sx={{ minHeight: 48, mt: 1 }}>
+        <Button component={RouterLink} to={`/magasins/${encodeURIComponent(m.nom)}?vue=simulateurs&partie=simulateurs&sim=tireuses`} sx={{ minHeight: 48, mt: 1 }}>
           {`Simuler le parc de ${tireuses} tireuse${tireuses > 1 ? 's' : ''}`}
         </Button>
       )}

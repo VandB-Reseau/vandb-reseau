@@ -28,7 +28,7 @@ export function SectionExterieur({ reseau, m }: { reseau: Reseau; m: Magasin }) 
   const r = x.reseau
   return (
     <Section titre={`Marché extérieur · ${x.annee}`}
-      action={<Button component={RouterLink} to={`/magasins/${encodeURIComponent(m.nom)}?vue=chiffres&partie=simulateurs&sim=exterieur`} sx={{ minHeight: 48 }}>Simuler un contrat</Button>}>
+      action={<Button component={RouterLink} to={`/magasins/${encodeURIComponent(m.nom)}?vue=simulateurs&partie=simulateurs&sim=exterieur`} sx={{ minHeight: 48 }}>Simuler un contrat</Button>}>
       <Ligne libelle={`CA extérieur, janvier à ${libelleMois(x.dernierMois).split(' ')[0]}`}>{formatEuros(x.caExt)}</Ligne>
       <Ligne libelle="Part du CA du magasin">{x.part === null ? null : pct(x.part)}</Ligne>
       <Ligne libelle={`Évolution sur ${Number(x.annee) - 1}`}>{x.evolution === null ? null : `${formatPourcent(x.evolution)} (${formatEuros(x.caExtN1)})`}</Ligne>

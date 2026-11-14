@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { seConnecter, textesTropPetits } from './supabase-simule'
 
-// Joseph (14/11/2026) : plus d'onglet « Ressources » ; les bonnes pratiques du magasin sont dans son Activité.
+// Sur téléphone, autant d'onglets que la largeur en tient, le reste sous « Plus » (six onglets depuis Simulateurs, 14/11/2026).
 // Sur téléphone, les cinq onglets de la fiche tiennent dès 375 px de large (« Plus » seulement en dessous).
 const pratiques = [
   { id: 'bp_1', magasin: 'Lyon Test', date: '2026-10-12', titre: 'Coffrets à composer', theme: 'Vente additionnelle', texte: 'Le client choisit trois bouteilles.', par: 'Hugo FICTIF', photos: [], reprises: [] },
@@ -42,14 +42,15 @@ test('sans bonne pratique, le filtre propose d’en ajouter une', async ({ page 
   await expect(page.getByRole('dialog', { name: 'Nouvelle bonne pratique' })).toBeVisible()
 })
 
-test('téléphone courant : les cinq onglets de la fiche visibles, sans déborder', async ({ page, isMobile }, info) => {
+// Avec l'onglet Simulateurs (Joseph, 14/11/2026), six onglets : autant que la largeur en tient, le reste sous « Plus »
+test('téléphone courant : les onglets de la fiche visibles sans déborder, le reste sous « Plus »', async ({ page, isMobile }, info) => {
   test.skip(!isMobile, 'téléphone seulement')
   await seConnecter(page)
-  for (const largeur of [375, 390]) {
+  for (const [largeur, attendus] of [[375, ['Aperçu', 'Activité', 'Chiffres', 'Plus']], [412, ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Plus']]] as const) {
     await page.setViewportSize({ width: largeur, height: 812 })
     await page.goto('./#/magasins/Lyon%20Test')
     const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })
-    await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Nine box', 'Budget'])
+    await expect(onglets.getByRole('tab')).toHaveText([...attendus])
     for (const t of await onglets.getByRole('tab').all()) {
       const b = (await t.boundingBox())!
       expect(b.x + b.width).toBeLessThanOrEqual(largeur)
@@ -60,11 +61,11 @@ test('téléphone courant : les cinq onglets de la fiche visibles, sans déborde
   await page.screenshot({ path: `captures/${info.project.name}-onglets-fiche-cinq.png` })
 })
 
-test('fiche du franchisé : ses bonnes pratiques dans l’Activité, quatre onglets', async ({ page, isMobile }) => {
+test('fiche du franchisé : ses bonnes pratiques dans l’Activité, cinq onglets avec Simulateurs', async ({ page, isMobile }) => {
   await seConnecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Lyon Test'] }, espace: { pratiques } })
   await page.goto('./#/magasins/Lyon%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Aperçu', 'Activité', 'Chiffres', 'Budget'] : ['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget'])
+  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler'] : ['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Simulateurs'])
   await onglets.getByRole('tab', { name: 'Activité' }).click()
   await page.getByRole('tablist', { name: 'Parties de l’activité' }).getByRole('tab', { name: 'Bonnes pratiques' }).click()
   await expect(page.getByRole('article', { name: 'Coffrets à composer' })).toBeVisible()

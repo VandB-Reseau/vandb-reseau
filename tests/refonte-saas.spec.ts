@@ -85,7 +85,7 @@ test('la fiche du magasin tient en cinq onglets et deux niveaux ; le suivi, la s
   await connecter(page)
   await page.goto(fiche())
   const onglets = page.getByRole('tablist', { name: `Rubriques de ${M}` })
-  if (!isMobile) await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Nine box', 'Budget'])
+  if (!isMobile) await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Simulateurs', 'Nine box'])
   // Activité : un seul fil, filtré par des puces (vague 3, 23A)
   await page.goto(fiche('?vue=visites'))
   const filtres = page.getByRole('group', { name: 'Filtrer l’activité' })
@@ -96,7 +96,7 @@ test('la fiche du magasin tient en cinq onglets et deux niveaux ; le suivi, la s
   const parties = page.getByRole('tablist', { name: 'Parties des chiffres' })
   await expect(parties.getByRole('tab', { name: 'Vue d’ensemble' })).toHaveAttribute('aria-selected', 'true')
   // Vague 6 (76A) : cinq puces, la santé dans l'Analyse
-  await expect(parties.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', /^Atterrissage/, 'Analyse', 'Simulateurs'])
+  await expect(parties.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', /^Atterrissage/, 'Analyse'])
   await expect(page.getByRole('tablist', { name: 'Espaces du magasin' })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-refonte-chiffres.png` })

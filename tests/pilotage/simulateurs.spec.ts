@@ -41,7 +41,7 @@ test('franchisé : le menu ouvre les simulateurs de son magasin ; embauche chiff
   } else {
     await page.getByRole('navigation').getByRole('button', { name: 'Simulateurs' }).first().click()
   }
-  await expect(page).toHaveURL(/magasins\/Annecy%20Test\?vue=chiffres&partie=simulateurs/)
+  await expect(page).toHaveURL(/magasins\/Annecy%20Test\?vue=simulateurs/)
   await expect(simulateurs(page).getByRole('button')).toHaveCount(13)
   // Embauche d'un vendeur en janvier, d'office : coût, EBE, % de frais de personnel, trésorerie, CA nécessaire
   await expect(page.getByRole('heading', { name: 'Embaucher' })).toBeVisible()

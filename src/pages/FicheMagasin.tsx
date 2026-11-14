@@ -1,4 +1,5 @@
 import { EcartsAudit, RangeePhotos } from '../components/GrilleAudit'
+import CalculateOutlined from '@mui/icons-material/CalculateOutlined'
 import { suiviEtRR } from '../data/charge'
 import { CartePratique, DialogPratique } from '../components/BonnesPratiques'
 import { useReactionsPratiques } from '../data/reactionsPratiques'
@@ -98,20 +99,22 @@ import { FilAriane } from '../components/FilAriane'
 // visites et journal ; Chiffres regroupe le suivi face au budget, la santé, les leviers et les saisies (une seule source,
 // la caisse) ; Budget ne garde que les étapes du budget. Les bonnes pratiques sont dans l'Activité (Joseph, 14/11/2026 :
 // plus d'onglet « Ressources » ; anciens liens « ?vue=pratiques » ouverts sur le filtre Bonnes pratiques).
-type VueFiche = 'fiche' | 'activite' | 'actions' | 'visites' | 'journal' | 'chiffres' | 'ninebox' | 'budget' | 'pratiques'
-type OngletFiche = 'fiche' | 'activite' | 'chiffres' | 'ninebox' | 'budget'
+type VueFiche = 'fiche' | 'activite' | 'actions' | 'visites' | 'journal' | 'chiffres' | 'ninebox' | 'budget' | 'simulateurs' | 'pratiques'
+type OngletFiche = 'fiche' | 'activite' | 'chiffres' | 'ninebox' | 'budget' | 'simulateurs'
 const rubriquesFiche: Rubrique<OngletFiche>[] = [
   { vue: 'fiche', libelle: 'Vue d’ensemble', court: 'Aperçu', icone: <StorefrontOutlined /> },
   { vue: 'activite', libelle: 'Activité', icone: <TaskAltOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
+  { vue: 'budget', libelle: 'Budget', icone: <RequestQuoteOutlined /> },
+  // Joseph (14/11/2026) : les simulateurs au même niveau que Chiffres et Budget, juste après eux
+  { vue: 'simulateurs', libelle: 'Simulateurs', court: 'Simuler', icone: <CalculateOutlined /> },
   // Joseph (13/11/2026) : la nine box du magasin a son onglet, avec son évolution
   { vue: 'ninebox', libelle: 'Nine box', icone: <GridViewOutlined /> },
-  { vue: 'budget', libelle: 'Budget', icone: <RequestQuoteOutlined /> },
 ]
 // Vague 3 (23A) : plus de sous-onglets dans Activité ; les anciennes adresses (actions, visites, journal) ouvrent le fil
 // sur le bon filtre
 const ongletDe = (v: VueFiche): OngletFiche => (v === 'actions' || v === 'visites' || v === 'journal' || v === 'activite' || v === 'pratiques' ? 'activite' : v)
-const VUES: VueFiche[] = ['fiche', 'activite', 'actions', 'visites', 'journal', 'chiffres', 'ninebox', 'budget', 'pratiques']
+const VUES: VueFiche[] = ['fiche', 'activite', 'actions', 'visites', 'journal', 'chiffres', 'ninebox', 'budget', 'simulateurs', 'pratiques']
 // Anciens liens vers un onglet regroupé : l'onglet qui l'accueille, ouvert sur sa partie
 const anciennesVues: Record<string, VueFiche> = { sante: 'ninebox', campagnes: 'actions', fil: 'journal' }
 const filtreActivite = (v: VueFiche, fil: string | null): FiltreActivite =>
@@ -126,7 +129,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const partie = params.get('partie')
   const brute = (anciennesVues[demandee] ?? VUES.find((v) => v === demandee) ?? 'fiche') as VueFiche
   // Une partie du budget ouverte depuis Chiffres (ou l'inverse, anciens liens « vue=budget ») : l'onglet qui la porte
-  const vue: VueFiche = (brute === 'budget' || brute === 'chiffres') && partie ? (PARTIES_BUDGET.includes(partie) ? 'budget' : 'chiffres')
+  // Anciens liens « vue=chiffres&partie=simulateurs » : l'onglet Simulateurs
+  const vue: VueFiche = (brute === 'budget' || brute === 'chiffres') && partie ? (PARTIES_BUDGET.includes(partie) ? 'budget' : partie === 'simulateurs' ? 'simulateurs' : 'chiffres')
     : brute
   useEffect(() => {
     // Adresse lue au moment même : le suivi a pu la réécrire juste avant (ancienne partie, « tresorerie » → « comptes »)
@@ -248,6 +252,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         )}
 
         {vue === 'budget' && <OngletBudget nom={m.nom} mode="budget" />}
+        {vue === 'simulateurs' && <OngletBudget nom={m.nom} mode="simulateurs" />}
 
         {vue === 'ninebox' && (
           <Box id="partie-sante" sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
