@@ -22,5 +22,6 @@ test('polices de la charte prêtes dès le premier affichage, Agenda compris', a
   const mois = page.getByRole('heading', { level: 2 }).filter({ hasText: /\d{4}/ }).first()
   await expect(mois).toBeVisible()
   expect(await page.evaluate(() => (window as unknown as { premierAffichage?: boolean[] }).premierAffichage)).toEqual([true, true, true, true, true])
-  expect(await mois.evaluate((e) => getComputedStyle(e).fontFamily)).toMatch(/^"?Alegreya/)
+  // Depuis l'échelle unique (#178), les titres de section sont en Lato ; seul compte qu'ils soient dans une police de la charte
+  expect(await mois.evaluate((e) => getComputedStyle(e).fontFamily)).toMatch(/^"?(Alegreya|Lato)/)
 })

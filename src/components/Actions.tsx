@@ -325,5 +325,5 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
 const NOUVELLE = '__nouvelle'
 const libelleObjectif = (objectifs: ReturnType<typeof objectifsDu>, p: Priorite) => {
   const o = p.objectif ? objectifs.find((x) => x.id === p.objectif) : undefined
-  return o ? `Objectif : ${phraseObjectif(o)}` : 'Sans objectif chiffré'
+  return o ? `Objectif : ${phraseObjectif(o)}` : 'Sans objectif'
 }

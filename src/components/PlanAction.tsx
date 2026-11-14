@@ -1,5 +1,5 @@
 // Objectifs de l'année et plan d'action du magasin (refonte vague 4, Joseph 10/11/2026, 31A ; un seul bloc le 14/11/2026) :
-// chaque objectif chiffré, ses priorités (3 au plus par objectif) et leurs tâches. L'équipe le pose et le revoit en visite ; le franchisé le lit (titres, statuts, tâches) et change
+// chaque objectif (chiffré ou qualitatif), ses priorités (3 au plus par objectif) et leurs tâches. L'équipe le pose et le revoit en visite ; le franchisé le lit (titres, statuts, tâches) et change
 // le statut de ses tâches, sans voir l'objectif chiffré.
 import { useState } from 'react'
 import Box from '@mui/material/Box'
@@ -26,7 +26,7 @@ import Menu from '@mui/material/Menu'
 import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
 import { Link as RouterLink } from 'react-router-dom'
 import { lienFiche } from '../lib/format'
-import { anneeObjectif, avancement, libelleStatut, objectifsDu, phraseObjectif, type Objectif } from '../data/objectifs'
+import { anneeObjectif, avancement, libelleAvancement, objectifsDu, phraseObjectif, type Objectif } from '../data/objectifs'
 import { PRIORITES_MAX, libelleStatutPriorite, nouvelIdPriorite, prioritesDu, tachesDeLaPriorite, type Priorite, type StatutPriorite } from '../data/planAction'
 import { dateCourte } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
@@ -50,7 +50,7 @@ function BlocPriorite({ reseau, m, p, rang, actions, equipe, modifier, ajouterTa
           {modifier && <Button size="small" startIcon={<EditOutlined />} onClick={modifier} sx={{ minHeight: 48 }} aria-label={`Modifier la priorité ${p.titre}`}>Modifier</Button>}
         </Box>
         <Typography variant="body2" color="text.secondary">
-          {[objectif ? `Objectif : ${phraseObjectif(objectif)}` : null, statutObj ? libelleStatut[statutObj] : null,
+          {[objectif ? `Objectif : ${phraseObjectif(objectif)}` : null, statutObj && objectif ? libelleAvancement(objectif, statutObj) : null,
             toutes.length ? `${faites} tâche${faites > 1 ? 's' : ''} faite${faites > 1 ? 's' : ''} sur ${toutes.length}` : 'Aucune tâche pour l’instant'].filter(Boolean).join(' · ')}
         </Typography>
         {taches.length > 0 && (
@@ -98,7 +98,7 @@ export function SectionObjectifsPlan({ reseau, m, signaler, equipe = true, lectu
     : `Plan d’action ${annees.length ? annees.join(' et ') : anneeCourante}`
   const sansObjectif = actives.filter((p) => !equipe || !objectifs.some((o) => o.id === p.objectif))
   const blocs = (liste: Priorite[], sousObjectif: boolean) => (
-    <Box component="ol" aria-label={sousObjectif || !equipe ? 'Priorités' : 'Priorités sans objectif chiffré'} sx={{ listStyle: 'none', m: 0, p: 0 }}>
+    <Box component="ol" aria-label={sousObjectif || !equipe ? 'Priorités' : 'Priorités sans objectif'} sx={{ listStyle: 'none', m: 0, p: 0 }}>
       {liste.map((p, i) => <BlocPriorite key={p.id} reseau={reseau} m={m} p={p} rang={i + 1} actions={actions} equipe={equipe} signaler={signaler} sousObjectif={sousObjectif}
         modifier={modifiable ? () => setEdition({ priorite: p, objectif: p.objectif }) : undefined}
         ajouterTache={modifiable ? () => setNouvelleTache(p.id) : undefined} />)}
@@ -126,8 +126,8 @@ export function SectionObjectifsPlan({ reseau, m, signaler, equipe = true, lectu
         )
       })}
       {(sansObjectif.length > 0 || (modifiable && objectifs.length === 0)) && (
-        <Box component="section" aria-label={equipe ? 'Priorités sans objectif chiffré' : 'Priorités'} sx={{ mb: 1 }}>
-          {equipe && objectifs.length > 0 && <Typography component="h3" sx={{ fontWeight: 700, fontSize: echelle.carte, minHeight: 40, display: 'flex', alignItems: 'center' }}>Priorités sans objectif chiffré</Typography>}
+        <Box component="section" aria-label={equipe ? 'Priorités sans objectif' : 'Priorités'} sx={{ mb: 1 }}>
+          {equipe && objectifs.length > 0 && <Typography component="h3" sx={{ fontWeight: 700, fontSize: echelle.carte, minHeight: 40, display: 'flex', alignItems: 'center' }}>Priorités sans objectif</Typography>}
           {sansObjectif.length > 0 && blocs(sansObjectif, false)}
           {sansObjectif.length < PRIORITES_MAX && boutonAction('', objectifs.length ? 'Ajouter une priorité sans objectif' : 'Ajouter une priorité')}
         </Box>
@@ -224,7 +224,7 @@ function DialogPriorite({ reseau, m, priorite, objectifInitial = '', actions, on
       supprimer={priorite ? supprimer : undefined} libelleSuppression={priorite ? `Retirer « ${priorite.titre} » du plan ?` : undefined}>
       <TextField label="Priorité" placeholder="Relancer la Cave" value={titre} onChange={(e) => setTitre(e.target.value)} autoFocus={!priorite} slotProps={{ htmlInput: { maxLength: 200 } }} />
       <TextField select label="Objectif de l’année" value={objectifs.some((o) => o.id === objectif) ? objectif : ''} onChange={(e) => setObjectif(e.target.value)}
-        helperText={objectifs.length ? 'Jamais montré au franchisé' : 'Aucun objectif fixé : la priorité reste sans objectif chiffré'}>
+        helperText={objectifs.length ? 'Jamais montré au franchisé' : 'Aucun objectif fixé : la priorité reste sans objectif'}>
         <MenuItem value="" sx={{ minHeight: 48 }}>Aucun</MenuItem>
         {objectifs.map((o) => <MenuItem key={o.id} value={o.id} sx={{ minHeight: 48 }}>{phraseObjectif(o)}</MenuItem>)}
       </TextField>

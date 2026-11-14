@@ -23,7 +23,7 @@ test('un seul bloc : l’objectif de l’année, ses priorités et leurs tâches
   await expect(objectif.getByRole('heading', { name: 'Panier moyen HT Cave : 37,14 € → 40,00 €' })).toBeVisible()
   await expect(objectif.getByRole('listitem', { name: 'Priorité 1 : Améliorer le mix produit' })).toBeVisible()
   // La priorité sans objectif reste dans le bloc, à part
-  await expect(bloc.getByRole('region', { name: 'Priorités sans objectif chiffré' })).toContainText('Tenir les rituels d’équipe')
+  await expect(bloc.getByRole('region', { name: 'Priorités sans objectif' })).toContainText('Tenir les rituels d’équipe')
   expect(await textesTropPetits(page)).toEqual([])
   // Une tâche s'ajoute sous la priorité : elle y est rattachée d'office
   await objectif.getByRole('button', { name: 'Ajouter une tâche à la priorité Améliorer le mix produit' }).click()
@@ -51,4 +51,50 @@ test('une priorité se crée sous son objectif, déjà reliée', async ({ page }
   const plan = ecritures.filter((e) => e.table === 'app_config' && (e.corps as { key?: string }).key === 'plans_magasins').at(-1)
   const p = JSON.parse((plan!.corps as { value: string }).value)['Brest Test'] as { titre: string; objectif: string }[]
   expect(p).toEqual([expect.objectContaining({ titre: 'Relancer la Cave', objectif: 'o1' })])
+})
+
+// Joseph (14/11/2026) : un objectif peut être qualitatif (« faire monter l'équipe en compétence ») : intitulé, description,
+// période ; ses priorités et tâches se rangent dessous comme pour un objectif chiffré, l'avancement se lit dans les tâches faites.
+test('un objectif qualitatif se fixe, s’affiche et avance avec ses tâches', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await page.goto('./#/magasins/Brest%20Test')
+  await page.getByRole('button', { name: 'Fixer un objectif' }).click()
+  const d = page.getByRole('dialog')
+  await d.getByRole('button', { name: 'Qualitatif' }).click()
+  await expect(d.getByLabel('Indicateur de la caisse')).toHaveCount(0)
+  await d.getByLabel('Objectif', { exact: true }).fill('Faire monter l’équipe en compétence')
+  await d.getByLabel('Description (facultatif)').fill('Deux vendeurs autonomes en dégustation')
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toHaveCount(0)
+  const ecrit = ecritures.filter((e) => e.table === 'app_config' && (e.corps as { key?: string }).key === 'objectifs_magasins').at(-1)
+  const o = (JSON.parse((ecrit!.corps as { value: string }).value)['Brest Test'] as Record<string, unknown>[])[0]
+  expect(o).toEqual(expect.objectContaining({ nature: 'qualitatif', titre: 'Faire monter l’équipe en compétence', description: 'Deux vendeurs autonomes en dégustation', echeance: '2026-12' }))
+})
+
+test('un objectif qualitatif dit son avancement par les tâches faites', async ({ page }) => {
+  const objectifsQ = { 'Brest Test': [{ id: 'q1', nature: 'qualitatif', titre: 'Racheter un deuxième magasin', description: 'Repérer et chiffrer deux cibles', echeance: '2026-12', moisDepart: '2026-09', par: 'Joseph', creeLe: '2026-09-01' }] }
+  const plansQ = { 'Brest Test': [{ id: 'p9', titre: 'Trouver le financement', objectif: 'q1', statut: 'active', bilan: '', creeLe: '2026-09-01', par: 'Joseph', closLe: '', revueLe: '' }] }
+  const actions = { 'Brest Test': [
+    { id: 'l1', action: 'Rencontrer la banque', echeance: '2026-10-15', faite: true, priorite: 'p9', creeLe: '2026-09-02' },
+    { id: 'l2', action: 'Monter le prévisionnel', echeance: '2026-11-15', faite: false, priorite: 'p9', creeLe: '2026-09-02' },
+  ] }
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, config: { objectifs_magasins: objectifsQ, plans_magasins: plansQ, actions } })
+  await page.goto('./#/magasins/Brest%20Test')
+  const objectif = page.getByRole('region', { name: /^Objectif : Racheter un deuxième magasin/ })
+  await expect(objectif.getByRole('heading', { name: 'Racheter un deuxième magasin' })).toBeVisible()
+  await expect(objectif.getByText('Repérer et chiffrer deux cibles')).toBeVisible()
+  await expect(objectif.getByRole('meter')).toHaveAttribute('aria-valuenow', '50')
+  await expect(objectif.getByRole('listitem', { name: 'Priorité 1 : Trouver le financement' })).toBeVisible()
+  // Statut réglé à la main
+  await objectif.getByRole('button', { name: /^Modifier l’objectif/ }).click()
+  const d = page.getByRole('dialog')
+  await expect(d.getByRole('button', { name: 'Chiffré' })).toHaveCount(0)
+  await d.getByRole('button', { name: 'Atteint' }).click()
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toHaveCount(0)
+  const ecrit = ecritures.filter((e) => e.table === 'app_config' && (e.corps as { key?: string }).key === 'objectifs_magasins').at(-1)
+  expect(JSON.parse((ecrit!.corps as { value: string }).value)['Brest Test'][0]).toEqual(expect.objectContaining({ nature: 'qualitatif', etat: 'atteint' }))
+  expect(await textesTropPetits(page)).toEqual([])
 })

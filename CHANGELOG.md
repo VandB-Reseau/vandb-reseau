@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Objectifs qualitatifs (Joseph, 14/11/2026) : « Fixer un objectif » propose Chiffré ou Qualitatif. Un objectif
+  qualitatif (« faire monter l'équipe en compétence », « racheter un magasin ») a un intitulé, une description facultative
+  et une période ; ses priorités et tâches se rangent dessous comme pour un objectif chiffré. Jauge = part des tâches
+  faites dans ses priorités (une priorité atteinte compte pour faite), comparée au temps écoulé ; statut réglable à la main
+  (Selon les tâches, Sur la bonne voie, En retard, Atteint). « Priorités sans objectif chiffré » devient « Priorités sans
+  objectif ». Sans migration (champs de plus dans la rubrique `objectifs` de `suivi_magasins`).
 - Polices à l'ouverture (Joseph, 14/11/2026) : plus de texte qui s'affiche d'abord en police de secours (Georgia, police
   système) puis bascule en Alegreya ou Lato, visible surtout sur les titres (mois de l'Agenda, titres de page et de
   section). Les cinq fichiers de police (jeu latin) sont préchargés dans la page et l'app attend qu'ils soient prêts avant
