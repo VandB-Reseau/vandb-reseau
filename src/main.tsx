@@ -14,7 +14,15 @@ import App from './App'
 // Écoute dès le démarrage la proposition d'installation du navigateur
 import './lib/installation'
 
-createRoot(document.getElementById('root')!).render(
+// Premier affichage seulement quand les polices de la charte sont prêtes (préchargées par vite.config.ts) : plus de texte
+// qui s'affiche en police de secours puis change de police (Joseph, 14/11/2026). Au-delà de 1,5 s (réseau très lent),
+// l'app s'affiche quand même et la police arrive ensuite.
+const polices = ['400 1em Lato', '700 1em Lato', '900 1em Lato', '700 1em Alegreya', '800 1em Alegreya']
+const policesPretes: Promise<unknown> = 'fonts' in document
+  ? Promise.race([Promise.all(polices.map((p) => document.fonts.load(p))).catch(() => undefined), new Promise((ok) => setTimeout(ok, 1500))])
+  : Promise.resolve()
+
+policesPretes.then(() => createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline enableColorScheme />
@@ -25,4 +33,4 @@ createRoot(document.getElementById('root')!).render(
       </AuthProvider>
     </ThemeProvider>
   </StrictMode>,
-)
+))

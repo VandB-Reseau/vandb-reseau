@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Polices à l'ouverture (Joseph, 14/11/2026) : plus de texte qui s'affiche d'abord en police de secours (Georgia, police
+  système) puis bascule en Alegreya ou Lato, visible surtout sur les titres (mois de l'Agenda, titres de page et de
+  section). Les cinq fichiers de police (jeu latin) sont préchargés dans la page et l'app attend qu'ils soient prêts avant
+  son premier affichage (1,5 s au plus). Sans migration.
 - Barre du haut sur fond noir (Joseph, 14/11/2026) : sur téléphone, toute la barre est noire (logo sans ovale, recherche,
   cloche et compte en clair), filet jaune et vert dessous ; sur PC, même tête noire en haut du menu latéral.
 - Objectifs de l'année et plan d'action en un seul bloc (Joseph, 14/11/2026) : dans l'aperçu de la fiche magasin, le
