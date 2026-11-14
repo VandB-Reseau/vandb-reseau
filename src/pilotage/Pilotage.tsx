@@ -22,6 +22,7 @@ import { anneeBudget, oublier } from './data/pilotage'
 import { Magasin } from './pages/Magasin'
 import { Magasins } from './pages/Magasins'
 import { Parametres } from './pages/Parametres'
+import { SimulateursEquipe } from './pages/SimulateursEquipe'
 import { theme } from './theme/theme'
 
 // Pilotage financier des magasins (budget, suivi, saisies), venu de l'app « V and B Pilotage » à la fusion
@@ -169,6 +170,11 @@ export function PagesBudgets() {
       )}
     </ZonePilotage>
   )
+}
+
+// Simulateurs de l'équipe (choix 157, Joseph 14/11/2026) : entrée du menu sous le Budget prévisionnel
+export function PageSimulateurs() {
+  return <ZonePilotage>{() => <SimulateursEquipe />}</ZonePilotage>
 }
 
 // Onglet « Budget » de la fiche d'un magasin : suivi, budget et saisies du magasin

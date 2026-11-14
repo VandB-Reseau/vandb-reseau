@@ -86,6 +86,7 @@ import { Contact, Ligne, Section } from '../components/Section'
 import { SectionExterieur, SectionRedressement } from '../components/ExterieurRedressement'
 import { SectionReunionsMagasin } from '../components/Reunions'
 import { SectionConcurrents } from '../components/Concurrents'
+import { SectionEquipements } from '../components/Equipements'
 import { SectionObjectifs } from '../components/Objectifs'
 import { SectionPlan } from '../components/PlanAction'
 import { MontrerAuFranchise } from '../components/MontrerAuFranchise'
@@ -228,6 +229,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
               <SectionExploitation m={m} />
               {manquants > 0 && <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 700, px: 1 }}>{manquants} information{manquants > 1 ? 's' : ''} à compléter{referentiels ? '' : ' par le Directeur de réseau'}
                 {referentiels && <Button onClick={() => setEdition(true)} sx={{ minHeight: 48, ml: 1 }}>Compléter</Button>}</Typography>}
+              <SectionEquipements reseau={reseau} m={m} signaler={setConfirmation} />
               <SectionConcurrents reseau={reseau} m={m} signaler={setConfirmation} />
             </Box>
             <Box sx={{ display: 'grid', gap: 2, minWidth: 0, order: { xs: 1, lg: 2 } }}>

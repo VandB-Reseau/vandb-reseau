@@ -476,11 +476,20 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       }
       // Communications du réseau (script 0008_communications.sql) : le Directeur pour tout le réseau, un RR pour ses magasins
       // Temps forts, parcours et suivi d'intégration des magasins du franchisé (script 0044_actualites_vague5.sql)
+      // Équipements tenus par le franchisé sur ses magasins (script 0046_equipements_magasins.sql)
+      if (fn === 'ecrire_equipements') {
+        if (acces.role !== 'franchise' || !(acces.magasins ?? []).includes(String(corps.p_store))) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const liste = corps.p_liste as unknown[]
+        suiviCourant = [...suiviCourant.filter((l) => !(l.cle === 'equipements' && l.store_name === corps.p_store)), ...(liste.length ? [{ store_name: String(corps.p_store), cle: 'equipements', valeur: liste }] : [])]
+        if (options.persister) suiviPersiste = structuredClone(suiviCourant)
+        return route.fulfill({ status: 200, json: null })
+      }
       if (fn === 'animation_franchise') {
         if (acces.role !== 'franchise') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
         const lire = (k: string) => (configEcrite.has(k) ? JSON.parse(configEcrite.get(k)!) : undefined)
-        const integration = Object.fromEntries(suiviCourant.filter((l) => l.cle === 'integration' && (acces.magasins ?? []).includes(l.store_name)).map((l) => [l.store_name, l.valeur]))
-        return route.fulfill({ json: { temps_forts: lire('temps_forts') ?? [], parcours_integration: lire('parcours_integration') ?? null, integration } })
+        const rubrique = (r: string) => Object.fromEntries(suiviCourant.filter((l) => l.cle === r && (acces.magasins ?? []).includes(l.store_name)).map((l) => [l.store_name, l.valeur]))
+        // Équipements du magasin, en lecture seule (script 0046_equipements_magasins.sql)
+        return route.fulfill({ json: { temps_forts: lire('temps_forts') ?? [], parcours_integration: lire('parcours_integration') ?? null, integration: rubrique('integration'), equipements: rubrique('equipements') } })
       }
       if (['communications', 'publier_communication', 'supprimer_communication', 'basculer_pouce_communication', 'commenter_communication', 'supprimer_commentaire_communication', 'lectures_communications', 'lire_communications', 'a_la_une', 'mettre_a_la_une', 'connaissances', 'prendre_connaissance', 'demander_connaissance'].includes(fn)) {
         if (options.communications === null) return absente()

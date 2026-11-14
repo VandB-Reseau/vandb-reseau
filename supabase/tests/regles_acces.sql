@@ -1025,3 +1025,33 @@ SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
 SELECT pg_temp.attendre('Vague 6 : plus de modification après 15 minutes', pg_temp.refuse('SELECT public.modifier_message(' || :m_fr || ', ''Trop tard'')'), 1);
 RESET ROLE;
 RESET request.jwt.claim.sub;
+
+-- ── 0046 : équipements du magasin (rubrique « equipements »), lus par le franchisé par animation_franchise()
+\ir ../migrations/0046_equipements_magasins.sql
+\ir ../migrations/0046_equipements_magasins.sql
+SELECT pg_temp.attendre('Journal : 0046 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0046'), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Équipements : le Coach les saisit sur son magasin',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''equipements'', ''[{"id":"e1","categorie":"tireuse","quantite":3}]'') ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur'), 0);
+SELECT pg_temp.attendre('Équipements : pas sur un magasin d''un autre Coach',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Nice'', ''equipements'', ''[]'')'), 1);
+RESET ROLE;
+INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES ('Nice', 'equipements', '[{"id":"e2","categorie":"barnum","quantite":1}]')
+ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Équipements : le franchisé lit ceux de son magasin', (SELECT count(*) FROM jsonb_object_keys(public.animation_franchise()->'equipements') k WHERE k = 'Lille'), 1);
+SELECT pg_temp.attendre('Équipements : jamais ceux d''un autre magasin', (SELECT count(*) FROM jsonb_object_keys(public.animation_franchise()->'equipements') k WHERE k = 'Nice'), 0);
+SELECT pg_temp.attendre('Équipements : pas de lecture directe', (SELECT count(*) FROM public.suivi_magasins WHERE cle = 'equipements'), 0);
+SELECT pg_temp.attendre('Équipements : pas d''écriture directe par le franchisé',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''equipements'', ''[]'') ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur'), 1);
+SELECT pg_temp.attendre('Équipements : le franchisé modifie ceux de son magasin',
+  pg_temp.refuse('SELECT public.ecrire_equipements(''Lille'', ''[{"id":"e1","categorie":"tireuse","quantite":5}]'')'), 0);
+SELECT pg_temp.attendre('Équipements : la modification du franchisé est lue', (SELECT (public.animation_franchise()->'equipements'->'Lille'->0->>'quantite')::int), 5);
+SELECT pg_temp.attendre('Équipements : jamais sur un autre magasin', pg_temp.refuse('SELECT public.ecrire_equipements(''Nice'', ''[]'')'), 1);
+SELECT pg_temp.attendre('Équipements : liste mal formée refusée', pg_temp.refuse('SELECT public.ecrire_equipements(''Lille'', ''{"a":1}'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Équipements : ecrire_equipements refusée à l''équipe', pg_temp.refuse('SELECT public.ecrire_equipements(''Lille'', ''[]'')'), 1);
+RESET ROLE;
+RESET request.jwt.claim.sub;

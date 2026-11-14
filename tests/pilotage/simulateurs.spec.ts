@@ -83,14 +83,15 @@ test('franchisé : une soirée se met dans le budget, la promo se lit en volume'
   await page.getByLabel('Prix par participant TTC').fill('25')
   await page.getByLabel('Participants attendus').fill('40')
   await page.getByLabel('Taux de marge', { exact: true }).fill('60')
-  await page.getByLabel('Coûts propres HT').fill('200')
+  // Vague 10 : sans achats des participants ; coûts d'office 50 € de décoration et 150 € d'animation
+  await page.getByLabel('Les participants achètent en cave').uncheck()
   await page.getByLabel('Extras de personnel').fill('150')
   // Bar à 18 % de TVA : 25 ÷ 1,18 = 21,19 € HT × 40 = 847,46 € ; marge 508,47 − 3 % 25,42 − 350 = 133,05 €
   await expect(page.getByRole('status')).toContainText(/gain de 133\s€/)
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-simulateurs-soiree.png`, fullPage: true })
   await page.getByRole('button', { name: 'Mettre dans mon budget 2027' }).click()
-  await expect(page.getByText(/Ajouté au budget 2027\. Les extras de personnel se saisissent dans l’Équipe du budget\. Pense à l’envoyer au siège\./)).toBeVisible()
+  await expect(page.getByText(/Ajouté au budget 2027\. Les extras et les heures de l’équipe se saisissent dans l’Équipe du budget\. Pense à l’envoyer au siège\./)).toBeVisible()
   const budget = ecritures.find((e) => e.table === 'budgets' && e.methode === 'PATCH')?.corps as { ajustements: { tempsForts: unknown[] } }
   expect(budget.ajustements.tempsForts).toEqual([{ nom: 'Soirée bières de Noël', type: 'soiree', mois: 12, univers: 'bar', caAnPasse: 0, ca: 847, autresCharges: 200, moisAchats: 11 }])
 })
