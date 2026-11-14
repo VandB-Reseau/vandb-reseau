@@ -23,7 +23,6 @@ import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
-import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
@@ -584,19 +583,19 @@ export function MagasinsFranchise() {
 // comme pour l'équipe (Joseph, 23/10/2026), plus d'onglet Messages : le picto message ouvre le groupe du magasin dans
 // Messages ; les bonnes pratiques du magasin ont leur onglet
 // Refonte (Joseph, 09/11/2026, 3A) : mêmes cinq onglets que la fiche de l'équipe, deux niveaux au plus.
-// Activité : visites et campagnes ; Chiffres : suivi face au budget, chiffres du mois et saisies ; Ressources : bonnes pratiques
+// Activité : visites, campagnes et bonnes pratiques (plus d'onglet « Ressources », Joseph 14/11/2026) ; Chiffres : suivi
+// face au budget, chiffres du mois et saisies
 type VueFiche = 'fiche' | 'chiffres' | 'budget' | 'visites' | 'campagnes' | 'pratiques'
-type OngletFicheF = 'fiche' | 'activite' | 'chiffres' | 'budget' | 'pratiques'
+type OngletFicheF = 'fiche' | 'activite' | 'chiffres' | 'budget'
 const rubriques: Rubrique<OngletFicheF>[] = [
   { vue: 'fiche', libelle: 'Vue d’ensemble', court: 'Aperçu', icone: <StorefrontOutlined /> },
   { vue: 'activite', libelle: 'Activité', icone: <EventNoteOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
   { vue: 'budget', libelle: 'Budget', icone: <RequestQuoteOutlined /> },
-  { vue: 'pratiques', libelle: 'Ressources', icone: <TipsAndUpdatesOutlined /> },
 ]
-const partiesActiviteF: { vue: VueFiche; libelle: string }[] = [{ vue: 'visites', libelle: 'Visites' }, { vue: 'campagnes', libelle: 'Campagnes' }]
+const partiesActiviteF: { vue: VueFiche; libelle: string }[] = [{ vue: 'visites', libelle: 'Visites' }, { vue: 'campagnes', libelle: 'Campagnes' }, { vue: 'pratiques', libelle: 'Bonnes pratiques' }]
 const VUES_F: VueFiche[] = ['fiche', 'chiffres', 'budget', 'visites', 'campagnes', 'pratiques']
-const ongletDeF = (v: VueFiche): OngletFicheF => (v === 'visites' || v === 'campagnes' ? 'activite' : v)
+const ongletDeF = (v: VueFiche): OngletFicheF => (v === 'visites' || v === 'campagnes' || v === 'pratiques' ? 'activite' : v)
 const PARTIES_BUDGET_F = ['budget', 'visualiser', 'echanges', 'depart', 'ventes', 'calendrier', 'investissements', 'equipe', 'fraisBudget', 'resultat', 'tresoBudget', 'travaux']
 
 function OngletFiche({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (msg: string) => void }) {

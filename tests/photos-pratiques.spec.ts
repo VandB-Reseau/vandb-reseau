@@ -69,8 +69,10 @@ test('les bonnes pratiques : liste, filtre par thème, fiche magasin', async ({ 
 test('ajouter une bonne pratique avec une photo et un magasin qui la reprend', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, config: { bonnes_pratiques: pratiques } })
-  await page.goto('./#/magasins/Lyon%20Test?vue=pratiques')
-  await page.getByRole('button', { name: 'Ajouter une bonne pratique' }).click()
+  // Ajout depuis le « + » de la fiche du magasin
+  await page.goto('./#/magasins/Lyon%20Test')
+  await page.getByRole('button', { name: 'Ajouter', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Bonne pratique' }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle bonne pratique' })
   await expect(d.getByRole('combobox', { name: 'Magasin' })).toHaveValue('Lyon Test')
   await expect(d.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
