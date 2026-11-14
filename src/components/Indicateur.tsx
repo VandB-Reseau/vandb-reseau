@@ -5,6 +5,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Typography from '@mui/material/Typography'
+import { styleChiffre } from '../theme/theme'
 
 // Grille : deux par ligne sur téléphone, quatre sur PC
 export const grilleIndicateurs = { display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 1, md: 1.5 } } as const
@@ -25,12 +26,12 @@ export function Indicateur({ libelle, valeur, detail, couleur, couleurDetail, li
       <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' }, lineHeight: 1.35 }}>{libelle}</Typography>
       <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: large ? '1.75rem' : { xs: '1.125rem', md: '1.75rem' }, fontWeight: 700, lineHeight: 1.25, color: couleur }}>{valeur}</Typography>
+          <Typography sx={{ ...styleChiffre, color: couleur }}>{valeur}</Typography>
           {detail && <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' }, ...(couleurDetail ? { color: couleurDetail, fontWeight: 700 } : {}) }}>{detail}</Typography>}
         </Box>
         {fin}
       </Box>
-      {phrase && <Typography sx={{ fontSize: '0.9375rem', fontWeight: 500, mt: 0.5 }}>{phrase}</Typography>}
+      {phrase && <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, mt: 0.5 }}>{phrase}</Typography>}
       {children && <Box aria-hidden>{children}</Box>}
     </>
   )

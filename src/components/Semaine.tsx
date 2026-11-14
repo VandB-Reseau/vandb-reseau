@@ -23,6 +23,7 @@ import { libellePasVu } from '../data/visites'
 import { motDe } from '../data/motFranchise'
 import { lienFiche } from '../lib/format'
 import type { Reseau, Visite } from '../data/modele'
+import { styleChiffre } from '../theme/theme'
 
 const jourCourt = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 
@@ -38,7 +39,7 @@ export function coachsSuivis(reseau: Reseau, profil: ReturnType<typeof useAuth>[
 function Chiffre({ valeur, libelle, detail }: { valeur: ReactNode; libelle: string; detail?: ReactNode }) {
   return (
     <Card sx={{ border: 0, px: 1.5, py: 1.25, minWidth: 0 }}>
-      <Typography sx={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{valeur}</Typography>
+      <Typography sx={{ ...styleChiffre, whiteSpace: 'nowrap' }}>{valeur}</Typography>
       <Typography variant="body2" color="text.secondary">{libelle}</Typography>
       {detail && <Box sx={{ mt: 0.5 }}>{detail}</Box>}
     </Card>

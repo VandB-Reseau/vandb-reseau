@@ -9,6 +9,7 @@ import { Aide } from './Aide'
 import { Courbe } from './Courbe'
 import { COULEUR_NIVEAU } from './Tableau'
 import type { NiveauEcart } from '../moteur/visuel'
+import { styleChiffre } from '../../theme/theme'
 
 // Carte de chiffre clé : libellé discret, valeur en grand, écart coloré (vert si favorable, rouge sinon), courbe facultative.
 // Lot 32 : picto (i) à côté du libellé, l'aide du calcul (aide) ou le calcul détaillé avec les chiffres du magasin (info)
@@ -35,7 +36,7 @@ export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide
         {info}
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
-        <Typography component="p" sx={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}>{valeur}</Typography>
+        <Typography component="p" sx={styleChiffre}>{valeur}</Typography>
         {ecart && (
           <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, fontSize: '0.8125rem', fontWeight: 700, color: ecart.favorable ? 'success.dark' : 'error.main' }}>
             {ecart.hausse ? <ArrowUpwardOutlined sx={{ fontSize: 16 }} /> : <ArrowDownwardOutlined sx={{ fontSize: 16 }} />}
@@ -51,7 +52,7 @@ export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide
         </Box>
       )}
       {detail && <Typography color="text.secondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>{detail}</Typography>}
-      {phrase && <Typography sx={{ fontSize: '0.9375rem', fontWeight: 500, mt: 0.5 }}>{phrase}</Typography>}
+      {phrase && <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, mt: 0.5 }}>{phrase}</Typography>}
       {serie && <Box sx={{ mt: 'auto', pt: 1 }}><Courbe valeurs={serie} /></Box>}
       {action}
     </Card>

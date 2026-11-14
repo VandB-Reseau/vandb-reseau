@@ -13,7 +13,18 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   système) puis bascule en Alegreya ou Lato, visible surtout sur les titres (mois de l'Agenda, titres de page et de
   section). Les cinq fichiers de police (jeu latin) sont préchargés dans la page et l'app attend qu'ils soient prêts avant
   son premier affichage (1,5 s au plus). Sans migration.
-
+- Barre du haut sur fond noir (Joseph, 14/11/2026) : sur téléphone, toute la barre est noire (logo sans ovale, recherche,
+  cloche et compte en clair), filet jaune et vert dessous ; sur PC, même tête noire en haut du menu latéral.
+- Objectifs de l'année et plan d'action en un seul bloc (Joseph, 14/11/2026) : dans l'aperçu de la fiche magasin, le
+  bloc « Objectifs 2026 et plan d'action » remplace les cartes séparées Plan d'action et Objectifs. Chaque objectif
+  porte sa période (Année, 1er semestre, ou « D'ici » son mois), sa cible, sa jauge et son statut ; dessous, ses
+  priorités (3 au plus par objectif), chacune avec ses tâches (échéance, porteur) et « Ajouter une tâche » qui la
+  rattache d'office. Priorités sans objectif chiffré à part, tâches hors plan ensuite. Fixer un objectif propose
+  l'année ou le semestre. Le franchisé voit toujours ses priorités et ses tâches, jamais l'objectif chiffré. Sans migration.
+- Proportions du texte (Joseph, 14/11/2026) : une seule échelle, la même partout. Titre de page 26 (22 sur téléphone),
+  chiffre clé 22 (20 sur téléphone, style commun `styleChiffre`), titre de section 18, titre de carte 16, texte et
+  onglets 14, légende 13, mention 12. Les chiffres des cartes (accueil, fiche, simulateurs, budget, Santé, bilan)
+  passent de 28 à 22 ; titres de section des écrans du budget alignés sur ceux du réseau (18). Test de cohérence à jour.
 - Fiche magasin sur téléphone (Joseph, 14/11/2026) : Budget et Simuler dans la barre d'onglets, sans « Plus », dès
   360 px (marges des onglets resserrées à 7 px) ; la Nine box s'ouvre par le menu « ⋯ » de l'en-tête. PC inchangé.
 - Simulateurs, HT et TTC (Joseph, 14/11/2026) : CA et prix d'achat toujours HT, prix de vente au client final saisi TTC,

@@ -89,13 +89,13 @@ import { SectionExterieur, SectionRedressement } from '../components/ExterieurRe
 import { SectionReunionsMagasin } from '../components/Reunions'
 import { SectionConcurrents } from '../components/Concurrents'
 import { SectionEquipements } from '../components/Equipements'
-import { SectionObjectifs } from '../components/Objectifs'
-import { SectionPlan } from '../components/PlanAction'
+import { SectionObjectifsPlan } from '../components/PlanAction'
 import { MontrerAuFranchise } from '../components/MontrerAuFranchise'
 import PresentToAllOutlined from '@mui/icons-material/PresentToAllOutlined'
 import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 import { cartouche } from '../components/Social'
 import { FilAriane } from '../components/FilAriane'
+import { styleChiffre } from '../theme/theme'
 
 // Refonte (Joseph, 09/11/2026, choix 3A) : cinq onglets, jamais plus de deux niveaux. Activité regroupe tâches et campagnes,
 // visites et journal ; Chiffres regroupe le suivi face au budget, la santé, les leviers et les saisies (une seule source,
@@ -241,7 +241,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             </Box>
             <Box sx={{ display: 'grid', gap: 2, minWidth: 0, order: { xs: 1, lg: 2 } }}>
               {aOuvrir(m, reseau.jour) && <SectionOuverture reseau={reseau} m={m} signaler={setConfirmation} />}
-              <SituationMagasin reseau={reseau} m={m} objectifs={<><SectionPlan reseau={reseau} m={m} signaler={setConfirmation} /><SectionObjectifs reseau={reseau} m={m} signaler={setConfirmation} /></>} />
+              <SituationMagasin reseau={reseau} m={m} objectifs={<SectionObjectifsPlan reseau={reseau} m={m} signaler={setConfirmation} />} />
               {lieuCarte && (
                 <Card sx={{ overflow: 'hidden' }}>
                   <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
@@ -474,7 +474,7 @@ function SectionDeploiements({ reseau, m, modifier }: { reseau: Reseau; m: Magas
   return (
     <Section titre="Déploiements" action={<Button startIcon={<EditOutlined />} onClick={modifier} aria-label="Modifier les déploiements" sx={{ minHeight: 48 }}>Modifier</Button>}>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-        <Typography sx={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1.1 }}>{n('positif')}</Typography>
+        <Typography sx={{ ...styleChiffre, lineHeight: 1.1 }}>{n('positif')}</Typography>
         <Typography variant="body2" color="text.secondary">sur {ths.length} thématique{ths.length > 1 ? 's' : ''} déployée{n('positif') > 1 ? 's' : ''}</Typography>
       </Box>
       <Box role="img" aria-label={`${n('positif')} déployées, ${n('partiel')} en partie, ${n('negatif')} pas déployées sur ${ths.length}`}

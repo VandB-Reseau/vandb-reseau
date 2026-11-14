@@ -8,6 +8,7 @@ import { milliers, MOIS_LONGS, taux } from '../lib/format'
 import type { Tresorerie } from '../moteur/tresorerie'
 import type { Budget } from '../moteur/types'
 import { hautEntete } from '../../components/Collant'
+import { styleChiffre } from '../../theme/theme'
 
 // Lot 42 (Joseph, 02/11/2026, proposition 4) : le résultat du budget reste en vue pendant qu'on change les hypothèses ;
 // chaque frappe le recalcule. Sur PC, la bande reste collée en haut de l'écran ; sur téléphone, elle est en tête de page.
@@ -46,7 +47,7 @@ export function ResultatDirect({ budget: b, ebeSiege, tresorerie, annee, infos =
               {c.aide && <Aide sujet={c.aide} />}
               {c.info}
             </Box>
-            <Typography sx={{ fontSize: c.fort ? '1.375rem' : '1.25rem', fontWeight: c.fort ? 900 : 700, lineHeight: 1.25, fontVariantNumeric: 'tabular-nums' }}>{c.valeur}</Typography>
+            <Typography sx={{ ...styleChiffre, fontWeight: c.fort ? 800 : 700 }}>{c.valeur}</Typography>
             {c.detail && <Typography variant="body2" sx={{ fontSize: '0.8125rem', color: c.couleur ?? 'text.secondary', fontWeight: c.couleur ? 700 : 400 }}>{c.detail}</Typography>}
           </Box>
         ))}
