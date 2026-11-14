@@ -95,9 +95,10 @@ import { FilAriane } from '../components/FilAriane'
 
 // Refonte (Joseph, 09/11/2026, choix 3A) : cinq onglets, jamais plus de deux niveaux. Activité regroupe tâches et campagnes,
 // visites et journal ; Chiffres regroupe le suivi face au budget, la santé, les leviers et les saisies (une seule source,
-// la caisse) ; Budget ne garde que les étapes du budget ; Ressources accueille les bonnes pratiques.
+// la caisse) ; Budget ne garde que les étapes du budget. Les bonnes pratiques sont dans l'Activité (Joseph, 14/11/2026 :
+// plus d'onglet « Ressources » ; anciens liens « ?vue=pratiques » ouverts sur le filtre Bonnes pratiques).
 type VueFiche = 'fiche' | 'activite' | 'actions' | 'visites' | 'journal' | 'chiffres' | 'ninebox' | 'budget' | 'pratiques'
-type OngletFiche = 'fiche' | 'activite' | 'chiffres' | 'ninebox' | 'budget' | 'pratiques'
+type OngletFiche = 'fiche' | 'activite' | 'chiffres' | 'ninebox' | 'budget'
 const rubriquesFiche: Rubrique<OngletFiche>[] = [
   { vue: 'fiche', libelle: 'Vue d’ensemble', court: 'Aperçu', icone: <StorefrontOutlined /> },
   { vue: 'activite', libelle: 'Activité', icone: <TaskAltOutlined /> },
@@ -105,16 +106,15 @@ const rubriquesFiche: Rubrique<OngletFiche>[] = [
   // Joseph (13/11/2026) : la nine box du magasin a son onglet, avec son évolution
   { vue: 'ninebox', libelle: 'Nine box', icone: <GridViewOutlined /> },
   { vue: 'budget', libelle: 'Budget', icone: <RequestQuoteOutlined /> },
-  { vue: 'pratiques', libelle: 'Ressources', icone: <TipsAndUpdatesOutlined /> },
 ]
 // Vague 3 (23A) : plus de sous-onglets dans Activité ; les anciennes adresses (actions, visites, journal) ouvrent le fil
 // sur le bon filtre
-const ongletDe = (v: VueFiche): OngletFiche => (v === 'actions' || v === 'visites' || v === 'journal' || v === 'activite' ? 'activite' : v)
+const ongletDe = (v: VueFiche): OngletFiche => (v === 'actions' || v === 'visites' || v === 'journal' || v === 'activite' || v === 'pratiques' ? 'activite' : v)
 const VUES: VueFiche[] = ['fiche', 'activite', 'actions', 'visites', 'journal', 'chiffres', 'ninebox', 'budget', 'pratiques']
 // Anciens liens vers un onglet regroupé : l'onglet qui l'accueille, ouvert sur sa partie
 const anciennesVues: Record<string, VueFiche> = { sante: 'ninebox', campagnes: 'actions', fil: 'journal' }
 const filtreActivite = (v: VueFiche, fil: string | null): FiltreActivite =>
-  (FILTRES_ACTIVITE.some((f) => f.v === fil) ? fil as FiltreActivite : v === 'visites' ? 'visites' : v === 'journal' ? 'journal' : 'tout')
+  (FILTRES_ACTIVITE.some((f) => f.v === fil) ? fil as FiltreActivite : v === 'visites' ? 'visites' : v === 'journal' ? 'journal' : v === 'pratiques' ? 'pratiques' : 'tout')
 // Parties du pilotage rangées dans l'onglet Budget ; toutes les autres (suivi, santé, saisies) sont dans Chiffres
 const PARTIES_BUDGET = ['budget', 'visualiser', 'echanges', 'depart', 'ventes', 'calendrier', 'investissements', 'equipe', 'fraisBudget', 'resultat', 'tresoBudget', 'travaux']
 
@@ -242,7 +242,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         {/* Vague 3 (23A) : l'activité du magasin en un seul fil, « À venir » en tête */}
         {ongletDe(vue) === 'activite' && (
           <ActiviteMagasin reseau={reseau} m={m} filtre={filtreActivite(vue, params.get('fil'))} filtrer={(f) => setParams((p) => { const n = new URLSearchParams(p); n.set('vue', 'activite'); if (f === 'tout') n.delete('fil'); else n.set('fil', f); return n }, { replace: true })}
-            actions={actions} signaler={setConfirmation} saisirVisite={saisirVisite} modifierVisite={setVisite} />
+            actions={actions} signaler={setConfirmation} saisirVisite={saisirVisite} modifierVisite={setVisite} ajouterPratique={() => setNouvellePratique(true)} />
         )}
 
         {vue === 'budget' && <OngletBudget nom={m.nom} mode="budget" />}
@@ -255,8 +255,6 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             <Box sx={{ gridColumn: { lg: '1 / -1' } }}><SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/campagnes?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} /></Box>
           </Box>
         )}
-
-        {vue === 'pratiques' && <SectionPratiques reseau={reseau} m={m} signaler={setConfirmation} />}
 
         {vue === 'chiffres' && <OngletBudget nom={m.nom} mode="chiffres" sante={
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
@@ -577,15 +575,21 @@ function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Ma
   )
 }
 
-// Bonnes pratiques du magasin, et celles d'autres magasins qu'il a reprises
-function SectionPratiques({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (msg: string) => void }) {
+// Filtre « Bonnes pratiques » de l'activité : celles du magasin en entier (modifier, J'aime, commentaires), et celles
+// d'autres magasins qu'il a reprises. L'ajout passe par le « + » de l'en-tête ; l'état vide le propose aussi.
+function SectionPratiques({ reseau, m, signaler, ajouter }: { reseau: Reseau; m: Magasin; signaler: (msg: string) => void; ajouter: () => void }) {
   const [edition, setEdition] = useState<BonnePratique | null | undefined>(undefined)
   const reactions = useReactionsPratiques()
   const siennes = reseau.pratiques.filter((p) => p.magasin === m.nom)
   const reprises = reseau.pratiques.filter((p) => p.reprises.includes(m.nom))
   return (
-    <Section titre="Bonnes pratiques" action={<Button startIcon={<AddOutlined />} onClick={() => setEdition(null)} aria-label="Ajouter une bonne pratique" sx={{ minHeight: 48 }}>Ajouter</Button>}>
-      {!siennes.length && !reprises.length && <Typography variant="body2" color="text.secondary">Aucune bonne pratique enregistrée.</Typography>}
+    <Section titre="Bonnes pratiques">
+      {!siennes.length && !reprises.length && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Typography variant="body2" color="text.secondary">Aucune bonne pratique pour ce magasin.</Typography>
+          <Button startIcon={<AddOutlined />} onClick={ajouter} sx={{ minHeight: 48 }}>Ajouter une bonne pratique</Button>
+        </Box>
+      )}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         {siennes.map((p) => <CartePratique key={p.id} p={p} sansMagasin modifier={() => setEdition(p)} reactions={reactions} signaler={signaler} />)}
       </Box>
@@ -708,9 +712,9 @@ const FILTRES_ACTIVITE: { v: FiltreActivite; libelle: string; genres: string[] }
   { v: 'chiffres', libelle: 'Chiffres', genres: ['chiffres'] },
   { v: 'journal', libelle: 'Journal', genres: ['journal'] },
 ]
-function ActiviteMagasin({ reseau, m, filtre, filtrer, actions, signaler, saisirVisite, modifierVisite }: {
+function ActiviteMagasin({ reseau, m, filtre, filtrer, actions, signaler, saisirVisite, modifierVisite, ajouterPratique }: {
   reseau: Reseau; m: Magasin; filtre: FiltreActivite; filtrer: (f: FiltreActivite) => void; actions: ReturnType<typeof actionsDuMagasin>
-  signaler: (message: string) => void; saisirVisite: () => void; modifierVisite: (v: Visite) => void
+  signaler: (message: string) => void; saisirVisite: () => void; modifierVisite: (v: Visite) => void; ajouterPratique: () => void
 }) {
   const edition = useEditionJournal(reseau, m, signaler)
   const tous = useMemo(() => [...filDu(reseau, new Set([m.nom]), null, 3650), ...journalDansLeFil(reseau, m)]
@@ -738,7 +742,9 @@ function ActiviteMagasin({ reseau, m, filtre, filtrer, actions, signaler, saisir
       <Box>
         <Puces label="Filtrer l’activité" valeur={filtre} onChange={filtrer} options={FILTRES_ACTIVITE.map((f) => ({ v: f.v, libelle: f.libelle }))} />
       </Box>
-      {filtre === 'visites'
+      {filtre === 'pratiques'
+        ? <SectionPratiques reseau={reseau} m={m} signaler={signaler} ajouter={ajouterPratique} />
+        : filtre === 'visites'
         ? <>
           <SectionAudits reseau={reseau} m={m} />
           <SectionVisites reseau={reseau} m={m} saisir={saisirVisite} modifier={modifierVisite} />

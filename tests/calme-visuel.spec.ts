@@ -31,14 +31,14 @@ test('seul le rouge reste une pastille pleine ; le reste est un texte coloré', 
   await page.screenshot({ path: `captures/${info.project.name}-magasins-calme.png` })
 })
 
-test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur PC, tous les onglets', async ({ page, isMobile }, info) => {
-  if (isMobile) await page.setViewportSize({ width: 390, height: 844 })
+test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur un téléphone courant et sur PC, tous les onglets', async ({ page, isMobile }, info) => {
+  if (isMobile) await page.setViewportSize({ width: 360, height: 780 })
   await seConnecter(page)
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   if (!isMobile) {
     // Refonte (Joseph, 09/11/2026, 3A) : 5 onglets
-    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Nine box', 'Budget', 'Ressources'])
+    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Nine box', 'Budget'])
     return
   }
   await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Plus'])
@@ -51,15 +51,15 @@ test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur PC,
   }
   await onglets.getByRole('tab', { name: 'Autres rubriques' }).click()
   const panneau = page.getByRole('dialog', { name: 'Rubriques de Brest Test' })
-  await expect(panneau.getByRole('button')).toHaveText(['Nine box', 'Budget', 'Ressources'])
+  await expect(panneau.getByRole('button')).toHaveText(['Nine box', 'Budget'])
   for (const b of await panneau.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-onglets-plus.png` })
-  await panneau.getByRole('button', { name: 'Ressources' }).click()
-  await expect(page).toHaveURL(/vue=pratiques/)
+  await panneau.getByRole('button', { name: 'Nine box' }).click()
+  await expect(page).toHaveURL(/vue=ninebox/)
   // L'onglet « Plus » prend le nom de la rubrique ouverte
-  const plus = onglets.getByRole('tab', { name: 'Ressources, autres rubriques' })
-  await expect(plus).toHaveText('Ressources')
+  const plus = onglets.getByRole('tab', { name: 'Nine box, autres rubriques' })
+  await expect(plus).toHaveText('Nine box')
   await expect(plus).toHaveAttribute('aria-selected', 'true')
   await page.screenshot({ path: `captures/${info.project.name}-onglet-journal.png` })
   await onglets.getByRole('tab', { name: 'Vue d’ensemble' }).click()

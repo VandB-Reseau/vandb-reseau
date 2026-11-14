@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin (Joseph, 14/11/2026) : plus d'onglet « Ressources » ; les bonnes pratiques du magasin sont dans son
+  Activité (fil « Tout » et filtre « Bonnes pratiques », avec modifier, J'aime et reprises d'autres magasins), l'ajout
+  par le « + ». Fiche du franchisé : « Bonnes pratiques » à côté de Visites et Campagnes. Anciens liens « ?vue=pratiques »
+  ouverts sur ce filtre. Téléphone : onglets plus serrés, les cinq onglets de la fiche tiennent dès 375 px de large
+  (« Plus » seulement sur les écrans plus étroits). Sans migration.
+
 - Boîte à outils du coach, vague 9 (Joseph, 14/11/2026, choix 138 à 147 sauf 148 à 151, « tout le reste, en une fois ») :
   cinq simulateurs en plus. Contrat extérieur (net par fût, coûts fixes de la tireuse et des livraisons, fûts pour
   l'équilibre, remise maximale, prix plancher d'une livraison) avec le don à l'association, réduction mécénat de 60 % si

@@ -91,7 +91,7 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await page.getByRole('link', { name: /Annecy Test/ }).click()
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
   // Plus d'onglet Messages, comme pour l'équipe : le picto message ouvre le groupe du magasin (Joseph, 23/10/2026)
-  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Aperçu', 'Activité', 'Chiffres', 'Plus'] : ['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Ressources'])
+  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Aperçu', 'Activité', 'Chiffres', 'Budget'] : ['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget'])
   await expect(page.getByRole('button', { name: /Modifier|Réaffecter|Saisir/ })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'En bref' })).toContainText('tâches en cours')
   await expect(page.getByRole('region', { name: 'Fil du magasin' })).toHaveCount(0)
@@ -119,7 +119,7 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await expect(page).toHaveURL(/#\/echanges\/magasin\/Annecy%20Test$/)
 })
 
-test('un franchisé d’un seul magasin arrive sur sa fiche par l’onglet Mes magasins ; ses bonnes pratiques ont leur onglet', async ({ page, isMobile }, info) => {
+test('un franchisé d’un seul magasin arrive sur sa fiche par l’onglet Mes magasins ; ses bonnes pratiques sont dans l’Activité', async ({ page, isMobile }, info) => {
   await seConnecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, espace: { ...espace, pratiques: [...espace.pratiques,
     { id: 'bp2', magasin: 'Annecy Test', date: '2026-09-20', titre: 'Coffrets à composer', theme: 'Vente additionnelle', texte: 'Le client choisit trois bouteilles.', par: 'Hugo FICTIF', photos: [], reprises: [] }] } })
   await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: isMobile ? 'Magasin' : 'Mes magasins', exact: true }).click()
