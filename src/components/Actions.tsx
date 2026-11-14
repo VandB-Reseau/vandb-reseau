@@ -34,7 +34,7 @@ import { PuceStatut } from './StatutTache'
 import type { ActionLibre, Reseau, StatutTache } from '../data/modele'
 import { dateCourte, lienFiche } from '../lib/format'
 import { lienCompteRendu } from '../data/visites'
-import { PRIORITES_MAX, nouvelIdPriorite, prioritesActives, type Priorite } from '../data/planAction'
+import { nouvelIdPriorite, prioritesActives, type Priorite } from '../data/planAction'
 import { objectifsDu, phraseObjectif } from '../data/objectifs'
 import { enregistrerPlan } from '../data/chargement'
 import ListItemText from '@mui/material/ListItemText'
@@ -219,8 +219,8 @@ function echeancesRapides(jour: string): { libelle: string; date: string }[] {
 }
 
 // depuis : tâche née d'un message (texte proposé, fil « Équipe seule » ou non, message d'origine)
-export function DialogAction({ reseau, magasins, action, porteurInitial = '', echeanceInitiale = '', depuis, piecesInitiales = [], onFermer }: {
-  reseau: Reseau; magasins: string[]; action: ActionSuivie | null; porteurInitial?: string; echeanceInitiale?: string; depuis?: { texte: string; equipe: boolean; message: number }
+export function DialogAction({ reseau, magasins, action, porteurInitial = '', echeanceInitiale = '', prioriteInitiale = '', depuis, piecesInitiales = [], onFermer }: {
+  reseau: Reseau; magasins: string[]; action: ActionSuivie | null; porteurInitial?: string; echeanceInitiale?: string; prioriteInitiale?: string; depuis?: { texte: string; equipe: boolean; message: number }
   piecesInitiales?: Piece[]; onFermer: (msg?: string) => void
 }) {
   const { profil } = useAuth()
@@ -231,7 +231,7 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
   const [porteur, setPorteur] = useState(a?.porteur ?? porteurInitial)
   const [echeance, setEcheance] = useState(a ? echeanceDate(a) : echeanceInitiale)
   const [pieces, setPieces] = useState<Piece[]>(a?.pieces ?? piecesInitiales)
-  const [priorite, setPriorite] = useState(a?.priorite ?? '')
+  const [priorite, setPriorite] = useState(a?.priorite ?? prioriteInitiale)
   // Vague 7 (86A) : mêmes champs partout, le statut compris (à faire, en cours, bloquée avec sa raison)
   const [statut, setStatut] = useState<'' | StatutTache>(a?.statut ?? '')
   const [raison, setRaison] = useState(a?.raison ?? '')
@@ -285,13 +285,13 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
             slotProps={{ select: { displayEmpty: true, renderValue: (v) => (v === NOUVELLE ? 'Nouvelle priorité' : priorites.find((p) => p.id === v)?.titre ?? 'Aucune') }, inputLabel: { shrink: true } }}>
             <MenuItem value="" sx={{ minHeight: 48 }}>Aucune</MenuItem>
             {priorites.map((p) => <MenuItem key={p.id} value={p.id} sx={{ minHeight: 48 }}><ListItemText primary={p.titre} secondary={libelleObjectif(objectifs, p)} /></MenuItem>)}
-            {priorites.length < PRIORITES_MAX && <MenuItem value={NOUVELLE} sx={{ minHeight: 48, fontWeight: 600 }}>Nouvelle priorité…</MenuItem>}
+            <MenuItem value={NOUVELLE} sx={{ minHeight: 48, fontWeight: 600 }}>Nouvelle priorité…</MenuItem>
           </TextField>
           {priorite === NOUVELLE && (
             <>
               <TextField label="Nouvelle priorité" placeholder="Relancer la Cave" value={nouvellePriorite} onChange={(e) => setNouvellePriorite(e.target.value)} slotProps={{ htmlInput: { maxLength: 200 } }} />
               <TextField select label="Objectif chiffré de la priorité" value={objectifs.some((o) => o.id === objectifPriorite) ? objectifPriorite : ''} onChange={(e) => setObjectifPriorite(e.target.value)}
-                slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }} helperText={objectifs.length ? 'Jamais montré au franchisé' : 'Aucun objectif fixé pour ce magasin : il se fixe dans la fiche, carte Objectifs'}>
+                slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }} helperText={objectifs.length ? 'Jamais montré au franchisé' : 'Aucun objectif fixé pour ce magasin : il se fixe dans l’aperçu de la fiche'}>
                 <MenuItem value="" sx={{ minHeight: 48 }}>Aucun</MenuItem>
                 {objectifs.map((o) => <MenuItem key={o.id} value={o.id} sx={{ minHeight: 48 }}>{phraseObjectif(o)}</MenuItem>)}
               </TextField>

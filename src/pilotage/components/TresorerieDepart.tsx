@@ -8,6 +8,7 @@ import type { DepartEstime } from '../moteur/reprise'
 import type { Tresorerie } from '../moteur/tresorerie'
 import { Aide } from './Aide'
 import { ChampNombre } from './ChampNombre'
+import { styleChiffre } from '../../theme/theme'
 
 const finQuadrimestre = (q: number) => (q === 1 ? 'avril' : q === 2 ? 'août' : 'décembre')
 export const texteEstimee = (e: DepartEstime) =>
@@ -43,7 +44,7 @@ export function TresorerieDepart({ annee, depart, estimee, onDepart, lectureSeul
         {onDepart ? (
           <ChampNombre libelle="Trésorerie au 1er janvier" valeur={saisie} onChange={changer} desactive={lectureSeule} largeur={180} />
         ) : (
-          <Typography sx={{ fontSize: '1.75rem', fontWeight: 700 }}>{estimee ? milliers(estimee.montant) : 'Pas encore connue'}</Typography>
+          <Typography sx={styleChiffre}>{estimee ? milliers(estimee.montant) : 'Pas encore connue'}</Typography>
         )}
         {tresorerie && (
           <Typography variant="body2" color="text.secondary">

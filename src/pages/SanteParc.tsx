@@ -71,6 +71,7 @@ import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
 import { analyser as analyserCA, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, libelleMoisCourt, courbeCA, formatKEuros, type StatutAlerte } from '../data/chiffres'
 import { estOuvert, type Magasin, type Reseau } from '../data/modele'
 import { ChampDate as ChampDateCommun } from '../components/ChampDate'
+import { styleChiffre } from '../theme/theme'
 
 // Filtres communs : la recherche (Responsable Régional et Coach : le périmètre choisi)
 function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
@@ -175,7 +176,7 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
                         <Typography sx={{ fontWeight: 700, fontSize: { xs: 12, md: 14 }, flex: 1, lineHeight: 1.2 }}>{c.libelle}</Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                        {liste.length ? <Typography sx={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1 }}>{liste.length}</Typography>
+                        {liste.length ? <Typography sx={{ ...styleChiffre, lineHeight: 1 }}>{liste.length}</Typography>
                           : <Typography sx={{ fontSize: { xs: 16, md: 18 }, fontWeight: 600, lineHeight: 1, color: 'text.secondary' }}>0</Typography>}
                         <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>{liste.length ? `${pct(liste.length)} % des classés` : 'aucun magasin'}</Typography>
                       </Box>

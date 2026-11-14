@@ -7,6 +7,7 @@ import { useEntretiens } from '../data/entretiens'
 import { tauxRituels, type TauxRituel } from '../data/rituels'
 import { Personne } from './Entites'
 import type { Reseau } from '../data/modele'
+import { styleChiffre } from '../theme/theme'
 
 const couleur = (t: number | null) => (t === null ? 'text.secondary' : t >= 80 ? 'success.dark' : t >= 50 ? 'warning.dark' : 'error.main')
 export const libelleTaux = (t: TauxRituel) => (t.taux === null ? 'Pas encore mesuré' : `${t.taux} %`)
@@ -25,7 +26,7 @@ export function VueRituels({ reseau }: { reseau: Reseau }) {
       <Box role="list" aria-label="Taux de tenue des rituels" sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: `repeat(${taux.length}, 1fr)` } }}>
         {taux.map((t) => (
           <Box role="listitem" key={t.rituel.type} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }}>
-            <Typography sx={{ fontSize: '1.75rem', fontWeight: 700, color: couleur(t.taux) }}>{libelleTaux(t)}</Typography>
+            <Typography sx={{ ...styleChiffre, color: couleur(t.taux) }}>{libelleTaux(t)}</Typography>
             <Typography sx={{ fontWeight: 600 }}>{t.rituel.libelle}</Typography>
             {t.taux !== null && <Typography variant="body2" color="text.secondary">{t.faits} sur {t.attendus}</Typography>}
           </Box>

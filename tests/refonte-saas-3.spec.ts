@@ -131,7 +131,10 @@ test('26A : fixer un objectif chiffré, suivi dans la fiche et la préparation',
   await page.getByRole('dialog').getByRole('checkbox', { name: 'Refaire la tête de gondole Beaujolais' }).check()
   await page.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Objectif fixé.')).toBeVisible()
-  await expect(page.getByText('Panier moyen HT Cave : 40,00 € → 45,00 € d’ici janvier 2027')).toBeVisible()
+  // Joseph (14/11/2026) : objectifs de l'année et plan d'action en un seul bloc ; la période en tête de l'objectif
+  const bloc = page.locator('.MuiCard-root', { has: page.getByRole('heading', { name: 'Objectifs 2027 et plan d’action' }) })
+  await expect(bloc.getByRole('heading', { name: 'Panier moyen HT Cave : 40,00 € → 45,00 €' })).toBeVisible()
+  await expect(bloc.getByText('D’ici janvier 2027')).toBeVisible()
   await expect(page.getByText('En attente des chiffres')).toBeVisible()
   const e = ecritures.find((x) => x.methode === 'SUIVI' && (x.corps as { key: string }).key === 'objectifs_magasins')
   const valeur = JSON.parse((e!.corps as { value: string }).value) as Record<string, { indicateur: string; cible: number; depart: number; taches: string[] }[]>

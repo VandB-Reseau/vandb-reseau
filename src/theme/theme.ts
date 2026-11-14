@@ -32,9 +32,13 @@ export const couleurEvenement = { event: brand.or, reunion: brand.vertFonce, for
 // Texte lisible sur un aplat de la charte : noir sur les jaunes, blanc ailleurs
 export const texteSur = (fond: string) => ([brand.or, brand.jaune, brand.creme, brand.beige] as string[]).includes(fond.toLowerCase()) ? brand.noir : '#ffffff'
 
-// Vague 8 (92A) : une échelle de texte, et rien d'autre. Titre de page 30 (22 sur téléphone), chiffre clé 28, section 18,
-// titre de carte 16, texte 14, légende 13, mention 12. Les écrans n'écrivent plus de taille en dur hors de cette échelle.
-export const echelle = { page: '1.875rem', chiffre: '1.75rem', section: '1.125rem', carte: '1rem', texte: '0.875rem', legende: '0.8125rem', mention: '0.75rem' } as const
+// Vague 8 (92A) : une échelle de texte, et rien d'autre. Proportions revues (Joseph, 14/11/2026 : « que le choix établi
+// soit le même partout ») : titre de page 26 (22 sur téléphone), chiffre clé 22 (20 sur téléphone), titre de section 18,
+// titre de carte et sous-titre 16, texte et onglets 14, légende 13, mention 12. Un chiffre clé dépasse d'un cran le titre
+// de section, jamais le titre de page. Les écrans n'écrivent plus de taille en dur hors de cette échelle.
+export const echelle = { page: '1.625rem', chiffre: '1.375rem', section: '1.125rem', carte: '1rem', texte: '0.875rem', legende: '0.8125rem', mention: '0.75rem' } as const
+// Chiffre clé d'une carte (indicateurs, simulateurs, fiche magasin, accueil) : partout le même
+export const styleChiffre = { fontSize: { xs: '1.25rem', md: echelle.chiffre }, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' } as const
 
 // Polices : Lato (charte) pour le texte ; Alegreya, police libre proche de Coline (titres de la charte, sans fichier web), pour les titres
 const fontFamily = '"Lato", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
@@ -100,10 +104,10 @@ export const optionsTheme: ThemeOptions = {
     // Aucune taille sous 12 px dans l'app
     // Titres de page compacts sur téléphone, pour laisser la place au contenu
     // Refonte (Joseph, 09/11/2026, 8C) : titre de page en casse normale ; capitales seulement dans les écrans « marque »
-    h1: { fontFamily: titres, fontSize: '1.875rem', fontWeight: 800, letterSpacing: '0.005em', [telephone]: { fontSize: '1.375rem' } },
-    h2: { fontFamily: titres, fontSize: '1.5rem', fontWeight: 700 },
-    h3: { fontFamily: titres, fontSize: '1.125rem', fontWeight: 700 },
-    h4: { fontSize: '1.125rem', fontWeight: 700 },
+    h1: { fontFamily: titres, fontSize: '1.625rem', fontWeight: 800, letterSpacing: '0.005em', [telephone]: { fontSize: '1.375rem' } },
+    h2: { fontSize: '1.125rem', fontWeight: 700 },
+    h3: { fontSize: '1.125rem', fontWeight: 700 },
+    h4: { fontSize: '1rem', fontWeight: 700 },
     h5: { fontSize: '1rem', fontWeight: 700 },
     h6: { fontSize: '1rem', fontWeight: 700 },
     subtitle1: { fontSize: '1rem', fontWeight: 500 },

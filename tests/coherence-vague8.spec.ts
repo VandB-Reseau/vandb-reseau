@@ -3,7 +3,7 @@ import { seConnecter } from './supabase-simule'
 
 // Vague 8 (95A) : un test de cohérence qui empêche les dérives. Sur les écrans principaux :
 // toutes les tailles de texte sont sur l'échelle du thème (92A) et aucun bouton n'emploie un verbe retiré (101A).
-const ECHELLE = [12, 13, 14, 16, 18, 22, 24, 28, 30]
+const ECHELLE = [12, 13, 14, 16, 18, 20, 22, 26]
 const PAGES = ['./#/', './#/magasins', './#/magasins/Lyon%20Test', './#/magasins/Lyon%20Test?vue=activite', './#/magasins/Lyon%20Test?vue=ninebox', './#/visites', './#/taches', './#/echanges', './#/infos', './#/plus/sante']
 
 async function taillesHorsEchelle(page: Page): Promise<string[]> {

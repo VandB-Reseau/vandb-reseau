@@ -28,6 +28,7 @@ import { useMessagerie } from '../data/MessagerieContext'
 import { chargerReperesEquipe, type IndicateurRepere, type Reperes } from '../data/espaceFranchise'
 import { motDe, partiesMot, prochaineVisite } from '../data/motFranchise'
 import { libelleDistance, lignesConcurrents, suiviVide, useCommercesProches } from '../data/concurrence'
+import { styleChiffre } from '../theme/theme'
 
 // Fiche avant visite : tout ce qu'il faut savoir d'un magasin sur une page, lisible au téléphone
 // et téléchargeable en PDF (même feuille que le compte rendu de visite)
@@ -66,7 +67,7 @@ function Chiffres({ reseau, m }: { reseau: Reseau; m: Magasin }) {
           ].map((t) => (
             <Box key={t.libelle} sx={{ border: `1px solid ${FILET}`, borderRadius: 2, p: 1.25, minWidth: 0 }}>
               <Typography variant="body2" sx={{ color: GRIS }}>{t.libelle}</Typography>
-              <Typography sx={{ color: NOIR, fontWeight: 800, fontSize: '1.75rem', lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{t.valeur}</Typography>
+              <Typography sx={{ ...styleChiffre, color: NOIR, whiteSpace: 'nowrap' }}>{t.valeur}</Typography>
               {t.detail && <Typography variant="body2" sx={{ color: t.rouge ? ROUGE : GRIS, fontWeight: t.rouge ? 700 : 400 }}>{t.detail}</Typography>}
             </Box>
           ))}

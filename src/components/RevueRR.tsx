@@ -18,6 +18,7 @@ import { moisDeRevue, moisParDefaut, revueDu } from '../data/revue'
 import { porteursDe, echeanceDate } from '../data/actions'
 import { dateCourte, lienCoach, lienFiche, lienRR } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
+import { styleChiffre } from '../theme/theme'
 
 // À l'impression, seule la revue sort
 const styleImpression = (
@@ -43,7 +44,7 @@ const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 function Compteur({ valeur, libelle }: { valeur: string | number; libelle: string }) {
   return (
     <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'action.hover' }}>
-      <Typography sx={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2 }}>{valeur}</Typography>
+      <Typography sx={styleChiffre}>{valeur}</Typography>
       <Typography variant="body2" color="text.secondary">{libelle}</Typography>
     </Box>
   )

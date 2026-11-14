@@ -52,7 +52,7 @@ export function Initiales({ nom, taille = 44, icone, couleur }: { nom: string; t
   return (
     <Box aria-hidden sx={{
       width: taille, height: taille, borderRadius: '50%', flexShrink: 0, display: 'grid', placeItems: 'center',
-      bgcolor: alpha(c, 0.2), color: 'text.primary', fontWeight: 600, fontSize: taille >= 64 ? '1.5rem' : '0.9375rem',
+      bgcolor: alpha(c, 0.2), color: 'text.primary', fontWeight: 600, fontSize: taille >= 64 ? '1.375rem' : '0.875rem',
       '& svg': { fontSize: taille * 0.5 },
     }}>
       {icone ?? initialesDe(nom)}
@@ -123,7 +123,7 @@ export function CarteLignes({ children, label }: { children: ReactNode; label?: 
 // le cartouche de la charte (noir, capitales, penché) reste dans les écrans qui communiquent, marqués « marque »
 // (Accueil, Infos réseau, compte rendu de visite). En mode sombre, le cartouche passe en jaune-or.
 export const cartouche = (theme: Theme) => ({
-  display: 'inline-block', fontSize: '1rem', fontWeight: 700, lineHeight: 1.4, color: 'text.primary',
+  display: 'inline-block', fontSize: '1.125rem', fontWeight: 700, lineHeight: 1.4, color: 'text.primary',
   '.marque &': {
     px: 1, py: 0.25, bgcolor: '#1d1d1b', color: '#ffffff', fontSize: '0.8125rem', fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', transform: 'rotate(-1.5deg)',
     ...theme.applyStyles('dark', { bgcolor: brand.or, color: '#1d1d1b' }),

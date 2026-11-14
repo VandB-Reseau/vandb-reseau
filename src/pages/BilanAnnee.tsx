@@ -22,6 +22,7 @@ import { caseDe, historiqueSante, nineBox, tonDe, type CaseNineBox } from '../da
 import { anneeDe, suiviRythme } from '../data/visites'
 import { actionsDuMagasin, echeanceDate } from '../data/actions'
 import { reunionsDuMagasin, usePresences } from '../data/reunions'
+import { styleChiffre } from '../theme/theme'
 
 // Bilan de l'année d'un magasin (sprint 26, F1), pour l'entretien annuel avec le franchisé : chiffres de l'année face
 // à N-1, visites, nine box du début à la fin de l'année, audits, tâches tenues, réunions et formations, thématiques
@@ -112,7 +113,7 @@ function Tuile({ libelle, valeur, detail, ton }: { libelle: string; valeur: stri
   return (
     <Box sx={{ border: `1px solid ${FILET}`, borderRadius: 2, p: 1.25, minWidth: 0 }}>
       <Typography variant="body2" sx={{ color: GRIS }}>{libelle}</Typography>
-      <Typography sx={{ color: NOIR, fontWeight: 800, fontSize: '1.75rem', lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{valeur}</Typography>
+      <Typography sx={{ ...styleChiffre, color: NOIR, whiteSpace: 'nowrap' }}>{valeur}</Typography>
       {detail && <Typography variant="body2" sx={{ color: ton === 'rouge' ? ROUGE : ton === 'vert' ? VERT : GRIS, fontWeight: ton ? 700 : 400 }}>{detail}</Typography>}
     </Box>
   )

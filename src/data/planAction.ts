@@ -4,6 +4,7 @@
 import type { ActionSuivie } from './actions'
 import type { Reseau } from './modele'
 
+// Joseph (14/11/2026) : 3 priorités au plus par objectif (et 3 sans objectif)
 export const PRIORITES_MAX = 3
 export type StatutPriorite = 'active' | 'atteinte' | 'abandonnee'
 export interface Priorite {

@@ -29,7 +29,7 @@ async function avecVisitePrevue(page: Page) {
 
 async function ajouterPriorite(page: Page, titre: string) {
   await page.goto('./#/magasins/Lyon%20Test')
-  await page.getByRole('button', { name: 'Ajouter une priorité' }).click()
+  await page.getByRole('button', { name: 'Ajouter une priorité' }).first().click()
   const d = page.getByRole('dialog')
   await d.getByLabel('Priorité', { exact: true }).fill(titre)
   await d.getByRole('button', { name: 'Enregistrer' }).click()
