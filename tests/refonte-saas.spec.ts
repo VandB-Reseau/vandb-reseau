@@ -63,8 +63,10 @@ test('PC : menu clair en quatre rubriques, tête noire ; téléphone : barre du 
 test('PC : Ctrl K place le curseur dans la recherche, qui propose de créer et ouvre la saisie en panneau à droite', async ({ page, isMobile }, info) => {
   test.skip(isMobile, 'raccourci clavier et panneau latéral : PC')
   await connecter(page)
-  await page.keyboard.press('Control+k')
   const champ = page.getByRole('combobox', { name: 'Recherche globale' })
+  // Le raccourci s'écoute une fois le menu affiché : on attend le champ avant d'appuyer (course vue sur la CI)
+  await expect(champ).toBeVisible()
+  await page.keyboard.press('Control+k')
   await expect(champ).toBeFocused()
   await champ.fill('Annecy')
   const action = page.getByRole('option', { name: `Saisir une visite à ${M}` })
