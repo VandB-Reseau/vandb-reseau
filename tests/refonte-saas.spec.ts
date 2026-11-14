@@ -38,11 +38,11 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs, 'aucune erreur JavaScript').toEqual([])
 })
 
-test('PC : menu clair en quatre rubriques, sans barre noire ; téléphone : barre du haut claire et barre du bas inchangée', async ({ page, isMobile }, info) => {
+test('PC : menu clair en quatre rubriques, tête noire ; téléphone : barre du haut noire (Joseph, 14/11/2026) et barre du bas inchangée', async ({ page, isMobile }, info) => {
   await connecter(page)
   if (isMobile) {
     const fond = await page.getByRole('banner').evaluate((e) => getComputedStyle(e).backgroundColor)
-    expect(fond).not.toBe('rgb(0, 0, 0)')
+    expect(fond).toBe('rgb(0, 0, 0)')
     await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
     expect(await zonesTropPetites(page)).toEqual([])
   } else {

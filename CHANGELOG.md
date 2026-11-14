@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Barre du haut sur fond noir (Joseph, 14/11/2026) : sur téléphone, toute la barre est noire (logo sans ovale, recherche,
+  cloche et compte en clair), filet jaune et vert dessous ; sur PC, même tête noire en haut du menu latéral.
 - Objectifs de l'année et plan d'action en un seul bloc (Joseph, 14/11/2026) : dans l'aperçu de la fiche magasin, le
   bloc « Objectifs 2026 et plan d'action » remplace les cartes séparées Plan d'action et Objectifs. Chaque objectif
   porte sa période (Année, 1er semestre, ou « D'ici » son mois), sa cible, sa jauge et son statut ; dessous, ses

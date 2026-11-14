@@ -207,17 +207,20 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
       variant="permanent"
       sx={{ width: LARGEUR_MENU, flexShrink: 0, '& .MuiDrawer-paper': { width: LARGEUR_MENU, boxSizing: 'border-box', borderRight: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', display: 'flex', flexDirection: 'column' } }}
     >
-      <Box sx={{ px: 2, pt: 2, pb: 1.5, display: 'flex', alignItems: 'center', gap: 1.25 }}>
-        <Box sx={{ bgcolor: '#000000', borderRadius: 1.5, px: 0.75, py: 0.5, display: 'flex' }}><Logo size={14} /></Box>
-        <Typography component="span" sx={{ fontWeight: 700, fontSize: '1rem' }}>{franchise ? 'Espace franchisé' : 'Réseau'}</Typography>
+      {/* Joseph (14/11/2026) : tête du menu sur fond noir (logo sans ovale, recherche, cloche), filet de la charte dessous */}
+      <Box data-entete-noir="" sx={{ bgcolor: '#000000', color: '#ffffff', '& .MuiIconButton-root': { color: '#ffffff' } }}>
+        <Box sx={{ px: 2, pt: 2, pb: 1, display: 'flex', alignItems: 'center', gap: 1.25 }}>
+          <Box sx={{ display: 'flex' }}><Logo size={14} /></Box>
+          <Typography component="span" sx={{ fontWeight: 700, fontSize: '1rem' }}>{franchise ? 'Espace franchisé' : 'Réseau'}</Typography>
+        </Box>
+        {/* Refonte vague 2 (10A) : la cloche des notifications à côté de la recherche */}
+        <Box sx={{ px: 1.5, pb: 1.25, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {!franchise && <Box sx={{ flex: 1, minWidth: 0 }}><RechercheGlobale menu surFonce /></Box>}
+          {franchise && <Box sx={{ flex: 1 }} />}
+          <Cloche />
+        </Box>
       </Box>
-      <Box aria-hidden data-filet="" sx={{ height: 3, mx: 2, mb: 1.5, borderRadius: 2, background: brandStripe }} />
-      {/* Refonte vague 2 (10A) : la cloche des notifications à côté de la recherche */}
-      <Box sx={{ px: 1.5, pb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-        {!franchise && <Box sx={{ flex: 1, minWidth: 0 }}><RechercheGlobale menu /></Box>}
-        {franchise && <Box sx={{ flex: 1 }} />}
-        <Cloche />
-      </Box>
+      <Box aria-hidden data-filet="" sx={{ height: 4, mb: 1.5, background: brandStripe }} />
       {/* Choix 114 : créations gardées sans réseau */}
       <Box sx={{ px: 1.5, '&:has(button)': { pb: 1 } }}><EnvoisEnAttente /></Box>
       {!franchise && <Box sx={{ px: 1.5, pb: 1 }}><SelecteurPerimetre /></Box>}
@@ -335,11 +338,12 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
     <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'background.default', '--barre-basse': sansBarre ? '0px' : 'calc(80px + env(safe-area-inset-bottom))' }}>
       {/* Téléphone : barre du haut claire (logo, recherche, « + », infos, compte). PC : plus de barre du haut, tout est dans le menu */}
       {!surPC && (
-        <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1, bgcolor: 'background.paper', color: 'text.primary' }}>
+        // Joseph (14/11/2026) : toute la barre sur fond noir plutôt qu'un ovale noir autour du logo ; icônes en blanc
+        <AppBar position="fixed" data-entete-noir="" sx={{ zIndex: (t) => t.zIndex.drawer + 1, bgcolor: '#000000', color: '#ffffff', '& .MuiIconButton-root': { color: '#ffffff' } }}>
           <Toolbar sx={{ minHeight: 60, gap: 0.5, px: { xs: 1.5, sm: 2 } }}>
-            <Box sx={{ bgcolor: '#000000', borderRadius: 1.5, px: 0.75, py: 0.5, display: 'flex', flexShrink: 0 }}><Logo size={14} /></Box>
+            <Box sx={{ display: 'flex', flexShrink: 0, px: 0.5 }}><Logo size={14} /></Box>
             <Box sx={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center', px: 0.5 }}>
-              {!franchise && <RechercheGlobale court />}
+              {!franchise && <RechercheGlobale court surFonce />}
               {franchise && <Typography component="span" sx={{ fontWeight: 700, mr: 'auto', ml: 1 }}>Espace franchisé</Typography>}
             </Box>
             {/* Vague 8 (110A) : en-tête allégé (logo, recherche, cloche, compte) ; Actualités passe au menu du compte, le « + » flotte */}
