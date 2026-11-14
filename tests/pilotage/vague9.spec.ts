@@ -76,7 +76,8 @@ test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', a
 test('139 : parc de tireuses, racheter quand les refus coûtent plus qu’une tireuse neuve', async ({ page }) => {
   await connecter(page, franchise, { role: 'franchise' })
   await simulateur(page, 'tireuses')
-  await page.getByLabel('Net par fût').fill('24,83')
+  await page.getByLabel('Prix de vente du fût HT').fill('69')
+  await page.getByLabel('Prix d’achat du fût HT').fill('41,34')
   await page.getByLabel('Fûts par week-end loué').fill('3')
   await page.getByLabel('Week-ends refusés faute de tireuse').fill('12')
   // 12 × 3 fûts × 24,83 € = 894 € perdus, face à 1 500 ÷ 5 = 300 € par an (vague 10 : compté en week-ends)

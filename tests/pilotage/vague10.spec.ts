@@ -122,14 +122,18 @@ test('152-153 : soirée avec les achats des participants, les coûts détaillés
   expect(corps.ajustements.tempsForts).toMatchObject([{ univers: 'bar', nom: 'Soirée dégustation', autresCharges: 320 }, { univers: 'cave', nom: 'Soirée dégustation (achats)', ca: 225, autresCharges: 0 }])
 })
 
-test('155 : tireuses en week-ends loués, occupation modifiable', async ({ page, isMobile }, info) => {
+test('155 : tireuses en week-ends loués, occupation modifiable', async ({ page, isMobile }) => {
   await connecter(page, franchise, { role: 'franchise' })
   await simulateur(page, 'tireuses')
   // Valeurs d'office : 17 week-ends de saison, 90 % puis 20 % des week-ends loués
   await expect(page.getByLabel('Week-ends loués en saison')).toHaveValue('90')
-  await page.getByLabel('Net par fût').fill('25,59')
+  // Prix du Contrat extérieur d'office : 70 € et 42 €, marge 28 € (40 %) ; net 70 − 2,10 − 42 − 0,76 = 25,14 €
+  await expect(page.getByLabel('Prix de vente du fût HT')).toHaveValue('70')
+  await expect(page.getByText(/Marge par fût : 28,00\s€, soit 40\s%.*Net par fût : 25,14\s€/)).toBeVisible()
+  await page.getByLabel('Prix d’achat du fût HT').fill('41')
+  await expect(page.getByText(/Marge par fût : 29,00\s€, soit 41,4\s%/)).toBeVisible()
   await page.getByLabel('Prix d’une tireuse neuve HT').fill('800')
-  // 800 ÷ 5 + 60 = 220 € par an : 9 fûts, 5 week-ends de 2 fûts ; 17 × 90 % + 35 × 20 % = 22 week-ends par tireuse
+  // 800 ÷ 5 + 60 = 220 € par an, 26,14 € nets : 9 fûts, 5 week-ends de 2 fûts ; 17 × 90 % + 35 × 20 % = 22 week-ends par tireuse
   await expect(statut(page)).toHaveText('Une tireuse de plus se paie avec 9 fûts, soit 5 week-ends loués par an. Chaque tireuse est louée environ 22 week-ends par an. Parc plein en saison : note les week-ends refusés pour décider.')
   await page.getByLabel('Week-ends loués en saison').fill('70')
   // 17 × 70 % + 7 = 18,9 : 19 week-ends, plus saturé
@@ -138,7 +142,6 @@ test('155 : tireuses en week-ends loués, occupation modifiable', async ({ page,
   await expect(statut(page)).toContainText('5 week-ends refusés : racheter une tireuse.')
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-simulateur-tireuses-weekends.png`, fullPage: true })
 })
 
 test('161 et 160 : perte réelle de la pression, 33 cl, marge par famille et plusieurs produits', async ({ page }) => {

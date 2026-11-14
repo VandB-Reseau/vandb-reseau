@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { auditPression, coutContrats, ligneBec, palierExterieur, prixLivraisonGrille, simulerExterieur, simulerParc, type Bec, type ContratExterieur } from '../../../src/pilotage/moteur/boiteOutils'
+import { auditPression, coutContrats, margeFut, ligneBec, palierExterieur, prixLivraisonGrille, simulerExterieur, simulerParc, type Bec, type ContratExterieur } from '../../../src/pilotage/moteur/boiteOutils'
 import { parametresParDefaut } from '../../../src/pilotage/moteur/parametres'
 import { analyserRemises, appliquerLevier, margeMix, parametresSimulateurs, simulerPrimes, simulerSoiree, tempsFortDeSoiree } from '../../../src/pilotage/moteur/simulateurs'
 import type { Budget } from '../../../src/pilotage/moteur/types'
@@ -159,4 +159,12 @@ test('158 · un levier sur le budget d’un magasin', () => {
   proche(appliquerLevier(b, p, { type: 'prix', univers: 'cave', taux: 0.05 })!.ebe, 29_100)
   expect(appliquerLevier(b, p, { type: 'tickets', univers: 'bar', taux: 0.05 })).toBeNull()
   expect(v).toMatchObject({ caAvant: 700_000, ebeAvant: 50_000 })
+})
+
+test('Marge d’un fût : prix de vente et prix d’achat HT (Joseph, 14/11/2026)', () => {
+  // 70 − 42 = 28 €, soit 40 % du prix de vente
+  const m = margeFut(70, 42)
+  proche(m.valeur, 28)
+  proche(m.taux ?? 0, 0.4)
+  expect(margeFut(0, 10).taux).toBeNull()
 })

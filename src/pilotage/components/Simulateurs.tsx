@@ -53,7 +53,7 @@ import {
   type CleRemise, type CoupDur, type LigneEvenement, type LigneMix, type Mouvement, type PalierPrime,
 } from '../moteur/simulateurs'
 import {
-  auditPression, cartePression, coutComposition, coutContrats, margePourPrix, nouveauBec, palierExterieur, prixLivraisonGrille, prixPourMarge,
+  auditPression, cartePression, margeFut, coutComposition, coutContrats, margePourPrix, nouveauBec, palierExterieur, prixLivraisonGrille, prixPourMarge,
   simulerExterieur, simulerOuverture, simulerParc, cibleProductivite, TAUX_MECENAT, type Bec, type Composant,
 } from '../moteur/boiteOutils'
 import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TempsFort, Univers } from '../moteur/types'
@@ -162,7 +162,7 @@ type Etats = {
     prixLivraison: number | null; sponsoring: boolean; sponsoMontant: number; sponsoParFut: number; materiel: number; astreinte: number; locations: number; prixLocation: number // 154, 162
   }
   tireuses: {
-    tireuses: number; semaines: number; sortiesSaison: number; sortiesHors: number; refus: number; futsParSortie: number; net: number | null; prixNeuve: number; duree: number; entretien: number; vieilles: { nom: string; age: number; reparations: number }[]
+    tireuses: number; semaines: number; sortiesSaison: number; sortiesHors: number; refus: number; futsParSortie: number; prixVente: number | null; prixAchat: number | null; prixNeuve: number; duree: number; entretien: number; vieilles: { nom: string; age: number; reparations: number }[]
     saisie: 'occupation' | 'sorties'; occSaison: number; occHors: number // 155 · week-ends loués
   }
   pression: {
@@ -209,7 +209,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       prixLivraison: null, sponsoring: false, sponsoMontant: 0, sponsoParFut: 0, materiel: 0, astreinte: 0, locations: 0, prixLocation: 0,
     },
     tireuses: {
-      tireuses: tireusesParc ?? 2, semaines: s.tireuses.semainesSaison, sortiesSaison: 30, sortiesHors: 8, refus: 0, futsParSortie: 2, net: null, prixNeuve: 1_500, duree: s.exterieur.dureeTireuse || 5, entretien: s.exterieur.entretienTireuse, vieilles: [],
+      tireuses: tireusesParc ?? 2, semaines: s.tireuses.semainesSaison, sortiesSaison: 30, sortiesHors: 8, refus: 0, futsParSortie: 2, prixVente: null, prixAchat: null, prixNeuve: 1_500, duree: s.exterieur.dureeTireuse || 5, entretien: s.exterieur.entretienTireuse, vieilles: [],
       saisie: 'occupation', occSaison: s.tireuses.occupationSaison, occHors: s.tireuses.occupationHors,
     },
     pression: {
@@ -719,6 +719,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       prixLivraison, sponsoring: e.sponsoring ? { montant: e.sponsoMontant, parFut: e.sponsoParFut } : undefined,
       materiel: e.materiel, astreinte: e.astreinte, locations: { nombre: e.locations, prix: e.prixLocation },
     }, p, s.donMecenat)
+    const margeExt = margeFut(Math.max(0, e.prixVente - e.remise), e.prixAchat)
     const m = (k: keyof Etats['exterieur']) => (v: number) => maj('exterieur', { [k]: v })
     saisies = (
       <Stack spacing={2}>
@@ -779,6 +780,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       : `${nomParDefaut} : ${centimes(r.netParFut)} nets par fût, ${montant(r.coutFixe)} de coûts fixes${r.recettes ? `, ${montant(r.recettes)} de livraisons et locations facturées` : ''}, équilibre à ${r.equilibre} fûts ; ${r.gain >= 0 ? `gain de ${montant(r.gain)}` : `perte de ${montant(-r.gain)}`} au volume prévu.`
     resultats = (
       <Resultats>
+        <Indicateur libelle="Marge par fût" valeur={centimes(margeExt.valeur)} detail={margeExt.taux !== null ? `${taux(margeExt.taux)} du prix de vente après remise` : 'pas de prix de vente'} />
         <Indicateur libelle="Net par fût" valeur={centimes(r.netParFut)} detail={`après achat, CO2, gobelets et ${centimes(r.redevanceParFut)} de redevance et publicité`} />
         <Indicateur libelle="Coûts fixes de l’année" valeur={montant(r.coutFixe)} detail={`tireuse ${montant(r.tireuseAn)}, livraisons ${montant(r.livraisonsAn)}${r.don.valeur ? `, don ${montant(r.don.cout)}` : ''}${r.sponsoring ? `, sponsoring ${montant(r.sponsoring)}` : ''}${r.materiel ? `, matériel ${montant(r.materiel)}` : ''}${r.astreinte ? `, astreinte ${montant(r.astreinte)}` : ''}`} />
         {r.recettes > 0 && <Indicateur libelle="Livraisons et locations facturées" valeur={montant(r.recettes)} detail={`HT, ${montant(r.recettesNettes)} après redevance et publicité`} />}
@@ -793,8 +795,13 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   if (choisi === 'tireuses') {
     const e = etats.tireuses
     const x = etats.exterieur
-    const netExterieur = simulerExterieur({ futs: x.futs, prixVente: x.prixVente, remise: x.remise, prixAchat: x.prixAchat, co2: x.co2, gobelets: x.gobelets, tireuse: 'parc', prixTireuse: 0, dureeTireuse: 1, entretien: 0, livraisons: 0, km: 0, prixKm: 0, heures: 0, coutHoraire: 0, don: { type: 'aucun', montant: 0, futs: 0, cerfa: false } }, p, false).netParFut
-    const net = e.net ?? netExterieur
+    // Prix de vente et d'achat du fût (Joseph, 14/11/2026) : repris du Contrat extérieur (prix après remise), modifiables ;
+    // le net par fût en découle (moins redevance et publicité, CO2 et gobelets du contrat).
+    const prixVente = e.prixVente ?? Math.max(0, x.prixVente - x.remise)
+    const prixAchat = e.prixAchat ?? x.prixAchat
+    const fut = simulerExterieur({ futs: x.futs, prixVente, remise: 0, prixAchat, co2: x.co2, gobelets: x.gobelets, tireuse: 'parc', prixTireuse: 0, dureeTireuse: 1, entretien: 0, livraisons: 0, km: 0, prixKm: 0, heures: 0, coutHoraire: 0, don: { type: 'aucun', montant: 0, futs: 0, cerfa: false } }, p, false)
+    const net = fut.netParFut
+    const marge = margeFut(prixVente, prixAchat)
     const occupation = e.saisie === 'occupation' ? { saison: e.occSaison, hors: e.occHors } : null
     const r = simulerParc({ tireuses: e.tireuses, semainesSaison: e.semaines, sortiesSaison: e.sortiesSaison, sortiesHorsSaison: e.sortiesHors, refus: e.refus, futsParSortie: e.futsParSortie, netParFut: net, prixNeuve: e.prixNeuve, dureeVie: e.duree, entretien: e.entretien, vieilles: e.vieilles, occupation, saturation: s.tireuses.saturation })
     const m = (k: keyof Etats['tireuses']) => (v: number) => maj('tireuses', { [k]: v })
@@ -816,8 +823,12 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           </>}
           <Montant libelle="Week-ends refusés faute de tireuse" valeur={e.refus} onChange={(v) => maj('tireuses', { refus: Math.round(v) })} unite="" />
           <Montant libelle="Fûts par week-end loué" valeur={e.futsParSortie} onChange={m('futsParSortie')} unite="" />
-          <Montant libelle="Net par fût" valeur={net} onChange={(v) => maj('tireuses', { net: v })} />
         </Saisies>
+        <Saisies>
+          <Montant libelle="Prix de vente du fût HT" valeur={prixVente} onChange={(v) => maj('tireuses', { prixVente: v })} />
+          <Montant libelle="Prix d’achat du fût HT" valeur={prixAchat} onChange={(v) => maj('tireuses', { prixAchat: v })} />
+        </Saisies>
+        <Typography color="text.secondary">Marge par fût : {centimes(marge.valeur)}{marge.taux !== null ? `, soit ${taux(marge.taux)} du prix de vente` : ''}. Net par fût : {centimes(net)}, après {centimes(fut.redevanceParFut)} de redevance et publicité, CO2 et gobelets.</Typography>
         <Saisies>
           <Montant libelle="Prix d’une tireuse neuve HT" valeur={e.prixNeuve} onChange={m('prixNeuve')} />
           <Montant libelle="Durée de vie" valeur={e.duree} onChange={m('duree')} unite="ans" />

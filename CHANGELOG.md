@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateur Parc de tireuses (Joseph, 14/11/2026) : le « Net par fût » saisi est remplacé par le prix de vente et le
+  prix d'achat du fût HT (repris du Contrat extérieur, modifiables) ; marge par fût en euros et en pourcentage, puis net
+  par fût (après redevance et publicité, CO2 et gobelets) calculés. Contrat extérieur : marge par fût en euros et en
+  pourcentage dans les résultats. Sans migration.
 - Filtres et Simulateurs (Joseph, 14/11/2026) : les filtres en puces (Activité de la fiche magasin, Actualités de
   l'accueil et tous les filtres en puces) ne ressemblent plus à des sous-onglets : puces cerclées, coche sur la puce
   active, picto filtre en tête. Fiche magasin (équipe et franchisé) : onglet « Simulateurs » à côté de Chiffres et
