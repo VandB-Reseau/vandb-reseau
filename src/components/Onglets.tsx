@@ -28,7 +28,8 @@ const PLUS = '__plus'
 const VISIBLES_TELEPHONE = 3
 const ECART = 0 // puces bord à bord, l'espace est dessiné dans la zone tactile
 // Joseph (14/11/2026) : plus d'onglets visibles sur téléphone ; marge serrée (8 px de chaque côté, 2 px entre deux onglets)
-const MARGE_PUCE = 16 // marge intérieure (2 × 8) ; l'écart de 2 px est compté dans la mesure du texte
+// Joseph (14/11/2026) : 7 px de chaque côté, pour que les cinq onglets de la fiche magasin tiennent dès 360 px
+const MARGE_PUCE = 14 // marge intérieure (2 × 7) ; l'écart de 2 px est compté dans la mesure du texte
 const MARGE_PLUS = 48 // 14 à gauche, 10 à droite, flèche de 20 et son écart, écart de 2 avant
 
 let pinceau: CanvasRenderingContext2D | null | undefined
@@ -97,7 +98,7 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
   const ouverteAilleurs = autres.find((r) => r.vue === valeur)
   const pastilleAutres = autres.reduce((n, r) => n + (r.pastille ?? 0), 0)
   const onglets = (dansBande: boolean) => (
-    <Tabs ref={dansBande ? undefined : bande} className={fiche ? 'onglets-fiche' : undefined} value={ouverteAilleurs ? PLUS : valeur} onChange={(_e, v) => { if (v !== PLUS) onChange(v as V) }} variant="scrollable" scrollButtons={false} aria-label={libelle}
+    <Tabs ref={dansBande ? undefined : bande} className={fiche ? 'onglets-fiche' : undefined} value={ouverteAilleurs ? PLUS : rubriques.some((r) => r.vue === valeur) ? valeur : false} onChange={(_e, v) => { if (v !== PLUS) onChange(v as V) }} variant="scrollable" scrollButtons={false} aria-label={libelle}
       slotProps={{ indicator: { sx: { bgcolor: 'secondary.main', height: 3, borderRadius: '3px 3px 0 0' } } }}
       sx={{
         mb: dansBande ? 0 : { xs: 1.5, md: 2.5 }, minHeight: 48, ...(dansBande ? { flex: 1, minWidth: 0 } : {}), mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, '& .MuiTabs-flexContainer, & .MuiTabs-list': { gap: { xs: 0.25, md: 3 } },
@@ -151,7 +152,7 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
 // Onglet souligné (refonte, Joseph 09/11/2026, choix 4A) : un seul style pour changer de partie d'une page ;
 // le soulignement jaune-or marque l'onglet ouvert. Zone tactile de 48 px.
 const styleOnglet = {
-  minHeight: 48, minWidth: 0, px: { xs: 1, md: 0 }, py: 0, gap: 0.75, color: 'text.secondary', opacity: 1,
+  minHeight: 48, minWidth: 0, px: { xs: '7px', md: 0 }, py: 0, gap: 0.75, color: 'text.secondary', opacity: 1,
   fontSize: { xs: '0.875rem', md: '0.875rem' }, fontWeight: 600,
   '& .MuiTab-icon': { mb: 0, mr: 0, fontSize: 20 },
   '&.Mui-selected': { color: 'text.primary', fontWeight: 700 },

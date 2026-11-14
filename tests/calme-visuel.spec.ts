@@ -31,7 +31,7 @@ test('seul le rouge reste une pastille pleine ; le reste est un texte coloré', 
   await page.screenshot({ path: `captures/${info.project.name}-magasins-calme.png` })
 })
 
-test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur un téléphone courant et sur PC, tous les onglets', async ({ page, isMobile }, info) => {
+test('fiche magasin : sur téléphone, cinq onglets sans « Plus » (Nine box par le menu) ; sur PC, tous les onglets', async ({ page, isMobile }, info) => {
   if (isMobile) await page.setViewportSize({ width: 360, height: 780 })
   await seConnecter(page)
   await page.goto('./#/magasins/Brest%20Test')
@@ -41,7 +41,8 @@ test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur un 
     await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Simulateurs', 'Nine box'])
     return
   }
-  await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Plus'])
+  // Joseph (14/11/2026) : Budget et Simulateurs dans la barre dès 360 px, marges des onglets resserrées
+  await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler'])
   // Aucun onglet coupé au bord de l'écran
   const largeur = page.viewportSize()!.width
   for (const t of await onglets.getByRole('tab').all()) {
@@ -49,21 +50,14 @@ test('fiche magasin : sur téléphone étroit, 3 onglets et « Plus » ; sur un 
     expect(b.x + b.width).toBeLessThanOrEqual(largeur)
     expect(b.height).toBeGreaterThanOrEqual(48)
   }
-  await onglets.getByRole('tab', { name: 'Autres rubriques' }).click()
-  const panneau = page.getByRole('dialog', { name: 'Rubriques de Brest Test' })
-  await expect(panneau.getByRole('button')).toHaveText(['Budget', 'Simulateurs', 'Nine box'])
-  for (const b of await panneau.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-onglets-plus.png` })
-  await panneau.getByRole('button', { name: 'Nine box' }).click()
+  await page.getByRole('button', { name: 'Autres actions' }).click()
+  const nine = page.getByRole('menuitem', { name: 'Nine box' })
+  expect((await nine.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  await nine.click()
   await expect(page).toHaveURL(/vue=ninebox/)
-  // L'onglet « Plus » prend le nom de la rubrique ouverte
-  const plus = onglets.getByRole('tab', { name: 'Nine box, autres rubriques' })
-  await expect(plus).toHaveText('Nine box')
-  await expect(plus).toHaveAttribute('aria-selected', 'true')
-  await page.screenshot({ path: `captures/${info.project.name}-onglet-journal.png` })
   await onglets.getByRole('tab', { name: 'Vue d’ensemble' }).click()
-  await expect(onglets.getByRole('tab', { name: 'Autres rubriques' })).toHaveText('Plus')
+  await expect(page).not.toHaveURL(/vue=/)
 })
 
 test('après « Voir plus », le retour arrière retrouve la liste aussi longue', async ({ page }) => {

@@ -29,7 +29,7 @@ export interface ParametresSimulateurs {
   coutHoraire: number                                       // coût chargé d'une heure de travail (livraisons, ouvertures)
   exterieur: { prixKm: number; dureeTireuse: number; entretienTireuse: number; co2ParFut: number } // marché extérieur
   donMecenat: boolean                                       // contrepartie d'un contrat traitée comme un don (réduction mécénat)
-  pression: { cibleMarge: number; joursFraicheur: number }  // cible de marge du bar, jours au-delà desquels un fût s'abîme
+  pression: { cibleMarge: number; joursFraicheur: number; perteStandard: number }  // cible de marge du bar, jours au-delà desquels un fût s'abîme, perte normale (coulage, mousse au perçage)
   tva: { normale: number; intermediaire: number; reduite: number } // taux de TVA de la calculette des prix
   productivite: { partBar: number; cible: number }[]        // CA HT par heure visé selon la part du bar (seuil mini, cible)
   majorations: { dimanche: number; ferie: number }          // majoration des heures payées un dimanche, un jour férié
@@ -60,7 +60,7 @@ export const TIREUSES = { semainesSaison: 17, occupationSaison: 0.9, occupationH
 export const simulateursParDefaut: ParametresSimulateurs = {
   tauxDecouvert: 0, aideApprenti: 0, corner: { caParMetre: 0, tauxMarge: 0, demarque: 0 },
   coutHoraire: 0, exterieur: { prixKm: 0, dureeTireuse: 0, entretienTireuse: 0, co2ParFut: 0 }, donMecenat: false,
-  pression: { cibleMarge: 0, joursFraicheur: 0 },
+  pression: { cibleMarge: 0, joursFraicheur: 0, perteStandard: 0.07 }, // 7 % : standard du réseau (Joseph, 14/11/2026)
   // Taux légaux en France métropolitaine (20 %, 10 %, 5,5 %), modifiables par le Directeur
   tva: { normale: 0.2, intermediaire: 0.1, reduite: 0.055 },
   productivite: [], majorations: { dimanche: 0, ferie: 0 }, coefInterim: COEF_INTERIM,
@@ -78,7 +78,7 @@ export function parametresSimulateurs(p: { simulateurs?: Partial<ParametresSimul
     coutHoraire: positif(s.coutHoraire),
     exterieur: { prixKm: positif(s.exterieur?.prixKm), dureeTireuse: positif(s.exterieur?.dureeTireuse), entretienTireuse: positif(s.exterieur?.entretienTireuse), co2ParFut: positif(s.exterieur?.co2ParFut) },
     donMecenat: s.donMecenat === true,
-    pression: { cibleMarge: positif(s.pression?.cibleMarge), joursFraicheur: positif(s.pression?.joursFraicheur) },
+    pression: { cibleMarge: positif(s.pression?.cibleMarge), joursFraicheur: positif(s.pression?.joursFraicheur), perteStandard: Number.isFinite(s.pression?.perteStandard) ? Math.min(1, positif(s.pression?.perteStandard)) : d.pression.perteStandard },
     tva: { normale: tva('normale'), intermediaire: tva('intermediaire'), reduite: tva('reduite') },
     productivite: (Array.isArray(s.productivite) ? s.productivite : [])
       .filter((x) => x && Number.isFinite(x.partBar) && Number.isFinite(x.cible) && x.cible > 0)

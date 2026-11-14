@@ -101,12 +101,25 @@ test('161 · le verre de 33 cl et la perte réelle d’une semaine', () => {
   proche(b.margeSemaine - a.margeSemaine, 110 / 1.2 - 22)
   proche(b.litresSemaine - a.litresSemaine, 6.6)
   // 6 fûts de 30 l = 180 l ; vendus 400 demis (100 l) + 120 pintes (60 l) ; 4 l offerts : 16 l perdus, 8,9 %
-  const r = auditPression({ futs: 6, litres: 30, prixFut: 90, demis: 400, verres33: 0, pintes: 120, litresVendus1L: 0, offerts: 4, caTTC: 2_600, tva: 0.2 })
+  // Perte standard 5 % (Joseph 14/11/2026 : une part est normale) : 9 l ; seul l'écart de 7 l coûte
+  const caHT = 2_600 / 1.2
+  const r = auditPression({ futs: 6, litres: 30, prixFut: 90, demis: 400, verres33: 0, pintes: 120, litresVendus1L: 0, offerts: 4, caHT, standard: 0.05 })
   expect([r.sortis, r.vendus, r.perte]).toEqual([180, 160, 16])
   proche(r.taux, 16 / 180)
-  proche(r.coutSemaine, 48)       // 16 l × 3 €
-  proche(r.coutAn, 2_496)
-  proche(r.caManqueSemaine, 16 * (2_600 / 1.2 / 160))
+  proche(r.perteStandard, 9)
+  proche(r.ecart, 7)
+  proche(r.tauxEcart, 7 / 180)
+  proche(r.coutPerte, 48)         // 16 l × 3 €
+  proche(r.coutStandard, 27)      // 9 l × 3 €
+  proche(r.coutSemaine, 21)       // 7 l × 3 €
+  proche(r.coutAn, 1_092)
+  proche(r.caManqueSemaine, 7 * (caHT / 160))
+  // Perte standard 10 % : 18 l, la perte réelle reste dedans, rien ne coûte
+  const dedans = auditPression({ futs: 6, litres: 30, prixFut: 90, demis: 400, verres33: 0, pintes: 120, litresVendus1L: 0, offerts: 4, caHT, standard: 0.1 })
+  expect([dedans.ecart, dedans.coutAn, dedans.caManqueAn]).toEqual([0, 0, 0])
+  // Standard du réseau : 7 % d'office, réglable par le siège
+  expect(parametresSimulateurs(null).pression.perteStandard).toBe(0.07)
+  expect(parametresSimulateurs({ simulateurs: { pression: { cibleMarge: 0, joursFraicheur: 0, perteStandard: 0.05 } } }).pression.perteStandard).toBe(0.05)
 })
 
 test('159 · CDD avec ses frais fixes, intérim à 1,75', () => {

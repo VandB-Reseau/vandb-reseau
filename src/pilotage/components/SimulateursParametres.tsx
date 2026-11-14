@@ -101,6 +101,7 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
             <FormControlLabel control={<Checkbox checked={v.donMecenat} onChange={(e) => setV((y) => ({ ...y, donMecenat: e.target.checked }))} disabled={lecture} slotProps={{ input: { 'aria-label': 'Don traité comme un don' } }} />} label={v.donMecenat ? 'Oui' : 'Non'} sx={{ minHeight: 48, mr: 0 }} />)}
           {ligne('Carte pression : marge visée au bar', <ChampTaux libelle="Marge visée au bar" valeur={v.pression.cibleMarge} onChange={(x) => pression('cibleMarge', x ?? 0)} />)}
           {ligne('Carte pression : jours au-delà desquels un fût entamé s’abîme', <ChampMontant libelle="Jours de fraîcheur d’un fût" valeur={v.pression.joursFraicheur} onChange={(x) => pression('joursFraicheur', x)} unite="j" largeur={160} />)}
+          {ligne('Perte pression : perte normale (coulage au service, mousse au perçage du fût)', <ChampTaux libelle="Perte standard des fûts" valeur={v.pression.perteStandard} onChange={(x) => pression('perteStandard', Math.min(1, x ?? 0))} />)}
           {ligne('TVA normale (prix et marge)', <ChampTaux libelle="TVA normale" valeur={v.tva.normale} onChange={(x) => tva('normale', x ?? 0)} />)}
           {ligne('TVA intermédiaire (restauration sur place)', <ChampTaux libelle="TVA intermédiaire" valeur={v.tva.intermediaire} onChange={(x) => tva('intermediaire', x ?? 0)} />)}
           {ligne('TVA réduite (alimentation à emporter)', <ChampTaux libelle="TVA réduite" valeur={v.tva.reduite} onChange={(x) => tva('reduite', x ?? 0)} />)}

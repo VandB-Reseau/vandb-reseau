@@ -9,6 +9,14 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin sur téléphone (Joseph, 14/11/2026) : Budget et Simuler dans la barre d'onglets, sans « Plus », dès
+  360 px (marges des onglets resserrées à 7 px) ; la Nine box s'ouvre par le menu « ⋯ » de l'en-tête. PC inchangé.
+- Simulateurs, HT et TTC (Joseph, 14/11/2026) : CA et prix d'achat toujours HT, prix de vente au client final saisi TTC,
+  ce qui est facturé en B2B reste HT (Contrat extérieur : prix du fût, remise, livraison, location). Chaque montant du
+  Contrat extérieur étiqueté HT ; coût d'une livraison détaillé sous ses champs (indemnités kilométriques, temps, coût
+  annuel, net après la livraison facturée). Coût d'une heure chargée : sans équipe ni repère du siège, 120 % du SMIC
+  plutôt que 0 €. Perte pression d'une semaine : CA saisi HT, perte standard des fûts (7 % d'office, réglée dans
+  Paramètres › Simulateurs, modifiable), coût et CA manqué calculés sur l'écart seulement. Sans migration.
 - Simulateur Parc de tireuses (Joseph, 14/11/2026) : le « Net par fût » saisi est remplacé par le prix de vente du fût
   TTC (prix conseillé) et son prix d'achat HT (repris du Contrat extérieur, modifiables) ; marge par fût en euros HT et en
   pourcentage du prix HT, puis net par fût (après redevance et publicité, CO2 et gobelets) calculés. Contrat extérieur :

@@ -44,9 +44,11 @@ test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', a
   await simulateur(page, 'exterieur')
   await expect(page.getByRole('navigation', { name: 'Choisir un simulateur' }).getByRole('button')).toHaveCount(13)
   await expect(page.getByRole('heading', { name: 'Contrat extérieur' })).toBeVisible()
-  // Exemple de la fiche : 69 € HT, achat 41,34 € ; CO2 0,76 €, 0,60 €/km et 20 €/h viennent des repères du siège
-  await page.getByLabel('Prix de vente du fût').fill('69')
-  await page.getByLabel('Prix d’achat du fût').fill('41,34')
+  // Exemple de la fiche : 69 € HT (facturé à l'organisateur, tout en HT), achat 41,34 € HT ; CO2 0,76 €, 0,60 €/km et 20 €/h viennent des repères du siège
+  await page.getByLabel('Prix de vente du fût HT').fill('69')
+  await page.getByLabel('Prix d’achat du fût HT').fill('41,34')
+  // Livraison : 30 km × 0,60 = 18 € + 1,5 h × 20 € = 30 €, 48 € ; × 10 = 480 € par an
+  await expect(page.getByText(/Une livraison coûte 48,00\s€ HT : 18,00\s€ d’indemnités kilométriques .* et 30,00\s€ de temps .*Sur 10 livraisons : 480\s€ par an/)).toBeVisible()
   // 24,83 € nets par fût ; 300 € de tireuse + 10 × 48 € de livraisons = 780 € ; équilibre à 32 fûts ; 213 € de gain à 40 fûts
   await expect(page.getByRole('status')).toContainText(/24,83\s€ nets par fût, 780\s€ de coûts fixes, équilibre à 32 fûts ; gain de 213\s€/)
   // Don de 1 000 € avec reçu Cerfa : 400 € de coût réel (réduction mécénat réglée par le siège)
@@ -149,13 +151,16 @@ test('Directeur : les nouveaux repères dans Paramètres, don traité comme un d
   await page.getByRole('tab', { name: 'Simulateurs' }).click()
   await page.getByLabel('Prix du kilomètre').fill('0,6')
   await page.getByLabel('Don traité comme un don').check()
+  // Perte standard des fûts : 7 % d'office (Joseph, 14/11/2026), réglable
+  await expect(page.getByLabel('Perte standard des fûts')).toHaveValue('7')
+  await page.getByLabel('Perte standard des fûts').fill('6')
   await page.getByRole('button', { name: 'Ajouter un palier', exact: true }).click()
   await page.getByLabel('Part du bar, palier 1').fill('55')
   await page.getByLabel('CA par heure visé, palier 1').fill('100')
   await page.getByRole('region', { name: 'Simulateurs' }).getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText(/Repères des simulateurs \d{4} enregistrés\./)).toBeVisible()
   const p = ecritures.filter((e) => e.table === 'parametres_reseau').at(-1)?.corps as { valeur: { simulateurs: Record<string, unknown> } }
-  expect(p.valeur.simulateurs).toMatchObject({ donMecenat: true, exterieur: { prixKm: 0.6 }, productivite: [{ partBar: 0.55, cible: 100 }], tva: { normale: 0.2, intermediaire: 0.1, reduite: 0.055 } })
+  expect(p.valeur.simulateurs).toMatchObject({ donMecenat: true, exterieur: { prixKm: 0.6 }, productivite: [{ partBar: 0.55, cible: 100 }], tva: { normale: 0.2, intermediaire: 0.1, reduite: 0.055 }, pression: { perteStandard: 0.06 } })
 })
 
 test('145 : productivité visée dans l’Équipe, selon la part du bar', async ({ page }) => {

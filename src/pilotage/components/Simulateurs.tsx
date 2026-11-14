@@ -167,7 +167,7 @@ type Etats = {
   }
   pression: {
     becs: Bec[]; projet: boolean; mode: 'ajouter' | 'remplacer'; remplace: number; cout: number; cannibalisation: number; nouveau: Bec
-    vue: 'carte' | 'audit'; audit: { futs: number; litres: number; prixFut: number; demis: number; verres33: number; pintes: number; litres1L: number; offerts: number; caTTC: number } // 161
+    vue: 'carte' | 'audit'; audit: { futs: number; litres: number; prixFut: number; demis: number; verres33: number; pintes: number; litres1L: number; offerts: number; caHT: number; caTTC?: number; standard?: number | null } // 161 (standard absent ou null : perte standard réglée par le siège) (caTTC : simulations gardées avant le CA en HT)
   }
   calculette: { nom: string; composants: Composant[]; tva: 'normale' | 'intermediaire' | 'reduite'; mode: 'prix' | 'marge' | 'mix'; marge: number; prixTTC: number; famille: string; mix: LigneMix[] }
   ouverture: { jour: 'dimanche' | 'ferie'; caBar: number; caCave: number; margeBar: number | null; margeCave: number | null; report: number; heures: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number; frais: number }
@@ -178,8 +178,10 @@ type Etats = {
 // siège si l'équipe n'est pas saisie), ou une part du SMIC, ou un montant libre.
 type ModeHeure = 'equipe' | 'smic' | 'libre'
 const HEURE = { modeHeure: 'equipe' as ModeHeure, partSmic: 1.2 }
-function CoutHeure({ e, valeur, equipeSaisie, onChange }: {
-  e: { modeHeure: ModeHeure; partSmic: number; coutHoraire: number }; valeur: number; equipeSaisie: boolean
+// Ni équipe saisie ni repère du siège : 120 % du SMIC, pour ne jamais compter une heure à 0 € (Joseph, 14/11/2026)
+const PART_SMIC_DEFAUT = 1.2
+function CoutHeure({ e, valeur, equipeSaisie, repere, onChange }: {
+  e: { modeHeure: ModeHeure; partSmic: number; coutHoraire: number }; valeur: number; equipeSaisie: boolean; repere?: boolean
   onChange: (v: Partial<{ modeHeure: ModeHeure; partSmic: number; coutHoraire: number }>) => void
 }) {
   return <>
@@ -187,7 +189,7 @@ function CoutHeure({ e, valeur, equipeSaisie, onChange }: {
     {e.modeHeure === 'smic' && <Taux libelle="Part du SMIC brut" valeur={e.partSmic} onChange={(partSmic) => onChange({ partSmic })} />}
     {e.modeHeure === 'libre' && <Montant libelle="Coût d’une heure chargée" valeur={e.coutHoraire} onChange={(coutHoraire) => onChange({ coutHoraire })} />}
     {e.modeHeure !== 'libre' && <Typography color="text.secondary" sx={{ alignSelf: 'center' }}>
-      {centimes(valeur)} l’heure chargée{e.modeHeure === 'smic' ? '' : equipeSaisie ? ', moyenne de l’équipe' : ', repère du siège (équipe pas saisie)'}
+      {centimes(valeur)} l’heure chargée{e.modeHeure === 'smic' ? '' : equipeSaisie ? ', moyenne de l’équipe' : repere === false ? ', 120 % du SMIC (équipe et repère du siège pas saisis)' : ', repère du siège (équipe pas saisie)'}
     </Typography>}
   </>
 }
@@ -234,7 +236,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       becs: [{ biere: 'Blonde', prixFut: 90, litres: 30, perte: 0.1, prixDemi: 4.2, prixPinte: 7.8, demis: 80, pintes: 30 }],
       projet: false, mode: 'ajouter', remplace: 0, cout: 500, cannibalisation: 0.5,
       nouveau: { biere: 'Nouvelle bière', prixFut: 100, litres: 30, perte: 0.1, prixDemi: 4.5, prixPinte: 8.5, demis: 30, pintes: 10 },
-      vue: 'carte', audit: { futs: 6, litres: 30, prixFut: 90, demis: 400, verres33: 0, pintes: 120, litres1L: 0, offerts: 4, caTTC: 2_600 },
+      vue: 'carte', audit: { futs: 6, litres: 30, prixFut: 90, demis: 400, verres33: 0, pintes: 120, litres1L: 0, offerts: 4, caHT: 2_170, standard: null },
     },
     calculette: {
       nom: 'Planche mixte', composants: [{ libelle: 'Charcuterie', cout: 3, quantite: 1 }, { libelle: 'Fromage', cout: 2.5, quantite: 1 }], tva: 'intermediaire', mode: 'prix', marge: 0.7, prixTTC: 18, famille: '',
@@ -265,7 +267,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   const [etats, setEtats] = useState<Etats>(() => etatsInitiaux(b, h, p, aujourdhui, tireusesParc))
   const heureEquipe = useMemo(() => (h?.equipe?.length ? coutHoraireEquipe(h.equipe, p.charges, h.annee, h.hausseSalaires ?? 0) : null), [h, p])
   const heure = (x: { modeHeure?: ModeHeure; partSmic: number; coutHoraire: number }) =>
-    x.modeHeure === 'libre' ? x.coutHoraire : x.modeHeure === 'smic' ? coutHoraireSmic(x.partSmic, p.charges) : heureEquipe ?? parametresSimulateurs(p).coutHoraire
+    x.modeHeure === 'libre' ? x.coutHoraire : x.modeHeure === 'smic' ? coutHoraireSmic(x.partSmic, p.charges) : heureEquipe ?? (parametresSimulateurs(p).coutHoraire || coutHoraireSmic(PART_SMIC_DEFAUT, p.charges))
   const maj = <K extends keyof Etats>(k: K, v: Partial<Etats[K]>) => setEtats((e) => ({ ...e, [k]: { ...e[k], ...v } }))
   const [gardees, setGardees] = useState<SimulationGardee[] | null>(null)
   const [nom, setNom] = useState('')
@@ -620,7 +622,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         <Saisies>
           <Montant libelle="Personnes" valeur={e.personnes} onChange={(v) => maj('soiree', { personnes: Math.max(0, Math.round(v)) })} unite="" />
           <Montant libelle="Heures chacune" valeur={e.heuresEquipe} onChange={(v) => maj('soiree', { heuresEquipe: v })} unite="h" />
-          <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} onChange={(v) => maj('soiree', v)} />
+          <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('soiree', v)} />
           <Taux libelle="Majoration des heures" valeur={e.majoration} onChange={(v) => maj('soiree', { majoration: v })} />
         </Saisies>
       </Stack>
@@ -742,34 +744,38 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     }, p, s.donMecenat)
     const margeExt = margeFut(Math.max(0, e.prixVente - e.remise), e.prixAchat)
     const m = (k: keyof Etats['exterieur']) => (v: number) => maj('exterieur', { [k]: v })
+    // Facturé à un organisateur (B2B) : tout en HT (Joseph, 14/11/2026). Le TTC ne sert qu'à la vente au client final.
     saisies = (
       <Stack spacing={2}>
         <Saisies>
           <Texte libelle="Contrat" aria="Nom du contrat" valeur={e.nom} onChange={(v) => maj('exterieur', { nom: v })} />
           <Montant libelle="Fûts vendus par an" valeur={e.futs} onChange={(v) => maj('exterieur', { futs: Math.round(v) })} unite="" />
         </Saisies>
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Par fût, HT</Typography>
+        <Typography component="h3" sx={{ fontWeight: 700 }}>Par fût</Typography>
         <Saisies>
-          <Montant libelle="Prix de vente du fût" valeur={e.prixVente} onChange={m('prixVente')} />
-          <Montant libelle="Remise accordée" valeur={e.remise} onChange={m('remise')} />
-          <Montant libelle="Prix d’achat du fût" valeur={e.prixAchat} onChange={m('prixAchat')} />
-          <Montant libelle="CO2 par fût" valeur={e.co2} onChange={m('co2')} />
-          <Montant libelle="Gobelets par fût" valeur={e.gobelets} onChange={m('gobelets')} />
+          <Montant libelle="Prix de vente du fût HT" valeur={e.prixVente} onChange={m('prixVente')} />
+          <Montant libelle="Remise accordée HT" valeur={e.remise} onChange={m('remise')} />
+          <Montant libelle="Prix d’achat du fût HT" valeur={e.prixAchat} onChange={m('prixAchat')} />
+          <Montant libelle="CO2 par fût HT" valeur={e.co2} onChange={m('co2')} />
+          <Montant libelle="Gobelets par fût HT" valeur={e.gobelets} onChange={m('gobelets')} />
         </Saisies>
         <Typography component="h3" sx={{ fontWeight: 700 }}>Tireuse et livraisons</Typography>
         <Saisies>
           <Choix libelle="Tireuse" valeur={e.tireuse} onChange={(v) => maj('exterieur', { tireuse: v })} options={[['neuve', 'À acheter'], ['parc', 'Déjà dans le parc']]} />
           {e.tireuse === 'neuve' && <><Montant libelle="Prix de la tireuse HT" valeur={e.prixTireuse} onChange={m('prixTireuse')} /><Montant libelle="Durée de vie" valeur={e.duree} onChange={m('duree')} unite="ans" /></>}
-          <Montant libelle="Entretien par an" valeur={e.entretien} onChange={m('entretien')} />
+          <Montant libelle="Entretien par an HT" valeur={e.entretien} onChange={m('entretien')} />
         </Saisies>
         <Saisies>
           <Montant libelle="Livraisons par an" valeur={e.livraisons} onChange={(v) => maj('exterieur', { livraisons: Math.round(v) })} unite="" />
           <Montant libelle="Kilomètres aller-retour" valeur={e.km} onChange={m('km')} unite="km" />
-          <Montant libelle="Prix du kilomètre" valeur={e.prixKm} onChange={m('prixKm')} unite="€/km" />
+          <Montant libelle="Prix du kilomètre HT" valeur={e.prixKm} onChange={m('prixKm')} unite="€/km" />
           <Montant libelle="Heures par livraison" valeur={e.heures} onChange={m('heures')} unite="h" />
-          <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} onChange={(v) => maj('exterieur', v)} />
+          <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('exterieur', v)} />
           <Montant libelle="Livraison facturée HT" valeur={prixLivraison} onChange={(v) => maj('exterieur', { prixLivraison: v })} />
         </Saisies>
+        <Typography color="text.secondary">
+          Une livraison coûte {centimes(r.coutLivraison)} HT : {centimes(r.kmLivraison)} d’indemnités kilométriques ({unChiffre(e.km)} km à {centimes(e.prixKm)}) et {centimes(r.tempsLivraison)} de temps ({unChiffre(e.heures)} h à {centimes(heure(e))}). Sur {entier(e.livraisons)} livraisons : {montant(r.livraisonsAn)} par an{r.livraisonsFacturees > 0 ? `, ${montant(r.livraisonsFacturees)} facturés, net ${r.netLivraisons >= 0 ? '' : 'de − '}${montant(Math.abs(r.netLivraisons))} après redevance et publicité` : ', rien de facturé'}.
+        </Typography>
         {prixGrille !== null && e.prixLivraison === null && <Typography color="text.secondary">Livraison au prix de la grille du siège : {prixGrille ? montant(prixGrille) : 'offerte'} pour {unChiffre(e.km / 2)} km et {montant(commande)} commandés par livraison.</Typography>}
         {e.prixLivraison !== null && prixGrille !== null && <Box><Button onClick={() => maj('exterieur', { prixLivraison: null })} sx={{ minHeight: 48 }}>Reprendre le prix de la grille ({montant(prixGrille)})</Button></Box>}
         <Typography component="h3" sx={{ fontWeight: 700 }}>Matériel, astreinte, locations</Typography>
@@ -790,7 +796,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <FormControlLabel control={<Checkbox sx={{ width: 48, height: 48 }} checked={e.sponsoring} onChange={(x) => maj('exterieur', { sponsoring: x.target.checked })} />} label="Sponsoring (contrepartie publicitaire)" sx={{ minHeight: 48, mr: 0 }} />
           {e.sponsoring && <>
             <Montant libelle="Somme versée HT" valeur={e.sponsoMontant} onChange={m('sponsoMontant')} />
-            <Montant libelle="Rétrocession par fût" valeur={e.sponsoParFut} onChange={m('sponsoParFut')} />
+            <Montant libelle="Rétrocession par fût HT" valeur={e.sponsoParFut} onChange={m('sponsoParFut')} />
           </>}
         </Saisies>
       </Stack>
@@ -801,13 +807,13 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       : `${nomParDefaut} : ${centimes(r.netParFut)} nets par fût, ${montant(r.coutFixe)} de coûts fixes${r.recettes ? `, ${montant(r.recettes)} de livraisons et locations facturées` : ''}, équilibre à ${r.equilibre} fûts ; ${r.gain >= 0 ? `gain de ${montant(r.gain)}` : `perte de ${montant(-r.gain)}`} au volume prévu.`
     resultats = (
       <Resultats>
-        <Indicateur libelle="Marge par fût" valeur={centimes(margeExt.valeur)} detail={margeExt.taux !== null ? `${taux(margeExt.taux)} du prix de vente après remise` : 'pas de prix de vente'} />
-        <Indicateur libelle="Net par fût" valeur={centimes(r.netParFut)} detail={`après achat, CO2, gobelets et ${centimes(r.redevanceParFut)} de redevance et publicité`} />
+        <Indicateur libelle="Marge par fût" valeur={centimes(margeExt.valeur)} detail={margeExt.taux !== null ? `HT, ${taux(margeExt.taux)} du prix de vente HT après remise` : 'pas de prix de vente'} />
+        <Indicateur libelle="Net par fût" valeur={centimes(r.netParFut)} detail={`HT, après achat, CO2, gobelets et ${centimes(r.redevanceParFut)} de redevance et publicité`} />
         <Indicateur libelle="Coûts fixes de l’année" valeur={montant(r.coutFixe)} detail={`tireuse ${montant(r.tireuseAn)}, livraisons ${montant(r.livraisonsAn)}${r.don.valeur ? `, don ${montant(r.don.cout)}` : ''}${r.sponsoring ? `, sponsoring ${montant(r.sponsoring)}` : ''}${r.materiel ? `, matériel ${montant(r.materiel)}` : ''}${r.astreinte ? `, astreinte ${montant(r.astreinte)}` : ''}`} />
         {r.recettes > 0 && <Indicateur libelle="Livraisons et locations facturées" valeur={montant(r.recettes)} detail={`HT, ${montant(r.recettesNettes)} après redevance et publicité`} />}
         <Indicateur libelle="Fûts pour l’équilibre" valeur={r.equilibre !== null ? entier(r.equilibre) : 'Jamais'} detail={r.equilibre !== null ? `${e.futs} prévus` : 'Le fût ne rapporte rien'} />
         <Indicateur libelle={r.gain >= 0 ? 'Gain de l’année' : 'Perte de l’année'} valeur={montant(Math.abs(r.gain))} detail={`sur ${montant(r.ca)} de CA HT`} />
-        {r.remiseMax !== null && <Indicateur libelle="Remise maximale par fût" valeur={centimes(r.remiseMax)} detail={`au-delà, ${e.futs} fûts ne paient plus les coûts fixes`} />}
+        {r.remiseMax !== null && <Indicateur libelle="Remise maximale par fût" valeur={centimes(r.remiseMax)} detail={`HT ; au-delà, ${e.futs} fûts ne paient plus les coûts fixes`} />}
         {r.prixPlancherLivraison !== null && r.coutLivraison > 0 && <Indicateur libelle="Prix plancher d’une livraison" valeur={centimes(r.prixPlancherLivraison)} detail={`HT, pour couvrir ${centimes(r.coutLivraison)} de route et de temps`} />}
         {r.don.valeur > 0 && <Indicateur libelle="Coût réel du don" valeur={montant(r.don.cout)} detail={r.don.reduction ? `${montant(r.don.valeur)} moins ${taux(TAUX_MECENAT)} de réduction d’impôt` : s.donMecenat ? 'sans reçu Cerfa, pas de réduction' : 'sans réduction d’impôt'} />}
       </Resultats>
@@ -855,14 +861,14 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         <Saisies>
           <Montant libelle="Prix d’une tireuse neuve HT" valeur={e.prixNeuve} onChange={m('prixNeuve')} />
           <Montant libelle="Durée de vie" valeur={e.duree} onChange={m('duree')} unite="ans" />
-          <Montant libelle="Entretien par an" valeur={e.entretien} onChange={m('entretien')} />
+          <Montant libelle="Entretien par an HT" valeur={e.entretien} onChange={m('entretien')} />
         </Saisies>
         <Typography component="h3" sx={{ fontWeight: 700 }}>Tireuses qui vieillissent</Typography>
         {e.vieilles.map((v, i) => (
           <Saisies key={i}>
             <Texte libelle="Tireuse" aria={`Nom de la tireuse ${i + 1}`} valeur={v.nom} onChange={(nom) => vieille(i, { nom })} largeur={160} />
             <MontantDe libelle="Âge" aria={`Âge de la tireuse ${i + 1}`} valeur={v.age} onChange={(age) => vieille(i, { age })} unite="ans" />
-            <MontantDe libelle="Réparations de l’année" aria={`Réparations de la tireuse ${i + 1}`} valeur={v.reparations} onChange={(reparations) => vieille(i, { reparations })} />
+            <MontantDe libelle="Réparations de l’année HT" aria={`Réparations de la tireuse ${i + 1}`} valeur={v.reparations} onChange={(reparations) => vieille(i, { reparations })} />
             <Button color="inherit" startIcon={<DeleteOutlineOutlined />} onClick={() => maj('tireuses', { vieilles: e.vieilles.filter((_, j) => j !== i) })} aria-label={`Retirer la tireuse ${i + 1}`} sx={{ minHeight: 48 }}>Retirer</Button>
           </Saisies>
         ))}
@@ -979,8 +985,11 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   if (choisi === 'pression' && etats.pression.vue === 'audit') {
     const e = etats.pression
     const a = e.audit
-    const perteCarte = e.becs.length ? somme(e.becs.map((x) => x.perte)) / e.becs.length : 0
-    const r = auditPression({ futs: a.futs, litres: a.litres, prixFut: a.prixFut, demis: a.demis, verres33: a.verres33, pintes: a.pintes, litresVendus1L: a.litres1L, offerts: a.offerts, caTTC: a.caTTC, tva: s.tva.normale })
+    // CA toujours en HT (Joseph, 14/11/2026) ; une simulation gardée avant en TTC est ramenée au HT
+    // Perte standard (Joseph, 14/11/2026) : 7 % par défaut, réglée dans Paramètres, modifiable ici
+    const standard = a.standard ?? s.pression.perteStandard
+    const caPression = a.caTTC !== undefined ? a.caTTC / (1 + s.tva.normale) : a.caHT
+    const r = auditPression({ futs: a.futs, litres: a.litres, prixFut: a.prixFut, demis: a.demis, verres33: a.verres33, pintes: a.pintes, litresVendus1L: a.litres1L, offerts: a.offerts, caHT: caPression, standard })
     const au = (k: keyof typeof a) => (v: number) => maj('pression', { audit: { ...a, [k]: v } })
     saisies = (
       <Stack spacing={2}>
@@ -998,18 +1007,27 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Montant libelle="Pintes 50 cl" valeur={a.pintes} onChange={(v) => au('pintes')(Math.round(v))} unite="" />
           <Montant libelle="Pichets et mètres (litres)" valeur={a.litres1L} onChange={au('litres1L')} unite="l" />
           <Montant libelle="Offerts (litres)" valeur={a.offerts} onChange={au('offerts')} unite="l" />
-          <Montant libelle="CA pression de la semaine TTC" valeur={a.caTTC} onChange={au('caTTC')} />
+          <Montant libelle="CA pression de la semaine HT" valeur={Math.round(caPression * 100) / 100} onChange={(v) => maj('pression', { audit: { ...a, caHT: v, caTTC: undefined } })} />
+        </Saisies>
+        <Typography component="h3" sx={{ fontWeight: 700 }}>Perte normale</Typography>
+        <Saisies>
+          <Taux libelle="Perte standard" valeur={standard} onChange={(v) => maj('pression', { audit: { ...a, standard: Math.min(1, v) } })} />
+          {a.standard != null && Math.abs(a.standard - s.pression.perteStandard) > 1e-9 && <Button onClick={() => maj('pression', { audit: { ...a, standard: null } })} sx={{ minHeight: 48 }}>Reprendre le standard du siège ({taux(s.pression.perteStandard)})</Button>}
         </Saisies>
       </Stack>
     )
     nomParDefaut = 'Audit pression d’une semaine'
-    phrase = r.taux === null ? '' : `${unChiffre(r.perte)} litres perdus sur ${unChiffre(r.sortis)} sortis du stock, soit ${taux(r.taux)}${perteCarte > 0 ? ` (${taux(perteCarte)} prévus dans la carte)` : ''} : ${montant(r.coutAn)} de bière payée pour rien et ${montant(r.caManqueAn)} de CA HT manqué sur un an.`
+    phrase = r.taux === null ? '' : r.ecart <= 0
+      ? `${unChiffre(r.perte)} litres perdus sur ${unChiffre(r.sortis)} sortis du stock, soit ${taux(r.taux)} : dans la perte standard de ${taux(standard)}, rien à redresser.`
+      : `${unChiffre(r.perte)} litres perdus sur ${unChiffre(r.sortis)} sortis, soit ${taux(r.taux)} pour ${taux(standard)} de perte standard : ${unChiffre(r.ecart)} litres de trop, ${montant(r.coutAn)} de bière payée pour rien et ${montant(r.caManqueAn)} de CA HT manqué sur un an.`
     resultats = r.taux === null ? null : (
       <Resultats>
-        <Indicateur libelle="Perte réelle" valeur={taux(r.taux)} detail={`${unChiffre(r.perte)} litres sur ${unChiffre(r.sortis)}, ${unChiffre(r.vendus)} vendus`}
-          ecart={perteCarte > 0 ? { texte: ecartPts(r.taux - perteCarte), hausse: r.taux > perteCarte, favorable: r.taux <= perteCarte } : undefined} />
-        <Indicateur libelle="Bière payée pour rien" valeur={montant(r.coutAn)} detail={`par an, ${montant(r.coutSemaine)} cette semaine`} />
-        <Indicateur libelle="CA HT manqué" valeur={montant(r.caManqueAn)} detail="par an, au prix moyen du litre vendu" />
+        <Indicateur libelle="Écart à la perte standard" valeur={`${unChiffre(r.ecart)} litres`} detail={`${r.tauxEcart === null ? '–' : taux(r.tauxEcart)} des litres sortis, ${montant(r.coutSemaine)} HT cette semaine`}
+          ecart={{ texte: ecartPts(r.taux - standard), hausse: r.taux > standard, favorable: r.taux <= standard }} />
+        <Indicateur libelle="Perte réelle" valeur={`${unChiffre(r.perte)} litres`} detail={`${taux(r.taux)} sur ${unChiffre(r.sortis)} sortis, ${montant(r.coutPerte)} HT`} />
+        <Indicateur libelle="Perte standard" valeur={`${unChiffre(r.perteStandard)} litres`} detail={`${taux(standard)} des litres sortis, ${montant(r.coutStandard)} HT`} />
+        <Indicateur libelle="Bière payée pour rien" valeur={montant(r.coutAn)} detail="HT par an, sur l’écart seulement" />
+        <Indicateur libelle="CA HT manqué" valeur={montant(r.caManqueAn)} detail="par an, sur l’écart, au prix moyen du litre vendu" />
       </Resultats>
     )
   }
@@ -1118,7 +1136,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         </Saisies>
         <Saisies>
           <Montant libelle="Heures payées" valeur={e.heures} onChange={(v) => maj('ouverture', { heures: v })} unite="h" />
-          <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} onChange={(v) => maj('ouverture', v)} />
+          <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('ouverture', v)} />
           <Montant libelle="Frais du jour HT" valeur={e.frais} onChange={(v) => maj('ouverture', { frais: v })} />
         </Saisies>
         <Typography color="text.secondary">Majoration des heures {e.jour === 'dimanche' ? 'du dimanche' : 'd’un jour férié'} : {taux(majoration)}{majoration ? ', réglée par le siège' : ', à régler par le siège selon la convention collective'}.</Typography>

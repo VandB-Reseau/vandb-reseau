@@ -46,13 +46,27 @@ for (const { ancienne, onglet, vu } of [
   })
 }
 
-// Avec Simulateurs (Joseph, 14/11/2026), six onglets : à 430 px, quatre et « Plus », sans déborder
-test('grand téléphone : les onglets tiennent sans déborder, le reste sous « Plus »', async ({ page, isMobile }) => {
-  test.skip(!isMobile, 'téléphone seulement')
-  await page.setViewportSize({ width: 430, height: 900 })
-  await seConnecter(page)
-  await page.goto('./#/magasins/Lyon%20Test')
-  await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Plus'])
-  const droite = await page.evaluate(() => Math.max(...[...document.querySelectorAll('.onglets-fiche [role=tab]')].map((t) => t.getBoundingClientRect().right)))
-  expect(droite).toBeLessThanOrEqual(430 - 16)
-})
+// Téléphone (Joseph, 14/11/2026) : Budget et Simulateurs dans la barre, sans « Plus », de 375 à 430 px ; Nine box par le menu « ⋯ »
+for (const largeur of [375, 430]) {
+  test(`téléphone de ${largeur} px : Budget et Simuler dans la barre, sans déborder`, async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'téléphone seulement')
+    await page.setViewportSize({ width: largeur, height: 900 })
+    await seConnecter(page)
+    await page.goto('./#/magasins/Lyon%20Test')
+    const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })
+    await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler'])
+    const droite = await page.evaluate(() => Math.max(...[...document.querySelectorAll('.onglets-fiche [role=tab]')].map((t) => t.getBoundingClientRect().right)))
+    expect(droite).toBeLessThanOrEqual(largeur - 16)
+    for (const t of await onglets.getByRole('tab').all()) {
+      const b = (await t.boundingBox())!
+      expect(b.width).toBeGreaterThanOrEqual(48)
+      expect(b.height).toBeGreaterThanOrEqual(48)
+    }
+    await page.getByRole('button', { name: 'Autres actions' }).click()
+    await page.getByRole('menuitem', { name: 'Nine box' }).click()
+    await expect(page).toHaveURL(/vue=ninebox/)
+    await expect(onglets.getByRole('tab', { selected: true })).toHaveCount(0)
+    await onglets.getByRole('tab', { name: 'Budget' }).click()
+    await expect(page).toHaveURL(/vue=budget/)
+  })
+}
