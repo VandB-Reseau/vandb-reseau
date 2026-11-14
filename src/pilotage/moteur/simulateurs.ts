@@ -25,13 +25,43 @@ export interface ParametresSimulateurs {
   tauxDecouvert: number                                     // coût annuel de l'argent immobilisé (découvert, ligne de crédit)
   aideApprenti: number                                      // aide annuelle à l'embauche d'un apprenti, la 1re année
   corner: { caParMetre: number; tauxMarge: number; demarque: number } // corner alimentaire : CA HT par mètre linéaire et par an
+  // Vague 9 (choix 138 à 147, Joseph 14/11/2026)
+  coutHoraire: number                                       // coût chargé d'une heure de travail (livraisons, ouvertures)
+  exterieur: { prixKm: number; dureeTireuse: number; entretienTireuse: number; co2ParFut: number } // marché extérieur
+  donMecenat: boolean                                       // contrepartie d'un contrat traitée comme un don (réduction mécénat)
+  pression: { cibleMarge: number; joursFraicheur: number }  // cible de marge du bar, jours au-delà desquels un fût s'abîme
+  tva: { normale: number; intermediaire: number; reduite: number } // taux de TVA de la calculette des prix
+  productivite: { partBar: number; cible: number }[]        // CA HT par heure visé selon la part du bar (seuil mini, cible)
+  majorations: { dimanche: number; ferie: number }          // majoration des heures payées un dimanche, un jour férié
+  coefInterim: number                                       // coefficient de facturation de l'intérim sur le salaire brut
 }
-export const simulateursParDefaut: ParametresSimulateurs = { tauxDecouvert: 0, aideApprenti: 0, corner: { caParMetre: 0, tauxMarge: 0, demarque: 0 } }
+export const simulateursParDefaut: ParametresSimulateurs = {
+  tauxDecouvert: 0, aideApprenti: 0, corner: { caParMetre: 0, tauxMarge: 0, demarque: 0 },
+  coutHoraire: 0, exterieur: { prixKm: 0, dureeTireuse: 0, entretienTireuse: 0, co2ParFut: 0 }, donMecenat: false,
+  pression: { cibleMarge: 0, joursFraicheur: 0 },
+  // Taux légaux en France métropolitaine (20 %, 10 %, 5,5 %), modifiables par le Directeur
+  tva: { normale: 0.2, intermediaire: 0.1, reduite: 0.055 },
+  productivite: [], majorations: { dimanche: 0, ferie: 0 }, coefInterim: 0,
+}
+const positif = (x: unknown) => Math.max(0, fini(x as number))
 export function parametresSimulateurs(p: { simulateurs?: Partial<ParametresSimulateurs> } | null | undefined): ParametresSimulateurs {
   const s = p?.simulateurs ?? {}
+  const d = simulateursParDefaut
+  const tva = (k: keyof ParametresSimulateurs['tva']) => (Number.isFinite(s.tva?.[k]) ? positif(s.tva?.[k]) : d.tva[k])
   return {
-    tauxDecouvert: Math.max(0, fini(s.tauxDecouvert)), aideApprenti: Math.max(0, fini(s.aideApprenti)),
-    corner: { caParMetre: Math.max(0, fini(s.corner?.caParMetre)), tauxMarge: Math.max(0, fini(s.corner?.tauxMarge)), demarque: Math.max(0, fini(s.corner?.demarque)) },
+    tauxDecouvert: positif(s.tauxDecouvert), aideApprenti: positif(s.aideApprenti),
+    corner: { caParMetre: positif(s.corner?.caParMetre), tauxMarge: positif(s.corner?.tauxMarge), demarque: positif(s.corner?.demarque) },
+    coutHoraire: positif(s.coutHoraire),
+    exterieur: { prixKm: positif(s.exterieur?.prixKm), dureeTireuse: positif(s.exterieur?.dureeTireuse), entretienTireuse: positif(s.exterieur?.entretienTireuse), co2ParFut: positif(s.exterieur?.co2ParFut) },
+    donMecenat: s.donMecenat === true,
+    pression: { cibleMarge: positif(s.pression?.cibleMarge), joursFraicheur: positif(s.pression?.joursFraicheur) },
+    tva: { normale: tva('normale'), intermediaire: tva('intermediaire'), reduite: tva('reduite') },
+    productivite: (Array.isArray(s.productivite) ? s.productivite : [])
+      .filter((x) => x && Number.isFinite(x.partBar) && Number.isFinite(x.cible) && x.cible > 0)
+      .map((x) => ({ partBar: Math.min(1, positif(x.partBar)), cible: positif(x.cible) }))
+      .sort((a, b) => b.partBar - a.partBar),
+    majorations: { dimanche: positif(s.majorations?.dimanche), ferie: positif(s.majorations?.ferie) },
+    coefInterim: positif(s.coefInterim),
   }
 }
 
@@ -39,6 +69,7 @@ export function parametresSimulateurs(p: { simulateurs?: Partial<ParametresSimul
 export interface Situation { h: Hypotheses; p: ParametresReseau; depart: number }   // depart : trésorerie au 1er janvier
 export interface EtatBudget {
   ca: number; marge: number; personnel: number; ebe: number; resultatNet: number; pctFP: number
+  heures: number // heures travaillées de l'année (productivité, choix 145)
   soldes: number[]; fin: number; pointBas: { montant: number; mois: number }; premierMoisNegatif: number | null // mois 0 à 11
 }
 export interface Comparaison { avant: EtatBudget; apres: EtatBudget; ecart: { ca: number; marge: number; personnel: number; ebe: number; resultatNet: number; pctFP: number; fin: number; pointBas: number } }
@@ -51,6 +82,7 @@ export function etatBudget(h: Hypotheses, p: ParametresReseau, depart: number, r
   const neg = soldes.findIndex((x) => x < 0)
   return {
     ca: b.ca, marge: b.marge, personnel: b.personnel, ebe: b.ebe, resultatNet: b.resultatNet, pctFP: b.ratios.pctFP,
+    heures: somme(b.mois.map((m) => (m.productivite ? m.ca / m.productivite : 0))),
     soldes, fin: soldes[11], pointBas: { montant: soldes[bas], mois: bas }, premierMoisNegatif: neg >= 0 ? neg : null,
   }
 }

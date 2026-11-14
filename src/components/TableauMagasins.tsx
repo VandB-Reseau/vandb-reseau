@@ -27,6 +27,7 @@ import { lienFiche } from '../lib/format'
 import { libelleSuivi } from '../data/charge'
 import { statutLibelle, type Magasin, type Reseau } from '../data/modele'
 import { analyser, formatKEuros, formatPourcent, libelleMois } from '../data/chiffres'
+import { caExterieurAnnee } from '../data/exterieur'
 import { caseDe, visitesParAn } from '../data/sante'
 import { actionsEnCours } from '../data/actions'
 import { anneeDe, suiviRythme } from '../data/visites'
@@ -35,7 +36,7 @@ import type { TriMagasins } from './ListeMagasins'
 
 // Liste des magasins sur PC en vrai tableau (refonte, Joseph 09/11/2026, choix 5A) : lignes de 44 px, colonnes triables,
 // une ligne cliquée ouvre l'aperçu à droite sans quitter la liste ; le nom ouvre la fiche. Le téléphone garde ses lignes.
-interface Infos { ca: number | null; mois: string | null; ecart: number | null; caseLibelle: string; rang: number; depuis: number | null; alerteVisite: boolean; taches: number; alerte: 'decroche' | 'surveiller' | null }
+interface Infos { ext: number | null; ca: number | null; mois: string | null; ecart: number | null; caseLibelle: string; rang: number; depuis: number | null; alerteVisite: boolean; taches: number; alerte: 'decroche' | 'surveiller' | null }
 
 function infosDe(reseau: Reseau | null): Map<string, Infos> {
   const res = new Map<string, Infos>()
@@ -48,7 +49,7 @@ function infosDe(reseau: Reseau | null): Map<string, Infos> {
     const c = caseDe(reseau.evaluations[m.nom])
     const l = rythme.get(m.nom)
     res.set(m.nom, {
-      ca: a?.ca ?? null, mois: a?.mois ?? null, ecart: a?.ecart ?? null, caseLibelle: c?.libelle ?? '', rang: c ? visitesParAn(c) : 0,
+      ext: caExterieurAnnee(reseau, m.nom, reseau.jour.slice(0, 4)), ca: a?.ca ?? null, mois: a?.mois ?? null, ecart: a?.ecart ?? null, caseLibelle: c?.libelle ?? '', rang: c ? visitesParAn(c) : 0,
       depuis: l?.derniere ? l.depuis ?? 0 : null, alerteVisite: !!l?.alerte, taches: taches.get(m.nom) ?? 0,
       alerte: a?.statut === 'decroche' || a?.statut === 'surveiller' ? a.statut : null,
     })
@@ -66,6 +67,7 @@ const colonnesDe = (infos: Map<string, Infos>): ColonneTri<Magasin>[] => [
   { cle: 'coach', libelle: 'Coach', valeur: (m) => libelleSuivi(m) || null },
   { cle: 'rr', libelle: 'Responsable Régional', valeur: (m) => m.rr?.nom ?? null },
   { cle: 'mois', libelle: 'CA du mois', valeur: (m) => infos.get(m.nom)?.ca ?? null, nombre: (m) => { const c = infos.get(m.nom)?.ca; return c == null ? null : c / 1000 }, unite: 'k€' },
+  { cle: 'ext', libelle: 'CA extérieur de l’année', valeur: (m) => infos.get(m.nom)?.ext ?? null, nombre: (m) => { const c = infos.get(m.nom)?.ext; return c == null ? null : c / 1000 }, unite: 'k€', premier: 'desc' },
   { cle: 'ecart', libelle: 'évolution du CA', valeur: (m) => infos.get(m.nom)?.ecart ?? null, premier: 'asc', unite: '%' },
   { cle: 'case', libelle: 'nine box', valeur: (m) => infos.get(m.nom)?.rang ?? 0, texte: (m) => infos.get(m.nom)?.caseLibelle || 'Non classé', filtre: 'liste', premier: 'desc' },
   { cle: 'visite', libelle: 'dernière visite', valeur: (m) => infos.get(m.nom)?.depuis ?? Infinity, nombre: (m) => infos.get(m.nom)?.depuis ?? null, unite: 'jours', premier: 'desc' },
@@ -125,7 +127,8 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
       ca += x.ca; n++
       if (x.ecart !== null) ref += x.ca / (1 + x.ecart / 100)
     }
-    return { ca: n ? ca : null, ecart: ref ? ((ca - ref) / ref) * 100 : null }
+    const ext = tries.reduce((a, m) => a + (infos.get(m.nom)?.ext ?? 0), 0)
+    return { ca: n ? ca : null, ecart: ref ? ((ca - ref) / ref) * 100 : null, ext }
   }, [tries, infos])
   const ouvrir = (nom: string) => setChoisi((c) => (c === nom ? null : nom))
   // Refonte vague 2 (16A) : cocher plusieurs magasins et leur créer une même tâche
@@ -149,6 +152,7 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
                 <Entete t={t} cle="rr" sx={{ width: 150 }}>Responsable Régional</Entete>
                 <Entete t={t} cle="mois" align="right" sx={{ width: 104 }}>CA du mois</Entete>
                 <Entete t={t} cle="ecart" align="right" sx={{ width: 88 }}>vs N-1</Entete>
+                <Entete t={t} cle="ext" align="right" sx={{ width: 104 }}>Extérieur</Entete>
                 <Entete t={t} cle="case" sx={{ width: 150 }}>Nine box</Entete>
                 <Entete t={t} cle="visite" align="right" sx={{ width: 112 }}>Dernière visite</Entete>
                 <Entete t={t} cle="taches" align="right" sx={{ width: 76 }}>Tâches</Entete>
@@ -176,6 +180,7 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
                     <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: x?.ecart === null || x?.ecart === undefined ? 'text.secondary' : x.ecart <= -5 ? 'error.main' : x.ecart < 0 ? 'warning.dark' : 'success.dark' }}>
                       {x?.ecart === null || x?.ecart === undefined ? '—' : formatPourcent(x.ecart)}
                     </TableCell>
+                    <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', color: x?.ext ? 'text.primary' : 'text.secondary' }}>{x?.ext ? formatKEuros(x.ext) : '—'}</TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap', color: x?.caseLibelle ? 'text.primary' : 'text.secondary' }}>{x?.caseLibelle || 'Non classé'}</TableCell>
                     <TableCell align="right" sx={{ whiteSpace: 'nowrap', color: x?.alerteVisite ? 'warning.dark' : 'text.secondary', fontWeight: x?.alerteVisite ? 600 : 400 }}>
                       {x?.depuis === null || x?.depuis === undefined ? 'jamais' : `il y a ${x.depuis} j`}
@@ -184,11 +189,12 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
                   </TableRow>
                 )
               })}
-              <LigneSansResultat t={t} colSpan={avecSelection ? 9 : 8} quoi="Aucun magasin ne correspond" />
+              <LigneSansResultat t={t} colSpan={avecSelection ? 10 : 9} quoi="Aucun magasin ne correspond" />
               <TableRow sx={{ '&&': { cursor: 'default', height: 44 }, '&&:hover': { bgcolor: 'transparent' }, '& td': { borderBottom: 0, fontWeight: 700 } }}>
                 <TableCell colSpan={avecSelection ? 4 : 3} sx={{ color: 'text.secondary' }}>{tries.length < magasins.length ? `${tries.length} sur ${magasins.length} magasins` : `${magasins.length} magasin${magasins.length > 1 ? 's' : ''}`}</TableCell>
                 <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{formatKEuros(total.ca)}</TableCell>
                 <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{total.ecart === null ? '—' : formatPourcent(total.ecart)}</TableCell>
+                <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{total.ext ? formatKEuros(total.ext) : '—'}</TableCell>
                 <TableCell colSpan={3} />
               </TableRow>
             </TableBody>

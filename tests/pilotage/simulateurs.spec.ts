@@ -42,7 +42,7 @@ test('franchisé : le menu ouvre les simulateurs de son magasin ; embauche chiff
     await page.getByRole('navigation').getByRole('button', { name: 'Simulateurs' }).first().click()
   }
   await expect(page).toHaveURL(/magasins\/Annecy%20Test\?vue=chiffres&partie=simulateurs/)
-  await expect(simulateurs(page).getByRole('button')).toHaveCount(8)
+  await expect(simulateurs(page).getByRole('button')).toHaveCount(13)
   // Embauche d'un vendeur en janvier, d'office : coût, EBE, % de frais de personnel, trésorerie, CA nécessaire
   await expect(page.getByRole('heading', { name: 'Embaucher' })).toBeVisible()
   await page.getByLabel('Salaire brut mensuel').fill('2000')
@@ -128,7 +128,7 @@ test('Directeur : les repères des simulateurs dans les paramètres des budgets'
   await page.getByRole('region', { name: 'Simulateurs' }).getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText(/Repères des simulateurs \d{4} enregistrés\./)).toBeVisible()
   const p = ecritures.filter((e) => e.table === 'parametres_reseau').at(-1)?.corps as { valeur: { simulateurs: unknown } }
-  expect(p.valeur.simulateurs).toEqual({ tauxDecouvert: 0.06, aideApprenti: 0, corner: { caParMetre: 5_000, tauxMarge: 0, demarque: 0 } })
+  expect(p.valeur.simulateurs).toMatchObject({ tauxDecouvert: 0.06, aideApprenti: 0, corner: { caParMetre: 5_000, tauxMarge: 0, demarque: 0 } })
 })
 
 test('120 : clôture en un écran, stock repris du mois précédent en gris, rappel dans la cloche', async ({ page, isMobile }, info) => {

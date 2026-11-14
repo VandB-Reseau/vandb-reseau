@@ -19,6 +19,7 @@ import { ChampNombre } from './ChampNombre'
 import { useSaisieEnCours } from './GardeSaisie'
 import { ImportFEC, type FichierFEC } from './ImportFEC'
 import { grilleDe } from '../moteur/parametres'
+import { DiagnosticMarge } from './DiagnosticMarge'
 import { Indicateur } from './Indicateur'
 import { Panne } from './Panne'
 import { atterrissageDe, chargerBudgets, chargerParametres, chargerQuadrimestres, chargerReel, chargerSecours, enregistrerQuadrimestres, hypothesesDe, parametresDuBudget } from '../data/pilotage'
@@ -268,6 +269,7 @@ export function QuadrimestresMagasin({ magasin, annee, peutSaisir, vue = 'saisie
         </Stack>
       )}
 
+        {cumul && dernier && <DiagnosticMarge magasin={magasin} annee={annee} quadrimestre={dernier} fin={fin} ca={cumul.ca} ecart={cumul.ecartMargeCaisse} seuil={donnees.parametres.alertes.baisseMarge} />}
         {pont && <PontEcartEBE pont={pont} periode={`à fin ${fin}`} />}
         {comparaisonCarte}
       </Stack>

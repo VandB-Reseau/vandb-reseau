@@ -9,6 +9,21 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Boîte à outils du coach, vague 9 (Joseph, 14/11/2026, choix 138 à 147 sauf 148 à 151, « tout le reste, en une fois ») :
+  cinq simulateurs en plus. Contrat extérieur (net par fût, coûts fixes de la tireuse et des livraisons, fûts pour
+  l'équilibre, remise maximale, prix plancher d'une livraison) avec le don à l'association, réduction mécénat de 60 % si
+  le siège le règle et que le reçu Cerfa est demandé (garde-fou dans l'aide) ; parc de tireuses (occupation, marge perdue
+  sur les refus, racheter ou remplacer) ; carte pression (marge et coût au verre par bec, jours pour vider un fût, fûts à
+  commander, ajouter ou remplacer un bec) ; prix et marge (composition, TVA réglée par le siège) ; ouvrir un dimanche ou
+  un jour férié (majorations réglées par le siège). Équipe : productivité visée selon la part du bar et ETP visés ;
+  simulateur d'embauche : productivité face à la cible, le même poste en CDD ou en intérim. Comptes du quadrimestre :
+  écart de marge sous la caisse, un point en euros et causes de l'audit de marge cochées. Fiche magasin (équipe) : bloc
+  Marché extérieur (année, part, évolution, rang parmi les magasins qui en font) et colonne Extérieur dans le tableau des
+  magasins ; plan de redressement d'un magasin qui décroche (causes, leviers, tâches du Coach). Repères dans Paramètres,
+  Simulateurs. Chaque simulation se télécharge en PDF (la carte seule, avec le magasin et la date), gardée ou non.
+  **Base : migration pilotage `0032_simulations_boite_a_outils.sql`** (dépôt du pilotage) ; sans elle, les
+  cinq nouveaux simulateurs calculent mais ne se gardent pas.
+
 - Facilité d'usage et simulateurs du franchisé (Joseph, 13/11/2026, choix 114 à 135, « faire tout d'un coup ») :
   travailler sans réseau (visite, note, tâche et photo gardées sur l'appareil, envoyées seules au retour du réseau,
   compteur « N en attente d'envoi » ; fichiers de l'app gardés par le service de l'app) ; « Montrer au franchisé » en

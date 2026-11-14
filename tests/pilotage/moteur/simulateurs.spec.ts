@@ -101,7 +101,7 @@ test('investissement : EBE en plus, délai de retour, année de la mise en servi
   proche(avecPret.interets, 0)
   // Corner : 6 mètres à 5 000 € par mètre et par an
   expect(caCorner(6, parametresSimulateurs({ simulateurs: { corner: { caParMetre: 5_000, tauxMarge: 0.3, demarque: 0.03 } } }))).toBe(30_000)
-  expect(parametresSimulateurs(null)).toEqual({ tauxDecouvert: 0, aideApprenti: 0, corner: { caParMetre: 0, tauxMarge: 0, demarque: 0 } })
+  expect(parametresSimulateurs(null)).toMatchObject({ tauxDecouvert: 0, aideApprenti: 0, corner: { caParMetre: 0, tauxMarge: 0, demarque: 0 } })
 })
 
 test('embauche : coût chargé de l’année, EBE, CA nécessaire, aide à l’apprentissage', () => {

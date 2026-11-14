@@ -82,6 +82,7 @@ import { ContenuLeviers, ListeInspirations } from '../components/Leviers'
 import { inspirationsDu, leviersDuMagasin, libellesLevier, useReperesReseau } from '../data/leviers'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
 import { Contact, Ligne, Section } from '../components/Section'
+import { SectionExterieur, SectionRedressement } from '../components/ExterieurRedressement'
 import { SectionReunionsMagasin } from '../components/Reunions'
 import { SectionConcurrents } from '../components/Concurrents'
 import { SectionObjectifs } from '../components/Objectifs'
@@ -260,6 +261,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         {vue === 'chiffres' && <OngletBudget nom={m.nom} mode="chiffres" sante={
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
             <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
+            <SectionRedressement reseau={reseau} m={m} />
+            <SectionExterieur reseau={reseau} m={m} />
             <SectionLeviers reseau={reseau} m={m} />
           </Box>
         } />}

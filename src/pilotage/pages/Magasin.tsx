@@ -93,6 +93,7 @@ import { calculerBudget, effetTravaux } from '../moteur/budget'
 import { campagneDe } from '../moteur/campagne'
 import { compteResultat } from '../moteur/compteResultat'
 import { grilleDe } from '../moteur/parametres'
+import { parametresSimulateurs } from '../moteur/simulateurs'
 import { reglesDe } from '../moteur/regles'
 import { pointsAttention } from '../moteur/attention'
 import { PointsAttention } from '../components/PointsAttention'
@@ -704,6 +705,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
           hausse={resolu?.hypotheses.hausseSalaires ?? valeurHeritee(niveauxDe(ligne, d, brouillon), 'hausseSalaires')?.valeur ?? 0}
           charges={donnees.parametresN.charges} chargesBudget={parametres.charges}
           peutSaisir={peutSaisir} apresEnregistrement={recharger} caAnnee={b?.atterrissage} caBudget={b?.ca} ebeBudget={b?.ebe}
+          caBarBudget={b ? b.familles.filter((f) => f.univers === 'bar').reduce((a, f) => a + f.objectif, 0) : undefined} grilleProductivite={parametresSimulateurs(parametres).productivite}
         />
         {barreBudget}
         </Stack>

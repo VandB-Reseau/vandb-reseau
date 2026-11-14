@@ -34,6 +34,7 @@ import { ChampNombre } from './ChampNombre'
 import { EtatVide } from './EtatVide'
 import { useSaisieEnCours } from './GardeSaisie'
 import { Indicateur } from './Indicateur'
+import { productiviteCible } from '../moteur/boiteOutils'
 import { enregistrerPersonne, supprimerPersonne } from '../data/pilotage'
 import { nombreChangements } from '../lib/aFaire'
 import { milliers, montant, MOIS, MOIS_LONGS, panier, taux } from '../lib/format'
@@ -69,7 +70,7 @@ function presence(p: Personne): string {
 const parHeure = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
 const heuresDe = (p: Personne) => (p.enveloppe ? '–' : p.heuresSaisie === 'mois' ? `${heures.format(p.heuresHebdo * SEMAINES_PAR_MOIS)} h par mois` : `${heures.format(p.heuresHebdo)} h par semaine`)
 
-export function EquipeMagasin({ magasin, equipe, annee, anneeBudget, hausse, charges, chargesBudget, peutSaisir, apresEnregistrement, caAnnee, caBudget, ebeBudget }: {
+export function EquipeMagasin({ magasin, equipe, annee, anneeBudget, hausse, charges, chargesBudget, peutSaisir, apresEnregistrement, caAnnee, caBudget, ebeBudget, caBarBudget, grilleProductivite = [] }: {
   magasin: string
   equipe: Personne[]
   annee: number
@@ -82,6 +83,8 @@ export function EquipeMagasin({ magasin, equipe, annee, anneeBudget, hausse, cha
   caAnnee?: number     // CA HT atterri de l'année en cours, pour la productivité
   caBudget?: number    // CA HT du budget
   ebeBudget?: number   // EBE du budget, pour l'effet de la saisie (lot 28)
+  caBarBudget?: number // CA HT du bar au budget : part du bar pour la productivité visée (choix 145)
+  grilleProductivite?: { partBar: number; cible: number }[]
 }) {
   const [fiche, setFiche] = useState<ChampsPersonne | null>(null)
   const [erreurs, setErreurs] = useState<string[]>([])
@@ -249,6 +252,8 @@ export function EquipeMagasin({ magasin, equipe, annee, anneeBudget, hausse, cha
   const heuresAn = (m: ReturnType<typeof masseSalariale>) => m.parMois.reduce((a, x) => a + x.heures, 0)
   const productivite = (ca: number | undefined, m: ReturnType<typeof masseSalariale>) => (ca && heuresAn(m) > 0 ? ca / heuresAn(m) : null)
   const prodN = productivite(caAnnee, n), prodN1 = productivite(caBudget, n1)
+  // 145 : productivité visée par le réseau selon la part du bar du budget, heures et ETP qui la donnent
+  const cible = caBudget && caBarBudget !== undefined ? productiviteCible(caBudget, caBarBudget, heuresAn(n1), grilleProductivite) : null
   // Effet de la fiche en cours sur l'année du budget : le poste modifié remplace l'ancien, un nouveau s'ajoute
   const apercu = fiche ? lirePersonne(fiche).personne : null
   const apres = apercu ? masseSalariale([...equipe.filter((p) => !apercu.id || p.id !== apercu.id), apercu], chargesBudget, anneeBudget, hausse) : null
@@ -362,6 +367,11 @@ export function EquipeMagasin({ magasin, equipe, annee, anneeBudget, hausse, cha
             {(prodN1 !== null || prodN !== null) && (
               <Indicateur aide="productivite" libelle={`Productivité ${prodN1 !== null ? anneeBudget : annee}`} valeur={`${parHeure.format((prodN1 ?? prodN)!)} par heure`}
                 detail={`CA HT par heure travaillée${prodN1 !== null && prodN !== null ? ` · ${annee} : ${parHeure.format(prodN)}` : ''} · ${heures.format(heuresAn(prodN1 !== null ? n1 : n))} h`} />
+            )}
+            {cible && (
+              <Indicateur aide="productiviteCible" libelle={`Productivité visée ${anneeBudget}`} valeur={`${parHeure.format(cible.cible)} par heure`}
+                detail={`${taux(cible.partBar)} de bar · ${nombreEtp.format(cible.etpCible)} ETP visés pour ${nombreEtp.format(cible.etpReel)} au budget`}
+                ecart={cible.reelle !== null ? { texte: cible.ecartHeures > 0 ? `${heures.format(cible.ecartHeures)} h de plus que visé` : `${heures.format(-cible.ecartHeures)} h de moins que visé`, hausse: cible.ecartHeures > 0, favorable: cible.ecartHeures <= 0 } : undefined} />
             )}
           </Stack>
           {boutonAjout && <Box>{boutonAjout}</Box>}
