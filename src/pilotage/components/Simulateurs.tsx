@@ -167,7 +167,7 @@ type Etats = {
   }
   pression: {
     becs: Bec[]; projet: boolean; mode: 'ajouter' | 'remplacer'; remplace: number; cout: number; cannibalisation: number; nouveau: Bec
-    vue: 'carte' | 'audit'; audit: { futs: number; litres: number; prixFut: number; demis: number; verres33: number; pintes: number; litres1L: number; offerts: number; caHT: number; caTTC?: number; standard?: number | null } // 161 (standard absent ou null : perte prévue dans la carte) (caTTC : simulations gardées avant le CA en HT)
+    vue: 'carte' | 'audit'; audit: { futs: number; litres: number; prixFut: number; demis: number; verres33: number; pintes: number; litres1L: number; offerts: number; caHT: number; caTTC?: number; standard?: number | null } // 161 (standard absent ou null : perte standard réglée par le siège) (caTTC : simulations gardées avant le CA en HT)
   }
   calculette: { nom: string; composants: Composant[]; tva: 'normale' | 'intermediaire' | 'reduite'; mode: 'prix' | 'marge' | 'mix'; marge: number; prixTTC: number; famille: string; mix: LigneMix[] }
   ouverture: { jour: 'dimanche' | 'ferie'; caBar: number; caCave: number; margeBar: number | null; margeCave: number | null; report: number; heures: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number; frais: number }
@@ -744,10 +744,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     }, p, s.donMecenat)
     const margeExt = margeFut(Math.max(0, e.prixVente - e.remise), e.prixAchat)
     const m = (k: keyof Etats['exterieur']) => (v: number) => maj('exterieur', { [k]: v })
-    // Prix de vente et remise saisis TTC (prix conseillé), gardés HT pour le calcul (Joseph, 14/11/2026), TVA normale
-    const tvaExt = s.tva.normale
-    const enTTC = (ht: number) => Math.round(ht * (1 + tvaExt) * 100) / 100
-    const mHT = (k: 'prixVente' | 'remise') => (v: number) => maj('exterieur', { [k]: Math.round(v / (1 + tvaExt) * 1e6) / 1e6 })
+    // Facturé à un organisateur (B2B) : tout en HT (Joseph, 14/11/2026). Le TTC ne sert qu'à la vente au client final.
     saisies = (
       <Stack spacing={2}>
         <Saisies>
@@ -756,13 +753,12 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         </Saisies>
         <Typography component="h3" sx={{ fontWeight: 700 }}>Par fût</Typography>
         <Saisies>
-          <Montant libelle="Prix de vente du fût TTC" valeur={enTTC(e.prixVente)} onChange={mHT('prixVente')} />
-          <Montant libelle="Remise accordée TTC" valeur={enTTC(e.remise)} onChange={mHT('remise')} />
+          <Montant libelle="Prix de vente du fût HT" valeur={e.prixVente} onChange={m('prixVente')} />
+          <Montant libelle="Remise accordée HT" valeur={e.remise} onChange={m('remise')} />
           <Montant libelle="Prix d’achat du fût HT" valeur={e.prixAchat} onChange={m('prixAchat')} />
           <Montant libelle="CO2 par fût HT" valeur={e.co2} onChange={m('co2')} />
           <Montant libelle="Gobelets par fût HT" valeur={e.gobelets} onChange={m('gobelets')} />
         </Saisies>
-        <Typography color="text.secondary">Prix après remise : {centimes(enTTC(Math.max(0, e.prixVente - e.remise)))} TTC, soit {centimes(Math.max(0, e.prixVente - e.remise))} HT.</Typography>
         <Typography component="h3" sx={{ fontWeight: 700 }}>Tireuse et livraisons</Typography>
         <Saisies>
           <Choix libelle="Tireuse" valeur={e.tireuse} onChange={(v) => maj('exterieur', { tireuse: v })} options={[['neuve', 'À acheter'], ['parc', 'Déjà dans le parc']]} />
@@ -817,7 +813,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         {r.recettes > 0 && <Indicateur libelle="Livraisons et locations facturées" valeur={montant(r.recettes)} detail={`HT, ${montant(r.recettesNettes)} après redevance et publicité`} />}
         <Indicateur libelle="Fûts pour l’équilibre" valeur={r.equilibre !== null ? entier(r.equilibre) : 'Jamais'} detail={r.equilibre !== null ? `${e.futs} prévus` : 'Le fût ne rapporte rien'} />
         <Indicateur libelle={r.gain >= 0 ? 'Gain de l’année' : 'Perte de l’année'} valeur={montant(Math.abs(r.gain))} detail={`sur ${montant(r.ca)} de CA HT`} />
-        {r.remiseMax !== null && <Indicateur libelle="Remise maximale par fût" valeur={centimes(enTTC(r.remiseMax))} detail={`TTC (${centimes(r.remiseMax)} HT) ; au-delà, ${e.futs} fûts ne paient plus les coûts fixes`} />}
+        {r.remiseMax !== null && <Indicateur libelle="Remise maximale par fût" valeur={centimes(r.remiseMax)} detail={`HT ; au-delà, ${e.futs} fûts ne paient plus les coûts fixes`} />}
         {r.prixPlancherLivraison !== null && r.coutLivraison > 0 && <Indicateur libelle="Prix plancher d’une livraison" valeur={centimes(r.prixPlancherLivraison)} detail={`HT, pour couvrir ${centimes(r.coutLivraison)} de route et de temps`} />}
         {r.don.valeur > 0 && <Indicateur libelle="Coût réel du don" valeur={montant(r.don.cout)} detail={r.don.reduction ? `${montant(r.don.valeur)} moins ${taux(TAUX_MECENAT)} de réduction d’impôt` : s.donMecenat ? 'sans reçu Cerfa, pas de réduction' : 'sans réduction d’impôt'} />}
       </Resultats>
@@ -989,10 +985,9 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   if (choisi === 'pression' && etats.pression.vue === 'audit') {
     const e = etats.pression
     const a = e.audit
-    const perteCarte = e.becs.length ? somme(e.becs.map((x) => x.perte)) / e.becs.length : 0
     // CA toujours en HT (Joseph, 14/11/2026) ; une simulation gardée avant en TTC est ramenée au HT
-    // Perte standard (Joseph, 14/11/2026) : par défaut celle prévue dans la carte (moyenne des becs), modifiable
-    const standard = a.standard ?? perteCarte
+    // Perte standard (Joseph, 14/11/2026) : 7 % par défaut, réglée dans Paramètres, modifiable ici
+    const standard = a.standard ?? s.pression.perteStandard
     const caPression = a.caTTC !== undefined ? a.caTTC / (1 + s.tva.normale) : a.caHT
     const r = auditPression({ futs: a.futs, litres: a.litres, prixFut: a.prixFut, demis: a.demis, verres33: a.verres33, pintes: a.pintes, litresVendus1L: a.litres1L, offerts: a.offerts, caHT: caPression, standard })
     const au = (k: keyof typeof a) => (v: number) => maj('pression', { audit: { ...a, [k]: v } })
@@ -1017,7 +1012,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         <Typography component="h3" sx={{ fontWeight: 700 }}>Perte normale</Typography>
         <Saisies>
           <Taux libelle="Perte standard" valeur={standard} onChange={(v) => maj('pression', { audit: { ...a, standard: Math.min(1, v) } })} />
-          {a.standard != null && Math.abs(a.standard - perteCarte) > 1e-9 && <Button onClick={() => maj('pression', { audit: { ...a, standard: null } })} sx={{ minHeight: 48 }}>Reprendre la perte de la carte ({taux(perteCarte)})</Button>}
+          {a.standard != null && Math.abs(a.standard - s.pression.perteStandard) > 1e-9 && <Button onClick={() => maj('pression', { audit: { ...a, standard: null } })} sx={{ minHeight: 48 }}>Reprendre le standard du siège ({taux(s.pression.perteStandard)})</Button>}
         </Saisies>
       </Stack>
     )

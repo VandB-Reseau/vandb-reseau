@@ -117,6 +117,9 @@ test('161 · le verre de 33 cl et la perte réelle d’une semaine', () => {
   // Perte standard 10 % : 18 l, la perte réelle reste dedans, rien ne coûte
   const dedans = auditPression({ futs: 6, litres: 30, prixFut: 90, demis: 400, verres33: 0, pintes: 120, litresVendus1L: 0, offerts: 4, caHT, standard: 0.1 })
   expect([dedans.ecart, dedans.coutAn, dedans.caManqueAn]).toEqual([0, 0, 0])
+  // Standard du réseau : 7 % d'office, réglable par le siège
+  expect(parametresSimulateurs(null).pression.perteStandard).toBe(0.07)
+  expect(parametresSimulateurs({ simulateurs: { pression: { cibleMarge: 0, joursFraicheur: 0, perteStandard: 0.05 } } }).pression.perteStandard).toBe(0.05)
 })
 
 test('159 · CDD avec ses frais fixes, intérim à 1,75', () => {

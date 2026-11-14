@@ -150,16 +150,17 @@ test('161 et 160 : perte réelle de la pression, 33 cl, marge par famille et plu
   await simulateur(page, 'pression')
   await expect(page.getByLabel('Prix du 33 cl TTC, bec 1')).toBeVisible()
   await page.getByRole('group', { name: 'Je regarde' }).getByRole('button', { name: 'La perte sur une semaine' }).click()
-  // 6 fûts de 30 l, 400 demis et 120 pintes (160 l), 4 l offerts : 16 l perdus ; perte standard = celle de la carte (10 %, 18 l)
+  // 6 fûts de 30 l, 400 demis et 120 pintes (160 l), 4 l offerts : 16 l perdus ; perte standard du siège 7 % : 12,6 l
+  // Écart 3,4 l : 3,4 × 3 € × 52 = 530 € ; CA manqué 3,4 × 2 170 ÷ 160 × 52 = 2 398 €
   await expect(page.getByLabel('CA pression de la semaine HT')).toHaveValue('2 170')
-  await expect(page.getByLabel('Perte standard')).toHaveValue('10')
-  await expect(statut(page)).toHaveText(/^16 litres perdus sur 180 sortis du stock, soit 8,9\s% : dans la perte standard de 10\s%, rien à redresser\.$/)
-  // Standard 5 % : 9 l normaux, 7 l de trop ; 7 × 3 € × 52 = 1 092 € ; CA manqué 7 × 2 170 ÷ 160 × 52 = 4 937 €
-  await page.getByLabel('Perte standard').fill('5')
-  await expect(statut(page)).toHaveText(/^16 litres perdus sur 180 sortis, soit 8,9\s% pour 5\s% de perte standard : 7 litres de trop, 1\s092\s€ de bière payée pour rien et 4\s937\s€ de CA HT manqué sur un an\.$/)
+  await expect(page.getByLabel('Perte standard', { exact: true })).toHaveValue('7')
+  await expect(statut(page)).toHaveText(/^16 litres perdus sur 180 sortis, soit 8,9\s% pour 7\s% de perte standard : 3,4 litres de trop, 530\s€ de bière payée pour rien et 2\s398\s€ de CA HT manqué sur un an\.$/)
   await expect(page.getByText('Écart à la perte standard')).toBeVisible()
-  await page.getByRole('button', { name: /Reprendre la perte de la carte/ }).click()
-  await expect(page.getByLabel('Perte standard')).toHaveValue('10')
+  // Standard 10 % : 18 l, la perte reste dedans
+  await page.getByLabel('Perte standard', { exact: true }).fill('10')
+  await expect(statut(page)).toHaveText(/^16 litres perdus sur 180 sortis du stock, soit 8,9\s% : dans la perte standard de 10\s%, rien à redresser\.$/)
+  await page.getByRole('button', { name: /Reprendre le standard du siège \(7\s%\)/ }).click()
+  await expect(page.getByLabel('Perte standard', { exact: true })).toHaveValue('7')
 
   await page.getByRole('navigation', { name: 'Choisir un simulateur' }).getByRole('button', { name: /Prix et marge/ }).click()
   await page.getByLabel('Famille', { exact: true }).click()
