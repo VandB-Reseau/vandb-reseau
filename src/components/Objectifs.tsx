@@ -12,9 +12,10 @@ import { Puces } from './Social'
 import { useAuth } from '../auth/AuthContext'
 import { enregistrerObjectifs } from '../data/chargement'
 import { actionsDuMagasin } from '../data/actions'
+import { prioritesDu, tachesDeLaPriorite } from '../data/planAction'
 import { analyser, chiffresDuMagasin, decalerMois, libelleMois } from '../data/chiffres'
 import { echelle } from '../theme/theme'
-import { INDICATEURS, avancement, cibleObjectif, formatIndicateur, libelleStatut, periodeObjectif, phraseObjectif, valeurAu, type IndicateurObjectif, type ModeObjectif, type Objectif, type StatutObjectif } from '../data/objectifs'
+import { INDICATEURS, avancement, cibleObjectif, formatIndicateur, libelleAvancement, periodeObjectif, phraseObjectif, valeurAu, type EtatObjectif, type IndicateurObjectif, type ModeObjectif, type NatureObjectif, type Objectif, type StatutObjectif } from '../data/objectifs'
 import type { Magasin, Reseau } from '../data/modele'
 
 const couleurStatut: Record<StatutObjectif, string> = { atteint: 'success.main', voie: 'success.main', retard: 'error.main', manque: 'error.main', attente: 'text.secondary' }
@@ -24,20 +25,24 @@ const couleurJauge: Record<StatutObjectif, string> = { atteint: '#307672', voie:
 // priorités qui y mènent se rangent dessous (SectionObjectifsPlan, PlanAction.tsx)
 export function EnteteObjectif({ reseau, magasin, o, onClick }: { reseau: Reseau; magasin: string; o: Objectif; onClick?: () => void }) {
   const a = avancement(reseau, magasin, o)
-  const detail = [a.mois ? `${libelleMois(a.mois)} : ${formatIndicateur(o.indicateur, o.mode, a.actuel)}` : null, o.par && `fixé par ${o.par}`].filter(Boolean).join(' · ')
+  const qualitatif = o.nature === 'qualitatif'
+  const taches = qualitatif ? prioritesDu(reseau, magasin).filter((p) => p.objectif === o.id && p.statut !== 'abandonnee').flatMap((p) => tachesDeLaPriorite(actionsDuMagasin(reseau, magasin), p)) : []
+  const faites = taches.filter((x) => x.a.faite).length
+  const detail = [qualitatif ? (taches.length ? `${faites} tâche${faites > 1 ? 's' : ''} faite${faites > 1 ? 's' : ''} sur ${taches.length}` : null) : a.mois ? `${libelleMois(a.mois)} : ${formatIndicateur(o.indicateur, o.mode, a.actuel)}` : null, o.par && `fixé par ${o.par}`].filter(Boolean).join(' · ')
   const pct = Math.max(0, Math.min(1, a.progression ?? 0)) * 100
   const contenu = (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr auto', sm: 'minmax(0, 1fr) 120px 150px' }, gap: { xs: 0.5, sm: 2 }, alignItems: 'center', width: '100%', textAlign: 'left' }}>
       <Box sx={{ minWidth: 0, gridColumn: { xs: '1 / -1', sm: 'auto' } }}>
         <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>{periodeObjectif(o)}</Typography>
         <Typography component="h3" sx={{ fontWeight: 700, fontSize: echelle.carte }}>{cibleObjectif(o)}</Typography>
+        {qualitatif && o.description && <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>{o.description}</Typography>}
         {detail && <Typography variant="body2" color="text.secondary">{detail}</Typography>}
       </Box>
       <Box role="meter" aria-label={`Avancement : ${phraseObjectif(o)}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}
         sx={{ height: 8, borderRadius: 4, bgcolor: 'action.hover', overflow: 'hidden' }}>
         <Box sx={{ height: '100%', width: `${pct}%`, bgcolor: couleurJauge[a.statut], borderRadius: 4 }} />
       </Box>
-      <Typography variant="body2" sx={{ fontWeight: 700, color: couleurStatut[a.statut], textAlign: { sm: 'right' } }}>{libelleStatut[a.statut]}</Typography>
+      <Typography variant="body2" sx={{ fontWeight: 700, color: couleurStatut[a.statut], textAlign: { sm: 'right' } }}>{libelleAvancement(o, a.statut)}</Typography>
     </Box>
   )
   const sx = { display: 'block', width: '100%', py: 1, minHeight: 56, borderRadius: 1 } as const
@@ -52,6 +57,12 @@ export function DialogObjectif({ reseau, m, objectif, onFermer }: { reseau: Rese
   const { profil } = useAuth()
   const liste = chiffresDuMagasin(reseau, m.nom)
   const dernier = analyser(reseau, m.nom)?.mois ?? decalerMois(reseau.jour.slice(0, 7), -1)
+  // Joseph (14/11/2026) : à la création, un objectif chiffré (indicateur de la caisse) ou qualitatif (intitulé libre)
+  const [nature, setNature] = useState<NatureObjectif>(objectif?.nature ?? 'chiffre')
+  const [titre, setTitre] = useState(objectif?.titre ?? '')
+  const [description, setDescription] = useState(objectif?.description ?? '')
+  const [etat, setEtat] = useState<EtatObjectif>(objectif?.etat ?? '')
+  const qualitatif = nature === 'qualitatif'
   const [indicateur, setIndicateur] = useState<IndicateurObjectif>(objectif?.indicateur ?? 'pmCave')
   const [mode, setMode] = useState<ModeObjectif>(objectif?.mode ?? 'valeur')
   const [cible, setCible] = useState(objectif ? String(objectif.cible).replace('.', ',') : '')
@@ -65,10 +76,15 @@ export function DialogObjectif({ reseau, m, objectif, onFermer }: { reseau: Rese
   const moisDepart = objectif?.moisDepart ?? dernier
   const depart = objectif && objectif.indicateur === indicateur && objectif.mode === mode ? objectif.depart : valeurAu(liste, indicateur, mode, moisDepart)
   const n = nombreSaisi(cible)
-  const valide = n !== null && /^\d{4}-\d{2}$/.test(echeance) && echeance > moisDepart
+  const valide = (qualitatif ? !!titre.trim() : n !== null) && /^\d{4}-\d{2}$/.test(echeance) && echeance > moisDepart
   const enregistrer = async () => {
-    const o: Objectif = {
-      id: objectif?.id ?? `o_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    const id = objectif?.id ?? `o_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+    const o: Objectif = qualitatif ? {
+      id, nature, titre: titre.trim().slice(0, 200), description: description.trim().slice(0, 600), etat,
+      indicateur: 'pmCave', mode: 'valeur', depart: null, moisDepart, cible: 0, echeance, taches: [],
+      par: objectif?.par ?? profil?.nom ?? '', creeLe: objectif?.creeLe ?? reseau.jour, visite: objectif?.visite ?? null,
+    } : {
+      id, nature, titre: '', description: '', etat: '',
       indicateur, mode, depart, moisDepart, cible: n!, echeance, taches,
       par: objectif?.par ?? profil?.nom ?? '', creeLe: objectif?.creeLe ?? reseau.jour, visite: objectif?.visite ?? null,
     }
@@ -83,22 +99,36 @@ export function DialogObjectif({ reseau, m, objectif, onFermer }: { reseau: Rese
   return (
     <Fenetre titre={objectif ? 'Modifier l’objectif' : `Fixer un objectif à ${m.nom}`} ouvert onFermer={onFermer} valide={valide} enregistrer={enregistrer}
       supprimer={objectif ? clore : undefined} libelleSuppression={objectif ? 'Retirer cet objectif du suivi ?' : undefined}>
-      <TextField select label="Indicateur de la caisse" value={indicateur} onChange={(e) => setIndicateur(e.target.value as IndicateurObjectif)}>
-        {INDICATEURS.map((i) => <MenuItem key={i.id} value={i.id} sx={{ minHeight: 48 }}>{i.libelle}</MenuItem>)}
-      </TextField>
-      <Puces label="Cible" valeur={mode} onChange={setMode} options={[{ v: 'valeur', libelle: 'Une valeur' }, { v: 'evolution', libelle: 'Une évolution vs N-1' }]} />
-      <Typography variant="body2" color="text.secondary">
-        {`Départ, ${libelleMois(moisDepart)} : ${formatIndicateur(indicateur, mode, depart)}${mode === 'evolution' ? ' vs N-1' : ''}`}
-      </Typography>
+      {!objectif && <Puces label="Type d’objectif" valeur={nature} onChange={setNature} options={[{ v: 'chiffre', libelle: 'Chiffré' }, { v: 'qualitatif', libelle: 'Qualitatif' }]} />}
+      {qualitatif ? (
+        <>
+          <TextField label="Objectif" placeholder="Faire monter l’équipe en compétence" value={titre} onChange={(e) => setTitre(e.target.value)} autoFocus={!objectif} slotProps={{ htmlInput: { maxLength: 200 } }} />
+          <TextField label="Description (facultatif)" value={description} onChange={(e) => setDescription(e.target.value)} multiline minRows={2} slotProps={{ htmlInput: { maxLength: 600 } }} />
+        </>
+      ) : (
+        <>
+          <TextField select label="Indicateur de la caisse" value={indicateur} onChange={(e) => setIndicateur(e.target.value as IndicateurObjectif)}>
+            {INDICATEURS.map((i) => <MenuItem key={i.id} value={i.id} sx={{ minHeight: 48 }}>{i.libelle}</MenuItem>)}
+          </TextField>
+          <Puces label="Cible" valeur={mode} onChange={setMode} options={[{ v: 'valeur', libelle: 'Une valeur' }, { v: 'evolution', libelle: 'Une évolution vs N-1' }]} />
+          <Typography variant="body2" color="text.secondary">
+            {`Départ, ${libelleMois(moisDepart)} : ${formatIndicateur(indicateur, mode, depart)}${mode === 'evolution' ? ' vs N-1' : ''}`}
+          </Typography>
+        </>
+      )}
       <Puces label="Période" valeur={horizons.includes(echeance) ? echeance : 'autre'} onChange={(v) => { if (v !== 'autre') setEcheance(v) }}
         options={[...horizons.map((h) => ({ v: h, libelle: h.endsWith('-06') ? `1er semestre ${h.slice(0, 4)}` : `Année ${h.slice(0, 4)}` })), { v: 'autre', libelle: 'Autre échéance' }]} />
-      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-        <TextField label={mode === 'evolution' ? 'Évolution visée (%)' : 'Valeur visée'} value={cible} onChange={(e) => setCible(e.target.value)} slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-          error={!!cible && n === null} helperText={!!cible && n === null ? 'Un nombre, par exemple 26,5' : ' '} />
+      <Box sx={{ display: 'grid', gridTemplateColumns: qualitatif ? '1fr' : '1fr 1fr', gap: 2 }}>
+        {!qualitatif && <TextField label={mode === 'evolution' ? 'Évolution visée (%)' : 'Valeur visée'} value={cible} onChange={(e) => setCible(e.target.value)} slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+          error={!!cible && n === null} helperText={!!cible && n === null ? 'Un nombre, par exemple 26,5' : ' '} />}
         <TextField type="month" label="Échéance" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
           error={!!echeance && echeance <= moisDepart} helperText={!!echeance && echeance <= moisDepart ? `Après ${libelleMois(moisDepart)}` : ' '} />
       </Box>
-      {!!ouvertes.length && (
+      {qualitatif && objectif && (
+        <Puces label="Avancement" valeur={etat || 'auto'} onChange={(v) => setEtat(v === 'auto' ? '' : v)}
+          options={[{ v: 'auto' as const, libelle: 'Selon les tâches' }, { v: 'voie' as const, libelle: 'Sur la bonne voie' }, { v: 'retard' as const, libelle: 'En retard' }, { v: 'atteint' as const, libelle: 'Atteint' }]} />
+      )}
+      {!qualitatif && !!ouvertes.length && (
         <Box role="group" aria-label="Tâches rattachées">
           <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Tâches rattachées</Typography>
           {ouvertes.map((x) => (

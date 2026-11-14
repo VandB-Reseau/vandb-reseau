@@ -110,7 +110,7 @@ function Rapport({ reseau }: { reseau: Reseau }) {
           </Section>
         )}
         <Section titre={`Objectifs en retard · ${enRetard.length}`}>
-          <Liste vide={r.objectifs.length ? 'Tous les objectifs avancent au rythme prévu.' : 'Aucun objectif chiffré fixé sur le périmètre.'} lignes={enRetard.map((x) => ({ cle: `${x.magasin}:${x.o.id}`, magasin: x.magasin, detail: `${phraseObjectif(x.o)} · ${libelleStatut[x.statut].toLowerCase()}`, rouge: true }))} />
+          <Liste vide={r.objectifs.length ? 'Tous les objectifs avancent au rythme prévu.' : 'Aucun objectif fixé sur le périmètre.'} lignes={enRetard.map((x) => ({ cle: `${x.magasin}:${x.o.id}`, magasin: x.magasin, detail: `${phraseObjectif(x.o)} · ${libelleStatut[x.statut].toLowerCase()}`, rouge: true }))} />
         </Section>
       </Box>
     </Box>
