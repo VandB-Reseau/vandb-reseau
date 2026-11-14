@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin sur téléphone (Joseph, 14/11/2026) : Budget et Simuler dans la barre d'onglets, sans « Plus », dès
+  360 px (marges des onglets resserrées à 7 px) ; la Nine box s'ouvre par le menu « ⋯ » de l'en-tête. PC inchangé.
 - Simulateurs, HT et TTC (Joseph, 14/11/2026) : CA et prix d'achat toujours HT, prix de vente au client final saisi TTC,
   ce qui est facturé en B2B reste HT (Contrat extérieur : prix du fût, remise, livraison, location). Chaque montant du
   Contrat extérieur étiqueté HT ; coût d'une livraison détaillé sous ses champs (indemnités kilométriques, temps, coût

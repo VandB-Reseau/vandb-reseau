@@ -864,6 +864,11 @@ export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page
     if (ancien[0] !== nom) return
   }
   if (await onglet.isVisible()) return onglet.click()
+  // Fiche magasin sur téléphone (Joseph, 14/11/2026) : pas de « Plus », la Nine box s'ouvre par le menu « ⋯ »
+  if (!(await plus.count())) {
+    await page.getByRole('button', { name: 'Autres actions' }).click()
+    return page.getByRole('menuitem', { name: nomComplet }).click()
+  }
   await plus.click()
   await page.getByRole('dialog').getByRole('button', { name: nomComplet }).click()
 }

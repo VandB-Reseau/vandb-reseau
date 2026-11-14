@@ -42,11 +42,11 @@ test('sans bonne pratique, le filtre propose d’en ajouter une', async ({ page 
   await expect(page.getByRole('dialog', { name: 'Nouvelle bonne pratique' })).toBeVisible()
 })
 
-// Avec l'onglet Simulateurs (Joseph, 14/11/2026), six onglets : autant que la largeur en tient, le reste sous « Plus »
-test('téléphone courant : les onglets de la fiche visibles sans déborder, le reste sous « Plus »', async ({ page, isMobile }, info) => {
+// Joseph (14/11/2026) : Budget et Simulateurs dans la barre du téléphone ; Nine box par le menu « ⋯ »
+test('téléphone courant : les cinq onglets de la fiche visibles sans déborder', async ({ page, isMobile }, info) => {
   test.skip(!isMobile, 'téléphone seulement')
   await seConnecter(page)
-  for (const [largeur, attendus] of [[375, ['Aperçu', 'Activité', 'Chiffres', 'Plus']], [412, ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Plus']]] as const) {
+  for (const [largeur, attendus] of [[375, ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler']], [412, ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler']]] as const) {
     await page.setViewportSize({ width: largeur, height: 812 })
     await page.goto('./#/magasins/Lyon%20Test')
     const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })
