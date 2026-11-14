@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateur Parc de tireuses (Joseph, 14/11/2026) : le « Net par fût » saisi est remplacé par le prix de vente du fût
+  TTC (prix conseillé) et son prix d'achat HT (repris du Contrat extérieur, modifiables) ; marge par fût en euros HT et en
+  pourcentage du prix HT, puis net par fût (après redevance et publicité, CO2 et gobelets) calculés. Contrat extérieur :
+  marge par fût en euros et en pourcentage dans les résultats. Coût d'une heure chargée (soirée, contrat extérieur,
+  dimanche ou jour férié) : moyenne de l'équipe du magasin par défaut (repère du siège si l'équipe n'est pas saisie), en
+  part du SMIC ou montant libre. Sans migration.
 - Filtres et Simulateurs (Joseph, 14/11/2026) : les filtres en puces (Activité de la fiche magasin, Actualités de
   l'accueil et tous les filtres en puces) ne ressemblent plus à des sous-onglets : puces cerclées, coche sur la puce
   active, picto filtre en tête. Fiche magasin (équipe et franchisé) : onglet « Simulateurs » à côté de Chiffres et

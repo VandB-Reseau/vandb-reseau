@@ -43,6 +43,12 @@ export interface EffetExterieur {
   sponsoring: number; materiel: number; astreinte: number; recettes: number; recettesNettes: number
   coutFixe: number; gain: number; equilibre: number | null; remiseMax: number | null
 }
+// Marge d'un fût (Joseph, 14/11/2026) : prix de vente HT − prix d'achat HT, en euros et en part du prix de vente.
+// Avant redevance, publicité, CO2 et gobelets, que le net par fût retire ensuite.
+export function margeFut(prixVente: number, prixAchat: number): { valeur: number; taux: number | null } {
+  const valeur = pos(prixVente) - pos(prixAchat)
+  return { valeur, taux: pos(prixVente) > 0 ? valeur / pos(prixVente) : null }
+}
 export function simulerExterieur(x: ContratExterieur, p: Redevances, donMecenat: boolean): EffetExterieur {
   const rp = p.tauxRedevance + p.tauxPublicite
   const caParFut = Math.max(0, pos(x.prixVente) - pos(x.remise))

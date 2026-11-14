@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { auditPression, coutContrats, ligneBec, palierExterieur, prixLivraisonGrille, simulerExterieur, simulerParc, type Bec, type ContratExterieur } from '../../../src/pilotage/moteur/boiteOutils'
-import { parametresParDefaut } from '../../../src/pilotage/moteur/parametres'
+import { auditPression, coutContrats, margeFut, ligneBec, palierExterieur, prixLivraisonGrille, simulerExterieur, simulerParc, type Bec, type ContratExterieur } from '../../../src/pilotage/moteur/boiteOutils'
+import { chargesParDefaut, parametresParDefaut } from '../../../src/pilotage/moteur/parametres'
+import { coutHoraireEquipe, coutHoraireSmic } from '../../../src/pilotage/moteur/equipe'
 import { analyserRemises, appliquerLevier, margeMix, parametresSimulateurs, simulerPrimes, simulerSoiree, tempsFortDeSoiree } from '../../../src/pilotage/moteur/simulateurs'
 import type { Budget } from '../../../src/pilotage/moteur/types'
 
@@ -159,4 +160,26 @@ test('158 · un levier sur le budget d’un magasin', () => {
   proche(appliquerLevier(b, p, { type: 'prix', univers: 'cave', taux: 0.05 })!.ebe, 29_100)
   expect(appliquerLevier(b, p, { type: 'tickets', univers: 'bar', taux: 0.05 })).toBeNull()
   expect(v).toMatchObject({ caAvant: 700_000, ebeAvant: 50_000 })
+})
+
+test('Marge d’un fût : prix de vente et prix d’achat HT (Joseph, 14/11/2026)', () => {
+  // 70 − 42 = 28 €, soit 40 % du prix de vente
+  const m = margeFut(70, 42)
+  proche(m.valeur, 28)
+  proche(m.taux ?? 0, 0.4)
+  expect(margeFut(0, 10).taux).toBeNull()
+})
+
+test('Coût d’une heure chargée : moyenne de l’équipe ou part du SMIC (Joseph, 14/11/2026)', () => {
+  const c = chargesParDefaut // employé 35 %, sans provision de congés payés
+  // SMIC à 35 h : 21 876,40 € bruts, réduction plafonnée à 35 % − 1,23 % = 33,77 % → 21 876,40 × 1,0123 ÷ 1 820 h = 12,17 €
+  proche(coutHoraireSmic(1, c), 21_876.4 * 1.0123 / 1_820)
+  // Équipe : un employé à 2 000 € par mois sur 35 h, le gérant TNS n'entre pas dans la moyenne.
+  // Réduction : 0,02 + 0,3781 × (0,5 × (3 × 21 876,40 ÷ 24 000 − 1))^1,75 = 31,47 % → 24 000 × 1,03531 ÷ 1 820 = 13,65 €
+  const salarie = { poste: 'Vendeur', categorie: 'employe' as const, heuresHebdo: 35, brutMensuel: 2_000, primes: [], entree: null, sortie: null }
+  const gerant = { ...salarie, poste: 'Gérant', categorie: 'gerant_tns' as const, brutMensuel: 3_000 }
+  const coef = 0.02 + 0.3781 * Math.pow(0.5 * (3 * 21_876.4 / 24_000 - 1), 1.75)
+  proche(coutHoraireEquipe([salarie, gerant], c, 2027), 24_000 * (1 + 0.35 - coef) / 1_820)
+  proche(coutHoraireEquipe([salarie, gerant], c, 2027), 13.65, 2)
+  expect(coutHoraireEquipe([gerant], c, 2027)).toBeNull()
 })

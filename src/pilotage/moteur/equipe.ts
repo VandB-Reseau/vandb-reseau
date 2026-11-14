@@ -137,3 +137,20 @@ export function masseSalariale(equipe: Personne[], c: ParametresCharges, annee: 
     etp: somme(personnes.map((x) => x.etp)), tauxEffectif: brut ? (charges - reduction) / brut : 0,
   }
 }
+
+// Coût d'une heure chargée pour les simulateurs (Joseph, 14/11/2026) :
+// - moyenne de l'équipe : coût chargé des salariés (congés payés compris) ÷ leurs heures payées de l'année, sans le gérant
+//   TNS ni les primes d'équipe sans salarié ; null si aucune heure saisie ;
+// - en part du SMIC : une heure d'un employé à 35 heures payé cette part du SMIC brut, chargée au taux employé moins la
+//   réduction générale, congés payés compris.
+export function coutHoraireEquipe(equipe: Personne[], c: ParametresCharges, annee: number, hausse = 0): number | null {
+  const salaries = equipe.filter((p) => p.categorie !== 'gerant_tns' && !p.enveloppe)
+  const m = masseSalariale(salaries, c, annee, hausse)
+  const heures = somme(m.parMois.map((x) => x.heures))
+  return heures > 0 ? m.cout / heures : null
+}
+export function coutHoraireSmic(part: number, c: ParametresCharges): number {
+  const x = coutPersonne({ poste: 'SMIC', categorie: 'employe', heuresHebdo: DUREE_LEGALE, brutMensuel: c.reduction.smicAnnuel / 12 * Math.max(0, part), primes: [], entree: null, sortie: null }, c, 2000)
+  const heures = somme(x.heures)
+  return heures > 0 ? x.coutAnnuel / heures : 0
+}

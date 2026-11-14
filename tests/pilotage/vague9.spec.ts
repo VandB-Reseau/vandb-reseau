@@ -76,7 +76,8 @@ test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', a
 test('139 : parc de tireuses, racheter quand les refus coûtent plus qu’une tireuse neuve', async ({ page }) => {
   await connecter(page, franchise, { role: 'franchise' })
   await simulateur(page, 'tireuses')
-  await page.getByLabel('Net par fût').fill('24,83')
+  await page.getByLabel('Prix de vente du fût TTC').fill('82,8')
+  await page.getByLabel('Prix d’achat du fût HT').fill('41,34')
   await page.getByLabel('Fûts par week-end loué').fill('3')
   await page.getByLabel('Week-ends refusés faute de tireuse').fill('12')
   // 12 × 3 fûts × 24,83 € = 894 € perdus, face à 1 500 ÷ 5 = 300 € par an (vague 10 : compté en week-ends)
@@ -130,6 +131,16 @@ test('143 et 146 : calculette prix et marge, ouverture un dimanche', async ({ pa
   await page.getByLabel('Frais du jour HT').fill('50')
   // Majoration du dimanche 50 % (siège) : 16 h × 20 € × 1,5 = 480 € ; gain 840 − 45 − 480 − 50 = 265 €
   await expect(page.getByRole('status')).toContainText(/gain de 265\s€, rentable à partir de 1\s333\s€ de CA HT dans la journée/)
+  // Coût horaire (Joseph, 14/11/2026) : moyenne de l'équipe par défaut, repère du siège quand l'équipe n'est pas saisie
+  await expect(page.getByText('20,00 € l’heure chargée, repère du siège (équipe pas saisie)')).toBeVisible()
+  const cout = page.getByRole('group', { name: 'Coût horaire' })
+  await cout.getByRole('button', { name: 'Montant libre' }).click()
+  await page.getByLabel('Coût d’une heure chargée').fill('25')
+  // 16 h × 25 € × 1,5 = 600 € ; gain 840 − 45 − 600 − 50 = 145 €
+  await expect(page.getByRole('status')).toContainText(/gain de 145\s€/)
+  await cout.getByRole('button', { name: 'En part du SMIC' }).click()
+  await expect(page.getByLabel('Part du SMIC brut')).toHaveValue('120')
+  await expect(page.getByText(/€ l’heure chargée$/)).toBeVisible()
 })
 
 test('Directeur : les nouveaux repères dans Paramètres, don traité comme un don', async ({ page }) => {
