@@ -132,7 +132,8 @@ type Message = { gravite: 'success' | 'error' | 'warning'; texte: string; detail
 // Refonte (Joseph, 09/11/2026, 3A) : dans la fiche du magasin, mode « chiffres » (suivi, santé et saisies, onglet Chiffres)
 // ou « budget » (étapes du budget, onglet Budget) ; sans mode (espace du contrôle de gestion), les trois espaces en onglets.
 // sante : santé, leviers et chiffres du réseau, fournis par la fiche, affichés dans la puce « Santé et leviers »
-export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }: { nom: string; mode?: 'chiffres' | 'budget'; sante?: ReactNode; santeLibelle?: string }) {
+// Joseph (14/11/2026) : mode « simulateurs », onglet Simulateurs de la fiche, au même niveau que Chiffres et Budget
+export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }: { nom: string; mode?: 'chiffres' | 'budget' | 'simulateurs'; sante?: ReactNode; santeLibelle?: string }) {
   const [params] = useSearchParams()
   const partieUrl = params.get('partie') ?? undefined
   const location = useLocation()
@@ -162,9 +163,9 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
   const anneeEnCours = anneeSuivi()
   // Lot 36 : la partie affichée vient de l'adresse ; un ancien lien (sans partie, ou par l'état « onglet ») est réécrit
   const etatLien = location.state as { onglet?: string; section?: string } | null
-  const defaut = mode === 'budget' ? 'budget' : 'synthese'
+  const defaut = mode === 'budget' ? 'budget' : mode === 'simulateurs' ? 'simulateurs' : 'synthese'
   const voulu = partieUrl ?? etatLien?.onglet ?? defaut
-  const onglet = partieConnue(voulu) && (voulu !== 'sante' || !!sante) ? partieDe(voulu) : defaut
+  const onglet = mode === 'simulateurs' ? 'simulateurs' : partieConnue(voulu) && voulu !== 'simulateurs' && (voulu !== 'sante' || !!sante) ? partieDe(voulu) : defaut
   useEffect(() => {
     if (partieUrl === onglet) return
     const { onglet: _o, ...reste } = etatLien ?? {}
@@ -495,7 +496,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
       {/* Option A (Joseph, 03/11/2026) : trois onglets (Suivi, Budget, Saisies) ; les étapes du budget en frise, les parties
           du suivi et les saisies en puces. Joseph (09/11/2026) : sur ordinateur, le statut du budget et ses actions sur la
           même ligne que les onglets, pour gagner de la hauteur */}
-      <Box component="nav" aria-label="Pages du magasin" sx={{ mb: 3 }}>
+      {mode !== 'simulateurs' && <Box component="nav" aria-label="Pages du magasin" sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', columnGap: 2, rowGap: 1, flexWrap: 'wrap', borderBottom: 1, borderColor: 'divider', pb: { xs: 1, md: 0 } }}>
         {!mode && <Tabs value={espace} onChange={(_, v: Espace) => garde(() => aller(PARTIE_PAR_DEFAUT[v]), v === espace)} variant="scrollable" scrollButtons={false} className="pas-a-l-impression"
           aria-label="Espaces du magasin" sx={{ flex: '0 1 auto', mb: '-1px', '& .MuiTab-root': { minHeight: 48, fontWeight: 700, fontSize: '1rem', px: { xs: 2, md: 3 } } }}>
@@ -536,7 +537,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
           // Vague 6 (76A) : cinq puces ; le stock va avec les comptes, la santé avec l'analyse ; la clôture du mois est une
           // action, à droite
           const puces = mode === 'chiffres'
-            ? [...partiesDe('suivi', anneeEnCours).filter((x) => x.cle !== 'stock'), ...(anneesPassees.length ? [{ cle: 'passees', libelle: 'Années passées' }] : [])]
+            ? [...partiesDe('suivi', anneeEnCours).filter((x) => x.cle !== 'stock' && x.cle !== 'simulateurs'), ...(anneesPassees.length ? [{ cle: 'passees', libelle: 'Années passées' }] : [])]
             : parties
           const valeur = mode === 'chiffres' ? (espace === 'donnees' ? false : onglet === 'stock' ? 'comptes' : onglet === 'sante' ? 'analyse' : onglet) : onglet
           const manqueSaisies = mode === 'chiffres' && (manques.reel || manques.frais)
@@ -568,7 +569,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         {mode === 'chiffres' && espace === 'donnees' && onglet !== 'cloture' && (
           <Button startIcon={<ArrowBack />} onClick={() => garde(() => aller('cloture'))} className="pas-a-l-impression" sx={{ mt: 1, minHeight: 48 }}>Clôture du mois</Button>
         )}
-      </Box>
+      </Box>}
       {commentaires}
       {themeOuvert && (
         <Box className="pas-a-l-impression" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>

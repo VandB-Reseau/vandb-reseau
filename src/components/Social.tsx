@@ -143,7 +143,7 @@ export function TitreSection({ children, nombre, action }: { children: ReactNode
 
 // Puces de filtre (une seule active), zone tactile de 48 px. Vague 8 (96A) : même rendu que les vues rapides des listes
 export function Puces<V extends string>({ valeur, options, onChange, label }: { valeur: V; options: { v: V; libelle: string }[]; onChange: (v: V) => void; label: string }) {
-  return <VuesRapides valeur={valeur} options={options} onChange={onChange} label={label} />
+  return <VuesRapides filtre valeur={valeur} options={options} onChange={onChange} label={label} />
 }
 
 // Mini-courbe (12 derniers mois par exemple), dessinée en SVG, sans axe

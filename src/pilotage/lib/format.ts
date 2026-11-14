@@ -27,7 +27,7 @@ export const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin'
 // Refonte (Joseph, 09/11/2026, 3A) : le suivi et les saisies sont dans l'onglet Chiffres de la fiche, le budget dans l'onglet Budget
 // (liste recopiée de lib/navigation pour garder ce fichier sans dépendance : le moteur le lit hors navigateur)
 const PARTIES_BUDGET = ['budget', 'visualiser', 'echanges', 'depart', 'ventes', 'calendrier', 'investissements', 'equipe', 'fraisBudget', 'resultat', 'tresoBudget', 'travaux']
-export const lienMagasin = (nom: string, partie = 'synthese') => `/magasins/${encodeURIComponent(nom)}?vue=${PARTIES_BUDGET.includes(partie) ? 'budget' : 'chiffres'}&partie=${encodeURIComponent(partie)}`
+export const lienMagasin = (nom: string, partie = 'synthese') => `/magasins/${encodeURIComponent(nom)}?vue=${PARTIES_BUDGET.includes(partie) ? 'budget' : partie === 'simulateurs' ? 'simulateurs' : 'chiffres'}&partie=${encodeURIComponent(partie)}`
 
 // Instant ISO en heure locale : « 21/10 à 14h32 »
 export function dateHeure(iso: string): string {

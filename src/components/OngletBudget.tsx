@@ -7,6 +7,6 @@ import { chargementDiffere } from '../lib/chargementDiffere'
 // « budget » (onglet Budget : les trois étapes)
 const Budget = chargementDiffere(() => import('../pilotage/Pilotage').then((m) => ({ default: m.OngletBudget })))
 
-export function OngletBudget({ nom, mode, sante, santeLibelle }: { nom: string; mode?: 'chiffres' | 'budget'; sante?: ReactNode; santeLibelle?: string }) {
+export function OngletBudget({ nom, mode, sante, santeLibelle }: { nom: string; mode?: 'chiffres' | 'budget' | 'simulateurs'; sante?: ReactNode; santeLibelle?: string }) {
   return <Suspense fallback={<Skeleton variant="rounded" height={240} />}><Budget nom={nom} mode={mode} sante={sante} santeLibelle={santeLibelle} /></Suspense>
 }

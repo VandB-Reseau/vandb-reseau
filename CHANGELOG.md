@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Filtres et Simulateurs (Joseph, 14/11/2026) : les filtres en puces (Activité de la fiche magasin, Actualités de
+  l'accueil et tous les filtres en puces) ne ressemblent plus à des sous-onglets : puces cerclées, coche sur la puce
+  active, picto filtre en tête. Fiche magasin (équipe et franchisé) : onglet « Simulateurs » à côté de Chiffres et
+  Budget, retiré des puces de Chiffres ; anciens liens « vue=chiffres&partie=simulateurs » ouverts sur l'onglet. Sur
+  téléphone, six onglets : Aperçu, Activité, Chiffres puis « Plus » à 375 px, Budget visible dès ~410 px. Sans migration.
 - Fiche magasin (Joseph, 14/11/2026) : plus d'onglet « Ressources » ; les bonnes pratiques du magasin sont dans son
   Activité (fil « Tout » et filtre « Bonnes pratiques », avec modifier, J'aime et reprises d'autres magasins), l'ajout
   par le « + ». Fiche du franchisé : « Bonnes pratiques » à côté de Visites et Campagnes. Anciens liens « ?vue=pratiques »
