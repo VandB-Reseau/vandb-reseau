@@ -77,9 +77,11 @@ test('139 : parc de tireuses, racheter quand les refus coûtent plus qu’une ti
   await connecter(page, franchise, { role: 'franchise' })
   await simulateur(page, 'tireuses')
   await page.getByLabel('Net par fût').fill('24,83')
-  await page.getByLabel('Demandes refusées faute de tireuse').fill('12')
-  // 12 × 3 fûts × 24,83 € = 894 € perdus, face à 1 500 ÷ 5 = 300 € par an
-  await expect(page.getByRole('status')).toContainText(/12 demandes refusées : 894\s€ de marge perdue, plus que les 300\s€ par an d’une tireuse neuve\. Racheter une tireuse\./)
+  await page.getByLabel('Fûts par week-end loué').fill('3')
+  await page.getByLabel('Week-ends refusés faute de tireuse').fill('12')
+  // 12 × 3 fûts × 24,83 € = 894 € perdus, face à 1 500 ÷ 5 = 300 € par an (vague 10 : compté en week-ends)
+  await expect(page.getByText(/894\s€ de marge perdue sur 12 week-ends refusés/)).toBeVisible()
+  await expect(page.getByRole('status')).toContainText(/12 week-ends refusés : racheter une tireuse\./)
   await page.getByRole('button', { name: 'Ajouter une tireuse' }).click()
   await page.getByLabel('Réparations de la tireuse 1').fill('450')
   await expect(page.getByRole('status')).toContainText('Remplacer Tireuse 1')
@@ -113,7 +115,7 @@ test('143 et 146 : calculette prix et marge, ouverture un dimanche', async ({ pa
   await simulateur(page, 'calculette')
   // Planche : 3 + 2,50 = 5,50 € de coût, 70 % de marge, TVA 10 % : 18,33 € HT, 20,17 € TTC
   await expect(page.getByRole('status')).toContainText(/vendu 20,17\s€ TTC \(18,33\s€ HT\), marge 12,83\s€ soit 70\s%, coefficient 3,67/)
-  await page.getByRole('group', { name: 'Je cherche' }).getByRole('button', { name: 'La marge' }).click()
+  await page.getByRole('group', { name: 'Je cherche' }).getByRole('button', { name: 'La marge', exact: true }).click()
   await page.getByLabel('Prix de vente TTC').fill('22')
   // 22 € TTC = 20 € HT : 14,50 € de marge, 72,5 %
   await expect(page.getByRole('status')).toContainText(/marge 14,50\s€ soit 72,5\s%/)
@@ -136,7 +138,7 @@ test('Directeur : les nouveaux repères dans Paramètres, don traité comme un d
   await page.getByRole('tab', { name: 'Simulateurs' }).click()
   await page.getByLabel('Prix du kilomètre').fill('0,6')
   await page.getByLabel('Don traité comme un don').check()
-  await page.getByRole('button', { name: 'Ajouter un palier' }).click()
+  await page.getByRole('button', { name: 'Ajouter un palier', exact: true }).click()
   await page.getByLabel('Part du bar, palier 1').fill('55')
   await page.getByLabel('CA par heure visé, palier 1').fill('100')
   await page.getByRole('region', { name: 'Simulateurs' }).getByRole('button', { name: 'Enregistrer' }).click()

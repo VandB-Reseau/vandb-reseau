@@ -148,6 +148,7 @@ export interface Reseau {
   plans?: Record<string, import('./planAction').Priorite[]> // plan d'action par magasin (refonte vague 4, 31A, 0043)
   tempsForts?: import('./tempsForts').TempsFort[] // temps forts de l'année (vague 5, 48A), clé temps_forts d'app_config
   parcoursIntegration?: import('./integration').EtapeParcours[] // étapes du parcours des nouveaux magasins (vague 5, 50A)
+  equipements?: Record<string, import('./equipements').Equipement[]> // équipements mis à disposition, par magasin (rubrique equipements, 0046)
   integration?: Record<string, import('./integration').SuiviIntegration> // suivi du parcours par magasin (rubrique integration, 0044)
   concurrence: Record<string, import('./concurrence').SuiviConcurrence> // concurrents ajoutés, retirés ou notés, par magasin (sprint 27, F3, 0038)
   motsFranchise: Record<string, import('./motFranchise').MotFranchise[]> // mots du franchisé avant ses visites, par magasin (sprint 27, F4, 0038)

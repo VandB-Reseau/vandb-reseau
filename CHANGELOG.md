@@ -15,6 +15,20 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   ouverts sur ce filtre. Téléphone : onglets plus serrés, les cinq onglets de la fiche tiennent dès 375 px de large
   (« Plus » seulement sur les écrans plus étroits). Sans migration.
 
+- Simulateurs, vague 10 (Joseph, 14/11/2026, choix 152 à 165, « toutes les recos ») : relecture de tous les Sheets du
+  coaching. Entrée « Simulateurs » au menu de l'équipe, sous le Budget prévisionnel : un magasin (le dernier retenu) ou
+  un levier sur plusieurs magasins, une région, les magasins d'un Coach (vente additionnelle, panier, tickets, prix ;
+  tableau par magasin et total, magasins sans budget à part, jamais montré au franchisé). Soirée : achats des
+  participants en cave, bon d'achat, coûts ligne par ligne, heures de l'équipe en place. Contrat extérieur : sponsoring
+  (charge pleine) à part du don, matériel, astreinte, livraisons et locations facturées, prix de livraison de la grille
+  du siège. Parc de tireuses compté en week-ends loués (90 % et 20 % d'office, modifiables) : fûts et week-ends pour
+  payer une tireuse, parc plein. Carte pression : verre de 33 cl, perte réelle d'une semaine. Prix et marge : marge
+  visée par famille, plusieurs produits (coffret, planche). Promo : offres 5 + 1 et 4 + 2, remises et offerts face aux
+  repères. Embauche : frais d'un CDD, intérim à 1,75, primes par paliers. Investir : modèle Marché extérieur selon la
+  préconisation du siège. Nouveaux repères dans Paramètres, Simulateurs.
+  Équipements du magasin (Joseph, 14/11/2026) : bloc « Équipements » de la fiche (tireuses, barnums, stands, camion
+  frigorifique, chariot, remorque, groupe froid…), quantité, année et prix d'achat HT ; tenu par l'équipe et par le
+  franchisé sur ses magasins ; le nombre de tireuses préremplit le parc de tireuses. **Migration à passer : `0046_equipements_magasins.sql`.**
 - Boîte à outils du coach, vague 9 (Joseph, 14/11/2026, choix 138 à 147 sauf 148 à 151, « tout le reste, en une fois ») :
   cinq simulateurs en plus. Contrat extérieur (net par fût, coûts fixes de la tireuse et des livraisons, fûts pour
   l'équilibre, remise maximale, prix plancher d'une livraison) avec le don à l'association, réduction mécénat de 60 % si

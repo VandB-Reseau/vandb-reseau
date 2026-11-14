@@ -90,6 +90,8 @@ Rubriques de `suivi_magasins` (contrainte `suivi_magasins_cle_check`) :
 
 | `integration` | Parcours d'intégration du magasin (0044, refonte vague 5) : `{ etapes: { <id d'étape>: { faite, par } } }`, `faite` = AAAA-MM-JJ. Les étapes elles-mêmes sont la clé `parcours_integration` d'`app_config`. Le franchisé le lit par `animation_franchise()` | `integration_magasins` |
 
+| `equipements` | Équipements mis à disposition du magasin (0046, Joseph 14/11/2026) : liste de `{ id, categorie, precision, quantite, annee, valeur, note, par, le }` ; `categorie` = `tireuse`, `froid`, `barnum`, `stand`, `mobilier`, `camion`, `remorque`, `manutention`, `electricite`, `glacieres`, `paiement`, `signaletique`, `verres` ou `autre` ; `valeur` = prix d'achat HT de la ligne. Tenue par l'équipe ; le franchisé la lit pour ses magasins par `animation_franchise()` (clé `equipements`) et la modifie par `ecrire_equipements(p_store, p_liste)` (ses magasins seulement, liste entière, 200 lignes au plus). Le nombre de tireuses préremplit le simulateur du parc | `equipements_magasins` |
+
 Champs ajoutés aux tâches (rubrique `actions` et plans d'action des visites, sans migration de structure, 0043) : `statut`
 (`en_cours`, `bloquee` ; absent = à faire), `raison` (ce qui bloque, 300 caractères), `priorite` (numéro d'une priorité
 du plan). Remarques internes d'une visite (Joseph, 10/11/2026) : rubrique `notes`, champs `visite` (numéro de la visite)
@@ -238,7 +240,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Espace franchisé | `espace_franchise` (sans les tâches de l'équipe seule depuis 0019, avec `mots_franchise` depuis 0038), `reperes_reseau` (interne : médiane, quart supérieur et, depuis 0020, quart inférieur `quartBas`), `reperes_equipe` | 0004, 0005, 0019, 0020, 0038 |
 | Actions du franchisé | `franchise_du_magasin`, `ajouter_action_franchise`, `marquer_action_franchise` (tâche de l'équipe seule introuvable, 0019), `statut_action_franchise` (À faire, En cours, Bloquée avec sa raison, 0043) | 0007, 0019, 0043 |
 | Prise de connaissance | `demander_connaissance(p_id, p_oui)` (Directeur, ou RR auteur), `prendre_connaissance(p_id)` (franchisé, communication visible qui la demande ; vaut lecture), `connaissances()` (franchisé : sa propre date ; équipe : franchisés de ses magasins qui l'ont donnée et ceux qui manquent ; Directeur : tous) | 0044 |
-| Animation du franchisé | `animation_franchise()` (franchisé : temps forts, parcours d'intégration et son suivi pour ses magasins) | 0044 |
+| Animation du franchisé | `animation_franchise()` (franchisé : temps forts, parcours d'intégration et son suivi, équipements de ses magasins depuis 0046) ; `ecrire_equipements()` (franchisé : équipements de ses magasins) | 0044, 0046 |
 | Plan d'action du magasin | `plans_franchise()` (franchisé : titres, statuts et bilans des priorités de ses magasins, sans l'objectif chiffré) | 0043 |
 | Entretiens RR–Coach | `coachs_encadres()`, `mon_coach()` (internes) ; `remarque_entretien(p_id, p_texte)` (le Coach, ses entretiens) | 0043 |
 | Demandes des franchisés | `creer_demande`, `mes_demandes`, `completer_demande` (franchisé, ses magasins, 20 demandes par jour au plus) ; `repondre_demande` (équipe, ses magasins ; la base pose l'auteur, la première réponse et la résolution) | 0043 |

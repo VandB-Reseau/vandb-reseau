@@ -64,6 +64,7 @@ const espace = () => import('./pages/EspaceFranchise')
 // Pilotage financier (budgets, suivi, saisies), venu de l'app de pilotage à la fusion : chargé à la demande
 const pilotage = () => import('./pilotage/Pilotage')
 const PagesBudgets = chargementDiffere(() => pilotage().then((m) => ({ default: m.PagesBudgets })))
+const PageSimulateurs = chargementDiffere(() => pilotage().then((m) => ({ default: m.PageSimulateurs })))
 const SelonControleGestion = chargementDiffere(() => import('./pilotage/ControleGestion').then((m) => ({ default: m.SelonControleGestion })))
 const Direction = chargementDiffere(chargeurs.direction)
 const ChargeCoachs = chargementDiffere(chargeurs.charge)
@@ -189,6 +190,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/plus" element={<Plus />} />
         <Route path="/partage" element={<Partage />} />
         <Route path="/budgets/*" element={<PagesBudgets />} />
+        <Route path="/simulateurs" element={<PageSimulateurs />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>

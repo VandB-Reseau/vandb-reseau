@@ -19,7 +19,9 @@ import { ChampTaux } from './ChampTaux'
 import { useSaisieEnCours } from './GardeSaisie'
 import { SectionParametres } from './SectionParametres'
 import { enregistrerParametres } from '../data/pilotage'
-import { parametresSimulateurs, simulateursParDefaut, type ParametresSimulateurs } from '../moteur/simulateurs'
+import MenuItem from '@mui/material/MenuItem'
+import TextField from '@mui/material/TextField'
+import { LIGNES_REMISES, parametresSimulateurs, simulateursParDefaut, type CleRemise, type ParametresSimulateurs } from '../moteur/simulateurs'
 import type { ParametresReseau } from '../moteur/types'
 
 // Repères des simulateurs du franchisé (choix 127, 134, 135, Joseph 13/11/2026), réglés par le Directeur : à 0, le
@@ -47,6 +49,16 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
   const tva = (k: keyof ParametresSimulateurs['tva'], x: number) => setV((y) => ({ ...y, tva: { ...y.tva, [k]: x } }))
   const majoration = (k: keyof ParametresSimulateurs['majorations'], x: number) => setV((y) => ({ ...y, majorations: { ...y.majorations, [k]: x } }))
   const palier = (i: number, k: 'partBar' | 'cible', x: number) => setV((y) => ({ ...y, productivite: y.productivite.map((l, j) => (j === i ? { ...l, [k]: x } : l)) }))
+  // Vague 10 (choix 152 à 165)
+  const contrat = (k: keyof ParametresSimulateurs['contrat'], x: number) => setV((y) => ({ ...y, contrat: { ...y.contrat, [k]: x } }))
+  const tireuses = (k: keyof ParametresSimulateurs['tireuses'], x: number) => setV((y) => ({ ...y, tireuses: { ...y.tireuses, [k]: x } }))
+  const remise = (k: CleRemise, x: number) => setV((y) => ({ ...y, remises: { ...y.remises, [k]: x } }))
+  const livraison = (i: number, k: 'kmMax' | 'franco' | 'prix', x: number) => setV((y) => ({ ...y, livraison: y.livraison.map((l, j) => (j === i ? { ...l, [k]: x } : l)) }))
+  const palierExt = (i: number, k: 'caMax' | 'tireuses' | 'investissement' | 'heures', x: number) => setV((y) => ({ ...y, marcheExterieur: { ...y.marcheExterieur, paliers: y.marcheExterieur.paliers.map((l, j) => (j === i ? { ...l, [k]: x } : l)) } }))
+  const famille = (i: number, f: Partial<ParametresSimulateurs['familles'][number]>) => setV((y) => ({ ...y, familles: y.familles.map((l, j) => (j === i ? { ...l, ...f } : l)) }))
+  const retirer = (i: number, onRetire: () => void, quoi: string) => !lecture && <IconButton aria-label={`Retirer ${quoi} ${i + 1}`} onClick={onRetire} sx={{ width: 48, height: 48 }}><DeleteOutlineOutlined /></IconButton>
+  const titre = (t: string) => <Box sx={{ px: 2, pt: 2, pb: 1 }}><Typography component="h3" sx={{ fontWeight: 700 }}>{t}</Typography></Box>
+  const ajouter = (libelle: string, f: () => void) => !lecture && <Box sx={{ px: 2, py: 1 }}><Button startIcon={<AddOutlined />} onClick={f} sx={{ minHeight: 48 }}>{libelle}</Button></Box>
 
   const enregistrer = async () => {
     setOccupe(true)
@@ -95,6 +107,13 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
           {ligne('Majoration des heures du dimanche', <ChampTaux libelle="Majoration du dimanche" valeur={v.majorations.dimanche} onChange={(x) => majoration('dimanche', x ?? 0)} />)}
           {ligne('Majoration des heures d’un jour férié', <ChampTaux libelle="Majoration d’un jour férié" valeur={v.majorations.ferie} onChange={(x) => majoration('ferie', x ?? 0)} />)}
           {ligne('Intérim : coefficient de l’agence sur le salaire brut', <ChampMontant libelle="Coefficient de l’intérim" valeur={v.coefInterim} onChange={(x) => setV((y) => ({ ...y, coefInterim: x }))} unite="" largeur={160} />)}
+          {ligne('CDD : rédaction du contrat et solde de tout compte', <ChampMontant libelle="Rédaction d’un CDD" valeur={v.contrat.redaction} onChange={(x) => contrat('redaction', x)} largeur={160} />)}
+          {ligne('CDD : bulletin de paie par mois', <ChampMontant libelle="Bulletin de paie par mois" valeur={v.contrat.paieParMois} onChange={(x) => contrat('paieParMois', x)} largeur={160} />)}
+          {ligne('Tireuses : week-ends de la saison', <ChampMontant libelle="Week-ends de la saison" valeur={v.tireuses.semainesSaison} onChange={(x) => tireuses('semainesSaison', x)} unite="" largeur={160} />)}
+          {ligne('Tireuses : part des week-ends loués en saison', <ChampTaux libelle="Week-ends loués en saison" valeur={v.tireuses.occupationSaison} onChange={(x) => tireuses('occupationSaison', x ?? 0)} />)}
+          {ligne('Tireuses : part des week-ends loués le reste de l’année', <ChampTaux libelle="Week-ends loués hors saison" valeur={v.tireuses.occupationHors} onChange={(x) => tireuses('occupationHors', x ?? 0)} />)}
+          {ligne('Tireuses : parc plein au-delà de', <ChampTaux libelle="Parc plein au-delà de" valeur={v.tireuses.saturation} onChange={(x) => tireuses('saturation', x ?? 0)} />)}
+          {ligne('Marché extérieur : prix d’un camion', <ChampMontant libelle="Prix d’un camion" valeur={v.marcheExterieur.camion} onChange={(x) => setV((y) => ({ ...y, marcheExterieur: { ...y.marcheExterieur, camion: x } }))} largeur={160} />)}
         </TableBody>
       </Table>
       <Box sx={{ px: 2, pt: 2, pb: 1 }}>
@@ -114,6 +133,74 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
         </TableBody>
       </Table>
       {!lecture && <Box sx={{ px: 2, py: 1 }}><Button startIcon={<AddOutlined />} onClick={() => setV((y) => ({ ...y, productivite: [...y.productivite, { partBar: 0, cible: 0 }] }))} sx={{ minHeight: 48 }}>Ajouter un palier</Button></Box>}
+
+      {titre('Remises et offerts : repères en part du CA')}
+      <Table aria-label="Repères des remises et offerts">
+        <TableBody>
+          {LIGNES_REMISES.map((l) => ligne(l.libelle, <ChampTaux libelle={`Repère, ${l.libelle}`} valeur={v.remises[l.cle]} onChange={(x) => remise(l.cle, x ?? 0)} />))}
+        </TableBody>
+      </Table>
+
+      {titre('Marge visée par famille (calculette Prix et marge)')}
+      <Table aria-label="Marge visée par famille">
+        <TableHead><TableRow><TableCell>Famille</TableCell><TableCell>Univers</TableCell><TableCell>TVA</TableCell><TableCell align="right">Marge visée</TableCell><TableCell /></TableRow></TableHead>
+        <TableBody>
+          {v.familles.map((f, i) => (
+            <TableRow key={i}>
+              <TableCell><TextField size="small" value={f.libelle} disabled={lecture} onChange={(e) => famille(i, { libelle: e.target.value })} slotProps={{ htmlInput: { 'aria-label': `Famille ${i + 1}`, maxLength: 40 } }} sx={{ width: 180, '& .MuiInputBase-root': { minHeight: 48 } }} /></TableCell>
+              <TableCell>
+                <TextField select size="small" value={f.univers} disabled={lecture} onChange={(e) => famille(i, { univers: e.target.value as 'cave' | 'bar' })} slotProps={{ htmlInput: { 'aria-label': `Univers de la famille ${i + 1}` } }} sx={{ width: 110, '& .MuiInputBase-root': { minHeight: 48 } }}>
+                  <MenuItem value="cave">Cave</MenuItem><MenuItem value="bar">Bar</MenuItem>
+                </TextField>
+              </TableCell>
+              <TableCell>
+                <TextField select size="small" value={f.tva} disabled={lecture} onChange={(e) => famille(i, { tva: e.target.value as 'normale' | 'intermediaire' | 'reduite' })} slotProps={{ htmlInput: { 'aria-label': `TVA de la famille ${i + 1}` } }} sx={{ width: 150, '& .MuiInputBase-root': { minHeight: 48 } }}>
+                  <MenuItem value="normale">Normale</MenuItem><MenuItem value="intermediaire">Intermédiaire</MenuItem><MenuItem value="reduite">Réduite</MenuItem>
+                </TextField>
+              </TableCell>
+              <TableCell align="right"><ChampTaux libelle={`Marge visée, famille ${i + 1}`} valeur={f.marge} onChange={(x) => famille(i, { marge: x ?? 0 })} /></TableCell>
+              <TableCell align="right" sx={{ width: 64 }}>{retirer(i, () => setV((y) => ({ ...y, familles: y.familles.filter((_, j) => j !== i) })), 'la famille')}</TableCell>
+            </TableRow>
+          ))}
+          {!v.familles.length && <TableRow><TableCell colSpan={5} sx={{ color: 'text.secondary' }}>Aucune famille : la calculette demande la marge visée.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+      {ajouter('Ajouter une famille', () => setV((y) => ({ ...y, familles: [...y.familles, { libelle: '', univers: 'cave', marge: 0, tva: 'normale' }] })))}
+
+      {titre('Livraisons du marché extérieur (distance aller)')}
+      <Table aria-label="Grille des livraisons">
+        <TableHead><TableRow><TableCell>Jusqu’à</TableCell><TableCell align="right">Offerte dès (commande HT)</TableCell><TableCell align="right">Prix HT sinon</TableCell><TableCell /></TableRow></TableHead>
+        <TableBody>
+          {v.livraison.map((l, i) => (
+            <TableRow key={i}>
+              <TableCell><ChampMontant libelle={`Distance maximale, ligne ${i + 1}`} valeur={l.kmMax} onChange={(x) => livraison(i, 'kmMax', x)} unite="km" largeur={120} /></TableCell>
+              <TableCell align="right"><ChampMontant libelle={`Commande pour une livraison offerte, ligne ${i + 1}`} valeur={l.franco} onChange={(x) => livraison(i, 'franco', x)} largeur={140} /></TableCell>
+              <TableCell align="right"><ChampMontant libelle={`Prix de la livraison, ligne ${i + 1}`} valeur={l.prix} onChange={(x) => livraison(i, 'prix', x)} largeur={120} /></TableCell>
+              <TableCell align="right" sx={{ width: 64 }}>{retirer(i, () => setV((y) => ({ ...y, livraison: y.livraison.filter((_, j) => j !== i) })), 'la ligne de livraison')}</TableCell>
+            </TableRow>
+          ))}
+          {!v.livraison.length && <TableRow><TableCell colSpan={4} sx={{ color: 'text.secondary' }}>Aucune grille : le prix de livraison se saisit dans le contrat.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+      {ajouter('Ajouter une distance', () => setV((y) => ({ ...y, livraison: [...y.livraison, { kmMax: 0, franco: 0, prix: 0 }] })))}
+
+      {titre('Développer le marché extérieur : préconisation selon l’objectif de CA')}
+      <Table aria-label="Préconisation du marché extérieur">
+        <TableHead><TableRow><TableCell>CA HT jusqu’à</TableCell><TableCell align="right">Tireuses</TableCell><TableCell align="right">Investissement HT</TableCell><TableCell align="right">Heures par semaine</TableCell><TableCell /></TableRow></TableHead>
+        <TableBody>
+          {v.marcheExterieur.paliers.map((l, i) => (
+            <TableRow key={i}>
+              <TableCell><ChampMontant libelle={`CA maximal, palier ${i + 1}`} valeur={l.caMax} onChange={(x) => palierExt(i, 'caMax', x)} largeur={150} /></TableCell>
+              <TableCell align="right"><ChampMontant libelle={`Tireuses, palier ${i + 1}`} valeur={l.tireuses} onChange={(x) => palierExt(i, 'tireuses', x)} unite="" largeur={100} /></TableCell>
+              <TableCell align="right"><ChampMontant libelle={`Investissement, palier ${i + 1}`} valeur={l.investissement} onChange={(x) => palierExt(i, 'investissement', x)} largeur={150} /></TableCell>
+              <TableCell align="right"><ChampMontant libelle={`Heures par semaine, palier ${i + 1}`} valeur={l.heures} onChange={(x) => palierExt(i, 'heures', x)} unite="h" largeur={100} /></TableCell>
+              <TableCell align="right" sx={{ width: 64 }}>{retirer(i, () => setV((y) => ({ ...y, marcheExterieur: { ...y.marcheExterieur, paliers: y.marcheExterieur.paliers.filter((_, j) => j !== i) } })), 'le palier extérieur')}</TableCell>
+            </TableRow>
+          ))}
+          {!v.marcheExterieur.paliers.length && <TableRow><TableCell colSpan={5} sx={{ color: 'text.secondary' }}>Aucune préconisation : le modèle Marché extérieur d’« Investir » se saisit à la main.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+      {ajouter('Ajouter un palier extérieur', () => setV((y) => ({ ...y, marcheExterieur: { ...y.marcheExterieur, paliers: [...y.marcheExterieur.paliers, { caMax: 0, tireuses: 0, investissement: 0, heures: 0 }] } })))}
     </SectionParametres>
   )
 }

@@ -155,7 +155,7 @@ test('productivité cible selon la part du bar, ETP et coût selon le contrat', 
   proche(r.etpReel, 3_800 / 1607)
   proche(r.ecartHeures, 3_800 - 400_000 / 110)
   // CDD : + 10 % ; intérim à coefficient 2 : 1 800 € × 2 × 6 mois
-  expect(coutContrats(20_000, 1_800, 6, 2)).toEqual({ cdi: 20_000, cdd: 22_000, interim: 21_600 })
+  expect(coutContrats(20_000, 1_800, 6, 2)).toEqual({ cdi: 20_000, cdd: 22_000, fraisCDD: 0, interim: 21_600 })
   expect(coutContrats(20_000, 1_800, 6, 0).interim).toBeNull()
 })
 
@@ -177,6 +177,7 @@ test('redressement : leviers des causes cochées, dans l’ordre, sans doublon ;
   expect(leviersPour([])).toEqual([])
   const d = parametresSimulateurs(null)
   expect(d.tva).toEqual({ normale: 0.2, intermediaire: 0.1, reduite: 0.055 })
-  expect(d).toMatchObject({ donMecenat: false, coutHoraire: 0, productivite: [], coefInterim: 0 })
+  // Vague 10 : intérim à 1,75 tant que le Directeur ne l'a pas réglé (fiche outil intérim)
+  expect(d).toMatchObject({ donMecenat: false, coutHoraire: 0, productivite: [], coefInterim: 1.75 })
   expect(parametresSimulateurs({ simulateurs: { donMecenat: true, tva: { normale: 0.2, intermediaire: 0.1, reduite: 0 } } })).toMatchObject({ donMecenat: true, tva: { reduite: 0 } })
 })

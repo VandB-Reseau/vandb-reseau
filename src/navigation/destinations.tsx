@@ -68,7 +68,9 @@ export const animation = campagnes
 export const chiffres: Destination = { chemin: '/performance', libelle: 'Chiffres', description: 'Performance des magasins, écarts au budget, clôtures et rapport du mois', icone: <QueryStatsOutlined />, iconeActive: <QueryStats />, sprint: 'Refonte' }
 // Budget prévisionnel (Joseph, 10/11/2026) : les budgets de l'année ont leur entrée du menu, à côté de Chiffres
 export const budgetPrevisionnel: Destination = { chemin: '/budgets', libelle: 'Budget prévisionnel', court: 'Budget', description: 'Budgets de l’année des magasins : construire, envoyer et valider', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Refonte' }
-export const secondaires: Destination[] = [campagnes, demandes, chiffres, budgetPrevisionnel, agenda]
+// Simulateurs de l'équipe (choix 157, Joseph 14/11/2026) : un magasin ou plusieurs, juste sous le Budget prévisionnel
+export const simulateursEquipe: Destination = { chemin: '/simulateurs', libelle: 'Simulateurs', court: 'Simuler', description: 'Simuler pour un magasin, ou un levier sur plusieurs magasins', icone: <CalculateOutlined />, iconeActive: <Calculate />, sprint: 'Choix 157' }
+export const secondaires: Destination[] = [campagnes, demandes, chiffres, budgetPrevisionnel, simulateursEquipe, agenda]
 export const pourRole = (liste: Destination[], role: string | undefined) => liste.filter((d) => !d.roles || (!!role && d.roles.includes(role)))
 
 // Réglages : Équipe et Paramètres. Évolution du parc est une vue de Magasins depuis la refonte (Joseph, 09/11/2026, 2A)
@@ -85,7 +87,7 @@ export interface Rubrique { titre: string; destinations: Destination[] }
 export function rubriquesMenu(_sansParametres?: boolean): Rubrique[] {
   return [
     { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
-    { titre: 'Réseau', destinations: [magasins, visites, chiffres, budgetPrevisionnel] },
+    { titre: 'Réseau', destinations: [magasins, visites, chiffres, budgetPrevisionnel, simulateursEquipe] },
     { titre: 'Animation', destinations: [infosReseau, campagnes, demandes] },
   ]
 }
@@ -95,7 +97,7 @@ export const demandesFranchise: Destination = { ...demandes, libelle: 'Mes deman
 export const menuTelephone = (role: string | undefined) => menuTelephoneRubriques(role).flatMap((r) => r.destinations)
 // Vague 6 (Joseph, 10/11/2026) : le menu du compte sur téléphone rangé comme le menu du PC, en rubriques
 export const menuTelephoneRubriques = (role: string | undefined): Rubrique[] => [
-  { titre: 'Réseau', destinations: pourRole([visites, chiffres, budgetPrevisionnel], role) },
+  { titre: 'Réseau', destinations: pourRole([visites, chiffres, budgetPrevisionnel, simulateursEquipe], role) },
   { titre: 'Animation', destinations: pourRole([infosReseau, campagnes, demandes], role) },
 ].filter((r) => r.destinations.length)
 

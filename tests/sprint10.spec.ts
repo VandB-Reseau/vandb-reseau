@@ -30,7 +30,7 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Aperçu', 'Activité', 'Chiffres', 'Nine box', 'Budget'] : ['Vue d’ensemble', 'Activité', 'Chiffres', 'Nine box', 'Budget'])
   // Plus de fil (Joseph, 22/10/2026) : la fiche s'ouvre sur l'équipe ; le journal a son onglet
-  await expect(page.getByRole('heading', { name: 'Équipe' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Équipe', exact: true })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Journal' })).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'Fil du magasin' })).toHaveCount(0)
   // En-tête : deux actions en cours dont une en retard

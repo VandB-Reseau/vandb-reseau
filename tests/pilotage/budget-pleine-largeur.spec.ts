@@ -97,7 +97,7 @@ test('le budget prévisionnel a son entrée dans le menu, à côté de Chiffres'
   await connecter(page)
   if (!isMobile) {
     const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-    await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Tâches', 'Messages', 'Agenda', 'Magasins', 'Visites', 'Chiffres', 'Budget prévisionnel', 'Actualités', 'Campagnes', 'Demandes'].map((t) => new RegExp(`^${t}`)))
+    await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Tâches', 'Messages', 'Agenda', 'Magasins', 'Visites', 'Chiffres', 'Budget prévisionnel', 'Simulateurs', 'Actualités', 'Campagnes', 'Demandes'].map((t) => new RegExp(`^${t}`)))
     await nav.getByRole('button', { name: /^Budget prévisionnel/ }).click()
     await expect(page).toHaveURL(/#\/budgets$/)
     await expect(page.getByRole('heading', { level: 1, name: /^(Budget prévisionnel|Mon budget)$/ })).toBeVisible()
