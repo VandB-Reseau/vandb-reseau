@@ -47,7 +47,7 @@ test('le Suivi se lit en puces, une partie à la fois, sans liste du plan d’ac
   // Refonte (09/11/2026, 3A) : le suivi est dans l'onglet Chiffres, avec la santé et les saisies
   await ouvrirOnglet(page, 'Chiffres')
   const puces = page.getByRole('tablist', { name: 'Parties des chiffres' })
-  await expect(puces.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', 'Atterrissage 2026', 'Analyse', 'Simulateurs'])
+  await expect(puces.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', 'Atterrissage 2026', 'Analyse'])
   await expect(puces.getByRole('tab', { name: 'Vue d’ensemble' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('region', { name: 'Santé du magasin à fin septembre' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Plan d’action' })).toHaveCount(0)
