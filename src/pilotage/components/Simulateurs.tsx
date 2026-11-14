@@ -5,6 +5,7 @@ import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import Checkbox from '@mui/material/Checkbox'
+import GlobalStyles from '@mui/material/GlobalStyles'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
@@ -29,6 +30,7 @@ import SportsBarOutlined from '@mui/icons-material/SportsBarOutlined'
 import WarehouseOutlined from '@mui/icons-material/WarehouseOutlined'
 import DeleteOutlineOutlined from '@mui/icons-material/DeleteOutlineOutlined'
 import FlagOutlined from '@mui/icons-material/FlagOutlined'
+import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import Inventory2Outlined from '@mui/icons-material/Inventory2Outlined'
 import PersonAddOutlined from '@mui/icons-material/PersonAddOutlined'
 import PlaylistAddOutlined from '@mui/icons-material/PlaylistAddOutlined'
@@ -210,6 +212,13 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   const [nom, setNom] = useState('')
   const [message, setMessage] = useState<{ texte: string; bon: boolean } | null>(null)
   const [occupe, setOccupe] = useState(false)
+  // PDF d'une simulation (Joseph, 14/11/2026) : seule la carte du simulateur s'imprime, avec le magasin et la date
+  useEffect(() => {
+    const fin = () => document.body.classList.remove('simulation-seule')
+    window.addEventListener('afterprint', fin)
+    return () => { window.removeEventListener('afterprint', fin); fin() }
+  }, [])
+  const enPDF = () => { document.body.classList.add('simulation-seule'); window.print() }
   const recharger = () => chargerSimulations(magasin).then(setGardees).catch(() => setGardees(null))
   useEffect(() => { void recharger() }, [magasin]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setNom(''); setMessage(null) }, [choisi])
@@ -827,9 +836,14 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         })}
       </Box>
 
-      <Card sx={{ p: { xs: 2, md: 3 }, borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <GlobalStyles styles={{ '@media print': {
+        'body.simulation-seule *': { visibility: 'hidden' },
+        'body.simulation-seule #carte-simulation, body.simulation-seule #carte-simulation *': { visibility: 'visible' },
+        'body.simulation-seule #carte-simulation': { position: 'absolute', left: 0, top: 0, width: '100%', border: 'none !important' },
+      } }} />
+      <Card id="carte-simulation" sx={{ p: { xs: 2, md: 3 }, borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Typography variant="h2">{simulateur.titre}</Typography>
+          <Typography variant="h2">{simulateur.titre}<Box component="span" className="impression-seule"> · {magasin} · {aujourdhui.toLocaleDateString('fr-FR')}</Box></Typography>
           <Aide sujet={simulateur.aide} />
         </Box>
         {sansBudget ? (
@@ -839,7 +853,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             {saisies}
             {resultats}
             {phrase && <Typography role="status" sx={{ fontWeight: 600, fontSize: '1rem', maxWidth: '75ch' }}>{phrase}</Typography>}
-            {phrase && (peutGarder && gardees !== null || ajout) && (
+            {phrase && (
               <Box className="pas-a-l-impression" sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-end', pt: 1, borderTop: 1, borderColor: 'divider' }}>
                 {peutGarder && gardees !== null && (
                   <>
@@ -849,6 +863,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
                     <Button variant="outlined" startIcon={<BookmarkAddOutlined />} onClick={() => void garder()} aria-disabled={occupe} sx={{ minHeight: 48 }}>Garder</Button>
                   </>
                 )}
+                <Button variant="outlined" startIcon={<PictureAsPdfOutlined />} onClick={enPDF} sx={{ minHeight: 48 }}>PDF</Button>
                 {ajout && mettreAuBudget && <Button variant="contained" startIcon={<PlaylistAddOutlined />} onClick={() => void versBudget()} aria-disabled={occupe} sx={{ minHeight: 48 }}>Mettre dans mon budget {annee}</Button>}
                 {ajout && !mettreAuBudget && budgetValide && <Typography color="text.secondary" sx={{ alignSelf: 'center' }}>Le budget {annee} est validé : la simulation se garde sans le changer.</Typography>}
               </Box>

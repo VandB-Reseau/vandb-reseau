@@ -20,7 +20,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   écart de marge sous la caisse, un point en euros et causes de l'audit de marge cochées. Fiche magasin (équipe) : bloc
   Marché extérieur (année, part, évolution, rang parmi les magasins qui en font) et colonne Extérieur dans le tableau des
   magasins ; plan de redressement d'un magasin qui décroche (causes, leviers, tâches du Coach). Repères dans Paramètres,
-  Simulateurs. **Base : migration pilotage `0032_simulations_boite_a_outils.sql`** (dépôt du pilotage) ; sans elle, les
+  Simulateurs. Chaque simulation se télécharge en PDF (la carte seule, avec le magasin et la date), gardée ou non.
+  **Base : migration pilotage `0032_simulations_boite_a_outils.sql`** (dépôt du pilotage) ; sans elle, les
   cinq nouveaux simulateurs calculent mais ne se gardent pas.
 
 - Facilité d'usage et simulateurs du franchisé (Joseph, 13/11/2026, choix 114 à 135, « faire tout d'un coup ») :
