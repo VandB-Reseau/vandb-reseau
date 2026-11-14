@@ -46,7 +46,7 @@ import { EtatVide } from './EtatVide'
 import { Indicateur } from './Indicateur'
 import { useAuth } from '../auth/AuthContext'
 import { chargerSimulations, garderSimulation, retirerSimulation, SimulationPasEncoreGardable, type SimulationGardee, type TypeSimulation } from '../data/pilotage'
-import { categorieLibelle, type Categorie } from '../moteur/equipe'
+import { categorieLibelle, coutHoraireEquipe, coutHoraireSmic, type Categorie } from '../moteur/equipe'
 import {
   analyserRemises, caCorner, LIGNES_EVENEMENT, LIGNES_REMISES, margeMix, parametresSimulateurs, resteAFaire, simulerAchat, simulerCoupDur, simulerEmbauche,
   simulerInvestissement, simulerPrimes, simulerPrix, simulerSoiree, simulerVenteAdditionnelle, tempsFortDeSoiree,
@@ -151,13 +151,13 @@ type Etats = {
     nom: string; mois: number; univers: Univers; prix: number; participants: number; marge: number | null; couts: number; extras: number
     achats: boolean; part: number; panier: number; bon: boolean                    // 152 · achats des participants
     lignes: Record<Exclude<LigneEvenement, 'divers'>, number>                     // 153 · coûts détaillés (Divers : « couts »)
-    personnes: number; heuresEquipe: number; coutHoraire: number; majoration: number // 153 · heures de l'équipe en place
+    personnes: number; heuresEquipe: number; coutHoraire: number; majoration: number; modeHeure: ModeHeure; partSmic: number // 153 · heures de l'équipe en place
   }
   achat: { montant: number; remise: number; mois: number; invendu: number; taux: number }
   exterieur: {
     nom: string; futs: number; prixVente: number; remise: number; prixAchat: number; co2: number; gobelets: number
     tireuse: 'neuve' | 'parc'; prixTireuse: number; duree: number; entretien: number
-    livraisons: number; km: number; prixKm: number; heures: number; coutHoraire: number
+    livraisons: number; km: number; prixKm: number; heures: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number
     don: 'aucun' | 'argent' | 'nature'; montantDon: number; futsDon: number; cerfa: boolean
     prixLivraison: number | null; sponsoring: boolean; sponsoMontant: number; sponsoParFut: number; materiel: number; astreinte: number; locations: number; prixLocation: number // 154, 162
   }
@@ -170,8 +170,26 @@ type Etats = {
     vue: 'carte' | 'audit'; audit: { futs: number; litres: number; prixFut: number; demis: number; verres33: number; pintes: number; litres1L: number; offerts: number; caTTC: number } // 161
   }
   calculette: { nom: string; composants: Composant[]; tva: 'normale' | 'intermediaire' | 'reduite'; mode: 'prix' | 'marge' | 'mix'; marge: number; prixTTC: number; famille: string; mix: LigneMix[] }
-  ouverture: { jour: 'dimanche' | 'ferie'; caBar: number; caCave: number; margeBar: number | null; margeCave: number | null; report: number; heures: number; coutHoraire: number; frais: number }
+  ouverture: { jour: 'dimanche' | 'ferie'; caBar: number; caCave: number; margeBar: number | null; margeCave: number | null; report: number; heures: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number; frais: number }
   investissement: { modele: 'libre' | 'corner' | 'exterieur'; objectifExterieur: number; camion: boolean; libelle: string; cout: number; duree: number; mois: number; ca: number; metres: number; marge: number; demarque: number; charges: number; financement: 'tresorerie' | 'pret'; tauxPret: number; dureePret: number; univers: Univers }
+}
+
+// Coût d'une heure chargée des simulateurs (Joseph, 14/11/2026) : moyenne de l'équipe du magasin par défaut (repère du
+// siège si l'équipe n'est pas saisie), ou une part du SMIC, ou un montant libre.
+type ModeHeure = 'equipe' | 'smic' | 'libre'
+const HEURE = { modeHeure: 'equipe' as ModeHeure, partSmic: 1.2 }
+function CoutHeure({ e, valeur, equipeSaisie, onChange }: {
+  e: { modeHeure: ModeHeure; partSmic: number; coutHoraire: number }; valeur: number; equipeSaisie: boolean
+  onChange: (v: Partial<{ modeHeure: ModeHeure; partSmic: number; coutHoraire: number }>) => void
+}) {
+  return <>
+    <Choix libelle="Coût horaire" valeur={e.modeHeure} onChange={(modeHeure) => onChange({ modeHeure })} options={[['equipe', 'Moyenne de l’équipe'], ['smic', 'En part du SMIC'], ['libre', 'Montant libre']]} />
+    {e.modeHeure === 'smic' && <Taux libelle="Part du SMIC brut" valeur={e.partSmic} onChange={(partSmic) => onChange({ partSmic })} />}
+    {e.modeHeure === 'libre' && <Montant libelle="Coût d’une heure chargée" valeur={e.coutHoraire} onChange={(coutHoraire) => onChange({ coutHoraire })} />}
+    {e.modeHeure !== 'libre' && <Typography color="text.secondary" sx={{ alignSelf: 'center' }}>
+      {centimes(valeur)} l’heure chargée{e.modeHeure === 'smic' ? '' : equipeSaisie ? ', moyenne de l’équipe' : ', repère du siège (équipe pas saisie)'}
+    </Typography>}
+  </>
 }
 
 function margeUnivers(b: Budget | null, u: Univers): number | null {
@@ -199,13 +217,13 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       nom: 'Soirée dégustation', mois: 12, univers: 'bar', prix: 25, participants: 30, marge: null, couts: 0, extras: 150,
       achats: true, part: 0.3, panier: 40, bon: false,
       lignes: { produits: 0, securite: 0, deco: 50, animation: 150, communication: 0, location: 0 },
-      personnes: 0, heuresEquipe: 3, coutHoraire: s.coutHoraire, majoration: 0.25,
+      personnes: 0, heuresEquipe: 3, coutHoraire: s.coutHoraire, majoration: 0.25, ...HEURE,
     },
     achat: { montant: 10_000, remise: 0.1, mois: 4, invendu: 0.05, taux: s.tauxDecouvert },
     exterieur: {
       nom: 'Fête du village', futs: 40, prixVente: 70, remise: 0, prixAchat: 42, co2: s.exterieur.co2ParFut, gobelets: 0,
       tireuse: 'neuve', prixTireuse: 1_500, duree: s.exterieur.dureeTireuse || 5, entretien: s.exterieur.entretienTireuse,
-      livraisons: 10, km: 30, prixKm: s.exterieur.prixKm, heures: 1.5, coutHoraire: s.coutHoraire, don: 'aucun', montantDon: 500, futsDon: 5, cerfa: true,
+      livraisons: 10, km: 30, prixKm: s.exterieur.prixKm, heures: 1.5, coutHoraire: s.coutHoraire, ...HEURE, don: 'aucun', montantDon: 500, futsDon: 5, cerfa: true,
       prixLivraison: null, sponsoring: false, sponsoMontant: 0, sponsoParFut: 0, materiel: 0, astreinte: 0, locations: 0, prixLocation: 0,
     },
     tireuses: {
@@ -222,7 +240,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       nom: 'Planche mixte', composants: [{ libelle: 'Charcuterie', cout: 3, quantite: 1 }, { libelle: 'Fromage', cout: 2.5, quantite: 1 }], tva: 'intermediaire', mode: 'prix', marge: 0.7, prixTTC: 18, famille: '',
       mix: [{ libelle: 'Bouteille de vin', cout: 6, consigne: 0, prixTTC: 15, quantite: 1 }, { libelle: 'Coffret bois', cout: 3, consigne: 0, prixTTC: 8, quantite: 1 }],
     },
-    ouverture: { jour: 'dimanche', caBar: 800, caCave: 1_200, margeBar: null, margeCave: null, report: 0.2, heures: 14, coutHoraire: s.coutHoraire, frais: 0 },
+    ouverture: { jour: 'dimanche', caBar: 800, caCave: 1_200, margeBar: null, margeCave: null, report: 0.2, heures: 14, coutHoraire: s.coutHoraire, ...HEURE, frais: 0 },
     investissement: { modele: 'libre', objectifExterieur: 100_000, camion: false, libelle: 'Tireuse', cout: 15_000, duree: 5, mois: moisSuivant, ca: 20_000, metres: 6, marge: 0.35, demarque: 0, charges: 1_000, financement: 'tresorerie', tauxPret: 0.04, dureePret: 5, univers: 'bar' },
   }
 }
@@ -245,6 +263,9 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   const reseauDispo = useReseauSiDispo()
   const tireusesParc = tireusesDu(equipementsDu(reseauDispo?.reseau, magasin))
   const [etats, setEtats] = useState<Etats>(() => etatsInitiaux(b, h, p, aujourdhui, tireusesParc))
+  const heureEquipe = useMemo(() => (h?.equipe?.length ? coutHoraireEquipe(h.equipe, p.charges, h.annee, h.hausseSalaires ?? 0) : null), [h, p])
+  const heure = (x: { modeHeure?: ModeHeure; partSmic: number; coutHoraire: number }) =>
+    x.modeHeure === 'libre' ? x.coutHoraire : x.modeHeure === 'smic' ? coutHoraireSmic(x.partSmic, p.charges) : heureEquipe ?? parametresSimulateurs(p).coutHoraire
   const maj = <K extends keyof Etats>(k: K, v: Partial<Etats[K]>) => setEtats((e) => ({ ...e, [k]: { ...e[k], ...v } }))
   const [gardees, setGardees] = useState<SimulationGardee[] | null>(null)
   const [nom, setNom] = useState('')
@@ -565,7 +586,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const r = simulerSoiree({
       prixTTC: e.prix, participants: e.participants, tva, tauxMarge: e.marge ?? margeU, couts: coutsPropres, extras: e.extras,
       achats: e.achats ? { part: e.part, panierTTC: e.panier, tva: p.tvaPanier.cave, tauxMarge: margeCave, bon: e.bon } : null,
-      equipe: { personnes: e.personnes, heures: e.heuresEquipe, coutHoraire: e.coutHoraire, majoration: e.majoration },
+      equipe: { personnes: e.personnes, heures: e.heuresEquipe, coutHoraire: heure(e), majoration: e.majoration },
     }, p)
     saisies = (
       <Stack spacing={2}>
@@ -599,7 +620,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         <Saisies>
           <Montant libelle="Personnes" valeur={e.personnes} onChange={(v) => maj('soiree', { personnes: Math.max(0, Math.round(v)) })} unite="" />
           <Montant libelle="Heures chacune" valeur={e.heuresEquipe} onChange={(v) => maj('soiree', { heuresEquipe: v })} unite="h" />
-          <Montant libelle="Coût d’une heure chargée" valeur={e.coutHoraire} onChange={(v) => maj('soiree', { coutHoraire: v })} />
+          <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} onChange={(v) => maj('soiree', v)} />
           <Taux libelle="Majoration des heures" valeur={e.majoration} onChange={(v) => maj('soiree', { majoration: v })} />
         </Saisies>
       </Stack>
@@ -714,7 +735,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const r = simulerExterieur({
       futs: e.futs, prixVente: e.prixVente, remise: e.remise, prixAchat: e.prixAchat, co2: e.co2, gobelets: e.gobelets,
       tireuse: e.tireuse, prixTireuse: e.prixTireuse, dureeTireuse: e.duree, entretien: e.entretien,
-      livraisons: e.livraisons, km: e.km, prixKm: e.prixKm, heures: e.heures, coutHoraire: e.coutHoraire,
+      livraisons: e.livraisons, km: e.km, prixKm: e.prixKm, heures: e.heures, coutHoraire: heure(e),
       don: { type: e.don, montant: e.montantDon, futs: e.futsDon, cerfa: e.cerfa },
       prixLivraison, sponsoring: e.sponsoring ? { montant: e.sponsoMontant, parFut: e.sponsoParFut } : undefined,
       materiel: e.materiel, astreinte: e.astreinte, locations: { nombre: e.locations, prix: e.prixLocation },
@@ -746,7 +767,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Montant libelle="Kilomètres aller-retour" valeur={e.km} onChange={m('km')} unite="km" />
           <Montant libelle="Prix du kilomètre" valeur={e.prixKm} onChange={m('prixKm')} unite="€/km" />
           <Montant libelle="Heures par livraison" valeur={e.heures} onChange={m('heures')} unite="h" />
-          <Montant libelle="Coût d’une heure chargée" valeur={e.coutHoraire} onChange={m('coutHoraire')} />
+          <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} onChange={(v) => maj('exterieur', v)} />
           <Montant libelle="Livraison facturée HT" valeur={prixLivraison} onChange={(v) => maj('exterieur', { prixLivraison: v })} />
         </Saisies>
         {prixGrille !== null && e.prixLivraison === null && <Typography color="text.secondary">Livraison au prix de la grille du siège : {prixGrille ? montant(prixGrille) : 'offerte'} pour {unChiffre(e.km / 2)} km et {montant(commande)} commandés par livraison.</Typography>}
@@ -795,9 +816,11 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   if (choisi === 'tireuses') {
     const e = etats.tireuses
     const x = etats.exterieur
-    // Prix de vente et d'achat du fût (Joseph, 14/11/2026) : repris du Contrat extérieur (prix après remise), modifiables ;
+    // Prix de vente TTC (PVC) et prix d'achat HT du fût (Joseph, 14/11/2026) : repris du Contrat extérieur (prix après remise), modifiables ;
     // le net par fût en découle (moins redevance et publicité, CO2 et gobelets du contrat).
-    const prixVente = e.prixVente ?? Math.max(0, x.prixVente - x.remise)
+    const tvaFut = s.tva.normale
+    const prixVenteTTC = e.prixVente ?? Math.round(Math.max(0, x.prixVente - x.remise) * (1 + tvaFut) * 100) / 100
+    const prixVente = prixVenteTTC / (1 + tvaFut)
     const prixAchat = e.prixAchat ?? x.prixAchat
     const fut = simulerExterieur({ futs: x.futs, prixVente, remise: 0, prixAchat, co2: x.co2, gobelets: x.gobelets, tireuse: 'parc', prixTireuse: 0, dureeTireuse: 1, entretien: 0, livraisons: 0, km: 0, prixKm: 0, heures: 0, coutHoraire: 0, don: { type: 'aucun', montant: 0, futs: 0, cerfa: false } }, p, false)
     const net = fut.netParFut
@@ -825,10 +848,10 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Montant libelle="Fûts par week-end loué" valeur={e.futsParSortie} onChange={m('futsParSortie')} unite="" />
         </Saisies>
         <Saisies>
-          <Montant libelle="Prix de vente du fût HT" valeur={prixVente} onChange={(v) => maj('tireuses', { prixVente: v })} />
+          <Montant libelle="Prix de vente du fût TTC" valeur={prixVenteTTC} onChange={(v) => maj('tireuses', { prixVente: v })} />
           <Montant libelle="Prix d’achat du fût HT" valeur={prixAchat} onChange={(v) => maj('tireuses', { prixAchat: v })} />
         </Saisies>
-        <Typography color="text.secondary">Marge par fût : {centimes(marge.valeur)}{marge.taux !== null ? `, soit ${taux(marge.taux)} du prix de vente` : ''}. Net par fût : {centimes(net)}, après {centimes(fut.redevanceParFut)} de redevance et publicité, CO2 et gobelets.</Typography>
+        <Typography color="text.secondary">Marge par fût : {centimes(marge.valeur)} HT{marge.taux !== null ? `, soit ${taux(marge.taux)} du prix de vente HT (${centimes(prixVente)})` : ''}. Net par fût : {centimes(net)}, après {centimes(fut.redevanceParFut)} de redevance et publicité, CO2 et gobelets.</Typography>
         <Saisies>
           <Montant libelle="Prix d’une tireuse neuve HT" valeur={e.prixNeuve} onChange={m('prixNeuve')} />
           <Montant libelle="Durée de vie" valeur={e.duree} onChange={m('duree')} unite="ans" />
@@ -1082,7 +1105,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const e = etats.ouverture
     const mBar = e.margeBar ?? margeUnivers(b, 'bar') ?? 0.6, mCave = e.margeCave ?? margeUnivers(b, 'cave') ?? 0.3
     const majoration = e.jour === 'dimanche' ? s.majorations.dimanche : s.majorations.ferie
-    const r = simulerOuverture({ caBar: e.caBar, caCave: e.caCave, margeBar: mBar, margeCave: mCave, report: e.report, heures: e.heures, coutHoraire: e.coutHoraire, majoration, frais: e.frais }, p)
+    const r = simulerOuverture({ caBar: e.caBar, caCave: e.caCave, margeBar: mBar, margeCave: mCave, report: e.report, heures: e.heures, coutHoraire: heure(e), majoration, frais: e.frais }, p)
     saisies = (
       <Stack spacing={2}>
         <Saisies>
@@ -1095,7 +1118,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         </Saisies>
         <Saisies>
           <Montant libelle="Heures payées" valeur={e.heures} onChange={(v) => maj('ouverture', { heures: v })} unite="h" />
-          <Montant libelle="Coût d’une heure chargée" valeur={e.coutHoraire} onChange={(v) => maj('ouverture', { coutHoraire: v })} />
+          <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} onChange={(v) => maj('ouverture', v)} />
           <Montant libelle="Frais du jour HT" valeur={e.frais} onChange={(v) => maj('ouverture', { frais: v })} />
         </Saisies>
         <Typography color="text.secondary">Majoration des heures {e.jour === 'dimanche' ? 'du dimanche' : 'd’un jour férié'} : {taux(majoration)}{majoration ? ', réglée par le siège' : ', à régler par le siège selon la convention collective'}.</Typography>
@@ -1132,7 +1155,10 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     finally { setOccupe(false) }
   }
   const rouvrir = (g: SimulationGardee) => {
-    setEtats((e) => ({ ...e, [g.type]: { ...e[g.type], ...g.donnees } }))
+    // Simulation gardée avant le choix du coût horaire : son montant saisi reste en montant libre
+    const d = g.donnees as Record<string, unknown>
+    const donnees = 'coutHoraire' in d && !('modeHeure' in d) ? { ...d, modeHeure: 'libre' } : d
+    setEtats((e) => ({ ...e, [g.type]: { ...e[g.type], ...donnees } }))
     choisir(g.type)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
