@@ -34,14 +34,38 @@ export interface ParametresSimulateurs {
   productivite: { partBar: number; cible: number }[]        // CA HT par heure visé selon la part du bar (seuil mini, cible)
   majorations: { dimanche: number; ferie: number }          // majoration des heures payées un dimanche, un jour férié
   coefInterim: number                                       // coefficient de facturation de l'intérim sur le salaire brut
+  // Vague 10 (choix 152 à 165, Joseph 14/11/2026)
+  contrat: { redaction: number; paieParMois: number }       // frais fixes d'un CDD : rédaction du contrat et fin, bulletin par mois
+  tireuses: { semainesSaison: number; occupationSaison: number; occupationHors: number; saturation: number } // week-ends loués
+  livraison: { kmMax: number; franco: number; prix: number }[] // grille de livraison : gratuite dès « franco » € HT commandés
+  marcheExterieur: { paliers: { caMax: number; tireuses: number; investissement: number; heures: number }[]; camion: number }
+  familles: { libelle: string; univers: 'cave' | 'bar'; marge: number; tva: 'normale' | 'intermediaire' | 'reduite' }[]
+  remises: Record<CleRemise, number>                        // repères en part du CA HT (0 : pas de repère)
 }
+// Remises et offerts (choix 163) : les lignes du fichier « Pilotage remises & gratuités »
+export const LIGNES_REMISES = [
+  { cle: 'offerts', libelle: 'Offerts et dégustations' },
+  { cle: 'persos', libelle: 'Consommation personnelle' },
+  { cle: 'prixSpeciaux', libelle: 'Prix spéciaux' },
+  { cle: 'remises', libelle: 'Remises en caisse' },
+  { cle: 'fidelite', libelle: 'Fidélité (points, bons)' },
+] as const
+export type CleRemise = (typeof LIGNES_REMISES)[number]['cle']
+// Valeurs courantes proposées tant que le Directeur ne les a pas réglées (aucune donnée du réseau) : coefficient
+// d'intérim et frais d'un CDD de la fiche outil intérim ; saison de mai à août (17 week-ends), 90 % des week-ends loués
+// en saison, 20 % le reste de l'année (Joseph, 14/11/2026), parc saturé au-delà de 85 %
+export const COEF_INTERIM = 1.75
+export const CONTRAT_CDD = { redaction: 260, paieParMois: 20 }
+export const TIREUSES = { semainesSaison: 17, occupationSaison: 0.9, occupationHors: 0.2, saturation: 0.85 }
 export const simulateursParDefaut: ParametresSimulateurs = {
   tauxDecouvert: 0, aideApprenti: 0, corner: { caParMetre: 0, tauxMarge: 0, demarque: 0 },
   coutHoraire: 0, exterieur: { prixKm: 0, dureeTireuse: 0, entretienTireuse: 0, co2ParFut: 0 }, donMecenat: false,
   pression: { cibleMarge: 0, joursFraicheur: 0 },
   // Taux légaux en France métropolitaine (20 %, 10 %, 5,5 %), modifiables par le Directeur
   tva: { normale: 0.2, intermediaire: 0.1, reduite: 0.055 },
-  productivite: [], majorations: { dimanche: 0, ferie: 0 }, coefInterim: 0,
+  productivite: [], majorations: { dimanche: 0, ferie: 0 }, coefInterim: COEF_INTERIM,
+  contrat: { ...CONTRAT_CDD }, tireuses: { ...TIREUSES }, livraison: [], marcheExterieur: { paliers: [], camion: 0 }, familles: [],
+  remises: { offerts: 0, persos: 0, prixSpeciaux: 0, remises: 0, fidelite: 0 },
 }
 const positif = (x: unknown) => Math.max(0, fini(x as number))
 export function parametresSimulateurs(p: { simulateurs?: Partial<ParametresSimulateurs> } | null | undefined): ParametresSimulateurs {
@@ -61,9 +85,26 @@ export function parametresSimulateurs(p: { simulateurs?: Partial<ParametresSimul
       .map((x) => ({ partBar: Math.min(1, positif(x.partBar)), cible: positif(x.cible) }))
       .sort((a, b) => b.partBar - a.partBar),
     majorations: { dimanche: positif(s.majorations?.dimanche), ferie: positif(s.majorations?.ferie) },
-    coefInterim: positif(s.coefInterim),
+    coefInterim: positif(s.coefInterim) || COEF_INTERIM,
+    contrat: { redaction: ou(s.contrat?.redaction, CONTRAT_CDD.redaction), paieParMois: ou(s.contrat?.paieParMois, CONTRAT_CDD.paieParMois) },
+    tireuses: {
+      semainesSaison: Math.min(52, ou(s.tireuses?.semainesSaison, TIREUSES.semainesSaison)), occupationSaison: Math.min(1, ou(s.tireuses?.occupationSaison, TIREUSES.occupationSaison)),
+      occupationHors: Math.min(1, ou(s.tireuses?.occupationHors, TIREUSES.occupationHors)), saturation: Math.min(1, ou(s.tireuses?.saturation, TIREUSES.saturation)),
+    },
+    livraison: liste(s.livraison).filter((x) => x && Number.isFinite(x.kmMax) && x.kmMax > 0)
+      .map((x) => ({ kmMax: positif(x.kmMax), franco: positif(x.franco), prix: positif(x.prix) })).sort((a, b) => a.kmMax - b.kmMax),
+    marcheExterieur: {
+      paliers: liste(s.marcheExterieur?.paliers).filter((x) => x && Number.isFinite(x.caMax) && x.caMax > 0)
+        .map((x) => ({ caMax: positif(x.caMax), tireuses: positif(x.tireuses), investissement: positif(x.investissement), heures: positif(x.heures) })).sort((a, b) => a.caMax - b.caMax),
+      camion: positif(s.marcheExterieur?.camion),
+    },
+    familles: liste(s.familles).filter((x) => x && typeof x.libelle === 'string' && x.libelle.trim() && Number.isFinite(x.marge))
+      .map((x) => ({ libelle: x.libelle.trim().slice(0, 40), univers: x.univers === 'bar' ? 'bar' as const : 'cave' as const, marge: Math.min(0.99, positif(x.marge)), tva: (['normale', 'intermediaire', 'reduite'] as const).includes(x.tva) ? x.tva : 'normale' as const })),
+    remises: Object.fromEntries(LIGNES_REMISES.map((l) => [l.cle, Math.min(1, positif(s.remises?.[l.cle]))])) as Record<CleRemise, number>,
   }
 }
+const ou = (x: unknown, defaut: number) => (Number.isFinite(x) ? positif(x) : defaut)
+const liste = <T,>(x: T[] | undefined | null): T[] => (Array.isArray(x) ? x : [])
 
 // ── Budget rejoué ───────────────────────────────────────────────────────────────────────────────────────────────────
 export interface Situation { h: Hypotheses; p: ParametresReseau; depart: number }   // depart : trésorerie au 1er janvier
@@ -239,24 +280,64 @@ export function resteAFaire(b: Budget, annee: number, mois: number, jour: number
 }
 export { joursHorsDimanche }
 
-// ── 133 · Soirée, dégustation, événement ───────────────────────────────────────────────────────────────────────────
-// Prix TTC par participant, TVA de l'univers, taux de marge sur les ventes de la soirée, coûts propres HT (animation,
-// location, communication) et extras de personnel chargés. Gain = marge − redevance et publicité − coûts.
-// Seuil : participants pour ne pas perdre d'argent = coûts ÷ (prix HT × (marge − redevance − publicité)).
-export interface EffetSoiree { caHT: number; marge: number; redevance: number; couts: number; gain: number; seuil: number | null; gainParParticipant: number }
-export function simulerSoiree(x: { prixTTC: number; participants: number; tva: number; tauxMarge: number; couts: number; extras: number }, p: Pick<ParametresReseau, 'tauxRedevance' | 'tauxPublicite'>): EffetSoiree {
-  const prixHT = Math.max(0, x.prixTTC) / (1 + x.tva)
-  const caHT = prixHT * Math.max(0, x.participants)
-  const marge = caHT * x.tauxMarge
-  const redevance = caHT * (p.tauxRedevance + p.tauxPublicite)
-  const couts = Math.max(0, x.couts) + Math.max(0, x.extras)
-  const unitaire = prixHT * (x.tauxMarge - p.tauxRedevance - p.tauxPublicite)
-  return { caHT, marge, redevance, couts, gain: marge - redevance - couts, seuil: unitaire > 0 ? Math.ceil(couts / unitaire - 1e-9) : null, gainParParticipant: unitaire }
+// ── 133 · Soirée, dégustation, événement (152 et 153 : achats des participants, coûts détaillés) ──────────────────
+// Prix TTC par participant, TVA de l'univers, taux de marge sur les ventes de la soirée. Achats (152) : une part des
+// participants achète un panier TTC (TVA et marge de la cave) ; avec un bon d'achat du prix d'entrée, le bon est une
+// remise sur ces achats (il ne dépasse pas le panier). Coûts (153) : lignes propres HT, extras de personnel, et heures
+// en plus de l'équipe déjà en place (personnes × heures × coût horaire chargé × (1 + majoration)).
+// Gain = marge − redevance et publicité − coûts. Seuil : participants pour ne pas perdre d'argent = coûts ÷ gain d'un
+// participant (entrée et achats compris).
+export const LIGNES_EVENEMENT = [
+  { cle: 'produits', libelle: 'Produits offerts (prix d’achat)' },
+  { cle: 'securite', libelle: 'Sécurité' },
+  { cle: 'deco', libelle: 'Décoration' },
+  { cle: 'animation', libelle: 'Animation, intervenant' },
+  { cle: 'communication', libelle: 'Communication (flyers, réseaux)' },
+  { cle: 'location', libelle: 'Location (matériel, salle)' },
+  { cle: 'divers', libelle: 'Divers' },
+] as const
+export type LigneEvenement = (typeof LIGNES_EVENEMENT)[number]['cle']
+export interface AchatsSoiree { part: number; panierTTC: number; tva: number; tauxMarge: number; bon: boolean }
+export interface HeuresEquipe { personnes: number; heures: number; coutHoraire: number; majoration: number }
+export interface Soiree { prixTTC: number; participants: number; tva: number; tauxMarge: number; couts: number; extras: number; achats?: AchatsSoiree | null; equipe?: HeuresEquipe | null }
+export interface EffetSoiree {
+  caHT: number; caEntree: number; caAchats: number; bon: number; acheteurs: number
+  marge: number; redevance: number; couts: number; equipeEnPlace: number; gain: number; seuil: number | null; gainParParticipant: number
 }
-// Le temps fort à ajouter au budget : CA de la soirée dans son mois ; coûts propres hors extras (les extras se saisissent
-// dans l'Équipe) ; achats payés le mois d'avant
-export function tempsFortDeSoiree(nom: string, mois: number, univers: Univers, e: Pick<EffetSoiree, 'caHT'>, coutsHorsExtras: number): TempsFort {
-  return { nom, type: 'soiree', mois, univers, caAnPasse: 0, ca: Math.round(e.caHT), autresCharges: Math.round(Math.max(0, coutsHorsExtras)), moisAchats: Math.max(1, mois - 1) }
+export const coutHeuresEquipe = (e: HeuresEquipe | null | undefined) =>
+  e ? Math.max(0, e.personnes) * Math.max(0, e.heures) * Math.max(0, e.coutHoraire) * (1 + Math.max(0, e.majoration)) : 0
+export function simulerSoiree(x: Soiree, p: Pick<ParametresReseau, 'tauxRedevance' | 'tauxPublicite'>): EffetSoiree {
+  const rp = p.tauxRedevance + p.tauxPublicite
+  // Ce que rapporte un participant (entrée, et achats à hauteur de la part qui achète)
+  const prixHT = Math.max(0, x.prixTTC) / (1 + x.tva)
+  const a = x.achats && x.achats.part > 0 && x.achats.panierTTC > 0 ? x.achats : null
+  const part = a ? Math.min(1, a.part) : 0
+  const panierHT = a ? a.panierTTC / (1 + a.tva) : 0
+  const bonHT = a && a.bon ? Math.min(Math.max(0, x.prixTTC), a.panierTTC) / (1 + a.tva) : 0
+  const caUn = prixHT + part * (panierHT - bonHT)
+  const margeUn = prixHT * x.tauxMarge + part * (panierHT * (a?.tauxMarge ?? 0) - bonHT)
+  const unitaire = margeUn - caUn * rp
+  const n = Math.max(0, x.participants)
+  const equipeEnPlace = coutHeuresEquipe(x.equipe)
+  const couts = Math.max(0, x.couts) + Math.max(0, x.extras) + equipeEnPlace
+  const caHT = caUn * n, marge = margeUn * n, redevance = caHT * rp
+  return {
+    caHT, caEntree: prixHT * n, caAchats: part * panierHT * n, bon: part * bonHT * n, acheteurs: part * n,
+    marge, redevance, couts, equipeEnPlace, gain: marge - redevance - couts,
+    seuil: unitaire > 0 ? Math.ceil(couts / unitaire - 1e-9) : null, gainParParticipant: unitaire,
+  }
+}
+// Les temps forts à ajouter au budget : l'entrée dans l'univers de la soirée, les achats des participants en cave (bon
+// d'achat déduit) ; coûts propres hors personnel (extras et heures de l'équipe se voient dans l'Équipe) ; achats payés
+// le mois d'avant
+export function tempsFortDeSoiree(nom: string, mois: number, univers: Univers, e: Pick<EffetSoiree, 'caHT'> & Partial<Pick<EffetSoiree, 'caAchats' | 'bon'>>, coutsHorsExtras: number): TempsFort[] {
+  const achats = Math.max(0, (e.caAchats ?? 0) - (e.bon ?? 0))
+  const commun = { type: 'soiree' as const, mois, caAnPasse: 0, moisAchats: Math.max(1, mois - 1) }
+  if (!(achats > 0) || univers === 'cave') return [{ ...commun, nom, univers, ca: Math.round(e.caHT), autresCharges: Math.round(Math.max(0, coutsHorsExtras)) }]
+  return [
+    { ...commun, nom, univers, ca: Math.round(e.caHT - achats), autresCharges: Math.round(Math.max(0, coutsHorsExtras)) },
+    { ...commun, nom: `${nom} (achats)`.slice(0, 60), univers: 'cave', ca: Math.round(achats), autresCharges: 0 },
+  ]
 }
 
 // ── 134 · Acheter en volume, précommande de Noël ───────────────────────────────────────────────────────────────────
@@ -303,3 +384,84 @@ export function simulerInvestissement(x: Investir, p: Pick<ParametresReseau, 'ta
 }
 // Repères du corner alimentaire : CA d'une année pleine pour tant de mètres linéaires
 export const caCorner = (metres: number, s: ParametresSimulateurs) => Math.max(0, metres) * s.corner.caParMetre
+
+// ── 164 · Système de primes de l'équipe ───────────────────────────────────────────────────────────────────────────
+// Paliers de progression du CA HT (5 %, 10 %…) avec la prime de chaque salarié, celle du gérant, et une part de la
+// progression reversée (1 à 2 % du CA en plus, fichier primes du réseau). À chaque palier : CA en plus = CA de base ×
+// progression ; marge en plus = CA en plus × (taux de marge − redevance et publicité) ; coût = (primes × salariés + prime du
+// gérant + CA en plus × part reversée) × (1 + charges). Gain net = marge en plus − coût. Le dernier palier rentable est
+// celui où la prime paie encore. Charges au taux employé avant réduction (prudent : la réduction baisse avec la prime).
+export interface PalierPrime { progression: number; prime: number; primeGerant: number }
+export interface Primes { caBase: number; tauxMarge: number; salaries: number; tauxCharges: number; partReversee: number; paliers: PalierPrime[] }
+export interface EffetPalier extends PalierPrime { caEnPlus: number; margeEnPlus: number; cout: number; gain: number; rentable: boolean }
+export function simulerPrimes(x: Primes, p: Pick<ParametresReseau, 'tauxRedevance' | 'tauxPublicite'>): { paliers: EffetPalier[]; dernierRentable: number | null } {
+  const rp = p.tauxRedevance + p.tauxPublicite
+  const paliers = [...x.paliers].filter((l) => l.progression > 0).sort((a, b) => a.progression - b.progression).map((l) => {
+    const caEnPlus = Math.max(0, x.caBase) * l.progression
+    const margeEnPlus = caEnPlus * (x.tauxMarge - rp)
+    const cout = (Math.max(0, l.prime) * Math.max(0, x.salaries) + Math.max(0, l.primeGerant) + caEnPlus * Math.max(0, x.partReversee)) * (1 + Math.max(0, x.tauxCharges))
+    return { ...l, caEnPlus, margeEnPlus, cout, gain: margeEnPlus - cout, rentable: margeEnPlus - cout >= 0 }
+  })
+  const i = paliers.map((l) => l.rentable).lastIndexOf(true)
+  return { paliers, dernierRentable: i >= 0 ? i : null }
+}
+
+// ── 163 · Remises et offerts face aux repères ──────────────────────────────────────────────────────────────────
+// Montants HT de la période (la caisse ne les envoie pas) rapportés au CA HT de la même période ; écart au repère du siège
+// en euros (positif : plus que le repère). Chaque euro au-dessus du repère est de la marge perdue : sur une année, l'écart
+// annualisé (× 12 ÷ mois de la période) est l'EBE que le magasin récupère en revenant au repère.
+export interface LigneRemise { cle: CleRemise; libelle: string; montant: number; part: number | null; repere: number; ecart: number | null }
+export function analyserRemises(ca: number, mois: number, montants: Partial<Record<CleRemise, number>>, reperes: Record<CleRemise, number>) {
+  const lignes: LigneRemise[] = LIGNES_REMISES.map((l) => {
+    const m = Math.max(0, fini(montants[l.cle]))
+    const repere = reperes[l.cle] ?? 0
+    return { cle: l.cle, libelle: l.libelle, montant: m, part: ca > 0 ? m / ca : null, repere, ecart: repere > 0 && ca > 0 ? m - ca * repere : null }
+  })
+  const total = somme(lignes.map((l) => l.montant))
+  const ecart = somme(lignes.map((l) => Math.max(0, l.ecart ?? 0)))
+  const an = mois > 0 ? 12 / mois : 1
+  return { lignes, total, part: ca > 0 ? total / ca : null, ecart, ecartAn: ecart * an }
+}
+
+// ── 160 · Marge de plusieurs produits (planche, coffret, panier) ────────────────────────────────────────────────
+// Chaque ligne : coût HT unitaire (consigne non reprise comprise), prix TTC, quantité. Marge pondérée = (CA HT − coût) ÷ CA HT.
+export interface LigneMix { libelle: string; cout: number; consigne: number; prixTTC: number; quantite: number }
+export function margeMix(lignes: LigneMix[], tva: number) {
+  const detail = lignes.map((l) => {
+    const q = Math.max(0, l.quantite), ca = Math.max(0, l.prixTTC) / (1 + tva) * q, cout = (Math.max(0, l.cout) + Math.max(0, l.consigne)) * q
+    return { ca, cout, marge: ca - cout, taux: ca > 0 ? (ca - cout) / ca : null }
+  })
+  const ca = somme(detail.map((d) => d.ca)), cout = somme(detail.map((d) => d.cout))
+  return { detail, ca, cout, marge: ca - cout, taux: ca > 0 ? (ca - cout) / ca : null, prixTTC: ca * (1 + tva) }
+}
+
+// ── 158 · Un levier sur plusieurs magasins ──────────────────────────────────────────────────────────────────────
+// Sur le budget de chaque magasin, un levier qui s'additionne d'un magasin à l'autre :
+// - vente : un article à P € TTC pour 1 client sur N (130) ;
+// - panier : + X € TTC par ticket : CA HT = tickets × X ÷ (1 + TVA), à la marge de l'univers ;
+// - tickets : + X % de tickets au même panier : CA HT = CA de l'univers × X, à la marge de l'univers ;
+// - prix : + X % sur les prix, mêmes ventes : CA HT = CA de l'univers × X, tout en marge.
+// EBE en plus = marge − redevance et publicité (ce que le réseau perçoit en plus). Équipe et frais ne bougent pas.
+export type Levier =
+  | { type: 'vente'; univers: 'cave' | 'bar'; unSur: number; prixTTC: number }
+  | { type: 'panier'; univers: 'cave' | 'bar'; euros: number }
+  | { type: 'tickets'; univers: 'cave' | 'bar'; taux: number }
+  | { type: 'prix'; univers: 'cave' | 'bar'; taux: number }
+export interface EffetLevier { ca: number; marge: number; redevance: number; ebe: number; caAvant: number; ebeAvant: number; articlesParJour: number | null }
+export function appliquerLevier(b: Budget, p: Pick<ParametresReseau, 'tauxRedevance' | 'tauxPublicite' | 'tvaPanier'>, l: Levier): EffetLevier | null {
+  const rp = p.tauxRedevance + p.tauxPublicite
+  const familles = b.familles.filter((y) => y.univers === l.univers)
+  const caU = somme(familles.map((y) => y.objectif))
+  const tauxU = caU > 0 ? somme(familles.map((y) => y.margeObjectif)) / caU : 0
+  const tickets = b.flux[l.univers]?.objectif ?? 0
+  const avant = { caAvant: b.ca, ebeAvant: b.ebe }
+  if (l.type === 'vente') {
+    const r = simulerVenteAdditionnelle(b, p, { univers: l.univers, unSur: l.unSur, prixTTC: l.prixTTC })
+    return r ? { ca: r.caHT, marge: r.marge, redevance: r.caHT * rp, ebe: r.ebe, ...avant, articlesParJour: r.articlesParJour } : null
+  }
+  if (caU <= 0) return null
+  if (l.type === 'panier' && !(tickets > 0)) return null
+  const ca = l.type === 'panier' ? tickets * Math.max(0, l.euros) / (1 + (p.tvaPanier[l.univers] ?? 0)) : caU * Math.max(0, l.taux)
+  const marge = l.type === 'prix' ? ca : ca * tauxU
+  return { ca, marge, redevance: ca * rp, ebe: marge - ca * rp, ...avant, articlesParJour: null }
+}

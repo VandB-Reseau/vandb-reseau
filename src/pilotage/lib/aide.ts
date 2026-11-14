@@ -529,15 +529,15 @@ export const AIDE = {
   },
   simEmbauche: {
     titre: 'Si j’embauche, si quelqu’un part',
-    quoi: 'Ce que coûte un poste en plus, en moins ou à d’autres heures, et ce que ça change à l’EBE, au % de frais de personnel et à la trésorerie.',
-    remplir: 'Choisis le mouvement, le mois et le poste. Un départ ou des heures se choisissent dans l’équipe saisie.',
-    calcul: 'Le budget de l’année est recalculé avec le changement : charges, réduction générale et congés payés comme dans l’Équipe. CA nécessaire = coût sur 12 mois ÷ marge sur coûts variables du magasin. L’aide à l’apprentissage est réglée par le siège.',
+    quoi: 'Ce que coûte un poste en plus, en moins ou à d’autres heures, et ce que ça change à l’EBE, au % de frais de personnel et à la trésorerie. « Primes » : jusqu’où un système de primes par paliers paie.',
+    remplir: 'Choisis le mouvement, le mois et le poste. Un départ ou des heures se choisissent dans l’équipe saisie. Primes : les salariés concernés, et pour chaque palier de progression du CA la prime par salarié et celle du gérant.',
+    calcul: 'Le budget de l’année est recalculé avec le changement : charges, réduction générale et congés payés comme dans l’Équipe. CA nécessaire = coût sur 12 mois ÷ marge sur coûts variables du magasin. L’aide à l’apprentissage est réglée par le siège. CDD : 10 % de prime de fin de contrat, plus la rédaction du contrat et un bulletin par mois (repères du siège) ; intérim : salaire brut × coefficient de l’agence. Primes : marge en plus = CA du budget × progression × (taux de marge − 3 %) ; coût = (primes + part de la progression reversée) × (1 + charges du taux employé) ; un palier paie quand la marge en plus dépasse le coût.',
   },
   simPrix: {
-    titre: 'Promo ou hausse de prix',
-    quoi: 'Combien vendre en plus après une remise, ou combien de ventes on peut perdre après une hausse, pour garder la même marge.',
-    remplir: 'Le taux de la remise ou de la hausse, et le taux de marge du produit ou de la famille.',
-    calcul: 'Remise r, marge m : ventes à multiplier par m ÷ (m − r). Hausse h : on peut perdre jusqu’à 1 − m ÷ (m + h) des ventes. Sans effet d’aubaine ni report d’achat : c’est un seuil.',
+    titre: 'Promo, prix, remises',
+    quoi: 'Combien vendre en plus après une remise, combien de ventes on peut perdre après une hausse ; et les remises et offerts du magasin face aux repères du siège.',
+    remplir: 'Le taux de la remise ou de la hausse, et le taux de marge du produit. « 5 + 1 » et « 4 + 2 » remplissent la remise équivalente. Remises et offerts : les montants HT de la période, lus dans le logiciel de caisse.',
+    calcul: 'Remise r, marge m : ventes à multiplier par m ÷ (m − r). Hausse h : on peut perdre jusqu’à 1 − m ÷ (m + h) des ventes. Sans effet d’aubaine ni report d’achat : c’est un seuil. 5 + 1 = 1 gratuit sur 6, soit 16,7 % ; 4 + 2 = 33,3 %. Remises et offerts : montant ÷ CA HT de la période ; au-dessus du repère, chaque euro est de la marge perdue, ramené à l’année.',
   },
   simTresorerie: {
     titre: 'Coup dur de trésorerie',
@@ -560,8 +560,8 @@ export const AIDE = {
   simSoiree: {
     titre: 'Soirée, dégustation, événement',
     quoi: 'Ce que rapporte un événement et le nombre de participants pour ne pas perdre d’argent.',
-    remplir: 'Prix TTC par participant, participants attendus, marge, coûts propres (animation, location, communication) et extras de personnel.',
-    calcul: 'Gain = CA HT × (marge − redevance − publicité) − coûts. Seuil = coûts ÷ gain par participant. « Mettre dans mon budget » ajoute un temps fort ; les extras se saisissent dans l’Équipe.',
+    remplir: 'Prix TTC par participant, participants attendus, marge ; la part des participants qui achète en cave et son panier ; les coûts ligne par ligne, les extras et les heures en plus de l’équipe déjà en place.',
+    calcul: 'Gain = marge (entrée et achats) − redevance et publicité − coûts. Achats : participants × part qui achète × panier, à la marge de la cave ; un bon d’achat du prix d’entrée est une remise sur ces achats. Heures de l’équipe = personnes × heures × coût horaire × (1 + majoration). Seuil = coûts ÷ gain par participant. « Mettre dans mon budget » ajoute un temps fort (et un en cave pour les achats) ; extras et heures se saisissent dans l’Équipe.',
   },
   simAchat: {
     titre: 'Acheter en volume',
@@ -572,7 +572,7 @@ export const AIDE = {
   simInvestissement: {
     titre: 'Investir',
     quoi: 'Une tireuse, une terrasse, un corner alimentaire : ce qu’il rapporte chaque année et en combien de temps il est remboursé.',
-    remplir: 'Le coût, la durée d’amortissement, le mois de mise en service, le CA et les charges en plus, le financement. Le modèle Corner alimentaire part des repères du siège.',
+    remplir: 'Le coût, la durée d’amortissement, le mois de mise en service, le CA et les charges en plus, le financement. Les modèles Corner alimentaire et Marché extérieur partent des repères du siège (pour l’extérieur : tireuses, investissement et heures par semaine selon l’objectif de CA).',
     calcul: 'EBE en plus = CA × (marge − démarque) − redevance et publicité − charges. Délai de retour = coût ÷ EBE en plus. Année 1 au prorata des mois ; avec un prêt, seules les échéances sortent.',
   },
   // Vague 9 (choix 138 à 146, Joseph 14/11/2026)
@@ -580,31 +580,37 @@ export const AIDE = {
     titre: 'Contrat extérieur',
     quoi: 'Ce que rapporte un contrat avec une association ou un client extérieur : marge par fût, fûts pour être à l’équilibre, remise tenable, prix plancher d’une livraison.',
     remplir: 'Les fûts prévus, les prix HT par fût, la tireuse (à acheter ou déjà là), les livraisons et le temps passé, le don éventuel. Le prix du kilomètre et le coût d’une heure viennent des repères du siège, modifiables.',
-    calcul: 'Net par fût = prix après remise − redevance et publicité (3 %) − achat − CO2 − gobelets. Coûts fixes = tireuse (prix ÷ durée de vie + entretien) + livraisons (km × prix du km + heures × coût horaire) + don. Équilibre = coûts fixes ÷ net par fût, au fût supérieur. Don : quand le siège le traite comme un don et que le reçu Cerfa est demandé, 60 % reviennent en réduction d’impôt (mécénat). La réduction ne vaut que si ce que le magasin reçoit en retour (visibilité, exclusivité des fûts) reste nettement inférieur au don, en pratique un quart de sa valeur au plus. Demande le reçu Cerfa à l’association. Réduction plafonnée à 20 000 € ou 0,5 % du CA HT si c’est plus. En cas de doute, vois avec ton expert-comptable.',
+    calcul: 'Net par fût = prix après remise − redevance et publicité (3 %) − achat − CO2 − gobelets − rétrocession du sponsoring. Coûts fixes = tireuse (prix ÷ durée de vie + entretien) + livraisons (km × prix du km + heures × coût horaire) + don + sponsoring + matériel + astreinte (heures × coût horaire). Livraisons et locations de tireuse facturées : des recettes, après redevance. Prix de livraison : celui de la grille du siège (distance aller, commande moyenne d’une livraison), modifiable. Le sponsoring a une contrepartie publicitaire : c’est une charge pleine, sans réduction d’impôt. Équilibre = coûts fixes ÷ net par fût, au fût supérieur. Don : quand le siège le traite comme un don et que le reçu Cerfa est demandé, 60 % reviennent en réduction d’impôt (mécénat). La réduction ne vaut que si ce que le magasin reçoit en retour (visibilité, exclusivité des fûts) reste nettement inférieur au don, en pratique un quart de sa valeur au plus. Demande le reçu Cerfa à l’association. Réduction plafonnée à 20 000 € ou 0,5 % du CA HT si c’est plus. En cas de doute, vois avec ton expert-comptable.',
   },
   simTireuses: {
     titre: 'Parc de tireuses',
-    quoi: 'Savoir s’il faut racheter une tireuse, ou en remplacer une qui coûte trop en réparations. Le planning reste dans la plateforme de location des tireuses.',
-    remplir: 'Les sorties et les demandes refusées de l’année, lues dans la plateforme, les fûts par sortie, le prix d’une tireuse neuve. Le net par fût vient du simulateur Contrat extérieur, modifiable.',
-    calcul: 'Occupation = sorties ÷ (tireuses × semaines) : une tireuse fait au plus une sortie par semaine. Marge perdue = refus × fûts par sortie × net par fût. Coût annuel d’une neuve = prix ÷ durée de vie + entretien. On rachète si la marge perdue le dépasse ; on remplace une tireuse dont les réparations de l’année le dépassent.',
+    quoi: 'Combien de fûts et de week-ends loués pour payer une tireuse de plus, si le parc est plein, s’il faut racheter ou remplacer une tireuse. Le planning reste dans la plateforme de location des tireuses.',
+    remplir: 'L’occupation se compte en week-ends : une tireuse louée un week-end compte pour un, quel que soit le nombre de jours. Saisis la part des week-ends loués en saison et le reste de l’année (valeurs du siège, modifiables), ou les sorties lues dans la plateforme ; le nombre de tireuses vient des Équipements de la fiche du magasin, modifiable ; les week-ends refusés faute de tireuse ; les fûts par week-end ; le prix d’une neuve. Le net par fût vient du Contrat extérieur, modifiable.',
+    calcul: 'Week-ends loués par tireuse = week-ends de saison × occupation de saison + autres week-ends × occupation hors saison. Coût annuel d’une neuve = prix ÷ durée de vie + entretien. Fûts pour la payer = coût annuel ÷ net par fût, au fût supérieur ; week-ends = fûts ÷ fûts par week-end. Parc plein au-delà du seuil réglé par le siège. On rachète si la marge perdue sur les week-ends refusés dépasse le coût annuel ; on remplace une tireuse dont les réparations de l’année le dépassent.',
   },
   simPression: {
     titre: 'Ma carte pression',
     quoi: 'La marge de chaque bec, le temps pour vider un fût et les fûts à commander ; et ce que rapporterait un bec ajouté ou remplacé.',
-    remplir: 'Pour chaque bec : prix du fût HT, litres, perte (mousse, purge), prix du demi et de la pinte TTC, ventes par semaine. Les prix d’achat changent : vérifie-les à chaque visite.',
-    calcul: 'Litres servis = litres × (1 − perte) ; coût du demi = prix du fût ÷ litres servis × 0,25. Marge = (prix TTC ÷ (1 + TVA) − coût) ÷ prix HT. Jours pour vider = litres servis ÷ litres vendus par jour (7 jours sur 7). Alerte au-delà du nombre de jours réglé par le siège, la bière s’abîme. Projet : marge du nouveau bec − part prise aux autres becs (à leur marge moyenne par litre) − marge du bec remplacé.',
+    remplir: 'Pour chaque bec : prix du fût HT, litres, perte (mousse, purge), prix du demi, du 33 cl et de la pinte TTC, ventes par semaine. Les prix d’achat changent : vérifie-les à chaque visite. « La perte sur une semaine » : fûts vidés, verres vendus par format et litres offerts, lus en caisse.',
+    calcul: 'Litres servis = litres × (1 − perte) ; coût du demi = prix du fût ÷ litres servis × 0,25. Marge = (prix TTC ÷ (1 + TVA) − coût) ÷ prix HT. Jours pour vider = litres servis ÷ litres vendus par jour (7 jours sur 7). Alerte au-delà du nombre de jours réglé par le siège, la bière s’abîme. Projet : marge du nouveau bec − part prise aux autres becs (à leur marge moyenne par litre) − marge du bec remplacé. Perte de la semaine = litres sortis (fûts × litres) − litres vendus − offerts ; coût = perte × prix d’achat du litre ; CA manqué = perte × prix moyen HT du litre vendu ; × 52 pour l’année.',
   },
   simCalculette: {
     titre: 'Prix et marge',
     quoi: 'Le prix de vente pour une marge visée, ou la marge d’un prix : un verre, une planche, un coffret, un cocktail.',
-    remplir: 'Les composants et leur coût HT, le taux de TVA, puis la marge visée ou le prix TTC. Garde la composition pour la reprendre.',
-    calcul: 'Prix HT = coût ÷ (1 − marge) ; prix TTC = HT × (1 + TVA). Taux de marge = (prix HT − coût) ÷ prix HT. Coefficient = prix TTC ÷ coût HT. Taux de TVA réglés par le siège.',
+    remplir: 'Les composants et leur coût HT, le taux de TVA, puis la marge visée ou le prix TTC. La famille remplit la marge visée et la TVA réglées par le siège. « Plusieurs produits » : un coffret, une planche, un panier, chaque produit avec son coût, sa consigne non reprise, son prix et sa quantité.',
+    calcul: 'Prix HT = coût ÷ (1 − marge) ; prix TTC = HT × (1 + TVA). Taux de marge = (prix HT − coût) ÷ prix HT. Coefficient = prix TTC ÷ coût HT. Plusieurs produits : marge = (somme des prix HT − somme des coûts et consignes) ÷ somme des prix HT. Taux de TVA et marges par famille réglés par le siège.',
   },
   simOuverture: {
     titre: 'Dimanche ou jour férié',
     quoi: 'Ce que rapporte une ouverture exceptionnelle, une fois l’équipe payée avec sa majoration.',
     remplir: 'Le CA HT attendu au bar et en cave, la part qui se serait faite un autre jour, les heures payées et les frais du jour.',
     calcul: 'Gain = marge du CA nouveau − redevance et publicité − heures × coût horaire × (1 + majoration) − frais. La majoration est réglée par le siège selon la convention collective. CA pour ne rien perdre = coûts ÷ (part nouvelle × (marge moyenne − 3 %)).',
+  },
+  simReseau: {
+    titre: 'Un levier sur plusieurs magasins',
+    quoi: 'Ce que rapporterait un même geste commercial fait par plusieurs magasins : une sélection, une région, les magasins d’un Coach ou tout le périmètre. Pour animer une réunion ; rien n’est enregistré.',
+    remplir: 'Choisis les magasins, le levier (vente additionnelle, panier, tickets, prix) et l’univers.',
+    calcul: 'Sur le budget de l’année de chaque magasin : vente additionnelle = tickets visés ÷ fréquence × prix ÷ (1 + TVA), à la marge de l’univers ; panier = tickets × euros en plus ÷ (1 + TVA) ; tickets = CA de l’univers × taux, à sa marge ; prix = CA de l’univers × hausse, tout en marge. EBE en plus = marge − redevance et publicité. Un magasin sans budget proposé n’est pas compté.',
   },
   productiviteCible: {
     titre: 'Productivité cible',

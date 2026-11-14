@@ -65,7 +65,7 @@ test('soirée : gain et nombre de participants pour ne pas perdre d’argent', (
   proche(e.gainParParticipant, 11.875)
   expect(e.seuil).toBe(30)
   // Au budget : CA arrondi, coûts hors extras, achats payés le mois d'avant
-  expect(tempsFortDeSoiree('Soirée bières de Noël', 12, 'bar', e, 200)).toEqual({ nom: 'Soirée bières de Noël', type: 'soiree', mois: 12, univers: 'bar', caAnPasse: 0, ca: 833, autresCharges: 200, moisAchats: 11 })
+  expect(tempsFortDeSoiree('Soirée bières de Noël', 12, 'bar', e, 200)).toEqual([{ nom: 'Soirée bières de Noël', type: 'soiree', mois: 12, univers: 'bar', caAnPasse: 0, ca: 833, autresCharges: 200, moisAchats: 11 }])
 })
 
 test('achat en volume : remise, argent immobilisé, invendu et durée maximale', () => {

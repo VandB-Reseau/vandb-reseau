@@ -1,4 +1,5 @@
 import useMediaQuery from '@mui/material/useMediaQuery'
+import { SectionEquipements } from '../components/Equipements'
 import { useTheme } from '@mui/material/styles'
 import { SectionPlan } from '../components/PlanAction'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -618,6 +619,7 @@ function OngletFiche({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; sign
           return <Ligne key={a.id} libelle="Franchisé associé">{`${a.nom}${mandat?.fin ? ` · mandat jusqu’au ${dateCourte(mandat.fin)}` : ''}`}</Ligne>
         })}
       </Section>
+      <SectionEquipements reseau={reseau} m={m} signaler={signaler} />
     </Box>
   )
 }

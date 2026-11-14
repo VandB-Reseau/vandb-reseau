@@ -96,7 +96,7 @@ test('F3 : le Directeur saisit les étapes depuis la fiche du magasin', async ({
 test('F3 : un Coach voit les étapes sans les modifier ; un magasin ouvert n’a pas de carte Ouverture', async ({ page }) => {
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Noé MODELE' }, config: { ouvertures_magasins: ouvertures } })
   await page.goto('./#/magasins/Lyon%20Test')
-  await expect(page.getByRole('heading', { name: 'Équipe' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Équipe', exact: true })).toBeVisible()
   await expect(page.getByRole('list', { name: 'Étapes de l’ouverture' })).toHaveCount(0)
 })
 

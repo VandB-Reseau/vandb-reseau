@@ -21,38 +21,65 @@ export const HEURES_ETP = 1607
 // ÷ net par fût, arrondi au fût supérieur. Remise maximale : celle qui ramène le gain à zéro au volume prévu.
 // Don : en argent, ou en fûts valorisés au prix d'achat ; si le réseau le traite comme un don et que le reçu Cerfa est
 // demandé, 60 % reviennent en réduction d'impôt.
+// Vague 10 (154, 162) : sponsoring à part du don (contrepartie publicitaire : charge pleine, sans réduction d'impôt), avec
+// une somme fixe et une rétrocession par fût ; matériel prêté (barnum, tables, frigo) et astreinte du week-end (heures ×
+// coût horaire) en coûts fixes ; livraisons et locations de tireuse facturées au client en recettes (CA, donc redevance).
+// Équilibre = (coûts fixes − recettes nettes) ÷ net par fût.
 export interface ContratExterieur {
   futs: number; prixVente: number; remise: number; prixAchat: number; co2: number; gobelets: number
   tireuse: 'neuve' | 'parc'; prixTireuse: number; dureeTireuse: number; entretien: number
   livraisons: number; km: number; prixKm: number; heures: number; coutHoraire: number
   don: { type: 'aucun' | 'argent' | 'nature'; montant: number; futs: number; cerfa: boolean }
+  prixLivraison?: number                              // facturé au client par livraison, HT
+  sponsoring?: { montant: number; parFut: number }    // somme fixe et rétrocession par fût vendu
+  materiel?: number                                   // matériel prêté, par an HT
+  astreinte?: number                                  // heures d'astreinte du week-end par an
+  locations?: { nombre: number; prix: number }        // locations de tireuse facturées (sans fûts du contrat)
 }
 export interface EffetExterieur {
   caParFut: number; redevanceParFut: number; netParFut: number; ca: number
   tireuseAn: number; coutLivraison: number; livraisonsAn: number; prixPlancherLivraison: number | null
   don: { valeur: number; reduction: number; cout: number }
+  sponsoring: number; materiel: number; astreinte: number; recettes: number; recettesNettes: number
   coutFixe: number; gain: number; equilibre: number | null; remiseMax: number | null
 }
 export function simulerExterieur(x: ContratExterieur, p: Redevances, donMecenat: boolean): EffetExterieur {
   const rp = p.tauxRedevance + p.tauxPublicite
   const caParFut = Math.max(0, pos(x.prixVente) - pos(x.remise))
   const redevanceParFut = caParFut * rp
-  const netParFut = caParFut - redevanceParFut - pos(x.prixAchat) - pos(x.co2) - pos(x.gobelets)
+  const netParFut = caParFut - redevanceParFut - pos(x.prixAchat) - pos(x.co2) - pos(x.gobelets) - pos(x.sponsoring?.parFut)
   const tireuseAn = (x.tireuse === 'neuve' ? (x.dureeTireuse > 0 ? pos(x.prixTireuse) / x.dureeTireuse : pos(x.prixTireuse)) : 0) + pos(x.entretien)
   const coutLivraison = pos(x.km) * pos(x.prixKm) + pos(x.heures) * pos(x.coutHoraire)
   const livraisonsAn = pos(x.livraisons) * coutLivraison
   const valeur = x.don.type === 'argent' ? pos(x.don.montant) : x.don.type === 'nature' ? pos(x.don.futs) * pos(x.prixAchat) : 0
   const reduction = donMecenat && x.don.cerfa ? valeur * TAUX_MECENAT : 0
   const don = { valeur, reduction, cout: valeur - reduction }
-  const coutFixe = tireuseAn + livraisonsAn + don.cout
+  const sponsoring = pos(x.sponsoring?.montant), materiel = pos(x.materiel), astreinte = pos(x.astreinte) * pos(x.coutHoraire)
+  const recettes = pos(x.livraisons) * pos(x.prixLivraison) + pos(x.locations?.nombre) * pos(x.locations?.prix)
+  const recettesNettes = recettes * (1 - rp)
+  const coutFixe = tireuseAn + livraisonsAn + don.cout + sponsoring + materiel + astreinte
   const futs = pos(x.futs)
-  const gain = futs * netParFut - coutFixe
+  const gain = futs * netParFut + recettesNettes - coutFixe
+  const reste = coutFixe - recettesNettes
   return {
-    caParFut, redevanceParFut, netParFut, ca: futs * caParFut, tireuseAn, coutLivraison, livraisonsAn,
-    prixPlancherLivraison: rp < 1 ? coutLivraison / (1 - rp) : null, don, coutFixe, gain,
-    equilibre: netParFut > 0 ? Math.ceil(coutFixe / netParFut - 1e-9) : null,
-    remiseMax: futs > 0 && rp < 1 ? Math.max(0, pos(x.remise) + (netParFut - coutFixe / futs) / (1 - rp)) : null,
+    caParFut, redevanceParFut, netParFut, ca: futs * caParFut + recettes, tireuseAn, coutLivraison, livraisonsAn,
+    prixPlancherLivraison: rp < 1 ? coutLivraison / (1 - rp) : null, don, sponsoring, materiel, astreinte, recettes, recettesNettes, coutFixe, gain,
+    equilibre: reste <= 0 ? 0 : netParFut > 0 ? Math.ceil(reste / netParFut - 1e-9) : null,
+    remiseMax: futs > 0 && rp < 1 ? Math.max(0, pos(x.remise) + (netParFut - reste / futs) / (1 - rp)) : null,
   }
+}
+// 162 · Prix d'une livraison selon la grille du réseau : première ligne dont la distance (aller simple) couvre le trajet ;
+// gratuite dès que la commande atteint le franco. Au-delà de la dernière distance : pas de prix (à fixer à la main).
+export function prixLivraisonGrille(grille: { kmMax: number; franco: number; prix: number }[], km: number, commandeHT: number): number | null {
+  const l = [...grille].sort((a, b) => a.kmMax - b.kmMax).find((g) => pos(km) <= g.kmMax + 1e-9)
+  if (!l) return null
+  return l.franco > 0 && commandeHT >= l.franco - 1e-9 ? 0 : l.prix
+}
+// 156 · Préconisation du réseau pour développer l'extérieur : le premier palier dont le CA maximal couvre l'objectif
+// (le dernier au-delà). Charges de l'année = heures par semaine × 52 × coût horaire chargé.
+export function palierExterieur<T extends { caMax: number }>(paliers: T[], objectif: number): T | null {
+  const g = [...paliers].sort((a, b) => a.caMax - b.caMax)
+  return g.find((x) => objectif <= x.caMax + 1e-9) ?? g.at(-1) ?? null
 }
 
 // ── 139 · Faut-il racheter une tireuse ? ──────────────────────────────────────────────────────────────────────────
@@ -60,27 +87,42 @@ export function simulerExterieur(x: ContratExterieur, p: Redevances, donMecenat:
 // Occupation = sorties ÷ (tireuses × semaines). Marge perdue = refus × fûts par sortie × net par fût. Une tireuse neuve
 // coûte chaque année prix ÷ durée de vie + entretien : on rachète si la marge perdue dépasse ce coût ; on remplace une
 // vieille tireuse si ses réparations de l'année le dépassent.
+// Vague 10 (155, Joseph 14/11/2026) : l'occupation se compte en week-ends (une tireuse sortie un week-end compte pour un
+// week-end, quel que soit le nombre de jours). Elle se saisit en part des week-ends loués, en saison et le reste de
+// l'année (valeurs du siège, modifiables), ou se déduit des sorties lues dans la plateforme. Trois réponses : fûts et
+// week-ends loués par an pour payer une tireuse de plus (coût annuel ÷ net par fût, au fût supérieur, puis ÷ fûts par
+// week-end) ; parc saturé quand l'occupation de saison atteint le seuil réglé ; on rachète quand les week-ends refusés
+// dépassent ceux qu'il faut pour payer une tireuse (même chose que marge perdue > coût annuel).
 export interface ParcTireuses {
   tireuses: number; semainesSaison: number; sortiesSaison: number; sortiesHorsSaison: number
   refus: number; futsParSortie: number; netParFut: number
   prixNeuve: number; dureeVie: number; entretien: number
   vieilles: { nom: string; age: number; reparations: number }[]
+  occupation?: { saison: number; hors: number } | null // saisie en part des week-ends (remplace les sorties)
+  saturation?: number
 }
 export interface EffetParc {
   occupationSaison: number | null; occupationHorsSaison: number | null; margePerdue: number; coutAnnuelNeuve: number
   racheter: boolean; couverture: number | null; aRemplacer: string[]
+  weekendsParTireuse: number; futsPourPayer: number | null; weekendsPourPayer: number | null; sature: boolean
+  gainParTireuse: number
 }
 export function simulerParc(x: ParcTireuses): EffetParc {
   const n = pos(x.tireuses), saison = Math.min(52, pos(x.semainesSaison))
   const capSaison = n * saison, capHors = n * (52 - saison)
+  const occupationSaison = x.occupation ? part(x.occupation.saison) : capSaison > 0 ? pos(x.sortiesSaison) / capSaison : null
+  const occupationHorsSaison = x.occupation ? part(x.occupation.hors) : capHors > 0 ? pos(x.sortiesHorsSaison) / capHors : null
+  const weekendsParTireuse = saison * (occupationSaison ?? 0) + (52 - saison) * (occupationHorsSaison ?? 0)
   const margePerdue = pos(x.refus) * pos(x.futsParSortie) * x.netParFut
   const coutAnnuelNeuve = (x.dureeVie > 0 ? pos(x.prixNeuve) / x.dureeVie : pos(x.prixNeuve)) + pos(x.entretien)
+  const futsPourPayer = x.netParFut > 0 && coutAnnuelNeuve > 0 ? Math.ceil(coutAnnuelNeuve / x.netParFut - 1e-9) : null
   return {
-    occupationSaison: capSaison > 0 ? pos(x.sortiesSaison) / capSaison : null,
-    occupationHorsSaison: capHors > 0 ? pos(x.sortiesHorsSaison) / capHors : null,
-    margePerdue, coutAnnuelNeuve, racheter: margePerdue > coutAnnuelNeuve && coutAnnuelNeuve > 0,
+    occupationSaison, occupationHorsSaison, margePerdue, coutAnnuelNeuve, racheter: margePerdue > coutAnnuelNeuve && coutAnnuelNeuve > 0,
     couverture: coutAnnuelNeuve > 0 ? margePerdue / coutAnnuelNeuve : null,
     aRemplacer: x.vieilles.filter((v) => coutAnnuelNeuve > 0 && pos(v.reparations) > coutAnnuelNeuve).map((v) => v.nom),
+    weekendsParTireuse, futsPourPayer, weekendsPourPayer: futsPourPayer !== null && x.futsParSortie > 0 ? Math.ceil(futsPourPayer / x.futsParSortie - 1e-9) : null,
+    sature: !!x.saturation && occupationSaison !== null && occupationSaison >= x.saturation - 1e-9,
+    gainParTireuse: weekendsParTireuse * pos(x.futsParSortie) * x.netParFut - coutAnnuelNeuve,
   }
 }
 
@@ -89,8 +131,9 @@ export function simulerParc(x: ParcTireuses): EffetParc {
 // litres servis ; demi = 25 cl, pinte = 50 cl. Prix HT = prix TTC ÷ (1 + TVA). Marge du verre = prix HT − coût.
 // Jours pour vider un fût = litres servis ÷ litres vendus par jour (semaine de 7 jours : la bière vieillit le dimanche
 // aussi). Fûts par mois = litres vendus par semaine × 52 ÷ 12 ÷ litres servis.
-export const DEMI = 0.25, PINTE = 0.5
-export interface Bec { biere: string; prixFut: number; litres: number; perte: number; prixDemi: number; prixPinte: number; demis: number; pintes: number }
+export const DEMI = 0.25, VERRE33 = 0.33, PINTE = 0.5
+// Vague 10 (161) : le verre de 33 cl, facultatif (absent des cartes gardées avant)
+export interface Bec { biere: string; prixFut: number; litres: number; perte: number; prixDemi: number; prixPinte: number; demis: number; pintes: number; prix33?: number; verres33?: number }
 export interface LigneBec {
   coutLitre: number | null; coutDemi: number | null; coutPinte: number | null; tauxDemi: number | null; tauxPinte: number | null
   caSemaine: number; margeSemaine: number; tauxMarge: number | null; litresSemaine: number
@@ -103,9 +146,9 @@ export function ligneBec(b: Bec, tva: number, cible: number, joursFraicheur: num
   const ht = (ttc: number) => pos(ttc) / (1 + tva)
   const coutDemi = coutLitre === null ? null : coutLitre * DEMI, coutPinte = coutLitre === null ? null : coutLitre * PINTE
   const taux = (prix: number, cout: number | null) => (cout === null || ht(prix) <= 0 ? null : (ht(prix) - cout) / ht(prix))
-  const caSemaine = ht(b.prixDemi) * pos(b.demis) + ht(b.prixPinte) * pos(b.pintes)
-  const coutSemaine = (coutDemi ?? 0) * pos(b.demis) + (coutPinte ?? 0) * pos(b.pintes)
-  const litresSemaine = DEMI * pos(b.demis) + PINTE * pos(b.pintes)
+  const caSemaine = ht(b.prixDemi) * pos(b.demis) + ht(b.prix33 ?? 0) * pos(b.verres33) + ht(b.prixPinte) * pos(b.pintes)
+  const coutSemaine = (coutDemi ?? 0) * pos(b.demis) + (coutLitre ?? 0) * VERRE33 * pos(b.verres33) + (coutPinte ?? 0) * pos(b.pintes)
+  const litresSemaine = DEMI * pos(b.demis) + VERRE33 * pos(b.verres33) + PINTE * pos(b.pintes)
   const tauxMarge = caSemaine > 0 ? (caSemaine - coutSemaine) / caSemaine : null
   const joursPourVider = servis > 0 && litresSemaine > 0 ? servis / (litresSemaine / 7) : null
   return {
@@ -139,6 +182,21 @@ export function nouveauBec(becs: Bec[], nouveau: Bec, x: { cout: number; canniba
   const perteRemplace = x.remplace !== null && becs[x.remplace] ? ligneBec(becs[x.remplace], tva, 0, 0).margeSemaine : 0
   const gainSemaine = n.margeSemaine - perteCannibalisation - perteRemplace
   return { margeNouveau: n.margeSemaine, perteCannibalisation, perteRemplace, gainSemaine, gainAn: gainSemaine * 52, semainesRetour: gainSemaine > 0 ? pos(x.cout) / gainSemaine : null }
+}
+
+// 161 · Audit de la perte sur une semaine (fichier « Audit bouteilles et pressions ») : litres sortis du stock (fûts vidés
+// × litres) face aux litres vendus (25, 33, 50 cl et 1 L) et offerts. Perte = sortis − vendus − offerts. Coût de la perte
+// au prix d'achat du litre ; CA manqué au prix moyen de vente HT du litre vendu (CA de la semaine ÷ litres vendus) ;
+// sur l'année : × 52.
+export interface AuditPression { futs: number; litres: number; prixFut: number; demis: number; verres33: number; pintes: number; litresVendus1L: number; offerts: number; caTTC: number; tva: number }
+export interface EffetAudit { sortis: number; vendus: number; perte: number; taux: number | null; coutSemaine: number; caManqueSemaine: number; coutAn: number; caManqueAn: number }
+export function auditPression(x: AuditPression): EffetAudit {
+  const sortis = pos(x.futs) * pos(x.litres)
+  const vendus = DEMI * pos(x.demis) + VERRE33 * pos(x.verres33) + PINTE * pos(x.pintes) + pos(x.litresVendus1L)
+  const perte = Math.max(0, sortis - vendus - pos(x.offerts))
+  const coutLitre = pos(x.litres) > 0 ? pos(x.prixFut) / pos(x.litres) : 0
+  const prixLitre = vendus > 0 ? pos(x.caTTC) / (1 + x.tva) / vendus : 0
+  return { sortis, vendus, perte, taux: sortis > 0 ? perte / sortis : null, coutSemaine: perte * coutLitre, caManqueSemaine: perte * prixLitre, coutAn: perte * coutLitre * 52, caManqueAn: perte * prixLitre * 52 }
 }
 
 // ── 143 · Calculette prix et marge ────────────────────────────────────────────────────────────────────────────
@@ -204,9 +262,11 @@ export function productiviteCible(ca: number, caBar: number, heures: number, gri
   return { partBar, cible, reelle: heures > 0 ? ca / heures : null, etpReel: pos(heures) / HEURES_ETP, etpCible: heuresCible / HEURES_ETP, heuresCible, ecartHeures: pos(heures) - heuresCible }
 }
 // Le même poste selon le contrat : CDD avec 10 % de prime de fin de contrat (indemnité de précarité, sur le brut, chargée
-// comme le salaire) ; intérim facturé brut × coefficient de l'agence, mois par mois.
-export function coutContrats(coutCDI: number, brutMensuel: number, mois: number, coefInterim: number): { cdi: number; cdd: number; interim: number | null } {
-  return { cdi: coutCDI, cdd: coutCDI * 1.1, interim: coefInterim > 0 ? pos(brutMensuel) * coefInterim * pos(mois) : null }
+// comme le salaire) et ses frais fixes (159 : rédaction du contrat et solde de tout compte, bulletin de paie chaque mois) ;
+// intérim facturé brut × coefficient de l'agence, mois par mois (l'agence fait contrat et paie).
+export function coutContrats(coutCDI: number, brutMensuel: number, mois: number, coefInterim: number, frais: { redaction: number; paieParMois: number } = { redaction: 0, paieParMois: 0 }): { cdi: number; cdd: number; fraisCDD: number; interim: number | null } {
+  const fraisCDD = pos(frais.redaction) + pos(frais.paieParMois) * pos(mois)
+  return { cdi: coutCDI, cdd: coutCDI * 1.1 + fraisCDD, fraisCDD, interim: coefInterim > 0 ? pos(brutMensuel) * coefInterim * pos(mois) : null }
 }
 
 // ── 146 · Ouvrir un dimanche ou un jour férié ───────────────────────────────────────────────────────────────────
