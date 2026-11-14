@@ -29,7 +29,7 @@ test('31A et 32A : une priorité du plan d’action, une tâche bloquée avec sa
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, persister: true })
   await page.goto('./#/magasins/Lyon%20Test')
-  await page.getByRole('button', { name: 'Ajouter une priorité' }).click()
+  await page.getByRole('button', { name: 'Ajouter une priorité' }).first().click()
   const d = page.getByRole('dialog')
   await d.getByLabel('Priorité', { exact: true }).fill('Relancer la vente additionnelle au bar')
   await d.getByRole('button', { name: 'Enregistrer' }).click()

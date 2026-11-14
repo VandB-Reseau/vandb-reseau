@@ -18,6 +18,7 @@ import { confierAuCoach } from '../data/taches'
 import { lienMagasin, milliers } from '../lib/format'
 import type { Alerte } from '../moteur/alertes'
 import type { LigneSemaine } from '../moteur/semaine'
+import { echelle, styleChiffre } from '../../theme/theme'
 
 // Revue express du portefeuille (choix 117, Joseph 13/11/2026) : pour le point du mois du RR avec ses Coachs, un magasin
 // par écran, dans l'ordre de Ma semaine, et trois décisions en un geste. « Avancer la visite » et « Tâche au Coach »
@@ -82,14 +83,14 @@ export function RevueExpress({ lignes, fermer }: { lignes: LigneSemaine<Alerte>[
         ) : l && (
           <Box component="section" aria-label={l.magasin} sx={{ bgcolor: 'background.paper', borderRadius: '16px', p: { xs: 2, md: 3 }, display: 'grid', gap: 1.5 }}>
             <Box>
-              <Typography component="h3" sx={{ fontSize: { xs: '1.5rem', md: '2rem' }, fontWeight: 700, lineHeight: 1.2 }}>{l.magasin}</Typography>
+              <Typography component="h3" sx={{ fontSize: { xs: '1.375rem', md: echelle.page }, fontWeight: 700, lineHeight: 1.2 }}>{l.magasin}</Typography>
               {l.coach && <Typography color="text.secondary">Coach : {l.coach}</Typography>}
               {decisions[l.magasin] && <Typography sx={{ fontWeight: 700, color: 'success.dark' }}>Déjà décidé : {libelleDecision[decisions[l.magasin]]}</Typography>}
             </Box>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1.5 }}>
-              <Box><Typography color="text.secondary">Marge en jeu</Typography><Typography sx={{ fontSize: '1.5rem', fontWeight: 700 }}>{l.enJeu > 0 ? milliers(l.enJeu) : '–'}</Typography></Box>
-              <Box><Typography color="text.secondary">Alertes</Typography><Typography sx={{ fontSize: '1.5rem', fontWeight: 700, color: l.alertes.length ? 'error.main' : undefined }}>{l.alertes.length}</Typography></Box>
-              <Box><Typography color="text.secondary">Tâches en retard</Typography><Typography sx={{ fontSize: '1.5rem', fontWeight: 700, color: l.actionsEnRetard ? 'error.main' : undefined }}>{l.actionsEnRetard}</Typography></Box>
+              <Box><Typography color="text.secondary">Marge en jeu</Typography><Typography sx={styleChiffre}>{l.enJeu > 0 ? milliers(l.enJeu) : '–'}</Typography></Box>
+              <Box><Typography color="text.secondary">Alertes</Typography><Typography sx={{ ...styleChiffre, color: l.alertes.length ? 'error.main' : undefined }}>{l.alertes.length}</Typography></Box>
+              <Box><Typography color="text.secondary">Tâches en retard</Typography><Typography sx={{ ...styleChiffre, color: l.actionsEnRetard ? 'error.main' : undefined }}>{l.actionsEnRetard}</Typography></Box>
             </Box>
             <Typography><b>Premier sujet :</b> {sujet ? sujet.constat : 'rien ne recule'}</Typography>
             {l.alertes.length > 0 && (

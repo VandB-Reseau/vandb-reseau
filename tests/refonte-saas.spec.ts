@@ -38,11 +38,11 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs, 'aucune erreur JavaScript').toEqual([])
 })
 
-test('PC : menu clair en quatre rubriques, sans barre noire ; téléphone : barre du haut claire et barre du bas inchangée', async ({ page, isMobile }, info) => {
+test('PC : menu clair en quatre rubriques, tête noire ; téléphone : barre du haut noire (Joseph, 14/11/2026) et barre du bas inchangée', async ({ page, isMobile }, info) => {
   await connecter(page)
   if (isMobile) {
     const fond = await page.getByRole('banner').evaluate((e) => getComputedStyle(e).backgroundColor)
-    expect(fond).not.toBe('rgb(0, 0, 0)')
+    expect(fond).toBe('rgb(0, 0, 0)')
     await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
     expect(await zonesTropPetites(page)).toEqual([])
   } else {
@@ -63,8 +63,10 @@ test('PC : menu clair en quatre rubriques, sans barre noire ; téléphone : barr
 test('PC : Ctrl K place le curseur dans la recherche, qui propose de créer et ouvre la saisie en panneau à droite', async ({ page, isMobile }, info) => {
   test.skip(isMobile, 'raccourci clavier et panneau latéral : PC')
   await connecter(page)
-  await page.keyboard.press('Control+k')
   const champ = page.getByRole('combobox', { name: 'Recherche globale' })
+  // Le raccourci s'écoute une fois le menu affiché : on attend le champ avant d'appuyer (course vue sur la CI)
+  await expect(champ).toBeVisible()
+  await page.keyboard.press('Control+k')
   await expect(champ).toBeFocused()
   await champ.fill('Annecy')
   const action = page.getByRole('option', { name: `Saisir une visite à ${M}` })

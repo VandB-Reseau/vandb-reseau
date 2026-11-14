@@ -118,7 +118,7 @@ export function ObjectifsMois({ ouverte, fermer, magasin, annee, budget, n1, tva
             {d && (
               <Box component="section" aria-label="Défi de l’équipe" sx={{ mt: 3, p: 2, border: 2, borderColor: 'primary.main', borderRadius: 2 }}>
                 <Typography variant="h3" component="h3">Défi de l’équipe : {defi!.nom}</Typography>
-                <Typography sx={{ mt: 1, fontSize: '1.25rem' }}>
+                <Typography sx={{ mt: 1, fontSize: '1.125rem' }}>
                   <b>{entier(d.articlesParJour)} par jour</b> en {universLibelle[d.univers]}, soit {entier(d.articles)} sur le mois : un article à {prixPanier(d.prixTTC)} pour 1 client sur {d.unSur}.
                 </Typography>
                 <Typography sx={{ mt: 0.5 }}>{montant(d.caTTC)} TTC de plus sur le mois.</Typography>

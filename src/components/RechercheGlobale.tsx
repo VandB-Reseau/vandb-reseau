@@ -140,7 +140,7 @@ export function RechercheGlobale({ surFonce, court, menu }: { surFonce?: boolean
       sx={{ width: '100%', maxWidth: 560 }}
       slotProps={{ paper: { sx: { mt: 1 } }, popper: court ? { sx: { width: 'calc(100vw - 16px) !important' } } : menu ? { placement: 'bottom-start', sx: { width: '420px !important' } } : undefined }}
       renderInput={(p) => (
-        <Box ref={p.slotProps.input.ref} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: court || menu ? 1.25 : 2, height: menu ? 40 : 44, borderRadius: 2, bgcolor: surFonce ? 'rgba(255,255,255,0.12)' : 'action.hover', border: menu ? '1px solid' : 0, borderColor: 'divider' }}>
+        <Box ref={p.slotProps.input.ref} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: court || menu ? 1.25 : 2, height: menu ? 40 : 44, borderRadius: 2, bgcolor: surFonce ? 'rgba(255,255,255,0.12)' : 'action.hover', border: menu && !surFonce ? '1px solid' : 0, borderColor: 'divider' }}>
           <SearchIcon sx={{ color: surFonce ? '#ffffff' : 'text.secondary', fontSize: menu ? 20 : 24 }} />
           <InputBase
             inputRef={champ}
@@ -148,7 +148,7 @@ export function RechercheGlobale({ surFonce, court, menu }: { surFonce?: boolean
             placeholder={court ? 'Rechercher' : menu ? 'Rechercher ou agir' : 'Rechercher un magasin, une personne, une ville'}
             sx={{ flex: 1, fontSize: '0.875rem', color: surFonce ? '#ffffff' : 'text.primary', '& input::placeholder': { color: surFonce ? 'rgba(255,255,255,0.78)' : 'text.secondary', opacity: 1 } }}
           />
-          {menu && <Box component="kbd" aria-hidden sx={{ fontFamily: 'inherit', fontSize: '0.75rem', color: 'text.secondary', border: '1px solid', borderColor: 'divider', borderRadius: 1, px: 0.5, whiteSpace: 'nowrap' }}>Ctrl K</Box>}
+          {menu && <Box component="kbd" aria-hidden sx={{ fontFamily: 'inherit', fontSize: '0.75rem', color: surFonce ? 'rgba(255,255,255,0.78)' : 'text.secondary', border: '1px solid', borderColor: surFonce ? 'rgba(255,255,255,0.3)' : 'divider', borderRadius: 1, px: 0.5, whiteSpace: 'nowrap' }}>Ctrl K</Box>}
         </Box>
       )}
     />

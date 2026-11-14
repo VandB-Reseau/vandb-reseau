@@ -106,6 +106,22 @@ export function phraseObjectif(o: Objectif): string {
     : `${lib} : ${formatIndicateur(o.indicateur, o.mode, o.depart)} → ${formatIndicateur(o.indicateur, o.mode, o.cible)} d’ici ${libelleMois(o.echeance)}`
 }
 
+// Joseph (14/11/2026) : un objectif est un objectif de l'année (ou d'un semestre) ; sa période se lit dans son échéance
+export const anneeObjectif = (o: Objectif) => Number(o.echeance.slice(0, 4))
+export function periodeObjectif(o: Objectif): string {
+  const [a, m] = o.echeance.split('-')
+  if (m === '12') return `Année ${a}`
+  if (m === '06') return `1er semestre ${a}`
+  return `D’ici ${libelleMois(o.echeance)}`
+}
+// Valeur et cible sans l'échéance, pour le titre d'un objectif dont la période est déjà dite
+export function cibleObjectif(o: Objectif): string {
+  const lib = libelleIndicateur(o.indicateur)
+  return o.mode === 'evolution'
+    ? `${lib} : ${formatPourcent(o.cible)} vs N-1`
+    : `${lib} : ${formatIndicateur(o.indicateur, o.mode, o.depart)} → ${formatIndicateur(o.indicateur, o.mode, o.cible)}`
+}
+
 // Compte des objectifs en cours d'un ensemble de magasins (Performance, rapport du mois)
 export function resumeObjectifs(reseau: Reseau, noms: string[]): { total: number; parStatut: Record<StatutObjectif, number> } {
   const parStatut: Record<StatutObjectif, number> = { atteint: 0, voie: 0, retard: 0, manque: 0, attente: 0 }

@@ -61,11 +61,11 @@ export function ProfilPersonne({ nom, insigne, avatar, lignes, pastille, compteu
           {insigne
             ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-                <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.75rem' }, minWidth: 0, ...uneLigne }}>{nom}</Typography>
+                <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.625rem' }, minWidth: 0, ...uneLigne }}>{nom}</Typography>
                 {insigne}
               </Box>
             )
-            : <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.75rem' }, ...uneLigne }}>{nom}</Typography>}
+            : <Typography variant="h1" sx={{ fontSize: { xs: '1.125rem', md: '1.625rem' }, ...uneLigne }}>{nom}</Typography>}
           {surPC
             ? <Typography variant="body2" color="text.secondary">{lignes.filter(Boolean).join(' · ')}</Typography>
             : lignes.filter(Boolean).map((l) => <Typography key={l} variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem', ...uneLigne }}>{l}</Typography>)}

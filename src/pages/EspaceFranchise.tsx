@@ -2,7 +2,7 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import CalculateOutlined from '@mui/icons-material/CalculateOutlined'
 import { SectionEquipements } from '../components/Equipements'
 import { useTheme } from '@mui/material/styles'
-import { SectionPlan } from '../components/PlanAction'
+import { SectionObjectifsPlan } from '../components/PlanAction'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
 import InventoryOutlined from '@mui/icons-material/Inventory2Outlined'
@@ -77,6 +77,7 @@ import { Fenetre } from '../components/EditionEquipe'
 import { TexteDicte } from '../components/Dictee'
 import { ErreurAction } from '../data/espaceFranchise'
 import { ecrireMotFranchise, ErreurMot, motDe, partiesMot, prochaineVisite, type ContenuMot } from '../data/motFranchise'
+import { styleChiffre } from '../theme/theme'
 
 const couleurExecution: Record<Execution, 'success' | 'warning' | 'error' | 'default'> = { fait: 'success', partiel: 'warning', non: 'error', aConstater: 'default' }
 const pastille = { fontSize: 12, fontWeight: 600 }
@@ -565,7 +566,7 @@ export function MagasinsFranchise() {
                       </Box>
                       {a ? (
                         <Box>
-                          <Typography sx={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.2 }}>{formatKEuros(a.ca)}</Typography>
+                          <Typography sx={styleChiffre}>{formatKEuros(a.ca)}</Typography>
                           <Typography variant="body2" color="text.secondary"><Box component="span" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Box> · {libelleMois(a.mois)}</Typography>
                         </Box>
                       ) : m.statut !== 'ouvert' ? <Box><Pastille ton="gris">{statutLibelle[m.statut]}</Pastille></Box>
@@ -607,7 +608,7 @@ function OngletFiche({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; sign
   const associes = associesEnPlace(reseau, m)
   return (
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-      {!!reseau.plans?.[m.nom]?.length && <Box sx={{ gridColumn: '1 / -1' }}><SectionPlan reseau={reseau} m={m} equipe={false} signaler={signaler} /></Box>}
+      {!!reseau.plans?.[m.nom]?.length && <Box sx={{ gridColumn: '1 / -1' }}><SectionObjectifsPlan reseau={reseau} m={m} equipe={false} signaler={signaler} /></Box>}
       <Section titre="Mon équipe V and B">
         {contacts(reseau, [m]).map((x) => <Contact key={x.role} role={x.role} p={x.p} />)}
         {!m.coach && <Contact role="Coach" p={null} sousTitre="Aucun Coach affecté à ce jour" />}

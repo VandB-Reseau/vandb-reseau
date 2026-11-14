@@ -1,44 +1,36 @@
 // Objectifs chiffrés du magasin (refonte vague 3, Joseph 09/11/2026, 26A) : vue d'ensemble de la fiche, préparation de visite
 import { useState } from 'react'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import AddOutlined from '@mui/icons-material/AddOutlined'
-import { Section } from './Section'
 import { Fenetre } from './EditionEquipe'
 import { Puces } from './Social'
 import { useAuth } from '../auth/AuthContext'
 import { enregistrerObjectifs } from '../data/chargement'
 import { actionsDuMagasin } from '../data/actions'
 import { analyser, chiffresDuMagasin, decalerMois, libelleMois } from '../data/chiffres'
-import { INDICATEURS, avancement, formatIndicateur, libelleStatut, objectifsDu, phraseObjectif, valeurAu, type IndicateurObjectif, type ModeObjectif, type Objectif, type StatutObjectif } from '../data/objectifs'
+import { echelle } from '../theme/theme'
+import { INDICATEURS, avancement, cibleObjectif, formatIndicateur, libelleStatut, periodeObjectif, phraseObjectif, valeurAu, type IndicateurObjectif, type ModeObjectif, type Objectif, type StatutObjectif } from '../data/objectifs'
 import type { Magasin, Reseau } from '../data/modele'
 
 const couleurStatut: Record<StatutObjectif, string> = { atteint: 'success.main', voie: 'success.main', retard: 'error.main', manque: 'error.main', attente: 'text.secondary' }
 const couleurJauge: Record<StatutObjectif, string> = { atteint: '#307672', voie: '#307672', retard: '#c24119', manque: '#c24119', attente: '#b4afa8' }
 
-export function LigneObjectif({ reseau, magasin, o, onClick }: { reseau: Reseau; magasin: string; o: Objectif; onClick?: () => void }) {
+// Joseph (14/11/2026) : en tête de chaque objectif de l'année, sa période, sa cible, sa jauge et son statut ; les
+// priorités qui y mènent se rangent dessous (SectionObjectifsPlan, PlanAction.tsx)
+export function EnteteObjectif({ reseau, magasin, o, onClick }: { reseau: Reseau; magasin: string; o: Objectif; onClick?: () => void }) {
   const a = avancement(reseau, magasin, o)
-  // Vague 8 : les tâches d'un objectif sont aussi celles des priorités du plan qui le visent
-  const prioritesLiees = (reseau.plans?.[magasin] ?? []).filter((p) => p.objectif === o.id && p.statut === 'active')
-  const ids = new Set(prioritesLiees.map((p) => p.id))
-  const taches = actionsDuMagasin(reseau, magasin).filter((x) => o.taches.includes(x.cle) || (!!x.a.priorite && ids.has(x.a.priorite)))
-  const detail = [
-    prioritesLiees.length ? `Priorité : ${prioritesLiees.map((p) => p.titre).join(', ')}` : null,
-    a.mois ? `${libelleMois(a.mois)} : ${formatIndicateur(o.indicateur, o.mode, a.actuel)}` : null,
-    taches.length ? `${taches.length} tâche${taches.length > 1 ? 's' : ''}${taches.some((x) => !x.a.faite) ? ` dont ${taches.filter((x) => !x.a.faite).length} ouverte${taches.filter((x) => !x.a.faite).length > 1 ? 's' : ''}` : ''}` : null,
-    o.par && `fixé par ${o.par}`,
-  ].filter(Boolean).join(' · ')
+  const detail = [a.mois ? `${libelleMois(a.mois)} : ${formatIndicateur(o.indicateur, o.mode, a.actuel)}` : null, o.par && `fixé par ${o.par}`].filter(Boolean).join(' · ')
   const pct = Math.max(0, Math.min(1, a.progression ?? 0)) * 100
   const contenu = (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr auto', sm: 'minmax(0, 1fr) 120px 150px' }, gap: { xs: 0.5, sm: 2 }, alignItems: 'center', width: '100%', textAlign: 'left' }}>
       <Box sx={{ minWidth: 0, gridColumn: { xs: '1 / -1', sm: 'auto' } }}>
-        <Typography sx={{ fontWeight: 700 }}>{phraseObjectif(o)}</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>{periodeObjectif(o)}</Typography>
+        <Typography component="h3" sx={{ fontWeight: 700, fontSize: echelle.carte }}>{cibleObjectif(o)}</Typography>
         {detail && <Typography variant="body2" color="text.secondary">{detail}</Typography>}
       </Box>
       <Box role="meter" aria-label={`Avancement : ${phraseObjectif(o)}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}
@@ -48,34 +40,26 @@ export function LigneObjectif({ reseau, magasin, o, onClick }: { reseau: Reseau;
       <Typography variant="body2" sx={{ fontWeight: 700, color: couleurStatut[a.statut], textAlign: { sm: 'right' } }}>{libelleStatut[a.statut]}</Typography>
     </Box>
   )
-  const sx = { display: 'block', width: '100%', py: 1.25, minHeight: 56, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } } as const
-  return onClick ? <ButtonBase onClick={onClick} sx={{ ...sx, fontFamily: 'inherit', '&:hover': { bgcolor: 'action.hover' } }}>{contenu}</ButtonBase> : <Box sx={sx}>{contenu}</Box>
-}
-
-export function SectionObjectifs({ reseau, m, signaler, lecture = false }: { reseau: Reseau; m: Magasin; signaler?: (msg: string) => void; lecture?: boolean }) {
-  const liste = objectifsDu(reseau, m.nom)
-  const [edition, setEdition] = useState<Objectif | null | undefined>(undefined)
-  return (
-    <Section titre={liste.length ? `Objectifs · ${liste.length}` : 'Objectifs'}
-      action={lecture ? undefined : <Button startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }}>Fixer un objectif</Button>}>
-      {!liste.length
-        ? <Typography variant="body2" color="text.secondary">Aucun objectif chiffré.</Typography>
-        : <Box>{liste.map((o) => <LigneObjectif key={o.id} reseau={reseau} magasin={m.nom} o={o} onClick={lecture ? undefined : () => setEdition(o)} />)}</Box>}
-      {edition !== undefined && <DialogObjectif reseau={reseau} m={m} objectif={edition} onFermer={(msg) => { setEdition(undefined); if (msg) signaler?.(msg) }} />}
-    </Section>
-  )
+  const sx = { display: 'block', width: '100%', py: 1, minHeight: 56, borderRadius: 1 } as const
+  return onClick
+    ? <ButtonBase onClick={onClick} aria-label={`Modifier l’objectif ${phraseObjectif(o)}`} sx={{ ...sx, fontFamily: 'inherit', '&:hover': { bgcolor: 'action.hover' } }}>{contenu}</ButtonBase>
+    : <Box sx={sx}>{contenu}</Box>
 }
 
 const nombreSaisi = (t: string) => { const n = Number(t.replace(/\s/g, '').replace(',', '.').replace('%', '').replace('€', '')); return t.trim() && Number.isFinite(n) ? n : null }
 
-function DialogObjectif({ reseau, m, objectif, onFermer }: { reseau: Reseau; m: Magasin; objectif: Objectif | null; onFermer: (msg?: string) => void }) {
+export function DialogObjectif({ reseau, m, objectif, onFermer }: { reseau: Reseau; m: Magasin; objectif: Objectif | null; onFermer: (msg?: string) => void }) {
   const { profil } = useAuth()
   const liste = chiffresDuMagasin(reseau, m.nom)
   const dernier = analyser(reseau, m.nom)?.mois ?? decalerMois(reseau.jour.slice(0, 7), -1)
   const [indicateur, setIndicateur] = useState<IndicateurObjectif>(objectif?.indicateur ?? 'pmCave')
   const [mode, setMode] = useState<ModeObjectif>(objectif?.mode ?? 'valeur')
   const [cible, setCible] = useState(objectif ? String(objectif.cible).replace('.', ',') : '')
-  const [echeance, setEcheance] = useState(objectif?.echeance ?? decalerMois(dernier, 4))
+  // Joseph (14/11/2026) : un objectif se fixe pour l'année ou le semestre ; fin de l'année en cours par défaut, l'année
+  // suivante dès novembre
+  const an = Number(reseau.jour.slice(0, 4)) + (Number(reseau.jour.slice(5, 7)) >= 11 ? 1 : 0)
+  const horizons = [`${an}-06`, `${an}-12`, ...(an === Number(reseau.jour.slice(0, 4)) ? [`${an + 1}-12`] : [])]
+  const [echeance, setEcheance] = useState(objectif?.echeance ?? `${an}-12`)
   const ouvertes = actionsDuMagasin(reseau, m.nom).filter((x) => !x.a.faite || objectif?.taches.includes(x.cle))
   const [taches, setTaches] = useState<string[]>(objectif?.taches ?? [])
   const moisDepart = objectif?.moisDepart ?? dernier
@@ -106,6 +90,8 @@ function DialogObjectif({ reseau, m, objectif, onFermer }: { reseau: Reseau; m: 
       <Typography variant="body2" color="text.secondary">
         {`Départ, ${libelleMois(moisDepart)} : ${formatIndicateur(indicateur, mode, depart)}${mode === 'evolution' ? ' vs N-1' : ''}`}
       </Typography>
+      <Puces label="Période" valeur={horizons.includes(echeance) ? echeance : 'autre'} onChange={(v) => { if (v !== 'autre') setEcheance(v) }}
+        options={[...horizons.map((h) => ({ v: h, libelle: h.endsWith('-06') ? `1er semestre ${h.slice(0, 4)}` : `Année ${h.slice(0, 4)}` })), { v: 'autre', libelle: 'Autre échéance' }]} />
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
         <TextField label={mode === 'evolution' ? 'Évolution visée (%)' : 'Valeur visée'} value={cible} onChange={(e) => setCible(e.target.value)} slotProps={{ htmlInput: { inputMode: 'decimal' } }}
           error={!!cible && n === null} helperText={!!cible && n === null ? 'Un nombre, par exemple 26,5' : ' '} />
