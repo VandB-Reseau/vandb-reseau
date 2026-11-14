@@ -86,6 +86,8 @@ import { SectionReunionsMagasin } from '../components/Reunions'
 import { SectionConcurrents } from '../components/Concurrents'
 import { SectionObjectifs } from '../components/Objectifs'
 import { SectionPlan } from '../components/PlanAction'
+import { MontrerAuFranchise } from '../components/MontrerAuFranchise'
+import PresentToAllOutlined from '@mui/icons-material/PresentToAllOutlined'
 import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 import { cartouche } from '../components/Social'
 import { FilAriane } from '../components/FilAriane'
@@ -613,7 +615,9 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
     : alerteVisite ? { ton: 'orange', libelle: alerteVisite }
     : m.statut !== 'ouvert' ? { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] } : null
   const concept = etatConcept20(reseau, m.nom)
+  const [montrer, setMontrer] = useState(false)
   return (
+    <>
     <ProfilPersonne nom={m.nom} retour={retour}
       insigne={concept && <Chip size="small" icon={<AutoAwesomeOutlined />} label={concept === 'fait' ? 'Concept 2.0' : 'Concept 2.0 en cours'}
         color={concept === 'fait' ? 'primary' : 'default'} variant={concept === 'fait' ? 'filled' : 'outlined'} sx={{ fontSize: 12, fontWeight: 700, flexShrink: 0 }} />} avatar={(taille) => <Blason magasin={m} taille={taille} />}
@@ -631,8 +635,12 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
       principal={<BoutonVisite reseau={reseau} magasin={m.nom} principal />}
       actions={<>
         <Tooltip title="Message"><IconButton onClick={message} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Tooltip>
+        {/* Choix 116 : en visite, les chiffres du magasin en grand, sans rien d'interne */}
+        <Tooltip title="Montrer au franchisé"><IconButton onClick={() => setMontrer(true)} aria-label="Montrer au franchisé" sx={rond}><PresentToAllOutlined /></IconButton></Tooltip>
         <MenuAjouter creer={creer} />
       </>} />
+    {montrer && <MontrerAuFranchise reseau={reseau} magasin={m.nom} fermer={() => setMontrer(false)} />}
+    </>
   )
 }
 

@@ -17,7 +17,8 @@ import { ChampNombre } from './ChampNombre'
 import { ChoixListe } from './ChoixListe'
 import { nombre } from '../import/caisse'
 import { montant, MOIS_LONGS, panier as prixPanier } from '../lib/format'
-import { joursHorsDimanche, objectifsDuMois } from '../moteur/objectifs'
+import { defiDuMois, joursHorsDimanche, objectifsDuMois } from '../moteur/objectifs'
+import { chargerSimulations, type SimulationGardee } from '../data/pilotage'
 import type { MoisReel, UniversTickets } from '../moteur/suivi'
 import { universLibelle, type Budget } from '../moteur/types'
 
@@ -37,6 +38,13 @@ export function ObjectifsMois({ ouverte, fermer, magasin, annee, budget, n1, tva
   const telephone = useMediaQuery(theme.breakpoints.down('md'))
   const [mois, setMois] = useState(new Date().getMonth() + 1)
   const [jours, setJours] = useState(String(joursHorsDimanche(annee, mois)))
+  // Défi de vente additionnelle (choix 130) : la dernière simulation « Vente additionnelle » gardée pour ce magasin
+  const [defi, setDefi] = useState<SimulationGardee | null>(null)
+  useEffect(() => {
+    let actif = true
+    chargerSimulations(magasin).then((l) => { if (actif) setDefi(l?.find((x) => x.type === 'vente_additionnelle') ?? null) }).catch(() => undefined)
+    return () => { actif = false }
+  }, [magasin])
   useEffect(() => {
     const fin = () => document.body.classList.remove('fiche-seule')
     window.addEventListener('afterprint', fin)
@@ -45,6 +53,8 @@ export function ObjectifsMois({ ouverte, fermer, magasin, annee, budget, n1, tva
   const j = nombre(jours) ?? 0
   const o = objectifsDuMois(budget, mois, Number.isNaN(j) ? 0 : j, tvaPanier, n1[mois - 1])
   const univers = (['cave', 'bar'] as UniversTickets[]).filter((u) => o.univers[u])
+  const dd = defi?.donnees as { univers?: UniversTickets; unSur?: number; prix?: number } | undefined
+  const d = dd?.univers && dd.unSur && dd.prix ? defiDuMois(o, { univers: dd.univers, unSur: dd.unSur, prixTTC: dd.prix }) : null
   const imprimer = () => { document.body.classList.add('fiche-seule'); window.print() }
   const choisirMois = (m: number) => { setMois(m); setJours(String(joursHorsDimanche(annee, m))) }
 
@@ -105,6 +115,15 @@ export function ObjectifsMois({ ouverte, fermer, magasin, annee, budget, n1, tva
                 <li key={u}><Typography>{universLibelle[u]} : <b>+{montant(o.univers[u]!.unEuroDePlus)}</b> TTC sur le mois, sans un client de plus.</Typography></li>
               ))}
             </Box>
+            {d && (
+              <Box component="section" aria-label="Défi de l’équipe" sx={{ mt: 3, p: 2, border: 2, borderColor: 'primary.main', borderRadius: 2 }}>
+                <Typography variant="h3" component="h3">Défi de l’équipe : {defi!.nom}</Typography>
+                <Typography sx={{ mt: 1, fontSize: '1.25rem' }}>
+                  <b>{entier(d.articlesParJour)} par jour</b> en {universLibelle[d.univers]}, soit {entier(d.articles)} sur le mois : un article à {prixPanier(d.prixTTC)} pour 1 client sur {d.unSur}.
+                </Typography>
+                <Typography sx={{ mt: 0.5 }}>{montant(d.caTTC)} TTC de plus sur le mois.</Typography>
+              </Box>
+            )}
           </>
         )}
       </DialogContent>

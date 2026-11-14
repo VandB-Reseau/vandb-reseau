@@ -9,6 +9,19 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Facilité d'usage et simulateurs du franchisé (Joseph, 13/11/2026, choix 114 à 135, « faire tout d'un coup ») :
+  travailler sans réseau (visite, note, tâche et photo gardées sur l'appareil, envoyées seules au retour du réseau,
+  compteur « N en attente d'envoi » ; fichiers de l'app gardés par le service de l'app) ; « Montrer au franchisé » en
+  visite (plein écran, chiffres du magasin seulement) ; revue express du portefeuille pour le RR (un magasin par écran,
+  Rien à signaler / Avancer la visite / Tâche au Coach) ; chiffres du franchisé expliqués en phrases écrites par le
+  moteur ; clôture du mois en un écran (stock repris du mois précédent, en gris tant qu'il n'est pas confirmé), rappel
+  le 2 et relance le 7 dans la cloche ; vitesse mesurée sur une 4G moyenne avec un test qui bloque au-dessus de 2 s.
+  Rubrique Simulateurs (franchisé, et Coach depuis la fiche) : embauche, départ ou heures ; promo ou hausse de prix ; coup
+  dur de trésorerie ; vente additionnelle (défi ajouté aux Objectifs du mois de l'équipe) ; reste à faire du mois ;
+  soirée ; achat en volume ; investissement avec le modèle Corner alimentaire (repères réglés dans Paramètres). « Garder »
+  une simulation, « Mettre dans mon budget » tant qu'il n'est pas validé. **Base : migration pilotage `0031_simulations.sql`**
+  (dépôt du pilotage) ; sans elle, les simulateurs marchent sans « Garder ».
+
 - Refonte SaaS, vague 8, suite (Joseph, 13/11/2026, « Faire le reste », choix 100, 104, 108, 109) : espace franchisé
   avec sélecteur « Mon magasin » en tête du menu, menu en deux rubriques (Mon magasin, Échanger), À faire regroupé par
   tâche (un bouton par magasin) et Mes magasins en cartes ; actions secondaires d'une page dans « ⋯ » (Évolution du

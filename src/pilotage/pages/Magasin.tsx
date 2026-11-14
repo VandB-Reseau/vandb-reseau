@@ -69,6 +69,7 @@ import { Effet, HypotheseCle, HypothesesUnivers, TableauHypotheses } from '../co
 import { HypothesesCartes } from '../components/HypothesesCartes'
 import { RevueChangements } from '../components/RevueChangements'
 import { SimulateurObjectif } from '../components/ObjectifEbe'
+import { Simulateurs, type AjoutBudget } from '../components/Simulateurs'
 import { economieFranchise } from '../moteur/economie'
 import { changementsCibles, changementsParTheme, effetsChangements, pointsAvantValidation, themeDeCle, type ThemeAccord } from '../moteur/changements'
 import { marquesEtapes } from '../moteur/campagne'
@@ -279,6 +280,21 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
     }
     setCopie(false)
   }, vers.length > 1 ? `Hypothèses copiées vers ${vers.length} magasins.` : `Hypothèses copiées vers ${vers[0]}.`)
+
+  // Simulateurs (choix 126) : une soirée ou un investissement ajouté au budget, à la suite de ce qui y est déjà
+  const mettreAuBudget = async (ajout: AjoutBudget) => {
+    if (!resolu) return
+    const h0 = resolu.hypotheses
+    const c: Cibles = { ...ligne.ajustements }
+    if (ajout.tempsForts) c.tempsForts = [...(h0.tempsForts ?? []), ...ajout.tempsForts]
+    if (ajout.investissements) c.investissements = [...(h0.investissements ?? []), ...ajout.investissements]
+    if (ajout.emprunts) c.emprunts = [...(h0.emprunts ?? []), ...ajout.emprunts]
+    if (ajout.ajustementsCA) c.ajustementsCA = [...(h0.ajustementsCA ?? []), ...ajout.ajustementsCA]
+    const h = hypothesesDe(ligne, d, c)
+    if (!h) throw new Error('budget')
+    await enregistrerAjustements(ligne.magasin, annee, c, h.hypotheses)
+    recharger()
+  }
 
   // Export du budget tel qu'à l'écran, ajustements en cours compris
   const exporter = () => {
@@ -569,7 +585,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         {/* Joseph (09/11/2026) : le Suivi en puces, une partie à la fois, au lieu d'une longue page à dérouler */}
         {(onglet === 'synthese' || onglet === 'analyse') && (
           <SyntheseMagasin key={`${ligne.magasin}-${onglet}`} magasin={ligne.magasin} d={d} annee={anneeEnCours} parametres={donnees.parametresN} allerA={aller}
-            partie={onglet === 'synthese' ? 'ensemble' : 'analyse'}
+            partie={onglet === 'synthese' ? 'ensemble' : 'analyse'} phrases={franchise}
             visiteEtActions={!franchise && profil?.role !== 'aucun'} proposerAction={!franchise && profil?.role !== 'aucun' ? (intitule) => { setProposition({ intitule, n: Date.now() }); aller('synthese') } : undefined}
             quoiFaire={<>
               {franchise && (
@@ -624,6 +640,11 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
             {anneeChoix(anneeReel, (v) => setAnneeReel(v), 'Année du stock')}
             <StockMagasin key={`${ligne.magasin}-${anneeReel}`} magasin={ligne.magasin} annee={anneeReel} peutSaisir={false} />
           </>
+        )}
+        {onglet === 'simulateurs' && (
+          <Simulateurs key={`simulateurs-${ligne.magasin}`} magasin={ligne.magasin} budget={b} hypotheses={resolu?.hypotheses ?? null} parametres={parametres}
+            depart={departDe(ligne.ajustements)} peutGarder={!!profil && profil.role !== 'aucun' && !profil.apercu}
+            budgetValide={ligne.statut === 'valide'} mettreAuBudget={peutAjuster && resolu ? mettreAuBudget : null} />
         )}
         {onglet === 'sante' && sante}
         {mode === 'chiffres' && onglet === 'analyse' && sante && (

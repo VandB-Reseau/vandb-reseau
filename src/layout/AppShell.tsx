@@ -1,3 +1,4 @@
+import { EnvoisEnAttente } from '../components/EnvoisEnAttente'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import AppBar from '@mui/material/AppBar'
@@ -217,6 +218,8 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
         {franchise && <Box sx={{ flex: 1 }} />}
         <Cloche />
       </Box>
+      {/* Choix 114 : créations gardées sans réseau */}
+      <Box sx={{ px: 1.5, '&:has(button)': { pb: 1 } }}><EnvoisEnAttente /></Box>
       {!franchise && <Box sx={{ px: 1.5, pb: 1 }}><SelecteurPerimetre /></Box>}
       {franchise && <Box sx={{ px: 1.5, pb: 1 }}><SelecteurMonMagasin /></Box>}
       <Box component="nav" aria-label="Navigation principale" sx={{ px: 1, flex: 1, overflowY: 'auto' }}>
@@ -340,6 +343,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
               {franchise && <Typography component="span" sx={{ fontWeight: 700, mr: 'auto', ml: 1 }}>Espace franchisé</Typography>}
             </Box>
             {/* Vague 8 (110A) : en-tête allégé (logo, recherche, cloche, compte) ; Actualités passe au menu du compte, le « + » flotte */}
+            <EnvoisEnAttente court />
             <Cloche />
             <MenuCompte liens={franchise ? [] : [...menuTelephoneRubriques(profil?.role), ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }])]} />
           </Toolbar>

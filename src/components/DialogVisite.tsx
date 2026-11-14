@@ -30,6 +30,7 @@ import { supprimerPhotos } from '../lib/photos'
 import { ChampPhotos, SaisieGrille } from './GrilleAudit'
 import { SaisieCampagnes, useSaisieCampagnes } from './Campagnes'
 import { notifier } from '../lib/notifications'
+import { estErreurReseau, horsLigne, mettreEnAttente } from '../lib/horsLigne'
 import { effacerBrouillon, garderBrouillon, lireBrouillon } from '../lib/brouillon'
 import { preparationDe } from '../data/semaine'
 import { dateCourte, dateHeure } from '../lib/format'
@@ -151,7 +152,18 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
       enregistrer={async () => {
         const groupe = cible?.groupe || (magasins.length > 1 ? `g_${Date.now()}` : '')
         const signe = signatureRequise && !contact
-        const ids = await enregistrerVisites({ groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, photos: unSeul && !contact ? photos : [], notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [], prevue: date > reseau.jour }, magasins, cible?.id ?? null)
+        const base = { groupe, date, type, visiteurs: participants, signatureRequise: signe, lienSigne: signe ? lienSigne.trim() : '', dateSignature: signe ? dateSignature : '', documents: contact ? [] : documents, photos: unSeul && !contact ? photos : [], notes: notes.trim(), parties: unSeul && !contact ? parties : partiesVides(), plan: unSeul && !contact ? plan : [], prevue: date > reseau.jour }
+        // Choix 114 : sans réseau, une nouvelle visite (et le résultat de son audit) est gardée sur l'appareil
+        const resultatAudit = audit && grilleRemplie && resultatG ? { date, type, conforme: resultatG.conforme, score: resultatG.score, reponses }
+          : audit && (conforme || scoreLu !== null) ? { date, type, conforme: conforme ? conforme === 'oui' : null, score: scoreLu } : null
+        const garder = async () => {
+          await mettreEnAttente('visite', `${libelleTypeVisite(type)} · ${magasins.join(', ')}`, { base, magasins, audit: resultatAudit })
+          effacerBrouillon(cleBrouillon)
+          return 'Visite gardée sur l’appareil : elle partira seule au retour du réseau.'
+        }
+        if (!cible && horsLigne()) return garder()
+        let ids: number[]
+        try { ids = await enregistrerVisites(base, magasins, cible?.id ?? null) } catch (e) { if (!cible && estErreurReseau(e)) return garder(); throw e }
         effacerBrouillon(cleBrouillon)
         // Franchisé prévenu sur son téléphone d'un nouveau compte rendu (visite faite, pas un appel ni une visite planifiée)
         const sansCompteRendu = !cible || (!cible.notes.trim() && !cible.parties.some((x) => x.trim()))
@@ -182,8 +194,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         }
         const constats = unSeul ? campagnes.lot(date, participants[0] ?? reseau.directeur.nom) : []
         if (constats.length) await enregistrerConstats(constats)
-        const resultat = audit && grilleRemplie && resultatG ? { date, type, conforme: resultatG.conforme, score: resultatG.score, reponses }
-          : audit && (conforme || scoreLu !== null) ? { date, type, conforme: conforme ? conforme === 'oui' : null, score: scoreLu } : null
+        const resultat = resultatAudit
         const ancien = visite && typesAudit.includes(visite.type) ? { date: visite.date, type: visite.type } : null
         if (resultat || (ancien && auditAvant)) await enregistrerAudit(magasins[0], ancien, resultat)
         // Photos retirées ou d'un audit remplacé : effacées de l'espace photos une fois l'audit enregistré

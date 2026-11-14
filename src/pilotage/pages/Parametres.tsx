@@ -35,6 +35,7 @@ import { ChoixListe } from '../components/ChoixListe'
 import { EtatVide } from '../components/EtatVide'
 import { Panne } from '../components/Panne'
 import { SectionParametres } from '../components/SectionParametres'
+import { SimulateursParametres } from '../components/SimulateursParametres'
 import { GrilleFraisParametres } from '../components/GrilleFraisParametres'
 import { ReglesCalculParametres } from '../components/ReglesCalculParametres'
 import { reglesDe } from '../moteur/regles'
@@ -69,11 +70,11 @@ const DE_L_UNIVERS: Record<Univers, string> = { cave: 'de la Cave', bar: 'du Bar
 const egal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 type Message = { gravite: 'success' | 'error'; texte: string } | null
 const ECHEC = 'L’enregistrement n’a pas abouti. Vérifie ta connexion, puis réessaie.'
-type Onglet = 'annees' | 'franchise' | 'equipe' | 'tresorerie' | 'alertes' | 'grille' | 'regles' | 'journal' | 'acces'
+type Onglet = 'annees' | 'franchise' | 'equipe' | 'tresorerie' | 'alertes' | 'grille' | 'regles' | 'simulateurs' | 'journal' | 'acces'
 const ONGLETS: { cle: Onglet; libelle: string }[] = [
   { cle: 'annees', libelle: 'Années' },
   { cle: 'franchise', libelle: 'Franchise et impôts' }, { cle: 'equipe', libelle: 'Équipe' }, { cle: 'tresorerie', libelle: 'Trésorerie' },
-  { cle: 'alertes', libelle: 'Alertes et campagne' }, { cle: 'grille', libelle: 'Grille des frais' }, { cle: 'regles', libelle: 'Règles de calcul' },
+  { cle: 'alertes', libelle: 'Alertes et campagne' }, { cle: 'grille', libelle: 'Grille des frais' }, { cle: 'regles', libelle: 'Règles de calcul' }, { cle: 'simulateurs', libelle: 'Simulateurs' },
   { cle: 'journal', libelle: 'Journal' }, { cle: 'acces', libelle: 'Accès' },
 ]
 // Franchise et impôts (lot 39) : bornes de saisie
@@ -289,7 +290,8 @@ export function Parametres() {
   // Lot 40 : grille des frais et règles de calcul, saisies dans leurs propres composants
   const [grilleModifiee, setGrilleModifiee] = useState(false)
   const [reglesModifiees, setReglesModifiees] = useState(false)
-  const enCours = franchiseModifiee || chargesModifiees || tresoModifiee || alertesModifiees || campagneModifiee || grilleModifiee || reglesModifiees
+  const [simulateursModifies, setSimulateursModifies] = useState(false)
+  const enCours = franchiseModifiee || chargesModifiees || tresoModifiee || alertesModifiees || campagneModifiee || grilleModifiee || reglesModifiees || simulateursModifies
   const onglets = ONGLETS.filter((o) => o.cle !== 'acces' || directeur)
   const enregistrerBouton = (desactive: boolean, faire: () => Promise<void>) =>
     lecture ? undefined : <Button variant="contained" startIcon={<SaveOutlined />} disabled={occupe || desactive} onClick={() => void faire()} sx={{ minHeight: 48 }}>Enregistrer</Button>
@@ -431,6 +433,7 @@ export function Parametres() {
         )}
 
         {onglet === 'grille' && <GrilleFraisParametres annee={annee} parametres={p} lecture={lecture} onEnregistre={recharger} onModifie={setGrilleModifiee} />}
+        {onglet === 'simulateurs' && <SimulateursParametres annee={annee} parametres={p} lecture={lecture} onEnregistre={recharger} onModifie={setSimulateursModifies} />}
         {onglet === 'regles' && <ReglesCalculParametres annee={annee} parametres={p} lecture={lecture} onEnregistre={recharger} onModifie={setReglesModifiees} />}
 
         {onglet === 'alertes' && campagne && (

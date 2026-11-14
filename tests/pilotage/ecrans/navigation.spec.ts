@@ -28,7 +28,7 @@ test('fiche : onglets Chiffres et Budget de l’app réseau, suivi et saisies en
   const pages = page.getByRole('navigation', { name: 'Pages du magasin' })
   await expect(pages.getByRole('tablist', { name: 'Espaces du magasin' })).toHaveCount(0)
   await expect(ongletEspace(page, 'Suivi')).toHaveAttribute('aria-selected', 'true')
-  await expect(partiesAffichees(page)).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', `Atterrissage ${annee}`, 'Analyse'])
+  await expect(partiesAffichees(page)).toHaveText(['Vue d’ensemble', 'Mois par mois', 'Comptes et trésorerie', `Atterrissage ${annee}`, 'Analyse', 'Simulateurs'])
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-navigation-suivi.png`, fullPage: true })

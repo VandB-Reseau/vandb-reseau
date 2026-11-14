@@ -75,3 +75,14 @@ export async function relancerFranchise(magasin: string, intitule: string, echea
   if (r && porteur) notifierTache(magasin, id, clesDesPorteurs(r, magasin, [porteur]).filter((c) => !pont.courant!.mesCles.includes(c)))
 }
 export const apresRelances = rafraichirReseau
+
+// Revue express du portefeuille (choix 117, Joseph 13/11/2026) : la décision du RR devient une tâche du Coach du magasin
+export async function confierAuCoach(magasin: string, intitule: string, echeance: string) {
+  if (dansApercu()) throw new Error('apercu')
+  const porteur = porteurPour(magasin, 'coach')
+  const id = await enregistrerActionLibre(magasin, { action: intitule.trim(), porteur, echeance, creeLe: aujourdhui(), ...(pont.courant?.nom ? { auteur: pont.courant.nom } : {}) })
+  const r = pont.courant?.reseau
+  if (r && porteur) notifierTache(magasin, id, clesDesPorteurs(r, magasin, [porteur]).filter((c) => !pont.courant!.mesCles.includes(c)))
+  rafraichirReseau()
+  return porteur
+}

@@ -51,7 +51,10 @@ test('synthèse en 3 blocs : les chiffres, quoi faire, et le détail dans l’an
 })
 
 test('objectifs du mois : clients par jour et panier visés pour la Cave, à imprimer pour l’équipe', async ({ page, isMobile }, info) => {
-  await seConnecter(page, { role: 'franchise', magasins: unMagasin, reel })
+  // Défi de l'équipe (choix 130) : la vente additionnelle gardée dans les simulateurs
+  const defi = { id: 3, store_name: MAGASINS[0], type: 'vente_additionnelle', nom: 'Un apéritif de plus', donnees: { univers: 'cave', unSur: 10, prix: 12, marge: null },
+    resume: '', auteur: 'autre', auteur_role: 'coach', auteur_nom: 'Camille TESTARD', cree_le: '2026-10-20T08:00:00Z' }
+  await seConnecter(page, { role: 'franchise', magasins: unMagasin, reel, simulations: [defi] })
   await page.getByRole('button', { name: 'Objectifs du mois' }).click()
   const fiche = page.getByRole('dialog', { name: /^Objectifs de/ })
   // CA Cave du budget du mois × (1 + TVA) ÷ panier visé 24 € ÷ jours hors dimanches
@@ -64,6 +67,9 @@ test('objectifs du mois : clients par jour et panier visés pour la Cave, à imp
   await expect(tableau.getByRole('row', { name: /^Clients par jour/ })).toContainText(clients.toLocaleString('fr-FR'))
   await expect(tableau.getByRole('row', { name: /^Panier moyen TTC/ })).toContainText(/24,00\s€/)
   await expect(fiche.getByRole('list', { name: 'Un euro de plus par client' })).toContainText('Cave : +')
+  const parJour = Math.round(b.mois[M - 1].univers!.cave.ca * (1 + parametresParDefaut.tvaPanier.cave) / 24 / jours / 10)
+  await expect(fiche.getByRole('region', { name: 'Défi de l’équipe' })).toContainText(`Défi de l’équipe : Un apéritif de plus${parJour} par jour en Cave`)
+  await expect(fiche.getByRole('region', { name: 'Défi de l’équipe' })).toContainText('pour 1 client sur 10')
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-objectifs-mois.png` })

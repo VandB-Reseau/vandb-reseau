@@ -11,8 +11,9 @@ export const grilleIndicateurs = { display: 'grid', gridTemplateColumns: { xs: '
 
 // large : toute la largeur ; largeTelephone : toute la largeur sur téléphone seulement ;
 // couleurDetail : le détail en gras de cette couleur (un écart) ; fin : à droite de la valeur (courbe) ; children : sous le détail (barre)
-export function Indicateur({ libelle, valeur, detail, couleur, couleurDetail, lien, onClick, actif, large = false, largeTelephone = false, fin, children }: {
+export function Indicateur({ libelle, valeur, detail, couleur, couleurDetail, lien, onClick, actif, large = false, largeTelephone = false, fin, children, phrase }: {
   libelle: string; valeur: ReactNode; detail?: ReactNode; couleur?: string; couleurDetail?: string; lien?: string; onClick?: () => void; actif?: boolean; large?: boolean; largeTelephone?: boolean; fin?: ReactNode; children?: ReactNode
+  phrase?: string | null // choix 119 : le chiffre dit en clair, pour le franchisé
 }) {
   const sx = { display: 'block', minWidth: 0, textAlign: 'left', px: { xs: 1.5, md: 2 }, py: { xs: 1.25, md: 1.75 }, borderRadius: '14px', bgcolor: 'background.paper', color: 'text.primary', fontFamily: 'inherit', textDecoration: 'none',
     ...(large ? { gridColumn: '1 / -1' } : largeTelephone ? { gridColumn: { xs: '1 / -1', md: 'auto' } } : {}),
@@ -29,6 +30,7 @@ export function Indicateur({ libelle, valeur, detail, couleur, couleurDetail, li
         </Box>
         {fin}
       </Box>
+      {phrase && <Typography sx={{ fontSize: '0.9375rem', fontWeight: 500, mt: 0.5 }}>{phrase}</Typography>}
       {children && <Box aria-hidden>{children}</Box>}
     </>
   )

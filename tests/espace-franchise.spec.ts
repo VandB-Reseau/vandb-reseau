@@ -32,7 +32,7 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   await seConnecterFranchise(page, { ecritures })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Magasin', /Messages$/, /Tâches$/, /Plus$/] : ['Accueil', 'Mes magasins', 'Mon budget', /Tâches$/, /Messages$/, /Mes demandes$/, /Actualités$/])
+  await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Magasin', /Messages$/, /Tâches$/, /Plus$/] : ['Accueil', 'Mes magasins', 'Mon budget', 'Simulateurs', /Tâches$/, /Messages$/, /Mes demandes$/, /Actualités$/])
   await expect(page.getByText('Paramètres')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Rechercher' })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button')).toHaveText(['Tous mes magasins', 'Annecy Test', 'Rennes Test'])
@@ -61,6 +61,8 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   // Tuiles comme sur l'accueil de l'équipe (Joseph, 23/10/2026) : le CA sur toute la largeur, puis deux par ligne sur téléphone
   const chiffres = page.getByRole('region', { name: 'Mes chiffres' })
   await expect(chiffres.getByRole('group', { name: 'CA cumulé' })).toContainText('vs septembre 2025')
+  // Choix 119 : le chiffre dit en clair
+  await expect(chiffres.getByRole('group', { name: 'CA cumulé' })).toContainText(/En septembre 2026, tu fais (autant|[\d,]+\s% de (plus|moins)) qu’en septembre 2025\./)
   await expect(chiffres.getByRole('group')).toHaveCount(5)
   const reperes = page.getByRole('region', { name: 'Repères réseau' })
   // Refonte vague 2 (19A) : repères repliés en bas de l'accueil

@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import type { Photo } from '../data/grilles'
+import { creerOuGarder } from './horsLigne'
 
 // Photos d'audit : espace fichiers Supabase (seau privé « photos »), lues par liens temporaires
 export const SEAU = 'photos'
@@ -37,9 +38,15 @@ const aleatoire = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()
 export async function envoyerPhoto(fichier: File): Promise<Photo> {
   const blob = await compresser(fichier)
   const chemin = `audits/${new Date().toISOString().slice(0, 7)}/${aleatoire()}.jpg`
-  const { error } = await supabase.storage.from(SEAU).upload(chemin, blob, { contentType: 'image/jpeg', upsert: false })
-  if (error) throw new ErreurPhoto(error.message)
+  // Choix 114 : sans réseau, la photo est gardée sur l'appareil et partira à son chemin, déjà noté dans la visite
+  await creerOuGarder('photo', 'Photo', { chemin, blob }, () => televerserPhoto(chemin, blob))
   return { chemin, taille: blob.size }
+}
+
+export async function televerserPhoto(chemin: string, blob: Blob) {
+  const { error } = await supabase.storage.from(SEAU).upload(chemin, blob, { contentType: 'image/jpeg', upsert: false })
+  // Déjà envoyée (nouvel essai après une coupure) : rien à refaire
+  if (error && !/already exists|Duplicate/i.test(error.message)) throw new ErreurPhoto(error.message)
 }
 
 export async function lienPhoto(chemin: string): Promise<string | null> {

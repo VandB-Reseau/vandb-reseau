@@ -37,6 +37,10 @@ test('le franchisé voit ce qu’il a à faire et y va en un clic, sans la compa
     /Équipe à renseigner/,
     /Frais à renseigner/,
   ])
+  // Choix 119 : chaque chiffre clé dit en clair, par les modèles de phrases du moteur
+  const sante = page.getByRole('region', { name: /^Santé du magasin à fin/ })
+  await expect(sante.getByText(/^À fin [a-zéû]+, tu (es|fais|as fait) /)).toBeVisible()
+  await expect(sante.getByText(/il te reste .* pour rembourser tes emprunts, investir et payer tes impôts/)).toBeVisible()
   await plusLoin(page)
   await expect(page.getByRole('region', { name: 'Face au réseau', exact: true })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
