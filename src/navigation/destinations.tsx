@@ -114,6 +114,11 @@ export const espaceFranchise: Destination[] = [
 ]
 // Barre du bas du franchisé sur téléphone (refonte vague 5, 56A) : Accueil, Magasin, Messages, Tâches et « Plus »
 // (Mon budget, Mes demandes, Actualités)
+// Vague 8 (109A) : le menu du franchisé en deux rubriques, comme celui de l'équipe
+export const rubriquesFranchise = (liste: Destination[]): Rubrique[] => [
+  { titre: 'Mon magasin', destinations: liste.filter((d) => ['/', '/magasins', '/budgets', '/simulateurs', '/taches'].includes(d.chemin)) },
+  { titre: 'Échanger', destinations: liste.filter((d) => !['/', '/magasins', '/budgets', '/simulateurs', '/taches'].includes(d.chemin)) },
+].filter((r) => r.destinations.length)
 export const barreFranchise = (liste: Destination[]) => liste.filter((d) => ['/', '/magasins', '/echanges', '/taches'].includes(d.chemin))
 export const plusFranchise = (liste: Destination[]) => liste.filter((d) => !['/', '/magasins', '/echanges', '/taches'].includes(d.chemin))
 

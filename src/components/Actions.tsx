@@ -40,6 +40,7 @@ import { enregistrerPlan } from '../data/chargement'
 import ListItemText from '@mui/material/ListItemText'
 import { Fenetre } from './EditionEquipe'
 import { TexteDicte } from './Dictee'
+import { ChampDate } from './ChampDate'
 
 // Écriture des actions : l'équipe écrit directement ; un franchisé passe par les fonctions de la base ;
 // l'aperçu de l'espace d'un franchisé ne modifie rien
@@ -308,7 +309,7 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
           {statut === 'bloquee' && <TextField label="Ce qui bloque" value={raison} onChange={(e) => setRaison(e.target.value)} slotProps={{ htmlInput: { maxLength: 300 } }} />}
         </>
       )}
-      <TextField type="date" label="Échéance" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+      <ChampDate label="Échéance" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       <Box role="group" aria-label="Échéance rapide" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: -1 }}>
         {echeancesRapides(reseau.jour).map((x) => (
           <Chip key={x.libelle} label={x.libelle} onClick={() => setEcheance(x.date)} aria-pressed={echeance === x.date}

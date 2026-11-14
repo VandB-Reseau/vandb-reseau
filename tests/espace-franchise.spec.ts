@@ -32,7 +32,7 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   await seConnecterFranchise(page, { ecritures })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Magasin', /Messages$/, /Tâches$/, /Plus$/] : ['Accueil', 'Mes magasins', 'Mon budget', 'Simulateurs', /Messages$/, /Tâches$/, /Mes demandes$/, /Actualités$/])
+  await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Magasin', /Messages$/, /Tâches$/, /Plus$/] : ['Accueil', 'Mes magasins', 'Mon budget', 'Simulateurs', /Tâches$/, /Messages$/, /Mes demandes$/, /Actualités$/])
   await expect(page.getByText('Paramètres')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Rechercher' })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button')).toHaveText(['Tous mes magasins', 'Annecy Test', 'Rennes Test'])

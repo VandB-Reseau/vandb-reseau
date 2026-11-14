@@ -107,3 +107,47 @@ test('l’onglet Nine box montre la case actuelle et le chemin du magasin', asyn
   await lisible(page, isMobile)
   await page.screenshot({ path: `captures/${info.project.name}-vague8-ninebox-magasin.png`, fullPage: true })
 })
+
+// Vague 8, suite (Joseph, 13/11/2026, « faire le reste ») : 109, 104, 100
+test('109 : l’espace franchisé a deux rubriques, « Mon magasin », À faire par tâche et ses magasins en cartes', async ({ page, isMobile }, info) => {
+  await seConnecter(page, { acces: PAUL, espace: {} })
+  if (!isMobile) {
+    const nav = page.getByRole('navigation', { name: 'Navigation principale' })
+    await expect(nav.getByText('Mon magasin', { exact: true })).toBeVisible()
+    await expect(nav.getByText('Échanger', { exact: true })).toBeVisible()
+    await page.getByRole('combobox', { name: 'Mon magasin' }).click()
+    await page.getByRole('option', { name: 'Rennes Test' }).click()
+    await expect(page).toHaveURL(/magasins\/Rennes/)
+    await page.goto('./#/')
+  }
+  // À faire : une ligne par tâche, les deux magasins en boutons
+  const aFaire = page.getByRole('region', { name: 'À faire' })
+  await expect(aFaire.getByRole('link', { name: /^Clôturer .+ : Annecy Test$/ })).toBeVisible()
+  await expect(aFaire.getByRole('link', { name: /^Clôturer .+ : Rennes Test$/ })).toBeVisible()
+  await expect(aFaire.getByText(/^Clôturer /)).toHaveCount(1)
+  await page.goto('./#/magasins')
+  const cartes = page.getByRole('region', { name: 'Mes magasins' })
+  await expect(cartes.getByRole('heading', { level: 2 })).toHaveText(['Annecy Test', 'Rennes Test'])
+  await lisible(page, isMobile)
+  await page.screenshot({ path: `captures/${info.project.name}-vague8-franchise-magasins.png`, fullPage: true })
+})
+
+test('104 : les actions secondaires passent dans « ⋯ »', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'PC : Évolution du parc depuis Magasins')
+  await seConnecter(page)
+  await page.goto('./#/magasins')
+  await page.getByRole('button', { name: 'Autres actions' }).click()
+  await page.getByRole('menuitem', { name: 'Évolution du parc' }).click()
+  await expect(page).toHaveURL(/vue=evolution/)
+})
+
+test('100 : un seul champ de date, libellé au-dessus, valeur conservée', async ({ page }) => {
+  await seConnecter(page)
+  await page.goto('./#/magasins/Annecy%20Test')
+  await creerDepuisMenu(page, 'Tâche')
+  const d = page.getByRole('dialog', { name: 'Ajouter une tâche' })
+  const echeance = d.getByRole('textbox', { name: 'Échéance' })
+  await echeance.fill('2026-12-05')
+  await expect(echeance).toHaveValue('2026-12-05')
+  await expect(echeance).toHaveAttribute('type', 'date')
+})

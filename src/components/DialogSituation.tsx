@@ -17,6 +17,7 @@ import { enregistrerSituations } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
 import { libelleFermeture, libelleSituation, type Magasin, type Situation, type TypeFermeture, type TypeSituation } from '../data/modele'
 import { texteSituation } from '../data/situations'
+import { ChampDate } from './ChampDate'
 
 // Situation d'un magasin (Directeur seul) : fermeture provisoire, passage intégré ou franchisé, sortie du réseau,
 // soirée d'inauguration. Une ligne datée par changement ; une seule sortie du réseau à la fois.
@@ -84,9 +85,9 @@ export function DialogSituation({ magasin, jour, onFermer }: { magasin: Magasin;
           )}
           {type && (
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <TextField type="date" label={type === 'travaux' ? 'Du' : 'Date'} value={date} onChange={(e) => { setDate(e.target.value); if (fin < e.target.value) setFin(e.target.value) }}
+              <ChampDate label={type === 'travaux' ? 'Du' : 'Date'} value={date} onChange={(e) => { setDate(e.target.value); if (fin < e.target.value) setFin(e.target.value) }}
                 error={!DATE.test(date)} slotProps={{ inputLabel: { shrink: true } }} sx={{ flex: 1, minWidth: 160 }} />
-              {type === 'travaux' && <TextField type="date" label="Au" value={fin} onChange={(e) => setFin(e.target.value)}
+              {type === 'travaux' && <ChampDate label="Au" value={fin} onChange={(e) => setFin(e.target.value)}
                 error={!DATE.test(fin) || fin < date} slotProps={{ inputLabel: { shrink: true } }} sx={{ flex: 1, minWidth: 160 }} />}
             </Box>
           )}

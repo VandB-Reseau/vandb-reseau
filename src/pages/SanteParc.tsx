@@ -70,6 +70,7 @@ import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
 import { analyser as analyserCA, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, libelleMoisCourt, courbeCA, formatKEuros, type StatutAlerte } from '../data/chiffres'
 import { estOuvert, type Magasin, type Reseau } from '../data/modele'
+import { ChampDate as ChampDateCommun } from '../components/ChampDate'
 
 // Filtres communs : la recherche (Responsable Régional et Coach : le périmètre choisi)
 function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
@@ -738,7 +739,7 @@ function AvancementThematiques({ reseau, ths, surPC }: { reseau: Reseau; ths: Th
 // Date à laquelle les notes et déploiements saisis prennent effet
 function ChampDate({ valeur, max, onChange }: { valeur: string; max: string; onChange: (v: string) => void }) {
   return (
-    <TextField type="date" size="small" label="Date des changements" value={valeur} onChange={(e) => onChange(e.target.value || max)}
+    <ChampDateCommun size="small" label="Date des changements" value={valeur} onChange={(e) => onChange(e.target.value || max)}
       slotProps={{ inputLabel: { shrink: true }, htmlInput: { max } }} sx={{ minWidth: 200, '& .MuiInputBase-root': { minHeight: 48 } }} />
   )
 }

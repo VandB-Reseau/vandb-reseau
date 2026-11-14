@@ -21,6 +21,7 @@ import { useDictee } from '../lib/dictee'
 import type { RevueTache } from '../data/chargement'
 import { prioritesActives, type Priorite, type StatutPriorite } from '../data/planAction'
 import type { Sujet } from '../data/ordreDuJour'
+import { ChampDate } from './ChampDate'
 
 // Champ texte avec micro : le texte dicté s'ajoute à la fin
 export function ChampDicte({ libelle, valeur, changer, minRows = 2 }: { libelle: string; valeur: string; changer: (f: (v: string) => string) => void; minRows?: number }) {
@@ -92,7 +93,7 @@ function TacheRevue({ reseau, x, revue, changer }: { reseau: Reseau; x: ActionSu
         {STATUTS_REVUE.map((s) => <MenuItem key={s.v} value={s.v} sx={{ minHeight: 48 }}>{s.libelle}</MenuItem>)}
       </TextField>
       {statut === 'bloquee' && <TextField size="small" label="Ce qui bloque" value={revue?.raison ?? x.a.raison ?? ''} onChange={(e) => changer({ statut: 'bloquee', raison: e.target.value })} sx={{ gridColumn: '1 / -1' }} />}
-      {statut === 'reportee' && <TextField size="small" type="date" label="Nouvelle échéance" value={revue?.echeance ?? ''} onChange={(e) => changer({ statut: 'reportee', echeance: e.target.value })}
+      {statut === 'reportee' && <ChampDate size="small" label="Nouvelle échéance" value={revue?.echeance ?? ''} onChange={(e) => changer({ statut: 'reportee', echeance: e.target.value })}
         slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: reseau.jour } }} sx={{ gridColumn: '1 / -1', maxWidth: 260 }} />}
     </Box>
   )

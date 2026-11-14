@@ -23,6 +23,7 @@ import { enregistrerParcours, enregistrerTempsForts } from '../data/chargement'
 import { ANNONCE_PAR_DEFAUT, type TempsFort } from '../data/tempsForts'
 import { libellesResponsable, parcoursParDefaut, type EtapeParcours, type ResponsableEtape } from '../data/integration'
 import type { Reseau } from '../data/modele'
+import { ChampDate } from './ChampDate'
 
 function Pied({ modifie, envoi, annuler, enregistrer }: { modifie: boolean; envoi: boolean; annuler: () => void; enregistrer: () => void }) {
   return (
@@ -123,8 +124,8 @@ export function RegleTempsForts({ reseau, signaler }: { reseau: Reseau; signaler
         {liste.map((t, i) => (
           <Box key={t.id} sx={ligneReglage}>
             <TextField label="Temps fort" value={t.nom} onChange={(e) => changer(i, { nom: e.target.value })} sx={{ flex: 2, minWidth: 200 }} slotProps={{ htmlInput: { maxLength: 80 } }} />
-            <TextField type="date" label="Début" value={t.debut} onChange={(e) => changer(i, { debut: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} sx={{ width: 170 }} />
-            <TextField type="date" label="Fin" value={t.fin} onChange={(e) => changer(i, { fin: e.target.value })} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: t.debut } }} sx={{ width: 170 }} />
+            <ChampDate label="Début" value={t.debut} onChange={(e) => changer(i, { debut: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} sx={{ width: 170 }} />
+            <ChampDate label="Fin" value={t.fin} onChange={(e) => changer(i, { fin: e.target.value })} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: t.debut } }} sx={{ width: 170 }} />
             <TextField type="number" label="Annoncé (jours avant)" value={t.annonce} onChange={(e) => changer(i, { annonce: Math.max(0, Math.min(180, Math.round(Number(e.target.value) || 0))) })} sx={{ width: 170 }} slotProps={{ htmlInput: { min: 0, max: 180 } }} />
             <TextField label="À préparer" value={t.detail} onChange={(e) => changer(i, { detail: e.target.value })} sx={{ flex: 3, minWidth: 240 }} slotProps={{ htmlInput: { maxLength: 500 } }} />
             <Tooltip title="Retirer"><IconButton aria-label={`Retirer ${t.nom || 'ce temps fort'}`} onClick={() => setListe((l) => l.filter((_x, j) => j !== i))} sx={{ width: 48, height: 48 }}><DeleteOutlineOutlined /></IconButton></Tooltip>

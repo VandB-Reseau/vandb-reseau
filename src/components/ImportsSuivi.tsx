@@ -29,6 +29,7 @@ import { libelleCritere, type Thematique, type Ton } from '../data/sante'
 import { dateCourte } from '../lib/format'
 import type { Reseau } from '../data/modele'
 import { cartouche } from './Social'
+import { ChampDate } from './ChampDate'
 
 // Imports des fichiers venus d'autres outils (export Asana de la santé du parc, export mensuel des chiffres, classeur des visites),
 // ouverts depuis la carte du référentiel quand le fichier n'est pas un export de l'app ; thématiques de déploiement.
@@ -190,7 +191,7 @@ export function DialogImportVisites({ reseau, fichier, onFermer }: { reseau: Res
                 {a > 0 && <Typography variant="body1">{pluriel(a, 'note')} d’audit : {res.audits.filter((x) => x.type === 'hygiene').length} hygiène, {res.audits.filter((x) => x.type === 'excellence').length} excellence.</Typography>}
                 {fr > 0 && <Typography variant="body1">{pluriel(fr, 'feuille')} de route faite{fr > 1 ? 's' : ''}.</Typography>}
               </Box>
-              {sansDate > 0 && <TextField type="date" label="Date des audits et feuilles de route" value={dateAudits} onChange={(e) => setDateAudits(e.target.value)} error={!dateValide}
+              {sansDate > 0 && <ChampDate label="Date des audits et feuilles de route" value={dateAudits} onChange={(e) => setDateAudits(e.target.value)} error={!dateValide}
                 slotProps={{ inputLabel: { shrink: true } }} sx={{ width: { xs: '100%', sm: 300 } }} />}
             </Box>
           )}

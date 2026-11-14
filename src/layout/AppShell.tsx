@@ -38,9 +38,10 @@ import { useTotalEchanges } from '../data/echanges'
 import { BoutonCreer } from '../components/Creer'
 import { useInstallation } from '../lib/installation'
 import { brandStripe } from '../theme/theme'
-import { barreFranchise, barreTelephone, menuTelephoneRubriques, parametres, plusFranchise, rubriquesMenu, type Destination } from '../navigation/destinations'
+import { barreFranchise, barreTelephone, rubriquesFranchise, menuTelephoneRubriques, parametres, plusFranchise, rubriquesMenu, type Destination } from '../navigation/destinations'
 import { CreerProvider } from '../components/Creer'
 import { SelecteurPerimetre } from '../components/SelecteurPerimetre'
+import { SelecteurMonMagasin } from '../components/SelecteurMonMagasin'
 import { useCompteurTaches } from '../data/tachesVues'
 import { useNouveautesInfos } from '../data/infosVues'
 import { useAuth } from '../auth/AuthContext'
@@ -220,10 +221,9 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
       {/* Choix 114 : créations gardées sans réseau */}
       <Box sx={{ px: 1.5, '&:has(button)': { pb: 1 } }}><EnvoisEnAttente /></Box>
       {!franchise && <Box sx={{ px: 1.5, pb: 1 }}><SelecteurPerimetre /></Box>}
+      {franchise && <Box sx={{ px: 1.5, pb: 1 }}><SelecteurMonMagasin /></Box>}
       <Box component="nav" aria-label="Navigation principale" sx={{ px: 1, flex: 1, overflowY: 'auto' }}>
-        {franchise
-          ? <List disablePadding>{franchise.map(item)}</List>
-          : rubriquesMenu(!!sansParametres).map((r) => (
+        {(franchise ? rubriquesFranchise(franchise) : rubriquesMenu(!!sansParametres)).map((r) => (
             <List key={r.titre} disablePadding sx={{ mb: 0.5 }} subheader={<ListSubheader disableSticky sx={titreRubrique}>{r.titre}</ListSubheader>}>
               {r.destinations.map(item)}
             </List>

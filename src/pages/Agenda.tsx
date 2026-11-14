@@ -49,6 +49,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useCreer } from '../components/Creer'
 import { BoutonAction } from '../components/Outils'
 import { ajouterJours, ecartJours, elementsDuMois, iso, jourLong, jourUTC, nomMois, type Categorie, type Element } from '../data/agenda'
+import { ChampDate } from '../components/ChampDate'
 
 const categories: { id: Categorie; libelle: string; couleur: string; icone: ReactElement }[] = [
   { id: 'visite', libelle: 'Visites', couleur: '#307672', icone: <EventAvailableOutlined fontSize="small" /> },
@@ -108,8 +109,8 @@ export function DialogEvenement({ reseau, evenement, jourInitial, typeInitial = 
       <Puces label="Type" valeur={type} onChange={changerType} options={(['event', 'reunion', 'formation'] as const).map((v) => ({ v, libelle: libellesTypeEvenement[v] }))} />
       <TextField label="Titre" value={titre} onChange={(e) => setTitre(e.target.value)} autoFocus placeholder={type === 'formation' ? 'Par exemple : accords mets et vins' : 'Par exemple : séminaire des Coachs'} />
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: avecContenu ? { xs: '1fr 1fr', sm: '1fr 1fr 1fr' } : '1fr 1fr' }}>
-        <TextField type="date" label="Du" value={debut} onChange={(e) => setDebut(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <TextField type="date" label="Au" value={fin} onChange={(e) => setFin(e.target.value)} error={!ordre} helperText={ordre ? ' ' : 'La fin doit suivre le début.'} slotProps={{ inputLabel: { shrink: true } }} />
+        <ChampDate label="Du" value={debut} onChange={(e) => setDebut(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        <ChampDate label="Au" value={fin} onChange={(e) => setFin(e.target.value)} error={!ordre} helperText={ordre ? ' ' : 'La fin doit suivre le début.'} slotProps={{ inputLabel: { shrink: true } }} />
         {avecContenu && <TextField type="time" label="Heure (facultatif)" value={heure} onChange={(e) => setHeure(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { step: 300 } }} />}
       </Box>
       <TextField label={avecContenu ? 'Lieu ou détails (facultatif)' : 'Détails (facultatif)'} value={notes} onChange={(e) => setNotes(e.target.value)} multiline minRows={2} />

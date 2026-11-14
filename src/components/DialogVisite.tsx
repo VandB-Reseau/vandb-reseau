@@ -36,6 +36,7 @@ import { preparationDe } from '../data/semaine'
 import { dateCourte, dateHeure } from '../lib/format'
 import { libelleTypeVisite, typesVisite, type ActionPlan, type Document, type Reseau, type Visite } from '../data/modele'
 import { TexteDicte } from './Dictee'
+import { ChampDate } from './ChampDate'
 
 // Personnes qui peuvent visiter : Coachs, RR, Directeur
 export function visiteursGroupes(reseau: Reseau): { nom: string; groupe: string }[] {
@@ -236,7 +237,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         noOptionsText="Aucun magasin ne correspond"
       />
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
-        <TextField type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        <ChampDate label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
         <TextField select label="Type" value={type} onChange={(e) => setType(e.target.value)}>
           {typesVisite.map((t) => <MenuItem key={t.id} value={t.id}>{t.libelle}</MenuItem>)}
         </TextField>
@@ -298,7 +299,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         <Collapse in={signatureRequise}>
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr' }, mt: 1 }}>
             <TextField label="Lien du compte rendu signé (Drive)" value={lienSigne} onChange={(e) => setLienSigne(e.target.value)} placeholder="https://drive.google.com/…" />
-            <TextField type="date" label="Signé le" value={dateSignature} onChange={(e) => setDateSignature(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+            <ChampDate label="Signé le" value={dateSignature} onChange={(e) => setDateSignature(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
           </Box>
         </Collapse>
       </Box>

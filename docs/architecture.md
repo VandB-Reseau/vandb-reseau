@@ -89,3 +89,18 @@ sur l’appareil), dictée du navigateur.
 - **Une donnée à montrer au franchisé** : à ajouter dans `espace_franchise()` (nouvelle migration).
 - **Une table ou une colonne** : nouvelle migration numérotée (voir [supabase/README.md](../supabase/README.md)),
   mise à jour de [base-de-donnees.md](base-de-donnees.md) et du [journal](../CHANGELOG.md), dans la même demande de fusion.
+
+## Règles d'écran (refonte SaaS, vague 8)
+
+- **Gabarit de page (104A)** : `PageHeader` porte le titre (= nom du menu), une ligne de résumé (`sousTitre`), UNE action
+  principale (`actions`, bouton plein) et les actions secondaires dans « ⋯ » (`autres`). Pas de titre de section qui
+  répète l'onglet ouvert. Fil d'Ariane sur PC pour les pages de détail (`FilAriane`).
+- **Enregistrer (108A)** : ce qui ne regarde que soi s'enregistre tout seul, sans bouton (préférences, vues, période,
+  brouillons de visite et de message via `src/lib/brouillon.ts`, statut d'une tâche cochée avec « Annuler »). Dès qu'on
+  touche à des chiffres ou à ce que d'autres verront (budget, fiche, visite, communication), un bouton « Enregistrer »
+  explicite : en bas de la fenêtre (`Fenetre`) ou en barre collante sur les longues pages (`BarreEnregistrement` du budget).
+  Le bouton n'est jamais grisé : au clic, il dit ce qui manque (100A).
+- **Champs (100A)** : un seul champ de date, `ChampDate` (calendrier natif de l'appareil, libellé toujours au-dessus).
+- **Statuts (97A)** : `Pastille` et le lexique fermé `LEXIQUE_STATUTS` (`src/components/Social.tsx`) ; les types
+  (Visite, Demande…) en ton `type`. **Verbes (101A)** : Ajouter, Planifier, Envoyer, Supprimer, Retirer, Écrire.
+- **Contrôle** : `tests/coherence-vague8.spec.ts` (tailles de texte sur l'échelle, verbes retirés).

@@ -22,6 +22,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   une simulation, « Mettre dans mon budget » tant qu'il n'est pas validé. **Base : migration pilotage `0031_simulations.sql`**
   (dépôt du pilotage) ; sans elle, les simulateurs marchent sans « Garder ».
 
+- Refonte SaaS, vague 8, suite (Joseph, 13/11/2026, « Faire le reste », choix 100, 104, 108, 109) : espace franchisé
+  avec sélecteur « Mon magasin » en tête du menu, menu en deux rubriques (Mon magasin, Échanger), À faire regroupé par
+  tâche (un bouton par magasin) et Mes magasins en cartes ; actions secondaires d'une page dans « ⋯ » (Évolution du
+  parc sur Magasins) ; un seul champ de date partout (`ChampDate`, calendrier de l'appareil, libellé toujours au-dessus) ;
+  règles d'écran écrites dans `docs/architecture.md`. Sans migration.
+
 - Titres des tableaux qui passaient par-dessus « Magasin » (Joseph, 11/11/2026, Budget > Tous les magasins sur
   téléphone) : en faisant défiler un tableau vers la droite, les titres des autres colonnes glissaient sur le titre
   figé de la première colonne, alors que les lignes, elles, restaient bien dessous. Le titre figé repasse devant, dans

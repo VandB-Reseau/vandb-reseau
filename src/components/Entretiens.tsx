@@ -20,6 +20,7 @@ import { ENGAGEMENTS_MAX, enregistrerEntretien, enregistrerRemarques, moisPreced
 import { libelleMois } from '../data/chiffres'
 import { dateCourte } from '../lib/format'
 import type { Coach, Reseau } from '../data/modele'
+import { ChampDate } from './ChampDate'
 
 const vide = (coach: string, mois: string, par: string): Entretien => ({ id: null, coach, mois, notes: '', engagements: [], remarques: '', faitLe: '', par })
 const nouvelEngagement = (): Engagement => ({ id: Math.random().toString(36).slice(2, 8), texte: '', echeance: '' })
@@ -93,7 +94,7 @@ export function OngletEntretiens({ reseau, coach, signaler }: { reseau: Reseau; 
                   {brouillon.engagements.map((e, i) => (
                     <Box key={e.id} sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                       <TextField label={`Engagement ${i + 1}`} value={e.texte} onChange={(ev) => changerEngagement(e.id, { texte: ev.target.value })} sx={{ flex: 1, minWidth: 220 }} slotProps={{ htmlInput: { maxLength: 300 } }} />
-                      <TextField label="Pour le" type="date" value={e.echeance} onChange={(ev) => changerEngagement(e.id, { echeance: ev.target.value })} sx={{ width: 170 }} slotProps={{ inputLabel: { shrink: true } }} />
+                      <ChampDate label="Pour le" value={e.echeance} onChange={(ev) => changerEngagement(e.id, { echeance: ev.target.value })} sx={{ width: 170 }} slotProps={{ inputLabel: { shrink: true } }} />
                     </Box>
                   ))}
                 </Box>
