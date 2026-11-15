@@ -14,6 +14,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   une vieille tireuse dans le parc, des remises et offerts en part du CA du budget, un réalisé du mois à 95 % du rythme.
   « Effacer » met les saisies à zéro et les textes à blanc (restent les mois, les modes et les réglages du siège), le vide
   est gardé dans le brouillon ; « Revenir à l'exemple » remplace « Revenir aux valeurs du magasin ».
+- Fiche magasin, correctif (Joseph, 15/11/2026), sans migration : rouverte sur le dernier onglet utilisé (203), la fiche
+  y restait bloquée (Simuler sur iPhone) ; l'onglet retenu n'est plus rouvert qu'une fois, à l'ouverture du magasin.
+  Magasin précédent / suivant (202) retiré, au bout du fil d'Ariane comme dans le menu « ⋯ ».
 - Fiche magasin repensée, choix 196 à 203 (Joseph, 15/11/2026), sans migration. 196 : sous les indicateurs, une seule
   bande « À faire maintenant » (visite, tâches en retard, prochaine échéance) ; les raccourcis Budget et Clôture du mois
   sont retirés. 197 : chaque objectif tient sur une ligne (jauge, statut, nombre de priorités) et se déplie au clic.
