@@ -5,6 +5,8 @@ import { chiffresDuMagasin } from '../../data/chiffres'
 import IconButton from '@mui/material/IconButton'
 import RemoveOutlined from '@mui/icons-material/RemoveOutlined'
 import RestartAltOutlined from '@mui/icons-material/RestartAltOutlined'
+import DeleteSweepOutlined from '@mui/icons-material/DeleteSweepOutlined'
+import Chip from '@mui/material/Chip'
 import { equipementsDu, tireusesDu } from '../../data/equipements'
 import { actionsDuMagasin } from '../../data/actions'
 import { DialogPriorite, type PrioriteProposee } from '../../components/PlanAction'
@@ -352,6 +354,34 @@ function margeUnivers(b: Budget | null, u: Univers): number | null {
   return ca > 0 ? Math.round(somme(f.map((x) => x.margeObjectif)) / ca * 100) / 100 : null
 }
 
+// Exemple chiffré de chaque simulateur (Joseph, 15/11/2026) : remises et offerts sur un an, en part du CA HT du budget
+function exempleRemises(b: Budget | null): Record<CleRemise, number> {
+  const ca = b && b.ca > 0 ? b.ca : 600_000
+  const de = (t: number) => Math.round(ca * t / 100) * 100
+  return { offerts: de(0.003), persos: de(0.0015), prixSpeciaux: de(0.003), remises: de(0.006), fidelite: de(0.004) }
+}
+// Réalisé du mois en cours jusqu'à hier, en exemple : 95 % du rythme du budget
+function exempleRealise(b: Budget | null, aujourdhui: Date): number {
+  const budget = b?.mois[aujourdhui.getMonth()]?.ca ?? 0
+  const fin = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth() + 1, 0).getDate()
+  return Math.round(budget * (aujourdhui.getDate() - 1) / fin * 0.95 / 100) * 100
+}
+
+// « Effacer » (Joseph, 15/11/2026) : les saisies passent à zéro et les textes à blanc ; restent les choix (mois, modes),
+// les réglages du siège et du magasin, et ce qui servirait de diviseur. Une liste garde une ligne vide.
+const GARDES_AU_VIDE = new Set(['mois', 'moisDepense', 'moisRetard', 'de', 'a', 'jour', 'jours', 'index', 'salaries', 'coutHoraire', 'partSmic', 'majoration',
+  'duree', 'dureePret', 'tauxPret', 'co2', 'prixKm', 'entretien', 'semaines', 'occSaison', 'occHors', 'litres', 'quantite', 'unSur', 'prix.marge', 'achat.taux', 'calculette.marge'])
+const TEXTES_AU_VIDE = new Set(['nom', 'poste', 'libelle', 'biere'])
+function vider(v: unknown, cle: string, sim: string): unknown {
+  if (GARDES_AU_VIDE.has(cle) || GARDES_AU_VIDE.has(`${sim}.${cle}`)) return v
+  if (typeof v === 'number') return 0
+  if (typeof v === 'string') return TEXTES_AU_VIDE.has(cle) ? '' : v
+  if (Array.isArray(v)) return cle === 'vieilles' || !v.length ? [] : [vider(v[0], '', sim)]
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, vider(x, k, sim)]))
+  return v
+}
+const etatVide = <K extends TypeSimulation>(k: K, e: Etats[K]): Etats[K] => vider(e, '', k) as Etats[K]
+
 // tireusesParc : tireuses saisies dans les équipements du magasin (Joseph, 14/11/2026)
 function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresReseau, aujourdhui: Date, tireusesParc: number | null = null): Etats {
   const annee = h?.annee ?? aujourdhui.getFullYear()
@@ -364,10 +394,10 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       salaries: Math.max(1, h?.equipe?.filter((x) => x.categorie !== 'gerant_tns').length || 2), partReversee: 0,
       paliers: [{ progression: 0.05, prime: 150, primeGerant: 0 }, { progression: 0.1, prime: 200, primeGerant: 0 }, { progression: 0.15, prime: 250, primeGerant: 0 }],
     },
-    prix: { type: 'remise', taux: 0.1, marge: b && b.ca > 0 ? Math.round(b.tauxMarge * 100) / 100 : 0.35, cartons: 0, mois: 12, ca: null, montants: { offerts: 0, persos: 0, prixSpeciaux: 0, remises: 0, fidelite: 0 } },
+    prix: { type: 'remise', taux: 0.1, marge: b && b.ca > 0 ? Math.round(b.tauxMarge * 100) / 100 : 0.35, cartons: 0, mois: 12, ca: null, montants: exempleRemises(b) },
     tresorerie: { baisse: true, tauxBaisse: 0.15, de: 1, a: 3, depense: false, montantDepense: 10_000, moisDepense: 6, retard: false, montantRetard: 5_000, moisRetard: 7, duree: 2 },
     vente_additionnelle: { univers: b?.flux.cave?.objectif ? 'cave' : 'bar', unSur: 10, prix: 12, marge: null, base: 'caisse' },
-    reste_a_faire: { mois: aujourdhui.getMonth() + 1, jour: aujourdhui.getDate(), realise: 0 },
+    reste_a_faire: { mois: aujourdhui.getMonth() + 1, jour: aujourdhui.getDate(), realise: exempleRealise(b, aujourdhui) },
     soiree: {
       nom: 'Soirée dégustation', mois: 12, univers: 'bar', prix: 25, participants: 30, marge: null, couts: 0, extras: 150,
       achats: true, part: 0.3, panier: 40, bon: false,
@@ -382,11 +412,15 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       prixLivraison: null, sponsoring: false, sponsoMontant: 0, sponsoParFut: 0, materiel: 0, astreinte: 0, locations: 0, prixLocation: 0,
     },
     tireuses: {
-      tireuses: tireusesParc ?? 2, semaines: s.tireuses.semainesSaison, sortiesSaison: 30, sortiesHors: 8, refus: 0, futsParSortie: 2, prixVente: null, prixAchat: null, prixNeuve: 1_500, duree: s.exterieur.dureeTireuse || 5, entretien: s.exterieur.entretienTireuse, vieilles: [],
+      tireuses: tireusesParc ?? 2, semaines: s.tireuses.semainesSaison, sortiesSaison: 30, sortiesHors: 8, refus: 0, futsParSortie: 2, prixVente: null, prixAchat: null, prixNeuve: 1_500, duree: s.exterieur.dureeTireuse || 5, entretien: s.exterieur.entretienTireuse, vieilles: [{ nom: 'Tireuse de 2019', age: 7, reparations: 250 }],
       saisie: 'occupation', occSaison: s.tireuses.occupationSaison, occHors: s.tireuses.occupationHors,
     },
     pression: {
-      becs: [{ biere: 'Blonde', prixFut: 90, litres: 30, perte: 0.1, prixDemi: 4.2, prixPinte: 7.8, demis: 80, pintes: 30 }],
+      becs: [
+        { biere: 'Blonde', prixFut: 90, litres: 30, perte: 0.1, prixDemi: 4.2, prixPinte: 7.8, demis: 80, pintes: 30 },
+        { biere: 'Blanche', prixFut: 95, litres: 30, perte: 0.1, prixDemi: 4.5, prixPinte: 8.2, demis: 40, pintes: 15 },
+        { biere: 'IPA', prixFut: 120, litres: 20, perte: 0.12, prixDemi: 5, prixPinte: 9, demis: 25, pintes: 12 },
+      ],
       projet: false, mode: 'ajouter', remplace: 0, cout: 500, cannibalisation: 0.5,
       nouveau: { biere: 'Nouvelle bière', prixFut: 100, litres: 30, perte: 0.1, prixDemi: 4.5, prixPinte: 8.5, demis: 30, pintes: 10 },
       vue: 'carte', audit: { futs: 6, litres: 30, prixFut: 90, demis: 400, verres33: 0, pintes: 120, litres1L: 0, offerts: 4, caHT: 2_170, standard: null },
@@ -451,6 +485,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     ecrire(cleBrouillon(magasin), touches.length ? l : null)
   }, [etats, touches, magasin])
   const toucher = (k: TypeSimulation) => setTouches((t) => (t.includes(k) ? t : [...t, k]))
+  const effacer = (k: TypeSimulation) => { toucher(k); setEtats((e) => ({ ...e, [k]: etatVide(k, e[k]) })) }
   const revenir = (k: TypeSimulation) => { setEtats((e) => ({ ...e, [k]: initiaux[k] })); setTouches((t) => t.filter((x) => x !== k)) }
   // 191 : tickets et panier de la caisse, 12 derniers mois clos (null : pas assez de mois)
   const caisse = useMemo(() => (reseauDispo?.reseau ? baseCaisse(chiffresDuMagasin(reseauDispo.reseau, magasin)) : null), [reseauDispo, magasin])
@@ -1607,8 +1642,10 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             </Box>
             <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>{simulateur.question}</Typography>
           </Box>
+          {!sansBudget && !!phrase && !touches.includes(choisi) && <Chip label="Exemple" size="small" className="pas-a-l-impression" sx={{ fontWeight: 600, fontSize: '0.8125rem' }} />}
+          {!sansBudget && !!phrase && <Button color="inherit" className="pas-a-l-impression" startIcon={<DeleteSweepOutlined />} onClick={() => effacer(choisi)} sx={{ minHeight: 48 }}>Effacer</Button>}
           {touches.includes(choisi) && (
-            <Button color="inherit" className="pas-a-l-impression" startIcon={<RestartAltOutlined />} onClick={() => revenir(choisi)} sx={{ minHeight: 48 }}>Revenir aux valeurs du magasin</Button>
+            <Button color="inherit" className="pas-a-l-impression" startIcon={<RestartAltOutlined />} onClick={() => revenir(choisi)} sx={{ minHeight: 48 }}>Revenir à l’exemple</Button>
           )}
         </Box>
         {sansBudget ? (

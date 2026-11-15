@@ -63,7 +63,7 @@ test('fiche magasin : ses alertes en tête de la synthèse', async ({ page }) =>
   // 4 points perdus sur l'an dernier : le levier part de 4 points de marge, le lien ne reste pas dans l'adresse
   await expect(page.getByRole('textbox', { name: 'Points de marge en plus' })).toHaveValue('4')
   await expect(page).not.toHaveURL(/pre=/)
-  await expect(page.getByRole('button', { name: 'Revenir aux valeurs du magasin' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Revenir à l’exemple' })).toBeVisible()
 })
 
 test('paramètres réseau : le Directeur règle les seuils, les alertes suivent', async ({ page, isMobile }) => {

@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateurs : un exemple chiffré sur chacun et un bouton « Effacer » (Joseph, 15/11/2026), sans migration. Chaque
+  simulateur s'ouvre sur un exemple (étiquette « Exemple »), complété là où il manquait : trois becs sur la carte pression,
+  une vieille tireuse dans le parc, des remises et offerts en part du CA du budget, un réalisé du mois à 95 % du rythme.
+  « Effacer » met les saisies à zéro et les textes à blanc (restent les mois, les modes et les réglages du siège), le vide
+  est gardé dans le brouillon ; « Revenir à l'exemple » remplace « Revenir aux valeurs du magasin ».
 - Fiche magasin, correctif (Joseph, 15/11/2026), sans migration : rouverte sur le dernier onglet utilisé (203), la fiche
   y restait bloquée (Simuler sur iPhone) ; l'onglet retenu n'est plus rouvert qu'une fois, à l'ouverture du magasin.
   Magasin précédent / suivant (202) retiré, au bout du fil d'Ariane comme dans le menu « ⋯ ».

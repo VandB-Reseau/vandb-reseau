@@ -74,9 +74,39 @@ test('188-191 et 195 : familles, derniers utilisés, caisse, résultat en vue, b
   await expect(page.getByRole('heading', { name: 'Vente additionnelle' })).toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Un client sur' })).toHaveValue('11')
   await expect(page.getByRole('navigation', { name: 'Derniers simulateurs utilisés' }).getByRole('button')).toHaveText(['Vente additionnelle'])
-  await page.getByRole('button', { name: 'Revenir aux valeurs du magasin' }).click()
+  await page.getByRole('button', { name: 'Revenir à l’exemple' }).click()
   await expect(page.getByRole('textbox', { name: 'Un client sur' })).toHaveValue('10')
-  await expect(page.getByRole('button', { name: 'Revenir aux valeurs du magasin' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Revenir à l’exemple' })).toHaveCount(0)
+})
+
+// Exemple prérempli et « Effacer » (Joseph, 15/11/2026) : chaque simulateur s'ouvre sur un exemple chiffré, un appui vide
+// les saisies sans jamais afficher de calcul impossible, un autre remet l'exemple
+test('Chaque simulateur : un exemple, Effacer, Revenir à l’exemple', async ({ page }) => {
+  await connecter(page, coach, 'coach')
+  await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=simulateurs`)
+  const carte = page.locator('#carte-simulation')
+  const titres = ['Mon meilleur levier', 'Embaucher', 'Promo, prix, remises', 'Coup dur de trésorerie', 'Vente additionnelle', 'Reste à faire du mois', 'Soirée, dégustation',
+    'Acheter en volume', 'Investir', 'Contrat extérieur', 'Parc de tireuses', 'Ma carte pression', 'Prix et marge', 'Dimanche ou jour férié']
+  await expect(choix(page).getByRole('button')).toHaveCount(titres.length)
+  for (const titre of titres) {
+    await choix(page).getByRole('button', { name: titre, exact: true }).click()
+    await expect(page.getByRole('heading', { name: titre })).toBeVisible()
+    // Le reste à faire suit le budget du mois en cours : le budget 2027 du magasin fictif n'a pas encore commencé
+    if (titre === 'Reste à faire du mois') { await expect(carte.getByText('Disponible en 2027')).toBeVisible(); await expect(carte.getByRole('button', { name: 'Effacer' })).toHaveCount(0); continue }
+    await expect(carte.getByText('Exemple', { exact: true }), titre).toBeVisible()
+    await expect(carte.getByRole('status'), titre).toBeVisible()
+    await carte.getByRole('button', { name: 'Effacer' }).click()
+    await expect(carte.getByText('Exemple', { exact: true })).toHaveCount(0)
+    await expect(carte.getByRole('button', { name: 'Revenir à l’exemple' })).toBeVisible()
+    expect(await carte.innerText(), titre).not.toMatch(/NaN|Infinity|undefined|∞/)
+  }
+  // Le vide survit au rechargement (brouillon), l'exemple revient d'un appui
+  await page.reload()
+  await choix(page).getByRole('button', { name: 'Promo, prix, remises', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'Remise' })).toHaveValue('0')
+  await carte.getByRole('button', { name: 'Revenir à l’exemple' }).click()
+  await expect(page.getByRole('textbox', { name: 'Remise' })).toHaveValue('10')
+  await expect(carte.getByText('Exemple', { exact: true })).toBeVisible()
 })
 
 test('192 : deux simulations gardées comparées côte à côte', async ({ page, isMobile }) => {
