@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits } from './supabase-simule'
+import { deplierPoint, seConnecter, textesTropPetits } from './supabase-simule'
 
 // Accueil de pilotage (maquette A, Joseph 22/10/2026, revue le 09/11/2026) : quatre repères, À traiter, Mes tâches et
 // Cette semaine au centre, actualités à droite ; sur téléphone, ces trois blocs en onglets courts au-dessus des actualités
@@ -16,7 +16,7 @@ test.afterEach(async ({ page }) => {
 test('quatre repères de pilotage en tête de l’accueil, chacun mène à son détail', async ({ page, isMobile }) => {
   await seConnecter(page)
   // Vague 8 : sur téléphone, les indicateurs se déplient sous les actualités
-  if (isMobile) await page.getByRole('button', { name: 'Mes indicateurs' }).click()
+  if (isMobile) { await deplierPoint(page); await page.getByRole('button', { name: 'Mes indicateurs' }).click() }
   const pilotage = page.getByRole('region', { name: 'Pilotage' })
   const tuiles = pilotage.getByRole('link')
   await expect(tuiles).toHaveCount(4)
@@ -54,6 +54,7 @@ test('PC : les actualités au centre, À traiter, Mes tâches et Cette semaine �
 test('téléphone : les actualités d’abord, un bloc court à onglets, repères en 2 × 2 dépliés à la demande', async ({ page, isMobile }, info) => {
   test.skip(!isMobile, 'Disposition du téléphone')
   await seConnecter(page)
+  await deplierPoint(page)
   await page.getByRole('button', { name: 'Mes indicateurs' }).click()
   const pilotage = page.getByRole('region', { name: 'Pilotage' })
   // Quatre cartes égales en 2 × 2, toutes dans l'écran, sans défilement de côté
@@ -70,10 +71,10 @@ test('téléphone : les actualités d’abord, un bloc court à onglets, repère
   const onglets = page.getByRole('tablist', { name: 'Mon point' }).getByRole('tab')
   await expect(onglets).toHaveText([/^À traiter/, /^Tâches/, 'Semaine', /^Contrats/])
   for (const o of await onglets.all()) expect((await o.boundingBox())!.height).toBeGreaterThanOrEqual(48)
-  // Vague 8 (retour de Joseph, 13/11/2026) : les actualités passent avant le bloc à onglets
+  // 209A (Joseph, 15/11/2026) : le point du jour se replie en une bande juste au-dessus des actualités
   await expect(page.getByRole('region', { name: 'À traiter' }).getByRole('link')).toHaveCount(2)
   const actualites = page.getByRole('region', { name: 'Actualités' })
-  expect((await actualites.boundingBox())!.y).toBeLessThan((await page.getByRole('tablist', { name: 'Mon point' }).boundingBox())!.y)
+  expect((await page.getByRole('button', { name: /^Mon point du jour/ }).boundingBox())!.y).toBeLessThan((await actualites.boundingBox())!.y)
   await onglets.nth(1).click()
   await expect(onglets.nth(1)).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('region', { name: 'Mes tâches' })).toBeVisible()

@@ -39,7 +39,8 @@ test('116 : montrer au franchisé, les chiffres du magasin en grand et rien d’
 
 test('114 : sans réseau, la note et la tâche sont gardées sur l’appareil et partent au retour du réseau', async ({ page, context, isMobile }, info) => {
   const envois: string[] = []
-  page.on('request', (r) => { if (r.url().includes('suivi_magasins') && ['POST', 'PATCH'].includes(r.method())) envois.push(r.postData() ?? '') })
+  // La liste des concurrents lue à l'ouverture de la fiche est enregistrée à part : seules la note et la tâche comptent ici
+  page.on('request', (r) => { if (r.url().includes('suivi_magasins') && ['POST', 'PATCH'].includes(r.method()) && !(r.postData() ?? '').includes('"lus"')) envois.push(r.postData() ?? '') })
   await seConnecter(page)
   await page.goto('./#/magasins/Annecy%20Test')
   await expect(page.getByRole('button', { name: 'Montrer au franchisé' })).toBeVisible()

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { ouvrirInfos, ouvrirOnglet, seConnecter, simulerSupabase, textesTropPetits, COMPTE, type Ecriture, type OptionsSimulation } from './supabase-simule'
+import { deplierPoint, ouvrirInfos, ouvrirOnglet, seConnecter, simulerSupabase, textesTropPetits, COMPTE, type Ecriture, type OptionsSimulation } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -31,6 +31,7 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   const ecritures: Ecriture[] = []
   await seConnecterFranchise(page, { ecritures })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
+  await deplierPoint(page)
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
   await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Magasin', /Messages$/, /Tâches$/, /Plus$/] : ['Accueil', 'Mes magasins', 'Mon budget', 'Simulateurs', /Tâches$/, /Messages$/, /Mes demandes$/, /Actualités$/])
   await expect(page.getByText('Paramètres')).toHaveCount(0)
@@ -247,6 +248,7 @@ test('la connexion d’un franchisé n’affiche jamais l’app de l’équipe, 
 test('l’accueil du franchisé : le fil au centre, à faire et visites à droite', async ({ page, isMobile }, info) => {
   await seConnecterFranchise(page)
   await page.getByRole('button', { name: 'Annecy Test', exact: true }).click()
+  await deplierPoint(page)
   const aFaire = page.getByRole('region', { name: 'À faire' })
   await expect(aFaire.getByRole('link')).toHaveText([/Clôturer septembre 2026/, /Relire mon budget/])
   if (!isMobile) {

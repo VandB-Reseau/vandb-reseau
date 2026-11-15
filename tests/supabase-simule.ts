@@ -57,12 +57,17 @@ export interface ChallengesSimules { equipe: Record<string, unknown>[]; franchis
 // Fonction Supabase « comptes » (supabase/functions/comptes) : absente = pas encore déployée
 export interface ComptesSimules { equipe?: string[] }
 // Refonte vague 4 (migration 0043) : entretiens RR–Coach et demandes des franchisés ; null = table absente
-export interface OptionsSimulation { entretiens?: Record<string, unknown>[] | null; demandes?: Record<string, unknown>[] | null; magasinsEnPlus?: (typeof magasinsFictifs)[number][]; chiffresFermes?: boolean; chiffresCaisse?: Record<string, unknown>[] | null; surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' | 'principalSature' }
+export interface OptionsSimulation { bandesRepliees?: boolean; entretiens?: Record<string, unknown>[] | null; demandes?: Record<string, unknown>[] | null; magasinsEnPlus?: (typeof magasinsFictifs)[number][]; chiffresFermes?: boolean; chiffresCaisse?: Record<string, unknown>[] | null; surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' | 'principalSature' }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
 export async function simulerSupabase(page: Page, options: OptionsSimulation = {}) {
   await decalerHorloge(page)
+  // 209A : sur téléphone, le point du jour et « Mon magasin » se replient au-dessus du fil. Les tests écrits avant
+  // les trouvent dépliés, comme pour quelqu'un qui les a ouverts une fois ; bandesRepliees : premier passage
+  if (!options.bandesRepliees) await page.addInitScript(() => {
+    try { for (const t of ['Mon point du jour', 'Mon magasin']) if (localStorage.getItem(`vandb-bande-${t}`) === null) localStorage.setItem(`vandb-bande-${t}`, '1') } catch { /* sans stockage */ }
+  })
   // « config » remplace des clés d'app_config ; avec « persister », les clés réécrites sont relues telles qu'enregistrées
   const configEcrite = new Map<string, string>(Object.entries(options.config ?? {}).map(([k, v]) => [k, JSON.stringify(v)]))
   // Suivi rangé par magasin (table suivi_magasins) : données fictives et clés fournies par le test, éclatées par magasin.
@@ -126,10 +131,10 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
   })
   await page.route('https://nominatim.openstreetmap.org/**', (r) => r.fulfill({ json: [] }))
   // Concurrents à 2 km (OpenStreetMap, service Overpass) : deux commerces fictifs autour du point demandé, plus un V and B écarté
-  // Le serveur principal et ses miroirs : « panne » les met tous hors service, « principalSature » seulement le premier
+  // Le serveur principal et ses miroirs : « panne » les met tous hors service, « principalSature » seulement le premier interrogé
   await page.route(/^https:\/\/(overpass-api\.de|overpass\.private\.coffee|maps\.mail\.ru)\//, (r) => {
     if (options.overpass === 'panne') return r.fulfill({ status: 504, body: '' })
-    if (options.overpass === 'principalSature' && r.request().url().startsWith('https://overpass-api.de/')) return r.fulfill({ status: 429, body: '' })
+    if (options.overpass === 'principalSature' && r.request().url().startsWith('https://overpass.private.coffee/')) return r.fulfill({ status: 429, body: '' })
     const q = decodeURIComponent(new URL(r.request().url()).searchParams.get('data') ?? '')
     const [lat, lon] = (/around:\d+,([-\d.]+),([-\d.]+)/.exec(q) ?? []).slice(1).map(Number)
     if (options.overpass === 'vide' || !Number.isFinite(lat)) return r.fulfill({ json: { elements: [] } })
@@ -923,7 +928,17 @@ export async function actionFiche(page: Page, nom: 'Planifier la visite' | 'Pré
 }
 
 // Téléphone : « À traiter » ne montre que deux lignes ; on déplie la liste (et ses puces) avant de la vérifier
+// Fil façon réseau social (209A, Joseph 15/11/2026) : sur téléphone, le point du jour (équipe) ou « Mon magasin »
+// (franchisé) se replie en une bande au-dessus du fil ; on la déplie pour lire ce qu'elle contient
+export async function deplierPoint(page: Page) {
+  if (page.viewportSize()!.width >= 900) return
+  const bande = page.getByRole('button', { name: /^(Mon point du jour|Mon magasin)/, expanded: false })
+  await bande.or(page.getByRole('button', { name: /^(Mon point du jour|Mon magasin)/, expanded: true })).first().waitFor()
+  if (await bande.count()) await bande.first().click()
+}
+
 export async function deplierATraiter(page: Page) {
+  await deplierPoint(page)
   const bloc = page.getByRole('region', { name: 'À traiter' })
   await bloc.waitFor()
   if (page.viewportSize()!.width >= 900) return

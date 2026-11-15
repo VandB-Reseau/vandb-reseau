@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { avecPoint, definirGrille, delaisVisiteParDefaut, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
 import type { ActionLibre, ActionPlan, StatutTache, Evenement, Situation, Figure, NoteMagasin, PreparationVisite, Reseau, SuiviOuverture, Topographie, Visite } from './modele'
-import { normaliserConcurrence, suiviEstVide, type SuiviConcurrence } from './concurrence'
+import { normaliserConcurrence, suiviEstVide, suiviVide, type ListeLue, type SuiviConcurrence } from './concurrence'
 import { normaliserObjectifs, type Objectif } from './objectifs'
 import { normaliserPlans, type Priorite } from './planAction'
 import { normaliserMots } from './motFranchise'
@@ -1124,8 +1124,19 @@ export function enregistrerConcurrence(magasin: string, suivi: SuiviConcurrence)
   return enFile(async () => {
     const lu = await lireSuivi<Record<string, SuiviConcurrence>>('concurrents_magasins', {})
     const { valeur } = lu
-    if (suiviEstVide(suivi)) delete valeur[magasin]
-    else valeur[magasin] = suivi
+    // La liste lue sur la carte est gardée telle quelle quand l'écran n'en avait pas encore connaissance
+    const complet = { ...suivi, ...(suivi.lus ?? valeur[magasin]?.lus ? { lus: suivi.lus ?? valeur[magasin]?.lus } : {}) }
+    if (suiviEstVide(complet)) delete valeur[magasin]
+    else valeur[magasin] = complet
+    await ecrireSuivi('concurrents_magasins', valeur, lu)
+  })
+}
+// Liste des commerces lue sur la carte, partagée avec toute l'équipe (15/11/2026) ; le reste du suivi n'est pas touché
+export function enregistrerListeLue(magasin: string, lus: ListeLue) {
+  return enFile(async () => {
+    const lu = await lireSuivi<Record<string, SuiviConcurrence>>('concurrents_magasins', {})
+    const { valeur } = lu
+    valeur[magasin] = { ...(valeur[magasin] ?? suiviVide()), lus }
     await ecrireSuivi('concurrents_magasins', valeur, lu)
   })
 }

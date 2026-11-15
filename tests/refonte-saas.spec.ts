@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { COMPTE, simulerSupabase, textesTropPetits } from './supabase-simule'
+import { deplierPoint, COMPTE, simulerSupabase, textesTropPetits } from './supabase-simule'
 import { magasinFictif } from './pilotage/donnees-fictives'
 import { simulerPilotage, zonesTropPetites, type MagasinSimule, type TicketsSimules, type VenteSimulee } from './pilotage/supabase-simule'
 
@@ -149,7 +149,7 @@ test('PC : les magasins en tableau, une ligne ouvre l’aperçu ; téléphone : 
 
 test('accueil : période en tête, actualités visibles dès l’arrivée sur PC ; style de la charte gardé sur l’accueil seulement', async ({ page, isMobile }, info) => {
   await connecter(page)
-  if (isMobile) await page.getByRole('button', { name: 'Mes indicateurs' }).click()
+  if (isMobile) { await deplierPoint(page); await page.getByRole('button', { name: 'Mes indicateurs' }).click() }
   const ca = page.getByRole('link', { name: /^CA de / })
   await expect(ca).toContainText('k€')
   await expect(ca).toContainText('vs N-1')

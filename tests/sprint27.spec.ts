@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
-import { visitesFictives } from './donnees-fictives'
+import { magasinsFictifs, visitesFictives } from './donnees-fictives'
 
 // Sprint 27 (Joseph, 26/10/2026) : S1 listes de tâches en puces, S3 même nombre de magasins partout,
 // F3 concurrents à 2 km (OpenStreetMap + ajouts de l'équipe), F4 le mot du franchisé avant une visite
@@ -139,6 +139,41 @@ test('F3 : serveur principal saturé, la liste vient d’un miroir', async ({ pa
   const liste = page.getByRole('list', { name: 'Concurrents de Lyon Test' })
   await expect(liste.getByRole('listitem')).toHaveCount(2)
   await expect(page.getByText('La carte des commerces ne répond pas pour le moment.')).toHaveCount(0)
+})
+
+// 15/11/2026 : la liste lue est partagée avec l'équipe et sert de repli quand la carte ne répond pas
+test('F3 : la liste lue sur la carte est gardée pour toute l’équipe', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ...NOE, ecritures })
+  await page.goto('./#/magasins/Lyon%20Test')
+  await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
+  await expect(page.getByRole('list', { name: 'Concurrents de Lyon Test' }).getByRole('listitem')).toHaveCount(2)
+  await expect.poll(() => suiviEcrit(ecritures, 'concurrents_magasins')?.['Lyon Test']?.lus?.liste?.map((c: { nom: string }) => c.nom))
+    .toEqual(['Cave Fictive du Centre', 'Spiritueux Simulés'])
+})
+
+test('F3 : carte en panne, la liste de l’équipe s’affiche', async ({ page }) => {
+  const lus = { le: '2026-09-01', lat: 43, lon: -1, liste: [{ id: 'node/21', nom: 'Cave Déjà Connue', genre: 'Caviste', adresse: '', distance: 450 }] }
+  let appels = 0
+  page.on('request', (r) => { if (/overpass/.test(r.url())) appels++ })
+  await seConnecter(page, { overpass: 'panne', config: { concurrents_magasins: { 'Lyon Test': { ajoutes: [], masques: [], notes: {}, lus } } } })
+  await page.goto('./#/magasins/Lyon%20Test')
+  await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
+  const liste = page.getByRole('list', { name: 'Concurrents de Lyon Test' })
+  await expect(liste).toContainText('Cave Déjà Connue')
+  await expect(liste).toContainText('450 m')
+  await expect(page.getByText('La carte des commerces ne répond pas pour le moment.')).toHaveCount(0)
+  expect(appels).toBeGreaterThan(0) // liste de plus de 30 jours : la carte est d'abord réinterrogée
+})
+
+test('F3 : magasin placé au centre de son département, pas de recherche à 2 km', async ({ page }) => {
+  let appels = 0
+  page.on('request', (r) => { if (/overpass/.test(r.url())) appels++ })
+  await seConnecter(page, { magasinsEnPlus: [{ ...magasinsFictifs[0], n: 'Approx Test', addr: '', cp: '', ville: '', lat: 45.7, lon: 4.8, geo: 'dept' } as (typeof magasinsFictifs)[number]] })
+  await page.goto('./#/magasins/Approx%20Test')
+  await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
+  await expect(page.getByText('Le magasin n’est placé qu’au centre de son département', { exact: false })).toBeVisible()
+  expect(appels).toBe(0)
 })
 
 test('F4 : le franchisé écrit son mot avant la visite prévue', async ({ page }, info) => {

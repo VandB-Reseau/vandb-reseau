@@ -34,8 +34,10 @@ test('l’équipe : le fil ne garde que les comptes rendus, les bonnes pratiques
   await expect(fil.getByText(/tâche faite|nouvelle tâche/)).toHaveCount(0)
   // J'aime et commentaire sur le compte rendu
   await compteRendu.getByRole('button', { name: 'J’aime' }).click()
-  await expect(compteRendu.getByRole('button', { name: 'J’aime · 1' })).toHaveAttribute('aria-pressed', 'true')
-  expect(ecritures.some((e) => e.table === 'rpc/basculer_pouce_visite' && typeof (e.corps as { p_id: unknown }).p_id === 'number')).toBe(true)
+  await expect(compteRendu.getByRole('button', { name: 'J’aime' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(compteRendu.getByText('1 J’aime', { exact: true })).toBeVisible()
+  // L'écran se met à jour avant la réponse de la base : on attend l'écriture
+  await expect.poll(() => ecritures.some((e) => e.table === 'rpc/basculer_pouce_visite' && typeof (e.corps as { p_id: unknown }).p_id === 'number')).toBe(true)
   await compteRendu.getByRole('button', { name: 'Commenter' }).click()
   await compteRendu.getByRole('textbox', { name: /^Commentaire sur le compte rendu de / }).fill('Belle visite, merci.')
   await compteRendu.getByRole('button', { name: 'Envoyer le commentaire' }).click()
@@ -53,8 +55,9 @@ test('le franchisé aime et commente le compte rendu de son Coach ; pas les appe
   await expect(compteRendu).toHaveCount(1)
   await expect(compteRendu).toContainText('Vitrine propre, bon mois.')
   await expect(fil.getByText('Appel de suivi.')).toHaveCount(0)
-  await compteRendu.getByRole('button', { name: 'J’aime · 1' }).click()
-  await expect(compteRendu.getByRole('button', { name: 'J’aime · 2' })).toBeVisible()
+  await expect(compteRendu.getByText('1 J’aime', { exact: true })).toBeVisible()
+  await compteRendu.getByRole('button', { name: 'J’aime' }).click()
+  await expect(compteRendu.getByText('2 J’aime', { exact: true })).toBeVisible()
   // L'écran se met à jour avant la réponse de la base : on attend l'écriture
   await expect.poll(() => ecritures.find((e) => e.table === 'rpc/basculer_pouce_visite')?.corps).toEqual({ p_id: 50 })
   await compteRendu.getByRole('button', { name: 'Commenter' }).click()
@@ -68,9 +71,11 @@ test('le franchisé aime et commente le compte rendu de son Coach ; pas les appe
 
 test('migration pas encore passée : le compte rendu s’affiche sans J’aime ni erreur', async ({ page }) => {
   await seConnecter(page)
-  const compteRendu = page.getByRole('region', { name: 'Actualités' }).getByText(/visite terrain/).first()
-  await expect(compteRendu).toBeVisible()
-  await expect(page.getByRole('article', { name: /^Compte rendu de / })).toHaveCount(0)
+  // 204A : une carte par compte rendu, avec un seul geste pour l'ouvrir
+  const compteRendu = page.getByRole('region', { name: 'Actualités' }).getByRole('article', { name: /^Compte rendu de / }).first()
+  await expect(compteRendu.getByText(/^Visite terrain/)).toBeVisible()
+  await expect(compteRendu.getByRole('button', { name: 'J’aime' })).toHaveCount(0)
+  await expect(compteRendu.getByRole('link', { name: 'Voir le compte rendu' })).toBeVisible()
 })
 
 // Résumé automatique du compte rendu en tête de carte (Joseph, 23/10/2026) : phrase clé et faits, construits par règles

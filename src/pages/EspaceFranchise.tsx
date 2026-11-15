@@ -34,7 +34,9 @@ import MailOutlined from '@mui/icons-material/MailOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, MiniCourbe, Pastille, Puces, TitreSection, type Ton } from '../components/Social'
 import { ProfilPersonne, rond } from '../components/Portefeuille'
-import { FilActivite } from './Accueil'
+import { BandeRepliable, FilActivite } from './Accueil'
+import { BarrePartager } from '../components/Publication'
+import { useAuth } from '../auth/AuthContext'
 import { filDu, type ElementFil } from '../data/fil'
 import { useCommunicationsDuFil, useConnaissances, type Communication } from '../data/communications'
 import { ALaUne, aLaUneDuJour } from '../components/ALaUne'
@@ -482,6 +484,7 @@ export function TableauFranchise() {
 
 function AccueilFranchise({ reseau }: { reseau: Reseau }) {
   const { apercu } = useApercu()
+  const { profil } = useAuth()
   const [choix, setChoix] = useState('')
   const tous = reseau.magasins
   const magasins = choix ? tous.filter((m) => m.nom === choix) : tous
@@ -507,11 +510,10 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
         lien={(c) => `/infos?vue=communications&c=${c.id}`} />
       {/* Vague 8 (Joseph, 11/11/2026) : l'actualité en premier plan, sur PC comme sur téléphone ; mes chiffres passent en
           tête de la colonne de droite */}
-      <Box sx={{ display: 'grid', gap: { xs: 2, md: 4 }, mt: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 380px' }, alignItems: 'start' }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, maxWidth: 760, order: 1 }}>
-          <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" limite={surPC ? undefined : 3} lienTout="/infos" communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
-        </Box>
-        <Box component="aside" aria-label="Mon magasin" sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, order: 2 }}>
+      {/* 15/11/2026 (204A à 211A) : le fil façon réseau social. Sur téléphone, « Mon magasin » se replie en une bande
+          au-dessus d'un fil qui défile sans fin ; sur PC, il garde sa colonne à droite */}
+      {(() => {
+        const sections = <>
           <SectionChiffresDuMois reseau={reseau} magasins={magasins} />
           <SectionIntegration reseau={reseau} magasins={magasins} />
           <SectionAFaire reseau={reseau} magasins={magasins} />
@@ -523,8 +525,25 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
           <SectionVisitesAudits reseau={reseau} magasins={magasins} />
           {!apercu && <SectionReunionsFranchise jour={reseau.jour} />}
           <SectionContacts reseau={reseau} magasins={magasins} />
-        </Box>
-      </Box>
+        </>
+        const filActu = <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" sansFiltre social
+          partager={apercu ? undefined : <BarrePartager moi={profil?.nom ?? ''} franchise communication={false} />}
+          connaissances={{ carte: connaissances, franchise: true, recharger: () => void rechargerConnaissances() }}
+          communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
+        return surPC ? (
+          <Box sx={{ display: 'grid', gap: 4, mt: 2, gridTemplateColumns: 'minmax(0, 1fr) 380px', alignItems: 'start' }}>
+            <Box sx={{ minWidth: 0, maxWidth: 680, width: '100%', justifySelf: 'center', display: 'flex', flexDirection: 'column' }}>{filActu}</Box>
+            <Box component="aside" aria-label="Mon magasin" sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>{sections}</Box>
+          </Box>
+        ) : (
+          <Box sx={{ mt: 2 }}>
+            <BandeRepliable titre="Mon magasin" resume="Mes chiffres, ce que j’ai à faire, mes contacts" icone={<StorefrontOutlined />}>
+              <Box component="aside" aria-label="Mon magasin" sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>{sections}</Box>
+            </BandeRepliable>
+            {filActu}
+          </Box>
+        )
+      })()}
       <Box sx={{ mt: 2 }}><SectionReperes reseau={reseau} magasins={magasins} repliable /></Box>
       <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </>
