@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Accueil du franchisé sur téléphone et clôture express (choix 222 et 223, Joseph, 16/11/2026), sans migration. En tête de
+  l'accueil du téléphone, carte « Mon mois » : CA HT du dernier mois face à N-1, puis une seule chose à faire (clôture du
+  mois si le stock manque, sinon tâche en retard, sinon tâche à rendre dans les 7 jours, sinon « Rien d'urgent »). Le PC ne
+  change pas. « Clôturer » ouvre la clôture en trois écrans : stocks Cave, Bar, Extérieur repris du mois précédent en
+  gris, vérification (variation de plus de 30 % par univers signalée « À vérifier »), confirmation.
 - Accueil, Actualités et Campagnes simplifiés (choix 212 à 219, Joseph, 15/11/2026), sans migration. L'Accueil porte seul
   le fil d'actualité, avec ses filtres (équipe et franchisé) ; l'onglet « Fil » d'Actualités est retiré. Actualités et
   Campagnes ne font plus qu'une page « Animation » (adresse /infos) : Communications, Campagnes (campagnes, déploiements et

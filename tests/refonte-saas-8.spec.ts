@@ -49,7 +49,7 @@ test('l’actualité au premier plan de l’accueil, comme un réseau social', a
 
 test('l’accueil du franchisé commence aussi par l’actualité', async ({ page, isMobile }) => {
   await seConnecter(page, { acces: PAUL })
-  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', isMobile ? 'Mon magasin' : 'Actualités')
+  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', isMobile ? 'Mon mois' : 'Actualités') // 222 : sur le téléphone, un chiffre et une action d'abord
   await lisible(page, isMobile)
 })
 
