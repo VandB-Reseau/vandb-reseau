@@ -739,9 +739,16 @@ function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Resea
   )
 }
 
-// Téléphone (209A) : une bande qui résume, le détail se déplie ; le fil passe juste dessous
+// Téléphone (209A) : une bande qui résume, le détail se déplie ; le fil passe juste dessous. Dépliée une fois, elle le
+// reste sur l'appareil (confort de lecture, rien d'important n'y est rangé)
+const cleBande = (titre: string) => `vandb-bande-${titre}`
 export function BandeRepliable({ titre, resume, icone, children }: { titre: string; resume: string; icone: ReactNode; children: ReactNode }) {
-  const [ouvert, setOuvert] = useState(false)
+  const [ouvert, setOuvertEtat] = useState(() => { try { return localStorage.getItem(cleBande(titre)) === '1' } catch { return false } })
+  const setOuvert = (f: (o: boolean) => boolean) => setOuvertEtat((o) => {
+    const v = f(o)
+    try { localStorage.setItem(cleBande(titre), v ? '1' : '0') } catch { /* appareil sans stockage */ }
+    return v
+  })
   return (
     <Card component="section" aria-label={titre} sx={{ mb: 2 }}>
       <ButtonBase onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert} sx={{ width: '100%', minHeight: 56, px: 2, py: 1, gap: 1.5, justifyContent: 'flex-start', textAlign: 'left', fontFamily: 'inherit' }}>

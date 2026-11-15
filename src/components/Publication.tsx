@@ -84,7 +84,7 @@ export function CartePublication({ e, jour, sansMagasin = false, nouveau = false
           </Box>
           {nouveau && <Nouveau />}
         </Box>
-        {e.titre && <Typography sx={{ mt: 1.5, fontWeight: 600, fontSize: '1.0625rem' }}>{e.titre}</Typography>}
+        {e.titre && <Typography sx={{ mt: 1.5, fontWeight: 600, fontSize: '1.125rem' }}>{e.titre}</Typography>}
       </ButtonBase>
       {e.texte && !e.valeur && <Box sx={{ px: 2, pb: 1 }}><TexteRepliable texte={e.texte} secondaire={e.genre === 'visite'} /></Box>}
       {e.visuel && (
