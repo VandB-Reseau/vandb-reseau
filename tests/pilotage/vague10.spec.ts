@@ -258,6 +258,7 @@ test('Équipements : saisis par l’équipe, repris dans le parc de tireuses', a
   const ecritures: Ecriture[] = []
   await connecter(page, { ecritures, persister: true }, {})
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}`)
+  await page.getByRole('button', { name: /^Équipements/ }).click() // repliés dans la colonne d'identité (choix 200)
   await expect(page.getByText('Aucun équipement enregistré', { exact: false })).toBeVisible()
   await page.getByRole('button', { name: 'Ajouter un équipement' }).click()
   const d = page.getByRole('dialog')

@@ -59,11 +59,7 @@ test('les bonnes pratiques : liste, filtre par thème, fiche magasin', async ({ 
   await page.keyboard.press('Escape')
   await expect(page.getByRole('region', { name: 'Bonnes pratiques' }).getByRole('article')).toHaveCount(1)
   await expect(page.getByRole('article', { name: 'Dégustation du samedi' })).toHaveCount(0)
-  // Fiche du magasin qui l'a reprise
-  await page.goto('./#/magasins/Nantes%20Test?vue=pratiques')
-  const section = page.getByRole('heading', { name: 'Bonnes pratiques' }).locator('xpath=ancestor::div[contains(@class,"MuiCard-root")]')
-  await expect(section.getByText('Reprises d’autres magasins')).toBeVisible()
-  await expect(section.getByRole('link', { name: 'Annecy Test' })).toBeVisible()
+  // Choix 199 (15/11/2026) : plus de filtre Bonnes pratiques dans la fiche magasin, les reprises se lisent sur la carte ci-dessus
 })
 
 test('ajouter une bonne pratique avec une photo et un magasin qui la reprend', async ({ page }) => {

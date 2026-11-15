@@ -1,5 +1,8 @@
 // Carte à titre, ligne libellé / valeur et ligne de contact des fiches (magasin, Coach, RR, franchisé)
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, useState, type ReactNode } from 'react'
+import ButtonBase from '@mui/material/ButtonBase'
+import Collapse from '@mui/material/Collapse'
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
@@ -18,8 +21,31 @@ import type { Personne } from '../data/modele'
 // Vague 5 (55A) : une section posée dans une carte qui en réunit plusieurs (la carte « Plan » de la fiche magasin)
 // perd sa propre carte et devient une partie, titrée en h3
 export const DansCarte = createContext(false)
+// Choix 200 (Joseph, 15/11/2026) : une section posée sous « Repliee » (colonne d'identité de la fiche magasin) n'affiche
+// que son titre ; son contenu et ses boutons s'ouvrent au clic sur le titre
+export const Repliee = createContext(false)
+function SectionRepliee({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
+  const [ouvert, setOuvert] = useState(false)
+  return (
+    <Card component="section" aria-label={titre}>
+      <Box sx={{ display: 'flex', alignItems: 'center', pr: ouvert && action ? 2 : 0 }}>
+        <ButtonBase onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert}
+          sx={{ flex: 1, minHeight: 56, px: 3, justifyContent: 'flex-start', gap: 1, fontFamily: 'inherit', textAlign: 'left' }}>
+          <Typography component="h2" sx={[cartouche, { mr: 'auto' }]}>{titre}</Typography>
+          <ExpandMoreOutlined sx={{ color: 'text.secondary', transform: ouvert ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }} />
+        </ButtonBase>
+        {ouvert && action}
+      </Box>
+      <Collapse in={ouvert} unmountOnExit>
+        <Box sx={{ px: 3, pb: 3 }}><Repliee.Provider value={false}>{children}</Repliee.Provider></Box>
+      </Collapse>
+    </Card>
+  )
+}
 export function Section({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
   const dansCarte = useContext(DansCarte)
+  const repliee = useContext(Repliee)
+  if (repliee && !dansCarte) return <SectionRepliee titre={titre} action={action}>{children}</SectionRepliee>
   if (dansCarte) {
     return (
       <Box component="section" aria-label={titre} sx={{ pt: 2, mt: 2, borderTop: '1px solid', borderColor: 'divider' }}>

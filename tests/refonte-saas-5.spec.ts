@@ -144,7 +144,7 @@ test('50A et 55A : le parcours d’intégration se règle dans Paramètres et se
   // Vague 7 : la carte Plan est défaite, l'intégration a sa propre carte
   const plan = page.getByRole('main')
   await expect(plan.getByRole('heading', { name: /^Intégration · jour 68 · 0 sur 9$/ })).toBeVisible()
-  await expect(plan.getByRole('region', { name: 'Prochaines étapes' })).toBeVisible()
+  await expect(plan.getByRole('region', { name: 'À faire maintenant' })).toBeVisible()
   await plan.getByRole('checkbox', { name: 'Visite du premier mois faite' }).click()
   await expect.poll(() => ecritures.some((e) => e.table === 'suivi_magasins' && JSON.stringify(e.corps).includes('v30'))).toBe(true)
   await expect(plan.getByRole('heading', { name: /^Intégration · jour 68 · 1 sur 9$/ })).toBeVisible()

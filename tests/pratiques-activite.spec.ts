@@ -15,31 +15,18 @@ test('les bonnes pratiques du magasin sont dans son activité, sans onglet Resso
   await expect(onglets.getByRole('tab', { name: /Ressources/ })).toHaveCount(0)
   // Dans le fil « Tout »
   await expect(page.getByText('Coffrets à composer').first()).toBeVisible()
-  // Le filtre Bonnes pratiques : la carte entière, modifiable, et les reprises d'autres magasins
-  await page.getByRole('group', { name: 'Filtrer l’activité' }).getByRole('button', { name: 'Bonnes pratiques', exact: true }).click()
-  await expect(page).toHaveURL(/fil=pratiques/)
-  await expect(page.getByRole('article', { name: 'Coffrets à composer' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Modifier la bonne pratique Coffrets à composer' })).toBeVisible()
-  await expect(page.getByText('Reprises d’autres magasins')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Annecy Test' })).toBeVisible()
+  // Choix 199 (Joseph, 15/11/2026) : plus de filtre Bonnes pratiques, elles restent dans le fil avec leur étiquette
+  await expect(page.getByRole('group', { name: 'Filtrer l’activité' }).getByRole('button', { name: 'Bonnes pratiques', exact: true })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-pratiques-activite.png`, fullPage: !isMobile })
 })
 
-test('un ancien lien vers les bonnes pratiques du magasin ouvre l’activité sur ce filtre', async ({ page }) => {
+test('un ancien lien vers les bonnes pratiques du magasin ouvre tout le fil de l’activité', async ({ page }) => {
   await seConnecter(page, { config: { bonnes_pratiques: pratiques } })
   await page.goto('./#/magasins/Lyon%20Test?vue=pratiques')
   await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab', { name: 'Activité', selected: true })).toBeVisible()
-  await expect(page.getByRole('group', { name: 'Filtrer l’activité' }).getByRole('button', { name: 'Bonnes pratiques', exact: true })).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('article', { name: 'Coffrets à composer' })).toBeVisible()
-})
-
-test('sans bonne pratique, le filtre propose d’en ajouter une', async ({ page }) => {
-  await seConnecter(page, { config: { bonnes_pratiques: [] } })
-  await page.goto('./#/magasins/Brest%20Test?vue=activite&fil=pratiques')
-  await expect(page.getByText('Aucune bonne pratique pour ce magasin.')).toBeVisible()
-  await page.getByRole('button', { name: 'Ajouter une bonne pratique' }).click()
-  await expect(page.getByRole('dialog', { name: 'Nouvelle bonne pratique' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Filtrer l’activité' }).getByRole('button', { name: 'Tout', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText('Coffrets à composer').first()).toBeVisible()
 })
 
 // Joseph (14/11/2026) : Budget et Simulateurs dans la barre du téléphone ; Nine box par le menu « ⋯ »

@@ -21,8 +21,12 @@ test('un seul bloc : l’objectif de l’année, ses priorités et leurs tâches
   const objectif = bloc.getByRole('region', { name: /^Objectif : Panier moyen HT Cave/ })
   await expect(objectif.getByText('Année 2026')).toBeVisible()
   await expect(objectif.getByRole('heading', { name: 'Panier moyen HT Cave : 37,14 € → 40,00 €' })).toBeVisible()
+  // Choix 197 (15/11/2026) : l'objectif tient sur une ligne, ses priorités se déplient à la demande
+  await expect(objectif.getByRole('listitem', { name: 'Priorité 1 : Améliorer le mix produit' })).toHaveCount(0)
+  await objectif.getByRole('button', { name: /^Déplier : .*\(1 priorité\)$/ }).click()
   await expect(objectif.getByRole('listitem', { name: 'Priorité 1 : Améliorer le mix produit' })).toBeVisible()
-  // La priorité sans objectif reste dans le bloc, à part
+  // La priorité sans objectif reste dans le bloc, à part, repliée elle aussi
+  await bloc.getByRole('button', { name: /^Déplier : Priorités sans objectif/ }).click()
   await expect(bloc.getByRole('region', { name: 'Priorités sans objectif' })).toContainText('Tenir les rituels d’équipe')
   expect(await textesTropPetits(page)).toEqual([])
   // Une tâche s'ajoute sous la priorité : elle y est rattachée d'office
@@ -42,6 +46,7 @@ test('une priorité se crée sous son objectif, déjà reliée', async ({ page }
   await seConnecter(page, { ecritures, config: { objectifs_magasins: objectifs } })
   await page.goto('./#/magasins/Brest%20Test')
   const objectif = page.getByRole('region', { name: /^Objectif : Panier moyen HT Cave/ })
+  await objectif.getByRole('button', { name: /^Déplier/ }).click()
   await expect(objectif.getByText('Aucune priorité pour cet objectif.')).toBeVisible()
   await objectif.getByRole('button', { name: 'Ajouter une priorité' }).click()
   const d = page.getByRole('dialog')
@@ -86,6 +91,7 @@ test('un objectif qualitatif dit son avancement par les tâches faites', async (
   await expect(objectif.getByRole('heading', { name: 'Racheter un deuxième magasin' })).toBeVisible()
   await expect(objectif.getByText('Repérer et chiffrer deux cibles')).toBeVisible()
   await expect(objectif.getByRole('meter')).toHaveAttribute('aria-valuenow', '50')
+  await objectif.getByRole('button', { name: /^Déplier/ }).click()
   await expect(objectif.getByRole('listitem', { name: 'Priorité 1 : Trouver le financement' })).toBeVisible()
   // Statut réglé à la main
   await objectif.getByRole('button', { name: /^Modifier l’objectif/ }).click()

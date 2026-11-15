@@ -29,7 +29,7 @@ test('chaque onglet regroupé montre ses deux parties, sans déborder de l’éc
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-chiffres-sante.png`, fullPage: true })
   await ouvrirOnglet(page, 'Tâches')
-  await expect(page.getByRole('heading', { name: 'Campagnes' })).toBeVisible()
+  await expect(page.getByRole('main').getByRole('button', { name: /^Campagnes/ })).toBeVisible()
   expect(await largeurTenue(page)).toBe(true)
 })
 

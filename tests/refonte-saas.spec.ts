@@ -91,7 +91,7 @@ test('la fiche du magasin tient en cinq onglets et deux niveaux ; le suivi, la s
   // Activité : un seul fil, filtré par des puces (vague 3, 23A)
   await page.goto(fiche('?vue=visites'))
   const filtres = page.getByRole('group', { name: 'Filtrer l’activité' })
-  await expect(filtres.getByRole('button')).toHaveText(['Tout', 'Visites', 'Tâches', 'Bonnes pratiques', 'Chiffres', 'Journal'])
+  await expect(filtres.getByRole('button')).toHaveText(['Tout', 'Visites', 'Tâches', 'Notes et journal'])
   await expect(filtres.getByRole('button', { name: 'Visites' })).toHaveAttribute('aria-pressed', 'true')
   // Chiffres : une seule sous-navigation
   await page.goto(fiche('?vue=chiffres'))

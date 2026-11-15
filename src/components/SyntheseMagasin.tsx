@@ -1,13 +1,14 @@
 // Vue d'ensemble d'un magasin (refonte vague 3, Joseph 09/11/2026, 22A) : au centre, où en est le magasin.
 // Quatre indicateurs de la caisse (dernier mois connu, comparé à la référence des alertes), les prochaines étapes
 // (visite, tâches, budget, clôture du mois) et le dernier compte rendu. Les informations du magasin sont à gauche.
+// Choix 196 (Joseph, 15/11/2026) : sous les indicateurs, une seule bande « À faire maintenant » (visite, tâches en retard,
+// prochaine échéance) ; les raccourcis Budget et Clôture du mois redoublaient les onglets, ils sont retirés.
 import type { ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
-import AccountBalanceWalletOutlined from '@mui/icons-material/AccountBalanceWalletOutlined'
-import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
+import EventOutlined from '@mui/icons-material/EventOutlined'
 import { iconeEtape } from './BoutonVisite'
 import { prochaineEtape } from '../data/ordreDuJour'
 import Link from '@mui/material/Link'
@@ -15,10 +16,11 @@ import Typography from '@mui/material/Typography'
 import { Section } from './Section'
 import { Indicateur as CarteIndicateur } from './Indicateur'
 import { useTheme } from '@mui/material/styles'
+import { echelle } from '../theme/theme'
 import { ParcoursIntegration } from './ParcoursIntegration'
 import { analyser, estVisite, formatEuros, formatKEuros, formatPourcent, libelleMois } from '../data/chiffres'
 import { libelleTypeVisite, nomsVisiteurs, visiteFaite, type Magasin, type Reseau } from '../data/modele'
-import { actionsDuMagasin, enRetard } from '../data/actions'
+import { actionsDuMagasin, echeanceDate, enRetard } from '../data/actions'
 import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme } from '../data/visites'
 import { resumeCompteRendu } from '../data/resumeCompteRendu'
 import { dateCourte, lienFiche } from '../lib/format'
@@ -38,7 +40,7 @@ function Tuile({ libelle, valeur, detail, lien, icone, alerte }: { libelle: stri
       <Box sx={{ color: alerte ? 'error.main' : 'text.secondary', mt: 0.25, display: 'flex' }}>{icone}</Box>
       <Box sx={{ minWidth: 0 }}>
         <Typography variant="body2" color="text.secondary">{libelle}</Typography>
-        <Typography sx={{ fontWeight: 700, lineHeight: 1.3 }}>{valeur}</Typography>
+        <Typography sx={{ fontWeight: 700, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' }}>{valeur}</Typography>
         {detail && <Typography variant="body2" sx={{ color: alerte ? 'error.main' : 'text.secondary' }}>{detail}</Typography>}
       </Box>
     </ButtonBase>
@@ -53,6 +55,7 @@ export function SituationMagasin({ reseau, m, objectifs }: { reseau: Reseau; m: 
   const etape = prochaineEtape(reseau, m.nom)
   const ouvertes = actionsDuMagasin(reseau, m.nom).filter((x) => !x.a.faite)
   const retards = ouvertes.filter((x) => enRetard(x.a, reseau.jour)).length
+  const prochaine = ouvertes.filter((x) => echeanceDate(x.a) >= reseau.jour).sort((x, y) => echeanceDate(x.a).localeCompare(echeanceDate(y.a)))[0]
   const derniere = reseau.visites.filter((v) => v.magasin === m.nom && visiteFaite(v, reseau.jour) && estVisite(v)).sort((x, y) => y.date.localeCompare(x.date))[0]
   const resume = derniere ? resumeCompteRendu(derniere) : null
   const lien = lienFiche(m.nom)
@@ -65,11 +68,15 @@ export function SituationMagasin({ reseau, m, objectifs }: { reseau: Reseau; m: 
         <Indicateur libelle="Panier moyen HT" valeur={c?.panier != null ? formatEuros(c.panier) : '—'} detail={c?.pmCave != null ? `Cave ${formatEuros(c.pmCave)}` : undefined} />
         <Indicateur libelle="Taux de marge" valeur={c?.marge != null ? `${c.marge.toLocaleString('fr-FR')} %` : '—'} />
       </Box>
-      <Box component="section" aria-label="Prochaines étapes" sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' } }}>
-        <Tuile libelle="Visite" valeur={etape.libelle} detail={etape.etape === 'planifier' && rythme?.alerte ? libellePasVu(rythme) : etape.detail} lien={etape.lien} icone={iconeEtape[etape.etape]} alerte={etape.etape === 'planifier' && !!rythme?.alerte} />
-        <Tuile libelle="Tâches" valeur={ouvertes.length ? `${ouvertes.length} en cours` : 'Aucune en cours'} detail={retards ? `${retards} en retard` : undefined} lien={`${lien}?vue=activite`} icone={<TaskAltOutlined />} alerte={retards > 0} />
-        <Tuile libelle="Budget" valeur="Construire, relire, valider" lien={`${lien}?vue=budget`} icone={<AccountBalanceWalletOutlined />} />
-        <Tuile libelle="Clôture du mois" valeur="Réel, stock, frais" lien={`${lien}?vue=chiffres&partie=cloture`} icone={<FactCheckOutlined />} />
+      <Box component="section" aria-label="À faire maintenant">
+        <Typography component="h2" sx={{ fontWeight: 700, fontSize: echelle.section, mb: 1 }}>À faire maintenant</Typography>
+        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(3, minmax(0, 1fr))' } }}>
+          <Tuile libelle="Visite" valeur={etape.libelle} detail={etape.etape === 'planifier' && rythme?.alerte ? libellePasVu(rythme) : etape.detail} lien={etape.lien} icone={iconeEtape[etape.etape]} alerte={etape.etape === 'planifier' && !!rythme?.alerte} />
+          <Tuile libelle="Tâches" valeur={retards ? `${retards} en retard` : ouvertes.length ? `${ouvertes.length} en cours` : 'Aucune en cours'} detail={retards ? `${ouvertes.length} en cours au total` : ouvertes.length ? 'Aucune en retard' : undefined}
+            lien={`${lien}?vue=activite&fil=taches`} icone={<TaskAltOutlined />} alerte={retards > 0} />
+          <Tuile libelle="Prochaine échéance" valeur={prochaine ? prochaine.a.action : 'Aucune'} detail={prochaine ? `Le ${dateCourte(echeanceDate(prochaine.a))}` : 'Pas de tâche datée à venir'}
+            lien={`${lien}?vue=activite&fil=taches`} icone={<EventOutlined />} />
+        </Box>
       </Box>
       <ParcoursIntegration reseau={reseau} m={m} />
       {objectifs}

@@ -249,9 +249,10 @@ test('l’onglet Visites commence par les audits du magasin', async ({ page, isM
   await seConnecter(page)
   await page.goto('./#/magasins/Nantes%20Test?vue=visites')
   await expect(page.getByRole('heading', { name: 'Visites', exact: true })).toBeVisible()
-  const titres = await page.locator('main h2').allTextContents()
-  // Vague 3 (23A) : « À venir » en tête de l'activité, puis les audits et les visites
-  expect(titres.slice(0, 3)).toEqual(['À venir', 'Audits', 'Visites'])
+  // Choix 198 et 199 (15/11/2026) : « À faire » à gauche ; à droite, une seule carte, les audits puis les visites
+  await expect(page.locator('main h2').first()).toHaveText('À faire')
+  const titres = await page.getByRole('region', { name: 'Visites, audits et réunions' }).locator('h3').allTextContents()
+  expect(titres.slice(0, 2)).toEqual(['Audits', 'Visites'])
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-audits-visites.png`, fullPage: !isMobile })
 })

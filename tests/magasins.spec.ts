@@ -55,7 +55,8 @@ test('la fiche magasin regroupe équipe, coordonnées et historique', async ({ p
   expect(src.origin + src.pathname).toBe('https://www.google.com/maps')
   expect(src.searchParams.get('output')).toBe('embed')
   expect(src.searchParams.get('q')).toMatch(/^V and B .*Lyon/)
-  expect((await carte.boundingBox())!.height).toBeGreaterThanOrEqual(250)
+  // Choix 200 (15/11/2026) : la carte, réduite, dans le bloc Magasin
+  expect((await carte.boundingBox())!.height).toBeGreaterThanOrEqual(150)
   await expect(page.frameLocator('iframe[title="Carte Google de Lyon Test"]').getByText('Carte simulée')).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-fiche.png`, fullPage: true })
   // Le journal a son onglet
