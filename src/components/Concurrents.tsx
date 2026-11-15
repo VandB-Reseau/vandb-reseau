@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
@@ -10,7 +10,7 @@ import { Section } from './Section'
 import { Fenetre } from './EditionEquipe'
 import { useAuth } from '../auth/AuthContext'
 import { useReseau } from '../data/ReseauContext'
-import { enregistrerConcurrence } from '../data/chargement'
+import { enregistrerConcurrence, enregistrerListeLue } from '../data/chargement'
 import { libelleDistance, lignesConcurrents, suiviVide, useCommercesProches, type LigneConcurrent, type SuiviConcurrence } from '../data/concurrence'
 import type { Magasin, Reseau } from '../data/modele'
 
@@ -18,9 +18,14 @@ import type { Magasin, Reseau } from '../data/modele'
 const VISIBLES = 8
 
 export function SectionConcurrents({ reseau, m, signaler, lecture = false, max }: { reseau: Reseau; m: Magasin; signaler?: (msg: string) => void; lecture?: boolean; max?: number }) {
-  const { commerces, relancer } = useCommercesProches(m)
   const { recharger } = useReseau()
   const suivi = reseau.concurrence[m.nom] ?? suiviVide()
+  const { commerces, relancer } = useCommercesProches(m, suivi.lus)
+  // Liste fraîchement lue sur la carte : gardée avec le suivi du magasin pour toute l'équipe, sans rien afficher
+  const nouvelle = commerces.etat === 'pret' && !lecture ? commerces.nouvelle : null
+  useEffect(() => {
+    if (nouvelle) enregistrerListeLue(m.nom, nouvelle).catch(() => { /* droits ou réseau : la liste reste dans ce navigateur */ })
+  }, [nouvelle, m.nom])
   const [edition, setEdition] = useState<LigneConcurrent | null | undefined>(undefined)
   const [tout, setTout] = useState(false)
   const lignes = lignesConcurrents(commerces.etat === 'pret' ? commerces.liste : [], suivi)
@@ -28,6 +33,7 @@ export function SectionConcurrents({ reseau, m, signaler, lecture = false, max }
   const etat = commerces.etat === 'chargement' ? 'Recherche des commerces alentour…'
     : commerces.etat === 'erreur' ? 'La carte des commerces ne répond pas pour le moment.'
       : commerces.etat === 'sansPosition' ? 'Position du magasin inconnue sur la carte : seuls les concurrents ajoutés s’affichent.'
+        : commerces.etat === 'positionApprochee' ? 'Le magasin n’est placé qu’au centre de son département : les commerces à 2 km s’afficheront dès que son adresse sera localisée.'
         : !lignes.length ? 'Aucun caviste ni cave à moins de 2 km sur la carte.' : ''
   const remettre = async () => {
     try { await enregistrerConcurrence(m.nom, { ...suivi, masques: [] }); await recharger(); signaler?.('Commerces remis dans la liste.') } catch { signaler?.('La liste n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.') }

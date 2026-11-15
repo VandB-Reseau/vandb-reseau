@@ -114,8 +114,9 @@ function MotDuFranchise({ reseau, m }: { reseau: Reseau; m: Magasin }) {
 
 // Concurrents à moins de 2 km (sprint 27, F3) : les six plus proches, puis ceux ajoutés par l'équipe
 function Concurrents({ reseau, m }: { reseau: Reseau; m: Magasin }) {
-  const { commerces } = useCommercesProches(m)
-  const lignes = lignesConcurrents(commerces.etat === 'pret' ? commerces.liste : [], reseau.concurrence[m.nom] ?? suiviVide())
+  const suivi = reseau.concurrence[m.nom] ?? suiviVide()
+  const { commerces } = useCommercesProches(m, suivi.lus)
+  const lignes = lignesConcurrents(commerces.etat === 'pret' ? commerces.liste : [], suivi)
   const vus = [...lignes.filter((l) => !l.ajoute).slice(0, 6), ...lignes.filter((l) => l.ajoute)]
   if (!vus.length) return <Vide>{commerces.etat === 'chargement' ? 'Recherche des commerces alentour…' : 'Aucun concurrent connu à moins de 2 km.'}</Vide>
   return (
