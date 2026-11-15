@@ -88,3 +88,45 @@ export function meilleursLeviers(b: Budget, p: { tauxRedevance: number; tauxPubl
   }
   return l.sort((a, c) => c.ebe - a.ebe)
 }
+
+// ── 191 · Base de la caisse (Joseph, 15/11/2026) ───────────────────────────────────────────────────────────────────
+// Les simulateurs « Mon meilleur levier » et « Vente additionnelle » partent des tickets et du panier réellement passés en
+// caisse sur les 12 derniers mois clos plutôt que des seuls tickets visés au budget. Un univers ne compte que si ses
+// 12 mois ont tous des tickets et un panier ; sinon il garde le budget. Panier de la caisse en HT (TVA du panier pour le TTC).
+export interface MoisCaisse { mois: string; fluxCave: number | null; pmCave: number | null; fluxBar: number | null; pmBar: number | null } // mois AAAA-MM
+export interface BaseCaisseUnivers { tickets: number; panierHT: number; ca: number }
+export interface BaseCaisse { de: string; a: string; univers: Partial<Record<'cave' | 'bar', BaseCaisseUnivers>> }
+const moisAvant = (m: string, n: number) => {
+  const [a, mm] = m.split('-').map(Number)
+  const t = a * 12 + (mm - 1) - n
+  return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`
+}
+export function baseCaisse(liste: MoisCaisse[]): BaseCaisse | null {
+  const avecTickets = liste.filter((x) => (x.fluxCave ?? 0) > 0 || (x.fluxBar ?? 0) > 0).map((x) => x.mois).sort()
+  const a = avecTickets.at(-1)
+  if (!a) return null
+  const parMois = new Map(liste.map((x) => [x.mois, x]))
+  const douze = Array.from({ length: 12 }, (_, i) => parMois.get(moisAvant(a, 11 - i)))
+  const univers: BaseCaisse['univers'] = {}
+  for (const u of ['cave', 'bar'] as const) {
+    const flux = douze.map((x) => (u === 'cave' ? x?.fluxCave : x?.fluxBar) ?? 0), pm = douze.map((x) => (u === 'cave' ? x?.pmCave : x?.pmBar) ?? 0)
+    if (flux.some((f) => f <= 0) || pm.some((p) => p <= 0)) continue
+    const tickets = somme(flux), ca = somme(flux.map((f, i) => f * pm[i]))
+    univers[u] = { tickets, ca, panierHT: ca / tickets }
+  }
+  return Object.keys(univers).length ? { de: moisAvant(a, 11), a, univers } : null
+}
+// Le budget recalé sur la caisse : tickets, panier TTC et CA de l'univers (familles au prorata, taux de marge inchangé)
+export function budgetSurCaisse(b: Budget, base: BaseCaisse, tvaPanier: Partial<Record<Univers, number>>): Budget {
+  const flux = { ...b.flux }
+  let familles = b.familles
+  for (const u of ['cave', 'bar'] as const) {
+    const c = base.univers[u], f = b.flux[u]
+    const caU = somme(b.familles.filter((x) => x.univers === u).map((x) => x.objectif))
+    if (!c || !f || caU <= 0) continue
+    const k = c.ca / caU
+    familles = familles.map((x) => (x.univers === u ? { ...x, objectif: x.objectif * k, margeObjectif: x.margeObjectif * k } : x))
+    flux[u] = { ...f, objectif: c.tickets, panierObjectifTTC: c.panierHT * (1 + (tvaPanier[u] ?? 0)) }
+  }
+  return { ...b, flux, familles }
+}

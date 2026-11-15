@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Children, isValidElement, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useReseauSiDispo } from '../../data/ReseauContext'
+import { chiffresDuMagasin } from '../../data/chiffres'
+import IconButton from '@mui/material/IconButton'
+import RemoveOutlined from '@mui/icons-material/RemoveOutlined'
+import RestartAltOutlined from '@mui/icons-material/RestartAltOutlined'
 import { equipementsDu, tireusesDu } from '../../data/equipements'
 import { actionsDuMagasin } from '../../data/actions'
 import { DialogPriorite, type PrioriteProposee } from '../../components/PlanAction'
@@ -61,7 +65,7 @@ import {
   auditPression, cartePression, margeFut, coutComposition, coutContrats, margePourPrix, nouveauBec, palierExterieur, prixLivraisonGrille, prixPourMarge,
   simulerExterieur, simulerOuverture, simulerParc, cibleProductivite, TAUX_MECENAT, type Bec, type Composant,
 } from '../moteur/boiteOutils'
-import { meilleursLeviers, type CleLevier } from '../moteur/leviers'
+import { baseCaisse, budgetSurCaisse, meilleursLeviers, type CleLevier } from '../moteur/leviers'
 import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TempsFort, Univers } from '../moteur/types'
 import { dateHeure, ecartMontant, ecartPts, montant, MOIS_LONGS, panier as centimes, tauxCourt as taux } from '../lib/format'
 import type { SujetAide } from '../lib/aide'
@@ -92,6 +96,79 @@ const SIMULATEURS: { cle: TypeSimulation; titre: string; question: string; icone
   { cle: 'calculette', titre: 'Prix et marge', question: 'À quel prix vendre pour ma marge ?', icone: <CalculateOutlined />, aide: 'simCalculette', budget: false },
   { cle: 'ouverture', titre: 'Dimanche ou jour férié', question: 'Ouvrir ce jour-là rapporte-t-il ?', icone: <EventAvailableOutlined />, aide: 'simOuverture', budget: false },
 ]
+
+// 188 (Joseph, 15/11/2026) : les simulateurs rangés en 4 familles, en boutons compacts ; les 3 derniers utilisés en tête
+type Famille = 'vendre' | 'evenements' | 'equipe' | 'investir'
+const FAMILLES: [Famille, string][] = [['vendre', 'Vendre plus'], ['evenements', 'Événements et extérieur'], ['equipe', 'Équipe'], ['investir', 'Investir et trésorerie']]
+const FAMILLE_DE: Record<TypeSimulation, Famille> = {
+  levier: 'vendre', vente_additionnelle: 'vendre', reste_a_faire: 'vendre', prix: 'vendre', calculette: 'vendre',
+  soiree: 'evenements', exterieur: 'evenements', tireuses: 'evenements', pression: 'evenements',
+  embauche: 'equipe', ouverture: 'equipe',
+  investissement: 'investir', achat: 'investir', tresorerie: 'investir',
+}
+// Mémoire du navigateur (derniers simulateurs, brouillons) : jamais indispensable, toute erreur est ignorée
+function lire<T>(cle: string): T | null { try { const t = localStorage.getItem(cle); return t ? JSON.parse(t) as T : null } catch { return null } }
+function ecrire(cle: string, v: unknown) { try { if (v === null) localStorage.removeItem(cle); else localStorage.setItem(cle, JSON.stringify(v)) } catch { /* navigateur sans mémoire */ } }
+const CLE_RECENTS = 'simulateurs-recents'
+const cleBrouillon = (magasin: string) => `simulateurs-brouillon:${magasin}`
+
+// 192 : chiffres clés d'une simulation, relevés sur ses cartes de résultat pour la comparer à d'autres
+type IndicateurGarde = { libelle: string; valeur: string }
+function indicateursDe(n: ReactNode, l: IndicateurGarde[] = []): IndicateurGarde[] {
+  Children.forEach(n, (x) => {
+    if (!isValidElement(x)) return
+    const p = x.props as { libelle?: unknown; valeur?: unknown; children?: ReactNode }
+    if (x.type === Indicateur && typeof p.libelle === 'string' && typeof p.valeur === 'string') l.push({ libelle: p.libelle, valeur: p.valeur })
+    else if (p.children) indicateursDe(p.children, l)
+  })
+  return l
+}
+// 192 · Comparer 2 ou 3 simulations gardées : résumé et chiffres clés côte à côte (union des chiffres, dans l'ordre)
+function Comparaison({ simulations }: { simulations: SimulationGardee[] }) {
+  const ind = simulations.map((g) => (Array.isArray(g.donnees._indicateurs) ? g.donnees._indicateurs as IndicateurGarde[] : []))
+  const libelles = [...new Set(ind.flat().map((x) => x.libelle))]
+  const cellule = { verticalAlign: 'top', fontVariantNumeric: 'tabular-nums', minWidth: 180 }
+  return (
+    <Card component="section" aria-label="Comparaison des simulations" sx={{ borderRadius: '12px', overflowX: 'auto' }}>
+      <Table size="small" aria-label="Simulations comparées" sx={{ minWidth: 200 + 200 * simulations.length }}>
+        <TableHead>
+          <TableRow>
+            <TableCell sx={{ width: 200 }} />
+            {simulations.map((g) => <TableCell key={g.id} sx={{ ...cellule, fontWeight: 700 }}>{g.nom}</TableCell>)}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          <TableRow>
+            <TableCell component="th" scope="row">Simulateur</TableCell>
+            {simulations.map((g) => <TableCell key={g.id} sx={cellule}>{libelleSimulation(g.type)}</TableCell>)}
+          </TableRow>
+          <TableRow>
+            <TableCell component="th" scope="row">Résultat</TableCell>
+            {simulations.map((g) => <TableCell key={g.id} sx={cellule}>{g.resume || '–'}</TableCell>)}
+          </TableRow>
+          {libelles.map((l) => (
+            <TableRow key={l}>
+              <TableCell component="th" scope="row">{l}</TableCell>
+              {simulations.map((g, i) => <TableCell key={g.id} sx={{ ...cellule, fontWeight: 600 }}>{ind[i].find((x) => x.libelle === l)?.valeur ?? '–'}</TableCell>)}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
+  )
+}
+
+// Saisies reprises d'un brouillon, d'une simulation gardée ou d'un lien : seulement les clés connues, du même type
+function fusionner<T extends object>(base: T, ajout: unknown): T {
+  if (!ajout || typeof ajout !== 'object') return base
+  const r = { ...base } as Record<string, unknown>
+  for (const [k, v] of Object.entries(ajout as Record<string, unknown>)) {
+    if (!(k in r) || k.startsWith('_')) continue
+    const b = r[k]
+    if (b === null || v === null || typeof b === typeof v) r[k] = v
+  }
+  return r as T
+}
 const libelleSimulation = (t: TypeSimulation) => SIMULATEURS.find((s) => s.cle === t)?.titre ?? 'Simulation'
 
 const somme = (l: number[]) => l.reduce((a, b) => a + b, 0)
@@ -100,19 +177,36 @@ const unChiffre = (v: number) => new Intl.NumberFormat('fr-FR', { maximumFractio
 const champ = { '& .MuiInputBase-root': { minHeight: 48 }, '& input': { height: 48, boxSizing: 'border-box', py: 0 } }
 
 // Un champ avec son libellé visible au-dessus
-function Champ({ libelle, children }: { libelle: string; children: ReactNode }) {
+// 191 : source, d'où vient le chiffre prérempli (« budget », « caisse »…), affichée tant qu'il n'est pas changé
+function Champ({ libelle, source, children }: { libelle: string; source?: string | false | null; children: ReactNode }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 0 }}>
-      <Typography component="span" sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>{libelle}</Typography>
+      <Typography component="span" sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
+        {libelle}
+        {source && <Box component="span" className="source-chiffre" sx={{ ml: 0.75, px: 0.75, py: 0.125, borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, bgcolor: 'action.hover', color: 'text.primary', whiteSpace: 'nowrap' }}>{source}</Box>}
+      </Typography>
       {children}
     </Box>
   )
 }
-const Montant = ({ libelle, valeur, onChange, unite = '€' }: { libelle: string; valeur: number; onChange: (v: number) => void; unite?: string }) => (
-  <Champ libelle={libelle}><ChampMontant libelle={libelle} valeur={valeur} onChange={onChange} unite={unite} largeur={150} /></Champ>
+// 195 : sur téléphone, boutons − et + autour des valeurs qu'on ajuste souvent (pas : l'écart d'un appui)
+function Pas({ valeur, pas, min = 0, onChange, children }: { valeur: number; pas?: number; min?: number; onChange: (v: number) => void; children: ReactNode }) {
+  if (!pas) return <>{children}</>
+  const arrondi = (v: number) => Math.round(v * 100) / 100
+  const bouton = { display: { xs: 'inline-flex', md: 'none' }, width: 48, height: 48, border: 1, borderColor: 'divider', borderRadius: '10px' }
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+      <IconButton aria-label="Diminuer" onClick={() => onChange(Math.max(min, arrondi(valeur - pas)))} sx={bouton}><RemoveOutlined /></IconButton>
+      {children}
+      <IconButton aria-label="Augmenter" onClick={() => onChange(arrondi(valeur + pas))} sx={bouton}><AddOutlined /></IconButton>
+    </Box>
+  )
+}
+const Montant = ({ libelle, valeur, onChange, unite = '€', source, pas, min }: { libelle: string; valeur: number; onChange: (v: number) => void; unite?: string; source?: string | false | null; pas?: number; min?: number }) => (
+  <Champ libelle={libelle} source={source}><Pas valeur={valeur} pas={pas} min={min} onChange={onChange}><ChampMontant libelle={libelle} valeur={valeur} onChange={onChange} unite={unite} largeur={pas ? 110 : 150} /></Pas></Champ>
 )
-const Taux = ({ libelle, valeur, onChange }: { libelle: string; valeur: number; onChange: (v: number) => void }) => (
-  <Champ libelle={libelle}><ChampTaux libelle={libelle} valeur={valeur} onChange={(v) => onChange(v ?? 0)} largeur={130} pas={0.01} /></Champ>
+const Taux = ({ libelle, valeur, onChange, source }: { libelle: string; valeur: number; onChange: (v: number) => void; source?: string | false | null }) => (
+  <Champ libelle={libelle} source={source}><ChampTaux libelle={libelle} valeur={valeur} onChange={(v) => onChange(v ?? 0)} largeur={130} pas={0.01} /></Champ>
 )
 function ChoixMois({ libelle, valeur, onChange }: { libelle: string; valeur: number; onChange: (v: number) => void }) {
   return (
@@ -148,14 +242,14 @@ const ecart = (v: number, favorable = v >= 0) => ({ texte: ecartMontant(v), haus
 
 // État de chaque simulateur : ses saisies, gardées telles quelles avec une simulation (« Rouvrir » les reprend)
 type Etats = {
-  levier: { ticketsJour: number; panier: number; points: number; heures: number; jours: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number }
+  levier: { ticketsJour: number; panier: number; points: number; heures: number; jours: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number; base: BaseChiffres }
   embauche: {
     mouvement: Mouvement['type'] | 'primes'; poste: string; categorie: Categorie; heures: number; brut: number; mois: number; index: number; nouvellesHeures: number
     salaries: number; partReversee: number; paliers: PalierPrime[] // 164 · primes
   }
   prix: { type: 'remise' | 'hausse' | 'remises'; taux: number; marge: number; cartons: number; mois: number; ca: number | null; montants: Record<CleRemise, number> }
   tresorerie: { baisse: boolean; tauxBaisse: number; de: number; a: number; depense: boolean; montantDepense: number; moisDepense: number; retard: boolean; montantRetard: number; moisRetard: number; duree: number }
-  vente_additionnelle: { univers: 'cave' | 'bar'; unSur: number; prix: number; marge: number | null }
+  vente_additionnelle: { univers: 'cave' | 'bar'; unSur: number; prix: number; marge: number | null; base: BaseChiffres }
   reste_a_faire: { mois: number; jour: number; realise: number }
   soiree: {
     nom: string; mois: number; univers: Univers; prix: number; participants: number; marge: number | null; couts: number; extras: number
@@ -187,6 +281,8 @@ type Etats = {
 // Coût d'une heure chargée des simulateurs (Joseph, 14/11/2026) : moyenne de l'équipe du magasin par défaut (repère du
 // siège si l'équipe n'est pas saisie), ou une part du SMIC, ou un montant libre.
 type ModeHeure = 'equipe' | 'smic' | 'libre'
+// 191 : tickets et panier lus en caisse (12 derniers mois clos) ou visés au budget
+type BaseChiffres = 'caisse' | 'budget'
 const HEURE = { modeHeure: 'equipe' as ModeHeure, partSmic: 1.2 }
 // Ni équipe saisie ni repère du siège : 120 % du SMIC, pour ne jamais compter une heure à 0 € (Joseph, 14/11/2026)
 const PART_SMIC_DEFAUT = 1.2
@@ -204,6 +300,17 @@ function CoutHeure({ e, valeur, equipeSaisie, repere, onChange }: {
   </>
 }
 
+// 191 : le levier et la vente additionnelle partent de la caisse (12 derniers mois clos) ou du budget
+const moisCourt = (m: string) => { const [a, mm] = m.split('-').map(Number); return `${MOIS_LONGS[mm - 1]} ${a}` }
+function BaseDesChiffres({ valeur, annee, caisse, onChange }: { valeur: BaseChiffres; annee: number; caisse: { de: string; a: string }; onChange: (v: BaseChiffres) => void }) {
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+      <Choix libelle="Tickets et panier" valeur={valeur} onChange={onChange} options={[['caisse', 'Caisse, 12 derniers mois'], ['budget', `Budget ${annee}`]]} />
+      {valeur === 'caisse' && <Typography color="text.secondary" sx={{ fontSize: '0.8125rem' }}>De {moisCourt(caisse.de)} à {moisCourt(caisse.a)}</Typography>}
+    </Box>
+  )
+}
+
 function margeUnivers(b: Budget | null, u: Univers): number | null {
   const f = b?.familles.filter((x) => x.univers === u) ?? []
   const ca = somme(f.map((x) => x.objectif))
@@ -216,7 +323,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
   const moisSuivant = annee === aujourdhui.getFullYear() ? Math.min(12, aujourdhui.getMonth() + 2) : 1
   const s = parametresSimulateurs(p)
   return {
-    levier: { ticketsJour: 1, panier: 0.5, points: 1, heures: 2, jours: 307, coutHoraire: s.coutHoraire, ...HEURE },
+    levier: { ticketsJour: 1, panier: 0.5, points: 1, heures: 2, jours: 307, coutHoraire: s.coutHoraire, ...HEURE, base: 'caisse' },
     embauche: {
       mouvement: 'embauche', poste: 'Vendeur', categorie: 'employe', heures: 35, brut: Math.round(p.charges.reduction.smicAnnuel / 12), mois: moisSuivant, index: 0, nouvellesHeures: 28,
       salaries: Math.max(1, h?.equipe?.filter((x) => x.categorie !== 'gerant_tns').length || 2), partReversee: 0,
@@ -224,7 +331,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
     },
     prix: { type: 'remise', taux: 0.1, marge: b && b.ca > 0 ? Math.round(b.tauxMarge * 100) / 100 : 0.35, cartons: 0, mois: 12, ca: null, montants: { offerts: 0, persos: 0, prixSpeciaux: 0, remises: 0, fidelite: 0 } },
     tresorerie: { baisse: true, tauxBaisse: 0.15, de: 1, a: 3, depense: false, montantDepense: 10_000, moisDepense: 6, retard: false, montantRetard: 5_000, moisRetard: 7, duree: 2 },
-    vente_additionnelle: { univers: b?.flux.cave?.objectif ? 'cave' : 'bar', unSur: 10, prix: 12, marge: null },
+    vente_additionnelle: { univers: b?.flux.cave?.objectif ? 'cave' : 'bar', unSur: 10, prix: 12, marge: null, base: 'caisse' },
     reste_a_faire: { mois: aujourdhui.getMonth() + 1, jour: aujourdhui.getDate(), realise: 0 },
     soiree: {
       nom: 'Soirée dégustation', mois: 12, univers: 'bar', prix: 25, participants: 30, marge: null, couts: 0, extras: 150,
@@ -271,16 +378,55 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   const { profil } = useAuth()
   const [params, setParams] = useSearchParams()
   const choisi = (SIMULATEURS.find((s) => s.cle === params.get('sim'))?.cle ?? 'levier') as TypeSimulation
-  const choisir = (cle: TypeSimulation) => setParams((x) => { const n = new URLSearchParams(x); n.set('sim', cle); return n }, { replace: true })
+  const choisir = (cle: TypeSimulation) => setParams((x) => { const n = new URLSearchParams(x); n.set('sim', cle); n.delete('pre'); return n }, { replace: true })
+  // 188 : les 3 derniers simulateurs ouverts par un appui, en tête
+  const [recents, setRecents] = useState<TypeSimulation[]>(() => (lire<string[]>(CLE_RECENTS) ?? []).filter((x): x is TypeSimulation => SIMULATEURS.some((y) => y.cle === x)).slice(0, 3))
+  const ouvrir = (cle: TypeSimulation) => {
+    choisir(cle)
+    const l = [cle, ...recents.filter((x) => x !== cle)].slice(0, 3)
+    setRecents(l); ecrire(CLE_RECENTS, l)
+    // Sur téléphone, la carte du simulateur vient sous les doigts
+    if (window.matchMedia('(max-width: 899.95px)').matches) requestAnimationFrame(() => document.getElementById('carte-simulation')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
   const aujourdhui = useMemo(() => new Date(), [])
   const reseauDispo = useReseauSiDispo()
   const tireusesParc = tireusesDu(equipementsDu(reseauDispo?.reseau, magasin))
-  const [etats, setEtats] = useState<Etats>(() => etatsInitiaux(b, h, p, aujourdhui, tireusesParc))
+  const initiaux = useMemo(() => etatsInitiaux(b, h, p, aujourdhui, tireusesParc), [b, h, p, aujourdhui, tireusesParc])
+  // 190 : brouillon du navigateur, simulateur par simulateur, seulement ceux qu'on a touchés (les autres suivent le budget)
+  // 194 : un lien (depuis une alerte) préremplit le simulateur ouvert (paramètre « pre »)
+  const [touches, setTouches] = useState<TypeSimulation[]>(() => {
+    const l = Object.keys(lire<Partial<Etats>>(cleBrouillon(magasin)) ?? {}).filter((k): k is TypeSimulation => k in initiaux)
+    return params.get('pre') && !l.includes(choisi) ? [...l, choisi] : l
+  })
+  const [etats, setEtats] = useState<Etats>(() => {
+    const e = { ...initiaux }
+    const brouillon = lire<Partial<Etats>>(cleBrouillon(magasin)) ?? {}
+    for (const k of Object.keys(brouillon) as TypeSimulation[]) if (k in e) (e as Record<string, unknown>)[k] = fusionner(e[k], brouillon[k])
+    let pre: unknown = null
+    try { pre = JSON.parse(params.get('pre') ?? 'null') } catch { pre = null }
+    if (pre) (e as Record<string, unknown>)[choisi] = fusionner(e[choisi], pre)
+    return e
+  })
+  useEffect(() => {
+    if (!params.get('pre')) return
+    setParams((x) => { const n = new URLSearchParams(x); n.delete('pre'); return n }, { replace: true })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const l = Object.fromEntries(touches.map((k) => [k, etats[k]]))
+    ecrire(cleBrouillon(magasin), touches.length ? l : null)
+  }, [etats, touches, magasin])
+  const toucher = (k: TypeSimulation) => setTouches((t) => (t.includes(k) ? t : [...t, k]))
+  const revenir = (k: TypeSimulation) => { setEtats((e) => ({ ...e, [k]: initiaux[k] })); setTouches((t) => t.filter((x) => x !== k)) }
+  // 191 : tickets et panier de la caisse, 12 derniers mois clos (null : pas assez de mois)
+  const caisse = useMemo(() => (reseauDispo?.reseau ? baseCaisse(chiffresDuMagasin(reseauDispo.reseau, magasin)) : null), [reseauDispo, magasin])
+  const surCaisse = (base: BaseChiffres) => (b && caisse && base === 'caisse' ? budgetSurCaisse(b, caisse, p.tvaPanier) : b)
   const heureEquipe = useMemo(() => (h?.equipe?.length ? coutHoraireEquipe(h.equipe, p.charges, h.annee, h.hausseSalaires ?? 0) : null), [h, p])
   const heure = (x: { modeHeure?: ModeHeure; partSmic: number; coutHoraire: number }) =>
     x.modeHeure === 'libre' ? x.coutHoraire : x.modeHeure === 'smic' ? coutHoraireSmic(x.partSmic, p.charges) : heureEquipe ?? (parametresSimulateurs(p).coutHoraire || coutHoraireSmic(PART_SMIC_DEFAUT, p.charges))
-  const maj = <K extends keyof Etats>(k: K, v: Partial<Etats[K]>) => setEtats((e) => ({ ...e, [k]: { ...e[k], ...v } }))
+  const maj = <K extends keyof Etats>(k: K, v: Partial<Etats[K]>) => { toucher(k); setEtats((e) => ({ ...e, [k]: { ...e[k], ...v } })) }
   const [gardees, setGardees] = useState<SimulationGardee[] | null>(null)
+  const [compares, setCompares] = useState<number[]>([]) // 192 : 2 ou 3 simulations gardées côte à côte
+  const comparees = compares.map((id) => gardees?.find((g) => g.id === id)).filter((g): g is SimulationGardee => !!g)
   const [nom, setNom] = useState('')
   const [message, setMessage] = useState<{ texte: string; bon: boolean } | null>(null)
   const [occupe, setOccupe] = useState(false)
@@ -310,7 +456,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   if (!sansBudget && choisi === 'levier' && b) {
     const e = etats.levier
     const coutHeure = heure(e)
-    const lignes = meilleursLeviers(b, p, { ticketsJour: e.ticketsJour, panierTTC: e.panier, pointsMarge: e.points, heuresSemaine: e.heures, coutHeure, joursParAn: e.jours })
+    const lignes = meilleursLeviers(surCaisse(e.base) ?? b, p, { ticketsJour: e.ticketsJour, panierTTC: e.panier, pointsMarge: e.points, heuresSemaine: e.heures, coutHeure, joursParAn: e.jours })
     const titreLigne = (c: CleLevier) => ({
       tickets_cave: `${unChiffre(e.ticketsJour)} ticket${e.ticketsJour > 1 ? 's' : ''} de plus par jour en Cave`,
       tickets_bar: `${unChiffre(e.ticketsJour)} ticket${e.ticketsJour > 1 ? 's' : ''} de plus par jour au Bar`,
@@ -322,10 +468,11 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     saisies = (
       <Stack spacing={2}>
         <Saisies>
-          <Montant libelle="Tickets de plus par jour" valeur={e.ticketsJour} onChange={(v) => maj('levier', { ticketsJour: Math.max(0, v) })} unite="" />
-          <Montant libelle="Euros de plus par panier, TTC" valeur={e.panier} onChange={(v) => maj('levier', { panier: Math.max(0, v) })} />
-          <Montant libelle="Points de marge en plus" valeur={e.points} onChange={(v) => maj('levier', { points: Math.max(0, v) })} unite="pt" />
-          <Montant libelle="Heures payées de moins par semaine" valeur={e.heures} onChange={(v) => maj('levier', { heures: Math.max(0, v) })} unite="h" />
+          {caisse && <BaseDesChiffres valeur={e.base} annee={annee} caisse={caisse} onChange={(base) => maj('levier', { base })} />}
+          <Montant libelle="Tickets de plus par jour" valeur={e.ticketsJour} onChange={(v) => maj('levier', { ticketsJour: Math.max(0, v) })} unite="" pas={1} />
+          <Montant libelle="Euros de plus par panier, TTC" valeur={e.panier} onChange={(v) => maj('levier', { panier: Math.max(0, v) })} pas={0.5} />
+          <Montant libelle="Points de marge en plus" valeur={e.points} onChange={(v) => maj('levier', { points: Math.max(0, v) })} unite="pt" pas={0.5} />
+          <Montant libelle="Heures payées de moins par semaine" valeur={e.heures} onChange={(v) => maj('levier', { heures: Math.max(0, v) })} unite="h" pas={1} />
           <Montant libelle="Jours d’ouverture par an" valeur={e.jours} onChange={(v) => maj('levier', { jours: Math.min(366, Math.max(1, Math.round(v))) })} unite="j" />
         </Saisies>
         <Saisies><CoutHeure e={e} valeur={coutHeure} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('levier', v)} /></Saisies>
@@ -373,7 +520,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         {e.mouvement === 'primes' ? (
           <Stack spacing={1.5}>
             <Saisies>
-              <Montant libelle="Salariés concernés" valeur={e.salaries} onChange={(v) => maj('embauche', { salaries: Math.max(0, Math.round(v)) })} unite="" />
+              <Montant libelle="Salariés concernés" valeur={e.salaries} onChange={(v) => maj('embauche', { salaries: Math.max(0, Math.round(v)) })} unite="" source={!!h?.equipe?.length && e.salaries === initiaux.embauche.salaries && 'équipe'} />
               <Taux libelle="Part de la progression reversée" valeur={e.partReversee} onChange={(v) => maj('embauche', { partReversee: v })} />
             </Saisies>
             {e.paliers.map((l, i) => (
@@ -518,7 +665,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         <Saisies>
           <Choix libelle="Je regarde" valeur={e.type} onChange={(v) => maj('prix', { type: v })} options={[['remise', 'Une remise'], ['hausse', 'Une hausse de prix'], ['remises', 'Remises et offerts']]} />
           <Taux libelle={e.type === 'remise' ? 'Remise' : 'Hausse'} valeur={e.taux} onChange={(v) => maj('prix', { taux: v })} />
-          <Taux libelle="Taux de marge du produit" valeur={e.marge} onChange={(v) => maj('prix', { marge: v })} />
+          <Taux libelle="Taux de marge du produit" valeur={e.marge} onChange={(v) => maj('prix', { marge: v })} source={!!b && b.ca > 0 && e.marge === initiaux.prix.marge && 'budget'} />
           {e.type === 'remise' && <Montant libelle="Cartons vendus d’habitude" valeur={e.cartons} onChange={(v) => maj('prix', { cartons: Math.max(0, Math.round(v)) })} unite="" />}
         </Saisies>
         {e.type === 'remise' && (
@@ -606,13 +753,14 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const universDispo = (['cave', 'bar'] as const).filter((u) => (b.flux[u]?.objectif ?? 0) > 0)
     const u = universDispo.includes(e.univers) ? e.univers : universDispo[0]
     const margeU = u ? margeUnivers(b, u) ?? 0 : 0
-    const r = u ? simulerVenteAdditionnelle(b, p, { univers: u, unSur: e.unSur, prixTTC: e.prix, tauxMarge: e.marge ?? margeU }) : null
+    const r = u ? simulerVenteAdditionnelle(surCaisse(e.base) ?? b, p, { univers: u, unSur: e.unSur, prixTTC: e.prix, tauxMarge: e.marge ?? margeU }) : null
     saisies = u ? (
       <Saisies>
         {universDispo.length > 1 && <Choix libelle="Univers" valeur={u} onChange={(v) => maj('vente_additionnelle', { univers: v })} options={[['cave', 'Cave'], ['bar', 'Bar']]} />}
-        <Montant libelle="Un client sur" valeur={e.unSur} onChange={(v) => maj('vente_additionnelle', { unSur: Math.max(1, Math.round(v)) })} unite="" />
-        <Montant libelle="Prix de l’article TTC" valeur={e.prix} onChange={(v) => maj('vente_additionnelle', { prix: v })} />
-        <Taux libelle="Taux de marge de l’article" valeur={e.marge ?? margeU} onChange={(v) => maj('vente_additionnelle', { marge: v })} />
+        {caisse && <BaseDesChiffres valeur={e.base} annee={annee} caisse={caisse} onChange={(base) => maj('vente_additionnelle', { base })} />}
+        <Montant libelle="Un client sur" valeur={e.unSur} onChange={(v) => maj('vente_additionnelle', { unSur: Math.max(1, Math.round(v)) })} unite="" pas={1} min={1} />
+        <Montant libelle="Prix de l’article TTC" valeur={e.prix} onChange={(v) => maj('vente_additionnelle', { prix: v })} pas={1} />
+        <Taux libelle="Taux de marge de l’article" valeur={e.marge ?? margeU} onChange={(v) => maj('vente_additionnelle', { marge: v })} source={e.marge === null && u && margeUnivers(b, u) !== null && 'budget'} />
       </Saisies>
     ) : <EtatVide titre="Pas de tickets visés au budget" texte="La vente additionnelle part des tickets de la Cave ou du Bar visés au budget. Ils arrivent avec la proposition du siège." />
     if (r) {
@@ -667,8 +815,8 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         </Saisies>
         <Saisies>
           <Montant libelle="Prix par participant TTC" valeur={e.prix} onChange={(v) => maj('soiree', { prix: v })} />
-          <Montant libelle="Participants attendus" valeur={e.participants} onChange={(v) => maj('soiree', { participants: Math.round(v) })} unite="" />
-          <Taux libelle="Taux de marge" valeur={e.marge ?? margeU} onChange={(v) => maj('soiree', { marge: v })} />
+          <Montant libelle="Participants attendus" valeur={e.participants} onChange={(v) => maj('soiree', { participants: Math.round(v) })} unite="" pas={5} />
+          <Taux libelle="Taux de marge" valeur={e.marge ?? margeU} onChange={(v) => maj('soiree', { marge: v })} source={e.marge === null && margeUnivers(b, e.univers) !== null && 'budget'} />
         </Saisies>
         <Typography component="h3" sx={{ fontWeight: 700 }}>Achats des participants</Typography>
         <Saisies>
@@ -824,7 +972,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Montant libelle="Prix de vente du fût HT" valeur={e.prixVente} onChange={m('prixVente')} />
           <Montant libelle="Remise accordée HT" valeur={e.remise} onChange={m('remise')} />
           <Montant libelle="Prix d’achat du fût HT" valeur={e.prixAchat} onChange={m('prixAchat')} />
-          <Montant libelle="CO2 par fût HT" valeur={e.co2} onChange={m('co2')} />
+          <Montant libelle="CO2 par fût HT" valeur={e.co2} onChange={m('co2')} source={e.co2 > 0 && e.co2 === initiaux.exterieur.co2 && 'siège'} />
           <Montant libelle="Gobelets par fût HT" valeur={e.gobelets} onChange={m('gobelets')} />
         </Saisies>
         <Typography component="h3" sx={{ fontWeight: 700 }}>Tireuse et livraisons</Typography>
@@ -836,7 +984,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         <Saisies>
           <Montant libelle="Livraisons par an" valeur={e.livraisons} onChange={(v) => maj('exterieur', { livraisons: Math.round(v) })} unite="" />
           <Montant libelle="Kilomètres aller-retour" valeur={e.km} onChange={m('km')} unite="km" />
-          <Montant libelle="Prix du kilomètre HT" valeur={e.prixKm} onChange={m('prixKm')} unite="€/km" />
+          <Montant libelle="Prix du kilomètre HT" valeur={e.prixKm} onChange={m('prixKm')} unite="€/km" source={e.prixKm > 0 && e.prixKm === initiaux.exterieur.prixKm && 'siège'} />
           <Montant libelle="Heures par livraison" valeur={e.heures} onChange={m('heures')} unite="h" />
           <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('exterieur', v)} />
           <Montant libelle="Livraison facturée HT" valeur={prixLivraison} onChange={(v) => maj('exterieur', { prixLivraison: v })} />
@@ -906,7 +1054,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     saisies = (
       <Stack spacing={2}>
         <Saisies>
-          <Montant libelle="Tireuses" valeur={e.tireuses} onChange={(v) => maj('tireuses', { tireuses: Math.round(v) })} unite="" />
+          <Montant libelle="Tireuses" valeur={e.tireuses} onChange={(v) => maj('tireuses', { tireuses: Math.round(v) })} unite="" source={tireusesParc !== null && e.tireuses === tireusesParc && 'équipements'} />
           <Montant libelle="Week-ends de saison" valeur={e.semaines} onChange={(v) => maj('tireuses', { semaines: Math.min(52, Math.max(0, Math.round(v))) })} unite="" />
           <Choix libelle="Occupation" valeur={e.saisie} onChange={(v) => maj('tireuses', { saisie: v })} options={[['occupation', 'En part des week-ends'], ['sorties', 'En sorties de l’année']]} />
         </Saisies>
@@ -1198,8 +1346,8 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Choix libelle="Jour" valeur={e.jour} onChange={(v) => maj('ouverture', { jour: v })} options={[['dimanche', 'Un dimanche'], ['ferie', 'Un jour férié']]} />
           <Montant libelle="CA HT attendu au bar" valeur={e.caBar} onChange={(v) => maj('ouverture', { caBar: v })} />
           <Montant libelle="CA HT attendu en cave" valeur={e.caCave} onChange={(v) => maj('ouverture', { caCave: v })} />
-          <Taux libelle="Marge du bar" valeur={mBar} onChange={(v) => maj('ouverture', { margeBar: v })} />
-          <Taux libelle="Marge de la cave" valeur={mCave} onChange={(v) => maj('ouverture', { margeCave: v })} />
+          <Taux libelle="Marge du bar" valeur={mBar} onChange={(v) => maj('ouverture', { margeBar: v })} source={e.margeBar === null && margeUnivers(b, 'bar') !== null && 'budget'} />
+          <Taux libelle="Marge de la cave" valeur={mCave} onChange={(v) => maj('ouverture', { margeCave: v })} source={e.margeCave === null && margeUnivers(b, 'cave') !== null && 'budget'} />
           <Taux libelle="Part qui serait venue un autre jour" valeur={e.report} onChange={(v) => maj('ouverture', { report: v })} />
         </Saisies>
         <Saisies>
@@ -1224,7 +1372,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   const garder = async () => {
     setOccupe(true); setMessage(null)
     try {
-      await garderSimulation(magasin, choisi, nom.trim() || nomParDefaut, { ...etats[choisi] } as Record<string, unknown>, phrase)
+      await garderSimulation(magasin, choisi, nom.trim() || nomParDefaut, { ...etats[choisi], _indicateurs: indicateursDe(resultats).slice(0, 12) } as Record<string, unknown>, phrase)
       setNom(''); setMessage({ texte: 'Simulation gardée.', bon: true })
       await recharger()
     } catch (e) {
@@ -1244,7 +1392,8 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     // Simulation gardée avant le choix du coût horaire : son montant saisi reste en montant libre
     const d = g.donnees as Record<string, unknown>
     const donnees = 'coutHoraire' in d && !('modeHeure' in d) ? { ...d, modeHeure: 'libre' } : d
-    setEtats((e) => ({ ...e, [g.type]: { ...e[g.type], ...donnees } }))
+    setEtats((e) => ({ ...e, [g.type]: fusionner(e[g.type], donnees) }))
+    toucher(g.type)
     choisir(g.type)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -1252,22 +1401,36 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     try { await retirerSimulation(g.id); await recharger() } catch { setMessage({ texte: 'La simulation n’a pas été retirée. Vérifie ta connexion, puis réessaie.', bon: false }) }
   }
 
+  const tuile = (x: (typeof SIMULATEURS)[number]) => {
+    const actif = x.cle === choisi
+    return (
+      <ButtonBase key={x.cle} onClick={() => ouvrir(x.cle)} aria-current={actif ? 'true' : undefined} focusRipple
+        sx={{ justifyContent: 'flex-start', textAlign: 'left', gap: 1, px: 1, py: 0.75, minHeight: 52, borderRadius: '10px', border: 2, borderColor: actif ? 'text.primary' : 'divider', bgcolor: 'background.paper', minWidth: 0 }}>
+        <Box sx={{ display: 'grid', placeItems: 'center', width: 34, height: 34, borderRadius: '8px', flex: 'none', bgcolor: actif ? 'secondary.main' : 'action.hover', color: actif ? 'secondary.contrastText' : 'text.primary', '& svg': { fontSize: 20 } }}>{x.icone}</Box>
+        <Typography sx={{ fontWeight: 700, fontSize: '0.9375rem', lineHeight: 1.25, minWidth: 0 }}>{x.titre}</Typography>
+      </ButtonBase>
+    )
+  }
   return (
     <Stack spacing={3} component="section" aria-label="Simulateurs" id="partie-simulateurs">
-      <Box component="nav" aria-label="Choisir un simulateur" sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' } }}>
-        {SIMULATEURS.map((x) => {
-          const actif = x.cle === choisi
-          return (
-            <ButtonBase key={x.cle} onClick={() => choisir(x.cle)} aria-current={actif ? 'true' : undefined} focusRipple
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', gap: 1.5, p: 1.5, minHeight: 64, borderRadius: '12px', border: 2, borderColor: actif ? 'text.primary' : 'divider', bgcolor: 'background.paper' }}>
-              <Box sx={{ display: 'grid', placeItems: 'center', width: 40, height: 40, borderRadius: '10px', flex: 'none', bgcolor: actif ? 'secondary.main' : 'action.hover', color: actif ? 'secondary.contrastText' : 'text.primary' }}>{x.icone}</Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ fontWeight: 700, fontSize: '1rem' }}>{x.titre}</Typography>
-                <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>{x.question}</Typography>
-              </Box>
-            </ButtonBase>
-          )
-        })}
+      {recents.length > 0 && (
+        <Box component="nav" aria-label="Derniers simulateurs utilisés" className="pas-a-l-impression" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Typography color="text.secondary" sx={{ fontSize: '0.875rem', mr: 0.5 }}>Derniers utilisés</Typography>
+          {recents.map((c) => {
+            const x = SIMULATEURS.find((y) => y.cle === c)!
+            return <Button key={c} size="small" variant={c === choisi ? 'contained' : 'outlined'} color="inherit" startIcon={x.icone} onClick={() => ouvrir(c)} sx={{ minHeight: 48, borderRadius: '24px', textTransform: 'none' }}>{x.titre}</Button>
+          })}
+        </Box>
+      )}
+      <Box component="nav" aria-label="Choisir un simulateur" className="pas-a-l-impression" sx={{ display: 'grid', columnGap: 2, rowGap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' } }}>
+        {FAMILLES.map(([f, libelle]) => (
+          <Box key={f} component="section" aria-label={libelle} sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0 }}>
+            <Typography component="h3" sx={{ fontSize: '0.8125rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{libelle}</Typography>
+            <Box sx={{ display: 'grid', gap: 0.75, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(2, minmax(0, 1fr))', xl: '1fr' } }}>
+              {SIMULATEURS.filter((x) => FAMILLE_DE[x.cle] === f).map(tuile)}
+            </Box>
+          </Box>
+        ))}
       </Box>
 
       <GlobalStyles styles={{ '@media print': {
@@ -1275,10 +1438,18 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         'body.simulation-seule #carte-simulation, body.simulation-seule #carte-simulation *': { visibility: 'visible' },
         'body.simulation-seule #carte-simulation': { position: 'absolute', left: 0, top: 0, width: '100%', border: 'none !important' },
       } }} />
-      <Card id="carte-simulation" sx={{ p: { xs: 2, md: 3 }, borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Typography variant="h2">{simulateur.titre}<Box component="span" className="impression-seule"> · {magasin} · {aujourdhui.toLocaleDateString('fr-FR')}</Box></Typography>
-          <Aide sujet={simulateur.aide} />
+      <Card id="carte-simulation" sx={{ p: { xs: 2, md: 3 }, borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: 2.5, overflow: 'visible', scrollMarginTop: { xs: 72, md: 'calc(var(--onglets, 0px) + 8px)' } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', order: { md: -2 } }}>
+          <Box sx={{ flex: '1 1 240px', minWidth: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Typography variant="h2">{simulateur.titre}<Box component="span" className="impression-seule"> · {magasin} · {aujourdhui.toLocaleDateString('fr-FR')}</Box></Typography>
+              <Aide sujet={simulateur.aide} />
+            </Box>
+            <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>{simulateur.question}</Typography>
+          </Box>
+          {touches.includes(choisi) && (
+            <Button color="inherit" className="pas-a-l-impression" startIcon={<RestartAltOutlined />} onClick={() => revenir(choisi)} sx={{ minHeight: 48 }}>Revenir aux valeurs du magasin</Button>
+          )}
         </Box>
         {sansBudget ? (
           <EtatVide titre={`Le budget ${annee} n’est pas encore proposé`} texte="Ce simulateur part du budget de l’année du magasin. Les autres simulateurs (promo, soirée, achat en volume, investissement, extérieur, pression, prix) marchent déjà." />
@@ -1286,7 +1457,16 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <>
             {saisies}
             {resultats}
-            {phrase && <Typography role="status" sx={{ fontWeight: 600, fontSize: '1rem', maxWidth: '75ch' }}>{phrase}</Typography>}
+            {/* 189 : le résultat reste en vue pendant la saisie, en haut de la carte sur PC, en bas de l'écran sur téléphone */}
+            {phrase && (
+              <Box role="status" sx={{
+                order: { md: -1 }, position: 'sticky', zIndex: 2, top: { xs: 'auto', md: 'calc(var(--onglets, 0px) + 8px)' }, bottom: { xs: 'calc(var(--barre-basse, 0px) + 8px)', md: 'auto' },
+                bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderLeft: 4, borderLeftColor: 'secondary.main', borderRadius: '10px', boxShadow: 3, px: 2, py: 1.25,
+                '@media print': { position: 'static', boxShadow: 'none' },
+              }}>
+                <Typography sx={{ fontWeight: 600, fontSize: '1rem', maxWidth: '75ch' }}>{phrase}</Typography>
+              </Box>
+            )}
             {phrase && (
               <Box className="pas-a-l-impression" sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-end', pt: 1, borderTop: 1, borderColor: 'divider' }}>
                 {peutGarder && gardees !== null && simulateur.gardable !== false && (
@@ -1315,6 +1495,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       {gardees !== null && (
         <Stack spacing={1.5} component="section" aria-label="Simulations gardées">
           <Typography variant="h2">Simulations gardées</Typography>
+          {comparees.length >= 2 && <Comparaison simulations={comparees} />}
           {gardees.length === 0 ? (
             <EtatVide titre="Aucune simulation gardée" texte="Une simulation gardée reste ici, avec son résultat, pour en reparler avec ton Coach ou ton franchisé." />
           ) : (
@@ -1327,6 +1508,12 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
                       <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>{libelleSimulation(g.type)} · {g.auteurNom ?? 'Siège'} · {dateHeure(g.creeLe)}</Typography>
                       {g.resume && <Typography sx={{ fontSize: '0.875rem', mt: 0.5 }}>{g.resume}</Typography>}
                     </Box>
+                    {gardees.length > 1 && (
+                      <FormControlLabel label="Comparer" sx={{ minHeight: 48, mr: 0 }} control={
+                        <Checkbox sx={{ width: 48, height: 48 }} checked={compares.includes(g.id)} disabled={!compares.includes(g.id) && compares.length >= 3}
+                          onChange={(x) => setCompares((l) => (x.target.checked ? [...l, g.id] : l.filter((y) => y !== g.id)))} slotProps={{ input: { 'aria-label': `Comparer ${g.nom}` } }} />
+                      } />
+                    )}
                     <Button startIcon={<ReplayOutlined />} onClick={() => rouvrir(g)} sx={{ minHeight: 48 }}>Rouvrir</Button>
                     {(g.auteur === profil?.id || profil?.role === 'directeur') && !profil?.apercu && (
                       <Button color="inherit" startIcon={<DeleteOutlineOutlined />} onClick={() => void retirer(g)} aria-label={`Retirer ${g.nom}`} sx={{ minHeight: 48 }}>Retirer</Button>

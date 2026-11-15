@@ -55,7 +55,15 @@ test('fiche magasin : ses alertes en tête de la synthèse', async ({ page }) =>
   await page.getByText(MAGASINS[0], { exact: true }).last().click()
   const alertes = page.getByRole('region', { name: 'Alertes' })
   await expect(alertes.getByRole('heading')).toHaveText('2 alertes')
-  await expect(alertes.getByRole('link')).toHaveCount(0)
+  // Pas de lien vers le magasin sur sa propre fiche ; 194 : chaque alerte ouvre le simulateur qui chiffre la réponse
+  await expect(alertes.getByRole('link', { name: /^Simuler/ })).toHaveCount(2)
+  await expect(alertes.getByRole('link').filter({ hasNotText: 'Simuler' })).toHaveCount(0)
+  await alertes.getByRole('link', { name: /^Simuler : Taux de marge/ }).click()
+  await expect(page.getByRole('heading', { name: 'Mon meilleur levier' })).toBeVisible()
+  // 4 points perdus sur l'an dernier : le levier part de 4 points de marge, le lien ne reste pas dans l'adresse
+  await expect(page.getByRole('textbox', { name: 'Points de marge en plus' })).toHaveValue('4')
+  await expect(page).not.toHaveURL(/pre=/)
+  await expect(page.getByRole('button', { name: 'Revenir aux valeurs du magasin' })).toBeVisible()
 })
 
 test('paramètres réseau : le Directeur règle les seuils, les alertes suivent', async ({ page, isMobile }) => {

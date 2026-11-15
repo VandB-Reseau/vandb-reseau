@@ -65,6 +65,8 @@ test('franchisé : le menu ouvre les simulateurs de son magasin ; embauche chiff
   const ecrite = ecritures.find((e) => e.table === 'simulations' && e.methode === 'POST')?.corps as Record<string, unknown>
   expect(ecrite).toMatchObject({ store_name: NOM, type: 'embauche', nom: 'Vendeur pour Noël', donnees: { mouvement: 'embauche', brut: 2_000, heures: 35 } })
   expect(String(ecrite.resume)).toMatch(/^Embauche Vendeur 35 h en janvier : coûte/)
+  // 192 : ses chiffres clés partent avec elle, pour la comparer plus tard
+  expect((ecrite.donnees as { _indicateurs: { libelle: string }[] })._indicateurs.map((x) => x.libelle)).toContain('CA HT en plus pour le payer')
   await expect(liste).toContainText('Vendeur pour Noël')
 
   await liste.getByRole('listitem').filter({ hasText: 'Précommande de Noël' }).getByRole('button', { name: 'Rouvrir' }).click()
