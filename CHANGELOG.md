@@ -9,6 +9,15 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateurs plus fluides, choix 188 à 192, 194 et 195 (Joseph, 15/11/2026), sans migration. 188 : les 14 simulateurs
+  en 4 familles (Vendre plus, Événements et extérieur, Équipe, Investir et trésorerie), boutons compacts, les 3 derniers
+  utilisés en tête ; sur téléphone, la carte vient sous les doigts. 189 : la phrase de résultat reste en vue (en haut de la
+  carte sur PC, en bas de l'écran sur téléphone). 190 : saisies gardées dans le navigateur, simulateur par simulateur,
+  « Revenir aux valeurs du magasin ». 191 : source des chiffres préremplis (budget, caisse, équipe, équipements, siège) ;
+  « Mon meilleur levier » et « Vente additionnelle » partent des tickets et du panier de la caisse sur les 12 derniers mois
+  clos (ou du budget, au choix). 192 : 2 ou 3 simulations gardées comparées côte à côte (chiffres clés gardés avec la
+  simulation). 194 : bouton « Simuler » sur les alertes (panier, marge, CA, tickets, trésorerie), simulateur prérempli de
+  l'écart. 195 : boutons − et + sur téléphone pour les valeurs qu'on ajuste souvent.
 - Pilotage du franchisé, choix 183 à 185 (Joseph, 15/11/2026). **Migration à passer : `0047_operations_mesure_priorites.sql`.**
   183 « Mon meilleur levier », en tête des simulateurs : pour un même petit effort (tickets par jour, euros par panier,
   point de marge, heures en moins), l'EBE gagné par levier, du plus au moins rentable. 184 « En faire une priorité »

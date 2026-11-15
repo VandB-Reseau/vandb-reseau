@@ -48,6 +48,23 @@ const ongletDe = (a: Alerte) => (a.type === 'reel' ? 'reel' : a.type === 'tresor
 
 const PREMIERES = 6
 
+// 194 (Joseph, 15/11/2026) : de l'alerte au simulateur qui chiffre la réponse, prérempli avec l'écart
+// Panier : 1 article à 12 € TTC vendu à 1 client sur N rattrape la baisse ; marge : les points perdus ; CA et tickets : le
+// meilleur levier ; trésorerie : le coup dur. Le réel en retard n'a pas de simulateur.
+export function lienSimulateur(a: Alerte): string | null {
+  const sim = (cle: string, pre?: object) => `/magasins/${encodeURIComponent(a.magasin)}?vue=simulateurs&partie=simulateurs&sim=${cle}${pre ? `&pre=${encodeURIComponent(JSON.stringify(pre))}` : ''}`
+  switch (a.type) {
+    case 'panier': {
+      const manque = a.panier / (1 + a.ecart) - a.panier
+      return sim('vente_additionnelle', { univers: a.univers, prix: 12, unSur: manque > 0 ? Math.max(1, Math.round(12 / manque)) : 10 })
+    }
+    case 'marge': return sim('levier', { points: Math.max(0.5, Math.round(-a.ecart * 1000) / 10) })
+    case 'ca': case 'tickets': return sim('levier')
+    case 'tresorerie': return sim('tresorerie')
+    case 'reel': return null
+  }
+}
+
 // Alertes des magasins : filtre par type, les plus graves d'abord. Sur une fiche magasin (unMagasin), sans nom ni filtre.
 export function AlertesMagasins({ alertes, etat, unMagasin, siVide = true, agir, actions: fournies }: {
   alertes: Alerte[]
@@ -100,6 +117,9 @@ export function AlertesMagasins({ alertes, etat, unMagasin, siVide = true, agir,
               <Typography component="span">{texteAlerte(a)}</Typography>
               {suivie(a) && <Chip size="small" label="Action en cours" color="primary" variant="outlined" />}
             </Box>
+            {lienSimulateur(a) && (
+              <Button component={RouterLink} to={lienSimulateur(a)!} sx={{ minHeight: 48 }} aria-label={`Simuler : ${texteAlerte(a)}`}>Simuler</Button>
+            )}
             {agir && (
               <Button onClick={() => agir(a)} sx={{ minHeight: 48 }} aria-label={`Agir : ${texteAlerte(a)}`}>Agir</Button>
             )}
