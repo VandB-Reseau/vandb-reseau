@@ -81,7 +81,7 @@ test('une tâche se relie à une priorité du plan, créée au passage avec son 
 })
 
 // Joseph (13/11/2026) : bonne pratique depuis le « + » du magasin, visible dans son activité ; onglet Nine box avec l'évolution
-test('le « + » du magasin ajoute une bonne pratique, qui a son filtre dans l’activité', async ({ page, isMobile }) => {
+test('le « + » du magasin ajoute une bonne pratique, rangée dans le fil de l’activité', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
   await page.getByRole('main').getByRole('button', { name: 'Ajouter', exact: true }).first().click()
@@ -91,7 +91,8 @@ test('le « + » du magasin ajoute une bonne pratique, qui a son filtre dans l�
   await expect(d.getByRole('combobox', { name: 'Magasin' }).or(d.getByLabel('Magasin')).first()).toHaveValue('Lyon Test')
   await page.keyboard.press('Escape')
   await page.goto('./#/magasins/Lyon%20Test?vue=activite')
-  await expect(page.getByRole('group', { name: 'Filtrer l’activité' }).getByRole('button', { name: 'Bonnes pratiques', exact: true })).toBeVisible()
+  // Choix 199 (15/11/2026) : plus de filtre à part, les bonnes pratiques sont dans le fil
+  await expect(page.getByRole('group', { name: 'Filtrer l’activité' }).getByRole('button', { name: 'Bonnes pratiques', exact: true })).toHaveCount(0)
   // (zones tactiles : le fil d'activité a des liens courts déjà connus, hors de ce lot)
   expect(await textesTropPetits(page)).toEqual([])
 })

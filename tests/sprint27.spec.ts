@@ -73,6 +73,7 @@ test('F3 : les concurrents à 2 km de la fiche magasin, complétés par l’équ
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ...NOE, ecritures, persister: true })
   await page.goto('./#/magasins/Lyon%20Test')
+  await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
   const liste = page.getByRole('list', { name: 'Concurrents de Lyon Test' })
   await expect(liste.getByRole('listitem')).toHaveCount(2)
   await expect(liste.getByRole('listitem').nth(0)).toContainText('Cave Fictive du Centre')
@@ -126,6 +127,7 @@ test('F3 : les concurrents à 2 km de la fiche magasin, complétés par l’équ
 test('F3 : la carte des commerces ne répond pas', async ({ page }) => {
   await seConnecter(page, { overpass: 'panne' })
   await page.goto('./#/magasins/Lyon%20Test')
+  await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
   await expect(page.getByText('La carte des commerces ne répond pas pour le moment.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Réessayer' })).toBeVisible()
 })
@@ -133,6 +135,7 @@ test('F3 : la carte des commerces ne répond pas', async ({ page }) => {
 test('F3 : serveur principal saturé, la liste vient d’un miroir', async ({ page }) => {
   await seConnecter(page, { overpass: 'principalSature' })
   await page.goto('./#/magasins/Lyon%20Test')
+  await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
   const liste = page.getByRole('list', { name: 'Concurrents de Lyon Test' })
   await expect(liste.getByRole('listitem')).toHaveCount(2)
   await expect(page.getByText('La carte des commerces ne répond pas pour le moment.')).toHaveCount(0)
@@ -143,6 +146,7 @@ test('F3 : la liste lue sur la carte est gardée pour toute l’équipe', async 
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ...NOE, ecritures })
   await page.goto('./#/magasins/Lyon%20Test')
+  await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
   await expect(page.getByRole('list', { name: 'Concurrents de Lyon Test' }).getByRole('listitem')).toHaveCount(2)
   await expect.poll(() => suiviEcrit(ecritures, 'concurrents_magasins')?.['Lyon Test']?.lus?.liste?.map((c: { nom: string }) => c.nom))
     .toEqual(['Cave Fictive du Centre', 'Spiritueux Simulés'])
@@ -154,6 +158,7 @@ test('F3 : carte en panne, la liste de l’équipe s’affiche', async ({ page }
   page.on('request', (r) => { if (/overpass/.test(r.url())) appels++ })
   await seConnecter(page, { overpass: 'panne', config: { concurrents_magasins: { 'Lyon Test': { ajoutes: [], masques: [], notes: {}, lus } } } })
   await page.goto('./#/magasins/Lyon%20Test')
+  await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
   const liste = page.getByRole('list', { name: 'Concurrents de Lyon Test' })
   await expect(liste).toContainText('Cave Déjà Connue')
   await expect(liste).toContainText('450 m')
@@ -166,6 +171,7 @@ test('F3 : magasin placé au centre de son département, pas de recherche à 2 k
   page.on('request', (r) => { if (/overpass/.test(r.url())) appels++ })
   await seConnecter(page, { magasinsEnPlus: [{ ...magasinsFictifs[0], n: 'Approx Test', addr: '', cp: '', ville: '', lat: 45.7, lon: 4.8, geo: 'dept' } as (typeof magasinsFictifs)[number]] })
   await page.goto('./#/magasins/Approx%20Test')
+  await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
   await expect(page.getByText('Le magasin n’est placé qu’au centre de son département', { exact: false })).toBeVisible()
   expect(appels).toBe(0)
 })

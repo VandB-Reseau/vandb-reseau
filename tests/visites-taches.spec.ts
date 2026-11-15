@@ -41,7 +41,7 @@ test('79A et fiche : un seul bouton Visite, « + » regroupe tâche, visite non 
   await page.goto('./#/magasins/Lyon%20Test')
   const visite = page.getByRole('link', { name: 'Planifier la visite : Lyon Test' })
   await expect(visite).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Prochaines étapes' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'À faire maintenant' })).toBeVisible()
   await page.getByRole('button', { name: 'Ajouter', exact: true }).click()
   const menu = page.getByRole('menu')
   for (const n of ['Tâche', 'Visite non prévue', 'Appel', 'Note']) await expect(menu.getByRole('menuitem', { name: n })).toBeVisible()
@@ -52,7 +52,7 @@ test('79A et fiche : un seul bouton Visite, « + » regroupe tâche, visite non 
   await page.keyboard.press('Escape')
   // Activité : plus de boutons en double
   await page.goto('./#/magasins/Lyon%20Test?vue=activite')
-  await expect(page.getByRole('heading', { name: 'À venir' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'À faire', exact: true })).toBeVisible()
   await expect(page.getByRole('main').getByRole('button', { name: 'Ajouter une tâche' })).toHaveCount(0)
   await lisible(page)
   await visite.click()

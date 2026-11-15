@@ -9,6 +9,15 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin repensée, choix 196 à 203 (Joseph, 15/11/2026), sans migration. 196 : sous les indicateurs, une seule
+  bande « À faire maintenant » (visite, tâches en retard, prochaine échéance) ; les raccourcis Budget et Clôture du mois
+  sont retirés. 197 : chaque objectif tient sur une ligne (jauge, statut, nombre de priorités) et se déplie au clic.
+  198 : Activité en deux colonnes sur PC, « À faire » (visites prévues, tâches, campagnes repliées) à gauche, le fil à
+  droite. 199 : filtres Tout / Visites / Tâches / Notes et journal ; audits, visites et réunions dans une seule carte ;
+  les bonnes pratiques restent dans le fil. 200 : Exploitation, Équipements et Concurrents repliés, carte Google réduite
+  dans le bloc Magasin. 201 : une tâche rattachée à une priorité vit sous la priorité, les autres dans « À faire ».
+  202 : magasin précédent / suivant (au bout du fil d'Ariane sur PC, dans « ⋯ » sur téléphone), dans la liste filtrée
+  de Magasins. 203 : la fiche rouvre le dernier onglet et le dernier filtre de l'Activité.
 - Simulateurs structurés pour guider la réflexion (Joseph, 15/11/2026), sans migration. Les 14 simulateurs suivent la même
   trame : étapes numérotées dans des blocs encadrés (point de départ, ce qu'on change, recettes, coûts), chacune avec son
   sous-total, puis un bloc « Résultat ». Contrat extérieur, soirée et dimanche ou jour férié ont leur compte, du CA (ou de

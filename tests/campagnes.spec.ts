@@ -82,7 +82,7 @@ test('constater une campagne depuis la fiche magasin et pendant une visite', asy
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, config: { campagnes } })
   await page.goto(`./#/magasins/${encodeURIComponent('Nantes Test')}?vue=campagnes`)
-  // Vague 3 (23A) : les campagnes sont dans « À venir » de l'activité
+  // Vague 3 (23A) : les campagnes sont dans « À faire » de l'activité ; repliées (198), ouvertes par l'ancien lien
   const section = page.locator('#partie-campagnes')
   await expect(section.getByText('Noël 2026')).toBeVisible()
   await expect(section.getByRole('button', { name: 'Noël 2026, Vitrine posée : pas fait' })).toHaveAttribute('aria-pressed', 'true')

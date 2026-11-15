@@ -10,6 +10,8 @@ import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import AddOutlined from '@mui/icons-material/AddOutlined'
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
+import Collapse from '@mui/material/Collapse'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { Section } from './Section'
 import { Fenetre } from './EditionEquipe'
@@ -20,12 +22,10 @@ import { echelle } from '../theme/theme'
 import { useAuth } from '../auth/AuthContext'
 import { useReseau } from '../data/ReseauContext'
 import { enregistrerPlan, rattacherTaches, type CibleTache } from '../data/chargement'
-import { actionsDuMagasin, echeanceDate, enRetard, type ActionSuivie } from '../data/actions'
+import { actionsDuMagasin, type ActionSuivie } from '../data/actions'
 import IconButton from '@mui/material/IconButton'
 import Menu from '@mui/material/Menu'
 import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
-import { Link as RouterLink } from 'react-router-dom'
-import { lienFiche } from '../lib/format'
 import { anneeObjectif, avancement, libelleAvancement, objectifsDu, phraseObjectif, type Objectif } from '../data/objectifs'
 import {
   PRIORITES_MAX, constater, indicateursMesure, placesLibres, libelleStatutPriorite, moisSuivant, nouvelIdPriorite, phrasesMesure, prioritesDu, tachesDeLaPriorite,
@@ -99,6 +99,9 @@ export function SectionObjectifsPlan({ reseau, m, signaler, equipe = true, lectu
   const [editionObjectif, setEditionObjectif] = useState<Objectif | null | undefined>(undefined)
   const [nouvelleTache, setNouvelleTache] = useState<string | null>(null)
   const [voirCloses, setVoirCloses] = useState(false)
+  // Choix 197 (Joseph, 15/11/2026) : chaque objectif tient sur une ligne (jauge, statut, nombre de priorités) et se déplie à la demande
+  const [ouverts, setOuverts] = useState<Set<string>>(new Set())
+  const basculer = (id: string) => setOuverts((o) => { const n = new Set(o); if (n.has(id)) n.delete(id); else n.add(id); return n })
   const actions = actionsDuMagasin(reseau, m.nom)
   const modifiable = equipe && !lecture
   const revue = actives.map((p) => p.revueLe || p.creeLe).filter(Boolean).sort().at(-1)
@@ -137,22 +140,33 @@ export function SectionObjectifsPlan({ reseau, m, signaler, equipe = true, lectu
         const liees = actives.filter((p) => p.objectif === o.id)
         return (
           <Box key={o.id} component="section" aria-label={`Objectif : ${phraseObjectif(o)}`}
-            sx={{ border: '1px solid', borderColor: 'divider', borderRadius: '12px', px: { xs: 1.5, md: 2 }, py: 1, mb: 1.5 }}>
-            <EnteteObjectif reseau={reseau} magasin={m.nom} o={o} onClick={modifiable ? () => setEditionObjectif(o) : undefined} />
-            {liees.length > 0 ? blocs(liees, true)
-              : <Typography variant="body2" color="text.secondary" sx={{ py: 1, borderTop: '1px solid', borderColor: 'divider' }}>Aucune priorité pour cet objectif.</Typography>}
-            {liees.length < PRIORITES_MAX && boutonAction(o.id, 'Ajouter une priorité')}
+            sx={{ border: '1px solid', borderColor: 'divider', borderRadius: '12px', px: { xs: 1.5, md: 2 }, py: 0.5, mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}><EnteteObjectif reseau={reseau} magasin={m.nom} o={o} onClick={modifiable ? () => setEditionObjectif(o) : undefined} /></Box>
+              <Deplier ouvert={ouverts.has(o.id)} basculer={() => basculer(o.id)} libelle={`${liees.length} priorité${liees.length > 1 ? 's' : ''}`} cible={phraseObjectif(o)} />
+            </Box>
+            <Collapse in={ouverts.has(o.id)} unmountOnExit>
+              {liees.length > 0 ? blocs(liees, true)
+                : <Typography variant="body2" color="text.secondary" sx={{ py: 1, borderTop: '1px solid', borderColor: 'divider' }}>Aucune priorité pour cet objectif.</Typography>}
+              {liees.length < PRIORITES_MAX && boutonAction(o.id, 'Ajouter une priorité')}
+            </Collapse>
           </Box>
         )
       })}
       {(sansObjectif.length > 0 || (modifiable && objectifs.length === 0)) && (
         <Box component="section" aria-label={equipe ? 'Priorités sans objectif' : 'Priorités'} sx={{ mb: 1 }}>
-          {equipe && objectifs.length > 0 && <Typography component="h3" sx={{ fontWeight: 700, fontSize: echelle.carte, minHeight: 40, display: 'flex', alignItems: 'center' }}>Priorités sans objectif</Typography>}
-          {sansObjectif.length > 0 && blocs(sansObjectif, false)}
-          {sansObjectif.length < PRIORITES_MAX && boutonAction('', objectifs.length ? 'Ajouter une priorité sans objectif' : 'Ajouter une priorité')}
+          {equipe && objectifs.length > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minHeight: 48 }}>
+              <Typography component="h3" sx={{ fontWeight: 700, fontSize: echelle.carte, flex: 1 }}>Priorités sans objectif</Typography>
+              <Deplier ouvert={ouverts.has('')} basculer={() => basculer('')} libelle={`${sansObjectif.length} priorité${sansObjectif.length > 1 ? 's' : ''}`} cible="Priorités sans objectif" />
+            </Box>
+          )}
+          <Collapse in={!(equipe && objectifs.length > 0) || ouverts.has('')} unmountOnExit>
+            {sansObjectif.length > 0 && blocs(sansObjectif, false)}
+            {sansObjectif.length < PRIORITES_MAX && boutonAction('', objectifs.length ? 'Ajouter une priorité sans objectif' : 'Ajouter une priorité')}
+          </Collapse>
         </Box>
       )}
-      {equipe && <AutresTaches reseau={reseau} m={m} actions={actions.filter((x) => !x.a.faite && !actives.some((p) => p.id === x.a.priorite))} signaler={signaler} avecTitre={actives.length > 0} />}
       {(actives.length > 0 || closes.length > 0) && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
           {actives.length > 0 && <Typography variant="body2" color="text.secondary" sx={{ mr: 'auto' }}>{revue ? `Revu le ${dateCourte(revue)}` : 'Pas encore revu'}</Typography>}
@@ -178,6 +192,13 @@ export function SectionObjectifsPlan({ reseau, m, signaler, equipe = true, lectu
 }
 
 // Vague 7 (90A) : la visite marque le plan revu ; le geste à la main reste dans le menu « ⋯ »
+function Deplier({ ouvert, basculer, libelle, cible }: { ouvert: boolean; basculer: () => void; libelle: string; cible: string }) {
+  return (
+    <Button onClick={basculer} aria-expanded={ouvert} aria-label={`${ouvert ? 'Replier' : 'Déplier'} : ${cible} (${libelle})`} endIcon={<ExpandMoreOutlined sx={{ transform: ouvert ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }} />}
+      sx={{ minHeight: 48, flexShrink: 0, color: 'text.secondary', whiteSpace: 'nowrap' }}>{libelle}</Button>
+  )
+}
+
 function MenuRevue({ marquer }: { marquer: () => void }) {
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   return (
@@ -187,24 +208,6 @@ function MenuRevue({ marquer }: { marquer: () => void }) {
         <MenuItem onClick={() => { setAncre(null); marquer() }} sx={{ minHeight: 48 }}>Marquer revu aujourd’hui</MenuItem>
       </Menu>
     </>
-  )
-}
-
-// Vague 7 (90A) : les tâches ouvertes sans priorité, sous le plan ; les cinq plus urgentes, le reste dans Activité
-function AutresTaches({ reseau, m, actions, signaler, avecTitre }: { reseau: Reseau; m: Magasin; actions: ActionSuivie[]; signaler: (msg: string) => void; avecTitre: boolean }) {
-  const changerStatut = useChangerStatut(reseau, signaler)
-  if (!actions.length) return null
-  const tries = [...actions].sort((x, y) => Number(enRetard(y.a, reseau.jour)) - Number(enRetard(x.a, reseau.jour)) || (echeanceDate(x.a) || '9999').localeCompare(echeanceDate(y.a) || '9999'))
-  return (
-    <Box sx={{ mt: 1.5, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 48 }}>
-        <Typography component="h3" sx={{ fontWeight: 700, fontSize: echelle.carte, mr: 'auto' }}>{avecTitre ? `Tâches hors plan · ${actions.length}` : `Tâches en cours · ${actions.length}`}</Typography>
-        {actions.length > 5 && <Button component={RouterLink} to={`${lienFiche(m.nom)}?vue=activite`} sx={{ minHeight: 48 }}>Tout voir</Button>}
-      </Box>
-      <Box component="ul" aria-label={avecTitre ? 'Tâches hors plan' : 'Tâches en cours'} sx={{ listStyle: 'none', m: 0, p: 0 }}>
-        {tries.slice(0, 5).map((x) => <LigneAction key={x.cle} reseau={reseau} x={x} avecPorteur changerStatut={changerStatut?.(x)} />)}
-      </Box>
-    </Box>
   )
 }
 

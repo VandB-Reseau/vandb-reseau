@@ -48,20 +48,21 @@ test('22A et 23A : vue d’ensemble du magasin et activité en un seul fil', asy
   const indicateurs = page.getByRole('region', { name: 'Indicateurs du magasin' })
   await expect(indicateurs.getByText('CA de septembre 2026')).toBeVisible()
   await expect(indicateurs.getByText('Panier moyen HT')).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Prochaines étapes' })).toBeVisible()
+  // Choix 196 (15/11/2026) : une seule bande « À faire maintenant »
+  await expect(page.getByRole('region', { name: 'À faire maintenant' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Dernier compte rendu' })).toBeVisible()
   await expect(page.getByText('Vitrine refaite, stock à revoir.').first()).toBeVisible()
-  // Activité : plus de sous-onglets, « À venir » en tête et des filtres en puces
+  // Activité : plus de sous-onglets, « À faire » à côté du fil (198) et des filtres en puces
   await page.goto('./#/magasins/Lyon%20Test?vue=activite')
   await expect(page.getByRole('tablist', { name: 'Parties de l’activité' })).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: 'À venir' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'À faire', exact: true })).toBeVisible()
   await expect(page.getByText('Refaire la tête de gondole Beaujolais').first()).toBeVisible()
   const filtres = page.getByRole('group', { name: 'Filtrer l’activité' })
   await filtres.getByRole('button', { name: 'Visites' }).click()
   await expect(page).toHaveURL(/fil=visites/)
   // Les anciennes adresses mènent au même onglet
   await page.goto('./#/magasins/Lyon%20Test?vue=journal')
-  await expect(page.getByRole('heading', { name: 'À venir' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'À faire', exact: true })).toBeVisible()
   await lisible(page, isMobile, false)
 })
 
@@ -127,7 +128,7 @@ test('26A : fixer un objectif chiffré, suivi dans la fiche et la préparation',
   await page.getByRole('button', { name: 'Fixer un objectif' }).click()
   await expect(page.getByText('Départ, septembre 2026 : 40,00 €')).toBeVisible()
   await page.getByLabel('Valeur visée').fill('45')
-  await page.getByLabel('Échéance').fill('2027-01')
+  await page.getByRole('dialog').getByLabel('Échéance').fill('2027-01')
   await page.getByRole('dialog').getByRole('checkbox', { name: 'Refaire la tête de gondole Beaujolais' }).check()
   await page.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Objectif fixé.')).toBeVisible()
