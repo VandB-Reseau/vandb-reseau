@@ -2,6 +2,7 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import CalculateOutlined from '@mui/icons-material/CalculateOutlined'
 import { SectionEquipements } from '../components/Equipements'
 import { SectionOperations } from '../components/Operations'
+import { MonMois } from '../components/MonMois'
 import { useTheme } from '@mui/material/styles'
 import { SectionObjectifsPlan } from '../components/PlanAction'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -506,6 +507,8 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
       {tous.length > 1 && <Puces label="Magasins affichés" valeur={choix} onChange={setChoix} options={[{ v: '', libelle: 'Tous mes magasins' }, ...tous.map((m) => ({ v: m.nom, libelle: m.nom }))]} />}
       {/* Refonte vague 5 (44A) : l'actualité du réseau au centre (À la une, puis le fil) ; à droite, mon magasin,
           ce que j'ai à faire et mon équipe V and B. Chiffres du mois en tête, repères du réseau repliés en bas */}
+      {/* 222 (Joseph, 16/11/2026) : sur le téléphone, un chiffre et une seule chose à faire avant l'actualité */}
+      {!surPC && <MonMois reseau={reseau} magasins={magasins} lectureSeule={!!apercu} />}
       <ALaUne liste={communications.liste} jour={reseau.jour} connaissances={connaissances} franchise lectureSeule={!!apercu} apres={() => void rechargerConnaissances()}
         lien={(c) => `/infos?vue=communications&c=${c.id}`} />
       {/* Vague 8 (Joseph, 11/11/2026) : l'actualité en premier plan, sur PC comme sur téléphone ; mes chiffres passent en
