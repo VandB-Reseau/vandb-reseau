@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Concurrents à 2 km fiables (Joseph, 15/11/2026), sans migration. La liste lue sur OpenStreetMap n'était gardée que
+  dans le navigateur de chacun : chaque personne dépendait d'Overpass, souvent saturé. Elle est maintenant gardée avec le
+  suivi du magasin dès qu'un membre de l'équipe l'a lue (repli pour tous quand la carte ne répond pas, relue tous les
+  30 jours). Miroir sans limite interrogé avant le serveur principal, 20 s par service au lieu de 12, liste vide gardée
+  un jour seulement. Magasin placé au centre de son département : plus de recherche trompeuse, message dédié.
 - Simulateurs plus fluides, choix 188 à 192, 194 et 195 (Joseph, 15/11/2026), sans migration. 188 : les 14 simulateurs
   en 4 familles (Vendre plus, Événements et extérieur, Équipe, Investir et trésorerie), boutons compacts, les 3 derniers
   utilisés en tête ; sur téléphone, la carte vient sous les doigts. 189 : la phrase de résultat reste en vue (en haut de la

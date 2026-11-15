@@ -123,11 +123,13 @@ test('réaffecter un magasin propose le Coach le plus proche et enregistre', asy
   await dialogue.getByRole('button', { name: 'Confier à Noé MODELE' }).click()
   await expect(page.getByText('Nantes Test est confié à Noé MODELE.')).toBeVisible()
   // Au mois : un seul changement par mois, celui du même mois est d'abord retiré
-  expect(ecritures[0]).toMatchObject({ methode: 'DELETE', table: 'reassigns' })
-  expect(ecritures[0].filtre).toContain('store=eq.Nantes')
-  expect(ecritures[0].filtre).toContain('date=gte.2026-11-01')
-  expect(ecritures[0].filtre).toContain('date=lt.2026-12-01')
-  expect(ecritures.slice(1)).toEqual([expect.objectContaining({ methode: 'POST', table: 'reassigns', corps: expect.objectContaining({ store: 'Nantes Test', cs: 'Noé MODELE', date: '2026-11-01', type: 'manual', note: 'Réaffectation' }) })])
+  // (la liste des concurrents lue à l'ouverture de la fiche est aussi enregistrée : seules les affectations comptent ici)
+  const affectations = ecritures.filter((e) => e.table === 'reassigns')
+  expect(affectations[0]).toMatchObject({ methode: 'DELETE', table: 'reassigns' })
+  expect(affectations[0].filtre).toContain('store=eq.Nantes')
+  expect(affectations[0].filtre).toContain('date=gte.2026-11-01')
+  expect(affectations[0].filtre).toContain('date=lt.2026-12-01')
+  expect(affectations.slice(1)).toEqual([expect.objectContaining({ methode: 'POST', table: 'reassigns', corps: expect.objectContaining({ store: 'Nantes Test', cs: 'Noé MODELE', date: '2026-11-01', type: 'manual', note: 'Réaffectation' }) })])
 })
 
 test('Direction règle la charge sans perdre les autres paramètres', async ({ page, isMobile }, info) => {

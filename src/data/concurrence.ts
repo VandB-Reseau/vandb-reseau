@@ -6,24 +6,45 @@ import type { Magasin } from './modele'
 // à la main, retire un commerce qui n'est pas un concurrent et note une remarque (rubrique « concurrence »).
 // Le serveur principal d'Overpass est souvent saturé (refus 429 ou 504) : on essaie ses miroirs publics l'un après l'autre,
 // et, si aucun ne répond, on garde la dernière liste lue même si elle a plus de 30 jours (10/11/2026).
+// 15/11/2026 (« ça ne marche toujours pas ») : la liste n'était gardée que dans le navigateur de chacun, donc chaque
+// personne, sur chaque appareil, dépendait d'Overpass. Elle est maintenant aussi enregistrée avec le suivi du magasin
+// (rubrique « concurrence », champ « lus ») dès qu'un membre de l'équipe l'a lue : tout le monde la retrouve ensuite, même
+// quand Overpass est en panne. Le serveur principal, saturé, passe après le miroir sans limite ; 20 s par service car
+// une requête mise en file d'attente dépassait les 12 s ; une liste vide n'est gardée qu'un jour (réponse parfois fausse).
+// Un magasin posé au centre de son département n'est plus cherché : la liste serait celle d'une autre ville.
 export const SERVICES = [
-  'https://overpass-api.de/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ]
-const ATTENTE_SERVICE = 12000
+const ATTENTE_SERVICE = 20000
 const STOCKAGE = 'vandb-concurrents'
 const RAYON = 2000
 const GARDE_JOURS = 30
+const GARDE_VIDE_JOURS = 1
+const JOUR = 86400000
 
 export interface ConcurrentAjoute { id: string; nom: string; detail: string; note: string; par: string; le: string }
-export interface SuiviConcurrence { ajoutes: ConcurrentAjoute[]; masques: string[]; notes: Record<string, string> }
 export interface CommerceProche { id: string; nom: string; genre: string; adresse: string; distance: number } // distance en mètres
+// Dernière liste lue sur la carte, partagée par toute l'équipe : date (AAAA-MM-JJ) et position du magasin à ce moment
+export interface ListeLue { le: string; lat: number; lon: number; liste: CommerceProche[] }
+export interface SuiviConcurrence { ajoutes: ConcurrentAjoute[]; masques: string[]; notes: Record<string, string>; lus?: ListeLue }
 
 export const suiviVide = (): SuiviConcurrence => ({ ajoutes: [], masques: [], notes: {} })
-export const suiviEstVide = (s: SuiviConcurrence) => !s.ajoutes.length && !s.masques.length && !Object.values(s.notes).some(Boolean)
+export const suiviEstVide = (s: SuiviConcurrence) => !s.ajoutes.length && !s.masques.length && !Object.values(s.notes).some(Boolean) && !s.lus
 
 const texte = (v: unknown) => (typeof v === 'string' ? v : '')
+const nombre = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+function normaliserLue(v: unknown): ListeLue | undefined {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined
+  const o = v as Record<string, unknown>
+  const lat = nombre(o.lat), lon = nombre(o.lon), le = texte(o.le)
+  if (lat === null || lon === null || !/^\d{4}-\d{2}-\d{2}$/.test(le) || !Array.isArray(o.liste)) return undefined
+  const liste = o.liste.filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
+    .map((x) => ({ id: texte(x.id), nom: texte(x.nom), genre: texte(x.genre), adresse: texte(x.adresse), distance: nombre(x.distance) ?? 0 }))
+    .filter((x) => x.id && x.nom)
+  return { le, lat, lon, liste }
+}
 export function normaliserConcurrence(v: unknown): Record<string, SuiviConcurrence> {
   const r: Record<string, SuiviConcurrence> = {}
   if (!v || typeof v !== 'object' || Array.isArray(v)) return r
@@ -34,7 +55,8 @@ export function normaliserConcurrence(v: unknown): Record<string, SuiviConcurren
       .filter((x) => x.id && x.nom)
     const masques = (Array.isArray(o.masques) ? o.masques : []).filter((x): x is string => typeof x === 'string')
     const notes = Object.fromEntries(Object.entries(o.notes && typeof o.notes === 'object' ? o.notes as Record<string, unknown> : {}).filter(([, n]) => typeof n === 'string' && n.trim()).map(([k, n]) => [k, n as string]))
-    const s = { ajoutes, masques, notes }
+    const lus = normaliserLue(o.lus)
+    const s: SuiviConcurrence = { ajoutes, masques, notes, ...(lus ? { lus } : {}) }
     if (!suiviEstVide(s)) r[m] = s
   }
   return r
@@ -67,13 +89,17 @@ export function lireReponse(j: { elements?: Element[] }, depuis: { lat: number; 
   }).filter((c) => c.distance <= RAYON).sort((a, b) => a.distance - b.distance)
 }
 
+const garde = (liste: CommerceProche[]) => (liste.length ? GARDE_JOURS : GARDE_VIDE_JOURS) * JOUR
 function lireCache(cle: string, perime = false): CommerceProche[] | null {
   try {
     const tout = JSON.parse(localStorage.getItem(STOCKAGE) ?? '{}') as Record<string, { le: number; liste: CommerceProche[] }>
     const x = tout[cle]
-    return x && Array.isArray(x.liste) && (perime || Date.now() - x.le < GARDE_JOURS * 86400000) ? x.liste : null
+    return x && Array.isArray(x.liste) && (perime || Date.now() - x.le < garde(x.liste)) ? x.liste : null
   } catch { return null }
 }
+// La liste partagée vaut pour cette position si le magasin n'a pas bougé de plus de 100 m depuis
+const memePosition = (l: ListeLue, lat: number, lon: number) => distance(l, { lat, lon }) < 100
+const lueRecente = (l: ListeLue) => Date.now() - new Date(`${l.le}T12:00:00`).getTime() < garde(l.liste)
 function ecrireCache(cle: string, liste: CommerceProche[]) {
   try {
     const tout = JSON.parse(localStorage.getItem(STOCKAGE) ?? '{}') as Record<string, unknown>
@@ -96,42 +122,52 @@ async function interroger(service: string, requete: string): Promise<{ elements?
 }
 
 // Une seule recherche à la fois par position, même si la fiche et la préparation de visite la demandent ensemble
-const enCours = new Map<string, Promise<CommerceProche[]>>()
-export function chargerCommercesProches(lat: number, lon: number): Promise<CommerceProche[]> {
+// « nouvelle » : liste fraîchement lue sur la carte, à partager avec l'équipe
+export interface Lecture { liste: CommerceProche[]; nouvelle: ListeLue | null }
+const enCours = new Map<string, Promise<Lecture>>()
+export function chargerCommercesProches(lat: number, lon: number, partagee?: ListeLue): Promise<Lecture> {
+  const base = partagee && memePosition(partagee, lat, lon) ? partagee : undefined
+  if (base && lueRecente(base)) return Promise.resolve({ liste: base.liste, nouvelle: null })
   const cle = `${lat.toFixed(4)},${lon.toFixed(4)}`
-  const garde = lireCache(cle)
-  if (garde) return Promise.resolve(garde)
+  const locale = lireCache(cle)
+  if (locale) return Promise.resolve({ liste: locale, nouvelle: null })
   const deja = enCours.get(cle)
   if (deja) return deja
-  const requete = `[out:json][timeout:15];nwr(around:${RAYON},${lat},${lon})[shop~"^(wine|alcohol|beverages)$"];out center tags 80;`
-  const p = (async () => {
+  const requete = `[out:json][timeout:18];nwr(around:${RAYON},${lat},${lon})[shop~"^(wine|alcohol|beverages)$"];out center tags 80;`
+  const p = (async (): Promise<Lecture> => {
     for (const service of SERVICES) {
       try {
         const liste = lireReponse(await interroger(service, requete), { lat, lon })
         ecrireCache(cle, liste)
-        return liste
+        return { liste, nouvelle: { le: new Date().toLocaleDateString('sv-SE'), lat, lon, liste } }
       } catch { /* serveur saturé ou injoignable : miroir suivant */ }
     }
-    const ancienne = lireCache(cle, true)
-    if (ancienne) return ancienne
+    // Carte injoignable : la dernière liste connue, celle de l'équipe d'abord, même ancienne
+    const ancienne = base?.liste ?? lireCache(cle, true)
+    if (ancienne) return { liste: ancienne, nouvelle: null }
     throw new Error('carte des commerces injoignable')
   })().finally(() => enCours.delete(cle))
   enCours.set(cle, p)
   return p
 }
 
-export type EtatCommerces = { etat: 'chargement' } | { etat: 'erreur' } | { etat: 'sansPosition' } | { etat: 'pret'; liste: CommerceProche[] }
-export function useCommercesProches(m: Magasin): { commerces: EtatCommerces; relancer: () => void } {
+export type EtatCommerces = { etat: 'chargement' } | { etat: 'erreur' } | { etat: 'sansPosition' } | { etat: 'positionApprochee' }
+  | { etat: 'pret'; liste: CommerceProche[]; nouvelle: ListeLue | null }
+export function useCommercesProches(m: Magasin, partagee?: ListeLue): { commerces: EtatCommerces; relancer: () => void } {
   const [essai, setEssai] = useState(0)
   const [commerces, setCommerces] = useState<EtatCommerces>({ etat: 'chargement' })
-  const { lat, lon } = m
+  const { lat, lon, positionApprochee } = m
+  // La liste partagée ne relance la recherche que si sa date change (pas à chaque rechargement du réseau)
+  const clePartagee = partagee ? `${partagee.le}|${partagee.lat}|${partagee.lon}` : ''
   useEffect(() => {
     if (lat === null || lon === null) { setCommerces({ etat: 'sansPosition' }); return }
+    if (positionApprochee) { setCommerces({ etat: 'positionApprochee' }); return }
     let actif = true
     setCommerces({ etat: 'chargement' })
-    chargerCommercesProches(lat, lon).then((liste) => { if (actif) setCommerces({ etat: 'pret', liste }) }, () => { if (actif) setCommerces({ etat: 'erreur' }) })
+    chargerCommercesProches(lat, lon, partagee).then((l) => { if (actif) setCommerces({ etat: 'pret', ...l }) }, () => { if (actif) setCommerces({ etat: 'erreur' }) })
     return () => { actif = false }
-  }, [lat, lon, essai])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lat, lon, positionApprochee, essai, clePartagee])
   const relancer = useCallback(() => setEssai((n) => n + 1), [])
   return { commerces, relancer }
 }
