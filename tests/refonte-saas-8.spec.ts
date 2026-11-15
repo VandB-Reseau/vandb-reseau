@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { creerDepuisMenu, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { deplierPoint, creerDepuisMenu, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { zonesTropPetites } from './pilotage/supabase-simule'
 
 // Refonte façon SaaS, vague 8 (Joseph, 10/11/2026, « ok pour tout, fais tout ») : cohérence globale (92 à 110 sauf 107)
@@ -26,12 +26,13 @@ test('l’actualité au premier plan de l’accueil, comme un réseau social', a
   await seConnecter(page)
   const fil = page.getByRole('region', { name: 'Actualités' })
   await expect(fil).toBeVisible()
-  // Le fil passe avant les indicateurs et avant À traiter
-  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', 'Actualités')
-  await expect(fil.getByRole('link', { name: 'Publier' })).toBeVisible()
+  // Le fil passe avant les indicateurs et avant À traiter ; sur téléphone, seule la bande repliée du point du jour le précède (209A)
+  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', isMobile ? 'Mon point du jour' : 'Actualités')
+  await expect(fil.getByRole('link', { name: 'Communication' })).toBeVisible()
   if (isMobile) {
     // Téléphone : les indicateurs se déplient
     await expect(page.getByRole('region', { name: 'Pilotage' })).toHaveCount(0)
+    await deplierPoint(page)
     await page.getByRole('button', { name: 'Mes indicateurs' }).click()
     await expect(page.getByRole('region', { name: 'Pilotage' })).toBeVisible()
   } else {
@@ -42,13 +43,13 @@ test('l’actualité au premier plan de l’accueil, comme un réseau social', a
   }
   await lisible(page, isMobile)
   await page.screenshot({ path: `captures/${info.project.name}-vague8-accueil-actualites.png` })
-  await fil.getByRole('link', { name: 'Publier' }).click()
+  await fil.getByRole('link', { name: 'Communication' }).click()
   await expect(page.getByRole('dialog', { name: 'Nouvelle communication' })).toBeVisible()
 })
 
 test('l’accueil du franchisé commence aussi par l’actualité', async ({ page, isMobile }) => {
   await seConnecter(page, { acces: PAUL })
-  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', 'Actualités')
+  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', isMobile ? 'Mon magasin' : 'Actualités')
   await lisible(page, isMobile)
 })
 
@@ -121,6 +122,7 @@ test('109 : l’espace franchisé a deux rubriques, « Mon magasin », À faire 
     await page.goto('./#/')
   }
   // À faire : une ligne par tâche, les deux magasins en boutons
+  await deplierPoint(page)
   const aFaire = page.getByRole('region', { name: 'À faire' })
   await expect(aFaire.getByRole('link', { name: /^Clôturer .+ : Annecy Test$/ })).toBeVisible()
   await expect(aFaire.getByRole('link', { name: /^Clôturer .+ : Rennes Test$/ })).toBeVisible()

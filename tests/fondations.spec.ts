@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { COMPTE, seConnecter, simulerSupabase, textesTropPetits } from './supabase-simule'
+import { deplierPoint, COMPTE, seConnecter, simulerSupabase, textesTropPetits } from './supabase-simule'
 
 // Barre du bas sur téléphone : libellé court ; menu latéral sur PC : libellé long. Refonte vague 4 (Joseph, 10/11/2026,
 // 36A) : Accueil, Agenda, Magasins, Tâches, Messages dans la barre du bas ; Visites et Santé passent dans le menu du compte
@@ -37,6 +37,7 @@ test('un mauvais mot de passe affiche un message clair', async ({ page }) => {
 
 test('après connexion, l’accueil montre les priorités dans l’ordre choisi', async ({ page, isMobile }, info) => {
   await seConnecter(page)
+  await deplierPoint(page)
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
   await expect(aTraiter).toBeVisible()
   await expect(page.getByRole('region', { name: 'Actualités' })).toBeVisible()

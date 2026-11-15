@@ -70,13 +70,15 @@ function DialogProposer({ reseau, onFermer }: { reseau: Reseau; onFermer: (m?: s
 }
 
 // Franchisé : proposer, et suivre ses propositions ; rien tant que la base ne les connaît pas
-export function MesPropositions({ reseau }: { reseau: Reseau }) {
+// ouvrir : arrivée depuis « Partager » du fil, la fenêtre de proposition s'ouvre d'elle-même
+export function MesPropositions({ reseau, ouvrir = false }: { reseau: Reseau; ouvrir?: boolean }) {
   const [propositions, setPropositions] = useState<Proposition[] | null>(null)
-  const [ajout, setAjout] = useState(false)
+  const [ajout, setAjout] = useState(ouvrir)
   const [message, setMessage] = useState('')
   const relire = useCallback(() => { void chargerMesPropositions().then(setPropositions).catch(() => setPropositions(null)) }, [])
   useEffect(relire, [relire])
-  if (!propositions) return null
+  const dialogue = ajout && <DialogProposer reseau={reseau} onFermer={(m) => { setAjout(false); if (m) { setMessage(m); relire() } }} />
+  if (!propositions) return dialogue || null
   return (
     <Box component="section" aria-label="Mes propositions" sx={{ mb: 2 }}>
       <TitreSection nombre={propositions.length} action={<BoutonAction libelle="Proposer une bonne pratique" onClick={() => setAjout(true)} />}>Mes propositions</TitreSection>
@@ -94,7 +96,7 @@ export function MesPropositions({ reseau }: { reseau: Reseau }) {
         </Card>
       )}
       {message && <Typography role="status" sx={{ mt: 1 }}>{message}</Typography>}
-      {ajout && <DialogProposer reseau={reseau} onFermer={(m) => { setAjout(false); if (m) { setMessage(m); relire() } }} />}
+      {dialogue}
     </Box>
   )
 }

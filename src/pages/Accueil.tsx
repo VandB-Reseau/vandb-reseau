@@ -1,6 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
-import AddOutlined from '@mui/icons-material/AddOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
@@ -10,6 +9,7 @@ import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import Typography from '@mui/material/Typography'
 import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined'
+import TodayOutlined from '@mui/icons-material/TodayOutlined'
 import PersonSearchOutlined from '@mui/icons-material/PersonSearchOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
@@ -81,7 +81,8 @@ import { brand } from '../theme/theme'
 import { Blason } from '../components/Blason'
 import { Indicateur } from '../components/Indicateur'
 import { ALaUne, aLaUneDuJour, connaissancesEnAttente } from '../components/ALaUne'
-import { useConnaissances, type Communication, type Connaissance } from '../data/communications'
+import { prendreConnaissance, useConnaissances, type Communication, type Connaissance } from '../data/communications'
+import { ActionsSimples, AJour, BarrePartager, BoutonConnaissance, CartePublication, estPublication, instantFil, useDernierPassage, useSuiteAutomatique } from '../components/Publication'
 import { libellesResponsable, parcoursDu } from '../data/integration'
 import { misDeCote, mettrePlusTard, reprendre, usePlusTard } from '../data/plusTard'
 import { useMessageAnnulable } from '../components/Annulable'
@@ -545,62 +546,89 @@ export function PublicationFil({ e, jour, sansMagasin = false, ouvrir }: { e: El
   )
 }
 
-export function FilActivite({ elements, jour, sansMagasin = false, sansFiltre = false, titre = 'Actualités', communications, reactionsPratiques, reactionsVisites, action, ouvrirJournal, limite, lienTout }: {
+// Connaissances des communications, pour le geste « J'ai pris connaissance » du franchisé dans le fil
+export interface ConnaissancesDuFil { carte: Map<number, Connaissance> | null; franchise: boolean; recharger: () => void }
+
+export function FilActivite({ elements, jour, sansMagasin = false, sansFiltre = false, titre = 'Actualités', communications, reactionsPratiques, reactionsVisites, action, ouvrirJournal, limite, lienTout, social = false, partager, connaissances }: {
   elements: ElementFil[]; jour: string; sansMagasin?: boolean; sansFiltre?: boolean; titre?: string; communications?: CommunicationsDuFil; reactionsPratiques?: ReactionsPratiques | null
   reactionsVisites?: ReactionsVisites | null
   action?: ReactNode; ouvrirJournal?: (e: ElementFil) => void
   // Vague 8 (Joseph, 11/11/2026, « les actus en premier plan, comme un réseau social ») : sur téléphone, l'accueil montre
   // les premières publications en tête, la suite dans Actualités
   limite?: number; lienTout?: string
+  // social : fil d'actualité façon réseau social (Accueil, Actualités) : une carte par publication, repère « Nouveau »
+  // depuis le dernier passage (211A) ; la fiche magasin garde son fil d'activité. 207A : « Partager » en tête ; 206A : prise de connaissance
+  social?: boolean; partager?: ReactNode; connaissances?: ConnaissancesDuFil
 }) {
   const { apercu, equipe } = useApercu()
   const [message, setMessage] = useState('')
   const [filtre, setFiltre] = useState<FiltreFil>('tout')
   const [nb, setNb] = useState(limite ?? PAS_FIL)
+  const vuAvant = useDernierPassage(social && !apercu)
   const vus = elements.filter((e) => filtre === 'tout' || e.genre === filtre)
-  // Visite, photos, tâches et messages d'un même magasin le même jour : une seule carte (Joseph, 21/10/2026)
+  // Visite, photos, tâches et messages d'un même magasin le même jour : une seule carte (Joseph, 21/10/2026) ;
+  // une publication garde toujours sa propre carte (204A, Joseph 15/11/2026)
   const groupes = useMemo(() => {
     const parCle = new Map<string, ElementFil[]>()
     for (const e of vus) {
-      // Un compte rendu qu'on aime et commente garde sa propre carte
-      const cle = e.communication || e.pratique || e.journal || !e.magasin || (reactionsVisites && e.visiteId) ? e.cle : `${e.magasin}|${e.instant.slice(0, 10)}`
+      const cle = (social && estPublication(e)) || e.communication || e.pratique || e.journal || !e.magasin ? e.cle : `${e.magasin}|${e.instant.slice(0, 10)}`
       const g = parCle.get(cle)
       if (g) g.push(e); else parCle.set(cle, [e])
     }
     // Les communications à la une restent en tête
     const tous = [...parCle.values()]
     return [...tous.filter((g) => g[0].communication?.aLaUne), ...tous.filter((g) => !g[0].communication?.aLaUne)]
-  }, [vus, reactionsVisites])
+  }, [vus, social])
   const options = filtresFil.filter((f) => f.v === 'tout' || elements.some((e) => e.genre === f.v))
+  const lectureSeule = !!apercu || !!equipe
+  const plus = useCallback(() => setNb((n) => n + PAS_FIL), [])
+  const suite = useSuiteAutomatique(plus, !lienTout && groupes.length > nb)
+  const estNouveau = (e: ElementFil) => !!vuAvant && instantFil(e.instant) > vuAvant
+  const affiches = groupes.slice(0, nb)
+  // Le séparateur « Vous êtes à jour » suit la dernière nouveauté, s'il reste des publications plus anciennes
+  const derniereNouvelle = affiches.reduce((d, g, i) => (estNouveau(g[0]) ? i : d), -1)
+  const prendre = (id: number) => prendreConnaissance(id).then(() => { setMessage('C’est noté, merci.'); connaissances?.recharger() }, () => setMessage('La confirmation n’a pas pu partir. Réessayez dans un instant.'))
+  const reactions = (e: ElementFil) => {
+    if (e.communication && communications?.moi) {
+      const k = connaissances?.franchise ? connaissances.carte?.get(e.communication.id) : undefined
+      return <ReactionsCommunication c={e.communication} moi={communications.moi} jour={jour} lectureSeule={lectureSeule} apres={communications.recharger} signaler={setMessage}
+        extra={k ? <BoutonConnaissance pris={!!k.moi} lectureSeule={lectureSeule} prendre={() => void prendre(e.communication!.id)} /> : undefined} />
+    }
+    if (e.pratique && reactionsPratiques) return <ReactionsPratique p={e.pratique} reactions={reactionsPratiques} lectureSeule={lectureSeule} signaler={setMessage} />
+    if (e.visiteId && reactionsVisites) return (
+      <Reactions titre={`le compte rendu de ${e.magasin}`} pouces={reactionsVisites.pouces[e.visiteId] ?? AUCUNE} commentaires={reactionsVisites.commentaires[e.visiteId] ?? AUCUNE}
+        moi={reactionsVisites.moi} jour={jour} lectureSeule={lectureSeule} basculer={() => basculerPouceVisite(e.visiteId!)} commenter={(t) => commenterVisite(e.visiteId!, t)}
+        supprimer={supprimerCommentaireVisite} message={messageReactionVisite} apres={reactionsVisites.recharger} signaler={setMessage} />
+    )
+    return <ActionsSimples lien={e.lien} libelle={e.genre === 'visite' ? 'Voir le compte rendu' : 'Voir le détail'} />
+  }
   return (
     <Box component="section" aria-label={titre}>
       <TitreSection action={action}>{titre}</TitreSection>
+      {partager}
       {!sansFiltre && options.length > 2 && <BandeCollante><Puces valeur={filtre} options={options} onChange={(v) => { setFiltre(v); setNb(PAS_FIL) }} label="Filtrer le fil" /></BandeCollante>}
       {!vus.length ? (
         <CarteLignes><LigneCompacte avatar={<Initiales nom="fil" icone={<HistoryOutlined />} />} titre="Rien de nouveau" detail="Les comptes rendus et les communications des dernières semaines s’afficheront ici." /></CarteLignes>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          {groupes.slice(0, nb).map(([e, ...suite]) => (
-            <Card key={e.cle} component={e.communication || e.pratique || (reactionsVisites && e.visiteId) ? 'article' : 'div'}
-              aria-label={e.communication?.titre ?? e.pratique?.titre ?? (reactionsVisites && e.visiteId ? `Compte rendu de ${e.magasin}` : undefined)} sx={{ border: 0, overflow: 'hidden', ...(suite.length ? { '& > * + *': { borderTop: '1px solid', borderColor: 'divider' } } : {}) }}>
-              {e.communication?.aLaUne && <Box sx={{ pt: 1.5 }}><MarqueUne jusquAu={e.communication.aLaUne} /></Box>}
-              <PublicationFil e={e} jour={jour} sansMagasin={sansMagasin} ouvrir={e.libelleOuvrir && ouvrirJournal ? ouvrirJournal : undefined} />
-              {suite.map((x) => <PublicationFil key={x.cle} e={x} jour={jour} sansMagasin={sansMagasin} ouvrir={x.libelleOuvrir && ouvrirJournal ? ouvrirJournal : undefined} />)}
-              {e.communication && communications?.moi && (
-                <ReactionsCommunication c={e.communication} moi={communications.moi} jour={jour} lectureSeule={!!apercu || !!equipe}
-                  apres={communications.recharger} signaler={setMessage} />
-              )}
-              {e.pratique && reactionsPratiques && <ReactionsPratique p={e.pratique} reactions={reactionsPratiques} lectureSeule={!!apercu || !!equipe} signaler={setMessage} />}
-              {e.visiteId && reactionsVisites && (
-                <Reactions titre={`le compte rendu de ${e.magasin}`} pouces={reactionsVisites.pouces[e.visiteId] ?? AUCUNE} commentaires={reactionsVisites.commentaires[e.visiteId] ?? AUCUNE}
-                  moi={reactionsVisites.moi} jour={jour} lectureSeule={!!apercu || !!equipe} basculer={() => basculerPouceVisite(e.visiteId!)} commenter={(t) => commenterVisite(e.visiteId!, t)}
-                  supprimer={supprimerCommentaireVisite} message={messageReactionVisite} apres={reactionsVisites.recharger} signaler={setMessage} />
-              )}
-            </Card>
-          ))}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {affiches.map(([e, ...reste], i) => {
+            const carte = social && estPublication(e) ? (
+              <CartePublication key={e.cle} e={e} jour={jour} sansMagasin={sansMagasin} nouveau={estNouveau(e)}
+                entete={e.communication?.aLaUne && <Box sx={{ pt: 1.5 }}><MarqueUne jusquAu={e.communication.aLaUne} /></Box>}>
+                {reactions(e)}
+              </CartePublication>
+            ) : (
+              <Card key={e.cle} component={e.communication || e.pratique ? 'article' : 'div'}
+                aria-label={e.communication?.titre ?? e.pratique?.titre} sx={{ border: 0, overflow: 'hidden', ...(reste.length ? { '& > * + *': { borderTop: '1px solid', borderColor: 'divider' } } : {}) }}>
+                <PublicationFil e={e} jour={jour} sansMagasin={sansMagasin} ouvrir={e.libelleOuvrir && ouvrirJournal ? ouvrirJournal : undefined} />
+                {reste.map((x) => <PublicationFil key={x.cle} e={x} jour={jour} sansMagasin={sansMagasin} ouvrir={x.libelleOuvrir && ouvrirJournal ? ouvrirJournal : undefined} />)}
+              </Card>
+            )
+            return i === derniereNouvelle && i < affiches.length - 1 ? <Fragment key={e.cle}>{carte}<AJour /></Fragment> : carte
+          })}
           {groupes.length > nb && (lienTout
             ? <Button component={RouterLink} to={lienTout} sx={{ alignSelf: 'center', minHeight: 48 }}>Voir toutes les actualités</Button>
-            : <Button onClick={() => setNb(nb + PAS_FIL)} sx={{ alignSelf: 'center', minHeight: 48 }}>Voir plus</Button>)}
+            : <><Box ref={suite} aria-hidden /><Button onClick={plus} sx={{ alignSelf: 'center', minHeight: 48 }}>Voir plus</Button></>)}
         </Box>
       )}
       <FenetreCompteRendu />
@@ -672,19 +700,23 @@ function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Resea
   // Vague 8 (Joseph, 11/11/2026) : l'actualité d'abord, comme un réseau social. Sur téléphone, À la une puis les
   // dernières publications, ensuite le point du jour ; les indicateurs se déplient. Sur PC, le fil ouvre la page et les
   // indicateurs passent en tête de la colonne « Aujourd'hui ».
+  // 15/11/2026 (204A à 211A) : le fil façon réseau social. « Partager » en tête du fil, une publication par carte, repère
+  // « Nouveau » ; sur téléphone, le point du jour se replie en une bande au-dessus d'un fil qui défile sans fin.
   const peutPublier = profil?.role === 'directeur' || profil?.role === 'rr'
-  const publier = peutPublier ? <Button component={RouterLink} to="/infos?vue=communications&publier=1" startIcon={<AddOutlined />} sx={{ minHeight: 48 }}>Publier</Button> : undefined
+  const partager = <BarrePartager moi={monNomPorteur(reseau, profil) || profil?.nom || ''} franchise={false} communication={peutPublier} />
+  const filActu = <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" sansFiltre social partager={partager} communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
   if (!surPC) {
+    const resume = [items.length ? `${items.length} à traiter` : '', taches.length ? `${taches.length} tâche${taches.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ') || 'Rien d’urgent'
     return (
       <>
         {aLaUne}
-        <Box sx={{ mb: 3 }}>
-          <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" sansFiltre limite={3} lienTout="/infos" action={publier} communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
-        </Box>
-        {profil?.role === 'coach' ? <MaJournee reseau={reseau} p={p} moi={monNomPorteur(reseau, profil)} /> : <AuMagasin reseau={reseau} p={p} />}
-        <PointCompact reseau={reseau} p={p} items={items} taches={taches} contrats={contrats} />
-        <SondagesARepondre equipe aFaire titre="Sondages à remplir" />
-        <IndicateursRepliables><Indicateurs reseau={reseau} p={p} periode={periode} /></IndicateursRepliables>
+        <BandeRepliable titre="Mon point du jour" resume={resume} icone={<TodayOutlined />}>
+          {profil?.role === 'coach' ? <MaJournee reseau={reseau} p={p} moi={monNomPorteur(reseau, profil)} /> : <AuMagasin reseau={reseau} p={p} />}
+          <PointCompact reseau={reseau} p={p} items={items} taches={taches} contrats={contrats} />
+          <SondagesARepondre equipe aFaire titre="Sondages à remplir" />
+          <IndicateursRepliables><Indicateurs reseau={reseau} p={p} periode={periode} /></IndicateursRepliables>
+        </BandeRepliable>
+        {filActu}
       </>
     )
   }
@@ -692,9 +724,7 @@ function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Resea
     <>
       {aLaUne}
       <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: 'minmax(0, 1fr) minmax(340px, 400px)', alignItems: 'start' }}>
-        <Box sx={{ minWidth: 0, maxWidth: 760 }}>
-          <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" action={publier} communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
-        </Box>
+        <Box sx={{ minWidth: 0, maxWidth: 680, width: '100%', justifySelf: 'center', display: 'flex', flexDirection: 'column' }}>{filActu}</Box>
         <Box component="aside" aria-label="Aujourd’hui" sx={{ minWidth: 0 }}>
           <Indicateurs reseau={reseau} p={p} periode={periode} colonne />
           {profil?.role === 'coach' && <MaJournee reseau={reseau} p={p} moi={monNomPorteur(reseau, profil)} />}
@@ -706,6 +736,31 @@ function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Resea
         </Box>
       </Box>
     </>
+  )
+}
+
+// Téléphone (209A) : une bande qui résume, le détail se déplie ; le fil passe juste dessous. Dépliée une fois, elle le
+// reste sur l'appareil (confort de lecture, rien d'important n'y est rangé)
+const cleBande = (titre: string) => `vandb-bande-${titre}`
+export function BandeRepliable({ titre, resume, icone, children }: { titre: string; resume: string; icone: ReactNode; children: ReactNode }) {
+  const [ouvert, setOuvertEtat] = useState(() => { try { return localStorage.getItem(cleBande(titre)) === '1' } catch { return false } })
+  const setOuvert = (f: (o: boolean) => boolean) => setOuvertEtat((o) => {
+    const v = f(o)
+    try { localStorage.setItem(cleBande(titre), v ? '1' : '0') } catch { /* appareil sans stockage */ }
+    return v
+  })
+  return (
+    <Card component="section" aria-label={titre} sx={{ mb: 2 }}>
+      <ButtonBase onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert} sx={{ width: '100%', minHeight: 56, px: 2, py: 1, gap: 1.5, justifyContent: 'flex-start', textAlign: 'left', fontFamily: 'inherit' }}>
+        <Box sx={{ color: 'secondary.main', display: 'flex' }}>{icone}</Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 700 }}>{titre}</Typography>
+          <Typography variant="body2" color="text.secondary" noWrap>{resume}</Typography>
+        </Box>
+        {ouvert ? <ExpandLessOutlined /> : <ExpandMoreOutlined />}
+      </ButtonBase>
+      <Collapse in={ouvert} unmountOnExit><Box sx={{ px: 2, pb: 2 }}>{children}</Box></Collapse>
+    </Card>
   )
 }
 

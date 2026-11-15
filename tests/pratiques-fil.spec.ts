@@ -31,9 +31,9 @@ test('les bonnes pratiques du réseau avec J’aime et commentaires', async ({ p
   await expect(carte.getByText('Je le propose à Nantes.')).toBeVisible()
   // Ancien « J'aime » de l'équipe et nouveau pouce comptés ensemble
   const pouce = carte.getByRole('button', { name: /^J’aime/ })
-  await expect(pouce).toHaveText('J’aime · 2')
+  await expect(carte.getByText('2 J’aime', { exact: true })).toBeVisible()
   await pouce.click()
-  await expect(pouce).toHaveText('J’aime · 3')
+  await expect(carte.getByText('3 J’aime', { exact: true })).toBeVisible()
   expect(ecritures.find((e) => e.table === 'rpc/basculer_pouce_pratique')?.corps).toEqual({ p_id: 'bp_1' })
   await carte.getByRole('button', { name: /^Commenter/ }).click()
   await carte.getByRole('textbox', { name: 'Commentaire sur Dégustation du samedi' }).fill('Bravo à l’équipe de Lyon.')

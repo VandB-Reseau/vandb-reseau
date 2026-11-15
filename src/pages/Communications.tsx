@@ -123,12 +123,12 @@ function DialogCommunication({ edition: { c, brouillon, erreur }, auteur, publie
 }
 
 // « J'aime » et commentaires d'une communication : sur sa page et dans le fil d'activité
-export function ReactionsCommunication({ c, moi, jour, lectureSeule, apres, signaler }: {
-  c: Communication; moi: string; jour: string; lectureSeule: boolean; apres: () => Promise<void>; signaler: (m: string) => void
+export function ReactionsCommunication({ c, moi, jour, lectureSeule, apres, signaler, extra }: {
+  c: Communication; moi: string; jour: string; lectureSeule: boolean; apres: () => Promise<void>; signaler: (m: string) => void; extra?: ReactNode
 }) {
   return (
     <Reactions titre={c.titre} pouces={c.pouces} commentaires={c.commentaires} moi={moi} jour={jour} lectureSeule={lectureSeule}
-      basculer={() => basculerPouce(c.id)} commenter={(t) => commenter(c.id, t)} supprimer={supprimerCommentaire} message={messageCommunication} apres={apres} signaler={signaler} />
+      basculer={() => basculerPouce(c.id)} commenter={(t) => commenter(c.id, t)} supprimer={supprimerCommentaire} message={messageCommunication} apres={apres} signaler={signaler} extra={extra} />
   )
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
@@ -19,8 +19,10 @@ export interface Commentaire { id: number; auteur: string; auteurNom: string; au
 
 // « J'aime » et commentaires d'une publication (communication, bonne pratique) : sur sa page et dans le fil d'activité.
 // autres : anciens « J'aime » enregistrés par nom, affichés avec les pouces
-export function Reactions({ titre, pouces: initiaux, commentaires: tous, autres = [], moi, jour, lectureSeule, basculer, commenter, supprimer, message, apres, signaler }: {
-  titre: string; pouces: Pouce[]; commentaires: Commentaire[]; autres?: string[]; moi: string; jour: string; lectureSeule: boolean
+// Barre façon réseau social (206A, Joseph 15/11/2026) : le décompte au-dessus (« 3 J'aime · 2 commentaires »), puis des
+// boutons simples de même largeur ; extra : un troisième geste propre à la publication (prise de connaissance)
+export function Reactions({ titre, pouces: initiaux, commentaires: tous, autres = [], moi, jour, lectureSeule, basculer, commenter, supprimer, message, apres, signaler, extra }: {
+  titre: string; pouces: Pouce[]; commentaires: Commentaire[]; autres?: string[]; moi: string; jour: string; lectureSeule: boolean; extra?: ReactNode
   basculer: () => Promise<unknown>; commenter: (texte: string) => Promise<unknown>; supprimer: (id: number) => Promise<unknown>
   message: (e: unknown) => string; apres: () => Promise<void>; signaler: (m: string) => void
 }) {
@@ -57,14 +59,27 @@ export function Reactions({ titre, pouces: initiaux, commentaires: tous, autres 
   const commentaires = ouvert ? affiches : affiches.slice(-2)
   return (
     <>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, pt: 0.5 }}>
-        <Button onClick={() => void reagir()} disabled={lectureSeule || envoi} aria-pressed={aime} startIcon={aime ? <ThumbUp /> : <ThumbUpOutlined />} color={aime ? 'secondary' : 'inherit'} sx={{ minHeight: 48, px: 1.5 }}>
-          {pouces.length ? `J’aime · ${pouces.length}` : 'J’aime'}
+      {(pouces.length > 0 || affiches.length > 0) && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, pt: 1, minWidth: 0 }}>
+          {pouces.length > 0 && (
+            <Typography variant="body2" color="text.secondary" noWrap title={pouces.map((p) => p.nom).join(', ')} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0, flex: 1 }}>
+              <Box component="span" sx={{ width: 20, height: 20, borderRadius: '50%', bgcolor: 'secondary.main', color: 'secondary.contrastText', display: 'inline-grid', placeItems: 'center', flexShrink: 0 }}><ThumbUp sx={{ fontSize: 12 }} /></Box>
+              {pouces.length} J’aime
+            </Typography>
+          )}
+          {affiches.length > 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto', whiteSpace: 'nowrap' }}>{affiches.length} commentaire{affiches.length > 1 ? 's' : ''}</Typography>
+          )}
+        </Box>
+      )}
+      <Box sx={{ display: 'flex', alignItems: 'stretch', mx: 1, mt: 0.5, borderTop: '1px solid', borderColor: 'divider', '& > *': { flex: 1, minHeight: 48 } }}>
+        <Button onClick={() => void reagir()} disabled={lectureSeule || envoi} aria-pressed={aime} startIcon={aime ? <ThumbUp /> : <ThumbUpOutlined />} color={aime ? 'secondary' : 'inherit'} sx={{ px: 1, minHeight: 48 }}>
+          J’aime
         </Button>
-        <Button onClick={() => setOuvert((v) => !v)} aria-expanded={ouvert} startIcon={<ChatBubbleOutlineOutlined />} color="inherit" sx={{ minHeight: 48, px: 1.5 }}>
-          {affiches.length ? `Commenter · ${affiches.length}` : 'Commenter'}
+        <Button onClick={() => setOuvert((v) => !v)} aria-expanded={ouvert} startIcon={<ChatBubbleOutlineOutlined />} color="inherit" sx={{ px: 1, minHeight: 48 }}>
+          Commenter
         </Button>
-        {pouces.length > 0 && <Typography variant="body2" color="text.secondary" noWrap sx={{ minWidth: 0, display: { xs: 'none', sm: 'block' } }}>{pouces.slice(0, 3).map((p) => p.nom).join(', ')}{pouces.length > 3 ? ` et ${pouces.length - 3} autre${pouces.length > 4 ? 's' : ''}` : ''}</Typography>}
+        {extra}
       </Box>
       {(commentaires.length > 0 || ouvert) && (
         <Box sx={{ borderTop: '1px solid', borderColor: 'divider', px: 2, py: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>

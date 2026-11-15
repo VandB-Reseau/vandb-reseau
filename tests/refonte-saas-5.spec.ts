@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { seConnecter, textesTropPetits, type CommunicationSimulee, type Ecriture } from './supabase-simule'
+import { deplierPoint, seConnecter, textesTropPetits, type CommunicationSimulee, type Ecriture } from './supabase-simule'
 import { zonesTropPetites } from './pilotage/supabase-simule'
 
 // Refonte façon SaaS, vague 5 (Joseph, 10/11/2026, « tout d'un coup sauf 47 ») : l'actualité au cœur des accueils (43A,
@@ -51,7 +51,7 @@ test('43A et 46A : l’accueil de l’équipe met À la une en tête, le fil au 
 test('46A : au bout de 7 jours, la prise de connaissance qui manque arrive dans À traiter', async ({ page, isMobile }) => {
   await seConnecter(page, { communications: communications() })
   await page.goto('./#/')
-  if (isMobile) await page.getByRole('button', { name: /^Voir les \d+$/ }).first().click()
+  if (isMobile) { await deplierPoint(page); await page.getByRole('button', { name: /^Voir les \d+$/ }).first().click() }
   else await page.getByRole('region', { name: 'À traiter' }).getByRole('button', { name: /^Voir les \d+$/ }).click()
   await expect(page.getByText('2 franchisés sans prise de connaissance : Paul MULTI, Franchisé 4')).toBeVisible()
 })
@@ -66,8 +66,9 @@ test('44A et 46A : le franchisé lit À la une, donne sa prise de connaissance, 
   await expect(une.getByText('À relancer')).toBeVisible()
   await une.getByRole('button', { name: 'J’ai pris connaissance' }).click()
   await expect(une.getByText('Pris connaissance')).toBeVisible()
-  expect(ecritures.some((e) => e.table === 'rpc/prendre_connaissance' && JSON.stringify(e.corps).includes('"p_id":1'))).toBe(true)
+  await expect.poll(() => ecritures.some((e) => e.table === 'rpc/prendre_connaissance' && JSON.stringify(e.corps).includes('"p_id":1'))).toBe(true)
   await expect(page.getByRole('region', { name: 'Actualités' }).getByText('Résultats du challenge de septembre')).toBeVisible()
+  await deplierPoint(page)
   await expect(page.getByRole('complementary', { name: 'Mon magasin' }).getByRole('region', { name: 'À faire' })).toBeVisible()
   await lisible(page, isMobile, false)
 })
@@ -191,8 +192,8 @@ test('54A : « Plus tard » met une ligne de À traiter de côté, « Tout revoi
 test('53A : une seule carte d’indicateur, cliquable, sur l’accueil et dans Chiffres', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./#/')
-  // Vague 8 : sur téléphone, les indicateurs se déplient sous l'actualité
-  if (isMobile) await page.getByRole('button', { name: 'Mes indicateurs' }).click()
+  // Vague 8 : sur téléphone, les indicateurs se déplient dans le point du jour
+  if (isMobile) { await deplierPoint(page); await page.getByRole('button', { name: 'Mes indicateurs' }).click() }
   await page.getByRole('region', { name: 'Pilotage' }).getByRole('link', { name: /^Décrochent :/ }).click()
   await expect(page).toHaveURL(/#\/performance/)
   // Dans Chiffres, la carte filtre la liste
