@@ -48,7 +48,13 @@ test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', a
   await page.getByLabel('Prix de vente du fût HT').fill('69')
   await page.getByLabel('Prix d’achat du fût HT').fill('41,34')
   // Livraison : 30 km × 0,60 = 18 € + 1,5 h × 20 € = 30 €, 48 € ; × 10 = 480 € par an
-  await expect(page.getByText(/Une livraison coûte 48,00\s€ HT : 18,00\s€ d’indemnités kilométriques .* et 30,00\s€ de temps .*Sur 10 livraisons : 480\s€ par an/)).toBeVisible()
+  await expect(page.getByText(/Une livraison coûte 48,00\s€ HT : 18,00\s€ d’indemnités kilométriques .* et 30,00\s€ de temps .*Rien de facturé\./)).toBeVisible()
+  // Blocs dans l'ordre recettes → coûts → résultat, chacun avec son sous-total (Joseph, 15/11/2026)
+  await expect(page.getByRole('region', { name: '1. Recettes' }).locator('.sous-total')).toHaveText(/CA HT de l’année\s*2\s760\s€/)
+  await expect(page.getByRole('region', { name: '2. Fûts' }).locator('.sous-total')).toHaveText(/− 1\s684\s€/)
+  await expect(page.getByRole('region', { name: '4. Livraisons' }).locator('.sous-total')).toHaveText(/Par an\s*− 480\s€/)
+  const compte = page.getByRole('table', { name: 'Compte de l’année' })
+  await expect(compte.getByRole('row')).toHaveText([/Recettes.*\+ 2\s760\s€/, /Fûts.*− 1\s684\s€/, /Redevance et publicité.*− 83\s€/, /Tireuse.*− 300\s€/, /Livraisons.*− 480\s€/, /Gain de l’année.*213\s€/])
   // 24,83 € nets par fût ; 300 € de tireuse + 10 × 48 € de livraisons = 780 € ; équilibre à 32 fûts ; 213 € de gain à 40 fûts
   await expect(page.getByRole('status')).toContainText(/24,83\s€ nets par fût, 780\s€ de coûts fixes, équilibre à 32 fûts ; gain de 213\s€/)
   // Don de 1 000 € avec reçu Cerfa : 400 € de coût réel (réduction mécénat réglée par le siège)
@@ -103,9 +109,12 @@ test('142 : carte pression, le bec à revoir et le projet de nouveau bec', async
   await page.getByLabel('Prix de la pinte TTC, bec 2').fill('9')
   await page.getByLabel('Demis par semaine, bec 2').fill('10')
   await page.getByLabel('Pintes par semaine, bec 2').fill('5')
-  // IPA : 44 € de marge par semaine à 57 %, 25 jours pour vider un fût (seuil du siège : 21) ; demi à 6,25 € pour 68 %
-  await expect(page.getByRole('status')).toHaveText(/^Le bec 2 \(IPA\) rapporte 44\s€ par semaine à 57\s% de marge et met 25 jours à vider un fût : monte le demi à 6,25\s€, ou remplace-le\.$/)
+  // IPA : 44 € de marge par semaine à 57 %, 25 jours pour vider un fût (seuil du siège : 21) ; prix du bec × 1,344 (demi à 6,45 €) pour 68 % formats confondus
+  await expect(page.getByRole('status')).toHaveText(/^Le bec 2 \(IPA\) rapporte 44\s€ par semaine à 57\s% de marge et met 25 jours à vider un fût : monte ses prix de 34,4\s% \(demi à 6,45\s€\), ou remplace-le\.$/)
   await expect(page.getByRole('table', { name: 'Becs de la carte pression' }).getByRole('row')).toHaveCount(3)
+  // Marge du bec, tous formats confondus (Joseph, 15/11/2026) : plus de colonne au demi
+  await expect(page.getByRole('table', { name: 'Becs de la carte pression' }).getByRole('columnheader')).toHaveText(['Bec', 'CA HT par semaine', 'Marge par semaine', 'Taux de marge', 'Coût du litre servi', 'Jours pour vider un fût', 'Fûts par mois'])
+  await expect(page.getByRole('table', { name: 'Becs de la carte pression' }).getByRole('row').nth(2)).toContainText(/IPA.*78\s€.*44\s€.*57\s%/)
   await page.getByLabel('Projet : ajouter ou remplacer un bec').check()
   await expect(page.getByText('Gain du projet')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])

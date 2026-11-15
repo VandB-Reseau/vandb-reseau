@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateurs structurés pour guider la réflexion (Joseph, 15/11/2026), sans migration. Les 14 simulateurs suivent la même
+  trame : étapes numérotées dans des blocs encadrés (point de départ, ce qu'on change, recettes, coûts), chacune avec son
+  sous-total, puis un bloc « Résultat ». Contrat extérieur, soirée et dimanche ou jour férié ont leur compte, du CA (ou de
+  la marge) au gain, ligne par ligne. Carte pression : la marge se lit par bec, tous formats confondus (demi, 33 cl,
+  pinte), en sous-total de chaque bec et dans le tableau (CA HT, marge, taux de marge, coût du litre servi) ; le conseil
+  donne la hausse de prix du bec qui ramène sa marge à la cible.
+
 - Concurrents à 2 km fiables (Joseph, 15/11/2026), sans migration. La liste lue sur OpenStreetMap n'était gardée que
   dans le navigateur de chacun : chaque personne dépendait d'Overpass, souvent saturé. Elle est maintenant gardée avec le
   suivi du magasin dès qu'un membre de l'équipe l'a lue (repli pour tous quand la carte ne répond pas, relue tous les
