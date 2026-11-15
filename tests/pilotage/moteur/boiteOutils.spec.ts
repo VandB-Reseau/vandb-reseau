@@ -37,6 +37,16 @@ test('contrat extérieur : net par fût, coûts fixes, équilibre, remise maxima
   // Équilibre : 780 ÷ 24,83 = 31,4 → 32 fûts ; à 40 fûts : 993,20 − 780 = 213,20 €
   expect(r.equilibre).toBe(32)
   proche(r.gain, 213.2)
+  // Compte du contrat : CA 2 760 − fûts 40 × 42,10 = 1 684 − redevance et publicité 82,80 − coûts fixes 780 = 213,20 €
+  proche(r.coutFuts, 1_684)
+  proche(r.redevance, 82.8)
+  proche(r.retrocession, 0)
+  proche(r.ca - r.coutFuts - r.redevance - r.retrocession - r.coutFixe, r.gain)
+  const sponso = simulerExterieur({ ...contrat, prixLivraison: 40, sponsoring: { montant: 0, parFut: 2 } }, p, false)
+  // Livraisons facturées dans le CA (2 760 + 400), rétrocession 40 × 2 = 80 € ; le compte retombe sur le gain
+  proche(sponso.redevance, 3_160 * 0.03)
+  proche(sponso.retrocession, 80)
+  proche(sponso.ca - sponso.coutFuts - sponso.redevance - sponso.retrocession - sponso.coutFixe, sponso.gain)
   // Remise tenable à 40 fûts : (24,83 − 780 ÷ 40) ÷ 0,97 = 5,49 €
   proche(r.remiseMax, (24.83 - 19.5) / 0.97)
   // Une livraison facturée au moins 48 ÷ 0,97 = 49,48 € HT
@@ -100,6 +110,9 @@ test('carte pression : coût au verre, marge, jours pour vider un fût, bec à r
   proche(i.joursPourVider, 25.2)
   expect(i).toMatchObject({ vieillit: true, sousCible: true })
   proche(i.prixDemiCible, 6.25)
+  // Marge du bec, formats confondus : coût 33,33 € pour 77,50 € de CA ; prix × (33,33 ÷ 77,50) ÷ 0,32 = × 1,344 pour 68 %
+  proche(i.hausseCible, (100 / 3 / 77.5) / 0.32 - 1)
+  expect(b.hausseCible).toBeNull()
   expect(c.faible).toBe(1)
   proche(c.margeSemaine, 460 + 77.5 - 100 / 3)
 })

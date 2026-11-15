@@ -92,6 +92,9 @@ test('franchisé : une soirée se met dans le budget, la promo se lit en volume'
   await page.getByLabel('Extras de personnel').fill('150')
   // Bar à 18 % de TVA : 25 ÷ 1,18 = 21,19 € HT × 40 = 847,46 € ; marge 508,47 − 3 % 25,42 − 350 = 133,05 €
   await expect(page.getByRole('status')).toContainText(/gain de 133\s€/)
+  // Compte de l'événement : marge 508 € − redevance et publicité 25 € − coûts 350 € = 133 €
+  await expect(page.getByRole('region', { name: '3. Coûts de l’événement HT' }).locator('.sous-total')).toHaveText(/− 350\s€/)
+  await expect(page.getByRole('table', { name: 'Compte de l’événement' }).getByRole('row')).toHaveText([/Marge sur les ventes.*\+ 508\s€/, /Redevance et publicité.*− 25\s€/, /Coûts de l’événement.*− 350\s€/, /Gain.*133\s€/])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-simulateurs-soiree.png`, fullPage: true })
   await page.getByRole('button', { name: 'Mettre dans mon budget 2027' }).click()

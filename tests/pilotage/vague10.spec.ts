@@ -105,7 +105,7 @@ test('152-153 : soirée avec les achats des participants, les coûts détaillés
   await page.getByLabel('Sécurité').fill('120')
   await page.getByLabel('Personnes', { exact: true }).fill('2')
   // 2 personnes × 3 h × 20 € (repère du siège) × 1,25 = 150 €
-  await expect(page.getByText('Heures de l’équipe en place')).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Heures de l’équipe en place' })).toBeVisible()
   await expect(page.locator('#carte-simulation')).toContainText(/150\s€chargées, majoration comprise/)
   // 30 participants, un sur quatre achète 36 € TTC : 7,5 acheteurs × 30 € HT = 225 €
   await expect(statut(page)).toContainText(/dont 225\s€ d’achats en cave/)
