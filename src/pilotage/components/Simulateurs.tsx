@@ -354,12 +354,7 @@ function margeUnivers(b: Budget | null, u: Univers): number | null {
   return ca > 0 ? Math.round(somme(f.map((x) => x.margeObjectif)) / ca * 100) / 100 : null
 }
 
-// Exemple chiffré de chaque simulateur (Joseph, 15/11/2026) : remises et offerts sur un an, en part du CA HT du budget
-function exempleRemises(b: Budget | null): Record<CleRemise, number> {
-  const ca = b && b.ca > 0 ? b.ca : 600_000
-  const de = (t: number) => Math.round(ca * t / 100) * 100
-  return { offerts: de(0.003), persos: de(0.0015), prixSpeciaux: de(0.003), remises: de(0.006), fidelite: de(0.004) }
-}
+// Exemple chiffré de chaque simulateur (Joseph, 15/11/2026).
 // Réalisé du mois en cours jusqu'à hier, en exemple : 95 % du rythme du budget
 function exempleRealise(b: Budget | null, aujourdhui: Date): number {
   const budget = b?.mois[aujourdhui.getMonth()]?.ca ?? 0
@@ -394,7 +389,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       salaries: Math.max(1, h?.equipe?.filter((x) => x.categorie !== 'gerant_tns').length || 2), partReversee: 0,
       paliers: [{ progression: 0.05, prime: 150, primeGerant: 0 }, { progression: 0.1, prime: 200, primeGerant: 0 }, { progression: 0.15, prime: 250, primeGerant: 0 }],
     },
-    prix: { type: 'remise', taux: 0.1, marge: b && b.ca > 0 ? Math.round(b.tauxMarge * 100) / 100 : 0.35, cartons: 0, mois: 12, ca: null, montants: exempleRemises(b) },
+    prix: { type: 'remise', taux: 0.1, marge: b && b.ca > 0 ? Math.round(b.tauxMarge * 100) / 100 : 0.35, cartons: 0, mois: 12, ca: null, montants: { offerts: 0, persos: 0, prixSpeciaux: 0, remises: 0, fidelite: 0 } },
     tresorerie: { baisse: true, tauxBaisse: 0.15, de: 1, a: 3, depense: false, montantDepense: 10_000, moisDepense: 6, retard: false, montantRetard: 5_000, moisRetard: 7, duree: 2 },
     vente_additionnelle: { univers: b?.flux.cave?.objectif ? 'cave' : 'bar', unSur: 10, prix: 12, marge: null, base: 'caisse' },
     reste_a_faire: { mois: aujourdhui.getMonth() + 1, jour: aujourdhui.getDate(), realise: exempleRealise(b, aujourdhui) },
@@ -412,15 +407,11 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       prixLivraison: null, sponsoring: false, sponsoMontant: 0, sponsoParFut: 0, materiel: 0, astreinte: 0, locations: 0, prixLocation: 0,
     },
     tireuses: {
-      tireuses: tireusesParc ?? 2, semaines: s.tireuses.semainesSaison, sortiesSaison: 30, sortiesHors: 8, refus: 0, futsParSortie: 2, prixVente: null, prixAchat: null, prixNeuve: 1_500, duree: s.exterieur.dureeTireuse || 5, entretien: s.exterieur.entretienTireuse, vieilles: [{ nom: 'Tireuse de 2019', age: 7, reparations: 250 }],
+      tireuses: tireusesParc ?? 2, semaines: s.tireuses.semainesSaison, sortiesSaison: 30, sortiesHors: 8, refus: 0, futsParSortie: 2, prixVente: null, prixAchat: null, prixNeuve: 1_500, duree: s.exterieur.dureeTireuse || 5, entretien: s.exterieur.entretienTireuse, vieilles: [],
       saisie: 'occupation', occSaison: s.tireuses.occupationSaison, occHors: s.tireuses.occupationHors,
     },
     pression: {
-      becs: [
-        { biere: 'Blonde', prixFut: 90, litres: 30, perte: 0.1, prixDemi: 4.2, prixPinte: 7.8, demis: 80, pintes: 30 },
-        { biere: 'Blanche', prixFut: 95, litres: 30, perte: 0.1, prixDemi: 4.5, prixPinte: 8.2, demis: 40, pintes: 15 },
-        { biere: 'IPA', prixFut: 120, litres: 20, perte: 0.12, prixDemi: 5, prixPinte: 9, demis: 25, pintes: 12 },
-      ],
+      becs: [{ biere: 'Blonde', prixFut: 90, litres: 30, perte: 0.1, prixDemi: 4.2, prixPinte: 7.8, demis: 80, pintes: 30 }],
       projet: false, mode: 'ajouter', remplace: 0, cout: 500, cannibalisation: 0.5,
       nouveau: { biere: 'Nouvelle bière', prixFut: 100, litres: 30, perte: 0.1, prixDemi: 4.5, prixPinte: 8.5, demis: 30, pintes: 10 },
       vue: 'carte', audit: { futs: 6, litres: 30, prixFut: 90, demis: 400, verres33: 0, pintes: 120, litres1L: 0, offerts: 4, caHT: 2_170, standard: null },
