@@ -87,10 +87,8 @@ import { Contact, DansCarte, Ligne, Repliee, Section } from '../components/Secti
 import CardContent from '@mui/material/CardContent'
 import Collapse from '@mui/material/Collapse'
 import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
-import ChevronLeftOutlined from '@mui/icons-material/ChevronLeftOutlined'
-import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
 import { prioritesActives } from '../data/planAction'
-import { filRetenu, ongletRetenu, retenirFil, retenirOnglet, voisinsDe } from '../lib/ficheMemoire'
+import { filRetenu, ongletRetenu, retenirFil, retenirOnglet } from '../lib/ficheMemoire'
 import { SectionExterieur, SectionRedressement } from '../components/ExterieurRedressement'
 import { SectionReunionsMagasin } from '../components/Reunions'
 import { SectionConcurrents } from '../components/Concurrents'
@@ -167,17 +165,26 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   // pas sur 375 à 430 px, la Nine box s'ouvre alors par le menu « ⋯ » de l'en-tête
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const rubriques = surPC ? rubriquesFiche : rubriquesFiche.filter((r) => r.vue !== 'ninebox')
-  // Choix 203 (Joseph, 15/11/2026) : sans onglet demandé, la fiche rouvre le dernier onglet (et filtre) de la personne
-  const [retenu] = useState(() => (demandee ? null : { onglet: ongletRetenu(), fil: filRetenu() }))
+  // Choix 203 (Joseph, 15/11/2026) : sans onglet demandé, la fiche rouvre le dernier onglet (et filtre) de la personne.
+  // Une seule fois par magasin ouvert : rejouée à chaque changement d'adresse, elle ramenait sans cesse l'onglet retenu
+  // (fiche bloquée sur Simuler, Joseph 15/11/2026).
+  const ouverte = useRef<string | null>(null)
+  const enReprise = useRef(false)
   useEffect(() => {
-    const o = retenu?.onglet
+    if (ouverte.current === m.nom) return
+    ouverte.current = m.nom
+    const o = demandee ? null : ongletRetenu()
     if (!o || o === 'fiche' || !rubriquesFiche.some((r) => r.vue === o)) return
-    setParams((p) => { const n = new URLSearchParams(p); n.set('vue', o); if (o === 'activite' && retenu.fil && FILTRES_ACTIVITE.some((f) => f.v === retenu.fil)) n.set('fil', retenu.fil); return n }, { replace: true })
-  }, [retenu, setParams])
+    const fil = filRetenu()
+    enReprise.current = true
+    setParams((p) => { const n = new URLSearchParams(p); n.set('vue', o); if (o === 'activite' && fil && FILTRES_ACTIVITE.some((f) => f.v === fil)) n.set('fil', fil); return n }, { replace: true })
+  }, [m.nom, demandee, setParams])
   const ongletActuel = ongletDe(vue)
-  useEffect(() => { if (!retenu?.onglet || retenu.onglet === 'fiche' || demandee) retenirOnglet(ongletActuel) }, [ongletActuel, retenu, demandee])
-  // Choix 202 : magasin précédent / suivant dans la liste filtrée de Magasins
-  const voisins = useMemo(() => voisinsDe(m.nom, reseau.magasins.map((x) => x.nom)), [m.nom, reseau.magasins])
+  useEffect(() => {
+    // Tant que l'onglet retenu n'est pas rouvert, la Vue d'ensemble affichée un instant n'efface pas la mémoire
+    if (enReprise.current) { if (!demandee) return; enReprise.current = false }
+    retenirOnglet(ongletActuel)
+  }, [ongletActuel, demandee])
   const changerOnglet = (o: OngletFiche) => setParams((p) => { const n = new URLSearchParams(p); n.delete('partie'); n.delete('fil'); if (o === 'fiche') n.delete('vue'); else n.set('vue', o); return n }, { replace: true })
   const [reaffectation, setReaffectation] = useState(false)
   const [edition, setEdition] = useState(false)
@@ -211,13 +218,12 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
     <>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <FilAriane pcSeulement etapes={[{ libelle: 'Magasins', lien: '/magasins' }]} ici={m.nom} />
-        {surPC && <MagasinsVoisins voisins={voisins} />}
       </Box>
       <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} alerteVisite={rythme?.alerte ? libellePasVu(rythme) : ''}
         appeler={m.telephone || m.responsable?.telephone || ''} message={conversation.ouvrir}
         creer={{ visite: saisirVisite, tache: () => setNouvelleTache(true), appel: () => { setTypeVisite('appel'); setVisite(null) }, note: journal.nouvelleNote, pratique: () => setNouvellePratique(true) }}
         modifier={referentiels ? () => setEdition(true) : undefined} fermer={referentiels ? () => setSituation(true) : undefined}
-        ninebox={surPC ? undefined : () => changerOnglet('ninebox')} voisins={surPC ? undefined : voisins} />
+        ninebox={surPC ? undefined : () => changerOnglet('ninebox')} />
       {conversation.panneau}
       {situationsAffichees(m, reseau.jour).map((s) => (
         <Alert key={`${s.type}-${s.date}`} severity={s.type === 'sortie' || (s.type === 'travaux' && s.date <= reseau.jour) ? 'warning' : 'info'} sx={{ mb: 2 }}
@@ -615,10 +621,9 @@ function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Ma
 
 
 // Haut de fiche façon profil : initiales, nom, trois compteurs, puis Appeler, Message, Visite
-function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, appeler, message, creer, modifier, fermer, retour, ninebox, voisins }: {
+function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, appeler, message, creer, modifier, fermer, retour, ninebox }: {
   m: Magasin; reseau: Reseau; alerte: ReturnType<typeof analyser>; enRetardNb: number; ouvertes: number; alerteVisite: string
   appeler: string; message: () => void; creer: MenuCreer; modifier?: () => void; fermer?: () => void; retour: { libelle: string; aller: () => void }; ninebox?: () => void
-  voisins?: Voisins
 }) {
   const c = caseDe(reseau.evaluations[m.nom])
   // Une seule pastille : la plus grave
@@ -647,7 +652,7 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
       ]}
       detail={c && <><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} par an</>}
       telephone={appeler}
-      icones={<AutresActions nom={m.nom} modifier={modifier} fermer={fermer} ninebox={ninebox} voisins={voisins} />}
+      icones={<AutresActions nom={m.nom} modifier={modifier} fermer={fermer} ninebox={ninebox} />}
       principal={<BoutonVisite reseau={reseau} magasin={m.nom} principal />}
       actions={<>
         <Tooltip title="Message"><IconButton onClick={message} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Tooltip>
@@ -689,23 +694,8 @@ function MenuAjouter({ creer }: { creer: MenuCreer }) {
   )
 }
 
-type Voisins = { precedent: string | null; suivant: string | null }
-// Choix 202 (Joseph, 15/11/2026) : sur PC, au bout du fil d'Ariane, passer au magasin précédent ou suivant de la liste
-function MagasinsVoisins({ voisins }: { voisins: Voisins }) {
-  if (!voisins.precedent && !voisins.suivant) return null
-  const bouton = (nom: string | null, sens: 'Précédent' | 'Suivant', icone: React.ReactNode) => nom
-    ? <Tooltip title={`${sens} : ${nom}`}><IconButton component={RouterLink} to={lienFiche(nom)} aria-label={`Magasin ${sens.toLowerCase()} : ${nom}`} sx={{ width: 40, height: 40 }}>{icone}</IconButton></Tooltip>
-    : <span><IconButton disabled aria-label={`Pas de magasin ${sens.toLowerCase()}`} sx={{ width: 40, height: 40 }}>{icone}</IconButton></span>
-  return (
-    <Box role="group" aria-label="Passer à un autre magasin" className="sans-impression" sx={{ display: 'flex', alignItems: 'center', ml: 'auto', mb: 1 }}>
-      {bouton(voisins.precedent, 'Précédent', <ChevronLeftOutlined />)}
-      {bouton(voisins.suivant, 'Suivant', <ChevronRightOutlined />)}
-    </Box>
-  )
-}
-
 // Bilan de l'année (sprint 26, F1), favoris et Modifier dans un menu « ⋯ »
-function AutresActions({ nom, modifier, fermer: fermerMagasin, ninebox, voisins }: { nom: string; modifier?: () => void; fermer?: () => void; ninebox?: () => void; voisins?: Voisins }) {
+function AutresActions({ nom, modifier, fermer: fermerMagasin, ninebox }: { nom: string; modifier?: () => void; fermer?: () => void; ninebox?: () => void }) {
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const favori = useSuivis().favoris.includes(nom)
   const fermer = () => setAncre(null)
@@ -714,9 +704,6 @@ function AutresActions({ nom, modifier, fermer: fermerMagasin, ninebox, voisins 
       <Tooltip title="Autres actions"><IconButton onClick={(e) => setAncre(e.currentTarget)} aria-label="Autres actions" aria-haspopup="menu" aria-expanded={!!ancre} sx={{ width: 48, height: 48 }}><MoreHorizOutlined /></IconButton></Tooltip>
       <Menu anchorEl={ancre} open={!!ancre} onClose={fermer} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
         {ninebox && <MenuItem onClick={() => { fermer(); ninebox() }} sx={{ minHeight: 48 }}><ListItemIcon><GridViewOutlined /></ListItemIcon>Nine box</MenuItem>}
-        {/* Choix 202 : sur téléphone, magasin précédent / suivant dans ce menu (l'en-tête n'a plus de place) */}
-        {voisins?.precedent && <MenuItem component={RouterLink} to={lienFiche(voisins.precedent)} onClick={fermer} sx={{ minHeight: 48 }}><ListItemIcon><ChevronLeftOutlined /></ListItemIcon>Précédent : {voisins.precedent}</MenuItem>}
-        {voisins?.suivant && <MenuItem component={RouterLink} to={lienFiche(voisins.suivant)} onClick={fermer} sx={{ minHeight: 48 }}><ListItemIcon><ChevronRightOutlined /></ListItemIcon>Suivant : {voisins.suivant}</MenuItem>}
         <MenuItem component={RouterLink} to={lienBilan(nom)} onClick={fermer} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><InsightsOutlined /></ListItemIcon>Bilan de l’année</MenuItem>
         <MenuItem onClick={() => { fermer(); basculerFavori(nom) }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon>{favori ? <StarOutlined /> : <StarBorderOutlined />}</ListItemIcon>{favori ? 'Retirer des favoris' : 'Ajouter aux favoris'}</MenuItem>
         {modifier && <MenuItem onClick={() => { fermer(); modifier() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><EditOutlined /></ListItemIcon>Modifier la fiche</MenuItem>}

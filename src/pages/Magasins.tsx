@@ -1,6 +1,5 @@
 import { Suspense, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { memoriserListe } from '../lib/ficheMemoire'
 import { DialogMagasin } from '../components/EditionMagasin'
 import { lienFiche } from '../lib/format'
 import { libelleCleCoach } from '../data/charge'
@@ -95,8 +94,6 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
         const parAlerte = (nom: string) => alertes.get(nom) ?? []
         const parLevier = lev ? (nom: string) => lev.get(nom) ?? null : undefined
         const resultats = filtrer(reseau.magasins, filtres, parAlerte, parLevier)
-        // Choix 202 : la liste filtrée, pour passer d'une fiche à la suivante (la carte montre tout le réseau, elle ne compte pas)
-        if (vue === 'liste') memoriserListe(resultats.map((m) => m.nom).sort((x, y) => x.localeCompare(y, 'fr')))
         // Nom proposé pour enregistrer la vue : ses filtres mis bout à bout
         const nomPropose = [filtres.texte, ...filtres.alertes.map((a) => libellesAlerte[a]), ...filtres.leviers.map((l) => libellesLevier[l]), ...filtres.statuts.map((s) => statutLibelle[s]),
           ...filtres.types.map((t) => (t === 'franchise' ? 'Franchisés' : 'Intégrés')), ...filtres.rrs.map((r) => reseau.rrs.find((x) => x.id === r)?.nom ?? 'Sans RR'),
