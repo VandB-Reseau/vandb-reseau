@@ -42,8 +42,10 @@ test('franchisé : le menu ouvre les simulateurs de son magasin ; embauche chiff
     await page.getByRole('navigation').getByRole('button', { name: 'Simulateurs' }).first().click()
   }
   await expect(page).toHaveURL(/magasins\/Annecy%20Test\?vue=simulateurs/)
-  await expect(simulateurs(page).getByRole('button')).toHaveCount(13)
-  // Embauche d'un vendeur en janvier, d'office : coût, EBE, % de frais de personnel, trésorerie, CA nécessaire
+  await expect(simulateurs(page).getByRole('button')).toHaveCount(14)
+  // 183 : « Mon meilleur levier » s'ouvre d'office ; puis l'embauche d'un vendeur en janvier : coût, EBE, % de frais de personnel, trésorerie, CA nécessaire
+  await expect(page.getByRole('heading', { name: 'Mon meilleur levier' })).toBeVisible()
+  await simulateurs(page).getByRole('button', { name: /^Embaucher/ }).click()
   await expect(page.getByRole('heading', { name: 'Embaucher' })).toBeVisible()
   await page.getByLabel('Salaire brut mensuel').fill('2000')
   await expect(page.getByText('Coût en 2027')).toBeVisible()

@@ -27,7 +27,12 @@ import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
 import { Link as RouterLink } from 'react-router-dom'
 import { lienFiche } from '../lib/format'
 import { anneeObjectif, avancement, libelleAvancement, objectifsDu, phraseObjectif, type Objectif } from '../data/objectifs'
-import { PRIORITES_MAX, libelleStatutPriorite, nouvelIdPriorite, prioritesDu, tachesDeLaPriorite, type Priorite, type StatutPriorite } from '../data/planAction'
+import {
+  PRIORITES_MAX, constater, indicateursMesure, placesLibres, libelleStatutPriorite, moisSuivant, nouvelIdPriorite, phrasesMesure, prioritesDu, tachesDeLaPriorite,
+  type IndicateurMesure, type MesurePriorite, type Priorite, type StatutPriorite,
+} from '../data/planAction'
+import { chiffresDuMagasin } from '../data/chiffres'
+import { Aide } from '../pilotage/components/Aide'
 import { dateCourte } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
 
@@ -53,6 +58,7 @@ function BlocPriorite({ reseau, m, p, rang, actions, equipe, modifier, ajouterTa
           {[objectif ? `Objectif : ${phraseObjectif(objectif)}` : null, statutObj && objectif ? libelleAvancement(objectif, statutObj) : null,
             toutes.length ? `${faites} tâche${faites > 1 ? 's' : ''} faite${faites > 1 ? 's' : ''} sur ${toutes.length}` : 'Aucune tâche pour l’instant'].filter(Boolean).join(' · ')}
         </Typography>
+        {p.mesure && <LigneMesure reseau={reseau} magasin={m.nom} mesure={p.mesure} titre={p.titre} />}
         {taches.length > 0 && (
           <Box component="ul" aria-label={`Tâches de la priorité ${p.titre}`} sx={{ listStyle: 'none', m: 0, mt: 0.5, p: 0 }}>
             {taches.map((x) => <LigneAction key={x.cle} reseau={reseau} x={x} avecPorteur sansPriorite changerStatut={changerStatut?.(x)} />)}
@@ -60,6 +66,20 @@ function BlocPriorite({ reseau, m, p, rang, actions, equipe, modifier, ajouterTa
         )}
         {ajouterTache && <Button size="small" startIcon={<AddOutlined />} onClick={ajouterTache} sx={{ minHeight: 48 }} aria-label={`Ajouter une tâche à la priorité ${p.titre}`}>Ajouter une tâche</Button>}
       </Box>
+    </Box>
+  )
+}
+
+// 184 : ce qu'on attend de la priorité en caisse, et ce que la caisse dit depuis
+function LigneMesure({ reseau, magasin, mesure, titre }: { reseau: Reseau; magasin: string; mesure: MesurePriorite; titre: string }) {
+  const c = constater(chiffresDuMagasin(reseau, magasin), mesure)
+  const t = phrasesMesure(mesure, c)
+  return (
+    <Box role="group" aria-label={`Mesure en caisse de ${titre}`} sx={{ mt: 0.5, pl: 1.5, borderLeft: '3px solid', borderColor: c ? (c.atteint ? 'success.main' : 'warning.main') : 'divider' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><Typography variant="body2">{t.attendu}</Typography><Aide sujet="mesurePriorite" /></Box>
+      <Typography variant="body2" sx={{ fontWeight: c ? 700 : 400, color: c ? (c.atteint ? 'success.dark' : 'text.primary') : 'text.secondary' }}>
+        {t.constate}{c ? (c.atteint ? ' · au rendez-vous' : ` · ${Math.max(0, Math.round(c.part * 100))} % de l’attendu`) : ''}
+      </Typography>
     </Box>
   )
 }
@@ -188,21 +208,37 @@ function AutresTaches({ reseau, m, actions, signaler, avecTitre }: { reseau: Res
   )
 }
 
-function DialogPriorite({ reseau, m, priorite, objectifInitial = '', actions, onFermer }: { reseau: Reseau; m: Magasin; priorite: Priorite | null; objectifInitial?: string; actions: ActionSuivie[]; onFermer: (msg?: string) => void }) {
+// 184 : ouverte depuis un simulateur, la priorité arrive avec son titre et la mesure proposée
+export interface PrioriteProposee { titre: string; mesure: { indicateur: IndicateurMesure; attendu: number } | null; source: string }
+const nombreSaisi = (v: string) => { const n = Number(v.replace(/\s/g, '').replace('−', '-').replace(',', '.')); return v.trim() && Number.isFinite(n) ? n : null }
+const arrondiSaisie = (v: number) => String(Math.round(v * 100) / 100).replace('.', ',')
+
+export function DialogPriorite({ reseau, m, priorite, objectifInitial = '', actions, proposee, onFermer }: { reseau: Reseau; m: Magasin; priorite: Priorite | null; objectifInitial?: string; actions: ActionSuivie[]; proposee?: PrioriteProposee; onFermer: (msg?: string) => void }) {
   const { profil } = useAuth()
-  const [titre, setTitre] = useState(priorite?.titre ?? '')
-  const [objectif, setObjectif] = useState(priorite?.objectif ?? objectifInitial)
+  const [titre, setTitre] = useState(priorite?.titre ?? proposee?.titre ?? '')
+  const libres = priorite ? null : placesLibres(reseau, m.nom)
+  const [objectif, setObjectif] = useState(priorite?.objectif ?? (libres && !libres.includes(objectifInitial) ? libres.find((x) => x) ?? libres[0] ?? '' : objectifInitial))
+  const mesureDepart = priorite?.mesure ?? proposee?.mesure ?? null
+  const [indicateur, setIndicateur] = useState<IndicateurMesure | ''>(mesureDepart?.indicateur ?? '')
+  const [attendu, setAttendu] = useState(mesureDepart ? arrondiSaisie(mesureDepart.attendu) : '')
+  const source = priorite?.mesure?.source ?? proposee?.source ?? ''
   const [statut, setStatut] = useState<StatutPriorite>(priorite?.statut ?? 'active')
   const [bilan, setBilan] = useState(priorite?.bilan ?? '')
   const objectifs = objectifsDu(reseau, m.nom)
   const candidates = actions.filter((x) => !x.a.faite || (priorite && x.a.priorite === priorite.id))
   const [taches, setTaches] = useState<string[]>(priorite ? actions.filter((x) => x.a.priorite === priorite.id).map((x) => x.cle) : [])
-  const valide = !!titre.trim() && (statut === 'active' || !!bilan.trim())
+  const valeurAttendue = nombreSaisi(attendu)
+  const plein = libres !== null && libres.length === 0
+  const valide = !!titre.trim() && (statut === 'active' || !!bilan.trim()) && (!indicateur || (valeurAttendue !== null && valeurAttendue !== 0)) && !plein
   const enregistrer = async () => {
     const id = priorite?.id ?? nouvelIdPriorite()
+    const creeLe = priorite?.creeLe || reseau.jour
+    const mesure: MesurePriorite | undefined = indicateur && valeurAttendue
+      ? { indicateur, attendu: valeurAttendue, depuis: priorite?.mesure?.depuis || moisSuivant(creeLe), source: source.slice(0, 300) } : undefined
     const p: Priorite = {
       id, titre: titre.trim().slice(0, 200), objectif: objectifs.some((o) => o.id === objectif) ? objectif : '', statut, bilan: statut === 'active' ? '' : bilan.trim().slice(0, 300),
-      creeLe: priorite?.creeLe || reseau.jour, par: priorite?.par || profil?.nom || '', closLe: statut === 'active' ? '' : priorite?.closLe || reseau.jour, revueLe: priorite?.revueLe ?? '',
+      creeLe, par: priorite?.par || profil?.nom || '', closLe: statut === 'active' ? '' : priorite?.closLe || reseau.jour, revueLe: priorite?.revueLe ?? '',
+      ...(mesure ? { mesure } : {}),
     }
     const tout = reseau.plans?.[m.nom] ?? []
     await enregistrerPlan(m.nom, priorite ? tout.map((x) => (x.id === id ? p : x)) : [...tout, p])
@@ -223,11 +259,22 @@ function DialogPriorite({ reseau, m, priorite, objectifInitial = '', actions, on
     <Fenetre titre={priorite ? 'Modifier la priorité' : `Nouvelle priorité pour ${m.nom}`} ouvert onFermer={onFermer} valide={valide} enregistrer={enregistrer}
       supprimer={priorite ? supprimer : undefined} libelleSuppression={priorite ? `Retirer « ${priorite.titre} » du plan ?` : undefined}>
       <TextField label="Priorité" placeholder="Relancer la Cave" value={titre} onChange={(e) => setTitre(e.target.value)} autoFocus={!priorite} slotProps={{ htmlInput: { maxLength: 200 } }} />
+      {plein && <Typography role="alert" sx={{ color: 'error.main', fontWeight: 600 }}>Le plan de {m.nom} a déjà 3 priorités par objectif. Clos ou abandonne une priorité, puis reviens ici.</Typography>}
       <TextField select label="Objectif de l’année" value={objectifs.some((o) => o.id === objectif) ? objectif : ''} onChange={(e) => setObjectif(e.target.value)}
         helperText={objectifs.length ? 'Jamais montré au franchisé' : 'Aucun objectif fixé : la priorité reste sans objectif'}>
-        <MenuItem value="" sx={{ minHeight: 48 }}>Aucun</MenuItem>
-        {objectifs.map((o) => <MenuItem key={o.id} value={o.id} sx={{ minHeight: 48 }}>{phraseObjectif(o)}</MenuItem>)}
+        <MenuItem value="" disabled={!!libres && !libres.includes('')} sx={{ minHeight: 48 }}>Aucun</MenuItem>
+        {objectifs.map((o) => <MenuItem key={o.id} value={o.id} disabled={!!libres && !libres.includes(o.id)} sx={{ minHeight: 48 }}>{phraseObjectif(o)}</MenuItem>)}
       </TextField>
+      <TextField select label="Mesure en caisse" value={indicateur} onChange={(e) => setIndicateur(e.target.value as IndicateurMesure | '')}
+        helperText={source ? `Simulation : ${source}` : 'Comparée chaque mois au même mois de l’an passé, vue aussi par le franchisé'}>
+        <MenuItem value="" sx={{ minHeight: 48 }}>Aucune</MenuItem>
+        {(Object.keys(indicateursMesure) as IndicateurMesure[]).map((k) => <MenuItem key={k} value={k} sx={{ minHeight: 48 }}>{indicateursMesure[k].libelle}</MenuItem>)}
+      </TextField>
+      {indicateur && (
+        <TextField label={`Gain attendu par mois (${indicateursMesure[indicateur].unite === 'pts' ? 'points' : indicateursMesure[indicateur].unite === 'tickets' ? 'tickets' : '€ HT'})`} value={attendu}
+          onChange={(e) => setAttendu(e.target.value)} slotProps={{ htmlInput: { inputMode: 'decimal' } }} required
+          error={!!attendu.trim() && (valeurAttendue === null || valeurAttendue === 0)} />
+      )}
       {candidates.length > 0 && (
         <Box role="group" aria-label="Tâches de la priorité">
           <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Tâches de la priorité</Typography>

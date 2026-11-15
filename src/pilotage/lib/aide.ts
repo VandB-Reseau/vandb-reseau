@@ -545,11 +545,23 @@ export const AIDE = {
     remplir: 'Coche un ou plusieurs coups durs et règle-les.',
     calcul: 'Même calcul que la trésorerie du budget (ventes, achats, TVA, personnel, échéances), à partir de la trésorerie au 1er janvier. La dépense est amortie sur 5 ans ; le retard enlève le montant de son mois jusqu’à son arrivée.',
   },
+  simLevier: {
+    titre: 'Mon meilleur levier',
+    quoi: 'Pour un même petit effort, ce que chaque levier rapporte en EBE sur un an à ce magasin, du plus au moins rentable.',
+    remplir: 'La taille de l’effort : tickets de plus par jour, euros de plus par panier, points de marge, heures de moins par semaine. Les jours d’ouverture et le coût d’une heure sont modifiables.',
+    calcul: 'Tickets : tickets visés de l’univers × (1 + tickets par jour × jours ÷ tickets visés). Panier : CA de l’univers × euros en plus ÷ panier TTC visé. Marge : points × CA. Redevance et publicité déduites. Heures : heures × 52 × coût chargé. « En faire une priorité » reprend la ligne et ce que la caisse doit montrer chaque mois.',
+  },
   simVente: {
     titre: 'Vente additionnelle',
     quoi: 'Ce que rapporte un article de plus vendu à un client sur dix, vingt…',
     remplir: 'L’univers, la fréquence, le prix TTC de l’article. La marge est celle de l’univers, modifiable.',
     calcul: 'Articles = tickets visés de l’année ÷ fréquence. CA HT = articles × prix ÷ (1 + TVA). EBE = marge − redevance et publicité. L’équipe et les frais ne bougent pas.',
+  },
+  mesurePriorite: {
+    titre: 'Mesure en caisse d’une priorité',
+    quoi: 'Ce qu’on attend de la priorité chaque mois sur un indicateur de la caisse, et ce que la caisse montre depuis.',
+    remplir: 'L’indicateur et le gain attendu par mois, repris du simulateur ou saisis.',
+    calcul: 'Constaté = moyenne, sur les mois clos depuis le mois qui suit la création, de l’écart face au même mois de l’an passé. Il contient aussi la tendance du magasin : c’est un repère, pas une preuve.',
   },
   simReste: {
     titre: 'Reste à faire du mois',

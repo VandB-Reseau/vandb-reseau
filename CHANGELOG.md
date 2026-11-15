@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Pilotage du franchisé, choix 183 à 185 (Joseph, 15/11/2026). **Migration à passer : `0047_operations_mesure_priorites.sql`.**
+  183 « Mon meilleur levier », en tête des simulateurs : pour un même petit effort (tickets par jour, euros par panier,
+  point de marge, heures en moins), l'EBE gagné par levier, du plus au moins rentable. 184 « En faire une priorité »
+  depuis un simulateur (équipe) : la priorité garde ce qu'on attend en caisse chaque mois, et affiche le constaté face à
+  l'an passé, pour l'équipe comme pour le franchisé. 185 Journal des opérations commerciales dans les chiffres du magasin
+  (franchisé et équipe), avec leur bilan en caisse ; onglet « Opérations commerciales » dans Chiffres pour le réseau.
 - Objectifs qualitatifs (Joseph, 14/11/2026) : « Fixer un objectif » propose Chiffré ou Qualitatif. Un objectif
   qualitatif (« faire monter l'équipe en compétence », « racheter un magasin ») a un intitulé, une description facultative
   et une période ; ses priorités et tâches se rangent dessous comme pour un objectif chiffré. Jauge = part des tâches
