@@ -923,7 +923,17 @@ export async function actionFiche(page: Page, nom: 'Planifier la visite' | 'Pré
 }
 
 // Téléphone : « À traiter » ne montre que deux lignes ; on déplie la liste (et ses puces) avant de la vérifier
+// Fil façon réseau social (209A, Joseph 15/11/2026) : sur téléphone, le point du jour (équipe) ou « Mon magasin »
+// (franchisé) se replie en une bande au-dessus du fil ; on la déplie pour lire ce qu'elle contient
+export async function deplierPoint(page: Page) {
+  if (page.viewportSize()!.width >= 900) return
+  const bande = page.getByRole('button', { name: /^(Mon point du jour|Mon magasin)/, expanded: false })
+  await bande.or(page.getByRole('button', { name: /^(Mon point du jour|Mon magasin)/, expanded: true })).first().waitFor()
+  if (await bande.count()) await bande.first().click()
+}
+
 export async function deplierATraiter(page: Page) {
+  await deplierPoint(page)
   const bloc = page.getByRole('region', { name: 'À traiter' })
   await bloc.waitFor()
   if (page.viewportSize()!.width >= 900) return

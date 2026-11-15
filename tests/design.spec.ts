@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { deplierPoint, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 // Sprint 16 : app « façon réseau social » (bouton Créer, fiche profil, lignes plutôt que tableaux, J'aime, glisser)
 
@@ -47,6 +47,7 @@ test('le bouton Créer ouvre sous lui un menu : visite, tâche, message, bonne p
 
 test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ouvre sur sa vue d’ensemble', async ({ page, isMobile }, info) => {
   await seConnecter(page)
+  await deplierPoint(page)
   await expect(page.getByRole('region', { name: 'À traiter' })).toBeVisible()
   expect(await sansDebordement(page.locator('body'))).toBe(true)
   await page.goto('./#/magasins/Lyon%20Test')

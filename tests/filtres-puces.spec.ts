@@ -35,8 +35,11 @@ const pratiques = [
 // Sur téléphone, l'accueil montre trois publications sans filtre ; le fil complet et ses filtres sont dans la page Actualités (même composant)
 test('accueil : les filtres des Actualités ont le même rendu', async ({ page, isMobile }) => {
   await seConnecter(page, { config: { bonnes_pratiques: pratiques }, reactionsVisites: { pouces: {}, commentaires: {} } })
-  if (isMobile) await page.goto('./#/infos')
-  const fil = page.getByRole('region', { name: isMobile ? 'Fil du réseau' : 'Actualités' })
+  // 204A (15/11/2026) : l'accueil montre le fil sans filtres ; ils restent dans Actualités
+  await expect(page.getByRole('region', { name: 'Actualités' }).getByRole('group', { name: 'Filtrer le fil' })).toHaveCount(0)
+  void isMobile
+  await page.goto('./#/infos')
+  const fil = page.getByRole('region', { name: 'Fil du réseau' })
   await verifierFiltres(fil.getByRole('group', { name: 'Filtrer le fil' }), 'Tout')
 })
 

@@ -31,7 +31,8 @@ import QuizOutlined from '@mui/icons-material/QuizOutlined'
 import DynamicFeedOutlined from '@mui/icons-material/DynamicFeedOutlined'
 import { FilActivite } from './Accueil'
 import { filDu } from '../data/fil'
-import { useCommunicationsDuFil } from '../data/communications'
+import { useCommunicationsDuFil, useConnaissances } from '../data/communications'
+import { BarrePartager } from '../components/Publication'
 import { useReactionsPratiques } from '../data/reactionsPratiques'
 import { useReactionsVisites } from '../data/reactionsVisites'
 import { magasinsDu, perimetreDuProfil } from '../data/perimetre'
@@ -68,6 +69,9 @@ function Contenu({ reseau }: { reseau: Reseau }) {
   const [themes, setThemes] = useState<string[]>([])
   const [periode, setPeriode] = useState<Periode>('tout')
   const [pratique, setPratique] = useState<BonnePratique | null | undefined>(undefined)
+  // Depuis « Partager » du fil : la fenêtre d'une nouvelle bonne pratique s'ouvre d'elle-même
+  const ajouter = params.get('ajouter') === '1' && !franchise && !apercu
+  useEffect(() => { if (ajouter) setPratique(null) }, [ajouter])
   const [message, setMessage] = useState('')
   // Ouvrir l'onglet vaut lecture : le nombre de l'en-tête retombe à zéro
   useEffect(() => { if (!apercu) noterReseauVu() }, [apercu])
@@ -99,10 +103,14 @@ function Contenu({ reseau }: { reseau: Reseau }) {
     const l = filDu(reseau, new Set(suivis.map((m) => m.nom)), null, 120, duFil.liste, true, true, !franchise)
     return franchise ? l.map((e) => (e.genre === 'pratique' ? { ...e, lien: '/infos?vue=pratiques' } : e.genre === 'animation' ? { ...e, lien: suivis[0] ? `${lienFiche(suivis[0].nom)}?vue=campagnes` : '/' } : e)) : l
   }, [reseau, franchise, profil, duFil.liste])
+  const { connaissances, recharger: rechargerConnaissances } = useConnaissances()
+  // 207A : « Partager » en tête du fil ; la bonne pratique s'ouvre ici même (proposée par le franchisé)
+  const partager = apercu ? undefined : <BarrePartager moi={profil?.nom ?? ''} franchise={franchise} communication={poseSondages} />
   const fil = <FilActivite elements={elements} jour={reseau.jour} sansMagasin={franchise && reseau.magasins.length === 1} titre="Fil du réseau" communications={duFil}
-    reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
+    reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} social partager={partager}
+    connaissances={franchise ? { carte: connaissances, franchise: true, recharger: () => void rechargerConnaissances() } : undefined} />
   const pratiques = franchise ? <>
-    {!apercu && <MesPropositions reseau={reseau} />}
+    {!apercu && <MesPropositions reseau={reseau} ouvrir={params.get('proposer') === '1'} />}
     <VuePratiques integre reseau={reseau} filtre={filtrePratique} />
   </> : <>
     <PropositionsARelire reseau={reseau} signaler={setMessage} />
@@ -126,7 +134,7 @@ function Contenu({ reseau }: { reseau: Reseau }) {
           {(actifs > 0 || recherche) && <Button onClick={effacer} sx={{ minHeight: 36 }}>Retirer les filtres</Button>}
         </RechercheFiltres>
       )}
-      <Box sx={{ maxWidth: 760 }}>
+      <Box sx={{ maxWidth: vue === 'fil' ? 680 : 760, ...(vue === 'fil' ? { mx: { md: 'auto' } } : {}) }}>
         {vue === 'fil' && fil}
         {vue === 'questions' && !franchise && sondages}
         {vue === 'communications' && <Box component="section" aria-label="Communications">{communications}</Box>}

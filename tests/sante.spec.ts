@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { deplierPoint, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -177,6 +177,7 @@ test('l’accueil donne les priorités du jour', async ({ page, isMobile }, info
   await page.clock.setFixedTime(new Date())
   await seConnecter(page)
   await page.goto('./#/')
+  await deplierPoint(page)
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
   await aTraiter.getByRole('button', { name: /^Voir les \d+$/ }).click()
   await expect(aTraiter.getByRole('link', { name: /^Lyon Test/ }).first()).toContainText('Décroche')

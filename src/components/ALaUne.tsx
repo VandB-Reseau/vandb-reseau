@@ -31,33 +31,33 @@ export function ALaUne({ liste, jour, connaissances, franchise, lectureSeule, ap
   if (!unes.length) return null
   const prendre = (id: number) => prendreConnaissance(id).then(() => { setMessage('C’est noté, merci.'); apres() }, () => setMessage('La confirmation n’a pas pu partir. Réessayez dans un instant.'))
   return (
-    <Box component="section" aria-label="À la une" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
+    // 208A (Joseph, 15/11/2026) : un bandeau compact qui défile sur le côté, le fil reste sous les yeux
+    <Box component="section" aria-label="À la une" sx={{ mb: 2 }}>
+      <Box sx={{ display: 'flex', gap: 1.5, overflowX: 'auto', scrollSnapType: 'x mandatory', pb: unes.length > 1 ? 0.5 : 0 }}>
       {unes.map((c) => {
         const k = connaissances?.get(c.id)
         const rappel = franchise && k && !k.moi && joursDepuis(c.creeLe, jour) >= RAPPEL_CONNAISSANCE
         const total = k ? k.pris.length + k.manquants.length : 0
         return (
-          <Card key={c.id} component="article" aria-label={`À la une : ${c.titre}`} sx={{ border: 0, borderLeft: `4px solid ${brand.or}`, p: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.5, alignItems: { sm: 'center' } }}>
+          <Card key={c.id} component="article" aria-label={`À la une : ${c.titre}`} sx={{ flex: unes.length > 1 ? '0 0 min(86%, 440px)' : '1 1 auto', scrollSnapAlign: 'start', borderLeft: `4px solid ${brand.or}`, px: 2, py: 1.25, display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'warning.dark', fontWeight: 700, fontSize: '0.8125rem' }}>
                 <PushPinOutlined sx={{ fontSize: 18 }} />À la une
                 {rappel && <Pastille ton="orange">À relancer</Pastille>}
               </Box>
-              <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem', mt: 0.5 }}>{c.titre}</Typography>
-              {c.texte && <Typography variant="body2" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.texte}</Typography>}
-              {k && !franchise && total > 0 && (
-                <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600 }}>Pris connaissance : {k.pris.length} sur {total}</Typography>
-              )}
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1, flex: 'none', flexWrap: 'wrap' }}>
-              <Button component={RouterLink} to={lien(c)} sx={{ minHeight: 48 }}>Lire</Button>
+              <Typography component="h2" noWrap sx={{ fontWeight: 700, fontSize: '1rem', mt: 0.25 }}>{c.titre}</Typography>
+              {k && !franchise && total > 0
+                ? <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>Pris connaissance : {k.pris.length} sur {total}</Typography>
+                : c.texte && <Typography variant="body2" color="text.secondary" noWrap>{c.texte}</Typography>}
               {k && franchise && (k.moi
-                ? <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minHeight: 48, color: 'success.dark', fontWeight: 600 }}><TaskAltOutlined fontSize="small" />Pris connaissance</Typography>
-                : <Button variant="contained" startIcon={<TaskAltOutlined />} disabled={lectureSeule} onClick={() => prendre(c.id)} sx={{ minHeight: 48 }}>J’ai pris connaissance</Button>)}
+                ? <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5, color: 'success.dark', fontWeight: 600 }}><TaskAltOutlined fontSize="small" />Pris connaissance</Typography>
+                : <Button variant="contained" startIcon={<TaskAltOutlined />} disabled={lectureSeule} onClick={() => prendre(c.id)} sx={{ minHeight: 48, mt: 1 }}>J’ai pris connaissance</Button>)}
             </Box>
+            <Button component={RouterLink} to={lien(c)} sx={{ minHeight: 48, flex: 'none', alignSelf: 'flex-start' }}>Lire</Button>
           </Card>
         )
       })}
+      </Box>
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
     </Box>
   )

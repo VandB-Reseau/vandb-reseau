@@ -9,6 +9,16 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fil d'actualité façon réseau social, choix 204 à 211 (Joseph, 15/11/2026, « fais tout »), sans migration. 204 : une
+  carte par publication (comptes rendus, bonnes pratiques, communications, temps forts), plus de regroupement par magasin
+  et par jour ; l'accueil n'a plus de filtres, ils restent dans Actualités. 205 : l'auteur en gras, puis rôle ou type,
+  lieu et moment ; le texte coupé à 4 lignes se déplie sur place (« …voir plus »), la photo en grand. 206 : le décompte
+  au-dessus (« 3 J'aime · 2 commentaires »), puis les mêmes boutons sous chaque publication (J'aime, Commenter ; « J'ai
+  pris connaissance » pour le franchisé ; « Voir le détail » pour un temps fort). 207 : « Partager » en tête du fil
+  (bonne pratique pour l'équipe, proposition pour le franchisé, communication pour le Directeur et les RR). 208 : À la
+  une en bandeau compact qui défile sur le côté. 209 : sur téléphone, le point du jour (équipe) ou « Mon magasin »
+  (franchisé) se replie en une bande au-dessus d'un fil qui défile sans fin. 210 : cartes blanches en colonne centrée.
+  211 : « Nouveau » sur ce qui est arrivé depuis le dernier passage, puis « Vous êtes à jour ».
 - Simulateurs plus fluides, choix 188 à 192, 194 et 195 (Joseph, 15/11/2026), sans migration. 188 : les 14 simulateurs
   en 4 familles (Vendre plus, Événements et extérieur, Équipe, Investir et trésorerie), boutons compacts, les 3 derniers
   utilisés en tête ; sur téléphone, la carte vient sous les doigts. 189 : la phrase de résultat reste en vue (en haut de la
