@@ -61,7 +61,7 @@ test('183-184 : le meilleur levier en tête, puis une priorité mesurée en cais
   await expect(d.getByLabel(/^Gain attendu par mois/)).toHaveValue('76,75')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
-  await expect(page.getByRole('alert')).toContainText('Priorité ajoutée au plan. Elle est dans le plan d’action de la fiche du magasin.')
+  await expect(page.getByRole('alert')).toContainText('Priorité ajoutée au plan. Elle est dans les objectifs et priorités de la fiche du magasin.')
   const plan = derniere(ecritures, 'plans_magasins')?.[NOM] as { titre: string; mesure?: { indicateur: string; attendu: number; depuis: string } }[]
   expect(plan.at(-1)).toEqual(expect.objectContaining({ titre: '3 tickets de plus par jour en Cave', mesure: expect.objectContaining({ indicateur: 'fluxCave', attendu: 76.75, depuis: '2026-11' }) }))
 })

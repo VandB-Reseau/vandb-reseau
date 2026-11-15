@@ -15,6 +15,7 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   depuis un simulateur (équipe) : la priorité garde ce qu'on attend en caisse chaque mois, et affiche le constaté face à
   l'an passé, pour l'équipe comme pour le franchisé. 185 Journal des opérations commerciales dans les chiffres du magasin
   (franchisé et équipe), avec leur bilan en caisse ; onglet « Opérations commerciales » dans Chiffres pour le réseau.
+  Le bloc de la fiche s'appelle « Objectifs {année} et priorités » (« Priorités {année} » pour le franchisé).
 - Objectifs qualitatifs (Joseph, 14/11/2026) : « Fixer un objectif » propose Chiffré ou Qualitatif. Un objectif
   qualitatif (« faire monter l'équipe en compétence », « racheter un magasin ») a un intitulé, une description facultative
   et une période ; ses priorités et tâches se rangent dessous comme pour un objectif chiffré. Jauge = part des tâches

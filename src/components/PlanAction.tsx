@@ -106,7 +106,7 @@ export function SectionObjectifsPlan({ reseau, m, signaler, equipe = true, lectu
     try {
       await enregistrerPlan(m.nom, tout.map((p) => (p.statut === 'active' ? { ...p, revueLe: reseau.jour } : p)))
       await recharger()
-      signaler('Plan d’action marqué revu.')
+      signaler('Priorités marquées revues.')
     } catch { signaler('Le plan n’a pas pu être enregistré. Vérifie ta connexion et réessaie.') }
   }
   if (!equipe && !tout.length) return null
@@ -114,8 +114,8 @@ export function SectionObjectifsPlan({ reseau, m, signaler, equipe = true, lectu
   const annees = [...new Set(objectifs.map(anneeObjectif))].sort()
   const anneeCourante = Number(reseau.jour.slice(0, 4))
   const titre = equipe
-    ? `Objectifs ${(annees.length ? annees : [anneeCourante]).join(' et ')} et plan d’action`
-    : `Plan d’action ${annees.length ? annees.join(' et ') : anneeCourante}`
+    ? `Objectifs ${(annees.length ? annees : [anneeCourante]).join(' et ')} et priorités`
+    : `Priorités ${annees.length ? annees.join(' et ') : anneeCourante}`
   const sansObjectif = actives.filter((p) => !equipe || !objectifs.some((o) => o.id === p.objectif))
   const blocs = (liste: Priorite[], sousObjectif: boolean) => (
     <Box component="ol" aria-label={sousObjectif || !equipe ? 'Priorités' : 'Priorités sans objectif'} sx={{ listStyle: 'none', m: 0, p: 0 }}>

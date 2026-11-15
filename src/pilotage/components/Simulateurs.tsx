@@ -1310,7 +1310,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
 
       {priorite && ficheMagasin && reseauFiche && (
         <DialogPriorite reseau={reseauFiche} m={ficheMagasin} priorite={null} objectifInitial={placesLibres(reseauFiche, magasin).find((x) => x) ?? ''} actions={actionsDuMagasin(reseauFiche, magasin)} proposee={priorite}
-          onFermer={(msg) => { setPriorite(null); if (msg) setMessage({ texte: `${msg} Elle est dans le plan d’action de la fiche du magasin.`, bon: true }) }} />
+          onFermer={(msg) => { setPriorite(null); if (msg) setMessage({ texte: `${msg} Elle est dans les objectifs et priorités de la fiche du magasin.`, bon: true }) }} />
       )}
       {gardees !== null && (
         <Stack spacing={1.5} component="section" aria-label="Simulations gardées">
