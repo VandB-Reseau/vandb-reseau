@@ -44,6 +44,9 @@ export interface EffetExterieur {
   don: { valeur: number; reduction: number; cout: number }
   sponsoring: number; materiel: number; astreinte: number; recettes: number; recettesNettes: number
   coutFixe: number; gain: number; equilibre: number | null; remiseMax: number | null
+  // Compte de résultat du contrat (Joseph, 15/11/2026) : CA − fûts (achat, CO2, gobelets) − redevance et publicité
+  // − rétrocession du sponsoring − coûts fixes = gain
+  coutFuts: number; redevance: number; retrocession: number
 }
 // Marge d'un fût (Joseph, 14/11/2026) : prix de vente HT − prix d'achat HT, en euros et en part du prix de vente.
 // Avant redevance, publicité, CO2 et gobelets, que le net par fût retire ensuite.
@@ -77,6 +80,7 @@ export function simulerExterieur(x: ContratExterieur, p: Redevances, donMecenat:
     prixPlancherLivraison: rp < 1 ? coutLivraison / (1 - rp) : null, don, sponsoring, materiel, astreinte, recettes, recettesNettes, coutFixe, gain,
     equilibre: reste <= 0 ? 0 : netParFut > 0 ? Math.ceil(reste / netParFut - 1e-9) : null,
     remiseMax: futs > 0 && rp < 1 ? Math.max(0, pos(x.remise) + (netParFut - reste / futs) / (1 - rp)) : null,
+    coutFuts: futs * (pos(x.prixAchat) + pos(x.co2) + pos(x.gobelets)), redevance: (futs * caParFut + recettes) * rp, retrocession: futs * pos(x.sponsoring?.parFut),
   }
 }
 // 162 · Prix d'une livraison selon la grille du réseau : première ligne dont la distance (aller simple) couvre le trajet ;
@@ -140,6 +144,7 @@ export function simulerParc(x: ParcTireuses): EffetParc {
 // ── 142 · Ma carte pression ────────────────────────────────────────────────────────────────────────────────────
 // Un fût de L litres perd une part p (mousse, purge) : L × (1 − p) litres servis. Coût du litre servi = prix du fût HT ÷
 // litres servis ; demi = 25 cl, pinte = 50 cl. Prix HT = prix TTC ÷ (1 + TVA). Marge du verre = prix HT − coût.
+// Le bec se juge sur sa marge, tous formats confondus (CA HT de la semaine − coût des litres vendus) ÷ CA HT (Joseph, 15/11/2026).
 // Jours pour vider un fût = litres servis ÷ litres vendus par jour (semaine de 7 jours : la bière vieillit le dimanche
 // aussi). Fûts par mois = litres vendus par semaine × 52 ÷ 12 ÷ litres servis.
 export const DEMI = 0.25, VERRE33 = 0.33, PINTE = 0.5
@@ -149,6 +154,8 @@ export interface LigneBec {
   coutLitre: number | null; coutDemi: number | null; coutPinte: number | null; tauxDemi: number | null; tauxPinte: number | null
   caSemaine: number; margeSemaine: number; tauxMarge: number | null; litresSemaine: number
   joursPourVider: number | null; futsParMois: number | null; vieillit: boolean; sousCible: boolean; prixDemiCible: number | null
+  // Hausse de tous les prix du bec (demi, 33 cl, pinte) qui amène sa marge, formats confondus, à la cible (Joseph, 15/11/2026)
+  hausseCible: number | null
 }
 export interface CartePression { lignes: LigneBec[]; caSemaine: number; margeSemaine: number; tauxMarge: number | null; futsParMois: number; faible: number | null }
 export function ligneBec(b: Bec, tva: number, cible: number, joursFraicheur: number): LigneBec {
@@ -170,6 +177,8 @@ export function ligneBec(b: Bec, tva: number, cible: number, joursFraicheur: num
     sousCible: cible > 0 && tauxMarge !== null && tauxMarge < cible - 1e-9,
     // Prix TTC du demi qui donne la marge visée
     prixDemiCible: cible > 0 && cible < 1 && coutDemi !== null ? coutDemi / (1 - cible) * (1 + tva) : null,
+    // Prix × k : marge = 1 − coût ÷ (k × CA) ; cible atteinte pour k = (coût ÷ CA) ÷ (1 − cible)
+    hausseCible: cible > 0 && cible < 1 && caSemaine > 0 && tauxMarge !== null && tauxMarge < cible - 1e-9 ? (coutSemaine / caSemaine) / (1 - cible) - 1 : null,
   }
 }
 export function cartePression(becs: Bec[], tva: number, cible: number, joursFraicheur: number): CartePression {

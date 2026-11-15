@@ -18,6 +18,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   dans le bloc Magasin. 201 : une tâche rattachée à une priorité vit sous la priorité, les autres dans « À faire ».
   202 : magasin précédent / suivant (au bout du fil d'Ariane sur PC, dans « ⋯ » sur téléphone), dans la liste filtrée
   de Magasins. 203 : la fiche rouvre le dernier onglet et le dernier filtre de l'Activité.
+- Simulateurs structurés pour guider la réflexion (Joseph, 15/11/2026), sans migration. Les 14 simulateurs suivent la même
+  trame : étapes numérotées dans des blocs encadrés (point de départ, ce qu'on change, recettes, coûts), chacune avec son
+  sous-total, puis un bloc « Résultat ». Contrat extérieur, soirée et dimanche ou jour férié ont leur compte, du CA (ou de
+  la marge) au gain, ligne par ligne. Carte pression : la marge se lit par bec, tous formats confondus (demi, 33 cl,
+  pinte), en sous-total de chaque bec et dans le tableau (CA HT, marge, taux de marge, coût du litre servi) ; le conseil
+  donne la hausse de prix du bec qui ramène sa marge à la cible.
 - Fil d'actualité façon réseau social, choix 204 à 211 (Joseph, 15/11/2026, « fais tout »), sans migration. 204 : une
   carte par publication (comptes rendus, bonnes pratiques, communications, temps forts), plus de regroupement par magasin
   et par jour ; l'accueil n'a plus de filtres, ils restent dans Actualités. 205 : l'auteur en gras, puis rôle ou type,

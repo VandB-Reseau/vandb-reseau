@@ -238,6 +238,41 @@ const Texte = ({ libelle, aria = libelle, valeur, onChange, largeur = 200 }: { l
 )
 const Saisies = ({ children }: { children: ReactNode }) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-end' }}>{children}</Box>
 const Resultats = ({ children }: { children: ReactNode }) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>{children}</Box>
+// Un bloc de saisies encadré, avec son sous-total à droite du titre (Joseph, 15/11/2026 : « on se repère mal dans les cases »).
+// Ordre des simulateurs d'événement : recettes, puis coûts, puis le compte qui mène au résultat.
+function Bloc({ titre, total, children }: { titre: string; total?: { libelle: string; valeur: string; negatif?: boolean }; children: ReactNode }) {
+  return (
+    <Box component="section" aria-label={titre} sx={{ border: 1, borderColor: 'divider', borderRadius: '12px', p: { xs: 1.5, md: 2 }, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5, minWidth: 0 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 2, rowGap: 0.5 }}>
+        <Typography component="h3" sx={{ fontWeight: 700, flex: 1, minWidth: 0 }}>{titre}</Typography>
+        {total && <Typography className="sous-total" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+          <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>{total.libelle}</Box>
+          <Box component="span" sx={{ fontWeight: 700, color: total.negatif ? 'error.main' : 'text.primary' }}>{total.valeur}</Box>
+        </Typography>}
+      </Box>
+      {children}
+    </Box>
+  )
+}
+// Le compte du simulateur, du chiffre d'affaires au résultat : une ligne par bloc, le total en gras (en tête du bloc Résultat)
+function Compte({ titre, lignes, total }: { titre: string; lignes: { libelle: string; valeur: number; detail?: string }[]; total: { libelle: string; valeur: number } }) {
+  const ligne = (libelle: string, valeur: number, detail: string | undefined, fort: boolean) => (
+    <Box key={libelle} role="row" sx={{ display: 'flex', alignItems: 'baseline', gap: 2, py: 0.5, ...(fort ? { borderTop: 1, borderColor: 'divider', mt: 0.5, pt: 1 } : {}) }}>
+      <Typography role="cell" sx={{ flex: 1, minWidth: 0, fontWeight: fort ? 700 : undefined }}>
+        {libelle}{detail && <Box component="span" sx={{ color: 'text.secondary', ml: 1, fontSize: '0.875rem' }}>{detail}</Box>}
+      </Typography>
+      <Typography role="cell" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: fort ? 700 : undefined, color: fort && valeur < 0 ? 'error.main' : undefined }}>
+        {valeur < 0 ? '− ' : fort ? '' : '+ '}{montant(Math.abs(valeur))}
+      </Typography>
+    </Box>
+  )
+  return (
+    <Box role="table" aria-label={titre} sx={{ maxWidth: 560 }}>
+      {lignes.filter((l, i) => i === 0 || Math.abs(l.valeur) >= 0.5).map((l) => ligne(l.libelle, l.valeur, l.detail, false))}
+      {ligne(total.libelle, total.valeur, undefined, true)}
+    </Box>
+  )
+}
 const ecart = (v: number, favorable = v >= 0) => ({ texte: ecartMontant(v), hausse: v >= 0, favorable })
 
 // État de chaque simulateur : ses saisies, gardées telles quelles avec une simulation (« Rouvrir » les reprend)
@@ -467,15 +502,21 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     })[c]
     saisies = (
       <Stack spacing={2}>
+        <Bloc titre="1. Point de départ">
+          <Saisies>
+            {caisse && <BaseDesChiffres valeur={e.base} annee={annee} caisse={caisse} onChange={(base) => maj('levier', { base })} />}
+            <Montant libelle="Jours d’ouverture par an" valeur={e.jours} onChange={(v) => maj('levier', { jours: Math.min(366, Math.max(1, Math.round(v))) })} unite="j" />
+          </Saisies>
+          <Saisies><CoutHeure e={e} valeur={coutHeure} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('levier', v)} /></Saisies>
+        </Bloc>
+        <Bloc titre="2. Les petits efforts à comparer">
         <Saisies>
-          {caisse && <BaseDesChiffres valeur={e.base} annee={annee} caisse={caisse} onChange={(base) => maj('levier', { base })} />}
           <Montant libelle="Tickets de plus par jour" valeur={e.ticketsJour} onChange={(v) => maj('levier', { ticketsJour: Math.max(0, v) })} unite="" pas={1} />
           <Montant libelle="Euros de plus par panier, TTC" valeur={e.panier} onChange={(v) => maj('levier', { panier: Math.max(0, v) })} pas={0.5} />
           <Montant libelle="Points de marge en plus" valeur={e.points} onChange={(v) => maj('levier', { points: Math.max(0, v) })} unite="pt" pas={0.5} />
           <Montant libelle="Heures payées de moins par semaine" valeur={e.heures} onChange={(v) => maj('levier', { heures: Math.max(0, v) })} unite="h" pas={1} />
-          <Montant libelle="Jours d’ouverture par an" valeur={e.jours} onChange={(v) => maj('levier', { jours: Math.min(366, Math.max(1, Math.round(v))) })} unite="j" />
         </Saisies>
-        <Saisies><CoutHeure e={e} valeur={coutHeure} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('levier', v)} /></Saisies>
+        </Bloc>
       </Stack>
     )
     const premier = lignes[0]
@@ -485,9 +526,9 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       : ''
     if (premier?.mesure) mesure = premier.mesure
     resultats = lignes.length ? (
-      <Box component="ol" aria-label="Leviers du plus au moins rentable" sx={{ listStyle: 'none', m: 0, p: 0, border: 1, borderColor: 'divider', borderRadius: '12px' }}>
+      <Box component="ol" aria-label="Leviers du plus au moins rentable" sx={{ listStyle: 'none', m: 0, p: 0 }}>
         {lignes.map((l, i) => (
-          <Box component="li" key={l.cle} aria-label={`${i + 1}. ${titreLigne(l.cle)}`} sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', px: 2, py: 1.25, borderTop: i ? 1 : 0, borderColor: 'divider' }}>
+          <Box component="li" key={l.cle} aria-label={`${i + 1}. ${titreLigne(l.cle)}`} sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', py: 1.25, borderTop: i ? 1 : 0, borderColor: 'divider' }}>
             <Box aria-hidden sx={{ width: 28, height: 28, borderRadius: '50%', flex: 'none', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: '0.8125rem', bgcolor: i === 0 ? 'secondary.main' : 'action.hover', color: i === 0 ? 'secondary.contrastText' : 'text.primary' }}>{i + 1}</Box>
             <Box sx={{ flex: '1 1 260px', minWidth: 0 }}>
               <Typography sx={{ fontWeight: 700 }}>{titreLigne(l.cle)}</Typography>
@@ -512,11 +553,14 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       : equipe[e.index] ? (e.mouvement === 'depart' ? { type: 'depart', index: e.index, mois: e.mois } : { type: 'heures', index: e.index, mois: e.mois, heuresHebdo: e.nouvellesHeures }) : null
     const palier = (i: number, v: Partial<PalierPrime>) => maj('embauche', { paliers: e.paliers.map((x, j) => (j === i ? { ...x, ...v } : x)) })
     saisies = (
-      <>
+      <Stack spacing={2}>
+        <Bloc titre="1. Le mouvement">
         <Saisies>
           <Choix libelle="Mouvement" valeur={e.mouvement} onChange={(v) => maj('embauche', { mouvement: v })} options={[['embauche', 'Embauche'], ['depart', 'Départ'], ['heures', 'Heures'], ['primes', 'Primes']]} />
           {e.mouvement !== 'primes' && <ChoixMois libelle={e.mouvement === 'embauche' ? 'Arrivée en' : e.mouvement === 'depart' ? 'Parti au 1er' : 'À partir de'} valeur={e.mois} onChange={(v) => maj('embauche', { mois: v })} />}
         </Saisies>
+        </Bloc>
+        <Bloc titre={e.mouvement === 'primes' ? '2. Les paliers de primes' : e.mouvement === 'embauche' ? '2. Le poste' : '2. La personne'}>
         {e.mouvement === 'primes' ? (
           <Stack spacing={1.5}>
             <Saisies>
@@ -554,7 +598,8 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             {e.mouvement === 'heures' && <Montant libelle="Nouvelles heures par semaine" valeur={e.nouvellesHeures} onChange={(v) => maj('embauche', { nouvellesHeures: v })} unite="h" />}
           </Saisies>
         ) : <EtatVide titre="Aucune équipe saisie" texte="Un départ ou un changement d’heures se choisit dans l’équipe du magasin. Saisis-la dans Saisies, Équipe, puis reviens ici." />}
-      </>
+        </Bloc>
+      </Stack>
     )
     if (mouvement) {
       const r = simulerEmbauche({ h, p, depart }, mouvement, s.aideApprenti)
@@ -622,12 +667,18 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         <Stack spacing={2}>
           <Saisies>
             <Choix libelle="Je regarde" valeur={e.type} onChange={(v) => maj('prix', { type: v })} options={[['remise', 'Une remise'], ['hausse', 'Une hausse de prix'], ['remises', 'Remises et offerts']]} />
-            <Montant libelle="Mois de la période" valeur={e.mois} onChange={(v) => maj('prix', { mois: Math.min(12, Math.max(1, Math.round(v))) })} unite="mois" />
-            <Montant libelle="CA HT de la période" valeur={ca} onChange={(v) => maj('prix', { ca: v })} />
           </Saisies>
-          <Saisies>
-            {LIGNES_REMISES.map((l) => <Montant key={l.cle} libelle={`${l.libelle}, HT`} valeur={e.montants[l.cle] ?? 0} onChange={(v) => maj('prix', { montants: { ...e.montants, [l.cle]: v } })} />)}
-          </Saisies>
+          <Bloc titre="1. La période" total={{ libelle: 'CA HT', valeur: montant(ca) }}>
+            <Saisies>
+              <Montant libelle="Mois de la période" valeur={e.mois} onChange={(v) => maj('prix', { mois: Math.min(12, Math.max(1, Math.round(v))) })} unite="mois" />
+              <Montant libelle="CA HT de la période" valeur={ca} onChange={(v) => maj('prix', { ca: v })} />
+            </Saisies>
+          </Bloc>
+          <Bloc titre="2. Remises et offerts accordés" total={{ libelle: 'Total HT', valeur: montant(r.total) }}>
+            <Saisies>
+              {LIGNES_REMISES.map((l) => <Montant key={l.cle} libelle={`${l.libelle}, HT`} valeur={e.montants[l.cle] ?? 0} onChange={(v) => maj('prix', { montants: { ...e.montants, [l.cle]: v } })} />)}
+            </Saisies>
+          </Bloc>
         </Stack>
       )
       nomParDefaut = `Remises et offerts sur ${e.mois} mois`
@@ -664,16 +715,24 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       <Stack spacing={2}>
         <Saisies>
           <Choix libelle="Je regarde" valeur={e.type} onChange={(v) => maj('prix', { type: v })} options={[['remise', 'Une remise'], ['hausse', 'Une hausse de prix'], ['remises', 'Remises et offerts']]} />
-          <Taux libelle={e.type === 'remise' ? 'Remise' : 'Hausse'} valeur={e.taux} onChange={(v) => maj('prix', { taux: v })} />
-          <Taux libelle="Taux de marge du produit" valeur={e.marge} onChange={(v) => maj('prix', { marge: v })} source={!!b && b.ca > 0 && e.marge === initiaux.prix.marge && 'budget'} />
-          {e.type === 'remise' && <Montant libelle="Cartons vendus d’habitude" valeur={e.cartons} onChange={(v) => maj('prix', { cartons: Math.max(0, Math.round(v)) })} unite="" />}
         </Saisies>
-        {e.type === 'remise' && (
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button variant="outlined" onClick={() => offre(1, 5)} sx={{ minHeight: 48 }}>Offre 5 + 1</Button>
-            <Button variant="outlined" onClick={() => offre(2, 4)} sx={{ minHeight: 48 }}>Offre 4 + 2</Button>
-          </Box>
-        )}
+        <Bloc titre="1. Le produit aujourd’hui">
+          <Saisies>
+            <Taux libelle="Taux de marge du produit" valeur={e.marge} onChange={(v) => maj('prix', { marge: v })} source={!!b && b.ca > 0 && e.marge === initiaux.prix.marge && 'budget'} />
+            {e.type === 'remise' && <Montant libelle="Cartons vendus d’habitude" valeur={e.cartons} onChange={(v) => maj('prix', { cartons: Math.max(0, Math.round(v)) })} unite="" />}
+          </Saisies>
+        </Bloc>
+        <Bloc titre={e.type === 'remise' ? '2. La remise envisagée' : '2. La hausse envisagée'}>
+          <Saisies>
+            <Taux libelle={e.type === 'remise' ? 'Remise' : 'Hausse'} valeur={e.taux} onChange={(v) => maj('prix', { taux: v })} />
+          </Saisies>
+          {e.type === 'remise' && (
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Button variant="outlined" onClick={() => offre(1, 5)} sx={{ minHeight: 48 }}>Offre 5 + 1</Button>
+              <Button variant="outlined" onClick={() => offre(2, 4)} sx={{ minHeight: 48 }}>Offre 4 + 2</Button>
+            </Box>
+          )}
+        </Bloc>
       </Stack>
     )
     nomParDefaut = e.type === 'remise' ? `Remise de ${taux(e.taux)}` : `Hausse de ${taux(e.taux)}`
@@ -710,6 +769,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       <FormControlLabel control={<Checkbox checked={e[cle]} onChange={(x) => maj('tresorerie', { [cle]: x.target.checked })} />} label={libelle} sx={{ minHeight: 48, mr: 0 }} />
     )
     saisies = (
+      <Bloc titre="Les coups durs à tester">
       <Stack spacing={1.5}>
         {coche('baisse', 'Baisse du CA')}
         {e.baisse && <Saisies><Taux libelle="Baisse" valeur={e.tauxBaisse} onChange={(v) => maj('tresorerie', { tauxBaisse: v })} /><ChoixMois libelle="De" valeur={e.de} onChange={(v) => maj('tresorerie', { de: v })} /><ChoixMois libelle="À" valeur={e.a} onChange={(v) => maj('tresorerie', { a: v })} /></Saisies>}
@@ -718,6 +778,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         {coche('retard', 'Client qui paie en retard')}
         {e.retard && <Saisies><Montant libelle="Montant TTC attendu" valeur={e.montantRetard} onChange={(v) => maj('tresorerie', { montantRetard: v })} /><ChoixMois libelle="Attendu en" valeur={e.moisRetard} onChange={(v) => maj('tresorerie', { moisRetard: v })} /><Montant libelle="Retard" valeur={e.duree} onChange={(v) => maj('tresorerie', { duree: Math.round(v) })} unite="mois" /></Saisies>}
       </Stack>
+      </Bloc>
     )
     nomParDefaut = coups.length ? coups.map((c) => (c.type === 'baisse' ? `CA − ${taux(c.taux)}` : c.type === 'depense' ? `dépense de ${montant(c.montant)}` : `retard de ${c.retard} mois`)).join(', ') : 'Coup dur'
     const neg = r.apres.premierMoisNegatif
@@ -755,13 +816,21 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const margeU = u ? margeUnivers(b, u) ?? 0 : 0
     const r = u ? simulerVenteAdditionnelle(surCaisse(e.base) ?? b, p, { univers: u, unSur: e.unSur, prixTTC: e.prix, tauxMarge: e.marge ?? margeU }) : null
     saisies = u ? (
+      <Stack spacing={2}>
+      {(universDispo.length > 1 || caisse) && <Bloc titre="1. Point de départ">
       <Saisies>
         {universDispo.length > 1 && <Choix libelle="Univers" valeur={u} onChange={(v) => maj('vente_additionnelle', { univers: v })} options={[['cave', 'Cave'], ['bar', 'Bar']]} />}
         {caisse && <BaseDesChiffres valeur={e.base} annee={annee} caisse={caisse} onChange={(base) => maj('vente_additionnelle', { base })} />}
+      </Saisies>
+      </Bloc>}
+      <Bloc titre={universDispo.length > 1 || caisse ? '2. L’article proposé' : 'L’article proposé'}>
+      <Saisies>
         <Montant libelle="Un client sur" valeur={e.unSur} onChange={(v) => maj('vente_additionnelle', { unSur: Math.max(1, Math.round(v)) })} unite="" pas={1} min={1} />
         <Montant libelle="Prix de l’article TTC" valeur={e.prix} onChange={(v) => maj('vente_additionnelle', { prix: v })} pas={1} />
         <Taux libelle="Taux de marge de l’article" valeur={e.marge ?? margeU} onChange={(v) => maj('vente_additionnelle', { marge: v })} source={e.marge === null && u && margeUnivers(b, u) !== null && 'budget'} />
       </Saisies>
+      </Bloc>
+      </Stack>
     ) : <EtatVide titre="Pas de tickets visés au budget" texte="La vente additionnelle part des tickets de la Cave ou du Bar visés au budget. Ils arrivent avec la proposition du siège." />
     if (r) {
       nomParDefaut = `1 article de plus pour 1 client sur ${e.unSur} (${u === 'cave' ? 'Cave' : 'Bar'})`
@@ -782,7 +851,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       saisies = <EtatVide titre={`Disponible en ${h.annee}`} texte={`Le reste à faire se calcule sur le budget du mois en cours. Le budget ${h.annee} servira dès janvier ${h.annee}.`} />
     } else {
       const r = resteAFaire(b, h.annee, e.mois, e.jour, e.realise)
-      saisies = <Saisies><Montant libelle={`CA HT de ${MOIS_LONGS[e.mois - 1]} jusqu’à hier soir`} valeur={e.realise} onChange={(v) => maj('reste_a_faire', { realise: v })} /></Saisies>
+      saisies = <Bloc titre="Où j’en suis" total={{ libelle: `Budget de ${MOIS_LONGS[e.mois - 1]}`, valeur: montant(r.budget) }}><Saisies><Montant libelle={`CA HT de ${MOIS_LONGS[e.mois - 1]} jusqu’à hier soir`} valeur={e.realise} onChange={(v) => maj('reste_a_faire', { realise: v })} /></Saisies></Bloc>
       nomParDefaut = `Reste à faire au ${e.jour} ${MOIS_LONGS[e.mois - 1]}`
       phrase = r.atteint ? `Budget de ${MOIS_LONGS[e.mois - 1]} atteint (${montant(r.budget)}).` : `Il reste ${montant(r.reste)} à faire en ${r.joursRestants} jours, soit ${montant(r.parJour ?? 0)} par jour${r.rythme !== null ? ` contre ${montant(r.rythme)} jusqu’ici` : ''}.`
       resultats = (
@@ -806,52 +875,70 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       achats: e.achats ? { part: e.part, panierTTC: e.panier, tva: p.tvaPanier.cave, tauxMarge: margeCave, bon: e.bon } : null,
       equipe: { personnes: e.personnes, heures: e.heuresEquipe, coutHoraire: heure(e), majoration: e.majoration },
     }, p)
+    const extrasEtCouts = coutsPropres + e.extras
     saisies = (
       <Stack spacing={2}>
-        <Saisies>
-          <Champ libelle="Nom"><TextField size="small" value={e.nom} onChange={(x) => maj('soiree', { nom: x.target.value })} slotProps={{ htmlInput: { 'aria-label': 'Nom de l’événement', maxLength: 60 } }} sx={{ ...champ, width: 220 }} /></Champ>
-          <ChoixMois libelle="Mois" valeur={e.mois} onChange={(v) => maj('soiree', { mois: v })} />
-          <Choix libelle="Univers" valeur={e.univers} onChange={(v) => maj('soiree', { univers: v })} options={[['bar', 'Bar'], ['cave', 'Cave']]} />
-        </Saisies>
-        <Saisies>
-          <Montant libelle="Prix par participant TTC" valeur={e.prix} onChange={(v) => maj('soiree', { prix: v })} />
-          <Montant libelle="Participants attendus" valeur={e.participants} onChange={(v) => maj('soiree', { participants: Math.round(v) })} unite="" pas={5} />
-          <Taux libelle="Taux de marge" valeur={e.marge ?? margeU} onChange={(v) => maj('soiree', { marge: v })} source={e.marge === null && margeUnivers(b, e.univers) !== null && 'budget'} />
-        </Saisies>
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Achats des participants</Typography>
-        <Saisies>
-          <FormControlLabel control={<Checkbox sx={{ width: 48, height: 48 }} checked={e.achats} onChange={(x) => maj('soiree', { achats: x.target.checked })} />} label="Les participants achètent en cave" sx={{ minHeight: 48, mr: 0 }} />
-          {e.achats && <>
-            <Taux libelle="Part qui achète" valeur={e.part} onChange={(v) => maj('soiree', { part: v })} />
-            <Montant libelle="Panier moyen TTC" valeur={e.panier} onChange={(v) => maj('soiree', { panier: v })} />
-            <FormControlLabel control={<Checkbox sx={{ width: 48, height: 48 }} checked={e.bon} onChange={(x) => maj('soiree', { bon: x.target.checked })} />} label="Entrée remboursée en bon d’achat" sx={{ minHeight: 48, mr: 0 }} />
-          </>}
-        </Saisies>
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Coûts HT</Typography>
-        <Saisies>
-          {LIGNES_EVENEMENT.map((l) => l.cle === 'divers'
-            ? <Montant key={l.cle} libelle={l.libelle} valeur={e.couts} onChange={(v) => maj('soiree', { couts: v })} />
-            : <Montant key={l.cle} libelle={l.libelle} valeur={lignes[l.cle]} onChange={(v) => maj('soiree', { lignes: { ...lignes, [l.cle]: v } })} />)}
-          <Montant libelle="Extras de personnel" valeur={e.extras} onChange={(v) => maj('soiree', { extras: v })} />
-        </Saisies>
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Heures en plus de l’équipe en place</Typography>
-        <Saisies>
-          <Montant libelle="Personnes" valeur={e.personnes} onChange={(v) => maj('soiree', { personnes: Math.max(0, Math.round(v)) })} unite="" />
-          <Montant libelle="Heures chacune" valeur={e.heuresEquipe} onChange={(v) => maj('soiree', { heuresEquipe: v })} unite="h" />
-          <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('soiree', v)} />
-          <Taux libelle="Majoration des heures" valeur={e.majoration} onChange={(v) => maj('soiree', { majoration: v })} />
-        </Saisies>
+        <Bloc titre="L’événement">
+          <Saisies>
+            <Champ libelle="Nom"><TextField size="small" value={e.nom} onChange={(x) => maj('soiree', { nom: x.target.value })} slotProps={{ htmlInput: { 'aria-label': 'Nom de l’événement', maxLength: 60 } }} sx={{ ...champ, width: 220 }} /></Champ>
+            <ChoixMois libelle="Mois" valeur={e.mois} onChange={(v) => maj('soiree', { mois: v })} />
+            <Choix libelle="Univers" valeur={e.univers} onChange={(v) => maj('soiree', { univers: v })} options={[['bar', 'Bar'], ['cave', 'Cave']]} />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="1. Entrées" total={{ libelle: 'CA HT', valeur: montant(r.caEntree) }}>
+          <Saisies>
+            <Montant libelle="Prix par participant TTC" valeur={e.prix} onChange={(v) => maj('soiree', { prix: v })} />
+            <Montant libelle="Participants attendus" valeur={e.participants} onChange={(v) => maj('soiree', { participants: Math.round(v) })} unite="" pas={5} />
+            <Taux libelle="Taux de marge" valeur={e.marge ?? margeU} onChange={(v) => maj('soiree', { marge: v })} source={e.marge === null && margeUnivers(b, e.univers) !== null && 'budget'} />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="2. Achats des participants en cave" total={r.caAchats > 0 ? { libelle: 'CA HT', valeur: montant(r.caAchats - r.bon) } : undefined}>
+          <Saisies>
+            <FormControlLabel control={<Checkbox sx={{ width: 48, height: 48 }} checked={e.achats} onChange={(x) => maj('soiree', { achats: x.target.checked })} />} label="Les participants achètent en cave" sx={{ minHeight: 48, mr: 0 }} />
+            {e.achats && <>
+              <Taux libelle="Part qui achète" valeur={e.part} onChange={(v) => maj('soiree', { part: v })} />
+              <Montant libelle="Panier moyen TTC" valeur={e.panier} onChange={(v) => maj('soiree', { panier: v })} />
+              <FormControlLabel control={<Checkbox sx={{ width: 48, height: 48 }} checked={e.bon} onChange={(x) => maj('soiree', { bon: x.target.checked })} />} label="Entrée remboursée en bon d’achat" sx={{ minHeight: 48, mr: 0 }} />
+            </>}
+          </Saisies>
+        </Bloc>
+        <Bloc titre="3. Coûts de l’événement HT" total={{ libelle: 'Total', valeur: `− ${montant(extrasEtCouts)}` }}>
+          <Saisies>
+            {LIGNES_EVENEMENT.map((l) => l.cle === 'divers'
+              ? <Montant key={l.cle} libelle={l.libelle} valeur={e.couts} onChange={(v) => maj('soiree', { couts: v })} />
+              : <Montant key={l.cle} libelle={l.libelle} valeur={lignes[l.cle]} onChange={(v) => maj('soiree', { lignes: { ...lignes, [l.cle]: v } })} />)}
+            <Montant libelle="Extras de personnel" valeur={e.extras} onChange={(v) => maj('soiree', { extras: v })} />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="4. Heures en plus de l’équipe en place" total={{ libelle: 'Total', valeur: `− ${montant(r.equipeEnPlace)}` }}>
+          <Saisies>
+            <Montant libelle="Personnes" valeur={e.personnes} onChange={(v) => maj('soiree', { personnes: Math.max(0, Math.round(v)) })} unite="" />
+            <Montant libelle="Heures chacune" valeur={e.heuresEquipe} onChange={(v) => maj('soiree', { heuresEquipe: v })} unite="h" />
+            <Taux libelle="Majoration des heures" valeur={e.majoration} onChange={(v) => maj('soiree', { majoration: v })} />
+          </Saisies>
+          <Saisies>
+            <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('soiree', v)} />
+          </Saisies>
+        </Bloc>
       </Stack>
     )
     nomParDefaut = `${e.nom || 'Soirée'} en ${MOIS_LONGS[e.mois - 1]}`
     phrase = `${nomParDefaut}, ${e.participants} participants à ${montant(e.prix)} : ${r.gain >= 0 ? `gain de ${montant(r.gain)}` : `perte de ${montant(-r.gain)}`}${r.caAchats > 0 ? `, dont ${montant(r.caAchats - r.bon)} d’achats en cave` : ''}${r.seuil !== null ? `, à partir de ${r.seuil} participants on ne perd pas d’argent` : ''}.`
     resultats = (
+      <Stack spacing={2}>
+      <Compte titre="Compte de l’événement" lignes={[
+          { libelle: 'Marge sur les ventes', valeur: r.marge, detail: `${montant(r.caHT)} de CA HT` },
+          { libelle: 'Redevance et publicité', valeur: -r.redevance },
+          { libelle: 'Coûts de l’événement', valeur: -extrasEtCouts },
+          { libelle: 'Heures de l’équipe en place', valeur: -r.equipeEnPlace },
+        ]} total={{ libelle: r.gain >= 0 ? 'Gain' : 'Perte', valeur: r.gain }} />
       <Resultats>
         <Indicateur libelle={r.gain >= 0 ? 'Gain' : 'Perte'} valeur={montant(Math.abs(r.gain))} detail={`${montant(r.caHT)} de CA HT, ${montant(r.couts)} de coûts`} />
         <Indicateur libelle="Participants pour ne rien perdre" valeur={r.seuil !== null ? entier(r.seuil) : 'Jamais rentable'} detail={r.seuil !== null ? `${montant(r.gainParParticipant)} gagnés par participant` : 'La marge ne couvre pas la redevance'} />
         {r.caAchats > 0 && <Indicateur libelle="Achats des participants" valeur={montant(r.caAchats - r.bon)} detail={`HT, ${entier(r.acheteurs)} acheteurs${r.bon > 0 ? `, bons de ${montant(r.bon)} déduits` : ''}`} />}
         {r.equipeEnPlace > 0 && <Indicateur libelle="Heures de l’équipe en place" valeur={montant(r.equipeEnPlace)} detail="chargées, majoration comprise" />}
       </Resultats>
+      </Stack>
     )
     ajout = { tempsForts: tempsFortDeSoiree(e.nom || 'Soirée', e.mois, e.univers, r, coutsPropres) }
     if (e.extras > 0 || r.equipeEnPlace > 0) note = 'Les extras et les heures de l’équipe se saisissent dans l’Équipe du budget.'
@@ -860,13 +947,21 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const e = etats.achat
     const r = simulerAchat({ montant: e.montant, remise: e.remise, mois: e.mois, invendu: e.invendu, tauxAnnuel: e.taux, tvaAchats: p.tresorerie.tvaAchats })
     saisies = (
-      <Saisies>
-        <Montant libelle="Achat au prix habituel HT" valeur={e.montant} onChange={(v) => maj('achat', { montant: v })} />
-        <Taux libelle="Remise du fournisseur" valeur={e.remise} onChange={(v) => maj('achat', { remise: v })} />
-        <Montant libelle="Temps pour tout vendre" valeur={e.mois} onChange={(v) => maj('achat', { mois: v })} unite="mois" />
-        <Taux libelle="Part qui risque de rester" valeur={e.invendu} onChange={(v) => maj('achat', { invendu: v })} />
-        <Taux libelle="Coût annuel de l’argent" valeur={e.taux} onChange={(v) => maj('achat', { taux: v })} />
-      </Saisies>
+      <Stack spacing={2}>
+        <Bloc titre="1. L’offre du fournisseur" total={{ libelle: 'Remise gagnée', valeur: montant(r.remise) }}>
+          <Saisies>
+            <Montant libelle="Achat au prix habituel HT" valeur={e.montant} onChange={(v) => maj('achat', { montant: v })} />
+            <Taux libelle="Remise du fournisseur" valeur={e.remise} onChange={(v) => maj('achat', { remise: v })} />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="2. Ce que ça coûte de stocker" total={{ libelle: 'Total', valeur: `− ${montant(r.perteInvendu + r.coutArgent)}` }}>
+          <Saisies>
+            <Montant libelle="Temps pour tout vendre" valeur={e.mois} onChange={(v) => maj('achat', { mois: v })} unite="mois" />
+            <Taux libelle="Part qui risque de rester" valeur={e.invendu} onChange={(v) => maj('achat', { invendu: v })} />
+            <Taux libelle="Coût annuel de l’argent" valeur={e.taux} onChange={(v) => maj('achat', { taux: v })} />
+          </Saisies>
+        </Bloc>
+      </Stack>
     )
     nomParDefaut = `Achat de ${montant(e.montant)} à ${taux(e.remise)} de remise`
     phrase = `${nomParDefaut}, vendu en ${unChiffre(e.mois)} mois : ${r.gain >= 0 ? `gain de ${montant(r.gain)}` : `perte de ${montant(-r.gain)}`}${r.moisMaximum !== null ? `, la remise vaut le coup si tout part en moins de ${unChiffre(r.moisMaximum)} mois` : ''}.`
@@ -894,6 +989,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const reperes = e.modele === 'corner' && s.corner.caParMetre > 0
     saisies = (
       <Stack spacing={2}>
+        <Bloc titre="1. Le projet">
         <Saisies>
           <Choix libelle="Projet" valeur={e.modele} onChange={(v) => maj('investissement', { modele: v, libelle: v === 'corner' ? 'Corner alimentaire' : v === 'exterieur' ? 'Marché extérieur' : ['Corner alimentaire', 'Marché extérieur'].includes(e.libelle) ? 'Tireuse' : e.libelle, univers: v === 'corner' ? 'cave' : v === 'exterieur' ? 'exterieur' : e.univers })} options={[['libre', 'Libre'], ['corner', 'Corner alimentaire'], ['exterieur', 'Marché extérieur']]} />
           <Champ libelle="Nom"><TextField size="small" value={e.libelle} onChange={(x) => maj('investissement', { libelle: x.target.value })} slotProps={{ htmlInput: { 'aria-label': 'Nom du projet', maxLength: 60 } }} sx={{ ...champ, width: 200 }} /></Champ>
@@ -905,9 +1001,20 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             {s.marcheExterieur.camion > 0 && <FormControlLabel control={<Checkbox sx={{ width: 48, height: 48 }} checked={e.camion} onChange={(x) => maj('investissement', { camion: x.target.checked })} />} label={`Avec un camion (${montant(s.marcheExterieur.camion)})`} sx={{ minHeight: 48, mr: 0 }} />}
           </Saisies>
         )}
+        {e.modele === 'exterieur' && (pal
+          ? <Typography color="text.secondary">Préconisation du siège pour {montant(e.objectifExterieur)} de CA : {entier(pal.tireuses)} tireuses, {montant(pal.investissement)} d’investissement{e.camion ? ` et ${montant(s.marcheExterieur.camion)} de camion` : ''}, {unChiffre(pal.heures)} h par semaine{s.coutHoraire > 0 ? `, soit ${montant(chargesExt ?? 0)} par an au coût horaire du siège` : ''}.</Typography>
+          : <Typography color="text.secondary">Le siège n’a pas encore réglé la préconisation du marché extérieur : saisis le coût et les charges en mode Libre.</Typography>)}
+        </Bloc>
+        <Bloc titre="2. L’investissement" total={{ libelle: 'Coût HT', valeur: montant(cout) }}>
         <Saisies>
           {coutExt === null ? <Montant libelle="Coût HT" valeur={e.cout} onChange={(v) => maj('investissement', { cout: v })} /> : null}
           <Montant libelle="Amorti sur" valeur={e.duree} onChange={(v) => maj('investissement', { duree: v })} unite="ans" />
+          <Choix libelle="Financement" valeur={e.financement} onChange={(v) => maj('investissement', { financement: v })} options={[['tresorerie', 'Trésorerie'], ['pret', 'Prêt']]} />
+          {e.financement === 'pret' && <><Taux libelle="Taux du prêt" valeur={e.tauxPret} onChange={(v) => maj('investissement', { tauxPret: v })} /><Montant libelle="Durée du prêt" valeur={e.dureePret} onChange={(v) => maj('investissement', { dureePret: v })} unite="ans" /></>}
+        </Saisies>
+        </Bloc>
+        <Bloc titre="3. Ce qu’il rapporte et coûte chaque année" total={{ libelle: 'EBE en plus', valeur: ecartMontant(r.ebeAn), negatif: r.ebeAn < 0 }}>
+        <Saisies>
           {e.modele === 'corner' && reperes
             ? <Montant libelle="Mètres linéaires" valeur={e.metres} onChange={(v) => maj('investissement', { metres: v })} unite="m" />
             : e.modele === 'exterieur' ? null : <Montant libelle="CA HT en plus par an" valeur={e.ca} onChange={(v) => maj('investissement', { ca: v })} />}
@@ -915,14 +1022,8 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           {!(e.modele === 'corner' && s.corner.demarque > 0) && <Taux libelle="Démarque" valeur={e.demarque} onChange={(v) => maj('investissement', { demarque: v })} />}
           {chargesExt === null && <Montant libelle="Charges en plus par an HT" valeur={e.charges} onChange={(v) => maj('investissement', { charges: v })} />}
         </Saisies>
-        <Saisies>
-          <Choix libelle="Financement" valeur={e.financement} onChange={(v) => maj('investissement', { financement: v })} options={[['tresorerie', 'Trésorerie'], ['pret', 'Prêt']]} />
-          {e.financement === 'pret' && <><Taux libelle="Taux du prêt" valeur={e.tauxPret} onChange={(v) => maj('investissement', { tauxPret: v })} /><Montant libelle="Durée du prêt" valeur={e.dureePret} onChange={(v) => maj('investissement', { dureePret: v })} unite="ans" /></>}
-        </Saisies>
-        {e.modele === 'exterieur' && (pal
-          ? <Typography color="text.secondary">Préconisation du siège pour {montant(e.objectifExterieur)} de CA : {entier(pal.tireuses)} tireuses, {montant(pal.investissement)} d’investissement{e.camion ? ` et ${montant(s.marcheExterieur.camion)} de camion` : ''}, {unChiffre(pal.heures)} h par semaine{s.coutHoraire > 0 ? `, soit ${montant(chargesExt ?? 0)} par an au coût horaire du siège` : ''}.</Typography>
-          : <Typography color="text.secondary">Le siège n’a pas encore réglé la préconisation du marché extérieur : saisis le coût et les charges en mode Libre.</Typography>)}
         {reperes && <Typography color="text.secondary">Repères du siège : {montant(s.corner.caParMetre)} de CA HT par mètre et par an, soit {montant(ca)}{s.corner.tauxMarge > 0 ? `, marge ${taux(s.corner.tauxMarge)}` : ''}{s.corner.demarque > 0 ? `, démarque ${taux(s.corner.demarque)}` : ''}.</Typography>}
+        </Bloc>
       </Stack>
     )
     nomParDefaut = `${e.libelle || 'Investissement'} de ${montant(cout)}`
@@ -961,60 +1062,80 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const margeExt = margeFut(Math.max(0, e.prixVente - e.remise), e.prixAchat)
     const m = (k: keyof Etats['exterieur']) => (v: number) => maj('exterieur', { [k]: v })
     // Facturé à un organisateur (B2B) : tout en HT (Joseph, 14/11/2026). Le TTC ne sert qu'à la vente au client final.
+    const moins = (v: number) => ({ valeur: `− ${montant(v)}`, negatif: false })
+    const donSponso = r.don.cout + r.sponsoring + r.retrocession
     saisies = (
       <Stack spacing={2}>
-        <Saisies>
-          <Texte libelle="Contrat" aria="Nom du contrat" valeur={e.nom} onChange={(v) => maj('exterieur', { nom: v })} />
-          <Montant libelle="Fûts vendus par an" valeur={e.futs} onChange={(v) => maj('exterieur', { futs: Math.round(v) })} unite="" />
-        </Saisies>
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Par fût</Typography>
-        <Saisies>
-          <Montant libelle="Prix de vente du fût HT" valeur={e.prixVente} onChange={m('prixVente')} />
-          <Montant libelle="Remise accordée HT" valeur={e.remise} onChange={m('remise')} />
-          <Montant libelle="Prix d’achat du fût HT" valeur={e.prixAchat} onChange={m('prixAchat')} />
-          <Montant libelle="CO2 par fût HT" valeur={e.co2} onChange={m('co2')} source={e.co2 > 0 && e.co2 === initiaux.exterieur.co2 && 'siège'} />
-          <Montant libelle="Gobelets par fût HT" valeur={e.gobelets} onChange={m('gobelets')} />
-        </Saisies>
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Tireuse et livraisons</Typography>
-        <Saisies>
-          <Choix libelle="Tireuse" valeur={e.tireuse} onChange={(v) => maj('exterieur', { tireuse: v })} options={[['neuve', 'À acheter'], ['parc', 'Déjà dans le parc']]} />
-          {e.tireuse === 'neuve' && <><Montant libelle="Prix de la tireuse HT" valeur={e.prixTireuse} onChange={m('prixTireuse')} /><Montant libelle="Durée de vie" valeur={e.duree} onChange={m('duree')} unite="ans" /></>}
-          <Montant libelle="Entretien par an HT" valeur={e.entretien} onChange={m('entretien')} />
-        </Saisies>
-        <Saisies>
-          <Montant libelle="Livraisons par an" valeur={e.livraisons} onChange={(v) => maj('exterieur', { livraisons: Math.round(v) })} unite="" />
-          <Montant libelle="Kilomètres aller-retour" valeur={e.km} onChange={m('km')} unite="km" />
-          <Montant libelle="Prix du kilomètre HT" valeur={e.prixKm} onChange={m('prixKm')} unite="€/km" source={e.prixKm > 0 && e.prixKm === initiaux.exterieur.prixKm && 'siège'} />
-          <Montant libelle="Heures par livraison" valeur={e.heures} onChange={m('heures')} unite="h" />
-          <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('exterieur', v)} />
-          <Montant libelle="Livraison facturée HT" valeur={prixLivraison} onChange={(v) => maj('exterieur', { prixLivraison: v })} />
-        </Saisies>
-        <Typography color="text.secondary">
-          Une livraison coûte {centimes(r.coutLivraison)} HT : {centimes(r.kmLivraison)} d’indemnités kilométriques ({unChiffre(e.km)} km à {centimes(e.prixKm)}) et {centimes(r.tempsLivraison)} de temps ({unChiffre(e.heures)} h à {centimes(heure(e))}). Sur {entier(e.livraisons)} livraisons : {montant(r.livraisonsAn)} par an{r.livraisonsFacturees > 0 ? `, ${montant(r.livraisonsFacturees)} facturés, net ${r.netLivraisons >= 0 ? '' : 'de − '}${montant(Math.abs(r.netLivraisons))} après redevance et publicité` : ', rien de facturé'}.
-        </Typography>
-        {prixGrille !== null && e.prixLivraison === null && <Typography color="text.secondary">Livraison au prix de la grille du siège : {prixGrille ? montant(prixGrille) : 'offerte'} pour {unChiffre(e.km / 2)} km et {montant(commande)} commandés par livraison.</Typography>}
-        {e.prixLivraison !== null && prixGrille !== null && <Box><Button onClick={() => maj('exterieur', { prixLivraison: null })} sx={{ minHeight: 48 }}>Reprendre le prix de la grille ({montant(prixGrille)})</Button></Box>}
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Matériel, astreinte, locations</Typography>
-        <Saisies>
-          <Montant libelle="Matériel prêté par an HT" valeur={e.materiel} onChange={m('materiel')} />
-          <Montant libelle="Heures d’astreinte par an" valeur={e.astreinte} onChange={m('astreinte')} unite="h" />
-          <Montant libelle="Locations de tireuse facturées" valeur={e.locations} onChange={(v) => maj('exterieur', { locations: Math.round(v) })} unite="" />
-          {e.locations > 0 && <Montant libelle="Prix d’une location HT" valeur={e.prixLocation} onChange={m('prixLocation')} />}
-        </Saisies>
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Don ou sponsoring à l’association</Typography>
-        <Saisies>
-          <Choix libelle="Don" valeur={e.don} onChange={(v) => maj('exterieur', { don: v })} options={[['aucun', 'Aucun'], ['argent', 'En argent'], ['nature', 'En fûts']]} />
-          {e.don === 'argent' && <Montant libelle="Montant du don" valeur={e.montantDon} onChange={m('montantDon')} />}
-          {e.don === 'nature' && <Montant libelle="Fûts offerts" valeur={e.futsDon} onChange={(v) => maj('exterieur', { futsDon: Math.round(v) })} unite="" />}
-          {e.don !== 'aucun' && s.donMecenat && <FormControlLabel control={<Checkbox sx={{ width: 48, height: 48 }} checked={e.cerfa} onChange={(x) => maj('exterieur', { cerfa: x.target.checked })} />} label="Reçu Cerfa demandé" sx={{ minHeight: 48, mr: 0 }} />}
-        </Saisies>
-        <Saisies>
-          <FormControlLabel control={<Checkbox sx={{ width: 48, height: 48 }} checked={e.sponsoring} onChange={(x) => maj('exterieur', { sponsoring: x.target.checked })} />} label="Sponsoring (contrepartie publicitaire)" sx={{ minHeight: 48, mr: 0 }} />
-          {e.sponsoring && <>
-            <Montant libelle="Somme versée HT" valeur={e.sponsoMontant} onChange={m('sponsoMontant')} />
-            <Montant libelle="Rétrocession par fût HT" valeur={e.sponsoParFut} onChange={m('sponsoParFut')} />
-          </>}
-        </Saisies>
+        <Bloc titre="Le contrat">
+          <Saisies>
+            <Texte libelle="Contrat" aria="Nom du contrat" valeur={e.nom} onChange={(v) => maj('exterieur', { nom: v })} />
+            <Montant libelle="Fûts vendus par an" valeur={e.futs} onChange={(v) => maj('exterieur', { futs: Math.round(v) })} unite="" />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="1. Recettes" total={{ libelle: 'CA HT de l’année', valeur: montant(r.ca) }}>
+          <Saisies>
+            <Montant libelle="Prix de vente du fût HT" valeur={e.prixVente} onChange={m('prixVente')} />
+            <Montant libelle="Remise accordée HT" valeur={e.remise} onChange={m('remise')} />
+            <Montant libelle="Livraison facturée HT" valeur={prixLivraison} onChange={(v) => maj('exterieur', { prixLivraison: v })} />
+            <Montant libelle="Locations de tireuse facturées" valeur={e.locations} onChange={(v) => maj('exterieur', { locations: Math.round(v) })} unite="" />
+            {e.locations > 0 && <Montant libelle="Prix d’une location HT" valeur={e.prixLocation} onChange={m('prixLocation')} />}
+          </Saisies>
+          <Typography color="text.secondary">
+            {entier(e.futs)} fûts à {centimes(r.caParFut)} : {montant(e.futs * r.caParFut)}{r.livraisonsFacturees > 0 ? `, ${entier(e.livraisons)} livraisons facturées : ${montant(r.livraisonsFacturees)}` : ''}{r.recettes - r.livraisonsFacturees > 0 ? `, locations : ${montant(r.recettes - r.livraisonsFacturees)}` : ''}.
+            {prixGrille !== null && e.prixLivraison === null && ` Livraison au prix de la grille du siège : ${prixGrille ? montant(prixGrille) : 'offerte'} pour ${unChiffre(e.km / 2)} km et ${montant(commande)} commandés par livraison.`}
+          </Typography>
+          {e.prixLivraison !== null && prixGrille !== null && <Box><Button onClick={() => maj('exterieur', { prixLivraison: null })} sx={{ minHeight: 48 }}>Reprendre le prix de la grille ({montant(prixGrille)})</Button></Box>}
+        </Bloc>
+        <Bloc titre="2. Fûts" total={{ libelle: 'Coût de l’année', ...moins(r.coutFuts) }}>
+          <Saisies>
+            <Montant libelle="Prix d’achat du fût HT" valeur={e.prixAchat} onChange={m('prixAchat')} />
+            <Montant libelle="CO2 par fût HT" valeur={e.co2} onChange={m('co2')} source={e.co2 > 0 && e.co2 === initiaux.exterieur.co2 && 'siège'} />
+            <Montant libelle="Gobelets par fût HT" valeur={e.gobelets} onChange={m('gobelets')} />
+          </Saisies>
+          <Typography color="text.secondary">Marge par fût : {centimes(margeExt.valeur)}{margeExt.taux !== null ? ` (${taux(margeExt.taux)} du prix de vente)` : ''}. Net par fût : {centimes(r.netParFut)}, après CO2, gobelets{e.sponsoring && e.sponsoParFut ? ', rétrocession' : ''} et {centimes(r.redevanceParFut)} de redevance et publicité.</Typography>
+        </Bloc>
+        <Bloc titre="3. Tireuse" total={{ libelle: 'Par an', ...moins(r.tireuseAn) }}>
+          <Saisies>
+            <Choix libelle="Tireuse" valeur={e.tireuse} onChange={(v) => maj('exterieur', { tireuse: v })} options={[['neuve', 'À acheter'], ['parc', 'Déjà dans le parc']]} />
+            {e.tireuse === 'neuve' && <><Montant libelle="Prix de la tireuse HT" valeur={e.prixTireuse} onChange={m('prixTireuse')} /><Montant libelle="Durée de vie" valeur={e.duree} onChange={m('duree')} unite="ans" /></>}
+            <Montant libelle="Entretien par an HT" valeur={e.entretien} onChange={m('entretien')} />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="4. Livraisons" total={{ libelle: 'Par an', ...moins(r.livraisonsAn) }}>
+          <Saisies>
+            <Montant libelle="Livraisons par an" valeur={e.livraisons} onChange={(v) => maj('exterieur', { livraisons: Math.round(v) })} unite="" />
+            <Montant libelle="Kilomètres aller-retour" valeur={e.km} onChange={m('km')} unite="km" />
+            <Montant libelle="Prix du kilomètre HT" valeur={e.prixKm} onChange={m('prixKm')} unite="€/km" source={e.prixKm > 0 && e.prixKm === initiaux.exterieur.prixKm && 'siège'} />
+            <Montant libelle="Heures par livraison" valeur={e.heures} onChange={m('heures')} unite="h" />
+          </Saisies>
+          <Saisies>
+            <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('exterieur', v)} />
+          </Saisies>
+          <Typography color="text.secondary">
+            Une livraison coûte {centimes(r.coutLivraison)} HT : {centimes(r.kmLivraison)} d’indemnités kilométriques ({unChiffre(e.km)} km à {centimes(e.prixKm)}) et {centimes(r.tempsLivraison)} de temps ({unChiffre(e.heures)} h à {centimes(heure(e))}).{r.livraisonsFacturees > 0 ? ` Facturées : ${montant(r.livraisonsFacturees)}, net ${r.netLivraisons >= 0 ? '' : 'de − '}${montant(Math.abs(r.netLivraisons))} après redevance et publicité.` : ' Rien de facturé.'}
+          </Typography>
+        </Bloc>
+        <Bloc titre="5. Matériel et astreinte" total={{ libelle: 'Par an', ...moins(r.materiel + r.astreinte) }}>
+          <Saisies>
+            <Montant libelle="Matériel prêté par an HT" valeur={e.materiel} onChange={m('materiel')} />
+            <Montant libelle="Heures d’astreinte par an" valeur={e.astreinte} onChange={m('astreinte')} unite="h" />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="6. Don ou sponsoring à l’association" total={{ libelle: 'Par an', ...moins(donSponso) }}>
+          <Saisies>
+            <Choix libelle="Don" valeur={e.don} onChange={(v) => maj('exterieur', { don: v })} options={[['aucun', 'Aucun'], ['argent', 'En argent'], ['nature', 'En fûts']]} />
+            {e.don === 'argent' && <Montant libelle="Montant du don" valeur={e.montantDon} onChange={m('montantDon')} />}
+            {e.don === 'nature' && <Montant libelle="Fûts offerts" valeur={e.futsDon} onChange={(v) => maj('exterieur', { futsDon: Math.round(v) })} unite="" />}
+            {e.don !== 'aucun' && s.donMecenat && <FormControlLabel control={<Checkbox sx={{ width: 48, height: 48 }} checked={e.cerfa} onChange={(x) => maj('exterieur', { cerfa: x.target.checked })} />} label="Reçu Cerfa demandé" sx={{ minHeight: 48, mr: 0 }} />}
+          </Saisies>
+          <Saisies>
+            <FormControlLabel control={<Checkbox sx={{ width: 48, height: 48 }} checked={e.sponsoring} onChange={(x) => maj('exterieur', { sponsoring: x.target.checked })} />} label="Sponsoring (contrepartie publicitaire)" sx={{ minHeight: 48, mr: 0 }} />
+            {e.sponsoring && <>
+              <Montant libelle="Somme versée HT" valeur={e.sponsoMontant} onChange={m('sponsoMontant')} />
+              <Montant libelle="Rétrocession par fût HT" valeur={e.sponsoParFut} onChange={m('sponsoParFut')} />
+            </>}
+          </Saisies>
+        </Bloc>
       </Stack>
     )
     nomParDefaut = `${e.nom || 'Contrat extérieur'}, ${e.futs} fûts`
@@ -1022,6 +1143,16 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       ? `${nomParDefaut} : chaque fût fait perdre ${centimes(-r.netParFut)}, le prix ne couvre pas l’achat et la redevance.`
       : `${nomParDefaut} : ${centimes(r.netParFut)} nets par fût, ${montant(r.coutFixe)} de coûts fixes${r.recettes ? `, ${montant(r.recettes)} de livraisons et locations facturées` : ''}, équilibre à ${r.equilibre} fûts ; ${r.gain >= 0 ? `gain de ${montant(r.gain)}` : `perte de ${montant(-r.gain)}`} au volume prévu.`
     resultats = (
+      <Stack spacing={2}>
+      <Compte titre="Compte de l’année" lignes={[
+          { libelle: 'Recettes', valeur: r.ca, detail: 'CA HT' },
+          { libelle: 'Fûts', valeur: -r.coutFuts, detail: 'achat, CO2, gobelets' },
+          { libelle: 'Redevance et publicité', valeur: -r.redevance },
+          { libelle: 'Tireuse', valeur: -r.tireuseAn },
+          { libelle: 'Livraisons', valeur: -r.livraisonsAn },
+          { libelle: 'Matériel et astreinte', valeur: -(r.materiel + r.astreinte) },
+          { libelle: 'Don ou sponsoring', valeur: -donSponso, detail: r.don.reduction ? 'réduction d’impôt déduite' : undefined },
+        ]} total={{ libelle: r.gain >= 0 ? 'Gain de l’année' : 'Perte de l’année', valeur: r.gain }} />
       <Resultats>
         <Indicateur libelle="Marge par fût" valeur={centimes(margeExt.valeur)} detail={margeExt.taux !== null ? `HT, ${taux(margeExt.taux)} du prix de vente HT après remise` : 'pas de prix de vente'} />
         <Indicateur libelle="Net par fût" valeur={centimes(r.netParFut)} detail={`HT, après achat, CO2, gobelets et ${centimes(r.redevanceParFut)} de redevance et publicité`} />
@@ -1033,6 +1164,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         {r.prixPlancherLivraison !== null && r.coutLivraison > 0 && <Indicateur libelle="Prix plancher d’une livraison" valeur={centimes(r.prixPlancherLivraison)} detail={`HT, pour couvrir ${centimes(r.coutLivraison)} de route et de temps`} />}
         {r.don.valeur > 0 && <Indicateur libelle="Coût réel du don" valeur={montant(r.don.cout)} detail={r.don.reduction ? `${montant(r.don.valeur)} moins ${taux(TAUX_MECENAT)} de réduction d’impôt` : s.donMecenat ? 'sans reçu Cerfa, pas de réduction' : 'sans réduction d’impôt'} />}
       </Resultats>
+      </Stack>
     )
   }
   if (choisi === 'tireuses') {
@@ -1053,6 +1185,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const vieille = (i: number, v: Partial<Etats['tireuses']['vieilles'][number]>) => maj('tireuses', { vieilles: e.vieilles.map((y, j) => (j === i ? { ...y, ...v } : y)) })
     saisies = (
       <Stack spacing={2}>
+        <Bloc titre="1. Mon parc et ses locations">
         <Saisies>
           <Montant libelle="Tireuses" valeur={e.tireuses} onChange={(v) => maj('tireuses', { tireuses: Math.round(v) })} unite="" source={tireusesParc !== null && e.tireuses === tireusesParc && 'équipements'} />
           <Montant libelle="Week-ends de saison" valeur={e.semaines} onChange={(v) => maj('tireuses', { semaines: Math.min(52, Math.max(0, Math.round(v))) })} unite="" />
@@ -1069,17 +1202,22 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Montant libelle="Week-ends refusés faute de tireuse" valeur={e.refus} onChange={(v) => maj('tireuses', { refus: Math.round(v) })} unite="" />
           <Montant libelle="Fûts par week-end loué" valeur={e.futsParSortie} onChange={m('futsParSortie')} unite="" />
         </Saisies>
+        </Bloc>
+        <Bloc titre="2. Ce que rapporte un fût" total={{ libelle: 'Net par fût', valeur: centimes(net), negatif: net < 0 }}>
         <Saisies>
           <Montant libelle="Prix de vente du fût TTC" valeur={prixVenteTTC} onChange={(v) => maj('tireuses', { prixVente: v })} />
           <Montant libelle="Prix d’achat du fût HT" valeur={prixAchat} onChange={(v) => maj('tireuses', { prixAchat: v })} />
         </Saisies>
         <Typography color="text.secondary">Marge par fût : {centimes(marge.valeur)} HT{marge.taux !== null ? `, soit ${taux(marge.taux)} du prix de vente HT (${centimes(prixVente)})` : ''}. Net par fût : {centimes(net)}, après {centimes(fut.redevanceParFut)} de redevance et publicité, CO2 et gobelets.</Typography>
+        </Bloc>
+        <Bloc titre="3. Ce que coûte une tireuse de plus" total={{ libelle: 'Par an', valeur: `− ${montant(r.coutAnnuelNeuve)}` }}>
         <Saisies>
           <Montant libelle="Prix d’une tireuse neuve HT" valeur={e.prixNeuve} onChange={m('prixNeuve')} />
           <Montant libelle="Durée de vie" valeur={e.duree} onChange={m('duree')} unite="ans" />
           <Montant libelle="Entretien par an HT" valeur={e.entretien} onChange={m('entretien')} />
         </Saisies>
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Tireuses qui vieillissent</Typography>
+        </Bloc>
+        <Bloc titre="4. Tireuses qui vieillissent">
         {e.vieilles.map((v, i) => (
           <Saisies key={i}>
             <Texte libelle="Tireuse" aria={`Nom de la tireuse ${i + 1}`} valeur={v.nom} onChange={(nom) => vieille(i, { nom })} largeur={160} />
@@ -1089,6 +1227,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           </Saisies>
         ))}
         <Box><Button startIcon={<AddOutlined />} onClick={() => maj('tireuses', { vieilles: [...e.vieilles, { nom: `Tireuse ${e.vieilles.length + 1}`, age: 5, reparations: 0 }] })} sx={{ minHeight: 48 }}>Ajouter une tireuse</Button></Box>
+        </Bloc>
       </Stack>
     )
     nomParDefaut = `Parc de ${e.tireuses} tireuse${e.tireuses > 1 ? 's' : ''}`
@@ -1129,21 +1268,21 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     saisies = (
       <Stack spacing={2}>
         {vueChoix}
-        {e.becs.map((b, i) => (
-          <Box key={i} component="section" aria-label={`Bec ${i + 1}`} sx={{ display: 'grid', gap: 1, pb: 2, borderBottom: 1, borderColor: 'divider' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography component="h3" sx={{ fontWeight: 700, flex: 1 }}>Bec {i + 1}</Typography>
-              {e.becs.length > 1 && <Button color="inherit" startIcon={<DeleteOutlineOutlined />} onClick={() => maj('pression', { becs: e.becs.filter((_, j) => j !== i), remplace: 0 })} aria-label={`Retirer le bec ${i + 1}`} sx={{ minHeight: 48 }}>Retirer</Button>}
-            </Box>
-            {champsBec(b, `bec ${i + 1}`, (v) => bec(i, v))}
-          </Box>
-        ))}
+        {e.becs.map((b, i) => {
+          const l = carte.lignes[i]
+          return (
+            <Bloc key={i} titre={`Bec ${i + 1}`} total={{ libelle: 'Marge du bec', valeur: `${l.tauxMarge === null ? '–' : taux(l.tauxMarge)} · ${montant(l.margeSemaine)} par semaine`, negatif: l.sousCible }}>
+              {champsBec(b, `bec ${i + 1}`, (v) => bec(i, v))}
+              {e.becs.length > 1 && <Box><Button color="inherit" startIcon={<DeleteOutlineOutlined />} onClick={() => maj('pression', { becs: e.becs.filter((_, j) => j !== i), remplace: 0 })} aria-label={`Retirer le bec ${i + 1}`} sx={{ minHeight: 48 }}>Retirer ce bec</Button></Box>}
+            </Bloc>
+          )
+        })}
         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
           {e.becs.length < 20 && <Button startIcon={<AddOutlined />} onClick={() => maj('pression', { becs: [...e.becs, { ...e.becs[e.becs.length - 1], biere: `Bière ${e.becs.length + 1}` }] })} sx={{ minHeight: 48 }}>Ajouter un bec</Button>}
           <FormControlLabel control={<Checkbox sx={{ width: 48, height: 48 }} checked={e.projet} onChange={(x) => maj('pression', { projet: x.target.checked })} />} label="Projet : ajouter ou remplacer un bec" sx={{ minHeight: 48, mr: 0 }} />
         </Box>
         {e.projet && (
-          <Box component="section" aria-label="Projet de bec" sx={{ display: 'grid', gap: 1.5 }}>
+          <Bloc titre="Projet de bec" total={projet ? { libelle: 'Gain', valeur: `${ecartMontant(projet.gainSemaine)} par semaine`, negatif: projet.gainSemaine < 0 } : undefined}>
             <Saisies>
               <Choix libelle="Je veux" valeur={e.mode} onChange={(v) => maj('pression', { mode: v })} options={[['ajouter', 'Ajouter un bec'], ['remplacer', 'Remplacer un bec']]} />
               {e.mode === 'remplacer' && (
@@ -1157,7 +1296,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
               <Taux libelle="Part prise aux autres becs" valeur={e.cannibalisation} onChange={(v) => maj('pression', { cannibalisation: v })} />
             </Saisies>
             {champsBec(e.nouveau, 'nouveau bec', nouveau)}
-          </Box>
+          </Bloc>
         )}
       </Stack>
     )
@@ -1165,7 +1304,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const fb = carte.faible !== null ? e.becs[carte.faible] : null
     nomParDefaut = `Carte pression, ${e.becs.length} bec${e.becs.length > 1 ? 's' : ''}`
     phrase = faible && fb
-      ? `Le bec ${carte.faible! + 1} (${fb.biere}) rapporte ${montant(faible.margeSemaine)} par semaine à ${faible.tauxMarge === null ? '–' : taux(faible.tauxMarge)} de marge${faible.joursPourVider !== null ? ` et met ${entier(faible.joursPourVider)} jours à vider un fût` : ''} : ${faible.sousCible && faible.prixDemiCible !== null ? `monte le demi à ${centimes(faible.prixDemiCible)}` : 'change de bière ou de taille de fût'}${faible.vieillit && faible.sousCible ? ', ou remplace-le' : ''}.`
+      ? `Le bec ${carte.faible! + 1} (${fb.biere}) rapporte ${montant(faible.margeSemaine)} par semaine à ${faible.tauxMarge === null ? '–' : taux(faible.tauxMarge)} de marge${faible.joursPourVider !== null ? ` et met ${entier(faible.joursPourVider)} jours à vider un fût` : ''} : ${faible.sousCible && faible.hausseCible !== null ? `monte ses prix de ${taux(faible.hausseCible)} (demi à ${centimes(fb.prixDemi * (1 + faible.hausseCible))})` : 'change de bière ou de taille de fût'}${faible.vieillit && faible.sousCible ? ', ou remplace-le' : ''}.`
       : `${montant(carte.margeSemaine)} de marge par semaine sur la pression${carte.tauxMarge !== null ? `, ${taux(carte.tauxMarge)}` : ''}, ${unChiffre(carte.futsParMois)} fûts par mois.`
     if (projet) phrase += ` ${e.mode === 'ajouter' ? 'Ajouter' : 'Remplacer par'} ${e.nouveau.biere || 'le nouveau bec'} : ${ecartMontant(projet.gainSemaine)} par semaine${projet.semainesRetour !== null ? `, installation remboursée en ${entier(projet.semainesRetour)} semaines` : ', jamais remboursé'}.`
     resultats = (
@@ -1179,14 +1318,15 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         </Resultats>
         <Box sx={{ overflowX: 'auto' }}>
           <Table size="small" aria-label="Becs de la carte pression" sx={{ minWidth: 640, '& td, & th': { fontVariantNumeric: 'tabular-nums' } }}>
-            <TableHead><TableRow><TableCell>Bec</TableCell><TableCell align="right">Coût du demi</TableCell><TableCell align="right">Marge du demi</TableCell><TableCell align="right">Marge par semaine</TableCell><TableCell align="right">Jours pour vider un fût</TableCell><TableCell align="right">Fûts par mois</TableCell></TableRow></TableHead>
+            <TableHead><TableRow><TableCell>Bec</TableCell><TableCell align="right">CA HT par semaine</TableCell><TableCell align="right">Marge par semaine</TableCell><TableCell align="right">Taux de marge</TableCell><TableCell align="right">Coût du litre servi</TableCell><TableCell align="right">Jours pour vider un fût</TableCell><TableCell align="right">Fûts par mois</TableCell></TableRow></TableHead>
             <TableBody>
               {carte.lignes.map((l, i) => (
                 <TableRow key={i}>
                   <TableCell>{i + 1} · {e.becs[i].biere}</TableCell>
-                  <TableCell align="right">{l.coutDemi === null ? '–' : centimes(l.coutDemi)}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, color: l.sousCible ? 'error.main' : undefined }}>{l.tauxDemi === null ? '–' : taux(l.tauxDemi)}</TableCell>
+                  <TableCell align="right">{montant(l.caSemaine)}</TableCell>
                   <TableCell align="right">{montant(l.margeSemaine)}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: l.sousCible ? 'error.main' : undefined }}>{l.tauxMarge === null ? '–' : taux(l.tauxMarge)}</TableCell>
+                  <TableCell align="right">{l.coutLitre === null ? '–' : centimes(l.coutLitre)}</TableCell>
                   <TableCell align="right" sx={{ fontWeight: l.vieillit ? 700 : undefined, color: l.vieillit ? 'error.main' : undefined }}>{l.joursPourVider === null ? '–' : `${entier(l.joursPourVider)} j`}</TableCell>
                   <TableCell align="right">{l.futsParMois === null ? '–' : unChiffre(l.futsParMois)}</TableCell>
                 </TableRow>
@@ -1210,13 +1350,14 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     saisies = (
       <Stack spacing={2}>
         <Saisies><Choix libelle="Je regarde" valeur="audit" onChange={(v) => maj('pression', { vue: v })} options={[['carte', 'Ma carte pression'], ['audit', 'La perte sur une semaine']]} /></Saisies>
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Sorti du stock</Typography>
+        <Bloc titre="1. Sorti du stock" total={{ libelle: 'Litres', valeur: unChiffre(r.sortis) }}>
         <Saisies>
           <Montant libelle="Fûts vidés dans la semaine" valeur={a.futs} onChange={au('futs')} unite="" />
           <Montant libelle="Litres par fût" valeur={a.litres} onChange={au('litres')} unite="l" />
           <Montant libelle="Prix moyen du fût HT" valeur={a.prixFut} onChange={au('prixFut')} />
         </Saisies>
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Vendu et offert (caisse de la semaine)</Typography>
+        </Bloc>
+        <Bloc titre="2. Vendu et offert (caisse de la semaine)" total={{ libelle: 'Litres', valeur: unChiffre(r.vendus + a.offerts) }}>
         <Saisies>
           <Montant libelle="Demis 25 cl" valeur={a.demis} onChange={(v) => au('demis')(Math.round(v))} unite="" />
           <Montant libelle="Verres 33 cl" valeur={a.verres33} onChange={(v) => au('verres33')(Math.round(v))} unite="" />
@@ -1225,11 +1366,13 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Montant libelle="Offerts (litres)" valeur={a.offerts} onChange={au('offerts')} unite="l" />
           <Montant libelle="CA pression de la semaine HT" valeur={Math.round(caPression * 100) / 100} onChange={(v) => maj('pression', { audit: { ...a, caHT: v, caTTC: undefined } })} />
         </Saisies>
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Perte normale</Typography>
+        </Bloc>
+        <Bloc titre="3. Perte normale" total={{ libelle: 'Litres', valeur: unChiffre(r.perteStandard) }}>
         <Saisies>
           <Taux libelle="Perte standard" valeur={standard} onChange={(v) => maj('pression', { audit: { ...a, standard: Math.min(1, v) } })} />
           {a.standard != null && Math.abs(a.standard - s.pression.perteStandard) > 1e-9 && <Button onClick={() => maj('pression', { audit: { ...a, standard: null } })} sx={{ minHeight: 48 }}>Reprendre le standard du siège ({taux(s.pression.perteStandard)})</Button>}
         </Saisies>
+        </Bloc>
       </Stack>
     )
     nomParDefaut = 'Audit pression d’une semaine'
@@ -1258,6 +1401,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     }
     const famille = s.familles.find((x) => `${x.univers}|${x.libelle}` === e.famille) ?? null
     const entete = (
+      <Bloc titre="1. Le produit">
       <Saisies>
         <Texte libelle="Produit" aria="Nom du produit" valeur={e.nom} onChange={(v) => maj('calculette', { nom: v })} />
         <Choix libelle="TVA" valeur={e.tva} onChange={(v) => maj('calculette', { tva: v })} options={[['normale', taux(s.tva.normale)], ['intermediaire', taux(s.tva.intermediaire)], ['reduite', taux(s.tva.reduite)]]} />
@@ -1272,6 +1416,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         )}
         {e.mode === 'prix' ? <Taux libelle="Marge visée" valeur={e.marge} onChange={(v) => maj('calculette', { marge: v })} /> : e.mode === 'marge' ? <Montant libelle="Prix de vente TTC" valeur={e.prixTTC} onChange={(v) => maj('calculette', { prixTTC: v })} /> : null}
       </Saisies>
+      </Bloc>
     )
     if (e.mode === 'mix') {
       const lignes = e.mix ?? []
@@ -1280,6 +1425,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       saisies = (
         <Stack spacing={2}>
           {entete}
+          <Bloc titre="2. Les produits vendus ensemble">
           {lignes.map((l, i) => (
             <Saisies key={i}>
               <Texte libelle="Produit" aria={`Produit ${i + 1}`} valeur={l.libelle} onChange={(libelle) => ligneMix(i, { libelle })} largeur={180} />
@@ -1291,6 +1437,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             </Saisies>
           ))}
           <Box>{lignes.length < 30 && <Button startIcon={<AddOutlined />} onClick={() => maj('calculette', { mix: [...lignes, { libelle: '', cout: 0, consigne: 0, prixTTC: 0, quantite: 1 }] })} sx={{ minHeight: 48 }}>Ajouter un produit</Button>}</Box>
+          </Bloc>
         </Stack>
       )
       nomParDefaut = e.nom || 'Plusieurs produits'
@@ -1309,7 +1456,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     saisies = (
       <Stack spacing={2}>
         {entete}
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Coût HT</Typography>
+        <Bloc titre="2. Ce qu’il coûte" total={{ libelle: 'Coût HT', valeur: centimes(cout) }}>
         {e.composants.map((c, i) => (
           <Saisies key={i}>
             <Texte libelle="Composant" aria={`Composant ${i + 1}`} valeur={c.libelle} onChange={(libelle) => comp(i, { libelle })} largeur={180} />
@@ -1319,6 +1466,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           </Saisies>
         ))}
         <Box>{e.composants.length < 30 && <Button startIcon={<AddOutlined />} onClick={() => maj('calculette', { composants: [...e.composants, { libelle: '', cout: 0, quantite: 1 }] })} sx={{ minHeight: 48 }}>Ajouter un composant</Button>}</Box>
+        </Bloc>
       </Stack>
     )
     nomParDefaut = e.nom || 'Prix et marge'
@@ -1342,6 +1490,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const r = simulerOuverture({ caBar: e.caBar, caCave: e.caCave, margeBar: mBar, margeCave: mCave, report: e.report, heures: e.heures, coutHoraire: heure(e), majoration, frais: e.frais }, p)
     saisies = (
       <Stack spacing={2}>
+        <Bloc titre="1. Ce que la journée ferait vendre" total={{ libelle: 'CA nouveau HT', valeur: montant(r.caNouveau) }}>
         <Saisies>
           <Choix libelle="Jour" valeur={e.jour} onChange={(v) => maj('ouverture', { jour: v })} options={[['dimanche', 'Un dimanche'], ['ferie', 'Un jour férié']]} />
           <Montant libelle="CA HT attendu au bar" valeur={e.caBar} onChange={(v) => maj('ouverture', { caBar: v })} />
@@ -1350,22 +1499,33 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Taux libelle="Marge de la cave" valeur={mCave} onChange={(v) => maj('ouverture', { margeCave: v })} source={e.margeCave === null && margeUnivers(b, 'cave') !== null && 'budget'} />
           <Taux libelle="Part qui serait venue un autre jour" valeur={e.report} onChange={(v) => maj('ouverture', { report: v })} />
         </Saisies>
+        </Bloc>
+        <Bloc titre="2. Ce qu’elle coûte" total={{ libelle: 'Total', valeur: `− ${montant(r.personnel + r.frais)}` }}>
         <Saisies>
           <Montant libelle="Heures payées" valeur={e.heures} onChange={(v) => maj('ouverture', { heures: v })} unite="h" />
           <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('ouverture', v)} />
           <Montant libelle="Frais du jour HT" valeur={e.frais} onChange={(v) => maj('ouverture', { frais: v })} />
         </Saisies>
         <Typography color="text.secondary">Majoration des heures {e.jour === 'dimanche' ? 'du dimanche' : 'd’un jour férié'} : {taux(majoration)}{majoration ? ', réglée par le siège' : ', à régler par le siège selon la convention collective'}.</Typography>
+        </Bloc>
       </Stack>
     )
     nomParDefaut = `Ouverture ${e.jour === 'dimanche' ? 'un dimanche' : 'un jour férié'}, ${montant(r.ca)} de CA`
     phrase = `${nomParDefaut} : ${r.gain >= 0 ? `gain de ${montant(r.gain)}` : `perte de ${montant(-r.gain)}`}${r.seuil !== null ? `, rentable à partir de ${montant(r.seuil)} de CA HT dans la journée` : ''}.`
     resultats = (
+      <Stack spacing={2}>
+        <Compte titre="Compte de la journée" lignes={[
+          { libelle: 'Marge sur les ventes', valeur: r.marge, detail: `${montant(r.caNouveau)} de CA HT nouveau` },
+          { libelle: 'Redevance et publicité', valeur: -r.redevance },
+          { libelle: 'Heures de l’équipe', valeur: -r.personnel, detail: 'majorées' },
+          { libelle: 'Frais du jour', valeur: -r.frais },
+        ]} total={{ libelle: r.gain >= 0 ? 'Gain du jour' : 'Perte du jour', valeur: r.gain }} />
       <Resultats>
         <Indicateur libelle={r.gain >= 0 ? 'Gain du jour' : 'Perte du jour'} valeur={montant(Math.abs(r.gain))} detail={`marge ${montant(r.marge)}, équipe ${montant(r.personnel)}, frais et redevance ${montant(r.frais + r.redevance)}`} />
         <Indicateur libelle="CA nouveau" valeur={montant(r.caNouveau)} detail={`sur ${montant(r.ca)} attendus`} />
         <Indicateur libelle="CA pour ne rien perdre" valeur={r.seuil === null ? 'Jamais' : montant(r.seuil)} detail="HT, au même mélange bar et cave" />
       </Resultats>
+      </Stack>
     )
   }
 
@@ -1456,7 +1616,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         ) : (
           <>
             {saisies}
-            {resultats}
+            {resultats && <Bloc titre="Résultat">{resultats}</Bloc>}
             {/* 189 : le résultat reste en vue pendant la saisie, en haut de la carte sur PC, en bas de l'écran sur téléphone */}
             {phrase && (
               <Box role="status" sx={{
