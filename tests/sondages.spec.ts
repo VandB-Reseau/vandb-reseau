@@ -122,8 +122,9 @@ test('le Coach remplit un sondage depuis son accueil, sans voir les résultats',
   await envoyer.click()
   await expect(sondage).toContainText('Réponse envoyée, merci.')
   expect(ecritures.filter((e) => e.table === 'rpc/repondre_sondage').map((e) => e.corps)).toEqual([{ p_id: 4, p_valeurs: ['4', 'Visio', 'non'] }])
+  // Choix 215 (15/11/2026) : le Coach répond depuis l'Accueil ; l'onglet Sondages de la page Animation est au Directeur et aux RR
   await page.goto('./#/infos?vue=sondages')
-  await expect(page.getByRole('region', { name: 'Sondages à remplir' })).toContainText('Réponse envoyée, merci.')
+  await expect(page.getByRole('tab', { name: 'Sondages' })).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'Sondages posés' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Ajouter un sondage' })).toHaveCount(0)
 })

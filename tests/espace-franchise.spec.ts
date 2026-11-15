@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { deplierPoint, ouvrirInfos, ouvrirOnglet, seConnecter, simulerSupabase, textesTropPetits, COMPTE, type Ecriture, type OptionsSimulation } from './supabase-simule'
+import { deplierPoint, ouvrirOnglet, seConnecter, simulerSupabase, textesTropPetits, COMPTE, type Ecriture, type OptionsSimulation } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -33,7 +33,7 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   await deplierPoint(page)
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Magasin', /Messages$/, /Tâches$/, /Plus$/] : ['Accueil', 'Mes magasins', 'Mon budget', 'Simulateurs', /Tâches$/, /Messages$/, /Mes demandes$/, /Actualités$/])
+  await expect(nav.getByRole('button')).toHaveText(isMobile ? ['Accueil', 'Magasin', /Messages$/, /Tâches$/, /Plus$/] : ['Accueil', 'Mes magasins', 'Mon budget', 'Simulateurs', /Tâches$/, /Messages$/, /Mes demandes$/, /Bonnes pratiques$/])
   await expect(page.getByText('Paramètres')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Rechercher' })).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'Magasins affichés' }).getByRole('button')).toHaveText(['Tous mes magasins', 'Annecy Test', 'Rennes Test'])
@@ -142,9 +142,9 @@ test('un franchisé ne peut ouvrir ni un autre magasin ni les écrans de l’éq
     await page.goto(`./#${ecran}`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accueil')
   }
+  // Choix 217 (15/11/2026) : la page du franchisé est « Bonnes pratiques », sans onglets
   await page.goto('./#/infos')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Actualités')
-  await ouvrirInfos(page, 'Bonnes pratiques')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Bonnes pratiques')
   await expect(page.getByRole('heading', { name: 'Dégustation du vendredi' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Modifier|Ajouter/ })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Lyon Test' })).toHaveCount(0)

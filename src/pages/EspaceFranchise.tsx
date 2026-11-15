@@ -526,7 +526,7 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
           {!apercu && <SectionReunionsFranchise jour={reseau.jour} />}
           <SectionContacts reseau={reseau} magasins={magasins} />
         </>
-        const filActu = <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" sansFiltre social
+        const filActu = <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" social
           partager={apercu ? undefined : <BarrePartager moi={profil?.nom ?? ''} franchise communication={false} />}
           connaissances={{ carte: connaissances, franchise: true, recharger: () => void rechargerConnaissances() }}
           communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />

@@ -35,7 +35,7 @@ test('un Coach ne voit pas les boutons des référentiels et ne les écrit pas',
   await expect(page.getByText('Noël').first()).toBeVisible()
   await expect(page.getByRole('button', { name: 'Ajouter une campagne' })).toHaveCount(0)
   await page.goto('./#/plus/sante?vue=deploiements')
-  await expect(page.getByRole('heading', { name: 'Campagnes', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Animation', level: 1 })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Gérer les thématiques' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Importer Excel' })).toHaveCount(0)
   await page.goto('./#/equipe/coach/No%C3%A9%20MODELE?vue=fiche')

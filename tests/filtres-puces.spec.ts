@@ -32,15 +32,11 @@ const pratiques = [
   { id: 'bp_1', magasin: 'Lyon Test', date: '2026-10-20', titre: 'Coffrets à composer', theme: 'Vente additionnelle', texte: 'Le client choisit trois bouteilles.', par: 'Hugo FICTIF', photos: [], reprises: [] },
 ]
 
-// Sur téléphone, l'accueil montre trois publications sans filtre ; le fil complet et ses filtres sont dans la page Actualités (même composant)
+// Choix 212 (15/11/2026) : l'Accueil porte seul le fil, avec ses filtres
 test('accueil : les filtres des Actualités ont le même rendu', async ({ page, isMobile }) => {
   await seConnecter(page, { config: { bonnes_pratiques: pratiques }, reactionsVisites: { pouces: {}, commentaires: {} } })
-  // 204A (15/11/2026) : l'accueil montre le fil sans filtres ; ils restent dans Actualités
-  await expect(page.getByRole('region', { name: 'Actualités' }).getByRole('group', { name: 'Filtrer le fil' })).toHaveCount(0)
   void isMobile
-  await page.goto('./#/infos')
-  const fil = page.getByRole('region', { name: 'Fil du réseau' })
-  await verifierFiltres(fil.getByRole('group', { name: 'Filtrer le fil' }), 'Tout')
+  await verifierFiltres(page.getByRole('region', { name: 'Actualités' }).getByRole('group', { name: 'Filtrer le fil' }), 'Tout')
 })
 
 // Joseph (14/11/2026) : Simulateurs au même niveau que Chiffres et Budget dans la fiche magasin

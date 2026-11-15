@@ -18,12 +18,6 @@ const communications = (): CommunicationSimulee[] => [
   { id: 2, titre: 'Réunion des franchisés du Sud', texte: 'Rendez-vous à Marseille.', magasins: ['Nice Test'], auteur: AUTRE, auteur_nom: 'Sam SUD', auteur_role: 'rr', cree_le: '2026-10-18T09:00:00Z' },
 ]
 
-// Vague 5 (56A) : sur téléphone, Actualités du franchisé est derrière « Plus »
-async function versActualites(page: import('@playwright/test').Page, isMobile: boolean) {
-  const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  if (isMobile) { await nav.getByRole('button', { name: /^Plus/ }).click(); await page.getByRole('menuitem', { name: /^Actualités/ }).click() }
-  else await nav.getByRole('button', { name: /^Actualités/ }).click()
-}
 
 test('le Directeur publie une communication pour tout le réseau', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
@@ -52,9 +46,9 @@ test('le Directeur publie une communication pour tout le réseau', async ({ page
 test('un franchisé lit les communications de ses magasins, met un pouce et commente', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { acces: PAUL, ecritures, communications: communications() })
-  await versActualites(page, isMobile)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Actualités')
-  await page.getByRole('tab', { name: 'Communications' }).click()
+  // Choix 217 (15/11/2026) : plus d'entrée Actualités ; les communications s'ouvrent par leur lien
+  await page.goto('./#/infos?vue=communications')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Communications')
   // Celle du Sud ne concerne pas ses magasins
   await expect(page.getByRole('region', { name: 'Communications' }).getByRole('article')).toHaveCount(1)
   await expect(page.getByRole('button', { name: 'Publier' })).toHaveCount(0)
@@ -201,25 +195,21 @@ test('une communication stockée piégée est nettoyée à l’affichage', async
   expect(await page.evaluate(() => (window as unknown as { pirate?: number }).pirate)).toBeUndefined()
 })
 
-test('le franchisé voit ses nouveautés sur l’onglet Infos réseau, plus de canal dans Messages', async ({ page, isMobile }, info) => {
+test('le franchisé retrouve les communications sur son Accueil, plus de canal dans Messages', async ({ page, isMobile }, info) => {
   const liste: CommunicationSimulee[] = [
     { id: 1, titre: 'V and B Day : J-7', texte: 'Ne tardez plus à confirmer votre présence !', magasins: null, auteur: AUTRE, auteur_nom: 'Joseph PERREAU', auteur_role: 'rr', cree_le: new Date(Date.now() - 3_600_000).toISOString() },
   ]
-  // Infos réseau ouvert hier sur cet appareil (la première fois, rien d'ancien n'est signalé)
   await page.addInitScript((vu: string) => { if (!localStorage.getItem('vandb-reseau-vu')) localStorage.setItem('vandb-reseau-vu', vu) }, new Date(Date.now() - 86_400_000).toISOString())
   await seConnecter(page, { acces: PAUL, communications: liste, messagerie: {} })
   await page.goto('./#/echanges')
   await expect(page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /^Réseau V and B/ })).toHaveCount(0)
+  // Choix 217 : l'entrée « Bonnes pratiques » ne compte pas les communications
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  const infos = nav.getByRole('button', { name: isMobile ? /^Plus/ : /^Actualités/ })
-  await expect(infos).toHaveAccessibleName(isMobile ? 'Plus : 1 nouveauté' : 'Actualités : 1 nouveauté')
+  if (!isMobile) await expect(nav.getByRole('button', { name: /^Bonnes pratiques/ })).not.toHaveAccessibleName(/nouveauté/)
+  await page.goto('./#/')
+  await expect(page.getByRole('article', { name: 'V and B Day : J-7' }).first()).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-franchise-infos-compteur.png`, fullPage: !isMobile })
-  await versActualites(page, isMobile)
-  await expect(page).toHaveURL(/#\/infos$/)
-  await expect(page.getByRole('article', { name: 'V and B Day : J-7' }).first()).toBeVisible()
-  // Vue : plus de nouveauté
-  await expect(infos).not.toHaveAccessibleName(/nouveauté/)
 })
 
 test('le franchisé ne voit dans Infos réseau que les communications qui le concernent', async ({ page }) => {

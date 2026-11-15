@@ -55,8 +55,8 @@ test('204 à 206 et 208 : une carte par publication, l’auteur en tête, voir p
   const comptesRendus = fil.getByRole('article', { name: /^Compte rendu de / })
   expect(await comptesRendus.count()).toBeGreaterThan(0)
   for (const cr of await comptesRendus.all()) await expect(cr.getByRole('button', { name: 'J’aime' })).toHaveCount(1)
-  // Accueil : plus de filtres, ils restent dans Actualités
-  await expect(fil.getByRole('group', { name: 'Filtrer le fil' })).toHaveCount(0)
+  // Choix 212 (15/11/2026) : l'Accueil porte seul le fil, avec ses filtres
+  await expect(fil.getByRole('group', { name: 'Filtrer le fil' })).toBeVisible()
   await lisible(page, isMobile)
 })
 

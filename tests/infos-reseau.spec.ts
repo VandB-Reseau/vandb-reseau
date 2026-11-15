@@ -27,13 +27,13 @@ const pratiques = [
 // Téléphone : dans le menu du compte (vague 8, 110A) ; PC : en bas du menu latéral (refonte 09/11/2026)
 const telephone = (page: Page) => (page.viewportSize()?.width ?? 1440) < 900
 const infos = async (page: Page) => {
-  if (!telephone(page)) return page.locator('.MuiDrawer-paper').getByRole('button', { name: /^Actualités/ }).filter({ visible: true }).first()
+  if (!telephone(page)) return page.locator('.MuiDrawer-paper').getByRole('button', { name: /^Animation/ }).filter({ visible: true }).first()
   if (!(await page.getByRole('menu').count())) await page.getByRole('button', { name: /^Mon compte/ }).click()
-  return page.getByRole('menuitem', { name: /^Actualités/ })
+  return page.getByRole('menuitem', { name: /^Animation/ })
 }
 const ouvrir = async (page: Page) => {
   await (await infos(page)).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Actualités' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Animation' })).toBeVisible()
 }
 const titres = (page: Page, section: string) => page.getByRole('region', { name: section }).getByRole('article')
 
@@ -82,21 +82,22 @@ test('le picto compte les communications et bonnes pratiques pas encore vues, pu
   // Coffrets de Noël (5 jours) et Dégustation du samedi
   // Téléphone : un point rouge sur le compte signale les nouveautés
   if (isMobile) await expect(page.getByRole('button', { name: 'Mon compte : 2 actualités à lire' })).toBeVisible()
-  await expect(await infos(page)).toHaveAccessibleName('Actualités : 2 nouveautés')
+  await expect(await infos(page)).toHaveAccessibleName('Animation : 2 nouveautés')
   if (isMobile) expect((await (await infos(page)).boundingBox())!.height).toBeGreaterThanOrEqual(48)
   await page.screenshot({ path: `captures/${info.project.name}-infos-picto.png`, clip: { x: 0, y: 0, width: page.viewportSize()!.width, height: 120 } })
   await ouvrir(page)
-  await expect(await infos(page)).toHaveAccessibleName('Actualités')
+  await expect(await infos(page)).toHaveAccessibleName('Animation')
   await page.keyboard.press('Escape')
   await page.reload()
-  await expect(await infos(page)).toHaveAccessibleName('Actualités')
+  await expect(await infos(page)).toHaveAccessibleName('Animation')
 })
 
 test('le franchisé n’a pas l’onglet Infos réseau', async ({ page }) => {
   await seConnecter(page, { appMetadata: { role: 'franchise' }, acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, espace: {} })
   // Pas de picto « Infos réseau » hors de son menu (son entrée de menu reste, Joseph 23/10/2026)
   await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
-  expect(await page.evaluate(() => [...document.querySelectorAll('button[aria-label^="Actualités"]')].filter((b) => !b.closest('nav') && (b as HTMLElement).offsetParent).length)).toBe(0)
+  expect(await page.evaluate(() => [...document.querySelectorAll('button[aria-label^="Bonnes pratiques"]')].filter((b) => !b.closest('nav') && (b as HTMLElement).offsetParent).length)).toBe(0)
+  // Choix 217 (15/11/2026) : sa page s'appelle « Bonnes pratiques »
   await page.goto('./#/infos')
-  await expect(page.getByRole('heading', { level: 1, name: 'Actualités' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Bonnes pratiques' })).toBeVisible()
 })

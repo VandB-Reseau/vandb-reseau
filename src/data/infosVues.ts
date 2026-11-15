@@ -53,5 +53,7 @@ export function useNouveautesInfos(aucun = false): number {
   if (aucun || !reseau) return 0
   const moi = monNomPorteur(reseau, profil)
   const pratiques = vues ? reseau.pratiques.filter((p) => !vues.includes(p.id) && p.par !== moi).length : 0
+  // Choix 217 (15/11/2026) : l'entrée du franchisé est « Bonnes pratiques » ; ses communications sont sur son Accueil
+  if (profil?.role === 'franchise' || reseau.espace) return pratiques
   return communicationsNonVues(communications.liste, communications.moi, vu) + pratiques
 }

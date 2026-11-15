@@ -12,17 +12,17 @@ import TimelineOutlined from '@mui/icons-material/TimelineOutlined'
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import HomeOutlined from '@mui/icons-material/HomeOutlined'
 import Home from '@mui/icons-material/Home'
-import NewspaperOutlined from '@mui/icons-material/NewspaperOutlined'
-import Newspaper from '@mui/icons-material/Newspaper'
+import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
+import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
+import Campaign from '@mui/icons-material/Campaign'
+import TipsAndUpdates from '@mui/icons-material/TipsAndUpdates'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import Forum from '@mui/icons-material/Forum'
 import MonitorHeart from '@mui/icons-material/MonitorHeart'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import TaskAlt from '@mui/icons-material/TaskAlt'
-import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
 import RequestQuote from '@mui/icons-material/RequestQuote'
-import Insights from '@mui/icons-material/Insights'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import QueryStats from '@mui/icons-material/QueryStats'
 import SupportAgentOutlined from '@mui/icons-material/SupportAgentOutlined'
@@ -61,16 +61,18 @@ export const demandes: Destination = { chemin: '/demandes', libelle: 'Demandes',
 // Rubrique Animation (refonte vague 3, Joseph 09/11/2026, 27A) : Infos réseau et Campagnes (campagnes, déploiements,
 // challenges, et pour le Directeur et les RR le suivi des sondages, formations et réunions, ancien onglet de Messages)
 // Actualités (refonte vague 5, 45A) : le fil du réseau, les communications, les bonnes pratiques et les sondages
-export const infosReseau: Destination = { chemin: '/infos', libelle: 'Actualités', description: 'Fil du réseau, communications, bonnes pratiques et sondages', icone: <NewspaperOutlined />, iconeActive: <Newspaper />, sprint: 'Sprint 22' }
-export const campagnes: Destination = { chemin: '/campagnes', libelle: 'Campagnes', description: 'Campagnes, déploiements, challenges, sondages, formations et réunions, avec leur suivi', icone: <InsightsOutlined />, iconeActive: <Insights />, sprint: 'Refonte' }
-export const animation = campagnes
+// Choix 213 (Joseph, 15/11/2026) : Actualités et Campagnes réunies dans « Animation » ; le fil reste sur l'Accueil (212)
+export const infosReseau: Destination = { chemin: '/infos', libelle: 'Animation', description: 'Communications, campagnes, bonnes pratiques et sondages', icone: <CampaignOutlined />, iconeActive: <Campaign />, sprint: 'Choix 213' }
+export const animation = infosReseau
+// Choix 217 : pour le franchisé, l'entrée devient « Bonnes pratiques » (le fil est sur son Accueil)
+export const pratiquesFranchise: Destination = { chemin: '/infos', libelle: 'Bonnes pratiques', court: 'Pratiques', description: 'Les bonnes pratiques du réseau et mes propositions', icone: <TipsAndUpdatesOutlined />, iconeActive: <TipsAndUpdates />, sprint: 'Choix 217' }
 // Chiffres (refonte vague 5, 51A) : Performance et Budgets réunis sous une entrée, en onglets
 export const chiffres: Destination = { chemin: '/performance', libelle: 'Chiffres', description: 'Performance des magasins, écarts au budget, clôtures et rapport du mois', icone: <QueryStatsOutlined />, iconeActive: <QueryStats />, sprint: 'Refonte' }
 // Budget prévisionnel (Joseph, 10/11/2026) : les budgets de l'année ont leur entrée du menu, à côté de Chiffres
 export const budgetPrevisionnel: Destination = { chemin: '/budgets', libelle: 'Budget prévisionnel', court: 'Budget', description: 'Budgets de l’année des magasins : construire, envoyer et valider', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Refonte' }
 // Simulateurs de l'équipe (choix 157, Joseph 14/11/2026) : un magasin ou plusieurs, juste sous le Budget prévisionnel
 export const simulateursEquipe: Destination = { chemin: '/simulateurs', libelle: 'Simulateurs', court: 'Simuler', description: 'Simuler pour un magasin, ou un levier sur plusieurs magasins', icone: <CalculateOutlined />, iconeActive: <Calculate />, sprint: 'Choix 157' }
-export const secondaires: Destination[] = [campagnes, demandes, chiffres, budgetPrevisionnel, simulateursEquipe, agenda]
+export const secondaires: Destination[] = [demandes, chiffres, budgetPrevisionnel, simulateursEquipe, agenda]
 export const pourRole = (liste: Destination[], role: string | undefined) => liste.filter((d) => !d.roles || (!!role && d.roles.includes(role)))
 
 // Réglages : Équipe et Paramètres. Évolution du parc est une vue de Magasins depuis la refonte (Joseph, 09/11/2026, 2A)
@@ -88,7 +90,7 @@ export function rubriquesMenu(_sansParametres?: boolean): Rubrique[] {
   return [
     { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
     { titre: 'Réseau', destinations: [magasins, visites, chiffres, budgetPrevisionnel, simulateursEquipe] },
-    { titre: 'Animation', destinations: [infosReseau, campagnes, demandes] },
+    { titre: 'Siège', destinations: [infosReseau, demandes] },
   ]
 }
 
@@ -98,7 +100,7 @@ export const menuTelephone = (role: string | undefined) => menuTelephoneRubrique
 // Vague 6 (Joseph, 10/11/2026) : le menu du compte sur téléphone rangé comme le menu du PC, en rubriques
 export const menuTelephoneRubriques = (role: string | undefined): Rubrique[] => [
   { titre: 'Réseau', destinations: pourRole([visites, chiffres, budgetPrevisionnel, simulateursEquipe], role) },
-  { titre: 'Animation', destinations: pourRole([infosReseau, campagnes, demandes], role) },
+  { titre: 'Siège', destinations: pourRole([infosReseau, demandes], role) },
 ].filter((r) => r.destinations.length)
 
 // Espace d'un franchisé : ses magasins seulement, sans Paramètres
@@ -111,11 +113,10 @@ export const espaceFranchise: Destination[] = [
   { ...messages, description: 'Mes magasins et mon équipe' },
   taches,
   demandesFranchise,
-  // Communications et bonnes pratiques réunies, comme pour l'équipe (Joseph, 23/10/2026)
-  infosReseau,
+  pratiquesFranchise,
 ]
 // Barre du bas du franchisé sur téléphone (refonte vague 5, 56A) : Accueil, Magasin, Messages, Tâches et « Plus »
-// (Mon budget, Mes demandes, Actualités)
+// (Mon budget, Mes demandes, Bonnes pratiques)
 // Vague 8 (109A) : le menu du franchisé en deux rubriques, comme celui de l'équipe
 export const rubriquesFranchise = (liste: Destination[]): Rubrique[] => [
   { titre: 'Mon magasin', destinations: liste.filter((d) => ['/', '/magasins', '/budgets', '/simulateurs', '/taches'].includes(d.chemin)) },

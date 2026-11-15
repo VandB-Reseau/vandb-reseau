@@ -295,7 +295,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             <GrilleMagasin reseau={reseau} m={m} />
             <SectionSante reseau={reseau} m={m} modifier={() => naviguer(`/plus/sante?vue=evaluer&magasin=${encodeURIComponent(m.nom)}`)} />
             {/* Les déploiements des thématiques suivent la santé du magasin */}
-            <Box sx={{ gridColumn: { lg: '1 / -1' } }}><SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/campagnes?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} /></Box>
+            <Box sx={{ gridColumn: { lg: '1 / -1' } }}><SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/infos?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} /></Box>
           </Box>
         )}
 

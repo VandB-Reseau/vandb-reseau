@@ -282,7 +282,7 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
 // Campagnes et Bonnes pratiques ont quitté les Visites (sprint 21) : les anciennes adresses y mènent
 export function Visites() {
   const [params] = useSearchParams()
-  if (params.get('vue') === 'campagnes') return <Navigate to={`/campagnes?${params.toString()}`} replace />
+  if (params.get('vue') === 'campagnes') return <Navigate to={`/infos?${params.toString()}`} replace />
   if (params.get('vue') === 'pratiques') return <Navigate to="/infos?vue=pratiques" replace />
   // La semaine du Coach est passée dans l'Agenda (refonte vague 3, 25A)
   if (params.get('vue') === 'semaine') return <Navigate to="/plus/agenda?vue=semaine" replace />
