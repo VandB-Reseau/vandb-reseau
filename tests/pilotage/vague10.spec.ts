@@ -53,8 +53,9 @@ test('157 : « Simulateurs » au menu de l’équipe, le dernier magasin retenu'
   await page.getByLabel('Magasin', { exact: true }).click()
   await page.getByRole('option', { name: NOM }).click()
   await expect(page.locator('#carte-simulation')).toBeVisible()
-  await expect(page.getByRole('navigation', { name: 'Choisir un simulateur' }).getByRole('button')).toHaveCount(13)
-  await expect(page.getByRole('heading', { name: 'Embaucher' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Choisir un simulateur' }).getByRole('button')).toHaveCount(14)
+  // 183 (15/11/2026) : « Mon meilleur levier » s'ouvre d'office
+  await expect(page.getByRole('heading', { name: 'Mon meilleur levier' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-simulateurs-equipe.png`, fullPage: true })

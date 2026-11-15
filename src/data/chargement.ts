@@ -2,6 +2,7 @@ import { couleurEvenement, dansCharte } from '../theme/theme'
 import { normaliserRituels, type Rituel } from './rituels'
 import { normaliserTempsForts, type TempsFort } from './tempsForts'
 import { normaliserEquipements, type Equipement } from './equipements'
+import { normaliserOperations, type Operation } from './operations'
 import { normaliserIntegration, normaliserParcours, type EtapeParcours, type SuiviIntegration } from './integration'
 import { normaliserInterlocuteurs } from './demandes'
 import { renommerAccesCoach } from './accesEquipe'
@@ -72,7 +73,7 @@ let fichesEnTable: boolean | null = null
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
   const [config, surcharges, affectations, coachs, recrues, visites, evenements, finances, suivi, regions, fiches, fermes] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins', 'rituels', 'demandes_themes', 'temps_forts', 'parcours_integration', 'integration_magasins', 'equipements_magasins']),
+    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins', 'rituels', 'demandes_themes', 'temps_forts', 'parcours_integration', 'integration_magasins', 'equipements_magasins', 'operations_magasins']),
     supabase.from('store_overrides').select('*'),
     supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
     supabase.from('cs_overrides').select('*'),
@@ -146,6 +147,7 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   reseau.parcoursIntegration = normaliserParcours(json<unknown>(cle('parcours_integration'), null))
   reseau.integration = normaliserIntegration(json<unknown>(cle('integration_magasins'), {}))
   reseau.equipements = normaliserEquipements(json<unknown>(cle('equipements_magasins'), {}))
+  reseau.operations = normaliserOperations(json<unknown>(cle('operations_magasins'), {}))
   reseau.interlocuteursDemandes = normaliserInterlocuteurs(json<unknown>(cle('demandes_themes'), {}))
   reseau.motsFranchise = normaliserMots(json<unknown>(cle('mots_franchise'), {}))
   reseau.audits = json<Audits>(cle('audits'), {})
@@ -292,6 +294,22 @@ export function enregistrerEquipements(magasin: string, liste: Equipement[]) {
 // Le franchisé tient les équipements de ses magasins par la fonction ecrire_equipements (0046, Joseph 14/11/2026)
 export async function enregistrerEquipementsFranchise(magasin: string, liste: Equipement[]) {
   const { error } = await supabase.rpc('ecrire_equipements', { p_store: magasin, p_liste: liste })
+  if (error) throw new ErreurEnregistrement(error.message)
+}
+
+// 185 · Journal des opérations commerciales d'un magasin (0047) : la liste entière du magasin est réécrite
+export function enregistrerOperations(magasin: string, liste: Operation[]) {
+  return enFile(async () => {
+    const lu = await lireSuivi<Record<string, Operation[]>>('operations_magasins', {})
+    const { valeur } = lu
+    if (liste.length) valeur[magasin] = liste
+    else delete valeur[magasin]
+    await ecrireSuivi('operations_magasins', valeur, lu)
+  })
+}
+// Le franchisé tient le journal de ses magasins par la fonction ecrire_operations (0047)
+export async function enregistrerOperationsFranchise(magasin: string, liste: Operation[]) {
+  const { error } = await supabase.rpc('ecrire_operations', { p_store: magasin, p_liste: liste })
   if (error) throw new ErreurEnregistrement(error.message)
 }
 
@@ -707,7 +725,7 @@ export async function enregistrerMagasin(f: FicheMagasin, ancienNom: string | nu
       const v = l.valeur as Campagne | null
       if (v?.magasins?.includes(ancienNom)) verifier(await supabase.from('campagnes_regions').update({ valeur: { ...v, magasins: v.magasins.map((n) => (n === ancienNom ? f.nom : n)) } }).eq('id', l.id))
     }
-    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes', 'actions', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins', 'integration_magasins', 'equipements_magasins'] as const) {
+    for (const cleConfig of ['sante_parc', 'deploiements', 'notes_magasins', 'audits', 'associes', 'actions', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins', 'integration_magasins', 'equipements_magasins', 'operations_magasins'] as const) {
       const lu = await lireSuivi<Record<string, unknown>>(cleConfig, {})
       const cibles = (cleConfig === 'deploiements' ? [lu.valeur.valeurs, lu.valeur.journal] : [lu.valeur]) as (Record<string, unknown> | undefined)[]
       let change = false

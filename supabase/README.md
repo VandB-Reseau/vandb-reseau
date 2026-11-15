@@ -50,6 +50,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0043_animation_vague4` | Rubrique `plan` de `suivi_magasins` et `plans_franchise()` ; `statut_action_franchise` ; table `entretiens` (RR–Coach) et `remarque_entretien` ; sondages à réponse libre (`chiffre`, `texte`) pour les remontées ; table `demandes` fermée et ses fonctions (`creer_demande`, `mes_demandes`, `completer_demande`, `repondre_demande`) | 10/11/2026 |
 | `0044_actualites_vague5` | Prise de connaissance des communications (colonne `connaissance`, table `communications_connaissances` fermée, `demander_connaissance`, `prendre_connaissance`, `connaissances`) ; rubrique `integration` de `suivi_magasins` ; `animation_franchise()` (temps forts, parcours et suivi d'intégration du franchisé) | 10/11/2026 |
 | `0046_equipements_magasins` | Rubrique `equipements` de `suivi_magasins` ; `animation_franchise()` renvoie aussi les équipements des magasins du franchisé, qui les modifie par `ecrire_equipements()` | 14/11/2026 |
+| `0047_operations_mesure_priorites` | Rubrique `operations` de `suivi_magasins` (journal des opérations commerciales) ; `animation_franchise()` la renvoie au franchisé, qui la modifie par `ecrire_operations()` ; `plans_franchise()` renvoie aussi la mesure en caisse des priorités | 15/11/2026 |
 
 ## Règles
 

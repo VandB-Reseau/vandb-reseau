@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useReseauSiDispo } from '../../data/ReseauContext'
 import { equipementsDu, tireusesDu } from '../../data/equipements'
+import { actionsDuMagasin } from '../../data/actions'
+import { DialogPriorite, type PrioriteProposee } from '../../components/PlanAction'
+import { ecartMesure, indicateursMesure, placesLibres } from '../../data/planAction'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -32,6 +35,8 @@ import SportsBarOutlined from '@mui/icons-material/SportsBarOutlined'
 import WarehouseOutlined from '@mui/icons-material/WarehouseOutlined'
 import DeleteOutlineOutlined from '@mui/icons-material/DeleteOutlineOutlined'
 import FlagOutlined from '@mui/icons-material/FlagOutlined'
+import TrendingUpOutlined from '@mui/icons-material/TrendingUpOutlined'
+import PlaylistAddCheckOutlined from '@mui/icons-material/PlaylistAddCheckOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import Inventory2Outlined from '@mui/icons-material/Inventory2Outlined'
 import PersonAddOutlined from '@mui/icons-material/PersonAddOutlined'
@@ -56,6 +61,7 @@ import {
   auditPression, cartePression, margeFut, coutComposition, coutContrats, margePourPrix, nouveauBec, palierExterieur, prixLivraisonGrille, prixPourMarge,
   simulerExterieur, simulerOuverture, simulerParc, cibleProductivite, TAUX_MECENAT, type Bec, type Composant,
 } from '../moteur/boiteOutils'
+import { meilleursLeviers, type CleLevier } from '../moteur/leviers'
 import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TempsFort, Univers } from '../moteur/types'
 import { dateHeure, ecartMontant, ecartPts, montant, MOIS_LONGS, panier as centimes, tauxCourt as taux } from '../lib/format'
 import type { SujetAide } from '../lib/aide'
@@ -67,7 +73,10 @@ import type { SujetAide } from '../lib/aide'
 
 export interface AjoutBudget { tempsForts?: TempsFort[]; investissements?: Investissement[]; emprunts?: Emprunt[]; ajustementsCA?: AjustementCA[] }
 
-const SIMULATEURS: { cle: TypeSimulation; titre: string; question: string; icone: ReactNode; aide: SujetAide; budget: boolean }[] = [
+// gardable : faux tant que la base du pilotage ne connaît pas le type (« Mon meilleur levier » se garde en priorité, 184)
+const SIMULATEURS: { cle: TypeSimulation; titre: string; question: string; icone: ReactNode; aide: SujetAide; budget: boolean; gardable?: false }[] = [
+  // 183 (Joseph, 15/11/2026) : en tête, le levier qui rapporte le plus pour un même petit effort
+  { cle: 'levier', titre: 'Mon meilleur levier', question: 'Quel petit effort rapporte le plus ?', icone: <TrendingUpOutlined />, aide: 'simLevier', budget: true, gardable: false },
   { cle: 'embauche', titre: 'Embaucher', question: 'Embauche, départ, heures, primes ?', icone: <PersonAddOutlined />, aide: 'simEmbauche', budget: true },
   { cle: 'prix', titre: 'Promo, prix, remises', question: 'Combien vendre en plus, mes remises sont-elles dans les repères ?', icone: <SellOutlined />, aide: 'simPrix', budget: false },
   { cle: 'tresorerie', titre: 'Coup dur de trésorerie', question: 'Et si le CA baisse, si un client paie en retard ?', icone: <AccountBalanceWalletOutlined />, aide: 'simTresorerie', budget: true },
@@ -139,6 +148,7 @@ const ecart = (v: number, favorable = v >= 0) => ({ texte: ecartMontant(v), haus
 
 // État de chaque simulateur : ses saisies, gardées telles quelles avec une simulation (« Rouvrir » les reprend)
 type Etats = {
+  levier: { ticketsJour: number; panier: number; points: number; heures: number; jours: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number }
   embauche: {
     mouvement: Mouvement['type'] | 'primes'; poste: string; categorie: Categorie; heures: number; brut: number; mois: number; index: number; nouvellesHeures: number
     salaries: number; partReversee: number; paliers: PalierPrime[] // 164 · primes
@@ -206,6 +216,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
   const moisSuivant = annee === aujourdhui.getFullYear() ? Math.min(12, aujourdhui.getMonth() + 2) : 1
   const s = parametresSimulateurs(p)
   return {
+    levier: { ticketsJour: 1, panier: 0.5, points: 1, heures: 2, jours: 307, coutHoraire: s.coutHoraire, ...HEURE },
     embauche: {
       mouvement: 'embauche', poste: 'Vendeur', categorie: 'employe', heures: 35, brut: Math.round(p.charges.reduction.smicAnnuel / 12), mois: moisSuivant, index: 0, nouvellesHeures: 28,
       salaries: Math.max(1, h?.equipe?.filter((x) => x.categorie !== 'gerant_tns').length || 2), partReversee: 0,
@@ -259,7 +270,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
 }) {
   const { profil } = useAuth()
   const [params, setParams] = useSearchParams()
-  const choisi = (SIMULATEURS.find((s) => s.cle === params.get('sim'))?.cle ?? 'embauche') as TypeSimulation
+  const choisi = (SIMULATEURS.find((s) => s.cle === params.get('sim'))?.cle ?? 'levier') as TypeSimulation
   const choisir = (cle: TypeSimulation) => setParams((x) => { const n = new URLSearchParams(x); n.set('sim', cle); return n }, { replace: true })
   const aujourdhui = useMemo(() => new Date(), [])
   const reseauDispo = useReseauSiDispo()
@@ -273,6 +284,11 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   const [nom, setNom] = useState('')
   const [message, setMessage] = useState<{ texte: string; bon: boolean } | null>(null)
   const [occupe, setOccupe] = useState(false)
+  // 184 · Du simulateur à la priorité : l'équipe (pas le franchisé, pas en aperçu) pose la priorité depuis la simulation
+  const [priorite, setPriorite] = useState<PrioriteProposee | null>(null)
+  const reseauFiche = reseauDispo?.reseau ?? null
+  const ficheMagasin = reseauFiche?.magasins.find((x) => x.nom === magasin) ?? null
+  const peutPrioriser = !!reseauFiche && !!ficheMagasin && !!profil && ['directeur', 'rr', 'coach'].includes(profil.role) && !profil.apercu
   // PDF d'une simulation (Joseph, 14/11/2026) : seule la carte du simulateur s'imprime, avec le magasin et la date
   useEffect(() => {
     const fin = () => document.body.classList.remove('simulation-seule')
@@ -289,7 +305,58 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
 
   // ── Calcul et rendu du simulateur choisi : saisies, résultats, phrase gardée avec la simulation
   let saisies: ReactNode = null, resultats: ReactNode = null, phrase = '', nomParDefaut = simulateur.titre, ajout: AjoutBudget | null = null, note: string | null = null
+  let mesure: PrioriteProposee['mesure'] = null // 184 : ce que la caisse dira chaque mois, quand le simulateur le sait
   const sansBudget = simulateur.budget && (!b || !h)
+  if (!sansBudget && choisi === 'levier' && b) {
+    const e = etats.levier
+    const coutHeure = heure(e)
+    const lignes = meilleursLeviers(b, p, { ticketsJour: e.ticketsJour, panierTTC: e.panier, pointsMarge: e.points, heuresSemaine: e.heures, coutHeure, joursParAn: e.jours })
+    const titreLigne = (c: CleLevier) => ({
+      tickets_cave: `${unChiffre(e.ticketsJour)} ticket${e.ticketsJour > 1 ? 's' : ''} de plus par jour en Cave`,
+      tickets_bar: `${unChiffre(e.ticketsJour)} ticket${e.ticketsJour > 1 ? 's' : ''} de plus par jour au Bar`,
+      panier_cave: `${centimes(e.panier)} TTC de plus par panier en Cave`,
+      panier_bar: `${centimes(e.panier)} TTC de plus par panier au Bar`,
+      marge: `${unChiffre(e.points)} point${e.points >= 2 ? 's' : ''} de marge en plus`,
+      heures: `${unChiffre(e.heures)} heure${e.heures >= 2 ? 's' : ''} payée${e.heures >= 2 ? 's' : ''} de moins par semaine`,
+    })[c]
+    saisies = (
+      <Stack spacing={2}>
+        <Saisies>
+          <Montant libelle="Tickets de plus par jour" valeur={e.ticketsJour} onChange={(v) => maj('levier', { ticketsJour: Math.max(0, v) })} unite="" />
+          <Montant libelle="Euros de plus par panier, TTC" valeur={e.panier} onChange={(v) => maj('levier', { panier: Math.max(0, v) })} />
+          <Montant libelle="Points de marge en plus" valeur={e.points} onChange={(v) => maj('levier', { points: Math.max(0, v) })} unite="pt" />
+          <Montant libelle="Heures payées de moins par semaine" valeur={e.heures} onChange={(v) => maj('levier', { heures: Math.max(0, v) })} unite="h" />
+          <Montant libelle="Jours d’ouverture par an" valeur={e.jours} onChange={(v) => maj('levier', { jours: Math.min(366, Math.max(1, Math.round(v))) })} unite="j" />
+        </Saisies>
+        <Saisies><CoutHeure e={e} valeur={coutHeure} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('levier', v)} /></Saisies>
+      </Stack>
+    )
+    const premier = lignes[0]
+    nomParDefaut = premier ? titreLigne(premier.cle) : simulateur.titre
+    phrase = premier && premier.ebe > 0
+      ? `Pour ${magasin}, le levier qui rapporte le plus est : ${titreLigne(premier.cle).toLowerCase()}, soit ${montant(premier.ebe)} d’EBE par an${lignes[1] ? `, devant ${titreLigne(lignes[1].cle).toLowerCase()} (${montant(lignes[1].ebe)})` : ''}.`
+      : ''
+    if (premier?.mesure) mesure = premier.mesure
+    resultats = lignes.length ? (
+      <Box component="ol" aria-label="Leviers du plus au moins rentable" sx={{ listStyle: 'none', m: 0, p: 0, border: 1, borderColor: 'divider', borderRadius: '12px' }}>
+        {lignes.map((l, i) => (
+          <Box component="li" key={l.cle} aria-label={`${i + 1}. ${titreLigne(l.cle)}`} sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', px: 2, py: 1.25, borderTop: i ? 1 : 0, borderColor: 'divider' }}>
+            <Box aria-hidden sx={{ width: 28, height: 28, borderRadius: '50%', flex: 'none', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: '0.8125rem', bgcolor: i === 0 ? 'secondary.main' : 'action.hover', color: i === 0 ? 'secondary.contrastText' : 'text.primary' }}>{i + 1}</Box>
+            <Box sx={{ flex: '1 1 260px', minWidth: 0 }}>
+              <Typography sx={{ fontWeight: 700 }}>{titreLigne(l.cle)}</Typography>
+              <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                {l.cle === 'heures' ? 'sans perte de CA, à productivité égale' : l.cle === 'marge' ? 'sur le CA prévu, sans vendre plus' : `${montant(l.ca)} de CA HT en plus par an`}
+                {l.mesure ? ` · en caisse : ${ecartMesure(l.mesure.indicateur, l.mesure.attendu)} par mois sur ${indicateursMesure[l.mesure.indicateur].sur}` : ''}
+              </Typography>
+            </Box>
+            <Typography sx={{ fontWeight: 800, fontSize: '1.125rem', fontVariantNumeric: 'tabular-nums', minWidth: 110, textAlign: 'right' }}>{ecartMontant(l.ebe)}<Box component="span" sx={{ display: 'block', fontWeight: 400, fontSize: '0.8125rem', color: 'text.secondary' }}>d’EBE par an</Box></Typography>
+            {peutPrioriser && <Button size="small" className="pas-a-l-impression" startIcon={<PlaylistAddCheckOutlined />} onClick={() => setPriorite({ titre: titreLigne(l.cle), mesure: l.mesure, source: `${titreLigne(l.cle)} : ${montant(l.ebe)} d’EBE par an` })}
+              aria-label={`En faire une priorité : ${titreLigne(l.cle)}`} sx={{ minHeight: 48 }}>En faire une priorité</Button>}
+          </Box>
+        ))}
+      </Box>
+    ) : <EtatVide titre="Aucun levier à comparer" texte="Mets au moins un effort au-dessus de zéro. Les tickets et le panier partent des tickets visés au budget de la Cave et du Bar." />
+  }
   if (!sansBudget && choisi === 'embauche' && b && h) {
     const e = etats.embauche
     const equipe = h.equipe ?? []
@@ -550,6 +617,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     ) : <EtatVide titre="Pas de tickets visés au budget" texte="La vente additionnelle part des tickets de la Cave ou du Bar visés au budget. Ils arrivent avec la proposition du siège." />
     if (r) {
       nomParDefaut = `1 article de plus pour 1 client sur ${e.unSur} (${u === 'cave' ? 'Cave' : 'Bar'})`
+      mesure = { indicateur: u === 'cave' ? 'pmCave' : 'pmBar', attendu: r.panierEnPlus / (1 + (p.tvaPanier[r.univers] ?? 0)) }
       phrase = `Un article à ${montant(e.prix)} vendu à 1 client sur ${e.unSur} : ${entier(r.articles)} articles par an (${unChiffre(r.articlesParJour)} par jour), ${montant(r.caHT)} de CA HT et ${montant(r.ebe)} d’EBE en plus.`
       resultats = (
         <Resultats>
@@ -1156,7 +1224,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   const garder = async () => {
     setOccupe(true); setMessage(null)
     try {
-      await garderSimulation(magasin, choisi, nom.trim() || nomParDefaut, { ...etats[choisi] }, phrase)
+      await garderSimulation(magasin, choisi, nom.trim() || nomParDefaut, { ...etats[choisi] } as Record<string, unknown>, phrase)
       setNom(''); setMessage({ texte: 'Simulation gardée.', bon: true })
       await recharger()
     } catch (e) {
@@ -1221,7 +1289,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             {phrase && <Typography role="status" sx={{ fontWeight: 600, fontSize: '1rem', maxWidth: '75ch' }}>{phrase}</Typography>}
             {phrase && (
               <Box className="pas-a-l-impression" sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-end', pt: 1, borderTop: 1, borderColor: 'divider' }}>
-                {peutGarder && gardees !== null && (
+                {peutGarder && gardees !== null && simulateur.gardable !== false && (
                   <>
                     <Champ libelle="Nom de la simulation">
                       <TextField size="small" value={nom} placeholder={nomParDefaut} onChange={(x) => setNom(x.target.value)} slotProps={{ htmlInput: { 'aria-label': 'Nom de la simulation', maxLength: 80 } }} sx={{ ...champ, width: { xs: '100%', sm: 320 } }} />
@@ -1230,6 +1298,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
                   </>
                 )}
                 <Button variant="outlined" startIcon={<PictureAsPdfOutlined />} onClick={enPDF} sx={{ minHeight: 48 }}>PDF</Button>
+                {peutPrioriser && choisi !== 'levier' && <Button variant="outlined" startIcon={<PlaylistAddCheckOutlined />} onClick={() => setPriorite({ titre: (nom.trim() || nomParDefaut).slice(0, 200), mesure, source: phrase })} sx={{ minHeight: 48 }}>En faire une priorité</Button>}
                 {ajout && mettreAuBudget && <Button variant="contained" startIcon={<PlaylistAddOutlined />} onClick={() => void versBudget()} aria-disabled={occupe} sx={{ minHeight: 48 }}>Mettre dans mon budget {annee}</Button>}
                 {ajout && !mettreAuBudget && budgetValide && <Typography color="text.secondary" sx={{ alignSelf: 'center' }}>Le budget {annee} est validé : la simulation se garde sans le changer.</Typography>}
               </Box>
@@ -1239,6 +1308,10 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         )}
       </Card>
 
+      {priorite && ficheMagasin && reseauFiche && (
+        <DialogPriorite reseau={reseauFiche} m={ficheMagasin} priorite={null} objectifInitial={placesLibres(reseauFiche, magasin).find((x) => x) ?? ''} actions={actionsDuMagasin(reseauFiche, magasin)} proposee={priorite}
+          onFermer={(msg) => { setPriorite(null); if (msg) setMessage({ texte: `${msg} Elle est dans les objectifs et priorités de la fiche du magasin.`, bon: true }) }} />
+      )}
       {gardees !== null && (
         <Stack spacing={1.5} component="section" aria-label="Simulations gardées">
           <Typography variant="h2">Simulations gardées</Typography>

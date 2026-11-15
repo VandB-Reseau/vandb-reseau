@@ -89,6 +89,7 @@ import { SectionExterieur, SectionRedressement } from '../components/ExterieurRe
 import { SectionReunionsMagasin } from '../components/Reunions'
 import { SectionConcurrents } from '../components/Concurrents'
 import { SectionEquipements } from '../components/Equipements'
+import { SectionOperations } from '../components/Operations'
 import { SectionObjectifsPlan } from '../components/PlanAction'
 import { MontrerAuFranchise } from '../components/MontrerAuFranchise'
 import PresentToAllOutlined from '@mui/icons-material/PresentToAllOutlined'
@@ -276,6 +277,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
             <SectionRedressement reseau={reseau} m={m} />
             <SectionExterieur reseau={reseau} m={m} />
             <SectionLeviers reseau={reseau} m={m} />
+            <SectionOperations reseau={reseau} m={m} signaler={setConfirmation} />
           </Box>
         } />}
 

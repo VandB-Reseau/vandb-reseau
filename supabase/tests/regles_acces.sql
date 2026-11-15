@@ -1055,3 +1055,40 @@ SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 SELECT pg_temp.attendre('Équipements : ecrire_equipements refusée à l''équipe', pg_temp.refuse('SELECT public.ecrire_equipements(''Lille'', ''[]'')'), 1);
 RESET ROLE;
 RESET request.jwt.claim.sub;
+
+-- ── 0047 : opérations commerciales (rubrique « operations ») et mesure en caisse des priorités (184, 185)
+\ir ../migrations/0047_operations_mesure_priorites.sql
+\ir ../migrations/0047_operations_mesure_priorites.sql
+SELECT pg_temp.attendre('Journal : 0047 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0047'), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Opérations : le Coach les saisit sur son magasin',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''operations'', ''[{"id":"o1","type":"degustation","titre":"Vins de Loire"}]'') ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur'), 0);
+SELECT pg_temp.attendre('Opérations : pas sur un magasin d''un autre Coach',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Nice'', ''operations'', ''[]'')'), 1);
+SELECT pg_temp.attendre('Mesure : le Coach pose une priorité mesurée',
+  pg_temp.refuse('UPDATE public.suivi_magasins SET valeur = ''[{"id":"p1","titre":"Relancer la Cave","objectif":"o1","statut":"active","mesure":{"indicateur":"pmCave","attendu":0.42,"depuis":"2026-12","source":"Vente additionnelle"}}]'' WHERE store_name = ''Lille'' AND cle = ''plan'''), 0);
+RESET ROLE;
+INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES ('Nice', 'operations', '[{"id":"o2","type":"soiree","titre":"Soirée bière"}]')
+ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Mesure : le franchisé lit la mesure de sa priorité',
+  (SELECT count(*) FROM jsonb_array_elements(public.plans_franchise()->'Lille') e WHERE e->'mesure'->>'indicateur' = 'pmCave'), 1);
+SELECT pg_temp.attendre('Mesure : toujours sans l''objectif chiffré',
+  (SELECT count(*) FROM jsonb_array_elements(public.plans_franchise()->'Lille') e WHERE e ? 'objectif'), 0);
+SELECT pg_temp.attendre('Opérations : le franchisé lit celles de son magasin', (SELECT count(*) FROM jsonb_object_keys(public.animation_franchise()->'operations') k WHERE k = 'Lille'), 1);
+SELECT pg_temp.attendre('Opérations : jamais celles d''un autre magasin', (SELECT count(*) FROM jsonb_object_keys(public.animation_franchise()->'operations') k WHERE k = 'Nice'), 0);
+SELECT pg_temp.attendre('Opérations : pas de lecture directe', (SELECT count(*) FROM public.suivi_magasins WHERE cle = 'operations'), 0);
+SELECT pg_temp.attendre('Opérations : pas d''écriture directe par le franchisé',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''operations'', ''[]'') ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur'), 1);
+SELECT pg_temp.attendre('Opérations : le franchisé tient celles de son magasin',
+  pg_temp.refuse('SELECT public.ecrire_operations(''Lille'', ''[{"id":"o1","type":"promotion","titre":"Foire aux vins"}]'')'), 0);
+SELECT pg_temp.attendre('Opérations : la saisie du franchisé est lue', (SELECT count(*) FROM jsonb_array_elements(public.animation_franchise()->'operations'->'Lille') e WHERE e->>'type' = 'promotion'), 1);
+SELECT pg_temp.attendre('Opérations : jamais sur un autre magasin', pg_temp.refuse('SELECT public.ecrire_operations(''Nice'', ''[]'')'), 1);
+SELECT pg_temp.attendre('Opérations : liste mal formée refusée', pg_temp.refuse('SELECT public.ecrire_operations(''Lille'', ''{"a":1}'')'), 1);
+SELECT pg_temp.attendre('Équipements : toujours lus après 0047', (SELECT count(*) FROM jsonb_object_keys(public.animation_franchise()->'equipements') k WHERE k = 'Lille'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Opérations : ecrire_operations refusée à l''équipe', pg_temp.refuse('SELECT public.ecrire_operations(''Lille'', ''[]'')'), 1);
+RESET ROLE;
+RESET request.jwt.claim.sub;

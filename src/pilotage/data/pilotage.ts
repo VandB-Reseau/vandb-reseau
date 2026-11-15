@@ -811,6 +811,7 @@ export async function retirerVersionNommee(id: number) {
 // base. Avant la migration, la table n'existe pas : null, les simulateurs marchent sans « Garder ».
 export type TypeSimulation = 'embauche' | 'prix' | 'tresorerie' | 'vente_additionnelle' | 'reste_a_faire' | 'soiree' | 'achat' | 'investissement'
   | 'exterieur' | 'tireuses' | 'pression' | 'calculette' | 'ouverture' // vague 9, migration 0032
+  | 'levier' // 183 : pas encore gardable (pas dans la règle de la table), se garde en priorité
 export interface SimulationGardee { id: number; type: TypeSimulation; nom: string; donnees: Record<string, unknown>; resume: string; auteur: string | null; auteurRole: Role | null; auteurNom: string | null; creeLe: string }
 export async function chargerSimulations(magasin: string): Promise<SimulationGardee[] | null> {
   const { data, error } = await pilotage().from('simulations').select('id, type, nom, donnees, resume, auteur, auteur_role, auteur_nom, cree_le')

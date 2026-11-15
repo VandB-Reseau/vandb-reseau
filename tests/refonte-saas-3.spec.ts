@@ -132,7 +132,7 @@ test('26A : fixer un objectif chiffré, suivi dans la fiche et la préparation',
   await page.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Objectif fixé.')).toBeVisible()
   // Joseph (14/11/2026) : objectifs de l'année et plan d'action en un seul bloc ; la période en tête de l'objectif
-  const bloc = page.locator('.MuiCard-root', { has: page.getByRole('heading', { name: 'Objectifs 2027 et plan d’action' }) })
+  const bloc = page.locator('.MuiCard-root', { has: page.getByRole('heading', { name: 'Objectifs 2027 et priorités' }) })
   await expect(bloc.getByRole('heading', { name: 'Panier moyen HT Cave : 40,00 € → 45,00 €' })).toBeVisible()
   await expect(bloc.getByText('D’ici janvier 2027')).toBeVisible()
   await expect(page.getByText('En attente des chiffres')).toBeVisible()

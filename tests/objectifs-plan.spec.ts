@@ -13,7 +13,7 @@ test('un seul bloc : l’objectif de l’année, ses priorités et leurs tâches
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, config: { objectifs_magasins: objectifs, plans_magasins: plans } })
   await page.goto('./#/magasins/Brest%20Test')
-  const bloc = page.locator('.MuiCard-root', { has: page.getByRole('heading', { name: 'Objectifs 2026 et plan d’action' }) })
+  const bloc = page.locator('.MuiCard-root', { has: page.getByRole('heading', { name: 'Objectifs 2026 et priorités' }) })
   await expect(bloc).toBeVisible()
   // Plus de cartes séparées « Plan d'action » et « Objectifs »
   await expect(page.getByRole('heading', { name: /^Plan d’action/ })).toHaveCount(0)

@@ -49,3 +49,42 @@ export function effetLeviers(
   const ca = somme(Object.values(univers).map((x) => x.ca)), marge = somme(Object.values(univers).map((x) => x.marge))
   return { univers, ca, marge, ebe: marge - ca * (p.tauxRedevance + p.tauxPublicite) }
 }
+
+// ── 183 · Mon meilleur levier (Joseph, 15/11/2026) ─────────────────────────────────────────────────────────────────
+// Pour un même petit effort, ce que chaque levier rapporte en EBE sur un an à CE magasin, du plus au moins rentable :
+// - un ticket de plus par jour d'ouverture, Cave puis Bar (tickets de l'univers × jours / tickets visés) ;
+// - quelques euros TTC de plus par panier, Cave puis Bar ;
+// - un point de marge sur tout le CA (Cave, Bar, Extérieur) ;
+// - quelques heures payées de moins par semaine (52 semaines × coût chargé d'une heure), sans perte de CA.
+// Les quatre premiers passent par effetLeviers (redevance et publicité suivent le CA). Chaque ligne dit aussi ce qui se
+// mesure en caisse chaque mois (184) : tickets, panier HT, points de marge ; les heures ne se lisent pas en caisse.
+export type CleLevier = 'tickets_cave' | 'tickets_bar' | 'panier_cave' | 'panier_bar' | 'marge' | 'heures'
+export interface EffortsLeviers { ticketsJour: number; panierTTC: number; pointsMarge: number; heuresSemaine: number; coutHeure: number; joursParAn: number }
+export interface LigneLevier {
+  cle: CleLevier; univers: 'cave' | 'bar' | null
+  ca: number; marge: number; ebe: number
+  mesure: { indicateur: 'fluxCave' | 'fluxBar' | 'pmCave' | 'pmBar' | 'marge'; attendu: number } | null // par mois
+}
+export function meilleursLeviers(b: Budget, p: { tauxRedevance: number; tauxPublicite: number; tvaPanier: Partial<Record<Univers, number>> }, x: EffortsLeviers): LigneLevier[] {
+  const base = baseLeviers(b)
+  const l: LigneLevier[] = []
+  const ajoute = (cle: CleLevier, univers: 'cave' | 'bar' | null, leviers: Partial<Record<Univers, Leviers>>, mesure: LigneLevier['mesure']) => {
+    const e = effetLeviers(base, leviers, p)
+    l.push({ cle, univers, ca: e.ca, marge: e.marge, ebe: e.ebe, mesure })
+  }
+  for (const u of ['cave', 'bar'] as const) {
+    const tickets = b.flux[u]?.objectif ?? 0
+    if (!base[u] || tickets <= 0) continue
+    const enPlus = x.ticketsJour * x.joursParAn
+    if (x.ticketsJour > 0) ajoute(`tickets_${u}`, u, { [u]: { ...AUCUN_LEVIER, tickets: enPlus / tickets } }, { indicateur: u === 'cave' ? 'fluxCave' : 'fluxBar', attendu: enPlus / 12 })
+    if (x.panierTTC > 0 && base[u]!.panierTTC) ajoute(`panier_${u}`, u, { [u]: { ...AUCUN_LEVIER, panier: x.panierTTC } }, { indicateur: u === 'cave' ? 'pmCave' : 'pmBar', attendu: x.panierTTC / (1 + (p.tvaPanier[u] ?? 0)) })
+  }
+  if (x.pointsMarge > 0 && Object.keys(base).length) {
+    ajoute('marge', null, Object.fromEntries(Object.keys(base).map((u) => [u, { ...AUCUN_LEVIER, mix: x.pointsMarge / 100 }])), { indicateur: 'marge', attendu: x.pointsMarge })
+  }
+  if (x.heuresSemaine > 0 && x.coutHeure > 0) {
+    const gain = x.heuresSemaine * 52 * x.coutHeure
+    l.push({ cle: 'heures', univers: null, ca: 0, marge: 0, ebe: gain, mesure: null })
+  }
+  return l.sort((a, c) => c.ebe - a.ebe)
+}

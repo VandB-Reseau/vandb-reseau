@@ -42,7 +42,7 @@ test.afterEach(async ({ page }) => {
 test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', async ({ page, isMobile }, info) => {
   const ecritures = await connecter(page, franchise, { role: 'franchise' })
   await simulateur(page, 'exterieur')
-  await expect(page.getByRole('navigation', { name: 'Choisir un simulateur' }).getByRole('button')).toHaveCount(13)
+  await expect(page.getByRole('navigation', { name: 'Choisir un simulateur' }).getByRole('button')).toHaveCount(14)
   await expect(page.getByRole('heading', { name: 'Contrat extérieur' })).toBeVisible()
   // Exemple de la fiche : 69 € HT (facturé à l'organisateur, tout en HT), achat 41,34 € HT ; CO2 0,76 €, 0,60 €/km et 20 €/h viennent des repères du siège
   await page.getByLabel('Prix de vente du fût HT').fill('69')

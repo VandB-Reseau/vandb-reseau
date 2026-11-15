@@ -1,6 +1,7 @@
 import useMediaQuery from '@mui/material/useMediaQuery'
 import CalculateOutlined from '@mui/icons-material/CalculateOutlined'
 import { SectionEquipements } from '../components/Equipements'
+import { SectionOperations } from '../components/Operations'
 import { useTheme } from '@mui/material/styles'
 import { SectionObjectifsPlan } from '../components/PlanAction'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -638,6 +639,7 @@ function OngletChiffres({ reseau, m }: { reseau: Reseau; m: Magasin }) {
         {liste.length > 1 && <Section titre="Évolution du CA"><GraphiqueCA liste={chiffresDuMagasin(reseau, m.nom)} /></Section>}
       </Box>
       <SectionReperes reseau={reseau} magasins={[m]} />
+      <SectionOperations reseau={reseau} m={m} />
       {liste.length > 0 && (
         <Section titre="Mois enregistrés">
           {(tous ? liste : liste.slice(0, 12)).map((c) => (
