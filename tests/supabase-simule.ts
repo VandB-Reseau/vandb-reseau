@@ -131,10 +131,10 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
   })
   await page.route('https://nominatim.openstreetmap.org/**', (r) => r.fulfill({ json: [] }))
   // Concurrents à 2 km (OpenStreetMap, service Overpass) : deux commerces fictifs autour du point demandé, plus un V and B écarté
-  // Le serveur principal et ses miroirs : « panne » les met tous hors service, « principalSature » seulement le premier
+  // Le serveur principal et ses miroirs : « panne » les met tous hors service, « principalSature » seulement le premier interrogé
   await page.route(/^https:\/\/(overpass-api\.de|overpass\.private\.coffee|maps\.mail\.ru)\//, (r) => {
     if (options.overpass === 'panne') return r.fulfill({ status: 504, body: '' })
-    if (options.overpass === 'principalSature' && r.request().url().startsWith('https://overpass-api.de/')) return r.fulfill({ status: 429, body: '' })
+    if (options.overpass === 'principalSature' && r.request().url().startsWith('https://overpass.private.coffee/')) return r.fulfill({ status: 429, body: '' })
     const q = decodeURIComponent(new URL(r.request().url()).searchParams.get('data') ?? '')
     const [lat, lon] = (/around:\d+,([-\d.]+),([-\d.]+)/.exec(q) ?? []).slice(1).map(Number)
     if (options.overpass === 'vide' || !Number.isFinite(lat)) return r.fulfill({ json: { elements: [] } })
