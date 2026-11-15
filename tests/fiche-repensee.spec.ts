@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test'
 import { seConnecter, textesTropPetits } from './supabase-simule'
 
 // Fiche magasin repensée (choix 196 à 203, Joseph 15/11/2026) : aperçu resserré, objectifs repliés, activité en deux
-// colonnes, une tâche à un seul endroit, quatre filtres, colonne d'identité repliée, magasin précédent / suivant,
-// dernier onglet retenu.
+// colonnes, une tâche à un seul endroit, quatre filtres, colonne d'identité repliée, dernier onglet retenu
+// (202, magasin précédent / suivant, retiré le 15/11/2026).
 const objectifs = { 'Brest Test': [{ id: 'o1', indicateur: 'pmCave', mode: 'valeur', depart: 37.14, moisDepart: '2026-09', cible: 40, echeance: '2026-12', taches: [], par: 'Joseph', creeLe: '2026-10-01' }] }
 const plans = { 'Brest Test': [{ id: 'p1', titre: 'Améliorer le mix produit', objectif: 'o1', statut: 'active', bilan: '', creeLe: '2026-10-01', par: 'Joseph', closLe: '', revueLe: '' }] }
 const actions = { 'Brest Test': [
@@ -54,23 +54,15 @@ test('198, 199 et 201 : l’activité en deux colonnes, une tâche à un seul en
   expect(await textesTropPetits(page)).toEqual([])
 })
 
-test('202 : passer au magasin suivant sans revenir à la liste', async ({ page, isMobile }) => {
+// Joseph (15/11/2026) : magasin précédent / suivant retiré, ni au bout du fil d'Ariane ni dans le menu « ⋯ »
+test('202 retiré : plus de magasin précédent ni suivant', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Brest%20Test')
   await expect(page.getByRole('heading', { level: 1, name: 'Brest Test' })).toBeVisible()
-  let suivant: string
-  if (isMobile) {
-    await page.getByRole('button', { name: 'Autres actions' }).click()
-    const item = page.getByRole('menuitem', { name: /^Suivant : / })
-    suivant = (await item.textContent())!.replace(/^Suivant : /, '')
-    await item.click()
-  } else {
-    const bouton = page.getByRole('link', { name: /^Magasin suivant : / })
-    suivant = (await bouton.getAttribute('aria-label'))!.replace(/^Magasin suivant : /, '')
-    await bouton.click()
-  }
-  expect(suivant).not.toBe('Brest Test')
-  await expect(page.getByRole('heading', { level: 1, name: suivant })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Passer à un autre magasin' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Autres actions' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Bilan de l’année' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: /^(Précédent|Suivant) : / })).toHaveCount(0)
 })
 
 test('203 : la fiche rouvre le dernier onglet et le dernier filtre', async ({ page }) => {
@@ -82,4 +74,21 @@ test('203 : la fiche rouvre le dernier onglet et le dernier filtre', async ({ pa
   await expect(page).toHaveURL(/vue=activite/)
   await expect(page).toHaveURL(/fil=taches/)
   await expect(page.getByRole('group', { name: 'Filtrer l’activité' }).getByRole('button', { name: 'Tâches', exact: true })).toHaveAttribute('aria-pressed', 'true')
+})
+
+// Joseph (15/11/2026, iPhone) : rouverte sur Simuler, la fiche y restait bloquée ; chaque onglet doit rester cliquable
+test('203 : après réouverture sur le dernier onglet, les autres onglets restent accessibles', async ({ page }) => {
+  await seConnecter(page)
+  const onglets = page.getByRole('tablist', { name: /^Rubriques de/ })
+  await page.goto('./#/magasins/Lyon%20Test?vue=simulateurs')
+  await expect(onglets.getByRole('tab', { name: 'Simulateurs', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await page.goto('./#/magasins/Brest%20Test')
+  await expect(page).toHaveURL(/vue=simulateurs/)
+  for (const [nom, vue] of [['Vue d’ensemble', null], ['Activité', 'activite'], ['Chiffres', 'chiffres'], ['Budget', 'budget']] as const) {
+    await onglets.getByRole('tab', { name: nom, exact: true }).click()
+    await expect(onglets.getByRole('tab', { name: nom, exact: true })).toHaveAttribute('aria-selected', 'true')
+    if (vue) await expect(page).toHaveURL(new RegExp(`vue=${vue}`))
+    else await expect(page).not.toHaveURL(/vue=/)
+    await expect(onglets.getByRole('tab', { name: 'Simulateurs', exact: true })).toHaveAttribute('aria-selected', 'false')
+  }
 })
