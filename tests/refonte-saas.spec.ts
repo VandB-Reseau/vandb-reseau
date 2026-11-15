@@ -48,13 +48,13 @@ test('PC : menu clair en quatre rubriques, tête noire ; téléphone : barre du 
   } else {
     await expect(page.getByRole('banner')).toHaveCount(0)
     const menu = page.getByRole('navigation', { name: 'Navigation principale' })
-    for (const r of ['Mon travail', 'Réseau', 'Animation']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
-    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Chiffres', 'Budget prévisionnel', 'Simulateurs', /^Actualités/, 'Campagnes', /^Demandes/])
-    // Vague 3 (27A) : sondages, formations et réunions dans Campagnes › Sondages et rendez-vous
-    await expect(menu.getByRole('button', { name: 'Animation réseau' })).toHaveCount(0)
+    for (const r of ['Mon travail', 'Réseau', 'Siège']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
+    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Chiffres', 'Budget prévisionnel', 'Simulateurs', /^Animation/, /^Demandes/])
+    // Choix 213 (15/11/2026) : Actualités et Campagnes réunies dans Animation ; l'ancienne adresse y mène
+    await expect(menu.getByRole('button', { name: 'Campagnes' })).toHaveCount(0)
     await page.goto('./#/animation')
-    await expect(page.getByRole('tab', { name: 'Sondages et rendez-vous' })).toHaveAttribute('aria-selected', 'true')
-    await expect(menu.getByRole('button', { name: 'Campagnes' })).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('tab', { name: 'Communications' })).toHaveAttribute('aria-selected', 'true')
+    await expect(menu.getByRole('button', { name: /^Animation/ })).toHaveAttribute('aria-current', 'page')
   }
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-refonte-coquille.png` })

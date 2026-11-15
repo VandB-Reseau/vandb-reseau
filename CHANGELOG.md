@@ -9,6 +9,16 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Accueil, Actualités et Campagnes simplifiés (choix 212 à 219, Joseph, 15/11/2026), sans migration. L'Accueil porte seul
+  le fil d'actualité, avec ses filtres (équipe et franchisé) ; l'onglet « Fil » d'Actualités est retiré. Actualités et
+  Campagnes ne font plus qu'une page « Animation » (adresse /infos) : Communications, Campagnes (campagnes, déploiements et
+  challenges choisis par puces), Bonnes pratiques et, pour le Directeur et les RR, Sondages ; « Envoyer au réseau » en tête.
+  Rubrique du menu renommée « Siège » (Animation, Demandes).
+  L'onglet « Sondages et rendez-vous » disparaît : lectures, réponses et exécution se lisent sur chaque contenu, présences
+  aux formations et réunions dans l'Agenda. On répond aux sondages depuis l'Accueil. Franchisé : l'entrée « Actualités »
+  devient « Bonnes pratiques ». Anciennes adresses (/campagnes, /animation, ?vue=fil, /echanges/reseau) redirigées.
+  Rituels retirés (onglet de l'Équipe, réglage des Paramètres, section du rapport du mois) ; la clé `rituels` reste en base.
+
 - Simulateurs : un exemple chiffré sur chacun et un bouton « Effacer » (Joseph, 15/11/2026), sans migration. Chaque
   simulateur s'ouvre sur un exemple (étiquette « Exemple »), complété là où il manquait : trois becs sur la carte pression,
   une vieille tireuse dans le parc, des remises et offerts en part du CA du budget, un réalisé du mois à 95 % du rythme.

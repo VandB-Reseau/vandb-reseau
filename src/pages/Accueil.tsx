@@ -180,7 +180,7 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean, moi = '
   }
   for (const { c, b } of reseau.campagnes.liste.filter((c) => phase(c, j) === 'encours')
     .map((c) => ({ c, b: bilan(reseau.campagnes, c, magasinsConcernes(reseau, c).filter((m) => noms.has(m.nom))) })).filter((x) => x.b.total > 0 && x.b.aConstater > 0)) {
-    items.push({ cle: `cp-${c.id}`, titre: c.nom, avatar: c.nom, icone: <CampaignOutlined />, lien: `/campagnes?vue=campagnes&campagne=${encodeURIComponent(c.id)}`,
+    items.push({ cle: `cp-${c.id}`, titre: c.nom, avatar: c.nom, icone: <CampaignOutlined />, lien: `/infos?vue=campagnes&campagne=${encodeURIComponent(c.id)}`,
       detail: `${b.fait} sur ${b.total} magasin${b.total > 1 ? 's' : ''} exécuté${b.fait > 1 ? 's' : ''} · ${b.aConstater} à constater`, pastille: { ton: 'gris', libelle: b.taux === null ? 'Campagne' : `${b.taux} %` } })
   }
   void sansParametres
@@ -693,7 +693,7 @@ function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Resea
   const reactionsVisites = useReactionsVisites()
   // Les communications à la une sont dans le bandeau : le fil ne les répète pas
   const unes = useMemo(() => new Set(aLaUneDuJour(communications.liste, reseau.jour).map((c) => c.id)), [communications.liste, reseau.jour])
-  const fil = useMemo(() => filDu(reseau, noms, messagerie, 45, communications.liste, true, true, true).filter((e) => !e.communication || !unes.has(e.communication.id)),
+  const fil = useMemo(() => filDu(reseau, noms, messagerie, 120, communications.liste, true, true, true).filter((e) => !e.communication || !unes.has(e.communication.id)),
     [reseau, noms, messagerie, communications.liste, unes])
   const aLaUne = <ALaUne liste={communications.liste} jour={reseau.jour} connaissances={connaissances} franchise={false} lectureSeule apres={() => void rechargerConnaissances()}
     lien={(c) => `/infos?vue=communications&c=${c.id}`} />
@@ -704,7 +704,8 @@ function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Resea
   // « Nouveau » ; sur téléphone, le point du jour se replie en une bande au-dessus d'un fil qui défile sans fin.
   const peutPublier = profil?.role === 'directeur' || profil?.role === 'rr'
   const partager = <BarrePartager moi={monNomPorteur(reseau, profil) || profil?.nom || ''} franchise={false} communication={peutPublier} />
-  const filActu = <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" sansFiltre social partager={partager} communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
+  // Choix 212 (15/11/2026) : l'Accueil porte seul le fil, avec ses filtres (l'onglet Fil d'Actualités est retiré)
+  const filActu = <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" social partager={partager} communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
   if (!surPC) {
     const resume = [items.length ? `${items.length} à traiter` : '', taches.length ? `${taches.length} tâche${taches.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ') || 'Rien d’urgent'
     return (

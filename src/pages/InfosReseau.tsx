@@ -1,10 +1,14 @@
-// Actualités (refonte vague 5, Joseph 10/11/2026, 45A ; avant « Infos réseau ») : un seul fil typé (visites, bonnes
-// pratiques, communications, temps forts et campagnes) avec ses filtres, puis les communications, la bibliothèque des
-// bonnes pratiques et, pour l'équipe, les sondages. Mêmes onglets sur PC et sur téléphone.
-// Même onglet pour le franchisé (Joseph, 23/10/2026), en lecture : il aime, commente et propose ses bonnes pratiques ;
-// ses sondages restent sur son accueil.
+// Animation (choix 212-217, Joseph 15/11/2026) : Actualités et Campagnes ne font plus qu'une page. L'Accueil porte seul le
+// fil d'actualité ; ici on publie et on suit : Communications, Campagnes (campagnes, déploiements, challenges), Bonnes
+// pratiques et, pour le Directeur et les RR, Sondages (on y répond depuis l'Accueil). Le suivi (lectures, réponses,
+// exécution) s'affiche sur chaque contenu. Franchisé : la page devient « Bonnes pratiques » ; ses communications restent
+// ouvrables par leur lien (À la une, fil, notifications).
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useSearchParams } from 'react-router-dom'
+import FlagOutlined from '@mui/icons-material/FlagOutlined'
+import { EnvoyerAuReseau } from './Animation'
+import { RubriqueCampagnes, TYPES_CAMPAGNES, type TypeCampagne } from './SanteParc'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Snackbar from '@mui/material/Snackbar'
@@ -21,22 +25,13 @@ import { PageCommunications } from './Communications'
 import type { BonnePratique } from '../data/bonnesPratiques'
 import type { Communication } from '../data/communications'
 import type { Reseau } from '../data/modele'
-import { noterReseauVu } from '../data/echanges'
 import { noterPratiquesVues } from '../data/infosVues'
-import { SectionSondages, SondagesARepondre } from '../components/Questions'
+import { noterReseauVu } from '../data/echanges'
 import { MesPropositions, PropositionsARelire } from '../components/Propositions'
 import { useApercu } from '../auth/Apercu'
 import { useAuth } from '../auth/AuthContext'
+import { SectionSondages } from '../components/Questions'
 import QuizOutlined from '@mui/icons-material/QuizOutlined'
-import DynamicFeedOutlined from '@mui/icons-material/DynamicFeedOutlined'
-import { FilActivite } from './Accueil'
-import { filDu } from '../data/fil'
-import { useCommunicationsDuFil, useConnaissances } from '../data/communications'
-import { BarrePartager } from '../components/Publication'
-import { useReactionsPratiques } from '../data/reactionsPratiques'
-import { useReactionsVisites } from '../data/reactionsVisites'
-import { magasinsDu, perimetreDuProfil } from '../data/perimetre'
-import { lienFiche } from '../lib/format'
 
 const sansAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr')
 type Periode = 'tout' | '3' | '12'
@@ -46,24 +41,27 @@ const depuis = (p: Periode) => {
   const d = new Date(); d.setMonth(d.getMonth() - Number(p))
   return d.toISOString().slice(0, 10)
 }
-type Vue = 'fil' | 'communications' | 'pratiques' | 'questions'
+type Vue = 'communications' | 'campagnes' | 'pratiques' | 'sondages'
 
 function Contenu({ reseau }: { reseau: Reseau }) {
-  const [params] = useSearchParams()
-  const demandee = params.get('vue')
-  const vueDemandee: Vue = demandee === 'pratiques' ? 'pratiques' : demandee === 'sondages' ? 'questions' : demandee === 'communications' || params.get('c') ? 'communications' : 'fil'
-  const [vue, setVue] = useState<Vue>(vueDemandee)
-  // Un lien vers une autre partie (notification, fil) change l'onglet même si la page est déjà ouverte
-  useEffect(() => { setVue(vueDemandee) }, [vueDemandee])
-  // Sondages (sprint 22, A3, puis 23/10/2026) : toute l'équipe y répond, le Directeur et les RR en posent
+  const [params, setParams] = useSearchParams()
   const { profil } = useAuth()
   const poseSondages = profil?.role === 'directeur' || profil?.role === 'rr'
   const { apercu } = useApercu()
   const franchise = profil?.role === 'franchise' || !!reseau.espace
-  const sondages = <>
-    <SondagesARepondre equipe titre="Sondages à remplir" />
-    {poseSondages && <SectionSondages reseau={reseau} />}
-  </>
+  const demandee = params.get('vue') ?? ''
+  const typeCampagne: TypeCampagne = (TYPES_CAMPAGNES as readonly string[]).includes(demandee) ? demandee as TypeCampagne : 'campagnes'
+  const vueDemandee: Vue = demandee === 'pratiques' ? 'pratiques'
+    : (demandee === 'sondages' || demandee === 'questions') && poseSondages ? 'sondages'
+    : (TYPES_CAMPAGNES as readonly string[]).includes(demandee) && !franchise ? 'campagnes'
+    : demandee === 'communications' || params.get('c') ? 'communications'
+    : franchise ? 'pratiques' : 'communications'
+  const [vue, setVueLocale] = useState<Vue>(vueDemandee)
+  // Un lien vers une autre partie (notification, fil) change l'onglet même si la page est déjà ouverte
+  useEffect(() => { setVueLocale(vueDemandee) }, [vueDemandee])
+  const setVue = (v: Vue) => { setVueLocale(v); setParams({ vue: v }, { replace: true }) }
+  const choisirCampagne = (t: TypeCampagne) => setParams({ vue: t }, { replace: true })
+  const [versionSondages, setVersionSondages] = useState(0)
   const [recherche, setRecherche] = useState('')
   const [magasins, setMagasins] = useState<string[]>([])
   const [themes, setThemes] = useState<string[]>([])
@@ -94,21 +92,6 @@ function Contenu({ reseau }: { reseau: Reseau }) {
   const effacer = () => { setRecherche(''); setMagasins([]); setThemes([]); setPeriode('tout') }
 
   const communications = <PageCommunications integre filtre={filtreCommunication} lectureSeule={!!apercu} />
-  // Le fil : les magasins suivis (le franchisé, les siens), les liens restent dans son espace
-  const duFil = useCommunicationsDuFil()
-  const reactionsPratiques = useReactionsPratiques()
-  const reactionsVisites = useReactionsVisites()
-  const elements = useMemo(() => {
-    const suivis = franchise ? reseau.magasins : magasinsDu(reseau, perimetreDuProfil(profil) ?? { type: 'reseau' as const })
-    const l = filDu(reseau, new Set(suivis.map((m) => m.nom)), null, 120, duFil.liste, true, true, !franchise)
-    return franchise ? l.map((e) => (e.genre === 'pratique' ? { ...e, lien: '/infos?vue=pratiques' } : e.genre === 'animation' ? { ...e, lien: suivis[0] ? `${lienFiche(suivis[0].nom)}?vue=campagnes` : '/' } : e)) : l
-  }, [reseau, franchise, profil, duFil.liste])
-  const { connaissances, recharger: rechargerConnaissances } = useConnaissances()
-  // 207A : « Partager » en tête du fil ; la bonne pratique s'ouvre ici même (proposée par le franchisé)
-  const partager = apercu ? undefined : <BarrePartager moi={profil?.nom ?? ''} franchise={franchise} communication={poseSondages} />
-  const fil = <FilActivite elements={elements} jour={reseau.jour} sansMagasin={franchise && reseau.magasins.length === 1} titre="Fil du réseau" communications={duFil}
-    reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} social partager={partager}
-    connaissances={franchise ? { carte: connaissances, franchise: true, recharger: () => void rechargerConnaissances() } : undefined} />
   const pratiques = franchise ? <>
     {!apercu && <MesPropositions reseau={reseau} ouvrir={params.get('proposer') === '1'} />}
     <VuePratiques integre reseau={reseau} filtre={filtrePratique} />
@@ -117,15 +100,18 @@ function Contenu({ reseau }: { reseau: Reseau }) {
     <VuePratiques integre reseau={reseau} filtre={filtrePratique} modifier={setPratique}
       actions={<BoutonAction libelle="Ajouter une bonne pratique" onClick={() => setPratique(null)} />} />
   </>
+  // Choix 212 : l'ancien onglet « Fil » renvoie à l'Accueil
+  if (demandee === 'fil') return <Navigate to="/" replace />
+  const titre = franchise ? (vue === 'communications' ? 'Communications' : 'Bonnes pratiques') : 'Animation'
   return (
     <>
-      <PageHeader titre="Actualités" />
-      <Onglets valeur={vue} onChange={setVue} libelle="Actualités" rubriques={[
-        { vue: 'fil', libelle: 'Fil', icone: <DynamicFeedOutlined /> },
+      <PageHeader titre={titre} actions={poseSondages && !apercu && !franchise ? <EnvoyerAuReseau reseau={reseau} apres={() => setVersionSondages((n) => n + 1)} /> : undefined} />
+      {!franchise && <Onglets valeur={vue} onChange={setVue} libelle="Animation" rubriques={[
         { vue: 'communications', libelle: 'Communications', icone: <CampaignOutlined /> },
+        { vue: 'campagnes', libelle: 'Campagnes', icone: <FlagOutlined /> },
         { vue: 'pratiques', libelle: 'Bonnes pratiques', icone: <TipsAndUpdatesOutlined /> },
-        ...(franchise ? [] : [{ vue: 'questions' as const, libelle: 'Sondages', icone: <QuizOutlined /> }]),
-      ]} />
+        ...(poseSondages ? [{ vue: 'sondages' as const, libelle: 'Sondages', icone: <QuizOutlined /> }] : []),
+      ]} />}
       {(vue === 'communications' || vue === 'pratiques') && (
         <RechercheFiltres actifs={actifs} recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Titre, texte, magasin, auteur" libelle={vue === 'communications' ? 'Rechercher une communication' : 'Rechercher une bonne pratique'} />}>
           <FiltreMenu libelle="Magasin" choisis={magasins} onChange={setMagasins} options={optionsMagasins} />
@@ -134,9 +120,9 @@ function Contenu({ reseau }: { reseau: Reseau }) {
           {(actifs > 0 || recherche) && <Button onClick={effacer} sx={{ minHeight: 36 }}>Retirer les filtres</Button>}
         </RechercheFiltres>
       )}
-      <Box sx={{ maxWidth: vue === 'fil' ? 680 : 760, ...(vue === 'fil' ? { mx: { md: 'auto' } } : {}) }}>
-        {vue === 'fil' && fil}
-        {vue === 'questions' && !franchise && sondages}
+      {vue === 'campagnes' && <RubriqueCampagnes reseau={reseau} type={typeCampagne} choisir={choisirCampagne} />}
+      <Box sx={{ maxWidth: 760 }}>
+        {vue === 'sondages' && poseSondages && <SectionSondages key={versionSondages} reseau={reseau} />}
         {vue === 'communications' && <Box component="section" aria-label="Communications">{communications}</Box>}
         {vue === 'pratiques' && <Box component="section" aria-label="Bonnes pratiques">{pratiques}</Box>}
       </Box>

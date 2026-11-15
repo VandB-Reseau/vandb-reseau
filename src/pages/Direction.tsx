@@ -49,7 +49,7 @@ import { Parametres as ParametresBudget } from '../pilotage/pages/Parametres'
 import { anneeBudget } from '../pilotage/data/pilotage'
 import SupportAgentOutlined from '@mui/icons-material/SupportAgentOutlined'
 import { parcoursParDefaut } from '../data/integration'
-import { RegleInterlocuteurs, RegleParcours, RegleRituels, RegleTempsForts } from '../components/ReglagesAnimation'
+import { RegleInterlocuteurs, RegleParcours, RegleTempsForts } from '../components/ReglagesAnimation'
 import CelebrationOutlined from '@mui/icons-material/CelebrationOutlined'
 import FlagOutlined from '@mui/icons-material/FlagOutlined'
 
@@ -238,10 +238,10 @@ function RegleVisite({ reseau }: { reseau: Reseau }) {
 // Sur PC, le sommaire reste à gauche et la rubrique s'affiche à droite.
 // Refonte vague 2 (Joseph, 09/11/2026, 14A) : un seul endroit pour régler l'outil, en 4 groupes ; les réglages des budgets
 // (hypothèses du réseau, paramètres de l'année, imports de caisse) quittent la page Budgets pour venir ici
-export type Rubrique = 'rituels' | 'interlocuteurs' | 'tempsforts' | 'parcours' | 'charge' | 'chiffres' | 'visite' | 'ninebox' | 'thematiques' | 'audits' | 'photos' | 'historique' | 'hypotheses' | 'budget' | 'imports'
+export type Rubrique = 'interlocuteurs' | 'tempsforts' | 'parcours' | 'charge' | 'chiffres' | 'visite' | 'ninebox' | 'thematiques' | 'audits' | 'photos' | 'historique' | 'hypotheses' | 'budget' | 'imports'
 type Groupe = 'Visites et suivi' | 'Animation' | 'Budgets' | 'Données' | 'Historique'
 const GROUPES: Groupe[] = ['Visites et suivi', 'Animation', 'Budgets', 'Données', 'Historique']
-const GROUPE: Record<Rubrique, Groupe> = { rituels: 'Animation', interlocuteurs: 'Animation', tempsforts: 'Animation', parcours: 'Animation', charge: 'Visites et suivi', chiffres: 'Visites et suivi', visite: 'Visites et suivi', ninebox: 'Visites et suivi', thematiques: 'Visites et suivi', audits: 'Visites et suivi',
+const GROUPE: Record<Rubrique, Groupe> = { interlocuteurs: 'Animation', tempsforts: 'Animation', parcours: 'Animation', charge: 'Visites et suivi', chiffres: 'Visites et suivi', visite: 'Visites et suivi', ninebox: 'Visites et suivi', thematiques: 'Visites et suivi', audits: 'Visites et suivi',
   hypotheses: 'Budgets', budget: 'Budgets', imports: 'Données', photos: 'Données', historique: 'Historique' }
 function rubriques(reseau: Reseau): { id: Rubrique; libelle: string; detail: string; icone: ReactNode }[] {
   const p = reseau.parametres, s = reseau.seuils
@@ -254,7 +254,6 @@ function rubriques(reseau: Reseau): { id: Rubrique; libelle: string; detail: str
     { id: 'ninebox', libelle: 'Nine box', detail: 'Grille de notation, notes des magasins', icone: <GridViewOutlined /> },
     { id: 'thematiques', libelle: 'Thématiques de déploiement', detail: ths ? `${ths} thématique${ths > 1 ? 's' : ''}` : 'Aucune thématique', icone: <RocketLaunchOutlined /> },
     { id: 'audits', libelle: 'Grilles d’audit', detail: 'Critères et seuils de conformité', icone: <FactCheckOutlined /> },
-    { id: 'rituels', libelle: 'Rituels d’animation', detail: `${(reseau.rituels ?? []).filter((r) => r.actif).length} rituels suivis`, icone: <EventRepeatOutlined /> },
     { id: 'tempsforts', libelle: 'Temps forts de l’année', detail: `${(reseau.tempsForts ?? []).length} temps fort${(reseau.tempsForts ?? []).length > 1 ? 's' : ''}`, icone: <CelebrationOutlined /> },
     { id: 'parcours', libelle: 'Parcours d’intégration', detail: `${(reseau.parcoursIntegration ?? parcoursParDefaut).length} étapes sur 6 mois`, icone: <FlagOutlined /> },
     { id: 'interlocuteurs', libelle: 'Demandes des franchisés', detail: `${Object.keys(reseau.interlocuteursDemandes ?? {}).length} thème${Object.keys(reseau.interlocuteursDemandes ?? {}).length > 1 ? 's' : ''} avec un interlocuteur`, icone: <SupportAgentOutlined /> },
@@ -270,7 +269,6 @@ function ContenuRubrique({ id, reseau, signaler }: { id: Rubrique; reseau: Resea
   return (
     // Les cartes gardent leur propre marge haute quand elles s'enchaînent ; la première colle au sommaire ou au retour
     <Box sx={{ '& > .MuiCard-root:first-of-type': { mt: 0 } }}>
-      {id === 'rituels' && <RegleRituels reseau={reseau} signaler={signaler} />}
       {id === 'interlocuteurs' && <RegleInterlocuteurs reseau={reseau} signaler={signaler} />}
       {id === 'tempsforts' && <RegleTempsForts reseau={reseau} signaler={signaler} />}
       {id === 'parcours' && <RegleParcours reseau={reseau} signaler={signaler} />}

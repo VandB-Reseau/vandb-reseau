@@ -27,8 +27,6 @@ import { Onglets, styleSousNavigation } from '../components/Onglets'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import { AvecReseau } from '../components/EtatDonnees'
-import { VueRituels } from '../components/TenueRituels'
-import EventRepeatOutlined from '@mui/icons-material/EventRepeatOutlined'
 import { EmptyState } from '../components/EmptyState'
 import { PastilleCharge } from '../components/Charge'
 import { chargeA, libelleSuivi, magasinsDuCoach, niveauCharge, suivi } from '../data/charge'
@@ -277,12 +275,12 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
 
 // Vague 3 (Joseph, 09/11/2026, 28A) : trois onglets ; collaborateurs, franchisés, portefeuilles et postes à pourvoir
 // sont des vues de « Personnes » (sous-navigation, 2e et dernier niveau). Les anciennes adresses ?vue=… y mènent.
-type Onglet = 'organisation' | 'personnes' | 'revue' | 'rituels'
+// Rituels retirés (Joseph, 15/11/2026) : l'ancienne adresse ?vue=rituels mène à l'organisation
+type Onglet = 'organisation' | 'personnes' | 'revue'
 const rubriques: { vue: Onglet; libelle: string; court: string; icone: ReactElement }[] = [
   { vue: 'organisation', libelle: 'Organisation', court: 'Organisation', icone: <AccountTreeOutlined /> },
   { vue: 'personnes', libelle: 'Personnes', court: 'Personnes', icone: <BadgeOutlined /> },
   { vue: 'revue', libelle: 'Revue du mois', court: 'Revue', icone: <EventNoteOutlined /> },
-  { vue: 'rituels', libelle: 'Rituels', court: 'Rituels', icone: <EventRepeatOutlined /> },
 ]
 const vuesPersonnes: { vue: Vue; libelle: string }[] = [
   { vue: 'collaborateurs', libelle: 'Collaborateurs' },
@@ -290,13 +288,14 @@ const vuesPersonnes: { vue: Vue; libelle: string }[] = [
   { vue: 'portefeuilles', libelle: 'Portefeuilles' },
   { vue: 'postes', libelle: 'Postes à pourvoir' },
 ]
-const ongletDe = (v: Vue): Onglet => (v === 'organisation' || v === 'revue' || v === 'rituels' ? v : 'personnes')
+const ongletDe = (v: Vue): Onglet => (v === 'organisation' || v === 'revue' ? v : 'personnes')
 
 export function Equipe() {
   const [params, setParams] = useSearchParams()
   const demandee = params.get('vue')
   const vue = (demandee === 'magasins' ? 'franchises' : demandee as Vue | null) ?? 'organisation'
   // Charge et répartition ont rejoint Paramètres > Charge des Coachs
+  if (vue === 'rituels') return <Navigate to="/equipe" replace />
   if (vue === 'charge') return <Navigate to="/parametres/charge" replace />
   if (vue === 'plan') return <Navigate to={`/parametres/charge?vue=repartition${params.get('date') ? `&date=${params.get('date')}` : ''}`} replace />
   const changerVue = (v: Vue) => setParams({ vue: v }, { replace: true })
@@ -312,7 +311,6 @@ export function Equipe() {
             </Tabs>
           )}
           {vue === 'collaborateurs' || vue === 'franchises' ? <VuePersonnes key={vue} perimetre={vue} reseau={reseau} />
-            : vue === 'rituels' ? <VueRituels reseau={reseau} />
             : vue === 'revue' ? <RevueRR reseau={reseau} nom="réseau" magasins={reseau.magasins} parRR />
             : vue === 'portefeuilles' ? <VuePortefeuilles reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
         </>

@@ -116,21 +116,14 @@ test('34A et 38B : le RR retrouve les entretiens du mois à faire dans À traite
   await expect(aTraiter.getByText('Entretien avec Inès EXEMPLE').first()).toBeVisible()
 })
 
-test('33A : le Directeur règle les rituels et lit leur taux de tenue', async ({ page, isMobile }) => {
-  const ecritures: Ecriture[] = []
-  await seConnecter(page, { ecritures, entretiens: [{ id: 1, coach: 'Noé MODELE', mois: '2026-10', notes: '', engagements: [], fait_le: '2026-10-20', par: 'Sam SUD' }] })
-  await page.goto('./#/parametres/reglages?rubrique=rituels')
-  await expect(page.getByRole('heading', { name: 'Rituels d’animation' })).toBeVisible()
-  await page.getByRole('switch', { name: /^Suivre : Réunion régionale/ }).or(page.getByRole('checkbox', { name: /^Suivre : Réunion régionale/ })).click()
-  await page.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect.poll(() => ecritures.some((e) => e.table === 'app_config' && JSON.stringify(e.corps).includes('rituels'))).toBe(true)
+// Rituels retirés (Joseph, 15/11/2026) : ni réglage, ni onglet de l'Équipe ; l'ancienne adresse mène à l'Équipe
+test('33A : plus de rituels dans les Paramètres ni dans l’Équipe', async ({ page }) => {
+  await seConnecter(page)
   await page.goto('./#/equipe?vue=rituels')
-  const taux = page.getByRole('list', { name: 'Taux de tenue des rituels' })
-  await expect(taux.getByRole('listitem')).toHaveCount(3)
-  await expect(taux).toContainText('Entretien mensuel du Responsable Régional avec chaque Coach')
-  await expect(page.getByRole('heading', { name: 'Entretien mensuel du Responsable Régional avec chaque Coach' })).toBeVisible()
-  await expect(page.getByText('1 entretien fait sur 2 Coachs')).toBeVisible()
-  await lisible(page, isMobile, false)
+  await expect(page.getByRole('tab', { name: 'Organisation' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tab', { name: 'Rituels' })).toHaveCount(0)
+  await page.goto('./#/parametres/reglages')
+  await expect(page.getByText('Rituels d’animation')).toHaveCount(0)
 })
 
 test('37A : le franchisé envoie une demande, le siège la traite', async ({ page, isMobile }) => {

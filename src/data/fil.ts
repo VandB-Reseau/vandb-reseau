@@ -104,12 +104,12 @@ export function filDu(reseau: Reseau, noms: Set<string>, mg: Messagerie | null, 
       if (le < depuis || le > reseau.jour || t.fin < reseau.jour) continue
       const du = new Date(`${t.debut}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
       res.push({ cle: `tf|${t.id}`, genre: 'animation', instant: le, auteur: '', action: 'temps fort à préparer', magasin: '', cible: 'Tout le réseau',
-        titre: `${t.nom} : à partir du ${du}`, texte: t.detail || undefined, lien: '/campagnes?vue=campagnes' })
+        titre: `${t.nom} : à partir du ${du}`, texte: t.detail || undefined, lien: '/infos?vue=campagnes' })
     }
     for (const c of reseau.campagnes.liste) {
       if (!c.debut || c.debut < depuis || c.debut > reseau.jour || !magasinsConcernes(reseau, c).some((m) => noms.has(m.nom))) continue
       res.push({ cle: `ca|${c.id}`, genre: 'animation', instant: c.debut, auteur: '', action: 'campagne lancée', magasin: '', cible: 'Campagne',
-        titre: c.nom, texte: c.points.map((x) => x.libelle).join(' · ') || undefined, lien: `/campagnes?vue=campagnes&campagne=${encodeURIComponent(c.id)}` })
+        titre: c.nom, texte: c.points.map((x) => x.libelle).join(' · ') || undefined, lien: `/infos?vue=campagnes&campagne=${encodeURIComponent(c.id)}` })
     }
   }
   return res.sort((a, b) => instantDe(b.instant).localeCompare(instantDe(a.instant)))
