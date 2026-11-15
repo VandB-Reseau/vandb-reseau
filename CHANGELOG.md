@@ -13,6 +13,7 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   le fil d'actualité, avec ses filtres (équipe et franchisé) ; l'onglet « Fil » d'Actualités est retiré. Actualités et
   Campagnes ne font plus qu'une page « Animation » (adresse /infos) : Communications, Campagnes (campagnes, déploiements et
   challenges choisis par puces), Bonnes pratiques et, pour le Directeur et les RR, Sondages ; « Envoyer au réseau » en tête.
+  Rubrique du menu renommée « Siège » (Animation, Demandes).
   L'onglet « Sondages et rendez-vous » disparaît : lectures, réponses et exécution se lisent sur chaque contenu, présences
   aux formations et réunions dans l'Agenda. On répond aux sondages depuis l'Accueil. Franchisé : l'entrée « Actualités »
   devient « Bonnes pratiques ». Anciennes adresses (/campagnes, /animation, ?vue=fil, /echanges/reseau) redirigées.
