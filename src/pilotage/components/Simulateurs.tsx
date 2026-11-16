@@ -72,7 +72,7 @@ import {
 } from '../moteur/simulateurs'
 import {
   auditPression, cartePression, margeFut, coutComposition, coutContrats, margePourPrix, nouveauBec, palierExterieur, prixLivraisonGrille, prixPourMarge,
-  simulerExterieur, simulerOuverture, simulerParc, simulerRemisesB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise,
+  gainsSelonFuts, simulerExterieur, simulerOuverture, simulerParc, simulerProspection, simulerRemisesB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise,
 } from '../moteur/boiteOutils'
 import { baseCaisse, budgetSurCaisse, meilleursLeviers, type CleLevier } from '../moteur/leviers'
 import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TempsFort, Univers } from '../moteur/types'
@@ -320,7 +320,12 @@ type Etats = {
   }
   calculette: { nom: string; composants: Composant[]; tva: 'normale' | 'intermediaire' | 'reduite'; mode: 'prix' | 'marge' | 'mix'; marge: number; prixTTC: number; famille: string; mix: LigneMix[] }
   ouverture: { jour: 'dimanche' | 'ferie'; caBar: number; caCave: number; margeBar: number | null; margeCave: number | null; report: number; heures: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number; frais: number }
-  remises_b2b: { client: string; mode: 'famille' | 'produit'; plancher: number; paliers: PalierRemise[]; familles: LigneB2B[]; produits: LigneB2B[] }
+  remises_b2b: {
+    client: string; mode: 'famille' | 'produit'; plancher: number; paliers: PalierRemise[]; familles: LigneB2B[]; produits: LigneB2B[]
+    // 238 · démarcher d'autres entreprises (marge null : celle de la commande simulée)
+    prospection: boolean; heuresSemaine: number; semaines: number; entreprises: number; ticket: number; margeProspection: number | null
+    coutHoraire: number; modeHeure: ModeHeure; partSmic: number
+  }
   investissement: { modele: 'libre' | 'corner' | 'exterieur'; objectifExterieur: number; camion: boolean; libelle: string; cout: number; duree: number; mois: number; ca: number; metres: number; marge: number; demarque: number; charges: number; financement: 'tresorerie' | 'pret'; tauxPret: number; dureePret: number; univers: Univers }
 }
 
@@ -449,6 +454,8 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
         { libelle: 'Champagne brut 75 cl', quantite: 10, prixTTC: 32, achatHT: 17.5 }, { libelle: 'Gin artisanal 70 cl', quantite: 10, prixTTC: 39.9, achatHT: 23 },
         { libelle: 'Bourriche 6 bières', quantite: 10, prixTTC: 24.9, achatHT: 13.5 },
       ],
+      // 238 : l'exemple de la fiche « Rentabilité Extérieur » (3 h par semaine pendant 6 mois, 15 entreprises à 330 €)
+      prospection: true, heuresSemaine: 3, semaines: 26, entreprises: 15, ticket: 330, margeProspection: null, coutHoraire: s.coutHoraire, ...HEURE,
     },
     investissement: { modele: 'libre', objectifExterieur: 100_000, camion: false, libelle: 'Tireuse', cout: 15_000, duree: 5, mois: moisSuivant, ca: 20_000, metres: 6, marge: 0.35, demarque: 0, charges: 1_000, financement: 'tresorerie', tauxPret: 0.04, dureePret: 5, univers: 'bar' },
   }
@@ -1219,6 +1226,21 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         {r.prixPlancherLivraison !== null && r.coutLivraison > 0 && <Indicateur libelle="Prix plancher d’une livraison" valeur={centimes(r.prixPlancherLivraison)} detail={`HT, pour couvrir ${centimes(r.coutLivraison)} de route et de temps`} />}
         {r.don.valeur > 0 && <Indicateur libelle="Coût réel du don" valeur={montant(r.don.cout)} detail={r.don.reduction ? `${montant(r.don.valeur)} moins ${taux(TAUX_MECENAT)} de réduction d’impôt` : s.donMecenat ? 'sans reçu Cerfa, pas de réduction' : 'sans réduction d’impôt'} />}
       </Resultats>
+      {/* 239 : le gain selon le nombre de fûts, comme dans la fiche « Rentabilité Extérieur » */}
+      <Box sx={{ overflowX: 'auto' }}>
+        <Table size="small" aria-label="Gain selon le nombre de fûts" sx={{ minWidth: 420, maxWidth: 560, '& td, & th': { fontVariantNumeric: 'tabular-nums' } }}>
+          <TableHead><TableRow><TableCell>Fûts vendus</TableCell><TableCell align="right">CA HT</TableCell><TableCell align="right">Gain de l’année</TableCell></TableRow></TableHead>
+          <TableBody>
+            {gainsSelonFuts(r, e.futs).map((l) => (
+              <TableRow key={l.futs} selected={l.prevu}>
+                <TableCell sx={{ fontWeight: l.prevu || l.seuil ? 700 : undefined }}>{entier(l.futs)}{l.prevu ? ', prévus' : ''}{l.seuil ? ', équilibre' : ''}</TableCell>
+                <TableCell align="right">{montant(l.ca)}</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600, color: l.gain < 0 ? 'error.main' : 'success.dark' }}>{l.gain < 0 ? '− ' : '+ '}{montant(Math.abs(l.gain))}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Box>
       </Stack>
     )
   }
@@ -1235,7 +1257,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const net = fut.netParFut
     const marge = margeFut(prixVente, prixAchat)
     const occupation = e.saisie === 'occupation' ? { saison: e.occSaison, hors: e.occHors } : null
-    const r = simulerParc({ tireuses: e.tireuses, semainesSaison: e.semaines, sortiesSaison: e.sortiesSaison, sortiesHorsSaison: e.sortiesHors, refus: e.refus, futsParSortie: e.futsParSortie, netParFut: net, prixNeuve: e.prixNeuve, dureeVie: e.duree, entretien: e.entretien, vieilles: e.vieilles, occupation, saturation: s.tireuses.saturation })
+    const r = simulerParc({ tireuses: e.tireuses, semainesSaison: e.semaines, sortiesSaison: e.sortiesSaison, sortiesHorsSaison: e.sortiesHors, refus: e.refus, futsParSortie: e.futsParSortie, netParFut: net, prixNeuve: e.prixNeuve, dureeVie: e.duree, entretien: e.entretien, vieilles: e.vieilles, occupation, saturation: s.tireuses.saturation, prixVenteHT: prixVente, margeParFut: marge.valeur })
     const m = (k: keyof Etats['tireuses']) => (v: number) => maj('tireuses', { [k]: v })
     const vieille = (i: number, v: Partial<Etats['tireuses']['vieilles'][number]>) => maj('tireuses', { vieilles: e.vieilles.map((y, j) => (j === i ? { ...y, ...v } : y)) })
     saisies = (
@@ -1287,9 +1309,11 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     )
     nomParDefaut = `Parc de ${e.tireuses} tireuse${e.tireuses > 1 ? 's' : ''}`
     const payer = r.futsPourPayer !== null && r.weekendsPourPayer !== null ? `Une tireuse de plus se paie avec ${entier(r.futsPourPayer)} fûts, soit ${entier(r.weekendsPourPayer)} week-ends loués par an. ` : ''
-    phrase = `${payer}Chaque tireuse est louée environ ${entier(r.weekendsParTireuse)} week-ends par an. ${e.refus ? `${e.refus} week-ends refusés : ${r.racheter ? 'racheter une tireuse.' : 'pas assez pour racheter.'}` : r.sature ? 'Parc plein en saison : note les week-ends refusés pour décider.' : 'Aucun week-end refusé : pas besoin de racheter.'}${r.aRemplacer.length ? ` Remplacer ${r.aRemplacer.join(', ')} : ses réparations dépassent le coût d’une neuve.` : ''}`
+    const parc = r.futsParc > 0 ? `Le parc vend environ ${entier(r.futsParc)} fûts par an : ${montant(r.caParc)} de CA HT, ${montant(r.margeParc)} de marge. ` : ''
+    phrase = `${parc}${payer}Chaque tireuse est louée environ ${entier(r.weekendsParTireuse)} week-ends par an. ${e.refus ? `${e.refus} week-ends refusés : ${r.racheter ? 'racheter une tireuse.' : 'pas assez pour racheter.'}` : r.sature ? 'Parc plein en saison : note les week-ends refusés pour décider.' : 'Aucun week-end refusé : pas besoin de racheter.'}${r.aRemplacer.length ? ` Remplacer ${r.aRemplacer.join(', ')} : ses réparations dépassent le coût d’une neuve.` : ''}`
     resultats = (
       <Resultats>
+        <Indicateur libelle="Ce que rapporte le parc" valeur={`${montant(r.caParc)} HT`} detail={`par an, ${entier(r.futsParc)} fûts, marge ${montant(r.margeParc)}, net ${montant(r.netParc)} après redevance, CO2 et gobelets`} />
         <Indicateur libelle="Pour payer une tireuse de plus" valeur={r.futsPourPayer === null ? '–' : `${entier(r.futsPourPayer)} fûts par an`} detail={r.weekendsPourPayer === null ? 'le fût ne rapporte rien' : `soit ${entier(r.weekendsPourPayer)} week-ends loués, ${montant(r.coutAnnuelNeuve)} par an d’amortissement et d’entretien`} />
         <Indicateur libelle="Week-ends loués par tireuse" valeur={`${entier(r.weekendsParTireuse)} par an`} detail={`${r.occupationSaison === null ? '–' : taux(r.occupationSaison)} en saison, ${r.occupationHorsSaison === null ? '–' : taux(r.occupationHorsSaison)} le reste de l’année`}
           ecart={r.sature ? { texte: 'Plein en saison', hausse: true, favorable: true } : undefined} />
@@ -1546,6 +1570,8 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const lignes = parFamille ? e.familles : e.produits
     const cleLignes = parFamille ? 'familles' : 'produits'
     const r = simulerRemisesB2B({ paliers: e.paliers, lignes, tva: s.tva.normale, plancher: e.plancher }, p)
+    const margeProsp = e.margeProspection ?? (r.taux !== null ? Math.round(r.taux * 1000) / 1000 : 0.35)
+    const pr = simulerProspection({ heuresSemaine: e.heuresSemaine, semaines: e.semaines, coutHoraire: heure(e), entreprises: e.entreprises, ticket: e.ticket, marge: margeProsp }, p)
     const nomPalier = (i: number) => `Palier ${i}`
     const majLigne = (i: number, v: Partial<LigneB2B>) => maj('remises_b2b', { [cleLignes]: lignes.map((y, j) => (j === i ? { ...y, ...v } : y)) })
     const majPalier = (i: number, v: Partial<PalierRemise>) => maj('remises_b2b', { paliers: e.paliers.map((y, j) => (j === i ? { ...y, ...v } : y)) })
@@ -1592,13 +1618,27 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Box>{lignes.length < 40 && <Button startIcon={<AddOutlined />} onClick={() => maj('remises_b2b', { [cleLignes]: [...lignes, { libelle: '', quantite: 0, prixTTC: 0, achatHT: 0 }] })} sx={{ minHeight: 48 }}>{parFamille ? 'Ajouter une famille' : 'Ajouter un produit'}</Button>}</Box>
           {parFamille && <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>Par famille, les prix moyens donnent une première idée ; produit par produit, la commande réelle.</Typography>}
         </Bloc>
+        <Bloc titre="4. Démarcher d’autres entreprises" total={e.prospection ? { libelle: 'Temps passé', valeur: `− ${montant(pr.coutTemps)}` } : undefined}>
+          <Saisies>
+            <Choix libelle="Prospection" valeur={e.prospection ? 'oui' : 'non'} onChange={(v) => maj('remises_b2b', { prospection: v === 'oui' })} options={[['oui', 'À chiffrer'], ['non', 'Sans']]} />
+            {e.prospection && <>
+              <Montant libelle="Heures par semaine" valeur={e.heuresSemaine} onChange={(v) => maj('remises_b2b', { heuresSemaine: Math.max(0, v) })} unite="h" />
+              <Montant libelle="Semaines de test" valeur={e.semaines} onChange={(v) => maj('remises_b2b', { semaines: Math.max(0, Math.round(v)) })} unite="" />
+              <Montant libelle="Entreprises visées" valeur={e.entreprises} onChange={(v) => maj('remises_b2b', { entreprises: Math.max(0, Math.round(v)) })} unite="" />
+              <Montant libelle="Ticket moyen par entreprise HT" valeur={e.ticket} onChange={(v) => maj('remises_b2b', { ticket: Math.max(0, v) })} />
+              <Taux libelle="Marge sur ces ventes" valeur={margeProsp} onChange={(v) => maj('remises_b2b', { margeProspection: v })} source={e.margeProspection === null && r.taux !== null && 'commande'} />
+            </>}
+          </Saisies>
+          {e.prospection && <Saisies><CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('remises_b2b', v)} /></Saisies>}
+        </Bloc>
       </Stack>
     )
     nomParDefaut = `${e.client || 'Commande'}, ${unite(r.unites)}`
+    const prospectionTexte = e.prospection && pr.ca > 0 ? ` Démarcher ${entier(e.entreprises)} entreprises : ${pr.gain >= 0 ? `gain de ${montant(pr.gain)}` : `perte de ${montant(-pr.gain)}`}${pr.seuil !== null ? `, le temps est payé dès ${entier(pr.seuil)} entreprise${pr.seuil > 1 ? 's' : ''}` : ''}.` : ''
     const prochain = r.suivant ? ` Encore ${unite(r.suivant.manque)} pour passer au ${nomPalier(r.suivant.index).toLowerCase()} (${taux(r.suivant.remise)}).` : r.unites > 0 ? ' Dernier palier atteint.' : ''
     const plancherTexte = r.taux === null ? '' : r.marge < 0 ? ' Vente à perte sur l’ensemble.' : r.taux < e.plancher ? ` Sous le plancher de ${taux(e.plancher)}.` : r.alertes ? ` ${r.alertes} ligne${r.alertes > 1 ? 's' : ''} sous le plancher.` : ''
     phrase = r.unites > 0 && r.caNet > 0
-      ? `${e.client || 'Commande'} : ${unite(r.unites)}, ${nomPalier(r.palier).toLowerCase()} à ${taux(r.remise)} de remise, ${montant(r.caNet)} HT, marge ${montant(r.marge)} soit ${r.taux === null ? '–' : taux(r.taux)}.${plancherTexte}${prochain}`
+      ? `${e.client || 'Commande'} : ${unite(r.unites)}, ${nomPalier(r.palier).toLowerCase()} à ${taux(r.remise)} de remise, ${montant(r.caNet)} HT, marge ${montant(r.marge)} soit ${r.taux === null ? '–' : taux(r.taux)}.${plancherTexte}${prochain}${prospectionTexte}`
       : ''
     const actuel = r.paliers[r.palier]
     resultats = phrase ? (
@@ -1657,6 +1697,18 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             </TableBody>
           </Table>
         </Box>
+        {e.prospection && pr.ca > 0 && (
+          <Compte titre="Compte de la prospection" lignes={[
+            { libelle: 'Marge des ventes attendues', valeur: pr.marge, detail: `${entier(e.entreprises)} entreprises, ${montant(pr.ca)} HT` },
+            { libelle: 'Redevance et publicité', valeur: -pr.redevance },
+            { libelle: 'Temps passé à démarcher', valeur: -pr.coutTemps, detail: `${entier(pr.heures)} h` },
+          ]} total={{ libelle: pr.gain >= 0 ? 'Gain de la prospection' : 'Perte de la prospection', valeur: pr.gain }} />
+        )}
+        {e.prospection && pr.ca > 0 && (
+          <Resultats>
+            <Indicateur libelle="Entreprises pour payer le temps" valeur={pr.seuil === null ? 'Jamais' : entier(pr.seuil)} detail={pr.seuil === null ? 'la marge ne couvre pas la redevance' : `sur ${entier(e.entreprises)} visées, à ${montant(e.ticket)} HT chacune`} />
+          </Resultats>
+        )}
       </Stack>
     ) : null
   }
