@@ -67,7 +67,7 @@ import { chargerSimulations, garderSimulation, retirerSimulation, SimulationPasE
 import { categorieLibelle, coutHoraireEquipe, coutHoraireSmic, type Categorie } from '../moteur/equipe'
 import {
   analyserRemises, caCorner, LIGNES_EVENEMENT, LIGNES_REMISES, margeMix, parametresSimulateurs, resteAFaire, simulerAchat, simulerCoupDur, simulerEmbauche,
-  simulerInvestissement, simulerPrimes, simulerPrix, simulerSoiree, simulerSoireeAnimee, simulerVenteAdditionnelle, tempsFortDeSoiree,
+  simulerInvestissement, simulerLot, simulerPrimes, simulerPrix, simulerSoiree, simulerSoireeAnimee, simulerVenteAdditionnelle, tempsFortDeSoiree,
   type CleRemise, type CoupDur, type LigneEvenement, type LigneMix, type Mouvement, type PalierPrime,
 } from '../moteur/simulateurs'
 import {
@@ -75,7 +75,7 @@ import {
   gainsSelonFuts, simulerExterieur, simulerHeuresSup, simulerOuverture, simulerParc, simulerProspection, simulerRemisesB2B, unitaireB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise,
 } from '../moteur/boiteOutils'
 import { baseCaisse, budgetSurCaisse, meilleursLeviers, type CleLevier } from '../moteur/leviers'
-import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TempsFort, Univers } from '../moteur/types'
+import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TypeInvestissement, TempsFort, Univers } from '../moteur/types'
 import { dateHeure, ecartMontant, ecartPts, montant, MOIS_LONGS, panier as centimes, tauxCourt as taux } from '../lib/format'
 import type { SujetAide } from '../lib/aide'
 import { LISTE_SIMULATEURS } from '../lib/listeSimulateurs'
@@ -286,6 +286,23 @@ function Compte({ titre, lignes, total }: { titre: string; lignes: { libelle: st
 const ecart = (v: number, favorable = v >= 0) => ({ texte: ecartMontant(v), hausse: v >= 0, favorable })
 
 // État de chaque simulateur : ses saisies, gardées telles quelles avec une simulation (« Rouvrir » les reprend)
+// Investir (Joseph, 16/11/2026) : travaux et équipements du magasin ; la tireuse se simule dans Contrat extérieur et
+// Parc de tireuses. Projets préréglés = ordres de grandeur fictifs (aucun chiffre de magasin), tous modifiables.
+type ModeleInvestir = 'libre' | 'terrasse' | 'travaux' | 'food' | 'corner' | 'exterieur'
+type ReglagesInvestir = { libelle: string; cout: number; duree: number; ca: number; marge: number; demarque: number; charges: number; univers: Univers; type: TypeInvestissement; fermeture: number }
+const PROJETS_INVESTIR: Partial<Record<ModeleInvestir, ReglagesInvestir>> = {
+  // 25 000 € de mobilier, store et aménagement ; 20 000 € de CA au bar à 70 % ; extras d'été et droit de terrasse 8 000 €
+  terrasse: { libelle: 'Travaux terrasse', cout: 25_000, duree: 7, ca: 20_000, marge: 0.7, demarque: 0, charges: 8_000, univers: 'bar', type: 'mobilier', fermeture: 0 },
+  // Passage au concept 2.0 : 80 000 € sur 10 ans, 10 jours de fermeture, 40 000 € de CA cave en plus à 33 %, 1 000 € d'entretien
+  travaux: { libelle: 'Passage au concept 2.0', cout: 80_000, duree: 10, ca: 40_000, marge: 0.33, demarque: 0, charges: 1_000, univers: 'cave', type: 'autre', fermeture: 10 },
+  // Four : 6 000 €, 12 000 € de CA food au bar à 65 %, 5 % de perte, énergie et temps de préparation 4 000 €
+  food: { libelle: 'Four, offre food', cout: 6_000, duree: 5, ca: 12_000, marge: 0.65, demarque: 0.05, charges: 4_000, univers: 'bar', type: 'equipement', fermeture: 0 },
+  corner: { libelle: 'Corner alimentaire', cout: 10_000, duree: 5, ca: 25_000, marge: 0.3, demarque: 0.03, charges: 2_000, univers: 'cave', type: 'equipement', fermeture: 0 },
+  // Marché extérieur (sans préconisation du siège) : tireuses, remorque, stock déporté 40 000 € ; 100 000 € de CA à 40 % ;
+  // personnel (20 h par semaine) et local du stock déporté 27 000 € par an
+  exterieur: { libelle: 'Marché extérieur', cout: 40_000, duree: 5, ca: 100_000, marge: 0.4, demarque: 0, charges: 27_000, univers: 'exterieur', type: 'equipement', fermeture: 0 },
+}
+
 type Etats = {
   levier: { ticketsJour: number; panier: number; points: number; heures: number; jours: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number; base: BaseChiffres }
   embauche: {
@@ -293,7 +310,7 @@ type Etats = {
     heuresMois: number; heuresSup: number; majorationSup: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number // 242 · heures sup
     salaries: number; partReversee: number; paliers: PalierPrime[] // 164 · primes
   }
-  prix: { type: 'remise' | 'hausse' | 'remises'; taux: number; marge: number; cartons: number; mois: number; ca: number | null; montants: Record<CleRemise, number> }
+  prix: { type: 'remise' | 'hausse' | 'remises'; taux: number; marge: number; cartons: number; mois: number; ca: number | null; montants: Record<CleRemise, number>; payes: number; offerts: number; avant: number; prixBouteille: number; monte: number; deja: number }
   tresorerie: { baisse: boolean; tauxBaisse: number; de: number; a: number; depense: boolean; montantDepense: number; moisDepense: number; retard: boolean; montantRetard: number; moisRetard: number; duree: number }
   vente_additionnelle: { univers: 'cave' | 'bar'; unSur: number; prix: number; marge: number | null; base: BaseChiffres }
   reste_a_faire: { mois: number; jour: number; realise: number }
@@ -328,7 +345,7 @@ type Etats = {
     prospection: boolean; heuresSemaine: number; semaines: number; entreprises: number; ticket: number; margeProspection: number | null
     coutHoraire: number; modeHeure: ModeHeure; partSmic: number
   }
-  investissement: { modele: 'libre' | 'corner' | 'exterieur'; objectifExterieur: number; camion: boolean; libelle: string; cout: number; duree: number; mois: number; ca: number; metres: number; marge: number; demarque: number; charges: number; financement: 'tresorerie' | 'pret'; tauxPret: number; dureePret: number; univers: Univers }
+  investissement: { modele: ModeleInvestir; objectifExterieur: number; camion: boolean; libelle: string; cout: number; duree: number; mois: number; ca: number; metres: number; marge: number; demarque: number; charges: number; financement: 'tresorerie' | 'pret'; tauxPret: number; dureePret: number; univers: Univers; fermeture: number; caJour: number | null; margeMagasin: number | null }
 }
 
 // Coût d'une heure chargée des simulateurs (Joseph, 14/11/2026) : moyenne de l'équipe du magasin par défaut (repère du
@@ -381,7 +398,7 @@ function exempleRealise(b: Budget | null, aujourdhui: Date): number {
 // « Effacer » (Joseph, 15/11/2026) : les saisies passent à zéro et les textes à blanc ; restent les choix (mois, modes),
 // les réglages du siège et du magasin, et ce qui servirait de diviseur. Une liste garde une ligne vide.
 const GARDES_AU_VIDE = new Set(['mois', 'moisDepense', 'moisRetard', 'de', 'a', 'jour', 'jours', 'index', 'salaries', 'coutHoraire', 'partSmic', 'majoration',
-  'duree', 'dureePret', 'tauxPret', 'co2', 'prixKm', 'entretien', 'semaines', 'occSaison', 'occHors', 'litres', 'quantite', 'unSur', 'prix.marge', 'achat.taux', 'calculette.marge',
+  'duree', 'dureePret', 'tauxPret', 'co2', 'prixKm', 'entretien', 'semaines', 'occSaison', 'occHors', 'litres', 'quantite', 'unSur', 'prix.marge', 'prix.payes', 'prix.offerts', 'prix.avant', 'achat.taux', 'calculette.marge',
   'remises_b2b.paliers', 'remises_b2b.plancher', 'majorationSup'])
 const TEXTES_AU_VIDE = new Set(['nom', 'poste', 'libelle', 'biere', 'client'])
 function vider(v: unknown, cle: string, sim: string): unknown {
@@ -412,7 +429,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       paliers: [{ progression: 0.05, prime: 150, primeGerant: 0 }, { progression: 0.1, prime: 200, primeGerant: 0 }, { progression: 0.15, prime: 250, primeGerant: 0 }],
       heuresMois: 600, heuresSup: 30, majorationSup: 0.25, coutHoraire: s.coutHoraire, ...HEURE,
     },
-    prix: { type: 'remise', taux: 0.1, marge: b && b.ca > 0 ? Math.round(b.tauxMarge * 100) / 100 : 0.35, cartons: 0, mois: 12, ca: null, montants: { offerts: 0, persos: 0, prixSpeciaux: 0, remises: 0, fidelite: 0 } },
+    prix: { type: 'remise', taux: 0.1, marge: b && b.ca > 0 ? Math.round(b.tauxMarge * 100) / 100 : 0.35, cartons: 0, mois: 12, ca: null, montants: { offerts: 0, persos: 0, prixSpeciaux: 0, remises: 0, fidelite: 0 }, payes: 5, offerts: 1, avant: 4, prixBouteille: 10, monte: 10, deja: 5 },
     tresorerie: { baisse: true, tauxBaisse: 0.15, de: 1, a: 3, depense: false, montantDepense: 10_000, moisDepense: 6, retard: false, montantRetard: 5_000, moisRetard: 7, duree: 2 },
     vente_additionnelle: { univers: b?.flux.cave?.objectif ? 'cave' : 'bar', unSur: 10, prix: 12, marge: null, base: 'caisse' },
     reste_a_faire: { mois: aujourdhui.getMonth() + 1, jour: aujourdhui.getDate(), realise: exempleRealise(b, aujourdhui) },
@@ -462,7 +479,8 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       // 238 : l'exemple de la fiche « Rentabilité Extérieur » (3 h par semaine pendant 6 mois, 15 entreprises à 330 €)
       prospection: true, heuresSemaine: 3, semaines: 26, entreprises: 15, ticket: 330, margeProspection: null, coutHoraire: s.coutHoraire, ...HEURE,
     },
-    investissement: { modele: 'libre', objectifExterieur: 100_000, camion: false, libelle: 'Tireuse', cout: 15_000, duree: 5, mois: moisSuivant, ca: 20_000, metres: 6, marge: 0.35, demarque: 0, charges: 1_000, financement: 'tresorerie', tauxPret: 0.04, dureePret: 5, univers: 'bar' },
+    // Exemple : travaux terrasse (Joseph, 16/11/2026), 5 400 € d'EBE en plus par an, remboursé en 4,6 ans
+    investissement: (({ type: _t, ...r }) => ({ modele: 'terrasse' as const, objectifExterieur: 100_000, camion: false, ...r, mois: moisSuivant, metres: 6, financement: 'tresorerie' as const, tauxPret: 0.04, dureePret: 5, caJour: null, margeMagasin: null }))(PROJETS_INVESTIR.terrasse!),
   }
 }
 
@@ -800,7 +818,15 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     } else {
     const r = simulerPrix(e.type, e.taux, e.marge)
     // 165 · offres en produits gratuits : « 5 + 1 » = 1 gratuit sur 6, « 4 + 2 » = 2 sur 6
-    const offre = (gratuits: number, payes: number) => maj('prix', { type: 'remise', taux: Math.round(gratuits / (gratuits + payes) * 10000) / 10000 })
+    const offre = (gratuits: number, payes: number) => maj('prix', { type: 'remise', taux: Math.round(gratuits / (gratuits + payes) * 10000) / 10000, payes, offerts: gratuits, avant: payes - 1 })
+    // Offre en lot en parallèle (Joseph, 16/11/2026) : la remise sur tout demande du volume ; le lot fait monter des clients
+    const lot = e.type === 'remise' ? simulerLot({ payes: e.payes, offerts: e.offerts, avant: e.avant, prixHT: e.prixBouteille, tauxMarge: e.marge, monte: e.monte, deja: e.deja }) : null
+    const nomLot = `${entier(e.payes)} + ${entier(e.offerts)}`
+    const montee = `de ${entier(e.avant)} à ${nomLot} bouteilles`
+    const changerLot = (x: { payes?: number; offerts?: number }) => {
+      const n = Math.max(0, Math.round(x.payes ?? e.payes)), g = Math.max(0, Math.round(x.offerts ?? e.offerts))
+      maj('prix', { payes: n, offerts: g, avant: Math.max(0, n - 1), ...(n + g > 0 ? { taux: Math.round(g / (n + g) * 10000) / 10000 } : {}) })
+    }
     saisies = (
       <Stack spacing={2}>
         <Saisies>
@@ -823,18 +849,67 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             </Box>
           )}
         </Bloc>
+        {e.type === 'remise' && (
+          <Bloc titre="3. Si l’offre se fait en lot" total={lot ? { libelle: 'Marge pour 100 clients', valeur: ecartMontant(lot.gain), negatif: lot.gain < 0 } : undefined}>
+            <Saisies>
+              <Montant libelle="Bouteilles payées" valeur={e.payes} onChange={(v) => changerLot({ payes: v })} unite="" />
+              <Montant libelle="Bouteilles offertes" valeur={e.offerts} onChange={(v) => changerLot({ offerts: v })} unite="" />
+              <Montant libelle="Prix de la bouteille HT" valeur={e.prixBouteille} onChange={(v) => maj('prix', { prixBouteille: Math.max(0, v) })} />
+              <Montant libelle="Bouteilles prises avant l’offre" valeur={e.avant} onChange={(v) => maj('prix', { avant: Math.min(e.payes, Math.max(0, Math.round(v))) })} unite="" />
+              <Montant libelle={`Clients sur 100 qui passent ${montee}`} valeur={e.monte} onChange={(v) => maj('prix', { monte: Math.min(100, Math.max(0, v)) })} unite="" />
+              <Montant libelle={`Clients sur 100 qui prenaient déjà ${entier(e.payes)} bouteilles`} valeur={e.deja} onChange={(v) => maj('prix', { deja: Math.min(100, Math.max(0, v)) })} unite="" />
+            </Saisies>
+          </Bloc>
+        )}
       </Stack>
     )
     nomParDefaut = e.type === 'remise' ? `Remise de ${taux(e.taux)}` : `Hausse de ${taux(e.taux)}`
     if (e.type === 'remise') {
       const cartons = r.ventesEnPlus !== null && e.cartons > 0 ? Math.ceil(e.cartons * (1 + r.ventesEnPlus) - 1e-9) : null
       phrase = r.ventesEnPlus === null ? `Une remise de ${taux(e.taux)} sur un produit margé à ${taux(e.marge)} fait vendre à perte.` : `Avec ${taux(e.taux)} de remise, il faut vendre ${taux(r.ventesEnPlus)} de plus pour garder la même marge${cartons !== null ? `, soit ${entier(cartons)} cartons au lieu de ${entier(e.cartons)}` : ''}.`
+      if (lot) phrase += ` En lot, si ${entier(lot.monte)} clients sur 100 passent ${montee}, la marge ${lot.gain >= 0 ? 'gagne' : 'perd'} ${montant(Math.abs(lot.gain))} pour 100 clients${lot.seuil === null ? ` : chaque client qui monte fait perdre de la marge, il faudrait plus de ${taux(lot.margeMini)} de marge` : lot.seuil > 0 ? `, elle se rattrape dès ${entier(Math.ceil(lot.seuil - 1e-9))} clients sur 100` : ''}.`
+      const colonne = (titre: string, contenu: ReactNode) => (
+        <Box component="section" aria-label={titre} sx={{ border: 1, borderColor: 'divider', borderRadius: '12px', p: { xs: 1.5, md: 2 }, display: 'grid', gap: 1.5, alignContent: 'start', minWidth: 0 }}>
+          <Typography component="h3" sx={{ fontWeight: 700 }}>{titre}</Typography>
+          {contenu}
+        </Box>
+      )
       resultats = (
-        <Resultats>
-          <Indicateur libelle="Ventes en plus nécessaires" valeur={r.ventesEnPlus === null ? 'Vente à perte' : `+ ${taux(r.ventesEnPlus)}`} detail={r.ventesEnPlus === null ? 'La remise dépasse la marge' : `Pour 100 ventes avant : ${entier(100 * (1 + r.ventesEnPlus))} après`} />
-          {cartons !== null && <Indicateur libelle="Cartons à vendre" valeur={entier(cartons)} detail={`au lieu de ${entier(e.cartons)}, pour la même marge`} />}
-          <Indicateur libelle="Taux de marge pendant la promo" valeur={taux(r.nouveauTauxMarge)} detail={`${taux(e.marge)} avant`} />
-        </Resultats>
+        <Stack spacing={2}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: lot ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)' }, gap: 2 }}>
+            {colonne(`Remise de ${taux(e.taux)} sur toutes les ventes`, (
+              <Resultats>
+                <Indicateur libelle="Ventes en plus nécessaires" valeur={r.ventesEnPlus === null ? 'Vente à perte' : `+ ${taux(r.ventesEnPlus)}`} detail={r.ventesEnPlus === null ? 'La remise dépasse la marge' : `Pour 100 ventes avant : ${entier(100 * (1 + r.ventesEnPlus))} après`} />
+                {cartons !== null && <Indicateur libelle="Cartons à vendre" valeur={entier(cartons)} detail={`au lieu de ${entier(e.cartons)}, pour la même marge`} />}
+                <Indicateur libelle="Taux de marge pendant la promo" valeur={taux(r.nouveauTauxMarge)} detail={`${taux(e.marge)} avant`} />
+              </Resultats>
+            ))}
+            {lot && colonne(`Offre ${nomLot} : clients qui montent au lot`, (
+              <Resultats>
+                <Indicateur libelle="Marge gagnée pour 100 clients" valeur={ecartMontant(lot.gain)} detail={`si ${entier(lot.monte)} clients sur 100 passent ${montee}`} ecart={{ texte: lot.gain >= 0 ? 'Masse de marge en hausse' : 'Masse de marge en baisse', hausse: lot.gain >= 0, favorable: lot.gain >= 0 }} />
+                <Indicateur libelle="Clients à faire monter" valeur={lot.seuil === null ? 'Jamais rattrapé' : `${entier(Math.ceil(lot.seuil - 1e-9))} sur 100`} detail={lot.seuil === null ? `le lot ne rapporte qu’au-dessus de ${taux(lot.margeMini)} de marge` : `pour couvrir ${montant(lot.perteAubaine)} de bouteilles offertes à ceux qui en prenaient déjà ${entier(e.payes)}`} />
+                <Indicateur libelle="Par client qui monte" valeur={`${lot.gainParClient >= 0 ? '+ ' : '− '}${centimes(Math.abs(lot.gainParClient))}`} detail={`de marge : ${centimes(e.payes * e.prixBouteille)} payés pour ${entier(e.payes + e.offerts)} bouteilles au lieu de ${centimes(e.avant * e.prixBouteille)} pour ${entier(e.avant)}`} />
+              </Resultats>
+            ))}
+          </Box>
+          {lot && (
+            <Box sx={{ overflowX: 'auto' }}>
+              <Table size="small" aria-label="Offre en lot, avant et après" sx={{ minWidth: 480, '& td, & th': { fontVariantNumeric: 'tabular-nums' } }}>
+                <TableHead><TableRow><TableCell>Pour 100 clients, HT</TableCell><TableCell align="right">Sans l’offre</TableCell><TableCell align="right">Avec l’offre {nomLot}</TableCell><TableCell align="right">Écart</TableCell></TableRow></TableHead>
+                <TableBody>
+                  {([['Bouteilles vendues', lot.avant.bouteilles, lot.apres.bouteilles, entier], ['Panier moyen', lot.avant.panier, lot.apres.panier, centimes], ['Marge par ticket', lot.avant.margeTicket, lot.apres.margeTicket, centimes], ['Marge totale', lot.avant.marge, lot.apres.marge, montant]] as const).map(([libelle, avant, apres, f]) => (
+                    <TableRow key={libelle}>
+                      <TableCell>{libelle}</TableCell>
+                      <TableCell align="right">{f(avant)}</TableCell>
+                      <TableCell align="right">{f(apres)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, color: apres - avant < 0 ? 'error.main' : undefined }}>{apres - avant >= 0 ? '+ ' : '− '}{f(Math.abs(apres - avant))}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          )}
+        </Stack>
       )
     } else {
       phrase = `Avec ${taux(e.taux)} de hausse, on garde la même marge tant qu’on ne perd pas plus de ${taux(r.ventesPerdables ?? 0)} des ventes.`
@@ -1111,13 +1186,22 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const marge = e.modele === 'corner' && s.corner.tauxMarge > 0 ? s.corner.tauxMarge : e.marge
     const demarque = e.modele === 'corner' ? s.corner.demarque || e.demarque : e.demarque
     const pret = e.financement === 'pret' ? { taux: e.tauxPret, duree: e.dureePret } : null
-    const r = simulerInvestissement({ cout, duree: e.duree, mois: e.mois, ca, tauxMarge: marge, demarque, charges, pret }, p)
+    // Jours de fermeture : CA d'un jour du budget (lundi au samedi, 306 jours) et marge du magasin, modifiables
+    const jours = e.fermeture ?? 0
+    const caJourBudget = b && b.ca > 0 ? Math.round(b.ca / 306) : null
+    const caJour = e.caJour ?? caJourBudget ?? 0
+    const margeMagasin = e.margeMagasin ?? (b && b.ca > 0 ? Math.round(b.tauxMarge * 1000) / 1000 : 0.35)
+    const r = simulerInvestissement({ cout, duree: e.duree, mois: e.mois, ca, tauxMarge: marge, demarque, charges, pret, fermeture: jours > 0 ? { jours, caJour, tauxMarge: margeMagasin } : null }, p)
     const reperes = e.modele === 'corner' && s.corner.caParMetre > 0
     saisies = (
       <Stack spacing={2}>
         <Bloc titre="1. Le projet">
         <Saisies>
-          <Choix libelle="Projet" valeur={e.modele} onChange={(v) => maj('investissement', { modele: v, libelle: v === 'corner' ? 'Corner alimentaire' : v === 'exterieur' ? 'Marché extérieur' : ['Corner alimentaire', 'Marché extérieur'].includes(e.libelle) ? 'Tireuse' : e.libelle, univers: v === 'corner' ? 'cave' : v === 'exterieur' ? 'exterieur' : e.univers })} options={[['libre', 'Libre'], ['corner', 'Corner alimentaire'], ['exterieur', 'Marché extérieur']]} />
+          <Choix libelle="Projet" valeur={e.modele} onChange={(v) => {
+            const pr = PROJETS_INVESTIR[v]
+            maj('investissement', pr ? { modele: v, libelle: pr.libelle, cout: pr.cout, duree: pr.duree, ca: pr.ca, marge: pr.marge, demarque: pr.demarque, charges: pr.charges, univers: pr.univers, fermeture: pr.fermeture, ...(v === 'exterieur' ? { objectifExterieur: pr.ca } : {}) }
+              : { modele: v, libelle: '' })
+          }} options={[['libre', 'Libre'], ['terrasse', 'Terrasse'], ['travaux', 'Concept 2.0'], ['food', 'Four, food'], ['corner', 'Corner alimentaire'], ['exterieur', 'Marché extérieur']]} />
           <Champ libelle="Nom"><TextField size="small" value={e.libelle} onChange={(x) => maj('investissement', { libelle: x.target.value })} slotProps={{ htmlInput: { 'aria-label': 'Nom du projet', maxLength: 60 } }} sx={{ ...champ, width: 200 }} /></Champ>
           <ChoixMois libelle="En service en" valeur={e.mois} onChange={(v) => maj('investissement', { mois: v })} />
         </Saisies>
@@ -1129,13 +1213,16 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         )}
         {e.modele === 'exterieur' && (pal
           ? <Typography color="text.secondary">Préconisation du siège pour {montant(e.objectifExterieur)} de CA : {entier(pal.tireuses)} tireuses, {montant(pal.investissement)} d’investissement{e.camion ? ` et ${montant(s.marcheExterieur.camion)} de camion` : ''}, {unChiffre(pal.heures)} h par semaine{s.coutHoraire > 0 ? `, soit ${montant(chargesExt ?? 0)} par an au coût horaire du siège` : ''}.</Typography>
-          : <Typography color="text.secondary">Le siège n’a pas encore réglé la préconisation du marché extérieur : saisis le coût et les charges en mode Libre.</Typography>)}
+          : <Typography color="text.secondary">Pas encore de préconisation du siège : coût (tireuses, véhicule, stock déporté) et charges (personnel, local) à saisir ci-dessous.</Typography>)}
         </Bloc>
         <Bloc titre="2. L’investissement" total={{ libelle: 'Coût HT', valeur: montant(cout) }}>
         <Saisies>
           {coutExt === null ? <Montant libelle="Coût HT" valeur={e.cout} onChange={(v) => maj('investissement', { cout: v })} /> : null}
           <Montant libelle="Amorti sur" valeur={e.duree} onChange={(v) => maj('investissement', { duree: v })} unite="ans" />
           <Choix libelle="Financement" valeur={e.financement} onChange={(v) => maj('investissement', { financement: v })} options={[['tresorerie', 'Trésorerie'], ['pret', 'Prêt']]} />
+          <Montant libelle="Jours de fermeture" valeur={jours} onChange={(v) => maj('investissement', { fermeture: Math.max(0, Math.round(v)) })} unite="j" />
+          {jours > 0 && <><Montant libelle="CA HT d’un jour" valeur={caJour} onChange={(v) => maj('investissement', { caJour: v })} source={e.caJour === null && caJourBudget !== null && 'budget'} />
+            <Taux libelle="Marge du magasin" valeur={margeMagasin} onChange={(v) => maj('investissement', { margeMagasin: v })} source={e.margeMagasin === null && !!b && b.ca > 0 && 'budget'} /></>}
           {e.financement === 'pret' && <><Taux libelle="Taux du prêt" valeur={e.tauxPret} onChange={(v) => maj('investissement', { tauxPret: v })} /><Montant libelle="Durée du prêt" valeur={e.dureePret} onChange={(v) => maj('investissement', { dureePret: v })} unite="ans" /></>}
         </Saisies>
         </Bloc>
@@ -1157,18 +1244,18 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     resultats = (
       <Resultats>
         <Indicateur libelle="EBE en plus par an" valeur={montant(r.ebeAn)} detail={`sur ${montant(ca)} de CA HT`} />
-        <Indicateur libelle="Remboursé en" valeur={r.retourAnnees !== null ? `${unChiffre(r.retourAnnees)} an${r.retourAnnees >= 2 ? 's' : ''}` : 'Jamais'} detail="coût ÷ EBE en plus" />
+        <Indicateur libelle="Remboursé en" valeur={r.retourAnnees !== null ? `${unChiffre(r.retourAnnees)} an${r.retourAnnees >= 2 ? 's' : ''}` : 'Jamais'} detail={r.perteFermeture > 0 ? `(coût + ${montant(r.perteFermeture)} de marge perdue en ${entier(jours)} jours de fermeture) ÷ EBE en plus` : 'coût ÷ EBE en plus'} />
         <Indicateur libelle="Résultat en plus par an" valeur={montant(r.resultatAn)} detail={`après ${montant(r.amortissement)} d’amortissement${r.interets ? ` et ${montant(r.interets)} d’intérêts` : ''}`} />
         <Indicateur libelle="Trésorerie la 1re année" valeur={ecartMontant(r.annee1.tresorerie)} detail={`${r.annee1.mois} mois en service`} />
       </Resultats>
     )
     const univers: Univers = e.modele === 'corner' ? 'cave' : e.modele === 'exterieur' ? 'exterieur' : e.univers
     ajout = {
-      investissements: [{ libelle: (e.libelle || 'Investissement').slice(0, 60), type: 'equipement', montant: Math.round(cout), mois: e.mois, duree: Math.max(1, Math.round(e.duree)) }],
+      investissements: [{ libelle: (e.libelle || 'Investissement').slice(0, 60), type: PROJETS_INVESTIR[e.modele]?.type ?? 'equipement', montant: Math.round(cout), mois: e.mois, duree: Math.max(1, Math.round(e.duree)) }],
       ...(pret ? { emprunts: [{ libelle: `Prêt ${e.libelle || ''}`.trim().slice(0, 60), montant: Math.round(cout), taux: e.tauxPret, duree: e.dureePret, premiereEcheance: Math.min(12, e.mois + 1) }] } : {}),
       ...(ca > 0 ? { ajustementsCA: [{ libelle: (e.libelle || 'Investissement').slice(0, 60), univers, de: e.mois, a: 12, montant: Math.round(ca / 12) }] } : {}),
     }
-    note = `Au budget, le CA en plus entre dans ${univers === 'cave' ? 'la Cave' : univers === 'bar' ? 'le Bar' : 'l’Extérieur'} à sa marge${charges > 0 ? ' ; les charges en plus se saisissent dans les Frais ou l’Équipe' : ''}.`
+    note = `Au budget, le CA en plus entre dans ${univers === 'cave' ? 'la Cave' : univers === 'bar' ? 'le Bar' : 'l’Extérieur'} à sa marge${charges > 0 ? ' ; les charges en plus se saisissent dans les Frais ou l’Équipe' : ''}${jours > 0 ? ' ; les jours de fermeture se saisissent dans « Travaux, fermeture »' : ''}.`
   }
 
   if (choisi === 'exterieur') {

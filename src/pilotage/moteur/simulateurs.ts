@@ -217,6 +217,34 @@ export function simulerPrix(type: 'remise' | 'hausse', taux: number, tauxMarge: 
   return { type, taux: t, tauxMarge: m, ventesEnPlus: null, ventesPerdables: m + t > 0 ? 1 - m / (m + t) : null, nouveauTauxMarge: (m + t) / (1 + t) }
 }
 
+// Offre en lot « N + G » (Joseph, 16/11/2026) : en parallèle de la remise sur toutes les ventes, ce que rapporte l'offre si
+// des clients montent d'un cran : en 5 + 1, ceux qui prenaient 4 bouteilles en paient 5 et en emportent 6 (« avant » = N − 1
+// par défaut, modifiable). Pour 100 clients du produit (tickets constants) : « deja » prenaient déjà N bouteilles et reçoivent
+// maintenant G offertes (effet d'aubaine, G × coût d'achat chacun) ; les autres prenaient « avant » bouteilles, « monte »
+// d'entre eux passent au lot. Tout en HT, prix P, marge m :
+// un client qui monte rapporte P × (N − (N + G) × (1 − m) − avant × m), positif seulement si m > G ÷ (N + G − avant).
+// Seuil = clients qui doivent monter pour couvrir l'aubaine ; null si chaque client qui monte fait perdre de la marge.
+export interface EtatLot { bouteilles: number; ca: number; marge: number; panier: number; margeTicket: number }
+export interface EffetLot { remise: number; avant: EtatLot; apres: EtatLot; gain: number; gainParClient: number; perteAubaine: number; seuil: number | null; margeMini: number; monte: number }
+export function simulerLot(o: { payes: number; offerts: number; avant: number; prixHT: number; tauxMarge: number; monte: number; deja: number; clients?: number }): EffetLot | null {
+  const n = Math.max(0, o.payes), g = Math.max(0, o.offerts), l = n + g, k = Math.min(n, Math.max(0, o.avant)), clients = o.clients ?? 100
+  if (g <= 0 || n <= 0 || o.prixHT <= 0) return null
+  const p = o.prixHT, m = o.tauxMarge
+  const deja = Math.min(clients, Math.max(0, o.deja)), monte = Math.min(clients - deja, Math.max(0, o.monte))
+  const etat = (bouteilles: number, ca: number): EtatLot => {
+    const marge = ca - bouteilles * p * (1 - m)
+    return { bouteilles, ca, marge, panier: ca / clients, margeTicket: marge / clients }
+  }
+  const reste = clients - deja
+  const avant = etat(reste * k + deja * n, p * (reste * k + deja * n))
+  const apres = etat((reste - monte) * k + (deja + monte) * l, p * ((reste - monte) * k + (deja + monte) * n))
+  const gainParClient = p * (n - l * (1 - m) - k * m), perteAubaine = deja * g * p * (1 - m)
+  return {
+    remise: g / l, avant, apres, gain: apres.marge - avant.marge, gainParClient, perteAubaine,
+    seuil: gainParClient > 0 ? perteAubaine / gainParClient : null, margeMini: g / (l - k), monte,
+  }
+}
+
 // ── 129 · Coup dur de trésorerie ───────────────────────────────────────────────────────────────────────────────────
 export type CoupDur =
   | { type: 'baisse'; taux: number; de: number; a: number }          // CA en moins sur ces mois, tous univers (0,15 = −15 %)
@@ -381,9 +409,12 @@ export function simulerAchat(x: { montant: number; remise: number; mois: number;
 // amortissement linéaire ; intérêts de la 1re année du prêt. Délai de retour = coût ÷ EBE en plus d'une année pleine.
 // Année de la mise en service : au prorata des mois ouverts ; trésorerie = EBE du prorata − coût payé (trésorerie) ou
 // − échéances (prêt, capital encaissé le mois d'avant la 1re échéance, donc sans effet sur la trésorerie).
-export interface Investir { cout: number; duree: number; mois: number; ca: number; tauxMarge: number; demarque: number; charges: number; pret?: { taux: number; duree: number } | null }
+// Fermeture pendant les travaux (Joseph, 16/11/2026) : jours × CA HT d'un jour × (marge du magasin − redevance et
+// publicité) = marge perdue, une seule fois ; elle s'ajoute au coût pour le délai de retour et pèse sur l'année 1.
+export interface Investir { cout: number; duree: number; mois: number; ca: number; tauxMarge: number; demarque: number; charges: number; pret?: { taux: number; duree: number } | null; fermeture?: { jours: number; caJour: number; tauxMarge: number } | null }
 export interface EffetInvestir {
   ebeAn: number; amortissement: number; interets: number; resultatAn: number; retourAnnees: number | null
+  perteFermeture: number
   annee1: { mois: number; ebe: number; tresorerie: number }
 }
 export function simulerInvestissement(x: Investir, p: Pick<ParametresReseau, 'tauxRedevance' | 'tauxPublicite'>): EffetInvestir {
@@ -393,11 +424,14 @@ export function simulerInvestissement(x: Investir, p: Pick<ParametresReseau, 'ta
   const pret = x.pret && x.pret.duree > 0 && cout > 0 ? echeancier({ libelle: '', montant: cout, taux: x.pret.taux, duree: x.pret.duree, premiereEcheance: 1 }) : null
   const interets = pret ? somme(pret.interets) : 0
   const mois = moisValide(x.mois) ? 13 - x.mois : 12
-  const ebe1 = ebeAn * mois / 12
+  const f = x.fermeture
+  const perteFermeture = f ? Math.max(0, f.jours) * Math.max(0, f.caJour) * Math.max(0, f.tauxMarge - p.tauxRedevance - p.tauxPublicite) : 0
+  const ebe1 = ebeAn * mois / 12 - perteFermeture
   // Échéances de l'année : de la mise en service à décembre
   const echeances = pret ? pret.echeance * Math.max(0, mois - 1) : 0
   return {
-    ebeAn, amortissement, interets, resultatAn: ebeAn - amortissement - interets, retourAnnees: ebeAn > 0 ? cout / ebeAn : null,
+    ebeAn, amortissement, interets, resultatAn: ebeAn - amortissement - interets, retourAnnees: ebeAn > 0 ? (cout + perteFermeture) / ebeAn : null,
+    perteFermeture,
     annee1: { mois, ebe: ebe1, tresorerie: ebe1 - (pret ? echeances : cout) },
   }
 }

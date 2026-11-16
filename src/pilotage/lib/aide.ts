@@ -536,8 +536,8 @@ export const AIDE = {
   simPrix: {
     titre: 'Promo, prix, remises',
     quoi: 'Combien vendre en plus après une remise, combien de ventes on peut perdre après une hausse ; et les remises et offerts du magasin face aux repères du siège.',
-    remplir: 'Le taux de la remise ou de la hausse, et le taux de marge du produit. « 5 + 1 » et « 4 + 2 » remplissent la remise équivalente. Remises et offerts : les montants HT de la période, lus dans le logiciel de caisse.',
-    calcul: 'Remise r, marge m : ventes à multiplier par m ÷ (m − r). Hausse h : on peut perdre jusqu’à 1 − m ÷ (m + h) des ventes. Sans effet d’aubaine ni report d’achat : c’est un seuil. 5 + 1 = 1 gratuit sur 6, soit 16,7 % ; 4 + 2 = 33,3 %. Remises et offerts : montant ÷ CA HT de la période ; au-dessus du repère, chaque euro est de la marge perdue, ramené à l’année.',
+    remplir: 'Le taux de la remise ou de la hausse, et le taux de marge du produit. « 5 + 1 » et « 4 + 2 » remplissent la remise équivalente. Offre en lot : prix de la bouteille, bouteilles prises avant l’offre (4 pour un 5 + 1, 3 pour un 4 + 2), et sur 100 clients, ceux qui montent au lot et ceux qui prenaient déjà les bouteilles payées. Remises et offerts : les montants HT de la période, lus dans le logiciel de caisse.',
+    calcul: 'Remise r, marge m : ventes à multiplier par m ÷ (m − r). Hausse h : on peut perdre jusqu’à 1 − m ÷ (m + h) des ventes. Sans effet d’aubaine ni report d’achat : c’est un seuil. 5 + 1 = 1 gratuit sur 6, soit 16,7 % ; 4 + 2 = 33,3 %. En lot N + G (prix P, marge m), un client qui passait K bouteilles rapporte P × (N − (N + G) × (1 − m) − K × m) de marge en plus, positif seulement au-dessus de G ÷ (N + G − K) de marge : 50 % pour 4 → 5 + 1, 66,7 % pour 3 → 4 + 2, 20 % pour 1 → 5 + 1. Un client qui prenait déjà N bouteilles reçoit G bouteilles au coût d’achat. Clients à faire monter = ce coût ÷ le gain par client. Remises et offerts : montant ÷ CA HT de la période ; au-dessus du repère, chaque euro est de la marge perdue, ramené à l’année.',
   },
   simTresorerie: {
     titre: 'Coup dur de trésorerie',
@@ -589,8 +589,8 @@ export const AIDE = {
   },
   simInvestissement: {
     titre: 'Investir',
-    quoi: 'Une tireuse, une terrasse, un corner alimentaire : ce qu’il rapporte chaque année et en combien de temps il est remboursé.',
-    remplir: 'Le coût, la durée d’amortissement, le mois de mise en service, le CA et les charges en plus, le financement. Les modèles Corner alimentaire et Marché extérieur partent des repères du siège (pour l’extérieur : tireuses, investissement et heures par semaine selon l’objectif de CA).',
+    quoi: 'Des travaux de terrasse, le passage au concept 2.0, un four pour l’offre food, un corner alimentaire, le marché extérieur : ce qu’il rapporte chaque année et en combien de temps il est remboursé. Les tireuses se simulent dans Contrat extérieur et Parc de tireuses.',
+    remplir: 'Le coût, la durée d’amortissement, le mois de mise en service, le CA et les charges en plus, le financement. Chaque projet préréglé part d’ordres de grandeur à remplacer par tes devis ; Corner alimentaire et Marché extérieur partent des repères du siège quand il les a réglés (pour l’extérieur : tireuses, investissement et heures par semaine selon l’objectif de CA).',
     calcul: 'EBE en plus = CA × (marge − démarque) − redevance et publicité − charges. Délai de retour = coût ÷ EBE en plus. Année 1 au prorata des mois ; avec un prêt, seules les échéances sortent.',
   },
   // Vague 9 (choix 138 à 146, Joseph 14/11/2026)
