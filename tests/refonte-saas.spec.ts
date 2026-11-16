@@ -49,7 +49,7 @@ test('PC : menu clair en quatre rubriques, tête noire ; téléphone : barre du 
     await expect(page.getByRole('banner')).toHaveCount(0)
     const menu = page.getByRole('navigation', { name: 'Navigation principale' })
     for (const r of ['Mon travail', 'Réseau', 'Siège']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
-    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Chiffres', 'Budget prévisionnel', 'Simulateurs', /^Animation/, /^Demandes/])
+    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Visites', 'Chiffres', 'Budget prévisionnel', 'Simulateurs', 'Marché extérieur', /^Animation/, /^Demandes/])
     // Choix 213 (15/11/2026) : Actualités et Campagnes réunies dans Animation ; l'ancienne adresse y mène
     await expect(menu.getByRole('button', { name: 'Campagnes' })).toHaveCount(0)
     await page.goto('./#/animation')

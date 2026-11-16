@@ -567,6 +567,17 @@ export function SimulateursFranchise() {
   )
 }
 
+// Marché extérieur depuis le menu (Joseph, 16/11/2026) : ouvre l'onglet de la fiche de son magasin
+export function ExterieurFranchise() {
+  return (
+    <AvecReseau>
+      {(reseau) => reseau.magasins.length
+        ? <Navigate to={`${lienFiche(reseau.magasins[0].nom)}?vue=exterieur`} replace />
+        : <EmptyState icone={<StorefrontOutlined />} titre="Aucun magasin rattaché" texte="Ton Coach ou ton Responsable Régional peut rattacher tes magasins à ton accès." />}
+    </AvecReseau>
+  )
+}
+
 export function MagasinsFranchise() {
   return (
     <AvecReseau>
