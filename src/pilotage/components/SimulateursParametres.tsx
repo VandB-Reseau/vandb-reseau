@@ -9,8 +9,6 @@ import TableRow from '@mui/material/TableRow'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import DeleteOutlineOutlined from '@mui/icons-material/DeleteOutlineOutlined'
 import SaveOutlined from '@mui/icons-material/SaveOutlined'
-import Checkbox from '@mui/material/Checkbox'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import TableHead from '@mui/material/TableHead'
 import Typography from '@mui/material/Typography'
@@ -54,7 +52,6 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
   const contrat = (k: keyof ParametresSimulateurs['contrat'], x: number) => setV((y) => ({ ...y, contrat: { ...y.contrat, [k]: x } }))
   const tireuses = (k: keyof ParametresSimulateurs['tireuses'], x: number) => setV((y) => ({ ...y, tireuses: { ...y.tireuses, [k]: x } }))
   const remise = (k: CleRemise, x: number) => setV((y) => ({ ...y, remises: { ...y.remises, [k]: x } }))
-  const livraison = (i: number, k: 'kmMax' | 'franco' | 'prix', x: number) => setV((y) => ({ ...y, livraison: y.livraison.map((l, j) => (j === i ? { ...l, [k]: x } : l)) }))
   const palierExt = (i: number, k: 'caMax' | 'tireuses' | 'investissement' | 'heures', x: number) => setV((y) => ({ ...y, marcheExterieur: { ...y.marcheExterieur, paliers: y.marcheExterieur.paliers.map((l, j) => (j === i ? { ...l, [k]: x } : l)) } }))
   const famille = (i: number, f: Partial<ParametresSimulateurs['familles'][number]>) => setV((y) => ({ ...y, familles: y.familles.map((l, j) => (j === i ? { ...l, ...f } : l)) }))
   const retirer = (i: number, onRetire: () => void, quoi: string) => !lecture && <IconButton aria-label={`Retirer ${quoi} ${i + 1}`} onClick={onRetire} sx={{ width: 48, height: 48 }}><DeleteOutlineOutlined /></IconButton>
@@ -98,8 +95,6 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
           {ligne('Marché extérieur : durée de vie d’une tireuse', <ChampMontant libelle="Durée de vie d’une tireuse" valeur={v.exterieur.dureeTireuse} onChange={(x) => ext('dureeTireuse', x)} unite="ans" largeur={160} />)}
           {ligne('Marché extérieur : entretien d’une tireuse par an', <ChampMontant libelle="Entretien d’une tireuse" valeur={v.exterieur.entretienTireuse} onChange={(x) => ext('entretienTireuse', x)} largeur={160} />)}
           {ligne('Marché extérieur : CO2 par fût', <ChampMontant libelle="CO2 par fût" valeur={v.exterieur.co2ParFut} onChange={(x) => ext('co2ParFut', x)} largeur={160} />)}
-          {ligne('Don à l’association traité comme un don (réduction mécénat de 60 %, reçu Cerfa demandé)',
-            <FormControlLabel control={<Checkbox checked={v.donMecenat} onChange={(e) => setV((y) => ({ ...y, donMecenat: e.target.checked }))} disabled={lecture} slotProps={{ input: { 'aria-label': 'Don traité comme un don' } }} />} label={v.donMecenat ? 'Oui' : 'Non'} sx={{ minHeight: 48, mr: 0 }} />)}
           {ligne('Carte pression : marge visée au bar', <ChampTaux libelle="Marge visée au bar" valeur={v.pression.cibleMarge} onChange={(x) => pression('cibleMarge', x ?? 0)} />)}
           {ligne('Carte pression : jours au-delà desquels un fût entamé s’abîme', <ChampMontant libelle="Jours de fraîcheur d’un fût" valeur={v.pression.joursFraicheur} onChange={(x) => pression('joursFraicheur', x)} unite="j" largeur={160} />)}
           {ligne('Perte pression : perte normale (coulage au service, mousse au perçage du fût)', <ChampTaux libelle="Perte standard des fûts" valeur={v.pression.perteStandard} onChange={(x) => pression('perteStandard', Math.min(1, x ?? 0))} />)}
@@ -171,23 +166,6 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
         </TableBody>
       </Table>
       {ajouter('Ajouter une famille', () => setV((y) => ({ ...y, familles: [...y.familles, { libelle: '', univers: 'cave', marge: 0, tva: 'normale' }] })))}
-
-      {titre('Livraisons du marché extérieur (distance aller)')}
-      <Table aria-label="Grille des livraisons">
-        <TableHead><TableRow><TableCell>Jusqu’à</TableCell><TableCell align="right">Offerte dès (commande HT)</TableCell><TableCell align="right">Prix HT sinon</TableCell><TableCell /></TableRow></TableHead>
-        <TableBody>
-          {v.livraison.map((l, i) => (
-            <TableRow key={i}>
-              <TableCell><ChampMontant libelle={`Distance maximale, ligne ${i + 1}`} valeur={l.kmMax} onChange={(x) => livraison(i, 'kmMax', x)} unite="km" largeur={120} /></TableCell>
-              <TableCell align="right"><ChampMontant libelle={`Commande pour une livraison offerte, ligne ${i + 1}`} valeur={l.franco} onChange={(x) => livraison(i, 'franco', x)} largeur={140} /></TableCell>
-              <TableCell align="right"><ChampMontant libelle={`Prix de la livraison, ligne ${i + 1}`} valeur={l.prix} onChange={(x) => livraison(i, 'prix', x)} largeur={120} /></TableCell>
-              <TableCell align="right" sx={{ width: 64 }}>{retirer(i, () => setV((y) => ({ ...y, livraison: y.livraison.filter((_, j) => j !== i) })), 'la ligne de livraison')}</TableCell>
-            </TableRow>
-          ))}
-          {!v.livraison.length && <TableRow><TableCell colSpan={4} sx={{ color: 'text.secondary' }}>Aucune grille : le prix de livraison se saisit dans le contrat.</TableCell></TableRow>}
-        </TableBody>
-      </Table>
-      {ajouter('Ajouter une distance', () => setV((y) => ({ ...y, livraison: [...y.livraison, { kmMax: 0, franco: 0, prix: 0 }] })))}
 
       {titre('Développer le marché extérieur : préconisation selon l’objectif de CA')}
       <Table aria-label="Préconisation du marché extérieur">
