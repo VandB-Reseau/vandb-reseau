@@ -12,7 +12,12 @@ import CelebrationOutlined from '@mui/icons-material/CelebrationOutlined'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import OpenInNewOutlined from '@mui/icons-material/OpenInNewOutlined'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
+import Snackbar from '@mui/material/Snackbar'
 import { GrillePhotos, Initiales } from './Social'
+import { useCreer } from './Creer'
+import { DialogProposer } from './Propositions'
+import { PublierCommunication } from '../pages/Communications'
+import type { Reseau } from '../data/modele'
 import { VisuelFil } from './MiseEnForme'
 import { useOuvrirCompteRendu, VignetteCompteRendu } from './ApercuCompteRendu'
 import { quand, type ElementFil, type GenreFil } from '../data/fil'
@@ -117,20 +122,30 @@ export function BoutonConnaissance({ pris, lectureSeule, prendre }: { pris: bool
 
 // « Partager quelque chose » en tête du fil (207A) : bonne pratique pour tous (proposée par le franchisé), communication
 // pour le Directeur et les RR
-export function BarrePartager({ moi, franchise, communication }: { moi: string; franchise: boolean; communication: boolean }) {
-  const pratique = franchise ? '/infos?vue=pratiques&proposer=1' : '/infos?vue=pratiques&ajouter=1'
+export function BarrePartager({ moi, franchise, communication, reseau, apres }: {
+  moi: string; franchise: boolean; communication: boolean; reseau: Reseau; apres?: () => Promise<void> | void
+}) {
+  // Joseph 16/11/2026 : on écrit et on publie depuis l'Accueil, sans être renvoyé vers Animation
+  const creer = useCreer()
+  const [ouvert, setOuvert] = useState<'proposer' | 'communication' | null>(null)
+  const [message, setMessage] = useState('')
+  const fermer = (m?: string) => { setOuvert(null); if (m) setMessage(m) }
+  const pratique = () => (franchise ? setOuvert('proposer') : creer('pratique'))
   return (
     <Card component="section" aria-label="Partager" sx={{ p: 1.5, mb: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
         <Initiales nom={moi || 'Moi'} taille={48} />
-        <ButtonBase component={RouterLink} to={pratique} sx={{ flex: 1, minHeight: 48, borderRadius: 999, border: '1px solid', borderColor: 'divider', px: 2, justifyContent: 'flex-start', fontFamily: 'inherit', fontSize: '1rem', color: 'text.secondary', '&:hover': { bgcolor: 'action.hover' } }}>
+        <ButtonBase onClick={pratique} sx={{ flex: 1, minHeight: 48, borderRadius: 999, border: '1px solid', borderColor: 'divider', px: 2, justifyContent: 'flex-start', fontFamily: 'inherit', fontSize: '1rem', color: 'text.secondary', '&:hover': { bgcolor: 'action.hover' } }}>
           {franchise ? 'Partager une réussite de mon magasin' : 'Partager une réussite du terrain'}
         </ButtonBase>
       </Box>
       <Box sx={{ display: 'flex', gap: 1, mt: 1, pl: { sm: 7.5 }, flexWrap: 'wrap' }}>
-        <Button component={RouterLink} to={pratique} startIcon={<TipsAndUpdatesOutlined />} color="inherit" sx={{ minHeight: 48 }}>{franchise ? 'Proposer une bonne pratique' : 'Bonne pratique'}</Button>
-        {communication && <Button component={RouterLink} to="/infos?vue=communications&publier=1" startIcon={<CampaignOutlined />} color="inherit" sx={{ minHeight: 48 }}>Communication</Button>}
+        <Button onClick={pratique} startIcon={<TipsAndUpdatesOutlined />} color="inherit" sx={{ minHeight: 48 }}>{franchise ? 'Proposer une bonne pratique' : 'Bonne pratique'}</Button>
+        {communication && <Button onClick={() => setOuvert('communication')} startIcon={<CampaignOutlined />} color="inherit" sx={{ minHeight: 48 }}>Communication</Button>}
       </Box>
+      {ouvert === 'proposer' && <DialogProposer reseau={reseau} onFermer={fermer} />}
+      {ouvert === 'communication' && <PublierCommunication apres={apres} onFermer={fermer} />}
+      <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />
     </Card>
   )
 }
