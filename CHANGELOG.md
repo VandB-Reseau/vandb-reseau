@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateur « Contrat extérieur » : durée du contrat en années (Joseph, 16/11/2026), sans migration. Une tireuse achetée
+  pour un contrat plus court que sa durée de vie se paie sur le contrat (gain, équilibre et remise maximale en tiennent
+  compte) ; en plus : reste non amorti si le client part, équilibre si la tireuse ressert ailleurs, gain sur la durée
+  du contrat. Exemple prérempli : contrat de 3 ans pour une tireuse de 5 ans.
 - Fiches Excel de Joseph comparées aux simulateurs (choix 241, 242, 244, 245 et grille de productivité, Joseph,
   16/11/2026), sans migration. 241 : Soirée, formule « soirée animée sans billet » (CA du bar d'un soir normal et attendu,
   CA à viser pour ne rien perdre). 242 : Embaucher, « Heures sup » (part dans les heures payées, coût majoré, économie
