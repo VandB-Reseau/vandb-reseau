@@ -83,6 +83,16 @@ export function simulerExterieur(x: ContratExterieur, p: Redevances, donMecenat:
     coutFuts: futs * (pos(x.prixAchat) + pos(x.co2) + pos(x.gobelets)), redevance: (futs * caParFut + recettes) * rp, retrocession: futs * pos(x.sponsoring?.parFut),
   }
 }
+// 239 (Joseph, 16/11/2026, fiche « Rentabilité Extérieur ») : le gain du contrat selon le nombre de fûts vendus, de 20 à
+// 70 comme dans la fiche, plus le nombre prévu et le seuil. Gain = fûts × net par fût + recettes nettes − coûts fixes.
+export function gainsSelonFuts(r: EffetExterieur, futsPrevus: number): { futs: number; ca: number; gain: number; prevu: boolean; seuil: boolean }[] {
+  const liste = [...new Set([20, 30, 40, 50, 60, 70, Math.round(pos(futsPrevus)), ...(r.equilibre ? [r.equilibre] : [])])].filter((f) => f > 0).sort((a, b) => a - b)
+  return liste.map((f) => ({
+    futs: f, ca: f * r.caParFut + r.recettes, gain: f * r.netParFut + r.recettesNettes - r.coutFixe,
+    prevu: f === Math.round(pos(futsPrevus)), seuil: f === r.equilibre,
+  }))
+}
+
 // 162 · Prix d'une livraison selon la grille du réseau : première ligne dont la distance (aller simple) couvre le trajet ;
 // gratuite dès que la commande atteint le franco. Au-delà de la dernière distance : pas de prix (à fixer à la main).
 export function prixLivraisonGrille(grille: { kmMax: number; franco: number; prix: number }[], km: number, commandeHT: number): number | null {
@@ -115,12 +125,16 @@ export interface ParcTireuses {
   vieilles: { nom: string; age: number; reparations: number }[]
   occupation?: { saison: number; hors: number } | null // saisie en part des week-ends (remplace les sorties)
   saturation?: number
+  // 236 (Joseph, 16/11/2026, fiche « Rentabilité Extérieur ») : ce que le parc rapporte sur l'année
+  prixVenteHT?: number; margeParFut?: number
 }
 export interface EffetParc {
   occupationSaison: number | null; occupationHorsSaison: number | null; margePerdue: number; coutAnnuelNeuve: number
   racheter: boolean; couverture: number | null; aRemplacer: string[]
   weekendsParTireuse: number; futsPourPayer: number | null; weekendsPourPayer: number | null; sature: boolean
   gainParTireuse: number
+  // 236 : fûts, CA HT, marge (prix − achat) et net (après redevance et publicité, CO2, gobelets) du parc sur l'année
+  futsParc: number; caParc: number; margeParc: number; netParc: number
 }
 export function simulerParc(x: ParcTireuses): EffetParc {
   const n = pos(x.tireuses), saison = Math.min(52, pos(x.semainesSaison))
@@ -131,6 +145,7 @@ export function simulerParc(x: ParcTireuses): EffetParc {
   const margePerdue = pos(x.refus) * pos(x.futsParSortie) * x.netParFut
   const coutAnnuelNeuve = (x.dureeVie > 0 ? pos(x.prixNeuve) / x.dureeVie : pos(x.prixNeuve)) + pos(x.entretien)
   const futsPourPayer = x.netParFut > 0 && coutAnnuelNeuve > 0 ? Math.ceil(coutAnnuelNeuve / x.netParFut - 1e-9) : null
+  const futsParc = n * weekendsParTireuse * pos(x.futsParSortie)
   return {
     occupationSaison, occupationHorsSaison, margePerdue, coutAnnuelNeuve, racheter: margePerdue > coutAnnuelNeuve && coutAnnuelNeuve > 0,
     couverture: coutAnnuelNeuve > 0 ? margePerdue / coutAnnuelNeuve : null,
@@ -138,6 +153,7 @@ export function simulerParc(x: ParcTireuses): EffetParc {
     weekendsParTireuse, futsPourPayer, weekendsPourPayer: futsPourPayer !== null && x.futsParSortie > 0 ? Math.ceil(futsPourPayer / x.futsParSortie - 1e-9) : null,
     sature: !!x.saturation && occupationSaison !== null && occupationSaison >= x.saturation - 1e-9,
     gainParTireuse: weekendsParTireuse * pos(x.futsParSortie) * x.netParFut - coutAnnuelNeuve,
+    futsParc, caParc: futsParc * pos(x.prixVenteHT), margeParc: futsParc * (x.margeParFut ?? 0), netParc: futsParc * x.netParFut,
   }
 }
 
@@ -452,4 +468,16 @@ export function simulerRemisesB2B(x: { paliers: PalierRemise[]; lignes: LigneB2B
     redevance, reste: marge - redevance, lignes, paliers: calcules, suivant,
     alertes: lignes.filter((l) => l.quantite > 0 && (l.alerte === 'perte' || l.alerte === 'plancher')).length,
   }
+}
+
+// 238 (Joseph, 16/11/2026, fiche « Rentabilité Extérieur », cible entreprise) : démarcher des entreprises (cadeaux
+// clients) pendant un test. Temps = heures par semaine × semaines × coût d'une heure chargée. Marge attendue =
+// entreprises × ticket moyen HT × (marge − redevance et publicité). Seuil = entreprises qu'il faut pour payer le temps.
+export interface EffetProspection { heures: number; coutTemps: number; ca: number; marge: number; redevance: number; gain: number; seuil: number | null }
+export function simulerProspection(x: { heuresSemaine: number; semaines: number; coutHoraire: number; entreprises: number; ticket: number; marge: number }, p: Redevances): EffetProspection {
+  const rp = p.tauxRedevance + p.tauxPublicite
+  const heures = pos(x.heuresSemaine) * pos(x.semaines), coutTemps = heures * pos(x.coutHoraire)
+  const ca = pos(x.entreprises) * pos(x.ticket), marge = ca * part(x.marge), redevance = ca * rp
+  const parEntreprise = pos(x.ticket) * (part(x.marge) - rp)
+  return { heures, coutTemps, ca, marge, redevance, gain: marge - redevance - coutTemps, seuil: coutTemps <= 0 ? 0 : parEntreprise > 0 ? Math.ceil(coutTemps / parEntreprise - 1e-9) : null }
 }

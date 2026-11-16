@@ -118,3 +118,29 @@ test('232 et 234 : recherche des pages et des simulateurs, réouverture là où 
   await page.waitForTimeout(300)
   await expect(page).not.toHaveURL(/magasins/)
 })
+
+test('236, 238 et 239 : la fiche « Rentabilité Extérieur » dans les simulateurs', async ({ page, isMobile }) => {
+  await connecter(page)
+  const carte = page.locator('#carte-simulation')
+  // 236 : ce que rapporte le parc sur l'année
+  await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=simulateurs&partie=simulateurs&sim=tireuses`)
+  await expect(carte.getByRole('status')).toContainText('Le parc vend environ')
+  await expect(carte.getByText('Ce que rapporte le parc')).toBeVisible()
+  // 239 : gain selon le nombre de fûts, les fûts prévus repérés
+  await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=simulateurs&partie=simulateurs&sim=exterieur`)
+  const tableau = page.getByRole('table', { name: 'Gain selon le nombre de fûts' })
+  await expect(tableau.getByRole('row', { name: /^20/ })).toBeVisible()
+  await expect(tableau.getByRole('row', { name: /^70/ })).toBeVisible()
+  await expect(tableau).toContainText('40, prévus')
+  await expect(tableau).toContainText('équilibre')
+  // 238 : démarcher d'autres entreprises, avec la marge de la commande
+  await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=simulateurs&partie=simulateurs&sim=remises_b2b`)
+  await expect(carte.getByRole('status')).toContainText('Démarcher 15 entreprises')
+  await expect(page.getByRole('table', { name: 'Compte de la prospection' })).toContainText('Temps passé à démarcher')
+  await expect(carte.getByText('Entreprises pour payer le temps')).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  await page.getByRole('button', { name: 'Sans', exact: true }).click()
+  await expect(carte.getByRole('status')).not.toContainText('Démarcher')
+  await expect(page.getByRole('table', { name: 'Compte de la prospection' })).toHaveCount(0)
+})

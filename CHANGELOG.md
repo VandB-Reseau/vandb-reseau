@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche « Rentabilité Extérieur » dans les simulateurs (choix 236, 238 et 239, Joseph, 16/11/2026), sans migration.
+  236 : le Parc de tireuses donne ce que rapporte le parc sur l'année (fûts, CA HT, marge, net). 238 : les Remises
+  entreprise chiffrent la prospection (heures par semaine × semaines × coût horaire face aux entreprises visées × ticket
+  moyen × marge, celle de la commande par défaut) et le nombre d'entreprises qui paie le temps. 239 : le Contrat extérieur
+  montre le gain de l'année de 20 à 70 fûts, avec les fûts prévus et l'équilibre.
 - Remises entreprise par paliers et fluidité (choix 228 et 232 à 235, Joseph, 16/11/2026). Base : passer la migration
   pilotage `0033_simulations_remises_b2b.sql` (dépôt du pilotage) pour garder ce simulateur ; sans elle, il calcule.
   228 : le fichier « Simulateur remises B2B » de Joseph devient un simulateur (Vendre plus) : paliers de quantité sur le
