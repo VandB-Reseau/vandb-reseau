@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Marché extérieur (Joseph, 16/11/2026), sans migration : entrée « Marché extérieur » dans le menu, comme les
+  Simulateurs (l'équipe choisit le magasin ; le franchisé arrive sur le plan de son magasin). Repérage refait : la
+  recherche « autour d'un point » de l'Annuaire ignorait le filtre d'effectif (les grands sites, Thales à Vendôme par
+  exemple, n'apparaissaient pas) ; on cherche maintenant par codes postaux des communes du rayon (Géo de l'État), avec
+  le filtre d'effectif, chaque site dans le rayon, les plus gros en tête, l'effectif du site (« non publié » s'il manque)
+  et non celui du groupe. Filtres de la liste : effectif du site, distance, nom ou activité. Champ « Salariés,
+  licenciés ou adhérents » sur chaque cible (aucune source publique des licenciés par club).
 - Mise en ligne en 5 minutes après une fusion (Joseph, 16/11/2026), sans migration : la série complète des tests
   navigateur tourne sur chaque demande de fusion ; après la fusion, seuls les contrôles de la base et la construction
   repassent avant la mise en ligne. Le lancement manuel garde ses tests au choix.

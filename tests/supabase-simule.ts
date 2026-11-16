@@ -147,6 +147,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
   })
   // Annuaire des entreprises (marché extérieur, 0048) : par défaut, rien autour du magasin ; un test le remplace au besoin
   await page.route(/^https:\/\/recherche-entreprises\.api\.gouv\.fr\//, (r) => r.fulfill({ json: { results: [], total_results: 0, page: 1, per_page: 25, total_pages: 1 } }))
+  await simulerGeo(page)
   await page.route(/^https:\/\/www\.google\.com\/maps/, (r) => r.fulfill({ contentType: 'text/html; charset=utf-8', body: '<!doctype html><title>Carte</title><p>Carte simulée</p>' }))
   await page.route('https://supabase.test/**', async (route) => {
     const req = route.request()
@@ -982,4 +983,20 @@ export async function saisirVisiteNonPrevue(page: Page, magasin: string) {
 export async function revoirTache(page: Page, dialogue: Locator, tache: string, etat: string) {
   await dialogue.getByRole('region', { name: 'Plan d’action et tâches' }).getByRole('listitem').filter({ hasText: tache }).getByRole('combobox').click()
   await page.getByRole('option', { name: etat, exact: true }).click()
+}
+
+// Données Géo de l'État simulées (Marché extérieur) : une commune fictive au centre des points demandés
+export async function simulerGeo(page: Page) {
+  const points: { lat: number; lon: number }[] = []
+  await page.route(/^https:\/\/geo\.api\.gouv\.fr\//, (r) => {
+    const u = new URL(r.request().url())
+    if (u.pathname === '/communes' && !u.searchParams.get('lat')) return r.fallback()
+    if (!/^\/(communes|departements\/\w+\/communes)$/.test(u.pathname)) return r.fallback()
+    if (u.pathname === '/communes') {
+      points.push({ lat: Number(u.searchParams.get('lat')), lon: Number(u.searchParams.get('lon')) })
+      return r.fulfill({ json: [{ codeDepartement: '74' }] })
+    }
+    const lat = points.reduce((s, p) => s + p.lat, 0) / Math.max(1, points.length), lon = points.reduce((s, p) => s + p.lon, 0) / Math.max(1, points.length)
+    return r.fulfill({ json: [{ codesPostaux: ['74000'], centre: { type: 'Point', coordinates: [lon, lat] } }, { codesPostaux: ['13001'], centre: { type: 'Point', coordinates: [5.37, 43.3] } }] })
+  })
 }

@@ -1,6 +1,8 @@
 import type { ReactElement } from 'react'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import Storefront from '@mui/icons-material/Storefront'
+import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
+import Handshake from '@mui/icons-material/Handshake'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import EventNote from '@mui/icons-material/EventNote'
 import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
@@ -72,7 +74,9 @@ export const chiffres: Destination = { chemin: '/performance', libelle: 'Chiffre
 export const budgetPrevisionnel: Destination = { chemin: '/budgets', libelle: 'Budget prévisionnel', court: 'Budget', description: 'Budgets de l’année des magasins : construire, envoyer et valider', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Refonte' }
 // Simulateurs de l'équipe (choix 157, Joseph 14/11/2026) : un magasin ou plusieurs, juste sous le Budget prévisionnel
 export const simulateursEquipe: Destination = { chemin: '/simulateurs', libelle: 'Simulateurs', court: 'Simuler', description: 'Simuler pour un magasin, ou un levier sur plusieurs magasins', icone: <CalculateOutlined />, iconeActive: <Calculate />, sprint: 'Choix 157' }
-export const secondaires: Destination[] = [demandes, chiffres, budgetPrevisionnel, simulateursEquipe, agenda]
+// Marché extérieur (Joseph, 16/11/2026) : le plan d'action d'un magasin, aussi depuis le menu, comme les Simulateurs
+export const marcheExterieur: Destination = { chemin: '/marche-exterieur', libelle: 'Marché extérieur', court: 'Extérieur', description: 'Repérer les entreprises et prescripteurs autour d’un magasin, bâtir son plan d’action', icone: <HandshakeOutlined />, iconeActive: <Handshake />, sprint: 'Marché extérieur' }
+export const secondaires: Destination[] = [demandes, chiffres, budgetPrevisionnel, simulateursEquipe, marcheExterieur, agenda]
 export const pourRole = (liste: Destination[], role: string | undefined) => liste.filter((d) => !d.roles || (!!role && d.roles.includes(role)))
 
 // Réglages : Équipe et Paramètres. Évolution du parc est une vue de Magasins depuis la refonte (Joseph, 09/11/2026, 2A)
@@ -89,7 +93,7 @@ export interface Rubrique { titre: string; destinations: Destination[] }
 export function rubriquesMenu(_sansParametres?: boolean): Rubrique[] {
   return [
     { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
-    { titre: 'Réseau', destinations: [magasins, visites, chiffres, budgetPrevisionnel, simulateursEquipe] },
+    { titre: 'Réseau', destinations: [magasins, visites, chiffres, budgetPrevisionnel, simulateursEquipe, marcheExterieur] },
     { titre: 'Siège', destinations: [infosReseau, demandes] },
   ]
 }
@@ -99,7 +103,7 @@ export const demandesFranchise: Destination = { ...demandes, libelle: 'Mes deman
 export const menuTelephone = (role: string | undefined) => menuTelephoneRubriques(role).flatMap((r) => r.destinations)
 // Vague 6 (Joseph, 10/11/2026) : le menu du compte sur téléphone rangé comme le menu du PC, en rubriques
 export const menuTelephoneRubriques = (role: string | undefined): Rubrique[] => [
-  { titre: 'Réseau', destinations: pourRole([visites, chiffres, budgetPrevisionnel, simulateursEquipe], role) },
+  { titre: 'Réseau', destinations: pourRole([visites, chiffres, budgetPrevisionnel, simulateursEquipe, marcheExterieur], role) },
   { titre: 'Siège', destinations: pourRole([infosReseau, demandes], role) },
 ].filter((r) => r.destinations.length)
 
@@ -110,6 +114,7 @@ export const espaceFranchise: Destination[] = [
   { chemin: '/budgets', libelle: 'Mon budget', court: 'Budget', description: 'Budget de l’année, suivi face au réel et saisies', icone: <RequestQuoteOutlined />, iconeActive: <RequestQuote />, sprint: 'Fusion' },
   // Choix 125 (Joseph, 13/11/2026) : embaucher, faire une promo, investir… chiffres en main
   { chemin: '/simulateurs', libelle: 'Simulateurs', court: 'Simuler', description: 'Embauche, promo, trésorerie, vente additionnelle, soirée, achat, investissement', icone: <CalculateOutlined />, iconeActive: <Calculate />, sprint: 'Choix 125' },
+  { ...marcheExterieur, description: 'Repérer les entreprises et prescripteurs autour de mon magasin, bâtir mon plan d’action' },
   { ...messages, description: 'Mes magasins et mon équipe' },
   taches,
   demandesFranchise,
@@ -119,8 +124,8 @@ export const espaceFranchise: Destination[] = [
 // (Mon budget, Mes demandes, Bonnes pratiques)
 // Vague 8 (109A) : le menu du franchisé en deux rubriques, comme celui de l'équipe
 export const rubriquesFranchise = (liste: Destination[]): Rubrique[] => [
-  { titre: 'Mon magasin', destinations: liste.filter((d) => ['/', '/magasins', '/budgets', '/simulateurs', '/taches'].includes(d.chemin)) },
-  { titre: 'Échanger', destinations: liste.filter((d) => !['/', '/magasins', '/budgets', '/simulateurs', '/taches'].includes(d.chemin)) },
+  { titre: 'Mon magasin', destinations: liste.filter((d) => ['/', '/magasins', '/budgets', '/simulateurs', '/marche-exterieur', '/taches'].includes(d.chemin)) },
+  { titre: 'Échanger', destinations: liste.filter((d) => !['/', '/magasins', '/budgets', '/simulateurs', '/marche-exterieur', '/taches'].includes(d.chemin)) },
 ].filter((r) => r.destinations.length)
 export const barreFranchise = (liste: Destination[]) => liste.filter((d) => ['/', '/magasins', '/echanges', '/taches'].includes(d.chemin))
 export const plusFranchise = (liste: Destination[]) => liste.filter((d) => !['/', '/magasins', '/echanges', '/taches'].includes(d.chemin))

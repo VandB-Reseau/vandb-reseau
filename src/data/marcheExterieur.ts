@@ -52,6 +52,7 @@ export interface Cible {
   siren: string
   source: 'annuaire' | 'saisie'
   contact: string
+  membres: number | null // salariés, licenciés ou adhérents, saisi
   notes: Partial<Record<Critere, number>> // 1 à 5
   action: string
   qui: string
@@ -82,7 +83,7 @@ export function normaliserCible(x: Record<string, unknown>): Cible | null {
   return {
     id, nom, categorie: dans(x.categorie, CATEGORIES.map((c) => c.cle), 'entreprise'), detail: texte(x.detail, 200), adresse: texte(x.adresse, 200),
     distance: d !== null && d >= 0 ? Math.round(d) : null, siren: texte(x.siren, 14), source: x.source === 'annuaire' ? 'annuaire' : 'saisie',
-    contact: texte(x.contact, 200), notes, action: texte(x.action, 300), qui: texte(x.qui, 80),
+    contact: texte(x.contact, 200), membres: (() => { const v = nombre(x.membres); return v !== null && v >= 0 ? Math.round(v) : null })(), notes, action: texte(x.action, 300), qui: texte(x.qui, 80),
     echeance: /^\d{4}-\d{2}-\d{2}$/.test(String(x.echeance)) ? String(x.echeance) : '', caVise: ca !== null && ca >= 0 ? ca : null,
     statut: dans(x.statut, STATUTS.map(([k]) => k), 'a_faire'), offre: dans(x.offre, OFFRES.map(([k]) => k), ''), par: texte(x.par, 80), le: texte(x.le, 10),
   }
@@ -148,7 +149,12 @@ export function synthese(p: PlanExterieur): Synthese {
 }
 
 // ── Repérage : Annuaire des entreprises ─────────────────────────────
-export const API = 'https://recherche-entreprises.api.gouv.fr/near_point'
+// Correctif (Joseph, 16/11/2026, « je ne vois pas les usines Thales à Vendôme ») : la recherche « autour d'un point »
+// de l'Annuaire ignore le filtre d'effectif ; elle rendait les 50 premières entreprises de toutes tailles. On cherche
+// désormais par codes postaux (communes du rayon, données Géo de l'État) avec le filtre d'effectif, puis on garde les
+// établissements dans le rayon. L'effectif retenu est celui du site, pas celui du groupe.
+export const API = 'https://recherche-entreprises.api.gouv.fr/search'
+export const GEO = 'https://geo.api.gouv.fr'
 // Tranches d'effectif salarié de l'INSEE : code → libellé et effectif minimal
 export const TRANCHES: Record<string, { libelle: string; min: number }> = {
   '00': { libelle: '0 salarié', min: 0 }, '01': { libelle: '1 ou 2 salariés', min: 1 }, '02': { libelle: '3 à 5 salariés', min: 3 },
@@ -172,11 +178,12 @@ const libelleNaf = (code: string) => {
   return null
 }
 
-export interface Trouvee { id: string; nom: string; categorie: Categorie; detail: string; adresse: string; distance: number; siren: string; effectifMin: number }
-type Etablissement = { siret?: string; adresse?: string; latitude?: string | number; longitude?: string | number; activite_principale?: string; tranche_effectif_salarie?: string | null; liste_enseignes?: string[] | null; etat_administratif?: string }
+// effectif : effectif minimal du site (null s'il n'est pas publié) ; taille : tranche de l'entreprise entière
+export interface Trouvee { id: string; nom: string; categorie: Categorie; activite: string; effectif: number | null; libelleEffectif: string; taille: string; detail: string; adresse: string; distance: number; siren: string }
+type Etablissement = { siret?: string; adresse?: string; latitude?: string | number | null; longitude?: string | number | null; activite_principale?: string; tranche_effectif_salarie?: string | null; liste_enseignes?: string[] | null; etat_administratif?: string }
 type Resultat = { siren?: string; nom_complet?: string; nom_raison_sociale?: string; activite_principale?: string; tranche_effectif_salarie?: string | null; matching_etablissements?: Etablissement[]; siege?: Etablissement }
 
-function distance(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+export function distance(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
   const r = (x: number) => (x * Math.PI) / 180
   const dLat = r(b.lat - a.lat), dLon = r(b.lon - a.lon)
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLon / 2) ** 2
@@ -185,63 +192,103 @@ function distance(a: { lat: number; lon: number }, b: { lat: number; lon: number
 const majuscules = (s: string) => s.toLowerCase().replace(/(^|[\s'’(-])(\p{L})/gu, (_, a: string, b: string) => a + b.toUpperCase())
 // Les magasins V and B ne sont pas des cibles
 const estVandB = (nom: string) => /\bv\s*(and|&|et)\s*b\b/i.test(nom)
+const nombreOuNul = (v: unknown) => (v === null || v === undefined || v === '' ? NaN : Number(v))
 
-// Lecture d'une page de réponse : un établissement par entreprise, le plus proche du magasin, dans le rayon
+// Lecture d'une page de réponse : chaque site de l'entreprise dans le rayon (une usine et une agence sont deux cibles)
 export function lireResultats(j: { results?: Resultat[] }, depuis: { lat: number; lon: number }, rayonM: number, categorie: Categorie): Trouvee[] {
   return (j.results ?? []).flatMap((r) => {
-    const etabs = (r.matching_etablissements?.length ? r.matching_etablissements : r.siege ? [r.siege] : [])
+    const nomBase = r.nom_complet || r.nom_raison_sociale || ''
+    if (!nomBase) return []
+    const taille = TRANCHES[r.tranche_effectif_salarie ?? '']?.libelle ?? ''
+    return (r.matching_etablissements?.length ? r.matching_etablissements : r.siege ? [r.siege] : [])
       .filter((e) => e.etat_administratif !== 'F')
-      .map((e) => ({ e, lat: Number(e.latitude), lon: Number(e.longitude) }))
+      .map((e) => ({ e, lat: nombreOuNul(e.latitude), lon: nombreOuNul(e.longitude) }))
       .filter((x) => Number.isFinite(x.lat) && Number.isFinite(x.lon))
       .map((x) => ({ ...x, d: distance(depuis, x) }))
-      .sort((a, b) => a.d - b.d)
-    const p = etabs[0]
-    const nomBase = r.nom_complet || r.nom_raison_sociale || ''
-    if (!p || !nomBase || p.d > rayonM) return []
-    const enseigne = p.e.liste_enseignes?.find(Boolean)
-    const nom = majuscules(enseigne && !nomBase.toLowerCase().includes(enseigne.toLowerCase()) ? `${enseigne} (${nomBase})` : nomBase)
-    if (estVandB(nom)) return []
-    const naf = p.e.activite_principale || r.activite_principale || ''
-    const lu = libelleNaf(naf)
-    const tranche = p.e.tranche_effectif_salarie ?? r.tranche_effectif_salarie ?? ''
-    const t = TRANCHES[tranche ?? '']
-    const cat: Categorie = categorie === 'entreprise' ? 'entreprise' : lu?.categorie ?? categorie
-    const detail = [lu?.libelle ?? (naf ? `Activité ${naf}` : ''), t?.libelle].filter(Boolean).join(' · ')
-    return [{ id: `siret/${p.e.siret ?? r.siren}`, nom: nom.slice(0, 160), categorie: cat, detail, adresse: majuscules(p.e.adresse ?? '').slice(0, 200), distance: Math.round(p.d), siren: r.siren ?? '', effectifMin: t?.min ?? 0 }]
+      .filter((x) => x.d <= rayonM)
+      .flatMap(({ e, d }) => {
+        const enseigne = e.liste_enseignes?.find(Boolean)
+        const nom = majuscules(enseigne && !nomBase.toLowerCase().includes(enseigne.toLowerCase()) ? `${enseigne} (${nomBase})` : nomBase)
+        if (estVandB(nom)) return []
+        const naf = e.activite_principale || r.activite_principale || ''
+        const lu = libelleNaf(naf)
+        const t = TRANCHES[e.tranche_effectif_salarie ?? '']
+        const cat: Categorie = categorie === 'entreprise' ? 'entreprise' : lu?.categorie ?? categorie
+        const activite = lu?.libelle ?? (naf ? `Activité ${naf}` : '')
+        const libelleEffectif = t ? `${t.libelle} sur le site` : 'Effectif du site non publié'
+        const detail = [activite, libelleEffectif, taille && !t ? `entreprise : ${taille}` : ''].filter(Boolean).join(' · ')
+        return [{ id: `siret/${e.siret ?? r.siren}`, nom: nom.slice(0, 160), categorie: cat, activite, effectif: t ? t.min : null, libelleEffectif, taille, detail: detail.slice(0, 200), adresse: majuscules(e.adresse ?? '').slice(0, 200), distance: Math.round(d), siren: r.siren ?? '' }]
+      })
   })
 }
 
-export function requetes(categorie: Categorie, lat: number, lon: number, rayonKm: number, tailleMin: number): string[] {
-  const base = `lat=${lat.toFixed(5)}&long=${lon.toFixed(5)}&radius=${rayonKm}&etat_administratif=A&per_page=25`
-  if (categorie === 'entreprise') return [1, 2].map((page) => `${API}?${base}&tranche_effectif_salarie=${tranchesDepuis(tailleMin).join(',')}&page=${page}`)
-  return [`${API}?${base}&activite_principale=${Object.keys(NAF[categorie]).join(',')}&page=1`, `${API}?${base}&activite_principale=${Object.keys(NAF[categorie]).join(',')}&page=2`]
+// Les plus gros sites d'abord, effectif inconnu ensuite, puis du plus proche au plus loin
+export const trierParPotentiel = (a: Trouvee, b: Trouvee) => (b.effectif ?? -1) - (a.effectif ?? -1) || a.distance - b.distance
+
+// Points du cercle (centre et 8 directions) : leurs départements, pour un magasin près d'une limite
+export function pointsDuCercle(lat: number, lon: number, rayonKm: number): { lat: number; lon: number }[] {
+  const dLat = rayonKm / 111.2, dLon = rayonKm / (111.2 * Math.cos((lat * Math.PI) / 180))
+  const pts = [{ lat, lon }]
+  for (let i = 0; i < 8; i++) { const a = (i * Math.PI) / 4; pts.push({ lat: lat + dLat * Math.cos(a), lon: lon + dLon * Math.sin(a) }) }
+  return pts
+}
+type CommuneGeo = { codesPostaux?: string[]; centre?: { coordinates?: [number, number] } }
+// Codes postaux des communes dont le centre est dans le rayon (avec 3 km de marge pour les communes étendues)
+export function codesDansLeRayon(communes: CommuneGeo[], lat: number, lon: number, rayonKm: number): string[] {
+  const codes = new Set<string>()
+  for (const c of communes) {
+    const [clon, clat] = c.centre?.coordinates ?? []
+    if (typeof clat !== 'number' || typeof clon !== 'number') continue
+    if (distance({ lat, lon }, { lat: clat, lon: clon }) <= (rayonKm + 3) * 1000) for (const cp of c.codesPostaux ?? []) codes.add(cp)
+  }
+  return [...codes].sort()
 }
 
 const ATTENTE = 15000
-async function lire(url: string): Promise<{ results?: Resultat[]; total_pages?: number }> {
+async function lire<T>(url: string): Promise<T> {
   const ctrl = new AbortController()
   const minuterie = setTimeout(() => ctrl.abort(), ATTENTE)
   try {
     const r = await fetch(url, { signal: ctrl.signal })
     if (!r.ok) throw new Error(String(r.status))
-    return await r.json()
+    return await r.json() as T
   } finally { clearTimeout(minuterie) }
 }
 
-// Recherche d'un type de cible autour du magasin ; la 2e page n'est lue que si la 1re est pleine
-export async function chercher(categorie: Categorie, lat: number, lon: number, rayonKm: number, tailleMin: number): Promise<Trouvee[]> {
-  const [p1, p2] = requetes(categorie, lat, lon, rayonKm, tailleMin)
-  const j1 = await lire(p1)
+export async function codesPostauxAutour(lat: number, lon: number, rayonKm: number): Promise<string[]> {
+  const deps = new Set<string>()
+  const lus = await Promise.allSettled(pointsDuCercle(lat, lon, rayonKm).map((p) => lire<{ codeDepartement?: string }[]>(`${GEO}/communes?lat=${p.lat.toFixed(5)}&lon=${p.lon.toFixed(5)}&fields=codeDepartement&format=json`)))
+  for (const l of lus) if (l.status === 'fulfilled') for (const c of l.value ?? []) if (c.codeDepartement) deps.add(c.codeDepartement)
+  if (!deps.size) throw new Error('geo')
+  const communes = (await Promise.all([...deps].map((d) => lire<CommuneGeo[]>(`${GEO}/departements/${d}/communes?fields=codesPostaux,centre&format=json`)))).flat()
+  const codes = codesDansLeRayon(communes, lat, lon, rayonKm)
+  if (!codes.length) throw new Error('geo')
+  return codes
+}
+
+export const PAGES_MAX = 8
+export function requete(categorie: Categorie, codesPostaux: string[], tailleMin: number, page: number): string {
+  const filtre = categorie === 'entreprise' ? `tranche_effectif_salarie=${tranchesDepuis(tailleMin).join(',')}` : `activite_principale=${Object.keys(NAF[categorie]).join(',')}`
+  return `${API}?code_postal=${codesPostaux.join(',')}&${filtre}&etat_administratif=A&limite_matching_etablissements=20&per_page=25&page=${page}`
+}
+
+// Recherche d'un type de cible dans les codes postaux du rayon ; jusqu'à 8 pages de 25 entreprises
+export async function chercher(categorie: Categorie, codesPostaux: string[], lat: number, lon: number, rayonKm: number, tailleMin: number): Promise<Trouvee[]> {
+  const j1 = await lire<{ results?: Resultat[]; total_pages?: number }>(requete(categorie, codesPostaux, tailleMin, 1))
   const pages = [j1]
-  if ((j1.total_pages ?? 1) > 1) { try { pages.push(await lire(p2)) } catch { /* 1re page gardée */ } }
+  const n = Math.min(PAGES_MAX, j1.total_pages ?? 1)
+  for (let p = 2; p <= n; p += 3) {
+    const lot = await Promise.allSettled([p, p + 1, p + 2].filter((x) => x <= n).map((x) => lire<{ results?: Resultat[] }>(requete(categorie, codesPostaux, tailleMin, x))))
+    for (const l of lot) if (l.status === 'fulfilled') pages.push(l.value)
+  }
   const vus = new Set<string>()
   return pages.flatMap((j) => lireResultats(j, { lat, lon }, rayonKm * 1000, categorie))
-    .filter((t) => (categorie !== 'entreprise' || t.effectifMin >= tailleMin) && !vus.has(t.id) && (vus.add(t.id), true))
-    .sort((a, b) => a.distance - b.distance)
+    // Entreprises : un site dont l'effectif publié est sous la taille demandée sort (une agence d'un grand groupe)
+    .filter((t) => (categorie !== 'entreprise' || t.effectif === null || t.effectif >= tailleMin) && !vus.has(t.id) && (vus.add(t.id), true))
 }
 
 export function cibleDepuis(t: Trouvee, par: string, le: string): Cible {
-  return { id: t.id, nom: t.nom, categorie: t.categorie, detail: t.detail, adresse: t.adresse, distance: t.distance, siren: t.siren, source: 'annuaire', contact: '', notes: {}, action: '', qui: '', echeance: '', caVise: null, statut: 'a_faire', offre: '', par, le }
+  return { id: t.id, nom: t.nom, categorie: t.categorie, detail: t.detail, adresse: t.adresse, distance: t.distance, siren: t.siren, source: 'annuaire', contact: '', membres: null, notes: {}, action: '', qui: '', echeance: '', caVise: null, statut: 'a_faire', offre: '', par, le }
 }
 export const nouvelId = () => `c_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 export const libelleDistance = (d: number | null) => (d === null ? '' : d < 1000 ? `${Math.max(10, Math.round(d / 10) * 10)} m` : `${(d / 1000).toFixed(1).replace('.', ',')} km`)

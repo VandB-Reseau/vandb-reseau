@@ -40,11 +40,12 @@ import { useReseau } from '../data/ReseauContext'
 import { enregistrerExterieur, enregistrerExterieurFranchise } from '../data/chargement'
 import { chiffresDuMagasin, formatEuros } from '../data/chiffres'
 import {
-  CATEGORIES, CRITERES, OFFRES, QUADRANTS, RAYONS, SEUIL, STATUTS, TAILLES, actionProposee, axes, chercher, cibleDepuis, estNotee,
+  CATEGORIES, CRITERES, OFFRES, QUADRANTS, RAYONS, SEUIL, STATUTS, TAILLES, actionProposee, axes, chercher, cibleDepuis, codesPostauxAutour, trierParPotentiel, estNotee,
   libelleCategorie, libelleDistance, nouvelId, ordrePlan, planVide, quadrant, synthese,
   type Categorie, type Cible, type Critere, type Offre, type PlanExterieur, type Quadrant, type StatutAction, type Trouvee,
 } from '../data/marcheExterieur'
 import { dateCourte } from '../lib/format'
+const formatNombre = (n: number) => n.toLocaleString('fr-FR')
 import type { Magasin, Reseau } from '../data/modele'
 
 const ETAPES = [
@@ -209,8 +210,9 @@ function EtapeMagasin({ reseau, m, plan, changer, lecture }: { reseau: Reseau; m
 }
 
 // ── 2 · Repérage ────────────────────────────────────────────────────
+const TRANCHE_COURTE = (t: Trouvee) => t.libelleEffectif.replace(' sur le site', '')
 type EtatRecherche = { etat: 'repos' } | { etat: 'chargement'; fait: number } | { etat: 'pret'; liste: Trouvee[]; echecs: number }
-const CLE_CACHE = 'vandb-reperage-exterieur'
+const CLE_CACHE = 'vandb-reperage-exterieur-2'
 const JOURS_CACHE = 30
 function lireCache(cle: string): Trouvee[] | null {
   try {
@@ -230,20 +232,26 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const [taille, setTaille] = useState(20)
   const [filtre, setFiltre] = useState<Categorie | 'tous'>('tous')
+  // Filtres de la liste (Joseph, 16/11/2026) : effectif du site, distance, nom
+  const [effectifMin, setEffectifMin] = useState(0)
+  const [distanceMax, setDistanceMax] = useState(0)
+  const [nomCherche, setNomCherche] = useState('')
   const cle = m.lat !== null && m.lon !== null ? `${m.lat.toFixed(4)},${m.lon.toFixed(4)}|${plan.rayon}|${taille}` : ''
   const [recherche, setRecherche] = useState<EtatRecherche>(() => { const l = cle ? lireCache(cle) : null; return l ? { etat: 'pret', liste: l, echecs: 0 } : { etat: 'repos' } })
   useEffect(() => { const l = cle ? lireCache(cle) : null; setRecherche(l ? { etat: 'pret', liste: l, echecs: 0 } : { etat: 'repos' }) }, [cle])
   const lancer = async () => {
     if (m.lat === null || m.lon === null) return
     setRecherche({ etat: 'chargement', fait: 0 })
+    let codes: string[]
+    try { codes = await codesPostauxAutour(m.lat, m.lon, plan.rayon) } catch { setRecherche({ etat: 'pret', liste: [], echecs: CATEGORIES.length }); return }
     const liste: Trouvee[] = []
     let echecs = 0
     for (const [i, c] of CATEGORIES.entries()) {
-      try { liste.push(...await chercher(c.cle, m.lat, m.lon, plan.rayon, taille)) } catch { echecs++ }
+      try { liste.push(...await chercher(c.cle, codes, m.lat, m.lon, plan.rayon, taille)) } catch { echecs++ }
       setRecherche({ etat: 'chargement', fait: i + 1 })
     }
     const vus = new Set<string>()
-    const uniques = liste.filter((t) => !vus.has(t.id) && (vus.add(t.id), true)).sort((a, b) => a.distance - b.distance)
+    const uniques = liste.filter((t) => !vus.has(t.id) && (vus.add(t.id), true)).sort(trierParPotentiel)
     if (echecs < CATEGORIES.length) ecrireCache(cle, uniques)
     setRecherche({ etat: 'pret', liste: uniques, echecs })
   }
@@ -260,7 +268,9 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
     )
   }
   const liste = recherche.etat === 'pret' ? recherche.liste : []
-  const vues = filtre === 'tous' ? liste : liste.filter((t) => t.categorie === filtre)
+  const mot = nomCherche.trim().toLowerCase()
+  const filtrees = liste.filter((t) => (!effectifMin || (t.effectif ?? -1) >= effectifMin) && (!distanceMax || t.distance <= distanceMax * 1000) && (!mot || t.nom.toLowerCase().includes(mot) || t.activite.toLowerCase().includes(mot)))
+  const vues = filtre === 'tous' ? filtrees : filtrees.filter((t) => t.categorie === filtre)
   return (
     <>
       <Titre action={!lecture && (
@@ -284,23 +294,35 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
       )}
       {recherche.etat === 'pret' && recherche.echecs < CATEGORIES.length && (
         <>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 1.5 }}>
+            <TextField label="Chercher un nom ou une activité" value={nomCherche} onChange={(e) => setNomCherche(e.target.value)} sx={{ flex: '1 1 240px', maxWidth: 360 }} />
+            <TextField select label="Effectif du site" value={effectifMin} onChange={(e) => setEffectifMin(Number(e.target.value))} sx={{ minWidth: 200 }} slotProps={{ select: { native: true } }}>
+              <option value={0}>Tous, publié ou non</option>
+              {[10, 20, 50, 100, 250, 500].map((t) => <option key={t} value={t}>{`${t} salariés et plus`}</option>)}
+            </TextField>
+            <TextField select label="Distance" value={distanceMax} onChange={(e) => setDistanceMax(Number(e.target.value))} sx={{ minWidth: 160 }} slotProps={{ select: { native: true } }}>
+              <option value={0}>{`Tout le rayon (${plan.rayon} km)`}</option>
+              {[1, 2, 5, 10].filter((d) => d < plan.rayon).map((d) => <option key={d} value={d}>{`À moins de ${d} km`}</option>)}
+            </TextField>
+          </Box>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }} role="group" aria-label="Filtrer par type">
             {[{ cle: 'tous' as const, pluriel: 'Tous' }, ...CATEGORIES].map((c) => {
-              const n = c.cle === 'tous' ? liste.length : liste.filter((t) => t.categorie === c.cle).length
+              const n = c.cle === 'tous' ? filtrees.length : filtrees.filter((t) => t.categorie === c.cle).length
               return <Chip key={c.cle} label={`${c.pluriel} · ${n}`} onClick={() => setFiltre(c.cle)} color={filtre === c.cle ? 'secondary' : 'default'} variant={filtre === c.cle ? 'filled' : 'outlined'} aria-pressed={filtre === c.cle} sx={{ minHeight: 48, borderRadius: 999, fontWeight: 600 }} />
             })}
           </Box>
-          {!vues.length ? <Typography color="text.secondary">Rien trouvé de ce type dans ce rayon. Élargis le rayon à l’étape 1, ou ajoute la cible à la main.</Typography> : surPC ? (
+          {!vues.length ? <Typography color="text.secondary">{filtrees.length < liste.length ? 'Rien ne correspond à ces filtres. Desserre-les, ou ajoute la cible à la main.' : 'Rien trouvé de ce type dans ce rayon. Élargis le rayon à l’étape 1, ou ajoute la cible à la main.'}</Typography> : surPC ? (
             <TableContainer>
               <Table size="small" aria-label="Repérage autour du magasin">
-                <TableHead><TableRow><TableCell padding="checkbox">Retenir</TableCell><TableCell>Nom</TableCell><TableCell>Type</TableCell><TableCell>Activité</TableCell><TableCell>Adresse</TableCell><TableCell align="right">Distance</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell padding="checkbox">Retenir</TableCell><TableCell>Nom</TableCell><TableCell>Type</TableCell><TableCell>Activité</TableCell><TableCell>Effectif du site</TableCell><TableCell>Adresse</TableCell><TableCell align="right">Distance</TableCell></TableRow></TableHead>
                 <TableBody>
                   {vues.map((t) => (
                     <TableRow key={t.id} hover selected={retenues.has(t.id)}>
                       <TableCell padding="checkbox"><Checkbox checked={retenues.has(t.id)} onChange={() => basculer(t)} disabled={lecture} slotProps={{ input: { 'aria-label': `Retenir ${t.nom}` } }} /></TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>{t.nom}</TableCell>
                       <TableCell><Pastille ton="type">{libelleCategorie(t.categorie)}</Pastille></TableCell>
-                      <TableCell>{t.detail}</TableCell>
+                      <TableCell>{t.activite}</TableCell>
+                      <TableCell sx={{ color: t.effectif === null ? 'text.secondary' : undefined, fontWeight: (t.effectif ?? 0) >= 100 ? 700 : undefined }}>{t.effectif === null ? ['Non publié', t.taille && `entreprise : ${t.taille}`].filter(Boolean).join(' · ') : TRANCHE_COURTE(t)}</TableCell>
                       <TableCell sx={{ color: 'text.secondary' }}>{t.adresse}</TableCell>
                       <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{libelleDistance(t.distance)}</TableCell>
                     </TableRow>
@@ -315,7 +337,7 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
                   <Checkbox checked={retenues.has(t.id)} onChange={() => basculer(t)} disabled={lecture} slotProps={{ input: { 'aria-label': `Retenir ${t.nom}` } }} sx={{ width: 48, height: 48 }} />
                   <Box sx={{ minWidth: 0 }}>
                     <Typography sx={{ fontWeight: 600 }}>{t.nom}</Typography>
-                    <Typography variant="body2" color="text.secondary">{[libelleCategorie(t.categorie), t.detail, libelleDistance(t.distance)].filter(Boolean).join(' · ')}</Typography>
+                    <Typography variant="body2" color="text.secondary">{[libelleCategorie(t.categorie), t.activite, t.effectif === null ? 'effectif non publié' : TRANCHE_COURTE(t), libelleDistance(t.distance)].filter(Boolean).join(' · ')}</Typography>
                   </Box>
                 </Box>
               ))}
@@ -343,12 +365,13 @@ function EtapeCibles({ plan, changer, lecture, par, le }: { plan: PlanExterieur;
       ) : surPC ? (
         <TableContainer>
           <Table size="small" aria-label="Mes cibles">
-            <TableHead><TableRow><TableCell>Cible</TableCell><TableCell>Type</TableCell><TableCell>Contact</TableCell><TableCell align="right">Distance</TableCell><TableCell>Diagnostic</TableCell><TableCell /></TableRow></TableHead>
+            <TableHead><TableRow><TableCell>Cible</TableCell><TableCell>Type</TableCell><TableCell align="right">Salariés, licenciés</TableCell><TableCell>Contact</TableCell><TableCell align="right">Distance</TableCell><TableCell>Diagnostic</TableCell><TableCell /></TableRow></TableHead>
             <TableBody>
               {plan.cibles.map((c) => (
                 <TableRow key={c.id} hover>
                   <TableCell><Typography sx={{ fontWeight: 600 }}>{c.nom}</Typography><Typography variant="body2" color="text.secondary">{c.detail}</Typography></TableCell>
                   <TableCell><Pastille ton="type">{libelleCategorie(c.categorie)}</Pastille></TableCell>
+                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{c.membres !== null ? formatNombre(c.membres) : <Typography component="span" variant="body2" color="text.secondary">À compléter</Typography>}</TableCell>
                   <TableCell>{c.contact || <Typography component="span" variant="body2" color="text.secondary">À compléter</Typography>}</TableCell>
                   <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{libelleDistance(c.distance)}</TableCell>
                   <TableCell><Pastille ton={tonQuadrant(quadrant(c))}>{libelleQuadrant(quadrant(c))}</Pastille></TableCell>
@@ -364,7 +387,7 @@ function EtapeCibles({ plan, changer, lecture, par, le }: { plan: PlanExterieur;
             <Box component="li" key={c.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography sx={{ fontWeight: 600 }}>{c.nom}</Typography>
-                <Typography variant="body2" color="text.secondary">{[libelleCategorie(c.categorie), c.contact, libelleDistance(c.distance)].filter(Boolean).join(' · ')}</Typography>
+                <Typography variant="body2" color="text.secondary">{[libelleCategorie(c.categorie), c.membres !== null ? `${formatNombre(c.membres)} membres ou salariés` : '', c.contact, libelleDistance(c.distance)].filter(Boolean).join(' · ')}</Typography>
               </Box>
               {!lecture && <IconButton onClick={() => setEdition(c)} aria-label={`Modifier ${c.nom}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton>}
             </Box>
@@ -381,9 +404,10 @@ function FenetreCible({ cible: c, plan, changer, par, le, onFermer }: { cible: C
   const [categorie, setCategorie] = useState<Categorie>(c?.categorie ?? 'club')
   const [detail, setDetail] = useState(c?.detail ?? '')
   const [contact, setContact] = useState(c?.contact ?? '')
+  const [membres, setMembres] = useState(c?.membres != null ? String(c.membres) : '')
   const enregistrer = async () => {
-    const base: Cible = c ?? { id: nouvelId(), nom: '', categorie, detail: '', adresse: '', distance: null, siren: '', source: 'saisie', contact: '', notes: {}, action: '', qui: '', echeance: '', caVise: null, statut: 'a_faire', offre: '', par, le }
-    const ligne: Cible = { ...base, nom: nom.trim().slice(0, 160), categorie, detail: detail.trim().slice(0, 200), contact: contact.trim().slice(0, 200) }
+    const base: Cible = c ?? { id: nouvelId(), nom: '', categorie, detail: '', adresse: '', distance: null, siren: '', source: 'saisie', contact: '', membres: null, notes: {}, action: '', qui: '', echeance: '', caVise: null, statut: 'a_faire', offre: '', par, le }
+    const ligne: Cible = { ...base, nom: nom.trim().slice(0, 160), categorie, detail: detail.trim().slice(0, 200), contact: contact.trim().slice(0, 200), membres: membres.trim() && Number.isFinite(Number(membres)) && Number(membres) >= 0 ? Math.round(Number(membres)) : null }
     changer({ ...plan, cibles: c ? plan.cibles.map((x) => (x.id === c.id ? ligne : x)) : [...plan.cibles, ligne] }, true)
     return c ? 'Cible enregistrée.' : 'Cible ajoutée.'
   }
@@ -396,6 +420,7 @@ function FenetreCible({ cible: c, plan, changer, par, le, onFermer }: { cible: C
         {CATEGORIES.map((x) => <MenuItem key={x.cle} value={x.cle} sx={{ minHeight: 48 }}>{x.libelle}</MenuItem>)}
       </TextField>
       <TextField label="Activité, taille" value={detail} onChange={(e) => setDetail(e.target.value)} slotProps={{ htmlInput: { maxLength: 200 } }} />
+      <TextField label="Salariés, licenciés ou adhérents" value={membres} onChange={(e) => setMembres(e.target.value.replace(/[^\d]/g, ''))} slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 7 } }} />
       <TextField label="Contact (nom, téléphone, email)" value={contact} onChange={(e) => setContact(e.target.value)} slotProps={{ htmlInput: { maxLength: 200 } }} />
     </Fenetre>
   )

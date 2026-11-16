@@ -7,21 +7,35 @@ import { zonesTropPetites } from './pilotage/supabase-simule'
 const NOM = 'Annecy Test'
 const fiche = (etape?: number) => `./#/magasins/${encodeURIComponent(NOM)}?vue=exterieur${etape ? `&etape=${etape}` : ''}`
 
-// Réponse de l'API près du point demandé : une entreprise de 50 à 99 salariés (2e page jamais demandée), un traiteur,
-// un V and B (jamais une cible) ; rien pour les autres types
+// Réponse de l'Annuaire pour les codes postaux du rayon : un grand site (groupe de 10 000 salariés, 500 sur place),
+// une entreprise de 50 à 99 salariés, l'agence d'un groupe trop petite sur place (écartée), un site à l'effectif non
+// publié, un V and B (jamais une cible), un site hors rayon ; un traiteur ; rien pour les autres types
 const demandes: string[] = []
 async function annuaire(page: Page) {
   demandes.length = 0
+  const points: { lat: number; lon: number }[] = []
+  const centre = () => ({ lat: points.reduce((s, p) => s + p.lat, 0) / points.length, lon: points.reduce((s, p) => s + p.lon, 0) / points.length })
+  await page.route(/^https:\/\/geo\.api\.gouv\.fr\//, (r: Route) => {
+    const u = new URL(r.request().url())
+    if (u.pathname === '/communes' && !u.searchParams.get('lat')) return r.fallback()
+    if (!/^\/(communes|departements\/\w+\/communes)$/.test(u.pathname)) return r.fallback()
+    if (u.pathname === '/communes') { points.push({ lat: Number(u.searchParams.get('lat')), lon: Number(u.searchParams.get('lon')) }); return r.fulfill({ json: [{ codeDepartement: '74' }] }) }
+    const c = centre()
+    return r.fulfill({ json: [{ codesPostaux: ['74000'], centre: { type: 'Point', coordinates: [c.lon, c.lat] } }, { codesPostaux: ['74960'], centre: { type: 'Point', coordinates: [c.lon, c.lat + 0.05] } }, { codesPostaux: ['13001'], centre: { type: 'Point', coordinates: [5.37, 43.3] } }] })
+  })
   await page.route(/^https:\/\/recherche-entreprises\.api\.gouv\.fr\//, (r: Route) => {
     const u = new URL(r.request().url())
     demandes.push(u.search)
-    const lat = Number(u.searchParams.get('lat')), lon = Number(u.searchParams.get('long'))
+    const { lat, lon } = centre()
     const etab = (siret: string, naf: string, tranche: string | null, dlat: number, enseigne?: string) => ({ siret, activite_principale: naf, tranche_effectif_salarie: tranche, latitude: String(lat + dlat), longitude: String(lon), adresse: '1 RUE DES ESSAIS 74000 ANNECY', etat_administratif: 'A', liste_enseignes: enseigne ? [enseigne] : null })
     const vide = { results: [], total_pages: 1 }
     if (u.searchParams.get('tranche_effectif_salarie')) {
       return r.fulfill({ json: { total_pages: 1, results: [
-        { siren: '000000001', nom_complet: 'ATELIERS FICTIFS DU LAC', matching_etablissements: [etab('00000000100011', '28.29B', '21', 0.01)] },
-        { siren: '000000002', nom_complet: 'V AND B EXEMPLE', matching_etablissements: [etab('00000000200011', '47.25Z', '12', 0.005)] },
+        { siren: '000000001', nom_complet: 'ATELIERS FICTIFS DU LAC', tranche_effectif_salarie: '21', matching_etablissements: [etab('00000000100011', '28.29B', '21', 0.01)] },
+        { siren: '000000002', nom_complet: 'V AND B EXEMPLE', tranche_effectif_salarie: '12', matching_etablissements: [etab('00000000200011', '47.25Z', '12', 0.005)] },
+        { siren: '000000004', nom_complet: 'GROUPE AERONAUTIQUE FICTIF', tranche_effectif_salarie: '53', matching_etablissements: [etab('00000000400011', '26.51A', '41', 0.04), etab('00000000400029', '26.51A', '32', 0.5)] },
+        { siren: '000000005', nom_complet: 'BANQUE FICTIVE', tranche_effectif_salarie: '53', matching_etablissements: [etab('00000000500011', '64.19Z', '02', 0.001)] },
+        { siren: '000000006', nom_complet: 'LOGISTIQUE DISCRETE', tranche_effectif_salarie: '22', matching_etablissements: [etab('00000000600011', '52.29A', null, 0.02)] },
       ] } })
     }
     if ((u.searchParams.get('activite_principale') ?? '').includes('56.21Z')) {
@@ -67,10 +81,22 @@ test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’ac
   await expect(page.getByLabel('Retenir Ateliers Fictifs Du Lac')).toBeVisible()
   await expect(page.getByLabel('Retenir Traiteur Du Test (Saveurs Simulees)')).toBeVisible()
   await expect(page.getByText(/V And B Exemple/)).toHaveCount(0)
-  expect(demandes.some((d) => d.includes('radius=10') && d.includes('tranche_effectif_salarie=12,21'))).toBe(true)
+  // L'agence du groupe (3 à 5 salariés sur place) et le site hors rayon sont écartés ; le grand site arrive en tête
+  await expect(page.getByText(/Banque Fictive/)).toHaveCount(0)
+  await expect(page.getByLabel(/^Retenir Groupe Aeronautique Fictif/)).toHaveCount(1)
+  await expect(page.getByLabel(/^Retenir /).first()).toHaveAttribute('aria-label', 'Retenir Groupe Aeronautique Fictif')
+  expect(demandes.some((d) => d.includes('code_postal=74000,74960') && !d.includes('13001') && d.includes('tranche_effectif_salarie=12,21'))).toBe(true)
+  // Filtres de la liste : effectif du site, puis nom
+  await page.getByLabel('Effectif du site').selectOption('100')
+  await expect(page.getByRole('button', { name: 'Tous · 1' })).toBeVisible()
+  await page.getByLabel('Effectif du site').selectOption('0')
+  await expect(page.getByRole('button', { name: 'Tous · 4' })).toBeVisible()
+  await page.getByLabel('Chercher un nom ou une activité').fill('traiteur')
+  await expect(page.getByRole('button', { name: 'Tous · 1' })).toBeVisible()
+  await page.getByLabel('Chercher un nom ou une activité').fill('')
   await page.getByRole('button', { name: 'Prescripteurs · 1' }).click()
   await expect(page.getByLabel('Retenir Ateliers Fictifs Du Lac')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Tous · 2' }).click()
+  await page.getByRole('button', { name: 'Tous · 4' }).click()
   await page.getByLabel('Retenir Ateliers Fictifs Du Lac').check()
   await page.getByLabel('Retenir Traiteur Du Test (Saveurs Simulees)').check()
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
@@ -81,8 +107,10 @@ test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’ac
   await page.getByRole('button', { name: 'Ajouter une cible' }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une cible' })
   await d.getByRole('textbox', { name: 'Nom', exact: true }).fill('Club des entrepreneurs fictifs')
+  await d.getByLabel('Salariés, licenciés ou adhérents').fill('120')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByRole('heading', { name: 'Mes cibles · 3' })).toBeVisible()
+  await expect(page.getByText(isMobile ? /120 membres ou salariés/ : '120', { exact: !isMobile })).toBeVisible()
 
   // 4 · Diagnostic : l'atelier rapporte (5/5 en direct) sans relais (1/5) → client à signer ; le traiteur partout à 4 → priorité
   await page.getByRole('button', { name: 'Diagnostic', exact: true }).click()
@@ -112,6 +140,7 @@ test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’ac
   await expect(page.getByText('20 %')).toBeVisible() // 8 000 € sur un objectif de 40 000 €
   await expect.poll(() => derniere(ecritures, 'exterieur_magasins')?.[NOM]?.cibles?.length).toBe(3)
   const traiteur = derniere(ecritures, 'exterieur_magasins')[NOM].cibles.find((c: { nom: string }) => c.nom.startsWith('Traiteur'))
+  expect(derniere(ecritures, 'exterieur_magasins')[NOM].cibles.find((c: { nom: string }) => c.nom.startsWith('Club')).membres).toBe(120)
   expect(traiteur).toMatchObject({ categorie: 'prescripteur', source: 'annuaire', caVise: 8000, offre: 'exterieur', notes: { potentiel: 4, cause: 4 } })
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
@@ -151,4 +180,36 @@ test('Marché extérieur : annuaire injoignable, un message humain et l’ajout 
   await page.goto(fiche(2))
   await page.getByRole('button', { name: 'Chercher dans un rayon de 10 km' }).click()
   await expect(page.getByText('L’Annuaire des entreprises ne répond pas pour le moment. Réessaie dans quelques minutes, ou ajoute tes cibles à la main à l’étape suivante.')).toBeVisible()
+})
+
+test('Marché extérieur depuis le menu : on choisit le magasin, puis son plan', async ({ page, isMobile }) => {
+  await seConnecter(page)
+  await page.goto('./')
+  if (isMobile) {
+    await page.getByRole('button', { name: 'Mon compte' }).click()
+    await page.getByRole('menu').getByRole('menuitem', { name: 'Marché extérieur' }).click()
+  } else {
+    await page.getByRole('navigation').getByRole('button', { name: 'Marché extérieur' }).click()
+  }
+  await expect(page.getByRole('heading', { level: 1, name: 'Marché extérieur' })).toBeVisible()
+  await page.getByRole('combobox', { name: 'Magasin' }).fill(NOM)
+  await page.getByRole('option', { name: NOM }).click()
+  await expect(page.getByRole('link', { name: 'Fiche du magasin' })).toHaveAttribute('href', new RegExp(encodeURIComponent(NOM)))
+  await expect(page.getByRole('navigation', { name: 'Étapes du plan marché extérieur' }).getByRole('button')).toHaveCount(6)
+  await page.getByLabel('Objectif de CA extérieur sur un an (€ HT)').fill('25000')
+  await expect(page.getByText('Enregistré')).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+})
+
+test('Marché extérieur depuis le menu du franchisé : ouvre le plan de son magasin', async ({ page }) => {
+  await simulerSupabase(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: [NOM] } })
+  await page.goto('./')
+  await page.getByLabel('Email').fill(COMPTE.email)
+  await page.getByLabel('Mot de passe').fill(COMPTE.motDePasse)
+  await page.getByRole('button', { name: 'Se connecter' }).click()
+  await page.getByRole('heading', { level: 1 }).first().waitFor()
+  await page.goto('./#/marche-exterieur')
+  await expect(page).toHaveURL(/vue=exterieur/)
+  await expect(page.getByRole('navigation', { name: 'Étapes du plan marché extérieur' }).getByRole('button')).toHaveCount(6)
 })
