@@ -138,7 +138,10 @@ test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’ac
   await a.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByRole('link', { name: 'Chiffrer Traiteur Du Test (Saveurs Simulees) : Contrat extérieur' })).toHaveAttribute('href', /vue=simulateurs&partie=simulateurs&sim=exterieur$/)
   await expect(page.getByText('20 %')).toBeVisible() // 8 000 € sur un objectif de 40 000 €
-  await expect.poll(() => derniere(ecritures, 'exterieur_magasins')?.[NOM]?.cibles?.length).toBe(3)
+  // L'action se garde juste après les notes : on attend la dernière écriture, celle qui porte le CA visé
+  const traiteurEcrit = () => derniere(ecritures, 'exterieur_magasins')?.[NOM]?.cibles?.find((c: { nom: string }) => c.nom.startsWith('Traiteur'))
+  await expect.poll(() => traiteurEcrit()?.caVise).toBe(8000)
+  expect(derniere(ecritures, 'exterieur_magasins')[NOM].cibles).toHaveLength(3)
   const traiteur = derniere(ecritures, 'exterieur_magasins')[NOM].cibles.find((c: { nom: string }) => c.nom.startsWith('Traiteur'))
   expect(derniere(ecritures, 'exterieur_magasins')[NOM].cibles.find((c: { nom: string }) => c.nom.startsWith('Club')).membres).toBe(120)
   expect(traiteur).toMatchObject({ categorie: 'prescripteur', source: 'annuaire', caVise: 8000, offre: 'exterieur', notes: { potentiel: 4, cause: 4 } })

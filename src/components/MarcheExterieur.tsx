@@ -75,7 +75,12 @@ export function MarcheExterieur({ reseau, m }: { reseau: Reseau; m: Magasin }) {
   const [etat, setEtat] = useState<'' | 'envoi' | 'ok' | 'erreur'>('')
   const ecrire = profil?.role === 'franchise' ? enregistrerExterieurFranchise : enregistrerExterieur
   const enAttente = useRef<PlanExterieur | null>(null)
+  const touche = useRef(false)
   const minuterie = useRef<number | undefined>(undefined)
+  // Le réseau gardé sur l'appareil s'affiche d'abord, puis la base répond : tant que rien n'est saisi ici, le plan suit
+  // la version lue (sinon une version ancienne resterait à l'écran, et serait réenregistrée à la première saisie)
+  const lu = reseau.exterieur?.[m.nom]
+  useEffect(() => { if (!touche.current) setPlan(lu ?? planVide()) }, [lu])
   const vider = useCallback(async () => {
     window.clearTimeout(minuterie.current)
     const p = enAttente.current
@@ -88,6 +93,7 @@ export function MarcheExterieur({ reseau, m }: { reseau: Reseau; m: Magasin }) {
   // Chaque changement est gardé : tout de suite (ajout, retrait) ou après une courte pause (notes, réglages)
   const changer = (p: PlanExterieur, aussitot = false) => {
     if (lecture) return
+    touche.current = true
     setPlan(p)
     enAttente.current = p
     window.clearTimeout(minuterie.current)
