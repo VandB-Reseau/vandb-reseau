@@ -42,3 +42,13 @@ test('contrat aussi long que la tireuse, sans durée ou tireuse déjà dans le p
   proche(parc.tireuseAn, 60)
   expect(parc.resteNonAmorti).toBe(0)
 })
+
+test('gobelets réutilisables du contrat : nombre × prix, en coût fixe', () => {
+  // 500 × 0,25 = 125 € ; 560 € de tireuse + 125 € = 685 € ; 685 ÷ 25,59 = 26,8, 27 fûts
+  const r = simulerExterieur({ ...contrat, dureeContrat: 3, gobeletsContrat: { nombre: 500, prix: 0.25 } }, p, false)
+  proche(r.gobeletsAn, 125)
+  proche(r.coutFixe, 685)
+  proche(r.netParFut, 25.59)
+  expect(r.equilibre).toBe(27)
+  proche(r.gain, 40 * 25.59 - 685)
+})
