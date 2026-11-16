@@ -213,17 +213,18 @@ test('165, 163 et 164 : offre 5 + 1, remises face aux repères, primes par palie
   await expect(statut(page)).toContainText(/à \+ 20\s%, elles coûtent plus que la marge gagnée/)
 })
 
-test('154, 162 et 156 : livraison de la grille, sponsoring, modèle Marché extérieur', async ({ page }) => {
+test('154 et 156 : sponsoring, livraison jamais facturée en recette, modèle Marché extérieur', async ({ page }) => {
   await connecter(page, franchise, { role: 'franchise' })
   await simulateur(page, 'exterieur')
-  // 30 km aller-retour = 15 km ; 40 fûts ÷ 10 livraisons × 70 € = 280 € par livraison, sous les 3 000 € de franco : 40 €
-  await expect(page.getByText(/Livraison au prix de la grille du siège : 40\s€ pour 15 km et 280\s€ commandés par livraison\./)).toBeVisible()
-  await expect(page.getByText('Livraisons et locations facturées', { exact: true })).toBeVisible()
+  // Livraison comptée une seule fois, en coût (Joseph, 16/11/2026) : plus de livraison facturée dans les recettes
+  await expect(page.getByLabel('Livraison facturée HT')).toHaveCount(0)
+  await expect(page.getByText(/grille du siège/)).toHaveCount(0)
+  await page.getByLabel('Locations de tireuse facturées').fill('2')
+  await page.getByLabel('Prix d’une location HT').fill('150')
+  await expect(page.getByText('Locations facturées', { exact: true })).toBeVisible()
   await page.getByLabel('Sponsoring (contrepartie publicitaire)').check()
   await page.getByLabel('Somme versée HT').fill('300')
   await expect(page.locator('#carte-simulation')).toContainText(/sponsoring 300\s€/)
-  await page.getByLabel('Livraison facturée HT').fill('25')
-  await expect(page.getByRole('button', { name: /Reprendre le prix de la grille/ })).toBeVisible()
 
   await page.getByRole('navigation', { name: 'Choisir un simulateur' }).getByRole('button', { name: /Investir/ }).click()
   await page.getByRole('group', { name: 'Projet' }).getByRole('button', { name: 'Marché extérieur' }).click()
@@ -247,9 +248,7 @@ test('Directeur : les repères de la vague 10 dans Paramètres', async ({ page }
   await page.getByRole('button', { name: 'Ajouter une famille' }).click()
   await page.getByLabel('Famille 1', { exact: true }).fill('Bières')
   await page.getByLabel('Marge visée, famille 1').fill('42')
-  await page.getByRole('button', { name: 'Ajouter une distance' }).click()
-  await page.getByLabel('Distance maximale, ligne 1').fill('15')
-  await page.getByLabel('Prix de la livraison, ligne 1').fill('50')
+  await expect(page.getByRole('table', { name: 'Grille des livraisons' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Ajouter un palier extérieur' }).click()
   await page.getByLabel('CA maximal, palier 1').fill('100000')
   await page.getByLabel('Tireuses, palier 1').fill('12')
@@ -259,7 +258,7 @@ test('Directeur : les repères de la vague 10 dans Paramètres', async ({ page }
   expect(p.valeur.simulateurs).toMatchObject({
     coefInterim: 1.75, contrat: { redaction: 260, paieParMois: 25 }, tireuses: { semainesSaison: 17, occupationSaison: 0.85 },
     remises: { offerts: 0.015 }, familles: [{ libelle: 'Bières', univers: 'cave', marge: 0.42, tva: 'normale' }],
-    livraison: [{ kmMax: 15, prix: 50 }], marcheExterieur: { paliers: [{ caMax: 100_000, tireuses: 12 }] },
+    marcheExterieur: { paliers: [{ caMax: 100_000, tireuses: 12 }] },
   })
 })
 

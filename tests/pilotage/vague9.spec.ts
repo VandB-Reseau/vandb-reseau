@@ -12,7 +12,7 @@ const franchise: OptionsSimulation = { acces: { role: 'franchise', franchise: 'P
 const reperes = {
   tauxRedevance: 0.02, tauxPublicite: 0.01,
   simulateurs: {
-    coutHoraire: 20, exterieur: { prixKm: 0.6, dureeTireuse: 5, entretienTireuse: 0, co2ParFut: 0.76 }, donMecenat: true,
+    coutHoraire: 20, exterieur: { prixKm: 0.6, dureeTireuse: 5, entretienTireuse: 0, co2ParFut: 0.76 }, donMecenat: false,
     pression: { cibleMarge: 0.68, joursFraicheur: 21 }, majorations: { dimanche: 0.5, ferie: 1 },
     productivite: [{ partBar: 0.55, cible: 100 }, { partBar: 0.45, cible: 105 }, { partBar: 0.35, cible: 110 }, { partBar: 0.3, cible: 120 }, { partBar: 0, cible: 130 }],
   },
@@ -48,7 +48,7 @@ test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', a
   await page.getByLabel('Prix de vente du fût HT').fill('69')
   await page.getByLabel('Prix d’achat du fût HT').fill('41,34')
   // Livraison : 30 km × 0,60 = 18 € + 1,5 h × 20 € = 30 €, 48 € ; × 10 = 480 € par an
-  await expect(page.getByText(/Une livraison coûte 48,00\s€ HT : 18,00\s€ d’indemnités kilométriques .* et 30,00\s€ de temps .*Rien de facturé\./)).toBeVisible()
+  await expect(page.getByText(/Une livraison coûte 48,00\s€ HT : 18,00\s€ d’indemnités kilométriques .* et 30,00\s€ de temps \(1,5 h à 20,00\s€\)\./)).toBeVisible()
   // Blocs dans l'ordre recettes → coûts → résultat, chacun avec son sous-total (Joseph, 15/11/2026)
   await expect(page.getByRole('region', { name: '1. Recettes' }).locator('.sous-total')).toHaveText(/CA HT de l’année\s*2\s760\s€/)
   await expect(page.getByRole('region', { name: '2. Fûts' }).locator('.sous-total')).toHaveText(/− 1\s684\s€/)
@@ -69,15 +69,17 @@ test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', a
   await expect(page.getByRole('status')).toContainText(/905\s€ de coûts fixes, équilibre à 37 fûts ; gain de 88\s€ au volume prévu\.$/)
   await expect(page.getByText('Reste non amorti en fin de contrat')).toHaveCount(0)
   await page.getByLabel('Durée du contrat').fill('3')
-  // Don de 1 000 € avec reçu Cerfa : 400 € de coût réel (réduction mécénat réglée par le siège)
+  // Don de 1 000 € avec reçu Cerfa : 400 € de coût réel ; case Cerfa proposée sur chaque contrat (Joseph, 16/11/2026)
   await page.getByRole('group', { name: 'Don' }).getByRole('button', { name: 'En argent' }).click()
   await page.getByLabel('Montant du don').fill('1000')
   await expect(page.getByLabel('Reçu Cerfa demandé')).toBeChecked()
-  await expect(page.getByText('Coût réel du don')).toBeVisible()
+  await expect(page.getByText('Coût réel du don', { exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: '6. Don ou sponsoring à l’association' })).toContainText(/Coût réel du don : 400\s€ \(1\s000\s€ moins 600\s€ de réduction d’impôt grâce au reçu Cerfa\)\./)
   // 1 105 + 400 = 1 505 € ; 1 505 ÷ 24,83 = 60,6, 61 fûts ; 40 × 24,83 − 1 505 = − 511,80 €
   await expect(page.getByRole('status')).toContainText(/1\s505\s€ de coûts fixes, équilibre à 61 fûts ; perte de 512\s€/)
   await page.getByLabel('Reçu Cerfa demandé').uncheck()
   await expect(page.getByRole('status')).toContainText(/2\s105\s€ de coûts fixes/)
+  await expect(page.getByRole('region', { name: '6. Don ou sponsoring à l’association' })).toContainText(/sans reçu Cerfa, pas de réduction d’impôt \(600\s€ perdus\)/)
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-simulateur-exterieur.png`, fullPage: true })
@@ -167,12 +169,12 @@ test('143 et 146 : calculette prix et marge, ouverture un dimanche', async ({ pa
   await expect(page.getByText(/€ l’heure chargée$/)).toBeVisible()
 })
 
-test('Directeur : les nouveaux repères dans Paramètres, don traité comme un don', async ({ page }) => {
+test('Directeur : les nouveaux repères dans Paramètres', async ({ page }) => {
   const ecritures = await connecter(page, {}, { parametres: { tauxRedevance: 0.02, tauxPublicite: 0.01 } })
   await page.goto('./#/parametres/reglages?rubrique=budget')
   await page.getByRole('tab', { name: 'Simulateurs' }).click()
   await page.getByLabel('Prix du kilomètre').fill('0,6')
-  await page.getByLabel('Don traité comme un don').check()
+  await expect(page.getByLabel('Don traité comme un don')).toHaveCount(0)
   // Perte standard des fûts : 7 % d'office (Joseph, 14/11/2026), réglable
   await expect(page.getByLabel('Perte standard des fûts')).toHaveValue('7')
   await page.getByLabel('Perte standard des fûts').fill('6')
@@ -182,7 +184,7 @@ test('Directeur : les nouveaux repères dans Paramètres, don traité comme un d
   await page.getByRole('region', { name: 'Simulateurs' }).getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText(/Repères des simulateurs \d{4} enregistrés\./)).toBeVisible()
   const p = ecritures.filter((e) => e.table === 'parametres_reseau').at(-1)?.corps as { valeur: { simulateurs: Record<string, unknown> } }
-  expect(p.valeur.simulateurs).toMatchObject({ donMecenat: true, exterieur: { prixKm: 0.6 }, productivite: [{ partBar: 0.55, cible: 100 }], tva: { normale: 0.2, intermediaire: 0.1, reduite: 0.055 }, pression: { perteStandard: 0.06 } })
+  expect(p.valeur.simulateurs).toMatchObject({ exterieur: { prixKm: 0.6 }, productivite: [{ partBar: 0.55, cible: 100 }], tva: { normale: 0.2, intermediaire: 0.1, reduite: 0.055 }, pression: { perteStandard: 0.06 } })
 })
 
 test('145 : productivité visée dans l’Équipe, selon la part du bar', async ({ page }) => {
