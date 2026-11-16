@@ -66,6 +66,10 @@ for (const largeur of [375, 430]) {
     await page.getByRole('menuitem', { name: 'Nine box' }).click()
     await expect(page).toHaveURL(/vue=ninebox/)
     await expect(onglets.getByRole('tab', { selected: true })).toHaveCount(0)
+    // Marché extérieur (Joseph, 16/11/2026) : par le même menu
+    await page.getByRole('button', { name: 'Autres actions' }).click()
+    await page.getByRole('menuitem', { name: 'Marché extérieur' }).click()
+    await expect(page).toHaveURL(/vue=exterieur/)
     await onglets.getByRole('tab', { name: 'Budget' }).click()
     await expect(page).toHaveURL(/vue=budget/)
   })

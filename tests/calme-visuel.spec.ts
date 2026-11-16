@@ -38,7 +38,7 @@ test('fiche magasin : sur téléphone, cinq onglets sans « Plus » (Nine box pa
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   if (!isMobile) {
     // Refonte (Joseph, 09/11/2026, 3A) ; Simulateurs à côté de Chiffres et Budget (Joseph, 14/11/2026)
-    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Simulateurs', 'Nine box'])
+    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box'])
     return
   }
   // Joseph (14/11/2026) : Budget et Simulateurs dans la barre dès 360 px, marges des onglets resserrées

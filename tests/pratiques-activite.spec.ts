@@ -52,7 +52,7 @@ test('fiche du franchisé : ses bonnes pratiques dans l’Activité, cinq onglet
   await seConnecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Lyon Test'] }, espace: { pratiques } })
   await page.goto('./#/magasins/Lyon%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler'] : ['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Simulateurs'])
+  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler'] : ['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur'])
   await onglets.getByRole('tab', { name: 'Activité' }).click()
   await page.getByRole('tablist', { name: 'Parties de l’activité' }).getByRole('tab', { name: 'Bonnes pratiques' }).click()
   await expect(page.getByRole('article', { name: 'Coffrets à composer' })).toBeVisible()

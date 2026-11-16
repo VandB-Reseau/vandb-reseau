@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Onglet « Marché extérieur » de la fiche magasin (Joseph, 16/11/2026), pour l'équipe et le franchisé.
+  **Migration à passer : `0048_marche_exterieur.sql`.** Plan d'action en 6 étapes : point de départ (rayon, objectif,
+  CA extérieur de la caisse), repérage autour du magasin dans l'Annuaire des entreprises de l'État (entreprises par
+  effectif, traiteurs et salles, associations et clubs, organisations patronales, cafés-hôtels-restaurants ; gratuit,
+  sans clé), cibles retenues ou ajoutées à la main, diagnostic noté de 1 à 5 sur 5 critères, matrice des opportunités
+  (Priorité, Client à signer, Partenaire relais, Plus tard), plan d'action avec lien vers les simulateurs Contrat
+  extérieur, Remises entreprise et Soirée. Sur téléphone : menu « ⋯ » (équipe) ou bouton du haut (franchisé).
 - Simulateur « Contrat extérieur » (Joseph, 16/11/2026), sans migration : la « Livraison facturée HT » quitte les
   Recettes (la livraison n'est plus comptée qu'une fois, en coût, bloc Livraisons) ; grille de livraison du siège et
   prix plancher retirés. Prix de vente, remise, achat, CO2 et rétrocession saisis en « €/fût ». Case « Reçu Cerfa

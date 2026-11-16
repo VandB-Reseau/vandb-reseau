@@ -2,6 +2,8 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import CalculateOutlined from '@mui/icons-material/CalculateOutlined'
 import { SectionEquipements } from '../components/Equipements'
 import { SectionOperations } from '../components/Operations'
+import { MarcheExterieur } from '../components/MarcheExterieur'
+import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
 import { MonMois } from '../components/MonMois'
 import { useTheme } from '@mui/material/styles'
 import { SectionObjectifsPlan } from '../components/PlanAction'
@@ -611,8 +613,8 @@ export function MagasinsFranchise() {
 // Refonte (Joseph, 09/11/2026, 3A) : mêmes cinq onglets que la fiche de l'équipe, deux niveaux au plus.
 // Activité : visites, campagnes et bonnes pratiques (plus d'onglet « Ressources », Joseph 14/11/2026) ; Chiffres : suivi
 // face au budget, chiffres du mois et saisies
-type VueFiche = 'fiche' | 'chiffres' | 'budget' | 'simulateurs' | 'visites' | 'campagnes' | 'pratiques'
-type OngletFicheF = 'fiche' | 'activite' | 'chiffres' | 'budget' | 'simulateurs'
+type VueFiche = 'fiche' | 'chiffres' | 'budget' | 'simulateurs' | 'exterieur' | 'visites' | 'campagnes' | 'pratiques'
+type OngletFicheF = 'fiche' | 'activite' | 'chiffres' | 'budget' | 'simulateurs' | 'exterieur'
 const rubriques: Rubrique<OngletFicheF>[] = [
   { vue: 'fiche', libelle: 'Vue d’ensemble', court: 'Aperçu', icone: <StorefrontOutlined /> },
   { vue: 'activite', libelle: 'Activité', icone: <EventNoteOutlined /> },
@@ -620,9 +622,11 @@ const rubriques: Rubrique<OngletFicheF>[] = [
   { vue: 'budget', libelle: 'Budget', icone: <RequestQuoteOutlined /> },
   // Joseph (14/11/2026) : les simulateurs au même niveau que Chiffres et Budget
   { vue: 'simulateurs', libelle: 'Simulateurs', court: 'Simuler', icone: <CalculateOutlined /> },
+  // Joseph (16/11/2026) : le franchisé bâtit lui aussi son plan marché extérieur
+  { vue: 'exterieur', libelle: 'Marché extérieur', court: 'Extérieur', icone: <HandshakeOutlined /> },
 ]
 const partiesActiviteF: { vue: VueFiche; libelle: string }[] = [{ vue: 'visites', libelle: 'Visites' }, { vue: 'campagnes', libelle: 'Campagnes' }, { vue: 'pratiques', libelle: 'Bonnes pratiques' }]
-const VUES_F: VueFiche[] = ['fiche', 'chiffres', 'budget', 'simulateurs', 'visites', 'campagnes', 'pratiques']
+const VUES_F: VueFiche[] = ['fiche', 'chiffres', 'budget', 'simulateurs', 'exterieur', 'visites', 'campagnes', 'pratiques']
 const ongletDeF = (v: VueFiche): OngletFicheF => (v === 'visites' || v === 'campagnes' || v === 'pratiques' ? 'activite' : v)
 const PARTIES_BUDGET_F = ['budget', 'visualiser', 'echanges', 'depart', 'ventes', 'calendrier', 'investissements', 'equipe', 'fraisBudget', 'resultat', 'tresoBudget', 'travaux']
 
@@ -754,7 +758,7 @@ function OngletCampagnes({ reseau, m }: { reseau: Reseau; m: Magasin }) {
 }
 
 // Haut de fiche façon profil : CA du mois, écart, tâches en cours ; appeler son Coach, écrire, voir les visites
-function ProfilFranchise({ reseau, m, message, retour }: { reseau: Reseau; m: Magasin; message: () => void; retour?: { libelle: string; aller: () => void } }) {
+function ProfilFranchise({ reseau, m, message, retour, exterieur }: { reseau: Reseau; m: Magasin; message: () => void; retour?: { libelle: string; aller: () => void }; exterieur?: () => void }) {
   const a = analyser(reseau, m.nom)
   const ouvertes = actionsDes(reseau, new Set([m.nom])).filter((x) => !x.a.faite)
   const retard = ouvertes.filter((x) => enRetard(x.a, reseau.jour)).length
@@ -769,7 +773,11 @@ function ProfilFranchise({ reseau, m, message, retour }: { reseau: Reseau; m: Ma
         { valeur: ouvertes.length, libelle: ouvertes.length > 1 ? 'tâches en cours' : 'tâche en cours' },
       ]}
       telephone={coach?.telephone} libelleAppel="Coach"
-      actions={<Tooltip title="Message"><IconButton onClick={message} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Tooltip>} />
+      actions={<>
+        {/* Téléphone : le marché extérieur s'ouvre d'ici, Budget et Simuler restent dans la barre (Joseph, 16/11/2026) */}
+        {exterieur && <Tooltip title="Marché extérieur"><IconButton onClick={exterieur} aria-label="Marché extérieur" sx={rond}><HandshakeOutlined /></IconButton></Tooltip>}
+        <Tooltip title="Message"><IconButton onClick={message} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Tooltip>
+      </>} />
   )
 }
 
@@ -787,13 +795,14 @@ export function FicheMagasinFranchise() {
   const naviguer = useNavigate()
   const [confirmation, setConfirmation] = useState('')
   const [params, setParams] = useSearchParams()
+  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const brute = (VUES_F.find((v) => v === params.get('vue')) ?? 'fiche') as VueFiche
   const partie = params.get('partie')
   const vue: VueFiche = (brute === 'budget' || brute === 'chiffres') && partie ? (PARTIES_BUDGET_F.includes(partie) ? 'budget' : partie === 'simulateurs' ? 'simulateurs' : 'chiffres') : brute
   useEffect(() => {
     if ((brute === 'budget' || brute === 'chiffres') && vue !== brute) setParams((p) => { const n = new URLSearchParams(p); n.set('vue', vue); return n }, { replace: true })
   }, [brute, vue, setParams])
-  const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); n.delete('partie'); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
+  const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); n.delete('partie'); n.delete('etape'); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const changerOnglet = (o: OngletFicheF) => changerVue(o === 'activite' ? 'visites' : o)
   const groupe = lienFil({ genre: 'magasin', magasin: nom, equipe: false })
   // Anciens liens vers l'onglet Messages : le groupe du magasin
@@ -806,8 +815,8 @@ export function FicheMagasinFranchise() {
         return (
           <>
             {reseau.magasins.length > 1 && <Button startIcon={<ArrowBack />} onClick={() => naviguer('/magasins')} sx={{ mb: 2, ml: -1, minHeight: 48, display: { xs: 'none', md: 'inline-flex' } }}>Mes magasins</Button>}
-            <ProfilFranchise retour={reseau.magasins.length > 1 ? { libelle: 'Mes magasins', aller: () => naviguer('/magasins') } : undefined} reseau={reseau} m={m} message={() => naviguer(groupe)} />
-            <Onglets valeur={ongletDeF(vue)} onChange={changerOnglet} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} fiche />
+            <ProfilFranchise retour={reseau.magasins.length > 1 ? { libelle: 'Mes magasins', aller: () => naviguer('/magasins') } : undefined} reseau={reseau} m={m} message={() => naviguer(groupe)} exterieur={surPC ? undefined : () => changerVue('exterieur')} />
+            <Onglets valeur={ongletDeF(vue)} onChange={changerOnglet} rubriques={surPC ? rubriques : rubriques.filter((r) => r.vue !== 'exterieur')} libelle={`Rubriques de ${m.nom}`} fiche />
             <ContenuOnglet>
               {ongletDeF(vue) === 'activite' && (
                 <Tabs value={vue} onChange={(_e, v: VueFiche) => changerVue(v)} variant="scrollable" scrollButtons={false} aria-label="Parties de l’activité" sx={{ mb: 2, ...styleSousNavigation }}>
@@ -818,6 +827,7 @@ export function FicheMagasinFranchise() {
               {vue === 'chiffres' && <OngletBudget nom={m.nom} mode="chiffres" santeLibelle="Chiffres du mois" sante={<OngletChiffres reseau={reseau} m={m} />} />}
               {vue === 'budget' && <OngletBudget nom={m.nom} mode="budget" />}
               {vue === 'simulateurs' && <OngletBudget nom={m.nom} mode="simulateurs" />}
+              {vue === 'exterieur' && <MarcheExterieur key={m.nom} reseau={reseau} m={m} />}
               {vue === 'visites' && <><LireVisites magasin={m.nom} /><OngletVisites reseau={reseau} m={m} /></>}
               {vue === 'campagnes' && <OngletCampagnes reseau={reseau} m={m} />}
               {vue === 'pratiques' && <OngletPratiques reseau={reseau} m={m} signaler={setConfirmation} />}
