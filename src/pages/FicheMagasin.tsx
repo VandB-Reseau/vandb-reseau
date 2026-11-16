@@ -254,6 +254,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                       <span>{adresseComplete}</span>
                       {lienPlan && <Chip icon={<PlaceOutlined />} label="Itinéraire" size="small" component="a" href={lienPlan} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />}
+                      {/* Choix 260 bis (Joseph, 16/11/2026) : les avis Google du magasin en un clic */}
+                      <Chip icon={<StarOutlined />} label="Avis Google" size="small" component="a" href={`https://www.google.com/search?q=${encodeURIComponent(`V and B ${m.nom} avis`)}`} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />
                     </Box>
                   )}
                 </Ligne>
@@ -263,20 +265,18 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
                 {lieuCarte && <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
                   loading="lazy" referrerPolicy="no-referrer-when-downgrade" sx={{ display: 'block', width: '100%', height: 160, border: 0, borderRadius: 1, mt: 1.5 }} />}
               </Section>
-              {/* Choix 200 (Joseph, 15/11/2026) : Équipe et Magasin ouverts, le reste replié */}
-              <Repliee.Provider value>
-                <SectionExploitation m={m} />
-              </Repliee.Provider>
-              {manquants > 0 && <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 700, px: 1 }}>{manquants} information{manquants > 1 ? 's' : ''} à compléter{referentiels ? '' : ' par le Directeur de réseau'}
-                {referentiels && <Button onClick={() => setEdition(true)} sx={{ minHeight: 48, ml: 1 }}>Compléter</Button>}</Typography>}
-              <Repliee.Provider value>
-                <SectionEquipements reseau={reseau} m={m} signaler={setConfirmation} />
-                <SectionConcurrents reseau={reseau} m={m} signaler={setConfirmation} />
-              </Repliee.Provider>
             </Box>
             <Box sx={{ display: 'grid', gap: 2, minWidth: 0, order: { xs: 1, lg: 2 } }}>
               {aOuvrir(m, reseau.jour) && <SectionOuverture reseau={reseau} m={m} signaler={setConfirmation} />}
-              <SituationMagasin reseau={reseau} m={m} objectifs={<SectionObjectifsPlan reseau={reseau} m={m} signaler={setConfirmation} />} />
+              {/* Choix 255 (Joseph, 16/11/2026) : les blocs repliés (choix 200) passent sous les échanges, à droite, pour
+                  équilibrer les deux colonnes ; les informations à compléter rejoignent les points d'attention (257) */}
+              <SituationMagasin reseau={reseau} m={m} objectifs={<SectionObjectifsPlan reseau={reseau} m={m} signaler={setConfirmation} />}
+                manquants={manquants} completer={referentiels ? () => setEdition(true) : undefined}
+                suite={<Repliee.Provider value>
+                  <SectionExploitation m={m} />
+                  <SectionEquipements reseau={reseau} m={m} signaler={setConfirmation} />
+                  <SectionConcurrents reseau={reseau} m={m} signaler={setConfirmation} />
+                </Repliee.Provider>} />
             </Box>
           </Box>
         )}
