@@ -131,6 +131,11 @@ test('Directeur : les repères des simulateurs dans les paramètres des budgets'
   const ecritures = await connecter(page, {}, {})
   await page.goto('./#/parametres/reglages?rubrique=budget')
   await page.getByRole('tab', { name: 'Simulateurs' }).click()
+  // Pas forcément un découvert (Joseph, 16/11/2026) : l'aide dit quel taux mettre
+  await expect(page.getByText('Coût annuel de l’argent immobilisé (découvert ou placement), proposé dans « Acheter en volume »')).toBeVisible()
+  await page.getByRole('button', { name: 'Aide : Argent immobilisé : quel taux ?' }).click()
+  await expect(page.getByRole('dialog', { name: 'Argent immobilisé : quel taux ?' })).toContainText('ce que rapporterait cet argent placé')
+  await page.keyboard.press('Escape')
   await page.getByLabel('Coût annuel de l’argent').fill('6')
   await page.getByLabel('CA du corner par mètre').fill('5000')
   await page.getByRole('region', { name: 'Simulateurs' }).getByRole('button', { name: 'Enregistrer' }).click()

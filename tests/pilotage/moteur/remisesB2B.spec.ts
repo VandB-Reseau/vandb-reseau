@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { paliersRanges, simulerRemisesB2B } from '../../../src/pilotage/moteur/boiteOutils'
+import { paliersRanges, simulerRemisesB2B, unitaireB2B } from '../../../src/pilotage/moteur/boiteOutils'
 import { parametresParDefaut } from '../../../src/pilotage/moteur/parametres'
 
 // 228 · Remises entreprise par paliers (fichier de Joseph, 16/11/2026). Chiffres fictifs, vérifiés à la main.
@@ -69,4 +69,17 @@ test('228 · paliers rangés par quantité, le premier part de zéro', () => {
   expect(paliersRanges([{ min: 100, remise: 0.1 }, { min: 10, remise: 0 }, { min: 50, remise: 0.05 }]))
     .toEqual([{ min: 0, remise: 0 }, { min: 50, remise: 0.05 }, { min: 100, remise: 0.1 }])
   expect(paliersRanges([])).toEqual([{ min: 0, remise: 0 }])
+})
+
+test('% de marge par famille : achat = prix HT × (1 − taux), avant remise', () => {
+  // 12 € TTC = 10 € HT ; 40 % de marge → 4 € de marge HT par unité, achat 6 €
+  const u = unitaireB2B({ libelle: 'Vin', quantite: 1, prixTTC: 12, achatHT: 0, taux: 0.4 }, 0.2)
+  proche(u.prixHT, 10); proche(u.achatHT, 6); proche(u.marge, 4); proche(u.taux, 0.4)
+  // Même commande qu'avec un achat de 6 € : 100 unités, palier à 10 %, CA net 900 €, marge 900 − 600 = 300 €
+  const parTaux = simulerRemisesB2B({ paliers, lignes: [{ libelle: 'Vin', quantite: 100, prixTTC: 12, achatHT: 0, taux: 0.4 }], tva: 0.2, plancher: 0.25 }, p)
+  const parAchat = simulerRemisesB2B({ paliers, lignes: [ligne(100)], tva: 0.2, plancher: 0.25 }, p)
+  proche(parTaux.marge, 300); proche(parTaux.marge, parAchat.marge); proche(parTaux.cout, 600)
+  // Produit par produit (sans taux) : l'achat saisi fait foi, marge unitaire 10 − 7,50 = 2,50 € soit 25 %
+  const v = unitaireB2B({ libelle: 'Gin', quantite: 1, prixTTC: 12, achatHT: 7.5 }, 0.2)
+  proche(v.marge, 2.5); proche(v.taux, 0.25)
 })
