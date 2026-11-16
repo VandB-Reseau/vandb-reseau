@@ -90,7 +90,7 @@ test('Chaque simulateur : un exemple, Effacer, Revenir à l’exemple', async ({
   await expect(choix(page).getByRole('button')).toHaveCount(titres.length)
   for (const titre of titres) {
     await choix(page).getByRole('button', { name: titre, exact: true }).click()
-    await expect(page.getByRole('heading', { name: titre })).toBeVisible()
+    await expect(page.getByRole('heading', { name: titre, exact: true })).toBeVisible()
     // Le reste à faire suit le budget du mois en cours : le budget 2027 du magasin fictif n'a pas encore commencé
     if (titre === 'Reste à faire du mois') { await expect(carte.getByText('Disponible en 2027')).toBeVisible(); await expect(carte.getByRole('button', { name: 'Effacer' })).toHaveCount(0); continue }
     await expect(carte.getByText('Exemple', { exact: true }), titre).toBeVisible()

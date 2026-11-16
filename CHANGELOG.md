@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Tests, correctif (16/11/2026), sans migration : le test des 14 simulateurs cherche le titre exact (« Investir » ne
+  confond plus « Investir et trésorerie ») ; le menu attendu suit la rubrique Animation (#189).
 - Accueil du franchisé sur téléphone et clôture express (choix 222 et 223, Joseph, 16/11/2026), sans migration. En tête de
   l'accueil du téléphone, carte « Mon mois » : CA HT du dernier mois face à N-1, puis une seule chose à faire (clôture du
   mois si le stock manque, sinon tâche en retard, sinon tâche à rendre dans les 7 jours, sinon « Rien d'urgent »). Le PC ne
