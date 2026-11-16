@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { MOI, seConnecter, textesTropPetits, type CommunicationSimulee, type Ecriture, type QuestionsSimulees, type ReunionsSimulees } from './supabase-simule'
 
-// Animation du réseau (Joseph, 23/10/2026) : un onglet pour créer et suivre communications, bonnes pratiques, sondages,
+// Animation du réseau (Joseph, 23/10/2026 ; page Animation depuis le 15/11/2026) : créer et suivre communications, bonnes pratiques, sondages,
 // formations, réunions et campagnes ; un type « Formation » dans l'agenda avec un contenu mis en forme ;
 // chaque nouveau contenu part en notification vers les personnes concernées (fonction « notifier » simulée).
 test.beforeEach(async ({ page }) => {
@@ -51,58 +51,36 @@ async function fonctionSimulee(page: Page) {
   return appels
 }
 
-// Refonte (Joseph, 09/11/2026, 2A) : l'animation réseau est un onglet de Messages, pour le Directeur et les RR
-// Vague 3 (27A) : sondages, formations et réunions sont dans Campagnes › Sondages et rendez-vous
-const ongletAnimation = (page: Page) => page.getByRole('tab', { name: /^(Sondages et rendez-vous|Suivi)$/ })
-async function ouvrirAnimation(page: Page) {
-  await page.goto('./#/campagnes')
-  await ongletAnimation(page).click()
-  await expect(ongletAnimation(page)).toHaveAttribute('aria-selected', 'true')
+// Choix 213-214 (Joseph, 15/11/2026) : plus d'onglet « Sondages et rendez-vous » ; la page Animation (/infos) garde
+// « Envoyer au réseau » et chaque contenu porte son suivi (lectures, réponses, exécution)
+async function ouvrirAnimation(page: Page, vue = 'communications') {
+  await page.goto(`./#/infos?vue=${vue}`)
+  await expect(page.getByRole('heading', { level: 1, name: 'Animation' })).toBeVisible()
 }
 
-test('le Directeur suit lectures, réponses, présences et exécution au même endroit', async ({ page, isMobile }, info) => {
+test('le Directeur lit le suivi sur chaque contenu de la page Animation', async ({ page, isMobile }, info) => {
   await seConnecter(page, tout())
   await ouvrirAnimation(page)
-  const contenus = page.getByRole('region', { name: 'Contenus' })
-  await expect(contenus.getByRole('button', { name: 'Information Nouvelle gamme de Noël : 3 lues sur 4' })).toBeVisible()
-  await expect(contenus.getByRole('button', { name: 'Bonne pratique Dégustation du samedi : 1 vue sur 4' })).toBeVisible()
-  await expect(contenus.getByRole('button', { name: 'Sondage Besoin de formation ? : 1 réponse sur 4' })).toBeVisible()
-  await expect(contenus.getByRole('button', { name: 'Formation Formation accords mets et vins : 1 réponse sur 2' })).toBeVisible()
-  await expect(contenus.getByRole('button', { name: /^Campagne Noël 2026 : 1 exécutée sur \d+$/ })).toBeVisible()
-  // Un événement sans invités n'est ni une réunion ni une formation
-  await expect(contenus).not.toContainText('Séminaire des Coachs')
-  await expect(page.getByRole('region', { name: 'Repères' }).getByRole('button', { name: 'Communications lues : 75 %, 90 derniers jours' })).toBeVisible()
+  await expect(page.getByText('Lue par 3 franchisés sur 4')).toBeVisible()
+  await page.getByRole('tab', { name: 'Bonnes pratiques' }).click()
+  await expect(page.getByText('Vue par 1 franchisé sur 4')).toBeVisible()
+  await page.getByRole('tab', { name: 'Sondages' }).click()
+  await expect(page.getByText(/1 réponse sur 4/).first()).toBeVisible()
+  await page.getByRole('tab', { name: 'Campagnes' }).click()
+  await expect(page.getByText('Noël 2026').first()).toBeVisible()
+  // Les anciennes adresses mènent à la page Animation
+  await page.goto('./#/campagnes?vue=suivi')
+  await expect(page.getByRole('heading', { level: 1, name: 'Animation' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: /Sondages et rendez-vous|Suivi/ })).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-animation-reseau.png`, fullPage: !isMobile })
-
-  // Filtre par type, puis le détail : qui n'a pas lu, qui a répondu
-  await page.getByRole('group', { name: 'Type de contenu' }).getByRole('button', { name: 'Informations (1)' }).click()
-  await expect(contenus.getByRole('button')).toHaveCount(1)
-  await contenus.getByRole('button', { name: /^Information Nouvelle gamme/ }).click()
-  const d = page.getByRole('dialog', { name: 'Nouvelle gamme de Noël' })
-  await expect(d).toContainText('Lue par 3 franchisés sur 4')
-  await expect(d).toContainText('Pas encore lue (1)')
-  await expect(d).toContainText('Franchisé 6')
-  await d.getByRole('button', { name: 'Fermer' }).click()
-
-  await page.getByRole('group', { name: 'Type de contenu' }).getByRole('button', { name: 'Formations (1)', exact: true }).click()
-  await contenus.getByRole('button', { name: /^Formation Formation accords/ }).click()
-  const f = page.getByRole('dialog', { name: 'Formation accords mets et vins' })
-  await expect(f).toContainText('à 14 h 30')
-  await expect(f.getByRole('region', { name: 'Présences' })).toContainText('1 réponse sur 2')
-  await f.getByRole('button', { name: 'Voir le contenu' }).click()
-  const c = page.getByRole('dialog', { name: 'Formation accords mets et vins' }).last()
-  await expect(c.getByRole('heading', { name: 'Programme' })).toBeVisible()
-  expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-animation-formation.png` })
 })
 
 test('le Directeur crée une formation avec un contenu en HTML : les invités sont prévenus', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ...tout(), ecritures })
   const appels = await fonctionSimulee(page)
-  await page.goto('./#/animation')
-  await expect(ongletAnimation(page)).toHaveAttribute('aria-selected', 'true')
+  await ouvrirAnimation(page)
   await page.getByRole('button', { name: 'Envoyer au réseau' }).last().click()
   await page.getByRole('menu', { name: 'Envoyer au réseau' }).getByRole('menuitem', { name: 'Formation', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Ajouter une formation' })
@@ -143,8 +121,7 @@ test('l’agenda range les formations à part et en ajoute une depuis un jour', 
 test('un nouveau sondage, une nouvelle communication, bonne pratique ou campagne partent en notification', async ({ page }) => {
   await seConnecter(page, { ...tout(), communications: [] })
   const appels = await fonctionSimulee(page)
-  await page.goto('./#/animation')
-  await expect(ongletAnimation(page)).toHaveAttribute('aria-selected', 'true')
+  await ouvrirAnimation(page)
   const creer = async (nom: string) => {
     await page.getByRole('button', { name: 'Envoyer au réseau' }).last().click()
     await page.getByRole('menu', { name: 'Envoyer au réseau' }).getByRole('menuitem', { name: nom }).click()
@@ -198,16 +175,18 @@ test('le franchisé voit l’heure de la formation et en ouvre le contenu, sans 
   await page.screenshot({ path: `captures/${info.project.name}-franchise-formation.png`, fullPage: !isMobile })
 })
 
-test('le Responsable Régional a l’onglet', async ({ page }) => {
+test('le Responsable Régional a les sondages et « Envoyer au réseau »', async ({ page }) => {
   await seConnecter(page, { ...tout(), appMetadata: { role: 'rr', rr: 'rr1' } })
   await ouvrirAnimation(page)
-  await expect(page.getByRole('region', { name: 'Contenus' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Sondages' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Envoyer au réseau' })).toBeVisible()
 })
 
-test('le Coach n’a pas l’onglet', async ({ page }) => {
+test('le Coach n’a ni les sondages ni « Envoyer au réseau »', async ({ page }) => {
   await seConnecter(page, { ...tout(), appMetadata: { role: 'coach', coach: 'Noé MODELE' } })
   await page.goto('./#/animation')
-  await expect(page.getByRole('heading', { level: 1, name: 'Campagnes' })).toBeVisible()
-  await expect(ongletAnimation(page)).toHaveCount(0)
-  await expect(page.getByRole('region', { name: 'Contenus' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { level: 1, name: 'Animation' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Campagnes' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Sondages' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Envoyer au réseau' })).toHaveCount(0)
 })

@@ -9,6 +9,21 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Accueil du franchisé sur téléphone et clôture express (choix 222 et 223, Joseph, 16/11/2026), sans migration. En tête de
+  l'accueil du téléphone, carte « Mon mois » : CA HT du dernier mois face à N-1, puis une seule chose à faire (clôture du
+  mois si le stock manque, sinon tâche en retard, sinon tâche à rendre dans les 7 jours, sinon « Rien d'urgent »). Le PC ne
+  change pas. « Clôturer » ouvre la clôture en trois écrans : stocks Cave, Bar, Extérieur repris du mois précédent en
+  gris, vérification (variation de plus de 30 % par univers signalée « À vérifier »), confirmation.
+- Accueil, Actualités et Campagnes simplifiés (choix 212 à 219, Joseph, 15/11/2026), sans migration. L'Accueil porte seul
+  le fil d'actualité, avec ses filtres (équipe et franchisé) ; l'onglet « Fil » d'Actualités est retiré. Actualités et
+  Campagnes ne font plus qu'une page « Animation » (adresse /infos) : Communications, Campagnes (campagnes, déploiements et
+  challenges choisis par puces), Bonnes pratiques et, pour le Directeur et les RR, Sondages ; « Envoyer au réseau » en tête.
+  Rubrique du menu renommée « Siège » (Animation, Demandes).
+  L'onglet « Sondages et rendez-vous » disparaît : lectures, réponses et exécution se lisent sur chaque contenu, présences
+  aux formations et réunions dans l'Agenda. On répond aux sondages depuis l'Accueil. Franchisé : l'entrée « Actualités »
+  devient « Bonnes pratiques ». Anciennes adresses (/campagnes, /animation, ?vue=fil, /echanges/reseau) redirigées.
+  Rituels retirés (onglet de l'Équipe, réglage des Paramètres, section du rapport du mois) ; la clé `rituels` reste en base.
+
 - Simulateurs : un exemple chiffré sur chacun et un bouton « Effacer » (Joseph, 15/11/2026), sans migration. Chaque
   simulateur s'ouvre sur un exemple (étiquette « Exemple »), avec un réalisé du mois à 95 % du rythme du budget. Correctif
   (#190) : carte pression, parc de tireuses et remises reprennent leur exemple d'avant, sur lequel leurs tests sont vérifiés.

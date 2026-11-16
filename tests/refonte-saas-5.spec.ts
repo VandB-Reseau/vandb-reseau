@@ -73,16 +73,17 @@ test('44A et 46A : le franchisé lit À la une, donne sa prise de connaissance, 
   await lisible(page, isMobile, false)
 })
 
-test('45A : Actualités réunit le fil, les communications, les bonnes pratiques et les sondages', async ({ page, isMobile }) => {
+// Choix 212-213 (15/11/2026) : le fil est sur l'Accueil ; Animation garde communications, campagnes, bonnes pratiques et sondages
+test('45A : Animation réunit communications, campagnes, bonnes pratiques et sondages', async ({ page, isMobile }) => {
   await seConnecter(page, { communications: communications() })
   await page.goto('./#/infos')
-  await expect(page.getByRole('heading', { level: 1, name: 'Actualités' })).toBeVisible()
-  const onglets = page.getByRole('tablist', { name: 'Actualités' })
-  await expect(onglets.getByRole('tab', { name: 'Fil' })).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByRole('region', { name: 'Fil du réseau' })).toBeVisible()
-  await onglets.getByRole('tab', { name: 'Communications' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Animation' })).toBeVisible()
+  const onglets = page.getByRole('tablist', { name: 'Animation' })
+  await expect(onglets.getByRole('tab')).toHaveText(['Communications', 'Campagnes', 'Bonnes pratiques', 'Sondages'])
   await expect(page.getByRole('article', { name: 'Nouvelle charte des vitrines' }).getByText(/^Prise de connaissance :/)).toBeVisible()
-  // L'ancienne adresse des communications ouvre l'onglet Communications
+  // L'ancien onglet Fil mène à l'Accueil ; l'ancienne adresse des communications ouvre l'onglet Communications
+  await page.goto('./#/infos?vue=fil')
+  await expect(page).toHaveURL(/#\/$/)
   await page.goto('./#/communications?c=2')
   await expect(onglets.getByRole('tab', { name: 'Communications' })).toHaveAttribute('aria-selected', 'true')
   await lisible(page, isMobile, false)
@@ -157,7 +158,7 @@ test('51A : dix entrées dans le menu, Équipe et Paramètres au menu du compte,
   await seConnecter(page)
   await page.goto('./#/')
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Tâches', 'Messages', 'Agenda', 'Magasins', 'Visites', 'Chiffres', 'Budget prévisionnel', 'Simulateurs', 'Actualités', 'Campagnes', 'Demandes'].map((t) => new RegExp(`^${t}`)))
+  await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Tâches', 'Messages', 'Agenda', 'Magasins', 'Visites', 'Chiffres', 'Budget prévisionnel', 'Simulateurs', 'Animation', 'Demandes'].map((t) => new RegExp(`^${t}`)))
   await page.getByRole('button', { name: 'Mon compte' }).click()
   await page.getByRole('menuitem', { name: 'Paramètres' }).click()
   await expect(page).toHaveURL(/#\/parametres\/reglages/)
@@ -210,8 +211,8 @@ test('56A : la barre du franchisé sur téléphone, Accueil, Magasin, Messages, 
   const barre = page.getByRole('navigation', { name: 'Navigation principale' })
   await expect(barre.getByRole('button')).toHaveCount(5)
   await barre.getByRole('button', { name: 'Plus' }).click()
-  for (const m of ['Mon budget', 'Simulateurs', 'Mes demandes', 'Actualités']) await expect(page.getByRole('menuitem', { name: m })).toBeVisible()
-  await page.getByRole('menuitem', { name: 'Actualités' }).click()
+  for (const m of ['Mon budget', 'Simulateurs', 'Mes demandes', 'Bonnes pratiques']) await expect(page.getByRole('menuitem', { name: m })).toBeVisible()
+  await page.getByRole('menuitem', { name: 'Bonnes pratiques' }).click()
   await expect(page).toHaveURL(/#\/infos/)
   await lisible(page, isMobile)
 })

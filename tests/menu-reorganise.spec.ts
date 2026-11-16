@@ -49,13 +49,13 @@ test('Campagnes passent dans Santé du parc, Bonnes pratiques dans Infos réseau
   await expect(onglets).not.toContainText('Campagnes')
   await expect(onglets).not.toContainText('Pratiques')
   await page.goto('./#/visites?vue=campagnes')
-  // Vague 3 (27A) : les campagnes ont leur page, dans la rubrique Animation
-  await expect(page).toHaveURL(/#\/campagnes\?vue=campagnes/)
-  await expect(page.getByRole('heading', { name: 'Campagnes', level: 1 })).toBeVisible()
+  // Choix 213 (15/11/2026) : les campagnes sont un onglet de la page Animation
+  await expect(page).toHaveURL(/#\/infos\?vue=campagnes/)
+  await expect(page.getByRole('tab', { name: 'Campagnes' })).toHaveAttribute('aria-selected', 'true')
   // Bonnes pratiques : Infos réseau (sprint 22, S1)
   await page.goto('./#/visites?vue=pratiques')
   await expect(page).toHaveURL(/#\/infos\?vue=pratiques$/)
-  await expect(page.getByRole('heading', { name: 'Actualités', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Animation', level: 1 })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-echanges-pratiques.png`, fullPage: !isMobile })
 })

@@ -145,20 +145,22 @@ test('26A : fixer un objectif chiffré, suivi dans la fiche et la préparation',
   await lisible(page, isMobile)
 })
 
-test('27A et 28A : rubrique Animation, Campagnes à part, Équipe en trois onglets', async ({ page, isMobile }) => {
+test('27A et 28A : rubrique Siège, Campagnes dans Animation, Équipe en trois onglets', async ({ page, isMobile }) => {
   await seConnecter(page)
   if (!isMobile) {
     const menu = page.getByRole('navigation').first()
-    await expect(menu.getByText('Animation', { exact: true })).toBeVisible()
-    await expect(menu.getByRole('button', { name: 'Campagnes' })).toBeVisible()
+    await expect(menu.getByText('Siège', { exact: true })).toBeVisible()
+    await expect(menu.getByRole('button', { name: /^Animation/ })).toBeVisible()
   }
+  // Choix 213 et 216 (15/11/2026) : Campagnes est un onglet d'Animation ; déploiements et challenges en puces
   await page.goto('./#/campagnes')
-  await expect(page.getByRole('heading', { level: 1, name: 'Campagnes' })).toBeVisible()
-  // Santé du parc ne garde que Nine box et Évaluer ; ses anciennes adresses de campagnes suivent
+  await expect(page.getByRole('heading', { level: 1, name: 'Animation' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Campagnes' })).toHaveAttribute('aria-selected', 'true')
   await page.goto('./#/plus/sante?vue=challenges')
-  await expect(page).toHaveURL(/#\/campagnes\?vue=challenges/)
+  await expect(page).toHaveURL(/#\/infos\?vue=challenges/)
+  await expect(page.getByRole('group', { name: 'Type de campagne' }).getByRole('button', { name: 'Challenges' })).toHaveAttribute('aria-pressed', 'true')
   await page.goto('./#/animation')
-  await expect(page).toHaveURL(/#\/campagnes\?vue=suivi/)
+  await expect(page).toHaveURL(/#\/infos\?vue=communications/)
   await page.goto('./#/equipe')
   for (const nom of ['Organisation', 'Personnes', 'Revue du mois']) await expect(page.getByRole('tab', { name: nom })).toBeVisible()
   await page.getByRole('tab', { name: 'Personnes' }).click()

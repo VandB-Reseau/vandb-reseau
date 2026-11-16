@@ -28,8 +28,9 @@ const publications = (page: Page, canal: string) => page.getByRole('list', { nam
 // Pour l'équipe, communications et bonnes pratiques ne sont plus que dans Infos réseau (sprint 22, S1)
 test('pour l’équipe, les anciens canaux mènent à Infos réseau', async ({ page }) => {
   await seConnecter(page, { communications: communications(), config: { bonnes_pratiques: pratiques } })
+  // Choix 212 (15/11/2026) : le fil est sur l'Accueil
   await page.goto('./#/echanges/reseau')
-  await expect(page).toHaveURL(/#\/infos$/)
+  await expect(page).toHaveURL(/#\/$/)
   await expect(page.getByRole('article', { name: 'Coffrets de Noël' })).toBeVisible()
   await page.goto('./#/echanges/pratiques')
   await expect(page).toHaveURL(/#\/infos\?vue=pratiques$/)
