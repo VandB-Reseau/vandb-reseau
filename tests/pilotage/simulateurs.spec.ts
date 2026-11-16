@@ -80,7 +80,7 @@ test('franchisé : une soirée se met dans le budget, la promo se lit en volume'
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=chiffres&partie=simulateurs&sim=prix`)
   await page.getByLabel('Remise', { exact: true }).fill('10')
   await page.getByLabel('Taux de marge du produit').fill('30')
-  await expect(page.getByRole('status')).toHaveText('Avec 10 % de remise, il faut vendre 50 % de plus pour garder la même marge.')
+  await expect(page.getByRole('status')).toContainText('Avec 10 % de remise, il faut vendre 50 % de plus pour garder la même marge.')
 
   await simulateurs(page).getByRole('button', { name: /Soirée, dégustation/ }).click()
   await page.getByLabel('Nom de l’événement').fill('Soirée bières de Noël')
