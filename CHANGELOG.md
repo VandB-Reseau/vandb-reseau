@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Promo, prix, remises (Joseph, 16/11/2026), sans migration : en parallèle des ventes en plus nécessaires pour une remise
+  sur tout, l'offre en lot (5 + 1, 4 + 2 ou au choix) : marge gagnée pour 100 clients si X clients montent d'un cran au
+  lot (de 4 à 5 + 1, de 3 à 4 + 2, modifiable), clients à faire monter pour couvrir ceux qui prenaient déjà 5,
+  marge minimale pour que le lot rapporte, tableau avant/après (bouteilles, panier moyen,
+  marge par ticket, marge totale). Moteur `simulerLot`.
 - Simulateur « Contrat extérieur » (Joseph, 16/11/2026), sans migration : la « Livraison facturée HT » quitte les
   Recettes (la livraison n'est plus comptée qu'une fois, en coût, bloc Livraisons) ; grille de livraison du siège et
   prix plancher retirés. Prix de vente, remise, achat, CO2 et rétrocession saisis en « €/fût ». Case « Reçu Cerfa

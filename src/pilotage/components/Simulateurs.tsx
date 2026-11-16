@@ -67,7 +67,7 @@ import { chargerSimulations, garderSimulation, retirerSimulation, SimulationPasE
 import { categorieLibelle, coutHoraireEquipe, coutHoraireSmic, type Categorie } from '../moteur/equipe'
 import {
   analyserRemises, caCorner, LIGNES_EVENEMENT, LIGNES_REMISES, margeMix, parametresSimulateurs, resteAFaire, simulerAchat, simulerCoupDur, simulerEmbauche,
-  simulerInvestissement, simulerPrimes, simulerPrix, simulerSoiree, simulerSoireeAnimee, simulerVenteAdditionnelle, tempsFortDeSoiree,
+  simulerInvestissement, simulerLot, simulerPrimes, simulerPrix, simulerSoiree, simulerSoireeAnimee, simulerVenteAdditionnelle, tempsFortDeSoiree,
   type CleRemise, type CoupDur, type LigneEvenement, type LigneMix, type Mouvement, type PalierPrime,
 } from '../moteur/simulateurs'
 import {
@@ -293,7 +293,7 @@ type Etats = {
     heuresMois: number; heuresSup: number; majorationSup: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number // 242 · heures sup
     salaries: number; partReversee: number; paliers: PalierPrime[] // 164 · primes
   }
-  prix: { type: 'remise' | 'hausse' | 'remises'; taux: number; marge: number; cartons: number; mois: number; ca: number | null; montants: Record<CleRemise, number> }
+  prix: { type: 'remise' | 'hausse' | 'remises'; taux: number; marge: number; cartons: number; mois: number; ca: number | null; montants: Record<CleRemise, number>; payes: number; offerts: number; avant: number; prixBouteille: number; monte: number; deja: number }
   tresorerie: { baisse: boolean; tauxBaisse: number; de: number; a: number; depense: boolean; montantDepense: number; moisDepense: number; retard: boolean; montantRetard: number; moisRetard: number; duree: number }
   vente_additionnelle: { univers: 'cave' | 'bar'; unSur: number; prix: number; marge: number | null; base: BaseChiffres }
   reste_a_faire: { mois: number; jour: number; realise: number }
@@ -381,7 +381,7 @@ function exempleRealise(b: Budget | null, aujourdhui: Date): number {
 // « Effacer » (Joseph, 15/11/2026) : les saisies passent à zéro et les textes à blanc ; restent les choix (mois, modes),
 // les réglages du siège et du magasin, et ce qui servirait de diviseur. Une liste garde une ligne vide.
 const GARDES_AU_VIDE = new Set(['mois', 'moisDepense', 'moisRetard', 'de', 'a', 'jour', 'jours', 'index', 'salaries', 'coutHoraire', 'partSmic', 'majoration',
-  'duree', 'dureePret', 'tauxPret', 'co2', 'prixKm', 'entretien', 'semaines', 'occSaison', 'occHors', 'litres', 'quantite', 'unSur', 'prix.marge', 'achat.taux', 'calculette.marge',
+  'duree', 'dureePret', 'tauxPret', 'co2', 'prixKm', 'entretien', 'semaines', 'occSaison', 'occHors', 'litres', 'quantite', 'unSur', 'prix.marge', 'prix.payes', 'prix.offerts', 'prix.avant', 'achat.taux', 'calculette.marge',
   'remises_b2b.paliers', 'remises_b2b.plancher', 'majorationSup'])
 const TEXTES_AU_VIDE = new Set(['nom', 'poste', 'libelle', 'biere', 'client'])
 function vider(v: unknown, cle: string, sim: string): unknown {
@@ -412,7 +412,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       paliers: [{ progression: 0.05, prime: 150, primeGerant: 0 }, { progression: 0.1, prime: 200, primeGerant: 0 }, { progression: 0.15, prime: 250, primeGerant: 0 }],
       heuresMois: 600, heuresSup: 30, majorationSup: 0.25, coutHoraire: s.coutHoraire, ...HEURE,
     },
-    prix: { type: 'remise', taux: 0.1, marge: b && b.ca > 0 ? Math.round(b.tauxMarge * 100) / 100 : 0.35, cartons: 0, mois: 12, ca: null, montants: { offerts: 0, persos: 0, prixSpeciaux: 0, remises: 0, fidelite: 0 } },
+    prix: { type: 'remise', taux: 0.1, marge: b && b.ca > 0 ? Math.round(b.tauxMarge * 100) / 100 : 0.35, cartons: 0, mois: 12, ca: null, montants: { offerts: 0, persos: 0, prixSpeciaux: 0, remises: 0, fidelite: 0 }, payes: 5, offerts: 1, avant: 4, prixBouteille: 10, monte: 10, deja: 5 },
     tresorerie: { baisse: true, tauxBaisse: 0.15, de: 1, a: 3, depense: false, montantDepense: 10_000, moisDepense: 6, retard: false, montantRetard: 5_000, moisRetard: 7, duree: 2 },
     vente_additionnelle: { univers: b?.flux.cave?.objectif ? 'cave' : 'bar', unSur: 10, prix: 12, marge: null, base: 'caisse' },
     reste_a_faire: { mois: aujourdhui.getMonth() + 1, jour: aujourdhui.getDate(), realise: exempleRealise(b, aujourdhui) },
@@ -800,7 +800,15 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     } else {
     const r = simulerPrix(e.type, e.taux, e.marge)
     // 165 · offres en produits gratuits : « 5 + 1 » = 1 gratuit sur 6, « 4 + 2 » = 2 sur 6
-    const offre = (gratuits: number, payes: number) => maj('prix', { type: 'remise', taux: Math.round(gratuits / (gratuits + payes) * 10000) / 10000 })
+    const offre = (gratuits: number, payes: number) => maj('prix', { type: 'remise', taux: Math.round(gratuits / (gratuits + payes) * 10000) / 10000, payes, offerts: gratuits, avant: payes - 1 })
+    // Offre en lot en parallèle (Joseph, 16/11/2026) : la remise sur tout demande du volume ; le lot fait monter des clients
+    const lot = e.type === 'remise' ? simulerLot({ payes: e.payes, offerts: e.offerts, avant: e.avant, prixHT: e.prixBouteille, tauxMarge: e.marge, monte: e.monte, deja: e.deja }) : null
+    const nomLot = `${entier(e.payes)} + ${entier(e.offerts)}`
+    const montee = `de ${entier(e.avant)} à ${nomLot} bouteilles`
+    const changerLot = (x: { payes?: number; offerts?: number }) => {
+      const n = Math.max(0, Math.round(x.payes ?? e.payes)), g = Math.max(0, Math.round(x.offerts ?? e.offerts))
+      maj('prix', { payes: n, offerts: g, avant: Math.max(0, n - 1), ...(n + g > 0 ? { taux: Math.round(g / (n + g) * 10000) / 10000 } : {}) })
+    }
     saisies = (
       <Stack spacing={2}>
         <Saisies>
@@ -823,18 +831,67 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             </Box>
           )}
         </Bloc>
+        {e.type === 'remise' && (
+          <Bloc titre="3. Si l’offre se fait en lot" total={lot ? { libelle: 'Marge pour 100 clients', valeur: ecartMontant(lot.gain), negatif: lot.gain < 0 } : undefined}>
+            <Saisies>
+              <Montant libelle="Bouteilles payées" valeur={e.payes} onChange={(v) => changerLot({ payes: v })} unite="" />
+              <Montant libelle="Bouteilles offertes" valeur={e.offerts} onChange={(v) => changerLot({ offerts: v })} unite="" />
+              <Montant libelle="Prix de la bouteille HT" valeur={e.prixBouteille} onChange={(v) => maj('prix', { prixBouteille: Math.max(0, v) })} />
+              <Montant libelle="Bouteilles prises avant l’offre" valeur={e.avant} onChange={(v) => maj('prix', { avant: Math.min(e.payes, Math.max(0, Math.round(v))) })} unite="" />
+              <Montant libelle={`Clients sur 100 qui passent ${montee}`} valeur={e.monte} onChange={(v) => maj('prix', { monte: Math.min(100, Math.max(0, v)) })} unite="" />
+              <Montant libelle={`Clients sur 100 qui prenaient déjà ${entier(e.payes)} bouteilles`} valeur={e.deja} onChange={(v) => maj('prix', { deja: Math.min(100, Math.max(0, v)) })} unite="" />
+            </Saisies>
+          </Bloc>
+        )}
       </Stack>
     )
     nomParDefaut = e.type === 'remise' ? `Remise de ${taux(e.taux)}` : `Hausse de ${taux(e.taux)}`
     if (e.type === 'remise') {
       const cartons = r.ventesEnPlus !== null && e.cartons > 0 ? Math.ceil(e.cartons * (1 + r.ventesEnPlus) - 1e-9) : null
       phrase = r.ventesEnPlus === null ? `Une remise de ${taux(e.taux)} sur un produit margé à ${taux(e.marge)} fait vendre à perte.` : `Avec ${taux(e.taux)} de remise, il faut vendre ${taux(r.ventesEnPlus)} de plus pour garder la même marge${cartons !== null ? `, soit ${entier(cartons)} cartons au lieu de ${entier(e.cartons)}` : ''}.`
+      if (lot) phrase += ` En lot, si ${entier(lot.monte)} clients sur 100 passent ${montee}, la marge ${lot.gain >= 0 ? 'gagne' : 'perd'} ${montant(Math.abs(lot.gain))} pour 100 clients${lot.seuil === null ? ` : chaque client qui monte fait perdre de la marge, il faudrait plus de ${taux(lot.margeMini)} de marge` : lot.seuil > 0 ? `, elle se rattrape dès ${entier(Math.ceil(lot.seuil - 1e-9))} clients sur 100` : ''}.`
+      const colonne = (titre: string, contenu: ReactNode) => (
+        <Box component="section" aria-label={titre} sx={{ border: 1, borderColor: 'divider', borderRadius: '12px', p: { xs: 1.5, md: 2 }, display: 'grid', gap: 1.5, alignContent: 'start', minWidth: 0 }}>
+          <Typography component="h3" sx={{ fontWeight: 700 }}>{titre}</Typography>
+          {contenu}
+        </Box>
+      )
       resultats = (
-        <Resultats>
-          <Indicateur libelle="Ventes en plus nécessaires" valeur={r.ventesEnPlus === null ? 'Vente à perte' : `+ ${taux(r.ventesEnPlus)}`} detail={r.ventesEnPlus === null ? 'La remise dépasse la marge' : `Pour 100 ventes avant : ${entier(100 * (1 + r.ventesEnPlus))} après`} />
-          {cartons !== null && <Indicateur libelle="Cartons à vendre" valeur={entier(cartons)} detail={`au lieu de ${entier(e.cartons)}, pour la même marge`} />}
-          <Indicateur libelle="Taux de marge pendant la promo" valeur={taux(r.nouveauTauxMarge)} detail={`${taux(e.marge)} avant`} />
-        </Resultats>
+        <Stack spacing={2}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: lot ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)' }, gap: 2 }}>
+            {colonne(`Remise de ${taux(e.taux)} sur toutes les ventes`, (
+              <Resultats>
+                <Indicateur libelle="Ventes en plus nécessaires" valeur={r.ventesEnPlus === null ? 'Vente à perte' : `+ ${taux(r.ventesEnPlus)}`} detail={r.ventesEnPlus === null ? 'La remise dépasse la marge' : `Pour 100 ventes avant : ${entier(100 * (1 + r.ventesEnPlus))} après`} />
+                {cartons !== null && <Indicateur libelle="Cartons à vendre" valeur={entier(cartons)} detail={`au lieu de ${entier(e.cartons)}, pour la même marge`} />}
+                <Indicateur libelle="Taux de marge pendant la promo" valeur={taux(r.nouveauTauxMarge)} detail={`${taux(e.marge)} avant`} />
+              </Resultats>
+            ))}
+            {lot && colonne(`Offre ${nomLot} : clients qui montent au lot`, (
+              <Resultats>
+                <Indicateur libelle="Marge gagnée pour 100 clients" valeur={ecartMontant(lot.gain)} detail={`si ${entier(lot.monte)} clients sur 100 passent ${montee}`} ecart={{ texte: lot.gain >= 0 ? 'Masse de marge en hausse' : 'Masse de marge en baisse', hausse: lot.gain >= 0, favorable: lot.gain >= 0 }} />
+                <Indicateur libelle="Clients à faire monter" valeur={lot.seuil === null ? 'Jamais rattrapé' : `${entier(Math.ceil(lot.seuil - 1e-9))} sur 100`} detail={lot.seuil === null ? `le lot ne rapporte qu’au-dessus de ${taux(lot.margeMini)} de marge` : `pour couvrir ${montant(lot.perteAubaine)} de bouteilles offertes à ceux qui en prenaient déjà ${entier(e.payes)}`} />
+                <Indicateur libelle="Par client qui monte" valeur={`${lot.gainParClient >= 0 ? '+ ' : '− '}${centimes(Math.abs(lot.gainParClient))}`} detail={`de marge : ${centimes(e.payes * e.prixBouteille)} payés pour ${entier(e.payes + e.offerts)} bouteilles au lieu de ${centimes(e.avant * e.prixBouteille)} pour ${entier(e.avant)}`} />
+              </Resultats>
+            ))}
+          </Box>
+          {lot && (
+            <Box sx={{ overflowX: 'auto' }}>
+              <Table size="small" aria-label="Offre en lot, avant et après" sx={{ minWidth: 480, '& td, & th': { fontVariantNumeric: 'tabular-nums' } }}>
+                <TableHead><TableRow><TableCell>Pour 100 clients, HT</TableCell><TableCell align="right">Sans l’offre</TableCell><TableCell align="right">Avec l’offre {nomLot}</TableCell><TableCell align="right">Écart</TableCell></TableRow></TableHead>
+                <TableBody>
+                  {([['Bouteilles vendues', lot.avant.bouteilles, lot.apres.bouteilles, entier], ['Panier moyen', lot.avant.panier, lot.apres.panier, centimes], ['Marge par ticket', lot.avant.margeTicket, lot.apres.margeTicket, centimes], ['Marge totale', lot.avant.marge, lot.apres.marge, montant]] as const).map(([libelle, avant, apres, f]) => (
+                    <TableRow key={libelle}>
+                      <TableCell>{libelle}</TableCell>
+                      <TableCell align="right">{f(avant)}</TableCell>
+                      <TableCell align="right">{f(apres)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, color: apres - avant < 0 ? 'error.main' : undefined }}>{apres - avant >= 0 ? '+ ' : '− '}{f(Math.abs(apres - avant))}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          )}
+        </Stack>
       )
     } else {
       phrase = `Avec ${taux(e.taux)} de hausse, on garde la même marge tant qu’on ne perd pas plus de ${taux(r.ventesPerdables ?? 0)} des ventes.`
