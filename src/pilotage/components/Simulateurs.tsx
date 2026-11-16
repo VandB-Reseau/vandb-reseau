@@ -7,6 +7,12 @@ import RemoveOutlined from '@mui/icons-material/RemoveOutlined'
 import RestartAltOutlined from '@mui/icons-material/RestartAltOutlined'
 import DeleteSweepOutlined from '@mui/icons-material/DeleteSweepOutlined'
 import Chip from '@mui/material/Chip'
+import Autocomplete from '@mui/material/Autocomplete'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
+import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined'
 import { equipementsDu, tireusesDu } from '../../data/equipements'
 import { actionsDuMagasin } from '../../data/actions'
 import { DialogPriorite, type PrioriteProposee } from '../../components/PlanAction'
@@ -46,6 +52,7 @@ import PlaylistAddCheckOutlined from '@mui/icons-material/PlaylistAddCheckOutlin
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import Inventory2Outlined from '@mui/icons-material/Inventory2Outlined'
 import PersonAddOutlined from '@mui/icons-material/PersonAddOutlined'
+import BusinessCenterOutlined from '@mui/icons-material/BusinessCenterOutlined'
 import PlaylistAddOutlined from '@mui/icons-material/PlaylistAddOutlined'
 import ReplayOutlined from '@mui/icons-material/ReplayOutlined'
 import SellOutlined from '@mui/icons-material/SellOutlined'
@@ -65,12 +72,13 @@ import {
 } from '../moteur/simulateurs'
 import {
   auditPression, cartePression, margeFut, coutComposition, coutContrats, margePourPrix, nouveauBec, palierExterieur, prixLivraisonGrille, prixPourMarge,
-  simulerExterieur, simulerOuverture, simulerParc, cibleProductivite, TAUX_MECENAT, type Bec, type Composant,
+  simulerExterieur, simulerOuverture, simulerParc, simulerRemisesB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise,
 } from '../moteur/boiteOutils'
 import { baseCaisse, budgetSurCaisse, meilleursLeviers, type CleLevier } from '../moteur/leviers'
 import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TempsFort, Univers } from '../moteur/types'
 import { dateHeure, ecartMontant, ecartPts, montant, MOIS_LONGS, panier as centimes, tauxCourt as taux } from '../lib/format'
 import type { SujetAide } from '../lib/aide'
+import { LISTE_SIMULATEURS } from '../lib/listeSimulateurs'
 
 // Simulateurs du franchisé (choix 125 à 135, Joseph 13/11/2026) : une puce « Simulateurs » dans les chiffres du magasin,
 // pour le franchisé comme pour le Coach (on simule à deux en visite). Une carte par question ; rien n'est enregistré tant
@@ -80,30 +88,30 @@ import type { SujetAide } from '../lib/aide'
 export interface AjoutBudget { tempsForts?: TempsFort[]; investissements?: Investissement[]; emprunts?: Emprunt[]; ajustementsCA?: AjustementCA[] }
 
 // gardable : faux tant que la base du pilotage ne connaît pas le type (« Mon meilleur levier » se garde en priorité, 184)
-const SIMULATEURS: { cle: TypeSimulation; titre: string; question: string; icone: ReactNode; aide: SujetAide; budget: boolean; gardable?: false }[] = [
-  // 183 (Joseph, 15/11/2026) : en tête, le levier qui rapporte le plus pour un même petit effort
-  { cle: 'levier', titre: 'Mon meilleur levier', question: 'Quel petit effort rapporte le plus ?', icone: <TrendingUpOutlined />, aide: 'simLevier', budget: true, gardable: false },
-  { cle: 'embauche', titre: 'Embaucher', question: 'Embauche, départ, heures, primes ?', icone: <PersonAddOutlined />, aide: 'simEmbauche', budget: true },
-  { cle: 'prix', titre: 'Promo, prix, remises', question: 'Combien vendre en plus, mes remises sont-elles dans les repères ?', icone: <SellOutlined />, aide: 'simPrix', budget: false },
-  { cle: 'tresorerie', titre: 'Coup dur de trésorerie', question: 'Et si le CA baisse, si un client paie en retard ?', icone: <AccountBalanceWalletOutlined />, aide: 'simTresorerie', budget: true },
-  { cle: 'vente_additionnelle', titre: 'Vente additionnelle', question: 'Un article de plus à un client sur dix ?', icone: <AddShoppingCartOutlined />, aide: 'simVente', budget: true },
-  { cle: 'reste_a_faire', titre: 'Reste à faire du mois', question: 'Combien vendre par jour pour tenir mon budget ?', icone: <FlagOutlined />, aide: 'simReste', budget: true },
-  { cle: 'soiree', titre: 'Soirée, dégustation', question: 'Combien de participants pour ne pas perdre d’argent ?', icone: <CelebrationOutlined />, aide: 'simSoiree', budget: false },
-  { cle: 'achat', titre: 'Acheter en volume', question: 'La remise vaut-elle le stock bloqué ?', icone: <Inventory2Outlined />, aide: 'simAchat', budget: false },
-  { cle: 'investissement', titre: 'Investir', question: 'Tireuse, terrasse, corner : en combien de temps remboursé ?', icone: <StorefrontOutlined />, aide: 'simInvestissement', budget: false },
-  // Vague 9 (choix 138 à 146, Joseph 14/11/2026)
-  { cle: 'exterieur', titre: 'Contrat extérieur', question: 'Ce contrat avec une association est-il rentable ?', icone: <LocalShippingOutlined />, aide: 'simExterieur', budget: false },
-  { cle: 'tireuses', titre: 'Parc de tireuses', question: 'Combien de week-ends pour payer une tireuse ?', icone: <WarehouseOutlined />, aide: 'simTireuses', budget: false },
-  { cle: 'pression', titre: 'Ma carte pression', question: 'Quels becs, quelle marge, quelle perte ?', icone: <SportsBarOutlined />, aide: 'simPression', budget: false },
-  { cle: 'calculette', titre: 'Prix et marge', question: 'À quel prix vendre pour ma marge ?', icone: <CalculateOutlined />, aide: 'simCalculette', budget: false },
-  { cle: 'ouverture', titre: 'Dimanche ou jour férié', question: 'Ouvrir ce jour-là rapporte-t-il ?', icone: <EventAvailableOutlined />, aide: 'simOuverture', budget: false },
-]
+const DETAILS: Record<TypeSimulation, { icone: ReactNode; aide: SujetAide; budget: boolean; gardable?: false }> = {
+  levier: { icone: <TrendingUpOutlined />, aide: 'simLevier', budget: true, gardable: false },
+  embauche: { icone: <PersonAddOutlined />, aide: 'simEmbauche', budget: true },
+  prix: { icone: <SellOutlined />, aide: 'simPrix', budget: false },
+  tresorerie: { icone: <AccountBalanceWalletOutlined />, aide: 'simTresorerie', budget: true },
+  vente_additionnelle: { icone: <AddShoppingCartOutlined />, aide: 'simVente', budget: true },
+  reste_a_faire: { icone: <FlagOutlined />, aide: 'simReste', budget: true },
+  soiree: { icone: <CelebrationOutlined />, aide: 'simSoiree', budget: false },
+  achat: { icone: <Inventory2Outlined />, aide: 'simAchat', budget: false },
+  investissement: { icone: <StorefrontOutlined />, aide: 'simInvestissement', budget: false },
+  exterieur: { icone: <LocalShippingOutlined />, aide: 'simExterieur', budget: false },
+  tireuses: { icone: <WarehouseOutlined />, aide: 'simTireuses', budget: false },
+  pression: { icone: <SportsBarOutlined />, aide: 'simPression', budget: false },
+  calculette: { icone: <CalculateOutlined />, aide: 'simCalculette', budget: false },
+  ouverture: { icone: <EventAvailableOutlined />, aide: 'simOuverture', budget: false },
+  remises_b2b: { icone: <BusinessCenterOutlined />, aide: 'simRemisesB2B', budget: false },
+}
+const SIMULATEURS = LISTE_SIMULATEURS.map((x) => ({ ...x, ...DETAILS[x.cle] }))
 
 // 188 (Joseph, 15/11/2026) : les simulateurs rangés en 4 familles, en boutons compacts ; les 3 derniers utilisés en tête
 type Famille = 'vendre' | 'evenements' | 'equipe' | 'investir'
 const FAMILLES: [Famille, string][] = [['vendre', 'Vendre plus'], ['evenements', 'Événements et extérieur'], ['equipe', 'Équipe'], ['investir', 'Investir et trésorerie']]
 const FAMILLE_DE: Record<TypeSimulation, Famille> = {
-  levier: 'vendre', vente_additionnelle: 'vendre', reste_a_faire: 'vendre', prix: 'vendre', calculette: 'vendre',
+  levier: 'vendre', vente_additionnelle: 'vendre', reste_a_faire: 'vendre', prix: 'vendre', remises_b2b: 'vendre', calculette: 'vendre',
   soiree: 'evenements', exterieur: 'evenements', tireuses: 'evenements', pression: 'evenements',
   embauche: 'equipe', ouverture: 'equipe',
   investissement: 'investir', achat: 'investir', tresorerie: 'investir',
@@ -312,6 +320,7 @@ type Etats = {
   }
   calculette: { nom: string; composants: Composant[]; tva: 'normale' | 'intermediaire' | 'reduite'; mode: 'prix' | 'marge' | 'mix'; marge: number; prixTTC: number; famille: string; mix: LigneMix[] }
   ouverture: { jour: 'dimanche' | 'ferie'; caBar: number; caCave: number; margeBar: number | null; margeCave: number | null; report: number; heures: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number; frais: number }
+  remises_b2b: { client: string; mode: 'famille' | 'produit'; plancher: number; paliers: PalierRemise[]; familles: LigneB2B[]; produits: LigneB2B[] }
   investissement: { modele: 'libre' | 'corner' | 'exterieur'; objectifExterieur: number; camion: boolean; libelle: string; cout: number; duree: number; mois: number; ca: number; metres: number; marge: number; demarque: number; charges: number; financement: 'tresorerie' | 'pret'; tauxPret: number; dureePret: number; univers: Univers }
 }
 
@@ -365,13 +374,19 @@ function exempleRealise(b: Budget | null, aujourdhui: Date): number {
 // « Effacer » (Joseph, 15/11/2026) : les saisies passent à zéro et les textes à blanc ; restent les choix (mois, modes),
 // les réglages du siège et du magasin, et ce qui servirait de diviseur. Une liste garde une ligne vide.
 const GARDES_AU_VIDE = new Set(['mois', 'moisDepense', 'moisRetard', 'de', 'a', 'jour', 'jours', 'index', 'salaries', 'coutHoraire', 'partSmic', 'majoration',
-  'duree', 'dureePret', 'tauxPret', 'co2', 'prixKm', 'entretien', 'semaines', 'occSaison', 'occHors', 'litres', 'quantite', 'unSur', 'prix.marge', 'achat.taux', 'calculette.marge'])
-const TEXTES_AU_VIDE = new Set(['nom', 'poste', 'libelle', 'biere'])
+  'duree', 'dureePret', 'tauxPret', 'co2', 'prixKm', 'entretien', 'semaines', 'occSaison', 'occHors', 'litres', 'quantite', 'unSur', 'prix.marge', 'achat.taux', 'calculette.marge',
+  'remises_b2b.paliers', 'remises_b2b.plancher'])
+const TEXTES_AU_VIDE = new Set(['nom', 'poste', 'libelle', 'biere', 'client'])
 function vider(v: unknown, cle: string, sim: string): unknown {
   if (GARDES_AU_VIDE.has(cle) || GARDES_AU_VIDE.has(`${sim}.${cle}`)) return v
   if (typeof v === 'number') return 0
   if (typeof v === 'string') return TEXTES_AU_VIDE.has(cle) ? '' : v
-  if (Array.isArray(v)) return cle === 'vieilles' || !v.length ? [] : [vider(v[0], '', sim)]
+  if (Array.isArray(v)) {
+    if (cle === 'vieilles' || !v.length) return []
+    // 228 : les familles d'une commande gardent leur nom, sans chiffres
+    if (sim === 'remises_b2b' && cle === 'familles') return v.map((x: LigneB2B) => ({ ...(vider(x, '', sim) as LigneB2B), libelle: x.libelle }))
+    return [vider(v[0], '', sim)]
+  }
   if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, vider(x, k, sim)]))
   return v
 }
@@ -421,6 +436,20 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       mix: [{ libelle: 'Bouteille de vin', cout: 6, consigne: 0, prixTTC: 15, quantite: 1 }, { libelle: 'Coffret bois', cout: 3, consigne: 0, prixTTC: 8, quantite: 1 }],
     },
     ouverture: { jour: 'dimanche', caBar: 800, caCave: 1_200, margeBar: null, margeCave: null, report: 0.2, heures: 14, coutHoraire: s.coutHoraire, ...HEURE, frais: 0 },
+    // 228 : l'exemple du fichier de Joseph (paliers, plancher 25 %, prix fictifs)
+    remises_b2b: {
+      client: 'Comité d’entreprise', mode: 'famille', plancher: 0.25,
+      paliers: [{ min: 0, remise: 0 }, { min: 50, remise: 0.05 }, { min: 100, remise: 0.08 }, { min: 200, remise: 0.1 }, { min: 500, remise: 0.12 }, { min: 1000, remise: 0.15 }],
+      familles: [
+        { libelle: 'Vin', quantite: 50, prixTTC: 12.2, achatHT: 6.05 }, { libelle: 'Effervescent', quantite: 20, prixTTC: 21.95, achatHT: 11.55 },
+        { libelle: 'Spiritueux', quantite: 20, prixTTC: 40.4, achatHT: 24.88 }, { libelle: 'Bourriche', quantite: 10, prixTTC: 34.9, achatHT: 19.25 },
+      ],
+      produits: [
+        { libelle: 'Côtes du Rhône rouge 75 cl', quantite: 30, prixTTC: 8.9, achatHT: 4.2 }, { libelle: 'Crémant de Loire brut 75 cl', quantite: 20, prixTTC: 11.9, achatHT: 5.6 },
+        { libelle: 'Champagne brut 75 cl', quantite: 10, prixTTC: 32, achatHT: 17.5 }, { libelle: 'Gin artisanal 70 cl', quantite: 10, prixTTC: 39.9, achatHT: 23 },
+        { libelle: 'Bourriche 6 bières', quantite: 10, prixTTC: 24.9, achatHT: 13.5 },
+      ],
+    },
     investissement: { modele: 'libre', objectifExterieur: 100_000, camion: false, libelle: 'Tireuse', cout: 15_000, duree: 5, mois: moisSuivant, ca: 20_000, metres: 6, marge: 0.35, demarque: 0, charges: 1_000, financement: 'tresorerie', tauxPret: 0.04, dureePret: 5, univers: 'bar' },
   }
 }
@@ -1509,6 +1538,128 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     } else phrase = 'Une marge de 100 % ou plus ne donne aucun prix.'
     }
   }
+  if (choisi === 'remises_b2b') {
+    // 228 · Remises entreprise par paliers (fichier « Simulateur remises B2B » de Joseph, 16/11/2026). Facturé en HT ;
+    // paliers, remises et plancher en exemple, modifiables à chaque simulation (pas de réglage du siège).
+    const e = etats.remises_b2b
+    const parFamille = e.mode === 'famille'
+    const lignes = parFamille ? e.familles : e.produits
+    const cleLignes = parFamille ? 'familles' : 'produits'
+    const r = simulerRemisesB2B({ paliers: e.paliers, lignes, tva: s.tva.normale, plancher: e.plancher }, p)
+    const nomPalier = (i: number) => `Palier ${i}`
+    const majLigne = (i: number, v: Partial<LigneB2B>) => maj('remises_b2b', { [cleLignes]: lignes.map((y, j) => (j === i ? { ...y, ...v } : y)) })
+    const majPalier = (i: number, v: Partial<PalierRemise>) => maj('remises_b2b', { paliers: e.paliers.map((y, j) => (j === i ? { ...y, ...v } : y)) })
+    const unite = (n: number) => `${entier(n)} unité${n > 1 ? 's' : ''}`
+    const lecture = (a: AlerteB2B | null) => (a === 'perte' ? 'Vente à perte' : a === 'plancher' ? 'Sous le plancher' : a === 'ok' ? 'Au-dessus du plancher' : '–')
+    const couleur = (a: AlerteB2B | null) => (a === 'perte' ? 'error.main' : a === 'plancher' ? 'warning.dark' : a === 'ok' ? 'success.dark' : 'text.secondary')
+    const quantites = (x: { min: number; max: number | null }) => (x.max === null ? `${entier(x.min)} et plus` : `${entier(x.min)} à ${entier(x.max)}`)
+    const tableau = { minWidth: 640, '& td, & th': { fontVariantNumeric: 'tabular-nums' } }
+    saisies = (
+      <Stack spacing={2}>
+        <Bloc titre="1. La commande" total={{ libelle: 'Unités', valeur: entier(r.unites) }}>
+          <Saisies>
+            <Texte libelle="Client ou projet" valeur={e.client} onChange={(client) => maj('remises_b2b', { client })} largeur={240} />
+            <Choix libelle="Je simule" valeur={e.mode} onChange={(mode) => maj('remises_b2b', { mode })} options={[['famille', 'Par famille'], ['produit', 'Produit par produit']]} />
+            <Taux libelle="Marge plancher" valeur={e.plancher} onChange={(plancher) => maj('remises_b2b', { plancher })} />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="2. Les paliers de remise" total={{ libelle: 'Remise appliquée', valeur: `${nomPalier(r.palier)}, ${taux(r.remise)}` }}>
+          {e.paliers.map((x, i) => (
+            <Saisies key={i}>
+              <Typography sx={{ fontWeight: 700, minWidth: 72, alignSelf: 'center' }}>{nomPalier(i)}</Typography>
+              {i === 0
+                ? <Typography color="text.secondary" sx={{ alignSelf: 'center', minWidth: 130 }}>Dès la première unité</Typography>
+                : <MontantDe libelle="À partir de" aria={`À partir de, palier ${i}`} valeur={x.min} onChange={(v) => majPalier(i, { min: Math.max(1, Math.round(v)) })} unite="u" largeur={130} />}
+              <TauxDe libelle="Remise" aria={`Remise, palier ${i}`} valeur={x.remise} onChange={(v) => majPalier(i, { remise: v })} />
+              {i > 0 && <Button color="inherit" startIcon={<DeleteOutlineOutlined />} onClick={() => maj('remises_b2b', { paliers: e.paliers.filter((_, j) => j !== i) })} aria-label={`Retirer le palier ${i}`} sx={{ minHeight: 48 }}>Retirer</Button>}
+            </Saisies>
+          ))}
+          <Box>{e.paliers.length < 8 && <Button startIcon={<AddOutlined />} onClick={() => maj('remises_b2b', { paliers: [...e.paliers, { min: Math.max(1, (e.paliers.at(-1)?.min ?? 0) * 2), remise: Math.min(1, (e.paliers.at(-1)?.remise ?? 0) + 0.02) }] })} sx={{ minHeight: 48 }}>Ajouter un palier</Button>}</Box>
+        </Bloc>
+        <Bloc titre={parFamille ? '3. Les familles commandées' : '3. Les produits commandés'} total={{ libelle: 'CA HT avant remise', valeur: montant(r.caBrut) }}>
+          {lignes.map((l, i) => {
+            const nomLigne = l.libelle || `${parFamille ? 'Famille' : 'Produit'} ${i + 1}`
+            return (
+              <Saisies key={i}>
+                <Texte libelle={parFamille ? 'Famille' : 'Produit'} aria={`${parFamille ? 'Famille' : 'Produit'} ${i + 1}`} valeur={l.libelle} onChange={(libelle) => majLigne(i, { libelle })} largeur={parFamille ? 160 : 240} />
+                <MontantDe libelle="Unités" aria={`Unités, ${nomLigne}`} valeur={l.quantite} onChange={(v) => majLigne(i, { quantite: Math.max(0, Math.round(v)) })} unite="" largeur={100} />
+                <MontantDe libelle={parFamille ? 'Prix public moyen TTC' : 'Prix public TTC'} aria={`Prix public TTC, ${nomLigne}`} valeur={l.prixTTC} onChange={(v) => majLigne(i, { prixTTC: v })} />
+                <MontantDe libelle={parFamille ? 'Achat moyen HT' : 'Achat HT, accises comprises'} aria={`Achat HT, ${nomLigne}`} valeur={l.achatHT} onChange={(v) => majLigne(i, { achatHT: v })} />
+                {lignes.length > 1 && <Button color="inherit" startIcon={<DeleteOutlineOutlined />} onClick={() => maj('remises_b2b', { [cleLignes]: lignes.filter((_, j) => j !== i) })} aria-label={`Retirer ${nomLigne}`} sx={{ minHeight: 48 }}>Retirer</Button>}
+              </Saisies>
+            )
+          })}
+          <Box>{lignes.length < 40 && <Button startIcon={<AddOutlined />} onClick={() => maj('remises_b2b', { [cleLignes]: [...lignes, { libelle: '', quantite: 0, prixTTC: 0, achatHT: 0 }] })} sx={{ minHeight: 48 }}>{parFamille ? 'Ajouter une famille' : 'Ajouter un produit'}</Button>}</Box>
+          {parFamille && <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>Par famille, les prix moyens donnent une première idée ; produit par produit, la commande réelle.</Typography>}
+        </Bloc>
+      </Stack>
+    )
+    nomParDefaut = `${e.client || 'Commande'}, ${unite(r.unites)}`
+    const prochain = r.suivant ? ` Encore ${unite(r.suivant.manque)} pour passer au ${nomPalier(r.suivant.index).toLowerCase()} (${taux(r.suivant.remise)}).` : r.unites > 0 ? ' Dernier palier atteint.' : ''
+    const plancherTexte = r.taux === null ? '' : r.marge < 0 ? ' Vente à perte sur l’ensemble.' : r.taux < e.plancher ? ` Sous le plancher de ${taux(e.plancher)}.` : r.alertes ? ` ${r.alertes} ligne${r.alertes > 1 ? 's' : ''} sous le plancher.` : ''
+    phrase = r.unites > 0 && r.caNet > 0
+      ? `${e.client || 'Commande'} : ${unite(r.unites)}, ${nomPalier(r.palier).toLowerCase()} à ${taux(r.remise)} de remise, ${montant(r.caNet)} HT, marge ${montant(r.marge)} soit ${r.taux === null ? '–' : taux(r.taux)}.${plancherTexte}${prochain}`
+      : ''
+    const actuel = r.paliers[r.palier]
+    resultats = phrase ? (
+      <Stack spacing={2}>
+        <Compte titre="Compte de la commande" lignes={[
+          { libelle: 'CA HT avant remise', valeur: r.caBrut, detail: unite(r.unites) },
+          { libelle: 'Remise cédée au client', valeur: -r.margeCedee, detail: taux(r.remise) },
+          { libelle: 'Achats HT', valeur: -r.cout, detail: 'accises comprises' },
+          { libelle: 'Redevance et publicité', valeur: -r.redevance },
+        ]} total={{ libelle: 'Ce qu’il reste au magasin', valeur: r.reste }} />
+        <Resultats>
+          <Indicateur libelle="Taux de marge" valeur={r.taux === null ? '–' : taux(r.taux)} detail={`${montant(r.marge)} sur ${montant(r.caNet)} HT`}
+            ecart={r.taux === null ? undefined : { texte: ecartPts(r.taux - e.plancher), hausse: r.taux >= e.plancher, favorable: r.taux >= e.plancher }} />
+          <Indicateur libelle="Marge cédée au client" valeur={montant(r.margeCedee)} detail={`${montant(r.margeSansRemise)} de marge sans remise`} />
+          <Indicateur libelle="Remise appliquée" valeur={taux(r.remise)} detail={`${nomPalier(r.palier)}, ${quantites(actuel)} unités`} />
+          <Indicateur libelle="Palier suivant" valeur={r.suivant ? unite(r.suivant.manque) : 'Atteint'} detail={r.suivant ? `de plus pour ${taux(r.suivant.remise)}` : 'dernier palier'} />
+        </Resultats>
+        <Box sx={{ overflowX: 'auto' }}>
+          <Table size="small" aria-label="Remises par palier" sx={tableau}>
+            <TableHead><TableRow>
+              <TableCell>Palier</TableCell><TableCell>Unités</TableCell><TableCell align="right">Remise</TableCell><TableCell align="right">Marge par unité</TableCell><TableCell align="right">Taux de marge</TableCell><TableCell>Lecture</TableCell>
+            </TableRow></TableHead>
+            <TableBody>
+              {r.paliers.map((x, i) => (
+                <TableRow key={i} selected={i === r.palier} aria-current={i === r.palier ? 'true' : undefined}>
+                  <TableCell sx={{ fontWeight: i === r.palier ? 700 : undefined }}>{nomPalier(i)}{i === r.palier ? ', la commande' : ''}</TableCell>
+                  <TableCell>{quantites(x)}</TableCell>
+                  <TableCell align="right">{taux(x.remise)}</TableCell>
+                  <TableCell align="right">{x.margeUnite === null ? '–' : centimes(x.margeUnite)}</TableCell>
+                  <TableCell align="right">{x.taux === null ? '–' : taux(x.taux)}</TableCell>
+                  <TableCell sx={{ color: x.margeRetrouveeA !== null && x.alerte === 'ok' ? 'warning.dark' : couleur(x.alerte), fontWeight: 600 }}>
+                    {x.alerte === 'ok' && x.margeRetrouveeA !== null ? `Creux : moins de marge qu’au palier d’avant jusqu’à ${entier(x.margeRetrouveeA - 1)} unités` : lecture(x.alerte)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Box>
+        <Box sx={{ overflowX: 'auto' }}>
+          <Table size="small" aria-label={parFamille ? 'Détail par famille' : 'Détail par produit'} sx={tableau}>
+            <TableHead><TableRow>
+              <TableCell>{parFamille ? 'Famille' : 'Produit'}</TableCell><TableCell align="right">Unités</TableCell><TableCell align="right">CA HT net</TableCell><TableCell align="right">Marge</TableCell><TableCell align="right">Taux</TableCell><TableCell align="right">Remise maximale</TableCell><TableCell>Lecture</TableCell>
+            </TableRow></TableHead>
+            <TableBody>
+              {r.lignes.map((l, i) => l.quantite > 0 && (
+                <TableRow key={i}>
+                  <TableCell>{l.libelle || `${parFamille ? 'Famille' : 'Produit'} ${i + 1}`}</TableCell>
+                  <TableCell align="right">{entier(l.quantite)}</TableCell>
+                  <TableCell align="right">{montant(l.caNet)}</TableCell>
+                  <TableCell align="right">{montant(l.marge)}</TableCell>
+                  <TableCell align="right">{l.taux === null ? '–' : taux(l.taux)}</TableCell>
+                  <TableCell align="right">{l.remiseMax === null ? '–' : taux(l.remiseMax)}</TableCell>
+                  <TableCell sx={{ color: couleur(l.alerte), fontWeight: 600 }}>{lecture(l.alerte)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Box>
+      </Stack>
+    ) : null
+  }
   if (choisi === 'ouverture') {
     const e = etats.ouverture
     const mBar = e.margeBar ?? margeUnivers(b, 'bar') ?? 0.6, mCave = e.margeCave ?? margeUnivers(b, 'cave') ?? 0.3
@@ -1582,6 +1733,24 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     toucher(g.type)
     choisir(g.type)
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  // 235 (Joseph, 16/11/2026) : une simulation gardée se copie telle quelle vers un autre magasin du périmètre
+  const [copie, setCopie] = useState<SimulationGardee | null>(null)
+  const [cible, setCible] = useState<string | null>(null)
+  const [messageCopie, setMessageCopie] = useState<{ texte: string; bon: boolean } | null>(null)
+  const autresMagasins = (reseauFiche?.magasins ?? []).map((x) => x.nom).filter((n) => n !== magasin).sort((a, c) => a.localeCompare(c, 'fr'))
+  const peutCopier = peutGarder && !profil?.apercu && autresMagasins.length > 0
+  const copier = async () => {
+    if (!copie || !cible) return
+    setOccupe(true)
+    try {
+      await garderSimulation(cible, copie.type, copie.nom, copie.donnees, copie.resume)
+      setMessageCopie({ texte: `« ${copie.nom} » est copiée dans les simulations gardées de ${cible}.`, bon: true })
+      setCopie(null); setCible(null)
+    } catch (x) {
+      setMessageCopie({ texte: x instanceof SimulationPasEncoreGardable ? 'Ce simulateur se gardera après la prochaine mise à jour de la base par le siège.' : 'La simulation n’a pas été copiée. Vérifie ta connexion, puis réessaie.', bon: false })
+      setCopie(null); setCible(null)
+    } finally { setOccupe(false) }
   }
   const retirer = async (g: SimulationGardee) => {
     try { await retirerSimulation(g.id); await recharger() } catch { setMessage({ texte: 'La simulation n’a pas été retirée. Vérifie ta connexion, puis réessaie.', bon: false }) }
@@ -1680,9 +1849,22 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         <DialogPriorite reseau={reseauFiche} m={ficheMagasin} priorite={null} objectifInitial={placesLibres(reseauFiche, magasin).find((x) => x) ?? ''} actions={actionsDuMagasin(reseauFiche, magasin)} proposee={priorite}
           onFermer={(msg) => { setPriorite(null); if (msg) setMessage({ texte: `${msg} Elle est dans les objectifs et priorités de la fiche du magasin.`, bon: true }) }} />
       )}
+      <Dialog open={!!copie} onClose={() => setCopie(null)} maxWidth="xs" fullWidth aria-labelledby="titre-copie-simulation">
+        <DialogTitle id="titre-copie-simulation">Copier vers un autre magasin</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>{copie?.nom}, avec ses saisies, rangée dans les simulations gardées du magasin choisi.</Typography>
+          <Autocomplete options={autresMagasins} value={cible} onChange={(_, v) => setCible(v)} openText="Ouvrir la liste" closeText="Fermer la liste" noOptionsText="Aucun magasin de ce nom"
+            renderInput={(x) => <TextField {...x} label="Magasin" slotProps={{ ...x.slotProps, htmlInput: { ...x.slotProps.htmlInput, 'aria-label': 'Magasin de destination' } }} sx={{ '& .MuiInputBase-root': { minHeight: 48 } }} />} />
+        </DialogContent>
+        <DialogActions>
+          <Button color="inherit" onClick={() => setCopie(null)} sx={{ minHeight: 48 }}>Annuler</Button>
+          <Button variant="contained" startIcon={<ContentCopyOutlined />} onClick={() => void copier()} disabled={!cible || occupe} sx={{ minHeight: 48 }}>Copier</Button>
+        </DialogActions>
+      </Dialog>
       {gardees !== null && (
         <Stack spacing={1.5} component="section" aria-label="Simulations gardées">
           <Typography variant="h2">Simulations gardées</Typography>
+          {messageCopie && <Typography role="status" sx={{ fontWeight: 600, color: messageCopie.bon ? 'success.dark' : 'error.main' }}>{messageCopie.texte}</Typography>}
           {comparees.length >= 2 && <Comparaison simulations={comparees} />}
           {gardees.length === 0 ? (
             <EtatVide titre="Aucune simulation gardée" texte="Une simulation gardée reste ici, avec son résultat, pour en reparler avec ton Coach ou ton franchisé." />
@@ -1703,6 +1885,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
                       } />
                     )}
                     <Button startIcon={<ReplayOutlined />} onClick={() => rouvrir(g)} sx={{ minHeight: 48 }}>Rouvrir</Button>
+                    {peutCopier && <Button startIcon={<ContentCopyOutlined />} onClick={() => { setCopie(g); setCible(null) }} aria-label={`Copier ${g.nom} vers un autre magasin`} sx={{ minHeight: 48 }}>Copier vers…</Button>}
                     {(g.auteur === profil?.id || profil?.role === 'directeur') && !profil?.apercu && (
                       <Button color="inherit" startIcon={<DeleteOutlineOutlined />} onClick={() => void retirer(g)} aria-label={`Retirer ${g.nom}`} sx={{ minHeight: 48 }}>Retirer</Button>
                     )}

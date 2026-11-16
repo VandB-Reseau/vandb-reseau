@@ -38,9 +38,9 @@ test.afterEach(async ({ page }) => {
 test('188-191 et 195 : familles, derniers utilisés, caisse, résultat en vue, brouillon gardé', async ({ page, isMobile }) => {
   await connecter(page, coach, 'coach')
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=simulateurs`)
-  // 188 : 14 simulateurs en 4 familles, aucun « dernier utilisé » au départ
+  // 188 : 15 simulateurs en 4 familles, aucun « dernier utilisé » au départ
   for (const f of ['Vendre plus', 'Événements et extérieur', 'Équipe', 'Investir et trésorerie']) await expect(choix(page).getByRole('region', { name: f })).toBeVisible()
-  await expect(choix(page).getByRole('button')).toHaveCount(14)
+  await expect(choix(page).getByRole('button')).toHaveCount(15)
   await expect(page.getByRole('navigation', { name: 'Derniers simulateurs utilisés' })).toHaveCount(0)
   await choix(page).getByRole('button', { name: 'Vente additionnelle' }).click()
   await expect(page.getByRole('heading', { name: 'Vente additionnelle' })).toBeVisible()
@@ -86,7 +86,7 @@ test('Chaque simulateur : un exemple, Effacer, Revenir à l’exemple', async ({
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=simulateurs`)
   const carte = page.locator('#carte-simulation')
   const titres = ['Mon meilleur levier', 'Embaucher', 'Promo, prix, remises', 'Coup dur de trésorerie', 'Vente additionnelle', 'Reste à faire du mois', 'Soirée, dégustation',
-    'Acheter en volume', 'Investir', 'Contrat extérieur', 'Parc de tireuses', 'Ma carte pression', 'Prix et marge', 'Dimanche ou jour férié']
+    'Acheter en volume', 'Investir', 'Contrat extérieur', 'Parc de tireuses', 'Ma carte pression', 'Prix et marge', 'Dimanche ou jour férié', 'Remises entreprise par paliers']
   await expect(choix(page).getByRole('button')).toHaveCount(titres.length)
   for (const titre of titres) {
     await choix(page).getByRole('button', { name: titre, exact: true }).click()
@@ -103,9 +103,9 @@ test('Chaque simulateur : un exemple, Effacer, Revenir à l’exemple', async ({
   // Le vide survit au rechargement (brouillon), l'exemple revient d'un appui
   await page.reload()
   await choix(page).getByRole('button', { name: 'Promo, prix, remises', exact: true }).click()
-  await expect(page.getByRole('textbox', { name: 'Remise' })).toHaveValue('0')
+  await expect(page.getByRole('textbox', { name: 'Remise', exact: true })).toHaveValue('0')
   await carte.getByRole('button', { name: 'Revenir à l’exemple' }).click()
-  await expect(page.getByRole('textbox', { name: 'Remise' })).toHaveValue('10')
+  await expect(page.getByRole('textbox', { name: 'Remise', exact: true })).toHaveValue('10')
   await expect(carte.getByText('Exemple', { exact: true })).toBeVisible()
 })
 

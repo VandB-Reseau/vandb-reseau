@@ -378,3 +378,78 @@ export function leviersPour(causes: CauseDifficulte[]): (typeof LEVIERS_REDRESSE
   const cles = new Set(causes.flatMap((c) => GRILLE_REDRESSEMENT[c] ?? []))
   return LEVIERS_REDRESSEMENT.filter((l) => cles.has(l.cle))
 }
+
+// ── 228 · Remises entreprise par paliers (fichier « Simulateur remises B2B » de Joseph, 16/11/2026) ─────────────
+// Une commande d'entreprise (comité d'entreprise, mariage, cadeaux) : le palier se lit sur le nombre total d'unités
+// (1 bouteille = 1 unité, 1 bourriche = 1 unité) et sa remise s'applique à toute la commande. Prix public TTC ramené en
+// HT (vente facturée en HT), prix d'achat HT accises comprises. Taux de marge sur le prix de vente HT remisé.
+// Ajout au fichier : redevance et publicité retirées du CA HT remisé (ce qu'il reste au magasin).
+// Creux : en passant un seuil, la marge totale peut retomber sous celle du haut du palier précédent ; on donne jusqu'à
+// combien d'unités (au même mélange de produits) : margeRetrouveeA = première quantité qui rend au moins autant.
+export interface PalierRemise { min: number; remise: number }
+export interface LigneB2B { libelle: string; quantite: number; prixTTC: number; achatHT: number }
+export type AlerteB2B = 'perte' | 'plancher' | 'ok'
+export interface LigneB2BCalculee {
+  libelle: string; quantite: number; prixHT: number; caBrut: number; caNet: number; marge: number; taux: number | null; alerte: AlerteB2B | null
+  remiseMax: number | null // remise la plus forte qui garde le plancher, pour ce produit
+}
+export interface PalierCalcule { min: number; max: number | null; remise: number; margeUnite: number | null; taux: number | null; alerte: AlerteB2B | null; margeRetrouveeA: number | null }
+export interface EffetRemisesB2B {
+  unites: number; palier: number; remise: number
+  caBrut: number; cout: number; caNet: number; margeSansRemise: number; marge: number; taux: number | null; margeCedee: number
+  redevance: number; reste: number
+  lignes: LigneB2BCalculee[]; paliers: PalierCalcule[]
+  suivant: { index: number; manque: number; remise: number } | null
+  alertes: number // lignes à perte ou sous le plancher
+}
+const alerteDe = (marge: number, taux: number | null, plancher: number): AlerteB2B | null =>
+  taux === null ? null : marge < 0 ? 'perte' : taux < plancher ? 'plancher' : 'ok'
+// Paliers rangés par quantité minimale croissante, le premier ramené à 0
+export function paliersRanges(paliers: PalierRemise[]): PalierRemise[] {
+  const l = [...paliers].map((x) => ({ min: Math.round(pos(x.min)), remise: part(x.remise) })).sort((a, b) => a.min - b.min)
+  if (!l.length) return [{ min: 0, remise: 0 }]
+  l[0] = { ...l[0], min: 0 }
+  return l
+}
+export function simulerRemisesB2B(x: { paliers: PalierRemise[]; lignes: LigneB2B[]; tva: number; plancher: number }, p: Redevances): EffetRemisesB2B {
+  const rp = p.tauxRedevance + p.tauxPublicite
+  const plancher = part(x.plancher)
+  const paliers = paliersRanges(x.paliers)
+  const lignesSaisies = x.lignes.map((l) => ({ libelle: l.libelle, quantite: Math.round(pos(l.quantite)), prixHT: pos(l.prixTTC) / (1 + pos(x.tva)), achatHT: pos(l.achatHT) }))
+  const unites = somme(lignesSaisies.map((l) => l.quantite))
+  let palier = 0
+  paliers.forEach((y, i) => { if (unites >= y.min) palier = i })
+  const remise = paliers[palier].remise
+  const lignes: LigneB2BCalculee[] = lignesSaisies.map((l) => {
+    const caBrut = l.quantite * l.prixHT, caNet = caBrut * (1 - remise), marge = caNet - l.quantite * l.achatHT
+    const taux = caNet > 0 ? marge / caNet : null
+    return {
+      libelle: l.libelle, quantite: l.quantite, prixHT: l.prixHT, caBrut, caNet, marge, taux, alerte: alerteDe(marge, taux, plancher),
+      remiseMax: l.prixHT > 0 && plancher < 1 ? Math.max(0, 1 - l.achatHT / (l.prixHT * (1 - plancher))) : null,
+    }
+  })
+  const caBrut = somme(lignes.map((l) => l.caBrut)), cout = somme(lignesSaisies.map((l) => l.quantite * l.achatHT))
+  const caNet = caBrut * (1 - remise), marge = caNet - cout
+  const redevance = caNet * rp
+  // Par palier, au mélange de la commande : prix et achat moyens par unité
+  const pvMoy = unites > 0 ? caBrut / unites : null, paMoy = unites > 0 ? cout / unites : null
+  const calcules: PalierCalcule[] = paliers.map((y, i) => {
+    const max = i + 1 < paliers.length ? paliers[i + 1].min - 1 : null
+    if (pvMoy === null || paMoy === null) return { min: y.min, max, remise: y.remise, margeUnite: null, taux: null, alerte: null, margeRetrouveeA: null }
+    const vente = pvMoy * (1 - y.remise), margeUnite = vente - paMoy
+    const taux = vente > 0 ? margeUnite / vente : null
+    return { min: y.min, max, remise: y.remise, margeUnite, taux, alerte: alerteDe(margeUnite, taux, plancher), margeRetrouveeA: null }
+  })
+  for (let i = 1; i < calcules.length; i++) {
+    const avant = calcules[i - 1], c = calcules[i]
+    if (avant.margeUnite === null || c.margeUnite === null || c.margeUnite <= 0 || avant.max === null || avant.margeUnite <= 0) continue
+    const egal = Math.ceil(avant.max * avant.margeUnite / c.margeUnite - 1e-9)
+    if (egal > c.min) c.margeRetrouveeA = egal
+  }
+  const suivant = palier + 1 < paliers.length ? { index: palier + 1, manque: paliers[palier + 1].min - unites, remise: paliers[palier + 1].remise } : null
+  return {
+    unites, palier, remise, caBrut, cout, caNet, margeSansRemise: caBrut - cout, marge, taux: caNet > 0 ? marge / caNet : null, margeCedee: caBrut - caNet,
+    redevance, reste: marge - redevance, lignes, paliers: calcules, suivant,
+    alertes: lignes.filter((l) => l.quantite > 0 && (l.alerte === 'perte' || l.alerte === 'plancher')).length,
+  }
+}

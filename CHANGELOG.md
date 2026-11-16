@@ -9,6 +9,16 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Remises entreprise par paliers et fluidité (choix 228 et 232 à 235, Joseph, 16/11/2026). Base : passer la migration
+  pilotage `0033_simulations_remises_b2b.sql` (dépôt du pilotage) pour garder ce simulateur ; sans elle, il calcule.
+  228 : le fichier « Simulateur remises B2B » de Joseph devient un simulateur (Vendre plus) : paliers de quantité sur le
+  total des unités, remise sur toute la commande, plancher de marge, par famille ou produit par produit, prix public TTC
+  ramené en HT, remise maximale par produit, unités jusqu'au palier suivant, creux de marge, marge cédée, et ce qu'il
+  reste après redevance et publicité. Paliers, remises et plancher en exemple, modifiables dans chaque simulation.
+  232 : la recherche (Ctrl K) trouve aussi les pages du menu, chaque simulateur et « Simuler pour » un magasin.
+  233 : dans un tableau de montants, Entrée descend d'une ligne (Maj + Entrée remonte) et une colonne copiée d'Excel se
+  colle d'un coup. 234 : l'app rouvre sur la dernière page (moins de trois jours, même compte, une fois par onglet).
+  235 : « Copier vers… » met une simulation gardée dans les simulations d'un autre magasin du périmètre.
 - Tests, correctif (16/11/2026), sans migration : le test des 14 simulateurs cherche le titre exact (« Investir » ne
   confond plus « Investir et trésorerie ») ; le menu attendu suit la rubrique Animation (#189).
 - Accueil du franchisé sur téléphone et clôture express (choix 222 et 223, Joseph, 16/11/2026), sans migration. En tête de
