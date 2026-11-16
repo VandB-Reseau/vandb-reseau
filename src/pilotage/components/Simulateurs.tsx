@@ -323,7 +323,7 @@ type Etats = {
   }
   achat: { montant: number; remise: number; mois: number; invendu: number; taux: number }
   exterieur: {
-    nom: string; futs: number; prixVente: number; remise: number; prixAchat: number; co2: number; gobelets: number
+    nom: string; futs: number; dureeContrat: number; prixVente: number; remise: number; prixAchat: number; co2: number; gobelets: number
     tireuse: 'neuve' | 'parc'; prixTireuse: number; duree: number; entretien: number
     livraisons: number; km: number; prixKm: number; heures: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number
     don: 'aucun' | 'argent' | 'nature'; montantDon: number; futsDon: number; cerfa: boolean
@@ -442,7 +442,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
     },
     achat: { montant: 10_000, remise: 0.1, mois: 4, invendu: 0.05, taux: s.tauxDecouvert },
     exterieur: {
-      nom: 'Fête du village', futs: 40, prixVente: 70, remise: 0, prixAchat: 42, co2: s.exterieur.co2ParFut, gobelets: 0,
+      nom: 'Fête du village', futs: 40, dureeContrat: 3, prixVente: 70, remise: 0, prixAchat: 42, co2: s.exterieur.co2ParFut, gobelets: 0,
       tireuse: 'neuve', prixTireuse: 1_500, duree: s.exterieur.dureeTireuse || 5, entretien: s.exterieur.entretienTireuse,
       livraisons: 10, km: 30, prixKm: s.exterieur.prixKm, heures: 1.5, coutHoraire: s.coutHoraire, ...HEURE, don: 'aucun', montantDon: 500, futsDon: 5, cerfa: true,
       prixLivraison: null, sponsoring: false, sponsoMontant: 0, sponsoParFut: 0, materiel: 0, astreinte: 0, locations: 0, prixLocation: 0,
@@ -1213,8 +1213,10 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       livraisons: e.livraisons, km: e.km, prixKm: e.prixKm, heures: e.heures, coutHoraire: heure(e),
       don: { type: e.don, montant: e.montantDon, futs: e.futsDon, cerfa: e.cerfa },
       prixLivraison, sponsoring: e.sponsoring ? { montant: e.sponsoMontant, parFut: e.sponsoParFut } : undefined,
-      materiel: e.materiel, astreinte: e.astreinte, locations: { nombre: e.locations, prix: e.prixLocation },
+      materiel: e.materiel, astreinte: e.astreinte, locations: { nombre: e.locations, prix: e.prixLocation }, dureeContrat: e.dureeContrat,
     }, p, s.donMecenat)
+    const ans = (v: number) => `${unChiffre(v)} an${v >= 2 ? 's' : ''}`
+    const contratCourt = r.resteNonAmorti > 0
     const margeExt = margeFut(Math.max(0, e.prixVente - e.remise), e.prixAchat)
     const m = (k: keyof Etats['exterieur']) => (v: number) => maj('exterieur', { [k]: v })
     // Facturé à un organisateur (B2B) : tout en HT (Joseph, 14/11/2026). Le TTC ne sert qu'à la vente au client final.
@@ -1226,6 +1228,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Saisies>
             <Texte libelle="Contrat" aria="Nom du contrat" valeur={e.nom} onChange={(v) => maj('exterieur', { nom: v })} />
             <Montant libelle="Fûts vendus par an" valeur={e.futs} onChange={(v) => maj('exterieur', { futs: Math.round(v) })} unite="" />
+            <Montant libelle="Durée du contrat" valeur={e.dureeContrat} onChange={m('dureeContrat')} unite="ans" />
           </Saisies>
         </Bloc>
         <Bloc titre="1. Recettes" total={{ libelle: 'CA HT de l’année', valeur: montant(r.ca) }}>
@@ -1256,6 +1259,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             {e.tireuse === 'neuve' && <><Montant libelle="Prix de la tireuse HT" valeur={e.prixTireuse} onChange={m('prixTireuse')} /><Montant libelle="Durée de vie" valeur={e.duree} onChange={m('duree')} unite="ans" /></>}
             <Montant libelle="Entretien par an HT" valeur={e.entretien} onChange={m('entretien')} />
           </Saisies>
+          {contratCourt && <Typography color="text.secondary">Contrat de {ans(e.dureeContrat)} pour une tireuse de {ans(e.duree)} : elle est payée sur le contrat, {montant(r.tireuseAn)} par an au lieu de {montant(r.tireuseAnDureeVie)}. Si le client part à la fin, il reste {montant(r.resteNonAmorti)} non amortis.</Typography>}
         </Bloc>
         <Bloc titre="4. Livraisons" total={{ libelle: 'Par an', ...moins(r.livraisonsAn) }}>
           <Saisies>
@@ -1297,7 +1301,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     nomParDefaut = `${e.nom || 'Contrat extérieur'}, ${e.futs} fûts`
     phrase = r.netParFut <= 0
       ? `${nomParDefaut} : chaque fût fait perdre ${centimes(-r.netParFut)}, le prix ne couvre pas l’achat et la redevance.`
-      : `${nomParDefaut} : ${centimes(r.netParFut)} nets par fût, ${montant(r.coutFixe)} de coûts fixes${r.recettes ? `, ${montant(r.recettes)} de livraisons et locations facturées` : ''}, équilibre à ${r.equilibre} fûts ; ${r.gain >= 0 ? `gain de ${montant(r.gain)}` : `perte de ${montant(-r.gain)}`} au volume prévu.`
+      : `${nomParDefaut} : ${centimes(r.netParFut)} nets par fût, ${montant(r.coutFixe)} de coûts fixes${r.recettes ? `, ${montant(r.recettes)} de livraisons et locations facturées` : ''}, équilibre à ${r.equilibre} fûts ; ${r.gain >= 0 ? `gain de ${montant(r.gain)}` : `perte de ${montant(-r.gain)}`} au volume prévu.${contratCourt ? ` Tireuse payée sur les ${ans(e.dureeContrat)} du contrat : ${montant(r.resteNonAmorti)} non amortis si le client part${r.equilibreDureeVie !== null ? `, équilibre à ${r.equilibreDureeVie} fûts si elle ressert ailleurs` : ''}.` : ''}`
     resultats = (
       <Stack spacing={2}>
       <Compte titre="Compte de l’année" lignes={[
@@ -1316,6 +1320,9 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         {r.recettes > 0 && <Indicateur libelle="Livraisons et locations facturées" valeur={montant(r.recettes)} detail={`HT, ${montant(r.recettesNettes)} après redevance et publicité`} />}
         <Indicateur libelle="Fûts pour l’équilibre" valeur={r.equilibre !== null ? entier(r.equilibre) : 'Jamais'} detail={r.equilibre !== null ? `${e.futs} prévus` : 'Le fût ne rapporte rien'} />
         <Indicateur libelle={r.gain >= 0 ? 'Gain de l’année' : 'Perte de l’année'} valeur={montant(Math.abs(r.gain))} detail={`sur ${montant(r.ca)} de CA HT`} />
+        {r.gainContrat !== null && <Indicateur libelle={r.gainContrat >= 0 ? 'Gain sur la durée du contrat' : 'Perte sur la durée du contrat'} valeur={montant(Math.abs(r.gainContrat))} detail={`${ans(e.dureeContrat)} au volume prévu`} />}
+        {contratCourt && <Indicateur libelle="Reste non amorti en fin de contrat" valeur={montant(r.resteNonAmorti)} detail={`tireuse de ${ans(e.duree)}, à payer dans les ${ans(e.dureeContrat)} du contrat ; perdu si elle ne ressert pas`} />}
+        {contratCourt && r.equilibreDureeVie !== null && <Indicateur libelle="Équilibre si la tireuse ressert" valeur={entier(r.equilibreDureeVie)} detail={`fûts par an, tireuse amortie sur ${ans(e.duree)}`} />}
         {r.remiseMax !== null && <Indicateur libelle="Remise maximale par fût" valeur={centimes(r.remiseMax)} detail={`HT ; au-delà, ${e.futs} fûts ne paient plus les coûts fixes`} />}
         {r.prixPlancherLivraison !== null && r.coutLivraison > 0 && <Indicateur libelle="Prix plancher d’une livraison" valeur={centimes(r.prixPlancherLivraison)} detail={`HT, pour couvrir ${centimes(r.coutLivraison)} de route et de temps`} />}
         {r.don.valeur > 0 && <Indicateur libelle="Coût réel du don" valeur={montant(r.don.cout)} detail={r.don.reduction ? `${montant(r.don.valeur)} moins ${taux(TAUX_MECENAT)} de réduction d’impôt` : s.donMecenat ? 'sans reçu Cerfa, pas de réduction' : 'sans réduction d’impôt'} />}
