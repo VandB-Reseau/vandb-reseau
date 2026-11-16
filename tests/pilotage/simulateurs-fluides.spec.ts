@@ -41,6 +41,8 @@ test('188-191 et 195 : familles, derniers utilisés, caisse, résultat en vue, b
   // 188 : 15 simulateurs en 4 familles, aucun « dernier utilisé » au départ
   for (const f of ['Vendre plus', 'Événements et extérieur', 'Équipe', 'Investir et trésorerie']) await expect(choix(page).getByRole('region', { name: f })).toBeVisible()
   await expect(choix(page).getByRole('button')).toHaveCount(15)
+  // Remises entreprise rangé avec le marché extérieur (Joseph, 16/11/2026)
+  await expect(choix(page).getByRole('region', { name: 'Événements et extérieur' }).getByRole('button', { name: /Remises entreprise/ })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Derniers simulateurs utilisés' })).toHaveCount(0)
   await choix(page).getByRole('button', { name: 'Vente additionnelle' }).click()
   await expect(page.getByRole('heading', { name: 'Vente additionnelle' })).toBeVisible()

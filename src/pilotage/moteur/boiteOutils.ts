@@ -403,7 +403,15 @@ export function leviersPour(causes: CauseDifficulte[]): (typeof LEVIERS_REDRESSE
 // Creux : en passant un seuil, la marge totale peut retomber sous celle du haut du palier précédent ; on donne jusqu'à
 // combien d'unités (au même mélange de produits) : margeRetrouveeA = première quantité qui rend au moins autant.
 export interface PalierRemise { min: number; remise: number }
-export interface LigneB2B { libelle: string; quantite: number; prixTTC: number; achatHT: number }
+// Par famille, on saisit un taux de marge sur le prix de vente HT avant remise (Joseph, 16/11/2026) : achat = prix HT × (1 − taux).
+// Produit par produit, on garde le prix d'achat réel. Une famille gardée avant ce choix (achat seul) se lit comme avant.
+export interface LigneB2B { libelle: string; quantite: number; prixTTC: number; achatHT: number; taux?: number }
+// Achat et marge unitaires HT d'une ligne, avant remise
+export function unitaireB2B(l: LigneB2B, tva: number): { prixHT: number; achatHT: number; marge: number; taux: number | null } {
+  const prixHT = pos(l.prixTTC) / (1 + pos(tva))
+  const achatHT = l.taux === undefined || !Number.isFinite(l.taux) ? pos(l.achatHT) : prixHT * (1 - Math.min(1, l.taux))
+  return { prixHT, achatHT, marge: prixHT - achatHT, taux: prixHT > 0 ? (prixHT - achatHT) / prixHT : null }
+}
 export type AlerteB2B = 'perte' | 'plancher' | 'ok'
 export interface LigneB2BCalculee {
   libelle: string; quantite: number; prixHT: number; caBrut: number; caNet: number; marge: number; taux: number | null; alerte: AlerteB2B | null
@@ -431,7 +439,7 @@ export function simulerRemisesB2B(x: { paliers: PalierRemise[]; lignes: LigneB2B
   const rp = p.tauxRedevance + p.tauxPublicite
   const plancher = part(x.plancher)
   const paliers = paliersRanges(x.paliers)
-  const lignesSaisies = x.lignes.map((l) => ({ libelle: l.libelle, quantite: Math.round(pos(l.quantite)), prixHT: pos(l.prixTTC) / (1 + pos(x.tva)), achatHT: pos(l.achatHT) }))
+  const lignesSaisies = x.lignes.map((l) => ({ libelle: l.libelle, quantite: Math.round(pos(l.quantite)), ...unitaireB2B(l, x.tva) }))
   const unites = somme(lignesSaisies.map((l) => l.quantite))
   let palier = 0
   paliers.forEach((y, i) => { if (unites >= y.min) palier = i })
