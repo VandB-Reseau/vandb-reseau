@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin, Vue d'ensemble (correctif 254, Joseph, 16/11/2026), sans migration : la pastille « Fin dans moins de
+  6 mois » d'un franchisé associé passe sous son nom ; à côté, elle écrasait le texte du mandat (un mot par ligne).
 - Remises entreprise (Joseph, 16/11/2026), sans migration : par famille, un « % de marge » sur le prix HT avant remise
   remplace l'achat moyen HT (marge HT par unité = prix HT × %, exemple préréglé à 40, 37, 26 et 34 %) ; produit par
   produit, prix public et prix d'achat gardés, marge unitaire affichée. Le simulateur passe dans « Événements et extérieur ».

@@ -49,8 +49,9 @@ function LigneAssocie({ reseau, m, a, modifier }: { reseau: Reseau; m: Magasin; 
         {fiche ? <Link component={RouterLink} to={lienFranchise(a.nom)} variant="body1" sx={{ fontWeight: 500, display: 'inline-flex', minHeight: 32, alignItems: 'center' }}>{a.nom}</Link>
           : <Typography variant="body1" sx={{ fontWeight: 500 }}>{a.nom}</Typography>}
         {detail.some(Boolean) && <Typography variant="body2" color="text.secondary">{detail.filter(Boolean).join(' · ')}</Typography>}
+        {/* Correctif 254 (16/11/2026) : la pastille sous le nom ; à côté, elle écrasait le texte du mandat (un mot par ligne) */}
+        {enPlace(a, reseau.jour) && <Box sx={{ mt: 0.5, '&:empty': { display: 'none' } }}><PastilleMandat e={x?.etat ?? null} /></Box>}
       </Box>
-      {enPlace(a, reseau.jour) && <PastilleMandat e={x?.etat ?? null} />}
       {p?.telephone && <Tooltip title={p.telephone}><IconButton href={telLien(p.telephone)} aria-label={`Appeler ${a.nom}`}><CallOutlined /></IconButton></Tooltip>}
       {p?.email && <Tooltip title={p.email}><IconButton href={`mailto:${p.email}`} aria-label={`Écrire à ${a.nom}`}><MailOutlined /></IconButton></Tooltip>}
       {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier l’associé ${a.nom}`}><EditOutlined /></IconButton></Tooltip>}
