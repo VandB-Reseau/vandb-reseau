@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateur « Investir » recentré sur les travaux et équipements (Joseph, 16/11/2026), sans migration. Tireuse retirée
+  (Contrat extérieur, Parc de tireuses) ; projets préréglés Terrasse, Concept 2.0, Four et offre food, Corner alimentaire,
+  Marché extérieur (gardé : tireuses, véhicule, stock déporté), ordres de grandeur fictifs ; exemple = travaux terrasse
+  (25 000 €, remboursé en 4,6 ans) au lieu d'un marché extérieur sans préconisation (15 000 € pour 31 000 € d'EBE).
+  Jours de fermeture : marge perdue (CA d'un jour du budget × marge du magasin) ajoutée au délai de retour et à l'année 1.
 - Fiches Excel de Joseph comparées aux simulateurs (choix 241, 242, 244, 245 et grille de productivité, Joseph,
   16/11/2026), sans migration. 241 : Soirée, formule « soirée animée sans billet » (CA du bar d'un soir normal et attendu,
   CA à viser pour ne rien perdre). 242 : Embaucher, « Heures sup » (part dans les heures payées, coût majoré, économie

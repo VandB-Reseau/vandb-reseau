@@ -98,6 +98,13 @@ test('investissement : EBE en plus, délai de retour, année de la mise en servi
   // Prêt à 0 % sur 4 ans : 250 € par mois, 8 échéances de mai à décembre ; la trésorerie reste à + 6 625 €
   const avecPret = simulerInvestissement({ ...x, pret: { taux: 0, duree: 4 } }, p)
   proche(avecPret.annee1.tresorerie, 6_625)
+  // Fermeture de 10 jours à 1 000 € de CA HT par jour, marge du magasin 40 % : 10 × 1 000 × (40 % − 3 %) = 3 700 € perdus
+  const ferme = simulerInvestissement({ ...x, fermeture: { jours: 10, caJour: 1_000, tauxMarge: 0.4 } }, p)
+  proche(ferme.perteFermeture, 3_700)
+  proche(ferme.retourAnnees, 15_700 / 11_500)
+  proche(ferme.annee1.ebe, 4_925)
+  proche(ferme.annee1.tresorerie, -7_075)
+  proche(e.perteFermeture, 0)
   proche(avecPret.interets, 0)
   // Corner : 6 mètres à 5 000 € par mètre et par an
   expect(caCorner(6, parametresSimulateurs({ simulateurs: { corner: { caParMetre: 5_000, tauxMarge: 0.3, demarque: 0.03 } } }))).toBe(30_000)

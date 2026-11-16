@@ -75,7 +75,7 @@ import {
   gainsSelonFuts, simulerExterieur, simulerHeuresSup, simulerOuverture, simulerParc, simulerProspection, simulerRemisesB2B, unitaireB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise,
 } from '../moteur/boiteOutils'
 import { baseCaisse, budgetSurCaisse, meilleursLeviers, type CleLevier } from '../moteur/leviers'
-import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TempsFort, Univers } from '../moteur/types'
+import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TypeInvestissement, TempsFort, Univers } from '../moteur/types'
 import { dateHeure, ecartMontant, ecartPts, montant, MOIS_LONGS, panier as centimes, tauxCourt as taux } from '../lib/format'
 import type { SujetAide } from '../lib/aide'
 import { LISTE_SIMULATEURS } from '../lib/listeSimulateurs'
@@ -286,6 +286,23 @@ function Compte({ titre, lignes, total }: { titre: string; lignes: { libelle: st
 const ecart = (v: number, favorable = v >= 0) => ({ texte: ecartMontant(v), hausse: v >= 0, favorable })
 
 // État de chaque simulateur : ses saisies, gardées telles quelles avec une simulation (« Rouvrir » les reprend)
+// Investir (Joseph, 16/11/2026) : travaux et équipements du magasin ; la tireuse se simule dans Contrat extérieur et
+// Parc de tireuses. Projets préréglés = ordres de grandeur fictifs (aucun chiffre de magasin), tous modifiables.
+type ModeleInvestir = 'libre' | 'terrasse' | 'travaux' | 'food' | 'corner' | 'exterieur'
+type ReglagesInvestir = { libelle: string; cout: number; duree: number; ca: number; marge: number; demarque: number; charges: number; univers: Univers; type: TypeInvestissement; fermeture: number }
+const PROJETS_INVESTIR: Partial<Record<ModeleInvestir, ReglagesInvestir>> = {
+  // 25 000 € de mobilier, store et aménagement ; 20 000 € de CA au bar à 70 % ; extras d'été et droit de terrasse 8 000 €
+  terrasse: { libelle: 'Travaux terrasse', cout: 25_000, duree: 7, ca: 20_000, marge: 0.7, demarque: 0, charges: 8_000, univers: 'bar', type: 'mobilier', fermeture: 0 },
+  // Passage au concept 2.0 : 80 000 € sur 10 ans, 10 jours de fermeture, 40 000 € de CA cave en plus à 33 %, 1 000 € d'entretien
+  travaux: { libelle: 'Passage au concept 2.0', cout: 80_000, duree: 10, ca: 40_000, marge: 0.33, demarque: 0, charges: 1_000, univers: 'cave', type: 'autre', fermeture: 10 },
+  // Four : 6 000 €, 12 000 € de CA food au bar à 65 %, 5 % de perte, énergie et temps de préparation 4 000 €
+  food: { libelle: 'Four, offre food', cout: 6_000, duree: 5, ca: 12_000, marge: 0.65, demarque: 0.05, charges: 4_000, univers: 'bar', type: 'equipement', fermeture: 0 },
+  corner: { libelle: 'Corner alimentaire', cout: 10_000, duree: 5, ca: 25_000, marge: 0.3, demarque: 0.03, charges: 2_000, univers: 'cave', type: 'equipement', fermeture: 0 },
+  // Marché extérieur (sans préconisation du siège) : tireuses, remorque, stock déporté 40 000 € ; 100 000 € de CA à 40 % ;
+  // personnel (20 h par semaine) et local du stock déporté 27 000 € par an
+  exterieur: { libelle: 'Marché extérieur', cout: 40_000, duree: 5, ca: 100_000, marge: 0.4, demarque: 0, charges: 27_000, univers: 'exterieur', type: 'equipement', fermeture: 0 },
+}
+
 type Etats = {
   levier: { ticketsJour: number; panier: number; points: number; heures: number; jours: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number; base: BaseChiffres }
   embauche: {
@@ -328,7 +345,7 @@ type Etats = {
     prospection: boolean; heuresSemaine: number; semaines: number; entreprises: number; ticket: number; margeProspection: number | null
     coutHoraire: number; modeHeure: ModeHeure; partSmic: number
   }
-  investissement: { modele: 'libre' | 'corner' | 'exterieur'; objectifExterieur: number; camion: boolean; libelle: string; cout: number; duree: number; mois: number; ca: number; metres: number; marge: number; demarque: number; charges: number; financement: 'tresorerie' | 'pret'; tauxPret: number; dureePret: number; univers: Univers }
+  investissement: { modele: ModeleInvestir; objectifExterieur: number; camion: boolean; libelle: string; cout: number; duree: number; mois: number; ca: number; metres: number; marge: number; demarque: number; charges: number; financement: 'tresorerie' | 'pret'; tauxPret: number; dureePret: number; univers: Univers; fermeture: number; caJour: number | null; margeMagasin: number | null }
 }
 
 // Coût d'une heure chargée des simulateurs (Joseph, 14/11/2026) : moyenne de l'équipe du magasin par défaut (repère du
@@ -462,7 +479,8 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       // 238 : l'exemple de la fiche « Rentabilité Extérieur » (3 h par semaine pendant 6 mois, 15 entreprises à 330 €)
       prospection: true, heuresSemaine: 3, semaines: 26, entreprises: 15, ticket: 330, margeProspection: null, coutHoraire: s.coutHoraire, ...HEURE,
     },
-    investissement: { modele: 'libre', objectifExterieur: 100_000, camion: false, libelle: 'Tireuse', cout: 15_000, duree: 5, mois: moisSuivant, ca: 20_000, metres: 6, marge: 0.35, demarque: 0, charges: 1_000, financement: 'tresorerie', tauxPret: 0.04, dureePret: 5, univers: 'bar' },
+    // Exemple : travaux terrasse (Joseph, 16/11/2026), 5 400 € d'EBE en plus par an, remboursé en 4,6 ans
+    investissement: (({ type: _t, ...r }) => ({ modele: 'terrasse' as const, objectifExterieur: 100_000, camion: false, ...r, mois: moisSuivant, metres: 6, financement: 'tresorerie' as const, tauxPret: 0.04, dureePret: 5, caJour: null, margeMagasin: null }))(PROJETS_INVESTIR.terrasse!),
   }
 }
 
@@ -1111,13 +1129,22 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const marge = e.modele === 'corner' && s.corner.tauxMarge > 0 ? s.corner.tauxMarge : e.marge
     const demarque = e.modele === 'corner' ? s.corner.demarque || e.demarque : e.demarque
     const pret = e.financement === 'pret' ? { taux: e.tauxPret, duree: e.dureePret } : null
-    const r = simulerInvestissement({ cout, duree: e.duree, mois: e.mois, ca, tauxMarge: marge, demarque, charges, pret }, p)
+    // Jours de fermeture : CA d'un jour du budget (lundi au samedi, 306 jours) et marge du magasin, modifiables
+    const jours = e.fermeture ?? 0
+    const caJourBudget = b && b.ca > 0 ? Math.round(b.ca / 306) : null
+    const caJour = e.caJour ?? caJourBudget ?? 0
+    const margeMagasin = e.margeMagasin ?? (b && b.ca > 0 ? Math.round(b.tauxMarge * 1000) / 1000 : 0.35)
+    const r = simulerInvestissement({ cout, duree: e.duree, mois: e.mois, ca, tauxMarge: marge, demarque, charges, pret, fermeture: jours > 0 ? { jours, caJour, tauxMarge: margeMagasin } : null }, p)
     const reperes = e.modele === 'corner' && s.corner.caParMetre > 0
     saisies = (
       <Stack spacing={2}>
         <Bloc titre="1. Le projet">
         <Saisies>
-          <Choix libelle="Projet" valeur={e.modele} onChange={(v) => maj('investissement', { modele: v, libelle: v === 'corner' ? 'Corner alimentaire' : v === 'exterieur' ? 'Marché extérieur' : ['Corner alimentaire', 'Marché extérieur'].includes(e.libelle) ? 'Tireuse' : e.libelle, univers: v === 'corner' ? 'cave' : v === 'exterieur' ? 'exterieur' : e.univers })} options={[['libre', 'Libre'], ['corner', 'Corner alimentaire'], ['exterieur', 'Marché extérieur']]} />
+          <Choix libelle="Projet" valeur={e.modele} onChange={(v) => {
+            const pr = PROJETS_INVESTIR[v]
+            maj('investissement', pr ? { modele: v, libelle: pr.libelle, cout: pr.cout, duree: pr.duree, ca: pr.ca, marge: pr.marge, demarque: pr.demarque, charges: pr.charges, univers: pr.univers, fermeture: pr.fermeture, ...(v === 'exterieur' ? { objectifExterieur: pr.ca } : {}) }
+              : { modele: v, libelle: '' })
+          }} options={[['libre', 'Libre'], ['terrasse', 'Terrasse'], ['travaux', 'Concept 2.0'], ['food', 'Four, food'], ['corner', 'Corner alimentaire'], ['exterieur', 'Marché extérieur']]} />
           <Champ libelle="Nom"><TextField size="small" value={e.libelle} onChange={(x) => maj('investissement', { libelle: x.target.value })} slotProps={{ htmlInput: { 'aria-label': 'Nom du projet', maxLength: 60 } }} sx={{ ...champ, width: 200 }} /></Champ>
           <ChoixMois libelle="En service en" valeur={e.mois} onChange={(v) => maj('investissement', { mois: v })} />
         </Saisies>
@@ -1129,13 +1156,16 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         )}
         {e.modele === 'exterieur' && (pal
           ? <Typography color="text.secondary">Préconisation du siège pour {montant(e.objectifExterieur)} de CA : {entier(pal.tireuses)} tireuses, {montant(pal.investissement)} d’investissement{e.camion ? ` et ${montant(s.marcheExterieur.camion)} de camion` : ''}, {unChiffre(pal.heures)} h par semaine{s.coutHoraire > 0 ? `, soit ${montant(chargesExt ?? 0)} par an au coût horaire du siège` : ''}.</Typography>
-          : <Typography color="text.secondary">Le siège n’a pas encore réglé la préconisation du marché extérieur : saisis le coût et les charges en mode Libre.</Typography>)}
+          : <Typography color="text.secondary">Pas encore de préconisation du siège : coût (tireuses, véhicule, stock déporté) et charges (personnel, local) à saisir ci-dessous.</Typography>)}
         </Bloc>
         <Bloc titre="2. L’investissement" total={{ libelle: 'Coût HT', valeur: montant(cout) }}>
         <Saisies>
           {coutExt === null ? <Montant libelle="Coût HT" valeur={e.cout} onChange={(v) => maj('investissement', { cout: v })} /> : null}
           <Montant libelle="Amorti sur" valeur={e.duree} onChange={(v) => maj('investissement', { duree: v })} unite="ans" />
           <Choix libelle="Financement" valeur={e.financement} onChange={(v) => maj('investissement', { financement: v })} options={[['tresorerie', 'Trésorerie'], ['pret', 'Prêt']]} />
+          <Montant libelle="Jours de fermeture" valeur={jours} onChange={(v) => maj('investissement', { fermeture: Math.max(0, Math.round(v)) })} unite="j" />
+          {jours > 0 && <><Montant libelle="CA HT d’un jour" valeur={caJour} onChange={(v) => maj('investissement', { caJour: v })} source={e.caJour === null && caJourBudget !== null && 'budget'} />
+            <Taux libelle="Marge du magasin" valeur={margeMagasin} onChange={(v) => maj('investissement', { margeMagasin: v })} source={e.margeMagasin === null && !!b && b.ca > 0 && 'budget'} /></>}
           {e.financement === 'pret' && <><Taux libelle="Taux du prêt" valeur={e.tauxPret} onChange={(v) => maj('investissement', { tauxPret: v })} /><Montant libelle="Durée du prêt" valeur={e.dureePret} onChange={(v) => maj('investissement', { dureePret: v })} unite="ans" /></>}
         </Saisies>
         </Bloc>
@@ -1157,18 +1187,18 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     resultats = (
       <Resultats>
         <Indicateur libelle="EBE en plus par an" valeur={montant(r.ebeAn)} detail={`sur ${montant(ca)} de CA HT`} />
-        <Indicateur libelle="Remboursé en" valeur={r.retourAnnees !== null ? `${unChiffre(r.retourAnnees)} an${r.retourAnnees >= 2 ? 's' : ''}` : 'Jamais'} detail="coût ÷ EBE en plus" />
+        <Indicateur libelle="Remboursé en" valeur={r.retourAnnees !== null ? `${unChiffre(r.retourAnnees)} an${r.retourAnnees >= 2 ? 's' : ''}` : 'Jamais'} detail={r.perteFermeture > 0 ? `(coût + ${montant(r.perteFermeture)} de marge perdue en ${entier(jours)} jours de fermeture) ÷ EBE en plus` : 'coût ÷ EBE en plus'} />
         <Indicateur libelle="Résultat en plus par an" valeur={montant(r.resultatAn)} detail={`après ${montant(r.amortissement)} d’amortissement${r.interets ? ` et ${montant(r.interets)} d’intérêts` : ''}`} />
         <Indicateur libelle="Trésorerie la 1re année" valeur={ecartMontant(r.annee1.tresorerie)} detail={`${r.annee1.mois} mois en service`} />
       </Resultats>
     )
     const univers: Univers = e.modele === 'corner' ? 'cave' : e.modele === 'exterieur' ? 'exterieur' : e.univers
     ajout = {
-      investissements: [{ libelle: (e.libelle || 'Investissement').slice(0, 60), type: 'equipement', montant: Math.round(cout), mois: e.mois, duree: Math.max(1, Math.round(e.duree)) }],
+      investissements: [{ libelle: (e.libelle || 'Investissement').slice(0, 60), type: PROJETS_INVESTIR[e.modele]?.type ?? 'equipement', montant: Math.round(cout), mois: e.mois, duree: Math.max(1, Math.round(e.duree)) }],
       ...(pret ? { emprunts: [{ libelle: `Prêt ${e.libelle || ''}`.trim().slice(0, 60), montant: Math.round(cout), taux: e.tauxPret, duree: e.dureePret, premiereEcheance: Math.min(12, e.mois + 1) }] } : {}),
       ...(ca > 0 ? { ajustementsCA: [{ libelle: (e.libelle || 'Investissement').slice(0, 60), univers, de: e.mois, a: 12, montant: Math.round(ca / 12) }] } : {}),
     }
-    note = `Au budget, le CA en plus entre dans ${univers === 'cave' ? 'la Cave' : univers === 'bar' ? 'le Bar' : 'l’Extérieur'} à sa marge${charges > 0 ? ' ; les charges en plus se saisissent dans les Frais ou l’Équipe' : ''}.`
+    note = `Au budget, le CA en plus entre dans ${univers === 'cave' ? 'la Cave' : univers === 'bar' ? 'le Bar' : 'l’Extérieur'} à sa marge${charges > 0 ? ' ; les charges en plus se saisissent dans les Frais ou l’Équipe' : ''}${jours > 0 ? ' ; les jours de fermeture se saisissent dans « Travaux, fermeture »' : ''}.`
   }
 
   if (choisi === 'exterieur') {
