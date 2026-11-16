@@ -28,28 +28,38 @@ test('promo et hausse de prix : ventes en plus ou ventes qu’on peut perdre à 
   proche(h.nouveauTauxMarge, 0.35 / 1.05)
 })
 
-test('offre 5 + 1 en lot : marge gagnée quand des clients montent de 1 à 6 bouteilles', () => {
-  // 100 clients, bouteille 10 € HT, marge 35 %. Avant : 95 clients × 1 + 5 clients × 6 = 125 bouteilles, 1 250 € de CA, 437,50 € de marge.
-  // Après : 10 clients montent au lot. 85 × 1 + 15 × 6 = 175 bouteilles ; CA 85 × 10 + 15 × 50 = 1 600 € ; coût 175 × 6,50 = 1 137,50 € ;
-  // marge 462,50 €, soit + 25 €. Un client qui monte : 50 − 39 = 11 € au lieu de 3,50 € → + 7,50 € ; l'aubaine coûte 5 × 10 = 50 € ;
-  // seuil 50 ÷ 7,50 = 6,67 clients sur 100.
-  const r = simulerLot({ payes: 5, offerts: 1, prixHT: 10, tauxMarge: 0.35, monte: 10, deja: 5 })!
+test('offre 5 + 1 en lot : marge des clients qui passent de 4 à 5 + 1 bouteilles', () => {
+  // 100 clients, bouteille 10 € HT (coût 6,50 € à 35 %), 5 prenaient déjà 5 bouteilles, les 95 autres 4, dont 10 montent à 5 + 1.
+  // Avant : 95 × 4 + 5 × 5 = 405 bouteilles, 4 050 € de CA, marge 4 050 × 35 % = 1 417,50 €.
+  // Après : 85 × 4 + 15 × 6 = 430 bouteilles ; CA 10 × (340 + 75) = 4 150 € ; coût 430 × 6,50 = 2 795 € ; marge 1 355 €, soit − 62,50 €.
+  // Un client qui monte : 50 − 39 = 11 € au lieu de 4 × 3,50 = 14 € → − 3 € ; l'aubaine : 5 bouteilles offertes × 6,50 = 32,50 €.
+  // Le lot ne rapporte qu'au-dessus de 1 ÷ (6 − 4) = 50 % de marge : aucun seuil.
+  const r = simulerLot({ payes: 5, offerts: 1, avant: 4, prixHT: 10, tauxMarge: 0.35, monte: 10, deja: 5 })!
   proche(r.remise, 1 / 6)
-  expect(r.avant).toMatchObject({ bouteilles: 125, ca: 1_250 })
-  proche(r.avant.marge, 437.5)
-  expect(r.apres).toMatchObject({ bouteilles: 175, ca: 1_600 })
-  proche(r.apres.marge, 462.5)
-  proche(r.apres.panier, 16)
-  proche(r.apres.margeTicket, 4.625)
-  proche(r.gain, 25)
-  proche(r.gainParClient, 7.5)
-  proche(r.perteAubaine, 50)
-  proche(r.seuil, 50 / 7.5)
-  // Marge 20 % : 5 × 0,20 − 1 = 0, un client qui monte ne rapporte rien, aucun seuil
-  expect(simulerLot({ payes: 5, offerts: 1, prixHT: 10, tauxMarge: 0.2, monte: 10, deja: 5 })!.seuil).toBeNull()
-  // Sans aubaine, seuil nul ; prix nul ou lot vide : pas de calcul
-  proche(simulerLot({ payes: 5, offerts: 1, prixHT: 10, tauxMarge: 0.35, monte: 10, deja: 0 })!.seuil, 0)
-  expect(simulerLot({ payes: 5, offerts: 1, prixHT: 0, tauxMarge: 0.35, monte: 10, deja: 5 })).toBeNull()
+  expect(r.avant).toMatchObject({ bouteilles: 405, ca: 4_050 })
+  proche(r.avant.marge, 1_417.5)
+  expect(r.apres).toMatchObject({ bouteilles: 430, ca: 4_150 })
+  proche(r.apres.marge, 1_355)
+  proche(r.apres.panier, 41.5)
+  proche(r.apres.margeTicket, 13.55)
+  proche(r.gain, -62.5)
+  proche(r.gainParClient, -3)
+  proche(r.perteAubaine, 32.5)
+  proche(r.margeMini, 0.5)
+  expect(r.seuil).toBeNull()
+  // Marge 60 % (coût 4 €) : 50 − 24 − 24 = + 2 € par client ; aubaine 5 × 4 = 20 € ; seuil 10 clients, gain nul à 10
+  const f = simulerLot({ payes: 5, offerts: 1, avant: 4, prixHT: 10, tauxMarge: 0.6, monte: 10, deja: 5 })!
+  proche(f.gainParClient, 2)
+  proche(f.seuil, 10)
+  proche(f.gain, 0)
+  // 4 + 2, de 3 à 4 + 2, marge 70 % : 40 − 6 × 3 − 3 × 7 = + 1 € ; rentable au-dessus de 2 ÷ 3
+  const q = simulerLot({ payes: 4, offerts: 2, avant: 3, prixHT: 10, tauxMarge: 0.7, monte: 10, deja: 0 })!
+  proche(q.gainParClient, 1)
+  proche(q.margeMini, 2 / 3)
+  proche(q.seuil, 0)
+  // De 1 à 5 + 1 (35 %) : 50 − 39 − 3,50 = + 7,50 € ; rentable au-dessus de 1 ÷ 5 = 20 %
+  proche(simulerLot({ payes: 5, offerts: 1, avant: 1, prixHT: 10, tauxMarge: 0.35, monte: 10, deja: 0 })!.gainParClient, 7.5)
+  expect(simulerLot({ payes: 5, offerts: 1, avant: 4, prixHT: 0, tauxMarge: 0.35, monte: 10, deja: 5 })).toBeNull()
 })
 
 test('vente additionnelle : un article de plus à 1 client sur 10', () => {

@@ -218,25 +218,31 @@ export function simulerPrix(type: 'remise' | 'hausse', taux: number, tauxMarge: 
 }
 
 // Offre en lot « N + G » (Joseph, 16/11/2026) : en parallèle de la remise sur toutes les ventes, ce que rapporte l'offre si
-// des clients venus pour 1 bouteille montent au lot. Pour 100 clients (tickets constants) : « monte » passent de 1 bouteille
-// au lot, « deja » prenaient déjà le lot au prix plein (effet d'aubaine : ils paient G bouteilles de moins). Tout en HT.
-// Un client qui monte rapporte P × ((N + G − 1) × m − G) de marge en plus ; un client d'aubaine coûte G × P.
+// des clients montent d'un cran : en 5 + 1, ceux qui prenaient 4 bouteilles en paient 5 et en emportent 6 (« avant » = N − 1
+// par défaut, modifiable). Pour 100 clients du produit (tickets constants) : « deja » prenaient déjà N bouteilles et reçoivent
+// maintenant G offertes (effet d'aubaine, G × coût d'achat chacun) ; les autres prenaient « avant » bouteilles, « monte »
+// d'entre eux passent au lot. Tout en HT, prix P, marge m :
+// un client qui monte rapporte P × (N − (N + G) × (1 − m) − avant × m), positif seulement si m > G ÷ (N + G − avant).
 // Seuil = clients qui doivent monter pour couvrir l'aubaine ; null si chaque client qui monte fait perdre de la marge.
 export interface EtatLot { bouteilles: number; ca: number; marge: number; panier: number; margeTicket: number }
-export interface EffetLot { remise: number; avant: EtatLot; apres: EtatLot; gain: number; gainParClient: number; perteAubaine: number; seuil: number | null; monte: number }
-export function simulerLot(o: { payes: number; offerts: number; prixHT: number; tauxMarge: number; monte: number; deja: number; clients?: number }): EffetLot | null {
-  const n = Math.max(0, o.payes), g = Math.max(0, o.offerts), l = n + g, clients = o.clients ?? 100
-  if (l <= 1 || n <= 0 || o.prixHT <= 0) return null
+export interface EffetLot { remise: number; avant: EtatLot; apres: EtatLot; gain: number; gainParClient: number; perteAubaine: number; seuil: number | null; margeMini: number; monte: number }
+export function simulerLot(o: { payes: number; offerts: number; avant: number; prixHT: number; tauxMarge: number; monte: number; deja: number; clients?: number }): EffetLot | null {
+  const n = Math.max(0, o.payes), g = Math.max(0, o.offerts), l = n + g, k = Math.min(n, Math.max(0, o.avant)), clients = o.clients ?? 100
+  if (g <= 0 || n <= 0 || o.prixHT <= 0) return null
   const p = o.prixHT, m = o.tauxMarge
   const deja = Math.min(clients, Math.max(0, o.deja)), monte = Math.min(clients - deja, Math.max(0, o.monte))
   const etat = (bouteilles: number, ca: number): EtatLot => {
     const marge = ca - bouteilles * p * (1 - m)
     return { bouteilles, ca, marge, panier: ca / clients, margeTicket: marge / clients }
   }
-  const avant = etat(clients - deja + deja * l, p * (clients - deja + deja * l))
-  const apres = etat(clients - deja - monte + (deja + monte) * l, p * (clients - deja - monte + (deja + monte) * n))
-  const gainParClient = p * ((l - 1) * m - g), perteAubaine = deja * g * p
-  return { remise: g / l, avant, apres, gain: apres.marge - avant.marge, gainParClient, perteAubaine, seuil: gainParClient > 0 ? perteAubaine / gainParClient : null, monte }
+  const reste = clients - deja
+  const avant = etat(reste * k + deja * n, p * (reste * k + deja * n))
+  const apres = etat((reste - monte) * k + (deja + monte) * l, p * ((reste - monte) * k + (deja + monte) * n))
+  const gainParClient = p * (n - l * (1 - m) - k * m), perteAubaine = deja * g * p * (1 - m)
+  return {
+    remise: g / l, avant, apres, gain: apres.marge - avant.marge, gainParClient, perteAubaine,
+    seuil: gainParClient > 0 ? perteAubaine / gainParClient : null, margeMini: g / (l - k), monte,
+  }
 }
 
 // ── 129 · Coup dur de trésorerie ───────────────────────────────────────────────────────────────────────────────────
