@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   tester:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -56,7 +56,7 @@ jobs:
     # La mise en ligne n'a lieu que si tous les tests passent
     if: github.ref == 'refs/heads/main'
     needs: tester
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deploiement.outputs.page_url }}

@@ -327,6 +327,25 @@ export function simulerSoiree(x: Soiree, p: Pick<ParametresReseau, 'tauxRedevanc
     seuil: unitaire > 0 ? Math.ceil(couts / unitaire - 1e-9) : null, gainParParticipant: unitaire,
   }
 }
+// ── 241 · Soirée animée sans billet (DJ, concert, match) : fiche « rentabilité soirée » de Joseph (16/11/2026) ─────────
+// Pas d'entrée payante : la soirée se paie par le CA du bar en plus d'un soir normal. Gain = (CA attendu − CA d'un soir
+// normal) × (marge − redevance et publicité) − coûts. CA à viser pour ne rien perdre = CA d'un soir normal + coûts ÷
+// (marge − redevance et publicité) ; jamais rentable si la marge ne couvre pas la redevance.
+export interface SoireeAnimee { caNormal: number; caAttendu: number; tauxMarge: number; couts: number; extras: number; equipe?: HeuresEquipe | null }
+export interface EffetSoireeAnimee { caEnPlus: number; marge: number; redevance: number; couts: number; equipeEnPlace: number; gain: number; caAViser: number | null; caEnPlusAViser: number | null }
+export function simulerSoireeAnimee(x: SoireeAnimee, p: Pick<ParametresReseau, 'tauxRedevance' | 'tauxPublicite'>): EffetSoireeAnimee {
+  const rp = p.tauxRedevance + p.tauxPublicite
+  const caEnPlus = Math.max(0, x.caAttendu) - Math.max(0, x.caNormal)
+  const equipeEnPlace = coutHeuresEquipe(x.equipe)
+  const couts = Math.max(0, x.couts) + Math.max(0, x.extras) + equipeEnPlace
+  const marge = caEnPlus * x.tauxMarge, redevance = caEnPlus * rp
+  const net = x.tauxMarge - rp
+  const caEnPlusAViser = net > 0 ? couts / net : null
+  return {
+    caEnPlus, marge, redevance, couts, equipeEnPlace, gain: marge - redevance - couts,
+    caEnPlusAViser, caAViser: caEnPlusAViser === null ? null : Math.max(0, x.caNormal) + caEnPlusAViser,
+  }
+}
 // Les temps forts à ajouter au budget : l'entrée dans l'univers de la soirée, les achats des participants en cave (bon
 // d'achat déduit) ; coûts propres hors personnel (extras et heures de l'équipe se voient dans l'Équipe) ; achats payés
 // le mois d'avant

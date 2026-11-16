@@ -536,7 +536,7 @@ const couleurNoteChip = { 1: 'error', 2: 'warning', 3: 'success' } as const
 
 // Derniers audits hygiène et excellence, avec leurs écarts
 function SectionAudits({ reseau, m }: { reseau: Reseau; m: Magasin }) {
-  const audits = [['hygiene', 'Dernier audit hygiène'], ['excellence', 'Dernier audit excellence']] as const
+  const audits = [['hygiene', 'Dernier audit hygiène'], ['excellence', 'Dernier audit excellence'], ['marge', 'Dernier audit de marge']] as const
   return (
     <Section titre="Audits">
       {audits.map(([type, libelle]) => {

@@ -29,7 +29,7 @@ import { useAuth } from '../auth/AuthContext'
 import { EtatVide } from '../components/EtatVide'
 import { Indicateur } from '../components/Indicateur'
 import { Panne } from '../components/Panne'
-import { chargerActions, chargerAlertes, chargerBudgets, chargerParametres, chargerQuadrimestres, chargerReelDuCompte, hypothesesDe, parametresDuBudget, type SaisiesQuadrimestres } from '../data/pilotage'
+import { chargerActions, chargerAlertes, chargerBudgets, chargerParametres, chargerQuadrimestres, chargerReelDuCompte, chargerStocksReseau, hypothesesDe, parametresDuBudget, type SaisiesQuadrimestres } from '../data/pilotage'
 import { useChargement } from '../data/useChargement'
 import { feuilleReseau } from '../lib/exports'
 import { ecartTaux, lienMagasin, milliers, MOIS, taux } from '../lib/format'
@@ -44,8 +44,9 @@ import { styleTableau } from '../theme/tableau'
 import { niveauEcart } from '../moteur/visuel'
 import { Pastille } from '../components/Tableau'
 import { anneeSuivi } from '../data/annees'
+import { stockParDefaut, stockReseau, type EtatStock } from '../moteur/stock'
 
-type Cle = 'magasin' | 'moisRealises' | 'ca' | 'evolution' | 'ecartBudget' | 'tauxMarge' | 'panierCave' | 'ticketsCave' | 'panierBar' | 'ticketsBar' | 'pctFP' | 'caParHeure' | 'loyerSurCA' | 'ebeSurCA'
+type Cle = 'magasin' | 'moisRealises' | 'ca' | 'evolution' | 'ecartBudget' | 'tauxMarge' | 'panierCave' | 'ticketsCave' | 'panierBar' | 'ticketsBar' | 'pctFP' | 'caParHeure' | 'loyerSurCA' | 'ebeSurCA' | 'moisStock' | 'cibleStock'
 type Colonne = { cle: Exclude<Cle, 'magasin'>; libelle: string; texte: (v: number) => string; rouge?: (v: number) => boolean }
 
 const euros = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -63,25 +64,34 @@ const COLONNES: Colonne[] = [
   { cle: 'caParHeure', libelle: 'CA par heure travaillée', texte: (v) => euros.format(v) },
   { cle: 'loyerSurCA', libelle: 'Loyer / CA', texte: taux },
   { cle: 'ebeSurCA', libelle: 'EBE / CA', texte: taux, rouge: (v) => v < 0 },
+  // 245 : mois d'achats à venir que couvre le stock Cave + Bar du dernier mois saisi, face à la cible pondérée
+  { cle: 'moisStock', libelle: 'Stock en mois d’achats', texte: (v) => `${unMois.format(v)} mois` },
+  { cle: 'cibleStock', libelle: 'Cible du stock', texte: (v) => `${unMois.format(v)} mois` },
 ]
+const unMois = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+const valeurDe = (m: object, cle: string) => ((m as Record<string, unknown>)[cle] as number | null | undefined) ?? null
 const MILLIERS = new Set(['ca']), POURCENTS = new Set(['evolution', 'ecartBudget', 'tauxMarge', 'ticketsCave', 'ticketsBar', 'pctFP', 'loyerSurCA', 'ebeSurCA'])
 const colonnesTri: ColonneTri<LigneReseau & { coach: string }>[] = [
   { cle: 'magasin', libelle: 'Magasin', valeur: (m) => m.magasin },
   { cle: 'coach', libelle: 'Coach', valeur: (m) => m.coach || null },
   ...COLONNES.map((c): ColonneTri<LigneReseau & { coach: string }> => {
-    const v = (m: LigneReseau & { coach: string }) => (c.cle === 'moisRealises' ? m.moisRealises || null : m[c.cle as keyof LigneReseau] as number | null)
+    const v = (m: LigneReseau & { coach: string }) => (c.cle === 'moisRealises' ? m.moisRealises || null : valeurDe(m, c.cle))
     if (c.cle === 'moisRealises') return { cle: c.cle, libelle: c.libelle, valeur: v, texte: (m) => c.texte(m.moisRealises), filtre: 'liste' }
     const echelle = MILLIERS.has(c.cle) ? 1 / 1000 : POURCENTS.has(c.cle) ? 100 : 1
     return { cle: c.cle, libelle: c.libelle, valeur: v, filtre: 'nombre', nombre: (m) => { const x = v(m); return x === null ? null : x * echelle }, unite: MILLIERS.has(c.cle) ? 'k€' : POURCENTS.has(c.cle) ? '%' : '€' }
   }),
 ]
 // Allègement (Joseph, 03/11/2026) : le classement se lit par vue de 4 à 5 colonnes ; l'export Excel garde tout
-type Vue = 'ventes' | 'clients' | 'equipe'
+type Vue = 'ventes' | 'clients' | 'equipe' | 'stock'
 const VUES: { cle: Vue; libelle: string; colonnes: Colonne['cle'][] }[] = [
   { cle: 'ventes', libelle: 'Ventes', colonnes: ['moisRealises', 'ca', 'evolution', 'ecartBudget', 'tauxMarge'] },
   { cle: 'clients', libelle: 'Clients', colonnes: ['panierCave', 'ticketsCave', 'panierBar', 'ticketsBar'] },
   { cle: 'equipe', libelle: 'Équipe et frais', colonnes: ['pctFP', 'caParHeure', 'loyerSurCA', 'ebeSurCA'] },
+  { cle: 'stock', libelle: 'Stock', colonnes: ['moisRealises', 'moisStock', 'cibleStock'] },
 ]
+const ETAT_STOCK: Record<EtatStock, { niveau: 'favorable' | 'fort'; texte: string }> = {
+  ok: { niveau: 'favorable', texte: 'dans la cible' }, haut: { niveau: 'fort', texte: 'au-dessus de la cible' }, bas: { niveau: 'fort', texte: 'sous la cible' },
+}
 const douze = (): MoisReel[] => Array.from({ length: 12 }, () => ({ caHT: 0, margeHT: 0, caAvecMarge: 0, caTTC: 0, tickets: 0 }))
 // Sur téléphone, les chiffres d'abord : Coach, RR et groupe restent dans les filtres
 const surPC = { display: { xs: 'none', md: 'table-cell' } }
@@ -90,6 +100,8 @@ const simple = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerC
 // Chaque magasin à la fin de son dernier mois réalisé, face à l'an dernier et à son budget (aussi lu par le rapport du mois, 29A)
 export async function chargerSuiviReseau(annee: number) {
   const [d, { parametres }, reel, alertes, actions, quadrimestres] = await Promise.all([chargerBudgets(annee), chargerParametres(annee), chargerReelDuCompte(annee), chargerAlertes(), chargerActions().catch(() => []), chargerQuadrimestres(annee).catch(() => ({} as SaisiesQuadrimestres))])
+  const stocks = await chargerStocksReseau(annee).catch(() => ({} as Awaited<ReturnType<typeof chargerStocksReseau>>))
+  const pStock = parametres.tresorerie.stock ?? stockParDefaut
   const groupes = new Map(d.groupes.map((g) => [g.id, g.nom]))
   const p = { tauxRedevance: parametres.tauxRedevance, tauxPublicite: parametres.tauxPublicite, charges: parametres.charges, annee }
   const magasins = d.magasins.map((l) => {
@@ -97,7 +109,9 @@ export async function chargerSuiviReseau(annee: number) {
     const frais = d.frais[l.magasin]
     const n = reel.magasins[l.magasin]?.n ?? douze(), n1 = reel.magasins[l.magasin]?.n1 ?? douze()
     const budget = h ? calculerBudget(h.hypotheses, parametresDuBudget(l, parametres)) : null
+    const stock = stocks[l.magasin] ? stockReseau(n, reel.magasins[l.magasin]?.n1 ?? [], stocks[l.magasin], pStock) : null
     return {
+      moisStock: stock?.moisCouverts ?? null, cibleStock: stock?.cible ?? null, etatStock: stock?.etat ?? null,
       // Fiche de visite du magasin (lot 28), pour « Ma semaine » (lot 29)
       fiche: ficheVisite({ n, n1, budget }, parametres.tvaPanier),
       ...ligneReseau({
@@ -188,11 +202,13 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
     return <Box>{entete}<EtatVide titre={`Pas encore de réel ${annee}`} texte={`La vue réseau compare les magasins à partir des chiffres réels ${annee}, importés chaque mois depuis la caisse.`} /></Box>
   }
 
-  const cellule = (c: Colonne, v: number | null, fort = false) => (
+  const cellule = (c: Colonne, v: number | null, fort = false, etat: EtatStock | null = null) => (
     <TableCell key={c.cle} align="right" sx={{ whiteSpace: 'nowrap', fontWeight: fort ? 700 : 400, color: v !== null && c.rouge?.(v) ? 'error.main' : v === null ? 'text.disabled' : undefined }}>
       {v === null ? '–' : c.cle === 'ecartBudget' ? (
         // Refonte T2 (2/11/2026) : pastille de l'écart au budget, mêmes couleurs que dans la fiche du magasin
         <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}><Pastille niveau={niveauEcart(1 + v, 1, donnees.seuil)} />{c.texte(v)}</Box>
+      ) : etat && c.cle === 'moisStock' ? (
+        <Box component="span" title={ETAT_STOCK[etat].texte} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}><Pastille niveau={ETAT_STOCK[etat].niveau} />{c.texte(v)}</Box>
       ) : c.texte(v)}
     </TableCell>
   )
@@ -305,7 +321,7 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
                   {donnees.coachs.length > 0 && <TableCell sx={surPC} />}
                   {colonnes.map((c) => (c.cle === 'moisRealises'
                     ? <TableCell key={c.cle} align="right" sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}>{total.magasins} magasin{total.magasins > 1 ? 's' : ''}</TableCell>
-                    : cellule(c, (total as unknown as Record<string, number | null>)[c.cle], true)))}
+                    : cellule(c, valeurDe(total, c.cle), true)))}
                 </TableRow>
                 <TableRow sx={{ '& td': { color: 'text.secondary' } }}>
                   <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{filtre ? 'Médiane de la sélection' : 'Médiane du réseau'}</TableCell>
@@ -323,7 +339,7 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
                     {donnees.coachs.length > 0 && <TableCell sx={{ whiteSpace: 'nowrap', ...surPC }}>{m.coach}</TableCell>}
                     {colonnes.map((c) => (c.cle === 'moisRealises'
                       ? cellule(c, m.moisRealises || null)
-                      : cellule(c, m[c.cle as keyof LigneReseau] as number | null)))}
+                      : cellule(c, valeurDe(m, c.cle), false, m.etatStock)))}
                   </TableRow>
                 ))}
               </TableBody>

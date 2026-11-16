@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiches Excel de Joseph comparées aux simulateurs (choix 241, 242, 244, 245 et grille de productivité, Joseph,
+  16/11/2026), sans migration. 241 : Soirée, formule « soirée animée sans billet » (CA du bar d'un soir normal et attendu,
+  CA à viser pour ne rien perdre). 242 : Embaucher, « Heures sup » (part dans les heures payées, coût majoré, économie
+  et seuil d'un extra). 244 : grille d'audit « Audit de marge » toute prête (sa check-list en 6 thèmes), nouveau type
+  de visite ; elle n'entre pas dans la note de santé. 245 : vue réseau du Suivi, onglet « Stock » : mois d'achats que
+  couvre le stock Cave + Bar du dernier mois saisi, face à la cible pondérée par la part du CA TTC. Paramètres ›
+  Simulateurs : « Préparer 3 paliers » (46 % et 53 % de bar) pour la productivité visée, les €/h à saisir.
 - Accueil : « Partager une réussite », « Bonne pratique » et « Communication » ouvrent la fenêtre de saisie sur place au
   lieu de renvoyer vers Animation (Joseph, 16/11/2026) ; la communication publiée arrive dans le fil. Le franchisé
   propose sa bonne pratique de la même façon. Sans migration.

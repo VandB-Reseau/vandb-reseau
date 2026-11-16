@@ -131,7 +131,10 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
               <TableCell align="right" sx={{ width: 64 }}>{!lecture && <IconButton aria-label={`Retirer le palier ${i + 1}`} onClick={() => setV((y) => ({ ...y, productivite: y.productivite.filter((_, j) => j !== i) }))} sx={{ width: 48, height: 48 }}><DeleteOutlineOutlined /></IconButton>}</TableCell>
             </TableRow>
           ))}
-          {!v.productivite.length && <TableRow><TableCell colSpan={3} sx={{ color: 'text.secondary' }}>Aucune grille : l’Équipe montre la productivité sans cible.</TableCell></TableRow>}
+          {!v.productivite.length && <TableRow><TableCell colSpan={3} sx={{ color: 'text.secondary' }}>Aucune grille : l’Équipe montre la productivité sans cible.
+            {/* Joseph (16/11/2026) : la grille de sa fiche « masse salariale », en 3 paliers de part du bar ; les €/h se saisissent ici (dépôt public) */}
+            {!lecture && <Button startIcon={<AddOutlined />} onClick={() => setV((y) => ({ ...y, productivite: [{ partBar: 0.53, cible: 0 }, { partBar: 0.46, cible: 0 }, { partBar: 0, cible: 0 }] }))} sx={{ minHeight: 48, ml: 1 }}>Préparer 3 paliers (46 % et 53 % de bar)</Button>}
+          </TableCell></TableRow>}
         </TableBody>
       </Table>
       {!lecture && <Box sx={{ px: 2, py: 1 }}><Button startIcon={<AddOutlined />} onClick={() => setV((y) => ({ ...y, productivite: [...y.productivite, { partBar: 0, cible: 0 }] }))} sx={{ minHeight: 48 }}>Ajouter un palier</Button></Box>}

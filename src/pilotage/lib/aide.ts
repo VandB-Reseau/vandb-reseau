@@ -529,9 +529,9 @@ export const AIDE = {
   },
   simEmbauche: {
     titre: 'Si j’embauche, si quelqu’un part',
-    quoi: 'Ce que coûte un poste en plus, en moins ou à d’autres heures, et ce que ça change à l’EBE, au % de frais de personnel et à la trésorerie. « Primes » : jusqu’où un système de primes par paliers paie.',
+    quoi: 'Ce que coûte un poste en plus, en moins ou à d’autres heures, et ce que ça change à l’EBE, au % de frais de personnel et à la trésorerie. « Primes » : jusqu’où un système de primes par paliers paie. « Heures sup » : leur part dans les heures payées et ce qu’elles coûtent.',
     remplir: 'Choisis le mouvement, le mois et le poste. Un départ ou des heures se choisissent dans l’équipe saisie. Primes : les salariés concernés, et pour chaque palier de progression du CA la prime par salarié et celle du gérant.',
-    calcul: 'Le budget de l’année est recalculé avec le changement : charges, réduction générale et congés payés comme dans l’Équipe. CA nécessaire = coût sur 12 mois ÷ marge sur coûts variables du magasin. L’aide à l’apprentissage est réglée par le siège. CDD : 10 % de prime de fin de contrat, plus la rédaction du contrat et un bulletin par mois (repères du siège) ; intérim : salaire brut × coefficient de l’agence. Primes : marge en plus = CA du budget × progression × (taux de marge − 3 %) ; coût = (primes + part de la progression reversée) × (1 + charges du taux employé) ; un palier paie quand la marge en plus dépasse le coût.',
+    calcul: 'Le budget de l’année est recalculé avec le changement : charges, réduction générale et congés payés comme dans l’Équipe. CA nécessaire = coût sur 12 mois ÷ marge sur coûts variables du magasin. L’aide à l’apprentissage est réglée par le siège. CDD : 10 % de prime de fin de contrat, plus la rédaction du contrat et un bulletin par mois (repères du siège) ; intérim : salaire brut × coefficient de l’agence. Primes : marge en plus = CA du budget × progression × (taux de marge − 3 %) ; coût = (primes + part de la progression reversée) × (1 + charges du taux employé) ; un palier paie quand la marge en plus dépasse le coût. Heures sup : coût = heures sup × coût horaire chargé × (1 + majoration) ; un extra payé sans majoration économise la majoration moins sa paie du mois (repère du siège).',
   },
   simPrix: {
     titre: 'Promo, prix, remises',
@@ -571,9 +571,9 @@ export const AIDE = {
   },
   simSoiree: {
     titre: 'Soirée, dégustation, événement',
-    quoi: 'Ce que rapporte un événement et le nombre de participants pour ne pas perdre d’argent.',
+    quoi: 'Ce que rapporte un événement et le nombre de participants pour ne pas perdre d’argent. Soirée animée sans billet (DJ, concert) : le CA du bar à viser pour la payer.',
     remplir: 'Prix TTC par participant, participants attendus, marge ; la part des participants qui achète en cave et son panier ; les coûts ligne par ligne, les extras et les heures en plus de l’équipe déjà en place.',
-    calcul: 'Gain = marge (entrée et achats) − redevance et publicité − coûts. Achats : participants × part qui achète × panier, à la marge de la cave ; un bon d’achat du prix d’entrée est une remise sur ces achats. Heures de l’équipe = personnes × heures × coût horaire × (1 + majoration). Seuil = coûts ÷ gain par participant. « Mettre dans mon budget » ajoute un temps fort (et un en cave pour les achats) ; extras et heures se saisissent dans l’Équipe.',
+    calcul: 'Gain = marge (entrée et achats) − redevance et publicité − coûts. Achats : participants × part qui achète × panier, à la marge de la cave ; un bon d’achat du prix d’entrée est une remise sur ces achats. Heures de l’équipe = personnes × heures × coût horaire × (1 + majoration). Seuil = coûts ÷ gain par participant. Soirée animée : gain = (CA attendu − CA d’un soir normal) × (marge − 3 %) − coûts ; CA à viser = CA d’un soir normal + coûts ÷ (marge − 3 %). « Mettre dans mon budget » ajoute un temps fort (et un en cave pour les achats) ; extras et heures se saisissent dans l’Équipe.',
   },
   coutArgent: {
     titre: 'Argent immobilisé : quel taux ?',

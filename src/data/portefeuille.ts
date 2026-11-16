@@ -30,7 +30,8 @@ export function portefeuilleDe(reseau: Reseau, magasins: Magasin[], rythme?: Lig
     const a = analyser(reseau, m.nom)
     if (a?.statut) { avecChiffres++; if (a.statut === 'decroche') decroche++ }
     if (a && a.ca !== null && a.caReference) { ca += a.ca; caRef += a.caReference }
-    const notes = typesAudit.map((t) => dernierAudit(reseau, m.nom, t)?.score).filter((s): s is number => typeof s === 'number')
+    // La note de santé reste celle des audits hygiène et excellence (l'audit de marge, 244, n'y entre pas)
+    const notes = typesAudit.filter((t) => t !== 'marge').map((t) => dernierAudit(reseau, m.nom, t)?.score).filter((s): s is number => typeof s === 'number')
     if (notes.length) { audites++; scores += notes.reduce((t, s) => t + s, 0) / notes.length }
     const c = caseDe(reseau.evaluations[m.nom])
     if (c) { classes++; if (CASES_A_SURVEILLER.includes(c.id)) aSurveiller++ }

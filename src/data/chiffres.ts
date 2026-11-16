@@ -178,7 +178,7 @@ export function lireNombre(v: unknown): number | null {
 // reponses : grille remplie pendant la visite (sinon résultat saisi directement ou importé)
 export interface ResultatAudit { date: string; type: string; conforme: boolean | null; score: number | null; reponses?: import('./grilles').Reponses }
 export type Audits = Record<string, ResultatAudit[]>
-export const typesAudit = ['hygiene', 'excellence']
+export const typesAudit = ['hygiene', 'excellence', 'marge']
 
 export function auditDe(reseau: Reseau, magasin: string, date: string, type: string): ResultatAudit | null {
   return reseau.audits[magasin]?.find((a) => a.date === date && a.type === type) ?? null

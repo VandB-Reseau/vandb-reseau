@@ -905,6 +905,17 @@ export const chargerStocks = (magasin: string, annee: number): Promise<(StockSai
   }
   return mois
 })
+// 245 : stocks de l'année de tous les magasins du compte (la base ne renvoie que ceux du périmètre), Cave et Bar
+export const chargerStocksReseau = (annee: number): Promise<Record<string, (StockSaisi | null)[]>> => memo(`stocks-reseau|${annee}`, async () => {
+  const parMagasin: Record<string, (StockSaisi | null)[]> = {}
+  const { data, error } = await pilotage().from('stocks').select('store_name, mois, cave, bar').eq('annee', annee)
+  if (error || !Array.isArray(data)) return parMagasin
+  const num = (x: unknown) => (x === null || x === undefined ? null : Number(x))
+  for (const l of data as unknown as { store_name: string; mois: number; cave: unknown; bar: unknown }[]) {
+    if (l.mois >= 1 && l.mois <= 12) (parMagasin[l.store_name] ??= Array(12).fill(null))[l.mois - 1] = { cave: num(l.cave), bar: num(l.bar) }
+  }
+  return parMagasin
+})
 export async function enregistrerStock(magasin: string, annee: number, mois: number, s: StockSaisi) {
   const exterieur = s.exterieur ?? null
   if (s.cave === null && s.bar === null && exterieur === null) verifier(await pilotage().from('stocks').delete().eq('store_name', magasin).eq('annee', annee).eq('mois', mois))

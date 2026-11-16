@@ -172,11 +172,12 @@ export interface Reseau {
   espace?: import('./espaceFranchise').EspaceFranchise // espace d'un franchisé : ses magasins seulement
 }
 
-export type TypeVisite = 'terrain' | 'hygiene' | 'excellence' | 'ouverture' | 'feuille' | 'appel' | 'point'
+export type TypeVisite = 'terrain' | 'hygiene' | 'excellence' | 'marge' | 'ouverture' | 'feuille' | 'appel' | 'point'
 export const typesVisite: { id: TypeVisite; libelle: string; couleur: string }[] = [
   { id: 'terrain', libelle: 'Visite terrain', couleur: '#307672' },
   { id: 'hygiene', libelle: 'Audit hygiène', couleur: '#3a8f8d' },
   { id: 'excellence', libelle: 'Audit excellence', couleur: '#f8bb09' },
+  { id: 'marge', libelle: 'Audit de marge', couleur: '#8a5a2b' },
   { id: 'ouverture', libelle: 'Accompagnement ouverture', couleur: '#ea6029' },
   // Revue budgétaire avec le franchisé : hors rythme de visite
   { id: 'feuille', libelle: 'Feuille de route', couleur: '#312e2e' },

@@ -144,3 +144,29 @@ export function stockComplete(cout: CoutVentes, saisies: (StockSaisi | null)[], 
     return { cave: c.v, bar: bar[i].v, exterieur: ext[i].v, total, estime: l.some((x) => x.estime) }
   })
 }
+
+// ── 245 · Mois de stock de chaque magasin dans la vue réseau (Joseph, 16/11/2026) ─────────────────────────────────
+// Dernier mois où le stock (Cave + Bar) est saisi et le réel connu. Les mois couverts se lisent comme dans la fiche :
+// achats des ventes à venir, ici celles des mêmes mois de l'an dernier (la saison est dedans) au taux de marge de
+// l'année ; sans an dernier, le rythme des 3 derniers mois. Cible : mois de la Cave et du Bar pondérés par leur part du
+// CA TTC de l'année (le CA HT n'est pas séparé dans le réel du réseau) ; l'Extérieur n'entre pas dans ce repère.
+export interface MoisReelStock { caHT: number; margeHT: number; caAvecMarge: number; univers?: Record<'cave' | 'bar', { caTTC: number }> }
+export interface StockReseau { mois: number; stock: number; moisCouverts: number; cible: number | null; etat: EtatStock | null }
+export function stockReseau(n: MoisReelStock[], n1: MoisReelStock[], saisies: (StockSaisi | null)[], p: ParametresStock = stockParDefaut): StockReseau | null {
+  let fin = -1
+  for (let i = 0; i < 12; i++) if ((n[i]?.caHT ?? 0) > 0 && (saisi(saisies[i], 'cave') !== null || saisi(saisies[i], 'bar') !== null)) fin = i
+  if (fin < 0) return null
+  const faits = n.slice(0, fin + 1)
+  const caMarge = faits.reduce((a, x) => a + x.caAvecMarge, 0)
+  if (!(caMarge > 0)) return null
+  const tauxAchat = 1 - faits.reduce((a, x) => a + x.margeHT, 0) / caMarge
+  const stock = (saisi(saisies[fin], 'cave') ?? 0) + (saisi(saisies[fin], 'bar') ?? 0)
+  const avecN1 = n1.length === 12 && n1.every((x) => x.caHT > 0)
+  const recents = faits.slice(-3).filter((x) => x.caHT > 0)
+  const rythme = recents.reduce((a, x) => a + x.caHT, 0) / Math.max(1, recents.length)
+  const achats = avecN1 ? n1.map((x) => x.caHT * tauxAchat) : Array(12).fill(rythme * tauxAchat)
+  const tc = faits.reduce((a, x) => a + (x.univers?.cave.caTTC ?? 0), 0), tb = faits.reduce((a, x) => a + (x.univers?.bar.caTTC ?? 0), 0)
+  const cible = tc + tb > 0 ? (tc * p.mois.cave + tb * p.mois.bar) / (tc + tb) : null
+  const couverts = moisCouverts(achats, fin, stock)
+  return { mois: fin + 1, stock, moisCouverts: couverts, cible, etat: cible !== null && cible > 0 ? etatStock(couverts, cible, p.tolerance) : null }
+}

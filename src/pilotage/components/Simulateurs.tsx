@@ -67,12 +67,12 @@ import { chargerSimulations, garderSimulation, retirerSimulation, SimulationPasE
 import { categorieLibelle, coutHoraireEquipe, coutHoraireSmic, type Categorie } from '../moteur/equipe'
 import {
   analyserRemises, caCorner, LIGNES_EVENEMENT, LIGNES_REMISES, margeMix, parametresSimulateurs, resteAFaire, simulerAchat, simulerCoupDur, simulerEmbauche,
-  simulerInvestissement, simulerPrimes, simulerPrix, simulerSoiree, simulerVenteAdditionnelle, tempsFortDeSoiree,
+  simulerInvestissement, simulerPrimes, simulerPrix, simulerSoiree, simulerSoireeAnimee, simulerVenteAdditionnelle, tempsFortDeSoiree,
   type CleRemise, type CoupDur, type LigneEvenement, type LigneMix, type Mouvement, type PalierPrime,
 } from '../moteur/simulateurs'
 import {
   auditPression, cartePression, margeFut, coutComposition, coutContrats, margePourPrix, nouveauBec, palierExterieur, prixLivraisonGrille, prixPourMarge,
-  gainsSelonFuts, simulerExterieur, simulerOuverture, simulerParc, simulerProspection, simulerRemisesB2B, unitaireB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise,
+  gainsSelonFuts, simulerExterieur, simulerHeuresSup, simulerOuverture, simulerParc, simulerProspection, simulerRemisesB2B, unitaireB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise,
 } from '../moteur/boiteOutils'
 import { baseCaisse, budgetSurCaisse, meilleursLeviers, type CleLevier } from '../moteur/leviers'
 import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TempsFort, Univers } from '../moteur/types'
@@ -289,7 +289,8 @@ const ecart = (v: number, favorable = v >= 0) => ({ texte: ecartMontant(v), haus
 type Etats = {
   levier: { ticketsJour: number; panier: number; points: number; heures: number; jours: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number; base: BaseChiffres }
   embauche: {
-    mouvement: Mouvement['type'] | 'primes'; poste: string; categorie: Categorie; heures: number; brut: number; mois: number; index: number; nouvellesHeures: number
+    mouvement: Mouvement['type'] | 'primes' | 'heures_sup'; poste: string; categorie: Categorie; heures: number; brut: number; mois: number; index: number; nouvellesHeures: number
+    heuresMois: number; heuresSup: number; majorationSup: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number // 242 · heures sup
     salaries: number; partReversee: number; paliers: PalierPrime[] // 164 · primes
   }
   prix: { type: 'remise' | 'hausse' | 'remises'; taux: number; marge: number; cartons: number; mois: number; ca: number | null; montants: Record<CleRemise, number> }
@@ -298,6 +299,7 @@ type Etats = {
   reste_a_faire: { mois: number; jour: number; realise: number }
   soiree: {
     nom: string; mois: number; univers: Univers; prix: number; participants: number; marge: number | null; couts: number; extras: number
+    formule: 'billet' | 'animee'; caNormal: number; caSoir: number                // 241 · soirée animée sans billet
     achats: boolean; part: number; panier: number; bon: boolean                    // 152 · achats des participants
     lignes: Record<Exclude<LigneEvenement, 'divers'>, number>                     // 153 · coûts détaillés (Divers : « couts »)
     personnes: number; heuresEquipe: number; coutHoraire: number; majoration: number; modeHeure: ModeHeure; partSmic: number // 153 · heures de l'équipe en place
@@ -380,7 +382,7 @@ function exempleRealise(b: Budget | null, aujourdhui: Date): number {
 // les réglages du siège et du magasin, et ce qui servirait de diviseur. Une liste garde une ligne vide.
 const GARDES_AU_VIDE = new Set(['mois', 'moisDepense', 'moisRetard', 'de', 'a', 'jour', 'jours', 'index', 'salaries', 'coutHoraire', 'partSmic', 'majoration',
   'duree', 'dureePret', 'tauxPret', 'co2', 'prixKm', 'entretien', 'semaines', 'occSaison', 'occHors', 'litres', 'quantite', 'unSur', 'prix.marge', 'achat.taux', 'calculette.marge',
-  'remises_b2b.paliers', 'remises_b2b.plancher'])
+  'remises_b2b.paliers', 'remises_b2b.plancher', 'majorationSup'])
 const TEXTES_AU_VIDE = new Set(['nom', 'poste', 'libelle', 'biere', 'client'])
 function vider(v: unknown, cle: string, sim: string): unknown {
   if (GARDES_AU_VIDE.has(cle) || GARDES_AU_VIDE.has(`${sim}.${cle}`)) return v
@@ -408,6 +410,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       mouvement: 'embauche', poste: 'Vendeur', categorie: 'employe', heures: 35, brut: Math.round(p.charges.reduction.smicAnnuel / 12), mois: moisSuivant, index: 0, nouvellesHeures: 28,
       salaries: Math.max(1, h?.equipe?.filter((x) => x.categorie !== 'gerant_tns').length || 2), partReversee: 0,
       paliers: [{ progression: 0.05, prime: 150, primeGerant: 0 }, { progression: 0.1, prime: 200, primeGerant: 0 }, { progression: 0.15, prime: 250, primeGerant: 0 }],
+      heuresMois: 600, heuresSup: 30, majorationSup: 0.25, coutHoraire: s.coutHoraire, ...HEURE,
     },
     prix: { type: 'remise', taux: 0.1, marge: b && b.ca > 0 ? Math.round(b.tauxMarge * 100) / 100 : 0.35, cartons: 0, mois: 12, ca: null, montants: { offerts: 0, persos: 0, prixSpeciaux: 0, remises: 0, fidelite: 0 } },
     tresorerie: { baisse: true, tauxBaisse: 0.15, de: 1, a: 3, depense: false, montantDepense: 10_000, moisDepense: 6, retard: false, montantRetard: 5_000, moisRetard: 7, duree: 2 },
@@ -415,6 +418,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
     reste_a_faire: { mois: aujourdhui.getMonth() + 1, jour: aujourdhui.getDate(), realise: exempleRealise(b, aujourdhui) },
     soiree: {
       nom: 'Soirée dégustation', mois: 12, univers: 'bar', prix: 25, participants: 30, marge: null, couts: 0, extras: 150,
+      formule: 'billet', caNormal: 1_500, caSoir: 3_500,
       achats: true, part: 0.3, panier: 40, bon: false,
       lignes: { produits: 0, securite: 0, deco: 50, animation: 150, communication: 0, location: 0 },
       personnes: 0, heuresEquipe: 3, coutHoraire: s.coutHoraire, majoration: 0.25, ...HEURE,
@@ -611,7 +615,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   if (!sansBudget && choisi === 'embauche' && b && h) {
     const e = etats.embauche
     const equipe = h.equipe ?? []
-    const mouvement: Mouvement | null = e.mouvement === 'primes' ? null : e.mouvement === 'embauche'
+    const mouvement: Mouvement | null = e.mouvement === 'primes' || e.mouvement === 'heures_sup' ? null : e.mouvement === 'embauche'
       ? { type: 'embauche', mois: e.mois, poste: { poste: e.poste || 'Poste', categorie: e.categorie, heuresHebdo: e.heures, brutMensuel: e.brut, primes: [] } }
       : equipe[e.index] ? (e.mouvement === 'depart' ? { type: 'depart', index: e.index, mois: e.mois } : { type: 'heures', index: e.index, mois: e.mois, heuresHebdo: e.nouvellesHeures }) : null
     const palier = (i: number, v: Partial<PalierPrime>) => maj('embauche', { paliers: e.paliers.map((x, j) => (j === i ? { ...x, ...v } : x)) })
@@ -619,12 +623,21 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       <Stack spacing={2}>
         <Bloc titre="1. Le mouvement">
         <Saisies>
-          <Choix libelle="Mouvement" valeur={e.mouvement} onChange={(v) => maj('embauche', { mouvement: v })} options={[['embauche', 'Embauche'], ['depart', 'Départ'], ['heures', 'Heures'], ['primes', 'Primes']]} />
-          {e.mouvement !== 'primes' && <ChoixMois libelle={e.mouvement === 'embauche' ? 'Arrivée en' : e.mouvement === 'depart' ? 'Parti au 1er' : 'À partir de'} valeur={e.mois} onChange={(v) => maj('embauche', { mois: v })} />}
+          <Choix libelle="Mouvement" valeur={e.mouvement} onChange={(v) => maj('embauche', { mouvement: v })} options={[['embauche', 'Embauche'], ['depart', 'Départ'], ['heures', 'Heures'], ['heures_sup', 'Heures sup'], ['primes', 'Primes']]} />
+          {e.mouvement !== 'primes' && e.mouvement !== 'heures_sup' && <ChoixMois libelle={e.mouvement === 'embauche' ? 'Arrivée en' : e.mouvement === 'depart' ? 'Parti au 1er' : 'À partir de'} valeur={e.mois} onChange={(v) => maj('embauche', { mois: v })} />}
         </Saisies>
         </Bloc>
-        <Bloc titre={e.mouvement === 'primes' ? '2. Les paliers de primes' : e.mouvement === 'embauche' ? '2. Le poste' : '2. La personne'}>
-        {e.mouvement === 'primes' ? (
+        <Bloc titre={e.mouvement === 'primes' ? '2. Les paliers de primes' : e.mouvement === 'heures_sup' ? '2. Les heures du mois' : e.mouvement === 'embauche' ? '2. Le poste' : '2. La personne'}>
+        {e.mouvement === 'heures_sup' ? (
+          <Stack spacing={1.5}>
+            <Saisies>
+              <Montant libelle="Heures payées du mois" valeur={e.heuresMois} onChange={(v) => maj('embauche', { heuresMois: v })} unite="h" pas={10} />
+              <Montant libelle="Dont heures sup" valeur={e.heuresSup} onChange={(v) => maj('embauche', { heuresSup: v })} unite="h" />
+              <Taux libelle="Majoration des heures sup" valeur={e.majorationSup} onChange={(v) => maj('embauche', { majorationSup: v })} />
+            </Saisies>
+            <Saisies><CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={s.coutHoraire > 0} onChange={(v) => maj('embauche', v)} /></Saisies>
+          </Stack>
+        ) : e.mouvement === 'primes' ? (
           <Stack spacing={1.5}>
             <Saisies>
               <Montant libelle="Salariés concernés" valeur={e.salaries} onChange={(v) => maj('embauche', { salaries: Math.max(0, Math.round(v)) })} unite="" source={!!h?.equipe?.length && e.salaries === initiaux.embauche.salaries && 'équipe'} />
@@ -688,6 +701,20 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           )}
           {contrats && <Indicateur libelle="Le même poste en CDD" valeur={montant(contrats.cdd)} detail={`en ${annee}, avec 10 % de prime de fin de contrat${contrats.fraisCDD ? ` et ${montant(contrats.fraisCDD)} de contrat et de paie` : ''}`} />}
           {contrats && contrats.interim !== null && <Indicateur libelle="Le même poste en intérim" valeur={montant(contrats.interim)} detail={`en ${annee}, salaire brut × ${unChiffre(s.coefInterim)}`} />}
+        </Resultats>
+      )
+    }
+    if (e.mouvement === 'heures_sup') {
+      const r = simulerHeuresSup({ heures: e.heuresMois, heuresSup: e.heuresSup, coutHoraire: heure(e), majoration: e.majorationSup, paieExtraMois: s.contrat.paieParMois })
+      nomParDefaut = `${unChiffre(e.heuresSup)} heures sup par mois`
+      phrase = `${unChiffre(e.heuresSup)} heures sup sur ${unChiffre(e.heuresMois)} heures payées${r.part !== null ? ` (${taux(r.part)})` : ''} : ${montant(r.coutMois)} par mois chargés, dont ${montant(r.majorationMois)} de majoration${r.gainExtraMois > 0 ? `. Faites par un extra, ${montant(r.gainExtraMois)} d’économie par mois` : ''}.`
+      resultats = (
+        <Resultats>
+          <Indicateur libelle="Part des heures sup" valeur={r.part !== null ? taux(r.part) : '–'} detail={`${unChiffre(e.heuresSup)} heures sur ${unChiffre(e.heuresMois)} payées`} />
+          <Indicateur libelle="Coût des heures sup" valeur={`${montant(r.coutMois)} par mois`} detail={`chargé, majoration comprise, ${montant(r.coutAn)} sur 12 mois`} />
+          <Indicateur libelle="Dont majoration" valeur={`${montant(r.majorationMois)} par mois`} detail="ce que coûtent les heures sup de plus que des heures normales" />
+          <Indicateur libelle="Les mêmes heures par un extra" valeur={r.gainExtraMois >= 0 ? `${montant(r.gainExtraMois)} d’économie` : `${montant(-r.gainExtraMois)} de plus`}
+            detail={r.seuilHeures !== null && s.contrat.paieParMois > 0 ? `par mois, paie de l’extra (${montant(s.contrat.paieParMois)}) déduite ; rentable au-delà de ${unChiffre(r.seuilHeures)} heures sup par mois` : 'par mois, sans majoration'} />
         </Resultats>
       )
     }
@@ -939,15 +966,30 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       equipe: { personnes: e.personnes, heures: e.heuresEquipe, coutHoraire: heure(e), majoration: e.majoration },
     }, p)
     const extrasEtCouts = coutsPropres + e.extras
+    // 241 : soirée animée sans billet, payée par le CA du bar en plus d'un soir normal
+    const animee = e.formule === 'animee'
+    const ra = simulerSoireeAnimee({ caNormal: e.caNormal, caAttendu: e.caSoir, tauxMarge: e.marge ?? margeU, couts: coutsPropres, extras: e.extras,
+      equipe: { personnes: e.personnes, heures: e.heuresEquipe, coutHoraire: heure(e), majoration: e.majoration } }, p)
+    const n = (i: number) => (animee ? i - 1 : i)
     saisies = (
       <Stack spacing={2}>
         <Bloc titre="L’événement">
           <Saisies>
             <Champ libelle="Nom"><TextField size="small" value={e.nom} onChange={(x) => maj('soiree', { nom: x.target.value })} slotProps={{ htmlInput: { 'aria-label': 'Nom de l’événement', maxLength: 60 } }} sx={{ ...champ, width: 220 }} /></Champ>
             <ChoixMois libelle="Mois" valeur={e.mois} onChange={(v) => maj('soiree', { mois: v })} />
-            <Choix libelle="Univers" valeur={e.univers} onChange={(v) => maj('soiree', { univers: v })} options={[['bar', 'Bar'], ['cave', 'Cave']]} />
+            <Choix libelle="Formule" valeur={e.formule} onChange={(v) => maj('soiree', { formule: v, ...(v === 'animee' ? { univers: 'bar' as Univers } : {}) })} options={[['billet', 'Entrée payante'], ['animee', 'Soirée animée sans billet']]} />
+            {!animee && <Choix libelle="Univers" valeur={e.univers} onChange={(v) => maj('soiree', { univers: v })} options={[['bar', 'Bar'], ['cave', 'Cave']]} />}
           </Saisies>
         </Bloc>
+        {animee ? (
+          <Bloc titre="1. Le bar ce soir-là" total={{ libelle: 'CA HT en plus', valeur: montant(ra.caEnPlus) }}>
+            <Saisies>
+              <Montant libelle="CA HT du bar un soir normal" valeur={e.caNormal} onChange={(v) => maj('soiree', { caNormal: v })} pas={100} />
+              <Montant libelle="CA HT du bar attendu ce soir-là" valeur={e.caSoir} onChange={(v) => maj('soiree', { caSoir: v })} pas={100} />
+              <Taux libelle="Taux de marge du bar" valeur={e.marge ?? margeU} onChange={(v) => maj('soiree', { marge: v })} source={e.marge === null && margeUnivers(b, 'bar') !== null && 'budget'} />
+            </Saisies>
+          </Bloc>
+        ) : <>
         <Bloc titre="1. Entrées" total={{ libelle: 'CA HT', valeur: montant(r.caEntree) }}>
           <Saisies>
             <Montant libelle="Prix par participant TTC" valeur={e.prix} onChange={(v) => maj('soiree', { prix: v })} />
@@ -965,7 +1007,8 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             </>}
           </Saisies>
         </Bloc>
-        <Bloc titre="3. Coûts de l’événement HT" total={{ libelle: 'Total', valeur: `− ${montant(extrasEtCouts)}` }}>
+        </>}
+        <Bloc titre={`${n(3)}. Coûts de l’événement HT`} total={{ libelle: 'Total', valeur: `− ${montant(extrasEtCouts)}` }}>
           <Saisies>
             {LIGNES_EVENEMENT.map((l) => l.cle === 'divers'
               ? <Montant key={l.cle} libelle={l.libelle} valeur={e.couts} onChange={(v) => maj('soiree', { couts: v })} />
@@ -973,7 +1016,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             <Montant libelle="Extras de personnel" valeur={e.extras} onChange={(v) => maj('soiree', { extras: v })} />
           </Saisies>
         </Bloc>
-        <Bloc titre="4. Heures en plus de l’équipe en place" total={{ libelle: 'Total', valeur: `− ${montant(r.equipeEnPlace)}` }}>
+        <Bloc titre={`${n(4)}. Heures en plus de l’équipe en place`} total={{ libelle: 'Total', valeur: `− ${montant(r.equipeEnPlace)}` }}>
           <Saisies>
             <Montant libelle="Personnes" valeur={e.personnes} onChange={(v) => maj('soiree', { personnes: Math.max(0, Math.round(v)) })} unite="" />
             <Montant libelle="Heures chacune" valeur={e.heuresEquipe} onChange={(v) => maj('soiree', { heuresEquipe: v })} unite="h" />
@@ -986,6 +1029,25 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       </Stack>
     )
     nomParDefaut = `${e.nom || 'Soirée'} en ${MOIS_LONGS[e.mois - 1]}`
+    if (animee) {
+      phrase = `${nomParDefaut}, ${montant(ra.caEnPlus)} de CA HT en plus d’un soir normal : ${ra.gain >= 0 ? `gain de ${montant(ra.gain)}` : `perte de ${montant(-ra.gain)}`}${ra.caAViser !== null ? `. Pour ne rien perdre, viser ${montant(ra.caAViser)} de CA HT au bar` : ''}.`
+      resultats = (
+        <Stack spacing={2}>
+          <Compte titre="Compte de la soirée" lignes={[
+            { libelle: 'Marge sur le CA en plus', valeur: ra.marge, detail: `${montant(ra.caEnPlus)} de CA HT en plus` },
+            { libelle: 'Redevance et publicité', valeur: -ra.redevance },
+            { libelle: 'Coûts de l’événement', valeur: -extrasEtCouts },
+            { libelle: 'Heures de l’équipe en place', valeur: -ra.equipeEnPlace },
+          ]} total={{ libelle: ra.gain >= 0 ? 'Gain' : 'Perte', valeur: ra.gain }} />
+          <Resultats>
+            <Indicateur libelle={ra.gain >= 0 ? 'Gain' : 'Perte'} valeur={montant(Math.abs(ra.gain))} detail={`${montant(ra.caEnPlus)} de CA HT en plus, ${montant(ra.couts)} de coûts`} />
+            <Indicateur libelle="CA du bar à viser pour ne rien perdre" valeur={ra.caAViser !== null ? montant(ra.caAViser) : 'Jamais rentable'}
+              detail={ra.caEnPlusAViser !== null ? `HT, soit ${montant(ra.caEnPlusAViser)} de plus qu’un soir normal` : 'La marge ne couvre pas la redevance'} />
+          </Resultats>
+        </Stack>
+      )
+      ajout = { tempsForts: tempsFortDeSoiree(e.nom || 'Soirée', e.mois, 'bar', { caHT: ra.caEnPlus }, coutsPropres) }
+    } else {
     phrase = `${nomParDefaut}, ${e.participants} participants à ${montant(e.prix)} : ${r.gain >= 0 ? `gain de ${montant(r.gain)}` : `perte de ${montant(-r.gain)}`}${r.caAchats > 0 ? `, dont ${montant(r.caAchats - r.bon)} d’achats en cave` : ''}${r.seuil !== null ? `, à partir de ${r.seuil} participants on ne perd pas d’argent` : ''}.`
     resultats = (
       <Stack spacing={2}>
@@ -1004,6 +1066,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       </Stack>
     )
     ajout = { tempsForts: tempsFortDeSoiree(e.nom || 'Soirée', e.mois, e.univers, r, coutsPropres) }
+    }
     if (e.extras > 0 || r.equipeEnPlace > 0) note = 'Les extras et les heures de l’équipe se saisissent dans l’Équipe du budget.'
   }
   if (choisi === 'achat') {
