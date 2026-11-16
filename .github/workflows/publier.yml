@@ -38,12 +38,15 @@ jobs:
           VITE_SUPABASE_URL: https://aipodcpbakywbrrilaud.supabase.co
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
       # Lancement manuel limité (Joseph, 10/11/2026) : seuls les tests demandés repassent avant la mise en ligne
-      - run: npx playwright test $TESTS
+      # Mise en ligne en 5 min après une fusion (Joseph, 16/11/2026) : la série complète tourne sur chaque demande de
+      # fusion avant le « fusionne » ; après la fusion, seuls la base et la construction repassent avant la mise en ligne
+      - if: github.event_name != 'push'
+        run: npx playwright test $TESTS
         env:
           CI: 'true'
           TESTS: ${{ inputs.tests }}
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && github.event_name != 'push'
         with:
           name: captures
           path: captures/
