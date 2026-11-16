@@ -28,7 +28,7 @@ test('l’actualité au premier plan de l’accueil, comme un réseau social', a
   await expect(fil).toBeVisible()
   // Le fil passe avant les indicateurs et avant À traiter ; sur téléphone, seule la bande repliée du point du jour le précède (209A)
   await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', isMobile ? 'Mon point du jour' : 'Actualités')
-  await expect(fil.getByRole('link', { name: 'Communication' })).toBeVisible()
+  await expect(fil.getByRole('button', { name: 'Communication' })).toBeVisible()
   if (isMobile) {
     // Téléphone : les indicateurs se déplient
     await expect(page.getByRole('region', { name: 'Pilotage' })).toHaveCount(0)
@@ -43,7 +43,7 @@ test('l’actualité au premier plan de l’accueil, comme un réseau social', a
   }
   await lisible(page, isMobile)
   await page.screenshot({ path: `captures/${info.project.name}-vague8-accueil-actualites.png` })
-  await fil.getByRole('link', { name: 'Communication' }).click()
+  await fil.getByRole('button', { name: 'Communication' }).click()
   await expect(page.getByRole('dialog', { name: 'Nouvelle communication' })).toBeVisible()
 })
 

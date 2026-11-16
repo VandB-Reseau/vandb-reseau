@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Accueil : « Partager une réussite », « Bonne pratique » et « Communication » ouvrent la fenêtre de saisie sur place au
+  lieu de renvoyer vers Animation (Joseph, 16/11/2026) ; la communication publiée arrive dans le fil. Le franchisé
+  propose sa bonne pratique de la même façon. Sans migration.
 - Fiche magasin, Vue d'ensemble plus parlante (choix 254 à 260 bis, Joseph, 16/11/2026), sans migration. 254 : la
   pastille « Fin dans moins de 6 mois » d'un associé passe sous son nom (elle écrasait le mandat, un mot par ligne).
   255 : Exploitation, Équipements et Concurrents passent à droite, sous les échanges. 256 : CA de l'année à fin du dernier

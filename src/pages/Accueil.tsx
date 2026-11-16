@@ -703,7 +703,7 @@ function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Resea
   // 15/11/2026 (204A à 211A) : le fil façon réseau social. « Partager » en tête du fil, une publication par carte, repère
   // « Nouveau » ; sur téléphone, le point du jour se replie en une bande au-dessus d'un fil qui défile sans fin.
   const peutPublier = profil?.role === 'directeur' || profil?.role === 'rr'
-  const partager = <BarrePartager moi={monNomPorteur(reseau, profil) || profil?.nom || ''} franchise={false} communication={peutPublier} />
+  const partager = <BarrePartager moi={monNomPorteur(reseau, profil) || profil?.nom || ''} franchise={false} communication={peutPublier} reseau={reseau} apres={communications.recharger} />
   // Choix 212 (15/11/2026) : l'Accueil porte seul le fil, avec ses filtres (l'onglet Fil d'Actualités est retiré)
   const filActu = <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" social partager={partager} communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
   if (!surPC) {
