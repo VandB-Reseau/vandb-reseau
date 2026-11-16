@@ -181,6 +181,17 @@ test('165, 163 et 164 : offre 5 + 1, remises face aux repères, primes par palie
   await page.getByRole('button', { name: 'Offre 5 + 1' }).click()
   // 1 gratuit sur 6 = 16,7 % ; il reste 13,3 % : 30 ÷ 13,33 = 2,25 fois plus, 23 cartons au lieu de 10
   await expect(statut(page)).toContainText(/Avec 16,7\s% de remise, il faut vendre 125(,1)?\s% de plus pour garder la même marge, soit 23 cartons au lieu de 10\./)
+  // Offre en lot en parallèle (exemple prérempli : 10 € HT, de 4 à 5 + 1, 10 clients montent, 5 prenaient déjà 5) ;
+  // marge 30 % : un client qui monte 10 × (5 − 6 × 0,7 − 4 × 0,3) = − 4 € ; 20 clients − 80 €, aubaine 5 × 7 € = 35 € → − 115 €
+  await page.getByLabel('Clients sur 100 qui passent de 4 à 5 + 1 bouteilles').fill('20')
+  await expect(statut(page)).toContainText(/En lot, si 20 clients sur 100 passent de 4 à 5 \+ 1 bouteilles, la marge perd 115\s€ pour 100 clients : chaque client qui monte fait perdre de la marge, il faudrait plus de 50\s% de marge\./)
+  // marge 60 % : + 2 € par client, aubaine 5 × 4 € = 20 €, seuil 10 ; 20 clients → + 20 €
+  await page.getByLabel('Taux de marge du produit').fill('60')
+  await expect(statut(page)).toContainText(/la marge gagne 20\s€ pour 100 clients, elle se rattrape dès 10 clients sur 100\./)
+  await expect(page.getByRole('region', { name: 'Offre 5 + 1 : clients qui montent au lot' })).toContainText('Marge gagnée pour 100 clients')
+  await expect(page.getByRole('table', { name: 'Offre en lot, avant et après' }).getByRole('row')).toHaveCount(5)
+  await page.getByRole('button', { name: 'Effacer' }).click()
+  await expect(page.getByLabel('Bouteilles payées')).toHaveValue('5')
 
   await page.getByRole('group', { name: 'Je regarde' }).getByRole('button', { name: 'Remises et offerts' }).click()
   await page.getByLabel('CA HT de la période').fill('100000')
