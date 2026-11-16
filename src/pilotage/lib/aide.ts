@@ -536,8 +536,8 @@ export const AIDE = {
   simPrix: {
     titre: 'Promo, prix, remises',
     quoi: 'Combien vendre en plus après une remise, combien de ventes on peut perdre après une hausse ; et les remises et offerts du magasin face aux repères du siège.',
-    remplir: 'Le taux de la remise ou de la hausse, et le taux de marge du produit. « 5 + 1 » et « 4 + 2 » remplissent la remise équivalente. Remises et offerts : les montants HT de la période, lus dans le logiciel de caisse.',
-    calcul: 'Remise r, marge m : ventes à multiplier par m ÷ (m − r). Hausse h : on peut perdre jusqu’à 1 − m ÷ (m + h) des ventes. Sans effet d’aubaine ni report d’achat : c’est un seuil. 5 + 1 = 1 gratuit sur 6, soit 16,7 % ; 4 + 2 = 33,3 %. Remises et offerts : montant ÷ CA HT de la période ; au-dessus du repère, chaque euro est de la marge perdue, ramené à l’année.',
+    remplir: 'Le taux de la remise ou de la hausse, et le taux de marge du produit. « 5 + 1 » et « 4 + 2 » remplissent la remise équivalente. Offre en lot : prix de la bouteille, et sur 100 clients, ceux qui montent de 1 bouteille au lot et ceux qui prenaient déjà le lot. Remises et offerts : les montants HT de la période, lus dans le logiciel de caisse.',
+    calcul: 'Remise r, marge m : ventes à multiplier par m ÷ (m − r). Hausse h : on peut perdre jusqu’à 1 − m ÷ (m + h) des ventes. Sans effet d’aubaine ni report d’achat : c’est un seuil. 5 + 1 = 1 gratuit sur 6, soit 16,7 % ; 4 + 2 = 33,3 %. En lot N + G (prix P, marge m), un client qui monte de 1 bouteille au lot rapporte P × ((N + G − 1) × m − G) de marge en plus ; un client qui prenait déjà le lot coûte G × P. Clients à faire monter = ce coût ÷ le gain par client. Exemple 5 + 1, 10 € HT, 35 % : + 7,50 € par client, 5 clients d’aubaine coûtent 50 €, il en faut 7 sur 100. Remises et offerts : montant ÷ CA HT de la période ; au-dessus du repère, chaque euro est de la marge perdue, ramené à l’année.',
   },
   simTresorerie: {
     titre: 'Coup dur de trésorerie',

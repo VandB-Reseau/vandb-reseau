@@ -5,7 +5,7 @@ import { coutPersonne, type Personne } from '../../../src/pilotage/moteur/equipe
 import { parametresParDefaut } from '../../../src/pilotage/moteur/parametres'
 import {
   caCorner, etatBudget, joursOuverts, parametresSimulateurs, resteAFaire, simulerAchat, simulerCoupDur, simulerEmbauche,
-  simulerInvestissement, simulerPrix, simulerSoiree, simulerVenteAdditionnelle, tempsFortDeSoiree,
+  simulerInvestissement, simulerLot, simulerPrix, simulerSoiree, simulerVenteAdditionnelle, tempsFortDeSoiree,
 } from '../../../src/pilotage/moteur/simulateurs'
 import type { Budget } from '../../../src/pilotage/moteur/types'
 import { magasinFictif } from '../donnees-fictives'
@@ -26,6 +26,30 @@ test('promo et hausse de prix : ventes en plus ou ventes qu’on peut perdre à 
   const h = simulerPrix('hausse', 0.05, 0.3)
   proche(h.ventesPerdables, 1 - 0.3 / 0.35)
   proche(h.nouveauTauxMarge, 0.35 / 1.05)
+})
+
+test('offre 5 + 1 en lot : marge gagnée quand des clients montent de 1 à 6 bouteilles', () => {
+  // 100 clients, bouteille 10 € HT, marge 35 %. Avant : 95 clients × 1 + 5 clients × 6 = 125 bouteilles, 1 250 € de CA, 437,50 € de marge.
+  // Après : 10 clients montent au lot. 85 × 1 + 15 × 6 = 175 bouteilles ; CA 85 × 10 + 15 × 50 = 1 600 € ; coût 175 × 6,50 = 1 137,50 € ;
+  // marge 462,50 €, soit + 25 €. Un client qui monte : 50 − 39 = 11 € au lieu de 3,50 € → + 7,50 € ; l'aubaine coûte 5 × 10 = 50 € ;
+  // seuil 50 ÷ 7,50 = 6,67 clients sur 100.
+  const r = simulerLot({ payes: 5, offerts: 1, prixHT: 10, tauxMarge: 0.35, monte: 10, deja: 5 })!
+  proche(r.remise, 1 / 6)
+  expect(r.avant).toMatchObject({ bouteilles: 125, ca: 1_250 })
+  proche(r.avant.marge, 437.5)
+  expect(r.apres).toMatchObject({ bouteilles: 175, ca: 1_600 })
+  proche(r.apres.marge, 462.5)
+  proche(r.apres.panier, 16)
+  proche(r.apres.margeTicket, 4.625)
+  proche(r.gain, 25)
+  proche(r.gainParClient, 7.5)
+  proche(r.perteAubaine, 50)
+  proche(r.seuil, 50 / 7.5)
+  // Marge 20 % : 5 × 0,20 − 1 = 0, un client qui monte ne rapporte rien, aucun seuil
+  expect(simulerLot({ payes: 5, offerts: 1, prixHT: 10, tauxMarge: 0.2, monte: 10, deja: 5 })!.seuil).toBeNull()
+  // Sans aubaine, seuil nul ; prix nul ou lot vide : pas de calcul
+  proche(simulerLot({ payes: 5, offerts: 1, prixHT: 10, tauxMarge: 0.35, monte: 10, deja: 0 })!.seuil, 0)
+  expect(simulerLot({ payes: 5, offerts: 1, prixHT: 0, tauxMarge: 0.35, monte: 10, deja: 5 })).toBeNull()
 })
 
 test('vente additionnelle : un article de plus à 1 client sur 10', () => {

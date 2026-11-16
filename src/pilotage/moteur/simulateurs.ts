@@ -217,6 +217,28 @@ export function simulerPrix(type: 'remise' | 'hausse', taux: number, tauxMarge: 
   return { type, taux: t, tauxMarge: m, ventesEnPlus: null, ventesPerdables: m + t > 0 ? 1 - m / (m + t) : null, nouveauTauxMarge: (m + t) / (1 + t) }
 }
 
+// Offre en lot « N + G » (Joseph, 16/11/2026) : en parallèle de la remise sur toutes les ventes, ce que rapporte l'offre si
+// des clients venus pour 1 bouteille montent au lot. Pour 100 clients (tickets constants) : « monte » passent de 1 bouteille
+// au lot, « deja » prenaient déjà le lot au prix plein (effet d'aubaine : ils paient G bouteilles de moins). Tout en HT.
+// Un client qui monte rapporte P × ((N + G − 1) × m − G) de marge en plus ; un client d'aubaine coûte G × P.
+// Seuil = clients qui doivent monter pour couvrir l'aubaine ; null si chaque client qui monte fait perdre de la marge.
+export interface EtatLot { bouteilles: number; ca: number; marge: number; panier: number; margeTicket: number }
+export interface EffetLot { remise: number; avant: EtatLot; apres: EtatLot; gain: number; gainParClient: number; perteAubaine: number; seuil: number | null; monte: number }
+export function simulerLot(o: { payes: number; offerts: number; prixHT: number; tauxMarge: number; monte: number; deja: number; clients?: number }): EffetLot | null {
+  const n = Math.max(0, o.payes), g = Math.max(0, o.offerts), l = n + g, clients = o.clients ?? 100
+  if (l <= 1 || n <= 0 || o.prixHT <= 0) return null
+  const p = o.prixHT, m = o.tauxMarge
+  const deja = Math.min(clients, Math.max(0, o.deja)), monte = Math.min(clients - deja, Math.max(0, o.monte))
+  const etat = (bouteilles: number, ca: number): EtatLot => {
+    const marge = ca - bouteilles * p * (1 - m)
+    return { bouteilles, ca, marge, panier: ca / clients, margeTicket: marge / clients }
+  }
+  const avant = etat(clients - deja + deja * l, p * (clients - deja + deja * l))
+  const apres = etat(clients - deja - monte + (deja + monte) * l, p * (clients - deja - monte + (deja + monte) * n))
+  const gainParClient = p * ((l - 1) * m - g), perteAubaine = deja * g * p
+  return { remise: g / l, avant, apres, gain: apres.marge - avant.marge, gainParClient, perteAubaine, seuil: gainParClient > 0 ? perteAubaine / gainParClient : null, monte }
+}
+
 // ── 129 · Coup dur de trésorerie ───────────────────────────────────────────────────────────────────────────────────
 export type CoupDur =
   | { type: 'baisse'; taux: number; de: number; a: number }          // CA en moins sur ces mois, tous univers (0,15 = −15 %)

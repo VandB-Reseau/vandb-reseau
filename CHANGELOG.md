@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Promo, prix, remises (Joseph, 16/11/2026), sans migration : en parallèle des ventes en plus nécessaires pour une remise
+  sur tout, l'offre en lot (5 + 1, 4 + 2 ou au choix) : marge gagnée pour 100 clients si X clients passent de 1 bouteille au
+  lot, clients à faire monter pour couvrir ceux qui prenaient déjà le lot, tableau avant/après (bouteilles, panier moyen,
+  marge par ticket, marge totale). Moteur `simulerLot`.
 - Fiches Excel de Joseph comparées aux simulateurs (choix 241, 242, 244, 245 et grille de productivité, Joseph,
   16/11/2026), sans migration. 241 : Soirée, formule « soirée animée sans billet » (CA du bar d'un soir normal et attendu,
   CA à viser pour ne rien perdre). 242 : Embaucher, « Heures sup » (part dans les heures payées, coût majoré, économie
