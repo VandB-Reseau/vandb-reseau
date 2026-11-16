@@ -54,7 +54,7 @@ export function PropositionsARelire({ reseau, signaler }: { reseau: Reseau; sign
 const libelles = { proposee: 'En relecture', publiee: 'Publiée', refusee: 'Non retenue' } as const
 const couleurs = { proposee: 'default', publiee: 'success', refusee: 'default' } as const
 
-function DialogProposer({ reseau, onFermer }: { reseau: Reseau; onFermer: (m?: string) => void }) {
+export function DialogProposer({ reseau, onFermer }: { reseau: Reseau; onFermer: (m?: string) => void }) {
   const noms = reseau.magasins.map((m) => m.nom)
   const [magasin, setMagasin] = useState(noms.length === 1 ? noms[0] : '')
   const [titre, setTitre] = useState('')

@@ -60,22 +60,34 @@ test('204 à 206 et 208 : une carte par publication, l’auteur en tête, voir p
   await lisible(page, isMobile)
 })
 
-test('207 : « Partager » en tête du fil ouvre la bonne pratique ; le Directeur publie une communication', async ({ page }) => {
+test('207 : « Partager » en tête du fil ouvre la bonne pratique sur place ; le Directeur publie une communication sans quitter l’Accueil', async ({ page }) => {
   await seConnecter(page)
   const partager = page.getByRole('region', { name: 'Actualités' }).getByRole('region', { name: 'Partager' })
-  await expect(partager.getByRole('link', { name: 'Communication' })).toBeVisible()
-  await partager.getByRole('link', { name: 'Bonne pratique' }).click()
-  await expect(page).toHaveURL(/vue=pratiques&ajouter=1/)
+  await partager.getByRole('button', { name: 'Bonne pratique' }).click()
   await expect(page.getByRole('dialog', { name: 'Nouvelle bonne pratique' })).toBeVisible()
+  await expect(page).not.toHaveURL(/infos/)
+  await page.getByRole('dialog').getByRole('button', { name: 'Annuler' }).click()
+  await partager.getByRole('button', { name: 'Partager une réussite du terrain' }).click()
+  await expect(page.getByRole('dialog', { name: 'Nouvelle bonne pratique' })).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: 'Annuler' }).click()
+  await partager.getByRole('button', { name: 'Communication' }).click()
+  const fenetre = page.getByRole('dialog', { name: 'Nouvelle communication' })
+  await expect(fenetre).toBeVisible()
+  await fenetre.getByRole('textbox', { name: 'Titre' }).fill('Bravo à toute l’équipe')
+  await fenetre.getByRole('textbox', { name: 'Message' }).fill('Belle soirée dégustation samedi.')
+  await fenetre.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(fenetre).toHaveCount(0)
+  await expect(page.getByText('Communication publiée.')).toBeVisible()
+  await expect(page).not.toHaveURL(/infos/)
 })
 
 test('207 : le franchisé propose une bonne pratique depuis son fil, sans publier de communication', async ({ page }) => {
   await seConnecter(page, { acces: PAUL })
   const partager = page.getByRole('region', { name: 'Actualités' }).getByRole('region', { name: 'Partager' })
-  await expect(partager.getByRole('link', { name: 'Communication' })).toHaveCount(0)
-  await partager.getByRole('link', { name: 'Proposer une bonne pratique' }).click()
-  await expect(page).toHaveURL(/vue=pratiques&proposer=1/)
+  await expect(partager.getByRole('button', { name: 'Communication' })).toHaveCount(0)
+  await partager.getByRole('button', { name: 'Proposer une bonne pratique' }).click()
   await expect(page.getByRole('dialog', { name: 'Proposer une bonne pratique' })).toBeVisible()
+  await expect(page).not.toHaveURL(/infos/)
 })
 
 test('209 : sur téléphone, le point du jour se replie au-dessus du fil et se déplie à la demande', async ({ page, isMobile }) => {

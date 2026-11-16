@@ -122,6 +122,29 @@ function DialogCommunication({ edition: { c, brouillon, erreur }, auteur, publie
   )
 }
 
+// Publier une communication sans quitter la page (« Partager » de l'Accueil, Joseph 16/11/2026) : la fenêtre s'ouvre sur
+// place, se ferme dès l'envoi ; si la base refuse, elle revient avec ce qui avait été saisi. apres : relit le fil.
+export function PublierCommunication({ apres, onFermer }: { apres?: () => Promise<void> | void; onFermer: (m?: string) => void }) {
+  const { profil } = useAuth()
+  const { reseau } = useReseau()
+  const connues = communicationsConnues()?.communications
+  const [edition, setEdition] = useState<Edition | null>({ c: null })
+  const { connaissances } = useConnaissances()
+  const moisEnCours = new Date().toISOString().slice(0, 7)
+  const demandesDuMois = (connues?.liste ?? []).filter((c) => connaissances?.has(c.id) && c.creeLe.slice(0, 7) === moisEnCours).length
+  if (!edition) return null
+  const moi = connues?.moi ?? ''
+  return (
+    <DialogCommunication key={edition.brouillon?.id ?? 0} edition={edition} onFermer={() => onFermer()}
+      auteur={{ moi, role: connues?.role || profil?.role || '', nom: profil?.nom || '', magasins: profil?.role === 'rr' ? (reseau?.magasins ?? []).map((m) => m.nom) : null }}
+      publier={(b, envoyer) => {
+        setEdition(null)
+        envoyer().then(async () => { await apres?.(); onFermer('Communication publiée.') }, (e) => setEdition({ c: null, brouillon: b, erreur: messageCommunication(e) }))
+      }}
+      retirer={() => undefined} demandesDuMois={demandesDuMois} />
+  )
+}
+
 // « J'aime » et commentaires d'une communication : sur sa page et dans le fil d'activité
 export function ReactionsCommunication({ c, moi, jour, lectureSeule, apres, signaler, extra }: {
   c: Communication; moi: string; jour: string; lectureSeule: boolean; apres: () => Promise<void>; signaler: (m: string) => void; extra?: ReactNode

@@ -530,7 +530,7 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
           <SectionContacts reseau={reseau} magasins={magasins} />
         </>
         const filActu = <FilActivite elements={fil} jour={reseau.jour} sansMagasin={magasins.length === 1} titre="Actualités" social
-          partager={apercu ? undefined : <BarrePartager moi={profil?.nom ?? ''} franchise communication={false} />}
+          partager={apercu ? undefined : <BarrePartager moi={profil?.nom ?? ''} franchise communication={false} reseau={reseau} />}
           connaissances={{ carte: connaissances, franchise: true, recharger: () => void rechargerConnaissances() }}
           communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
         return surPC ? (
