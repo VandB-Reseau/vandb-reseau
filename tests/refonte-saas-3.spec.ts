@@ -50,7 +50,7 @@ test('22A et 23A : vue d’ensemble du magasin et activité en un seul fil', asy
   await expect(indicateurs.getByText('Panier moyen HT')).toBeVisible()
   // Choix 196 (15/11/2026) : une seule bande « À faire maintenant »
   await expect(page.getByRole('region', { name: 'À faire maintenant' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Dernier compte rendu' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Derniers échanges' })).toBeVisible() // choix 259 (16/11/2026)
   await expect(page.getByText('Vitrine refaite, stock à revoir.').first()).toBeVisible()
   // Activité : plus de sous-onglets, « À faire » à côté du fil (198) et des filtres en puces
   await page.goto('./#/magasins/Lyon%20Test?vue=activite')

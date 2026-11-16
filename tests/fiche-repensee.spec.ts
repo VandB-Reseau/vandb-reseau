@@ -16,7 +16,7 @@ test('196, 197 et 200 : aperçu resserré, objectifs repliés, colonne d’ident
   await seConnecter(page, { config })
   await page.goto('./#/magasins/Brest%20Test')
   const bande = page.getByRole('region', { name: 'À faire maintenant' })
-  await expect(bande.getByRole('link')).toHaveCount(3)
+  await expect(bande.getByRole('link')).toHaveCount(4) // + Budget de l'année (choix 258, 16/11/2026)
   await expect(bande.getByRole('link', { name: /^Prochaine échéance : Changer l’ampoule de la vitrine/ })).toBeVisible()
   await expect(page.getByRole('link', { name: /^Clôture du mois/ })).toHaveCount(0)
   // L'objectif tient sur une ligne ; ses priorités et leurs tâches se déplient
@@ -30,6 +30,10 @@ test('196, 197 et 200 : aperçu resserré, objectifs repliés, colonne d’ident
   await expect(page.getByRole('heading', { name: 'Équipe', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: /^Équipements/ })).toHaveAttribute('aria-expanded', 'false')
   await expect(page.getByRole('button', { name: 'Concurrents à 2 km' })).toHaveAttribute('aria-expanded', 'false')
+  // 254 : la pastille « Fin dans moins de 6 mois » passe sous le nom, le mandat se lit sur une ou deux lignes
+  const mandat = page.getByText(/^Mandat du /).first()
+  await expect(page.getByText('Fin dans moins de 6 mois').first()).toBeVisible()
+  expect((await mandat.boundingBox())!.height).toBeLessThan(60)
   expect(await textesTropPetits(page)).toEqual([])
 })
 

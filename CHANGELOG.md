@@ -16,6 +16,14 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   de visite ; elle n'entre pas dans la note de santé. 245 : vue réseau du Suivi, onglet « Stock » : mois d'achats que
   couvre le stock Cave + Bar du dernier mois saisi, face à la cible pondérée par la part du CA TTC. Paramètres ›
   Simulateurs : « Préparer 3 paliers » (46 % et 53 % de bar) pour la productivité visée, les €/h à saisir.
+- Fiche magasin, Vue d'ensemble plus parlante (choix 254 à 260 bis, Joseph, 16/11/2026), sans migration. 254 : la
+  pastille « Fin dans moins de 6 mois » d'un associé passe sous son nom (elle écrasait le mandat, un mot par ligne).
+  255 : Exploitation, Équipements et Concurrents passent à droite, sous les échanges. 256 : CA de l'année à fin du dernier
+  mois face aux mêmes mois de l'an passé, avec la courbe sur douze mois ; tickets sous le panier. 257 : « Points
+  d'attention » en tête (caisse qui décroche ou à surveiller, case faible ou en baisse de la nine box, mandat échu ou à
+  renouveler, informations à compléter). 258 : tuile Budget de l'année (statut, CA HT face à l'atterrissage). 259 :
+  « Derniers échanges » (trois derniers : visite, appel, note, message, tâche faite) remplace le dernier compte rendu.
+  260 bis : bouton « Avis Google » à côté d'« Itinéraire ». La carte Google reste (260 écarté).
 - Remises entreprise (Joseph, 16/11/2026), sans migration : par famille, un « % de marge » sur le prix HT avant remise
   remplace l'achat moyen HT (marge HT par unité = prix HT × %, exemple préréglé à 40, 37, 26 et 34 %) ; produit par
   produit, prix public et prix d'achat gardés, marge unitaire affichée. Le simulateur passe dans « Événements et extérieur ».
