@@ -575,10 +575,16 @@ export const AIDE = {
     remplir: 'Prix TTC par participant, participants attendus, marge ; la part des participants qui achète en cave et son panier ; les coûts ligne par ligne, les extras et les heures en plus de l’équipe déjà en place.',
     calcul: 'Gain = marge (entrée et achats) − redevance et publicité − coûts. Achats : participants × part qui achète × panier, à la marge de la cave ; un bon d’achat du prix d’entrée est une remise sur ces achats. Heures de l’équipe = personnes × heures × coût horaire × (1 + majoration). Seuil = coûts ÷ gain par participant. « Mettre dans mon budget » ajoute un temps fort (et un en cave pour les achats) ; extras et heures se saisissent dans l’Équipe.',
   },
+  coutArgent: {
+    titre: 'Argent immobilisé : quel taux ?',
+    quoi: 'Ce que coûte l’argent bloqué dans un stock acheté en avance. Pas forcément un découvert.',
+    remplir: 'Le taux du découvert si le magasin est à découvert ; sinon ce que rapporterait cet argent placé ; 0 % s’il dort sur le compte. Modifiable dans chaque simulation.',
+    calcul: 'Coût = montant payé × taux ÷ 12 × la moitié des mois pour tout vendre (le stock se vide peu à peu).',
+  },
   simAchat: {
     titre: 'Acheter en volume',
     quoi: 'Une remise du fournisseur face à l’argent bloqué en stock et au risque d’invendu.',
-    remplir: 'Le montant au prix habituel, la remise, le temps pour tout vendre, la part qui risque de rester, le coût annuel de l’argent (découvert).',
+    remplir: 'Le montant au prix habituel, la remise, le temps pour tout vendre, la part qui risque de rester, le coût annuel de l’argent : le taux du découvert si le magasin est à découvert, sinon ce que rapporterait cet argent placé, 0 % s’il dort sur le compte.',
     calcul: 'Gain = remise − invendu au prix payé − coût de l’argent (montant payé × taux ÷ 12 × la moitié des mois pour tout vendre). Durée maximale : celle où le gain tombe à zéro.',
   },
   simInvestissement: {
