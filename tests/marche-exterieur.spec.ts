@@ -1,0 +1,154 @@
+import { expect, test, type Page, type Route } from '@playwright/test'
+import { seConnecter, simulerSupabase, COMPTE, textesTropPetits, type Ecriture, type OptionsSimulation } from './supabase-simule'
+import { zonesTropPetites } from './pilotage/supabase-simule'
+
+// Plan d'action « Marché extérieur » en 6 étapes (Joseph, 16/11/2026), pour l'équipe et le franchisé.
+// L'Annuaire des entreprises est simulé : entreprises et traiteur fictifs autour du magasin. Données fictives uniquement.
+const NOM = 'Annecy Test'
+const fiche = (etape?: number) => `./#/magasins/${encodeURIComponent(NOM)}?vue=exterieur${etape ? `&etape=${etape}` : ''}`
+
+// Réponse de l'API près du point demandé : une entreprise de 50 à 99 salariés (2e page jamais demandée), un traiteur,
+// un V and B (jamais une cible) ; rien pour les autres types
+const demandes: string[] = []
+async function annuaire(page: Page) {
+  demandes.length = 0
+  await page.route(/^https:\/\/recherche-entreprises\.api\.gouv\.fr\//, (r: Route) => {
+    const u = new URL(r.request().url())
+    demandes.push(u.search)
+    const lat = Number(u.searchParams.get('lat')), lon = Number(u.searchParams.get('long'))
+    const etab = (siret: string, naf: string, tranche: string | null, dlat: number, enseigne?: string) => ({ siret, activite_principale: naf, tranche_effectif_salarie: tranche, latitude: String(lat + dlat), longitude: String(lon), adresse: '1 RUE DES ESSAIS 74000 ANNECY', etat_administratif: 'A', liste_enseignes: enseigne ? [enseigne] : null })
+    const vide = { results: [], total_pages: 1 }
+    if (u.searchParams.get('tranche_effectif_salarie')) {
+      return r.fulfill({ json: { total_pages: 1, results: [
+        { siren: '000000001', nom_complet: 'ATELIERS FICTIFS DU LAC', matching_etablissements: [etab('00000000100011', '28.29B', '21', 0.01)] },
+        { siren: '000000002', nom_complet: 'V AND B EXEMPLE', matching_etablissements: [etab('00000000200011', '47.25Z', '12', 0.005)] },
+      ] } })
+    }
+    if ((u.searchParams.get('activite_principale') ?? '').includes('56.21Z')) {
+      return r.fulfill({ json: { total_pages: 1, results: [
+        { siren: '000000003', nom_complet: 'SAVEURS SIMULEES', matching_etablissements: [etab('00000000300011', '56.21Z', '03', 0.02, 'TRAITEUR DU TEST')] },
+      ] } })
+    }
+    return r.fulfill({ json: vide })
+  })
+}
+
+const derniere = (ecritures: Ecriture[], cle: string) => {
+  const e = ecritures.filter((x) => x.table === 'app_config' && (x.corps as { key?: string }).key === cle).at(-1)
+  return e ? JSON.parse((e.corps as { value: string }).value) : null
+}
+
+test.beforeEach(async ({ page }) => {
+  const erreurs: string[] = []
+  page.on('pageerror', (e) => erreurs.push(e.message))
+  ;(page as unknown as { erreurs: string[] }).erreurs = erreurs
+})
+test.afterEach(async ({ page }) => {
+  expect((page as unknown as { erreurs: string[] }).erreurs, 'aucune erreur JavaScript').toEqual([])
+})
+
+test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’action', async ({ page, isMobile }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures })
+  await annuaire(page)
+  await page.goto(fiche())
+  const etapes = page.getByRole('navigation', { name: 'Étapes du plan marché extérieur' })
+  await expect(etapes.getByRole('button')).toHaveCount(6)
+  await expect(etapes.getByRole('button', { name: 'Étape 1 : Magasin' })).toHaveAttribute('aria-current', 'step')
+  await page.getByLabel('Objectif de CA extérieur sur un an (€ HT)').fill('40000')
+  await expect(page.getByText('Enregistré')).toBeVisible()
+  expect(derniere(ecritures, 'exterieur_magasins')[NOM].objectif).toBe(40000)
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+
+  // 2 · Repérage : entreprises de 20 salariés et plus, puis traiteur ; le V and B est écarté
+  await page.getByRole('button', { name: 'Repérage', exact: true }).click()
+  await page.getByRole('button', { name: 'Chercher dans un rayon de 10 km' }).click()
+  await expect(page.getByLabel('Retenir Ateliers Fictifs Du Lac')).toBeVisible()
+  await expect(page.getByLabel('Retenir Traiteur Du Test (Saveurs Simulees)')).toBeVisible()
+  await expect(page.getByText(/V And B Exemple/)).toHaveCount(0)
+  expect(demandes.some((d) => d.includes('radius=10') && d.includes('tranche_effectif_salarie=12,21'))).toBe(true)
+  await page.getByRole('button', { name: 'Prescripteurs · 1' }).click()
+  await expect(page.getByLabel('Retenir Ateliers Fictifs Du Lac')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Tous · 2' }).click()
+  await page.getByLabel('Retenir Ateliers Fictifs Du Lac').check()
+  await page.getByLabel('Retenir Traiteur Du Test (Saveurs Simulees)').check()
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+
+  // 3 · Cibles : un business club ajouté à la main
+  await page.getByRole('button', { name: 'Cibles', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Mes cibles · 2' })).toBeVisible()
+  await page.getByRole('button', { name: 'Ajouter une cible' }).click()
+  const d = page.getByRole('dialog', { name: 'Ajouter une cible' })
+  await d.getByRole('textbox', { name: 'Nom', exact: true }).fill('Club des entrepreneurs fictifs')
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByRole('heading', { name: 'Mes cibles · 3' })).toBeVisible()
+
+  // 4 · Diagnostic : l'atelier rapporte (5/5 en direct) sans relais (1/5) → client à signer ; le traiteur partout à 4 → priorité
+  await page.getByRole('button', { name: 'Diagnostic', exact: true }).click()
+  const noter = async (notes: number[]) => { for (const [i, c] of ['Potentiel commercial', 'Visibilité', 'Prescription', 'Bénéfice concret attendu', 'Intérêt pour la cause'].entries()) await page.getByRole('button', { name: `${c} : ${notes[i]} sur 5` }).click() }
+  await noter([5, 1, 1, 5, 1])
+  await expect(page.getByText('Valeur directe 5,0 / 5')).toBeVisible()
+  await expect(page.getByText('Valeur relais 1,0 / 5')).toBeVisible()
+  await page.getByRole('button', { name: 'Cible suivante' }).click()
+  await noter([4, 4, 4, 4, 4])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+
+  // 5 · Matrice : une cible par case notée, le club hors matrice
+  await page.getByRole('button', { name: 'Matrice', exact: true }).click()
+  await expect(page.getByText('1 cible pas encore notée, hors matrice.')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Priorité' })).toContainText('Traiteur Du Test')
+  await expect(page.getByRole('region', { name: 'Client à signer' })).toContainText('Ateliers Fictifs Du Lac')
+  await expect(page.getByRole('img', { name: /Matrice des opportunités/ })).toBeVisible()
+
+  // 6 · Plan : la priorité en tête, action proposée selon le type, lien vers le simulateur Contrat extérieur
+  await page.getByRole('button', { name: 'Plan d’action', exact: true }).click()
+  await page.getByRole('button', { name: 'Action pour Traiteur Du Test (Saveurs Simulees)' }).click()
+  const a = page.getByRole('dialog', { name: /^Action pour Traiteur/ })
+  await expect(a.getByLabel('Action')).toHaveValue('Dégustation et grille tarifaire réservée aux prescripteurs')
+  await a.getByLabel('CA visé sur un an (€ HT)').fill('8000')
+  await a.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByRole('link', { name: 'Chiffrer Traiteur Du Test (Saveurs Simulees) : Contrat extérieur' })).toHaveAttribute('href', /vue=simulateurs&partie=simulateurs&sim=exterieur$/)
+  await expect(page.getByText('20 %')).toBeVisible() // 8 000 € sur un objectif de 40 000 €
+  await expect.poll(() => derniere(ecritures, 'exterieur_magasins')?.[NOM]?.cibles?.length).toBe(3)
+  const traiteur = derniere(ecritures, 'exterieur_magasins')[NOM].cibles.find((c: { nom: string }) => c.nom.startsWith('Traiteur'))
+  expect(traiteur).toMatchObject({ categorie: 'prescripteur', source: 'annuaire', caVise: 8000, offre: 'exterieur', notes: { potentiel: 4, cause: 4 } })
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+})
+
+test('Marché extérieur : le franchisé bâtit le plan de son magasin', async ({ page, isMobile }) => {
+  const franchise: OptionsSimulation = { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: [NOM] }, persister: true }
+  await simulerSupabase(page, franchise)
+  await page.goto('./')
+  await page.getByLabel('Email').fill(COMPTE.email)
+  await page.getByLabel('Mot de passe').fill(COMPTE.motDePasse)
+  await page.getByRole('button', { name: 'Se connecter' }).click()
+  await page.getByRole('heading', { level: 1 }).first().waitFor()
+  await page.goto(fiche(3))
+  await page.getByRole('button', { name: 'Ajouter une cible' }).click()
+  const d = page.getByRole('dialog', { name: 'Ajouter une cible' })
+  await d.getByRole('textbox', { name: 'Nom', exact: true }).fill('Comité des fêtes fictif')
+  await d.getByLabel('Type').click()
+  await page.getByRole('option', { name: 'Association ou club' }).click()
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText('Enregistré')).toBeVisible()
+  // Relu depuis la base après rechargement : le plan est bien gardé pour son magasin
+  await page.reload()
+  // Téléphone : l'onglet n'est pas dans la barre (Budget et Simuler y restent), le bouton du haut l'ouvre
+  if (isMobile) {
+    await page.goto(`./#/magasins/${encodeURIComponent(NOM)}`)
+    await page.getByRole('button', { name: 'Marché extérieur' }).click()
+  }
+  await page.getByRole('button', { name: /^Étape 3 : Cibles/ }).click()
+  await expect(page.getByRole('heading', { name: 'Mes cibles · 1' })).toBeVisible()
+  await expect(page.getByText('Comité des fêtes fictif').first()).toBeVisible()
+})
+
+test('Marché extérieur : annuaire injoignable, un message humain et l’ajout à la main reste possible', async ({ page }) => {
+  await seConnecter(page)
+  await page.route(/^https:\/\/recherche-entreprises\.api\.gouv\.fr\//, (r) => r.fulfill({ status: 503, body: '' }))
+  await page.goto(fiche(2))
+  await page.getByRole('button', { name: 'Chercher dans un rayon de 10 km' }).click()
+  await expect(page.getByText('L’Annuaire des entreprises ne répond pas pour le moment. Réessaie dans quelques minutes, ou ajoute tes cibles à la main à l’étape suivante.')).toBeVisible()
+})

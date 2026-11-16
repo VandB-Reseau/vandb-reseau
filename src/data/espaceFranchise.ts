@@ -41,21 +41,22 @@ export async function chargerEspaceFranchise(apercu: Apercu | null, jour = new D
 // modifiées par ecrire_operations().
 // En aperçu, le Directeur lit les clés et la rubrique lui-même. Base d'avant 0044 : rien, sans erreur.
 async function chargerAnimationFranchise(apercu: Apercu | null): Promise<Tables['config']> {
-  const lignes = (v: { temps_forts?: unknown; parcours_integration?: unknown; integration?: unknown; equipements?: unknown; operations?: unknown }) => [
+  const lignes = (v: { temps_forts?: unknown; parcours_integration?: unknown; integration?: unknown; equipements?: unknown; operations?: unknown; exterieur?: unknown }) => [
     { key: 'temps_forts', value: JSON.stringify(v.temps_forts ?? []) },
     ...(v.parcours_integration ? [{ key: 'parcours_integration', value: JSON.stringify(v.parcours_integration) }] : []),
     { key: 'integration_magasins', value: JSON.stringify(v.integration ?? {}) },
     { key: 'equipements_magasins', value: JSON.stringify(v.equipements ?? {}) },
     { key: 'operations_magasins', value: JSON.stringify(v.operations ?? {}) },
+    { key: 'exterieur_magasins', value: JSON.stringify(v.exterieur ?? {}) },
   ]
   if (apercu) {
     const [config, suivi] = await Promise.all([
       supabase.from('app_config').select('key,value').in('key', ['temps_forts', 'parcours_integration']),
-      supabase.from('suivi_magasins').select('store_name,cle,valeur').in('cle', ['integration', 'equipements', 'operations']).in('store_name', apercu.magasins),
+      supabase.from('suivi_magasins').select('store_name,cle,valeur').in('cle', ['integration', 'equipements', 'operations', 'exterieur']).in('store_name', apercu.magasins),
     ])
     if (config.error) return []
     const cle = (k: string) => { const l = (config.data ?? []).find((x) => x.key === k); try { return l ? JSON.parse(String(l.value)) : undefined } catch { return undefined } }
-    return lignes({ temps_forts: cle('temps_forts'), parcours_integration: cle('parcours_integration'), ...Object.fromEntries((['integration', 'equipements', 'operations'] as const).map((r) => [r, suivi.error ? {} : Object.fromEntries((suivi.data ?? []).filter((l) => l.cle === r).map((l) => [l.store_name, l.valeur]))])) })
+    return lignes({ temps_forts: cle('temps_forts'), parcours_integration: cle('parcours_integration'), ...Object.fromEntries((['integration', 'equipements', 'operations', 'exterieur'] as const).map((r) => [r, suivi.error ? {} : Object.fromEntries((suivi.data ?? []).filter((l) => l.cle === r).map((l) => [l.store_name, l.valeur]))])) })
   }
   const { data, error } = await supabase.rpc('animation_franchise')
   return error || !data || typeof data !== 'object' ? [] : lignes(data as Record<string, unknown>)

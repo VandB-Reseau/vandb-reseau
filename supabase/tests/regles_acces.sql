@@ -1092,3 +1092,34 @@ SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 SELECT pg_temp.attendre('Opérations : ecrire_operations refusée à l''équipe', pg_temp.refuse('SELECT public.ecrire_operations(''Lille'', ''[]'')'), 1);
 RESET ROLE;
 RESET request.jwt.claim.sub;
+
+-- ── 0048 : plan d'action « Marché extérieur » (rubrique « exterieur »)
+\ir ../migrations/0048_marche_exterieur.sql
+\ir ../migrations/0048_marche_exterieur.sql
+SELECT pg_temp.attendre('Journal : 0048 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0048'), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Extérieur : le Coach tient le plan de son magasin',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''exterieur'', ''{"cibles":[{"id":"c1","nom":"Club de rugby"}]}'') ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur'), 0);
+SELECT pg_temp.attendre('Extérieur : pas sur un magasin d''un autre Coach',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Nice'', ''exterieur'', ''{}'')'), 1);
+RESET ROLE;
+INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES ('Nice', 'exterieur', '{"cibles":[{"id":"c2","nom":"Traiteur"}]}')
+ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Extérieur : le franchisé lit le plan de son magasin', (SELECT count(*) FROM jsonb_object_keys(public.animation_franchise()->'exterieur') k WHERE k = 'Lille'), 1);
+SELECT pg_temp.attendre('Extérieur : jamais celui d''un autre magasin', (SELECT count(*) FROM jsonb_object_keys(public.animation_franchise()->'exterieur') k WHERE k = 'Nice'), 0);
+SELECT pg_temp.attendre('Extérieur : pas de lecture directe', (SELECT count(*) FROM public.suivi_magasins WHERE cle = 'exterieur'), 0);
+SELECT pg_temp.attendre('Extérieur : pas d''écriture directe par le franchisé',
+  pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Lille'', ''exterieur'', ''{}'') ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur'), 1);
+SELECT pg_temp.attendre('Extérieur : le franchisé tient le plan de son magasin',
+  pg_temp.refuse('SELECT public.ecrire_exterieur(''Lille'', ''{"cibles":[{"id":"c3","nom":"Comité des fêtes"}]}'')'), 0);
+SELECT pg_temp.attendre('Extérieur : la saisie du franchisé est lue', (SELECT count(*) FROM jsonb_array_elements(public.animation_franchise()->'exterieur'->'Lille'->'cibles') e WHERE e->>'id' = 'c3'), 1);
+SELECT pg_temp.attendre('Extérieur : jamais sur un autre magasin', pg_temp.refuse('SELECT public.ecrire_exterieur(''Nice'', ''{}'')'), 1);
+SELECT pg_temp.attendre('Extérieur : plan mal formé refusé', pg_temp.refuse('SELECT public.ecrire_exterieur(''Lille'', ''[1]'')'), 1);
+SELECT pg_temp.attendre('Opérations : toujours lues après 0048', (SELECT count(*) FROM jsonb_object_keys(public.animation_franchise()->'operations') k WHERE k = 'Lille'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Extérieur : ecrire_exterieur refusée à l''équipe', pg_temp.refuse('SELECT public.ecrire_exterieur(''Lille'', ''{}'')'), 1);
+RESET ROLE;
+RESET request.jwt.claim.sub;

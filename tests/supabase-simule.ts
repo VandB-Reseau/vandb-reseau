@@ -145,6 +145,8 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       { type: 'node', id: 14, lat: lat + 0.05, lon, tags: { shop: 'wine', name: 'Trop Loin' } },
     ] } })
   })
+  // Annuaire des entreprises (marché extérieur, 0048) : par défaut, rien autour du magasin ; un test le remplace au besoin
+  await page.route(/^https:\/\/recherche-entreprises\.api\.gouv\.fr\//, (r) => r.fulfill({ json: { results: [], total_results: 0, page: 1, per_page: 25, total_pages: 1 } }))
   await page.route(/^https:\/\/www\.google\.com\/maps/, (r) => r.fulfill({ contentType: 'text/html; charset=utf-8', body: '<!doctype html><title>Carte</title><p>Carte simulée</p>' }))
   await page.route('https://supabase.test/**', async (route) => {
     const req = route.request()
@@ -497,12 +499,19 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         if (options.persister) suiviPersiste = structuredClone(suiviCourant)
         return route.fulfill({ status: 200, json: null })
       }
+      // Plan d'action marché extérieur tenu par le franchisé sur ses magasins (script 0048_marche_exterieur.sql)
+      if (fn === 'ecrire_exterieur') {
+        if (acces.role !== 'franchise' || !(acces.magasins ?? []).includes(String(corps.p_store))) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        suiviCourant = [...suiviCourant.filter((l) => !(l.cle === 'exterieur' && l.store_name === corps.p_store)), { store_name: String(corps.p_store), cle: 'exterieur', valeur: corps.p_plan }]
+        if (options.persister) suiviPersiste = structuredClone(suiviCourant)
+        return route.fulfill({ status: 200, json: null })
+      }
       if (fn === 'animation_franchise') {
         if (acces.role !== 'franchise') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
         const lire = (k: string) => (configEcrite.has(k) ? JSON.parse(configEcrite.get(k)!) : undefined)
         const rubrique = (r: string) => Object.fromEntries(suiviCourant.filter((l) => l.cle === r && (acces.magasins ?? []).includes(l.store_name)).map((l) => [l.store_name, l.valeur]))
         // Équipements du magasin, en lecture seule (script 0046_equipements_magasins.sql)
-        return route.fulfill({ json: { temps_forts: lire('temps_forts') ?? [], parcours_integration: lire('parcours_integration') ?? null, integration: rubrique('integration'), equipements: rubrique('equipements'), operations: rubrique('operations') } })
+        return route.fulfill({ json: { temps_forts: lire('temps_forts') ?? [], parcours_integration: lire('parcours_integration') ?? null, integration: rubrique('integration'), equipements: rubrique('equipements'), operations: rubrique('operations'), exterieur: rubrique('exterieur') } })
       }
       if (['communications', 'publier_communication', 'supprimer_communication', 'basculer_pouce_communication', 'commenter_communication', 'supprimer_commentaire_communication', 'lectures_communications', 'lire_communications', 'a_la_une', 'mettre_a_la_une', 'connaissances', 'prendre_connaissance', 'demander_connaissance'].includes(fn)) {
         if (options.communications === null) return absente()
