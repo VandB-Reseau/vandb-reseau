@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Mise en ligne en 5 minutes après une fusion (Joseph, 16/11/2026), sans migration : la série complète des tests
+  navigateur tourne sur chaque demande de fusion ; après la fusion, seuls les contrôles de la base et la construction
+  repassent avant la mise en ligne. Le lancement manuel garde ses tests au choix.
 - Simulateur « Promo, prix, remises » : l’offre en lot se lit en masse de marge sur le mois (Joseph, 16/11/2026),
   sans migration. « 1 client sur X suffit » en grand (clients du milieu qui passent de 2 bouteilles au lot pour rembourser
   les bouteilles offertes), masse de marge du mois et de l’année, taux de marge qui baisse quand la masse monte,
