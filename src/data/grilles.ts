@@ -12,7 +12,7 @@ export interface Photo { chemin: string; taille: number }
 export interface ReponsePoint { theme: string; libelle: string; critique?: boolean; etat: EtatPoint | null; commentaire?: string; photos?: Photo[] }
 export type Reponses = Record<string, ReponsePoint>
 
-export const libellesGrilles: Record<string, string> = { hygiene: 'Hygiène', excellence: 'Excellence opérationnelle' }
+export const libellesGrilles: Record<string, string> = { hygiene: 'Hygiène', excellence: 'Excellence opérationnelle', marge: 'Audit de marge' }
 
 let compteur = 0
 export const nouvelId = (prefixe: string) => `${prefixe}_${Date.now().toString(36)}${(compteur++).toString(36)}`
@@ -85,6 +85,61 @@ export const grillesParDefaut: Grilles = {
       theme('equipe', 'Équipe', [
         ['Effectif adapté à l’affluence'],
         ['Tenue aux couleurs de l’enseigne'],
+      ]),
+    ],
+  },
+  // 244 (Joseph, 16/11/2026) : sa check-list « Audit de marge » ; « Non » = à mettre en place, le commentaire porte l'échéance
+  marge: {
+    seuil: 80,
+    themes: [
+      theme('commande', 'Commande', [
+        ['Commandes ajustées à l’activité réelle (stock de quelques références sondé face aux ventes)'],
+        ['Fûts commandés en priorité pendant les promotions'],
+        ['Hors promotion, fûts commandés avec une marge cohérente (simulateur « Ma carte pression »)'],
+        ['Commandes des promotions des années passées archivées'],
+      ]),
+      theme('reception', 'Réception', [
+        ['Livraison rapprochée du bon de livraison, et le bon de la facture', true],
+        ['Quantités, dates limites de consommation et d’utilisation contrôlées'],
+        ['Prix facturés des achats en direct contrôlés face aux prix négociés'],
+        ['Avoirs demandés et remboursements suivis'],
+      ]),
+      theme('stockage', 'Stockage', [
+        ['Inventaire tournant chaque semaine au magasin'],
+        ['Premier entré, premier sorti respecté'],
+        ['Contrôle visuel régulier des stocks'],
+        ['Dates limites contrôlées chaque mois, au magasin et en réserve'],
+        ['Produits rares stockés sous clé, accès limité'],
+      ]),
+      theme('prix', 'Prix et caisse', [
+        ['Prix de vente des produits en direct calculés (simulateur « Prix et marge »)'],
+        ['Prix en magasin mis à jour pour les produits de la centrale'],
+        ['Prix en magasin mis à jour pour les produits achetés en direct'],
+        ['Cours des produits rares suivi'],
+        ['Taux de marge cohérent sur les coffrets bois'],
+        ['Tous les coûts intégrés dans les prix des marchés extérieurs (simulateur « Contrat extérieur »)'],
+        ['Pertes notées et valorisées', true],
+        ['Marge du mois suivie avec le stock saisi'],
+        ['Briefing pour orienter les ventes (meilleure marge, dates courtes)'],
+        ['Programmation des caisses vérifiée (consignes automatiques, taux de TVA)'],
+        ['Annulations en caisse vérifiées et tracées', true],
+      ]),
+      theme('bar', 'Bar', [
+        ['Pression servie uniquement dans des verres gradués'],
+        ['Stop-mousse en place'],
+        ['Procédure de déstockage en place'],
+        ['Tout est tapé en caisse au bar, dans le bon intitulé', true],
+        ['Audits fûts et bouteilles réalisés (simulateur « Ma carte pression », audit de la perte)'],
+        ['Inventaire du bar chaque mois'],
+        ['Prix de vente du bar calculés'],
+        ['Offerts du bar suivis'],
+      ]),
+      theme('alimentaire', 'Alimentaire au bar', [
+        ['Fiche de coût de chaque assiette (simulateur « Prix et marge »)'],
+        ['Fiches de coût affichées au poste d’envoi'],
+        ['Équipe formée aux techniques de préparation'],
+        ['Repères de grammage donnés'],
+        ['Denrées entamées stockées avec leur date limite secondaire'],
       ]),
     ],
   },

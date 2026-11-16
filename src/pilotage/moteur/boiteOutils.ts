@@ -315,6 +315,20 @@ export function coutContrats(coutCDI: number, brutMensuel: number, mois: number,
   return { cdi: coutCDI, cdd: coutCDI * 1.1 + fraisCDD, fraisCDD, interim: coefInterim > 0 ? pos(brutMensuel) * coefInterim * pos(mois) : null }
 }
 
+// ── 242 · Heures supplémentaires (fiche « masse salariale » de Joseph, 16/11/2026) ─────────────────────────────────
+// Part des heures sup dans les heures payées du mois. Coût = heures sup × coût horaire chargé × (1 + majoration) ; la
+// majoration seule est ce qu'un extra payé sans majoration ferait économiser, moins sa paie du mois (frais fixes).
+// Seuil : heures sup par mois à partir desquelles un extra coûte moins cher = paie du mois ÷ (coût horaire × majoration).
+export interface HeuresSup { part: number | null; coutMois: number; majorationMois: number; coutAn: number; gainExtraMois: number; seuilHeures: number | null }
+export function simulerHeuresSup(x: { heures: number; heuresSup: number; coutHoraire: number; majoration: number; paieExtraMois: number }): HeuresSup {
+  const sup = pos(x.heuresSup), heure = pos(x.coutHoraire), maj = pos(x.majoration)
+  const coutMois = sup * heure * (1 + maj), majorationMois = sup * heure * maj
+  return {
+    part: pos(x.heures) > 0 ? sup / pos(x.heures) : null, coutMois, majorationMois, coutAn: coutMois * 12,
+    gainExtraMois: majorationMois - pos(x.paieExtraMois), seuilHeures: heure * maj > 0 ? pos(x.paieExtraMois) / (heure * maj) : null,
+  }
+}
+
 // ── 146 · Ouvrir un dimanche ou un jour férié ───────────────────────────────────────────────────────────────────
 // CA HT attendu du jour (bar et cave), dont une part aurait été faite un autre jour (report) : seul le reste compte.
 // Gain = marge du CA nouveau − redevance et publicité − heures × coût horaire chargé × (1 + majoration) − frais du jour.

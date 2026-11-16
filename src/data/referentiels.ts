@@ -665,7 +665,7 @@ function ninebox(reseau: Reseau | null): Referentiel {
   }
 }
 
-const TYPES_AUDIT: Record<string, string> = { hygiene: 'Audit hygiène', excellence: 'Audit excellence' }
+const TYPES_AUDIT: Record<string, string> = { hygiene: 'Audit hygiène', excellence: 'Audit excellence', marge: 'Audit de marge' }
 const audits: Referentiel = {
   id: 'audits', libelle: 'Notes d’audit', groupe: 'Suivi des magasins', feuille: 'Notes d’audit',
   colonnes: [

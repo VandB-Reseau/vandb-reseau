@@ -18,6 +18,7 @@ import ArrowUpwardOutlined from '@mui/icons-material/ArrowUpwardOutlined'
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import CleaningServicesOutlined from '@mui/icons-material/CleaningServicesOutlined'
 import StarOutlineOutlined from '@mui/icons-material/StarOutlineOutlined'
+import PercentOutlined from '@mui/icons-material/PercentOutlined'
 import { Onglets } from './Onglets'
 import { enregistrerGrilles } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
@@ -68,7 +69,7 @@ function EditeurGrille({ grille, onChange }: { grille: Grille; onChange: (g: Gri
 
 export function GrillesAudit({ reseau }: { reseau: Reseau }) {
   const { recharger } = useReseau()
-  const [vue, setVue] = useState<'hygiene' | 'excellence'>('hygiene')
+  const [vue, setVue] = useState<'hygiene' | 'excellence' | 'marge'>('hygiene')
   const [grilles, setGrilles] = useState<Grilles>(() => copie(reseau.grilles))
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState(false)
@@ -87,6 +88,7 @@ export function GrillesAudit({ reseau }: { reseau: Reseau }) {
         <Onglets valeur={vue} onChange={setVue} libelle="Grilles d’audit" libres rubriques={[
           { vue: 'hygiene', libelle: libellesGrilles.hygiene, icone: <CleaningServicesOutlined /> },
           { vue: 'excellence', libelle: libellesGrilles.excellence, court: 'Excellence', icone: <StarOutlineOutlined /> },
+          { vue: 'marge', libelle: libellesGrilles.marge, court: 'Marge', icone: <PercentOutlined /> },
         ]} />
         <EditeurGrille key={vue} grille={grilles[vue]} onChange={(g) => setGrilles((x) => ({ ...x, [vue]: g }))} />
         {erreur && <Alert severity="error" sx={{ mt: 2 }}>Les grilles n’ont pas pu être enregistrées. Vérifie ta connexion et réessaie.</Alert>}

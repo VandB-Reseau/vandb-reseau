@@ -100,7 +100,7 @@ export function texteBilan(m: Magasin, b: Bilan): string {
   b.indicateurs.forEach((x) => l.push(`${x.libelle} : ${formatValeur(x.id, x.valeur)}${x.ref !== null ? ` (${formatValeur(x.id, x.ref)} en ${Number(b.annee) - 1})` : ''}`))
   l.push(`Visites : ${b.visites.faites}${b.visites.reference ? ` sur ${b.visites.reference} de référence` : ''}`)
   if (b.caseFin) l.push(`Nine box : ${b.caseDebut && b.caseDebut.id !== b.caseFin.id ? `${b.caseDebut.libelle} → ` : ''}${b.caseFin.libelle}`)
-  b.audits.forEach((x) => l.push(`Audit ${x.type === 'hygiene' ? 'hygiène' : 'excellence opérationnelle'} du ${dateCourte(x.date)} : ${libelleAudit(x)}`))
+  b.audits.forEach((x) => l.push(`Audit ${x.type === 'hygiene' ? 'hygiène' : x.type === 'marge' ? 'de marge' : 'excellence opérationnelle'} du ${dateCourte(x.date)} : ${libelleAudit(x)}`))
   if (b.taches.echues) l.push(`Tâches tenues à l'échéance : ${b.taches.tenues} sur ${b.taches.echues}`)
   if (b.reunions?.length) l.push(`Réunions et formations suivies : ${b.reunions.filter((x) => x.presence?.present === true).length} sur ${b.reunions.length}`)
   const deployees = b.thematiques.filter((x) => x.ton === 'positif')
@@ -188,7 +188,7 @@ function Feuille({ reseau, m }: { reseau: Reseau; m: Magasin }) {
           <Bloc titre="Santé du magasin">
             <Ligne libelle={`Nine box au 1er janvier ${annee}`}>{b.caseDebut?.libelle ?? 'Non classé'}</Ligne>
             <Ligne libelle={annee === courante ? 'Nine box aujourd’hui' : `Nine box au 31 décembre ${annee}`}>{b.caseFin?.libelle ?? 'Non classé'}</Ligne>
-            {b.audits.map((x) => <Ligne key={`${x.type}-${x.date}`} libelle={`Audit ${x.type === 'hygiene' ? 'hygiène' : 'excellence opérationnelle'} · ${dateCourte(x.date)}`}><Box component="span" sx={{ color: x.conforme === false ? ROUGE : NOIR }}>{libelleAudit(x)}</Box></Ligne>)}
+            {b.audits.map((x) => <Ligne key={`${x.type}-${x.date}`} libelle={`Audit ${x.type === 'hygiene' ? 'hygiène' : x.type === 'marge' ? 'de marge' : 'excellence opérationnelle'} · ${dateCourte(x.date)}`}><Box component="span" sx={{ color: x.conforme === false ? ROUGE : NOIR }}>{libelleAudit(x)}</Box></Ligne>)}
             {!b.audits.length && <Ligne libelle="Audits">Aucun en {annee}</Ligne>}
           </Bloc>
 
