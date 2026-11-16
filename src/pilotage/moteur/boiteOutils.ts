@@ -25,6 +25,12 @@ export const HEURES_ETP = 1607
 // une somme fixe et une rétrocession par fût ; matériel prêté (barnum, tables, frigo) et astreinte du week-end (heures ×
 // coût horaire) en coûts fixes ; livraisons et locations de tireuse facturées au client en recettes (CA, donc redevance).
 // Équilibre = (coûts fixes − recettes nettes) ÷ net par fût.
+// Durée du contrat (Joseph, 16/11/2026 : « l'amortissement de la tireuse peut être sur 5 ans, mais si le contrat est sur
+// 3… ça fait mal ») : une tireuse achetée pour un contrat plus court que sa durée de vie se paie sur la durée du contrat
+// (prix ÷ années du contrat), par prudence ; le gain, l'équilibre et la remise maximale en tiennent compte. Deux repères en
+// plus : le reste non amorti à la fin du contrat (prix × années restantes ÷ durée de vie, ce que coûte le départ du client
+// si la tireuse ne ressert pas) et l'équilibre si elle ressert ailleurs (amortie sur sa durée de vie). Sans durée saisie,
+// ou contrat au moins aussi long que la durée de vie : rien ne change.
 export interface ContratExterieur {
   futs: number; prixVente: number; remise: number; prixAchat: number; co2: number; gobelets: number
   tireuse: 'neuve' | 'parc'; prixTireuse: number; dureeTireuse: number; entretien: number
@@ -35,6 +41,7 @@ export interface ContratExterieur {
   materiel?: number                                   // matériel prêté, par an HT
   astreinte?: number                                  // heures d'astreinte du week-end par an
   locations?: { nombre: number; prix: number }        // locations de tireuse facturées (sans fûts du contrat)
+  dureeContrat?: number                               // années ; 0 ou absent : la tireuse s'amortit sur sa durée de vie
 }
 export interface EffetExterieur {
   caParFut: number; redevanceParFut: number; netParFut: number; ca: number
@@ -47,6 +54,9 @@ export interface EffetExterieur {
   // Compte de résultat du contrat (Joseph, 15/11/2026) : CA − fûts (achat, CO2, gobelets) − redevance et publicité
   // − rétrocession du sponsoring − coûts fixes = gain
   coutFuts: number; redevance: number; retrocession: number
+  // Durée du contrat : années sur lesquelles la tireuse est payée, tireuse par an sur sa durée de vie, reste non amorti à la
+  // fin du contrat, équilibre si la tireuse ressert après, gain cumulé sur la durée du contrat (null sans durée saisie)
+  anneesTireuse: number; tireuseAnDureeVie: number; resteNonAmorti: number; equilibreDureeVie: number | null; gainContrat: number | null
 }
 // Marge d'un fût (Joseph, 14/11/2026) : prix de vente HT − prix d'achat HT, en euros et en part du prix de vente.
 // Avant redevance, publicité, CO2 et gobelets, que le net par fût retire ensuite.
@@ -54,12 +64,17 @@ export function margeFut(prixVente: number, prixAchat: number): { valeur: number
   const valeur = pos(prixVente) - pos(prixAchat)
   return { valeur, taux: pos(prixVente) > 0 ? valeur / pos(prixVente) : null }
 }
+const equilibre = (reste: number, net: number) => reste <= 0 ? 0 : net > 0 ? Math.ceil(reste / net - 1e-9) : null
 export function simulerExterieur(x: ContratExterieur, p: Redevances, donMecenat: boolean): EffetExterieur {
   const rp = p.tauxRedevance + p.tauxPublicite
   const caParFut = Math.max(0, pos(x.prixVente) - pos(x.remise))
   const redevanceParFut = caParFut * rp
   const netParFut = caParFut - redevanceParFut - pos(x.prixAchat) - pos(x.co2) - pos(x.gobelets) - pos(x.sponsoring?.parFut)
-  const tireuseAn = (x.tireuse === 'neuve' ? (x.dureeTireuse > 0 ? pos(x.prixTireuse) / x.dureeTireuse : pos(x.prixTireuse)) : 0) + pos(x.entretien)
+  const vie = pos(x.dureeTireuse), contrat = pos(x.dureeContrat), neuve = x.tireuse === 'neuve'
+  const anneesTireuse = contrat > 0 && (vie <= 0 || contrat < vie) ? contrat : vie
+  const parAn = (annees: number) => (neuve ? (annees > 0 ? pos(x.prixTireuse) / annees : pos(x.prixTireuse)) : 0) + pos(x.entretien)
+  const tireuseAn = parAn(anneesTireuse), tireuseAnDureeVie = parAn(vie)
+  const resteNonAmorti = neuve && vie > 0 && anneesTireuse < vie ? pos(x.prixTireuse) * (vie - anneesTireuse) / vie : 0
   const kmLivraison = pos(x.km) * pos(x.prixKm), tempsLivraison = pos(x.heures) * pos(x.coutHoraire)
   const coutLivraison = kmLivraison + tempsLivraison
   const livraisonsAn = pos(x.livraisons) * coutLivraison
@@ -78,9 +93,12 @@ export function simulerExterieur(x: ContratExterieur, p: Redevances, donMecenat:
     caParFut, redevanceParFut, netParFut, ca: futs * caParFut + recettes, tireuseAn, coutLivraison, livraisonsAn,
     kmLivraison, tempsLivraison, livraisonsFacturees, netLivraisons: livraisonsFacturees * (1 - rp) - livraisonsAn,
     prixPlancherLivraison: rp < 1 ? coutLivraison / (1 - rp) : null, don, sponsoring, materiel, astreinte, recettes, recettesNettes, coutFixe, gain,
-    equilibre: reste <= 0 ? 0 : netParFut > 0 ? Math.ceil(reste / netParFut - 1e-9) : null,
+    equilibre: equilibre(reste, netParFut),
     remiseMax: futs > 0 && rp < 1 ? Math.max(0, pos(x.remise) + (netParFut - reste / futs) / (1 - rp)) : null,
     coutFuts: futs * (pos(x.prixAchat) + pos(x.co2) + pos(x.gobelets)), redevance: (futs * caParFut + recettes) * rp, retrocession: futs * pos(x.sponsoring?.parFut),
+    anneesTireuse, tireuseAnDureeVie, resteNonAmorti,
+    equilibreDureeVie: equilibre(reste - (tireuseAn - tireuseAnDureeVie), netParFut),
+    gainContrat: contrat > 0 ? gain * contrat : null,
   }
 }
 // 239 (Joseph, 16/11/2026, fiche « Rentabilité Extérieur ») : le gain du contrat selon le nombre de fûts vendus, de 20 à

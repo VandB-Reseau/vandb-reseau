@@ -53,18 +53,29 @@ test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', a
   await expect(page.getByRole('region', { name: '1. Recettes' }).locator('.sous-total')).toHaveText(/CA HT de l’année\s*2\s760\s€/)
   await expect(page.getByRole('region', { name: '2. Fûts' }).locator('.sous-total')).toHaveText(/− 1\s684\s€/)
   await expect(page.getByRole('region', { name: '4. Livraisons' }).locator('.sous-total')).toHaveText(/Par an\s*− 480\s€/)
+  // Contrat de 3 ans dans l'exemple, tireuse de 5 ans : 1 500 ÷ 3 = 500 € par an au lieu de 300 € ; 600 € non amortis à la fin
+  await expect(page.getByLabel('Durée du contrat')).toHaveValue('3')
+  await expect(page.getByRole('region', { name: '3. Tireuse' })).toContainText(/payée sur le contrat, 500\s€ par an au lieu de 300\s€\. Si le client part à la fin, il reste 600\s€ non amortis\./)
   const compte = page.getByRole('table', { name: 'Compte de l’année' })
-  await expect(compte.getByRole('row')).toHaveText([/Recettes.*\+ 2\s760\s€/, /Fûts.*− 1\s684\s€/, /Redevance et publicité.*− 83\s€/, /Tireuse.*− 300\s€/, /Livraisons.*− 480\s€/, /Gain de l’année.*213\s€/])
-  // 24,83 € nets par fût ; 300 € de tireuse + 10 × 48 € de livraisons = 780 € ; équilibre à 32 fûts ; 213 € de gain à 40 fûts
-  await expect(page.getByRole('status')).toContainText(/24,83\s€ nets par fût, 780\s€ de coûts fixes, équilibre à 32 fûts ; gain de 213\s€/)
+  await expect(compte.getByRole('row')).toHaveText([/Recettes.*\+ 2\s760\s€/, /Fûts.*− 1\s684\s€/, /Redevance et publicité.*− 83\s€/, /Tireuse.*− 500\s€/, /Livraisons.*− 480\s€/, /Gain de l’année.*13\s€/])
+  // 24,83 € nets par fût ; 500 € de tireuse + 10 × 48 € de livraisons = 980 € ; équilibre à 40 fûts (39,5) ; 13 € de gain à 40 fûts ;
+  // si la tireuse ressert : 780 ÷ 24,83 = 31,4, 32 fûts
+  await expect(page.getByRole('status')).toContainText(/24,83\s€ nets par fût, 980\s€ de coûts fixes, équilibre à 40 fûts ; gain de 13\s€ au volume prévu\. Tireuse payée sur les 3 ans du contrat : 600\s€ non amortis si le client part, équilibre à 32 fûts si elle ressert ailleurs\./)
+  await expect(page.getByText('Gain sur la durée du contrat')).toBeVisible() // 3 × 13,2 = 40 €
+  // Contrat de 5 ans : on revient à l'amortissement sur la durée de vie
+  await page.getByLabel('Durée du contrat').fill('5')
+  await expect(page.getByRole('status')).toContainText(/780\s€ de coûts fixes, équilibre à 32 fûts ; gain de 213\s€ au volume prévu\.$/)
+  await expect(page.getByText('Reste non amorti en fin de contrat')).toHaveCount(0)
+  await page.getByLabel('Durée du contrat').fill('3')
   // Don de 1 000 € avec reçu Cerfa : 400 € de coût réel (réduction mécénat réglée par le siège)
   await page.getByRole('group', { name: 'Don' }).getByRole('button', { name: 'En argent' }).click()
   await page.getByLabel('Montant du don').fill('1000')
   await expect(page.getByLabel('Reçu Cerfa demandé')).toBeChecked()
   await expect(page.getByText('Coût réel du don')).toBeVisible()
-  await expect(page.getByRole('status')).toContainText(/1\s180\s€ de coûts fixes, équilibre à 48 fûts ; perte de 187\s€/)
+  // 980 + 400 = 1 380 € ; 1 380 ÷ 24,83 = 55,6, 56 fûts ; 40 × 24,83 − 1 380 = − 386,80 €
+  await expect(page.getByRole('status')).toContainText(/1\s380\s€ de coûts fixes, équilibre à 56 fûts ; perte de 387\s€/)
   await page.getByLabel('Reçu Cerfa demandé').uncheck()
-  await expect(page.getByRole('status')).toContainText(/1\s780\s€ de coûts fixes/)
+  await expect(page.getByRole('status')).toContainText(/1\s980\s€ de coûts fixes/)
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-simulateur-exterieur.png`, fullPage: true })
