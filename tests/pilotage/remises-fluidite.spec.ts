@@ -37,10 +37,18 @@ test('228 : remises entreprise par paliers, par famille puis produit par produit
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=simulateurs&partie=simulateurs&sim=remises_b2b`)
   await expect(page.getByRole('heading', { name: 'Remises entreprise par paliers' })).toBeVisible()
   const statut = page.locator('#carte-simulation').getByRole('status')
-  // Exemple du fichier : 100 unités, palier 2 à 8 % ; CA HT 1 838,33 € − 8 % = 1 691 € ; achats 1 223,60 € ; marge 468 € (27,7 %)
+  // Exemple du fichier, % de marge par famille (40, 37, 26, 34 %) : 100 unités, palier 2 à 8 % ; CA HT 1 838,33 € − 8 % = 1 691 € ;
+  // marge avant remise 612,64 €, achats 1 225,69 € ; marge 1 691,27 − 1 225,69 = 466 €
   await expect(statut).toContainText(/100 unités, palier 2 à 8\s?%/)
   await expect(statut).toContainText(/1\s691\s€ HT/)
-  await expect(statut).toContainText(/marge 468\s€/)
+  await expect(statut).toContainText(/marge 466\s€/)
+  // Vin : 12,20 € TTC = 10,17 € HT × 40 % = 4,07 € de marge HT par unité
+  await expect(page.getByRole('textbox', { name: '% de marge, Vin' })).toHaveValue('40')
+  await expect(page.getByLabel('Marge HT par unité, Vin')).toContainText(/4,07\s€/)
+  await page.getByRole('textbox', { name: '% de marge, Vin' }).fill('50')
+  await expect(page.getByLabel('Marge HT par unité, Vin')).toContainText(/5,08\s€/)
+  await page.getByRole('textbox', { name: '% de marge, Vin' }).fill('40')
+  await expect(statut).toContainText(/marge 466\s€/)
   await expect(statut).toContainText(/Encore 100 unités pour passer au palier 3 \(10\s?%\)/)
   await expect(page.getByRole('table', { name: 'Remises par palier' }).getByRole('row')).toHaveCount(7)
   await expect(page.getByRole('table', { name: 'Détail par famille' })).toContainText('Spiritueux')
@@ -52,6 +60,9 @@ test('228 : remises entreprise par paliers, par famille puis produit par produit
   await page.getByRole('button', { name: 'Produit par produit' }).click()
   await expect(statut).toContainText(/80 unités, palier 1 à 5\s?%/)
   await expect(page.getByRole('table', { name: 'Détail par produit' })).toContainText('Champagne brut 75 cl')
+  // Produit par produit : prix public et prix d'achat gardés, marge unitaire affichée (8,90 € TTC = 7,42 € HT − 4,20 € = 3,22 €, 43,4 %)
+  await expect(page.getByRole('textbox', { name: 'Achat HT, Côtes du Rhône rouge 75 cl' })).toBeVisible()
+  await expect(page.getByLabel('Marge HT par unité, Côtes du Rhône rouge 75 cl')).toContainText(/3,22\s€ · 43,4\s?%/)
   // Plus de 100 unités : on passe au palier 2
   await page.getByRole('textbox', { name: 'Unités, Côtes du Rhône rouge 75 cl' }).fill('60')
   await expect(statut).toContainText(/110 unités, palier 2 à 8\s?%/)

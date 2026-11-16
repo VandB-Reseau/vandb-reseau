@@ -72,7 +72,7 @@ import {
 } from '../moteur/simulateurs'
 import {
   auditPression, cartePression, margeFut, coutComposition, coutContrats, margePourPrix, nouveauBec, palierExterieur, prixLivraisonGrille, prixPourMarge,
-  gainsSelonFuts, simulerExterieur, simulerOuverture, simulerParc, simulerProspection, simulerRemisesB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise,
+  gainsSelonFuts, simulerExterieur, simulerOuverture, simulerParc, simulerProspection, simulerRemisesB2B, unitaireB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise,
 } from '../moteur/boiteOutils'
 import { baseCaisse, budgetSurCaisse, meilleursLeviers, type CleLevier } from '../moteur/leviers'
 import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TempsFort, Univers } from '../moteur/types'
@@ -111,8 +111,8 @@ const SIMULATEURS = LISTE_SIMULATEURS.map((x) => ({ ...x, ...DETAILS[x.cle] }))
 type Famille = 'vendre' | 'evenements' | 'equipe' | 'investir'
 const FAMILLES: [Famille, string][] = [['vendre', 'Vendre plus'], ['evenements', 'Événements et extérieur'], ['equipe', 'Équipe'], ['investir', 'Investir et trésorerie']]
 const FAMILLE_DE: Record<TypeSimulation, Famille> = {
-  levier: 'vendre', vente_additionnelle: 'vendre', reste_a_faire: 'vendre', prix: 'vendre', remises_b2b: 'vendre', calculette: 'vendre',
-  soiree: 'evenements', exterieur: 'evenements', tireuses: 'evenements', pression: 'evenements',
+  levier: 'vendre', vente_additionnelle: 'vendre', reste_a_faire: 'vendre', prix: 'vendre', calculette: 'vendre',
+  soiree: 'evenements', exterieur: 'evenements', tireuses: 'evenements', pression: 'evenements', remises_b2b: 'evenements', // Joseph 16/11 : avec le marché extérieur
   embauche: 'equipe', ouverture: 'equipe',
   investissement: 'investir', achat: 'investir', tresorerie: 'investir',
 }
@@ -446,8 +446,9 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       client: 'Comité d’entreprise', mode: 'famille', plancher: 0.25,
       paliers: [{ min: 0, remise: 0 }, { min: 50, remise: 0.05 }, { min: 100, remise: 0.08 }, { min: 200, remise: 0.1 }, { min: 500, remise: 0.12 }, { min: 1000, remise: 0.15 }],
       familles: [
-        { libelle: 'Vin', quantite: 50, prixTTC: 12.2, achatHT: 6.05 }, { libelle: 'Effervescent', quantite: 20, prixTTC: 21.95, achatHT: 11.55 },
-        { libelle: 'Spiritueux', quantite: 20, prixTTC: 40.4, achatHT: 24.88 }, { libelle: 'Bourriche', quantite: 10, prixTTC: 34.9, achatHT: 19.25 },
+        // % de marge sur le prix HT avant remise, arrondis depuis les achats du fichier (6,05 € ; 11,55 € ; 24,88 € ; 19,25 €)
+        { libelle: 'Vin', quantite: 50, prixTTC: 12.2, achatHT: 0, taux: 0.4 }, { libelle: 'Effervescent', quantite: 20, prixTTC: 21.95, achatHT: 0, taux: 0.37 },
+        { libelle: 'Spiritueux', quantite: 20, prixTTC: 40.4, achatHT: 0, taux: 0.26 }, { libelle: 'Bourriche', quantite: 10, prixTTC: 34.9, achatHT: 0, taux: 0.34 },
       ],
       produits: [
         { libelle: 'Côtes du Rhône rouge 75 cl', quantite: 30, prixTTC: 8.9, achatHT: 4.2 }, { libelle: 'Crémant de Loire brut 75 cl', quantite: 20, prixTTC: 11.9, achatHT: 5.6 },
@@ -1605,17 +1606,25 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         <Bloc titre={parFamille ? '3. Les familles commandées' : '3. Les produits commandés'} total={{ libelle: 'CA HT avant remise', valeur: montant(r.caBrut) }}>
           {lignes.map((l, i) => {
             const nomLigne = l.libelle || `${parFamille ? 'Famille' : 'Produit'} ${i + 1}`
+            const u = unitaireB2B(l, s.tva.normale)
             return (
               <Saisies key={i}>
                 <Texte libelle={parFamille ? 'Famille' : 'Produit'} aria={`${parFamille ? 'Famille' : 'Produit'} ${i + 1}`} valeur={l.libelle} onChange={(libelle) => majLigne(i, { libelle })} largeur={parFamille ? 160 : 240} />
                 <MontantDe libelle="Unités" aria={`Unités, ${nomLigne}`} valeur={l.quantite} onChange={(v) => majLigne(i, { quantite: Math.max(0, Math.round(v)) })} unite="" largeur={100} />
                 <MontantDe libelle={parFamille ? 'Prix public moyen TTC' : 'Prix public TTC'} aria={`Prix public TTC, ${nomLigne}`} valeur={l.prixTTC} onChange={(v) => majLigne(i, { prixTTC: v })} />
-                <MontantDe libelle={parFamille ? 'Achat moyen HT' : 'Achat HT, accises comprises'} aria={`Achat HT, ${nomLigne}`} valeur={l.achatHT} onChange={(v) => majLigne(i, { achatHT: v })} />
+                {parFamille
+                  ? <TauxDe libelle="% de marge" aria={`% de marge, ${nomLigne}`} valeur={u.taux ?? 0} onChange={(v) => majLigne(i, { taux: v })} />
+                  : <MontantDe libelle="Achat HT, accises comprises" aria={`Achat HT, ${nomLigne}`} valeur={l.achatHT} onChange={(v) => majLigne(i, { achatHT: v })} />}
+                <Champ libelle={parFamille ? 'Marge HT par unité' : 'Marge unitaire HT'}>
+                  <Typography aria-label={`Marge HT par unité, ${nomLigne}`} sx={{ minHeight: 48, minWidth: 110, display: 'flex', alignItems: 'center', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: u.marge < 0 ? 'error.main' : 'text.primary' }}>
+                    {u.prixHT > 0 ? `${centimes(u.marge)}${parFamille || u.taux === null ? '' : ` · ${taux(u.taux)}`}` : '–'}
+                  </Typography>
+                </Champ>
                 {lignes.length > 1 && <Button color="inherit" startIcon={<DeleteOutlineOutlined />} onClick={() => maj('remises_b2b', { [cleLignes]: lignes.filter((_, j) => j !== i) })} aria-label={`Retirer ${nomLigne}`} sx={{ minHeight: 48 }}>Retirer</Button>}
               </Saisies>
             )
           })}
-          <Box>{lignes.length < 40 && <Button startIcon={<AddOutlined />} onClick={() => maj('remises_b2b', { [cleLignes]: [...lignes, { libelle: '', quantite: 0, prixTTC: 0, achatHT: 0 }] })} sx={{ minHeight: 48 }}>{parFamille ? 'Ajouter une famille' : 'Ajouter un produit'}</Button>}</Box>
+          <Box>{lignes.length < 40 && <Button startIcon={<AddOutlined />} onClick={() => maj('remises_b2b', { [cleLignes]: [...lignes, parFamille ? { libelle: '', quantite: 0, prixTTC: 0, achatHT: 0, taux: 0 } : { libelle: '', quantite: 0, prixTTC: 0, achatHT: 0 }] })} sx={{ minHeight: 48 }}>{parFamille ? 'Ajouter une famille' : 'Ajouter un produit'}</Button>}</Box>
           {parFamille && <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>Par famille, les prix moyens donnent une première idée ; produit par produit, la commande réelle.</Typography>}
         </Bloc>
         <Bloc titre="4. Démarcher d’autres entreprises" total={e.prospection ? { libelle: 'Temps passé', valeur: `− ${montant(pr.coutTemps)}` } : undefined}>

@@ -575,10 +575,16 @@ export const AIDE = {
     remplir: 'Prix TTC par participant, participants attendus, marge ; la part des participants qui achète en cave et son panier ; les coûts ligne par ligne, les extras et les heures en plus de l’équipe déjà en place.',
     calcul: 'Gain = marge (entrée et achats) − redevance et publicité − coûts. Achats : participants × part qui achète × panier, à la marge de la cave ; un bon d’achat du prix d’entrée est une remise sur ces achats. Heures de l’équipe = personnes × heures × coût horaire × (1 + majoration). Seuil = coûts ÷ gain par participant. « Mettre dans mon budget » ajoute un temps fort (et un en cave pour les achats) ; extras et heures se saisissent dans l’Équipe.',
   },
+  coutArgent: {
+    titre: 'Argent immobilisé : quel taux ?',
+    quoi: 'Ce que coûte l’argent bloqué dans un stock acheté en avance. Pas forcément un découvert.',
+    remplir: 'Le taux du découvert si le magasin est à découvert ; sinon ce que rapporterait cet argent placé ; 0 % s’il dort sur le compte. Modifiable dans chaque simulation.',
+    calcul: 'Coût = montant payé × taux ÷ 12 × la moitié des mois pour tout vendre (le stock se vide peu à peu).',
+  },
   simAchat: {
     titre: 'Acheter en volume',
     quoi: 'Une remise du fournisseur face à l’argent bloqué en stock et au risque d’invendu.',
-    remplir: 'Le montant au prix habituel, la remise, le temps pour tout vendre, la part qui risque de rester, le coût annuel de l’argent (découvert).',
+    remplir: 'Le montant au prix habituel, la remise, le temps pour tout vendre, la part qui risque de rester, le coût annuel de l’argent : le taux du découvert si le magasin est à découvert, sinon ce que rapporterait cet argent placé, 0 % s’il dort sur le compte.',
     calcul: 'Gain = remise − invendu au prix payé − coût de l’argent (montant payé × taux ÷ 12 × la moitié des mois pour tout vendre). Durée maximale : celle où le gain tombe à zéro.',
   },
   simInvestissement: {
@@ -615,7 +621,7 @@ export const AIDE = {
   simRemisesB2B: {
     titre: 'Remises entreprise par paliers',
     quoi: 'Une commande d’entreprise (comité d’entreprise, mariage, cadeaux d’affaires) : la remise de chaque palier de quantité, la marge qui reste et ce qu’on cède au client.',
-    remplir: 'Les paliers (à partir de combien d’unités, quelle remise) et la marge plancher, modifiables à chaque simulation. Par famille : unités, prix public moyen TTC et achat moyen HT, pour une première idée. Produit par produit : la commande réelle, ligne à ligne. Une bouteille ou une bourriche compte pour une unité ; le prix d’achat comprend les accises.',
+    remplir: 'Les paliers (à partir de combien d’unités, quelle remise) et la marge plancher, modifiables à chaque simulation. Par famille : unités, prix public moyen TTC et % de marge sur le prix HT avant remise, pour une première idée. Produit par produit : la commande réelle, ligne à ligne, avec le prix d’achat ; la marge par unité s’affiche à côté. Une bouteille ou une bourriche compte pour une unité ; le prix d’achat comprend les accises.',
     calcul: 'Le palier se lit sur le total des unités ; sa remise s’applique à toute la commande. Prix HT = prix public TTC ÷ (1 + TVA). CA HT net = CA HT × (1 − remise). Taux de marge = (CA HT net − achats HT) ÷ CA HT net, comparé au plancher. Remise maximale d’un produit = 1 − achat ÷ (prix HT × (1 − plancher)). Ce qu’il reste au magasin = marge − redevance et publicité (3 % du CA HT net). Creux : en passant un seuil, la marge totale retombe sous celle du haut du palier précédent jusqu’à la quantité indiquée (au même mélange de produits). Démarcher d’autres entreprises : temps = heures par semaine × semaines × coût d’une heure chargée ; marge attendue = entreprises × ticket moyen HT × marge (celle de la commande par défaut) − redevance et publicité ; entreprises pour payer le temps = temps ÷ (ticket × (marge − 3 %)), à l’entreprise supérieure.',
   },
   simOuverture: {

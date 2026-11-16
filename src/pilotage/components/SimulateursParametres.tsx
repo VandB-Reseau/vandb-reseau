@@ -14,6 +14,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import TableHead from '@mui/material/TableHead'
 import Typography from '@mui/material/Typography'
+import { Aide } from './Aide'
 import { ChampMontant } from './ChampMontant'
 import { ChampTaux } from './ChampTaux'
 import { useSaisieEnCours } from './GardeSaisie'
@@ -73,7 +74,7 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
       setOccupe(false)
     }
   }
-  const ligne = (libelle: string, champ: ReactNode) => <TableRow><TableCell>{libelle}</TableCell><TableCell align="right">{champ}</TableCell></TableRow>
+  const ligne = (libelle: ReactNode, champ: ReactNode) => <TableRow><TableCell>{libelle}</TableCell><TableCell align="right">{champ}</TableCell></TableRow>
 
   return (
     <SectionParametres nom="Simulateurs" titre={`Repères des simulateurs ${annee}`} parDefaut={empreinte === JSON.stringify(simulateursParDefaut)}
@@ -87,7 +88,7 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
       )}
       <Table aria-label={`Repères des simulateurs ${annee}`}>
         <TableBody>
-          {ligne('Coût annuel de l’argent immobilisé (découvert), proposé dans « Acheter en volume »', <ChampTaux libelle="Coût annuel de l’argent" valeur={v.tauxDecouvert} onChange={(x) => setV((y) => ({ ...y, tauxDecouvert: x ?? 0 }))} />)}
+          {ligne(<>Coût annuel de l’argent immobilisé (découvert ou placement), proposé dans « Acheter en volume » <Aide sujet="coutArgent" compact /></>, <ChampTaux libelle="Coût annuel de l’argent" valeur={v.tauxDecouvert} onChange={(x) => setV((y) => ({ ...y, tauxDecouvert: x ?? 0 }))} />)}
           {ligne('Aide à l’embauche d’un apprenti, par an, déduite dans « Embaucher »', <ChampMontant libelle="Aide à l’embauche d’un apprenti" valeur={v.aideApprenti} onChange={(x) => setV((y) => ({ ...y, aideApprenti: x }))} largeur={160} />)}
           {ligne('Corner alimentaire : CA HT par mètre linéaire et par an', <ChampMontant libelle="CA du corner par mètre" valeur={v.corner.caParMetre} onChange={(x) => corner('caParMetre', x)} largeur={160} />)}
           {ligne('Corner alimentaire : taux de marge', <ChampTaux libelle="Taux de marge du corner" valeur={v.corner.tauxMarge} onChange={(x) => corner('tauxMarge', x ?? 0)} />)}
