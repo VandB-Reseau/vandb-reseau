@@ -45,6 +45,7 @@ import { SelecteurMonMagasin } from '../components/SelecteurMonMagasin'
 import { useCompteurTaches } from '../data/tachesVues'
 import { useNouveautesInfos } from '../data/infosVues'
 import { useAuth } from '../auth/AuthContext'
+import { useReprise } from '../lib/reprise'
 import { roleLibelle } from '../auth/roles'
 import NotificationsActiveOutlined from '@mui/icons-material/NotificationsActiveOutlined'
 import NotificationsOffOutlined from '@mui/icons-material/NotificationsOffOutlined'
@@ -316,6 +317,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const { pathname } = useLocation()
   const { profil } = useAuth()
+  useReprise(profil?.id) // 234 : rouvrir là où on s'est arrêté
   // Téléphone : la barre du bas s'efface dans une conversation et pendant la saisie d'un message, pour laisser la place au clavier
   const [saisie, setSaisie] = useState(false)
   useEffect(() => {

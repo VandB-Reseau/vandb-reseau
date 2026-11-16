@@ -612,6 +612,12 @@ export const AIDE = {
     remplir: 'Les composants et leur coût HT, le taux de TVA, puis la marge visée ou le prix TTC. La famille remplit la marge visée et la TVA réglées par le siège. « Plusieurs produits » : un coffret, une planche, un panier, chaque produit avec son coût, sa consigne non reprise, son prix et sa quantité.',
     calcul: 'Prix HT = coût ÷ (1 − marge) ; prix TTC = HT × (1 + TVA). Taux de marge = (prix HT − coût) ÷ prix HT. Coefficient = prix TTC ÷ coût HT. Plusieurs produits : marge = (somme des prix HT − somme des coûts et consignes) ÷ somme des prix HT. Taux de TVA et marges par famille réglés par le siège.',
   },
+  simRemisesB2B: {
+    titre: 'Remises entreprise par paliers',
+    quoi: 'Une commande d’entreprise (comité d’entreprise, mariage, cadeaux d’affaires) : la remise de chaque palier de quantité, la marge qui reste et ce qu’on cède au client.',
+    remplir: 'Les paliers (à partir de combien d’unités, quelle remise) et la marge plancher, modifiables à chaque simulation. Par famille : unités, prix public moyen TTC et achat moyen HT, pour une première idée. Produit par produit : la commande réelle, ligne à ligne. Une bouteille ou une bourriche compte pour une unité ; le prix d’achat comprend les accises.',
+    calcul: 'Le palier se lit sur le total des unités ; sa remise s’applique à toute la commande. Prix HT = prix public TTC ÷ (1 + TVA). CA HT net = CA HT × (1 − remise). Taux de marge = (CA HT net − achats HT) ÷ CA HT net, comparé au plancher. Remise maximale d’un produit = 1 − achat ÷ (prix HT × (1 − plancher)). Ce qu’il reste au magasin = marge − redevance et publicité (3 % du CA HT net). Creux : en passant un seuil, la marge totale retombe sous celle du haut du palier précédent jusqu’à la quantité indiquée (au même mélange de produits).',
+  },
   simOuverture: {
     titre: 'Dimanche ou jour férié',
     quoi: 'Ce que rapporte une ouverture exceptionnelle, une fois l’équipe payée avec sa majoration.',

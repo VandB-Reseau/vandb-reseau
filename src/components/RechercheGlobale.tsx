@@ -24,12 +24,17 @@ import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import { useMessagerie } from '../data/MessagerieContext'
 import { filDe, lienFil, nomDe } from '../data/messagerie'
 import { useApercu } from '../auth/Apercu'
+import CalculateOutlined from '@mui/icons-material/CalculateOutlined'
+import ArticleOutlined from '@mui/icons-material/ArticleOutlined'
+import { parametres as pagesReglages, rubriquesMenu } from '../navigation/destinations'
+import { LISTE_SIMULATEURS } from '../pilotage/lib/listeSimulateurs'
 
-interface Resultat { type: 'Messages' | 'Actions' | 'Favoris' | 'Consultés récemment' | 'Magasins' | 'Coachs' | 'Responsables Régionaux' | 'Franchisés' | 'Direction'; libelle: string; detail: string; cible: string; cle: string; faire?: { choix: Choix | 'message'; magasin?: string } }
+interface Resultat { type: 'Messages' | 'Actions' | 'Favoris' | 'Consultés récemment' | 'Magasins' | 'Coachs' | 'Responsables Régionaux' | 'Franchisés' | 'Direction' | 'Pages' | 'Simulateurs'; libelle: string; detail: string; cible: string; cle: string; faire?: { choix: Choix | 'message'; magasin?: string } }
 
-const icones = { Messages: <ForumOutlined />, Actions: <AddOutlined />, Favoris: <StarOutlined />, 'Consultés récemment': <HistoryOutlined />, Magasins: <StorefrontOutlined />, Coachs: <PersonOutline />, 'Responsables Régionaux': <SupervisorAccountOutlined />, Franchisés: <HandshakeOutlined />, Direction: <AdminPanelSettingsOutlined /> }
+const icones = { Messages: <ForumOutlined />, Actions: <AddOutlined />, Favoris: <StarOutlined />, 'Consultés récemment': <HistoryOutlined />, Magasins: <StorefrontOutlined />, Coachs: <PersonOutline />, 'Responsables Régionaux': <SupervisorAccountOutlined />, Franchisés: <HandshakeOutlined />, Direction: <AdminPanelSettingsOutlined />, Pages: <ArticleOutlined />, Simulateurs: <CalculateOutlined /> }
 
-const ordreTypes: Resultat['type'][] = ['Coachs', 'Responsables Régionaux', 'Direction', 'Franchisés', 'Magasins']
+// 232 (Joseph, 16/11/2026) : les pages du menu et chaque simulateur se trouvent aussi en deux touches
+const ordreTypes: Resultat['type'][] = ['Coachs', 'Responsables Régionaux', 'Direction', 'Franchisés', 'Magasins', 'Pages', 'Simulateurs']
 
 // Actions proposées par la recherche (refonte, Joseph 09/11/2026, choix 9A) : créer sans quitter l'écran
 const ACTIONS: { choix: Choix | 'message'; libelle: string; avecMagasin: string; mots: string }[] = [
@@ -72,8 +77,11 @@ export function RechercheGlobale({ surFonce, court, menu }: { surFonce?: boolean
       ...reseau.rrs.map((r) => ({ type: 'Responsables Régionaux' as const, libelle: r.nom, detail: `${reseau.magasins.filter((m) => m.rr?.id === r.id).length} magasins`, cible: lienRR(r.id), cle: `r-${r.id}` })),
       ...franchises(reseau).map((f) => ({ type: 'Franchisés' as const, libelle: f.nom, detail: f.magasins.map((m) => m.nom).join(', '), cible: lienFranchise(f.nom), cle: `f-${f.nom}` })),
       ...(reseau.directeur.nom !== 'Direction du réseau' ? [{ type: 'Direction' as const, libelle: reseau.directeur.nom, detail: reseau.directeur.titre, cible: lienDirecteur(), cle: 'directeur' }] : []),
+      ...[...rubriquesMenu().flatMap((r) => r.destinations), ...(profil?.role === 'directeur' ? pagesReglages : [])]
+        .map((d) => ({ type: 'Pages' as const, libelle: d.libelle, detail: d.description, cible: d.chemin, cle: `p-${d.chemin}` })),
+      ...LISTE_SIMULATEURS.map((x) => ({ type: 'Simulateurs' as const, libelle: x.titre, detail: x.question, cible: `/simulateurs?sim=${x.cle}`, cle: `s-${x.cle}` })),
     ]
-  }, [reseau])
+  }, [reseau, profil?.role])
   // Champ vide : favoris puis dernières fiches ouvertes
   const suivis = useSuivis()
   const enTete = useMemo<Resultat[]>(() => {
@@ -106,8 +114,9 @@ export function RechercheGlobale({ surFonce, court, menu }: { surFonce?: boolean
         const tries = trouves.sort((a, b) => ordre(a) - ordre(b) || rang(a) - rang(b)).slice(0, 12)
         // Un magasin trouvé : ses actions directes (« Saisir une visite à Annecy »)
         const premier = tries.find((o) => o.type === 'Magasins')
-        const surMagasin: Resultat[] = avecActions && premier ? ACTIONS.filter((a) => a.avecMagasin)
-          .map((a) => ({ type: 'Actions' as const, libelle: `${a.avecMagasin} ${premier.libelle}`, detail: '', cible: '', cle: `a-${a.choix}-${premier.libelle}`, faire: { choix: a.choix, magasin: premier.libelle } })) : []
+        const surMagasin: Resultat[] = avecActions && premier ? [...ACTIONS.filter((a) => a.avecMagasin)
+          .map((a) => ({ type: 'Actions' as const, libelle: `${a.avecMagasin} ${premier.libelle}`, detail: '', cible: '', cle: `a-${a.choix}-${premier.libelle}`, faire: { choix: a.choix, magasin: premier.libelle } })),
+          { type: 'Actions' as const, libelle: `Simuler pour ${premier.libelle}`, detail: '', cible: `${lienFiche(premier.libelle)}?vue=simulateurs&partie=simulateurs`, cle: `a-simuler-${premier.libelle}` }] : []
         const messages: Resultat[] = []
         if (reseau && messagerie && t.length >= 3) {
           for (const x of [...messagerie.messages].reverse()) {
