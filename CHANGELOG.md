@@ -14,6 +14,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   Marché extérieur (gardé : tireuses, véhicule, stock déporté), ordres de grandeur fictifs ; exemple = travaux terrasse
   (25 000 €, remboursé en 4,6 ans) au lieu d'un marché extérieur sans préconisation (15 000 € pour 31 000 € d'EBE).
   Jours de fermeture : marge perdue (CA d'un jour du budget × marge du magasin) ajoutée au délai de retour et à l'année 1.
+- Simulateur « Contrat extérieur » : gobelets réutilisables comptés par contrat (Joseph, 16/11/2026), sans migration.
+  Nombre de gobelets fournis sur l'année × prix d'un gobelet (exemple 500 × 0,25 € = 125 €), en coût fixe ; le champ
+  « Gobelets par fût » disparaît.
 - Simulateur « Contrat extérieur » : durée du contrat en années (Joseph, 16/11/2026), sans migration. Une tireuse achetée
   pour un contrat plus court que sa durée de vie se paie sur le contrat (gain, équilibre et remise maximale en tiennent
   compte) ; en plus : reste non amorti si le client part, équilibre si la tireuse ressert ailleurs, gain sur la durée

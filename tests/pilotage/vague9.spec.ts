@@ -57,14 +57,16 @@ test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', a
   await expect(page.getByLabel('Durée du contrat')).toHaveValue('3')
   await expect(page.getByRole('region', { name: '3. Tireuse' })).toContainText(/payée sur le contrat, 500\s€ par an au lieu de 300\s€\. Si le client part à la fin, il reste 600\s€ non amortis\./)
   const compte = page.getByRole('table', { name: 'Compte de l’année' })
-  await expect(compte.getByRole('row')).toHaveText([/Recettes.*\+ 2\s760\s€/, /Fûts.*− 1\s684\s€/, /Redevance et publicité.*− 83\s€/, /Tireuse.*− 500\s€/, /Livraisons.*− 480\s€/, /Gain de l’année.*13\s€/])
-  // 24,83 € nets par fût ; 500 € de tireuse + 10 × 48 € de livraisons = 980 € ; équilibre à 40 fûts (39,5) ; 13 € de gain à 40 fûts ;
-  // si la tireuse ressert : 780 ÷ 24,83 = 31,4, 32 fûts
-  await expect(page.getByRole('status')).toContainText(/24,83\s€ nets par fût, 980\s€ de coûts fixes, équilibre à 40 fûts ; gain de 13\s€ au volume prévu\. Tireuse payée sur les 3 ans du contrat : 600\s€ non amortis si le client part, équilibre à 32 fûts si elle ressert ailleurs\./)
-  await expect(page.getByText('Gain sur la durée du contrat')).toBeVisible() // 3 × 13,2 = 40 €
-  // Contrat de 5 ans : on revient à l'amortissement sur la durée de vie
+  // Gobelets réutilisables du contrat (Joseph, 16/11/2026) : 500 × 0,25 € = 125 € de coût fixe
+  await expect(page.getByRole('region', { name: '5. Matériel, gobelets et astreinte' }).locator('.sous-total')).toHaveText(/Par an\s*− 125\s€/)
+  await expect(compte.getByRole('row')).toHaveText([/Recettes.*\+ 2\s760\s€/, /Fûts.*− 1\s684\s€/, /Redevance et publicité.*− 83\s€/, /Tireuse.*− 500\s€/, /Livraisons.*− 480\s€/, /Matériel, gobelets et astreinte.*− 125\s€/, /Perte de l’année.*112\s€/])
+  // 24,83 € nets par fût ; 500 € de tireuse + 480 € de livraisons + 125 € de gobelets = 1 105 € ; équilibre à 45 fûts (44,5) ;
+  // 40 × 24,83 − 1 105 = − 111,80 € ; si la tireuse ressert : 905 ÷ 24,83 = 36,4, 37 fûts
+  await expect(page.getByRole('status')).toContainText(/24,83\s€ nets par fût, 1\s105\s€ de coûts fixes, équilibre à 45 fûts ; perte de 112\s€ au volume prévu\. Tireuse payée sur les 3 ans du contrat : 600\s€ non amortis si le client part, équilibre à 37 fûts si elle ressert ailleurs\./)
+  await expect(page.getByText('Perte sur la durée du contrat')).toBeVisible() // 3 × 111,80 = 335 €
+  // Contrat de 5 ans : on revient à l'amortissement sur la durée de vie : 905 € ; 993,20 − 905 = 88 €
   await page.getByLabel('Durée du contrat').fill('5')
-  await expect(page.getByRole('status')).toContainText(/780\s€ de coûts fixes, équilibre à 32 fûts ; gain de 213\s€ au volume prévu\.$/)
+  await expect(page.getByRole('status')).toContainText(/905\s€ de coûts fixes, équilibre à 37 fûts ; gain de 88\s€ au volume prévu\.$/)
   await expect(page.getByText('Reste non amorti en fin de contrat')).toHaveCount(0)
   await page.getByLabel('Durée du contrat').fill('3')
   // Don de 1 000 € avec reçu Cerfa : 400 € de coût réel (réduction mécénat réglée par le siège)
@@ -72,10 +74,10 @@ test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', a
   await page.getByLabel('Montant du don').fill('1000')
   await expect(page.getByLabel('Reçu Cerfa demandé')).toBeChecked()
   await expect(page.getByText('Coût réel du don')).toBeVisible()
-  // 980 + 400 = 1 380 € ; 1 380 ÷ 24,83 = 55,6, 56 fûts ; 40 × 24,83 − 1 380 = − 386,80 €
-  await expect(page.getByRole('status')).toContainText(/1\s380\s€ de coûts fixes, équilibre à 56 fûts ; perte de 387\s€/)
+  // 1 105 + 400 = 1 505 € ; 1 505 ÷ 24,83 = 60,6, 61 fûts ; 40 × 24,83 − 1 505 = − 511,80 €
+  await expect(page.getByRole('status')).toContainText(/1\s505\s€ de coûts fixes, équilibre à 61 fûts ; perte de 512\s€/)
   await page.getByLabel('Reçu Cerfa demandé').uncheck()
-  await expect(page.getByRole('status')).toContainText(/1\s980\s€ de coûts fixes/)
+  await expect(page.getByRole('status')).toContainText(/2\s105\s€ de coûts fixes/)
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-simulateur-exterieur.png`, fullPage: true })

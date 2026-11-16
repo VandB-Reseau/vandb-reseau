@@ -42,6 +42,8 @@ export interface ContratExterieur {
   astreinte?: number                                  // heures d'astreinte du week-end par an
   locations?: { nombre: number; prix: number }        // locations de tireuse facturées (sans fûts du contrat)
   dureeContrat?: number                               // années ; 0 ou absent : la tireuse s'amortit sur sa durée de vie
+  // Gobelets réutilisables fournis pour le contrat (Joseph, 16/11/2026 : 0,25 € le gobelet) : nombre × prix, coût fixe
+  gobeletsContrat?: { nombre: number; prix: number }
 }
 export interface EffetExterieur {
   caParFut: number; redevanceParFut: number; netParFut: number; ca: number
@@ -49,7 +51,7 @@ export interface EffetExterieur {
   // Détail d'une livraison (Joseph, 14/11/2026) : indemnités kilométriques, temps passé, facturé, net de l'année
   kmLivraison: number; tempsLivraison: number; livraisonsFacturees: number; netLivraisons: number
   don: { valeur: number; reduction: number; cout: number }
-  sponsoring: number; materiel: number; astreinte: number; recettes: number; recettesNettes: number
+  sponsoring: number; materiel: number; astreinte: number; gobeletsAn: number; recettes: number; recettesNettes: number
   coutFixe: number; gain: number; equilibre: number | null; remiseMax: number | null
   // Compte de résultat du contrat (Joseph, 15/11/2026) : CA − fûts (achat, CO2, gobelets) − redevance et publicité
   // − rétrocession du sponsoring − coûts fixes = gain
@@ -82,17 +84,18 @@ export function simulerExterieur(x: ContratExterieur, p: Redevances, donMecenat:
   const reduction = donMecenat && x.don.cerfa ? valeur * TAUX_MECENAT : 0
   const don = { valeur, reduction, cout: valeur - reduction }
   const sponsoring = pos(x.sponsoring?.montant), materiel = pos(x.materiel), astreinte = pos(x.astreinte) * pos(x.coutHoraire)
+  const gobeletsAn = pos(x.gobeletsContrat?.nombre) * pos(x.gobeletsContrat?.prix)
   const livraisonsFacturees = pos(x.livraisons) * pos(x.prixLivraison)
   const recettes = livraisonsFacturees + pos(x.locations?.nombre) * pos(x.locations?.prix)
   const recettesNettes = recettes * (1 - rp)
-  const coutFixe = tireuseAn + livraisonsAn + don.cout + sponsoring + materiel + astreinte
+  const coutFixe = tireuseAn + livraisonsAn + don.cout + sponsoring + materiel + astreinte + gobeletsAn
   const futs = pos(x.futs)
   const gain = futs * netParFut + recettesNettes - coutFixe
   const reste = coutFixe - recettesNettes
   return {
     caParFut, redevanceParFut, netParFut, ca: futs * caParFut + recettes, tireuseAn, coutLivraison, livraisonsAn,
     kmLivraison, tempsLivraison, livraisonsFacturees, netLivraisons: livraisonsFacturees * (1 - rp) - livraisonsAn,
-    prixPlancherLivraison: rp < 1 ? coutLivraison / (1 - rp) : null, don, sponsoring, materiel, astreinte, recettes, recettesNettes, coutFixe, gain,
+    prixPlancherLivraison: rp < 1 ? coutLivraison / (1 - rp) : null, don, sponsoring, materiel, astreinte, gobeletsAn, recettes, recettesNettes, coutFixe, gain,
     equilibre: equilibre(reste, netParFut),
     remiseMax: futs > 0 && rp < 1 ? Math.max(0, pos(x.remise) + (netParFut - reste / futs) / (1 - rp)) : null,
     coutFuts: futs * (pos(x.prixAchat) + pos(x.co2) + pos(x.gobelets)), redevance: (futs * caParFut + recettes) * rp, retrocession: futs * pos(x.sponsoring?.parFut),
