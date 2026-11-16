@@ -217,31 +217,44 @@ export function simulerPrix(type: 'remise' | 'hausse', taux: number, tauxMarge: 
   return { type, taux: t, tauxMarge: m, ventesEnPlus: null, ventesPerdables: m + t > 0 ? 1 - m / (m + t) : null, nouveauTauxMarge: (m + t) / (1 + t) }
 }
 
-// Offre en lot « N + G » (Joseph, 16/11/2026) : en parallèle de la remise sur toutes les ventes, ce que rapporte l'offre si
-// des clients montent d'un cran : en 5 + 1, ceux qui prenaient 4 bouteilles en paient 5 et en emportent 6 (« avant » = N − 1
-// par défaut, modifiable). Pour 100 clients du produit (tickets constants) : « deja » prenaient déjà N bouteilles et reçoivent
-// maintenant G offertes (effet d'aubaine, G × coût d'achat chacun) ; les autres prenaient « avant » bouteilles, « monte »
-// d'entre eux passent au lot. Tout en HT, prix P, marge m :
-// un client qui monte rapporte P × (N − (N + G) × (1 − m) − avant × m), positif seulement si m > G ÷ (N + G − avant).
-// Seuil = clients qui doivent monter pour couvrir l'aubaine ; null si chaque client qui monte fait perdre de la marge.
-export interface EtatLot { bouteilles: number; ca: number; marge: number; panier: number; margeTicket: number }
-export interface EffetLot { remise: number; avant: EtatLot; apres: EtatLot; gain: number; gainParClient: number; perteAubaine: number; seuil: number | null; margeMini: number; monte: number }
-export function simulerLot(o: { payes: number; offerts: number; avant: number; prixHT: number; tauxMarge: number; monte: number; deja: number; clients?: number }): EffetLot | null {
-  const n = Math.max(0, o.payes), g = Math.max(0, o.offerts), l = n + g, k = Math.min(n, Math.max(0, o.avant)), clients = o.clients ?? 100
-  if (g <= 0 || n <= 0 || o.prixHT <= 0) return null
-  const p = o.prixHT, m = o.tauxMarge
-  const deja = Math.min(clients, Math.max(0, o.deja)), monte = Math.min(clients - deja, Math.max(0, o.monte))
-  const etat = (bouteilles: number, ca: number): EtatLot => {
-    const marge = ca - bouteilles * p * (1 - m)
-    return { bouteilles, ca, marge, panier: ca / clients, margeTicket: marge / clients }
-  }
-  const reste = clients - deja
-  const avant = etat(reste * k + deja * n, p * (reste * k + deja * n))
-  const apres = etat((reste - monte) * k + (deja + monte) * l, p * ((reste - monte) * k + (deja + monte) * n))
-  const gainParClient = p * (n - l * (1 - m) - k * m), perteAubaine = deja * g * p * (1 - m)
+// Offre en lot « N + G » (Joseph, 16/11/2026, repris le soir) : l'offre se juge en MASSE de marge sur le mois, pas en taux.
+// Sur les clients du mois (tickets de l'univers, prix moyen P HT, marge m), trois effets :
+// - « monte » clients qui prenaient « milieu » bouteilles (2 ou 3) passent au lot : chacun rapporte P × ((N − milieu) − (N + G − milieu) × (1 − m)) ;
+// - « deja » clients qui prenaient déjà N bouteilles reçoivent G offertes (aubaine) : chacun coûte G × P × (1 − m) ;
+// - « bascule » clients qui prenaient N − 1 paient une bouteille de plus et en emportent 1 + G : chacun coûte P × ((1 + G) × (1 − m) − 1).
+// Coût de l'offre = aubaine + bascule. Seuil = clients qui doivent monter pour le rembourser ; « 1 client sur X » = clients ÷ seuil.
+// Taux de marge du magasin supposé égal à m (hypothèse) : il baisse un peu, la masse de marge monte.
+export interface EffetLot {
+  remise: number; gainParClient: number; coutAubaine: number; coutBascule: number; coutOffre: number
+  seuil: number | null; unSur: number | null; bouteillesEquivalentes: number; unSurBouteille: number | null
+  gain: number; caEnPlus: number; caAvant: number; margeAvant: number; tauxAvant: number; tauxApres: number
+  panierAvant: number; panierApres: number; bouteillesTicketAvant: number; bouteillesTicketApres: number; margeMini: number
+  paliers: { monte: number; gain: number; unSur: number | null }[]
+}
+export function simulerLot(o: { payes: number; offerts: number; milieu: number; prixHT: number; tauxMarge: number; clients: number; panierHT: number; monte: number; deja: number; bascule: number }): EffetLot | null {
+  const n = Math.max(0, o.payes), g = Math.max(0, o.offerts), l = n + g, k = Math.min(n, Math.max(0, o.milieu)), c = Math.max(0, o.clients)
+  if (g <= 0 || n <= 0 || o.prixHT <= 0 || c <= 0) return null
+  const p = o.prixHT, m = o.tauxMarge, cout = p * (1 - m)
+  const deja = Math.max(0, o.deja), bascule = Math.max(0, o.bascule), monte = Math.max(0, o.monte)
+  const gainParClient = p * (n - k) - (l - k) * cout // (N − milieu) bouteilles payées en plus, (N + G − milieu) sorties en plus
+  const coutAubaine = deja * g * cout, coutBascule = bascule * ((1 + g) * cout - p)
+  const coutOffre = coutAubaine + coutBascule
+  const seuil = coutOffre <= 0 ? 0 : gainParClient > 0 ? coutOffre / gainParClient : null
+  const unSur = (x: number | null) => (x === null ? null : x > 0 ? c / x : null)
+  const margeBouteille = p * m, bouteillesEquivalentes = margeBouteille > 0 ? Math.max(0, coutOffre) / margeBouteille : 0
+  const caAvant = c * Math.max(0, o.panierHT), margeAvant = caAvant * m
+  const effet = (x: number) => x * gainParClient - coutOffre
+  const caEnPlus = monte * (n - k) * p + bascule * p
+  const sorties = monte * (l - k) + bascule * (1 + g) + deja * g
+  const gain = effet(monte), caApres = caAvant + caEnPlus
+  const base = [5, 10, 20, 30, 50]
+  const paliers = [...new Set([...(seuil !== null && seuil > 0 ? [Math.ceil(seuil - 1e-9)] : []), ...base])].sort((a, b) => a - b).map((x) => ({ monte: x, gain: effet(x), unSur: unSur(x) }))
   return {
-    remise: g / l, avant, apres, gain: apres.marge - avant.marge, gainParClient, perteAubaine,
-    seuil: gainParClient > 0 ? perteAubaine / gainParClient : null, margeMini: g / (l - k), monte,
+    remise: g / l, gainParClient, coutAubaine, coutBascule, coutOffre, seuil, unSur: seuil === null ? null : seuil > 0 ? c / seuil : null,
+    bouteillesEquivalentes, unSurBouteille: bouteillesEquivalentes > 0 ? c / bouteillesEquivalentes : null,
+    gain, caEnPlus, caAvant, margeAvant, tauxAvant: caAvant > 0 ? m : 0, tauxApres: caApres > 0 ? (margeAvant + gain) / caApres : 0,
+    panierAvant: o.panierHT, panierApres: o.panierHT + caEnPlus / c, bouteillesTicketAvant: o.panierHT / p, bouteillesTicketApres: o.panierHT / p + sorties / c,
+    margeMini: g / (l - k), paliers,
   }
 }
 

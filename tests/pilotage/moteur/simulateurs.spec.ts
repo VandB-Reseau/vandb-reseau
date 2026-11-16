@@ -28,38 +28,48 @@ test('promo et hausse de prix : ventes en plus ou ventes qu’on peut perdre à 
   proche(h.nouveauTauxMarge, 0.35 / 1.05)
 })
 
-test('offre 5 + 1 en lot : marge des clients qui passent de 4 à 5 + 1 bouteilles', () => {
-  // 100 clients, bouteille 10 € HT (coût 6,50 € à 35 %), 5 prenaient déjà 5 bouteilles, les 95 autres 4, dont 10 montent à 5 + 1.
-  // Avant : 95 × 4 + 5 × 5 = 405 bouteilles, 4 050 € de CA, marge 4 050 × 35 % = 1 417,50 €.
-  // Après : 85 × 4 + 15 × 6 = 430 bouteilles ; CA 10 × (340 + 75) = 4 150 € ; coût 430 × 6,50 = 2 795 € ; marge 1 355 €, soit − 62,50 €.
-  // Un client qui monte : 50 − 39 = 11 € au lieu de 4 × 3,50 = 14 € → − 3 € ; l'aubaine : 5 bouteilles offertes × 6,50 = 32,50 €.
-  // Le lot ne rapporte qu'au-dessus de 1 ÷ (6 − 4) = 50 % de marge : aucun seuil.
-  const r = simulerLot({ payes: 5, offerts: 1, avant: 4, prixHT: 10, tauxMarge: 0.35, monte: 10, deja: 5 })!
+test('offre 5 + 1 en lot : l’effort pour rembourser l’offre, en masse de marge du mois', () => {
+  // 1 500 clients cave, panier 30 € HT, bouteille 10 € HT (coût 6,50 € à 35 %). Client du milieu : 2 bouteilles.
+  // Un client qui passe de 2 à 5 + 1 : 3 bouteilles payées en plus (30 €), 4 sorties en plus (26 €) → + 4 €.
+  // Aubaine : 10 clients prenaient déjà 5 → 10 × 6,50 = 65 € ; bascule : 10 clients de 4 à 5 + 1 → 10 × (13 − 10) = 30 €.
+  // Coût de l'offre 95 € ; seuil 95 ÷ 4 = 23,75 clients, soit 1 client sur 1 500 ÷ 23,75 = 63,2.
+  // 30 clients montent : 120 − 95 = + 25 € ; CA en plus 30 × 30 + 10 × 10 = 1 000 € ;
+  // taux : (45 000 × 35 % + 25) ÷ 46 000 = 15 775 ÷ 46 000 = 34,29 % (il baisse, la masse monte).
+  // Équivalent : 95 ÷ 3,50 = 27,1 bouteilles au prix normal, 1 client sur 55,3.
+  // Bouteilles par ticket : 3 → 3 + (30 × 4 + 10 × 2 + 10 × 1) ÷ 1 500 = 3,1.
+  const o = { payes: 5, offerts: 1, milieu: 2, prixHT: 10, tauxMarge: 0.35, clients: 1_500, panierHT: 30, monte: 30, deja: 10, bascule: 10 }
+  const r = simulerLot(o)!
   proche(r.remise, 1 / 6)
-  expect(r.avant).toMatchObject({ bouteilles: 405, ca: 4_050 })
-  proche(r.avant.marge, 1_417.5)
-  expect(r.apres).toMatchObject({ bouteilles: 430, ca: 4_150 })
-  proche(r.apres.marge, 1_355)
-  proche(r.apres.panier, 41.5)
-  proche(r.apres.margeTicket, 13.55)
-  proche(r.gain, -62.5)
-  proche(r.gainParClient, -3)
-  proche(r.perteAubaine, 32.5)
-  proche(r.margeMini, 0.5)
-  expect(r.seuil).toBeNull()
-  // Marge 60 % (coût 4 €) : 50 − 24 − 24 = + 2 € par client ; aubaine 5 × 4 = 20 € ; seuil 10 clients, gain nul à 10
-  const f = simulerLot({ payes: 5, offerts: 1, avant: 4, prixHT: 10, tauxMarge: 0.6, monte: 10, deja: 5 })!
-  proche(f.gainParClient, 2)
-  proche(f.seuil, 10)
-  proche(f.gain, 0)
-  // 4 + 2, de 3 à 4 + 2, marge 70 % : 40 − 6 × 3 − 3 × 7 = + 1 € ; rentable au-dessus de 2 ÷ 3
-  const q = simulerLot({ payes: 4, offerts: 2, avant: 3, prixHT: 10, tauxMarge: 0.7, monte: 10, deja: 0 })!
-  proche(q.gainParClient, 1)
-  proche(q.margeMini, 2 / 3)
-  proche(q.seuil, 0)
-  // De 1 à 5 + 1 (35 %) : 50 − 39 − 3,50 = + 7,50 € ; rentable au-dessus de 1 ÷ 5 = 20 %
-  proche(simulerLot({ payes: 5, offerts: 1, avant: 1, prixHT: 10, tauxMarge: 0.35, monte: 10, deja: 0 })!.gainParClient, 7.5)
-  expect(simulerLot({ payes: 5, offerts: 1, avant: 4, prixHT: 0, tauxMarge: 0.35, monte: 10, deja: 5 })).toBeNull()
+  proche(r.gainParClient, 4)
+  proche(r.coutAubaine, 65)
+  proche(r.coutBascule, 30)
+  proche(r.coutOffre, 95)
+  proche(r.seuil, 23.75)
+  proche(r.unSur, 1_500 / 23.75)
+  proche(r.gain, 25)
+  proche(r.caEnPlus, 1_000)
+  proche(r.tauxAvant, 0.35)
+  proche(r.tauxApres, 15_775 / 46_000)
+  proche(r.bouteillesEquivalentes, 95 / 3.5)
+  proche(r.unSurBouteille, 1_500 / (95 / 3.5))
+  proche(r.panierApres, 30 + 1_000 / 1_500)
+  proche(r.bouteillesTicketAvant, 3)
+  proche(r.bouteillesTicketApres, 3.1)
+  proche(r.margeMini, 1 / 4)
+  // Paliers : le seuil arrondi (24) puis 5, 10, 20, 30, 50 clients ; 24 → 96 − 95 = + 1 €, 5 → 20 − 95 = − 75 €
+  expect(r.paliers.map((x) => x.monte)).toEqual([5, 10, 20, 24, 30, 50])
+  proche(r.paliers[3].gain, 1)
+  proche(r.paliers[0].gain, -75)
+  // Personne n'en profite déjà : l'offre ne coûte rien, seuil 0
+  expect(simulerLot({ ...o, deja: 0, bascule: 0 })!.seuil).toBe(0)
+  // De 4 à 5 + 1 seulement (milieu 4) à 35 % : 10 − 2 × 6,50 = − 3 € par client, jamais rattrapé ; rentable au-dessus de 50 %
+  const q = simulerLot({ ...o, milieu: 4 })!
+  proche(q.gainParClient, -3)
+  expect(q.seuil).toBeNull()
+  proche(q.margeMini, 0.5)
+  // 4 + 2, de 2 à 4 + 2, marge 40 % (coût 6 €) : 20 − 4 × 6 = − 4 € ; rentable au-dessus de 2 ÷ 4 = 50 %
+  proche(simulerLot({ ...o, payes: 4, offerts: 2, tauxMarge: 0.4 })!.gainParClient, -4)
+  expect(simulerLot({ ...o, prixHT: 0 })).toBeNull()
 })
 
 test('vente additionnelle : un article de plus à 1 client sur 10', () => {

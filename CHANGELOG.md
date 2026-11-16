@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateur « Promo, prix, remises » : l’offre en lot se lit en masse de marge sur le mois (Joseph, 16/11/2026),
+  sans migration. « 1 client sur X suffit » en grand (clients du milieu qui passent de 2 bouteilles au lot pour rembourser
+  les bouteilles offertes), masse de marge du mois et de l’année, taux de marge qui baisse quand la masse monte,
+  équivalent « une bouteille de plus à 1 client sur Y », tableau selon le nombre de clients qui montent, panier et
+  bouteilles par ticket. Clients et panier cave lus en caisse (12 derniers mois clos) ; coût de l’offre = clients qui
+  prenaient déjà le lot + clients qui passent de 4 à 5 + 1.
 - Onglet « Marché extérieur » de la fiche magasin (Joseph, 16/11/2026), pour l'équipe et le franchisé.
   **Migration à passer : `0048_marche_exterieur.sql`.** Plan d'action en 6 étapes : point de départ (rayon, objectif,
   CA extérieur de la caisse), repérage autour du magasin dans l'Annuaire des entreprises de l'État (entreprises par
