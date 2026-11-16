@@ -589,8 +589,8 @@ export const AIDE = {
   },
   simInvestissement: {
     titre: 'Investir',
-    quoi: 'Une tireuse, une terrasse, un corner alimentaire : ce qu’il rapporte chaque année et en combien de temps il est remboursé.',
-    remplir: 'Le coût, la durée d’amortissement, le mois de mise en service, le CA et les charges en plus, le financement. Les modèles Corner alimentaire et Marché extérieur partent des repères du siège (pour l’extérieur : tireuses, investissement et heures par semaine selon l’objectif de CA).',
+    quoi: 'Des travaux de terrasse, le passage au concept 2.0, un four pour l’offre food, un corner alimentaire, le marché extérieur : ce qu’il rapporte chaque année et en combien de temps il est remboursé. Les tireuses se simulent dans Contrat extérieur et Parc de tireuses.',
+    remplir: 'Le coût, la durée d’amortissement, le mois de mise en service, le CA et les charges en plus, le financement. Chaque projet préréglé part d’ordres de grandeur à remplacer par tes devis ; Corner alimentaire et Marché extérieur partent des repères du siège quand il les a réglés (pour l’extérieur : tireuses, investissement et heures par semaine selon l’objectif de CA).',
     calcul: 'EBE en plus = CA × (marge − démarque) − redevance et publicité − charges. Délai de retour = coût ÷ EBE en plus. Année 1 au prorata des mois ; avec un prêt, seules les échéances sortent.',
   },
   // Vague 9 (choix 138 à 146, Joseph 14/11/2026)

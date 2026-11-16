@@ -409,9 +409,12 @@ export function simulerAchat(x: { montant: number; remise: number; mois: number;
 // amortissement linéaire ; intérêts de la 1re année du prêt. Délai de retour = coût ÷ EBE en plus d'une année pleine.
 // Année de la mise en service : au prorata des mois ouverts ; trésorerie = EBE du prorata − coût payé (trésorerie) ou
 // − échéances (prêt, capital encaissé le mois d'avant la 1re échéance, donc sans effet sur la trésorerie).
-export interface Investir { cout: number; duree: number; mois: number; ca: number; tauxMarge: number; demarque: number; charges: number; pret?: { taux: number; duree: number } | null }
+// Fermeture pendant les travaux (Joseph, 16/11/2026) : jours × CA HT d'un jour × (marge du magasin − redevance et
+// publicité) = marge perdue, une seule fois ; elle s'ajoute au coût pour le délai de retour et pèse sur l'année 1.
+export interface Investir { cout: number; duree: number; mois: number; ca: number; tauxMarge: number; demarque: number; charges: number; pret?: { taux: number; duree: number } | null; fermeture?: { jours: number; caJour: number; tauxMarge: number } | null }
 export interface EffetInvestir {
   ebeAn: number; amortissement: number; interets: number; resultatAn: number; retourAnnees: number | null
+  perteFermeture: number
   annee1: { mois: number; ebe: number; tresorerie: number }
 }
 export function simulerInvestissement(x: Investir, p: Pick<ParametresReseau, 'tauxRedevance' | 'tauxPublicite'>): EffetInvestir {
@@ -421,11 +424,14 @@ export function simulerInvestissement(x: Investir, p: Pick<ParametresReseau, 'ta
   const pret = x.pret && x.pret.duree > 0 && cout > 0 ? echeancier({ libelle: '', montant: cout, taux: x.pret.taux, duree: x.pret.duree, premiereEcheance: 1 }) : null
   const interets = pret ? somme(pret.interets) : 0
   const mois = moisValide(x.mois) ? 13 - x.mois : 12
-  const ebe1 = ebeAn * mois / 12
+  const f = x.fermeture
+  const perteFermeture = f ? Math.max(0, f.jours) * Math.max(0, f.caJour) * Math.max(0, f.tauxMarge - p.tauxRedevance - p.tauxPublicite) : 0
+  const ebe1 = ebeAn * mois / 12 - perteFermeture
   // Échéances de l'année : de la mise en service à décembre
   const echeances = pret ? pret.echeance * Math.max(0, mois - 1) : 0
   return {
-    ebeAn, amortissement, interets, resultatAn: ebeAn - amortissement - interets, retourAnnees: ebeAn > 0 ? cout / ebeAn : null,
+    ebeAn, amortissement, interets, resultatAn: ebeAn - amortissement - interets, retourAnnees: ebeAn > 0 ? (cout + perteFermeture) / ebeAn : null,
+    perteFermeture,
     annee1: { mois, ebe: ebe1, tresorerie: ebe1 - (pret ? echeances : cout) },
   }
 }

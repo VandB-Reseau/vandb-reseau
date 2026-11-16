@@ -107,8 +107,8 @@ test('Coach : les simulateurs dans les chiffres du magasin, sans toucher au budg
   const ecritures = await connecter(page, { appMetadata: { role: 'coach', coach: 'Hugo FICTIF' } }, { role: 'coach', simulations: [gardee] })
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=chiffres&partie=simulateurs&sim=investissement`)
   await expect(page.getByRole('tab', { name: 'Simulateurs' })).toHaveAttribute('aria-selected', 'true')
-  // Tireuse de 15 000 € en service en janvier, 20 000 € de CA à 35 % : 7 000 − 600 − 1 000 = 5 400 € d'EBE par an
-  await expect(page.getByRole('status')).toContainText(/Tireuse de 15\s000\s€ : 5\s400\s€ d’EBE en plus par an, remboursé en 2,8 ans/)
+  // Exemple : travaux terrasse de 25 000 €, 20 000 € de CA au bar à 70 % : 14 000 − 600 − 8 000 = 5 400 € d'EBE par an
+  await expect(page.getByRole('status')).toContainText(/Travaux terrasse de 25\s000\s€ : 5\s400\s€ d’EBE en plus par an, remboursé en 4,6 ans/)
   await expect(page.getByRole('button', { name: /Mettre dans mon budget/ })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Garder', exact: true })).toBeVisible()
   // La simulation du franchisé se lit, mais seul son auteur la retire
@@ -116,6 +116,30 @@ test('Coach : les simulateurs dans les chiffres du magasin, sans toucher au budg
   await expect(ligne.getByRole('button', { name: 'Rouvrir' })).toBeVisible()
   await expect(ligne.getByRole('button', { name: /Retirer/ })).toHaveCount(0)
   expect(ecritures.filter((e) => e.table === 'budgets')).toEqual([])
+})
+
+test('Investir : travaux et équipements préréglés, jours de fermeture, plus de tireuse (Joseph, 16/11/2026)', async ({ page, isMobile }) => {
+  await connecter(page, franchise, { role: 'franchise' })
+  await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=chiffres&partie=simulateurs&sim=investissement`)
+  const projet = page.getByRole('group', { name: 'Projet' })
+  for (const n of ['Libre', 'Terrasse', 'Concept 2.0', 'Four, food', 'Corner alimentaire', 'Marché extérieur']) await expect(projet.getByRole('button', { name: n, exact: true })).toBeVisible()
+  await expect(page.getByText(/Tireuse/)).toHaveCount(0)
+  // Concept 2.0 : 80 000 €, 40 000 € de CA cave à 33 % : 13 200 − 1 200 − 1 000 = 11 000 € d'EBE ; 10 jours de fermeture
+  await projet.getByRole('button', { name: 'Concept 2.0' }).click()
+  await expect(page.getByLabel('Jours de fermeture')).toHaveValue('10')
+  await page.getByLabel('CA HT d’un jour').fill('1000')
+  await page.getByLabel('Marge du magasin').fill('40')
+  // 10 × 1 000 × (40 % − 3 %) = 3 700 € de marge perdue : (80 000 + 3 700) ÷ 11 000 = 7,6 ans
+  await expect(page.getByRole('status')).toContainText(/Passage au concept 2\.0 de 80\s000\s€ : 11\s000\s€ d’EBE en plus par an, remboursé en 7,6 ans/)
+  await expect(page.getByText(/3\s700\s€ de marge perdue en 10 jours de fermeture/)).toBeVisible()
+  // Four : 6 000 €, 12 000 € de CA à 65 % et 5 % de perte : 7 200 − 360 − 4 000 = 2 840 € ; sans fermeture
+  await projet.getByRole('button', { name: 'Four, food' }).click()
+  await expect(page.getByLabel('CA HT d’un jour')).toHaveCount(0)
+  await expect(page.getByRole('status')).toContainText(/Four, offre food de 6\s000\s€ : 2\s840\s€ d’EBE en plus par an, remboursé en 2,1 ans/)
+  // Marché extérieur sans préconisation du siège : 40 000 €, 100 000 € de CA à 40 % : 40 000 − 3 000 − 27 000 = 10 000 €
+  await projet.getByRole('button', { name: 'Marché extérieur' }).click()
+  await expect(page.getByRole('status')).toContainText(/Marché extérieur de 40\s000\s€ : 10\s000\s€ d’EBE en plus par an, remboursé en 4 ans/)
+  if (isMobile) for (const b of await projet.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
 })
 
 test('avant la mise à jour 0031 de la base : les simulateurs marchent, sans « Garder »', async ({ page }) => {

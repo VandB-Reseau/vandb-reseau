@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateur « Investir » recentré sur les travaux et équipements (Joseph, 16/11/2026), sans migration. Tireuse retirée
+  (Contrat extérieur, Parc de tireuses) ; projets préréglés Terrasse, Concept 2.0, Four et offre food, Corner alimentaire,
+  Marché extérieur (gardé : tireuses, véhicule, stock déporté), ordres de grandeur fictifs ; exemple = travaux terrasse
+  (25 000 €, remboursé en 4,6 ans) au lieu d'un marché extérieur sans préconisation (15 000 € pour 31 000 € d'EBE).
+  Jours de fermeture : marge perdue (CA d'un jour du budget × marge du magasin) ajoutée au délai de retour et à l'année 1.
 - Promo, prix, remises (Joseph, 16/11/2026), sans migration : en parallèle des ventes en plus nécessaires pour une remise
   sur tout, l'offre en lot (5 + 1, 4 + 2 ou au choix) : marge gagnée pour 100 clients si X clients montent d'un cran au
   lot (de 4 à 5 + 1, de 3 à 4 + 2, modifiable), clients à faire monter pour couvrir ceux qui prenaient déjà 5,
