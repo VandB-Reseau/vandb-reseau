@@ -14,6 +14,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   Marché extérieur (gardé : tireuses, véhicule, stock déporté), ordres de grandeur fictifs ; exemple = travaux terrasse
   (25 000 €, remboursé en 4,6 ans) au lieu d'un marché extérieur sans préconisation (15 000 € pour 31 000 € d'EBE).
   Jours de fermeture : marge perdue (CA d'un jour du budget × marge du magasin) ajoutée au délai de retour et à l'année 1.
+- Simulateur « Contrat extérieur » (Joseph, 16/11/2026), sans migration : la « Livraison facturée HT » quitte les
+  Recettes (la livraison n'est plus comptée qu'une fois, en coût, bloc Livraisons) ; grille de livraison du siège et
+  prix plancher retirés. Prix de vente, remise, achat, CO2 et rétrocession saisis en « €/fût ». Case « Reçu Cerfa
+  demandé » proposée sur chaque don (60 % de réduction d'impôt), avec le coût réel du don sous la saisie ; le réglage
+  « Don traité comme un don » quitte Paramètres.
 - Simulateur « Contrat extérieur » : gobelets réutilisables comptés par contrat (Joseph, 16/11/2026), sans migration.
   Nombre de gobelets fournis sur l'année × prix d'un gobelet (exemple 500 × 0,25 € = 125 €), en coût fixe ; le champ
   « Gobelets par fût » disparaît.
