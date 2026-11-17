@@ -95,10 +95,27 @@ test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’ac
   await expect(page.getByLabel('Retenir Logistique Discrete')).toHaveCount(0)
   await page.getByRole('button', { name: 'Conseillées · 3' }).click()
   await expect(page.getByLabel('Retenir Logistique Discrete')).toHaveCount(1)
+  // Joseph (17/11/2026) : trier et filtrer la liste ; par colonne sur PC, « Trier par » sur téléphone
+  if (isMobile) {
+    await page.getByLabel('Trier par').selectOption('distance')
+  } else {
+    await page.getByRole('button', { name: 'Trier par Distance' }).click()
+  }
+  await expect(page.getByLabel(/^Retenir /).first()).toHaveAttribute('aria-label', 'Retenir Ateliers Fictifs Du Lac')
+  if (isMobile) {
+    await page.getByLabel('Trier par').selectOption('pertinence')
+  } else {
+    await page.getByRole('button', { name: 'Filtrer Effectif du site' }).click()
+    await page.getByLabel('Au moins').fill('100')
+    await page.keyboard.press('Escape')
+    await expect(page.getByLabel(/^Retenir /)).toHaveCount(1)
+    await page.getByRole('button', { name: /^Retirer tri et filtres/ }).click()
+  }
+  await expect(page.getByLabel(/^Retenir /).first()).toHaveAttribute('aria-label', 'Retenir Groupe Aeronautique Fictif')
   // Filtres de la liste : effectif du site, puis nom
-  await page.getByLabel('Effectif du site').selectOption('100')
+  await page.getByLabel('Effectif du site', { exact: true }).selectOption('100')
   await expect(page.getByRole('button', { name: 'Tous · 1' })).toBeVisible()
-  await page.getByLabel('Effectif du site').selectOption('0')
+  await page.getByLabel('Effectif du site', { exact: true }).selectOption('0')
   await expect(page.getByRole('button', { name: 'Tous · 4' })).toBeVisible()
   await page.getByLabel('Chercher un nom ou une activité').fill('traiteur')
   await expect(page.getByRole('button', { name: 'Tous · 1' })).toBeVisible()
@@ -242,6 +259,26 @@ test('Marché extérieur : annuaire injoignable, un message humain et l’ajout 
   await page.goto(fiche(2))
   await page.getByRole('button', { name: 'Chercher dans un rayon de 10 km' }).click()
   await expect(page.getByText('L’Annuaire des entreprises ne répond pas pour le moment. Réessaie dans quelques minutes, ou ajoute tes cibles à la main à l’étape suivante.')).toBeVisible()
+})
+
+test('Marché extérieur : repérage autour d’une autre adresse, celle d’un concurrent par exemple', async ({ page, isMobile }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, persister: true })
+  await page.goto(fiche())
+  await page.getByLabel('Chercher autour d’une autre adresse').fill('Rue sans commune')
+  await page.getByRole('button', { name: 'Centrer ici' }).click()
+  await expect(page.getByText('Adresse introuvable. Ajoute le code postal et la ville.')).toBeVisible()
+  await page.getByLabel('Chercher autour d’une autre adresse').fill('12 rue du Concurrent, 74960 Cran-Gevrier')
+  await page.getByRole('button', { name: 'Centrer ici' }).click()
+  await expect(page.getByText('Repérage centré sur 12 rue du Concurrent, 74960 Cran-Gevrier')).toBeVisible()
+  await expect.poll(() => derniere(ecritures, 'exterieur_magasins')?.[NOM]?.centre?.adresse).toBe('12 rue du Concurrent, 74960 Cran-Gevrier')
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  await page.getByRole('button', { name: 'Repérage', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Repérage autour de 12 rue du Concurrent, 74960 Cran-Gevrier' })).toBeVisible()
+  await page.getByRole('button', { name: 'Magasin', exact: true }).click()
+  await page.getByRole('button', { name: 'Revenir au magasin' }).click()
+  await expect(page.getByLabel('Chercher autour d’une autre adresse')).toBeVisible()
+  await expect.poll(() => derniere(ecritures, 'exterieur_magasins')?.[NOM]?.centre ?? null).toBeNull()
 })
 
 test('Marché extérieur depuis le menu : on choisit le magasin, puis son plan', async ({ page, isMobile }) => {

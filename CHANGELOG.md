@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Marché extérieur (Joseph, 17/11/2026), sans migration : la liste du repérage se trie et se filtre par colonne
+  comme les autres tableaux (nom, type, activité, effectif du site, chiffre d'affaires en k€, distance en km) ;
+  « Trier par » sur téléphone. Titre « Retenir » en entier.
+  Repérage autour d'une autre adresse que celle du magasin (les extérieurs d'un concurrent, par exemple), saisie au
+  point de départ, « Revenir au magasin » pour reprendre le magasin comme centre.
 - Simulateur Contrat extérieur (Joseph, 17/11/2026), sans migration : la remise se saisit en « Prix facturé après remise HT »
   (un prix remisé tapé dans l'ancien champ « Remise accordée » était lu comme une remise : 70 € et 68 € donnaient 2 € par fût).
   La remise en € et en % s'affiche sous les recettes ; la remise maximale donne aussi le prix facturé minimum.
