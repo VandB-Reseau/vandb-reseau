@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { ouvrirInfosMagasin, ouvrirOnglet, revoirTache, saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { deplierPoint, ouvrirInfosMagasin, ouvrirOnglet, revoirTache, saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { magasinsFictifs } from './donnees-fictives'
 
 test.beforeEach(async ({ page }) => {
@@ -14,6 +14,7 @@ test.afterEach(async ({ page }) => {
 // Déplie toute la liste « À traiter » de l'accueil quand elle dépasse cinq lignes
 const voirTout = async (page: Page) => {
   const bouton = page.getByRole('region', { name: 'À traiter' }).getByRole('button', { name: /^Voir les \d+$/ })
+  await deplierPoint(page) // 278 : sur téléphone, le point du jour s'ouvre par la barre du haut
   await page.getByRole('region', { name: 'À traiter' }).waitFor()
   if (await bouton.count()) await bouton.click()
 }
@@ -134,6 +135,7 @@ test('les mandats à renouveler remontent à l’accueil et sur la fiche du fran
   const associes = { 'Brest Test': [{ id: 'x1', nom: 'Franchisé 11', entree: '', sortie: '', mandats: [{ debut: '2016-01-01', fin: '2026-06-30' }] }] }
   await seConnecter(page, { config: { associes } })
   await page.goto('./#/')
+  await deplierPoint(page) // 278 : sur téléphone, le point du jour s'ouvre par la barre du haut
   if (isMobile) await page.getByRole('tab', { name: /^Contrats/ }).click()
   const bloc = page.getByRole('region', { name: 'Contrats' })
   const voir = bloc.getByRole('button', { name: /^Voir les \d+$/ })

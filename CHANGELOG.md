@@ -16,6 +16,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   « Infos du magasin » de l'en-tête. Panier et marge restent dans l'onglet Chiffres ; compteurs de l'en-tête retirés.
   Onglet Activité, maquette 265 : « À faire » en tête sur toute la largeur, puis l'historique en tableau sur PC (date,
   type, quoi, par qui, compte rendu en icône), en lignes sur téléphone, 30 éléments puis « Voir plus ».
+- Accueil sur PC (Joseph, 17/11/2026), sans migration : le fil et la colonne de droite s'alignent à gauche sous le titre,
+  24 px entre eux ; le fil va jusqu'à 760 px et la colonne de droite prend le reste de la largeur. Téléphone inchangé.
 - Accueil sur téléphone, choix 278 (Joseph, 17/11/2026), sans migration : le fil seul, façon LinkedIn ; la bande
   « Mon point du jour » devient un picto dans la barre du haut avec le nombre à traiter en rouge. Il ouvre une page :
   Ma journée, la période, « Le point » en quatre lignes comme sur PC (plus de « Mes indicateurs » replié), sondages,
