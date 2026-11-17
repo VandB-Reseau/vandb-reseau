@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Audits paramétrables (Joseph, 17/11/2026), sans migration : dans Paramètres › Audits, le Directeur ajoute un audit
+  (nom, seuil, thèmes et points) ou en supprime un ; un audit déjà rempli est gardé pour ses résultats (« Audits
+  supprimés », avec « Rétablir »), un audit jamais servi disparaît. Pendant une visite d'un magasin, bloc « Audits » :
+  « Ouvrir un audit » propose toutes les grilles actives, remplies comme la grille d'audit (oui, non, sans objet, écart,
+  photos) et rangées à la date de la visite ; un audit supprimé n'est plus proposé, ni comme type de visite. Les audits
+  ajoutés apparaissent dans la fiche magasin, le journal et le bilan de l'année.
 - Onglet « Pilotage » (Joseph, 17/11/2026, propositions 286 à 292), **migration `0050_rapports_pilotage.sql` à passer** :
   nouvelle entrée du menu (équipe et franchisé) pour faire ses rapports, graphes et tableaux croisés sur tous les sujets :
   ventes de la caisse (Cave et Bar séparés), budget et résultat (écart au budget, EBE, % frais de personnel, stock),

@@ -7,7 +7,9 @@ import Button from '@mui/material/Button'
 import Collapse from '@mui/material/Collapse'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
+import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
+import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -27,7 +29,8 @@ import { enregistrerAudit, enregistrerConstats, enregistrerPlan, enregistrerPrep
 import { useSaisieChiffres } from './Chiffres'
 import { analyser, auditDe, formatKEuros, formatPourcent, formatValeur, libelleMois, lireNombre, moisPrecedent, typesAudit, typesContact } from '../data/chiffres'
 import { partiesVides } from '../data/compteRendu'
-import { libellesGrilles, photosDe, reponsesPourSaisie, resultatGrille, type Reponses } from '../data/grilles'
+import { grillesActives, libelleGrille, photosDe, reponsesPourSaisie, resultatGrille, type Reponses } from '../data/grilles'
+import type { ResultatAudit } from '../data/chiffres'
 import { supprimerPhotos } from '../lib/photos'
 import { ChampPhotos, SaisieGrille } from './GrilleAudit'
 import { SaisieCampagnes, useSaisieCampagnes } from './Campagnes'
@@ -117,6 +120,19 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const [photos, setPhotos] = useState(visite?.photos ?? [])
   const resultatG = grille ? resultatGrille(reponses, grille.seuil) : null
   const grilleRemplie = !!resultatG && (resultatG.renseignes > 0 || photosDe(reponses).length > 0)
+  // Audits ouverts pendant la visite (Joseph, 17/11/2026) : toute grille de Paramètres, rangée à la date de la visite
+  const autresAvant = visite ? (reseau.audits[visite.magasin] ?? []).filter((a) => a.date === visite.date && a.type !== visite.type && reseau.grilles[a.type]) : []
+  const [ouverts, setOuverts] = useState<string[]>(() => autresAvant.map((a) => a.type))
+  const avecAudits = unSeul && !contact
+  const ouvertsEffectifs = avecAudits ? ouverts.filter((t) => !(audit && t === type) && reseau.grilles[t]) : []
+  const proposables = grillesActives(reseau.grilles).filter((t) => !ouvertsEffectifs.includes(t) && !(audit && t === type))
+  const [menuAudits, setMenuAudits] = useState<HTMLElement | null>(null)
+  const reponsesDe = (t: string) => reponsesParType[t] ?? reponsesPourSaisie(reseau.grilles[t], autresAvant.find((a) => a.type === t)?.reponses)
+  const autresResultats: ResultatAudit[] = ouvertsEffectifs.flatMap((t) => {
+    const r = reponsesDe(t)
+    const res = resultatGrille(r, reseau.grilles[t].seuil)
+    return res.renseignes > 0 || photosDe(r).length > 0 ? [{ date, type: t, conforme: res.conforme, score: res.score, reponses: r }] : []
+  })
   const chiffres = useSaisieChiffres(reseau, magasins[0] ?? '', b?.mois ?? moisPrecedent(visite?.date ?? reseau.jour))
   const [chiffresRepris, setChiffresRepris] = useState(!b?.chiffres)
   if (!chiffresRepris) { setChiffresRepris(true); chiffres.setValeurs(b!.chiffres) }
@@ -140,7 +156,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const prioritesActivesNb = avecPlan ? prioritesDu(reseau, magasins[0]).filter((p) => p.statut === 'active').length : 0
   const sommaire = contact ? [] : [
     ...(sujets.length ? [{ id: 'saisie-ordre', titre: 'Ordre du jour' }] : []), ...(avecPlan ? [{ id: 'saisie-plan', titre: 'Plan d’action' }] : []),
-    { id: 'saisie-constats', titre: 'Constats' }, ...(audit || unSeul ? [{ id: 'saisie-chiffres', titre: audit ? 'Grille et chiffres' : 'Chiffres' }] : []), { id: 'saisie-documents', titre: 'Photos et documents' },
+    { id: 'saisie-constats', titre: 'Constats' }, ...(avecAudits ? [{ id: 'saisie-audits', titre: 'Audits' }] : []), ...(audit || unSeul ? [{ id: 'saisie-chiffres', titre: audit ? 'Grille et chiffres' : 'Chiffres' }] : []), { id: 'saisie-documents', titre: 'Photos et documents' },
   ]
   const quand = date === reseau.jour ? 'aujourd’hui' : /^\d{4}-\d{2}-\d{2}$/.test(date) ? `le ${dateCourte(date)}` : ''
   return (
@@ -159,7 +175,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         const resultatAudit = audit && grilleRemplie && resultatG ? { date, type, conforme: resultatG.conforme, score: resultatG.score, reponses }
           : audit && (conforme || scoreLu !== null) ? { date, type, conforme: conforme ? conforme === 'oui' : null, score: scoreLu } : null
         const garder = async () => {
-          await mettreEnAttente('visite', `${libelleTypeVisite(type)} · ${magasins.join(', ')}`, { base, magasins, audit: resultatAudit })
+          await mettreEnAttente('visite', `${libelleTypeVisite(type)} · ${magasins.join(', ')}`, { base, magasins, audit: resultatAudit, autres: autresResultats })
           effacerBrouillon(cleBrouillon)
           return 'Visite gardée sur l’appareil : elle partira seule au retour du réseau.'
         }
@@ -199,16 +215,20 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         const resultat = resultatAudit
         const ancien = visite && typesAudit.includes(visite.type) ? { date: visite.date, type: visite.type } : null
         if (resultat || (ancien && auditAvant)) await enregistrerAudit(magasins[0], ancien, resultat)
+        // Audits ouverts pendant la visite : remplacés à la nouvelle date, retirés s'ils ne sont plus remplis
+        for (const a of autresResultats) await enregistrerAudit(magasins[0], autresAvant.some((x) => x.type === a.type) ? { date: visite!.date, type: a.type } : null, a)
+        for (const a of autresAvant.filter((x) => !autresResultats.some((r) => r.type === x.type))) await enregistrerAudit(visite!.magasin, { date: a.date, type: a.type }, null)
         // Photos retirées ou d'un audit remplacé : effacées de l'espace photos une fois l'audit enregistré
-        const gardees = new Set([...photosDe(resultat?.reponses), ...(unSeul && !contact ? photos : [])].map((p) => p.chemin))
-        await supprimerPhotos([...new Set([...photosRetirees, ...photosDe(auditAvant?.reponses).map((p) => p.chemin), ...(visite?.photos ?? []).map((p) => p.chemin)])].filter((c) => !gardees.has(c)))
+        const gardees = new Set([...photosDe(resultat?.reponses), ...autresResultats.flatMap((a) => photosDe(a.reponses)), ...(unSeul && !contact ? photos : [])].map((p) => p.chemin))
+        await supprimerPhotos([...new Set([...photosRetirees, ...photosDe(auditAvant?.reponses).map((p) => p.chemin), ...autresAvant.flatMap((a) => photosDe(a.reponses)).map((p) => p.chemin), ...(visite?.photos ?? []).map((p) => p.chemin)])].filter((c) => !gardees.has(c)))
         return visite || reprise ? 'Visite mise à jour.' : magasins.length > 1 ? `${magasins.length} visites enregistrées.` : 'Visite enregistrée.'
       }}
       supprimer={visite?.id ? async () => {
         await supprimerVisite(visite.id!)
         effacerBrouillon(cleBrouillon)
         if (auditAvant) await enregistrerAudit(visite.magasin, { date: visite.date, type: visite.type }, null)
-        await supprimerPhotos([...photosDe(auditAvant?.reponses), ...(visite.photos ?? [])].map((p) => p.chemin))
+        for (const a of autresAvant) await enregistrerAudit(visite.magasin, { date: a.date, type: a.type }, null)
+        await supprimerPhotos([...photosDe(auditAvant?.reponses), ...autresAvant.flatMap((a) => photosDe(a.reponses)), ...(visite.photos ?? [])].map((p) => p.chemin))
         return 'Visite supprimée.'
       } : undefined}
       libelleSuppression={visite ? `Supprimer la visite du ${date} à ${visite.magasin} ?` : undefined}
@@ -241,7 +261,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
         <ChampDate label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
         <TextField select label="Type" value={type} onChange={(e) => setType(e.target.value)}>
-          {typesVisite.map((t) => <MenuItem key={t.id} value={t.id}>{t.libelle}</MenuItem>)}
+          {typesVisite.filter((t) => t.id === type || !reseau.grilles[t.id]?.supprimee).map((t) => <MenuItem key={t.id} value={t.id}>{t.libelle}</MenuItem>)}
         </TextField>
       </Box>
       <Autocomplete
@@ -274,11 +294,31 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
           <BlocSaisie id="saisie-constats" titre="Constats">
             <ConstatsVisite tournee={!unSeul} notes={notes} setNotes={setNotes} parties={parties} setParties={setParties} />
           </BlocSaisie>
+          {avecAudits && (
+            <BlocSaisie id="saisie-audits" titre="Audits" detail={ouvertsEffectifs.length ? `${ouvertsEffectifs.length} ouvert${ouvertsEffectifs.length > 1 ? 's' : ''}` : undefined}>
+              {ouvertsEffectifs.map((t) => (
+                <Box key={t}>
+                  <SaisieGrille titre={libelleGrille(reseau.grilles, t)} reponses={reponsesDe(t)} setReponses={(f) => setReponsesParType((x) => ({ ...x, [t]: f(reponsesDe(t)) }))} seuil={reseau.grilles[t].seuil} onRetirerPhoto={(c) => setPhotosRetirees((x) => [...x, c])} />
+                  <Button color="error" startIcon={<CloseOutlined />} onClick={() => { setPhotosRetirees((x) => [...x, ...photosDe(reponsesDe(t)).map((p) => p.chemin)]); setOuverts((o) => o.filter((x) => x !== t)); setReponsesParType(({ [t]: _r, ...reste }) => reste) }} sx={{ minHeight: 48, mt: 1 }}>
+                    {`Retirer l’audit ${libelleGrille(reseau.grilles, t)}`}
+                  </Button>
+                </Box>
+              ))}
+              {proposables.length > 0
+                ? <Box>
+                    <Button variant="outlined" startIcon={<FactCheckOutlined />} aria-haspopup="menu" onClick={(e) => setMenuAudits(e.currentTarget)} sx={{ minHeight: 48 }}>Ouvrir un audit</Button>
+                    <Menu anchorEl={menuAudits} open={!!menuAudits} onClose={() => setMenuAudits(null)}>
+                      {proposables.map((t) => <MenuItem key={t} onClick={() => { setOuverts((o) => [...o, t]); setMenuAudits(null) }} sx={{ minHeight: 48 }}>{libelleGrille(reseau.grilles, t)}</MenuItem>)}
+                    </Menu>
+                  </Box>
+                : !ouvertsEffectifs.length && <LigneVide>Aucun audit paramétré. Le Directeur de réseau en ajoute dans Paramètres.</LigneVide>}
+            </BlocSaisie>
+          )}
         </>}
       {(audit || unSeul) && (
         <BlocSaisie id="saisie-chiffres" titre={audit ? 'Grille, campagnes et chiffres' : 'Campagnes et chiffres'}>
       {grille && grille.themes.length > 0 && (
-        <SaisieGrille titre={`Grille ${libellesGrilles[type]?.toLowerCase() ?? ''}`} reponses={reponses} setReponses={setReponses} seuil={grille.seuil} onRetirerPhoto={(c) => setPhotosRetirees((x) => [...x, c])} />
+        <SaisieGrille titre={`Grille ${libelleGrille(reseau.grilles, type).toLowerCase()}`} reponses={reponses} setReponses={setReponses} seuil={grille.seuil} onRetirerPhoto={(c) => setPhotosRetirees((x) => [...x, c])} />
       )}
       {audit && !grilleRemplie && (
         <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>

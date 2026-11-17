@@ -19,10 +19,13 @@ import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import CleaningServicesOutlined from '@mui/icons-material/CleaningServicesOutlined'
 import StarOutlineOutlined from '@mui/icons-material/StarOutlineOutlined'
 import PercentOutlined from '@mui/icons-material/PercentOutlined'
+import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
+import { LigneVide } from './Section'
+import { styleIntertitre } from '../theme/theme'
 import { Onglets } from './Onglets'
 import { enregistrerGrilles } from '../data/chargement'
 import { useReseau } from '../data/ReseauContext'
-import { grillesParDefaut, libellesGrilles, nombrePoints, nouvelId, photosDe, type Grille, type Grilles, type ThemeGrille } from '../data/grilles'
+import { grillesDeDepart, grillesParDefaut, libelleGrille, nombrePoints, nouvelId, photosDe, type Grille, type Grilles, type ThemeGrille } from '../data/grilles'
 import { ESPACE_GRATUIT, formatTaille } from '../lib/photos'
 import type { Reseau } from '../data/modele'
 import { cartouche } from './Social'
@@ -67,33 +70,78 @@ function EditeurGrille({ grille, onChange }: { grille: Grille; onChange: (g: Gri
   )
 }
 
+// Audits paramétrables (Joseph, 17/11/2026) : grilles de départ et audits ajoutés ; un audit supprimé qui a déjà été
+// rempli reste en base (marqué supprimé) pour garder ses résultats, et peut être rétabli
 export function GrillesAudit({ reseau }: { reseau: Reseau }) {
   const { recharger } = useReseau()
-  const [vue, setVue] = useState<'hygiene' | 'excellence' | 'marge'>('hygiene')
   const [grilles, setGrilles] = useState<Grilles>(() => copie(reseau.grilles))
+  const actives = Object.keys(grilles).filter((k) => !grilles[k].supprimee)
+  const [choix, setVue] = useState<string>('hygiene')
+  const vue = actives.includes(choix) ? choix : actives[0] ?? ''
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState(false)
   const [ok, setOk] = useState(false)
+  const remplis = new Set(Object.values(reseau.audits).flat().map((a) => a.type))
   const modifie = JSON.stringify(grilles) !== JSON.stringify(reseau.grilles)
-  const invalide = Object.values(grilles).some((g) => !Number.isInteger(g.seuil) || g.seuil < 0 || g.seuil > 100 || g.themes.some((t) => !t.libelle.trim() || t.points.some((p) => !p.libelle.trim())))
+  const ajoutee = (k: string) => !grillesDeDepart.includes(k)
+  const invalide = Object.entries(grilles).some(([k, g]) => !g.supprimee && (!Number.isInteger(g.seuil) || g.seuil < 0 || g.seuil > 100 || (ajoutee(k) && !g.libelle?.trim()) || g.themes.some((t) => !t.libelle.trim() || t.points.some((p) => !p.libelle.trim()))))
   const enregistrer = async () => {
     setEnvoi(true); setErreur(false)
-    const propres: Grilles = Object.fromEntries(Object.entries(grilles).map(([k, g]) => [k, { ...g, themes: g.themes.map((t) => ({ ...t, libelle: t.libelle.trim(), points: t.points.map((p) => ({ ...p, libelle: p.libelle.trim() })) })) }]))
+    const propres: Grilles = Object.fromEntries(Object.entries(grilles).map(([k, g]) => [k, { ...g, ...(g.libelle !== undefined ? { libelle: g.libelle.trim() } : {}), themes: g.themes.map((t) => ({ ...t, libelle: t.libelle.trim(), points: t.points.map((p) => ({ ...p, libelle: p.libelle.trim() })) })) }]))
     try { await enregistrerGrilles(propres); await recharger(); setOk(true) } catch { setErreur(true) } finally { setEnvoi(false) }
   }
+  const ajouter = () => {
+    const id = nouvelId('audit')
+    setGrilles((x) => ({ ...x, [id]: { libelle: '', seuil: 80, themes: [{ id: nouvelId('theme'), libelle: '', points: [{ id: nouvelId('point'), libelle: '' }] }] } }))
+    setVue(id)
+  }
+  // Supprimer : retiré tout de suite s'il n'a jamais servi, sinon gardé pour ses résultats
+  const supprimer = (k: string) => setGrilles((x) => {
+    if (ajoutee(k) && !remplis.has(k)) { const { [k]: _retiree, ...reste } = x; return reste }
+    return { ...x, [k]: { ...x[k], supprimee: reseau.jour } }
+  })
+  const retablir = (k: string) => { setGrilles((x) => { const { supprimee: _s, ...g } = x[k]; return { ...x, [k]: g } }); setVue(k) }
+  const supprimees = Object.keys(grilles).filter((k) => grilles[k].supprimee)
+  const icone = (k: string) => k === 'hygiene' ? <CleaningServicesOutlined /> : k === 'excellence' ? <StarOutlineOutlined /> : k === 'marge' ? <PercentOutlined /> : <FactCheckOutlined />
+  const court = (k: string) => k === 'excellence' ? 'Excellence' : k === 'marge' ? 'Marge' : undefined
+  const g = vue ? grilles[vue] : undefined
   return (
     <Card sx={{ mt: 2 }}>
       <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-        <Typography component="h2" sx={[cartouche, { mb: 2 }]}>Grilles d’audit</Typography>
-        <Onglets valeur={vue} onChange={setVue} libelle="Grilles d’audit" libres rubriques={[
-          { vue: 'hygiene', libelle: libellesGrilles.hygiene, icone: <CleaningServicesOutlined /> },
-          { vue: 'excellence', libelle: libellesGrilles.excellence, court: 'Excellence', icone: <StarOutlineOutlined /> },
-          { vue: 'marge', libelle: libellesGrilles.marge, court: 'Marge', icone: <PercentOutlined /> },
-        ]} />
-        <EditeurGrille key={vue} grille={grilles[vue]} onChange={(g) => setGrilles((x) => ({ ...x, [vue]: g }))} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+          <Typography component="h2" sx={[cartouche, { mr: 'auto' }]}>Grilles d’audit</Typography>
+          <Button variant="outlined" startIcon={<AddOutlined />} onClick={ajouter} sx={{ minHeight: 48 }}>Ajouter un audit</Button>
+        </Box>
+        {actives.length > 0 && (
+          <Onglets valeur={vue} onChange={setVue} libelle="Grilles d’audit" libres rubriques={actives.map((k) => ({ vue: k, libelle: libelleGrille(grilles, k) === 'Audit' && ajoutee(k) ? 'Nouvel audit' : libelleGrille(grilles, k), court: court(k), icone: icone(k) }))} />
+        )}
+        {g && vue ? (
+          <>
+            {ajoutee(vue) && (
+              <TextField label="Nom de l’audit" value={g.libelle ?? ''} onChange={(e) => setGrilles((x) => ({ ...x, [vue]: { ...x[vue], libelle: e.target.value } }))}
+                error={!g.libelle?.trim()} helperText={!g.libelle?.trim() ? 'Donne un nom à l’audit.' : undefined} sx={{ width: { xs: '100%', sm: 420 }, mb: 2, display: 'flex' }} />
+            )}
+            <EditeurGrille key={vue} grille={g} onChange={(n) => setGrilles((x) => ({ ...x, [vue]: n }))} />
+          </>
+        ) : (
+          <LigneVide>Aucun audit proposé en visite. Ajoute un audit pour en remplir un pendant une visite.</LigneVide>
+        )}
+        {supprimees.length > 0 && (
+          <Box component="section" aria-label="Audits supprimés" sx={{ mt: 3 }}>
+            <Typography component="h3" sx={styleIntertitre}>Audits supprimés</Typography>
+            {supprimees.map((k) => (
+              <Box key={k} sx={{ display: 'flex', alignItems: 'center', gap: 1, borderTop: '1px solid', borderColor: 'divider', py: 0.5 }}>
+                <Typography variant="body2" sx={{ flex: 1 }}>{`${libelleGrille(grilles, k)}${remplis.has(k) ? ' · résultats gardés' : ''}`}</Typography>
+                <Button onClick={() => retablir(k)} sx={{ minHeight: 48 }}>Rétablir</Button>
+              </Box>
+            ))}
+          </Box>
+        )}
         {erreur && <Alert severity="error" sx={{ mt: 2 }}>Les grilles n’ont pas pu être enregistrées. Vérifie ta connexion et réessaie.</Alert>}
         <Box sx={{ display: 'flex', gap: 1, mt: 3, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <Button onClick={() => setGrilles((x) => ({ ...x, [vue]: copie(grillesParDefaut)[vue] }))} sx={{ minHeight: 48, mr: 'auto' }}>Grille de départ</Button>
+          {vue && <Button color="error" startIcon={<DeleteOutlined />} onClick={() => supprimer(vue)} sx={{ minHeight: 48 }}>{`Supprimer l’audit ${libelleGrille(grilles, vue) === 'Audit' ? '' : libelleGrille(grilles, vue)}`.trim()}</Button>}
+          {vue && !ajoutee(vue) && <Button onClick={() => setGrilles((x) => ({ ...x, [vue]: copie(grillesParDefaut)[vue] }))} sx={{ minHeight: 48 }}>Grille de départ</Button>}
+          <Box sx={{ flex: 1 }} />
           <Button disabled={!modifie || envoi} onClick={() => setGrilles(copie(reseau.grilles))} sx={{ minHeight: 48 }}>Annuler</Button>
           <Button variant="contained" disabled={!modifie || envoi || invalide} onClick={enregistrer} sx={{ minHeight: 48 }}>{envoi ? 'Enregistrement…' : 'Enregistrer'}</Button>
         </Box>
