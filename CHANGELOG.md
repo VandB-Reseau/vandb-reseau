@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Offre 5 + 1 simplifiée (Joseph, 17/11/2026), sans migration : dans « Promo, prix, remises », un choix « Offre 5 + 1
+  ou 4 + 2 » (par défaut) à part de « Une remise ». L'offre se choisit une seule fois (5 + 1 ou 4 + 2) ; restent le taux
+  de marge du vin, le prix moyen de la bouteille, les clients cave du mois, ceux qui prennent le lot au lieu de 2
+  bouteilles et ceux qui en prenaient déjà presque autant. Résultat en tête : « 1 client sur X suffit », puis la masse
+  de marge du mois, de l'année et par client. Retirés : remise en % en double, bouteilles payées/offertes, client du
+  milieu, panier, bascule de 4 à 5 + 1 (comptée avec les clients qui en prenaient déjà, hypothèse prudente).
+
 - Remises entreprise au bar (Joseph, 17/11/2026), sans migration : on part des venues habituelles de la société, sans
   remise ; pour chaque remise testée (0,50 €, 1 € par produit ou par panier), les venues en plus qu'il faut pour garder
   la même masse de marge, donc le seuil du palier (en théorie). Les simulations gardées se relisent. Cave inchangée.
