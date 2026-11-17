@@ -149,7 +149,7 @@ test('PC : les magasins en tableau, une ligne ouvre l’aperçu ; téléphone : 
 
 test('accueil : période en tête, actualités visibles dès l’arrivée sur PC ; style de la charte gardé sur l’accueil seulement', async ({ page, isMobile }, info) => {
   await connecter(page)
-  if (isMobile) { await deplierPoint(page); await page.getByRole('button', { name: 'Mes indicateurs' }).click() }
+  await deplierPoint(page)
   const ca = page.getByRole('link', { name: /^CA de / })
   await expect(ca).toContainText('k€')
   await expect(ca).toContainText('vs N-1')
@@ -160,6 +160,7 @@ test('accueil : période en tête, actualités visibles dès l’arrivée sur PC
     const b = (await actualites.boundingBox())!
     expect(b.y).toBeLessThan(page.viewportSize()!.height / 2)
   }
+  if (isMobile) await page.getByRole('dialog', { name: 'Mon point du jour' }).getByRole('button', { name: 'Fermer' }).click()
   // Vague 5 (52A) : l'accueil reprend la casse normale des autres écrans
   const casse = () => page.getByRole('heading', { level: 1 }).first().evaluate((e) => getComputedStyle(e).textTransform)
   expect(await casse()).toBe('none')

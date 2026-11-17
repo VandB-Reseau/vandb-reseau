@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { toutATraiter, deplierPoint, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { zonesTropPetites } from './pilotage/supabase-simule'
 
 // Refonte façon SaaS, vague 4 (Joseph, 10/11/2026, « tout en même temps sauf 35 ») : plan d'action du magasin (31A),
@@ -111,7 +111,7 @@ test('34A : le RR prépare et note l’entretien du mois, le Coach ajoute ses re
 test('34A et 38B : le RR retrouve les entretiens du mois à faire dans À traiter', async ({ page }) => {
   await seConnecter(page, { ...SAM, entretiens: [] })
   const aTraiter = page.getByRole('region', { name: 'À traiter' }).first()
-  await aTraiter.getByRole('button', { name: /^Voir les \d+$/ }).click()
+  await toutATraiter(page)
   await expect(aTraiter.getByText('Entretien avec Noé MODELE').first()).toBeVisible()
   await expect(aTraiter.getByText('Entretien avec Inès EXEMPLE').first()).toBeVisible()
 })
@@ -147,7 +147,7 @@ test('37A : le franchisé envoie une demande, le siège la traite', async ({ pag
   await page.evaluate(() => { localStorage.clear(); sessionStorage.clear() })
   await seConnecter(page, { demandes, config: { demandes_themes: { caisse: 'Tom TECHNICIEN' } } })
   const aTraiter = page.getByRole('region', { name: 'À traiter' }).first()
-  await aTraiter.getByRole('button', { name: /^Voir les \d+$/ }).click()
+  await toutATraiter(page)
   await expect(aTraiter.getByText('La caisse ne sort plus les tickets cadeaux').first()).toBeVisible()
   await page.goto('./#/demandes')
   await expect(page.getByRole('heading', { level: 1, name: 'Demandes' })).toBeVisible()
@@ -198,8 +198,10 @@ test('42A : barre du téléphone et journée du Coach', async ({ page, isMobile 
   const barre = page.getByRole('navigation', { name: 'Navigation principale' })
   await expect(barre.getByRole('button')).toHaveCount(5)
   for (const n of [/^Accueil/, /^Agenda/, /^Magasins/, /^Tâches/, /^Messages/]) await expect(barre.getByRole('button', { name: n })).toBeVisible()
+  await deplierPoint(page)
   await expect(page.getByRole('region', { name: 'Ma journée' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Mes indicateurs' })).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('region', { name: 'Pilotage' })).toBeVisible()
+  await page.getByRole('dialog', { name: 'Mon point du jour' }).getByRole('button', { name: 'Fermer' }).click()
   // Le « + » : les gestes du terrain d'abord
   await page.getByRole('button', { name: 'Ajouter', exact: true }).click()
   await expect(page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem').first()).toHaveText('Visite')

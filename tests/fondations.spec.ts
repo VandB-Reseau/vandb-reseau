@@ -40,7 +40,8 @@ test('après connexion, l’accueil montre les priorités dans l’ordre choisi'
   await deplierPoint(page)
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
   await expect(aTraiter).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Actualités' })).toBeVisible()
+  // Téléphone (278) : le point du jour s'ouvre en page par-dessus le fil
+  if (!isMobile) await expect(page.getByRole('region', { name: 'Actualités' })).toBeVisible()
   // PC : tout est affiché ; téléphone : Cette semaine est un onglet
   await expect(page.getByRole('region', { name: 'Cette semaine' })).toHaveCount(isMobile ? 0 : 1)
   // Cinq lignes d'abord sur PC, deux sur téléphone, puis tout
