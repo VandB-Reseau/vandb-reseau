@@ -15,8 +15,8 @@ test.afterEach(async ({ page }) => {
 
 test('quatre repères de pilotage en tête de l’accueil, chacun mène à son détail', async ({ page, isMobile }) => {
   await seConnecter(page)
-  // Vague 8 : sur téléphone, les indicateurs se déplient sous les actualités
-  if (isMobile) { await deplierPoint(page); await page.getByRole('button', { name: 'Mes indicateurs' }).click() }
+  // 278 : sur téléphone, Le point s'ouvre par le picto de la barre du haut
+  await deplierPoint(page)
   const pilotage = page.getByRole('region', { name: 'Pilotage' })
   const tuiles = pilotage.getByRole('link')
   await expect(tuiles).toHaveCount(4)
@@ -51,37 +51,44 @@ test('PC : les actualités au centre, À traiter, Mes tâches et Cette semaine �
   await page.screenshot({ path: `captures/${info.project.name}-accueil-pilotage.png` })
 })
 
-test('téléphone : les actualités d’abord, un bloc court à onglets, repères en 2 × 2 dépliés à la demande', async ({ page, isMobile }, info) => {
+// Choix 278 (Joseph, 17/11/2026) : le fil seul, façon LinkedIn ; « Mon point du jour » passe en picto dans la barre du
+// haut, avec le nombre à traiter, et ouvre une page : Le point en lignes, puis À traiter groupé par sujet à onglets
+test('278 : téléphone, le fil seul et le point du jour en picto dans la barre du haut', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'Disposition du téléphone')
   await seConnecter(page)
-  await deplierPoint(page)
-  await page.getByRole('button', { name: 'Mes indicateurs' }).click()
-  const pilotage = page.getByRole('region', { name: 'Pilotage' })
-  // Quatre cartes égales en 2 × 2, toutes dans l'écran, sans défilement de côté
-  await expect(pilotage.getByRole('link')).toHaveCount(4)
-  const b = await Promise.all((await pilotage.getByRole('link').all()).map(async (l) => (await l.boundingBox())!))
-  expect(b).toHaveLength(4)
-  expect(Math.abs(b[0].y - b[1].y)).toBeLessThan(2)
-  expect(b[2].y).toBeGreaterThan(b[0].y + b[0].height - 1)
-  expect(Math.abs(b[0].width - b[1].width)).toBeLessThan(2)
-  expect(Math.abs(b[0].height - b[1].height)).toBeLessThan(2)
-  for (const x of b) expect(x.x + x.width).toBeLessThanOrEqual(page.viewportSize()!.width)
-  expect(await pilotage.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true)
+  const picto = page.getByRole('banner').getByRole('button', { name: /^Mon point du jour, \d+ à traiter/ })
+  await expect(picto).toBeVisible()
+  const b = (await picto.boundingBox())!
+  expect(b.width).toBeGreaterThanOrEqual(48)
+  expect(b.height).toBeGreaterThanOrEqual(48)
+  // Le fil ouvre la page, plus de bande au-dessus
+  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', 'Actualités')
+  await expect(page.getByRole('region', { name: 'Pilotage' })).toHaveCount(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-  const onglets = page.getByRole('tablist', { name: 'Mon point' }).getByRole('tab')
+  await picto.click()
+  const point = page.getByRole('dialog', { name: 'Mon point du jour' })
+  // Le point en quatre lignes, comme sur PC
+  const pilotage = point.getByRole('region', { name: 'Pilotage' })
+  await expect(pilotage.getByRole('link')).toHaveCount(4)
+  const lignes = await Promise.all((await pilotage.getByRole('link').all()).map(async (l) => (await l.boundingBox())!))
+  for (let k = 1; k < 4; k++) expect(lignes[k].y).toBeGreaterThanOrEqual(lignes[k - 1].y + lignes[k - 1].height - 1)
+  await expect(point.getByRole('group', { name: 'Période des chiffres' })).toBeVisible()
+  const onglets = point.getByRole('tablist', { name: 'Mon point' }).getByRole('tab')
   await expect(onglets).toHaveText([/^À traiter/, /^Tâches/, 'Semaine', /^Contrats/])
   for (const o of await onglets.all()) expect((await o.boundingBox())!.height).toBeGreaterThanOrEqual(48)
-  // 209A (Joseph, 15/11/2026) : le point du jour se replie en une bande juste au-dessus des actualités
-  await expect(page.getByRole('region', { name: 'À traiter' }).getByRole('link')).toHaveCount(2)
-  const actualites = page.getByRole('region', { name: 'Actualités' })
-  expect((await page.getByRole('button', { name: /^Mon point du jour/ }).boundingBox())!.y).toBeLessThan((await actualites.boundingBox())!.y)
+  // À traiter groupé par sujet, comme sur PC : un groupe se déplie
+  const traiter = point.getByRole('region', { name: 'À traiter' })
+  await traiter.getByRole('button', { name: /^Voir les \d+$/ }).click()
+  const groupe = traiter.locator('button[aria-expanded="false"]').first()
+  await expect(groupe).toBeVisible()
+  await groupe.click()
+  await expect(traiter.locator('button[aria-expanded="true"]').first()).toBeVisible()
   await onglets.nth(1).click()
-  await expect(onglets.nth(1)).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByRole('region', { name: 'Mes tâches' })).toBeVisible()
+  await expect(point.getByRole('region', { name: 'Mes tâches' })).toBeVisible()
   await onglets.nth(2).click()
-  await expect(page.getByRole('region', { name: 'Cette semaine' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Ouvrir l’agenda' })).toBeVisible()
+  await expect(point.getByRole('region', { name: 'Cette semaine' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
-  await onglets.nth(0).click()
-  await page.screenshot({ path: `captures/${info.project.name}-accueil-pilotage.png` })
+  await point.getByRole('button', { name: 'Fermer' }).click()
+  await expect(point).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Actualités' })).toBeVisible()
 })

@@ -958,9 +958,14 @@ export async function actionFiche(page: Page, nom: 'Planifier la visite' | 'Pré
 // (franchisé) se replie en une bande au-dessus du fil ; on la déplie pour lire ce qu'elle contient
 export async function deplierPoint(page: Page) {
   if (page.viewportSize()!.width >= 900) return
-  const bande = page.getByRole('button', { name: /^(Mon point du jour|Mon magasin)/, expanded: false })
-  await bande.or(page.getByRole('button', { name: /^(Mon point du jour|Mon magasin)/, expanded: true })).first().waitFor()
-  if (await bande.count()) await bande.first().click()
+  // Choix 278 (17/11/2026) : l'équipe ouvre « Mon point du jour » par le picto de la barre du haut ; le franchisé déplie sa bande
+  const picto = page.getByRole('banner').getByRole('button', { name: /^Mon point du jour/ })
+  const bande = page.getByRole('button', { name: /^Mon magasin/ })
+  const page278 = page.getByRole('dialog', { name: 'Mon point du jour' })
+  await picto.or(bande).or(page278).first().waitFor()
+  if (await page278.isVisible()) return
+  if (await picto.count()) { await picto.click(); await page278.waitFor(); return }
+  if ((await bande.getAttribute('aria-expanded')) === 'false') await bande.click()
 }
 
 // Choix 271 : sur PC, les lignes d'un même sujet sont regroupées ; on les déplie toutes pour lire chaque ligne
@@ -970,6 +975,16 @@ export async function deplierGroupes(page: Page) {
   while (await fermes.count()) await fermes.first().click()
 }
 
+// Toute la liste À traiter, sur PC comme sur téléphone : le point ouvert, « Voir les N », chaque sujet déplié
+export async function toutATraiter(page: Page) {
+  await deplierPoint(page)
+  const bloc = page.getByRole('region', { name: 'À traiter' }).first()
+  await bloc.waitFor()
+  const voir = bloc.getByRole('button', { name: /^Voir les \d+$/ })
+  if (await voir.count()) await voir.click()
+  await deplierGroupes(page)
+}
+
 export async function deplierATraiter(page: Page) {
   await deplierPoint(page)
   const bloc = page.getByRole('region', { name: 'À traiter' })
@@ -977,6 +992,7 @@ export async function deplierATraiter(page: Page) {
   if (page.viewportSize()!.width >= 900) return
   const voir = bloc.getByRole('button', { name: /^Voir les \d+$/ })
   if (await voir.count()) await voir.click()
+  await deplierGroupes(page)
 }
 
 // Refonte (Joseph, 09/11/2026, 9A) : sur téléphone, le « + » de l'en-tête ; sur PC, plus de bouton Créer, la recherche

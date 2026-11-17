@@ -90,22 +90,17 @@ test('207 : le franchisé propose une bonne pratique depuis son fil, sans publie
   await expect(page).not.toHaveURL(/infos/)
 })
 
-test('209 : sur téléphone, le point du jour se replie au-dessus du fil et se déplie à la demande', async ({ page, isMobile }) => {
+test('209 puis 278 : sur téléphone, le fil commence en haut ; le point du jour s’ouvre par la barre du haut', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'Disposition du téléphone')
-  await seConnecter(page, { bandesRepliees: true })
-  const bande = page.getByRole('button', { name: /^Mon point du jour/ })
-  await expect(bande).toHaveAttribute('aria-expanded', 'false')
+  await seConnecter(page)
   await expect(page.getByRole('region', { name: 'À traiter' })).toHaveCount(0)
   // Le fil commence dans le premier écran
   const fil = page.getByRole('region', { name: 'Actualités' })
-  expect((await fil.boundingBox())!.y).toBeLessThan(page.viewportSize()!.height)
+  expect((await fil.boundingBox())!.y).toBeLessThan(page.viewportSize()!.height / 3)
   await expect(fil.getByRole('link', { name: 'Voir toutes les actualités' })).toHaveCount(0)
   await deplierPoint(page)
   await expect(page.getByRole('region', { name: 'À traiter' })).toBeVisible()
   await lisible(page, isMobile)
-  // Dépliée une fois, la bande le reste
-  await page.reload()
-  await expect(page.getByRole('button', { name: /^Mon point du jour/ })).toHaveAttribute('aria-expanded', 'true')
 })
 
 test('211 : ce qui est arrivé depuis le dernier passage porte « Nouveau », puis « Vous êtes à jour »', async ({ page }) => {

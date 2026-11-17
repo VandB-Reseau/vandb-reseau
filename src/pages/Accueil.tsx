@@ -1,4 +1,8 @@
-import { Fragment, useCallback, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import Badge from '@mui/material/Badge'
+import Drawer from '@mui/material/Drawer'
+import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -331,8 +335,8 @@ function BlocATraiter({ reseau, items, compact = false }: { reseau: Reseau; item
   const presents = GROUPES.map((g) => ({ ...g, n: tries.filter((x) => groupeDe(x) === g.v).length })).filter((g) => g.n)
   const filtres = filtre === 'tout' ? tries : tries.filter((x) => groupeDe(x) === filtre)
   const apercu = compact ? APERCU_COMPACT : APERCU
-  // PC : un sujet partagé par plusieurs lignes n'en fait qu'une ; téléphone : les lignes une par une, comme avant
-  const rangees: LigneOuGroupe[] = compact ? filtres.map((x) => ({ seul: x })) : regrouper(filtres)
+  // Un sujet partagé par plusieurs lignes n'en fait qu'une (choix 271 sur PC, 278 sur téléphone)
+  const rangees: LigneOuGroupe[] = regrouper(filtres)
   const lignes = tout ? rangees : rangees.slice(0, apercu)
   const ligne = (x: ATraiter) => (x.visite
             ? <LigneCompacte key={x.cle} onClick={() => setCompteRendu(x.visite!)} label={`Compte rendu de ${x.titre}`} avatar={avatarATraiter(reseau, x)} titre={x.titre} detail={x.detail}
@@ -355,7 +359,7 @@ function BlocATraiter({ reseau, items, compact = false }: { reseau: Reseau; item
         <CarteLignes>
           {lignes.map((r) => ('seul' in r ? ligne(r.seul) : <LigneGroupe key={`g-${r.sujet}-${groupeDe(r.items[0])}`} sujet={r.sujet} items={r.items}>{r.items.map(ligne)}</LigneGroupe>))}
           {rangees.length > apercu && (
-            <ButtonBase onClick={() => setTout((v) => !v)} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{tout ? 'Afficher moins' : `Voir les ${filtres.length}`}</ButtonBase>
+            <ButtonBase onClick={() => setTout((v) => !v)} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{tout ? 'Afficher moins' : `Voir les ${rangees.length}`}</ButtonBase>
           )}
         </CarteLignes>
       )}
@@ -748,20 +752,38 @@ function MaJournee({ reseau, p, moi }: { reseau: Reseau; p: Perimetre; moi: stri
   )
 }
 
-function IndicateursRepliables({ children }: { children: ReactNode }) {
+// Choix 278 (Joseph, 17/11/2026) : sur téléphone, le fil seul, façon LinkedIn. Le point du jour passe dans la barre du
+// haut, en picto avec le nombre à traiter (comme une notification) ; il ouvre une page pleine avec Le point et À traiter
+function PointTelephone({ items, taches, children }: { items: ATraiter[]; taches: ReturnType<typeof mesTaches>; children: ReactNode }) {
   const [ouvert, setOuvert] = useState(false)
+  const [cible, setCible] = useState<HTMLElement | null>(null)
+  useEffect(() => { setCible(document.getElementById('entete-actions-page')) }, [])
+  const resume = [items.length ? `${items.length} à traiter` : '', taches.length ? `${taches.length} tâche${taches.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ') || 'rien d’urgent'
+  const bouton = (
+    <Tooltip title="Mon point du jour">
+      <IconButton onClick={() => setOuvert(true)} aria-label={`Mon point du jour, ${resume}`} aria-haspopup="dialog" aria-expanded={ouvert} sx={{ width: 48, height: 48, flexShrink: 0 }}>
+        <Badge color="error" badgeContent={items.length} max={99}><TodayOutlined /></Badge>
+      </IconButton>
+    </Tooltip>
+  )
   return (
-    <Box sx={{ mb: 2 }}>
-      <Button onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert} endIcon={ouvert ? <ExpandLessOutlined /> : <ExpandMoreOutlined />} sx={{ minHeight: 48, px: 0 }}>Mes indicateurs</Button>
-      <Collapse in={ouvert} unmountOnExit>{children}</Collapse>
-    </Box>
+    <>
+      {cible ? createPortal(bouton, cible) : <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>{bouton}</Box>}
+      <Drawer anchor="right" open={ouvert} onClose={() => setOuvert(false)} sx={{ zIndex: (t) => t.zIndex.modal }} slotProps={{ paper: { role: 'dialog', 'aria-label': 'Mon point du jour', sx: { width: '100%', bgcolor: 'background.default' } } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, pt: 'calc(8px + env(safe-area-inset-top))', pb: 1, position: 'sticky', top: 0, zIndex: 1, bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider' }}>
+          <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1.125rem', flex: 1 }}>Mon point du jour</Typography>
+          <IconButton onClick={() => setOuvert(false)} aria-label="Fermer" sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
+        </Box>
+        <Box sx={{ px: 2, pt: 2, pb: 'calc(24px + env(safe-area-inset-bottom))' }}>{children}</Box>
+      </Drawer>
+    </>
   )
 }
 
 // Accueil (refonte vague 5, Joseph 10/11/2026, 43A) : l'actualité au centre. Les repères chiffrés en tête, puis À la une
 // et le fil du réseau en colonne principale ; « Aujourd'hui » (ma journée, À traiter, mes tâches, la semaine, les contrats)
 // en colonne compacte à droite. Sur téléphone : À la une, puis le point du jour, puis le fil.
-function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Reseau; p: Perimetre; sansParametres?: boolean; periode: Periode }) {
+function Tableau({ reseau, p, sansParametres = false, periode, barrePeriode }: { reseau: Reseau; p: Perimetre; sansParametres?: boolean; periode: Periode; barrePeriode?: ReactNode }) {
   const { profil } = useAuth()
   const { messagerie } = useMessagerie()
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
@@ -795,21 +817,19 @@ function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Resea
   const partager = <BarrePartager moi={monNomPorteur(reseau, profil) || profil?.nom || ''} franchise={false} communication={peutPublier} reseau={reseau} apres={communications.recharger} />
   // Choix 212 (15/11/2026) : l'Accueil porte seul le fil, avec ses filtres (l'onglet Fil d'Actualités est retiré)
   const filActu = <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" social partager={partager} communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
-  if (!surPC) {
-    const resume = [items.length ? `${items.length} à traiter` : '', taches.length ? `${taches.length} tâche${taches.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ') || 'Rien d’urgent'
-    return (
-      <>
-        {aLaUne}
-        <BandeRepliable titre="Mon point du jour" resume={resume} icone={<TodayOutlined />}>
-          {profil?.role === 'coach' ? <MaJournee reseau={reseau} p={p} moi={monNomPorteur(reseau, profil)} /> : <AuMagasin reseau={reseau} p={p} />}
-          <PointCompact reseau={reseau} p={p} items={items} taches={taches} contrats={contrats} />
-          <SondagesARepondre equipe aFaire titre="Sondages à remplir" />
-          <IndicateursRepliables><Indicateurs reseau={reseau} p={p} periode={periode} /></IndicateursRepliables>
-        </BandeRepliable>
-        {filActu}
-      </>
-    )
-  }
+  if (!surPC) return (
+    <>
+      {aLaUne}
+      <PointTelephone items={items} taches={taches}>
+        {profil?.role === 'coach' ? <MaJournee reseau={reseau} p={p} moi={monNomPorteur(reseau, profil)} /> : <AuMagasin reseau={reseau} p={p} />}
+        {barrePeriode && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>{barrePeriode}</Box>}
+        <Indicateurs reseau={reseau} p={p} periode={periode} colonne />
+        <SondagesARepondre equipe aFaire titre="Sondages à remplir" />
+        <PointCompact reseau={reseau} p={p} items={items} taches={taches} contrats={contrats} />
+      </PointTelephone>
+      {filActu}
+    </>
+  )
   return (
     <>
       {aLaUne}
@@ -865,10 +885,13 @@ export function Accueil() {
   const demandee = params.get('periode')
   const periode: Periode = demandee === 'cumul' || demandee === 'mois' ? demandee : commune
   const choisir = (v: Periode | null) => { if (!v) return; setCommune(v); const n = new URLSearchParams(params); if (v === 'mois') n.delete('periode'); else n.set('periode', v); setParams(n, { replace: true }) }
+  // 278 : sur téléphone, la période suit Le point dans la page « Mon point du jour »
+  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
+  const barre = <BarrePeriode valeur={periode} onChange={choisir} sx={{ ml: 'auto' }} />
   return (
     <>
-      <PageHeader titre="Accueil" actions={<BarrePeriode valeur={periode} onChange={choisir} sx={{ ml: 'auto' }} />} />
-      <AvecReseau>{(r) => <Tableau reseau={r} p={p} sansParametres={p.type !== 'reseau'} periode={periode} />}</AvecReseau>
+      <PageHeader titre="Accueil" actions={surPC ? barre : undefined} />
+      <AvecReseau>{(r) => <Tableau reseau={r} p={p} sansParametres={p.type !== 'reseau'} periode={periode} barrePeriode={surPC ? undefined : barre} />}</AvecReseau>
     </>
   )
 }

@@ -26,15 +26,15 @@ test('l’actualité au premier plan de l’accueil, comme un réseau social', a
   await seConnecter(page)
   const fil = page.getByRole('region', { name: 'Actualités' })
   await expect(fil).toBeVisible()
-  // Le fil passe avant les indicateurs et avant À traiter ; sur téléphone, seule la bande repliée du point du jour le précède (209A)
-  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', isMobile ? 'Mon point du jour' : 'Actualités')
+  // Le fil passe avant les indicateurs et avant À traiter ; sur téléphone, le fil seul (278), le point du jour est dans la barre du haut
+  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', 'Actualités')
   await expect(fil.getByRole('button', { name: 'Communication' })).toBeVisible()
   if (isMobile) {
-    // Téléphone : les indicateurs se déplient
+    // Téléphone : les indicateurs s'ouvrent par le picto « Mon point du jour »
     await expect(page.getByRole('region', { name: 'Pilotage' })).toHaveCount(0)
     await deplierPoint(page)
-    await page.getByRole('button', { name: 'Mes indicateurs' }).click()
     await expect(page.getByRole('region', { name: 'Pilotage' })).toBeVisible()
+    await page.getByRole('dialog', { name: 'Mon point du jour' }).getByRole('button', { name: 'Fermer' }).click()
   } else {
     // PC : le fil à gauche, les indicateurs en tête de la colonne Aujourd'hui
     const [f, ind] = await Promise.all([fil.boundingBox(), page.getByRole('region', { name: 'Pilotage' }).boundingBox()])
