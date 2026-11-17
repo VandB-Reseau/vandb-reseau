@@ -58,7 +58,7 @@ export interface ChallengesSimules { equipe: Record<string, unknown>[]; franchis
 export interface ComptesSimules { equipe?: string[] }
 // Refonte vague 4 (migration 0043) : entretiens RR–Coach et demandes des franchisés ; null = table absente
 // Rapports de l'onglet Pilotage (script 0050_rapports_pilotage.sql) : définitions seules
-export interface RapportSimule { id: number; titre: string; definition: Record<string, unknown>; modele: boolean; partage: boolean; auteur: string; role: string; moi?: boolean }
+export interface RapportSimule { id: number; titre: string; definition: Record<string, unknown>; modele: boolean; partage: boolean; publics?: string[]; auteur: string; role: string; moi?: boolean }
 export interface OptionsSimulation { bandesRepliees?: boolean; entretiens?: Record<string, unknown>[] | null; demandes?: Record<string, unknown>[] | null; magasinsEnPlus?: (typeof magasinsFictifs)[number][]; chiffresFermes?: boolean; chiffresCaisse?: Record<string, unknown>[] | null; surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' | 'principalSature'; rapports?: RapportSimule[] | null }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
@@ -514,13 +514,13 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         const liste = (options.rapports ??= [])
         const refus = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
         const equipe = acces.role !== 'franchise'
-        if (fn === 'rapports_du_compte') return route.fulfill({ json: liste.filter((r) => r.moi || r.modele || (r.partage && equipe)).map((r) => ({ id: r.id, titre: r.titre, definition: r.definition, modele: r.modele, partage: r.partage, auteur: r.auteur, mien: !!r.moi })) })
+        if (fn === 'rapports_du_compte') return route.fulfill({ json: liste.filter((r) => r.moi || (r.modele && (acces.role === 'directeur' || (r.publics ?? ['rr', 'coach', 'franchise']).includes(acces.role))) || (r.partage && equipe)).map((r) => ({ id: r.id, titre: r.titre, definition: r.definition, modele: r.modele, partage: r.partage, publics: r.publics ?? ['rr', 'coach', 'franchise'], auteur: r.auteur, mien: !!r.moi })) })
         if (fn === 'enregistrer_rapport') {
           if ((corps.p_modele && acces.role !== 'directeur') || (corps.p_partage && !equipe) || !String(corps.p_titre ?? '').trim()) return refus()
           const id = corps.p_id === null || corps.p_id === undefined ? Math.max(0, ...liste.map((r) => r.id)) + 1 : Number(corps.p_id)
           const ancien = liste.find((r) => r.id === id)
           if (ancien && !ancien.moi) return refus()
-          const r: RapportSimule = { id, titre: String(corps.p_titre), definition: corps.p_definition as Record<string, unknown>, modele: !!corps.p_modele, partage: !!corps.p_partage, auteur: 'Moi', role: acces.role, moi: true }
+          const r: RapportSimule = { id, titre: String(corps.p_titre), definition: corps.p_definition as Record<string, unknown>, modele: !!corps.p_modele, partage: !!corps.p_partage, publics: Array.isArray(corps.p_publics) ? corps.p_publics as string[] : undefined, auteur: 'Moi', role: acces.role, moi: true }
           options.rapports = [...liste.filter((x) => x.id !== id), r]
           return route.fulfill({ json: id })
         }
