@@ -37,6 +37,7 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import DragIndicatorOutlined from '@mui/icons-material/DragIndicatorOutlined'
+import TuneOutlined from '@mui/icons-material/TuneOutlined'
 import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined'
 import PrintOutlined from '@mui/icons-material/PrintOutlined'
 import LinkOutlined from '@mui/icons-material/LinkOutlined'
@@ -202,7 +203,7 @@ function Rapports({ reseau }: { reseau: Reseau }) {
               )}
             </Box>
           </Box>
-          <Constructeur def={def} changer={changer} ctx={ctx} surPC={surPC} />
+          <Constructeur def={def} changer={changer} ctx={ctx} surPC={surPC} nouveau={titreDepart === 'Nouveau rapport'} />
           {finances === undefined && resultat.indicateurs.some((i) => i.theme === 'budget') && <Skeleton variant="rounded" height={8} sx={{ mb: 1 }} aria-label="Chargement des budgets" />}
           <Affichage resultat={resultat} def={def} changer={changer} surPC={surPC} />
         </Box>
@@ -330,8 +331,11 @@ function ListeRapports({ proposes, role, enregistres, indisponibles, selection, 
 
 // ── Constructeur : champs à glisser, zones, période ─────────────────────
 const TYPE_GLISSE = 'application/x-vandb-champ'
-function Constructeur({ def, changer, ctx, surPC }: { def: Definition; changer: (d: Partial<Definition>) => void; ctx: Contexte; surPC: boolean }) {
-  const [ouvert, setOuvert] = useState(surPC)
+// Replié par défaut : le rapport s'affiche d'abord, la construction s'ouvre pour le modifier (Joseph, 17/11/2026) ;
+// ouverte d'office sur un nouveau rapport, qui est à construire
+function Constructeur({ def, changer, ctx, surPC, nouveau }: { def: Definition; changer: (d: Partial<Definition>) => void; ctx: Contexte; surPC: boolean; nouveau: boolean }) {
+  const [ouvert, setOuvert] = useState(nouveau)
+  useEffect(() => { if (nouveau) setOuvert(true) }, [nouveau])
   const [survol, setSurvol] = useState<string | null>(null)
   const inds = indicateursVisibles(ctx.equipe)
   const axes = axesVisibles(ctx.equipe)
@@ -370,9 +374,9 @@ function Constructeur({ def, changer, ctx, surPC }: { def: Definition; changer: 
   )
   return (
     <Card variant="outlined" className="pas-a-l-impression" sx={{ mb: 2, overflow: 'hidden' }}>
-      <Button fullWidth onClick={() => setOuvert((o) => !o)} endIcon={ouvert ? <ExpandLessOutlined /> : <ExpandMoreOutlined />} aria-expanded={ouvert}
-        sx={{ justifyContent: 'space-between', px: 2, minHeight: 48, color: 'text.primary', fontWeight: 600 }}>
-        Construire le rapport
+      <Button fullWidth onClick={() => setOuvert((o) => !o)} startIcon={<TuneOutlined />} endIcon={ouvert ? <ExpandLessOutlined /> : <ExpandMoreOutlined />} aria-expanded={ouvert}
+        sx={{ justifyContent: 'flex-start', '& .MuiButton-endIcon': { ml: 'auto' }, px: 2, minHeight: 48, color: 'text.primary', fontWeight: 600 }}>
+        Modifier le rapport
       </Button>
       {ouvert && (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: '260px minmax(0, 1fr)' }, borderTop: 1, borderColor: 'divider' }}>

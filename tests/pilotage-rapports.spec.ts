@@ -26,7 +26,7 @@ async function choisirRapport(page: Page, titre: string, isMobile: boolean) {
   await expect(page.getByRole('heading', { level: 2, name: titre })).toBeVisible()
 }
 async function ouvrirConstructeur(page: Page) {
-  const b = page.getByRole('button', { name: 'Construire le rapport' })
+  const b = page.getByRole('button', { name: 'Modifier le rapport' })
   if ((await b.getAttribute('aria-expanded')) === 'false') await b.click()
 }
 
@@ -41,6 +41,9 @@ test('Pilotage : rapport du siège, indicateurs en parallèle, typologie, mois e
   await expect(tableau(page).getByRole('row', { name: /Nantes Test/ })).toContainText('879 000 €')
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  // Construction repliée à l'ouverture : le rapport d'abord, « Modifier le rapport » pour l'ouvrir
+  await expect(page.getByRole('button', { name: 'Modifier le rapport' })).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('group', { name: 'Lignes' })).toHaveCount(0)
 
   // Rapport partagé par un membre de l'équipe
   if (!isMobile) await expect(page.getByRole('list', { name: 'Partagés avec moi' })).toContainText('Point du RR Sud')
@@ -98,6 +101,7 @@ test('Pilotage : glisser un indicateur et un axe sur PC', async ({ page, isMobil
   await seConnecter(page, { rapports: [] })
   await page.goto('./#/pilotage')
   await expect(page.getByRole('heading', { level: 2, name: 'Budget contre réel par magasin' })).toBeVisible()
+  await ouvrirConstructeur(page)
   const champs = page.getByRole('complementary', { name: 'Champs du rapport' })
   await champs.getByRole('button', { name: 'Panier moyen HT Cave', exact: true }).dragTo(page.getByRole('group', { name: /^Indicateurs/ }))
   await expect(tableau(page).getByRole('columnheader', { name: 'Panier moyen HT Cave' })).toBeVisible()
@@ -124,6 +128,8 @@ test('Pilotage : le Directeur propose un rapport à tout le réseau', async ({ p
 
   // Un rapport pour les Coachs seulement : rangé avec les rapports des Coachs
   await page.getByRole('button', { name: 'Nouveau rapport' }).click()
+  // Un nouveau rapport est à construire : la construction s'ouvre d'office
+  await expect(page.getByRole('button', { name: 'Modifier le rapport' })).toHaveAttribute('aria-expanded', 'true')
   await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
   await page.getByRole('dialog').getByLabel('Titre').fill('Visites de la semaine')
   await page.getByRole('dialog').getByLabel('Proposer comme rapport du siège').check()
