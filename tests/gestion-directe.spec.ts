@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { construireReseau } from '../src/data/construction'
 import { cleFiltreCoach, libelleSuivi, suiviEtRR } from '../src/data/charge'
 import { affectationsFictives, coachsFictifs, configRRFictive, magasinsFictifs } from './donnees-fictives'
-import { seConnecter, textesTropPetits } from './supabase-simule'
+import { deplierPoint, seConnecter, textesTropPetits } from './supabase-simule'
 
 // Metz Test n'a plus de Coach depuis janvier : Alex NORD (Responsable Régional) le gère en direct.
 // C'est un choix d'organisation, jamais un « Sans Coach ».
@@ -37,6 +37,7 @@ test('libellés : Coach, géré en direct, ou vraiment sans Coach', ({ isMobile 
 
 test('un magasin géré en direct par son RR n’est signalé nulle part comme sans Coach', async ({ page, isMobile }, info) => {
   await seConnecter(page, { affectationsEnPlus: [plusDeCoach] })
+  await deplierPoint(page) // 278 : sur téléphone, le point du jour s'ouvre par la barre du haut
   await expect(page.getByRole('region', { name: 'À traiter' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'À traiter' })).not.toContainText('Sans Coach')
 

@@ -41,7 +41,7 @@ test('79A et fiche : un seul bouton Visite, « + » regroupe tâche, visite non 
   await page.goto('./#/magasins/Lyon%20Test')
   const visite = page.getByRole('link', { name: 'Planifier la visite : Lyon Test' })
   await expect(visite).toBeVisible()
-  await expect(page.getByRole('region', { name: 'À faire maintenant' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'À faire' })).toBeVisible()
   await page.getByRole('button', { name: 'Ajouter', exact: true }).click()
   const menu = page.getByRole('menu')
   for (const n of ['Tâche', 'Visite non prévue', 'Appel', 'Note']) await expect(menu.getByRole('menuitem', { name: n })).toBeVisible()

@@ -28,9 +28,11 @@ test('l’équipe voit la tâche, marquée « Équipe seule »', async ({ page }
   await seConnecter(page, { config: { actions } })
   await page.goto('#/magasins/Annecy%20Test?vue=actions')
   await ouvrirOnglet(page, 'Tâches')
-  const ligne = page.getByRole('listitem').filter({ hasText: 'Préparer le point marge' })
+  // Maquette 265 (17/11/2026) : la liste des tâches en cours, pas l'historique en dessous
+  const taches = page.getByRole('list', { name: 'Tâches en cours de Annecy Test' })
+  const ligne = taches.getByRole('listitem').filter({ hasText: 'Préparer le point marge' })
   await expect(ligne).toContainText('Équipe seule')
-  await expect(page.getByRole('listitem').filter({ hasText: 'Refaire la vitrine' })).not.toContainText('Équipe seule')
+  await expect(taches.getByRole('listitem').filter({ hasText: 'Refaire la vitrine' })).not.toContainText('Équipe seule')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-taches-equipe.png` })
 })

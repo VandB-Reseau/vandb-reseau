@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { ouvrirInfosMagasin, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { magasinsFictifs, visitesFictives } from './donnees-fictives'
 
 // Sprint 27 (Joseph, 26/10/2026) : S1 listes de tâches en puces, S3 même nombre de magasins partout,
@@ -73,6 +73,7 @@ test('F3 : les concurrents à 2 km de la fiche magasin, complétés par l’équ
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ...NOE, ecritures, persister: true })
   await page.goto('./#/magasins/Lyon%20Test')
+  await ouvrirInfosMagasin(page)
   await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
   const liste = page.getByRole('list', { name: 'Concurrents de Lyon Test' })
   await expect(liste.getByRole('listitem')).toHaveCount(2)
@@ -86,7 +87,7 @@ test('F3 : les concurrents à 2 km de la fiche magasin, complétés par l’équ
 
   // Une note sur un commerce de la carte
   await liste.getByRole('button', { name: 'Modifier Cave Fictive du Centre' }).click()
-  let d = page.getByRole('dialog')
+  let d = page.getByRole('dialog').last()
   await d.getByLabel('Note').fill('Prix agressifs sur le champagne')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Concurrent enregistré.')).toBeVisible()
@@ -95,7 +96,7 @@ test('F3 : les concurrents à 2 km de la fiche magasin, complétés par l’équ
 
   // Un concurrent absent de la carte
   await page.getByRole('button', { name: 'Ajouter un concurrent' }).click()
-  d = page.getByRole('dialog')
+  d = page.getByRole('dialog').last()
   await d.getByLabel('Nom').fill('Rayon cave du supermarché')
   await d.getByLabel('Adresse ou précision').fill('Centre commercial')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
@@ -105,7 +106,7 @@ test('F3 : les concurrents à 2 km de la fiche magasin, complétés par l’équ
 
   // Un commerce qui n'est pas un concurrent est retiré, puis remis
   await liste.getByRole('button', { name: 'Modifier Spiritueux Simulés' }).click()
-  d = page.getByRole('dialog')
+  d = page.getByRole('dialog').last()
   await d.getByRole('button', { name: 'Supprimer' }).click()
   await d.getByRole('alert').getByRole('button', { name: 'Supprimer' }).click()
   await expect(page.getByText('Spiritueux Simulés retiré de la liste.')).toBeVisible()
@@ -127,6 +128,7 @@ test('F3 : les concurrents à 2 km de la fiche magasin, complétés par l’équ
 test('F3 : la carte des commerces ne répond pas', async ({ page }) => {
   await seConnecter(page, { overpass: 'panne' })
   await page.goto('./#/magasins/Lyon%20Test')
+  await ouvrirInfosMagasin(page)
   await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
   await expect(page.getByText('La carte des commerces ne répond pas pour le moment.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Réessayer' })).toBeVisible()
@@ -135,6 +137,7 @@ test('F3 : la carte des commerces ne répond pas', async ({ page }) => {
 test('F3 : serveur principal saturé, la liste vient d’un miroir', async ({ page }) => {
   await seConnecter(page, { overpass: 'principalSature' })
   await page.goto('./#/magasins/Lyon%20Test')
+  await ouvrirInfosMagasin(page)
   await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
   const liste = page.getByRole('list', { name: 'Concurrents de Lyon Test' })
   await expect(liste.getByRole('listitem')).toHaveCount(2)
@@ -146,6 +149,7 @@ test('F3 : la liste lue sur la carte est gardée pour toute l’équipe', async 
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ...NOE, ecritures })
   await page.goto('./#/magasins/Lyon%20Test')
+  await ouvrirInfosMagasin(page)
   await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
   await expect(page.getByRole('list', { name: 'Concurrents de Lyon Test' }).getByRole('listitem')).toHaveCount(2)
   await expect.poll(() => suiviEcrit(ecritures, 'concurrents_magasins')?.['Lyon Test']?.lus?.liste?.map((c: { nom: string }) => c.nom))
@@ -158,6 +162,7 @@ test('F3 : carte en panne, la liste de l’équipe s’affiche', async ({ page }
   page.on('request', (r) => { if (/overpass/.test(r.url())) appels++ })
   await seConnecter(page, { overpass: 'panne', config: { concurrents_magasins: { 'Lyon Test': { ajoutes: [], masques: [], notes: {}, lus } } } })
   await page.goto('./#/magasins/Lyon%20Test')
+  await ouvrirInfosMagasin(page)
   await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
   const liste = page.getByRole('list', { name: 'Concurrents de Lyon Test' })
   await expect(liste).toContainText('Cave Déjà Connue')
@@ -171,6 +176,7 @@ test('F3 : magasin placé au centre de son département, pas de recherche à 2 k
   page.on('request', (r) => { if (/overpass/.test(r.url())) appels++ })
   await seConnecter(page, { magasinsEnPlus: [{ ...magasinsFictifs[0], n: 'Approx Test', addr: '', cp: '', ville: '', lat: 45.7, lon: 4.8, geo: 'dept' } as (typeof magasinsFictifs)[number]] })
   await page.goto('./#/magasins/Approx%20Test')
+  await ouvrirInfosMagasin(page)
   await page.getByRole('button', { name: 'Concurrents à 2 km' }).click() // repliés (choix 200)
   await expect(page.getByText('Le magasin n’est placé qu’au centre de son département', { exact: false })).toBeVisible()
   expect(appels).toBe(0)
@@ -183,7 +189,7 @@ test('F4 : le franchisé écrit son mot avant la visite prévue', async ({ page 
   const bloc = page.getByRole('region', { name: 'Avant la visite' })
   await expect(bloc).toContainText('Hugo FICTIF')
   await bloc.getByRole('button', { name: 'Écrire mon mot' }).click()
-  const d = page.getByRole('dialog')
+  const d = page.getByRole('dialog').last()
   await d.getByLabel('Ce qui marche', { exact: true }).fill('Les dégustations du samedi')
   await d.getByLabel('Ce qui bloque', { exact: true }).fill('Livraisons en retard')
   await d.getByRole('button', { name: 'Enregistrer' }).click()

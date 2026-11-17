@@ -82,7 +82,7 @@ test('après la réunion, l’équipe pointe les présents', async ({ page, isMo
 test('la fiche magasin compte les présences de l’année', async ({ page, isMobile }, info) => {
   await seConnecter(page, { reunions: reunions() })
   await page.goto('./#/magasins/Lyon%20Test?vue=visites')
-  const section = page.getByRole('heading', { name: /^Réunions et formations · \d{4}$/ }).locator('xpath=ancestor::div[contains(@class,"MuiCard-root")]')
+  const section = page.getByRole('heading', { name: /^Réunions et formations · \d{4}$/ }).locator('xpath=ancestor::*[contains(@class,"MuiCard-root")]')
   await expect(section).toContainText('Présent à 1 sur 1')
   await expect(section).toContainText('Formation vente')
   await expect(section).toContainText('Réunion régionale')

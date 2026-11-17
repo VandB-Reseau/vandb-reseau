@@ -833,8 +833,9 @@ function Tableau({ reseau, p, sansParametres = false, periode, barrePeriode }: {
   return (
     <>
       {aLaUne}
-      {/* Choix 271 (Joseph, 17/11/2026) : le fil façon LinkedIn sur 600 px, la colonne « Aujourd'hui » à côté */}
-      <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: 'minmax(0, 600px) minmax(340px, 400px)', justifyContent: 'center', alignItems: 'start' }}>
+      {/* Choix 271 (Joseph, 17/11/2026) : le fil façon LinkedIn, la colonne « Aujourd'hui » à côté. 17/11 : aligné à gauche
+          sous le titre, fil jusqu'à 760 px, la colonne de droite prend le reste (plus de vide sur les côtés) */}
+      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: 'minmax(0, 760px) minmax(360px, 1fr)', justifyContent: 'start', alignItems: 'start' }}>
         <Box sx={{ minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column' }}>{filActu}</Box>
         <Box component="aside" aria-label="Aujourd’hui" sx={{ minWidth: 0 }}>
           <Indicateurs reseau={reseau} p={p} periode={periode} colonne />
