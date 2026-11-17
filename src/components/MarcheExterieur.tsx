@@ -31,6 +31,8 @@ import ArrowForward from '@mui/icons-material/ArrowForward'
 import Check from '@mui/icons-material/Check'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import Favorite from '@mui/icons-material/Favorite'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Switch from '@mui/material/Switch'
 import SearchOutlined from '@mui/icons-material/SearchOutlined'
 import { Fenetre } from './EditionEquipe'
 import { useMessageAnnulable } from './Annulable'
@@ -125,7 +127,7 @@ export function MarcheExterieur({ reseau, m }: { reseau: Reseau; m: Magasin }) {
       <Frise etape={etape} fait={fait} allerA={allerA} />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', minHeight: 24 }}>
         <Typography variant="body2" color="text.secondary">
-          {[`${s.cibles} cible${s.cibles > 1 ? 's' : ''}`, `${s.notees} notée${s.notees > 1 ? 's' : ''}`, `${s.actions} action${s.actions > 1 ? 's' : ''}`, s.caVise > 0 && `${formatEuros(s.caVise)} HT visés`].filter(Boolean).join(' · ')}
+          {[`${s.cibles} cible${s.cibles > 1 ? 's' : ''}`, `${s.notees} notée${s.notees > 1 ? 's' : ''}`, `${s.actions} action${s.actions > 1 ? 's' : ''}`, s.sousContrat > 0 && `${s.sousContrat} sous contrat`, s.caVise > 0 && `${formatEuros(s.caVise)} HT visés`].filter(Boolean).join(' · ')}
         </Typography>
         <Typography role="status" variant="body2" sx={{ ml: 'auto', color: etat === 'erreur' ? 'error.main' : 'text.secondary', fontWeight: etat === 'erreur' ? 600 : 400 }}>
           {etat === 'envoi' ? 'Enregistrement…' : etat === 'ok' ? 'Enregistré' : etat === 'erreur' ? 'Pas enregistré : vérifie la connexion, la saisie sera renvoyée au prochain changement.' : ''}
@@ -208,10 +210,11 @@ function EtapeMagasin({ reseau, m, plan, changer, lecture }: { reseau: Reseau; m
         <TextField label="Objectif de CA extérieur sur un an (€ HT)" value={objectif} disabled={lecture} slotProps={{ htmlInput: { inputMode: 'decimal' } }}
           onChange={(e) => { setObjectif(e.target.value); const n = nombreOuNull(e.target.value); if (n === null || n >= 0) changer({ ...plan, objectif: n }) }} />
       </Box>
-      <Box sx={{ display: 'grid', gap: 1.5, mt: 2.5, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}>
+      <Box sx={{ display: 'grid', gap: 1.5, mt: 2.5, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(5, minmax(0, 1fr))' } }}>
         <Indicateur libelle={mois.length ? `CA extérieur, ${mois.length} dernier${mois.length > 1 ? 's' : ''} mois` : 'CA extérieur'} valeur={mois.length ? formatEuros(caExt) : '—'} />
         <Indicateur libelle="Objectif sur un an" valeur={plan.objectif !== null ? formatEuros(plan.objectif) : '—'} />
         <Indicateur libelle="Cibles retenues" valeur={String(s.cibles)} />
+        <Indicateur libelle={s.sousContrat ? `CA sous contrat, ${s.sousContrat} cible${s.sousContrat > 1 ? 's' : ''}` : 'CA sous contrat'} valeur={s.caContrat ? formatEuros(s.caContrat) : '—'} />
         <Indicateur libelle="CA visé par le plan" valeur={s.caVise ? formatEuros(s.caVise) : '—'} />
       </Box>
     </>
@@ -238,7 +241,7 @@ function ecrireCache(cle: string, liste: Trouvee[]) {
 }
 
 // Cibles conseillées (Joseph, 17/11/2026) : un cœur et la raison sous le nom ; toutes restent listées
-function NomConseil({ t }: { t: Trouvee }) {
+function NomConseil({ t, cible }: { t: Trouvee; cible?: Cible }) {
   return (
     <>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
@@ -246,6 +249,7 @@ function NomConseil({ t }: { t: Trouvee }) {
         <Typography component="span" sx={{ fontWeight: 600 }}>{t.nom}</Typography>
       </Box>
       {t.conseil && <Typography variant="body2" sx={{ color: 'secondary.dark' }}>{t.conseil}</Typography>}
+      {cible?.contrat && <Box sx={{ mt: 0.5 }}><Contrat c={cible} /></Box>}
     </>
   )
 }
@@ -279,6 +283,7 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
     setRecherche({ etat: 'pret', liste: uniques, echecs })
   }
   const retenues = new Set(plan.cibles.map((c) => c.id))
+  const parId = new Map(plan.cibles.map((c) => [c.id, c]))
   const basculer = (t: Trouvee) => changer(retenues.has(t.id)
     ? { ...plan, cibles: plan.cibles.filter((c) => c.id !== t.id) }
     : { ...plan, cibles: [...plan.cibles, cibleDepuis(t, par, le)] }, true)
@@ -343,7 +348,7 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
                   {vues.map((t) => (
                     <TableRow key={t.id} hover selected={retenues.has(t.id)}>
                       <TableCell padding="checkbox"><Checkbox checked={retenues.has(t.id)} onChange={() => basculer(t)} disabled={lecture} slotProps={{ input: { 'aria-label': `Retenir ${t.nom}` } }} /></TableCell>
-                      <TableCell><NomConseil t={t} /></TableCell>
+                      <TableCell><NomConseil t={t} cible={parId.get(t.id)} /></TableCell>
                       <TableCell><Pastille ton="type">{libelleCategorie(t.categorie)}</Pastille></TableCell>
                       <TableCell>{t.activite}</TableCell>
                       <TableCell sx={{ color: t.effectif === null ? 'text.secondary' : undefined, fontWeight: (t.effectif ?? 0) >= 100 ? 700 : undefined }}>{t.effectif === null ? ['Non publié', t.taille && `entreprise : ${t.taille}`].filter(Boolean).join(' · ') : TRANCHE_COURTE(t)}</TableCell>
@@ -361,7 +366,7 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
                 <Box component="li" key={t.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
                   <Checkbox checked={retenues.has(t.id)} onChange={() => basculer(t)} disabled={lecture} slotProps={{ input: { 'aria-label': `Retenir ${t.nom}` } }} sx={{ width: 48, height: 48 }} />
                   <Box sx={{ minWidth: 0 }}>
-                    <NomConseil t={t} />
+                    <NomConseil t={t} cible={parId.get(t.id)} />
                     <Typography variant="body2" color="text.secondary">{[libelleCategorie(t.categorie), t.activite, t.effectif === null ? 'effectif non publié' : TRANCHE_COURTE(t), t.ca && `CA ${libelleCA(t.ca)}`, libelleDistance(t.distance)].filter(Boolean).join(' · ')}</Typography>
                   </Box>
                 </Box>
@@ -378,13 +383,12 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
 function EtapeCibles({ plan, changer, lecture, par, le }: { plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; lecture: boolean; par: string; le: string }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const [edition, setEdition] = useState<Cible | null | undefined>(undefined)
-  const [message, setMessage] = useState('')
+  const { signaler, bandeau } = useMessageAnnulable()
   return (
     <>
       <Titre action={!lecture && <Button variant="outlined" startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }}>Ajouter une cible</Button>}>
         {`Mes cibles · ${plan.cibles.length}`}
       </Titre>
-      {message && <Alert severity="success" onClose={() => setMessage('')} sx={{ mb: 2 }}>{message}</Alert>}
       {!plan.cibles.length ? (
         <Typography color="text.secondary">Aucune cible retenue. Coche des noms au repérage, ou ajoute une cible à la main : un business club, un client que tu connais déjà.</Typography>
       ) : surPC ? (
@@ -394,7 +398,7 @@ function EtapeCibles({ plan, changer, lecture, par, le }: { plan: PlanExterieur;
             <TableBody>
               {plan.cibles.map((c) => (
                 <TableRow key={c.id} hover>
-                  <TableCell><Typography sx={{ fontWeight: 600 }}>{c.nom}</Typography><Typography variant="body2" color="text.secondary">{c.detail}</Typography></TableCell>
+                  <TableCell><Typography sx={{ fontWeight: 600 }}>{c.nom}</Typography><Typography variant="body2" color="text.secondary">{c.detail}</Typography>{c.contrat && <Box sx={{ mt: 0.5 }}><Contrat c={c} /></Box>}</TableCell>
                   <TableCell><Pastille ton="type">{libelleCategorie(c.categorie)}</Pastille></TableCell>
                   <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{c.membres !== null ? formatNombre(c.membres) : <Typography component="span" variant="body2" color="text.secondary">À compléter</Typography>}</TableCell>
                   <TableCell>{c.contact || <Typography component="span" variant="body2" color="text.secondary">À compléter</Typography>}</TableCell>
@@ -413,15 +417,23 @@ function EtapeCibles({ plan, changer, lecture, par, le }: { plan: PlanExterieur;
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography sx={{ fontWeight: 600 }}>{c.nom}</Typography>
                 <Typography variant="body2" color="text.secondary">{[libelleCategorie(c.categorie), c.membres !== null ? `${formatNombre(c.membres)} membres ou salariés` : '', c.contact, libelleDistance(c.distance)].filter(Boolean).join(' · ')}</Typography>
+                {c.contrat && <Box sx={{ mt: 0.5 }}><Contrat c={c} /></Box>}
               </Box>
               {!lecture && <IconButton onClick={() => setEdition(c)} aria-label={`Modifier ${c.nom}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton>}
             </Box>
           ))}
         </Box>
       )}
-      {edition !== undefined && <FenetreCible cible={edition} plan={plan} changer={changer} par={par} le={le} onFermer={(msg) => { setEdition(undefined); if (msg) setMessage(msg) }} />}
+      {edition !== undefined && <FenetreCible cible={edition} plan={plan} changer={changer} par={par} le={le} onFermer={(msg) => { setEdition(undefined); if (msg) signaler(msg) }} />}
+      {bandeau}
     </>
   )
+}
+
+// Cible déjà sous contrat (Joseph, 17/11/2026) : visible du coach au repérage, aux cibles et au plan
+function Contrat({ c }: { c: Pick<Cible, 'contrat'> }) {
+  if (!c.contrat) return null
+  return <Pastille ton="vert">{['Contrat en cours', c.contrat.ca !== null && `${formatEuros(c.contrat.ca)} HT par an`, !c.contrat.ecrit && 'non écrit'].filter(Boolean).join(' · ')}</Pastille>
 }
 
 function FenetreCible({ cible: c, plan, changer, par, le, onFermer }: { cible: Cible | null; plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; par: string; le: string; onFermer: (msg?: string) => void }) {
@@ -430,9 +442,13 @@ function FenetreCible({ cible: c, plan, changer, par, le, onFermer }: { cible: C
   const [detail, setDetail] = useState(c?.detail ?? '')
   const [contact, setContact] = useState(c?.contact ?? '')
   const [membres, setMembres] = useState(c?.membres != null ? String(c.membres) : '')
+  const [enContrat, setEnContrat] = useState(!!c?.contrat)
+  const [caContrat, setCaContrat] = useState(c?.contrat?.ca != null ? String(c.contrat.ca) : '')
+  const [ecrit, setEcrit] = useState(!!c?.contrat?.ecrit)
   const enregistrer = async () => {
-    const base: Cible = c ?? { id: nouvelId(), nom: '', categorie, detail: '', adresse: '', distance: null, siren: '', source: 'saisie', contact: '', membres: null, notes: {}, action: '', qui: '', echeance: '', caVise: null, statut: 'a_faire', offre: '', par, le }
-    const ligne: Cible = { ...base, nom: nom.trim().slice(0, 160), categorie, detail: detail.trim().slice(0, 200), contact: contact.trim().slice(0, 200), membres: membres.trim() && Number.isFinite(Number(membres)) && Number(membres) >= 0 ? Math.round(Number(membres)) : null }
+    const base: Cible = c ?? { id: nouvelId(), nom: '', categorie, detail: '', adresse: '', distance: null, siren: '', source: 'saisie', contact: '', membres: null, contrat: null, notes: {}, action: '', qui: '', echeance: '', caVise: null, statut: 'a_faire', offre: '', par, le }
+    const ca = caContrat.trim() ? Number(caContrat.replace(',', '.')) : NaN
+    const ligne: Cible = { ...base, contrat: enContrat ? { ca: Number.isFinite(ca) && ca >= 0 ? Math.round(ca) : null, ecrit } : null, nom: nom.trim().slice(0, 160), categorie, detail: detail.trim().slice(0, 200), contact: contact.trim().slice(0, 200), membres: membres.trim() && Number.isFinite(Number(membres)) && Number(membres) >= 0 ? Math.round(Number(membres)) : null }
     changer({ ...plan, cibles: c ? plan.cibles.map((x) => (x.id === c.id ? ligne : x)) : [...plan.cibles, ligne] }, true)
     return c ? 'Cible enregistrée.' : 'Cible ajoutée.'
   }
@@ -447,6 +463,11 @@ function FenetreCible({ cible: c, plan, changer, par, le, onFermer }: { cible: C
       <TextField label="Activité, taille" value={detail} onChange={(e) => setDetail(e.target.value)} slotProps={{ htmlInput: { maxLength: 200 } }} />
       <TextField label="Salariés, licenciés ou adhérents" value={membres} onChange={(e) => setMembres(e.target.value.replace(/[^\d]/g, ''))} slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 7 } }} />
       <TextField label="Contact (nom, téléphone, email)" value={contact} onChange={(e) => setContact(e.target.value)} slotProps={{ htmlInput: { maxLength: 200 } }} />
+      <FormControlLabel control={<Switch checked={enContrat} onChange={(e) => setEnContrat(e.target.checked)} />} label="Contrat en cours" sx={{ minHeight: 48, ml: 0 }} />
+      {enContrat && <>
+        <TextField label="CA annuel du contrat (€ HT)" value={caContrat} onChange={(e) => setCaContrat(e.target.value.replace(/[^\d]/g, ''))} slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 9 } }} />
+        <FormControlLabel control={<Checkbox checked={ecrit} onChange={(e) => setEcrit(e.target.checked)} />} label="Contrat écrit" sx={{ minHeight: 48, ml: 0 }} />
+      </>}
     </Fenetre>
   )
 }
@@ -645,6 +666,7 @@ function EtapePlan({ reseau, m, plan, changer, lecture }: { reseau: Reseau; m: M
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem', mr: 0.5 }}>{c.nom}</Typography>
                 <Pastille ton={tonQuadrant(q)}>{libelleQuadrant(q)}</Pastille>
+                <Contrat c={c} />
                 <Typography variant="body2" color="text.secondary" sx={{ ml: { md: 'auto' } }}>{c.caVise !== null ? `${formatEuros(c.caVise)} HT visés sur un an` : 'CA visé à fixer'}</Typography>
                 {c.offre && <Button component={RouterLink} to={lien(c.offre)} size="small" sx={{ minHeight: 48 }} aria-label={`Chiffrer ${c.nom} : ${OFFRES.find(([k]) => k === c.offre)?.[1]}`}>Chiffrer</Button>}
                 {!lecture && <IconButton onClick={() => setObjectif(c)} aria-label={`CA visé pour ${c.nom}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton>}

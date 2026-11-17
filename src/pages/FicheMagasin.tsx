@@ -217,7 +217,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const ex = m.exploitation
   const conversation = useConversationLaterale(reseau, m.nom)
   const journal = useEditionJournal(reseau, m, setConfirmation)
-  const manquants = [m.code, ex.implantation, m.ouvertureConnue, adresseComplete, m.telephone, m.email, ex.typologie, ex.zoneChalandise, ex.licence, ex.instagram, resumeHoraires(ex.horaires).length].filter((x) => !x).length
+  const manquants = [m.code, m.ouvertureConnue, adresseComplete, m.telephone, m.email, ex.typologie, ex.zoneChalandise, ex.licence, ex.instagram, resumeHoraires(ex.horaires).length].filter((x) => !x).length
   return (
     <>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -250,7 +250,6 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
               </Section>
               <Section titre="Magasin">
                 <Ligne compacte libelle="Code magasin">{m.code || null}</Ligne>
-                <Ligne compacte libelle="Implantation des produits">{m.exploitation.implantation ? dateLongue(m.exploitation.implantation) : null}</Ligne>
                 <Ligne compacte libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
                 <GroupeBudgetaire magasin={m.nom} modifiable={referentiels} />
                 <Ligne compacte libelle="Adresse">
