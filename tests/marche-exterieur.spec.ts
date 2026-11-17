@@ -120,6 +120,15 @@ test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’ac
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByRole('heading', { name: 'Mes cibles · 3' })).toBeVisible()
   await expect(page.getByText(isMobile ? /120 membres ou salariés/ : '120', { exact: !isMobile })).toBeVisible()
+  // Joseph (17/11/2026) : une cible déjà sous contrat avant l'app, CA annuel facultatif, contrat souvent non écrit
+  await page.getByRole('button', { name: 'Modifier Club des entrepreneurs fictifs' }).click()
+  const k = page.getByRole('dialog', { name: 'Modifier Club des entrepreneurs fictifs' })
+  await k.getByLabel('Contrat en cours').check()
+  await k.getByLabel('CA annuel du contrat (€ HT)').fill('12000')
+  await k.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText(/^Contrat en cours · 12\s000 € HT par an · non écrit$/)).toBeVisible()
+  await expect.poll(() => derniere(ecritures, 'exterieur_magasins')?.[NOM]?.cibles?.find((c: { nom: string }) => c.nom === 'Club des entrepreneurs fictifs')?.contrat).toEqual({ ca: 12000, ecrit: false })
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 
   // 4 · Diagnostic : l'atelier rapporte (5/5 en direct) sans relais (1/5) → client à signer ; le traiteur partout à 4 → priorité
   await page.getByRole('button', { name: 'Diagnostic', exact: true }).click()

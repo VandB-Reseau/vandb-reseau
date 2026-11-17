@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Marché extérieur et fiche magasin (Joseph, 17/11/2026), sans migration : une cible se marque « Contrat en cours »
+  (contrats d'avant l'app), avec son CA annuel facultatif et la mention écrit ou non ; visible au repérage, aux cibles
+  et au plan, CA sous contrat au point de départ. L'implantation des produits quitte la fiche d'un magasin ouvert
+  (elle reste une étape d'ouverture et se saisit tant que le magasin n'est pas ouvert).
 - Marché extérieur (Joseph, 17/11/2026), **migration 0049 à passer** : plusieurs actions par cible, chacune devient une
   tâche du magasin (liste Tâches, étiquette `exterieur`), cochée et suivie comme les autres ; le franchisé crée,
   modifie et supprime les tâches de son plan seulement (`tache_exterieur_franchise`). Les actions déjà saisies dans les
