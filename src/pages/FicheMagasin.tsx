@@ -1,4 +1,5 @@
 import { EcartsAudit, RangeePhotos } from '../components/GrilleAudit'
+import { grillesDeDepart, libelleGrille } from '../data/grilles'
 import CalculateOutlined from '@mui/icons-material/CalculateOutlined'
 import { suiviEtRR } from '../data/charge'
 import { DialogPratique } from '../components/BonnesPratiques'
@@ -559,7 +560,9 @@ const couleurNoteChip = { 1: 'error', 2: 'warning', 3: 'success' } as const
 
 // Derniers audits hygiène et excellence, avec leurs écarts
 function SectionAudits({ reseau, m }: { reseau: Reseau; m: Magasin }) {
-  const audits = [['hygiene', 'Dernier audit hygiène'], ['excellence', 'Dernier audit excellence'], ['marge', 'Dernier audit de marge']] as const
+  // Audits ajoutés dans Paramètres : affichés dès qu'un résultat existe pour ce magasin
+  const ajoutes = [...new Set((reseau.audits[m.nom] ?? []).map((a) => a.type))].filter((t) => !grillesDeDepart.includes(t) && reseau.grilles[t])
+  const audits: (readonly [string, string])[] = [['hygiene', 'Dernier audit hygiène'], ['excellence', 'Dernier audit excellence'], ['marge', 'Dernier audit de marge'], ...ajoutes.map((t) => [t, libelleGrille(reseau.grilles, t)] as const)]
   return (
     <Section titre="Audits">
       {audits.map(([type, libelle]) => {

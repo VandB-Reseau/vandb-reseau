@@ -226,7 +226,7 @@ Aucun e-mail n'est envoyé par Supabase : le Directeur transmet les identifiants
 | `cs_deletes` | Coachs historiques supprimés | tableau de noms |
 | `params` | Réglages de charge : durées, plafonds, poids, seuils | objet |
 | `grille_ninebox` | Critères et pondération de la nine box | objet |
-| `grilles_audit` | Grilles d'audit hygiène et excellence opérationnelle | objet |
+| `grilles_audit` | Grilles d'audit : hygiène, excellence, marge et audits ajoutés (`libelle`), `supprimee` = date de retrait (résultats gardés) | objet |
 | `bonnes_pratiques` | Bonnes pratiques du réseau (photos, photo d'en-tête `entete` choisie parmi elles, J'aime d'origine) | tableau |
 | `campagnes` | Liste des campagnes nationales (constats dans `suivi_magasins`) | objet `{ liste }` |
 | `deploiements` | Thématiques suivies (état par magasin dans `suivi_magasins`) | objet `{ thematiques }` |

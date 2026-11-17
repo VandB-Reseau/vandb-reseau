@@ -17,6 +17,15 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   bouton « Fait » (et « Rouvrir ») à la place de la case à cocher, partout. Opérations commerciales (185) retirées
   (chiffres du magasin, espace franchisé, Performance, rapports) ; rubrique `operations` et `ecrire_operations` laissées
   en base, vides.
+- Audits paramétrables (Joseph, 17/11/2026), sans migration : dans Paramètres › Audits, le Directeur ajoute un audit
+  (nom, seuil, thèmes et points) ou en supprime un ; un audit déjà rempli est gardé pour ses résultats (« Audits
+  supprimés », avec « Rétablir »), un audit jamais servi disparaît. Pendant une visite d'un magasin, bloc « Audits » :
+  « Ouvrir un audit » propose toutes les grilles actives, remplies comme la grille d'audit (oui, non, sans objet, écart,
+  photos) et rangées à la date de la visite ; un audit supprimé n'est plus proposé, ni comme type de visite. Les audits
+  ajoutés apparaissent dans la fiche magasin, le journal et le bilan de l'année.
+- Pilotage : construction du rapport repliée à l'ouverture (Joseph, 17/11/2026) : le tableau et les graphes s'affichent
+  d'abord, « Modifier le rapport » ouvre les lignes, colonnes, indicateurs, filtres et la période ; ouverte d'office sur un
+  nouveau rapport. Sans migration.
 - Pilotage : favoris et rapports masqués, public des rapports du siège (Joseph, 17/11/2026), **migration `0050_rapports_pilotage.sql`
   à passer (ou à rejouer si elle est déjà passée : elle ajoute le public)** : chacun met ses rapports en favoris (étoile,
   en tête de liste, ouvert par défaut) et masque ceux qui ne lui servent pas (réaffichables) ; favoris et masqués suivent le
