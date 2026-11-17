@@ -1,3 +1,4 @@
+import { LigneVide } from './Section'
 // Messagerie, refonte vague 6 (Joseph, 10/11/2026) : gestes sur un message (60A : répondre en citant, réactions,
 // modifier, épingler), demande née d'un message (57A), fichiers d'une conversation (63A), message à plusieurs magasins
 // et suivi des réponses (62A), contexte du magasin à droite de la conversation (71A).
@@ -184,7 +185,7 @@ export function DialogFichiers({ messages, fermer }: { messages: Message[]; ferm
       </DialogTitle>
       <DialogContent>
         {!avec.length
-          ? <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>Aucune photo ni aucun fichier dans cette conversation.</Typography>
+          ? <LigneVide>Aucune photo ni aucun fichier dans cette conversation.</LigneVide>
           : (
             <Box component="ul" aria-label="Fichiers et photos" sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
               {avec.map((x) => (
@@ -274,7 +275,7 @@ export function DialogEnvois({ magasins, fermer, signaler }: { magasins: Magasin
       </DialogTitle>
       <DialogContent>
         {!envois.length
-          ? <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>Aucun envoi à plusieurs magasins pour le moment.</Typography>
+          ? <LigneVide>Aucun envoi à plusieurs magasins pour le moment.</LigneVide>
           : (
             <Box component="ul" aria-label="Envois" sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
               {envois.map((e) => {

@@ -1,3 +1,4 @@
+import { LigneVide } from './Section'
 import { creerOuGarder } from '../lib/horsLigne'
 import { useState } from 'react'
 import { Glisser } from './Social'
@@ -169,7 +170,7 @@ export function ListeActions({ reseau, actions, avecMagasin, signaler, libelle, 
   return (
     <>
       {ouvertes.length === 0
-        ? <Typography variant="body2" color="text.secondary">{actions.length ? 'Toutes les tâches sont faites.' : 'Aucune tâche en cours.'}</Typography>
+        ? <LigneVide>{actions.length ? 'Toutes les tâches sont faites.' : 'Aucune tâche en cours.'}</LigneVide>
         : <Box component="ul" aria-label={libelle} sx={{ listStyle: 'none', m: 0, p: 0 }}>{ouvertes.map(ligne)}</Box>}
       {faites.length > 0 && (
         <>

@@ -1,3 +1,4 @@
+import { LigneVide } from '../../components/Section'
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -72,7 +73,7 @@ export function CausesEcartsMois({ magasin, annee, mois, peutSaisir }: { magasin
                     <Button variant="outlined" disabled={!c.cause || occupe === ancre} onClick={() => void enregistrer(e)} sx={{ minHeight: 48, flexShrink: 0 }}>Enregistrer</Button>
                   </Box>
                 </>
-              ) : <Typography variant="body2" color="text.secondary">Pas encore expliqué.</Typography>}
+              ) : <LigneVide>Pas encore expliqué.</LigneVide>}
             </Box>
           )
         })}

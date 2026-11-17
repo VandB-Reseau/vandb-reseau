@@ -1,3 +1,4 @@
+import { styleIntertitre } from '../theme/theme'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
@@ -25,7 +26,7 @@ export function ChampsPersonnels({ f, onChange, doublon, aideNom, libelleArrivee
   const date = { type: 'date', slotProps: { inputLabel: { shrink: true } } } as const
   return (
     <Box>
-      <Typography variant="subtitle2" component="h3" sx={{ mb: 1.5 }}>Fiche personnelle</Typography>
+      <Typography component="h3" sx={styleIntertitre}>Fiche personnelle</Typography>
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
         <TextField label="Prénom" value={f.prenom} onChange={(e) => maj({ prenom: e.target.value })} autoFocus={autoFocus} />
         <TextField label="Nom" value={f.nom} onChange={(e) => maj({ nom: e.target.value })} required error={doublon}
@@ -49,7 +50,7 @@ export function ChampsPersonnels({ f, onChange, doublon, aideNom, libelleArrivee
           error={!emailValide(f.email)} helperText={emailValide(f.email) ? ' ' : 'Adresse email incomplète.'} />
         <TextField label="Téléphone" type="tel" value={f.telephone} onChange={(e) => maj({ telephone: e.target.value })} />
       </Box>
-      <Typography variant="subtitle2" component="h3" id="choix-visage" sx={{ mt: 2.5, mb: 1 }}>Visage</Typography>
+      <Typography component="h3" id="choix-visage" sx={{ ...styleIntertitre, mt: 2.5 }}>Visage</Typography>
       <ToggleButtonGroup exclusive value={f.visage || ''} onChange={(_e, v) => v !== null && maj({ visage: v })} aria-labelledby="choix-visage"
         sx={{ flexWrap: 'wrap', gap: 1, '& .MuiToggleButton-root': { width: 56, height: 56, p: 0.5, borderRadius: '50% !important', border: '2px solid', borderColor: 'divider', bgcolor: '#ffffff', '&.Mui-selected': { borderColor: 'text.primary', bgcolor: '#ffffff' } } }}>
         <ToggleButton value="" aria-label="Initiales" sx={{ fontWeight: 700, color: 'text.primary' }}>{initialesDe(nomAffiche(f)) || '—'}</ToggleButton>

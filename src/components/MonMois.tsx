@@ -1,3 +1,4 @@
+import { LigneVide } from './Section'
 import { useEffect, useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -111,13 +112,13 @@ export function MonMois({ reseau, magasins, lectureSeule }: { reseau: Reseau; ma
           <Box>
             <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>{`CA HT · ${libelleMois(a0.mois)}`}</Typography>
             <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
-              <Typography sx={{ ...styleChiffre, fontSize: '1.75rem' }}>{formatEuros(a0.ca)}</Typography>
+              <Typography sx={styleChiffre}>{formatEuros(a0.ca)}</Typography>
               <Typography sx={{ fontWeight: 700, color: couleurEcart(a0.ecart) }}>{formatPourcent(a0.ecart)}</Typography>
               <Typography variant="body2" color="text.secondary">{`vs ${libelleMois(a0.reference)}`}</Typography>
             </Box>
             {(() => { const p = phraseCADuMois({ mois: libelleMois(a0.mois), reference: libelleMois(a0.reference), ecartPct: a0.ecart }); return p ? <Typography variant="body2">{p}</Typography> : null })()}
           </Box>
-        ) : <Typography variant="body2" color="text.secondary">Pas encore de chiffres de caisse pour ce magasin.</Typography>
+        ) : <LigneVide>Pas encore de chiffres de caisse pour ce magasin.</LigneVide>
       ) : (
         <Box component="ul" aria-label="CA du dernier mois" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 0.5 }}>
           {analyses.map(({ m, a }) => (

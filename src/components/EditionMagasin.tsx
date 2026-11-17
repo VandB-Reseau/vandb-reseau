@@ -1,3 +1,4 @@
+import { styleIntertitre } from '../theme/theme'
 import { useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -22,7 +23,7 @@ const emailValide = (e: string) => !e.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.tes
 function Groupe({ titre, children }: { titre: string; children: ReactNode }) {
   return (
     <Box>
-      <Typography variant="subtitle2" component="h3" sx={{ mb: 1.5 }}>{titre}</Typography>
+      <Typography component="h3" sx={styleIntertitre}>{titre}</Typography>
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>{children}</Box>
     </Box>
   )

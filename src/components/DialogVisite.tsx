@@ -1,3 +1,5 @@
+import { LigneVide } from './Section'
+import { styleIntertitre } from '../theme/theme'
 import { useEffect, useState } from 'react'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
@@ -305,7 +307,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
       </Box>
       {unSeul && <ChampPhotos photos={photos} onChange={setPhotos} onRetirer={(c) => setPhotosRetirees((x) => [...x, c])} />}
       <Box>
-        <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>Documents (liens Drive)</Typography>
+        <Typography component="h3" sx={styleIntertitre}>Documents (liens Drive)</Typography>
         {documents.map((d, i) => (
           <Box key={i} sx={{ display: 'flex', gap: 1, mb: 1.5, alignItems: 'center' }}>
             <TextField label="Intitulé" value={d.label} onChange={(e) => setDocuments((x) => x.map((y, j) => (j === i ? { ...y, label: e.target.value } : y)))} sx={{ flex: 1 }} />
@@ -327,7 +329,7 @@ function ChiffresCaisse({ reseau, magasin }: { reseau: Reseau; magasin: string }
   const a = analyser(reseau, magasin)
   return (
     <Box component="section" aria-label="Chiffres de la caisse">
-      <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>{a ? `Chiffres de la caisse · ${libelleMois(a.mois)}` : 'Chiffres de la caisse'}</Typography>
+      <Typography component="h3" sx={styleIntertitre}>{a ? `Chiffres de la caisse · ${libelleMois(a.mois)}` : 'Chiffres de la caisse'}</Typography>
       {a ? (
         <Typography variant="body2">
           {[`CA ${formatKEuros(a.ca)}${a.ecart === null ? '' : ` (${formatPourcent(a.ecart)} vs N-1)`}`,
@@ -335,7 +337,7 @@ function ChiffresCaisse({ reseau, magasin }: { reseau: Reseau; magasin: string }
             a.chiffre.panier !== null && `panier ${formatValeur('panier', a.chiffre.panier)}`,
             a.chiffre.marge !== null && `marge ${formatValeur('marge', a.chiffre.marge)}`].filter(Boolean).join(' · ')}
         </Typography>
-      ) : <Typography variant="body2" color="text.secondary">Pas encore de chiffres de caisse pour ce magasin.</Typography>}
+      ) : <LigneVide>Pas encore de chiffres de caisse pour ce magasin.</LigneVide>}
     </Box>
   )
 }

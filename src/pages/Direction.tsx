@@ -1,3 +1,4 @@
+import { styleBloc, styleEnteteBloc } from '../components/Section'
 import { useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import useMediaQuery from '@mui/material/useMediaQuery'
@@ -20,7 +21,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import MenuItem from '@mui/material/MenuItem'
 import Snackbar from '@mui/material/Snackbar'
 import TextField from '@mui/material/TextField'
@@ -109,8 +109,8 @@ function RegleCharge({ reseau }: { reseau: Reseau }) {
 
   return (
     <Card>
-      <CardContent sx={{ p: 3 }}>
-        <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>Règle de charge des Coachs</Typography>
+      <Box sx={styleBloc}>
+        <Box sx={styleEnteteBloc}><Typography component="h2" sx={cartouche}>Règle de charge des Coachs</Typography></Box>
         <Box>
           {champs.map((c) => (
             <LigneReglage key={c.cle} libelle={c.libelle} detail={c.aide} valeur={valeurs[c.cle]} onChange={(v) => setValeurs((x) => ({ ...x, [c.cle]: v }))} invalide={invalides.includes(c)} min={c.min} max={c.max} />
@@ -127,7 +127,7 @@ function RegleCharge({ reseau }: { reseau: Reseau }) {
           <Button disabled={!modifie || envoi} onClick={() => setValeurs(Object.fromEntries(champs.map((c) => [c.cle, String(reseau.parametres[c.cle])])) as Record<Cle, string>)} sx={{ minHeight: 48 }}>Annuler</Button>
           <Button variant="contained" disabled={!modifie || envoi || invalides.length > 0 || incoherent} onClick={enregistrer} sx={{ minHeight: 48 }}>{envoi ? 'Enregistrement…' : 'Enregistrer'}</Button>
         </Box>
-      </CardContent>
+      </Box>
       <Snackbar open={ok} autoHideDuration={5000} onClose={() => setOk(false)} message="Règle de charge enregistrée." />
     </Card>
   )
@@ -162,8 +162,8 @@ function RegleAlerte({ reseau }: { reseau: Reseau }) {
   }
   return (
     <Card sx={{ mt: 2 }}>
-      <CardContent sx={{ p: 3 }}>
-        <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>Alerte sur les chiffres</Typography>
+      <Box sx={styleBloc}>
+        <Box sx={styleEnteteBloc}><Typography component="h2" sx={cartouche}>Alerte sur les chiffres</Typography></Box>
         <TextField select fullWidth label="Écart de CA par rapport au" value={valeurs.moisReference} onChange={(e) => setValeurs((v) => ({ ...v, moisReference: e.target.value }))} sx={{ mb: 1 }}>
           {referencesPossibles.map((r) => <MenuItem key={r.valeur} value={String(r.valeur)}>{r.libelle}</MenuItem>)}
         </TextField>
@@ -183,7 +183,7 @@ function RegleAlerte({ reseau }: { reseau: Reseau }) {
           <Button disabled={!modifie || envoi} onClick={() => setValeurs(initiales())} sx={{ minHeight: 48 }}>Annuler</Button>
           <Button variant="contained" disabled={!modifie || envoi || invalides.length > 0 || incoherent} onClick={enregistrer} sx={{ minHeight: 48 }}>{envoi ? 'Enregistrement…' : 'Enregistrer'}</Button>
         </Box>
-      </CardContent>
+      </Box>
       <Snackbar open={ok} autoHideDuration={5000} onClose={() => setOk(false)} message="Alerte sur les chiffres enregistrée." />
     </Card>
   )
@@ -210,8 +210,8 @@ function RegleVisite({ reseau }: { reseau: Reseau }) {
   }
   return (
     <Card sx={{ mt: 2 }}>
-      <CardContent sx={{ p: 3 }}>
-        <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>Alerte de visite</Typography>
+      <Box sx={styleBloc}>
+        <Box sx={styleEnteteBloc}><Typography component="h2" sx={cartouche}>Alerte de visite</Typography></Box>
         <Box>
           {casesDelai.map((c) => (
             <LigneReglage key={c.cle} libelle={c.libelle} nom={`${c.libelle} (jours sans visite)`} detail={`Référence ${c.rythme.split('×')[0].trim()} par an · jours sans visite`}
@@ -228,7 +228,7 @@ function RegleVisite({ reseau }: { reseau: Reseau }) {
           <Button disabled={!modifie || envoi} onClick={() => setValeurs(initiales())} sx={{ minHeight: 48 }}>Annuler</Button>
           <Button variant="contained" disabled={!modifie || envoi || invalides.length > 0} onClick={enregistrer} sx={{ minHeight: 48 }}>{envoi ? 'Enregistrement…' : 'Enregistrer'}</Button>
         </Box>
-      </CardContent>
+      </Box>
       <Snackbar open={ok} autoHideDuration={5000} onClose={() => setOk(false)} message="Alerte de visite enregistrée." />
     </Card>
   )

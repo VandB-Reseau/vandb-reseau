@@ -2,6 +2,7 @@
 // magasin (Annuaire des entreprises), cibles, diagnostic sur 5 critères, matrice des opportunités, plan d'action.
 // Onglet de la fiche magasin, pour l'équipe (Directeur partout, Coach et RR sur leurs magasins) et pour le franchisé
 // (ses magasins, par ecrire_exterieur). Calculs dans src/data/marcheExterieur.ts.
+import { styleChiffre } from '../theme/theme'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
@@ -186,7 +187,7 @@ function Indicateur({ libelle, valeur }: { libelle: string; valeur: string }) {
   return (
     <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, px: 2, py: 1.5 }}>
       <Typography variant="body2" color="text.secondary">{libelle}</Typography>
-      <Typography sx={{ fontWeight: 800, fontSize: '1.375rem', fontVariantNumeric: 'tabular-nums' }}>{valeur}</Typography>
+      <Typography sx={styleChiffre}>{valeur}</Typography>
     </Box>
   )
 }

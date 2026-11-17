@@ -1,3 +1,5 @@
+import { LigneVide } from '../components/Section'
+import { styleIntertitre } from '../theme/theme'
 import { VuesRapides } from '../components/VuesRapides'
 // Onglet Messages (Joseph, 21/10/2026, séparé des Tâches le 22/10) : groupes des magasins, groupes libres,
 // échanges à deux. Téléphone : la liste, puis la conversation en plein écran ; PC : la liste à gauche, la conversation à droite.
@@ -359,7 +361,7 @@ function Panneau({ reseau, fil, membres }: { reseau: Reseau; fil: Fil; membres: 
   return (
     <Card component="aside" aria-label="Membres et tâches" sx={{ p: 2, display: { xs: 'none', lg: 'flex' }, flexDirection: 'column', gap: 3, overflowY: 'auto', minHeight: 0 }}>
       <Box>
-        <Typography variant="overline" component="h3" sx={{ fontWeight: 700 }}>Membres</Typography>
+        <Typography component="h3" sx={styleIntertitre}>Membres</Typography>
         <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
           {membres.map((p) => (
             <Box component="li" key={p.cle} sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
@@ -371,8 +373,8 @@ function Panneau({ reseau, fil, membres }: { reseau: Reseau; fil: Fil; membres: 
       </Box>
       {fil.genre === 'magasin' && (
         <Box>
-          <Typography variant="overline" component="h3" sx={{ fontWeight: 700 }}>Tâches ouvertes · {ouvertes.length}</Typography>
-          {!ouvertes.length ? <Typography variant="body2" color="text.secondary">Aucune tâche en cours.</Typography> : (
+          <Typography component="h3" sx={styleIntertitre}>Tâches ouvertes · {ouvertes.length}</Typography>
+          {!ouvertes.length ? <LigneVide>Aucune tâche en cours.</LigneVide> : (
             <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
               {ouvertes.slice(0, 8).map((x) => (
                 <Box component="li" key={x.cle}>

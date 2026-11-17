@@ -9,6 +9,16 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin cohérente (Joseph, 17/11/2026), sans migration : « À faire » est le même bloc dans la Vue d'ensemble
+  et dans l'Activité (même source : visite à venir, rendez-vous prévus, mandats et fiche à compléter, tâches hors
+  priorités, cochables aux deux endroits ; les 3 plus urgentes dans la Vue d'ensemble, toutes et les campagnes dans
+  l'Activité). « Toutes les tâches » n'apparaît que si la liste est coupée. Une seule carte de bloc (`Section`) dans
+  toute l'app : mêmes marges, titre au même retrait, bouton qui passe sous le titre sur téléphone au lieu de le couper.
+  Chiffres des indicateurs du Marché extérieur à l'échelle commune.
+  Choix 1 à 6 (Joseph, 17/11/2026) : « À faire » de l'espace franchisé dans la même carte et les mêmes lignes que la
+  fiche ; cartes de Paramètres, Direction, Données, Équipe, Évolution sur la carte commune ; intertitres des cartes en
+  un seul style (`styleIntertitre`) ; liste vide dans un bloc = une ligne grise (`LigneVide`), l'illustration restant
+  pour un écran vide ; chiffre de « Mon mois » à 22 px ; visite repérée par un calendrier dans « À faire ».
 - Proportions des chiffres (Joseph, 17/11/2026), sans migration : dans « Le point » (Mon point du jour sur téléphone,
   colonne de l'accueil sur PC), les valeurs sont à la taille de leur libellé ; dans l'offre 5 + 1, « 1 client sur X
   suffit » passe à la taille des chiffres clés (20 px téléphone, 22 px PC) ; sur téléphone, le bandeau de synthèse

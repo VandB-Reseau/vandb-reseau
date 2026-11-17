@@ -13,7 +13,7 @@ import AddOutlined from '@mui/icons-material/AddOutlined'
 import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import Collapse from '@mui/material/Collapse'
 import EditOutlined from '@mui/icons-material/EditOutlined'
-import { Section } from './Section'
+import { Section, LigneVide } from './Section'
 import { Fenetre } from './EditionEquipe'
 import { Puces } from './Social'
 import { DialogAction, LigneAction, useChangerStatut } from './Actions'
@@ -134,7 +134,7 @@ export function SectionObjectifsPlan({ reseau, m, signaler, equipe = true, lectu
     <Section titre={titre}
       action={modifiable ? <Button startIcon={<AddOutlined />} onClick={() => setEditionObjectif(null)} sx={{ minHeight: 48 }}>Fixer un objectif</Button> : undefined}>
       {equipe && objectifs.length === 0 && actives.length === 0 && (
-        <Typography variant="body2" color="text.secondary">Aucun objectif pour l’instant. Fixe l’objectif de l’année, puis les priorités qui y mènent.</Typography>
+        <LigneVide>Aucun objectif pour l’instant. Fixe l’objectif de l’année, puis les priorités qui y mènent.</LigneVide>
       )}
       {objectifs.map((o) => {
         const liees = actives.filter((p) => p.objectif === o.id)

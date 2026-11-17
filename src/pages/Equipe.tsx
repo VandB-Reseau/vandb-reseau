@@ -1,3 +1,4 @@
+import { styleBloc, styleEnteteBloc } from '../components/Section'
 import { type ReactElement, type ReactNode } from 'react'
 import { Link as RouterLink, Navigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -229,11 +230,11 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
   if (rien) return <EmptyState icone={<WorkOutlineOutlined />} titre="Aucun poste à pourvoir" texte="Tous les postes de Coach sont pourvus et chaque magasin a son franchisé. Un Coach marqué « non recruté » dans l’ancienne application apparaîtra ici." />
   const Bloc = ({ titre, aide, children }: { titre: string; aide: string; children: ReactNode }) => (
     <Card sx={{ mb: 2 }}>
-      <CardContent sx={{ p: 3 }}>
-        <Box><Typography component="h2" sx={[cartouche, { mb: 0.5 }]}>{titre}</Typography></Box>
+      <Box sx={styleBloc}>
+        <Box sx={styleEnteteBloc}><Typography component="h2" sx={cartouche}>{titre}</Typography></Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{aide}</Typography>
         {children}
-      </CardContent>
+      </Box>
     </Card>
   )
   const Rangee = ({ children }: { children: ReactNode }) => <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 52, flexWrap: 'wrap', borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>{children}</Box>

@@ -38,6 +38,8 @@ export const texteSur = (fond: string) => ([brand.or, brand.jaune, brand.creme, 
 // de section, jamais le titre de page. Les écrans n'écrivent plus de taille en dur hors de cette échelle.
 export const echelle = { page: '1.625rem', chiffre: '1.375rem', section: '1.125rem', carte: '1rem', texte: '0.875rem', legende: '0.8125rem', mention: '0.75rem' } as const
 // Chiffre clé d'une carte (indicateurs, simulateurs, fiche magasin, accueil) : partout le même
+// Choix 5 (Joseph, 17/11/2026) : intertitre dans une carte ou un panneau, partout le même (taille carte, gras, marge 8 px)
+export const styleIntertitre = { fontSize: echelle.carte, fontWeight: 700, lineHeight: 1.4, color: 'text.primary', mb: 1 } as const
 export const styleChiffre = { fontSize: { xs: '1.25rem', md: echelle.chiffre }, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' } as const
 
 // Polices : Lato (charte) pour le texte ; Alegreya, police libre proche de Coline (titres de la charte, sans fichier web), pour les titres

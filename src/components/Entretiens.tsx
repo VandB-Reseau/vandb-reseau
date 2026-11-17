@@ -12,7 +12,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import CheckCircleOutline from '@mui/icons-material/CheckCircleOutlined'
-import { Section } from './Section'
+import { Section, LigneVide } from './Section'
 import { TexteDicte } from './Dictee'
 import { useAuth } from '../auth/AuthContext'
 import { monNom } from './AgendaAbonne'
@@ -132,7 +132,7 @@ export function OngletEntretiens({ reseau, coach, signaler }: { reseau: Reseau; 
         )}
       </Box>
       <Section titre="À aborder">
-        {points.length === 0 ? <Typography variant="body2" color="text.secondary">Rien de particulier dans son portefeuille ce mois-ci.</Typography> : (
+        {points.length === 0 ? <LigneVide>Rien de particulier dans son portefeuille ce mois-ci.</LigneVide> : (
           <Box component="ul" aria-label="Ordre du jour" sx={{ listStyle: 'none', m: 0, p: 0 }}>
             {points.map((p, i) => (
               <Box component="li" key={i} sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
