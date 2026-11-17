@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Marché extérieur (Joseph, 17/11/2026), sans migration : la liste du repérage se trie et se filtre par colonne
+  comme les autres tableaux (nom, type, activité, effectif du site, chiffre d'affaires en k€, distance en km) ;
+  « Trier par » sur téléphone. Titre « Retenir » en entier.
 - Marché extérieur et fiche magasin (Joseph, 17/11/2026), sans migration : une cible se marque « Contrat en cours »
   (contrats d'avant l'app), avec son CA annuel facultatif et la mention écrit ou non ; visible au repérage, aux cibles
   et au plan, CA sous contrat au point de départ. L'implantation des produits quitte la fiche d'un magasin ouvert

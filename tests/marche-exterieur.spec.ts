@@ -95,10 +95,27 @@ test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’ac
   await expect(page.getByLabel('Retenir Logistique Discrete')).toHaveCount(0)
   await page.getByRole('button', { name: 'Conseillées · 3' }).click()
   await expect(page.getByLabel('Retenir Logistique Discrete')).toHaveCount(1)
+  // Joseph (17/11/2026) : trier et filtrer la liste ; par colonne sur PC, « Trier par » sur téléphone
+  if (isMobile) {
+    await page.getByLabel('Trier par').selectOption('distance')
+  } else {
+    await page.getByRole('button', { name: 'Trier par Distance' }).click()
+  }
+  await expect(page.getByLabel(/^Retenir /).first()).toHaveAttribute('aria-label', 'Retenir Ateliers Fictifs Du Lac')
+  if (isMobile) {
+    await page.getByLabel('Trier par').selectOption('pertinence')
+  } else {
+    await page.getByRole('button', { name: 'Filtrer Effectif du site' }).click()
+    await page.getByLabel('Au moins').fill('100')
+    await page.keyboard.press('Escape')
+    await expect(page.getByLabel(/^Retenir /)).toHaveCount(1)
+    await page.getByRole('button', { name: /^Retirer tri et filtres/ }).click()
+  }
+  await expect(page.getByLabel(/^Retenir /).first()).toHaveAttribute('aria-label', 'Retenir Groupe Aeronautique Fictif')
   // Filtres de la liste : effectif du site, puis nom
-  await page.getByLabel('Effectif du site').selectOption('100')
+  await page.getByLabel('Effectif du site', { exact: true }).selectOption('100')
   await expect(page.getByRole('button', { name: 'Tous · 1' })).toBeVisible()
-  await page.getByLabel('Effectif du site').selectOption('0')
+  await page.getByLabel('Effectif du site', { exact: true }).selectOption('0')
   await expect(page.getByRole('button', { name: 'Tous · 4' })).toBeVisible()
   await page.getByLabel('Chercher un nom ou une activité').fill('traiteur')
   await expect(page.getByRole('button', { name: 'Tous · 1' })).toBeVisible()

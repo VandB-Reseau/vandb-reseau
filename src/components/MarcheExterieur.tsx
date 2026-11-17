@@ -35,6 +35,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import SearchOutlined from '@mui/icons-material/SearchOutlined'
 import { Fenetre } from './EditionEquipe'
+import { EffacerTriFiltres, Entete, LigneSansResultat, useTableau, type ColonneTri } from './TableauTri'
 import { useMessageAnnulable } from './Annulable'
 import TuneOutlined from '@mui/icons-material/TuneOutlined'
 import DeleteOutline from '@mui/icons-material/DeleteOutlined'
@@ -254,6 +255,60 @@ function NomConseil({ t, cible }: { t: Trouvee; cible?: Cible }) {
   )
 }
 
+// Tri et filtres par colonne (Joseph, 17/11/2026), comme les autres tableaux : clic sur le titre, entonnoir au survol
+type OrdreReperage = 'pertinence' | 'effectif' | 'ca' | 'distance' | 'nom'
+const ORDRES_REPERAGE: [OrdreReperage, string][] = [['pertinence', 'Conseillées d’abord'], ['effectif', 'Effectif du site'], ['ca', 'Chiffre d’affaires'], ['distance', 'Distance'], ['nom', 'Nom']]
+function ordonner(l: Trouvee[], o: OrdreReperage): Trouvee[] {
+  if (o === 'pertinence') return l
+  const x = [...l]
+  if (o === 'effectif') return x.sort((a, b) => (b.effectif ?? -1) - (a.effectif ?? -1) || a.distance - b.distance)
+  if (o === 'ca') return x.sort((a, b) => (b.ca?.montant ?? -1) - (a.ca?.montant ?? -1) || a.distance - b.distance)
+  if (o === 'distance') return x.sort((a, b) => a.distance - b.distance)
+  return x.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+}
+const COLONNES_REPERAGE: ColonneTri<Trouvee>[] = [
+  { cle: 'nom', libelle: 'Nom', valeur: (t) => t.nom, filtre: false },
+  { cle: 'type', libelle: 'Type', valeur: (t) => libelleCategorie(t.categorie) },
+  { cle: 'activite', libelle: 'Activité', valeur: (t) => t.activite },
+  { cle: 'effectif', libelle: 'Effectif du site', valeur: (t) => t.effectif, filtre: 'nombre', unite: 'salariés', premier: 'desc' },
+  { cle: 'ca', libelle: 'Chiffre d’affaires', valeur: (t) => t.ca?.montant ?? null, nombre: (t) => (t.ca ? t.ca.montant / 1000 : null), filtre: 'nombre', unite: 'k€', premier: 'desc' },
+  { cle: 'adresse', libelle: 'Adresse', valeur: (t) => t.adresse, filtre: false },
+  { cle: 'distance', libelle: 'Distance', valeur: (t) => t.distance, nombre: (t) => t.distance / 1000, filtre: 'nombre', unite: 'km', premier: 'asc' },
+]
+function TableauReperage({ vues, retenues, basculer, lecture, parId }: { vues: Trouvee[]; retenues: Set<string>; basculer: (t: Trouvee) => void; lecture: boolean; parId: Map<string, Cible> }) {
+  const t = useTableau(vues, COLONNES_REPERAGE, { memoire: 'reperage-exterieur' })
+  return (
+    <>
+      <EffacerTriFiltres t={t} sx={{ mb: 1 }} />
+      <TableContainer>
+        <Table size="small" aria-label="Repérage autour du magasin">
+          <TableHead><TableRow>
+            <TableCell padding="checkbox" sx={{ whiteSpace: 'nowrap', minWidth: 80 }}>Retenir</TableCell>
+            <Entete t={t} cle="nom" />
+            <Entete t={t} cle="type" /><Entete t={t} cle="activite" /><Entete t={t} cle="effectif" />
+            <Entete t={t} cle="ca" align="right" /><Entete t={t} cle="adresse" /><Entete t={t} cle="distance" align="right" />
+          </TableRow></TableHead>
+          <TableBody>
+            <LigneSansResultat t={t} colSpan={8} quoi="Aucune cible ne correspond" />
+            {t.lignes.map((x) => (
+              <TableRow key={x.id} hover selected={retenues.has(x.id)}>
+                <TableCell padding="checkbox"><Checkbox checked={retenues.has(x.id)} onChange={() => basculer(x)} disabled={lecture} slotProps={{ input: { 'aria-label': `Retenir ${x.nom}` } }} /></TableCell>
+                <TableCell><NomConseil t={x} cible={parId.get(x.id)} /></TableCell>
+                <TableCell><Pastille ton="type">{libelleCategorie(x.categorie)}</Pastille></TableCell>
+                <TableCell>{x.activite}</TableCell>
+                <TableCell sx={{ color: x.effectif === null ? 'text.secondary' : undefined, fontWeight: (x.effectif ?? 0) >= 100 ? 700 : undefined }}>{x.effectif === null ? ['Non publié', x.taille && `entreprise : ${x.taille}`].filter(Boolean).join(' · ') : TRANCHE_COURTE(x)}</TableCell>
+                <TableCell align="right" sx={{ whiteSpace: 'nowrap', color: x.ca ? undefined : 'text.secondary', fontWeight: (x.ca?.montant ?? 0) >= 500_000 ? 700 : undefined }}>{x.ca ? libelleCA(x.ca) : 'Non publié'}</TableCell>
+                <TableCell sx={{ color: 'text.secondary' }}>{x.adresse}</TableCell>
+                <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{libelleDistance(x.distance)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </>
+  )
+}
+
 function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; lecture: boolean; par: string; le: string }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const [taille, setTaille] = useState(20)
@@ -263,6 +318,7 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
   const [distanceMax, setDistanceMax] = useState(0)
   const [nomCherche, setNomCherche] = useState('')
   const [conseillees, setConseillees] = useState(false)
+  const [ordre, setOrdre] = useState<OrdreReperage>('pertinence')
   const cle = m.lat !== null && m.lon !== null ? `${m.lat.toFixed(4)},${m.lon.toFixed(4)}|${plan.rayon}|${taille}` : ''
   const [recherche, setRecherche] = useState<EtatRecherche>(() => { const l = cle ? lireCache(cle) : null; return l ? { etat: 'pret', liste: l, echecs: 0 } : { etat: 'repos' } })
   useEffect(() => { const l = cle ? lireCache(cle) : null; setRecherche(l ? { etat: 'pret', liste: l, echecs: 0 } : { etat: 'repos' }) }, [cle])
@@ -332,6 +388,11 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
               <option value={0}>{`Tout le rayon (${plan.rayon} km)`}</option>
               {[1, 2, 5, 10].filter((d) => d < plan.rayon).map((d) => <option key={d} value={d}>{`À moins de ${d} km`}</option>)}
             </TextField>
+            {!surPC && (
+              <TextField select label="Trier par" value={ordre} onChange={(e) => setOrdre(e.target.value as OrdreReperage)} sx={{ minWidth: 200 }} slotProps={{ select: { native: true } }}>
+                {ORDRES_REPERAGE.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </TextField>
+            )}
             <Chip icon={<Favorite />} label={`Conseillées · ${liste.filter((t) => t.conseil).length}`} onClick={() => setConseillees((x) => !x)} color={conseillees ? 'secondary' : 'default'} variant={conseillees ? 'filled' : 'outlined'} aria-pressed={conseillees} sx={{ minHeight: 48, borderRadius: 999, fontWeight: 600 }} />
           </Box>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }} role="group" aria-label="Filtrer par type">
@@ -341,28 +402,10 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
             })}
           </Box>
           {!vues.length ? <Typography color="text.secondary">{filtrees.length < liste.length ? 'Rien ne correspond à ces filtres. Desserre-les, ou ajoute la cible à la main.' : 'Rien trouvé de ce type dans ce rayon. Élargis le rayon à l’étape 1, ou ajoute la cible à la main.'}</Typography> : surPC ? (
-            <TableContainer>
-              <Table size="small" aria-label="Repérage autour du magasin">
-                <TableHead><TableRow><TableCell padding="checkbox">Retenir</TableCell><TableCell>Nom</TableCell><TableCell>Type</TableCell><TableCell>Activité</TableCell><TableCell>Effectif du site</TableCell><TableCell align="right">Chiffre d’affaires</TableCell><TableCell>Adresse</TableCell><TableCell align="right">Distance</TableCell></TableRow></TableHead>
-                <TableBody>
-                  {vues.map((t) => (
-                    <TableRow key={t.id} hover selected={retenues.has(t.id)}>
-                      <TableCell padding="checkbox"><Checkbox checked={retenues.has(t.id)} onChange={() => basculer(t)} disabled={lecture} slotProps={{ input: { 'aria-label': `Retenir ${t.nom}` } }} /></TableCell>
-                      <TableCell><NomConseil t={t} cible={parId.get(t.id)} /></TableCell>
-                      <TableCell><Pastille ton="type">{libelleCategorie(t.categorie)}</Pastille></TableCell>
-                      <TableCell>{t.activite}</TableCell>
-                      <TableCell sx={{ color: t.effectif === null ? 'text.secondary' : undefined, fontWeight: (t.effectif ?? 0) >= 100 ? 700 : undefined }}>{t.effectif === null ? ['Non publié', t.taille && `entreprise : ${t.taille}`].filter(Boolean).join(' · ') : TRANCHE_COURTE(t)}</TableCell>
-                      <TableCell align="right" sx={{ whiteSpace: 'nowrap', color: t.ca ? undefined : 'text.secondary', fontWeight: (t.ca?.montant ?? 0) >= 500_000 ? 700 : undefined }}>{t.ca ? libelleCA(t.ca) : 'Non publié'}</TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>{t.adresse}</TableCell>
-                      <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{libelleDistance(t.distance)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <TableauReperage vues={vues} retenues={retenues} basculer={basculer} lecture={lecture} parId={parId} />
           ) : (
             <Box component="ul" aria-label="Repérage autour du magasin" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-              {vues.map((t) => (
+              {ordonner(vues, ordre).map((t) => (
                 <Box component="li" key={t.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
                   <Checkbox checked={retenues.has(t.id)} onChange={() => basculer(t)} disabled={lecture} slotProps={{ input: { 'aria-label': `Retenir ${t.nom}` } }} sx={{ width: 48, height: 48 }} />
                   <Box sx={{ minWidth: 0 }}>
