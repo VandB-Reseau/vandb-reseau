@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ouvrirOnglet, seConnecter } from './supabase-simule'
+import { ouvrirInfosMagasin, ouvrirOnglet, seConnecter } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -45,9 +45,11 @@ test('la fiche magasin regroupe équipe, coordonnées et historique', async ({ p
   await liste.getByRole('link', { name: /^Lyon Test/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()
   await page.getByRole('tab', { name: 'Vue d’ensemble' }).click()
+  await expect(page.getByText(/^Intégré · Lyon/)).toBeVisible()
+  // Maquette 264 (17/11/2026) : équipe, coordonnées et carte dans le panneau « Infos du magasin »
+  await ouvrirInfosMagasin(page)
   await expect(page.getByText('Noé MODELE').first()).toBeVisible()
   await expect(page.getByRole('link', { name: 'Sam SUD', exact: true })).toBeVisible()
-  await expect(page.getByText(/^Intégré · Lyon/)).toBeVisible()
   const carte = page.locator('iframe[title="Carte Google de Lyon Test"]')
   await carte.scrollIntoViewIfNeeded()
   await expect(carte).toBeVisible()
@@ -59,9 +61,10 @@ test('la fiche magasin regroupe équipe, coordonnées et historique', async ({ p
   expect((await carte.boundingBox())!.height).toBeGreaterThanOrEqual(150)
   await expect(page.frameLocator('iframe[title="Carte Google de Lyon Test"]').getByText('Carte simulée')).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-fiche.png`, fullPage: true })
+  await page.keyboard.press('Escape')
   // Le journal a son onglet
   await ouvrirOnglet(page, 'Journal')
-  await expect(page.getByRole('region', { name: 'Fil d’activité' }).getByText('Réaffectation').first()).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Historique' }).getByText('Réaffectation').first()).toBeVisible()
   // Vague 8 (105A) : sur PC, le fil d'Ariane ramène aux Magasins ; sur téléphone, la flèche de retour
   await page.getByRole('navigation', { name: 'Fil d’Ariane' }).getByRole('link', { name: 'Magasins' }).or(page.getByRole('button', { name: 'Magasins' })).first().click()
   await expect(page.getByRole('heading', { level: 1, name: 'Magasins' })).toBeVisible()

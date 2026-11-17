@@ -170,6 +170,6 @@ test('accueil : période en tête, actualités visibles dès l’arrivée sur PC
   expect(await casse()).toBe('none')
   // Fiche : titre de section sobre, sans cartouche noir
   await page.goto(fiche())
-  const fond = await page.getByRole('heading', { name: 'Équipe', exact: true }).evaluate((e) => getComputedStyle(e).backgroundColor)
+  const fond = await page.getByRole('heading', { name: 'À faire', exact: true }).evaluate((e) => getComputedStyle(e).backgroundColor)
   expect(fond).toBe('rgba(0, 0, 0, 0)')
 })

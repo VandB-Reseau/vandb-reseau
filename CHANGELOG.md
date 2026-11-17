@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Vue d'ensemble de la fiche magasin allégée, maquette 264 (Joseph, 17/11/2026), sans migration : à gauche « À faire »
+  (visite, trois prochaines tâches, mandats et fiche à compléter, en une seule liste) puis les objectifs ; à droite
+  « Comment va le magasin » (CA de l'année face à N-1, CA du mois, alertes de caisse et de santé), le budget et le
+  dernier échange. Équipe, adresse, carte, avis Google, exploitation, équipements et concurrents passent dans le panneau
+  « Infos du magasin » de l'en-tête. Panier et marge restent dans l'onglet Chiffres ; compteurs de l'en-tête retirés.
+  Onglet Activité, maquette 265 : « À faire » en tête sur toute la largeur, puis l'historique en tableau sur PC (date,
+  type, quoi, par qui, compte rendu en icône), en lignes sur téléphone, 30 éléments puis « Voir plus ».
 - Remises entreprise au bar (Joseph, 17/11/2026), sans migration : le simulateur « Remises entreprise par paliers »
   a un choix « Cave, une commande » / « Bar, des venues ». Au bar, le palier se lit sur les venues de la société par
   semaine ou par mois, la remise est un montant TTC par produit (conseillé) ou par panier ; elle porte sur tout le

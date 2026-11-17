@@ -1000,3 +1000,12 @@ export async function simulerGeo(page: Page) {
     return r.fulfill({ json: [{ codesPostaux: ['74000'], centre: { type: 'Point', coordinates: [lon, lat] } }, { codesPostaux: ['13001'], centre: { type: 'Point', coordinates: [5.37, 43.3] } }] })
   })
 }
+
+// Maquette 264 (17/11/2026) : équipe, coordonnées, carte et blocs repliés du magasin sont dans le panneau
+// « Infos du magasin » de l'en-tête de la fiche
+export async function ouvrirInfosMagasin(page: Page) {
+  await page.getByRole('button', { name: 'Infos du magasin', exact: true }).click()
+  const panneau = page.getByRole('dialog', { name: 'Infos du magasin' })
+  await panneau.waitFor()
+  return panneau
+}

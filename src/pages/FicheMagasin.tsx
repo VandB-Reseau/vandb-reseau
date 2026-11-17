@@ -20,7 +20,7 @@ import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutl
 import type { Ton } from '../components/Social'
 import { ProfilPersonne, rond } from '../components/Portefeuille'
 import { Blason } from '../components/Blason'
-import { FilActivite } from './Accueil'
+import { TableauActivite } from '../components/TableauActivite'
 import { filDu } from '../data/fil'
 import { Puces } from '../components/Social'
 import { SituationMagasin } from '../components/SyntheseMagasin'
@@ -34,6 +34,9 @@ import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import Drawer from '@mui/material/Drawer'
+import CloseOutlined from '@mui/icons-material/CloseOutlined'
+import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
@@ -84,7 +87,6 @@ import { ContenuLeviers, ListeInspirations } from '../components/Leviers'
 import { inspirationsDu, leviersDuMagasin, libellesLevier, useReperesReseau } from '../data/leviers'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
 import { Contact, DansCarte, Ligne, Repliee, Section } from '../components/Section'
-import CardContent from '@mui/material/CardContent'
 import Collapse from '@mui/material/Collapse'
 import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import { prioritesActives } from '../data/planAction'
@@ -99,10 +101,10 @@ import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
 import { SectionObjectifsPlan } from '../components/PlanAction'
 import { MontrerAuFranchise } from '../components/MontrerAuFranchise'
 import PresentToAllOutlined from '@mui/icons-material/PresentToAllOutlined'
-import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatKEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
+import { analyser, caDe, chiffresDuMagasin, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, suiviAlerte } from '../data/chiffres'
 import { cartouche } from '../components/Social'
 import { FilAriane } from '../components/FilAriane'
-import { styleChiffre } from '../theme/theme'
+import { echelle, styleChiffre } from '../theme/theme'
 
 // Refonte (Joseph, 09/11/2026, choix 3A) : cinq onglets, jamais plus de deux niveaux. Activité regroupe tâches et campagnes,
 // visites et journal ; Chiffres regroupe le suivi face au budget, la santé, les leviers et les saisies (une seule source,
@@ -199,6 +201,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const [saisieChiffres, setSaisieChiffres] = useState<string | null | undefined>(undefined)
   const [confirmation, setConfirmation] = useState('')
   const [situation, setSituation] = useState(false)
+  const [infos, setInfos] = useState(false)
   useEffect(() => { noterRecent(m.nom) }, [m.nom])
   const coach = m.coach ? reseau.coachs[m.coach] ?? { nom: m.coach } : null
   const adresseComplete = [m.adresse || [m.codePostal, m.ville].filter(Boolean).join(' '), m.pays].filter(Boolean).join(', ')
@@ -227,8 +230,49 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         appeler={m.telephone || m.responsable?.telephone || ''} message={conversation.ouvrir}
         creer={{ visite: saisirVisite, tache: () => setNouvelleTache(true), appel: () => { setTypeVisite('appel'); setVisite(null) }, note: journal.nouvelleNote, pratique: () => setNouvellePratique(true) }}
         modifier={referentiels ? () => setEdition(true) : undefined} fermer={referentiels ? () => setSituation(true) : undefined}
-        ninebox={surPC ? undefined : () => changerOnglet('ninebox')} exterieur={surPC ? undefined : () => changerOnglet('exterieur')} />
+        infos={() => setInfos(true)} ninebox={surPC ? undefined : () => changerOnglet('ninebox')} exterieur={surPC ? undefined : () => changerOnglet('exterieur')} />
       {conversation.panneau}
+      <Drawer anchor="right" open={infos} onClose={() => setInfos(false)} sx={{ zIndex: (t) => t.zIndex.modal }}
+        slotProps={{ paper: { role: 'dialog', 'aria-label': 'Infos du magasin', sx: { width: { xs: '100%', sm: 440 }, bgcolor: 'background.default' } } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+          <Typography component="h2" sx={{ fontWeight: 700, fontSize: echelle.section, mr: 'auto' }}>Infos du magasin</Typography>
+          <IconButton onClick={() => setInfos(false)} aria-label="Fermer" sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
+        </Box>
+        <Box sx={{ display: 'grid', gap: 2, p: 2 }}>
+          <Section titre="Équipe" action={referentiels ? <Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button> : undefined}>
+            <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
+            <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
+            {m.franchise && m.responsableARecruter && <Contact role={libelleResponsable(m)} p={null} sousTitre="En cours de recrutement" />}
+            <ListeAssocies reseau={reseau} m={m} signaler={setConfirmation} />
+          </Section>
+          <Section titre="Magasin">
+            <Ligne compacte libelle="Code magasin">{m.code || null}</Ligne>
+            <Ligne compacte libelle="Implantation des produits">{m.exploitation.implantation ? dateLongue(m.exploitation.implantation) : null}</Ligne>
+            <Ligne compacte libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
+            <GroupeBudgetaire magasin={m.nom} modifiable={referentiels} />
+            <Ligne compacte libelle="Adresse">
+              {adresseComplete && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <span>{adresseComplete}</span>
+                  {lienPlan && <Chip icon={<PlaceOutlined />} label="Itinéraire" size="small" component="a" href={lienPlan} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />}
+                  {/* Choix 260 bis (Joseph, 16/11/2026) : les avis Google du magasin en un clic */}
+                  <Chip icon={<StarOutlined />} label="Avis Google" size="small" component="a" href={`https://www.google.com/search?q=${encodeURIComponent(`V and B ${m.nom} avis`)}`} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />
+                </Box>
+              )}
+            </Ligne>
+            <Ligne compacte libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
+            <Ligne compacte libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
+            {/* Choix 200 : la carte Google, réduite, dans le bloc Magasin */}
+            {lieuCarte && <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
+              loading="lazy" referrerPolicy="no-referrer-when-downgrade" sx={{ display: 'block', width: '100%', height: 160, border: 0, borderRadius: 1, mt: 1.5 }} />}
+          </Section>
+          <Repliee.Provider value>
+            <SectionExploitation m={m} />
+            <SectionEquipements reseau={reseau} m={m} signaler={setConfirmation} />
+            <SectionConcurrents reseau={reseau} m={m} signaler={setConfirmation} />
+          </Repliee.Provider>
+        </Box>
+      </Drawer>
       {situationsAffichees(m, reseau.jour).map((s) => (
         <Alert key={`${s.type}-${s.date}`} severity={s.type === 'sortie' || (s.type === 'travaux' && s.date <= reseau.jour) ? 'warning' : 'info'} sx={{ mb: 2 }}
           action={referentiels ? <Button color="inherit" onClick={() => setSituation(true)} sx={{ minHeight: 48 }}>Modifier</Button> : undefined}>
@@ -238,51 +282,12 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
       <Onglets valeur={ongletDe(vue)} onChange={changerOnglet} rubriques={rubriques} libelle={`Rubriques de ${m.nom}`} fiche titre={m.nom} />
       <ContenuOnglet>
 
-        {/* Vague 3 (22A) : les informations du magasin à gauche, où en est le magasin au centre */}
+        {/* Maquette 264 (Joseph, 17/11/2026) : À faire et objectifs à gauche, comment va le magasin à droite ; les
+            informations fixes du magasin dans le panneau « Infos du magasin » */}
         {vue === 'fiche' && (
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '360px minmax(0, 1fr)' }, alignItems: 'start' }}>
-            <Box sx={{ display: 'grid', gap: 2, minWidth: 0, order: { xs: 2, lg: 1 } }}>
-              <Section titre="Équipe" action={referentiels ? <Button startIcon={<SwapHoriz />} onClick={() => setReaffectation(true)} sx={{ minHeight: 48 }}>Réaffecter</Button> : undefined}>
-                <Contact role="Coach" p={coach} lien={m.coach ? lienCoach(m.coach) : undefined} sousTitre={m.coach ? undefined : 'Aucun Coach affecté à ce jour'} />
-                <Contact role={m.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={m.rr} lien={m.rr ? lienRR(m.rr.id) : undefined} sousTitre={m.rrEnDirect ? 'Gère ce magasin en direct' : undefined} />
-                {m.franchise && m.responsableARecruter && <Contact role={libelleResponsable(m)} p={null} sousTitre="En cours de recrutement" />}
-                <ListeAssocies reseau={reseau} m={m} signaler={setConfirmation} />
-              </Section>
-              <Section titre="Magasin">
-                <Ligne compacte libelle="Code magasin">{m.code || null}</Ligne>
-                <Ligne compacte libelle="Implantation des produits">{m.exploitation.implantation ? dateLongue(m.exploitation.implantation) : null}</Ligne>
-                <Ligne compacte libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
-                <GroupeBudgetaire magasin={m.nom} modifiable={referentiels} />
-                <Ligne compacte libelle="Adresse">
-                  {adresseComplete && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                      <span>{adresseComplete}</span>
-                      {lienPlan && <Chip icon={<PlaceOutlined />} label="Itinéraire" size="small" component="a" href={lienPlan} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />}
-                      {/* Choix 260 bis (Joseph, 16/11/2026) : les avis Google du magasin en un clic */}
-                      <Chip icon={<StarOutlined />} label="Avis Google" size="small" component="a" href={`https://www.google.com/search?q=${encodeURIComponent(`V and B ${m.nom} avis`)}`} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />
-                    </Box>
-                  )}
-                </Ligne>
-                <Ligne compacte libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
-                <Ligne compacte libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
-                {/* Choix 200 : la carte Google, réduite, dans le bloc Magasin */}
-                {lieuCarte && <Box component="iframe" title={`Carte Google de ${m.nom}`} src={`https://www.google.com/maps?q=${encodeURIComponent(lieuCarte)}&output=embed&hl=fr`}
-                  loading="lazy" referrerPolicy="no-referrer-when-downgrade" sx={{ display: 'block', width: '100%', height: 160, border: 0, borderRadius: 1, mt: 1.5 }} />}
-              </Section>
-            </Box>
-            <Box sx={{ display: 'grid', gap: 2, minWidth: 0, order: { xs: 1, lg: 2 } }}>
-              {aOuvrir(m, reseau.jour) && <SectionOuverture reseau={reseau} m={m} signaler={setConfirmation} />}
-              {/* Choix 255 (Joseph, 16/11/2026) : les blocs repliés (choix 200) passent sous les échanges, à droite, pour
-                  équilibrer les deux colonnes ; les informations à compléter rejoignent les points d'attention (257) */}
-              <SituationMagasin reseau={reseau} m={m} objectifs={<SectionObjectifsPlan reseau={reseau} m={m} signaler={setConfirmation} />}
-                manquants={manquants} completer={referentiels ? () => setEdition(true) : undefined}
-                suite={<Repliee.Provider value>
-                  <SectionExploitation m={m} />
-                  <SectionEquipements reseau={reseau} m={m} signaler={setConfirmation} />
-                  <SectionConcurrents reseau={reseau} m={m} signaler={setConfirmation} />
-                </Repliee.Provider>} />
-            </Box>
-          </Box>
+          <SituationMagasin reseau={reseau} m={m} objectifs={<SectionObjectifsPlan reseau={reseau} m={m} signaler={setConfirmation} />}
+            manquants={manquants} completer={referentiels ? () => setEdition(true) : undefined}
+            avant={aOuvrir(m, reseau.jour) ? <SectionOuverture reseau={reseau} m={m} signaler={setConfirmation} /> : undefined} />
         )}
 
         {/* Vague 3 (23A) : l'activité du magasin en un seul fil, « À venir » en tête */}
@@ -626,10 +631,12 @@ function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Ma
 
 
 // Haut de fiche façon profil : initiales, nom, trois compteurs, puis Appeler, Message, Visite
-function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, appeler, message, creer, modifier, fermer, retour, ninebox, exterieur }: {
+function ProfilMagasin({ m, reseau, alerte, enRetardNb, alerteVisite, appeler, message, creer, modifier, fermer, retour, ninebox, exterieur, infos }: {
   m: Magasin; reseau: Reseau; alerte: ReturnType<typeof analyser>; enRetardNb: number; ouvertes: number; alerteVisite: string
   appeler: string; message: () => void; creer: MenuCreer; modifier?: () => void; fermer?: () => void; retour: { libelle: string; aller: () => void }; ninebox?: () => void; exterieur?: () => void
+  infos: () => void // maquette 264 : le panneau « Infos du magasin »
 }) {
+  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const c = caseDe(reseau.evaluations[m.nom])
   // Une seule pastille : la plus grave
   const ferme = !!m.fermeture && m.fermeture.date <= reseau.jour
@@ -649,17 +656,16 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, ouvertes, alerteVisite, 
         color={concept === 'fait' ? 'primary' : 'default'} variant={concept === 'fait' ? 'filled' : 'outlined'} sx={{ fontSize: 12, fontWeight: 700, flexShrink: 0 }} />} avatar={(taille) => <Blason magasin={m} taille={taille} />}
       lignes={[[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · '), suiviEtRR(m)]}
       pastille={pastille}
-      compteurs={[
-        // Compteurs sans valeur retirés plutôt qu'affichés en tiret
-        ...(alerte && alerte.ca !== null ? [{ valeur: formatKEuros(alerte.ca), libelle: `CA ${libelleMois(alerte.mois).split(' ')[0]}` }] : []),
-        ...(alerte?.ecart !== null && alerte?.ecart !== undefined ? [{ valeur: formatPourcent(alerte.ecart), libelle: 'vs l’an dernier', couleur: alerte.ecart < 0 ? 'error.main' : undefined }] : []),
-        { valeur: ouvertes || '0', libelle: ouvertes > 1 ? 'tâches en cours' : 'tâche en cours' },
-      ]}
+      // Maquette 264 (17/11/2026) : plus de compteurs dans l'en-tête, la vue d'ensemble dit déjà le CA et les tâches
+      compteurs={[]}
       detail={c && <><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} par an</>}
       telephone={appeler}
       icones={<AutresActions nom={m.nom} modifier={modifier} fermer={fermer} ninebox={ninebox} exterieur={exterieur} />}
       principal={<BoutonVisite reseau={reseau} magasin={m.nom} principal />}
       actions={<>
+        {surPC
+          ? <Button variant="outlined" startIcon={<InfoOutlined />} onClick={infos} sx={{ minHeight: 48, borderRadius: 999, whiteSpace: 'nowrap' }}>Infos du magasin</Button>
+          : <Tooltip title="Infos du magasin"><IconButton onClick={infos} aria-label="Infos du magasin" sx={rond}><InfoOutlined /></IconButton></Tooltip>}
         <Tooltip title="Message"><IconButton onClick={message} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Tooltip>
         {/* Choix 116 : en visite, les chiffres du magasin en grand, sans rien d'interne */}
         <Tooltip title="Montrer au franchisé"><IconButton onClick={() => setMontrer(true)} aria-label="Montrer au franchisé" sx={rond}><PresentToAllOutlined /></IconButton></Tooltip>
@@ -751,8 +757,8 @@ function ActiviteMagasin({ reseau, m, filtre, filtrer, actions, signaler, saisir
   const sousPriorites = actions.filter((x) => !x.a.faite && !!x.a.priorite && actives.has(x.a.priorite)).length
   const nbCampagnes = campagnesDuMagasin(reseau, m.nom, reseau.jour).length
   return (
-    // Choix 198 (Joseph, 15/11/2026) : sur PC, « À faire » à gauche et le fil du passé à droite, visible tout de suite
-    <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 5fr) minmax(0, 7fr)' }, alignItems: 'start' }}>
+    // Maquette 265 (Joseph, 17/11/2026) : « À faire » en tête sur toute la largeur, puis l'historique en tableau
+    <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)', alignItems: 'start' }}>
       {/* Vague 7 (retour de Joseph, 10/11/2026) : un seul jeu d'actions, celles de l'en-tête de la fiche */}
       <Section titre="À faire">
         {prevues.map((v) => (
@@ -775,23 +781,25 @@ function ActiviteMagasin({ reseau, m, filtre, filtrer, actions, signaler, saisir
           <Collapse in={campagnes} unmountOnExit><CampagnesMagasin reseau={reseau} magasin={m.nom} signaler={signaler} /></Collapse>
         </Box>
       </Section>
-      <Box sx={{ display: 'grid', gap: 2, minWidth: 0, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-        <Box>
+      <Card component="section" aria-label="Historique" sx={{ px: { xs: 2, md: 3 }, pt: 2, pb: 1.5, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 1 }}>
+          <Typography component="h2" sx={{ fontWeight: 700, fontSize: echelle.section }}>Historique</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mr: 'auto' }}>{filtre === 'visites' ? '' : `${elements.length} élément${elements.length > 1 ? 's' : ''}`}</Typography>
           <Puces label="Filtrer l’activité" valeur={filtre} onChange={filtrer} options={FILTRES_ACTIVITE.map((f) => ({ v: f.v, libelle: f.libelle }))} />
         </Box>
         {filtre === 'visites'
-          // Choix 199 : visites, audits et réunions dans une seule carte
-          ? <Card role="region" aria-label="Visites, audits et réunions"><CardContent sx={{ p: 3, '& > section:first-of-type': { borderTop: 0, mt: 0, pt: 0 } }}>
+          // Choix 199 : visites, audits et réunions ensemble
+          ? <Box role="region" aria-label="Visites, audits et réunions" sx={{ '& > section:first-of-type': { borderTop: 0, mt: 0, pt: 0 } }}>
             <DansCarte.Provider value>
               <SectionAudits reseau={reseau} m={m} />
               <SectionVisites reseau={reseau} m={m} saisir={saisirVisite} modifier={modifierVisite} />
               <SectionReunionsMagasin reseau={reseau} magasin={m.nom} />
             </DansCarte.Provider>
-          </CardContent></Card>
+          </Box>
           : elements.length
-            ? <FilActivite elements={elements} jour={reseau.jour} sansMagasin sansFiltre titre="Fil d’activité" ouvrirJournal={edition.ouvrir} />
-            : <Typography variant="body2" color="text.secondary">Rien pour l’instant dans ce filtre.</Typography>}
-      </Box>
+            ? <TableauActivite elements={elements} ouvrirJournal={edition.ouvrir} />
+            : <Typography variant="body2" color="text.secondary" sx={{ py: 1.5 }}>Rien pour l’instant dans ce filtre. Une visite, un appel ou une note s’ajoutent par le « + » de la fiche.</Typography>}
+      </Card>
       {edition.fenetres}
     </Box>
   )

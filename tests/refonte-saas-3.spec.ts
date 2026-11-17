@@ -45,14 +45,12 @@ test('21A : le périmètre choisi filtre les listes et se rappelle à côté du 
 test('22A et 23A : vue d’ensemble du magasin et activité en un seul fil', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
-  const indicateurs = page.getByRole('region', { name: 'Indicateurs du magasin' })
+  // Maquette 264 (17/11/2026) : À faire, comment va le magasin, dernier échange
+  const indicateurs = page.getByRole('group', { name: 'Indicateurs du magasin' })
   await expect(indicateurs.getByText('CA de septembre 2026')).toBeVisible()
-  await expect(indicateurs.getByText('Panier moyen HT')).toBeVisible()
-  // Choix 196 (15/11/2026) : une seule bande « À faire maintenant »
-  await expect(page.getByRole('region', { name: 'À faire maintenant' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Derniers échanges' })).toBeVisible() // choix 259 (16/11/2026)
-  await expect(page.getByText('Vitrine refaite, stock à revoir.').first()).toBeVisible()
-  // Activité : plus de sous-onglets, « À faire » à côté du fil (198) et des filtres en puces
+  await expect(page.getByRole('region', { name: 'À faire' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Dernier échange' })).toBeVisible()
+  // Activité : plus de sous-onglets, « À faire » en tête, l'historique dessous (265) et des filtres en puces
   await page.goto('./#/magasins/Lyon%20Test?vue=activite')
   await expect(page.getByRole('tablist', { name: 'Parties de l’activité' })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'À faire', exact: true })).toBeVisible()

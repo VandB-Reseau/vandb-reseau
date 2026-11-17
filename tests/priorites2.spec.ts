@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { MOI, seConnecter, textesTropPetits, type CommunicationSimulee, type Ecriture } from './supabase-simule'
+import { ouvrirInfosMagasin, MOI, seConnecter, textesTropPetits, type CommunicationSimulee, type Ecriture } from './supabase-simule'
 
 // Priorités 2 des propositions par onglet (Joseph, 21/10/2026) : en-tête compact, Plus et Paramètres en lignes,
 // contacts à initiales, tri et lettres dans Magasins, Agenda en pastilles, communication à la une
@@ -61,8 +61,9 @@ test('fiche magasin : contacts à initiales, rôle sous le nom, pictos de 48 px'
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
   await page.getByRole('tab', { name: 'Vue d’ensemble' }).click()
+  const infos = await ouvrirInfosMagasin(page)
   await expect(page.getByText(/^Coach( · .*)?$/).first()).toBeVisible()
-  for (const b of await page.getByRole('main').getByRole('link', { name: /^(Appeler|Écrire à) / }).all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  for (const b of await infos.getByRole('link', { name: /^(Appeler|Écrire à) / }).all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-contacts.png`, fullPage: !isMobile })
 })

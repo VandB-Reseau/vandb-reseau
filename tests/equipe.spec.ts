@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { choisirMois, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { ouvrirInfosMagasin, choisirMois, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -108,6 +108,7 @@ test('réaffecter un magasin propose le Coach le plus proche et enregistre', asy
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Nantes%20Test?vue=fiche')
+  await ouvrirInfosMagasin(page)
   await page.getByRole('button', { name: 'Réaffecter' }).click()
   const dialogue = page.getByRole('dialog', { name: 'Réaffecter Nantes Test' })
   await expect(dialogue).toBeVisible()
