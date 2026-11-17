@@ -19,6 +19,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 - Marché extérieur (Joseph, 17/11/2026), sans migration : le Diagnostic devient la liste des cibles avec leurs cinq
   notes et leur case de la matrice ; « Noter » ou « Modifier » ouvre le panneau de notation, chaque cible se retire
   (« Annuler » possible). Plus de « Cible suivante ». La frise montre les titres des étapes, sans numéros.
+- Remises entreprise au bar (Joseph, 17/11/2026), sans migration : le simulateur « Remises entreprise par paliers »
+  a un choix « Cave, une commande » / « Bar, des venues ». Au bar, le palier se lit sur les venues de la société par
+  semaine ou par mois, la remise est un montant TTC par produit (conseillé) ou par panier ; elle porte sur tout le
+  panier type (food, softs, alcool), jamais sur l'alcool seul (loi Évin, alerte si le panier n'a que de l'alcool).
+  Résultats : masse de marge avec et sans remise, coût sur l'année, venues en plus pour la payer, creux entre paliers,
+  remise maximale TTC par produit au plancher. Moteur `simulerRemisesBar`, testé à la main.
 - Marché extérieur (Joseph, 16/11/2026), sans migration : entrée « Marché extérieur » dans le menu, comme les
   Simulateurs (l'équipe choisit le magasin ; le franchisé arrive sur le plan de son magasin). Repérage refait : la
   recherche « autour d'un point » de l'Annuaire ignorait le filtre d'effectif (les grands sites, Thales à Vendôme par
