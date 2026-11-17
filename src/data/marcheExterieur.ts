@@ -55,6 +55,8 @@ export interface Cible {
   source: 'annuaire' | 'saisie'
   contact: string
   membres: number | null // salariés, licenciés ou adhérents, saisi
+  // Contrat déjà en cours, souvent antérieur à l'app (Joseph, 17/11/2026) : CA annuel facultatif (€ HT), écrit ou non
+  contrat: { ca: number | null; ecrit: boolean } | null
   notes: Partial<Record<Critere, number>> // 1 à 5
   action: string
   qui: string
@@ -86,6 +88,7 @@ export function normaliserCible(x: Record<string, unknown>): Cible | null {
     id, nom, categorie: dans(x.categorie, CATEGORIES.map((c) => c.cle), 'entreprise'), detail: texte(x.detail, 200), adresse: texte(x.adresse, 200),
     distance: d !== null && d >= 0 ? Math.round(d) : null, siren: texte(x.siren, 14), source: x.source === 'annuaire' ? 'annuaire' : 'saisie',
     contact: texte(x.contact, 200), membres: (() => { const v = nombre(x.membres); return v !== null && v >= 0 ? Math.round(v) : null })(), notes, action: texte(x.action, 300), qui: texte(x.qui, 80),
+    contrat: (() => { const k = x.contrat; if (!k || typeof k !== 'object' || Array.isArray(k)) return null; const o = k as Record<string, unknown>; const v = nombre(o.ca); return { ca: v !== null && v >= 0 ? v : null, ecrit: o.ecrit === true } })(),
     echeance: /^\d{4}-\d{2}-\d{2}$/.test(String(x.echeance)) ? String(x.echeance) : '', caVise: ca !== null && ca >= 0 ? ca : null,
     statut: dans(x.statut, STATUTS.map(([k]) => k), 'a_faire'), offre: dans(x.offre, OFFRES.map(([k]) => k), ''), par: texte(x.par, 80), le: texte(x.le, 10),
   }
@@ -139,7 +142,7 @@ export function actionProposee(c: Cible): { action: string; offre: Offre } {
   }
 }
 
-export interface Synthese { cibles: number; notees: number; parQuadrant: Record<Quadrant, number>; actions: number; faites: number; caVise: number }
+export interface Synthese { cibles: number; notees: number; parQuadrant: Record<Quadrant, number>; actions: number; faites: number; caVise: number; sousContrat: number; caContrat: number }
 // Actions du plan = tâches du magasin rattachées à une cible (0049, Joseph 17/11/2026)
 export const tachesDuPlan = (taches: ActionLibre[] | undefined, p: PlanExterieur) => {
   const ids = new Set(p.cibles.map((c) => c.id))
@@ -152,6 +155,7 @@ export function synthese(p: PlanExterieur, taches: ActionLibre[] = []): Synthese
   return {
     cibles: p.cibles.length, notees: p.cibles.filter(estNotee).length, parQuadrant, actions: t.length,
     faites: t.filter((x) => x.faite).length, caVise: p.cibles.reduce((s, c) => s + (c.caVise ?? 0), 0),
+    sousContrat: p.cibles.filter((c) => c.contrat).length, caContrat: p.cibles.reduce((s, c) => s + (c.contrat?.ca ?? 0), 0),
   }
 }
 
@@ -330,7 +334,7 @@ export async function chercher(categorie: Categorie, codesPostaux: string[], lat
 }
 
 export function cibleDepuis(t: Trouvee, par: string, le: string): Cible {
-  return { id: t.id, nom: t.nom, categorie: t.categorie, detail: t.detail, adresse: t.adresse, distance: t.distance, siren: t.siren, source: 'annuaire', contact: '', membres: null, notes: {}, action: '', qui: '', echeance: '', caVise: null, statut: 'a_faire', offre: '', par, le }
+  return { id: t.id, nom: t.nom, categorie: t.categorie, detail: t.detail, adresse: t.adresse, distance: t.distance, siren: t.siren, source: 'annuaire', contact: '', membres: null, contrat: null, notes: {}, action: '', qui: '', echeance: '', caVise: null, statut: 'a_faire', offre: '', par, le }
 }
 export const nouvelId = () => `c_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 export const libelleDistance = (d: number | null) => (d === null ? '' : d < 1000 ? `${Math.max(10, Math.round(d / 10) * 10)} m` : `${(d / 1000).toFixed(1).replace('.', ',')} km`)
