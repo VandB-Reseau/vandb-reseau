@@ -72,7 +72,7 @@ import {
 } from '../moteur/simulateurs'
 import {
   auditPression, cartePression, margeFut, coutComposition, coutContrats, margePourPrix, nouveauBec, palierExterieur, prixPourMarge,
-  gainsSelonFuts, simulerExterieur, simulerHeuresSup, simulerOuverture, simulerParc, simulerProspection, simulerRemisesB2B, unitaireB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise,
+  gainsSelonFuts, simulerExterieur, simulerHeuresSup, simulerOuverture, simulerParc, simulerProspection, simulerRemisesB2B, simulerRemisesBar, unitaireB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise, type LigneBar, type NatureBar, type PalierBar,
 } from '../moteur/boiteOutils'
 import { baseCaisse, budgetSurCaisse, meilleursLeviers, type CleLevier } from '../moteur/leviers'
 import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TypeInvestissement, TempsFort, Univers } from '../moteur/types'
@@ -341,6 +341,8 @@ type Etats = {
   ouverture: { jour: 'dimanche' | 'ferie'; caBar: number; caCave: number; margeBar: number | null; margeCave: number | null; report: number; heures: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number; frais: number }
   remises_b2b: {
     client: string; mode: 'famille' | 'produit'; plancher: number; paliers: PalierRemise[]; familles: LigneB2B[]; produits: LigneB2B[]
+    // Au bar (Joseph, 17/11/2026) : remise en euros par produit ou par panier, paliers sur les venues de la société
+    lieu: 'cave' | 'bar'; bar: { base: 'produit' | 'panier'; periode: 'semaine' | 'mois'; venues: number; paliers: PalierBar[]; lignes: LigneBar[] }
     // 238 · démarcher d'autres entreprises (marge null : celle de la commande simulée)
     prospection: boolean; heuresSemaine: number; semaines: number; entreprises: number; ticket: number; margeProspection: number | null
     coutHoraire: number; modeHeure: ModeHeure; partSmic: number
@@ -408,6 +410,7 @@ function vider(v: unknown, cle: string, sim: string): unknown {
   if (Array.isArray(v)) {
     if (cle === 'vieilles' || !v.length) return []
     // 228 : les familles d'une commande gardent leur nom, sans chiffres
+    if (sim === 'remises_b2b' && cle === 'lignes') return v.map((x: LigneBar) => ({ ...(vider(x, '', sim) as LigneBar), libelle: x.libelle }))
     if (sim === 'remises_b2b' && cle === 'familles') return v.map((x: LigneB2B) => ({ ...(vider(x, '', sim) as LigneB2B), libelle: x.libelle }))
     return [vider(v[0], '', sim)]
   }
@@ -464,7 +467,17 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
     ouverture: { jour: 'dimanche', caBar: 800, caCave: 1_200, margeBar: null, margeCave: null, report: 0.2, heures: 14, coutHoraire: s.coutHoraire, ...HEURE, frais: 0 },
     // 228 : l'exemple du fichier de Joseph (paliers, plancher 25 %, prix fictifs)
     remises_b2b: {
-      client: 'Comité d’entreprise', mode: 'famille', plancher: 0.25,
+      client: 'Comité d’entreprise', mode: 'famille', plancher: 0.25, lieu: 'cave',
+      // Au bar : une société dont les salariés viennent 30 fois par semaine ; panier type d'une venue (prix fictifs)
+      bar: {
+        base: 'produit', periode: 'semaine', venues: 30,
+        paliers: [{ min: 0, remise: 0 }, { min: 15, remise: 0.5 }, { min: 40, remise: 1 }],
+        lignes: [
+          { libelle: 'Food', nature: 'food', parVenue: 0.5, prixTTC: 12, taux: 0.7 },
+          { libelle: 'Softs et boissons sans alcool', nature: 'soft', parVenue: 0.5, prixTTC: 4, taux: 0.8 },
+          { libelle: 'Boissons alcoolisées', nature: 'alcool', parVenue: 1.5, prixTTC: 6.5, taux: 0.8 },
+        ],
+      },
       paliers: [{ min: 0, remise: 0 }, { min: 50, remise: 0.05 }, { min: 100, remise: 0.08 }, { min: 200, remise: 0.1 }, { min: 500, remise: 0.12 }, { min: 1000, remise: 0.15 }],
       familles: [
         // % de marge sur le prix HT avant remise, arrondis depuis les achats du fichier (6,05 € ; 11,55 € ; 24,88 € ; 19,25 €)
@@ -1743,7 +1756,140 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     } else phrase = 'Une marge de 100 % ou plus ne donne aucun prix.'
     }
   }
-  if (choisi === 'remises_b2b') {
+  if (choisi === 'remises_b2b' && etats.remises_b2b.lieu === 'bar') {
+    // Remises entreprise au bar (Joseph, 17/11/2026) : un montant en euros par produit (conseillé) ou par panier, selon
+    // les venues de la société par semaine ou par mois. Loi Évin : la remise vaut pour tout le panier, jamais l'alcool seul.
+    const e = etats.remises_b2b
+    const eb = e.bar
+    const majBar = (v: Partial<typeof eb>) => maj('remises_b2b', { bar: { ...eb, ...v } })
+    const tvaBar: Record<NatureBar, number> = { food: s.tva.intermediaire, soft: s.tva.intermediaire, alcool: s.tva.normale }
+    const r = simulerRemisesBar({ paliers: eb.paliers, lignes: eb.lignes, venues: eb.venues, periode: eb.periode, base: eb.base, plancher: e.plancher, tva: tvaBar }, p)
+    const nomPalier = (i: number) => `Palier ${i}`
+    const par = eb.periode === 'semaine' ? 'par semaine' : 'par mois'
+    const surQuoi = eb.base === 'produit' ? 'par produit' : 'par panier'
+    const venuesTxt = (n: number) => `${entier(n)} venue${n > 1 ? 's' : ''}`
+    const majLigne = (i: number, v: Partial<LigneBar>) => majBar({ lignes: eb.lignes.map((y, j) => (j === i ? { ...y, ...v } : y)) })
+    const majPalier = (i: number, v: Partial<PalierBar>) => majBar({ paliers: eb.paliers.map((y, j) => (j === i ? { ...y, ...v } : y)) })
+    const lecture = (a: AlerteB2B | null) => (a === 'perte' ? 'Vente à perte' : a === 'plancher' ? 'Sous le plancher' : a === 'ok' ? 'Au-dessus du plancher' : '–')
+    const couleur = (a: AlerteB2B | null) => (a === 'perte' ? 'error.main' : a === 'plancher' ? 'warning.dark' : a === 'ok' ? 'success.dark' : 'text.secondary')
+    const tranche = (x: { min: number; max: number | null }) => (x.max === null ? `${entier(x.min)} et plus` : `${entier(x.min)} à ${entier(x.max)}`)
+    const natures: [NatureBar, string][] = [['food', 'Food'], ['soft', 'Sans alcool'], ['alcool', 'Alcool']]
+    const tableau = { minWidth: 640, '& td, & th': { fontVariantNumeric: 'tabular-nums' } }
+    saisies = (
+      <Stack spacing={2}>
+        <Bloc titre="1. La société" total={{ libelle: 'Venues', valeur: `${entier(r.venues)} ${par}` }}>
+          <Saisies>
+            <Texte libelle="Client ou projet" valeur={e.client} onChange={(client) => maj('remises_b2b', { client })} largeur={240} />
+            <Choix libelle="Où" valeur={e.lieu} onChange={(lieu) => maj('remises_b2b', { lieu })} options={[['cave', 'Cave, une commande'], ['bar', 'Bar, des venues']]} />
+            <Choix libelle="Venues comptées" valeur={eb.periode} onChange={(periode) => majBar({ periode })} options={[['semaine', 'Par semaine'], ['mois', 'Par mois']]} />
+            <Montant libelle={`Venues ${par}`} valeur={eb.venues} onChange={(v) => majBar({ venues: Math.max(0, Math.round(v)) })} unite="" />
+            <Choix libelle="Remise" valeur={eb.base} onChange={(base) => majBar({ base })} options={[['produit', 'Par produit'], ['panier', 'Par panier']]} />
+            <Taux libelle="Marge plancher" valeur={e.plancher} onChange={(plancher) => maj('remises_b2b', { plancher })} />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="2. Les paliers de remise" total={{ libelle: 'Remise appliquée', valeur: `${nomPalier(r.palier)}, ${centimes(r.remise)} ${surQuoi}` }}>
+          {eb.paliers.map((x, i) => (
+            <Saisies key={i}>
+              <Typography sx={{ fontWeight: 700, minWidth: 72, alignSelf: 'center' }}>{nomPalier(i)}</Typography>
+              {i === 0
+                ? <Typography color="text.secondary" sx={{ alignSelf: 'center', minWidth: 130 }}>Dès la première venue</Typography>
+                : <MontantDe libelle={`À partir de (venues ${par})`} aria={`À partir de, palier ${i}`} valeur={x.min} onChange={(v) => majPalier(i, { min: Math.max(1, Math.round(v)) })} unite="" largeur={130} />}
+              <MontantDe libelle={`Remise TTC ${surQuoi}`} aria={`Remise TTC, palier ${i}`} valeur={x.remise} onChange={(v) => majPalier(i, { remise: Math.max(0, v) })} />
+              {i > 0 && <Button color="inherit" startIcon={<DeleteOutlineOutlined />} onClick={() => majBar({ paliers: eb.paliers.filter((_, j) => j !== i) })} aria-label={`Retirer le palier ${i}`} sx={{ minHeight: 48 }}>Retirer</Button>}
+            </Saisies>
+          ))}
+          <Box>{eb.paliers.length < 8 && <Button startIcon={<AddOutlined />} onClick={() => majBar({ paliers: [...eb.paliers, { min: Math.max(1, (eb.paliers.at(-1)?.min ?? 0) * 2), remise: (eb.paliers.at(-1)?.remise ?? 0) + 0.5 }] })} sx={{ minHeight: 48 }}>Ajouter un palier</Button>}</Box>
+        </Bloc>
+        <Bloc titre="3. Le panier d’une venue" total={{ libelle: 'Panier TTC', valeur: centimes(r.caTTC) }}>
+          {eb.lignes.map((l, i) => {
+            const nomLigne = l.libelle || `Ligne ${i + 1}`
+            return (
+              <Saisies key={i}>
+                <Texte libelle="Produits" aria={`Produits, ligne ${i + 1}`} valeur={l.libelle} onChange={(libelle) => majLigne(i, { libelle })} largeur={220} />
+                <Choix libelle="Nature" valeur={l.nature} onChange={(nature) => majLigne(i, { nature })} options={natures} />
+                <MontantDe libelle="Produits par venue" aria={`Produits par venue, ${nomLigne}`} valeur={l.parVenue} onChange={(v) => majLigne(i, { parVenue: Math.max(0, v) })} unite="" largeur={110} />
+                <MontantDe libelle="Prix moyen TTC" aria={`Prix moyen TTC, ${nomLigne}`} valeur={l.prixTTC} onChange={(v) => majLigne(i, { prixTTC: Math.max(0, v) })} />
+                <TauxDe libelle="% de marge" aria={`% de marge, ${nomLigne}`} valeur={l.taux} onChange={(v) => majLigne(i, { taux: v })} />
+                {eb.lignes.length > 1 && <Button color="inherit" startIcon={<DeleteOutlineOutlined />} onClick={() => majBar({ lignes: eb.lignes.filter((_, j) => j !== i) })} aria-label={`Retirer ${nomLigne}`} sx={{ minHeight: 48 }}>Retirer</Button>}
+              </Saisies>
+            )
+          })}
+          <Box>{eb.lignes.length < 12 && <Button startIcon={<AddOutlined />} onClick={() => majBar({ lignes: [...eb.lignes, { libelle: '', nature: 'food', parVenue: 0, prixTTC: 0, taux: 0 }] })} sx={{ minHeight: 48 }}>Ajouter une ligne</Button>}</Box>
+          {!r.evin && <Typography role="alert" sx={{ color: 'error.main', fontWeight: 600 }}>Le panier ne compte que de l’alcool : la remise doit aussi valoir pour les boissons sans alcool et la food (loi Évin).</Typography>}
+        </Bloc>
+      </Stack>
+    )
+    nomParDefaut = `${e.client || 'Société'}, bar, ${venuesTxt(r.venues)} ${par}`
+    const prochain = r.suivant ? ` Encore ${venuesTxt(r.suivant.manque)} pour passer au ${nomPalier(r.suivant.index).toLowerCase()} (${centimes(r.suivant.remise)}).` : r.venues > 0 ? ' Dernier palier atteint.' : ''
+    const plancherTexte = r.taux === null ? '' : r.marge < 0 ? ' Vente à perte.' : r.taux < e.plancher ? ` Sous le plancher de ${taux(e.plancher)}.` : ''
+    const payee = r.remise <= 0 ? '' : r.venuesEnPlus === null ? ' La remise ne se rattrape pas par des venues en plus.' : ` La remise coûte ${montant(r.perteAn)} par an ; ${venuesTxt(r.venuesEnPlus)} de plus ${par} la paient.`
+    phrase = r.venues > 0 && r.caNet > 0
+      ? `${e.client || 'Société'} : ${venuesTxt(r.venues)} ${par}, ${nomPalier(r.palier).toLowerCase()} à ${centimes(r.remise)} ${surQuoi}, ${montant(r.caNet)} HT, marge ${montant(r.marge)} soit ${r.taux === null ? '–' : taux(r.taux)}.${plancherTexte}${payee}${prochain}`
+      : ''
+    const actuel = r.paliers[r.palier]
+    resultats = phrase ? (
+      <Stack spacing={2}>
+        <Compte titre={`Compte ${par}`} lignes={[
+          { libelle: 'CA HT avant remise', valeur: r.caBrut, detail: `${venuesTxt(r.venues)}, ${centimes(r.caHT)} HT par venue` },
+          { libelle: 'Remise cédée aux salariés', valeur: -r.margeCedee, detail: `${centimes(r.remise)} TTC ${surQuoi}` },
+          { libelle: 'Achats HT', valeur: -r.cout },
+          { libelle: 'Redevance et publicité', valeur: -r.redevance },
+        ]} total={{ libelle: 'Ce qu’il reste au magasin', valeur: r.reste }} />
+        <Resultats>
+          <Indicateur libelle="Masse de marge" valeur={montant(r.marge)} detail={`${par}, ${montant(r.margeSansRemise)} sans remise`}
+            ecart={{ texte: `− ${montant(r.margeCedee)}`, hausse: false, favorable: r.margeCedee <= 0 }} />
+          <Indicateur libelle="Taux de marge" valeur={r.taux === null ? '–' : taux(r.taux)} detail={`plancher ${taux(e.plancher)}`}
+            ecart={r.taux === null ? undefined : { texte: ecartPts(r.taux - e.plancher), hausse: r.taux >= e.plancher, favorable: r.taux >= e.plancher }} />
+          <Indicateur libelle="Coût de la remise sur l’année" valeur={montant(r.perteAn)} detail="sur ce qu’il reste au magasin" />
+          <Indicateur libelle="Venues en plus pour la payer" valeur={r.venuesEnPlus === null ? 'Jamais' : entier(r.venuesEnPlus)} detail={r.venuesEnPlus === null ? 'une venue remisée ne rapporte plus rien' : par} />
+          <Indicateur libelle="Palier suivant" valeur={r.suivant ? venuesTxt(r.suivant.manque) : 'Atteint'} detail={r.suivant ? `de plus pour ${centimes(r.suivant.remise)}` : `${nomPalier(r.palier)}, ${tranche(actuel)} venues`} />
+        </Resultats>
+        <Box sx={{ overflowX: 'auto' }}>
+          <Table size="small" aria-label="Remises par palier au bar" sx={tableau}>
+            <TableHead><TableRow>
+              <TableCell>Palier</TableCell><TableCell>Venues {par}</TableCell><TableCell align="right">Remise TTC</TableCell><TableCell align="right">Remise HT par venue</TableCell><TableCell align="right">Marge par venue</TableCell><TableCell align="right">Taux de marge</TableCell><TableCell>Lecture</TableCell>
+            </TableRow></TableHead>
+            <TableBody>
+              {r.paliers.map((x, i) => (
+                <TableRow key={i} selected={i === r.palier} aria-current={i === r.palier ? 'true' : undefined}>
+                  <TableCell sx={{ fontWeight: i === r.palier ? 700 : undefined }}>{nomPalier(i)}{i === r.palier ? ', la société' : ''}</TableCell>
+                  <TableCell>{tranche(x)}</TableCell>
+                  <TableCell align="right">{centimes(x.remise)}</TableCell>
+                  <TableCell align="right">{centimes(x.remiseHT)}</TableCell>
+                  <TableCell align="right">{centimes(x.margeVenue)}</TableCell>
+                  <TableCell align="right">{x.taux === null ? '–' : taux(x.taux)}</TableCell>
+                  <TableCell sx={{ color: x.margeRetrouveeA !== null && x.alerte === 'ok' ? 'warning.dark' : couleur(x.alerte), fontWeight: 600 }}>
+                    {x.alerte === 'ok' && x.margeRetrouveeA !== null ? `Creux : moins de marge qu’au palier d’avant jusqu’à ${entier(x.margeRetrouveeA - 1)} venues` : lecture(x.alerte)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Box>
+        <Box sx={{ overflowX: 'auto' }}>
+          <Table size="small" aria-label="Détail du panier" sx={tableau}>
+            <TableHead><TableRow>
+              <TableCell>Produits</TableCell><TableCell align="right">Par venue</TableCell><TableCell align="right">Marge d’un produit avant</TableCell><TableCell align="right">Après remise</TableCell><TableCell align="right">Taux</TableCell><TableCell align="right">Remise maximale TTC</TableCell><TableCell>Lecture</TableCell>
+            </TableRow></TableHead>
+            <TableBody>
+              {r.lignes.map((l, i) => l.parVenue > 0 && (
+                <TableRow key={i}>
+                  <TableCell>{l.libelle || `Ligne ${i + 1}`}</TableCell>
+                  <TableCell align="right">{unChiffre(l.parVenue)}</TableCell>
+                  <TableCell align="right">{centimes(l.margeAvant)}</TableCell>
+                  <TableCell align="right">{centimes(l.margeApres)}</TableCell>
+                  <TableCell align="right">{l.taux === null ? '–' : taux(l.taux)}</TableCell>
+                  <TableCell align="right">{l.remiseMax === null ? '–' : centimes(l.remiseMax)}</TableCell>
+                  <TableCell sx={{ color: couleur(l.alerte), fontWeight: 600 }}>{lecture(l.alerte)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Box>
+      </Stack>
+    ) : null
+  }
+  if (choisi === 'remises_b2b' && etats.remises_b2b.lieu !== 'bar') {
     // 228 · Remises entreprise par paliers (fichier « Simulateur remises B2B » de Joseph, 16/11/2026). Facturé en HT ;
     // paliers, remises et plancher en exemple, modifiables à chaque simulation (pas de réglage du siège).
     const e = etats.remises_b2b
@@ -1766,6 +1912,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         <Bloc titre="1. La commande" total={{ libelle: 'Unités', valeur: entier(r.unites) }}>
           <Saisies>
             <Texte libelle="Client ou projet" valeur={e.client} onChange={(client) => maj('remises_b2b', { client })} largeur={240} />
+            <Choix libelle="Où" valeur={e.lieu} onChange={(lieu) => maj('remises_b2b', { lieu })} options={[['cave', 'Cave, une commande'], ['bar', 'Bar, des venues']]} />
             <Choix libelle="Je simule" valeur={e.mode} onChange={(mode) => maj('remises_b2b', { mode })} options={[['famille', 'Par famille'], ['produit', 'Produit par produit']]} />
             <Taux libelle="Marge plancher" valeur={e.plancher} onChange={(plancher) => maj('remises_b2b', { plancher })} />
           </Saisies>
