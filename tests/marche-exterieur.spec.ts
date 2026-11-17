@@ -261,6 +261,26 @@ test('Marché extérieur : annuaire injoignable, un message humain et l’ajout 
   await expect(page.getByText('L’Annuaire des entreprises ne répond pas pour le moment. Réessaie dans quelques minutes, ou ajoute tes cibles à la main à l’étape suivante.')).toBeVisible()
 })
 
+test('Marché extérieur : repérage autour d’une autre adresse, celle d’un concurrent par exemple', async ({ page, isMobile }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, persister: true })
+  await page.goto(fiche())
+  await page.getByLabel('Chercher autour d’une autre adresse').fill('Rue sans commune')
+  await page.getByRole('button', { name: 'Centrer ici' }).click()
+  await expect(page.getByText('Adresse introuvable. Ajoute le code postal et la ville.')).toBeVisible()
+  await page.getByLabel('Chercher autour d’une autre adresse').fill('12 rue du Concurrent, 74960 Cran-Gevrier')
+  await page.getByRole('button', { name: 'Centrer ici' }).click()
+  await expect(page.getByText('Repérage centré sur 12 rue du Concurrent, 74960 Cran-Gevrier')).toBeVisible()
+  await expect.poll(() => derniere(ecritures, 'exterieur_magasins')?.[NOM]?.centre?.adresse).toBe('12 rue du Concurrent, 74960 Cran-Gevrier')
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  await page.getByRole('button', { name: 'Repérage', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Repérage autour de 12 rue du Concurrent, 74960 Cran-Gevrier' })).toBeVisible()
+  await page.getByRole('button', { name: 'Magasin', exact: true }).click()
+  await page.getByRole('button', { name: 'Revenir au magasin' }).click()
+  await expect(page.getByLabel('Chercher autour d’une autre adresse')).toBeVisible()
+  await expect.poll(() => derniere(ecritures, 'exterieur_magasins')?.[NOM]?.centre ?? null).toBeNull()
+})
+
 test('Marché extérieur depuis le menu : on choisit le magasin, puis son plan', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./')

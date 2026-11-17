@@ -35,6 +35,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import SearchOutlined from '@mui/icons-material/SearchOutlined'
 import { Fenetre } from './EditionEquipe'
+import { geolocaliser } from '../data/geolocalisation'
 import { EffacerTriFiltres, Entete, LigneSansResultat, useTableau, type ColonneTri } from './TableauTri'
 import { useMessageAnnulable } from './Annulable'
 import TuneOutlined from '@mui/icons-material/TuneOutlined'
@@ -191,6 +192,41 @@ function Indicateur({ libelle, valeur }: { libelle: string; valeur: string }) {
 }
 
 // ── 1 · Magasin ─────────────────────────────────────────────────────
+// Autre point de départ du repérage (Joseph, 17/11/2026) : l'adresse d'un concurrent, d'une zone d'activité…
+function AutreCentre({ plan, changer, lecture }: { plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; lecture: boolean }) {
+  const [saisie, setSaisie] = useState('')
+  const [etat, setEtat] = useState<'repos' | 'cherche' | 'introuvable'>('repos')
+  if (plan.centre) {
+    return (
+      <Box sx={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+        <Pastille ton="orange">{`Repérage centré sur ${plan.centre.adresse}`}</Pastille>
+        {!lecture && <Button onClick={() => { const { centre: _c, ...reste } = plan; changer({ ...reste, centre: null }, true) }} sx={{ minHeight: 48 }}>Revenir au magasin</Button>}
+      </Box>
+    )
+  }
+  if (lecture) return null
+  const placer = async () => {
+    const adresse = saisie.trim()
+    if (!adresse) return
+    setEtat('cherche')
+    const p = await geolocaliser({ adresse, codePostal: '', ville: '', pays: 'France' }).catch(() => null)
+    if (!p) { setEtat('introuvable'); return }
+    changer({ ...plan, centre: { adresse: adresse.slice(0, 200), lat: p.lat, lon: p.lon } }, true)
+    setSaisie(''); setEtat('repos')
+  }
+  return (
+    <Box sx={{ gridColumn: '1 / -1', display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <TextField label="Chercher autour d’une autre adresse" value={saisie} onChange={(e) => { setSaisie(e.target.value); setEtat('repos') }}
+        onKeyDown={(e) => { if (e.key === 'Enter') void placer() }} sx={{ flex: '1 1 320px' }}
+        error={etat === 'introuvable'} helperText={etat === 'introuvable' ? 'Adresse introuvable. Ajoute le code postal et la ville.' : 'Un concurrent, une zone d’activité : avec le code postal et la ville.'}
+        slotProps={{ htmlInput: { maxLength: 200 } }} />
+      <Button variant="outlined" onClick={() => void placer()} disabled={!saisie.trim() || etat === 'cherche'} sx={{ minHeight: 56 }}>
+        {etat === 'cherche' ? 'Recherche…' : 'Centrer ici'}
+      </Button>
+    </Box>
+  )
+}
+
 function EtapeMagasin({ reseau, m, plan, changer, lecture }: { reseau: Reseau; m: Magasin; plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; lecture: boolean }) {
   const [objectif, setObjectif] = useState(plan.objectif !== null ? String(plan.objectif) : '')
   const mois = chiffresDuMagasin(reseau, m.nom).filter((c) => c.caExt !== null).slice(-12)
@@ -208,6 +244,7 @@ function EtapeMagasin({ reseau, m, plan, changer, lecture }: { reseau: Reseau; m
             {RAYONS.map((r) => <ToggleButton key={r} value={r} sx={{ minHeight: 48, minWidth: 72 }}>{`${r} km`}</ToggleButton>)}
           </ToggleButtonGroup>
         </Box>
+        <AutreCentre plan={plan} changer={changer} lecture={lecture} />
         <TextField label="Objectif de CA extérieur sur un an (€ HT)" value={objectif} disabled={lecture} slotProps={{ htmlInput: { inputMode: 'decimal' } }}
           onChange={(e) => { setObjectif(e.target.value); const n = nombreOuNull(e.target.value); if (n === null || n >= 0) changer({ ...plan, objectif: n }) }} />
       </Box>
@@ -319,18 +356,20 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
   const [nomCherche, setNomCherche] = useState('')
   const [conseillees, setConseillees] = useState(false)
   const [ordre, setOrdre] = useState<OrdreReperage>('pertinence')
-  const cle = m.lat !== null && m.lon !== null ? `${m.lat.toFixed(4)},${m.lon.toFixed(4)}|${plan.rayon}|${taille}` : ''
+  const ici = plan.centre ?? (m.lat !== null && m.lon !== null && !m.positionApprochee ? { lat: m.lat, lon: m.lon, adresse: '' } : null)
+  const lieu = plan.centre ? `Repérage autour de ${plan.centre.adresse}` : 'Repérage autour du magasin'
+  const cle = ici ? `${ici.lat.toFixed(4)},${ici.lon.toFixed(4)}|${plan.rayon}|${taille}` : ''
   const [recherche, setRecherche] = useState<EtatRecherche>(() => { const l = cle ? lireCache(cle) : null; return l ? { etat: 'pret', liste: l, echecs: 0 } : { etat: 'repos' } })
   useEffect(() => { const l = cle ? lireCache(cle) : null; setRecherche(l ? { etat: 'pret', liste: l, echecs: 0 } : { etat: 'repos' }) }, [cle])
   const lancer = async () => {
-    if (m.lat === null || m.lon === null) return
+    if (!ici) return
     setRecherche({ etat: 'chargement', fait: 0 })
     let codes: string[]
-    try { codes = await codesPostauxAutour(m.lat, m.lon, plan.rayon) } catch { setRecherche({ etat: 'pret', liste: [], echecs: CATEGORIES.length }); return }
+    try { codes = await codesPostauxAutour(ici.lat, ici.lon, plan.rayon) } catch { setRecherche({ etat: 'pret', liste: [], echecs: CATEGORIES.length }); return }
     const liste: Trouvee[] = []
     let echecs = 0
     for (const [i, c] of CATEGORIES.entries()) {
-      try { liste.push(...await chercher(c.cle, codes, m.lat, m.lon, plan.rayon, taille)) } catch { echecs++ }
+      try { liste.push(...await chercher(c.cle, codes, ici.lat, ici.lon, plan.rayon, taille)) } catch { echecs++ }
       setRecherche({ etat: 'chargement', fait: i + 1 })
     }
     const vus = new Set<string>()
@@ -343,7 +382,7 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
   const basculer = (t: Trouvee) => changer(retenues.has(t.id)
     ? { ...plan, cibles: plan.cibles.filter((c) => c.id !== t.id) }
     : { ...plan, cibles: [...plan.cibles, cibleDepuis(t, par, le)] }, true)
-  if (m.lat === null || m.lon === null || m.positionApprochee) {
+  if (!ici) {
     return (
       <>
         <Titre>Repérage autour du magasin</Titre>
@@ -361,7 +400,7 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
         <Button variant={recherche.etat === 'pret' ? 'outlined' : 'contained'} startIcon={<SearchOutlined />} onClick={lancer} disabled={recherche.etat === 'chargement'} sx={{ minHeight: 48 }}>
           {recherche.etat === 'pret' ? 'Relancer la recherche' : `Chercher dans un rayon de ${plan.rayon} km`}
         </Button>
-      )}>Repérage autour du magasin</Titre>
+      )}>{lieu}</Titre>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 2 }}>
         <TextField select label="Entreprises : taille minimale" value={taille} onChange={(e) => setTaille(Number(e.target.value))} sx={{ minWidth: 240 }} slotProps={{ select: { native: true } }}>
           {TAILLES.map((t) => <option key={t} value={t}>{`${t} salariés et plus`}</option>)}

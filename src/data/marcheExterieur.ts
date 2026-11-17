@@ -67,7 +67,9 @@ export interface Cible {
   par: string
   le: string
 }
-export interface PlanExterieur { rayon: number; objectif: number | null; cibles: Cible[] }
+// centre : autre point de départ du repérage, par exemple pour « prendre » les extérieurs d'un concurrent (Joseph, 17/11/2026)
+export interface Centre { adresse: string; lat: number; lon: number }
+export interface PlanExterieur { rayon: number; objectif: number | null; cibles: Cible[]; centre?: Centre | null }
 
 export const RAYONS = [5, 10, 20]
 export const planVide = (): PlanExterieur => ({ rayon: 10, objectif: null, cibles: [] })
@@ -99,7 +101,10 @@ export function normaliserPlan(v: unknown): PlanExterieur | null {
   const cibles = (Array.isArray(o.cibles) ? o.cibles : []).filter((x): x is Record<string, unknown> => !!x && typeof x === 'object').map(normaliserCible).filter((c): c is Cible => !!c)
   const rayon = nombre(o.rayon)
   const objectif = nombre(o.objectif)
-  return { rayon: rayon !== null && RAYONS.includes(rayon) ? rayon : 10, objectif: objectif !== null && objectif >= 0 ? objectif : null, cibles }
+  const c = o.centre && typeof o.centre === 'object' && !Array.isArray(o.centre) ? o.centre as Record<string, unknown> : null
+  const lat = nombre(c?.lat), lon = nombre(c?.lon), adresse = texte(c?.adresse, 200)
+  const centre = lat !== null && lon !== null && adresse && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { adresse, lat, lon } : null
+  return { rayon: rayon !== null && RAYONS.includes(rayon) ? rayon : 10, objectif: objectif !== null && objectif >= 0 ? objectif : null, cibles, ...(centre ? { centre } : {}) }
 }
 export function normaliserExterieur(v: unknown): Record<string, PlanExterieur> {
   const o = v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {}
