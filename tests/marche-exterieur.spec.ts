@@ -213,6 +213,12 @@ test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’ac
   expect(traiteur).toMatchObject({ categorie: 'prescripteur', source: 'annuaire', caVise: 8000, offre: 'exterieur', notes: { potentiel: 4, cause: 4 } })
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  // Joseph (17/11/2026) : hors du plan, la tâche dit qu'elle vient du Marché extérieur et pour quelle cible
+  await expect(page.getByText('Marché extérieur : Traiteur Du Test (Saveurs Simulees)')).toHaveCount(0)
+  await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=actions`)
+  await expect(page.getByText('Marché extérieur : Traiteur Du Test (Saveurs Simulees)').first()).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 })
 
 test('Marché extérieur : le franchisé bâtit le plan de son magasin', async ({ page, isMobile }) => {

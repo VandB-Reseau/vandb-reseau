@@ -131,12 +131,12 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean, moi = '
   for (const x of actionsEnCours(reseau, noms).filter((x) => echeanceDate(x.a) && echeanceDate(x.a) <= dans15j).sort((x, y) => echeanceDate(x.a).localeCompare(echeanceDate(y.a)))) {
     const retard = enRetard(x.a, j)
     items.push({ cle: `t-${x.cle}`, titre: x.a.action, avatar: x.a.action, icone: <TaskAltOutlined />, lien: `${lienFiche(x.magasin)}?vue=actions`,
-      detail: [x.magasin, x.a.porteur, `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · '), pastille: retard ? { ton: 'rouge', libelle: 'En retard' } : undefined, tache: x })
+      detail: [x.magasin, x.libre?.exterieur && `Marché extérieur : ${x.libre.exterieur.nom}`, x.a.porteur, `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · '), pastille: retard ? { ton: 'rouge', libelle: 'En retard' } : undefined, tache: x })
   }
   // Refonte vague 4 (32A) : une tâche bloquée attend qu'on la débloque, quelle que soit son échéance
   for (const x of actionsEnCours(reseau, noms).filter((x) => x.a.statut === 'bloquee' && !items.some((i) => i.cle === `t-${x.cle}`))) {
     items.push({ cle: `t-${x.cle}`, titre: x.a.action, avatar: x.a.action, icone: <TaskAltOutlined />, lien: `${lienFiche(x.magasin)}?vue=actions`,
-      detail: [x.magasin, x.a.porteur, x.a.raison && `bloquée : ${x.a.raison}`].filter(Boolean).join(' · '), pastille: { ton: 'rouge', libelle: 'Bloquée' }, tache: x })
+      detail: [x.magasin, x.libre?.exterieur && `Marché extérieur : ${x.libre.exterieur.nom}`, x.a.porteur, x.a.raison && `bloquée : ${x.a.raison}`].filter(Boolean).join(' · '), pastille: { ton: 'rouge', libelle: 'Bloquée' }, tache: x })
   }
   for (const i of items) if (i.tache?.a.statut === 'bloquee' && i.pastille?.libelle !== 'Bloquée' && i.pastille?.ton !== 'rouge') i.pastille = { ton: 'rouge', libelle: 'Bloquée' }
   // Visites planifiées dont la date est passée sans compte rendu : faites ou à reporter
@@ -455,7 +455,7 @@ function BlocMesTaches({ reseau, taches, compact = false }: { reseau: Reseau; ta
   const cocher = useCocherTache(reseau)
   const lignes = taches.slice(0, compact ? APERCU_COMPACT : 4).map((x) => (
     <LigneTache key={x.cle} x={x} cocher={cocher.cocher} lien={`${lienFiche(x.magasin)}?vue=actions`} titre={x.a.action}
-      detail={[x.magasin, echeanceDate(x.a) && `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · ')}
+      detail={[x.magasin, x.libre?.exterieur && `Marché extérieur : ${x.libre.exterieur.nom}`, echeanceDate(x.a) && `pour le ${dateCourte(echeanceDate(x.a))}`].filter(Boolean).join(' · ')}
       fin={enRetard(x.a, reseau.jour) ? <Pastille ton="rouge">En retard</Pastille> : undefined} />
   ))
   const vide = <LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur={brand.vertFonce} />} titre="Liste vide" detail="Tout est fait, chapeau." />
