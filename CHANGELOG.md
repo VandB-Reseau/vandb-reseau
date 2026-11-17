@@ -16,6 +16,16 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   de marge du mois, de l'année et par client. Retirés : remise en % en double, bouteilles payées/offertes, client du
   milieu, panier, bascule de 4 à 5 + 1 (comptée avec les clients qui en prenaient déjà, hypothèse prudente).
 
+- Marché extérieur (Joseph, 17/11/2026), **migration 0049 à passer** : plusieurs actions par cible, chacune devient une
+  tâche du magasin (liste Tâches, étiquette `exterieur`), cochée et suivie comme les autres ; le franchisé crée,
+  modifie et supprime les tâches de son plan seulement (`tache_exterieur_franchise`). Les actions déjà saisies dans les
+  plans sont reprises en tâches. Repérage : un cœur et la raison signalent les cibles conseillées (grands sites,
+  prescripteurs d'au moins 500 k€ de chiffre d'affaires ou 10 salariés, associations employeuses, réseaux de
+  dirigeants, hébergements et CHR de 10 salariés et plus), puce « Conseillées » ; toutes restent listées. Chiffre
+  d'affaires de la dernière année publiée par l'Annuaire (sociétés qui déposent leurs comptes).
+- Marché extérieur (Joseph, 17/11/2026), sans migration : le Diagnostic devient la liste des cibles avec leurs cinq
+  notes et leur case de la matrice ; « Noter » ou « Modifier » ouvre le panneau de notation, chaque cible se retire
+  (« Annuler » possible). Plus de « Cible suivante ». La frise montre les titres des étapes, sans numéros.
 - Remises entreprise au bar (Joseph, 17/11/2026), sans migration : le simulateur « Remises entreprise par paliers »
   a un choix « Cave, une commande » / « Bar, des venues ». Au bar, le palier se lit sur les venues de la société par
   semaine ou par mois, la remise est un montant TTC par produit (conseillé) ou par panier ; elle porte sur tout le

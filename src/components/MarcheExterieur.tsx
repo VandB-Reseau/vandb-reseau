@@ -30,8 +30,12 @@ import ArrowBack from '@mui/icons-material/ArrowBack'
 import ArrowForward from '@mui/icons-material/ArrowForward'
 import Check from '@mui/icons-material/Check'
 import EditOutlined from '@mui/icons-material/EditOutlined'
+import Favorite from '@mui/icons-material/Favorite'
 import SearchOutlined from '@mui/icons-material/SearchOutlined'
 import { Fenetre } from './EditionEquipe'
+import { useMessageAnnulable } from './Annulable'
+import TuneOutlined from '@mui/icons-material/TuneOutlined'
+import DeleteOutline from '@mui/icons-material/DeleteOutlined'
 import { ChampDate } from './ChampDate'
 import { Pastille } from './Social'
 import { useAuth } from '../auth/AuthContext'
@@ -40,13 +44,19 @@ import { useReseau } from '../data/ReseauContext'
 import { enregistrerExterieur, enregistrerExterieurFranchise } from '../data/chargement'
 import { chiffresDuMagasin, formatEuros } from '../data/chiffres'
 import {
-  CATEGORIES, CRITERES, OFFRES, QUADRANTS, RAYONS, SEUIL, STATUTS, TAILLES, actionProposee, axes, chercher, cibleDepuis, codesPostauxAutour, trierParPotentiel, estNotee,
-  libelleCategorie, libelleDistance, nouvelId, ordrePlan, planVide, quadrant, synthese,
-  type Categorie, type Cible, type Critere, type Offre, type PlanExterieur, type Quadrant, type StatutAction, type Trouvee,
+  CATEGORIES, CRITERES, OFFRES, QUADRANTS, RAYONS, SEUIL, TAILLES, actionProposee, axes, chercher, cibleDepuis, codesPostauxAutour, trierParPotentiel, estNotee,
+  libelleCA, libelleCategorie, libelleDistance, nouvelId, ordrePlan, planVide, quadrant, synthese, tachesDuPlan,
+  type Categorie, type Cible, type Critere, type Offre, type PlanExterieur, type Quadrant, type Trouvee,
 } from '../data/marcheExterieur'
-import { dateCourte } from '../lib/format'
+import type { ActionLibre, Magasin, Reseau } from '../data/modele'
+import Stack from '@mui/material/Stack'
+import { LigneAction, ChampPorteur, useChangerStatut, useEcritureActions } from './Actions'
+import { cleLibre, clesDesPorteurs, porteursDe, type ActionSuivie } from '../data/actions'
+import { enregistrerActionLibre, supprimerActionLibre } from '../data/chargement'
+import { tacheExterieurFranchise } from '../data/espaceFranchise'
+import { mesCles } from '../data/messagerie'
+import { notifierTache } from '../lib/notifications'
 const formatNombre = (n: number) => n.toLocaleString('fr-FR')
-import type { Magasin, Reseau } from '../data/modele'
 
 const ETAPES = [
   { libelle: 'Magasin', sous: 'Point de départ' },
@@ -58,8 +68,6 @@ const ETAPES = [
 ]
 const tonQuadrant = (q: Quadrant | null) => (q ? QUADRANTS.find((x) => x.cle === q)!.ton : 'gris')
 const libelleQuadrant = (q: Quadrant | null) => (q ? QUADRANTS.find((x) => x.cle === q)!.libelle : 'À noter')
-const libelleStatut = (s: StatutAction) => STATUTS.find(([k]) => k === s)?.[1] ?? 'À faire'
-const tonStatut = (s: StatutAction) => (s === 'fait' ? 'vert' : 'gris') as 'vert' | 'gris'
 const virgule = (n: number) => n.toFixed(1).replace('.', ',')
 const nombreOuNull = (v: string) => { const n = Number(v.replace(/\s/g, '').replace('€', '').replace(',', '.')); return v.trim() && Number.isFinite(n) ? n : null }
 
@@ -102,14 +110,14 @@ export function MarcheExterieur({ reseau, m }: { reseau: Reseau; m: Magasin }) {
   }
   const par = profil?.nom ?? ''
   const le = reseau.jour
-  const s = synthese(plan)
+  const s = synthese(plan, reseau.actionsLibres?.[m.nom])
   const vues = [
     <EtapeMagasin key="0" reseau={reseau} m={m} plan={plan} changer={changer} lecture={lecture} />,
     <EtapeReperage key="1" m={m} plan={plan} changer={changer} lecture={lecture} par={par} le={le} />,
     <EtapeCibles key="2" plan={plan} changer={changer} lecture={lecture} par={par} le={le} />,
     <EtapeDiagnostic key="3" plan={plan} changer={changer} lecture={lecture} />,
     <EtapeMatrice key="4" plan={plan} />,
-    <EtapePlan key="5" m={m} plan={plan} changer={changer} lecture={lecture} />,
+    <EtapePlan key="5" reseau={reseau} m={m} plan={plan} changer={changer} lecture={lecture} />,
   ]
   const fait = [plan.objectif !== null, plan.cibles.some((c) => c.source === 'annuaire'), plan.cibles.length > 0, s.cibles > 0 && s.notees === s.cibles, s.notees > 0, s.actions > 0]
   return (
@@ -139,30 +147,25 @@ function Frise({ etape, fait, allerA }: { etape: number; fait: boolean[]; allerA
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   return (
     <Box component="nav" aria-label="Étapes du plan marché extérieur">
-      <Box component="ol" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))' }}>
+      {/* Titres des étapes, sans numéros (Joseph, 17/11/2026) ; sur téléphone la frise défile */}
+      <Box component="ol" sx={{ listStyle: 'none', m: 0, p: 0, display: surPC ? 'grid' : 'flex', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', overflowX: surPC ? undefined : 'auto', scrollbarWidth: 'none' }}>
         {ETAPES.map((e, i) => {
           const actuelle = i === etape
           const ok = fait[i] && !actuelle
           return (
             <li key={e.libelle}>
-              <ButtonBase onClick={() => allerA(i)} aria-current={actuelle ? 'step' : undefined} aria-label={`Étape ${i + 1} : ${e.libelle}${ok ? ', faite' : ''}`}
-                sx={{ width: '100%', minHeight: 56, px: { xs: 0.5, md: 1.5 }, py: 1, gap: 1.25, justifyContent: surPC ? 'flex-start' : 'center', borderBottom: '3px solid', borderColor: actuelle ? 'secondary.main' : ok ? 'success.main' : 'divider', fontFamily: 'inherit', textAlign: 'left', borderRadius: '8px 8px 0 0', '&:hover': { bgcolor: 'action.hover' } }}>
-                <Box component="span" aria-hidden sx={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: '0.875rem', border: '2px solid', fontVariantNumeric: 'tabular-nums',
-                  borderColor: actuelle ? 'secondary.main' : ok ? 'success.main' : 'divider', bgcolor: actuelle ? 'secondary.main' : ok ? 'success.main' : 'background.paper', color: actuelle ? 'secondary.contrastText' : ok ? '#fff' : 'text.primary' }}>
-                  {ok ? <Check sx={{ fontSize: 18 }} /> : i + 1}
+              <ButtonBase onClick={() => allerA(i)} aria-current={actuelle ? 'step' : undefined} aria-label={`Étape ${e.libelle}${ok ? ', faite' : ''}`}
+                sx={{ width: '100%', minHeight: 56, px: { xs: 1.25, md: 1.5 }, py: 1, gap: 0.75, justifyContent: 'flex-start', borderBottom: '3px solid', borderColor: actuelle ? 'secondary.main' : ok ? 'success.main' : 'divider', fontFamily: 'inherit', textAlign: 'left', borderRadius: '8px 8px 0 0', '&:hover': { bgcolor: 'action.hover' } }}>
+                {ok && <Check aria-hidden sx={{ fontSize: 18, color: 'success.main', flexShrink: 0 }} />}
+                <Box component="span" sx={{ minWidth: 0 }}>
+                  <Box component="span" sx={{ display: 'block', fontWeight: actuelle ? 800 : 600, fontSize: '0.875rem', lineHeight: 1.25, whiteSpace: 'nowrap', color: actuelle ? 'text.primary' : 'text.secondary' }}>{e.libelle}</Box>
+                  {surPC && <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', color: 'text.secondary' }}>{e.sous}</Box>}
                 </Box>
-                {surPC && (
-                  <Box component="span" sx={{ minWidth: 0 }}>
-                    <Box component="span" sx={{ display: 'block', fontWeight: 700, fontSize: '0.875rem', lineHeight: 1.25 }}>{e.libelle}</Box>
-                    <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', color: 'text.secondary' }}>{e.sous}</Box>
-                  </Box>
-                )}
               </ButtonBase>
             </li>
           )
         })}
       </Box>
-      {!surPC && <Typography sx={{ mt: 1, fontWeight: 700 }}>{`${etape + 1}. ${ETAPES[etape].libelle}`}</Typography>}
     </Box>
   )
 }
@@ -189,7 +192,7 @@ function EtapeMagasin({ reseau, m, plan, changer, lecture }: { reseau: Reseau; m
   const [objectif, setObjectif] = useState(plan.objectif !== null ? String(plan.objectif) : '')
   const mois = chiffresDuMagasin(reseau, m.nom).filter((c) => c.caExt !== null).slice(-12)
   const caExt = mois.reduce((t, c) => t + (c.caExt ?? 0), 0)
-  const s = synthese(plan)
+  const s = synthese(plan, reseau.actionsLibres?.[m.nom])
   const adresse = [m.adresse || [m.codePostal, m.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   return (
     <>
@@ -218,7 +221,7 @@ function EtapeMagasin({ reseau, m, plan, changer, lecture }: { reseau: Reseau; m
 // ── 2 · Repérage ────────────────────────────────────────────────────
 const TRANCHE_COURTE = (t: Trouvee) => t.libelleEffectif.replace(' sur le site', '')
 type EtatRecherche = { etat: 'repos' } | { etat: 'chargement'; fait: number } | { etat: 'pret'; liste: Trouvee[]; echecs: number }
-const CLE_CACHE = 'vandb-reperage-exterieur-2'
+const CLE_CACHE = 'vandb-reperage-exterieur-3'
 const JOURS_CACHE = 30
 function lireCache(cle: string): Trouvee[] | null {
   try {
@@ -234,6 +237,19 @@ function ecrireCache(cle: string, liste: Trouvee[]) {
   } catch { /* stockage indisponible : recherche refaite la prochaine fois */ }
 }
 
+// Cibles conseillées (Joseph, 17/11/2026) : un cœur et la raison sous le nom ; toutes restent listées
+function NomConseil({ t }: { t: Trouvee }) {
+  return (
+    <>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+        {t.conseil && <Favorite titleAccess={`Conseillée : ${t.conseil}`} sx={{ fontSize: 18, color: 'secondary.main', flexShrink: 0 }} />}
+        <Typography component="span" sx={{ fontWeight: 600 }}>{t.nom}</Typography>
+      </Box>
+      {t.conseil && <Typography variant="body2" sx={{ color: 'secondary.dark' }}>{t.conseil}</Typography>}
+    </>
+  )
+}
+
 function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; lecture: boolean; par: string; le: string }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const [taille, setTaille] = useState(20)
@@ -242,6 +258,7 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
   const [effectifMin, setEffectifMin] = useState(0)
   const [distanceMax, setDistanceMax] = useState(0)
   const [nomCherche, setNomCherche] = useState('')
+  const [conseillees, setConseillees] = useState(false)
   const cle = m.lat !== null && m.lon !== null ? `${m.lat.toFixed(4)},${m.lon.toFixed(4)}|${plan.rayon}|${taille}` : ''
   const [recherche, setRecherche] = useState<EtatRecherche>(() => { const l = cle ? lireCache(cle) : null; return l ? { etat: 'pret', liste: l, echecs: 0 } : { etat: 'repos' } })
   useEffect(() => { const l = cle ? lireCache(cle) : null; setRecherche(l ? { etat: 'pret', liste: l, echecs: 0 } : { etat: 'repos' }) }, [cle])
@@ -275,7 +292,7 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
   }
   const liste = recherche.etat === 'pret' ? recherche.liste : []
   const mot = nomCherche.trim().toLowerCase()
-  const filtrees = liste.filter((t) => (!effectifMin || (t.effectif ?? -1) >= effectifMin) && (!distanceMax || t.distance <= distanceMax * 1000) && (!mot || t.nom.toLowerCase().includes(mot) || t.activite.toLowerCase().includes(mot)))
+  const filtrees = liste.filter((t) => (!effectifMin || (t.effectif ?? -1) >= effectifMin) && (!distanceMax || t.distance <= distanceMax * 1000) && (!mot || t.nom.toLowerCase().includes(mot) || t.activite.toLowerCase().includes(mot)) && (!conseillees || !!t.conseil))
   const vues = filtre === 'tous' ? filtrees : filtrees.filter((t) => t.categorie === filtre)
   return (
     <>
@@ -310,6 +327,7 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
               <option value={0}>{`Tout le rayon (${plan.rayon} km)`}</option>
               {[1, 2, 5, 10].filter((d) => d < plan.rayon).map((d) => <option key={d} value={d}>{`À moins de ${d} km`}</option>)}
             </TextField>
+            <Chip icon={<Favorite />} label={`Conseillées · ${liste.filter((t) => t.conseil).length}`} onClick={() => setConseillees((x) => !x)} color={conseillees ? 'secondary' : 'default'} variant={conseillees ? 'filled' : 'outlined'} aria-pressed={conseillees} sx={{ minHeight: 48, borderRadius: 999, fontWeight: 600 }} />
           </Box>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }} role="group" aria-label="Filtrer par type">
             {[{ cle: 'tous' as const, pluriel: 'Tous' }, ...CATEGORIES].map((c) => {
@@ -320,15 +338,16 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
           {!vues.length ? <Typography color="text.secondary">{filtrees.length < liste.length ? 'Rien ne correspond à ces filtres. Desserre-les, ou ajoute la cible à la main.' : 'Rien trouvé de ce type dans ce rayon. Élargis le rayon à l’étape 1, ou ajoute la cible à la main.'}</Typography> : surPC ? (
             <TableContainer>
               <Table size="small" aria-label="Repérage autour du magasin">
-                <TableHead><TableRow><TableCell padding="checkbox">Retenir</TableCell><TableCell>Nom</TableCell><TableCell>Type</TableCell><TableCell>Activité</TableCell><TableCell>Effectif du site</TableCell><TableCell>Adresse</TableCell><TableCell align="right">Distance</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell padding="checkbox">Retenir</TableCell><TableCell>Nom</TableCell><TableCell>Type</TableCell><TableCell>Activité</TableCell><TableCell>Effectif du site</TableCell><TableCell align="right">Chiffre d’affaires</TableCell><TableCell>Adresse</TableCell><TableCell align="right">Distance</TableCell></TableRow></TableHead>
                 <TableBody>
                   {vues.map((t) => (
                     <TableRow key={t.id} hover selected={retenues.has(t.id)}>
                       <TableCell padding="checkbox"><Checkbox checked={retenues.has(t.id)} onChange={() => basculer(t)} disabled={lecture} slotProps={{ input: { 'aria-label': `Retenir ${t.nom}` } }} /></TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>{t.nom}</TableCell>
+                      <TableCell><NomConseil t={t} /></TableCell>
                       <TableCell><Pastille ton="type">{libelleCategorie(t.categorie)}</Pastille></TableCell>
                       <TableCell>{t.activite}</TableCell>
                       <TableCell sx={{ color: t.effectif === null ? 'text.secondary' : undefined, fontWeight: (t.effectif ?? 0) >= 100 ? 700 : undefined }}>{t.effectif === null ? ['Non publié', t.taille && `entreprise : ${t.taille}`].filter(Boolean).join(' · ') : TRANCHE_COURTE(t)}</TableCell>
+                      <TableCell align="right" sx={{ whiteSpace: 'nowrap', color: t.ca ? undefined : 'text.secondary', fontWeight: (t.ca?.montant ?? 0) >= 500_000 ? 700 : undefined }}>{t.ca ? libelleCA(t.ca) : 'Non publié'}</TableCell>
                       <TableCell sx={{ color: 'text.secondary' }}>{t.adresse}</TableCell>
                       <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{libelleDistance(t.distance)}</TableCell>
                     </TableRow>
@@ -342,8 +361,8 @@ function EtapeReperage({ m, plan, changer, lecture, par, le }: { m: Magasin; pla
                 <Box component="li" key={t.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
                   <Checkbox checked={retenues.has(t.id)} onChange={() => basculer(t)} disabled={lecture} slotProps={{ input: { 'aria-label': `Retenir ${t.nom}` } }} sx={{ width: 48, height: 48 }} />
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography sx={{ fontWeight: 600 }}>{t.nom}</Typography>
-                    <Typography variant="body2" color="text.secondary">{[libelleCategorie(t.categorie), t.activite, t.effectif === null ? 'effectif non publié' : TRANCHE_COURTE(t), libelleDistance(t.distance)].filter(Boolean).join(' · ')}</Typography>
+                    <NomConseil t={t} />
+                    <Typography variant="body2" color="text.secondary">{[libelleCategorie(t.categorie), t.activite, t.effectif === null ? 'effectif non publié' : TRANCHE_COURTE(t), t.ca && `CA ${libelleCA(t.ca)}`, libelleDistance(t.distance)].filter(Boolean).join(' · ')}</Typography>
                   </Box>
                 </Box>
               ))}
@@ -433,66 +452,95 @@ function FenetreCible({ cible: c, plan, changer, par, le, onFermer }: { cible: C
 }
 
 // ── 4 · Diagnostic ──────────────────────────────────────────────────
+// Joseph (17/11/2026) : la liste des cibles avec leurs notes ; on choisit celle à noter ou à reprendre, on peut la retirer
+const NOTE_COURTE: Record<Critere, string> = { potentiel: 'Potentiel', visibilite: 'Visibilité', prescription: 'Prescription', recurrence: 'Bénéfice', cause: 'Cause' }
 function EtapeDiagnostic({ plan, changer, lecture }: { plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; lecture: boolean }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
-  const [choisie, setChoisie] = useState(() => (plan.cibles.find((c) => !estNotee(c)) ?? plan.cibles[0])?.id ?? '')
-  const c = plan.cibles.find((x) => x.id === choisie) ?? plan.cibles[0]
-  if (!c) return <><Titre>Diagnostic</Titre><Typography color="text.secondary">Aucune cible à noter. Retiens des cibles au repérage ou ajoute-les à la main.</Typography></>
-  const noter = (k: Critere, v: number | null) => {
-    const notes = { ...c.notes }
-    if (v === null) delete notes[k]; else notes[k] = v
-    changer({ ...plan, cibles: plan.cibles.map((x) => (x.id === c.id ? { ...x, notes } : x)) })
+  const [edition, setEdition] = useState<Cible | null>(null)
+  const { signaler, bandeau } = useMessageAnnulable()
+  if (!plan.cibles.length) return <><Titre>Diagnostic</Titre><Typography color="text.secondary">Aucune cible à noter. Retiens des cibles au repérage ou ajoute-les à la main.</Typography></>
+  const retirer = (c: Cible) => {
+    const avant = plan
+    changer({ ...plan, cibles: plan.cibles.filter((x) => x.id !== c.id) }, true)
+    signaler(`${c.nom} retirée des cibles.`, () => changer(avant, true))
   }
-  const a = axes(c)
-  const q = quadrant(c)
-  const i = plan.cibles.indexOf(c)
-  const suivante = plan.cibles[i + 1]
+  const restantes = plan.cibles.filter((c) => !estNotee(c)).length
+  const etat = (c: Cible) => <Pastille ton={tonQuadrant(quadrant(c))}>{estNotee(c) ? libelleQuadrant(quadrant(c)) : `${Object.keys(c.notes).length}/5 noté${Object.keys(c.notes).length > 1 ? 's' : ''}`}</Pastille>
+  const bouton = (c: Cible) => (
+    <Button variant={estNotee(c) ? 'text' : 'outlined'} startIcon={estNotee(c) ? <EditOutlined /> : <TuneOutlined />} onClick={() => setEdition(c)} aria-label={`${estNotee(c) ? 'Modifier le diagnostic de' : 'Noter'} ${c.nom}`} sx={{ minHeight: 48, whiteSpace: 'nowrap' }}>
+      {estNotee(c) ? 'Modifier' : 'Noter'}
+    </Button>
+  )
   return (
     <>
-      <Titre>Diagnostic</Titre>
-      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: '280px minmax(0, 1fr)' }, alignItems: 'start' }}>
-        {surPC ? (
-          <Box component="ul" aria-label="Cibles à noter" sx={{ listStyle: 'none', m: 0, p: 0, borderRight: '1px solid', borderColor: 'divider', pr: 1.5 }}>
-            {plan.cibles.map((x) => (
-              <li key={x.id}>
-                <ButtonBase onClick={() => setChoisie(x.id)} aria-current={x.id === c.id ? 'true' : undefined}
-                  sx={{ width: '100%', minHeight: 48, px: 1.5, gap: 1, justifyContent: 'space-between', borderRadius: 2, fontFamily: 'inherit', fontSize: '0.875rem', textAlign: 'left', fontWeight: x.id === c.id ? 700 : 500, bgcolor: x.id === c.id ? 'action.selected' : undefined }}>
-                  <Box component="span" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.nom}</Box>
-                  <Pastille ton={tonQuadrant(quadrant(x))}>{estNotee(x) ? libelleQuadrant(quadrant(x)) : `${Object.keys(x.notes).length}/5`}</Pastille>
-                </ButtonBase>
-              </li>
-            ))}
-          </Box>
-        ) : (
-          <TextField select label="Cible" value={c.id} onChange={(e) => setChoisie(e.target.value)} slotProps={{ select: { native: true } }}>
-            {plan.cibles.map((x) => <option key={x.id} value={x.id}>{x.nom}</option>)}
-          </TextField>
-        )}
-        <Box sx={{ minWidth: 0 }}>
-          <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1.125rem' }}>{c.nom}</Typography>
-          <Typography variant="body2" color="text.secondary">{[libelleCategorie(c.categorie), c.detail].filter(Boolean).join(' · ')}</Typography>
-          {CRITERES.map((k) => (
-            <Box key={k.cle} sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider', flexWrap: 'wrap' }}>
-              <Box sx={{ flex: '1 1 240px', minWidth: 0 }}>
-                <Typography sx={{ fontWeight: 700 }} id={`critere-${k.cle}`}>{k.libelle}</Typography>
-                <Typography variant="body2" color="text.secondary">{k.question}</Typography>
+      <Titre>{restantes ? `Diagnostic · ${restantes} cible${restantes > 1 ? 's' : ''} à noter` : 'Diagnostic · toutes les cibles sont notées'}</Titre>
+      {surPC ? (
+        <TableContainer>
+          <Table size="small" aria-label="Diagnostic des cibles">
+            <TableHead><TableRow><TableCell>Cible</TableCell>{CRITERES.map((k) => <TableCell key={k.cle} align="center">{NOTE_COURTE[k.cle]}</TableCell>)}<TableCell>Case de la matrice</TableCell><TableCell /></TableRow></TableHead>
+            <TableBody>
+              {plan.cibles.map((c) => (
+                <TableRow key={c.id} hover>
+                  <TableCell><Typography sx={{ fontWeight: 600 }}>{c.nom}</Typography><Typography variant="body2" color="text.secondary">{libelleCategorie(c.categorie)}</Typography></TableCell>
+                  {CRITERES.map((k) => <TableCell key={k.cle} align="center" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: c.notes[k.cle] ? 'text.primary' : 'text.secondary' }}>{c.notes[k.cle] ?? '—'}</TableCell>)}
+                  <TableCell>{etat(c)}</TableCell>
+                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                    {!lecture && <>{bouton(c)}<IconButton onClick={() => retirer(c)} aria-label={`Retirer ${c.nom}`} sx={{ width: 48, height: 48 }}><DeleteOutline /></IconButton></>}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        <Box component="ul" aria-label="Diagnostic des cibles" sx={{ listStyle: 'none', m: 0, p: 0 }}>
+          {plan.cibles.map((c) => (
+            <Box component="li" key={c.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 600 }}>{c.nom}</Typography>
+                <Box sx={{ mt: 0.5 }}>{etat(c)}</Box>
               </Box>
-              <ToggleButtonGroup exclusive value={c.notes[k.cle] ?? null} onChange={(_e, v: number | null) => noter(k.cle, v)} aria-labelledby={`critere-${k.cle}`} disabled={lecture} size="small">
-                {[1, 2, 3, 4, 5].map((v) => <ToggleButton key={v} value={v} aria-label={`${k.libelle} : ${v} sur 5`} sx={{ width: 48, height: 48, fontWeight: 800 }}>{v}</ToggleButton>)}
-              </ToggleButtonGroup>
+              {!lecture && bouton(c)}
             </Box>
           ))}
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', mt: 2 }}>
-            {a ? <>
-              <Typography variant="body2">{`Valeur directe ${virgule(a.direct)} / 5`}</Typography>
-              <Typography variant="body2">{`Valeur relais ${virgule(a.relais)} / 5`}</Typography>
-              <Pastille ton={tonQuadrant(q)}>{libelleQuadrant(q)}</Pastille>
-            </> : <Typography variant="body2" color="text.secondary">{`${5 - Object.keys(c.notes).length} critère${5 - Object.keys(c.notes).length > 1 ? 's' : ''} à noter`}</Typography>}
-            {suivante && <Button onClick={() => setChoisie(suivante.id)} endIcon={<ArrowForward />} sx={{ ml: 'auto', minHeight: 48 }}>Cible suivante</Button>}
-          </Box>
         </Box>
-      </Box>
+      )}
+      {edition && <FenetreDiagnostic cible={edition} plan={plan} changer={changer} onFermer={(msg) => { setEdition(null); if (msg) signaler(msg) }} />}
+      {bandeau}
     </>
+  )
+}
+
+function FenetreDiagnostic({ cible: c, plan, changer, onFermer }: { cible: Cible; plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; onFermer: (msg?: string) => void }) {
+  const [notes, setNotes] = useState<Partial<Record<Critere, number>>>(c.notes)
+  const essai: Cible = { ...c, notes }
+  const a = axes(essai)
+  const q = quadrant(essai)
+  const noter = (k: Critere, v: number | null) => setNotes((n) => { const x = { ...n }; if (v === null) delete x[k]; else x[k] = v; return x })
+  const enregistrer = async () => { changer({ ...plan, cibles: plan.cibles.map((x) => (x.id === c.id ? { ...x, notes } : x)) }, true); return `Diagnostic de ${c.nom} enregistré.` }
+  const retirer = async () => { changer({ ...plan, cibles: plan.cibles.filter((x) => x.id !== c.id) }, true); return `${c.nom} retirée des cibles.` }
+  const reste = 5 - Object.keys(notes).length
+  return (
+    <Fenetre titre={`Diagnostic de ${c.nom}`} ouvert onFermer={onFermer} valide enregistrer={enregistrer} sansRechargement
+      supprimer={retirer} libelleSuppression={`Retirer « ${c.nom} » des cibles ? Son diagnostic et son action partent avec.`}>
+      <Typography variant="body2" color="text.secondary">{[libelleCategorie(c.categorie), c.detail].filter(Boolean).join(' · ')}</Typography>
+      {CRITERES.map((k) => (
+        <Box key={k.cle} sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Typography sx={{ fontWeight: 700 }} id={`critere-${k.cle}`}>{k.libelle}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{k.question}</Typography>
+          <ToggleButtonGroup exclusive value={notes[k.cle] ?? null} onChange={(_e, v: number | null) => noter(k.cle, v)} aria-labelledby={`critere-${k.cle}`} size="small">
+            {[1, 2, 3, 4, 5].map((v) => <ToggleButton key={v} value={v} aria-label={`${k.libelle} : ${v} sur 5`} sx={{ width: 48, height: 48, fontWeight: 800 }}>{v}</ToggleButton>)}
+          </ToggleButtonGroup>
+        </Box>
+      ))}
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+        {a ? <>
+          <Typography variant="body2">{`Valeur directe ${virgule(a.direct)} / 5`}</Typography>
+          <Typography variant="body2">{`Valeur relais ${virgule(a.relais)} / 5`}</Typography>
+          <Pastille ton={tonQuadrant(q)}>{libelleQuadrant(q)}</Pastille>
+        </> : <Typography variant="body2" color="text.secondary">{`${reste} critère${reste > 1 ? 's' : ''} à noter`}</Typography>}
+      </Box>
+    </Fenetre>
   )
 }
 
@@ -556,13 +604,28 @@ function EtapeMatrice({ plan }: { plan: PlanExterieur }) {
 }
 
 // ── 6 · Plan d'action ───────────────────────────────────────────────
-function EtapePlan({ m, plan, changer, lecture }: { m: Magasin; plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; lecture: boolean }) {
-  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
-  const [edition, setEdition] = useState<Cible | null>(null)
+// Joseph (17/11/2026) : plusieurs actions par cible, chacune une tâche du magasin (liste Tâches, cochée partout pareil) ;
+// le CA visé et le simulateur restent sur la cible
+function EtapePlan({ reseau, m, plan, changer, lecture }: { reseau: Reseau; m: Magasin; plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; lecture: boolean }) {
+  const [objectif, setObjectif] = useState<Cible | null>(null)
+  const [tache, setTache] = useState<{ cible: Cible; a: ActionLibre | null } | null>(null)
+  const [enCours, setEnCours] = useState('')
+  const { signaler, bandeau } = useMessageAnnulable()
+  const { recharger } = useReseau()
+  const ecriture = useEcritureActions(reseau)
+  const changerStatut = useChangerStatut(reseau, signaler)
+  const taches = tachesDuPlan(reseau.actionsLibres?.[m.nom], plan)
   const lignes = ordrePlan(plan.cibles)
-  const s = synthese(plan)
+  const s = synthese(plan, reseau.actionsLibres?.[m.nom])
   const lien = (o: Offre) => `/magasins/${encodeURIComponent(m.nom)}?vue=simulateurs&partie=simulateurs&sim=${o}`
-  const chiffrer = (c: Cible) => (c.offre ? <Button component={RouterLink} to={lien(c.offre)} size="small" sx={{ minHeight: 48 }} aria-label={`Chiffrer ${c.nom} : ${OFFRES.find(([k]) => k === c.offre)?.[1]}`}>Chiffrer</Button> : null)
+  const suivie = (a: ActionLibre): ActionSuivie => ({ visite: null, libre: a, magasin: m.nom, date: a.creeLe, index: -1, a, cle: cleLibre(a.id) })
+  const cocher = async (x: ActionSuivie, faite: boolean) => {
+    setEnCours(x.cle)
+    try { await ecriture.cocher(x, faite); await recharger(); signaler(faite ? 'Tâche marquée faite.' : 'Tâche remise en cours.') }
+    catch { signaler('La tâche n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.') }
+    finally { setEnCours('') }
+  }
+  const ecrire = !lecture && !ecriture.lectureSeule
   if (!lignes.length) return <><Titre>Plan d’action</Titre><Typography color="text.secondary">Aucune cible. Le plan se construit à partir des cibles retenues et notées.</Typography></>
   return (
     <>
@@ -573,76 +636,93 @@ function EtapePlan({ m, plan, changer, lecture }: { m: Magasin; plan: PlanExteri
         <Indicateur libelle="CA visé (€ HT, un an)" valeur={s.caVise ? formatEuros(s.caVise) : '—'} />
         <Indicateur libelle="Part de l’objectif" valeur={plan.objectif ? `${Math.round((s.caVise / plan.objectif) * 100)} %` : '—'} />
       </Box>
-      {surPC ? (
-        <TableContainer>
-          <Table size="small" aria-label="Plan d’action">
-            <TableHead><TableRow><TableCell>Cible</TableCell><TableCell>Case</TableCell><TableCell>Action</TableCell><TableCell>Qui</TableCell><TableCell>Échéance</TableCell><TableCell align="right">CA visé</TableCell><TableCell>Statut</TableCell><TableCell /><TableCell /></TableRow></TableHead>
-            <TableBody>
-              {lignes.map((c) => (
-                <TableRow key={c.id} hover>
-                  <TableCell sx={{ fontWeight: 600 }}>{c.nom}</TableCell>
-                  <TableCell><Pastille ton={tonQuadrant(quadrant(c))}>{libelleQuadrant(quadrant(c))}</Pastille></TableCell>
-                  <TableCell>{c.action || <Typography component="span" variant="body2" color="text.secondary">{quadrant(c) === 'plus_tard' ? 'Rien cette année' : 'À définir'}</Typography>}</TableCell>
-                  <TableCell>{c.qui}</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{c.echeance ? dateCourte(c.echeance) : ''}</TableCell>
-                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{c.caVise !== null ? formatEuros(c.caVise) : ''}</TableCell>
-                  <TableCell>{c.action && <Pastille ton={tonStatut(c.statut)}>{libelleStatut(c.statut)}</Pastille>}</TableCell>
-                  <TableCell>{chiffrer(c)}</TableCell>
-                  <TableCell align="right">{!lecture && <IconButton onClick={() => setEdition(c)} aria-label={`Action pour ${c.nom}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton>}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      ) : (
-        <Box component="ul" aria-label="Plan d’action" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-          {lignes.map((c) => (
-            <Box component="li" key={c.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1.25, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}><Typography sx={{ fontWeight: 600 }}>{c.nom}</Typography><Pastille ton={tonQuadrant(quadrant(c))}>{libelleQuadrant(quadrant(c))}</Pastille></Box>
-                <Typography variant="body2">{c.action || (quadrant(c) === 'plus_tard' ? 'Rien cette année' : 'Action à définir')}</Typography>
-                <Typography variant="body2" color="text.secondary">{[c.qui, c.echeance && dateCourte(c.echeance), c.caVise !== null && formatEuros(c.caVise), c.action && libelleStatut(c.statut)].filter(Boolean).join(' · ')}</Typography>
-                {chiffrer(c)}
+      <Stack spacing={1.5}>
+        {lignes.map((c) => {
+          const q = quadrant(c)
+          const siennes = taches.filter((t) => t.exterieur?.cible === c.id).map(suivie)
+          return (
+            <Box key={c.id} component="section" aria-label={`Actions pour ${c.nom}`} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: { xs: 1.5, md: 2 } }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem', mr: 0.5 }}>{c.nom}</Typography>
+                <Pastille ton={tonQuadrant(q)}>{libelleQuadrant(q)}</Pastille>
+                <Typography variant="body2" color="text.secondary" sx={{ ml: { md: 'auto' } }}>{c.caVise !== null ? `${formatEuros(c.caVise)} HT visés sur un an` : 'CA visé à fixer'}</Typography>
+                {c.offre && <Button component={RouterLink} to={lien(c.offre)} size="small" sx={{ minHeight: 48 }} aria-label={`Chiffrer ${c.nom} : ${OFFRES.find(([k]) => k === c.offre)?.[1]}`}>Chiffrer</Button>}
+                {!lecture && <IconButton onClick={() => setObjectif(c)} aria-label={`CA visé pour ${c.nom}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton>}
               </Box>
-              {!lecture && <IconButton onClick={() => setEdition(c)} aria-label={`Action pour ${c.nom}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton>}
+              {siennes.length ? (
+                <Box component="ul" aria-label={`Tâches pour ${c.nom}`} sx={{ listStyle: 'none', m: 0, p: 0 }}>
+                  {siennes.map((x) => (
+                    <LigneAction key={x.cle} reseau={reseau} x={x} avecPorteur enCours={enCours === x.cle} sansPriorite
+                      cocher={ecrire ? (f) => void cocher(x, f) : undefined} changerStatut={ecrire ? changerStatut?.(x) : undefined}
+                      modifier={ecrire ? () => setTache({ cible: c, a: x.libre }) : undefined} />
+                  ))}
+                </Box>
+              ) : <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{q === 'plus_tard' ? 'Rien prévu cette année.' : 'Aucune action pour l’instant.'}</Typography>}
+              {ecrire && <Button startIcon={<AddOutlined />} onClick={() => setTache({ cible: c, a: null })} sx={{ minHeight: 48, mt: 0.5, ml: -1 }} aria-label={`Ajouter une action pour ${c.nom}`}>Ajouter une action</Button>}
             </Box>
-          ))}
-        </Box>
-      )}
-      {edition && <FenetreAction cible={edition} plan={plan} changer={changer} onFermer={() => setEdition(null)} />}
+          )
+        })}
+      </Stack>
+      {objectif && <FenetreObjectif cible={objectif} plan={plan} changer={changer} onFermer={(msg) => { setObjectif(null); if (msg) signaler(msg) }} />}
+      {tache && <FenetreTache reseau={reseau} magasin={m.nom} cible={tache.cible} a={tache.a} premiere={!taches.some((t) => t.exterieur?.cible === tache.cible.id)} onFermer={(msg) => { setTache(null); if (msg) signaler(msg) }} />}
+      {bandeau}
     </>
   )
 }
 
-function FenetreAction({ cible: c, plan, changer, onFermer }: { cible: Cible; plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; onFermer: (msg?: string) => void }) {
-  const propose = actionProposee(c)
-  const [action, setAction] = useState(c.action || propose.action)
-  const [qui, setQui] = useState(c.qui || 'Franchisé')
-  const [echeance, setEcheance] = useState(c.echeance)
+// CA visé sur un an et simulateur pour chiffrer : propres à la cible
+function FenetreObjectif({ cible: c, plan, changer, onFermer }: { cible: Cible; plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; onFermer: (msg?: string) => void }) {
   const [ca, setCa] = useState(c.caVise !== null ? String(c.caVise) : '')
-  const [offre, setOffre] = useState<Offre>(c.action ? c.offre : propose.offre)
-  const [statut, setStatut] = useState<StatutAction>(c.statut)
+  const [offre, setOffre] = useState<Offre>(c.offre || (c.caVise === null ? actionProposee(c).offre : ''))
   const n = nombreOuNull(ca)
-  const valide = (!ca.trim() || (n !== null && n >= 0)) && (!echeance || /^\d{4}-\d{2}-\d{2}$/.test(echeance))
+  const valide = !ca.trim() || (n !== null && n >= 0)
   const enregistrer = async () => {
-    const ligne: Cible = { ...c, action: action.trim().slice(0, 300), qui: qui.trim().slice(0, 80), echeance, caVise: n, offre, statut }
-    changer({ ...plan, cibles: plan.cibles.map((x) => (x.id === c.id ? ligne : x)) }, true)
-    return 'Action enregistrée.'
+    changer({ ...plan, cibles: plan.cibles.map((x) => (x.id === c.id ? { ...x, caVise: n, offre } : x)) }, true)
+    return 'CA visé enregistré.'
   }
   return (
-    <Fenetre titre={`Action pour ${c.nom}`} ouvert onFermer={onFermer} valide={valide} enregistrer={enregistrer} sansRechargement>
-      <TextField label="Action" value={action} onChange={(e) => setAction(e.target.value)} multiline minRows={2} slotProps={{ htmlInput: { maxLength: 300 } }} />
-      <TextField select label="Qui" value={qui} onChange={(e) => setQui(e.target.value)}>
-        {['Franchisé', 'Coach', 'Responsable Régional', 'Directeur de réseau', ...(['Franchisé', 'Coach', 'Responsable Régional', 'Directeur de réseau'].includes(qui) ? [] : [qui])].map((x) => <MenuItem key={x} value={x} sx={{ minHeight: 48 }}>{x}</MenuItem>)}
-      </TextField>
-      <ChampDate label="Échéance" value={echeance} onChange={(e) => setEcheance(e.target.value)} />
+    <Fenetre titre={`CA visé pour ${c.nom}`} ouvert onFermer={onFermer} valide={valide} enregistrer={enregistrer} sansRechargement>
       <TextField label="CA visé sur un an (€ HT)" value={ca} onChange={(e) => setCa(e.target.value)} slotProps={{ htmlInput: { inputMode: 'decimal' } }} />
       <TextField select label="Chiffrer avec" value={offre} onChange={(e) => setOffre(e.target.value as Offre)}>
         {OFFRES.map(([k, l]) => <MenuItem key={k || 'aucun'} value={k} sx={{ minHeight: 48 }}>{l}</MenuItem>)}
       </TextField>
-      <TextField select label="Statut" value={statut} onChange={(e) => setStatut(e.target.value as StatutAction)}>
-        {STATUTS.map(([k, l]) => <MenuItem key={k} value={k} sx={{ minHeight: 48 }}>{l}</MenuItem>)}
-      </TextField>
+    </Fenetre>
+  )
+}
+
+// Une tâche du magasin rattachée à la cible ; le franchisé passe par la base (0049)
+function FenetreTache({ reseau, magasin, cible: c, a, premiere, onFermer }: { reseau: Reseau; magasin: string; cible: Cible; a: ActionLibre | null; premiere: boolean; onFermer: (msg?: string) => void }) {
+  const { profil } = useAuth()
+  const { franchise } = useEcritureActions(reseau)
+  const [texte, setTexte] = useState(a?.action ?? (premiere ? actionProposee(c).action : ''))
+  const [porteur, setPorteur] = useState(a?.porteur ?? '')
+  const [echeance, setEcheance] = useState(a?.echeance ?? '')
+  const propre = texte.trim().replace(/\s+/g, ' ').slice(0, 1000)
+  const exterieur = { cible: c.id, nom: c.nom }
+  const enregistrer = async () => {
+    if (franchise) {
+      await tacheExterieurFranchise(magasin, { id: a?.id, ...exterieur, action: propre, porteur: porteur.trim(), echeance })
+      return a ? 'Tâche mise à jour.' : 'Tâche ajoutée à la liste du magasin.'
+    }
+    const l: Omit<ActionLibre, 'id'> & { id?: string } = { ...(a ?? {}), id: a?.id, action: propre, porteur: porteur.trim(), echeance, creeLe: a?.creeLe || reseau.jour, ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), exterieur }
+    const id = await enregistrerActionLibre(magasin, l)
+    if (!a) {
+      const cles = clesDesPorteurs(reseau, magasin, porteursDe(l)).filter((k) => !mesCles(profil).includes(k))
+      notifierTache(magasin, id, cles)
+    }
+    return a ? 'Tâche mise à jour.' : 'Tâche ajoutée à la liste du magasin.'
+  }
+  const supprimer = a ? async () => {
+    if (franchise) await tacheExterieurFranchise(magasin, { id: a.id, ...exterieur, action: '', porteur: '', echeance: '', supprimer: true })
+    else await supprimerActionLibre(magasin, a.id)
+    return 'Tâche supprimée.'
+  } : undefined
+  return (
+    <Fenetre titre={a ? `Modifier l’action pour ${c.nom}` : `Action pour ${c.nom}`} ouvert onFermer={onFermer} valide={!!propre && (!echeance || /^\d{4}-\d{2}-\d{2}$/.test(echeance))}
+      enregistrer={enregistrer} supprimer={supprimer} libelleSuppression={a ? `Supprimer la tâche « ${a.action} » ?` : undefined}>
+      <TextField label="Action" value={texte} onChange={(e) => setTexte(e.target.value)} multiline minRows={2} autoFocus={!a} slotProps={{ htmlInput: { maxLength: 1000 } }} />
+      <ChampPorteur reseau={reseau} magasin={magasin} valeur={porteur} changer={setPorteur} />
+      <ChampDate label="Échéance" value={echeance} onChange={(e) => setEcheance(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
     </Fenetre>
   )
 }

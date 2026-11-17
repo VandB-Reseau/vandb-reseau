@@ -1123,3 +1123,44 @@ SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 SELECT pg_temp.attendre('Extérieur : ecrire_exterieur refusée à l''équipe', pg_temp.refuse('SELECT public.ecrire_exterieur(''Lille'', ''{}'')'), 1);
 RESET ROLE;
 RESET request.jwt.claim.sub;
+
+-- ── 0049 : actions du plan extérieur = tâches du magasin ; reprise des actions déjà saisies
+INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES ('Lille', 'exterieur',
+  '{"cibles":[{"id":"c4","nom":"Traiteur ancien","action":"Dégustation","qui":"Franchisé","echeance":"2026-12-01","statut":"en_cours"},{"id":"c5","nom":"Club abandonné","action":"Buvette","statut":"abandon"}]}')
+ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur;
+\ir ../migrations/0049_taches_exterieur.sql
+\ir ../migrations/0049_taches_exterieur.sql
+SELECT pg_temp.attendre('Journal : 0049 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0049'), 1);
+SELECT pg_temp.attendre('Reprise : l''action saisie devient une tâche, une seule fois',
+  (SELECT count(*) FROM public.suivi_magasins s, jsonb_array_elements(s.valeur) e WHERE s.store_name = 'Lille' AND s.cle = 'actions' AND e->>'id' = 'l_ext_c4' AND e->>'statut' = 'en_cours' AND e->'exterieur'->>'cible' = 'c4'), 1);
+SELECT pg_temp.attendre('Reprise : une action abandonnée n''est pas reprise',
+  (SELECT count(*) FROM public.suivi_magasins s, jsonb_array_elements(s.valeur) e WHERE s.store_name = 'Lille' AND s.cle = 'actions' AND e->>'id' = 'l_ext_c5'), 0);
+SELECT pg_temp.attendre('Reprise : l''action est retirée du plan, la cible reste',
+  (SELECT count(*) FROM public.suivi_magasins s, jsonb_array_elements(s.valeur->'cibles') c WHERE s.store_name = 'Lille' AND s.cle = 'exterieur' AND c ? 'action'), 0);
+INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES ('Lille', 'actions', '[{"id":"l_autre","action":"Tâche du Coach","porteur":"","echeance":"","creeLe":"2026-10-01"}]'::jsonb)
+ON CONFLICT (store_name, cle) DO UPDATE SET valeur = public.suivi_magasins.valeur || excluded.valeur;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+CREATE TEMP TABLE IF NOT EXISTS id_ext (id text);
+GRANT ALL ON id_ext TO authenticated;
+INSERT INTO id_ext SELECT public.tache_exterieur_franchise('Lille', '', 'c3', 'Comité des fêtes', 'Appeler le président', 'Franchisé Test', '2026-12-15');
+RESET ROLE;
+SELECT pg_temp.attendre('Tâches extérieur : le franchisé crée une tâche de son plan',
+  (SELECT count(*) FROM public.suivi_magasins s, jsonb_array_elements(s.valeur) e WHERE s.store_name = 'Lille' AND s.cle = 'actions' AND e->>'id' = (SELECT id FROM id_ext) AND e->'exterieur'->>'cible' = 'c3' AND e->>'auteur' = 'Franchisé Test'), 1);
+SET ROLE authenticated;
+SELECT pg_temp.attendre('Tâches extérieur : il la modifie',
+  pg_temp.refuse(format('SELECT public.tache_exterieur_franchise(''Lille'', %L, ''c3'', ''Comité des fêtes'', ''Rappeler le président'')', (SELECT id FROM id_ext))), 0);
+SELECT pg_temp.attendre('Tâches extérieur : jamais une tâche hors du plan',
+  pg_temp.refuse('SELECT public.tache_exterieur_franchise(''Lille'', ''l_autre'', ''c3'', ''Comité'', ''Texte changé'')'), 1);
+SELECT pg_temp.attendre('Tâches extérieur : ni la supprimer',
+  pg_temp.refuse('SELECT public.tache_exterieur_franchise(''Lille'', ''l_autre'', '''', '''', '''', '''', '''', true)'), 1);
+SELECT pg_temp.attendre('Tâches extérieur : jamais sur un autre magasin',
+  pg_temp.refuse('SELECT public.tache_exterieur_franchise(''Nice'', '''', ''c2'', ''Traiteur'', ''Appeler'')'), 1);
+SELECT pg_temp.attendre('Tâches extérieur : il supprime une tâche de son plan',
+  pg_temp.refuse(format('SELECT public.tache_exterieur_franchise(''Lille'', %L, '''', '''', '''', '''', '''', true)', (SELECT id FROM id_ext))), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Tâches extérieur : fonction refusée à l''équipe', pg_temp.refuse('SELECT public.tache_exterieur_franchise(''Lille'', '''', ''c3'', ''Comité'', ''Appeler'')'), 1);
+RESET ROLE;
+RESET request.jwt.claim.sub;
+SELECT pg_temp.attendre('Tâches extérieur : la tâche du Coach est intacte',
+  (SELECT count(*) FROM public.suivi_magasins s, jsonb_array_elements(s.valeur) e WHERE s.store_name = 'Lille' AND s.cle = 'actions' AND e->>'id' = 'l_autre' AND e->>'action' = 'Tâche du Coach'), 1);

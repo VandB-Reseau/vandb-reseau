@@ -52,6 +52,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0046_equipements_magasins` | Rubrique `equipements` de `suivi_magasins` ; `animation_franchise()` renvoie aussi les équipements des magasins du franchisé, qui les modifie par `ecrire_equipements()` | 14/11/2026 |
 | `0047_operations_mesure_priorites` | Rubrique `operations` de `suivi_magasins` (journal des opérations commerciales) ; `animation_franchise()` la renvoie au franchisé, qui la modifie par `ecrire_operations()` ; `plans_franchise()` renvoie aussi la mesure en caisse des priorités | 15/11/2026 |
 | `0048_marche_exterieur` | Rubrique `exterieur` de `suivi_magasins` (plan d'action marché extérieur) ; `animation_franchise()` la renvoie au franchisé, qui la modifie par `ecrire_exterieur()` | 16/11/2026 |
+| `0049_taches_exterieur` | Actions du plan marché extérieur rangées en tâches (`actions`, étiquette `exterieur`) ; `tache_exterieur_franchise()` ; reprise des actions déjà saisies | 17/11/2026 |
 
 ## Règles
 
