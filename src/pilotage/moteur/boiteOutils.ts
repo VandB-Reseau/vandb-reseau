@@ -514,48 +514,46 @@ export function simulerRemisesB2B(x: { paliers: PalierRemise[]; lignes: LigneB2B
 }
 
 // ── Remises entreprise au bar (Joseph, 17/11/2026) ─────────────────────────────────────────────────────────────
-// Les salariés d'une société viennent au bar. On part de leurs venues habituelles, sans remise (aujourd'hui), puis
-// chaque palier propose une remise en euros TTC par produit (choix conseillé) ou par panier si la société vient
-// X fois de plus par semaine ou par mois (Joseph, 17/11/2026 : « partir du nombre qu'ils viennent d'habitude, à +
-// au fur et à mesure »). C'est théorique : on espère plus de venues, rien ne les garantit. Une fois le palier atteint,
-// la remise vaut pour toutes les venues, habituelles comprises.
+// Les salariés d'une société viennent au bar. On part de leurs venues habituelles, sans remise (aujourd'hui). Chaque
+// palier est une remise en euros TTC par produit (choix conseillé) ou par panier ; le simulateur dit combien de venues
+// de plus il faut pour garder la même masse de marge (Joseph, 17/11/2026 : « si je mets −0,50 € par produit, il faut
+// combien de venues supplémentaires pour le compenser »). Le palier s'ouvre donc à habituelles + venues en plus.
+// C'est théorique : on espère plus de venues, rien ne les garantit. Une fois le palier atteint, la remise vaut pour
+// toutes les venues, habituelles comprises.
 // Loi Évin (code de la santé publique, article L3322-9) : une remise sur l'alcool doit aussi porter sur les boissons
 // sans alcool ; par prudence la remise porte sur tout le panier (food, softs, alcool), jamais sur l'alcool seul.
 // Un panier type d'une venue : par nature, produits par venue, prix TTC moyen, % de marge sur le prix HT avant remise,
 // TVA de la nature (10 % food et softs sur place, 20 % alcool). Remise par produit : chaque produit perd la remise TTC,
 // ramenée en HT à sa TVA, sans descendre sous 0. Par panier : la remise TTC se répartit au prorata du TTC, donc
-// HT = remise × CA HT ÷ CA TTC. Reste au magasin par venue = marge après remise − redevance et publicité du CA HT remisé.
-// Gain d'un palier = (habituelles + venues en plus) × reste d'une venue remisée − habituelles × reste d'une venue sans
-// remise. Remise payée dès = habituelles × reste sans remise ÷ reste remisé − habituelles, à la venue supérieure.
+// HT = remise × CA HT ÷ CA TTC. Masse de marge = CA HT remisé − achats HT.
+// Venues pour compenser = habituelles × marge d'une venue sans remise ÷ marge d'une venue remisée, à la venue
+// supérieure ; venues en plus = ce nombre − habituelles.
 export type NatureBar = 'food' | 'soft' | 'alcool'
 export interface LigneBar { libelle: string; nature: NatureBar; parVenue: number; prixTTC: number; taux: number }
-export interface PalierBar { plus: number; remise: number } // venues en plus des habituelles, remise en euros TTC
+export interface PalierBar { remise: number } // remise en euros TTC
 export interface PalierBarCalcule {
-  plus: number; venues: number; remise: number
-  remiseHT: number; margeVenue: number; taux: number | null; resteVenue: number; alerte: AlerteB2B | null
-  caNet: number; marge: number; reste: number; gain: number; gainAn: number // sur la période, gain face à aujourd'hui
-  payeeDes: number | null // venues en plus des habituelles pour ne rien perdre ; null : une venue remisée ne rapporte plus rien
+  remise: number; remiseHT: number; margeVenue: number; taux: number | null; alerte: AlerteB2B | null
+  enPlus: number | null // venues de plus pour garder la masse de marge ; null : une venue remisée ne rapporte plus rien
+  venues: number | null // habituelles + venues en plus : le palier s'ouvre là
+  hausse: number | null // venues en plus ÷ habituelles
+  marge: number | null // masse de marge de la période à ce nombre de venues
 }
 export interface LigneBarCalculee { libelle: string; nature: NatureBar; parVenue: number; prixHT: number; margeAvant: number; margeApres: number; taux: number | null; alerte: AlerteB2B | null; remiseMax: number | null }
 export interface EffetRemisesBar {
   habituelles: number; parAn: number
   produits: number; caTTC: number; caHT: number; achat: number // par venue, avant remise
-  aujourdhui: PalierBarCalcule // les venues habituelles, sans remise
-  paliers: PalierBarCalcule[] // au-dessus d'aujourd'hui, rangés par venues en plus croissantes
+  margeVenue: number; taux: number | null; marge: number // aujourd'hui : par venue, taux, masse de la période
+  paliers: PalierBarCalcule[] // rangés par remise croissante
   remiseForte: number // remise du palier le plus fort, pour le détail du panier
-  meilleur: number | null // index dans paliers du plus gros gain positif
   evin: boolean
   lignes: LigneBarCalculee[]
 }
-// Paliers rangés par venues en plus croissantes, au moins une venue de plus
 export function paliersBarRanges(paliers: PalierBar[]): PalierBar[] {
-  return [...paliers].map((x) => ({ plus: Math.max(1, Math.round(pos(x.plus))), remise: pos(x.remise) })).sort((a, b) => a.plus - b.plus)
+  return [...paliers].map((x) => ({ remise: pos(x.remise) })).sort((a, b) => a.remise - b.remise)
 }
 export function simulerRemisesBar(
   x: { paliers: PalierBar[]; lignes: LigneBar[]; habituelles: number; periode: 'semaine' | 'mois'; base: 'produit' | 'panier'; plancher: number; tva: Record<NatureBar, number> },
-  p: Redevances,
 ): EffetRemisesBar {
-  const rp = p.tauxRedevance + p.tauxPublicite
   const plancher = part(x.plancher)
   const paliers = paliersBarRanges(x.paliers)
   const habituelles = Math.round(pos(x.habituelles))
@@ -571,22 +569,19 @@ export function simulerRemisesBar(
   const remiseHTDe = (r: number) => x.base === 'produit'
     ? somme(saisies.map((l) => l.parVenue * Math.min(r, l.prixTTC) / (1 + l.tva)))
     : caTTC > 0 ? Math.min(r, caTTC) * caHT / caTTC : 0
-  const resteSans = caHT - achat - caHT * rp
-  const calculer = (plus: number, remise: number): PalierBarCalcule => {
-    const remiseHT = remiseHTDe(remise), net = caHT - remiseHT, margeVenue = net - achat
-    const taux = net > 0 ? margeVenue / net : null, resteVenue = margeVenue - net * rp
-    const venues = habituelles + plus, reste = venues * resteVenue, gain = reste - habituelles * resteSans
-    const perte = habituelles * (resteSans - resteVenue) // ce que la remise retire aux venues habituelles
-    const payeeDes = perte <= 0 ? 0 : resteVenue > 0 ? Math.ceil(perte / resteVenue - 1e-9) : null
+  const margeSans = caHT - achat
+  const masse = habituelles * margeSans
+  const calcules: PalierBarCalcule[] = paliers.map((y) => {
+    const remiseHT = remiseHTDe(y.remise), net = caHT - remiseHT, margeVenue = net - achat
+    const taux = net > 0 ? margeVenue / net : null
+    const alerte = produits > 0 ? alerteDe(margeVenue, taux, plancher) : null
+    const venues = margeVenue > 0 ? Math.max(habituelles, Math.ceil(masse / margeVenue - 1e-9)) : null
+    const enPlus = venues === null ? null : venues - habituelles
     return {
-      plus, venues, remise, remiseHT, margeVenue, taux, resteVenue, alerte: produits > 0 ? alerteDe(margeVenue, taux, plancher) : null,
-      caNet: venues * net, marge: venues * margeVenue, reste, gain, gainAn: gain * parAn, payeeDes,
+      remise: y.remise, remiseHT, margeVenue, taux, alerte, enPlus, venues,
+      hausse: enPlus === null || habituelles === 0 ? null : enPlus / habituelles, marge: venues === null ? null : venues * margeVenue,
     }
-  }
-  const aujourdhui = calculer(0, 0)
-  const calcules = paliers.map((y) => calculer(y.plus, y.remise))
-  let meilleur: number | null = null
-  calcules.forEach((c, i) => { if (c.gain > 1e-9 && (meilleur === null || c.gain > calcules[meilleur].gain)) meilleur = i })
+  })
   const remiseForte = Math.max(0, ...paliers.map((y) => y.remise))
   // Par produit : marge d'un produit avant et après la remise la plus forte, remise maximale TTC qui garde le plancher
   const lignes: LigneBarCalculee[] = saisies.map((l) => {
@@ -598,8 +593,8 @@ export function simulerRemisesBar(
   const alcool = saisies.some((l) => l.nature === 'alcool' && l.parVenue > 0)
   const sansAlcool = saisies.some((l) => l.nature !== 'alcool' && l.parVenue > 0)
   return {
-    habituelles, parAn, produits, caTTC, caHT, achat, aujourdhui, paliers: calcules, remiseForte, meilleur,
-    evin: !(alcool && !sansAlcool && remiseForte > 0), lignes,
+    habituelles, parAn, produits, caTTC, caHT, achat, margeVenue: margeSans, taux: caHT > 0 ? margeSans / caHT : null, marge: masse,
+    paliers: calcules, remiseForte, evin: !(alcool && !sansAlcool && remiseForte > 0), lignes,
   }
 }
 
