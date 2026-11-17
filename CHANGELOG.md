@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateur Contrat extérieur (Joseph, 17/11/2026), sans migration : la remise se saisit en « Prix facturé après remise HT »
+  (un prix remisé tapé dans l'ancien champ « Remise accordée » était lu comme une remise : 70 € et 68 € donnaient 2 € par fût).
+  La remise en € et en % s'affiche sous les recettes ; la remise maximale donne aussi le prix facturé minimum.
 - Marché extérieur et fiche magasin (Joseph, 17/11/2026), sans migration : une cible se marque « Contrat en cours »
   (contrats d'avant l'app), avec son CA annuel facultatif et la mention écrit ou non ; visible au repérage, aux cibles
   et au plan, CA sous contrat au point de départ. L'implantation des produits quitte la fiche d'un magasin ouvert
