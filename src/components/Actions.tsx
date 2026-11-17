@@ -133,7 +133,7 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
         {x.a.pieces && <ListePieces pieces={x.a.pieces} />}
       </Box>
       {(pastille || statut) && <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1, alignItems: 'center', mt: 1.5, flexShrink: 0 }}>{statut}{pastille}</Box>}
-      {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la tâche ${x.a.action}`}><EditOutlined /></IconButton></Tooltip>}
+      {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la tâche ${x.a.action}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
     </Box>
     </Glisser>
     </Box>
@@ -257,7 +257,7 @@ export function DialogAction({ reseau, magasins, action, porteurInitial = '', ec
           await enregistrerPlan(magasin, [...(reseau.plans?.[magasin] ?? []), p])
           idPriorite = p.id
         }
-        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), ...(a?.fil ?? (depuis?.equipe ? 'equipe' : undefined) ? { fil: 'equipe' as const } : {}), ...(a?.message ?? depuis?.message ? { message: a?.message ?? depuis?.message } : {}), ...(a?.budget ? { budget: a.budget } : {}), ...(statut ? { statut } : {}), ...(statut === 'bloquee' && raison.trim() ? { raison: raison.trim().slice(0, 300) } : {}), ...(idPriorite ? { priorite: idPriorite } : {}) }
+        const l: Omit<ActionLibre, 'id'> & { id?: string } = { id: a?.id, action: propre, porteur: porteur.trim(), echeance, ...(pieces.length ? { pieces } : {}), creeLe: a?.creeLe || reseau.jour, ...(a?.faite ? { faite: a.faite, ...(a.faitePar ? { faitePar: a.faitePar } : {}) } : {}), ...(a?.auteur || profil?.nom ? { auteur: a?.auteur || profil?.nom } : {}), ...(a?.fil ?? (depuis?.equipe ? 'equipe' : undefined) ? { fil: 'equipe' as const } : {}), ...(a?.message ?? depuis?.message ? { message: a?.message ?? depuis?.message } : {}), ...(a?.budget ? { budget: a.budget } : {}), ...(a?.exterieur ? { exterieur: a.exterieur } : {}), ...(statut ? { statut } : {}), ...(statut === 'bloquee' && raison.trim() ? { raison: raison.trim().slice(0, 300) } : {}), ...(idPriorite ? { priorite: idPriorite } : {}) }
         if (!a) {
           // Choix 114 : une nouvelle tâche se garde sur l'appareil sans réseau ; son identifiant est posé tout de suite
           const nouvelle = { ...l, id: `l_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}` }

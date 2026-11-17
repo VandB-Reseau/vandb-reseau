@@ -646,6 +646,22 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         e.remarques = corps.p_texte
         return route.fulfill({ status: 200, json: null })
       }
+      // Tâches du plan « Marché extérieur » tenues par le franchisé (0049) : seulement celles marquées « exterieur »
+      if (fn === 'tache_exterieur_franchise') {
+        const st = String(corps.p_store ?? '')
+        if (acces.role !== 'franchise' || !(acces.magasins ?? []).includes(st)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const actions = ((options.espace ??= {}).actions ??= {})
+        const l = (actions[st] ??= [])
+        const id = String(corps.p_id ?? '')
+        const existante = id ? l.find((x) => x.id === id) : undefined
+        if (id && (!existante || !existante.exterieur)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'action_introuvable' } })
+        if (corps.p_supprimer) { actions[st] = l.filter((x) => x.id !== id); return route.fulfill({ json: id }) }
+        const champs = { action: String(corps.p_action).trim(), porteur: String(corps.p_porteur ?? ''), echeance: String(corps.p_echeance ?? ''), exterieur: { cible: String(corps.p_cible), nom: String(corps.p_nom) } }
+        if (existante) { Object.assign(existante, champs); return route.fulfill({ json: id }) }
+        const nouvel = `l_ext_simule${Object.values(actions).flat().length + 1}`
+        l.push({ id: nouvel, ...champs, creeLe: new Date().toISOString().slice(0, 10), auteur: acces.franchise })
+        return route.fulfill({ json: nouvel })
+      }
       // Actions du franchisé (script 0007_actions_franchise.sql) : la base pose son nom et la date
       if (fn === 'ajouter_action_franchise' || fn === 'marquer_action_franchise') {
         const st = String(corps.p_store ?? '')
