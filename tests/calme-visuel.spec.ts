@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test'
-import { COMPTE, seConnecter, simulerSupabase, textesTropPetits, deplierATraiter } from './supabase-simule'
+import { COMPTE, seConnecter, simulerSupabase, textesTropPetits, deplierATraiter, deplierGroupes } from './supabase-simule'
 import { magasinsFictifs } from './donnees-fictives'
 
 // Une seule couleur forte par ligne, onglets qui tiennent sur l'écran du téléphone,
@@ -14,6 +14,7 @@ test('seul le rouge reste une pastille pleine ; le reste est un texte coloré', 
   await deplierATraiter(page)
   expect(await fond(aTraiter.getByText('Décroche', { exact: true }))).toBe('rgb(194, 65, 25)')
   await aTraiter.getByRole('button', { name: /^À voir · \d+$/ }).click()
+  await deplierGroupes(page)
   expect(await fond(aTraiter.getByText('Visite', { exact: true }).first())).toBe(transparent)
   await page.goto('./#/magasins')
   const liste = page.getByRole('main')

@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Accueil, choix 271 (Joseph, 17/11/2026), sans migration : fil d'actualité façon LinkedIn sur 600 px (photos en grand,
+  une grande et deux petites à partir de trois), compte rendu et autres pièces jointes non photo en ligne avec picto au
+  lieu d'un grand carré. À droite sur PC, « Le point » en quatre lignes qui disent quelque chose (dernier mois comparable
+  à N-1 au lieu de « — », « Aucun » au lieu de « 0 », visites en avance ou en retard sur le repère, parc « À classer »)
+  et « À traiter » regroupé par sujet (intégrations, magasins à visiter, demandes…), chaque groupe se déplie.
 - Marché extérieur et fiche magasin (Joseph, 17/11/2026), sans migration : une cible se marque « Contrat en cours »
   (contrats d'avant l'app), avec son CA annuel facultatif et la mention écrit ou non ; visible au repérage, aux cibles
   et au plan, CA sous contrat au point de départ. L'implantation des produits quitte la fiche d'un magasin ouvert

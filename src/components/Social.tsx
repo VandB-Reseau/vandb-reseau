@@ -203,11 +203,11 @@ function MiniPhoto({ chemin }: { chemin: string }) {
     : <Box sx={{ width: 40, height: 40, borderRadius: 1, bgcolor: 'action.hover' }} />
 }
 
-function Vignette({ chemin, numero, reste, onOuvrir }: { chemin: string; numero: number; reste?: number; onOuvrir: () => void }) {
+function Vignette({ chemin, numero, reste, onOuvrir, sx }: { chemin: string; numero: number; reste?: number; onOuvrir: () => void; sx?: object }) {
   const lien = useLienPhoto(chemin)
   return (
     <ButtonBase onClick={onOuvrir} aria-label={reste ? `Voir les photos, ${reste} de plus` : `Agrandir la photo ${numero}`}
-      sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: 'action.hover', display: 'grid', placeItems: 'center', color: 'text.secondary', overflow: 'hidden', borderRadius: 2 }}>
+      sx={{ position: 'relative', aspectRatio: '1 / 1', bgcolor: 'action.hover', display: 'grid', placeItems: 'center', color: 'text.secondary', overflow: 'hidden', borderRadius: 2, ...sx }}>
       {lien ? <Box component="img" src={lien} alt={`Photo ${numero}`} loading="lazy" sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <ImageOutlined aria-hidden />}
       {!!reste && <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.5)', color: '#ffffff', display: 'grid', placeItems: 'center', fontWeight: 600, fontSize: '1.125rem' }}>+{reste}</Box>}
     </ButtonBase>
@@ -242,10 +242,27 @@ function PhotosPleinEcran({ photos, depart, onFermer }: { photos: Photo[]; depar
 // Photos toujours en vignettes carrées, même seules (Joseph, 21/10/2026) ; au-delà de max, la dernière annonce le reste.
 // Le toucher ouvre la photo en plein écran.
 // avant : vignette posée dans la première case (compte rendu d'une visite), qui prend la place d'une photo
-export function GrillePhotos({ photos, max = 3, colonnes = 3, avant }: { photos: Photo[] | undefined; max?: number; colonnes?: number; avant?: ReactNode }) {
+export function GrillePhotos({ photos, max = 3, colonnes = 3, avant, grand = false }: { photos: Photo[] | undefined; max?: number; colonnes?: number; avant?: ReactNode; grand?: boolean }) {
   const [ouverte, setOuverte] = useState<number | null>(null)
   if (!photos?.length && !avant) return null
   photos ??= []
+  // Fil façon LinkedIn (choix 271, Joseph 17/11/2026) : la photo sur toute la largeur de la carte ; deux côte à côte ;
+  // à partir de trois, une grande et deux petites, « +N » sur la dernière
+  if (grand && photos.length) {
+    const n = photos.length
+    const vues = photos.slice(0, 3)
+    const plein = { aspectRatio: 'auto', width: '100%', height: '100%', borderRadius: 0 }
+    const grille = n === 1 ? { gridTemplateColumns: '1fr', aspectRatio: '16 / 9' } : n === 2 ? { gridTemplateColumns: '1fr 1fr', aspectRatio: '2 / 1' } : { gridTemplateColumns: '2fr 1fr', gridTemplateRows: '1fr 1fr', aspectRatio: '3 / 2' }
+    return (
+      <>
+        <Box sx={{ display: 'grid', gap: 0.5, maxWidth: '100%', maxHeight: 520, ...grille }}>
+          {vues.map((p, i) => <Vignette key={p.chemin} chemin={p.chemin} numero={i + 1} reste={i === vues.length - 1 ? n - vues.length : 0} onOuvrir={() => setOuverte(i)}
+            sx={{ ...plein, ...(n >= 3 && i === 0 ? { gridRow: '1 / 3' } : {}) }} />)}
+        </Box>
+        {ouverte !== null && <PhotosPleinEcran photos={photos} depart={ouverte} onFermer={() => setOuverte(null)} />}
+      </>
+    )
+  }
   const vues = photos.slice(0, avant ? max - 1 : max)
   return (
     <>

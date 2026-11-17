@@ -1,4 +1,4 @@
-// Compte rendu de visite ouvert depuis le fil d'actualité (Joseph, 22/10/2026) : une vignette carrée, comme une photo ;
+// Compte rendu de visite ouvert depuis le fil d'actualité (Joseph, 22/10/2026) : une pièce jointe avec picto (choix 271) ;
 // le toucher l'ouvre dans une fenêtre, et la fermer (ou revenir en arrière) laisse le fil à la même place,
 // pour aimer ou commenter. La fenêtre suit le paramètre « cr » de l'adresse, d'où le retour arrière qui la ferme.
 import { lazy, Suspense } from 'react'
@@ -15,7 +15,6 @@ import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import { useReseau } from '../data/ReseauContext'
 import { lienCompteRendu } from '../data/visites'
-import { brandStripe } from '../theme/theme'
 
 const FeuilleCompteRendu = lazy(() => import('./FeuilleCompteRendu').then((m) => ({ default: m.FeuilleCompteRendu })))
 
@@ -28,15 +27,15 @@ export function useOuvrirCompteRendu() {
   }
 }
 
-// Petite page du compte rendu, de la taille d'une photo
-export function VignetteCompteRendu({ libelle, onOuvrir }: { libelle: string; onOuvrir: () => void }) {
+// Pièce jointe qui n'est pas une photo (choix 271, Joseph 17/11/2026) : une ligne avec un picto, jamais un grand carré
+export function PieceJointe({ nom, detail = 'PDF · Ouvrir', libelle, onOuvrir }: { nom: string; detail?: string; libelle: string; onOuvrir: () => void }) {
   return (
     <ButtonBase onClick={onOuvrir} aria-label={libelle}
-      sx={{ aspectRatio: '1 / 1', borderRadius: 2, overflow: 'hidden', bgcolor: '#ffffff', border: '1px solid', borderColor: 'divider', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-      <Box sx={{ height: 10, display: 'flex', justifyContent: 'flex-end', flexShrink: 0, pt: 0.75, pr: 0.75 }}><Box sx={{ width: '40%', height: 6, background: brandStripe, borderRadius: 0.5 }} /></Box>
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.5, color: '#1d1d1b', px: 0.5 }}>
-        <PictureAsPdfOutlined sx={{ fontSize: 32, color: '#c24119' }} />
-        <Typography component="span" sx={{ fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.2, textAlign: 'center', color: '#1d1d1b' }}>Compte rendu</Typography>
+      sx={{ display: 'inline-flex', alignItems: 'center', gap: 1.25, minHeight: 48, maxWidth: '100%', px: 1.5, py: 0.75, border: '1px solid', borderColor: 'divider', borderRadius: 2, textAlign: 'left', justifyContent: 'flex-start', color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
+      <PictureAsPdfOutlined sx={{ color: 'error.main', flex: 'none' }} />
+      <Box sx={{ minWidth: 0 }}>
+        <Typography sx={{ fontWeight: 600, fontSize: '0.875rem', lineHeight: 1.3 }} noWrap>{nom}</Typography>
+        <Typography color="text.secondary" sx={{ fontSize: '0.75rem', lineHeight: 1.3 }}>{detail}</Typography>
       </Box>
     </ButtonBase>
   )
