@@ -56,11 +56,14 @@ test('204 à 206 et 208 : une carte par publication, l’auteur en tête, voir p
   expect(await comptesRendus.count()).toBeGreaterThan(0)
   for (const cr of await comptesRendus.all()) await expect(cr.getByRole('button', { name: 'J’aime' })).toHaveCount(1)
   // Choix 212 (15/11/2026) : l'Accueil porte seul le fil, avec ses filtres
-  await expect(fil.getByRole('group', { name: 'Filtrer le fil' })).toBeVisible()
+  // Téléphone (278) : les filtres derrière un picto
+  if (isMobile) await expect(fil.getByRole('button', { name: 'Filtrer le fil' })).toBeVisible()
+  else await expect(fil.getByRole('group', { name: 'Filtrer le fil' })).toBeVisible()
   await lisible(page, isMobile)
 })
 
-test('207 : « Partager » en tête du fil ouvre la bonne pratique sur place ; le Directeur publie une communication sans quitter l’Accueil', async ({ page }) => {
+test('207 : « Partager » en tête du fil ouvre la bonne pratique sur place ; le Directeur publie une communication sans quitter l’Accueil', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Téléphone : un seul champ, voir le test 278')
   await seConnecter(page)
   const partager = page.getByRole('region', { name: 'Actualités' }).getByRole('region', { name: 'Partager' })
   await partager.getByRole('button', { name: 'Bonne pratique' }).click()
@@ -124,4 +127,55 @@ test('Accueil PC (17/11) : fil et colonne de droite alignés sous le titre, sans
   expect(cote.x - (fil.x + fil.width)).toBeLessThanOrEqual(32)
   expect(fil.width).toBeGreaterThan(700)
   expect(cote.width).toBeGreaterThan(500)
+})
+
+test('278 corrigé (17/11) : sur téléphone, ni titre visible, périmètre en puce, Partager en un champ, filtres derrière un picto, fil bord à bord, nombre rouge = urgences', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'Disposition du téléphone')
+  await seConnecter(page, { communications: communications().map((c) => ({ ...c, a_la_une: null })) })
+  await page.goto('./#/')
+  const main = page.getByRole('main')
+  const fil = page.getByRole('region', { name: 'Actualités' })
+  await expect(fil.getByRole('article').first()).toBeVisible()
+  // Titres présents pour les lecteurs d'écran seulement
+  for (const nom of ['Accueil', 'Actualités']) {
+    const t = main.getByRole('heading', { name: nom, exact: true })
+    expect((await t.boundingBox())!.height).toBeLessThanOrEqual(2)
+  }
+  // Périmètre : une puce d'une ligne
+  const perimetre = main.getByRole('button', { name: /^Périmètre : / })
+  await expect(perimetre).toHaveText(/^Tout le réseau/)
+  expect((await perimetre.boundingBox())!.height).toBeLessThanOrEqual(50)
+  // Partager : un seul champ ; Bonne pratique et Communication au toucher
+  const partager = fil.getByRole('region', { name: 'Partager' })
+  await expect(partager.getByRole('button')).toHaveCount(1)
+  await partager.getByRole('button', { name: 'Partager une réussite du terrain' }).click()
+  await page.getByRole('menuitem', { name: 'Bonne pratique' }).click()
+  await expect(page.getByRole('dialog', { name: 'Nouvelle bonne pratique' })).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: 'Annuler' }).click()
+  await partager.getByRole('button', { name: 'Partager une réussite du terrain' }).click()
+  await page.getByRole('menuitem', { name: 'Communication' }).click()
+  await expect(page.getByRole('dialog', { name: 'Nouvelle communication' })).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: 'Annuler' }).click()
+  // Filtres : repliés derrière le picto, le filtre choisi se retire d'un geste
+  await expect(fil.getByRole('group', { name: 'Filtrer le fil' })).toHaveCount(0)
+  await fil.getByRole('button', { name: 'Filtrer le fil' }).click()
+  await page.getByRole('menuitem', { name: 'Visites' }).click()
+  await expect(fil.getByRole('article', { name: /^Compte rendu de / }).first()).toBeVisible()
+  await fil.getByRole('button', { name: 'Retirer le filtre Visites' }).click()
+  await expect(fil.getByRole('button', { name: /^Retirer le filtre/ })).toHaveCount(0)
+  // Publications bord à bord, séparées par un fin espace
+  const largeur = page.viewportSize()!.width
+  const [a, b] = await fil.getByRole('article').all()
+  const [ba, bb] = [(await a.boundingBox())!, (await b.boundingBox())!]
+  expect(ba.x).toBeLessThanOrEqual(1)
+  expect(ba.width).toBeGreaterThanOrEqual(largeur - 2)
+  expect(bb.y - (ba.y + ba.height)).toBeLessThanOrEqual(8)
+  // Le nombre rouge ne compte que les urgences (pastilles rouges), pas tout ce qui est à traiter
+  const picto = page.getByRole('banner').getByRole('button', { name: /^Mon point du jour/ })
+  const libelle = (await picto.getAttribute('aria-label'))!
+  const urgences = Number(/(\d+) urgence/.exec(libelle)?.[1] ?? 0)
+  const total = Number(/(\d+) à traiter/.exec(libelle)?.[1] ?? 0)
+  expect(urgences).toBeLessThan(total)
+  if (urgences) await expect(picto.locator('.MuiBadge-badge')).toHaveText(String(urgences))
+  await lisible(page, isMobile)
 })
