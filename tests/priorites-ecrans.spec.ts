@@ -44,13 +44,14 @@ test('Magasins : la dernière visite à droite, le rouge réservé au décrochag
   await page.screenshot({ path: `captures/${info.project.name}-magasins-derniere-visite.png` })
 })
 
-test('une photo seule reste une vignette et s’ouvre en plein écran', async ({ page }, info) => {
+test('une photo seule s’affiche en grand dans le fil (choix 271) et s’ouvre en plein écran', async ({ page }, info) => {
   await seConnecter(page)
   // Le compte rendu de Lyon et sa photo, dans le fil d'actualité de l'accueil
   const vignette = page.getByRole('region', { name: 'Actualités' }).getByRole('button', { name: 'Agrandir la photo 1' }).first()
   const v = (await vignette.boundingBox())!
-  expect(v.width).toBeLessThanOrEqual(170)
-  expect(Math.abs(v.width - v.height)).toBeLessThanOrEqual(2)
+  // Sur toute la largeur de la carte, au format 16:9
+  expect(v.width).toBeGreaterThan(300)
+  expect(Math.abs(v.width / v.height - 16 / 9)).toBeLessThanOrEqual(0.05)
   await vignette.click()
   const plein = page.getByRole('dialog', { name: 'Photos' })
   await expect(plein.getByText('1 / 1')).toBeVisible()
