@@ -11,6 +11,7 @@ import { libellesLicence, libellesTypologie, libellesZone } from './exploitation
 import { caseDe, scoreAxe, tonDe } from './sante'
 import { normaliserExterieur, synthese } from './marcheExterieur'
 import { visiteFaite } from './modele'
+import { peuEngage, silence, type Engagement } from './engagement'
 
 // ── Données des budgets (schéma pilotage), chargées à part ──────────────
 export interface FinanceMagasin {
@@ -98,6 +99,8 @@ export interface Contexte {
   finances: Map<string, FinanceMagasin> | null // null : budgets pas (encore) chargés
   jour: string
   equipe: boolean // false pour un franchisé
+  // Engagement du franchisé de chaque magasin (90 jours, équipe seule) ; absent : indicateurs vides
+  engagement?: ((m: Magasin) => Engagement | null) | null
 }
 const cacheIndex = new WeakMap<Reseau, Map<string, Map<string, ChiffreMois>>>()
 function chiffre(r: Reseau, magasin: string, mois: string): ChiffreMois | undefined {
@@ -114,13 +117,14 @@ const caDe = (c: ChiffreMois | undefined) => (!c || (c.caCave === null && c.caBa
 // ou un texte (le plus fréquent du groupe). moins1 : le ratio se lit en évolution (n / d − 1).
 export type Mesure = { n: number; d?: number } | { texte: string }
 export type Format = 'euros' | 'euros2' | 'pct' | 'ecart' | 'nombre' | 'texte' | 'jours' | 'note' | 'mois'
-export type Theme = 'ventes' | 'budget' | 'exterieur' | 'ninebox' | 'animation'
+export type Theme = 'ventes' | 'budget' | 'exterieur' | 'ninebox' | 'animation' | 'engagement'
 export const THEMES: { cle: Theme; libelle: string; equipeSeule?: boolean }[] = [
   { cle: 'ventes', libelle: 'Ventes (caisse)' },
   { cle: 'budget', libelle: 'Budget et résultat' },
   { cle: 'exterieur', libelle: 'Marché extérieur' },
   { cle: 'ninebox', libelle: 'Nine box et santé', equipeSeule: true },
   { cle: 'animation', libelle: 'Animation du réseau' },
+  { cle: 'engagement', libelle: 'Engagement du franchisé', equipeSeule: true },
 ]
 export interface Indicateur {
   id: string
@@ -152,6 +156,7 @@ function moisBudget(f: FinanceMagasin, mois: string[]): number[] {
 const fin = (c: Contexte, m: Magasin) => c.finances?.get(m.nom) ?? null
 
 const visitesFaites = (c: Contexte, m: Magasin) => c.reseau.visites.filter((v) => v.magasin === m.nom && estVisite(v) && visiteFaite(v, c.jour))
+const eng = (c: Contexte, m: Magasin) => (c.equipe && c.engagement ? c.engagement(m) : null)
 const tachesOuvertes = (c: Contexte, m: Magasin) => (c.reseau.actionsLibres[m.nom] ?? []).filter((t) => !t.faite)
 const planExterieur = (c: Contexte, m: Magasin) => {
   const p = normaliserExterieur(c.reseau.exterieur ?? {})[m.nom]
@@ -237,12 +242,18 @@ export const INDICATEURS: Indicateur[] = [
   { id: 'prioritesActives', libelle: 'Priorités de l’année en cours', theme: 'animation', format: 'nombre', agregat: 'somme', temporel: false, mesure: (c, m) => ({ n: (c.reseau.plans?.[m.nom] ?? []).filter((p) => p.statut === 'active').length }) },
   { id: 'prioritesAtteintes', libelle: 'Priorités atteintes', theme: 'animation', format: 'nombre', agregat: 'somme', temporel: true, mesure: (c, m, mois) => ({ n: (c.reseau.plans?.[m.nom] ?? []).filter((p) => p.statut === 'atteinte' && p.closLe && mois.includes(p.closLe.slice(0, 7))).length }) },
   { id: 'operations', libelle: 'Opérations commerciales', theme: 'animation', format: 'nombre', agregat: 'somme', temporel: true, mesure: (c, m, mois) => ({ n: (c.reseau.operations?.[m.nom] ?? []).filter((o) => mois.includes(o.jour.slice(0, 7))).length }) },
+  // Engagement du franchisé : mêmes repères que sa fiche (90 jours glissants), jamais montrés au franchisé
+  { id: 'engCommunications', libelle: 'Communications lues (90 jours)', theme: 'engagement', format: 'pct', agregat: 'ratio', temporel: false, equipeSeule: true, aide: 'Communications du siège des 90 derniers jours lues par le franchisé. Visible du Directeur et des Responsables Régionaux.', mesure: (c, m) => { const r = eng(c, m)?.communications; return r ? ratio(r.fait, r.total) : null } },
+  { id: 'engTaches', libelle: 'Tâches tenues dans les délais (90 jours)', theme: 'engagement', format: 'pct', agregat: 'ratio', temporel: false, equipeSeule: true, aide: 'Tâches portées par le franchisé arrivées à échéance dans les 90 derniers jours et faites à temps.', mesure: (c, m) => { const r = eng(c, m)?.taches; return r ? ratio(r.fait, r.total) : null } },
+  { id: 'engReunions', libelle: 'Réunions et formations suivies (90 jours)', theme: 'engagement', format: 'pct', agregat: 'ratio', temporel: false, equipeSeule: true, mesure: (c, m) => { const r = eng(c, m)?.reunions; return r ? ratio(r.fait, r.total) : null } },
+  { id: 'engSilence', libelle: 'Jours depuis son dernier message', theme: 'engagement', format: 'jours', agregat: 'moyenne', temporel: false, inverse: true, equipeSeule: true, mesure: (c, m) => { const e = eng(c, m); return e ? val(silence(e, c.jour)) : null } },
+  { id: 'engFaible', libelle: 'Magasins au franchisé peu engagé', theme: 'engagement', format: 'nombre', agregat: 'somme', temporel: false, inverse: true, equipeSeule: true, aide: 'Au moins deux repères en retrait : communications lues ou tâches tenues sous 50 %, réunions suivies sous 50 %, aucun message depuis 60 jours.', mesure: (c, m) => { const e = eng(c, m); return e ? { n: peuEngage(e, c.jour) ? 1 : 0 } : null } },
 ]
 export const indicateur = (id: string) => INDICATEURS.find((i) => i.id === id)
 export const indicateursVisibles = (equipe: boolean) => INDICATEURS.filter((i) => equipe || !i.equipeSeule)
 
 // ── Axes de regroupement et de filtre ───────────────────────────────────
-export type AxeId = 'magasin' | 'rr' | 'coach' | 'groupe' | 'typologie' | 'zone' | 'licence' | 'contrat' | 'anciennete' | 'departement' | 'statut' | 'caseNineBox' | 'reseau'
+export type AxeId = 'magasin' | 'rr' | 'coach' | 'groupe' | 'typologie' | 'zone' | 'licence' | 'contrat' | 'anciennete' | 'departement' | 'statut' | 'caseNineBox' | 'engagement' | 'reseau'
 export interface Axe { id: AxeId; libelle: string; equipeSeule?: boolean; valeur: (c: Contexte, m: Magasin) => string }
 const NON = 'Non renseigné'
 function anciennete(m: Magasin, jour: string): string {
@@ -264,6 +275,7 @@ export const AXES: Axe[] = [
   { id: 'departement', libelle: 'Département', valeur: (_c, m) => m.departement || NON },
   { id: 'statut', libelle: 'Statut du budget', equipeSeule: true, valeur: (c, m) => c.finances?.get(m.nom)?.statut || 'Sans budget' },
   { id: 'caseNineBox', libelle: 'Case de la nine box', equipeSeule: true, valeur: (c, m) => caseDe(c.reseau.evaluations[m.nom], c.reseau.grilleNineBox)?.libelle ?? 'Non classé' },
+  { id: 'engagement', libelle: 'Engagement du franchisé', equipeSeule: true, valeur: (c, m) => { const e = eng(c, m); return !e ? 'Non mesuré' : peuEngage(e, c.jour) ? 'Peu engagé' : 'Engagé' } },
 ]
 export const axe = (id: string) => AXES.find((a) => a.id === id)
 export const axesVisibles = (equipe: boolean) => AXES.filter((a) => equipe || !a.equipeSeule)
@@ -415,7 +427,18 @@ export function tonCellule(i: Indicateur, c: Cellule): 'bon' | 'mauvais' | null 
 }
 
 // Rapports proposés par le siège, toujours présents (le Directeur peut en publier d'autres)
-export interface RapportPropose { id: string; titre: string; definition: Definition; equipeSeule?: boolean }
+// pour : rapports de départ d'un public (Joseph, 17/11/2026) ; sans pour, rapport général proposé à tous
+export type Public = 'rr' | 'coach' | 'franchise'
+export interface RapportPropose { id: string; titre: string; definition: Definition; equipeSeule?: boolean; pour?: Public[] }
+export const PUBLICS: { cle: Public; libelle: string }[] = [
+  { cle: 'rr', libelle: 'Pour les Responsables Régionaux' }, { cle: 'coach', libelle: 'Pour les Coachs' }, { cle: 'franchise', libelle: 'Pour les franchisés' },
+]
+// Rapports proposés au compte : le Directeur voit tout, les autres les rapports généraux et ceux de leur public
+export const rapportsProposes = (role: string | undefined) => RAPPORTS_PROPOSES.filter((r) => {
+  if (role === 'directeur') return true
+  if (role === 'franchise') return !r.equipeSeule && (!r.pour || r.pour.includes('franchise'))
+  return !r.pour || r.pour.includes(role as Public)
+})
 export const RAPPORTS_PROPOSES: RapportPropose[] = [
   { id: 'budget', titre: 'Budget contre réel par magasin', definition: { ...definitionVide(), indicateurs: ['ca', 'caBudget', 'ecartBudget', 'statutBudget'], periode: { type: 'cumul' } } },
   { id: 'n1', titre: 'Ventes sur l’an dernier', definition: { ...definitionVide(), indicateurs: ['ca', 'evolution', 'evolTicketsCave', 'evolTicketsBar'], periode: { type: 'cumul' } } },
@@ -424,6 +447,17 @@ export const RAPPORTS_PROPOSES: RapportPropose[] = [
   { id: 'resultat', titre: 'Résultat et frais de personnel', definition: { ...definitionVide(), indicateurs: ['ebe', 'ebeCA', 'pctFP', 'caHeure'], periode: { type: 'cumul' } } },
   { id: 'typologie', titre: 'Les typologies face à l’an dernier', definition: { ...definitionVide(), lignes: 'typologie', indicateurs: ['ca', 'evolution', 'panierCave', 'panierBar', 'marge'], periode: { type: 'cumul' } } },
   { id: 'exterieur', titre: 'Marché extérieur', definition: { ...definitionVide(), indicateurs: ['caExt', 'extCibles', 'extPriorites', 'extContrats', 'extCAContrats'], periode: { type: 'cumul' } } },
+  // Pour démarrer, par public (modifiables : « Enregistrer comme un nouveau rapport » en garde une copie à soi)
+  { id: 'rr-region', titre: 'Ma région : ventes, budget et an dernier', equipeSeule: true, pour: ['rr'], definition: { ...definitionVide(), indicateurs: ['ca', 'evolution', 'ecartBudget', 'statutBudget', 'tachesRetard'], periode: { type: 'cumul' }, tri: { cle: 'ecartBudget', sens: 'asc' } } },
+  { id: 'rr-coachs', titre: 'Mes Coachs : visites et tâches du mois', equipeSeule: true, pour: ['rr'], definition: { ...definitionVide(), lignes: 'coach', indicateurs: ['visites', 'joursSansVisite', 'tachesRetard', 'tachesTenues', 'operations'], periode: { type: 'mois' } } },
+  { id: 'coach-priorites', titre: 'Mes magasins : qui voir en priorité', equipeSeule: true, pour: ['coach'], definition: { ...definitionVide(), indicateurs: ['joursSansVisite', 'tachesRetard', 'tachesProches', 'evolution', 'ecartBudget'], periode: { type: 'cumul' }, affichage: 'tableau', tri: { cle: 'joursSansVisite', sens: 'desc' } } },
+  { id: 'coach-clients', titre: 'Paniers et tickets de mes magasins', equipeSeule: true, pour: ['coach'], definition: { ...definitionVide(), indicateurs: ['panierCave', 'evolTicketsCave', 'panierBar', 'evolTicketsBar'], periode: { type: 'mois' } } },
+  { id: 'coach-taches', titre: 'Tâches et priorités de mes magasins', equipeSeule: true, pour: ['coach'], definition: { ...definitionVide(), indicateurs: ['tachesOuvertes', 'tachesRetard', 'tachesBloquees', 'tachesTenues', 'prioritesActives', 'prioritesAtteintes'], periode: { type: 'cumul' } } },
+  { id: 'franchises-engagement', titre: 'Franchisés à remobiliser', equipeSeule: true, pour: ['rr', 'coach'], definition: { ...definitionVide(), indicateurs: ['engTaches', 'engReunions', 'engCommunications', 'engSilence', 'tachesRetard'], periode: { type: 'cumul' }, affichage: 'tableau', tri: { cle: 'engTaches', sens: 'asc' } } },
+  { id: 'fr-mois', titre: 'Mon CA mois par mois face à l’an dernier', pour: ['franchise'], definition: { ...definitionVide(), indicateurs: ['ca', 'caN1', 'evolution'], periode: { type: 'douze' }, colonnes: 'mois' } },
+  { id: 'fr-budget', titre: 'Mon budget : où j’en suis', pour: ['franchise'], definition: { ...definitionVide(), indicateurs: ['ca', 'caBudget', 'ecartBudget', 'ebe', 'pctFP'], periode: { type: 'cumul' } } },
+  { id: 'fr-clients', titre: 'Mes clients Cave et Bar', pour: ['franchise'], definition: { ...definitionVide(), indicateurs: ['ticketsCave', 'evolTicketsCave', 'panierCave', 'ticketsBar', 'evolTicketsBar', 'panierBar'], periode: { type: 'mois' } } },
+  { id: 'fr-taches', titre: 'Mes tâches et priorités', pour: ['franchise'], definition: { ...definitionVide(), indicateurs: ['tachesOuvertes', 'tachesRetard', 'tachesProches', 'prioritesActives', 'prioritesAtteintes'], periode: { type: 'cumul' } } },
   { id: 'animation', titre: 'Animation du mois', equipeSeule: true, definition: { ...definitionVide(), lignes: 'coach', indicateurs: ['visites', 'joursSansVisite', 'tachesRetard', 'operations'], periode: { type: 'mois' } } },
   { id: 'ninebox', titre: 'Nine box et résultats', equipeSeule: true, definition: { ...definitionVide(), lignes: 'caseNineBox', indicateurs: ['ca', 'evolution', 'ecartBudget', 'deploiements'], periode: { type: 'cumul' } } },
 ]

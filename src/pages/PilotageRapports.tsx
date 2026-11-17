@@ -47,9 +47,10 @@ import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { useAuth } from '../auth/AuthContext'
 import { useApercu } from '../auth/Apercu'
-import type { Reseau } from '../data/modele'
+import type { Magasin, Reseau } from '../data/modele'
+import { useEngagement, type Engagement } from '../data/engagement'
 import {
-  AXES, DECOUPAGES, RAPPORTS_PROPOSES, THEMES, TYPES_PERIODE, axe, axesVisibles, calculer, definitionVide, dernierMoisClos, formater,
+  AXES, DECOUPAGES, PUBLICS, THEMES, rapportsProposes, type RapportPropose, TYPES_PERIODE, axe, axesVisibles, calculer, definitionVide, dernierMoisClos, formater,
   indicateur, indicateursVisibles, libelleMoisLong, libellePeriode, normaliserDefinition, tonCellule, valeursAxe,
   type AxeId, type Cellule, type Contexte, type Definition, type FinanceMagasin, type Indicateur, type Resultat, type Theme,
 } from '../data/rapports'
@@ -101,10 +102,10 @@ function Rapports({ reseau }: { reseau: Reseau }) {
   const recharger = useCallback(() => chargerRapports(equipe).then((l) => { setEnregistres(l); setIndisponibles(false) }).catch(() => { setEnregistres([]); setIndisponibles(true) }), [equipe])
   useEffect(() => { void recharger() }, [recharger])
 
-  const proposes = RAPPORTS_PROPOSES.filter((r) => equipe || !r.equipeSeule)
+  const proposes = rapportsProposes(profil?.role)
   const choix = params.get('rapport') ?? ''
   const selection: Selection = choix.startsWith('p-') && proposes.some((r) => `p-${r.id}` === choix) ? { genre: 'propose', id: choix.slice(2) }
-    : /^\d+$/.test(choix) ? { genre: 'base', id: Number(choix) } : choix || params.get('d') ? { genre: 'libre' } : { genre: 'propose', id: proposes[0].id }
+    : /^\d+$/.test(choix) ? { genre: 'base', id: Number(choix) } : choix || params.get('d') ? { genre: 'libre' } : { genre: 'propose', id: groupesProposes(proposes, profil?.role)[0].rapports[0].id }
   const enregistre = selection.genre === 'base' ? enregistres?.find((r) => r.id === selection.id) ?? null : null
   const propose = selection.genre === 'propose' ? proposes.find((r) => r.id === selection.id) ?? null : null
   const depart = useMemo(() => lireDefinitionAdresse(params.get('d'), equipe)
@@ -119,7 +120,21 @@ function Rapports({ reseau }: { reseau: Reseau }) {
   const modifie = JSON.stringify(def) !== JSON.stringify(depart)
   const changer = (d: Partial<Definition>) => setDef((x) => ({ ...x, ...d }))
 
-  const ctx: Contexte = useMemo(() => ({ reseau, finances: finances ?? null, jour: reseau.jour, equipe }), [reseau, finances, equipe])
+  // Engagement du franchisé (équipe seule) : repères de sa fiche, calculés une fois par franchisé sur tous ses magasins
+  const calculEngagement = useEngagement(reseau)
+  const engagement = useMemo(() => {
+    if (!calculEngagement || !equipe) return null
+    const parFranchise = new Map<string, string[]>()
+    for (const m of reseau.magasins) if (m.responsable?.nom) parFranchise.set(m.responsable.nom, [...parFranchise.get(m.responsable.nom) ?? [], m.nom])
+    const cache = new Map<string, Engagement>()
+    return (m: Magasin) => {
+      const nom = m.responsable?.nom
+      if (!nom) return null
+      if (!cache.has(nom)) cache.set(nom, calculEngagement(nom, parFranchise.get(nom) ?? [m.nom]))
+      return cache.get(nom)!
+    }
+  }, [calculEngagement, equipe, reseau])
+  const ctx: Contexte = useMemo(() => ({ reseau, finances: finances ?? null, jour: reseau.jour, equipe, engagement }), [reseau, finances, equipe, engagement])
   const resultat = useMemo(() => calculer(ctx, def), [ctx, def])
 
   const ouvrir = (cle: string) => setParams(cle ? { rapport: cle } : {}, { replace: false })
@@ -142,7 +157,7 @@ function Rapports({ reseau }: { reseau: Reseau }) {
   }
 
   const liste = (
-    <ListeRapports proposes={proposes} enregistres={enregistres} indisponibles={indisponibles} selection={selection} ouvrir={ouvrir}
+    <ListeRapports proposes={proposes} role={profil?.role} enregistres={enregistres} indisponibles={indisponibles} selection={selection} ouvrir={ouvrir}
       nouveau={() => setParams({ d: JSON.stringify(definitionVide()), titre: 'Nouveau rapport' })} lectureSeule={lectureSeule} surPC={surPC} />
   )
 
@@ -196,8 +211,18 @@ function Rapports({ reseau }: { reseau: Reseau }) {
 }
 
 // ── Liste des rapports ──────────────────────────────────────────────────
-function ListeRapports({ proposes, enregistres, indisponibles, selection, ouvrir, nouveau, lectureSeule, surPC }: {
-  proposes: typeof RAPPORTS_PROPOSES; enregistres: RapportEnregistre[] | null; indisponibles: boolean; selection: Selection; ouvrir: (cle: string) => void
+const TITRE_SIEGE = 'Proposés par le siège'
+// Rapports proposés rangés : ceux de son public d'abord (« Pour bien démarrer »), les trois publics pour le Directeur
+function groupesProposes(proposes: RapportPropose[], role: string | undefined) {
+  const generaux = { titre: TITRE_SIEGE, rapports: proposes.filter((r) => !r.pour) }
+  const publics = role === 'directeur'
+    ? PUBLICS.map((p) => ({ titre: p.libelle, rapports: proposes.filter((r) => r.pour?.includes(p.cle)) }))
+    : [{ titre: 'Pour bien démarrer', rapports: proposes.filter((r) => r.pour) }]
+  return (role === 'directeur' ? [generaux, ...publics] : [...publics, generaux]).filter((g) => g.rapports.length)
+}
+
+function ListeRapports({ proposes, role, enregistres, indisponibles, selection, ouvrir, nouveau, lectureSeule, surPC }: {
+  proposes: RapportPropose[]; role: string | undefined; enregistres: RapportEnregistre[] | null; indisponibles: boolean; selection: Selection; ouvrir: (cle: string) => void
   nouveau: () => void; lectureSeule: boolean; surPC: boolean
 }) {
   const modeles = (enregistres ?? []).filter((r) => r.modele)
@@ -209,9 +234,11 @@ function ListeRapports({ proposes, enregistres, indisponibles, selection, ouvrir
     return (
       <TextField select label="Rapport" value={actif} onChange={(e) => (e.target.value === 'nouveau' ? nouveau() : ouvrir(e.target.value))} fullWidth sx={{ '& .MuiInputBase-root': { minHeight: 48 }, '& .MuiSelect-nativeInput': { height: '100%' } }}>
         {selection.genre === 'libre' && <MenuItem value="">Rapport en cours</MenuItem>}
-        <ListSubheader>Proposés par le siège</ListSubheader>
-        {proposes.map((r) => <MenuItem key={r.id} value={`p-${r.id}`} sx={{ minHeight: 48 }}>{r.titre}</MenuItem>)}
-        {modeles.map((r) => <MenuItem key={r.id} value={String(r.id)} sx={{ minHeight: 48 }}>{r.titre}</MenuItem>)}
+        {groupesProposes(proposes, role).flatMap((g) => [
+          <ListSubheader key={g.titre}>{g.titre}</ListSubheader>,
+          ...g.rapports.map((r) => <MenuItem key={`${g.titre}-${r.id}`} value={`p-${r.id}`} sx={{ minHeight: 48 }}>{r.titre}</MenuItem>),
+          ...(g.titre === TITRE_SIEGE ? modeles.map((r) => <MenuItem key={r.id} value={String(r.id)} sx={{ minHeight: 48 }}>{r.titre}</MenuItem>) : []),
+        ])}
         {miens.length > 0 && <ListSubheader>Mes rapports</ListSubheader>}
         {miens.map((r) => <MenuItem key={r.id} value={String(r.id)} sx={{ minHeight: 48 }}>{r.titre}</MenuItem>)}
         {partages.length > 0 && <ListSubheader>Partagés avec moi</ListSubheader>}
@@ -232,7 +259,8 @@ function ListeRapports({ proposes, enregistres, indisponibles, selection, ouvrir
   return (
     <Card variant="outlined" sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       {!lectureSeule && <Button variant="outlined" startIcon={<AddOutlined />} onClick={nouveau} sx={{ minHeight: 48 }}>Nouveau rapport</Button>}
-      {groupe('Proposés par le siège', [...proposes.map((r) => ({ cle: `p-${r.id}`, titre: r.titre })), ...modeles.map((r) => ({ cle: String(r.id), titre: r.titre }))])}
+      {groupesProposes(proposes, role).map((g) => <Box key={g.titre}>{groupe(g.titre, [...g.rapports.map((r) => ({ cle: `p-${r.id}`, titre: r.titre })),
+        ...(g.titre === TITRE_SIEGE ? modeles.map((r) => ({ cle: String(r.id), titre: r.titre })) : [])])}</Box>)}
       {enregistres === null ? <Skeleton variant="rounded" height={88} /> : indisponibles ? (
         <Typography variant="body2" color="text.secondary" sx={{ px: 1 }}>Les rapports enregistrés ne sont pas encore disponibles.</Typography>
       ) : (

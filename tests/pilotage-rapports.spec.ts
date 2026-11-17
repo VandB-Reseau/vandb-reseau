@@ -148,6 +148,9 @@ test('Pilotage du franchisé : son magasin seul, sans nine box ni axes de l’é
   await page.goto('./#/pilotage')
   await expect(page.getByRole('heading', { level: 1, name: 'Pilotage' })).toBeVisible()
   await expect(page.getByText('1 magasin', { exact: false }).first()).toBeVisible()
+  // Ses rapports de départ, jamais ceux de l'équipe
+  await expect(page.getByRole('heading', { level: 2, name: 'Mon CA mois par mois face à l’an dernier' })).toBeVisible()
+  await expect(page.getByText('Franchisés à remobiliser')).toHaveCount(0)
   // Les rapports de l'équipe et ceux réservés à l'équipe n'apparaissent pas
   if (isMobile) {
     await page.getByRole('combobox', { name: 'Rapport' }).click()
@@ -177,4 +180,57 @@ test('Pilotage du franchisé : son magasin seul, sans nine box ni axes de l’é
   await page.keyboard.press('Escape')
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+})
+
+// Rapports de départ par public et engagement du franchisé (Joseph, 17/11/2026 au soir)
+const jourTest = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10)
+const donneesEngagement = () => ({
+  communications: [1, 2].map((id) => ({
+    id, titre: `Annonce ${id}`, texte: 'Texte.', magasins: null, auteur: 'autre', auteur_nom: 'Dominique DIRECTION', auteur_role: 'directeur',
+    cree_le: `${jourTest(-5)}T09:00:00Z`, lus: ['Franchisé 4'], non_lus: ['Franchisé 2'],
+  })),
+  config: { actions: {
+    'Nantes Test': [{ id: 'l1', action: 'Refaire la vitrine', porteur: 'Franchisé 2', echeance: jourTest(-10), creeLe: jourTest(-30) }],
+    'Bordeaux Test': [{ id: 'l2', action: 'Commander les coffrets', porteur: 'Franchisé 4', echeance: jourTest(-10), creeLe: jourTest(-30), faite: jourTest(-12) }],
+  } },
+  messagerie: { messages: [{ id: 1, store: 'Bordeaux Test', auteur: 'f4', auteur_nom: 'Franchisé 4', auteur_role: 'franchise', auteur_cle: 'franchise:Franchisé 4', texte: 'Bien reçu', mentions: [], cree_le: `${jourTest(-1)}T10:00:00Z` }] },
+})
+
+test('Pilotage : rapports de départ par public et engagement du franchisé', async ({ page, isMobile }) => {
+  await seConnecter(page, { ...donneesEngagement(), rapports: [] })
+  await page.goto('./#/pilotage')
+  await expect(page.getByRole('heading', { level: 2, name: 'Budget contre réel par magasin' })).toBeVisible()
+  const titre = 'Franchisés à remobiliser'
+  if (isMobile) {
+    await page.getByRole('combobox', { name: 'Rapport' }).click()
+    await page.getByRole('option', { name: titre, exact: true }).first().click()
+  } else {
+    // Le Directeur voit les rapports de départ des trois publics
+    await expect(page.getByRole('list', { name: 'Pour les Coachs' })).toContainText('Mes magasins : qui voir en priorité')
+    await expect(page.getByRole('list', { name: 'Pour les franchisés' })).toContainText('Mon budget : où j’en suis')
+    await page.getByRole('list', { name: 'Pour les Responsables Régionaux' }).getByRole('button', { name: titre }).click()
+  }
+  await expect(page.getByRole('heading', { level: 2, name: titre })).toBeVisible()
+  await expect(tableau(page).getByRole('columnheader', { name: 'Tâches tenues dans les délais (90 jours)' })).toBeVisible()
+  await expect(tableau(page).getByRole('row', { name: /^Nantes Test/ }).getByRole('cell').nth(1)).toHaveText(/^0(,0)?\s%$/)
+  await expect(tableau(page).getByRole('row', { name: /^Bordeaux Test/ }).getByRole('cell').nth(1)).toHaveText(/^100(,0)?\s%$/)
+  await expect(tableau(page).getByRole('row', { name: /^Nantes Test/ }).getByRole('cell').nth(3)).toHaveText(/^0(,0)?\s%$/)
+  // Regroupement par engagement
+  await ouvrirConstructeur(page)
+  await page.getByRole('group', { name: 'Lignes' }).getByRole('combobox').click()
+  await page.getByRole('option', { name: 'Engagement du franchisé', exact: true }).click()
+  await expect(tableau(page).getByRole('row', { name: /^Peu engagé/ })).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+})
+
+test('Pilotage du Coach : ses rapports de départ d’abord', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Même liste sur téléphone')
+  await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Noé MODELE' }, rapports: [] })
+  await page.goto('./#/pilotage')
+  await expect(page.getByRole('heading', { level: 2, name: 'Mes magasins : qui voir en priorité' })).toBeVisible()
+  const depart = page.getByRole('list', { name: 'Pour bien démarrer' })
+  await expect(depart).toContainText('Franchisés à remobiliser')
+  await expect(depart).not.toContainText('Ma région')
+  await expect(depart).not.toContainText('Mon budget')
 })
