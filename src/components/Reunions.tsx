@@ -1,3 +1,4 @@
+import { styleIntertitre } from '../theme/theme'
 // Réunions et formations (sprint 22, A2) : magasins invités d'un événement, pointage des présents par l'équipe,
 // réunions de l'année sur la fiche magasin, réponse du franchisé sur son accueil
 import { useEffect, useState } from 'react'
@@ -72,7 +73,7 @@ export function PresencesReunion({ reseau, e }: { reseau: Reseau; e: Evenement }
   }
   return (
     <Box component="section" aria-label="Présences">
-      <Typography variant="h3" component="h3" sx={{ mb: 0.5 }}>Présences</Typography>
+      <Typography component="h3" sx={styleIntertitre}>Présences</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         {[`${reponses} réponse${reponses > 1 ? 's' : ''} sur ${visibles.length}`, commencee && `${presents} présent${presents > 1 ? 's' : ''}`].filter(Boolean).join(' · ')}
       </Typography>

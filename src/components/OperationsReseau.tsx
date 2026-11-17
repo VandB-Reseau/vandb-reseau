@@ -14,7 +14,7 @@ import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
-import { Section } from './Section'
+import { Section, LigneVide } from './Section'
 import { formatEuros } from '../data/chiffres'
 import { bilanOperation, libelleTypeOperation, operationsDu, phraseBilan, pts, statsOperations } from '../data/operations'
 import { dateCourte, lienFiche } from '../lib/format'
@@ -29,7 +29,7 @@ export function OperationsReseau({ reseau }: { reseau: Reseau }) {
   if (!stats.length) {
     return (
       <Section titre="Opérations commerciales">
-        <Typography variant="body2" color="text.secondary">Aucune opération notée sur ces magasins. Le franchisé ou son Coach les note dans les chiffres du magasin ; leur bilan arrive ici le mois suivant.</Typography>
+        <LigneVide>Aucune opération notée sur ces magasins. Le franchisé ou son Coach les note dans les chiffres du magasin ; leur bilan arrive ici le mois suivant.</LigneVide>
       </Section>
     )
   }

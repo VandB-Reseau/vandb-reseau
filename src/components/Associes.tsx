@@ -1,3 +1,5 @@
+import { LigneVide } from './Section'
+import { styleIntertitre } from '../theme/theme'
 import { useDroits } from '../auth/Droits'
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
@@ -73,7 +75,7 @@ export function ListeAssocies({ reseau, m, signaler }: { reseau: Reseau; m: Maga
         {referentiels && <Button startIcon={<AddOutlined />} onClick={() => setEdition(null)} sx={{ minHeight: 48 }} aria-label="Ajouter un associé">Ajouter</Button>}
       </Box>
       {!m.franchise && <Box sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider' }}><Typography variant="body1" sx={{ fontWeight: 500 }}>V and B</Typography></Box>}
-      {enplace.length === 0 && m.franchise && <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>Aucun franchisé associé renseigné.</Typography>}
+      {enplace.length === 0 && m.franchise && <LigneVide>Aucun franchisé associé renseigné.</LigneVide>}
       {enplace.map((a) => <LigneAssocie key={a.id} reseau={reseau} m={m} a={a} modifier={referentiels ? () => setEdition(a) : undefined} />)}
       {anciens.length > 0 && (
         <>
@@ -118,7 +120,7 @@ function DialogAssocie({ reseau, m, associe, onFermer }: { reseau: Reseau; m: Ma
         renderInput={(p) => <TextField {...p} label="Nom" autoFocus={!associe} error={doublon} helperText={doublon ? 'Déjà associé à ce magasin.' : ' '} />} />
       {m.franchise ? (
         <Box role="group" aria-label="Mandats">
-          <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>Mandats</Typography>
+          <Typography component="h3" sx={styleIntertitre}>Mandats</Typography>
           {mandats.map((x, i) => (
             <Box key={i} sx={{ display: 'grid', gap: 1, mb: 1.5, alignItems: 'center', gridTemplateColumns: '1fr 1fr 48px' }}>
               <ChampDate label="Début du mandat" value={x.debut} onChange={(e) => changerMandat(i, 'debut', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />

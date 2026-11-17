@@ -1,3 +1,4 @@
+import { LigneVide } from './Section'
 import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -86,7 +87,7 @@ export function AuMagasin({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
           <Button variant="outlined" startIcon={<MyLocationOutlined />} onClick={() => localiser(true)} disabled={etat === 'cherche'} sx={{ minHeight: 48, bgcolor: 'background.paper' }}>
             {etat === 'cherche' ? 'Recherche…' : 'Je suis au magasin'}
           </Button>
-          {etat === 'loin' && <Typography variant="body2" color="text.secondary">Aucun de tes magasins à moins de 300 m.</Typography>}
+          {etat === 'loin' && <LigneVide>Aucun de tes magasins à moins de 300 m.</LigneVide>}
         </Box>
       )}
       {visite && proche && <DialogVisite reseau={reseau} visite={null} magasinsInitiaux={[proche.nom]} onFermer={(m) => { setVisite(false); if (m) setMessage(m) }} />}

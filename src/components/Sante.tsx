@@ -1,3 +1,4 @@
+import { styleIntertitre } from '../theme/theme'
 import { memo, useCallback, useRef, useState } from 'react'
 import Chip from '@mui/material/Chip'
 import Box from '@mui/material/Box'
@@ -179,7 +180,7 @@ export function NotesParAxe({ integre, notes, noter, libelleMagasin, colonnes = 
     <>
       {(['resultats', 'franchise'] as Axe[]).map((axe) => (
         <Box key={axe} sx={{ mb: 2 }}>
-          <Typography variant="overline" component="h3" color="text.secondary" sx={{ fontSize: 13, display: 'block', mb: 0.5 }}>{libelleAxe(axe, integre)}</Typography>
+          <Typography component="h3" sx={styleIntertitre}>{libelleAxe(axe, integre)}</Typography>
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: colonnes === 2 ? '1fr 1fr' : '1fr' } }}>
             {criteresAxe(axe).map((c) => (
               <Box key={c.id}>

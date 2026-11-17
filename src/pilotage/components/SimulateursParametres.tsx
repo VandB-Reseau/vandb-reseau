@@ -1,3 +1,4 @@
+import { styleIntertitre } from '../../theme/theme'
 import { useEffect, useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -55,7 +56,7 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
   const palierExt = (i: number, k: 'caMax' | 'tireuses' | 'investissement' | 'heures', x: number) => setV((y) => ({ ...y, marcheExterieur: { ...y.marcheExterieur, paliers: y.marcheExterieur.paliers.map((l, j) => (j === i ? { ...l, [k]: x } : l)) } }))
   const famille = (i: number, f: Partial<ParametresSimulateurs['familles'][number]>) => setV((y) => ({ ...y, familles: y.familles.map((l, j) => (j === i ? { ...l, ...f } : l)) }))
   const retirer = (i: number, onRetire: () => void, quoi: string) => !lecture && <IconButton aria-label={`Retirer ${quoi} ${i + 1}`} onClick={onRetire} sx={{ width: 48, height: 48 }}><DeleteOutlineOutlined /></IconButton>
-  const titre = (t: string) => <Box sx={{ px: 2, pt: 2, pb: 1 }}><Typography component="h3" sx={{ fontWeight: 700 }}>{t}</Typography></Box>
+  const titre = (t: string) => <Box sx={{ px: 2, pt: 2, pb: 1 }}><Typography component="h3" sx={{ ...styleIntertitre, mb: 0 }}>{t}</Typography></Box>
   const ajouter = (libelle: string, f: () => void) => !lecture && <Box sx={{ px: 2, py: 1 }}><Button startIcon={<AddOutlined />} onClick={f} sx={{ minHeight: 48 }}>{libelle}</Button></Box>
 
   const enregistrer = async () => {
@@ -114,7 +115,7 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
         </TableBody>
       </Table>
       <Box sx={{ px: 2, pt: 2, pb: 1 }}>
-        <Typography component="h3" sx={{ fontWeight: 700 }}>Productivité visée selon la part du bar</Typography>
+        <Typography component="h3" sx={{ ...styleIntertitre, mb: 0 }}>Productivité visée selon la part du bar</Typography>
       </Box>
       <Table aria-label="Productivité visée selon la part du bar">
         <TableHead><TableRow><TableCell>Part du bar à partir de</TableCell><TableCell align="right">CA HT par heure visé</TableCell><TableCell /></TableRow></TableHead>

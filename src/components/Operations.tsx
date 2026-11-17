@@ -10,7 +10,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
-import { Section } from './Section'
+import { Section, LigneVide } from './Section'
 import { Fenetre } from './EditionEquipe'
 import { ChampDate } from './ChampDate'
 import { useAuth } from '../auth/AuthContext'
@@ -37,7 +37,7 @@ export function SectionOperations({ reseau, m, signaler }: { reseau: Reseau; m: 
     <Section titre={liste.length ? `Opérations commerciales · ${liste.length}` : 'Opérations commerciales'}
       action={apercu ? undefined : <Button startIcon={<AddOutlined />} onClick={() => setEdition(null)} aria-label="Ajouter une opération commerciale" sx={{ minHeight: 48 }}>Ajouter</Button>}>
       {!liste.length ? (
-        <Typography variant="body2" color="text.secondary">Aucune opération notée. Note une dégustation, une soirée ou une promotion : son bilan se lit en caisse le mois suivant.</Typography>
+        <LigneVide>Aucune opération notée. Note une dégustation, une soirée ou une promotion : son bilan se lit en caisse le mois suivant.</LigneVide>
       ) : (
         <Box component="ul" aria-label={`Opérations commerciales de ${m.nom}`} sx={{ listStyle: 'none', m: 0, p: 0 }}>
           {vues.map((o) => {

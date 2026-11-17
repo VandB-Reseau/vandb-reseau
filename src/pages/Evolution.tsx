@@ -1,3 +1,4 @@
+import { styleBloc, styleEnteteBloc } from '../components/Section'
 import { styleListe } from '../components/TableauTri'
 import { useNavigate } from 'react-router-dom'
 import Button from '@mui/material/Button'
@@ -7,7 +8,6 @@ import { Link as RouterLink } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -153,8 +153,8 @@ function Contenu({ reseau, integre }: { reseau: Reseau; integre?: boolean }) {
         </Box>
       )}
       <Card sx={{ mb: 3 }}>
-        <CardContent sx={{ p: 3 }}>
-          <Typography component="h2" sx={[cartouche, { mb: 2 }]}>{avecSorties ? 'Ouvertures et sorties par année' : 'Ouvertures par année'}</Typography>
+        <Box sx={styleBloc}>
+          <Box sx={styleEnteteBloc}><Typography component="h2" sx={cartouche}>{avecSorties ? 'Ouvertures et sorties par année' : 'Ouvertures par année'}</Typography></Box>
           <CourbeParc annees={recentes} jour={reseau.jour} />
           <Box sx={{ display: 'flex', alignItems: 'flex-end', height: 200 }} role="img"
             aria-label={`Ouvertures : ${recentes.map((x) => `${x.a} ${x.ouvertures.length}${x.sorties.length ? `, ${x.sorties.length} sortie${x.sorties.length > 1 ? 's' : ''}` : ''}`).join(' ; ')}`}>
@@ -173,7 +173,7 @@ function Contenu({ reseau, integre }: { reseau: Reseau; integre?: boolean }) {
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}><Box component="span" sx={[{ fontWeight: 700 }, vert]}>En vert</Box> : magasins dans le réseau en fin d’année</Typography>
           {avecSorties && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}><Box component="span" sx={{ color: 'error.main', fontWeight: 700 }}>En rouge</Box> : sorties du réseau (fermeture, liquidation, tombée d’enseigne, cession)</Typography>}
-        </CardContent>
+        </Box>
       </Card>
       {surPC && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}><ChoixAffichage valeur={affichage} onChange={setAffichage} /></Box>}
       {!surPC || affichage === 'lignes' ? (

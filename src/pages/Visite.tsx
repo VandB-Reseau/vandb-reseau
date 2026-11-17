@@ -21,7 +21,7 @@ import { DialogVisite } from '../components/DialogVisite'
 import { EnvoyerCompteRendu } from '../components/EnvoyerCompteRendu'
 import { FeuilleCompteRendu } from '../components/FeuilleCompteRendu'
 import { ListeActions } from '../components/Actions'
-import { Section } from '../components/Section'
+import { Section, LigneVide } from '../components/Section'
 import { Fiche } from './PreparationVisite'
 import { styleImpression } from '../components/Feuille'
 import { actionsDuMagasin } from '../data/actions'
@@ -129,8 +129,7 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
         <Box className="sans-impression">
           {actions.length
             ? <ListeActions reseau={reseau} actions={actions} signaler={setMessage} libelle="Tâches décidées pendant la visite" magasins={[m.nom]} />
-            : <EmptyState icone={<CheckOutlined />} titre="Aucune tâche décidée" texte="Les tâches ajoutées pendant la visite se suivent ici."
-                action={<Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>Modifier la visite</Button>} />}
+            : <LigneVide action={<Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>Modifier la visite</Button>}>Aucune tâche décidée pendant la visite.</LigneVide>}
         </Box>
       </Box>
     )

@@ -1,3 +1,4 @@
+import { LigneVide } from '../components/Section'
 // Demandes des franchisés au siège (refonte vague 4, Joseph 10/11/2026, 37A). Équipe : guichet de ses magasins, filtré par
 // statut, avec le délai médian de première réponse et les demandes ouvertes depuis plus de 5 jours. Franchisé : ses
 // demandes, une nouvelle en trois champs, la conversation avec le siège.
@@ -52,7 +53,7 @@ export function PuceDemande({ statut }: { statut: StatutDemande }) {
 }
 
 function FilEchanges({ d }: { d: Demande }) {
-  if (!d.echanges.length) return <Typography variant="body2" color="text.secondary">Aucun message.</Typography>
+  if (!d.echanges.length) return <LigneVide>Aucun message.</LigneVide>
   return (
     <Box component="ol" aria-label="Échanges" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>
       {d.echanges.map((e, i) => (

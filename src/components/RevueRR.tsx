@@ -10,7 +10,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import ArrowForward from '@mui/icons-material/ArrowForward'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
-import { Section } from './Section'
+import { Section, LigneVide } from './Section'
 import { Pastille } from './Social'
 import { PastilleCase } from './Sante'
 import { formatPourcent, libelleAlerte, libelleMois } from '../data/chiffres'
@@ -37,7 +37,7 @@ const styleImpression = (
 const Rangee = ({ children }: { children: ReactNode }) => (
   <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 1.5, rowGap: 0.5, minHeight: 52, py: 0.75, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>{children}</Box>
 )
-const Vide = ({ children }: { children: ReactNode }) => <Typography variant="body2" color="text.secondary">{children}</Typography>
+const Vide = LigneVide
 const LienMagasin = ({ nom }: { nom: string }) => <Link component={RouterLink} to={lienFiche(nom)} sx={{ fontWeight: 500, py: 1 }}>{nom}</Link>
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 

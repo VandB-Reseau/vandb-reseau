@@ -30,7 +30,7 @@ import { DialogDirecteur, DialogFranchise, DialogRR } from '../components/Editio
 import { PastilleCharge } from '../components/Charge'
 import { PastilleStatut } from '../components/Pastilles'
 import { ListeMagasins } from '../components/ListeMagasins'
-import { Ligne, Section } from '../components/Section'
+import { Ligne, Section, LigneVide } from '../components/Section'
 import { SectionEngagement } from '../components/Engagement'
 import { useEngagement } from '../data/engagement'
 import { chargeA, magasinsDuCoach } from '../data/charge'
@@ -138,7 +138,7 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
         {vue === 'magasins' && <Box sx={{ display: 'grid', gap: 2 }}>
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
             <Section titre="Coachs rattachés">
-              {coachs.length === 0 ? <Typography variant="body2" color="text.secondary">Aucun Coach rattaché.</Typography> : coachs.map((c) => (
+              {coachs.length === 0 ? <LigneVide>Aucun Coach rattaché.</LigneVide> : coachs.map((c) => (
                 <Rangee key={c.nom}>
                   <Link component={RouterLink} to={lienCoach(c.nom)} sx={{ flex: 1, py: 1.5, fontWeight: 500 }}>{c.nom}</Link>
                   <Typography variant="body2" color="text.secondary">{pluriel(magasinsDuCoach(reseau, c.nom).length, 'magasin')}</Typography>

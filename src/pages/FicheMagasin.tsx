@@ -41,7 +41,7 @@ import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import TipsAndUpdatesOutlined from '@mui/icons-material/TipsAndUpdatesOutlined'
 import GridViewOutlined from '@mui/icons-material/GridViewOutlined'
-import { texteSur } from '../theme/theme'
+import { texteSur, styleIntertitre } from '../theme/theme'
 import { PastilleCase, PastilleTendance } from '../components/Sante'
 import { journalDansLeFil, useEditionJournal } from '../components/Journal'
 import { ANCIENNE_NOTE_FRANCHISE, caseDe, couleurTon, criteresAxe, historiqueSante, libelleAncienneNote, libelleAxe, libelleNote, niveauAxe, nineBox, scoreAxe, tendance, tonDe, type Axe, type Ton as TonDeploiement } from '../data/sante'
@@ -85,7 +85,7 @@ import RateReviewOutlined from '@mui/icons-material/RateReviewOutlined'
 import { ContenuLeviers, ListeInspirations } from '../components/Leviers'
 import { inspirationsDu, leviersDuMagasin, libellesLevier, useReperesReseau } from '../data/leviers'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
-import { Contact, DansCarte, Ligne, Repliee, Section, styleBloc, styleEnteteBloc } from '../components/Section'
+import { Contact, DansCarte, Ligne, Repliee, Section, styleBloc, styleEnteteBloc, LigneVide } from '../components/Section'
 import Collapse from '@mui/material/Collapse'
 import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import { filRetenu, ongletRetenu, retenirFil, retenirOnglet } from '../lib/ficheMemoire'
@@ -376,7 +376,7 @@ function SectionVisites({ reseau, m, saisir, modifier }: { reseau: Reseau; m: Ma
         <Typography variant="body2" color="text.secondary">{r.faites} visite{r.faites > 1 ? 's' : ''} en {a.court} · référence nine box {r.reference}</Typography>
         {r.alerte && <Chip size="small" color="warning" label={libellePasVu(r)} sx={{ fontSize: 12, fontWeight: 600 }} />}
       </Box>}
-      {vs.length === 0 ? <Typography variant="body2" color="text.secondary">Aucune visite enregistrée.</Typography> : (toutes ? vs : vs.slice(0, MAXI)).map((v) => (
+      {vs.length === 0 ? <LigneVide>Aucune visite enregistrée.</LigneVide> : (toutes ? vs : vs.slice(0, MAXI)).map((v) => (
         <Box key={v.id ?? v.date} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
           <Typography variant="body2" color="text.secondary" sx={{ width: 110, flexShrink: 0 }}>{dateCourte(v.date)}</Typography>
           <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -606,7 +606,7 @@ function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Ma
         if (!liste.length) return null
         return (
           <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle2" component="h3" sx={{ mb: 0.5 }}>Mois enregistrés</Typography>
+            <Typography component="h3" sx={styleIntertitre}>Mois enregistrés</Typography>
             {(tousLesMois ? liste : liste.slice(0, 6)).map((c) => (
               <Box key={c.mois} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
                 <Typography variant="body2" color="text.secondary" sx={{ width: 130, flexShrink: 0 }}>{libelleMois(c.mois)}</Typography>
@@ -776,7 +776,7 @@ function ActiviteMagasin({ reseau, m, filtre, filtrer, signaler, saisirVisite, m
           </Box>
           : elements.length
             ? <TableauActivite elements={elements} ouvrirJournal={edition.ouvrir} />
-            : <Typography variant="body2" color="text.secondary" sx={{ py: 1.5 }}>Rien pour l’instant dans ce filtre. Une visite, un appel ou une note s’ajoutent par le « + » de la fiche.</Typography>}
+            : <LigneVide>Rien pour l’instant dans ce filtre. Une visite, un appel ou une note s’ajoutent par le « + » de la fiche.</LigneVide>}
       </Card>
       {edition.fenetres}
     </Box>

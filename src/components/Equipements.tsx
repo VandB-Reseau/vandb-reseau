@@ -11,7 +11,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
-import { Section } from './Section'
+import { Section, LigneVide } from './Section'
 import { Fenetre } from './EditionEquipe'
 import { useAuth } from '../auth/AuthContext'
 import { useApercu } from '../auth/Apercu'
@@ -33,7 +33,7 @@ export function SectionEquipements({ reseau, m, signaler }: { reseau: Reseau; m:
   return (
     <Section titre={titre} action={lecture ? undefined : <Button startIcon={<AddOutlined />} onClick={() => setEdition(null)} aria-label="Ajouter un équipement" sx={{ minHeight: 48 }}>Ajouter</Button>}>
       {!liste.length ? (
-        <Typography variant="body2" color="text.secondary">Aucun équipement enregistré : tireuses, barnums, camion ou chariot mis à disposition du magasin.</Typography>
+        <LigneVide>Aucun équipement enregistré : tireuses, barnums, camion ou chariot mis à disposition du magasin.</LigneVide>
       ) : (
         <Box component="ul" aria-label={`Équipements de ${m.nom}`} sx={{ listStyle: 'none', m: 0, p: 0 }}>
           {liste.map((e) => (

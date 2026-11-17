@@ -1,3 +1,4 @@
+import { LigneVide } from '../../components/Section'
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Badge from '@mui/material/Badge'
@@ -266,7 +267,7 @@ function Activite({ magasin, annee, fils }: { magasin: string; annee: number; fi
     <>
       {erreur && !donnees && <Alert severity="warning">Les modifications du budget ne se chargent pas pour l’instant. Les commentaires restent affichés.</Alert>}
       {evts.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">Rien pour l’instant : les commentaires et les enregistrements du budget s’afficheront ici.</Typography>
+        <LigneVide>Rien pour l’instant : les commentaires et les enregistrements du budget s’afficheront ici.</LigneVide>
       ) : (
         <Box component="ol" aria-label="Activité du budget" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>
           {evts.map((e) => (

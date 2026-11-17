@@ -1,3 +1,4 @@
+import { styleBloc, styleEnteteBloc } from './Section'
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -250,8 +251,8 @@ export function CarteThematiques({ reseau, signaler }: { reseau: Reseau; signale
   const ths = reseau.deploiements.thematiques
   return (
     <Card sx={{ mt: 2 }} component="section" aria-label="Thématiques de déploiement">
-      <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
+      <Box sx={styleBloc}>
+        <Box sx={styleEnteteBloc}>
           <Typography component="h2" sx={[cartouche, { mr: 'auto' }]}>Thématiques de déploiement</Typography>
           <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48 }}>Gérer les thématiques</Button>
         </Box>
@@ -260,7 +261,7 @@ export function CarteThematiques({ reseau, signaler }: { reseau: Reseau; signale
             {ths.map((t) => <Chip key={t.id} label={`${t.libelle} · ${t.options.map((o) => o.libelle).join(' / ')}`} variant="outlined" sx={{ fontSize: 13, minHeight: 36 }} />)}
           </Box>
         ) : <Typography color="text.secondary">Aucune thématique</Typography>}
-      </CardContent>
+      </Box>
       {ouvert && <DialogThematiques reseau={reseau} onFermer={(m) => { setOuvert(false); if (m) signaler(m) }} />}
     </Card>
   )

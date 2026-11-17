@@ -11,8 +11,9 @@ import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
 import ErrorOutlineOutlined from '@mui/icons-material/ErrorOutlineOutlined'
 import WarningAmberOutlined from '@mui/icons-material/WarningAmberOutlined'
 import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
+import EventOutlined from '@mui/icons-material/EventOutlined'
 import Button from '@mui/material/Button'
-import { Section } from './Section'
+import { Section, LigneVide } from './Section'
 import { ListeActions } from './Actions'
 import { prioritesActives } from '../data/planAction'
 import { chargementDiffere } from '../lib/chargementDiffere'
@@ -98,33 +99,37 @@ export function pointsAttention(reseau: Reseau, m: Magasin, manquants: number, c
 // (une seule liste : visite, tâches, mandats, fiche à compléter) et les objectifs ; à droite comment va le magasin
 // (CA de l'année et du mois, alertes de caisse et de santé), le budget et le dernier échange. Les informations fixes du
 // magasin passent dans le panneau « Infos du magasin » de l'en-tête.
-type TonLigne = 'agir' | 'surveiller' | 'neutre'
-interface LigneAFaire { cle: string; ton: TonLigne; titre: string; detail?: string; lien?: string; onClick?: () => void }
+export type TonLigne = 'agir' | 'surveiller' | 'neutre'
+// icone : à la place du point gris (calendrier d'une visite, saisie…) ; fin : boutons en bout de ligne (plusieurs magasins)
+export interface LigneAFaire { cle: string; ton: TonLigne; titre: string; detail?: string; lien?: string; onClick?: () => void; icone?: ReactNode; fin?: ReactNode }
 const RANG_TON: Record<TonLigne, number> = { agir: 0, surveiller: 1, neutre: 2 }
 const MAX_TACHES = 3
 
 // Puce dans une colonne de 48 px, comme la case à cocher des tâches : les textes du bloc « À faire » s'alignent
-function Puce({ ton }: { ton: TonLigne }) {
+function Puce({ ton, icone }: { ton: TonLigne; icone?: ReactNode }) {
   return (
     <Box aria-hidden={ton === 'neutre' || undefined} sx={{ width: 48, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
       {ton === 'agir' ? <ErrorOutlineOutlined sx={{ color: 'error.main' }} />
         : ton === 'surveiller' ? <WarningAmberOutlined sx={{ color: 'warning.dark' }} />
+        // Choix 6 (Joseph, 17/11/2026) : une visite ou un rendez-vous se reconnaît à son calendrier
+        : icone ? <Box sx={{ display: 'flex', color: 'text.secondary' }}>{icone}</Box>
         : <Box sx={{ width: 8, height: 8, borderRadius: 999, bgcolor: 'text.disabled' }} />}
     </Box>
   )
 }
 
-function Lignes({ lignes }: { lignes: LigneAFaire[] }) {
+export function Lignes({ lignes }: { lignes: LigneAFaire[] }) {
   return (
     <Box sx={{ display: 'grid' }}>
       {lignes.map((l, i) => {
         const contenu = (
           <>
-            <Puce ton={l.ton} />
+            <Puce ton={l.ton} icone={l.icone} />
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>{l.titre}</Typography>
               {l.detail && <Typography variant="body2" sx={{ color: l.ton === 'agir' ? 'error.main' : 'text.secondary' }}>{l.detail}</Typography>}
             </Box>
+            {l.fin}
             {(l.lien || l.onClick) && <ChevronRightOutlined sx={{ color: 'text.secondary', flexShrink: 0 }} />}
           </>
         )
@@ -152,9 +157,9 @@ export function AFaireMagasin({ reseau, m, signaler, manquants = 0, completer, c
   const autresPrevues = reseau.visites.filter((v) => v.magasin === m.nom && v.date > reseau.jour && (!etape.visite || v.id !== etape.visite.id))
     .sort((a, b) => a.date.localeCompare(b.date))
   const lignes: LigneAFaire[] = [
-    { cle: 'visite', ton: (pasVu ? 'surveiller' : 'neutre') as TonLigne, titre: `Visite : ${etape.libelle}`, detail: pasVu && rythme ? libellePasVu(rythme) : etape.detail || undefined, lien: etape.lien },
+    { cle: 'visite', ton: (pasVu ? 'surveiller' : 'neutre') as TonLigne, titre: `Visite : ${etape.libelle}`, detail: pasVu && rythme ? libellePasVu(rythme) : etape.detail || undefined, lien: etape.lien, icone: <EventOutlined /> },
     ...autresPrevues.map((v): LigneAFaire => ({ cle: `prevue-${v.id ?? v.date}`, ton: 'neutre', titre: `${libelleTypeVisite(v.type)} prévue`,
-      detail: [dateCourte(v.date), v.visiteurs.length ? nomsVisiteurs(v) : ''].filter(Boolean).join(' · '), lien: lienVisite(v) })),
+      detail: [dateCourte(v.date), v.visiteurs.length ? nomsVisiteurs(v) : ''].filter(Boolean).join(' · '), lien: lienVisite(v), icone: <EventOutlined /> })),
     // Mandats et fiche à compléter (points d'attention 257) : des choses à faire
     ...pointsAttention(reseau, m, manquants, completer).filter((p) => p.cle.startsWith('mandat-') || p.cle === 'fiche')
       .map((p): LigneAFaire => ({ cle: p.cle, ton: p.ton, titre: p.texte, lien: p.lien, onClick: p.onClick })),
@@ -172,7 +177,7 @@ export function AFaireMagasin({ reseau, m, signaler, manquants = 0, completer, c
     <Section region titre="À faire" action={autres > 0
       ? <Button component={RouterLink} to={`${lien}?vue=activite&fil=taches`} sx={{ minHeight: 48 }}>{`Toutes les tâches (${ouvertes.length})`}</Button> : undefined}>
       <Lignes lignes={lignes} />
-      <Box sx={{ borderTop: '1px solid', borderColor: 'divider', '& > p:first-of-type': { py: 1.5 } }}>
+      <Box sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
         <ListeActions reseau={reseau} actions={montrees} signaler={signaler} libelle={`Tâches en cours de ${m.nom}`} magasins={[m.nom]} />
       </Box>
       {autres > 0 && <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>{`Et ${autres} autre${autres > 1 ? 's' : ''} tâche${autres > 1 ? 's' : ''} en cours`}</Typography>}
@@ -194,7 +199,7 @@ function CommentVa({ reseau, m }: { reseau: Reseau; m: Magasin }) {
     .map((p): LigneAFaire => ({ cle: p.cle, ton: p.ton, titre: p.texte, lien: p.lien }))
   return (
     <Section region titre="Comment va le magasin" action={<Button component={RouterLink} to={`${lienFiche(m.nom)}?vue=chiffres`} sx={{ minHeight: 48 }}>Chiffres</Button>}>
-      {!a ? <Typography variant="body2" color="text.secondary" sx={{ pb: 1 }}>Pas encore de chiffres de caisse pour ce magasin. Ils arrivent avec l’import mensuel.</Typography> : (
+      {!a ? <LigneVide>Pas encore de chiffres de caisse pour ce magasin. Ils arrivent avec l’import mensuel.</LigneVide> : (
         <Box role="group" aria-label="Indicateurs du magasin" sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', mx: { xs: -1.5, md: -2 } }}>
           <Indicateur libelle={cumul ? `CA ${cumul.annee} à fin ${libelleMoisCourt(a.mois).split(' ')[0]}` : 'CA de l’année'} valeur={formatKEuros(cumul?.ca ?? null)}
             detail={cumul?.ecart != null ? `${formatPourcent(cumul.ecart)} vs ${cumul.annee - 1}` : 'Pas de comparaison'} ton={cumul?.ecart != null ? (cumul.ecart >= 0 ? 'bon' : 'mauvais') : undefined}
@@ -218,7 +223,7 @@ function DernierEchange({ reseau, m }: { reseau: Reseau; m: Magasin }) {
     .sort((x, y) => instantTri(y.instant).localeCompare(instantTri(x.instant)))[0] as ElementFil | undefined
   return (
     <Section region titre="Dernier échange" action={<Button component={RouterLink} to={`${lienFiche(m.nom)}?vue=activite`} sx={{ minHeight: 48 }}>Toute l’activité</Button>}>
-      {!e ? <Typography variant="body2" color="text.secondary" sx={{ pb: 1 }}>Aucun échange enregistré. Une visite, un appel ou une note s’ajoutent par le « + » de la fiche.</Typography> : (
+      {!e ? <LigneVide>Aucun échange enregistré. Une visite, un appel ou une note s’ajoutent par le « + » de la fiche.</LigneVide> : (
         <ButtonBase component={RouterLink} to={e.lien}
           sx={{ display: 'block', width: '100%', textAlign: 'left', py: 1, minHeight: 48, fontFamily: 'inherit', '@media (hover: hover)': { '&:hover': { bgcolor: 'action.hover' } } }}>
           <Typography variant="body2" color="text.secondary">{[dateCourte(e.instant.slice(0, 10)), e.action.charAt(0).toUpperCase() + e.action.slice(1), e.auteur].filter(Boolean).join(' · ')}</Typography>

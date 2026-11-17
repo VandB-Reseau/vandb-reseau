@@ -1,3 +1,4 @@
+import { styleIntertitre } from '../theme/theme'
 // Carte à titre, ligne libellé / valeur et ligne de contact des fiches (magasin, Coach, RR, franchisé)
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -52,7 +53,7 @@ export function Section({ titre, children, action, region = false }: { titre: st
     return (
       <Box component="section" aria-label={titre} sx={{ pt: 2, mt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, minHeight: 48 }}>
-          <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1rem', mr: 'auto' }}>{titre}</Typography>
+          <Typography component="h3" sx={{ ...styleIntertitre, mb: 0, mr: 'auto' }}>{titre}</Typography>
           {action}
         </Box>
         {children}
@@ -69,6 +70,17 @@ export function Section({ titre, children, action, region = false }: { titre: st
       </Box>
       {children}
     </Card>
+  )
+}
+
+// Choix 3 (Joseph, 17/11/2026) : une liste vide dans un bloc est une ligne grise, partout la même ; l'illustration
+// (EmptyState) est réservée à un écran entier vide
+export function LigneVide({ children, action }: { children: ReactNode; action?: ReactNode }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', py: 1.5 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ flex: 1, minWidth: 0 }}>{children}</Typography>
+      {action}
+    </Box>
   )
 }
 
