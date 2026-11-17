@@ -32,6 +32,9 @@ import Check from '@mui/icons-material/Check'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import SearchOutlined from '@mui/icons-material/SearchOutlined'
 import { Fenetre } from './EditionEquipe'
+import { useMessageAnnulable } from './Annulable'
+import TuneOutlined from '@mui/icons-material/TuneOutlined'
+import DeleteOutline from '@mui/icons-material/DeleteOutlined'
 import { ChampDate } from './ChampDate'
 import { Pastille } from './Social'
 import { useAuth } from '../auth/AuthContext'
@@ -139,30 +142,25 @@ function Frise({ etape, fait, allerA }: { etape: number; fait: boolean[]; allerA
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   return (
     <Box component="nav" aria-label="Étapes du plan marché extérieur">
-      <Box component="ol" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))' }}>
+      {/* Titres des étapes, sans numéros (Joseph, 17/11/2026) ; sur téléphone la frise défile */}
+      <Box component="ol" sx={{ listStyle: 'none', m: 0, p: 0, display: surPC ? 'grid' : 'flex', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', overflowX: surPC ? undefined : 'auto', scrollbarWidth: 'none' }}>
         {ETAPES.map((e, i) => {
           const actuelle = i === etape
           const ok = fait[i] && !actuelle
           return (
             <li key={e.libelle}>
-              <ButtonBase onClick={() => allerA(i)} aria-current={actuelle ? 'step' : undefined} aria-label={`Étape ${i + 1} : ${e.libelle}${ok ? ', faite' : ''}`}
-                sx={{ width: '100%', minHeight: 56, px: { xs: 0.5, md: 1.5 }, py: 1, gap: 1.25, justifyContent: surPC ? 'flex-start' : 'center', borderBottom: '3px solid', borderColor: actuelle ? 'secondary.main' : ok ? 'success.main' : 'divider', fontFamily: 'inherit', textAlign: 'left', borderRadius: '8px 8px 0 0', '&:hover': { bgcolor: 'action.hover' } }}>
-                <Box component="span" aria-hidden sx={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: '0.875rem', border: '2px solid', fontVariantNumeric: 'tabular-nums',
-                  borderColor: actuelle ? 'secondary.main' : ok ? 'success.main' : 'divider', bgcolor: actuelle ? 'secondary.main' : ok ? 'success.main' : 'background.paper', color: actuelle ? 'secondary.contrastText' : ok ? '#fff' : 'text.primary' }}>
-                  {ok ? <Check sx={{ fontSize: 18 }} /> : i + 1}
+              <ButtonBase onClick={() => allerA(i)} aria-current={actuelle ? 'step' : undefined} aria-label={`Étape ${e.libelle}${ok ? ', faite' : ''}`}
+                sx={{ width: '100%', minHeight: 56, px: { xs: 1.25, md: 1.5 }, py: 1, gap: 0.75, justifyContent: 'flex-start', borderBottom: '3px solid', borderColor: actuelle ? 'secondary.main' : ok ? 'success.main' : 'divider', fontFamily: 'inherit', textAlign: 'left', borderRadius: '8px 8px 0 0', '&:hover': { bgcolor: 'action.hover' } }}>
+                {ok && <Check aria-hidden sx={{ fontSize: 18, color: 'success.main', flexShrink: 0 }} />}
+                <Box component="span" sx={{ minWidth: 0 }}>
+                  <Box component="span" sx={{ display: 'block', fontWeight: actuelle ? 800 : 600, fontSize: '0.875rem', lineHeight: 1.25, whiteSpace: 'nowrap', color: actuelle ? 'text.primary' : 'text.secondary' }}>{e.libelle}</Box>
+                  {surPC && <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', color: 'text.secondary' }}>{e.sous}</Box>}
                 </Box>
-                {surPC && (
-                  <Box component="span" sx={{ minWidth: 0 }}>
-                    <Box component="span" sx={{ display: 'block', fontWeight: 700, fontSize: '0.875rem', lineHeight: 1.25 }}>{e.libelle}</Box>
-                    <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', color: 'text.secondary' }}>{e.sous}</Box>
-                  </Box>
-                )}
               </ButtonBase>
             </li>
           )
         })}
       </Box>
-      {!surPC && <Typography sx={{ mt: 1, fontWeight: 700 }}>{`${etape + 1}. ${ETAPES[etape].libelle}`}</Typography>}
     </Box>
   )
 }
@@ -433,66 +431,95 @@ function FenetreCible({ cible: c, plan, changer, par, le, onFermer }: { cible: C
 }
 
 // ── 4 · Diagnostic ──────────────────────────────────────────────────
+// Joseph (17/11/2026) : la liste des cibles avec leurs notes ; on choisit celle à noter ou à reprendre, on peut la retirer
+const NOTE_COURTE: Record<Critere, string> = { potentiel: 'Potentiel', visibilite: 'Visibilité', prescription: 'Prescription', recurrence: 'Bénéfice', cause: 'Cause' }
 function EtapeDiagnostic({ plan, changer, lecture }: { plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; lecture: boolean }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
-  const [choisie, setChoisie] = useState(() => (plan.cibles.find((c) => !estNotee(c)) ?? plan.cibles[0])?.id ?? '')
-  const c = plan.cibles.find((x) => x.id === choisie) ?? plan.cibles[0]
-  if (!c) return <><Titre>Diagnostic</Titre><Typography color="text.secondary">Aucune cible à noter. Retiens des cibles au repérage ou ajoute-les à la main.</Typography></>
-  const noter = (k: Critere, v: number | null) => {
-    const notes = { ...c.notes }
-    if (v === null) delete notes[k]; else notes[k] = v
-    changer({ ...plan, cibles: plan.cibles.map((x) => (x.id === c.id ? { ...x, notes } : x)) })
+  const [edition, setEdition] = useState<Cible | null>(null)
+  const { signaler, bandeau } = useMessageAnnulable()
+  if (!plan.cibles.length) return <><Titre>Diagnostic</Titre><Typography color="text.secondary">Aucune cible à noter. Retiens des cibles au repérage ou ajoute-les à la main.</Typography></>
+  const retirer = (c: Cible) => {
+    const avant = plan
+    changer({ ...plan, cibles: plan.cibles.filter((x) => x.id !== c.id) }, true)
+    signaler(`${c.nom} retirée des cibles.`, () => changer(avant, true))
   }
-  const a = axes(c)
-  const q = quadrant(c)
-  const i = plan.cibles.indexOf(c)
-  const suivante = plan.cibles[i + 1]
+  const restantes = plan.cibles.filter((c) => !estNotee(c)).length
+  const etat = (c: Cible) => <Pastille ton={tonQuadrant(quadrant(c))}>{estNotee(c) ? libelleQuadrant(quadrant(c)) : `${Object.keys(c.notes).length}/5 noté${Object.keys(c.notes).length > 1 ? 's' : ''}`}</Pastille>
+  const bouton = (c: Cible) => (
+    <Button variant={estNotee(c) ? 'text' : 'outlined'} startIcon={estNotee(c) ? <EditOutlined /> : <TuneOutlined />} onClick={() => setEdition(c)} aria-label={`${estNotee(c) ? 'Modifier le diagnostic de' : 'Noter'} ${c.nom}`} sx={{ minHeight: 48, whiteSpace: 'nowrap' }}>
+      {estNotee(c) ? 'Modifier' : 'Noter'}
+    </Button>
+  )
   return (
     <>
-      <Titre>Diagnostic</Titre>
-      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: '280px minmax(0, 1fr)' }, alignItems: 'start' }}>
-        {surPC ? (
-          <Box component="ul" aria-label="Cibles à noter" sx={{ listStyle: 'none', m: 0, p: 0, borderRight: '1px solid', borderColor: 'divider', pr: 1.5 }}>
-            {plan.cibles.map((x) => (
-              <li key={x.id}>
-                <ButtonBase onClick={() => setChoisie(x.id)} aria-current={x.id === c.id ? 'true' : undefined}
-                  sx={{ width: '100%', minHeight: 48, px: 1.5, gap: 1, justifyContent: 'space-between', borderRadius: 2, fontFamily: 'inherit', fontSize: '0.875rem', textAlign: 'left', fontWeight: x.id === c.id ? 700 : 500, bgcolor: x.id === c.id ? 'action.selected' : undefined }}>
-                  <Box component="span" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.nom}</Box>
-                  <Pastille ton={tonQuadrant(quadrant(x))}>{estNotee(x) ? libelleQuadrant(quadrant(x)) : `${Object.keys(x.notes).length}/5`}</Pastille>
-                </ButtonBase>
-              </li>
-            ))}
-          </Box>
-        ) : (
-          <TextField select label="Cible" value={c.id} onChange={(e) => setChoisie(e.target.value)} slotProps={{ select: { native: true } }}>
-            {plan.cibles.map((x) => <option key={x.id} value={x.id}>{x.nom}</option>)}
-          </TextField>
-        )}
-        <Box sx={{ minWidth: 0 }}>
-          <Typography component="h3" sx={{ fontWeight: 700, fontSize: '1.125rem' }}>{c.nom}</Typography>
-          <Typography variant="body2" color="text.secondary">{[libelleCategorie(c.categorie), c.detail].filter(Boolean).join(' · ')}</Typography>
-          {CRITERES.map((k) => (
-            <Box key={k.cle} sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider', flexWrap: 'wrap' }}>
-              <Box sx={{ flex: '1 1 240px', minWidth: 0 }}>
-                <Typography sx={{ fontWeight: 700 }} id={`critere-${k.cle}`}>{k.libelle}</Typography>
-                <Typography variant="body2" color="text.secondary">{k.question}</Typography>
+      <Titre>{restantes ? `Diagnostic · ${restantes} cible${restantes > 1 ? 's' : ''} à noter` : 'Diagnostic · toutes les cibles sont notées'}</Titre>
+      {surPC ? (
+        <TableContainer>
+          <Table size="small" aria-label="Diagnostic des cibles">
+            <TableHead><TableRow><TableCell>Cible</TableCell>{CRITERES.map((k) => <TableCell key={k.cle} align="center">{NOTE_COURTE[k.cle]}</TableCell>)}<TableCell>Case de la matrice</TableCell><TableCell /></TableRow></TableHead>
+            <TableBody>
+              {plan.cibles.map((c) => (
+                <TableRow key={c.id} hover>
+                  <TableCell><Typography sx={{ fontWeight: 600 }}>{c.nom}</Typography><Typography variant="body2" color="text.secondary">{libelleCategorie(c.categorie)}</Typography></TableCell>
+                  {CRITERES.map((k) => <TableCell key={k.cle} align="center" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: c.notes[k.cle] ? 'text.primary' : 'text.secondary' }}>{c.notes[k.cle] ?? '—'}</TableCell>)}
+                  <TableCell>{etat(c)}</TableCell>
+                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                    {!lecture && <>{bouton(c)}<IconButton onClick={() => retirer(c)} aria-label={`Retirer ${c.nom}`} sx={{ width: 48, height: 48 }}><DeleteOutline /></IconButton></>}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        <Box component="ul" aria-label="Diagnostic des cibles" sx={{ listStyle: 'none', m: 0, p: 0 }}>
+          {plan.cibles.map((c) => (
+            <Box component="li" key={c.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 600 }}>{c.nom}</Typography>
+                <Box sx={{ mt: 0.5 }}>{etat(c)}</Box>
               </Box>
-              <ToggleButtonGroup exclusive value={c.notes[k.cle] ?? null} onChange={(_e, v: number | null) => noter(k.cle, v)} aria-labelledby={`critere-${k.cle}`} disabled={lecture} size="small">
-                {[1, 2, 3, 4, 5].map((v) => <ToggleButton key={v} value={v} aria-label={`${k.libelle} : ${v} sur 5`} sx={{ width: 48, height: 48, fontWeight: 800 }}>{v}</ToggleButton>)}
-              </ToggleButtonGroup>
+              {!lecture && bouton(c)}
             </Box>
           ))}
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', mt: 2 }}>
-            {a ? <>
-              <Typography variant="body2">{`Valeur directe ${virgule(a.direct)} / 5`}</Typography>
-              <Typography variant="body2">{`Valeur relais ${virgule(a.relais)} / 5`}</Typography>
-              <Pastille ton={tonQuadrant(q)}>{libelleQuadrant(q)}</Pastille>
-            </> : <Typography variant="body2" color="text.secondary">{`${5 - Object.keys(c.notes).length} critère${5 - Object.keys(c.notes).length > 1 ? 's' : ''} à noter`}</Typography>}
-            {suivante && <Button onClick={() => setChoisie(suivante.id)} endIcon={<ArrowForward />} sx={{ ml: 'auto', minHeight: 48 }}>Cible suivante</Button>}
-          </Box>
         </Box>
-      </Box>
+      )}
+      {edition && <FenetreDiagnostic cible={edition} plan={plan} changer={changer} onFermer={(msg) => { setEdition(null); if (msg) signaler(msg) }} />}
+      {bandeau}
     </>
+  )
+}
+
+function FenetreDiagnostic({ cible: c, plan, changer, onFermer }: { cible: Cible; plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; onFermer: (msg?: string) => void }) {
+  const [notes, setNotes] = useState<Partial<Record<Critere, number>>>(c.notes)
+  const essai: Cible = { ...c, notes }
+  const a = axes(essai)
+  const q = quadrant(essai)
+  const noter = (k: Critere, v: number | null) => setNotes((n) => { const x = { ...n }; if (v === null) delete x[k]; else x[k] = v; return x })
+  const enregistrer = async () => { changer({ ...plan, cibles: plan.cibles.map((x) => (x.id === c.id ? { ...x, notes } : x)) }, true); return `Diagnostic de ${c.nom} enregistré.` }
+  const retirer = async () => { changer({ ...plan, cibles: plan.cibles.filter((x) => x.id !== c.id) }, true); return `${c.nom} retirée des cibles.` }
+  const reste = 5 - Object.keys(notes).length
+  return (
+    <Fenetre titre={`Diagnostic de ${c.nom}`} ouvert onFermer={onFermer} valide enregistrer={enregistrer} sansRechargement
+      supprimer={retirer} libelleSuppression={`Retirer « ${c.nom} » des cibles ? Son diagnostic et son action partent avec.`}>
+      <Typography variant="body2" color="text.secondary">{[libelleCategorie(c.categorie), c.detail].filter(Boolean).join(' · ')}</Typography>
+      {CRITERES.map((k) => (
+        <Box key={k.cle} sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Typography sx={{ fontWeight: 700 }} id={`critere-${k.cle}`}>{k.libelle}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{k.question}</Typography>
+          <ToggleButtonGroup exclusive value={notes[k.cle] ?? null} onChange={(_e, v: number | null) => noter(k.cle, v)} aria-labelledby={`critere-${k.cle}`} size="small">
+            {[1, 2, 3, 4, 5].map((v) => <ToggleButton key={v} value={v} aria-label={`${k.libelle} : ${v} sur 5`} sx={{ width: 48, height: 48, fontWeight: 800 }}>{v}</ToggleButton>)}
+          </ToggleButtonGroup>
+        </Box>
+      ))}
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+        {a ? <>
+          <Typography variant="body2">{`Valeur directe ${virgule(a.direct)} / 5`}</Typography>
+          <Typography variant="body2">{`Valeur relais ${virgule(a.relais)} / 5`}</Typography>
+          <Pastille ton={tonQuadrant(q)}>{libelleQuadrant(q)}</Pastille>
+        </> : <Typography variant="body2" color="text.secondary">{`${reste} critère${reste > 1 ? 's' : ''} à noter`}</Typography>}
+      </Box>
+    </Fenetre>
   )
 }
 

@@ -68,7 +68,7 @@ test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’ac
   await page.goto(fiche())
   const etapes = page.getByRole('navigation', { name: 'Étapes du plan marché extérieur' })
   await expect(etapes.getByRole('button')).toHaveCount(6)
-  await expect(etapes.getByRole('button', { name: 'Étape 1 : Magasin' })).toHaveAttribute('aria-current', 'step')
+  await expect(etapes.getByRole('button', { name: 'Étape Magasin' })).toHaveAttribute('aria-current', 'step')
   await page.getByLabel('Objectif de CA extérieur sur un an (€ HT)').fill('40000')
   await expect(page.getByText('Enregistré')).toBeVisible()
   expect(derniere(ecritures, 'exterieur_magasins')[NOM].objectif).toBe(40000)
@@ -114,12 +114,29 @@ test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’ac
 
   // 4 · Diagnostic : l'atelier rapporte (5/5 en direct) sans relais (1/5) → client à signer ; le traiteur partout à 4 → priorité
   await page.getByRole('button', { name: 'Diagnostic', exact: true }).click()
-  const noter = async (notes: number[]) => { for (const [i, c] of ['Potentiel commercial', 'Visibilité', 'Prescription', 'Bénéfice concret attendu', 'Intérêt pour la cause'].entries()) await page.getByRole('button', { name: `${c} : ${notes[i]} sur 5` }).click() }
-  await noter([5, 1, 1, 5, 1])
-  await expect(page.getByText('Valeur directe 5,0 / 5')).toBeVisible()
-  await expect(page.getByText('Valeur relais 1,0 / 5')).toBeVisible()
-  await page.getByRole('button', { name: 'Cible suivante' }).click()
-  await noter([4, 4, 4, 4, 4])
+  // Joseph (17/11/2026) : la liste des cibles, on choisit celle à noter ; le panneau garde les notes, on peut y revenir
+  await expect(page.getByRole('heading', { name: 'Diagnostic · 3 cibles à noter' })).toBeVisible()
+  const noter = async (nom: string, notes: number[]) => {
+    await page.getByRole('button', { name: new RegExp(`^(Noter|Modifier le diagnostic de) ${nom}`) }).click()
+    const f = page.getByRole('dialog', { name: new RegExp(`^Diagnostic de ${nom}`) })
+    for (const [i, c] of ['Potentiel commercial', 'Visibilité', 'Prescription', 'Bénéfice concret attendu', 'Intérêt pour la cause'].entries()) await f.getByRole('button', { name: `${c} : ${notes[i]} sur 5` }).click()
+    return f
+  }
+  const f = await noter('Ateliers Fictifs Du Lac', [5, 1, 1, 5, 1])
+  await expect(f.getByText('Valeur directe 5,0 / 5')).toBeVisible()
+  await expect(f.getByText('Valeur relais 1,0 / 5')).toBeVisible()
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  await f.getByRole('button', { name: 'Enregistrer' }).click()
+  await (await noter('Traiteur Du Test', [4, 4, 4, 4, 4])).getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByRole('heading', { name: 'Diagnostic · 1 cible à noter' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Modifier le diagnostic de Ateliers Fictifs Du Lac' })).toBeVisible()
+  // Retirer une cible depuis le diagnostic, puis « Annuler »
+  if (!isMobile) {
+    await page.getByRole('button', { name: 'Retirer Club des entrepreneurs fictifs' }).click()
+    await expect(page.getByRole('heading', { name: 'Diagnostic · toutes les cibles sont notées' })).toBeVisible()
+    await page.getByRole('button', { name: 'Annuler' }).click()
+    await expect(page.getByRole('heading', { name: 'Diagnostic · 1 cible à noter' })).toBeVisible()
+  }
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 
   // 5 · Matrice : une cible par case notée, le club hors matrice
@@ -172,7 +189,7 @@ test('Marché extérieur : le franchisé bâtit le plan de son magasin', async (
     await page.goto(`./#/magasins/${encodeURIComponent(NOM)}`)
     await page.getByRole('button', { name: 'Marché extérieur' }).click()
   }
-  await page.getByRole('button', { name: /^Étape 3 : Cibles/ }).click()
+  await page.getByRole('button', { name: /^Étape Cibles/ }).click()
   await expect(page.getByRole('heading', { name: 'Mes cibles · 1' })).toBeVisible()
   await expect(page.getByText('Comité des fêtes fictif').first()).toBeVisible()
 })
