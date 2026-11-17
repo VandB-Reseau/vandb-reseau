@@ -16,6 +16,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   de marge du mois, de l'année et par client. Retirés : remise en % en double, bouteilles payées/offertes, client du
   milieu, panier, bascule de 4 à 5 + 1 (comptée avec les clients qui en prenaient déjà, hypothèse prudente).
 
+- Remises entreprise au bar (Joseph, 17/11/2026), sans migration : on part des venues habituelles de la société, sans
+  remise ; pour chaque remise testée (0,50 €, 1 € par produit ou par panier), les venues en plus qu'il faut pour garder
+  la même masse de marge, donc le seuil du palier (en théorie). Les simulations gardées se relisent. Cave inchangée.
+- Marché extérieur et fiche magasin (Joseph, 17/11/2026), sans migration : une cible se marque « Contrat en cours »
+  (contrats d'avant l'app), avec son CA annuel facultatif et la mention écrit ou non ; visible au repérage, aux cibles
+  et au plan, CA sous contrat au point de départ. L'implantation des produits quitte la fiche d'un magasin ouvert
+  (elle reste une étape d'ouverture et se saisit tant que le magasin n'est pas ouvert).
 - Marché extérieur (Joseph, 17/11/2026), **migration 0049 à passer** : plusieurs actions par cible, chacune devient une
   tâche du magasin (liste Tâches, étiquette `exterieur`), cochée et suivie comme les autres ; le franchisé crée,
   modifie et supprime les tâches de son plan seulement (`tache_exterieur_franchise`). Les actions déjà saisies dans les
