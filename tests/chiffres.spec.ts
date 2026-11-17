@@ -65,7 +65,7 @@ test('la fiche magasin montre les chiffres, l’alerte et le graphique', async (
   await expect(page.getByRole('heading', { name: 'Chiffres', exact: true })).toBeVisible()
   await expect(page.getByText('Dernier audit hygiène')).toHaveCount(0)
   await page.goto('./#/magasins/Nantes%20Test?vue=visites')
-  const audits = page.getByRole('heading', { name: 'Audits', exact: true }).locator('xpath=ancestor::div[contains(@class,"MuiCard-root")]')
+  const audits = page.getByRole('heading', { name: 'Audits', exact: true }).locator('xpath=ancestor::*[contains(@class,"MuiCard-root")]')
   await expect(audits.getByText('Conforme · 92 % · 10 mars 2026')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Visites', exact: true })).toBeVisible()
 })

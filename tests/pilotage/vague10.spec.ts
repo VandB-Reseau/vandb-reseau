@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { COMPTE, simulerSupabase, textesTropPetits, type Ecriture, type OptionsSimulation } from '../supabase-simule'
+import { COMPTE, ouvrirInfosMagasin, simulerSupabase, textesTropPetits, type Ecriture, type OptionsSimulation } from '../supabase-simule'
 import { magasinFictif } from './donnees-fictives'
 import { simulerPilotage, zonesTropPetites, type MagasinSimule, type OptionsSimulation as OptionsPilotage } from './supabase-simule'
 
@@ -282,10 +282,11 @@ test('Équipements : saisis par l’équipe, repris dans le parc de tireuses', a
   const ecritures: Ecriture[] = []
   await connecter(page, { ecritures, persister: true }, {})
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}`)
+  await ouvrirInfosMagasin(page) // maquette 264 (17/11/2026) : panneau « Infos du magasin »
   await page.getByRole('button', { name: /^Équipements/ }).click() // repliés dans la colonne d'identité (choix 200)
   await expect(page.getByText('Aucun équipement enregistré', { exact: false })).toBeVisible()
   await page.getByRole('button', { name: 'Ajouter un équipement' }).click()
-  const d = page.getByRole('dialog')
+  const d = page.getByRole('dialog').last()
   await d.getByLabel('Quantité').fill('4')
   await d.getByLabel('Année d’achat').fill('2025')
   await d.getByLabel('Prix d’achat HT (toute la ligne)').fill('6000')

@@ -53,9 +53,10 @@ test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ou
   await page.goto('./#/magasins/Lyon%20Test')
   await expect(page.getByRole('heading', { name: 'Lyon Test', level: 1 })).toBeVisible()
   await expect(page.getByRole('tab', { name: 'Vue d’ensemble', selected: true })).toBeVisible()
-  const bref = page.getByRole('group', { name: 'En bref' })
-  await expect(bref).toContainText('70 k€')
-  await expect(bref).toContainText('−30,0 %')
+  // Maquette 264 (17/11/2026) : le CA du mois se lit dans « Comment va le magasin », plus dans l'en-tête
+  const va = page.getByRole('region', { name: 'Comment va le magasin' })
+  await expect(va).toContainText('70 k€')
+  await expect(va).toContainText('−30,0 %')
   for (const b of ['Appeler', 'Écrire un message', 'Planifier la visite : Lyon Test']) await expect(page.getByRole('main').getByRole('button', { name: b, exact: true }).or(page.getByRole('main').getByRole('link', { name: b, exact: true }))).toBeVisible()
   await expect(page.getByRole('button', { name: 'Autres actions' })).toBeVisible()
   expect(await sansDebordement(page.locator('body'))).toBe(true)

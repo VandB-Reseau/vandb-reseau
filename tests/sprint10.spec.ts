@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { deplierPoint, ouvrirOnglet, revoirTache, saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { deplierPoint, ouvrirInfosMagasin, ouvrirOnglet, revoirTache, saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { magasinsFictifs } from './donnees-fictives'
 
 test.beforeEach(async ({ page }) => {
@@ -30,12 +30,12 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler'] : ['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box'])
-  // Plus de fil (Joseph, 22/10/2026) : la fiche s'ouvre sur l'équipe ; le journal a son onglet
-  await expect(page.getByRole('heading', { name: 'Équipe', exact: true })).toBeVisible()
+  // Plus de fil (Joseph, 22/10/2026) : la fiche s'ouvre sur « À faire » (maquette 264) ; le journal a son onglet
+  await expect(page.getByRole('heading', { name: 'À faire', exact: true })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Journal' })).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'Fil du magasin' })).toHaveCount(0)
   // En-tête : deux actions en cours dont une en retard
-  await expect(page.getByRole('group', { name: 'En bref' })).toContainText(/2 ?tâches en cours/)
+  await expect(page.getByRole('region', { name: 'À faire' }).getByRole('link', { name: 'Toutes les tâches (2)' })).toBeVisible()
   await expect(page.getByText('1 tâche en retard', { exact: true })).toBeVisible()
   await ouvrirOnglet(page, 'Tâches', onglets)
   const liste = page.getByRole('list', { name: 'Tâches en cours de Brest Test' })
@@ -84,6 +84,7 @@ test('un magasin franchisé a plusieurs associés avec leurs mandats', async ({ 
   ] }
   await seConnecter(page, { ecritures, config: { associes } })
   await page.goto('./#/magasins/Brest%20Test?vue=fiche')
+  await ouvrirInfosMagasin(page)
   await expect(page.getByRole('heading', { name: 'Franchisés associés' })).toBeVisible()
   await expect(page.getByText('Mandat du 1 janv. 2022 au 31 mars 2027 · 2e mandat')).toBeVisible()
   await expect(page.getByText('Fin dans moins de 6 mois')).toBeVisible()
@@ -116,6 +117,7 @@ test('un magasin intégré associe V and B à des particuliers', async ({ page }
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test?vue=fiche')
+  await ouvrirInfosMagasin(page)
   await expect(page.getByRole('heading', { name: 'Associés', exact: true })).toBeVisible()
   await expect(page.getByText('V and B', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Ajouter un associé' }).click()

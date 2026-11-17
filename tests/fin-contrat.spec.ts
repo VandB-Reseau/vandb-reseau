@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import lireExcel from 'read-excel-file/node'
-import { deplierPoint, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { deplierPoint, ouvrirInfosMagasin, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { dateCourte } from '../src/lib/format'
 
 // Mandats (Joseph, 26/10/2026) : 5 ans renouvelés par 5 ans, calculés sur chaque associé (entrée, sinon ouverture) quand
@@ -33,6 +33,7 @@ const associe = (page: Page, nom: string) => page.getByText(nom, { exact: true }
 test('sans mandat saisi, le mandat du franchisé est calculé depuis l’ouverture', async ({ page }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Nantes%20Test')
+  await ouvrirInfosMagasin(page)
   const a = attendu('2020-03-15')
   await expect(associe(page, 'Franchisé 2')).toContainText(`Mandat du ${dateCourte(a.debut)} au ${dateCourte(a.fin)} · ${a.numero}`)
   await expect(page.getByText('Fin de contrat', { exact: true })).toHaveCount(0)
@@ -44,6 +45,7 @@ test('un associé d’un intégré a aussi son mandat', async ({ page }) => {
   const associes = { 'Lyon Test': [{ id: 'x1', nom: 'Associé UN', entree: '', sortie: '', mandats: [] }] }
   await seConnecter(page, { config: { associes } })
   await page.goto('./#/magasins/Lyon%20Test')
+  await ouvrirInfosMagasin(page)
   const a = attendu('2018-01-15')
   await expect(associe(page, 'Associé UN')).toContainText(`Mandat du ${dateCourte(a.debut)} au ${dateCourte(a.fin)} · ${a.numero}`)
 })
@@ -54,6 +56,7 @@ test('une entrée récente redémarre le mandat ; la fin à 6 mois apparaît dan
   const associes = { 'Nantes Test': [{ id: 'x1', nom: 'Franchisé 2', entree, sortie: '', mandats: [] }] }
   await seConnecter(page, { config: { associes } })
   await page.goto('./#/magasins/Nantes%20Test')
+  await ouvrirInfosMagasin(page)
   await expect(associe(page, 'Franchisé 2')).toContainText(`au ${dateCourte(plusAns(entree, 5))} · 1er mandat`)
   await expect(page.getByText('Fin dans moins de 6 mois')).toBeVisible()
   await page.goto('./#/')
@@ -70,6 +73,7 @@ test('un mandat saisi l’emporte sur le calcul', async ({ page }) => {
   const associes = { 'Brest Test': [{ id: 'x1', nom: 'Franchisé 11', entree: '', sortie: '', mandats: [{ debut: '2022-01-01', fin: '2030-03-31' }] }] }
   await seConnecter(page, { config: { associes } })
   await page.goto('./#/magasins/Brest%20Test')
+  await ouvrirInfosMagasin(page)
   await expect(associe(page, 'Franchisé 11')).toContainText(`Mandat du ${dateCourte('2022-01-01')} au ${dateCourte('2030-03-31')}`)
   await expect(associe(page, 'Franchisé 11')).not.toContainText('1er mandat')
 })
@@ -104,6 +108,7 @@ test('la fenêtre de modification montre les mandats calculés ; enregistrés te
   const associes = { 'Nantes Test': [{ id: 'x1', nom: 'Franchisé 2', entree, sortie: '', mandats: [] }] }
   await seConnecter(page, { ecritures, config: { associes } })
   await page.goto('./#/magasins/Nantes%20Test?vue=fiche')
+  await ouvrirInfosMagasin(page)
   await page.getByRole('button', { name: 'Modifier l’associé Franchisé 2' }).click()
   const d = page.getByRole('dialog', { name: 'Modifier Franchisé 2' })
   const a = attendu(entree)

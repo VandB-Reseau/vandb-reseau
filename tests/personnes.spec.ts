@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { ouvrirInfosMagasin, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -149,6 +149,7 @@ test('ajouter un franchisé et lui confier un magasin', async ({ page }) => {
 test('fiche magasin : Franchisé à la place du responsable, sans adjoint ni plateforme', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Annecy%20Test?vue=fiche')
+  await ouvrirInfosMagasin(page)
   await expect(page.getByRole('heading', { name: 'Franchisés associés' })).toBeVisible()
   await expect(page.getByText('Adjoint')).toHaveCount(0)
   await expect(page.getByText('Plateforme logistique')).toHaveCount(0)
