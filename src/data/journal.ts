@@ -1,3 +1,4 @@
+import { libelleGrille } from './grilles'
 import type { Magasin, Reseau } from './modele'
 import { libelleTypeVisite, nomsVisiteurs, visiteFaite } from './modele'
 import { historiqueSante, libelleCritere, libelleNote, nineBox, tousCriteres, unChangementParJour, type Note } from './sante'
@@ -34,9 +35,12 @@ export function journalMagasin(reseau: Reseau, m: Magasin): EvenementJournal[] {
   reseau.visites.filter((v) => v.magasin === m.nom && visiteFaite(v, reseau.jour)).forEach((v) => {
     const actions = v.plan.length
     const audit = auditDe(reseau, m.nom, v.date, v.type)
+    // Audits ouverts pendant la visite (grilles de Paramètres)
+    const ouverts = (reseau.audits[m.nom] ?? []).filter((a) => a.date === v.date && a.type !== v.type && reseau.grilles[a.type] && (a.conforme !== null || a.score !== null))
+      .map((a) => `${libelleGrille(reseau.grilles, a.type)} : ${libelleAudit(a)}`)
     ev.push({
       cle: `visite-${v.id ?? v.date}`, date: v.date, type: 'visite', titre: `${libelleTypeVisite(v.type)}${v.visiteurs.length ? ` · ${nomsVisiteurs(v)}` : ''}`,
-      detail: [audit ? libelleAudit(audit) : '', v.notes, actions ? `${actions} tâche${actions > 1 ? 's' : ''} au plan` : ''].filter(Boolean).join(' · '),
+      detail: [audit ? libelleAudit(audit) : '', ...ouverts, v.notes, actions ? `${actions} tâche${actions > 1 ? 's' : ''} au plan` : ''].filter(Boolean).join(' · '),
       lien: v.id !== null ? lienCompteRendu(v) : undefined,
     })
   })

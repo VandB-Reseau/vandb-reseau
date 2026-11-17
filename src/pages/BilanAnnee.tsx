@@ -16,6 +16,7 @@ import { BoutonAjouterAction } from '../components/Actions'
 import { EnvoyerAuFranchise } from '../components/EnvoyerCompteRendu'
 import { useAuth } from '../auth/AuthContext'
 import { dateCourte, dateLongue } from '../lib/format'
+import { libelleGrille } from '../data/grilles'
 import { libelleTypeVisite, nomsVisiteurs, visiteFaite, type Magasin, type Reseau } from '../data/modele'
 import { caDe, chiffresDuMagasin, decalerMois, estVisite, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, type ChampChiffre, type ChiffreMois } from '../data/chiffres'
 import { caseDe, historiqueSante, nineBox, tonDe, type CaseNineBox } from '../data/sante'
@@ -25,6 +26,8 @@ import { reunionsDuMagasin, usePresences } from '../data/reunions'
 import { styleChiffre } from '../theme/theme'
 
 // Bilan de l'année d'un magasin (sprint 26, F1), pour l'entretien annuel avec le franchisé : chiffres de l'année face
+// Nom d'un audit dans le bilan : grilles de départ comme avant, audits ajoutés sous leur nom
+const nomAudit = (reseau: Reseau, t: string) => t === 'hygiene' ? 'Audit hygiène' : t === 'marge' ? 'Audit de marge' : t === 'excellence' ? 'Audit excellence opérationnelle' : libelleGrille(reseau.grilles, t)
 // à N-1, visites, nine box du début à la fin de l'année, audits, tâches tenues, réunions et formations, thématiques
 // déployées, priorités de l'année suivante. Au format lettre, téléchargeable en PDF, envoyable au franchisé.
 // Année civile, comme le reste de l'app ; l'année en cours s'arrête à aujourd'hui.
@@ -42,7 +45,7 @@ export interface Bilan {
   indicateurs: { id: ChampChiffre; libelle: string; valeur: number | null; ref: number | null }[]
   visites: { faites: number; reference: number; liste: Reseau['visites'] }
   caseDebut: CaseNineBox | null; caseFin: CaseNineBox | null
-  audits: Reseau['audits'][string]
+  audits: (Reseau['audits'][string][number] & { nom: string })[]
   taches: { tenues: number; echues: number; enCours: number; enRetard: number }
   reunions: ReturnType<typeof reunionsDuMagasin> | null
   thematiques: { libelle: string; etat: string; ton: ReturnType<typeof tonDe> }[]
@@ -77,7 +80,7 @@ export function bilanDe(reseau: Reseau, m: Magasin, annee: string, presences: Pa
     visites: { faites: rythme?.faites ?? visites.length, reference: rythme?.reference ?? 0, liste: visites },
     caseDebut: caseAu(reseau, m.nom, `${Number(annee) - 1}-12-31`),
     caseFin: annee === reseau.jour.slice(0, 4) ? caseDe(reseau.evaluations[m.nom]) : caseAu(reseau, m.nom, fin),
-    audits: (reseau.audits[m.nom] ?? []).filter((x) => x.date >= a.debut && x.date <= fin && (x.conforme !== null || x.score !== null)).sort((x, y) => x.date.localeCompare(y.date)),
+    audits: (reseau.audits[m.nom] ?? []).filter((x) => x.date >= a.debut && x.date <= fin && (x.conforme !== null || x.score !== null)).sort((x, y) => x.date.localeCompare(y.date)).map((x) => ({ ...x, nom: nomAudit(reseau, x.type) })),
     taches: {
       echues: echues.length,
       tenues: echues.filter((x) => x.a.faite && x.a.faite <= echeanceDate(x.a)).length,
@@ -100,7 +103,7 @@ export function texteBilan(m: Magasin, b: Bilan): string {
   b.indicateurs.forEach((x) => l.push(`${x.libelle} : ${formatValeur(x.id, x.valeur)}${x.ref !== null ? ` (${formatValeur(x.id, x.ref)} en ${Number(b.annee) - 1})` : ''}`))
   l.push(`Visites : ${b.visites.faites}${b.visites.reference ? ` sur ${b.visites.reference} de référence` : ''}`)
   if (b.caseFin) l.push(`Nine box : ${b.caseDebut && b.caseDebut.id !== b.caseFin.id ? `${b.caseDebut.libelle} → ` : ''}${b.caseFin.libelle}`)
-  b.audits.forEach((x) => l.push(`Audit ${x.type === 'hygiene' ? 'hygiène' : x.type === 'marge' ? 'de marge' : 'excellence opérationnelle'} du ${dateCourte(x.date)} : ${libelleAudit(x)}`))
+  b.audits.forEach((x) => l.push(`${x.nom} du ${dateCourte(x.date)} : ${libelleAudit(x)}`))
   if (b.taches.echues) l.push(`Tâches tenues à l'échéance : ${b.taches.tenues} sur ${b.taches.echues}`)
   if (b.reunions?.length) l.push(`Réunions et formations suivies : ${b.reunions.filter((x) => x.presence?.present === true).length} sur ${b.reunions.length}`)
   const deployees = b.thematiques.filter((x) => x.ton === 'positif')
@@ -188,7 +191,7 @@ function Feuille({ reseau, m }: { reseau: Reseau; m: Magasin }) {
           <Bloc titre="Santé du magasin">
             <Ligne libelle={`Nine box au 1er janvier ${annee}`}>{b.caseDebut?.libelle ?? 'Non classé'}</Ligne>
             <Ligne libelle={annee === courante ? 'Nine box aujourd’hui' : `Nine box au 31 décembre ${annee}`}>{b.caseFin?.libelle ?? 'Non classé'}</Ligne>
-            {b.audits.map((x) => <Ligne key={`${x.type}-${x.date}`} libelle={`Audit ${x.type === 'hygiene' ? 'hygiène' : x.type === 'marge' ? 'de marge' : 'excellence opérationnelle'} · ${dateCourte(x.date)}`}><Box component="span" sx={{ color: x.conforme === false ? ROUGE : NOIR }}>{libelleAudit(x)}</Box></Ligne>)}
+            {b.audits.map((x) => <Ligne key={`${x.type}-${x.date}`} libelle={`${x.nom} · ${dateCourte(x.date)}`}><Box component="span" sx={{ color: x.conforme === false ? ROUGE : NOIR }}>{libelleAudit(x)}</Box></Ligne>)}
             {!b.audits.length && <Ligne libelle="Audits">Aucun en {annee}</Ligne>}
           </Bloc>
 

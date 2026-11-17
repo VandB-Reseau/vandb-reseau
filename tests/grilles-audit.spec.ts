@@ -150,3 +150,69 @@ test('sans espace photos activé, un message clair', async ({ page }) => {
   await d.getByTestId('photo-froid_1').setInputFiles(photo)
   await expect(d.getByText('L’espace photos n’est pas encore activé : le script SQL des photos doit être lancé dans Supabase.')).toBeVisible()
 })
+
+// Audits ajoutés et supprimés dans Paramètres, ouverts pendant une visite (Joseph, 17/11/2026)
+const auditSecurite = {
+  seuil: 75, libelle: 'Audit sécurité',
+  themes: [{ id: 'issues', libelle: 'Issues de secours', points: [{ id: 'issues_1', libelle: 'Issues de secours dégagées', critique: true }, { id: 'issues_2', libelle: 'Extincteurs vérifiés dans l’année' }] }],
+}
+
+test('ajouter et supprimer un audit dans Paramètres', async ({ page, isMobile }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, config: { audits: auditRempli } })
+  await page.goto('./#/parametres/reglages?rubrique=audits')
+  const carte = page.getByRole('heading', { name: 'Grilles d’audit' }).locator('xpath=ancestor::div[contains(@class,"MuiCard-root")]')
+  await carte.getByRole('button', { name: 'Ajouter un audit' }).click()
+  await expect(carte.getByRole('tab', { name: 'Nouvel audit', selected: true })).toBeVisible()
+  await expect(carte.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
+  await carte.getByLabel('Nom de l’audit').fill('Audit sécurité')
+  await carte.getByRole('textbox', { name: 'Thème', exact: true }).fill('Issues de secours')
+  await carte.getByRole('textbox', { name: 'Point 1', exact: true }).fill('Issues de secours dégagées')
+  await expect(carte.getByRole('tab', { name: 'Audit sécurité', selected: true })).toBeVisible()
+  // Hygiène déjà remplie à Nantes : supprimée mais gardée pour ses résultats ; Excellence jamais remplie : supprimée aussi
+  await carte.getByRole('tab', { name: 'Hygiène' }).click()
+  await carte.getByRole('button', { name: 'Supprimer l’audit Hygiène' }).click()
+  await expect(carte.getByRole('tab', { name: 'Hygiène' })).toHaveCount(0)
+  const supprimes = carte.getByRole('region', { name: 'Audits supprimés' })
+  await expect(supprimes.getByText('Hygiène · résultats gardés')).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await petitesZones(page, '.MuiCard-root button:not(.MuiTab-root)')).toEqual([])
+  await carte.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText('Grilles d’audit enregistrées.')).toBeVisible()
+  const grilles = JSON.parse((ecritures.filter((e) => e.table === 'app_config').at(-1)!.corps as { value: string }).value)
+  const ajoute = Object.entries(grilles).find(([k]) => k.startsWith('audit_'))![1] as { libelle: string; themes: { points: { libelle: string }[] }[] }
+  expect(ajoute.libelle).toBe('Audit sécurité')
+  expect(ajoute.themes[0].points[0].libelle).toBe('Issues de secours dégagées')
+  expect(grilles.hygiene.supprimee).toBe('2026-10-27')
+  // Rétablir
+  await supprimes.getByRole('button', { name: 'Rétablir' }).click()
+  await expect(carte.getByRole('tab', { name: 'Hygiène', selected: true })).toBeVisible()
+})
+
+test('ouvrir un audit pendant une visite', async ({ page, isMobile }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, config: { grilles_audit: { securite: auditSecurite, excellence: { seuil: 80, themes: [], supprimee: '2026-10-01' } } } })
+  await page.goto('./#/magasins/Annecy%20Test?vue=visites')
+  await page.getByRole('button', { name: 'Saisir', exact: true }).click()
+  const d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  const bloc = d.getByRole('region', { name: 'Audits' })
+  await bloc.getByRole('button', { name: 'Ouvrir un audit' }).click()
+  // Audit supprimé : plus proposé, ni en audit ni en type de visite
+  await expect(page.getByRole('menuitem', { name: 'Excellence opérationnelle' })).toHaveCount(0)
+  await page.getByRole('menuitem', { name: 'Audit sécurité' }).click()
+  const grille = bloc.getByRole('region', { name: 'Audit sécurité' })
+  await grille.getByRole('group', { name: 'Issues de secours dégagées' }).getByRole('button', { name: 'Oui' }).click()
+  await grille.getByRole('group', { name: 'Extincteurs vérifiés dans l’année' }).getByRole('button', { name: 'Non' }).click()
+  await expect(grille.getByText(/Score 50 %/)).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await petitesZones(page, '[role="dialog"] section[aria-label="Audits"] button')).toEqual([])
+  await d.getByRole('region', { name: 'Visite' }).getByRole('button', { name: 'Modifier' }).click()
+  await d.getByLabel('Type').click()
+  await expect(page.getByRole('option', { name: 'Audit excellence' })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  const ecrit = ecritures.filter((e) => e.table === 'app_config' && (e.corps as { key: string }).key === 'audits').at(-1)!
+  const a = JSON.parse((ecrit.corps as { value: string }).value)['Annecy Test'][0]
+  expect(a).toEqual(expect.objectContaining({ type: 'securite', score: 50, conforme: false, date: '2026-10-27' }))
+})

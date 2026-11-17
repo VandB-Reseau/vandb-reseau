@@ -4,7 +4,9 @@
 export type EtatPoint = 'oui' | 'non' | 'na'
 export interface PointGrille { id: string; libelle: string; critique?: boolean }
 export interface ThemeGrille { id: string; libelle: string; points: PointGrille[] }
-export interface Grille { seuil: number; themes: ThemeGrille[] }
+// libelle : nom de l'audit (grilles ajoutées dans Paramètres) ; supprimee : date de retrait, l'audit n'est plus proposé
+// mais ses résultats déjà remplis restent lisibles (Joseph, 17/11/2026)
+export interface Grille { seuil: number; themes: ThemeGrille[]; libelle?: string; supprimee?: string }
 export type Grilles = Record<string, Grille>
 
 export interface Photo { chemin: string; taille: number }
@@ -145,14 +147,28 @@ export const grillesParDefaut: Grilles = {
   },
 }
 
+export const grillesDeDepart = Object.keys(grillesParDefaut)
+
 export function normaliserGrilles(brut: unknown): Grilles {
   const g = (brut && typeof brut === 'object' ? brut : {}) as Partial<Grilles>
-  return Object.fromEntries(Object.entries(grillesParDefaut).map(([type, defaut]) => {
-    const x = g[type]
-    if (!x || !Array.isArray(x.themes)) return [type, defaut]
-    return [type, { seuil: Number.isFinite(Number(x.seuil)) ? Number(x.seuil) : defaut.seuil, themes: x.themes }]
-  }))
+  const lire = (x: Grille | undefined, defaut: Grille | null): Grille | null => {
+    if (!x || !Array.isArray(x.themes)) return defaut
+    const libelle = typeof x.libelle === 'string' && x.libelle.trim() ? x.libelle.trim() : undefined
+    if (!defaut && !libelle) return null
+    return {
+      seuil: Number.isFinite(Number(x.seuil)) ? Number(x.seuil) : defaut?.seuil ?? 80, themes: x.themes,
+      ...(libelle ? { libelle } : {}), ...(typeof x.supprimee === 'string' && x.supprimee ? { supprimee: x.supprimee } : {}),
+    }
+  }
+  // Grilles de départ toujours présentes (retirées = marquées supprimées), puis les audits ajoutés
+  const depart = Object.entries(grillesParDefaut).map(([type, defaut]) => [type, lire(g[type], defaut)!] as const)
+  const ajoutees = Object.entries(g).filter(([type]) => !(type in grillesParDefaut)).map(([type, x]) => [type, lire(x, null)] as const).filter((e): e is [string, Grille] => !!e[1])
+  return Object.fromEntries([...depart, ...ajoutees])
 }
+
+export const libelleGrille = (grilles: Grilles, type: string) => grilles[type]?.libelle || libellesGrilles[type] || 'Audit'
+// Audits proposés en visite : ceux qui ne sont pas supprimés, avec au moins un point
+export const grillesActives = (grilles: Grilles) => Object.entries(grilles).filter(([, g]) => !g.supprimee && nombrePoints(g) > 0).map(([type]) => type)
 
 export const nombrePoints = (g: Grille) => g.themes.reduce((n, t) => n + t.points.length, 0)
 
