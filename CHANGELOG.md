@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- J'aime retiré (Joseph, 17/11/2026), sans migration : le bouton « J'aime » ne se grise plus pendant l'envoi (il
+  restait gris sur téléphone si la réponse tardait) ; il change tout de suite, le décompte suit, des gestes rapides
+  finissent sur l'état voulu, et une réponse qui ne vient pas libère le bouton au bout de 15 s avec un message.
+  Communications, bonnes pratiques et comptes rendus.
 - Accueil téléphone au plus près de la maquette 278 (Joseph, 17/11/2026), sans migration, rien ne change sur PC : le
   nombre rouge du picto « Mon point du jour » ne compte que les urgences ; plus de titres « Accueil » et « Actualités »
   visibles, le périmètre en puce d'une ligne ; « Partager » réduit à un champ (Bonne pratique ou Communication au
