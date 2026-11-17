@@ -176,27 +176,36 @@ test('161 et 160 : perte réelle de la pression, 33 cl, marge par famille et plu
 test('165, 163 et 164 : offre 5 + 1, remises face aux repères, primes par paliers', async ({ page, isMobile }, info) => {
   await connecter(page, franchise, { role: 'franchise' })
   await simulateur(page, 'prix')
+  // Offre 5 + 1 par défaut (exemple : 1 500 clients, bouteille 10 € HT, 30 prennent le lot au lieu de 2, 10 prenaient déjà 4 ou 5)
+  await expect(page.getByRole('group', { name: 'Offre' }).getByRole('button', { name: '5 + 1' })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByLabel('Taux de marge du vin').fill('35')
+  await page.getByLabel('Clients cave du mois').fill('1500')
+  // Marge 35 % (coût 6,50 €) : 30 − 4 × 6,50 = + 4 € par client ; offertes 10 × 6,50 = 65 € ; seuil 16,25 → 1 sur 92 ; 30 clients : 120 − 65 = + 55 €
+  await expect(statut(page)).toHaveText(/^Offre 5 \+ 1 : 1 client sur 92 qui prend le lot au lieu de 2 bouteilles suffit à payer les bouteilles offertes ; avec 30 clients, la masse de marge gagne 55\s€ par mois\.$/)
+  const effort = page.getByRole('region', { name: 'L’effort demandé' })
+  await expect(effort).toContainText('1 client sur 92 suffit')
+  await expect(effort).toContainText(/17 clients sur 1\s500 qui prennent le 5 \+ 1 au lieu de 2 bouteilles paient les 65\s€ de bouteilles offertes/)
+  // Les saisies se limitent à l'offre, la marge, le prix, les clients
+  await expect(page.getByLabel('Bouteilles payées')).toHaveCount(0)
+  await expect(page.getByLabel('Panier moyen cave HT')).toHaveCount(0)
+  await expect(page.getByRole('textbox', { name: 'Remise', exact: true })).toHaveCount(0)
+  // Seuil arrondi (17) + 5, 10, 20, 30, 50
+  await expect(page.getByRole('table', { name: 'Offre en lot, selon les clients qui montent' }).getByRole('row')).toHaveCount(7)
+  // 4 + 2 à 35 % : 20 − 4 × 6,50 = − 6 € par client, il faut plus de 50 %
+  await page.getByRole('group', { name: 'Offre' }).getByRole('button', { name: '4 + 2' }).click()
+  await expect(statut(page)).toHaveText(/^À 35\s% de marge, un client qui passe de 2 bouteilles au 4 \+ 2 fait perdre 6,00\s€ de marge : il faut plus de 50\s% de marge\.$/)
+  await expect(page.getByLabel('Clients qui prenaient déjà 3 ou 4 bouteilles')).toBeVisible()
+  await page.getByRole('button', { name: 'Effacer' }).click()
+  await expect(page.getByLabel('Prix moyen de la bouteille HT')).toHaveValue('')
+
+  // Remise en % : un seul champ de remise, plus de bloc lot
+  await page.getByRole('group', { name: 'Je regarde' }).getByRole('button', { name: 'Une remise' }).click()
   await page.getByLabel('Taux de marge du produit').fill('30')
   await page.getByLabel('Cartons vendus d’habitude').fill('10')
-  await page.getByRole('button', { name: 'Offre 5 + 1' }).click()
-  // 1 gratuit sur 6 = 16,7 % ; il reste 13,3 % : 30 ÷ 13,33 = 2,25 fois plus, 23 cartons au lieu de 10
+  await page.getByRole('textbox', { name: 'Remise', exact: true }).fill('16,67')
+  // 30 ÷ 13,33 = 2,25 fois plus, 23 cartons au lieu de 10
   await expect(statut(page)).toContainText(/Avec 16,7\s% de remise, il faut vendre 125(,1)?\s% de plus pour garder la même marge, soit 23 cartons au lieu de 10\./)
-  await page.getByLabel('Clients cave du mois').fill('1500')
-  await page.getByLabel('Panier moyen cave HT').fill('30')
-  // Offre en lot sur un mois (exemple : 1 500 clients, panier 30 € HT, bouteille 10 € HT, de 2 à 5 + 1, 30 montent,
-  // 10 prenaient déjà 5, 10 passent de 4 à 5 + 1). Marge 30 % (coût 7 €) : + 30 − 4 × 7 = + 2 € par client ;
-  // coût de l'offre 10 × 7 + 10 × (14 − 10) = 110 € ; seuil 55 clients, 1 sur 27 ; 30 clients : 60 − 110 = − 50 €
-  await expect(statut(page)).toContainText(/En lot 5 \+ 1, 1 client sur 27 qui passe de 2 à 5 \+ 1 bouteilles suffit à rembourser l’offre ; avec 30 clients, la masse de marge perd 50\s€ par mois\./)
-  // marge 45 % (coût 5,50 €) : + 8 € par client ; coût 55 + 10 = 65 € ; seuil 8,125 → 1 sur 185 ; 30 clients → + 175 €
-  await page.getByLabel('Taux de marge du produit').fill('45')
-  await expect(statut(page)).toContainText(/1 client sur 185 qui passe de 2 à 5 \+ 1 bouteilles suffit à rembourser l’offre ; avec 30 clients, la masse de marge gagne 175\s€ par mois\./)
-  const effort = page.getByRole('region', { name: 'Offre 5 + 1 : l’effort pour la rembourser' })
-  await expect(effort).toContainText('1 client sur 185 suffit')
-  await expect(effort).toContainText('Masse de marge du mois')
-  // Seuil arrondi (9) + 5, 10, 20, 30, 50 + ligne du panier
-  await expect(page.getByRole('table', { name: 'Offre en lot, selon les clients qui montent' }).getByRole('row')).toHaveCount(8)
-  await page.getByRole('button', { name: 'Effacer' }).click()
-  await expect(page.getByLabel('Bouteilles payées')).toHaveValue('5')
+  await expect(page.getByLabel('Prix moyen de la bouteille HT')).toHaveCount(0)
 
   await page.getByRole('group', { name: 'Je regarde' }).getByRole('button', { name: 'Remises et offerts' }).click()
   await page.getByLabel('CA HT de la période').fill('100000')
