@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture, type QuestionsSimulees } from './supabase-simule'
+import { deplierPoint, seConnecter, textesTropPetits, type Ecriture, type QuestionsSimulees } from './supabase-simule'
 
 // Sondages (sprint 22, A3, puis 23/10/2026) : 1 à 5 questions posées dans Infos réseau aux franchisés, à l'équipe ou aux deux
 test.beforeEach(async ({ page }) => {
@@ -107,6 +107,7 @@ test('un sondage d’une question garde son intitulé pour titre et part aux fra
 test('le Coach remplit un sondage depuis son accueil, sans voir les résultats', async ({ page, isMobile }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { questions: sondages(), ecritures, appMetadata: { role: 'coach', coach: 'Noé MODELE' } })
+  await deplierPoint(page) // 278 : sur téléphone, le point du jour s'ouvre par la barre du haut
   const section = page.getByRole('region', { name: 'Sondages à remplir' })
   const sondage = section.getByRole('listitem', { name: 'Point Coachs' })
   await expect(sondage).toContainText('1. Charge de travail')

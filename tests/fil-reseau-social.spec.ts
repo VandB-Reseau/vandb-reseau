@@ -112,3 +112,16 @@ test('211 : ce qui est arrivé depuis le dernier passage porte « Nouveau », pu
   await expect(fil.getByRole('article', { name: 'Nouvelle charte des vitrines' }).getByText('Nouveau', { exact: true })).toHaveCount(0)
   await expect(fil.getByRole('separator', { name: 'Vous êtes à jour' })).toHaveCount(1)
 })
+
+test('Accueil PC (17/11) : fil et colonne de droite alignés sous le titre, sans grand vide entre ou autour', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Disposition du PC')
+  await page.setViewportSize({ width: 1920, height: 1000 })
+  await seConnecter(page)
+  const fil = (await page.getByRole('region', { name: 'Actualités' }).boundingBox())!
+  const cote = (await page.getByRole('complementary', { name: 'Aujourd’hui' }).boundingBox())!
+  const titre = (await page.getByRole('heading', { name: 'Accueil', level: 1 }).boundingBox())!
+  expect(Math.abs(fil.x - titre.x)).toBeLessThan(4)
+  expect(cote.x - (fil.x + fil.width)).toBeLessThanOrEqual(32)
+  expect(fil.width).toBeGreaterThan(700)
+  expect(cote.width).toBeGreaterThan(500)
+})

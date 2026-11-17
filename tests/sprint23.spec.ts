@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { creerDepuisMenu, saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { deplierPoint, creerDepuisMenu, saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 // Sprint 23 (Joseph, 23/10/2026) : retouches du quotidien. Saisie d'une visite sans champs déjà connus (S1),
 // Ma semaine en trois chiffres (S2), rythme par Coach lisible en entier (S3), tâche cochée depuis l'accueil
@@ -67,6 +67,7 @@ test('S3 : la ligne de chaque Coach dit visites sur référence, avec une jauge,
 test('S4 : une tâche se coche depuis l’accueil et « Annuler » la remet en cours', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
+  await deplierPoint(page) // 278 : sur téléphone, le point du jour s'ouvre par la barre du haut
   const bouton = page.getByRole('region', { name: 'À traiter' }).getByRole('button', { name: 'Tâche faite : Refaire la vitrine' })
   await expect(bouton).toBeVisible()
   const box = (await bouton.boundingBox())!
