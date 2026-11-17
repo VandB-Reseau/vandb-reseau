@@ -25,7 +25,7 @@ import SnoozeOutlined from '@mui/icons-material/SnoozeOutlined'
 import FlagOutlined from '@mui/icons-material/FlagOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
-import { FenetreCompteRendu, useOuvrirCompteRendu, VignetteCompteRendu } from '../components/ApercuCompteRendu'
+import { FenetreCompteRendu, PieceJointe, useOuvrirCompteRendu } from '../components/ApercuCompteRendu'
 import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, Pastille, Puces, TitreSection, type Ton } from '../components/Social'
 import { analyser, caDe, chiffresDuMagasin, decalerMois, formatKEuros, formatPourcent, libelleMoisCourt, suiviAlerte } from '../data/chiffres'
 import { useAuth } from '../auth/AuthContext'
@@ -101,7 +101,7 @@ function avatarATraiter(reseau: Reseau, x: ATraiter) {
   return m ? <Blason magasin={m} /> : <Initiales nom={x.avatar} icone={x.icone} />
 }
 
-interface ATraiter { cle: string; titre: string; detail: string; lien: string; avatar: string; icone?: ReactNode; pastille?: { ton: Ton; libelle: string }; visite?: Visite; tache?: ActionSuivie }
+interface ATraiter { cle: string; sujet?: string; nom?: string; titre: string; detail: string; lien: string; avatar: string; icone?: ReactNode; pastille?: { ton: Ton; libelle: string }; visite?: Visite; tache?: ActionSuivie }
 
 function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean, moi = ''): ATraiter[] {
   const j = reseau.jour
@@ -194,7 +194,7 @@ function aTraiterAnimation(reseau: Reseau, p: Perimetre, profil: Profil | null, 
   const items: ATraiter[] = []
   for (const d of (demandes ?? []).filter((d) => aTraiterParLeSiege(d) && noms.has(d.magasin))) {
     const longue = enAttenteLongue(d, `${reseau.jour}T12:00:00Z`)
-    items.push({ cle: `dm-${d.id}`, titre: d.titre, avatar: d.titre, icone: <SupportAgentOutlined />, lien: '/demandes',
+    items.push({ cle: `dm-${d.id}`, nom: d.magasin, titre: d.titre, avatar: d.titre, icone: <SupportAgentOutlined />, lien: '/demandes',
       detail: [d.magasin, libelleTheme(d.theme), `ouverte ${dateRelative(d.ouverteLe, reseau.jour)}`].join(' · '), pastille: longue ? { ton: 'rouge', libelle: 'En retard' } : { ton: 'type', libelle: 'Demande' } })
   }
   const mois = reseau.jour.slice(0, 7)
@@ -220,7 +220,7 @@ function aTraiterVague5(reseau: Reseau, p: Perimetre, communications: Communicat
     if (!dues.length) continue
     const retard = dues.filter((x) => x.etat === 'retard').length
     const x = dues[0]
-    items.push({ cle: `in-${m.nom}`, titre: `${m.nom} · ${x.e.libelle}`, avatar: m.nom, icone: <FlagOutlined />, lien: `${lienFiche(m.nom)}?vue=fiche`,
+    items.push({ cle: `in-${m.nom}`, sujet: retard ? `Intégration en retard : ${x.e.libelle}` : `Intégration : ${x.e.libelle}`, nom: m.nom, titre: `${m.nom} · ${x.e.libelle}`, avatar: m.nom, icone: <FlagOutlined />, lien: `${lienFiche(m.nom)}?vue=fiche`,
       detail: [`Intégration, jour ${x.e.jour}`, libellesResponsable[x.e.responsable], retard > 1 ? `${retard} étapes en retard` : `pour le ${dateCourte(x.echeance)}`].join(' · '),
       pastille: retard ? { ton: 'rouge', libelle: 'En retard' } : { ton: 'type', libelle: 'Intégration' } })
   }
@@ -231,6 +231,53 @@ function aTraiterVague5(reseau: Reseau, p: Perimetre, communications: Communicat
 type GroupeATraiter = 'urgent' | 'suivi' | 'visite'
 const groupeDe = (x: ATraiter): GroupeATraiter => (x.pastille?.ton === 'rouge' ? 'urgent' : x.cle.startsWith('v-') ? 'visite' : 'suivi')
 const GROUPES: { v: GroupeATraiter; libelle: string }[] = [{ v: 'urgent', libelle: 'Urgent' }, { v: 'suivi', libelle: 'Suivi' }, { v: 'visite', libelle: 'À voir' }]
+
+// Choix 271 (Joseph, 17/11/2026) : sur PC, les lignes d'un même sujet (5 visites d'intégration, 40 magasins à visiter…) se
+// regroupent en une seule ligne qui nomme les magasins et se déplie. Tâches, magasins qui décrochent et visites à
+// confirmer restent une par une : chacune a son geste
+const SUJETS: Record<string, string> = {
+  v: 'Magasins à visiter', s: 'Magasins prioritaires', c: 'Magasins qui ont reculé d’une case', sc: 'Magasins sans Coach', pv: 'Postes de Coach à pourvoir',
+  ch: 'Coachs surchargés', o: 'Ouvertures à préparer', cp: 'Campagnes à constater', dm: 'Demandes de franchisés', pc: 'Prises de connaissance à relancer', en: 'Entretiens du mois',
+}
+const sujetDe = (x: ATraiter) => x.sujet ?? SUJETS[x.cle.split('-')[0]]
+type LigneOuGroupe = { seul: ATraiter } | { sujet: string; items: ATraiter[] }
+function regrouper(liste: ATraiter[]): LigneOuGroupe[] {
+  const sortie: LigneOuGroupe[] = []
+  const parSujet = new Map<string, ATraiter[]>()
+  for (const x of liste) {
+    const sujet = sujetDe(x)
+    const cle = sujet && `${groupeDe(x)}|${sujet}`
+    if (!cle) { sortie.push({ seul: x }); continue }
+    const g = parSujet.get(cle)
+    if (g) { g.push(x); continue }
+    const nouveau = [x]
+    parSujet.set(cle, nouveau)
+    sortie.push({ sujet: sujet!, items: nouveau })
+  }
+  return sortie.map((r) => ('items' in r && r.items.length === 1 ? { seul: r.items[0] } : r))
+}
+const nomDe = (x: ATraiter) => x.nom ?? x.titre
+
+function LigneGroupe({ sujet, items, children }: { sujet: string; items: ATraiter[]; children: ReactNode }) {
+  const [ouvert, setOuvert] = useState(false)
+  const noms = [...new Set(items.map(nomDe))]
+  const pastille = items.find((x) => x.pastille?.ton === 'rouge')?.pastille ?? items[0].pastille
+  return (
+    <Box>
+      <ButtonBase onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert} aria-label={`${sujet} : ${items.length}`}
+        sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1, minHeight: 64, width: '100%', textAlign: 'left', justifyContent: 'flex-start', color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
+        <Initiales nom={sujet} icone={items[0].icone ?? <StorefrontOutlined />} />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 600 }}>{sujet}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{noms.join(', ')}</Typography>
+        </Box>
+        <Pastille ton={pastille?.ton ?? 'gris'}>{String(items.length)}</Pastille>
+        {ouvert ? <ExpandLessOutlined /> : <ExpandMoreOutlined />}
+      </ButtonBase>
+      <Collapse in={ouvert} unmountOnExit><Box sx={{ pl: 3, '& > * + *': { borderTop: '1px solid', borderColor: 'divider' }, borderTop: '1px solid', borderColor: 'divider' }}>{children}</Box></Collapse>
+    </Box>
+  )
+}
 
 // Cocher une tâche sans quitter l'accueil ; « Annuler » la remet en cours
 function useCocherTache(reseau: Reseau) {
@@ -284,7 +331,18 @@ function BlocATraiter({ reseau, items, compact = false }: { reseau: Reseau; item
   const presents = GROUPES.map((g) => ({ ...g, n: tries.filter((x) => groupeDe(x) === g.v).length })).filter((g) => g.n)
   const filtres = filtre === 'tout' ? tries : tries.filter((x) => groupeDe(x) === filtre)
   const apercu = compact ? APERCU_COMPACT : APERCU
-  const vus = tout ? filtres : filtres.slice(0, apercu)
+  // PC : un sujet partagé par plusieurs lignes n'en fait qu'une ; téléphone : les lignes une par une, comme avant
+  const rangees: LigneOuGroupe[] = compact ? filtres.map((x) => ({ seul: x })) : regrouper(filtres)
+  const lignes = tout ? rangees : rangees.slice(0, apercu)
+  const ligne = (x: ATraiter) => (x.visite
+            ? <LigneCompacte key={x.cle} onClick={() => setCompteRendu(x.visite!)} label={`Compte rendu de ${x.titre}`} avatar={avatarATraiter(reseau, x)} titre={x.titre} detail={x.detail}
+              actions={<Box sx={{ display: 'flex', gap: 0.5, flex: 'none' }}>
+                <Button onClick={() => faite(x.visite!)} aria-label={`Visite de ${x.titre} faite`} sx={{ minHeight: 48, minWidth: 0, px: 1.25 }}>Faite</Button>
+                <Button onClick={() => setReporter(x.visite!)} aria-label={`Reporter la visite de ${x.titre}`} sx={{ minHeight: 48, minWidth: 0, px: 1.25 }}>Reporter</Button>
+              </Box>} />
+            : x.tache
+              ? <LigneTache key={x.cle} x={x.tache} cocher={taches.cocher} lien={x.lien} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />
+              : <LigneCompacte key={x.cle} lien={x.lien} avatar={avatarATraiter(reseau, x)} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} actions={boutonPlusTard(x)} />)
   return (
     <Box component="section" aria-label="À traiter">
       {!compact && <TitreSection nombre={tries.length}>À traiter</TitreSection>}
@@ -295,16 +353,8 @@ function BlocATraiter({ reseau, items, compact = false }: { reseau: Reseau; item
       )}
       {!tries.length ? <CarteLignes><LigneCompacte avatar={<Initiales nom="ok" icone={<TaskAltOutlined />} couleur={brand.vertFonce} />} titre="Rien d’urgent" detail="Aucun magasin ne décroche ni n’attend de visite, aucune tâche en retard." /></CarteLignes> : (
         <CarteLignes>
-          {vus.map((x) => x.visite
-            ? <LigneCompacte key={x.cle} onClick={() => setCompteRendu(x.visite!)} label={`Compte rendu de ${x.titre}`} avatar={avatarATraiter(reseau, x)} titre={x.titre} detail={x.detail}
-              actions={<Box sx={{ display: 'flex', gap: 0.5, flex: 'none' }}>
-                <Button onClick={() => faite(x.visite!)} aria-label={`Visite de ${x.titre} faite`} sx={{ minHeight: 48, minWidth: 0, px: 1.25 }}>Faite</Button>
-                <Button onClick={() => setReporter(x.visite!)} aria-label={`Reporter la visite de ${x.titre}`} sx={{ minHeight: 48, minWidth: 0, px: 1.25 }}>Reporter</Button>
-              </Box>} />
-            : x.tache
-              ? <LigneTache key={x.cle} x={x.tache} cocher={taches.cocher} lien={x.lien} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />
-              : <LigneCompacte key={x.cle} lien={x.lien} avatar={avatarATraiter(reseau, x)} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} actions={boutonPlusTard(x)} />)}
-          {filtres.length > apercu && (
+          {lignes.map((r) => ('seul' in r ? ligne(r.seul) : <LigneGroupe key={`g-${r.sujet}-${groupeDe(r.items[0])}`} sujet={r.sujet} items={r.items}>{r.items.map(ligne)}</LigneGroupe>))}
+          {rangees.length > apercu && (
             <ButtonBase onClick={() => setTout((v) => !v)} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{tout ? 'Afficher moins' : `Voir les ${filtres.length}`}</ButtonBase>
           )}
         </CarteLignes>
@@ -451,19 +501,58 @@ function Indicateurs({ reseau, p, periode = 'mois', colonne = false }: { reseau:
   const cases = actifs.map((m) => caseDe(reseau.evaluations[m.nom])).filter((c) => !!c)
   const prioritaires = cases.filter((c) => PRIORITAIRES.includes(c.id)).length
   const repartition = nineBox.map((c) => ({ c, n: cases.filter((x) => x.id === c.id).length })).filter((x) => x.n)
+  // Choix 271 (Joseph, 17/11/2026) : chaque chiffre dit quelque chose. Mois en cours encore sans comparaison : le dernier
+  // mois comparable à N-1 ; « Aucun » plutôt que « 0 » ; visites en avance ou en retard sur le repère ; parc pas encore classé
+  let moisCa = mois
+  let caAff = ca
+  let ecartAff = ecart
+  let incomplet = false
+  if (ecart === null && mois) {
+    for (let k = 1; k <= 12 && ecartAff === null; k++) {
+      const m = decalerMois(mois, -k)
+      let c = 0, r = 0
+      for (const x of actifs) {
+        const v = periode === 'cumul' ? cumul(x.nom, m) : caDe(chiffresDuMagasin(reseau, x.nom).find((y) => y.mois === m)) ?? 0
+        const w = periode === 'cumul' ? cumul(x.nom, decalerMois(m, -12)) : caDe(chiffresDuMagasin(reseau, x.nom).find((y) => y.mois === decalerMois(m, -12))) ?? 0
+        if (v > 0 && w > 0) { c += v; r += w }
+      }
+      if (r > 0) { moisCa = m; caAff = c; ecartAff = ((c - r) / r) * 100; incomplet = true }
+    }
+  }
+  const avance = Math.round(faites - refVisites)
   const tuiles: { cle: string; libelle: string; valeur: string; detail: string; lien: string; couleur?: string; couleurDetail?: string; barre?: ReactNode }[] = [
-    { cle: 'ca', libelle: mois ? (periode === 'cumul' ? `CA cumulé à fin ${libelleMoisCourt(mois)}` : `CA de ${libelleMoisCourt(mois)}`) : 'CA du mois', valeur: ecart === null ? '—' : formatKEuros(ca),
-      detail: ecart === null ? 'Pas encore de chiffres' : `${formatPourcent(ecart)} ${reference === decalerMois(mois, -12) || periode === 'cumul' ? 'vs N-1' : `vs ${libelleMoisCourt(reference!)}`}`, lien: '/performance',
-      couleurDetail: ecart === null ? undefined : ecart < 0 ? theme.palette.error.main : theme.palette.success.dark },
-    { cle: 'decroche', libelle: 'Décrochent', valeur: String(decrochent), detail: surveiller ? `${surveiller} à surveiller` : 'aucun à surveiller', lien: '/performance', couleur: decrochent ? theme.palette.error.main : undefined },
-    { cle: 'visites', libelle: 'Visites de l’année', valeur: tauxVisites === null ? '—' : `${tauxVisites} %`, detail: `${faites} sur ${Math.round(refVisites)} de référence`, lien: '/visites?vue=rythme',
-      barre: tauxVisites === null ? undefined : <Box sx={{ height: 6, borderRadius: 3, bgcolor: 'action.hover', mt: 0.75 }}><Box sx={{ width: `${Math.min(100, tauxVisites)}%`, height: 6, borderRadius: 3, bgcolor: 'warning.main' }} /></Box> },
-    { cle: 'sante', libelle: 'Santé du parc', valeur: String(prioritaires), detail: `prioritaires sur ${cases.length} classés`, lien: '/plus/sante', couleur: prioritaires ? theme.palette.warning.dark : undefined,
-      barre: repartition.length ? <Box sx={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', mt: 0.75 }}>{repartition.map((x) => <Box key={x.c.id} sx={{ flex: x.n, bgcolor: x.c.couleur }} />)}</Box> : undefined },
+    { cle: 'ca', libelle: moisCa ? (periode === 'cumul' ? `CA cumulé à fin ${libelleMoisCourt(moisCa)}` : `CA de ${libelleMoisCourt(moisCa)}`) : 'CA du mois', valeur: ecartAff === null ? '—' : formatKEuros(caAff),
+      detail: ecartAff === null ? 'Pas encore de chiffres' : `${formatPourcent(ecartAff)} ${incomplet || reference === decalerMois(mois, -12) || periode === 'cumul' ? 'vs N-1' : `vs ${libelleMoisCourt(reference!)}`}${incomplet ? ` · ${libelleMoisCourt(mois)} incomplet` : ''}`, lien: '/performance',
+      couleurDetail: ecartAff === null ? undefined : ecartAff < 0 ? theme.palette.error.main : theme.palette.success.dark },
+    { cle: 'decroche', libelle: 'Décrochent', valeur: decrochent ? String(decrochent) : 'Aucun', detail: surveiller ? `${surveiller} à surveiller` : 'aucun à surveiller', lien: '/performance', couleur: decrochent ? theme.palette.error.main : theme.palette.success.dark },
+    { cle: 'visites', libelle: 'Visites de l’année', valeur: refVisites ? `${faites} faites` : String(faites),
+      detail: !refVisites ? 'pas de repère cette année' : avance >= 0 ? `${avance} d’avance sur le repère (${Math.round(refVisites)})` : `${-avance} de retard sur le repère (${Math.round(refVisites)})`, lien: '/visites?vue=rythme',
+      couleurDetail: !refVisites ? undefined : avance >= 0 ? theme.palette.success.dark : theme.palette.error.main,
+      barre: tauxVisites === null || colonne ? undefined : <Box sx={{ height: 6, borderRadius: 3, bgcolor: 'action.hover', mt: 0.75 }}><Box sx={{ width: `${Math.min(100, tauxVisites)}%`, height: 6, borderRadius: 3, bgcolor: 'warning.main' }} /></Box> },
+    cases.length
+      ? { cle: 'sante', libelle: 'Santé du parc', valeur: prioritaires ? String(prioritaires) : 'Aucun', detail: `prioritaire${prioritaires > 1 ? 's' : ''} sur ${cases.length} classés`, lien: '/plus/sante', couleur: prioritaires ? theme.palette.warning.dark : theme.palette.success.dark,
+        barre: repartition.length && !colonne ? <Box sx={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', mt: 0.75 }}>{repartition.map((x) => <Box key={x.c.id} sx={{ flex: x.n, bgcolor: x.c.couleur }} />)}</Box> : undefined }
+      : { cle: 'sante', libelle: 'Santé du parc', valeur: 'À classer', detail: `aucun magasin classé sur ${actifs.length}`, lien: '/plus/sante' },
   ]
+  // PC (choix 271) : « Le point » en quatre lignes dans la colonne de droite, libellé et détail à gauche, valeur à droite
+  if (colonne) return (
+    <Box component="section" aria-label="Pilotage" sx={{ mb: 3 }}>
+      <TitreSection>Le point</TitreSection>
+      <CarteLignes>
+        {tuiles.map((t) => (
+          <ButtonBase key={t.cle} component={RouterLink} to={t.lien} aria-label={`${t.libelle} : ${t.valeur}, ${t.detail}`}
+            sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 1.5, alignItems: 'baseline', width: '100%', textAlign: 'left', px: 2, py: 1.25, minHeight: 64, color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
+            <Typography sx={{ fontWeight: 600, minWidth: 0 }} noWrap>{t.libelle}</Typography>
+            <Typography sx={{ fontWeight: 700, fontSize: '1.125rem', fontVariantNumeric: 'tabular-nums', color: t.couleur, whiteSpace: 'nowrap' }}>{t.valeur}</Typography>
+            <Typography variant="body2" sx={{ gridColumn: '1 / -1', color: t.couleurDetail ?? 'text.secondary', fontWeight: t.couleurDetail ? 600 : 400 }}>{t.detail}</Typography>
+          </ButtonBase>
+        ))}
+      </CarteLignes>
+    </Box>
+  )
   return (
     // Téléphone : quatre petites cartes égales en 2 × 2, sans défilement de côté (Joseph, 22/10/2026)
-    <Box component="section" aria-label="Pilotage" sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: colonne ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 1, md: colonne ? 1.5 : 2 }, mb: { xs: 2, md: 3 } }}>
+    <Box component="section" aria-label="Pilotage" sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 1, md: 2 }, mb: { xs: 2, md: 3 } }}>
       {tuiles.map((t) => <Indicateur key={t.cle} libelle={t.libelle} valeur={t.valeur} detail={t.detail} lien={t.lien} couleur={t.couleur} couleurDetail={t.couleurDetail}>{t.barre}</Indicateur>)}
     </Box>
   )
@@ -540,8 +629,8 @@ export function PublicationFil({ e, jour, sansMagasin = false, ouvrir }: { e: El
         {e.texte && !e.valeur && <Typography {...(e.genre === 'visite' ? { variant: 'body2' as const, color: 'text.secondary' } : {})} sx={{ mt: e.titre ? 0.25 : 1.25, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'pre-line' }}>{e.texte}</Typography>}
       </ButtonBase>
       {/* Les photos hors du lien : le toucher les ouvre en plein écran */}
-      {(!!e.photos?.length || cr) && <Box sx={{ px: 2, pb: 2, mt: -0.75 }}><GrillePhotos photos={e.photos}
-        avant={cr && <VignetteCompteRendu libelle={`Ouvrir le compte rendu de ${e.magasin}`} onOuvrir={cr} />} /></Box>}
+      {(!!e.photos?.length || cr) && <Box sx={{ px: 2, pb: 2, mt: -0.75, display: 'flex', flexDirection: 'column', gap: 1 }}><GrillePhotos photos={e.photos} />
+        {cr && <PieceJointe nom={`Compte rendu de ${e.magasin}`} libelle={`Ouvrir le compte rendu de ${e.magasin}`} onOuvrir={cr} />}</Box>}
     </Box>
   )
 }
@@ -724,8 +813,9 @@ function Tableau({ reseau, p, sansParametres = false, periode }: { reseau: Resea
   return (
     <>
       {aLaUne}
-      <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: 'minmax(0, 1fr) minmax(340px, 400px)', alignItems: 'start' }}>
-        <Box sx={{ minWidth: 0, maxWidth: 680, width: '100%', justifySelf: 'center', display: 'flex', flexDirection: 'column' }}>{filActu}</Box>
+      {/* Choix 271 (Joseph, 17/11/2026) : le fil façon LinkedIn sur 600 px, la colonne « Aujourd'hui » à côté */}
+      <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: 'minmax(0, 600px) minmax(340px, 400px)', justifyContent: 'center', alignItems: 'start' }}>
+        <Box sx={{ minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column' }}>{filActu}</Box>
         <Box component="aside" aria-label="Aujourd’hui" sx={{ minWidth: 0 }}>
           <Indicateurs reseau={reseau} p={p} periode={periode} colonne />
           {profil?.role === 'coach' && <MaJournee reseau={reseau} p={p} moi={monNomPorteur(reseau, profil)} />}

@@ -105,9 +105,9 @@ test('Chaque simulateur : un exemple, Effacer, Revenir à l’exemple', async ({
   // Le vide survit au rechargement (brouillon), l'exemple revient d'un appui
   await page.reload()
   await choix(page).getByRole('button', { name: 'Promo, prix, remises', exact: true }).click()
-  await expect(page.getByRole('textbox', { name: 'Remise', exact: true })).toHaveValue('0')
+  await expect(page.getByLabel('Prix moyen de la bouteille HT')).toHaveValue('')
   await carte.getByRole('button', { name: 'Revenir à l’exemple' }).click()
-  await expect(page.getByRole('textbox', { name: 'Remise', exact: true })).toHaveValue('10')
+  await expect(page.getByLabel('Prix moyen de la bouteille HT')).toHaveValue('10')
   await expect(carte.getByText('Exemple', { exact: true })).toBeVisible()
 })
 

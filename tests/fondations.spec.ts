@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { deplierPoint, COMPTE, seConnecter, simulerSupabase, textesTropPetits } from './supabase-simule'
+import { deplierGroupes, deplierPoint, COMPTE, seConnecter, simulerSupabase, textesTropPetits } from './supabase-simule'
 
 // Barre du bas sur téléphone : libellé court ; menu latéral sur PC : libellé long. Refonte vague 4 (Joseph, 10/11/2026,
 // 36A) : Accueil, Agenda, Magasins, Tâches, Messages dans la barre du bas ; Visites et Santé passent dans le menu du compte
@@ -44,8 +44,10 @@ test('après connexion, l’accueil montre les priorités dans l’ordre choisi'
   // PC : tout est affiché ; téléphone : Cette semaine est un onglet
   await expect(page.getByRole('region', { name: 'Cette semaine' })).toHaveCount(isMobile ? 0 : 1)
   // Cinq lignes d'abord sur PC, deux sur téléphone, puis tout
-  await expect(aTraiter.getByRole('link')).toHaveCount(isMobile ? 2 : 5)
+  // Choix 271 : sur PC, une ligne peut regrouper un sujet (bouton qui se déplie)
+  await expect(aTraiter.getByRole('link').or(aTraiter.locator('button[aria-expanded]'))).toHaveCount(isMobile ? 2 : 5)
   await aTraiter.getByRole('button', { name: /^Voir les \d+$/ }).click()
+  await deplierGroupes(page)
   // Chaque ligne porte une seule pastille (la plus grave), dans l'ordre de priorité choisi
   const pastilles = (await aTraiter.getByRole('link').allInnerTexts()).map((t) => t.trim().split('\n').at(-1)!.trim())
   expect([...new Set(pastilles)]).toEqual([

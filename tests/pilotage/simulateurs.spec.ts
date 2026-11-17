@@ -78,6 +78,7 @@ test('franchisé : le menu ouvre les simulateurs de son magasin ; embauche chiff
 test('franchisé : une soirée se met dans le budget, la promo se lit en volume', async ({ page, isMobile }, info) => {
   const ecritures = await connecter(page, franchise, { role: 'franchise' })
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=chiffres&partie=simulateurs&sim=prix`)
+  await page.getByRole('group', { name: 'Je regarde' }).getByRole('button', { name: 'Une remise' }).click()
   await page.getByLabel('Remise', { exact: true }).fill('10')
   await page.getByLabel('Taux de marge du produit').fill('30')
   await expect(page.getByRole('status')).toContainText('Avec 10 % de remise, il faut vendre 50 % de plus pour garder la même marge.')

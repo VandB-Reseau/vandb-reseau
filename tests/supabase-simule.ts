@@ -963,6 +963,13 @@ export async function deplierPoint(page: Page) {
   if (await bande.count()) await bande.first().click()
 }
 
+// Choix 271 : sur PC, les lignes d'un même sujet sont regroupées ; on les déplie toutes pour lire chaque ligne
+export async function deplierGroupes(page: Page) {
+  const bloc = page.getByRole('region', { name: 'À traiter' })
+  const fermes = bloc.locator('button[aria-expanded="false"]')
+  while (await fermes.count()) await fermes.first().click()
+}
+
 export async function deplierATraiter(page: Page) {
   await deplierPoint(page)
   const bloc = page.getByRole('region', { name: 'À traiter' })

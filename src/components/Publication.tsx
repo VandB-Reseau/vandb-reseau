@@ -19,7 +19,7 @@ import { DialogProposer } from './Propositions'
 import { PublierCommunication } from '../pages/Communications'
 import type { Reseau } from '../data/modele'
 import { VisuelFil } from './MiseEnForme'
-import { useOuvrirCompteRendu, VignetteCompteRendu } from './ApercuCompteRendu'
+import { PieceJointe, useOuvrirCompteRendu } from './ApercuCompteRendu'
 import { quand, type ElementFil, type GenreFil } from '../data/fil'
 
 // Ce qui se publie : comptes rendus, bonnes pratiques, communications, temps forts et campagnes (204A). Le reste (tâches,
@@ -97,8 +97,8 @@ export function CartePublication({ e, jour, sansMagasin = false, nouveau = false
           <VisuelFil piece={e.visuel.piece} url={e.visuel.url} alt={e.titre ?? ''} />
         </ButtonBase>
       )}
-      {(!!e.photos?.length || cr) && <Box sx={{ px: 2, pb: 1.5, pt: 0.5 }}><GrillePhotos photos={e.photos}
-        avant={cr && <VignetteCompteRendu libelle={`Ouvrir le compte rendu de ${e.magasin}`} onOuvrir={cr} />} /></Box>}
+      {!!e.photos?.length && <Box sx={{ pt: 0.5, pb: cr ? 0 : 1 }}><GrillePhotos photos={e.photos} grand /></Box>}
+      {cr && <Box sx={{ px: 2, pt: 1, pb: 1.5 }}><PieceJointe nom={`Compte rendu de ${e.magasin}`} libelle={`Ouvrir le compte rendu de ${e.magasin}`} onOuvrir={cr} /></Box>}
       {children}
     </Card>
   )
