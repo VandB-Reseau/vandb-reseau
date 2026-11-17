@@ -7,6 +7,8 @@
 --  · Chacun (Directeur, RR, Coach, franchisé) enregistre ses rapports et ne lit que les siens, plus :
 --  · les modèles « proposés par le siège », publiés par le Directeur, lus par tous les comptes ;
 --  · les rapports partagés avec l'équipe par un membre de l'équipe, lus par l'équipe seulement (jamais par un franchisé).
+--  · Public d'un modèle (17/11/2026, ajouté avant tout passage en ligne) : Responsables Régionaux, Coachs, franchisés ;
+--    un modèle ne revient qu'aux comptes de ces rôles, le Directeur les voit tous. Déjà passée : la rejouer suffit.
 -- Table fermée : aucune lecture ni écriture directe, tout passe par les fonctions ci-dessous.
 -- ════════════════════════════════════════════════════════════════
 
@@ -22,6 +24,10 @@ CREATE TABLE IF NOT EXISTS public.rapports (
   cree_le     timestamptz NOT NULL DEFAULT now(),
   maj_le      timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE public.rapports ADD COLUMN IF NOT EXISTS publics text[] NOT NULL DEFAULT ARRAY['rr', 'coach', 'franchise'];
+ALTER TABLE public.rapports DROP CONSTRAINT IF EXISTS rapports_publics_valides;
+ALTER TABLE public.rapports ADD CONSTRAINT rapports_publics_valides
+  CHECK (publics <@ ARRAY['rr', 'coach', 'franchise'] AND cardinality(publics) BETWEEN 1 AND 3);
 CREATE INDEX IF NOT EXISTS rapports_auteur ON public.rapports (auteur);
 ALTER TABLE public.rapports ENABLE ROW LEVEL SECURITY;
 DO $$ DECLARE p record; BEGIN
@@ -38,30 +44,37 @@ DECLARE v_role text := public.mon_role();
 BEGIN
   IF auth.uid() IS NULL OR v_role NOT IN ('directeur', 'rr', 'coach', 'franchise') THEN RAISE EXCEPTION 'acces_refuse'; END IF;
   RETURN (SELECT coalesce(jsonb_agg(jsonb_build_object(
-      'id', r.id, 'titre', r.titre, 'definition', r.definition, 'modele', r.modele, 'partage', r.partage,
+      'id', r.id, 'titre', r.titre, 'definition', r.definition, 'modele', r.modele, 'partage', r.partage, 'publics', to_jsonb(r.publics),
       'auteur', r.auteur_nom, 'mien', r.auteur = auth.uid(), 'maj_le', r.maj_le) ORDER BY r.modele DESC, r.titre), '[]'::jsonb)
     FROM public.rapports r
-    WHERE r.auteur = auth.uid() OR r.modele OR (r.partage AND public.est_equipe()));
+    WHERE r.auteur = auth.uid()
+      OR (r.modele AND (v_role = 'directeur' OR v_role = ANY (r.publics)))
+      OR (r.partage AND public.est_equipe()));
 END $$;
 
 -- Enregistrer (p_id NULL : nouveau) ; seul l'auteur modifie. Modèle : Directeur seul ; partage : équipe seule.
-CREATE OR REPLACE FUNCTION public.enregistrer_rapport(p_id bigint, p_titre text, p_definition jsonb, p_modele boolean DEFAULT false, p_partage boolean DEFAULT false) RETURNS bigint
+-- Première version sans public : retirée, une seule fonction d'enregistrement
+DROP FUNCTION IF EXISTS public.enregistrer_rapport(bigint, text, jsonb, boolean, boolean);
+CREATE OR REPLACE FUNCTION public.enregistrer_rapport(p_id bigint, p_titre text, p_definition jsonb, p_modele boolean DEFAULT false,
+  p_partage boolean DEFAULT false, p_publics text[] DEFAULT NULL) RETURNS bigint
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v_role text := public.mon_role(); v_id bigint;
+  v_publics text[] := coalesce(p_publics, ARRAY['rr', 'coach', 'franchise']);
 BEGIN
   IF auth.uid() IS NULL OR v_role NOT IN ('directeur', 'rr', 'coach', 'franchise') THEN RAISE EXCEPTION 'acces_refuse'; END IF;
   IF coalesce(btrim(p_titre), '') = '' OR length(p_titre) > 120 OR jsonb_typeof(p_definition) IS DISTINCT FROM 'object'
     OR length(p_definition::text) > 20000 THEN RAISE EXCEPTION 'format'; END IF;
+  IF NOT (v_publics <@ ARRAY['rr', 'coach', 'franchise']) OR cardinality(v_publics) NOT BETWEEN 1 AND 3 THEN RAISE EXCEPTION 'format'; END IF;
   IF coalesce(p_modele, false) AND NOT public.est_directeur() THEN RAISE EXCEPTION 'acces_refuse'; END IF;
   IF coalesce(p_partage, false) AND NOT public.est_equipe() THEN RAISE EXCEPTION 'acces_refuse'; END IF;
   IF p_id IS NULL THEN
     IF (SELECT count(*) FROM public.rapports r WHERE r.auteur = auth.uid()) >= 200 THEN RAISE EXCEPTION 'trop_de_rapports'; END IF;
-    INSERT INTO public.rapports (auteur, auteur_nom, auteur_role, titre, definition, modele, partage)
-    VALUES (auth.uid(), coalesce(public.mon_nom(), ''), v_role, btrim(p_titre), p_definition, coalesce(p_modele, false), coalesce(p_partage, false))
+    INSERT INTO public.rapports (auteur, auteur_nom, auteur_role, titre, definition, modele, partage, publics)
+    VALUES (auth.uid(), coalesce(public.mon_nom(), ''), v_role, btrim(p_titre), p_definition, coalesce(p_modele, false), coalesce(p_partage, false), v_publics)
     RETURNING id INTO v_id;
   ELSE
     UPDATE public.rapports r SET titre = btrim(p_titre), definition = p_definition, modele = coalesce(p_modele, false),
-      partage = coalesce(p_partage, false), maj_le = now()
+      partage = coalesce(p_partage, false), publics = v_publics, maj_le = now()
     WHERE r.id = p_id AND r.auteur = auth.uid() RETURNING r.id INTO v_id;
     IF v_id IS NULL THEN RAISE EXCEPTION 'acces_refuse'; END IF;
   END IF;
@@ -78,10 +91,10 @@ BEGIN
 END $$;
 
 REVOKE ALL ON FUNCTION public.rapports_du_compte() FROM PUBLIC, anon;
-REVOKE ALL ON FUNCTION public.enregistrer_rapport(bigint, text, jsonb, boolean, boolean) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.enregistrer_rapport(bigint, text, jsonb, boolean, boolean, text[]) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.supprimer_rapport(bigint) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rapports_du_compte() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.enregistrer_rapport(bigint, text, jsonb, boolean, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.enregistrer_rapport(bigint, text, jsonb, boolean, boolean, text[]) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.supprimer_rapport(bigint) TO authenticated;
 
 INSERT INTO public.journal_migrations (numero, nom) VALUES ('0050', 'rapports_pilotage')

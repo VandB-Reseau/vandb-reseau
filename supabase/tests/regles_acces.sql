@@ -1195,3 +1195,23 @@ SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
 SELECT pg_temp.attendre('Rapports : le Directeur retire un modèle', pg_temp.refuse(format('SELECT public.supprimer_rapport(%s)', :r_modele)), 0);
 RESET ROLE;
 RESET request.jwt.claim.sub;
+
+-- ── 0050 (suite) : public des rapports proposés par le siège
+SELECT pg_temp.attendre('Rapports : une seule fonction d''enregistrement', (SELECT count(*) FROM pg_proc WHERE proname = 'enregistrer_rapport' AND pronamespace = 'public'::regnamespace), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT public.enregistrer_rapport(NULL, 'Pour les Coachs', '{"indicateurs":["visites"]}', true, false, ARRAY['coach']) AS r_coachs \gset
+SELECT public.enregistrer_rapport(NULL, 'Pour les franchisés', '{"indicateurs":["ca"]}', true, false, ARRAY['franchise']) AS r_franchises \gset
+SELECT pg_temp.attendre('Rapports : public inconnu refusé', pg_temp.refuse('SELECT public.enregistrer_rapport(NULL, ''x'', ''{}'', true, false, ARRAY[''anon''])'), 1);
+SELECT pg_temp.attendre('Rapports : public vide refusé', pg_temp.refuse('SELECT public.enregistrer_rapport(NULL, ''x'', ''{}'', true, false, ARRAY[]::text[])'), 1);
+SELECT pg_temp.attendre('Rapports : le Directeur voit tous ses modèles', (SELECT count(*) FROM jsonb_array_elements(public.rapports_du_compte()) e WHERE (e->>'id')::bigint IN (:r_coachs, :r_franchises)), 2);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Rapports : le Coach lit le modèle des Coachs', (SELECT count(*) FROM jsonb_array_elements(public.rapports_du_compte()) e WHERE (e->>'id')::bigint = :r_coachs), 1);
+SELECT pg_temp.attendre('Rapports : pas celui des franchisés', (SELECT count(*) FROM jsonb_array_elements(public.rapports_du_compte()) e WHERE (e->>'id')::bigint = :r_franchises), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000e';
+SELECT pg_temp.attendre('Rapports : le RR ne lit aucun des deux', (SELECT count(*) FROM jsonb_array_elements(public.rapports_du_compte()) e WHERE (e->>'id')::bigint IN (:r_coachs, :r_franchises)), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Rapports : le franchisé lit le modèle des franchisés', (SELECT count(*) FROM jsonb_array_elements(public.rapports_du_compte()) e WHERE (e->>'id')::bigint = :r_franchises), 1);
+SELECT pg_temp.attendre('Rapports : pas celui des Coachs', (SELECT count(*) FROM jsonb_array_elements(public.rapports_du_compte()) e WHERE (e->>'id')::bigint = :r_coachs), 0);
+RESET ROLE;
+RESET request.jwt.claim.sub;
