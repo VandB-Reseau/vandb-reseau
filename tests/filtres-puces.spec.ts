@@ -47,6 +47,5 @@ test('fiche magasin : un onglet Simulateurs, et les anciens liens des chiffres y
   await expect(page).toHaveURL(/vue=simulateurs/)
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })
   if (!isMobile) await expect(onglets.getByRole('tab', { name: 'Simulateurs', selected: true })).toBeVisible()
-  // Téléphone : Simulateurs est dans le menu « ⋯ » (onglet Tâches, Joseph 17/11/2026), aucun onglet de la barre n'est choisi
-  else await expect(onglets.getByRole('tab', { selected: true })).toHaveCount(0)
+  else await expect(onglets.getByRole('tab', { selected: true })).toHaveText('Simuler')
 })

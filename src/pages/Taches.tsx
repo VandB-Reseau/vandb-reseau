@@ -268,8 +268,10 @@ export function PageTaches() {
 // Onglet Tâches de la fiche magasin (Joseph, 17/11/2026) : toutes les tâches du magasin, quel que soit le porteur,
 // en puces À faire / En retard / Bloquées / Faites ; les tâches à faire rangées par échéance. L'Activité garde l'historique.
 export type FiltreTachesMagasin = 'afaire' | 'retard' | 'bloquees' | 'faites'
-export function TachesMagasin({ reseau, magasin, signaler, ajouter }: { reseau: Reseau; magasin: string; signaler: (m: string, annuler?: () => void) => void; ajouter: () => void }) {
+export function TachesMagasin({ reseau, magasin, ajouter }: { reseau: Reseau; magasin: string; ajouter: () => void }) {
   const { recharger } = useReseau()
+  // « Fait » se défait : « Annuler » dans le message (Joseph, 17/11/2026 : une tâche validée par erreur)
+  const { signaler, bandeau } = useMessageAnnulable()
   const ecriture = useEcritureActions(reseau)
   const changerStatut = useChangerStatut(reseau, signaler)
   const [filtre, setFiltre] = useState<FiltreTachesMagasin>('afaire')
@@ -290,7 +292,7 @@ export function TachesMagasin({ reseau, magasin, signaler, ajouter }: { reseau: 
     try {
       await ecriture.cocher(x, faite)
       await recharger()
-      signaler(faite ? 'Tâche marquée faite.' : 'Tâche remise à faire.', () => void cocher(x, !faite))
+      signaler(faite ? 'Tâche marquée faite.' : 'Tâche remise en cours.', () => void cocher(x, !faite))
     } catch (e) { signaler(e instanceof ErreurAction ? e.message : 'La tâche n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.') }
     finally { setEnCours(null) }
   }
@@ -327,10 +329,11 @@ export function TachesMagasin({ reseau, magasin, signaler, ajouter }: { reseau: 
               <Box component="ul" aria-label="Tâches faites" sx={{ listStyle: 'none', m: 0, p: 0 }}>{(toutesFaites ? lignes : lignes.slice(0, FAITES_VISIBLES)).map(ligne)}</Box>
               {lignes.length > FAITES_VISIBLES && <Button onClick={() => setToutesFaites((v) => !v)} sx={{ minHeight: 48, width: '100%' }}>{toutesFaites ? 'Voir moins' : `Voir les ${lignes.length} tâches faites`}</Button>}
             </>
-          : <Box component="ul" aria-label={`Tâches ${libelles[filtre].toLocaleLowerCase('fr')}`} sx={{ listStyle: 'none', m: 0, p: 0 }}>
+          : <Box component="ul" aria-label={filtre === 'afaire' ? `Tâches en cours de ${magasin}` : `Tâches ${libelles[filtre].toLocaleLowerCase('fr')}`} sx={{ listStyle: 'none', m: 0, p: 0 }}>
               {parGroupe.flatMap((g) => [<Intertitre key={`t-${g.g}`} titre={g.titre} nombre={g.lignes.length} />, ...g.lignes.map((x) => <Fragment key={`${g.g}-${x.cle}`}>{ligne(x)}</Fragment>)])}
             </Box>}
       {edition && <DialogAction reseau={reseau} magasins={[magasin]} action={edition} onFermer={(msg) => { setEdition(null); if (msg) signaler(msg) }} />}
+      {bandeau}
     </Card>
   )
 }

@@ -50,17 +50,17 @@ test('22A et 23A : vue d’ensemble du magasin et activité en un seul fil', asy
   await expect(indicateurs.getByText('CA de septembre 2026')).toBeVisible()
   await expect(page.getByRole('region', { name: 'À faire' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Dernier échange' })).toBeVisible()
-  // Activité : plus de sous-onglets, « À faire » en tête, l'historique dessous (265) et des filtres en puces
+  // Historique (Joseph, 17/11/2026) : plus de sous-onglets ni de « À faire », le fil et des filtres en puces
   await page.goto('./#/magasins/Lyon%20Test?vue=activite')
   await expect(page.getByRole('tablist', { name: 'Parties de l’activité' })).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: 'À faire', exact: true })).toBeVisible()
-  await expect(page.getByText('Refaire la tête de gondole Beaujolais').first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Historique', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'À faire', exact: true })).toHaveCount(0)
   const filtres = page.getByRole('group', { name: 'Filtrer l’activité' })
   await filtres.getByRole('button', { name: 'Visites' }).click()
   await expect(page).toHaveURL(/fil=visites/)
   // Les anciennes adresses mènent au même onglet
   await page.goto('./#/magasins/Lyon%20Test?vue=journal')
-  await expect(page.getByRole('heading', { name: 'À faire', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Historique', exact: true })).toBeVisible()
   await lisible(page, isMobile, false)
 })
 

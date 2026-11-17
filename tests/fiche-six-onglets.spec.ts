@@ -35,7 +35,7 @@ test('chaque onglet regroupé montre ses deux parties, sans déborder de l’éc
 
 for (const { ancienne, onglet, vu } of [
   { ancienne: 'sante', onglet: /^Nine box/, vu: /En recul depuis le 1 oct\. 2026/ },
-  { ancienne: 'fil', onglet: /^Activité/, vu: 'Classé Cœur de réseau' },
+  { ancienne: 'fil', onglet: /^Historique/, vu: 'Classé Cœur de réseau' },
 ]) {
   test(`un ancien lien ?vue=${ancienne} ouvre l’onglet qui l’accueille`, async ({ page, isMobile }) => {
     await seConnecter(page)
@@ -46,35 +46,30 @@ for (const { ancienne, onglet, vu } of [
   })
 }
 
-// Téléphone (Joseph, 14/11/2026) : Budget et Simulateurs dans la barre, sans « Plus », de 375 à 430 px ; Nine box par le menu « ⋯ »
+// Téléphone (Joseph, 17/11/2026) : tous les onglets dans la bande, qui défile vers la droite ; Historique en dernier
 for (const largeur of [375, 430]) {
-  test(`téléphone de ${largeur} px : Tâches et Budget dans la barre, sans déborder`, async ({ page, isMobile }) => {
+  test(`téléphone de ${largeur} px : tous les onglets, la bande défile sans déborder de la page`, async ({ page, isMobile }) => {
     test.skip(!isMobile, 'téléphone seulement')
     await page.setViewportSize({ width: largeur, height: 900 })
     await seConnecter(page)
     await page.goto('./#/magasins/Lyon%20Test')
     const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })
-    await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Tâches', 'Chiffres', 'Budget'])
-    const droite = await page.evaluate(() => Math.max(...[...document.querySelectorAll('.onglets-fiche [role=tab]')].map((t) => t.getBoundingClientRect().right)))
-    expect(droite).toBeLessThanOrEqual(largeur - 16)
+    await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Tâches', 'Chiffres', 'Budget', 'Simuler', 'Extérieur', 'Nine box', 'Historique'])
+    expect(await largeurTenue(page)).toBe(true)
     for (const t of await onglets.getByRole('tab').all()) {
       const b = (await t.boundingBox())!
       expect(b.width).toBeGreaterThanOrEqual(48)
       expect(b.height).toBeGreaterThanOrEqual(48)
     }
-    // Onglet Tâches (Joseph, 17/11/2026) : Simulateurs passe dans le menu « ⋯ »
+    // Plus d'onglet dans le menu « ⋯ »
     await page.getByRole('button', { name: 'Autres actions' }).click()
-    await page.getByRole('menuitem', { name: 'Simulateurs' }).click()
-    await expect(page).toHaveURL(/vue=simulateurs/)
-    await page.getByRole('button', { name: 'Autres actions' }).click()
-    await page.getByRole('menuitem', { name: 'Nine box et déploiements' }).click()
-    await expect(page).toHaveURL(/vue=ninebox/)
-    await expect(onglets.getByRole('tab', { selected: true })).toHaveCount(0)
-    // Marché extérieur (Joseph, 16/11/2026) : par le même menu
-    await page.getByRole('button', { name: 'Autres actions' }).click()
-    await page.getByRole('menuitem', { name: 'Marché extérieur' }).click()
+    await expect(page.getByRole('menuitem', { name: /Nine box|Simulateurs|Marché extérieur/ })).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    // Le dernier onglet s'atteint en faisant défiler la bande
+    await onglets.getByRole('tab', { name: 'Historique' }).click()
+    await expect(page).toHaveURL(/vue=activite/)
+    expect(await largeurTenue(page)).toBe(true)
+    await onglets.getByRole('tab', { name: 'Marché extérieur' }).click()
     await expect(page).toHaveURL(/vue=exterieur/)
-    await onglets.getByRole('tab', { name: 'Budget' }).click()
-    await expect(page).toHaveURL(/vue=budget/)
   })
 }

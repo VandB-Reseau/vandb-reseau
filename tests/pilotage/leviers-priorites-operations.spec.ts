@@ -94,41 +94,15 @@ test('184 : la priorité affiche l’attendu et le constaté, pour l’équipe c
 // Lyon décroche en septembre 2026 (− 30 %) après des mois stables : la dégustation de septembre n'a pas suffi
 const operations = { 'Lyon Test': [{ id: 'o1', type: 'degustation', titre: 'Vins de Loire', jour: '2026-09-10', univers: 'tout', cout: 500, note: '', par: 'Hugo FICTIF', le: '2026-09-01' }] }
 
-test('185 : le journal des opérations du magasin et son bilan en caisse', async ({ page, isMobile }) => {
-  const ecritures: Ecriture[] = []
-  await seConnecter(page, { ecritures, persister: true, config: { operations_magasins: operations } })
+// Joseph (17/11/2026) : plus d'opérations commerciales, ni dans les chiffres du magasin ni dans la vue du réseau
+test('185 retiré : plus de journal des opérations commerciales', async ({ page }) => {
+  await seConnecter(page, { config: { operations_magasins: operations } })
   await page.goto('./#/magasins/Lyon%20Test?vue=chiffres')
-  const journal = page.getByRole('list', { name: 'Opérations commerciales de Lyon Test' })
-  await expect(journal).toContainText('Vins de Loire')
-  await expect(journal).toContainText('CA de septembre 2026 −30,0 % face à l’an passé, tendance 0,0 % : effet −30,0 pts, environ −30 000 € HT pour 500 € de coût')
-  await page.getByRole('button', { name: 'Ajouter une opération commerciale' }).click()
-  const d = page.getByRole('dialog', { name: 'Ajouter une opération commerciale' })
-  await d.getByLabel('Type d’opération').click()
-  await page.getByRole('option', { name: 'Soirée ou animation' }).click()
-  await d.getByLabel('Intitulé').fill('Soirée bières de Noël')
-  await d.getByLabel('Coût HT (produits offerts, animation, communication)').fill('300')
-  await d.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect(d).toBeHidden()
-  const l = derniere(ecritures, 'operations_magasins')?.['Lyon Test'] as { titre: string; type: string; jour: string; cout: number }[]
-  expect(l[0]).toEqual(expect.objectContaining({ titre: 'Soirée bières de Noël', type: 'soiree', jour: '2026-10-27', cout: 300 }))
-  await expect(journal).toContainText('Bilan dès la caisse de octobre 2026')
-  expect(await textesTropPetits(page)).toEqual([])
-  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
-  // Vue du réseau : ce qui marche le mieux, par type
+  await expect(page.getByRole('tab', { name: 'Chiffres', selected: true })).toBeVisible()
+  await page.waitForLoadState('networkidle')
+  await expect(page.getByText(/Opérations commerciales/)).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Ajouter une opération commerciale' })).toHaveCount(0)
   await page.goto('./#/performance?vue=operations')
-  await expect(page.getByRole(isMobile ? 'list' : 'table', { name: 'Opérations par type' })).toContainText('Dégustation')
-  await expect(page.getByRole('list', { name: 'Opérations les plus fortes' })).toContainText('Vins de Loire')
-  expect(await textesTropPetits(page)).toEqual([])
-})
-
-test('185 : le franchisé note une opération sur son magasin', async ({ page }) => {
-  await seConnecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: [NOM] }, persister: true })
-  await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=chiffres`)
-  await expect(page.getByText('Aucune opération notée.', { exact: false })).toBeVisible()
-  await page.getByRole('button', { name: 'Ajouter une opération commerciale' }).click()
-  const d = page.getByRole('dialog', { name: 'Ajouter une opération commerciale' })
-  await d.getByLabel('Intitulé').fill('Dégustation champagne')
-  await d.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect(d).toBeHidden()
-  await expect(page.getByRole('list', { name: `Opérations commerciales de ${NOM}` })).toContainText('Dégustation champagne')
+  await expect(page.getByRole('tablist', { name: 'Parties des chiffres' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: /Opérations/ })).toHaveCount(0)
 })

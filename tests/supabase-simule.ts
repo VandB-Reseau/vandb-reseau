@@ -893,9 +893,11 @@ export async function seConnecter(page: Page, options: OptionsSimulation = {}) {
 // Un onglet regroupé (« Chiffres et santé ») s'ouvre aussi par son nom court (« Chiffres »)
 // Refonte (Joseph, 09/11/2026, 3A) : fiche du magasin en 5 onglets ; les anciens noms d'onglets des tests y mènent encore
 const ANCIENS_ONGLETS_FICHE: Record<string, [string, string?]> = {
-  'Fiche': ['Vue d’ensemble'], 'Chiffres et santé': ['Nine box'], 'Bonnes pratiques': ['Activité', 'Tout'],
+  // Joseph (17/11/2026) : l'Activité devient l'Historique (dernier onglet) ; les tâches et campagnes ont leur onglet Tâches
+  'Activité': ['Historique', 'Tout'],
+  'Fiche': ['Vue d’ensemble'], 'Chiffres et santé': ['Nine box'], 'Bonnes pratiques': ['Historique', 'Tout'],
   // Vague 3 (23A) : l'activité est un seul fil, « À venir » en tête (tâches, campagnes) et filtres en puces
-  'Tâches et campagnes': ['Activité', 'Tout'], 'Tâches': ['Activité', 'Tout'], 'Visites': ['Activité', 'Visites'], 'Journal': ['Activité', 'Notes et journal'], 'Campagnes': ['Activité', 'Tout'],
+  'Tâches': ['Tâches'], 'Tâches et campagnes': ['Tâches'], 'Visites': ['Historique', 'Visites'], 'Journal': ['Historique', 'Notes et journal'], 'Campagnes': ['Tâches'],
 }
 export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page = page) {
   const nomComplet = new RegExp(`^${nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( et .+)?$`)
@@ -904,7 +906,10 @@ export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page
   const ensemble = dans.getByRole('tab', { name: 'Vue d’ensemble' })
   // Les écrans se chargent à la demande : attendre que la rangée d'onglets soit là
   await expect(onglet.or(plus).or(ensemble).first()).toBeVisible()
-  const ancien = ANCIENS_ONGLETS_FICHE[nom]
+  let ancien = ANCIENS_ONGLETS_FICHE[nom]
+  // Fiche du franchisé (sans onglet Historique ni Tâches) : l'ancienne Activité regroupe toujours tâches, visites et journal
+  if (ancien && ['Historique', 'Tâches'].includes(ancien[0]) && !(await dans.getByRole('tab', { name: ancien[0], exact: true }).count()))
+    ancien = nom === 'Activité' ? undefined as unknown as [string] : ['Activité', ancien[0] === 'Tâches' ? 'Tout' : ancien[1]]
   if (ancien && (await ensemble.count()) > 0) {
     if (ancien[0] !== nom) await ouvrirOnglet(page, ancien[0], dans)
     // Santé et leviers : une puce de l'onglet Chiffres, absente quand le suivi financier ne se charge pas (la santé s'affiche alors seule)
@@ -916,7 +921,7 @@ export async function ouvrirOnglet(page: Page, nom: string, dans: Locator | Page
     } else if (ancien[1]) {
       // Fiche magasin : des puces ; fiche du franchisé : des sous-onglets ; fiches Coach et RR : ni l'un ni l'autre
       const filtres = page.getByRole('group', { name: 'Filtrer l’activité' })
-      const sousOnglet = page.getByRole('tablist').filter({ hasNot: page.getByRole('tab', { name: 'Activité' }) }).getByRole('tab', { name: nom, exact: true })
+      const sousOnglet = page.getByRole('tablist').filter({ hasNot: page.getByRole('tab', { name: /^(Activité|Historique)$/ }) }).getByRole('tab', { name: nom, exact: true })
       const coach = page.getByRole('heading', { name: 'Tâches en cours de ses magasins' })
       await expect(filtres.or(sousOnglet).or(coach).first()).toBeVisible()
       if (await filtres.count()) await filtres.getByRole('button', { name: ancien[1], exact: true }).click()

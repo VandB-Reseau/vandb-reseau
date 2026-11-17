@@ -59,7 +59,7 @@ test('le Directeur ne voit que les tâches qui lui sont attribuées, les coche e
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-actions.png`, fullPage: !isMobile })
 
-  await ligne.getByRole('checkbox', { name: 'Marquer faite : Commander la nouvelle PLV' }).click()
+  await ligne.getByRole('button', { name: 'Marquer faite : Commander la nouvelle PLV' }).click()
   await expect(page.getByText('Tâche marquée faite.')).toBeVisible()
   const faite = derniere(ecritures)!['Brest Test'][0]
   expect(faite.faite).toBe(aujourdhui())
@@ -91,7 +91,7 @@ test('une action du plan de visite cochée garde qui l’a faite', async ({ page
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/taches?de=No%C3%A9%20MODELE')
-  await page.getByRole('list', { name: 'Tâches à faire' }).getByRole('checkbox', { name: 'Marquer faite : Former l’équipe à la vente additionnelle' }).click()
+  await page.getByRole('list', { name: 'Tâches à faire' }).getByRole('button', { name: 'Marquer faite : Former l’équipe à la vente additionnelle' }).click()
   await expect(page.getByText('Tâche marquée faite.')).toBeVisible()
   const maj = ecritures.filter((e) => e.methode === 'PATCH' && e.table === 'visits').at(-1)!
   const plan = (maj.corps as { action_plan: { action: string; faite?: string; faitePar?: string }[] }).action_plan
@@ -162,7 +162,7 @@ test('une tâche en retard de l’accueil mène aux actions du magasin', async (
   await ligne.click()
   await expect(page).toHaveURL(/#\/magasins\/Brest%20Test\?vue=actions$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Brest Test' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: /^Activité/, selected: true })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Tâches', exact: true, selected: true })).toBeVisible()
   await expect(page.getByText('Commander la nouvelle PLV').first()).toBeVisible()
 })
 
@@ -204,13 +204,13 @@ test('le franchisé coche et ajoute ses actions, la base pose son nom', async ({
   await page.screenshot({ path: `captures/${info.project.name}-franchise-actions.png`, fullPage: true })
 
   // Action du plan de visite (la ligne vide du plan est ignorée, comme dans la base)
-  await aFaire.getByRole('checkbox', { name: 'Marquer faite : Lancer une dégustation' }).click()
+  await aFaire.getByRole('button', { name: 'Marquer faite : Lancer une dégustation' }).click()
   await expect(page.getByText('Tâche marquée faite.')).toBeVisible()
   expect(ecritures.filter((e) => e.table === 'rpc/marquer_action_franchise').at(-1)!.corps).toEqual({ p_store: 'Annecy Test', p_faite: true, p_visite: 50, p_index: 0, p_texte: 'Lancer une dégustation' })
   await expect(faites.getByRole('listitem').filter({ hasText: 'Lancer une dégustation' })).toContainText('par Paul MULTI')
 
   // Remise à faire
-  await faites.getByRole('checkbox', { name: 'Remettre en cours : Refaire la vitrine' }).click()
+  await faites.getByRole('button', { name: 'Remettre en cours : Refaire la vitrine' }).click()
   await expect(page.getByText('Tâche remise à faire.')).toBeVisible()
   expect(ecritures.filter((e) => e.table === 'rpc/marquer_action_franchise').at(-1)!.corps).toEqual({ p_store: 'Rennes Test', p_faite: false, p_libre: 'l9' })
   await expect(aFaire.getByText('Refaire la vitrine')).toBeVisible()
@@ -234,6 +234,6 @@ test('franchisé : un message humain si la base n’est pas encore prête', asyn
   await seConnecter(page, { acces: PAUL, espace: espace() })
   await page.route('**/rest/v1/rpc/marquer_action_franchise', (r) => r.fulfill({ status: 404, json: { code: 'PGRST202', message: 'Could not find the function public.marquer_action_franchise' } }))
   await page.goto('./#/taches')
-  await page.getByRole('checkbox', { name: 'Marquer faite : Lancer une dégustation' }).click()
+  await page.getByRole('button', { name: 'Marquer faite : Lancer une dégustation' }).click()
   await expect(page.getByText('Les tâches ne peuvent pas encore être modifiées depuis ton espace. Ton Coach peut le faire pour toi.')).toBeVisible()
 })
