@@ -26,11 +26,11 @@ test('la vignette ouvre le compte rendu dans une fenêtre ; la fermer garde la p
   const carte = page.getByRole('region', { name: 'Actualités' }).getByRole('article', { name: 'Compte rendu de Rennes Test' })
   const vignette = carte.getByRole('button', { name: 'Ouvrir le compte rendu de Rennes Test' })
   await vignette.scrollIntoViewIfNeeded()
-  // Carrée, de la taille d'une photo
+  // Choix 271 : une pièce jointe sur une ligne, avec un picto, pas un grand carré
   const b = (await vignette.boundingBox())!
-  expect(Math.abs(b.width - b.height)).toBeLessThanOrEqual(2)
-  expect(b.width).toBeLessThanOrEqual(170)
   expect(b.height).toBeGreaterThanOrEqual(48)
+  expect(b.height).toBeLessThanOrEqual(80)
+  expect(b.width).toBeGreaterThan(b.height * 2)
   // Avec les photos de la visite, la vignette prend la première case
   const annecy = page.getByRole('article', { name: 'Compte rendu de Annecy Test' })
   await expect(annecy.getByRole('button', { name: 'Ouvrir le compte rendu de Annecy Test' })).toBeVisible()
