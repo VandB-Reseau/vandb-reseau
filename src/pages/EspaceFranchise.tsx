@@ -292,7 +292,7 @@ function SectionTaches({ reseau, magasins }: { reseau: Reseau; magasins: Magasin
   const ligne = (x: (typeof ouvertes)[number]) => (
     <Box component="li" key={x.cle}>
       <LigneCompacte lien="/taches" avatar={<Initiales nom={x.a.action} icone={<TaskAltOutlined />} />} titre={x.a.action}
-        detail={[magasins.length > 1 && x.magasin, x.a.porteur, echeanceDate(x.a) ? `pour le ${dateCourte(echeanceDate(x.a))}` : x.a.echeance].filter(Boolean).join(' · ')}
+        detail={[magasins.length > 1 && x.magasin, x.libre?.exterieur && `Marché extérieur : ${x.libre.exterieur.nom}`, x.a.porteur, echeanceDate(x.a) ? `pour le ${dateCourte(echeanceDate(x.a))}` : x.a.echeance].filter(Boolean).join(' · ')}
         fin={enRetard(x.a, reseau.jour) ? <Pastille ton="rouge">En retard</Pastille> : undefined} />
     </Box>
   )

@@ -21,6 +21,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
+import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import { useReseau } from '../data/ReseauContext'
@@ -90,7 +91,7 @@ export function useChangerStatut(reseau: Reseau, signaler: (m: string) => void) 
 const messageErreur = (e: unknown) => (e instanceof ErreurAction ? e.message : 'La tâche n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.')
 
 // Ligne d'une action ; sans « cocher », lecture seule
-export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher, enCours = false, modifier, changerStatut, sansPriorite = false }: { reseau: Reseau; x: ActionSuivie; avecMagasin?: boolean; avecPorteur?: boolean; cocher?: (faite: boolean) => void; enCours?: boolean; modifier?: () => void; changerStatut?: (s: '' | StatutTache, raison: string) => Promise<void>; sansPriorite?: boolean }) {
+export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher, enCours = false, modifier, changerStatut, sansPriorite = false, sansExterieur = false }: { reseau: Reseau; x: ActionSuivie; avecMagasin?: boolean; avecPorteur?: boolean; cocher?: (faite: boolean) => void; enCours?: boolean; modifier?: () => void; changerStatut?: (s: '' | StatutTache, raison: string) => Promise<void>; sansPriorite?: boolean; sansExterieur?: boolean }) {
   const retard = enRetard(x.a, reseau.jour)
   const echeance = x.a.echeance && (echeanceDate(x.a) ? dateCourte(x.a.echeance) : x.a.echeance)
   const auteur = x.libre?.auteur ? ` par ${x.libre.auteur}` : ''
@@ -128,6 +129,8 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
         </Typography>
         {/* Vague 7 (89A) : la priorité du plan en puce, sauf quand la tâche est déjà rangée sous sa priorité */}
         {priorite && !sansPriorite && <Chip size="small" icon={<FlagOutlined />} label={objectifLie ? `Priorité : ${priorite.titre} · Objectif : ${phraseObjectif(objectifLie)}` : `Priorité : ${priorite.titre}`} sx={{ mt: 0.5, fontSize: 12, fontWeight: 600, maxWidth: '100%', bgcolor: 'rgba(48,118,114,0.10)', color: '#24524f', '& .MuiChip-icon': { color: '#307672' } }} />}
+        {/* Joseph (17/11/2026) : une tâche du plan Marché extérieur dit d'où elle vient et pour quelle cible */}
+        {x.libre?.exterieur && !sansExterieur && <Chip size="small" icon={<HandshakeOutlined />} label={`Marché extérieur : ${x.libre.exterieur.nom}`} sx={{ mt: 0.5, mr: 0.5, fontSize: 12, fontWeight: 600, maxWidth: '100%', bgcolor: 'rgba(48,118,114,0.10)', color: '#24524f', '& .MuiChip-icon': { color: '#307672' } }} />}
         {x.a.statut === 'bloquee' && x.a.raison && !x.a.faite && <Typography variant="body2" sx={{ color: 'error.dark' }}>Bloquée : {x.a.raison}</Typography>}
         {(pastille || statut) && <Box sx={{ display: { xs: 'flex', sm: 'none' }, gap: 1, flexWrap: 'wrap', alignItems: 'center', mt: 0.75 }}>{statut}{pastille}</Box>}
         {x.a.pieces && <ListePieces pieces={x.a.pieces} />}

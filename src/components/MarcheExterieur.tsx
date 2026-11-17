@@ -756,7 +756,7 @@ function EtapePlan({ reseau, m, plan, changer, lecture }: { reseau: Reseau; m: M
               {siennes.length ? (
                 <Box component="ul" aria-label={`Tâches pour ${c.nom}`} sx={{ listStyle: 'none', m: 0, p: 0 }}>
                   {siennes.map((x) => (
-                    <LigneAction key={x.cle} reseau={reseau} x={x} avecPorteur enCours={enCours === x.cle} sansPriorite
+                    <LigneAction key={x.cle} reseau={reseau} x={x} avecPorteur enCours={enCours === x.cle} sansPriorite sansExterieur
                       cocher={ecrire ? (f) => void cocher(x, f) : undefined} changerStatut={ecrire ? changerStatut?.(x) : undefined}
                       modifier={ecrire ? () => setTache({ cible: c, a: x.libre }) : undefined} />
                   ))}

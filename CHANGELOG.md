@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Marché extérieur (Joseph, 17/11/2026), sans migration : une tâche née du plan porte l'étiquette « Marché extérieur :
+  cible » dans les listes de tâches, et la mention dans les lignes compactes (Accueil, espace du franchisé).
 - Vue d'ensemble de la fiche magasin allégée, maquette 264 (Joseph, 17/11/2026), sans migration : à gauche « À faire »
   (visite, trois prochaines tâches, mandats et fiche à compléter, en une seule liste) puis les objectifs ; à droite
   « Comment va le magasin » (CA de l'année face à N-1, CA du mois, alertes de caisse et de santé), le budget et le
