@@ -24,7 +24,10 @@ import FlagOutlined from '@mui/icons-material/FlagOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { ChampRecherche } from '../components/Outils'
 import { RechercheFiltres } from '../components/RechercheFiltres'
-import { CarteLignes, TitreSection, cartouche } from '../components/Social'
+import { CarteLignes, Puces, TitreSection, cartouche } from '../components/Social'
+import Card from '@mui/material/Card'
+import AddOutlined from '@mui/icons-material/AddOutlined'
+import { LigneVide, styleBloc, styleEnteteBloc } from '../components/Section'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { BoutonAjouterAction, DialogAction, LigneAction, useChangerStatut, useEcritureActions } from '../components/Actions'
@@ -259,5 +262,78 @@ export function PageTaches() {
       )}</AvecReseau>
       {bandeau}
     </>
+  )
+}
+
+// Onglet Tâches de la fiche magasin (Joseph, 17/11/2026) : toutes les tâches du magasin, quel que soit le porteur,
+// en puces À faire / En retard / Bloquées / Faites ; les tâches à faire rangées par échéance. L'Activité garde l'historique.
+export type FiltreTachesMagasin = 'afaire' | 'retard' | 'bloquees' | 'faites'
+export function TachesMagasin({ reseau, magasin, ajouter }: { reseau: Reseau; magasin: string; ajouter: () => void }) {
+  const { recharger } = useReseau()
+  // « Fait » se défait : « Annuler » dans le message (Joseph, 17/11/2026 : une tâche validée par erreur)
+  const { signaler, bandeau } = useMessageAnnulable()
+  const ecriture = useEcritureActions(reseau)
+  const changerStatut = useChangerStatut(reseau, signaler)
+  const [filtre, setFiltre] = useState<FiltreTachesMagasin>('afaire')
+  const [enCours, setEnCours] = useState<string | null>(null)
+  const [edition, setEdition] = useState<ActionSuivie | null>(null)
+  const [toutesFaites, setToutesFaites] = useState(false)
+  const toutes = actionsDes(reseau, new Set([magasin]))
+  const aFaire = toutes.filter((x) => !x.a.faite)
+  const listes: Record<FiltreTachesMagasin, ActionSuivie[]> = {
+    afaire: aFaire,
+    retard: aFaire.filter((x) => enRetard(x.a, reseau.jour)),
+    bloquees: aFaire.filter((x) => x.a.statut === 'bloquee'),
+    faites: toutes.filter((x) => x.a.faite),
+  }
+  const libelles: Record<FiltreTachesMagasin, string> = { afaire: 'À faire', retard: 'En retard', bloquees: 'Bloquées', faites: 'Faites' }
+  const cocher = async (x: ActionSuivie, faite: boolean) => {
+    setEnCours(x.cle)
+    try {
+      await ecriture.cocher(x, faite)
+      await recharger()
+      signaler(faite ? 'Tâche marquée faite.' : 'Tâche remise en cours.', () => void cocher(x, !faite))
+    } catch (e) { signaler(e instanceof ErreurAction ? e.message : 'La tâche n’a pas pu être enregistrée. Vérifie ta connexion et réessaie.') }
+    finally { setEnCours(null) }
+  }
+  const ligne = (x: ActionSuivie) => (
+    <LigneAction key={x.cle} reseau={reseau} x={x} avecMagasin={false} enCours={enCours === x.cle} changerStatut={changerStatut?.(x)}
+      cocher={ecriture.lectureSeule ? undefined : (f) => void cocher(x, f)}
+      modifier={x.libre && !ecriture.franchise ? () => setEdition(x) : undefined} />
+  )
+  const lignes = listes[filtre]
+  const dansUneSemaine = plusSept(reseau.jour)
+  const parGroupe = groupes.map((g) => ({ ...g, lignes: lignes.filter((x) => groupeDe(x, reseau.jour, dansUneSemaine) === g.g) })).filter((g) => g.lignes.length)
+  const vide: Record<FiltreTachesMagasin, string> = {
+    afaire: 'Aucune tâche en cours pour ce magasin.',
+    retard: 'Aucune tâche en retard.',
+    bloquees: 'Aucune tâche bloquée.',
+    faites: 'Aucune tâche faite pour l’instant.',
+  }
+  const bouton = !ecriture.lectureSeule && <Button startIcon={<AddOutlined />} onClick={ajouter} sx={{ minHeight: 48, whiteSpace: 'nowrap' }}>Ajouter une tâche</Button>
+  return (
+    <Card component="section" aria-label="Tâches du magasin" sx={styleBloc}>
+      <Box sx={{ ...styleEnteteBloc, columnGap: 2 }}>
+        <Typography component="h2" sx={cartouche}>Tâches</Typography>
+        <Box sx={{ mr: 'auto' }} />
+        {bouton}
+      </Box>
+      <Box sx={{ mb: 1 }}>
+        <Puces label="Filtrer les tâches" valeur={filtre} onChange={(v) => { setFiltre(v); setToutesFaites(false) }}
+          options={(Object.keys(libelles) as FiltreTachesMagasin[]).map((v) => ({ v, libelle: `${libelles[v]} · ${listes[v].length}` }))} />
+      </Box>
+      {!lignes.length
+        ? <LigneVide>{vide[filtre]}</LigneVide>
+        : filtre === 'faites'
+          ? <>
+              <Box component="ul" aria-label="Tâches faites" sx={{ listStyle: 'none', m: 0, p: 0 }}>{(toutesFaites ? lignes : lignes.slice(0, FAITES_VISIBLES)).map(ligne)}</Box>
+              {lignes.length > FAITES_VISIBLES && <Button onClick={() => setToutesFaites((v) => !v)} sx={{ minHeight: 48, width: '100%' }}>{toutesFaites ? 'Voir moins' : `Voir les ${lignes.length} tâches faites`}</Button>}
+            </>
+          : <Box component="ul" aria-label={filtre === 'afaire' ? `Tâches en cours de ${magasin}` : `Tâches ${libelles[filtre].toLocaleLowerCase('fr')}`} sx={{ listStyle: 'none', m: 0, p: 0 }}>
+              {parGroupe.flatMap((g) => [<Intertitre key={`t-${g.g}`} titre={g.titre} nombre={g.lignes.length} />, ...g.lignes.map((x) => <Fragment key={`${g.g}-${x.cle}`}>{ligne(x)}</Fragment>)])}
+            </Box>}
+      {edition && <DialogAction reseau={reseau} magasins={[magasin]} action={edition} onFermer={(msg) => { setEdition(null); if (msg) signaler(msg) }} />}
+      {bandeau}
+    </Card>
   )
 }

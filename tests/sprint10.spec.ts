@@ -29,7 +29,7 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler'] : ['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box'])
+  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Aperçu', 'Tâches', 'Chiffres', 'Budget', 'Simuler', 'Extérieur', 'Nine box', 'Historique'] : ['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box et déploiements', 'Historique'])
   // Plus de fil (Joseph, 22/10/2026) : la fiche s'ouvre sur « À faire » (maquette 264) ; le journal a son onglet
   await expect(page.getByRole('heading', { name: 'À faire', exact: true })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Journal' })).toHaveCount(0)
@@ -45,7 +45,7 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   await expect(liste.getByRole('listitem').first()).toContainText('En retard')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-actions.png`, fullPage: !isMobile })
-  await page.getByRole('checkbox', { name: 'Marquer faite : Refaire la vitrine' }).click()
+  await page.getByRole('button', { name: 'Marquer faite : Refaire la vitrine' }).click()
   await expect(page.getByText('Tâche marquée faite.')).toBeVisible()
   const maj = ecritures.filter((e) => e.table === 'visits' && e.methode === 'PATCH').at(-1)!
   expect(maj.filtre).toBe('?id=eq.4')
@@ -53,8 +53,8 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   expect(plan.find((a) => a.id === 'a1')?.faite).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   expect(plan.find((a) => a.id === 'a3')?.faite).toBe('2026-09-24')
   // Les actions faites restent consultables
-  await page.getByRole('button', { name: 'Tâches faites (1)' }).click()
-  await expect(page.getByRole('list', { name: 'Tâches en cours de Brest Test : faites' })).toContainText('Changer l’enseigne')
+  await page.getByRole('group', { name: 'Filtrer les tâches' }).getByRole('button', { name: /^Faites/ }).click()
+  await expect(page.getByRole('list', { name: 'Tâches faites' })).toContainText('Changer l’enseigne')
 })
 
 test('une nouvelle visite reprend les actions en cours et les coche faites', async ({ page }) => {

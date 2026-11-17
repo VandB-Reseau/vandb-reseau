@@ -57,9 +57,9 @@ test('la page Performance réunit les chiffres, le budget, les clôtures et l’
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Chiffres')
   const onglets = page.getByRole('tablist', { name: 'Parties des chiffres' })
   // Joseph (10/11/2026) : les budgets de l'année ont quitté Chiffres pour l'entrée « Budget prévisionnel »
-  // Joseph (14/11/2026) : onglets plus serrés sur téléphone ; avec « Opérations » (185, 15/11/2026), six onglets :
-  // sur téléphone, les deux derniers passent derrière « Plus »
-  await expect(onglets.getByRole('tab')).toHaveCount(isMobile ? 4 : 6)
+  // Joseph (14/11/2026) : onglets plus serrés sur téléphone ; « Opérations » retiré (Joseph, 17/11/2026) : cinq onglets
+  // (sur téléphone, quatre et « Plus »)
+  await expect(onglets.getByRole('tab')).toHaveCount(5)
   await expect(onglets.getByRole('tab', { selected: true })).toContainText(isMobile ? 'Magasins' : 'Chiffres des magasins')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-performance.png`, fullPage: !isMobile })
@@ -112,7 +112,7 @@ test('cocher une tâche se rattrape avec « Annuler »', async ({ page, isMobile
   await seConnecter(page, { ecritures, persister: true, config: { actions } })
   await page.goto('./#/taches')
   const aFaire = page.getByRole('list', { name: 'Tâches à faire' })
-  await aFaire.getByRole('checkbox', { name: 'Marquer faite : Commander la nouvelle PLV' }).click()
+  await aFaire.getByRole('button', { name: 'Marquer faite : Commander la nouvelle PLV' }).click()
   await expect(page.getByText('Tâche marquée faite.')).toBeVisible()
   const annuler = page.getByRole('button', { name: 'Annuler' })
   if (isMobile) expect((await annuler.boundingBox())!.height).toBeGreaterThanOrEqual(48)

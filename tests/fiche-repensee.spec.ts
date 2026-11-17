@@ -39,26 +39,21 @@ test('196, 197 et 200 : aperçu resserré, objectifs repliés, colonne d’ident
   expect(await textesTropPetits(page)).toEqual([])
 })
 
-test('198, 199, 201 et 265 : l’activité, À faire en tête puis l’historique en tableau, une tâche à un seul endroit, quatre filtres', async ({ page, isMobile }) => {
+test('198, 199 et 265 revus (17/11/2026) : l’Historique en tableau et quatre filtres ; les tâches et campagnes dans Tâches', async ({ page, isMobile }) => {
   await seConnecter(page, { config })
   await page.goto('./#/magasins/Brest%20Test?vue=activite')
-  const aFaire = page.locator('.MuiCard-root', { has: page.getByRole('heading', { name: 'À faire', exact: true }) })
-  await expect(aFaire.getByText('Changer l’ampoule de la vitrine')).toBeVisible()
-  await expect(aFaire.getByText('Mettre en avant les vins à 15 €')).toHaveCount(0)
-  await expect(aFaire.getByText('1 tâche rattachée aux priorités')).toBeVisible()
-  await expect(aFaire.getByRole('button', { name: /^Campagnes/ })).toHaveAttribute('aria-expanded', 'false')
   const filtres = page.getByRole('group', { name: 'Filtrer l’activité' })
   await expect(filtres.getByRole('button')).toHaveText(['Tout', 'Visites', 'Tâches', 'Notes et journal'])
-  // Maquette 265 (17/11/2026) : l'historique sous « À faire », en tableau sur PC, en liste sur téléphone
-  const a = (await aFaire.boundingBox())!
-  const f = (await filtres.boundingBox())!
-  expect(f.y).toBeGreaterThan(a.y + a.height - 1)
+  await expect(page.getByRole('heading', { name: 'À faire', exact: true })).toHaveCount(0)
   const historique = page.getByRole('region', { name: 'Historique' })
   if (isMobile) await expect(historique.getByRole('list', { name: 'Historique du magasin' })).toBeVisible()
   else await expect(historique.getByRole('table', { name: 'Historique du magasin' }).getByRole('columnheader')).toHaveText(['Date', 'Type', 'Quoi', 'Par', ''])
-  // « Voir les priorités » ramène à la vue d'ensemble
-  await aFaire.getByRole('link', { name: 'Voir les priorités' }).click()
-  await expect(page.getByRole('region', { name: 'Comment va le magasin' })).toBeVisible()
+  // Onglet Tâches : toutes les tâches du magasin, priorités comprises, et les campagnes repliées dessous
+  await page.getByRole('tablist', { name: 'Rubriques de Brest Test' }).getByRole('tab', { name: 'Tâches', exact: true }).click()
+  const taches = page.getByRole('region', { name: 'Tâches du magasin' })
+  await expect(taches.getByText('Changer l’ampoule de la vitrine')).toBeVisible()
+  await expect(taches.getByText('Mettre en avant les vins à 15 €')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Campagnes' }).getByRole('button', { name: /^Campagnes/ })).toHaveAttribute('aria-expanded', 'false')
   expect(await textesTropPetits(page)).toEqual([])
 })
 
@@ -92,7 +87,7 @@ test('203 : après réouverture sur le dernier onglet, les autres onglets resten
   await expect(onglets.getByRole('tab', { name: 'Simulateurs', exact: true })).toHaveAttribute('aria-selected', 'true')
   await page.goto('./#/magasins/Brest%20Test')
   await expect(page).toHaveURL(/vue=simulateurs/)
-  for (const [nom, vue] of [['Vue d’ensemble', null], ['Activité', 'activite'], ['Chiffres', 'chiffres'], ['Budget', 'budget']] as const) {
+  for (const [nom, vue] of [['Vue d’ensemble', null], ['Historique', 'activite'], ['Chiffres', 'chiffres'], ['Budget', 'budget']] as const) {
     await onglets.getByRole('tab', { name: nom, exact: true }).click()
     await expect(onglets.getByRole('tab', { name: nom, exact: true })).toHaveAttribute('aria-selected', 'true')
     if (vue) await expect(page).toHaveURL(new RegExp(`vue=${vue}`))

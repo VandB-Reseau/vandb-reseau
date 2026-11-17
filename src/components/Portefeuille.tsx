@@ -40,7 +40,8 @@ export interface Compteur { valeur: ReactNode; libelle: string; couleur?: string
 // PC : grande pastille, compteurs en colonnes. Téléphone : en-tête bas (petite pastille, lignes sur une ligne,
 // compteurs en texte, flèche de retour à la place de la pastille) pour laisser la place aux onglets.
 // À côté du nom, en pictos : Appeler, Message, puis actions et icones (boutons ronds), puis Modifier ; detail : ligne en plus.
-export function ProfilPersonne({ nom, insigne, avatar, lignes, pastille, compteurs, telephone, libelleAppel = 'Appeler', lienMessage, modifier, actions, icones, detail, retour, principal }: {
+export function ProfilPersonne({ nom, insigne, avatar, lignes, pastille, compteurs, telephone, libelleAppel = 'Appeler', lienMessage, modifier, actions, icones, detail, retour, principal, coin }: {
+  coin?: ReactNode // pictos en haut à droite, sur la ligne du nom (fiche magasin : avis Google, itinéraire)
   nom: string; insigne?: ReactNode; avatar?: (taille: number) => ReactNode; lignes: string[]; pastille?: { ton: Ton; libelle: string } | null; compteurs: Compteur[]
   telephone?: string; libelleAppel?: string; lienMessage?: string; modifier?: () => void; actions?: ReactNode; icones?: ReactNode; detail?: ReactNode
   principal?: ReactNode // vague 7 (79A) : l'action principale (le bouton « Visite »), à droite sur PC, en pleine largeur sur téléphone
@@ -49,16 +50,8 @@ export function ProfilPersonne({ nom, insigne, avatar, lignes, pastille, compteu
   const appel = libelleAppel === 'Appeler' ? 'Appeler' : `Appeler ${libelleAppel === 'Coach' ? 'mon Coach' : libelleAppel}`
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const uneLigne = surPC ? {} : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const
-  return (
-    // Refonte vague 2 (Joseph, 09/11/2026, 11A) : sur PC, une bande compacte sans carte (nom, une ligne d'infos, pastille et
-    // compteurs en ligne, actions à droite) ; les onglets collants reprennent le nom quand la bande sort de l'écran
-    <Card className="profil-entete" sx={{ border: 0, p: { xs: 1.5, md: 0 }, mb: { xs: 1.5, md: 1.5 }, bgcolor: { md: 'transparent' }, boxShadow: { md: 'none' }, overflow: 'visible' }}>
-      {/* Sur PC, les compteurs se rangent sur la ligne du nom, entre les infos et les pictos ; les pictos passent dessous quand la ligne est trop étroite */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: { xs: 1.5, md: 2 }, rowGap: { xs: 0, md: 1 }, alignItems: 'center' }}>
-        {!surPC && retour
-          ? <IconButton onClick={retour.aller} aria-label={retour.libelle} sx={{ width: 48, height: 48, ml: -1, mr: -1, flexShrink: 0 }}><ArrowBack /></IconButton>
-          : avatar ? avatar(surPC ? 44 : 44) : <Initiales nom={nom} taille={44} />}
-        <Box sx={{ flex: '1 1 140px', minWidth: 0 }}>
+  const entete = (
+    <>
           {insigne
             ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
@@ -81,9 +74,25 @@ export function ProfilPersonne({ nom, insigne, avatar, lignes, pastille, compteu
               {detail && <Typography variant="body2">{detail}</Typography>}
             </Box>
           )}
+    </>
+  )
+  return (
+    // Refonte vague 2 (Joseph, 09/11/2026, 11A) : sur PC, une bande compacte sans carte (nom, une ligne d'infos, pastille et
+    // compteurs en ligne, actions à droite) ; les onglets collants reprennent le nom quand la bande sort de l'écran
+    <Card className="profil-entete" sx={{ border: 0, p: { xs: 1.5, md: 0 }, mb: { xs: 1.5, md: 1.5 }, bgcolor: { md: 'transparent' }, boxShadow: { md: 'none' }, overflow: 'visible' }}>
+      {/* Sur PC, les compteurs se rangent sur la ligne du nom, entre les infos et les pictos ; les pictos passent dessous quand la ligne est trop étroite */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: { xs: 1.5, md: 2 }, rowGap: { xs: 0, md: 1 }, alignItems: 'center' }}>
+        {!surPC && retour
+          ? <IconButton onClick={retour.aller} aria-label={retour.libelle} sx={{ width: 48, height: 48, ml: -1, mr: -1, flexShrink: 0 }}><ArrowBack /></IconButton>
+          : avatar ? avatar(surPC ? 44 : 44) : <Initiales nom={nom} taille={44} />}
+        <Box sx={{ flex: '1 1 140px', minWidth: 0 }}>
+          {coin && !surPC
+            ? <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, minWidth: 0 }}><Box sx={{ flex: 1, minWidth: 0 }}>{entete}</Box><Box sx={{ display: 'flex', flexShrink: 0, mr: -1, mt: -0.5 }}>{coin}</Box></Box>
+            : entete}
         </Box>
         <Box sx={{ display: 'flex', flexShrink: 0, alignSelf: { xs: 'flex-start', md: 'center' }, alignItems: 'center', ml: 'auto', mr: { xs: -1, md: 0 } }}>
           {surPC && principal && <Box sx={{ mr: 1 }}>{principal}</Box>}
+          {surPC && coin}
           <Bulle titre={telephone ? `${appel} · ${telephone}` : appel}>
             {telephone
               ? <IconButton href={telLien(telephone)} aria-label={appel} sx={rond}><CallOutlined /></IconButton>

@@ -32,30 +32,22 @@ test('seul le rouge reste une pastille pleine ; le reste est un texte coloré', 
   await page.screenshot({ path: `captures/${info.project.name}-magasins-calme.png` })
 })
 
-test('fiche magasin : sur téléphone, cinq onglets sans « Plus » (Nine box par le menu) ; sur PC, tous les onglets', async ({ page, isMobile }, info) => {
+test('fiche magasin : tous les onglets, sur téléphone dans une bande qui défile (Joseph, 17/11/2026)', async ({ page, isMobile }, info) => {
   if (isMobile) await page.setViewportSize({ width: 360, height: 780 })
   await seConnecter(page)
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   if (!isMobile) {
     // Refonte (Joseph, 09/11/2026, 3A) ; Simulateurs à côté de Chiffres et Budget (Joseph, 14/11/2026)
-    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box'])
+    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box et déploiements', 'Historique'])
     return
   }
-  // Joseph (14/11/2026) : Budget et Simulateurs dans la barre dès 360 px, marges des onglets resserrées
-  await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler'])
-  // Aucun onglet coupé au bord de l'écran
-  const largeur = page.viewportSize()!.width
-  for (const t of await onglets.getByRole('tab').all()) {
-    const b = (await t.boundingBox())!
-    expect(b.x + b.width).toBeLessThanOrEqual(largeur)
-    expect(b.height).toBeGreaterThanOrEqual(48)
-  }
+  // Joseph (17/11/2026) : tous les onglets présents, la bande défile vers la droite, sans « Plus »
+  await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Tâches', 'Chiffres', 'Budget', 'Simuler', 'Extérieur', 'Nine box', 'Historique'])
+  for (const t of await onglets.getByRole('tab').all()) expect((await t.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   expect(await textesTropPetits(page)).toEqual([])
-  await page.getByRole('button', { name: 'Autres actions' }).click()
-  const nine = page.getByRole('menuitem', { name: 'Nine box' })
-  expect((await nine.boundingBox())!.height).toBeGreaterThanOrEqual(48)
-  await nine.click()
+  await onglets.getByRole('tab', { name: 'Nine box et déploiements' }).click()
   await expect(page).toHaveURL(/vue=ninebox/)
   await onglets.getByRole('tab', { name: 'Vue d’ensemble' }).click()
   await expect(page).not.toHaveURL(/vue=/)

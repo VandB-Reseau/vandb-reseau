@@ -8,6 +8,8 @@ import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
+import RocketLaunchOutlined from '@mui/icons-material/RocketLaunchOutlined'
+import { tonDe } from '../data/sante'
 import ErrorOutlineOutlined from '@mui/icons-material/ErrorOutlineOutlined'
 import WarningAmberOutlined from '@mui/icons-material/WarningAmberOutlined'
 import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
@@ -237,6 +239,18 @@ function DernierEchange({ reseau, m }: { reseau: Reseau; m: Magasin }) {
 // Choix 258 : où en est le budget de l'année, chargé avec le pilotage (à la demande)
 const EtatBudgetMagasin = chargementDiffere(() => import('../pilotage/components/EtatBudgetMagasin'))
 
+function TuileDeploiements({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+  const ths = reseau.deploiements.thematiques
+  const valeurs = reseau.deploiements.valeurs[m.nom] ?? {}
+  const n = (ton: string) => ths.filter((t) => tonDe(t, valeurs[t.id]) === ton).length
+  const partiel = n('partiel')
+  return (
+    <Tuile libelle="Déploiements" lien={`${lienFiche(m.nom)}?vue=ninebox`} icone={<RocketLaunchOutlined />}
+      valeur={ths.length ? `${n('positif')} sur ${ths.length} déployée${n('positif') > 1 ? 's' : ''}` : 'Aucune thématique'}
+      detail={partiel ? `${partiel} en partie` : undefined} />
+  )
+}
+
 export function SituationMagasin({ reseau, m, signaler, objectifs, manquants = 0, completer, avant }: {
   reseau: Reseau; m: Magasin; signaler: (message: string) => void; objectifs?: ReactNode
   manquants?: number; completer?: () => void // informations de la fiche à compléter (dans « À faire »)
@@ -255,10 +269,14 @@ export function SituationMagasin({ reseau, m, signaler, objectifs, manquants = 0
       </Box>
       <Box sx={{ display: 'grid', gap: 2, minWidth: 0 }}>
         <CommentVa reseau={reseau} m={m} />
-        <Box role="group" aria-label="Budget du magasin" sx={{ display: 'grid' }}>
-          <Suspense fallback={tuileBudget({ libelle: 'Budget', valeur: '…' })}>
-            <EtatBudgetMagasin nom={m.nom} rendre={tuileBudget} />
-          </Suspense>
+        {/* Joseph (17/11/2026) : les déploiements difficiles à trouver ; une tuile à côté du budget mène à leur onglet */}
+        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' } }}>
+          <Box role="group" aria-label="Budget du magasin" sx={{ display: 'grid' }}>
+            <Suspense fallback={tuileBudget({ libelle: 'Budget', valeur: '…' })}>
+              <EtatBudgetMagasin nom={m.nom} rendre={tuileBudget} />
+            </Suspense>
+          </Box>
+          <TuileDeploiements reseau={reseau} m={m} />
         </Box>
         <DernierEchange reseau={reseau} m={m} />
       </Box>

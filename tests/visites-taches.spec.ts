@@ -50,9 +50,9 @@ test('79A et fiche : un seul bouton Visite, « + » regroupe tâche, visite non 
   await page.getByRole('button', { name: 'Autres actions' }).click()
   await expect(page.getByRole('menuitem', { name: 'Planifier la visite' })).toHaveCount(0)
   await page.keyboard.press('Escape')
-  // Activité : plus de boutons en double
+  // Historique : plus de boutons en double
   await page.goto('./#/magasins/Lyon%20Test?vue=activite')
-  await expect(page.getByRole('heading', { name: 'À faire', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Historique', exact: true })).toBeVisible()
   await expect(page.getByRole('main').getByRole('button', { name: 'Ajouter une tâche' })).toHaveCount(0)
   await lisible(page)
   await visite.click()

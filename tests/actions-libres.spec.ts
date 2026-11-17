@@ -49,13 +49,15 @@ test('ajouter une action hors visite, la cocher faite, puis la modifier et la su
   await page.screenshot({ path: `captures/${info.project.name}-actions-hors-visite.png`, fullPage: !isMobile })
 
   // Validée sans visite
-  await ligne.getByRole('checkbox', { name: 'Marquer faite : Relancer la commande de coffrets' }).click()
+  await ligne.getByRole('button', { name: 'Marquer faite : Relancer la commande de coffrets' }).click()
   await expect(page.getByText('Tâche marquée faite.')).toBeVisible()
   expect(derniere(ecritures)!['Brest Test'][0].faite).toBe(new Date().toISOString().slice(0, 10))
-  await page.getByRole('button', { name: 'Tâches faites (2)' }).click()
-  const faites = page.getByRole('list', { name: 'Tâches en cours de Brest Test : faites' })
-  await faites.getByRole('checkbox', { name: 'Remettre en cours : Relancer la commande de coffrets' }).click()
+  // Onglet Tâches (Joseph, 17/11/2026) : les tâches faites derrière la puce « Faites »
+  await page.getByRole('group', { name: 'Filtrer les tâches' }).getByRole('button', { name: /^Faites/ }).click()
+  const faites = page.getByRole('list', { name: 'Tâches faites' })
+  await faites.getByRole('button', { name: 'Remettre en cours : Relancer la commande de coffrets' }).click()
   await expect(page.getByText('Tâche remise en cours.')).toBeVisible()
+  await page.getByRole('group', { name: 'Filtrer les tâches' }).getByRole('button', { name: /^À faire/ }).click()
   expect(derniere(ecritures)!['Brest Test'][0].faite).toBeUndefined()
 
   // Modifiée puis supprimée

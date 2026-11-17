@@ -85,41 +85,24 @@ test('264 : le budget de l’année, son statut et son CA face à l’atterrissa
   await expect(page).toHaveURL(/vue=budget/)
 })
 
-// Joseph (17/11/2026) : « À faire » identique dans la Vue d'ensemble et dans l'Activité (même carte, même titre, mêmes
-// lignes) ; tous les blocs de la fiche ont le titre au même endroit
-test('À faire : même bloc et mêmes lignes dans la Vue d’ensemble et dans l’Activité', async ({ page }) => {
+// Joseph (17/11/2026) : « À faire » dans la Vue d'ensemble seulement (l'Activité devient l'Historique) ; tous les blocs
+// de la fiche ont le titre au même endroit
+test('À faire dans la Vue d’ensemble, titres alignés jusque dans l’Historique', async ({ page }) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
-  const lire = async () => {
-    const bloc = page.getByRole('region', { name: 'À faire' })
-    await expect(bloc.getByText(/^Visite : /)).toBeVisible()
-    const titre = await bloc.getByRole('heading', { name: 'À faire' }).boundingBox()
-    const carte = await bloc.boundingBox()
-    return {
-      visite: await bloc.getByText(/^Visite : /).innerText(),
-      taches: await bloc.getByRole('list', { name: /^Tâches en cours de/ }).getByRole('listitem').count().catch(() => 0),
-      vide: await bloc.getByText('Aucune tâche en cours.').count(),
-      retrait: Math.round(titre!.x - carte!.x),
-      hauteurTitre: Math.round(titre!.height),
-    }
-  }
-  const apercu = await lire()
-  // Tous les blocs de la Vue d'ensemble : le titre au même retrait
+  const bloc = page.getByRole('region', { name: 'À faire' })
+  await expect(bloc.getByText(/^Visite : /)).toBeVisible()
+  const retrait = Math.round((await bloc.getByRole('heading', { name: 'À faire' }).boundingBox())!.x - (await bloc.boundingBox())!.x)
   for (const nom of ['Comment va le magasin', 'Dernier échange']) {
-    const bloc = page.getByRole('region', { name: nom })
-    const t = await bloc.getByRole('heading', { name: nom }).boundingBox()
-    expect(Math.round(t!.x - (await bloc.boundingBox())!.x)).toBe(apercu.retrait)
+    const b = page.getByRole('region', { name: nom })
+    const t = await b.getByRole('heading', { name: nom }).boundingBox()
+    expect(Math.round(t!.x - (await b.boundingBox())!.x)).toBe(retrait)
   }
-  await page.getByRole('tab', { name: 'Activité' }).click()
-  await expect(page.getByRole('region', { name: 'Historique' })).toBeVisible()
-  const activite = await lire()
-  expect(activite.visite).toBe(apercu.visite)
-  expect(activite.vide).toBe(apercu.vide)
-  expect(activite.retrait).toBe(apercu.retrait)
-  expect(activite.hauteurTitre).toBe(apercu.hauteurTitre)
-  if (apercu.taches <= 3) expect(activite.taches).toBe(apercu.taches)
+  await page.getByRole('tab', { name: 'Historique' }).click()
   const historique = page.getByRole('region', { name: 'Historique' })
+  await expect(historique).toBeVisible()
+  await expect(page.getByRole('region', { name: 'À faire' })).toHaveCount(0)
   const t = await historique.getByRole('heading', { name: 'Historique' }).boundingBox()
-  expect(Math.round(t!.x - (await historique.boundingBox())!.x)).toBe(apercu.retrait)
+  expect(Math.round(t!.x - (await historique.boundingBox())!.x)).toBe(retrait)
   expect(await textesTropPetits(page)).toEqual([])
 })

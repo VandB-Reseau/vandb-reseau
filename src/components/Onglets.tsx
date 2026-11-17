@@ -53,7 +53,8 @@ export function combienVisibles(noms: string[], largeur: number, mesure: (t: str
 }
 
 // titre (refonte vague 2, 11A) : sur PC, le nom de la fiche s'affiche dans la bande collante dès que l'en-tête est sorti de l'écran
-export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle, fiche, libres, titre }: { valeur: V; onChange: (v: V) => void; rubriques: Rubrique<V>[]; libelle: string; fiche?: boolean; libres?: boolean; titre?: ReactNode }) {
+// defilant (Joseph, 17/11/2026, fiche magasin) : tous les onglets restent dans la bande, qui défile vers la droite, sans « Plus »
+export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle, fiche, libres, titre, defilant }: { valeur: V; onChange: (v: V) => void; rubriques: Rubrique<V>[]; libelle: string; fiche?: boolean; libres?: boolean; titre?: ReactNode; defilant?: boolean }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const avecTitre = !!titre && surPC && !libres
   const repere = useRef<HTMLDivElement | null>(null)
@@ -88,10 +89,10 @@ export function Onglets<V extends string>({ valeur, onChange, rubriques, libelle
   }, [publierBande])
   const noms = rubriques.map((r) => r.court ?? r.libelle).join('|')
   const nbVisibles = useMemo(() => {
-    if (surPC) return rubriques.length
+    if (surPC || defilant) return rubriques.length
     if (!place) return rubriques.length > VISIBLES_TELEPHONE + 1 ? VISIBLES_TELEPHONE : rubriques.length
     return combienVisibles(noms.split('|'), place.largeur, (t) => largeurTexte(t, place.police))
-  }, [surPC, place, noms, rubriques.length])
+  }, [surPC, defilant, place, noms, rubriques.length])
   const replier = nbVisibles < rubriques.length
   const visibles = replier ? rubriques.slice(0, nbVisibles) : rubriques
   const autres = replier ? rubriques.slice(nbVisibles) : []

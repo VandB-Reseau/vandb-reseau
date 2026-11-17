@@ -9,6 +9,14 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin, onglet Tâches (Joseph, 17/11/2026), sans migration : toutes les tâches du magasin en puces À faire,
+  En retard, Bloquées, Faites (à faire rangées par échéance), bouton « Ajouter une tâche », campagnes repliées dessous.
+  L'Activité devient « Historique », en dernier onglet, sans le bloc « À faire ». Téléphone : tous les onglets dans une
+  bande qui défile (plus d'onglet dans le « ⋯ »). Pictos Avis Google et Itinéraire (Google Maps en mode trajet) en haut
+  à droite de l'en-tête. Déploiements : tuile dans la Vue d'ensemble et onglet « Nine box et déploiements ». Tâches :
+  bouton « Fait » (et « Rouvrir ») à la place de la case à cocher, partout. Opérations commerciales (185) retirées
+  (chiffres du magasin, espace franchisé, Performance, rapports) ; rubrique `operations` et `ecrire_operations` laissées
+  en base, vides.
 - Audits paramétrables (Joseph, 17/11/2026), sans migration : dans Paramètres › Audits, le Directeur ajoute un audit
   (nom, seuil, thèmes et points) ou en supprime un ; un audit déjà rempli est gardé pour ses résultats (« Audits
   supprimés », avec « Rétablir »), un audit jamais servi disparaît. Pendant une visite d'un magasin, bloc « Audits » :

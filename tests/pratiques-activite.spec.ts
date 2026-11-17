@@ -24,7 +24,7 @@ test('les bonnes pratiques du magasin sont dans son activité, sans onglet Resso
 test('un ancien lien vers les bonnes pratiques du magasin ouvre tout le fil de l’activité', async ({ page }) => {
   await seConnecter(page, { config: { bonnes_pratiques: pratiques } })
   await page.goto('./#/magasins/Lyon%20Test?vue=pratiques')
-  await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab', { name: 'Activité', selected: true })).toBeVisible()
+  await expect(page.getByRole('tablist', { name: 'Rubriques de Lyon Test' }).getByRole('tab', { name: 'Historique', selected: true })).toBeVisible()
   await expect(page.getByRole('group', { name: 'Filtrer l’activité' }).getByRole('button', { name: 'Tout', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByText('Coffrets à composer').first()).toBeVisible()
 })
@@ -33,14 +33,13 @@ test('un ancien lien vers les bonnes pratiques du magasin ouvre tout le fil de l
 test('téléphone courant : les cinq onglets de la fiche visibles sans déborder', async ({ page, isMobile }, info) => {
   test.skip(!isMobile, 'téléphone seulement')
   await seConnecter(page)
-  for (const [largeur, attendus] of [[375, ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler']], [412, ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler']]] as const) {
+  for (const [largeur, attendus] of [[375, ['Aperçu', 'Tâches', 'Chiffres', 'Budget', 'Simuler', 'Extérieur', 'Nine box', 'Historique']], [412, ['Aperçu', 'Tâches', 'Chiffres', 'Budget', 'Simuler', 'Extérieur', 'Nine box', 'Historique']]] as const) {
     await page.setViewportSize({ width: largeur, height: 812 })
     await page.goto('./#/magasins/Lyon%20Test')
     const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })
     await expect(onglets.getByRole('tab')).toHaveText([...attendus])
     for (const t of await onglets.getByRole('tab').all()) {
       const b = (await t.boundingBox())!
-      expect(b.x + b.width).toBeLessThanOrEqual(largeur)
       expect(b.height).toBeGreaterThanOrEqual(48)
       expect(b.width).toBeGreaterThanOrEqual(48)
     }

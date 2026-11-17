@@ -6,8 +6,6 @@ import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
 import TimelineOutlined from '@mui/icons-material/TimelineOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import SummarizeOutlined from '@mui/icons-material/SummarizeOutlined'
-import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
-import { OperationsReseau } from '../components/OperationsReseau'
 import { RapportMois } from './RapportMois'
 import { Clotures } from '../pilotage/pages/Clotures'
 import { PageHeader } from '../components/PageHeader'
@@ -26,7 +24,7 @@ import { Reseau as SuiviBudgets } from '../pilotage/pages/Reseau'
 // Le franchisé ne la voit jamais : médianes et comparaisons du réseau ne lui arrivent pas.
 // Les budgets de l'année ont quitté Chiffres pour l'entrée « Budget prévisionnel » du menu (Joseph, 10/11/2026) :
 // l'ancienne adresse ?vue=budgets y mène.
-type Vue = 'rapports' | 'magasins' | 'budget' | 'clotures' | 'evolution' | 'operations'
+type Vue = 'rapports' | 'magasins' | 'budget' | 'clotures' | 'evolution'
 
 export function Performance() {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
@@ -42,7 +40,6 @@ export function Performance() {
     // Vague 3 (29A) : le rapport du mois sur le périmètre choisi
     { vue: 'rapports', libelle: 'Rapport du mois', court: 'Rapport', icone: <SummarizeOutlined /> },
     // 185 (Joseph, 15/11/2026) : les opérations commerciales des magasins et leur effet en caisse
-    { vue: 'operations', libelle: 'Opérations commerciales', court: 'Opérations', icone: <CampaignOutlined /> },
     ...(voitEvolution ? [{ vue: 'evolution' as const, libelle: 'Évolution du parc', court: 'Évolution', icone: <TimelineOutlined /> }] : []),
   ]
   const demandee = params.get('vue') as Vue | 'budgets' | null
@@ -57,7 +54,6 @@ export function Performance() {
       {vue === 'clotures' && <ZonePilotage>{() => <Clotures />}</ZonePilotage>}
       {vue === 'evolution' && <Evolution integre />}
       {vue === 'rapports' && <ZonePilotage>{() => <RapportMois />}</ZonePilotage>}
-      {vue === 'operations' && <AvecReseau>{(reseau) => <OperationsReseau reseau={reseau} />}</AvecReseau>}
     </>
   )
 }

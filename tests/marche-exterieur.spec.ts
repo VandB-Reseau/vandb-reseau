@@ -239,7 +239,7 @@ test('Marché extérieur : le franchisé bâtit le plan de son magasin', async (
   await expect(page.getByText('Enregistré')).toBeVisible()
   // Relu depuis la base après rechargement : le plan est bien gardé pour son magasin
   await page.reload()
-  // Téléphone : l'onglet n'est pas dans la barre (Budget et Simuler y restent), le bouton du haut l'ouvre
+  // Téléphone : l'onglet n'est pas dans la barre (Tâches et Budget y restent), le bouton du haut l'ouvre
   if (isMobile) {
     await page.goto(`./#/magasins/${encodeURIComponent(NOM)}`)
     await page.getByRole('button', { name: 'Marché extérieur' }).click()

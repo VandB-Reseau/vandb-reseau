@@ -12,7 +12,7 @@ import Autocomplete from '@mui/material/Autocomplete'
 import type { SxProps, Theme } from '@mui/material/styles'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Checkbox from '@mui/material/Checkbox'
+import CheckCircleOutline from '@mui/icons-material/CheckCircleOutlineOutlined'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
@@ -112,12 +112,10 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
     <Box component="li" sx={{ borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
     <Glisser libelle="Faite" icone={<CheckCircle />} actif={!!cocher && !x.a.faite && !enCours} onGlisser={() => cocher?.(true)}>
     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, py: 0.75 }}>
-      {cocher
-        ? <Checkbox checked={!!x.a.faite} disabled={enCours} onChange={(e) => cocher(e.target.checked)} sx={{ width: 48, height: 48, flexShrink: 0 }}
-            slotProps={{ input: { 'aria-label': `${x.a.faite ? 'Remettre en cours' : 'Marquer faite'} : ${x.a.action}` } }} />
-        : <Box sx={{ width: 48, height: 48, flexShrink: 0, display: 'grid', placeItems: 'center', color: x.a.faite ? 'success.main' : 'text.secondary' }}>
-            {x.a.faite ? <CheckCircle aria-label="Faite" /> : <RadioButtonUnchecked aria-label="À faire" />}
-          </Box>}
+      {/* Joseph (17/11/2026) : plus de case à cocher, trop vite cochée par erreur ; l'état à gauche, un bouton « Fait » à droite */}
+      <Box sx={{ width: 48, height: 48, flexShrink: 0, display: 'grid', placeItems: 'center', color: x.a.faite ? 'success.main' : 'text.secondary' }}>
+        {x.a.faite ? <CheckCircle aria-label="Faite" /> : <RadioButtonUnchecked aria-label="À faire" />}
+      </Box>
       <Box sx={{ flex: 1, minWidth: 0, py: 1 }}>
         <Typography variant="body1" sx={{ fontWeight: 500, textDecoration: x.a.faite ? 'line-through' : undefined, color: x.a.faite ? 'text.secondary' : undefined, overflowWrap: 'anywhere' }}>{x.a.action}</Typography>
         <Typography variant="body2" color="text.secondary">
@@ -137,6 +135,9 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
         {x.a.pieces && <ListePieces pieces={x.a.pieces} />}
       </Box>
       {(pastille || statut) && <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1, alignItems: 'center', mt: 1.5, flexShrink: 0 }}>{statut}{pastille}</Box>}
+      {cocher && (x.a.faite
+        ? <Button variant="text" onClick={() => cocher(false)} disabled={enCours} aria-label={`Remettre en cours : ${x.a.action}`} sx={{ minHeight: 48, flexShrink: 0, color: 'text.secondary', whiteSpace: 'nowrap' }}>Rouvrir</Button>
+        : <Button variant="outlined" onClick={() => cocher(true)} disabled={enCours} startIcon={<CheckCircleOutline />} aria-label={`Marquer faite : ${x.a.action}`} sx={{ minHeight: 48, flexShrink: 0, borderRadius: 2, whiteSpace: 'nowrap', mt: { sm: 0.5 } }}>Fait</Button>)}
       {modifier && <Tooltip title="Modifier"><IconButton onClick={modifier} aria-label={`Modifier la tâche ${x.a.action}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>}
     </Box>
     </Glisser>
