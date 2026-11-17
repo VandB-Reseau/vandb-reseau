@@ -1,3 +1,4 @@
+import { styleIntertitre } from '../../theme/theme'
 import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -109,7 +110,7 @@ export function ObjectifsMois({ ouverte, fermer, magasin, annee, budget, n1, tva
                 </TableRow>
               </TableBody>
             </Table>
-            <Typography variant="h3" component="h3" sx={{ mt: 3, mb: 1 }}>Un euro de plus par client</Typography>
+            <Typography component="h3" sx={{ ...styleIntertitre, mt: 3 }}>Un euro de plus par client</Typography>
             <Box component="ul" aria-label="Un euro de plus par client" sx={{ m: 0, pl: 2.5 }}>
               {univers.map((u) => (
                 <li key={u}><Typography>{universLibelle[u]} : <b>+{montant(o.univers[u]!.unEuroDePlus)}</b> TTC sur le mois, sans un client de plus.</Typography></li>
@@ -117,7 +118,7 @@ export function ObjectifsMois({ ouverte, fermer, magasin, annee, budget, n1, tva
             </Box>
             {d && (
               <Box component="section" aria-label="Défi de l’équipe" sx={{ mt: 3, p: 2, border: 2, borderColor: 'primary.main', borderRadius: 2 }}>
-                <Typography variant="h3" component="h3">Défi de l’équipe : {defi!.nom}</Typography>
+                <Typography component="h3" sx={styleIntertitre}>Défi de l’équipe : {defi!.nom}</Typography>
                 <Typography sx={{ mt: 1, fontSize: '1.125rem' }}>
                   <b>{entier(d.articlesParJour)} par jour</b> en {universLibelle[d.univers]}, soit {entier(d.articles)} sur le mois : un article à {prixPanier(d.prixTTC)} pour 1 client sur {d.unSur}.
                 </Typography>

@@ -10,7 +10,7 @@ import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { ListeMagasins } from '../components/ListeMagasins'
-import { Contact, Section } from '../components/Section'
+import { Contact, Section, LigneVide } from '../components/Section'
 import { chargeA, magasinsDuCoach } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche, lienRR } from '../lib/format'
 import { SectionFichePersonnelle } from './FichePersonne'
@@ -99,7 +99,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
         )}
 
         {vue === 'magasins' && (magasins.length === 0
-          ? <Typography variant="body2" color="text.secondary">Aucun magasin affecté aujourd’hui.</Typography>
+          ? <LigneVide>Aucun magasin affecté aujourd’hui.</LigneVide>
           : <ListeMagasins magasins={magasins} />)}
 
         {vue === 'activite' && <Box sx={{ display: 'grid', gap: 2 }}>
@@ -118,7 +118,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
               ))}
             </Section>
             <Section titre="Dernières visites">
-              {visites.length === 0 ? <Typography variant="body2" color="text.secondary">Aucune visite enregistrée.</Typography> : (toutes ? visites : visites.slice(0, 12)).map((v) => (
+              {visites.length === 0 ? <LigneVide>Aucune visite enregistrée.</LigneVide> : (toutes ? visites : visites.slice(0, 12)).map((v) => (
                 <Box key={v.id ?? `${v.magasin}-${v.date}`} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
                   <Typography variant="body2" color="text.secondary" sx={{ width: 100, flexShrink: 0 }}>{dateCourte(v.date)}</Typography>
                   <Box sx={{ flex: 1, minWidth: 0 }}>

@@ -1,3 +1,4 @@
+import { styleBloc, styleEnteteBloc } from '../components/Section'
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -51,8 +52,8 @@ function Sauvegarde({ reseau, signaler }: { reseau: Reseau; signaler: (m: string
   }
   return (
     <Card sx={{ mb: 3 }}>
-      <CardContent sx={{ p: 3 }}>
-        <Typography component="h2" sx={cartouche}>Sauvegarde</Typography>
+      <Box sx={styleBloc}>
+        <Box sx={styleEnteteBloc}><Typography component="h2" sx={cartouche}>Sauvegarde</Typography></Box>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           {reseau.derniereSauvegarde ? `Dernière sauvegarde complète : ${dateCourte(reseau.derniereSauvegarde)}` : 'Aucune sauvegarde complète téléchargée'}
         </Typography>
@@ -65,7 +66,7 @@ function Sauvegarde({ reseau, signaler }: { reseau: Reseau; signaler: (m: string
             {envoi === 'excel' ? 'Préparation…' : 'Tout exporter en Excel'}
           </Button>
         </Box>
-      </CardContent>
+      </Box>
     </Card>
   )
 }

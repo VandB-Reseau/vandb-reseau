@@ -35,7 +35,8 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   await expect(page.getByRole('region', { name: 'Journal' })).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'Fil du magasin' })).toHaveCount(0)
   // En-tête : deux actions en cours dont une en retard
-  await expect(page.getByRole('region', { name: 'À faire' }).getByRole('link', { name: 'Toutes les tâches (2)' })).toBeVisible()
+  // Les deux tâches sont dans « À faire » (lien « Toutes les tâches » seulement au-delà de 3, Joseph 17/11/2026)
+  await expect(page.getByRole('region', { name: 'À faire' }).getByRole('list', { name: 'Tâches en cours de Brest Test' }).getByRole('listitem')).toHaveCount(2)
   await expect(page.getByText('1 tâche en retard', { exact: true })).toBeVisible()
   await ouvrirOnglet(page, 'Tâches', onglets)
   const liste = page.getByRole('list', { name: 'Tâches en cours de Brest Test' })

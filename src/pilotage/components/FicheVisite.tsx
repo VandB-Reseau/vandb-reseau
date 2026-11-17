@@ -1,3 +1,4 @@
+import { styleIntertitre } from '../../theme/theme'
 import { styleTableau } from '../theme/tableau'
 import { useEffect } from 'react'
 import Box from '@mui/material/Box'
@@ -71,7 +72,7 @@ export function FicheVisite({ ouverte, fermer, magasin, annee, n, n1, budget, tv
       <TableCell align="right" sx={rouge ? { color: 'error.main', fontWeight: 600 } : undefined}>{n1Texte}</TableCell>
     </TableRow>
   )
-  const titre = (t: string) => <Typography variant="h3" component="h3" sx={{ mt: 2.5, mb: 1 }}>{t}</Typography>
+  const titre = (t: string) => <Typography component="h3" sx={{ ...styleIntertitre, mt: 2.5 }}>{t}</Typography>
 
   return (
     <Dialog open={ouverte} onClose={fermer} fullScreen={telephone} maxWidth="md" fullWidth aria-labelledby="titre-fiche-visite" className="fiche-visite">

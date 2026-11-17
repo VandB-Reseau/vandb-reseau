@@ -1,3 +1,4 @@
+import { styleBloc, styleEnteteBloc, LigneVide } from './Section'
 // Paramètres › Animation (refonte vague 4, Joseph 10/11/2026) : rituels d'animation suivis (33A) et interlocuteur de
 // chaque thème des demandes des franchisés (37A). Réglés par le Directeur seul.
 import { useState } from 'react'
@@ -5,7 +6,6 @@ import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -49,8 +49,8 @@ export function RegleRituels({ reseau, signaler }: { reseau: Reseau; signaler: (
   }
   return (
     <Card>
-      <CardContent sx={{ p: 3 }}>
-        <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>Rituels d’animation</Typography>
+      <Box sx={styleBloc}>
+        <Box sx={styleEnteteBloc}><Typography component="h2" sx={cartouche}>Rituels d’animation</Typography></Box>
         {liste.map((r, i) => (
           <Box key={r.type} sx={{ display: 'flex', gap: 1.5, alignItems: 'center', py: 1.25, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 }, flexWrap: 'wrap' }}>
             <TextField label={`Rituel du ${quiRituel[r.type]}`} value={r.libelle} onChange={(e) => changer(i, { libelle: e.target.value })} disabled={!r.actif} sx={{ flex: 1, minWidth: 240 }} slotProps={{ htmlInput: { maxLength: 120 } }} />
@@ -61,7 +61,7 @@ export function RegleRituels({ reseau, signaler }: { reseau: Reseau; signaler: (
           </Box>
         ))}
         <Pied modifie={modifie} envoi={envoi} annuler={() => setListe(initiaux())} enregistrer={() => void enregistrer()} />
-      </CardContent>
+      </Box>
     </Card>
   )
 }
@@ -82,8 +82,8 @@ export function RegleInterlocuteurs({ reseau, signaler }: { reseau: Reseau; sign
   }
   return (
     <Card>
-      <CardContent sx={{ p: 3 }}>
-        <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>Interlocuteur par thème</Typography>
+      <Box sx={styleBloc}>
+        <Box sx={styleEnteteBloc}><Typography component="h2" sx={cartouche}>Interlocuteur par thème</Typography></Box>
         <Box sx={{ display: 'grid', gap: 2 }}>
           {themesDemande.map((t) => (
             <Autocomplete key={t.v} freeSolo options={personnes} value={valeurs[t.v] ?? ''} onInputChange={(_, v) => setValeurs((x) => ({ ...x, [t.v]: v }))}
@@ -91,7 +91,7 @@ export function RegleInterlocuteurs({ reseau, signaler }: { reseau: Reseau; sign
           ))}
         </Box>
         <Pied modifie={modifie} envoi={envoi} annuler={() => setValeurs(initiaux())} enregistrer={() => void enregistrer()} />
-      </CardContent>
+      </Box>
     </Card>
   )
 }
@@ -118,9 +118,9 @@ export function RegleTempsForts({ reseau, signaler }: { reseau: Reseau; signaler
   }
   return (
     <Card>
-      <CardContent sx={{ p: 3 }}>
-        <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>Temps forts de l’année</Typography>
-        {!liste.length && <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>Aucun temps fort. Noël, Beaujolais nouveau, Fête des pères : chacun s’annonce aux franchisés quelques semaines avant.</Typography>}
+      <Box sx={styleBloc}>
+        <Box sx={styleEnteteBloc}><Typography component="h2" sx={cartouche}>Temps forts de l’année</Typography></Box>
+        {!liste.length && <LigneVide>Aucun temps fort. Noël, Beaujolais nouveau, Fête des pères : chacun s’annonce aux franchisés quelques semaines avant.</LigneVide>}
         {liste.map((t, i) => (
           <Box key={t.id} sx={ligneReglage}>
             <TextField label="Temps fort" value={t.nom} onChange={(e) => changer(i, { nom: e.target.value })} sx={{ flex: 2, minWidth: 200 }} slotProps={{ htmlInput: { maxLength: 80 } }} />
@@ -133,7 +133,7 @@ export function RegleTempsForts({ reseau, signaler }: { reseau: Reseau; signaler
         ))}
         <Button startIcon={<AddOutlined />} onClick={() => setListe((l) => [...l, { id: nouvelId('tf'), nom: '', debut: '', fin: '', annonce: ANNONCE_PAR_DEFAUT, detail: '' }])} sx={{ minHeight: 48, mt: 1 }}>Ajouter un temps fort</Button>
         <Pied modifie={modifie && valide} envoi={envoi} annuler={() => setListe(initiaux())} enregistrer={() => void enregistrer()} />
-      </CardContent>
+      </Box>
     </Card>
   )
 }
@@ -155,8 +155,8 @@ export function RegleParcours({ reseau, signaler }: { reseau: Reseau; signaler: 
   }
   return (
     <Card>
-      <CardContent sx={{ p: 3 }}>
-        <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>Parcours d’intégration</Typography>
+      <Box sx={styleBloc}>
+        <Box sx={styleEnteteBloc}><Typography component="h2" sx={cartouche}>Parcours d’intégration</Typography></Box>
         {liste.map((e, i) => (
           <Box key={e.id} sx={ligneReglage}>
             <TextField type="number" label="Jour" value={e.jour} onChange={(x) => changer(i, { jour: Math.max(0, Math.min(365, Math.round(Number(x.target.value) || 0))) })} sx={{ width: 110 }} slotProps={{ htmlInput: { min: 0, max: 365 } }} />
@@ -169,7 +169,7 @@ export function RegleParcours({ reseau, signaler }: { reseau: Reseau; signaler: 
         ))}
         <Button startIcon={<AddOutlined />} onClick={() => setListe((l) => [...l, { id: nouvelId('e'), libelle: '', jour: (l.at(-1)?.jour ?? 0) + 15, responsable: 'coach' }])} sx={{ minHeight: 48, mt: 1 }}>Ajouter une étape</Button>
         <Pied modifie={modifie && valide} envoi={envoi} annuler={() => setListe(initiaux())} enregistrer={() => void enregistrer()} />
-      </CardContent>
+      </Box>
     </Card>
   )
 }

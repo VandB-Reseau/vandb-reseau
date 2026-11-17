@@ -5,6 +5,7 @@ import { SectionOperations } from '../components/Operations'
 import { MarcheExterieur } from '../components/MarcheExterieur'
 import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
 import { MonMois } from '../components/MonMois'
+import { Lignes, type LigneAFaire } from '../components/SyntheseMagasin'
 import { useTheme } from '@mui/material/styles'
 import { SectionObjectifsPlan } from '../components/PlanAction'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -64,7 +65,7 @@ import Tabs from '@mui/material/Tabs'
 import { GraphiqueCA } from '../components/Chiffres'
 import { phraseCADuMois } from '../pilotage/moteur/phrases'
 import { CartePratique } from '../components/BonnesPratiques'
-import { Contact, Ligne, Section } from '../components/Section'
+import { Contact, Ligne, Section, LigneVide } from '../components/Section'
 import { useApercu } from '../auth/Apercu'
 import { SectionReunionsFranchise } from '../components/Reunions'
 import { SondagesARepondre } from '../components/Questions'
@@ -252,32 +253,25 @@ function SectionAFaire({ reseau, magasins }: { reseau: Reseau; magasins: Magasin
   const jalons = jalonsAVenir(reseau.campagnes.liste.filter((c) => magasinsConcernes(reseau, c).some((m) => noms.has(m.nom))), reseau.jour, 14)
   const tempsForts = (reseau.tempsForts ?? []).filter((t) => tempsFortAnnonce(t, reseau.jour) && t.debut >= reseau.jour)
   const plusieurs = magasins.length > 1
-  return (
-    <Box component="section" aria-label="À faire">
-      <TitreSection>À faire</TitreSection>
-      <CarteLignes label="Saisies et budget">
-        {/* Vague 8 (109A) : une ligne par tâche, les magasins concernés en boutons sur la ligne */}
-        {[
-          { cle: 'c', titre: `Clôturer ${libelleMois(mois).toLowerCase()}`, detail: 'Réel, stock de fin de mois et comptes', icone: <InventoryOutlined />, nom: 'cloture', suffixe: '?vue=chiffres&partie=cloture' },
-          { cle: 'b', titre: 'Relire mon budget', detail: 'Hypothèses, commentaires et validation', icone: <RequestQuoteOutlined />, nom: 'budget', suffixe: '?vue=budget' },
-        ].map((t) => plusieurs
-          ? <LigneCompacte key={t.cle} avatar={<Initiales nom={t.nom} icone={t.icone} />} titre={t.titre} detail={t.detail}
-            actions={<Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'flex-end', flex: 'none', maxWidth: '50%' }}>
-              {magasins.map((m) => <Button key={m.nom} component={RouterLink} to={`${lienFiche(m.nom)}${t.suffixe}`} aria-label={`${t.titre} : ${m.nom}`} variant="outlined" size="small" sx={{ minHeight: { xs: 48, md: 40 }, textTransform: 'none' }}>{m.nom}</Button>)}
-            </Box>} />
-          : <LigneCompacte key={t.cle} lien={`${lienFiche(magasins[0].nom)}${t.suffixe}`} avatar={<Initiales nom={t.nom} icone={t.icone} />} titre={t.titre} detail={t.detail} />)}
-        {/* Refonte vague 5 (48A) : dates clés des campagnes dans les 14 jours, temps forts annoncés */}
-        {jalons.map(({ c, j }) => (
-          <LigneCompacte key={`j-${c.id}-${j.id}`} lien={`${lienFiche(magasins[0].nom)}?vue=campagnes`} avatar={<Initiales nom="jalon" icone={<EventOutlined />} />}
-            titre={`${libelleJalon(j)} ${dateCourte(j.date)}`} detail={c.nom} fin={j.date < reseau.jour ? <Pastille ton="gris">Passée</Pastille> : undefined} />
-        ))}
-        {tempsForts.map((t) => (
-          <LigneCompacte key={`tf-${t.id}`} avatar={<Initiales nom="temps fort" icone={<CelebrationOutlined />} />} titre={`Préparer ${t.nom}`}
-            detail={[`à partir du ${dateCourte(t.debut)}`, t.detail].filter(Boolean).join(' · ')} />
-        ))}
-      </CarteLignes>
-    </Box>
-  )
+  // Choix 1 (Joseph, 17/11/2026) : la même carte et les mêmes lignes que « À faire » de la fiche magasin
+  const lignes: LigneAFaire[] = [
+    ...[
+      { cle: 'c', titre: `Clôturer ${libelleMois(mois).toLowerCase()}`, detail: 'Réel, stock de fin de mois et comptes', icone: <InventoryOutlined />, suffixe: '?vue=chiffres&partie=cloture' },
+      { cle: 'b', titre: 'Relire mon budget', detail: 'Hypothèses, commentaires et validation', icone: <RequestQuoteOutlined />, suffixe: '?vue=budget' },
+    ].map((t): LigneAFaire => plusieurs
+      // Vague 8 (109A) : une ligne par tâche, les magasins concernés en boutons sur la ligne
+      ? { cle: t.cle, ton: 'neutre', titre: t.titre, detail: t.detail, icone: t.icone,
+        fin: <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'flex-end', flex: 'none', maxWidth: '50%' }}>
+          {magasins.map((m) => <Button key={m.nom} component={RouterLink} to={`${lienFiche(m.nom)}${t.suffixe}`} aria-label={`${t.titre} : ${m.nom}`} variant="outlined" size="small" sx={{ minHeight: { xs: 48, md: 40 }, textTransform: 'none' }}>{m.nom}</Button>)}
+        </Box> }
+      : { cle: t.cle, ton: 'neutre', titre: t.titre, detail: t.detail, icone: t.icone, lien: `${lienFiche(magasins[0].nom)}${t.suffixe}` }),
+    // Refonte vague 5 (48A) : dates clés des campagnes dans les 14 jours, temps forts annoncés
+    ...jalons.map(({ c, j }): LigneAFaire => ({ cle: `j-${c.id}-${j.id}`, ton: 'neutre', icone: <EventOutlined />, lien: `${lienFiche(magasins[0].nom)}?vue=campagnes`,
+      titre: `${libelleJalon(j)} ${dateCourte(j.date)}`, detail: c.nom, fin: j.date < reseau.jour ? <Pastille ton="gris">Passée</Pastille> : undefined })),
+    ...tempsForts.map((t): LigneAFaire => ({ cle: `tf-${t.id}`, ton: 'neutre', icone: <CelebrationOutlined />, titre: `Préparer ${t.nom}`,
+      detail: [`à partir du ${dateCourte(t.debut)}`, t.detail].filter(Boolean).join(' · ') })),
+  ]
+  return <Section region titre="À faire"><Lignes lignes={lignes} /></Section>
 }
 
 // ── Tâches en cours ── (vague 7, 91A) : rangées sous les priorités du plan d'action, « ce sur quoi on travaille ensemble »,
@@ -606,7 +600,7 @@ export function MagasinsFranchise() {
                           <Typography variant="body2" color="text.secondary"><Box component="span" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Box> · {libelleMois(a.mois)}</Typography>
                         </Box>
                       ) : m.statut !== 'ouvert' ? <Box><Pastille ton="gris">{statutLibelle[m.statut]}</Pastille></Box>
-                        : <Typography variant="body2" color="text.secondary">Pas encore de chiffres de caisse.</Typography>}
+                        : <LigneVide>Pas encore de chiffres de caisse.</LigneVide>}
                     </Box>
                   </Card>
                 )
@@ -727,7 +721,7 @@ function OngletPratiques({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; 
   const siennes = reseau.pratiques.filter((p) => p.magasin === m.nom)
   const reprises = reseau.pratiques.filter((p) => p.reprises.includes(m.nom))
   if (!siennes.length && !reprises.length) {
-    return <Section titre="Bonnes pratiques"><Vide>Aucune bonne pratique pour ce magasin.</Vide></Section>
+    return <Section titre="Bonnes pratiques"><LigneVide>Aucune bonne pratique pour ce magasin.</LigneVide></Section>
   }
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxWidth: 640 }}>
@@ -745,7 +739,7 @@ function OngletCampagnes({ reseau, m }: { reseau: Reseau; m: Magasin }) {
   // Vague 5 (48A) : les campagnes à venir aussi, pour leurs dates de commande
   const liste = reseau.campagnes.liste.filter((c) => magasinsConcernes(reseau, c).some((x) => x.nom === m.nom))
     .sort((a, b) => b.debut.localeCompare(a.debut))
-  if (!liste.length) return <Section titre="Campagnes"><Vide>Aucune campagne ne concerne ce magasin.</Vide></Section>
+  if (!liste.length) return <Section titre="Campagnes"><LigneVide>Aucune campagne ne concerne ce magasin.</LigneVide></Section>
   return (
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
       {liste.map((c) => {

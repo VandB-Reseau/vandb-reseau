@@ -1,3 +1,5 @@
+import { LigneVide } from './Section'
+import { styleIntertitre } from '../theme/theme'
 import { Entete, LigneSansResultat, useTableau, type ColonneTri } from './TableauTri'
 import { useAuth } from '../auth/AuthContext'
 import { CarteLignes, Initiales, LigneCompacte, TitreSection, cartouche } from './Social'
@@ -89,7 +91,7 @@ export function SaisieCampagnes({ s }: { s: ReturnType<typeof useSaisieCampagnes
   if (!s.campagnes.length) return null
   return (
     <Box>
-      <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>Campagnes en cours</Typography>
+      <Typography component="h3" sx={styleIntertitre}>Campagnes en cours</Typography>
       <ListeConstats campagnes={s.campagnes} valeur={s.valeur} changer={s.changer} />
     </Box>
   )
@@ -470,7 +472,7 @@ export function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau;
           error={!!fin && fin < debut} helperText={fin && fin < debut ? 'La fin doit suivre le début.' : ' '} />
       </Box>
       <Box>
-        <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>Points à constater</Typography>
+        <Typography component="h3" sx={styleIntertitre}>Points à constater</Typography>
         {points.map((p, i) => (
           <Box key={p.id} sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1.5 }}>
             <TextField label={`Point ${i + 1}`} value={p.libelle} onChange={(e) => setPoints((x) => x.map((y) => (y.id === p.id ? { ...y, libelle: e.target.value } : y)))} sx={{ flex: 1 }} />
@@ -480,7 +482,7 @@ export function DialogCampagne({ reseau, campagne, onFermer }: { reseau: Reseau;
         {points.length < MAX_POINTS && <Button startIcon={<AddOutlined />} onClick={nouveauPoint} sx={{ minHeight: 48 }}>Ajouter un point</Button>}
       </Box>
       <Box>
-        <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>Dates clés</Typography>
+        <Typography component="h3" sx={styleIntertitre}>Dates clés</Typography>
         {jalons.map((j, i) => (
           <Box key={j.id} sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1.5, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
             <TextField select label="Date clé" value={j.type} onChange={(e) => setJalons((x) => x.map((y) => (y.id === j.id ? { ...y, type: e.target.value as TypeJalon } : y)))} sx={{ flex: 1, minWidth: 200 }}>
@@ -516,13 +518,13 @@ export function CampagnesMagasin({ reseau, magasin, signaler }: { reseau: Reseau
   const encours = campagnesDuMagasin(reseau, magasin, reseau.jour)
   const autres = reseau.campagnes.liste.filter((c) => phase(c, reseau.jour) !== 'encours' && magasinsConcernes(reseau, c).some((m) => m.nom === magasin))
     .sort((a, b) => b.debut.localeCompare(a.debut))
-  if (!encours.length && !autres.length) return <Typography variant="body2" color="text.secondary">Aucune campagne ne concerne ce magasin.</Typography>
+  if (!encours.length && !autres.length) return <LigneVide>Aucune campagne ne concerne ce magasin.</LigneVide>
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {encours.length > 0 && <ConstatsMagasin reseau={reseau} magasin={magasin} signaler={signaler} />}
       {autres.length > 0 && (
         <Box>
-          <Typography variant="subtitle2" component="h3" sx={{ mb: 0.5 }}>Autres campagnes</Typography>
+          <Typography component="h3" sx={styleIntertitre}>Autres campagnes</Typography>
           {autres.map((c) => {
             const e = executionMagasin(reseau.campagnes, c, magasin)
             const ph = phase(c, reseau.jour)
@@ -548,7 +550,7 @@ export function BilanCampagnes({ reseau, magasins }: { reseau: Reseau; magasins:
   const liste = reseau.campagnes.liste.filter((c) => phase(c, reseau.jour) !== 'avenir')
     .map((c) => ({ c, ms: magasinsConcernes(reseau, c).filter((m) => noms.has(m.nom)) })).filter((x) => x.ms.length)
     .sort((a, b) => b.c.debut.localeCompare(a.c.debut))
-  if (!liste.length) return <Typography variant="body2" color="text.secondary">Aucune campagne en cours ou passée sur ces magasins.</Typography>
+  if (!liste.length) return <LigneVide>Aucune campagne en cours ou passée sur ces magasins.</LigneVide>
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {liste.map(({ c, ms }) => {

@@ -1,3 +1,4 @@
+import { LigneVide } from './Section'
 import { Entete, LigneSansResultat, useTableau, type ColonneTri } from './TableauTri'
 import { useMemo, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
@@ -249,7 +250,7 @@ export function VuePortefeuilles({ reseau }: { reseau: Reseau }) {
       )}
     </Box>
   )
-  if (!coachs.length && !rrs.length) return <Typography variant="body2" color="text.secondary">Aucun magasin affecté à un Coach ou à un Responsable Régional.</Typography>
+  if (!coachs.length && !rrs.length) return <LigneVide>Aucun magasin affecté à un Coach ou à un Responsable Régional.</LigneVide>
   return (
     <>
       {groupe('Coachs', coachs, true)}

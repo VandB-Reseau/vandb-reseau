@@ -1,3 +1,5 @@
+import { LigneVide } from '../components/Section'
+import { styleIntertitre } from '../theme/theme'
 import { Entete, LigneSansResultat, useTableau, type ColonneTri } from '../components/TableauTri'
 import { Fragment, useMemo, useState } from 'react'
 import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, useAffichage, cartouche } from '../components/Social'
@@ -73,7 +75,7 @@ function changementsDuCoach(reseau: Reseau, coach: string, fin: string): Changem
 }
 
 function ListeChangements({ changements }: { changements: Changement[] }) {
-  if (!changements.length) return <Typography variant="body2" color="text.secondary">Aucun changement prévu dans l’année.</Typography>
+  if (!changements.length) return <LigneVide>Aucun changement prévu dans l’année.</LigneVide>
   return (
     <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
       {changements.map((c) => (
@@ -165,7 +167,7 @@ export function VueCharge({ reseau, versRepartition }: { reseau: Reseau; versRep
   const Detail = ({ l }: { l: Ligne }) => (
     <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', lg: '3fr 2fr' }, py: 1.5 }}>
       <Box>
-        <Typography variant="subtitle2" component="h3" sx={{ mb: 0.5 }}>Magasins ({l.magasins.length})</Typography>
+        <Typography component="h3" sx={styleIntertitre}>Magasins ({l.magasins.length})</Typography>
         <Box role="list" aria-label={`Magasins de ${l.coach.nom}`}>
           {[...l.magasins].sort((a, b) => (l.route.acces.find((x) => x.magasin === b)?.minutes ?? 0) - (l.route.acces.find((x) => x.magasin === a)?.minutes ?? 0)).map((m) => {
             const acces = l.route.acces.find((x) => x.magasin === m)
@@ -196,7 +198,7 @@ export function VueCharge({ reseau, versRepartition }: { reseau: Reseau; versRep
         </Box>
       </Box>
       <Box>
-        <Typography variant="subtitle2" component="h3" sx={{ mb: 0.5 }}>Changements dans les douze prochains mois</Typography>
+        <Typography component="h3" sx={styleIntertitre}>Changements dans les douze prochains mois</Typography>
         <ListeChangements changements={l.changements} />
       </Box>
     </Box>

@@ -1,3 +1,4 @@
+import { styleIntertitre } from '../../theme/theme'
 import { styleListe } from '../../components/TableauTri'
 import { useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
@@ -55,7 +56,7 @@ export function CopieHypotheses({ source, destinations, ebe, occupe, onCopier, o
         Seuls les thèmes choisis changent. Travaux et trésorerie au 1er janvier restent ceux de chaque magasin.
       </Typography>
 
-      <Typography component="h3" sx={{ fontWeight: 700, mb: 0.5 }}>Ce qu’on copie</Typography>
+      <Typography component="h3" sx={styleIntertitre}>Ce qu’on copie</Typography>
       <Box role="group" aria-label="Thèmes à copier" sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 2 }}>
         {THEMES_COPIE.map((t) => (
           <FormControlLabel key={t.cle} label={t.libelle} sx={{ minHeight: 48 }}
@@ -63,7 +64,7 @@ export function CopieHypotheses({ source, destinations, ebe, occupe, onCopier, o
         ))}
       </Box>
 
-      <Typography component="h3" sx={{ fontWeight: 700, mt: 2, mb: 1 }}>Vers quels magasins</Typography>
+      <Typography component="h3" sx={{ ...styleIntertitre, mt: 2 }}>Vers quels magasins</Typography>
       <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', mb: 1.5 }}>
         <ToggleButtonGroup exclusive size="small" value={statut} onChange={(_, v) => v && setStatut(v)} aria-label="Statut des budgets visés">
           <ToggleButton value="propose" sx={{ minHeight: 48 }}>Proposés</ToggleButton>

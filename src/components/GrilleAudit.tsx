@@ -1,3 +1,4 @@
+import { styleIntertitre } from '../theme/theme'
 import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -112,7 +113,7 @@ export function SaisieGrille({ titre, reponses, setReponses, seuil, onRetirerPho
   const modifier = (id: string, x: Partial<ReponsePoint>) => setReponses((r) => ({ ...r, [id]: { ...r[id], ...x } }))
   return (
     <Box component="section" aria-label={titre}>
-      <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 700, mb: 1 }}>{titre}</Typography>
+      <Typography component="h3" sx={styleIntertitre}>{titre}</Typography>
       <ResultatAuditPastille reponses={reponses} seuil={seuil} />
       {parTheme(reponses).map((t) => (
         <Box key={t.theme} sx={{ mt: 2 }}>
@@ -162,7 +163,7 @@ export function ChampPhotos({ photos, onChange, onRetirer, titre = 'Photos' }: {
   }
   return (
     <Box component="section" aria-label={titre}>
-      <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>{titre}</Typography>
+      <Typography component="h3" sx={styleIntertitre}>{titre}</Typography>
       {photos.length > 0 && (
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 1.5, ml: 0.5, mt: 2 }}>
           {photos.map((ph, i) => <MiniaturePhoto key={ph.chemin} chemin={ph.chemin} numero={i + 1} onRetirer={() => { onRetirer(ph.chemin); onChange(photos.filter((x) => x.chemin !== ph.chemin)) }} />)}

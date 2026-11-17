@@ -1,3 +1,4 @@
+import { styleIntertitre } from '../theme/theme'
 // Vocabulaire réservé (refonte vague 4, Joseph 10/11/2026, 40A) : un mot veut dire une seule chose dans toute l'app.
 // S'ouvre à la demande depuis le menu du compte, jamais d'office.
 import Box from '@mui/material/Box'
@@ -24,7 +25,7 @@ export function DialogGlossaire({ onFermer }: { onFermer: () => void }) {
       <DialogContent>
         {GLOSSAIRE.map((g) => (
           <Box key={g.domaine} component="section" aria-label={g.domaine} sx={{ mb: 2 }}>
-            <Typography component="h3" sx={{ fontWeight: 700, mb: 0.5 }}>{g.domaine}</Typography>
+            <Typography component="h3" sx={styleIntertitre}>{g.domaine}</Typography>
             <Box component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: 'minmax(110px, auto) 1fr', columnGap: 2, rowGap: 0.5 }}>
               {g.termes.map(([t, d]) => [
                 <Typography key={`${t}-t`} component="dt" variant="body2" sx={{ fontWeight: 600 }}>{t}</Typography>,
