@@ -15,6 +15,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   « Ouvrir un audit » propose toutes les grilles actives, remplies comme la grille d'audit (oui, non, sans objet, écart,
   photos) et rangées à la date de la visite ; un audit supprimé n'est plus proposé, ni comme type de visite. Les audits
   ajoutés apparaissent dans la fiche magasin, le journal et le bilan de l'année.
+- Pilotage : favoris et rapports masqués, public des rapports du siège (Joseph, 17/11/2026), **migration `0050_rapports_pilotage.sql`
+  à passer (ou à rejouer si elle est déjà passée : elle ajoute le public)** : chacun met ses rapports en favoris (étoile,
+  en tête de liste, ouvert par défaut) et masque ceux qui ne lui servent pas (réaffichables) ; favoris et masqués suivent le
+  compte de l'équipe, restent sur l'appareil pour un franchisé. Le Directeur choisit à qui il propose un rapport :
+  Responsables Régionaux, Coachs, franchisés ; le modèle est rangé avec les rapports de ce public.
 - Onglet « Pilotage » (Joseph, 17/11/2026, propositions 286 à 292), **migration `0050_rapports_pilotage.sql` à passer** :
   nouvelle entrée du menu (équipe et franchisé) pour faire ses rapports, graphes et tableaux croisés sur tous les sujets :
   ventes de la caisse (Cave et Bar séparés), budget et résultat (écart au budget, EBE, % frais de personnel, stock),

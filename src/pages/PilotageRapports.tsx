@@ -14,6 +14,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import ListSubheader from '@mui/material/ListSubheader'
@@ -43,6 +44,10 @@ import SaveOutlined from '@mui/icons-material/SaveOutlined'
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined'
 import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
+import StarBorderRounded from '@mui/icons-material/StarBorderRounded'
+import StarRounded from '@mui/icons-material/StarRounded'
+import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined'
+import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { AvecReseau } from '../components/EtatDonnees'
 import { useAuth } from '../auth/AuthContext'
@@ -50,10 +55,11 @@ import { useApercu } from '../auth/Apercu'
 import type { Magasin, Reseau } from '../data/modele'
 import { useEngagement, type Engagement } from '../data/engagement'
 import {
-  DECOUPAGES, PUBLICS, THEMES, connaitreThematiques, rapportsProposes, type RapportPropose, TYPES_PERIODE, axe, axesVisibles, calculer, definitionVide, dernierMoisClos, formater,
+  DECOUPAGES, PUBLICS, THEMES, connaitreThematiques, rapportsProposes, type Public, type RapportPropose, TYPES_PERIODE, axe, axesVisibles, calculer, definitionVide, dernierMoisClos, formater,
   indicateur, indicateursVisibles, libelleMoisLong, libellePeriode, normaliserDefinition, tonCellule, valeursAxe,
   type AxeId, type Cellule, type Contexte, type Definition, type FinanceMagasin, type Indicateur, type Resultat, type Theme,
 } from '../data/rapports'
+import { basculerFavori, basculerMasque, useListeRapports } from '../data/rapportsListe'
 import { chargerRapports, enregistrerRapport, supprimerRapport, type RapportEnregistre } from '../data/rapportsBase'
 import { chargerFinancesRapports } from '../data/rapportsFinances'
 import { ZonePilotage } from '../pilotage/Pilotage'
@@ -104,9 +110,13 @@ function Rapports({ reseau }: { reseau: Reseau }) {
 
   connaitreThematiques(reseau.deploiements.thematiques)
   const proposes = rapportsProposes(profil?.role)
+  const listePerso = useListeRapports()
   const choix = params.get('rapport') ?? ''
-  const selection: Selection = choix.startsWith('p-') && proposes.some((r) => `p-${r.id}` === choix) ? { genre: 'propose', id: choix.slice(2) }
-    : /^\d+$/.test(choix) ? { genre: 'base', id: Number(choix) } : choix || params.get('d') ? { genre: 'libre' } : { genre: 'propose', id: groupesProposes(proposes, profil?.role)[0].rapports[0].id }
+  const parDefaut = listePerso.favoris.find((c) => /^\d+$/.test(c) ? enregistres?.some((r) => String(r.id) === c) : proposes.some((r) => `p-${r.id}` === c))
+    ?? `p-${(groupesProposes(proposes, profil?.role).flatMap((g) => g.rapports).find((r) => !listePerso.masques.includes(`p-${r.id}`)) ?? proposes[0]).id}`
+  const cleChoisie = choix || (params.get('d') ? '' : parDefaut)
+  const selection: Selection = cleChoisie.startsWith('p-') && proposes.some((r) => `p-${r.id}` === cleChoisie) ? { genre: 'propose', id: cleChoisie.slice(2) }
+    : /^\d+$/.test(cleChoisie) ? { genre: 'base', id: Number(cleChoisie) } : { genre: 'libre' }
   const enregistre = selection.genre === 'base' ? enregistres?.find((r) => r.id === selection.id) ?? null : null
   const propose = selection.genre === 'propose' ? proposes.find((r) => r.id === selection.id) ?? null : null
   const depart = useMemo(() => lireDefinitionAdresse(params.get('d'), equipe)
@@ -138,6 +148,9 @@ function Rapports({ reseau }: { reseau: Reseau }) {
   const ctx: Contexte = useMemo(() => ({ reseau, finances: finances ?? null, jour: reseau.jour, equipe, engagement }), [reseau, finances, equipe, engagement])
   const resultat = useMemo(() => calculer(ctx, def), [ctx, def])
 
+  const cleRapport = selection.genre === 'propose' ? `p-${selection.id}` : selection.genre === 'base' && enregistre ? String(selection.id) : ''
+  const favori = listePerso.favoris.includes(cleRapport)
+  const masque = listePerso.masques.includes(cleRapport)
   const ouvrir = (cle: string) => setParams(cle ? { rapport: cle } : {}, { replace: false })
   const [message, setMessage] = useState('')
   const [dialogue, setDialogue] = useState<null | 'enregistrer'>(null)
@@ -174,7 +187,7 @@ function Rapports({ reseau }: { reseau: Reseau }) {
               <Typography variant="h2" component="h2">{titreDepart}</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 {libellePeriode(def.periode, reseau.jour)} · {resultat.magasins} magasin{resultat.magasins > 1 ? 's' : ''}{modifie ? ' · modifié' : ''}
-                {(propose || enregistre?.modele) && ' · proposé par le siège'}{enregistre && !enregistre.mien && !enregistre.modele ? ` · de ${enregistre.auteur}` : ''}
+                {(propose || enregistre?.modele) && ' · proposé par le siège'}{enregistre?.modele && directeur && enregistre.publics.length < PUBLICS.length ? ` · ${PUBLICS.filter((p) => enregistre.publics.includes(p.cle)).map((p) => p.libelle.toLowerCase()).join(', ')}` : ''}{enregistre && !enregistre.mien && !enregistre.modele ? ` · de ${enregistre.auteur}` : ''}
               </Typography>
             </Box>
             <Box className="pas-a-l-impression" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -182,6 +195,8 @@ function Rapports({ reseau }: { reseau: Reseau }) {
               <Button variant="outlined" startIcon={<LinkOutlined />} onClick={copierLien} sx={{ minHeight: 48 }}>Partager</Button>
               <Button variant="outlined" startIcon={<FileDownloadOutlined />} onClick={exporter} sx={{ minHeight: 48 }}>Excel</Button>
               {surPC && <Button variant="outlined" startIcon={<PrintOutlined />} onClick={() => window.print()} sx={{ minHeight: 48 }}>Imprimer</Button>}
+              {cleRapport && <IconButton aria-label={favori ? 'Retirer de mes favoris' : 'Ajouter à mes favoris'} aria-pressed={favori} onClick={() => basculerFavori(cleRapport)} sx={{ width: 48, height: 48, color: favori ? 'warning.main' : undefined }}>{favori ? <StarRounded /> : <StarBorderRounded />}</IconButton>}
+              {cleRapport && !enregistre?.mien && <IconButton aria-label={masque ? 'Réafficher dans ma liste' : 'Masquer de ma liste'} onClick={() => { basculerMasque(cleRapport); setMessage(masque ? 'Rapport réaffiché dans ta liste' : 'Rapport masqué de ta liste') }} sx={{ width: 48, height: 48 }}>{masque ? <VisibilityOutlined /> : <VisibilityOffOutlined />}</IconButton>}
               {enregistre && (enregistre.mien || (enregistre.modele && directeur)) && !lectureSeule && (
                 <IconButton aria-label="Supprimer ce rapport" onClick={() => void supprimer()} sx={{ width: 48, height: 48 }}><DeleteOutlined /></IconButton>
               )}
@@ -202,7 +217,7 @@ function Rapports({ reseau }: { reseau: Reseau }) {
             await recharger()
             setDialogue(null)
             setParams({ rapport: String(id) })
-            setMessage(r.modele ? 'Rapport proposé à tout le réseau' : 'Rapport enregistré')
+            setMessage(r.modele ? 'Rapport proposé par le siège' : 'Rapport enregistré')
           }}
         />
       )}
@@ -222,53 +237,91 @@ function groupesProposes(proposes: RapportPropose[], role: string | undefined) {
   return (role === 'directeur' ? [generaux, ...publics] : [...publics, generaux]).filter((g) => g.rapports.length)
 }
 
+interface Entree { cle: string; titre: string; sous?: string }
+// Tous les rapports du compte rangés par groupe ; favoris en tête, masqués à part (rapportsListe.ts)
+function rangerRapports(proposes: RapportPropose[], role: string | undefined, enregistres: RapportEnregistre[] | null, liste: { favoris: string[]; masques: string[] }) {
+  // Modèles publiés : pour tous dans « Proposés par le siège », sinon avec les rapports de leur public
+  const modeles = (enregistres ?? []).filter((r) => r.modele)
+  const pourTous = (r: RapportEnregistre) => r.publics.length === PUBLICS.length
+  const modelesDe = (titre: string) => modeles.filter((r) => (titre === TITRE_SIEGE ? pourTous(r)
+    : !pourTous(r) && (titre === 'Pour bien démarrer' || r.publics.includes(PUBLICS.find((p) => p.libelle === titre)?.cle as Public))))
+  const proposesRanges = groupesProposes(proposes, role)
+  for (const t of [TITRE_SIEGE, role === 'directeur' ? '' : 'Pour bien démarrer', ...(role === 'directeur' ? PUBLICS.map((p) => p.libelle) : [])]) {
+    if (t && !proposesRanges.some((g) => g.titre === t) && modelesDe(t).length) proposesRanges.push({ titre: t, rapports: [] })
+  }
+  const groupes: { titre: string; entrees: Entree[] }[] = [
+    ...proposesRanges.map((g) => ({ titre: g.titre, entrees: [...g.rapports.map((r) => ({ cle: `p-${r.id}`, titre: r.titre })),
+      ...modelesDe(g.titre).map((r) => ({ cle: String(r.id), titre: r.titre}))] })),
+    { titre: 'Mes rapports', entrees: (enregistres ?? []).filter((r) => r.mien && !r.modele).map((r) => ({ cle: String(r.id), titre: r.titre, sous: r.partage ? 'Partagé à l’équipe' : undefined })) },
+    { titre: 'Partagés avec moi', entrees: (enregistres ?? []).filter((r) => !r.mien && !r.modele).map((r) => ({ cle: String(r.id), titre: r.titre, sous: r.auteur })) },
+  ]
+  const toutes = new Map(groupes.flatMap((g) => g.entrees).map((e) => [e.cle, e] as const))
+  const favoris = liste.favoris.map((c) => toutes.get(c)).filter((e): e is Entree => !!e)
+  const masques = liste.masques.map((c) => toutes.get(c)).filter((e): e is Entree => !!e)
+  const a_part = new Set([...liste.favoris, ...liste.masques])
+  return { favoris, masques, groupes: groupes.map((g) => ({ ...g, entrees: g.entrees.filter((e) => !a_part.has(e.cle)) })) }
+}
+
 function ListeRapports({ proposes, role, enregistres, indisponibles, selection, ouvrir, nouveau, lectureSeule, surPC }: {
   proposes: RapportPropose[]; role: string | undefined; enregistres: RapportEnregistre[] | null; indisponibles: boolean; selection: Selection; ouvrir: (cle: string) => void
   nouveau: () => void; lectureSeule: boolean; surPC: boolean
 }) {
-  const modeles = (enregistres ?? []).filter((r) => r.modele)
-  const miens = (enregistres ?? []).filter((r) => r.mien && !r.modele)
-  const partages = (enregistres ?? []).filter((r) => !r.mien && !r.modele)
+  const liste = useListeRapports()
+  const { favoris, masques, groupes } = rangerRapports(proposes, role, enregistres, liste)
+  const [voirMasques, setVoirMasques] = useState(false)
   const actif = selection.genre === 'propose' ? `p-${selection.id}` : selection.genre === 'base' ? String(selection.id) : ''
+  const visibles = groupes.filter((g) => g.entrees.length && (g.titre !== 'Mes rapports' && g.titre !== 'Partagés avec moi' || (enregistres !== null && !indisponibles)))
   if (!surPC) {
     // Téléphone : un choix déroulant, le reste de la page pour les chiffres
+    const option = (e: Entree, g: string) => <MenuItem key={`${g}-${e.cle}`} value={e.cle} sx={{ minHeight: 48 }}>{e.titre}</MenuItem>
     return (
       <TextField select label="Rapport" value={actif} onChange={(e) => (e.target.value === 'nouveau' ? nouveau() : ouvrir(e.target.value))} fullWidth sx={{ '& .MuiInputBase-root': { minHeight: 48 }, '& .MuiSelect-nativeInput': { height: '100%' } }}>
         {selection.genre === 'libre' && <MenuItem value="">Rapport en cours</MenuItem>}
-        {groupesProposes(proposes, role).flatMap((g) => [
-          <ListSubheader key={g.titre}>{g.titre}</ListSubheader>,
-          ...g.rapports.map((r) => <MenuItem key={`${g.titre}-${r.id}`} value={`p-${r.id}`} sx={{ minHeight: 48 }}>{r.titre}</MenuItem>),
-          ...(g.titre === TITRE_SIEGE ? modeles.map((r) => <MenuItem key={r.id} value={String(r.id)} sx={{ minHeight: 48 }}>{r.titre}</MenuItem>) : []),
-        ])}
-        {miens.length > 0 && <ListSubheader>Mes rapports</ListSubheader>}
-        {miens.map((r) => <MenuItem key={r.id} value={String(r.id)} sx={{ minHeight: 48 }}>{r.titre}</MenuItem>)}
-        {partages.length > 0 && <ListSubheader>Partagés avec moi</ListSubheader>}
-        {partages.map((r) => <MenuItem key={r.id} value={String(r.id)} sx={{ minHeight: 48 }}>{r.titre}</MenuItem>)}
+        {favoris.length > 0 && <ListSubheader>Mes favoris</ListSubheader>}
+        {favoris.map((e) => option(e, 'favoris'))}
+        {visibles.flatMap((g) => [<ListSubheader key={g.titre}>{g.titre}</ListSubheader>, ...g.entrees.map((e) => option(e, g.titre))])}
+        {masques.length > 0 && <ListSubheader>Masqués</ListSubheader>}
+        {masques.map((e) => option(e, 'masques'))}
         {!lectureSeule && <MenuItem value="nouveau" sx={{ minHeight: 48 }}>Nouveau rapport</MenuItem>}
       </TextField>
     )
   }
-  const groupe = (titre: string, l: { cle: string; titre: string; sous?: string }[]) => (
+  const groupe = (titre: string, l: Entree[], action: 'favori' | 'reafficher' = 'favori') => (
     <List dense disablePadding aria-label={titre} subheader={<ListSubheader disableSticky sx={{ px: 1, lineHeight: '32px', fontWeight: 700, bgcolor: 'transparent' }}>{titre}</ListSubheader>}>
-      {l.map((r) => (
-        <ListItemButton key={r.cle} selected={actif === r.cle} onClick={() => ouvrir(r.cle)} sx={{ borderRadius: 1, minHeight: 48 }} aria-current={actif === r.cle ? 'page' : undefined}>
-          <ListItemText primary={r.titre} secondary={r.sous} slotProps={{ primary: { variant: 'body2' }, secondary: { variant: 'caption' } }} />
-        </ListItemButton>
-      ))}
+      {l.map((r) => {
+        const fav = liste.favoris.includes(r.cle)
+        return (
+          <ListItem key={r.cle} disablePadding secondaryAction={action === 'reafficher'
+            ? <IconButton edge="end" aria-label={`Réafficher ${r.titre}`} onClick={() => basculerMasque(r.cle)} sx={{ width: 40, height: 40 }}><VisibilityOutlined fontSize="small" /></IconButton>
+            : <IconButton edge="end" aria-label={fav ? `Retirer ${r.titre} de mes favoris` : `Ajouter ${r.titre} à mes favoris`} aria-pressed={fav} onClick={() => basculerFavori(r.cle)} sx={{ width: 40, height: 40, color: fav ? 'warning.main' : 'text.secondary' }}>{fav ? <StarRounded fontSize="small" /> : <StarBorderRounded fontSize="small" />}</IconButton>}>
+            <ListItemButton selected={actif === r.cle} onClick={() => ouvrir(r.cle)} sx={{ borderRadius: 1, minHeight: 48, pr: 6 }} aria-current={actif === r.cle ? 'page' : undefined}>
+              <ListItemText primary={r.titre} secondary={r.sous} slotProps={{ primary: { variant: 'body2' }, secondary: { variant: 'caption' } }} />
+            </ListItemButton>
+          </ListItem>
+        )
+      })}
     </List>
   )
   return (
     <Card variant="outlined" sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       {!lectureSeule && <Button variant="outlined" startIcon={<AddOutlined />} onClick={nouveau} sx={{ minHeight: 48 }}>Nouveau rapport</Button>}
-      {groupesProposes(proposes, role).map((g) => <Box key={g.titre}>{groupe(g.titre, [...g.rapports.map((r) => ({ cle: `p-${r.id}`, titre: r.titre })),
-        ...(g.titre === TITRE_SIEGE ? modeles.map((r) => ({ cle: String(r.id), titre: r.titre })) : [])])}</Box>)}
+      {favoris.length > 0 && groupe('Mes favoris', favoris)}
+      {visibles.filter((g) => g.titre !== 'Mes rapports' && g.titre !== 'Partagés avec moi').map((g) => <Box key={g.titre}>{groupe(g.titre, g.entrees)}</Box>)}
       {enregistres === null ? <Skeleton variant="rounded" height={88} /> : indisponibles ? (
         <Typography variant="body2" color="text.secondary" sx={{ px: 1 }}>Les rapports enregistrés ne sont pas encore disponibles.</Typography>
       ) : (
         <>
-          {groupe('Mes rapports', miens.map((r) => ({ cle: String(r.id), titre: r.titre, sous: r.partage ? 'Partagé à l’équipe' : undefined })))}
-          {miens.length === 0 && <Typography variant="body2" color="text.secondary" sx={{ px: 1, mt: -1 }}>Aucun rapport enregistré pour l’instant.</Typography>}
-          {partages.length > 0 && groupe('Partagés avec moi', partages.map((r) => ({ cle: String(r.id), titre: r.titre, sous: r.auteur })))}
+          {(groupes.find((g) => g.titre === 'Mes rapports')!.entrees.length > 0 || !(enregistres ?? []).some((r) => r.mien && !r.modele)) && groupe('Mes rapports', groupes.find((g) => g.titre === 'Mes rapports')!.entrees)}
+          {!(enregistres ?? []).some((r) => r.mien && !r.modele) && <Typography variant="body2" color="text.secondary" sx={{ px: 1, mt: -1 }}>Aucun rapport enregistré pour l’instant.</Typography>}
+          {visibles.filter((g) => g.titre === 'Partagés avec moi').map((g) => <Box key={g.titre}>{groupe(g.titre, g.entrees)}</Box>)}
+        </>
+      )}
+      {masques.length > 0 && (
+        <>
+          <Button onClick={() => setVoirMasques((v) => !v)} aria-expanded={voirMasques} endIcon={voirMasques ? <ExpandLessOutlined /> : <ExpandMoreOutlined />} sx={{ minHeight: 48, justifyContent: 'space-between', color: 'text.secondary' }}>
+            Rapports masqués ({masques.length})
+          </Button>
+          {voirMasques && groupe('Rapports masqués', masques, 'reafficher')}
         </>
       )}
     </Card>
@@ -451,8 +504,9 @@ function DialogueFiltre({ axe: a, valeurs, choisies, fermer, valider }: { axe: A
 
 function DialogueEnregistrer({ titre: initial, existant, equipe, directeur, fermer, enregistrer }: {
   titre: string; existant: RapportEnregistre | null; equipe: boolean; directeur: boolean; fermer: () => void
-  enregistrer: (r: { id: number | null; titre: string; modele: boolean; partage: boolean }) => Promise<void>
+  enregistrer: (r: { id: number | null; titre: string; modele: boolean; partage: boolean; publics: Public[] }) => Promise<void>
 }) {
+  const [publics, setPublics] = useState<Public[]>(existant?.modele ? existant.publics : ['rr', 'coach', 'franchise'])
   const [titre, setTitre] = useState(initial)
   const [modele, setModele] = useState(existant?.modele ?? false)
   const [partage, setPartage] = useState(existant?.partage ?? false)
@@ -461,8 +515,9 @@ function DialogueEnregistrer({ titre: initial, existant, equipe, directeur, ferm
   const [envoi, setEnvoi] = useState(false)
   const valider = async () => {
     if (!titre.trim()) { setErreur('Donne un titre au rapport.'); return }
+    if (directeur && modele && !publics.length) { setErreur('Choisis au moins un public.'); return }
     setEnvoi(true); setErreur('')
-    try { await enregistrer({ id: existant && !copie ? existant.id : null, titre, modele: directeur && modele, partage: equipe && !modele && partage }) } catch { setErreur('Le rapport n’a pas pu être enregistré. Réessaie dans un instant.'); setEnvoi(false) }
+    try { await enregistrer({ id: existant && !copie ? existant.id : null, titre, modele: directeur && modele, partage: equipe && !modele && partage, publics: directeur && modele ? publics : ['rr', 'coach', 'franchise'] }) } catch { setErreur('Le rapport n’a pas pu être enregistré. Réessaie dans un instant.'); setEnvoi(false) }
   }
   return (
     <Dialog open onClose={fermer} maxWidth="xs" fullWidth>
@@ -471,7 +526,15 @@ function DialogueEnregistrer({ titre: initial, existant, equipe, directeur, ferm
         <TextField autoFocus label="Titre" value={titre} onChange={(e) => setTitre(e.target.value.slice(0, 120))} error={!!erreur && !titre.trim()} sx={{ mt: 1 }} />
         {existant && <FormControlLabel sx={{ minHeight: 48 }} control={<Checkbox checked={copie} onChange={(e) => setCopie(e.target.checked)} />} label="Enregistrer comme un nouveau rapport" />}
         {equipe && !modele && <FormControlLabel sx={{ minHeight: 48 }} control={<Checkbox checked={partage} onChange={(e) => setPartage(e.target.checked)} />} label="Partager avec l’équipe" />}
-        {directeur && <FormControlLabel sx={{ minHeight: 48 }} control={<Checkbox checked={modele} onChange={(e) => setModele(e.target.checked)} />} label="Proposer à tout le réseau (franchisés compris)" />}
+        {directeur && <FormControlLabel sx={{ minHeight: 48 }} control={<Checkbox checked={modele} onChange={(e) => setModele(e.target.checked)} />} label="Proposer comme rapport du siège" />}
+        {directeur && modele && (
+          <Box role="group" aria-label="Proposer à" sx={{ pl: 4, display: 'flex', flexDirection: 'column' }}>
+            {PUBLICS.map((p) => (
+              <FormControlLabel key={p.cle} sx={{ minHeight: 48 }} label={p.libelle}
+                control={<Checkbox checked={publics.includes(p.cle)} onChange={(e) => setPublics((l) => (e.target.checked ? PUBLICS.map((x) => x.cle).filter((c) => c === p.cle || l.includes(c)) : l.filter((c) => c !== p.cle)))} />} />
+            ))}
+          </Box>
+        )}
         {erreur && <Typography variant="body2" color="error">{erreur}</Typography>}
       </DialogContent>
       <DialogActions>

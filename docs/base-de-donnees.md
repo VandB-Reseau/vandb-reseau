@@ -199,10 +199,10 @@ fonction). Lue par `historique_modifications` et remise par `remettre_modificati
 
 | Table | Contenu | Clé |
 | --- | --- | --- |
-| `rapports` | Un rapport enregistré : `auteur` (compte), `auteur_nom`, `auteur_role`, `titre` (120 caractères au plus), `definition` (jsonb : `lignes`, `indicateurs`, `filtres`, `periode`, `colonnes`, `affichage`, `tri` ; jamais de chiffres), `modele` (proposé par le siège, Directeur seul), `partage` (partagé avec l'équipe, équipe seule), `cree_le`, `maj_le`. 200 rapports par compte au plus | `id` |
+| `rapports` | Un rapport enregistré : `auteur` (compte), `auteur_nom`, `auteur_role`, `titre` (120 caractères au plus), `definition` (jsonb : `lignes`, `indicateurs`, `filtres`, `periode`, `colonnes`, `affichage`, `tri` ; jamais de chiffres), `modele` (proposé par le siège, Directeur seul), `publics` (rôles à qui le modèle est proposé : `rr`, `coach`, `franchise`, au moins un), `partage` (partagé avec l'équipe, équipe seule), `cree_le`, `maj_le`. 200 rapports par compte au plus | `id` |
 
 Chacun recalcule les chiffres avec ses propres droits : un rapport partagé ne montre à personne plus que ce qu'il voit
-déjà. Lue par `rapports_du_compte()` (les siens, les modèles du siège, et pour l'équipe ceux partagés ; jamais un rapport
+déjà. Lue par `rapports_du_compte()` (les siens, les modèles du siège dont il fait partie du public (le Directeur les voit tous), et pour l'équipe ceux partagés ; jamais un rapport
 de l'équipe pour un franchisé), écrite par `enregistrer_rapport` et `supprimer_rapport` (l'auteur, ou le Directeur pour un
 modèle).
 
@@ -254,7 +254,7 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Actions du franchisé | `franchise_du_magasin`, `ajouter_action_franchise`, `marquer_action_franchise` (tâche de l'équipe seule introuvable, 0019), `statut_action_franchise` (À faire, En cours, Bloquée avec sa raison, 0043), `tache_exterieur_franchise` (crée, modifie ou supprime une tâche marquée `exterieur` de ses magasins, 0049) | 0007, 0019, 0043, 0049 |
 | Prise de connaissance | `demander_connaissance(p_id, p_oui)` (Directeur, ou RR auteur), `prendre_connaissance(p_id)` (franchisé, communication visible qui la demande ; vaut lecture), `connaissances()` (franchisé : sa propre date ; équipe : franchisés de ses magasins qui l'ont donnée et ceux qui manquent ; Directeur : tous) | 0044 |
 | Animation du franchisé | `animation_franchise()` (franchisé : temps forts, parcours d'intégration et son suivi, équipements de ses magasins depuis 0046, opérations commerciales depuis 0047, plan marché extérieur depuis 0048) ; `ecrire_equipements()` (franchisé : équipements de ses magasins) ; `ecrire_operations()` (franchisé : opérations de ses magasins) ; `ecrire_exterieur()` (franchisé : plan marché extérieur de ses magasins) | 0044, 0046, 0047, 0048 |
-| Rapports du Pilotage | `rapports_du_compte()`, `enregistrer_rapport(p_id, p_titre, p_definition, p_modele, p_partage)`, `supprimer_rapport(p_id)` (tous les rôles ; modèle : Directeur ; partage : équipe) | 0050 |
+| Rapports du Pilotage | `rapports_du_compte()`, `enregistrer_rapport(p_id, p_titre, p_definition, p_modele, p_partage, p_publics)`, `supprimer_rapport(p_id)` (tous les rôles ; modèle : Directeur ; partage : équipe) | 0050 |
 | Plan d'action du magasin | `plans_franchise()` (franchisé : titres, statuts, bilans et mesure en caisse des priorités de ses magasins, sans l'objectif chiffré) | 0043, 0047 |
 | Entretiens RR–Coach | `coachs_encadres()`, `mon_coach()` (internes) ; `remarque_entretien(p_id, p_texte)` (le Coach, ses entretiens) | 0043 |
 | Demandes des franchisés | `creer_demande`, `mes_demandes`, `completer_demande` (franchisé, ses magasins, 20 demandes par jour au plus) ; `repondre_demande` (équipe, ses magasins ; la base pose l'auteur, la première réponse et la résolution) | 0043 |
