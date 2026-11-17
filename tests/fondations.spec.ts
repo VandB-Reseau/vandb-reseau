@@ -173,7 +173,9 @@ test('Équipe ouvre le groupe Réglages', async ({ page, isMobile }) => {
     // Juste sous le titre « Réglages » ; la partie classique (au-dessus) ne le contient pas
     const titre = menu.locator('li', { hasText: /^Réglages$/ }).first()
     await expect(titre.locator('xpath=following-sibling::*[1]')).toHaveText('Équipe')
-    await expect(menu.getByRole('menuitem').first()).toHaveText('Visites')
+    // Joseph (17/11/2026) : la rubrique Réseau commence par Magasins puis Santé du parc
+    await expect(menu.getByRole('menuitem').nth(0)).toHaveText('Magasins')
+    await expect(menu.getByRole('menuitem').nth(1)).toHaveText('Santé du parc')
   } else {
     // Vague 5 (51A) : le groupe Réglages est dans le menu du compte
     await page.getByRole('button', { name: 'Mon compte' }).click()

@@ -933,6 +933,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   titres reste visible
 - Tableaux Évaluer et Déploiements : « Voir plus » sous le tableau, toujours visible ; le tableau défile jusqu'aux
   lignes ajoutées
+- Menu de l'équipe rangé (Joseph, 17/11/2026), sans migration : rubrique Réseau = Magasins, Santé du parc, Visites ;
+  nouvelle rubrique Performance = Chiffres, Pilotage, Budget prévisionnel, Simulateurs, Marché extérieur. Santé du parc a
+  son entrée dans le menu (elle reste aussi une vue des Magasins) ; même rangement dans le menu du compte sur téléphone.
 
 ## Sprint 25 — agenda, ouvertures, effet des déploiements (26/10/2026)
 

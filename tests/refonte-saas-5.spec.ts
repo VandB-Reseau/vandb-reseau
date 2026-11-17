@@ -158,7 +158,7 @@ test('51A : dix entrées dans le menu, Équipe et Paramètres au menu du compte,
   await seConnecter(page)
   await page.goto('./#/')
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Tâches', 'Messages', 'Agenda', 'Magasins', 'Visites', 'Chiffres', 'Pilotage', 'Budget prévisionnel', 'Simulateurs', 'Marché extérieur', 'Animation', 'Demandes'].map((t) => new RegExp(`^${t}`)))
+  await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Tâches', 'Messages', 'Agenda', 'Magasins', 'Santé du parc', 'Visites', 'Chiffres', 'Pilotage', 'Budget prévisionnel', 'Simulateurs', 'Marché extérieur', 'Animation', 'Demandes'].map((t) => new RegExp(`^${t}`)))
   await page.getByRole('button', { name: 'Mon compte' }).click()
   await page.getByRole('menuitem', { name: 'Paramètres' }).click()
   await expect(page).toHaveURL(/#\/parametres\/reglages/)
@@ -168,11 +168,12 @@ test('51A : dix entrées dans le menu, Équipe et Paramètres au menu du compte,
   await nav.getByRole('button', { name: /^Budget prévisionnel/ }).click()
   await expect(page).toHaveURL(/#\/budgets/)
   await expect(nav.getByRole('button', { name: /^Budget prévisionnel/ })).toHaveAttribute('aria-current', 'page')
-  // La santé du parc est une vue des Magasins
+  // La santé du parc reste une vue des Magasins, et a sa propre entrée sous Magasins dans le menu (Joseph, 17/11/2026)
   await page.goto('./#/magasins')
-  await page.getByRole('button', { name: 'Santé du parc' }).click()
+  await page.getByRole('main').getByRole('button', { name: 'Santé du parc' }).click()
   await expect(page).toHaveURL(/#\/plus\/sante/)
-  await expect(nav.getByRole('button', { name: /^Magasins/ })).toHaveAttribute('aria-current', 'page')
+  await expect(nav.getByRole('button', { name: /^Santé du parc/ })).toHaveAttribute('aria-current', 'page')
+  await expect(nav.getByRole('button', { name: /^Magasins/ })).not.toHaveAttribute('aria-current', 'page')
 })
 
 test('54A : « Plus tard » met une ligne de À traiter de côté, « Tout revoir » la remet', async ({ page, isMobile }) => {

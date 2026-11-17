@@ -54,13 +54,15 @@ import { activerNotifications, couperNotifications, ErreurNotifications, useNoti
 
 const LARGEUR_MENU = 248
 
-function estActive(d: Destination, pathname: string): boolean {
+// santeDansMagasins : la barre du bas du téléphone n'a pas d'entrée Santé du parc, Magasins reste allumé ; le menu
+// latéral (PC) a la sienne depuis le 17/11/2026 (Joseph)
+function estActive(d: Destination, pathname: string, santeDansMagasins = true): boolean {
   // Charge des Coachs et Import et export sont des rubriques de Paramètres
   if (d.chemin === '/parametres/reglages' && /^\/parametres\/(charge|donnees)/.test(pathname)) return true
   // Évolution du parc est une vue de Magasins, Animation réseau un onglet de Messages (refonte, Joseph 09/11/2026)
   // Les anciennes adresses de l'évolution du parc mènent à Performance (vague 2, 15A)
   // La santé du parc est une vue des Magasins ; le Budget prévisionnel a son entrée depuis le 10/11/2026
-  if (d.chemin === '/magasins' && pathname.startsWith('/plus/sante')) return true
+  if (santeDansMagasins && d.chemin === '/magasins' && pathname.startsWith('/plus/sante')) return true
   return d.chemin === '/' ? pathname === '/' : pathname.startsWith(d.chemin)
 }
 
@@ -193,7 +195,7 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
   const naviguer = useNavigate()
   const c = useCompteurs(sansCompteur)
   const item = (d: Destination) => {
-    const actif = estActive(d, pathname)
+    const actif = estActive(d, pathname, !!franchise)
     return (
       <ListItemButton key={d.chemin} selected={actif} onClick={() => naviguer(d.chemin)} aria-label={libelleAccessible(d, c)} aria-current={actif ? 'page' : undefined}
         sx={{ mb: 0.25, minHeight: 36, px: 1.5, borderRadius: 2, '&.Mui-selected': { bgcolor: 'action.selected', boxShadow: (t) => `inset 3px 0 0 ${t.palette.secondary.main}` } }}>
