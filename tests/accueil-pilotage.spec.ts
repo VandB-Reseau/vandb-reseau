@@ -72,6 +72,9 @@ test('278 : téléphone, le fil seul et le point du jour en picto dans la barre 
   await expect(pilotage.getByRole('link')).toHaveCount(4)
   const lignes = await Promise.all((await pilotage.getByRole('link').all()).map(async (l) => (await l.boundingBox())!))
   for (let k = 1; k < 4; k++) expect(lignes[k].y).toBeGreaterThanOrEqual(lignes[k - 1].y + lignes[k - 1].height - 1)
+  // Proportions (Joseph, 17/11/2026) : chaque valeur à la taille de son libellé, pas plus grande
+  const tailles = await pilotage.getByRole('link').evaluateAll((ls) => ls.map((l) => [...l.querySelectorAll('p')].slice(0, 2).map((x) => parseFloat(getComputedStyle(x).fontSize))))
+  for (const [libelle, valeur] of tailles) expect(valeur).toBeLessThanOrEqual(libelle)
   await expect(point.getByRole('group', { name: 'Période des chiffres' })).toBeVisible()
   const onglets = point.getByRole('tablist', { name: 'Mon point' }).getByRole('tab')
   await expect(onglets).toHaveText([/^À traiter/, /^Tâches/, 'Semaine', /^Contrats/])

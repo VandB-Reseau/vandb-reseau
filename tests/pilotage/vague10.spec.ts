@@ -184,6 +184,16 @@ test('165, 163 et 164 : offre 5 + 1, remises face aux repères, primes par palie
   await expect(statut(page)).toHaveText(/^Offre 5 \+ 1 : 1 client sur 92 qui prend le lot au lieu de 2 bouteilles suffit à payer les bouteilles offertes ; avec 30 clients, la masse de marge gagne 55\s€ par mois\.$/)
   const effort = page.getByRole('region', { name: 'L’effort demandé' })
   await expect(effort).toContainText('1 client sur 92 suffit')
+  // Proportions (Joseph, 17/11/2026) : la phrase clé à la taille des chiffres clés (20 px téléphone, 22 px PC)
+  expect(await effort.locator('p').first().evaluate((x) => parseFloat(getComputedStyle(x).fontSize))).toBe(isMobile ? 20 : 22)
+  if (isMobile) {
+    // Le bandeau collant ne recouvre plus le résultat : il rentre dans le flux dès que le bloc Résultat est à l'écran
+    const resultat = page.locator('#carte-simulation').getByRole('region', { name: 'Résultat' })
+    await resultat.getByText('Masse de marge du mois').first().scrollIntoViewIfNeeded()
+    await expect(statut(page)).toHaveCSS('position', 'static')
+    const r = (await resultat.boundingBox())!, s = (await statut(page).boundingBox())!
+    expect(s.y).toBeGreaterThanOrEqual(r.y + r.height - 1)
+  }
   await expect(effort).toContainText(/17 clients sur 1\s500 qui prennent le 5 \+ 1 au lieu de 2 bouteilles paient les 65\s€ de bouteilles offertes/)
   // Les saisies se limitent à l'offre, la marge, le prix, les clients
   await expect(page.getByLabel('Bouteilles payées')).toHaveCount(0)
