@@ -198,6 +198,13 @@ export async function ajouterActionFranchise(magasin: string, action: string, po
   if (error) erreurAction(error)
 }
 
+// Tâche du plan « Marché extérieur » (0049) : créée, modifiée ou supprimée par le franchisé depuis son plan
+export async function tacheExterieurFranchise(magasin: string, t: { id?: string; cible: string; nom: string; action: string; porteur: string; echeance: string; supprimer?: boolean }): Promise<string> {
+  const { data, error } = await supabase.rpc('tache_exterieur_franchise', { p_store: magasin, p_id: t.id ?? '', p_cible: t.cible, p_nom: t.nom, p_action: t.action, p_porteur: t.porteur, p_echeance: t.echeance, p_supprimer: !!t.supprimer })
+  if (error) erreurAction(error)
+  return typeof data === 'string' ? data : ''
+}
+
 // Action hors visite (libre) ou action du plan d'une visite (visite, index, texte vérifié par la base)
 // Statut d'une tâche posé par le franchisé (0043) : à faire, en cours, bloquée avec sa raison
 export async function statutActionFranchise(magasin: string, statut: '' | 'en_cours' | 'bloquee', raison: string, cible: { libre: string } | { visite: number; index: number; texte: string }) {

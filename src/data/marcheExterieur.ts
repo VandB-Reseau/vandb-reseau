@@ -11,6 +11,8 @@
 // Matrice : valeur directe = moyenne (potentiel commercial, bénéfice récurrent) ; valeur relais = moyenne (visibilité,
 // prescription, intérêt pour la cause). Seuil à 3 sur 5 sur chaque axe.
 
+import type { ActionLibre } from './modele'
+
 export type Categorie = 'entreprise' | 'prescripteur' | 'association' | 'club' | 'chr'
 export const CATEGORIES: { cle: Categorie; libelle: string; pluriel: string }[] = [
   { cle: 'entreprise', libelle: 'Entreprise', pluriel: 'Entreprises' },
@@ -53,6 +55,8 @@ export interface Cible {
   source: 'annuaire' | 'saisie'
   contact: string
   membres: number | null // salariés, licenciés ou adhérents, saisi
+  // Contrat déjà en cours, souvent antérieur à l'app (Joseph, 17/11/2026) : CA annuel facultatif (€ HT), écrit ou non
+  contrat: { ca: number | null; ecrit: boolean } | null
   notes: Partial<Record<Critere, number>> // 1 à 5
   action: string
   qui: string
@@ -84,6 +88,7 @@ export function normaliserCible(x: Record<string, unknown>): Cible | null {
     id, nom, categorie: dans(x.categorie, CATEGORIES.map((c) => c.cle), 'entreprise'), detail: texte(x.detail, 200), adresse: texte(x.adresse, 200),
     distance: d !== null && d >= 0 ? Math.round(d) : null, siren: texte(x.siren, 14), source: x.source === 'annuaire' ? 'annuaire' : 'saisie',
     contact: texte(x.contact, 200), membres: (() => { const v = nombre(x.membres); return v !== null && v >= 0 ? Math.round(v) : null })(), notes, action: texte(x.action, 300), qui: texte(x.qui, 80),
+    contrat: (() => { const k = x.contrat; if (!k || typeof k !== 'object' || Array.isArray(k)) return null; const o = k as Record<string, unknown>; const v = nombre(o.ca); return { ca: v !== null && v >= 0 ? v : null, ecrit: o.ecrit === true } })(),
     echeance: /^\d{4}-\d{2}-\d{2}$/.test(String(x.echeance)) ? String(x.echeance) : '', caVise: ca !== null && ca >= 0 ? ca : null,
     statut: dans(x.statut, STATUTS.map(([k]) => k), 'a_faire'), offre: dans(x.offre, OFFRES.map(([k]) => k), ''), par: texte(x.par, 80), le: texte(x.le, 10),
   }
@@ -137,14 +142,20 @@ export function actionProposee(c: Cible): { action: string; offre: Offre } {
   }
 }
 
-export interface Synthese { cibles: number; notees: number; parQuadrant: Record<Quadrant, number>; actions: number; faites: number; caVise: number }
-export function synthese(p: PlanExterieur): Synthese {
+export interface Synthese { cibles: number; notees: number; parQuadrant: Record<Quadrant, number>; actions: number; faites: number; caVise: number; sousContrat: number; caContrat: number }
+// Actions du plan = tâches du magasin rattachées à une cible (0049, Joseph 17/11/2026)
+export const tachesDuPlan = (taches: ActionLibre[] | undefined, p: PlanExterieur) => {
+  const ids = new Set(p.cibles.map((c) => c.id))
+  return (taches ?? []).filter((t) => t.exterieur && ids.has(t.exterieur.cible))
+}
+export function synthese(p: PlanExterieur, taches: ActionLibre[] = []): Synthese {
   const parQuadrant: Record<Quadrant, number> = { priorite: 0, client: 0, relais: 0, plus_tard: 0 }
   for (const c of p.cibles) { const q = quadrant(c); if (q) parQuadrant[q]++ }
-  const avecAction = p.cibles.filter((c) => c.action && c.statut !== 'abandon')
+  const t = tachesDuPlan(taches, p)
   return {
-    cibles: p.cibles.length, notees: p.cibles.filter(estNotee).length, parQuadrant, actions: avecAction.length,
-    faites: avecAction.filter((c) => c.statut === 'fait').length, caVise: avecAction.reduce((s, c) => s + (c.caVise ?? 0), 0),
+    cibles: p.cibles.length, notees: p.cibles.filter(estNotee).length, parQuadrant, actions: t.length,
+    faites: t.filter((x) => x.faite).length, caVise: p.cibles.reduce((s, c) => s + (c.caVise ?? 0), 0),
+    sousContrat: p.cibles.filter((c) => c.contrat).length, caContrat: p.cibles.reduce((s, c) => s + (c.contrat?.ca ?? 0), 0),
   }
 }
 
@@ -179,9 +190,41 @@ const libelleNaf = (code: string) => {
 }
 
 // effectif : effectif minimal du site (null s'il n'est pas publié) ; taille : tranche de l'entreprise entière
-export interface Trouvee { id: string; nom: string; categorie: Categorie; activite: string; effectif: number | null; libelleEffectif: string; taille: string; detail: string; adresse: string; distance: number; siren: string }
+// ca : chiffre d'affaires de l'entreprise, dernière année publiée (comptes déposés) ; conseil : pourquoi l'app la met en avant
+export interface Trouvee { id: string; nom: string; categorie: Categorie; activite: string; effectif: number | null; libelleEffectif: string; taille: string; detail: string; adresse: string; distance: number; siren: string; ca: { montant: number; annee: string } | null; conseil: string }
 type Etablissement = { siret?: string; adresse?: string; latitude?: string | number | null; longitude?: string | number | null; activite_principale?: string; tranche_effectif_salarie?: string | null; liste_enseignes?: string[] | null; etat_administratif?: string }
-type Resultat = { siren?: string; nom_complet?: string; nom_raison_sociale?: string; activite_principale?: string; tranche_effectif_salarie?: string | null; matching_etablissements?: Etablissement[]; siege?: Etablissement }
+type Resultat = { siren?: string; nom_complet?: string; nom_raison_sociale?: string; activite_principale?: string; tranche_effectif_salarie?: string | null; matching_etablissements?: Etablissement[]; siege?: Etablissement; finances?: Record<string, { ca?: number | null } | null> | null }
+
+// Dernier chiffre d'affaires publié
+export function dernierCA(f: Resultat['finances']): Trouvee['ca'] {
+  const annees = Object.entries(f ?? {}).filter(([a, v]) => /^\d{4}$/.test(a) && typeof v?.ca === 'number' && Number.isFinite(v.ca) && v.ca > 0).sort(([a], [b]) => b.localeCompare(a))
+  return annees.length ? { montant: annees[0][1]!.ca as number, annee: annees[0][0] } : null
+}
+export const libelleCA = (ca: Trouvee['ca']) => !ca ? '' : `${ca.montant >= 1e6 ? `${(ca.montant / 1e6).toFixed(1).replace('.', ',')} M€` : `${Math.round(ca.montant / 1000).toLocaleString('fr-FR')} k€`} (${ca.annee})`
+
+// Cibles mises en avant (Joseph, 17/11/2026) : toutes restent listées ; l'app signale les plus prometteuses et dit pourquoi.
+// Règles simples, assumées : la taille du site ou le chiffre d'affaires d'abord, le rôle de relais pour les business clubs.
+export function conseil(t: Pick<Trouvee, 'categorie' | 'effectif' | 'ca' | 'activite'>): string {
+  const e = t.effectif ?? 0, ca = t.ca?.montant ?? 0
+  switch (t.categorie) {
+    case 'entreprise':
+      if (e >= 50) return 'Grand site : comité social et économique, cadeaux d’affaires, pots'
+      if (!t.effectif && ca >= 10e6) return 'Grosse entreprise : cadeaux d’affaires, pots'
+      return ''
+    case 'prescripteur':
+      if (ca >= 500000) return 'Grand prescripteur : volume d’événements'
+      if (e >= 10) return 'Prescripteur de 10 salariés et plus : volume d’événements'
+      return ''
+    case 'association':
+      return e >= 1 ? 'Association employeuse : structure active, événements réguliers' : ''
+    case 'club':
+      return 'Réseau de dirigeants : relais vers leurs entreprises'
+    case 'chr':
+      if (e >= 10 && /Hôtel|Camping|Gîte/.test(t.activite)) return 'Hébergement de 10 salariés et plus : séminaires, mariages'
+      if (e >= 10) return 'Grosse affluence : fûts et tireuse'
+      return ''
+  }
+}
 
 export function distance(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
   const r = (x: number) => (x * Math.PI) / 180
@@ -217,13 +260,16 @@ export function lireResultats(j: { results?: Resultat[] }, depuis: { lat: number
         const activite = lu?.libelle ?? (naf ? `Activité ${naf}` : '')
         const libelleEffectif = t ? `${t.libelle} sur le site` : 'Effectif du site non publié'
         const detail = [activite, libelleEffectif, taille && !t ? `entreprise : ${taille}` : ''].filter(Boolean).join(' · ')
-        return [{ id: `siret/${e.siret ?? r.siren}`, nom: nom.slice(0, 160), categorie: cat, activite, effectif: t ? t.min : null, libelleEffectif, taille, detail: detail.slice(0, 200), adresse: majuscules(e.adresse ?? '').slice(0, 200), distance: Math.round(d), siren: r.siren ?? '' }]
+        const ca = dernierCA(r.finances)
+        const effectif = t ? t.min : null
+        const detailCA = ca ? `${detail} · CA ${libelleCA(ca)}` : detail
+        return [{ id: `siret/${e.siret ?? r.siren}`, nom: nom.slice(0, 160), categorie: cat, activite, effectif, libelleEffectif, taille, detail: detailCA.slice(0, 200), adresse: majuscules(e.adresse ?? '').slice(0, 200), distance: Math.round(d), siren: r.siren ?? '', ca, conseil: conseil({ categorie: cat, effectif, ca, activite }) }]
       })
   })
 }
 
 // Les plus gros sites d'abord, effectif inconnu ensuite, puis du plus proche au plus loin
-export const trierParPotentiel = (a: Trouvee, b: Trouvee) => (b.effectif ?? -1) - (a.effectif ?? -1) || a.distance - b.distance
+export const trierParPotentiel = (a: Trouvee, b: Trouvee) => Number(!!b.conseil) - Number(!!a.conseil) || (b.effectif ?? -1) - (a.effectif ?? -1) || (b.ca?.montant ?? 0) - (a.ca?.montant ?? 0) || a.distance - b.distance
 
 // Points du cercle (centre et 8 directions) : leurs départements, pour un magasin près d'une limite
 export function pointsDuCercle(lat: number, lon: number, rayonKm: number): { lat: number; lon: number }[] {
@@ -288,7 +334,7 @@ export async function chercher(categorie: Categorie, codesPostaux: string[], lat
 }
 
 export function cibleDepuis(t: Trouvee, par: string, le: string): Cible {
-  return { id: t.id, nom: t.nom, categorie: t.categorie, detail: t.detail, adresse: t.adresse, distance: t.distance, siren: t.siren, source: 'annuaire', contact: '', membres: null, notes: {}, action: '', qui: '', echeance: '', caVise: null, statut: 'a_faire', offre: '', par, le }
+  return { id: t.id, nom: t.nom, categorie: t.categorie, detail: t.detail, adresse: t.adresse, distance: t.distance, siren: t.siren, source: 'annuaire', contact: '', membres: null, contrat: null, notes: {}, action: '', qui: '', echeance: '', caVise: null, statut: 'a_faire', offre: '', par, le }
 }
 export const nouvelId = () => `c_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 export const libelleDistance = (d: number | null) => (d === null ? '' : d < 1000 ? `${Math.max(10, Math.round(d / 10) * 10)} m` : `${(d / 1000).toFixed(1).replace('.', ',')} km`)

@@ -40,7 +40,7 @@ async function annuaire(page: Page) {
     }
     if ((u.searchParams.get('activite_principale') ?? '').includes('56.21Z')) {
       return r.fulfill({ json: { total_pages: 1, results: [
-        { siren: '000000003', nom_complet: 'SAVEURS SIMULEES', matching_etablissements: [etab('00000000300011', '56.21Z', '03', 0.02, 'TRAITEUR DU TEST')] },
+        { siren: '000000003', nom_complet: 'SAVEURS SIMULEES', finances: { '2022': { ca: 900000 }, '2023': { ca: 1400000 } }, matching_etablissements: [etab('00000000300011', '56.21Z', '03', 0.02, 'TRAITEUR DU TEST')] },
       ] } })
     }
     return r.fulfill({ json: vide })
@@ -63,12 +63,12 @@ test.afterEach(async ({ page }) => {
 
 test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’action', async ({ page, isMobile }) => {
   const ecritures: Ecriture[] = []
-  await seConnecter(page, { ecritures })
+  await seConnecter(page, { ecritures, persister: true })
   await annuaire(page)
   await page.goto(fiche())
   const etapes = page.getByRole('navigation', { name: 'Étapes du plan marché extérieur' })
   await expect(etapes.getByRole('button')).toHaveCount(6)
-  await expect(etapes.getByRole('button', { name: 'Étape 1 : Magasin' })).toHaveAttribute('aria-current', 'step')
+  await expect(etapes.getByRole('button', { name: 'Étape Magasin' })).toHaveAttribute('aria-current', 'step')
   await page.getByLabel('Objectif de CA extérieur sur un an (€ HT)').fill('40000')
   await expect(page.getByText('Enregistré')).toBeVisible()
   expect(derniere(ecritures, 'exterieur_magasins')[NOM].objectif).toBe(40000)
@@ -86,6 +86,15 @@ test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’ac
   await expect(page.getByLabel(/^Retenir Groupe Aeronautique Fictif/)).toHaveCount(1)
   await expect(page.getByLabel(/^Retenir /).first()).toHaveAttribute('aria-label', 'Retenir Groupe Aeronautique Fictif')
   expect(demandes.some((d) => d.includes('code_postal=74000,74960') && !d.includes('13001') && d.includes('tranche_effectif_salarie=12,21'))).toBe(true)
+  // Cibles conseillées : cœur et raison ; chiffre d'affaires du traiteur (dernière année publiée) ; toutes restent listées
+  await expect(page.getByRole('img', { name: /^Conseillée : / })).toHaveCount(3)
+  await expect(page.getByRole('img', { name: 'Conseillée : Grand prescripteur : volume d’événements' })).toBeVisible()
+  await expect(page.getByText('1,4 M€ (2023)').first()).toBeVisible()
+  await expect(page.getByLabel(/^Retenir /).last()).toHaveAttribute('aria-label', 'Retenir Logistique Discrete')
+  await page.getByRole('button', { name: 'Conseillées · 3' }).click()
+  await expect(page.getByLabel('Retenir Logistique Discrete')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Conseillées · 3' }).click()
+  await expect(page.getByLabel('Retenir Logistique Discrete')).toHaveCount(1)
   // Filtres de la liste : effectif du site, puis nom
   await page.getByLabel('Effectif du site').selectOption('100')
   await expect(page.getByRole('button', { name: 'Tous · 1' })).toBeVisible()
@@ -111,15 +120,41 @@ test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’ac
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByRole('heading', { name: 'Mes cibles · 3' })).toBeVisible()
   await expect(page.getByText(isMobile ? /120 membres ou salariés/ : '120', { exact: !isMobile })).toBeVisible()
+  // Joseph (17/11/2026) : une cible déjà sous contrat avant l'app, CA annuel facultatif, contrat souvent non écrit
+  await page.getByRole('button', { name: 'Modifier Club des entrepreneurs fictifs' }).click()
+  const k = page.getByRole('dialog', { name: 'Modifier Club des entrepreneurs fictifs' })
+  await k.getByLabel('Contrat en cours').check()
+  await k.getByLabel('CA annuel du contrat (€ HT)').fill('12000')
+  await k.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText(/^Contrat en cours · 12\s000 € HT par an · non écrit$/)).toBeVisible()
+  await expect.poll(() => derniere(ecritures, 'exterieur_magasins')?.[NOM]?.cibles?.find((c: { nom: string }) => c.nom === 'Club des entrepreneurs fictifs')?.contrat).toEqual({ ca: 12000, ecrit: false })
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 
   // 4 · Diagnostic : l'atelier rapporte (5/5 en direct) sans relais (1/5) → client à signer ; le traiteur partout à 4 → priorité
   await page.getByRole('button', { name: 'Diagnostic', exact: true }).click()
-  const noter = async (notes: number[]) => { for (const [i, c] of ['Potentiel commercial', 'Visibilité', 'Prescription', 'Bénéfice concret attendu', 'Intérêt pour la cause'].entries()) await page.getByRole('button', { name: `${c} : ${notes[i]} sur 5` }).click() }
-  await noter([5, 1, 1, 5, 1])
-  await expect(page.getByText('Valeur directe 5,0 / 5')).toBeVisible()
-  await expect(page.getByText('Valeur relais 1,0 / 5')).toBeVisible()
-  await page.getByRole('button', { name: 'Cible suivante' }).click()
-  await noter([4, 4, 4, 4, 4])
+  // Joseph (17/11/2026) : la liste des cibles, on choisit celle à noter ; le panneau garde les notes, on peut y revenir
+  await expect(page.getByRole('heading', { name: 'Diagnostic · 3 cibles à noter' })).toBeVisible()
+  const noter = async (nom: string, notes: number[]) => {
+    await page.getByRole('button', { name: new RegExp(`^(Noter|Modifier le diagnostic de) ${nom}`) }).click()
+    const f = page.getByRole('dialog', { name: new RegExp(`^Diagnostic de ${nom}`) })
+    for (const [i, c] of ['Potentiel commercial', 'Visibilité', 'Prescription', 'Bénéfice concret attendu', 'Intérêt pour la cause'].entries()) await f.getByRole('button', { name: `${c} : ${notes[i]} sur 5` }).click()
+    return f
+  }
+  const f = await noter('Ateliers Fictifs Du Lac', [5, 1, 1, 5, 1])
+  await expect(f.getByText('Valeur directe 5,0 / 5')).toBeVisible()
+  await expect(f.getByText('Valeur relais 1,0 / 5')).toBeVisible()
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  await f.getByRole('button', { name: 'Enregistrer' }).click()
+  await (await noter('Traiteur Du Test', [4, 4, 4, 4, 4])).getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByRole('heading', { name: 'Diagnostic · 1 cible à noter' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Modifier le diagnostic de Ateliers Fictifs Du Lac' })).toBeVisible()
+  // Retirer une cible depuis le diagnostic, puis « Annuler »
+  if (!isMobile) {
+    await page.getByRole('button', { name: 'Retirer Club des entrepreneurs fictifs' }).click()
+    await expect(page.getByRole('heading', { name: 'Diagnostic · toutes les cibles sont notées' })).toBeVisible()
+    await page.getByRole('button', { name: 'Annuler' }).click()
+    await expect(page.getByRole('heading', { name: 'Diagnostic · 1 cible à noter' })).toBeVisible()
+  }
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 
   // 5 · Matrice : une cible par case notée, le club hors matrice
@@ -129,13 +164,27 @@ test('Marché extérieur : repérage, cibles, diagnostic, matrice et plan d’ac
   await expect(page.getByRole('region', { name: 'Client à signer' })).toContainText('Ateliers Fictifs Du Lac')
   await expect(page.getByRole('img', { name: /Matrice des opportunités/ })).toBeVisible()
 
-  // 6 · Plan : la priorité en tête, action proposée selon le type, lien vers le simulateur Contrat extérieur
+  // 6 · Plan : la priorité en tête ; CA visé et simulateur sur la cible ; plusieurs actions, chacune une tâche du magasin
   await page.getByRole('button', { name: 'Plan d’action', exact: true }).click()
-  await page.getByRole('button', { name: 'Action pour Traiteur Du Test (Saveurs Simulees)' }).click()
+  await expect(page.getByRole('region', { name: /^Actions pour / }).first()).toHaveAttribute('aria-label', 'Actions pour Traiteur Du Test (Saveurs Simulees)')
+  await page.getByRole('button', { name: 'CA visé pour Traiteur Du Test (Saveurs Simulees)' }).click()
+  const o = page.getByRole('dialog', { name: /^CA visé pour Traiteur/ })
+  await o.getByLabel('CA visé sur un an (€ HT)').fill('8000')
+  await o.getByRole('button', { name: 'Enregistrer' }).click()
+  await page.getByRole('button', { name: 'Ajouter une action pour Traiteur Du Test (Saveurs Simulees)' }).click()
   const a = page.getByRole('dialog', { name: /^Action pour Traiteur/ })
   await expect(a.getByLabel('Action')).toHaveValue('Dégustation et grille tarifaire réservée aux prescripteurs')
-  await a.getByLabel('CA visé sur un an (€ HT)').fill('8000')
   await a.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByRole('list', { name: 'Tâches pour Traiteur Du Test (Saveurs Simulees)' }).getByText('Dégustation et grille tarifaire réservée aux prescripteurs')).toBeVisible()
+  await page.getByRole('button', { name: 'Ajouter une action pour Traiteur Du Test (Saveurs Simulees)' }).click()
+  const a2 = page.getByRole('dialog', { name: /^Action pour Traiteur/ })
+  await expect(a2.getByLabel('Action')).toHaveValue('')
+  await a2.getByLabel('Action').fill('Relancer en janvier pour les mariages')
+  await a2.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByRole('list', { name: 'Tâches pour Traiteur Du Test (Saveurs Simulees)' }).getByRole('listitem')).toHaveCount(2)
+  // Les deux actions sont des tâches du magasin, rattachées à la cible
+  const taches = () => { const e = ecritures.filter((x) => x.table === 'app_config' && (x.corps as { key?: string }).key === 'actions').at(-1); return e ? JSON.parse((e.corps as { value: string }).value)[NOM] ?? [] : [] }
+  await expect.poll(() => taches().filter((t: { exterieur?: { nom: string } }) => t.exterieur?.nom === 'Traiteur Du Test (Saveurs Simulees)').length).toBe(2)
   await expect(page.getByRole('link', { name: 'Chiffrer Traiteur Du Test (Saveurs Simulees) : Contrat extérieur' })).toHaveAttribute('href', /vue=simulateurs&partie=simulateurs&sim=exterieur$/)
   await expect(page.getByText('20 %')).toBeVisible() // 8 000 € sur un objectif de 40 000 €
   // L'action se garde juste après les notes : on attend la dernière écriture, celle qui porte le CA visé
@@ -172,9 +221,19 @@ test('Marché extérieur : le franchisé bâtit le plan de son magasin', async (
     await page.goto(`./#/magasins/${encodeURIComponent(NOM)}`)
     await page.getByRole('button', { name: 'Marché extérieur' }).click()
   }
-  await page.getByRole('button', { name: /^Étape 3 : Cibles/ }).click()
+  await page.getByRole('button', { name: /^Étape Cibles/ }).click()
   await expect(page.getByRole('heading', { name: 'Mes cibles · 1' })).toBeVisible()
   await expect(page.getByText('Comité des fêtes fictif').first()).toBeVisible()
+  // Il ajoute une action : elle devient une tâche de son magasin, gardée après rechargement
+  await page.getByRole('button', { name: /^Étape Plan d’action/ }).click()
+  await page.getByRole('button', { name: 'Ajouter une action pour Comité des fêtes fictif' }).click()
+  const t = page.getByRole('dialog', { name: 'Action pour Comité des fêtes fictif' })
+  await t.getByLabel('Action').fill('Proposer la buvette du vide-greniers')
+  await t.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByRole('list', { name: 'Tâches pour Comité des fêtes fictif' }).getByText('Proposer la buvette du vide-greniers')).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('list', { name: 'Tâches pour Comité des fêtes fictif' }).getByText('Proposer la buvette du vide-greniers')).toBeVisible()
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 })
 
 test('Marché extérieur : annuaire injoignable, un message humain et l’ajout à la main reste possible', async ({ page }) => {

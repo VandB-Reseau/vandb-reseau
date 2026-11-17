@@ -31,6 +31,12 @@ export function tacheBudget(v: unknown): TacheBudget | null {
 }
 
 // Relit les actions hors visite enregistrées (une liste par magasin)
+// Tâche du plan « Marché extérieur » : la cible du plan et son nom
+const tacheExterieur = (v: unknown) => {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const o = v as Record<string, unknown>
+  return typeof o.cible === 'string' && o.cible ? { cible: o.cible.slice(0, 40), nom: String(o.nom ?? '').slice(0, 160) } : null
+}
 export function normaliserActionsLibres(v: unknown): Record<string, ActionLibre[]> {
   const r: Record<string, ActionLibre[]> = {}
   if (!v || typeof v !== 'object' || Array.isArray(v)) return r
@@ -39,7 +45,7 @@ export function normaliserActionsLibres(v: unknown): Record<string, ActionLibre[
     const liste = l.filter((a) => a && typeof a === 'object' && (a as ActionLibre).id && String((a as ActionLibre).action ?? '').trim()).map((x) => {
       const a = x as Record<string, unknown>
       return { id: String(a.id), action: String(a.action), porteur: String(a.porteur ?? ''), echeance: String(a.echeance ?? ''), creeLe: String(a.creeLe ?? ''),
-        ...(a.faite ? { faite: String(a.faite) } : {}), ...(a.faite && a.faitePar ? { faitePar: String(a.faitePar) } : {}), ...(Array.isArray(a.pieces) && a.pieces.length ? { pieces: normaliserPieces(a.pieces) } : {}), ...(a.auteur ? { auteur: String(a.auteur) } : {}), ...(a.fil === 'equipe' ? { fil: 'equipe' as const } : {}), ...(Number(a.message) > 0 ? { message: Number(a.message) } : {}), ...(tacheBudget(a.budget) ? { budget: tacheBudget(a.budget)! } : {}), ...champsSuivi(a) }
+        ...(a.faite ? { faite: String(a.faite) } : {}), ...(a.faite && a.faitePar ? { faitePar: String(a.faitePar) } : {}), ...(Array.isArray(a.pieces) && a.pieces.length ? { pieces: normaliserPieces(a.pieces) } : {}), ...(a.auteur ? { auteur: String(a.auteur) } : {}), ...(a.fil === 'equipe' ? { fil: 'equipe' as const } : {}), ...(Number(a.message) > 0 ? { message: Number(a.message) } : {}), ...(tacheBudget(a.budget) ? { budget: tacheBudget(a.budget)! } : {}), ...(tacheExterieur(a.exterieur) ? { exterieur: tacheExterieur(a.exterieur)! } : {}), ...champsSuivi(a) }
     })
     if (liste.length) r[magasin] = liste
   }

@@ -204,7 +204,8 @@ export interface ActionPlan { id?: string; action: string; porteur: string; eche
 // Tâche née d'une alerte du budget (fusion du 04/11/2026) : type d'alerte, année, responsable et valeur de départ
 // gardés pour mesurer l'effet ; origine : numéro de l'action du pilotage reprise
 export interface TacheBudget { type: string; annee: number; responsable: string; depart: { valeur: number; mois: number | null } | null; abandonnee?: boolean; origine?: number; role?: string }
-export interface ActionLibre extends ActionPlan { id: string; creeLe: string; auteur?: string; fil?: 'equipe'; message?: number; budget?: TacheBudget }
+// exterieur : tâche née du plan « Marché extérieur » (0049), rattachée à une cible du plan
+export interface ActionLibre extends ActionPlan { id: string; creeLe: string; auteur?: string; fil?: 'equipe'; message?: number; budget?: TacheBudget; exterieur?: { cible: string; nom: string } }
 
 export interface Visite {
   id: number | null
