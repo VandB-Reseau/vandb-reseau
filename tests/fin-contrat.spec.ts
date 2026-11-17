@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import lireExcel from 'read-excel-file/node'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { deplierPoint, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { dateCourte } from '../src/lib/format'
 
 // Mandats (Joseph, 26/10/2026) : 5 ans renouvelés par 5 ans, calculés sur chaque associé (entrée, sinon ouverture) quand
@@ -57,6 +57,7 @@ test('une entrée récente redémarre le mandat ; la fin à 6 mois apparaît dan
   await expect(associe(page, 'Franchisé 2')).toContainText(`au ${dateCourte(plusAns(entree, 5))} · 1er mandat`)
   await expect(page.getByText('Fin dans moins de 6 mois')).toBeVisible()
   await page.goto('./#/')
+  await deplierPoint(page) // 278 : sur téléphone, le point du jour s'ouvre par la barre du haut
   if (isMobile) await page.getByRole('tab', { name: /^Contrats/ }).click()
   const bloc = page.getByRole('region', { name: 'Contrats' })
   await expect(bloc.getByRole('link', { name: /Franchisé 2 · Nantes Test/ })).toContainText(`Fin le ${dateCourte(plusAns(entree, 5))} · 1er mandat`)

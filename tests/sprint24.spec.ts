@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { deplierPoint, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 // Sprint 24 (Joseph, 24/10/2026) : Préparer depuis Ma semaine sur téléphone (S1), fiche avant visite en tuiles (S2,
 // sprint13.spec.ts), nine box en noms courts (S3, priorites-ecrans.spec.ts), années sans ouverture (S4), « Je suis
@@ -131,6 +131,7 @@ test('F1 : au magasin, l’accueil propose de saisir la visite', async ({ page, 
     await expect(page.getByRole('region', { name: 'Au magasin' })).toHaveCount(0)
     return
   }
+  await deplierPoint(page) // 278 : sur téléphone, le point du jour s'ouvre par la barre du haut
   const bandeau = page.getByRole('region', { name: 'Au magasin' })
   await expect(bandeau).toContainText('Nantes Test')
   expect(await textesTropPetits(page)).toEqual([])
@@ -147,6 +148,7 @@ test('F1 : loin de tout magasin, rien ne s’affiche sans demande', async ({ pag
   await seConnecter(page)
   await expect(page.getByRole('heading', { name: 'Accueil' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Au magasin' })).toHaveCount(0)
+  await deplierPoint(page) // 278 : sur téléphone, le point du jour s'ouvre par la barre du haut
   await page.getByRole('button', { name: 'Je suis au magasin' }).click()
   await expect(page.getByText('Aucun de tes magasins à moins de 300 m.')).toBeVisible()
 })
