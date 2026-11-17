@@ -97,7 +97,9 @@ export interface Rubrique { titre: string; destinations: Destination[] }
 export function rubriquesMenu(_sansParametres?: boolean): Rubrique[] {
   return [
     { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
-    { titre: 'Réseau', destinations: [magasins, visites, chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur] },
+    // Joseph (17/11/2026) : Réseau = Magasins, Santé du parc, Visites ; les chiffres et outils passent sous Performance
+    { titre: 'Réseau', destinations: [magasins, sante, visites] },
+    { titre: 'Performance', destinations: [chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur] },
     { titre: 'Siège', destinations: [infosReseau, demandes] },
   ]
 }
@@ -107,7 +109,8 @@ export const demandesFranchise: Destination = { ...demandes, libelle: 'Mes deman
 export const menuTelephone = (role: string | undefined) => menuTelephoneRubriques(role).flatMap((r) => r.destinations)
 // Vague 6 (Joseph, 10/11/2026) : le menu du compte sur téléphone rangé comme le menu du PC, en rubriques
 export const menuTelephoneRubriques = (role: string | undefined): Rubrique[] => [
-  { titre: 'Réseau', destinations: pourRole([visites, chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur], role) },
+  { titre: 'Réseau', destinations: pourRole([magasins, sante, visites], role) },
+  { titre: 'Performance', destinations: pourRole([chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur], role) },
   { titre: 'Siège', destinations: pourRole([infosReseau, demandes], role) },
 ].filter((r) => r.destinations.length)
 
