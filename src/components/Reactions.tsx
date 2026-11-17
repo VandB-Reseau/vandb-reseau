@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
@@ -13,6 +13,8 @@ import ThumbUpOutlined from '@mui/icons-material/ThumbUpOutlined'
 import { Initiales } from './Social'
 import { quand } from '../data/fil'
 import { BoutonDictee } from './Dictee'
+
+const DELAI_JAIME = 15000
 
 export interface Pouce { userId: string; nom: string }
 export interface Commentaire { id: number; auteur: string; auteurNom: string; auteurRole: string; texte: string; creeLe: string }
@@ -29,22 +31,44 @@ export function Reactions({ titre, pouces: initiaux, commentaires: tous, autres 
   const [ouvert, setOuvert] = useState(false)
   const [texte, setTexte] = useState('')
   const [envoi, setEnvoi] = useState(false)
-  const [mesPouces, setPouces] = useState(initiaux)
-  useEffect(() => setPouces(initiaux), [initiaux])
+  // « J'aime » (bug du J'aime retiré, Joseph 17/11/2026) : le bouton ne se grise plus pendant l'envoi. Il change tout de
+  // suite ; les gestes rapides se rattrapent par une seule file d'envois vers l'état voulu, et une réponse qui ne vient pas
+  // (réseau du téléphone) libère le bouton au bout de 15 s au lieu de le laisser bloqué.
+  const aimeBase = initiaux.some((p) => p.userId === moi)
+  const [aimeVoulu, setAimeVoulu] = useState<boolean | null>(null)
+  const voulu = useRef(false)
+  const enCours = useRef(false)
+  // État connu de la base entre la fin des envois et sa relecture (null : la base relue fait foi)
+  const serveur = useRef<boolean | null>(null)
+  const aime = aimeVoulu ?? aimeBase
+  const mesPouces = aime === aimeBase ? initiaux : aime ? [...initiaux, { userId: moi, nom: 'Moi' }] : initiaux.filter((p) => p.userId !== moi)
+  const pouces = [...mesPouces, ...autres.filter((n) => !mesPouces.some((p) => p.nom === n)).map((nom) => ({ userId: '', nom }))]
+  const reagir = async () => {
+    voulu.current = !aime
+    setAimeVoulu(voulu.current)
+    if (enCours.current) return
+    enCours.current = true
+    let etat = serveur.current ?? aimeBase
+    try {
+      while (etat !== voulu.current) {
+        const r = await Promise.race([basculer(), new Promise((_, non) => setTimeout(() => non(new Error('delai')), DELAI_JAIME))])
+        etat = typeof r === 'boolean' ? r : !etat
+      }
+      serveur.current = etat
+    } catch (e) { serveur.current = null; signaler(message(e)) }
+    enCours.current = false
+    // La base relue fait foi ; un nouveau geste pendant la relecture garde la main
+    await apres().catch(() => undefined)
+    if (!enCours.current) { serveur.current = null; setAimeVoulu(null) }
+  }
   // Commentaires écrits ou retirés ici, affichés sans attendre la relecture de la base
   const [ajoutes, setAjoutes] = useState<Commentaire[]>([])
   const [retires, setRetires] = useState<number[]>([])
   useEffect(() => { setAjoutes([]); setRetires([]) }, [tous])
-  const aime = mesPouces.some((p) => p.userId === moi)
-  const pouces = [...mesPouces, ...autres.filter((n) => !mesPouces.some((p) => p.nom === n)).map((nom) => ({ userId: '', nom }))]
   // La relecture de la base se fait en arrière-plan, le bouton se libère dès la réponse
   const agir = async (action: () => Promise<unknown>) => {
     setEnvoi(true)
     try { await action(); void apres(); return true } catch (e) { signaler(message(e)); return false } finally { setEnvoi(false) }
-  }
-  const reagir = async () => {
-    setPouces(aime ? mesPouces.filter((p) => p.userId !== moi) : [...mesPouces, { userId: moi, nom: 'Moi' }])
-    if (!(await agir(basculer))) setPouces(initiaux)
   }
   const envoyer = () => {
     const t = texte.trim()
@@ -73,7 +97,7 @@ export function Reactions({ titre, pouces: initiaux, commentaires: tous, autres 
         </Box>
       )}
       <Box sx={{ display: 'flex', alignItems: 'stretch', mx: 1, mt: 0.5, borderTop: '1px solid', borderColor: 'divider', '& > *': { flex: 1, minHeight: 48 } }}>
-        <Button onClick={() => void reagir()} disabled={lectureSeule || envoi} aria-pressed={aime} startIcon={aime ? <ThumbUp /> : <ThumbUpOutlined />} color={aime ? 'secondary' : 'inherit'} sx={{ px: 1, minHeight: 48 }}>
+        <Button onClick={() => void reagir()} disabled={lectureSeule} aria-pressed={aime} startIcon={aime ? <ThumbUp /> : <ThumbUpOutlined />} color={aime ? 'secondary' : 'inherit'} sx={{ px: 1, minHeight: 48 }}>
           J’aime
         </Button>
         <Button onClick={() => setOuvert((v) => !v)} aria-expanded={ouvert} startIcon={<ChatBubbleOutlineOutlined />} color="inherit" sx={{ px: 1, minHeight: 48 }}>

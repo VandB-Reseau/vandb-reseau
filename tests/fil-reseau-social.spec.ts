@@ -179,3 +179,36 @@ test('278 corrigé (17/11) : sur téléphone, ni titre visible, périmètre en p
   if (urgences) await expect(picto.locator('.MuiBadge-badge')).toHaveText(String(urgences))
   await lisible(page, isMobile)
 })
+
+// Bug du J'aime retiré (Joseph, 17/11/2026) : sur téléphone, le bouton restait grisé après avoir retiré son J'aime. Le
+// bouton ne se grise plus pendant l'envoi, le décompte suit, et des gestes rapides finissent sur l'état voulu.
+test('J’aime : aimer, retirer, remettre, même avec une base lente, le bouton reste actif et le décompte suit', async ({ page }) => {
+  const liste = communications()
+  await seConnecter(page, { communications: liste, reactionsVisites: { pouces: {}, commentaires: {} } })
+  let envois = 0
+  await page.route('**/rest/v1/rpc/basculer_pouce_communication', async (route) => { envois++; await new Promise((r) => setTimeout(r, 600)); await route.fallback() })
+  await page.goto('./#/')
+  const carte = page.getByRole('region', { name: 'Actualités' }).getByRole('article', { name: 'Résultats du challenge de septembre' })
+  const bouton = carte.getByRole('button', { name: 'J’aime' })
+  await expect(carte.getByText('2 J’aime', { exact: true })).toBeVisible()
+  await bouton.click()
+  await expect(bouton).toHaveAttribute('aria-pressed', 'true')
+  expect(await bouton.isDisabled()).toBe(false)
+  await expect(carte.getByText('3 J’aime', { exact: true })).toBeVisible()
+  await expect.poll(() => envois).toBe(1)
+  await bouton.click()
+  await expect(bouton).toHaveAttribute('aria-pressed', 'false')
+  expect(await bouton.isDisabled()).toBe(false)
+  await expect(carte.getByText('2 J’aime', { exact: true })).toBeVisible()
+  await bouton.click()
+  await expect(bouton).toHaveAttribute('aria-pressed', 'true')
+  await expect(carte.getByText('3 J’aime', { exact: true })).toBeVisible()
+  // Retiré pour de bon : après relecture de la base, le bouton reste vide et actif
+  await bouton.click()
+  await expect(bouton).toHaveAttribute('aria-pressed', 'false')
+  await page.waitForTimeout(2000)
+  await expect(bouton).toHaveAttribute('aria-pressed', 'false')
+  expect(await bouton.isDisabled()).toBe(false)
+  await expect(carte.getByText('2 J’aime', { exact: true })).toBeVisible()
+  expect(liste.find((c) => c.id === 2)!.pouces!.some((p) => p.user_id !== 'x' && p.user_id !== 'y')).toBe(false)
+})
