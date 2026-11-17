@@ -1,0 +1,180 @@
+import { expect, test, type Page } from '@playwright/test'
+import { seConnecter, simulerSupabase, COMPTE, textesTropPetits, type Ecriture, type RapportSimule } from './supabase-simule'
+import { zonesTropPetites } from './pilotage/supabase-simule'
+import { seConnecter as seConnecterAvecBudgets } from './pilotage/ecrans/outils'
+
+// Onglet « Pilotage » (Joseph, 17/11/2026) : rapports proposés par le siège, rapports de chacun, indicateurs en parallèle,
+// glisser-déposer, typologies et périodes, partage, export. Données fictives uniquement.
+
+test.beforeEach(async ({ page }) => {
+  const erreurs: string[] = []
+  page.on('pageerror', (e) => erreurs.push(e.message))
+  ;(page as unknown as { erreurs: string[] }).erreurs = erreurs
+})
+test.afterEach(async ({ page }) => {
+  expect((page as unknown as { erreurs: string[] }).erreurs, 'aucune erreur JavaScript').toEqual([])
+})
+
+const tableau = (page: Page) => page.getByRole('table', { name: 'Tableau du rapport' })
+async function choisirRapport(page: Page, titre: string, isMobile: boolean) {
+  if (isMobile) {
+    await page.getByRole('combobox', { name: 'Rapport' }).click()
+    await page.getByRole('option', { name: titre, exact: true }).click()
+  } else {
+    await page.getByRole('list', { name: 'Proposés par le siège' }).getByRole('button', { name: titre, exact: true }).click()
+  }
+  await expect(page.getByRole('heading', { level: 2, name: titre })).toBeVisible()
+}
+async function ouvrirConstructeur(page: Page) {
+  const b = page.getByRole('button', { name: 'Construire le rapport' })
+  if ((await b.getAttribute('aria-expanded')) === 'false') await b.click()
+}
+
+test('Pilotage : rapport du siège, indicateurs en parallèle, typologie, mois en colonnes, enregistrement', async ({ page, isMobile }) => {
+  const ecritures: Ecriture[] = []
+  const rapports: RapportSimule[] = [{ id: 7, titre: 'Point du RR Sud', definition: { indicateurs: ['ca', 'tachesRetard'], lignes: 'coach' }, modele: false, partage: true, auteur: 'Responsable Sud', role: 'rr' }]
+  await seConnecter(page, { ecritures, rapports })
+  // Entrée du menu (PC : menu latéral ; téléphone : menu du compte), comme les autres pages du réseau
+  await page.goto('./#/pilotage')
+  await expect(page.getByRole('heading', { level: 1, name: 'Pilotage' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: 'Budget contre réel par magasin' })).toBeVisible()
+  await expect(tableau(page).getByRole('row', { name: /Nantes Test/ })).toContainText('879 000 €')
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+
+  // Rapport partagé par un membre de l'équipe
+  if (!isMobile) await expect(page.getByRole('list', { name: 'Partagés avec moi' })).toContainText('Point du RR Sud')
+
+  // Ventes sur l'an dernier, regroupées par typologie, avec les tâches en retard en parallèle
+  await choisirRapport(page, 'Ventes sur l’an dernier', isMobile)
+  await ouvrirConstructeur(page)
+  await page.getByRole('group', { name: 'Lignes' }).getByRole('combobox').click()
+  await page.getByRole('option', { name: 'Typologie', exact: true }).click()
+  await page.getByRole('group', { name: /^Indicateurs/ }).getByRole('button', { name: 'Ajouter' }).click()
+  await page.getByRole('menuitem', { name: 'Tâches en retard', exact: true }).click()
+  await expect(tableau(page).getByRole('columnheader', { name: 'Tâches en retard' })).toBeVisible()
+  await expect(tableau(page).getByRole('columnheader', { name: 'Typologie' })).toBeVisible()
+  await expect(page.getByLabel('Graphe Tâches en retard')).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: 'Ventes sur l’an dernier' }).locator('..')).toContainText('modifié')
+
+  // Mois en colonnes sur 12 mois : une colonne par mois
+  await page.getByLabel('Période').click()
+  await page.getByRole('option', { name: '12 derniers mois' }).click()
+  await page.getByRole('group', { name: 'Colonnes' }).getByRole('button', { name: 'Mois', exact: true }).click()
+  await expect(tableau(page).getByRole('columnheader', { name: 'sept. 26' }).first()).toBeVisible()
+  await expect(tableau(page).getByRole('columnheader', { name: 'oct. 25' }).first()).toBeVisible()
+
+  // Filtre sur une typologie inexistante dans la sélection : message clair
+  await page.getByRole('group', { name: 'Filtres' }).getByRole('button', { name: 'Filtrer' }).click()
+  await page.getByRole('menuitem', { name: 'Franchisé ou intégré' }).click()
+  await page.getByRole('dialog').getByLabel('Franchisé', { exact: true }).check()
+  await page.getByRole('dialog').getByRole('button', { name: 'Appliquer' }).click()
+  await expect(page.getByRole('group', { name: 'Filtres' })).toContainText('Franchisé ou intégré : Franchisé')
+
+  // Enregistrer, partagé à l'équipe
+  await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
+  await page.getByRole('dialog').getByLabel('Titre').fill('Mes typologies')
+  await page.getByRole('dialog').getByLabel('Partager avec l’équipe').check()
+  await page.getByRole('dialog').getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByRole('heading', { level: 2, name: 'Mes typologies' })).toBeVisible()
+  const e = ecritures.filter((x) => x.table === 'rpc/enregistrer_rapport').at(-1)!.corps as { p_titre: string; p_partage: boolean; p_modele: boolean; p_definition: { lignes: string; indicateurs: string[]; colonnes: string; periode: { type: string }; filtres: Record<string, string[]> } }
+  expect(e.p_titre).toBe('Mes typologies')
+  expect(e.p_partage).toBe(true)
+  expect(e.p_modele).toBe(false)
+  expect(e.p_definition).toMatchObject({ lignes: 'typologie', colonnes: 'mois', periode: { type: 'douze' }, filtres: { contrat: ['Franchisé'] } })
+  expect(e.p_definition.indicateurs).toContain('tachesRetard')
+  if (!isMobile) await expect(page.getByRole('list', { name: 'Mes rapports' })).toContainText('Mes typologies')
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+
+  // Supprimer son rapport
+  await page.getByRole('button', { name: 'Supprimer ce rapport' }).click()
+  await expect(page.getByText('Rapport supprimé')).toBeVisible()
+  expect(ecritures.some((x) => x.table === 'rpc/supprimer_rapport')).toBe(true)
+})
+
+test('Pilotage : glisser un indicateur et un axe sur PC', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Le glisser-déposer est réservé au PC')
+  await seConnecter(page, { rapports: [] })
+  await page.goto('./#/pilotage')
+  await expect(page.getByRole('heading', { level: 2, name: 'Budget contre réel par magasin' })).toBeVisible()
+  const champs = page.getByRole('complementary', { name: 'Champs du rapport' })
+  await champs.getByRole('button', { name: 'Panier moyen HT Cave', exact: true }).dragTo(page.getByRole('group', { name: /^Indicateurs/ }))
+  await expect(tableau(page).getByRole('columnheader', { name: 'Panier moyen HT Cave' })).toBeVisible()
+  await champs.getByRole('button', { name: 'Zone de chalandise', exact: true }).dragTo(page.getByRole('group', { name: 'Lignes' }))
+  await expect(tableau(page).getByRole('columnheader', { name: 'Zone de chalandise' })).toBeVisible()
+  // Thème Nine box présent pour l'équipe
+  await champs.getByRole('button', { name: 'Nine box et santé' }).click()
+  await expect(champs.getByRole('button', { name: 'Note Résultats (sur 3)', exact: true })).toBeVisible()
+})
+
+test('Pilotage : le Directeur propose un rapport à tout le réseau', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Même enregistrement que sur PC')
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, rapports: [] })
+  await page.goto('./#/pilotage')
+  await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
+  await page.getByRole('dialog').getByLabel('Titre').fill('Budget du réseau')
+  await page.getByRole('dialog').getByLabel('Proposer à tout le réseau (franchisés compris)').check()
+  await page.getByRole('dialog').getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByRole('list', { name: 'Proposés par le siège' })).toContainText('Budget du réseau')
+  const e = ecritures.filter((x) => x.table === 'rpc/enregistrer_rapport').at(-1)!.corps as { p_modele: boolean }
+  expect(e.p_modele).toBe(true)
+})
+
+test('Pilotage : écart au budget calculé depuis les budgets du pilotage', async ({ page }) => {
+  await seConnecterAvecBudgets(page, {}, { rapports: [] })
+  await page.goto('./#/pilotage')
+  await expect(page.getByRole('heading', { level: 2, name: 'Budget contre réel par magasin' })).toBeVisible()
+  await expect(tableau(page).getByRole('columnheader', { name: 'Écart du CA au budget' })).toBeVisible()
+  // Budget validé, budget en discussion, magasin sans budget : statut et CA budgété lus du schéma pilotage
+  await expect(tableau(page).getByRole('row', { name: /^Brionne-sur-Lac/ })).toContainText('Validé')
+  await expect(tableau(page).getByRole('row', { name: /^Brionne-sur-Lac/ }).getByRole('cell').nth(2)).toHaveText(/\d €$/)
+  await expect(tableau(page).getByRole('row', { name: /^Valcourt/ })).toContainText('En discussion')
+  await expect(tableau(page).getByRole('row', { name: /^Saint-Aubin-des-Prés/ })).toContainText('Sans budget')
+})
+
+test('Pilotage du franchisé : son magasin seul, sans nine box ni axes de l’équipe', async ({ page, isMobile }) => {
+  const rapports: RapportSimule[] = [
+    { id: 1, titre: 'Modèle du siège', definition: { indicateurs: ['ca', 'caseNineBox'], lignes: 'coach' }, modele: true, partage: false, auteur: 'Directeur', role: 'directeur' },
+    { id: 2, titre: 'Rapport du Coach', definition: { indicateurs: ['ca'] }, modele: false, partage: true, auteur: 'Coach', role: 'coach' },
+  ]
+  await simulerSupabase(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, rapports })
+  await page.goto('./')
+  await page.getByLabel('Email').fill(COMPTE.email)
+  await page.getByLabel('Mot de passe').fill(COMPTE.motDePasse)
+  await page.getByRole('button', { name: 'Se connecter' }).click()
+  await page.getByRole('heading', { level: 1 }).first().waitFor()
+  await page.goto('./#/pilotage')
+  await expect(page.getByRole('heading', { level: 1, name: 'Pilotage' })).toBeVisible()
+  await expect(page.getByText('1 magasin', { exact: false }).first()).toBeVisible()
+  // Les rapports de l'équipe et ceux réservés à l'équipe n'apparaissent pas
+  if (isMobile) {
+    await page.getByRole('combobox', { name: 'Rapport' }).click()
+    await expect(page.getByRole('option', { name: 'Modèle du siège' })).toBeVisible()
+    await expect(page.getByRole('option', { name: 'Rapport du Coach' })).toHaveCount(0)
+    await expect(page.getByRole('option', { name: 'Nine box et résultats' })).toHaveCount(0)
+    await page.getByRole('option', { name: 'Modèle du siège' }).click()
+  } else {
+    const siege = page.getByRole('list', { name: 'Proposés par le siège' })
+    await expect(siege).toContainText('Modèle du siège')
+    await expect(siege).not.toContainText('Nine box et résultats')
+    await expect(page.getByText('Rapport du Coach')).toHaveCount(0)
+    await siege.getByRole('button', { name: 'Modèle du siège' }).click()
+  }
+  // Le modèle lui arrive sans la nine box et regroupé par magasin
+  await expect(tableau(page).getByRole('columnheader', { name: 'Case de la nine box' })).toHaveCount(0)
+  await expect(tableau(page).getByRole('columnheader', { name: 'Magasin' })).toBeVisible()
+  await expect(tableau(page).getByRole('row')).toHaveCount(2)
+  await ouvrirConstructeur(page)
+  await page.getByRole('group', { name: /^Indicateurs/ }).getByRole('button', { name: 'Ajouter' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Case de la nine box' })).toHaveCount(0)
+  await expect(page.getByRole('menuitem', { name: 'Tâches en retard' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.getByRole('group', { name: 'Lignes' }).getByRole('combobox').click()
+  await expect(page.getByRole('option', { name: 'Coach', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('option', { name: 'Typologie', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+})

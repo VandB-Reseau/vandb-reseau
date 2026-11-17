@@ -9,6 +9,17 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Onglet « Pilotage » (Joseph, 17/11/2026, propositions 286 à 292), **migration `0050_rapports_pilotage.sql` à passer** :
+  nouvelle entrée du menu (équipe et franchisé) pour faire ses rapports, graphes et tableaux croisés sur tous les sujets :
+  ventes de la caisse (Cave et Bar séparés), budget et résultat (écart au budget, EBE, % frais de personnel, stock),
+  marché extérieur, nine box et santé (équipe seule), animation (visites, tâches ouvertes, en retard, bloquées, faites à
+  l'heure, priorités, opérations). Regroupement et filtres par magasin, RR, Coach, groupe budgétaire, typologie, zone de
+  chalandise, licence, franchisé ou intégré, ancienneté, département, statut du budget, case de la nine box. Période : le
+  mois, depuis janvier, 12 mois, quadrimestre ou année, avec les mois ou quadrimestres en colonnes. Indicateurs en
+  parallèle (un graphe chacun), glisser-déposer sur PC, rapports proposés par le siège, rapports de chacun enregistrés
+  et partagés avec l'équipe, lien à partager, export Excel, impression. Le franchisé n'a que son magasin, sans nine box
+  ni axes de l'équipe.
+
 - Proportions des chiffres (Joseph, 17/11/2026), sans migration : dans « Le point » (Mon point du jour sur téléphone,
   colonne de l'accueil sur PC), les valeurs sont à la taille de leur libellé ; dans l'offre 5 + 1, « 1 client sur X
   suffit » passe à la taille des chiffres clés (20 px téléphone, 22 px PC) ; sur téléphone, le bandeau de synthèse

@@ -31,6 +31,8 @@ import SupportAgentOutlined from '@mui/icons-material/SupportAgentOutlined'
 import SupportAgent from '@mui/icons-material/SupportAgent'
 import CalculateOutlined from '@mui/icons-material/CalculateOutlined'
 import Calculate from '@mui/icons-material/Calculate'
+import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
+import Insights from '@mui/icons-material/Insights'
 
 export interface Destination {
   chemin: string
@@ -76,7 +78,9 @@ export const budgetPrevisionnel: Destination = { chemin: '/budgets', libelle: 'B
 export const simulateursEquipe: Destination = { chemin: '/simulateurs', libelle: 'Simulateurs', court: 'Simuler', description: 'Simuler pour un magasin, ou un levier sur plusieurs magasins', icone: <CalculateOutlined />, iconeActive: <Calculate />, sprint: 'Choix 157' }
 // Marché extérieur (Joseph, 16/11/2026) : le plan d'action d'un magasin, aussi depuis le menu, comme les Simulateurs
 export const marcheExterieur: Destination = { chemin: '/marche-exterieur', libelle: 'Marché extérieur', court: 'Extérieur', description: 'Repérer les entreprises et prescripteurs autour d’un magasin, bâtir son plan d’action', icone: <HandshakeOutlined />, iconeActive: <Handshake />, sprint: 'Marché extérieur' }
-export const secondaires: Destination[] = [demandes, chiffres, budgetPrevisionnel, simulateursEquipe, marcheExterieur, agenda]
+// Pilotage (Joseph, 17/11/2026, propositions 286 à 292) : rapports, graphes et tableaux croisés sur tous les sujets
+export const pilotageRapports: Destination = { chemin: '/pilotage', libelle: 'Pilotage', court: 'Pilotage', description: 'Rapports, graphes et tableaux croisés sur tous les indicateurs', icone: <InsightsOutlined />, iconeActive: <Insights />, sprint: 'Pilotage' }
+export const secondaires: Destination[] = [demandes, chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur, agenda]
 export const pourRole = (liste: Destination[], role: string | undefined) => liste.filter((d) => !d.roles || (!!role && d.roles.includes(role)))
 
 // Réglages : Équipe et Paramètres. Évolution du parc est une vue de Magasins depuis la refonte (Joseph, 09/11/2026, 2A)
@@ -93,7 +97,7 @@ export interface Rubrique { titre: string; destinations: Destination[] }
 export function rubriquesMenu(_sansParametres?: boolean): Rubrique[] {
   return [
     { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
-    { titre: 'Réseau', destinations: [magasins, visites, chiffres, budgetPrevisionnel, simulateursEquipe, marcheExterieur] },
+    { titre: 'Réseau', destinations: [magasins, visites, chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur] },
     { titre: 'Siège', destinations: [infosReseau, demandes] },
   ]
 }
@@ -103,7 +107,7 @@ export const demandesFranchise: Destination = { ...demandes, libelle: 'Mes deman
 export const menuTelephone = (role: string | undefined) => menuTelephoneRubriques(role).flatMap((r) => r.destinations)
 // Vague 6 (Joseph, 10/11/2026) : le menu du compte sur téléphone rangé comme le menu du PC, en rubriques
 export const menuTelephoneRubriques = (role: string | undefined): Rubrique[] => [
-  { titre: 'Réseau', destinations: pourRole([visites, chiffres, budgetPrevisionnel, simulateursEquipe, marcheExterieur], role) },
+  { titre: 'Réseau', destinations: pourRole([visites, chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur], role) },
   { titre: 'Siège', destinations: pourRole([infosReseau, demandes], role) },
 ].filter((r) => r.destinations.length)
 
@@ -115,6 +119,7 @@ export const espaceFranchise: Destination[] = [
   // Choix 125 (Joseph, 13/11/2026) : embaucher, faire une promo, investir… chiffres en main
   { chemin: '/simulateurs', libelle: 'Simulateurs', court: 'Simuler', description: 'Embauche, promo, trésorerie, vente additionnelle, soirée, achat, investissement', icone: <CalculateOutlined />, iconeActive: <Calculate />, sprint: 'Choix 125' },
   { ...marcheExterieur, description: 'Repérer les entreprises et prescripteurs autour de mon magasin, bâtir mon plan d’action' },
+  { ...pilotageRapports, description: 'Rapports, graphes et tableaux de mon magasin' },
   { ...messages, description: 'Mes magasins et mon équipe' },
   taches,
   demandesFranchise,
@@ -124,8 +129,8 @@ export const espaceFranchise: Destination[] = [
 // (Mon budget, Mes demandes, Bonnes pratiques)
 // Vague 8 (109A) : le menu du franchisé en deux rubriques, comme celui de l'équipe
 export const rubriquesFranchise = (liste: Destination[]): Rubrique[] => [
-  { titre: 'Mon magasin', destinations: liste.filter((d) => ['/', '/magasins', '/budgets', '/simulateurs', '/marche-exterieur', '/taches'].includes(d.chemin)) },
-  { titre: 'Échanger', destinations: liste.filter((d) => !['/', '/magasins', '/budgets', '/simulateurs', '/marche-exterieur', '/taches'].includes(d.chemin)) },
+  { titre: 'Mon magasin', destinations: liste.filter((d) => ['/', '/magasins', '/budgets', '/pilotage', '/simulateurs', '/marche-exterieur', '/taches'].includes(d.chemin)) },
+  { titre: 'Échanger', destinations: liste.filter((d) => !['/', '/magasins', '/budgets', '/pilotage', '/simulateurs', '/marche-exterieur', '/taches'].includes(d.chemin)) },
 ].filter((r) => r.destinations.length)
 export const barreFranchise = (liste: Destination[]) => liste.filter((d) => ['/', '/magasins', '/echanges', '/taches'].includes(d.chemin))
 export const plusFranchise = (liste: Destination[]) => liste.filter((d) => !['/', '/magasins', '/echanges', '/taches'].includes(d.chemin))
