@@ -23,7 +23,7 @@ import { Blason } from '../components/Blason'
 import { TableauActivite } from '../components/TableauActivite'
 import { filDu } from '../data/fil'
 import { Puces } from '../components/Social'
-import { SituationMagasin } from '../components/SyntheseMagasin'
+import { AFaireMagasin, SituationMagasin } from '../components/SyntheseMagasin'
 import { statutLibelle } from '../data/modele'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -61,10 +61,9 @@ import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
 import { libelleResponsable, libelleTypeVisite, nomsVisiteurs, type Magasin, type Reseau, type Visite } from '../data/modele'
 import { DialogVisite } from '../components/DialogVisite'
 import { EnvoyerCompteRendu } from '../components/EnvoyerCompteRendu'
-import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { CampagnesMagasin } from '../components/Campagnes'
 import { campagnesDuMagasin } from '../data/campagnes'
-import { DialogAction, ListeActions } from '../components/Actions'
+import { DialogAction } from '../components/Actions'
 import { BoutonVisite } from '../components/BoutonVisite'
 import { ListeAssocies } from '../components/Associes'
 import { useDroits } from '../auth/Droits'
@@ -77,7 +76,7 @@ import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import { lienFil } from '../data/messagerie'
 import { useConversationLaterale } from '../components/ConversationLaterale'
-import { anneeDe, libellePasVu, lienCompteRendu, lienVisite, suiviRythme, visitesDuMagasin } from '../data/visites'
+import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import PhoneInTalkOutlined from '@mui/icons-material/PhoneInTalkOutlined'
@@ -86,10 +85,9 @@ import RateReviewOutlined from '@mui/icons-material/RateReviewOutlined'
 import { ContenuLeviers, ListeInspirations } from '../components/Leviers'
 import { inspirationsDu, leviersDuMagasin, libellesLevier, useReperesReseau } from '../data/leviers'
 import { DialogChiffres, GraphiqueCA, PastilleAlerte, PastilleAppel } from '../components/Chiffres'
-import { Contact, DansCarte, Ligne, Repliee, Section } from '../components/Section'
+import { Contact, DansCarte, Ligne, Repliee, Section, styleBloc, styleEnteteBloc } from '../components/Section'
 import Collapse from '@mui/material/Collapse'
 import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
-import { prioritesActives } from '../data/planAction'
 import { filRetenu, ongletRetenu, retenirFil, retenirOnglet } from '../lib/ficheMemoire'
 import { SectionExterieur, SectionRedressement } from '../components/ExterieurRedressement'
 import { SectionReunionsMagasin } from '../components/Reunions'
@@ -284,7 +282,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         {/* Maquette 264 (Joseph, 17/11/2026) : À faire et objectifs à gauche, comment va le magasin à droite ; les
             informations fixes du magasin dans le panneau « Infos du magasin » */}
         {vue === 'fiche' && (
-          <SituationMagasin reseau={reseau} m={m} objectifs={<SectionObjectifsPlan reseau={reseau} m={m} signaler={setConfirmation} />}
+          <SituationMagasin reseau={reseau} m={m} signaler={setConfirmation} objectifs={<SectionObjectifsPlan reseau={reseau} m={m} signaler={setConfirmation} />}
             manquants={manquants} completer={referentiels ? () => setEdition(true) : undefined}
             avant={aOuvrir(m, reseau.jour) ? <SectionOuverture reseau={reseau} m={m} signaler={setConfirmation} /> : undefined} />
         )}
@@ -292,7 +290,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         {/* Vague 3 (23A) : l'activité du magasin en un seul fil, « À venir » en tête */}
         {ongletDe(vue) === 'activite' && (
           <ActiviteMagasin reseau={reseau} m={m} filtre={filtreActivite(vue, params.get('fil'))} filtrer={(f) => setParams((p) => { retenirFil(f);  const n = new URLSearchParams(p); n.set('vue', 'activite'); if (f === 'tout') n.delete('fil'); else n.set('fil', f); return n }, { replace: true })}
-            actions={actions} signaler={setConfirmation} saisirVisite={saisirVisite} modifierVisite={setVisite} />
+            signaler={setConfirmation} saisirVisite={saisirVisite} modifierVisite={setVisite}
+            manquants={manquants} completer={referentiels ? () => setEdition(true) : undefined} />
         )}
 
         {vue === 'budget' && <OngletBudget nom={m.nom} mode="budget" />}
@@ -737,9 +736,9 @@ const FILTRES_ACTIVITE: { v: FiltreActivite; libelle: string; genres: string[] }
   { v: 'taches', libelle: 'Tâches', genres: ['tache'] },
   { v: 'journal', libelle: 'Notes et journal', genres: ['journal'] },
 ]
-function ActiviteMagasin({ reseau, m, filtre, filtrer, actions, signaler, saisirVisite, modifierVisite }: {
-  reseau: Reseau; m: Magasin; filtre: FiltreActivite; filtrer: (f: FiltreActivite) => void; actions: ReturnType<typeof actionsDuMagasin>
-  signaler: (message: string) => void; saisirVisite: () => void; modifierVisite: (v: Visite) => void
+function ActiviteMagasin({ reseau, m, filtre, filtrer, signaler, saisirVisite, modifierVisite, manquants, completer }: {
+  reseau: Reseau; m: Magasin; filtre: FiltreActivite; filtrer: (f: FiltreActivite) => void
+  signaler: (message: string) => void; saisirVisite: () => void; modifierVisite: (v: Visite) => void; manquants: number; completer?: () => void
 }) {
   const edition = useEditionJournal(reseau, m, signaler)
   // Repliées ; ouvertes d'office par un ancien lien « vue=campagnes »
@@ -748,41 +747,21 @@ function ActiviteMagasin({ reseau, m, filtre, filtrer, actions, signaler, saisir
     .sort((a, b) => (b.instant.length === 10 ? `${b.instant}T00:00:00` : b.instant).localeCompare(a.instant.length === 10 ? `${a.instant}T00:00:00` : a.instant)), [reseau, m])
   const genres = FILTRES_ACTIVITE.find((f) => f.v === filtre)!.genres
   const elements = genres.length ? tous.filter((e) => genres.includes(e.genre)) : tous
-  const prevues = reseau.visites.filter((v) => v.magasin === m.nom && v.date > reseau.jour).sort((a, b) => a.date.localeCompare(b.date))
-  // Choix 201 (Joseph, 15/11/2026) : une tâche à un seul endroit. Rattachée à une priorité en cours, elle vit sous la
-  // priorité (Vue d'ensemble) ; ici, les autres
-  const actives = new Set(prioritesActives(reseau, m.nom).map((p) => p.id))
-  const horsPlan = actions.filter((x) => !x.a.priorite || !actives.has(x.a.priorite))
-  const sousPriorites = actions.filter((x) => !x.a.faite && !!x.a.priorite && actives.has(x.a.priorite)).length
   const nbCampagnes = campagnesDuMagasin(reseau, m.nom, reseau.jour).length
   return (
-    // Maquette 265 (Joseph, 17/11/2026) : « À faire » en tête sur toute la largeur, puis l'historique en tableau
+    // Maquette 265 (Joseph, 17/11/2026) : « À faire » en tête sur toute la largeur, puis l'historique en tableau.
+    // Le bloc « À faire » est celui de la Vue d'ensemble, en entier (Joseph, 17/11/2026)
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)', alignItems: 'start' }}>
-      {/* Vague 7 (retour de Joseph, 10/11/2026) : un seul jeu d'actions, celles de l'en-tête de la fiche */}
-      <Section titre="À faire">
-        {prevues.map((v) => (
-          <Box key={v.id ?? v.date} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 48, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <EventAvailableOutlined sx={{ color: 'text.secondary' }} />
-            <Typography sx={{ flex: 1, minWidth: 0 }}><b>{libelleTypeVisite(v.type)} prévue</b> · {dateLongue(v.date)}{v.visiteurs.length ? ` · ${nomsVisiteurs(v)}` : ''}</Typography>
-            <Button component={RouterLink} to={lienVisite(v)} sx={{ minHeight: 48 }}>Ouvrir</Button>
-          </Box>
-        ))}
-        <ListeActions reseau={reseau} actions={horsPlan} signaler={signaler} libelle={`Tâches en cours de ${m.nom}`} magasins={[m.nom]} />
-        {sousPriorites > 0 && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minHeight: 48, mt: 1 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>{sousPriorites} tâche{sousPriorites > 1 ? 's' : ''} rattachée{sousPriorites > 1 ? 's' : ''} aux priorités</Typography>
-            <Button component={RouterLink} to={`${lienFiche(m.nom)}?vue=fiche`} sx={{ minHeight: 48 }}>Voir les priorités</Button>
-          </Box>
-        )}
-        <Box id="partie-campagnes" sx={{ mt: 1, pt: 1, borderTop: '1px solid', borderColor: 'divider', scrollMarginTop: 160 }}>
+      <AFaireMagasin reseau={reseau} m={m} signaler={signaler} manquants={manquants} completer={completer} complet>
+        <Box id="partie-campagnes" sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider', scrollMarginTop: 160 }}>
           <Button onClick={() => setCampagnes((c) => !c)} aria-expanded={campagnes} endIcon={<ExpandMoreOutlined sx={{ transform: campagnes ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }} />}
             sx={{ minHeight: 48, ml: -1, color: 'text.primary', fontWeight: 700 }}>Campagnes{nbCampagnes ? ` · ${nbCampagnes} en cours` : ''}</Button>
           <Collapse in={campagnes} unmountOnExit><CampagnesMagasin reseau={reseau} magasin={m.nom} signaler={signaler} /></Collapse>
         </Box>
-      </Section>
-      <Card component="section" aria-label="Historique" sx={{ px: { xs: 2, md: 3 }, pt: 2, pb: 1.5, minWidth: 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 1 }}>
-          <Typography component="h2" sx={{ fontWeight: 700, fontSize: echelle.section }}>Historique</Typography>
+      </AFaireMagasin>
+      <Card component="section" aria-label="Historique" sx={styleBloc}>
+        <Box sx={{ ...styleEnteteBloc, columnGap: 2 }}>
+          <Typography component="h2" sx={cartouche}>Historique</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mr: 'auto' }}>{filtre === 'visites' ? '' : `${elements.length} élément${elements.length > 1 ? 's' : ''}`}</Typography>
           <Puces label="Filtrer l’activité" valeur={filtre} onChange={filtrer} options={FILTRES_ACTIVITE.map((f) => ({ v: f.v, libelle: f.libelle }))} />
         </Box>

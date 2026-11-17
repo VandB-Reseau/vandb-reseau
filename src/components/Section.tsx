@@ -6,7 +6,6 @@ import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Tooltip from '@mui/material/Tooltip'
@@ -42,7 +41,10 @@ function SectionRepliee({ titre, children, action }: { titre: string; children: 
     </Card>
   )
 }
-export function Section({ titre, children, action }: { titre: string; children: ReactNode; action?: ReactNode }) {
+export const styleBloc = { px: { xs: 2, md: 3 }, pt: 2, pb: 2, minWidth: 0 } as const
+export const styleEnteteBloc = { display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 1, minHeight: 48, mb: 1 } as const
+// region : la carte est une zone nommée par son titre (blocs de la fiche magasin) ; sinon, l'écran qui l'entoure la nomme déjà
+export function Section({ titre, children, action, region = false }: { titre: string; children: ReactNode; action?: ReactNode; region?: boolean }) {
   const dansCarte = useContext(DansCarte)
   const repliee = useContext(Repliee)
   if (repliee && !dansCarte) return <SectionRepliee titre={titre} action={action}>{children}</SectionRepliee>
@@ -57,15 +59,15 @@ export function Section({ titre, children, action }: { titre: string; children: 
       </Box>
     )
   }
+  // Joseph (17/11/2026) : une seule carte de bloc dans toute l'app (marges, titre, bouton à droite), la même que la vue
+  // d'ensemble de la fiche magasin ; sur téléphone, le bouton passe sous le titre plutôt que de le couper
   return (
-    <Card>
-      <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Typography component="h2" sx={[cartouche, { mr: 'auto' }]}>{titre}</Typography>
-          {action}
-        </Box>
-        {children}
-      </CardContent>
+    <Card {...(region ? { component: 'section', 'aria-label': titre } : {})} sx={styleBloc}>
+      <Box sx={styleEnteteBloc}>
+        <Typography component="h2" sx={[cartouche, { mr: 'auto' }]}>{titre}</Typography>
+        {action}
+      </Box>
+      {children}
     </Card>
   )
 }
