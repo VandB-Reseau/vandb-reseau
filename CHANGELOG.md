@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Proportions des chiffres (Joseph, 17/11/2026), sans migration : dans « Le point » (Mon point du jour sur téléphone,
+  colonne de l'accueil sur PC), les valeurs sont à la taille de leur libellé ; dans l'offre 5 + 1, « 1 client sur X
+  suffit » passe à la taille des chiffres clés (20 px téléphone, 22 px PC) ; sur téléphone, le bandeau de synthèse
+  des simulateurs, plus petit et à l'écart du bouton « + », rentre dans le flux dès que le bloc Résultat est à l'écran.
 - J'aime retiré (Joseph, 17/11/2026), sans migration : le bouton « J'aime » ne se grise plus pendant l'envoi (il
   restait gris sur téléphone si la réponse tardait) ; il change tout de suite, le décompte suit, des gestes rapides
   finissent sur l'état voulu, et une réponse qui ne vient pas libère le bouton au bout de 15 s avec un message.

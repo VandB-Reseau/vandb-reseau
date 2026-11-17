@@ -552,7 +552,8 @@ function Indicateurs({ reseau, p, periode = 'mois', colonne = false }: { reseau:
           <ButtonBase key={t.cle} component={RouterLink} to={t.lien} aria-label={`${t.libelle} : ${t.valeur}, ${t.detail}`}
             sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 1.5, alignItems: 'baseline', width: '100%', textAlign: 'left', px: 2, py: 1.25, minHeight: 64, color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }}>
             <Typography sx={{ fontWeight: 600, minWidth: 0 }} noWrap>{t.libelle}</Typography>
-            <Typography sx={{ fontWeight: 700, fontSize: '1.125rem', fontVariantNumeric: 'tabular-nums', color: t.couleur, whiteSpace: 'nowrap' }}>{t.valeur}</Typography>
+            {/* Proportions (Joseph, 17/11/2026) : la valeur à la taille du libellé, en gras, plus en plus grand */}
+            <Typography sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: t.couleur, whiteSpace: 'nowrap' }}>{t.valeur}</Typography>
             <Typography variant="body2" sx={{ gridColumn: '1 / -1', color: t.couleurDetail ?? 'text.secondary', fontWeight: t.couleurDetail ? 600 : 400 }}>{t.detail}</Typography>
           </ButtonBase>
         ))}

@@ -1,4 +1,5 @@
 import { Children, isValidElement, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { styleChiffre } from '../../theme/theme'
 import { useSearchParams } from 'react-router-dom'
 import { useReseauSiDispo } from '../../data/ReseauContext'
 import { chiffresDuMagasin } from '../../data/chiffres'
@@ -563,6 +564,15 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   const [compares, setCompares] = useState<number[]>([]) // 192 : 2 ou 3 simulations gardées côte à côte
   const comparees = compares.map((id) => gardees?.find((g) => g.id === id)).filter((g): g is SimulationGardee => !!g)
   const [nom, setNom] = useState('')
+  // Le bandeau collant du téléphone s'efface dès que le bloc Résultat est à l'écran : il ne le recouvre plus (Joseph, 17/11/2026)
+  const [blocResultat, setBlocResultat] = useState<HTMLElement | null>(null)
+  const [resultatEnVue, setResultatEnVue] = useState(false)
+  useEffect(() => {
+    if (!blocResultat || typeof IntersectionObserver === 'undefined') { setResultatEnVue(false); return }
+    const obs = new IntersectionObserver(([x]) => setResultatEnVue(x.isIntersecting), { threshold: 0 })
+    obs.observe(blocResultat)
+    return () => obs.disconnect()
+  }, [blocResultat])
   const [message, setMessage] = useState<{ texte: string; bon: boolean } | null>(null)
   const [occupe, setOccupe] = useState(false)
   // 184 · Du simulateur à la priorité : l'équipe (pas le franchisé, pas en aperçu) pose la priorité depuis la simulation
@@ -876,7 +886,8 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       resultats = lot ? (
         <Stack spacing={2}>
           <Box className="effort-lot" component="section" aria-label="L’effort demandé" sx={{ borderRadius: '12px', bgcolor: 'action.hover', px: 2, py: 1.5 }}>
-            <Typography sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' }, fontWeight: 800, lineHeight: 1.15, fontVariantNumeric: 'tabular-nums' }}>{effort}</Typography>
+            {/* Proportions (Joseph, 17/11/2026) : la phrase clé à la taille des chiffres clés de l'app, plus démesurée */}
+            <Typography sx={styleChiffre}>{effort}</Typography>
             <Typography sx={{ mt: 0.5 }}>
               {lot.seuil === null ? `Un client qui passe de ${entier(e.milieu)} bouteilles au ${nomLot} coûte plus qu’il ne rapporte : il faut plus de ${taux(lot.margeMini)} de marge.`
                 : lot.seuil === 0 ? `Chaque client qui prend le lot au lieu de ${entier(e.milieu)} bouteilles ajoute ${centimes(lot.gainParClient)} de marge.`
@@ -2187,15 +2198,15 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         ) : (
           <>
             {saisies}
-            {resultats && <Bloc titre="Résultat">{resultats}</Bloc>}
+            {resultats && <Box ref={setBlocResultat} sx={{ minWidth: 0 }}><Bloc titre="Résultat">{resultats}</Bloc></Box>}
             {/* 189 : le résultat reste en vue pendant la saisie, en haut de la carte sur PC, en bas de l'écran sur téléphone */}
             {phrase && (
               <Box role="status" sx={{
-                order: { md: -1 }, position: 'sticky', zIndex: 2, top: { xs: 'auto', md: 'calc(var(--onglets, 0px) + 8px)' }, bottom: { xs: 'calc(var(--barre-basse, 0px) + 8px)', md: 'auto' },
+                order: { md: -1 }, position: { xs: resultatEnVue ? 'static' : 'sticky', md: 'sticky' }, zIndex: 2, mr: { xs: resultatEnVue ? 0 : 7, md: 0 }, top: { xs: 'auto', md: 'calc(var(--onglets, 0px) + 8px)' }, bottom: { xs: 'calc(var(--barre-basse, 0px) + 8px)', md: 'auto' },
                 bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderLeft: 4, borderLeftColor: 'secondary.main', borderRadius: '10px', boxShadow: 3, px: 2, py: 1.25,
                 '@media print': { position: 'static', boxShadow: 'none' },
               }}>
-                <Typography sx={{ fontWeight: 600, fontSize: '1rem', maxWidth: '75ch' }}>{phrase}</Typography>
+                <Typography sx={{ fontWeight: 600, fontSize: { xs: '0.875rem', md: '1rem' }, maxWidth: '75ch' }}>{phrase}</Typography>
               </Box>
             )}
             {phrase && (
