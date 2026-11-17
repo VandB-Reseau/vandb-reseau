@@ -35,7 +35,8 @@ const pratiques = [
 // Choix 212 (15/11/2026) : l'Accueil porte seul le fil, avec ses filtres
 test('accueil : les filtres des Actualités ont le même rendu', async ({ page, isMobile }) => {
   await seConnecter(page, { config: { bonnes_pratiques: pratiques }, reactionsVisites: { pouces: {}, commentaires: {} } })
-  void isMobile
+  // Téléphone (278, 17/11/2026) : les filtres du fil passent derrière un picto
+  test.skip(isMobile, 'Filtres du fil derrière un picto sur téléphone')
   await verifierFiltres(page.getByRole('region', { name: 'Actualités' }).getByRole('group', { name: 'Filtrer le fil' }), 'Tout')
 })
 

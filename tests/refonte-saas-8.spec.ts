@@ -28,7 +28,8 @@ test('l’actualité au premier plan de l’accueil, comme un réseau social', a
   await expect(fil).toBeVisible()
   // Le fil passe avant les indicateurs et avant À traiter ; sur téléphone, le fil seul (278), le point du jour est dans la barre du haut
   await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', 'Actualités')
-  await expect(fil.getByRole('button', { name: 'Communication' })).toBeVisible()
+  // Téléphone (278) : Communication se choisit en touchant le champ Partager
+  if (!isMobile) await expect(fil.getByRole('button', { name: 'Communication' })).toBeVisible()
   if (isMobile) {
     // Téléphone : les indicateurs s'ouvrent par le picto « Mon point du jour »
     await expect(page.getByRole('region', { name: 'Pilotage' })).toHaveCount(0)
@@ -43,7 +44,10 @@ test('l’actualité au premier plan de l’accueil, comme un réseau social', a
   }
   await lisible(page, isMobile)
   await page.screenshot({ path: `captures/${info.project.name}-vague8-accueil-actualites.png` })
-  await fil.getByRole('button', { name: 'Communication' }).click()
+  if (isMobile) {
+    await fil.getByRole('button', { name: 'Partager une réussite du terrain' }).click()
+    await page.getByRole('menuitem', { name: 'Communication' }).click()
+  } else await fil.getByRole('button', { name: 'Communication' }).click()
   await expect(page.getByRole('dialog', { name: 'Nouvelle communication' })).toBeVisible()
 })
 

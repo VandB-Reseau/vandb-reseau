@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Accueil téléphone au plus près de la maquette 278 (Joseph, 17/11/2026), sans migration, rien ne change sur PC : le
+  nombre rouge du picto « Mon point du jour » ne compte que les urgences ; plus de titres « Accueil » et « Actualités »
+  visibles, le périmètre en puce d'une ligne ; « Partager » réduit à un champ (Bonne pratique ou Communication au
+  toucher) ; filtres du fil derrière un picto ; publications bord à bord séparées par un fin espace.
 - Marché extérieur (Joseph, 17/11/2026), sans migration : une tâche née du plan porte l'étiquette « Marché extérieur :
   cible » dans les listes de tâches, et la mention dans les lignes compactes (Accueil, espace du franchisé).
 - Vue d'ensemble de la fiche magasin allégée, maquette 264 (Joseph, 17/11/2026), sans migration : à gauche « À faire »

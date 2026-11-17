@@ -11,10 +11,11 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
 })
 
-test('le titre de chaque onglet est à la même place, sans grand blanc au-dessus', async ({ page }) => {
+test('le titre de chaque onglet est à la même place, sans grand blanc au-dessus', async ({ page, isMobile }) => {
   await seConnecter(page)
   const positions: number[] = []
-  for (const [chemin, titre] of [['/', 'Accueil'], ['/magasins', 'Magasins'], ['/visites', 'Visites'], ['/plus/sante', 'Santé du parc'], ['/echanges', 'Messages'], ['/taches', 'Tâches'], ['/plus/agenda', 'Agenda']]) {
+  // Téléphone (maquette 278, 17/11/2026) : l'Accueil n'affiche pas de titre, le fil commence tout de suite
+  for (const [chemin, titre] of [...(isMobile ? [] : [['/', 'Accueil']]), ['/magasins', 'Magasins'], ['/visites', 'Visites'], ['/plus/sante', 'Santé du parc'], ['/echanges', 'Messages'], ['/taches', 'Tâches'], ['/plus/agenda', 'Agenda']]) {
     await page.goto(`./#${chemin}`)
     const h1 = page.getByRole('heading', { level: 1, name: titre })
     await expect(h1).toBeVisible()

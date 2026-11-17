@@ -7,6 +7,10 @@ import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
+import { visuellementCache } from '../lib/accessibilite'
+import FilterListOutlined from '@mui/icons-material/FilterListOutlined'
 import Tooltip from '@mui/material/Tooltip'
 import CheckOutlined from '@mui/icons-material/CheckOutlined'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -60,6 +64,7 @@ import { libelleMois } from '../data/chiffres'
 import type { Profil } from '../auth/roles'
 import { libelleTypeVisite } from '../data/modele'
 import { PageHeader } from '../components/PageHeader'
+import { SelecteurPerimetre } from '../components/SelecteurPerimetre'
 import { rappelsVisites } from '../data/ordreDuJour'
 import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined'
 import RateReviewOutlined from '@mui/icons-material/RateReviewOutlined'
@@ -642,7 +647,7 @@ export function PublicationFil({ e, jour, sansMagasin = false, ouvrir }: { e: El
 // Connaissances des communications, pour le geste « J'ai pris connaissance » du franchisé dans le fil
 export interface ConnaissancesDuFil { carte: Map<number, Connaissance> | null; franchise: boolean; recharger: () => void }
 
-export function FilActivite({ elements, jour, sansMagasin = false, sansFiltre = false, titre = 'Actualités', communications, reactionsPratiques, reactionsVisites, action, ouvrirJournal, limite, lienTout, social = false, partager, connaissances }: {
+export function FilActivite({ elements, jour, sansMagasin = false, sansFiltre = false, titre = 'Actualités', communications, reactionsPratiques, reactionsVisites, action, ouvrirJournal, limite, lienTout, social = false, partager, connaissances, telephone = false }: {
   elements: ElementFil[]; jour: string; sansMagasin?: boolean; sansFiltre?: boolean; titre?: string; communications?: CommunicationsDuFil; reactionsPratiques?: ReactionsPratiques | null
   reactionsVisites?: ReactionsVisites | null
   action?: ReactNode; ouvrirJournal?: (e: ElementFil) => void
@@ -652,11 +657,15 @@ export function FilActivite({ elements, jour, sansMagasin = false, sansFiltre = 
   // social : fil d'actualité façon réseau social (Accueil, Actualités) : une carte par publication, repère « Nouveau »
   // depuis le dernier passage (211A) ; la fiche magasin garde son fil d'activité. 207A : « Partager » en tête ; 206A : prise de connaissance
   social?: boolean; partager?: ReactNode; connaissances?: ConnaissancesDuFil
+  // Accueil téléphone (maquette 278, Joseph 17/11/2026) : pas de titre visible, Partager en un champ, filtres derrière un
+  // picto, publications bord à bord séparées par un fin espace
+  telephone?: boolean
 }) {
   const { apercu, equipe } = useApercu()
   const [message, setMessage] = useState('')
   const [filtre, setFiltre] = useState<FiltreFil>('tout')
   const [nb, setNb] = useState(limite ?? PAS_FIL)
+  const [ancreFiltre, setAncreFiltre] = useState<HTMLElement | null>(null)
   const vuAvant = useDernierPassage(social && !apercu)
   const vus = elements.filter((e) => filtre === 'tout' || e.genre === filtre)
   // Visite, photos, tâches et messages d'un même magasin le même jour : une seule carte (Joseph, 21/10/2026) ;
@@ -697,13 +706,30 @@ export function FilActivite({ elements, jour, sansMagasin = false, sansFiltre = 
   }
   return (
     <Box component="section" aria-label={titre}>
-      <TitreSection action={action}>{titre}</TitreSection>
-      {partager}
-      {!sansFiltre && options.length > 2 && <BandeCollante><Puces valeur={filtre} options={options} onChange={(v) => { setFiltre(v); setNb(PAS_FIL) }} label="Filtrer le fil" /></BandeCollante>}
+      {telephone ? <Typography component="h2" sx={visuellementCache}>{titre}</Typography> : <TitreSection action={action}>{titre}</TitreSection>}
+      {telephone ? (
+        <>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+            {partager ?? <Box sx={{ flex: 1 }} />}
+            {!sansFiltre && options.length > 2 && (
+              <IconButton onClick={(ev) => setAncreFiltre(ev.currentTarget)} aria-label="Filtrer le fil" aria-haspopup="menu" sx={{ width: 48, height: 48, flexShrink: 0 }}>
+                <Badge color="secondary" variant="dot" invisible={filtre === 'tout'}><FilterListOutlined /></Badge>
+              </IconButton>
+            )}
+          </Box>
+          <Menu anchorEl={ancreFiltre} open={!!ancreFiltre} onClose={() => setAncreFiltre(null)} slotProps={{ list: { 'aria-label': 'Filtrer le fil' } }}>
+            {options.map((o) => <MenuItem key={o.v} selected={o.v === filtre} onClick={() => { setAncreFiltre(null); setFiltre(o.v); setNb(PAS_FIL) }} sx={{ minHeight: 48 }}>{o.libelle}</MenuItem>)}
+          </Menu>
+          {filtre !== 'tout' && <Box sx={{ mb: 1.5 }}><Button variant="outlined" color="inherit" endIcon={<CloseOutlined />} onClick={() => { setFiltre('tout'); setNb(PAS_FIL) }} aria-label={`Retirer le filtre ${options.find((o) => o.v === filtre)?.libelle ?? ''}`} sx={{ minHeight: 48, borderRadius: 999 }}>{options.find((o) => o.v === filtre)?.libelle}</Button></Box>}
+        </>
+      ) : <>
+        {partager}
+        {!sansFiltre && options.length > 2 && <BandeCollante><Puces valeur={filtre} options={options} onChange={(v) => { setFiltre(v); setNb(PAS_FIL) }} label="Filtrer le fil" /></BandeCollante>}
+      </>}
       {!vus.length ? (
         <CarteLignes><LigneCompacte avatar={<Initiales nom="fil" icone={<HistoryOutlined />} />} titre="Rien de nouveau" detail="Les comptes rendus et les communications des dernières semaines s’afficheront ici." /></CarteLignes>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, ...(telephone ? { gap: 0.75, mx: -2, '& > .MuiCard-root': { borderRadius: 0, borderLeft: 0, borderRight: 0 }, '& > [role="separator"]': { px: 2 } } : {}) }}>
           {affiches.map(([e, ...reste], i) => {
             const carte = social && estPublication(e) ? (
               <CartePublication key={e.cle} e={e} jour={jour} sansMagasin={sansMagasin} nouveau={estNouveau(e)}
@@ -758,11 +784,13 @@ function PointTelephone({ items, taches, children }: { items: ATraiter[]; taches
   const [ouvert, setOuvert] = useState(false)
   const [cible, setCible] = useState<HTMLElement | null>(null)
   useEffect(() => { setCible(document.getElementById('entete-actions-page')) }, [])
-  const resume = [items.length ? `${items.length} à traiter` : '', taches.length ? `${taches.length} tâche${taches.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ') || 'rien d’urgent'
+  // Le nombre rouge ne compte que les urgences (pastille rouge) ; le reste attend dans la page (Joseph 17/11/2026)
+  const urgences = items.filter((x) => x.pastille?.ton === 'rouge').length
+  const resume = [items.length ? `${items.length} à traiter` : '', urgences ? `dont ${urgences} urgence${urgences > 1 ? 's' : ''}` : '', taches.length ? `${taches.length} tâche${taches.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ') || 'rien d’urgent'
   const bouton = (
     <Tooltip title="Mon point du jour">
       <IconButton onClick={() => setOuvert(true)} aria-label={`Mon point du jour, ${resume}`} aria-haspopup="dialog" aria-expanded={ouvert} sx={{ width: 48, height: 48, flexShrink: 0 }}>
-        <Badge color="error" badgeContent={items.length} max={99}><TodayOutlined /></Badge>
+        <Badge color="error" badgeContent={urgences} max={99}><TodayOutlined /></Badge>
       </IconButton>
     </Tooltip>
   )
@@ -814,9 +842,9 @@ function Tableau({ reseau, p, sansParametres = false, periode, barrePeriode }: {
   // 15/11/2026 (204A à 211A) : le fil façon réseau social. « Partager » en tête du fil, une publication par carte, repère
   // « Nouveau » ; sur téléphone, le point du jour se replie en une bande au-dessus d'un fil qui défile sans fin.
   const peutPublier = profil?.role === 'directeur' || profil?.role === 'rr'
-  const partager = <BarrePartager moi={monNomPorteur(reseau, profil) || profil?.nom || ''} franchise={false} communication={peutPublier} reseau={reseau} apres={communications.recharger} />
+  const partager = <BarrePartager moi={monNomPorteur(reseau, profil) || profil?.nom || ''} franchise={false} communication={peutPublier} reseau={reseau} apres={communications.recharger} compact={!surPC} />
   // Choix 212 (15/11/2026) : l'Accueil porte seul le fil, avec ses filtres (l'onglet Fil d'Actualités est retiré)
-  const filActu = <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" social partager={partager} communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
+  const filActu = <FilActivite elements={fil} jour={reseau.jour} titre="Actualités" social telephone={!surPC} partager={partager} communications={communications} reactionsPratiques={reactionsPratiques} reactionsVisites={reactionsVisites} />
   if (!surPC) return (
     <>
       {aLaUne}
@@ -891,7 +919,11 @@ export function Accueil() {
   const barre = <BarrePeriode valeur={periode} onChange={choisir} sx={{ ml: 'auto' }} />
   return (
     <>
-      <PageHeader titre="Accueil" actions={surPC ? barre : undefined} />
+      {/* 278 (Joseph 17/11/2026) : sur téléphone, pas de titre visible, le périmètre en puce, le fil tout de suite */}
+      {surPC ? <PageHeader titre="Accueil" actions={barre} /> : <>
+        <Typography variant="h1" sx={visuellementCache}>Accueil</Typography>
+        {!!profil && profil.role !== 'franchise' && <Box sx={{ mb: 1, '&:empty': { display: 'none' } }}><SelecteurPerimetre compact /></Box>}
+      </>}
       <AvecReseau>{(r) => <Tableau reseau={r} p={p} sansParametres={p.type !== 'reseau'} periode={periode} barrePeriode={surPC ? undefined : barre} />}</AvecReseau>
     </>
   )
