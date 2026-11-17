@@ -2,11 +2,10 @@ import { expect, test } from '@playwright/test'
 import { meilleursLeviers } from '../../../src/pilotage/moteur/leviers'
 import type { Budget } from '../../../src/pilotage/moteur/types'
 import { constater, moisSuivant } from '../../../src/data/planAction'
-import { bilanOperation, statsOperations, type Operation } from '../../../src/data/operations'
 import type { ChiffreMois } from '../../../src/data/chiffres'
 
 // Choix 183 à 185 (Joseph, 15/11/2026) : meilleur levier, mesure en caisse d'une priorité, bilan d'une opération
-// commerciale. Magasin fictif, chaque résultat se vérifie à la main.
+// commerciale (185, retiré le 17/11/2026). Magasin fictif, chaque résultat se vérifie à la main.
 const proche = (v: number | null | undefined, attendu: number) => expect(v).toBeCloseTo(attendu, 2)
 
 // Cave : 600 000 € HT, marge 40 %, 20 000 tickets, panier 36 € TTC (600 000 × 1,2 ÷ 20 000).
@@ -57,25 +56,4 @@ test('184 : le constaté est l’écart moyen face à l’an passé, sur les moi
   proche(ca?.ecart, 2_500); proche(ca?.part, 0.5); expect(ca?.atteint).toBe(false)
   // Aucun mois clos depuis le départ : pas encore de constat
   expect(constater(chiffres, { indicateur: 'ca', attendu: 1, depuis: '2026-10', source: '' })).toBeNull()
-})
-
-test('185 : bilan d’une opération, face à l’an passé et à la tendance des 3 mois d’avant', () => {
-  const chiffres = [
-    ligne('2025-06', 40_000), ligne('2025-07', 40_000), ligne('2025-08', 40_000), ligne('2025-09', 50_000),
-    ligne('2026-06', 42_000), ligne('2026-07', 42_000), ligne('2026-08', 42_000), ligne('2026-09', 56_000),
-  ]
-  const op: Operation = { id: 'o1', type: 'degustation', titre: 'Vins de Loire', jour: '2026-09-12', univers: 'cave', cout: 400, note: '', par: '', le: '' }
-  // Septembre + 12 % (56 000 ÷ 50 000), tendance + 5 % (126 000 ÷ 120 000) : effet + 7 pts,
-  // soit 56 000 − 50 000 × 1,05 = 3 500 € ; 3 500 ÷ 400 = 8,75 € par euro dépensé
-  const b = bilanOperation(chiffres, op)
-  expect(b.etat).toBe('mesure')
-  if (b.etat !== 'mesure') return
-  proche(b.evolution, 0.12); proche(b.tendance, 0.05); proche(b.effetPts, 0.07); proche(b.effetEuros, 3_500); proche(b.rendement, 8.75)
-  // Caisse du mois pas encore là ; pas d'an passé
-  expect(bilanOperation(chiffres, { ...op, jour: '2026-10-03' }).etat).toBe('attente')
-  expect(bilanOperation(chiffres.filter((c) => c.mois !== '2025-07'), op).etat).toBe('sans_comparaison')
-  // Réseau : la dégustation mesurée, la soirée en attente
-  const s = statsOperations({ chiffres: { A: chiffres, B: chiffres }, operations: { A: [op], B: [{ ...op, id: 'o2', type: 'soiree', jour: '2026-10-01', cout: 200 }] } }, ['A', 'B'])
-  expect(s.map((x) => x.type)).toEqual(['degustation', 'soiree'])
-  proche(s[0].effetMedian, 0.07); expect(s[0].positives).toBe(1); expect(s[1].mesurees).toBe(0); expect(s[1].coutMedian).toBe(200)
 })
