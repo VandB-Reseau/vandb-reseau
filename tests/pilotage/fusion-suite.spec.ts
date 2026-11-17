@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
-import { COMPTE, ouvrirOnglet, simulerSupabase, textesTropPetits, type OptionsSimulation } from '../supabase-simule'
+import { COMPTE, ouvrirInfosMagasin, ouvrirOnglet, simulerSupabase, textesTropPetits, type OptionsSimulation } from '../supabase-simule'
 import { magasinFictif } from './donnees-fictives'
 import { simulerPilotage, zonesTropPetites, type MagasinSimule, type OptionsSimulation as OptionsPilotage } from './supabase-simule'
 
@@ -68,6 +68,7 @@ test('sans la mise à jour 0039, les chiffres saisis restent lus comme avant', a
 test('le Directeur range le magasin dans un groupe budgétaire depuis sa fiche', async ({ page, isMobile }) => {
   const ecritures = await connecter(page, {}, {})
   await page.goto('./#/magasins/Annecy%20Test')
+  await ouvrirInfosMagasin(page) // maquette 264 (17/11/2026) : panneau « Infos du magasin »
   const champ = page.getByLabel('Groupe budgétaire')
   await expect(champ).toHaveText('Alpes')
   await champ.click()
@@ -83,6 +84,7 @@ test('le Directeur range le magasin dans un groupe budgétaire depuis sa fiche',
 test('le Coach lit le groupe sans le changer', async ({ page }) => {
   await connecter(page, { appMetadata: { role: 'coach', coach: 'Hugo FICTIF' } }, { role: 'coach' })
   await page.goto('./#/magasins/Annecy%20Test')
+  await ouvrirInfosMagasin(page) // maquette 264 (17/11/2026) : panneau « Infos du magasin »
   await expect(page.getByText('Groupe budgétaire', { exact: true })).toBeVisible()
   await expect(page.getByText('Alpes', { exact: true })).toBeVisible()
   await expect(page.getByLabel('Groupe budgétaire')).toHaveCount(0)
@@ -91,6 +93,7 @@ test('le Coach lit le groupe sans le changer', async ({ page }) => {
 test('sans groupe budgétaire créé, la fiche n’a pas la ligne', async ({ page }) => {
   await connecter(page, {}, { groupes: [] })
   await page.goto('./#/magasins/Annecy%20Test')
+  await ouvrirInfosMagasin(page) // maquette 264 (17/11/2026) : panneau « Infos du magasin »
   await expect(page.getByText('Code magasin')).toBeVisible()
   await expect(page.getByText('Groupe budgétaire')).toHaveCount(0)
 })
