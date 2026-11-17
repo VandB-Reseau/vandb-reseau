@@ -104,10 +104,12 @@ test('franchisé : une soirée se met dans le budget, la promo se lit en volume'
   expect(budget.ajustements.tempsForts).toEqual([{ nom: 'Soirée bières de Noël', type: 'soiree', mois: 12, univers: 'bar', caAnPasse: 0, ca: 847, autresCharges: 200, moisAchats: 11 }])
 })
 
-test('Coach : les simulateurs dans les chiffres du magasin, sans toucher au budget', async ({ page }) => {
+test('Coach : les simulateurs dans les chiffres du magasin, sans toucher au budget', async ({ page, isMobile }) => {
   const ecritures = await connecter(page, { appMetadata: { role: 'coach', coach: 'Hugo FICTIF' } }, { role: 'coach', simulations: [gardee] })
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=chiffres&partie=simulateurs&sim=investissement`)
-  await expect(page.getByRole('tab', { name: 'Simulateurs' })).toHaveAttribute('aria-selected', 'true')
+  // Téléphone : Simulateurs passe dans le menu « ⋯ » de la fiche (onglet Tâches, Joseph 17/11/2026)
+  if (!isMobile) await expect(page.getByRole('tab', { name: 'Simulateurs' })).toHaveAttribute('aria-selected', 'true')
+  else await expect(page).toHaveURL(/vue=simulateurs/)
   // Exemple : travaux terrasse de 25 000 €, 20 000 € de CA au bar à 70 % : 14 000 − 600 − 8 000 = 5 400 € d'EBE par an
   await expect(page.getByRole('status')).toContainText(/Travaux terrasse de 25\s000\s€ : 5\s400\s€ d’EBE en plus par an, remboursé en 4,6 ans/)
   await expect(page.getByRole('button', { name: /Mettre dans mon budget/ })).toHaveCount(0)

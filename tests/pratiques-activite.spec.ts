@@ -33,7 +33,7 @@ test('un ancien lien vers les bonnes pratiques du magasin ouvre tout le fil de l
 test('téléphone courant : les cinq onglets de la fiche visibles sans déborder', async ({ page, isMobile }, info) => {
   test.skip(!isMobile, 'téléphone seulement')
   await seConnecter(page)
-  for (const [largeur, attendus] of [[375, ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler']], [412, ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler']]] as const) {
+  for (const [largeur, attendus] of [[375, ['Aperçu', 'Activité', 'Tâches', 'Chiffres', 'Budget']], [412, ['Aperçu', 'Activité', 'Tâches', 'Chiffres', 'Budget']]] as const) {
     await page.setViewportSize({ width: largeur, height: 812 })
     await page.goto('./#/magasins/Lyon%20Test')
     const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })

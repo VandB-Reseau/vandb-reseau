@@ -85,11 +85,14 @@ test('203 : la fiche rouvre le dernier onglet et le dernier filtre', async ({ pa
 })
 
 // Joseph (15/11/2026, iPhone) : rouverte sur Simuler, la fiche y restait bloquée ; chaque onglet doit rester cliquable
-test('203 : après réouverture sur le dernier onglet, les autres onglets restent accessibles', async ({ page }) => {
+test('203 : après réouverture sur le dernier onglet, les autres onglets restent accessibles', async ({ page, isMobile }) => {
   await seConnecter(page)
   const onglets = page.getByRole('tablist', { name: /^Rubriques de/ })
   await page.goto('./#/magasins/Lyon%20Test?vue=simulateurs')
-  await expect(onglets.getByRole('tab', { name: 'Simulateurs', exact: true })).toHaveAttribute('aria-selected', 'true')
+  // Téléphone : Simulateurs est dans le menu « ⋯ » (onglet Tâches, Joseph 17/11/2026)
+  const simuler = isMobile ? onglets.getByRole('tab', { selected: true }) : onglets.getByRole('tab', { name: 'Simulateurs', exact: true })
+  if (isMobile) { await expect(onglets.getByRole('tab', { name: 'Budget', exact: true })).toBeVisible(); await expect(simuler).toHaveCount(0) }
+  else await expect(simuler).toHaveAttribute('aria-selected', 'true')
   await page.goto('./#/magasins/Brest%20Test')
   await expect(page).toHaveURL(/vue=simulateurs/)
   for (const [nom, vue] of [['Vue d’ensemble', null], ['Activité', 'activite'], ['Chiffres', 'chiffres'], ['Budget', 'budget']] as const) {
@@ -97,6 +100,6 @@ test('203 : après réouverture sur le dernier onglet, les autres onglets resten
     await expect(onglets.getByRole('tab', { name: nom, exact: true })).toHaveAttribute('aria-selected', 'true')
     if (vue) await expect(page).toHaveURL(new RegExp(`vue=${vue}`))
     else await expect(page).not.toHaveURL(/vue=/)
-    await expect(onglets.getByRole('tab', { name: 'Simulateurs', exact: true })).toHaveAttribute('aria-selected', 'false')
+    if (!isMobile) await expect(onglets.getByRole('tab', { name: 'Simulateurs', exact: true })).toHaveAttribute('aria-selected', 'false')
   }
 })

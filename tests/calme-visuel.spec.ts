@@ -39,11 +39,11 @@ test('fiche magasin : sur téléphone, cinq onglets sans « Plus » (Nine box pa
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   if (!isMobile) {
     // Refonte (Joseph, 09/11/2026, 3A) ; Simulateurs à côté de Chiffres et Budget (Joseph, 14/11/2026)
-    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box'])
+    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Activité', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box et déploiements'])
     return
   }
   // Joseph (14/11/2026) : Budget et Simulateurs dans la barre dès 360 px, marges des onglets resserrées
-  await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler'])
+  await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Tâches', 'Chiffres', 'Budget'])
   // Aucun onglet coupé au bord de l'écran
   const largeur = page.viewportSize()!.width
   for (const t of await onglets.getByRole('tab').all()) {
@@ -53,7 +53,7 @@ test('fiche magasin : sur téléphone, cinq onglets sans « Plus » (Nine box pa
   }
   expect(await textesTropPetits(page)).toEqual([])
   await page.getByRole('button', { name: 'Autres actions' }).click()
-  const nine = page.getByRole('menuitem', { name: 'Nine box' })
+  const nine = page.getByRole('menuitem', { name: 'Nine box et déploiements' })
   expect((await nine.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   await nine.click()
   await expect(page).toHaveURL(/vue=ninebox/)

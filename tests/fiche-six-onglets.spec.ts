@@ -48,13 +48,13 @@ for (const { ancienne, onglet, vu } of [
 
 // Téléphone (Joseph, 14/11/2026) : Budget et Simulateurs dans la barre, sans « Plus », de 375 à 430 px ; Nine box par le menu « ⋯ »
 for (const largeur of [375, 430]) {
-  test(`téléphone de ${largeur} px : Budget et Simuler dans la barre, sans déborder`, async ({ page, isMobile }) => {
+  test(`téléphone de ${largeur} px : Tâches et Budget dans la barre, sans déborder`, async ({ page, isMobile }) => {
     test.skip(!isMobile, 'téléphone seulement')
     await page.setViewportSize({ width: largeur, height: 900 })
     await seConnecter(page)
     await page.goto('./#/magasins/Lyon%20Test')
     const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })
-    await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler'])
+    await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Activité', 'Tâches', 'Chiffres', 'Budget'])
     const droite = await page.evaluate(() => Math.max(...[...document.querySelectorAll('.onglets-fiche [role=tab]')].map((t) => t.getBoundingClientRect().right)))
     expect(droite).toBeLessThanOrEqual(largeur - 16)
     for (const t of await onglets.getByRole('tab').all()) {
@@ -62,8 +62,12 @@ for (const largeur of [375, 430]) {
       expect(b.width).toBeGreaterThanOrEqual(48)
       expect(b.height).toBeGreaterThanOrEqual(48)
     }
+    // Onglet Tâches (Joseph, 17/11/2026) : Simulateurs passe dans le menu « ⋯ »
     await page.getByRole('button', { name: 'Autres actions' }).click()
-    await page.getByRole('menuitem', { name: 'Nine box' }).click()
+    await page.getByRole('menuitem', { name: 'Simulateurs' }).click()
+    await expect(page).toHaveURL(/vue=simulateurs/)
+    await page.getByRole('button', { name: 'Autres actions' }).click()
+    await page.getByRole('menuitem', { name: 'Nine box et déploiements' }).click()
     await expect(page).toHaveURL(/vue=ninebox/)
     await expect(onglets.getByRole('tab', { selected: true })).toHaveCount(0)
     // Marché extérieur (Joseph, 16/11/2026) : par le même menu

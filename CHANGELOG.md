@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin, onglet Tâches (Joseph, 17/11/2026), sans migration : toutes les tâches du magasin en puces À faire,
+  En retard, Bloquées, Faites (à faire rangées par échéance), bouton « Ajouter une tâche » ; l'Activité garde
+  l'historique. Téléphone : Aperçu, Activité, Tâches, Chiffres, Budget dans la barre, Simulateurs passe dans le « ⋯ ».
+  Pictos Avis Google et Itinéraire (Google Maps en mode trajet) en haut à droite de l'en-tête. Déploiements : tuile
+  dans la Vue d'ensemble (déployées sur le total) et onglet renommé « Nine box et déploiements ».
 - Fiche magasin cohérente (Joseph, 17/11/2026), sans migration : « À faire » est le même bloc dans la Vue d'ensemble
   et dans l'Activité (même source : visite à venir, rendez-vous prévus, mandats et fiche à compléter, tâches hors
   priorités, cochables aux deux endroits ; les 3 plus urgentes dans la Vue d'ensemble, toutes et les campagnes dans
