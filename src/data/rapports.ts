@@ -8,7 +8,7 @@
 import { decalerMois, estVisite, type ChiffreMois } from './chiffres'
 import type { Magasin, Reseau } from './modele'
 import { libellesLicence, libellesTypologie, libellesZone } from './exploitation'
-import { caseDe, scoreAxe, tonDe } from './sante'
+import { caseDe, scoreAxe, tonDe, type Thematique } from './sante'
 import { normaliserExterieur, synthese } from './marcheExterieur'
 import { visiteFaite } from './modele'
 import { peuEngage, silence, type Engagement } from './engagement'
@@ -117,12 +117,13 @@ const caDe = (c: ChiffreMois | undefined) => (!c || (c.caCave === null && c.caBa
 // ou un texte (le plus fréquent du groupe). moins1 : le ratio se lit en évolution (n / d − 1).
 export type Mesure = { n: number; d?: number } | { texte: string }
 export type Format = 'euros' | 'euros2' | 'pct' | 'ecart' | 'nombre' | 'texte' | 'jours' | 'note' | 'mois'
-export type Theme = 'ventes' | 'budget' | 'exterieur' | 'ninebox' | 'animation' | 'engagement'
+export type Theme = 'ventes' | 'budget' | 'exterieur' | 'ninebox' | 'deploiements' | 'animation' | 'engagement'
 export const THEMES: { cle: Theme; libelle: string; equipeSeule?: boolean }[] = [
   { cle: 'ventes', libelle: 'Ventes (caisse)' },
   { cle: 'budget', libelle: 'Budget et résultat' },
   { cle: 'exterieur', libelle: 'Marché extérieur' },
   { cle: 'ninebox', libelle: 'Nine box et santé', equipeSeule: true },
+  { cle: 'deploiements', libelle: 'Déploiements', equipeSeule: true },
   { cle: 'animation', libelle: 'Animation du réseau' },
   { cle: 'engagement', libelle: 'Engagement du franchisé', equipeSeule: true },
 ]
@@ -224,7 +225,7 @@ export const INDICATEURS: Indicateur[] = [
   { id: 'noteResultats', libelle: 'Note Résultats (sur 3)', theme: 'ninebox', format: 'note', agregat: 'moyenne', temporel: false, equipeSeule: true, mesure: (c, m) => val(scoreAxe(c.reseau.evaluations[m.nom], 'resultats', c.reseau.grilleNineBox)) },
   { id: 'noteFranchise', libelle: 'Note Franchisé (sur 3)', theme: 'ninebox', format: 'note', agregat: 'moyenne', temporel: false, equipeSeule: true, mesure: (c, m) => val(scoreAxe(c.reseau.evaluations[m.nom], 'franchise', c.reseau.grilleNineBox)) },
   {
-    id: 'deploiements', libelle: 'Déploiements réussis', theme: 'ninebox', format: 'pct', agregat: 'ratio', temporel: false, equipeSeule: true,
+    id: 'deploiements', libelle: 'Déploiements réussis (toutes thématiques)', theme: 'deploiements', format: 'pct', agregat: 'ratio', temporel: false, equipeSeule: true,
     mesure: (c, m) => { const t = c.reseau.deploiements.thematiques; if (!t.length || m.statut === 'avenir') return null; return { n: t.filter((x) => tonDe(x, c.reseau.deploiements.valeurs[m.nom]?.[x.id]) === 'positif').length, d: t.length } },
   },
   // Animation du réseau
@@ -249,11 +250,32 @@ export const INDICATEURS: Indicateur[] = [
   { id: 'engSilence', libelle: 'Jours depuis son dernier message', theme: 'engagement', format: 'jours', agregat: 'moyenne', temporel: false, inverse: true, equipeSeule: true, mesure: (c, m) => { const e = eng(c, m); return e ? val(silence(e, c.jour)) : null } },
   { id: 'engFaible', libelle: 'Magasins au franchisé peu engagé', theme: 'engagement', format: 'nombre', agregat: 'somme', temporel: false, inverse: true, equipeSeule: true, aide: 'Au moins deux repères en retrait : communications lues ou tâches tenues sous 50 %, réunions suivies sous 50 %, aucun message depuis 60 jours.', mesure: (c, m) => { const e = eng(c, m); return e ? { n: peuEngage(e, c.jour) ? 1 : 0 } : null } },
 ]
-export const indicateur = (id: string) => INDICATEURS.find((i) => i.id === id)
-export const indicateursVisibles = (equipe: boolean) => INDICATEURS.filter((i) => equipe || !i.equipeSeule)
+// Déploiements (Joseph, 17/11/2026) : les thématiques sont réglées par le Directeur, donc indicateurs et axe se créent
+// pour chacune (identifiants dep:<thématique>…). La page les fait connaître avant tout calcul.
+let thematiques: Thematique[] = []
+let cacheDeploiements: { indicateurs: Indicateur[]; axes: Axe[] } = { indicateurs: [], axes: [] }
+export function connaitreThematiques(t: Thematique[]) {
+  if (t === thematiques) return
+  thematiques = t
+  const etat = (c: Contexte, m: Magasin, th: Thematique) => (m.statut === 'avenir' ? null : c.reseau.deploiements.valeurs[m.nom]?.[th.id] || null)
+  const ton = (c: Contexte, m: Magasin, th: Thematique) => { const e = etat(c, m, th); return e ? tonDe(th, e) : null }
+  const compte = (t2: 'partiel' | 'negatif') => (th: Thematique): Indicateur['mesure'] => (c, m) => { const x = ton(c, m, th); return x ? { n: x === t2 ? 1 : 0 } : null }
+  cacheDeploiements = {
+    indicateurs: t.flatMap((th): Indicateur[] => [
+      { id: `dep:${th.id}:pct`, libelle: `${th.libelle} : part déployée`, theme: 'deploiements', format: 'pct', agregat: 'ratio', temporel: false, equipeSeule: true, aide: 'Magasins où la thématique est au vert, sur les magasins renseignés.', mesure: (c, m) => { const x = ton(c, m, th); return x ? { n: x === 'positif' ? 1 : 0, d: 1 } : null } },
+      { id: `dep:${th.id}:etat`, libelle: `${th.libelle} : état`, theme: 'deploiements', format: 'texte', agregat: 'texte', temporel: false, equipeSeule: true, mesure: (c, m) => { const e = etat(c, m, th); return e ? { texte: e } : null } },
+      { id: `dep:${th.id}:encours`, libelle: `${th.libelle} : magasins en cours`, theme: 'deploiements', format: 'nombre', agregat: 'somme', temporel: false, equipeSeule: true, mesure: compte('partiel')(th) },
+      { id: `dep:${th.id}:non`, libelle: `${th.libelle} : magasins pas démarrés`, theme: 'deploiements', format: 'nombre', agregat: 'somme', temporel: false, inverse: true, equipeSeule: true, mesure: compte('negatif')(th) },
+    ]),
+    axes: t.map((th): Axe => ({ id: `dep:${th.id}`, libelle: `Déploiement : ${th.libelle}`, equipeSeule: true, valeur: (c, m) => etat(c, m, th) ?? NON })),
+  }
+}
+const tousIndicateurs = () => [...INDICATEURS, ...cacheDeploiements.indicateurs]
+export const indicateur = (id: string) => tousIndicateurs().find((i) => i.id === id)
+export const indicateursVisibles = (equipe: boolean) => tousIndicateurs().filter((i) => equipe || !i.equipeSeule)
 
 // ── Axes de regroupement et de filtre ───────────────────────────────────
-export type AxeId = 'magasin' | 'rr' | 'coach' | 'groupe' | 'typologie' | 'zone' | 'licence' | 'contrat' | 'anciennete' | 'departement' | 'statut' | 'caseNineBox' | 'engagement' | 'reseau'
+export type AxeId = `dep:${string}` | 'magasin' | 'rr' | 'coach' | 'groupe' | 'typologie' | 'zone' | 'licence' | 'contrat' | 'anciennete' | 'departement' | 'statut' | 'caseNineBox' | 'engagement' | 'reseau'
 export interface Axe { id: AxeId; libelle: string; equipeSeule?: boolean; valeur: (c: Contexte, m: Magasin) => string }
 const NON = 'Non renseigné'
 function anciennete(m: Magasin, jour: string): string {
@@ -277,8 +299,9 @@ export const AXES: Axe[] = [
   { id: 'caseNineBox', libelle: 'Case de la nine box', equipeSeule: true, valeur: (c, m) => caseDe(c.reseau.evaluations[m.nom], c.reseau.grilleNineBox)?.libelle ?? 'Non classé' },
   { id: 'engagement', libelle: 'Engagement du franchisé', equipeSeule: true, valeur: (c, m) => { const e = eng(c, m); return !e ? 'Non mesuré' : peuEngage(e, c.jour) ? 'Peu engagé' : 'Engagé' } },
 ]
-export const axe = (id: string) => AXES.find((a) => a.id === id)
-export const axesVisibles = (equipe: boolean) => AXES.filter((a) => equipe || !a.equipeSeule)
+const tousAxes = () => [...AXES, ...cacheDeploiements.axes]
+export const axe = (id: string) => tousAxes().find((a) => a.id === id)
+export const axesVisibles = (equipe: boolean) => tousAxes().filter((a) => equipe || !a.equipeSeule)
 
 // ── Définition d'un rapport (enregistrée telle quelle) ──────────────────
 export type Affichage = 'tableau' | 'graphes' | 'deux'
@@ -459,5 +482,6 @@ export const RAPPORTS_PROPOSES: RapportPropose[] = [
   { id: 'fr-clients', titre: 'Mes clients Cave et Bar', pour: ['franchise'], definition: { ...definitionVide(), indicateurs: ['ticketsCave', 'evolTicketsCave', 'panierCave', 'ticketsBar', 'evolTicketsBar', 'panierBar'], periode: { type: 'mois' } } },
   { id: 'fr-taches', titre: 'Mes tâches et priorités', pour: ['franchise'], definition: { ...definitionVide(), indicateurs: ['tachesOuvertes', 'tachesRetard', 'tachesProches', 'prioritesActives', 'prioritesAtteintes'], periode: { type: 'cumul' } } },
   { id: 'animation', titre: 'Animation du mois', equipeSeule: true, definition: { ...definitionVide(), lignes: 'coach', indicateurs: ['visites', 'joursSansVisite', 'tachesRetard', 'operations'], periode: { type: 'mois' } } },
+  { id: 'deploiements', titre: 'Déploiements par Responsable Régional', equipeSeule: true, definition: { ...definitionVide(), lignes: 'rr', indicateurs: ['deploiements', 'ca', 'evolution'], periode: { type: 'cumul' } } },
   { id: 'ninebox', titre: 'Nine box et résultats', equipeSeule: true, definition: { ...definitionVide(), lignes: 'caseNineBox', indicateurs: ['ca', 'evolution', 'ecartBudget', 'deploiements'], periode: { type: 'cumul' } } },
 ]

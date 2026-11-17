@@ -22,6 +22,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   Engagement du franchisé (équipe seule, 90 jours, mêmes repères que sa fiche) : communications lues, tâches tenues dans
   les délais, réunions suivies, jours depuis son dernier message, magasins au franchisé peu engagé, et axe « Engagement du
   franchisé ». Rapports de départ modifiables par public : Responsables Régionaux, Coachs, franchisés (« Pour bien démarrer »).
+  Déploiements : pour chaque thématique, part déployée, état, magasins en cours et pas démarrés, et regroupement ou filtre
+  « Déploiement : … » (équipe seule).
 
 - Proportions des chiffres (Joseph, 17/11/2026), sans migration : dans « Le point » (Mon point du jour sur téléphone,
   colonne de l'accueil sur PC), les valeurs sont à la taille de leur libellé ; dans l'offre 5 + 1, « 1 client sur X

@@ -50,7 +50,7 @@ import { useApercu } from '../auth/Apercu'
 import type { Magasin, Reseau } from '../data/modele'
 import { useEngagement, type Engagement } from '../data/engagement'
 import {
-  AXES, DECOUPAGES, PUBLICS, THEMES, rapportsProposes, type RapportPropose, TYPES_PERIODE, axe, axesVisibles, calculer, definitionVide, dernierMoisClos, formater,
+  DECOUPAGES, PUBLICS, THEMES, connaitreThematiques, rapportsProposes, type RapportPropose, TYPES_PERIODE, axe, axesVisibles, calculer, definitionVide, dernierMoisClos, formater,
   indicateur, indicateursVisibles, libelleMoisLong, libellePeriode, normaliserDefinition, tonCellule, valeursAxe,
   type AxeId, type Cellule, type Contexte, type Definition, type FinanceMagasin, type Indicateur, type Resultat, type Theme,
 } from '../data/rapports'
@@ -102,6 +102,7 @@ function Rapports({ reseau }: { reseau: Reseau }) {
   const recharger = useCallback(() => chargerRapports(equipe).then((l) => { setEnregistres(l); setIndisponibles(false) }).catch(() => { setEnregistres([]); setIndisponibles(true) }), [equipe])
   useEffect(() => { void recharger() }, [recharger])
 
+  connaitreThematiques(reseau.deploiements.thematiques)
   const proposes = rapportsProposes(profil?.role)
   const choix = params.get('rapport') ?? ''
   const selection: Selection = choix.startsWith('p-') && proposes.some((r) => `p-${r.id}` === choix) ? { genre: 'propose', id: choix.slice(2) }
@@ -390,7 +391,7 @@ function Constructeur({ def, changer, ctx, surPC }: { def: Definition; changer: 
 
 // Champs à glisser (PC) : indicateurs par thème, puis axes
 function Champs({ inds, axes, def, glisser, ajouter, choisirLignes }: {
-  inds: Indicateur[]; axes: typeof AXES; def: Definition; glisser: (v: string) => object; ajouter: (id: string) => void; choisirLignes: (id: AxeId) => void
+  inds: Indicateur[]; axes: ReturnType<typeof axesVisibles>; def: Definition; glisser: (v: string) => object; ajouter: (id: string) => void; choisirLignes: (id: AxeId) => void
 }) {
   const [theme, setTheme] = useState<Theme | 'axes'>('ventes')
   const themes = THEMES.filter((t) => inds.some((i) => i.theme === t.cle))
