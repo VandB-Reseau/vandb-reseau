@@ -267,7 +267,7 @@ export function PageTaches() {
 
 // Onglet Tâches de la fiche magasin (Joseph, 17/11/2026) : toutes les tâches du magasin, quel que soit le porteur,
 // en puces À faire / En retard / Bloquées / Faites ; les tâches à faire rangées par échéance. L'Activité garde l'historique.
-export type FiltreTachesMagasin = 'afaire' | 'retard' | 'bloquees' | 'faites'
+export type FiltreTachesMagasin = 'afaire' | 'encours' | 'retard' | 'bloquees' | 'faites'
 export function TachesMagasin({ reseau, magasin, ajouter }: { reseau: Reseau; magasin: string; ajouter: () => void }) {
   const { recharger } = useReseau()
   // « Fait » se défait : « Annuler » dans le message (Joseph, 17/11/2026 : une tâche validée par erreur)
@@ -282,11 +282,13 @@ export function TachesMagasin({ reseau, magasin, ajouter }: { reseau: Reseau; ma
   const aFaire = toutes.filter((x) => !x.a.faite)
   const listes: Record<FiltreTachesMagasin, ActionSuivie[]> = {
     afaire: aFaire,
+    // Joseph (18/11/2026) : les tâches passées « En cours » par leur puce de statut
+    encours: aFaire.filter((x) => x.a.statut === 'en_cours'),
     retard: aFaire.filter((x) => enRetard(x.a, reseau.jour)),
     bloquees: aFaire.filter((x) => x.a.statut === 'bloquee'),
     faites: toutes.filter((x) => x.a.faite),
   }
-  const libelles: Record<FiltreTachesMagasin, string> = { afaire: 'À faire', retard: 'En retard', bloquees: 'Bloquées', faites: 'Faites' }
+  const libelles: Record<FiltreTachesMagasin, string> = { afaire: 'À faire', encours: 'En cours', retard: 'En retard', bloquees: 'Bloquées', faites: 'Faites' }
   const cocher = async (x: ActionSuivie, faite: boolean) => {
     setEnCours(x.cle)
     try {
@@ -306,6 +308,7 @@ export function TachesMagasin({ reseau, magasin, ajouter }: { reseau: Reseau; ma
   const parGroupe = groupes.map((g) => ({ ...g, lignes: lignes.filter((x) => groupeDe(x, reseau.jour, dansUneSemaine) === g.g) })).filter((g) => g.lignes.length)
   const vide: Record<FiltreTachesMagasin, string> = {
     afaire: 'Aucune tâche en cours pour ce magasin.',
+    encours: 'Aucune tâche marquée en cours.',
     retard: 'Aucune tâche en retard.',
     bloquees: 'Aucune tâche bloquée.',
     faites: 'Aucune tâche faite pour l’instant.',

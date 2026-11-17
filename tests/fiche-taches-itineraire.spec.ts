@@ -21,7 +21,7 @@ test('onglet Tâches : filtres À faire, En retard, Bloquées, Faites et ajout d
   await expect(page).toHaveURL(/vue=taches/)
   const bloc = page.getByRole('region', { name: 'Tâches du magasin' })
   const filtres = bloc.getByRole('group', { name: 'Filtrer les tâches' })
-  for (const f of ['À faire', 'En retard', 'Bloquées', 'Faites']) await expect(filtres.getByRole('button', { name: new RegExp(`^${f} · \\d+$`) })).toBeVisible()
+  for (const f of ['À faire', 'En cours', 'En retard', 'Bloquées', 'Faites']) await expect(filtres.getByRole('button', { name: new RegExp(`^${f} · \\d+$`) })).toBeVisible()
   // Lyon Test a au moins une tâche à faire dans le réseau fictif
   await expect(bloc.getByRole('list', { name: 'Tâches en cours de Lyon Test' }).getByRole('listitem').first()).toBeVisible()
   await filtres.getByRole('button', { name: /^Faites/ }).click()

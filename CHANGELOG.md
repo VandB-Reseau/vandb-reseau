@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin, onglet Tâches : filtre « En cours » (tâches passées en cours par leur puce de statut), sans migration
+  (Joseph, 18/11/2026).
 - Fiche magasin, onglet Tâches (Joseph, 17/11/2026), sans migration : toutes les tâches du magasin en puces À faire,
   En retard, Bloquées, Faites (à faire rangées par échéance), bouton « Ajouter une tâche », campagnes repliées dessous.
   L'Activité devient « Historique », en dernier onglet, sans le bloc « À faire ». Téléphone : tous les onglets dans une
