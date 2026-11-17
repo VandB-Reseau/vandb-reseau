@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { deplierGroupes, ouvrirOnglet, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { toutATraiter, deplierGroupes, ouvrirOnglet, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 
 test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
@@ -54,8 +54,7 @@ test('ajouter, modifier et supprimer une note du journal', async ({ page }) => {
 test('l’accueil signale les magasins pas vus depuis longtemps et les changements de case', async ({ page }) => {
   await seConnecter(page)
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
-  await aTraiter.getByRole('button', { name: /^Voir les \d+$/ }).click()
-  await deplierGroupes(page)
+  await toutATraiter(page)
   await expect(aTraiter).not.toContainText('retard de visite')
   const aVoir = aTraiter.getByRole('link').filter({ hasText: /pas vu depuis|jamais visité/ })
   // Nantes (Cœur de réseau, vu en mars) dépasse son délai de 150 jours ; Agen n'a eu qu'un appel ; Lyon vient d'être vu

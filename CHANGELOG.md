@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Accueil sur téléphone, choix 278 (Joseph, 17/11/2026), sans migration : le fil seul, façon LinkedIn ; la bande
+  « Mon point du jour » devient un picto dans la barre du haut avec le nombre à traiter en rouge. Il ouvre une page :
+  Ma journée, la période, « Le point » en quatre lignes comme sur PC (plus de « Mes indicateurs » replié), sondages,
+  puis À traiter groupé par sujet, Tâches, Semaine et Contrats en onglets.
 - Marché extérieur (Joseph, 17/11/2026), sans migration : la liste du repérage se trie et se filtre par colonne
   comme les autres tableaux (nom, type, activité, effectif du site, chiffre d'affaires en k€, distance en km) ;
   « Trier par » sur téléphone. Titre « Retenir » en entier.

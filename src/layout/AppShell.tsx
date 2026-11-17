@@ -348,6 +348,8 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
               {franchise && <Typography component="span" sx={{ fontWeight: 700, mr: 'auto', ml: 1 }}>Espace franchisé</Typography>}
             </Box>
             {/* Vague 8 (110A) : en-tête allégé (logo, recherche, cloche, compte) ; Actualités passe au menu du compte, le « + » flotte */}
+            {/* 278 : une page peut poser ici son picto (l'Accueil y met « Mon point du jour ») */}
+            <Box id="entete-actions-page" sx={{ display: 'flex', flexShrink: 0, '&:empty': { display: 'none' } }} />
             <EnvoisEnAttente court />
             <Cloche />
             <MenuCompte liens={franchise ? [] : [...menuTelephoneRubriques(profil?.role), ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }])]} />

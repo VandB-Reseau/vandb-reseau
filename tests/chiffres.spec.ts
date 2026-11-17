@@ -39,7 +39,8 @@ test('l’accueil met en tête les magasins qui décrochent, avec l’appel en r
   await expect(bloc.getByRole('link', { name: /^Annecy Test.*(Décroche|À surveiller)$/ })).toHaveCount(0)
   // Vague 8 (Joseph, 11/11/2026) : l'actualité en tête de l'accueil, comme un réseau social ; sur téléphone, seule la bande
   // du point du jour la précède (209A, 15/11/2026)
-  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', page.viewportSize()!.width < 900 ? 'Mon point du jour' : 'Actualités')
+  if (page.viewportSize()!.width < 900) await page.getByRole('dialog', { name: 'Mon point du jour' }).getByRole('button', { name: 'Fermer' }).click()
+  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', 'Actualités')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-accueil-chiffres.png` })
 })

@@ -193,8 +193,8 @@ test('54A : « Plus tard » met une ligne de À traiter de côté, « Tout revoi
 test('53A : une seule carte d’indicateur, cliquable, sur l’accueil et dans Chiffres', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./#/')
-  // Vague 8 : sur téléphone, les indicateurs se déplient dans le point du jour
-  if (isMobile) { await deplierPoint(page); await page.getByRole('button', { name: 'Mes indicateurs' }).click() }
+  // 278 : sur téléphone, Le point s'ouvre par le picto « Mon point du jour » de la barre du haut
+  await deplierPoint(page)
   await page.getByRole('region', { name: 'Pilotage' }).getByRole('link', { name: /^Décrochent :/ }).click()
   await expect(page).toHaveURL(/#\/performance/)
   // Dans Chiffres, la carte filtre la liste
