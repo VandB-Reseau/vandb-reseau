@@ -57,7 +57,9 @@ export interface ChallengesSimules { equipe: Record<string, unknown>[]; franchis
 // Fonction Supabase « comptes » (supabase/functions/comptes) : absente = pas encore déployée
 export interface ComptesSimules { equipe?: string[] }
 // Refonte vague 4 (migration 0043) : entretiens RR–Coach et demandes des franchisés ; null = table absente
-export interface OptionsSimulation { bandesRepliees?: boolean; entretiens?: Record<string, unknown>[] | null; demandes?: Record<string, unknown>[] | null; magasinsEnPlus?: (typeof magasinsFictifs)[number][]; chiffresFermes?: boolean; chiffresCaisse?: Record<string, unknown>[] | null; surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' | 'principalSature' }
+// Rapports de l'onglet Pilotage (script 0050_rapports_pilotage.sql) : définitions seules
+export interface RapportSimule { id: number; titre: string; definition: Record<string, unknown>; modele: boolean; partage: boolean; auteur: string; role: string; moi?: boolean }
+export interface OptionsSimulation { bandesRepliees?: boolean; entretiens?: Record<string, unknown>[] | null; demandes?: Record<string, unknown>[] | null; magasinsEnPlus?: (typeof magasinsFictifs)[number][]; chiffresFermes?: boolean; chiffresCaisse?: Record<string, unknown>[] | null; surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' | 'principalSature'; rapports?: RapportSimule[] | null }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -193,7 +195,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       const meta = options.appMetadata ?? {}
       const acces: AccesSimule = options.acces ?? (meta.role === 'coach' || meta.role === 'rr' ? { role: String(meta.role), coach: meta.coach as string, rr: meta.rr as string } : { role: 'directeur' })
       if (fn === 'maj_perimetre_equipe') options.perimetreRecu = corps.p_lignes as PerimetreRecu[]
-      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie', 'communications', 'lectures_communications', 'a_la_une', 'reactions_pratiques', 'reactions_visites', 'lectures_pratiques', 'questions_equipe', 'chiffres_mensuels', 'saisie_chiffres_fermee', 'connaissances', 'animation_franchise'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
+      if (!['mon_acces', 'espace_franchise', 'liste_acces_franchises', 'liste_acces_equipe', 'reperes_equipe', 'maj_perimetre_equipe', 'messagerie', 'communications', 'lectures_communications', 'a_la_une', 'reactions_pratiques', 'reactions_visites', 'lectures_pratiques', 'questions_equipe', 'chiffres_mensuels', 'saisie_chiffres_fermee', 'connaissances', 'animation_franchise', 'rapports_du_compte'].includes(fn)) options.ecritures?.push({ methode: 'POST', table: `rpc/${fn}`, corps, filtre: '' })
       // Chiffres mensuels (script 0039_chiffres_caisse.sql) : la caisse passe devant la saisie, mois par mois
       if (fn === 'saisie_chiffres_fermee') return options.chiffresFermes === undefined ? route.fulfill({ status: 404, json: { code: 'PGRST202', message: 'Could not find the function public.saisie_chiffres_fermee' } }) : route.fulfill({ json: options.chiffresFermes })
       if (fn === 'chiffres_mensuels') {
@@ -505,6 +507,26 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         if (acces.role !== 'franchise' || !(acces.magasins ?? []).includes(String(corps.p_store))) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
         suiviCourant = [...suiviCourant.filter((l) => !(l.cle === 'exterieur' && l.store_name === corps.p_store)), { store_name: String(corps.p_store), cle: 'exterieur', valeur: corps.p_plan }]
         if (options.persister) suiviPersiste = structuredClone(suiviCourant)
+        return route.fulfill({ status: 200, json: null })
+      }
+      if (['rapports_du_compte', 'enregistrer_rapport', 'supprimer_rapport'].includes(fn)) {
+        if (options.rapports === null) return absente()
+        const liste = (options.rapports ??= [])
+        const refus = () => route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const equipe = acces.role !== 'franchise'
+        if (fn === 'rapports_du_compte') return route.fulfill({ json: liste.filter((r) => r.moi || r.modele || (r.partage && equipe)).map((r) => ({ id: r.id, titre: r.titre, definition: r.definition, modele: r.modele, partage: r.partage, auteur: r.auteur, mien: !!r.moi })) })
+        if (fn === 'enregistrer_rapport') {
+          if ((corps.p_modele && acces.role !== 'directeur') || (corps.p_partage && !equipe) || !String(corps.p_titre ?? '').trim()) return refus()
+          const id = corps.p_id === null || corps.p_id === undefined ? Math.max(0, ...liste.map((r) => r.id)) + 1 : Number(corps.p_id)
+          const ancien = liste.find((r) => r.id === id)
+          if (ancien && !ancien.moi) return refus()
+          const r: RapportSimule = { id, titre: String(corps.p_titre), definition: corps.p_definition as Record<string, unknown>, modele: !!corps.p_modele, partage: !!corps.p_partage, auteur: 'Moi', role: acces.role, moi: true }
+          options.rapports = [...liste.filter((x) => x.id !== id), r]
+          return route.fulfill({ json: id })
+        }
+        const r = liste.find((x) => x.id === Number(corps.p_id))
+        if (!r || !(r.moi || (r.modele && acces.role === 'directeur'))) return refus()
+        options.rapports = liste.filter((x) => x.id !== r.id)
         return route.fulfill({ status: 200, json: null })
       }
       if (fn === 'animation_franchise') {

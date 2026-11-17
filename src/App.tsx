@@ -64,6 +64,7 @@ const espace = () => import('./pages/EspaceFranchise')
 const pilotage = () => import('./pilotage/Pilotage')
 const PagesBudgets = chargementDiffere(() => pilotage().then((m) => ({ default: m.PagesBudgets })))
 const PageSimulateurs = chargementDiffere(() => pilotage().then((m) => ({ default: m.PageSimulateurs })))
+const PagePilotage = chargementDiffere(() => import('./pages/PilotageRapports').then((m) => ({ default: m.PilotageRapports })))
 const PageMarcheExterieur = chargementDiffere(() => import('./pages/MarcheExterieurEquipe').then((m) => ({ default: m.PageMarcheExterieur })))
 const ExterieurFranchise = chargementDiffere(() => espace().then((m) => ({ default: m.ExterieurFranchise })))
 const SelonControleGestion = chargementDiffere(() => import('./pilotage/ControleGestion').then((m) => ({ default: m.SelonControleGestion })))
@@ -192,6 +193,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/budgets/*" element={<PagesBudgets />} />
         <Route path="/simulateurs" element={<PageSimulateurs />} />
         <Route path="/marche-exterieur" element={<PageMarcheExterieur />} />
+        <Route path="/pilotage" element={<PagePilotage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>
@@ -221,6 +223,7 @@ function RoutesFranchise({ apercu }: { apercu: boolean }) {
         <Route path="/budgets/*" element={<PagesBudgets />} />
         <Route path="/simulateurs" element={<SimulateursFranchise />} />
         <Route path="/marche-exterieur" element={<ExterieurFranchise />} />
+        <Route path="/pilotage" element={<PagePilotage />} />
         <Route path="/echanges/reseau" element={<Vers cible={(_p, r) => (r.get('c') ? avec('/infos', r) : '/')} />} />
         <Route path="/echanges/:genre/:valeur" element={<Echanges lectureSeule={apercu} />} />
         {anciensLiens}

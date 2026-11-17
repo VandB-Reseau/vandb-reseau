@@ -1164,3 +1164,34 @@ RESET ROLE;
 RESET request.jwt.claim.sub;
 SELECT pg_temp.attendre('Tâches extérieur : la tâche du Coach est intacte',
   (SELECT count(*) FROM public.suivi_magasins s, jsonb_array_elements(s.valeur) e WHERE s.store_name = 'Lille' AND s.cle = 'actions' AND e->>'id' = 'l_autre' AND e->>'action' = 'Tâche du Coach'), 1);
+
+-- ── 0050 : rapports de l'onglet Pilotage (définitions seules, table fermée)
+SELECT pg_temp.attendre('Journal : 0050 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0050'), 1);
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT public.enregistrer_rapport(NULL, 'Modèle du siège', '{"indicateurs":["ca"]}', true, false) AS r_modele \gset
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT public.enregistrer_rapport(NULL, 'Mon point du lundi', '{"indicateurs":["ca"]}') AS r_coach \gset
+SELECT public.enregistrer_rapport(NULL, 'Partagé à l''équipe', '{"indicateurs":["visites"]}', false, true) AS r_partage \gset
+SELECT pg_temp.attendre('Rapports : le Coach ne publie pas de modèle', pg_temp.refuse('SELECT public.enregistrer_rapport(NULL, ''Faux modèle'', ''{}'', true, false)'), 1);
+SELECT pg_temp.attendre('Rapports : titre vide refusé', pg_temp.refuse('SELECT public.enregistrer_rapport(NULL, '' '', ''{}'')'), 1);
+SELECT pg_temp.attendre('Rapports : définition mal formée refusée', pg_temp.refuse('SELECT public.enregistrer_rapport(NULL, ''Titre'', ''[1]'')'), 1);
+SELECT pg_temp.attendre('Rapports : pas de lecture directe', pg_temp.refuse('SELECT count(*) FROM public.rapports'), 1);
+SELECT pg_temp.attendre('Rapports : pas d''écriture directe', pg_temp.refuse('INSERT INTO public.rapports (auteur, titre, definition) VALUES (auth.uid(), ''x'', ''{}'')'), 1);
+SELECT pg_temp.attendre('Rapports : le Coach lit les siens et le modèle', (SELECT count(*) FROM jsonb_array_elements(public.rapports_du_compte()) e WHERE (e->>'id')::bigint IN (:r_modele, :r_coach, :r_partage)), 3);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Rapports : le franchisé lit le modèle du siège', (SELECT count(*) FROM jsonb_array_elements(public.rapports_du_compte()) e WHERE (e->>'id')::bigint = :r_modele), 1);
+SELECT pg_temp.attendre('Rapports : jamais un rapport de l''équipe, même partagé', (SELECT count(*) FROM jsonb_array_elements(public.rapports_du_compte()) e WHERE (e->>'id')::bigint IN (:r_coach, :r_partage)), 0);
+SELECT pg_temp.attendre('Rapports : le franchisé enregistre le sien', pg_temp.refuse('SELECT public.enregistrer_rapport(NULL, ''Mon magasin'', ''{"indicateurs":["ca"]}'')'), 0);
+SELECT pg_temp.attendre('Rapports : le franchisé ne partage pas à l''équipe', pg_temp.refuse('SELECT public.enregistrer_rapport(NULL, ''Partage'', ''{}'', false, true)'), 1);
+SELECT pg_temp.attendre('Rapports : ni modifier celui d''un autre', pg_temp.refuse(format('SELECT public.enregistrer_rapport(%s, ''Changé'', ''{}'')', :r_coach)), 1);
+SELECT pg_temp.attendre('Rapports : ni le supprimer', pg_temp.refuse(format('SELECT public.supprimer_rapport(%s)', :r_modele)), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-000000000000';
+SELECT pg_temp.attendre('Rapports : refusés à un compte sans rôle', pg_temp.refuse('SELECT public.rapports_du_compte()'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Rapports : le Coach modifie le sien', pg_temp.refuse(format('SELECT public.enregistrer_rapport(%s, ''Mon point du mardi'', ''{}'')', :r_coach)), 0);
+SELECT pg_temp.attendre('Rapports : le Coach supprime le sien', pg_temp.refuse(format('SELECT public.supprimer_rapport(%s)', :r_coach)), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT pg_temp.attendre('Rapports : le Directeur retire un modèle', pg_temp.refuse(format('SELECT public.supprimer_rapport(%s)', :r_modele)), 0);
+RESET ROLE;
+RESET request.jwt.claim.sub;

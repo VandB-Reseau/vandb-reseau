@@ -14,6 +14,22 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   l'historique. Téléphone : Aperçu, Activité, Tâches, Chiffres, Budget dans la barre, Simulateurs passe dans le « ⋯ ».
   Pictos Avis Google et Itinéraire (Google Maps en mode trajet) en haut à droite de l'en-tête. Déploiements : tuile
   dans la Vue d'ensemble (déployées sur le total) et onglet renommé « Nine box et déploiements ».
+- Onglet « Pilotage » (Joseph, 17/11/2026, propositions 286 à 292), **migration `0050_rapports_pilotage.sql` à passer** :
+  nouvelle entrée du menu (équipe et franchisé) pour faire ses rapports, graphes et tableaux croisés sur tous les sujets :
+  ventes de la caisse (Cave et Bar séparés), budget et résultat (écart au budget, EBE, % frais de personnel, stock),
+  marché extérieur, nine box et santé (équipe seule), animation (visites, tâches ouvertes, en retard, bloquées, faites à
+  l'heure, priorités, opérations). Regroupement et filtres par magasin, RR, Coach, groupe budgétaire, typologie, zone de
+  chalandise, licence, franchisé ou intégré, ancienneté, département, statut du budget, case de la nine box. Période : le
+  mois, depuis janvier, 12 mois, quadrimestre ou année, avec les mois ou quadrimestres en colonnes. Indicateurs en
+  parallèle (un graphe chacun), glisser-déposer sur PC, rapports proposés par le siège, rapports de chacun enregistrés
+  et partagés avec l'équipe, lien à partager, export Excel, impression. Le franchisé n'a que son magasin, sans nine box
+  ni axes de l'équipe.
+  Engagement du franchisé (équipe seule, 90 jours, mêmes repères que sa fiche) : communications lues, tâches tenues dans
+  les délais, réunions suivies, jours depuis son dernier message, magasins au franchisé peu engagé, et axe « Engagement du
+  franchisé ». Rapports de départ modifiables par public : Responsables Régionaux, Coachs, franchisés (« Pour bien démarrer »).
+  Déploiements : pour chaque thématique, part déployée, état, magasins en cours et pas démarrés, et regroupement ou filtre
+  « Déploiement : … » (équipe seule).
+
 - Fiche magasin cohérente (Joseph, 17/11/2026), sans migration : « À faire » est le même bloc dans la Vue d'ensemble
   et dans l'Activité (même source : visite à venir, rendez-vous prévus, mandats et fiche à compléter, tâches hors
   priorités, cochables aux deux endroits ; les 3 plus urgentes dans la Vue d'ensemble, toutes et les campagnes dans
