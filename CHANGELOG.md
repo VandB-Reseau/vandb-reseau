@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateur Contrat extérieur (Joseph, 17/11/2026), sans migration : la remise se saisit en « Prix facturé après remise HT »
+  (un prix remisé tapé dans l'ancien champ « Remise accordée » était lu comme une remise : 70 € et 68 € donnaient 2 € par fût).
+  La remise en € et en % s'affiche sous les recettes ; la remise maximale donne aussi le prix facturé minimum.
 - Accueil, choix 271 (Joseph, 17/11/2026), sans migration : fil d'actualité façon LinkedIn sur 600 px (photos en grand,
   une grande et deux petites à partir de trois), compte rendu et autres pièces jointes non photo en ligne avec picto au
   lieu d'un grand carré. À droite sur PC, « Le point » en quatre lignes qui disent quelque chose (dernier mois comparable

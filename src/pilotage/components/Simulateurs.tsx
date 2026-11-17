@@ -1310,12 +1310,13 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         <Bloc titre="1. Recettes" total={{ libelle: 'CA HT de l’année', valeur: montant(r.ca) }}>
           <Saisies>
             <Montant libelle="Prix de vente du fût HT" valeur={e.prixVente} onChange={m('prixVente')} unite="€/fût" />
-            <Montant libelle="Remise accordée HT" valeur={e.remise} onChange={m('remise')} unite="€/fût" />
+            {/* Prix remisé saisi en direct (Joseph, 17/11/2026 : 68 € saisis comme prix remisé lus comme 68 € de remise) */}
+            <Montant libelle="Prix facturé après remise HT" valeur={Math.max(0, e.prixVente - e.remise)} onChange={(v) => maj('exterieur', { remise: Math.max(0, e.prixVente - v) })} unite="€/fût" />
             <Montant libelle="Locations de tireuse facturées" valeur={e.locations} onChange={(v) => maj('exterieur', { locations: Math.round(v) })} unite="" />
             {e.locations > 0 && <Montant libelle="Prix d’une location HT" valeur={e.prixLocation} onChange={m('prixLocation')} />}
           </Saisies>
           <Typography color="text.secondary">
-            {entier(e.futs)} fûts à {centimes(r.caParFut)} : {montant(e.futs * r.caParFut)}{r.recettes > 0 ? `, locations : ${montant(r.recettes)}` : ''}.
+            {entier(e.futs)} fûts à {centimes(r.caParFut)}{e.remise > 0 && e.prixVente > 0 ? ` (remise de ${centimes(Math.min(e.remise, e.prixVente))} par fût, soit ${taux(Math.min(1, e.remise / e.prixVente))})` : ''} : {montant(e.futs * r.caParFut)}{r.recettes > 0 ? `, locations : ${montant(r.recettes)}` : ''}.
           </Typography>
         </Bloc>
         <Bloc titre="2. Fûts" total={{ libelle: 'Coût de l’année', ...moins(r.coutFuts) }}>
@@ -1398,7 +1399,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         {r.gainContrat !== null && <Indicateur libelle={r.gainContrat >= 0 ? 'Gain sur la durée du contrat' : 'Perte sur la durée du contrat'} valeur={montant(Math.abs(r.gainContrat))} detail={`${ans(e.dureeContrat)} au volume prévu`} />}
         {contratCourt && <Indicateur libelle="Reste non amorti en fin de contrat" valeur={montant(r.resteNonAmorti)} detail={`tireuse de ${ans(e.duree)}, à payer dans les ${ans(e.dureeContrat)} du contrat ; perdu si elle ne ressert pas`} />}
         {contratCourt && r.equilibreDureeVie !== null && <Indicateur libelle="Équilibre si la tireuse ressert" valeur={entier(r.equilibreDureeVie)} detail={`fûts par an, tireuse amortie sur ${ans(e.duree)}`} />}
-        {r.remiseMax !== null && <Indicateur libelle="Remise maximale par fût" valeur={centimes(r.remiseMax)} detail={`HT ; au-delà, ${e.futs} fûts ne paient plus les coûts fixes`} />}
+        {r.remiseMax !== null && <Indicateur libelle="Remise maximale par fût" valeur={centimes(r.remiseMax)} detail={`HT, soit un prix facturé d’au moins ${centimes(Math.max(0, e.prixVente - r.remiseMax))} ; au-delà, ${e.futs} fûts ne paient plus les coûts fixes`} />}
         {r.don.valeur > 0 && <Indicateur libelle="Coût réel du don" valeur={montant(r.don.cout)} detail={r.don.reduction ? `${montant(r.don.valeur)} moins ${taux(TAUX_MECENAT)} de réduction d’impôt` : 'sans reçu Cerfa, pas de réduction'} />}
       </Resultats>
       {/* 239 : le gain selon le nombre de fûts, comme dans la fiche « Rentabilité Extérieur » */}

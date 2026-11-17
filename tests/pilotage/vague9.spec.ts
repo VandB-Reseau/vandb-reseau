@@ -96,6 +96,22 @@ test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', a
   expect(ecritures.find((e) => e.table === 'simulations' && e.methode === 'POST')?.corps).toMatchObject({ type: 'exterieur', donnees: { prixVente: 69, don: 'argent', montantDon: 1_000, cerfa: false } })
 })
 
+test('Contrat extérieur : la remise se saisit en prix facturé, le CA suit', async ({ page }) => {
+  await connecter(page, franchise, { role: 'franchise' })
+  await simulateur(page, 'exterieur')
+  // Joseph, 17/11/2026 : 70 € et 68 € saisis donnaient 80 × 2 € = 160 € de CA (68 € lus comme remise)
+  await page.getByLabel('Fûts vendus par an').fill('80')
+  await page.getByLabel('Prix de vente du fût HT').fill('70')
+  await expect(page.getByLabel('Prix facturé après remise HT')).toHaveValue('70')
+  await page.getByLabel('Prix facturé après remise HT').fill('68')
+  const recettes = page.getByRole('region', { name: '1. Recettes' })
+  await expect(recettes.locator('.sous-total')).toHaveText(/CA HT de l’année\s*5\s440\s€/)
+  await expect(recettes).toContainText(/80 fûts à 68,00\s€ \(remise de 2,00\s€ par fût, soit 2,9\s%\) : 5\s440\s€\./)
+  // Un prix facturé au-dessus du prix de vente ne crée pas de remise négative
+  await page.getByLabel('Prix facturé après remise HT').fill('75')
+  await expect(recettes.locator('.sous-total')).toHaveText(/CA HT de l’année\s*5\s600\s€/)
+})
+
 test('139 : parc de tireuses, racheter quand les refus coûtent plus qu’une tireuse neuve', async ({ page }) => {
   await connecter(page, franchise, { role: 'franchise' })
   await simulateur(page, 'tireuses')
