@@ -128,6 +128,8 @@ export interface ParametresReseau {
 
 export interface Reseau {
   magasins: Magasin[] // magasins du réseau à la date du jour (fermés et cédés retirés)
+  // Coachs et Responsables Régionaux partis (date de départ passée) : sortis des listes, fiche et historique gardés
+  anciens?: { coachs: Coach[]; rrs: ResponsableRegional[] }
   fermes: Magasin[] // magasins fermés ou cédés hors réseau : sortis des listes, fiche et historique gardés
   coachs: Record<string, Personne>
   equipe: Coach[] // Coachs pilotant des magasins (hors techniciens)

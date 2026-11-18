@@ -47,7 +47,7 @@ Exception : toute l'équipe écrit la clé `bonnes_pratiques` d'`app_config`.
 
 | Table | Contenu | Clé |
 | --- | --- | --- |
-| `fiches_personnes` | Fiche personnelle (prénom, nom, naissance, arrivée, ville, courriel, téléphone) en JSON. Clé : `directeur`, `rr:<identifiant>`, `coach:<nom>`, `franchise:<nom>`. Avant `0015`, clé `fiches_personnes` d'`app_config` | `cle` |
+| `fiches_personnes` | Fiche personnelle (prénom, nom, naissance, arrivée, ville, courriel, téléphone, `depart` : dernier jour d'un Coach ou d'un Responsable Régional, vide s'il est en poste) en JSON. Clé : `directeur`, `rr:<identifiant>`, `coach:<nom>`, `franchise:<nom>`. Avant `0015`, clé `fiches_personnes` d'`app_config` | `cle` |
 
 Un franchisé est « de mes magasins » (`franchise_de_mes_magasins`) s'il est inscrit sur un de ces magasins
 (`store_overrides.resp` ou `store_adds`), s'il en est associé (`suivi_magasins`, rubrique `associes`) ou si son

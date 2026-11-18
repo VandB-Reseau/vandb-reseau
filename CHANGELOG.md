@@ -12,6 +12,15 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 - Ajout d'un Coach réparé (Joseph, 18/11/2026) : la base en ligne refusait un nouveau Coach (« la base n'a pas toutes
   les colonnes attendues ») car la colonne `id` héritée de l'ancienne app n'avait pas de numéro automatique. Le message
   brut d'un refus est désormais gardé dans la console du navigateur. **Migration 0052_ajout_coach à passer.**
+- Équipe : départ d'un Coach ou d'un Responsable Régional et remplacement (Joseph, 18/11/2026), sans migration. Picto
+  « Départ et remplacement » sur sa fiche (Directeur) : dernier jour, remplaçant en poste ou nouveau (créé sur place, poste
+  à pourvoir possible), reprise à partir d'un mois de ses magasins (ou Coachs et magasins en direct), des visites prévues
+  après son départ et de ses tâches en cours, chaque bloc décochable. Le dernier jour passé, il sort de l'équipe et des
+  listes ; « Équipe › Personnes › Anciens » le garde avec sa fiche et son historique ; « Postes à pourvoir » montre les
+  départs prévus et ce qui reste à reprendre. Date rangée dans `fiches_personnes` (champ `depart`).
+- Fiche magasin, onglet « Équipements » en tableau prérempli (Joseph, 18/11/2026), sans migration : chaque type a sa ligne,
+  quantité −/+ (ou tapée), année et prix d'achat HT saisis sur la ligne et enregistrés seuls ; « Ajouter un autre équipement »
+  pour le reste ; crayon pour la précision, la note ou le retrait.
 - Tâches des campagnes (Joseph, 18/11/2026) : chaque point d'une campagne devient une tâche de chaque magasin concerné,
   portée par son franchisé, pour la fin de la campagne, avec la puce « Campagne : nom » (onglet Tâches de la fiche,
   listes Tâches, accueil, espace du franchisé). Rien n'est recopié : « Fait » constate le point, « Rouvrir » le remet à

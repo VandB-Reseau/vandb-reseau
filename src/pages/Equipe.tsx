@@ -30,14 +30,15 @@ import Tabs from '@mui/material/Tabs'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { PastilleCharge } from '../components/Charge'
-import { chargeA, libelleSuivi, magasinsDuCoach, niveauCharge, suivi } from '../data/charge'
+import { chargeA, coachA, libelleSuivi, magasinsDuCoach, niveauCharge, suivi } from '../data/charge'
+import { departDe } from '../data/personnes'
 import { dateCourte, lienCoach, lienDirecteur, lienFiche, lienRR, telLien } from '../lib/format'
 import { libelleParc, type Personne, type Reseau, type ResponsableRegional } from '../data/modele'
 import { sousBandes } from '../components/Collant'
 import { RevueRR } from '../components/RevueRR'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 
-type Vue = 'organisation' | 'portefeuilles' | 'revue' | 'rituels' | 'collaborateurs' | 'franchises' | 'charge' | 'postes' | 'plan'
+type Vue = 'organisation' | 'portefeuilles' | 'revue' | 'rituels' | 'collaborateurs' | 'franchises' | 'charge' | 'postes' | 'plan' | 'anciens'
 
 function BoutonsContact({ p }: { p: Personne }) {
   return (
@@ -226,7 +227,8 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
   const coachsARecruter = lignes.filter((l) => l.coach.fictif)
   const arrivees = reseau.equipe.filter((c) => !c.fictif && c.arrivee > reseau.jour).sort((a, b) => a.arrivee.localeCompare(b.arrivee))
   const responsables = reseau.magasins.filter((m) => m.franchise && m.statut !== 'avenir' && m.responsableARecruter)
-  const rien = !coachsARecruter.length && !arrivees.length && !responsables.length
+  const departs = departsPrevus(reseau)
+  const rien = !coachsARecruter.length && !arrivees.length && !responsables.length && !departs.length
   if (rien) return <EmptyState icone={<WorkOutlineOutlined />} titre="Aucun poste à pourvoir" texte="Tous les postes de Coach sont pourvus et chaque magasin a son franchisé. Un Coach marqué « non recruté » dans l’ancienne application apparaîtra ici." />
   const Bloc = ({ titre, aide, children }: { titre: string; aide: string; children: ReactNode }) => (
     <Card sx={{ mb: 2 }}>
@@ -260,6 +262,16 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
           ))}
         </Bloc>
       )}
+      {departs.length > 0 && (
+        <Bloc titre={`Départs prévus (${departs.length})`} aide="Collaborateurs dont le dernier jour est posé, avec ce qui reste à leur nom.">
+          {departs.map((d) => (
+            <Rangee key={d.lien}>
+              <Link component={RouterLink} to={d.lien} sx={{ flex: 1, minWidth: 160, py: 1.5, fontWeight: 500 }}>{d.nom}</Link>
+              <Typography variant="body2" color="text.secondary">{[d.role, `part le ${dateCourte(d.depart)}`, d.magasins ? aReprendreLibelle(d.role, d.magasins) : 'tout est repris'].join(' · ')}</Typography>
+            </Rangee>
+          ))}
+        </Bloc>
+      )}
       {responsables.length > 0 && (
         <Bloc titre={`Franchisés à trouver (${responsables.length})`} aide="Magasins dont le franchisé est indiqué « En cours de recrutement ».">
           {responsables.map((m) => (
@@ -271,6 +283,40 @@ function VuePostes({ reseau }: { reseau: Reseau }) {
         </Bloc>
       )}
     </>
+  )
+}
+
+// Départ d'un collaborateur (Joseph, 18/11/2026) : magasins encore à son nom le lendemain de son dernier jour
+const lendemain = (iso: string) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10) }
+function restants(reseau: Reseau, p: { coach?: string; rr?: string }, depart: string) {
+  return p.coach
+    ? reseau.magasins.filter((m) => coachA(m, lendemain(depart)) === p.coach).length
+    : reseau.magasins.filter((m) => m.rr?.id === p.rr && m.rrEnDirect).length + reseau.equipe.filter((c) => c.rr?.id === p.rr).length
+}
+const aReprendreLibelle = (role: string, n: number) => (role === 'Coach' ? `${n} magasin${n > 1 ? 's' : ''} encore à son nom` : `${n} à reprendre`)
+function departsPrevus(reseau: Reseau) {
+  return [
+    ...reseau.equipe.map((c) => ({ nom: c.nom, role: 'Coach', lien: lienCoach(c.nom), depart: departDe(reseau, { type: 'coach', cle: c.nom }), magasins: 0, p: { coach: c.nom } })),
+    ...reseau.rrs.map((r) => ({ nom: r.nom, role: 'Responsable Régional', lien: lienRR(r.id), depart: departDe(reseau, { type: 'rr', cle: r.id }), magasins: 0, p: { rr: r.id } })),
+  ].filter((d) => d.depart).map((d) => ({ ...d, magasins: restants(reseau, d.p, d.depart) })).sort((a, b) => a.depart.localeCompare(b.depart))
+}
+
+function VueAnciens({ reseau }: { reseau: Reseau }) {
+  const anciens = [
+    ...(reseau.anciens?.coachs ?? []).map((c) => ({ nom: c.nom, role: 'Coach', lien: lienCoach(c.nom), depart: departDe(reseau, { type: 'coach', cle: c.nom }), reste: restants(reseau, { coach: c.nom }, departDe(reseau, { type: 'coach', cle: c.nom })) })),
+    ...(reseau.anciens?.rrs ?? []).map((r) => ({ nom: r.nom, role: 'Responsable Régional', lien: lienRR(r.id), depart: departDe(reseau, { type: 'rr', cle: r.id }), reste: restants(reseau, { rr: r.id }, departDe(reseau, { type: 'rr', cle: r.id })) })),
+  ].sort((a, b) => b.depart.localeCompare(a.depart))
+  if (!anciens.length) return <EmptyState icone={<BadgeOutlined />} titre="Aucun ancien collaborateur" texte="Un Coach ou un Responsable Régional dont le dernier jour est passé rejoint cette liste ; sa fiche et son historique restent consultables." />
+  return (
+    <Card>
+      {anciens.map((a) => (
+        <Box key={a.lien} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, minHeight: 56, flexWrap: 'wrap', borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+          <Link component={RouterLink} to={a.lien} sx={{ flex: 1, minWidth: 160, py: 1.5, fontWeight: 500 }}>{a.nom}</Link>
+          <Typography variant="body2" color="text.secondary">{a.role} · parti le {dateCourte(a.depart)}</Typography>
+          {a.reste > 0 && <Chip size="small" color="warning" label={aReprendreLibelle(a.role, a.reste)} sx={{ fontSize: 12, fontWeight: 600 }} />}
+        </Box>
+      ))}
+    </Card>
   )
 }
 
@@ -288,6 +334,7 @@ const vuesPersonnes: { vue: Vue; libelle: string }[] = [
   { vue: 'franchises', libelle: 'Franchisés' },
   { vue: 'portefeuilles', libelle: 'Portefeuilles' },
   { vue: 'postes', libelle: 'Postes à pourvoir' },
+  { vue: 'anciens', libelle: 'Anciens' },
 ]
 const ongletDe = (v: Vue): Onglet => (v === 'organisation' || v === 'revue' ? v : 'personnes')
 
@@ -313,7 +360,7 @@ export function Equipe() {
           )}
           {vue === 'collaborateurs' || vue === 'franchises' ? <VuePersonnes key={vue} perimetre={vue} reseau={reseau} />
             : vue === 'revue' ? <RevueRR reseau={reseau} nom="réseau" magasins={reseau.magasins} parRR />
-            : vue === 'portefeuilles' ? <VuePortefeuilles reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
+            : vue === 'portefeuilles' ? <VuePortefeuilles reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : vue === 'anciens' ? <VueAnciens reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
         </>
       )}
     </AvecReseau>

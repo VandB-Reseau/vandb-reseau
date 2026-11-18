@@ -16,6 +16,7 @@ export interface FichePersonnelle {
   email: string
   telephone: string
   visage: string // visage de la charte (v1 à v6) ; vide = initiales
+  depart: string // AAAA-MM-JJ, dernier jour dans l'équipe (Coach, Responsable Régional) ; vide = en poste
 }
 
 export type TypePersonne = 'directeur' | 'rr' | 'coach' | 'franchise'
@@ -24,7 +25,7 @@ export interface RefPersonne { type: TypePersonne; cle: string }
 
 export const cleFiche = (r: RefPersonne) => (r.type === 'directeur' ? 'directeur' : `${r.type}:${r.cle}`)
 
-export const ficheVide = (): FichePersonnelle => ({ prenom: '', nom: '', naissance: '', arrivee: '', codePostal: '', departement: '', ville: '', pays: 'France', email: '', telephone: '', visage: '' })
+export const ficheVide = (): FichePersonnelle => ({ prenom: '', nom: '', naissance: '', arrivee: '', codePostal: '', departement: '', ville: '', pays: 'France', email: '', telephone: '', visage: '', depart: '' })
 
 export const nomComplet = (f: Pick<FichePersonnelle, 'prenom' | 'nom'>) => `${f.prenom} ${f.nom}`.trim().replace(/\s+/g, ' ')
 
@@ -86,7 +87,7 @@ export const libelleRole = (type: TypePersonne, integresSeulement = false) =>
 // Nom affiché aujourd'hui pour une personne (sert à reconnaître une fiche renommée par l'ancienne app)
 function nomActuel(reseau: Reseau, r: RefPersonne): string | null {
   if (r.type === 'directeur') return reseau.directeur.nom === 'Direction du réseau' ? '' : reseau.directeur.nom
-  if (r.type === 'rr') return reseau.rrs.find((x) => x.id === r.cle)?.nom ?? null
+  if (r.type === 'rr') return [...reseau.rrs, ...(reseau.anciens?.rrs ?? [])].find((x) => x.id === r.cle)?.nom ?? null
   return r.cle
 }
 
@@ -98,10 +99,10 @@ export function fichePersonne(reseau: Reseau, r: RefPersonne): FichePersonnelle 
     const d = reseau.directeur
     Object.assign(f, { telephone: d.telephone ?? '', email: d.email ?? '', naissance: d.naissance ?? '', arrivee: d.arrivee ?? '' })
   } else if (r.type === 'rr') {
-    const x = reseau.rrs.find((y) => y.id === r.cle)
+    const x = [...reseau.rrs, ...(reseau.anciens?.rrs ?? [])].find((y) => y.id === r.cle)
     if (x) Object.assign(f, { telephone: x.telephone ?? '', email: x.email ?? '', naissance: x.naissance, arrivee: x.arrivee })
   } else if (r.type === 'coach') {
-    const c = reseau.equipe.find((y) => y.nom === r.cle)
+    const c = [...reseau.equipe, ...(reseau.anciens?.coachs ?? [])].find((y) => y.nom === r.cle)
     const p = reseau.coachs[r.cle]
     Object.assign(f, { telephone: p?.telephone ?? '', email: p?.email ?? '', ville: c?.ville ?? '', arrivee: c?.arrivee ?? '', naissance: c?.naissance ?? '' })
   } else {
@@ -115,6 +116,14 @@ export function fichePersonne(reseau: Reseau, r: RefPersonne): FichePersonnelle 
   if (!f.pays) f.pays = 'France'
   return f
 }
+
+// Départ d'un Coach ou d'un Responsable Régional (Joseph, 18/11/2026) : dernier jour dans l'équipe, rangé dans sa fiche
+export const departDe = (reseau: Pick<Reseau, 'personnes'>, r: RefPersonne) => {
+  const d = reseau.personnes[cleFiche(r)]?.depart ?? ''
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : ''
+}
+// Parti : le dernier jour est passé
+export const estParti = (reseau: Pick<Reseau, 'personnes'>, r: RefPersonne, jour: string) => { const d = departDe(reseau, r); return !!d && d < jour }
 
 export const ageDepuis = (iso: string, jour: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null
