@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Pilotage (Joseph, 18/11/2026), sans migration : type de graphe au choix dans le rendu (Automatique, Barres, Bâtons,
+  Courbe, Camembert), gardé dans la définition du rapport ; le rapport suit le périmètre choisi (région, magasins d'un Coach).
 - Fiche magasin, onglet Tâches : filtre « En cours » (tâches passées en cours par leur puce de statut), sans migration
   (Joseph, 18/11/2026).
 - Fiche magasin, onglet Tâches (Joseph, 17/11/2026), sans migration : toutes les tâches du magasin en puces À faire,

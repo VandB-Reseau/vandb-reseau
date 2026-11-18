@@ -304,6 +304,15 @@ export const axesVisibles = (equipe: boolean) => tousAxes().filter((a) => equipe
 
 // ── Définition d'un rapport (enregistrée telle quelle) ──────────────────
 export type Affichage = 'tableau' | 'graphes' | 'deux'
+// Type de graphe choisi dans le rendu (Joseph, 18/11/2026) ; « auto » = colonnes dans le temps, barres sinon
+export type TypeGraphe = 'auto' | 'barres' | 'colonnes' | 'courbe' | 'camembert'
+export const TYPES_GRAPHE: { cle: TypeGraphe; libelle: string }[] = [
+  { cle: 'auto', libelle: 'Automatique' },
+  { cle: 'barres', libelle: 'Barres' },
+  { cle: 'colonnes', libelle: 'Bâtons' },
+  { cle: 'courbe', libelle: 'Courbe' },
+  { cle: 'camembert', libelle: 'Camembert' },
+]
 export interface Definition {
   lignes: AxeId
   indicateurs: string[]
@@ -311,9 +320,10 @@ export interface Definition {
   periode: Periode
   colonnes: Decoupage
   affichage: Affichage
+  graphe?: TypeGraphe
   tri?: { cle: string; sens: 'asc' | 'desc' } | null
 }
-export const definitionVide = (): Definition => ({ lignes: 'magasin', indicateurs: ['ca', 'evolution'], filtres: {}, periode: { type: 'cumul' }, colonnes: 'aucun', affichage: 'deux', tri: null })
+export const definitionVide = (): Definition => ({ lignes: 'magasin', indicateurs: ['ca', 'evolution'], filtres: {}, periode: { type: 'cumul' }, colonnes: 'aucun', affichage: 'deux', graphe: 'auto', tri: null })
 
 // Lecture tolérante d'une définition venue de la base (ou d'une adresse) ; retire ce que le compte ne voit pas
 export function normaliserDefinition(v: unknown, equipe: boolean): Definition {
@@ -330,9 +340,10 @@ export function normaliserDefinition(v: unknown, equipe: boolean): Definition {
   const periode: Periode = { type: TYPES_PERIODE.some((t) => t.cle === p.type) ? p.type as TypePeriode : base.periode.type, ...(typeof p.mois === 'string' && /^\d{4}-\d{2}$/.test(p.mois) ? { mois: p.mois } : {}) }
   const colonnes = DECOUPAGES.some((d) => d.cle === o.colonnes) ? o.colonnes as Decoupage : 'aucun'
   const affichage = (['tableau', 'graphes', 'deux'] as const).includes(o.affichage as Affichage) ? o.affichage as Affichage : 'deux'
+  const graphe = TYPES_GRAPHE.some((g) => g.cle === o.graphe) ? o.graphe as TypeGraphe : 'auto'
   const t = o.tri && typeof o.tri === 'object' ? o.tri as Record<string, unknown> : null
   const tri = t && typeof t.cle === 'string' && (t.sens === 'asc' || t.sens === 'desc') ? { cle: t.cle, sens: t.sens } as const : null
-  return { lignes, indicateurs: indicateurs.length ? indicateurs : base.indicateurs, filtres, periode, colonnes, affichage, tri }
+  return { lignes, indicateurs: indicateurs.length ? indicateurs : base.indicateurs, filtres, periode, colonnes, affichage, graphe, tri }
 }
 
 // ── Calcul ──────────────────────────────────────────────────────────────
