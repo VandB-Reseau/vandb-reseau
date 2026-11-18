@@ -684,6 +684,19 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         l.push({ id: nouvel, ...champs, creeLe: new Date().toISOString().slice(0, 10), auteur: acces.franchise })
         return route.fulfill({ json: nouvel })
       }
+      // Point d'une campagne marqué fait par le franchisé depuis sa tâche (0051) ; il ne rouvre que ses propres constats
+      if (fn === 'constat_campagne_franchise') {
+        const st = String(corps.p_store ?? '')
+        if (acces.role !== 'franchise' || !(acces.magasins ?? []).includes(st)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const cp = ((options.espace ??= {}).campagnes ??= { liste: [], constats: {} }) as { liste: { id: string; points: { id: string }[] }[]; constats: Record<string, Record<string, Record<string, Record<string, unknown>>>> }
+        const id = String(corps.p_campagne), point = String(corps.p_point)
+        if (!cp.liste.some((c) => c.id === id && c.points.some((p) => p.id === point))) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'action_introuvable' } })
+        const k = ((cp.constats[id] ??= {})[st] ??= {})
+        if (corps.p_fait) k[point] = { fait: true, date: new Date().toISOString().slice(0, 10), par: acces.franchise }
+        else if (k[point]?.par !== acces.franchise) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'action_introuvable' } })
+        else delete k[point]
+        return route.fulfill({ status: 200, json: null })
+      }
       // Actions du franchisé (script 0007_actions_franchise.sql) : la base pose son nom et la date
       if (fn === 'ajouter_action_franchise' || fn === 'marquer_action_franchise') {
         const st = String(corps.p_store ?? '')

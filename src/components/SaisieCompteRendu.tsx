@@ -128,7 +128,7 @@ export function RevuePlan({ reseau, visite, magasin, plan, setPlan, revues, setR
   priorites: RevuesPriorites; setPriorites: (f: (x: RevuesPriorites) => RevuesPriorites) => void
 }) {
   const actives = prioritesActives(reseau, magasin)
-  const ouvertes = actionsEnCours(reseau, new Set([magasin])).filter((x) => !x.visite || x.visite.id !== (visite?.id ?? null))
+  const ouvertes = actionsEnCours(reseau, new Set([magasin])).filter((x) => !x.campagne && (!x.visite || x.visite.id !== (visite?.id ?? null)))
   const changerRevue = (cle: string) => (r: RevueTache | undefined) => setRevues((x) => { const n = { ...x }; if (r) n[cle] = r; else delete n[cle]; return n })
   const ligne = (a: ActionPlan, i: number) => (
     <LigneNouvelleTache key={i} reseau={reseau} magasin={magasin} a={a} rang={i + 1} priorites={actives}
