@@ -92,7 +92,7 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await page.getByRole('link', { name: /Annecy Test/ }).click()
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
   // Plus d'onglet Messages, comme pour l'équipe : le picto message ouvre le groupe du magasin (Joseph, 23/10/2026)
-  await expect(onglets.getByRole('tab')).toHaveText((isMobile ? ['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Historique'] : ['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Historique']))
+  await expect(onglets.getByRole('tab')).toHaveText((isMobile ? ['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Équipements', 'Historique'] : ['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Équipements', 'Historique']))
   await expect(page.getByRole('button', { name: /Modifier|Réaffecter|Saisir/ })).toHaveCount(0)
   // 313 : plus de compteurs dans l'en-tête ; les infos du magasin s'ouvrent par le picto « Infos »
   await expect(page.getByRole('region', { name: 'Fil du magasin' })).toHaveCount(0)

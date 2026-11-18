@@ -9,6 +9,7 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin : picto « Avis Google » distinct de l'étoile des favoris (bulle d'avis) ; onglet « Équipements » avant l'Historique, équipements retirés d'« Infos du magasin » (équipe et franchisé) (Joseph, 18/11/2026), sans migration.
 - Revue de tous les écrans, propositions 293 à 360 en un seul lot (Joseph, 18/11/2026), sans migration.
   Défauts : sélecteur « Choisir un magasin » du franchisé, tuiles Mes chiffres en lignes, repères réseau sur deux lignes,
   « vs septembre 2025 » dans les entretiens, menu PC plus serré, Pilotage aux couleurs V and B, meilleur levier sans budget
