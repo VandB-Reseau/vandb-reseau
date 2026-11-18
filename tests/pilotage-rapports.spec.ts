@@ -311,3 +311,38 @@ test('Pilotage : favoris en tête et rapports masqués', async ({ page, isMobile
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 })
+
+test('Pilotage : type de graphe au choix et périmètre choisi pris en compte', async ({ page, isMobile }) => {
+  await seConnecter(page)
+  await page.goto('./#/pilotage')
+  await choisirRapport(page, 'Ventes sur l’an dernier', isMobile)
+  const lignes = tableau(page).getByRole('row')
+  await expect(lignes.nth(1)).toBeVisible()
+  const avant = await lignes.count()
+
+  // Type de graphe (Joseph, 18/11/2026) : automatique par défaut, puis barres, bâtons, courbe ou camembert
+  const graphe = page.getByLabel('Graphe CA HT', { exact: true })
+  await expect(graphe.locator('[data-graphe="barres"]')).toBeVisible()
+  const type = page.getByRole('combobox', { name: 'Type de graphe' })
+  for (const [libelle, cle] of [['Camembert', 'camembert'], ['Courbe', 'courbe'], ['Bâtons', 'colonnes']] as const) {
+    await type.click()
+    await page.getByRole('option', { name: libelle, exact: true }).click()
+    await expect(graphe.locator(`[data-graphe="${cle}"]`)).toBeVisible()
+  }
+  await type.click()
+  await page.getByRole('option', { name: 'Camembert', exact: true }).click()
+  await expect(graphe.locator('[data-graphe="camembert"] svg path, [data-graphe="camembert"] svg circle').first()).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: 'Ventes sur l’an dernier' }).locator('..')).toContainText('modifié')
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  // Seul le tableau : plus de choix de graphe
+  await page.getByRole('button', { name: 'Tableau', exact: true }).click()
+  await expect(type).toHaveCount(0)
+  await page.getByRole('button', { name: 'Les deux', exact: true }).click()
+
+  // Périmètre choisi (Joseph, 18/11/2026) : le rapport ne garde que les magasins de la région
+  await page.getByRole('button', { name: /^Périmètre/ }).first().click()
+  await page.getByRole('menu', { name: 'Choisir le périmètre' }).getByRole('menuitem', { name: /Région Alex NORD/ }).click()
+  await expect(page.getByRole('button', { name: 'Périmètre : Région Alex NORD' }).first()).toBeVisible()
+  await expect.poll(() => lignes.count()).toBeLessThan(avant)
+})

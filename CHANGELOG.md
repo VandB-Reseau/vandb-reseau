@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Pilotage (Joseph, 18/11/2026), sans migration : type de graphe au choix dans le rendu (Automatique, Barres, Bâtons,
+  Courbe, Camembert), gardé dans la définition du rapport ; le rapport suit le périmètre choisi (région, magasins d'un Coach).
 - Simulateurs du franchisé (Joseph, 18/11/2026, choix 287, 291, 292) : « Me rémunérer » (salaire ou dividendes : ce que
   je garde par mois, impôts et cotisations, ce qui reste dans la société et sort de sa trésorerie, gérant majoritaire ou
   président de SAS), « Mon loyer » (poids dans le CA, hausse, reste du bail, CA pour l'absorber, repère du siège),
