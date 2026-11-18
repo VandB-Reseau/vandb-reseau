@@ -35,7 +35,7 @@ export function visitePlanifieeProche(reseau: Reseau, magasin: string, date: str
 export function sujetsProposes(reseau: Reseau, magasin: string): Sujet[] {
   const r: Sujet[] = []
   for (const p of prioritesActives(reseau, magasin)) r.push({ id: `p:${p.id}`, genre: 'priorite', titre: p.titre, detail: 'Faire le point sur la priorité et ses tâches' })
-  const ouvertes = actionsDuMagasin(reseau, magasin).filter((x) => !x.a.faite)
+  const ouvertes = actionsDuMagasin(reseau, magasin).filter((x) => !x.a.faite && !x.campagne)
     .sort((x, y) => Number(enRetard(y.a, reseau.jour)) - Number(enRetard(x.a, reseau.jour)) || Number(y.a.statut === 'bloquee') - Number(x.a.statut === 'bloquee')
       || (echeanceDate(x.a) || '9999').localeCompare(echeanceDate(y.a) || '9999'))
   for (const x of ouvertes) {

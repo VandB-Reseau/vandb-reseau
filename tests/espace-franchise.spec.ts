@@ -42,7 +42,9 @@ test('un franchisé arrive sur son accueil, limité à ses magasins', async ({ p
   }
   // Tâches : celle en retard d'abord ; rien de Lyon ni de Brest
   const actions = page.getByRole('list', { name: 'Tâches en cours' }).getByRole('listitem')
-  await expect(actions).toHaveCount(2)
+  // + 3 points de la campagne Noël non constatés faits (2 magasins × 2 points, 1 déjà fait), échéance en fin de campagne (18/11/2026)
+  await expect(actions).toHaveCount(5)
+  await expect(actions.filter({ hasText: 'Campagne : Noël' })).toHaveCount(3)
   await expect(actions.first()).toContainText('Lancer une dégustation')
   await expect(actions.first()).toContainText('En retard')
   await expect(page.getByText('Refaire la vitrine')).toHaveCount(0)

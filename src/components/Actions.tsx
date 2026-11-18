@@ -23,15 +23,16 @@ import Typography from '@mui/material/Typography'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
+import CampaignOutlined from '@mui/icons-material/CampaignOutlined'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import { useReseau } from '../data/ReseauContext'
 import { useAuth } from '../auth/AuthContext'
-import { changerStatutTache, enregistrerActionLibre, marquerActions, supprimerActionLibre } from '../data/chargement'
+import { changerStatutTache, enregistrerActionLibre, enregistrerConstats, marquerActions, supprimerActionLibre } from '../data/chargement'
 import { clesDesPorteurs, echeanceDate, enRetard, joindrePorteurs, porteursDe, porteursDu, type ActionSuivie } from '../data/actions'
 import { mesCles } from '../data/messagerie'
 import { notifierTache } from '../lib/notifications'
-import { ajouterActionFranchise, ErreurAction, marquerActionFranchise, statutActionFranchise } from '../data/espaceFranchise'
+import { ajouterActionFranchise, constatCampagneFranchise, ErreurAction, marquerActionFranchise, statutActionFranchise } from '../data/espaceFranchise'
 import { PuceStatut } from './StatutTache'
 import type { ActionLibre, Reseau, StatutTache } from '../data/modele'
 import { dateCourte, lienFiche } from '../lib/format'
@@ -52,6 +53,11 @@ export function useEcritureActions(reseau: Reseau) {
   const franchise = !!reseau.espace
   const lectureSeule = franchise && profil?.role !== 'franchise'
   const cocher = async (x: ActionSuivie, faite: boolean) => {
+    // Tâche d'une campagne : « Fait » constate le point fait, « Rouvrir » le remet à constater
+    if (x.campagne) {
+      if (franchise) return constatCampagneFranchise(x.magasin, x.campagne.id, x.campagne.point, faite)
+      return enregistrerConstats([{ campagne: x.campagne.id, magasin: x.magasin, point: x.campagne.point, fait: faite ? true : null, date: reseau.jour, par: profil?.nom ?? '' }])
+    }
     if (franchise) {
       if (x.libre) return marquerActionFranchise(x.magasin, faite, { libre: x.libre.id })
       if (x.visite?.id != null) return marquerActionFranchise(x.magasin, faite, { visite: x.visite.id, index: x.index, texte: x.a.action })
@@ -80,7 +86,8 @@ export function useChangerStatut(reseau: Reseau, signaler: (m: string) => void) 
   const { recharger } = useReseau()
   const ecriture = useEcritureActions(reseau)
   if (ecriture.lectureSeule) return undefined
-  return (x: ActionSuivie) => async (s: '' | StatutTache, raison: string) => {
+  // Une tâche de campagne n'a pas de statut : son état est le constat du point
+  return (x: ActionSuivie) => x.campagne ? undefined : async (s: '' | StatutTache, raison: string) => {
     try {
       await ecriture.statut(x, s, raison)
       await recharger()
@@ -98,6 +105,7 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
   const auteur = x.libre?.auteur ? ` par ${x.libre.auteur}` : ''
   const origine = x.visite
     ? <Link component={RouterLink} to={lienCompteRendu(x.visite)}>visite du {dateCourte(x.visite.date)}</Link>
+    : x.campagne ? `campagne du ${dateCourte(x.campagne.debut)} au ${dateCourte(x.campagne.fin)}${x.campagne.constat && !x.campagne.constat.fait ? ` · constatée non faite le ${dateCourte(x.campagne.constat.date)}` : ''}`
     : x.date ? `ajoutée le ${dateCourte(x.date)}${auteur}` : 'hors visite'
   // Échéance : à droite sur PC, sous le texte sur téléphone pour laisser la largeur au libellé
   const pastille = !x.a.faite && echeance && <Chip size="small" color={retard ? 'error' : 'default'} variant={retard ? 'filled' : 'outlined'} label={retard ? `En retard · ${echeance}` : echeance} sx={{ fontSize: 12, fontWeight: 600 }} />
@@ -130,6 +138,8 @@ export function LigneAction({ reseau, x, avecMagasin, avecPorteur = true, cocher
         {priorite && !sansPriorite && <Chip size="small" icon={<FlagOutlined />} label={objectifLie ? `Priorité : ${priorite.titre} · Objectif : ${phraseObjectif(objectifLie)}` : `Priorité : ${priorite.titre}`} sx={{ mt: 0.5, fontSize: 12, fontWeight: 600, maxWidth: '100%', bgcolor: 'rgba(48,118,114,0.10)', color: '#24524f', '& .MuiChip-icon': { color: '#307672' } }} />}
         {/* Joseph (17/11/2026) : une tâche du plan Marché extérieur dit d'où elle vient et pour quelle cible */}
         {x.libre?.exterieur && !sansExterieur && <Chip size="small" icon={<HandshakeOutlined />} label={`Marché extérieur : ${x.libre.exterieur.nom}`} sx={{ mt: 0.5, mr: 0.5, fontSize: 12, fontWeight: 600, maxWidth: '100%', bgcolor: 'rgba(48,118,114,0.10)', color: '#24524f', '& .MuiChip-icon': { color: '#307672' } }} />}
+        {/* Joseph (18/11/2026) : une tâche née d'une campagne dit laquelle */}
+        {x.campagne && <Chip size="small" icon={<CampaignOutlined />} label={`Campagne : ${x.campagne.nom}`} sx={{ mt: 0.5, mr: 0.5, fontSize: 12, fontWeight: 600, maxWidth: '100%', bgcolor: 'rgba(48,118,114,0.10)', color: '#24524f', '& .MuiChip-icon': { color: '#307672' } }} />}
         {x.a.statut === 'bloquee' && x.a.raison && !x.a.faite && <Typography variant="body2" sx={{ color: 'error.dark' }}>Bloquée : {x.a.raison}</Typography>}
         {(pastille || statut) && <Box sx={{ display: { xs: 'flex', sm: 'none' }, gap: 1, flexWrap: 'wrap', alignItems: 'center', mt: 0.75 }}>{statut}{pastille}</Box>}
         {x.a.pieces && <ListePieces pieces={x.a.pieces} />}

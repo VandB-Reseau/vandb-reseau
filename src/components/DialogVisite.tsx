@@ -148,7 +148,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const cible = visite ?? reprise
   const sujets = unSeul && !contact && magasins[0] && (!visite || visite.prevue || visite.date >= reseau.jour) ? ordreDuJour(reseau, magasins[0]) : []
   const avecPlan = unSeul && !contact && !!magasins[0]
-  const nbOuvertes = avecPlan ? actionsEnCours(reseau, new Set([magasins[0]])).filter((x) => !x.visite || x.visite.id !== (visite?.id ?? null)).length : 0
+  const nbOuvertes = avecPlan ? actionsEnCours(reseau, new Set([magasins[0]])).filter((x) => !x.campagne && (!x.visite || x.visite.id !== (visite?.id ?? null))).length : 0
   const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date) && !(audit && !grilleRemplie && scoreInvalide)
   const noms = reseau.magasins.map((m) => m.nom)
   // Depuis un magasin (ou le compte rendu d'une visite prévue) : magasin, date, type et visiteurs déjà connus, sur une ligne
