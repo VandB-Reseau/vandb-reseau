@@ -39,7 +39,9 @@ export function dateHeure(iso: string): string {
 
 // Montant saisi remis en forme à la sortie du champ : « 60000 » → « 60 000 », « 1250,5 » → « 1 250,5 » ; illisible ou vide : tel quel
 const saisie = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2, useGrouping: true })
-export function enChiffres(v: number): string { return saisie.format(v).replace(/[\u202f\u00a0]/g, ' ') }
+const saisie3 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3, useGrouping: true })
+// decimales : 3 pour les barèmes au millième (indemnité kilométrique)
+export function enChiffres(v: number, decimales: 2 | 3 = 2): string { return (decimales === 3 ? saisie3 : saisie).format(v).replace(/[\u202f\u00a0]/g, ' ') }
 export function miseEnForme(texte: string, lire: (s: string) => number | null): string {
   const v = lire(texte)
   return v === null || Number.isNaN(v) ? texte : enChiffres(v)
