@@ -116,8 +116,11 @@ export function parametresSimulateurs(p: { simulateurs?: Partial<ParametresSimul
     formation: {
       km: Object.fromEntries(Object.entries(REGLES_FORMATION.km).map(([k, v]) => [k, ou(s.formation?.km?.[k as keyof ReglesFormation['km']], v)])) as ReglesFormation['km'],
       electrique: ou(s.formation?.electrique, REGLES_FORMATION.electrique),
-      opcoHeure: ou(s.formation?.opcoHeure, REGLES_FORMATION.opcoHeure),
-      opcoBudget: ou(s.formation?.opcoBudget, REGLES_FORMATION.opcoBudget),
+      // Clés renommées le 18/11/2026 (règles de L'Opcommerce) : les anciennes opcoHeure et opcoBudget sont ignorées
+      opcoPedagogiqueHeure: ou(s.formation?.opcoPedagogiqueHeure, REGLES_FORMATION.opcoPedagogiqueHeure),
+      opcoSalaireHeure: ou(s.formation?.opcoSalaireHeure, REGLES_FORMATION.opcoSalaireHeure),
+      opcoBudgetMoins11: ou(s.formation?.opcoBudgetMoins11, REGLES_FORMATION.opcoBudgetMoins11),
+      opcoBudget11a49: ou(s.formation?.opcoBudget11a49, REGLES_FORMATION.opcoBudget11a49),
       cpfResteACharge: ou(s.formation?.cpfResteACharge, REGLES_FORMATION.cpfResteACharge),
       aides: Object.fromEntries(Object.entries(REGLES_FORMATION.aides).map(([k, v]) => [k, ou(s.formation?.aides?.[k as keyof ReglesFormation['aides']], v)])) as ReglesFormation['aides'],
     },
