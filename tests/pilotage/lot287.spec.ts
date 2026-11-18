@@ -40,19 +40,33 @@ test('287 : salaire ou dividendes, ce que je garde par mois et ce qui part en im
   await simulateur(page, 'remuneration')
   await expect(page.getByRole('heading', { name: 'Me rémunérer' }).first()).toBeVisible()
   await page.getByLabel('Bénéfice avant ma rémunération et l’impôt').fill('60000')
-  await page.getByLabel('Capital, primes et comptes courants').fill('10000')
+  // Capital, primes et comptes courants à part : seuil des dividendes sans cotisations à 10 % de 10 000 €
+  await page.getByLabel('Capital social').fill('4000')
+  await page.getByLabel('Primes d’émission').fill('1000')
+  await page.getByLabel('Comptes courants d’associés').fill('5000')
+  await expect(page.getByText(/Dividendes sans cotisations jusqu’à 1\s000\s€ par an/)).toBeVisible()
   await page.getByLabel('Rémunération nette par mois').fill('2000')
   await page.getByLabel('Part du résultat versée en dividendes').fill('50')
-  await page.getByLabel('Taux de prélèvement à la source du foyer').fill('10')
-  // Je garde 26 383,62 ÷ 12 = 2 199 € ; impôts et cotisations 22 906,38 ÷ 12 = 1 909 € ; 10 710 € dans la société ;
-  // tout en rémunération 37 241,38 ÷ 12 = 3 103 € ; tout en dividendes 20 650,29 ÷ 12 = 1 721 €
-  await expect(phrase(page)).toContainText(/je garde 2\s199\s€ par mois après impôts, 1\s909\s€ par mois partent en impôts et cotisations, 10\s710\s€ restent dans la société\. Tout en rémunération : 3\s103\s€ par mois ; tout en dividendes : 1\s721\s€/)
+  await page.getByLabel('Je veux garder par mois, après impôts').fill('2500')
+  // Je garde 27 683,62 ÷ 12 = 2 307 € ; impôts et cotisations 21 606,38 ÷ 12 = 1 801 € ; 10 710 € dans la société ;
+  // tout en rémunération 37 102,91 ÷ 12 = 3 092 € ; tout en dividendes 20 650,29 ÷ 12 = 1 721 € ;
+  // recommandé pour 2 500 € : 2 660 € de rémunération, sans dividendes (tests/pilotage/moteur/lot287.spec.ts)
+  await expect(phrase(page)).toContainText(/je garde 2\s307\s€ par mois après impôts, 1\s801\s€ par mois partent en impôts et cotisations, 10\s710\s€ restent dans la société\. Tout en rémunération : 3\s092\s€ par mois ; tout en dividendes : 1\s721\s€/)
+  await expect(phrase(page)).toContainText(/Pour garder 2\s500\s€ par mois : 2\s660\s€ nets de rémunération par mois et 0\s?% du résultat en dividendes/)
   const tableau = page.getByRole('table', { name: 'Salaire ou dividendes' })
+  await expect(tableau.getByRole('columnheader', { name: 'Recommandé' })).toBeVisible()
+  // Charges en négatif, flat tax à part
+  await expect(tableau.getByRole('row', { name: /^Impôt sur les sociétés/ })).toContainText(/[−-]\s3\s780\s€/)
+  await expect(tableau.getByRole('row', { name: /^Flat tax, impôt sur le revenu/ })).toContainText(/[−-]\s1\s371\s€/)
+  await expect(tableau.getByRole('row', { name: /^Cotisations sur les dividendes au-delà de 1\s000\s€/ })).toContainText(/[−-]\s4\s370\s€/)
   await expect(tableau.getByRole('row', { name: /Sort de la trésorerie de la société/ })).toContainText(/49\s290\s€/)
-  // Président de SAS : plus de capital à saisir, dividendes sans cotisations
-  await page.getByRole('group', { name: 'Je suis' }).getByRole('button', { name: 'Président de SAS' }).click()
-  await expect(page.getByLabel('Capital, primes et comptes courants')).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Montage recommandé' })).toContainText(/1 € de bénéfice en plus te laisse 0,62\s€ en rémunération/)
+  // Assimilé salarié : plus de capital à saisir, dividendes sans cotisations ; montage recommandé repris : 810 € par mois
+  await page.getByRole('group', { name: 'Je suis' }).getByRole('button', { name: /Assimilé salarié/ }).click()
+  await expect(page.getByLabel('Capital social')).toHaveCount(0)
   await expect(tableau.getByRole('row', { name: /^Je garde après impôts, par an/ })).toContainText(/33\s786\s€/)
+  await page.getByRole('button', { name: 'Reprendre dans ma répartition' }).click()
+  await expect(page.getByLabel('Rémunération nette par mois')).toHaveValue(/810/)
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   // Le franchisé garde sa simulation (type remuneration, migration 0034)
@@ -100,9 +114,11 @@ test('Directeur : règles de « Me rémunérer » et repère du loyer dans Param
   // Règles 2026 proposées d'office : prélèvements sociaux 18,6 %, impôt forfaitaire 12,8 %
   await expect(page.getByLabel('Prélèvements sociaux des dividendes')).toHaveValue('18,6')
   await expect(page.getByLabel('Impôt forfaitaire des dividendes')).toHaveValue('12,8')
+  await expect(page.getByLabel('Indemnité kilométrique 5 CV')).toHaveValue('0,636')
+  await expect(page.getByLabel('Aide apprenti BTS (niveau 5)')).toHaveValue(/4\s?500/)
   await page.getByLabel('Repère du loyer').fill('8')
   await page.getByRole('region', { name: 'Simulateurs' }).getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText(/Repères des simulateurs \d{4} enregistrés\./)).toBeVisible()
   const p = ecritures.filter((e) => e.table === 'parametres_reseau').at(-1)?.corps as { valeur: { simulateurs: Record<string, unknown> } }
-  expect(p.valeur.simulateurs).toMatchObject({ loyerRepere: 0.08, remuneration: { prelevementsSociaux: 0.186, cotisationsTNS: 0.45 } })
+  expect(p.valeur.simulateurs).toMatchObject({ loyerRepere: 0.08, remuneration: { prelevementsSociaux: 0.186, cotisationsTNS: 0.45, plafondAbattement: 14_555 }, formation: { opcoHeure: 30, km: { cv5: 0.636 } } })
 })

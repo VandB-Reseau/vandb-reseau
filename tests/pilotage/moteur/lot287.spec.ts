@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { simulerLoyer, simulerMix } from '../../../src/pilotage/moteur/boiteOutils'
 import { parametresParDefaut } from '../../../src/pilotage/moteur/parametres'
-import { REGLES_REMUNERATION, scenarioRemuneration, simulerRemuneration } from '../../../src/pilotage/moteur/remunerationDirigeant'
+import { impotBareme, recommanderRemuneration, REGLES_REMUNERATION, rendements, scenarioRemuneration, simulerRemuneration } from '../../../src/pilotage/moteur/remunerationDirigeant'
 import { parametresSimulateurs } from '../../../src/pilotage/moteur/simulateurs'
 
 // Lot 287, 291, 292 (Joseph, 18/11/2026). Chiffres fictifs, vérifiés à la main.
@@ -11,8 +11,8 @@ const r = REGLES_REMUNERATION   // 45 % (gérant majoritaire), minimum 1 255 €
 
 test('287 · gérant majoritaire : rémunération et dividendes, impôts et cotisations, trésorerie', () => {
   // Bénéfice avant rémunération 60 000 € ; 2 000 € nets par mois ; la moitié du résultat net distribuée ;
-  // capital et comptes courants 10 000 € ; foyer prélevé à 10 %
-  const x = { benefice: 60_000, statut: 'tns' as const, netMois: 2_000, distribution: 0.5, capital: 10_000, tauxFoyer: 0.1 }
+  // capital 4 000 €, primes 1 000 €, comptes courants 5 000 € (seuil 1 000 €) ; foyer d'une part, sans autre revenu
+  const x = { benefice: 60_000, statut: 'tns' as const, netMois: 2_000, distribution: 0.5, capital: 4_000, primes: 1_000, comptesCourants: 5_000, parts: 1 }
   const e = simulerRemuneration(x, r, p.impot)
   const c = e.choix
   proche(c.netAn, 24_000)
@@ -22,14 +22,17 @@ test('287 · gérant majoritaire : rémunération et dividendes, impôts et coti
   proche(c.impotSocietes, 3_780)          // 25 200 × 15 %
   proche(c.resultatNet, 21_420)
   proche(c.dividendes, 10_710)            // la moitié
+  proche(c.seuilDividendes, 1_000)        // 10 % de 4 000 + 1 000 + 5 000
   proche(c.partSoumise, 9_710)            // au-delà de 10 % de 10 000 €
   proche(c.cotisationsDividendes, 4_369.5) // 9 710 × 45 %
   proche(c.irDividendes, 1_370.88)        // 10 710 × 12,8 %
   proche(c.prelevementsSociaux, 186)      // 1 000 × 18,6 %
   proche(c.netDividendes, 4_783.62)
-  proche(c.irRemuneration, 2_400)         // 24 000 × 10 %
-  proche(c.netPerso, 26_383.62)           // 24 000 − 2 400 + 4 783,62
-  proche(c.impotsEtCotisations, 22_906.38)
+  proche(c.imposable, 21_600)             // 24 000 − 10 % pour frais
+  proche(c.irRemuneration, 1_100)         // (21 600 − 11 600) × 11 %
+  proche(c.trancheMarginale, 0.11)
+  proche(c.netPerso, 27_683.62)           // 24 000 − 1 100 + 4 783,62
+  proche(c.impotsEtCotisations, 21_606.38) // 10 800 + 3 780 + 1 100 + 4 369,5 + 1 370,88 + 186
   proche(c.resteSociete, 10_710)
   proche(c.sortiesSociete, 49_290)        // 34 800 + 3 780 + 10 710
   // Rien ne se perd : ce que je garde + impôts et cotisations + ce qui reste dans la société = bénéfice
@@ -39,7 +42,9 @@ test('287 · gérant majoritaire : rémunération et dividendes, impôts et coti
   proche(e.toutSalaire.netAn, 41_379.31)
   proche(e.toutSalaire.cotisations, 18_620.69)
   proche(e.toutSalaire.impotSocietes, 0)
-  proche(e.toutSalaire.netPerso, 37_241.38)          // 41 379,31 × 90 %
+  // Impôt : 37 241,38 imposables ; 17 979 × 11 % + 7 662,38 × 30 % = 1 977,69 + 2 298,71 = 4 276,40
+  proche(e.toutSalaire.irRemuneration, 4_276.40)
+  proche(e.toutSalaire.netPerso, 37_102.91)
   // Tout en dividendes : minimum de cotisations 1 255 € ; IS 6 375 + 16 245 × 25 % = 10 436,25 €
   const d = e.toutDividendes
   proche(d.cotisations, 1_255)
@@ -51,25 +56,75 @@ test('287 · gérant majoritaire : rémunération et dividendes, impôts et coti
 })
 
 test('287 · président de SAS : dividendes sans cotisations, au prélèvement forfaitaire de 31,4 %', () => {
-  const e = simulerRemuneration({ benefice: 60_000, statut: 'assimile', netMois: 0, distribution: 1, capital: 0, tauxFoyer: 0.1 }, r, p.impot)
+  const e = simulerRemuneration({ benefice: 60_000, statut: 'assimile', netMois: 0, distribution: 1, capital: 50_000, parts: 1 }, r, p.impot)
   const d = e.toutDividendes
   proche(d.cotisations, 0)
   proche(d.impotSocietes, 10_750)         // 6 375 + 17 500 × 25 %
   proche(d.dividendes, 49_250)
-  proche(d.partSoumise, 0)
+  proche(d.partSoumise, 0)                // assimilé salarié : pas de seuil
+  proche(d.seuilDividendes, 0)
   proche(d.irDividendes, 6_304)           // 49 250 × 12,8 %
   proche(d.prelevementsSociaux, 9_160.5)  // 49 250 × 18,6 %
   proche(d.netPerso, 33_785.5)
   proche(e.toutSalaire.netAn, 33_333.33)  // 60 000 ÷ 1,8
-  proche(e.toutSalaire.netPerso, 30_000)
+  // 30 000 imposables : 17 979 × 11 % + 421 × 30 % = 1 977,69 + 126,30 = 2 103,99
+  proche(e.toutSalaire.netPerso, 31_229.34)
   // Bénéfice trop petit : perte, ni impôt ni dividende
-  const perte = scenarioRemuneration({ benefice: 10_000, statut: 'assimile', netAn: 12_000, distribution: 1, capital: 0, tauxFoyer: 0 }, r, p.impot)
+  const perte = scenarioRemuneration({ benefice: 10_000, statut: 'assimile', netAn: 12_000, distribution: 1, capital: 0, parts: 1 }, r, p.impot)
   proche(perte.resultatNet, -11_600)      // 10 000 − 12 000 × 1,8
   proche(perte.impotSocietes, 0)
   proche(perte.dividendes, 0)
   // Repères modifiables dans Paramètres ; absents : règles 2026
   expect(parametresSimulateurs({}).remuneration).toEqual(r)
   expect(parametresSimulateurs({ simulateurs: { remuneration: { ...r, prelevementsSociaux: 0.172 } } }).remuneration.prelevementsSociaux).toBe(0.172)
+})
+
+test('287 · barème de l impôt sur le revenu 2026, parts, autres revenus du foyer, plafond des frais', () => {
+  proche(impotBareme(11_600, 1), 0)
+  proche(impotBareme(50_000, 1), 8_103.99)          // 17 979 × 11 % + 20 421 × 30 % = 1 977,69 + 6 126,30
+  proche(impotBareme(100_000, 2), 8_103.99 * 2)     // quotient familial : 50 000 par part
+  proche(impotBareme(200_000, 1), 66_523.84)        // 1 977,69 + 54 998 × 30 % + 97 340 × 41 % + 18 083 × 45 %
+  // Conjoint à 40 000 €, 2 parts : 24 000 € nets de rémunération → 21 600 imposables ; foyer 61 600 ÷ 2 = 30 800 par part
+  // impôt avec : 2 × (1 977,69 + 1 221 × 30 %) = 4 687,98 ; sans : 2 × (8 400 × 11 %) = 1 848 ; dû à la rémunération 2 839,98
+  const c = scenarioRemuneration({ benefice: 60_000, statut: 'assimile', netAn: 24_000, distribution: 0, capital: 0, parts: 2, autresRevenus: 40_000 }, r, p.impot)
+  proche(c.irRemuneration, 2_839.98)
+  proche(c.trancheMarginale, 0.3)
+  // Plafond de la déduction pour frais : 200 000 € nets → 200 000 − 14 555 imposables
+  proche(scenarioRemuneration({ benefice: 400_000, statut: 'assimile', netAn: 200_000, distribution: 0, capital: 0, parts: 1 }, r, p.impot).imposable, 185_445)
+})
+
+test('287 · montage recommandé pour garder un montant par mois, net après impôts', () => {
+  // Non salarié, 60 000 € de bénéfice, garder 2 500 € par mois (30 000 € par an) : tout en rémunération, 2 660 € par mois.
+  // 31 920 € nets : cotisations 14 364, imposable 28 728, impôt 17 128 × 11 % = 1 884,08 ; je garde 30 035,92 ;
+  // IS (60 000 − 46 284) × 15 % = 2 057,40 ; reste 11 658,60 dans la société
+  const base = { benefice: 60_000, statut: 'tns' as const, capital: 10_000, parts: 1 }
+  const t = recommanderRemuneration(base, 30_000, r, p.impot)!
+  expect(t.atteint).toBe(true)
+  proche(t.netMois, 2_660)
+  proche(t.distribution, 0)
+  proche(t.scenario.netPerso, 30_035.92)
+  proche(t.scenario.resteSociete, 11_658.6)
+  // À ce niveau, 1 € de bénéfice laisse 1 ÷ 1,45 × (1 − 11 % × 90 %) = 0,6214 € en rémunération, 0,85 × (1 − 12,8 % − 18,6 %) = 0,5831 € en dividendes
+  const g = rendements(base, t.scenario, r, p.impot)
+  proche(g.salaire, 0.6214, 4)
+  proche(g.dividendes, 0.5831, 4)
+  // Assimilé salarié : la rémunération ramène le bénéfice à 42 500 € (fin du taux de 15 %), le reste en dividendes.
+  // 810 € par mois : 9 720 € nets, 7 776 € de charges, bénéfice 42 504 € ; 81,9 % distribués
+  const a = recommanderRemuneration({ ...base, statut: 'assimile' }, 30_000, r, p.impot)!
+  proche(a.netMois, 810)
+  proche(a.distribution, 0.819, 3)
+  expect(a.scenario.netPerso).toBeGreaterThanOrEqual(30_000)
+  proche(a.scenario.resultatAvantImpot, 42_504)
+  // Toujours au moins le montant visé, et jamais moins dans la société qu'avec tout en rémunération ou tout en dividendes
+  const e = simulerRemuneration({ ...base, netMois: 0, distribution: 0 }, r, p.impot)
+  expect(t.scenario.resteSociete).toBeGreaterThanOrEqual(e.toutSalaire.resteSociete)
+  // Hors d'atteinte : le montage qui garde le plus, signalé
+  const h = recommanderRemuneration(base, 45_000, r, p.impot)!
+  expect(h.atteint).toBe(false)
+  expect(h.scenario.netPerso).toBeLessThan(45_000)
+  expect(h.scenario.netPerso).toBeGreaterThanOrEqual(e.toutSalaire.netPerso)
+  // Rien visé : pas de recommandation
+  expect(recommanderRemuneration(base, 0, r, p.impot)).toBeNull()
 })
 
 test('291 · loyer : poids dans le CA, hausse, cumul sur le bail, CA pour l absorber, loyer supportable', () => {

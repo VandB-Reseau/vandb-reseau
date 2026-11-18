@@ -5,6 +5,7 @@ import { echeancier } from './financement'
 import { joursHorsDimanche } from './objectifs'
 import { tresorerieBudget } from './tresorerie'
 import { REGLES_REMUNERATION, type ReglesRemuneration } from './remunerationDirigeant'
+import { REGLES_FORMATION, type ReglesFormation } from './formation'
 import { UNIVERS, type Budget, type Hypotheses, type ParametresReseau, type TempsFort, type Univers } from './types'
 
 // Simulateurs du franchisé (choix 125 à 135, Joseph 13/11/2026) : les décisions du quotidien, hors du budget. Rien n'est
@@ -46,6 +47,7 @@ export interface ParametresSimulateurs {
   // repère en part du CA HT (0 : pas de repère)
   remuneration: ReglesRemuneration
   loyerRepere: number
+  formation: ReglesFormation // Former un collaborateur (Joseph, 18/11/2026), valeurs 2026 par défaut
 }
 // Remises et offerts (choix 163) : les lignes du fichier « Pilotage remises & gratuités »
 export const LIGNES_REMISES = [
@@ -72,6 +74,7 @@ export const simulateursParDefaut: ParametresSimulateurs = {
   contrat: { ...CONTRAT_CDD }, tireuses: { ...TIREUSES }, livraison: [], marcheExterieur: { paliers: [], camion: 0 }, familles: [],
   remises: { offerts: 0, persos: 0, prixSpeciaux: 0, remises: 0, fidelite: 0 },
   remuneration: { ...REGLES_REMUNERATION }, loyerRepere: 0,
+  formation: { ...REGLES_FORMATION, km: { ...REGLES_FORMATION.km }, aides: { ...REGLES_FORMATION.aides } },
 }
 const positif = (x: unknown) => Math.max(0, fini(x as number))
 export function parametresSimulateurs(p: { simulateurs?: Partial<ParametresSimulateurs> } | null | undefined): ParametresSimulateurs {
@@ -110,6 +113,14 @@ export function parametresSimulateurs(p: { simulateurs?: Partial<ParametresSimul
     remuneration: Object.fromEntries((Object.keys(REGLES_REMUNERATION) as (keyof ReglesRemuneration)[])
       .map((k) => [k, ou(s.remuneration?.[k], REGLES_REMUNERATION[k])])) as unknown as ReglesRemuneration,
     loyerRepere: Math.min(1, positif(s.loyerRepere)),
+    formation: {
+      km: Object.fromEntries(Object.entries(REGLES_FORMATION.km).map(([k, v]) => [k, ou(s.formation?.km?.[k as keyof ReglesFormation['km']], v)])) as ReglesFormation['km'],
+      electrique: ou(s.formation?.electrique, REGLES_FORMATION.electrique),
+      opcoHeure: ou(s.formation?.opcoHeure, REGLES_FORMATION.opcoHeure),
+      opcoBudget: ou(s.formation?.opcoBudget, REGLES_FORMATION.opcoBudget),
+      cpfResteACharge: ou(s.formation?.cpfResteACharge, REGLES_FORMATION.cpfResteACharge),
+      aides: Object.fromEntries(Object.entries(REGLES_FORMATION.aides).map(([k, v]) => [k, ou(s.formation?.aides?.[k as keyof ReglesFormation['aides']], v)])) as ReglesFormation['aides'],
+    },
   }
 }
 const ou = (x: unknown, defaut: number) => (Number.isFinite(x) ? positif(x) : defaut)

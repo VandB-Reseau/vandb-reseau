@@ -59,6 +59,7 @@ import PlaylistAddOutlined from '@mui/icons-material/PlaylistAddOutlined'
 import ReplayOutlined from '@mui/icons-material/ReplayOutlined'
 import SellOutlined from '@mui/icons-material/SellOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
+import SchoolOutlined from '@mui/icons-material/SchoolOutlined'
 import PaymentsOutlined from '@mui/icons-material/PaymentsOutlined'
 import HomeWorkOutlined from '@mui/icons-material/HomeWorkOutlined'
 import CompareArrowsOutlined from '@mui/icons-material/CompareArrowsOutlined'
@@ -70,7 +71,8 @@ import { Indicateur } from './Indicateur'
 import { useAuth } from '../auth/AuthContext'
 import { chargerSimulations, garderSimulation, retirerSimulation, SimulationPasEncoreGardable, type SimulationGardee, type TypeSimulation } from '../data/pilotage'
 import { categorieLibelle, coutHoraireEquipe, coutHoraireSmic, coutPersonne, type Categorie } from '../moteur/equipe'
-import { simulerRemuneration, type ScenarioRemuneration, type StatutDirigeant } from '../moteur/remunerationDirigeant'
+import { recommanderRemuneration, rendements, simulerRemuneration, type ScenarioRemuneration, type StatutDirigeant } from '../moteur/remunerationDirigeant'
+import { simulerFormation, type NiveauApprenti, type Puissance } from '../moteur/formation'
 import {
   analyserRemises, caCorner, LIGNES_EVENEMENT, LIGNES_REMISES, margeMix, parametresSimulateurs, resteAFaire, simulerAchat, simulerCoupDur, simulerEmbauche,
   simulerInvestissement, simulerLot, simulerPrimes, simulerPrix, simulerSoiree, simulerSoireeAnimee, simulerVenteAdditionnelle, tempsFortDeSoiree,
@@ -111,6 +113,7 @@ const DETAILS: Record<TypeSimulation, { icone: ReactNode; aide: SujetAide; budge
   ouverture: { icone: <EventAvailableOutlined />, aide: 'simOuverture', budget: false },
   remises_b2b: { icone: <BusinessCenterOutlined />, aide: 'simRemisesB2B', budget: false },
   remuneration: { icone: <PaymentsOutlined />, aide: 'simRemuneration', budget: false },
+  formation: { icone: <SchoolOutlined />, aide: 'simFormation', budget: false },
   loyer: { icone: <HomeWorkOutlined />, aide: 'simLoyer', budget: false },
   mix: { icone: <CompareArrowsOutlined />, aide: 'simMix', budget: false },
 }
@@ -122,7 +125,7 @@ const FAMILLES: [Famille, string][] = [['vendre', 'Vendre plus'], ['evenements',
 const FAMILLE_DE: Record<TypeSimulation, Famille> = {
   levier: 'vendre', vente_additionnelle: 'vendre', reste_a_faire: 'vendre', prix: 'vendre', calculette: 'vendre', mix: 'vendre',
   soiree: 'evenements', exterieur: 'evenements', tireuses: 'evenements', pression: 'evenements', remises_b2b: 'evenements', // Joseph 16/11 : avec le marché extérieur
-  embauche: 'equipe', ouverture: 'equipe',
+  embauche: 'equipe', ouverture: 'equipe', formation: 'equipe',
   investissement: 'investir', achat: 'investir', tresorerie: 'investir', remuneration: 'investir', loyer: 'investir',
 }
 // Mémoire du navigateur (derniers simulateurs, brouillons) : jamais indispensable, toute erreur est ignorée
@@ -358,7 +361,12 @@ type Etats = {
     coutHoraire: number; modeHeure: ModeHeure; partSmic: number
   }
   // 287, 291, 292 (Joseph, 18/11/2026) ; null : le chiffre suit le budget du magasin
-  remuneration: { statut: StatutDirigeant; benefice: number | null; netMois: number | null; distribution: number; capital: number; tauxFoyer: number }
+  remuneration: { statut: StatutDirigeant; benefice: number | null; netMois: number | null; distribution: number; capital: number; primes: number; comptesCourants: number; parts: number; autresRevenus: number; cible: number }
+  formation: {
+    jours: number; heuresParJour: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number; pedagogiqueJour: number
+    trajets: number; kmAllerRetour: number; puissance: Puissance; electrique: 'oui' | 'non'; peages: number; nuits: number; prixNuit: number; repas: number; prixRepas: number
+    heuresRemplacement: number; tauxMarge: number | null; profil: 'salarie' | 'apprenti'; niveau: NiveauApprenti; opco: 'oui' | 'non'; opcoDejaUtilise: number; opcoAutres: number; cpf: number
+  }
   loyer: { ca: number | null; marge: number | null; ebe: number | null; loyer: number | null; charges: number | null; mode: 'hausse' | 'montant'; hausse: number; nouveauMois: number; annees: number }
   mix: { caCave: number | null; caBar: number | null; margeCave: number | null; margeBar: number | null; part: number; sens: 'vers_bar' | 'vers_cave'; heures: 'grille' | 'saisie'; heuresSemaine: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number }
   investissement: { modele: ModeleInvestir; objectifExterieur: number; camion: boolean; libelle: string; cout: number; duree: number; mois: number; ca: number; metres: number; marge: number; demarque: number; charges: number; financement: 'tresorerie' | 'pret'; tauxPret: number; dureePret: number; univers: Univers; fermeture: number; caJour: number | null; margeMagasin: number | null }
@@ -415,7 +423,7 @@ function exempleRealise(b: Budget | null, aujourdhui: Date): number {
 // les réglages du siège et du magasin, et ce qui servirait de diviseur. Une liste garde une ligne vide.
 const GARDES_AU_VIDE = new Set(['mois', 'moisDepense', 'moisRetard', 'de', 'a', 'jour', 'jours', 'index', 'salaries', 'coutHoraire', 'partSmic', 'majoration',
   'duree', 'dureePret', 'tauxPret', 'co2', 'prixKm', 'entretien', 'semaines', 'occSaison', 'occHors', 'litres', 'quantite', 'unSur', 'prix.marge', 'prix.payes', 'prix.offerts', 'prix.avant', 'achat.taux', 'calculette.marge',
-  'remises_b2b.paliers', 'remises_b2b.plancher', 'majorationSup'])
+  'remises_b2b.paliers', 'remises_b2b.plancher', 'majorationSup', 'parts', 'heuresParJour'])
 const TEXTES_AU_VIDE = new Set(['nom', 'poste', 'libelle', 'biere', 'client'])
 function vider(v: unknown, cle: string, sim: string): unknown {
   if (GARDES_AU_VIDE.has(cle) || GARDES_AU_VIDE.has(`${sim}.${cle}`)) return v
@@ -507,8 +515,14 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       // 238 : l'exemple de la fiche « Rentabilité Extérieur » (3 h par semaine pendant 6 mois, 15 entreprises à 330 €)
       prospection: true, heuresSemaine: 3, semaines: 26, entreprises: 15, ticket: 330, margeProspection: null, coutHoraire: s.coutHoraire, ...HEURE,
     },
-    // 287 : 2 000 € nets par mois, la moitié du résultat en dividendes, 10 000 € de capital et comptes courants, foyer à 10 %
-    remuneration: { statut: 'tns', benefice: null, netMois: null, distribution: 0.5, capital: 10_000, tauxFoyer: 0.1 },
+    // 287 : 2 000 € nets par mois, la moitié du résultat en dividendes, 10 000 € de capital, foyer à 1 part ; je veux garder 2 500 € par mois
+    remuneration: { statut: 'tns', benefice: null, netMois: null, distribution: 0.5, capital: 10_000, primes: 0, comptesCourants: 0, parts: 1, autresRevenus: 0, cible: 2_500 },
+    // Former un collaborateur : 2 jours de 7 h à 350 € HT par jour, 240 km aller-retour en 5 CV, 1 nuit, 4 repas, 14 h remplacées
+    formation: {
+      jours: 2, heuresParJour: 7, coutHoraire: s.coutHoraire, ...HEURE, pedagogiqueJour: 350,
+      trajets: 1, kmAllerRetour: 240, puissance: 'cv5', electrique: 'non', peages: 30, nuits: 1, prixNuit: 95, repas: 4, prixRepas: 18,
+      heuresRemplacement: 14, tauxMarge: null, profil: 'salarie', niveau: 'niveau34', opco: 'oui', opcoDejaUtilise: 0, opcoAutres: 0, cpf: 0,
+    },
     // 291 : hausse de 5 % sur les 3 ans qui restent au bail
     loyer: { ca: null, marge: null, ebe: null, loyer: null, charges: null, mode: 'hausse', hausse: 0.05, nouveauMois: 0, annees: 3 },
     // 292 : 5 % du CA de la cave passe au bar
@@ -2111,7 +2125,9 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     )
   }
 
-  // ── 287 · Me rémunérer : salaire ou dividendes (Joseph, 18/11/2026)
+  // ── 287 · Me rémunérer : salaire ou dividendes (Joseph, 18/11/2026 ; corrections de 10h41 : charges en négatif, flat
+  // tax à part, statut non salarié ou assimilé salarié, capital, primes et comptes courants à part, pourcentages et
+  // explications, montage recommandé pour ce que je veux garder par mois, net après impôts)
   if (choisi === 'remuneration') {
     const e = etats.remuneration
     const gerants = h?.equipe?.filter((x) => x.categorie === 'gerant_tns') ?? []
@@ -2120,51 +2136,104 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const netBudget = gerants.length ? Math.round(somme(gerants.map((x) => x.brutMensuel))) : null
     const benefice = e.benefice ?? beneficeBudget ?? 60_000
     const netMois = e.netMois ?? netBudget ?? 2_000
-    const r = simulerRemuneration({ benefice, statut: e.statut, netMois, distribution: e.distribution, capital: e.capital, tauxFoyer: e.tauxFoyer, deficit: h?.deficitReportable }, s.remuneration, p.impot)
+    const regles = s.remuneration
+    const base = { benefice, statut: e.statut, capital: e.capital, primes: e.primes, comptesCourants: e.comptesCourants, parts: e.parts, autresRevenus: e.autresRevenus, deficit: h?.deficitReportable }
+    const r = simulerRemuneration({ ...base, netMois, distribution: e.distribution }, regles, p.impot)
+    const reco = recommanderRemuneration(base, e.cible * 12, regles, p.impot)
     const c = r.choix
+    const tns = e.statut === 'tns'
+    const tauxCoti = tns ? regles.cotisationsTNS : regles.cotisationsAssimile
+    const seuil = c.seuilDividendes
+    const pf = regles.irDividendes + regles.prelevementsSociaux
     saisies = (
       <Stack spacing={2}>
-        <Bloc titre="1. La société" total={{ libelle: 'Bénéfice à partager', valeur: montant(benefice) }}>
+        <Bloc titre="1. Mon statut et ma société" total={{ libelle: 'Bénéfice à partager', valeur: montant(benefice) }}>
           <Saisies>
-            <Choix libelle="Je suis" valeur={e.statut} onChange={(statut) => maj('remuneration', { statut })} options={[['tns', 'Gérant majoritaire (SARL, EURL)'], ['assimile', 'Président de SAS']]} />
+            <Choix libelle="Je suis" valeur={e.statut} onChange={(statut) => maj('remuneration', { statut })}
+              options={[['tns', 'Non salarié : gérant majoritaire (SARL, EURL)'], ['assimile', 'Assimilé salarié : président (SAS, SASU)']]} />
             <Montant libelle="Bénéfice avant ma rémunération et l’impôt" valeur={benefice} onChange={(v) => maj('remuneration', { benefice: v })} source={e.benefice === null && beneficeBudget !== null && 'budget'} />
-            {e.statut === 'tns' && <Montant libelle="Capital, primes et comptes courants" valeur={e.capital} onChange={(v) => maj('remuneration', { capital: Math.max(0, v) })} />}
+          </Saisies>
+          {tns && <Saisies>
+            <Montant libelle="Capital social" valeur={e.capital} onChange={(v) => maj('remuneration', { capital: Math.max(0, v) })} />
+            <Montant libelle="Primes d’émission" valeur={e.primes} onChange={(v) => maj('remuneration', { primes: Math.max(0, v) })} />
+            <Montant libelle="Comptes courants d’associés" valeur={e.comptesCourants} onChange={(v) => maj('remuneration', { comptesCourants: Math.max(0, v) })} />
+            <Typography color="text.secondary" sx={{ alignSelf: 'center' }}>Dividendes sans cotisations jusqu’à {montant(seuil)} par an ({taux(regles.seuilDividendesTNS)} de {montant(e.capital + e.primes + e.comptesCourants)})</Typography>
+          </Saisies>}
+        </Bloc>
+        <Bloc titre="2. Mon foyer">
+          <Saisies>
+            <Montant libelle="Parts du foyer fiscal" valeur={e.parts} onChange={(v) => maj('remuneration', { parts: Math.max(1, v) })} unite="parts" pas={0.5} min={1} />
+            <Montant libelle="Autres revenus imposables du foyer par an" valeur={e.autresRevenus} onChange={(v) => maj('remuneration', { autresRevenus: Math.max(0, v) })} />
           </Saisies>
         </Bloc>
-        <Bloc titre="2. Ma répartition">
+        <Bloc titre="3. Ma répartition">
           <Saisies>
             <Montant libelle="Rémunération nette par mois" valeur={netMois} onChange={(v) => maj('remuneration', { netMois: Math.max(0, v) })} source={e.netMois === null && netBudget !== null && 'budget'} pas={100} />
             <Taux libelle="Part du résultat versée en dividendes" valeur={e.distribution} onChange={(v) => maj('remuneration', { distribution: Math.min(1, Math.max(0, v)) })} />
-            <Taux libelle="Taux de prélèvement à la source du foyer" valeur={e.tauxFoyer} onChange={(v) => maj('remuneration', { tauxFoyer: Math.min(1, Math.max(0, v)) })} />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="4. Ce que je veux garder">
+          <Saisies>
+            <Montant libelle="Je veux garder par mois, après impôts" valeur={e.cible} onChange={(v) => maj('remuneration', { cible: Math.max(0, v) })} pas={100} />
           </Saisies>
         </Bloc>
       </Stack>
     )
     nomParDefaut = `${montant(netMois)} nets par mois, ${taux(e.distribution)} en dividendes`
+    const montage = (x: { netMois: number; distribution: number; scenario: ScenarioRemuneration }) => `${montant(x.netMois)} nets de rémunération par mois et ${taux(x.distribution)} du résultat en dividendes (${montant(x.scenario.dividendes)} par an)`
     phrase = `${nomParDefaut} : je garde ${montant(c.netPerso / 12)} par mois après impôts, ${montant(c.impotsEtCotisations / 12)} par mois partent en impôts et cotisations, ${montant(c.resteSociete)} restent dans la société. Tout en rémunération : ${montant(r.toutSalaire.netPerso / 12)} par mois ; tout en dividendes : ${montant(r.toutDividendes.netPerso / 12)}.`
-    const colonnes: [string, ScenarioRemuneration][] = [['Ma répartition', c], ['Tout en rémunération', r.toutSalaire], ['Tout en dividendes', r.toutDividendes]]
-    const lignes: [string, (x: ScenarioRemuneration) => number, boolean?][] = [
-      ['Rémunération nette', (x) => x.netAn],
-      ['Dividendes versés', (x) => x.dividendes],
-      ['Cotisations sociales', (x) => x.cotisations + x.cotisationsDividendes],
-      ['Impôt sur les sociétés', (x) => x.impotSocietes],
-      ['Impôt sur le revenu et prélèvements sociaux', (x) => x.irRemuneration + x.irDividendes + x.prelevementsSociaux],
-      ['Je garde après impôts, par an', (x) => x.netPerso, true],
-      ['Je garde après impôts, par mois', (x) => x.netPerso / 12, true],
-      ['Impôts et cotisations, par mois', (x) => x.impotsEtCotisations / 12],
-      ['Reste dans la société', (x) => x.resteSociete],
-      ['Sort de la trésorerie de la société', (x) => x.sortiesSociete],
+      + (reco ? reco.atteint ? ` Pour garder ${montant(e.cible)} par mois : ${montage(reco)}.` : ` ${montant(e.cible)} par mois est hors d’atteinte : au mieux ${montant(reco.scenario.netPerso / 12)}.` : '')
+    const colonnes: [string, ScenarioRemuneration][] = [['Ma répartition', c], ...(reco ? [['Recommandé', reco.scenario] as [string, ScenarioRemuneration]] : []), ['Tout en rémunération', r.toutSalaire], ['Tout en dividendes', r.toutDividendes]]
+    // Une ligne : libellé, explication, valeur (négative pour ce qui part), pourcentage du bénéfice affiché, ligne forte
+    type Ligne = { l: string; d?: string; f: (x: ScenarioRemuneration) => number; pct?: boolean; fort?: boolean; si?: boolean }
+    const lignes: Ligne[] = [
+      { l: 'Bénéfice avant ma rémunération', d: 'avant impôt sur les sociétés', f: () => benefice },
+      { l: 'Ma rémunération nette', d: 'avant impôt sur le revenu', f: (x) => x.netAn },
+      { l: 'Cotisations sur ma rémunération', d: `${taux(tauxCoti)} du net${tns ? `, au moins ${montant(regles.minimumTNS)} par an` : ', parts patronale et salariale'}`, f: (x) => -x.cotisations },
+      { l: 'Impôt sur les sociétés', d: `${taux(p.impot.tauxReduit)} jusqu’à ${montant(p.impot.plafondTauxReduit)}, ${taux(p.impot.tauxNormal)} au-delà`, f: (x) => -x.impotSocietes },
+      { l: 'Dividendes versés', d: 'résultat net × part distribuée', f: (x) => x.dividendes },
+      { l: 'Flat tax, impôt sur le revenu', d: `${taux(regles.irDividendes)} des dividendes`, f: (x) => -x.irDividendes },
+      { l: 'Flat tax, prélèvements sociaux', d: tns ? `${taux(regles.prelevementsSociaux)} des dividendes jusqu’à ${montant(seuil)}` : `${taux(regles.prelevementsSociaux)} des dividendes`, f: (x) => -x.prelevementsSociaux },
+      { l: `Cotisations sur les dividendes au-delà de ${montant(seuil)}`, d: `${taux(regles.cotisationsTNS)}, à la place des prélèvements sociaux`, f: (x) => -x.cotisationsDividendes, si: tns },
+      { l: 'Impôt sur le revenu de ma rémunération', d: `barème 2026, après ${taux(regles.abattement)} pour frais`, f: (x) => -x.irRemuneration },
+      { l: 'Total impôts et cotisations', f: (x) => -x.impotsEtCotisations, pct: true, fort: true },
+      { l: 'Je garde après impôts, par an', f: (x) => x.netPerso, pct: true, fort: true },
+      { l: 'Je garde après impôts, par mois', f: (x) => x.netPerso / 12, fort: true },
+      { l: 'Reste dans la société', d: 'réserves, trésorerie', f: (x) => x.resteSociete, pct: true },
+      { l: 'Sort de la trésorerie de la société', d: 'rémunération chargée, impôt, dividendes', f: (x) => x.sortiesSociete },
     ]
+    const signe = (v: number) => (v < -0.5 ? `− ${montant(-v)}` : montant(Math.max(0, v)))
+    const rend = reco ? rendements(base, reco.scenario, regles, p.impot) : null
     resultats = (
       <Stack spacing={2}>
+        {reco && <Box role="region" aria-label="Montage recommandé" sx={{ border: 1, borderColor: 'divider', borderRadius: '12px', p: 2, display: 'grid', gap: 1 }}>
+          <Typography component="h3" sx={{ fontWeight: 700 }}>{reco.atteint ? `Montage recommandé pour garder ${montant(e.cible)} par mois` : `${montant(e.cible)} par mois est hors d’atteinte avec ce bénéfice`}</Typography>
+          <Typography>{reco.atteint ? '' : `Au mieux ${montant(reco.scenario.netPerso / 12)} par mois : `}{montage(reco)}. Impôts et cotisations : {montant(reco.scenario.impotsEtCotisations)} par an ({taux(benefice > 0 ? reco.scenario.impotsEtCotisations / benefice : 0)} du bénéfice) ; {montant(reco.scenario.resteSociete)} restent dans la société.</Typography>
+          {rend && <Typography color="text.secondary">
+            Pourquoi : à ce niveau, 1 € de bénéfice en plus te laisse {centimes(rend.salaire)} en rémunération (cotisations {taux(tauxCoti)}, impôt sur le revenu à la tranche de {taux(reco.scenario.trancheMarginale)}) et {centimes(rend.dividendes)} en dividendes (impôt sur les sociétés {taux(rend.tauxIS)}, puis flat tax {taux(pf)}{rend.auDela ? ` et ${taux(regles.cotisationsTNS)} de cotisations au-delà de ${montant(seuil)}` : ''}). Le montage prend d’abord ce qui rapporte le plus.
+            {tns && ` Les dividendes restent sous ${montant(seuil)} par an : au-delà, ils paient les cotisations du non-salarié ; des comptes courants d’associés plus élevés relèvent ce seuil.`}
+            {reco.distribution > 0 && ' Les dividendes n’ouvrent aucun droit à la retraite : à discuter avec ton expert-comptable si la rémunération est basse.'}
+          </Typography>}
+          <Box><Button variant="outlined" onClick={() => maj('remuneration', { netMois: reco.netMois, distribution: reco.distribution })} sx={{ minHeight: 48 }}>Reprendre dans ma répartition</Button></Box>
+        </Box>}
         <Box sx={{ overflowX: 'auto' }}>
-          <Table size="small" aria-label="Salaire ou dividendes" sx={{ minWidth: 560 }}>
+          <Table size="small" aria-label="Salaire ou dividendes" sx={{ minWidth: 640 }}>
             <TableHead><TableRow><TableCell />{colonnes.map(([t]) => <TableCell key={t} align="right" sx={{ fontWeight: 700 }}>{t}</TableCell>)}</TableRow></TableHead>
             <TableBody>
-              {lignes.map(([l, f, fort]) => (
+              {lignes.filter((x) => x.si !== false).map(({ l, d, f, pct, fort }) => (
                 <TableRow key={l}>
-                  <TableCell sx={{ fontWeight: fort ? 700 : undefined }}>{l}</TableCell>
-                  {colonnes.map(([t, x]) => <TableCell key={t} align="right" sx={{ fontWeight: fort ? 700 : undefined, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{montant(f(x))}</TableCell>)}
+                  <TableCell sx={{ fontWeight: fort ? 700 : undefined }}>
+                    {l}{d && <Box component="span" sx={{ display: 'block', color: 'text.secondary', fontSize: '0.75rem', fontWeight: 400 }}>{d}</Box>}
+                  </TableCell>
+                  {colonnes.map(([t, x]) => {
+                    const v = f(x)
+                    return (
+                      <TableCell key={t} align="right" sx={{ fontWeight: fort ? 700 : undefined, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: v < -0.5 ? 'error.main' : undefined }}>
+                        {signe(v)}
+                        {pct && benefice > 0 && <Box component="span" sx={{ display: 'block', color: 'text.secondary', fontSize: '0.75rem', fontWeight: 400 }}>{taux(Math.abs(v) / benefice)} du bénéfice</Box>}
+                      </TableCell>
+                    )
+                  })}
                 </TableRow>
               ))}
             </TableBody>
@@ -2279,6 +2348,98 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Indicateur libelle="EBE par an" valeur={ecartMontant(r.ecartEbe)} detail={`marge ${ecartMontant(r.ecartMarge)}, équipe ${ecartMontant(-r.personnel)}`} />
           {r.apres.cible !== null && <Indicateur libelle="Productivité visée" valeur={`${entier(r.apres.cible)} € par heure`} detail={r.avant.cible !== null ? `${entier(r.avant.cible)} € avant, grille du siège` : 'grille du siège'} />}
         </Resultats>
+      </Stack>
+    )
+  }
+
+  // ── Former un collaborateur (Joseph, 18/11/2026)
+  if (choisi === 'formation') {
+    const e = etats.formation
+    const marge = e.tauxMarge ?? (b && b.ca > 0 ? Math.round(b.tauxMarge * 100) / 100 : 0.45)
+    const apprenti = e.profil === 'apprenti'
+    const r = simulerFormation({
+      jours: e.jours, heuresParJour: e.heuresParJour, coutHeure: heure(e), pedagogiqueJour: e.pedagogiqueJour,
+      trajets: e.trajets, kmAllerRetour: e.kmAllerRetour, puissance: e.puissance, electrique: e.electrique === 'oui', peages: e.peages,
+      nuits: e.nuits, prixNuit: e.prixNuit, repas: e.repas, prixRepas: e.prixRepas,
+      heuresRemplacement: e.heuresRemplacement, coutHeureRemplacement: heure(e),
+      opco: e.opco === 'oui', opcoDejaUtilise: e.opcoDejaUtilise, opcoAutres: e.opcoAutres, cpf: e.cpf,
+      apprenti: apprenti ? e.niveau : null, tauxMarge: marge,
+    }, s.formation, p.tauxRedevance + p.tauxPublicite)
+    saisies = (
+      <Stack spacing={2}>
+        <Bloc titre="1. La formation" total={{ libelle: 'Temps et prix', valeur: montant(r.salaire + r.pedagogique) }}>
+          <Saisies>
+            <Montant libelle="Jours de formation" valeur={e.jours} onChange={(v) => maj('formation', { jours: Math.max(0, v) })} unite="j" pas={1} />
+            <Montant libelle="Heures par jour" valeur={e.heuresParJour} onChange={(v) => maj('formation', { heuresParJour: Math.max(0, v) })} unite="h" />
+            <Montant libelle="Prix HT de la formation par jour" valeur={e.pedagogiqueJour} onChange={(v) => maj('formation', { pedagogiqueJour: Math.max(0, v) })} />
+          </Saisies>
+          <Saisies>
+            <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={s.coutHoraire > 0} onChange={(v) => maj('formation', v)} />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="2. Trajet, hôtel et repas" total={{ libelle: 'Frais', valeur: montant(r.indemnites + r.peages + r.hotel + r.repas) }}>
+          <Saisies>
+            <Montant libelle="Allers-retours" valeur={e.trajets} onChange={(v) => maj('formation', { trajets: Math.max(0, v) })} unite="" pas={1} />
+            <Montant libelle="Km par aller-retour" valeur={e.kmAllerRetour} onChange={(v) => maj('formation', { kmAllerRetour: Math.max(0, v) })} unite="km" />
+            <Choix libelle="Puissance de la voiture" valeur={e.puissance} onChange={(puissance) => maj('formation', { puissance })} options={[['cv3', '3 CV'], ['cv4', '4 CV'], ['cv5', '5 CV'], ['cv6', '6 CV'], ['cv7', '7 CV et plus']]} />
+            <Choix libelle="Voiture électrique" valeur={e.electrique} onChange={(electrique) => maj('formation', { electrique })} options={[['non', 'Non'], ['oui', 'Oui']]} />
+            <Typography color="text.secondary" sx={{ alignSelf: 'center' }}>{centimes(r.prixKm)} par km, barème kilométrique</Typography>
+          </Saisies>
+          <Saisies>
+            <Montant libelle="Péages et parking" valeur={e.peages} onChange={(v) => maj('formation', { peages: Math.max(0, v) })} />
+            <Montant libelle="Nuits d’hôtel" valeur={e.nuits} onChange={(v) => maj('formation', { nuits: Math.max(0, v) })} unite="" pas={1} />
+            <Montant libelle="Prix d’une nuit" valeur={e.prixNuit} onChange={(v) => maj('formation', { prixNuit: Math.max(0, v) })} />
+            <Montant libelle="Repas" valeur={e.repas} onChange={(v) => maj('formation', { repas: Math.max(0, v) })} unite="" pas={1} />
+            <Montant libelle="Prix d’un repas" valeur={e.prixRepas} onChange={(v) => maj('formation', { prixRepas: Math.max(0, v) })} />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="3. En magasin" total={{ libelle: 'Remplacement', valeur: montant(r.remplacement) }}>
+          <Saisies>
+            <Montant libelle="Heures payées pour le remplacer" valeur={e.heuresRemplacement} onChange={(v) => maj('formation', { heuresRemplacement: Math.max(0, v) })} unite="h" />
+            <Taux libelle="Taux de marge du magasin" valeur={marge} onChange={(v) => maj('formation', { tauxMarge: v })} source={e.tauxMarge === null && !!b && 'budget'} />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="4. Financements" total={{ libelle: 'Pris en charge', valeur: montant(r.financements) }}>
+          <Saisies>
+            <Choix libelle="Le collaborateur est" valeur={e.profil} onChange={(profil) => maj('formation', { profil })} options={[['salarie', 'Salarié'], ['apprenti', 'Apprenti (alternance)']]} />
+            {apprenti
+              ? <Choix libelle="Diplôme préparé" valeur={e.niveau} onChange={(niveau) => maj('formation', { niveau })}
+                options={[['niveau34', 'Jusqu’au bac'], ['niveau5', 'BTS'], ['niveau67', 'Licence, master'], ['handicap', 'Situation de handicap']]} />
+              : <>
+                <Choix libelle="Demande à l’OPCO" valeur={e.opco} onChange={(opco) => maj('formation', { opco })} options={[['oui', 'Oui'], ['non', 'Non']]} />
+                {e.opco === 'oui' && <Montant libelle="Budget OPCO déjà utilisé cette année" valeur={e.opcoDejaUtilise} onChange={(v) => maj('formation', { opcoDejaUtilise: Math.max(0, v) })} />}
+                <Montant libelle="Droits CPF mobilisés par le collaborateur" valeur={e.cpf} onChange={(v) => maj('formation', { cpf: Math.max(0, v) })} />
+              </>}
+            {(apprenti || e.opco === 'oui') && <Montant libelle="Autres frais pris par l’OPCO" valeur={e.opcoAutres} onChange={(v) => maj('formation', { opcoAutres: Math.max(0, v) })} />}
+          </Saisies>
+        </Bloc>
+      </Stack>
+    )
+    nomParDefaut = `Formation de ${unChiffre(e.jours)} jour${e.jours >= 2 ? 's' : ''}${apprenti ? ', apprenti' : ''}`
+    phrase = `${nomParDefaut} : coût ${montant(r.coutTotal)}, pris en charge ${montant(r.financements)}, ${r.resteACharge >= 0 ? `reste ${montant(r.resteACharge)} au magasin${r.parJour !== null ? ` (${montant(r.parJour)} par jour)` : ''}` : `les aides dépassent le coût de ${montant(-r.resteACharge)}`}.${r.caPourPayer !== null ? ` Il faut ${montant(r.caPourPayer)} de CA HT pour le payer.` : ''}`
+    resultats = (
+      <Stack spacing={2}>
+        <Compte titre="Coût de la formation" lignes={[
+          { libelle: 'Temps payé du collaborateur', valeur: -r.salaire, detail: `${unChiffre(r.heures)} h à ${centimes(heure(e))}` },
+          { libelle: 'Prix de la formation', valeur: -r.pedagogique, detail: `${unChiffre(e.jours)} j à ${montant(e.pedagogiqueJour)} HT` },
+          { libelle: 'Indemnités kilométriques', valeur: -r.indemnites, detail: `${entier(e.trajets * e.kmAllerRetour)} km à ${centimes(r.prixKm)}` },
+          { libelle: 'Péages et parking', valeur: -r.peages },
+          { libelle: 'Hôtel', valeur: -r.hotel, detail: `${unChiffre(e.nuits)} nuit${e.nuits >= 2 ? 's' : ''}` },
+          { libelle: 'Repas', valeur: -r.repas },
+          { libelle: 'Remplacement en magasin', valeur: -r.remplacement, detail: `${unChiffre(e.heuresRemplacement)} h` },
+          { libelle: 'Droits CPF du collaborateur', valeur: r.cpf },
+          { libelle: apprenti ? 'OPCO : formation au CFA' : 'OPCO : prix de la formation', valeur: r.opcoPedagogique, detail: apprenti ? 'niveau de prise en charge du contrat' : `jusqu’à ${montant(s.formation.opcoHeure)} par heure${s.formation.opcoBudget > 0 ? `, budget ${montant(s.formation.opcoBudget)} par an` : ''}` },
+          { libelle: 'OPCO : autres frais', valeur: r.opcoAutres },
+          { libelle: 'Aide à l’embauche de l’apprenti', valeur: r.aide, detail: '1re année' },
+        ]} total={{ libelle: r.resteACharge >= 0 ? 'Reste à charge du magasin' : 'Les aides dépassent le coût de', valeur: -r.resteACharge }} />
+        <Resultats>
+          <Indicateur libelle={r.resteACharge >= 0 ? 'Reste à charge du magasin' : 'Les aides dépassent le coût de'} valeur={montant(Math.abs(r.resteACharge))} detail={r.coutTotal > 0 ? `sur ${montant(r.coutTotal)} de coût, ${taux(r.financements / r.coutTotal)} pris en charge` : undefined} />
+          {r.parJour !== null && r.resteACharge >= 0 && <Indicateur libelle="Par jour de formation" valeur={montant(r.parJour)} detail={r.parHeure !== null ? `${centimes(r.parHeure)} par heure` : undefined} />}
+          {r.caPourPayer !== null && <Indicateur libelle="CA HT pour la payer" valeur={montant(r.caPourPayer)} detail={`à ${taux(marge)} de marge, moins redevance et publicité`} />}
+          {apprenti && r.aide > 0 && <Indicateur libelle="Aide de l’apprenti" valeur={`${montant(r.aide / 12)} par mois`} detail={`${montant(r.aide)} la 1re année`} />}
+          {r.cpf > 0 && <Indicateur libelle="Reste à charge du collaborateur" valeur={montant(r.participationCollaborateur)} detail={r.participationCollaborateur > 0 ? 'forfait CPF, sauf si le magasin complète' : 'le magasin complète : forfait CPF non dû'} />}
+        </Resultats>
+        <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>Ordres de grandeur aux règles réglées par le siège : la prise en charge réelle dépend de l’OPCO du magasin et de ses fonds de l’année.</Typography>
       </Stack>
     )
   }
