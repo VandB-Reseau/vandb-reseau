@@ -9,7 +9,7 @@ import { renommerAccesCoach } from './accesEquipe'
 import { supabase } from '../lib/supabase'
 import { construireReseau, type DonneesBrutes, type Parametres } from './construction'
 import { avecPoint, definirGrille, delaisVisiteParDefaut, normaliserGrille, notesAu, sansPoint, thematiquesParDefaut, type GrilleNineBox, type Deploiements, type Evaluation, type Evaluations, type IdCritere, type Note, type Thematique } from './sante'
-import type { ActionLibre, ActionPlan, StatutTache, Evenement, Situation, Figure, NoteMagasin, PreparationVisite, Reseau, SuiviOuverture, Topographie, Visite } from './modele'
+import type { ActionLibre, ActionPlan, Coach, ResponsableRegional, StatutTache, Evenement, Situation, Figure, NoteMagasin, PreparationVisite, Reseau, SuiviOuverture, Topographie, Visite } from './modele'
 import { normaliserConcurrence, suiviEstVide, suiviVide, type ListeLue, type SuiviConcurrence } from './concurrence'
 import { normaliserObjectifs, type Objectif } from './objectifs'
 import { normaliserPlans, type Priorite } from './planAction'
@@ -23,7 +23,7 @@ import { normaliserCampagnes, type Campagne, type Campagnes } from './campagnes'
 import { associesEnPlace, normaliserAssocies, type Associe, type Associes } from './associes'
 import { normaliserActionsLibres } from './actions'
 import { renommerAcces, supprimerComptesDe } from './espaceFranchise'
-import { cleFiche, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
+import { cleFiche, estParti, fichePersonne, ficheVide, franchises, libelleRole, type FichePersonnelle, type RefPersonne } from './personnes'
 import { configDepuisSuivi, eclater, assembler, rubriques, type CleSuivie } from './suivi'
 import { COLONNES_EXPLOITATION, colonnesExploitation, type Exploitation } from './exploitation'
 
@@ -199,6 +199,13 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   for (const r of recrues as L[]) if (r.start && !reseau.equipe.find((c) => c.nom === r.name)?.fictif) ann.push({ nom: t(r.name), role: 'Coach', date: t(r.start).slice(0, 10), nature: 'arrivee' })
   // Fiches personnelles : elles complètent ou remplacent les dates connues de l'ancienne app
   reseau.personnes = json<Reseau['personnes']>(cle('fiches_personnes'), {})
+  // Partis (date de départ passée) : hors de l'équipe, des listes et des anniversaires ; leur fiche reste lisible
+  const coachParti = (c: Coach) => estParti(reseau, { type: 'coach', cle: c.nom }, reseau.jour)
+  const rrParti = (r: ResponsableRegional) => estParti(reseau, { type: 'rr', cle: r.id }, reseau.jour)
+  reseau.anciens = { coachs: reseau.equipe.filter(coachParti), rrs: reseau.rrs.filter(rrParti) }
+  reseau.equipe = reseau.equipe.filter((c) => !coachParti(c))
+  reseau.rrs = reseau.rrs.filter((r) => !rrParti(r))
+  const nomsPartis = new Set([...reseau.anciens.coachs.map((c) => c.nom), ...reseau.anciens.rrs.map((r) => r.nom)])
   const parCle = new Map(ann.map((a) => [`${a.nom}|${a.nature}`, a]))
   const ajouter = (nom: string, role: string, f: Partial<FichePersonnelle> | undefined) => {
     if (!nom || !f) return
@@ -210,7 +217,7 @@ export function assemblerReseau(tables: Tables, jour = new Date().toISOString().
   for (const c of reseau.equipe) ajouter(c.nom, 'Coach', p[cleFiche({ type: 'coach', cle: c.nom })])
   for (const r of reseau.rrs) ajouter(r.nom, libelleRole('rr'), p[cleFiche({ type: 'rr', cle: r.id })])
   for (const f of franchises(reseau)) ajouter(f.nom, libelleRole('franchise', f.integresSeulement), p[cleFiche({ type: 'franchise', cle: f.nom })])
-  reseau.anniversaires = [...parCle.values()].filter((a) => /^\d{4}-\d{2}-\d{2}$/.test(a.date))
+  reseau.anniversaires = [...parCle.values()].filter((a) => /^\d{4}-\d{2}-\d{2}$/.test(a.date) && !nomsPartis.has(a.nom))
   return reseau
 }
 
@@ -491,6 +498,38 @@ export async function renommerVisiteur(ancien: string, nouveau: string) {
     const visitor = noms.map((n) => (n === ancien ? nouveau : n)).filter((n, i, t) => t.indexOf(n) === i).join(SEPARATEUR_VISITEURS)
     verifier(await supabase.from('visits').update({ visitor }).eq('id', v.id))
   }
+}
+
+// ── Départ d'un collaborateur et reprise par un remplaçant (Joseph, 18/11/2026) ──
+// Le départ est daté dans la fiche ; magasins (au mois), Coachs du Responsable Régional (au mois), visites prévues
+// et tâches en cours passent au remplaçant. Ce qui est passé (visites faites, historique des affectations) ne bouge pas.
+export interface Reprise {
+  personne: RefPersonne; nom: string; depart: string
+  remplacant: string // nom du Coach ou du Responsable Régional qui reprend ; vide : personne pour l'instant
+  mois: string // mois de reprise des magasins et des Coachs
+  magasins: string[] // magasins à confier au remplaçant (Coach : suivis ; RR : suivis en direct)
+  coachs: string[] // Coachs à rattacher au remplaçant (Responsable Régional)
+  rrRemplacant?: string // identifiant du Responsable Régional qui reprend
+  visites: { id: number; visiteurs: string[] }[] // visites prévues où il figure
+  taches: ({ libre: string; magasin: string } | { visite: number; plan: ActionPlan[] })[] // tâches en cours qu'il porte
+}
+const remplacerNom = (noms: string[], ancien: string, nouveau: string) => noms.map((n) => (n === ancien ? nouveau : n)).filter((n, i, t) => !!n && t.indexOf(n) === i)
+export const remplacerPorteur = (porteur: string, ancien: string, nouveau: string) => remplacerNom(String(porteur ?? '').split(',').map((n) => n.trim()), ancien, nouveau).join(', ')
+
+export async function organiserDepart(reseau: Reseau, r: Reprise) {
+  await enregistrerFichePersonne(r.personne, { ...fichePersonne(reseau, r.personne), depart: r.depart })
+  if (!r.remplacant) return
+  for (const m of r.magasins) {
+    if (r.personne.type === 'coach') await reaffecter(m, r.remplacant, r.mois, `Reprise après le départ de ${r.nom}`)
+    else if (r.rrRemplacant) verifier(await supabase.from('store_overrides').update({ rr: r.rrRemplacant }).eq('store_name', m))
+  }
+  if (r.rrRemplacant) for (const c of r.coachs) await rattacherCoach(c, r.rrRemplacant, r.mois)
+  for (const v of r.visites) verifier(await supabase.from('visits').update({ visitor: remplacerNom(v.visiteurs, r.nom, r.remplacant).join(SEPARATEUR_VISITEURS) || null }).eq('id', v.id))
+  const libres = r.taches.flatMap((t) => ('libre' in t ? [t] : []))
+  if (libres.length) await modifierActionsLibres((t) => {
+    for (const x of libres) for (const a of t[x.magasin] ?? []) if (a.id === x.libre) a.porteur = remplacerPorteur(a.porteur, r.nom, r.remplacant)
+  })
+  for (const t of r.taches) if ('visite' in t) await modifierPlanVisite(t.visite, t.plan.map((a) => (a.faite ? a : { ...a, porteur: remplacerPorteur(a.porteur, r.nom, r.remplacant) })))
 }
 
 // ── Fiches personnelles (Directeur, Responsables Régionaux, Coachs, franchisés) ──

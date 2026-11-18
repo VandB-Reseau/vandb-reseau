@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Équipe : départ d'un Coach ou d'un Responsable Régional et remplacement (Joseph, 18/11/2026), sans migration. Picto
+  « Départ et remplacement » sur sa fiche (Directeur) : dernier jour, remplaçant en poste ou nouveau (créé sur place, poste
+  à pourvoir possible), reprise à partir d'un mois de ses magasins (ou Coachs et magasins en direct), des visites prévues
+  après son départ et de ses tâches en cours, chaque bloc décochable. Le dernier jour passé, il sort de l'équipe et des
+  listes ; « Équipe › Personnes › Anciens » le garde avec sa fiche et son historique ; « Postes à pourvoir » montre les
+  départs prévus et ce qui reste à reprendre. Date rangée dans `fiches_personnes` (champ `depart`).
 - Fiche magasin, onglet « Équipements » en tableau prérempli (Joseph, 18/11/2026), sans migration : chaque type a sa ligne,
   quantité −/+ (ou tapée), année et prix d'achat HT saisis sur la ligne et enregistrés seuls ; « Ajouter un autre équipement »
   pour le reste ; crayon pour la précision, la note ou le retrait.
