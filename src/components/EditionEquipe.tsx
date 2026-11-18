@@ -33,6 +33,8 @@ const COULEURS = ['#307672', '#ea6029', '#1d1d1b', '#f8bb09', '#c24119', '#3a8f8
 export function messageErreur(e: unknown): string {
   if (e instanceof ErreurAction) return e.message
   const m = e instanceof Error ? e.message : String(e)
+  // Message brut gardé dans la console du navigateur pour le diagnostic (jamais à l'écran)
+  console.warn('Enregistrement refusé par la base :', m)
   if (/does not exist|schema cache|could not find the table/i.test(m)) return 'Cette partie n’est pas encore activée dans la base : le script SQL correspondant doit être lancé dans Supabase.'
   if (/row-level security|permission denied/i.test(m)) return 'La base refuse l’enregistrement : la règle d’accès de cette table manque dans Supabase.'
   if (/column/i.test(m)) return 'La base n’a pas toutes les colonnes attendues : le script SQL de mise à jour doit être lancé dans Supabase.'

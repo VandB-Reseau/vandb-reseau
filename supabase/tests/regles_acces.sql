@@ -1239,3 +1239,21 @@ RESET ROLE;
 RESET request.jwt.claim.sub;
 SELECT pg_temp.attendre('Campagnes : le point rouvert redevient à constater',
   (SELECT count(*) FROM public.suivi_magasins WHERE store_name = 'Lille' AND cle = 'constats' AND valeur->'cp51' ? 'p1'), 0);
+
+-- ── 0052 : ajout d'un Coach sur la base héritée (id de l'ancienne app sans valeur par défaut)
+SELECT pg_temp.attendre('Journal : 0052 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0052'), 1);
+ALTER TABLE public.cs_overrides ALTER COLUMN id DROP IDENTITY IF EXISTS;
+ALTER TABLE public.cs_overrides ALTER COLUMN id SET NOT NULL;
+ALTER TABLE public.cs_overrides ADD COLUMN IF NOT EXISTS ancienne_colonne text NOT NULL DEFAULT 'x';
+ALTER TABLE public.cs_overrides ALTER COLUMN ancienne_colonne DROP DEFAULT;
+\ir ../migrations/0052_ajout_coach.sql
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+INSERT INTO public.cs_overrides (cs_name, tel, email, ville, fictif) VALUES ('Coach 0052', '', '', 'Lyon', false);
+INSERT INTO public.cs_overrides (cs_name, ville) VALUES ('Coach 0052 bis', 'Lyon');
+RESET ROLE;
+RESET request.jwt.claim.sub;
+SELECT pg_temp.attendre('Coach : ajout accepté avec un numéro distinct',
+  (SELECT count(DISTINCT id) FROM public.cs_overrides WHERE cs_name LIKE 'Coach 0052%' AND id IS NOT NULL), 2);
+DELETE FROM public.cs_overrides WHERE cs_name LIKE 'Coach 0052%';
+ALTER TABLE public.cs_overrides DROP COLUMN ancienne_colonne;

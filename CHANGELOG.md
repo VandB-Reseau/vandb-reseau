@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Ajout d'un Coach réparé (Joseph, 18/11/2026) : la base en ligne refusait un nouveau Coach (« la base n'a pas toutes
+  les colonnes attendues ») car la colonne `id` héritée de l'ancienne app n'avait pas de numéro automatique. Le message
+  brut d'un refus est désormais gardé dans la console du navigateur. **Migration 0052_ajout_coach à passer.**
 - Équipe : départ d'un Coach ou d'un Responsable Régional et remplacement (Joseph, 18/11/2026), sans migration. Picto
   « Départ et remplacement » sur sa fiche (Directeur) : dernier jour, remplaçant en poste ou nouveau (créé sur place, poste
   à pourvoir possible), reprise à partir d'un mois de ses magasins (ou Coachs et magasins en direct), des visites prévues
