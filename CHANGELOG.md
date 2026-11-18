@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Ajout d'un Coach réparé (Joseph, 18/11/2026) : la base en ligne refusait un nouveau Coach (« la base n'a pas toutes
+  les colonnes attendues ») car la colonne `id` héritée de l'ancienne app n'avait pas de numéro automatique. Le message
+  brut d'un refus est désormais gardé dans la console du navigateur. **Migration 0052_ajout_coach à passer.**
 - Tâches des campagnes (Joseph, 18/11/2026) : chaque point d'une campagne devient une tâche de chaque magasin concerné,
   portée par son franchisé, pour la fin de la campagne, avec la puce « Campagne : nom » (onglet Tâches de la fiche,
   listes Tâches, accueil, espace du franchisé). Rien n'est recopié : « Fait » constate le point, « Rouvrir » le remet à

@@ -38,7 +38,7 @@ Mis à jour le 26/10/2026 (migration `0038`).
 | `app_config` | Réglages et référentiels en clé / valeur, `value` = texte JSON (détail plus bas) | `key` |
 | `store_overrides` | Fiche de chaque magasin : coordonnées, adresse, `franchise` (vrai = franchisé), `rr` (RR en direct), position, `topographie` du blason de ville (`littoral`, `montagne` ou `terres` ; vide = déduite du département), 0031 ; `figure` au centre du blason (voilier, sapin, château… ; vide = proposée selon le département), 0032 ; `situations` (jsonb, liste datée : fermeture provisoire `travaux` du … au …, passage `integre` ou `franchise`, `sortie` du réseau — fermeture, liquidation, tombée d'enseigne ou cession avec repreneur — et soirée d'`inauguration` ; à la date d'une sortie le magasin quitte les listes, sa fiche reste), 0033 ; exploitation : `implantation` (AAAA-MM-JJ), `typologie` (`T1`, `T2`, `T3`), `zone_chalandise` (`moins_10000`, `10000_35000`, `35000_100000`, `plus_100000`), `licence` (`3` ou `4`), `horaires` (jsonb `{ "lundi": "10:00-20:00", … }`, jour absent = fermé), `instagram`, 0037 | `store_name` |
 | `reassigns` | Coach de chaque magasin à partir d'une date (effet le 1er du mois ; `date` en texte AAAA-MM-JJ) | `id` ; `store`, `cs`, `date` |
-| `cs_overrides` | Coachs : téléphone, courriel, ville, couleur, `tech` (Technicien) | `cs_name` |
+| `cs_overrides` | Coachs : téléphone, courriel, ville, couleur, `tech` (Technicien) ; `id` héritée de l'ancienne app, numérotée automatiquement depuis 0052 | `cs_name` |
 | `recruits` | Recrues à venir ou fictives (simulation de charge) | `id` |
 
 Exception : toute l'équipe écrit la clé `bonnes_pratiques` d'`app_config`.
