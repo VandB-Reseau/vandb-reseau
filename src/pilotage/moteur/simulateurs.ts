@@ -4,6 +4,7 @@ import { coutPersonne, type Personne } from './equipe'
 import { echeancier } from './financement'
 import { joursHorsDimanche } from './objectifs'
 import { tresorerieBudget } from './tresorerie'
+import { REGLES_REMUNERATION, type ReglesRemuneration } from './remunerationDirigeant'
 import { UNIVERS, type Budget, type Hypotheses, type ParametresReseau, type TempsFort, type Univers } from './types'
 
 // Simulateurs du franchisé (choix 125 à 135, Joseph 13/11/2026) : les décisions du quotidien, hors du budget. Rien n'est
@@ -41,6 +42,10 @@ export interface ParametresSimulateurs {
   marcheExterieur: { paliers: { caMax: number; tireuses: number; investissement: number; heures: number }[]; camion: number }
   familles: { libelle: string; univers: 'cave' | 'bar'; marge: number; tva: 'normale' | 'intermediaire' | 'reduite' }[]
   remises: Record<CleRemise, number>                        // repères en part du CA HT (0 : pas de repère)
+  // 287 et 291 (Joseph, 18/11/2026) : règles sociales et fiscales de « Me rémunérer » (valeurs 2026 par défaut), loyer
+  // repère en part du CA HT (0 : pas de repère)
+  remuneration: ReglesRemuneration
+  loyerRepere: number
 }
 // Remises et offerts (choix 163) : les lignes du fichier « Pilotage remises & gratuités »
 export const LIGNES_REMISES = [
@@ -66,6 +71,7 @@ export const simulateursParDefaut: ParametresSimulateurs = {
   productivite: [], majorations: { dimanche: 0, ferie: 0 }, coefInterim: COEF_INTERIM,
   contrat: { ...CONTRAT_CDD }, tireuses: { ...TIREUSES }, livraison: [], marcheExterieur: { paliers: [], camion: 0 }, familles: [],
   remises: { offerts: 0, persos: 0, prixSpeciaux: 0, remises: 0, fidelite: 0 },
+  remuneration: { ...REGLES_REMUNERATION }, loyerRepere: 0,
 }
 const positif = (x: unknown) => Math.max(0, fini(x as number))
 export function parametresSimulateurs(p: { simulateurs?: Partial<ParametresSimulateurs> } | null | undefined): ParametresSimulateurs {
@@ -101,6 +107,9 @@ export function parametresSimulateurs(p: { simulateurs?: Partial<ParametresSimul
     familles: liste(s.familles).filter((x) => x && typeof x.libelle === 'string' && x.libelle.trim() && Number.isFinite(x.marge))
       .map((x) => ({ libelle: x.libelle.trim().slice(0, 40), univers: x.univers === 'bar' ? 'bar' as const : 'cave' as const, marge: Math.min(0.99, positif(x.marge)), tva: (['normale', 'intermediaire', 'reduite'] as const).includes(x.tva) ? x.tva : 'normale' as const })),
     remises: Object.fromEntries(LIGNES_REMISES.map((l) => [l.cle, Math.min(1, positif(s.remises?.[l.cle]))])) as Record<CleRemise, number>,
+    remuneration: Object.fromEntries((Object.keys(REGLES_REMUNERATION) as (keyof ReglesRemuneration)[])
+      .map((k) => [k, ou(s.remuneration?.[k], REGLES_REMUNERATION[k])])) as unknown as ReglesRemuneration,
+    loyerRepere: Math.min(1, positif(s.loyerRepere)),
   }
 }
 const ou = (x: unknown, defaut: number) => (Number.isFinite(x) ? positif(x) : defaut)
