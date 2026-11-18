@@ -299,9 +299,17 @@ export function Magasins() {
 
           <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 2, flexWrap: 'wrap' }} role="group" aria-label="Filtres">
             {/* Vague 8 (96A) : vues rapides au style commun des listes */}
+            {/* 326 (18/11/2026) : les statuts du budget d'un côté, ce qui manque (équipe, frais) de l'autre */}
             <VuesRapides label="Vues des budgets" valeur={filtre} onChange={(v) => changer('filtre', v === 'tous' ? null : v)} sx={{ mb: 0 }}
-              options={FILTRES.map((f) => ({ f, n: f.cle === 'tous' ? tous.length : tous.filter((m) => correspond(m, f.cle)).length }))
+              options={FILTRES.filter((f) => f.cle !== 'equipe' && f.cle !== 'frais').map((f) => ({ f, n: f.cle === 'tous' ? tous.length : tous.filter((m) => correspond(m, f.cle)).length }))
                 .filter(({ f, n }) => n > 0 || f.cle === filtre).map(({ f, n }) => ({ v: f.cle, libelle: `${f.libelle} · ${n}` }))} />
+            {FILTRES.some((f) => (f.cle === 'equipe' || f.cle === 'frais') && (f.cle === filtre || tous.some((m) => correspond(m, f.cle)))) && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: { md: 1 }, borderLeft: { md: '1px solid' }, borderColor: { md: 'divider' } }}>
+                <VuesRapides label="Ce qui manque" valeur={filtre} onChange={(v) => changer('filtre', v === filtre ? null : v)} sx={{ mb: 0 }}
+                  options={FILTRES.filter((f) => f.cle === 'equipe' || f.cle === 'frais').map((f) => ({ f, n: tous.filter((m) => correspond(m, f.cle)).length }))
+                    .filter(({ f, n }) => n > 0 || f.cle === filtre).map(({ f, n }) => ({ v: f.cle, libelle: `${f.libelle} · ${n}` }))} />
+              </Box>
+            )}
             {/* Lot 43 : Responsable Régional ou Coach choisi dans la campagne */}
             {responsable && (
               <Chip label={responsable} onDelete={() => changer('responsable', null)} deleteIcon={<CloseOutlined aria-label={`Retirer le filtre : ${responsable}`} />}

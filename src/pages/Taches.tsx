@@ -8,6 +8,7 @@ import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import Popover from '@mui/material/Popover'
 import { useMessageAnnulable } from '../components/Annulable'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
@@ -24,7 +25,7 @@ import FlagOutlined from '@mui/icons-material/FlagOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { ChampRecherche } from '../components/Outils'
 import { RechercheFiltres } from '../components/RechercheFiltres'
-import { CarteLignes, Puces, TitreSection, cartouche } from '../components/Social'
+import { CarteLignes, Puces, cartouche } from '../components/Social'
 import Card from '@mui/material/Card'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import { LigneVide, styleBloc, styleEnteteBloc } from '../components/Section'
@@ -129,6 +130,7 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajoutVide }: { r
   const ecriture = useEcritureActions(reseau)
   const [recherche, setRecherche] = useState('')
   const [magasin, setMagasin] = useState<string | null>(null)
+  const [ancreMagasin, setAncreMagasin] = useState<HTMLElement | null>(null)
   const [enCours, setEnCours] = useState<string | null>(null)
   const [toutesFaites, setToutesFaites] = useState(false)
   const [edition, setEdition] = useState<ActionSuivie | null>(null)
@@ -186,8 +188,17 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajoutVide }: { r
       </Box>
     )
     : (
-      <Autocomplete options={[...noms].sort((a, b) => a.localeCompare(b, 'fr'))} value={choix} onChange={(_e, v) => setMagasin(v)} sx={{ width: { xs: '100%', sm: 280 } }}
-        renderInput={(params) => <TextField {...params} size="small" label="Magasin" placeholder="Tous les magasins" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }} />} />
+      // 324 (18/11/2026) : le filtre Magasin en puce comme les autres ; la liste s'ouvre au clic
+      <>
+        <Chip label={choix ?? 'Tous les magasins'} icon={<StorefrontOutlined />} color={choix ? 'primary' : 'default'} variant={choix ? 'filled' : 'outlined'}
+          onClick={(e) => setAncreMagasin(e.currentTarget)} onDelete={choix ? () => setMagasin(null) : undefined} aria-haspopup="dialog" aria-label={`Magasin : ${choix ?? 'tous'}`} sx={{ minHeight: 48 }} />
+        <Popover open={!!ancreMagasin} anchorEl={ancreMagasin} onClose={() => setAncreMagasin(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}>
+          <Box sx={{ p: 1.5, width: 300 }}>
+            <Autocomplete openOnFocus options={[...noms].sort((a, b) => a.localeCompare(b, 'fr'))} value={choix} onChange={(_e, v) => { setMagasin(v); setAncreMagasin(null) }}
+              renderInput={(params) => <TextField {...params} autoFocus size="small" label="Magasin" placeholder="Tous les magasins" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }} />} />
+          </Box>
+        </Popover>
+      </>
     ))
   return (
     <>
@@ -208,18 +219,20 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajoutVide }: { r
             : q || faites.length
               ? <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>{q ? 'Aucune tâche ne correspond à la recherche.' : 'Toutes tes tâches sont faites.'}</Typography>
               : <EmptyState icone={<TaskAltOutlined />} titre="Aucune tâche en cours" texte="Les tâches confiées à cette liste arriveront ici." action={ajoutVide} />}
-        </CarteLignes>
-        {faites.length > 0 && (
-          <Box>
-            <TitreSection nombre={faites.length}>Faites</TitreSection>
-            <CarteLignes label="Faites">
+          {/* 324 : les tâches faites dans la même carte, sous leur intertitre */}
+          {faites.length > 0 && (
+            <Box component="section" aria-label="Faites">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, pt: 1.5, pb: 0.5, bgcolor: 'action.hover' }}>
+                <Typography component="h2" sx={cartouche}>Faites</Typography><Box sx={{ flex: 1 }} />
+                <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.secondary' }}>{faites.length}</Typography>
+              </Box>
               <Box component="ul" aria-label="Tâches faites" sx={{ listStyle: 'none', m: 0, p: 0, '& > li': { px: 1 } }}>{(toutesFaites ? faites : faites.slice(0, FAITES_VISIBLES)).map(ligne)}</Box>
               {faites.length > FAITES_VISIBLES && (
                 <Button onClick={() => setToutesFaites((v) => !v)} sx={{ minHeight: 48, width: '100%' }}>{toutesFaites ? 'Voir moins' : `Voir les ${faites.length} tâches faites`}</Button>
               )}
-            </CarteLignes>
-          </Box>
-        )}
+            </Box>
+          )}
+        </CarteLignes>
       </Box>
       {edition && <DialogAction reseau={reseau} magasins={noms} action={edition} onFermer={(msg) => { setEdition(null); if (msg) signaler(msg) }} />}
     </>

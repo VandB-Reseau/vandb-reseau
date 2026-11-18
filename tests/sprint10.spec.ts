@@ -29,7 +29,7 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Brest%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Aperçu', 'Tâches', 'Chiffres', 'Budget', 'Simuler', 'Extérieur', 'Nine box', 'Historique'] : ['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box et déploiements', 'Historique'])
+  await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Historique'])
   // Plus de fil (Joseph, 22/10/2026) : la fiche s'ouvre sur « À faire » (maquette 264) ; le journal a son onglet
   await expect(page.getByRole('heading', { name: 'À faire', exact: true })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Journal' })).toHaveCount(0)
@@ -37,7 +37,7 @@ test('la fiche magasin est rangée en onglets et regroupe les actions en cours',
   // En-tête : deux actions en cours dont une en retard
   // Les deux tâches sont dans « À faire » (lien « Toutes les tâches » seulement au-delà de 3, Joseph 17/11/2026)
   await expect(page.getByRole('region', { name: 'À faire' }).getByRole('list', { name: 'Tâches en cours de Brest Test' }).getByRole('listitem')).toHaveCount(2)
-  await expect(page.getByText('1 tâche en retard', { exact: true })).toBeVisible()
+  // 307 (18/11/2026) : plus de compteurs sous le nom ; le retard se lit sur la tâche (onglet Tâches, ci-dessous)
   await ouvrirOnglet(page, 'Tâches', onglets)
   const liste = page.getByRole('list', { name: 'Tâches en cours de Brest Test' })
   await expect(liste.getByRole('listitem')).toHaveCount(2)

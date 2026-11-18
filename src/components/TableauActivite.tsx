@@ -24,15 +24,18 @@ import { useOuvrirCompteRendu } from './ApercuCompteRendu'
 import { dateCourte } from '../lib/format'
 import { brand } from '../theme/theme'
 
+// 359 (Joseph, 18/11/2026) : le type d'un élément est une étiquette grise (ton « type » du lexique), la même pour tous :
+// plus de violet ni de vert qui laissent croire à un statut
+const gris = { fond: '#f0ece5', texte: '#4a4540' }
 const TYPE: Record<GenreFil, { libelle: string; fond: string; texte: string }> = {
-  visite: { libelle: 'Visite', fond: '#e3f0ef', texte: brand.vertFonce },
-  tache: { libelle: 'Tâche', fond: '#fdf3d6', texte: '#7a5800' },
-  message: { libelle: 'Message', fond: '#f0ece5', texte: '#4a4540' },
-  journal: { libelle: 'Journal', fond: '#efe9f7', texte: '#54457a' },
-  pratique: { libelle: 'Bonne pratique', fond: '#fde9df', texte: brand.brique },
-  chiffres: { libelle: 'Chiffres', fond: '#f0ece5', texte: '#4a4540' },
-  communication: { libelle: 'Communication', fond: '#f0ece5', texte: '#4a4540' },
-  animation: { libelle: 'Campagne', fond: '#f0ece5', texte: '#4a4540' },
+  visite: { libelle: 'Visite', ...gris },
+  tache: { libelle: 'Tâche', ...gris },
+  message: { libelle: 'Message', ...gris },
+  journal: { libelle: 'Journal', ...gris },
+  pratique: { libelle: 'Bonne pratique', ...gris },
+  chiffres: { libelle: 'Chiffres', ...gris },
+  communication: { libelle: 'Communication', ...gris },
+  animation: { libelle: 'Campagne', ...gris },
 }
 const PAS = 30
 

@@ -92,13 +92,18 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await page.getByRole('link', { name: /Annecy Test/ }).click()
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
   // Plus d'onglet Messages, comme pour l'équipe : le picto message ouvre le groupe du magasin (Joseph, 23/10/2026)
-  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler'] : ['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur'])
+  await expect(onglets.getByRole('tab')).toHaveText((isMobile ? ['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Historique'] : ['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Historique']))
   await expect(page.getByRole('button', { name: /Modifier|Réaffecter|Saisir/ })).toHaveCount(0)
-  await expect(page.getByRole('group', { name: 'En bref' })).toContainText('tâches en cours')
+  // 313 : plus de compteurs dans l'en-tête ; les infos du magasin s'ouvrent par le picto « Infos »
   await expect(page.getByRole('region', { name: 'Fil du magasin' })).toHaveCount(0)
-  await expect(page.getByText('Paul MULTI')).toBeVisible()
+  await page.getByRole('button', { name: 'Infos du magasin' }).click()
+  const infos = page.getByRole('dialog', { name: 'Infos du magasin' })
+  await expect(infos.getByText('Paul MULTI')).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-franchise-fiche-profil.png`, fullPage: true })
-  await ouvrirOnglet(page, 'Visites', onglets)
+  await page.keyboard.press('Escape')
+  await expect(infos).toBeHidden()
+  // 314 : les visites dans l'Historique, les campagnes sous les Tâches
+  await ouvrirOnglet(page, 'Historique', onglets)
   await expect(page.getByText('À venir', { exact: true })).toBeVisible()
   await expect(page.getByText('2 tâches au plan · 0 faite')).toBeVisible()
   await page.screenshot({ path: `captures/${info.project.name}-franchise-fiche-visites.png`, fullPage: true })
@@ -106,7 +111,7 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await expect(page.getByText('Vitrine propre.')).toBeVisible()
   await expect(page.getByText('Bon mois.')).toBeVisible()
   await page.goBack()
-  await ouvrirOnglet(page, 'Campagnes', page.getByRole('tablist', { name: 'Rubriques de Annecy Test' }))
+  await ouvrirOnglet(page, 'Tâches', page.getByRole('tablist', { name: 'Rubriques de Annecy Test' }))
   await expect(page.getByRole('heading', { name: 'Noël' })).toBeVisible()
   await expect(page.getByText('Vitrine de Noël')).toBeVisible()
   await expect(page.getByText('En partie')).toBeVisible()
@@ -127,7 +132,7 @@ test('un franchisé d’un seul magasin arrive sur sa fiche par l’onglet Mes m
   await expect(page).toHaveURL(/#\/magasins\/Annecy%20Test$/)
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Annecy Test' })
   await expect(onglets).toBeVisible()
-  await ouvrirOnglet(page, 'Bonnes pratiques', onglets)
+  await ouvrirOnglet(page, 'Historique', onglets)
   await expect(page.getByRole('article', { name: 'Coffrets à composer' })).toBeVisible()
   await expect(page.getByText('Dégustation du vendredi')).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
@@ -250,7 +255,8 @@ test('l’accueil du franchisé : le fil au centre, à faire et visites à droit
   await page.getByRole('button', { name: 'Annecy Test', exact: true }).click()
   await deplierPoint(page)
   const aFaire = page.getByRole('region', { name: 'À faire' })
-  await expect(aFaire.getByRole('link')).toHaveText([/Clôturer septembre 2026/, /Relire mon budget/])
+  // 348 : sur téléphone, « Clôturer » est dans le bandeau du haut, pas répété dans À faire
+  await expect(aFaire.getByRole('link')).toHaveText(isMobile ? [/Relire mon budget/] : [/Clôturer septembre 2026/, /Relire mon budget/])
   if (!isMobile) {
     // Vague 8 (Joseph, 11/11/2026) : le fil en premier plan à gauche ; mes chiffres et à faire à droite
     const [chiffres, gauche, droite] = await Promise.all([page.getByRole('region', { name: 'Mes chiffres' }), page.getByRole('region', { name: 'Actualités' }), aFaire].map(async (l) => (await l.boundingBox())!))
@@ -260,6 +266,12 @@ test('l’accueil du franchisé : le fil au centre, à faire et visites à droit
   } else for (const l of await aFaire.getByRole('link').all()) expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-franchise-tableau-de-bord.png`, fullPage: true })
+  if (isMobile) {
+    // 348 : sur téléphone, « Clôturer » du bandeau « Mon mois » ouvre la clôture sur place
+    await page.getByRole('main').getByRole('button', { name: 'Clôturer', exact: true }).first().click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    return
+  }
   await aFaire.getByRole('link', { name: /Clôturer/ }).click()
   await expect(page).toHaveURL(/vue=chiffres&partie=cloture/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Annecy Test')

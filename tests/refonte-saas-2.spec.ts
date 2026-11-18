@@ -87,6 +87,8 @@ test('PC : cocher des magasins ouvre la barre d’actions et crée une tâche po
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins')
   const tableau = page.getByRole('table', { name: 'Tableau des magasins' })
+  // 321 (18/11/2026) : Brest n'a pas de chiffres, rangé en bas et replié
+  await page.getByRole('button', { name: /^Afficher les \d+ sans chiffres$/ }).click()
   await tableau.getByRole('checkbox', { name: 'Sélectionner Annecy Test' }).check()
   await tableau.getByRole('checkbox', { name: 'Sélectionner Brest Test' }).check()
   const barre = page.getByRole('toolbar', { name: 'Actions sur la sélection' })
@@ -124,7 +126,7 @@ test('PC : en descendant dans la fiche, le nom du magasin reste au-dessus des on
   test.skip(isMobile, 'Bande collante des onglets sur PC')
   await seConnecter(page)
   await page.goto(`./#/magasins/${encodeURIComponent('Annecy Test')}`)
-  const enBref = page.getByRole('group', { name: 'En bref' })
+  const enBref = page.getByRole('main').getByRole('heading', { level: 1, name: 'Annecy Test' })
   await expect(enBref).toBeVisible()
   await page.mouse.wheel(0, 1500)
   await expect(enBref).not.toBeInViewport()

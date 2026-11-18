@@ -2,6 +2,9 @@
 // « Faite » se coche comme avant ; la puce change les trois autres. Vocabulaire réservé (40A) : ces mots ne servent qu'aux tâches.
 import { useState } from 'react'
 import Chip from '@mui/material/Chip'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
+import PendingOutlined from '@mui/icons-material/PendingOutlined'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
@@ -25,12 +28,16 @@ export function PuceStatut({ a, changer, titre }: { a: ActionPlan; titre: string
   const actuel = a.statut ?? 'a_faire'
   const libelle = libelleStatutTache(a)
   const sx = { fontSize: 12, fontWeight: 700, borderRadius: 1, height: 24, ...styles[actuel] }
-  if (!changer) return <Chip size="small" label={libelle} sx={sx} />
+  // 325 (18/11/2026) : « À faire » ne s'écrit plus, le groupe le dit déjà ; le statut se change par un picto discret
+  if (!changer) return actuel === 'a_faire' ? null : <Chip size="small" label={libelle} sx={sx} />
   const choisir = (s: '' | StatutTache) => { setAncre(null); if (s === 'bloquee') setRaison(a.raison ?? ''); else void changer(s, '') }
+  const etiquette = `Statut : ${libelle}. Changer le statut de ${titre}`
   return (
     <>
-      <Chip size="small" label={libelle} onClick={(e) => setAncre(e.currentTarget)} aria-haspopup="menu" aria-label={`Statut : ${libelle}. Changer le statut de ${titre}`}
-        sx={{ ...sx, minHeight: { xs: 48, sm: 24 }, '&:hover': styles[actuel] }} />
+      {actuel === 'a_faire'
+        ? <Tooltip title="Changer le statut"><IconButton size="small" onClick={(e) => setAncre(e.currentTarget)} aria-haspopup="menu" aria-label={etiquette} sx={{ width: { xs: 48, sm: 32 }, height: { xs: 48, sm: 32 }, color: 'text.secondary' }}><PendingOutlined fontSize="small" /></IconButton></Tooltip>
+        : <Chip size="small" label={libelle} onClick={(e) => setAncre(e.currentTarget)} aria-haspopup="menu" aria-label={etiquette}
+          sx={{ ...sx, minHeight: { xs: 48, sm: 24 }, '&:hover': styles[actuel] }} />}
       <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} slotProps={{ list: { 'aria-label': 'Statut de la tâche' } }}>
         <MenuItem selected={actuel === 'a_faire'} onClick={() => choisir('')} sx={{ minHeight: 48 }}>À faire</MenuItem>
         <MenuItem selected={actuel === 'en_cours'} onClick={() => choisir('en_cours')} sx={{ minHeight: 48 }}>En cours</MenuItem>

@@ -18,7 +18,7 @@ import { moisDeRevue, moisParDefaut, revueDu } from '../data/revue'
 import { porteursDe, echeanceDate } from '../data/actions'
 import { dateCourte, lienCoach, lienFiche, lienRR } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
-import { styleChiffre } from '../theme/theme'
+import { Indicateur } from './Indicateur'
 
 // À l'impression, seule la revue sort
 const styleImpression = (
@@ -41,13 +41,9 @@ const Vide = LigneVide
 const LienMagasin = ({ nom }: { nom: string }) => <Link component={RouterLink} to={lienFiche(nom)} sx={{ fontWeight: 500, py: 1 }}>{nom}</Link>
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 
+// 332 (18/11/2026) : la tuile chiffre commune (Indicateur), plus une tuile grise propre à la revue
 function Compteur({ valeur, libelle }: { valeur: string | number; libelle: string }) {
-  return (
-    <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'action.hover' }}>
-      <Typography sx={styleChiffre}>{valeur}</Typography>
-      <Typography variant="body2" color="text.secondary">{libelle}</Typography>
-    </Box>
-  )
+  return <Indicateur libelle={libelle.charAt(0).toUpperCase() + libelle.slice(1)} valeur={String(valeur)} />
 }
 
 // parRR : revue du réseau entier pour le Directeur (sprint 24, F4), une ligne par Responsable Régional en tête
@@ -77,6 +73,8 @@ export function RevueRR({ reseau, nom, magasins, parRR = false }: { reseau: Rese
         <TextField select label="Mois" value={mois} onChange={(e) => choisir(e.target.value)} className="sans-impression" sx={{ minWidth: 180 }}>
           {options.map((m) => <MenuItem key={m} value={m}>{libelleMois(m)}</MenuItem>)}
         </TextField>
+        {/* 357 : les chiffres du mois sont dans le Rapport du mois (Chiffres) */}
+        {parRR && <Button component={RouterLink} to="/performance?vue=rapports" className="sans-impression" sx={{ minHeight: 48 }}>Rapport du mois</Button>}
         <Button variant="contained" startIcon={<PictureAsPdfOutlined />} onClick={() => window.print()} className="sans-impression" sx={{ minHeight: 48 }}>Télécharger en PDF</Button>
       </Box>
 

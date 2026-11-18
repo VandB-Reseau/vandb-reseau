@@ -64,8 +64,8 @@ export function SectionAccesEquipe({ role, cle, nom, signaler }: { role: RoleEqu
       {liste && !acces && (
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <TextField label="Email du compte" type="email" value={email} onChange={(e) => setEmail(e.target.value)} sx={{ flex: '1 1 240px' }} />
-          <Button variant="contained" startIcon={<LockOpenOutlined />} disabled={!emailValide(email) || envoi}
-            onClick={() => agir(() => ouvrirAccesEquipe(email, role, cle), `Accès ouvert pour ${nom}.`)} sx={{ minHeight: 56 }}>Ouvrir l’accès</Button>
+          <Button variant="contained" startIcon={<LockOpenOutlined />} disabled={envoi}
+            onClick={() => !emailValide(email) ? setErreur('Écris une adresse email valide pour ouvrir l’accès.') : agir(() => ouvrirAccesEquipe(email, role, cle), `Accès ouvert pour ${nom}.`)} sx={{ minHeight: 56 }}>Ouvrir l’accès</Button>
         </Box>
       )}
       {erreur && <Alert severity="error" sx={{ mt: 2 }}>{erreur}</Alert>}

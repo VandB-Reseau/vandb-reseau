@@ -9,6 +9,29 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Revue de tous les écrans, propositions 293 à 360 en un seul lot (Joseph, 18/11/2026), sans migration.
+  Défauts : sélecteur « Choisir un magasin » du franchisé, tuiles Mes chiffres en lignes, repères réseau sur deux lignes,
+  « vs septembre 2025 » dans les entretiens, menu PC plus serré, Pilotage aux couleurs V and B, meilleur levier sans budget
+  2026, un seul statut du budget, marge sous le « + » flottant (retiré des pages qui ont leur propre bouton), chiffres
+  absents dits en clair ; test de charte des couleurs. Navigation : fil d'Ariane partout sur PC (Bilan, Charge des
+  Coachs, Import et export, fiche Directeur), mêmes noms d'onglets PC et téléphone, Équipe et Paramètres dans le menu du
+  Directeur (« Réglages »), périmètre en puce sur téléphone, page « Plus » sans Magasins. Fiches : en-tête magasin à
+  quatre actions (message et « Montrer au franchisé » dans « ⋯ »), sans étiquette d'alerte ni ligne nine box, visite en
+  picto sur téléphone ; fiche du franchisé au modèle 264 (À faire, Comment va le magasin, Infos du magasin, onglets
+  Tâches et Historique) ; champs vides des fiches personnes comptés en une ligne ; Portefeuille en carte titrée ; fiche
+  Directeur au gabarit des autres. Listes : blason partout, statut d'ouverture sur la ligne du nom, colonnes resserrées,
+  magasins sans chiffres repliés en bas (Magasins, Pilotage), « 0/10 » et « À compléter » d'office dans Évaluer, rythme
+  de visite en tableau trié par retard, filtre Magasin en puce et tâches faites dans la même carte, « À faire » retiré
+  des lignes, statuts du budget séparés des manques, légende des Clôtures, actions du Pilotage dans « ⋯ », compteur pour
+  les statuts, lignes du Pilotage sur téléphone, Coach sans magasin gardé dans la Charge. Chiffres : tuile commune dans
+  la Revue du mois, nine box teintée dans la fiche, Marché extérieur sans tuiles vides, audits en tuile, santé en point
+  et mot, légende de l'Évolution du parc. Parcours : étapes communes (budget, visite, marché extérieur), boutons jamais
+  grisés (un clic dit ce qui manque), fiche avant visite repliée, étapes du budget compactes sur téléphone, « À
+  compléter » sur les cartes du budget, simulateurs repliés sur téléphone, segments lisibles. Accueil franchisé sans
+  blocs vides, visites en une ligne, À faire sans doublon ; À traiter sur deux lignes ; Messages avec un seul état
+  vide ; Animation sans second bouton « Publier » et Campagnes en sous-navigation ; Agenda : aujourd'hui en rond noir ;
+  Charge des Coachs et Import et export dans le panneau des Paramètres, Import et export en tableau.
+
 - Fiche magasin, onglet Tâches : filtre « En cours » (tâches passées en cours par leur puce de statut), sans migration
   (Joseph, 18/11/2026).
 - Fiche magasin, onglet Tâches (Joseph, 17/11/2026), sans migration : toutes les tâches du magasin en puces À faire,

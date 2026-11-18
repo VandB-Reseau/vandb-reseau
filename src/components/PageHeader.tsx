@@ -34,10 +34,11 @@ function MenuAutres({ autres }: { autres: AutreAction[] }) {
 }
 export function PageHeader({ titre, sousTitre, actions: principales, autres }: { titre: string; sousTitre?: string; actions?: ReactNode; autres?: AutreAction[] }) {
   const actions = autres?.length ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 'auto' }}>{principales}<MenuAutres autres={autres} /></Box> : principales
-  // Téléphone (vague 3, 21A) : le périmètre sous le titre, qui garde sa place d'une page à l'autre
+  // Téléphone (vague 3, 21A) : le périmètre sous le titre, qui garde sa place d'une page à l'autre ; 307 (18/11/2026) : en puce
+  // d'une ligne comme sur l'Accueil, plus en bloc de 60 px
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const { pathname } = useLocation()
-  const selecteur = !surPC && suitLePerimetre(pathname) ? <Box sx={{ mt: 1 }}><SelecteurPerimetre /></Box> : null
+  const selecteur = !surPC && suitLePerimetre(pathname) ? <Box sx={{ mt: 0.5, '&:empty': { display: 'none' } }}><SelecteurPerimetre compact /></Box> : null
   if (!actions && sousTitre) {
     return (
       <Box sx={{ mb: { xs: 1.5, md: 2 } }}>

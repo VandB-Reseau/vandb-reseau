@@ -321,12 +321,15 @@ test('Équipements : le franchisé voit et modifie ceux de son magasin', async (
   const ecritures: Ecriture[] = []
   await connecter(page, { ...franchise, ecritures, config: { equipements_magasins: equipements } }, {})
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}`)
+  // 312 (18/11/2026) : équipe, adresse et équipements du franchisé sont dans « Infos du magasin »
+  await page.getByRole('button', { name: 'Infos du magasin' }).click()
   const liste = page.getByRole('list', { name: `Équipements de ${NOM}` })
   await expect(liste.getByText('2 × Barnum ou tente')).toBeVisible()
   await expect(liste.getByText('3 × 6 m · achat 2024 · 1 200 € HT')).toBeVisible()
   await liste.getByRole('button', { name: /^Modifier Barnum/ }).click()
-  await page.getByRole('dialog').getByLabel('Quantité').fill('3')
-  await page.getByRole('dialog').getByRole('button', { name: 'Enregistrer' }).click()
+  const saisie = page.getByRole('dialog').filter({ has: page.getByLabel('Quantité') }).last()
+  await saisie.getByLabel('Quantité').fill('3')
+  await saisie.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.getByText('Équipement enregistré.')).toBeVisible()
   await expect(liste.getByText('3 × Barnum ou tente')).toBeVisible()
   const e = ecritures.find((x) => x.table === 'rpc/ecrire_equipements')

@@ -1,5 +1,7 @@
 import { styleBloc, styleEnteteBloc } from '../components/Section'
 import { useState, type ReactNode } from 'react'
+import { ChargeCoachs } from './ChargeCoachs'
+import { Donnees } from './Donnees'
 import { useSearchParams } from 'react-router-dom'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
@@ -296,7 +298,16 @@ export function Direction() {
     <AvecReseau>
       {(reseau) => {
         const liste = rubriques(reseau)
-        const choisie = liste.find((r) => r.id === params.get('rubrique')) ?? (surPC ? liste[0] : null)
+        // 354 (Joseph, 18/11/2026) : sur PC, Charge des Coachs et Import et export s'ouvrent à droite comme les autres rubriques
+        const pageIntegree = surPC && (params.get('rubrique') === 'coachs' || params.get('rubrique') === 'donnees') ? params.get('rubrique') as 'coachs' | 'donnees' : null
+        const choisie = pageIntegree ? null : liste.find((r) => r.id === params.get('rubrique')) ?? (surPC ? liste[0] : null)
+        const ouvrirPage = (id: 'coachs' | 'donnees') => { const n = new URLSearchParams(); n.set('rubrique', id); setParams(n, { replace: true }) }
+        const lignePage = (id: 'coachs' | 'donnees', lien: string, titre: string, detail: string, icone: ReactNode) => (
+          <Box sx={{ bgcolor: pageIntegree === id ? 'action.selected' : undefined }}>
+            <LigneCompacte {...(surPC ? { onClick: () => ouvrirPage(id) } : { lien })} label={titre} avatar={<Initiales nom={titre} icone={icone} />} titre={titre}
+              detail={detail} fin={!surPC && <ChevronRightOutlined color="action" />} />
+          </Box>
+        )
         const ligne = (r: (typeof liste)[number]) => (
           <Box key={r.id} sx={{ bgcolor: surPC && choisie?.id === r.id ? 'action.selected' : undefined }}>
             <LigneCompacte onClick={() => ouvrir(r.id)} label={r.libelle} avatar={<Initiales nom={r.libelle} icone={r.icone} />} titre={r.libelle} detail={r.detail}
@@ -311,15 +322,9 @@ export function Direction() {
             {GROUPES.map((g) => (
               <Box key={g} role="group" aria-label={g}>
                 {titreGroupe(g)}
-                {g === 'Visites et suivi' && (
-                  <LigneCompacte lien="/parametres/charge" label="Charge des Coachs" avatar={<Initiales nom="Charge des Coachs" icone={<GroupsOutlined />} />} titre="Charge des Coachs"
-                    detail={`${reseau.equipe.filter((c) => !c.fictif).length} Coachs · simulation et répartition`} fin={<ChevronRightOutlined color="action" />} />
-                )}
+                {g === 'Visites et suivi' && lignePage('coachs', '/parametres/charge', 'Charge des Coachs', `${reseau.equipe.filter((c) => !c.fictif).length} Coachs · simulation et répartition`, <GroupsOutlined />)}
                 {liste.filter((r) => GROUPE[r.id] === g).map(ligne)}
-                {g === 'Données' && (
-                  <LigneCompacte lien="/parametres/donnees" label="Import et export" avatar={<Initiales nom="Import et export" icone={<ImportExportOutlined />} />} titre="Import et export"
-                    detail={reseau.derniereSauvegarde ? `Dernière sauvegarde ${dateCourte(reseau.derniereSauvegarde)}` : 'Référentiels en Excel, sauvegarde complète'} fin={<ChevronRightOutlined color="action" />} />
-                )}
+                {g === 'Données' && lignePage('donnees', '/parametres/donnees', 'Import et export', reseau.derniereSauvegarde ? `Dernière sauvegarde ${dateCourte(reseau.derniereSauvegarde)}` : 'Référentiels en Excel, sauvegarde complète', <ImportExportOutlined />)}
               </Box>
             ))}
           </CarteLignes>
@@ -342,6 +347,8 @@ export function Direction() {
                   <Box sx={{ display: 'grid', gridTemplateColumns: '320px minmax(0, 1fr)', gap: 3, alignItems: 'start' }}>
                     {/* Le sommaire reste à l'écran quand la rubrique défile */}
                     <Box sx={{ position: 'sticky', top: hautEntete.md + 16, maxHeight: `calc(100vh - ${hautEntete.md + 32}px)`, overflowY: 'auto', scrollbarWidth: 'thin' }}>{sommaire}</Box>
+                    {pageIntegree === 'coachs' && <Box sx={{ minWidth: 0 }}><ChargeCoachs integre /></Box>}
+                    {pageIntegree === 'donnees' && <Box sx={{ minWidth: 0 }}><Donnees integre /></Box>}
                     {choisie && <ContenuRubrique id={choisie.id} reseau={reseau} signaler={setMessage} />}
                   </Box>
                 ) : sommaire}

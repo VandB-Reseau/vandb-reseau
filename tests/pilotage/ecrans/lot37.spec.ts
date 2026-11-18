@@ -33,7 +33,7 @@ test('hypothèses en cartes : chaque carte ouvre son tableau, les changements re
     await expect(main.getByRole('region', { name: t, exact: true })).toBeVisible()
   }
   // Sans équipe : la carte le dit
-  await expect(main.getByRole('region', { name: 'Équipe', exact: true })).toContainText('À renseigner')
+  await expect(main.getByRole('region', { name: 'Équipe', exact: true })).toContainText('À compléter')
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-hypotheses-cartes.png`, fullPage: true })

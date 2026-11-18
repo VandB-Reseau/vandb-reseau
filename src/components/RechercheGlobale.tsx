@@ -77,7 +77,7 @@ export function RechercheGlobale({ surFonce, court, menu }: { surFonce?: boolean
       ...reseau.rrs.map((r) => ({ type: 'Responsables Régionaux' as const, libelle: r.nom, detail: `${reseau.magasins.filter((m) => m.rr?.id === r.id).length} magasins`, cible: lienRR(r.id), cle: `r-${r.id}` })),
       ...franchises(reseau).map((f) => ({ type: 'Franchisés' as const, libelle: f.nom, detail: f.magasins.map((m) => m.nom).join(', '), cible: lienFranchise(f.nom), cle: `f-${f.nom}` })),
       ...(reseau.directeur.nom !== 'Direction du réseau' ? [{ type: 'Direction' as const, libelle: reseau.directeur.nom, detail: reseau.directeur.titre, cible: lienDirecteur(), cle: 'directeur' }] : []),
-      ...[...rubriquesMenu().flatMap((r) => r.destinations), ...(profil?.role === 'directeur' ? pagesReglages : [])]
+      ...[...rubriquesMenu(true).flatMap((r) => r.destinations), ...(profil?.role === 'directeur' ? pagesReglages : [])]
         .map((d) => ({ type: 'Pages' as const, libelle: d.libelle, detail: d.description, cible: d.chemin, cle: `p-${d.chemin}` })),
       ...LISTE_SIMULATEURS.map((x) => ({ type: 'Simulateurs' as const, libelle: x.titre, detail: x.question, cible: `/simulateurs?sim=${x.cle}`, cle: `s-${x.cle}` })),
     ]

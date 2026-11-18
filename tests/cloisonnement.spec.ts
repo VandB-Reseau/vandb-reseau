@@ -37,6 +37,10 @@ test('un Coach ne voit pas les Paramètres', async ({ page, isMobile }, info) =>
 test('un Coach ne voit que ses magasins dans la liste, les visites et la santé du parc', async ({ page, isMobile }, info) => {
   await seConnecter(page, NOE)
   await page.goto('./#/magasins?vue=liste')
+  // 321 (18/11/2026) : les magasins sans chiffres sont repliés en bas du tableau
+  const deplier = page.getByRole('button', { name: /^Afficher les \d+ sans chiffres$/ })
+  await expect(page.getByText('7 ouverts · 1 à venir')).toBeVisible()
+  if (await deplier.count()) await deplier.click()
   await expect(page.getByText('Rennes Test').first()).toBeVisible()
   await expect(page.getByText('Nantes Test')).toHaveCount(0)
   await expect(page.getByText('Annecy Test')).toHaveCount(0)

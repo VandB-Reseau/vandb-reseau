@@ -122,7 +122,8 @@ export function VueCharge({ reseau, versRepartition }: { reseau: Reseau; versRep
           route: routeAnnuelle(reseau, positionCoach(reseau, c, jour, choix), magasins), changements: changementsDuCoach(reseau, c.nom, fin),
         }
       })
-      .filter((l) => l.magasins.length || l.changements.length || choix.size > 0 && [...choix.values()].includes(l.coach.nom))
+      // 331 (18/11/2026) : un Coach sans magasin reste dans la liste (0 sur le maximum), comme dans le compte de l'en-tête
+      .filter((l) => !l.coach.fictif || l.magasins.length || l.changements.length || choix.size > 0 && [...choix.values()].includes(l.coach.nom))
       .sort((a, b) => a.coach.nom.localeCompare(b.coach.nom, 'fr'))
   }
   const base = useMemo(() => calculer(new Map()), [calcul, fin]) // eslint-disable-line react-hooks/exhaustive-deps

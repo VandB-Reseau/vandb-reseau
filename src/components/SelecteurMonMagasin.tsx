@@ -29,7 +29,7 @@ export function SelecteurMonMagasin() {
   return (
     <TextField select fullWidth size="small" label="Mon magasin" value={ouvert?.nom ?? ''}
       onChange={(e) => naviguer(lienFiche(e.target.value))}
-      slotProps={{ select: { displayEmpty: true, renderValue: (v) => (v as string) || 'Choisir un magasin' } }}>
+      slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true, renderValue: (v) => (v as string) || 'Choisir un magasin' } }}>
       {magasins.map((m) => <MenuItem key={m.nom} value={m.nom} sx={{ minHeight: 48 }}>{m.nom}</MenuItem>)}
     </TextField>
   )

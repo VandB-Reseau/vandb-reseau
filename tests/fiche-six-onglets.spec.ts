@@ -54,7 +54,7 @@ for (const largeur of [375, 430]) {
     await seConnecter(page)
     await page.goto('./#/magasins/Lyon%20Test')
     const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })
-    await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Tâches', 'Chiffres', 'Budget', 'Simuler', 'Extérieur', 'Nine box', 'Historique'])
+    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Historique'])
     expect(await largeurTenue(page)).toBe(true)
     for (const t of await onglets.getByRole('tab').all()) {
       const b = (await t.boundingBox())!

@@ -308,10 +308,11 @@ function ListeDiscussions({ reseau, lignes, mg, actif, ouvrir, ecrire, peutCreer
           </>
         )}
         {vue !== 'demandes' && !affichees.length && !trouves.length && (q || vue !== 'tout') && (
-          <EmptyState icone={<ForumOutlined />} titre={q ? 'Aucun résultat' : vue === 'mentions' ? 'Personne ne te cite' : 'Tout est lu'} texte={q ? 'Vérifie l’orthographe du nom ou du mot cherché.' : 'Le calme avant la prochaine visite.'} />
+          // 350 (18/11/2026) : dans la liste, une ligne ; l'illustration reste au centre de l'écran
+          <Box role="status" sx={{ px: 2.5, py: 2 }}><Typography sx={{ fontWeight: 700 }}>{q ? 'Aucun résultat' : vue === 'mentions' ? 'Personne ne te cite' : 'Tout est lu'}</Typography><Typography variant="body2" color="text.secondary">{q ? 'Vérifie l’orthographe du nom ou du mot cherché.' : 'Le calme avant la prochaine visite.'}</Typography></Box>
         )}
         {vue === 'tout' && !affichees.length && !q && (
-          <EmptyState icone={<ForumOutlined />} titre="Aucune conversation en cours" texte="Tes échanges avec les franchisés et l’équipe arriveront ici." />
+          <Box role="status" sx={{ px: 2.5, py: 2 }}><Typography sx={{ fontWeight: 700 }}>Aucune conversation en cours</Typography><Typography variant="body2" color="text.secondary">Tes échanges avec les franchisés et l’équipe arriveront ici.</Typography></Box>
         )}
       </Box>
     </Box>

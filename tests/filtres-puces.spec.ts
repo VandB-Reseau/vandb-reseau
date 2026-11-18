@@ -47,5 +47,5 @@ test('fiche magasin : un onglet Simulateurs, et les anciens liens des chiffres y
   await expect(page).toHaveURL(/vue=simulateurs/)
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })
   if (!isMobile) await expect(onglets.getByRole('tab', { name: 'Simulateurs', selected: true })).toBeVisible()
-  else await expect(onglets.getByRole('tab', { selected: true })).toHaveText('Simuler')
+  else await expect(onglets.getByRole('tab', { selected: true })).toHaveText('Simulateurs')
 })

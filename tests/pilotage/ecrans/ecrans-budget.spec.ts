@@ -40,8 +40,8 @@ test('Construire : toutes les hypothèses en cartes, chacune dit ce qu’il rest
   await expect(cartes.getByRole('link', { name: /^Prochaine étape : / })).toBeVisible()
   await expect(cartes.getByRole('region', { name: 'Investissements & Financements', exact: true })).toContainText('Capacité d’autofinancement')
   const calendrier = cartes.getByRole('region', { name: 'Évènements & Temps forts', exact: true })
-  await expect(calendrier).toContainText('À faire')
-  await expect(calendrier).toContainText('À répondre')
+  // 342 (18/11/2026) : un seul mot pour ce qui manque
+  await expect(calendrier).toContainText('À compléter')
   await expect(calendrier.getByRole('link')).toContainText('Remplir')
   // Le tableau des ventes n'est plus sur la page : il s'ouvre depuis la carte de l'univers
   await expect(page.getByRole('table', { name: /Hypothèses \d+ : Cave/ })).toBeHidden()

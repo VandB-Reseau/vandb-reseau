@@ -84,6 +84,8 @@ function aVenir(reseau: Reseau) {
 }
 
 // Vert lisible sur fond clair comme sombre
+// 337 : pictos neutres, une couleur au hasard ne dit rien
+const NEUTRE = '#6f6a64'
 const vert = (theme: Theme) => ({ color: theme.vars!.palette.success.dark, ...theme.applyStyles('dark', { color: theme.vars!.palette.success.light }) })
 
 // Parc en fin d'année au-dessus des barres : une colonne par année, mêmes largeurs que les barres
@@ -146,8 +148,8 @@ function Contenu({ reseau, integre }: { reseau: Reseau; integre?: boolean }) {
           <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>À venir sur 12 mois</Typography>
           <CarteLignes label="À venir sur 12 mois">
             {prochains.map((x) => x.genre === 'ouverture'
-              ? <LigneOuverture key={`${x.genre}-${x.m.nom}-${x.date}`} reseau={reseau} m={x.m} lien={lienFiche(x.m.nom)} avatar={<Initiales nom={x.m.nom} icone={icones[x.genre]} />} />
-              : <LigneCompacte key={`${x.genre}-${x.m.nom}-${x.date}-${x.texte}`} lien={lienFiche(x.m.nom)} avatar={<Initiales nom={x.m.nom} icone={icones[x.genre]} />}
+              ? <LigneOuverture key={`${x.genre}-${x.m.nom}-${x.date}`} reseau={reseau} m={x.m} lien={lienFiche(x.m.nom)} avatar={<Initiales nom={x.m.nom} icone={icones[x.genre]} couleur={NEUTRE} />} />
+              : <LigneCompacte key={`${x.genre}-${x.m.nom}-${x.date}-${x.texte}`} lien={lienFiche(x.m.nom)} avatar={<Initiales nom={x.m.nom} icone={icones[x.genre]} couleur={NEUTRE} />}
                 titre={x.m.nom} detail={x.texte} />)}
           </CarteLignes>
         </Box>
@@ -171,15 +173,16 @@ function Contenu({ reseau, integre }: { reseau: Reseau; integre?: boolean }) {
               </Box>
             ))}
           </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}><Box component="span" sx={[{ fontWeight: 700 }, vert]}>En vert</Box> : magasins dans le réseau en fin d’année</Typography>
-          {avecSorties && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}><Box component="span" sx={{ color: 'error.main', fontWeight: 700 }}>En rouge</Box> : sorties du réseau (fermeture, liquidation, tombée d’enseigne, cession)</Typography>}
+          {/* 337 (18/11/2026) : la légende montre la couleur de la courbe plutôt que de la nommer */}
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 0.75 }}><Box component="span" aria-hidden sx={{ width: 16, height: 3, borderRadius: 2, bgcolor: 'success.main', flexShrink: 0 }} />Courbe : magasins dans le réseau en fin d’année</Typography>
+          {avecSorties && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.75 }}><Box component="span" aria-hidden sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: 'error.main', flexShrink: 0 }} />Barres rouges : sorties du réseau (fermeture, liquidation, tombée d’enseigne, cession)</Typography>}
         </Box>
       </Card>
       {surPC && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}><ChoixAffichage valeur={affichage} onChange={setAffichage} /></Box>}
       {!surPC || affichage === 'lignes' ? (
         <CarteLignes label="Évolution par année">
           {[...l].reverse().map((x) => (
-            <LigneCompacte key={x.a} avatar={<Initiales nom={String(x.a)} icone={<CalendarTodayOutlined />} />}
+            <LigneCompacte key={x.a} avatar={<Initiales nom={String(x.a)} icone={<CalendarTodayOutlined />} couleur={NEUTRE} />}
               titre={`${x.a}${x.enCours ? ' (en cours)' : ''}`}
               detail={detailAnnee(x)}
               fin={<Box sx={{ textAlign: 'right' }}>

@@ -3,12 +3,12 @@
 // Onglet de la fiche magasin, pour l'équipe (Directeur partout, Coach et RR sur leurs magasins) et pour le franchisé
 // (ses magasins, par ecrire_exterieur). Calculs dans src/data/marcheExterieur.ts.
 import { styleChiffre } from '../theme/theme'
+import { FriseEtapes } from './Etapes'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import ButtonBase from '@mui/material/ButtonBase'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
@@ -29,7 +29,6 @@ import { useTheme } from '@mui/material/styles'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import ArrowBack from '@mui/icons-material/ArrowBack'
 import ArrowForward from '@mui/icons-material/ArrowForward'
-import Check from '@mui/icons-material/Check'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import Favorite from '@mui/icons-material/Favorite'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -136,7 +135,7 @@ export function MarcheExterieur({ reseau, m }: { reseau: Reseau; m: Magasin }) {
           {etat === 'envoi' ? 'Enregistrement…' : etat === 'ok' ? 'Enregistré' : etat === 'erreur' ? 'Pas enregistré : vérifie la connexion, la saisie sera renvoyée au prochain changement.' : ''}
         </Typography>
       </Box>
-      <Paper variant="outlined" component="section" aria-label={ETAPES[etape].libelle} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, minWidth: 0 }}>
+      <Paper variant="outlined" component="section" aria-label={ETAPES[etape].libelle} sx={{ p: { xs: 2, md: 3 }, minWidth: 0 }}>
         {vues[etape]}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mt: 3, flexWrap: 'wrap' }}>
           {etape > 0 ? <Button startIcon={<ArrowBack />} onClick={() => allerA(etape - 1)} sx={{ minHeight: 48 }}>{ETAPES[etape - 1].libelle}</Button> : <span />}
@@ -148,30 +147,11 @@ export function MarcheExterieur({ reseau, m }: { reseau: Reseau; m: Magasin }) {
 }
 
 // ── Frise des 6 étapes ─────────────────────────────────────────────
+// 338 (18/11/2026) : la frise au modèle du budget (ronds numérotés), commune avec la visite
 function Frise({ etape, fait, allerA }: { etape: number; fait: boolean[]; allerA: (i: number) => void }) {
-  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   return (
-    <Box component="nav" aria-label="Étapes du plan marché extérieur">
-      {/* Titres des étapes, sans numéros (Joseph, 17/11/2026) ; sur téléphone la frise défile */}
-      <Box component="ol" sx={{ listStyle: 'none', m: 0, p: 0, display: surPC ? 'grid' : 'flex', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', overflowX: surPC ? undefined : 'auto', scrollbarWidth: 'none' }}>
-        {ETAPES.map((e, i) => {
-          const actuelle = i === etape
-          const ok = fait[i] && !actuelle
-          return (
-            <li key={e.libelle}>
-              <ButtonBase onClick={() => allerA(i)} aria-current={actuelle ? 'step' : undefined} aria-label={`Étape ${e.libelle}${ok ? ', faite' : ''}`}
-                sx={{ width: '100%', minHeight: 56, px: { xs: 1.25, md: 1.5 }, py: 1, gap: 0.75, justifyContent: 'flex-start', borderBottom: '3px solid', borderColor: actuelle ? 'secondary.main' : ok ? 'success.main' : 'divider', fontFamily: 'inherit', textAlign: 'left', borderRadius: '8px 8px 0 0', '&:hover': { bgcolor: 'action.hover' } }}>
-                {ok && <Check aria-hidden sx={{ fontSize: 18, color: 'success.main', flexShrink: 0 }} />}
-                <Box component="span" sx={{ minWidth: 0 }}>
-                  <Box component="span" sx={{ display: 'block', fontWeight: actuelle ? 800 : 600, fontSize: '0.875rem', lineHeight: 1.25, whiteSpace: 'nowrap', color: actuelle ? 'text.primary' : 'text.secondary' }}>{e.libelle}</Box>
-                  {surPC && <Box component="span" sx={{ display: 'block', fontSize: '0.75rem', color: 'text.secondary' }}>{e.sous}</Box>}
-                </Box>
-              </ButtonBase>
-            </li>
-          )
-        })}
-      </Box>
-    </Box>
+    <FriseEtapes libelle="Étapes du plan marché extérieur" actuelle={String(etape)} choisir={(c) => allerA(Number(c))}
+      etapes={ETAPES.map((e, i) => ({ cle: String(i), libelle: e.libelle, detail: e.sous, fait: fait[i] && i !== etape, aria: `Étape ${e.libelle}${fait[i] && i !== etape ? ', faite' : ''}` }))} />
   )
 }
 
@@ -196,7 +176,7 @@ function Indicateur({ libelle, valeur }: { libelle: string; valeur: string }) {
 // Autre point de départ du repérage (Joseph, 17/11/2026) : l'adresse d'un concurrent, d'une zone d'activité…
 function AutreCentre({ plan, changer, lecture }: { plan: PlanExterieur; changer: (p: PlanExterieur, aussitot?: boolean) => void; lecture: boolean }) {
   const [saisie, setSaisie] = useState('')
-  const [etat, setEtat] = useState<'repos' | 'cherche' | 'introuvable'>('repos')
+  const [etat, setEtat] = useState<'repos' | 'cherche' | 'introuvable' | 'vide'>('repos')
   if (plan.centre) {
     return (
       <Box sx={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
@@ -208,7 +188,7 @@ function AutreCentre({ plan, changer, lecture }: { plan: PlanExterieur; changer:
   if (lecture) return null
   const placer = async () => {
     const adresse = saisie.trim()
-    if (!adresse) return
+    if (!adresse) { setEtat('vide'); return } // 339 : le bouton reste actif et dit ce qui manque
     setEtat('cherche')
     const p = await geolocaliser({ adresse, codePostal: '', ville: '', pays: 'France' }).catch(() => null)
     if (!p) { setEtat('introuvable'); return }
@@ -219,9 +199,9 @@ function AutreCentre({ plan, changer, lecture }: { plan: PlanExterieur; changer:
     <Box sx={{ gridColumn: '1 / -1', display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}>
       <TextField label="Chercher autour d’une autre adresse" value={saisie} onChange={(e) => { setSaisie(e.target.value); setEtat('repos') }}
         onKeyDown={(e) => { if (e.key === 'Enter') void placer() }} sx={{ flex: '1 1 320px' }}
-        error={etat === 'introuvable'} helperText={etat === 'introuvable' ? 'Adresse introuvable. Ajoute le code postal et la ville.' : 'Un concurrent, une zone d’activité : avec le code postal et la ville.'}
+        error={etat === 'introuvable' || etat === 'vide'} helperText={etat === 'vide' ? 'Écris d’abord une adresse, avec le code postal et la ville.' : etat === 'introuvable' ? 'Adresse introuvable. Ajoute le code postal et la ville.' : 'Un concurrent, une zone d’activité : avec le code postal et la ville.'}
         slotProps={{ htmlInput: { maxLength: 200 } }} />
-      <Button variant="outlined" onClick={() => void placer()} disabled={!saisie.trim() || etat === 'cherche'} sx={{ minHeight: 56 }}>
+      <Button variant="outlined" onClick={() => void placer()} disabled={etat === 'cherche'} sx={{ minHeight: 56 }}>
         {etat === 'cherche' ? 'Recherche…' : 'Centrer ici'}
       </Button>
     </Box>
@@ -249,13 +229,16 @@ function EtapeMagasin({ reseau, m, plan, changer, lecture }: { reseau: Reseau; m
         <TextField label="Objectif de CA extérieur sur un an (€ HT)" value={objectif} disabled={lecture} slotProps={{ htmlInput: { inputMode: 'decimal' } }}
           onChange={(e) => { setObjectif(e.target.value); const n = nombreOuNull(e.target.value); if (n === null || n >= 0) changer({ ...plan, objectif: n }) }} />
       </Box>
-      <Box sx={{ display: 'grid', gap: 1.5, mt: 2.5, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(5, minmax(0, 1fr))' } }}>
+      {/* 334 (18/11/2026) : tant que rien n'est saisi, une ligne plutôt que cinq tuiles à tiret */}
+      {!mois.length && plan.objectif === null && !s.cibles && !s.caContrat && !s.caVise
+        ? <Typography variant="body2" color="text.secondary" sx={{ mt: 2.5 }}>0 cible retenue · pas d’objectif · pas encore de CA extérieur</Typography>
+        : <Box sx={{ display: 'grid', gap: 1.5, mt: 2.5, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(5, minmax(0, 1fr))' } }}>
         <Indicateur libelle={mois.length ? `CA extérieur, ${mois.length} dernier${mois.length > 1 ? 's' : ''} mois` : 'CA extérieur'} valeur={mois.length ? formatEuros(caExt) : '—'} />
         <Indicateur libelle="Objectif sur un an" valeur={plan.objectif !== null ? formatEuros(plan.objectif) : '—'} />
         <Indicateur libelle="Cibles retenues" valeur={String(s.cibles)} />
         <Indicateur libelle={s.sousContrat ? `CA sous contrat, ${s.sousContrat} cible${s.sousContrat > 1 ? 's' : ''}` : 'CA sous contrat'} valeur={s.caContrat ? formatEuros(s.caContrat) : '—'} />
         <Indicateur libelle="CA visé par le plan" valeur={s.caVise ? formatEuros(s.caVise) : '—'} />
-      </Box>
+      </Box>}
     </>
   )
 }

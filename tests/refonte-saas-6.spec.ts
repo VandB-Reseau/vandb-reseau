@@ -131,7 +131,9 @@ test('63A et 71A : vues des conversations et recherche dans les messages', async
 test('68A : la conversation du magasin s’ouvre sur le côté depuis la fiche', async ({ page, isMobile }) => {
   await seConnecter(page, { appMetadata: HUGO, messagerie: { version: 5, messages: [msg(1, 'Vitrine posée.')] } })
   await page.goto('./#/magasins/Annecy%20Test')
-  await page.getByRole('main').getByRole('button', { name: 'Écrire un message', exact: true }).click()
+  // 310 : le message est dans « ⋯ » de l'en-tête
+  await page.getByRole('main').getByRole('button', { name: 'Autres actions' }).first().click()
+  await page.getByRole('menuitem', { name: 'Écrire un message' }).click()
   if (isMobile) {
     await expect(page).toHaveURL(/echanges\/magasin\/Annecy%20Test/)
     return

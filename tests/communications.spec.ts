@@ -26,7 +26,9 @@ test('le Directeur publie une communication pour tout le réseau', async ({ page
   await page.goto('./#/communications')
   await expect(page).toHaveURL(/#\/infos\?vue=communications$/)
   await expect(page.getByText('Rien à annoncer')).toBeVisible()
-  await page.getByRole('button', { name: 'Publier' }).click()
+  // 351 : la création passe par « Envoyer au réseau » › Information
+  await page.getByRole('button', { name: 'Envoyer au réseau' }).click()
+  await page.getByRole('menuitem', { name: 'Information' }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle communication' })
   await d.getByLabel('Titre').fill('Nouvelle carte des cocktails')
   await d.getByRole('textbox', { name: 'Message' }).fill('La carte d’hiver est disponible.')
@@ -91,7 +93,9 @@ test('la recherche filtre les communications et un Responsable Régional publie 
   await expect(page.getByRole('region', { name: 'Communications' }).getByRole('article')).toHaveCount(1)
   await expect(page.getByRole('article', { name: 'Réunion des franchisés du Sud' })).toBeVisible()
   await recherche.fill('')
-  await page.getByRole('button', { name: 'Publier' }).click()
+  // 351 : la création passe par « Envoyer au réseau » › Information
+  await page.getByRole('button', { name: 'Envoyer au réseau' }).click()
+  await page.getByRole('menuitem', { name: 'Information' }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle communication' })
   await d.getByLabel('Titre').fill('Point rentrée')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
@@ -117,7 +121,9 @@ test('le Directeur publie une communication mise en forme, nettoyée, avec une p
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, communications: [] })
   await page.goto('./#/communications')
-  await page.getByRole('button', { name: 'Publier' }).click()
+  // 351 : la création passe par « Envoyer au réseau » › Information
+  await page.getByRole('button', { name: 'Envoyer au réseau' }).click()
+  await page.getByRole('menuitem', { name: 'Information' }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle communication' })
   await d.getByLabel('Titre').fill('V and B Day')
   await d.getByLabel('Photo d’en-tête').setInputFiles({ name: 'bandeau.png', mimeType: 'image/png', buffer: Buffer.from(PNG, 'base64') })
@@ -164,7 +170,9 @@ test('un courriel collé dans la zone mise en forme garde sa mise en forme, sans
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, communications: [] })
   await page.goto('./#/communications')
-  await page.getByRole('button', { name: 'Publier' }).click()
+  // 351 : la création passe par « Envoyer au réseau » › Information
+  await page.getByRole('button', { name: 'Envoyer au réseau' }).click()
+  await page.getByRole('menuitem', { name: 'Information' }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle communication' })
   await d.getByLabel('Titre').fill('Actualité')
   await d.getByRole('group', { name: 'Format du message' }).getByRole('button', { name: 'Mise en forme' }).click()

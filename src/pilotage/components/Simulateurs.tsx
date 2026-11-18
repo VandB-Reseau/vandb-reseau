@@ -1,4 +1,5 @@
 import { Children, isValidElement, useEffect, useMemo, useState, type ReactNode } from 'react'
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import { styleChiffre } from '../../theme/theme'
 import { useSearchParams } from 'react-router-dom'
 import { useReseauSiDispo } from '../../data/ReseauContext'
@@ -516,12 +517,14 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   const choisir = (cle: TypeSimulation) => setParams((x) => { const n = new URLSearchParams(x); n.set('sim', cle); n.delete('pre'); return n }, { replace: true })
   // 188 : les 3 derniers simulateurs ouverts par un appui, en tête
   const [recents, setRecents] = useState<TypeSimulation[]>(() => (lire<string[]>(CLE_RECENTS) ?? []).filter((x): x is TypeSimulation => SIMULATEURS.some((y) => y.cle === x)).slice(0, 3))
+  // 344 (18/11/2026) : sur téléphone, la liste des simulateurs se replie derrière un seul bouton
+  const [listeOuverte, setListeOuverte] = useState(true)
   const ouvrir = (cle: TypeSimulation) => {
     choisir(cle)
     const l = [cle, ...recents.filter((x) => x !== cle)].slice(0, 3)
     setRecents(l); ecrire(CLE_RECENTS, l)
-    // Sur téléphone, la carte du simulateur vient sous les doigts
-    if (window.matchMedia('(max-width: 899.95px)').matches) requestAnimationFrame(() => document.getElementById('carte-simulation')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    // Sur téléphone, la liste se replie et la carte du simulateur vient sous les doigts ; 343 : sur PC aussi, la carte remonte
+    requestAnimationFrame(() => document.getElementById('carte-simulation')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
   const aujourdhui = useMemo(() => new Date(), [])
   const reseauDispo = useReseauSiDispo()
@@ -2147,7 +2150,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       <ButtonBase key={x.cle} onClick={() => ouvrir(x.cle)} aria-current={actif ? 'true' : undefined} focusRipple
         sx={{ justifyContent: 'flex-start', textAlign: 'left', gap: 1, px: 1, py: 0.75, minHeight: 52, borderRadius: '10px', border: 2, borderColor: actif ? 'text.primary' : 'divider', bgcolor: 'background.paper', minWidth: 0 }}>
         <Box sx={{ display: 'grid', placeItems: 'center', width: 34, height: 34, borderRadius: '8px', flex: 'none', bgcolor: actif ? 'secondary.main' : 'action.hover', color: actif ? 'secondary.contrastText' : 'text.primary', '& svg': { fontSize: 20 } }}>{x.icone}</Box>
-        <Typography sx={{ fontWeight: 700, fontSize: '0.9375rem', lineHeight: 1.25, minWidth: 0 }}>{x.titre}</Typography>
+        <Typography sx={{ fontWeight: 700, fontSize: '0.875rem', lineHeight: 1.25, minWidth: 0 }}>{x.titre}</Typography>
       </ButtonBase>
     )
   }
@@ -2162,11 +2165,17 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           })}
         </Box>
       )}
-      <Box component="nav" aria-label="Choisir un simulateur" className="pas-a-l-impression" sx={{ display: 'grid', columnGap: 2, rowGap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' } }}>
+      <Button className="pas-a-l-impression" variant="outlined" color="inherit" onClick={() => setListeOuverte((o) => !o)} aria-expanded={listeOuverte}
+        startIcon={SIMULATEURS.find((y) => y.cle === choisi)?.icone} endIcon={<ExpandMoreOutlined sx={{ transform: listeOuverte ? 'rotate(180deg)' : 'none' }} />}
+        sx={{ display: { xs: 'flex', md: 'none' }, minHeight: 48, justifyContent: 'space-between', textTransform: 'none', fontWeight: 700, borderRadius: '12px' }}>
+        {listeOuverte ? 'Choisir un simulateur' : `Simulateur : ${SIMULATEURS.find((y) => y.cle === choisi)?.titre ?? ''}`}
+      </Button>
+      {/* 343 : sur PC, quatre familles côte à côte dès 900 px, en rangées compactes */}
+      <Box component="nav" aria-label="Choisir un simulateur" className="pas-a-l-impression" sx={{ display: { xs: listeOuverte ? 'grid' : 'none', md: 'grid' }, columnGap: 2, rowGap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(4, minmax(0, 1fr))' }, '&&': { mt: { xs: listeOuverte ? 1.5 : 0, md: 3 } } }}>
         {FAMILLES.map(([f, libelle]) => (
           <Box key={f} component="section" aria-label={libelle} sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0 }}>
             <Typography component="h3" sx={{ fontSize: '0.8125rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{libelle}</Typography>
-            <Box sx={{ display: 'grid', gap: 0.75, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(2, minmax(0, 1fr))', xl: '1fr' } }}>
+            <Box sx={{ display: 'grid', gap: 0.75, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: '1fr' } }}>
               {SIMULATEURS.filter((x) => FAMILLE_DE[x.cle] === f).map(tuile)}
             </Box>
           </Box>
@@ -2194,7 +2203,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           )}
         </Box>
         {sansBudget ? (
-          <EtatVide titre={`Le budget ${annee} n’est pas encore proposé`} texte="Ce simulateur part du budget de l’année du magasin. Les autres simulateurs (promo, soirée, achat en volume, investissement, extérieur, pression, prix) marchent déjà." />
+          <EtatVide titre={`Pas encore de budget pour ${magasin}`} texte="Ce simulateur se calcule dès que le budget du magasin est proposé (onglet Budget). Les autres simulateurs marchent déjà." />
         ) : (
           <>
             {saisies}
@@ -2252,7 +2261,8 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           {messageCopie && <Typography role="status" sx={{ fontWeight: 600, color: messageCopie.bon ? 'success.dark' : 'error.main' }}>{messageCopie.texte}</Typography>}
           {comparees.length >= 2 && <Comparaison simulations={comparees} />}
           {gardees.length === 0 ? (
-            <EtatVide titre="Aucune simulation gardée" texte="Une simulation gardée reste ici, avec son résultat, pour en reparler avec ton Coach ou ton franchisé." />
+            // 345 (18/11/2026) : une seule illustration par écran ; ici, une ligne
+            <Typography variant="body2" color="text.secondary">Aucune simulation gardée pour l’instant. Garde une simulation pour en reparler avec ton Coach ou ton franchisé.</Typography>
           ) : (
             <Card sx={{ borderRadius: '12px' }}>
               <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>

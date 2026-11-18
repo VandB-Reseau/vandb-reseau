@@ -16,19 +16,19 @@ test('Réglages en deux entrées : Équipe, Paramètres', async ({ page, isMobil
   await page.goto('./#/parametres/reglages')
   if (!isMobile) {
     const menu = page.getByRole('navigation', { name: 'Navigation principale' })
-    // Vague 5 (51A) : Équipe et Paramètres dans le menu du compte
-    await page.getByRole('button', { name: 'Mon compte' }).click()
-    for (const l of ['Équipe', 'Paramètres']) await expect(page.getByRole('menuitem', { name: l, exact: true })).toBeVisible()
-    await page.keyboard.press('Escape')
+    // 309 (18/11/2026) : Équipe et Paramètres dans le menu latéral, rubrique Réglages
+    for (const l of ['Équipe', 'Paramètres']) await expect(menu.getByRole('button', { name: l, exact: true })).toBeVisible()
     await expect(menu.getByRole('button', { name: 'Évolution du parc', exact: true })).toHaveCount(0)
     for (const l of ['Charge des Coachs', 'Collaborateurs', 'Franchisés', 'Import et export']) await expect(menu.getByRole('button', { name: l, exact: true })).toHaveCount(0)
   }
   const sommaire = page.getByRole('region', { name: 'Rubriques des paramètres' })
-  await sommaire.getByRole('link', { name: 'Charge des Coachs' }).click()
-  await expect(page.getByRole('heading', { name: 'Charge des Coachs', level: 1 })).toBeVisible()
-  await page.getByRole('link', { name: 'Paramètres', exact: true }).click()
-  await page.getByRole('region', { name: 'Rubriques des paramètres' }).getByRole('link', { name: 'Import et export' }).click()
-  await expect(page.getByRole('heading', { name: 'Import et export', level: 1 })).toBeVisible()
+  // 354 (18/11/2026) : sur PC, Charge des Coachs et Import et export s'ouvrent à droite du sommaire ;
+  // 304 : sur téléphone, page à part avec le retour « Paramètres »
+  await sommaire.getByRole(isMobile ? 'link' : 'button', { name: 'Charge des Coachs' }).click()
+  await expect(page.getByRole('heading', { name: 'Charge des Coachs', level: isMobile ? 1 : 2 })).toBeVisible()
+  if (isMobile) await page.getByRole('button', { name: 'Paramètres', exact: true }).click()
+  await page.getByRole('region', { name: 'Rubriques des paramètres' }).getByRole(isMobile ? 'link' : 'button', { name: 'Import et export' }).click()
+  await expect(page.getByRole('heading', { name: 'Import et export', level: isMobile ? 1 : 2 })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-parametres-trois-entrees.png` })
 })

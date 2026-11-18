@@ -4,7 +4,11 @@ import { SectionEquipements } from '../components/Equipements'
 import { MarcheExterieur } from '../components/MarcheExterieur'
 import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
 import { MonMois } from '../components/MonMois'
-import { Lignes, type LigneAFaire } from '../components/SyntheseMagasin'
+import { CommentVa, Lignes, type LigneAFaire } from '../components/SyntheseMagasin'
+import Drawer from '@mui/material/Drawer'
+import CloseOutlined from '@mui/icons-material/CloseOutlined'
+import InfoOutlined from '@mui/icons-material/InfoOutlined'
+import { FilAriane } from '../components/FilAriane'
 import { useTheme } from '@mui/material/styles'
 import { SectionObjectifsPlan } from '../components/PlanAction'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -22,7 +26,6 @@ import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import ArrowBack from '@mui/icons-material/ArrowBack'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
@@ -58,9 +61,7 @@ import { useMessagerie } from '../data/MessagerieContext'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
-import { ContenuOnglet, Onglets, styleSousNavigation, type Rubrique } from '../components/Onglets'
-import Tab from '@mui/material/Tab'
-import Tabs from '@mui/material/Tabs'
+import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { GraphiqueCA } from '../components/Chiffres'
 import { phraseCADuMois } from '../pilotage/moteur/phrases'
 import { CartePratique } from '../components/BonnesPratiques'
@@ -204,21 +205,21 @@ function SectionReperes({ reseau, magasins, repliable }: { reseau: Reseau; magas
 
 // ── Chiffres : le CA du mois en grande tuile avec la courbe des douze derniers mois, puis paniers, flux et marge ──
 function SectionChiffresDuMois({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
+  // 294 (Joseph, 18/11/2026) : plusieurs magasins, une ligne chacun (nom, mois, écart, CA) plutôt que des cartes écrasées
   if (magasins.length > 1) {
     return (
       <Box component="section" aria-label="Mes chiffres">
         <TitreSection>Mes chiffres</TitreSection>
-        <Box sx={grilleTuiles}>
+        <CarteLignes>
           {magasins.map((m) => {
             const a = analyser(reseau, m.nom)
             return (
-              <Tuile key={m.nom} lien={`${lienFiche(m.nom)}?vue=chiffres`} libelle={m.nom} valeur={a ? formatKEuros(a.ca) : '—'}
-                detail={a ? <><Box component="span" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Box> · {libelleMois(a.mois)}</> : 'Aucun chiffre enregistré'}>
-                {a && <Box aria-hidden sx={{ mt: 0.75 }}><MiniCourbe valeurs={douzeMois(reseau, m.nom, a.mois)} couleur={brand.vertFonce} largeur={96} hauteur={28} /></Box>}
-              </Tuile>
+              <LigneCompacte key={m.nom} lien={`${lienFiche(m.nom)}?vue=chiffres`} avatar={<Blason magasin={m} taille={36} />} titre={m.nom}
+                detail={a ? <><Box component="span" sx={{ fontWeight: 600, color: couleurEcart(a.ecart) }}>{formatPourcent(a.ecart)}</Box> · {libelleMois(a.mois)}</> : 'Aucun chiffre enregistré'}
+                fin={<Typography sx={{ ...styleChiffre, fontSize: '1.125rem' }}>{a ? formatKEuros(a.ca) : '—'}</Typography>} />
             )
           })}
-        </Box>
+        </CarteLignes>
       </Box>
     )
   }
@@ -246,7 +247,7 @@ function SectionChiffresDuMois({ reseau, magasins }: { reseau: Reseau; magasins:
 }
 
 // ── À faire (refonte vague 2, 19A) : ce que le magasin doit saisir ou relire, chaque ligne mène à sa page ──
-function SectionAFaire({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
+function SectionAFaire({ reseau, magasins, sansCloture = false }: { reseau: Reseau; magasins: Magasin[]; sansCloture?: boolean }) {
   const mois = moisPrecedent(reseau.jour)
   const noms = new Set(magasins.map((m) => m.nom))
   const jalons = jalonsAVenir(reseau.campagnes.liste.filter((c) => magasinsConcernes(reseau, c).some((m) => noms.has(m.nom))), reseau.jour, 14)
@@ -257,13 +258,9 @@ function SectionAFaire({ reseau, magasins }: { reseau: Reseau; magasins: Magasin
     ...[
       { cle: 'c', titre: `Clôturer ${libelleMois(mois).toLowerCase()}`, detail: 'Réel, stock de fin de mois et comptes', icone: <InventoryOutlined />, suffixe: '?vue=chiffres&partie=cloture' },
       { cle: 'b', titre: 'Relire mon budget', detail: 'Hypothèses, commentaires et validation', icone: <RequestQuoteOutlined />, suffixe: '?vue=budget' },
-    ].map((t): LigneAFaire => plusieurs
-      // Vague 8 (109A) : une ligne par tâche, les magasins concernés en boutons sur la ligne
-      ? { cle: t.cle, ton: 'neutre', titre: t.titre, detail: t.detail, icone: t.icone,
-        fin: <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'flex-end', flex: 'none', maxWidth: '50%' }}>
-          {magasins.map((m) => <Button key={m.nom} component={RouterLink} to={`${lienFiche(m.nom)}${t.suffixe}`} aria-label={`${t.titre} : ${m.nom}`} variant="outlined" size="small" sx={{ minHeight: { xs: 48, md: 40 }, textTransform: 'none' }}>{m.nom}</Button>)}
-        </Box> }
-      : { cle: t.cle, ton: 'neutre', titre: t.titre, detail: t.detail, icone: t.icone, lien: `${lienFiche(magasins[0].nom)}${t.suffixe}` }),
+    ].filter((t) => !(sansCloture && t.cle === 'c'))
+      // 348 (18/11/2026) : une ligne par tâche et par magasin, le magasin dans le détail (plus de boutons serrés sur la ligne)
+      .flatMap((t): LigneAFaire[] => magasins.map((m) => ({ cle: `${t.cle}-${m.nom}`, ton: 'neutre', titre: t.titre, detail: plusieurs ? `${m.nom} · ${t.detail}` : t.detail, icone: t.icone, lien: `${lienFiche(m.nom)}${t.suffixe}` }))),
     // Refonte vague 5 (48A) : dates clés des campagnes dans les 14 jours, temps forts annoncés
     ...jalons.map(({ c, j }): LigneAFaire => ({ cle: `j-${c.id}-${j.id}`, ton: 'neutre', icone: <EventOutlined />, lien: `${lienFiche(magasins[0].nom)}?vue=campagnes`,
       titre: `${libelleJalon(j)} ${dateCourte(j.date)}`, detail: c.nom, fin: j.date < reseau.jour ? <Pastille ton="gris">Passée</Pastille> : undefined })),
@@ -275,7 +272,7 @@ function SectionAFaire({ reseau, magasins }: { reseau: Reseau; magasins: Magasin
 
 // ── Tâches en cours ── (vague 7, 91A) : rangées sous les priorités du plan d'action, « ce sur quoi on travaille ensemble »,
 // puis les autres ; le franchisé change le statut depuis la liste Tâches, il ne crée pas de priorité
-function SectionTaches({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
+function SectionTaches({ reseau, magasins, masquerSiVide = false }: { reseau: Reseau; magasins: Magasin[]; masquerSiVide?: boolean }) {
   const ouvertes = actionsDes(reseau, new Set(magasins.map((m) => m.nom))).filter((x) => !x.a.faite)
     .sort((x, y) => Number(enRetard(y.a, reseau.jour)) - Number(enRetard(x.a, reseau.jour)) || (echeanceDate(x.a) || '9999').localeCompare(echeanceDate(y.a) || '9999'))
   const priorites = magasins.flatMap((m) => (reseau.plans?.[m.nom] ?? []).filter((p) => p.statut === 'active').map((p) => ({ p, magasin: m.nom })))
@@ -290,6 +287,8 @@ function SectionTaches({ reseau, magasins }: { reseau: Reseau; magasins: Magasin
     </Box>
   )
   const carte = { listStyle: 'none', m: 0, p: 0, border: 0, overflow: 'hidden', '& > li + li': { borderTop: '1px solid', borderColor: 'divider' } } as const
+  // 347 (18/11/2026) : sur l'Accueil, un bloc vide ne s'affiche pas
+  if (masquerSiVide && !ouvertes.length && !priorites.length) return null
   return (
     <Box component="section" aria-label="Mes tâches">
       <TitreSection nombre={ouvertes.length}>Mes tâches</TitreSection>
@@ -331,12 +330,11 @@ function SectionVisitesAudits({ reseau, magasins }: { reseau: Reseau; magasins: 
           const prevue = vs.filter((v) => v.date > reseau.jour).at(-1)
           const audits = (['hygiene', 'excellence'] as const).map((t) => [t, dernierAudit(reseau, m.nom, t)] as const)
           const ou = magasins.length > 1 ? ` · ${m.nom}` : ''
+          // 347 : une ligne par magasin, la dernière et la prochaine visite ensemble
           return [
             <LigneCompacte key={`d-${m.nom}`} lien={faite?.id !== null && faite ? lienCompteRendu(faite) : undefined} label={faite ? `Compte rendu du ${dateCourte(faite.date)}` : undefined}
-              avatar={<Initiales nom="visite" icone={<EventNoteOutlined />} />} titre={`Dernière visite${ou}`}
-              detail={faite ? [dateCourte(faite.date), libelleTypeVisite(faite.type), nomsVisiteurs(faite)].filter(Boolean).join(' · ') : 'Aucune visite enregistrée'} />,
-            <LigneCompacte key={`p-${m.nom}`} avatar={<Initiales nom="prochaine" icone={<EventAvailableOutlined />} />} titre={`Prochaine visite${ou}`}
-              detail={prevue ? [dateLongue(prevue.date), nomsVisiteurs(prevue)].filter(Boolean).join(' · ') : 'Pas encore fixée'} />,
+              avatar={<Initiales nom="visite" icone={<EventNoteOutlined />} />} titre={`Visites${ou}`}
+              detail={`Dernière : ${faite ? [dateCourte(faite.date), libelleTypeVisite(faite.type)].join(' · ') : 'aucune'} · Prochaine : ${prevue ? dateCourte(prevue.date) : 'à fixer'}`} />,
             ...(magasins.length > 1 ? [] : audits).map(([t, r]) => (
               <LigneCompacte key={`${t}-${m.nom}`} avatar={<Initiales nom={t} icone={<FactCheckOutlined />} />} titre={`${t === 'hygiene' ? 'Dernier audit hygiène' : 'Dernier audit excellence'}${ou}`}
                 detail={r ? `${libelleAudit(r)} · ${dateCourte(r.date)}` : 'Aucun audit noté'} />
@@ -400,6 +398,7 @@ const tonExecution: Record<Execution, Ton> = { fait: 'vert', partiel: 'orange', 
 
 function SectionCampagnesEnCours({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
   const lignes = magasins.flatMap((m) => campagnesDuMagasin(reseau, m.nom, reseau.jour).map((c) => ({ m, c, e: executionMagasin(reseau.campagnes, c, m.nom) })))
+  if (!lignes.length) return null // 347 : pas de bloc vide sur l'Accueil
   return (
     <Box component="section" aria-label="Campagnes en cours">
       <TitreSection nombre={lignes.length || undefined}>Campagnes en cours</TitreSection>
@@ -514,9 +513,10 @@ function AccueilFranchise({ reseau }: { reseau: Reseau }) {
         const sections = <>
           <SectionChiffresDuMois reseau={reseau} magasins={magasins} />
           <SectionIntegration reseau={reseau} magasins={magasins} />
-          <SectionAFaire reseau={reseau} magasins={magasins} />
+          {/* 348 : sur téléphone, « Clôturer » est déjà dans le bandeau du haut */}
+          <SectionAFaire reseau={reseau} magasins={magasins} sansCloture={!surPC} />
           <SectionMotAvantVisite reseau={reseau} magasins={magasins} signaler={setMessage} />
-          <SectionTaches reseau={reseau} magasins={magasins} />
+          <SectionTaches reseau={reseau} magasins={magasins} masquerSiVide />
           {!apercu && <SondagesARepondre />}
           {!apercu && <SectionChallengesFranchise />}
           <SectionCampagnesEnCours reseau={reseau} magasins={magasins} />
@@ -617,45 +617,68 @@ export function MagasinsFranchise() {
 // Refonte (Joseph, 09/11/2026, 3A) : mêmes cinq onglets que la fiche de l'équipe, deux niveaux au plus.
 // Activité : visites, campagnes et bonnes pratiques (plus d'onglet « Ressources », Joseph 14/11/2026) ; Chiffres : suivi
 // face au budget, chiffres du mois et saisies
-type VueFiche = 'fiche' | 'chiffres' | 'budget' | 'simulateurs' | 'exterieur' | 'visites' | 'campagnes' | 'pratiques'
-type OngletFicheF = 'fiche' | 'activite' | 'chiffres' | 'budget' | 'simulateurs' | 'exterieur'
-const rubriques: Rubrique<OngletFicheF>[] = [
-  { vue: 'fiche', libelle: 'Vue d’ensemble', court: 'Aperçu', icone: <StorefrontOutlined /> },
-  { vue: 'activite', libelle: 'Activité', icone: <EventNoteOutlined /> },
+// 314 (Joseph, 18/11/2026) : mêmes onglets que la fiche de l'équipe (Tâches, Historique) au lieu d'« Activité » et de ses
+// sous-onglets ; les anciennes adresses (visites, campagnes, pratiques) mènent à l'onglet qui les contient
+type VueFiche = 'fiche' | 'taches' | 'chiffres' | 'budget' | 'simulateurs' | 'exterieur' | 'historique'
+const rubriques: Rubrique<VueFiche>[] = [
+  { vue: 'fiche', libelle: 'Vue d’ensemble', icone: <StorefrontOutlined /> },
+  { vue: 'taches', libelle: 'Tâches', icone: <TaskAltOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
   { vue: 'budget', libelle: 'Budget', icone: <RequestQuoteOutlined /> },
   // Joseph (14/11/2026) : les simulateurs au même niveau que Chiffres et Budget
-  { vue: 'simulateurs', libelle: 'Simulateurs', court: 'Simuler', icone: <CalculateOutlined /> },
+  { vue: 'simulateurs', libelle: 'Simulateurs', icone: <CalculateOutlined /> },
   // Joseph (16/11/2026) : le franchisé bâtit lui aussi son plan marché extérieur
-  { vue: 'exterieur', libelle: 'Marché extérieur', court: 'Extérieur', icone: <HandshakeOutlined /> },
+  { vue: 'exterieur', libelle: 'Marché extérieur', icone: <HandshakeOutlined /> },
+  { vue: 'historique', libelle: 'Historique', icone: <EventNoteOutlined /> },
 ]
-const partiesActiviteF: { vue: VueFiche; libelle: string }[] = [{ vue: 'visites', libelle: 'Visites' }, { vue: 'campagnes', libelle: 'Campagnes' }, { vue: 'pratiques', libelle: 'Bonnes pratiques' }]
-const VUES_F: VueFiche[] = ['fiche', 'chiffres', 'budget', 'simulateurs', 'exterieur', 'visites', 'campagnes', 'pratiques']
-const ongletDeF = (v: VueFiche): OngletFicheF => (v === 'visites' || v === 'campagnes' || v === 'pratiques' ? 'activite' : v)
+const VUES_F: VueFiche[] = ['fiche', 'taches', 'chiffres', 'budget', 'simulateurs', 'exterieur', 'historique']
+const ANCIENNES_VUES_F: Record<string, VueFiche> = { visites: 'historique', pratiques: 'historique', activite: 'historique', campagnes: 'taches' }
 const PARTIES_BUDGET_F = ['budget', 'visualiser', 'echanges', 'depart', 'ventes', 'calendrier', 'investissements', 'equipe', 'fraisBudget', 'resultat', 'tresoBudget', 'travaux']
 
+// 313 (Joseph, 18/11/2026) : la vue d'ensemble du franchisé sur le modèle de celle de l'équipe (maquette 264) : à gauche
+// ce qu'il a à faire et ses objectifs, à droite comment va le magasin ; équipe, adresse et équipements dans « Infos du magasin »
 function OngletFiche({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (msg: string) => void }) {
+  return (
+    <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'start' }}>
+      <Box sx={{ display: 'grid', gap: 2, minWidth: 0 }}>
+        <SectionAFaire reseau={reseau} magasins={[m]} />
+        {!!reseau.plans?.[m.nom]?.length && <SectionObjectifsPlan reseau={reseau} m={m} equipe={false} signaler={signaler} />}
+      </Box>
+      <Box sx={{ display: 'grid', gap: 2, minWidth: 0 }}>
+        <CommentVa reseau={reseau} m={m} franchise />
+      </Box>
+    </Box>
+  )
+}
+
+function InfosMagasinFranchise({ reseau, m, ouvert, fermer, signaler }: { reseau: Reseau; m: Magasin; ouvert: boolean; fermer: () => void; signaler: (msg: string) => void }) {
   const adresse = [m.adresse || [m.codePostal, m.ville].filter(Boolean).join(' '), m.pays].filter(Boolean).join(', ')
   const associes = associesEnPlace(reseau, m)
   return (
-    <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
-      {!!reseau.plans?.[m.nom]?.length && <Box sx={{ gridColumn: '1 / -1' }}><SectionObjectifsPlan reseau={reseau} m={m} equipe={false} signaler={signaler} /></Box>}
-      <Section titre="Mon équipe V and B">
-        {contacts(reseau, [m]).map((x) => <Contact key={x.role} role={x.role} p={x.p} />)}
-        {!m.coach && <Contact role="Coach" p={null} sousTitre="Aucun Coach affecté à ce jour" />}
-      </Section>
-      <Section titre="Magasin">
-        <Ligne libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
-        <Ligne libelle="Adresse">{adresse}</Ligne>
-        <Ligne libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
-        <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
-        {m.franchise && associes.map((a) => {
-          const mandat = mandatActuel(a, reseau.jour)
-          return <Ligne key={a.id} libelle="Franchisé associé">{`${a.nom}${mandat?.fin ? ` · mandat jusqu’au ${dateCourte(mandat.fin)}` : ''}`}</Ligne>
-        })}
-      </Section>
-      <SectionEquipements reseau={reseau} m={m} signaler={signaler} />
-    </Box>
+    <Drawer anchor="right" open={ouvert} onClose={fermer} sx={{ zIndex: (t) => t.zIndex.modal }}
+      slotProps={{ paper: { role: 'dialog', 'aria-label': 'Infos du magasin', sx: { width: { xs: '100%', sm: 440 }, bgcolor: 'background.default' } } }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+        <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1.125rem', mr: 'auto' }}>Infos du magasin</Typography>
+        <IconButton onClick={fermer} aria-label="Fermer" sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
+      </Box>
+      <Box sx={{ display: 'grid', gap: 2, p: 2 }}>
+        <Section titre="Mon équipe V and B">
+          {contacts(reseau, [m]).map((x) => <Contact key={x.role} role={x.role} p={x.p} />)}
+          {!m.coach && <Contact role="Coach" p={null} sousTitre="Aucun Coach affecté à ce jour" />}
+        </Section>
+        <Section titre="Magasin">
+          <Ligne libelle="Ouverture">{m.ouvertureConnue ? dateLongue(m.ouverture) : null}</Ligne>
+          <Ligne libelle="Adresse">{adresse}</Ligne>
+          <Ligne libelle="Téléphone">{m.telephone && <Link href={telLien(m.telephone)}>{m.telephone}</Link>}</Ligne>
+          <Ligne libelle="Email">{m.email && <Link href={`mailto:${m.email}`}>{m.email}</Link>}</Ligne>
+          {m.franchise && associes.map((a) => {
+            const mandat = mandatActuel(a, reseau.jour)
+            return <Ligne key={a.id} libelle="Franchisé associé">{`${a.nom}${mandat?.fin ? ` · mandat jusqu’au ${dateCourte(mandat.fin)}` : ''}`}</Ligne>
+          })}
+        </Section>
+        <SectionEquipements reseau={reseau} m={m} signaler={signaler} />
+      </Box>
+    </Drawer>
   )
 }
 
@@ -685,7 +708,7 @@ function OngletChiffres({ reseau, m }: { reseau: Reseau; m: Magasin }) {
 function OngletVisites({ reseau, m }: { reseau: Reseau; m: Magasin }) {
   const vs = visitesDuMagasin(reseau, m.nom)
   return (
-    <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: '1fr 1fr' }, alignItems: 'start' }}>
+    <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)', alignItems: 'start' }}>
       <Box component="section" aria-label="Visites">
         <TitreSection nombre={vs.length}>Visites</TitreSection>
         {!vs.length ? <Vide>Aucune visite enregistrée.</Vide> : (
@@ -707,7 +730,19 @@ function OngletVisites({ reseau, m }: { reseau: Reseau; m: Magasin }) {
           </CarteLignes>
         )}
       </Box>
+    </Box>
+  )
+}
+
+// Onglet Tâches du franchisé (314) : ses tâches en cours, puis les campagnes qui concernent le magasin
+function OngletTachesF({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+  return (
+    <Box sx={{ display: 'grid', gap: 3 }}>
       <SectionTaches reseau={reseau} magasins={[m]} />
+      <Box component="section" aria-label="Campagnes">
+        <TitreSection>Campagnes</TitreSection>
+        <OngletCampagnes reseau={reseau} m={m} />
+      </Box>
     </Box>
   )
 }
@@ -761,8 +796,7 @@ function OngletCampagnes({ reseau, m }: { reseau: Reseau; m: Magasin }) {
 }
 
 // Haut de fiche façon profil : CA du mois, écart, tâches en cours ; appeler son Coach, écrire, voir les visites
-function ProfilFranchise({ reseau, m, message, retour, exterieur }: { reseau: Reseau; m: Magasin; message: () => void; retour?: { libelle: string; aller: () => void }; exterieur?: () => void }) {
-  const a = analyser(reseau, m.nom)
+function ProfilFranchise({ reseau, m, message, retour, exterieur, infos }: { reseau: Reseau; m: Magasin; message: () => void; retour?: { libelle: string; aller: () => void }; exterieur?: () => void; infos: () => void }) {
   const ouvertes = actionsDes(reseau, new Set([m.nom])).filter((x) => !x.a.faite)
   const retard = ouvertes.filter((x) => enRetard(x.a, reseau.jour)).length
   const coach = m.coach ? reseau.coachs[m.coach] ?? { nom: m.coach } : null
@@ -770,16 +804,14 @@ function ProfilFranchise({ reseau, m, message, retour, exterieur }: { reseau: Re
     <ProfilPersonne nom={m.nom} retour={retour} avatar={(taille) => <Blason magasin={m} taille={taille} />}
       lignes={[[m.franchise ? 'Franchisé' : 'Intégré', [m.ville, m.departement && `(${m.departement})`].filter(Boolean).join(' ')].filter(Boolean).join(' · '), [m.coach && `Coach ${m.coach}`, m.rr?.nom].filter(Boolean).join(' · ')]}
       pastille={retard ? { ton: 'rouge', libelle: `${retard} tâche${retard > 1 ? 's' : ''} en retard` } : m.statut !== 'ouvert' ? { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] } : null}
-      compteurs={[
-        { valeur: a ? formatKEuros(a.ca) : '—', libelle: a ? `CA ${libelleMois(a.mois).split(' ')[0]}` : 'CA du mois' },
-        { valeur: a ? formatPourcent(a.ecart) : '—', libelle: 'vs l’an dernier', couleur: a?.ecart !== null && a?.ecart !== undefined && a.ecart < 0 ? 'error.main' : undefined },
-        { valeur: ouvertes.length, libelle: ouvertes.length > 1 ? 'tâches en cours' : 'tâche en cours' },
-      ]}
+      // 313 : plus de compteurs dans l'en-tête, les chiffres sont dans « Comment va le magasin »
+      compteurs={[]}
       telephone={coach?.telephone} libelleAppel="Coach"
       actions={<>
         {/* Téléphone : le marché extérieur s'ouvre d'ici, Budget et Simuler restent dans la barre (Joseph, 16/11/2026) */}
         {exterieur && <Tooltip title="Marché extérieur"><IconButton onClick={exterieur} aria-label="Marché extérieur" sx={rond}><HandshakeOutlined /></IconButton></Tooltip>}
         <Tooltip title="Message"><IconButton onClick={message} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Tooltip>
+        <Tooltip title="Infos du magasin"><IconButton onClick={infos} aria-label="Infos du magasin" sx={rond}><InfoOutlined /></IconButton></Tooltip>
       </>} />
   )
 }
@@ -797,16 +829,17 @@ export function FicheMagasinFranchise() {
   const { nom = '' } = useParams()
   const naviguer = useNavigate()
   const [confirmation, setConfirmation] = useState('')
+  const [infos, setInfos] = useState(false)
   const [params, setParams] = useSearchParams()
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
-  const brute = (VUES_F.find((v) => v === params.get('vue')) ?? 'fiche') as VueFiche
+  const demandee = params.get('vue') ?? 'fiche'
+  const brute = (VUES_F.find((v) => v === demandee) ?? ANCIENNES_VUES_F[demandee] ?? 'fiche') as VueFiche
   const partie = params.get('partie')
   const vue: VueFiche = (brute === 'budget' || brute === 'chiffres') && partie ? (PARTIES_BUDGET_F.includes(partie) ? 'budget' : partie === 'simulateurs' ? 'simulateurs' : 'chiffres') : brute
   useEffect(() => {
-    if ((brute === 'budget' || brute === 'chiffres') && vue !== brute) setParams((p) => { const n = new URLSearchParams(p); n.set('vue', vue); return n }, { replace: true })
-  }, [brute, vue, setParams])
+    if (demandee !== 'fiche' && demandee !== 'messages' && vue !== demandee) setParams((p) => { const n = new URLSearchParams(p); n.set('vue', vue); return n }, { replace: true })
+  }, [demandee, vue, setParams])
   const changerVue = (v: VueFiche) => setParams((p) => { const n = new URLSearchParams(p); n.delete('partie'); n.delete('etape'); if (v === 'fiche') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
-  const changerOnglet = (o: OngletFicheF) => changerVue(o === 'activite' ? 'visites' : o)
   const groupe = lienFil({ genre: 'magasin', magasin: nom, equipe: false })
   // Anciens liens vers l'onglet Messages : le groupe du magasin
   if (params.get('vue') === 'messages') return <Navigate to={groupe} replace />
@@ -817,23 +850,29 @@ export function FicheMagasinFranchise() {
         if (!m) return <EmptyState icone={<StorefrontOutlined />} titre="Magasin introuvable" texte="Ce magasin ne fait pas partie de tes magasins." action={<Button variant="contained" onClick={() => naviguer('/magasins')}>Voir mes magasins</Button>} />
         return (
           <>
-            {reseau.magasins.length > 1 && <Button startIcon={<ArrowBack />} onClick={() => naviguer('/magasins')} sx={{ mb: 2, ml: -1, minHeight: 48, display: { xs: 'none', md: 'inline-flex' } }}>Mes magasins</Button>}
-            <ProfilFranchise retour={reseau.magasins.length > 1 ? { libelle: 'Mes magasins', aller: () => naviguer('/magasins') } : undefined} reseau={reseau} m={m} message={() => naviguer(groupe)} exterieur={surPC ? undefined : () => changerVue('exterieur')} />
-            <Onglets valeur={ongletDeF(vue)} onChange={changerOnglet} rubriques={surPC ? rubriques : rubriques.filter((r) => r.vue !== 'exterieur')} libelle={`Rubriques de ${m.nom}`} fiche />
+            {/* 304 : le fil d'Ariane, comme sur les autres pages */}
+            {reseau.magasins.length > 1 && <FilAriane pcSeulement etapes={[{ libelle: 'Mes magasins', lien: '/magasins' }]} ici={m.nom} />}
+            <ProfilFranchise retour={reseau.magasins.length > 1 ? { libelle: 'Mes magasins', aller: () => naviguer('/magasins') } : undefined} reseau={reseau} m={m} message={() => naviguer(groupe)}
+              exterieur={surPC ? undefined : () => changerVue('exterieur')} infos={() => setInfos(true)} />
+            <InfosMagasinFranchise reseau={reseau} m={m} ouvert={infos} fermer={() => setInfos(false)} signaler={setConfirmation} />
+            <Onglets valeur={vue} onChange={changerVue} rubriques={surPC ? rubriques : rubriques.filter((r) => r.vue !== 'exterieur')} libelle={`Rubriques de ${m.nom}`} fiche titre={m.nom} defilant />
             <ContenuOnglet>
-              {ongletDeF(vue) === 'activite' && (
-                <Tabs value={vue} onChange={(_e, v: VueFiche) => changerVue(v)} variant="scrollable" scrollButtons={false} aria-label="Parties de l’activité" sx={{ mb: 2, ...styleSousNavigation }}>
-                  {partiesActiviteF.map((x) => <Tab key={x.vue} value={x.vue} label={x.libelle} aria-current={vue === x.vue ? 'page' : undefined} />)}
-                </Tabs>
-              )}
               {vue === 'fiche' && <OngletFiche reseau={reseau} m={m} signaler={setConfirmation} />}
+              {vue === 'taches' && <OngletTachesF reseau={reseau} m={m} />}
               {vue === 'chiffres' && <OngletBudget nom={m.nom} mode="chiffres" santeLibelle="Chiffres du mois" sante={<OngletChiffres reseau={reseau} m={m} />} />}
               {vue === 'budget' && <OngletBudget nom={m.nom} mode="budget" />}
               {vue === 'simulateurs' && <OngletBudget nom={m.nom} mode="simulateurs" />}
               {vue === 'exterieur' && <MarcheExterieur key={m.nom} reseau={reseau} m={m} />}
-              {vue === 'visites' && <><LireVisites magasin={m.nom} /><OngletVisites reseau={reseau} m={m} /></>}
-              {vue === 'campagnes' && <OngletCampagnes reseau={reseau} m={m} />}
-              {vue === 'pratiques' && <OngletPratiques reseau={reseau} m={m} signaler={setConfirmation} />}
+              {vue === 'historique' && (
+                <Box sx={{ display: 'grid', gap: 3 }}>
+                  <LireVisites magasin={m.nom} />
+                  <OngletVisites reseau={reseau} m={m} />
+                  <Box component="section" aria-label="Bonnes pratiques">
+                    <TitreSection>Bonnes pratiques</TitreSection>
+                    <OngletPratiques reseau={reseau} m={m} signaler={setConfirmation} />
+                  </Box>
+                </Box>
+              )}
               <Snackbar open={!!confirmation} autoHideDuration={5000} onClose={() => setConfirmation('')} message={confirmation} />
             </ContenuOnglet>
           </>

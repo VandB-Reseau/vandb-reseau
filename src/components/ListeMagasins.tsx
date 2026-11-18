@@ -56,9 +56,11 @@ function infosDe(reseau: Reseau | null): Map<string, InfosMagasin> {
   }
   return res
 }
+// 320 (18/11/2026) : colonnes resserrées, plus aucune coupée à 1440 px
 const colonnes: { v: TriMagasins; libelle: string; largeur: number }[] = [
-  { v: 'ca', libelle: 'CA vs N-1', largeur: 96 }, { v: 'case', libelle: 'Case', largeur: 176 }, { v: 'visite', libelle: 'Vu', largeur: 88 }, { v: 'taches', libelle: 'Tâches', largeur: 64 },
+  { v: 'ca', libelle: 'CA vs N-1', largeur: 88 }, { v: 'case', libelle: 'Case', largeur: 150 }, { v: 'visite', libelle: 'Vu', largeur: 72 }, { v: 'taches', libelle: 'Tâches', largeur: 56 },
 ]
+const LARGEUR_ALERTE = 120
 const lettreDe = (nom: string) => { const l = nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').charAt(0).toUpperCase(); return /[A-Z]/.test(l) ? l : '#' }
 
 // Magasins en lignes compactes (PC et téléphone) : initiales, nom, Coach et Responsable Régional, une info à droite.
@@ -86,22 +88,23 @@ export function ListeMagasins({ magasins, tri = 'nom', suivis, trier }: { magasi
   const colonnesDe = (m: Magasin) => {
     const i = infos.get(m.nom)
     const p = pastilles.get(m.nom)
-    const alerte = p && (p.ton === 'rouge' || p.libelle === 'À surveiller' || m.statut !== 'ouvert') ? p : null
+    // 319 : le statut d'ouverture passe sur la ligne du nom, la colonne ne garde que l'alerte
+    const alerte = p && (p.ton === 'rouge' || p.libelle === 'À surveiller') ? p : null
     const cellule = (largeur: number, contenu: string, couleur?: string) => (
       <Typography variant="body2" sx={{ width: largeur, flexShrink: 0, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: couleur ?? 'text.secondary', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{contenu}</Typography>
     )
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ width: 150, flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>{alerte && <Pastille ton={alerte.ton}>{alerte.libelle}</Pastille>}</Box>
-        {cellule(96, i?.ecart === null || i?.ecart === undefined ? '' : formatPourcent(i.ecart), i?.ecart !== null && i?.ecart !== undefined ? (i.ecart <= -5 ? 'error.main' : i.ecart < 0 ? 'warning.dark' : 'text.primary') : undefined)}
-        {cellule(176, i?.caseLibelle || 'Non classé', i?.caseLibelle ? 'text.primary' : undefined)}
-        {cellule(88, i?.depuis === null || i?.depuis === undefined ? 'jamais' : `${i.depuis} j`, i?.alerteVisite ? 'warning.dark' : undefined)}
-        {cellule(64, i?.taches ? String(i.taches) : '', 'text.primary')}
+        <Box sx={{ width: LARGEUR_ALERTE, flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>{alerte && <Pastille ton={alerte.ton}>{alerte.libelle}</Pastille>}</Box>
+        {cellule(88, i?.ecart === null || i?.ecart === undefined ? '' : formatPourcent(i.ecart), i?.ecart !== null && i?.ecart !== undefined ? (i.ecart <= -5 ? 'error.main' : i.ecart < 0 ? 'warning.dark' : 'text.primary') : undefined)}
+        {cellule(150, i?.caseLibelle || 'Non classé', i?.caseLibelle ? 'text.primary' : undefined)}
+        {cellule(72, i?.depuis === null || i?.depuis === undefined ? 'jamais' : `${i.depuis} j`, i?.alerteVisite ? 'warning.dark' : undefined)}
+        {cellule(56, i?.taches ? String(i.taches) : '', 'text.primary')}
       </Box>
     )
   }
   const ligne = (m: Magasin) => {
-    if (large) return <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Blason magasin={m} />} titre={m.nom} detail={suiviEtRR(m)} fin={colonnesDe(m)} />
+    if (large) return <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Blason magasin={m} />} titre={m.statut === 'ouvert' ? m.nom : <>{m.nom} <Box component="span" sx={{ ml: 0.5, verticalAlign: 'middle' }}><Pastille ton={m.statut === 'nouveau' ? 'bleu' : 'gris'}>{statutLibelle[m.statut]}</Pastille></Box></>} detail={suiviEtRR(m)} fin={colonnesDe(m)} />
     const p = pastilles.get(m.nom)
     const e = tri === 'ca' && reseau ? analyser(reseau, m.nom)?.ecart : undefined
     return (
@@ -118,7 +121,7 @@ export function ListeMagasins({ magasins, tri = 'nom', suivis, trier }: { magasi
       {large && (
         <Box role="group" aria-label="Trier par colonne" sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 2, mb: -1 }}>
           <ButtonBase onClick={() => trier?.('nom')} aria-pressed={tri === 'nom'} sx={{ flex: 1, justifyContent: 'flex-start', minHeight: 48, pl: 7, fontFamily: 'inherit', fontSize: '0.8125rem', fontWeight: tri === 'nom' ? 700 : 500, color: tri === 'nom' ? 'text.primary' : 'text.secondary' }}>Magasin</ButtonBase>
-          <Box sx={{ width: 150, flexShrink: 0 }} />
+          <Box sx={{ width: LARGEUR_ALERTE, flexShrink: 0 }} />
           {colonnes.map((c) => (
             <ButtonBase key={c.v} onClick={() => trier?.(c.v)} aria-pressed={tri === c.v} aria-label={`Trier par ${c.libelle === 'Vu' ? 'dernière visite' : c.libelle}`}
               sx={{ width: c.largeur, flexShrink: 0, justifyContent: 'flex-end', minHeight: 48, gap: 0.25, fontFamily: 'inherit', fontSize: '0.8125rem', fontWeight: tri === c.v ? 700 : 500, color: tri === c.v ? 'text.primary' : 'text.secondary' }}>

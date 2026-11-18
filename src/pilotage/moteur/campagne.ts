@@ -98,9 +98,9 @@ export function marquesEtapes(e: {
 }): Record<'budget' | 'visualiser' | 'echanges', string> {
   const franchise = e.role === 'franchise', valideur = e.role === 'directeur' || e.role === 'rr'
   // Joseph (03/11/2026) : trois étapes ; « Construire » dit aussi si le budget attend la proposition du siège
-  const budget = !e.propose ? (e.role === 'directeur' ? 'À proposer' : 'En attente du siège') : e.statut === 'valide' ? 'Validé' : e.modifie ? 'Non enregistré'
+  const budget = e.statut === 'valide' ? 'Validé' : !e.propose ? (e.role === 'directeur' ? 'À proposer' : 'En attente du siège') : e.modifie ? 'Non enregistré'
     : franchise && e.statut === 'propose' ? (e.changements ? `${e.changements} changement${e.changements > 1 ? 's' : ''} à envoyer` : 'À relire') : ''
-  const echanges = !e.propose ? '' : e.statut === 'valide' ? 'Validé'
+  const echanges = e.statut === 'valide' ? 'Validé' : !e.propose ? ''
     : e.statut === 'en_discussion' ? (valideur ? 'À valider' : franchise ? 'Envoyé au siège' : 'Retour du franchisé')
       : franchise ? 'À envoyer' : 'Chez le franchisé'
   return { budget, visualiser: '', echanges }

@@ -33,7 +33,7 @@ test('un ancien lien vers les bonnes pratiques du magasin ouvre tout le fil de l
 test('téléphone courant : les cinq onglets de la fiche visibles sans déborder', async ({ page, isMobile }, info) => {
   test.skip(!isMobile, 'téléphone seulement')
   await seConnecter(page)
-  for (const [largeur, attendus] of [[375, ['Aperçu', 'Tâches', 'Chiffres', 'Budget', 'Simuler', 'Extérieur', 'Nine box', 'Historique']], [412, ['Aperçu', 'Tâches', 'Chiffres', 'Budget', 'Simuler', 'Extérieur', 'Nine box', 'Historique']]] as const) {
+  for (const [largeur, attendus] of [[375, ['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Historique']], [412, ['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Historique']]] as const) {
     await page.setViewportSize({ width: largeur, height: 812 })
     await page.goto('./#/magasins/Lyon%20Test')
     const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })
@@ -51,10 +51,10 @@ test('fiche du franchisé : ses bonnes pratiques dans l’Activité, cinq onglet
   await seConnecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Lyon Test'] }, espace: { pratiques } })
   await page.goto('./#/magasins/Lyon%20Test')
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Lyon Test' })
-  await expect(onglets.getByRole('tab')).toHaveText(isMobile ? ['Aperçu', 'Activité', 'Chiffres', 'Budget', 'Simuler'] : ['Vue d’ensemble', 'Activité', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur'])
-  await onglets.getByRole('tab', { name: 'Activité' }).click()
-  await page.getByRole('tablist', { name: 'Parties de l’activité' }).getByRole('tab', { name: 'Bonnes pratiques' }).click()
+  await expect(onglets.getByRole('tab')).toHaveText((isMobile ? ['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Historique'] : ['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Historique']))
+  // 314 : les bonnes pratiques dans l'Historique, comme pour l'équipe ; l'ancien lien y mène
+  await onglets.getByRole('tab', { name: 'Historique' }).click()
   await expect(page.getByRole('article', { name: 'Coffrets à composer' })).toBeVisible()
   await page.goto('./#/magasins/Lyon%20Test?vue=pratiques')
-  await expect(page.getByRole('tablist', { name: 'Parties de l’activité' }).getByRole('tab', { name: 'Bonnes pratiques', selected: true })).toBeVisible()
+  await expect(onglets.getByRole('tab', { name: 'Historique', selected: true })).toBeVisible()
 })

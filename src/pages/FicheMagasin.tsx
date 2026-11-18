@@ -12,7 +12,7 @@ import StarBorderOutlined from '@mui/icons-material/StarBorderOutlined'
 import { basculerFavori, noterRecent, useSuivis } from '../lib/suivis'
 import Menu from '@mui/material/Menu'
 import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
+import { alpha, useTheme } from '@mui/material/styles'
 import MenuItem from '@mui/material/MenuItem'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import ListItemIcon from '@mui/material/ListItemIcon'
@@ -72,7 +72,6 @@ import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { SectionOuverture } from '../components/Ouverture'
 import { compteInstagram, libellesLicence, libellesTypologie, libellesZone, lienInstagram, resumeHoraires } from '../data/exploitation'
 import { aOuvrir } from '../data/ouvertures'
-import { actionsDuMagasin, enRetard } from '../data/actions'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import { lienFil } from '../data/messagerie'
@@ -117,18 +116,18 @@ const lienAvisGoogle = (nom: string) => `https://www.google.com/search?q=${encod
 type VueFiche = 'fiche' | 'activite' | 'taches' | 'actions' | 'visites' | 'journal' | 'chiffres' | 'ninebox' | 'budget' | 'simulateurs' | 'exterieur' | 'pratiques'
 type OngletFiche = 'fiche' | 'activite' | 'taches' | 'chiffres' | 'ninebox' | 'budget' | 'simulateurs' | 'exterieur'
 const rubriquesFiche: Rubrique<OngletFiche>[] = [
-  { vue: 'fiche', libelle: 'Vue d’ensemble', court: 'Aperçu', icone: <StorefrontOutlined /> },
+  { vue: 'fiche', libelle: 'Vue d’ensemble', icone: <StorefrontOutlined /> },
   // Joseph (17/11/2026) : les tâches du magasin retrouvent leur onglet (filtres, ajout, campagnes)
   { vue: 'taches', libelle: 'Tâches', icone: <TaskAltOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
   { vue: 'budget', libelle: 'Budget', icone: <RequestQuoteOutlined /> },
   // Joseph (14/11/2026) : les simulateurs au même niveau que Chiffres et Budget, juste après eux
-  { vue: 'simulateurs', libelle: 'Simulateurs', court: 'Simuler', icone: <CalculateOutlined /> },
+  { vue: 'simulateurs', libelle: 'Simulateurs', icone: <CalculateOutlined /> },
   // Joseph (16/11/2026) : plan d'action marché extérieur en 6 étapes, pour l'équipe et le franchisé
-  { vue: 'exterieur', libelle: 'Marché extérieur', court: 'Extérieur', icone: <HandshakeOutlined /> },
+  { vue: 'exterieur', libelle: 'Marché extérieur', icone: <HandshakeOutlined /> },
   // Joseph (13/11/2026) : la nine box du magasin a son onglet, avec son évolution
   // Joseph (17/11/2026) : les déploiements, rangés avec la nine box, se trouvaient mal ; l'onglet les nomme
-  { vue: 'ninebox', libelle: 'Nine box et déploiements', court: 'Nine box', icone: <GridViewOutlined /> },
+  { vue: 'ninebox', libelle: 'Nine box', icone: <GridViewOutlined /> },
   // Joseph (17/11/2026) : l'Activité devient l'Historique (visites, tâches, notes et journal) et passe en dernier
   { vue: 'activite', libelle: 'Historique', icone: <HistoryOutlined /> },
 ]
@@ -218,12 +217,6 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const destination = adresseComplete ? `V and B ${m.nom} ${adresseComplete}` : m.lat !== null && m.lon !== null ? `${m.lat},${m.lon}` : ''
   const lienItineraire = destination ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}` : null
   const lienPlan = adresseComplete ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`V and B ${m.nom} ${adresseComplete}`)}` : null
-  const actions = actionsDuMagasin(reseau, m.nom)
-  const ouvertes = actions.filter((x) => !x.a.faite)
-  const enRetardNb = ouvertes.filter((x) => enRetard(x.a, reseau.jour)).length
-  const a = anneeDe(reseau.jour)
-  const rythme = suiviRythme(reseau, a).find((l) => l.magasin.nom === m.nom)
-  const alerte = analyser(reseau, m.nom)
   const saisirVisite = () => { setTypeVisite('terrain'); setVisite(null) }
   const { referentiels } = useDroits()
   const ex = m.exploitation
@@ -235,7 +228,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <FilAriane pcSeulement etapes={[{ libelle: 'Magasins', lien: '/magasins' }]} ici={m.nom} />
       </Box>
-      <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau} alerte={alerte} enRetardNb={enRetardNb} ouvertes={ouvertes.length} alerteVisite={rythme?.alerte ? libellePasVu(rythme) : ''}
+      <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau}
         appeler={m.telephone || m.responsable?.telephone || ''} message={conversation.ouvrir}
         creer={{ visite: saisirVisite, tache: () => setNouvelleTache(true), appel: () => { setTypeVisite('appel'); setVisite(null) }, note: journal.nouvelleNote, pratique: () => setNouvellePratique(true) }}
         modifier={referentiels ? () => setEdition(true) : undefined} fermer={referentiels ? () => setSituation(true) : undefined}
@@ -450,14 +443,25 @@ function SectionSante({ reseau, m, modifier }: { reseau: Reseau; m: Magasin; mod
             </Box>
             {criteresAxe(axe).map((k) => {
               const n = e?.notes[k.id]
-              return <Ligne key={k.id} libelle={k.libelle}>{n === undefined ? null : <Chip size="small" label={libelleNote[n]} color={n === 0 ? 'default' : couleurNoteChip[n]} sx={{ fontSize: 12 }} />}</Ligne>
+              // 336 (18/11/2026) : un point de couleur et le mot ; l'étiquette pleine reste au niveau de l'axe
+              return <Ligne key={k.id} libelle={k.libelle}>{n === undefined ? null : <PointNote n={n} />}</Ligne>
             })}
-            {ancienne !== undefined && <Ligne libelle={libelleAncienneNote}><Chip size="small" label={libelleNote[ancienne]} color={ancienne === 0 ? 'default' : couleurNoteChip[ancienne]} sx={{ fontSize: 12 }} /></Ligne>}
+            {ancienne !== undefined && <Ligne libelle={libelleAncienneNote}><PointNote n={ancienne} /></Ligne>}
           </Box>
         )
       })}
       <EvolutionCases points={historiqueSante(reseau.evaluations, m.nom)} />
     </Section>
+  )
+}
+
+function PointNote({ n }: { n: number }) {
+  const c = n === 0 ? 'text.disabled' : `${couleurNoteChip[n as keyof typeof couleurNoteChip]}.main`
+  return (
+    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+      <Box component="span" aria-hidden sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c, flexShrink: 0 }} />
+      <Typography component="span" variant="body2">{libelleNote[n as keyof typeof libelleNote]}</Typography>
+    </Box>
   )
 }
 
@@ -479,7 +483,8 @@ function GrilleMagasin({ reseau, m }: { reseau: Reseau; m: Magasin }) {
             const avant = passages(c.id)
             return (
               <Box key={c.id} role="group" aria-label={`${c.libelle}${ici ? ', case actuelle' : ''}${avant.length ? `, passé le ${avant.map((p) => dateCourte(p.date)).join(', ')}` : ''}`}
-                sx={{ minHeight: 76, p: 1, borderRadius: 2, border: '2px solid', borderColor: ici ? c.couleur : 'divider', bgcolor: ici ? c.couleur : 'transparent', color: ici ? texteSur(c.couleur) : 'text.primary', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 0.5 }}>
+                // 333 (18/11/2026) : la nine box de Santé du parc (cases teintées), la case du magasin pleine et entourée
+                sx={{ minHeight: 76, p: 1, borderRadius: 2, border: '2px solid', borderColor: ici ? 'text.primary' : 'transparent', bgcolor: ici ? c.couleur : alpha(c.couleur, 0.12), color: ici ? texteSur(c.couleur) : 'text.primary', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 0.5 }}>
                 <Typography variant="body2" sx={{ fontWeight: ici ? 700 : 600, lineHeight: 1.25 }}>{c.libelle}</Typography>
                 {avant.length > 0 && <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>{avant.map((p) => (
                   <Box key={p.date} component="span" title={dateCourte(p.date)} sx={{ minWidth: 24, height: 24, px: 0.5, borderRadius: 999, bgcolor: 'background.paper', color: 'text.primary', border: '1px solid', borderColor: 'divider', fontSize: '0.75rem', fontWeight: 700, display: 'grid', placeItems: 'center' }}>{p.n}</Box>
@@ -647,22 +652,17 @@ function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Ma
 
 
 // Haut de fiche façon profil : initiales, nom, trois compteurs, puis Appeler, Message, Visite
-function ProfilMagasin({ m, reseau, alerte, enRetardNb, alerteVisite, appeler, message, creer, modifier, fermer, retour, infos, lienItineraire }: {
+function ProfilMagasin({ m, reseau, appeler, message, creer, modifier, fermer, retour, infos, lienItineraire }: {
   lienItineraire: string | null
-  m: Magasin; reseau: Reseau; alerte: ReturnType<typeof analyser>; enRetardNb: number; ouvertes: number; alerteVisite: string
+  m: Magasin; reseau: Reseau
   appeler: string; message: () => void; creer: MenuCreer; modifier?: () => void; fermer?: () => void; retour: { libelle: string; aller: () => void }
   infos: () => void // maquette 264 : le panneau « Infos du magasin »
 }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
-  const c = caseDe(reseau.evaluations[m.nom])
-  // Une seule pastille : la plus grave
+  // 311 (18/11/2026) : l'en-tête ne dit plus l'alerte ni la nine box (la Vue d'ensemble le dit) ; seulement l'état du magasin
   const ferme = !!m.fermeture && m.fermeture.date <= reseau.jour
   const pastille: { ton: Ton; libelle: string } | null = ferme ? { ton: 'gris', libelle: etatSortie[m.fermeture!.type] }
     : enTravaux(m, reseau.jour) ? { ton: 'orange', libelle: `Fermé jusqu’au ${dateCourte(m.travaux!.fin)}` }
-    : alerte?.statut === 'decroche' ? { ton: 'rouge', libelle: 'Décroche' }
-    : enRetardNb ? { ton: 'rouge', libelle: `${enRetardNb} tâche${enRetardNb > 1 ? 's' : ''} en retard` }
-    : alerte?.statut === 'surveiller' ? { ton: 'orange', libelle: 'À surveiller' }
-    : alerteVisite ? { ton: 'orange', libelle: alerteVisite }
     : m.statut !== 'ouvert' ? { ton: m.statut === 'nouveau' ? 'bleu' : 'gris', libelle: statutLibelle[m.statut] } : null
   const concept = etatConcept20(reseau, m.nom)
   const [montrer, setMontrer] = useState(false)
@@ -675,22 +675,21 @@ function ProfilMagasin({ m, reseau, alerte, enRetardNb, alerteVisite, appeler, m
       pastille={pastille}
       // Maquette 264 (17/11/2026) : plus de compteurs dans l'en-tête, la vue d'ensemble dit déjà le CA et les tâches
       compteurs={[]}
-      detail={c && <><Box component="span" sx={{ color: 'text.secondary' }}>Nine box : </Box><b>{c.libelle}</b> · {c.rythme} par an</>}
       telephone={appeler}
       // Joseph (17/11/2026) : avis Google et itinéraire en haut à droite de la fiche
       coin={<>
         <Tooltip title="Avis Google"><IconButton component="a" href={lienAvisGoogle(m.nom)} target="_blank" rel="noopener" aria-label="Avis Google" sx={rond}><StarOutlined /></IconButton></Tooltip>
         {lienItineraire && <Tooltip title="Itinéraire"><IconButton component="a" href={lienItineraire} target="_blank" rel="noopener" aria-label="Itinéraire" sx={rond}><DirectionsOutlined /></IconButton></Tooltip>}
       </>}
-      icones={<AutresActions nom={m.nom} modifier={modifier} fermer={fermer} />}
-      principal={<BoutonVisite reseau={reseau} magasin={m.nom} principal />}
+      // 310 (18/11/2026) : en vue, la visite, l'appel, les infos et « + » ; message et « Montrer au franchisé » dans « ⋯ »
+      icones={<AutresActions nom={m.nom} modifier={modifier} fermer={fermer} message={message} montrer={() => setMontrer(true)} />}
+      // 312 : sur téléphone, la visite devient un picto parmi les autres, les onglets se voient dès l'ouverture
+      principal={surPC ? <BoutonVisite reseau={reseau} magasin={m.nom} principal /> : undefined}
       actions={<>
+        {!surPC && <BoutonVisite reseau={reseau} magasin={m.nom} forme="icone" sx={rond} />}
         {surPC
           ? <Button variant="outlined" startIcon={<InfoOutlined />} onClick={infos} sx={{ minHeight: 48, borderRadius: 999, whiteSpace: 'nowrap' }}>Infos du magasin</Button>
           : <Tooltip title="Infos du magasin"><IconButton onClick={infos} aria-label="Infos du magasin" sx={rond}><InfoOutlined /></IconButton></Tooltip>}
-        <Tooltip title="Message"><IconButton onClick={message} aria-label="Écrire un message" sx={rond}><ChatBubbleOutlineOutlined /></IconButton></Tooltip>
-        {/* Choix 116 : en visite, les chiffres du magasin en grand, sans rien d'interne */}
-        <Tooltip title="Montrer au franchisé"><IconButton onClick={() => setMontrer(true)} aria-label="Montrer au franchisé" sx={rond}><PresentToAllOutlined /></IconButton></Tooltip>
         <MenuAjouter creer={creer} />
       </>} />
     {montrer && <MontrerAuFranchise reseau={reseau} magasin={m.nom} fermer={() => setMontrer(false)} />}
@@ -728,7 +727,7 @@ function MenuAjouter({ creer }: { creer: MenuCreer }) {
 }
 
 // Bilan de l'année (sprint 26, F1), favoris et Modifier dans un menu « ⋯ »
-function AutresActions({ nom, modifier, fermer: fermerMagasin }: { nom: string; modifier?: () => void; fermer?: () => void }) {
+function AutresActions({ nom, modifier, fermer: fermerMagasin, message, montrer }: { nom: string; modifier?: () => void; fermer?: () => void; message: () => void; montrer: () => void }) {
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const favori = useSuivis().favoris.includes(nom)
   const fermer = () => setAncre(null)
@@ -736,6 +735,9 @@ function AutresActions({ nom, modifier, fermer: fermerMagasin }: { nom: string; 
     <>
       <Tooltip title="Autres actions"><IconButton onClick={(e) => setAncre(e.currentTarget)} aria-label="Autres actions" aria-haspopup="menu" aria-expanded={!!ancre} sx={{ width: 48, height: 48 }}><MoreHorizOutlined /></IconButton></Tooltip>
       <Menu anchorEl={ancre} open={!!ancre} onClose={fermer} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
+        <MenuItem onClick={() => { fermer(); message() }} sx={{ minHeight: 48 }}><ListItemIcon><ChatBubbleOutlineOutlined /></ListItemIcon>Écrire un message</MenuItem>
+        {/* Choix 116 : en visite, les chiffres du magasin en grand, sans rien d'interne */}
+        <MenuItem onClick={() => { fermer(); montrer() }} sx={{ minHeight: 48 }}><ListItemIcon><PresentToAllOutlined /></ListItemIcon>Montrer au franchisé</MenuItem>
         <MenuItem component={RouterLink} to={lienBilan(nom)} onClick={fermer} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><InsightsOutlined /></ListItemIcon>Bilan de l’année</MenuItem>
         <MenuItem onClick={() => { fermer(); basculerFavori(nom) }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon>{favori ? <StarOutlined /> : <StarBorderOutlined />}</ListItemIcon>{favori ? 'Retirer des favoris' : 'Ajouter aux favoris'}</MenuItem>
         {modifier && <MenuItem onClick={() => { fermer(); modifier() }} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><EditOutlined /></ListItemIcon>Modifier la fiche</MenuItem>}

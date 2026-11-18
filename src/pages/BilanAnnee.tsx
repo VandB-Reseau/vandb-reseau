@@ -4,7 +4,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Snackbar from '@mui/material/Snackbar'
 import Typography from '@mui/material/Typography'
-import ArrowBack from '@mui/icons-material/ArrowBack'
+import { FilAriane } from '../components/FilAriane'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
@@ -15,7 +15,7 @@ import { Puces } from '../components/Social'
 import { BoutonAjouterAction } from '../components/Actions'
 import { EnvoyerAuFranchise } from '../components/EnvoyerCompteRendu'
 import { useAuth } from '../auth/AuthContext'
-import { dateCourte, dateLongue } from '../lib/format'
+import { dateCourte, dateLongue, lienFiche } from '../lib/format'
 import { libelleGrille } from '../data/grilles'
 import { libelleTypeVisite, nomsVisiteurs, visiteFaite, type Magasin, type Reseau } from '../data/modele'
 import { caDe, chiffresDuMagasin, decalerMois, estVisite, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, type ChampChiffre, type ChiffreMois } from '../data/chiffres'
@@ -131,7 +131,6 @@ const tonEcart = (n: number | null) => (n === null ? undefined : n < 0 ? 'rouge'
 const couleurTon = { positif: VERT, partiel: GRIS, negatif: ROUGE } as const
 
 function Feuille({ reseau, m }: { reseau: Reseau; m: Magasin }) {
-  const naviguer = useNavigate()
   const { profil } = useAuth()
   const { presences } = usePresences()
   const courante = reseau.jour.slice(0, 4)
@@ -145,7 +144,8 @@ function Feuille({ reseau, m }: { reseau: Reseau; m: Magasin }) {
     <>
       {styleImpression}
       <Box className="sans-impression" sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Button startIcon={<ArrowBack />} onClick={() => naviguer(-1)} sx={{ ml: -1, minHeight: 48 }}>Retour</Button>
+        {/* 304 (Joseph, 18/11/2026) : le fil d'Ariane comme sur les autres pages */}
+        <FilAriane etapes={[...(profil?.role === 'franchise' ? [] : [{ libelle: 'Magasins', lien: '/magasins' }]), { libelle: m.nom, lien: lienFiche(m.nom) }]} ici={`Bilan ${annee}`} sx={{ mb: 0 }} />
         <Puces label="Année du bilan" valeur={annee} onChange={setAnnee} options={[courante, String(Number(courante) - 1)].map((x) => ({ v: x, libelle: x }))} />
         <Box sx={{ flex: 1 }} />
         {m.franchise && profil?.role !== 'franchise' && (

@@ -1,4 +1,4 @@
-import { LigneVide } from './Section'
+import { LigneVide, Section } from './Section'
 import { Entete, LigneSansResultat, useTableau, type ColonneTri } from './TableauTri'
 import { useMemo, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
@@ -156,9 +156,10 @@ const couleurTon = { mieux: 'success.main', moins: 'error.main', egal: undefined
 export function BlocPortefeuille({ reseau, p }: { reseau: Reseau; p: Portefeuille }) {
   const ref = useReference(reseau)
   return (
-    <Box component="section" sx={{ maxWidth: 760 }}>
-      <TitreSection nombre={p.magasins}>{ref ? `Portefeuille comparé ${ref.libelle === 'réseau' ? 'au réseau' : 'à la région'}` : 'Portefeuille'}</TitreSection>
-      <CarteLignes label="Portefeuille">
+    // 316 (18/11/2026) : une carte titrée comme les blocs de droite de la fiche
+    <Section titre={ref ? `Portefeuille comparé ${ref.libelle === 'réseau' ? 'au réseau' : 'à la région'}` : 'Portefeuille'}
+      action={<Typography variant="body2" color="text.secondary">{p.magasins} magasin{p.magasins > 1 ? 's' : ''}</Typography>}>
+      <Box component="section" aria-label="Portefeuille" sx={{ mx: { xs: -2, md: -3 }, '& > * + *': { borderTop: '1px solid', borderColor: 'divider' } }}>
         {indicateurs.map((i) => {
           const v = i.valeur(p), r = ref ? i.valeur(ref.p) : null
           const ton = tonEcart(v, r, i.sens, i.seuil)
@@ -173,8 +174,8 @@ export function BlocPortefeuille({ reseau, p }: { reseau: Reseau; p: Portefeuill
               } />
           )
         })}
-      </CarteLignes>
-    </Box>
+      </Box>
+    </Section>
   )
 }
 

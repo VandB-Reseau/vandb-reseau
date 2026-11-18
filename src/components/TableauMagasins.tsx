@@ -116,7 +116,12 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
     } },
   })
   const tries = t.lignes
-  const visibles = tries.slice(0, nb)
+  // 321 (18/11/2026) : les magasins sans chiffres se rangent en bas, repliés, au lieu de lignes de tirets
+  const [voirSans, setVoirSans] = useState(false)
+  const avecCA = tries.filter((m) => infos.get(m.nom)?.ca !== null && infos.get(m.nom)?.ca !== undefined)
+  const sansCA = tries.filter((m) => !avecCA.includes(m))
+  const ordonnes = sansCA.length && avecCA.length ? [...avecCA, ...(voirSans ? sansCA : [])] : tries
+  const visibles = ordonnes.slice(0, nb)
   const apercu = choisi ? magasins.find((m) => m.nom === choisi) ?? null : null
   // Totaux en pied : CA du mois des magasins affichés et écart pondéré face à l'an dernier
   const total = useMemo(() => {
@@ -166,7 +171,7 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
                   <TableRow key={m.nom} selected={actif} hover tabIndex={0} aria-selected={actif} onClick={() => ouvrir(m.nom)} onDoubleClick={() => naviguer(lienFiche(m.nom))} onKeyDown={(e) => clavier(e, m.nom)}>
                     {avecSelection && <TableCell padding="checkbox" sx={{ '&&': { pl: 1.5, pr: 0 } }}><CaseLigne s={sel} cle={m.nom} nom={m.nom} /></TableCell>}
                     <TableCell sx={{ minWidth: 200 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', columnGap: 1.25, rowGap: 0.25, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', columnGap: 1.25, flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
                         <Blason magasin={m} taille={28} />
                         <Link component={RouterLink} to={lienFiche(m.nom)} color="inherit" underline="hover" onClick={(e) => e.stopPropagation()} sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{m.nom}</Link>
                         {x?.alerte === 'decroche' && <Pastille ton="rouge">Décroche</Pastille>}
@@ -189,6 +194,15 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
                   </TableRow>
                 )
               })}
+              {sansCA.length > 0 && avecCA.length > 0 && (
+                <TableRow sx={{ '&&': { cursor: 'default', height: 48 }, '&&:hover': { bgcolor: 'transparent' } }}>
+                  <TableCell colSpan={avecSelection ? 10 : 9}>
+                    <Button onClick={() => setVoirSans((v) => !v)} aria-expanded={voirSans} sx={{ minHeight: 40 }}>
+                      {voirSans ? `Masquer les ${sansCA.length} sans chiffres` : `Afficher les ${sansCA.length} sans chiffres`}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )}
               <LigneSansResultat t={t} colSpan={avecSelection ? 10 : 9} quoi="Aucun magasin ne correspond" />
               <TableRow sx={{ '&&': { cursor: 'default', height: 44 }, '&&:hover': { bgcolor: 'transparent' }, '& td': { borderBottom: 0, fontWeight: 700 } }}>
                 <TableCell colSpan={avecSelection ? 4 : 3} sx={{ color: 'text.secondary' }}>{tries.length < magasins.length ? `${tries.length} sur ${magasins.length} magasins` : `${magasins.length} magasin${magasins.length > 1 ? 's' : ''}`}</TableCell>
@@ -200,9 +214,9 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
             </TableBody>
           </Table>
         </TableContainer>
-        {nb < tries.length && (
+        {nb < ordonnes.length && (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
-            <Button variant="outlined" onClick={() => setNb(nb + PAS)}>Afficher {Math.min(PAS, tries.length - nb)} magasins de plus</Button>
+            <Button variant="outlined" onClick={() => setNb(nb + PAS)}>Afficher {Math.min(PAS, ordonnes.length - nb)} magasins de plus</Button>
           </Box>
         )}
         <BarreSelection s={sel} quoi="magasin">

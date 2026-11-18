@@ -91,7 +91,9 @@ test('Pilotage : rapport du siège, indicateurs en parallèle, typologie, mois e
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 
   // Supprimer son rapport
-  await page.getByRole('button', { name: 'Supprimer ce rapport' }).click()
+  // 327 (18/11/2026) : les actions secondaires du rapport sont dans « Autres actions »
+  await page.getByRole('main').getByRole('button', { name: 'Autres actions' }).click()
+  await page.getByRole('menuitem', { name: 'Supprimer ce rapport' }).click()
   await expect(page.getByText('Rapport supprimé')).toBeVisible()
   expect(ecritures.some((x) => x.table === 'rpc/supprimer_rapport')).toBe(true)
 })
@@ -285,7 +287,8 @@ test('Pilotage : favoris en tête et rapports masqués', async ({ page, isMobile
   await page.getByRole('button', { name: 'Ajouter à mes favoris' }).click()
   await expect(page.getByRole('button', { name: 'Retirer de mes favoris' })).toHaveAttribute('aria-pressed', 'true')
   await choisirRapport(page, 'Marché extérieur', isMobile)
-  await page.getByRole('button', { name: 'Masquer de ma liste' }).click()
+  await page.getByRole('main').getByRole('button', { name: 'Autres actions' }).click()
+  await page.getByRole('menuitem', { name: 'Masquer de ma liste' }).click()
   await expect(page.getByText('Rapport masqué de ta liste')).toBeVisible()
   if (isMobile) {
     await page.getByRole('combobox', { name: 'Rapport' }).click()

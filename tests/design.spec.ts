@@ -57,13 +57,16 @@ test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ou
   const va = page.getByRole('region', { name: 'Comment va le magasin' })
   await expect(va).toContainText('70 k€')
   await expect(va).toContainText('−30,0 %')
-  for (const b of ['Appeler', 'Écrire un message', 'Planifier la visite : Lyon Test']) await expect(page.getByRole('main').getByRole('button', { name: b, exact: true }).or(page.getByRole('main').getByRole('link', { name: b, exact: true }))).toBeVisible()
+  // 310 (18/11/2026) : appel, visite, infos et « + » en vue ; le message passe dans « ⋯ »
+  for (const b of ['Appeler', 'Infos du magasin', 'Planifier la visite : Lyon Test']) await expect(page.getByRole('main').getByRole('button', { name: b, exact: true }).or(page.getByRole('main').getByRole('link', { name: b, exact: true }))).toBeVisible()
   await expect(page.getByRole('button', { name: 'Autres actions' })).toBeVisible()
   expect(await sansDebordement(page.locator('body'))).toBe(true)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-profil.png`, fullPage: true })
   await expect(page.getByRole('tab', { name: 'Messages' })).toHaveCount(0)
-  await page.getByRole('main').getByRole('button', { name: 'Écrire un message', exact: true }).or(page.getByRole('main').getByRole('link', { name: 'Écrire un message', exact: true })).click()
+  // 310 : le message est dans « ⋯ » de l'en-tête
+  await page.getByRole('main').getByRole('button', { name: 'Autres actions' }).first().click()
+  await page.getByRole('menuitem', { name: 'Écrire un message' }).click()
   // Vague 6 (68A) : sur PC, la conversation s'ouvre sur le côté ; sur téléphone, dans Messages
   if (isMobile) await expect(page).toHaveURL(/#\/echanges\/magasin\/Lyon%20Test$/)
   else await expect(page.getByRole('dialog', { name: 'Conversation : Lyon Test' })).toBeVisible()
@@ -136,7 +139,7 @@ test('glisser une tâche vers la gauche la marque faite (téléphone)', async ({
 
 // Appeler, Message et Visite en pictos à côté du nom, sur PC comme sur téléphone
 for (const f of [
-  { url: '/magasins/Nantes%20Test', nom: 'Nantes Test', etroit: true, pictos: ['Appeler', 'Écrire un message'] },
+  { url: '/magasins/Nantes%20Test', nom: 'Nantes Test', etroit: true, pictos: ['Appeler', 'Avis Google'] },
   { url: '/equipe/coach/In%C3%A8s%20EXEMPLE', nom: 'Inès EXEMPLE', pictos: ['Appeler', 'Écrire un message'] },
 ]) test(`pictos à côté du nom : ${f.nom}`, async ({ page, isMobile }, info) => {
   await seConnecter(page)
