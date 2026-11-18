@@ -630,6 +630,24 @@ export const AIDE = {
     remplir: 'Le CA HT attendu au bar et en cave, la part qui se serait faite un autre jour, les heures payées et les frais du jour.',
     calcul: 'Gain = marge du CA nouveau − redevance et publicité − heures × coût horaire × (1 + majoration) − frais. La majoration est réglée par le siège selon la convention collective. CA pour ne rien perdre = coûts ÷ (part nouvelle × (marge moyenne − 3 %)).',
   },
+  simRemuneration: {
+    titre: 'Me rémunérer',
+    quoi: 'Le même bénéfice sorti de trois façons : ma répartition, tout en rémunération, tout en dividendes. Ce que je garde chaque mois après impôts, ce qui part en impôts et cotisations, ce qui reste dans la société et ce qui sort de sa trésorerie. Des ordres de grandeur pour préparer l’échange avec l’expert-comptable, pas un conseil fiscal : la situation du foyer, la retraite et les options (barème de l’impôt) changent le résultat.',
+    remplir: 'Le statut du dirigeant, le bénéfice avant sa rémunération et avant l’impôt sur les sociétés (repris du budget : résultat avant impôt + coût du gérant), la rémunération nette par mois, la part du résultat versée en dividendes et le taux de prélèvement à la source du foyer (sur l’avis d’impôt). Gérant majoritaire : le capital, les primes d’émission et les comptes courants d’associés.',
+    calcul: 'Cotisations = rémunération nette × taux réglé par le siège (gérant majoritaire, travailleur non salarié : environ 45 %, minimum d’environ 1 255 € par an ; président de SAS, assimilé salarié : environ 80 %, parts patronale et salariale). La rémunération et ses cotisations se déduisent du bénéfice. Impôt sur les sociétés : celui des paramètres du budget (2026 : 15 % jusqu’à 42 500 € de bénéfice, 25 % au-delà). Dividendes = résultat net × part distribuée, prélèvement forfaitaire unique de 31,4 % en 2026 (12,8 % d’impôt sur le revenu et 18,6 % de prélèvements sociaux). Gérant majoritaire : la part des dividendes au-delà de 10 % du capital, des primes et des comptes courants paie les cotisations du travailleur non salarié au lieu des prélèvements sociaux. Impôt sur le revenu de la rémunération = net × taux du foyer. Je garde = rémunération nette − son impôt + dividendes nets. Trésorerie : la rémunération sort chaque mois, l’impôt sur les sociétés par acomptes trimestriels, les dividendes en une fois après l’approbation des comptes. Les cotisations ouvrent des droits (retraite, indemnités), les dividendes non. Sources : loi de finances 2026 (n° 2026-103), loi de financement de la sécurité sociale 2026 (CSG des revenus du capital à 10,6 %), code de la sécurité sociale (article L131-6), barèmes de l’Urssaf.',
+  },
+  simLoyer: {
+    titre: 'Mon loyer',
+    quoi: 'Ce que pèsent le loyer et les charges locatives dans le CA, et ce que coûte une hausse (indexation, renouvellement du bail) ou rapporte une renégociation.',
+    remplir: 'Le CA HT, la marge et l’EBE (repris du budget), le loyer et les charges locatives HT par an (repris des frais du budget), puis la hausse en % ou le nouveau loyer par mois, et les années qui restent au bail.',
+    calcul: 'Loyer et charges sur le CA = (loyer + charges) ÷ CA HT. EBE après = EBE − écart de loyer. Sur le reste du bail = écart par an × années. CA HT en plus pour absorber la hausse = écart ÷ (marge − redevance et publicité, 3 %). Loyer au repère du siège = repère × CA HT − charges, quand le siège a réglé un repère.',
+  },
+  simMix: {
+    titre: 'Mix Cave et Bar',
+    quoi: 'Ce que rapporte une part du CA qui passe de la cave au bar, ou l’inverse, à CA total égal : la marge du bar est plus forte, mais il demande plus d’heures.',
+    remplir: 'Le CA HT et la marge de la cave et du bar (repris du budget), la part du CA déplacée, puis les heures en plus par semaine, saisies ou lues dans la grille de productivité du siège.',
+    calcul: 'Marge = CA de la cave × sa marge + CA du bar × sa marge, avant et après. Heures selon la grille : CA ÷ productivité visée (CA HT par heure selon la part du bar), après moins avant, ÷ 52 semaines. Équipe = heures par semaine × 52 × coût d’une heure chargée. EBE = marge en plus − équipe ; redevance et publicité ne changent pas, le CA total restant le même.',
+  },
   simReseau: {
     titre: 'Un levier sur plusieurs magasins',
     quoi: 'Ce que rapporterait un même geste commercial fait par plusieurs magasins : une sélection, une région, les magasins d’un Coach ou tout le périmètre. Pour animer une réunion ; rien n’est enregistré.',
