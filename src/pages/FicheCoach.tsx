@@ -1,3 +1,5 @@
+import { useTheme } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import { useDroits } from '../auth/Droits'
 import { useState } from 'react'
 import Snackbar from '@mui/material/Snackbar'
@@ -34,7 +36,8 @@ import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import { BlocPortefeuille, ProfilPersonne } from '../components/Portefeuille'
 import { portefeuilleDe } from '../data/portefeuille'
 import { lienPersonne } from '../data/messagerie'
-import { fichePersonne } from '../data/personnes'
+import { departDe, fichePersonne } from '../data/personnes'
+import { BoutonDepart } from '../components/DepartCollaborateur'
 import { FilAriane } from '../components/FilAriane'
 
 // Vague 3 (Joseph, 09/11/2026, 28A) : fiche d'une personne au gabarit de la fiche magasin, trois onglets.
@@ -67,6 +70,8 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
     .sort((x, y) => y.date.localeCompare(x.date))
   const [toutes, setToutes] = useState(false)
   const { referentiels } = useDroits()
+  const depart = departDe(reseau, { type: 'coach', cle: coach.nom })
+  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const actions = actionsDes(reseau, noms)
   const ouvertes = actions.filter((x) => !x.a.faite)
   const retards = ouvertes.filter((x) => enRetard(x.a, reseau.jour)).length
@@ -75,7 +80,8 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
     <>
       <FilAriane pcSeulement etapes={[{ libelle: 'Équipe', lien: '/equipe' }]} ici={coach.nom} />
       <ProfilPersonne retour={{ libelle: 'Équipe', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe')) }} nom={coach.nom} lignes={[['Coach', coach.rr?.nom].filter(Boolean).join(' · ')]}
-        pastille={retards ? { ton: 'rouge', libelle: `${retards} tâche${retards > 1 ? 's' : ''} en retard` } : null}
+        pastille={depart ? { ton: depart < reseau.jour ? 'gris' : 'orange', libelle: `${depart < reseau.jour ? 'Parti' : 'Part'} le ${dateCourte(depart)}` } : retards ? { ton: 'rouge', libelle: `${retards} tâche${retards > 1 ? 's' : ''} en retard` } : null}
+        actions={surPC && referentiels && !coach.fictif ? <BoutonDepart reseau={reseau} personne={{ type: 'coach', cle: coach.nom }} nom={coach.nom} signaler={setMessage} /> : undefined}
         compteurs={[
           { valeur: magasins.length, libelle: magasins.length > 1 ? 'magasins' : 'magasin' },
           { valeur: faitesAn, libelle: `visites ${a.court}` },
@@ -93,6 +99,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
                 <Contact role={coach.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={coach.rr} lien={coach.rr ? lienRR(coach.rr.id) : undefined} sousTitre={coach.rr ? undefined : 'Non rattaché à ce jour'} />
               </Section>
               <SectionFichePersonnelle reseau={reseau} r={{ type: 'coach', cle: coach.nom }} />
+              {!surPC && referentiels && !coach.fictif && <BoutonDepart bouton reseau={reseau} personne={{ type: 'coach', cle: coach.nom }} nom={coach.nom} signaler={setMessage} />}
               {referentiels && !coach.fictif && <SectionAccesEquipe role="coach" cle={coach.nom} nom={coach.nom} signaler={setMessage} />}
             </Box>
           </Box>
@@ -147,7 +154,7 @@ export function FicheCoach() {
   return (
     <AvecReseau>
       {(reseau) => {
-        const coach = reseau.equipe.find((c) => c.nom === nom)
+        const coach = reseau.equipe.find((c) => c.nom === nom) ?? reseau.anciens?.coachs.find((c) => c.nom === nom)
         if (!coach) return <EmptyState icone={<PersonOutlineOutlined />} titre="Coach introuvable" texte={`Aucun Coach ne s’appelle « ${nom} ».`} action={<Button variant="contained" onClick={() => naviguer('/equipe')}>Voir toute l’équipe</Button>} />
         return <Fiche coach={coach} reseau={reseau} />
       }}

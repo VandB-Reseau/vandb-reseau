@@ -1,3 +1,5 @@
+import { useTheme } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import { useDroits } from '../auth/Droits'
 import { associesDu, mandatEffectif } from '../data/associes'
 import { SectionAcces } from '../components/AccesFranchise'
@@ -33,7 +35,8 @@ import { Ligne, Section, LigneVide } from '../components/Section'
 import { SectionEngagement } from '../components/Engagement'
 import { useEngagement } from '../data/engagement'
 import { chargeA, magasinsDuCoach } from '../data/charge'
-import { ageDepuis, estFrance, fichePersonne, franchises, libelleDepartement, libelleRole, type RefPersonne } from '../data/personnes'
+import { BoutonDepart } from '../components/DepartCollaborateur'
+import { ageDepuis, departDe, estFrance, fichePersonne, franchises, libelleDepartement, libelleRole, type RefPersonne } from '../data/personnes'
 import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienRR, telLien } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
 import { cartouche } from '../components/Social'
@@ -109,7 +112,9 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
   const changerVue = (v: VueRR) => setParams((p) => { const n = new URLSearchParams(p); n.delete('mois'); if (v === 'ensemble') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const [edition, setEdition] = useState(false)
   const [message, setMessage] = useState('')
-  const rr = reseau.rrs.find((r) => r.id === id)!
+  const rr = (reseau.rrs.find((r) => r.id === id) ?? reseau.anciens?.rrs.find((r) => r.id === id))!
+  const depart = departDe(reseau, { type: 'rr', cle: id })
+  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const coachs = reseau.equipe.filter((c) => c.rr?.id === id)
   const magasins = reseau.magasins.filter((m) => m.rr?.id === id)
   const directs = magasins.filter((m) => m.rrEnDirect)
@@ -120,7 +125,8 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
     <>
       <FilAriane pcSeulement etapes={[{ libelle: 'Équipe', lien: '/equipe' }]} ici={rr.nom} />
       <ProfilPersonne retour={{ libelle: 'Équipe', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe')) }} nom={rr.nom} lignes={[role]}
-        pastille={p.decroche ? { ton: 'rouge', libelle: `${p.decroche} magasin${p.decroche > 1 ? 's' : ''} en Décroche` } : null}
+        pastille={depart ? { ton: depart < reseau.jour ? 'gris' : 'orange', libelle: `${depart < reseau.jour ? 'Parti' : 'Part'} le ${dateCourte(depart)}` } : p.decroche ? { ton: 'rouge', libelle: `${p.decroche} magasin${p.decroche > 1 ? 's' : ''} en Décroche` } : null}
+        actions={surPC && referentiels ? <BoutonDepart reseau={reseau} personne={{ type: 'rr', cle: id }} nom={rr.nom} signaler={setMessage} /> : undefined}
         compteurs={[
           { valeur: coachs.length, libelle: coachs.length > 1 ? 'Coachs' : 'Coach' },
           { valeur: magasins.length, libelle: magasins.length > 1 ? 'magasins' : 'magasin' },
@@ -134,6 +140,7 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
             <BlocPortefeuille reseau={reseau} p={p} />
             <Box sx={{ display: 'grid', gap: 2 }}>
               <SectionFichePersonnelle reseau={reseau} r={{ type: 'rr', cle: id }} />
+              {!surPC && referentiels && <BoutonDepart bouton reseau={reseau} personne={{ type: 'rr', cle: id }} nom={rr.nom} signaler={setMessage} />}
               {referentiels && <SectionAccesEquipe role="rr" cle={id} nom={rr.nom} signaler={setMessage} />}
             </Box>
           </Box>
@@ -269,7 +276,7 @@ function Introuvable({ texte }: { texte: string }) {
 
 export function FicheRR() {
   const { id = '' } = useParams()
-  return <AvecReseau>{(reseau) => reseau.rrs.some((r) => r.id === id) ? <PageRR reseau={reseau} id={id} /> : <Introuvable texte="Ce Responsable Régional n’existe plus. Il a peut-être été supprimé." />}</AvecReseau>
+  return <AvecReseau>{(reseau) => [...reseau.rrs, ...(reseau.anciens?.rrs ?? [])].some((r) => r.id === id) ? <PageRR reseau={reseau} id={id} /> : <Introuvable texte="Ce Responsable Régional n’existe plus. Il a peut-être été supprimé." />}</AvecReseau>
 }
 
 export function FicheDirecteur() {
