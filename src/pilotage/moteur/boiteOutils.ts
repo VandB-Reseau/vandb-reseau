@@ -609,3 +609,54 @@ export function simulerProspection(x: { heuresSemaine: number; semaines: number;
   const parEntreprise = pos(x.ticket) * (part(x.marge) - rp)
   return { heures, coutTemps, ca, marge, redevance, gain: marge - redevance - coutTemps, seuil: coutTemps <= 0 ? 0 : parEntreprise > 0 ? Math.ceil(coutTemps / parEntreprise - 1e-9) : null }
 }
+
+// ── 291 · Mon loyer (Joseph, 18/11/2026) ─────────────────────────────────────────────────────────────────────────
+// Poids du loyer (et des charges locatives) dans le CA HT, effet d'une hausse annoncée ou d'une renégociation sur
+// l'EBE, cumul sur les années qui restent au bail, CA HT à vendre en plus pour absorber la hausse (marge − redevance
+// et publicité), loyer supportable au repère du siège (part du CA, 0 : pas de repère).
+export interface Loyer { ca: number; tauxMarge: number; ebe: number; loyer: number; charges: number; nouveauLoyer: number; annees: number; repere: number }
+export interface EffetLoyer {
+  avant: { immobilier: number; part: number | null; ebe: number }
+  apres: { immobilier: number; part: number | null; ebe: number }
+  ecartAn: number; ecartMois: number; cumul: number
+  caPourAbsorber: number | null   // null : marge sous la redevance, ou baisse du loyer
+  supportable: number | null      // loyer (hors charges) au repère du siège
+}
+export function simulerLoyer(x: Loyer, p: Redevances): EffetLoyer {
+  const ca = pos(x.ca), charges = pos(x.charges)
+  const avant = pos(x.loyer) + charges, apres = pos(x.nouveauLoyer) + charges
+  const ecartAn = pos(x.nouveauLoyer) - pos(x.loyer)
+  const unitaire = part(x.tauxMarge) - p.tauxRedevance - p.tauxPublicite
+  return {
+    avant: { immobilier: avant, part: ca > 0 ? avant / ca : null, ebe: x.ebe },
+    apres: { immobilier: apres, part: ca > 0 ? apres / ca : null, ebe: x.ebe - ecartAn },
+    ecartAn, ecartMois: ecartAn / 12, cumul: ecartAn * pos(x.annees),
+    caPourAbsorber: ecartAn > 0 && unitaire > 0 ? ecartAn / unitaire : null,
+    supportable: part(x.repere) > 0 && ca > 0 ? Math.max(0, part(x.repere) * ca - charges) : null,
+  }
+}
+
+// ── 292 · Mix Cave / Bar (Joseph, 18/11/2026) ────────────────────────────────────────────────────────────────────
+// Une part du CA HT passe de la cave au bar (ou l'inverse), CA total égal : la marge suit le taux de chaque univers ;
+// le bar demande plus d'heures, saisies ou lues dans la grille de productivité du siège (CA par heure selon la part du
+// bar). Redevance et publicité inchangées (même CA). EBE = marge en plus − heures en plus.
+export interface MixCaveBar { caCave: number; caBar: number; margeCave: number; margeBar: number; part: number; sens: 'vers_bar' | 'vers_cave'; heuresSemaine: number | null; coutHoraire: number; grille: { partBar: number; cible: number }[] }
+export interface EtatMix { caCave: number; caBar: number; partBar: number | null; marge: number; tauxMarge: number | null; cible: number | null; heuresVisees: number | null }
+export interface EffetMix { avant: EtatMix; apres: EtatMix; deplace: number; ecartMarge: number; heuresSemaine: number; heuresGrille: number | null; personnel: number; ecartEbe: number }
+export function simulerMix(x: MixCaveBar): EffetMix {
+  const caCave = pos(x.caCave), caBar = pos(x.caBar), ca = caCave + caBar
+  const deplace = Math.min(ca * part(x.part), x.sens === 'vers_bar' ? caCave : caBar)
+  const etat = (cave: number, bar: number): EtatMix => {
+    const marge = cave * part(x.margeCave) + bar * part(x.margeBar)
+    const partBar = ca > 0 ? bar / ca : null
+    const cible = partBar !== null && x.grille.length ? cibleProductivite(x.grille, partBar) : null
+    return { caCave: cave, caBar: bar, partBar, marge, tauxMarge: ca > 0 ? marge / ca : null, cible, heuresVisees: cible ? ca / cible : null }
+  }
+  const avant = etat(caCave, caBar)
+  const apres = x.sens === 'vers_bar' ? etat(caCave - deplace, caBar + deplace) : etat(caCave + deplace, caBar - deplace)
+  const heuresGrille = avant.heuresVisees !== null && apres.heuresVisees !== null ? (apres.heuresVisees - avant.heuresVisees) / 52 : null
+  const heuresSemaine = x.heuresSemaine ?? heuresGrille ?? 0
+  const personnel = heuresSemaine * 52 * pos(x.coutHoraire)
+  const ecartMarge = apres.marge - avant.marge
+  return { avant, apres, deplace, ecartMarge, heuresSemaine, heuresGrille, personnel, ecartEbe: ecartMarge - personnel }
+}

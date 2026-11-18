@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateurs du franchisé (Joseph, 18/11/2026, choix 287, 291, 292) : « Me rémunérer » (salaire ou dividendes : ce que
+  je garde par mois, impôts et cotisations, ce qui reste dans la société et sort de sa trésorerie, gérant majoritaire ou
+  président de SAS), « Mon loyer » (poids dans le CA, hausse, reste du bail, CA pour l'absorber, repère du siège),
+  « Mix Cave et Bar » (CA déplacé, marge, heures selon la grille de productivité). Règles sociales et fiscales 2026 et
+  repère du loyer réglables dans Paramètres, Simulateurs. Base : migration pilotage `0034_simulations_remuneration_loyer_mix`
+  (dépôt du pilotage) pour garder ces simulations ; sans elle, ils calculent mais ne se gardent pas.
 - Fiche magasin, onglet Tâches : filtre « En cours » (tâches passées en cours par leur puce de statut), sans migration
   (Joseph, 18/11/2026).
 - Fiche magasin, onglet Tâches (Joseph, 17/11/2026), sans migration : toutes les tâches du magasin en puces À faire,
