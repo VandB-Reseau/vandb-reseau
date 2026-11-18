@@ -72,7 +72,7 @@ import { useAuth } from '../auth/AuthContext'
 import { chargerSimulations, garderSimulation, retirerSimulation, SimulationPasEncoreGardable, type SimulationGardee, type TypeSimulation } from '../data/pilotage'
 import { categorieLibelle, coutHoraireEquipe, coutHoraireSmic, coutPersonne, type Categorie } from '../moteur/equipe'
 import { recommanderRemuneration, rendements, simulerRemuneration, type ScenarioRemuneration, type StatutDirigeant } from '../moteur/remunerationDirigeant'
-import { simulerFormation, type NiveauApprenti, type Puissance } from '../moteur/formation'
+import { simulerFormation, type Effectif, type NiveauApprenti, type Puissance } from '../moteur/formation'
 import {
   analyserRemises, caCorner, LIGNES_EVENEMENT, LIGNES_REMISES, margeMix, parametresSimulateurs, resteAFaire, simulerAchat, simulerCoupDur, simulerEmbauche,
   simulerInvestissement, simulerLot, simulerPrimes, simulerPrix, simulerSoiree, simulerSoireeAnimee, simulerVenteAdditionnelle, tempsFortDeSoiree,
@@ -262,6 +262,8 @@ const Saisies = ({ children }: { children: ReactNode }) => <Box sx={{ display: '
 const Resultats = ({ children }: { children: ReactNode }) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>{children}</Box>
 // Un bloc de saisies encadré, avec son sous-total à droite du titre (Joseph, 15/11/2026 : « on se repère mal dans les cases »).
 // Ordre des simulateurs d'événement : recettes, puis coûts, puis le compte qui mène au résultat.
+// Sous-total d'un bloc de frais : en négatif, signe − et rouge (Joseph, 18/11/2026 : « bien en négatif visuellement »)
+const moins = (v: number, f: (x: number) => string = montant) => (Math.abs(v) >= 0.005 ? { valeur: `− ${f(Math.abs(v))}`, negatif: true } : { valeur: f(0) })
 function Bloc({ titre, total, children }: { titre: string; total?: { libelle: string; valeur: string; negatif?: boolean }; children: ReactNode }) {
   return (
     <Box component="section" aria-label={titre} sx={{ border: 1, borderColor: 'divider', borderRadius: '12px', p: { xs: 1.5, md: 2 }, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5, minWidth: 0 }}>
@@ -283,7 +285,7 @@ function Compte({ titre, lignes, total }: { titre: string; lignes: { libelle: st
       <Typography role="cell" sx={{ flex: 1, minWidth: 0, fontWeight: fort ? 700 : undefined }}>
         {libelle}{detail && <Box component="span" sx={{ color: 'text.secondary', ml: 1, fontSize: '0.875rem' }}>{detail}</Box>}
       </Typography>
-      <Typography role="cell" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: fort ? 700 : undefined, color: fort && valeur < 0 ? 'error.main' : undefined }}>
+      <Typography role="cell" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: fort ? 700 : undefined, color: valeur <= -0.5 ? 'error.main' : undefined }}>
         {valeur < 0 ? '− ' : fort ? '' : '+ '}{montant(Math.abs(valeur))}
       </Typography>
     </Box>
@@ -361,11 +363,11 @@ type Etats = {
     coutHoraire: number; modeHeure: ModeHeure; partSmic: number
   }
   // 287, 291, 292 (Joseph, 18/11/2026) ; null : le chiffre suit le budget du magasin
-  remuneration: { statut: StatutDirigeant; benefice: number | null; netMois: number | null; distribution: number; capital: number; primes: number; comptesCourants: number; parts: number; autresRevenus: number; cible: number }
+  remuneration: { statut: StatutDirigeant; benefice: number | null; netMois: number | null; distribution: number | null; capital: number; primes: number; comptesCourants: number; parts: number; autresRevenus: number; cible: number }
   formation: {
     jours: number; heuresParJour: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number; pedagogiqueJour: number
     trajets: number; kmAllerRetour: number; puissance: Puissance; electrique: 'oui' | 'non'; peages: number; nuits: number; prixNuit: number; repas: number; prixRepas: number
-    heuresRemplacement: number; tauxMarge: number | null; profil: 'salarie' | 'apprenti'; niveau: NiveauApprenti; opco: 'oui' | 'non'; opcoDejaUtilise: number; opcoAutres: number; cpf: number
+    heuresRemplacement: number; tauxMarge: number | null; profil: 'salarie' | 'apprenti'; niveau: NiveauApprenti; opco: 'oui' | 'non'; opcoDejaUtilise: number; opcoAutres: number; cpf: number; effectif: Effectif | null
   }
   loyer: { ca: number | null; marge: number | null; ebe: number | null; loyer: number | null; charges: number | null; mode: 'hausse' | 'montant'; hausse: number; nouveauMois: number; annees: number }
   mix: { caCave: number | null; caBar: number | null; margeCave: number | null; margeBar: number | null; part: number; sens: 'vers_bar' | 'vers_cave'; heures: 'grille' | 'saisie'; heuresSemaine: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number }
@@ -516,12 +518,12 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       prospection: true, heuresSemaine: 3, semaines: 26, entreprises: 15, ticket: 330, margeProspection: null, coutHoraire: s.coutHoraire, ...HEURE,
     },
     // 287 : 2 000 € nets par mois, la moitié du résultat en dividendes, 10 000 € de capital, foyer à 1 part ; je veux garder 2 500 € par mois
-    remuneration: { statut: 'tns', benefice: null, netMois: null, distribution: 0.5, capital: 10_000, primes: 0, comptesCourants: 0, parts: 1, autresRevenus: 0, cible: 2_500 },
+    remuneration: { statut: 'tns', benefice: null, netMois: null, distribution: null, capital: 10_000, primes: 0, comptesCourants: 0, parts: 1, autresRevenus: 0, cible: 2_500 },
     // Former un collaborateur : 2 jours de 7 h à 350 € HT par jour, 240 km aller-retour en 5 CV, 1 nuit, 4 repas, 14 h remplacées
     formation: {
       jours: 2, heuresParJour: 7, coutHoraire: s.coutHoraire, ...HEURE, pedagogiqueJour: 350,
       trajets: 1, kmAllerRetour: 240, puissance: 'cv5', electrique: 'non', peages: 30, nuits: 1, prixNuit: 95, repas: 4, prixRepas: 18,
-      heuresRemplacement: 14, tauxMarge: null, profil: 'salarie', niveau: 'niveau34', opco: 'oui', opcoDejaUtilise: 0, opcoAutres: 0, cpf: 0,
+      heuresRemplacement: 14, tauxMarge: null, profil: 'salarie', niveau: 'niveau34', opco: 'oui', opcoDejaUtilise: 0, opcoAutres: 0, cpf: 0, effectif: null,
     },
     // 291 : hausse de 5 % sur les 3 ans qui restent au bail
     loyer: { ca: null, marge: null, ebe: null, loyer: null, charges: null, mode: 'hausse', hausse: 0.05, nouveauMois: 0, annees: 3 },
@@ -841,7 +843,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
               <Montant libelle="CA HT de la période" valeur={ca} onChange={(v) => maj('prix', { ca: v })} />
             </Saisies>
           </Bloc>
-          <Bloc titre="2. Remises et offerts accordés" total={{ libelle: 'Total HT', valeur: montant(r.total) }}>
+          <Bloc titre="2. Remises et offerts accordés" total={{ libelle: 'Total HT', ...moins(r.total) }}>
             <Saisies>
               {LIGNES_REMISES.map((l) => <Montant key={l.cle} libelle={`${l.libelle}, HT`} valeur={e.montants[l.cle] ?? 0} onChange={(v) => maj('prix', { montants: { ...e.montants, [l.cle]: v } })} />)}
             </Saisies>
@@ -1151,7 +1153,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           </Saisies>
         </Bloc>
         </>}
-        <Bloc titre={`${n(3)}. Coûts de l’événement HT`} total={{ libelle: 'Total', valeur: `− ${montant(extrasEtCouts)}` }}>
+        <Bloc titre={`${n(3)}. Coûts de l’événement HT`} total={{ libelle: 'Total', ...moins(extrasEtCouts) }}>
           <Saisies>
             {LIGNES_EVENEMENT.map((l) => l.cle === 'divers'
               ? <Montant key={l.cle} libelle={l.libelle} valeur={e.couts} onChange={(v) => maj('soiree', { couts: v })} />
@@ -1159,7 +1161,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             <Montant libelle="Extras de personnel" valeur={e.extras} onChange={(v) => maj('soiree', { extras: v })} />
           </Saisies>
         </Bloc>
-        <Bloc titre={`${n(4)}. Heures en plus de l’équipe en place`} total={{ libelle: 'Total', valeur: `− ${montant(r.equipeEnPlace)}` }}>
+        <Bloc titre={`${n(4)}. Heures en plus de l’équipe en place`} total={{ libelle: 'Total', ...moins(r.equipeEnPlace) }}>
           <Saisies>
             <Montant libelle="Personnes" valeur={e.personnes} onChange={(v) => maj('soiree', { personnes: Math.max(0, Math.round(v)) })} unite="" />
             <Montant libelle="Heures chacune" valeur={e.heuresEquipe} onChange={(v) => maj('soiree', { heuresEquipe: v })} unite="h" />
@@ -1223,7 +1225,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             <Taux libelle="Remise du fournisseur" valeur={e.remise} onChange={(v) => maj('achat', { remise: v })} />
           </Saisies>
         </Bloc>
-        <Bloc titre="2. Ce que ça coûte de stocker" total={{ libelle: 'Total', valeur: `− ${montant(r.perteInvendu + r.coutArgent)}` }}>
+        <Bloc titre="2. Ce que ça coûte de stocker" total={{ libelle: 'Total', ...moins(r.perteInvendu + r.coutArgent) }}>
           <Saisies>
             <Montant libelle="Temps pour tout vendre" valeur={e.mois} onChange={(v) => maj('achat', { mois: v })} unite="mois" />
             <Taux libelle="Part qui risque de rester" valeur={e.invendu} onChange={(v) => maj('achat', { invendu: v })} />
@@ -1283,7 +1285,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           ? <Typography color="text.secondary">Préconisation du siège pour {montant(e.objectifExterieur)} de CA : {entier(pal.tireuses)} tireuses, {montant(pal.investissement)} d’investissement{e.camion ? ` et ${montant(s.marcheExterieur.camion)} de camion` : ''}, {unChiffre(pal.heures)} h par semaine{s.coutHoraire > 0 ? `, soit ${montant(chargesExt ?? 0)} par an au coût horaire du siège` : ''}.</Typography>
           : <Typography color="text.secondary">Pas encore de préconisation du siège : coût (tireuses, véhicule, stock déporté) et charges (personnel, local) à saisir ci-dessous.</Typography>)}
         </Bloc>
-        <Bloc titre="2. L’investissement" total={{ libelle: 'Coût HT', valeur: montant(cout) }}>
+        <Bloc titre="2. L’investissement" total={{ libelle: 'Coût HT', ...moins(cout) }}>
         <Saisies>
           {coutExt === null ? <Montant libelle="Coût HT" valeur={e.cout} onChange={(v) => maj('investissement', { cout: v })} /> : null}
           <Montant libelle="Amorti sur" valeur={e.duree} onChange={(v) => maj('investissement', { duree: v })} unite="ans" />
@@ -1341,7 +1343,6 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const margeExt = margeFut(Math.max(0, e.prixVente - e.remise), e.prixAchat)
     const m = (k: keyof Etats['exterieur']) => (v: number) => maj('exterieur', { [k]: v })
     // Facturé à un organisateur (B2B) : tout en HT (Joseph, 14/11/2026). Le TTC ne sert qu'à la vente au client final.
-    const moins = (v: number) => ({ valeur: `− ${montant(v)}`, negatif: false })
     const donSponso = r.don.cout + r.sponsoring + r.retrocession
     saisies = (
       <Stack spacing={2}>
@@ -1508,7 +1509,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
         </Saisies>
         <Typography color="text.secondary">Marge par fût : {centimes(marge.valeur)} HT{marge.taux !== null ? `, soit ${taux(marge.taux)} du prix de vente HT (${centimes(prixVente)})` : ''}. Net par fût : {centimes(net)}, après {centimes(fut.redevanceParFut)} de redevance et publicité, et CO2.</Typography>
         </Bloc>
-        <Bloc titre="3. Ce que coûte une tireuse de plus" total={{ libelle: 'Par an', valeur: `− ${montant(r.coutAnnuelNeuve)}` }}>
+        <Bloc titre="3. Ce que coûte une tireuse de plus" total={{ libelle: 'Par an', ...moins(r.coutAnnuelNeuve) }}>
         <Saisies>
           <Montant libelle="Prix d’une tireuse neuve HT" valeur={e.prixNeuve} onChange={m('prixNeuve')} />
           <Montant libelle="Durée de vie" valeur={e.duree} onChange={m('duree')} unite="ans" />
@@ -1756,7 +1757,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     saisies = (
       <Stack spacing={2}>
         {entete}
-        <Bloc titre="2. Ce qu’il coûte" total={{ libelle: 'Coût HT', valeur: centimes(cout) }}>
+        <Bloc titre="2. Ce qu’il coûte" total={{ libelle: 'Coût HT', ...moins(cout, centimes) }}>
         {e.composants.map((c, i) => (
           <Saisies key={i}>
             <Texte libelle="Composant" aria={`Composant ${i + 1}`} valeur={c.libelle} onChange={(libelle) => comp(i, { libelle })} largeur={180} />
@@ -1985,7 +1986,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Box>{lignes.length < 40 && <Button startIcon={<AddOutlined />} onClick={() => maj('remises_b2b', { [cleLignes]: [...lignes, parFamille ? { libelle: '', quantite: 0, prixTTC: 0, achatHT: 0, taux: 0 } : { libelle: '', quantite: 0, prixTTC: 0, achatHT: 0 }] })} sx={{ minHeight: 48 }}>{parFamille ? 'Ajouter une famille' : 'Ajouter un produit'}</Button>}</Box>
           {parFamille && <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>Par famille, les prix moyens donnent une première idée ; produit par produit, la commande réelle.</Typography>}
         </Bloc>
-        <Bloc titre="4. Démarcher d’autres entreprises" total={e.prospection ? { libelle: 'Temps passé', valeur: `− ${montant(pr.coutTemps)}` } : undefined}>
+        <Bloc titre="4. Démarcher d’autres entreprises" total={e.prospection ? { libelle: 'Temps passé', ...moins(pr.coutTemps) } : undefined}>
           <Saisies>
             <Choix libelle="Prospection" valeur={e.prospection ? 'oui' : 'non'} onChange={(v) => maj('remises_b2b', { prospection: v === 'oui' })} options={[['oui', 'À chiffrer'], ['non', 'Sans']]} />
             {e.prospection && <>
@@ -2096,7 +2097,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Taux libelle="Part qui serait venue un autre jour" valeur={e.report} onChange={(v) => maj('ouverture', { report: v })} />
         </Saisies>
         </Bloc>
-        <Bloc titre="2. Ce qu’elle coûte" total={{ libelle: 'Total', valeur: `− ${montant(r.personnel + r.frais)}` }}>
+        <Bloc titre="2. Ce qu’elle coûte" total={{ libelle: 'Total', ...moins(r.personnel + r.frais) }}>
         <Saisies>
           <Montant libelle="Heures payées" valeur={e.heures} onChange={(v) => maj('ouverture', { heures: v })} unite="h" />
           <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={parametresSimulateurs(p).coutHoraire > 0} onChange={(v) => maj('ouverture', v)} />
@@ -2127,7 +2128,9 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
 
   // ── 287 · Me rémunérer : salaire ou dividendes (Joseph, 18/11/2026 ; corrections de 10h41 : charges en négatif, flat
   // tax à part, statut non salarié ou assimilé salarié, capital, primes et comptes courants à part, pourcentages et
-  // explications, montage recommandé pour ce que je veux garder par mois, net après impôts)
+  // explications, montage recommandé pour ce que je veux garder par mois, net après impôts). Joseph 18/11/2026 14h50 :
+  // « partir de la cible » : le montant visé donne le montage recommandé, qui préremplit la répartition (netMois et
+  // distribution à null = suivre la recommandation) ; ajuster un champ fige les deux, « Revenir à la recommandation »
   if (choisi === 'remuneration') {
     const e = etats.remuneration
     const gerants = h?.equipe?.filter((x) => x.categorie === 'gerant_tns') ?? []
@@ -2135,11 +2138,14 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const beneficeBudget = b ? Math.round(b.resultatAvantImpot + coutGerant) : null
     const netBudget = gerants.length ? Math.round(somme(gerants.map((x) => x.brutMensuel))) : null
     const benefice = e.benefice ?? beneficeBudget ?? 60_000
-    const netMois = e.netMois ?? netBudget ?? 2_000
     const regles = s.remuneration
     const base = { benefice, statut: e.statut, capital: e.capital, primes: e.primes, comptesCourants: e.comptesCourants, parts: e.parts, autresRevenus: e.autresRevenus, deficit: h?.deficitReportable }
-    const r = simulerRemuneration({ ...base, netMois, distribution: e.distribution }, regles, p.impot)
     const reco = recommanderRemuneration(base, e.cible * 12, regles, p.impot)
+    const suitReco = !!reco && e.netMois === null && e.distribution === null
+    const netMois = e.netMois ?? reco?.netMois ?? netBudget ?? 2_000
+    const distribution = e.distribution ?? reco?.distribution ?? 0
+    const sourceRepartition = suitReco ? 'recommandé' : null
+    const r = simulerRemuneration({ ...base, netMois, distribution }, regles, p.impot)
     const c = r.choix
     const tns = e.statut === 'tns'
     const tauxCoti = tns ? regles.cotisationsTNS : regles.cotisationsAssimile
@@ -2166,24 +2172,27 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             <Montant libelle="Autres revenus imposables du foyer par an" valeur={e.autresRevenus} onChange={(v) => maj('remuneration', { autresRevenus: Math.max(0, v) })} />
           </Saisies>
         </Bloc>
-        <Bloc titre="3. Ma répartition">
-          <Saisies>
-            <Montant libelle="Rémunération nette par mois" valeur={netMois} onChange={(v) => maj('remuneration', { netMois: Math.max(0, v) })} source={e.netMois === null && netBudget !== null && 'budget'} pas={100} />
-            <Taux libelle="Part du résultat versée en dividendes" valeur={e.distribution} onChange={(v) => maj('remuneration', { distribution: Math.min(1, Math.max(0, v)) })} />
-          </Saisies>
-        </Bloc>
-        <Bloc titre="4. Ce que je veux garder">
+        <Bloc titre="3. Ce que je veux garder">
           <Saisies>
             <Montant libelle="Je veux garder par mois, après impôts" valeur={e.cible} onChange={(v) => maj('remuneration', { cible: Math.max(0, v) })} pas={100} />
           </Saisies>
         </Bloc>
+        <Bloc titre="4. Ma répartition">
+          <Saisies>
+            <Montant libelle="Rémunération nette par mois" valeur={netMois} onChange={(v) => maj('remuneration', { netMois: Math.max(0, v), distribution })}
+              source={sourceRepartition ?? (e.netMois === null && !reco && netBudget !== null && 'budget')} pas={100} />
+            <Taux libelle="Part du résultat versée en dividendes" valeur={distribution} onChange={(v) => maj('remuneration', { netMois, distribution: Math.min(1, Math.max(0, v)) })} source={sourceRepartition} />
+            {reco && !suitReco && <Button variant="outlined" startIcon={<RestartAltOutlined />} onClick={() => maj('remuneration', { netMois: null, distribution: null })} sx={{ minHeight: 48, alignSelf: 'flex-end' }}>Revenir à la recommandation</Button>}
+          </Saisies>
+        </Bloc>
       </Stack>
     )
-    nomParDefaut = `${montant(netMois)} nets par mois, ${taux(e.distribution)} en dividendes`
+    nomParDefaut = `${montant(netMois)} nets par mois, ${taux(distribution)} en dividendes`
     const montage = (x: { netMois: number; distribution: number; scenario: ScenarioRemuneration }) => `${montant(x.netMois)} nets de rémunération par mois et ${taux(x.distribution)} du résultat en dividendes (${montant(x.scenario.dividendes)} par an)`
-    phrase = `${nomParDefaut} : je garde ${montant(c.netPerso / 12)} par mois après impôts, ${montant(c.impotsEtCotisations / 12)} par mois partent en impôts et cotisations, ${montant(c.resteSociete)} restent dans la société. Tout en rémunération : ${montant(r.toutSalaire.netPerso / 12)} par mois ; tout en dividendes : ${montant(r.toutDividendes.netPerso / 12)}.`
-      + (reco ? reco.atteint ? ` Pour garder ${montant(e.cible)} par mois : ${montage(reco)}.` : ` ${montant(e.cible)} par mois est hors d’atteinte : au mieux ${montant(reco.scenario.netPerso / 12)}.` : '')
-    const colonnes: [string, ScenarioRemuneration][] = [['Ma répartition', c], ...(reco ? [['Recommandé', reco.scenario] as [string, ScenarioRemuneration]] : []), ['Tout en rémunération', r.toutSalaire], ['Tout en dividendes', r.toutDividendes]]
+    phrase = (suitReco && reco ? reco.atteint ? `Pour garder ${montant(e.cible)} par mois : ` : `${montant(e.cible)} par mois est hors d’atteinte, au mieux : ` : '')
+      + `${nomParDefaut} : je garde ${montant(c.netPerso / 12)} par mois après impôts, ${montant(c.impotsEtCotisations / 12)} par mois partent en impôts et cotisations, ${montant(c.resteSociete)} restent dans la société. Tout en rémunération : ${montant(r.toutSalaire.netPerso / 12)} par mois ; tout en dividendes : ${montant(r.toutDividendes.netPerso / 12)}.`
+      + (reco && !suitReco ? reco.atteint ? ` Pour garder ${montant(e.cible)} par mois : ${montage(reco)}.` : ` ${montant(e.cible)} par mois est hors d’atteinte : au mieux ${montant(reco.scenario.netPerso / 12)}.` : '')
+    const colonnes: [string, ScenarioRemuneration][] = [['Ma répartition', c], ...(reco && !suitReco ? [['Recommandé', reco.scenario] as [string, ScenarioRemuneration]] : []), ['Tout en rémunération', r.toutSalaire], ['Tout en dividendes', r.toutDividendes]]
     // Une ligne : libellé, explication, valeur (négative pour ce qui part), pourcentage du bénéfice affiché, ligne forte
     type Ligne = { l: string; d?: string; f: (x: ScenarioRemuneration) => number; pct?: boolean; fort?: boolean; si?: boolean }
     const lignes: Ligne[] = [
@@ -2214,7 +2223,6 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             {tns && ` Les dividendes restent sous ${montant(seuil)} par an : au-delà, ils paient les cotisations du non-salarié ; des comptes courants d’associés plus élevés relèvent ce seuil.`}
             {reco.distribution > 0 && ' Les dividendes n’ouvrent aucun droit à la retraite : à discuter avec ton expert-comptable si la rémunération est basse.'}
           </Typography>}
-          <Box><Button variant="outlined" onClick={() => maj('remuneration', { netMois: reco.netMois, distribution: reco.distribution })} sx={{ minHeight: 48 }}>Reprendre dans ma répartition</Button></Box>
         </Box>}
         <Box sx={{ overflowX: 'auto' }}>
           <Table size="small" aria-label="Salaire ou dividendes" sx={{ minWidth: 640 }}>
@@ -2357,17 +2365,20 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const e = etats.formation
     const marge = e.tauxMarge ?? (b && b.ca > 0 ? Math.round(b.tauxMarge * 100) / 100 : 0.45)
     const apprenti = e.profil === 'apprenti'
+    // Taille de l'entreprise pour le budget OPCO : salariés de l'équipe du budget, tant qu'elle n'est pas choisie
+    const salariesBudget = h?.equipe ? h.equipe.filter((x) => x.categorie !== 'gerant_tns').length : null
+    const effectif: Effectif = e.effectif ?? (salariesBudget !== null && salariesBudget >= 11 ? 'de11a49' : 'moins11')
     const r = simulerFormation({
       jours: e.jours, heuresParJour: e.heuresParJour, coutHeure: heure(e), pedagogiqueJour: e.pedagogiqueJour,
       trajets: e.trajets, kmAllerRetour: e.kmAllerRetour, puissance: e.puissance, electrique: e.electrique === 'oui', peages: e.peages,
       nuits: e.nuits, prixNuit: e.prixNuit, repas: e.repas, prixRepas: e.prixRepas,
       heuresRemplacement: e.heuresRemplacement, coutHeureRemplacement: heure(e),
-      opco: e.opco === 'oui', opcoDejaUtilise: e.opcoDejaUtilise, opcoAutres: e.opcoAutres, cpf: e.cpf,
+      opco: e.opco === 'oui', opcoDejaUtilise: e.opcoDejaUtilise, opcoAutres: e.opcoAutres, cpf: e.cpf, effectif,
       apprenti: apprenti ? e.niveau : null, tauxMarge: marge,
     }, s.formation, p.tauxRedevance + p.tauxPublicite)
     saisies = (
       <Stack spacing={2}>
-        <Bloc titre="1. La formation" total={{ libelle: 'Temps et prix', valeur: montant(r.salaire + r.pedagogique) }}>
+        <Bloc titre="1. La formation" total={{ libelle: 'Temps et prix', ...moins(r.salaire + r.pedagogique) }}>
           <Saisies>
             <Montant libelle="Jours de formation" valeur={e.jours} onChange={(v) => maj('formation', { jours: Math.max(0, v) })} unite="j" pas={1} />
             <Montant libelle="Heures par jour" valeur={e.heuresParJour} onChange={(v) => maj('formation', { heuresParJour: Math.max(0, v) })} unite="h" />
@@ -2377,7 +2388,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={s.coutHoraire > 0} onChange={(v) => maj('formation', v)} />
           </Saisies>
         </Bloc>
-        <Bloc titre="2. Trajet, hôtel et repas" total={{ libelle: 'Frais', valeur: montant(r.indemnites + r.peages + r.hotel + r.repas) }}>
+        <Bloc titre="2. Trajet, hôtel et repas" total={{ libelle: 'Frais', ...moins(r.indemnites + r.peages + r.hotel + r.repas) }}>
           <Saisies>
             <Montant libelle="Allers-retours" valeur={e.trajets} onChange={(v) => maj('formation', { trajets: Math.max(0, v) })} unite="" pas={1} />
             <Montant libelle="Km par aller-retour" valeur={e.kmAllerRetour} onChange={(v) => maj('formation', { kmAllerRetour: Math.max(0, v) })} unite="km" />
@@ -2393,7 +2404,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             <Montant libelle="Prix d’un repas" valeur={e.prixRepas} onChange={(v) => maj('formation', { prixRepas: Math.max(0, v) })} />
           </Saisies>
         </Bloc>
-        <Bloc titre="3. En magasin" total={{ libelle: 'Remplacement', valeur: montant(r.remplacement) }}>
+        <Bloc titre="3. En magasin" total={{ libelle: 'Remplacement', ...moins(r.remplacement) }}>
           <Saisies>
             <Montant libelle="Heures payées pour le remplacer" valeur={e.heuresRemplacement} onChange={(v) => maj('formation', { heuresRemplacement: Math.max(0, v) })} unite="h" />
             <Taux libelle="Taux de marge du magasin" valeur={marge} onChange={(v) => maj('formation', { tauxMarge: v })} source={e.tauxMarge === null && !!b && 'budget'} />
@@ -2407,7 +2418,13 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
                 options={[['niveau34', 'Jusqu’au bac'], ['niveau5', 'BTS'], ['niveau67', 'Licence, master'], ['handicap', 'Situation de handicap']]} />
               : <>
                 <Choix libelle="Demande à l’OPCO" valeur={e.opco} onChange={(opco) => maj('formation', { opco })} options={[['oui', 'Oui'], ['non', 'Non']]} />
-                {e.opco === 'oui' && <Montant libelle="Budget OPCO déjà utilisé cette année" valeur={e.opcoDejaUtilise} onChange={(v) => maj('formation', { opcoDejaUtilise: Math.max(0, v) })} />}
+                {e.opco === 'oui' && <>
+                  <Choix libelle={`Salariés${e.effectif === null && salariesBudget !== null ? ' (équipe du budget)' : ''}`} valeur={effectif} onChange={(v) => maj('formation', { effectif: v })} options={[['moins11', 'Moins de 11'], ['de11a49', '11 à 49']]} />
+                  <Montant libelle="Budget OPCO déjà utilisé cette année" valeur={e.opcoDejaUtilise} onChange={(v) => maj('formation', { opcoDejaUtilise: Math.max(0, v) })} />
+                  {r.budgetOpco !== null && <Typography color="text.secondary" sx={{ alignSelf: 'center' }} data-testid="budget-opco">
+                    Budget OPCO {montant(r.budgetOpco)} par an : reste {montant(r.budgetOpcoAvant ?? 0)}, puis {montant(r.budgetOpcoApres ?? 0)} après cette formation
+                  </Typography>}
+                </>}
                 <Montant libelle="Droits CPF mobilisés par le collaborateur" valeur={e.cpf} onChange={(v) => maj('formation', { cpf: Math.max(0, v) })} />
               </>}
             {(apprenti || e.opco === 'oui') && <Montant libelle="Autres frais pris par l’OPCO" valeur={e.opcoAutres} onChange={(v) => maj('formation', { opcoAutres: Math.max(0, v) })} />}
@@ -2416,7 +2433,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       </Stack>
     )
     nomParDefaut = `Formation de ${unChiffre(e.jours)} jour${e.jours >= 2 ? 's' : ''}${apprenti ? ', apprenti' : ''}`
-    phrase = `${nomParDefaut} : coût ${montant(r.coutTotal)}, pris en charge ${montant(r.financements)}, ${r.resteACharge >= 0 ? `reste ${montant(r.resteACharge)} au magasin${r.parJour !== null ? ` (${montant(r.parJour)} par jour)` : ''}` : `les aides dépassent le coût de ${montant(-r.resteACharge)}`}.${r.caPourPayer !== null ? ` Il faut ${montant(r.caPourPayer)} de CA HT pour le payer.` : ''}`
+    phrase = `${nomParDefaut} : coût ${montant(r.coutTotal)}, pris en charge ${montant(r.financements)}, ${r.resteACharge >= 0 ? `reste ${montant(r.resteACharge)} au magasin${r.parJour !== null ? ` (${montant(r.parJour)} par jour)` : ''}` : `les aides dépassent le coût de ${montant(-r.resteACharge)}`}.${r.caPourPayer !== null ? ` Il faut ${montant(r.caPourPayer)} de CA HT pour le payer.` : ''}${!apprenti && e.opco === 'oui' && r.budgetOpcoApres !== null ? ` Budget OPCO de l’année : il restera ${montant(r.budgetOpcoApres)}.` : ''}`
     resultats = (
       <Stack spacing={2}>
         <Compte titre="Coût de la formation" lignes={[
@@ -2428,7 +2445,8 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           { libelle: 'Repas', valeur: -r.repas },
           { libelle: 'Remplacement en magasin', valeur: -r.remplacement, detail: `${unChiffre(e.heuresRemplacement)} h` },
           { libelle: 'Droits CPF du collaborateur', valeur: r.cpf },
-          { libelle: apprenti ? 'OPCO : formation au CFA' : 'OPCO : prix de la formation', valeur: r.opcoPedagogique, detail: apprenti ? 'niveau de prise en charge du contrat' : `jusqu’à ${montant(s.formation.opcoHeure)} par heure${s.formation.opcoBudget > 0 ? `, budget ${montant(s.formation.opcoBudget)} par an` : ''}` },
+          { libelle: apprenti ? 'OPCO : formation au CFA' : 'OPCO : prix de la formation', valeur: r.opcoPedagogique, detail: apprenti ? 'niveau de prise en charge du contrat' : `${s.formation.opcoPedagogiqueHeure > 0 ? `jusqu’à ${montant(s.formation.opcoPedagogiqueHeure)} par heure` : 'jusqu’à 100 %'}${r.budgetOpco !== null ? `, budget ${montant(r.budgetOpco)} par an` : ''}` },
+          { libelle: 'OPCO : salaire pendant la formation', valeur: r.opcoSalaire, detail: `jusqu’à ${centimes(s.formation.opcoSalaireHeure)} par heure, dans le même budget` },
           { libelle: 'OPCO : autres frais', valeur: r.opcoAutres },
           { libelle: 'Aide à l’embauche de l’apprenti', valeur: r.aide, detail: '1re année' },
         ]} total={{ libelle: r.resteACharge >= 0 ? 'Reste à charge du magasin' : 'Les aides dépassent le coût de', valeur: -r.resteACharge }} />

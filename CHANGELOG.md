@@ -10,6 +10,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 ## À venir
 
 - Fiche magasin : picto « Avis Google » distinct de l'étoile des favoris (bulle d'avis) ; onglet « Équipements » avant l'Historique, équipements retirés d'« Infos du magasin » (équipe et franchisé) (Joseph, 18/11/2026), sans migration.
+- Simulateurs (Joseph, 18/11/2026), sans migration. « Me rémunérer » part de la cible : ce que je veux garder par mois
+  après impôts donne le montage recommandé, qui préremplit ma répartition (étiquette « recommandé ») ; la répartition
+  s'ajuste à la main, « Revenir à la recommandation ». Frais en négatif partout : sous-totaux de frais avec le signe −
+  et en rouge, lignes de coûts en rouge dans les comptes. « Former un collaborateur » : budget OPCO de l'année simulé
+  (L'Opcommerce, commerce de détail alimentaire spécialisé IDCC 3237 : 2 000 € sous 11 salariés, 3 500 € de 11 à 49,
+  prix de la formation jusqu'à 100 %, salaire 13 € par heure), taille repérée dans l'équipe du budget, reste du budget
+  avant et après la formation ; nouveaux repères dans Paramètres (les anciens plafonds AKTO ne s'appliquent plus).
 - Revue de tous les écrans, propositions 293 à 360 en un seul lot (Joseph, 18/11/2026), sans migration.
   Défauts : sélecteur « Choisir un magasin » du franchisé, tuiles Mes chiffres en lignes, repères réseau sur deux lignes,
   « vs septembre 2025 » dans les entretiens, menu PC plus serré, Pilotage aux couleurs V and B, meilleur levier sans budget
