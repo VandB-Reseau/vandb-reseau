@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche magasin, onglet « Équipements » en tableau prérempli (Joseph, 18/11/2026), sans migration : chaque type a sa ligne,
+  quantité −/+ (ou tapée), année et prix d'achat HT saisis sur la ligne et enregistrés seuls ; « Ajouter un autre équipement »
+  pour le reste ; crayon pour la précision, la note ou le retrait.
 - Tâches des campagnes (Joseph, 18/11/2026) : chaque point d'une campagne devient une tâche de chaque magasin concerné,
   portée par son franchisé, pour la fin de la campagne, avec la puce « Campagne : nom » (onglet Tâches de la fiche,
   listes Tâches, accueil, espace du franchisé). Rien n'est recopié : « Fait » constate le point, « Rouvrir » le remet à
