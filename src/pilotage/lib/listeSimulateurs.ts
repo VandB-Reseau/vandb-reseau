@@ -18,4 +18,8 @@ export const LISTE_SIMULATEURS: { cle: TypeSimulation; titre: string; question: 
   { cle: 'ouverture', titre: 'Dimanche ou jour férié', question: 'Ouvrir ce jour-là rapporte-t-il ?' },
   // 228 (Joseph, 16/11/2026) : son fichier « Simulateur remises B2B » dans l'app
   { cle: 'remises_b2b', titre: 'Remises entreprise par paliers', question: 'Quelle remise par palier sans casser ma marge ?' },
+  // 287, 291, 292 (Joseph, 18/11/2026)
+  { cle: 'remuneration', titre: 'Me rémunérer', question: 'Salaire ou dividendes : combien je garde, combien part en impôts ?' },
+  { cle: 'loyer', titre: 'Mon loyer', question: 'Que pèse mon loyer, que coûte une hausse ?' },
+  { cle: 'mix', titre: 'Mix Cave et Bar', question: 'Si plus de CA passe au bar, que gagne-t-on ?' },
 ]

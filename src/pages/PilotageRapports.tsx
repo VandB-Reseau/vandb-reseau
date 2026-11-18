@@ -30,7 +30,7 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import { brand, styleChiffre } from '../theme/theme'
+import { brand } from '../theme/theme'
 import TableSortLabel from '@mui/material/TableSortLabel'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
@@ -61,7 +61,7 @@ import { useEngagement, type Engagement } from '../data/engagement'
 import {
   DECOUPAGES, PUBLICS, THEMES, connaitreThematiques, rapportsProposes, type Public, type RapportPropose, TYPES_PERIODE, axe, axesVisibles, calculer, definitionVide, dernierMoisClos, formater,
   indicateur, indicateursVisibles, libelleMoisLong, libellePeriode, normaliserDefinition, tonCellule, valeursAxe,
-  type AxeId, type Cellule, type Contexte, type Definition, type FinanceMagasin, type Indicateur, type Resultat, type Theme,
+  type AxeId, type Cellule, type Contexte, type Definition, TYPES_GRAPHE, type TypeGraphe, type FinanceMagasin, type Indicateur, type Resultat, type Theme,
 } from '../data/rapports'
 import { basculerFavori, basculerMasque, useListeRapports } from '../data/rapportsListe'
 import { chargerRapports, enregistrerRapport, supprimerRapport, type RapportEnregistre } from '../data/rapportsBase'
@@ -571,7 +571,12 @@ function Affichage({ resultat, def, changer, surPC }: { resultat: Resultat; def:
   if (!resultat.magasins) return <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>Aucun magasin ne correspond à ces filtres. Retire un filtre pour élargir la sélection.</Typography>
   return (
     <>
-      <Box className="pas-a-l-impression" sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
+      <Box className="pas-a-l-impression" sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+        {def.affichage !== 'tableau' && (
+          <TextField select size="small" label="Type de graphe" value={def.graphe ?? 'auto'} onChange={(e) => changer({ graphe: e.target.value as TypeGraphe })} sx={{ minWidth: 170, '& .MuiInputBase-root': { minHeight: 48 }, '& .MuiSelect-nativeInput': { height: '100%' } }}>
+            {TYPES_GRAPHE.map((g) => <MenuItem key={g.cle} value={g.cle} sx={{ minHeight: 48 }}>{g.libelle}</MenuItem>)}
+          </TextField>
+        )}
         <ToggleButtonGroup exclusive size="small" value={def.affichage} onChange={(_e, v) => v && changer({ affichage: v })} aria-label="Affichage du rapport">
           <ToggleButton value="tableau" sx={{ minHeight: 48, px: 2 }}>Tableau</ToggleButton>
           <ToggleButton value="graphes" sx={{ minHeight: 48, px: 2 }}>Graphes</ToggleButton>
@@ -586,54 +591,33 @@ function Affichage({ resultat, def, changer, surPC }: { resultat: Resultat; def:
 
 const COULEURS = { bon: brand.vertFonce, mauvais: brand.brique, neutre: brand.anthracite }
 const couleur = (i: Indicateur, c: Cellule) => { const t = tonCellule(i, c); return t ? COULEURS[t] : COULEURS.neutre }
+// Parts du camembert : couleurs bien distinctes, la dernière (gris) pour « Autres »
+const PARTS = ['#2f4f7a', '#a3162f', '#1d6b3a', '#b26a00', '#5b3f8c', '#1f7a7a', '#8c4a2f', '#6b6b6b']
+
+interface Point { libelle: string; valeur: number | null; affiche: string; couleur: string }
 
 function Graphes({ resultat, def }: { resultat: Resultat; def: Definition }) {
   const temps = def.colonnes !== 'aucun'
+  const choix = def.graphe ?? 'auto'
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5, mb: 2 }}>
       {resultat.indicateurs.map((i) => {
-        if (i.agregat === 'texte') return <Repartition key={i.id} i={i} resultat={resultat} />
+        if (i.agregat === 'texte') return <Repartition key={i.id} i={i} resultat={resultat} type={choix === 'auto' ? 'barres' : choix} />
         if (temps && i.temporel) {
           // Évolution dans le temps : total de la sélection, colonne par colonne
-          const points = resultat.colonnes.map((col) => ({ libelle: col.libelle, c: resultat.total.cellules[`${i.id}|${col.cle}`] }))
-          const max = Math.max(...points.map((p) => Math.abs(p.c.valeur ?? 0))) || 1
-          return (
-            <Card key={i.id} variant="outlined" sx={{ p: 2 }} aria-label={`Graphe ${i.libelle}`}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>{i.libelle}</Typography>
-              <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 0.5, height: 140 }}>
-                {points.map((p) => (
-                  <Box key={p.libelle} sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }} title={`${p.libelle} : ${formater(i.format, p.c)}`}>
-                    <Box sx={{ width: '70%', height: `${Math.max(2, Math.abs(p.c.valeur ?? 0) / max * 100)}%`, bgcolor: p.c.valeur === null ? 'divider' : couleur(i, p.c), borderRadius: '3px 3px 0 0' }} />
-                  </Box>
-                ))}
-              </Box>
-              <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
-                {points.map((p, k) => <Typography key={p.libelle} variant="caption" sx={{ flex: 1, minWidth: 0, textAlign: 'center', color: 'text.secondary', visibility: points.length > 8 && k % 2 ? 'hidden' : 'visible', whiteSpace: 'nowrap', overflow: 'hidden' }}>{p.libelle}</Typography>)}
-              </Box>
-            </Card>
-          )
+          const points = resultat.colonnes.map((col) => { const c = resultat.total.cellules[`${i.id}|${col.cle}`]; return { libelle: col.libelle, valeur: c.valeur, affiche: formater(i.format, c), couleur: couleur(i, c) } })
+          return <DessinGraphe key={i.id} titre={i.libelle} points={points} type={choix === 'auto' ? 'colonnes' : choix} vide="Pas encore de chiffres sur cette période." />
         }
         const col = i.temporel ? resultat.colonnes.at(-1)!.cle : resultat.colonnes[0].cle
         const avec = resultat.lignes.filter((l) => l.cellules[`${i.id}|${col}`]?.valeur !== null)
-        const lignes = avec.slice(0, 15).map((l) => ({ libelle: l.libelle, c: l.cellules[`${i.id}|${col}`] }))
-        const max = Math.max(...lignes.map((l) => Math.abs(l.c.valeur ?? 0))) || 1
+        const points = avec.map((l) => { const c = l.cellules[`${i.id}|${col}`]; return { libelle: l.libelle, valeur: c.valeur, affiche: formater(i.format, c), couleur: couleur(i, c) } })
+        const type = choix === 'auto' ? 'barres' : choix
+        // Le camembert regroupe le reste dans « Autres » ; les autres graphes montrent les 15 premiers
+        const montres = type === 'camembert' ? points : points.slice(0, 15)
         return (
-          <Card key={i.id} variant="outlined" sx={{ p: 2 }} aria-label={`Graphe ${i.libelle}`}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>{i.libelle}</Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-              {lignes.map((l) => (
-                <Box key={l.libelle} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 110px) minmax(0, 1fr) auto', gap: 1, alignItems: 'center' }}>
-                  <Typography variant="body2" noWrap title={l.libelle}>{l.libelle}</Typography>
-                  <Box sx={{ height: 10, bgcolor: 'action.hover', borderRadius: 5 }}>
-                    <Box sx={{ height: 10, width: `${Math.abs(l.c.valeur ?? 0) / max * 100}%`, bgcolor: couleur(i, l.c), borderRadius: 5 }} />
-                  </Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: l.c.valeur === null ? 'text.secondary' : couleur(i, l.c), textAlign: 'right', minWidth: 72 }}>{formater(i.format, l.c)}</Typography>
-                </Box>
-              ))}
-              {!avec.length && <Typography variant="body2" color="text.secondary">Pas encore de chiffres sur cette période.</Typography>}
-              {avec.length > 15 && <Typography variant="caption" color="text.secondary">Les 15 premiers sur {avec.length} ; le tableau les montre tous.</Typography>}
-            </Box>
-          </Card>
+          <DessinGraphe key={i.id} titre={i.libelle} points={montres} type={type} vide="Pas encore de chiffres sur cette période."
+            note={type !== 'camembert' && avec.length > 15 ? `Les 15 premiers sur ${avec.length} ; le tableau les montre tous.` : undefined}
+            formatAutres={(v) => formater(i.format, { valeur: v, texte: null })} />
         )
       })}
     </Box>
@@ -641,40 +625,139 @@ function Graphes({ resultat, def }: { resultat: Resultat; def: Definition }) {
 }
 
 // Indicateur en texte (case de la nine box, statut du budget) : nombre de magasins par valeur
-function Repartition({ i, resultat }: { i: Indicateur; resultat: Resultat }) {
+function Repartition({ i, resultat, type }: { i: Indicateur; resultat: Resultat; type: Exclude<TypeGraphe, 'auto'> }) {
   const comptes = new Map<string, number>()
   for (const l of resultat.lignes) {
     // Une ligne de plusieurs magasins compte pour sa valeur la plus fréquente
     const t = l.cellules[`${i.id}|${resultat.colonnes[0].cle}`]?.texte?.replace(/ \(\d+ sur \d+\)$/, '')
     if (t) comptes.set(t, (comptes.get(t) ?? 0) + 1)
   }
-  const tri = [...comptes].sort((a, b) => b[1] - a[1])
-  const max = Math.max(1, ...tri.map(([, n]) => n))
+  const points = [...comptes].sort((a, b) => b[1] - a[1]).map(([t, n]) => ({ libelle: t, valeur: n, affiche: String(n), couleur: COULEURS.neutre }))
+  return <DessinGraphe titre={i.libelle} points={points} type={type} vide="Pas encore de données." formatAutres={String} />
+}
+
+const styleCarte = { p: 2, display: 'flex', flexDirection: 'column' } as const
+
+function DessinGraphe({ titre, points, type, vide, note, formatAutres }: {
+  titre: string; points: Point[]; type: Exclude<TypeGraphe, 'auto'>; vide: string; note?: string; formatAutres?: (v: number) => string
+}) {
+  const avec = points.filter((p) => p.valeur !== null)
+  const negatif = avec.some((p) => (p.valeur ?? 0) < 0)
+  // Un camembert n'a pas de sens avec des valeurs négatives : barres à la place, en le disant
+  const effectif = type === 'camembert' && negatif ? 'barres' : type
   return (
-    <Card variant="outlined" sx={{ p: 2 }} aria-label={`Graphe ${i.libelle}`}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>{i.libelle}</Typography>
-      {!tri.length ? <Typography variant="body2" color="text.secondary">Pas encore de données.</Typography> : tri.length <= 4 ? (
-        // 329 (18/11/2026) : peu de valeurs, un compteur par valeur plutôt que des barres pleines identiques
-        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-          {tri.map(([t, n]) => (
-            <Box key={t} sx={{ minWidth: 0 }}>
-              <Typography sx={{ ...styleChiffre }}>{n}</Typography>
-              <Typography variant="body2" color="text.secondary">{t}</Typography>
-            </Box>
-          ))}
+    <Card variant="outlined" sx={styleCarte} aria-label={`Graphe ${titre}`}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>{titre}</Typography>
+      {!avec.length ? <Typography variant="body2" color="text.secondary">{vide}</Typography>
+        : effectif === 'barres' ? <Barres points={points} />
+        : effectif === 'colonnes' ? <Batons points={points} />
+        : effectif === 'courbe' ? <Courbe points={points} />
+        : <Camembert points={avec} formatAutres={formatAutres ?? String} />}
+      {type === 'camembert' && negatif && <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>Des valeurs sont négatives : le camembert ne peut pas les montrer, les barres prennent le relais.</Typography>}
+      {note && <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75 }}>{note}</Typography>}
+    </Card>
+  )
+}
+
+function Barres({ points }: { points: Point[] }) {
+  const max = Math.max(...points.map((p) => Math.abs(p.valeur ?? 0))) || 1
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }} data-graphe="barres">
+      {points.map((p) => (
+        <Box key={p.libelle} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 130px) minmax(0, 1fr) auto', gap: 1, alignItems: 'center' }}>
+          <Typography variant="body2" noWrap title={p.libelle}>{p.libelle}</Typography>
+          <Box sx={{ height: 10, bgcolor: 'action.hover', borderRadius: 5 }}>
+            <Box sx={{ height: 10, width: `${Math.abs(p.valeur ?? 0) / max * 100}%`, bgcolor: p.couleur, borderRadius: 5 }} />
+          </Box>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: p.valeur === null ? 'text.secondary' : p.couleur, textAlign: 'right', minWidth: 72 }}>{p.affiche}</Typography>
         </Box>
-      ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-          {tri.map(([t, n]) => (
-            <Box key={t} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 150px) minmax(0, 1fr) auto', gap: 1, alignItems: 'center' }}>
-              <Typography variant="body2" noWrap title={t}>{t}</Typography>
-              <Box sx={{ height: 10, bgcolor: 'action.hover', borderRadius: 5 }}><Box sx={{ height: 10, width: `${n / max * 100}%`, bgcolor: COULEURS.neutre, borderRadius: 5 }} /></Box>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>{n}</Typography>
-            </Box>
-          ))}
+      ))}
+    </Box>
+  )
+}
+
+function Etiquettes({ points }: { points: Point[] }) {
+  return (
+    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+      {points.map((p, k) => <Typography key={p.libelle} variant="caption" title={p.libelle} sx={{ flex: 1, minWidth: 0, textAlign: 'center', color: 'text.secondary', visibility: points.length > 8 && k % 2 ? 'hidden' : 'visible', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.libelle}</Typography>)}
+    </Box>
+  )
+}
+
+function Batons({ points }: { points: Point[] }) {
+  const max = Math.max(...points.map((p) => Math.abs(p.valeur ?? 0))) || 1
+  return (
+    <Box data-graphe="colonnes">
+      <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 0.5, height: 140 }}>
+        {points.map((p) => (
+          <Box key={p.libelle} sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }} title={`${p.libelle} : ${p.affiche}`}>
+            <Box sx={{ width: '70%', height: `${Math.max(2, Math.abs(p.valeur ?? 0) / max * 100)}%`, bgcolor: p.valeur === null ? 'divider' : p.couleur, borderRadius: '3px 3px 0 0' }} />
+          </Box>
+        ))}
+      </Box>
+      <Etiquettes points={points} />
+    </Box>
+  )
+}
+
+function Courbe({ points }: { points: Point[] }) {
+  const L = 600, H = 160, marge = 10
+  const vals = points.map((p) => p.valeur ?? 0)
+  const haut = Math.max(0, ...vals), bas = Math.min(0, ...vals)
+  const ecart = haut - bas || 1
+  const x = (k: number) => (k + 0.5) / points.length * L
+  const y = (v: number) => marge + (haut - v) / ecart * (H - 2 * marge)
+  // Le trait s'interrompt sur une période sans chiffre
+  const traits: string[] = []
+  let courant: string[] = []
+  points.forEach((p, k) => { if (p.valeur === null) { if (courant.length) traits.push(courant.join(' ')); courant = [] } else courant.push(`${x(k)},${y(p.valeur)}`) })
+  if (courant.length) traits.push(courant.join(' '))
+  return (
+    <Box data-graphe="courbe">
+      <Box component="svg" viewBox={`0 0 ${L} ${H}`} sx={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={points.map((p) => `${p.libelle} ${p.affiche}`).join(', ')}>
+        <line x1={0} x2={L} y1={y(0)} y2={y(0)} stroke="currentColor" strokeOpacity={0.2} />
+        {traits.map((t) => <polyline key={t} points={t} fill="none" stroke={COULEURS.neutre} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />)}
+        {points.map((p, k) => p.valeur !== null && <circle key={p.libelle} cx={x(k)} cy={y(p.valeur)} r={5} fill={p.couleur}><title>{`${p.libelle} : ${p.affiche}`}</title></circle>)}
+      </Box>
+      <Etiquettes points={points} />
+    </Box>
+  )
+}
+
+function Camembert({ points, formatAutres }: { points: Point[]; formatAutres: (v: number) => string }) {
+  // 7 parts au plus, le reste regroupé dans « Autres »
+  const tries = [...points].sort((a, b) => (b.valeur ?? 0) - (a.valeur ?? 0))
+  const parts = tries.length > 8 ? [...tries.slice(0, 7), { libelle: `Autres (${tries.length - 7})`, valeur: tries.slice(7).reduce((s, p) => s + (p.valeur ?? 0), 0), affiche: '', couleur: '' }] : tries
+  const total = parts.reduce((s, p) => s + (p.valeur ?? 0), 0)
+  const R = 80, C = 90
+  let angle = -Math.PI / 2
+  const arcs = parts.map((p, k) => {
+    const part = total ? (p.valeur ?? 0) / total : 0
+    const debut = angle
+    angle += part * 2 * Math.PI
+    const grand = part > 0.5 ? 1 : 0
+    const d = part >= 0.9999 ? null : `M ${C} ${C} L ${C + R * Math.cos(debut)} ${C + R * Math.sin(debut)} A ${R} ${R} 0 ${grand} 1 ${C + R * Math.cos(angle)} ${C + R * Math.sin(angle)} Z`
+    return { ...p, d, part, teinte: PARTS[k % PARTS.length], texte: p.affiche || formatAutres(p.valeur ?? 0) }
+  })
+  return (
+    <Box data-graphe="camembert" sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+      {!total ? <Typography variant="body2" color="text.secondary">Tout est à zéro sur cette période.</Typography> : (
+        <Box component="svg" viewBox="0 0 180 180" sx={{ width: 160, height: 160, flexShrink: 0 }} role="img" aria-label={arcs.map((a) => `${a.libelle} ${Math.round(a.part * 100)} %`).join(', ')}>
+          {arcs.map((a) => a.part <= 0 ? null : a.d ? <path key={a.libelle} d={a.d} fill={a.teinte} stroke="#fff" strokeWidth={1.5}><title>{`${a.libelle} : ${a.texte}`}</title></path>
+            : <circle key={a.libelle} cx={C} cy={C} r={R} fill={a.teinte}><title>{`${a.libelle} : ${a.texte}`}</title></circle>)}
         </Box>
       )}
-    </Card>
+      <Box sx={{ flex: 1, minWidth: 180, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        {arcs.map((a) => (
+          <Box key={a.libelle} sx={{ display: 'grid', gridTemplateColumns: '12px minmax(0, 1fr) auto auto', gap: 1, alignItems: 'center' }}>
+            <Box sx={{ width: 12, height: 12, borderRadius: '3px', bgcolor: a.teinte }} />
+            <Typography variant="body2" noWrap title={a.libelle}>{a.libelle}</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 600, textAlign: 'right' }}>{a.texte}</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'right', minWidth: 44 }}>{Math.round(a.part * 100)} %</Typography>
+          </Box>
+        ))}
+      </Box>
+    </Box>
   )
 }
 

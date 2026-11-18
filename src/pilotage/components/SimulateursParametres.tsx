@@ -52,6 +52,7 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
   // Vague 10 (choix 152 à 165)
   const contrat = (k: keyof ParametresSimulateurs['contrat'], x: number) => setV((y) => ({ ...y, contrat: { ...y.contrat, [k]: x } }))
   const tireuses = (k: keyof ParametresSimulateurs['tireuses'], x: number) => setV((y) => ({ ...y, tireuses: { ...y.tireuses, [k]: x } }))
+  const remuneration = (k: keyof ParametresSimulateurs['remuneration'], x: number) => setV((y) => ({ ...y, remuneration: { ...y.remuneration, [k]: x } }))
   const remise = (k: CleRemise, x: number) => setV((y) => ({ ...y, remises: { ...y.remises, [k]: x } }))
   const palierExt = (i: number, k: 'caMax' | 'tireuses' | 'investissement' | 'heures', x: number) => setV((y) => ({ ...y, marcheExterieur: { ...y.marcheExterieur, paliers: y.marcheExterieur.paliers.map((l, j) => (j === i ? { ...l, [k]: x } : l)) } }))
   const famille = (i: number, f: Partial<ParametresSimulateurs['familles'][number]>) => setV((y) => ({ ...y, familles: y.familles.map((l, j) => (j === i ? { ...l, ...f } : l)) }))
@@ -112,6 +113,13 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
           {ligne('Tireuses : part des week-ends loués le reste de l’année', <ChampTaux libelle="Week-ends loués hors saison" valeur={v.tireuses.occupationHors} onChange={(x) => tireuses('occupationHors', x ?? 0)} />)}
           {ligne('Tireuses : parc plein au-delà de', <ChampTaux libelle="Parc plein au-delà de" valeur={v.tireuses.saturation} onChange={(x) => tireuses('saturation', x ?? 0)} />)}
           {ligne('Marché extérieur : prix d’un camion', <ChampMontant libelle="Prix d’un camion" valeur={v.marcheExterieur.camion} onChange={(x) => setV((y) => ({ ...y, marcheExterieur: { ...y.marcheExterieur, camion: x } }))} largeur={160} />)}
+          {ligne('Mon loyer : repère du loyer et des charges, en part du CA HT', <ChampTaux libelle="Repère du loyer" valeur={v.loyerRepere} onChange={(x) => setV((y) => ({ ...y, loyerRepere: Math.min(1, x ?? 0) }))} />)}
+          {ligne(<>Me rémunérer : cotisations du gérant majoritaire, en part du net <Aide sujet="simRemuneration" compact /></>, <ChampTaux libelle="Cotisations du gérant majoritaire" valeur={v.remuneration.cotisationsTNS} onChange={(x) => remuneration('cotisationsTNS', x ?? 0)} />)}
+          {ligne('Me rémunérer : cotisations minimales du gérant majoritaire, par an', <ChampMontant libelle="Cotisations minimales" valeur={v.remuneration.minimumTNS} onChange={(x) => remuneration('minimumTNS', x)} largeur={160} />)}
+          {ligne('Me rémunérer : charges du président de SAS, en part du net', <ChampTaux libelle="Charges du président de SAS" valeur={v.remuneration.cotisationsAssimile} onChange={(x) => remuneration('cotisationsAssimile', x ?? 0)} />)}
+          {ligne('Me rémunérer : impôt sur le revenu forfaitaire des dividendes', <ChampTaux libelle="Impôt forfaitaire des dividendes" valeur={v.remuneration.irDividendes} onChange={(x) => remuneration('irDividendes', x ?? 0)} />)}
+          {ligne('Me rémunérer : prélèvements sociaux des dividendes', <ChampTaux libelle="Prélèvements sociaux des dividendes" valeur={v.remuneration.prelevementsSociaux} onChange={(x) => remuneration('prelevementsSociaux', x ?? 0)} />)}
+          {ligne('Me rémunérer : dividendes du gérant majoritaire soumis à cotisations au-delà de (part du capital, des primes et des comptes courants)', <ChampTaux libelle="Seuil des dividendes" valeur={v.remuneration.seuilDividendesTNS} onChange={(x) => remuneration('seuilDividendesTNS', x ?? 0)} />)}
         </TableBody>
       </Table>
       <Box sx={{ px: 2, pt: 2, pb: 1 }}>

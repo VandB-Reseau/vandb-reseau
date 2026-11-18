@@ -12,7 +12,7 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 - Revue de tous les écrans, propositions 293 à 360 en un seul lot (Joseph, 18/11/2026), sans migration.
   Défauts : sélecteur « Choisir un magasin » du franchisé, tuiles Mes chiffres en lignes, repères réseau sur deux lignes,
   « vs septembre 2025 » dans les entretiens, menu PC plus serré, Pilotage aux couleurs V and B, meilleur levier sans budget
-  2026, un seul statut du budget, marge sous le « + » flottant (retiré des pages qui ont leur propre bouton), chiffres
+  2026, un seul statut du budget, marge sous le « + » flottant (retiré de Tâches, qui a son bouton), chiffres
   absents dits en clair ; test de charte des couleurs. Navigation : fil d'Ariane partout sur PC (Bilan, Charge des
   Coachs, Import et export, fiche Directeur), mêmes noms d'onglets PC et téléphone, Équipe et Paramètres dans le menu du
   Directeur (« Réglages »), périmètre en puce sur téléphone, page « Plus » sans Magasins. Fiches : en-tête magasin à
@@ -23,15 +23,23 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   magasins sans chiffres repliés en bas (Magasins, Pilotage), « 0/10 » et « À compléter » d'office dans Évaluer, rythme
   de visite en tableau trié par retard, filtre Magasin en puce et tâches faites dans la même carte, « À faire » retiré
   des lignes, statuts du budget séparés des manques, légende des Clôtures, actions du Pilotage dans « ⋯ », compteur pour
-  les statuts, lignes du Pilotage sur téléphone, Coach sans magasin gardé dans la Charge. Chiffres : tuile commune dans
+  les statuts, Coach sans magasin gardé dans la Charge. Chiffres : tuile commune dans
   la Revue du mois, nine box teintée dans la fiche, Marché extérieur sans tuiles vides, audits en tuile, santé en point
   et mot, légende de l'Évolution du parc. Parcours : étapes communes (budget, visite, marché extérieur), boutons jamais
-  grisés (un clic dit ce qui manque), fiche avant visite repliée, étapes du budget compactes sur téléphone, « À
-  compléter » sur les cartes du budget, simulateurs repliés sur téléphone, segments lisibles. Accueil franchisé sans
+  grisés (un clic dit ce qui manque), étapes du budget compactes sur téléphone, « À
+  compléter » sur les cartes du budget, segments lisibles. Accueil franchisé sans
   blocs vides, visites en une ligne, À faire sans doublon ; À traiter sur deux lignes ; Messages avec un seul état
-  vide ; Animation sans second bouton « Publier » et Campagnes en sous-navigation ; Agenda : aujourd'hui en rond noir ;
+  vide ; Animation sans second bouton « Publier » ; Agenda : aujourd'hui en rond noir ;
   Charge des Coachs et Import et export dans le panneau des Paramètres, Import et export en tableau.
 
+- Pilotage (Joseph, 18/11/2026), sans migration : type de graphe au choix dans le rendu (Automatique, Barres, Bâtons,
+  Courbe, Camembert), gardé dans la définition du rapport ; le rapport suit le périmètre choisi (région, magasins d'un Coach).
+- Simulateurs du franchisé (Joseph, 18/11/2026, choix 287, 291, 292) : « Me rémunérer » (salaire ou dividendes : ce que
+  je garde par mois, impôts et cotisations, ce qui reste dans la société et sort de sa trésorerie, gérant majoritaire ou
+  président de SAS), « Mon loyer » (poids dans le CA, hausse, reste du bail, CA pour l'absorber, repère du siège),
+  « Mix Cave et Bar » (CA déplacé, marge, heures selon la grille de productivité). Règles sociales et fiscales 2026 et
+  repère du loyer réglables dans Paramètres, Simulateurs. Base : migration pilotage `0034_simulations_remuneration_loyer_mix`
+  (dépôt du pilotage) pour garder ces simulations ; sans elle, ils calculent mais ne se gardent pas.
 - Fiche magasin, onglet Tâches : filtre « En cours » (tâches passées en cours par leur puce de statut), sans migration
   (Joseph, 18/11/2026).
 - Fiche magasin, onglet Tâches (Joseph, 17/11/2026), sans migration : toutes les tâches du magasin en puces À faire,
