@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateurs du franchisé (Joseph, 18/11/2026) : « Me rémunérer » corrigé (impôts et cotisations en négatif, flat tax
+  à part, non salarié ou assimilé salarié, capital, primes d'émission et comptes courants d'associés à part, impôt sur le
+  revenu au barème 2026 avec les parts et autres revenus du foyer, pourcentages et explications de chaque ligne, montage
+  recommandé pour ce que je veux garder par mois, net après impôts) ; nouveau « Former un collaborateur » (temps payé,
+  prix de la formation, indemnités kilométriques, hôtel, repas, remplacement, OPCO, CPF, aide à l'apprentissage).
+  Repères 2026 réglables dans Paramètres, Simulateurs. Base : migration pilotage `0035_simulations_formation` (dépôt du
+  pilotage) pour garder les simulations de formation ; sans elle, il calcule mais ne se garde pas.
 - Pilotage (Joseph, 18/11/2026), sans migration : type de graphe au choix dans le rendu (Automatique, Barres, Bâtons,
   Courbe, Camembert), gardé dans la définition du rapport ; le rapport suit le périmètre choisi (région, magasins d'un Coach).
 - Simulateurs du franchisé (Joseph, 18/11/2026, choix 287, 291, 292) : « Me rémunérer » (salaire ou dividendes : ce que

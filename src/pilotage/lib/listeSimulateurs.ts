@@ -21,5 +21,7 @@ export const LISTE_SIMULATEURS: { cle: TypeSimulation; titre: string; question: 
   // 287, 291, 292 (Joseph, 18/11/2026)
   { cle: 'remuneration', titre: 'Me rémunérer', question: 'Salaire ou dividendes : combien je garde, combien part en impôts ?' },
   { cle: 'loyer', titre: 'Mon loyer', question: 'Que pèse mon loyer, que coûte une hausse ?' },
+  // Joseph, 18/11/2026
+  { cle: 'formation', titre: 'Former un collaborateur', question: 'Que coûte une formation, une fois l’OPCO, le CPF et les aides déduits ?' },
   { cle: 'mix', titre: 'Mix Cave et Bar', question: 'Si plus de CA passe au bar, que gagne-t-on ?' },
 ]

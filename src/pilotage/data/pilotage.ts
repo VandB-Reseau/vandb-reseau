@@ -814,6 +814,7 @@ export type TypeSimulation = 'embauche' | 'prix' | 'tresorerie' | 'vente_additio
   | 'levier' // 183 : pas encore gardable (pas dans la règle de la table), se garde en priorité
   | 'remises_b2b' // 228, migration pilotage 0033
   | 'remuneration' | 'loyer' | 'mix' // 287, 291, 292, migration pilotage 0034
+  | 'formation' // Former un collaborateur (Joseph, 18/11/2026), migration pilotage 0035
 export interface SimulationGardee { id: number; type: TypeSimulation; nom: string; donnees: Record<string, unknown>; resume: string; auteur: string | null; auteurRole: Role | null; auteurNom: string | null; creeLe: string }
 export async function chargerSimulations(magasin: string): Promise<SimulationGardee[] | null> {
   const { data, error } = await pilotage().from('simulations').select('id, type, nom, donnees, resume, auteur, auteur_role, auteur_nom, cree_le')

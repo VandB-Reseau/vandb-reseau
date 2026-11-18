@@ -1,5 +1,5 @@
 import { styleIntertitre } from '../../theme/theme'
-import { useEffect, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -53,6 +53,7 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
   const contrat = (k: keyof ParametresSimulateurs['contrat'], x: number) => setV((y) => ({ ...y, contrat: { ...y.contrat, [k]: x } }))
   const tireuses = (k: keyof ParametresSimulateurs['tireuses'], x: number) => setV((y) => ({ ...y, tireuses: { ...y.tireuses, [k]: x } }))
   const remuneration = (k: keyof ParametresSimulateurs['remuneration'], x: number) => setV((y) => ({ ...y, remuneration: { ...y.remuneration, [k]: x } }))
+  const formation = (f: Partial<ParametresSimulateurs['formation']>) => setV((y) => ({ ...y, formation: { ...y.formation, ...f } }))
   const remise = (k: CleRemise, x: number) => setV((y) => ({ ...y, remises: { ...y.remises, [k]: x } }))
   const palierExt = (i: number, k: 'caMax' | 'tireuses' | 'investissement' | 'heures', x: number) => setV((y) => ({ ...y, marcheExterieur: { ...y.marcheExterieur, paliers: y.marcheExterieur.paliers.map((l, j) => (j === i ? { ...l, [k]: x } : l)) } }))
   const famille = (i: number, f: Partial<ParametresSimulateurs['familles'][number]>) => setV((y) => ({ ...y, familles: y.familles.map((l, j) => (j === i ? { ...l, ...f } : l)) }))
@@ -120,6 +121,18 @@ export function SimulateursParametres({ annee, parametres, lecture, onEnregistre
           {ligne('Me rémunérer : impôt sur le revenu forfaitaire des dividendes', <ChampTaux libelle="Impôt forfaitaire des dividendes" valeur={v.remuneration.irDividendes} onChange={(x) => remuneration('irDividendes', x ?? 0)} />)}
           {ligne('Me rémunérer : prélèvements sociaux des dividendes', <ChampTaux libelle="Prélèvements sociaux des dividendes" valeur={v.remuneration.prelevementsSociaux} onChange={(x) => remuneration('prelevementsSociaux', x ?? 0)} />)}
           {ligne('Me rémunérer : dividendes du gérant majoritaire soumis à cotisations au-delà de (part du capital, des primes et des comptes courants)', <ChampTaux libelle="Seuil des dividendes" valeur={v.remuneration.seuilDividendesTNS} onChange={(x) => remuneration('seuilDividendesTNS', x ?? 0)} />)}
+          {ligne('Me rémunérer : déduction pour frais sur la rémunération (impôt sur le revenu)', <ChampTaux libelle="Déduction pour frais" valeur={v.remuneration.abattement} onChange={(x) => remuneration('abattement', x ?? 0)} />)}
+          {ligne('Me rémunérer : plafond de la déduction pour frais, par an', <ChampMontant libelle="Plafond de la déduction pour frais" valeur={v.remuneration.plafondAbattement} onChange={(x) => remuneration('plafondAbattement', x)} largeur={160} />)}
+          {([['cv3', '3 CV'], ['cv4', '4 CV'], ['cv5', '5 CV'], ['cv6', '6 CV'], ['cv7', '7 CV et plus']] as const).map(([k, l]) => (
+            <Fragment key={k}>{ligne(<>Former un collaborateur : indemnité kilométrique, voiture {l} <Aide sujet="simFormation" compact /></>, <ChampMontant libelle={`Indemnité kilométrique ${l}`} valeur={v.formation.km[k]} onChange={(x) => formation({ km: { ...v.formation.km, [k]: x } })} unite="€/km" largeur={160} decimales={3} />)}</Fragment>
+          ))}
+          {ligne('Former un collaborateur : majoration du barème pour une voiture électrique', <ChampTaux libelle="Majoration voiture électrique" valeur={v.formation.electrique} onChange={(x) => formation({ electrique: x ?? 0 })} />)}
+          {ligne('Former un collaborateur : plafond de l’OPCO par heure de formation', <ChampMontant libelle="Plafond OPCO par heure" valeur={v.formation.opcoHeure} onChange={(x) => formation({ opcoHeure: x })} unite="€/h" largeur={160} />)}
+          {ligne('Former un collaborateur : budget OPCO d’un magasin par an (0 : sans limite)', <ChampMontant libelle="Budget OPCO par an" valeur={v.formation.opcoBudget} onChange={(x) => formation({ opcoBudget: x })} largeur={160} />)}
+          {ligne('Former un collaborateur : reste à charge du CPF pour le salarié', <ChampMontant libelle="Reste à charge du CPF" valeur={v.formation.cpfResteACharge} onChange={(x) => formation({ cpfResteACharge: x })} largeur={160} />)}
+          {([['niveau34', 'jusqu’au bac (niveaux 3 et 4)'], ['niveau5', 'BTS (niveau 5)'], ['niveau67', 'licence, master (niveaux 6 et 7)'], ['handicap', 'en situation de handicap']] as const).map(([k, l]) => (
+            <Fragment key={k}>{ligne(`Former un collaborateur : aide à l’embauche d’un apprenti ${l}, 1re année`, <ChampMontant libelle={`Aide apprenti ${l}`} valeur={v.formation.aides[k]} onChange={(x) => formation({ aides: { ...v.formation.aides, [k]: x } })} largeur={160} />)}</Fragment>
+          ))}
         </TableBody>
       </Table>
       <Box sx={{ px: 2, pt: 2, pb: 1 }}>
