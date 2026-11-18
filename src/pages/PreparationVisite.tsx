@@ -168,7 +168,7 @@ export function Fiche({ reseau, m, integre = false }: { reseau: Reseau; m: Magas
   const preparation = preparationDe(reseau, m.nom)
   const c = caseDe(reseau.evaluations[m.nom])
   const associes = associesEnPlace(reseau, m).map((a) => a.nom)
-  const actions = actionsDuMagasin(reseau, m.nom).filter((x) => !x.a.faite)
+  const actions = actionsDuMagasin(reseau, m.nom).filter((x) => !x.a.faite && !x.campagne)
     .sort((x, y) => Number(enRetard(y.a, reseau.jour)) - Number(enRetard(x.a, reseau.jour)) || (echeanceDate(x.a) || '9999').localeCompare(echeanceDate(y.a) || '9999'))
   const audits = (['hygiene', 'excellence'] as const).map((t) => ({ t, r: dernierAudit(reseau, m.nom, t) }))
   const campagnes = campagnesDuMagasin(reseau, m.nom, reseau.jour)

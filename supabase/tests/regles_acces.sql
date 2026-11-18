@@ -1215,3 +1215,27 @@ SELECT pg_temp.attendre('Rapports : le franchisé lit le modèle des franchisés
 SELECT pg_temp.attendre('Rapports : pas celui des Coachs', (SELECT count(*) FROM jsonb_array_elements(public.rapports_du_compte()) e WHERE (e->>'id')::bigint = :r_coachs), 0);
 RESET ROLE;
 RESET request.jwt.claim.sub;
+
+-- ── 0051 : points des campagnes = tâches du magasin ; le franchisé marque un point fait depuis sa tâche
+SELECT pg_temp.attendre('Journal : 0051 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0051'), 1);
+INSERT INTO public.app_config (key, value) VALUES ('campagnes', '{"liste":[{"id":"cp51","nom":"Beaujolais","debut":"2026-11-01","fin":"2026-11-30","perimetre":"tous","magasins":[],"points":[{"id":"p1","libelle":"Vitrine posée"},{"id":"p2","libelle":"Affiches"}]}]}')
+ON CONFLICT (key) DO UPDATE SET value = excluded.value;
+INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES ('Lille', 'constats', '{"cp51":{"p2":{"fait":true,"date":"2026-11-05","par":"Coach Nord"}}}')
+ON CONFLICT (store_name, cle) DO UPDATE SET valeur = excluded.valeur;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Campagnes : le franchisé marque un point fait', pg_temp.refuse('SELECT public.constat_campagne_franchise(''Lille'', ''cp51'', ''p1'', true)'), 0);
+RESET ROLE;
+SELECT pg_temp.attendre('Campagnes : constat rangé à son nom, celui du Coach intact',
+  (SELECT count(*) FROM public.suivi_magasins WHERE store_name = 'Lille' AND cle = 'constats' AND valeur->'cp51'->'p1'->>'par' = 'Franchisé Test' AND valeur->'cp51'->'p2'->>'par' = 'Coach Nord'), 1);
+SET ROLE authenticated;
+SELECT pg_temp.attendre('Campagnes : il ne rouvre pas le constat de son Coach', pg_temp.refuse('SELECT public.constat_campagne_franchise(''Lille'', ''cp51'', ''p2'', false)'), 1);
+SELECT pg_temp.attendre('Campagnes : jamais un point inconnu', pg_temp.refuse('SELECT public.constat_campagne_franchise(''Lille'', ''cp51'', ''p9'', true)'), 1);
+SELECT pg_temp.attendre('Campagnes : jamais sur un autre magasin', pg_temp.refuse('SELECT public.constat_campagne_franchise(''Nice'', ''cp51'', ''p1'', true)'), 1);
+SELECT pg_temp.attendre('Campagnes : il rouvre le sien', pg_temp.refuse('SELECT public.constat_campagne_franchise(''Lille'', ''cp51'', ''p1'', false)'), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Campagnes : fonction refusée à l''équipe', pg_temp.refuse('SELECT public.constat_campagne_franchise(''Lille'', ''cp51'', ''p1'', true)'), 1);
+RESET ROLE;
+RESET request.jwt.claim.sub;
+SELECT pg_temp.attendre('Campagnes : le point rouvert redevient à constater',
+  (SELECT count(*) FROM public.suivi_magasins WHERE store_name = 'Lille' AND cle = 'constats' AND valeur->'cp51' ? 'p1'), 0);

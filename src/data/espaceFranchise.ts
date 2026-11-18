@@ -205,6 +205,12 @@ export async function tacheExterieurFranchise(magasin: string, t: { id?: string;
   return typeof data === 'string' ? data : ''
 }
 
+// Point d'une campagne constaté fait par le franchisé depuis sa tâche (0051) ; il ne rouvre que ses propres constats
+export async function constatCampagneFranchise(magasin: string, campagne: string, point: string, fait: boolean) {
+  const { error } = await supabase.rpc('constat_campagne_franchise', { p_store: magasin, p_campagne: campagne, p_point: point, p_fait: fait })
+  if (error) erreurAction(error)
+}
+
 // Action hors visite (libre) ou action du plan d'une visite (visite, index, texte vérifié par la base)
 // Statut d'une tâche posé par le franchisé (0043) : à faire, en cours, bloquée avec sa raison
 export async function statutActionFranchise(magasin: string, statut: '' | 'en_cours' | 'bloquee', raison: string, cible: { libre: string } | { visite: number; index: number; texte: string }) {

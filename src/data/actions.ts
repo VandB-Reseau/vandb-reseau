@@ -6,11 +6,49 @@ import { normaliserPieces } from '../lib/pieces'
 import { associesEnPlace } from './associes'
 import { coachA } from './charge'
 import { champsSuivi } from './compteRendu'
+import { magasinsConcernes, type Constat } from './campagnes'
 
-export interface ActionSuivie { visite: Visite | null; libre: ActionLibre | null; magasin: string; date: string; index: number; a: ActionPlan; cle: string }
+// campagne : tâche née d'un point d'une campagne (Joseph, 18/11/2026) ; son état est le constat du point dans le magasin
+export interface TacheCampagne { id: string; point: string; nom: string; debut: string; fin: string; constat?: Constat }
+export interface ActionSuivie { visite: Visite | null; libre: ActionLibre | null; magasin: string; date: string; index: number; a: ActionPlan; cle: string; campagne?: TacheCampagne }
 
 export const cleAction = (visiteId: number | null, index: number) => `${visiteId ?? 'x'}:${index}`
 export const cleLibre = (id: string) => `l:${id}`
+export const cleCampagne = (campagne: string, point: string) => `c:${campagne}:${point}`
+
+// Une campagne donne ses tâches de son premier jour jusqu'à 30 jours après sa fin (le temps de constater)
+export const JOURS_APRES_CAMPAGNE = 30
+const plusJours = (jour: string, n: number) => { const d = new Date(`${jour}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
+
+// Tâches des campagnes (Joseph, 18/11/2026) : chaque point d'une campagne devient une tâche de chaque magasin concerné,
+// portée par son franchisé, pour la fin de la campagne ; faite quand le point est constaté fait (visite, onglet Campagnes
+// ou bouton « Fait »). Rien n'est recopié : la tâche se lit dans la campagne, son état reste celui du constat.
+export function tachesCampagnes(reseau: Reseau, magasins: Set<string> | null): ActionSuivie[] {
+  const l: ActionSuivie[] = []
+  const porteurs = new Map<string, string>()
+  const porteurDe = (nom: string) => {
+    let p = porteurs.get(nom)
+    if (p === undefined) {
+      const m = reseau.magasins.find((x) => x.nom === nom)
+      p = m ? joindrePorteurs(porteursDu(reseau, nom).filter((x) => x.role === libelleResponsable(m)).map((x) => x.nom)) : ''
+      porteurs.set(nom, p)
+    }
+    return p
+  }
+  for (const c of reseau.campagnes?.liste ?? []) {
+    if (!c.points.length || (c.debut && reseau.jour < c.debut) || (c.fin && plusJours(c.fin, JOURS_APRES_CAMPAGNE) < reseau.jour)) continue
+    for (const m of magasinsConcernes(reseau, c)) {
+      if (magasins && !magasins.has(m.nom)) continue
+      const k = reseau.campagnes.constats[c.id]?.[m.nom] ?? {}
+      for (const p of c.points) {
+        const constat = k[p.id]
+        const a: ActionPlan = { action: p.libelle, porteur: porteurDe(m.nom), echeance: c.fin, ...(constat?.fait ? { faite: constat.date || reseau.jour, ...(constat.par ? { faitePar: constat.par } : {}) } : {}) }
+        l.push({ visite: null, libre: null, magasin: m.nom, date: c.debut, index: -1, a, cle: cleCampagne(c.id, p.id), campagne: { id: c.id, point: p.id, nom: c.nom, debut: c.debut, fin: c.fin, ...(constat ? { constat } : {}) } })
+      }
+    }
+  }
+  return l
+}
 export const echeanceDate = (a: ActionPlan) => (/^\d{4}-\d{2}-\d{2}$/.test(a.echeance) ? a.echeance : '')
 export const enRetard = (a: ActionPlan, jour: string) => !a.faite && !!echeanceDate(a) && echeanceDate(a) < jour
 
@@ -63,6 +101,7 @@ export function actionsDes(reseau: Reseau, magasins: Set<string> | null): Action
     if (magasins && !magasins.has(magasin)) continue
     for (const a of liste) l.push({ visite: null, libre: a, magasin, date: a.creeLe, index: -1, a, cle: cleLibre(a.id) })
   }
+  l.push(...tachesCampagnes(reseau, magasins))
   const fin = '9999-12-31'
   return l.sort((x, y) => Number(!!x.a.faite) - Number(!!y.a.faite)
     || (x.a.faite ? (y.a.faite ?? '').localeCompare(x.a.faite) : (echeanceDate(x.a) || fin).localeCompare(echeanceDate(y.a) || fin))

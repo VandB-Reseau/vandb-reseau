@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Tâches des campagnes (Joseph, 18/11/2026) : chaque point d'une campagne devient une tâche de chaque magasin concerné,
+  portée par son franchisé, pour la fin de la campagne, avec la puce « Campagne : nom » (onglet Tâches de la fiche,
+  listes Tâches, accueil, espace du franchisé). Rien n'est recopié : « Fait » constate le point, « Rouvrir » le remet à
+  constater ; un constat fait en visite ou dans la campagne coche la tâche. Tâches visibles du début de la campagne
+  jusqu'à 30 jours après sa fin, sans statut (en cours, bloquée). Le franchisé marque un point fait depuis sa tâche et
+  ne rouvre que ses propres constats. **Migration 0051_taches_campagnes à passer.**
 - Fiche magasin : picto « Avis Google » distinct de l'étoile des favoris (bulle d'avis) ; onglet « Équipements » avant l'Historique, équipements retirés d'« Infos du magasin » (équipe et franchisé) (Joseph, 18/11/2026), sans migration.
 - Simulateurs (Joseph, 18/11/2026), sans migration. « Me rémunérer » part de la cible : ce que je veux garder par mois
   après impôts donne le montage recommandé, qui préremplit ma répartition (étiquette « recommandé ») ; la répartition
