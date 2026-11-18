@@ -4,7 +4,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -71,7 +70,8 @@ function Sauvegarde({ reseau, signaler }: { reseau: Reseau; signaler: (m: string
   )
 }
 
-function CarteReferentiel({ reseau, r, importer, signaler }: { reseau: Reseau; r: Referentiel; importer: () => void; signaler: (m: string) => void }) {
+// 355 (Joseph, 18/11/2026) : une ligne par donnée (nom, nombre de lignes, Exporter, Importer) au lieu d'une carte chacune
+function LigneReferentiel({ reseau, r, importer, signaler }: { reseau: Reseau; r: Referentiel; importer: () => void; signaler: (m: string) => void }) {
   const [envoi, setEnvoi] = useState(false)
   const n = r.lignes(reseau).length
   const exporter = async () => {
@@ -80,18 +80,16 @@ function CarteReferentiel({ reseau, r, importer, signaler }: { reseau: Reseau; r
     catch { signaler('Le fichier n’a pas pu être préparé. Réessaie.') } finally { setEnvoi(false) }
   }
   return (
-    <Card component="section" aria-label={r.libelle}>
-      <CardContent sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5, height: '100%' }}>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h4" component="h3">{r.libelle}</Typography>
-          <Typography variant="body2" color="text.secondary">{n} ligne{n > 1 ? 's' : ''}</Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Button variant="outlined" startIcon={<DownloadOutlined />} onClick={exporter} disabled={envoi} aria-label={`Exporter ${r.libelle}`} sx={{ minHeight: 48 }}>Exporter</Button>
-          <Button variant="outlined" startIcon={<UploadFileOutlined />} onClick={importer} aria-label={`Importer ${r.libelle}`} sx={{ minHeight: 48 }}>Importer</Button>
-        </Box>
-      </CardContent>
-    </Card>
+    <Box component="section" aria-label={r.libelle} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' }, '& + &': { borderTop: '1px solid', borderColor: 'divider' } }}>
+      <Box sx={{ flex: 1, minWidth: 160 }}>
+        <Typography component="h3" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{r.libelle}</Typography>
+        <Typography variant="body2" color="text.secondary">{n} ligne{n > 1 ? 's' : ''}</Typography>
+      </Box>
+      <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+        <Button color="inherit" startIcon={<DownloadOutlined />} onClick={exporter} disabled={envoi} aria-label={`Exporter ${r.libelle}`} sx={{ minHeight: 48 }}>Exporter</Button>
+        <Button color="inherit" startIcon={<UploadFileOutlined />} onClick={importer} aria-label={`Importer ${r.libelle}`} sx={{ minHeight: 48 }}>Importer</Button>
+      </Box>
+    </Box>
   )
 }
 
@@ -202,7 +200,8 @@ function DialogImport({ reseau, r, onFermer }: { reseau: Reseau; r: Referentiel;
   )
 }
 
-export function Donnees() {
+// integre : dans le panneau de droite des Paramètres sur PC (354)
+export function Donnees({ integre = false }: { integre?: boolean }) {
   const [message, setMessage] = useState('')
   const [importer, setImporter] = useState<string | null>(null)
   return (
@@ -212,15 +211,15 @@ export function Donnees() {
         const choisi = liste.find((r) => r.id === importer)
         return (
           <>
-            <RetourParametres />
-            <PageHeader titre="Import et export" />
+            {!integre && <RetourParametres ici="Import et export" />}
+            {integre ? <Typography component="h2" variant="h2" sx={{ mb: 2 }}>Import et export</Typography> : <PageHeader titre="Import et export" />}
             <Sauvegarde reseau={reseau} signaler={setMessage} />
             {groupes.map((g) => (
               <Box key={g} component="section" aria-label={g} sx={{ mb: 3 }}>
                 <Typography component="h2" sx={[cartouche, { mb: 2 }]}>{g}</Typography>
-                <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' } }}>
-                  {liste.filter((r) => r.groupe === g).map((r) => <CarteReferentiel key={r.id} reseau={reseau} r={r} importer={() => setImporter(r.id)} signaler={setMessage} />)}
-                </Box>
+                <Card>
+                  {liste.filter((r) => r.groupe === g).map((r) => <LigneReferentiel key={r.id} reseau={reseau} r={r} importer={() => setImporter(r.id)} signaler={setMessage} />)}
+                </Card>
               </Box>
             ))}
             {choisi && <DialogImport reseau={reseau} r={choisi} onFermer={(m) => { setImporter(null); if (m) setMessage(m) }} />}

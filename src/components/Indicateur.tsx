@@ -7,8 +7,9 @@ import ButtonBase from '@mui/material/ButtonBase'
 import Typography from '@mui/material/Typography'
 import { styleChiffre } from '../theme/theme'
 
-// Grille : deux par ligne sur téléphone, quatre sur PC
-export const grilleIndicateurs = { display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 1, md: 1.5 } } as const
+// Grille : deux par ligne sur téléphone ; sur PC, autant de cartes de 190 px au moins que la place le permet
+// (294, Joseph 18/11/2026 : dans une colonne étroite, les cartes ne s'écrasent plus)
+export const grilleIndicateurs = { display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(auto-fit, minmax(190px, 1fr))' }, gap: { xs: 1, md: 1.5 } } as const
 
 // large : toute la largeur ; largeTelephone : toute la largeur sur téléphone seulement ;
 // couleurDetail : le détail en gras de cette couleur (un écart) ; fin : à droite de la valeur (courbe) ; children : sous le détail (barre)
@@ -23,11 +24,12 @@ export function Indicateur({ libelle, valeur, detail, couleur, couleurDetail, li
     ...(actif ? { boxShadow: (t: { palette: { secondary: { main: string } } }) => `inset 0 0 0 2px ${t.palette.secondary.main}` } : {}) } as const
   const contenu = (
     <>
-      <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' }, lineHeight: 1.35 }}>{libelle}</Typography>
+      {/* 295 : libellé et détail vont à la ligne plutôt que d'être coupés */}
+      <Typography color="text.secondary" sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' }, lineHeight: 1.35 }}>{libelle}</Typography>
       <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ ...styleChiffre, color: couleur }}>{valeur}</Typography>
-          {detail && <Typography color="text.secondary" noWrap sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' }, ...(couleurDetail ? { color: couleurDetail, fontWeight: 700 } : {}) }}>{detail}</Typography>}
+          {detail && <Typography color="text.secondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' }, ...(couleurDetail ? { color: couleurDetail, fontWeight: 700 } : {}) }}>{detail}</Typography>}
         </Box>
         {fin}
       </Box>

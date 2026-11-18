@@ -43,6 +43,7 @@ export function texteOrdreDuJour(m: Magasin, v: Visite | null, sujets: Sujet[], 
   ].join('\n')
 }
 
+// 339 (18/11/2026) : jamais de bouton grisé ; un clic dit ce qui manque
 export function PreparerVisite({ reseau, m, v, signaler }: { reseau: Reseau; m: Magasin; v: Visite | null; signaler: (msg: string) => void }) {
   const { profil } = useAuth()
   const { recharger } = useReseau()
@@ -85,7 +86,7 @@ export function PreparerVisite({ reseau, m, v, signaler }: { reseau: Reseau; m: 
         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
           <ChampDate label="Date" value={date} onChange={(e) => setDate(e.target.value)} disabled={lecture}
             slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: reseau.jour } }} error={!!date && date < reseau.jour} sx={{ width: { xs: '100%', sm: 220 } }} />
-          {!lecture && <Button variant={v ? 'outlined' : 'contained'} startIcon={<EventAvailableOutlined />} disabled={!dateValide || envoi || (!!v && v.date === date)} onClick={planifier} sx={{ minHeight: 48 }}>
+          {!lecture && <Button variant={v ? 'outlined' : 'contained'} startIcon={<EventAvailableOutlined />} disabled={envoi} onClick={() => (!dateValide ? signaler('Choisis une date à partir d’aujourd’hui pour planifier la visite.') : v && v.date === date ? signaler('La visite est déjà prévue à cette date. Choisis-en une autre pour la déplacer.') : planifier())} sx={{ minHeight: 48 }}>
             {v ? 'Changer la date' : 'Planifier la visite'}
           </Button>}
           {v && dateValide && <Tooltip title="Ajouter à Google Agenda"><IconButton component="a" href={lienGoogleAgenda({ magasins: [m], date, notes: { [m.nom]: notes } })} target="_blank" rel="noopener" aria-label="Ajouter à Google Agenda"><EventOutlined /></IconButton></Tooltip>}
@@ -142,7 +143,7 @@ export function PreparerVisite({ reseau, m, v, signaler }: { reseau: Reseau; m: 
           <Typography variant="body2" color="text.secondary" sx={{ mr: 'auto', alignSelf: 'center' }}>
             {`${retenus.length} sujet${retenus.length > 1 ? 's' : ''} à l’ordre du jour${p?.maj ? ` · enregistré le ${dateCourte(p.maj.slice(0, 10))}` : ''}`}
           </Typography>
-          <Button variant="contained" onClick={enregistrer} disabled={!modifie || envoi} sx={{ minHeight: 48 }}>{envoi ? 'Enregistrement…' : 'Enregistrer la préparation'}</Button>
+          <Button variant="contained" onClick={() => (modifie ? enregistrer() : signaler('Rien à enregistrer : coche un sujet ou écris une note d’abord.'))} disabled={envoi} sx={{ minHeight: 48 }}>{envoi ? 'Enregistrement…' : 'Enregistrer la préparation'}</Button>
         </Box>
       )}
     </Box>

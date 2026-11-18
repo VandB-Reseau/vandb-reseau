@@ -231,6 +231,8 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
   // Onglet Chiffres de la fiche : la santé du magasin (données du réseau) reste lisible même si le suivi financier ne se charge pas
   if (erreur) return <Box>{retour}<Panne quoi="Les chiffres du magasin" recharger={recharger} />{mode === 'chiffres' && sante && <Box sx={{ mt: 3 }}>{sante}</Box>}</Box>
   if (!donnees || !ligne) {
+    // 303 (Joseph, 18/11/2026) : dans la fiche, le magasin est forcément dans le périmètre ; il n'a simplement pas encore de chiffres ici
+    if (mode) return <Box>{retour}<EtatVide titre="Pas encore de chiffres pour ce magasin" texte="Le suivi et le budget apparaissent dès que sa caisse est importée ou que son budget est proposé." />{mode === 'chiffres' && sante && <Box sx={{ mt: 3 }}>{sante}</Box>}</Box>
     return <Box>{retour}<EtatVide titre="Ce magasin n’est pas dans ton périmètre" texte="Il n’apparaît pas parmi les magasins rattachés à ton compte. Reviens à la liste pour choisir un de tes magasins." /></Box>
   }
 
@@ -473,7 +475,9 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
                 flexDirection: 'row', gap: 1.25, '&:not(:last-of-type)::after': { content: '""', width: { xs: 16, md: enLigne ? 20 : 40 }, height: 2, bgcolor: 'divider', ml: { xs: 0.5, md: enLigne ? 1 : 1.5 } } },
               '& .MuiTab-root.Mui-selected': { fontWeight: 800, color: 'text.primary' },
               '& .rond-etape': { width: enLigne ? 26 : 32, height: enLigne ? 26 : 32, fontSize: enLigne ? '0.8125rem' : undefined, borderRadius: '50%', display: 'grid', placeItems: 'center', flexShrink: 0, fontWeight: 800, border: 2, borderColor: 'divider', bgcolor: 'background.paper' },
-              '& .Mui-selected .rond-etape': { borderColor: 'text.primary', bgcolor: 'text.primary', color: 'background.paper' } }}>
+              '& .Mui-selected .rond-etape': { borderColor: 'text.primary', bgcolor: 'text.primary', color: 'background.paper' },
+              // 341 (18/11/2026) : sur téléphone, seul le nom de l'étape ouverte s'écrit, les autres gardent leur rond (plus de « Env… » coupé)
+              '& .MuiTab-root:not(.Mui-selected) .libelle-etape': { '@media (max-width: 599.95px)': visuellementCache } }}>
             {parties.map((x) => {
               const [numero, nomEtape] = x.libelle.split(' · ')
               return (
@@ -481,7 +485,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
                   onClick={themeOuvert && x.cle === 'budget' ? () => (onglet === 'equipe' ? garde(() => aller('budget')) : aller('budget')) : undefined}
                   label={<>
                     <Box component="span" className="rond-etape">{numero}<Box component="span" sx={visuellementCache}> · </Box></Box>
-                    <LibelleOnglet texte={nomEtape ?? x.libelle} manque={!!manques[x.cle]} detail={manques[x.cle]?.detail ?? ''} marque={marquesMenu[x.cle]} />
+                    <Box component="span" className="libelle-etape"><LibelleOnglet texte={nomEtape ?? x.libelle} manque={!!manques[x.cle]} detail={manques[x.cle]?.detail ?? ''} marque={marquesMenu[x.cle]} /></Box>
                   </>} />
               )
             })}

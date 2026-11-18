@@ -123,7 +123,8 @@ test('l’onglet Chiffres donne les indicateurs et la liste des magasins', async
   await seConnecter(page)
   await page.goto('./#/plus/sante?vue=chiffres')
   await expect(page.getByRole('tab', { name: 'Chiffres', selected: true })).toBeVisible()
-  await expect(page.getByText(/Audits conformes : 1 sur 1/)).toBeVisible()
+  // 335 : les audits en 5e tuile
+  await expect(page.getByRole('group', { name: 'Audits conformes' })).toContainText('1 sur 1')
   // Pas d'appel ni de délai de contact à ce niveau
   await expect(page.locator('main').getByText(/appel|délai/i)).toHaveCount(0)
   await expect(page.getByText('CA sous −10 %')).toBeVisible()

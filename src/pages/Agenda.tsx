@@ -256,8 +256,8 @@ export function Agenda() {
                 const actif = actives.has(c.id)
                 return (
                   <ButtonBase key={c.id} aria-pressed={actif} onClick={() => setActives((a) => { const n = new Set(a); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n })}
-                    sx={{ flexShrink: 0, minHeight: 48, fontFamily: 'inherit', '& > span': { display: 'flex', alignItems: 'center', gap: 0.75, px: 1.5, height: 36, borderRadius: 2, border: '1px solid', borderColor: actif ? 'text.primary' : 'divider', bgcolor: actif ? 'action.selected' : 'background.paper', color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.875rem', fontWeight: actif ? 600 : 500 } }}>
-                    <span><Box component="i" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: c.couleur, opacity: actif ? 1 : 0.4 }} />{c.libelle}</span>
+                    sx={{ flexShrink: 0, minHeight: 48, fontFamily: 'inherit', '& > span': { display: 'flex', alignItems: 'center', gap: 0.75, px: 1.5, height: 36, borderRadius: 2, border: '1px solid', borderColor: actif ? 'text.primary' : 'divider', bgcolor: 'background.paper', color: actif ? 'text.primary' : 'text.secondary', fontSize: '0.875rem', fontWeight: actif ? 600 : 500 } }}>
+                    <span><Box component="i" sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c.couleur, opacity: actif ? 1 : 0.4 }} />{c.libelle}</span>
                   </ButtonBase>
                 )
               })}
@@ -344,7 +344,8 @@ function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, semaine = fal
                 onClick={(ev) => { if (!(ev.target as HTMLElement).closest('a,button')) ajouter({ jour: j, x: ev.clientX, y: ev.clientY }) }}
                 sx={{ position: 'relative', minHeight: semaine ? 420 : 112, p: 0.75, cursor: 'pointer', borderRight: (i % 7) < 6 ? '1px solid' : 0, borderBottom: '1px solid', borderColor: 'divider', bgcolor: cible ? 'action.selected' : horsMois ? 'action.hover' : undefined, minWidth: 0, '&:hover .ajout-jour, & .ajout-jour:focus-visible': { opacity: 1 } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
-                  <Typography variant="body2" sx={{ fontWeight: j === reseau.jour ? 800 : 500, color: horsMois ? 'text.secondary' : j === reseau.jour ? 'primary.main' : 'text.primary' }}>{Number(j.slice(8))}</Typography>
+                  {/* 353 (18/11/2026) : aujourd'hui dans un rond noir, comme sur le téléphone */}
+                  <Typography variant="body2" sx={{ fontWeight: j === reseau.jour ? 800 : 500, color: horsMois ? 'text.secondary' : j === reseau.jour ? 'background.paper' : 'text.primary', ...(j === reseau.jour ? { bgcolor: 'text.primary', borderRadius: '50%', width: 26, height: 26, display: 'grid', placeItems: 'center' } : {}) }}>{Number(j.slice(8))}</Typography>
                   <IconButton className="ajout-jour" size="small" aria-label={`Ajouter le ${jourLong(j)}`} onClick={(ev) => ajouter(ancreDe(j, ev.currentTarget))} sx={{ opacity: 0, p: 0.25, m: -0.25 }}><AddOutlined fontSize="small" /></IconButton>
                 </Box>
                 {!horsMois && duJour(j).map((e) => {
@@ -399,7 +400,7 @@ function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, semaine = fal
       {[...(voirPasses ? passes : []), ...aVenir].map((j) => (
         <Box key={j} id={`jour-${j}`} sx={{ scrollMarginTop: 72 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="subtitle2" component="h3" sx={{ textTransform: 'capitalize', color: j === reseau.jour ? 'primary.main' : 'text.primary' }}>{j === reseau.jour ? `Aujourd’hui · ${jourLong(j)}` : jourLong(j)}</Typography>
+            <Typography variant="subtitle2" component="h3" sx={{ textTransform: 'capitalize', color: 'text.primary', fontWeight: j === reseau.jour ? 800 : undefined }}>{j === reseau.jour ? `Aujourd’hui · ${jourLong(j)}` : jourLong(j)}</Typography>
             {boutonAjout(j)}
           </Box>
           {!elements.some((e) => premierJour(e) === j) ? <Card><Typography color="text.secondary" sx={{ px: 2, py: 1.5 }}>Rien de prévu</Typography></Card> : <Card>

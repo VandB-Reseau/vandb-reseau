@@ -87,10 +87,14 @@ test('chaque destination est accessible depuis la navigation', async ({ page, is
     if (nom !== 'Accueil') await expect(titre).toBeVisible()
   }
   for (const nom of isMobile ? ['Visites', ...secondaires] : secondaires) {
-    // Vague 5 (51A) : Équipe et Paramètres sont dans le menu du compte, sur PC aussi
-    await expect(nav.getByRole('button', { name: nom, exact: true })).toHaveCount(0)
-    await page.getByRole('button', { name: 'Mon compte' }).click()
-    await page.getByRole('menu').getByRole('menuitem', { name: nom, exact: true }).click()
+    // 309 (18/11/2026) : sur PC, Équipe et Paramètres reviennent dans le menu latéral (rubrique Réglages) ;
+    // sur téléphone, ils restent dans le menu du compte
+    if (!isMobile) await nav.getByRole('button', { name: nom, exact: true }).click()
+    else {
+      await expect(nav.getByRole('button', { name: nom, exact: true })).toHaveCount(0)
+      await page.getByRole('button', { name: 'Mon compte' }).click()
+      await page.getByRole('menu').getByRole('menuitem', { name: nom, exact: true }).click()
+    }
     await expect(page.getByRole('heading', { level: 1, name: new RegExp(`^${nom}( \\d{4})?$`) })).toBeVisible()
   }
   if (isMobile) {
@@ -155,10 +159,8 @@ test('le menu a deux parties : la partie classique et Paramètres', async ({ pag
   }
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
   await expect(nav.getByRole('button', { name: 'Accueil' })).toBeVisible()
-  // Vague 5 (51A) : Équipe et Paramètres sont dans le menu du compte, en bas du menu latéral
-  await page.getByRole('button', { name: 'Mon compte' }).click()
-  await expect(page.getByRole('menu').getByText('Paramètres', { exact: true }).first()).toBeVisible()
-  await page.keyboard.press('Escape')
+  // 309 (18/11/2026) : Équipe et Paramètres dans le menu latéral, rubrique Réglages
+  await expect(nav.getByRole('button', { name: 'Paramètres', exact: true })).toBeVisible()
   // Franchisés est un onglet de l'Équipe, et l'ancienne adresse y mène
   await page.goto('./#/parametres/franchises')
   await expect(page).toHaveURL(/#\/equipe\?vue=franchises/)
@@ -173,13 +175,12 @@ test('Équipe ouvre le groupe Réglages', async ({ page, isMobile }) => {
     // Juste sous le titre « Réglages » ; la partie classique (au-dessus) ne le contient pas
     const titre = menu.locator('li', { hasText: /^Réglages$/ }).first()
     await expect(titre.locator('xpath=following-sibling::*[1]')).toHaveText('Équipe')
-    // Joseph (17/11/2026) : la rubrique Réseau commence par Magasins puis Santé du parc
-    await expect(menu.getByRole('menuitem').nth(0)).toHaveText('Magasins')
-    await expect(menu.getByRole('menuitem').nth(1)).toHaveText('Santé du parc')
+    // 308 (18/11/2026) : Magasins est dans la barre du bas, la rubrique Réseau commence par Santé du parc
+    await expect(menu.getByRole('menuitem').nth(0)).toHaveText('Santé du parc')
+    await expect(menu.getByRole('menuitem').nth(1)).toHaveText('Visites')
   } else {
-    // Vague 5 (51A) : le groupe Réglages est dans le menu du compte
-    await page.getByRole('button', { name: 'Mon compte' }).click()
-    await expect(page.getByRole('menu').getByRole('menuitem').first()).toHaveText('Équipe')
-    await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Équipe' })).toHaveCount(0)
+    // 309 (18/11/2026) : la rubrique Réglages est en bas du menu latéral, Équipe en premier
+    const reglages = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('list').filter({ hasText: /^Réglages/ })
+    await expect(reglages.getByRole('button').first()).toHaveText('Équipe')
   }
 })

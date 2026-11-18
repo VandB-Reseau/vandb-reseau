@@ -203,7 +203,8 @@ test('F4 : le franchisé écrit son mot avant la visite prévue', async ({ page 
 
 test('F4 : pas de mot pour une visite passée', async ({ page }) => {
   await seConnecter(page, { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: ['Annecy Test'] }, espace: { visites: [{ id: 52, store: 'Annecy Test', visit_date: jour(-5), type: 'terrain', visitor: 'Hugo FICTIF', docs: [] }] } })
-  await expect(page.getByRole('heading', { name: 'Mes tâches' })).toBeVisible()
+  // 349 (18/11/2026) : « Mes tâches » disparaît quand il n'y a rien à faire ; on attend l'accueil
+  await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Avant la visite' })).toHaveCount(0)
 })
 

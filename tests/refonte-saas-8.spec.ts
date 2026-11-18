@@ -126,12 +126,13 @@ test('109 : l’espace franchisé a deux rubriques, « Mon magasin », À faire 
     await expect(page).toHaveURL(/magasins\/Rennes/)
     await page.goto('./#/')
   }
-  // À faire : une ligne par tâche, les deux magasins en boutons
+  // 348 (18/11/2026) : À faire en une ligne par tâche et par magasin ; sur téléphone, « Clôturer » est dans le bandeau du haut
   await deplierPoint(page)
   const aFaire = page.getByRole('region', { name: 'À faire' })
-  await expect(aFaire.getByRole('link', { name: /^Clôturer .+ : Annecy Test$/ })).toBeVisible()
-  await expect(aFaire.getByRole('link', { name: /^Clôturer .+ : Rennes Test$/ })).toBeVisible()
-  await expect(aFaire.getByText(/^Clôturer /)).toHaveCount(1)
+  const tache = isMobile ? 'Relire mon budget' : 'Clôturer'
+  await expect(aFaire.getByRole('link', { name: new RegExp(`^${tache}.*Annecy Test`) })).toBeVisible()
+  await expect(aFaire.getByRole('link', { name: new RegExp(`^${tache}.*Rennes Test`) })).toBeVisible()
+  if (isMobile) await expect(aFaire.getByText(/^Clôturer /)).toHaveCount(0)
   await page.goto('./#/magasins')
   const cartes = page.getByRole('region', { name: 'Mes magasins' })
   await expect(cartes.getByRole('heading', { level: 2 })).toHaveText(['Annecy Test', 'Rennes Test'])

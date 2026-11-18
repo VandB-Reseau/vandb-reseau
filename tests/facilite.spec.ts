@@ -21,8 +21,9 @@ async function lisible(page: Page, isMobile: boolean) {
 test('116 : montrer au franchisé, les chiffres du magasin en grand et rien d’interne', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Annecy%20Test')
-  await expect(page.getByText('Nine box :')).toBeVisible()
-  await page.getByRole('button', { name: 'Montrer au franchisé' }).click()
+  // 310 et 311 : plus de ligne nine box dans l'en-tête ; « Montrer au franchisé » est dans « ⋯ »
+  await page.getByRole('main').getByRole('button', { name: 'Autres actions' }).first().click()
+  await page.getByRole('menuitem', { name: 'Montrer au franchisé' }).click()
   const presentation = page.getByRole('dialog', { name: 'Annecy Test' })
   await expect(presentation.getByRole('heading', { name: 'Annecy Test' })).toBeVisible()
   await expect(presentation.getByRole('region', { name: /^Chiffre d’affaires de / })).toContainText(/tu fais .* qu’en /)
@@ -43,7 +44,7 @@ test('114 : sans réseau, la note et la tâche sont gardées sur l’appareil et
   page.on('request', (r) => { if (r.url().includes('suivi_magasins') && ['POST', 'PATCH'].includes(r.method()) && !(r.postData() ?? '').includes('"lus"')) envois.push(r.postData() ?? '') })
   await seConnecter(page)
   await page.goto('./#/magasins/Annecy%20Test')
-  await expect(page.getByRole('button', { name: 'Montrer au franchisé' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Infos du magasin' }).or(page.getByRole('link', { name: 'Infos du magasin' })).first()).toBeVisible()
   await context.setOffline(true)
   // Note créée en réserve
   await page.getByRole('main').getByRole('button', { name: 'Ajouter', exact: true }).click()

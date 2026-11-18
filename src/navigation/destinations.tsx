@@ -94,13 +94,15 @@ export const parametres: Destination[] = [
 // Vague 5 (51A) : dix entrées. La santé du parc devient une vue des Magasins, Budgets et Performance deviennent Chiffres,
 // Équipe et Paramètres passent au menu du compte. Joseph (10/11/2026) : le Budget prévisionnel ressort de Chiffres.
 export interface Rubrique { titre: string; destinations: Destination[] }
-export function rubriquesMenu(_sansParametres?: boolean): Rubrique[] {
+export function rubriquesMenu(sansParametres?: boolean): Rubrique[] {
   return [
     { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
     // Joseph (17/11/2026) : Réseau = Magasins, Santé du parc, Visites ; les chiffres et outils passent sous Performance
     { titre: 'Réseau', destinations: [magasins, sante, visites] },
     { titre: 'Performance', destinations: [chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur] },
     { titre: 'Siège', destinations: [infosReseau, demandes] },
+    // 309 (Joseph, 18/11/2026) : Équipe et Paramètres visibles dans le menu du Directeur, plus seulement dans le menu du compte
+    ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }]),
   ]
 }
 
@@ -108,10 +110,11 @@ export const demandesFranchise: Destination = { ...demandes, libelle: 'Mes deman
 // Menu du compte sur téléphone : ce que la barre du bas ne montre pas
 export const menuTelephone = (role: string | undefined) => menuTelephoneRubriques(role).flatMap((r) => r.destinations)
 // Vague 6 (Joseph, 10/11/2026) : le menu du compte sur téléphone rangé comme le menu du PC, en rubriques
+// 308 (18/11/2026) : sans Magasins (déjà dans la barre du bas), Siège remonté avant Performance
 export const menuTelephoneRubriques = (role: string | undefined): Rubrique[] => [
-  { titre: 'Réseau', destinations: pourRole([magasins, sante, visites], role) },
-  { titre: 'Performance', destinations: pourRole([chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur], role) },
+  { titre: 'Réseau', destinations: pourRole([sante, visites], role) },
   { titre: 'Siège', destinations: pourRole([infosReseau, demandes], role) },
+  { titre: 'Performance', destinations: pourRole([chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur], role) },
 ].filter((r) => r.destinations.length)
 
 // Espace d'un franchisé : ses magasins seulement, sans Paramètres

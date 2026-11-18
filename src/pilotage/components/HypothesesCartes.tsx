@@ -22,7 +22,8 @@ import { etatCalendrier, etatEquipe, etatFrais, etatInvestissements, QUESTIONS_C
 type Ligne = { libelle: string; valeur: ReactNode; signal?: boolean }
 
 const ETATS: Record<EtatCarte, { texte: string; couleur: 'warning' | 'info' | 'success'; action: string }> = {
-  aFaire: { texte: 'À faire', couleur: 'warning', action: 'Remplir' },
+  // 342 (18/11/2026) : un seul mot pour ce qui manque, « À compléter », en orange ; le rouge reste aux alertes
+  aFaire: { texte: 'À compléter', couleur: 'warning', action: 'Remplir' },
   aVerifier: { texte: 'À vérifier', couleur: 'info', action: 'Vérifier' },
   fait: { texte: 'Fait', couleur: 'success', action: 'Modifier' },
 }
@@ -93,7 +94,7 @@ export function HypothesesCartes({ magasin, annee, budget: b, cibles, hausseSala
   const lignesFrais = Object.keys(cibles.fraisBudget ?? {}).length
   const question = (q: QuestionCalendrier): Ligne => {
     const r = reponseQuestion(cibles, q), t = LIBELLES_QUESTIONS[q]
-    return { libelle: t.libelle, valeur: r === 'saisie' ? nombre(saisiesQuestion(cibles, q), t.un, t.plusieurs) : r === 'rien' ? 'Rien de prévu' : 'À répondre', signal: r === 'aRepondre' }
+    return { libelle: t.libelle, valeur: r === 'saisie' ? nombre(saisiesQuestion(cibles, q), t.un, t.plusieurs) : r === 'rien' ? 'Rien de prévu' : 'À compléter', signal: r === 'aRepondre' }
   }
   const f = b.financement
   const ecartEvenements = (b.tempsForts?.ajoute ?? 0) - (b.tempsForts?.retire ?? 0) + (b.tempsForts?.ajustements ?? 0)
@@ -103,7 +104,7 @@ export function HypothesesCartes({ magasin, annee, budget: b, cibles, hausseSala
   const ventesPretes = !!ventesPrete
   const cartes: Desc[] = [
     { cle: 'depart', titre: 'Point de départ', vers: 'depart', etat: depart.tresorerie === null || depart.estimee ? 'aVerifier' : 'fait', accord: accord?.('tresoBudget', 'Point de départ'), lignes: [
-      { libelle: 'Trésorerie au 1er janvier', valeur: depart.tresorerie === null ? 'À saisir' : `${milliers(depart.tresorerie)}${depart.estimee ? ' (estimée)' : ''}`, signal: depart.tresorerie === null || depart.estimee },
+      { libelle: 'Trésorerie au 1er janvier', valeur: depart.tresorerie === null ? 'À compléter' : `${milliers(depart.tresorerie)}${depart.estimee ? ' (estimée)' : ''}`, signal: depart.tresorerie === null || depart.estimee },
       { libelle: `CA atterri ${depart.annee}`, valeur: milliers(b.atterrissage) },
       { libelle: 'Saisonnalité', valeur: depart.saisonnalite ? 'Propre au magasin' : `Celle de ${depart.annee}` },
     ] },
@@ -120,7 +121,7 @@ export function HypothesesCartes({ magasin, annee, budget: b, cibles, hausseSala
     { cle: 'equipe', titre: 'Équipe', vers: 'equipe', etat: etatEquipe(sansEquipe, !!reprise?.personnel), accord: accord?.('equipe', 'Équipe'), lignes: [
       { libelle: 'Masse salariale', valeur: milliers(b.personnel) },
       ...(reprise?.personnel ? [{ libelle: 'Équipe', valeur: `Comptes ${reprise.annee} (${reprise.mois} mois)` }]
-        : sansEquipe ? [{ libelle: 'Équipe', valeur: 'À renseigner', signal: true }] : []),
+        : sansEquipe ? [{ libelle: 'Équipe', valeur: 'À compléter', signal: true }] : []),
       { libelle: 'Hausse générale des salaires', valeur: taux(hausseSalaires) },
       { libelle: '% FP', valeur: taux(b.ratios.pctFP) },
     ] },

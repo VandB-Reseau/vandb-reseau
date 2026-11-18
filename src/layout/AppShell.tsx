@@ -189,7 +189,7 @@ const libelleAccessible = (d: Destination, c: Compteurs) => {
 
 // Menu latéral clair (refonte, Joseph 09/11/2026, choix 1A et 2A) : logo et recherche en haut, quatre rubriques titrées,
 // le compte en bas. Plus de barre noire au-dessus des pages.
-const titreRubrique = { bgcolor: 'transparent', px: 1.5, lineHeight: '28px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary' } as const
+const titreRubrique = { bgcolor: 'transparent', px: 1.5, lineHeight: '24px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'text.secondary' } as const
 function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: Destination[]; sansParametres?: boolean; sansCompteur?: boolean }) {
   const { pathname } = useLocation()
   const naviguer = useNavigate()
@@ -198,7 +198,7 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
     const actif = estActive(d, pathname, !!franchise)
     return (
       <ListItemButton key={d.chemin} selected={actif} onClick={() => naviguer(d.chemin)} aria-label={libelleAccessible(d, c)} aria-current={actif ? 'page' : undefined}
-        sx={{ mb: 0.25, minHeight: 36, px: 1.5, borderRadius: 2, '&.Mui-selected': { bgcolor: 'action.selected', boxShadow: (t) => `inset 3px 0 0 ${t.palette.secondary.main}` } }}>
+        sx={{ mb: 0.125, minHeight: 32, py: 0.375, px: 1.5, borderRadius: 2, '&.Mui-selected': { bgcolor: 'action.selected', boxShadow: (t) => `inset 3px 0 0 ${t.palette.secondary.main}` } }}>
         <ListItemIcon sx={{ minWidth: 34, color: actif ? 'text.primary' : 'text.secondary', '& svg': { fontSize: 20 } }}><Icone d={d} actif={actif} c={c} /></ListItemIcon>
         <ListItemText primary={d.libelle} slotProps={{ primary: { sx: { fontWeight: actif ? 700 : 500, fontSize: '0.875rem' } } }} />
       </ListItemButton>
@@ -229,13 +229,13 @@ function MenuLateral({ franchise, sansParametres, sansCompteur }: { franchise?: 
       {franchise && <Box sx={{ px: 1.5, pb: 1 }}><SelecteurMonMagasin /></Box>}
       <Box component="nav" aria-label="Navigation principale" sx={{ px: 1, flex: 1, overflowY: 'auto' }}>
         {(franchise ? rubriquesFranchise(franchise) : rubriquesMenu(!!sansParametres)).map((r) => (
-            <List key={r.titre} disablePadding sx={{ mb: 0.5 }} subheader={<ListSubheader disableSticky sx={titreRubrique}>{r.titre}</ListSubheader>}>
+            <List key={r.titre} disablePadding sx={{ mb: 0.25 }} subheader={<ListSubheader disableSticky sx={titreRubrique}>{r.titre}</ListSubheader>}>
               {r.destinations.map(item)}
             </List>
           ))}
       </Box>
       <Box sx={{ px: 1, pb: 1.5, pt: 1, borderTop: '1px solid', borderColor: 'divider', display: 'grid', gap: 0.5 }}>
-        <MenuCompte ligne liens={franchise || sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }]} />
+        <MenuCompte ligne liens={[]} />
       </Box>
     </Drawer>
   )
@@ -317,7 +317,7 @@ function BarreBasse({ franchise, sansCompteur }: { franchise?: Destination[]; sa
 export function AppShell({ children, franchise, bandeau, sansParametres = false, sansCompteur = false }: { children: ReactNode; franchise?: Destination[]; bandeau?: ReactNode; sansParametres?: boolean; sansCompteur?: boolean }) {
   const theme = useTheme()
   const surPC = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const { profil } = useAuth()
   useReprise(profil?.id) // 234 : rouvrir là où on s'est arrêté
   // Téléphone : la barre du bas s'efface dans une conversation et pendant la saisie d'un message, pour laisser la place au clavier
@@ -335,6 +335,9 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
   }, [])
   const conversation = /^\/echanges\/(magasin|groupe|personne)\/.|^\/echanges\/(reseau|pratiques)$/.test(pathname)
   const sansBarre = surPC || saisie || conversation
+  // 306 : Tâches a déjà son bouton « Ajouter une tâche » en tête, pas de second « + » flottant (les autres pages gardent le « + », seul moyen de créer sur téléphone)
+  const pageQuiCree = /^\/taches$/.test(pathname)
+  const flottant = !surPC && !franchise && !saisie && !conversation && !pageQuiCree && !/^\/magasins\/[^/]+/.test(pathname)
 
   return (
     <CreerProvider>
@@ -362,10 +365,12 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
       )}
 
       {/* Sur la fiche d'un magasin, son propre « + » suffit (99A : pas de bouton en double) */}
-      {!surPC && !franchise && !saisie && !conversation && !/^\/magasins\/[^/]+/.test(pathname) && <BoutonCreer flottant />}
+      {/* 306 (Joseph, 18/11/2026) : un seul « + » par écran ; les pages qui ont leur bouton de création gardent le leur */}
+      {flottant && <BoutonCreer flottant />}
       {surPC && <MenuLateral franchise={franchise} sansParametres={sansParametres} sansCompteur={sansCompteur} />}
 
-      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: 0 }, pb: surPC ? 4 : conversation ? 0 : 'calc(96px + env(safe-area-inset-bottom))' }}>
+      {/* 302 : sous la dernière ligne, la place de la barre basse et du « + » flottant, qui ne cachent plus rien */}
+      <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '64px', md: 0 }, pb: surPC ? 4 : conversation ? 0 : flottant && !/vue=carte/.test(search) ? 'calc(168px + env(safe-area-inset-bottom))' : 'calc(96px + env(safe-area-inset-bottom))' }}>
         {bandeau}
         <Box sx={{ maxWidth: 1360, mx: 'auto', px: { xs: 2, sm: 3, md: 4 }, pt: { xs: 1.5, md: 3 } }}>{children}</Box>
       </Box>

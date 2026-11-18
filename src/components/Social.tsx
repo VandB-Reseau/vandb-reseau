@@ -277,10 +277,10 @@ export function GrillePhotos({ photos, max = 3, colonnes = 3, avant, grand = fal
 
 // Lignes par défaut, tableau à la demande (PC) ; le choix est gardé par écran
 export type Affichage = 'lignes' | 'tableau'
-export function useAffichage(ecran: string): [Affichage, (a: Affichage) => void] {
+export function useAffichage(ecran: string, defaut: Affichage = 'lignes'): [Affichage, (a: Affichage) => void] {
   const cle = `vandb-affichage-${ecran}`
   // Les lignes d'office : elles portent les actions de chaque magasin (Saisir, Voir plus) ; le tableau reste au choix
-  const [a, setA] = useState<Affichage>(() => { try { return localStorage.getItem(cle) === 'tableau' ? 'tableau' : 'lignes' } catch { return 'lignes' } })
+  const [a, setA] = useState<Affichage>(() => { try { const v = localStorage.getItem(cle); return v === 'tableau' || v === 'lignes' ? v : defaut } catch { return defaut } })
   return [a, (v) => { setA(v); try { localStorage.setItem(cle, v) } catch { /* stockage indisponible */ } }]
 }
 

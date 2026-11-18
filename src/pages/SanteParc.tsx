@@ -371,6 +371,8 @@ const LigneDeploiements = memo(function LigneDeploiements({ m, valeurs, ths, coc
 // Au-delà de 10 points (jusqu'à une vingtaine de thématiques), des points plus petits sur deux rangées de 10
 function Points({ couleurs, label }: { couleurs: (string | null)[]; label: string }) {
   const serre = couleurs.length > 10
+  // 322 : rien de saisi, « 0/10 » plutôt qu'une rangée de ronds vides
+  if (couleurs.every((c) => c === null)) return <Typography role="img" aria-label={label} variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' }, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>0/{couleurs.length}</Typography>
   const taille = serre ? 9 : 12
   return (
     <Box role="img" aria-label={label} sx={{ display: { xs: 'none', sm: 'grid' }, gridTemplateColumns: `repeat(${Math.min(couleurs.length, 10)}, ${taille}px)`, gap: serre ? '4px' : 0.5, flexShrink: 0 }}>
@@ -384,7 +386,7 @@ const LigneSaisie = memo(function LigneSaisie({ m, detail, fin, coche, basculer,
     <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: coche ? 'action.selected' : undefined }}>
       {selection && <Checkbox checked={coche} onChange={() => basculer(m.nom)} sx={{ ml: 0.5, width: 48, height: 48 }} slotProps={{ input: { 'aria-label': `Sélectionner ${m.nom}` } }} />}
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex' }}>
-        <LigneCompacte onClick={() => ouvrir(m.nom)} label={`Saisir ${m.nom}`} avatar={<Initiales nom={m.nom} />} titre={m.nom} detail={detail} fin={fin} />
+        <LigneCompacte onClick={() => ouvrir(m.nom)} label={`Saisir ${m.nom}`} avatar={<Blason magasin={m} taille={40} />} titre={m.nom} detail={detail} fin={fin} />
       </Box>
     </Box>
   )
@@ -401,7 +403,7 @@ function PanneauSaisie({ reseau, liste, nom, aller, fermer, saisie, partie, surP
       {m && (
         <Box role="dialog" aria-label={m.nom} sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Initiales nom={m.nom} />
+            <Blason magasin={m} taille={40} />
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Link component={RouterLink} to={lienFiche(m.nom)} color="inherit" sx={{ fontWeight: 600, display: 'block' }} noWrap>{m.nom}</Link>
               <Typography variant="body2" color="text.secondary" noWrap>{libelleSuivi(m, coachA(m, reseau.jour))} · {i + 1} sur {liste.length}</Typography>
@@ -439,7 +441,8 @@ function ListeSaisie({ reseau, magasins, incomplet, partie, saisie, surPC, ligne
   reseau: Reseau; magasins: Magasin[]; incomplet: (m: Magasin) => boolean; partie: 'notes' | 'deploiements'; saisie: Saisie; surPC: boolean
   ligne: (m: Magasin) => { detail: string; fin: ReactNode }; tableau: Tableau; cibles: Cible[]; colonnes: Colonne[]
 }) {
-  const [etat, setEtat] = useState<Etat>('tous')
+  // 322 (18/11/2026) : « À compléter » d'office tant qu'il reste des magasins à saisir
+  const [etat, setEtat] = useState<Etat>(() => (magasins.some(incomplet) ? 'completer' : 'tous'))
   const [ouvert, setOuvert] = useState<string | null>(null)
   const [affichage, setAffichage] = useAffichage(partie === 'notes' ? 'evaluer' : 'deploiements')
   const sel = useSelection()
@@ -820,12 +823,11 @@ export function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean 
   const audits = lignes.flatMap((l) => [l.hygiene, l.excellence]).filter((x) => x && x.conforme !== null)
   const conformes = audits.filter((x) => x!.conforme).length
   const { seuilDecroche, seuilSurveiller, moisReference } = reseau.seuils
-  const sansChiffres = lignes.filter((l) => !l.a).length
   const tuiles = [
     { id: 'decroche', titre: 'Décroche', n: compte('decroche'), couleur: theme.palette.error.main, detail: `CA sous −${seuilDecroche} %` },
     { id: 'surveiller', titre: 'À surveiller', n: compte('surveiller'), couleur: theme.palette.warning.main, detail: `CA sous −${seuilSurveiller} %` },
     { id: 'ok', titre: 'Dans la norme', n: compte('ok'), couleur: theme.palette.success.main, detail: `CA au-dessus de −${seuilSurveiller} %` },
-    { id: 'sans', titre: 'Sans chiffres', n: compte(null), couleur: theme.palette.text.secondary, detail: sansChiffres ? `Dont ${sansChiffres} sans chiffres` : 'Mois de comparaison manquant' },
+    { id: 'sans', titre: 'Sans chiffres', n: compte(null), couleur: theme.palette.text.secondary, detail: 'Mois de comparaison manquant' },
   ]
   const reference = moisReference === 1 ? 'mois précédent' : 'même mois l’an dernier'
   const enTetes = ['Magasin', 'Coach', 'Mois', 'CA cumulé', `Écart vs ${reference}`, 'Flux cumulé', 'Panier moyen', 'Marge', 'CA marché extérieur', 'Alerte', 'Audits']
@@ -839,10 +841,9 @@ export function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean 
           <Indicateur key={t.id} libelle={t.titre} valeur={String(t.n)} detail={t.detail} couleur={t.couleur} actif={statuts.length === 1 && statuts[0] === t.id}
             onClick={() => setStatuts(statuts.length === 1 && statuts[0] === t.id ? [] : [t.id])} />
         ))}
+        {/* 335 (18/11/2026) : les audits en 5e tuile plutôt qu'en ligne isolée */}
+        <Indicateur libelle="Audits conformes" valeur={audits.length ? `${conformes} sur ${audits.length}` : '0'} detail={audits.length ? `${Math.round((conformes / audits.length) * 100)} %` : 'Aucun résultat saisi'} />
       </Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        {`Audits conformes : ${audits.length ? `${conformes} sur ${audits.length} (${Math.round((conformes / audits.length) * 100)} %)` : 'aucun résultat saisi'}`}
-      </Typography>
       {visibles.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." /> : surPC && affichage === 'tableau' ? (
         <TableauChiffres lignes={visibles} enTetes={enTetes} />
       ) : (

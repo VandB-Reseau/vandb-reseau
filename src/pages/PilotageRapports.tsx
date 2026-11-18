@@ -20,6 +20,8 @@ import ListItemText from '@mui/material/ListItemText'
 import ListSubheader from '@mui/material/ListSubheader'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
 import Skeleton from '@mui/material/Skeleton'
 import Snackbar from '@mui/material/Snackbar'
 import Table from '@mui/material/Table'
@@ -28,6 +30,7 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import { brand } from '../theme/theme'
 import TableSortLabel from '@mui/material/TableSortLabel'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
@@ -193,14 +196,15 @@ function Rapports({ reseau }: { reseau: Reseau }) {
             </Box>
             <Box className="pas-a-l-impression" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               {!lectureSeule && <Button variant="contained" startIcon={<SaveOutlined />} onClick={() => setDialogue('enregistrer')} sx={{ minHeight: 48 }}>Enregistrer</Button>}
-              <Button variant="outlined" startIcon={<LinkOutlined />} onClick={copierLien} sx={{ minHeight: 48 }}>Partager</Button>
-              <Button variant="outlined" startIcon={<FileDownloadOutlined />} onClick={exporter} sx={{ minHeight: 48 }}>Excel</Button>
-              {surPC && <Button variant="outlined" startIcon={<PrintOutlined />} onClick={() => window.print()} sx={{ minHeight: 48 }}>Imprimer</Button>}
               {cleRapport && <IconButton aria-label={favori ? 'Retirer de mes favoris' : 'Ajouter à mes favoris'} aria-pressed={favori} onClick={() => basculerFavori(cleRapport)} sx={{ width: 48, height: 48, color: favori ? 'warning.main' : undefined }}>{favori ? <StarRounded /> : <StarBorderRounded />}</IconButton>}
-              {cleRapport && !enregistre?.mien && <IconButton aria-label={masque ? 'Réafficher dans ma liste' : 'Masquer de ma liste'} onClick={() => { basculerMasque(cleRapport); setMessage(masque ? 'Rapport réaffiché dans ta liste' : 'Rapport masqué de ta liste') }} sx={{ width: 48, height: 48 }}>{masque ? <VisibilityOutlined /> : <VisibilityOffOutlined />}</IconButton>}
-              {enregistre && (enregistre.mien || (enregistre.modele && directeur)) && !lectureSeule && (
-                <IconButton aria-label="Supprimer ce rapport" onClick={() => void supprimer()} sx={{ width: 48, height: 48 }}><DeleteOutlined /></IconButton>
-              )}
+              {/* 328 (18/11/2026) : Enregistrer et le favori en vue, le reste dans « ⋯ » */}
+              <MenuAutresRapport actions={[
+                { libelle: 'Partager le lien', icone: <LinkOutlined />, onClick: copierLien },
+                { libelle: 'Exporter en Excel', icone: <FileDownloadOutlined />, onClick: exporter },
+                ...(surPC ? [{ libelle: 'Imprimer', icone: <PrintOutlined />, onClick: () => window.print() }] : []),
+                ...(cleRapport && !enregistre?.mien ? [{ libelle: masque ? 'Réafficher dans ma liste' : 'Masquer de ma liste', icone: masque ? <VisibilityOutlined /> : <VisibilityOffOutlined />, onClick: () => { basculerMasque(cleRapport); setMessage(masque ? 'Rapport réaffiché dans ta liste' : 'Rapport masqué de ta liste') } }] : []),
+                ...(enregistre && (enregistre.mien || (enregistre.modele && directeur)) && !lectureSeule ? [{ libelle: 'Supprimer ce rapport', icone: <DeleteOutlined />, onClick: () => void supprimer() }] : []),
+              ]} />
             </Box>
           </Box>
           <Constructeur def={def} changer={changer} ctx={ctx} surPC={surPC} nouveau={titreDepart === 'Nouveau rapport'} />
@@ -239,6 +243,18 @@ function groupesProposes(proposes: RapportPropose[], role: string | undefined) {
 }
 
 interface Entree { cle: string; titre: string; sous?: string }
+function MenuAutresRapport({ actions }: { actions: { libelle: string; icone: ReactNode; onClick: () => void }[] }) {
+  const [ancre, setAncre] = useState<HTMLElement | null>(null)
+  return (
+    <>
+      <IconButton aria-label="Autres actions" aria-haspopup="menu" aria-expanded={!!ancre} onClick={(e) => setAncre(e.currentTarget)} sx={{ width: 48, height: 48 }}><MoreHorizOutlined /></IconButton>
+      <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
+        {actions.map((a) => <MenuItem key={a.libelle} onClick={() => { setAncre(null); a.onClick() }} sx={{ minHeight: 48 }}><ListItemIcon>{a.icone}</ListItemIcon>{a.libelle}</MenuItem>)}
+      </Menu>
+    </>
+  )
+}
+
 // Tous les rapports du compte rangés par groupe ; favoris en tête, masqués à part (rapportsListe.ts)
 function rangerRapports(proposes: RapportPropose[], role: string | undefined, enregistres: RapportEnregistre[] | null, liste: { favoris: string[]; masques: string[] }) {
   // Modèles publiés : pour tous dans « Proposés par le siège », sinon avec les rapports de leur public
@@ -573,7 +589,7 @@ function Affichage({ resultat, def, changer, surPC }: { resultat: Resultat; def:
   )
 }
 
-const COULEURS = { bon: '#1d6b3a', mauvais: '#a3162f', neutre: '#2f4f7a' }
+const COULEURS = { bon: brand.vertFonce, mauvais: brand.brique, neutre: brand.anthracite }
 const couleur = (i: Indicateur, c: Cellule) => { const t = tonCellule(i, c); return t ? COULEURS[t] : COULEURS.neutre }
 // Parts du camembert : couleurs bien distinctes, la dernière (gris) pour « Autres »
 const PARTS = ['#2f4f7a', '#a3162f', '#1d6b3a', '#b26a00', '#5b3f8c', '#1f7a7a', '#8c4a2f', '#6b6b6b']
@@ -757,6 +773,15 @@ function TableauRapport({ resultat, def, changer, surPC }: { resultat: Resultat;
   const cellule = (k: string, c: Cellule, i: Indicateur, gras = false) => (
     <TableCell key={k} align="right" sx={{ whiteSpace: 'nowrap', fontWeight: gras ? 700 : 400, color: tonCellule(i, c) ? couleur(i, c) : undefined }}>{formater(i.format, c)}</TableCell>
   )
+  // 321 (18/11/2026) : les lignes sans aucun chiffre se rangent en bas, repliées, au lieu de rangées de tirets
+  const [voirVides, setVoirVides] = useState(false)
+  const vide = (l: Resultat['lignes'][number]) => cols.every(({ cle }) => { const c = l.cellules[cle]; return !c || (c.valeur === null && !c.texte) })
+  const pleines = resultat.lignes.filter((l) => !vide(l))
+  const vides = resultat.lignes.filter(vide)
+  const affichees = pleines.length && vides.length ? [...pleines, ...(voirVides ? vides : [])] : resultat.lignes
+  const basculeVides = pleines.length > 0 && vides.length > 0 && (
+    <Button onClick={() => setVoirVides((v) => !v)} aria-expanded={voirVides} sx={{ minHeight: 48 }}>{voirVides ? `Masquer les ${vides.length} sans chiffres` : `Afficher les ${vides.length} sans chiffres`}</Button>
+  )
   return (
     <TableContainer component={Card} variant="outlined" sx={{ maxHeight: surPC ? '70vh' : undefined }}>
       <Table size="small" stickyHeader aria-label="Tableau du rapport">
@@ -779,7 +804,7 @@ function TableauRapport({ resultat, def, changer, surPC }: { resultat: Resultat;
           </TableRow>
         </TableHead>
         <TableBody>
-          {resultat.lignes.map((l) => (
+          {affichees.map((l) => (
             <TableRow key={l.cle} hover>
               <TableCell sx={{ minWidth: 140, position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 1 }}>
                 {parMagasin ? <Link component={RouterLink} to={`/magasins/${encodeURIComponent(l.libelle)}`} underline="hover" sx={zone}>{l.libelle}</Link> : <>{l.libelle} <Typography component="span" variant="caption" color="text.secondary">({l.magasins.length})</Typography></>}
@@ -793,6 +818,7 @@ function TableauRapport({ resultat, def, changer, surPC }: { resultat: Resultat;
               {cols.map(({ i, cle }) => cellule(cle, resultat.total.cellules[cle], i, true))}
             </TableRow>
           )}
+          {basculeVides && <TableRow><TableCell colSpan={cols.length + 1}>{basculeVides}</TableCell></TableRow>}
         </TableBody>
       </Table>
     </TableContainer>

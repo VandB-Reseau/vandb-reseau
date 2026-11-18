@@ -194,10 +194,11 @@ export function AFaireMagasin({ reseau, m, signaler, manquants = 0, completer, c
   )
 }
 
-function CommentVa({ reseau, m }: { reseau: Reseau; m: Magasin }) {
+// franchise : la fiche du franchisé (313), sans la nine box qui reste à l'équipe
+export function CommentVa({ reseau, m, franchise = false }: { reseau: Reseau; m: Magasin; franchise?: boolean }) {
   const a = analyser(reseau, m.nom)
   const cumul = a ? cumulAnnee(reseau, m.nom, a.mois) : null
-  const alertes = pointsAttention(reseau, m, 0).filter((p) => p.cle === 'caisse' || p.cle === 'sante')
+  const alertes = pointsAttention(reseau, m, 0).filter((p) => p.cle === 'caisse' || (!franchise && p.cle === 'sante'))
     .map((p): LigneAFaire => ({ cle: p.cle, ton: p.ton, titre: p.texte, lien: p.lien }))
   return (
     <Section region titre="Comment va le magasin" action={<Button component={RouterLink} to={`${lienFiche(m.nom)}?vue=chiffres`} sx={{ minHeight: 48 }}>Chiffres</Button>}>

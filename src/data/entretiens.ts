@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { actionsDes, enRetard } from './actions'
-import { analyser, decalerMois } from './chiffres'
+import { analyser, decalerMois, formatPourcent, libelleMois } from './chiffres'
 import { magasinsDuCoach } from './charge'
 import { anneeDe, suiviRythme } from './visites'
 import { visiteFaite, type Reseau } from './modele'
@@ -59,7 +59,7 @@ export function ordreDuJour(reseau: Reseau, coach: string): PointAborder[] {
   const points: PointAborder[] = []
   for (const m of magasins) {
     const a = analyser(reseau, m.nom)
-    if (a?.statut === 'decroche') points.push({ libelle: `${m.nom} décroche`, detail: `CA ${a.ecart !== null ? `${a.ecart > 0 ? '+' : ''}${a.ecart.toFixed(1).replace('.', ',')} %` : ''} vs ${a.reference}`, lien: `/magasins/${encodeURIComponent(m.nom)}` })
+    if (a?.statut === 'decroche') points.push({ libelle: `${m.nom} décroche`, detail: `CA ${a.ecart !== null ? formatPourcent(a.ecart) : ''} vs ${libelleMois(a.reference)}`, lien: `/magasins/${encodeURIComponent(m.nom)}` })
   }
   const enRetardVisite = suiviRythme(reseau, anneeDe(reseau.jour)).filter((l) => noms.has(l.magasin.nom) && l.alerte)
   if (enRetardVisite.length) points.push({ libelle: `${enRetardVisite.length} visite${enRetardVisite.length > 1 ? 's' : ''} en retard sur le rythme`, detail: enRetardVisite.slice(0, 4).map((l) => l.magasin.nom).join(', ') })

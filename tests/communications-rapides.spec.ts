@@ -40,7 +40,9 @@ test('publier ferme la fenêtre aussitôt, sans relire tout le réseau', async (
   await page.goto('./#/communications')
   await expect(page.getByRole('article')).toHaveCount(2)
   const reseau = lecturesReseau(page)
-  await page.getByRole('button', { name: 'Publier' }).click()
+  // 351 : la création passe par « Envoyer au réseau » › Information
+  await page.getByRole('button', { name: 'Envoyer au réseau' }).click()
+  await page.getByRole('menuitem', { name: 'Information' }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle communication' })
   await d.getByLabel('Titre').fill('Carte des cocktails d’hiver')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
@@ -55,7 +57,9 @@ test('une publication refusée par la base rouvre la fenêtre avec ce qui était
   await seConnecter(page, { communications: MIENNE() })
   await ralentir(page, 'publier_communication', 'trop_long')
   await page.goto('./#/communications')
-  await page.getByRole('button', { name: 'Publier' }).click()
+  // 351 : la création passe par « Envoyer au réseau » › Information
+  await page.getByRole('button', { name: 'Envoyer au réseau' }).click()
+  await page.getByRole('menuitem', { name: 'Information' }).click()
   await page.getByRole('dialog').getByLabel('Titre').fill('Texte trop long')
   await page.getByRole('dialog').getByRole('textbox', { name: 'Message' }).fill('Brouillon à garder')
   await page.getByRole('button', { name: 'Enregistrer' }).click()

@@ -20,7 +20,6 @@ import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
 import Snackbar from '@mui/material/Snackbar'
 import Typography from '@mui/material/Typography'
-import ArrowBack from '@mui/icons-material/ArrowBack'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
@@ -46,28 +45,33 @@ export function SectionFichePersonnelle({ reseau, r, action }: { reseau: Reseau;
   const age = ageDepuis(f.naissance, reseau.jour)
   const anciennete = ageDepuis(f.arrivee, reseau.jour)
   const futur = !!f.arrivee && f.arrivee > reseau.jour
+  const champs: [string, ReactNode][] = [
+    ['Prénom', f.prenom],
+    ['Nom', f.nom],
+    ['Date de naissance', f.naissance && `${dateLongue(f.naissance)}${age !== null ? ` · ${age} ans` : ''}`],
+    [futur ? 'Arrivée prévue' : 'Date d’arrivée', f.arrivee && `${dateLongue(f.arrivee)}${!futur && anciennete !== null ? (anciennete < 1 ? ' · moins d’un an' : ` · ${anciennete} an${anciennete > 1 ? 's' : ''}`) : ''}`],
+    ...(estFrance(f.pays) ? [['Code postal', f.codePostal] as [string, ReactNode]] : []),
+    ['Département', f.departement && (estFrance(f.pays) ? libelleDepartement(f.departement) : f.departement)],
+    ['Ville', f.ville],
+    ['Pays', f.pays],
+    ['Email', f.email && <Link href={`mailto:${f.email}`}>{f.email}</Link>],
+    ['Téléphone', f.telephone && <Link href={telLien(f.telephone)}>{f.telephone}</Link>],
+  ]
+  const vides = champs.filter(([, v]) => !v).length
   return (
+    // 315 (18/11/2026) : les champs vides ne prennent plus une ligne chacun, ils se comptent en une seule
     <Section titre="Fiche personnelle" action={action}>
-      <Ligne libelle="Prénom">{f.prenom}</Ligne>
-      <Ligne libelle="Nom">{f.nom}</Ligne>
-      <Ligne libelle="Date de naissance">{f.naissance && `${dateLongue(f.naissance)}${age !== null ? ` · ${age} ans` : ''}`}</Ligne>
-      <Ligne libelle={futur ? 'Arrivée prévue' : 'Date d’arrivée'}>{f.arrivee && `${dateLongue(f.arrivee)}${!futur && anciennete !== null ? (anciennete < 1 ? ' · moins d’un an' : ` · ${anciennete} an${anciennete > 1 ? 's' : ''}`) : ''}`}</Ligne>
-      {estFrance(f.pays) && <Ligne libelle="Code postal">{f.codePostal}</Ligne>}
-      <Ligne libelle="Département">{f.departement && (estFrance(f.pays) ? libelleDepartement(f.departement) : f.departement)}</Ligne>
-      <Ligne libelle="Ville">{f.ville}</Ligne>
-      <Ligne libelle="Pays">{f.pays}</Ligne>
-      <Ligne libelle="Email">{f.email && <Link href={`mailto:${f.email}`}>{f.email}</Link>}</Ligne>
-      <Ligne libelle="Téléphone">{f.telephone && <Link href={telLien(f.telephone)}>{f.telephone}</Link>}</Ligne>
+      {champs.map(([libelle, valeur]) => <Ligne key={libelle} libelle={libelle} compacte>{valeur}</Ligne>)}
+      {vides > 0 && <Typography variant="body2" color="text.secondary" sx={{ pt: 1 }}>{vides} information{vides > 1 ? 's' : ''} à compléter</Typography>}
     </Section>
   )
 }
 
 function Entete({ retour, titre, sousTitre, onModifier }: { retour?: string; titre: string; sousTitre: string; onModifier: () => void }) {
-  const naviguer = useNavigate()
   const { referentiels } = useDroits()
   return (
     <>
-      <Button startIcon={<ArrowBack />} onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer(retour ?? '/equipe'))} sx={{ mb: 2, ml: -1 }}>Équipe</Button>
+      <FilAriane etapes={[{ libelle: 'Équipe', lien: retour ?? '/equipe' }]} ici={titre} />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <Typography variant="h1" sx={{ flex: 1 }}>{titre}</Typography>
         {referentiels && <Button variant="outlined" startIcon={<EditOutlined />} onClick={onModifier} sx={{ minHeight: 48 }}>Modifier</Button>}
@@ -170,9 +174,20 @@ function PageDirecteur({ reseau }: { reseau: Reseau }) {
   const [edition, setEdition] = useState(false)
   const [message, setMessage] = useState('')
   const d = reseau.directeur
+  const naviguer = useNavigate()
+  const { referentiels } = useDroits()
   return (
     <>
-      <Entete titre={d.nom} sousTitre={`${d.titre} · ${reseau.rrs.length} ${reseau.rrs.length > 1 ? 'Responsables Régionaux' : 'Responsable Régional'} · ${pluriel(reseau.equipe.length, 'Coach')} · ${pluriel(reseau.magasins.length, 'magasin')}`} onModifier={() => setEdition(true)} />
+      {/* 317 (Joseph, 18/11/2026) : même en-tête que les fiches Coach et Responsable Régional */}
+      <FilAriane pcSeulement etapes={[{ libelle: 'Équipe', lien: '/equipe' }]} ici={d.nom} />
+      <ProfilPersonne retour={{ libelle: 'Équipe', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/equipe')) }} nom={d.nom} lignes={[d.titre]}
+        compteurs={[
+          { valeur: reseau.rrs.length, libelle: reseau.rrs.length > 1 ? 'Responsables Régionaux' : 'Responsable Régional' },
+          { valeur: reseau.equipe.length, libelle: reseau.equipe.length > 1 ? 'Coachs' : 'Coach' },
+          { valeur: reseau.magasins.length, libelle: reseau.magasins.length > 1 ? 'magasins' : 'magasin' },
+        ]}
+        telephone={fichePersonne(reseau, { type: 'directeur', cle: '' }).telephone} modifier={referentiels ? () => setEdition(true) : undefined} />
+      <Box sx={{ mt: 2 }} />
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
         <SectionFichePersonnelle reseau={reseau} r={{ type: 'directeur', cle: '' }} />
         <Section titre="Responsables Régionaux">

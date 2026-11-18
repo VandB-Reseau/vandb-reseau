@@ -39,15 +39,15 @@ test('fiche magasin : tous les onglets, sur téléphone dans une bande qui défi
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   if (!isMobile) {
     // Refonte (Joseph, 09/11/2026, 3A) ; Simulateurs à côté de Chiffres et Budget (Joseph, 14/11/2026)
-    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box et déploiements', 'Historique'])
+    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Historique'])
     return
   }
   // Joseph (17/11/2026) : tous les onglets présents, la bande défile vers la droite, sans « Plus »
-  await expect(onglets.getByRole('tab')).toHaveText(['Aperçu', 'Tâches', 'Chiffres', 'Budget', 'Simuler', 'Extérieur', 'Nine box', 'Historique'])
+  await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Historique'])
   for (const t of await onglets.getByRole('tab').all()) expect((await t.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   expect(await textesTropPetits(page)).toEqual([])
-  await onglets.getByRole('tab', { name: 'Nine box et déploiements' }).click()
+  await onglets.getByRole('tab', { name: 'Nine box' }).click()
   await expect(page).toHaveURL(/vue=ninebox/)
   await onglets.getByRole('tab', { name: 'Vue d’ensemble' }).click()
   await expect(page).not.toHaveURL(/vue=/)

@@ -353,7 +353,8 @@ function BlocATraiter({ reseau, items, compact = false }: { reseau: Reseau; item
               ? <LigneTache key={x.cle} x={x.tache} cocher={taches.cocher} lien={x.lien} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} />
               : <LigneCompacte key={x.cle} lien={x.lien} avatar={avatarATraiter(reseau, x)} titre={x.titre} detail={x.detail} fin={x.pastille && <Pastille ton={x.pastille.ton}>{x.pastille.libelle}</Pastille>} actions={boutonPlusTard(x)} />)
   return (
-    <Box component="section" aria-label="À traiter">
+    // 349 (18/11/2026) : le détail d'une ligne passe sur deux lignes plutôt que d'être coupé au milieu
+    <Box component="section" aria-label="À traiter" sx={{ '& .MuiTypography-body2': { whiteSpace: 'normal', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } }}>
       {!compact && <TitreSection nombre={tries.length}>À traiter</TitreSection>}
       {/* Téléphone : les puces n'apparaissent qu'une fois la liste dépliée */}
       {(!compact || tout) && presents.length > 1 && (

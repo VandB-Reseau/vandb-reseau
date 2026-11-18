@@ -89,7 +89,7 @@ export function SectionAcces({ nom, magasins, emailFiche = '', signaler }: { nom
           <Ligne libelle="Magasins visibles">{acces.magasins.join(', ') || 'Aucun'}</Ligne>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
             <Button startIcon={<KeyOutlined />} disabled={envoi} sx={{ minHeight: 48 }}
-              onClick={() => agir(async () => { const mot = await nouveauMotDePasse(acces.userId); setIdentifiants({ email: acces.email, motDePasse: mot }); return true }, `Nouveau mot de passe provisoire pour ${nom}.`)}>Nouveau mot de passe</Button>
+              onClick={() => !emailValide(email) ? setErreur('Écris une adresse email valide pour ouvrir l’accès.') : !magasins.length ? setErreur('Rattache d’abord un magasin à ce franchisé.') : agir(async () => { const mot = await nouveauMotDePasse(acces.userId); setIdentifiants({ email: acces.email, motDePasse: mot }); return true }, `Nouveau mot de passe provisoire pour ${nom}.`)}>Nouveau mot de passe</Button>
             <Button color="error" onClick={() => setCoupure(true)} sx={{ minHeight: 48 }}>Couper l’accès</Button>
           </Box>
         </>
@@ -97,7 +97,7 @@ export function SectionAcces({ nom, magasins, emailFiche = '', signaler }: { nom
       {liste && !acces && (
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <TextField label="Email du compte" type="email" value={email} onChange={(e) => setEmail(e.target.value)} sx={{ flex: '1 1 240px' }} />
-          <Button variant="contained" startIcon={<LockOpenOutlined />} disabled={!emailValide(email) || envoi || !magasins.length}
+          <Button variant="contained" startIcon={<LockOpenOutlined />} disabled={envoi}
             onClick={() => agir(async () => {
               const mot = await creerEtOuvrirAcces(email, nom, magasins)
               if (mot) setIdentifiants({ email: email.trim(), motDePasse: mot })

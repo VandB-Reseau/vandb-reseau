@@ -201,6 +201,8 @@ export const optionsTheme: ThemeOptions = {
     // Champs : un seul style, coins de 8 px (la recherche garde sa forme de pilule, posée par BarreFiltres)
     MuiOutlinedInput: { styleOverrides: { root: { borderRadius: rayon.champ } } },
     MuiToggleButtonGroup: { styleOverrides: { root: { borderRadius: rayon.champ } } },
+    // 346 (18/11/2026) : le choix non retenu reste lisible, en noir, pas en gris pâle ; le choix retenu se distingue par son fond
+    MuiToggleButton: { styleOverrides: { root: ({ theme }) => ({ color: theme.vars ? theme.vars.palette.text.primary : theme.palette.text.primary, textTransform: 'none', fontWeight: 600 }) } },
     // Écrans « marque » (Accueil, Infos réseau, compte rendu) : titres en capitales de la charte
     MuiCssBaseline: { styleOverrides: { '.marque .MuiTypography-h1': { textTransform: 'uppercase', letterSpacing: '0.01em' } } },
     MuiBottomNavigationAction: {

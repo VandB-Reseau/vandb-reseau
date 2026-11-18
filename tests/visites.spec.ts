@@ -6,6 +6,8 @@ test.beforeEach(async ({ page }) => {
   const erreurs: string[] = []
   page.on('pageerror', (e) => erreurs.push(e.message))
   ;(page as unknown as { erreurs: string[] }).erreurs = erreurs
+  // 326 (18/11/2026) : le rythme s'ouvre en tableau sur PC ; ces tests lisent les lignes
+  await page.addInitScript(() => { try { if (!localStorage.getItem('vandb-affichage-rythme')) localStorage.setItem('vandb-affichage-rythme', 'lignes') } catch { /* rien */ } })
 })
 test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])

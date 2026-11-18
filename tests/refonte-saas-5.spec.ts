@@ -93,7 +93,9 @@ test('46A : le Directeur demande la prise de connaissance en publiant', async ({
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures, communications: [] })
   await page.goto('./#/infos?vue=communications')
-  await page.getByRole('button', { name: 'Publier' }).click()
+  // 351 : la création passe par « Envoyer au réseau » › Information
+  await page.getByRole('button', { name: 'Envoyer au réseau' }).click()
+  await page.getByRole('menuitem', { name: 'Information' }).click()
   const d = page.getByRole('dialog')
   await d.getByLabel('Titre').fill('Rappel loi Évin : affichage en vitrine')
   await d.getByLabel('Message', { exact: true }).fill('Merci de vérifier l’affichage cette semaine.')
@@ -158,9 +160,9 @@ test('51A : dix entrées dans le menu, Équipe et Paramètres au menu du compte,
   await seConnecter(page)
   await page.goto('./#/')
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Tâches', 'Messages', 'Agenda', 'Magasins', 'Santé du parc', 'Visites', 'Chiffres', 'Pilotage', 'Budget prévisionnel', 'Simulateurs', 'Marché extérieur', 'Animation', 'Demandes'].map((t) => new RegExp(`^${t}`)))
-  await page.getByRole('button', { name: 'Mon compte' }).click()
-  await page.getByRole('menuitem', { name: 'Paramètres' }).click()
+  await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Tâches', 'Messages', 'Agenda', 'Magasins', 'Santé du parc', 'Visites', 'Chiffres', 'Pilotage', 'Budget prévisionnel', 'Simulateurs', 'Marché extérieur', 'Animation', 'Demandes', 'Équipe', 'Paramètres'].map((t) => new RegExp(`^${t}`)))
+  // 309 (18/11/2026) : Paramètres revient dans le menu latéral
+  await nav.getByRole('button', { name: 'Paramètres', exact: true }).click()
   await expect(page).toHaveURL(/#\/parametres\/reglages/)
   await page.goto('./#/performance')
   await expect(page.getByRole('heading', { level: 1, name: 'Chiffres' })).toBeVisible()

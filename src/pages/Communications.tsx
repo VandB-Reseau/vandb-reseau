@@ -297,7 +297,8 @@ export function PageCommunications({ lectureSeule = false, entete, filtre, integ
       ) : (
         <>
           {integre
-            ? <TitreSection nombre={etat ? liste.length : undefined} action={peutPublier ? <BoutonAction libelle="Publier" onClick={() => setEdition({ c: null })} /> : undefined}>Communications</TitreSection>
+            // 351 (18/11/2026) : dans Animation, « Envoyer au réseau » en haut de page suffit ; plus de second bouton « Publier »
+            ? <TitreSection nombre={etat ? liste.length : undefined}>Communications</TitreSection>
             : <RechercheFiltres recherche={<ChampRecherche valeur={recherche} onChange={setRecherche} placeholder="Rechercher une communication" />}
               actions={peutPublier ? <BoutonAction libelle="Publier" onClick={() => setEdition({ c: null })} /> : undefined} />}
           {etat === undefined ? <Typography variant="body2" color="text.secondary">Chargement…</Typography>

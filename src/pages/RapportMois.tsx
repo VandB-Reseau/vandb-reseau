@@ -79,6 +79,8 @@ function Rapport({ reseau }: { reseau: Reseau }) {
           <Typography variant="h3" component="h2">{r.mois ? `Rapport de ${libelleMois(r.mois)}` : 'Rapport du mois'}</Typography>
           <Typography variant="body2" color="text.secondary">{[etiquette?.libelle, `${r.magasins} magasin${r.magasins > 1 ? 's' : ''} ouvert${r.magasins > 1 ? 's' : ''}`].filter(Boolean).join(' · ')}</Typography>
         </Box>
+        {/* 357 (18/11/2026) : le rapport et la revue de l'équipe se répondent ; un lien de l'un à l'autre */}
+        <Button component={RouterLink} to="/equipe?vue=revue" className="sans-impression" sx={{ minHeight: 48 }}>Revue de l’équipe</Button>
         <Button variant="outlined" className="sans-impression" startIcon={<PictureAsPdfOutlined />} onClick={() => window.print()} sx={{ minHeight: 48 }}>Télécharger en PDF</Button>
       </Box>
       <Box component="section" aria-label="Le mois en chiffres" sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' } }}>

@@ -4,11 +4,12 @@ import { RemarquesInternes } from '../components/RemarquesInternes'
 import { useState, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
+import Collapse from '@mui/material/Collapse'
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
+import Button from '@mui/material/Button'
 import Snackbar from '@mui/material/Snackbar'
 import Typography from '@mui/material/Typography'
-import CheckOutlined from '@mui/icons-material/CheckOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
@@ -34,6 +35,7 @@ import { PARTIES } from '../data/compteRendu'
 import { dateLongue, lienFiche } from '../lib/format'
 import { useConversationLaterale } from '../components/ConversationLaterale'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
+import { FriseEtapes } from '../components/Etapes'
 import { FilAriane } from '../components/FilAriane'
 
 // La visite ouverte : celle demandée, sinon la prochaine prévue, sinon la dernière faite
@@ -63,6 +65,7 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
   const [message, setMessage] = useState('')
   const conversation = useConversationLaterale(reseau, m.nom)
   const [saisie, setSaisie] = useState(false)
+  const [ficheOuverte, setFicheOuverte] = useState(true)
   const v = visiteChoisie(reseau, m.nom, params.get('id'))
   const faite = !!v && visiteFaite(v, reseau.jour)
   const preparee = faite ? null : preparationDe(reseau, m.nom)
@@ -79,9 +82,16 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
     contenu = (
       <Box sx={{ display: 'grid', gap: 3 }}>
         {!faite && <PreparerVisite key={`${v?.id ?? 'x'}-${v?.date ?? ''}`} reseau={reseau} m={m} v={v} signaler={setMessage} />}
+        {/* 340 (18/11/2026) : la fiche avant visite repliée sous la préparation ; elle s'imprime toujours dépliée */}
         <Box>
-          <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem', mb: 1 }} className="sans-impression">Fiche avant visite</Typography>
-          <Fiche reseau={reseau} m={m} integre />
+          <ButtonBase onClick={() => setFicheOuverte((o) => !o)} aria-expanded={ficheOuverte} className="sans-impression"
+            sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', minHeight: 48, px: 0.5, borderRadius: 2, fontFamily: 'inherit', '&:hover': { bgcolor: 'action.hover' } }}>
+            <Typography component="h2" sx={{ fontWeight: 700, fontSize: '1rem' }}>Fiche avant visite</Typography>
+            <ExpandMoreOutlined sx={{ color: 'text.secondary', transform: ficheOuverte ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }} />
+          </ButtonBase>
+          <Collapse in={ficheOuverte} sx={{ '@media print': { height: 'auto !important', visibility: 'visible !important' } }}>
+            <Box sx={{ pt: 1 }}><Fiche reseau={reseau} m={m} integre /></Box>
+          </Collapse>
         </Box>
       </Box>
     )
@@ -140,28 +150,14 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
       <Box className="sans-impression">
         <FilAriane etapes={[{ libelle: 'Magasins', lien: '/magasins' }, { libelle: m.nom, lien: lienFiche(m.nom) }]} ici="Visite" />
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="h2" component="h1" sx={{ mb: 0.5, flex: 1, minWidth: 0 }}>{`Visite de ${m.nom}`}</Typography>
+          <Typography variant="h1" sx={{ mb: 0.5, flex: 1, minWidth: 0 }}>{`Visite de ${m.nom}`}</Typography>
           <Button startIcon={<ChatBubbleOutlineOutlined />} onClick={conversation.ouvrir} sx={{ minHeight: 48 }}>Conversation</Button>
         </Box>
         {conversation.panneau}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{meta}</Typography>
-        <Box component="nav" aria-label="Étapes de la visite" sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden', bgcolor: 'background.paper' }}>
-          {etats.map((e, i) => {
-            const actif = e.id === etape
-            return (
-              <ButtonBase key={e.id} onClick={() => choisir(e.id)} aria-current={actif ? 'step' : undefined} aria-label={`${i + 1} ${e.libelle} : ${e.faite ? 'fait' : e.detail}`}
-                sx={{ display: 'grid', justifyItems: 'start', alignContent: 'start', gap: 0.25, textAlign: 'left', px: { xs: 1, sm: 2 }, py: 1.25, minHeight: 64, fontFamily: 'inherit',
-                  borderLeft: i ? '1px solid' : 0, borderColor: 'divider', bgcolor: e.faite ? 'rgba(48,118,114,0.10)' : e.id === enCours ? 'rgba(248,187,9,0.16)' : undefined,
-                  boxShadow: actif ? 'inset 0 -3px 0 #1d1d1b' : undefined }}>
-                <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontWeight: 700, fontSize: { xs: '0.8125rem', sm: '0.875rem' } }}>
-                  {e.faite ? <CheckOutlined sx={{ fontSize: 16, color: 'success.main' }} /> : <Box component="span" sx={{ color: 'text.secondary' }}>{i + 1}</Box>}
-                  {e.libelle}
-                </Box>
-                <Box component="span" sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{e.detail}</Box>
-              </ButtonBase>
-            )
-          })}
-        </Box>
+        {/* 338 (18/11/2026) : les étapes au modèle du budget */}
+        <FriseEtapes libelle="Étapes de la visite" actuelle={etape} choisir={(c) => choisir(c as typeof etape)} sx={{ mb: 3 }}
+          etapes={etats.map((e, i) => ({ cle: e.id, libelle: e.libelle, detail: e.faite ? 'Fait' : e.detail, fait: e.faite, aria: `${i + 1} ${e.libelle} : ${e.faite ? 'fait' : e.detail}` }))} />
       </Box>
       {contenu}
       {saisie && v && <DialogVisite reseau={reseau} visite={v} onFermer={(t) => { setSaisie(false); if (t) setMessage(t) }} />}

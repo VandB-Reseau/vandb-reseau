@@ -49,7 +49,7 @@ test('PC : menu clair en quatre rubriques, tête noire ; téléphone : barre du 
     await expect(page.getByRole('banner')).toHaveCount(0)
     const menu = page.getByRole('navigation', { name: 'Navigation principale' })
     for (const r of ['Mon travail', 'Réseau', 'Performance', 'Siège']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
-    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Santé du parc', 'Visites', 'Chiffres', 'Pilotage', 'Budget prévisionnel', 'Simulateurs', 'Marché extérieur', /^Animation/, /^Demandes/])
+    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Santé du parc', 'Visites', 'Chiffres', 'Pilotage', 'Budget prévisionnel', 'Simulateurs', 'Marché extérieur', /^Animation/, /^Demandes/, 'Équipe', 'Paramètres'])
     // Choix 213 (15/11/2026) : Actualités et Campagnes réunies dans Animation ; l'ancienne adresse y mène
     await expect(menu.getByRole('button', { name: 'Campagnes' })).toHaveCount(0)
     await page.goto('./#/animation')
@@ -87,7 +87,7 @@ test('la fiche du magasin tient en cinq onglets et deux niveaux ; le suivi, la s
   await connecter(page)
   await page.goto(fiche())
   const onglets = page.getByRole('tablist', { name: `Rubriques de ${M}` })
-  if (!isMobile) await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box et déploiements', 'Historique'])
+  if (!isMobile) await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Historique'])
   // Activité : un seul fil, filtré par des puces (vague 3, 23A)
   await page.goto(fiche('?vue=visites'))
   const filtres = page.getByRole('group', { name: 'Filtrer l’activité' })
@@ -133,6 +133,8 @@ test('PC : les magasins en tableau, une ligne ouvre l’aperçu ; téléphone : 
   await expect(tableau).toBeVisible()
   await expect(tableau.getByRole('columnheader')).toContainText(['Magasin', 'Coach', 'Responsable Régional', 'CA du mois', 'vs N-1', 'Nine box', 'Dernière visite', 'Tâches'])
   // Plus de lignes qu'avant à l'écran (9 avant la refonte) : au moins 12 magasins visibles sans défiler
+  // 321 (18/11/2026) : les magasins sans chiffres sont repliés en bas
+  await page.getByRole('button', { name: /^Afficher les \d+ sans chiffres$/ }).click()
   const visibles = await tableau.locator('tbody tr').evaluateAll((l) => l.filter((r) => r.getBoundingClientRect().bottom <= window.innerHeight).length)
   expect(visibles).toBeGreaterThanOrEqual(12)
   await expect(page.getByRole('group', { name: 'Vues enregistrées' }).getByRole('button', { name: /^Tous/ })).toHaveAttribute('aria-pressed', 'true')

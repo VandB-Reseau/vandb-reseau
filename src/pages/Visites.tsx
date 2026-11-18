@@ -94,7 +94,8 @@ function VueRythme({ reseau, surPC, actions }: { reseau: Reseau; surPC: boolean;
   const mag = (p: (l: LigneRythme) => boolean) => { const n = toutes.filter(p).length; return `${n} magasin${n > 1 ? 's' : ''}` }
   const jours = (n: number) => `${String(Math.round(n * 10) / 10).replace('.', ',')} j`
   const visites = (l: LigneRythme) => `${pluriel(l.faites, 'visite')} · référence ${l.reference}`
-  const [affichage, setAffichage] = useAffichage('rythme')
+  // 323 (18/11/2026) : « Par magasin » en tableau d'office sur PC, dans l'ordre du retard
+  const [affichage, setAffichage] = useAffichage('rythme', 'tableau')
   // Tableau (PC) : chaque colonne se trie et se filtre, avant le découpage en tranches
   const tab = useTableau(lignes, colonnesRythme, { memoire: 'visites-rythme' })
   const enTableau = surPC && affichage === 'tableau'

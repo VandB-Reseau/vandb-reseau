@@ -98,6 +98,8 @@ export function Clotures() {
   if (erreur || !donnees) return <Panne quoi="Les clôtures" recharger={recharger} />
   const complets = lignes.filter((l) => l.faits === l.etapes.length).length
   const etapesNoms = lignes[0]?.etapes.map((e) => e.libelle) ?? []
+  // 327 (18/11/2026) : la colonne Coach seulement quand elle dit quelque chose ; une légende des pictos
+  const avecCoach = surPC && lignes.some((l) => l.coach)
   return (
     <Box component="section" aria-label="Clôtures du mois">
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 2 }}>
@@ -113,17 +115,17 @@ export function Clotures() {
               <TableRow>
                 <TableCell padding="checkbox" sx={{ pl: 2 }}><CaseEntete s={s} /></TableCell>
                 <Entete t={t} cle="magasin" />
-                {surPC && <Entete t={t} cle="coach" />}
+                {avecCoach && <Entete t={t} cle="coach" />}
                 {surPC ? (lignes[0]?.etapes ?? []).map((e) => <Entete key={e.cle} t={t} cle={`e:${e.cle}`} align="center" />) : <Entete t={t} cle="faits" />}
               </TableRow>
             </TableHead>
             <TableBody>
-              <LigneSansResultat t={t} colSpan={surPC ? etapesNoms.length + 3 : 3} quoi="Aucun magasin ne correspond" />
+              <LigneSansResultat t={t} colSpan={surPC ? etapesNoms.length + (avecCoach ? 3 : 2) : 3} quoi="Aucun magasin ne correspond" />
               {t.lignes.map((l) => (
                 <TableRow key={l.magasin} hover selected={s.choisis.has(l.magasin)} onClick={() => navigate(lienMagasin(l.magasin, 'cloture'))} sx={{ cursor: 'pointer' }}>
                   <TableCell padding="checkbox" sx={{ pl: 2 }}><CaseLigne s={s} cle={l.magasin} nom={l.magasin} /></TableCell>
                   <TableCell><Link component={RouterLink} to={lienMagasin(l.magasin, 'cloture')} onClick={(e) => e.stopPropagation()} sx={{ fontWeight: 600, display: 'inline-flex', minHeight: { xs: 48, md: 40 }, alignItems: 'center' }}>{l.magasin}</Link></TableCell>
-                  {surPC && <TableCell>{l.coach}</TableCell>}
+                  {avecCoach && <TableCell>{l.coach}</TableCell>}
                   {surPC
                     ? l.etapes.map((e) => (
                       <TableCell key={e.cle} align="center" aria-label={`${e.libelle} : ${e.fait ? 'fait' : 'à faire'}`}>
@@ -137,6 +139,12 @@ export function Clotures() {
           </Table>
         </TableContainer>
       </Card>
+      {surPC && (
+        <Box role="note" aria-label="Légende" sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 1, color: 'text.secondary' }}>
+          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}><CheckCircle fontSize="small" sx={{ color: 'success.main' }} /><Typography variant="body2">Fait</Typography></Box>
+          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}><RadioButtonUncheckedOutlined fontSize="small" /><Typography variant="body2">À faire</Typography></Box>
+        </Box>
+      )}
       <BarreSelection s={s} quoi="magasin">
         <Button variant="outlined" startIcon={<NotificationsActiveOutlined />} disabled={occupe} onClick={() => void relancer()}>Relancer les franchisés</Button>
       </BarreSelection>

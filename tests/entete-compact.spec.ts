@@ -24,13 +24,14 @@ for (const f of fiches) {
     await page.goto(f.url)
     const titre = page.getByRole('main').getByRole('heading', { level: 1, ...(f.titre ? { name: f.titre } : {}) })
     await expect(titre).toBeVisible()
-    const bref = page.getByRole('group', { name: 'En bref' })
+    // 307 (18/11/2026) : la fiche magasin n'a plus de compteurs sous le nom (statut seulement s'il n'est pas ouvert)
+    const bref = f.nom === 'magasin' ? titre : page.getByRole('group', { name: 'En bref' })
     await expect(bref).toBeVisible()
     const t = (await titre.boundingBox())!, b = (await bref.boundingBox())!
     const appel = (await page.getByRole('main').getByRole('button', { name: /^Appeler/ }).or(page.getByRole('main').getByRole('link', { name: /^Appeler/ })).first().boundingBox())!
     const carte = (await bref.locator('xpath=ancestor::div[contains(@class,"MuiCard-root")][1]').boundingBox())!
     // Refonte vague 2 (11A) : compteurs sous le nom, sur PC comme sur téléphone ; sur PC, l'en-tête reste bas
-    expect(b.y).toBeGreaterThan(t.y + t.height - 1)
+    if (f.nom !== 'magasin') expect(b.y).toBeGreaterThan(t.y + t.height - 1)
     if (!isMobile) {
       expect(b.x + b.width).toBeLessThanOrEqual(appel.x + 1)
       expect(carte.height).toBeLessThan(170)
@@ -45,7 +46,7 @@ test('PC étroit : compteurs et pictos passent sous le nom sans déborder', asyn
   await page.setViewportSize({ width: 960, height: 700 })
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test')
-  await expect(page.getByRole('group', { name: 'En bref' })).toBeVisible()
+  await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Lyon Test' })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.screenshot({ path: `captures/${info.project.name}-entete-etroit.png` })
 })
