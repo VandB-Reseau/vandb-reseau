@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { COMPTE, ouvrirInfosMagasin, simulerSupabase, textesTropPetits, type Ecriture, type OptionsSimulation } from '../supabase-simule'
+import { COMPTE, ouvrirOnglet, simulerSupabase, textesTropPetits, type Ecriture, type OptionsSimulation } from '../supabase-simule'
 import { magasinFictif } from './donnees-fictives'
 import { simulerPilotage, zonesTropPetites, type MagasinSimule, type OptionsSimulation as OptionsPilotage } from './supabase-simule'
 
@@ -292,8 +292,8 @@ test('Équipements : saisis par l’équipe, repris dans le parc de tireuses', a
   const ecritures: Ecriture[] = []
   await connecter(page, { ecritures, persister: true }, {})
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}`)
-  await ouvrirInfosMagasin(page) // maquette 264 (17/11/2026) : panneau « Infos du magasin »
-  await page.getByRole('button', { name: /^Équipements/ }).click() // repliés dans la colonne d'identité (choix 200)
+  // Joseph (18/11/2026) : les équipements ont leur onglet, juste avant l'Historique
+  await ouvrirOnglet(page, 'Équipements', page.getByRole('tablist', { name: `Rubriques de ${NOM}` }))
   await expect(page.getByText('Aucun équipement enregistré', { exact: false })).toBeVisible()
   await page.getByRole('button', { name: 'Ajouter un équipement' }).click()
   const d = page.getByRole('dialog').last()
@@ -321,8 +321,8 @@ test('Équipements : le franchisé voit et modifie ceux de son magasin', async (
   const ecritures: Ecriture[] = []
   await connecter(page, { ...franchise, ecritures, config: { equipements_magasins: equipements } }, {})
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}`)
-  // 312 (18/11/2026) : équipe, adresse et équipements du franchisé sont dans « Infos du magasin »
-  await page.getByRole('button', { name: 'Infos du magasin' }).click()
+  // Joseph (18/11/2026) : comme pour l'équipe, l'onglet Équipements avant l'Historique
+  await ouvrirOnglet(page, 'Équipements', page.getByRole('tablist', { name: `Rubriques de ${NOM}` }))
   const liste = page.getByRole('list', { name: `Équipements de ${NOM}` })
   await expect(liste.getByText('2 × Barnum ou tente')).toBeVisible()
   await expect(liste.getByText('3 × 6 m · achat 2024 · 1 200 € HT')).toBeVisible()

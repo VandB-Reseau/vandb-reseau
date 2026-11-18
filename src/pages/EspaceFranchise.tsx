@@ -1,6 +1,7 @@
 import useMediaQuery from '@mui/material/useMediaQuery'
 import CalculateOutlined from '@mui/icons-material/CalculateOutlined'
 import { SectionEquipements } from '../components/Equipements'
+import HandymanOutlined from '@mui/icons-material/HandymanOutlined'
 import { MarcheExterieur } from '../components/MarcheExterieur'
 import HandshakeOutlined from '@mui/icons-material/HandshakeOutlined'
 import { MonMois } from '../components/MonMois'
@@ -619,7 +620,7 @@ export function MagasinsFranchise() {
 // face au budget, chiffres du mois et saisies
 // 314 (Joseph, 18/11/2026) : mêmes onglets que la fiche de l'équipe (Tâches, Historique) au lieu d'« Activité » et de ses
 // sous-onglets ; les anciennes adresses (visites, campagnes, pratiques) mènent à l'onglet qui les contient
-type VueFiche = 'fiche' | 'taches' | 'chiffres' | 'budget' | 'simulateurs' | 'exterieur' | 'historique'
+type VueFiche = 'fiche' | 'taches' | 'chiffres' | 'budget' | 'simulateurs' | 'exterieur' | 'equipements' | 'historique'
 const rubriques: Rubrique<VueFiche>[] = [
   { vue: 'fiche', libelle: 'Vue d’ensemble', icone: <StorefrontOutlined /> },
   { vue: 'taches', libelle: 'Tâches', icone: <TaskAltOutlined /> },
@@ -629,14 +630,16 @@ const rubriques: Rubrique<VueFiche>[] = [
   { vue: 'simulateurs', libelle: 'Simulateurs', icone: <CalculateOutlined /> },
   // Joseph (16/11/2026) : le franchisé bâtit lui aussi son plan marché extérieur
   { vue: 'exterieur', libelle: 'Marché extérieur', icone: <HandshakeOutlined /> },
+  // Joseph (18/11/2026) : comme la fiche de l'équipe, les équipements ont leur onglet avant l'Historique
+  { vue: 'equipements', libelle: 'Équipements', icone: <HandymanOutlined /> },
   { vue: 'historique', libelle: 'Historique', icone: <EventNoteOutlined /> },
 ]
-const VUES_F: VueFiche[] = ['fiche', 'taches', 'chiffres', 'budget', 'simulateurs', 'exterieur', 'historique']
+const VUES_F: VueFiche[] = ['fiche', 'taches', 'chiffres', 'budget', 'simulateurs', 'exterieur', 'equipements', 'historique']
 const ANCIENNES_VUES_F: Record<string, VueFiche> = { visites: 'historique', pratiques: 'historique', activite: 'historique', campagnes: 'taches' }
 const PARTIES_BUDGET_F = ['budget', 'visualiser', 'echanges', 'depart', 'ventes', 'calendrier', 'investissements', 'equipe', 'fraisBudget', 'resultat', 'tresoBudget', 'travaux']
 
 // 313 (Joseph, 18/11/2026) : la vue d'ensemble du franchisé sur le modèle de celle de l'équipe (maquette 264) : à gauche
-// ce qu'il a à faire et ses objectifs, à droite comment va le magasin ; équipe, adresse et équipements dans « Infos du magasin »
+// ce qu'il a à faire et ses objectifs, à droite comment va le magasin ; équipe et adresse dans « Infos du magasin »
 function OngletFiche({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; signaler: (msg: string) => void }) {
   return (
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'start' }}>
@@ -651,7 +654,7 @@ function OngletFiche({ reseau, m, signaler }: { reseau: Reseau; m: Magasin; sign
   )
 }
 
-function InfosMagasinFranchise({ reseau, m, ouvert, fermer, signaler }: { reseau: Reseau; m: Magasin; ouvert: boolean; fermer: () => void; signaler: (msg: string) => void }) {
+function InfosMagasinFranchise({ reseau, m, ouvert, fermer }: { reseau: Reseau; m: Magasin; ouvert: boolean; fermer: () => void }) {
   const adresse = [m.adresse || [m.codePostal, m.ville].filter(Boolean).join(' '), m.pays].filter(Boolean).join(', ')
   const associes = associesEnPlace(reseau, m)
   return (
@@ -676,7 +679,6 @@ function InfosMagasinFranchise({ reseau, m, ouvert, fermer, signaler }: { reseau
             return <Ligne key={a.id} libelle="Franchisé associé">{`${a.nom}${mandat?.fin ? ` · mandat jusqu’au ${dateCourte(mandat.fin)}` : ''}`}</Ligne>
           })}
         </Section>
-        <SectionEquipements reseau={reseau} m={m} signaler={signaler} />
       </Box>
     </Drawer>
   )
@@ -854,7 +856,7 @@ export function FicheMagasinFranchise() {
             {reseau.magasins.length > 1 && <FilAriane pcSeulement etapes={[{ libelle: 'Mes magasins', lien: '/magasins' }]} ici={m.nom} />}
             <ProfilFranchise retour={reseau.magasins.length > 1 ? { libelle: 'Mes magasins', aller: () => naviguer('/magasins') } : undefined} reseau={reseau} m={m} message={() => naviguer(groupe)}
               exterieur={surPC ? undefined : () => changerVue('exterieur')} infos={() => setInfos(true)} />
-            <InfosMagasinFranchise reseau={reseau} m={m} ouvert={infos} fermer={() => setInfos(false)} signaler={setConfirmation} />
+            <InfosMagasinFranchise reseau={reseau} m={m} ouvert={infos} fermer={() => setInfos(false)} />
             <Onglets valeur={vue} onChange={changerVue} rubriques={surPC ? rubriques : rubriques.filter((r) => r.vue !== 'exterieur')} libelle={`Rubriques de ${m.nom}`} fiche titre={m.nom} defilant />
             <ContenuOnglet>
               {vue === 'fiche' && <OngletFiche reseau={reseau} m={m} signaler={setConfirmation} />}
@@ -863,6 +865,7 @@ export function FicheMagasinFranchise() {
               {vue === 'budget' && <OngletBudget nom={m.nom} mode="budget" />}
               {vue === 'simulateurs' && <OngletBudget nom={m.nom} mode="simulateurs" />}
               {vue === 'exterieur' && <MarcheExterieur key={m.nom} reseau={reseau} m={m} />}
+              {vue === 'equipements' && <SectionEquipements reseau={reseau} m={m} signaler={setConfirmation} />}
               {vue === 'historique' && (
                 <Box sx={{ display: 'grid', gap: 3 }}>
                   <LireVisites magasin={m.nom} />

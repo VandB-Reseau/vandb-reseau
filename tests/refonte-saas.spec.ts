@@ -87,7 +87,7 @@ test('la fiche du magasin tient en cinq onglets et deux niveaux ; le suivi, la s
   await connecter(page)
   await page.goto(fiche())
   const onglets = page.getByRole('tablist', { name: `Rubriques de ${M}` })
-  if (!isMobile) await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Historique'])
+  if (!isMobile) await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Équipements', 'Historique'])
   // Activité : un seul fil, filtré par des puces (vague 3, 23A)
   await page.goto(fiche('?vue=visites'))
   const filtres = page.getByRole('group', { name: 'Filtrer l’activité' })

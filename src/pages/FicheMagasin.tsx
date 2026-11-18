@@ -8,6 +8,8 @@ import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
 import { OngletBudget } from '../components/OngletBudget'
 import { GroupeBudgetaire } from '../components/GroupeBudgetaire'
 import StarOutlined from '@mui/icons-material/StarOutlined'
+import ReviewsOutlined from '@mui/icons-material/ReviewsOutlined'
+import HandymanOutlined from '@mui/icons-material/HandymanOutlined'
 import StarBorderOutlined from '@mui/icons-material/StarBorderOutlined'
 import { basculerFavori, noterRecent, useSuivis } from '../lib/suivis'
 import Menu from '@mui/material/Menu'
@@ -113,8 +115,8 @@ const lienAvisGoogle = (nom: string) => `https://www.google.com/search?q=${encod
 // visites et journal ; Chiffres regroupe le suivi face au budget, la santé, les leviers et les saisies (une seule source,
 // la caisse) ; Budget ne garde que les étapes du budget. Les bonnes pratiques sont dans l'Activité (Joseph, 14/11/2026 :
 // plus d'onglet « Ressources » ; anciens liens « ?vue=pratiques » ouverts sur le filtre Bonnes pratiques).
-type VueFiche = 'fiche' | 'activite' | 'taches' | 'actions' | 'visites' | 'journal' | 'chiffres' | 'ninebox' | 'budget' | 'simulateurs' | 'exterieur' | 'pratiques'
-type OngletFiche = 'fiche' | 'activite' | 'taches' | 'chiffres' | 'ninebox' | 'budget' | 'simulateurs' | 'exterieur'
+type VueFiche = 'fiche' | 'activite' | 'taches' | 'actions' | 'visites' | 'journal' | 'chiffres' | 'ninebox' | 'budget' | 'simulateurs' | 'exterieur' | 'pratiques' | 'equipements'
+type OngletFiche = 'fiche' | 'activite' | 'taches' | 'chiffres' | 'ninebox' | 'budget' | 'simulateurs' | 'exterieur' | 'equipements'
 const rubriquesFiche: Rubrique<OngletFiche>[] = [
   { vue: 'fiche', libelle: 'Vue d’ensemble', icone: <StorefrontOutlined /> },
   // Joseph (17/11/2026) : les tâches du magasin retrouvent leur onglet (filtres, ajout, campagnes)
@@ -128,13 +130,15 @@ const rubriquesFiche: Rubrique<OngletFiche>[] = [
   // Joseph (13/11/2026) : la nine box du magasin a son onglet, avec son évolution
   // Joseph (17/11/2026) : les déploiements, rangés avec la nine box, se trouvaient mal ; l'onglet les nomme
   { vue: 'ninebox', libelle: 'Nine box', icone: <GridViewOutlined /> },
+  // Joseph (18/11/2026) : les équipements quittent « Infos du magasin » pour leur onglet, juste avant l'Historique
+  { vue: 'equipements', libelle: 'Équipements', icone: <HandymanOutlined /> },
   // Joseph (17/11/2026) : l'Activité devient l'Historique (visites, tâches, notes et journal) et passe en dernier
   { vue: 'activite', libelle: 'Historique', icone: <HistoryOutlined /> },
 ]
 // Vague 3 (23A) : plus de sous-onglets dans Activité ; les anciennes adresses (actions, visites, journal) ouvrent le fil
 // sur le bon filtre
 const ongletDe = (v: VueFiche): OngletFiche => (v === 'actions' ? 'taches' : v === 'visites' || v === 'journal' || v === 'activite' || v === 'pratiques' ? 'activite' : v)
-const VUES: VueFiche[] = ['fiche', 'activite', 'taches', 'actions', 'visites', 'journal', 'chiffres', 'ninebox', 'budget', 'simulateurs', 'exterieur', 'pratiques']
+const VUES: VueFiche[] = ['fiche', 'activite', 'taches', 'actions', 'visites', 'journal', 'chiffres', 'ninebox', 'budget', 'simulateurs', 'exterieur', 'pratiques', 'equipements']
 // Anciens liens vers un onglet regroupé : l'onglet qui l'accueille, ouvert sur sa partie
 const anciennesVues: Record<string, VueFiche> = { sante: 'ninebox', campagnes: 'actions', fil: 'journal' }
 const filtreActivite = (v: VueFiche, fil: string | null): FiltreActivite =>
@@ -257,7 +261,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
                   <span>{adresseComplete}</span>
                   {lienPlan && <Chip icon={<PlaceOutlined />} label="Itinéraire" size="small" component="a" href={lienPlan} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />}
                   {/* Choix 260 bis (Joseph, 16/11/2026) : les avis Google du magasin en un clic */}
-                  <Chip icon={<StarOutlined />} label="Avis Google" size="small" component="a" href={lienAvisGoogle(m.nom)} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />
+                  <Chip icon={<ReviewsOutlined />} label="Avis Google" size="small" component="a" href={lienAvisGoogle(m.nom)} target="_blank" rel="noopener" clickable sx={{ fontSize: '0.75rem' }} />
                 </Box>
               )}
             </Ligne>
@@ -269,7 +273,6 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           </Section>
           <Repliee.Provider value>
             <SectionExploitation m={m} />
-            <SectionEquipements reseau={reseau} m={m} signaler={setConfirmation} />
             <SectionConcurrents reseau={reseau} m={m} signaler={setConfirmation} />
           </Repliee.Provider>
         </Box>
@@ -307,6 +310,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         {vue === 'budget' && <OngletBudget nom={m.nom} mode="budget" />}
         {vue === 'simulateurs' && <OngletBudget nom={m.nom} mode="simulateurs" />}
         {vue === 'exterieur' && <MarcheExterieur key={m.nom} reseau={reseau} m={m} />}
+        {vue === 'equipements' && <SectionEquipements reseau={reseau} m={m} signaler={setConfirmation} />}
 
         {vue === 'ninebox' && (
           <Box id="partie-sante" sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
@@ -678,7 +682,7 @@ function ProfilMagasin({ m, reseau, appeler, message, creer, modifier, fermer, r
       telephone={appeler}
       // Joseph (17/11/2026) : avis Google et itinéraire en haut à droite de la fiche
       coin={<>
-        <Tooltip title="Avis Google"><IconButton component="a" href={lienAvisGoogle(m.nom)} target="_blank" rel="noopener" aria-label="Avis Google" sx={rond}><StarOutlined /></IconButton></Tooltip>
+        <Tooltip title="Avis Google"><IconButton component="a" href={lienAvisGoogle(m.nom)} target="_blank" rel="noopener" aria-label="Avis Google" sx={rond}><ReviewsOutlined /></IconButton></Tooltip>
         {lienItineraire && <Tooltip title="Itinéraire"><IconButton component="a" href={lienItineraire} target="_blank" rel="noopener" aria-label="Itinéraire" sx={rond}><DirectionsOutlined /></IconButton></Tooltip>}
       </>}
       // 310 (18/11/2026) : en vue, la visite, l'appel, les infos et « + » ; message et « Montrer au franchisé » dans « ⋯ »

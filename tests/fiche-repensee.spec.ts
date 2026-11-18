@@ -30,7 +30,8 @@ test('196, 197 et 200 : aperçu resserré, objectifs repliés, colonne d’ident
   expect(await textesTropPetits(page)).toEqual([])
   await ouvrirInfosMagasin(page)
   await expect(page.getByRole('heading', { name: 'Équipe', exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: /^Équipements/ })).toHaveAttribute('aria-expanded', 'false')
+  // Joseph (18/11/2026) : les équipements ont leur onglet, plus dans ce panneau
+  await expect(page.getByRole('button', { name: /^Équipements/ })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Concurrents à 2 km' })).toHaveAttribute('aria-expanded', 'false')
   // 254 : la pastille « Fin dans moins de 6 mois » passe sous le nom, le mandat se lit sur une ou deux lignes
   const mandat = page.getByText(/^Mandat du /).first()

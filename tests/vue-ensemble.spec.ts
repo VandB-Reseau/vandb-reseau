@@ -51,7 +51,7 @@ test('264 : le panneau « Infos du magasin » réunit équipe, adresse, carte, a
   await expect(infos.getByRole('heading', { name: 'Magasin', exact: true })).toBeVisible()
   await expect(infos.getByRole('link', { name: 'Avis Google' })).toHaveAttribute('href', /google\.com\/search\?q=V%20and%20B%20Lyon%20Test%20avis/)
   await expect(infos.locator('iframe[title="Carte Google de Lyon Test"]')).toBeVisible()
-  await expect(infos.getByRole('button', { name: /^Équipements/ })).toBeVisible()
+  await expect(infos.getByRole('button', { name: /^Équipements/ })).toHaveCount(0) // onglet Équipements (18/11/2026)
   expect(await textesTropPetits(page)).toEqual([])
   await infos.getByRole('button', { name: 'Fermer' }).click()
   await expect(infos).toHaveCount(0)
