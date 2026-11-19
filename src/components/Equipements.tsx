@@ -1,7 +1,7 @@
 // Équipements du magasin (Joseph, 14/11/2026) : le matériel acheté et mis à disposition, surtout pour le marché
 // extérieur. L'équipe et le franchisé (ses magasins, Joseph 14/11/2026) ajoutent, modifient ou retirent une ligne ;
 // le nombre de tireuses ouvre le simulateur du parc.
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -21,7 +21,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useApercu } from '../auth/Apercu'
 import { enregistrerEquipements, enregistrerEquipementsFranchise } from '../data/chargement'
 import { formatEuros } from '../data/chiffres'
-import { categoriesEquipement, equipementsDu, libelleCategorie, resumeEquipements, tireusesDu, type CategorieEquipement, type Equipement } from '../data/equipements'
+import { achatsDe, avecAchats, categoriesEquipement, equipementsDu, libelleCategorie, resumeEquipements, tireusesDu, type AchatEquipement, type CategorieEquipement, type Equipement } from '../data/equipements'
 import type { Magasin, Reseau } from '../data/modele'
 
 // Joseph (18/11/2026) : saisie directe en tableau. Chaque type d'équipement a sa ligne d'office ; quantité (− / +),
@@ -104,6 +104,7 @@ export function SectionEquipements({ reseau, m, signaler }: { reseau: Reseau; m:
       <Box component="ul" aria-label={`Équipements de ${m.nom}`} sx={{ listStyle: 'none', m: 0, p: 0 }}>
         {rangsDu(lignes).map((rang) => (
           <RangEquipement key={rang.cle} rang={rang} lecture={lecture} onModifier={(c) => modifier(rang, c)}
+            onRemplacer={(e) => { if (rang.ligne) enregistrer(e ? lignes.map((x) => (x.id === rang.ligne!.id ? e : x)) : lignes.filter((x) => x.id !== rang.ligne!.id)) }}
             onDetails={rang.ligne ? () => setEdition({ e: rang.ligne }) : undefined} />
         ))}
       </Box>
@@ -124,16 +125,71 @@ export function SectionEquipements({ reseau, m, signaler }: { reseau: Reseau; m:
 }
 
 
-function RangEquipement({ rang, lecture, onModifier, onDetails }: { rang: Rang; lecture: boolean; onModifier: (c: Partial<Pick<Equipement, 'quantite' | 'annee' | 'valeur'>>) => void; onDetails?: () => void }) {
+type Champs = Partial<AchatEquipement>
+
+// Joseph (19/11/2026) : plusieurs achats d'un même équipement (10 tireuses en 2024, 7 en 2026). Un lien discret
+// « Ajouter un achat » sous la ligne ; dès deux achats, la ligne affiche les totaux et chaque achat a sa sous-ligne.
+function RangEquipement({ rang, lecture, onRemplacer, onModifier, onDetails }: { rang: Rang; lecture: boolean; onRemplacer: (e: Equipement | null) => void; onModifier: (c: Champs) => void; onDetails?: () => void }) {
   const e = rang.ligne
-  const q = e?.quantite ?? 0
   const nom = libelleCategorie(rang.categorie) + (e?.precision ? ` · ${e.precision}` : '')
+  const achats = e ? achatsDe(e) : []
+  const plusieurs = achats.length > 1
+  const changerAchat = (i: number, c: Champs) => {
+    if (!e) return
+    const avant = achats[i]
+    const apres = { ...avant, ...c }
+    if (apres.quantite === avant.quantite && apres.annee === avant.annee && apres.valeur === avant.valeur) return
+    onRemplacer(avecAchats(e, achats.map((a, j) => (j === i ? apres : a))))
+  }
+  const ajouterAchat = () => { if (e) onRemplacer(avecAchats(e, [...achats, { quantite: 1, annee: null, valeur: null }])) }
+  const crayon = onDetails && !lecture ? <IconButton onClick={onDetails} aria-label={`Modifier ${nom}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton> : null
+  const titre = (
+    <>
+      <Typography sx={{ fontWeight: e ? 600 : 400, color: e ? 'text.primary' : 'text.secondary' }}>{nom}</Typography>
+      {e?.note && <Typography variant="body2" color="text.secondary">« {e.note} »</Typography>}
+    </>
+  )
+  return (
+    <Box component="li" aria-label={nom} sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+      {plusieurs ? (
+        <>
+          <Box sx={grille}>
+            <Box sx={{ gridArea: 'nom', minWidth: 0 }}>{titre}</Box>
+            <Typography aria-label={`Quantité totale, ${nom}`} sx={{ gridArea: 'qte', fontWeight: 600, textAlign: { xs: 'left', md: 'center' } }}>{e!.quantite}</Typography>
+            <Typography color="text.secondary" sx={{ gridArea: 'annee' }}>{`${achats.length} achats`}</Typography>
+            <Typography aria-label={`Prix d’achat total HT, ${nom}`} sx={{ gridArea: 'valeur', fontWeight: 600 }}>{e!.valeur !== null ? `${formatEuros(e!.valeur)} HT` : ''}</Typography>
+            <Box sx={{ gridArea: 'details' }}>{crayon}</Box>
+          </Box>
+          {achats.map((a, i) => (
+            <LigneSaisie key={i} libelle={`${nom}, achat ${i + 1}`} achat={a} lecture={lecture} actif onModifier={(c) => changerAchat(i, c)}
+              titre={<Typography variant="body2" color="text.secondary" sx={{ pl: { md: 2 } }}>{`Achat ${i + 1}`}</Typography>} />
+          ))}
+        </>
+      ) : (
+        <LigneSaisie libelle={nom} achat={achats[0] ?? { quantite: 0, annee: null, valeur: null }} lecture={lecture} actif={!!e} onModifier={onModifier} titre={titre} details={crayon} />
+      )}
+      {e && !lecture && (
+        <Button size="small" startIcon={<AddOutlined />} onClick={ajouterAchat} aria-label={`Ajouter un achat, ${nom}`}
+          sx={{ minHeight: { xs: 48, md: 32 }, mt: 0.5, color: 'text.secondary', fontWeight: 400 }}>Ajouter un achat</Button>
+      )}
+    </Box>
+  )
+}
+
+const grille = {
+  display: 'grid', alignItems: 'center', columnGap: 1.5, rowGap: 1, py: 0.5,
+  gridTemplateColumns: { xs: '1fr 1fr 48px', md: 'minmax(200px, 1fr) 168px 120px 160px 48px' },
+  gridTemplateAreas: { xs: '"nom nom nom" "qte qte qte" "annee valeur details"', md: '"nom qte annee valeur details"' },
+} as const
+
+function LigneSaisie({ libelle, achat, lecture, actif, onModifier, titre, details }: { libelle: string; achat: AchatEquipement; lecture: boolean; actif: boolean; onModifier: (c: Champs) => void; titre: ReactNode; details?: ReactNode }) {
+  const q = achat.quantite
   const [quantite, setQuantite] = useState(String(q))
-  const [annee, setAnnee] = useState(e?.annee ? String(e.annee) : '')
-  const [valeur, setValeur] = useState(e?.valeur !== null && e?.valeur !== undefined ? String(e.valeur) : '')
+  const [annee, setAnnee] = useState(achat.annee ? String(achat.annee) : '')
+  const [valeur, setValeur] = useState(achat.valeur !== null ? String(achat.valeur) : '')
   useEffect(() => { setQuantite(String(q)) }, [q])
-  useEffect(() => { setAnnee(e?.annee ? String(e.annee) : '') }, [e?.annee])
-  useEffect(() => { setValeur(e?.valeur !== null && e?.valeur !== undefined ? String(e.valeur) : '') }, [e?.valeur])
+  useEffect(() => { setAnnee(achat.annee ? String(achat.annee) : '') }, [achat.annee])
+  useEffect(() => { setValeur(achat.valeur !== null ? String(achat.valeur) : '') }, [achat.valeur])
   const validerQuantite = () => {
     const n = nombreOuNull(quantite)
     if (n === null || n < 0) { setQuantite(String(q)); return }
@@ -141,39 +197,29 @@ function RangEquipement({ rang, lecture, onModifier, onDetails }: { rang: Rang; 
   }
   const validerAnnee = () => {
     const a = nombreOuNull(annee)
-    if (annee.trim() && (a === null || a < 1950 || a > 2100)) { setAnnee(e?.annee ? String(e.annee) : ''); return }
+    if (annee.trim() && (a === null || a < 1950 || a > 2100)) { setAnnee(achat.annee ? String(achat.annee) : ''); return }
     onModifier({ annee: a !== null ? Math.round(a) : null })
   }
   const validerValeur = () => {
     const v = nombreOuNull(valeur)
-    if (valeur.trim() && (v === null || v < 0)) { setValeur(e?.valeur !== null && e?.valeur !== undefined ? String(e.valeur) : ''); return }
+    if (valeur.trim() && (v === null || v < 0)) { setValeur(achat.valeur !== null ? String(achat.valeur) : ''); return }
     onModifier({ valeur: v })
   }
   const entree = (valider: () => void) => (x: KeyboardEvent) => { if (x.key === 'Enter') { x.preventDefault(); valider() } }
-  const vide = !e
   return (
-    <Box component="li" aria-label={nom} sx={{
-      display: 'grid', alignItems: 'center', columnGap: 1.5, rowGap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 },
-      gridTemplateColumns: { xs: '1fr 1fr 48px', md: 'minmax(200px, 1fr) 168px 120px 160px 48px' },
-      gridTemplateAreas: { xs: '"nom nom nom" "qte qte qte" "annee valeur details"', md: '"nom qte annee valeur details"' },
-    }}>
-      <Box sx={{ gridArea: 'nom', minWidth: 0 }}>
-        <Typography sx={{ fontWeight: vide ? 400 : 600, color: vide ? 'text.secondary' : 'text.primary' }}>{nom}</Typography>
-        {e?.note && <Typography variant="body2" color="text.secondary">« {e.note} »</Typography>}
-      </Box>
+    <Box sx={grille}>
+      <Box sx={{ gridArea: 'nom', minWidth: 0 }}>{titre}</Box>
       <Box sx={{ gridArea: 'qte', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-        <IconButton disabled={lecture || q < 1} onClick={() => onModifier({ quantite: q - 1 })} aria-label={`Enlever 1, ${nom}`} sx={{ width: 48, height: 48 }}><RemoveOutlined /></IconButton>
+        <IconButton disabled={lecture || q < 1} onClick={() => onModifier({ quantite: q - 1 })} aria-label={`Enlever 1, ${libelle}`} sx={{ width: 48, height: 48 }}><RemoveOutlined /></IconButton>
         <TextField value={quantite} disabled={lecture} onChange={(x) => setQuantite(x.target.value)} onBlur={validerQuantite} onKeyDown={entree(validerQuantite)}
-          slotProps={{ htmlInput: { inputMode: 'numeric', 'aria-label': `Quantité, ${nom}`, style: { textAlign: 'center' } } }} sx={{ width: 64 }} />
-        <IconButton disabled={lecture} onClick={() => onModifier({ quantite: q + 1 })} aria-label={`Ajouter 1, ${nom}`} sx={{ width: 48, height: 48 }}><AddOutlined /></IconButton>
+          slotProps={{ htmlInput: { inputMode: 'numeric', 'aria-label': `Quantité, ${libelle}`, style: { textAlign: 'center' } } }} sx={{ width: 64 }} />
+        <IconButton disabled={lecture} onClick={() => onModifier({ quantite: q + 1 })} aria-label={`Ajouter 1, ${libelle}`} sx={{ width: 48, height: 48 }}><AddOutlined /></IconButton>
       </Box>
-      <TextField label="Année d’achat" value={annee} disabled={lecture || vide} onChange={(x) => setAnnee(x.target.value)} onBlur={validerAnnee} onKeyDown={entree(validerAnnee)}
-        slotProps={{ htmlInput: { inputMode: 'numeric', 'aria-label': `Année d’achat, ${nom}` } }} sx={{ gridArea: 'annee' }} />
-      <TextField label="Prix d’achat HT" value={valeur} disabled={lecture || vide} onChange={(x) => setValeur(x.target.value)} onBlur={validerValeur} onKeyDown={entree(validerValeur)}
-        slotProps={{ htmlInput: { inputMode: 'decimal', 'aria-label': `Prix d’achat HT, ${nom}` }, input: { endAdornment: <InputAdornment position="end">€</InputAdornment> } }} sx={{ gridArea: 'valeur' }} />
-      <Box sx={{ gridArea: 'details' }}>
-        {onDetails && !lecture && <IconButton onClick={onDetails} aria-label={`Modifier ${nom}`} sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton>}
-      </Box>
+      <TextField label="Année d’achat" value={annee} disabled={lecture || !actif} onChange={(x) => setAnnee(x.target.value)} onBlur={validerAnnee} onKeyDown={entree(validerAnnee)}
+        slotProps={{ htmlInput: { inputMode: 'numeric', 'aria-label': `Année d’achat, ${libelle}` } }} sx={{ gridArea: 'annee' }} />
+      <TextField label="Prix d’achat HT" value={valeur} disabled={lecture || !actif} onChange={(x) => setValeur(x.target.value)} onBlur={validerValeur} onKeyDown={entree(validerValeur)}
+        slotProps={{ htmlInput: { inputMode: 'decimal', 'aria-label': `Prix d’achat HT, ${libelle}` }, input: { endAdornment: <InputAdornment position="end">€</InputAdornment> } }} sx={{ gridArea: 'valeur' }} />
+      <Box sx={{ gridArea: 'details' }}>{details}</Box>
     </Box>
   )
 }
@@ -188,11 +234,13 @@ function DialogEquipement({ m, liste, ecrire, equipement: e, categorieInitiale, 
   const [valeur, setValeur] = useState(e?.valeur !== null && e?.valeur !== undefined ? String(e.valeur) : '')
   const [note, setNote] = useState(e?.note ?? '')
   const q = nombreOuNull(quantite), a = nombreOuNull(annee), v = nombreOuNull(valeur)
-  const valide = q !== null && q >= 1 && (!annee.trim() || (a !== null && a >= 1950 && a <= 2100)) && (!valeur.trim() || (v !== null && v >= 0)) && (categorie !== 'autre' || !!precision.trim())
+  const plusieurs = !!e && achatsDe(e).length > 1
+  const valide = (plusieurs || q !== null && q >= 1) && (!annee.trim() || (a !== null && a >= 1950 && a <= 2100)) && (!valeur.trim() || (v !== null && v >= 0)) && (categorie !== 'autre' || !!precision.trim())
   const enregistrer = async () => {
     const ligne: Equipement = {
       id: e?.id ?? `e_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, categorie, precision: precision.trim(),
       quantite: Math.round(q ?? 1), annee: a !== null ? Math.round(a) : null, valeur: v, note: note.trim(), par: e?.par || par, le: e?.le || jour,
+      ...(plusieurs && e ? { quantite: e.quantite, annee: e.annee, valeur: e.valeur, achats: e.achats } : {}),
     }
     await ecrire(m.nom, e ? liste.map((x) => (x.id === e.id ? ligne : x)) : [...liste, ligne])
     return e ? 'Équipement enregistré.' : 'Équipement ajouté.'
@@ -208,9 +256,9 @@ function DialogEquipement({ m, liste, ecrire, equipement: e, categorieInitiale, 
         {categoriesEquipement.map(([k, l]) => <MenuItem key={k} value={k} sx={{ minHeight: 48 }}>{l}</MenuItem>)}
       </TextField>
       <TextField label={categorie === 'autre' ? 'Nom de l’équipement' : 'Précision (modèle, taille, nombre de becs…)'} value={precision} onChange={(x) => setPrecision(x.target.value)} required={categorie === 'autre'} />
-      <TextField label="Quantité" value={quantite} onChange={(x) => setQuantite(x.target.value)} slotProps={{ htmlInput: { inputMode: 'numeric' } }} required />
-      <TextField label="Année d’achat" value={annee} onChange={(x) => setAnnee(x.target.value)} slotProps={{ htmlInput: { inputMode: 'numeric' } }} />
-      <TextField label="Prix d’achat HT (toute la ligne)" value={valeur} onChange={(x) => setValeur(x.target.value)} slotProps={{ htmlInput: { inputMode: 'decimal' } }} />
+      {!plusieurs && <TextField label="Quantité" value={quantite} onChange={(x) => setQuantite(x.target.value)} slotProps={{ htmlInput: { inputMode: 'numeric' } }} required />}
+      {!plusieurs && <TextField label="Année d’achat" value={annee} onChange={(x) => setAnnee(x.target.value)} slotProps={{ htmlInput: { inputMode: 'numeric' } }} />}
+      {!plusieurs && <TextField label="Prix d’achat HT (toute la ligne)" value={valeur} onChange={(x) => setValeur(x.target.value)} slotProps={{ htmlInput: { inputMode: 'decimal' } }} />}
       <TextField label="Note" value={note} onChange={(x) => setNote(x.target.value)} multiline minRows={2} />
     </Fenetre>
   )

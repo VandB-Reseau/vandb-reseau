@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Équipements : plusieurs achats d'un même équipement (Joseph, 19/11/2026), sans migration. Lien discret « Ajouter un
+  achat » sous chaque ligne ; chaque achat a sa quantité, son année et son prix HT, la ligne affiche le total. Un achat
+  ramené à 0 disparaît, la ligne redevient simple quand il n'en reste qu'un.
 - Contrat extérieur : gaz, consignes et gratuité de fût (Joseph, 19/11/2026), sans migration. Bloc « Remise ou fûts
   offerts » mis en avant (remise en % ou en prix facturé, ou fûts offerts), avec la marge des fûts sans et avec et le coût
   du geste. Nombre de tireuses et bouteilles de CO2 saisis à part (une bouteille de plus que de tireuses par défaut),
