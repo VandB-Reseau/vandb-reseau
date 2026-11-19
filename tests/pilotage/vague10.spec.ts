@@ -321,6 +321,43 @@ test('Équipements : saisis par l’équipe, repris dans le parc de tireuses', a
   await expect(page.getByLabel('Tireuses', { exact: true })).toHaveValue('4')
 })
 
+// Joseph (19/11/2026) : plusieurs achats d'un même équipement (10 tireuses en 2024, 7 en 2026), la ligne fait le total
+test('Équipements : plusieurs achats d’un même équipement', async ({ page, isMobile }) => {
+  const equipements = { [NOM]: [{ id: 't1', categorie: 'tireuse', precision: '', quantite: 10, annee: 2024, valeur: 8000, note: '', par: '', le: '2026-10-01' }] }
+  const ecritures: Ecriture[] = []
+  await connecter(page, { ecritures, persister: true, config: { equipements_magasins: equipements } }, {})
+  await page.goto(`./#/magasins/${encodeURIComponent(NOM)}`)
+  await ouvrirOnglet(page, 'Équipements', page.getByRole('tablist', { name: `Rubriques de ${NOM}` }))
+  const tireuse = page.getByRole('list', { name: `Équipements de ${NOM}` }).getByRole('listitem', { name: 'Tireuse', exact: true })
+  await tireuse.getByRole('button', { name: 'Ajouter un achat, Tireuse' }).click()
+  await expect(tireuse.getByLabel('Quantité, Tireuse, achat 1')).toHaveValue('10')
+  await expect(tireuse.getByLabel('Année d’achat, Tireuse, achat 1')).toHaveValue('2024')
+  await tireuse.getByLabel('Quantité, Tireuse, achat 2').fill('7')
+  await tireuse.getByLabel('Quantité, Tireuse, achat 2').press('Enter')
+  await tireuse.getByLabel('Année d’achat, Tireuse, achat 2').fill('2026')
+  await tireuse.getByLabel('Année d’achat, Tireuse, achat 2').press('Enter')
+  await tireuse.getByLabel('Prix d’achat HT, Tireuse, achat 2').fill('6300')
+  await tireuse.getByLabel('Prix d’achat HT, Tireuse, achat 2').press('Enter')
+  await expect(tireuse.getByLabel('Quantité totale, Tireuse')).toHaveText('17')
+  await expect(tireuse.getByText('2 achats')).toBeVisible()
+  await expect(page.getByText(/Équipements · 17 · 14\s300 € HT/)).toBeVisible()
+  const derniere = () => {
+    const e = ecritures.filter((x) => x.methode === 'SUIVI' && (x.corps as { key: string }).key === 'equipements_magasins').at(-1)
+    return e ? JSON.parse((e.corps as { value: string }).value)[NOM][0] : null
+  }
+  await expect.poll(derniere).toMatchObject({ quantite: 17, annee: 2024, valeur: 14300, achats: [{ quantite: 10, annee: 2024, valeur: 8000 }, { quantite: 7, annee: 2026, valeur: 6300 }] })
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) for (const z of [tireuse.getByRole('button', { name: 'Ajouter un achat, Tireuse' }), tireuse.getByRole('button', { name: 'Ajouter 1, Tireuse, achat 2' })]) {
+    expect((await z.boundingBox())!.height).toBeGreaterThanOrEqual(48)
+  }
+  // Un achat ramené à 0 disparaît ; il reste une ligne simple
+  await tireuse.getByLabel('Quantité, Tireuse, achat 1').fill('0')
+  await tireuse.getByLabel('Quantité, Tireuse, achat 1').press('Enter')
+  await expect(tireuse.getByLabel('Quantité, Tireuse', { exact: true })).toHaveValue('7')
+  await expect.poll(derniere).toEqual(expect.objectContaining({ quantite: 7, annee: 2026, valeur: 6300 }))
+  expect((await derniere()).achats).toBeUndefined()
+})
+
 test('Équipements : le franchisé voit et modifie ceux de son magasin', async ({ page, isMobile }) => {
   const equipements = { [NOM]: [{ id: 'e1', categorie: 'barnum', precision: '3 × 6 m', quantite: 2, annee: 2024, valeur: 1200, note: '', par: '', le: '2026-10-01' }] }
   const ecritures: Ecriture[] = []
