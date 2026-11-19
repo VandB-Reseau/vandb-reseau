@@ -15,7 +15,7 @@ import { styleChiffre } from '../../theme/theme'
 // Lot 32 : picto (i) à côté du libellé, l'aide du calcul (aide) ou le calcul détaillé avec les chiffres du magasin (info)
 // Refonte R4 (2/11/2026) : jauge facultative, le réel rempli à la couleur de sa pastille, un trait noir au niveau du budget
 // (le budget est aux 4/5 de la jauge, pour voir aussi un dépassement)
-export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide, info, jauge, phrase }: {
+export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide, info, jauge, phrase, negatif }: {
   libelle: string
   valeur: string
   detail?: string
@@ -26,6 +26,7 @@ export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide
   info?: ReactNode
   jauge?: { valeur: number; cible: number; niveau: NiveauEcart | null; libelle: string }
   phrase?: string | null // choix 119 : le chiffre dit en clair, pour le franchisé
+  negatif?: boolean      // un frais : valeur en rouge (Joseph, 19/11/2026)
 }) {
   return (
     // Vague 8 (98A) : même bloc chiffré que le reste de l'app (fond blanc sans bord, coins de 12 px, mêmes tailles)
@@ -36,7 +37,7 @@ export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide
         {info}
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
-        <Typography component="p" sx={styleChiffre}>{valeur}</Typography>
+        <Typography component="p" sx={negatif ? { ...styleChiffre, color: 'error.main' } : styleChiffre}>{valeur}</Typography>
         {ecart && (
           <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, fontSize: '0.8125rem', fontWeight: 700, color: ecart.favorable ? 'success.dark' : 'error.main' }}>
             {ecart.hausse ? <ArrowUpwardOutlined sx={{ fontSize: 16 }} /> : <ArrowDownwardOutlined sx={{ fontSize: 16 }} />}

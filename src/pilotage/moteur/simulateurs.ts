@@ -29,7 +29,9 @@ export interface ParametresSimulateurs {
   corner: { caParMetre: number; tauxMarge: number; demarque: number } // corner alimentaire : CA HT par mètre linéaire et par an
   // Vague 9 (choix 138 à 147, Joseph 14/11/2026)
   coutHoraire: number                                       // coût chargé d'une heure de travail (livraisons, ouvertures)
-  exterieur: { prixKm: number; dureeTireuse: number; entretienTireuse: number; co2ParFut: number } // marché extérieur
+  exterieur: { prixKm: number; dureeTireuse: number; entretienTireuse: number; co2ParFut: number // marché extérieur
+    // Bouteille de CO2 vendue au client (TTC, marge sur le HT), consignes d'une bouteille et d'un fût (Joseph, 19/11/2026)
+    bouteilleTTC: number; margeBouteille: number; consigneBouteille: number; consigneFut: number }
   donMecenat: boolean                                       // contrepartie d'un contrat traitée comme un don (réduction mécénat)
   pression: { cibleMarge: number; joursFraicheur: number; perteStandard: number }  // cible de marge du bar, jours au-delà desquels un fût s'abîme, perte normale (coulage, mousse au perçage)
   tva: { normale: number; intermediaire: number; reduite: number } // taux de TVA de la calculette des prix
@@ -63,10 +65,12 @@ export type CleRemise = (typeof LIGNES_REMISES)[number]['cle']
 // en saison, 20 % le reste de l'année (Joseph, 14/11/2026), parc saturé au-delà de 85 %
 export const COEF_INTERIM = 1.75
 export const CONTRAT_CDD = { redaction: 260, paieParMois: 20 }
+// Valeurs données par Joseph le 19/11/2026, réglables dans Paramètres › Simulateurs
+export const GAZ_CONSIGNES = { bouteilleTTC: 40, margeBouteille: 0.4, consigneBouteille: 85, consigneFut: 60 }
 export const TIREUSES = { semainesSaison: 17, occupationSaison: 0.9, occupationHors: 0.2, saturation: 0.85 }
 export const simulateursParDefaut: ParametresSimulateurs = {
   tauxDecouvert: 0, aideApprenti: 0, corner: { caParMetre: 0, tauxMarge: 0, demarque: 0 },
-  coutHoraire: 0, exterieur: { prixKm: 0, dureeTireuse: 0, entretienTireuse: 0, co2ParFut: 0 }, donMecenat: false,
+  coutHoraire: 0, exterieur: { prixKm: 0, dureeTireuse: 0, entretienTireuse: 0, co2ParFut: 0, ...GAZ_CONSIGNES }, donMecenat: false,
   pression: { cibleMarge: 0, joursFraicheur: 0, perteStandard: 0.07 }, // 7 % : standard du réseau (Joseph, 14/11/2026)
   // Taux légaux en France métropolitaine (20 %, 10 %, 5,5 %), modifiables par le Directeur
   tva: { normale: 0.2, intermediaire: 0.1, reduite: 0.055 },
@@ -85,7 +89,9 @@ export function parametresSimulateurs(p: { simulateurs?: Partial<ParametresSimul
     tauxDecouvert: positif(s.tauxDecouvert), aideApprenti: positif(s.aideApprenti),
     corner: { caParMetre: positif(s.corner?.caParMetre), tauxMarge: positif(s.corner?.tauxMarge), demarque: positif(s.corner?.demarque) },
     coutHoraire: positif(s.coutHoraire),
-    exterieur: { prixKm: positif(s.exterieur?.prixKm), dureeTireuse: positif(s.exterieur?.dureeTireuse), entretienTireuse: positif(s.exterieur?.entretienTireuse), co2ParFut: positif(s.exterieur?.co2ParFut) },
+    exterieur: { prixKm: positif(s.exterieur?.prixKm), dureeTireuse: positif(s.exterieur?.dureeTireuse), entretienTireuse: positif(s.exterieur?.entretienTireuse), co2ParFut: positif(s.exterieur?.co2ParFut),
+      bouteilleTTC: ou(s.exterieur?.bouteilleTTC, GAZ_CONSIGNES.bouteilleTTC), margeBouteille: Math.min(1, ou(s.exterieur?.margeBouteille, GAZ_CONSIGNES.margeBouteille)),
+      consigneBouteille: ou(s.exterieur?.consigneBouteille, GAZ_CONSIGNES.consigneBouteille), consigneFut: ou(s.exterieur?.consigneFut, GAZ_CONSIGNES.consigneFut) },
     donMecenat: s.donMecenat === true,
     pression: { cibleMarge: positif(s.pression?.cibleMarge), joursFraicheur: positif(s.pression?.joursFraicheur), perteStandard: Number.isFinite(s.pression?.perteStandard) ? Math.min(1, positif(s.pression?.perteStandard)) : d.pression.perteStandard },
     tva: { normale: tva('normale'), intermediaire: tva('intermediaire'), reduite: tva('reduite') },

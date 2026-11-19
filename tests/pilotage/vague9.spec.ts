@@ -50,23 +50,26 @@ test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', a
   // Livraison : 30 km × 0,60 = 18 € + 1,5 h × 20 € = 30 €, 48 € ; × 10 = 480 € par an
   await expect(page.getByText(/Une livraison coûte 48,00\s€ HT : 18,00\s€ d’indemnités kilométriques .* et 30,00\s€ de temps \(1,5 h à 20,00\s€\)\./)).toBeVisible()
   // Blocs dans l'ordre recettes → coûts → résultat, chacun avec son sous-total (Joseph, 15/11/2026)
-  await expect(page.getByRole('region', { name: '1. Recettes' }).locator('.sous-total')).toHaveText(/CA HT de l’année\s*2\s760\s€/)
-  await expect(page.getByRole('region', { name: '2. Fûts' }).locator('.sous-total')).toHaveText(/− 1\s684\s€/)
-  await expect(page.getByRole('region', { name: '4. Livraisons' }).locator('.sous-total')).toHaveText(/Par an\s*− 480\s€/)
+  // Gaz vendu à la bouteille (Joseph, 19/11/2026) : 2 bouteilles (1 tireuse + 1) à 40 € TTC = 66,67 € HT ; plus de CO2 par fût
+  await expect(page.getByRole('region', { name: '1. Recettes' }).locator('.sous-total')).toHaveText(/CA HT de l’année\s*2\s827\s€/)
+  await expect(page.getByRole('region', { name: '2. Fûts' }).locator('.sous-total')).toHaveText(/− 1\s654\s€/)
+  await expect(page.getByRole('region', { name: '5. Livraisons' }).locator('.sous-total')).toHaveText(/Par an\s*− 480\s€/)
   // Contrat de 3 ans dans l'exemple, tireuse de 5 ans : 1 500 ÷ 3 = 500 € par an au lieu de 300 € ; 600 € non amortis à la fin
   await expect(page.getByLabel('Durée du contrat')).toHaveValue('3')
-  await expect(page.getByRole('region', { name: '3. Tireuse' })).toContainText(/payée sur le contrat, 500\s€ par an au lieu de 300\s€\. Si le client part à la fin, il reste 600\s€ non amortis\./)
+  await expect(page.getByRole('region', { name: '4. Tireuses et gaz' })).toContainText(/une tireuse de 5 ans : payée sur le contrat, 500\s€ par an au lieu de 300\s€\. Si le client part à la fin, il reste 600\s€ non amortis\./)
   const compte = page.getByRole('table', { name: 'Compte de l’année' })
   // Gobelets réutilisables du contrat (Joseph, 16/11/2026) : 500 × 0,25 € = 125 € de coût fixe
-  await expect(page.getByRole('region', { name: '5. Matériel, gobelets et astreinte' }).locator('.sous-total')).toHaveText(/Par an\s*− 125\s€/)
-  await expect(compte.getByRole('row')).toHaveText([/Recettes.*\+ 2\s760\s€/, /Fûts.*− 1\s684\s€/, /Redevance et publicité.*− 83\s€/, /Tireuse.*− 500\s€/, /Livraisons.*− 480\s€/, /Matériel, gobelets et astreinte.*− 125\s€/, /Perte de l’année.*112\s€/])
-  // 24,83 € nets par fût ; 500 € de tireuse + 480 € de livraisons + 125 € de gobelets = 1 105 € ; équilibre à 45 fûts (44,5) ;
-  // 40 × 24,83 − 1 105 = − 111,80 € ; si la tireuse ressert : 905 ÷ 24,83 = 36,4, 37 fûts
-  await expect(page.getByRole('status')).toContainText(/24,83\s€ nets par fût, 1\s105\s€ de coûts fixes, équilibre à 45 fûts ; perte de 112\s€ au volume prévu\. Tireuse payée sur les 3 ans du contrat : 600\s€ non amortis si le client part, équilibre à 37 fûts si elle ressert ailleurs\./)
-  await expect(page.getByText('Perte sur la durée du contrat')).toBeVisible() // 3 × 111,80 = 335 €
-  // Contrat de 5 ans : on revient à l'amortissement sur la durée de vie : 905 € ; 993,20 − 905 = 88 €
+  await expect(page.getByRole('region', { name: '6. Matériel, gobelets et astreinte' }).locator('.sous-total')).toHaveText(/Par an\s*− 125\s€/)
+  // CO2 : 66,67 € de CA, 40 € d'achat (marge de 40 % sur le HT) ; redevance et publicité 2 826,67 × 3 % = 84,80 €
+  await expect(compte.getByRole('row')).toHaveText([/Recettes.*\+ 2\s827\s€/, /Fûts.*− 1\s654\s€/, /Bouteilles de CO2.*− 40\s€/, /Redevance et publicité.*− 85\s€/, /Tireuse.*− 500\s€/, /Livraisons.*− 480\s€/, /Matériel, gobelets et astreinte.*− 125\s€/, /Perte de l’année.*57\s€/])
+  // 25,59 € nets par fût ; 1 105 € de coûts fixes ; CO2 net 66,67 × 0,97 − 40 = 24,67 € ; équilibre (1 105 − 24,67) ÷ 25,59 = 42,2,
+  // 43 fûts ; 40 × 25,59 + 24,67 − 1 105 = − 56,73 € ; si la tireuse ressert : 880,33 ÷ 25,59 = 34,4, 35 fûts.
+  // Consignes : 4 fûts d'une livraison × 60 € + 2 bouteilles × 85 € = 410 € bloqués au plus fort
+  await expect(page.getByRole('status')).toContainText(/25,59\s€ nets par fût, 1\s105\s€ de coûts fixes, équilibre à 43 fûts ; perte de 57\s€ au volume prévu\. Tireuse payée sur les 3 ans du contrat : 600\s€ non amortis si le client part, équilibre à 35 fûts si elle ressert ailleurs\. Consignes : 410\s€ de trésorerie bloqués au plus fort\./)
+  await expect(page.getByText('Perte sur la durée du contrat')).toBeVisible()
+  // Contrat de 5 ans : on revient à l'amortissement sur la durée de vie : 905 € ; 1 048,27 − 905 = 143 €
   await page.getByLabel('Durée du contrat').fill('5')
-  await expect(page.getByRole('status')).toContainText(/905\s€ de coûts fixes, équilibre à 37 fûts ; gain de 88\s€ au volume prévu\.$/)
+  await expect(page.getByRole('status')).toContainText(/905\s€ de coûts fixes, équilibre à 35 fûts ; gain de 143\s€ au volume prévu\. Consignes : 410\s€ de trésorerie bloqués au plus fort\.$/)
   await expect(page.getByText('Reste non amorti en fin de contrat')).toHaveCount(0)
   await page.getByLabel('Durée du contrat').fill('3')
   // Don de 1 000 € avec reçu Cerfa : 400 € de coût réel ; case Cerfa proposée sur chaque contrat (Joseph, 16/11/2026)
@@ -74,12 +77,12 @@ test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', a
   await page.getByLabel('Montant du don').fill('1000')
   await expect(page.getByLabel('Reçu Cerfa demandé')).toBeChecked()
   await expect(page.getByText('Coût réel du don', { exact: true })).toBeVisible()
-  await expect(page.getByRole('region', { name: '6. Don ou sponsoring à l’association' })).toContainText(/Coût réel du don : 400\s€ \(1\s000\s€ moins 600\s€ de réduction d’impôt grâce au reçu Cerfa\)\./)
-  // 1 105 + 400 = 1 505 € ; 1 505 ÷ 24,83 = 60,6, 61 fûts ; 40 × 24,83 − 1 505 = − 511,80 €
-  await expect(page.getByRole('status')).toContainText(/1\s505\s€ de coûts fixes, équilibre à 61 fûts ; perte de 512\s€/)
+  await expect(page.getByRole('region', { name: '7. Don ou sponsoring à l’association' })).toContainText(/Coût réel du don : 400\s€ \(1\s000\s€ moins 600\s€ de réduction d’impôt grâce au reçu Cerfa\)\./)
+  // 1 105 + 400 = 1 505 € ; (1 505 − 24,67) ÷ 25,59 = 57,8, 58 fûts ; 1 048,27 − 1 505 = − 456,73 €
+  await expect(page.getByRole('status')).toContainText(/1\s505\s€ de coûts fixes, équilibre à 58 fûts ; perte de 457\s€/)
   await page.getByLabel('Reçu Cerfa demandé').uncheck()
   await expect(page.getByRole('status')).toContainText(/2\s105\s€ de coûts fixes/)
-  await expect(page.getByRole('region', { name: '6. Don ou sponsoring à l’association' })).toContainText(/sans reçu Cerfa, pas de réduction d’impôt \(600\s€ perdus\)/)
+  await expect(page.getByRole('region', { name: '7. Don ou sponsoring à l’association' })).toContainText(/sans reçu Cerfa, pas de réduction d’impôt \(600\s€ perdus\)/)
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-simulateur-exterieur.png`, fullPage: true })
@@ -102,14 +105,61 @@ test('Contrat extérieur : la remise se saisit en prix facturé, le CA suit', as
   // Joseph, 17/11/2026 : 70 € et 68 € saisis donnaient 80 × 2 € = 160 € de CA (68 € lus comme remise)
   await page.getByLabel('Fûts vendus par an').fill('80')
   await page.getByLabel('Prix de vente du fût HT').fill('70')
+  // La remise est dans son bloc « Remise ou fûts offerts » (Joseph, 19/11/2026)
+  await page.getByRole('group', { name: 'Geste commercial' }).getByRole('button', { name: 'Remise' }).click()
   await expect(page.getByLabel('Prix facturé après remise HT')).toHaveValue('70')
   await page.getByLabel('Prix facturé après remise HT').fill('68')
   const recettes = page.getByRole('region', { name: '1. Recettes' })
-  await expect(recettes.locator('.sous-total')).toHaveText(/CA HT de l’année\s*5\s440\s€/)
-  await expect(recettes).toContainText(/80 fûts à 68,00\s€ \(remise de 2,00\s€ par fût, soit 2,9\s%\) : 5\s440\s€\./)
+  // 5 440 € de fûts + 66,67 € de CO2
+  await expect(recettes.locator('.sous-total')).toHaveText(/CA HT de l’année\s*5\s507\s€/)
+  await expect(recettes).toContainText(/80 fûts à 68,00\s€ \(remise de 2,00\s€ par fût, soit 2,9\s%\) : 5\s440\s€, CO2 : 67\s€\./)
   // Un prix facturé au-dessus du prix de vente ne crée pas de remise négative
   await page.getByLabel('Prix facturé après remise HT').fill('75')
-  await expect(recettes.locator('.sous-total')).toHaveText(/CA HT de l’année\s*5\s600\s€/)
+  await expect(recettes.locator('.sous-total')).toHaveText(/CA HT de l’année\s*5\s667\s€/)
+})
+
+test('Contrat extérieur : fûts offerts, bouteilles de CO2, consignes et trésorerie', async ({ page, isMobile }) => {
+  await connecter(page, franchise, { role: 'franchise' })
+  await simulateur(page, 'exterieur')
+  await page.getByLabel('Prix de vente du fût HT').fill('69')
+  await page.getByLabel('Prix d’achat du fût HT').fill('41,34')
+  // Bouteilles de CO2 : une de plus que de tireuses par défaut, puis saisies à part
+  await expect(page.getByLabel('Bouteilles de CO2 en place')).toHaveValue('2')
+  await page.getByLabel('Nombre de tireuses').fill('2')
+  await expect(page.getByLabel('Bouteilles de CO2 en place')).toHaveValue('3')
+  await expect(page.getByLabel('Bouteilles de CO2 vendues par an')).toHaveValue('3')
+  await expect(page.getByLabel('Prix d’une bouteille de CO2 TTC')).toHaveValue('40')
+  // 3 × 40 ÷ 1,2 = 100 € HT, achat 60 €, marge 40 €
+  const gaz = page.getByRole('region', { name: '4. Tireuses et gaz' })
+  await expect(gaz).toContainText(/3 bouteilles de CO2 à 40,00\s€ TTC, soit 33,33\s€ HT : 100\s€ de CA HT, 60\s€ d’achat, 40\s€ de marge/)
+  // Deux tireuses sur un contrat de 3 ans : 2 × 1 500 ÷ 3 = 1 000 € ; moins 40 € de marge du gaz : − 960 €, en rouge
+  await expect(gaz.locator('.sous-total')).toHaveText(/Par an\s*− 960\s€/)
+  // Consignes : 40 × 60 + 3 × 85 = 2 655 € ; au plus fort 4 fûts × 60 + 255 = 495 €
+  const consignes = page.getByRole('region', { name: '8. Consignes (trésorerie)' })
+  await expect(consignes.locator('.sous-total')).toHaveText(/Bloqué au plus fort\s*− 495\s€/)
+  await expect(consignes.getByRole('table', { name: 'Consignes de l’année' }).getByRole('row')).toHaveText([/Sorties.*− 2\s655\s€/, /Rentrées.*\+ 2\s655\s€/, /Bloqué au plus fort.*− 495\s€/])
+  await consignes.getByLabel('Consignes payées par le client').check()
+  await expect(consignes).toContainText(/Le client avance les consignes \(495\s€ au plus fort\)/)
+  await expect(consignes.locator('.sous-total')).toHaveText(/Bloqué au plus fort\s*0\s€/)
+  // Deux fûts offerts : 2 × 41,34 = 82,68 € ; marge 1 106,40 − 82,68 = 1 023,72 €
+  const geste = page.getByRole('region', { name: '3. Remise ou fûts offerts' })
+  await geste.getByRole('group', { name: 'Geste commercial' }).getByRole('button', { name: 'Fûts offerts' }).click()
+  await geste.getByLabel('Fûts offerts par an').fill('2')
+  await expect(geste.locator('.sous-total')).toHaveText(/Coût du geste\s*− 83\s€/)
+  await expect(geste).toContainText(/Marge des fûts : 1\s024\s€ \(37,1\s%\) au lieu de 1\s106\s€ \(40,1\s%\) sans geste, 2 fûts offerts à 41,34\s€ d’achat\. Le gain de l’année baisse de 83\s€\./)
+  await expect(page.getByRole('table', { name: 'Compte de l’année' })).toContainText(/Fûts offerts.*− 83\s€/)
+  // Remise de 10 % : 6,90 € par fût, prix facturé 62,10 € ; 40 × 6,90 × 0,97 = 267,72 €
+  await geste.getByRole('group', { name: 'Geste commercial' }).getByRole('button', { name: 'Remise', exact: true }).click()
+  await geste.getByLabel('Remise', { exact: true }).fill('10')
+  await expect(geste.getByLabel('Prix facturé après remise HT')).toHaveValue('62,1')
+  await expect(geste.locator('.sous-total')).toHaveText(/Coût du geste\s*− 268\s€/)
+  await expect(page.getByRole('table', { name: 'Compte de l’année' })).not.toContainText('Fûts offerts')
+  // Frais en négatif, en rouge : coûts fixes de l'année
+  const couts = page.getByText('Coûts fixes de l’année', { exact: true }).locator('xpath=ancestor::*[contains(@class,"MuiCard-root")][1]').locator('p').nth(1)
+  await expect(couts).toHaveText(/^− /)
+  expect(await couts.evaluate((n) => getComputedStyle(n).color)).not.toBe(await page.locator('body').evaluate((n) => getComputedStyle(n).color))
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 })
 
 test('139 : parc de tireuses, racheter quand les refus coûtent plus qu’une tireuse neuve', async ({ page }) => {
