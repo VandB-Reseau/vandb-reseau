@@ -31,6 +31,12 @@ export const HEURES_ETP = 1607
 // plus : le reste non amorti à la fin du contrat (prix × années restantes ÷ durée de vie, ce que coûte le départ du client
 // si la tireuse ne ressert pas) et l'équilibre si elle ressert ailleurs (amortie sur sa durée de vie). Sans durée saisie,
 // ou contrat au moins aussi long que la durée de vie : rien ne change.
+// Gaz, consignes et gratuité (Joseph, 19/11/2026) : plusieurs tireuses possibles (prix et entretien multipliés) ; bouteilles
+// de CO2 vendues au client au prix TTC (40 € par défaut), marge de 40 % prise sur le prix HT (hypothèse) : le CA HT entre
+// dans les recettes (donc la redevance), l'achat (CA HT × (1 − marge)) s'en retire. Fûts offerts : achetés sans CA, en coût
+// fixe (ils comptent dans l'équilibre). Consignes (fût 60 €, bouteille 85 €) payées au fournisseur et rendues au retour :
+// aucun effet sur le gain, seulement sur la trésorerie ; bloqué au plus fort = fûts d'une livraison + bouteilles en place
+// (0 si le client paie les consignes, il les avance alors à la place du magasin).
 export interface ContratExterieur {
   futs: number; prixVente: number; remise: number; prixAchat: number; co2: number; gobelets: number
   tireuse: 'neuve' | 'parc'; prixTireuse: number; dureeTireuse: number; entretien: number
@@ -44,6 +50,13 @@ export interface ContratExterieur {
   dureeContrat?: number                               // années ; 0 ou absent : la tireuse s'amortit sur sa durée de vie
   // Gobelets réutilisables fournis pour le contrat (Joseph, 16/11/2026 : 0,25 € le gobelet) : nombre × prix, coût fixe
   gobeletsContrat?: { nombre: number; prix: number }
+  // Gaz, consignes et gratuité (Joseph, 19/11/2026). Plusieurs tireuses : prix et entretien × nombre.
+  tireuses?: number                                   // 1 si absent
+  futsOfferts?: number                                // fûts offerts au client sur l'année : achat sans CA
+  // Bouteilles de CO2 : « en place » chez le client (consignées), « vendues » sur l'année au prix TTC, marge sur le HT
+  co2Bouteilles?: { enPlace: number; vendues: number; prixTTC: number; marge: number; tva: number }
+  // Consignes payées au fournisseur, rendues au retour : ni recette ni charge, seulement de la trésorerie
+  consignes?: { fut: number; bouteille: number; facturees: boolean }
 }
 export interface EffetExterieur {
   caParFut: number; redevanceParFut: number; netParFut: number; ca: number
@@ -59,6 +72,14 @@ export interface EffetExterieur {
   // Durée du contrat : années sur lesquelles la tireuse est payée, tireuse par an sur sa durée de vie, reste non amorti à la
   // fin du contrat, équilibre si la tireuse ressert après, gain cumulé sur la durée du contrat (null sans durée saisie)
   anneesTireuse: number; tireuseAnDureeVie: number; resteNonAmorti: number; equilibreDureeVie: number | null; gainContrat: number | null
+  // Bouteilles de CO2 vendues : CA HT, achat, marge (CA − achat) ; fûts offerts : nombre et coût d'achat
+  co2: { ca: number; achat: number; marge: number }; locationsFacturees: number
+  futsOfferts: number; coutOfferts: number
+  // Geste commercial (remise et fûts offerts) : marge des fûts sans et avec, en euros et en part du CA des fûts sans geste
+  // ou avec ; coût du geste sur le gain de l'année (remise après redevance et publicité, fûts offerts au prix d'achat)
+  geste: { margeSans: number; margeAvec: number; tauxSans: number | null; tauxAvec: number | null; coutGain: number }
+  // Consignes : fûts d'une livraison, avancées sur l'année (fûts et bouteilles), rendues au retour, bloquées au plus fort
+  consignes: { futsParLivraison: number; futs: number; bouteilles: number; sorties: number; rentrees: number; bloque: number; avanceClient: number }
 }
 // Marge d'un fût (Joseph, 14/11/2026) : prix de vente HT − prix d'achat HT, en euros et en part du prix de vente.
 // Avant redevance, publicité, CO2 et gobelets, que le net par fût retire ensuite.
@@ -72,11 +93,16 @@ export function simulerExterieur(x: ContratExterieur, p: Redevances, donMecenat:
   const caParFut = Math.max(0, pos(x.prixVente) - pos(x.remise))
   const redevanceParFut = caParFut * rp
   const netParFut = caParFut - redevanceParFut - pos(x.prixAchat) - pos(x.co2) - pos(x.gobelets) - pos(x.sponsoring?.parFut)
+  const nbTireuses = x.tireuses === undefined ? 1 : pos(x.tireuses)
   const vie = pos(x.dureeTireuse), contrat = pos(x.dureeContrat), neuve = x.tireuse === 'neuve'
   const anneesTireuse = contrat > 0 && (vie <= 0 || contrat < vie) ? contrat : vie
-  const parAn = (annees: number) => (neuve ? (annees > 0 ? pos(x.prixTireuse) / annees : pos(x.prixTireuse)) : 0) + pos(x.entretien)
+  const parAn = (annees: number) => nbTireuses * ((neuve ? (annees > 0 ? pos(x.prixTireuse) / annees : pos(x.prixTireuse)) : 0) + pos(x.entretien))
   const tireuseAn = parAn(anneesTireuse), tireuseAnDureeVie = parAn(vie)
-  const resteNonAmorti = neuve && vie > 0 && anneesTireuse < vie ? pos(x.prixTireuse) * (vie - anneesTireuse) / vie : 0
+  const resteNonAmorti = neuve && vie > 0 && anneesTireuse < vie ? nbTireuses * pos(x.prixTireuse) * (vie - anneesTireuse) / vie : 0
+  const b = x.co2Bouteilles
+  const caCo2 = b ? pos(b.vendues) * pos(b.prixTTC) / (1 + pos(b.tva)) : 0
+  const co2 = { ca: caCo2, achat: caCo2 * (1 - part(b?.marge)), marge: caCo2 * part(b?.marge) }
+  const futsOfferts = pos(x.futsOfferts), coutOfferts = futsOfferts * (pos(x.prixAchat) + pos(x.co2) + pos(x.gobelets))
   const kmLivraison = pos(x.km) * pos(x.prixKm), tempsLivraison = pos(x.heures) * pos(x.coutHoraire)
   const coutLivraison = kmLivraison + tempsLivraison
   const livraisonsAn = pos(x.livraisons) * coutLivraison
@@ -86,12 +112,28 @@ export function simulerExterieur(x: ContratExterieur, p: Redevances, donMecenat:
   const sponsoring = pos(x.sponsoring?.montant), materiel = pos(x.materiel), astreinte = pos(x.astreinte) * pos(x.coutHoraire)
   const gobeletsAn = pos(x.gobeletsContrat?.nombre) * pos(x.gobeletsContrat?.prix)
   const livraisonsFacturees = pos(x.livraisons) * pos(x.prixLivraison)
-  const recettes = livraisonsFacturees + pos(x.locations?.nombre) * pos(x.locations?.prix)
-  const recettesNettes = recettes * (1 - rp)
-  const coutFixe = tireuseAn + livraisonsAn + don.cout + sponsoring + materiel + astreinte + gobeletsAn
+  // Recettes hors fûts : livraisons facturées, locations de tireuse, CO2 (net de son achat : seule sa marge paie les coûts)
+  const recettesBrutes = livraisonsFacturees + pos(x.locations?.nombre) * pos(x.locations?.prix)
+  const recettes = recettesBrutes + co2.ca
+  const recettesNettes = recettes * (1 - rp) - co2.achat
+  const coutFixe = tireuseAn + livraisonsAn + don.cout + sponsoring + materiel + astreinte + gobeletsAn + coutOfferts
   const futs = pos(x.futs)
   const gain = futs * netParFut + recettesNettes - coutFixe
   const reste = coutFixe - recettesNettes
+  const prix = pos(x.prixVente), achat = pos(x.prixAchat)
+  const margeSans = futs * (prix - achat), margeAvec = futs * (caParFut - achat) - futsOfferts * achat
+  const geste = {
+    margeSans, margeAvec, tauxSans: futs * prix > 0 ? margeSans / (futs * prix) : null, tauxAvec: futs * caParFut > 0 ? margeAvec / (futs * caParFut) : null,
+    coutGain: futs * Math.min(pos(x.remise), prix) * (1 - rp) + coutOfferts,
+  }
+  const c = x.consignes, livres = futs + futsOfferts, bouteilles = pos(b?.enPlace)
+  const futsParLivraison = pos(x.livraisons) > 0 ? Math.ceil(livres / pos(x.livraisons) - 1e-9) : livres
+  const sortiesC = livres * pos(c?.fut) + bouteilles * pos(c?.bouteille)
+  const consignes = {
+    futsParLivraison, futs: livres * pos(c?.fut), bouteilles: bouteilles * pos(c?.bouteille), sorties: sortiesC, rentrees: sortiesC,
+    bloque: c?.facturees ? 0 : Math.min(livres, futsParLivraison) * pos(c?.fut) + bouteilles * pos(c?.bouteille),
+    avanceClient: c?.facturees ? Math.min(livres, futsParLivraison) * pos(c?.fut) + bouteilles * pos(c?.bouteille) : 0,
+  }
   return {
     caParFut, redevanceParFut, netParFut, ca: futs * caParFut + recettes, tireuseAn, coutLivraison, livraisonsAn,
     kmLivraison, tempsLivraison, livraisonsFacturees, netLivraisons: livraisonsFacturees * (1 - rp) - livraisonsAn,
@@ -102,6 +144,7 @@ export function simulerExterieur(x: ContratExterieur, p: Redevances, donMecenat:
     anneesTireuse, tireuseAnDureeVie, resteNonAmorti,
     equilibreDureeVie: equilibre(reste - (tireuseAn - tireuseAnDureeVie), netParFut),
     gainContrat: contrat > 0 ? gain * contrat : null,
+    co2, locationsFacturees: recettesBrutes - livraisonsFacturees, futsOfferts, coutOfferts, geste, consignes,
   }
 }
 // 239 (Joseph, 16/11/2026, fiche « Rentabilité Extérieur ») : le gain du contrat selon le nombre de fûts vendus, de 20 à
