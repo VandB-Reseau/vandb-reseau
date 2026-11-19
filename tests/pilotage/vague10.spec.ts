@@ -128,15 +128,15 @@ test('155 : tireuses en week-ends loués, occupation modifiable', async ({ page,
   await simulateur(page, 'tireuses')
   // Valeurs d'office : 17 week-ends de saison, 90 % puis 20 % des week-ends loués
   await expect(page.getByLabel('Week-ends loués en saison')).toHaveValue('90')
-  // Prix du Contrat extérieur d'office : 70 € HT et 42 €, marge 28 € (40 %) ; net 70 − 2,10 − 42 − 0,76 = 25,14 €
-  // Prix de vente saisi TTC (PVC) : 70 € HT × 1,2 = 84 € TTC
-  await expect(page.getByLabel('Prix de vente du fût TTC')).toHaveValue('84')
-  await expect(page.getByText(/Marge par fût : 28,00\s€ HT, soit 40\s% du prix de vente HT \(70,00\s€\).*Net par fût : 25,14\s€/)).toBeVisible()
+  // Prix du Contrat extérieur d'office (Joseph, 19/11/2026) : 83 € TTC, soit 69,17 € HT, et 42 € ; marge 27,17 € (39,3 %) ;
+  // net 69,17 − 2,08 − 42 − 0,76 = 24,33 €
+  await expect(page.getByLabel('Prix de vente du fût TTC')).toHaveValue('83')
+  await expect(page.getByText(/Marge par fût : 27,17\s€ HT, soit 39,3\s% du prix de vente HT \(69,17\s€\).*Net par fût : 24,33\s€/)).toBeVisible()
   await page.getByLabel('Prix d’achat du fût HT').fill('41')
-  await expect(page.getByText(/Marge par fût : 29,00\s€ HT, soit 41,4\s%/)).toBeVisible()
+  await expect(page.getByText(/Marge par fût : 28,17\s€ HT, soit 40,7\s%/)).toBeVisible()
   await page.getByLabel('Prix d’une tireuse neuve HT').fill('800')
   // 800 ÷ 5 + 60 = 220 € par an, 26,14 € nets : 9 fûts, 5 week-ends de 2 fûts ; 17 × 90 % + 35 × 20 % = 22 week-ends par tireuse
-  await expect(statut(page)).toHaveText('Le parc vend environ 89 fûts par an : 6 244 € de CA HT, 2 587 € de marge. Une tireuse de plus se paie avec 9 fûts, soit 5 week-ends loués par an. Chaque tireuse est louée environ 22 week-ends par an. Parc plein en saison : note les week-ends refusés pour décider.')
+  await expect(statut(page)).toHaveText('Le parc vend environ 89 fûts par an : 6 170 € de CA HT, 2 512 € de marge. Une tireuse de plus se paie avec 9 fûts, soit 5 week-ends loués par an. Chaque tireuse est louée environ 22 week-ends par an. Parc plein en saison : note les week-ends refusés pour décider.')
   await page.getByLabel('Week-ends loués en saison').fill('70')
   // 17 × 70 % + 7 = 18,9 : 19 week-ends, plus saturé
   await expect(statut(page)).toContainText('louée environ 19 week-ends par an. Aucun week-end refusé : pas besoin de racheter.')

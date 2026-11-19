@@ -15,7 +15,7 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   vendues 40 € TTC à 40 % de marge sur le HT : le CO2 n'est plus un coût par fût du contrat. Bloc « Consignes
   (trésorerie) » : fût 60 €, bouteille 85 €, sorties, rentrées et montant bloqué au plus fort, case « Consignes payées par
   le client ». Ces quatre valeurs sont des repères réglables dans Paramètres › Simulateurs. Coûts fixes, coût du don et
-  reste non amorti en négatif et en rouge.
+  reste non amorti en négatif et en rouge. Exemple : fût vendu 83 € TTC (69,17 € HT facturé), acheté 42 € HT.
 - Ajout d'un Coach réparé (Joseph, 18/11/2026) : la base en ligne refusait un nouveau Coach (« la base n'a pas toutes
   les colonnes attendues ») car la colonne `id` héritée de l'ancienne app n'avait pas de numéro automatique. Le message
   brut d'un refus est désormais gardé dans la console du navigateur. **Migration 0052_ajout_coach à passer.**

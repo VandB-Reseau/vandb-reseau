@@ -474,7 +474,8 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
     },
     achat: { montant: 10_000, remise: 0.1, mois: 4, invendu: 0.05, taux: s.tauxDecouvert },
     exterieur: {
-      nom: 'Fête du village', futs: 40, dureeContrat: 3, prixVente: 70, remise: 0, prixAchat: 42, co2: s.exterieur.co2ParFut, nbGobelets: 500, prixGobelet: 0.25,
+      // Fût vendu 83 € TTC, payé 42 € HT (Joseph, 19/11/2026) : facturé à l'organisateur en HT, 83 ÷ 1,2 = 69,17 €
+      nom: 'Fête du village', futs: 40, dureeContrat: 3, prixVente: Math.round(8_300 / (1 + s.tva.normale)) / 100, remise: 0, prixAchat: 42, co2: s.exterieur.co2ParFut, nbGobelets: 500, prixGobelet: 0.25,
       tireuse: 'neuve', prixTireuse: 1_500, duree: s.exterieur.dureeTireuse || 5, entretien: s.exterieur.entretienTireuse,
       livraisons: 10, km: 30, prixKm: s.exterieur.prixKm, heures: 1.5, coutHoraire: s.coutHoraire, ...HEURE, don: 'aucun', montantDon: 500, futsDon: 5, cerfa: true,
       sponsoring: false, sponsoMontant: 0, sponsoParFut: 0, materiel: 0, astreinte: 0, locations: 0, prixLocation: 0,
