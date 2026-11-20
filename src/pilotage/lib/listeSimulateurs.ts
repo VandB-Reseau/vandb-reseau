@@ -9,7 +9,7 @@ export const LISTE_SIMULATEURS: { cle: TypeSimulation; titre: string; question: 
   { cle: 'vente_additionnelle', titre: 'Vente additionnelle', question: 'Un article de plus à un client sur dix ?' },
   { cle: 'reste_a_faire', titre: 'Reste à faire du mois', question: 'Combien vendre par jour pour tenir mon budget ?' },
   { cle: 'soiree', titre: 'Soirée, dégustation', question: 'Combien de participants pour ne pas perdre d’argent ?' },
-  { cle: 'achat', titre: 'Acheter en volume', question: 'La remise vaut-elle le stock bloqué ?' },
+  { cle: 'achat', titre: 'Acheter en volume', question: 'La remise vaut-elle le stock qui reste et qui dort ?' },
   { cle: 'investissement', titre: 'Investir', question: 'Terrasse, travaux, four, marché extérieur : en combien de temps remboursé ?' },
   { cle: 'exterieur', titre: 'Contrat extérieur', question: 'Ce contrat avec une association est-il rentable ?' },
   { cle: 'tireuses', titre: 'Parc de tireuses', question: 'Combien de week-ends pour payer une tireuse ?' },

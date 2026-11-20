@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateur « Acheter en volume » revu (Joseph, 20/11/2026), sans migration. La remise est rendue au client pendant
+  l'opération ; on saisit la part du stock restant à la fin, la part de ce reste qui dormira et la valeur perdue sur le
+  dormant. Résultat : remise gardée sur le reste revendu au prix habituel − argent bloqué − dormant perdu, dormant à ne
+  pas dépasser, marge de toute l'opération. Frais et pertes en rouge avec « − ».
 - Équipements : plusieurs achats d'un même équipement (Joseph, 19/11/2026), sans migration. Lien discret « Ajouter un
   achat » sous chaque ligne ; chaque achat a sa quantité, son année et son prix HT, la ligne affiche le total. Un achat
   ramené à 0 disparaît, la ligne redevient simple quand il n'en reste qu'un.

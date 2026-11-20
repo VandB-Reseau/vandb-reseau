@@ -112,18 +112,28 @@ test('soirée : gain et nombre de participants pour ne pas perdre d’argent', (
   expect(tempsFortDeSoiree('Soirée bières de Noël', 12, 'bar', e, 200)).toEqual([{ nom: 'Soirée bières de Noël', type: 'soiree', mois: 12, univers: 'bar', caAnPasse: 0, ca: 833, autresCharges: 200, moisAchats: 11 }])
 })
 
-test('achat en volume : remise, argent immobilisé, invendu et durée maximale', () => {
-  // 10 000 € HT à 10 % de remise, vendus en 4 mois, 5 % d'invendu, argent à 6 % par an
-  const e = simulerAchat({ montant: 10_000, remise: 0.1, mois: 4, invendu: 0.05, tauxAnnuel: 0.06, tvaAchats: 0.2 })
-  // Payé 9 000 € ; remise 1 000 € ; 9 000 × 6 % ÷ 12 ÷ 2 = 22,50 € par mois × 4 = 90 € ; invendu 450 € ; gain 460 €
-  expect(e).toMatchObject({ paye: 9_000, remise: 1_000, perteInvendu: 450 })
-  proche(e.coutArgent, 90)
-  proche(e.gain, 460)
-  // La remise vaut le coup tant que (1 000 − 450) ÷ 22,50 = 24,4 mois ; 10 800 € TTC sortis à la commande
-  proche(e.moisMaximum, 550 / 22.5)
-  proche(e.payeTTC, 10_800)
-  // Sans coût de l'argent réglé : pas de durée maximale
-  expect(simulerAchat({ montant: 10_000, remise: 0.1, mois: 4, invendu: 0, tauxAnnuel: 0, tvaAchats: 0.2 }).moisMaximum).toBeNull()
+test('achat en volume : remise répercutée pendant l’opération, reste au prix habituel, stock dormant', () => {
+  // 10 000 € HT à 10 % de remise, marge 35 % ; 30 % restent après l'opération, dont 20 % dorment ; reste écoulé en 4 mois ;
+  // dormant déprécié de moitié ; argent à 6 % par an
+  const e = simulerAchat({ montant: 10_000, remise: 0.1, marge: 0.35, reste: 0.3, dormant: 0.2, mois: 4, depreciation: 0.5, tauxAnnuel: 0.06, tvaAchats: 0.2 })
+  // Payé 9 000 € (10 800 € TTC). Opération : 70 % = 6 300 € de coût, vendus 6 300 ÷ 0,65 = 9 692,31 €, marge 3 392,31 €
+  proche(e.paye, 9_000); proche(e.payeTTC, 10_800)
+  proche(e.operation.cout, 6_300); proche(e.operation.ca, 9_692.31, 1); proche(e.operation.marge, 3_392.31, 1)
+  // Reste vendu : 24 % ; coût 2 160 €, vendu au prix habituel 2 400 ÷ 0,65 = 3 692,31 € ; dont 240 € de remise gardée
+  proche(e.resteVendu.cout, 2_160); proche(e.resteVendu.ca, 3_692.31, 1); proche(e.resteVendu.marge, 1_532.31, 1); proche(e.resteVendu.remiseGardee, 240)
+  // Dormant : 6 % = 540 € au prix payé, moitié perdue 270 €
+  proche(e.dormant.valeur, 540); proche(e.dormant.perte, 270)
+  // Argent : 2 160 × 6 % ÷ 12 × 4 ÷ 2 = 21,60 € + 540 × 6 % = 32,40 € → 54 € ; gain 240 − 54 − 270 = −84 €
+  proche(e.coutArgent, 54)
+  proche(e.gain, -84)
+  proche(e.margeTotale, 3_392.31 + 1_532.31 - 270 - 54, 1)
+  // Dormant maximum : k = 0,1 − 0,9 × 0,06 × 4 ÷ 24 = 0,091 ; p = 0,9 × (0,5 + 0,06) = 0,504 ; 0,091 ÷ 0,595 = 15,3 %
+  proche(e.dormantMaximum, 0.091 / 0.595)
+  // Tout vendu pendant l'opération : la remise part au client, l'achat en volume ne rapporte rien en propre
+  const tout = simulerAchat({ montant: 10_000, remise: 0.1, marge: 0.35, reste: 0, dormant: 0, mois: 4, depreciation: 0.5, tauxAnnuel: 0.06, tvaAchats: 0.2 })
+  proche(tout.gain, 0)
+  // Sans dormant, sans coût de l'argent : gain = remise gardée sur le reste, 10 000 × 10 % × 30 % = 300 €
+  proche(simulerAchat({ montant: 10_000, remise: 0.1, marge: 0.35, reste: 0.3, dormant: 0, mois: 4, depreciation: 0.5, tauxAnnuel: 0, tvaAchats: 0.2 }).gain, 300)
 })
 
 test('investissement : EBE en plus, délai de retour, année de la mise en service', () => {
