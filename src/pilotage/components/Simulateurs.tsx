@@ -63,6 +63,7 @@ import SchoolOutlined from '@mui/icons-material/SchoolOutlined'
 import PaymentsOutlined from '@mui/icons-material/PaymentsOutlined'
 import HomeWorkOutlined from '@mui/icons-material/HomeWorkOutlined'
 import CompareArrowsOutlined from '@mui/icons-material/CompareArrowsOutlined'
+import PriceChangeOutlined from '@mui/icons-material/PriceChangeOutlined'
 import { Aide } from './Aide'
 import { ChampMontant } from './ChampMontant'
 import { ChampTaux } from './ChampTaux'
@@ -80,7 +81,7 @@ import {
 } from '../moteur/simulateurs'
 import {
   auditPression, cartePression, margeFut, coutComposition, coutContrats, margePourPrix, nouveauBec, palierExterieur, prixPourMarge,
-  gainsSelonFuts, simulerExterieur, simulerLoyer, simulerMix, simulerHeuresSup, simulerOuverture, simulerParc, simulerProspection, simulerRemisesB2B, simulerRemisesBar, unitaireB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise, type LigneBar, type NatureBar, type PalierBar,
+  gainsSelonFuts, masseSelonFuts, prixFutMarche, simulerExterieur, simulerLoyer, simulerMix, simulerHeuresSup, simulerOuverture, simulerParc, simulerProspection, simulerRemisesB2B, simulerRemisesBar, unitaireB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise, type LigneBar, type NatureBar, type PalierBar,
 } from '../moteur/boiteOutils'
 import { baseCaisse, budgetSurCaisse, meilleursLeviers, type CleLevier } from '../moteur/leviers'
 import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TypeInvestissement, TempsFort, Univers } from '../moteur/types'
@@ -107,6 +108,7 @@ const DETAILS: Record<TypeSimulation, { icone: ReactNode; aide: SujetAide; budge
   achat: { icone: <Inventory2Outlined />, aide: 'simAchat', budget: false },
   investissement: { icone: <StorefrontOutlined />, aide: 'simInvestissement', budget: false },
   exterieur: { icone: <LocalShippingOutlined />, aide: 'simExterieur', budget: false },
+  prix_fut: { icone: <PriceChangeOutlined />, aide: 'simPrixFut', budget: false },
   tireuses: { icone: <WarehouseOutlined />, aide: 'simTireuses', budget: false },
   pression: { icone: <SportsBarOutlined />, aide: 'simPression', budget: false },
   calculette: { icone: <CalculateOutlined />, aide: 'simCalculette', budget: false },
@@ -124,7 +126,7 @@ type Famille = 'vendre' | 'evenements' | 'equipe' | 'investir'
 const FAMILLES: [Famille, string][] = [['vendre', 'Vendre plus'], ['evenements', 'Événements et extérieur'], ['equipe', 'Équipe'], ['investir', 'Investir et trésorerie']]
 const FAMILLE_DE: Record<TypeSimulation, Famille> = {
   levier: 'vendre', vente_additionnelle: 'vendre', reste_a_faire: 'vendre', prix: 'vendre', calculette: 'vendre', mix: 'vendre',
-  soiree: 'evenements', exterieur: 'evenements', tireuses: 'evenements', pression: 'evenements', remises_b2b: 'evenements', // Joseph 16/11 : avec le marché extérieur
+  soiree: 'evenements', exterieur: 'evenements', prix_fut: 'evenements', tireuses: 'evenements', pression: 'evenements', remises_b2b: 'evenements', // Joseph 16/11 : avec le marché extérieur
   embauche: 'equipe', ouverture: 'equipe', formation: 'equipe',
   investissement: 'investir', achat: 'investir', tresorerie: 'investir', remuneration: 'investir', loyer: 'investir',
 }
@@ -374,6 +376,10 @@ type Etats = {
     heuresRemplacement: number; tauxMarge: number | null; profil: 'salarie' | 'apprenti'; niveau: NiveauApprenti; opco: 'oui' | 'non'; opcoDejaUtilise: number; opcoAutres: number; cpf: number; effectif: Effectif | null
   }
   loyer: { ca: number | null; marge: number | null; ebe: number | null; loyer: number | null; charges: number | null; mode: 'hausse' | 'montant'; hausse: number; nouveauMois: number; annees: number }
+  prix_fut: {
+    nom: string; futs: number; prixAchat: number; couts: { libelle: string; montant: number }[]
+    billet: 'aucun' | 'don' | 'sponsoring'; montantBillet: number; cerfa: boolean; mode: 'taux' | 'parFut' | 'total'; taux: number; parFut: number; total: number
+  }
   mix: { caCave: number | null; caBar: number | null; margeCave: number | null; margeBar: number | null; part: number; sens: 'vers_bar' | 'vers_cave'; heures: 'grille' | 'saisie'; heuresSemaine: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number }
   investissement: { modele: ModeleInvestir; objectifExterieur: number; camion: boolean; libelle: string; cout: number; duree: number; mois: number; ca: number; metres: number; marge: number; demarque: number; charges: number; financement: 'tresorerie' | 'pret'; tauxPret: number; dureePret: number; univers: Univers; fermeture: number; caJour: number | null; margeMagasin: number | null }
 }
@@ -440,6 +446,7 @@ function vider(v: unknown, cle: string, sim: string): unknown {
     if (cle === 'vieilles' || !v.length) return []
     // 228 : les familles d'une commande gardent leur nom, sans chiffres
     if (sim === 'remises_b2b' && cle === 'lignes') return v.map((x: LigneBar) => ({ ...(vider(x, '', sim) as LigneBar), libelle: x.libelle }))
+    if (sim === 'prix_fut' && cle === 'couts') return v.map((x: { libelle: string }) => ({ libelle: x.libelle, montant: 0 }))
     if (sim === 'remises_b2b' && cle === 'familles') return v.map((x: LigneB2B) => ({ ...(vider(x, '', sim) as LigneB2B), libelle: x.libelle }))
     return [vider(v[0], '', sim)]
   }
@@ -536,6 +543,16 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
     },
     // 291 : hausse de 5 % sur les 3 ans qui restent au bail
     loyer: { ca: null, marge: null, ebe: null, loyer: null, charges: null, mode: 'hausse', hausse: 0.05, nouveauMois: 0, annees: 3 },
+    // Gros marché (Joseph, 20/11/2026) : 60 fûts, 2 450 € de coûts annexes, don de 1 000 € avec reçu Cerfa, 15 % du CA visés :
+    // 109,15 € HT le fût, 982 € de masse de marge, équilibre à 45 fûts
+    prix_fut: {
+      nom: 'Festival d’été', futs: 60, prixAchat: 42,
+      couts: [
+        { libelle: 'Livraison et reprise', montant: 300 }, { libelle: 'PLV et signalétique', montant: 250 }, { libelle: 'Stand (barnum, comptoir)', montant: 400 },
+        { libelle: 'Entretien des tireuses', montant: 150 }, { libelle: 'Achats annexes (gobelets, glace)', montant: 350 }, { libelle: 'Achat de tireuses', montant: 1_000 },
+      ],
+      billet: 'don', montantBillet: 1_000, cerfa: true, mode: 'taux', taux: 0.15, parFut: 20, total: 1_000,
+    },
     // 292 : 5 % du CA de la cave passe au bar
     mix: { caCave: null, caBar: null, margeCave: null, margeBar: null, part: 0.05, sens: 'vers_bar', heures: s.productivite.length ? 'grille' : 'saisie', heuresSemaine: 2, coutHoraire: s.coutHoraire, ...HEURE },
     // Exemple : travaux terrasse (Joseph, 16/11/2026), 5 400 € d'EBE en plus par an, remboursé en 4,6 ans
@@ -1542,6 +1559,108 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
       </Box>
       </Stack>
     )
+  }
+  if (choisi === 'prix_fut') {
+    // Gros marché extérieur (Joseph, 20/11/2026) : tous les coûts annexes et le billet d'entrée dans le prix du fût, plus la
+    // marge souhaitée. Facturé à un organisateur : tout en HT, le TTC pour information.
+    const e = etats.prix_fut
+    const r = prixFutMarche({
+      futs: e.futs, prixAchat: e.prixAchat, couts: e.couts, tva: s.tva.normale,
+      billet: { type: e.billet, montant: e.montantBillet, cerfa: e.cerfa },
+      marge: { mode: e.mode, valeur: e.mode === 'taux' ? e.taux : e.mode === 'parFut' ? e.parFut : e.total },
+    }, p)
+    const cout = (i: number, v: Partial<Etats['prix_fut']['couts'][number]>) => maj('prix_fut', { couts: e.couts.map((y, j) => (j === i ? { ...y, ...v } : y)) })
+    const m = (k: keyof Etats['prix_fut']) => (v: number) => maj('prix_fut', { [k]: v })
+    const billetLibelle = e.billet === 'don' ? 'Don' : 'Sponsoring'
+    saisies = (
+      <Stack spacing={2}>
+        <Bloc titre="1. Le marché" total={{ libelle: 'Achat des fûts', ...moins(r.achats) }}>
+          <Saisies>
+            <Texte libelle="Marché" aria="Nom du marché" valeur={e.nom} onChange={(v) => maj('prix_fut', { nom: v })} />
+            <Montant libelle="Fûts prévus" valeur={e.futs} onChange={(v) => maj('prix_fut', { futs: Math.max(0, Math.round(v)) })} unite="" pas={5} />
+            <Montant libelle="Prix d’achat du fût HT" valeur={e.prixAchat} onChange={m('prixAchat')} unite="€/fût" />
+          </Saisies>
+        </Bloc>
+        <Bloc titre="2. Coûts annexes du marché" total={{ libelle: 'Total HT', ...moins(r.annexes) }}>
+          {e.couts.map((c, i) => (
+            <Saisies key={i}>
+              <Texte libelle="Coût" aria={`Coût ${i + 1}`} valeur={c.libelle} onChange={(libelle) => cout(i, { libelle })} largeur={240} />
+              <MontantDe libelle="Montant HT" aria={`Montant HT du coût ${i + 1}`} valeur={c.montant} onChange={(v) => cout(i, { montant: v })} />
+              {e.couts.length > 1 && <Button color="inherit" startIcon={<DeleteOutlineOutlined />} onClick={() => maj('prix_fut', { couts: e.couts.filter((_, j) => j !== i) })} aria-label={`Retirer le coût ${i + 1}`} sx={{ minHeight: 48 }}>Retirer</Button>}
+            </Saisies>
+          ))}
+          <Box>{e.couts.length < 30 && <Button startIcon={<AddOutlined />} onClick={() => maj('prix_fut', { couts: [...e.couts, { libelle: '', montant: 0 }] })} sx={{ minHeight: 48 }}>Ajouter un coût</Button>}</Box>
+        </Bloc>
+        <Bloc titre="3. Billet d’entrée" total={{ libelle: 'Coût réel', ...moins(r.billet.cout) }}>
+          <Saisies>
+            <Choix libelle="Billet d’entrée" valeur={e.billet} onChange={(v) => maj('prix_fut', { billet: v })} options={[['aucun', 'Aucun'], ['don', 'Don'], ['sponsoring', 'Sponsoring']]} />
+            {e.billet !== 'aucun' && <Montant libelle={`Montant du ${e.billet === 'don' ? 'don' : 'sponsoring'}`} valeur={e.montantBillet} onChange={m('montantBillet')} />}
+            {e.billet === 'don' && <FormControlLabel control={<Checkbox sx={{ width: 48, height: 48 }} checked={e.cerfa} onChange={(x) => maj('prix_fut', { cerfa: x.target.checked })} />} label="Reçu Cerfa demandé" sx={{ minHeight: 48, mr: 0 }} />}
+          </Saisies>
+          {e.billet === 'don' && r.billet.valeur > 0 && <Typography color="text.secondary">Coût réel du don : {montant(r.billet.cout)}{r.billet.reduction ? ` (${montant(r.billet.valeur)} moins ${montant(r.billet.reduction)} de réduction d’impôt grâce au reçu Cerfa)` : ` : sans reçu Cerfa, pas de réduction d’impôt (${montant(r.billet.valeur * TAUX_MECENAT)} perdus)`}.</Typography>}
+          {e.billet === 'sponsoring' && r.billet.valeur > 0 && <Typography color="text.secondary">Sponsoring : contrepartie publicitaire, charge pleine, sans réduction d’impôt.</Typography>}
+        </Bloc>
+        <Bloc titre="4. Marge souhaitée">
+          <Saisies>
+            <Choix libelle="Marge souhaitée" valeur={e.mode} onChange={(v) => maj('prix_fut', { mode: v })} options={[['taux', 'En % du CA'], ['parFut', 'En € par fût'], ['total', 'En € au total']]} />
+            {e.mode === 'taux' && <Taux libelle="Part du CA HT qui reste" valeur={e.taux} onChange={(v) => maj('prix_fut', { taux: Math.min(1, v) })} />}
+            {e.mode === 'parFut' && <Montant libelle="Marge par fût HT" valeur={e.parFut} onChange={m('parFut')} unite="€/fût" />}
+            {e.mode === 'total' && <Montant libelle="Masse de marge visée HT" valeur={e.total} onChange={m('total')} />}
+          </Saisies>
+        </Bloc>
+      </Stack>
+    )
+    nomParDefaut = `${e.nom || 'Gros marché'}, ${e.futs} fûts`
+    if (r.prixHT === null) {
+      phrase = e.futs <= 0 ? '' : 'Cette marge est trop haute : aucun prix ne la donne une fois la redevance et la publicité payées.'
+      resultats = <EtatVide titre={e.futs <= 0 ? 'Aucun fût prévu' : 'Marge impossible'} texte={e.futs <= 0 ? 'Saisis le nombre de fûts prévus : les coûts du marché se répartissent sur eux.' : 'Baisse la part du CA souhaitée : avec la redevance et la publicité, le total dépasse 100 % du prix.'} />
+    } else {
+      const pf = r.parFut!
+      phrase = `${nomParDefaut} : fût à ${centimes(r.prixHT)} HT (${centimes(r.prixTTC!)} TTC) pour couvrir ${montant(r.coutsFixes)} de coûts annexes${r.billet.valeur ? ` et billet d’entrée` : ''} et dégager ${montant(r.masseMarge)} de masse de marge${r.tauxMasse !== null ? ` (${taux(r.tauxMasse)} du CA HT)` : ''} ; prix plancher ${centimes(r.prixPlancher!)}, perte sous ${r.equilibre ?? 0} fûts vendus.`
+      resultats = (
+        <Stack spacing={2}>
+          <Resultats>
+            <Indicateur libelle="Prix du fût HT" valeur={centimes(r.prixHT)} detail={`${centimes(r.prixTTC!)} TTC ; marge sur achat ${centimes(r.margeFut!)}${r.tauxMargeFut !== null ? `, ${taux(r.tauxMargeFut)}` : ''}`} />
+            <Indicateur libelle="Masse de marge" valeur={montant(r.masseMarge)} detail={`sur ${montant(r.ca)} de CA HT, une fois tout payé`} />
+            <Indicateur libelle="Prix plancher" valeur={centimes(r.prixPlancher!)} detail="HT par fût, sans aucune marge" />
+            <Indicateur libelle="Fûts pour l’équilibre" valeur={r.equilibre !== null ? entier(r.equilibre) : 'Jamais'} detail={`à ce prix, ${entier(e.futs)} prévus`} />
+          </Resultats>
+          <Compte titre="Compte du marché" lignes={[
+            { libelle: 'Recettes', valeur: r.ca, detail: 'CA HT' },
+            { libelle: 'Fûts', valeur: -r.achats, detail: 'achat' },
+            { libelle: 'Coûts annexes', valeur: -r.annexes },
+            { libelle: billetLibelle, valeur: -r.billet.cout, detail: r.billet.reduction ? 'réduction d’impôt déduite' : undefined },
+            { libelle: 'Redevance et publicité', valeur: -r.redevance },
+          ]} total={{ libelle: 'Masse de marge', valeur: r.masseMarge }} />
+          <Box sx={{ overflowX: 'auto' }}>
+            <Table size="small" aria-label="Ce que paie le prix d’un fût" sx={{ minWidth: 300, maxWidth: 560, '& td, & th': { fontVariantNumeric: 'tabular-nums' } }}>
+              <TableHead><TableRow><TableCell>Dans le prix d’un fût</TableCell><TableCell align="right">HT</TableCell></TableRow></TableHead>
+              <TableBody>
+                {([['Achat du fût', pf.achat], ['Coûts annexes', pf.annexes], ...(pf.billet ? [[billetLibelle, pf.billet] as [string, number]] : []), ['Redevance et publicité', pf.redevance], ['Marge', pf.marge]] as [string, number][]).map(([l, v]) => (
+                  <TableRow key={l}><TableCell>{l}</TableCell><TableCell align="right">{centimes(v)}</TableCell></TableRow>
+                ))}
+                <TableRow><TableCell sx={{ fontWeight: 700 }}>Prix du fût</TableCell><TableCell align="right" sx={{ fontWeight: 700 }}>{centimes(r.prixHT)}</TableCell></TableRow>
+              </TableBody>
+            </Table>
+          </Box>
+          {/* Les coûts ne baissent pas si l'on vend moins : la masse de marge au prix trouvé selon les fûts vendus */}
+          <Box sx={{ overflowX: 'auto' }}>
+            <Table size="small" aria-label="Masse de marge selon les fûts vendus" sx={{ minWidth: 300, maxWidth: 560, '& td, & th': { fontVariantNumeric: 'tabular-nums' } }}>
+              <TableHead><TableRow><TableCell>Fûts vendus</TableCell><TableCell align="right">CA HT</TableCell><TableCell align="right">Masse de marge</TableCell></TableRow></TableHead>
+              <TableBody>
+                {masseSelonFuts(r, e.futs).map((l) => (
+                  <TableRow key={l.futs} selected={l.prevu}>
+                    <TableCell sx={{ fontWeight: l.prevu || l.seuil ? 700 : undefined }}>{entier(l.futs)}{l.prevu ? ', prévus' : ''}{l.seuil ? ', équilibre' : ''}</TableCell>
+                    <TableCell align="right">{montant(l.ca)}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600, color: l.masse < 0 ? 'error.main' : 'success.dark' }}>{l.masse < 0 ? '− ' : '+ '}{montant(Math.abs(l.masse))}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+        </Stack>
+      )
+    }
   }
   if (choisi === 'tireuses') {
     const e = etats.tireuses
