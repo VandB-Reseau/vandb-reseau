@@ -7,7 +7,7 @@ import { simulerPilotage, zonesTropPetites, type MagasinSimule, type OptionsSimu
 const NOM = 'Annecy Test'
 const magasins: MagasinSimule[] = [{ magasin: NOM, statut: 'en_discussion', hypotheses: magasinFictif, base: magasinFictif, ajustements: {}, maj_le: '2026-10-20T09:30:00Z' }]
 const gardee: SimulationSimulee = {
-  id: 7, store_name: NOM, type: 'achat', nom: 'Précommande de Noël', donnees: { montant: 20_000, remise: 0.12, mois: 3, invendu: 0, taux: 0.06 },
+  id: 7, store_name: NOM, type: 'achat', nom: 'Précommande de Noël', donnees: { montant: 20_000, remise: 0.12, marge: 0.35, reste: 0.25, dormant: 0.1, mois: 3, depreciation: 0.5, taux: 0.06 },
   resume: 'Achat de 20 000 € à 12 % de remise : gain de 2 220 €.', auteur: 'autre', auteur_role: 'franchise', auteur_nom: 'Paul MULTI', cree_le: '2026-10-25T08:00:00Z',
 }
 const franchise: OptionsSimulation = { acces: { role: 'franchise', franchise: 'Paul MULTI', magasins: [NOM] } }
@@ -71,8 +71,15 @@ test('franchisé : le menu ouvre les simulateurs de son magasin ; embauche chiff
 
   await liste.getByRole('listitem').filter({ hasText: 'Précommande de Noël' }).getByRole('button', { name: 'Rouvrir' }).click()
   await expect(page.getByRole('heading', { name: 'Acheter en volume' })).toBeVisible()
-  // 20 000 € à 12 % : 2 400 € de remise, 17 600 € payés × 6 % ÷ 12 ÷ 2 × 3 mois = 132 € ; gain 2 268 €
-  await expect(page.getByRole('status')).toContainText(/gain de 2\s268\s€/)
+  // 20 000 € à 12 %, remise rendue au client pendant l'opération (Joseph, 20/11/2026) ; 25 % restent, dont 10 % dorment.
+  // Remise gardée 20 000 × 12 % × 22,5 % = 540 € ; argent 3 960 × 6 % ÷ 12 × 3 ÷ 2 = 29,70 + 440 × 6 % = 26,40 → 56 € ;
+  // dormant 440 € à moitié perdu 220 € ; gain 264 €
+  await expect(page.getByRole('status')).toContainText(/l’achat en volume rapporte 264\s€/)
+  await expect(page.getByRole('table', { name: 'Ce que rapporte l’achat en volume' }).getByRole('row')).toHaveText([/Remise gardée sur le reste vendu.*\+ 540\s€/, /Argent bloqué dans le stock.*− 56\s€/, /Valeur perdue du stock dormant.*− 220\s€/, /Gain de l’achat en volume.*264\s€/])
+  // Tout le reste dort : l'achat en volume coûte, frais en rouge
+  await page.getByLabel('Part de ce reste qui dormira').fill('100')
+  await expect(page.getByRole('status')).toContainText(/l’achat en volume coûte/)
+  await expect(page.getByRole('region', { name: '2. Après l’opération' }).locator('.sous-total')).toHaveText(/Coût du stock restant\s*− /)
 })
 
 test('franchisé : une soirée se met dans le budget, la promo se lit en volume', async ({ page, isMobile }, info) => {

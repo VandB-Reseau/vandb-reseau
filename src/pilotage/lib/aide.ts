@@ -583,9 +583,9 @@ export const AIDE = {
   },
   simAchat: {
     titre: 'Acheter en volume',
-    quoi: 'Une remise du fournisseur face à l’argent bloqué en stock et au risque d’invendu.',
-    remplir: 'Le montant au prix habituel, la remise, le temps pour tout vendre, la part qui risque de rester, le coût annuel de l’argent : le taux du découvert si le magasin est à découvert, sinon ce que rapporterait cet argent placé, 0 % s’il dort sur le compte.',
-    calcul: 'Gain = remise − invendu au prix payé − coût de l’argent (montant payé × taux ÷ 12 × la moitié des mois pour tout vendre). Durée maximale : celle où le gain tombe à zéro.',
+    quoi: 'Une remise du fournisseur sur une grosse commande, rendue au client pendant l’opération, puis le stock restant revendu au prix habituel : ce que l’achat en volume rapporte vraiment, face au stock qui reste et à celui qui dort.',
+    remplir: 'Le montant au prix habituel, la remise, la marge habituelle du produit (celle du magasin par défaut) ; la part du stock qui reste à la fin de l’opération, la part de ce reste qui dormira, le temps pour écouler le reste, la valeur perdue sur le stock dormant (soldé ou déprécié), le coût annuel de l’argent : le taux du découvert si le magasin est à découvert, sinon ce que rapporterait cet argent placé, 0 % s’il dort sur le compte.',
+    calcul: 'Pendant l’opération, le prix de vente baisse de la remise : même taux de marge, la remise part au client. Le reste vendu au prix habituel garde la remise (achat au prix habituel × remise × part restante × part qui se vend). Gain de l’achat en volume = remise gardée − argent bloqué (reste au prix payé × taux ÷ 12 × la moitié des mois pour l’écouler, dormant × taux sur un an) − valeur perdue du dormant. Stock dormant à ne pas dépasser : la part du reste qui ramène le gain à zéro. Marge de toute l’opération = marge des ventes de l’opération et du reste − argent bloqué − valeur perdue.',
   },
   simInvestissement: {
     titre: 'Investir',
