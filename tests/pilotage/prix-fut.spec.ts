@@ -35,6 +35,11 @@ test('Prix du fût d’un gros marché : coûts annexes, billet d’entrée, mar
   await expect(page.getByRole('region', { name: '2. Tireuses achetées pour le marché' })).toContainText(/600\s€ resteraient à amortir/)
   await expect(page.getByRole('table', { name: 'Compte du marché sur un an' }).getByRole('row')).toHaveText([/Recettes.*\+ 6\s724\s€/, /Fûts.*− 2\s520\s€/, /Reversement au client.*− 300\s€/, /Tireuses.*− 500\s€/, /Livraisons et équipe.*− 644\s€/, /Autres coûts annexes.*− 1\s150\s€/, /Don.*− 400\s€/, /Redevance et publicité.*− 202\s€/, /Masse de marge.*1\s009\s€/])
   await expect(page.getByRole('table', { name: 'Masse de marge selon les fûts vendus' })).toContainText(/44, équilibre/)
+  // Stand de 1 200 € payé une fois sur les 3 ans : 400 € par an ; passé « Par an », 1 200 € par an
+  await expect(page.getByRole('region', { name: '4. Autres coûts annexes' })).toContainText(/400\s€ par an sur 3 ans/)
+  await page.getByRole('group', { name: 'Fréquence du coût 2' }).getByRole('button', { name: 'Par an' }).click()
+  await expect(page.getByRole('region', { name: '4. Autres coûts annexes' }).locator('.sous-total')).toHaveText(/Par an HT\s*− 1\s950\s€/)
+  await page.getByRole('group', { name: 'Fréquence du coût 2' }).getByRole('button', { name: 'Une fois' }).click()
   // Consignes payées par le client : plus rien de bloqué
   await page.getByLabel('Consignes payées par le client').check()
   await expect(page.getByRole('region', { name: '7. Consignes (trésorerie)' })).toContainText(/Le client avance les consignes \(855\s€ au plus fort\)/)

@@ -377,7 +377,7 @@ type Etats = {
   }
   loyer: { ca: number | null; marge: number | null; ebe: number | null; loyer: number | null; charges: number | null; mode: 'hausse' | 'montant'; hausse: number; nouveauMois: number; annees: number }
   prix_fut: {
-    nom: string; futs: number; prixAchat: number; couts: { libelle: string; montant: number }[]
+    nom: string; futs: number; prixAchat: number; couts: { libelle: string; montant: number; unique?: boolean }[]
     billet: 'aucun' | 'don' | 'sponsoring'; montantBillet: number; cerfa: boolean; mode: 'taux' | 'parFut' | 'total'; taux: number; parFut: number; total: number
     // Suite (Joseph, 20/11/2026) : durée, reversement, tireuses, livraisons et équipe, consignes (bouteilles null = tireuses + 1)
     dureeContrat: number; reversement: number; nbTireuses: number; prixTireuse: number; dureeTireuse: number
@@ -450,7 +450,7 @@ function vider(v: unknown, cle: string, sim: string): unknown {
     if (cle === 'vieilles' || !v.length) return []
     // 228 : les familles d'une commande gardent leur nom, sans chiffres
     if (sim === 'remises_b2b' && cle === 'lignes') return v.map((x: LigneBar) => ({ ...(vider(x, '', sim) as LigneBar), libelle: x.libelle }))
-    if (sim === 'prix_fut' && cle === 'couts') return v.map((x: { libelle: string }) => ({ libelle: x.libelle, montant: 0 }))
+    if (sim === 'prix_fut' && cle === 'couts') return v.map((x: { libelle: string; unique?: boolean }) => ({ libelle: x.libelle, montant: 0, unique: x.unique }))
     if (sim === 'remises_b2b' && cle === 'familles') return v.map((x: LigneB2B) => ({ ...(vider(x, '', sim) as LigneB2B), libelle: x.libelle }))
     return [vider(v[0], '', sim)]
   }
@@ -548,11 +548,11 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
     // 291 : hausse de 5 % sur les 3 ans qui restent au bail
     loyer: { ca: null, marge: null, ebe: null, loyer: null, charges: null, mode: 'hausse', hausse: 0.05, nouveauMois: 0, annees: 3 },
     // Gros marché (Joseph, 20/11/2026) : contrat de 3 ans, 60 fûts par an à 42 €, 5 € reversés au client par fût, 2 tireuses à
-    // 750 €, 6 livraisons de 40 km, 1 150 € d'autres coûts, don de 1 000 € avec reçu Cerfa, 15 % du CA visés
+    // 750 €, 6 livraisons de 40 km, 1 150 € d'autres coûts par an (stand de 1 200 € acheté une fois, 400 € par an), don de 1 000 € avec reçu Cerfa, 15 % du CA visés
     prix_fut: {
       nom: 'Festival d’été', futs: 60, prixAchat: 42,
       couts: [
-        { libelle: 'PLV et signalétique', montant: 250 }, { libelle: 'Stand (barnum, comptoir)', montant: 400 },
+        { libelle: 'PLV et signalétique', montant: 250 }, { libelle: 'Stand (barnum, comptoir)', montant: 1_200, unique: true },
         { libelle: 'Entretien des tireuses', montant: 150 }, { libelle: 'Achats annexes (gobelets, glace)', montant: 350 },
       ],
       billet: 'don', montantBillet: 1_000, cerfa: true, mode: 'taux', taux: 0.15, parFut: 20, total: 1_000,
@@ -1625,6 +1625,13 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             <Saisies key={i}>
               <Texte libelle="Coût" aria={`Coût ${i + 1}`} valeur={c.libelle} onChange={(libelle) => cout(i, { libelle })} largeur={240} />
               <MontantDe libelle="Montant HT" aria={`Montant HT du coût ${i + 1}`} valeur={c.montant} onChange={(v) => cout(i, { montant: v })} />
+              <Champ libelle="Payé">
+                <ToggleButtonGroup exclusive size="small" value={c.unique ? 'une' : 'an'} onChange={(_, v: string | null) => v && cout(i, { unique: v === 'une' })} aria-label={`Fréquence du coût ${i + 1}`}>
+                  <ToggleButton value="an" sx={{ minHeight: 48, px: 2 }}>Par an</ToggleButton>
+                  <ToggleButton value="une" sx={{ minHeight: 48, px: 2 }}>Une fois</ToggleButton>
+                </ToggleButtonGroup>
+              </Champ>
+              {c.unique && e.dureeContrat > 1 && <Typography color="text.secondary" sx={{ alignSelf: 'center' }}>{montant(c.montant / e.dureeContrat)} par an sur {ans(e.dureeContrat)}</Typography>}
               {e.couts.length > 1 && <Button color="inherit" startIcon={<DeleteOutlineOutlined />} onClick={() => maj('prix_fut', { couts: e.couts.filter((_, j) => j !== i) })} aria-label={`Retirer le coût ${i + 1}`} sx={{ minHeight: 48 }}>Retirer</Button>}
             </Saisies>
           ))}
