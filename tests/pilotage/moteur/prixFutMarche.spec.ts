@@ -58,3 +58,41 @@ test('Cas limites : aucun fût, marge impossible', () => {
   expect(prixFutMarche({ ...festival, marge: { mode: 'taux', valeur: 0.97 } }, p).prixHT).toBeNull()
   expect(masseSelonFuts(prixFutMarche({ ...festival, futs: 0 }, p), 0)).toEqual([])
 })
+
+// Suite (Joseph, 20/11/2026) : contrat de 3 ans, 2 tireuses à 750 € (durée de vie 5 ans), 6 livraisons de 40 km à
+// 0,60 €/km et 1,5 h, 16 h sur place, heure à 20 €, reversement de 5 € par fût, consignes 60 € et 85 € (3 bouteilles)
+const complet: MarcheGros = {
+  ...festival, reversement: 5, dureeContrat: 3,
+  couts: [{ libelle: 'PLV', montant: 250 }, { libelle: 'Stand', montant: 400 }, { libelle: 'Entretien', montant: 150 }, { libelle: 'Achats annexes', montant: 350 }],
+  tireuses: { nombre: 2, prix: 750, dureeVie: 5 },
+  livraisons: { nombre: 6, km: 40, prixKm: 0.6, heures: 1.5 }, heuresSurPlace: 16, coutHoraire: 20,
+  consignes: { fut: 60, bouteille: 85, bouteilles: 3, facturees: false },
+}
+test('Durée du contrat, tireuses, kilomètres, équipe, reversement, consignes', () => {
+  const r = prixFutMarche(complet, p)
+  proche(r.annexes, 1_150)
+  proche(r.tireusesAn, 500)                // 1 500 ÷ 3 ans du contrat (plus court que 5 ans)
+  expect(r.anneesTireuses).toBe(3)
+  proche(r.resteNonAmorti, 600)            // 1 500 × 2 ÷ 5
+  proche(r.kilometres, 144)                // 6 × 40 × 0,60
+  proche(r.heures, 25)                     // 6 × 1,5 + 16
+  proche(r.personnel, 500)
+  proche(r.coutsFixes, 2_694)              // 1 150 + 400 + 500 + 144 + 500
+  proche(r.prixHT, 112.0732, 3)            // (42 + 5 + 2 694 ÷ 60) ÷ 0,82
+  proche(r.reversement, 300)
+  proche(r.masseMarge, 1_008.66)           // 15 % de 6 724,39
+  proche(r.masseContrat, 3_025.98)
+  proche(r.prixPlancher, 94.742, 2)        // 91,9 ÷ 0,97
+  expect(r.equilibre).toBe(44)             // 2 694 ÷ (112,07 × 0,97 − 47) = 43,7
+  proche(r.parFut!.livraisons, 10.73)      // (144 + 500) ÷ 60
+  const pf = r.parFut!
+  proche(pf.achat + pf.reversement + pf.annexes + pf.tireuses + pf.livraisons + pf.billet + pf.redevance + pf.marge, r.prixHT!, 6)
+  proche(r.consignes.bloque, 855)          // 10 fûts d'une livraison × 60 + 3 × 85
+  const client = prixFutMarche({ ...complet, consignes: { ...complet.consignes!, facturees: true } }, p)
+  expect(client.consignes.bloque).toBe(0)
+  proche(client.consignes.avanceClient, 855)
+  // Contrat plus long que la durée de vie : tireuses sur leur durée de vie, rien de non amorti
+  const long = prixFutMarche({ ...complet, dureeContrat: 6 }, p)
+  proche(long.tireusesAn, 300)
+  proche(long.resteNonAmorti, 0)
+})

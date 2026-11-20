@@ -716,43 +716,79 @@ export function simulerMix(x: MixCaveBar): EffetMix {
 //   en euros au total M (ou par fût m, M = m × N) : P = (A + (C + M) ÷ N) ÷ (1 − rp)
 // Prix plancher (masse nulle) = (A + C ÷ N) ÷ (1 − rp). Au prix trouvé, le net par fût = P × (1 − rp) − A ; équilibre =
 // C ÷ net, au fût supérieur : sous ce nombre de fûts vendus, le marché perd de l'argent (les coûts ne baissent pas).
+// Suite (Joseph, 20/11/2026, 11h43) : durée du contrat, consignes, kilomètres (indemnités kilométriques), heures de l'équipe,
+// reversement par fût au client du marché, et les coûts annexes ligne par ligne. Tout est compté par an (fûts par an) :
+//   tireuses achetées : nombre × prix ÷ années (durée du contrat si plus courte que la durée de vie, par prudence), comme
+//   le Contrat extérieur ; reste non amorti = nombre × prix × années restantes ÷ durée de vie ;
+//   livraisons : nombre × (km aller-retour × prix du km) ; équipe : (livraisons × heures par livraison + heures sur place)
+//   × coût d'une heure chargée ; reversement R par fût vendu : un coût par fût, P = (A + R + C ÷ N) ÷ (1 − rp − t).
+//   Consignes (fût, bouteille de CO2) : ni recette ni charge, seulement de la trésorerie bloquée au plus fort (fûts d'une
+//   livraison + bouteilles en place), 0 si le client les paie.
+// Masse de marge sur la durée du contrat = masse de l'année × années du contrat.
 export interface MarcheGros {
   futs: number; prixAchat: number
   couts: { libelle: string; montant: number }[]
   billet: { type: 'aucun' | 'don' | 'sponsoring'; montant: number; cerfa: boolean }
   marge: { mode: 'taux' | 'parFut' | 'total'; valeur: number }
   tva: number
+  dureeContrat?: number                                                    // années ; 0 ou absent : une seule année
+  reversement?: number                                                     // reversé au client, par fût vendu HT
+  tireuses?: { nombre: number; prix: number; dureeVie: number }            // tireuses achetées pour le marché
+  livraisons?: { nombre: number; km: number; prixKm: number; heures: number }
+  heuresSurPlace?: number; coutHoraire?: number
+  consignes?: { fut: number; bouteille: number; bouteilles: number; facturees: boolean }
 }
 export interface EffetMarcheGros {
   annexes: number; billet: { valeur: number; reduction: number; cout: number }; coutsFixes: number
+  tireusesAn: number; anneesTireuses: number; resteNonAmorti: number
+  kilometres: number; heures: number; personnel: number; reversement: number
   prixHT: number | null; prixTTC: number | null; prixPlancher: number | null
-  ca: number; achats: number; redevance: number; masseMarge: number; tauxMasse: number | null
+  ca: number; achats: number; redevance: number; masseMarge: number; tauxMasse: number | null; masseContrat: number | null
   margeFut: number | null; tauxMargeFut: number | null                  // prix − achat, en part du prix (marge « habituelle »)
-  parFut: { achat: number; annexes: number; billet: number; redevance: number; marge: number } | null
+  parFut: { achat: number; reversement: number; annexes: number; tireuses: number; livraisons: number; billet: number; redevance: number; marge: number } | null
   netParFut: number | null; equilibre: number | null
+  consignes: { futsParLivraison: number; bloque: number; avanceClient: number }
 }
 export function prixFutMarche(x: MarcheGros, p: Redevances): EffetMarcheGros {
   const rp = p.tauxRedevance + p.tauxPublicite
-  const n = pos(x.futs), achat = pos(x.prixAchat)
+  const n = pos(x.futs), achat = pos(x.prixAchat), rev = pos(x.reversement)
   const annexes = somme(x.couts.map((c) => pos(c.montant)))
   const valeur = x.billet.type === 'aucun' ? 0 : pos(x.billet.montant)
   const reduction = x.billet.type === 'don' && x.billet.cerfa ? valeur * TAUX_MECENAT : 0
   const billet = { valeur, reduction, cout: valeur - reduction }
-  const coutsFixes = annexes + billet.cout
+  const contrat = pos(x.dureeContrat), t = x.tireuses, vie = pos(t?.dureeVie)
+  const totalTireuses = pos(t?.nombre) * pos(t?.prix)
+  const anneesTireuses = contrat > 0 && (vie <= 0 || contrat < vie) ? contrat : vie > 0 ? vie : 1
+  const tireusesAn = totalTireuses / anneesTireuses
+  const resteNonAmorti = vie > 0 && anneesTireuses < vie ? totalTireuses * (vie - anneesTireuses) / vie : 0
+  const l = x.livraisons, nbLiv = pos(l?.nombre)
+  const kilometres = nbLiv * pos(l?.km) * pos(l?.prixKm)
+  const heures = nbLiv * pos(l?.heures) + pos(x.heuresSurPlace)
+  const personnel = heures * pos(x.coutHoraire)
+  const coutsFixes = annexes + billet.cout + tireusesAn + kilometres + personnel
   const visee = x.marge.mode === 'taux' ? null : x.marge.mode === 'parFut' ? pos(x.marge.valeur) * n : pos(x.marge.valeur)
   const diviseur = x.marge.mode === 'taux' ? 1 - rp - part(x.marge.valeur) : 1 - rp
-  const prixHT = n > 0 && diviseur > 0 ? (achat + (coutsFixes + (visee ?? 0)) / n) / diviseur : null
-  const prixPlancher = n > 0 && rp < 1 ? (achat + coutsFixes / n) / (1 - rp) : null
+  const prixHT = n > 0 && diviseur > 0 ? (achat + rev + (coutsFixes + (visee ?? 0)) / n) / diviseur : null
+  const prixPlancher = n > 0 && rp < 1 ? (achat + rev + coutsFixes / n) / (1 - rp) : null
   const ca = prixHT === null ? 0 : prixHT * n
-  const achats = achat * n, redevance = ca * rp
-  const masseMarge = prixHT === null ? 0 : ca - redevance - achats - coutsFixes
-  const netParFut = prixHT === null ? null : prixHT * (1 - rp) - achat
+  const achats = achat * n, reversement = rev * n, redevance = ca * rp
+  const masseMarge = prixHT === null ? 0 : ca - redevance - achats - reversement - coutsFixes
+  const netParFut = prixHT === null ? null : prixHT * (1 - rp) - achat - rev
+  const c = x.consignes, bouteilles = pos(c?.bouteilles)
+  const futsParLivraison = nbLiv > 0 ? Math.ceil(n / nbLiv - 1e-9) : n
+  const auPlusFort = Math.min(n, futsParLivraison) * pos(c?.fut) + bouteilles * pos(c?.bouteille)
   return {
-    annexes, billet, coutsFixes, prixHT, prixTTC: prixHT === null ? null : prixHT * (1 + pos(x.tva)), prixPlancher,
+    annexes, billet, coutsFixes, tireusesAn, anneesTireuses, resteNonAmorti, kilometres, heures, personnel, reversement,
+    prixHT, prixTTC: prixHT === null ? null : prixHT * (1 + pos(x.tva)), prixPlancher,
     ca, achats, redevance, masseMarge, tauxMasse: ca > 0 ? masseMarge / ca : null,
+    masseContrat: contrat > 0 && prixHT !== null ? masseMarge * contrat : null,
     margeFut: prixHT === null ? null : prixHT - achat, tauxMargeFut: prixHT ? (prixHT - achat) / prixHT : null,
-    parFut: prixHT === null ? null : { achat, annexes: annexes / n, billet: billet.cout / n, redevance: prixHT * rp, marge: masseMarge / n },
+    parFut: prixHT === null ? null : {
+      achat, reversement: rev, annexes: annexes / n, tireuses: tireusesAn / n, livraisons: (kilometres + personnel) / n,
+      billet: billet.cout / n, redevance: prixHT * rp, marge: masseMarge / n,
+    },
     netParFut, equilibre: netParFut === null ? null : equilibre(coutsFixes, netParFut),
+    consignes: { futsParLivraison, bloque: c?.facturees ? 0 : auPlusFort, avanceClient: c?.facturees ? auPlusFort : 0 },
   }
 }
 // Le risque du gros marché : les coûts sont fixes, le prix les répartit sur les fûts prévus. Masse de marge au prix trouvé
