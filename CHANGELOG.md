@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Prix du fût d’un gros marché, suite (Joseph, 20/11/2026), sans migration : durée du contrat (masse de marge sur le
+  contrat, tireuses payées sur sa durée et reste non amorti), reversement au client par fût, tireuses achetées, livraisons
+  (kilomètres × indemnité kilométrique) et heures de l'équipe, autres coûts ligne par ligne, consignes (trésorerie bloquée
+  au plus fort, case « payées par le client »).
 - Simulateurs : « Prix du fût d’un gros marché » (Joseph, 20/11/2026), à côté du Contrat extérieur. On saisit les fûts
   prévus, le prix d'achat, chaque coût annexe du marché (livraison, PLV, stand, entretien et achat de tireuses, achats
   annexes…), le billet d'entrée (don avec case reçu Cerfa, 60 % de réduction d'impôt, ou sponsoring) et la marge

@@ -379,6 +379,10 @@ type Etats = {
   prix_fut: {
     nom: string; futs: number; prixAchat: number; couts: { libelle: string; montant: number }[]
     billet: 'aucun' | 'don' | 'sponsoring'; montantBillet: number; cerfa: boolean; mode: 'taux' | 'parFut' | 'total'; taux: number; parFut: number; total: number
+    // Suite (Joseph, 20/11/2026) : durée, reversement, tireuses, livraisons et équipe, consignes (bouteilles null = tireuses + 1)
+    dureeContrat: number; reversement: number; nbTireuses: number; prixTireuse: number; dureeTireuse: number
+    livraisons: number; km: number; prixKm: number; heuresLivraison: number; heuresSurPlace: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number
+    consigneFut: number; consigneBouteille: number; bouteilles: number | null; consignesClient: boolean
   }
   mix: { caCave: number | null; caBar: number | null; margeCave: number | null; margeBar: number | null; part: number; sens: 'vers_bar' | 'vers_cave'; heures: 'grille' | 'saisie'; heuresSemaine: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number }
   investissement: { modele: ModeleInvestir; objectifExterieur: number; camion: boolean; libelle: string; cout: number; duree: number; mois: number; ca: number; metres: number; marge: number; demarque: number; charges: number; financement: 'tresorerie' | 'pret'; tauxPret: number; dureePret: number; univers: Univers; fermeture: number; caJour: number | null; margeMagasin: number | null }
@@ -436,7 +440,7 @@ function exempleRealise(b: Budget | null, aujourdhui: Date): number {
 const GARDES_AU_VIDE = new Set(['mois', 'moisDepense', 'moisRetard', 'de', 'a', 'jour', 'jours', 'index', 'salaries', 'coutHoraire', 'partSmic', 'majoration',
   'duree', 'dureePret', 'tauxPret', 'co2', 'prixKm', 'entretien', 'semaines', 'occSaison', 'occHors', 'litres', 'quantite', 'unSur', 'prix.marge', 'prix.payes', 'prix.offerts', 'prix.avant', 'achat.taux', 'calculette.marge',
   'remises_b2b.paliers', 'remises_b2b.plancher', 'majorationSup', 'parts', 'heuresParJour',
-  'exterieur.nbTireuses', 'exterieur.prixBouteille', 'exterieur.margeBouteille', 'exterieur.consigneBouteille', 'exterieur.consigneFut'])
+  'prix_fut.dureeTireuse', 'prix_fut.consigneFut', 'prix_fut.consigneBouteille', 'exterieur.nbTireuses', 'exterieur.prixBouteille', 'exterieur.margeBouteille', 'exterieur.consigneBouteille', 'exterieur.consigneFut'])
 const TEXTES_AU_VIDE = new Set(['nom', 'poste', 'libelle', 'biere', 'client'])
 function vider(v: unknown, cle: string, sim: string): unknown {
   if (GARDES_AU_VIDE.has(cle) || GARDES_AU_VIDE.has(`${sim}.${cle}`)) return v
@@ -543,15 +547,18 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
     },
     // 291 : hausse de 5 % sur les 3 ans qui restent au bail
     loyer: { ca: null, marge: null, ebe: null, loyer: null, charges: null, mode: 'hausse', hausse: 0.05, nouveauMois: 0, annees: 3 },
-    // Gros marché (Joseph, 20/11/2026) : 60 fûts, 2 450 € de coûts annexes, don de 1 000 € avec reçu Cerfa, 15 % du CA visés :
-    // 109,15 € HT le fût, 982 € de masse de marge, équilibre à 45 fûts
+    // Gros marché (Joseph, 20/11/2026) : contrat de 3 ans, 60 fûts par an à 42 €, 5 € reversés au client par fût, 2 tireuses à
+    // 750 €, 6 livraisons de 40 km, 1 150 € d'autres coûts, don de 1 000 € avec reçu Cerfa, 15 % du CA visés
     prix_fut: {
       nom: 'Festival d’été', futs: 60, prixAchat: 42,
       couts: [
-        { libelle: 'Livraison et reprise', montant: 300 }, { libelle: 'PLV et signalétique', montant: 250 }, { libelle: 'Stand (barnum, comptoir)', montant: 400 },
-        { libelle: 'Entretien des tireuses', montant: 150 }, { libelle: 'Achats annexes (gobelets, glace)', montant: 350 }, { libelle: 'Achat de tireuses', montant: 1_000 },
+        { libelle: 'PLV et signalétique', montant: 250 }, { libelle: 'Stand (barnum, comptoir)', montant: 400 },
+        { libelle: 'Entretien des tireuses', montant: 150 }, { libelle: 'Achats annexes (gobelets, glace)', montant: 350 },
       ],
       billet: 'don', montantBillet: 1_000, cerfa: true, mode: 'taux', taux: 0.15, parFut: 20, total: 1_000,
+      dureeContrat: 3, reversement: 5, nbTireuses: 2, prixTireuse: 750, dureeTireuse: s.exterieur.dureeTireuse || 5,
+      livraisons: 6, km: 40, prixKm: s.exterieur.prixKm || 0.6, heuresLivraison: 1.5, heuresSurPlace: 16, coutHoraire: s.coutHoraire, ...HEURE,
+      consigneFut: s.exterieur.consigneFut, consigneBouteille: s.exterieur.consigneBouteille, bouteilles: null, consignesClient: false,
     },
     // 292 : 5 % du CA de la cave passe au bar
     mix: { caCave: null, caBar: null, margeCave: null, margeBar: null, part: 0.05, sens: 'vers_bar', heures: s.productivite.length ? 'grille' : 'saisie', heuresSemaine: 2, coutHoraire: s.coutHoraire, ...HEURE },
@@ -1561,27 +1568,59 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     )
   }
   if (choisi === 'prix_fut') {
-    // Gros marché extérieur (Joseph, 20/11/2026) : tous les coûts annexes et le billet d'entrée dans le prix du fût, plus la
-    // marge souhaitée. Facturé à un organisateur : tout en HT, le TTC pour information.
+    // Gros marché extérieur (Joseph, 20/11/2026) : tous les coûts du marché et le billet d'entrée dans le prix du fût, plus la
+    // marge souhaitée ; durée du contrat, reversement au client, tireuses, livraisons et équipe, consignes. Facturé à un
+    // organisateur : tout en HT, le TTC pour information.
     const e = etats.prix_fut
+    const bouteilles = e.bouteilles ?? e.nbTireuses + 1
     const r = prixFutMarche({
       futs: e.futs, prixAchat: e.prixAchat, couts: e.couts, tva: s.tva.normale,
       billet: { type: e.billet, montant: e.montantBillet, cerfa: e.cerfa },
       marge: { mode: e.mode, valeur: e.mode === 'taux' ? e.taux : e.mode === 'parFut' ? e.parFut : e.total },
+      dureeContrat: e.dureeContrat, reversement: e.reversement,
+      tireuses: { nombre: e.nbTireuses, prix: e.prixTireuse, dureeVie: e.dureeTireuse },
+      livraisons: { nombre: e.livraisons, km: e.km, prixKm: e.prixKm, heures: e.heuresLivraison }, heuresSurPlace: e.heuresSurPlace, coutHoraire: heure(e),
+      consignes: { fut: e.consigneFut, bouteille: e.consigneBouteille, bouteilles, facturees: e.consignesClient },
     }, p)
     const cout = (i: number, v: Partial<Etats['prix_fut']['couts'][number]>) => maj('prix_fut', { couts: e.couts.map((y, j) => (j === i ? { ...y, ...v } : y)) })
     const m = (k: keyof Etats['prix_fut']) => (v: number) => maj('prix_fut', { [k]: v })
     const billetLibelle = e.billet === 'don' ? 'Don' : 'Sponsoring'
+    const ans = (v: number) => `${unChiffre(v)} an${v >= 2 ? 's' : ''}`
+    const siege = (v: number, k: 'prixKm' | 'consigneFut' | 'consigneBouteille' | 'dureeTireuse') => v > 0 && v === initiaux.prix_fut[k] && 'siège'
+    const livraisonsEquipe = r.kilometres + r.personnel
     saisies = (
       <Stack spacing={2}>
-        <Bloc titre="1. Le marché" total={{ libelle: 'Achat des fûts', ...moins(r.achats) }}>
+        <Bloc titre="1. Le contrat" total={{ libelle: 'Fûts et reversement par an', ...moins(r.achats + r.reversement) }}>
           <Saisies>
             <Texte libelle="Marché" aria="Nom du marché" valeur={e.nom} onChange={(v) => maj('prix_fut', { nom: v })} />
-            <Montant libelle="Fûts prévus" valeur={e.futs} onChange={(v) => maj('prix_fut', { futs: Math.max(0, Math.round(v)) })} unite="" pas={5} />
+            <Montant libelle="Durée du contrat" valeur={e.dureeContrat} onChange={(v) => maj('prix_fut', { dureeContrat: Math.max(0, Math.round(v)) })} unite="ans" />
+            <Montant libelle="Fûts prévus par an" valeur={e.futs} onChange={(v) => maj('prix_fut', { futs: Math.max(0, Math.round(v)) })} unite="" pas={5} />
             <Montant libelle="Prix d’achat du fût HT" valeur={e.prixAchat} onChange={m('prixAchat')} unite="€/fût" />
+            <Montant libelle="Reversement au client HT" valeur={e.reversement} onChange={m('reversement')} unite="€/fût" />
           </Saisies>
         </Bloc>
-        <Bloc titre="2. Coûts annexes du marché" total={{ libelle: 'Total HT', ...moins(r.annexes) }}>
+        <Bloc titre="2. Tireuses achetées pour le marché" total={{ libelle: 'Par an', ...moins(r.tireusesAn) }}>
+          <Saisies>
+            <Montant libelle="Tireuses à acheter" valeur={e.nbTireuses} onChange={(v) => maj('prix_fut', { nbTireuses: Math.max(0, Math.round(v)) })} unite="" />
+            <Montant libelle="Prix d’une tireuse HT" valeur={e.prixTireuse} onChange={m('prixTireuse')} />
+            <Montant libelle="Durée de vie d’une tireuse" valeur={e.dureeTireuse} onChange={(v) => maj('prix_fut', { dureeTireuse: Math.max(0, Math.round(v)) })} unite="ans" source={siege(e.dureeTireuse, 'dureeTireuse')} />
+          </Saisies>
+          {r.resteNonAmorti > 0 && <Typography color="text.secondary">Payées sur les {ans(r.anneesTireuses)} du contrat : {montant(r.resteNonAmorti)} resteraient à amortir si les tireuses ne resservent pas après.</Typography>}
+        </Bloc>
+        <Bloc titre="3. Livraisons et équipe" total={{ libelle: 'Par an', ...moins(livraisonsEquipe) }}>
+          <Saisies>
+            <Montant libelle="Livraisons par an" valeur={e.livraisons} onChange={(v) => maj('prix_fut', { livraisons: Math.max(0, Math.round(v)) })} unite="" />
+            <Montant libelle="Kilomètres aller-retour" valeur={e.km} onChange={m('km')} unite="km" />
+            <Montant libelle="Indemnité kilométrique" valeur={e.prixKm} onChange={m('prixKm')} unite="€/km" source={siege(e.prixKm, 'prixKm')} />
+          </Saisies>
+          <Saisies>
+            <Montant libelle="Heures par livraison" valeur={e.heuresLivraison} onChange={m('heuresLivraison')} unite="h" />
+            <Montant libelle="Heures sur place par an" valeur={e.heuresSurPlace} onChange={m('heuresSurPlace')} unite="h" />
+            <CoutHeure e={e} valeur={heure(e)} equipeSaisie={heureEquipe !== null} repere={s.coutHoraire > 0} onChange={(v) => maj('prix_fut', v)} />
+          </Saisies>
+          <Typography color="text.secondary">Kilomètres : {montant(r.kilometres)} ; équipe : {unChiffre(r.heures)} h, {montant(r.personnel)} chargés.</Typography>
+        </Bloc>
+        <Bloc titre="4. Autres coûts annexes" total={{ libelle: 'Par an HT', ...moins(r.annexes) }}>
           {e.couts.map((c, i) => (
             <Saisies key={i}>
               <Texte libelle="Coût" aria={`Coût ${i + 1}`} valeur={c.libelle} onChange={(libelle) => cout(i, { libelle })} largeur={240} />
@@ -1591,7 +1630,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           ))}
           <Box>{e.couts.length < 30 && <Button startIcon={<AddOutlined />} onClick={() => maj('prix_fut', { couts: [...e.couts, { libelle: '', montant: 0 }] })} sx={{ minHeight: 48 }}>Ajouter un coût</Button>}</Box>
         </Bloc>
-        <Bloc titre="3. Billet d’entrée" total={{ libelle: 'Coût réel', ...moins(r.billet.cout) }}>
+        <Bloc titre="5. Billet d’entrée" total={{ libelle: 'Coût réel', ...moins(r.billet.cout) }}>
           <Saisies>
             <Choix libelle="Billet d’entrée" valeur={e.billet} onChange={(v) => maj('prix_fut', { billet: v })} options={[['aucun', 'Aucun'], ['don', 'Don'], ['sponsoring', 'Sponsoring']]} />
             {e.billet !== 'aucun' && <Montant libelle={`Montant du ${e.billet === 'don' ? 'don' : 'sponsoring'}`} valeur={e.montantBillet} onChange={m('montantBillet')} />}
@@ -1600,35 +1639,55 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           {e.billet === 'don' && r.billet.valeur > 0 && <Typography color="text.secondary">Coût réel du don : {montant(r.billet.cout)}{r.billet.reduction ? ` (${montant(r.billet.valeur)} moins ${montant(r.billet.reduction)} de réduction d’impôt grâce au reçu Cerfa)` : ` : sans reçu Cerfa, pas de réduction d’impôt (${montant(r.billet.valeur * TAUX_MECENAT)} perdus)`}.</Typography>}
           {e.billet === 'sponsoring' && r.billet.valeur > 0 && <Typography color="text.secondary">Sponsoring : contrepartie publicitaire, charge pleine, sans réduction d’impôt.</Typography>}
         </Bloc>
-        <Bloc titre="4. Marge souhaitée">
+        <Bloc titre="6. Marge souhaitée">
           <Saisies>
             <Choix libelle="Marge souhaitée" valeur={e.mode} onChange={(v) => maj('prix_fut', { mode: v })} options={[['taux', 'En % du CA'], ['parFut', 'En € par fût'], ['total', 'En € au total']]} />
             {e.mode === 'taux' && <Taux libelle="Part du CA HT qui reste" valeur={e.taux} onChange={(v) => maj('prix_fut', { taux: Math.min(1, v) })} />}
             {e.mode === 'parFut' && <Montant libelle="Marge par fût HT" valeur={e.parFut} onChange={m('parFut')} unite="€/fût" />}
-            {e.mode === 'total' && <Montant libelle="Masse de marge visée HT" valeur={e.total} onChange={m('total')} />}
+            {e.mode === 'total' && <Montant libelle="Masse de marge visée par an HT" valeur={e.total} onChange={m('total')} />}
           </Saisies>
+        </Bloc>
+        {/* Consignes : ni recette ni charge, de l'argent avancé puis rendu (comme le Contrat extérieur) */}
+        <Bloc titre="7. Consignes (trésorerie)" total={{ libelle: 'Bloqué au plus fort', ...moins(r.consignes.bloque) }}>
+          <Saisies>
+            <Montant libelle="Consigne d’un fût" valeur={e.consigneFut} onChange={m('consigneFut')} source={siege(e.consigneFut, 'consigneFut')} />
+            <Montant libelle="Consigne d’une bouteille de CO2" valeur={e.consigneBouteille} onChange={m('consigneBouteille')} source={siege(e.consigneBouteille, 'consigneBouteille')} />
+            <Montant libelle="Bouteilles de CO2 en place" valeur={bouteilles} onChange={(v) => maj('prix_fut', { bouteilles: Math.max(0, Math.round(v)) })} unite="" source={e.bouteilles === null && 'tireuses + 1'} />
+            <FormControlLabel control={<Checkbox sx={{ width: 48, height: 48 }} checked={e.consignesClient} onChange={(x) => maj('prix_fut', { consignesClient: x.target.checked })} />} label="Consignes payées par le client" sx={{ minHeight: 48, mr: 0 }} />
+          </Saisies>
+          <Typography color="text.secondary">
+            {e.consignesClient
+              ? `Le client avance les consignes (${montant(r.consignes.avanceClient)} au plus fort), à lui rendre au retour.`
+              : `Au plus fort : les ${entier(Math.min(e.futs, r.consignes.futsParLivraison))} fûts d’une livraison et ${entier(bouteilles)} bouteille${bouteilles >= 2 ? 's' : ''} de CO2, en attendant le remboursement du fournisseur.`}
+          </Typography>
         </Bloc>
       </Stack>
     )
-    nomParDefaut = `${e.nom || 'Gros marché'}, ${e.futs} fûts`
+    nomParDefaut = `${e.nom || 'Gros marché'}, ${e.futs} fûts par an`
     if (r.prixHT === null) {
       phrase = e.futs <= 0 ? '' : 'Cette marge est trop haute : aucun prix ne la donne une fois la redevance et la publicité payées.'
-      resultats = <EtatVide titre={e.futs <= 0 ? 'Aucun fût prévu' : 'Marge impossible'} texte={e.futs <= 0 ? 'Saisis le nombre de fûts prévus : les coûts du marché se répartissent sur eux.' : 'Baisse la part du CA souhaitée : avec la redevance et la publicité, le total dépasse 100 % du prix.'} />
+      resultats = <EtatVide titre={e.futs <= 0 ? 'Aucun fût prévu' : 'Marge impossible'} texte={e.futs <= 0 ? 'Saisis le nombre de fûts prévus par an : les coûts du marché se répartissent sur eux.' : 'Baisse la part du CA souhaitée : avec la redevance et la publicité, le total dépasse 100 % du prix.'} />
     } else {
       const pf = r.parFut!
-      phrase = `${nomParDefaut} : fût à ${centimes(r.prixHT)} HT (${centimes(r.prixTTC!)} TTC) pour couvrir ${montant(r.coutsFixes)} de coûts annexes${r.billet.valeur ? ` et billet d’entrée` : ''} et dégager ${montant(r.masseMarge)} de masse de marge${r.tauxMasse !== null ? ` (${taux(r.tauxMasse)} du CA HT)` : ''} ; prix plancher ${centimes(r.prixPlancher!)}, perte sous ${r.equilibre ?? 0} fûts vendus.`
+      phrase = `${nomParDefaut} : fût à ${centimes(r.prixHT)} HT (${centimes(r.prixTTC!)} TTC)${e.reversement > 0 ? `, dont ${centimes(e.reversement)} reversés au client,` : ''} pour couvrir ${montant(r.coutsFixes)} de coûts par an et dégager ${montant(r.masseMarge)} de masse de marge par an${r.tauxMasse !== null ? ` (${taux(r.tauxMasse)} du CA HT)` : ''}${r.masseContrat !== null ? `, ${montant(r.masseContrat)} sur les ${ans(e.dureeContrat)} du contrat` : ''} ; prix plancher ${centimes(r.prixPlancher!)}, perte sous ${r.equilibre ?? 0} fûts vendus.${r.consignes.bloque > 0 ? ` Consignes : ${montant(r.consignes.bloque)} de trésorerie bloqués au plus fort.` : ''}`
       resultats = (
         <Stack spacing={2}>
           <Resultats>
             <Indicateur libelle="Prix du fût HT" valeur={centimes(r.prixHT)} detail={`${centimes(r.prixTTC!)} TTC ; marge sur achat ${centimes(r.margeFut!)}${r.tauxMargeFut !== null ? `, ${taux(r.tauxMargeFut)}` : ''}`} />
-            <Indicateur libelle="Masse de marge" valeur={montant(r.masseMarge)} detail={`sur ${montant(r.ca)} de CA HT, une fois tout payé`} />
+            <Indicateur libelle="Masse de marge par an" valeur={montant(r.masseMarge)} detail={`sur ${montant(r.ca)} de CA HT, une fois tout payé`} />
+            {r.masseContrat !== null && <Indicateur libelle="Masse de marge sur le contrat" valeur={montant(r.masseContrat)} detail={`${ans(e.dureeContrat)} au volume prévu`} />}
             <Indicateur libelle="Prix plancher" valeur={centimes(r.prixPlancher!)} detail="HT par fût, sans aucune marge" />
-            <Indicateur libelle="Fûts pour l’équilibre" valeur={r.equilibre !== null ? entier(r.equilibre) : 'Jamais'} detail={`à ce prix, ${entier(e.futs)} prévus`} />
+            <Indicateur libelle="Fûts pour l’équilibre" valeur={r.equilibre !== null ? entier(r.equilibre) : 'Jamais'} detail={`par an à ce prix, ${entier(e.futs)} prévus`} />
+            {r.resteNonAmorti > 0 && <Indicateur libelle="Reste non amorti en fin de contrat" valeur={moins(r.resteNonAmorti).valeur} negatif detail="perdu si les tireuses ne resservent pas" />}
+            {r.consignes.bloque > 0 && <Indicateur libelle="Consignes bloquées au plus fort" valeur={moins(r.consignes.bloque).valeur} negatif detail="trésorerie, rendue au retour" />}
           </Resultats>
-          <Compte titre="Compte du marché" lignes={[
+          <Compte titre="Compte du marché sur un an" lignes={[
             { libelle: 'Recettes', valeur: r.ca, detail: 'CA HT' },
             { libelle: 'Fûts', valeur: -r.achats, detail: 'achat' },
-            { libelle: 'Coûts annexes', valeur: -r.annexes },
+            { libelle: 'Reversement au client', valeur: -r.reversement },
+            { libelle: 'Tireuses', valeur: -r.tireusesAn, detail: r.tireusesAn ? `sur ${ans(r.anneesTireuses)}` : undefined },
+            { libelle: 'Livraisons et équipe', valeur: -livraisonsEquipe },
+            { libelle: 'Autres coûts annexes', valeur: -r.annexes },
             { libelle: billetLibelle, valeur: -r.billet.cout, detail: r.billet.reduction ? 'réduction d’impôt déduite' : undefined },
             { libelle: 'Redevance et publicité', valeur: -r.redevance },
           ]} total={{ libelle: 'Masse de marge', valeur: r.masseMarge }} />
@@ -1636,9 +1695,10 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             <Table size="small" aria-label="Ce que paie le prix d’un fût" sx={{ minWidth: 300, maxWidth: 560, '& td, & th': { fontVariantNumeric: 'tabular-nums' } }}>
               <TableHead><TableRow><TableCell>Dans le prix d’un fût</TableCell><TableCell align="right">HT</TableCell></TableRow></TableHead>
               <TableBody>
-                {([['Achat du fût', pf.achat], ['Coûts annexes', pf.annexes], ...(pf.billet ? [[billetLibelle, pf.billet] as [string, number]] : []), ['Redevance et publicité', pf.redevance], ['Marge', pf.marge]] as [string, number][]).map(([l, v]) => (
-                  <TableRow key={l}><TableCell>{l}</TableCell><TableCell align="right">{centimes(v)}</TableCell></TableRow>
-                ))}
+                {([['Achat du fût', pf.achat], ['Reversement au client', pf.reversement], ['Tireuses', pf.tireuses], ['Livraisons et équipe', pf.livraisons], ['Autres coûts annexes', pf.annexes], [billetLibelle, pf.billet], ['Redevance et publicité', pf.redevance], ['Marge', pf.marge]] as [string, number][])
+                  .filter(([l, v]) => v >= 0.005 || l === 'Achat du fût' || l === 'Marge').map(([l, v]) => (
+                    <TableRow key={l}><TableCell>{l}</TableCell><TableCell align="right">{centimes(v)}</TableCell></TableRow>
+                  ))}
                 <TableRow><TableCell sx={{ fontWeight: 700 }}>Prix du fût</TableCell><TableCell align="right" sx={{ fontWeight: 700 }}>{centimes(r.prixHT)}</TableCell></TableRow>
               </TableBody>
             </Table>
@@ -1646,7 +1706,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           {/* Les coûts ne baissent pas si l'on vend moins : la masse de marge au prix trouvé selon les fûts vendus */}
           <Box sx={{ overflowX: 'auto' }}>
             <Table size="small" aria-label="Masse de marge selon les fûts vendus" sx={{ minWidth: 300, maxWidth: 560, '& td, & th': { fontVariantNumeric: 'tabular-nums' } }}>
-              <TableHead><TableRow><TableCell>Fûts vendus</TableCell><TableCell align="right">CA HT</TableCell><TableCell align="right">Masse de marge</TableCell></TableRow></TableHead>
+              <TableHead><TableRow><TableCell>Fûts vendus par an</TableCell><TableCell align="right">CA HT</TableCell><TableCell align="right">Masse de marge</TableCell></TableRow></TableHead>
               <TableBody>
                 {masseSelonFuts(r, e.futs).map((l) => (
                   <TableRow key={l.futs} selected={l.prevu}>
