@@ -429,21 +429,52 @@ export function tempsFortDeSoiree(nom: string, mois: number, univers: Univers, e
   ]
 }
 
-// ── 134 · Acheter en volume, précommande de Noël ───────────────────────────────────────────────────────────────────
-// Achat HT au prix habituel A, remise r : on paie A(1−r) à la commande. Gain de la remise = A × r. Coût de l'argent
-// immobilisé = A(1−r) × taux annuel ÷ 12 × durée moyenne de stockage (la moitié du temps pour tout vendre, ventes
-// régulières). Invendu : part du stock jamais vendue, perdue au prix payé. Durée maximale pour que la remise vaille le coup :
-// celle où le gain net s'annule.
-export interface EffetAchat { paye: number; remise: number; coutArgent: number; perteInvendu: number; gain: number; moisMaximum: number | null; payeTTC: number }
-export function simulerAchat(x: { montant: number; remise: number; mois: number; invendu: number; tauxAnnuel: number; tvaAchats: number }): EffetAchat {
-  const A = Math.max(0, x.montant), r = Math.min(1, Math.max(0, x.remise))
+// ── 134 · Acheter en volume (revu le 20/11/2026, Joseph) ───────────────────────────────────────────────────────
+// Achat HT au prix habituel A, remise r : on paie A(1−r). Pendant l'opération, la remise est répercutée sur le prix de
+// vente : prix habituel P = coût habituel ÷ (1 − m), vendu P(1−r), donc même taux de marge m ; la remise part au client.
+// À la fin de l'opération, une part s du stock reste ; elle repasse au prix habituel P. Dans ce reste, une part d dort.
+// - reste vendu (s(1−d)) : marge = P − A(1−r) = marge habituelle + remise gardée (A × r) ; argent bloqué la moitié des
+//   mois pour l'écouler (il se vend peu à peu) ;
+// - stock dormant (s × d) : valeur au prix payé, dont une part est perdue (soldé, provisionné) ; argent bloqué 12 mois.
+// Gain de l'achat en volume = remise gardée sur le reste vendu − coût de l'argent − valeur perdue du dormant. Pendant
+// l'opération, la remise est rendue au client : elle ne rapporte rien en propre. Dormant maximum : part du reste qui peut
+// dormir avant que le gain tombe à zéro (le gain baisse en ligne droite avec d).
+export interface Achat { montant: number; remise: number; marge: number; reste: number; dormant: number; mois: number; depreciation: number; tauxAnnuel: number; tvaAchats: number }
+export interface EffetAchat {
+  paye: number; payeTTC: number
+  operation: { cout: number; ca: number; marge: number }
+  resteVendu: { cout: number; ca: number; marge: number; remiseGardee: number }
+  dormant: { valeur: number; perte: number }
+  coutArgent: number; gain: number; margeTotale: number; dormantMaximum: number | null
+}
+export function simulerAchat(x: Achat): EffetAchat {
+  const borne = (v: number) => Math.min(1, Math.max(0, fini(v)))
+  const A = Math.max(0, fini(x.montant)), r = borne(x.remise), m = Math.min(0.95, borne(x.marge)), s = borne(x.reste), d = borne(x.dormant)
+  const t = Math.max(0, fini(x.tauxAnnuel)), mois = Math.max(0, fini(x.mois)), dep = borne(x.depreciation)
   const paye = A * (1 - r)
-  const remise = A * r
-  const parMois = paye * Math.max(0, x.tauxAnnuel) / 12 / 2
-  const coutArgent = parMois * Math.max(0, x.mois)
-  const perteInvendu = paye * Math.min(1, Math.max(0, x.invendu))
-  const net = remise - perteInvendu
-  return { paye, remise, coutArgent, perteInvendu, gain: net - coutArgent, moisMaximum: parMois > 0 ? (net > 0 ? net / parMois : 0) : null, payeTTC: paye * (1 + x.tvaAchats) }
+  const coutOp = paye * (1 - s)
+  const caOp = coutOp / (1 - m)
+  const coutReste = paye * s * (1 - d)
+  const caReste = A * s * (1 - d) / (1 - m)
+  const valeurDormant = paye * s * d
+  // Argent bloqué : reste vendu la moitié des mois pour l'écouler ; dormant une année entière
+  const argentReste = coutReste * t / 12 * mois / 2
+  const argentDormant = valeurDormant * t
+  const coutArgent = argentReste + argentDormant
+  const remiseGardee = A * r * s * (1 - d)
+  const perte = valeurDormant * dep
+  const gain = remiseGardee - coutArgent - perte
+  // Par euro de reste : k = r − (1−r)·t·mois/24 gagné s'il se vend, (1−r)·(dep + t) perdu s'il dort
+  const k = r - (1 - r) * t * mois / 24
+  const p = (1 - r) * (dep + t)
+  const dormantMaximum = k <= 0 ? 0 : k + p > 0 ? k / (k + p) : null
+  return {
+    paye, payeTTC: paye * (1 + x.tvaAchats),
+    operation: { cout: coutOp, ca: caOp, marge: caOp - coutOp },
+    resteVendu: { cout: coutReste, ca: caReste, marge: caReste - coutReste, remiseGardee },
+    dormant: { valeur: valeurDormant, perte },
+    coutArgent, gain, margeTotale: caOp - coutOp + caReste - coutReste - perte - coutArgent, dormantMaximum,
+  }
 }
 
 // ── 135 · Investir : tireuse, terrasse, corner alimentaire ─────────────────────────────────────────────────────────

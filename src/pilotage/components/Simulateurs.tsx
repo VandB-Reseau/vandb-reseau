@@ -337,7 +337,7 @@ type Etats = {
     lignes: Record<Exclude<LigneEvenement, 'divers'>, number>                     // 153 · coûts détaillés (Divers : « couts »)
     personnes: number; heuresEquipe: number; coutHoraire: number; majoration: number; modeHeure: ModeHeure; partSmic: number // 153 · heures de l'équipe en place
   }
-  achat: { montant: number; remise: number; mois: number; invendu: number; taux: number }
+  achat: { montant: number; remise: number; marge: number; reste: number; dormant: number; mois: number; depreciation: number; taux: number }
   exterieur: {
     nom: string; futs: number; dureeContrat: number; prixVente: number; remise: number; prixAchat: number; co2: number; nbGobelets: number; prixGobelet: number
     tireuse: 'neuve' | 'parc'; prixTireuse: number; duree: number; entretien: number
@@ -479,7 +479,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       lignes: { produits: 0, securite: 0, deco: 50, animation: 150, communication: 0, location: 0 },
       personnes: 0, heuresEquipe: 3, coutHoraire: s.coutHoraire, majoration: 0.25, ...HEURE,
     },
-    achat: { montant: 10_000, remise: 0.1, mois: 4, invendu: 0.05, taux: s.tauxDecouvert },
+    achat: { montant: 10_000, remise: 0.1, marge: b && b.ca > 0 ? Math.round(b.tauxMarge * 100) / 100 : 0.35, reste: 0.3, dormant: 0.2, mois: 4, depreciation: 0.5, taux: s.tauxDecouvert },
     exterieur: {
       // Fût vendu 83 € TTC, payé 42 € HT (Joseph, 19/11/2026) : facturé à l'organisateur en HT, 83 ÷ 1,2 = 69,17 €
       nom: 'Fête du village', futs: 40, dureeContrat: 3, prixVente: Math.round(8_300 / (1 + s.tva.normale)) / 100, remise: 0, prixAchat: 42, co2: s.exterieur.co2ParFut, nbGobelets: 500, prixGobelet: 0.25,
@@ -1242,32 +1242,45 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
   }
   if (choisi === 'achat') {
     const e = etats.achat
-    const r = simulerAchat({ montant: e.montant, remise: e.remise, mois: e.mois, invendu: e.invendu, tauxAnnuel: e.taux, tvaAchats: p.tresorerie.tvaAchats })
+    // Marge habituelle : celle de la cave du budget, modifiable ; reste écoulé au prix habituel, dormant gardé un an
+    const r = simulerAchat({ montant: e.montant, remise: e.remise, marge: e.marge, reste: e.reste, dormant: e.dormant, mois: e.mois, depreciation: e.depreciation, tauxAnnuel: e.taux, tvaAchats: p.tresorerie.tvaAchats })
+    const coutsStock = r.coutArgent + r.dormant.perte
     saisies = (
       <Stack spacing={2}>
-        <Bloc titre="1. L’offre du fournisseur" total={{ libelle: 'Remise gagnée', valeur: montant(r.remise) }}>
+        <Bloc titre="1. L’offre du fournisseur" total={{ libelle: 'Payé HT', valeur: montant(r.paye) }}>
           <Saisies>
             <Montant libelle="Achat au prix habituel HT" valeur={e.montant} onChange={(v) => maj('achat', { montant: v })} />
             <Taux libelle="Remise du fournisseur" valeur={e.remise} onChange={(v) => maj('achat', { remise: v })} />
+            <Taux libelle="Marge habituelle du produit" valeur={e.marge} onChange={(v) => maj('achat', { marge: v })} />
           </Saisies>
         </Bloc>
-        <Bloc titre="2. Ce que ça coûte de stocker" total={{ libelle: 'Total', ...moins(r.perteInvendu + r.coutArgent) }}>
+        <Bloc titre="2. Après l’opération" total={{ libelle: 'Coût du stock restant', ...moins(coutsStock) }}>
           <Saisies>
-            <Montant libelle="Temps pour tout vendre" valeur={e.mois} onChange={(v) => maj('achat', { mois: v })} unite="mois" />
-            <Taux libelle="Part qui risque de rester" valeur={e.invendu} onChange={(v) => maj('achat', { invendu: v })} />
+            <Taux libelle="Stock restant à la fin de l’opération" valeur={e.reste} onChange={(v) => maj('achat', { reste: v })} />
+            <Taux libelle="Part de ce reste qui dormira" valeur={e.dormant} onChange={(v) => maj('achat', { dormant: v })} />
+            <Montant libelle="Temps pour écouler le reste" valeur={e.mois} onChange={(v) => maj('achat', { mois: v })} unite="mois" />
+            <Taux libelle="Valeur perdue sur le stock dormant" valeur={e.depreciation} onChange={(v) => maj('achat', { depreciation: v })} />
             <Taux libelle="Coût annuel de l’argent" valeur={e.taux} onChange={(v) => maj('achat', { taux: v })} />
           </Saisies>
         </Bloc>
       </Stack>
     )
     nomParDefaut = `Achat de ${montant(e.montant)} à ${taux(e.remise)} de remise`
-    phrase = `${nomParDefaut}, vendu en ${unChiffre(e.mois)} mois : ${r.gain >= 0 ? `gain de ${montant(r.gain)}` : `perte de ${montant(-r.gain)}`}${r.moisMaximum !== null ? `, la remise vaut le coup si tout part en moins de ${unChiffre(r.moisMaximum)} mois` : ''}.`
+    phrase = `${nomParDefaut}, remise rendue au client pendant l’opération, ${taux(e.reste)} restant ensuite dont ${taux(e.dormant)} qui dort : ${r.gain >= 0 ? `l’achat en volume rapporte ${montant(r.gain)}` : `l’achat en volume coûte ${montant(-r.gain)}`}${r.dormantMaximum !== null ? `, il paie tant que moins de ${taux(r.dormantMaximum)} du reste dort` : ''}.`
     resultats = (
-      <Resultats>
-        <Indicateur libelle={r.gain >= 0 ? 'Gain net' : 'Perte nette'} valeur={montant(Math.abs(r.gain))} detail={`remise ${montant(r.remise)}, invendu ${montant(r.perteInvendu)}, argent bloqué ${montant(r.coutArgent)}`} />
-        <Indicateur libelle="Sortie de trésorerie à la commande" valeur={montant(r.payeTTC)} detail="TTC, revient au fil des ventes" />
-        <Indicateur libelle="Durée maximale pour tout vendre" valeur={r.moisMaximum === null ? 'Sans limite' : `${unChiffre(r.moisMaximum)} mois`} detail={r.moisMaximum === null ? 'Règle le coût de l’argent pour la calculer' : 'au-delà, la remise ne paie plus le stock bloqué'} />
-      </Resultats>
+      <Stack spacing={2}>
+        <Compte titre="Ce que rapporte l’achat en volume" lignes={[
+          { libelle: 'Remise gardée sur le reste vendu', valeur: r.resteVendu.remiseGardee, detail: 'revendu au prix habituel' },
+          { libelle: 'Argent bloqué dans le stock', valeur: -r.coutArgent },
+          { libelle: 'Valeur perdue du stock dormant', valeur: -r.dormant.perte, detail: `${montant(r.dormant.valeur)} au prix payé` },
+        ]} total={{ libelle: r.gain >= 0 ? 'Gain de l’achat en volume' : 'Perte de l’achat en volume', valeur: r.gain }} />
+        <Resultats>
+          <Indicateur libelle={r.gain >= 0 ? 'Gain de l’achat en volume' : 'Perte de l’achat en volume'} valeur={montant(Math.abs(r.gain))} detail="la remise de l’opération part au client" />
+          <Indicateur libelle="Stock dormant à ne pas dépasser" valeur={r.dormantMaximum === null ? 'Sans limite' : taux(r.dormantMaximum)} detail="du stock restant, au-delà l’achat en volume coûte" />
+          <Indicateur libelle="Marge de toute l’opération" valeur={montant(r.margeTotale)} detail={`${montant(r.operation.ca + r.resteVendu.ca)} de CA HT, stock compris`} />
+          <Indicateur libelle="Sortie de trésorerie à la commande" valeur={montant(r.payeTTC)} detail="TTC, revient au fil des ventes" />
+        </Resultats>
+      </Stack>
     )
   }
   if (choisi === 'investissement') {
