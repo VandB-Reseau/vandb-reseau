@@ -95,4 +95,9 @@ test('Durée du contrat, tireuses, kilomètres, équipe, reversement, consignes'
   const long = prixFutMarche({ ...complet, dureeContrat: 6 }, p)
   proche(long.tireusesAn, 300)
   proche(long.resteNonAmorti, 0)
+  // Stand de 1 200 € acheté une fois pour les 3 ans : 400 € par an, mêmes résultats ; sans durée, sur un an
+  const unique = prixFutMarche({ ...complet, couts: complet.couts.map((c) => (c.libelle === 'Stand' ? { ...c, montant: 1_200, unique: true } : c)) }, p)
+  proche(unique.annexes, 1_150)
+  proche(unique.prixHT, r.prixHT!, 6)
+  proche(prixFutMarche({ ...complet, dureeContrat: 0, couts: [{ libelle: 'Stand', montant: 1_200, unique: true }] }, p).annexes, 1_200)
 })

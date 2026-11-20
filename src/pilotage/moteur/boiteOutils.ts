@@ -727,7 +727,9 @@ export function simulerMix(x: MixCaveBar): EffetMix {
 // Masse de marge sur la durée du contrat = masse de l'année × années du contrat.
 export interface MarcheGros {
   futs: number; prixAchat: number
-  couts: { libelle: string; montant: number }[]
+  // Un coût « une fois » (stand acheté, PLV durable) est payé une fois pour tout le contrat : réparti sur ses années
+  // (Joseph, 20/11/2026) ; sans durée de contrat, sur une seule année
+  couts: { libelle: string; montant: number; unique?: boolean }[]
   billet: { type: 'aucun' | 'don' | 'sponsoring'; montant: number; cerfa: boolean }
   marge: { mode: 'taux' | 'parFut' | 'total'; valeur: number }
   tva: number
@@ -752,11 +754,12 @@ export interface EffetMarcheGros {
 export function prixFutMarche(x: MarcheGros, p: Redevances): EffetMarcheGros {
   const rp = p.tauxRedevance + p.tauxPublicite
   const n = pos(x.futs), achat = pos(x.prixAchat), rev = pos(x.reversement)
-  const annexes = somme(x.couts.map((c) => pos(c.montant)))
+  const contrat = pos(x.dureeContrat), anneesContrat = contrat > 0 ? contrat : 1
+  const annexes = somme(x.couts.map((c) => pos(c.montant) / (c.unique ? anneesContrat : 1)))
   const valeur = x.billet.type === 'aucun' ? 0 : pos(x.billet.montant)
   const reduction = x.billet.type === 'don' && x.billet.cerfa ? valeur * TAUX_MECENAT : 0
   const billet = { valeur, reduction, cout: valeur - reduction }
-  const contrat = pos(x.dureeContrat), t = x.tireuses, vie = pos(t?.dureeVie)
+  const t = x.tireuses, vie = pos(t?.dureeVie)
   const totalTireuses = pos(t?.nombre) * pos(t?.prix)
   const anneesTireuses = contrat > 0 && (vie <= 0 || contrat < vie) ? contrat : vie > 0 ? vie : 1
   const tireusesAn = totalTireuses / anneesTireuses

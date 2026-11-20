@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Prix du fût d’un gros marché : chaque coût annexe se dit payé « par an » ou « une fois » sur le contrat (réparti sur
+  ses années) (Joseph, 20/11/2026), sans migration.
 - Prix du fût d’un gros marché, suite (Joseph, 20/11/2026), sans migration : durée du contrat (masse de marge sur le
   contrat, tireuses payées sur sa durée et reste non amorti), reversement au client par fût, tireuses achetées, livraisons
   (kilomètres × indemnité kilométrique) et heures de l'équipe, autres coûts ligne par ligne, consignes (trésorerie bloquée
