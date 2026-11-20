@@ -40,7 +40,7 @@ test('188-191 et 195 : familles, derniers utilisés, caisse, résultat en vue, b
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=simulateurs`)
   // 188 : 15 simulateurs en 4 familles, aucun « dernier utilisé » au départ
   for (const f of ['Vendre plus', 'Événements et extérieur', 'Équipe', 'Investir et trésorerie']) await expect(choix(page).getByRole('region', { name: f })).toBeVisible()
-  await expect(choix(page).getByRole('button')).toHaveCount(19)
+  await expect(choix(page).getByRole('button')).toHaveCount(20)
   // Remises entreprise rangé avec le marché extérieur (Joseph, 16/11/2026)
   await expect(choix(page).getByRole('region', { name: 'Événements et extérieur' }).getByRole('button', { name: /Remises entreprise/ })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Derniers simulateurs utilisés' })).toHaveCount(0)
@@ -88,7 +88,7 @@ test('Chaque simulateur : un exemple, Effacer, Revenir à l’exemple', async ({
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=simulateurs`)
   const carte = page.locator('#carte-simulation')
   const titres = ['Mon meilleur levier', 'Embaucher', 'Promo, prix, remises', 'Coup dur de trésorerie', 'Vente additionnelle', 'Reste à faire du mois', 'Soirée, dégustation',
-    'Acheter en volume', 'Investir', 'Contrat extérieur', 'Parc de tireuses', 'Ma carte pression', 'Prix et marge', 'Dimanche ou jour férié', 'Remises entreprise par paliers',
+    'Acheter en volume', 'Investir', 'Contrat extérieur', 'Prix du fût d’un gros marché', 'Parc de tireuses', 'Ma carte pression', 'Prix et marge', 'Dimanche ou jour férié', 'Remises entreprise par paliers',
     'Me rémunérer', 'Mon loyer', 'Former un collaborateur', 'Mix Cave et Bar']
   await expect(choix(page).getByRole('button')).toHaveCount(titres.length)
   for (const titre of titres) {

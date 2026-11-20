@@ -703,3 +703,63 @@ export function simulerMix(x: MixCaveBar): EffetMix {
   const ecartMarge = apres.marge - avant.marge
   return { avant, apres, deplace, ecartMarge, heuresSemaine, heuresGrille, personnel, ecartEbe: ecartMarge - personnel }
 }
+
+// ── Prix du fût d'un gros marché extérieur (Joseph, 20/11/2026) ───────────────────────────────────────────────────
+// « Pour des gros marchés extérieurs, tous les coûts annexes (livraison, PLV, stand, entretien des tireuses, achats
+// annexes, achat de tireuses…) doivent être compris dans le prix au fût, pour compenser tous les achats et le billet
+// d'entrée en don ou sponsoring. » On part des coûts et de la marge souhaitée, et on en tire le prix du fût HT.
+// Coûts fixes du marché C = coûts annexes (tout le montant sur ce marché, achat de tireuses compris) + coût réel du billet
+// d'entrée (don avec reçu Cerfa : 60 % reviennent en réduction d'impôt ; sponsoring : charge pleine). Par fût : achat A.
+// Redevance et publicité rp sur le CA HT. Masse de marge = CA HT − redevance et publicité − achats − C (ce qui reste au
+// magasin une fois tout payé). Marge souhaitée :
+//   en part du CA HT t : P = (A + C ÷ N) ÷ (1 − rp − t) ; impossible si t ≥ 1 − rp
+//   en euros au total M (ou par fût m, M = m × N) : P = (A + (C + M) ÷ N) ÷ (1 − rp)
+// Prix plancher (masse nulle) = (A + C ÷ N) ÷ (1 − rp). Au prix trouvé, le net par fût = P × (1 − rp) − A ; équilibre =
+// C ÷ net, au fût supérieur : sous ce nombre de fûts vendus, le marché perd de l'argent (les coûts ne baissent pas).
+export interface MarcheGros {
+  futs: number; prixAchat: number
+  couts: { libelle: string; montant: number }[]
+  billet: { type: 'aucun' | 'don' | 'sponsoring'; montant: number; cerfa: boolean }
+  marge: { mode: 'taux' | 'parFut' | 'total'; valeur: number }
+  tva: number
+}
+export interface EffetMarcheGros {
+  annexes: number; billet: { valeur: number; reduction: number; cout: number }; coutsFixes: number
+  prixHT: number | null; prixTTC: number | null; prixPlancher: number | null
+  ca: number; achats: number; redevance: number; masseMarge: number; tauxMasse: number | null
+  margeFut: number | null; tauxMargeFut: number | null                  // prix − achat, en part du prix (marge « habituelle »)
+  parFut: { achat: number; annexes: number; billet: number; redevance: number; marge: number } | null
+  netParFut: number | null; equilibre: number | null
+}
+export function prixFutMarche(x: MarcheGros, p: Redevances): EffetMarcheGros {
+  const rp = p.tauxRedevance + p.tauxPublicite
+  const n = pos(x.futs), achat = pos(x.prixAchat)
+  const annexes = somme(x.couts.map((c) => pos(c.montant)))
+  const valeur = x.billet.type === 'aucun' ? 0 : pos(x.billet.montant)
+  const reduction = x.billet.type === 'don' && x.billet.cerfa ? valeur * TAUX_MECENAT : 0
+  const billet = { valeur, reduction, cout: valeur - reduction }
+  const coutsFixes = annexes + billet.cout
+  const visee = x.marge.mode === 'taux' ? null : x.marge.mode === 'parFut' ? pos(x.marge.valeur) * n : pos(x.marge.valeur)
+  const diviseur = x.marge.mode === 'taux' ? 1 - rp - part(x.marge.valeur) : 1 - rp
+  const prixHT = n > 0 && diviseur > 0 ? (achat + (coutsFixes + (visee ?? 0)) / n) / diviseur : null
+  const prixPlancher = n > 0 && rp < 1 ? (achat + coutsFixes / n) / (1 - rp) : null
+  const ca = prixHT === null ? 0 : prixHT * n
+  const achats = achat * n, redevance = ca * rp
+  const masseMarge = prixHT === null ? 0 : ca - redevance - achats - coutsFixes
+  const netParFut = prixHT === null ? null : prixHT * (1 - rp) - achat
+  return {
+    annexes, billet, coutsFixes, prixHT, prixTTC: prixHT === null ? null : prixHT * (1 + pos(x.tva)), prixPlancher,
+    ca, achats, redevance, masseMarge, tauxMasse: ca > 0 ? masseMarge / ca : null,
+    margeFut: prixHT === null ? null : prixHT - achat, tauxMargeFut: prixHT ? (prixHT - achat) / prixHT : null,
+    parFut: prixHT === null ? null : { achat, annexes: annexes / n, billet: billet.cout / n, redevance: prixHT * rp, marge: masseMarge / n },
+    netParFut, equilibre: netParFut === null ? null : equilibre(coutsFixes, netParFut),
+  }
+}
+// Le risque du gros marché : les coûts sont fixes, le prix les répartit sur les fûts prévus. Masse de marge au prix trouvé
+// si l'on vend la moitié, les trois quarts, tous les fûts prévus ou 20 % de plus, et au seuil d'équilibre.
+export function masseSelonFuts(r: EffetMarcheGros, futsPrevus: number): { futs: number; ca: number; masse: number; prevu: boolean; seuil: boolean }[] {
+  if (r.prixHT === null || r.netParFut === null) return []
+  const n = Math.round(pos(futsPrevus))
+  const liste = [...new Set([Math.round(n * 0.5), Math.round(n * 0.75), n, Math.round(n * 1.2), ...(r.equilibre ? [r.equilibre] : [])])].filter((f) => f > 0).sort((a, b) => a - b)
+  return liste.map((f) => ({ futs: f, ca: f * r.prixHT!, masse: f * r.netParFut! - r.coutsFixes, prevu: f === n, seuil: f === r.equilibre }))
+}

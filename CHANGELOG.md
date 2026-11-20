@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateurs : « Prix du fût d’un gros marché » (Joseph, 20/11/2026), à côté du Contrat extérieur. On saisit les fûts
+  prévus, le prix d'achat, chaque coût annexe du marché (livraison, PLV, stand, entretien et achat de tireuses, achats
+  annexes…), le billet d'entrée (don avec case reçu Cerfa, 60 % de réduction d'impôt, ou sponsoring) et la marge
+  souhaitée (en % du CA HT, en € par fût ou au total) : l'outil donne le prix du fût HT et TTC, la masse de marge, le prix
+  plancher, le seuil d'équilibre et la masse de marge si l'on vend moins de fûts. Base : passer la migration du pilotage
+  `0036_simulations_prix_fut.sql` (dépôt vandb-pilotage) pour pouvoir « Garder » la simulation ; sans elle, le calcul marche.
 - Équipements : plusieurs achats d'un même équipement (Joseph, 19/11/2026), sans migration. Lien discret « Ajouter un
   achat » sous chaque ligne ; chaque achat a sa quantité, son année et son prix HT, la ligne affiche le total. Un achat
   ramené à 0 disparaît, la ligne redevient simple quand il n'en reste qu'un.

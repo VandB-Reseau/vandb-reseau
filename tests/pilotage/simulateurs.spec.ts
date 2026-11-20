@@ -42,7 +42,7 @@ test('franchisé : le menu ouvre les simulateurs de son magasin ; embauche chiff
     await page.getByRole('navigation').getByRole('button', { name: 'Simulateurs' }).first().click()
   }
   await expect(page).toHaveURL(/magasins\/Annecy%20Test\?vue=simulateurs/)
-  await expect(simulateurs(page).getByRole('button')).toHaveCount(19)
+  await expect(simulateurs(page).getByRole('button')).toHaveCount(20)
   // 183 : « Mon meilleur levier » s'ouvre d'office ; puis l'embauche d'un vendeur en janvier : coût, EBE, % de frais de personnel, trésorerie, CA nécessaire
   await expect(page.getByRole('heading', { name: 'Mon meilleur levier' })).toBeVisible()
   await simulateurs(page).getByRole('button', { name: /^Embaucher/ }).click()

@@ -12,6 +12,8 @@ export const LISTE_SIMULATEURS: { cle: TypeSimulation; titre: string; question: 
   { cle: 'achat', titre: 'Acheter en volume', question: 'La remise vaut-elle le stock bloqué ?' },
   { cle: 'investissement', titre: 'Investir', question: 'Terrasse, travaux, four, marché extérieur : en combien de temps remboursé ?' },
   { cle: 'exterieur', titre: 'Contrat extérieur', question: 'Ce contrat avec une association est-il rentable ?' },
+  // Joseph, 20/11/2026 : gros marché, tous les coûts dans le prix du fût
+  { cle: 'prix_fut', titre: 'Prix du fût d’un gros marché', question: 'Quel prix du fût pour couvrir tous les coûts et dégager ma marge ?' },
   { cle: 'tireuses', titre: 'Parc de tireuses', question: 'Combien de week-ends pour payer une tireuse ?' },
   { cle: 'pression', titre: 'Ma carte pression', question: 'Quels becs, quelle marge, quelle perte ?' },
   { cle: 'calculette', titre: 'Prix et marge', question: 'À quel prix vendre pour ma marge ?' },
