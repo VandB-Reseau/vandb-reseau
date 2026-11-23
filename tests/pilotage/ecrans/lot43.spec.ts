@@ -39,8 +39,10 @@ test('Directeur : la campagne par étape et par Responsable Régional, dépliée
     ],
   })
   const bandeau = page.getByRole('region', { name: `Campagne des budgets ${N + 1}` })
-  await expect(bandeau).toContainText('1 validé sur 3')
-  await expect(bandeau).toContainText('1 en retard')
+  // C1 (23/11/2026) : l'avancement en cartes chiffrées ; chaque carte filtre la liste
+  await expect(bandeau.getByRole('button', { name: /^Validés : 1 sur 3/ })).toBeVisible()
+  await expect(bandeau.getByRole('button', { name: /^En retard : 1,/ })).toBeVisible()
+  await expect(bandeau).toContainText(/attendus? avant le \d+ \S+, (dans \d+ jours|demain|aujourd’hui)/)
   // Allègement (03/11/2026) : une seule rangée de filtres sous le bandeau porte les étapes
   await expect(bandeau.getByRole('group', { name: 'Étapes de la campagne' })).toHaveCount(0)
   const etapes = page.getByRole('group', { name: 'Filtres' })
@@ -61,7 +63,10 @@ test('Directeur : la campagne par étape et par Responsable Régional, dépliée
   await page.screenshot({ path: `captures/${info.project.name}-lot43-campagne-directeur.png`, fullPage: true })
 
   // Le chiffre « chez le franchisé » de Coach Bêta : la liste ne montre que son magasin chez le franchisé
-  await parRR.getByRole('button', { name: '1 : chez le franchisé, Coach Bêta' }).click()
+  // Téléphone : le chiffre au milieu de l'écran, ni sous la barre basse ni sous la colonne figée
+  const chiffre = parRR.getByRole('button', { name: '1 : chez le franchisé, Coach Bêta' })
+  await chiffre.evaluate((e) => e.scrollIntoView({ block: 'center', inline: 'end' }))
+  await chiffre.click()
   const filtres = page.getByRole('group', { name: 'Filtres' })
   await expect(filtres.getByRole('button', { name: /^Chez le franchisé · 1/ })).toHaveAttribute('aria-pressed', 'true')
   await expect(filtres).toContainText('Coach Bêta')
@@ -73,9 +78,10 @@ test('Directeur : la campagne par étape et par Responsable Régional, dépliée
   await filtres.getByLabel('Retirer le filtre : Coach Bêta').click()
   await expect(filtres).not.toContainText('Coach Bêta')
 
-  // « En retard » : le magasin sans budget
-  await etapes.getByRole('button', { name: 'En retard · 1' }).click()
+  // « En retard » : le magasin sans budget ; la carte et la pastille filtrent pareil
+  await bandeau.getByRole('button', { name: /^En retard : 1,/ }).click()
   await expect(filtres.getByRole('button', { name: /^En retard · 1/ })).toHaveAttribute('aria-pressed', 'true')
+  await expect(bandeau.getByRole('button', { name: /^En retard : 1,/ })).toHaveAttribute('aria-pressed', 'true')
 
   // Proposer en série : un bouton du bandeau ouvre le panneau
   await bandeau.getByRole('button', { name: 'Proposer en série' }).click()

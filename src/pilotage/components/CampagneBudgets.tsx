@@ -19,8 +19,9 @@ import type { Role } from '../auth/roles'
 import type { Statut } from '../data/pilotage'
 import type { Filtre } from '../lib/aFaire'
 import { lienMagasin, milliers, taux } from '../lib/format'
+import { grilleIndicateurs, Indicateur } from '../../components/Indicateur'
 import {
-  avancementCampagne, avancementParRR, ETAPES_CAMPAGNE, etapeCampagne, magasinsCampagne,
+  avancementCampagne, avancementParRR, ETAPES_CAMPAGNE, magasinsCampagne,
   type Avancement, type Campagne, type EtapeCampagne,
 } from '../moteur/campagne'
 
@@ -28,7 +29,6 @@ const jour = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('fr
 const pluriel = (n: number, un: string, plusieurs: string) => (n === 1 ? `1 ${un}` : `${n} ${plusieurs}`)
 // Étape de la campagne → filtre de la liste des magasins
 export const FILTRE_ETAPE: Record<EtapeCampagne, Filtre> = { a_proposer: 'sans_budget', chez_franchise: 'propose', retour: 'en_discussion', valide: 'valide' }
-const COULEUR: Record<EtapeCampagne, string> = { a_proposer: 'divider', chez_franchise: 'grey.500', retour: 'secondary.main', valide: 'success.main' }
 const COLONNES: { cle: Exclude<keyof Avancement, 'nom' | 'magasins' | 'commentaires'>; libelle: string; filtre: Filtre }[] = [
   { cle: 'aProposer', libelle: 'À proposer', filtre: 'sans_budget' }, { cle: 'proposes', libelle: 'Chez le franchisé', filtre: 'propose' },
   { cle: 'enDiscussion', libelle: 'Retour', filtre: 'en_discussion' }, { cle: 'valides', libelle: 'Validés', filtre: 'valide' },
@@ -157,7 +157,10 @@ function MesMagasinsCampagne({ magasins, campagne, aujourdhui }: { magasins: Mag
 // Les quatre étapes (à proposer, chez le franchisé, retour du franchisé, validés), chacune ouvre la liste filtrée ; puis
 // le détail selon qui regarde : le Directeur par Responsable Régional (déplié sur ses Coachs), le RR par Coach, le Coach
 // ses magasins un par un avec le temps d'attente. Les noms des RR et Coachs viennent de l'app du réseau.
-export function CampagneBudgets({ annee, campagne, magasins, aujourdhui, role, chiffres, filtrer, actions, children }: {
+// Lisibilité (C1 à C8, Joseph 23/11/2026) : l'échéance et son compte à rebours sous le titre, le détail et les actions en
+// boutons discrets à droite, puis des cartes chiffrées (gabarit des tableaux de bord) qui filtrent la liste ; plus de
+// barre de progression ni de phrase de statut.
+export function CampagneBudgets({ annee, campagne, magasins, aujourdhui, role, chiffres, filtrer, filtreActif, actions, children }: {
   annee: number
   campagne: Campagne
   magasins: MagasinCampagneListe[]
@@ -165,6 +168,7 @@ export function CampagneBudgets({ annee, campagne, magasins, aujourdhui, role, c
   role: Role
   chiffres: { ca: number; ebe: number; ebeSurCA: number; avecBudget: number } | null
   filtrer: Filtrer
+  filtreActif?: Filtre
   actions?: ReactNode
   children?: ReactNode
 }) {
@@ -173,11 +177,15 @@ export function CampagneBudgets({ annee, campagne, magasins, aujourdhui, role, c
   const [voirDetail, setVoirDetail] = useState(false)
   const total = avancementCampagne(magasins.map((m) => ({ statut: m.statut, responsables: ['Tout le périmètre'] })), campagne, aujourdhui)[0]
   if (!total) return null
-  const parEtape = Object.fromEntries(ETAPES_CAMPAGNE.map((e) => [e.cle, magasins.filter((m) => etapeCampagne(m.statut) === e.cle).length])) as Record<EtapeCampagne, number>
   const avecRR = magasins.some((m) => m.rrs.length), avecCoach = magasins.some((m) => m.coach)
-  const etape = aujourdhui <= campagne.proposition ? `Propositions attendues avant le ${jour(campagne.proposition)}`
-    : aujourdhui <= campagne.retour ? `Retours des franchisés attendus avant le ${jour(campagne.retour)}`
-      : aujourdhui <= campagne.validation ? `Validations attendues avant le ${jour(campagne.validation)}` : `Campagne close depuis le ${jour(campagne.validation)}`
+  const dans = (iso: string) => {
+    const j = Math.round((Date.parse(`${iso}T12:00:00`) - Date.parse(`${aujourdhui}T12:00:00`)) / 864e5)
+    return j <= 0 ? ', aujourd’hui' : j === 1 ? ', demain' : `, dans ${j} jours`
+  }
+  const etape = aujourdhui <= campagne.proposition ? `Propositions attendues avant le ${jour(campagne.proposition)}${dans(campagne.proposition)}`
+    : aujourdhui <= campagne.retour ? `Retours des franchisés attendus avant le ${jour(campagne.retour)}${dans(campagne.retour)}`
+      : aujourdhui <= campagne.validation ? `Validations attendues avant le ${jour(campagne.validation)}${dans(campagne.validation)}` : `Campagne close depuis le ${jour(campagne.validation)}`
+  const carte = (f: Filtre) => ({ onClick: () => filtrer(filtreActif === f ? 'tous' : f, null), actif: filtreActif === f })
 
   const detail = role === 'coach' ? <MesMagasinsCampagne magasins={magasins} campagne={campagne} aujourdhui={aujourdhui} /> : role === 'directeur' && avecRR ? (
     <TableauResponsables titre="Par Responsable Régional" sansNom="Sans Responsable Régional" filtrer={filtrer} libelleSous="Coachs"
@@ -192,35 +200,36 @@ export function CampagneBudgets({ annee, campagne, magasins, aujourdhui, role, c
 
   return (
     <Card component="section" aria-label={`Campagne des budgets ${annee}`}>
-      <Box sx={{ px: 2, pt: 2, pb: 1.5, display: 'grid', gap: 1.5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'baseline', columnGap: 2, rowGap: 0.5, flexWrap: 'wrap' }}>
-          <Typography variant="h2" sx={{ flex: 1, minWidth: 240 }}>Campagne des budgets {annee}</Typography>
-          <Typography color="text.secondary">
-            {etape} · {total.valides} validé{total.valides > 1 ? 's' : ''} sur {total.magasins}
-            {total.enRetard > 0 && <Box component="span" sx={{ color: 'error.main', fontWeight: 700 }}> · {total.enRetard} en retard</Box>}
-          </Typography>
-        </Box>
-        <Box aria-hidden sx={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', bgcolor: 'divider' }}>
-          {(['valide', 'retour', 'chez_franchise'] as EtapeCampagne[]).map((e) => (
-            <Box key={e} sx={{ width: `${(parEtape[e] / total.magasins) * 100}%`, bgcolor: COULEUR[e] }} />
-          ))}
-        </Box>
-        {chiffres && chiffres.avecBudget > 0 && (
-          <Typography variant="body2" color="text.secondary">
-            {`CA HT budgété ${milliers(chiffres.ca)} · EBE budgété ${milliers(chiffres.ebe)} (${taux(chiffres.ebeSurCA)} du CA), somme des ${pluriel(chiffres.avecBudget, 'budget', 'budgets')}`}
-          </Typography>
-        )}
-        {(actions || detail) && (
-          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
-            {detail && (
-              <Button variant={voirDetail ? 'contained' : 'outlined'} aria-expanded={voirDetail} onClick={() => setVoirDetail(!voirDetail)}
-                endIcon={voirDetail ? <ExpandLessOutlined /> : <ExpandMoreOutlined />} sx={{ minHeight: 48 }}>
-                {titreDetail}
-              </Button>
-            )}
-            {actions}
+      <Box sx={{ px: 2, pt: 2, pb: 2, display: 'grid', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', columnGap: 2, rowGap: 1, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: 1, minWidth: 240 }}>
+            <Typography variant="h2">Campagne des budgets {annee}</Typography>
+            <Typography color="text.secondary" sx={{ mt: 0.25 }}>{etape}</Typography>
           </Box>
-        )}
+          {(actions || detail) && (
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+              {detail && (
+                <Button variant={voirDetail ? 'contained' : 'text'} aria-expanded={voirDetail} onClick={() => setVoirDetail(!voirDetail)}
+                  endIcon={voirDetail ? <ExpandLessOutlined /> : <ExpandMoreOutlined />} sx={{ minHeight: 48 }}>
+                  {titreDetail}
+                </Button>
+              )}
+              {actions}
+            </Box>
+          )}
+        </Box>
+        <Box role="group" aria-label="Avancement de la campagne" sx={grilleIndicateurs}>
+          <Indicateur libelle="À proposer" valeur={String(total.aProposer)} detail={total.aProposer ? 'sans budget du siège' : 'tous proposés'} {...carte('sans_budget')} />
+          <Indicateur libelle="Chez le franchisé" valeur={String(total.proposes)} detail="à relire par le franchisé" {...carte('propose')} />
+          <Indicateur libelle="Retour du franchisé" valeur={String(total.enDiscussion)} detail="à relire par l’équipe" {...carte('en_discussion')} />
+          <Indicateur libelle="Validés" valeur={`${total.valides} sur ${total.magasins}`} detail={`${Math.round((total.valides / total.magasins) * 100)} % du périmètre`} {...carte('valide')} />
+          <Indicateur libelle="En retard" valeur={String(total.enRetard)} couleur={total.enRetard ? 'error.main' : undefined}
+            detail={total.enRetard ? 'échéance dépassée' : 'aucun retard'} {...carte('en_retard')} />
+          {chiffres && chiffres.avecBudget > 0 && (
+            <Indicateur libelle="CA HT budgété" valeur={milliers(chiffres.ca)}
+              detail={`EBE ${milliers(chiffres.ebe)} (${taux(chiffres.ebeSurCA)}), ${pluriel(chiffres.avecBudget, 'budget', 'budgets')}`} />
+          )}
+        </Box>
       </Box>
       {voirDetail && detail}
       {children}
