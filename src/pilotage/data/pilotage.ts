@@ -466,22 +466,39 @@ const versPersonne = (l: LigneEquipe): Personne => ({
   ...(Array.isArray(l.hausses) && l.hausses.length ? { hausses: (l.hausses as { mois: string; taux: number }[]).map((h) => ({ mois: String(h.mois).slice(0, 7), taux: Number(h.taux) })) } : {}),
 })
 
-// Toutes les lignes d'une table, par pages : l'API renvoie au plus 1 000 lignes par appel
+// Toutes les lignes d'une table, par pages : l'API renvoie au plus 1 000 lignes par appel. La première page demande aussi
+// le nombre de lignes, les suivantes partent ensemble (Joseph, 23/11/2026 : les frais de tout le réseau, une douzaine de
+// pages lues l'une après l'autre, retardaient de plusieurs secondes le Budget prévisionnel et Face au budget)
 const PAGE = 1000
-async function toutesLesLignes<T>(page: (de: number, a: number) => PromiseLike<{ data: unknown[] | null; error: unknown }>): Promise<T[]> {
-  const lignes: T[] = []
-  for (let de = 0; ; de += PAGE) {
-    const { data, error } = await page(de, de + PAGE - 1)
-    if (error) throw new ErreurChargement()
+type Compte = { count?: 'exact' }
+type Page = { data: unknown[] | null; error: unknown; count?: number | null }
+async function toutesLesLignes<T>(page: (de: number, a: number, compte?: Compte) => PromiseLike<Page>): Promise<T[]> {
+  const lire = async (de: number, compte?: Compte) => {
+    const r = await page(de, de + PAGE - 1, compte)
+    if (r.error) throw new ErreurChargement()
+    return r
+  }
+  const premiere = await lire(0, { count: 'exact' })
+  const lignes = (premiere.data ?? []) as T[]
+  if (lignes.length < PAGE) return lignes
+  // Nombre connu : toutes les pages restantes en même temps ; sinon, l'une après l'autre jusqu'à une page incomplète
+  if (typeof premiere.count === 'number') {
+    const suites = await Promise.all(Array.from({ length: Math.ceil(premiere.count / PAGE) - 1 }, (_, i) => lire((i + 1) * PAGE)))
+    return lignes.concat(...suites.map((r) => (r.data ?? []) as T[]))
+  }
+  for (let de = PAGE; ; de += PAGE) {
+    const { data } = await lire(de)
     lignes.push(...((data ?? []) as T[]))
     if (!data || data.length < PAGE) return lignes
   }
 }
 
 // Équipes de tous les magasins du compte (la base ne renvoie que ceux de son périmètre)
-export async function chargerEquipes(): Promise<Record<string, Personne[]>> {
-  const lignes = await toutesLesLignes<LigneEquipe>((de, a) =>
-    pilotage().from('equipe').select('*').order('id').range(de, a))
+// Gardées une minute comme les autres lectures : les budgets des deux années (suivi et campagne) les partagent
+export const chargerEquipes = (): Promise<Record<string, Personne[]>> => memo('equipes', lireEquipes)
+async function lireEquipes(): Promise<Record<string, Personne[]>> {
+  const lignes = await toutesLesLignes<LigneEquipe>((de, a, compte) =>
+    pilotage().from('equipe').select('*', compte).order('id').range(de, a))
   const r: Record<string, Personne[]> = {}
   for (const l of lignes) (r[l.store_name] ??= []).push(versPersonne(l))
   return r
@@ -504,9 +521,10 @@ export async function supprimerPersonne(id: number) {
 
 // ── Prêts du magasin (migration 0026) ; sans la table (migration pas encore passée), aucun prêt
 interface LignePret { id: number; store_name: string; libelle: string; mode: string; montant: unknown; taux: unknown; duree: unknown; debut: string; differe: unknown; mensualite: unknown }
-export async function chargerPrets(): Promise<Record<string, Pret[]>> {
-  const lignes = await toutesLesLignes<LignePret>((de, a) =>
-    pilotage().from('emprunts').select('*').order('id').range(de, a))
+export const chargerPrets = (): Promise<Record<string, Pret[]>> => memo('prets', lirePrets)
+async function lirePrets(): Promise<Record<string, Pret[]>> {
+  const lignes = await toutesLesLignes<LignePret>((de, a, compte) =>
+    pilotage().from('emprunts').select('*', compte).order('id').range(de, a))
   const r: Record<string, Pret[]> = {}
   const num = (x: unknown) => (x === null || x === undefined ? 0 : Number(x))
   for (const l of lignes) {
@@ -532,9 +550,10 @@ export async function supprimerPret(id: number) {
 }
 
 // ── Frais (lot 4)
-export async function chargerFrais(): Promise<Record<string, LigneFraisMagasin[]>> {
-  const lignes = await toutesLesLignes<{ store_name: string; code: string; libelle: string; rubrique: string; annuel: unknown; taux_ca: unknown }>((de, a) =>
-    pilotage().from('frais').select('store_name, code, libelle, rubrique, annuel, taux_ca').order('store_name').order('code').range(de, a))
+export const chargerFrais = (): Promise<Record<string, LigneFraisMagasin[]>> => memo('frais', lireFrais)
+async function lireFrais(): Promise<Record<string, LigneFraisMagasin[]>> {
+  const lignes = await toutesLesLignes<{ store_name: string; code: string; libelle: string; rubrique: string; annuel: unknown; taux_ca: unknown }>((de, a, compte) =>
+    pilotage().from('frais').select('store_name, code, libelle, rubrique, annuel, taux_ca', compte).order('store_name').order('code').range(de, a))
   const r: Record<string, LigneFraisMagasin[]> = {}
   const num = (x: unknown) => (x === null || x === undefined ? null : Number(x))
   for (const l of lignes) {
@@ -557,8 +576,8 @@ export async function enregistrerFrais(magasin: string, lignes: LigneFraisMagasi
 export type SaisiesQuadrimestres = Record<string, Partial<Record<Quadrimestre, SaisieQuadrimestre>>>
 type LigneQuadrimestre = { store_name: string; quadrimestre: number; achats: unknown; variation_stock: unknown; charges_externes: unknown; impots_taxes: unknown; personnel: unknown; tresorerie: unknown }
 export const chargerQuadrimestres = (annee: number): Promise<SaisiesQuadrimestres> => memo(`quadrimestres|${annee}`, async () => {
-  const lignes = await toutesLesLignes<LigneQuadrimestre>((de, a) =>
-    pilotage().from('quadrimestres').select('store_name, quadrimestre, achats, variation_stock, charges_externes, impots_taxes, personnel, tresorerie')
+  const lignes = await toutesLesLignes<LigneQuadrimestre>((de, a, compte) =>
+    pilotage().from('quadrimestres').select('store_name, quadrimestre, achats, variation_stock, charges_externes, impots_taxes, personnel, tresorerie', compte)
       .eq('annee', annee).order('store_name').order('quadrimestre').range(de, a))
   const num = (x: unknown) => (x === null || x === undefined ? null : Number(x))
   const r: SaisiesQuadrimestres = {}
@@ -667,8 +686,8 @@ export async function chargerComparaison(): Promise<{ annee: number; anneeBudget
 // Secours de l'atterrissage sans réel de l'an dernier (lot 16) : parts de l'année réalisées saisies, saisonnalité du réseau
 export type PartsRealisees = Partial<Record<Univers, number>>
 export const chargerPartsRealisees = (annee: number): Promise<Record<string, PartsRealisees>> => memo(`parts|${annee}`, async () => {
-  const lignes = await toutesLesLignes<{ store_name: string; univers: Univers; part: number }>((de, a) =>
-    pilotage().from('parts_realisees').select('store_name, univers, part').eq('annee', annee).order('store_name').range(de, a))
+  const lignes = await toutesLesLignes<{ store_name: string; univers: Univers; part: number }>((de, a, compte) =>
+    pilotage().from('parts_realisees').select('store_name, univers, part', compte).eq('annee', annee).order('store_name').range(de, a))
   const r: Record<string, PartsRealisees> = {}
   for (const l of lignes) (r[l.store_name] ??= {})[l.univers] = Number(l.part)
   return r
@@ -851,7 +870,7 @@ async function anciennesActions(): Promise<Action[]> {
   const lignes = await toutesLesLignes<{
     id: number; store_name: string; type_alerte: TypeAction; intitule: string; responsable: Responsable; echeance: string | null; statut: StatutAction
     annee: number; depart: number | null; mois_depart: number | null; cree_par_role: Role | null; cree_par_nom: string | null; cree_le: string; faite_le: string | null
-  }>((de, a) => pilotage().from('actions').select('*').order('cree_le').range(de, a))
+  }>((de, a, compte) => pilotage().from('actions').select('*', compte).order('cree_le').range(de, a))
   return lignes.map((l) => ({
     id: l.id, magasin: l.store_name, type: l.type_alerte, intitule: l.intitule, responsable: l.responsable, echeance: l.echeance, statut: l.statut,
     annee: l.annee, depart: l.depart === null ? null : { valeur: Number(l.depart), mois: l.mois_depart }, creeParRole: l.cree_par_role, creeParNom: l.cree_par_nom,
