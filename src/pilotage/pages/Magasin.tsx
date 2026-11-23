@@ -156,6 +156,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
   const [message, setMessage] = useState<Message | null>(null)
   const [occupe, setOccupe] = useState(false)
   const [copie, setCopie] = useState(false)
+  const [cibleActions, setCibleActions] = useState<HTMLElement | null>(null) // Fiche de visite à côté de « Clôturer » (23/11/2026)
   // Vague 6 (74A) : points d'attention encore sans justification, qui retiennent l'envoi au siège
   const [bloquants, setBloquants] = useState(0)
   // Action préparée depuis les leviers commerciaux de la synthèse (lot 28) : le plan d'action s'ouvre pré-rempli
@@ -559,7 +560,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
           )
           if (mode !== 'chiffres') return onglets
           return (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: { xs: 'wrap', md: 'nowrap' } }}>
               {onglets}
               <Badge color="warning" variant="dot" invisible={!manqueSaisies} overlap="rectangular" className="pas-a-l-impression">
                 <Button variant={espace === 'donnees' ? 'contained' : 'outlined'} startIcon={<TaskAltOutlined />} onClick={() => allerEtape('cloture')} aria-current={espace === 'donnees' ? 'page' : undefined}
@@ -567,6 +568,8 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
                   Clôturer {MOIS_LONGS[moisClos - 1]}
                 </Button>
               </Badge>
+              {/* Joseph (23/11/2026) : la Fiche de visite (et les objectifs du mois) se rangent ici, sur la même ligne */}
+              <Box ref={setCibleActions} sx={{ display: { xs: 'contents', md: 'flex' }, gap: 1, flexShrink: 0, '&:empty': { display: 'none' } }} />
             </Box>
           )
         })()}
@@ -592,7 +595,7 @@ export function Magasin({ nom, mode, sante, santeLibelle = 'Santé et leviers' }
         {/* Joseph (09/11/2026) : le Suivi en puces, une partie à la fois, au lieu d'une longue page à dérouler */}
         {(onglet === 'synthese' || onglet === 'analyse') && (
           <SyntheseMagasin key={`${ligne.magasin}-${onglet}`} magasin={ligne.magasin} d={d} annee={anneeEnCours} parametres={donnees.parametresN} allerA={aller}
-            partie={onglet === 'synthese' ? 'ensemble' : 'analyse'} phrases={franchise}
+            partie={onglet === 'synthese' ? 'ensemble' : 'analyse'} phrases={franchise} cibleActions={cibleActions}
             visiteEtActions={!franchise && profil?.role !== 'aucun'} proposerAction={!franchise && profil?.role !== 'aucun' ? (intitule) => { setProposition({ intitule, n: Date.now() }); aller('synthese') } : undefined}
             quoiFaire={<>
               {franchise && (
