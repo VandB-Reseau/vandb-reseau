@@ -704,6 +704,42 @@ export function simulerMix(x: MixCaveBar): EffetMix {
   return { avant, apres, deplace, ecartMarge, heuresSemaine, heuresGrille, personnel, ecartEbe: ecartMarge - personnel }
 }
 
+// ── Mix produit : ajuster la gamme d'un univers (Joseph, 23/11/2026) ──────────────────────────────────────────────
+// « Montrer qu'avec un ajustement de gamme, on peut gagner des points de marge. » Dans un seul univers (Cave ou Bar,
+// jamais additionnés), CA total égal : chaque famille garde son taux de marge théorique (caisse), seule sa part change.
+// Parts visées ramenées à 100 % quand leur total s'en écarte (au prorata). Taux de marge = Σ part × marge.
+// Effet d'une famille en points = (part après − part avant) × sa marge ; la somme des effets = points gagnés.
+// Marge en plus = CA × points gagnés ; redevance et publicité ne changent pas (même CA) : EBE en plus = marge en plus.
+// Repère : 1 point de part pris à la famille la moins margée pour la mieux margée = (marge max − marge min) × 1 %.
+export interface LigneGamme { libelle: string; ca: number; marge: number; part: number }
+export interface EffetGamme {
+  ca: number; totalVise: number
+  familles: { libelle: string; ca: number; marge: number; partAvant: number; partApres: number; caApres: number; effet: number }[]
+  avant: { marge: number; taux: number | null }; apres: { marge: number; taux: number | null }
+  points: number | null; ecartMarge: number
+  repere: { de: string; vers: string; points: number; euros: number } | null
+}
+export function simulerGamme(lignes: LigneGamme[]): EffetGamme {
+  const l = lignes.map((x) => ({ libelle: x.libelle, ca: pos(x.ca), marge: part(x.marge), vise: pos(x.part) }))
+  const ca = somme(l.map((x) => x.ca)), totalVise = somme(l.map((x) => x.vise))
+  const familles = l.map((x) => {
+    const partAvant = ca > 0 ? x.ca / ca : 0
+    const partApres = totalVise > 0 ? x.vise / totalVise : 0
+    return { libelle: x.libelle, ca: x.ca, marge: x.marge, partAvant, partApres, caApres: partApres * ca, effet: (partApres - partAvant) * x.marge }
+  })
+  const margeAvant = somme(familles.map((x) => x.ca * x.marge)), margeApres = somme(familles.map((x) => x.caApres * x.marge))
+  const tauxAvant = ca > 0 ? margeAvant / ca : null, tauxApres = ca > 0 && totalVise > 0 ? margeApres / ca : null
+  const vendues = familles.filter((x) => x.ca > 0 || x.partApres > 0)
+  const haut = vendues.reduce<typeof familles[number] | null>((a, x) => (!a || x.marge > a.marge ? x : a), null)
+  const bas = vendues.reduce<typeof familles[number] | null>((a, x) => (!a || x.marge < a.marge ? x : a), null)
+  const repere = haut && bas && haut.marge > bas.marge && ca > 0
+    ? { de: bas.libelle, vers: haut.libelle, points: (haut.marge - bas.marge) * 0.01, euros: ca * 0.01 * (haut.marge - bas.marge) } : null
+  return {
+    ca, totalVise, familles, avant: { marge: margeAvant, taux: tauxAvant }, apres: { marge: margeApres, taux: tauxApres },
+    points: tauxAvant !== null && tauxApres !== null ? tauxApres - tauxAvant : null, ecartMarge: totalVise > 0 ? margeApres - margeAvant : 0, repere,
+  }
+}
+
 // ── Prix du fût d'un gros marché extérieur (Joseph, 20/11/2026) ───────────────────────────────────────────────────
 // « Pour des gros marchés extérieurs, tous les coûts annexes (livraison, PLV, stand, entretien des tireuses, achats
 // annexes, achat de tireuses…) doivent être compris dans le prix au fût, pour compenser tous les achats et le billet

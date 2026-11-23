@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { simulerLoyer, simulerMix } from '../../../src/pilotage/moteur/boiteOutils'
+import { simulerLoyer, simulerMix, simulerGamme } from '../../../src/pilotage/moteur/boiteOutils'
 import { parametresParDefaut } from '../../../src/pilotage/moteur/parametres'
 import { impotBareme, recommanderRemuneration, REGLES_REMUNERATION, rendements, scenarioRemuneration, simulerRemuneration } from '../../../src/pilotage/moteur/remunerationDirigeant'
 import { parametresSimulateurs } from '../../../src/pilotage/moteur/simulateurs'
@@ -166,4 +166,36 @@ test('292 · mix Cave / Bar : marge, heures selon la grille du siège, EBE', () 
   const v = simulerMix({ caCave: 300_000, caBar: 10_000, margeCave: 0.35, margeBar: 0.7, part: 0.5, sens: 'vers_cave', heuresSemaine: 0, coutHoraire: 20, grille: [] })
   proche(v.deplace, 10_000)
   proche(v.ecartMarge, -3_500)            // 10 000 × (35 % − 70 %)
+})
+
+test('Mix produit · gamme de la cave : points de marge à CA égal, parts ramenées à 100 %, repère', () => {
+  // 300 000 € : vins 135 000 à 33 %, bières 90 000 à 38 %, spiritueux 45 000 à 30 %, épicerie 30 000 à 40 %
+  // Taux avant = (44 550 + 34 200 + 13 500 + 12 000) ÷ 300 000 = 104 250 ÷ 300 000 = 34,75 %
+  const lignes = [
+    { libelle: 'Vins', ca: 135_000, marge: 0.33, part: 0.45 },
+    { libelle: 'Bières', ca: 90_000, marge: 0.38, part: 0.30 },
+    { libelle: 'Spiritueux', ca: 45_000, marge: 0.30, part: 0.12 },
+    { libelle: 'Épicerie fine', ca: 30_000, marge: 0.40, part: 0.13 },
+  ]
+  const r = simulerGamme(lignes)
+  proche(r.ca, 300_000)
+  proche(r.avant.marge, 104_250)
+  proche(r.avant.taux!, 0.3475, 6)
+  // 3 points des spiritueux (30 %) vers l'épicerie (40 %) : + 0,3 pt, 900 € par an
+  proche(r.points!, 0.003, 6)
+  proche(r.ecartMarge, 900)
+  proche(r.familles[2]!.effet, -0.009, 6)   // − 3 pts × 30 %
+  proche(r.familles[3]!.effet, 0.012, 6)    // + 3 pts × 40 %
+  proche(r.familles[3]!.caApres, 39_000)
+  expect(r.repere).toMatchObject({ de: 'Spiritueux', vers: 'Épicerie fine' })
+  proche(r.repere!.points, 0.001, 6)        // (40 % − 30 %) × 1 %
+  proche(r.repere!.euros, 300)
+  // Parts visées à 110 % : ramenées au prorata (vins 50 ÷ 110 …)
+  const t = simulerGamme(lignes.map((x, i) => ({ ...x, part: i === 0 ? 0.55 : x.part })))
+  proche(t.totalVise, 1.1)
+  proche(t.familles[0]!.partApres, 0.5, 6)
+  // Aucune part visée : pas de calcul
+  const v = simulerGamme(lignes.map((x) => ({ ...x, part: 0 })))
+  expect(v.points).toBeNull()
+  expect(v.ecartMarge).toBe(0)
 })

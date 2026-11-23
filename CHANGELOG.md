@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Simulateur « Mix produit » (ex « Mix Cave et Bar », Joseph, 23/11/2026), sans migration : nouveau mode « Entre familles
+  de la gamme » par univers (Cave ou Bar, jamais additionnés) : CA et taux de marge de chaque famille repris du budget,
+  parts visées, points de marge gagnés à CA égal, effet de chaque famille et repère « 1 point de part déplacé ». Le mode
+  Cave et Bar reste, les simulations déjà gardées s'y rouvrent.
 - Prix du fût d’un gros marché : chaque coût annexe se dit payé « par an » ou « une fois » sur le contrat (réparti sur
   ses années) (Joseph, 20/11/2026), sans migration.
 - Prix du fût d’un gros marché, suite (Joseph, 20/11/2026), sans migration : durée du contrat (masse de marge sur le

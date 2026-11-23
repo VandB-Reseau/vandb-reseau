@@ -655,10 +655,10 @@ export const AIDE = {
     calcul: 'Loyer et charges sur le CA = (loyer + charges) ÷ CA HT. EBE après = EBE − écart de loyer. Sur le reste du bail = écart par an × années. CA HT en plus pour absorber la hausse = écart ÷ (marge − redevance et publicité, 3 %). Loyer au repère du siège = repère × CA HT − charges, quand le siège a réglé un repère.',
   },
   simMix: {
-    titre: 'Mix Cave et Bar',
-    quoi: 'Ce que rapporte une part du CA qui passe de la cave au bar, ou l’inverse, à CA total égal : la marge du bar est plus forte, mais il demande plus d’heures.',
-    remplir: 'Le CA HT et la marge de la cave et du bar (repris du budget), la part du CA déplacée, puis les heures en plus par semaine, saisies ou lues dans la grille de productivité du siège.',
-    calcul: 'Marge = CA de la cave × sa marge + CA du bar × sa marge, avant et après. Heures selon la grille : CA ÷ productivité visée (CA HT par heure selon la part du bar), après moins avant, ÷ 52 semaines. Équipe = heures par semaine × 52 × coût d’une heure chargée. EBE = marge en plus − équipe ; redevance et publicité ne changent pas, le CA total restant le même.',
+    titre: 'Mix produit',
+    quoi: 'Ce que rapporte un ajustement de la gamme, à CA égal : pousser les familles les mieux margées et réduire la place des moins margées fait gagner des points de marge. La même idée entre la cave et le bar : la marge du bar est plus forte, mais il demande plus d’heures.',
+    remplir: 'Entre familles : l’univers (la cave et le bar ne s’additionnent jamais), puis pour chaque famille son CA HT et son taux de marge (repris du budget), et la part visée dans le CA de l’univers. Entre Cave et Bar : le CA HT et la marge de chacun, la part du CA déplacée, puis les heures en plus, saisies ou lues dans la grille de productivité du siège.',
+    calcul: 'Entre familles : taux de marge = somme des parts × taux de marge de chaque famille, avant et après ; parts visées ramenées à 100 % si leur total s’en écarte. Effet d’une famille = (part visée − part avant) × son taux de marge. Marge en plus = CA × points gagnés ; redevance et publicité ne changent pas (même CA), l’EBE gagne autant. Repère : 1 point de part pris à la famille la moins margée pour la mieux margée = écart de leurs taux × 1 %. Entre Cave et Bar : marge = CA de la cave × sa marge + CA du bar × sa marge ; heures selon la grille = CA ÷ productivité visée, après moins avant, ÷ 52 ; EBE = marge en plus − heures × coût d’une heure chargée.',
   },
   simReseau: {
     titre: 'Un levier sur plusieurs magasins',
