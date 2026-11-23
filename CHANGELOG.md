@@ -9,6 +9,14 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- App plus rapide (choix 369 et 370, Joseph, 23/11/2026), sans migration. 370 : après un enregistrement, l'app ne relit
+  plus les douze tables du réseau mais seulement celles qui ont été écrites, et pour le suivi des magasins seulement la
+  rubrique touchée (une tâche ajoutée : 1 lecture au lieu de 12). Les écritures sont notées au passage par le client
+  Supabase (`src/lib/tablesTouchees.ts`) ; une fonction de la base qui écrit dans ces tables ou une écriture inconnue
+  fait tout relire, et tout est relu après 5 minutes ou au changement de compte. 369 : le cadre du budget
+  (`src/pilotage/ZonePilotage.tsx`) est séparé de ses pages et les simulateurs se téléchargent à leur ouverture :
+  la première ouverture de Chiffres, Pilotage ou Paramètres télécharge environ 200 Ko de moins, l'onglet Budget environ
+  100 Ko de moins.
 - Simulateur « Mix produit » (ex « Mix Cave et Bar », Joseph, 23/11/2026), sans migration : nouveau mode « Entre familles
   de la gamme » par univers (Cave ou Bar, jamais additionnés) : CA et taux de marge de chaque famille repris du budget,
   parts visées, points de marge gagnés à CA égal, effet de chaque famille et repère « 1 point de part déplacé ». Le mode

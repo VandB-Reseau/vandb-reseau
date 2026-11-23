@@ -15,7 +15,7 @@ import { useAuth } from '../auth/AuthContext'
 import { perimetreDuProfil } from '../data/perimetre'
 import { VueChiffres } from './SanteParc'
 import { Evolution } from './Evolution'
-import { ZonePilotage } from '../pilotage/Pilotage'
+import { ZonePilotage } from '../pilotage/ZonePilotage'
 import { Reseau as SuiviBudgets } from '../pilotage/pages/Reseau'
 
 // Refonte vague 2 (Joseph, 09/11/2026, 15A) : les chiffres du réseau en une seule page, sous Finances.
