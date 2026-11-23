@@ -100,7 +100,8 @@ const FicheMagasinFranchise = chargementDiffere(() => espace().then((m) => ({ de
 
 function usePrechargement() {
   useEffect(() => {
-    const lancer = () => { for (const c of Object.values(chargeurs)) void c().catch(() => undefined) }
+    // Budget prévisionnel et Face au budget (pilotage) aussi, pour s'ouvrir sans attendre leur fichier (Joseph, 23/11/2026)
+    const lancer = () => { for (const c of [...Object.values(chargeurs), pilotage]) void c().catch(() => undefined) }
     const w = window as Window & { requestIdleCallback?: (f: () => void) => number }
     const id = w.requestIdleCallback ? w.requestIdleCallback(lancer) : window.setTimeout(lancer, 1500)
     return () => { if (!w.requestIdleCallback) window.clearTimeout(id) }

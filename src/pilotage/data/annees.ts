@@ -13,14 +13,17 @@ export const anneeSuivi = (): number => actuelles.suivi
 export function ecouterAnnees(f: () => void) { abonnes.add(f); return () => { abonnes.delete(f) } }
 
 export async function chargerAnnees(): Promise<Annees> {
+  const avant = JSON.stringify([actuelles, lignes])
   try {
     const { data, error } = await pilotage().from('annees').select('annee, etat, campagne_le, suivi_le, close_le').order('annee')
     lignes = error ? [] : (data ?? []) as LigneAnnee[]
   } catch {
     lignes = []
   }
+  // Écrans prévenus seulement si les années ont changé : sinon leurs lectures gardées restent bonnes (Joseph, 23/11/2026,
+  // le Budget prévisionnel et Face au budget relisaient tout à chaque ouverture)
   actuelles = anneesDepuis(lignes)
-  abonnes.forEach((f) => f())
+  if (JSON.stringify([actuelles, lignes]) !== avant) abonnes.forEach((f) => f())
   return actuelles
 }
 

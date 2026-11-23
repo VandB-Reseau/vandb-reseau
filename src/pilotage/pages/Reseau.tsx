@@ -106,8 +106,9 @@ const simple = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerC
 
 // Chaque magasin à la fin de son dernier mois réalisé, face à l'an dernier et à son budget (aussi lu par le rapport du mois, 29A)
 export async function chargerSuiviReseau(annee: number) {
-  const [d, { parametres }, reel, alertes, actions, quadrimestres] = await Promise.all([chargerBudgets(annee), chargerParametres(annee), chargerReelDuCompte(annee), chargerAlertes(), chargerActions().catch(() => []), chargerQuadrimestres(annee).catch(() => ({} as SaisiesQuadrimestres))])
-  const stocks = await chargerStocksReseau(annee).catch(() => ({} as Awaited<ReturnType<typeof chargerStocksReseau>>))
+  // Stocks lus en même temps que le reste, plus après (Joseph, 23/11/2026 : ouverture plus rapide)
+  const [d, { parametres }, reel, alertes, actions, quadrimestres, stocks] = await Promise.all([chargerBudgets(annee), chargerParametres(annee), chargerReelDuCompte(annee), chargerAlertes(), chargerActions().catch(() => []), chargerQuadrimestres(annee).catch(() => ({} as SaisiesQuadrimestres)),
+    chargerStocksReseau(annee).catch(() => ({} as Awaited<ReturnType<typeof chargerStocksReseau>>))])
   const pStock = parametres.tresorerie.stock ?? stockParDefaut
   const groupes = new Map(d.groupes.map((g) => [g.id, g.nom]))
   const p = { tauxRedevance: parametres.tauxRedevance, tauxPublicite: parametres.tauxPublicite, charges: parametres.charges, annee }

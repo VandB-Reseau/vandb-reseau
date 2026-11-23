@@ -372,14 +372,20 @@ export async function simulerPilotage(page: Page, options: OptionsSimulation = {
     if (table === 'groupe_magasins') return route.fulfill({ json: filtrer(magasins.filter((x) => x.groupe_id !== null).map((x) => ({ store_name: x.magasin, groupe_id: x.groupe_id })), url.searchParams) })
     // Pages de 1 000 lignes au plus, comme l'API
     const page = <T,>(l: T[]) => { const de = Number(url.searchParams.get('offset') ?? 0); return l.slice(de, de + Math.min(1000, Number(url.searchParams.get('limit') ?? 1000))) }
-    if (table === 'equipe') return route.fulfill({ json: page(equipe) })
-    if (table === 'emprunts') return route.fulfill({ json: page(prets) })
-    if (table === 'frais') return route.fulfill({ json: page(frais) })
-    if (table === 'quadrimestres') return route.fulfill({ json: page(filtrer(quadrimestres, url.searchParams)) })
-    if (table === 'parts_realisees') return route.fulfill({ json: page(filtrer(parts, url.searchParams)) })
+    // Nombre de lignes demandé (Prefer: count=exact) : rendu dans Content-Range, comme PostgREST
+    const paginer = <T,>(l: T[]) => {
+      const de = Number(url.searchParams.get('offset') ?? 0), lignes = page(l)
+      const compte = /count=exact/.test(req.headers()['prefer'] ?? '')
+      return route.fulfill({ json: lignes, headers: compte ? { 'Content-Range': `${lignes.length ? `${de}-${de + lignes.length - 1}` : '*'}/${l.length}`, 'Access-Control-Expose-Headers': 'Content-Range' } : {} })
+    }
+    if (table === 'equipe') return paginer(equipe)
+    if (table === 'emprunts') return paginer(prets)
+    if (table === 'frais') return paginer(frais)
+    if (table === 'quadrimestres') return paginer(filtrer(quadrimestres, url.searchParams))
+    if (table === 'parts_realisees') return paginer(filtrer(parts, url.searchParams))
     if (table === 'stocks') return route.fulfill({ json: filtrer(stocks, url.searchParams) })
     if (table === 'correspondances_fec') return route.fulfill({ json: filtrer(correspondances, url.searchParams) })
-    if (table === 'actions') return route.fulfill({ json: page(filtrer(actions, url.searchParams)) })
+    if (table === 'actions') return paginer(filtrer(actions, url.searchParams))
     if (table === 'echanges_budget') return route.fulfill({ json: filtrer(messages, url.searchParams).sort((a, b) => a.cree_le.localeCompare(b.cree_le)) })
     if (table === 'versions_budget') return route.fulfill({ json: filtrer(versions, url.searchParams).sort((a, b) => b.cree_le.localeCompare(a.cree_le)) })
     if (table === 'ouvertures') return route.fulfill({ json: ouvertures })

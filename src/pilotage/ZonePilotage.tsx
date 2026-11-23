@@ -62,17 +62,19 @@ function SilhouetteBudget() {
 }
 
 // Charge le profil du pilotage et ses années (0027) avant d'afficher ; quand le Directeur ouvre une campagne ou démarre
-// un suivi, tout se redessine avec les nouvelles années
+// un suivi, tout se redessine avec les nouvelles années. Les années se lisent en même temps que les droits du compte, et
+// une fois lues, l'écran suivant s'affiche tout de suite pendant qu'elles sont relues (Joseph, 23/11/2026)
+let anneesLuesPour: string | null = null
 function Chargeur({ children }: { children: (p: Profil) => ReactNode }) {
   const { profil } = useAuth()
-  const [lu, setLu] = useState<string | null>(null)
+  const compte = useAuthSiDispo()?.profil?.id ?? profil?.id ?? null
+  const [lu, setLu] = useState<string | null>(anneesLuesPour)
   const [, setVersion] = useState(0)
-  const compte = profil ? `${profil.id}|${profil.role}` : null
   useEffect(() => ecouterAnnees(() => { oublier(); setVersion((v) => v + 1) }), [])
   useEffect(() => {
     if (!compte) return
     let actif = true
-    chargerAnnees().finally(() => actif && setLu(compte))
+    chargerAnnees().finally(() => { anneesLuesPour = compte; if (actif) setLu(compte) })
     return () => { actif = false }
   }, [compte])
   if (!profil || lu !== compte) return <SilhouetteBudget />
