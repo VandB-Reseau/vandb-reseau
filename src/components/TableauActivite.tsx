@@ -17,6 +17,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
+import EditOutlined from '@mui/icons-material/EditOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import PhotoLibraryOutlined from '@mui/icons-material/PhotoLibraryOutlined'
 import type { ElementFil, GenreFil } from '../data/fil'
@@ -53,14 +54,17 @@ function sujet(e: ElementFil): { principal: string; second?: string } {
   return { principal: action }
 }
 
-export function TableauActivite({ elements, ouvrirJournal }: { elements: ElementFil[]; ouvrirJournal?: (e: ElementFil) => void }) {
+// Fiche magasin (Joseph, 23/11/2026) : la ligne d'une visite ouvre sa modification, le picto PDF son compte rendu
+export function TableauActivite({ elements, ouvrirJournal, modifierVisite }: {
+  elements: ElementFil[]; ouvrirJournal?: (e: ElementFil) => void; modifierVisite?: (id: number) => void
+}) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const [nombre, setNombre] = useState(PAS)
   const naviguer = useNavigate()
   const ouvrirCR = useOuvrirCompteRendu()
   const ouvrir = (e: ElementFil) => {
     if (e.libelleOuvrir && ouvrirJournal) ouvrirJournal(e)
-    else if (e.genre === 'visite' && e.visiteId) ouvrirCR(e.visiteId)
+    else if (e.genre === 'visite' && e.visiteId) (modifierVisite ?? ouvrirCR)(e.visiteId)
     else naviguer(e.lien)
   }
   // Compte rendu et photos : de petites icônes, au lieu des vignettes
@@ -69,6 +73,10 @@ export function TableauActivite({ elements, ouvrirJournal }: { elements: Element
       {e.genre === 'visite' && e.visiteId && (
         <Tooltip title="Compte rendu"><IconButton aria-label={`Ouvrir le compte rendu de ${e.magasin}`} onClick={(ev) => { ev.stopPropagation(); ouvrirCR(e.visiteId!) }}
           sx={{ width: 48, height: 48, color: brand.brique }}><PictureAsPdfOutlined /></IconButton></Tooltip>
+      )}
+      {e.genre === 'visite' && e.visiteId && modifierVisite && (
+        <Tooltip title="Modifier"><IconButton aria-label={`Modifier la visite du ${dateCourte(e.instant.slice(0, 10))}`} onClick={(ev) => { ev.stopPropagation(); modifierVisite(e.visiteId!) }}
+          sx={{ width: 48, height: 48 }}><EditOutlined /></IconButton></Tooltip>
       )}
       {!!e.photos?.length && (
         <Tooltip title={`${e.photos.length} photo${e.photos.length > 1 ? 's' : ''}`}><Box aria-label={`${e.photos.length} photo${e.photos.length > 1 ? 's' : ''}`}
@@ -113,7 +121,7 @@ export function TableauActivite({ elements, ouvrirJournal }: { elements: Element
             <TableCell sx={{ width: 150 }}>Type</TableCell>
             <TableCell>Quoi</TableCell>
             <TableCell sx={{ width: 180 }}>Par</TableCell>
-            <TableCell sx={{ width: 112 }} aria-label="Pièces" />
+            <TableCell sx={{ width: modifierVisite ? 160 : 112 }} aria-label="Pièces" />
           </TableRow>
         </TableHead>
         <TableBody>
