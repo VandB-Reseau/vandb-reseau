@@ -21,12 +21,21 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import { Blason } from './Blason'
-import { Pastille } from './Social'
+import { MiniCourbe, Pastille } from './Social'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
+import OpenInNewOutlined from '@mui/icons-material/OpenInNewOutlined'
+import EventOutlined from '@mui/icons-material/EventOutlined'
+import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
+import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
+import { brand } from '../theme/theme'
 import { useCreer } from './Creer'
 import { lienFiche } from '../lib/format'
 import { libelleSuivi } from '../data/charge'
 import { statutLibelle, type Magasin, type Reseau } from '../data/modele'
-import { analyser, formatKEuros, formatPourcent, libelleMois } from '../data/chiffres'
+import { analyser, courbeCA, formatKEuros, formatPourcent, libelleMois } from '../data/chiffres'
 import { caExterieurAnnee } from '../data/exterieur'
 import { caseDe, visitesParAn } from '../data/sante'
 import { actionsEnCours } from '../data/actions'
@@ -36,7 +45,7 @@ import type { TriMagasins } from './ListeMagasins'
 
 // Liste des magasins sur PC en vrai tableau (refonte, Joseph 09/11/2026, choix 5A) : lignes de 44 px, colonnes triables,
 // une ligne cliquée ouvre l'aperçu à droite sans quitter la liste ; le nom ouvre la fiche. Le téléphone garde ses lignes.
-interface Infos { ext: number | null; ca: number | null; mois: string | null; ecart: number | null; caseLibelle: string; rang: number; depuis: number | null; alerteVisite: boolean; taches: number; alerte: 'decroche' | 'surveiller' | null }
+interface Infos { courbe: (number | null)[]; ext: number | null; ca: number | null; mois: string | null; ecart: number | null; caseLibelle: string; rang: number; depuis: number | null; alerteVisite: boolean; taches: number; alerte: 'decroche' | 'surveiller' | null }
 
 function infosDe(reseau: Reseau | null): Map<string, Infos> {
   const res = new Map<string, Infos>()
@@ -49,6 +58,7 @@ function infosDe(reseau: Reseau | null): Map<string, Infos> {
     const c = caseDe(reseau.evaluations[m.nom])
     const l = rythme.get(m.nom)
     res.set(m.nom, {
+      courbe: a ? courbeCA(reseau, m.nom, a.mois, 6) : [],
       ext: caExterieurAnnee(reseau, m.nom, reseau.jour.slice(0, 4)), ca: a?.ca ?? null, mois: a?.mois ?? null, ecart: a?.ecart ?? null, caseLibelle: c?.libelle ?? '', rang: c ? visitesParAn(c) : 0,
       depuis: l?.derniere ? l.depuis ?? 0 : null, alerteVisite: !!l?.alerte, taches: taches.get(m.nom) ?? 0,
       alerte: a?.statut === 'decroche' || a?.statut === 'surveiller' ? a.statut : null,
@@ -72,7 +82,16 @@ const colonnesDe = (infos: Map<string, Infos>): ColonneTri<Magasin>[] => [
   { cle: 'case', libelle: 'nine box', valeur: (m) => infos.get(m.nom)?.rang ?? 0, texte: (m) => infos.get(m.nom)?.caseLibelle || 'Non classé', filtre: 'liste', premier: 'desc' },
   { cle: 'visite', libelle: 'dernière visite', valeur: (m) => infos.get(m.nom)?.depuis ?? Infinity, nombre: (m) => infos.get(m.nom)?.depuis ?? null, unite: 'jours', premier: 'desc' },
   { cle: 'taches', libelle: 'tâches', valeur: (m) => infos.get(m.nom)?.taches ?? 0 },
+  { cle: 'statut', libelle: 'statut', valeur: (m) => statutDe(m, infos.get(m.nom))?.libelle ?? null, filtre: 'liste' },
 ]
+
+// 361 (Joseph, 23/11/2026) : une colonne Statut en badge, la plus grave d'abord (alerte du CA, puis étape d'ouverture)
+function statutDe(m: Magasin, x: Infos | undefined): { ton: 'rouge' | 'orange' | 'vert' | 'gris'; libelle: string } | null {
+  if (x?.alerte === 'decroche') return { ton: 'rouge', libelle: 'Décroche' }
+  if (x?.alerte === 'surveiller') return { ton: 'orange', libelle: 'À surveiller' }
+  if (m.statut !== 'ouvert') return { ton: 'gris', libelle: statutLibelle[m.statut] }
+  return x?.ca != null ? { ton: 'vert', libelle: 'Dans la norme' } : null
+}
 
 const PAS = 100
 
@@ -153,14 +172,15 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
               <TableRow>
                 {avecSelection && <TableCell padding="checkbox" sx={{ width: 44, '&&': { pl: 1.5, pr: 0 } }}><CaseEntete s={sel} /></TableCell>}
                 <Entete t={t} cle="nom" sx={{ minWidth: 200 }}>Magasin</Entete>
-                <Entete t={t} cle="coach">Coach</Entete>
-                <Entete t={t} cle="rr" sx={{ width: 150 }}>Responsable Régional</Entete>
                 <Entete t={t} cle="mois" align="right" sx={{ width: 104 }}>CA du mois</Entete>
                 <Entete t={t} cle="ecart" align="right" sx={{ width: 88 }}>vs N-1</Entete>
+                <TableCell sx={{ width: 84 }}>6 mois</TableCell>
                 <Entete t={t} cle="ext" align="right" sx={{ width: 104 }}>Extérieur</Entete>
                 <Entete t={t} cle="case" sx={{ width: 150 }}>Nine box</Entete>
                 <Entete t={t} cle="visite" align="right" sx={{ width: 112 }}>Dernière visite</Entete>
                 <Entete t={t} cle="taches" align="right" sx={{ width: 76 }}>Tâches</Entete>
+                <Entete t={t} cle="statut" sx={{ width: 132 }}>Statut</Entete>
+                <TableCell sx={{ width: 48, '&&': { px: 0.5 } }}><Box component="span" sx={visuellementCache}>Actions</Box></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -171,45 +191,49 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
                   <TableRow key={m.nom} selected={actif} hover tabIndex={0} aria-selected={actif} onClick={() => ouvrir(m.nom)} onDoubleClick={() => naviguer(lienFiche(m.nom))} onKeyDown={(e) => clavier(e, m.nom)}>
                     {avecSelection && <TableCell padding="checkbox" sx={{ '&&': { pl: 1.5, pr: 0 } }}><CaseLigne s={sel} cle={m.nom} nom={m.nom} /></TableCell>}
                     <TableCell sx={{ minWidth: 200 }}>
+                      {/* 362 (23/11/2026) : blason, nom en gras et une sous-ligne grise (Coach · Responsable Régional, le nom dit déjà la ville) : deux colonnes de gagnées */}
                       <Box sx={{ display: 'flex', alignItems: 'center', columnGap: 1.25, flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
-                        <Blason magasin={m} taille={28} />
-                        <Link component={RouterLink} to={lienFiche(m.nom)} color="inherit" underline="hover" onClick={(e) => e.stopPropagation()} sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{m.nom}</Link>
-                        {x?.alerte === 'decroche' && <Pastille ton="rouge">Décroche</Pastille>}
-                        {x?.alerte === 'surveiller' && <Pastille ton="orange">À surveiller</Pastille>}
-                        {m.statut !== 'ouvert' && <Pastille ton={m.statut === 'nouveau' ? 'bleu' : 'gris'}>{statutLibelle[m.statut]}</Pastille>}
+                        <Blason magasin={m} taille={32} />
+                        <Box sx={{ minWidth: 0, lineHeight: 1.25 }}>
+                          <Link component={RouterLink} to={lienFiche(m.nom)} color="inherit" underline="hover" onClick={(e) => e.stopPropagation()} sx={{ fontWeight: 700, whiteSpace: 'nowrap', display: 'block' }}>{m.nom}</Link>
+                          <Typography component="span" sx={{ display: 'block', fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>{[libelleSuivi(m) || 'Sans Coach', m.rr?.nom ?? 'Sans RR'].join(' · ')}</Typography>
+                        </Box>
                       </Box>
                     </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap', color: 'text.secondary' }}>{libelleSuivi(m) || '—'}</TableCell>
-                    <TableCell sx={{ color: 'text.secondary' }}>{m.rr?.nom ?? '—'}</TableCell>
                     <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{x?.ca !== null && x?.ca !== undefined ? formatKEuros(x.ca) : '—'}</TableCell>
                     <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: x?.ecart === null || x?.ecart === undefined ? 'text.secondary' : x.ecart <= -5 ? 'error.main' : x.ecart < 0 ? 'warning.dark' : 'success.dark' }}>
                       {x?.ecart === null || x?.ecart === undefined ? '—' : formatPourcent(x.ecart)}
                     </TableCell>
+                    {/* 367 : la tendance du CA sur 6 mois, d'un coup d'œil */}
+                    <TableCell sx={{ py: 0 }}><MiniCourbe valeurs={x?.courbe ?? []} couleur={x?.ecart != null && x.ecart < 0 ? brand.brique : brand.vertFonce} largeur={64} hauteur={24} label={x?.courbe.length ? `CA de ${m.nom} sur 6 mois` : undefined} /></TableCell>
                     <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', color: x?.ext ? 'text.primary' : 'text.secondary' }}>{x?.ext ? formatKEuros(x.ext) : '—'}</TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap', color: x?.caseLibelle ? 'text.primary' : 'text.secondary' }}>{x?.caseLibelle || 'Non classé'}</TableCell>
                     <TableCell align="right" sx={{ whiteSpace: 'nowrap', color: x?.alerteVisite ? 'warning.dark' : 'text.secondary', fontWeight: x?.alerteVisite ? 600 : 400 }}>
                       {x?.depuis === null || x?.depuis === undefined ? 'jamais' : `il y a ${x.depuis} j`}
                     </TableCell>
                     <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{x?.taches || ''}</TableCell>
+                    <TableCell>{(() => { const st = statutDe(m, x); return st ? <Pastille ton={st.ton}>{st.libelle}</Pastille> : null })()}</TableCell>
+                    <TableCell sx={{ '&&': { px: 0.5 } }} onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}><MenuLigne m={m} /></TableCell>
                   </TableRow>
                 )
               })}
               {sansCA.length > 0 && avecCA.length > 0 && (
                 <TableRow sx={{ '&&': { cursor: 'default', height: 48 }, '&&:hover': { bgcolor: 'transparent' } }}>
-                  <TableCell colSpan={avecSelection ? 10 : 9}>
+                  <TableCell colSpan={avecSelection ? 11 : 10}>
                     <Button onClick={() => setVoirSans((v) => !v)} aria-expanded={voirSans} sx={{ minHeight: 40 }}>
                       {voirSans ? `Masquer les ${sansCA.length} sans chiffres` : `Afficher les ${sansCA.length} sans chiffres`}
                     </Button>
                   </TableCell>
                 </TableRow>
               )}
-              <LigneSansResultat t={t} colSpan={avecSelection ? 10 : 9} quoi="Aucun magasin ne correspond" />
+              <LigneSansResultat t={t} colSpan={avecSelection ? 11 : 10} quoi="Aucun magasin ne correspond" />
               <TableRow sx={{ '&&': { cursor: 'default', height: 44 }, '&&:hover': { bgcolor: 'transparent' }, '& td': { borderBottom: 0, fontWeight: 700 } }}>
-                <TableCell colSpan={avecSelection ? 4 : 3} sx={{ color: 'text.secondary' }}>{tries.length < magasins.length ? `${tries.length} sur ${magasins.length} magasins` : `${magasins.length} magasin${magasins.length > 1 ? 's' : ''}`}</TableCell>
+                <TableCell colSpan={avecSelection ? 2 : 1} sx={{ color: 'text.secondary' }}>{tries.length < magasins.length ? `${tries.length} sur ${magasins.length} magasins` : `${magasins.length} magasin${magasins.length > 1 ? 's' : ''}`}</TableCell>
                 <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{formatKEuros(total.ca)}</TableCell>
                 <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{total.ecart === null ? '—' : formatPourcent(total.ecart)}</TableCell>
+                <TableCell />
                 <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{total.ext ? formatKEuros(total.ext) : '—'}</TableCell>
-                <TableCell colSpan={3} />
+                <TableCell colSpan={5} />
               </TableRow>
             </TableBody>
           </Table>
@@ -227,6 +251,32 @@ export function TableauMagasins({ magasins, tri, trier }: { magasins: Magasin[];
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
       {apercu && <Apercu m={apercu} infos={infos.get(apercu.nom)} fermer={() => setChoisi(null)} />}
     </Box>
+  )
+}
+
+const visuellementCache = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
+
+// 367 (Joseph, 23/11/2026) : les gestes courants d'une ligne dans « ⋯ », au bout de la ligne
+function MenuLigne({ m }: { m: Magasin }) {
+  const [ancre, setAncre] = useState<HTMLElement | null>(null)
+  const creer = useCreer()
+  const naviguer = useNavigate()
+  const { apercu } = useApercu()
+  const choix = [
+    { libelle: 'Ouvrir la fiche', icone: <OpenInNewOutlined fontSize="small" />, faire: () => naviguer(lienFiche(m.nom)) },
+    { libelle: 'Voir les chiffres', icone: <QueryStatsOutlined fontSize="small" />, faire: () => naviguer(`${lienFiche(m.nom)}?vue=chiffres`) },
+    ...(apercu ? [] : [
+      { libelle: 'Planifier une visite', icone: <EventOutlined fontSize="small" />, faire: () => creer('visite', m.nom) },
+      { libelle: 'Ajouter une tâche', icone: <TaskAltOutlined fontSize="small" />, faire: () => creer('tache', m.nom) },
+    ]),
+  ]
+  return (
+    <>
+      <Tooltip title="Autres actions"><IconButton aria-label={`Actions pour ${m.nom}`} aria-haspopup="menu" onClick={(e) => setAncre(e.currentTarget)} sx={{ width: 36, height: 36 }}><MoreHorizOutlined fontSize="small" /></IconButton></Tooltip>
+      <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
+        {choix.map((c) => <MenuItem key={c.libelle} onClick={() => { setAncre(null); c.faire() }} sx={{ minHeight: 44 }}><ListItemIcon>{c.icone}</ListItemIcon>{c.libelle}</MenuItem>)}
+      </Menu>
+    </>
   )
 }
 
