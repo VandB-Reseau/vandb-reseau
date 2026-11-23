@@ -6,6 +6,7 @@ import TextField from '@mui/material/TextField'
 import BookmarkAddOutlined from '@mui/icons-material/BookmarkAddOutlined'
 import BookmarkRemoveOutlined from '@mui/icons-material/BookmarkRemoveOutlined'
 import { Fenetre } from './EditionEquipe'
+import { Compteur, styleBac, styleVue } from './VuesRapides'
 import { adresseDeVue, enregistrerVue, retirerVue, useVues, PARAMETRES_VUE } from '../lib/vues'
 
 // Vues au-dessus de la liste : d'abord les vues toutes prêtes (refonte, Joseph 09/11/2026, 5A : Tous, À surveiller…, avec
@@ -26,26 +27,27 @@ export function VuesMagasins({ params, appliquer, nomPropose, pretes = [] }: { p
     appliquer(p)
   }
   return (
-    <Box role="group" aria-label="Vues enregistrées" sx={{ display: 'flex', alignItems: 'center', gap: 1, overflowX: 'auto', mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, mb: 1, scrollbarWidth: 'none' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
+    {/* 361 (Joseph, 23/11/2026) : vues prêtes et enregistrées dans un bac gris, chacune avec son compteur */}
+    {(pretes.length > 0 || vues.length > 0) && <Box role="group" aria-label="Vues enregistrées" sx={{ ...styleBac, mb: 0 }}>
       {pretes.map((v) => {
         const actif = v === prete
         return (
-          <ButtonBase key={`p-${v.nom}`} onClick={() => ouvrir(v.adresse)} aria-pressed={actif} aria-label={`${v.nom} : ${v.nombre}`}
-            sx={{ flexShrink: 0, minHeight: 48, px: 0.25, fontFamily: 'inherit', '& > span': { px: 1.5, height: 36, display: 'flex', alignItems: 'center', gap: 0.75, borderRadius: 2, fontSize: '0.875rem', fontWeight: actif ? 700 : 600, bgcolor: actif ? 'action.selected' : 'transparent', color: actif ? 'text.primary' : 'text.secondary', whiteSpace: 'nowrap' }, '&:hover > span': { color: 'text.primary' } }}>
-            <span>{v.nom}<Box component="span" sx={{ fontWeight: 500, color: 'text.secondary' }}>{v.nombre}</Box></span>
+          <ButtonBase key={`p-${v.nom}`} onClick={() => ouvrir(v.adresse)} aria-pressed={actif} aria-label={`${v.nom} : ${v.nombre}`} sx={styleVue(actif)}>
+            <span>{v.nom}<Compteur nombre={v.nombre} actif={actif} /></span>
           </ButtonBase>
         )
       })}
-      {pretes.length > 0 && vues.length > 0 && <Box aria-hidden sx={{ width: '1px', alignSelf: 'stretch', my: 1.5, bgcolor: 'divider', flexShrink: 0 }} />}
+      {pretes.length > 0 && vues.length > 0 && <Box aria-hidden sx={{ width: '1px', alignSelf: 'stretch', my: 1.5, mx: 0.5, bgcolor: 'divider', flexShrink: 0 }} />}
       {vues.map((v) => {
         const actif = v === active
         return (
-          <ButtonBase key={v.adresse} onClick={() => ouvrir(actif ? '' : v.adresse)} aria-pressed={actif}
-            sx={{ flexShrink: 0, minHeight: 48, px: 0.25, fontFamily: 'inherit', '& > span': { px: 1.5, height: 36, display: 'flex', alignItems: 'center', borderRadius: 2, fontSize: '0.875rem', fontWeight: actif ? 700 : 600, bgcolor: actif ? 'action.selected' : 'transparent', color: actif ? 'text.primary' : 'text.secondary', whiteSpace: 'nowrap' }, '&:hover > span': { color: 'text.primary' } }}>
+          <ButtonBase key={v.adresse} onClick={() => ouvrir(actif ? '' : v.adresse)} aria-pressed={actif} sx={styleVue(actif)}>
             <span>{v.nom}</span>
           </ButtonBase>
         )
       })}
+    </Box>}
       {prete ? null : active
         ? <Button startIcon={<BookmarkRemoveOutlined />} onClick={() => retirerVue(active.adresse)} sx={{ flexShrink: 0, minHeight: 48, whiteSpace: 'nowrap' }}>Retirer cette vue</Button>
         : courante && <Button startIcon={<BookmarkAddOutlined />} onClick={() => { setNom(nomPropose); setNommer(true) }} sx={{ flexShrink: 0, minHeight: 48, whiteSpace: 'nowrap' }}>Enregistrer la vue</Button>}

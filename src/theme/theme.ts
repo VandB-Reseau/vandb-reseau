@@ -48,19 +48,20 @@ const titres = `"Alegreya", Georgia, serif`
 
 const base = createTheme()
 
-// Une seule couleur forte par ligne (Joseph, 21/10/2026) : le rouge reste une pastille pleine,
-// orange, bleu et vert deviennent un texte coloré précédé d'un point, sans fond.
-export type CouleurSignal = 'warning' | 'info' | 'success'
+// Une seule couleur forte par ligne (Joseph, 21/10/2026). 361 (Joseph, 23/11/2026, « tableaux type SaaS ») : les statuts
+// deviennent des badges, une pilule teintée (fond pâle de la couleur, texte dans sa nuance foncée), rouge compris.
+export type CouleurSignal = 'warning' | 'info' | 'success' | 'error'
 export function styleSignal(theme: Theme, couleur: CouleurSignal) {
+  const p = theme.vars!.palette[couleur]
   return {
-    backgroundColor: 'transparent', color: theme.vars!.palette[couleur].dark, fontWeight: 600,
-    '&::before': { content: '""', width: 8, height: 8, borderRadius: '50%', backgroundColor: 'currentColor', flexShrink: 0 },
-    '&:has(.MuiChip-icon)::before': { display: 'none' },
+    backgroundColor: `rgba(${p.mainChannel} / 0.14)`, color: couleur === 'error' ? p.main : p.dark, fontWeight: 600,
     '& .MuiChip-icon': { color: 'inherit' },
-    '&.MuiChip-clickable:hover': { backgroundColor: theme.vars!.palette.action.hover },
-    ...theme.applyStyles('dark', { color: theme.vars!.palette[couleur].light }),
+    '&.MuiChip-clickable:hover': { backgroundColor: `rgba(${p.mainChannel} / 0.24)` },
+    ...theme.applyStyles('dark', { color: p.light ?? p.main, backgroundColor: `rgba(${p.mainChannel} / 0.22)` }),
   }
 }
+// 361 / 368 (23/11/2026) : gris chaud des en-têtes de tableau et du bac des vues (pastilles à compteur)
+export const fondEnTete = 'var(--vb-entete)'
 const telephone = base.breakpoints.down('sm')
 const ordinateur = base.breakpoints.up('md')
 
@@ -124,9 +125,9 @@ export const optionsTheme: ThemeOptions = {
     // Puces : toujours en pilule (vague 8, 93A)
     MuiChip: {
       styleOverrides: { root: { borderRadius: rayon.pilule } },
-      variants: (['warning', 'info', 'success'] as const).map((couleur) => ({
+      variants: (['warning', 'info', 'success', 'error'] as const).map((couleur) => ({
         props: { variant: 'filled' as const, color: couleur },
-        style: ({ theme }: { theme: Theme }) => ({ ...styleSignal(theme, couleur), '&::before': { ...styleSignal(theme, couleur)['&::before'], marginLeft: 8, marginRight: -4 } }),
+        style: ({ theme }: { theme: Theme }) => styleSignal(theme, couleur),
       })),
     },
     // Infobulles à 12 px au moins (11 px par défaut dans MUI)
@@ -178,7 +179,7 @@ export const optionsTheme: ThemeOptions = {
       styleOverrides: {
         root: ({ theme }) => ({
           position: 'sticky', top: 0, zIndex: 3,
-          '& th': { backgroundColor: theme.palette.background.paper },
+          '& th': { backgroundColor: fondEnTete, fontSize: '0.8125rem' },
           '& tr:last-of-type > th': { boxShadow: `inset 0 -1px 0 ${theme.palette.divider}` },
         }),
       },
@@ -204,7 +205,11 @@ export const optionsTheme: ThemeOptions = {
     // 346 (18/11/2026) : le choix non retenu reste lisible, en noir, pas en gris pâle ; le choix retenu se distingue par son fond
     MuiToggleButton: { styleOverrides: { root: ({ theme }) => ({ color: theme.vars ? theme.vars.palette.text.primary : theme.palette.text.primary, textTransform: 'none', fontWeight: 600 }) } },
     // Écrans « marque » (Accueil, Infos réseau, compte rendu) : titres en capitales de la charte
-    MuiCssBaseline: { styleOverrides: { '.marque .MuiTypography-h1': { textTransform: 'uppercase', letterSpacing: '0.01em' } } },
+    MuiCssBaseline: { styleOverrides: {
+      ':root': { '--vb-entete': '#f3eee6' },
+      '@media (prefers-color-scheme: dark)': { ':root': { '--vb-entete': '#3a3636' } },
+      '.marque .MuiTypography-h1': { textTransform: 'uppercase', letterSpacing: '0.01em' },
+    } },
     MuiBottomNavigationAction: {
       styleOverrides: { label: { fontSize: '0.75rem', '&.Mui-selected': { fontSize: '0.75rem' } } },
     },

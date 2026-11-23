@@ -8,20 +8,22 @@ import { magasinsFictifs } from './donnees-fictives'
 const fond = (l: Locator) => l.evaluate((e) => getComputedStyle(e).backgroundColor)
 const transparent = 'rgba(0, 0, 0, 0)'
 
-test('seul le rouge reste une pastille pleine ; le reste est un texte coloré', async ({ page, isMobile }, info) => {
+// 361 (Joseph, 23/11/2026) : les statuts deviennent des badges teintés (fond pâle, texte foncé), rouge compris ;
+// les étiquettes de type restent sans fond
+test('statuts en badges teintés, aucune pastille pleine ; les types restent sans fond', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
   await deplierATraiter(page)
-  expect(await fond(aTraiter.getByText('Décroche', { exact: true }))).toBe('rgb(194, 65, 25)')
+  expect(await fond(aTraiter.getByText('Décroche', { exact: true }))).toBe('rgba(194, 65, 25, 0.14)')
   await aTraiter.getByRole('button', { name: /^À voir · \d+$/ }).click()
   await deplierGroupes(page)
   expect(await fond(aTraiter.getByText('Visite', { exact: true }).first())).toBe(transparent)
   await page.goto('./#/magasins')
   const liste = page.getByRole('main')
-  // PC large : la dernière visite passe en colonne, l'alerte orange reste un texte coloré
+  // PC large : l'alerte orange est un badge teinté dans la colonne Statut
   const orange = isMobile ? liste.getByText(/^vu il y a \d+ j$/).first() : liste.getByText('À surveiller', { exact: true }).first()
   await expect(orange).toBeVisible()
-  expect(await fond(orange)).toBe(transparent)
+  if (!isMobile) expect(await fond(orange)).toBe('rgba(234, 96, 41, 0.14)')
   // La charge à 8/8 n'est plus pleine, le dépassement (9/8) l'est toujours
   await page.goto('./#/equipe')
   const charges = page.getByRole('main').locator('.MuiChip-root')

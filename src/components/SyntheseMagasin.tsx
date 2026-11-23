@@ -28,6 +28,8 @@ import { caseDe, tendance } from '../data/sante'
 import { prochaineEtape } from '../data/ordreDuJour'
 import Typography from '@mui/material/Typography'
 import { Indicateur as CarteIndicateur } from './Indicateur'
+import { TableauDeBord, evolPourcent } from './TableauDeBord'
+import CalendarMonthOutlined from '@mui/icons-material/CalendarMonthOutlined'
 import { useTheme } from '@mui/material/styles'
 import { ParcoursIntegration } from './ParcoursIntegration'
 import { analyser, caDe, chiffresDuMagasin, courbeCA, decalerMois, formatKEuros, formatPourcent, libelleMois, libelleMoisCourt } from '../data/chiffres'
@@ -203,12 +205,12 @@ export function CommentVa({ reseau, m, franchise = false }: { reseau: Reseau; m:
   return (
     <Section region titre="Comment va le magasin" action={<Button component={RouterLink} to={`${lienFiche(m.nom)}?vue=chiffres`} sx={{ minHeight: 48 }}>Chiffres</Button>}>
       {!a ? <LigneVide>Pas encore de chiffres de caisse pour ce magasin. Ils arrivent avec l’import mensuel.</LigneVide> : (
-        <Box role="group" aria-label="Indicateurs du magasin" sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', mx: { xs: -1.5, md: -2 } }}>
-          <Indicateur libelle={cumul ? `CA ${cumul.annee} à fin ${libelleMoisCourt(a.mois).split(' ')[0]}` : 'CA de l’année'} valeur={formatKEuros(cumul?.ca ?? null)}
-            detail={cumul?.ecart != null ? `${formatPourcent(cumul.ecart)} vs ${cumul.annee - 1}` : 'Pas de comparaison'} ton={cumul?.ecart != null ? (cumul.ecart >= 0 ? 'bon' : 'mauvais') : undefined}
-            fin={<MiniCourbe valeurs={courbeCA(reseau, m.nom, a.mois)} couleur={brand.vertFonce} largeur={72} hauteur={32} label="CA des douze derniers mois" />} />
-          <Indicateur libelle={`CA de ${libelleMois(a.mois)}`} valeur={a.ca != null ? formatKEuros(a.ca) : '—'}
-            detail={a.ecart != null ? `${formatPourcent(a.ecart)} vs ${libelleMois(a.reference)}` : 'Pas de comparaison'} ton={a.ecart != null ? (a.ecart >= 0 ? 'bon' : 'mauvais') : undefined} />
+        // 365 (Joseph, 23/11/2026) : même gabarit que le tableau de bord du réseau : 4 cartes chiffrées, 2 graphes
+        <Box sx={{ mx: { xs: -0.5, md: -1 } }}>
+          <TableauDeBord reseau={reseau} noms={[m.nom]} etroit label="Tableau de bord du magasin" groupe="Indicateurs du magasin"
+            avant={<CarteIndicateur bordee icone={<CalendarMonthOutlined />} libelle={cumul ? `CA ${cumul.annee} à fin ${libelleMoisCourt(a.mois).split(' ')[0]}` : 'CA de l’année'} valeur={formatKEuros(cumul?.ca ?? null)}
+              evolution={cumul ? evolPourcent(cumul.ecart, `vs ${cumul.annee - 1}`) : null} detail={cumul?.ecart == null ? 'Pas de comparaison' : undefined}
+              fin={<MiniCourbe valeurs={courbeCA(reseau, m.nom, a.mois)} couleur={brand.vertFonce} largeur={72} hauteur={32} label="CA des douze derniers mois" />} />} />
         </Box>
       )}
       {alertes.length > 0 && <Box sx={{ borderTop: '1px solid', borderColor: 'divider', mt: 1 }}><Lignes lignes={alertes} /></Box>}

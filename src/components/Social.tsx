@@ -17,7 +17,7 @@ import ChevronLeftOutlined from '@mui/icons-material/ChevronLeftOutlined'
 import ChevronRightOutlined from '@mui/icons-material/ChevronRightOutlined'
 import Dialog from '@mui/material/Dialog'
 import IconButton from '@mui/material/IconButton'
-import { brand, styleSignal, type CouleurSignal } from '../theme/theme'
+import { brand, fondEnTete, styleSignal, type CouleurSignal } from '../theme/theme'
 import { lienPhoto } from '../lib/photos'
 import type { Photo } from '../data/grilles'
 import { useVisage } from '../data/ReseauContext'
@@ -70,17 +70,16 @@ export const LEXIQUE_STATUTS = {
   vert: ['Fait', 'Validé', 'Planifiée', 'Au-dessus'],
   gris: ['À venir', 'En cours', 'Passée', 'Non classé', 'Sans Coach'],
 } as const
-const signaux: Record<'orange' | 'vert', CouleurSignal> = { orange: 'warning', vert: 'success' }
+const signaux: Record<'rouge' | 'orange' | 'vert', CouleurSignal> = { rouge: 'error', orange: 'warning', vert: 'success' }
 
-// Pastille unique d'une ligne : la plus grave seulement. Seul le rouge est plein ;
-// les autres tons sont un texte coloré précédé d'un point, pour que les alertes ressortent.
+// Pastille unique d'une ligne : la plus grave seulement. 361 (Joseph, 23/11/2026, « statuts en badges ») : chaque ton
+// est une pilule teintée (fond pâle, texte foncé de la couleur) ; le gris sur le fond des en-têtes de tableau.
 export function Pastille({ ton, children }: { ton: Ton; children: ReactNode }) {
-  const forme = { flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 0.75, borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap' } as const
-  if (ton === 'rouge') return <Box component="span" sx={{ ...forme, px: 1.25, py: 0.5, bgcolor: '#c24119', color: '#ffffff' }}>{children}</Box>
-  // Vague 8 (97A) : un seul composant de statut, quatre tons ; le gris garde son point comme les autres
+  const forme = { flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 0.75, borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap', px: 1.25, py: 0.375 } as const
+  // Vague 8 (97A) : un seul composant de statut, quatre tons ; « type » reste une étiquette grise cerclée
   if (ton === 'type') return <Box component="span" sx={{ ...forme, px: 1, py: 0.25, color: 'text.secondary', border: '1px solid', borderColor: 'divider' }}>{children}</Box>
-  if (ton === 'gris' || ton === 'bleu') return <Box component="span" sx={{ ...forme, py: 0.5, color: 'text.secondary', '&::before': { content: '""', width: 8, height: 8, borderRadius: '50%', bgcolor: 'currentColor', flexShrink: 0 } }}>{children}</Box>
-  return <Box component="span" sx={(t) => ({ ...forme, py: 0.5, ...styleSignal(t, signaux[ton as 'orange' | 'vert']) })}>{children}</Box>
+  if (ton === 'gris' || ton === 'bleu') return <Box component="span" sx={{ ...forme, color: 'text.secondary', bgcolor: fondEnTete }}>{children}</Box>
+  return <Box component="span" sx={(t) => ({ ...forme, ...styleSignal(t, signaux[ton]) })}>{children}</Box>
 }
 
 // Ligne compacte : avatar, titre, détail sur une ligne, puis une pastille ou une valeur à droite
@@ -131,11 +130,16 @@ export const cartouche = (theme: Theme) => ({
 })
 
 // Titre de section en cartouche, avec un nombre à droite
+import { Compteur } from './VuesRapides'
+export { Compteur }
+
 export function TitreSection({ children, nombre, action }: { children: ReactNode; nombre?: number; action?: ReactNode }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, mb: 1, minHeight: 40 }}>
-      <Typography component="h2" sx={cartouche}>{children}</Typography><Box sx={{ flex: 1 }} />
-      {nombre !== undefined && <Typography sx={{ fontWeight: 600 }}>{nombre}</Typography>}
+      <Typography component="h2" sx={cartouche}>{children}</Typography>
+      {/* 366 (Joseph, 23/11/2026) : le compteur en pastille, collé au titre (« Récemment lancés 5 ») */}
+      {nombre !== undefined && <Compteur nombre={nombre} />}
+      <Box sx={{ flex: 1 }} />
       {action}
     </Box>
   )

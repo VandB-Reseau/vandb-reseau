@@ -34,6 +34,7 @@ import FlagOutlined from '@mui/icons-material/FlagOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { FenetreCompteRendu, PieceJointe, useOuvrirCompteRendu } from '../components/ApercuCompteRendu'
+import ArrowForwardOutlined from '@mui/icons-material/ArrowForwardOutlined'
 import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, Pastille, Puces, TitreSection, type Ton } from '../components/Social'
 import { analyser, caDe, chiffresDuMagasin, decalerMois, formatKEuros, formatPourcent, libelleMoisCourt, suiviAlerte } from '../data/chiffres'
 import { useAuth } from '../auth/AuthContext'
@@ -409,7 +410,7 @@ function BlocSemaine({ reseau, p, compact = false }: { reseau: Reseau; p: Perime
   }
   return (
     <Box component="section" aria-label="Cette semaine" sx={{ mt: 2 }}>
-      <TitreSection action={<Button component={RouterLink} to="/plus/agenda" sx={{ minHeight: 40 }}>Agenda</Button>}>Cette semaine</TitreSection>
+      <TitreSection action={<Button component={RouterLink} to="/plus/agenda" endIcon={<ArrowForwardOutlined />} sx={{ minHeight: 40 }}>Agenda</Button>}>Cette semaine</TitreSection>
       <CarteLignes>{lignes}</CarteLignes>
     </Box>
   )
@@ -468,7 +469,7 @@ function BlocMesTaches({ reseau, taches, compact = false }: { reseau: Reseau; ta
   const toutes = '/taches'
   return (
     <Box component="section" aria-label="Mes tâches" sx={{ mt: compact ? 0 : 2 }}>
-      {!compact && <TitreSection nombre={taches.length} action={<Button component={RouterLink} to={toutes} sx={{ minHeight: 40 }}>Toutes</Button>}>Mes tâches</TitreSection>}
+      {!compact && <TitreSection nombre={taches.length} action={<Button component={RouterLink} to={toutes} endIcon={<ArrowForwardOutlined />} sx={{ minHeight: 40 }}>Toutes</Button>}>Mes tâches</TitreSection>}
       <CarteLignes>
         {taches.length ? lignes : vide}
         {compact && taches.length > APERCU_COMPACT && <ButtonBase component={RouterLink} to={toutes} sx={{ width: '100%', minHeight: 48, fontWeight: 600, fontSize: '0.875rem' }}>{`Voir les ${taches.length}`}</ButtonBase>}
