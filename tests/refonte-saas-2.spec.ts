@@ -59,14 +59,17 @@ test('la page Performance réunit les chiffres, le budget, les clôtures et l’
   // Joseph (10/11/2026) : les budgets de l'année ont quitté Chiffres pour l'entrée « Budget prévisionnel »
   // Joseph (14/11/2026) : onglets plus serrés sur téléphone ; « Opérations » retiré (Joseph, 17/11/2026) : cinq onglets
   // (sur téléphone, quatre et « Plus »)
-  await expect(onglets.getByRole('tab')).toHaveCount(5)
+  // Évolution du parc passée dans la rubrique Réseau du menu (Joseph, 23/11/2026) : quatre onglets
+  await expect(onglets.getByRole('tab')).toHaveCount(4)
   await expect(onglets.getByRole('tab', { selected: true })).toContainText(isMobile ? 'Magasins' : 'Chiffres des magasins')
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-performance.png`, fullPage: !isMobile })
   // Les anciennes adresses mènent ici
   await page.goto('./#/parametres/evolution')
-  await expect(page).toHaveURL(/#\/performance\?vue=evolution/)
-  await expect(onglets.getByRole('tab', { selected: true })).toContainText('Évolution')
+  await expect(page).toHaveURL(/#\/evolution$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Évolution du parc' })).toBeVisible()
+  await page.goto('./#/performance?vue=evolution')
+  await expect(page).toHaveURL(/#\/evolution$/)
 })
 
 test('les Paramètres se lisent en quatre groupes, budgets compris', async ({ page, isMobile }, info) => {

@@ -33,7 +33,7 @@ test('menu : Suivi et Budgets avec l’année de la base, pas celle du calendrie
   expect(await anneeEnTete(page)).toBe(2027)
   // La porte « Suivi » ouvre le suivi du réseau de l'année suivie
   await allerVers(page, 'Suivi 2026')
-  await expect(page.getByRole('heading', { level: 2, name: 'Suivi 2026' })).toBeVisible()
+  await expect(page.locator('main').getByRole('region', { name: 'Réseau 2026 en chiffres' }).or(page.getByText('Pas encore de réel 2026'))).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 })
@@ -68,7 +68,7 @@ test('Directeur : démarrer le suivi 2027, clore 2026, ouvrir la campagne 2028',
   await expect(page.getByRole('heading', { level: 1, name: 'Budget prévisionnel' })).toBeVisible()
   await expect(page.getByText('Campagne 2028 ouverte')).toBeVisible()
   await allerVers(page, 'Suivi ')
-  await expect(page.getByRole('heading', { level: 2, name: 'Suivi 2027' })).toBeVisible()
+  await expect(page.locator('main').getByRole('region', { name: 'Réseau 2027 en chiffres' }).or(page.getByText('Pas encore de réel 2027'))).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 })

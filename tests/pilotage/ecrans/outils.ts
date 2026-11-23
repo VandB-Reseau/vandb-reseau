@@ -53,6 +53,13 @@ export async function ouvrir(page: Page, partie: string) {
 // Ancien menu du pilotage : les onglets de la page « Budgets » de l'app réseau
 // Refonte vague 2 (14A) : pour le Directeur, les réglages des budgets sont dans Paramètres ; l'ancienne adresse y mène
 const REGLAGES_BUDGETS: Record<string, string> = { 'Hypothèses du réseau': 'hypotheses', 'Imports de caisse': 'imports', 'Paramètres réseau': 'parametres' }
+// Face au budget : les filtres (Groupe, Coach, Responsable Régional) sont des puces ; sur téléphone, sous « Filtres »
+export async function ouvrirFiltre(page: Page, libelle: string) {
+  const filtres = page.getByRole('button', { name: 'Filtres', exact: true })
+  if (await filtres.count() && (await filtres.getAttribute('aria-expanded')) !== 'true') await filtres.click()
+  await page.getByRole('button', { name: `Filtre ${libelle}` }).click()
+}
+
 export async function allerVers(page: Page, nom: string) {
   const reglage = Object.entries(REGLAGES_BUDGETS).find(([k]) => nom.startsWith(k))?.[1]
   if (reglage && !(await page.getByRole('navigation', { name: 'Pages des budgets' }).getByRole('tab', { name: new RegExp(`^${nom}`) }).count())) {
@@ -68,7 +75,8 @@ export async function allerVers(page: Page, nom: string) {
   }
   if (nom.startsWith('Suivi')) {
     await page.goto('./#/performance?vue=budget')
-    await page.getByRole('heading', { name: /^Suivi \d{4}$/ }).waitFor()
+    // Joseph (23/11/2026) : même structure que « Chiffres des magasins », sans titre « Suivi » à l'écran
+    await page.locator('main').getByRole('region', { name: /^Réseau \d{4} en chiffres$/ }).or(page.getByText(/^Pas encore de réel \d{4}$/)).first().waitFor()
     return
   }
   if (!/#\/budgets/.test(page.url())) {

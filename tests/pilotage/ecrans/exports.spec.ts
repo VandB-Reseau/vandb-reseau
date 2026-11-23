@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
 import { celluleXml, lireClasseur } from '../lecture-xlsx'
-import { seConnecter, textesTropPetits, zonesTropPetites, type VenteSimulee, ouvrir, allerVers, anneeEnTete } from './outils'
+import { seConnecter, textesTropPetits, zonesTropPetites, type VenteSimulee, ouvrir, allerVers, anneeEnTete, ouvrirFiltre } from './outils'
 
 // Export Excel, impression et filtre par Responsable Régional. Données fictives uniquement : dépôt public.
 
@@ -37,9 +37,10 @@ test('vue réseau : filtre par Responsable Régional, export de la sélection', 
   // Allègement (03/11/2026) : le Responsable Régional n'est plus une colonne du tableau, il reste un filtre et dans l'export
   await expect(tableau.getByRole('columnheader', { name: 'Responsable Régional' })).toHaveCount(0)
 
-  await page.getByLabel('Responsable Régional').click()
-  await expect(page.getByRole('option')).toHaveText(['Tous les Responsables Régionaux', 'RR Est', 'RR Nord'])
-  await page.getByRole('option', { name: 'RR Est' }).click()
+  await ouvrirFiltre(page, 'Responsable Régional')
+  await expect(page.getByRole('menuitem')).toHaveText(['Tous', 'RR Est', 'RR Nord'])
+  await page.getByRole('menuitem', { name: 'RR Est' }).click()
+  await page.keyboard.press('Escape')
   await expect(lignes).toHaveCount(5)                                   // total, médiane, Valcourt et Saint-Aubin
   await expect(lignes.nth(1)).toContainText('Total de la sélection')
   await expect(lignes.nth(1)).toContainText(/50\sk€/)
@@ -63,7 +64,7 @@ test('vue réseau : le RR et le Coach n’ont pas de filtre par RR', async ({ pa
   await seConnecter(page, { role: 'rr', reel, coachs })
   await allerVers(page, 'Suivi ')
   await expect(page.getByRole('table', { name: `Réel ${N} par magasin` })).toBeVisible()
-  await expect(page.getByLabel('Responsable Régional')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Filtre Responsable Régional' })).toHaveCount(0)
   await expect(page.getByRole('columnheader', { name: 'Responsable Régional' })).toHaveCount(0)
 })
 
@@ -71,8 +72,9 @@ test('vue réseau imprimée : sans menu ni filtres, sélection et date en tête'
   test.skip(isMobile, 'impression depuis le PC')
   await seConnecter(page, { reel, coachs, rrs })
   await allerVers(page, 'Suivi ')
-  await page.getByLabel('Coach', { exact: true }).click()
-  await page.getByRole('option', { name: 'Coach Sud' }).click()
+  await ouvrirFiltre(page, 'Coach')
+  await page.getByRole('menuitem', { name: /^Coach Sud/ }).click()
+  await page.keyboard.press('Escape')
   await page.emulateMedia({ media: 'print' })
   await expect(page.getByRole('navigation', { name: 'Menu principal' })).toBeHidden()
   await expect(page.getByRole('button', { name: 'Exporter en Excel' })).toBeHidden()

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { MAGASINS } from '../donnees-fictives'
-import { ouvrir, plusLoin, seConnecter, textesTropPetits, zonesTropPetites, type TicketsSimules, type VenteSimulee, allerVers, ouvrirSection } from './outils'
+import { ouvrir, plusLoin, seConnecter, textesTropPetits, zonesTropPetites, type TicketsSimules, type VenteSimulee, allerVers, ouvrirSection, ouvrirFiltre } from './outils'
 
 // Réel face au budget sur la fiche magasin, et vue réseau. Données fictives uniquement : dépôt public.
 // Budget du magasin fictif (tests/donnees-fictives.ts) : 640 000 € de CA, 48 000 € en janvier et en février, marge 57,4 %.
@@ -79,7 +79,7 @@ test('fiche magasin : sans budget de l’année, le suivi le dit', async ({ page
 test('vue réseau : classement, total, tri, filtre par Coach et retour', async ({ page, isMobile }, info) => {
   await seConnecter(page, { reel, tickets, coachs })
   await allerVers(page, 'Suivi ')
-  await expect(page.getByRole('heading', { level: 2, name: /^Suivi \d{4}$/ })).toBeVisible()
+  await expect(page.locator('main').getByRole('region', { name: /^Réseau \d{4} en chiffres$/ })).toBeVisible()
   const chiffres = page.getByRole('region', { name: `Réseau ${N} en chiffres` })
   await expect(chiffres).toContainText(/124\sk€/)
   await expect(chiffres).toContainText('2 magasins sous le budget sur 2')
@@ -112,14 +112,25 @@ test('vue réseau : classement, total, tri, filtre par Coach et retour', async (
   await expect(lignes.nth(3)).toContainText(MAGASINS[1])
   await expect(lignes.nth(5)).toContainText(MAGASINS[2])
 
-  await page.getByLabel('Coach', { exact: true }).click()
-  await page.getByRole('option', { name: /^Coach Nord/ }).click()
+  // Joseph (23/11/2026) : comme « Chiffres des magasins », une tuile par écart au budget filtre la liste
+  const tuiles = page.getByRole('group', { name: 'Magasins par écart au budget' })
+  await expect(tuiles.getByRole('button')).toHaveText([/^Sous le budget\s*1/, /^Léger retard\s*1/, /^Au budget ou au-dessus\s*0/, /^Sans comparaison\s*1/])
+  await tuiles.getByRole('button', { name: /^Sous le budget/ }).click()
+  expect(page.url()).toContain('ecart=fort')
+  await expect(lignes).toHaveCount(4)
+  await expect(lignes.nth(3)).toContainText(MAGASINS[1])
+  await tuiles.getByRole('button', { name: /^Sous le budget/ }).click()
+  await expect(lignes).toHaveCount(6)
+
+  await ouvrirFiltre(page, 'Coach')
+  await page.getByRole('menuitem', { name: /^Coach Nord/ }).click()
+  await page.keyboard.press('Escape')
   await expect(lignes).toHaveCount(4)
   await expect(lignes.nth(1)).toContainText('Total de la sélection')
   await tableau.getByRole('link', { name: MAGASINS[0] }).click()
   await expect(page.getByRole('heading', { level: 1, name: MAGASINS[0] })).toBeVisible()
   await page.goBack()
-  await expect(page.getByRole('heading', { level: 2, name: /^Suivi \d{4}$/ })).toBeVisible()
+  await expect(page.locator('main').getByRole('region', { name: /^Réseau \d{4} en chiffres$/ })).toBeVisible()
   await expect(lignes).toHaveCount(4)
 })
 
@@ -127,7 +138,7 @@ test('vue réseau : le Coach y accède, sans réel elle le dit', async ({ page }
   await seConnecter(page, { role: 'coach' })
   await allerVers(page, 'Suivi ')
   await expect(page.getByText(`Pas encore de réel ${N}`)).toBeVisible()
-  await expect(page.getByLabel('Coach', { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Filtre Coach' })).toHaveCount(0)
 })
 
 test('vue réseau : jamais montrée au franchisé', async ({ page }) => {

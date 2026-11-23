@@ -262,18 +262,20 @@ export function SituationMagasin({ reseau, m, signaler, objectifs, manquants = 0
   const tuileBudget = (e: { libelle: string; valeur: string; detail?: string } | null) => (
     <Tuile libelle={e?.libelle ?? 'Budget'} valeur={e?.valeur ?? 'Ouvrir le budget'} detail={e?.detail} lien={`${lienFiche(m.nom)}?vue=budget`} icone={<RequestQuoteOutlined />} />
   )
+  // Joseph (23/11/2026) : la colonne de droite (Comment va le magasin) est haute, la gauche courte laissait un grand vide en
+  // bas à gauche. Sur PC, le budget, les déploiements et le dernier échange passent sous les objectifs ; sur téléphone,
+  // une seule colonne dans l'ordre d'avant (colonnes en display: contents, rangées par order)
+  const colonne = { display: { xs: 'contents', lg: 'grid' }, gap: 2, minWidth: 0, alignContent: 'start' } as const
+  const rang = (n: number) => ({ order: { xs: n, lg: 0 }, minWidth: 0, '&:empty': { display: 'none' } })
   return (
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' }, alignItems: 'start' }}>
-      <Box sx={{ display: 'grid', gap: 2, minWidth: 0 }}>
-        {avant}
-        <AFaireMagasin reseau={reseau} m={m} signaler={signaler} manquants={manquants} completer={completer} />
-        <ParcoursIntegration reseau={reseau} m={m} />
-        {objectifs}
-      </Box>
-      <Box sx={{ display: 'grid', gap: 2, minWidth: 0 }}>
-        <CommentVa reseau={reseau} m={m} />
+      <Box sx={colonne}>
+        {avant && <Box sx={rang(1)}>{avant}</Box>}
+        <Box sx={rang(2)}><AFaireMagasin reseau={reseau} m={m} signaler={signaler} manquants={manquants} completer={completer} /></Box>
+        <Box sx={rang(3)}><ParcoursIntegration reseau={reseau} m={m} /></Box>
+        {objectifs && <Box sx={rang(4)}>{objectifs}</Box>}
         {/* Joseph (17/11/2026) : les déploiements difficiles à trouver ; une tuile à côté du budget mène à leur onglet */}
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' } }}>
+        <Box sx={{ ...rang(6), display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' } }}>
           <Box role="group" aria-label="Budget du magasin" sx={{ display: 'grid' }}>
             <Suspense fallback={tuileBudget({ libelle: 'Budget', valeur: '…' })}>
               <EtatBudgetMagasin nom={m.nom} rendre={tuileBudget} />
@@ -281,7 +283,10 @@ export function SituationMagasin({ reseau, m, signaler, objectifs, manquants = 0
           </Box>
           <TuileDeploiements reseau={reseau} m={m} />
         </Box>
-        <DernierEchange reseau={reseau} m={m} />
+        <Box sx={rang(7)}><DernierEchange reseau={reseau} m={m} /></Box>
+      </Box>
+      <Box sx={colonne}>
+        <Box sx={rang(5)}><CommentVa reseau={reseau} m={m} /></Box>
       </Box>
     </Box>
   )

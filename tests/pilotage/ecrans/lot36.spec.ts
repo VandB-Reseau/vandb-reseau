@@ -87,5 +87,5 @@ test('téléphone : le suivi dans l’onglet Chiffres de la fiche, ses parties e
   await ouvrirSection(page, /^Trésorerie$/)
   await expect(page).toHaveURL(/[?&]partie=comptes$/)
   await allerVers(page, 'Suivi ')
-  await expect(page.getByRole('heading', { level: 2, name: /^Suivi \d{4}$/ })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Face au budget', selected: true })).toBeVisible()
 })

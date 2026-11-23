@@ -59,8 +59,6 @@ const LARGEUR_MENU = 248
 function estActive(d: Destination, pathname: string, santeDansMagasins = true): boolean {
   // Charge des Coachs et Import et export sont des rubriques de Paramètres
   if (d.chemin === '/parametres/reglages' && /^\/parametres\/(charge|donnees)/.test(pathname)) return true
-  // Évolution du parc est une vue de Magasins, Animation réseau un onglet de Messages (refonte, Joseph 09/11/2026)
-  // Les anciennes adresses de l'évolution du parc mènent à Performance (vague 2, 15A)
   // La santé du parc est une vue des Magasins ; le Budget prévisionnel a son entrée depuis le 10/11/2026
   if (santeDansMagasins && d.chemin === '/magasins' && pathname.startsWith('/plus/sante')) return true
   return d.chemin === '/' ? pathname === '/' : pathname.startsWith(d.chemin)
@@ -357,7 +355,7 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
             <Box id="entete-actions-page" sx={{ display: 'flex', flexShrink: 0, '&:empty': { display: 'none' } }} />
             <EnvoisEnAttente court />
             <Cloche />
-            <MenuCompte liens={franchise ? [] : [...menuTelephoneRubriques(profil?.role), ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }])]} />
+            <MenuCompte liens={franchise ? [] : [...menuTelephoneRubriques(profil?.role, sansParametres), ...(sansParametres ? [] : [{ titre: 'Réglages', destinations: parametres }])]} />
           </Toolbar>
           {/* Filet de la charte sous la barre (60 + 4 = 64 px) */}
           <Box aria-hidden data-filet="" sx={{ height: 4, background: brandStripe }} />

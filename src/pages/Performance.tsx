@@ -3,7 +3,6 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
-import TimelineOutlined from '@mui/icons-material/TimelineOutlined'
 import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import SummarizeOutlined from '@mui/icons-material/SummarizeOutlined'
 import { RapportMois } from './RapportMois'
@@ -12,9 +11,7 @@ import { PageHeader } from '../components/PageHeader'
 import { Onglets, type Rubrique } from '../components/Onglets'
 import { AvecReseau } from '../components/EtatDonnees'
 import { useAuth } from '../auth/AuthContext'
-import { perimetreDuProfil } from '../data/perimetre'
 import { VueChiffres } from './SanteParc'
-import { Evolution } from './Evolution'
 import { ZonePilotage } from '../pilotage/ZonePilotage'
 import { Reseau as SuiviBudgets } from '../pilotage/pages/Reseau'
 
@@ -24,14 +21,13 @@ import { Reseau as SuiviBudgets } from '../pilotage/pages/Reseau'
 // Le franchisé ne la voit jamais : médianes et comparaisons du réseau ne lui arrivent pas.
 // Les budgets de l'année ont quitté Chiffres pour l'entrée « Budget prévisionnel » du menu (Joseph, 10/11/2026) :
 // l'ancienne adresse ?vue=budgets y mène.
-type Vue = 'rapports' | 'magasins' | 'budget' | 'clotures' | 'evolution'
+type Vue = 'rapports' | 'magasins' | 'budget' | 'clotures'
 
 export function Performance() {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
   const { profil } = useAuth()
   const [params, setParams] = useSearchParams()
   if (profil?.role === 'franchise') return <Navigate to="/" replace />
-  const voitEvolution = !perimetreDuProfil(profil)
   const rubriques: Rubrique<Vue>[] = [
     { vue: 'magasins', libelle: 'Chiffres des magasins', court: 'Magasins', icone: <QueryStatsOutlined /> },
     { vue: 'budget', libelle: 'Face au budget', court: 'Budget', icone: <RequestQuoteOutlined /> },
@@ -39,11 +35,11 @@ export function Performance() {
     { vue: 'clotures', libelle: 'Clôtures du mois', court: 'Clôtures', icone: <EventAvailableOutlined /> },
     // Vague 3 (29A) : le rapport du mois sur le périmètre choisi
     { vue: 'rapports', libelle: 'Rapport du mois', court: 'Rapport', icone: <SummarizeOutlined /> },
-    // 185 (Joseph, 15/11/2026) : les opérations commerciales des magasins et leur effet en caisse
-    ...(voitEvolution ? [{ vue: 'evolution' as const, libelle: 'Évolution du parc', court: 'Évolution', icone: <TimelineOutlined /> }] : []),
   ]
-  const demandee = params.get('vue') as Vue | 'budgets' | null
+  const demandee = params.get('vue') as Vue | 'budgets' | 'evolution' | null
   if (demandee === 'budgets') return <Navigate to="/budgets" replace />
+  // Évolution du parc : dans la rubrique Réseau du menu depuis le 23/11/2026
+  if (demandee === 'evolution') return <Navigate to="/evolution" replace />
   const vue: Vue = rubriques.some((r) => r.vue === demandee) ? demandee as Vue : 'magasins'
   return (
     <>
@@ -52,7 +48,6 @@ export function Performance() {
       {vue === 'magasins' && <AvecReseau>{(reseau) => <VueChiffres reseau={reseau} surPC={surPC} />}</AvecReseau>}
       {vue === 'budget' && <ZonePilotage>{() => <SuiviBudgets integre />}</ZonePilotage>}
       {vue === 'clotures' && <ZonePilotage>{() => <Clotures />}</ZonePilotage>}
-      {vue === 'evolution' && <Evolution integre />}
       {vue === 'rapports' && <ZonePilotage>{() => <RapportMois />}</ZonePilotage>}
     </>
   )
