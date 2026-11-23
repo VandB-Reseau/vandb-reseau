@@ -66,6 +66,10 @@ test('S3 : la ligne de chaque Coach tient sur une ligne : taux, visites sur réf
   expect(box.height).toBeLessThanOrEqual(isMobile ? 72 : 56)
   const coupe = await noe.getByText(/\d+ \/ \d+/).evaluate((e) => e.scrollWidth > e.clientWidth + 1)
   expect(coupe).toBe(false)
+  // Sur PC, plusieurs Coachs par ligne
+  const y = await Promise.all([0, 1].map(async (i) => (await coachs.getByRole('link').nth(i).boundingBox())!.y))
+  if (isMobile) expect(y[1]).toBeGreaterThan(y[0])
+  else expect(y[1]).toBe(y[0])
   expect(await textesTropPetits(page)).toEqual([])
 })
 

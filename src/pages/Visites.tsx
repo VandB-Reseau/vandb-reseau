@@ -89,7 +89,7 @@ function LigneRythmeCoach({ g, part, echelle, surPC }: { g: GroupeCoach; part: n
     </Box>
   )
   const chiffres = (
-    <Box component="span" sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75, flexShrink: 0, justifyContent: 'flex-end', minWidth: surPC ? 132 : 0 }}>
+    <Box component="span" sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75, flexShrink: 0, justifyContent: 'flex-end', minWidth: surPC ? 96 : 0 }}>
       <Typography component="span" sx={{ fontWeight: 700, fontSize: 18, color: couleur, fontVariantNumeric: 'tabular-nums' }}>{pourcent}</Typography>
       <Typography component="span" variant="body2" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{`${g.faites} / ${g.reference}`}</Typography>
     </Box>
@@ -98,10 +98,10 @@ function LigneRythmeCoach({ g, part, echelle, surPC }: { g: GroupeCoach; part: n
   const contenu = surPC ? (
     <>
       <Initiales nom={nom} taille={32} />
-      <Typography sx={{ fontWeight: 600, width: 240, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nom}</Typography>
+      <Typography sx={{ fontWeight: 600, width: 180, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nom}</Typography>
       {jauge}
       {chiffres}
-      <Box sx={{ width: 96, flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>{aVoir}</Box>
+      <Box sx={{ width: 84, flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>{aVoir}</Box>
     </>
   ) : (
     <>
@@ -195,9 +195,18 @@ function VueRythme({ reseau, surPC, actions }: { reseau: Reseau; surPC: boolean;
         <>
           {parCoach.length > 1 && <>
             <TitreSection nombre={parCoach.length}>Par Coach</TitreSection>
-            <CarteLignes label="Visites par Coach">
-              {parCoach.map((g) => <LigneRythmeCoach key={g.coach} g={g} part={part} echelle={echelle} surPC={surPC} />)}
-            </CarteLignes>
+            {surPC ? (
+              // PC : plusieurs Coachs par ligne (deux colonnes, trois sur grand écran), filets entre les lignes
+              <Card component="section" aria-label="Visites par Coach" sx={{ overflow: 'hidden', border: 0 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(440px, 1fr))', mb: '-1px', '& > *': { borderBottom: '1px solid', borderColor: 'divider' } }}>
+                  {parCoach.map((g) => <LigneRythmeCoach key={g.coach} g={g} part={part} echelle={echelle} surPC />)}
+                </Box>
+              </Card>
+            ) : (
+              <CarteLignes label="Visites par Coach">
+                {parCoach.map((g) => <LigneRythmeCoach key={g.coach} g={g} part={part} echelle={echelle} surPC={false} />)}
+              </CarteLignes>
+            )}
           </>}
 
           <TitreSection nombre={lignes.length} action={surPC && <ChoixAffichage valeur={affichage} onChange={setAffichage} />}>Par magasin</TitreSection>

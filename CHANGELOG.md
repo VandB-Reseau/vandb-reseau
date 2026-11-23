@@ -12,7 +12,7 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 - Rythme de visite par Coach plus visuel (Joseph, 23/11/2026), sans migration. Une ligne par Coach, moitié moins haute :
   taux de l'année en gros (« 130 % ») et « 70 / 54 », jauge colorée selon l'avance sur le rythme attendu à date (rouge sous
   50 %, orange sous 80 %, vert au-delà), trait « à date » sur la jauge, dépassement visible au-delà de 100 % ; Coachs les plus
-  en retard en tête ; « j par an » retiré.
+  en retard en tête ; « j par an » retiré. Sur PC, plusieurs Coachs par ligne (deux colonnes, trois sur grand écran).
 - Mise en page rééquilibrée (Joseph, 23/11/2026), sans migration. Fiche magasin, Vue d'ensemble : sur PC, les tuiles
   Budget et Déploiements et le dernier échange passent sous les objectifs, « Comment va le magasin » reste seul à droite
   (plus de grand vide en bas à gauche) ; sur téléphone, l'ordre ne change pas. Onglet Nine box : les déploiements passent
