@@ -108,7 +108,7 @@ export function Magasins({ vueInitiale = 'liste' }: { vueInitiale?: 'liste' | 'c
             <PageHeader
               titre="Magasins"
               sousTitre={resultats.length === total ? `${restreint ? 'Tout le réseau : ' : ''}${libelleParc(reseau.magasins)}` : `${resultats.length} sur ${total} magasins`}
-              autres={voitEvolution && surPC ? [{ libelle: 'Évolution du parc', icone: <TimelineOutlined />, onClick: () => naviguer('/performance?vue=evolution') }] : undefined}
+              autres={voitEvolution && surPC ? [{ libelle: 'Évolution du parc', icone: <TimelineOutlined />, onClick: () => naviguer('/evolution') }] : undefined}
               actions={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
                 {/* Refonte vague 4 (39A) : l'action principale à droite du titre, la bascule de vue au bout de la barre ;
                     vague 8 (104A) : les actions secondaires dans « ⋯ » */}

@@ -41,6 +41,7 @@ const chargeurs = {
   donnees: () => import('./pages/Donnees').then((m) => ({ default: m.Donnees })),
   compteRendu: () => import('./pages/CompteRendu').then((m) => ({ default: m.CompteRendu })),
   performance: () => import('./pages/Performance').then((m) => ({ default: m.Performance })),
+  evolution: () => import('./pages/Evolution').then((m) => ({ default: m.Evolution })),
   // Sprint 22 (F1) : chaque grand écran a son fichier, seul l'accueil part avec l'app
   magasins: () => import('./pages/Magasins').then((m) => ({ default: m.Magasins })),
   ficheMagasin: () => import('./pages/FicheMagasin').then((m) => ({ default: m.FicheMagasin })),
@@ -73,6 +74,7 @@ const ChargeCoachs = chargementDiffere(chargeurs.charge)
 const Donnees = chargementDiffere(chargeurs.donnees)
 const CompteRendu = chargementDiffere(chargeurs.compteRendu)
 const Performance = chargementDiffere(chargeurs.performance)
+const Evolution = chargementDiffere(chargeurs.evolution)
 const Magasins = chargementDiffere(chargeurs.magasins)
 const Partage = chargementDiffere(chargeurs.partage)
 const FicheMagasin = chargementDiffere(chargeurs.ficheMagasin)
@@ -142,7 +144,7 @@ const anciensLiens = [
 function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; bandeau?: ReactNode }) {
   const { pathname } = useLocation()
   usePrechargement()
-  if (equipeSeule && (pathname === '/equipe' || pathname.startsWith('/parametres') || pathname === '/plus/direction' || pathname.startsWith('/plus/evolution') || pathname === '/plus/charge')) return <Navigate to="/" replace />
+  if (equipeSeule && (pathname === '/equipe' || pathname.startsWith('/parametres') || pathname === '/plus/direction' || pathname.startsWith('/plus/evolution') || pathname === '/evolution' || pathname === '/plus/charge')) return <Navigate to="/" replace />
   return (
     <AppShell sansParametres={equipeSeule} bandeau={bandeau}>
       <RetourEnHaut />
@@ -186,8 +188,10 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/campagnes" element={<Vers cible={(_p, r) => avec('/infos', r, { vue: ['deploiements', 'challenges'].includes(r.get('vue') ?? '') ? r.get('vue')! : 'campagnes' })} />} />
         <Route path="/plus/sante" element={<SanteParc />} />
         <Route path="/performance" element={<Performance />} />
-        <Route path="/parametres/evolution" element={<Navigate to="/performance?vue=evolution" replace />} />
-        <Route path="/plus/evolution" element={<Navigate to="/performance?vue=evolution" replace />} />
+        {/* Évolution du parc : entrée de la rubrique Réseau (Joseph, 23/11/2026) ; les anciennes adresses y mènent */}
+        <Route path="/evolution" element={<Evolution />} />
+        <Route path="/parametres/evolution" element={<Navigate to="/evolution" replace />} />
+        <Route path="/plus/evolution" element={<Navigate to="/evolution" replace />} />
         <Route path="/plus" element={<Plus />} />
         <Route path="/partage" element={<Partage />} />
         <Route path="/budgets/*" element={<PagesBudgets />} />

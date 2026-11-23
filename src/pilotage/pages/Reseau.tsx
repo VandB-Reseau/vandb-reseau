@@ -1,14 +1,13 @@
 import { Entete, LigneSansResultat, styleListe, useTableau, type ColonneTri } from '../../components/TableauTri'
 import { CausesEcartsReseau } from '../components/CausesEcarts'
 import { useNomsPerimetre } from '../../data/perimetreChoisi'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import InputAdornment from '@mui/material/InputAdornment'
+import ButtonBase from '@mui/material/ButtonBase'
 import Link from '@mui/material/Link'
-import MenuItem from '@mui/material/MenuItem'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -23,11 +22,19 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined'
 import PrintOutlined from '@mui/icons-material/PrintOutlined'
-import FilterListOutlined from '@mui/icons-material/FilterListOutlined'
+import SearchOutlined from '@mui/icons-material/SearchOutlined'
+import EuroOutlined from '@mui/icons-material/EuroOutlined'
+import PercentOutlined from '@mui/icons-material/PercentOutlined'
+import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
+import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
+import { RechercheFiltres } from '../../components/RechercheFiltres'
+import { FiltreMenu } from '../../components/FiltreMenu'
+import { BoutonOutil, useTelephone } from '../../components/Outils'
+import { Indicateur, grilleIndicateurs } from '../../components/Indicateur'
+import { evolPourcent } from '../../components/TableauDeBord'
 import { MaSemaine } from '../components/MaSemaine'
 import { useAuth } from '../auth/AuthContext'
 import { EtatVide } from '../components/EtatVide'
-import { Indicateur } from '../components/Indicateur'
 import { Panne } from '../components/Panne'
 import { chargerActions, chargerAlertes, chargerBudgets, chargerParametres, chargerQuadrimestres, chargerReelDuCompte, chargerStocksReseau, hypothesesDe, parametresDuBudget, type SaisiesQuadrimestres } from '../data/pilotage'
 import { useChargement } from '../data/useChargement'
@@ -41,7 +48,7 @@ import { maSemaine, parCoach } from '../moteur/semaine'
 import { ligneReseau, totalReseau, type LigneReseau, type MoisReel } from '../moteur/suivi'
 import { ficheVisite } from '../moteur/visite'
 import { styleTableau } from '../theme/tableau'
-import { niveauEcart } from '../moteur/visuel'
+import { niveauEcart, type NiveauEcart } from '../moteur/visuel'
 import { Pastille } from '../components/Tableau'
 import { anneeSuivi } from '../data/annees'
 import { stockParDefaut, stockReseau, type EtatStock } from '../moteur/stock'
@@ -143,9 +150,14 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
     return n
   }, { replace: true })
   const recherche = params.get('q') ?? ''
-  const groupe = params.get('groupe') ? Number(params.get('groupe')) : null
-  const coach = params.get('coach') ?? ''
-  const rr = params.get('rr') ?? ''
+  // Plusieurs choix par filtre, comme dans « Chiffres des magasins » (Joseph, 23/11/2026) ; gardés dans l'adresse
+  const liste = (texte: string | null) => (texte ?? '').split('|').filter(Boolean)
+  const pGroupe = params.get('groupe'), pCoach = params.get('coach'), pRr = params.get('rr'), pEcart = params.get('ecart')
+  const groupes = useMemo(() => liste(pGroupe).map(Number), [pGroupe])
+  const coachs = useMemo(() => liste(pCoach), [pCoach])
+  const rrs = useMemo(() => liste(pRr), [pRr])
+  const ecarts = useMemo(() => liste(pEcart) as (NiveauEcart | 'sans')[], [pEcart])
+  const telephone = useTelephone()
   // Dans Performance, « vue » choisit l'onglet de la page : le classement prend son propre paramètre
   const PARAM_VUE = integre ? 'classement' : 'vue'
   const vue = VUES.find((v) => v.cle === params.get(PARAM_VUE)) ?? VUES[0]
@@ -157,11 +169,16 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
   const noms = useNomsPerimetre()
   const choisis = useMemo(() => {
     const q = simple(recherche)
-    return (donnees?.magasins ?? []).filter((m) => (!noms || noms.has(m.magasin)) && (groupe === null || m.groupeId === groupe) && (!coach || m.coach === coach) && (!rr || m.rrs.includes(rr)) && (!q || simple(m.magasin).includes(q)))
-  }, [donnees, noms, recherche, groupe, coach, rr])
+    return (donnees?.magasins ?? []).filter((m) => (!noms || noms.has(m.magasin)) && (!groupes.length || (m.groupeId !== null && m.groupeId !== undefined && groupes.includes(m.groupeId)))
+      && (!coachs.length || coachs.includes(m.coach)) && (!rrs.length || m.rrs.some((r) => rrs.includes(r))) && (!q || simple(m.magasin).includes(q)))
+  }, [donnees, noms, recherche, groupes, coachs, rrs])
+  // Tuiles de l'écart au budget (même geste que les alertes de « Chiffres des magasins ») : un clic filtre la liste
+  const seuil = donnees?.seuil ?? 0.05
+  const niveauDe = useCallback((m: LigneReseau) => (m.ecartBudget === null ? 'sans' : niveauEcart(1 + m.ecartBudget, 1, seuil) ?? 'sans'), [seuil])
+  const parEcart = useMemo(() => (ecarts.length ? choisis.filter((m) => ecarts.includes(niveauDe(m))) : choisis), [choisis, ecarts, niveauDe])
   // Harmonisation des tableaux (10/11/2026) : chaque colonne se trie et se filtre ; le tri reste dans l'adresse.
   // Valeur absente toujours en bas, quel que soit le sens ; bornes des filtres dans l'unité affichée (k€, %, €)
-  const tableau = useTableau(choisis, colonnesTri, {
+  const tableau = useTableau(parEcart, colonnesTri, {
     tri: { cle: 'ca', sens: 'desc' }, memoire: 'suivi-reseau',
     controle: { tri: { cle: tri, sens }, changer: (x) => changer({ tri: x && x.cle !== 'ca' ? x.cle : null, sens: x && !(x.cle === 'ca' && x.sens === 'desc') ? x.sens : null }) },
   })
@@ -175,7 +192,7 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
   const avecBudget = visibles.filter((m) => m.ecartBudget !== null).length
   // Sélection en clair, reprise dans l'export et sur la page imprimée
   const selection = [
-    groupe !== null ? donnees?.groupes.find((g) => g.id === groupe)?.nom : '', coach, rr, recherche.trim() ? `« ${recherche.trim()} »` : '',
+    ...groupes.map((g) => donnees?.groupes.find((x) => x.id === g)?.nom ?? ''), ...coachs, ...rrs, recherche.trim() ? `« ${recherche.trim()} »` : '',
   ].filter(Boolean).join(' · ') || 'Tout le réseau'
   const exporter = () => {
     if (!donnees) return
@@ -184,18 +201,13 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
       classeur([feuilleReseau({ annee, selection, lignes: visibles, total, avec })]))
   }
 
-  const titre = (actions?: React.ReactNode) => (
-    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, flexWrap: 'wrap', mb: 3 }}>
-      <Box sx={{ flex: 1, minWidth: 240 }}>
-        <Typography variant={integre ? 'h2' : 'h1'}>{`Suivi ${annee}`}</Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
-          Réel {annee}, magasin par magasin<Box component="span" className="impression-seule"> · {selection} · imprimé le {new Date().toLocaleDateString('fr-FR')}</Box>
-        </Typography>
-      </Box>
-      {actions}
-    </Box>
+  // Joseph (23/11/2026) : même structure que « Chiffres des magasins » : barre de recherche et filtres, cartes chiffrées,
+  // tuiles qui filtrent, tableau ; le titre « Suivi » ne reste qu'à l'impression
+  const entete = (
+    <Typography className="impression-seule" variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+      {`Suivi ${annee} · réel magasin par magasin · ${selection} · imprimé le ${new Date().toLocaleDateString('fr-FR')}`}
+    </Typography>
   )
-  const entete = titre()
   if (chargement && !donnees) return <Box>{entete}<Stack spacing={2}><Skeleton variant="rounded" height={120} /><Skeleton variant="rounded" height={320} /></Stack></Box>
   if (erreur || !donnees) return <Box>{entete}<Panne quoi={`Le réel ${annee} du réseau`} recharger={recharger} /></Box>
   if (!donnees.magasins.some((m) => m.moisRealises > 0)) {
@@ -212,93 +224,77 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
       ) : c.texte(v)}
     </TableCell>
   )
-  const champ = { '& .MuiInputBase-root': { minHeight: 48 }, '& .MuiSelect-nativeInput': { height: 48 } }
   // Le tableau « Par Coach » de Ma semaine passe dans le menu Coach : magasins et magasins à suivre de chaque Coach
   const aujourdhui = new Date().toISOString().slice(0, 10)
   const parCoachTous = new Map(parCoach(maSemaine(donnees.magasins.filter((m) => m.moisRealises > 0 || donnees.alertes.some((a) => a.magasin === m.magasin)),
     donnees.alertes, donnees.actions, aujourdhui)).map((c) => [c.coach, c]))
 
+  const filtrer = (cle: string, valeurs: string[]) => changer({ [cle]: valeurs.join('|') || null })
+  const nbFiltres = groupes.length + coachs.length + rrs.length + ecarts.length
+  const compte = (n: NiveauEcart | 'sans') => choisis.filter((m) => niveauDe(m) === n).length
+  const seuilTexte = `${Math.round(donnees.seuil * 100)} %`
+  const tuiles: { id: NiveauEcart | 'sans'; titre: string; detail: string; couleur?: string }[] = [
+    { id: 'fort', titre: 'Sous le budget', detail: `Plus de ${seuilTexte} sous le budget`, couleur: 'error.main' },
+    { id: 'leger', titre: 'Léger retard', detail: `Moins de ${seuilTexte} sous le budget`, couleur: 'warning.dark' },
+    { id: 'favorable', titre: 'Au budget ou au-dessus', detail: 'Réel au niveau du budget', couleur: 'success.dark' },
+    { id: 'sans', titre: 'Sans comparaison', detail: `Pas de budget ${annee} ou pas de réel` },
+  ]
+  const choixVue = (
+    <ToggleButtonGroup exclusive size="small" value={vue.cle} onChange={(_, v: Vue | null) => v && changer({ [PARAM_VUE]: v === 'ventes' ? null : v })} aria-label="Vue du classement"
+      className="pas-a-l-impression" sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, md: 40 }, px: 1.5, textTransform: 'none', fontWeight: 600 } }}>
+      {VUES.map((v) => <ToggleButton key={v.cle} value={v.cle}>{v.libelle}</ToggleButton>)}
+    </ToggleButtonGroup>
+  )
+  const champRecherche = (
+    <TextField size="small" value={recherche} onChange={(e) => changer({ q: e.target.value })} placeholder="Magasin…"
+      slotProps={{ htmlInput: { 'aria-label': 'Filtrer la liste des magasins' }, input: { startAdornment: <InputAdornment position="start"><SearchOutlined /></InputAdornment> } }}
+      sx={{ width: { xs: '100%', sm: 320 }, '& .MuiOutlinedInput-root': { borderRadius: 2, minHeight: 48 }, '& input': { height: 48, boxSizing: 'border-box', py: 0 } }} />
+  )
+
   return (
     <Box>
-      {titre(
-        <Stack direction="row" spacing={1.5} className="pas-a-l-impression" sx={{ width: { xs: '100%', sm: 'auto' } }}>
-          <Button variant="outlined" startIcon={<FileDownloadOutlined />} onClick={exporter} disabled={visibles.length === 0} sx={{ minHeight: 48, flex: { xs: 1, sm: 'none' } }}>Exporter en Excel</Button>
-          <Button variant="outlined" startIcon={<PrintOutlined />} onClick={() => window.print()} disabled={visibles.length === 0} sx={{ minHeight: 48, display: { xs: 'none', md: 'inline-flex' } }}>Imprimer</Button>
-        </Stack>,
-      )}
-      <Box component="section" aria-label={`Réseau ${annee} en chiffres`} sx={{ display: 'grid', gap: 2, mb: 4, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' } }}>
-        <Indicateur
-          libelle="CA HT cumulé" aide="caCumule" valeur={milliers(total.ca)}
-          ecart={total.evolution === null ? undefined : { texte: `${ecartTaux(total.evolution)} sur ${annee - 1}`, hausse: total.evolution >= 0, favorable: total.evolution >= 0 }}
-          detail={`${total.magasins} magasin${total.magasins > 1 ? 's' : ''} avec du réel`}
-        />
-        <Indicateur
-          libelle="Écart au budget" aide="ecartBudget" valeur={total.ecartBudget === null ? 'Pas de budget' : ecartTaux(total.ecartBudget)}
-          detail={avecBudget ? `${sousBudget} magasin${sousBudget > 1 ? 's' : ''} sous le budget sur ${avecBudget}` : `Aucun budget ${annee} dans l’app`}
-        />
-        <Indicateur libelle="Taux de marge" aide="margeTheorique" valeur={total.tauxMarge === null ? 'Non connu' : taux(total.tauxMarge)} detail={[total.panierCave === null ? '' : `Panier Cave ${euros.format(total.panierCave)}`, total.panierBar === null ? '' : `Bar ${euros.format(total.panierBar)}`].filter(Boolean).join(' · ') || undefined} />
-        <Indicateur
-          libelle="% FP" aide="pctFP" valeur={total.pctFP === null ? 'À renseigner' : taux(total.pctFP)}
-          detail={total.ebeSurCA === null ? 'Équipe et frais à renseigner' : `EBE à date : ${taux(total.ebeSurCA)} du CA`}
-        />
-      </Box>
-
-      {/* Vague 6 (77A) : les causes données par les magasins pour leurs écarts du dernier mois expliqué */}
-      <CausesEcartsReseau annee={annee} />
-      {/* Lot 41 (proposition 6) : les filtres (Coach, RR, groupe) s'appliquent aussi aux magasins à appeler */}
-      <Stack direction="row" spacing={2} useFlexGap className="pas-a-l-impression" sx={{ mb: 2, flexWrap: 'wrap' }}>
-        <TextField
-          size="small" value={recherche} onChange={(e) => changer({ q: e.target.value })} placeholder="Filtrer la liste"
-          slotProps={{ htmlInput: { 'aria-label': 'Filtrer la liste des magasins' }, input: { startAdornment: <InputAdornment position="start"><FilterListOutlined /></InputAdornment> } }}
-          sx={{ width: { xs: '100%', sm: 300 }, '& input': { height: 48, boxSizing: 'border-box', py: 0 } }}
-        />
-        {donnees.groupes.length > 0 && (
-          <TextField select size="small" label="Groupe" value={groupe ?? ''} onChange={(e) => changer({ groupe: e.target.value || null })}
-            slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }} sx={{ width: { xs: '100%', sm: 220 }, ...champ }}>
-            <MenuItem value="" sx={{ minHeight: 48 }}>Tous les groupes</MenuItem>
-            {donnees.groupes.map((g) => <MenuItem key={g.id} value={g.id} sx={{ minHeight: 48 }}>{g.nom}</MenuItem>)}
-          </TextField>
-        )}
-        {donnees.coachs.length > 1 && (
-          <TextField select size="small" label="Coach" value={coach} onChange={(e) => changer({ coach: e.target.value || null })}
-            slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }} sx={{ width: { xs: '100%', sm: 220 }, ...champ }}>
-            <MenuItem value="" sx={{ minHeight: 48 }}>Tous les Coachs</MenuItem>
-            {donnees.coachs.map((c) => {
-              const x = parCoachTous.get(c)
-              return (
-                <MenuItem key={c} value={c} sx={{ minHeight: 48 }}>
-                  {c}{x ? <Box component="span" sx={{ color: 'text.secondary', ml: 1 }}>{` · ${x.magasins} magasin${x.magasins > 1 ? 's' : ''}${x.aSuivre ? `, ${x.aSuivre} à suivre` : ''}`}</Box> : null}
-                </MenuItem>
-              )
-            })}
-          </TextField>
-        )}
-        {donnees.rrs.length > 1 && (
-          <TextField select size="small" label="Responsable Régional" value={rr} onChange={(e) => changer({ rr: e.target.value || null })}
-            slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }} sx={{ width: { xs: '100%', sm: 240 }, ...champ }}>
-            <MenuItem value="" sx={{ minHeight: 48 }}>Tous les Responsables Régionaux</MenuItem>
-            {donnees.rrs.map((r) => <MenuItem key={r} value={r} sx={{ minHeight: 48 }}>{r}</MenuItem>)}
-          </TextField>
-        )}
-      </Stack>
-
-      {/* Lot 30 (E3) : Ma semaine porte aussi les alertes ; un magasin sans réel y figure s'il a une alerte */}
+      {entete}
       <Box className="pas-a-l-impression">
-        <MaSemaine
-          lignes={maSemaine(visibles.filter((m) => m.moisRealises > 0 || donnees.alertes.some((a) => a.magasin === m.magasin)), donnees.alertes, donnees.actions, aujourdhui)}
-          avecCoachs={donnees.coachs.length > 0} etat={etat} revue={(profil?.role === 'rr' || profil?.role === 'directeur') && !profil.apercu}
-        />
+        <RechercheFiltres recherche={champRecherche} actifs={nbFiltres - ecarts.length} actions={<>
+          {!telephone && choixVue}
+          <BoutonOutil libelle="Exporter en Excel" icone={<FileDownloadOutlined />} onClick={exporter} />
+          {!telephone && <BoutonOutil libelle="Imprimer" icone={<PrintOutlined />} onClick={() => window.print()} />}
+        </>}>
+          {donnees.groupes.length > 0 && <FiltreMenu libelle="Groupe" choisis={groupes.map(String)} onChange={(l) => filtrer('groupe', l)}
+            options={donnees.groupes.map((g) => ({ valeur: String(g.id), libelle: g.nom }))} />}
+          {/* Lot 41 (proposition 6) : les filtres (Coach, RR, groupe) s'appliquent aussi aux magasins à appeler */}
+          {donnees.coachs.length > 1 && <FiltreMenu libelle="Coach" choisis={coachs} onChange={(l) => filtrer('coach', l)}
+            options={donnees.coachs.map((c) => { const x = parCoachTous.get(c); return { valeur: c, libelle: c, detail: x ? `${x.magasins} magasin${x.magasins > 1 ? 's' : ''}${x.aSuivre ? `, ${x.aSuivre} à suivre` : ''}` : undefined } })} />}
+          {donnees.rrs.length > 1 && <FiltreMenu libelle="Responsable Régional" choisis={rrs} onChange={(l) => filtrer('rr', l)}
+            options={donnees.rrs.map((r) => ({ valeur: r, libelle: r }))} />}
+          {(nbFiltres > 0 || recherche) && <ButtonBase onClick={() => changer({ groupe: null, coach: null, rr: null, ecart: null, q: null })}
+            sx={{ minHeight: { xs: 48, md: 36 }, px: 1, borderRadius: 2, fontFamily: 'inherit', fontWeight: 600, fontSize: '0.875rem', color: 'primary.main' }}>Retirer les filtres</ButtonBase>}
+        </RechercheFiltres>
       </Box>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
-        <Typography variant="h2" sx={{ flex: 1 }}>Tous les magasins</Typography>
-        <ToggleButtonGroup exclusive size="small" value={vue.cle} onChange={(_, v: Vue | null) => v && changer({ [PARAM_VUE]: v === 'ventes' ? null : v })} aria-label="Vue du classement"
-          className="pas-a-l-impression">
-          {VUES.map((v) => <ToggleButton key={v.cle} value={v.cle} sx={{ minHeight: 48, px: 2 }}>{v.libelle}</ToggleButton>)}
-        </ToggleButtonGroup>
+      <Box component="section" aria-label={`Réseau ${annee} en chiffres`} sx={{ ...grilleIndicateurs, mb: { xs: 1, md: 1.5 } }}>
+        <Indicateur bordee icone={<EuroOutlined />} libelle={`CA HT cumulé ${annee}`} valeur={milliers(total.ca)}
+          evolution={total.evolution === null ? null : evolPourcent(total.evolution * 100, `vs ${annee - 1} · ${total.magasins} magasin${total.magasins > 1 ? 's' : ''} avec du réel`)}
+          detail={total.evolution === null ? `${total.magasins} magasin${total.magasins > 1 ? 's' : ''} avec du réel` : undefined} />
+        <Indicateur bordee icone={<RequestQuoteOutlined />} libelle="Écart au budget" valeur={total.ecartBudget === null ? 'Pas de budget' : ecartTaux(total.ecartBudget)}
+          couleur={total.ecartBudget !== null && total.ecartBudget < 0 ? 'error.main' : undefined}
+          detail={avecBudget ? `${sousBudget} magasin${sousBudget > 1 ? 's' : ''} sous le budget sur ${avecBudget}` : `Aucun budget ${annee} dans l’app`} />
+        <Indicateur bordee icone={<PercentOutlined />} libelle="Taux de marge" valeur={total.tauxMarge === null ? 'Non connu' : taux(total.tauxMarge)}
+          detail={[total.panierCave === null ? '' : `Panier Cave ${euros.format(total.panierCave)}`, total.panierBar === null ? '' : `Bar ${euros.format(total.panierBar)}`].filter(Boolean).join(' · ') || undefined} />
+        <Indicateur bordee icone={<GroupsOutlined />} libelle="Frais de personnel / CA" valeur={total.pctFP === null ? 'À renseigner' : taux(total.pctFP)}
+          detail={total.ebeSurCA === null ? 'Équipe et frais à renseigner' : `EBE à date : ${taux(total.ebeSurCA)} du CA`} />
+      </Box>
+      <Box role="group" aria-label="Magasins par écart au budget" className="pas-a-l-impression" sx={{ ...grilleIndicateurs, mb: 2 }}>
+        {tuiles.map((t) => {
+          const actif = ecarts.length === 1 && ecarts[0] === t.id
+          return <Indicateur key={t.id} libelle={t.titre} valeur={String(compte(t.id))} detail={t.detail} couleur={t.couleur} actif={actif}
+            onClick={() => filtrer('ecart', actif ? [] : [t.id])} />
+        })}
       </Box>
 
-      {choisis.length === 0 ? (
+      {telephone && <Box sx={{ mb: 1.5, overflowX: 'auto' }}>{choixVue}</Box>}
+
+      {parEcart.length === 0 ? (
         <EtatVide titre="Aucun magasin ne correspond" texte="Change de filtre ou de recherche pour retrouver les magasins." />
       ) : (
         <Card>
@@ -347,6 +343,15 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
           </TableContainer>
         </Card>
       )}
+
+      {/* Sous le tableau : les causes données par les magasins (vague 6, 77A) et les magasins à appeler (lot 30, E3) */}
+      <Box sx={{ mt: 4 }}><CausesEcartsReseau annee={annee} /></Box>
+      <Box className="pas-a-l-impression">
+        <MaSemaine
+          lignes={maSemaine(visibles.filter((m) => m.moisRealises > 0 || donnees.alertes.some((a) => a.magasin === m.magasin)), donnees.alertes, donnees.actions, aujourdhui)}
+          avecCoachs={donnees.coachs.length > 0} etat={etat} revue={(profil?.role === 'rr' || profil?.role === 'directeur') && !profil.apercu}
+        />
+      </Box>
     </Box>
   )
 }

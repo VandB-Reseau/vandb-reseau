@@ -28,7 +28,8 @@ export function FiltreMenu({ libelle, options, choisis, onChange, unique }: { li
         color={actif ? 'secondary' : 'default'}
         variant={actif ? 'filled' : 'outlined'}
         aria-label={`Filtre ${libelle}`}
-        sx={{ height: 36, fontSize: '0.875rem', fontWeight: 500, borderRadius: 2 }}
+        // Zone tactile de 48 px sur téléphone (règle du dépôt), 36 px sur PC
+        sx={{ height: { xs: 48, md: 36 }, fontSize: '0.875rem', fontWeight: 500, borderRadius: 2 }}
       />
       <Menu anchorEl={ancre} open={!!ancre} onClose={() => setAncre(null)} slotProps={{ paper: { sx: { maxHeight: 420, minWidth: 260 } } }}>
         {!unique && options.length > 1 && (

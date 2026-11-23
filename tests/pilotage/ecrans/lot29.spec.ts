@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { magasinFictif, MAGASINS } from '../donnees-fictives'
-import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type ActionSimulee, type MagasinSimule, type VenteSimulee, plusLoin, allerVers } from './outils'
+import { ouvrir, seConnecter, textesTropPetits, zonesTropPetites, type ActionSimulee, type MagasinSimule, type VenteSimulee, plusLoin, allerVers, ouvrirFiltre } from './outils'
 
 // Lot 29 : économie du franchisé, familles face au réseau, « Ma semaine » dans la vue Réseau. Données fictives : dépôt public.
 const N = new Date().getFullYear()
@@ -94,8 +94,8 @@ test('ma semaine : magasins par marge en jeu, actions en retard, par Coach', asy
   await expect(lignes.nth(2)).toContainText(MAGASINS[1])
   // Allègement (03/11/2026) : le tableau par Coach passe dans le menu Coach, avec les magasins à suivre
   await expect(semaine.getByRole('table', { name: 'Marge en jeu par Coach' })).toHaveCount(0)
-  await page.getByLabel('Coach', { exact: true }).click()
-  await expect(page.getByRole('option', { name: /^Coach Nord · \d+ magasins?/ })).toBeVisible()
+  await ouvrirFiltre(page, 'Coach')
+  await expect(page.getByRole('menuitem', { name: /^Coach Nord\s*\d+ magasins?/ })).toBeVisible()
   await page.keyboard.press('Escape')
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])

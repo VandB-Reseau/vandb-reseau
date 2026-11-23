@@ -9,6 +9,15 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Mise en page rééquilibrée (Joseph, 23/11/2026), sans migration. Fiche magasin, Vue d'ensemble : sur PC, les tuiles
+  Budget et Déploiements et le dernier échange passent sous les objectifs, « Comment va le magasin » reste seul à droite
+  (plus de grand vide en bas à gauche) ; sur téléphone, l'ordre ne change pas. Onglet Nine box : les déploiements passent
+  sous la grille, à côté de la santé. Chiffres › Face au budget prend la structure de « Chiffres des magasins » : barre
+  de recherche et filtres en puces (Groupe, Coach, Responsable Régional, plusieurs choix), quatre cartes chiffrées à
+  picto, tuiles qui filtrent par écart au budget (Sous le budget, Léger retard, Au budget ou au-dessus, Sans
+  comparaison), tableau ; vue du classement, export et impression au bout de la barre ; causes des écarts et Ma semaine
+  sous le tableau. Évolution du parc quitte les onglets de Chiffres pour la rubrique Réseau du menu, sous Visites
+  (`/evolution`, Directeur ; les anciennes adresses y mènent). Puces de filtre à 48 px sur téléphone.
 - App plus rapide (choix 369 et 370, Joseph, 23/11/2026), sans migration. 370 : après un enregistrement, l'app ne relit
   plus les douze tables du réseau mais seulement celles qui ont été écrites, et pour le suivi des magasins seulement la
   rubrique touchée (une tâche ajoutée : 1 lecture au lieu de 12). Les écritures sont notées au passage par le client

@@ -83,8 +83,10 @@ export const pilotageRapports: Destination = { chemin: '/pilotage', libelle: 'Pi
 export const secondaires: Destination[] = [demandes, chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur, agenda]
 export const pourRole = (liste: Destination[], role: string | undefined) => liste.filter((d) => !d.roles || (!!role && d.roles.includes(role)))
 
-// Réglages : Équipe et Paramètres. Évolution du parc est une vue de Magasins depuis la refonte (Joseph, 09/11/2026, 2A)
-export const evolution: Destination = { chemin: '/performance?vue=evolution', libelle: 'Évolution du parc', description: 'Ouvertures par année', icone: <TimelineOutlined />, sprint: 'Sprint 4' }
+// Évolution du parc (Joseph, 23/11/2026) : quitte les onglets de Chiffres pour la rubrique Réseau, sous Visites.
+// Tout le parc : pas pour un Coach ou un Responsable Régional rattaché à un périmètre
+export const evolution: Destination = { chemin: '/evolution', libelle: 'Évolution du parc', court: 'Évolution', description: 'Ouvertures et sorties par année, à venir sur 12 mois', icone: <TimelineOutlined />, sprint: 'Mise en page 23/11' }
+// Réglages : Équipe et Paramètres
 export const parametres: Destination[] = [
   { chemin: '/equipe', libelle: 'Équipe', description: 'Organisation, portefeuilles, postes à pourvoir, collaborateurs, franchisés', icone: <GroupsOutlined />, iconeActive: <Groups />, sprint: 'Sprint 2' },
   { chemin: '/parametres/reglages', libelle: 'Paramètres', description: 'Charge des Coachs, import et export, alertes, nine box, audits', icone: <SettingsOutlined />, sprint: 'Sprint 5' },
@@ -98,7 +100,7 @@ export function rubriquesMenu(sansParametres?: boolean): Rubrique[] {
   return [
     { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
     // Joseph (17/11/2026) : Réseau = Magasins, Santé du parc, Visites ; les chiffres et outils passent sous Performance
-    { titre: 'Réseau', destinations: [magasins, sante, visites] },
+    { titre: 'Réseau', destinations: [magasins, sante, visites, ...(sansParametres ? [] : [evolution])] },
     { titre: 'Performance', destinations: [chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur] },
     { titre: 'Siège', destinations: [infosReseau, demandes] },
     // 309 (Joseph, 18/11/2026) : Équipe et Paramètres visibles dans le menu du Directeur, plus seulement dans le menu du compte
@@ -111,8 +113,8 @@ export const demandesFranchise: Destination = { ...demandes, libelle: 'Mes deman
 export const menuTelephone = (role: string | undefined) => menuTelephoneRubriques(role).flatMap((r) => r.destinations)
 // Vague 6 (Joseph, 10/11/2026) : le menu du compte sur téléphone rangé comme le menu du PC, en rubriques
 // 308 (18/11/2026) : sans Magasins (déjà dans la barre du bas), Siège remonté avant Performance
-export const menuTelephoneRubriques = (role: string | undefined): Rubrique[] => [
-  { titre: 'Réseau', destinations: pourRole([sante, visites], role) },
+export const menuTelephoneRubriques = (role: string | undefined, sansEvolution = false): Rubrique[] => [
+  { titre: 'Réseau', destinations: pourRole([sante, visites, ...(sansEvolution ? [] : [evolution])], role) },
   { titre: 'Siège', destinations: pourRole([infosReseau, demandes], role) },
   { titre: 'Performance', destinations: pourRole([chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur], role) },
 ].filter((r) => r.destinations.length)

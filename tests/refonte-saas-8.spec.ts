@@ -146,7 +146,7 @@ test('104 : les actions secondaires passent dans « ⋯ »', async ({ page, isMo
   await page.goto('./#/magasins')
   await page.getByRole('button', { name: 'Autres actions' }).click()
   await page.getByRole('menuitem', { name: 'Évolution du parc' }).click()
-  await expect(page).toHaveURL(/vue=evolution/)
+  await expect(page).toHaveURL(/#\/evolution$/)
 })
 
 test('100 : un seul champ de date, libellé au-dessus, valeur conservée', async ({ page }) => {

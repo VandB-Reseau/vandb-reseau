@@ -315,10 +315,13 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 
         {vue === 'ninebox' && (
           <Box id="partie-sante" sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
-            <GrilleMagasin reseau={reseau} m={m} />
-            <SectionSante reseau={reseau} m={m} modifier={() => naviguer(`/plus/sante?vue=evaluer&magasin=${encodeURIComponent(m.nom)}`)} />
-            {/* Les déploiements des thématiques suivent la santé du magasin */}
-            <Box sx={{ gridColumn: { lg: '1 / -1' } }}><SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/infos?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} /></Box>
+            {/* Joseph (23/11/2026) : la santé est haute, la nine box courte ; sur PC les déploiements passent sous la nine box
+                pour ne plus laisser de vide ; sur téléphone, l'ordre d'avant (nine box, santé, déploiements) */}
+            <Box sx={{ display: { xs: 'contents', lg: 'grid' }, gap: 2, minWidth: 0 }}>
+              <Box sx={{ minWidth: 0, order: { xs: 1, lg: 0 } }}><GrilleMagasin reseau={reseau} m={m} /></Box>
+              <Box sx={{ minWidth: 0, order: { xs: 3, lg: 0 } }}><SectionDeploiements reseau={reseau} m={m} modifier={() => naviguer(`/infos?vue=deploiements&magasin=${encodeURIComponent(m.nom)}`)} /></Box>
+            </Box>
+            <Box sx={{ minWidth: 0, order: { xs: 2, lg: 0 } }}><SectionSante reseau={reseau} m={m} modifier={() => naviguer(`/plus/sante?vue=evaluer&magasin=${encodeURIComponent(m.nom)}`)} /></Box>
           </Box>
         )}
 
