@@ -101,7 +101,8 @@ test('291 et 292 : hausse du loyer, déplacement de CA vers le bar', async ({ pa
   await page.getByRole('group', { name: 'Je simule' }).getByRole('button', { name: 'Un nouveau loyer' }).click()
   await expect(page.getByLabel('Nouveau loyer HT par mois')).toHaveValue(/2\s?750/)
 
-  await page.getByRole('navigation', { name: 'Choisir un simulateur' }).getByRole('button', { name: /Mix Cave et Bar/ }).click()
+  await page.getByRole('navigation', { name: 'Choisir un simulateur' }).getByRole('button', { name: /Mix produit/ }).click()
+  await page.getByRole('group', { name: 'Je déplace du CA' }).getByRole('button', { name: 'Entre Cave et Bar' }).click()
   await page.getByLabel('CA HT de la cave').fill('200000')
   await page.getByLabel('Marge de la cave').fill('35')
   await page.getByLabel('CA HT du bar').fill('200000')
@@ -113,6 +114,33 @@ test('291 et 292 : hausse du loyer, déplacement de CA vers le bar', async ({ pa
   await page.getByLabel('Heures en plus par semaine').fill('2')
   // 2 h × 52 × 20 € = 2 080 € ; EBE + 4 920 €
   await expect(phrase(page)).toContainText(/EBE \+\s?4\s920\s€ par an/)
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+})
+
+// Mix produit (Joseph, 23/11/2026) : ajuster la gamme de la cave à CA égal ; résultats vérifiés à la main
+test('Mix produit : la gamme de la cave fait gagner des points de marge', async ({ page, isMobile }) => {
+  await connecter(page, franchise, { role: 'franchise' })
+  await simulateur(page, 'mix')
+  await expect(page.getByRole('heading', { name: 'Mix produit', exact: true })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Je déplace du CA' }).getByRole('button', { name: 'Entre familles de la gamme' })).toHaveAttribute('aria-pressed', 'true')
+  // L'exemple montre déjà un gain : 3 points pris à la famille la moins margée
+  await expect(phrase(page)).toContainText(/Gamme de la cave : taux de marge .* \(\+/)
+  await page.locator('#carte-simulation').getByRole('button', { name: 'Effacer' }).click()
+  await page.getByLabel('Famille 1', { exact: true }).fill('Vins')
+  await page.getByLabel('Famille 2', { exact: true }).fill('Bières')
+  await page.getByLabel('CA HT de Vins').fill('200000')
+  await page.getByLabel('Taux de marge de Vins').fill('30')
+  await page.getByLabel('CA HT de Bières').fill('100000')
+  await page.getByLabel('Taux de marge de Bières').fill('45')
+  await page.getByLabel('Part visée de Vins').fill('60')
+  await page.getByLabel('Part visée de Bières').fill('40')
+  // Avant : (60 000 + 45 000) ÷ 300 000 = 35 % ; après : 60 % × 30 % + 40 % × 45 % = 36 % ; + 1 pt, 3 000 € par an
+  await expect(phrase(page)).toContainText(/taux de marge 36(,0)?\s%\sau lieu de 35(,0)?\s%\s\(\+1(,0)?\spt\), à CA égal de 300\s000\s€ HT : marge et EBE \+\s?3\s000\s€ par an/)
+  await expect(page.getByRole('table', { name: 'Effet de chaque famille' })).toContainText('Bières')
+  // Le bar a sa propre gamme : jamais additionnée à la cave
+  await page.getByRole('group', { name: 'Univers' }).getByRole('button', { name: 'Bar' }).click()
+  await expect(page.getByText('1. La gamme du bar aujourd’hui')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
 })

@@ -81,9 +81,10 @@ import {
 } from '../moteur/simulateurs'
 import {
   auditPression, cartePression, margeFut, coutComposition, coutContrats, margePourPrix, nouveauBec, palierExterieur, prixPourMarge,
-  gainsSelonFuts, masseSelonFuts, prixFutMarche, simulerExterieur, simulerLoyer, simulerMix, simulerHeuresSup, simulerOuverture, simulerParc, simulerProspection, simulerRemisesB2B, simulerRemisesBar, unitaireB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type Composant, type LigneB2B, type PalierRemise, type LigneBar, type NatureBar, type PalierBar,
+  gainsSelonFuts, masseSelonFuts, prixFutMarche, simulerExterieur, simulerLoyer, simulerMix, simulerGamme, simulerHeuresSup, simulerOuverture, simulerParc, simulerProspection, simulerRemisesB2B, simulerRemisesBar, unitaireB2B, cibleProductivite, TAUX_MECENAT, type AlerteB2B, type Bec, type LigneGamme, type Composant, type LigneB2B, type PalierRemise, type LigneBar, type NatureBar, type PalierBar,
 } from '../moteur/boiteOutils'
 import { baseCaisse, budgetSurCaisse, meilleursLeviers, type CleLevier } from '../moteur/leviers'
+import { libelleFamille } from '../moteur/reel'
 import type { AjustementCA, Budget, Emprunt, Hypotheses, Investissement, ParametresReseau, TypeInvestissement, TempsFort, Univers } from '../moteur/types'
 import { dateHeure, ecartMontant, ecartPts, montant, MOIS_LONGS, panier as centimes, tauxCourt as taux } from '../lib/format'
 import type { SujetAide } from '../lib/aide'
@@ -191,6 +192,8 @@ function fusionner<T extends object>(base: T, ajout: unknown): T {
     const b = r[k]
     if (b === null || v === null || typeof b === typeof v) r[k] = v
   }
+  // Mix gardé avant le mix produit (23/11/2026) : c'était un mix Cave et Bar
+  if (r.mode === 'familles' && 'sens' in (ajout as object) && !('mode' in (ajout as object))) r.mode = 'univers'
   return r as T
 }
 const libelleSimulation = (t: TypeSimulation) => SIMULATEURS.find((s) => s.cle === t)?.titre ?? 'Simulation'
@@ -384,7 +387,7 @@ type Etats = {
     livraisons: number; km: number; prixKm: number; heuresLivraison: number; heuresSurPlace: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number
     consigneFut: number; consigneBouteille: number; bouteilles: number | null; consignesClient: boolean
   }
-  mix: { caCave: number | null; caBar: number | null; margeCave: number | null; margeBar: number | null; part: number; sens: 'vers_bar' | 'vers_cave'; heures: 'grille' | 'saisie'; heuresSemaine: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number }
+  mix: { mode: 'familles' | 'univers'; univers: 'cave' | 'bar'; gamme: Record<'cave' | 'bar', LigneGamme[]>; caCave: number | null; caBar: number | null; margeCave: number | null; margeBar: number | null; part: number; sens: 'vers_bar' | 'vers_cave'; heures: 'grille' | 'saisie'; heuresSemaine: number; coutHoraire: number; modeHeure: ModeHeure; partSmic: number }
   investissement: { modele: ModeleInvestir; objectifExterieur: number; camion: boolean; libelle: string; cout: number; duree: number; mois: number; ca: number; metres: number; marge: number; demarque: number; charges: number; financement: 'tresorerie' | 'pret'; tauxPret: number; dureePret: number; univers: Univers; fermeture: number; caJour: number | null; margeMagasin: number | null }
 }
 
@@ -451,6 +454,7 @@ function vider(v: unknown, cle: string, sim: string): unknown {
     // 228 : les familles d'une commande gardent leur nom, sans chiffres
     if (sim === 'remises_b2b' && cle === 'lignes') return v.map((x: LigneBar) => ({ ...(vider(x, '', sim) as LigneBar), libelle: x.libelle }))
     if (sim === 'prix_fut' && cle === 'couts') return v.map((x: { libelle: string; unique?: boolean }) => ({ libelle: x.libelle, montant: 0, unique: x.unique }))
+    if (sim === 'mix' && (cle === 'cave' || cle === 'bar')) return v.map((x: LigneGamme) => ({ libelle: x.libelle, ca: 0, marge: 0, part: 0 }))
     if (sim === 'remises_b2b' && cle === 'familles') return v.map((x: LigneB2B) => ({ ...(vider(x, '', sim) as LigneB2B), libelle: x.libelle }))
     return [vider(v[0], '', sim)]
   }
@@ -458,6 +462,24 @@ function vider(v: unknown, cle: string, sim: string): unknown {
   return v
 }
 const etatVide = <K extends TypeSimulation>(k: K, e: Etats[K]): Etats[K] => vider(e, '', k) as Etats[K]
+
+// Mix produit (Joseph, 23/11/2026) : familles de l'univers au budget (CA et marge visés), sinon une gamme d'exemple.
+// Exemple : 3 points de part pris à la famille la moins margée pour la mieux margée.
+const GAMME_EXEMPLE: Record<'cave' | 'bar', [string, number, number][]> = {
+  cave: [['Vins', 135_000, 0.33], ['Bières', 90_000, 0.38], ['Spiritueux', 45_000, 0.3], ['Épicerie fine', 30_000, 0.4]],
+  bar: [['Bière pression', 60_000, 0.72], ['Vins au verre', 15_000, 0.68], ['Cocktails et spiritueux', 15_000, 0.75], ['Softs', 5_000, 0.8], ['À manger', 5_000, 0.6]],
+}
+function gammeInitiale(b: Budget | null, u: 'cave' | 'bar'): LigneGamme[] {
+  const f = (b?.familles ?? []).filter((x) => x.univers === u && x.objectif > 0)
+  const l: [string, number, number][] = f.length > 1
+    ? f.map((x) => [libelleFamille(x.famille).libelle, Math.round(x.objectif), Math.round(x.margeObjectif / x.objectif * 1000) / 1000])
+    : GAMME_EXEMPLE[u]
+  const ca = somme(l.map((x) => x[1]))
+  const lignes = l.map(([libelle, c, marge]) => ({ libelle, ca: c, marge, part: ca > 0 ? c / ca : 0 }))
+  const haut = lignes.reduce((a, x) => (x.marge > a.marge ? x : a), lignes[0]!), bas = lignes.reduce((a, x) => (x.marge < a.marge ? x : a), lignes[0]!)
+  if (haut !== bas) { const d = Math.min(0.03, bas.part); bas.part -= d; haut.part += d }
+  return lignes
+}
 
 // tireusesParc : tireuses saisies dans les équipements du magasin (Joseph, 14/11/2026)
 function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresReseau, aujourdhui: Date, tireusesParc: number | null = null): Etats {
@@ -561,7 +583,7 @@ function etatsInitiaux(b: Budget | null, h: Hypotheses | null, p: ParametresRese
       consigneFut: s.exterieur.consigneFut, consigneBouteille: s.exterieur.consigneBouteille, bouteilles: null, consignesClient: false,
     },
     // 292 : 5 % du CA de la cave passe au bar
-    mix: { caCave: null, caBar: null, margeCave: null, margeBar: null, part: 0.05, sens: 'vers_bar', heures: s.productivite.length ? 'grille' : 'saisie', heuresSemaine: 2, coutHoraire: s.coutHoraire, ...HEURE },
+    mix: { mode: 'familles', univers: 'cave', gamme: { cave: gammeInitiale(b, 'cave'), bar: gammeInitiale(b, 'bar') }, caCave: null, caBar: null, margeCave: null, margeBar: null, part: 0.05, sens: 'vers_bar', heures: s.productivite.length ? 'grille' : 'saisie', heuresSemaine: 2, coutHoraire: s.coutHoraire, ...HEURE },
     // Exemple : travaux terrasse (Joseph, 16/11/2026), 5 400 € d'EBE en plus par an, remboursé en 4,6 ans
     investissement: (({ type: _t, ...r }) => ({ modele: 'terrasse' as const, objectifExterieur: 100_000, camion: false, ...r, mois: moisSuivant, metres: 6, financement: 'tresorerie' as const, tauxPret: 0.04, dureePret: 5, caJour: null, margeMagasin: null }))(PROJETS_INVESTIR.terrasse!),
   }
@@ -2573,7 +2595,93 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     )
   }
   // ── 292 · Mix Cave et Bar (Joseph, 18/11/2026)
-  if (choisi === 'mix') {
+  // Mix produit (Joseph, 23/11/2026) : ajuster la gamme d'un univers, à CA égal, pour gagner des points de marge
+  const choixMix = (
+    <Bloc titre="Ce que je déplace">
+      <Saisies>
+        <Choix libelle="Je déplace du CA" valeur={etats.mix.mode} onChange={(mode) => maj('mix', { mode })} options={[['familles', 'Entre familles de la gamme'], ['univers', 'Entre Cave et Bar']]} />
+        {etats.mix.mode === 'familles' && <Choix libelle="Univers" valeur={etats.mix.univers} onChange={(univers) => maj('mix', { univers })} options={[['cave', 'Cave'], ['bar', 'Bar']]} />}
+      </Saisies>
+    </Bloc>
+  )
+  if (choisi === 'mix' && etats.mix.mode === 'familles') {
+    const e = etats.mix, u = e.univers, deNomU = u === 'cave' ? 'de la cave' : 'du bar'
+    const lignes = e.gamme[u]
+    const r = simulerGamme(lignes)
+    const deBudget = !!b && b.familles.filter((x) => x.univers === u && x.objectif > 0).length > 1
+    const ligne = (i: number, v: Partial<LigneGamme>) => maj('mix', { gamme: { ...e.gamme, [u]: lignes.map((y, j) => (j === i ? { ...y, ...v } : y)) } })
+    const retirer = (i: number) => maj('mix', { gamme: { ...e.gamme, [u]: lignes.filter((_, j) => j !== i) } })
+    const ajouter = () => maj('mix', { gamme: { ...e.gamme, [u]: [...lignes, { libelle: '', ca: 0, marge: 0, part: 0 }] } })
+    // Parts actuelles reprises telles quelles : on repart de la gamme d'aujourd'hui
+    const remettre = () => maj('mix', { gamme: { ...e.gamme, [u]: lignes.map((y) => ({ ...y, part: r.ca > 0 ? y.ca / r.ca : 0 })) } })
+    const nom = (l: { libelle: string }, i: number) => l.libelle || `Famille ${i + 1}`
+    saisies = (
+      <Stack spacing={2}>
+        {choixMix}
+        <Bloc titre={`1. La gamme ${deNomU} aujourd’hui`} total={{ libelle: 'Taux de marge', valeur: r.avant.taux !== null ? taux(r.avant.taux) : '–' }}>
+          {deBudget && <Typography color="text.secondary">CA et marges repris du budget</Typography>}
+          {lignes.map((l, i) => (
+            <Saisies key={i}>
+              <Texte libelle="Famille" aria={`Famille ${i + 1}`} valeur={l.libelle} onChange={(libelle) => ligne(i, { libelle })} largeur={180} />
+              <MontantDe libelle="CA HT par an" aria={`CA HT de ${nom(l, i)}`} valeur={l.ca} onChange={(v) => ligne(i, { ca: Math.max(0, v) })} largeur={140} />
+              <TauxDe libelle="Taux de marge" aria={`Taux de marge de ${nom(l, i)}`} valeur={l.marge} onChange={(v) => ligne(i, { marge: v })} />
+              <Typography sx={{ alignSelf: 'center', minWidth: 90 }} color="text.secondary">{r.ca > 0 ? `${taux(l.ca / r.ca)} du CA` : '–'}</Typography>
+              {lignes.length > 1 && <Button color="inherit" startIcon={<DeleteOutlineOutlined />} onClick={() => retirer(i)} aria-label={`Retirer ${nom(l, i)}`} sx={{ minHeight: 48 }}>Retirer</Button>}
+            </Saisies>
+          ))}
+          <Box>{lignes.length < 20 && <Button startIcon={<AddOutlined />} onClick={ajouter} sx={{ minHeight: 48 }}>Ajouter une famille</Button>}</Box>
+        </Bloc>
+        <Bloc titre="2. La gamme visée" total={{ libelle: 'Total des parts', valeur: taux(r.totalVise) }}>
+          <Saisies>
+            {lignes.map((l, i) => (
+              <TauxDe key={i} libelle={nom(l, i)} aria={`Part visée de ${nom(l, i)}`} valeur={l.part} onChange={(v) => ligne(i, { part: Math.max(0, v) })} />
+            ))}
+          </Saisies>
+          {r.totalVise > 0 && Math.abs(r.totalVise - 1) > 0.0005 && <Typography color="text.secondary">Parts ramenées à 100 % au prorata pour le calcul</Typography>}
+          <Box><Button color="inherit" startIcon={<RestartAltOutlined />} onClick={remettre} sx={{ minHeight: 48 }}>Repartir de la gamme actuelle</Button></Box>
+        </Bloc>
+      </Stack>
+    )
+    nomParDefaut = `Gamme ${deNomU}`
+    phrase = r.points === null ? '' : `${nomParDefaut} : taux de marge ${taux(r.apres.taux!)} au lieu de ${taux(r.avant.taux!)} (${ecartPts(r.points)}), à CA égal de ${montant(r.ca)} HT : marge et EBE ${ecartMontant(r.ecartMarge)} par an.`
+    resultats = r.points === null ? null : (
+      <Stack spacing={2}>
+        <Resultats>
+          <Indicateur libelle={`Taux de marge ${deNomU}`} valeur={taux(r.apres.taux!)} detail={`${taux(r.avant.taux!)} avant`}
+            ecart={{ texte: ecartPts(r.points), hausse: r.points >= 0, favorable: r.points >= 0 }} />
+          <Indicateur libelle="Marge et EBE par an" valeur={ecartMontant(r.ecartMarge)} detail={`${ecartMontant(r.ecartMarge / 12)} par mois, même CA`} />
+          {r.repere && <Indicateur libelle="Repère : 1 point de part déplacé" valeur={`${ecartPts(r.repere.points)} de marge`} detail={`de ${r.repere.de} vers ${r.repere.vers}, ${ecartMontant(r.repere.euros)} par an`} />}
+        </Resultats>
+        <Box sx={{ overflowX: 'auto' }}>
+          <Table size="small" aria-label="Effet de chaque famille">
+            <TableHead>
+              <TableRow>
+                <TableCell>Famille</TableCell>
+                <TableCell align="right">Taux de marge</TableCell>
+                <TableCell align="right">Part avant</TableCell>
+                <TableCell align="right">Part visée</TableCell>
+                <TableCell align="right">CA HT visé</TableCell>
+                <TableCell align="right">Effet sur la marge</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {r.familles.map((f, i) => (
+                <TableRow key={i}>
+                  <TableCell>{nom(f, i)}</TableCell>
+                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{taux(f.marge)}</TableCell>
+                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{taux(f.partAvant)}</TableCell>
+                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{taux(f.partApres)}</TableCell>
+                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{montant(f.caApres)}</TableCell>
+                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{Math.abs(f.effet) < 0.00005 ? '–' : ecartPts(f.effet)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Box>
+      </Stack>
+    )
+  }
+  if (choisi === 'mix' && etats.mix.mode === 'univers') {
     const e = etats.mix
     const caU = (u: Univers) => (b ? Math.round(somme(b.familles.filter((x) => x.univers === u).map((x) => x.objectif))) : null)
     const caCave = e.caCave ?? caU('cave') ?? 300_000, caBar = e.caBar ?? caU('bar') ?? 100_000
@@ -2583,6 +2691,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
     const r = simulerMix({ caCave, caBar, margeCave: mCave, margeBar: mBar, part: e.part, sens: e.sens, heuresSemaine: parGrille ? null : e.heuresSemaine, coutHoraire: heure(e), grille: s.productivite })
     saisies = (
       <Stack spacing={2}>
+        {choixMix}
         <Bloc titre="1. Aujourd’hui" total={{ libelle: 'CA HT', valeur: montant(caCave + caBar) }}>
           <Saisies>
             <Montant libelle="CA HT de la cave" valeur={caCave} onChange={(v) => maj('mix', { caCave: Math.max(0, v) })} source={e.caCave === null && caU('cave') !== null && 'budget'} />

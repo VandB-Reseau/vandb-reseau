@@ -89,7 +89,7 @@ test('Chaque simulateur : un exemple, Effacer, Revenir à l’exemple', async ({
   const carte = page.locator('#carte-simulation')
   const titres = ['Mon meilleur levier', 'Embaucher', 'Promo, prix, remises', 'Coup dur de trésorerie', 'Vente additionnelle', 'Reste à faire du mois', 'Soirée, dégustation',
     'Acheter en volume', 'Investir', 'Contrat extérieur', 'Prix du fût d’un gros marché', 'Parc de tireuses', 'Ma carte pression', 'Prix et marge', 'Dimanche ou jour férié', 'Remises entreprise par paliers',
-    'Me rémunérer', 'Mon loyer', 'Former un collaborateur', 'Mix Cave et Bar']
+    'Me rémunérer', 'Mon loyer', 'Former un collaborateur', 'Mix produit']
   await expect(choix(page).getByRole('button')).toHaveCount(titres.length)
   for (const titre of titres) {
     await choix(page).getByRole('button', { name: titre, exact: true }).click()
