@@ -39,8 +39,9 @@ test('Magasins : la dernière visite à droite, le rouge réservé au décrochag
   await expect(liste.getByText(vu).first()).toBeVisible()
   await expect(liste.getByText('Visite', { exact: true })).toHaveCount(0)
   const fond = (t: string) => liste.getByText(t, { exact: true }).first().evaluate((e) => getComputedStyle(e).backgroundColor)
-  expect(await fond('Décroche')).toBe('rgb(194, 65, 25)')
-  expect(await liste.getByText(vu).first().evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgba(0, 0, 0, 0)')
+  expect(await fond('Décroche')).toBe('rgba(194, 65, 25, 0.14)') // 361 : badge teinté
+  // 361 : sur téléphone, la visite est un badge gris (fond des en-têtes) ; sur PC, un texte dans sa colonne
+  expect(await liste.getByText(vu).first().evaluate((e) => getComputedStyle(e).backgroundColor)).toBe(isMobile ? 'rgb(243, 238, 230)' : 'rgba(0, 0, 0, 0)')
   await page.screenshot({ path: `captures/${info.project.name}-magasins-derniere-visite.png` })
 })
 

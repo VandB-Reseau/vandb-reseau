@@ -27,8 +27,9 @@ test('statuts en badges teintés, aucune pastille pleine ; les types restent san
   // La charge à 8/8 n'est plus pleine, le dépassement (9/8) l'est toujours
   await page.goto('./#/equipe')
   const charges = page.getByRole('main').locator('.MuiChip-root')
-  expect(await fond(charges.filter({ hasText: '8 / 8' }).first())).toBe(transparent)
-  expect(await fond(charges.filter({ hasText: '9 / 8' }).first())).not.toBe(transparent)
+  // Charge à 8/8 en badge orange, dépassement (9/8) en badge rouge
+  expect(await fond(charges.filter({ hasText: '8 / 8' }).first())).toBe('rgba(234, 96, 41, 0.14)')
+  expect(await fond(charges.filter({ hasText: '9 / 8' }).first())).toBe('rgba(194, 65, 25, 0.14)')
   expect(await textesTropPetits(page)).toEqual([])
   await page.goto('./#/magasins')
   await page.screenshot({ path: `captures/${info.project.name}-magasins-calme.png` })

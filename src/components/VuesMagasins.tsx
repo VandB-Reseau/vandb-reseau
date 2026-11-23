@@ -27,9 +27,9 @@ export function VuesMagasins({ params, appliquer, nomPropose, pretes = [] }: { p
     appliquer(p)
   }
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
+    <Box role="group" aria-label="Vues enregistrées" sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
     {/* 361 (Joseph, 23/11/2026) : vues prêtes et enregistrées dans un bac gris, chacune avec son compteur */}
-    {(pretes.length > 0 || vues.length > 0) && <Box role="group" aria-label="Vues enregistrées" sx={{ ...styleBac, mb: 0 }}>
+    {(pretes.length > 0 || vues.length > 0) && <Box sx={{ ...styleBac, mb: 0 }}>
       {pretes.map((v) => {
         const actif = v === prete
         return (
