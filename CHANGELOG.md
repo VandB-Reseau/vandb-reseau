@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Vue d'ensemble de l'onglet Chiffres plus visuelle (Joseph, 23/11/2026, choix 1 à 5), sans migration. Courbes sur les
+  cartes CA, Marge et % FP, l'an dernier en pointillé ; écarts en flèche de tendance comme la page Chiffres, marge face à
+  l'an dernier sans budget ; barre « Atterrissage : … déjà fait » dans la carte CA ; Fiche de visite (et objectifs du mois
+  en picto) sur la ligne de « Clôturer », plus de ligne vide ; graphes « CA par univers » et « Évolution du CA » (6 derniers
+  mois face à l'an dernier) sous les cartes. Calculs dans le moteur (`vueEnsemble`, `src/pilotage/moteur/sante.ts`).
 - Budget prévisionnel et Face au budget plus rapides à ouvrir (Joseph, 23/11/2026), sans migration. Les lectures par
   pages (frais, équipe, prêts, quadrimestres) demandent le nombre de lignes et lisent les pages restantes ensemble au
   lieu de l'une après l'autre ; équipe, frais et prêts lus une fois pour les deux années (suivi et campagne) ; stocks du

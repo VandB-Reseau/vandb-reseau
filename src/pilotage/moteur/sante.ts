@@ -1,5 +1,5 @@
 import { syntheseReel, type LigneReel, type TicketsReel } from './reel'
-import type { Budget } from './types'
+import type { Budget, Univers } from './types'
 
 // Santé d'un magasin en un coup d'œil : cumul réel de l'année comparé aux mêmes mois de l'an dernier,
 // marge réelle, et résultat attendu (atterrissage). Séries mensuelles pour les courbes.
@@ -79,4 +79,48 @@ export function totalBudgets(budgets: Budget[]) {
   const personnel = somme(budgets.map((b) => b.personnel))
   const ebe = somme(budgets.map((b) => b.ebe))
   return { magasins: budgets.length, ca, marge, ebe, tauxMarge: ca ? marge / ca : 0, pctFP: ca ? personnel / ca : 0, ebeSurCA: ca ? ebe / ca : 0 }
+}
+
+// Vue d'ensemble plus visuelle (Joseph, 23/11/2026, choix 1 à 5) : courbes mois par mois de la marge et du % FP,
+// marge de l'an dernier sur les mêmes mois, CA réalisé par univers, 6 derniers mois réalisés face à l'an dernier,
+// part de l'atterrissage déjà faite.
+export interface VueEnsemble {
+  margeParMois: (number | null)[]      // taux de marge réel du mois (null si une famille n'a pas de marge, ou mois non réalisé)
+  margeParMoisN1: (number | null)[]
+  tauxMargeN1: number | null           // mêmes mois l'an dernier, familles dont la marge est connue
+  fpParMois: (number | null)[]         // % FP de l'atterrissage, mois par mois
+  caParUnivers: Record<Univers, number> // CA HT réalisé à date
+  derniersMois: { mois: number; ca: number; caN1: number | null }[] // 6 derniers mois réalisés au plus (mois 1 à 12)
+  partAtterrissage: number | null      // CA réalisé ÷ CA atterri de l'année
+}
+
+function margeMensuelle(lignes: LigneReel[], jusqua: number): (number | null)[] {
+  return Array.from({ length: 12 }, (_, i) => {
+    if (i >= jusqua) return null
+    const du = lignes.filter((l) => l.mois === i + 1)
+    const ca = somme(du.map((l) => l.caHT))
+    if (ca <= 0 || du.some((l) => l.margeHT === null)) return null
+    return somme(du.map((l) => l.margeHT ?? 0)) / ca
+  })
+}
+
+export function vueEnsemble(n: { lignes: LigneReel[] }, n1: { lignes: LigneReel[] }, s: Sante): VueEnsemble {
+  const m = s.moisRealises
+  const avecMargeN1 = n1.lignes.filter((l) => l.mois <= m && l.margeHT !== null)
+  const caMargeN1 = somme(avecMargeN1.map((l) => l.caHT))
+  const caParUnivers: Record<Univers, number> = { cave: 0, bar: 0, exterieur: 0 }
+  for (const l of n.lignes) if (l.mois <= m) caParUnivers[l.univers] += l.caHT
+  const a = s.atterrissage
+  return {
+    margeParMois: margeMensuelle(n.lignes, m),
+    margeParMoisN1: margeMensuelle(n1.lignes, 12),
+    tauxMargeN1: caMargeN1 > 0 ? somme(avecMargeN1.map((l) => l.margeHT ?? 0)) / caMargeN1 : null,
+    fpParMois: a ? a.mois.map((x) => (x.ca > 0 ? x.personnel / x.ca : null)) : Array(12).fill(null),
+    caParUnivers,
+    derniersMois: Array.from({ length: Math.min(6, m) }, (_, k) => {
+      const i = m - Math.min(6, m) + k
+      return { mois: i + 1, ca: s.serieN[i] ?? 0, caN1: s.serieN1[i] }
+    }),
+    partAtterrissage: a && a.ca > 0 ? s.caCumule / a.ca : null,
+  }
 }
