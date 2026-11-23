@@ -1,4 +1,5 @@
 import { couleurEvenement, dansCharte } from '../theme/theme'
+import { prendreTablesTouchees, relireToutLaProchaineFois, type Touche } from '../lib/tablesTouchees'
 import { normaliserRituels, type Rituel } from './rituels'
 import { normaliserTempsForts, type TempsFort } from './tempsForts'
 import { normaliserEquipements, type Equipement } from './equipements'
@@ -70,27 +71,97 @@ let suiviEnTable: boolean | null = null
 // Fiches des personnes : table fiches_personnes une fois 0015 passée, sinon clé d'app_config
 let fichesEnTable: boolean | null = null
 
+type Lu = { data: Ligne[] | null; error: { message: string } | null }
+type Tout = { data: Ligne[]; error: { message: string } | null } // lu par pages (toutLire)
+type LuConfig = { data: { key: string; value: unknown }[] | null; error: { message: string } | null }
+interface Lectures { config: LuConfig; surcharges: Lu; affectations: Lu; coachs: Lu; recrues: Lu; visites: Tout; evenements: Lu; finances: Tout; suivi: Tout; regions: Lu; fiches: Tout; fermes: boolean }
+type Partie = keyof Lectures
+
+const CLES_CONFIG = ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins', 'rituels', 'demandes_themes', 'temps_forts', 'parcours_integration', 'integration_magasins', 'equipements_magasins', 'exterieur_magasins']
+const SUIVI = 'store_name,cle,valeur'
+const lectures: { [P in Partie]: () => Promise<Lectures[P]> } = {
+  config: async () => await supabase.from('app_config').select('key,value').in('key', CLES_CONFIG) as LuConfig,
+  surcharges: async () => await supabase.from('store_overrides').select('*') as Lu,
+  affectations: async () => await supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id') as Lu,
+  coachs: async () => await supabase.from('cs_overrides').select('*') as Lu,
+  recrues: async () => await supabase.from('recruits').select('*') as Lu,
+  visites: () => toutLire(() => supabase.from('visits').select('*').order('visit_date', { ascending: false }).order('id')),
+  evenements: async () => await supabase.from('events').select('*').order('start_date') as Lu,
+  finances: () => lireChiffres(),
+  suivi: () => toutLire(() => supabase.from('suivi_magasins').select(SUIVI).order('store_name').order('cle')),
+  regions: async () => await supabase.from('campagnes_regions').select('id,rr,valeur').order('id') as Lu,
+  fiches: () => toutLire(() => supabase.from('fiches_personnes').select('cle,fiche').order('cle')),
+  // 0041 : saisie à la main des chiffres fermée (fonction absente : encore ouverte)
+  fermes: () => Promise.resolve(supabase.rpc('saisie_chiffres_fermee')).then((r) => r.data === true, () => false),
+}
+// Table écrite → partie du réseau à relire
+const partieDe: Record<string, Partie> = {
+  app_config: 'config', store_overrides: 'surcharges', reassigns: 'affectations', cs_overrides: 'coachs', recruits: 'recrues',
+  visits: 'visites', events: 'evenements', store_finance: 'finances', chiffres: 'finances', suivi_magasins: 'suivi',
+  campagnes_regions: 'regions', fiches_personnes: 'fiches',
+}
+
+// Dernières tables lues (370) : gardées le temps de la session du compte, relues en entier au-delà de 5 minutes
+// pour voir aussi ce que les autres ont changé
+const FRAICHEUR = 5 * 60 * 1000
+let derniere: { compte: string; le: number; lu: Lectures } | null = null
+
+async function toutRelire(): Promise<Lectures> {
+  const parties = Object.keys(lectures) as Partie[]
+  const valeurs = await Promise.all(parties.map((p) => lectures[p]()))
+  return Object.fromEntries(parties.map((p, i) => [p, valeurs[i]])) as unknown as Lectures
+}
+
+// Ne relit que les tables écrites depuis la dernière lecture ; pour le suivi, seulement les rubriques touchées
+async function relireTouchees(avant: Lectures, touchees: Map<string, Touche>): Promise<Lectures | null> {
+  const parties = new Set<Partie>()
+  let rubriques = new Set<string>() as Set<string> | 'tout'
+  for (const [table, detail] of touchees) {
+    const p = partieDe[table]
+    if (!p) continue // table que le réseau ne charge pas (messages, préférences…)
+    if (p === 'suivi') rubriques = detail === 'tout' || rubriques === 'tout' ? 'tout' : new Set([...rubriques, ...detail])
+    else parties.add(p)
+  }
+  if (rubriques === 'tout') parties.add('suivi')
+  if (avant.suivi.error || avant.fiches.error) return null // ancien format (app_config) : tout relire
+  const nouveau: Lectures = { ...avant }
+  const relues = [...parties]
+  const valeurs = await Promise.all(relues.map((p) => lectures[p]()))
+  relues.forEach((p, i) => { (nouveau as unknown as Record<Partie, unknown>)[p] = valeurs[i] })
+  if (rubriques !== 'tout' && rubriques.size) {
+    const liste = [...rubriques]
+    const r = await toutLire(() => supabase.from('suivi_magasins').select(SUIVI).in('cle', liste).order('store_name').order('cle'))
+    if (r.error) return null
+    const garde = avant.suivi.data.filter((l) => !rubriques.has(String(l.cle)))
+    const suivi = [...garde, ...r.data].sort((a, b) => String(a.store_name).localeCompare(String(b.store_name)) || String(a.cle).localeCompare(String(b.cle)))
+    nouveau.suivi = { data: suivi, error: null }
+  }
+  return nouveau
+}
+
+async function lireTables(): Promise<Lectures> {
+  const touchees = prendreTablesTouchees()
+  const compte = (await supabase.auth.getSession()).data.session?.user.id ?? ''
+  try {
+    const d = derniere
+    const partiel = d && d.compte === compte && Date.now() - d.le < FRAICHEUR && touchees !== 'tout' && touchees.size > 0 ? await relireTouchees(d.lu, touchees) : null
+    const lu = partiel ?? await toutRelire()
+    derniere = { compte, le: partiel ? d!.le : Date.now(), lu }
+    return lu
+  } catch (e) {
+    derniere = null
+    relireToutLaProchaineFois()
+    throw e
+  }
+}
+
 // Lit les tables Supabase partagées avec l'ancienne app (lecture seule)
 export async function chargerReseau(jour = new Date().toISOString().slice(0, 10)): Promise<Reseau> {
-  const [config, surcharges, affectations, coachs, recrues, visites, evenements, finances, suivi, regions, fiches, fermes] = await Promise.all([
-    supabase.from('app_config').select('key,value').in('key', ['store_adds', 'store_renames', 'drs_data', 'params', 'cs_deletes', 'sante_parc', 'deploiements', 'fiches_personnes', 'notes_magasins', 'audits', 'grilles_audit', 'bonnes_pratiques', 'campagnes', 'associes', 'actions', 'derniere_sauvegarde', 'grille_ninebox', 'preparations_visites', 'ouvertures_magasins', 'concurrents_magasins', 'mots_franchise', 'objectifs_magasins', 'plans_magasins', 'rituels', 'demandes_themes', 'temps_forts', 'parcours_integration', 'integration_magasins', 'equipements_magasins', 'exterieur_magasins']),
-    supabase.from('store_overrides').select('*'),
-    supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id'),
-    supabase.from('cs_overrides').select('*'),
-    supabase.from('recruits').select('*'),
-    toutLire(() => supabase.from('visits').select('*').order('visit_date', { ascending: false }).order('id')),
-    supabase.from('events').select('*').order('start_date'),
-    lireChiffres(),
-    toutLire(() => supabase.from('suivi_magasins').select('store_name,cle,valeur').order('store_name').order('cle')),
-    supabase.from('campagnes_regions').select('id,rr,valeur').order('id'),
-    toutLire(() => supabase.from('fiches_personnes').select('cle,fiche').order('cle')),
-    // 0041 : saisie à la main des chiffres fermée (fonction absente : encore ouverte)
-    Promise.resolve(supabase.rpc('saisie_chiffres_fermee')).then((r) => r.data === true, () => false),
-  ])
+  const { config, surcharges, affectations, coachs, recrues, visites, evenements, finances, suivi, regions, fiches, fermes } = await lireTables()
   const erreur = config.error ?? surcharges.error ?? affectations.error ?? coachs.error ?? (suivi.error && !absente(suivi.error.message) ? suivi.error : null)
-  if (erreur) throw new ErreurChargement(erreur.message)
+  if (erreur) { derniere = null; throw new ErreurChargement(erreur.message) }
   suiviEnTable = !suivi.error
-  if (fiches.error && !absente(fiches.error.message)) throw new ErreurChargement(fiches.error.message)
+  if (fiches.error && !absente(fiches.error.message)) { derniere = null; throw new ErreurChargement(fiches.error.message) }
   fichesEnTable = !fiches.error
   // Tables facultatives : absentes ou vides, l'app fonctionne quand même
   const facultative = (r: { error: unknown; data: unknown }) => (r.error ? [] : (r.data as Ligne[] | null) ?? [])

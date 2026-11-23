@@ -84,6 +84,8 @@ test('188-191 et 195 : familles, derniers utilisés, caisse, résultat en vue, b
 // Exemple prérempli et « Effacer » (Joseph, 15/11/2026) : chaque simulateur s'ouvre sur un exemple chiffré, un appui vide
 // les saisies sans jamais afficher de calcul impossible, un autre remet l'exemple
 test('Chaque simulateur : un exemple, Effacer, Revenir à l’exemple', async ({ page }) => {
+  // Vingt simulateurs parcourus dans un seul test : ~22 s en local, au-delà des 30 s par défaut sur la machine de GitHub
+  test.setTimeout(60_000)
   await connecter(page, coach, 'coach')
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=simulateurs`)
   const carte = page.locator('#carte-simulation')

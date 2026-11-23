@@ -66,7 +66,7 @@ import {
 import { basculerFavori, basculerMasque, useListeRapports } from '../data/rapportsListe'
 import { chargerRapports, enregistrerRapport, supprimerRapport, type RapportEnregistre } from '../data/rapportsBase'
 import { chargerFinancesRapports } from '../data/rapportsFinances'
-import { ZonePilotage } from '../pilotage/Pilotage'
+import { ZonePilotage } from '../pilotage/ZonePilotage'
 import { anneeSuivi } from '../pilotage/data/annees'
 import { classeur, nomFichier, telecharger, type Cellule as CelluleXlsx } from '../pilotage/lib/xlsx'
 import { decalerMois } from '../data/chiffres'
