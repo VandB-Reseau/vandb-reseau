@@ -58,10 +58,12 @@ test('l’accueil filtre les magasins, la recherche ignore les accents, le retou
   const lignes = isMobile ? cartes : tableau.getByRole('row').filter({ has: page.getByRole('link') })
   await expect(filtres.getByRole('button', { name: 'Tous · 7' })).toHaveAttribute('aria-pressed', 'true')
   await expect(filtres.getByRole('button', { name: 'À proposer · 5' })).toBeVisible()
-  await expect(filtres.getByRole('button', { name: 'Équipe à renseigner · 6' })).toBeVisible()
+  const aRenseigner = page.getByRole('combobox', { name: 'À renseigner' })
+  await aRenseigner.click()
+  await expect(page.getByRole('option', { name: 'Équipe à renseigner · 6' })).toBeVisible()
   await expect(filtres.getByRole('button', { name: /Chez le franchisé/ })).toHaveCount(0)
 
-  await filtres.getByRole('button', { name: 'Frais à renseigner · 5' }).click()
+  await page.getByRole('option', { name: 'Frais à renseigner · 5' }).click()
   await expect(lignes).toHaveCount(5)
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
@@ -75,7 +77,7 @@ test('l’accueil filtre les magasins, la recherche ignore les accents, le retou
   // Retour du navigateur jusqu'à la liste (la fiche de l'app réseau change d'onglet sans ajouter de page)
   while (!/#\/budgets/.test(page.url())) await page.goBack()
   await expect(page.getByLabel('Filtrer la liste des magasins')).toHaveValue('azur')
-  await expect(filtres.getByRole('button', { name: 'Frais à renseigner · 5' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(aRenseigner).toContainText('Frais à renseigner · 5')
 
   await page.getByLabel('Filtrer la liste des magasins').fill('zzz')
   await expect(page.getByText('Aucun magasin ne correspond')).toBeVisible()

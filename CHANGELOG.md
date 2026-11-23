@@ -18,6 +18,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   comparaison), tableau ; vue du classement, export et impression au bout de la barre ; causes des écarts et Ma semaine
   sous le tableau. Évolution du parc quitte les onglets de Chiffres pour la rubrique Réseau du menu, sous Visites
   (`/evolution`, Directeur ; les anciennes adresses y mènent). Puces de filtre à 48 px sur téléphone.
+- Campagne des budgets plus lisible (C1 à C8, Joseph, 23/11/2026), sans migration. L'avancement en cartes chiffrées qui
+  filtrent la liste (À proposer, Chez le franchisé, Retour du franchisé, Validés, En retard, CA HT budgété) à la place de
+  la phrase de statut et de la barre ; l'échéance et son compte à rebours sous le titre ; détail et actions en série en
+  boutons discrets à droite ; plus de ligne « magasins en alerte » dans « À traiter » ; une seule rangée de pastilles,
+  l'équipe et les frais à renseigner dans la liste « À renseigner » ; colonnes CA, EBE / CA et point bas masquées tant
+  qu'aucun magasin affiché n'a de budget ; « Réel en retard » en gris (retard de saisie), le rouge reste aux alertes de
+  performance ; « Pas de budget » en texte gris au lieu d'une pastille.
 - App plus rapide (choix 369 et 370, Joseph, 23/11/2026), sans migration. 370 : après un enregistrement, l'app ne relit
   plus les douze tables du réseau mais seulement celles qui ont été écrites, et pour le suivi des magasins seulement la
   rubrique touchée (une tâche ajoutée : 1 lecture au lieu de 12). Les écritures sont notées au passage par le client

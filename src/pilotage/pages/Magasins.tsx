@@ -75,6 +75,12 @@ const SENS_DEFAUT: Record<Tri, 'asc' | 'desc'> = {
 
 // « 2 alertes · CA sous le budget » : le nombre et la plus grave
 const texteAlertes = (l: Alerte[]) => `${l.length === 1 ? '1 alerte' : `${l.length} alertes`} · ${typeAlerteLibelle[l[0].type]}`
+// C6 (Joseph, 23/11/2026) : le réel en retard est un retard de saisie, dit en gris ; le rouge reste aux alertes de
+// performance (CA, marge, tickets, panier, trésorerie)
+const ceQuiManque = (alertes: Alerte[], m: { aEquipe: boolean; aFrais: boolean }) => [
+  ...(alertes.some((a) => a.type === 'reel') ? ['Réel en retard'] : []),
+  ...(!m.aEquipe || !m.aFrais ? [`${!m.aEquipe && !m.aFrais ? 'Équipe et frais' : !m.aEquipe ? 'Équipe' : 'Frais'} à renseigner`] : []),
+].join(' · ')
 
 // EBE / CA avec une barre proportionnelle au plus fort de la liste ; rouge sous zéro
 function RatioEbe({ valeur, max }: { valeur: number; max: number }) {
@@ -191,6 +197,11 @@ export function Magasins() {
     setMessageSel(n ? `${n} relance${n > 1 ? 's' : ''} envoyée${n > 1 ? 's' : ''} : une tâche pour chaque franchisé.` : 'Les relances n’ont pas pu partir. Réessaie dans un instant.')
   }
   const avecGroupe = tous.some((m) => m.groupe)
+  // C5 (23/11/2026) : sans aucun budget dans la liste, pas de colonnes de chiffres vides
+  const avecChiffres = filtres.some((m) => m.budget)
+  const COLONNES_CHIFFRES = ['ca', 'ebeSurCA', 'pointBas']
+  const entetes = ENTETES.filter((c) => (avecGroupe || c.cle !== 'groupe') && (avecChiffres || !COLONNES_CHIFFRES.includes(c.cle)))
+  const manques = FILTRES.filter((f) => f.cle === 'equipe' || f.cle === 'frais').map((f) => ({ f, n: tous.filter((m) => correspond(m, f.cle)).length }))
   const total = totalBudgets(visibles.flatMap((m) => (m.budget ? [m.budget] : [])))
   const ebeMax = Math.max(0.01, ...visibles.map((m) => Math.abs(m.budget?.ratios.ebeSurCA ?? 0)))
   const synthese = tous.length > 1 ? syntheseBudgets(tous) : null
@@ -229,6 +240,7 @@ export function Magasins() {
               <CampagneBudgets
                 annee={annee} campagne={donnees.campagne} magasins={tous} aujourdhui={new Date().toISOString().slice(0, 10)} role={profil.role}
                 chiffres={synthese ? { ca: synthese.ca, ebe: synthese.ebe, ebeSurCA: synthese.ebeSurCA, avecBudget: synthese.avecBudget } : null}
+                filtreActif={filtre}
                 filtrer={(f, r) => {
                   setParams((p) => { const n = new URLSearchParams(p); if (f === 'tous') n.delete('filtre'); else n.set('filtre', f); if (r) n.set('responsable', r); else n.delete('responsable'); return n }, { replace: true })
                   document.querySelector('[aria-label="Filtres"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -236,18 +248,19 @@ export function Magasins() {
                 actions={((estDirecteur(profil) && campagne) || prets > 0) && (estDirecteur(profil) || profil.role === 'rr') ? (
                   <Stack direction="row" useFlexGap spacing={1.5} sx={{ flexWrap: 'wrap' }} className="pas-a-l-impression" aria-label="Actions en série">
                     {estDirecteur(profil) && campagne && (
-                      <Button variant={panneau === 'proposer' ? 'contained' : 'outlined'} startIcon={<PlaylistAddCheckOutlined />} aria-expanded={panneau === 'proposer'}
+                      <Button variant={panneau === 'proposer' ? 'contained' : 'text'} startIcon={<PlaylistAddCheckOutlined />} aria-expanded={panneau === 'proposer'}
                         onClick={() => setPanneau(panneau === 'proposer' ? null : 'proposer')} sx={{ minHeight: 48 }}>Proposer en série</Button>
                     )}
                     {prets > 0 && (
-                      <Button variant={panneau === 'valider' ? 'contained' : 'outlined'} color="success" startIcon={<DoneAllOutlined />} aria-expanded={panneau === 'valider'}
+                      <Button variant={panneau === 'valider' ? 'contained' : 'text'} color="success" startIcon={<DoneAllOutlined />} aria-expanded={panneau === 'valider'}
                         onClick={() => setPanneau(panneau === 'valider' ? null : 'valider')} sx={{ minHeight: 48 }}>{`Valider en série · ${prets}`}</Button>
                     )}
                   </Stack>
                 ) : undefined}
               >
+                {/* C3 (23/11/2026) : plus de ligne « magasins en alerte » (presque tout le réseau, déjà dans Ma semaine) */}
                 <ATraiter
-                  items={aTraiter(tous, donnees.alertes, donnees.actions, new Date().toISOString().slice(0, 10)).filter((x) => x.cle === 'alertes' || x.cle === 'actions')}
+                  items={aTraiter(tous, donnees.alertes, donnees.actions, new Date().toISOString().slice(0, 10)).filter((x) => x.cle === 'actions')}
                   etat={{ liste: tous.map((m) => m.magasin) }}
                   filtrer={(f) => { changer('filtre', f === 'tous' ? null : f); document.querySelector('[aria-label="Filtres"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
                 />
@@ -275,7 +288,7 @@ export function Magasins() {
           )}
           {/* Lot 30 (E3) : pour le Directeur, le RR et le Coach, les alertes se lisent dans Ma semaine (vue Réseau) */}
           {!estEquipe(profil) && <Box sx={{ mb: 4 }}><AlertesMagasins alertes={donnees.alertes} etat={{ liste: tous.map((m) => m.magasin) }} /></Box>}
-          {(tous.length > 5 || donnees.groupes.length > 0) && (
+          {(tous.length > 5 || donnees.groupes.length > 0 || manques.some((x) => x.n > 0) || manques.some((x) => x.f.cle === filtre)) && (
             <Stack direction="row" spacing={2} useFlexGap sx={{ mb: 2, flexWrap: 'wrap' }}>
               {tous.length > 5 && (
                 <TextField
@@ -294,22 +307,25 @@ export function Magasins() {
                   {donnees.groupes.map((g) => <MenuItem key={g.id} value={g.id} sx={{ minHeight: 48 }}>{g.nom}</MenuItem>)}
                 </TextField>
               )}
+              {/* C4 (23/11/2026) : ce qui manque (équipe, frais) dans une liste, une seule rangée de pastilles pour les étapes */}
+              {(manques.some((x) => x.n > 0) || manques.some((x) => x.f.cle === filtre)) && (
+                <TextField
+                  select size="small" label="À renseigner" value={filtre === 'equipe' || filtre === 'frais' ? filtre : ''} onChange={(e) => changer('filtre', e.target.value || null)}
+                  slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+                  sx={{ width: { xs: '100%', sm: 260 }, '& .MuiInputBase-root': { minHeight: 48 }, '& .MuiSelect-nativeInput': { height: 48 } }}
+                >
+                  <MenuItem value="" sx={{ minHeight: 48 }}>Tout</MenuItem>
+                  {manques.map(({ f, n }) => <MenuItem key={f.cle} value={f.cle} sx={{ minHeight: 48 }}>{`${f.libelle} · ${n}`}</MenuItem>)}
+                </TextField>
+              )}
             </Stack>
           )}
 
           <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 2, flexWrap: 'wrap' }} role="group" aria-label="Filtres">
             {/* Vague 8 (96A) : vues rapides au style commun des listes */}
-            {/* 326 (18/11/2026) : les statuts du budget d'un côté, ce qui manque (équipe, frais) de l'autre */}
             <VuesRapides label="Vues des budgets" valeur={filtre} onChange={(v) => changer('filtre', v === 'tous' ? null : v)} sx={{ mb: 0 }}
               options={FILTRES.filter((f) => f.cle !== 'equipe' && f.cle !== 'frais').map((f) => ({ f, n: f.cle === 'tous' ? tous.length : tous.filter((m) => correspond(m, f.cle)).length }))
                 .filter(({ f, n }) => n > 0 || f.cle === filtre).map(({ f, n }) => ({ v: f.cle, libelle: `${f.libelle} · ${n}` }))} />
-            {FILTRES.some((f) => (f.cle === 'equipe' || f.cle === 'frais') && (f.cle === filtre || tous.some((m) => correspond(m, f.cle)))) && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: { md: 1 }, borderLeft: { md: '1px solid' }, borderColor: { md: 'divider' } }}>
-                <VuesRapides label="Ce qui manque" valeur={filtre} onChange={(v) => changer('filtre', v === filtre ? null : v)} sx={{ mb: 0 }}
-                  options={FILTRES.filter((f) => f.cle === 'equipe' || f.cle === 'frais').map((f) => ({ f, n: tous.filter((m) => correspond(m, f.cle)).length }))
-                    .filter(({ f, n }) => n > 0 || f.cle === filtre).map(({ f, n }) => ({ v: f.cle, libelle: `${f.libelle} · ${n}` }))} />
-              </Box>
-            )}
             {/* Lot 43 : Responsable Régional ou Coach choisi dans la campagne */}
             {responsable && (
               <Chip label={responsable} onDelete={() => changer('responsable', null)} deleteIcon={<CloseOutlined aria-label={`Retirer le filtre : ${responsable}`} />}
@@ -335,8 +351,11 @@ export function Magasins() {
                         CA {milliers(m.budget.ca)} · EBE {milliers(m.budget.ebe)} ({taux(m.budget.ratios.ebeSurCA)})
                       </Typography>
                     )}
-                    {!!alertesDe.get(m.magasin)?.length && (
-                      <Typography variant="body2" sx={{ mt: 0.5, color: 'error.main', fontWeight: 600 }}>{texteAlertes(alertesDe.get(m.magasin)!)}</Typography>
+                    {!!alertesDe.get(m.magasin)?.some((a) => a.type !== 'reel') && (
+                      <Typography variant="body2" sx={{ mt: 0.5, color: 'error.main', fontWeight: 600 }}>{texteAlertes(alertesDe.get(m.magasin)!.filter((a) => a.type !== 'reel'))}</Typography>
+                    )}
+                    {ceQuiManque(alertesDe.get(m.magasin) ?? [], m) && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{ceQuiManque(alertesDe.get(m.magasin) ?? [], m)}</Typography>
                     )}
                   </CardActionArea>
                 </Card>
@@ -348,7 +367,7 @@ export function Magasins() {
                 <Table size="small" className="colonne-fixe" aria-label={`Budgets ${annee} par magasin`} sx={styleListe}>
                   <TableHead>
                     <TableRow>
-                      {ENTETES.filter((c) => avecGroupe || c.cle !== 'groupe').map((c) => (
+                      {entetes.map((c) => (
                         <Entete key={c.cle} t={tableau} cle={c.cle} align={'droite' in c ? 'right' : 'left'} sx={{ verticalAlign: 'bottom' }}
                           avant={c.cle === ENTETES[0].cle && avecSelection ? <Box component="span" sx={{ mr: 1.5, display: 'inline-flex' }}><CaseEntete s={sel} /></Box> : undefined}>
                           {c.cle === 'statut' ? `Budget ${annee}` : c.libelle}
@@ -357,8 +376,8 @@ export function Magasins() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    <LigneSansResultat t={tableau} colSpan={avecGroupe ? 7 : 6} quoi="Aucun magasin ne correspond" />
-                    {total.magasins > 1 && (
+                    <LigneSansResultat t={tableau} colSpan={entetes.length} quoi="Aucun magasin ne correspond" />
+                    {total.magasins > 1 && avecChiffres && (
                       <TableRow sx={{ bgcolor: 'action.hover', '& td': { fontWeight: 700 } }}>
                         <TableCell>Total de la sélection</TableCell>
                         {avecGroupe && <TableCell />}
@@ -371,6 +390,7 @@ export function Magasins() {
                     )}
                     {visibles.map((m) => {
                       const alertes = alertesDe.get(m.magasin) ?? []
+                      const perf = alertes.filter((a) => a.type !== 'reel'), manque = ceQuiManque(alertes, m)
                       return (
                         <TableRow key={m.magasin} hover onClick={() => navigate(lienMagasin(m.magasin, ongletListe), { state: etat })} sx={{ cursor: 'pointer' }}>
                           <TableCell>
@@ -379,12 +399,14 @@ export function Magasins() {
                           </TableCell>
                           {avecGroupe && <TableCell>{m.groupe}</TableCell>}
                           <TableCell><PastilleStatut statut={m.statut} /></TableCell>
-                          <TableCell align="right">{m.budget ? milliers(m.budget.ca) : ''}</TableCell>
-                          <TableCell align="right">{m.budget ? <RatioEbe valeur={m.budget.ratios.ebeSurCA} max={ebeMax} /> : ''}</TableCell>
-                          <TableCell align="right" sx={m.pointBas !== null && m.pointBas < 0 ? { color: 'error.main', fontWeight: 600 } : undefined}>{m.pointBas === null ? '' : milliers(m.pointBas)}</TableCell>
+                          {avecChiffres && <>
+                            <TableCell align="right">{m.budget ? milliers(m.budget.ca) : ''}</TableCell>
+                            <TableCell align="right">{m.budget ? <RatioEbe valeur={m.budget.ratios.ebeSurCA} max={ebeMax} /> : ''}</TableCell>
+                            <TableCell align="right" sx={m.pointBas !== null && m.pointBas < 0 ? { color: 'error.main', fontWeight: 600 } : undefined}>{m.pointBas === null ? '' : milliers(m.pointBas)}</TableCell>
+                          </>}
                           <TableCell>
-                            {alertes.length > 0 && <Box component="span" sx={{ color: 'error.main', fontWeight: 600, display: 'block' }}>{texteAlertes(alertes)}</Box>}
-                            {(!m.aEquipe || !m.aFrais) && <Box component="span" sx={{ color: 'text.secondary', display: 'block' }}>{!m.aEquipe && !m.aFrais ? 'Équipe et frais' : !m.aEquipe ? 'Équipe' : 'Frais'} à renseigner</Box>}
+                            {perf.length > 0 && <Box component="span" sx={{ color: 'error.main', fontWeight: 600, display: 'block' }}>{texteAlertes(perf)}</Box>}
+                            {manque && <Box component="span" sx={{ color: 'text.secondary', display: 'block' }}>{manque}</Box>}
                           </TableCell>
                         </TableRow>
                       )

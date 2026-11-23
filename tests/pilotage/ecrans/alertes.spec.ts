@@ -27,13 +27,13 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs, 'aucune erreur JavaScript').toEqual([])
 })
 
-test('vue Réseau : les alertes de chaque magasin dans Ma semaine ; « À traiter » y renvoie', async ({ page, isMobile }, info) => {
+test('vue Réseau : les alertes de chaque magasin dans Ma semaine', async ({ page, isMobile }, info) => {
   await seConnecter(page, { reel, quadrimestres })
-  // Lot 30 (E3) : plus de liste d'alertes sur l'accueil du siège, « À traiter » mène à Ma semaine
+  // Lot 30 (E3) : plus de liste d'alertes sur l'accueil du siège ; C3 (23/11/2026) : plus de ligne « magasins en alerte »
+  // dans la campagne, les alertes se lisent dans la colonne « À faire » et dans Ma semaine
   await expect(page.getByRole('region', { name: 'Alertes' })).toHaveCount(0)
-  const aTraiter = page.getByRole('region', { name: 'À traiter' })
-  await expect(aTraiter).toContainText(`${M >= 1 ? 3 : 2} magasins en alerte`)
-  await aTraiter.getByRole('link', { name: 'Voir dans Ma semaine' }).click()
+  await expect(page.getByText(/magasins? en alerte/)).toHaveCount(0)
+  await page.evaluate(() => { location.hash = '#/budgets/suivi' })
   const semaine = page.getByRole('region', { name: 'Ma semaine' })
   const premier = semaine.getByRole('list', { name: `Alertes de ${MAGASINS[0]}` }).getByRole('listitem')
   await expect(premier).toHaveText(['CA sous le budget', 'Marge en baisse'])

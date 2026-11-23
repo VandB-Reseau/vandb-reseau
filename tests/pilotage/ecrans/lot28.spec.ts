@@ -103,8 +103,8 @@ test('campagne des budgets : avancement par Responsable Régional, dates dans Pa
   })
   const campagne = page.getByRole('region', { name: /^Campagne des budgets \d{4}$/ })
   // Validé, en discussion après la date de validation, sans budget après la date de proposition : 2 en retard
-  await expect(campagne).toContainText('1 validé sur 3')
-  await expect(campagne).toContainText('2 en retard')
+  await expect(campagne.getByRole('button', { name: /^Validés : 1 sur 3/ })).toBeVisible()
+  await expect(campagne.getByRole('button', { name: /^En retard : 2,/ })).toBeVisible()
   // Allègement (03/11/2026) : le détail par Responsable Régional s'ouvre à la demande
   await expect(campagne.getByRole('table', { name: 'Par Responsable Régional' })).toHaveCount(0)
   await campagne.getByRole('button', { name: 'Par Responsable Régional' }).click()
