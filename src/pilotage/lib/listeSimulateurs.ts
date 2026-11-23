@@ -25,5 +25,6 @@ export const LISTE_SIMULATEURS: { cle: TypeSimulation; titre: string; question: 
   { cle: 'loyer', titre: 'Mon loyer', question: 'Que pèse mon loyer, que coûte une hausse ?' },
   // Joseph, 18/11/2026
   { cle: 'formation', titre: 'Former un collaborateur', question: 'Que coûte une formation, une fois l’OPCO, le CPF et les aides déduits ?' },
-  { cle: 'mix', titre: 'Mix Cave et Bar', question: 'Si plus de CA passe au bar, que gagne-t-on ?' },
+  // Mix produit (Joseph, 23/11/2026) : la gamme d'un univers, ou Cave et Bar
+  { cle: 'mix', titre: 'Mix produit', question: 'En ajustant ma gamme, combien de points de marge je gagne ?' },
 ]
