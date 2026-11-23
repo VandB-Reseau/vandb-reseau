@@ -20,15 +20,23 @@ export async function lireDroits(): Promise<{ parametreur: boolean; controleGest
   }
 }
 
+type Droits = { id: string; parametreur: boolean; controleGestion: boolean }
+let droitsLus: Droits | null = null
+
 export function PilotageAuthProvider({ children }: { children: ReactNode }) {
   const { profil } = useAuthReseau()
   const { apercu, equipe } = useApercu()
-  const [droits, setDroits] = useState<{ id: string; parametreur: boolean; controleGestion: boolean } | null>(null)
+  // Droits déjà lus pour ce compte : l'écran s'ouvre tout de suite, ils sont relus derrière (Joseph, 23/11/2026)
+  const [droits, setDroits] = useState<Droits | null>(droitsLus)
   const id = profil?.id ?? null
   useEffect(() => {
     if (!id) return
     let actif = true
-    lireDroits().then((d) => { if (actif) setDroits({ id, ...d }) })
+    lireDroits().then((d) => {
+      const memes = droitsLus?.id === id && droitsLus.parametreur === d.parametreur && droitsLus.controleGestion === d.controleGestion
+      if (!memes) droitsLus = { id, ...d }
+      if (actif) setDroits(droitsLus)
+    })
     return () => { actif = false }
   }, [id])
   const pret = !!profil && droits?.id === profil.id

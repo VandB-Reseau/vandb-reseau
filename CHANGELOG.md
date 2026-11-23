@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Budget prévisionnel et Face au budget plus rapides à ouvrir (Joseph, 23/11/2026), sans migration. Les lectures par
+  pages (frais, équipe, prêts, quadrimestres) demandent le nombre de lignes et lisent les pages restantes ensemble au
+  lieu de l'une après l'autre ; équipe, frais et prêts lus une fois pour les deux années (suivi et campagne) ; stocks du
+  réseau lus avec le reste ; années et droits du compte lus ensemble, puis plus relus avant d'afficher (ils le sont
+  derrière, l'écran ne se recharge que s'ils ont changé) ; fichier du budget préchargé en tâche de fond. Mesure locale,
+  280 magasins à 40 lignes de frais, 150 ms par requête : 3,0 s → 1,35 s (Budget prévisionnel), 3,5 s → 1,35 s (Face au
+  budget), 0,6 s à la réouverture dans la minute.
 - Mise en page rééquilibrée (Joseph, 23/11/2026), sans migration. Fiche magasin, Vue d'ensemble : sur PC, les tuiles
   Budget et Déploiements et le dernier échange passent sous les objectifs, « Comment va le magasin » reste seul à droite
   (plus de grand vide en bas à gauche) ; sur téléphone, l'ordre ne change pas. Onglet Nine box : les déploiements passent
