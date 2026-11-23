@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Vue d'ensemble de l'onglet Chiffres plus visuelle (Joseph, 23/11/2026, choix 1 à 5), sans migration. Courbes sur les
+  cartes CA, Marge et % FP, l'an dernier en pointillé ; écarts en flèche de tendance comme la page Chiffres, marge face à
+  l'an dernier sans budget ; barre « Atterrissage : … déjà fait » dans la carte CA ; Fiche de visite (et objectifs du mois
+  en picto) sur la ligne de « Clôturer », plus de ligne vide ; graphes « CA par univers » et « Évolution du CA » (6 derniers
+  mois face à l'an dernier) sous les cartes. Calculs dans le moteur (`vueEnsemble`, `src/pilotage/moteur/sante.ts`).
 - Mise en page rééquilibrée (Joseph, 23/11/2026), sans migration. Fiche magasin, Vue d'ensemble : sur PC, les tuiles
   Budget et Déploiements et le dernier échange passent sous les objectifs, « Comment va le magasin » reste seul à droite
   (plus de grand vide en bas à gauche) ; sur téléphone, l'ordre ne change pas. Onglet Nine box : les déploiements passent

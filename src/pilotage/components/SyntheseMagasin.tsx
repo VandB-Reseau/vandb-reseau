@@ -1,10 +1,12 @@
 import { useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined'
 import FlagOutlined from '@mui/icons-material/FlagOutlined'
@@ -18,12 +20,14 @@ import { Panne } from './Panne'
 import { PlusLoin } from './PlusLoin'
 import { atterrissageDe, chargerBudgets, chargerQuadrimestres, chargerReel, chargerSecours, hypothesesDe, type DonneesBudgets, parametresDuBudget, type SaisiesQuadrimestres } from '../data/pilotage'
 import { useChargement } from '../data/useChargement'
-import { ecartMilliers, ecartPts, enChiffres, milliers, MOIS_LONGS, montant, taux } from '../lib/format'
+import { ecartMilliers, ecartPts, enChiffres, milliers, MOIS, MOIS_LONGS, montant, taux } from '../lib/format'
 import { niveauEcart } from '../moteur/visuel'
 import { LignesTendance, type LigneTendance } from './LignesTendance'
 import { COULEUR_BARRE } from './Tableau'
 import { calculerBudget } from '../moteur/budget'
-import { cumul, cumulApres, santeMagasin } from '../moteur/sante'
+import { cumul, cumulApres, santeMagasin, vueEnsemble } from '../moteur/sante'
+import { UNIVERS, universLibelle } from '../moteur/types'
+import { Anneau, Barres, CarteGraphe } from '../../components/Graphes'
 import { moisDuReel, suiviBudget } from '../moteur/suivi'
 import { reelComplete } from '../moteur/reelComplete'
 import type { ParametresReseau } from '../moteur/types'
@@ -36,7 +40,7 @@ import { BarrePeriode, usePeriodeCommune } from '../../components/BarrePeriode'
 // Santé du magasin en un coup d'œil : cumul de l'année face au budget de l'année (lot 27) et à l'an dernier, marge,
 // masse salariale, résultat attendu ; CA cumulé ou mois par mois. Lot 30 (E2) : trois blocs, où on en est (les chiffres),
 // quoi faire (À faire, alertes, plan d'action) et, replié, pour aller plus loin (graphique, leviers, face au réseau)
-export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteEtActions, proposerAction, quoiFaire, plusLoin, conclusion, detail, partie = 'tout', phrases }: {
+export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteEtActions, proposerAction, quoiFaire, plusLoin, conclusion, detail, partie = 'tout', phrases, cibleActions }: {
   magasin: string
   d: DonneesBudgets
   annee: number
@@ -52,6 +56,7 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
   // « analyse » = graphique du CA, leviers commerciaux et comparaisons au réseau, sans repli
   partie?: 'tout' | 'ensemble' | 'analyse'
   phrases?: boolean                             // choix 119 : une phrase sous chaque chiffre clé (franchisé, Montrer au franchisé)
+  cibleActions?: HTMLElement | null             // Joseph (23/11/2026) : Fiche de visite à côté de « Clôturer », sur la ligne des puces
 }) {
   const { donnees, erreur, chargement, recharger } = useChargement(
     () => Promise.all([chargerReel(magasin, annee), chargerReel(magasin, annee - 1), chargerSecours(magasin, annee), chargerBudgets(annee).catch(() => null),
@@ -97,6 +102,8 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
   const suivi = budgetN ? suiviBudget(moisDuReel(donnees.n.lignes, donnees.n.tickets), budgetN) : null
   const ecartCA = suivi?.cumul.ecartCAPart ?? null
   const ecartMarge = suivi && s.tauxMarge !== null ? s.tauxMarge - suivi.cumul.tauxMargeBudget : null
+  const ve = vueEnsemble(donnees.n, donnees.n1, s)
+  const ecartMargeN1 = !suivi && s.tauxMarge !== null && ve.tauxMargeN1 !== null ? s.tauxMarge - ve.tauxMargeN1 : null
   const evolution = s.evolution === null ? null : `${s.evolution >= 0 ? '+' : '−'}${taux(Math.abs(s.evolution))} sur ${annee - 1}`
   const manques = [
     !equipe?.length && { onglet: 'equipe', texte: 'Équipe non renseignée : la masse salariale compte pour zéro.', action: 'Renseigner l’équipe' },
@@ -170,9 +177,15 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
   if (analyse) return <Stack spacing={3}>{graphiqueEtLeviers}</Stack>
   return (
     <Stack spacing={3}>
-      {(visiteEtActions || budgetN) && (
-        <Box className="pas-a-l-impression" sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, flexWrap: 'wrap', mb: -1 }}>
-          {budgetN && <Button variant="outlined" startIcon={<FlagOutlined />} onClick={() => setObjectifs(true)} sx={{ minHeight: 48 }}>Objectifs du mois</Button>}
+      {(visiteEtActions || budgetN) && (() => {
+        const boutons = (
+        <Box className="pas-a-l-impression" sx={cibleActions ? { display: 'contents' } : { display: 'flex', justifyContent: 'flex-end', gap: 1.5, flexWrap: 'wrap', mb: -1 }}>
+          {/* Sur la ligne des puces (PC), les objectifs du mois se réduisent à leur picto pour laisser la place aux puces */}
+          {budgetN && (cibleActions ? (
+            <Tooltip title="Objectifs du mois">
+              <Button variant="outlined" aria-label="Objectifs du mois" onClick={() => setObjectifs(true)} sx={{ minHeight: 48, minWidth: 48, px: 1.5 }}><FlagOutlined /></Button>
+            </Tooltip>
+          ) : <Button variant="outlined" startIcon={<FlagOutlined />} onClick={() => setObjectifs(true)} sx={{ minHeight: 48 }}>Objectifs du mois</Button>)}
           {visiteEtActions && <Button variant="outlined" startIcon={<FactCheckOutlined />} onClick={() => setVisite(true)} sx={{ minHeight: 48 }}>Fiche de visite</Button>}
           {visite && (
             <FicheVisite ouverte fermer={() => setVisite(false)} magasin={magasin} annee={annee} n={n}
@@ -183,7 +196,9 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
               n1={moisDuReel(donnees.n1.lignes, donnees.n1.tickets)} tvaPanier={parametres.tvaPanier} />
           )}
         </Box>
-      )}
+        )
+        return cibleActions ? createPortal(boutons, cibleActions) : boutons
+      })()}
       {conclusion}
       <Box component="section" aria-label={`Santé du magasin à fin ${finMois}`} sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' } }}>
         <Indicateur
@@ -191,12 +206,16 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
           ecart={ecartCA !== null ? { texte: `${taux(Math.abs(ecartCA))} face au budget`, hausse: ecartCA >= 0, favorable: ecartCA >= 0 }
             : s.evolution === null ? undefined : { texte: `${taux(Math.abs(s.evolution))} sur ${annee - 1}`, hausse: s.evolution >= 0, favorable: s.evolution >= 0 }}
           jauge={suivi ? { valeur: s.caCumule, cible: suivi.cumul.caBudget, niveau: niveauEcart(s.caCumule, suivi.cumul.caBudget, seuil), libelle: `CA réel face au budget à fin ${finMois}` } : undefined}
-          detail={[suivi && `Budget à date : ${milliers(suivi.cumul.caBudget)}`, suivi && evolution, `Atterrissage ${annee} : ${milliers(b.ca)}`].filter(Boolean).join(' · ')}
+          serieReference={s.serieN1}
+          progression={ve.partAtterrissage === null ? undefined : { part: ve.partAtterrissage, libelle: `Part de l’atterrissage ${annee} déjà faite`, texte: `Atterrissage ${annee} : ${milliers(b.ca)} · ${taux(ve.partAtterrissage)} déjà fait` }}
+          detail={[suivi && `Budget à date : ${milliers(suivi.cumul.caBudget)}`, suivi && evolution].filter(Boolean).join(' · ') || undefined}
           phrase={dit?.ca}
         />
         <Indicateur
           libelle="Marge commerciale" aide="margeTheorique" valeur={s.tauxMarge === null ? 'Non connue' : taux(s.tauxMarge)}
-          ecart={ecartMarge === null ? undefined : { texte: `${ecartPts(Math.abs(ecartMarge)).replace('+', '')} face au budget`, hausse: ecartMarge >= 0, favorable: ecartMarge >= 0 }}
+          ecart={ecartMarge !== null ? { texte: `${ecartPts(Math.abs(ecartMarge)).replace('+', '')} face au budget`, hausse: ecartMarge >= 0, favorable: ecartMarge >= 0 }
+            : ecartMargeN1 === null ? undefined : { texte: `${ecartPts(Math.abs(ecartMargeN1)).replace('+', '')} sur ${annee - 1}`, hausse: ecartMargeN1 >= 0, favorable: ecartMargeN1 >= 0 }}
+          serie={ve.margeParMois} serieReference={ve.margeParMoisN1}
           jauge={suivi && s.tauxMarge !== null ? { valeur: s.tauxMarge, cible: suivi.cumul.tauxMargeBudget, niveau: niveauEcart(s.tauxMarge, suivi.cumul.tauxMargeBudget, seuil), libelle: 'Taux de marge face au budget' } : undefined}
           detail={s.tauxMarge === null ? 'Marge absente des chiffres de caisse'
             : suivi ? `Budget : ${taux(suivi.cumul.tauxMargeBudget)} · ${milliers(s.margeCumulee)} à fin ${finMois}` : `${milliers(s.margeCumulee)} à fin ${finMois}`}
@@ -204,6 +223,7 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
         />
         <Indicateur
           libelle="% FP" aide="pctFP" valeur={equipe?.length ? taux(b.ratios.pctFP) : 'À renseigner'}
+          serie={equipe?.length ? ve.fpParMois : undefined}
           detail={equipe?.length ? `${milliers(b.personnel)} de masse salariale sur l’année` : 'Équipe non renseignée'}
           phrase={dit?.fp}
         />
@@ -219,6 +239,18 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
           detail={budgetN ? `Budget : ${milliers(budgetN.ebe)} · ${taux(b.ratios.ebeSurCA)} du CA` : `${taux(b.ratios.ebeSurCA)} du CA`}
           phrase={dit?.ebe}
         />}
+      </Box>
+
+      {/* Joseph (23/11/2026) : mêmes graphes que la page Chiffres, CA réalisé par univers et 6 derniers mois face à l'an dernier */}
+      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' } }}>
+        <CarteGraphe titre="CA par univers" sousTitre={`De janvier à fin ${finMois}`}>
+          <Anneau label={`Répartition du CA ${annee} à fin ${finMois} par univers`} centre={milliers(s.caCumule)} sousCentre="CA HT" format={milliers}
+            parts={UNIVERS.map((u) => ({ libelle: universLibelle[u], valeur: ve.caParUnivers[u] }))} />
+        </CarteGraphe>
+        <CarteGraphe titre="Évolution du CA" sousTitre={`${ve.derniersMois.length} dernier${ve.derniersMois.length > 1 ? 's' : ''} mois, face à ${annee - 1}`}>
+          <Barres label={`Chiffre d’affaires des ${ve.derniersMois.length} derniers mois, face à ${annee - 1}`} format={milliers}
+            barres={ve.derniersMois.map((m) => ({ libelle: MOIS[m.mois - 1], valeur: m.ca, reference: m.caN1 }))} />
+        </CarteGraphe>
       </Box>
 
       {/* Joseph (09/11/2026) : ce qui manque sur un seul bandeau, pour raccourcir la page */}

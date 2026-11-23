@@ -4,7 +4,7 @@ import { calculerBudget } from '../../../src/pilotage/moteur/budget'
 import { compteResultat } from '../../../src/pilotage/moteur/compteResultat'
 import { parametresParDefaut } from '../../../src/pilotage/moteur/parametres'
 import type { LigneReel } from '../../../src/pilotage/moteur/reel'
-import { santeMagasin, syntheseBudgets } from '../../../src/pilotage/moteur/sante'
+import { santeMagasin, syntheseBudgets, vueEnsemble } from '../../../src/pilotage/moteur/sante'
 
 // Même magasin fictif que tests/moteur/atterrissage.spec.ts : chaque résultat se vérifie à la main.
 const n: LigneReel[] = [
@@ -82,4 +82,27 @@ test('synthèse d’un périmètre : budgets validés, sommes, fiches à complé
     { statut: null, budget: null, aEquipe: true, aFrais: false },
   ])
   expect(s).toEqual({ magasins: 3, valides: 1, avecBudget: 2, ca: 1_000_000, ebe: 80_000, ebeSurCA: 0.08, aCompleter: 2 })
+})
+
+test('vue d’ensemble : marge mois par mois, CA par univers, derniers mois face à l’an dernier, part de l’atterrissage', () => {
+  // N-1 avec marge sur janvier et février : 300 / 1 000 = 30 % chaque mois
+  const n1m: LigneReel[] = n1.map((l) => (l.mois <= 2 ? { ...l, margeHT: 300 } : l))
+  const s = santeMagasin({ lignes: n, tickets: [] }, { lignes: n1m, tickets: [] }, null)
+  const v = vueEnsemble({ lignes: n }, { lignes: n1m }, s)
+  // Janvier : marge du Fût inconnue → pas de taux ; février : 7 200 / 20 000 = 36 %
+  expect(v.margeParMois[0]).toBeNull()
+  proche(v.margeParMois[1], 0.36)
+  expect(v.margeParMois[2]).toBeNull()
+  proche(v.margeParMoisN1[0], 0.3)
+  expect(v.margeParMoisN1[2]).toBeNull()
+  proche(v.tauxMargeN1, 0.3)                   // 600 / 2 000 sur les deux mêmes mois
+  expect(v.caParUnivers).toEqual({ cave: 30_000, bar: 10_000, exterieur: 0 })
+  expect(v.derniersMois).toEqual([{ mois: 1, ca: 20_000, caN1: 1_000 }, { mois: 2, ca: 20_000, caN1: 1_000 }])
+  expect(v.partAtterrissage).toBeNull()        // pas d'atterrissage
+  expect(v.fpParMois.every((x) => x === null)).toBe(true)
+  // Avec l'atterrissage : 40 000 réalisés sur 65 000 × 2 mois + projection
+  const b = { ca: 80_000, mois: Array.from({ length: 12 }, () => ({ ca: 10_000, personnel: 2_500 })) } as unknown as Parameters<typeof santeMagasin>[2]
+  const v2 = vueEnsemble({ lignes: n }, { lignes: n1m }, { ...s, atterrissage: b })
+  proche(v2.partAtterrissage, 0.5)             // 40 000 / 80 000
+  proche(v2.fpParMois[5], 0.25)                // 2 500 / 10 000
 })

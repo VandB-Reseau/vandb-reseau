@@ -2,29 +2,33 @@ import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import Typography from '@mui/material/Typography'
-import ArrowDownwardOutlined from '@mui/icons-material/ArrowDownwardOutlined'
-import ArrowUpwardOutlined from '@mui/icons-material/ArrowUpwardOutlined'
+import TrendingDownOutlined from '@mui/icons-material/TrendingDownOutlined'
+import TrendingUpOutlined from '@mui/icons-material/TrendingUpOutlined'
 import type { SujetAide } from '../lib/aide'
 import { Aide } from './Aide'
 import { Courbe } from './Courbe'
 import { COULEUR_NIVEAU } from './Tableau'
 import type { NiveauEcart } from '../moteur/visuel'
-import { styleChiffre } from '../../theme/theme'
+import { brand, styleChiffre } from '../../theme/theme'
 
 // Carte de chiffre clé : libellé discret, valeur en grand, écart coloré (vert si favorable, rouge sinon), courbe facultative.
 // Lot 32 : picto (i) à côté du libellé, l'aide du calcul (aide) ou le calcul détaillé avec les chiffres du magasin (info)
 // Refonte R4 (2/11/2026) : jauge facultative, le réel rempli à la couleur de sa pastille, un trait noir au niveau du budget
 // (le budget est aux 4/5 de la jauge, pour voir aussi un dépassement)
-export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide, info, jauge, phrase, negatif }: {
+// Vue d'ensemble plus visuelle (Joseph, 23/11/2026) : l'écart se lit comme sur la page Chiffres (flèche de tendance, valeur
+// en couleur), courbe de l'an dernier en pointillé (serieReference), barre de progression facultative (part de l'atterrissage)
+export function Indicateur({ libelle, valeur, detail, ecart, serie, serieReference, action, aide, info, jauge, progression, phrase, negatif }: {
   libelle: string
   valeur: string
   detail?: string
   ecart?: { texte: string; hausse: boolean; favorable: boolean }
   serie?: (number | null)[]
+  serieReference?: (number | null)[]
   action?: ReactNode
   aide?: SujetAide
   info?: ReactNode
   jauge?: { valeur: number; cible: number; niveau: NiveauEcart | null; libelle: string }
+  progression?: { part: number; libelle: string; texte: string }
   phrase?: string | null // choix 119 : le chiffre dit en clair, pour le franchisé
   negatif?: boolean      // un frais : valeur en rouge (Joseph, 19/11/2026)
 }) {
@@ -39,8 +43,8 @@ export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
         <Typography component="p" sx={negatif ? { ...styleChiffre, color: 'error.main' } : styleChiffre}>{valeur}</Typography>
         {ecart && (
-          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, fontSize: '0.8125rem', fontWeight: 700, color: ecart.favorable ? 'success.dark' : 'error.main' }}>
-            {ecart.hausse ? <ArrowUpwardOutlined sx={{ fontSize: 16 }} /> : <ArrowDownwardOutlined sx={{ fontSize: 16 }} />}
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem', fontWeight: 700, color: ecart.favorable ? 'success.dark' : 'error.main', fontVariantNumeric: 'tabular-nums' }}>
+            {ecart.hausse ? <TrendingUpOutlined sx={{ fontSize: 18 }} /> : <TrendingDownOutlined sx={{ fontSize: 18 }} />}
             {ecart.texte}
           </Box>
         )}
@@ -52,9 +56,18 @@ export function Indicateur({ libelle, valeur, detail, ecart, serie, action, aide
           <Box sx={{ position: 'absolute', top: -4, bottom: -4, left: 'calc(80% - 1.5px)', width: 3, borderRadius: 2, bgcolor: 'text.primary' }} />
         </Box>
       )}
+      {progression && (
+        <Box sx={{ my: 0.5 }}>
+          <Box role="progressbar" aria-label={progression.libelle} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.max(0, Math.min(1, progression.part)) * 100)}
+            sx={{ height: 8, borderRadius: 4, bgcolor: 'divider', overflow: 'hidden' }}>
+            <Box sx={{ height: '100%', width: `${Math.max(0, Math.min(1, progression.part)) * 100}%`, borderRadius: 4, bgcolor: brand.vertFonce }} />
+          </Box>
+          <Typography color="text.secondary" sx={{ fontSize: '0.8125rem', mt: 0.5 }}>{progression.texte}</Typography>
+        </Box>
+      )}
       {detail && <Typography color="text.secondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>{detail}</Typography>}
       {phrase && <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, mt: 0.5 }}>{phrase}</Typography>}
-      {serie && <Box sx={{ mt: 'auto', pt: 1 }}><Courbe valeurs={serie} /></Box>}
+      {serie && <Box sx={{ mt: 'auto', pt: 1 }}><Courbe valeurs={serie} reference={serieReference} /></Box>}
       {action}
     </Card>
   )
