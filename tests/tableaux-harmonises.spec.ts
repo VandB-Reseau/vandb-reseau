@@ -30,11 +30,11 @@ test('Magasins : chaque colonne se trie et se filtre, la colonne Magasin reste f
   const avant = await lignes.count()
   expect(await tableau.locator('tbody tr').first().locator('td').nth(1).evaluate((td) => getComputedStyle(td).position)).toBe('sticky')
 
-  // Tri sur une colonne qui ne se triait pas : Coach, de A à Z puis de Z à A
-  await tableau.getByRole('button', { name: 'Trier par Coach' }).click()
-  await expect(tableau.getByRole('columnheader', { name: /^Trier par Coach/ })).toHaveAttribute('aria-sort', 'ascending')
-  await tableau.getByRole('button', { name: 'Trier par Coach' }).click()
-  await expect(tableau.getByRole('columnheader', { name: /^Trier par Coach/ })).toHaveAttribute('aria-sort', 'descending')
+  // Tri sur une colonne qui ne se triait pas : Statut (361 ; Coach est passé en sous-ligne du magasin, 362), de A à Z puis de Z à A
+  await tableau.getByRole('button', { name: 'Trier par Statut' }).click()
+  await expect(tableau.getByRole('columnheader', { name: /^Trier par statut/ })).toHaveAttribute('aria-sort', 'ascending')
+  await tableau.getByRole('button', { name: 'Trier par Statut' }).click()
+  await expect(tableau.getByRole('columnheader', { name: /^Trier par statut/ })).toHaveAttribute('aria-sort', 'descending')
 
   // Filtre en nombre : au plus −10 % face à l'an dernier
   await tableau.getByRole('button', { name: 'Filtrer évolution du CA' }).click()

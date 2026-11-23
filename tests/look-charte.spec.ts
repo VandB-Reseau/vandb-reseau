@@ -54,8 +54,8 @@ test('les magasins ont leur blason de ville, à la place et à la taille du rond
   await expect(ligne('Annecy Test').locator('[data-blason="montagne"]')).toBeAttached()
   await expect(ligne('Lyon Test').locator('[data-blason="terres"]')).toBeAttached()
   const boite = (await ligne('Lyon Test').locator('[data-blason]').boundingBox())!
-  expect(Math.round(boite.width)).toBe(isMobile ? 44 : 28)
-  expect(Math.round(boite.height)).toBe(isMobile ? 44 : 28)
+  expect(Math.round(boite.width)).toBe(isMobile ? 44 : 32) // 362 : 32 px avec la sous-ligne
+  expect(Math.round(boite.height)).toBe(isMobile ? 44 : 32)
   await page.screenshot({ path: `captures/${info.project.name}-look-blasons.png` })
 })
 

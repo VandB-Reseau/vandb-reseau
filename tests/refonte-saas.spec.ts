@@ -131,7 +131,7 @@ test('PC : les magasins en tableau, une ligne ouvre l’aperçu ; téléphone : 
   }
   const tableau = page.getByRole('table', { name: 'Tableau des magasins' })
   await expect(tableau).toBeVisible()
-  await expect(tableau.getByRole('columnheader')).toContainText(['Magasin', 'Coach', 'Responsable Régional', 'CA du mois', 'vs N-1', 'Nine box', 'Dernière visite', 'Tâches'])
+  await expect(tableau.getByRole('columnheader')).toContainText(['Magasin', 'CA du mois', 'vs N-1', 'Nine box', 'Dernière visite', 'Tâches'])
   // Plus de lignes qu'avant à l'écran (9 avant la refonte) : au moins 12 magasins visibles sans défiler
   // 321 (18/11/2026) : les magasins sans chiffres sont repliés en bas
   await page.getByRole('button', { name: /^Afficher les \d+ sans chiffres$/ }).click()

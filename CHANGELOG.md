@@ -9,12 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
-- Historique de la fiche magasin réparé (Joseph, 23/11/2026), sans migration : le picto PDF ouvre de nouveau le compte
-  rendu (la fenêtre n'existait que sur l'Accueil), la ligne d'une visite et son crayon ouvrent sa modification.
-- Simulateur « Mix produit » (ex « Mix Cave et Bar », Joseph, 23/11/2026), sans migration : nouveau mode « Entre familles
-  de la gamme » par univers (Cave ou Bar, jamais additionnés) : CA et taux de marge de chaque famille repris du budget,
-  parts visées, points de marge gagnés à CA égal, effet de chaque famille et repère « 1 point de part déplacé ». Le mode
-  Cave et Bar reste, les simulations déjà gardées s'y rouvrent.
+- Refonte design 361-368, façon SaaS (Joseph, 23/11/2026), sans migration : en-têtes de tableau sur fond gris,
+  vues en bac à compteur, statuts en badges teintés (rouge compris), tableau des magasins avec sous-ligne Coach · RR,
+  colonne Statut, tendance sur 6 mois et menu « ⋯ » ; tableau de bord en tête des Chiffres et de la fiche magasin
+  (cartes chiffrées avec picto et évolution fléchée, anneau du CA par univers, barres des 6 derniers mois face à N-1) ;
+  compteurs en pastille à côté des titres de section.
 - Prix du fût d’un gros marché : chaque coût annexe se dit payé « par an » ou « une fois » sur le contrat (réparti sur
   ses années) (Joseph, 20/11/2026), sans migration.
 - Prix du fût d’un gros marché, suite (Joseph, 20/11/2026), sans migration : durée du contrat (masse de marge sur le

@@ -42,6 +42,7 @@ import SearchOffOutlined from '@mui/icons-material/SearchOffOutlined'
 import { PageHeader } from '../components/PageHeader'
 import { grilleIndicateurs, Indicateur } from '../components/Indicateur'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
+import { TableauDeBord } from '../components/TableauDeBord'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { RechercheFiltres } from '../components/RechercheFiltres'
@@ -819,6 +820,8 @@ export function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean 
   const lignes = useMemo(() => magasins.map((m) => ({ m, a: analyserCA(reseau, m.nom), coach: suivi(m, coachA(m, reseau.jour)), hygiene: dernierAudit(reseau, m.nom, 'hygiene'), excellence: dernierAudit(reseau, m.nom, 'excellence') }))
     .sort((x, y) => ordreAlerte.indexOf(x.a?.statut ?? null) - ordreAlerte.indexOf(y.a?.statut ?? null) || (x.a?.ecart ?? 0) - (y.a?.ecart ?? 0) || x.m.nom.localeCompare(y.m.nom, 'fr')), [magasins, reseau])
   const compte = (st: StatutAlerte | null) => lignes.filter((l) => (l.a?.statut ?? null) === st).length
+  const noms = useMemo(() => magasins.map((m) => m.nom), [magasins])
+  const avecStatut = lignes.filter((l) => l.a?.statut).length
   const visibles = lignes.filter((l) => !statuts.length || statuts.includes(l.a?.statut ?? 'sans'))
   const audits = lignes.flatMap((l) => [l.hygiene, l.excellence]).filter((x) => x && x.conforme !== null)
   const conformes = audits.filter((x) => x!.conforme).length
@@ -835,6 +838,10 @@ export function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean 
     <>
       {barreDe(<FiltreMenu libelle="Alerte" choisis={statuts} onChange={setStatuts} options={tuiles.map((t) => ({ valeur: t.id, libelle: t.titre, detail: `${t.n} magasins` }))} />,
         statuts.length, surPC ? <ChoixAffichage valeur={affichage} onChange={setAffichage} /> : undefined)}
+      {/* 364 (Joseph, 23/11/2026) : tableau de bord en tête, sur les magasins filtrés */}
+      <TableauDeBord reseau={reseau} noms={noms} label="Tableau de bord du réseau" groupe="Indicateurs du réseau"
+        quatrieme={avecStatut ? <Indicateur bordee icone={<StorefrontOutlined />} libelle="Magasins dans la norme" valeur={`${Math.round((compte('ok') / avecStatut) * 100)} %`}
+          detail={`${compte('ok')} sur ${avecStatut} magasins comparables`} /> : undefined} />
       {/* Vague 5 (53A) : la carte d'indicateur commune ; un clic filtre la liste sur cette alerte */}
       <Box sx={{ ...grilleIndicateurs, mb: 2 }}>
         {tuiles.map((t) => (
