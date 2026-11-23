@@ -127,8 +127,10 @@ test('« À traiter » dans la campagne : action en retard, équipe à renseigne
 
   // Allègement (03/11/2026) : l'équipe et les frais à renseigner sont des filtres de la liste, plus des points « À traiter »
   await expect(points.filter({ hasText: 'à renseigner' })).toHaveCount(0)
-  await page.getByRole('group', { name: 'Filtres' }).getByRole('button', { name: /^Équipe à renseigner/ }).click()
-  await expect(page.getByRole('group', { name: 'Filtres' }).getByRole('button', { name: /à renseigner/, pressed: true })).toHaveCount(1)
+  // C4 (23/11/2026) : l'équipe et les frais à renseigner dans une liste à côté de la recherche
+  await page.getByRole('combobox', { name: 'À renseigner' }).click()
+  await page.getByRole('option', { name: /^Équipe à renseigner/ }).click()
+  await expect(page.getByRole('combobox', { name: 'À renseigner' })).toContainText('Équipe à renseigner')
 
   // Replié, le choix est gardé
   await bloc.getByRole('button', { name: 'Replier' }).click()
@@ -137,11 +139,12 @@ test('« À traiter » dans la campagne : action en retard, équipe à renseigne
   await expect(page.getByRole('region', { name: 'À traiter' }).getByRole('button', { name: /^Voir les \d+ points$/ })).toBeVisible()
 })
 
-test('le Coach n’a pas de budget à proposer, mais voit l’équipe à renseigner dans les filtres', async ({ page }) => {
+test('le Coach n’a pas de budget à proposer, mais voit l’équipe à renseigner dans la liste « À renseigner »', async ({ page }) => {
   await seConnecter(page, { role: 'coach', magasins: [{ ...propose, statut: 'valide' }], equipe: [], frais: [] })
   const filtres = page.getByRole('group', { name: 'Filtres' })
   await expect(filtres.getByRole('button', { name: /^À proposer/ })).toHaveCount(0)
-  await expect(filtres.getByRole('button', { name: 'Équipe à renseigner · 1' })).toBeVisible()
+  await page.getByRole('combobox', { name: 'À renseigner' }).click()
+  await expect(page.getByRole('option', { name: 'Équipe à renseigner · 1' })).toBeVisible()
 })
 
 test('« À traiter » absent pour le franchisé', async ({ page }) => {
