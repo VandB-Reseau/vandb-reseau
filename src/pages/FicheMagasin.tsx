@@ -24,6 +24,7 @@ import type { Ton } from '../components/Social'
 import { ProfilPersonne, rond } from '../components/Portefeuille'
 import { Blason } from '../components/Blason'
 import { TableauActivite } from '../components/TableauActivite'
+import { FenetreCompteRendu } from '../components/ApercuCompteRendu'
 import { filDu } from '../data/fil'
 import { Puces } from '../components/Social'
 import { SituationMagasin } from '../components/SyntheseMagasin'
@@ -806,10 +807,13 @@ function ActiviteMagasin({ reseau, m, filtre, filtrer, signaler, saisirVisite, m
             </DansCarte.Provider>
           </Box>
           : elements.length
-            ? <TableauActivite elements={elements} ouvrirJournal={edition.ouvrir} />
+            ? <TableauActivite elements={elements} ouvrirJournal={edition.ouvrir}
+              modifierVisite={(id) => { const v = reseau.visites.find((x) => x.id === id); if (v) modifierVisite(v) }} />
             : <LigneVide>Rien pour l’instant dans ce filtre. Une visite, un appel ou une note s’ajoutent par le « + » de la fiche.</LigneVide>}
       </Card>
       {edition.fenetres}
+      {/* Le picto PDF du tableau ouvre le compte rendu ici (il ne s'affichait que sur l'Accueil) */}
+      <FenetreCompteRendu />
     </Box>
   )
 }

@@ -9,6 +9,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Historique de la fiche magasin réparé (Joseph, 23/11/2026), sans migration : le picto PDF ouvre de nouveau le compte
+  rendu (la fenêtre n'existait que sur l'Accueil), la ligne d'une visite et son crayon ouvrent sa modification.
 - Simulateur « Mix produit » (ex « Mix Cave et Bar », Joseph, 23/11/2026), sans migration : nouveau mode « Entre familles
   de la gamme » par univers (Cave ou Bar, jamais additionnés) : CA et taux de marge de chaque famille repris du budget,
   parts visées, points de marge gagnés à CA égal, effet de chaque famille et repère « 1 point de part déplacé ». Le mode
