@@ -1,6 +1,6 @@
 import { Children, isValidElement, useEffect, useMemo, useState, type ReactNode } from 'react'
 import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
-import { styleChiffre } from '../../theme/theme'
+import { brand, styleChiffre } from '../../theme/theme'
 import { useSearchParams } from 'react-router-dom'
 import { useReseauSiDispo } from '../../data/ReseauContext'
 import { chiffresDuMagasin } from '../../data/chiffres'
@@ -284,21 +284,40 @@ function Bloc({ titre, total, children }: { titre: string; total?: { libelle: st
   )
 }
 // Le compte du simulateur, du chiffre d'affaires au résultat : une ligne par bloc, le total en gras (en tête du bloc Résultat)
+// 409 (Joseph, 24/11/2026) : chaque ligne porte sa marche de la cascade (du CA au résultat), le trait pointillé marque le
+// point mort (0 €) : ce qui reste à droite du trait est gagné, à gauche perdu
 function Compte({ titre, lignes, total }: { titre: string; lignes: { libelle: string; valeur: number; detail?: string }[]; total: { libelle: string; valeur: number } }) {
-  const ligne = (libelle: string, valeur: number, detail: string | undefined, fort: boolean) => (
-    <Box key={libelle} role="row" sx={{ display: 'flex', alignItems: 'baseline', gap: 2, py: 0.5, ...(fort ? { borderTop: 1, borderColor: 'divider', mt: 0.5, pt: 1 } : {}) }}>
+  const vues = lignes.filter((l, i) => i === 0 || Math.abs(l.valeur) >= 0.5)
+  const marches: { de: number; a: number }[] = []
+  let cumul = 0
+  for (const l of vues) { marches.push({ de: cumul, a: cumul + l.valeur }); cumul += l.valeur }
+  const bornes = [0, total.valeur, ...marches.flatMap((m) => [m.de, m.a])]
+  const bas = Math.min(...bornes), haut = Math.max(...bornes)
+  const etendue = haut - bas || 1
+  const pos = (v: number) => ((v - bas) / etendue) * 100
+  const marche = (de: number, a: number, fort: boolean) => (
+    <Box aria-hidden className="cascade" sx={{ position: 'relative', alignSelf: 'center', flexShrink: 0, width: { xs: 72, sm: 140, md: 200 }, height: 14 }}>
+      <Box sx={{ position: 'absolute', top: -4, bottom: -4, left: `${pos(0)}%`, borderLeft: '1px dashed', borderColor: 'text.secondary', opacity: 0.6 }} />
+      <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: `${pos(Math.min(de, a))}%`, width: `max(2px, ${pos(Math.max(de, a)) - pos(Math.min(de, a))}%)`, borderRadius: '3px',
+        bgcolor: fort ? (a >= 0 ? brand.vertFonce : brand.brique) : a >= de ? 'rgba(48, 118, 114, 0.45)' : 'rgba(194, 65, 25, 0.45)' }} />
+    </Box>
+  )
+  const ligne = (libelle: string, valeur: number, detail: string | undefined, fort: boolean, m: { de: number; a: number }) => (
+    <Box key={libelle} role="row" sx={{ display: 'flex', alignItems: 'baseline', gap: { xs: 1, md: 2 }, py: 0.5, ...(fort ? { borderTop: 1, borderColor: 'divider', mt: 0.5, pt: 1 } : {}) }}>
       <Typography role="cell" sx={{ flex: 1, minWidth: 0, fontWeight: fort ? 700 : undefined }}>
         {libelle}{detail && <Box component="span" sx={{ color: 'text.secondary', ml: 1, fontSize: '0.875rem' }}>{detail}</Box>}
       </Typography>
-      <Typography role="cell" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: fort ? 700 : undefined, color: valeur <= -0.5 ? 'error.main' : undefined }}>
+      {marche(m.de, m.a, fort)}
+      <Typography role="cell" sx={{ minWidth: { md: 96 }, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: fort ? 700 : undefined, color: valeur <= -0.5 ? 'error.main' : undefined }}>
         {valeur < 0 ? '− ' : fort ? '' : '+ '}{montant(Math.abs(valeur))}
       </Typography>
     </Box>
   )
   return (
-    <Box role="table" aria-label={titre} sx={{ maxWidth: 560 }}>
-      {lignes.filter((l, i) => i === 0 || Math.abs(l.valeur) >= 0.5).map((l) => ligne(l.libelle, l.valeur, l.detail, false))}
-      {ligne(total.libelle, total.valeur, undefined, true)}
+    <Box role="table" aria-label={titre} sx={{ maxWidth: 760 }}>
+      {vues.map((l, i) => ligne(l.libelle, l.valeur, l.detail, false, marches[i]))}
+      {ligne(total.libelle, total.valeur, undefined, true, { de: 0, a: total.valeur })}
+      <Typography aria-hidden sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.5, textAlign: 'right' }}>Trait pointillé : point mort (0 €)</Typography>
     </Box>
   )
 }

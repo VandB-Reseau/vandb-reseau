@@ -1,4 +1,5 @@
 import { Indicateur } from '../components/Indicateur'
+import { BarresEmpilees, CarteGraphe } from '../components/Graphes'
 import { ton } from '../theme/theme'
 import { Entete, LigneSansResultat, useTableau, type ColonneTri } from '../components/TableauTri'
 import { useMemo, useState, type ReactNode } from 'react'
@@ -291,6 +292,10 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
   const [type, setType] = useState('')
   const [visiteur, setVisiteur] = useState('')
   const [recherche, setRecherche] = useState('')
+  // 407 (Joseph, 24/11/2026) : un clic sur un mois du graphe limite la liste à ce mois
+  const [moisChoisi, setMoisChoisi] = useState<string | null>(null)
+  // Sur téléphone, 6 mois : chaque colonne garde une zone tactile de 48 px
+  const larges = useMediaQuery(useTheme().breakpoints.up('md'))
   const s = useMemo(() => semestres.find((x) => x.cle === cle), [semestres, cle])
   // La recherche lit tout le compte rendu (sprint 26, S1) ; le passage trouvé remplace la note sur la ligne
   const trouvailles = useMemo(() => new Map(reseau.visites.map((v) => [v, chercherDansVisite(v, recherche)] as const)), [reseau, recherche])
@@ -298,7 +303,18 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
     .filter((v) => (!s || (v.date >= s.debut && v.date <= s.fin)) && (!type || v.type === type) && (!visiteur || v.visiteurs.includes(visiteur))
       && trouvailles.get(v) !== false)
     .sort((a, b) => b.date.localeCompare(a.date)), [reseau, s, type, visiteur, trouvailles])
-  const { visibles, suite } = useParTranches(liste, JSON.stringify([cle, type, visiteur, recherche]))
+  // Le graphe suit les filtres Type, Visité par et la recherche, sur les 12 derniers mois (la période ne le coupe pas)
+  const douzeMois = useMemo(() => {
+    const [a, m] = reseau.jour.slice(0, 7).split('-').map(Number)
+    const mois = Array.from({ length: 12 }, (_x, i) => { const d = new Date(Date.UTC(a, m - 12 + i, 15)); return d.toISOString().slice(0, 7) })
+    const pour = reseau.visites.filter((v) => (!type || v.type === type) && (!visiteur || v.visiteurs.includes(visiteur)) && trouvailles.get(v) !== false)
+    return mois.map((mo) => {
+      const du = pour.filter((v) => v.date.startsWith(mo))
+      return { cle: mo, libelle: new Date(`${mo}-15T12:00:00`).toLocaleDateString('fr-FR', { month: 'short' }).replace('.', ''), valeurs: typesVisite.map((t) => du.filter((v) => v.type === t.id).length) }
+    })
+  }, [reseau, type, visiteur, trouvailles])
+  const affichees = useMemo(() => (moisChoisi ? liste.filter((v) => v.date.startsWith(moisChoisi)) : liste), [liste, moisChoisi])
+  const { visibles, suite } = useParTranches(affichees, JSON.stringify([cle, type, visiteur, recherche, moisChoisi]))
   const Actions = ({ v }: { v: Visite }) => (
     <Box sx={{ display: 'flex' }}>
       <Tooltip title="Compte rendu PDF"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu de ${v.magasin} du ${dateCourte(v.date)}`}><PictureAsPdfOutlined /></IconButton></Tooltip>
@@ -312,10 +328,20 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
         <FiltreMenu libelle="Période" choisis={cle ? [cle] : []} onChange={(v) => setCle(v.at(-1) ?? '')} options={semestres.map((x) => ({ valeur: x.cle, libelle: x.court }))} />
         <FiltreMenu libelle="Type" choisis={type ? [type] : []} onChange={(v) => setType(v.at(-1) ?? '')} options={typesVisite.map((t) => ({ valeur: t.id, libelle: t.libelle }))} />
         <FiltreMenu libelle="Visité par" choisis={visiteur ? [visiteur] : []} onChange={(v) => setVisiteur(v.at(-1) ?? '')} options={visiteurs(reseau).map((n) => ({ valeur: n, libelle: n }))} />
-        {(cle || type || visiteur || recherche) && <Button onClick={() => { setCle(''); setType(''); setVisiteur(''); setRecherche('') }} sx={{ minHeight: 36 }}>Retirer les filtres</Button>}
+        {(cle || type || visiteur || recherche || moisChoisi) && <Button onClick={() => { setCle(''); setType(''); setVisiteur(''); setRecherche(''); setMoisChoisi(null) }} sx={{ minHeight: 36 }}>Retirer les filtres</Button>}
       </RechercheFiltres>
-      <TitreSection>{`${liste.length} visite${liste.length > 1 ? 's' : ''}`}</TitreSection>
-      {liste.length === 0 ? (
+      {reseau.visites.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          <CarteGraphe titre={`Visites des ${larges ? 12 : 6} derniers mois`} sousTitre={moisChoisi ? `Liste limitée à ${libelleMoisAnnee(moisChoisi)}` : 'Par type de visite'}
+            fin={moisChoisi ? <Button onClick={() => setMoisChoisi(null)} sx={{ minHeight: 40 }}>Tous les mois</Button> : undefined}>
+            <BarresEmpilees colonnes={larges ? douzeMois : douzeMois.slice(-6)} series={typesVisite.map((t) => ({ libelle: t.libelle, couleur: t.couleur }))} label="Visites par mois et par type"
+              actif={moisChoisi} ouvrir={(k) => setMoisChoisi((x) => (x === k ? null : k))}
+              libelleOuvrir={(c) => `${libelleMoisAnnee(c.cle)} : ${c.valeurs.reduce((a, v) => a + v, 0)} visites`} />
+          </CarteGraphe>
+        </Box>
+      )}
+      <TitreSection>{`${affichees.length} visite${affichees.length > 1 ? 's' : ''}`}</TitreSection>
+      {affichees.length === 0 ? (
         <EmptyState icone={<EventNoteOutlined />} titre="Aucune visite" texte={reseau.visites.length ? 'Aucune visite ne correspond à ces filtres.' : 'Saisis ta première visite avec le bouton « Saisir une visite ».'} />
       ) : (
         // Un intertitre collant par mois, avec le nombre de visites du mois (Joseph, 21/10/2026)
@@ -324,7 +350,7 @@ function VueHistorique({ reseau, modifier, actions }: { reseau: Reseau; modifier
             <Box key={mois} component="section" aria-label={libelleMoisAnnee(mois)}>
               <Box sx={{ position: 'sticky', top: sousBandes('--onglets', '--filtres'), zIndex: 3, bgcolor: 'background.default', py: 0.75, px: 0.5 }}>
                 <Typography component="h2" sx={{ fontWeight: 700, fontSize: '0.875rem', color: 'text.secondary', '&::first-letter': { textTransform: 'uppercase' } }}>
-                  {libelleMoisAnnee(mois)} · {nbDuMois(liste, mois)} visite{nbDuMois(liste, mois) > 1 ? 's' : ''}
+                  {libelleMoisAnnee(mois)} · {nbDuMois(affichees, mois)} visite{nbDuMois(affichees, mois) > 1 ? 's' : ''}
                 </Typography>
               </Box>
               <CarteLignes>

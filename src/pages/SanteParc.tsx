@@ -1,4 +1,5 @@
-import { rayon } from '../theme/theme'
+import { brand, rayon } from '../theme/theme'
+import { BarreRepartition, BarresEmpilees, CarteGraphe } from '../components/Graphes'
 import { Entete, LigneSansResultat, useTableau, type ColonneTri } from '../components/TableauTri'
 import { Blason } from '../components/Blason'
 import type { ReactNode } from 'react'
@@ -59,7 +60,7 @@ import InputAdornment from '@mui/material/InputAdornment'
 import SearchIcon from '@mui/icons-material/Search'
 import { BoutonsNote, BoutonsOption, LibelleCritere, NotesParAxe, PastilleCase, couleursCoachs, texteSur, useSaisieSante, type Saisie } from '../components/Sante'
 import { EN_DIRECT, coachA, libelleSuivi, suivi } from '../data/charge'
-import { avancement, caseDe, effetDeploiement, EFFET_MINIMUM, EFFET_MOIS, couleurTon, criteresAxe, libelleAxe, libelleNote, nineBox, tonDe, tousCriteres, type Evaluation, type IdCritere, type Thematique } from '../data/sante'
+import { avancement, caseDe, historiqueSante, effetDeploiement, EFFET_MINIMUM, EFFET_MOIS, couleurTon, criteresAxe, libelleAxe, libelleNote, nineBox, tonDe, tousCriteres, type Evaluation, type IdCritere, type Thematique } from '../data/sante'
 import { useAuth } from '../auth/AuthContext'
 import { lienFiche } from '../lib/format'
 import { PastilleAlerte } from '../components/Chiffres'
@@ -122,6 +123,48 @@ export function nomCourtCoach(nom: string, tous: string[] = []): string {
   if (nom.startsWith(EN_DIRECT)) return nomCourtCoach(nom.slice(EN_DIRECT.length), tous)
   const court = (n: string) => { const [p, ...r] = n.trim().split(/\s+/); return r.length ? `${p} ${r[0][0].toUpperCase()}.` : p }
   return tous.some((x) => x !== nom && court(x) === court(nom)) ? nom : court(nom)
+}
+
+// 408 (Joseph, 24/11/2026) : la répartition du parc en 4 tons (Agir, Surveiller, Bon, Neutre) et son évolution sur
+// 6 mois, lue dans l'historique des classements : combien de magasins passent du rouge au vert
+const tonsParc = [
+  { libelle: 'Prioritaires', couleur: brand.brique, ids: SURVEILLER },
+  { libelle: 'À suivre', couleur: brand.or, ids: null },
+  { libelle: 'Solides', couleur: brand.vertFonce, ids: SOLIDES },
+  { libelle: 'Non classés', couleur: '#9a948d', ids: [] as string[] },
+]
+const tonParcDe = (caseId: string | null | undefined) => (!caseId ? 3 : SURVEILLER.includes(caseId) ? 0 : SOLIDES.includes(caseId) ? 2 : 1)
+function RepartitionParc({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
+  // Les mêmes magasins que les cartes du dessus (filtres compris)
+  const ouverts = magasins
+  const [a, m] = reseau.jour.slice(0, 7).split('-').map(Number)
+  const mois = Array.from({ length: 6 }, (_x, i) => new Date(Date.UTC(a, m - 6 + i, 15)).toISOString().slice(0, 7))
+  const fin = (mo: string) => { const [y, n] = mo.split('-').map(Number); return new Date(Date.UTC(y, n, 0)).toISOString().slice(0, 10) }
+  const historiques = ouverts.map((x) => historiqueSante(reseau.evaluations, x.nom))
+  const colonnes = mois.map((mo) => {
+    const jour = mo === reseau.jour.slice(0, 7) ? reseau.jour : fin(mo)
+    const v = [0, 0, 0, 0]
+    for (const h of historiques) v[tonParcDe(h.filter((p) => p.date <= jour).at(-1)?.caseId)]++
+    return { cle: mo, libelle: new Date(`${mo}-15T12:00:00`).toLocaleDateString('fr-FR', { month: 'short' }).replace('.', ''), valeurs: v }
+  })
+  const maintenant = [0, 0, 0, 0]
+  for (const x of ouverts) maintenant[tonParcDe(caseDe(reseau.evaluations[x.nom])?.id)]++
+  const debut = colonnes[0].valeurs
+  const ecart = maintenant[2] - debut[2], ecartP = maintenant[0] - debut[0]
+  const phrase = !ouverts.length ? null
+    : `En 6 mois : ${ecart === 0 ? 'autant de magasins solides' : `${Math.abs(ecart)} magasin${Math.abs(ecart) > 1 ? 's' : ''} solide${Math.abs(ecart) > 1 ? 's' : ''} de ${ecart > 0 ? 'plus' : 'moins'}`}, ${ecartP === 0 ? 'autant de prioritaires' : `${Math.abs(ecartP)} prioritaire${Math.abs(ecartP) > 1 ? 's' : ''} de ${ecartP > 0 ? 'plus' : 'moins'}`}.`
+  if (!ouverts.length) return null
+  return (
+    <Box sx={{ display: 'grid', gap: { xs: 1, md: 1.5 }, gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(0, 1fr)' }, mt: { xs: 2, md: 3 } }}>
+      <CarteGraphe titre="Répartition du parc" sousTitre={`${ouverts.length} magasin${ouverts.length > 1 ? 's' : ''}`}>
+        <BarreRepartition label="Répartition du parc" parts={tonsParc.map((t, i) => ({ libelle: t.libelle, valeur: maintenant[i], couleur: t.couleur }))} />
+        {phrase && <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, mt: 1.5 }}>{phrase}</Typography>}
+      </CarteGraphe>
+      <CarteGraphe titre="Évolution sur 6 mois" sousTitre="Classement à la fin de chaque mois">
+        <BarresEmpilees enPart hauteur={120} colonnes={colonnes} series={tonsParc} label="Évolution de la répartition du parc sur 6 mois" />
+      </CarteGraphe>
+    </Box>
+  )
 }
 
 function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () => void; surPC: boolean }) {
@@ -209,6 +252,8 @@ function VueNineBox({ reseau, evaluer, surPC }: { reseau: Reseau; evaluer: () =>
           {niveaux.map((n) => <Typography key={n} variant="body2" color="text.secondary" sx={{ textAlign: 'center', fontWeight: 600, fontSize: { xs: 12, md: 14 } }}>Résultats {n}s</Typography>)}
         </Box>
       </Card>
+      {/* 408 : sous la nine box, qui reste visible sans faire défiler sur téléphone */}
+      <RepartitionParc reseau={reseau} magasins={magasins} />
 
       <Drawer anchor={surPC ? 'right' : 'bottom'} open={!!caseOuverte} onClose={() => setOuverte(null)} sx={{ zIndex: (t) => t.zIndex.appBar + 10 }}
         slotProps={{ paper: { sx: { width: surPC ? 440 : '100%', top: surPC ? 0 : undefined, height: surPC ? '100%' : undefined, maxHeight: surPC ? undefined : '85dvh', borderRadius: surPC ? 0 : '16px 16px 0 0' } } }}>

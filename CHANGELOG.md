@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Écrans encore peu visuels (Joseph, 24/11/2026, choix 406 à 412), sans migration. Tâches : quatre cartes chiffrées (à faire,
+  en retard, bloquées, faites sur 30 jours face aux 30 jours d'avant) et, par magasin ou par personne, une barre d'avancement.
+  Visites › Historique : visites par mois et par type (12 mois sur PC, 6 sur téléphone), un clic limite la liste au mois.
+  Santé du parc : répartition en 4 tons et évolution sur 6 mois, sous la nine box. Simulateurs : chaque ligne du compte porte
+  sa marche de cascade, point mort (0 €) en pointillés. Agenda : charge du jour en pastille (orange dès 3 rendez-vous).
+  Paramètres du budget : une carte par rubrique, « Réglé » ou « À régler ». 410 existait déjà (thèmes prêts du budget).
 - Écrans à graphes visuels comme Pilotage (Joseph, 24/11/2026, choix 393 à 405), sans migration. Face au budget : tableau
   coloré (bouton « Couleurs »), phrase de lecture, vue « Face au budget » avec marge, EBE sur CA et % FP en points face au
   budget, regroupement par RR puis par Coach (un clic descend, « Revenir » remonte), affichage Carte, mode présentation.
