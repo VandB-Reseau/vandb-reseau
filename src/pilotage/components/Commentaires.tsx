@@ -1,5 +1,15 @@
 import { LigneVide } from '../../components/Section'
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
+import LockOutlined from '@mui/icons-material/LockOutlined'
+import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
+import { Choix } from '../../components/Carnet'
+import { useReseauSiDispo } from '../../data/ReseauContext'
+import { monNomPorteur } from '../../data/actions'
+import { useAuth } from '../../auth/AuthContext'
+import { collegues } from '../../data/carnet'
 import Alert from '@mui/material/Alert'
 import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
@@ -28,13 +38,16 @@ import { useChargement } from '../data/useChargement'
 // messagerie : pas de fil général, pas de sujet.
 // Joseph (09/11/2026) : la colonne des commentaires mangeait la largeur du compte de résultat ; ils s'ouvrent à la demande
 // dans un volet à droite (bouton « Commentaires » de l'en-tête du budget, ou bulle d'un point), qui laisse la page défiler.
+// Joseph (24/11/2026, proposition C retenue pour le budget) : sur PC large, les commentaires passent dans la marge, chacun
+// à hauteur de la ligne qu'il commente, comme dans un document partagé. Chacun dit qui le lit (« Équipe seule » ou « Avec
+// le franchisé », migration pilotage 0037) et peut prévenir des collègues dans leur cloche. Téléphone et petit écran : volet.
 
 export const ANCRE_BUDGET = { ancre: 'budget', libelle: 'Le budget en général' }
 const MAX_TEXTE = 2000
 const quand = (d: string) => new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 const qui = (role: Role | null, nom: string | null) => [nom, role ? roleLibelle[role] : null].filter(Boolean).join(', ') || 'Compte retiré'
 
-interface Contexte { ouverts: (ancre: string) => number; ouvrir: (ancre: string, libelle: string) => void; total: number; ouvrirTout: () => void; volet: boolean }
+interface Contexte { ouverts: (ancre: string) => number; ouvrir: (ancre: string, libelle: string) => void; total: number; ouvrirTout: () => void; volet: boolean; marge: boolean }
 const Ctx = createContext<Contexte | null>(null)
 
 // Bouton « Commenter » d'un point : la bulle porte le nombre de commentaires ouverts sur ce point
@@ -47,7 +60,7 @@ export function BoutonCommenter({ ancre, libelle, compact, ligne }: { ancre: str
   const quoi = ligne ? 'cette ligne' : libelle
   return (
     <Tooltip title={n ? `${n} commentaire${n > 1 ? 's' : ''} ouvert${n > 1 ? 's' : ''}` : 'Commenter'}>
-      <IconButton className="pas-a-l-impression" aria-label={n ? `Commentaires sur ${quoi} (${n} ouvert${n > 1 ? 's' : ''})` : `Commenter ${ligne ? quoi : `: ${quoi}`}`}
+      <IconButton className="pas-a-l-impression" data-ancre-commentaire={ancre} aria-label={n ? `Commentaires sur ${quoi} (${n} ouvert${n > 1 ? 's' : ''})` : `Commenter ${ligne ? quoi : `: ${quoi}`}`}
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); c.ouvrir(ancre, libelle) }}
         sx={{ width: { xs: 48, lg: compact ? 28 : 36 }, height: { xs: 48, lg: compact ? 28 : 36 }, flexShrink: 0, color: n ? 'warning.dark' : 'text.secondary', opacity: n ? 1 : 0.6, '&:hover, &:focus-visible': { opacity: 1 } }}>
         <Badge badgeContent={n} color="warning" invisible={!n}><ChatBubbleOutlineOutlined fontSize="small" /></Badge>
@@ -62,6 +75,7 @@ export function BoutonCommentaires({ compact }: { compact?: boolean } = {}) {
   const c = useContext(Ctx)
   if (!c) return null
   const nom = c.total ? `Commentaires (${c.total} ouvert${c.total > 1 ? 's' : ''})` : 'Commentaires'
+  // En marge, le bouton montre ou cache la marge
   if (compact) return (
     <Tooltip title={nom}>
       <IconButton onClick={c.ouvrirTout} aria-expanded={c.volet} aria-label={nom} className="pas-a-l-impression"
@@ -88,87 +102,135 @@ export function filsDe(l: Commentaire[]): Fil[] {
 }
 const dernier = (f: Fil) => f.reponses.at(-1)?.creeLe ?? f.creeLe
 
-// Fournit les bulles aux points du budget et affiche le panneau ; « panneau » reçoit le panneau à placer
+type Point = { ancre: string; libelle: string }
+type Agir = (f: () => Promise<void>, apres?: () => void) => Promise<void>
+interface Commun { magasin: string; annee: number; moi: Profil | null; equipeDuReseau: boolean; autres: string[]; occupe: boolean; agir: Agir }
+
+// Fournit les bulles aux points du budget et affiche la marge (PC large) ou le volet ; « panneau » reçoit ce qu'il faut placer
 export function CommentairesBudget({ magasin, annee, moi, children }: {
   magasin: string; annee: number; moi: Profil | null
   children: (panneau: ReactNode, ouverts: number) => ReactNode
 }) {
   const { donnees, erreur, recharger } = useChargement(() => chargerCommentaires(magasin, annee), [magasin, annee])
-  const [point, setPoint] = useState<{ ancre: string; libelle: string } | null>(null)
+  const theme = useTheme()
+  const marge = useMediaQuery(theme.breakpoints.up('lg'))
+  const reseau = useReseauSiDispo()?.reseau ?? null
+  const [point, setPoint] = useState<Point | null>(null)
   const [demande, setDemande] = useState(0)
   const [volet, setVolet] = useState(false)
+  const [occupe, setOccupe] = useState(false)
+  const [probleme, setProbleme] = useState<string | null>(null)
   const fils = filsDe(donnees ?? [])
   const ouverts = fils.filter((f) => !f.resoluLe)
+  // Sur un grand écran (1 680 px et plus), la marge s'ouvre d'elle-même quand des commentaires sont ouverts (une fois par
+  // budget) ; en dessous, elle s'ouvre à la demande pour laisser au compte de résultat toute sa largeur (Joseph, 09/11/2026)
+  const grandEcran = useMediaQuery('(min-width: 1680px)')
+  const deja = useRef(false)
+  useEffect(() => { deja.current = false }, [magasin, annee])
+  useEffect(() => { if (grandEcran && donnees && !deja.current) { deja.current = true; if (ouverts.length) setVolet(true) } }, [grandEcran, donnees, ouverts.length])
+  const equipeDuReseau = !!moi && moi.role !== 'franchise' && moi.role !== 'aucun'
+  const profilReseau = useAuth().profil
+  const monNom = reseau && profilReseau ? monNomPorteur(reseau, profilReseau) : ''
+  const autres = equipeDuReseau && reseau ? collegues(reseau, magasin, monNom).map((p) => p.nom) : []
+  const agir: Agir = async (f, apres) => {
+    setOccupe(true); setProbleme(null)
+    try { await f(); apres?.(); recharger() } catch { setProbleme('Le commentaire n’est pas enregistré. Vérifie ta connexion, puis réessaie.') } finally { setOccupe(false) }
+  }
+  const commun: Commun = { magasin, annee, moi, equipeDuReseau, autres, occupe, agir }
   const ctx: Contexte = {
     ouverts: (ancre) => ouverts.filter((f) => f.ancre === ancre).length,
     ouvrir: (ancre, libelle) => { setPoint({ ancre, libelle }); setVolet(true); setDemande((n) => n + 1) },
-    total: ouverts.length, volet,
+    total: ouverts.length, volet, marge,
     ouvrirTout: () => { setPoint(null); setVolet((v) => !v) },
   }
-  // Volet sans fond grisé : la page reste lisible et défile pendant qu'on écrit
-  const panneau = (
+  const fermer = useCallback(() => { setVolet(false); setPoint(null) }, [])
+  const panneau = marge ? (
+    <>
+      <Box data-marge-depart aria-hidden sx={{ height: 0 }} />
+      {volet && <Marge key={`marge-${magasin}-${annee}`} fils={fils} commun={commun} panne={!!erreur && !donnees} probleme={probleme}
+        point={point} demande={demande} onPoint={setPoint} onFermer={fermer} />}
+    </>
+  ) : (
+    // Volet sans fond grisé : la page reste lisible et défile pendant qu'on écrit
     <Drawer variant="persistent" anchor="right" open={volet} className="pas-a-l-impression"
       slotProps={{ paper: { role: 'complementary', 'aria-label': 'Volet des commentaires', sx: { top: { xs: 64, md: 0 }, height: { xs: 'calc(100% - 64px - var(--barre-basse, 0px))', md: '100%' }, width: { xs: '100%', sm: 400 }, bgcolor: 'background.default', borderLeft: 1, borderColor: 'divider', boxShadow: 6, p: 1.5 } } }}>
       {/* Sur PC, la page se pousse à gauche du volet ouvert : il ne recouvre ni les étapes ni les boutons de l'en-tête */}
       {volet && <GlobalStyles styles={{ '@media (min-width: 900px)': { main: { paddingRight: '424px !important' } } }} />}
       {volet && (
-        <PanneauCommentaires key={`commentaires-${magasin}`} magasin={magasin} annee={annee} moi={moi} fils={fils} panne={!!erreur && !donnees} recharger={recharger}
-          point={point} demande={demande} onPoint={setPoint} onFermer={() => setVolet(false)} />
+        <PanneauCommentaires key={`commentaires-${magasin}`} commun={commun} fils={fils} panne={!!erreur && !donnees} probleme={probleme}
+          point={point} demande={demande} onPoint={setPoint} onFermer={fermer} />
       )}
     </Drawer>
   )
   return <Ctx.Provider value={ctx}>{children(panneau, ouverts.length)}</Ctx.Provider>
 }
 
-function PanneauCommentaires({ magasin, annee, moi, fils, panne, recharger, point, demande, onPoint, onFermer }: {
-  magasin: string; annee: number; moi: Profil | null; fils: Fil[]; panne: boolean; recharger: () => void
-  point: { ancre: string; libelle: string } | null; demande: number; onPoint: (p: { ancre: string; libelle: string } | null) => void
-  onFermer: () => void
-}) {
+// Qui lit ce commentaire : une puce sur chaque fil (l'équipe la voit ; le franchisé ne voit que les siens)
+function PuceVisibilite({ equipe }: { equipe: boolean }) {
+  return (
+    <Chip size="small" icon={equipe ? <LockOutlined /> : <StorefrontOutlined />} label={equipe ? 'Équipe seule' : 'Avec le franchisé'}
+      sx={{ fontSize: '0.75rem', fontWeight: 600, height: 24, ...(equipe ? { bgcolor: 'rgba(234, 96, 41, 0.12)', color: 'warning.dark', '& .MuiChip-icon': { color: 'inherit' } } : {}) }} />
+  )
+}
+
+// Nouveau commentaire : texte, qui le lit (équipe), collègues prévenus
+function NouveauCommentaire({ commun, sur, champ, compact, apres, aLaMain }: { commun: Commun; sur: Point; champ?: React.Ref<HTMLTextAreaElement>; compact?: boolean; apres?: () => void; aLaMain?: boolean }) {
   const [texte, setTexte] = useState('')
-  const [reponse, setReponse] = useState<{ id: number; texte: string } | null>(null)
-  const [voirResolus, setVoirResolus] = useState(false)
-  // Refonte vague 2 (Joseph, 09/11/2026, 20A) : le volet montre aussi ce qui a changé dans le budget (versions enregistrées)
-  const [vue, setVue] = useState<'commentaires' | 'tout'>('commentaires')
-  const [occupe, setOccupe] = useState(false)
-  const [probleme, setProbleme] = useState<string | null>(null)
-  const boite = useRef<HTMLDivElement>(null)
-  const champ = useRef<HTMLTextAreaElement>(null)
-  const peutEcrire = !!moi && moi.role !== 'aucun'
-  // Un point demandé depuis sa bulle : le panneau vient à l'écran, le champ prend la main
-  useEffect(() => {
-    if (!demande) return
-    champ.current?.focus({ preventScroll: true })
-  }, [demande])
-  useEffect(() => {
-    const echap = (e: KeyboardEvent) => { if (e.key === 'Escape') onFermer() }
-    window.addEventListener('keydown', echap)
-    return () => window.removeEventListener('keydown', echap)
-  }, [onFermer])
-
-  const agir = async (f: () => Promise<void>, apres?: () => void) => {
-    setOccupe(true); setProbleme(null)
-    try { await f(); apres?.(); recharger() } catch { setProbleme('Le commentaire n’est pas enregistré. Vérifie ta connexion, puis réessaie.') } finally { setOccupe(false) }
-  }
-  const sur = point ?? ANCRE_BUDGET
-  const visibles = fils.filter((f) => (!point || f.ancre === point.ancre))
-  const ouverts = visibles.filter((f) => !f.resoluLe), resolus = visibles.filter((f) => f.resoluLe)
-  const total = fils.filter((f) => !f.resoluLe).length
-
-  const carte = (f: Fil) => (
-    <Box key={f.id} component="li" aria-label={`Commentaire sur ${f.ancreLibelle ?? ANCRE_BUDGET.libelle}`}
-      sx={{ border: 1, borderColor: 'divider', borderRadius: 2, p: 1.25, display: 'grid', gap: 0.75, opacity: f.resoluLe ? 0.75 : 1, bgcolor: 'background.paper' }}>
-      {!point && (
-        <Button size="small" onClick={() => onPoint({ ancre: f.ancre, libelle: f.ancreLibelle ?? ANCRE_BUDGET.libelle })}
-          sx={{ justifyContent: 'flex-start', p: 0, minHeight: { xs: 48, lg: 28 }, fontWeight: 700, color: 'warning.dark', textAlign: 'left' }}>
-          {f.ancreLibelle ?? ANCRE_BUDGET.libelle}
-        </Button>
+  const zone = useRef<HTMLTextAreaElement | null>(null)
+  // Demandé depuis la bulle d'une ligne : le champ prend la main dès qu'il paraît (la marge se place après mesure)
+  useEffect(() => { if (aLaMain) zone.current?.focus({ preventScroll: true }) }, [aLaMain])
+  const lier = (el: HTMLTextAreaElement | null) => { zone.current = el; if (typeof champ === 'function') champ(el); else if (champ) (champ as React.MutableRefObject<HTMLTextAreaElement | null>).current = el }
+  const [equipe, setEquipe] = useState(true)
+  const [prevenir, setPrevenir] = useState<string[]>([])
+  const { magasin, annee, equipeDuReseau, autres, occupe, agir } = commun
+  return (
+    <Box sx={{ display: 'grid', gap: 1 }}>
+      <TextField inputRef={lier} size="small" multiline minRows={2} maxRows={6} label={`Commenter : ${sur.libelle}`} value={texte}
+        onChange={(e) => setTexte(e.target.value.slice(0, MAX_TEXTE))} />
+      {equipeDuReseau && (
+        <ToggleButtonGroup exclusive size="small" value={equipe ? 'equipe' : 'tous'} onChange={(_, v) => v && setEquipe(v === 'equipe')} aria-label="Qui lit ce commentaire"
+          sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, lg: 36 }, px: 1.25, textTransform: 'none', gap: 0.5 } }}>
+          <ToggleButton value="equipe"><LockOutlined sx={{ fontSize: 16 }} />Équipe seule</ToggleButton>
+          <ToggleButton value="tous"><StorefrontOutlined sx={{ fontSize: 16 }} />Avec le franchisé</ToggleButton>
+        </ToggleButtonGroup>
       )}
+      {autres.length > 0 && <Choix label="Prévenir" multiple options={autres.map((n) => ({ v: n, libelle: n }))} valeurs={prevenir} changer={setPrevenir} />}
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Button variant="contained" startIcon={compact ? undefined : <AddCommentOutlined />} disabled={occupe || !texte.trim()} sx={{ minHeight: { xs: 48, lg: compact ? 36 : 48 } }}
+          onClick={() => void agir(() => envoyerCommentaire(magasin, annee, { ancre: sur.ancre, libelle: sur.libelle, texte, equipe: equipeDuReseau && equipe, mentions: prevenir }), () => { setTexte(''); setPrevenir([]); apres?.() })}>
+          Commenter
+        </Button>
+        {apres && <Button onClick={apres} sx={{ minHeight: { xs: 48, lg: 36 } }}>Annuler</Button>}
+      </Box>
+    </Box>
+  )
+}
+
+// Un commentaire et ses réponses, avec Répondre et Résolu
+function CarteFil({ f, commun, avecPoint, onPoint }: { f: Fil; commun: Commun; avecPoint?: boolean; onPoint?: (p: Point) => void }) {
+  const { magasin, annee, moi, equipeDuReseau, autres, occupe, agir } = commun
+  const [reponse, setReponse] = useState<string | null>(null)
+  const [prevenir, setPrevenir] = useState<string[]>([])
+  const peutEcrire = !!moi && moi.role !== 'aucun'
+  const libelle = f.ancreLibelle ?? ANCRE_BUDGET.libelle
+  return (
+    <Box component="li" aria-label={`Commentaire sur ${libelle}`}
+      sx={{ border: 1, borderColor: 'divider', borderLeft: 4, borderLeftColor: f.resoluLe ? 'divider' : f.equipe ? 'warning.main' : 'secondary.main', borderRadius: 2, p: 1.25, display: 'grid', gap: 0.75, opacity: f.resoluLe ? 0.75 : 1, bgcolor: 'background.paper', listStyle: 'none' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+        {avecPoint && onPoint ? (
+          <Button size="small" onClick={() => onPoint({ ancre: f.ancre, libelle })}
+            sx={{ justifyContent: 'flex-start', p: 0, minHeight: { xs: 48, lg: 28 }, fontWeight: 700, color: 'warning.dark', textAlign: 'left', flex: 1, minWidth: 0 }}>
+            {libelle}
+          </Button>
+        ) : <Typography variant="body2" sx={{ fontWeight: 700, flex: 1, minWidth: 0 }}>{libelle}</Typography>}
+        {equipeDuReseau && <PuceVisibilite equipe={f.equipe} />}
+      </Box>
       {[f, ...f.reponses].map((m, i) => (
         <Box key={m.id} sx={{ ...(i ? { ml: 1.5, pl: 1.25, borderLeft: 2, borderColor: 'divider' } : {}), display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="body2" color="text.secondary">{`${qui(m.auteurRole, m.auteurNom)} · ${quand(m.creeLe)}`}</Typography>
             <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{m.texte}</Typography>
+            {m.mentions.length > 0 && equipeDuReseau && <Typography variant="body2" color="text.secondary">{`Prévenu${m.mentions.length > 1 ? 's' : ''} : ${m.mentions.join(', ')}`}</Typography>}
           </Box>
           {m.auteur === moi?.id && (
             <Tooltip title="Retirer">
@@ -180,27 +242,175 @@ function PanneauCommentaires({ magasin, annee, moi, fils, panne, recharger, poin
         </Box>
       ))}
       {f.resoluLe && <Typography variant="body2" color="text.secondary">{`Résolu par ${qui(f.resoluParRole, f.resoluParNom)} · ${quand(f.resoluLe)}`}</Typography>}
-      {peutEcrire && (reponse?.id === f.id ? (
+      {peutEcrire && (reponse !== null ? (
         <Box sx={{ display: 'grid', gap: 1 }}>
-          <TextField size="small" multiline minRows={2} autoFocus label="Ta réponse" value={reponse.texte} onChange={(e) => setReponse({ id: f.id, texte: e.target.value.slice(0, MAX_TEXTE) })} />
+          <TextField size="small" multiline minRows={2} autoFocus label="Ta réponse" value={reponse} onChange={(e) => setReponse(e.target.value.slice(0, MAX_TEXTE))} />
+          {autres.length > 0 && <Choix label="Prévenir" multiple options={autres.map((n) => ({ v: n, libelle: n }))} valeurs={prevenir} changer={setPrevenir} />}
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button variant="contained" size="small" disabled={occupe || !reponse.texte.trim()} sx={{ minHeight: { xs: 48, lg: 36 } }}
-              onClick={() => void agir(() => envoyerCommentaire(magasin, annee, { ancre: f.ancre, libelle: f.ancreLibelle ?? '', texte: reponse.texte, parent: f.id }), () => setReponse(null))}>Répondre</Button>
-            <Button size="small" onClick={() => setReponse(null)} sx={{ minHeight: { xs: 48, lg: 36 } }}>Annuler</Button>
+            <Button variant="contained" size="small" disabled={occupe || !reponse.trim()} sx={{ minHeight: { xs: 48, lg: 36 } }}
+              onClick={() => void agir(() => envoyerCommentaire(magasin, annee, { ancre: f.ancre, libelle: f.ancreLibelle ?? '', texte: reponse, parent: f.id, equipe: f.equipe, mentions: prevenir }), () => { setReponse(null); setPrevenir([]) })}>Répondre</Button>
+            <Button size="small" onClick={() => { setReponse(null); setPrevenir([]) }} sx={{ minHeight: { xs: 48, lg: 36 } }}>Annuler</Button>
           </Box>
         </Box>
       ) : (
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {!f.resoluLe && <Button size="small" onClick={() => setReponse({ id: f.id, texte: '' })} sx={{ minHeight: { xs: 48, lg: 32 } }}>Répondre</Button>}
+          {!f.resoluLe && <Button size="small" onClick={() => setReponse('')} sx={{ minHeight: { xs: 48, lg: 32 } }}>Répondre</Button>}
           <Button size="small" startIcon={f.resoluLe ? undefined : <CheckCircleOutlined />} disabled={occupe} sx={{ minHeight: { xs: 48, lg: 32 } }}
             onClick={() => void agir(() => resoudreCommentaire(f.id, !f.resoluLe))}>{f.resoluLe ? 'Rouvrir' : 'Résolu'}</Button>
         </Box>
       ))}
     </Box>
   )
+}
 
+// Marge des commentaires (PC large) : une colonne à droite de la page, chaque fil à hauteur de son point ; les fils dont le
+// point n'est pas à l'écran (autre étape, carte repliée) se rangent en tête, sous « Ailleurs dans le budget »
+const LARGEUR_MARGE = 320
+function Marge({ fils, commun, panne, probleme, point, demande, onPoint, onFermer }: {
+  fils: Fil[]; commun: Commun; panne: boolean; probleme: string | null
+  point: Point | null; demande: number; onPoint: (p: Point | null) => void; onFermer: () => void
+}) {
+  const [positions, setPositions] = useState<Record<string, number>>({})
+  const [depart, setDepart] = useState(0)
+  const [hauteurs, setHauteurs] = useState<Record<string, number>>({})
+  const [voirResolus, setVoirResolus] = useState(false)
+  const [voirAilleurs, setVoirAilleurs] = useState(false)
+  const [general, setGeneral] = useState(false)
+  const champ = useRef<HTMLTextAreaElement>(null)
+  // Positions des points commentables dans la page, relues quand la page bouge (contenu, largeur)
+  useEffect(() => {
+    let image = 0
+    const mesurer = () => {
+      cancelAnimationFrame(image)
+      image = requestAnimationFrame(() => {
+        const p: Record<string, number> = {}
+        document.querySelectorAll<HTMLElement>('[data-ancre-commentaire]').forEach((e) => {
+          const a = e.dataset.ancreCommentaire ?? ''
+          const r = e.getBoundingClientRect()
+          if (a && (r.width || r.height) && p[a] === undefined) p[a] = Math.round(r.top + window.scrollY)
+        })
+        const d = document.querySelector<HTMLElement>('[data-marge-depart]')
+        setDepart(d ? Math.round(d.getBoundingClientRect().top + window.scrollY) : 0)
+        setPositions((x) => (JSON.stringify(x) === JSON.stringify(p) ? x : p))
+      })
+    }
+    mesurer()
+    const taille = new ResizeObserver(mesurer)
+    taille.observe(document.body)
+    const changements = new MutationObserver(mesurer)
+    changements.observe(document.querySelector('main') ?? document.body, { childList: true, subtree: true })
+    window.addEventListener('resize', mesurer)
+    return () => { cancelAnimationFrame(image); taille.disconnect(); changements.disconnect(); window.removeEventListener('resize', mesurer) }
+  }, [])
+  useEffect(() => {
+    const echap = (e: KeyboardEvent) => { if (e.key === 'Escape') onFermer() }
+    window.addEventListener('keydown', echap)
+    return () => window.removeEventListener('keydown', echap)
+  }, [onFermer])
+  // Un point demandé depuis sa bulle : le champ prend la main
+  useEffect(() => { if (demande) champ.current?.focus({ preventScroll: true }) }, [demande])
+  const mesurerCarte = useCallback((cle: string) => (e: HTMLElement | null) => {
+    if (!e) return
+    const h = Math.round(e.getBoundingClientRect().height)
+    setHauteurs((x) => (x[cle] === h ? x : { ...x, [cle]: h }))
+  }, [])
+  // Les hauteurs bougent quand une réponse s'ouvre : relues à chaque rendu
+  useLayoutEffect(() => {
+    document.querySelectorAll<HTMLElement>('[data-carte-marge]').forEach((e) => {
+      const cle = e.dataset.carteMarge ?? ''
+      const h = Math.round(e.getBoundingClientRect().height)
+      setHauteurs((x) => (x[cle] === h ? x : { ...x, [cle]: h }))
+    })
+  })
+
+  const visibles = fils.filter((f) => voirResolus || !f.resoluLe)
+  const placables = visibles.filter((f) => positions[f.ancre] !== undefined)
+  const ailleurs = visibles.filter((f) => positions[f.ancre] === undefined)
+  const nouveauIci = point && positions[point.ancre] !== undefined && point.ancre !== ANCRE_BUDGET.ancre ? point : null
+  const total = fils.filter((f) => !f.resoluLe).length
+  const resolus = fils.filter((f) => f.resoluLe).length
+
+  // En tête de marge : compte, budget en général, ailleurs ; puis les fils à hauteur de leur point, sans se chevaucher
+  const elements: { cle: string; haut: number; contenu: ReactNode }[] = [
+    ...placables.map((f) => ({ cle: `f${f.id}`, haut: positions[f.ancre], contenu: <Box component="ul" sx={{ m: 0, p: 0 }}><CarteFil f={f} commun={commun} /></Box> })),
+    ...(nouveauIci ? [{ cle: 'nouveau', haut: positions[nouveauIci.ancre], contenu: (
+      <Card sx={{ p: 1.25, border: 2, borderColor: 'secondary.main' }}>
+        <NouveauCommentaire key={`${nouveauIci.ancre}-${demande}`} commun={commun} sur={nouveauIci} champ={champ} compact aLaMain={demande > 0} apres={() => onPoint(null)} />
+      </Card>
+    ) }] : []),
+  ].sort((a, b) => a.haut - b.haut || (a.cle === 'nouveau' ? 1 : -1))
+  const enTete = (
+    <Card component="section" aria-label="Commentaires" className="pas-a-l-impression" data-carte-marge="tete" ref={mesurerCarte('tete')}
+      sx={{ p: 1.5, display: 'grid', gap: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography variant="h2" sx={{ fontSize: '1.125rem', flex: 1 }}>Commentaires</Typography>
+        {total > 0 && <Chip size="small" color="warning" label={total > 1 ? `${total} ouverts` : '1 ouvert'} />}
+        <Tooltip title="Fermer"><IconButton aria-label="Fermer les commentaires" onClick={onFermer} sx={{ width: 40, height: 40 }}><CloseOutlined /></IconButton></Tooltip>
+      </Box>
+      {panne && <Alert severity="warning">Les commentaires ne se chargent pas pour l’instant. Réessaie dans un moment.</Alert>}
+      {probleme && <Alert severity="error">{probleme}</Alert>}
+      {fils.length === 0 && !panne && <Typography variant="body2" color="text.secondary">Aucun commentaire sur ce budget.</Typography>}
+      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+        {!general && commun.moi && commun.moi.role !== 'aucun' && <Button size="small" startIcon={<AddCommentOutlined />} onClick={() => setGeneral(true)} sx={{ minHeight: 36 }}>Le budget en général</Button>}
+        {ailleurs.length > 0 && <Button size="small" onClick={() => setVoirAilleurs((v) => !v)} aria-expanded={voirAilleurs} sx={{ minHeight: 36 }}>{`${voirAilleurs ? 'Masquer' : 'Voir'} ailleurs dans le budget (${ailleurs.length})`}</Button>}
+        {resolus > 0 && <Button size="small" onClick={() => setVoirResolus((v) => !v)} sx={{ minHeight: 36 }}>{voirResolus ? 'Masquer les résolus' : `Voir les résolus (${resolus})`}</Button>}
+      </Box>
+      {general && <NouveauCommentaire commun={commun} sur={ANCRE_BUDGET} compact apres={() => setGeneral(false)} />}
+      {point && !nouveauIci && point.ancre !== ANCRE_BUDGET.ancre && <NouveauCommentaire key={`${point.ancre}-${demande}`} commun={commun} sur={point} champ={champ} compact aLaMain={demande > 0} apres={() => onPoint(null)} />}
+      {voirAilleurs && ailleurs.length > 0 && (
+        <Box component="ul" aria-label="Ailleurs dans le budget" sx={{ m: 0, p: 0, display: 'grid', gap: 1 }}>
+          {ailleurs.map((f) => <CarteFil key={f.id} f={f} commun={commun} avecPoint onPoint={onPoint} />)}
+        </Box>
+      )}
+    </Card>
+  )
+  let bas = depart + (hauteurs.tete ?? 0) + 12
+  const places = elements.map((e) => {
+    const y = Math.max(e.haut - 8, bas)
+    bas = y + (hauteurs[e.cle] ?? 120) + 10
+    return { ...e, y }
+  })
+  return createPortal(
+    <>
+      {/* La page laisse la place de la marge à droite */}
+      <GlobalStyles styles={{ main: { paddingRight: `${LARGEUR_MARGE + 32}px !important` } }} />
+      <Box role="complementary" aria-label="Marge des commentaires" className="pas-a-l-impression"
+        sx={{ position: 'absolute', top: 0, right: 16, width: LARGEUR_MARGE, zIndex: 5 }}>
+        <Box sx={{ position: 'absolute', top: depart, left: 0, right: 0 }}>{enTete}</Box>
+        {places.map((e) => (
+          <Box key={e.cle} data-carte-marge={e.cle} ref={mesurerCarte(e.cle)} sx={{ position: 'absolute', top: e.y, left: 0, right: 0, transition: 'top 120ms ease-out', '@media (prefers-reduced-motion: reduce)': { transition: 'none' } }}>
+            {e.contenu}
+          </Box>
+        ))}
+      </Box>
+    </>,
+    document.body,
+  )
+}
+
+// Volet (téléphone, petit écran)
+function PanneauCommentaires({ commun, fils, panne, probleme, point, demande, onPoint, onFermer }: {
+  commun: Commun; fils: Fil[]; panne: boolean; probleme: string | null
+  point: Point | null; demande: number; onPoint: (p: Point | null) => void; onFermer: () => void
+}) {
+  const [voirResolus, setVoirResolus] = useState(false)
+  // Refonte vague 2 (Joseph, 09/11/2026, 20A) : le volet montre aussi ce qui a changé dans le budget (versions enregistrées)
+  const [vue, setVue] = useState<'commentaires' | 'tout'>('commentaires')
+  const champ = useRef<HTMLTextAreaElement>(null)
+  const { magasin, annee, moi } = commun
+  const peutEcrire = !!moi && moi.role !== 'aucun'
+  useEffect(() => { if (demande) champ.current?.focus({ preventScroll: true }) }, [demande])
+  useEffect(() => {
+    const echap = (e: KeyboardEvent) => { if (e.key === 'Escape') onFermer() }
+    window.addEventListener('keydown', echap)
+    return () => window.removeEventListener('keydown', echap)
+  }, [onFermer])
+  const sur = point ?? ANCRE_BUDGET
+  const visibles = fils.filter((f) => (!point || f.ancre === point.ancre))
+  const ouverts = visibles.filter((f) => !f.resoluLe), resolus = visibles.filter((f) => f.resoluLe)
+  const total = fils.filter((f) => !f.resoluLe).length
   return (
-    <Card ref={boite} component="section" aria-label="Commentaires" className="pas-a-l-impression" sx={{ p: 2, display: 'grid', gap: 1.5, scrollMarginTop: 90 }}>
+    <Card component="section" aria-label="Commentaires" className="pas-a-l-impression" sx={{ p: 2, display: 'grid', gap: 1.5, scrollMarginTop: 90 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Typography variant="h2" sx={{ fontSize: '1.125rem', flex: 1 }}>Commentaires</Typography>
         {total > 0 && <Chip size="small" color="warning" label={total > 1 ? `${total} ouverts` : '1 ouvert'} />}
@@ -223,25 +433,20 @@ function PanneauCommentaires({ magasin, annee, moi, fils, panne, recharger, poin
           {point ? 'Aucun commentaire sur ce point.' : 'Aucun commentaire. Pour commenter un point précis, clique sur la bulle à côté de lui.'}
         </Typography>
       )}
-      {ouverts.length > 0 && <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>{ouverts.map(carte)}</Box>}
+      {ouverts.length > 0 && <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>{ouverts.map((f) => <CarteFil key={f.id} f={f} commun={commun} avecPoint={!point} onPoint={onPoint} />)}</Box>}
       {resolus.length > 0 && (
         <>
           <Button size="small" onClick={() => setVoirResolus((v) => !v)} sx={{ justifySelf: 'start', minHeight: { xs: 48, lg: 32 } }}>
             {voirResolus ? 'Masquer les résolus' : `Voir ${resolus.length > 1 ? `les ${resolus.length} résolus` : 'le résolu'}`}
           </Button>
-          {voirResolus && <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>{resolus.map(carte)}</Box>}
+          {voirResolus && <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>{resolus.map((f) => <CarteFil key={f.id} f={f} commun={commun} avecPoint={!point} onPoint={onPoint} />)}</Box>}
         </>
       )}
       {peutEcrire && (
-        <Box sx={{ display: 'grid', gap: 1 }}>
+        <>
           {probleme && <Alert severity="error">{probleme}</Alert>}
-          <TextField inputRef={champ} size="small" multiline minRows={2} maxRows={6} label={`Commenter : ${sur.libelle}`} value={texte}
-            onChange={(e) => setTexte(e.target.value.slice(0, MAX_TEXTE))} />
-          <Button variant="contained" startIcon={<AddCommentOutlined />} disabled={occupe || !texte.trim()} sx={{ justifySelf: 'start', minHeight: 48 }}
-            onClick={() => void agir(() => envoyerCommentaire(magasin, annee, { ancre: sur.ancre, libelle: sur.libelle, texte }), () => setTexte(''))}>
-            Commenter
-          </Button>
-        </Box>
+          <NouveauCommentaire key={`${sur.ancre}-${demande}`} commun={commun} sur={sur} champ={champ} />
+        </>
       )}
       </>}
     </Card>

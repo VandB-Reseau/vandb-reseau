@@ -160,7 +160,7 @@ test('51A : dix entrées dans le menu, Équipe et Paramètres au menu du compte,
   await seConnecter(page)
   await page.goto('./#/')
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Tâches', 'Messages', 'Agenda', 'Magasins', 'Santé du parc', 'Visites', 'Évolution du parc', 'Chiffres', 'Pilotage', 'Budget prévisionnel', 'Simulateurs', 'Marché extérieur', 'Animation', 'Demandes', 'Équipe', 'Paramètres'].map((t) => new RegExp(`^${t}`)))
+  await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Tâches', 'Agenda', 'Magasins', 'Santé du parc', 'Visites', 'Évolution du parc', 'Chiffres', 'Pilotage', 'Budget prévisionnel', 'Simulateurs', 'Marché extérieur', 'Animation', 'Demandes', 'Équipe', 'Paramètres'].map((t) => new RegExp(`^${t}`)))
   // 309 (18/11/2026) : Paramètres revient dans le menu latéral
   await nav.getByRole('button', { name: 'Paramètres', exact: true }).click()
   await expect(page).toHaveURL(/#\/parametres\/reglages/)
@@ -207,12 +207,12 @@ test('53A : une seule carte d’indicateur, cliquable, sur l’accueil et dans C
   await lisible(page, isMobile, false)
 })
 
-test('56A : la barre du franchisé sur téléphone, Accueil, Magasin, Messages, Tâches et Plus', async ({ page, isMobile }) => {
+test('56A : la barre du franchisé sur téléphone, Accueil, Magasin, Tâches et Plus (Messages retiré le 24/11/2026)', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'Barre du bas : téléphone')
   await seConnecter(page, { acces: PAUL })
   await page.goto('./#/')
   const barre = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(barre.getByRole('button')).toHaveCount(5)
+  await expect(barre.getByRole('button')).toHaveCount(4)
   await barre.getByRole('button', { name: 'Plus' }).click()
   for (const m of ['Mon budget', 'Simulateurs', 'Marché extérieur', 'Mes demandes', 'Bonnes pratiques']) await expect(page.getByRole('menuitem', { name: m })).toBeVisible()
   await page.getByRole('menuitem', { name: 'Bonnes pratiques' }).click()

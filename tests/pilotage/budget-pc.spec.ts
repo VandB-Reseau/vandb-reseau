@@ -73,7 +73,7 @@ test('le Suivi se lit en puces, une partie à la fois, sans liste du plan d’ac
   await expect(puces.getByRole('tab', { name: 'Atterrissage 2026' })).toHaveAttribute('aria-selected', 'true')
 })
 
-test('les commentaires s’ouvrent dans un volet, à la demande, et le compte de résultat garde toute la largeur', async ({ page, isMobile }, info) => {
+test('les commentaires s’ouvrent en marge (volet sur téléphone), à la demande, et le compte de résultat garde toute la largeur', async ({ page, isMobile }, info) => {
   await connecter(page)
   await page.goto(partie('visualiser'))
   const tableau = page.getByRole('table', { name: 'Budget 2027 mois par mois' })
@@ -87,11 +87,31 @@ test('les commentaires s’ouvrent dans un volet, à la demande, et le compte de
   }
   const bouton = page.getByRole('button', { name: 'Commentaires (1 ouvert)' })
   await bouton.click()
+  if (!isMobile) {
+    // Sur ordinateur (24/11/2026) : les commentaires passent dans la marge, à côté de leur ligne
+    const marge = page.getByRole('complementary', { name: 'Marge des commentaires' })
+    await expect(marge.getByRole('region', { name: 'Commentaires', exact: true })).toBeVisible()
+    const ailleurs = marge.getByRole('button', { name: /^Voir ailleurs dans le budget/ })
+    if (await ailleurs.count()) await ailleurs.click()
+    await expect(marge.getByText('Le loyer augmente de 4 % en avril.')).toBeVisible()
+    expect(await textesTropPetits(page)).toEqual([])
+    await marge.getByRole('button', { name: 'Fermer les commentaires' }).click()
+    await expect(marge).toBeHidden()
+    // La bulle d'un point ouvre la marge à sa hauteur, le champ prêt à écrire, « Équipe seule » d'office
+    const bulle = page.getByRole('button', { name: `Commenter : Résultat et trésorerie 2027` })
+    await bulle.click()
+    const champ = marge.getByRole('textbox', { name: 'Commenter : Résultat et trésorerie 2027' })
+    await expect(champ).toBeFocused()
+    await expect(marge.getByRole('group', { name: 'Qui lit ce commentaire' }).getByRole('button', { name: 'Équipe seule' })).toHaveAttribute('aria-pressed', 'true')
+    await page.keyboard.press('Escape')
+    await expect(marge).toBeHidden()
+    return
+  }
   const volet = page.getByRole('complementary', { name: 'Volet des commentaires' })
   await expect(volet.getByRole('region', { name: 'Commentaires', exact: true })).toBeVisible()
   await expect(volet.getByText('Le loyer augmente de 4 % en avril.')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
-  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-commentaires-volet.png` })
   await volet.getByRole('button', { name: 'Fermer les commentaires' }).click()
   await expect(volet).toBeHidden()

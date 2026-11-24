@@ -10,7 +10,6 @@ import Snackbar from '@mui/material/Snackbar'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
-import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import PhotoCameraOutlined from '@mui/icons-material/PhotoCameraOutlined'
 import EventOutlined from '@mui/icons-material/EventOutlined'
 import { brand } from '../theme/theme'
@@ -38,7 +37,7 @@ const choixCreer: { id: Choix | 'message'; libelle: string; icone: ReactElement;
   { id: 'note', libelle: 'Note', icone: <StickyNote2Outlined fontSize="small" />, fond: brand.brique, texte: '#ffffff' },
   { id: 'tache', libelle: 'Tâche', icone: <TaskAltOutlined fontSize="small" />, fond: brand.or, texte: brand.noir },
   { id: 'pratique', libelle: 'Photo', icone: <PhotoCameraOutlined fontSize="small" />, fond: brand.orange, texte: brand.noir },
-  { id: 'message', libelle: 'Message', icone: <ChatBubbleOutlineOutlined fontSize="small" />, fond: brand.vertFonce, texte: '#ffffff' },
+  // Messagerie cachée (Joseph, 24/11/2026) : les échanges avec les franchisés restent sur WhatsApp ; la note va au carnet
   { id: 'evenement', libelle: 'Événement', icone: <EventOutlined fontSize="small" />, fond: brand.brique, texte: '#ffffff' },
 ]
 

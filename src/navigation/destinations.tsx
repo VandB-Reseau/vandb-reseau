@@ -59,7 +59,9 @@ export const principales: Destination[] = [accueil, magasins, visites, messages,
 // Performance (refonte vague 2, Joseph 09/11/2026, 15A) : les chiffres du réseau en une page
 export const performance: Destination = { chemin: '/performance', libelle: 'Performance', description: 'Chiffres des magasins, écarts au budget, évolution du parc', icone: <QueryStatsOutlined />, iconeActive: <QueryStats />, sprint: 'Refonte' }
 export const agenda: Destination = { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes, formations et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' }
-export const barreTelephone: Destination[] = [accueil, agenda, magasins, taches, messages]
+// Messagerie cachée (Joseph, 24/11/2026) : WhatsApp reste le canal avec les franchisés ; les notes de l'équipe sont dans
+// le Carnet de chaque magasin. Les adresses /echanges restent ouvertes (anciens liens), sans entrée de menu.
+export const barreTelephone: Destination[] = [accueil, agenda, magasins, taches]
 // Demandes des franchisés au siège (refonte vague 4, Joseph 10/11/2026, 37A)
 export const demandes: Destination = { chemin: '/demandes', libelle: 'Demandes', description: 'Demandes des franchisés au siège, par thème, avec leur délai de réponse', icone: <SupportAgentOutlined />, iconeActive: <SupportAgent />, sprint: 'Refonte' }
 // Rubrique Animation (refonte vague 3, Joseph 09/11/2026, 27A) : Infos réseau et Campagnes (campagnes, déploiements,
@@ -98,7 +100,7 @@ export const parametres: Destination[] = [
 export interface Rubrique { titre: string; destinations: Destination[] }
 export function rubriquesMenu(sansParametres?: boolean): Rubrique[] {
   return [
-    { titre: 'Mon travail', destinations: [accueil, taches, messages, agenda] },
+    { titre: 'Mon travail', destinations: [accueil, taches, agenda] },
     // Joseph (17/11/2026) : Réseau = Magasins, Santé du parc, Visites ; les chiffres et outils passent sous Performance
     { titre: 'Réseau', destinations: [magasins, sante, visites, ...(sansParametres ? [] : [evolution])] },
     { titre: 'Performance', destinations: [chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur] },
@@ -128,7 +130,6 @@ export const espaceFranchise: Destination[] = [
   { chemin: '/simulateurs', libelle: 'Simulateurs', court: 'Simuler', description: 'Embauche, promo, trésorerie, vente additionnelle, soirée, achat, investissement', icone: <CalculateOutlined />, iconeActive: <Calculate />, sprint: 'Choix 125' },
   { ...marcheExterieur, description: 'Repérer les entreprises et prescripteurs autour de mon magasin, bâtir mon plan d’action' },
   { ...pilotageRapports, description: 'Rapports, graphes et tableaux de mon magasin' },
-  { ...messages, description: 'Mes magasins et mon équipe' },
   taches,
   demandesFranchise,
   pratiquesFranchise,
@@ -140,8 +141,8 @@ export const rubriquesFranchise = (liste: Destination[]): Rubrique[] => [
   { titre: 'Mon magasin', destinations: liste.filter((d) => ['/', '/magasins', '/budgets', '/pilotage', '/simulateurs', '/marche-exterieur', '/taches'].includes(d.chemin)) },
   { titre: 'Échanger', destinations: liste.filter((d) => !['/', '/magasins', '/budgets', '/pilotage', '/simulateurs', '/marche-exterieur', '/taches'].includes(d.chemin)) },
 ].filter((r) => r.destinations.length)
-export const barreFranchise = (liste: Destination[]) => liste.filter((d) => ['/', '/magasins', '/echanges', '/taches'].includes(d.chemin))
-export const plusFranchise = (liste: Destination[]) => liste.filter((d) => !['/', '/magasins', '/echanges', '/taches'].includes(d.chemin))
+export const barreFranchise = (liste: Destination[]) => liste.filter((d) => ['/', '/magasins', '/taches'].includes(d.chemin))
+export const plusFranchise = (liste: Destination[]) => liste.filter((d) => !['/', '/magasins', '/taches'].includes(d.chemin))
 
 export const plus: Destination = {
   chemin: '/plus', libelle: 'Plus', description: 'Agenda, équipe et paramètres', icone: <MoreHoriz />, sprint: '',

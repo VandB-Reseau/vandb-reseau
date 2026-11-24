@@ -35,6 +35,8 @@ import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { FenetreCompteRendu, PieceJointe, useOuvrirCompteRendu } from '../components/ApercuCompteRendu'
 import ArrowForwardOutlined from '@mui/icons-material/ArrowForwardOutlined'
+import { alertesOuvertes, extrait, lienNote } from '../data/carnet'
+import LockOutlined from '@mui/icons-material/LockOutlined'
 import { CarteLignes, GrillePhotos, Initiales, LigneCompacte, Pastille, Puces, TitreSection, type Ton } from '../components/Social'
 import { analyser, caDe, chiffresDuMagasin, decalerMois, formatKEuros, formatPourcent, libelleMoisCourt, suiviAlerte } from '../data/chiffres'
 import { useAuth } from '../auth/AuthContext'
@@ -131,6 +133,11 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean, moi = '
     const appel = suivi && !suivi.contact ? (suivi.retard > 0 ? `appel en retard de ${suivi.retard} j` : `à appeler avant le ${dateCourte(suivi.limite)}`) : ''
     items.push({ cle: `a-${m.nom}`, titre: m.nom, avatar: m.nom, lien: lienFiche(m.nom), detail: coachDe(m) + [an!.raisons.join(' · '), appel].filter(Boolean).join(' · '),
       pastille: an!.statut === 'decroche' ? { ton: 'rouge', libelle: 'Décroche' } : { ton: 'orange', libelle: 'À surveiller' } })
+  }
+  // Carnet du magasin (Joseph, 24/11/2026) : les alertes ouvertes par un collègue, jusqu'à ce qu'on les close
+  for (const { magasin, note } of alertesOuvertes(reseau, perimetre).filter((x) => !moi || x.note.par !== moi)) {
+    items.push({ cle: `na-${note.id}`, titre: magasin, avatar: magasin, icone: <LockOutlined />, lien: lienNote(magasin, note.id),
+      detail: [note.par, dateCourte(note.date), extrait(note.texte, 90)].filter(Boolean).join(' · '), pastille: { ton: 'rouge', libelle: 'Alerte' } })
   }
   // Tâches en retard ou à échéance dans les quinze jours
   const dans15j = ajouterJours(j, 15)
@@ -246,7 +253,7 @@ const GROUPES: { v: GroupeATraiter; libelle: string }[] = [{ v: 'urgent', libell
 // regroupent en une seule ligne qui nomme les magasins et se déplie. Tâches, magasins qui décrochent et visites à
 // confirmer restent une par une : chacune a son geste
 const SUJETS: Record<string, string> = {
-  v: 'Magasins à visiter', s: 'Magasins prioritaires', c: 'Magasins qui ont reculé d’une case', sc: 'Magasins sans Coach', pv: 'Postes de Coach à pourvoir',
+  na: 'Alertes des carnets', v: 'Magasins à visiter', s: 'Magasins prioritaires', c: 'Magasins qui ont reculé d’une case', sc: 'Magasins sans Coach', pv: 'Postes de Coach à pourvoir',
   ch: 'Coachs surchargés', o: 'Ouvertures à préparer', cp: 'Campagnes à constater', dm: 'Demandes de franchisés', pc: 'Prises de connaissance à relancer', en: 'Entretiens du mois',
 }
 const sujetDe = (x: ATraiter) => x.sujet ?? SUJETS[x.cle.split('-')[0]]

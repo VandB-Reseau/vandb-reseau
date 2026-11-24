@@ -747,6 +747,33 @@ SELECT pg_temp.attendre('Budget : aucune notification vers l''auteur',
 SELECT pg_temp.attendre('Budget : rien pour un commentaire de plus d''un jour', jsonb_array_length(public.notifications_budget(ARRAY[:com_ancien]::bigint[], '00000000-0000-0000-0000-00000000000c')), 0);
 SELECT pg_temp.attendre('Budget : rien si l''auteur demandé n''est pas l''auteur', jsonb_array_length(public.notifications_budget(ARRAY[:com]::bigint[], '00000000-0000-0000-0000-00000000000d')), 0);
 SELECT pg_temp.attendre('Budget : rien pour un magasin hors du périmètre de l''auteur', jsonb_array_length(public.notifications_budget(ARRAY[:com_nice]::bigint[], '00000000-0000-0000-0000-00000000000c')), 0);
+-- Carnet du magasin (0053) : les notes en off restent dans la rubrique « notes », jamais renvoyées au franchisé
+INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES ('Lille', 'notes', '[{"id":"n1","date":"2026-11-24","texte":"Note en off du Coach","par":"Coach Nord","ton":"alerte","reponses":[{"id":"r1","quand":"2026-11-24T18:00:00Z","texte":"Réponse du RR","par":"RR"}]}]')
+ON CONFLICT (store_name, cle) DO UPDATE SET valeur = EXCLUDED.valeur;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Carnet : le franchisé ne lit pas la rubrique des notes', (SELECT count(*) FROM public.suivi_magasins WHERE cle = 'notes'), 0);
+SELECT pg_temp.attendre('Carnet : ni par son espace', position('Note en off' IN public.espace_franchise()::text) + position('Réponse du RR' IN public.espace_franchise()::text), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Carnet : le Coach lit les notes de son magasin', (SELECT count(*) FROM public.suivi_magasins WHERE cle = 'notes' AND store_name = 'Lille'), 1);
+RESET ROLE;
+-- Commentaire « équipe seule » (pilotage 0037, réseau 0053) : jamais vers le téléphone d'un franchisé
+SELECT pg_temp.attendre('Budget : un franchisé de Lille est bien abonné (sinon le contrôle suivant ne prouve rien)',
+  ((SELECT count(*) FROM public.abonnements_push a JOIN public.acces_franchises f ON f.user_id = a.user_id WHERE public.compte_lit_magasin(a.user_id, 'Lille', false)) > 0)::int, 1);
+ALTER TABLE pilotage.echanges_budget ADD COLUMN IF NOT EXISTS equipe boolean NOT NULL DEFAULT false;
+\ir ../migrations/0053_notes_equipe.sql
+INSERT INTO pilotage.echanges_budget (store_name, annee, texte, auteur, auteur_nom, equipe) VALUES
+  ('Lille', 2027, 'Masse salariale : on en parle entre nous', '00000000-0000-0000-0000-00000000000c', 'Coach Nord', true) RETURNING id AS com_equipe \gset
+SELECT pg_temp.attendre('Budget : le commentaire de l''équipe seule ne part vers aucun franchisé',
+  (SELECT count(*) FROM jsonb_array_elements(public.notifications_budget(ARRAY[:com_equipe]::bigint[], '00000000-0000-0000-0000-00000000000c')) n
+   WHERE n->>'endpoint' IN (SELECT a.endpoint FROM public.abonnements_push a JOIN public.acces_franchises f ON f.user_id = a.user_id)), 0);
+SELECT pg_temp.attendre('Budget : il part vers le reste de l''équipe de Lille',
+  (SELECT count(*) FROM jsonb_array_elements(public.notifications_budget(ARRAY[:com_equipe]::bigint[], '00000000-0000-0000-0000-00000000000c'))),
+  (SELECT count(*) FROM public.abonnements_push a WHERE a.user_id <> '00000000-0000-0000-0000-00000000000c' AND public.compte_lit_magasin(a.user_id, 'Lille', false)
+     AND NOT EXISTS (SELECT 1 FROM public.acces_franchises f WHERE f.user_id = a.user_id)));
+SELECT pg_temp.attendre('Budget : un commentaire ordinaire part toujours vers le franchisé',
+  ((SELECT count(*) FROM jsonb_array_elements(public.notifications_budget(ARRAY[:com]::bigint[], '00000000-0000-0000-0000-00000000000c')) n
+   WHERE n->>'endpoint' IN (SELECT a.endpoint FROM public.abonnements_push a JOIN public.acces_franchises f ON f.user_id = a.user_id)) > 0)::int, 1);
 SET ROLE authenticated;
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 SELECT pg_temp.attendre('Budget : un compte n''appelle pas l''envoi des notifications', pg_temp.refuse('SELECT public.notifications_budget(ARRAY[1]::bigint[], ''00000000-0000-0000-0000-00000000000c'')'), 1);

@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Carnet du magasin et commentaires du budget en marge (Joseph, 24/11/2026, proposition A). **Base : pilotage 0037
+  (`0037_commentaires_equipe.sql`, dépôt du pilotage) PUIS réseau 0053 (`0053_notes_equipe.sql`).** Onglet « Carnet »
+  sur la fiche : notes en off de l'équipe (ton Alerte, À surveiller, Positif, Info ; thèmes ; collègues prévenus ;
+  réponses ; clore), mêlées aux comptes rendus, jamais lues par le franchisé. Alertes ouvertes dans « À traiter » ;
+  mentions, réponses et nouvelles alertes (RR, Directeur) dans la cloche. Budget : commentaires dans la marge à côté de
+  leur ligne sur PC, volet sur téléphone ; « Équipe seule » par défaut, sans notification au franchisé ; mentions dans
+  la cloche. Messagerie retirée des menus (ses adresses restent).
 - Simulateurs, point mort (Joseph, 24/11/2026 : « le point mort est marqué à 0 € »), sans migration. Le trait pointillé
   du compte marque 0 € (gain à droite, perte à gauche) ; le point mort en fûts est écrit sous le compte dans Prix du fût
   d'un gros marché et Contrat extérieur. Plus de trait dans Coût de la formation et Consignes, sans gain possible.

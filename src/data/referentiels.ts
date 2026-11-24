@@ -831,7 +831,7 @@ const journal: Referentiel = {
     for (const ch of changements) {
       const l = ch.apres, nom = nomDuCode(r, l.code)
       if (ch.avant && ch.avant.code !== l.code) await supprimerNoteMagasin(nomDuCode(r, ch.avant.code), ch.cle)
-      await enregistrerNoteMagasin(nom, { id: ch.avant ? ch.cle : nouvelId('n'), date: l.date, texte: l.texte, par: l.par || r.directeur.nom })
+      await enregistrerNoteMagasin(nom, { ...(ch.avant ? r.notesMagasins[nomDuCode(r, ch.avant.code)]?.find((n) => n.id === ch.cle) : undefined), id: ch.avant ? ch.cle : nouvelId('n'), date: l.date, texte: l.texte, par: l.par || r.directeur.nom })
     }
   },
   async supprimer(r, suppressions) { for (const ch of suppressions) await supprimerNoteMagasin(nomDuCode(r, ch.avant!.code), ch.cle) },
