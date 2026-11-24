@@ -136,11 +136,16 @@ export interface LigneReseau {
   caParHeure: number | null        // CA HT par heure travaillée de l'équipe, mêmes mois (lot 28)
   ebeSurCA: number | null          // EBE estimé à date : marge − redevance, publicité, frais et équipe des mêmes mois
   loyerSurCA: number | null        // ligne « Locations immobilières » des frais sur le CA des mêmes mois
+  // 397 (Joseph, 24/11/2026) : face au budget des mêmes mois, en points (réel − budget) ; null sans budget ou sans réel
+  ecartMarge: number | null        // taux de marge réel − taux de marge budgété
+  ecartEbe: number | null          // EBE / CA réel − EBE / CA budgété
+  ecartFP: number | null           // % FP réel − % FP budgété (négatif = mieux)
   sommes: Sommes
 }
 // Montants derrière les pourcentages, pour totaliser le réseau ; null : non calculable pour ce magasin
 interface Sommes {
   ca: number; caN1: number | null; caBudget: number | null
+  margeBudget: number | null; personnelBudget: number | null; ebeBudget: number | null
   marge: number; caAvecMarge: number; margeEstimee: number | null
   caTTC: number; tickets: number; personnel: number | null; heures: number | null; ebe: number | null; loyer: number | null
   univers: Record<UniversTickets, SommesUnivers>
@@ -160,7 +165,18 @@ const pourcentages = (s: Sommes) => ({
   caParHeure: s.heures ? s.ca / s.heures : null,
   ebeSurCA: s.ebe !== null && s.ca ? s.ebe / s.ca : null,
   loyerSurCA: s.loyer !== null && s.ca ? s.loyer / s.ca : null,
+  ...ecartsAuBudget(s),
 })
+// 397 : écarts en points au budget des mêmes mois ; la marge réelle se lit sur le CA des familles dont elle est connue
+function ecartsAuBudget(s: Sommes) {
+  const b = s.caBudget
+  const t = s.caAvecMarge > 0 ? s.marge / s.caAvecMarge : null
+  return {
+    ecartMarge: b && t !== null && s.margeBudget !== null ? t - s.margeBudget / b : null,
+    ecartEbe: b && s.ca && s.ebe !== null && s.ebeBudget !== null ? s.ebe / s.ca - s.ebeBudget / b : null,
+    ecartFP: b && s.ca && s.personnel !== null && s.personnelBudget !== null ? s.personnel / s.ca - s.personnelBudget / b : null,
+  }
+}
 
 function sommesUnivers(n: MoisReel[], n1: MoisReel[], u: UniversTickets): SommesUnivers {
   const de = (x: MoisReel) => x.univers?.[u] ?? { caTTC: 0, tickets: 0 }
@@ -177,6 +193,10 @@ export function ligneReseau(e: EntreeReseau, p: ParametresReseauSuivi): LigneRes
   const ca = somme(mois.map((x) => x.caHT))
   const caN1 = somme(e.n1.slice(0, m).map((x) => x.caHT))
   const caBudget = e.budget ? somme(e.budget.mois.slice(0, m).map((x) => x.ca)) : 0
+  const auBudget = (k: 'marge' | 'personnel' | 'ebe') => {
+    const l = e.budget?.mois.slice(0, m) ?? []
+    return m && caBudget > 0 && l.every((x) => typeof x[k] === 'number') ? somme(l.map((x) => x[k])) : null
+  }
   const marge = somme(mois.map((x) => x.margeHT)), caAvecMarge = somme(mois.map((x) => x.caAvecMarge))
   // Marge de tout le CA, au taux des familles dont la marge est connue
   const margeEstimee = caAvecMarge > 0 ? ca * marge / caAvecMarge : null
@@ -193,6 +213,7 @@ export function ligneReseau(e: EntreeReseau, p: ParametresReseauSuivi): LigneRes
   const sommeComplete = (k: 'personnel' | 'ebe') => somme(complete!.map((x) => x?.[k].valeur ?? 0))
   const sommes: Sommes = {
     ca, caN1: m && caN1 > 0 ? caN1 : null, caBudget: m && caBudget > 0 ? caBudget : null,
+    margeBudget: auBudget('marge'), personnelBudget: auBudget('personnel'), ebeBudget: auBudget('ebe'),
     marge, caAvecMarge, margeEstimee,
     caTTC: somme(avecPanier.map((x) => x.caTTC)), tickets: somme(avecPanier.map((x) => x.tickets)),
     personnel: complete ? sommeComplete('personnel') : personnel, heures,
@@ -212,6 +233,7 @@ export function totalReseau(lignes: LigneReseau[]): Omit<LigneReseau, 'magasin' 
   const sommes: Sommes = {
     ca: t((s) => s.ca),
     caN1: avec('caN1', (s) => s.caN1!) || null, caBudget: avec('caBudget', (s) => s.caBudget!) || null,
+    margeBudget: null, personnelBudget: null, ebeBudget: null,
     marge: t((s) => s.marge), caAvecMarge: t((s) => s.caAvecMarge),
     margeEstimee: null, caTTC: t((s) => s.caTTC), tickets: t((s) => s.tickets), personnel: null, heures: null, ebe: null, loyer: null,
     univers: Object.fromEntries(UNIVERS_PANIER.map((u) => {
@@ -237,5 +259,14 @@ export function totalReseau(lignes: LigneReseau[]): Omit<LigneReseau, 'magasin' 
     caParHeure: (() => { const v = l.filter((s) => s.heures); return v.length ? somme(v.map((s) => s.ca)) / somme(v.map((s) => s.heures!)) : null })(),
     ebeSurCA: ratioSur('ebe', (s) => s.ca),
     loyerSurCA: ratioSur('loyer', (s) => s.ca),
+    // 397 : écarts du total sur les seuls magasins qui ont à la fois le réel et le budget de l'indicateur
+    ecartMarge: ecartTotal(l, (s) => s.caAvecMarge > 0 && s.margeBudget !== null, (s) => s.marge, (s) => s.caAvecMarge, (s) => s.margeBudget!),
+    ecartEbe: ecartTotal(l, (s) => s.ebe !== null && s.ebeBudget !== null, (s) => s.ebe!, (s) => s.ca, (s) => s.ebeBudget!),
+    ecartFP: ecartTotal(l, (s) => s.personnel !== null && s.personnelBudget !== null, (s) => s.personnel!, (s) => s.ca, (s) => s.personnelBudget!),
   }
+}
+function ecartTotal(l: Sommes[], garde: (s: Sommes) => boolean, reel: (s: Sommes) => number, base: (s: Sommes) => number, budget: (s: Sommes) => number) {
+  const v = l.filter((s) => s.caBudget && s.ca && garde(s))
+  const b = somme(v.map((s) => base(s))), cb = somme(v.map((s) => s.caBudget!))
+  return v.length && b && cb ? somme(v.map(reel)) / b - somme(v.map(budget)) / cb : null
 }

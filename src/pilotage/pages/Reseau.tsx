@@ -1,11 +1,12 @@
 import { Entete, LigneSansResultat, styleListe, useTableau, type ColonneTri } from '../../components/TableauTri'
 import { CausesEcartsReseau } from '../components/CausesEcarts'
 import { useNomsPerimetre } from '../../data/perimetreChoisi'
-import { useCallback, useMemo } from 'react'
+import { Suspense, lazy, useCallback, useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import InputAdornment from '@mui/material/InputAdornment'
+import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Link from '@mui/material/Link'
 import Skeleton from '@mui/material/Skeleton'
@@ -30,8 +31,13 @@ import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
 import { RechercheFiltres } from '../../components/RechercheFiltres'
 import { FiltreMenu } from '../../components/FiltreMenu'
 import { BoutonOutil, useTelephone } from '../../components/Outils'
-import { Indicateur, grilleIndicateurs } from '../../components/Indicateur'
-import { evolPourcent } from '../../components/TableauDeBord'
+import { Indicateur, grilleIndicateurs, sensDe } from '../../components/Indicateur'
+import { evolPoints, evolPourcent } from '../../components/TableauDeBord'
+import { BoutonCouleurs, BoutonPresenter, Lecture, Presentation, fondEcart, fondsMediane } from '../../components/Visuel'
+import type { PointCarte } from '../../components/CarteValeurs'
+import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined'
+import MapOutlined from '@mui/icons-material/MapOutlined'
+import TableChartOutlined from '@mui/icons-material/TableChartOutlined'
 import { MaSemaine } from '../components/MaSemaine'
 import { useAuth } from '../auth/AuthContext'
 import { EtatVide } from '../components/EtatVide'
@@ -39,7 +45,8 @@ import { Panne } from '../components/Panne'
 import { chargerActions, chargerAlertes, chargerBudgets, chargerParametres, chargerQuadrimestres, chargerReelDuCompte, chargerStocksReseau, hypothesesDe, parametresDuBudget, type SaisiesQuadrimestres } from '../data/pilotage'
 import { useChargement } from '../data/useChargement'
 import { feuilleReseau } from '../lib/exports'
-import { ecartTaux, lienMagasin, milliers, MOIS, taux } from '../lib/format'
+import { ecartPts, ecartTaux, lienMagasin, milliers, MOIS, MOIS_LONGS, taux } from '../lib/format'
+import { lectureEcarts } from '../lib/lecture'
 import { classeur, nomFichier, telecharger } from '../lib/xlsx'
 import { fraisDepuisLignes } from '../moteur/atterrissage'
 import { calculerBudget } from '../moteur/budget'
@@ -53,45 +60,51 @@ import { Pastille } from '../components/Tableau'
 import { anneeSuivi } from '../data/annees'
 import { stockParDefaut, stockReseau, type EtatStock } from '../moteur/stock'
 
-type Cle = 'magasin' | 'moisRealises' | 'ca' | 'evolution' | 'ecartBudget' | 'tauxMarge' | 'panierCave' | 'ticketsCave' | 'panierBar' | 'ticketsBar' | 'pctFP' | 'caParHeure' | 'loyerSurCA' | 'ebeSurCA' | 'moisStock' | 'cibleStock'
-type Colonne = { cle: Exclude<Cle, 'magasin'>; libelle: string; texte: (v: number) => string; rouge?: (v: number) => boolean }
+type Cle = 'magasin' | 'moisRealises' | 'ca' | 'evolution' | 'ecartBudget' | 'ecartMarge' | 'ecartEbe' | 'ecartFP' | 'tauxMarge' | 'panierCave' | 'ticketsCave' | 'panierBar' | 'ticketsBar' | 'pctFP' | 'caParHeure' | 'loyerSurCA' | 'ebeSurCA' | 'moisStock' | 'cibleStock'
+// fond (393) : écart signé (plein = couleur la plus franche), ou place face à la médiane ; inverse : plus bas = mieux
+type Colonne = { cle: Exclude<Cle, 'magasin'>; libelle: string; texte: (v: number) => string; rouge?: (v: number) => boolean; fond?: { ecart?: number; inverse?: boolean } }
 
 const euros = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const COLONNES: Colonne[] = [
   { cle: 'moisRealises', libelle: 'Réel à fin', texte: (v) => (v ? MOIS[v - 1] : 'Aucun') },
   { cle: 'ca', libelle: 'CA HT', texte: milliers },
-  { cle: 'evolution', libelle: 'Évolution sur l’an dernier', texte: ecartTaux, rouge: (v) => v < 0 },
-  { cle: 'ecartBudget', libelle: 'Écart au budget', texte: ecartTaux, rouge: (v) => v < 0 },
-  { cle: 'tauxMarge', libelle: 'Taux de marge', texte: taux },
-  { cle: 'panierCave', libelle: 'Panier Cave TTC', texte: (v) => euros.format(v) },
-  { cle: 'ticketsCave', libelle: 'Tickets Cave sur l’an dernier', texte: ecartTaux, rouge: (v) => v < 0 },
-  { cle: 'panierBar', libelle: 'Panier Bar TTC', texte: (v) => euros.format(v) },
-  { cle: 'ticketsBar', libelle: 'Tickets Bar sur l’an dernier', texte: ecartTaux, rouge: (v) => v < 0 },
-  { cle: 'pctFP', libelle: '% FP', texte: taux },
-  { cle: 'caParHeure', libelle: 'CA par heure travaillée', texte: (v) => euros.format(v) },
-  { cle: 'loyerSurCA', libelle: 'Loyer / CA', texte: taux },
-  { cle: 'ebeSurCA', libelle: 'EBE / CA', texte: taux, rouge: (v) => v < 0 },
+  { cle: 'evolution', libelle: 'Évolution sur l’an dernier', texte: ecartTaux, rouge: (v) => v < 0, fond: { ecart: 0.15 } },
+  { cle: 'ecartBudget', libelle: 'Écart au budget', texte: ecartTaux, rouge: (v) => v < 0, fond: { ecart: 0.15 } },
+  // 397 (Joseph, 24/11/2026) : marge, EBE et frais de personnel face au budget des mêmes mois, en points
+  { cle: 'ecartMarge', libelle: 'Marge face au budget', texte: ecartPts, rouge: (v) => v < 0, fond: { ecart: 0.03 } },
+  { cle: 'ecartEbe', libelle: 'EBE / CA face au budget', texte: ecartPts, rouge: (v) => v < 0, fond: { ecart: 0.03 } },
+  { cle: 'ecartFP', libelle: '% FP face au budget', texte: ecartPts, rouge: (v) => v > 0, fond: { ecart: 0.03, inverse: true } },
+  { cle: 'tauxMarge', libelle: 'Taux de marge', texte: taux, fond: {} },
+  { cle: 'panierCave', libelle: 'Panier Cave TTC', texte: (v) => euros.format(v), fond: {} },
+  { cle: 'ticketsCave', libelle: 'Tickets Cave sur l’an dernier', texte: ecartTaux, rouge: (v) => v < 0, fond: { ecart: 0.15 } },
+  { cle: 'panierBar', libelle: 'Panier Bar TTC', texte: (v) => euros.format(v), fond: {} },
+  { cle: 'ticketsBar', libelle: 'Tickets Bar sur l’an dernier', texte: ecartTaux, rouge: (v) => v < 0, fond: { ecart: 0.15 } },
+  { cle: 'pctFP', libelle: '% FP', texte: taux, fond: { inverse: true } },
+  { cle: 'caParHeure', libelle: 'CA par heure travaillée', texte: (v) => euros.format(v), fond: {} },
+  { cle: 'loyerSurCA', libelle: 'Loyer / CA', texte: taux, fond: { inverse: true } },
+  { cle: 'ebeSurCA', libelle: 'EBE / CA', texte: taux, rouge: (v) => v < 0, fond: {} },
   // 245 : mois d'achats à venir que couvre le stock Cave + Bar du dernier mois saisi, face à la cible pondérée
   { cle: 'moisStock', libelle: 'Stock en mois d’achats', texte: (v) => `${unMois.format(v)} mois` },
   { cle: 'cibleStock', libelle: 'Cible du stock', texte: (v) => `${unMois.format(v)} mois` },
 ]
 const unMois = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 const valeurDe = (m: object, cle: string) => ((m as Record<string, unknown>)[cle] as number | null | undefined) ?? null
-const MILLIERS = new Set(['ca']), POURCENTS = new Set(['evolution', 'ecartBudget', 'tauxMarge', 'ticketsCave', 'ticketsBar', 'pctFP', 'loyerSurCA', 'ebeSurCA'])
+const MILLIERS = new Set(['ca']), POURCENTS = new Set(['evolution', 'ecartBudget', 'tauxMarge', 'ticketsCave', 'ticketsBar', 'pctFP', 'loyerSurCA', 'ebeSurCA']), POINTS = new Set(['ecartMarge', 'ecartEbe', 'ecartFP'])
 const colonnesTri: ColonneTri<LigneReseau & { coach: string }>[] = [
   { cle: 'magasin', libelle: 'Magasin', valeur: (m) => m.magasin },
   { cle: 'coach', libelle: 'Coach', valeur: (m) => m.coach || null },
   ...COLONNES.map((c): ColonneTri<LigneReseau & { coach: string }> => {
     const v = (m: LigneReseau & { coach: string }) => (c.cle === 'moisRealises' ? m.moisRealises || null : valeurDe(m, c.cle))
     if (c.cle === 'moisRealises') return { cle: c.cle, libelle: c.libelle, valeur: v, texte: (m) => c.texte(m.moisRealises), filtre: 'liste' }
-    const echelle = MILLIERS.has(c.cle) ? 1 / 1000 : POURCENTS.has(c.cle) ? 100 : 1
-    return { cle: c.cle, libelle: c.libelle, valeur: v, filtre: 'nombre', nombre: (m) => { const x = v(m); return x === null ? null : x * echelle }, unite: MILLIERS.has(c.cle) ? 'k€' : POURCENTS.has(c.cle) ? '%' : '€' }
+    const echelle = MILLIERS.has(c.cle) ? 1 / 1000 : POURCENTS.has(c.cle) || POINTS.has(c.cle) ? 100 : 1
+    return { cle: c.cle, libelle: c.libelle, valeur: v, filtre: 'nombre', nombre: (m) => { const x = v(m); return x === null ? null : x * echelle }, unite: MILLIERS.has(c.cle) ? 'k€' : POURCENTS.has(c.cle) ? '%' : POINTS.has(c.cle) ? 'pt' : '€' }
   }),
 ]
 // Allègement (Joseph, 03/11/2026) : le classement se lit par vue de 4 à 5 colonnes ; l'export Excel garde tout
-type Vue = 'ventes' | 'clients' | 'equipe' | 'stock'
+type Vue = 'ventes' | 'budget' | 'clients' | 'equipe' | 'stock'
 const VUES: { cle: Vue; libelle: string; colonnes: Colonne['cle'][] }[] = [
   { cle: 'ventes', libelle: 'Ventes', colonnes: ['moisRealises', 'ca', 'evolution', 'ecartBudget', 'tauxMarge'] },
+  { cle: 'budget', libelle: 'Face au budget', colonnes: ['moisRealises', 'ecartBudget', 'ecartMarge', 'ecartEbe', 'ecartFP'] },
   { cle: 'clients', libelle: 'Clients', colonnes: ['panierCave', 'ticketsCave', 'panierBar', 'ticketsBar'] },
   { cle: 'equipe', libelle: 'Équipe et frais', colonnes: ['pctFP', 'caParHeure', 'loyerSurCA', 'ebeSurCA'] },
   { cle: 'stock', libelle: 'Stock', colonnes: ['moisRealises', 'moisStock', 'cibleStock'] },
@@ -99,6 +112,7 @@ const VUES: { cle: Vue; libelle: string; colonnes: Colonne['cle'][] }[] = [
 const ETAT_STOCK: Record<EtatStock, { niveau: 'favorable' | 'fort'; texte: string }> = {
   ok: { niveau: 'favorable', texte: 'dans la cible' }, haut: { niveau: 'fort', texte: 'au-dessus de la cible' }, bas: { niveau: 'fort', texte: 'sous la cible' },
 }
+const CarteValeurs = lazy(() => import('../../components/CarteValeurs'))
 const douze = (): MoisReel[] => Array.from({ length: 12 }, () => ({ caHT: 0, margeHT: 0, caAvecMarge: 0, caTTC: 0, tickets: 0 }))
 // Sur téléphone, les chiffres d'abord : Coach, RR et groupe restent dans les filtres
 const surPC = { display: { xs: 'none', md: 'table-cell' } }
@@ -165,6 +179,12 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
   const colonnes = COLONNES.filter((c) => vue.colonnes.includes(c.cle))
   const tri = ([...COLONNES.map((c) => c.cle), 'magasin', 'coach'] as string[]).includes(params.get('tri') ?? '') ? params.get('tri') as Cle : 'ca'
   const sens = params.get('sens') === 'asc' ? 'asc' : params.get('sens') === 'desc' ? 'desc' : tri === 'magasin' ? 'asc' : 'desc'
+  // 393 : tableau en couleurs (interrupteur) ; 399 : affichage Carte ; 398 : regroupé par RR ou par Coach, un clic creuse
+  const couleurs = params.get('couleurs') !== 'non'
+  const carte = params.get('affichage') === 'carte'
+  const par = params.get('par') === 'rr' ? 'rr' : params.get('par') === 'coach' ? 'coach' : null
+  const creuse = params.get('creuse') === '1'
+  const [presenter, setPresenter] = useState(false)
 
   // Vague 3 (21A) : le périmètre choisi dans le menu
   const noms = useNomsPerimetre()
@@ -215,8 +235,9 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
     return <Box>{entete}<EtatVide titre={`Pas encore de réel ${annee}`} texte={`La vue réseau compare les magasins à partir des chiffres réels ${annee}, importés chaque mois depuis la caisse.`} /></Box>
   }
 
-  const cellule = (c: Colonne, v: number | null, fort = false, etat: EtatStock | null = null) => (
-    <TableCell key={c.cle} align="right" sx={{ whiteSpace: 'nowrap', fontWeight: fort ? 700 : 400, color: v !== null && c.rouge?.(v) ? 'error.main' : v === null ? 'text.disabled' : undefined }}>
+  const cellule = (c: Colonne, v: number | null, fort = false, etat: EtatStock | null = null, fond?: string) => (
+    <TableCell key={c.cle} align="right" data-fond={fond ? '' : undefined}
+      sx={{ whiteSpace: 'nowrap', fontWeight: fort ? 700 : 400, color: v !== null && c.rouge?.(v) ? 'error.main' : v === null ? 'text.disabled' : undefined, ...(fond ? { bgcolor: fond } : {}) }}>
       {v === null ? '–' : c.cle === 'ecartBudget' ? (
         // Refonte T2 (2/11/2026) : pastille de l'écart au budget, mêmes couleurs que dans la fiche du magasin
         <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}><Pastille niveau={niveauEcart(1 + v, 1, donnees.seuil)} />{c.texte(v)}</Box>
@@ -240,6 +261,60 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
     { id: 'favorable', titre: 'Au budget ou au-dessus', detail: 'Réel au niveau du budget', couleur: 'success.dark' },
     { id: 'sans', titre: 'Sans comparaison', detail: `Pas de budget ${annee} ou pas de réel` },
   ]
+  // 398 : un total par Responsable Régional ou par Coach, sur les magasins filtrés ; un clic descend d'un niveau
+  const groupesAffiches = par ? (() => {
+    const cles = [...new Set(visibles.flatMap((m) => (par === 'rr' ? (m.rrs.length ? m.rrs : ['']) : [m.coach])))]
+    return cles.map((k) => {
+      const l = visibles.filter((m) => (par === 'rr' ? (k ? m.rrs.includes(k) : !m.rrs.length) : m.coach === k))
+      return { cle: k, nom: k || (par === 'rr' ? 'Sans Responsable Régional' : 'Sans Coach'), n: l.length, t: totalReseau(l) }
+    }).sort((a, b) => b.t.ca - a.t.ca)
+  })() : null
+  const creuser = (k: string) => {
+    if (!k) return
+    if (par === 'rr') changer({ rr: k, par: 'coach', creuse: '1' })
+    else if (par === 'coach') changer({ coach: k, par: null, creuse: '1' })
+  }
+  const revenir = () => {
+    if (!par && coachs.length === 1) changer({ coach: null, par: 'coach', creuse: rrs.length === 1 ? '1' : null })
+    else if (par === 'coach' && rrs.length === 1) changer({ rr: null, par: 'rr', creuse: null })
+    else changer({ creuse: null })
+  }
+  const peutRevenir = creuse && ((!par && coachs.length === 1) || (par === 'coach' && rrs.length === 1))
+  // 393 : fond de chaque cellule, colonne par colonne, sur les lignes affichées (magasins ou groupes)
+  const valeursAffichees = groupesAffiches ? groupesAffiches.map((g) => g.t) : visibles
+  const fonds = new Map(couleurs ? colonnes.filter((c) => c.fond).map((c) => {
+    const v = valeursAffichees.map((m) => valeurDe(m, c.cle))
+    return [c.cle, c.fond!.ecart ? v.map((x) => fondEcart(x, c.fond!.ecart!, c.fond!.inverse)) : fondsMediane(v, c.fond!.inverse)] as const
+  }) : [])
+  const fondDe = (cle: string, k: number) => fonds.get(cle as Colonne['cle'])?.[k]
+  // 394 : la phrase de lecture, sur l'écart au budget des magasins affichés
+  const dernier = Math.max(0, ...visibles.map((m) => m.moisRealises))
+  const lecture = lectureEcarts({
+    quoi: `CA HT${dernier ? ` à fin ${MOIS_LONGS[dernier - 1]}` : ''}`, total: total.ecartBudget, ref: 'le budget', seuil: donnees.seuil,
+    lignes: groupesAffiches ? groupesAffiches.map((g) => ({ nom: g.nom, e: g.t.ecartBudget })) : visibles.map((m) => ({ nom: m.magasin, e: m.ecartBudget })),
+    unite: par === 'rr' ? ['Responsable Régional', 'Responsables Régionaux'] : par === 'coach' ? ['Coach', 'Coachs'] : undefined,
+  })
+  const points: PointCarte[] = visibles.map((m) => ({
+    nom: m.magasin, lien: lienMagasin(m.magasin), bon: m.ecartBudget === null ? null : m.ecartBudget >= 0,
+    texte: m.ecartBudget === null ? 'pas de comparaison au budget' : `${ecartTaux(m.ecartBudget)} sur le budget (CA HT ${milliers(m.ca)})`,
+  }))
+  const choixRegrouper = (
+    <ToggleButtonGroup exclusive size="small" value={par ?? 'magasins'} aria-label="Regrouper"
+      onChange={(_, v: string | null) => v && changer({ par: v === 'magasins' ? null : v, creuse: null })}
+      className="pas-a-l-impression" sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, md: 40 }, px: 1.5, textTransform: 'none', fontWeight: 600 } }}>
+      <ToggleButton value="magasins">Magasins</ToggleButton>
+      {donnees.rrs.length > 0 && <ToggleButton value="rr">Par RR</ToggleButton>}
+      {donnees.coachs.length > 0 && <ToggleButton value="coach">Par Coach</ToggleButton>}
+    </ToggleButtonGroup>
+  )
+  const choixAffichage = (
+    <ToggleButtonGroup exclusive size="small" value={carte ? 'carte' : 'tableau'} aria-label="Affichage"
+      onChange={(_, v: string | null) => v && changer({ affichage: v === 'carte' ? 'carte' : null })}
+      className="pas-a-l-impression" sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, md: 40 }, px: 1.5, gap: 0.75, textTransform: 'none', fontWeight: 600 } }}>
+      <ToggleButton value="tableau"><TableChartOutlined fontSize="small" />Tableau</ToggleButton>
+      <ToggleButton value="carte"><MapOutlined fontSize="small" />Carte</ToggleButton>
+    </ToggleButtonGroup>
+  )
   const choixVue = (
     <ToggleButtonGroup exclusive size="small" value={vue.cle} onChange={(_, v: Vue | null) => v && changer({ [PARAM_VUE]: v === 'ventes' ? null : v })} aria-label="Vue du classement"
       className="pas-a-l-impression" sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, md: 40 }, px: 1.5, textTransform: 'none', fontWeight: 600 } }}>
@@ -252,12 +327,118 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
       sx={{ width: { xs: '100%', sm: 320 }, '& .MuiOutlinedInput-root': { borderRadius: 2, minHeight: 48 }, '& input': { height: 48, boxSizing: 'border-box', py: 0 } }} />
   )
 
+  const avecCoach = donnees.coachs.length > 0 && !par
+  const corps = (
+    <>
+      <Box component="section" aria-label={`Réseau ${annee} en chiffres`} sx={{ ...grilleIndicateurs, mb: { xs: 1, md: 1.5 } }}>
+        <Indicateur bordee icone={<EuroOutlined />} libelle={`CA HT cumulé ${annee}`} valeur={milliers(total.ca)}
+          evolution={total.evolution === null ? null : evolPourcent(total.evolution * 100, `vs ${annee - 1} · ${total.magasins} magasin${total.magasins > 1 ? 's' : ''} avec du réel`)}
+          detail={total.evolution === null ? `${total.magasins} magasin${total.magasins > 1 ? 's' : ''} avec du réel` : undefined} />
+        <Indicateur bordee icone={<RequestQuoteOutlined />} libelle="Écart au budget" valeur={total.ecartBudget === null ? 'Pas de budget' : ecartTaux(total.ecartBudget)}
+          couleur={total.ecartBudget !== null && total.ecartBudget < 0 ? 'error.main' : undefined}
+          detail={avecBudget ? `${sousBudget} magasin${sousBudget > 1 ? 's' : ''} sous le budget sur ${avecBudget}` : `Aucun budget ${annee} dans l’app`} />
+        <Indicateur bordee icone={<PercentOutlined />} libelle="Taux de marge" valeur={total.tauxMarge === null ? 'Non connu' : taux(total.tauxMarge)}
+          evolution={total.ecartMarge === null ? null : { ...evolPoints(total.ecartMarge * 100, 'face au budget')!, sens: sensDe(total.ecartMarge * 100) }}
+          detail={[total.panierCave === null ? '' : `Panier Cave ${euros.format(total.panierCave)}`, total.panierBar === null ? '' : `Bar ${euros.format(total.panierBar)}`].filter(Boolean).join(' · ') || undefined} />
+        <Indicateur bordee icone={<GroupsOutlined />} libelle="Frais de personnel / CA" valeur={total.pctFP === null ? 'À renseigner' : taux(total.pctFP)}
+          evolution={total.ecartFP === null ? null : { ...evolPoints(total.ecartFP * 100, 'face au budget')!, bon: total.ecartFP <= 0 }}
+          detail={total.ebeSurCA === null ? 'Équipe et frais à renseigner' : `EBE à date : ${taux(total.ebeSurCA)} du CA`} />
+      </Box>
+      <Lecture texte={lecture} />
+      {peutRevenir && (
+        <Button startIcon={<ArrowBackOutlined />} onClick={revenir} className="pas-a-l-impression" sx={{ minHeight: 48, mb: 1 }}>
+          {`Revenir ${par === 'coach' ? 'aux Responsables Régionaux' : 'aux Coachs'}`}
+        </Button>
+      )}
+      <Box role="group" aria-label="Magasins par écart au budget" className="pas-a-l-impression" sx={{ ...grilleIndicateurs, mb: 2 }}>
+        {tuiles.map((t) => {
+          const actif = ecarts.length === 1 && ecarts[0] === t.id
+          return <Indicateur key={t.id} libelle={t.titre} valeur={String(compte(t.id))} detail={t.detail} couleur={t.couleur} actif={actif}
+            onClick={() => filtrer('ecart', actif ? [] : [t.id])} />
+        })}
+      </Box>
+
+      <Box className="pas-a-l-impression" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mb: 1.5 }}>
+        {telephone && <Box sx={{ overflowX: 'auto', maxWidth: '100%' }}>{choixVue}</Box>}
+        {choixRegrouper}
+        {!par && choixAffichage}
+        {!(carte && !par) && <BoutonCouleurs actif={couleurs} basculer={() => changer({ couleurs: couleurs ? 'non' : null })} />}
+      </Box>
+
+      {parEcart.length === 0 ? (
+        <EtatVide titre="Aucun magasin ne correspond" texte="Change de filtre ou de recherche pour retrouver les magasins." />
+      ) : carte && !par ? (
+        <Suspense fallback={<Skeleton variant="rounded" height={420} />}>
+          <CarteValeurs points={points} titre={`Carte de l’écart au budget ${annee}`} mieux="Au budget ou au-dessus" moins="Sous le budget" surPC={!telephone} />
+        </Suspense>
+      ) : (
+        <Card>
+          <TableContainer>
+            <Table size="small" className="colonne-fixe" aria-label={`Réel ${annee} par magasin`} sx={[styleTableau, styleListe]}>
+              <TableHead>
+                <TableRow>
+                  {par ? <TableCell sx={{ minWidth: 180, fontWeight: 700 }}>{par === 'rr' ? 'Responsable Régional' : 'Coach'}</TableCell> : <Entete t={tableau} cle="magasin" sx={{ minWidth: 180 }}>Magasin</Entete>}
+                  {avecCoach && <Entete t={tableau} cle="coach" sx={surPC}>Coach</Entete>}
+                  {colonnes.map((c) => (
+                    <Entete key={c.cle} t={tableau} cle={c.cle} align="right" sx={{ whiteSpace: 'normal', minWidth: 96, verticalAlign: 'bottom' }}>
+                      {c.cle === 'pctFP' ? <abbr title="Frais de personnel ÷ CA HT" style={{ textDecoration: 'none' }}>{c.libelle}</abbr> : c.libelle}
+                    </Entete>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                <TableRow className="ligne-forte" sx={{ '& td': { fontWeight: 700 } }}>
+                  <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{filtre ? 'Total de la sélection' : 'Total du réseau'}</TableCell>
+                  {avecCoach && <TableCell sx={surPC} />}
+                  {colonnes.map((c) => (c.cle === 'moisRealises'
+                    ? <TableCell key={c.cle} align="right" sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}>{total.magasins} magasin{total.magasins > 1 ? 's' : ''}</TableCell>
+                    : cellule(c, valeurDe(total, c.cle), true)))}
+                </TableRow>
+                <TableRow sx={{ '& td': { color: 'text.secondary' } }}>
+                  <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{filtre ? 'Médiane de la sélection' : 'Médiane du réseau'}</TableCell>
+                  {avecCoach && <TableCell sx={surPC} />}
+                  {colonnes.map((c) => ((RATIOS as string[]).includes(c.cle)
+                    ? cellule(c, mediane[c.cle as CleRatio])
+                    : <TableCell key={c.cle} />))}
+                </TableRow>
+                <LigneSansResultat t={tableau} colSpan={colonnes.length + (avecCoach ? 2 : 1)} quoi="Aucun magasin ne correspond" />
+                {groupesAffiches ? groupesAffiches.map((g, k) => (
+                  <TableRow key={g.cle || 'sans'} hover={!!g.cle} onClick={() => creuser(g.cle)} sx={{ cursor: g.cle ? 'pointer' : undefined }} data-groupe={g.nom}>
+                    <TableCell>
+                      {g.cle ? <ButtonBase onClick={(e) => { e.stopPropagation(); creuser(g.cle) }} sx={{ fontFamily: 'inherit', fontWeight: 600, fontSize: 'inherit', color: 'primary.main', minHeight: 48, textAlign: 'left' }}>{g.nom}</ButtonBase>
+                        : <Typography component="span" sx={{ fontWeight: 600, fontSize: 'inherit' }}>{g.nom}</Typography>}
+                    </TableCell>
+                    {colonnes.map((c) => (c.cle === 'moisRealises'
+                      ? <TableCell key={c.cle} align="right" sx={{ whiteSpace: 'nowrap' }}>{g.n} magasin{g.n > 1 ? 's' : ''}</TableCell>
+                      : cellule(c, valeurDe(g.t, c.cle), false, null, fondDe(c.cle, k))))}
+                  </TableRow>
+                )) : visibles.map((m, k) => (
+                  <TableRow key={m.magasin} hover onClick={() => navigate(lienMagasin(m.magasin), { state: etat })} sx={{ cursor: 'pointer' }}>
+                    <TableCell>
+                      <Link component={RouterLink} to={lienMagasin(m.magasin)} state={etat} onClick={(e) => e.stopPropagation()} sx={{ fontWeight: 600, display: 'inline-flex', minHeight: 48, alignItems: 'center' }}>{m.magasin}</Link>
+                    </TableCell>
+                    {avecCoach && <TableCell sx={{ whiteSpace: 'nowrap', ...surPC }}>{m.coach}</TableCell>}
+                    {colonnes.map((c) => (c.cle === 'moisRealises'
+                      ? cellule(c, m.moisRealises || null)
+                      : cellule(c, valeurDe(m, c.cle), false, m.etatStock, fondDe(c.cle, k))))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Card>
+      )}
+
+    </>
+  )
+
   return (
     <Box>
       {entete}
       <Box className="pas-a-l-impression">
         <RechercheFiltres recherche={champRecherche} actifs={nbFiltres - ecarts.length} actions={<>
           {!telephone && choixVue}
+          <BoutonPresenter onClick={() => setPresenter(true)} />
           <BoutonOutil libelle="Exporter en Excel" icone={<FileDownloadOutlined />} onClick={exporter} />
           {!telephone && <BoutonOutil libelle="Imprimer" icone={<PrintOutlined />} onClick={() => window.print()} />}
         </>}>
@@ -273,77 +454,9 @@ export function Reseau({ integre }: { integre?: boolean } = {}) {
         </RechercheFiltres>
       </Box>
 
-      <Box component="section" aria-label={`Réseau ${annee} en chiffres`} sx={{ ...grilleIndicateurs, mb: { xs: 1, md: 1.5 } }}>
-        <Indicateur bordee icone={<EuroOutlined />} libelle={`CA HT cumulé ${annee}`} valeur={milliers(total.ca)}
-          evolution={total.evolution === null ? null : evolPourcent(total.evolution * 100, `vs ${annee - 1} · ${total.magasins} magasin${total.magasins > 1 ? 's' : ''} avec du réel`)}
-          detail={total.evolution === null ? `${total.magasins} magasin${total.magasins > 1 ? 's' : ''} avec du réel` : undefined} />
-        <Indicateur bordee icone={<RequestQuoteOutlined />} libelle="Écart au budget" valeur={total.ecartBudget === null ? 'Pas de budget' : ecartTaux(total.ecartBudget)}
-          couleur={total.ecartBudget !== null && total.ecartBudget < 0 ? 'error.main' : undefined}
-          detail={avecBudget ? `${sousBudget} magasin${sousBudget > 1 ? 's' : ''} sous le budget sur ${avecBudget}` : `Aucun budget ${annee} dans l’app`} />
-        <Indicateur bordee icone={<PercentOutlined />} libelle="Taux de marge" valeur={total.tauxMarge === null ? 'Non connu' : taux(total.tauxMarge)}
-          detail={[total.panierCave === null ? '' : `Panier Cave ${euros.format(total.panierCave)}`, total.panierBar === null ? '' : `Bar ${euros.format(total.panierBar)}`].filter(Boolean).join(' · ') || undefined} />
-        <Indicateur bordee icone={<GroupsOutlined />} libelle="Frais de personnel / CA" valeur={total.pctFP === null ? 'À renseigner' : taux(total.pctFP)}
-          detail={total.ebeSurCA === null ? 'Équipe et frais à renseigner' : `EBE à date : ${taux(total.ebeSurCA)} du CA`} />
-      </Box>
-      <Box role="group" aria-label="Magasins par écart au budget" className="pas-a-l-impression" sx={{ ...grilleIndicateurs, mb: 2 }}>
-        {tuiles.map((t) => {
-          const actif = ecarts.length === 1 && ecarts[0] === t.id
-          return <Indicateur key={t.id} libelle={t.titre} valeur={String(compte(t.id))} detail={t.detail} couleur={t.couleur} actif={actif}
-            onClick={() => filtrer('ecart', actif ? [] : [t.id])} />
-        })}
-      </Box>
-
-      {telephone && <Box sx={{ mb: 1.5, overflowX: 'auto' }}>{choixVue}</Box>}
-
-      {parEcart.length === 0 ? (
-        <EtatVide titre="Aucun magasin ne correspond" texte="Change de filtre ou de recherche pour retrouver les magasins." />
-      ) : (
-        <Card>
-          <TableContainer>
-            <Table size="small" className="colonne-fixe" aria-label={`Réel ${annee} par magasin`} sx={[styleTableau, styleListe]}>
-              <TableHead>
-                <TableRow>
-                  <Entete t={tableau} cle="magasin" sx={{ minWidth: 180 }}>Magasin</Entete>
-                  {donnees.coachs.length > 0 && <Entete t={tableau} cle="coach" sx={surPC}>Coach</Entete>}
-                  {colonnes.map((c) => (
-                    <Entete key={c.cle} t={tableau} cle={c.cle} align="right" sx={{ whiteSpace: 'normal', minWidth: 96, verticalAlign: 'bottom' }}>
-                      {c.cle === 'pctFP' ? <abbr title="Frais de personnel ÷ CA HT" style={{ textDecoration: 'none' }}>{c.libelle}</abbr> : c.libelle}
-                    </Entete>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                <TableRow className="ligne-forte" sx={{ '& td': { fontWeight: 700 } }}>
-                  <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{filtre ? 'Total de la sélection' : 'Total du réseau'}</TableCell>
-                  {donnees.coachs.length > 0 && <TableCell sx={surPC} />}
-                  {colonnes.map((c) => (c.cle === 'moisRealises'
-                    ? <TableCell key={c.cle} align="right" sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}>{total.magasins} magasin{total.magasins > 1 ? 's' : ''}</TableCell>
-                    : cellule(c, valeurDe(total, c.cle), true)))}
-                </TableRow>
-                <TableRow sx={{ '& td': { color: 'text.secondary' } }}>
-                  <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{filtre ? 'Médiane de la sélection' : 'Médiane du réseau'}</TableCell>
-                  {donnees.coachs.length > 0 && <TableCell sx={surPC} />}
-                  {colonnes.map((c) => ((RATIOS as string[]).includes(c.cle)
-                    ? cellule(c, mediane[c.cle as CleRatio])
-                    : <TableCell key={c.cle} />))}
-                </TableRow>
-                <LigneSansResultat t={tableau} colSpan={colonnes.length + (donnees.coachs.length > 0 ? 2 : 1)} quoi="Aucun magasin ne correspond" />
-                {visibles.map((m) => (
-                  <TableRow key={m.magasin} hover onClick={() => navigate(lienMagasin(m.magasin), { state: etat })} sx={{ cursor: 'pointer' }}>
-                    <TableCell>
-                      <Link component={RouterLink} to={lienMagasin(m.magasin)} state={etat} onClick={(e) => e.stopPropagation()} sx={{ fontWeight: 600, display: 'inline-flex', minHeight: 48, alignItems: 'center' }}>{m.magasin}</Link>
-                    </TableCell>
-                    {donnees.coachs.length > 0 && <TableCell sx={{ whiteSpace: 'nowrap', ...surPC }}>{m.coach}</TableCell>}
-                    {colonnes.map((c) => (c.cle === 'moisRealises'
-                      ? cellule(c, m.moisRealises || null)
-                      : cellule(c, valeurDe(m, c.cle), false, m.etatStock)))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
-      )}
+      {presenter ? (
+        <Presentation titre={integre ? 'Face au budget' : `Suivi ${annee}`} periode={selection} lecture={lecture} fermer={() => setPresenter(false)}>{corps}</Presentation>
+      ) : corps}
 
       {/* Sous le tableau : les causes données par les magasins (vague 6, 77A) et les magasins à appeler (lot 30, E3) */}
       <Box sx={{ mt: 4 }}><CausesEcartsReseau annee={annee} /></Box>

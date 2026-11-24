@@ -5,6 +5,7 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import ViewAgendaOutlined from '@mui/icons-material/ViewAgendaOutlined'
 import TableChartOutlined from '@mui/icons-material/TableChartOutlined'
+import MapOutlined from '@mui/icons-material/MapOutlined'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -280,19 +281,21 @@ export function GrillePhotos({ photos, max = 3, colonnes = 3, avant, grand = fal
 }
 
 // Lignes par défaut, tableau à la demande (PC) ; le choix est gardé par écran
-export type Affichage = 'lignes' | 'tableau'
+export type Affichage = 'lignes' | 'tableau' | 'carte' // carte : 399 (24/11/2026), seulement là où ChoixAffichage la propose
 export function useAffichage(ecran: string, defaut: Affichage = 'lignes'): [Affichage, (a: Affichage) => void] {
   const cle = `vandb-affichage-${ecran}`
   // Les lignes d'office : elles portent les actions de chaque magasin (Saisir, Voir plus) ; le tableau reste au choix
-  const [a, setA] = useState<Affichage>(() => { try { const v = localStorage.getItem(cle); return v === 'tableau' || v === 'lignes' ? v : defaut } catch { return defaut } })
+  const [a, setA] = useState<Affichage>(() => { try { const v = localStorage.getItem(cle); return v === 'tableau' || v === 'lignes' || v === 'carte' ? v : defaut } catch { return defaut } })
   return [a, (v) => { setA(v); try { localStorage.setItem(cle, v) } catch { /* stockage indisponible */ } }]
 }
 
-export function ChoixAffichage({ valeur, onChange }: { valeur: Affichage; onChange: (a: Affichage) => void }) {
+export function ChoixAffichage({ valeur, onChange, avecCarte, sansTableau }: { valeur: Affichage; onChange: (a: Affichage) => void; avecCarte?: boolean; sansTableau?: boolean }) {
+  const sx = { minHeight: { xs: 48, md: 40 }, px: 1.5, gap: 0.75 }
   return (
     <ToggleButtonGroup exclusive size="small" value={valeur} onChange={(_e, v: Affichage | null) => v && onChange(v)} aria-label="Affichage">
-      <ToggleButton value="lignes" sx={{ minHeight: 40, px: 1.5, gap: 0.75 }}><ViewAgendaOutlined fontSize="small" />Lignes</ToggleButton>
-      <ToggleButton value="tableau" sx={{ minHeight: 40, px: 1.5, gap: 0.75 }}><TableChartOutlined fontSize="small" />Tableau</ToggleButton>
+      <ToggleButton value="lignes" sx={sx}><ViewAgendaOutlined fontSize="small" />Lignes</ToggleButton>
+      {!sansTableau && <ToggleButton value="tableau" sx={sx}><TableChartOutlined fontSize="small" />Tableau</ToggleButton>}
+      {avecCarte && <ToggleButton value="carte" sx={sx}><MapOutlined fontSize="small" />Carte</ToggleButton>}
     </ToggleButtonGroup>
   )
 }

@@ -17,13 +17,14 @@ import { brand, styleChiffre } from '../../theme/theme'
 // (le budget est aux 4/5 de la jauge, pour voir aussi un dépassement)
 // Vue d'ensemble plus visuelle (Joseph, 23/11/2026) : l'écart se lit comme sur la page Chiffres (flèche de tendance, valeur
 // en couleur), courbe de l'an dernier en pointillé (serieReference), barre de progression facultative (part de l'atterrissage)
-export function Indicateur({ libelle, valeur, detail, ecart, serie, serieReference, action, aide, info, jauge, progression, phrase, negatif }: {
+export function Indicateur({ libelle, valeur, detail, ecart, serie, serieReference, repere, action, aide, info, jauge, progression, phrase, negatif }: {
   libelle: string
   valeur: string
   detail?: string
   ecart?: { texte: string; hausse: boolean; favorable: boolean }
   serie?: (number | null)[]
   serieReference?: (number | null)[]
+  repere?: { valeur: number; texte: string } | null // 396 : médiane du réseau sur la courbe (équipe seulement)
   action?: ReactNode
   aide?: SujetAide
   info?: ReactNode
@@ -67,7 +68,12 @@ export function Indicateur({ libelle, valeur, detail, ecart, serie, serieReferen
       )}
       {detail && <Typography color="text.secondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>{detail}</Typography>}
       {phrase && <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, mt: 0.5 }}>{phrase}</Typography>}
-      {serie && <Box sx={{ mt: 'auto', pt: 1 }}><Courbe valeurs={serie} reference={serieReference} /></Box>}
+      {serie && <Box sx={{ mt: 'auto', pt: 1 }}><Courbe valeurs={serie} reference={serieReference} repere={repere?.valeur} /></Box>}
+      {serie && repere && serie.filter((v) => v !== null).length > 1 && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+          <Box component="span" aria-hidden sx={{ width: 14, borderTop: '2px dashed', borderColor: brand.or, flexShrink: 0 }} />{repere.texte}
+        </Typography>
+      )}
       {action}
     </Card>
   )

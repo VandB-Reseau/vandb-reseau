@@ -3,10 +3,11 @@ import { Entete, LigneSansResultat, useTableau, type ColonneTri } from '../compo
 import { Blason } from '../components/Blason'
 import type { ReactNode } from 'react'
 import { normaliser } from '../data/filtres'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink, Navigate, useSearchParams } from 'react-router-dom'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
+import Skeleton from '@mui/material/Skeleton'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import Checkbox from '@mui/material/Checkbox'
@@ -65,6 +66,9 @@ import { PastilleAlerte } from '../components/Chiffres'
 import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, MiniCourbe, Pastille, Puces, TitreSection, useAffichage, useParTranches } from '../components/Social'
 import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined'
 import ExpandLessOutlined from '@mui/icons-material/ExpandLessOutlined'
+import { BoutonCouleurs, BoutonPresenter, Lecture, Presentation, fondEcart, fondsMediane, mediane } from '../components/Visuel'
+import type { PointCarte } from '../components/CarteValeurs'
+import { lectureEcarts } from '../pilotage/lib/lecture'
 import { analyser as analyserCA, dernierAudit, formatEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, libelleMoisCourt, courbeCA, formatKEuros, type StatutAlerte } from '../data/chiffres'
 import { estOuvert, type Magasin, type Reseau } from '../data/modele'
 import { ChampDate as ChampDateCommun } from '../components/ChampDate'
@@ -101,6 +105,9 @@ function useFiltres(reseau: Reseau, enPlus?: ReactNode) {
   return { magasins, barre: barreDe(enPlus), barreDe }
 }
 
+const CarteValeurs = lazy(() => import('../components/CarteValeurs'))
+// Écart en points de pourcentage (écarts en %), signe moins typographique
+const formatPoints = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} pt${Math.abs(n) >= 2 ? 's' : ''}`
 const niveaux = ['faible', 'moyen', 'fort']
 const SURVEILLER = ['redressement', 'relance', 'renforcer']
 const SOLIDES = ['locomotive', 'grandir', 'potentiel']
@@ -817,6 +824,10 @@ export function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean 
   const { magasins, barreDe } = useFiltres(reseau)
   const [statuts, setStatuts] = useState<string[]>([])
   const [affichage, setAffichage] = useAffichage('chiffres')
+  // 393 / 400 (24/11/2026) : tableau en couleurs (interrupteur gardé par écran) et mode présentation
+  const [couleurs, setCouleurs] = useState(() => { try { return localStorage.getItem('vandb-couleurs-chiffres') !== 'non' } catch { return true } })
+  const basculerCouleurs = () => { setCouleurs(!couleurs); try { localStorage.setItem('vandb-couleurs-chiffres', couleurs ? 'non' : 'oui') } catch { /* stockage indisponible */ } }
+  const [presenter, setPresenter] = useState(false)
   const lignes = useMemo(() => magasins.map((m) => ({ m, a: analyserCA(reseau, m.nom), coach: suivi(m, coachA(m, reseau.jour)), hygiene: dernierAudit(reseau, m.nom, 'hygiene'), excellence: dernierAudit(reseau, m.nom, 'excellence') }))
     .sort((x, y) => ordreAlerte.indexOf(x.a?.statut ?? null) - ordreAlerte.indexOf(y.a?.statut ?? null) || (x.a?.ecart ?? 0) - (y.a?.ecart ?? 0) || x.m.nom.localeCompare(y.m.nom, 'fr')), [magasins, reseau])
   const compte = (st: StatutAlerte | null) => lignes.filter((l) => (l.a?.statut ?? null) === st).length
@@ -833,12 +844,23 @@ export function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean 
     { id: 'sans', titre: 'Sans chiffres', n: compte(null), couleur: theme.palette.text.secondary, detail: 'Mois de comparaison manquant' },
   ]
   const reference = moisReference === 1 ? 'mois précédent' : 'même mois l’an dernier'
-  const enTetes = ['Magasin', 'Coach', 'Mois', 'CA cumulé', `Écart vs ${reference}`, 'Flux cumulé', 'Panier moyen', 'Marge', 'CA marché extérieur', 'Alerte', 'Audits']
-  return (
+  const enTetes = ['Magasin', 'Coach', 'Mois', 'CA cumulé', `Écart vs ${reference}`, 'Face à la médiane', 'Flux cumulé', 'Panier moyen', 'Marge', 'CA marché extérieur', 'Alerte', 'Audits']
+  // 395 : la médiane des écarts des magasins affichés ; chaque magasin se lit face à elle (en points)
+  const med = mediane(visibles.flatMap((l) => (l.a?.ecart != null ? [l.a.ecart] : [])))
+  const lignesVues = visibles.map((l) => ({ ...l, faceMediane: med !== null && l.a?.ecart != null ? l.a.ecart - med : null }))
+  // 394 : la phrase de lecture (écarts en %, ramenés en fraction pour le format commun)
+  const dernierMois = visibles.reduce((x, l) => (l.a && l.a.mois > x ? l.a.mois : x), '')
+  const lecture = [lectureEcarts({
+    quoi: `CA${dernierMois ? ` à fin ${libelleMois(dernierMois)}` : ''}`, total: null, ref: reference, seuil: seuilSurveiller / 100,
+    lignes: visibles.map((l) => ({ nom: l.m.nom, e: l.a?.ecart != null ? l.a.ecart / 100 : null })),
+  }), med === null ? '' : `Médiane des écarts : ${formatPourcent(med)}.`].filter(Boolean).join(' ') || null
+  const vueCarte = affichage === 'carte'
+  const points: PointCarte[] = lignesVues.map((l) => ({ nom: l.m.nom, lien: lienFiche(l.m.nom), bon: l.a?.ecart == null ? null : l.a.statut === 'ok',
+    texte: l.a ? `${formatKEuros(l.a.ca)} à fin ${libelleMoisCourt(l.a.mois)}, ${formatPourcent(l.a.ecart)} vs ${reference}` : 'sans chiffres' }))
+  const contenu = (
     <>
-      {barreDe(<FiltreMenu libelle="Alerte" choisis={statuts} onChange={setStatuts} options={tuiles.map((t) => ({ valeur: t.id, libelle: t.titre, detail: `${t.n} magasins` }))} />,
-        statuts.length, surPC ? <ChoixAffichage valeur={affichage} onChange={setAffichage} /> : undefined)}
       {/* 364 (Joseph, 23/11/2026) : tableau de bord en tête, sur les magasins filtrés */}
+      <Lecture texte={lecture} />
       <TableauDeBord reseau={reseau} noms={noms} label="Tableau de bord du réseau" groupe="Indicateurs du réseau"
         quatrieme={avecStatut ? <Indicateur bordee icone={<StorefrontOutlined />} libelle="Magasins dans la norme" valeur={`${Math.round((compte('ok') / avecStatut) * 100)} %`}
           detail={`${compte('ok')} sur ${avecStatut} magasins comparables`} /> : undefined} />
@@ -851,29 +873,58 @@ export function VueChiffres({ reseau, surPC }: { reseau: Reseau; surPC: boolean 
         {/* 335 (18/11/2026) : les audits en 5e tuile plutôt qu'en ligne isolée */}
         <Indicateur libelle="Audits conformes" valeur={audits.length ? `${conformes} sur ${audits.length}` : '0'} detail={audits.length ? `${Math.round((conformes / audits.length) * 100)} %` : 'Aucun résultat saisi'} />
       </Box>
-      {visibles.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." /> : surPC && affichage === 'tableau' ? (
-        <TableauChiffres lignes={visibles} enTetes={enTetes} />
+      {visibles.length === 0 ? <EmptyState icone={<SearchOffOutlined />} titre="Aucun magasin" texte="Aucun magasin ne correspond à ces filtres." /> : vueCarte ? (
+        <Suspense fallback={<Skeleton variant="rounded" height={420} />}>
+          <CarteValeurs points={points} titre="Carte des chiffres des magasins" mieux="Dans la norme" moins="À surveiller ou décroche" surPC={surPC} />
+        </Suspense>
+      ) : surPC && affichage === 'tableau' ? (
+        <TableauChiffres lignes={lignesVues} enTetes={enTetes} couleurs={couleurs} />
       ) : (
-        <LignesChiffres reseau={reseau} lignes={visibles} />
+        <LignesChiffres reseau={reseau} lignes={lignesVues} />
       )}
+    </>
+  )
+  return (
+    <>
+      {barreDe(<FiltreMenu libelle="Alerte" choisis={statuts} onChange={setStatuts} options={tuiles.map((t) => ({ valeur: t.id, libelle: t.titre, detail: `${t.n} magasins` }))} />,
+        statuts.length, surPC ? <>
+          <ChoixAffichage valeur={affichage} onChange={setAffichage} avecCarte />
+          {affichage === 'tableau' && <BoutonCouleurs actif={couleurs} basculer={basculerCouleurs} />}
+          <BoutonPresenter onClick={() => setPresenter(true)} />
+        </> : undefined)}
+      {/* Téléphone : Lignes ou Carte et la présentation sous la barre, pour laisser la place à la recherche */}
+      {!surPC && (
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1.5 }}>
+          <ChoixAffichage valeur={affichage === 'tableau' ? 'lignes' : affichage} onChange={setAffichage} avecCarte sansTableau />
+          <Box sx={{ flex: 1 }} />
+          <BoutonPresenter onClick={() => setPresenter(true)} />
+        </Box>
+      )}
+      {presenter ? <Presentation titre="Chiffres des magasins" periode={dernierMois ? `À fin ${libelleMois(dernierMois)}` : ''} lecture={lecture} fermer={() => setPresenter(false)}>{contenu}</Presentation> : contenu}
     </>
   )
 }
 
 // Chiffres des magasins sur PC : chaque colonne se trie et se filtre (harmonisation des tableaux, 10/11/2026)
-type LigneChiffre = { m: Magasin; a: ReturnType<typeof analyserCA>; coach: string; hygiene: ReturnType<typeof dernierAudit>; excellence: ReturnType<typeof dernierAudit> }
+type LigneChiffre = { m: Magasin; a: ReturnType<typeof analyserCA>; coach: string; hygiene: ReturnType<typeof dernierAudit>; excellence: ReturnType<typeof dernierAudit>; faceMediane: number | null }
 const LIBELLES_ALERTE: Record<string, string> = { decroche: 'Décroche', surveiller: 'À surveiller', ok: 'Dans la norme' }
-function TableauChiffres({ lignes, enTetes }: { lignes: LigneChiffre[]; enTetes: string[] }) {
+function TableauChiffres({ lignes, enTetes, couleurs }: { lignes: LigneChiffre[]; enTetes: string[]; couleurs: boolean }) {
   const colonnes = useMemo<ColonneTri<LigneChiffre>[]>(() => {
     const v: ((l: LigneChiffre) => string | number | null | undefined)[] = [
-      (l) => l.m.nom, (l) => l.coach || 'Sans Coach', (l) => l.a?.mois ?? null, (l) => l.a?.ca ?? null, (l) => l.a?.ecart ?? null,
+      (l) => l.m.nom, (l) => l.coach || 'Sans Coach', (l) => l.a?.mois ?? null, (l) => l.a?.ca ?? null, (l) => l.a?.ecart ?? null, (l) => l.faceMediane,
       (l) => l.a?.chiffre.tickets ?? null, (l) => l.a?.chiffre.panier ?? null, (l) => l.a?.chiffre.marge ?? null, (l) => l.a?.chiffre.caExt ?? null,
       (l) => (l.a?.statut ? LIBELLES_ALERTE[l.a.statut] ?? null : null), (l) => [l.hygiene && `Hygiène : ${libelleAudit(l.hygiene)}`, l.excellence && `Excellence : ${libelleAudit(l.excellence)}`].filter(Boolean).join(' · ') || null,
     ]
     return enTetes.map((h, i) => ({ cle: String(i), libelle: h, valeur: v[i], ...(i === 2 ? { texte: (l: LigneChiffre) => (l.a ? libelleMoisCourt(l.a.mois) : '') } : {}),
-      ...(i === 3 || i === 8 ? { nombre: (l: LigneChiffre) => { const x = v[i](l); return typeof x === 'number' ? x / 1000 : null }, unite: 'k€' } : {}), ...(i === 4 ? { unite: '%', premier: 'asc' as const } : {}) }))
+      ...(i === 3 || i === 9 ? { nombre: (l: LigneChiffre) => { const x = v[i](l); return typeof x === 'number' ? x / 1000 : null }, unite: 'k€' } : {}), ...(i === 4 ? { unite: '%', premier: 'asc' as const } : i === 5 ? { unite: 'pt', premier: 'asc' as const } : {}) }))
   }, [enTetes])
   const t = useTableau(lignes, colonnes, { memoire: 'sante-chiffres' })
+  // 393 : fonds de l'écart (plein à 15 %), de la place face à la médiane (plein à 10 points), du CA et de la marge face à la médiane
+  const fond = useMemo(() => {
+    if (!couleurs) return null
+    const ca = fondsMediane(t.lignes.map((l) => l.a?.ca ?? null)), marge = fondsMediane(t.lignes.map((l) => l.a?.chiffre.marge ?? null))
+    return new Map(t.lignes.map((l, k) => [l.m.nom, { ca: ca[k], marge: marge[k], ecart: fondEcart(l.a?.ecart ?? null, 15), mediane: fondEcart(l.faceMediane, 10) }]))
+  }, [couleurs, t.lignes])
   return (
     <TableContainer component={Paper}>
       <Table size="small" aria-label="Chiffres des magasins">
@@ -882,16 +933,17 @@ function TableauChiffres({ lignes, enTetes }: { lignes: LigneChiffre[]; enTetes:
         </TableHead>
         <TableBody>
           <LigneSansResultat t={t} colSpan={colonnes.length} quoi="Aucun magasin ne correspond" />
-          {t.lignes.map(({ m, a, coach, hygiene, excellence }) => (
+          {t.lignes.map(({ m, a, coach, hygiene, excellence, faceMediane }) => (
             <TableRow key={m.nom} hover>
               <TableCell><Link component={RouterLink} to={lienFiche(m.nom)} sx={{ fontWeight: 600 }}>{m.nom}</Link></TableCell>
               <TableCell>{coach || 'Sans Coach'}</TableCell>
               <TableCell sx={{ whiteSpace: 'nowrap' }}>{a ? libelleMoisCourt(a.mois) : '—'}</TableCell>
-              <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatEuros(a?.ca ?? null)}</TableCell>
-              <TableCell sx={{ whiteSpace: 'nowrap' }}>{a?.ecart === null || !a ? '—' : <Tooltip title={`${libelleMois(a.reference)} : ${formatEuros(a.caReference)}`}><span>{formatPourcent(a.ecart)}</span></Tooltip>}</TableCell>
+              <TableCell sx={{ whiteSpace: 'nowrap', bgcolor: fond?.get(m.nom)?.ca }}>{formatEuros(a?.ca ?? null)}</TableCell>
+              <TableCell sx={{ whiteSpace: 'nowrap', bgcolor: fond?.get(m.nom)?.ecart }}>{a?.ecart === null || !a ? '—' : <Tooltip title={`${libelleMois(a.reference)} : ${formatEuros(a.caReference)}`}><span>{formatPourcent(a.ecart)}</span></Tooltip>}</TableCell>
+              <TableCell sx={{ whiteSpace: 'nowrap', bgcolor: fond?.get(m.nom)?.mediane }} data-face-mediane>{faceMediane === null ? '—' : formatPoints(faceMediane)}</TableCell>
               <TableCell>{formatValeur('tickets', a?.chiffre.tickets ?? null)}</TableCell>
               <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatValeur('panier', a?.chiffre.panier ?? null)}</TableCell>
-              <TableCell>{formatValeur('marge', a?.chiffre.marge ?? null)}</TableCell>
+              <TableCell sx={{ bgcolor: fond?.get(m.nom)?.marge }}>{formatValeur('marge', a?.chiffre.marge ?? null)}</TableCell>
               <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatEuros(a?.chiffre.caExt ?? null)}</TableCell>
               <TableCell><PastilleAlerte statut={a?.statut ?? null} /></TableCell>
               <TableCell>{[hygiene && `Hygiène : ${libelleAudit(hygiene)}`, excellence && `Excellence : ${libelleAudit(excellence)}`].filter(Boolean).join(' · ') || '—'}</TableCell>
@@ -904,7 +956,7 @@ function TableauChiffres({ lignes, enTetes }: { lignes: LigneChiffre[]; enTetes:
 }
 
 // Une ligne par magasin : mini-courbe sur 12 mois, chiffre du mois en grand, écart en couleur ; les magasins sans chiffres sont repliés
-function LignesChiffres({ reseau, lignes }: { reseau: Reseau; lignes: { m: Magasin; a: ReturnType<typeof analyserCA>; coach: string }[] }) {
+function LignesChiffres({ reseau, lignes }: { reseau: Reseau; lignes: { m: Magasin; a: ReturnType<typeof analyserCA>; coach: string; faceMediane: number | null }[] }) {
   const theme = useTheme()
   const [ouvert, setOuvert] = useState(false)
   const [nb, setNb] = useState(50)
@@ -914,9 +966,9 @@ function LignesChiffres({ reseau, lignes }: { reseau: Reseau; lignes: { m: Magas
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <CarteLignes label="Chiffres des magasins">
-        {avec.slice(0, nb).map(({ m, a, coach }) => (
+        {avec.slice(0, nb).map(({ m, a, coach, faceMediane }) => (
           <LigneCompacte key={m.nom} lien={lienFiche(m.nom)} avatar={<Blason magasin={m} />} titre={m.nom}
-            detail={[coach || 'Sans Coach', libelleMois(a!.mois)].join(' · ')}
+            detail={[coach || 'Sans Coach', libelleMois(a!.mois), faceMediane === null ? '' : `${formatPoints(faceMediane)} face à la médiane`].filter(Boolean).join(' · ')}
             fin={<>
               <Box sx={{ display: { xs: 'none', sm: 'block' } }}><MiniCourbe valeurs={courbeCA(reseau, m.nom, a!.mois)} couleur={couleur(a!)} label={`Chiffre d'affaires de ${m.nom} sur 12 mois`} /></Box>
               <Box sx={{ textAlign: 'right', minWidth: 72 }}>

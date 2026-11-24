@@ -20,13 +20,15 @@ import { ecartChiffres, ecartMilliers, ecartMontant, ecartPts, ecartTaux, enChif
 import { calculerBudget } from '../moteur/budget'
 import { cumul, cumulApres, santeMagasin } from '../moteur/sante'
 import { effetsSurLaMarge, moisDuReel, suiviBudget } from '../moteur/suivi'
-import { reelComplete } from '../moteur/reelComplete'
+import { aDateFaceAuBudget, reelComplete } from '../moteur/reelComplete'
 import { Aide } from './Aide'
 import { Repliable } from './Repliable'
 import { niveauEcart } from '../moteur/visuel'
 import { brand } from '../theme/theme'
 import { styleTableau } from '../theme/tableau'
-import { CaseComplete, CaseReelPrevu, COULEUR_BARRE, EnTeteMois, LegendePastilles } from './Tableau'
+import { CaseComplete, CaseReelPrevu, COULEUR_BARRE, CouleursCases, EnTeteMois, LegendePastilles } from './Tableau'
+import { BoutonCouleurs } from '../../components/Visuel'
+import { usePreference } from '../lib/preferences'
 import { BarrePeriode, usePeriodeCommune } from '../../components/BarrePeriode'
 
 // Réel de l'année face à son budget, mois par mois : où le magasin décroche, et de combien. muetSansReel (lot 30) : dans
@@ -42,6 +44,10 @@ export function SuiviBudget({ magasin, annee, allerA, muetSansReel, vue: partie 
       .then(([d, p, reel, reelN1, secours, quadrimestres]) => ({ d, parametres: p.parametres, reel, reelN1, secours, quadrimestres: quadrimestres[magasin] ?? {} })),
     [magasin, annee])
   const [vue, setVue] = usePeriodeCommune()
+  // 401 : cases colorées selon l'écart au budget, interrupteur gardé dans les préférences
+  const [choixCouleurs, setChoixCouleurs] = usePreference<'oui' | 'non'>('couleurs-mois', 'oui', ['oui', 'non'])
+  const couleurs = choixCouleurs === 'oui'
+  const basculerCouleurs = () => setChoixCouleurs(couleurs ? 'non' : 'oui')
 
   if (chargement && !donnees) return partie === 'complet' ? <Skeleton variant="rounded" height={320} /> : null
   if (erreur || !donnees) return partie === 'conclusion' ? null : <Panne quoi={`Le suivi du budget ${annee}`} recharger={recharger} />
@@ -86,6 +92,7 @@ export function SuiviBudget({ magasin, annee, allerA, muetSansReel, vue: partie 
   const finAtterri = atterri?.[11] ?? null
   // Conclusion : écart de CA, écart de taux de marge, et ce qui pèse le plus sur la marge
   const effets = effetsSurLaMarge(s)
+  const aDate = aDateFaceAuBudget(rc, c.caReel, c.caBudget)
   const totalMarge = effets.effetCA + (effets.effetTaux ?? 0)
   const conclusion = [
     `À fin ${finMois}, CA ${c.ecartCAPart === null ? ecartMilliers(c.ecartCA) : `${ecartTaux(c.ecartCAPart)} sur le budget (${ecartMilliers(c.ecartCA)})`}`,
@@ -93,6 +100,8 @@ export function SuiviBudget({ magasin, annee, allerA, muetSansReel, vue: partie 
     effets.effetTaux === null ? '' : effets.principal === 'taux'
       ? `Sur la marge, le taux pèse le plus : ${ecartMilliers(effets.effetTaux)}, contre ${ecartMilliers(effets.effetCA)} pour le CA.`
       : `Sur la marge, le CA pèse le plus : ${ecartMilliers(effets.effetCA)}, contre ${ecartMilliers(effets.effetTaux)} pour le taux.`,
+    // 402 (Joseph, 24/11/2026) : dès qu'un quadrimestre est saisi, la phrase dit aussi % FP et EBE à date face au budget
+    aDate ? ` % FP ${taux(aDate.pctFP)} (${ecartPts(aDate.ecartFP)} sur le budget), EBE à date ${milliers(aDate.ebe)} (${ecartMilliers(aDate.ecartEbe)}).` : '',
   ].join('').trim()
 
   // Joseph (03/11/2026) : un budget pas encore validé sert quand même de référence, signalé « provisoire »
@@ -163,7 +172,8 @@ export function SuiviBudget({ magasin, annee, allerA, muetSansReel, vue: partie 
         )}
       </Card>}
 
-      <Repliable titre="Mois par mois" nom={`Réel et budget ${annee} mois par mois`} ouvert={ouvert} droite={<LegendePastilles seuil={seuil} />}>
+      <Repliable titre="Mois par mois" nom={`Réel et budget ${annee} mois par mois`} ouvert={ouvert} droite={<><BoutonCouleurs actif={couleurs} basculer={basculerCouleurs} /><LegendePastilles seuil={seuil} /></>}>
+        <CouleursCases.Provider value={couleurs}>
         <TableContainer>
           <Table size="small" className="colonne-fixe" aria-label={`Réel face au budget ${annee} mois par mois`} sx={styleTableau}>
             <TableHead>
@@ -225,6 +235,7 @@ export function SuiviBudget({ magasin, annee, allerA, muetSansReel, vue: partie 
             </TableBody>
           </Table>
         </TableContainer>
+        </CouleursCases.Provider>
       </Repliable>
     </Stack>
   )

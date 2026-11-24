@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { createContext, useContext, useState } from 'react'
+import { fondEcart } from '../../components/Visuel'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Popover from '@mui/material/Popover'
@@ -18,6 +19,11 @@ const cache = { position: 'absolute', width: '1px', height: '1px', overflow: 'hi
 // Couleur de la pastille : vert au prévu ou mieux, jaune-or dans le seuil, brique au-delà
 export const COULEUR_NIVEAU: Record<NiveauEcart, string> = { favorable: 'success.main', leger: brand.or, fort: 'error.main' }
 const TEXTE_NIVEAU: Record<NiveauEcart, string> = { favorable: 'au prévu ou mieux', leger: 'un peu en dessous du prévu', fort: 'nettement en dessous du prévu' }
+
+// 401 (Joseph, 24/11/2026) : dans un tableau réel / prévu, le fond des cases selon l'écart au prévu (plein à 15 %) ;
+// une charge plus haute que prévu se colore en brique. Activé par l'interrupteur « Couleurs » du tableau.
+export const CouleursCases = createContext(false)
+const fondCase = (part: number | null | undefined, charge?: boolean) => (part == null ? undefined : fondEcart(part, 0.15, charge))
 
 export function Pastille({ niveau }: { niveau: NiveauEcart | null }) {
   if (!niveau) return null
@@ -46,6 +52,8 @@ export function CaseReelPrevu({ reel, prevu, niveau, format, enCours, fort, char
   charge?: boolean
 }) {
   const e = ecartReelPrevu(reel, prevu)
+  const couleurs = useContext(CouleursCases)
+  const fond = couleurs ? fondCase(e?.part, charge) : undefined
   const contenu = reel === null ? (
     <Box sx={{ color: 'text.secondary', position: 'relative' }}>{prevu === null ? '' : <>{format(prevu)}<Box component="span" sx={cache}> prévu</Box></>}</Box>
   ) : (
@@ -58,7 +66,7 @@ export function CaseReelPrevu({ reel, prevu, niveau, format, enCours, fort, char
     </Box>
   )
   return (
-    <TableCell align="right" className={enCours ? 'en-cours' : undefined}>
+    <TableCell align="right" className={enCours ? 'en-cours' : undefined} data-fond={fond ? '' : undefined} sx={fond ? { bgcolor: `${fond} !important` } : undefined}>
       {e ? (
         <Tooltip enterTouchDelay={0} title={`Écart au prévu : ${ecartMontant(e.montant)}${e.part === null ? '' : ` (${ecartTaux(e.part)})`}${charge ? ', une charge plus haute coûte' : ''}`}>
           <Box component="span" sx={{ display: 'inline-block' }}>{contenu}</Box>
@@ -106,8 +114,10 @@ export function CaseComplete({ chiffre, prevu, format, enCours, fort, charge }: 
   if (!chiffre) return <TableCell align="right" className={enCours ? 'en-cours' : undefined}><Box sx={{ color: 'text.secondary' }}>{prevu === null ? '' : format(prevu)}</Box></TableCell>
   const estime = chiffre.source === 'estime'
   const e = ecartReelPrevu(chiffre.valeur, prevu)
+  const couleurs = useContext(CouleursCases)
+  const fond = couleurs && !estime ? fondCase(e?.part, charge) : undefined
   return (
-    <TableCell align="right" className={enCours ? 'en-cours' : undefined} data-source={chiffre.source}>
+    <TableCell align="right" className={enCours ? 'en-cours' : undefined} data-source={chiffre.source} data-fond={fond ? '' : undefined} sx={fond ? { bgcolor: `${fond} !important` } : undefined}>
       <Tooltip enterTouchDelay={0} title={`${estime ? 'Estimé' : chiffre.source === 'reparti' ? 'Réparti depuis le quadrimestre' : 'Réel'}${e ? `, écart au prévu : ${ecartMontant(e.montant)}${charge ? ', une charge plus haute coûte' : ''}` : ''}`}>
         <Box sx={{ display: 'inline-grid', justifyItems: 'end', lineHeight: 1.3, position: 'relative' }}>
           <Box component="span" sx={{ fontWeight: fort ? 800 : 700, ...(estime ? { fontStyle: 'italic', color: 'text.secondary' } : {}) }}>

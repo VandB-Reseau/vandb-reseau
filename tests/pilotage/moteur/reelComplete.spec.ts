@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { SaisieQuadrimestre } from '../../../src/pilotage/moteur/quadrimestre'
-import { demarqueBudget, reelComplete, sourceDe } from '../../../src/pilotage/moteur/reelComplete'
+import { aDateFaceAuBudget, demarqueBudget, reelComplete, sourceDe } from '../../../src/pilotage/moteur/reelComplete'
 import { stockComplete, stockEstime } from '../../../src/pilotage/moteur/stock'
 import type { MoisReel } from '../../../src/pilotage/moteur/suivi'
 import type { Budget } from '../../../src/pilotage/moteur/types'
@@ -126,4 +126,19 @@ test('stock complet : Cave et Bar séparés, mois marqué estimé', () => {
   expect(c[1]).toEqual({ cave: 30_000, bar: 4_000, exterieur: null, total: 34_000, estime: true })   // Bar estimé
   expect(c[2]).toEqual({ cave: 30_000, bar: 4_000, exterieur: null, total: 34_000, estime: false })
   expect(c[3]).toEqual({ cave: null, bar: null, exterieur: null, total: null, estime: false })
+})
+
+test('% FP et EBE à date face au budget, dès qu’un quadrimestre est saisi (402)', () => {
+  // Janvier à avril seuls : 200 000 € de CA réel, 192 000 € budgétés
+  const quatre = reel.map((m, i) => (i < 4 ? m : vide))
+  const r = reelComplete(quatre, { 1: q1 }, budget, taux, 2027)
+  const a = aDateFaceAuBudget(r, 200_000, 192_000)!
+  // % FP : 44 000 / 200 000 = 22 % ; budget 40 000 / 192 000 = 20,83 %
+  proche(a.pctFP, 0.22)
+  proche(a.ecartFP, 0.22 - 40_000 / 192_000)
+  // EBE : 2 000 réel ; budget 4 × (19 200 − 7 000 − 500) − 40 000 = 6 800, soit −4 800
+  proche(a.ebe, 2_000)
+  proche(a.ecartEbe, -4_800)
+  // Sans quadrimestre : tout viendrait du budget, rien à dire
+  expect(aDateFaceAuBudget(reelComplete(quatre, {}, budget, taux, 2027), 200_000, 192_000)).toBeNull()
 })

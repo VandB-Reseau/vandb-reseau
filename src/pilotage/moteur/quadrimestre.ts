@@ -28,6 +28,8 @@ export interface ResultatQuadrimestre {
   marge: number | null
   tauxMarge: number | null
   tauxMargeBudget: number | null
+  pctFPBudget: number | null      // 403 (24/11/2026) : % FP et EBE sur CA du budget des mêmes mois
+  ebeSurCABudget: number | null
   tauxMargeCaisse: number | null // marge théorique de la caisse, sur les familles qui la donnent
   ecartMargeCaisse: number | null // marge réelle − marge caisse, en points : la démarque constatée est négative
   chargesExternes: number | null
@@ -63,6 +65,7 @@ export function resultatPeriode(mois: number[], reel: MoisReel[], saisies: Saisi
   return {
     complet: ebe !== null && moisCaisse === mois.length, moisCaisse, ca, achatsConsommes, marge, tauxMarge,
     tauxMargeBudget: b ? ratio(b.marge, b.ca) : null, tauxMargeCaisse,
+    pctFPBudget: b ? ratio(b.personnel, b.ca) : null, ebeSurCABudget: b ? ratio(b.ebe, b.ca) : null,
     ecartMargeCaisse: tauxMarge !== null && tauxMargeCaisse !== null ? tauxMarge - tauxMargeCaisse : null,
     chargesExternes, impotsTaxes, personnel, ebe, ebeSurCA: ebe === null ? null : ratio(ebe, ca),
     pctFP: personnel === null ? null : ratio(personnel, ca),

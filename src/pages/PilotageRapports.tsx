@@ -60,11 +60,11 @@ import LeaderboardOutlined from '@mui/icons-material/LeaderboardOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import SendOutlined from '@mui/icons-material/SendOutlined'
 import SlideshowOutlined from '@mui/icons-material/SlideshowOutlined'
-import CloseOutlined from '@mui/icons-material/CloseOutlined'
 import PaletteOutlined from '@mui/icons-material/PaletteOutlined'
 import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined'
 import { Indicateur as CarteIndicateur, grilleIndicateurs, sensDe } from '../components/Indicateur'
 import { MiniCourbe } from '../components/Social'
+import { Presentation, teinte } from '../components/Visuel'
 import { useMessagerie } from '../data/MessagerieContext'
 import { contacts, type Contact } from '../data/messagerie'
 import { PageHeader } from '../components/PageHeader'
@@ -1090,10 +1090,8 @@ function Camembert({ points, formatAutres }: { points: Point[]; formatAutres: (v
 }
 
 // 385 (Joseph, 24/11/2026) : fond vert ou brique, plus foncé quand l'écart (ou l'écart à la médiane de la colonne) est grand
-const VERT = '48, 118, 114', BRIQUE = '194, 65, 25'
 function fondsCouleur(cols: { i: Indicateur; cle: string }[], lignes: Resultat['lignes']): Map<string, string> {
   const fonds = new Map<string, string>()
-  const teinte = (favorable: boolean, force: number) => `rgba(${favorable ? VERT : BRIQUE}, ${(0.06 + Math.min(1, force) * 0.22).toFixed(3)})`
   for (const { i, cle } of cols) {
     if (i.agregat === 'texte') continue
     const ecarts = lignes.map((l) => {
@@ -1239,26 +1237,3 @@ function feuilleRapport(titre: string, periode: string, r: Resultat, def: Defini
 
 
 // ── 390 (Joseph, 24/11/2026) : mode présentation, plein écran, pour une réunion de RR ou un point avec un franchisé ──
-function Presentation({ titre, periode, lecture, fermer, children }: { titre: string; periode: string; lecture: string | null; fermer: () => void; children: ReactNode }) {
-  useEffect(() => {
-    // Plein écran du navigateur quand il l'accepte ; sinon la fenêtre occupe déjà toute la page
-    const el = document.documentElement
-    if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => undefined)
-    return () => { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => undefined) }
-  }, [])
-  return (
-    <Dialog open fullScreen onClose={fermer} aria-labelledby="titre-presentation" slotProps={{ paper: { sx: { bgcolor: 'background.default' } } }}>
-      <Box sx={{ maxWidth: 1400, width: '100%', mx: 'auto', px: { xs: 2, md: 5 }, py: { xs: 2, md: 4 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 3 }}>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography id="titre-presentation" component="h2" sx={{ fontSize: { xs: '1.5rem', md: '2.25rem' }, fontWeight: 700, lineHeight: 1.2 }}>{titre}</Typography>
-            <Typography color="text.secondary" sx={{ fontSize: { xs: '1rem', md: '1.25rem' }, mt: 0.5 }}>{periode}</Typography>
-            {lecture && <Typography sx={{ fontSize: { xs: '1.0625rem', md: '1.375rem' }, fontWeight: 600, mt: 1.5, maxWidth: 1100 }}>{lecture}</Typography>}
-          </Box>
-          <IconButton aria-label="Quitter la présentation" onClick={fermer} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
-        </Box>
-        {children}
-      </Box>
-    </Dialog>
-  )
-}

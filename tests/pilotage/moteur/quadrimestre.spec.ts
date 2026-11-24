@@ -27,6 +27,8 @@ test('quadrimestre : marge réelle avec la variation de stock, démarque face à
   expect(r!.ebe).toBe(10_000)                       // 78 000 − 30 000 − 2 000 − 36 000
   proche(r!.ebeSurCA, 0.05)
   proche(r!.pctFP, 0.18)                            // % FP : 36 000 / 200 000
+  proche(r!.pctFPBudget, 38_800 / 192_000)          // 403 : % FP du budget, 20,2 %
+  proche(r!.ebeSurCABudget, 8_000 / 192_000)        // EBE du budget sur son CA, 4,2 %
   expect(r!.budget).toEqual({ ca: 192_000, marge: 76_800, chargesExternes: 28_000, impotsTaxes: 2_000, personnel: 38_800, ebe: 8_000 })
   expect(r!.ecartEBE).toBe(2_000)
   expect(r!.tresorerie).toBe(15_000)

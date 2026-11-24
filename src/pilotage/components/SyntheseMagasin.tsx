@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -18,7 +18,7 @@ import { GraphiqueMois } from './GraphiqueMois'
 import { Indicateur } from './Indicateur'
 import { Panne } from './Panne'
 import { PlusLoin } from './PlusLoin'
-import { atterrissageDe, chargerBudgets, chargerQuadrimestres, chargerReel, chargerSecours, hypothesesDe, type DonneesBudgets, parametresDuBudget, type SaisiesQuadrimestres } from '../data/pilotage'
+import { atterrissageDe, chargerBudgets, chargerComparaison, chargerQuadrimestres, chargerReel, chargerSecours, hypothesesDe, type DonneesBudgets, parametresDuBudget, type SaisiesQuadrimestres } from '../data/pilotage'
 import { useChargement } from '../data/useChargement'
 import { ecartMilliers, ecartPts, enChiffres, milliers, MOIS, MOIS_LONGS, montant, taux } from '../lib/format'
 import { niveauEcart } from '../moteur/visuel'
@@ -26,6 +26,7 @@ import { LignesTendance, type LigneTendance } from './LignesTendance'
 import { COULEUR_BARRE } from './Tableau'
 import { calculerBudget } from '../moteur/budget'
 import { cumul, cumulApres, santeMagasin, vueEnsemble } from '../moteur/sante'
+import { medianes } from '../moteur/comparaison'
 import { UNIVERS, universLibelle } from '../moteur/types'
 import { Anneau, Barres, CarteGraphe } from '../../components/Graphes'
 import { moisDuReel, suiviBudget } from '../moteur/suivi'
@@ -36,6 +37,23 @@ import { ecartExplique } from '../moteur/ecartExplique'
 import { EcartExpliqueCarte } from './EcartExpliqueCarte'
 import { phraseCA, phraseEBE, phraseFP, phraseMarge } from '../moteur/phrases'
 import { BarrePeriode, usePeriodeCommune } from '../../components/BarrePeriode'
+
+// 396 (Joseph, 24/11/2026) : médianes du réseau à date (taux de marge, % FP) pour le trait des courbes, équipe seulement.
+// Chargées après le reste, gardées cinq minutes : la Vue d'ensemble s'ouvre sans les attendre
+let medianesGardees: { quand: number; p: Promise<{ tauxMarge: number | null; pctFP: number | null } | null> } | null = null
+function useMedianesReseau(actif: boolean) {
+  const [m, setM] = useState<{ tauxMarge: number | null; pctFP: number | null } | null>(null)
+  useEffect(() => {
+    if (!actif) return
+    if (!medianesGardees || Date.now() - medianesGardees.quand > 5 * 60_000) {
+      medianesGardees = { quand: Date.now(), p: chargerComparaison().then((d) => (d.reel.length >= 3 ? medianes(d.reel.map((x) => x.ratios)) : null), () => null) }
+    }
+    let vivant = true
+    medianesGardees.p.then((x) => { if (vivant) setM(x ? { tauxMarge: x.tauxMarge, pctFP: x.pctFP } : null) })
+    return () => { vivant = false }
+  }, [actif])
+  return actif ? m : null
+}
 
 // Santé du magasin en un coup d'œil : cumul de l'année face au budget de l'année (lot 27) et à l'an dernier, marge,
 // masse salariale, résultat attendu ; CA cumulé ou mois par mois. Lot 30 (E2) : trois blocs, où on en est (les chiffres),
@@ -65,6 +83,8 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
   const [vue, setVue] = usePeriodeCommune('cumul')
   const [visite, setVisite] = useState(false)
   const [objectifs, setObjectifs] = useState(false)
+  // Le franchisé n'a pas « Pour aller plus loin » : il ne reçoit jamais la médiane du réseau
+  const mediane = useMedianesReseau(!!plusLoin && partie !== 'analyse')
 
   const contenu = plusLoin ? '(graphique, leviers, face au réseau)' : '(graphique, leviers)'
   const analyse = partie === 'analyse', ensemble = partie === 'ensemble'
@@ -216,6 +236,7 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
           ecart={ecartMarge !== null ? { texte: `${ecartPts(Math.abs(ecartMarge)).replace('+', '')} face au budget`, hausse: ecartMarge >= 0, favorable: ecartMarge >= 0 }
             : ecartMargeN1 === null ? undefined : { texte: `${ecartPts(Math.abs(ecartMargeN1)).replace('+', '')} sur ${annee - 1}`, hausse: ecartMargeN1 >= 0, favorable: ecartMargeN1 >= 0 }}
           serie={ve.margeParMois} serieReference={ve.margeParMoisN1}
+          repere={mediane?.tauxMarge != null ? { valeur: mediane.tauxMarge, texte: `Médiane du réseau : ${taux(mediane.tauxMarge)}` } : null}
           jauge={suivi && s.tauxMarge !== null ? { valeur: s.tauxMarge, cible: suivi.cumul.tauxMargeBudget, niveau: niveauEcart(s.tauxMarge, suivi.cumul.tauxMargeBudget, seuil), libelle: 'Taux de marge face au budget' } : undefined}
           detail={s.tauxMarge === null ? 'Marge absente des chiffres de caisse'
             : suivi ? `Budget : ${taux(suivi.cumul.tauxMargeBudget)} · ${milliers(s.margeCumulee)} à fin ${finMois}` : `${milliers(s.margeCumulee)} à fin ${finMois}`}
@@ -224,6 +245,7 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
         <Indicateur
           libelle="% FP" aide="pctFP" valeur={equipe?.length ? taux(b.ratios.pctFP) : 'À renseigner'}
           serie={equipe?.length ? ve.fpParMois : undefined}
+          repere={mediane?.pctFP != null ? { valeur: mediane.pctFP, texte: `Médiane du réseau : ${taux(mediane.pctFP)}` } : null}
           detail={equipe?.length ? `${milliers(b.personnel)} de masse salariale sur l’année` : 'Équipe non renseignée'}
           phrase={dit?.fp}
         />
@@ -249,7 +271,8 @@ export function SyntheseMagasin({ magasin, d, annee, parametres, allerA, visiteE
         </CarteGraphe>
         <CarteGraphe titre="Évolution du CA" sousTitre={`${ve.derniersMois.length} dernier${ve.derniersMois.length > 1 ? 's' : ''} mois, face à ${annee - 1}`}>
           <Barres label={`Chiffre d’affaires des ${ve.derniersMois.length} derniers mois, face à ${annee - 1}`} format={milliers}
-            barres={ve.derniersMois.map((m) => ({ libelle: MOIS[m.mois - 1], valeur: m.ca, reference: m.caN1 }))} />
+            barres={ve.derniersMois.map((m) => ({ libelle: MOIS[m.mois - 1], valeur: m.ca, reference: m.caN1 }))}
+            ouvrir={() => allerA('mois')} libelleOuvrir={(b) => `Voir ${b.libelle} dans Mois par mois`} />
         </CarteGraphe>
       </Box>
 

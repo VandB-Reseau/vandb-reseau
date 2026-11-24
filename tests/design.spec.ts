@@ -88,7 +88,8 @@ test('Santé > Chiffres en lignes, tableau au choix sur PC, magasins sans chiffr
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-chiffres-lignes.png`, fullPage: !isMobile })
   if (isMobile) {
-    await expect(page.getByRole('group', { name: 'Affichage' })).toHaveCount(0)
+    // 399 (24/11/2026) : sur téléphone, Lignes ou Carte, pas de tableau
+    await expect(page.getByRole('group', { name: 'Affichage' }).getByRole('button')).toHaveText(['Lignes', 'Carte'])
     return
   }
   await page.getByRole('group', { name: 'Affichage' }).getByRole('button', { name: 'Tableau' }).click()

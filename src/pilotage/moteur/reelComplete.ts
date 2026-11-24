@@ -112,3 +112,11 @@ export function reelComplete(reel: MoisReel[], saisies: Partial<Record<Quadrimes
     moisEstimes: faits.filter((m) => m.ebe.source === 'estime').length,
   }
 }
+
+// 402 (Joseph, 24/11/2026) : % FP et EBE à date face au budget des mêmes mois, pour la phrase du suivi ; null tant
+// qu'aucun quadrimestre n'est saisi (tout viendrait du budget)
+export function aDateFaceAuBudget(rc: ReelComplete, caReel: number, caBudget: number) {
+  if (!rc.cumul || rc.moisRepartis === 0 || caReel <= 0 || caBudget <= 0) return null
+  const pctFP = rc.cumul.personnel.valeur / caReel
+  return { pctFP, ecartFP: pctFP - rc.budget.personnel / caBudget, ebe: rc.cumul.ebe.valeur, ecartEbe: rc.cumul.ebe.valeur - rc.budget.ebe }
+}
