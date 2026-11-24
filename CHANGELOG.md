@@ -16,6 +16,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   (charge, rythme de visite). Activité du Coach : cartes des tâches et avancement de l'année, visites des 12 derniers mois
   par type (un clic limite la liste au mois), magasins pas vus avec la barre du retard. Revue du mois du RR : cartes en
   couleur et jauge par Coach. Les calculs des deux fiches ne se refont plus à chaque affichage.
+- Simulateurs, point mort (Joseph, 24/11/2026 : « le point mort est marqué à 0 € »), sans migration. Le trait pointillé
+  du compte marque 0 € (gain à droite, perte à gauche) ; le point mort en fûts est écrit sous le compte dans Prix du fût
+  d'un gros marché et Contrat extérieur. Plus de trait dans Coût de la formation et Consignes, sans gain possible.
 - Pages plus rapides (Joseph, 24/11/2026, « trop de latence sur chaque page »), sans migration ni changement à l'écran.
   Ouverture de l'app : les chiffres de la caisse, les visites, le suivi et les fiches se lisent par pages de 1 000 lignes
   parties ensemble (le nombre de lignes est demandé avec la première), au lieu de l'une après l'autre. Pilotage : les courbes
