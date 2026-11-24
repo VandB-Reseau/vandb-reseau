@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Pilotage encore plus visuel (Joseph, 24/11/2026, choix 385 à 392), sans migration. Tableau coloré selon l'écart ou le
+  rang (bouton « Couleurs »), phrase de lecture en tête du rapport, médiane en trait jaune sur les graphes de l'équipe,
+  clic sur un groupe (tableau ou barre) pour voir ses magasins et « Revenir », affichage « Carte » des magasins,
+  mode présentation plein écran, courbe des cartes chiffrées aussi sur téléphone. Le budget se compare désormais au CA
+  Cave, Bar et Extérieur, à la marge, à l'EBE, à l'EBE sur CA et au % de frais de personnel, plus seulement au CA.
 - Accueil sans saut au chargement (Joseph, 24/11/2026), sans migration. Pendant la lecture des « J'aime », un compte rendu
   ou une bonne pratique du fil montre déjà sa barre « J'aime » / « Commenter », inactive, au lieu d'un bouton « Voir le compte
   rendu » remplacé une seconde plus tard.

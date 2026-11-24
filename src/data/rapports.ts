@@ -28,6 +28,9 @@ export interface FinanceMagasin {
   loyer: number | null
   caADate: number
   moisStock: number | null
+  // 392 (Joseph, 24/11/2026) : le budget mois par mois au-delà du CA, pour comparer marge, EBE, frais de personnel et CA
+  // par univers ; absent : seul le CA se compare au budget
+  budgetMois?: { marge: number[]; personnel: number[]; ebe: number[]; cave: number[]; bar: number[]; exterieur: number[] } | null
 }
 
 // ── Périodes ────────────────────────────────────────────────────────────
@@ -303,7 +306,7 @@ export const axe = (id: string) => tousAxes().find((a) => a.id === id)
 export const axesVisibles = (equipe: boolean) => tousAxes().filter((a) => equipe || !a.equipeSeule)
 
 // ── Définition d'un rapport (enregistrée telle quelle) ──────────────────
-export type Affichage = 'tableau' | 'graphes' | 'deux'
+export type Affichage = 'tableau' | 'graphes' | 'deux' | 'carte' // carte : 386 (24/11/2026)
 // Type de graphe choisi dans le rendu (Joseph, 18/11/2026) ; « auto » = colonnes dans le temps, barres sinon
 // 382 / 383 (Joseph, 24/11/2026) : le type se choisit graphe par graphe ; « topflop » = les 5 meilleurs et les 5 moins bons
 export type TypeGraphe = 'auto' | 'barres' | 'colonnes' | 'courbe' | 'camembert' | 'topflop'
@@ -333,6 +336,7 @@ export interface Definition {
   graphes?: Record<string, TypeGraphe> // type choisi pour un indicateur (382), sinon graphe
   comparer?: Comparaison
   tri?: { cle: string; sens: 'asc' | 'desc' } | null
+  couleurs?: boolean // 385 : false = tableau sans fond de couleur (par défaut, les cellules se colorent)
 }
 export const definitionVide = (): Definition => ({ lignes: 'magasin', indicateurs: ['ca', 'evolution'], filtres: {}, periode: { type: 'cumul' }, colonnes: 'aucun', affichage: 'deux', graphe: 'auto', tri: null })
 
@@ -350,7 +354,7 @@ export function normaliserDefinition(v: unknown, equipe: boolean): Definition {
   const p = o.periode && typeof o.periode === 'object' ? o.periode as Record<string, unknown> : {}
   const periode: Periode = { type: TYPES_PERIODE.some((t) => t.cle === p.type) ? p.type as TypePeriode : base.periode.type, ...(typeof p.mois === 'string' && /^\d{4}-\d{2}$/.test(p.mois) ? { mois: p.mois } : {}) }
   const colonnes = DECOUPAGES.some((d) => d.cle === o.colonnes) ? o.colonnes as Decoupage : 'aucun'
-  const affichage = (['tableau', 'graphes', 'deux'] as const).includes(o.affichage as Affichage) ? o.affichage as Affichage : 'deux'
+  const affichage = (['tableau', 'graphes', 'deux', 'carte'] as const).includes(o.affichage as Affichage) ? o.affichage as Affichage : 'deux'
   const graphe = TYPES_GRAPHE.some((g) => g.cle === o.graphe) ? o.graphe as TypeGraphe : 'auto'
   const t = o.tri && typeof o.tri === 'object' ? o.tri as Record<string, unknown> : null
   const tri = t && typeof t.cle === 'string' && (t.sens === 'asc' || t.sens === 'desc') ? { cle: t.cle, sens: t.sens } as const : null
@@ -359,7 +363,7 @@ export function normaliserDefinition(v: unknown, equipe: boolean): Definition {
   for (const [k, x] of Object.entries(g)) if (ids.has(k) && TYPES_GRAPHE.some((y) => y.cle === x)) graphes[k] = x as TypeGraphe
   const comparer = COMPARAISONS.some((x) => x.cle === o.comparer) ? o.comparer as Comparaison : undefined
   return { lignes, indicateurs: indicateurs.length ? indicateurs : base.indicateurs, filtres, periode, colonnes, affichage, graphe, tri,
-    ...(Object.keys(graphes).length ? { graphes } : {}), ...(comparer && comparer !== 'aucune' ? { comparer } : {}) }
+    ...(Object.keys(graphes).length ? { graphes } : {}), ...(comparer && comparer !== 'aucune' ? { comparer } : {}), ...(o.couleurs === false ? { couleurs: false } : {}) }
 }
 
 // ── Calcul ──────────────────────────────────────────────────────────────
@@ -456,9 +460,11 @@ export function calculer(c: Contexte, d: Definition): Resultat {
 
 // ── Comparaison (381) ───────────────────────────────────────────────────
 // An dernier : tout indicateur chiffré qui suit la période et n'est pas déjà une évolution ni un chiffre du budget.
-// Budget : le CA HT seul (le budget n'a pas d'autre chiffre mensuel), sur les mois où le magasin a un CA en caisse.
+// Budget : CA HT (total et par univers) et taux de marge sur les mois où le magasin a un CA en caisse ; EBE, EBE sur CA
+// et % de frais de personnel « à date », sur les mois réalisés (392, Joseph 24/11/2026).
+const AU_BUDGET = ['ca', 'caCave', 'caBar', 'caExt', 'marge', 'ebe', 'ebeCA', 'pctFP']
 export function comparable(i: Indicateur, comp: Comparaison): boolean {
-  if (comp === 'budget') return i.id === 'ca'
+  if (comp === 'budget') return AU_BUDGET.includes(i.id)
   if (comp === 'n1') return i.temporel && i.agregat !== 'texte' && i.format !== 'ecart' && i.theme !== 'budget' && i.id !== 'caN1'
   return false
 }
@@ -466,8 +472,69 @@ function mesureReference(c: Contexte, m: Magasin, i: Indicateur, comp: Comparais
   if (comp === 'n1') return i.mesure(c, m, n1(mois))
   const f = fin(c, m)
   if (!f?.caBudget) return null
+  const b = f.budgetMois ?? null
+  const somme = (t: number[], l: number[]) => l.reduce((s, k) => s + (t[k] ?? 0), 0)
+  // À date : les mois réalisés de l'année de suivi, comme l'EBE et les frais de personnel du magasin
+  if (!i.temporel) {
+    if (!b || !f.moisRealises) return null
+    const l = Array.from({ length: f.moisRealises }, (_, k) => k)
+    const ca = somme(f.caBudget, l)
+    if (i.id === 'ebe') return { n: somme(b.ebe, l) }
+    if (i.id === 'ebeCA') return ratio(somme(b.ebe, l), ca)
+    if (i.id === 'pctFP') return ratio(somme(b.personnel, l), ca)
+    return null
+  }
   const l = mois.filter((x) => Number(x.slice(0, 4)) === f.annee && caDe(chiffre(c.reseau, m.nom, x)) !== null).map((x) => Number(x.slice(5, 7)) - 1)
-  return l.length ? { n: l.reduce((s, k) => s + (f.caBudget![k] ?? 0), 0) } : null
+  if (!l.length) return null
+  if (i.id === 'ca') return { n: somme(f.caBudget, l) }
+  if (!b) return null
+  if (i.id === 'caCave') return { n: somme(b.cave, l) }
+  if (i.id === 'caBar') return { n: somme(b.bar, l) }
+  if (i.id === 'caExt') return { n: somme(b.exterieur, l) }
+  if (i.id === 'marge') return ratio(somme(b.marge, l), somme(f.caBudget, l))
+  return null
+}
+
+// ── Lecture du rapport en une phrase (387) : total, écart, combien font mieux ou moins bien, en tête et en retrait ──
+export function lectureRapport(c: Contexte, d: Definition): string | null {
+  const i = d.indicateurs.map(indicateur).find((x): x is Indicateur => !!x && x.agregat !== 'texte' && (c.equipe || !x.equipeSeule))
+  if (!i) return null
+  const voulu = d.comparer && d.comparer !== 'aucune' ? d.comparer : 'n1'
+  const comp: Comparaison | null = comparable(i, voulu) ? voulu : null
+  const r = calculer(c, { ...d, lignes: 'magasin', colonnes: 'aucun', comparer: comp ?? undefined, tri: null })
+  const k = `${i.id}|${r.colonnes[0].cle}`
+  const total = r.total.cellules[k]
+  if (!r.magasins || total.valeur === null) return null
+  // Référence lue : celle de la comparaison, sinon celle que porte déjà l'indicateur d'écart
+  const ref = comp ? COMPARAISONS.find((x) => x.cle === comp)!.court : i.format === 'ecart' ? (i.theme === 'budget' ? 'le budget' : 'l’an dernier') : null
+  const eTotal = comp ? ecartReference(i, total, r.total.refs?.[k]) : null
+  const phrases = [`${i.libelle} : ${formater(i.format, total)}${eTotal !== null ? `, ${formaterEcart(i, eTotal)} sur ${ref}` : ''}`]
+  if (r.lignes.length >= 2) {
+    const ecarts = r.lignes.map((l) => ({ nom: l.libelle, v: l.cellules[k], e: comp ? ecartReference(i, l.cellules[k], l.refs?.[k]) : i.format === 'ecart' ? l.cellules[k].valeur : null }))
+    const avecEcart = ecarts.filter((x): x is typeof x & { e: number } => x.e !== null)
+    const pt = i.format === 'pct'
+    const fmtE = (e: number) => (i.format === 'ecart' && !comp ? formater('ecart', { valeur: e, texte: null }) : formaterEcart(i, e))
+    if (avecEcart.length >= 2 && ref) {
+      const mieux = avecEcart.filter((x) => ecartFavorable(i, x.e)).length
+      const seuil = pt ? 0.01 : 0.05
+      const net = avecEcart.filter((x) => x.e !== 0 && !ecartFavorable(i, x.e) && Math.abs(x.e) >= seuil).length
+      const s = (n: number) => (n > 1 ? 's' : '')
+      phrases.push(`${mieux} magasin${s(mieux)} sur ${avecEcart.length} ${mieux > 1 ? 'font' : 'fait'} mieux que ${ref}${net ? `, ${net} ${net > 1 ? 'font' : 'fait'} moins bien de plus ${pt ? 'd’1 point' : 'de 5 %'}` : ''}`)
+      const tries = [...avecEcart].sort((a, b) => (i.inverse ? a.e - b.e : b.e - a.e))
+      phrases.push(`En tête : ${tries[0].nom} (${fmtE(tries[0].e)}) ; le plus en retrait : ${tries.at(-1)!.nom} (${fmtE(tries.at(-1)!.e)})`)
+    } else {
+      const avec = ecarts.filter((x) => x.v.valeur !== null).sort((a, b) => (i.inverse ? -1 : 1) * (b.v.valeur! - a.v.valeur!))
+      if (avec.length >= 2) phrases.push(`En tête : ${avec[0].nom} (${formater(i.format, avec[0].v)}) ; en dernier : ${avec.at(-1)!.nom} (${formater(i.format, avec.at(-1)!.v)})`)
+    }
+  }
+  return `${phrases.join('. ')}.`
+}
+
+// Médiane des valeurs (389) : repère des graphes, pour voir qui est au-dessus et qui est en dessous
+export function mediane(l: number[]): number | null {
+  if (!l.length) return null
+  const t = [...l].sort((a, b) => a - b), m = Math.floor(t.length / 2)
+  return t.length % 2 ? t[m] : (t[m - 1] + t[m]) / 2
 }
 // Écart à la référence : en points pour un pourcentage, en % sinon ; null sans référence utilisable
 export function ecartReference(i: Indicateur, v: Cellule, ref: Cellule | undefined): number | null {

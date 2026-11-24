@@ -417,3 +417,81 @@ test('Pilotage plus visuel : cartes chiffrées, période et magasins en pastille
   await expect(page.getByText(/Rapport envoyé/)).toBeVisible()
   expect(ecritures.some((x) => /rpc\/(envoyer_a|ecrire_a|envoyer_message)/.test(x.table))).toBe(true)
 })
+
+test('Pilotage encore plus visuel : couleurs, phrase de lecture, médiane, détail d’un groupe, carte, présentation (385 à 391)', async ({ page, isMobile }) => {
+  await seConnecter(page, { rapports: [] })
+  await page.goto('./#/pilotage')
+  await choisirRapport(page, 'Ventes sur l’an dernier', isMobile)
+
+  // 387 : le rapport se lit en une phrase
+  const lecture = page.locator('[data-lecture]')
+  await expect(lecture).toContainText(/^CA HT : .+ €/)
+  await expect(lecture).toContainText('En tête :')
+
+  // 385 : cellules colorées, à enlever d'un clic
+  await expect(tableau(page).locator('[data-fond]').first()).toBeVisible()
+  const couleurs = page.getByRole('button', { name: 'Couleurs' })
+  await couleurs.click()
+  await expect(tableau(page).locator('[data-fond]')).toHaveCount(0)
+  await couleurs.click()
+  await expect(tableau(page).locator('[data-fond]').first()).toBeVisible()
+
+  // 389 : médiane sur les graphes de l'équipe
+  const graphe = page.getByLabel('Graphe CA HT', { exact: true })
+  await expect(graphe.locator('[data-repere]').first()).toBeAttached()
+  await expect(graphe).toContainText('Médiane :')
+
+  // 391 : la courbe des cartes chiffrées aussi sur téléphone
+  if (isMobile) await expect(page.getByRole('list', { name: 'Chiffres clés du rapport' }).locator('[data-courbe-telephone]').first()).toBeVisible()
+
+  // 388 : un groupe s'ouvre sur ses magasins, « Revenir » remet le rapport
+  await choisirRapport(page, 'Les typologies face à l’an dernier', isMobile)
+  const premiere = tableau(page).getByRole('row').nth(1).getByRole('button').first()
+  const groupe = ((await premiere.textContent()) ?? '').replace(/\s*\(\d+\)\s*$/, '').trim()
+  await premiere.click()
+  const bandeau = page.getByRole('status').filter({ hasText: 'Les magasins de' })
+  await expect(bandeau).toContainText(`« ${groupe} »`)
+  await expect(tableau(page).getByRole('row').nth(1).getByRole('link').first()).toBeVisible()
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+  await bandeau.getByRole('button', { name: 'Revenir' }).click()
+  await expect(bandeau).toHaveCount(0)
+  await expect(tableau(page).getByRole('row').nth(1).getByRole('button').first()).toBeVisible()
+
+  // 390 : mode présentation
+  await page.getByRole('button', { name: 'Présenter le rapport' }).click()
+  const presentation = page.getByRole('dialog', { name: 'Les typologies face à l’an dernier' })
+  await expect(presentation.getByRole('list', { name: 'Chiffres clés du rapport' })).toBeVisible()
+  await expect(presentation.getByLabel('Graphe CA HT', { exact: true })).toBeVisible()
+  await presentation.getByRole('button', { name: 'Quitter la présentation' }).click()
+  await expect(presentation).toHaveCount(0)
+
+  // 386 : la carte des magasins
+  await page.getByRole('group', { name: 'Affichage du rapport' }).getByRole('button', { name: 'Carte' }).click()
+  const carte = page.getByLabel('Carte du rapport')
+  await expect(carte).toBeVisible()
+  await expect(carte.locator('.leaflet-interactive').first()).toBeAttached()
+  expect(await carte.getByRole('list', { name: 'Magasins sur la carte' }).getByRole('listitem').count()).toBeGreaterThan(1)
+  await carte.getByRole('group', { name: 'Indicateur sur la carte' }).getByRole('button', { name: 'Évolution du CA sur l’an dernier' }).click()
+  await expect(carte.getByRole('list', { name: 'Magasins sur la carte' }).getByRole('listitem').first()).toContainText('%')
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+})
+
+test('Pilotage : le budget se compare au CA par univers, à la marge, à l’EBE et aux frais de personnel (392)', async ({ page }) => {
+  // Brionne-sur-Lac (budget validé) a aussi sa caisse de janvier à septembre 2026
+  const chiffresCaisse = Array.from({ length: 9 }, (_, k) => ({ store_name: 'Brionne-sur-Lac', month: `2026-0${k + 1}-01`, ca_ext: 0, pm_cave: 40, flux_cave: 500, pm_bar: 12, flux_bar: 600, ca_cave: 20_000, ca_bar: 7_200, freq: 1_100, panier: 24.7, marge: 41, updated_at: '2026-10-05T08:00:00Z' }))
+  await seConnecterAvecBudgets(page, {}, { rapports: [], chiffresCaisse })
+  const d = { lignes: 'magasin', indicateurs: ['ca', 'caCave', 'caBar', 'marge', 'ebe', 'pctFP'], periode: { type: 'cumul' }, affichage: 'tableau', comparer: 'budget' }
+  await page.goto(`./#/pilotage?d=${encodeURIComponent(JSON.stringify(d))}&titre=Essai`)
+  await expect(page.getByRole('heading', { level: 2, name: 'Essai' })).toBeVisible()
+  // CA, CA Cave, CA Bar et marge : le chiffre, l'écart et le budget des mêmes mois dessous
+  const ligne = tableau(page).getByRole('row', { name: /^Brionne-sur-Lac/ })
+  await expect(ligne.locator('[data-ecart]')).toHaveCount(4)
+  await expect(ligne.locator('[data-ecart]').nth(3)).toContainText(/ pt vs \d/)
+  await expect(page.locator('[data-lecture]')).toContainText('sur le budget')
+  // Sans CA HT dans le rapport, le budget reste proposé pour l'EBE et les frais de personnel
+  const seul = { ...d, indicateurs: ['ebe', 'pctFP'], comparer: undefined }
+  await page.goto(`./#/pilotage?d=${encodeURIComponent(JSON.stringify(seul))}&titre=Essai 2`)
+  await expect(page.getByRole('group', { name: 'Comparer à' }).getByRole('button', { name: 'Budget' })).toBeEnabled()
+})

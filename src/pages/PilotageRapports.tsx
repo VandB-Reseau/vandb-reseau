@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type DragEvent, type ReactNode } from 'react'
-import { Link as RouterLink, useSearchParams } from 'react-router-dom'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type DragEvent, type ReactNode } from 'react'
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
+import ButtonBase from '@mui/material/ButtonBase'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -58,6 +59,10 @@ import PieChartOutlineOutlined from '@mui/icons-material/PieChartOutlineOutlined
 import LeaderboardOutlined from '@mui/icons-material/LeaderboardOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
 import SendOutlined from '@mui/icons-material/SendOutlined'
+import SlideshowOutlined from '@mui/icons-material/SlideshowOutlined'
+import CloseOutlined from '@mui/icons-material/CloseOutlined'
+import PaletteOutlined from '@mui/icons-material/PaletteOutlined'
+import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined'
 import { Indicateur as CarteIndicateur, grilleIndicateurs, sensDe } from '../components/Indicateur'
 import { MiniCourbe } from '../components/Social'
 import { useMessagerie } from '../data/MessagerieContext'
@@ -69,7 +74,7 @@ import { useApercu } from '../auth/Apercu'
 import type { Magasin, Reseau } from '../data/modele'
 import { useEngagement, type Engagement } from '../data/engagement'
 import {
-  COMPARAISONS, apercuRapport, comparable, ecartFavorable, ecartReference, formaterEcart, tendance, magasinsRetenus, type Comparaison, type Periode,
+  COMPARAISONS, apercuRapport, comparable, lectureRapport, mediane, ecartFavorable, ecartReference, formaterEcart, tendance, magasinsRetenus, type Comparaison, type Periode,
   DECOUPAGES, PUBLICS, THEMES, connaitreThematiques, rapportsProposes, type Public, type RapportPropose, TYPES_PERIODE, axe, axesVisibles, calculer, definitionVide, dernierMoisClos, formater,
   indicateur, indicateursVisibles, libelleMoisLong, libellePeriode, normaliserDefinition, tonCellule, valeursAxe,
   type AxeId, type Cellule, type Contexte, type Definition, TYPES_GRAPHE, type TypeGraphe, type FinanceMagasin, type Indicateur, type Resultat, type Theme,
@@ -81,6 +86,9 @@ import { ZonePilotage } from '../pilotage/ZonePilotage'
 import { anneeSuivi } from '../pilotage/data/annees'
 import { classeur, nomFichier, telecharger, type Cellule as CelluleXlsx } from '../pilotage/lib/xlsx'
 import { decalerMois } from '../data/chiffres'
+
+// 386 (Joseph, 24/11/2026) : la carte charge Leaflet seulement quand on la demande
+const CarteRapport = lazy(() => import('../components/CarteRapport'))
 
 // Onglet « Pilotage » (Joseph, 17/11/2026) : rapports proposés par le siège, rapports de chacun (Coach compris),
 // indicateurs de tous les sujets en parallèle, glisser-déposer, tableau croisé et graphes, export Excel et impression.
@@ -142,7 +150,9 @@ function Rapports({ reseau }: { reseau: Reseau }) {
   const [def, setDef] = useState<Definition>(depart)
   const cleDepart = JSON.stringify(depart) + titreDepart
   const [vu, setVu] = useState(cleDepart)
-  if (vu !== cleDepart) { setVu(cleDepart); setDef(depart) }
+  // 388 : détail d'un groupe (typologie, Coach…) ; la pile garde le rapport d'avant pour « Revenir »
+  const [pile, setPile] = useState<Definition[]>([])
+  if (vu !== cleDepart) { setVu(cleDepart); setDef(depart); setPile([]) }
   const modifie = JSON.stringify(def) !== JSON.stringify(depart)
   const changer = (d: Partial<Definition>) => setDef((x) => ({ ...x, ...d }))
 
@@ -162,6 +172,17 @@ function Rapports({ reseau }: { reseau: Reseau }) {
   }, [calculEngagement, equipe, reseau])
   const ctx: Contexte = useMemo(() => ({ reseau, finances: finances ?? null, jour: reseau.jour, equipe, engagement }), [reseau, finances, equipe, engagement])
   const resultat = useMemo(() => calculer(ctx, def), [ctx, def])
+  const lecture = useMemo(() => lectureRapport(ctx, def), [ctx, def])
+  const naviguer = useNavigate()
+  // 388 : un magasin ouvre sa fiche ; un groupe montre ses magasins
+  const creuser = def.lignes === 'reseau' ? undefined : (libelle: string) => {
+    if (def.lignes === 'magasin') { naviguer(`/magasins/${encodeURIComponent(libelle)}`); return }
+    setPile((p) => [...p, def])
+    changer({ filtres: { ...def.filtres, [def.lignes]: [libelle] }, lignes: 'magasin', tri: null })
+  }
+  const detail = pile.length ? (() => { const avant = pile.at(-1)!; return { axe: axe(avant.lignes)?.libelle ?? '', valeur: def.filtres[avant.lignes]?.[0] ?? '' } })() : null
+  const revenir = () => { setDef(pile.at(-1)!); setPile((p) => p.slice(0, -1)) }
+  const [presentation, setPresentation] = useState(false)
 
   const cleRapport = selection.genre === 'propose' ? `p-${selection.id}` : selection.genre === 'base' && enregistre ? String(selection.id) : ''
   const favori = listePerso.favoris.includes(cleRapport)
@@ -216,9 +237,11 @@ function Rapports({ reseau }: { reseau: Reseau }) {
                 {libellePeriode(def.periode, reseau.jour)} · {resultat.magasins} magasin{resultat.magasins > 1 ? 's' : ''}{modifie ? ' · modifié' : ''}
                 {(propose || enregistre?.modele) && ' · proposé par le siège'}{enregistre?.modele && directeur && enregistre.publics.length < PUBLICS.length ? ` · ${PUBLICS.filter((p) => enregistre.publics.includes(p.cle)).map((p) => p.libelle.toLowerCase()).join(', ')}` : ''}{enregistre && !enregistre.mien && !enregistre.modele ? ` · de ${enregistre.auteur}` : ''}
               </Typography>
+              {lecture && <Typography data-lecture sx={{ mt: 1, fontWeight: 600, maxWidth: 760 }}>{lecture}</Typography>}
             </Box>
             <Box className="pas-a-l-impression" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               {!lectureSeule && <Button variant="contained" startIcon={<SaveOutlined />} onClick={() => setDialogue('enregistrer')} sx={{ minHeight: 48 }}>Enregistrer</Button>}
+              <IconButton aria-label="Présenter le rapport" title="Présenter le rapport" onClick={() => setPresentation(true)} sx={{ width: 48, height: 48 }}><SlideshowOutlined /></IconButton>
               {cleRapport && <IconButton aria-label={favori ? 'Retirer de mes favoris' : 'Ajouter à mes favoris'} aria-pressed={favori} onClick={() => basculerFavori(cleRapport)} sx={{ width: 48, height: 48, color: favori ? 'warning.main' : undefined }}>{favori ? <StarRounded /> : <StarBorderRounded />}</IconButton>}
               {/* 328 (18/11/2026) : Enregistrer et le favori en vue, le reste dans « ⋯ » */}
               <MenuAutresRapport actions={[
@@ -231,13 +254,25 @@ function Rapports({ reseau }: { reseau: Reseau }) {
               ]} />
             </Box>
           </Box>
+          {detail && (
+            <Box className="pas-a-l-impression" role="status" sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1.5, px: 1.5, py: 0.5, borderRadius: '12px', bgcolor: 'action.hover' }}>
+              <Typography sx={{ flex: 1, minWidth: 180, fontWeight: 600 }}>Les magasins de {detail.axe} « {detail.valeur} »</Typography>
+              <Button startIcon={<ArrowBackOutlined />} onClick={revenir} sx={{ minHeight: 48 }}>Revenir</Button>
+            </Box>
+          )}
           <BarreRapide def={def} changer={changer} ctx={ctx} surPC={surPC} />
           {finances === undefined && (resultat.indicateurs.some((i) => i.theme === 'budget') || def.comparer === 'budget') && <Skeleton variant="rounded" height={8} sx={{ mb: 1 }} aria-label="Chargement des budgets" />}
           <CartesChiffres resultat={resultat} def={def} ctx={ctx} />
           <Constructeur def={def} changer={changer} ctx={ctx} surPC={surPC} nouveau={titreDepart === 'Nouveau rapport'} />
-          <Affichage resultat={resultat} def={def} changer={changer} surPC={surPC} />
+          <Affichage resultat={resultat} def={def} changer={changer} surPC={surPC} ctx={ctx} creuser={creuser} />
         </Box>
       </Box>
+      {presentation && (
+        <Presentation titre={titreDepart} periode={libellePeriode(def.periode, reseau.jour)} lecture={lecture} fermer={() => setPresentation(false)}>
+          <CartesChiffres resultat={resultat} def={def} ctx={ctx} />
+          {resultat.indicateurs.length > 0 && resultat.magasins > 0 && <Graphes resultat={resultat} def={def} changer={changer} equipe={equipe} />}
+        </Presentation>
+      )}
       {dialogue === 'enregistrer' && (
         <DialogueEnregistrer
           titre={enregistre?.mien ? enregistre.titre : titreDepart === 'Nouveau rapport' ? '' : enregistre?.mien ? titreDepart : `${titreDepart} (ma version)`}
@@ -666,7 +701,7 @@ function BarreRapide({ def, changer, ctx, surPC }: { def: Definition; changer: (
           onChange={(_e, v: Comparaison | null) => v && changer({ comparer: v === 'aucune' ? undefined : v })}>
           {COMPARAISONS.map((c) => (
             <ToggleButton key={c.cle} value={c.cle} disabled={c.cle === 'budget' && !indicateurs.some((i) => comparable(i, 'budget'))}
-              title={c.cle === 'budget' && !indicateurs.some((i) => comparable(i, 'budget')) ? 'Le budget se compare au CA HT : ajoute cet indicateur' : undefined}
+              title={c.cle === 'budget' && !indicateurs.some((i) => comparable(i, 'budget')) ? 'Le budget se compare au CA, à la marge, à l’EBE et aux frais de personnel : ajoute un de ces indicateurs' : undefined}
               sx={{ minHeight: { xs: 48, md: 36 }, px: 1.5, textTransform: 'none' }}>{c.libelle}</ToggleButton>
           ))}
         </ToggleButtonGroup>
@@ -713,7 +748,10 @@ function CartesChiffres({ resultat, def, ctx }: { resultat: Resultat; def: Defin
           <CarteIndicateur libelle={i.libelle} valeur={formater(i.format, c)}
             couleur={tonCellule(i, c) === 'bon' ? brand.vertFonce : tonCellule(i, c) === 'mauvais' ? brand.brique : undefined}
             evolution={e === null ? null : { texte: formaterEcart(i, e), sens: sensDe(e, 0.0005), bon: ecartFavorable(i, e), reference: `vs ${court} : ${formater(i.format, ref!)}` }}
-            fin={surPC && serie.filter((x) => x !== null).length > 1 ? <MiniCourbe valeurs={serie} couleur={brand.vertFonce} largeur={80} hauteur={32} label={`${i.libelle} sur 12 mois`} /> : undefined} />
+            fin={surPC && serie.filter((x) => x !== null).length > 1 ? <MiniCourbe valeurs={serie} couleur={brand.vertFonce} largeur={80} hauteur={32} label={`${i.libelle} sur 12 mois`} /> : undefined}>
+            {/* 391 (24/11/2026) : sur téléphone, la courbe passe sous le chiffre */}
+            {!surPC && serie.filter((x) => x !== null).length > 1 ? <Box data-courbe-telephone sx={{ mt: 0.75 }}><MiniCourbe valeurs={serie} couleur={brand.vertFonce} largeur={120} hauteur={24} /></Box> : undefined}
+          </CarteIndicateur>
         </Box>
       ))}
     </Box>
@@ -773,20 +811,31 @@ function DialogueEnvoyer({ reseau, titre, periode, lien, fermer, envoye }: { res
 }
 
 // ── Résultat : graphes et tableau ───────────────────────────────────────
-function Affichage({ resultat, def, changer, surPC }: { resultat: Resultat; def: Definition; changer: (d: Partial<Definition>) => void; surPC: boolean }) {
+function Affichage({ resultat, def, changer, surPC, ctx, creuser }: { resultat: Resultat; def: Definition; changer: (d: Partial<Definition>) => void; surPC: boolean; ctx: Contexte; creuser?: (libelle: string) => void }) {
   if (!resultat.indicateurs.length) return <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>Ajoute un indicateur pour voir le rapport.</Typography>
   if (!resultat.magasins) return <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>Aucun magasin ne correspond à ces filtres. Retire un filtre pour élargir la sélection.</Typography>
   return (
     <>
       <Box className="pas-a-l-impression" sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+        {/* 385 : cellules colorées selon l'écart ou le rang, à enlever d'un clic */}
+        {(def.affichage === 'tableau' || def.affichage === 'deux') && (
+          <ToggleButton value="couleurs" size="small" selected={def.couleurs !== false} onChange={() => changer({ couleurs: def.couleurs === false ? undefined : false })}
+            sx={{ minHeight: 48, px: 1.5, gap: 0.75, textTransform: 'none' }}><PaletteOutlined fontSize="small" />Couleurs</ToggleButton>
+        )}
         <ToggleButtonGroup exclusive size="small" value={def.affichage} onChange={(_e, v) => v && changer({ affichage: v })} aria-label="Affichage du rapport">
           <ToggleButton value="tableau" sx={{ minHeight: 48, px: 2 }}>Tableau</ToggleButton>
           <ToggleButton value="graphes" sx={{ minHeight: 48, px: 2 }}>Graphes</ToggleButton>
           <ToggleButton value="deux" sx={{ minHeight: 48, px: 2 }}>Les deux</ToggleButton>
+          <ToggleButton value="carte" sx={{ minHeight: 48, px: 2 }}>Carte</ToggleButton>
         </ToggleButtonGroup>
       </Box>
-      {def.affichage !== 'tableau' && <Graphes resultat={resultat} def={def} changer={changer} />}
-      {def.affichage !== 'graphes' && <TableauRapport resultat={resultat} def={def} changer={changer} surPC={surPC} />}
+      {def.affichage === 'carte' && (
+        <Suspense fallback={<Skeleton variant="rounded" height={surPC ? 520 : 380} />}>
+          <CarteRapport ctx={ctx} def={def} surPC={surPC} />
+        </Suspense>
+      )}
+      {(def.affichage === 'graphes' || def.affichage === 'deux') && <Graphes resultat={resultat} def={def} changer={changer} equipe={ctx.equipe} creuser={surPC ? creuser : undefined} />}
+      {(def.affichage === 'tableau' || def.affichage === 'deux') && <TableauRapport resultat={resultat} def={def} changer={changer} surPC={surPC} creuser={creuser} />}
     </>
   )
 }
@@ -805,7 +854,8 @@ const ICONES_GRAPHE: Record<Dessin, ReactNode> = {
 }
 const libelleGraphe = (t: Dessin) => TYPES_GRAPHE.find((g) => g.cle === t)!.libelle
 
-function Graphes({ resultat, def, changer }: { resultat: Resultat; def: Definition; changer: (d: Partial<Definition>) => void }) {
+// equipe : repère médiane (389), jamais pour le franchisé ; creuser : clic sur une barre (388, PC)
+function Graphes({ resultat, def, changer, equipe, creuser }: { resultat: Resultat; def: Definition; changer: (d: Partial<Definition>) => void; equipe: boolean; creuser?: (libelle: string) => void }) {
   const temps = def.colonnes !== 'aucun'
   const court = COMPARAISONS.find((x) => x.cle === def.comparer)?.court
   // 382 : type choisi pour cet indicateur, sinon celui du rapport, sinon automatique
@@ -833,8 +883,11 @@ function Graphes({ resultat, def, changer }: { resultat: Resultat; def: Definiti
         const type: Dessin = voulu === 'auto' || (voulu === 'topflop' && !topflop) ? 'barres' : voulu
         // Le camembert regroupe le reste dans « Autres » ; le Top / Flop prend tout ; les autres graphes montrent les 15 premiers
         const montres = type === 'camembert' || type === 'topflop' ? points : points.slice(0, 15)
+        // 389 : médiane de toutes les lignes (pas seulement des 15 montrées)
+        const med = equipe && avec.length >= 3 ? mediane(avec.map((l) => l.cellules[k].valeur!)) : null
         return (
           <DessinGraphe key={i.id} titre={i.libelle} points={montres} type={type} vide="Pas encore de chiffres sur cette période." inverse={i.inverse}
+            repere={med === null ? undefined : { valeur: med, affiche: formater(i.format, { valeur: med, texte: null }) }} creuser={creuser}
             note={type !== 'camembert' && type !== 'topflop' && avec.length > 15 ? `Les 15 premiers sur ${avec.length} ; le tableau les montre tous.` : undefined}
             formatAutres={(v) => formater(i.format, { valeur: v, texte: null })} reference={court}
             choix={['barres', 'colonnes', 'courbe', 'camembert', ...(topflop ? ['topflop' as const] : [])]} choisir={choisir(i.id)} />
@@ -858,9 +911,10 @@ function Repartition({ i, resultat, type, choisir }: { i: Indicateur; resultat: 
 
 const styleCarte = { p: 2, display: 'flex', flexDirection: 'column', borderRadius: '14px' } as const
 
-function DessinGraphe({ titre, points, type, vide, note, formatAutres, choix, choisir, reference, inverse }: {
+type Repere = { valeur: number; affiche: string }
+function DessinGraphe({ titre, points, type, vide, note, formatAutres, choix, choisir, reference, inverse, repere, creuser }: {
   titre: string; points: Point[]; type: Dessin; vide: string; note?: string; formatAutres?: (v: number) => string
-  choix: Dessin[]; choisir: (t: Dessin) => void; reference?: string; inverse?: boolean
+  choix: Dessin[]; choisir: (t: Dessin) => void; reference?: string; inverse?: boolean; repere?: Repere; creuser?: (libelle: string) => void
 }) {
   const avec = points.filter((p) => p.valeur !== null)
   const negatif = avec.some((p) => (p.valeur ?? 0) < 0)
@@ -880,10 +934,10 @@ function DessinGraphe({ titre, points, type, vide, note, formatAutres, choix, ch
         )}
       </Box>
       {!avec.length ? <Typography variant="body2" color="text.secondary">{vide}</Typography>
-        : effectif === 'barres' ? <Barres points={points} />
-        : effectif === 'colonnes' ? <Batons points={points} />
-        : effectif === 'courbe' ? <Courbe points={points} />
-        : effectif === 'topflop' ? <TopFlop points={avec} inverse={!!inverse} />
+        : effectif === 'barres' ? <Barres points={points} repere={repere} creuser={creuser} />
+        : effectif === 'colonnes' ? <Batons points={points} repere={repere} creuser={creuser} />
+        : effectif === 'courbe' ? <Courbe points={points} repere={repere} />
+        : effectif === 'topflop' ? <TopFlop points={avec} inverse={!!inverse} creuser={creuser} />
         : <Camembert points={avec} formatAutres={formatAutres ?? String} />}
       {type === 'camembert' && negatif && <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>Des valeurs sont négatives : le camembert ne peut pas les montrer, les barres prennent le relais.</Typography>}
       {avecRef && reference && (
@@ -891,21 +945,30 @@ function DessinGraphe({ titre, points, type, vide, note, formatAutres, choix, ch
           <Box component="span" aria-hidden sx={{ width: 18, borderTop: '2px dashed', borderColor: 'text.secondary' }} />Pointillés : {reference}
         </Typography>
       )}
+      {repere && avec.length > 0 && (effectif === 'barres' || effectif === 'colonnes' || effectif === 'courbe') && (
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+          <Box component="span" aria-hidden sx={{ width: 18, borderTop: '3px solid', borderColor: brand.or }} />Médiane : {repere.affiche}
+        </Typography>
+      )}
       {note && <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75 }}>{note}</Typography>}
     </Card>
   )
 }
 
-function Barres({ points }: { points: Point[] }) {
-  const max = Math.max(...points.flatMap((p) => [Math.abs(p.valeur ?? 0), Math.abs(p.ref ?? 0)])) || 1
+// 388 : avec creuser, chaque ligne se clique (fiche du magasin ou magasins du groupe)
+const styleCliquable = { width: '100%', textAlign: 'left', borderRadius: '6px', fontFamily: 'inherit', '@media (hover: hover)': { '&:hover': { bgcolor: 'action.hover' } } } as const
+function Barres({ points, repere, creuser }: { points: Point[]; repere?: Repere; creuser?: (libelle: string) => void }) {
+  const max = Math.max(...points.flatMap((p) => [Math.abs(p.valeur ?? 0), Math.abs(p.ref ?? 0)]), Math.abs(repere?.valeur ?? 0)) || 1
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }} data-graphe="barres">
       {points.map((p) => (
-        <Box key={p.libelle} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 130px) minmax(0, 1fr) auto', gap: 1, alignItems: 'center' }} title={p.refAffiche ? `${p.libelle} : ${p.affiche} (référence ${p.refAffiche})` : undefined}>
+        <Box key={p.libelle} component={creuser ? ButtonBase : 'div'} {...(creuser ? { onClick: () => creuser(p.libelle), 'aria-label': `${p.libelle} : ${p.affiche}` } : {})}
+          sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 130px) minmax(0, 1fr) auto', gap: 1, alignItems: 'center', ...(creuser ? styleCliquable : {}) }} title={p.refAffiche ? `${p.libelle} : ${p.affiche} (référence ${p.refAffiche})` : undefined}>
           <Typography variant="body2" noWrap title={p.libelle}>{p.libelle}</Typography>
           <Box sx={{ position: 'relative', height: 10, bgcolor: 'action.hover', borderRadius: 5 }}>
             <Box sx={{ height: 10, width: `${Math.abs(p.valeur ?? 0) / max * 100}%`, bgcolor: p.couleur, borderRadius: 5 }} />
             {p.ref != null && <Box data-reference aria-hidden sx={{ position: 'absolute', top: -4, bottom: -4, left: `calc(${Math.abs(p.ref) / max * 100}% - 1px)`, borderLeft: '2px dashed', borderColor: 'text.primary' }} />}
+            {repere && <Box data-repere aria-hidden sx={{ position: 'absolute', top: -5, bottom: -5, left: `calc(${Math.abs(repere.valeur) / max * 100}% - 1.5px)`, borderLeft: '3px solid', borderColor: brand.or }} />}
           </Box>
           <Typography variant="body2" sx={{ fontWeight: 600, color: p.valeur === null ? 'text.secondary' : p.couleur, textAlign: 'right', minWidth: 72 }}>{p.affiche}</Typography>
         </Box>
@@ -922,13 +985,15 @@ function Etiquettes({ points }: { points: Point[] }) {
   )
 }
 
-function Batons({ points }: { points: Point[] }) {
-  const max = Math.max(...points.flatMap((p) => [Math.abs(p.valeur ?? 0), Math.abs(p.ref ?? 0)])) || 1
+function Batons({ points, repere, creuser }: { points: Point[]; repere?: Repere; creuser?: (libelle: string) => void }) {
+  const max = Math.max(...points.flatMap((p) => [Math.abs(p.valeur ?? 0), Math.abs(p.ref ?? 0)]), Math.abs(repere?.valeur ?? 0)) || 1
   return (
     <Box data-graphe="colonnes">
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 0.5, height: 140 }}>
+      <Box sx={{ position: 'relative', display: 'flex', alignItems: 'flex-end', gap: 0.5, height: 140 }}>
+        {repere && <Box data-repere aria-hidden sx={{ position: 'absolute', left: 0, right: 0, bottom: `${Math.abs(repere.valeur) / max * 100}%`, borderTop: '3px solid', borderColor: brand.or, zIndex: 1, pointerEvents: 'none' }} />}
         {points.map((p) => (
-          <Box key={p.libelle} sx={{ position: 'relative', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }} title={`${p.libelle} : ${p.affiche}${p.refAffiche ? ` (référence ${p.refAffiche})` : ''}`}>
+          <Box key={p.libelle} component={creuser ? ButtonBase : 'div'} {...(creuser ? { onClick: () => creuser(p.libelle), 'aria-label': `${p.libelle} : ${p.affiche}` } : {})}
+            sx={{ position: 'relative', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', ...(creuser ? { borderRadius: '4px', '@media (hover: hover)': { '&:hover': { bgcolor: 'action.hover' } } } : {}) }} title={`${p.libelle} : ${p.affiche}${p.refAffiche ? ` (référence ${p.refAffiche})` : ''}`}>
             <Box sx={{ width: '70%', height: `${Math.max(2, Math.abs(p.valeur ?? 0) / max * 100)}%`, bgcolor: p.valeur === null ? 'divider' : p.couleur, borderRadius: '3px 3px 0 0' }} />
             {p.ref != null && <Box data-reference aria-hidden sx={{ position: 'absolute', bottom: 0, width: '84%', height: `${Math.max(2, Math.abs(p.ref) / max * 100)}%`, border: '2px dashed', borderBottom: 0, borderColor: 'text.primary', borderRadius: '3px 3px 0 0' }} />}
           </Box>
@@ -939,9 +1004,9 @@ function Batons({ points }: { points: Point[] }) {
   )
 }
 
-function Courbe({ points }: { points: Point[] }) {
+function Courbe({ points, repere }: { points: Point[]; repere?: Repere }) {
   const L = 600, H = 160, marge = 10
-  const vals = points.flatMap((p) => [p.valeur ?? 0, p.ref ?? 0])
+  const vals = [...points.flatMap((p) => [p.valeur ?? 0, p.ref ?? 0]), repere?.valeur ?? 0]
   const haut = Math.max(0, ...vals), bas = Math.min(0, ...vals)
   const ecart = haut - bas || 1
   const x = (k: number) => (k + 0.5) / points.length * L
@@ -958,6 +1023,7 @@ function Courbe({ points }: { points: Point[] }) {
     <Box data-graphe="courbe">
       <Box component="svg" viewBox={`0 0 ${L} ${H}`} sx={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={points.map((p) => `${p.libelle} ${p.affiche}`).join(', ')}>
         <line x1={0} x2={L} y1={y(0)} y2={y(0)} stroke="currentColor" strokeOpacity={0.2} />
+        {repere && <line data-repere x1={0} x2={L} y1={y(repere.valeur)} y2={y(repere.valeur)} stroke={brand.or} strokeWidth={3} />}
         {traits((p) => p.ref).map((t) => <polyline key={`r${t}`} data-reference points={t} fill="none" stroke={COULEURS.neutre} strokeOpacity={0.7} strokeWidth={2} strokeDasharray="6 5" />)}
         {traits((p) => p.valeur).map((t) => <polyline key={t} points={t} fill="none" stroke={COULEURS.neutre} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />)}
         {points.map((p, k) => p.valeur !== null && <circle key={p.libelle} cx={x(k)} cy={y(p.valeur)} r={5} fill={p.couleur}><title>{`${p.libelle} : ${p.affiche}${p.refAffiche ? ` (référence ${p.refAffiche})` : ''}`}</title></circle>)}
@@ -968,14 +1034,14 @@ function Courbe({ points }: { points: Point[] }) {
 }
 
 // 383 : les 5 meilleurs et les 5 moins bons côte à côte (« meilleur » = plus bas pour un indicateur inversé)
-function TopFlop({ points, inverse }: { points: Point[]; inverse: boolean }) {
+function TopFlop({ points, inverse, creuser }: { points: Point[]; inverse: boolean; creuser?: (libelle: string) => void }) {
   const tries = [...points].sort((a, b) => (inverse ? -1 : 1) * ((b.valeur ?? 0) - (a.valeur ?? 0)))
   const n = Math.min(5, Math.floor(tries.length / 2))
   const top = tries.slice(0, n), flop = tries.slice(-n).reverse()
   const bloc = (titre: string, l: Point[], teinte: string) => (
     <Box role="group" aria-label={titre} sx={{ minWidth: 0 }}>
       <Typography variant="body2" sx={{ fontWeight: 700, color: teinte, mb: 0.75 }}>{titre}</Typography>
-      <Barres points={l.map((p) => ({ ...p, couleur: teinte, ref: undefined }))} />
+      <Barres points={l.map((p) => ({ ...p, couleur: teinte, ref: undefined }))} creuser={creuser} />
     </Box>
   )
   return (
@@ -1023,7 +1089,39 @@ function Camembert({ points, formatAutres }: { points: Point[]; formatAutres: (v
   )
 }
 
-function TableauRapport({ resultat, def, changer, surPC }: { resultat: Resultat; def: Definition; changer: (d: Partial<Definition>) => void; surPC: boolean }) {
+// 385 (Joseph, 24/11/2026) : fond vert ou brique, plus foncé quand l'écart (ou l'écart à la médiane de la colonne) est grand
+const VERT = '48, 118, 114', BRIQUE = '194, 65, 25'
+function fondsCouleur(cols: { i: Indicateur; cle: string }[], lignes: Resultat['lignes']): Map<string, string> {
+  const fonds = new Map<string, string>()
+  const teinte = (favorable: boolean, force: number) => `rgba(${favorable ? VERT : BRIQUE}, ${(0.06 + Math.min(1, force) * 0.22).toFixed(3)})`
+  for (const { i, cle } of cols) {
+    if (i.agregat === 'texte') continue
+    const ecarts = lignes.map((l) => {
+      const c = l.cellules[cle]
+      return l.refs?.[cle] ? ecartReference(i, c, l.refs[cle]) : i.format === 'ecart' ? c?.valeur ?? null : null
+    })
+    if (ecarts.some((e) => e !== null)) {
+      // Écart à la référence : plein à 15 % (ou 3 points pour un pourcentage)
+      const plein = i.format === 'pct' ? 0.03 : 0.15
+      lignes.forEach((l, k) => { const e = ecarts[k]; if (e !== null && e !== 0) fonds.set(`${l.cle}|${cle}`, teinte(ecartFavorable(i, e), Math.abs(e) / plein)) })
+      continue
+    }
+    // Sans référence : position dans la colonne, de part et d'autre de la médiane (3 lignes au moins)
+    const vals = lignes.map((l) => l.cellules[cle]?.valeur ?? null)
+    const nums = vals.filter((v): v is number => v !== null)
+    if (nums.length < 3) continue
+    const med = mediane(nums)!, haut = Math.max(...nums), bas = Math.min(...nums)
+    lignes.forEach((l, k) => {
+      const v = vals[k]
+      if (v === null || v === med) return
+      const force = v > med ? (v - med) / (haut - med || 1) : (med - v) / (med - bas || 1)
+      fonds.set(`${l.cle}|${cle}`, teinte((v > med) !== !!i.inverse, force))
+    })
+  }
+  return fonds
+}
+
+function TableauRapport({ resultat, def, changer, surPC, creuser }: { resultat: Resultat; def: Definition; changer: (d: Partial<Definition>) => void; surPC: boolean; creuser?: (libelle: string) => void }) {
   const temps = def.colonnes !== 'aucun'
   // Colonnes : indicateur × période (une seule période sans découpage) ; un indicateur « à date » n'a qu'une colonne
   const cols = resultat.indicateurs.flatMap((i) => (temps && i.temporel ? resultat.colonnes : [resultat.colonnes[0]]).map((col) => ({ i, col, cle: `${i.id}|${col.cle}` })))
@@ -1033,10 +1131,10 @@ function TableauRapport({ resultat, def, changer, surPC }: { resultat: Resultat;
   // Téléphone : en-têtes à trier et liens assez grands pour le doigt
   const zone = surPC ? undefined : { minHeight: 48, display: 'inline-flex', alignItems: 'center' }
   // 381 : sous le chiffre, l'écart à la référence (an dernier ou budget) et la référence
-  const cellule = (k: string, c: Cellule, i: Indicateur, gras = false, ref?: Cellule) => {
+  const cellule = (k: string, c: Cellule, i: Indicateur, gras = false, ref?: Cellule, fond?: string) => {
     const e = ecartReference(i, c, ref)
     return (
-      <TableCell key={k} align="right" sx={{ whiteSpace: 'nowrap', fontWeight: gras ? 700 : 400, color: tonCellule(i, c) ? couleur(i, c) : undefined }}>
+      <TableCell key={k} align="right" data-fond={fond ? '' : undefined} sx={{ whiteSpace: 'nowrap', fontWeight: gras ? 700 : 400, color: tonCellule(i, c) ? couleur(i, c) : undefined, ...(fond ? { bgcolor: fond } : {}) }}>
         {formater(i.format, c)}
         {e !== null && (
           <Box component="span" data-ecart sx={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: e === 0 ? 'text.secondary' : ecartFavorable(i, e) ? 'success.dark' : 'error.main' }}>
@@ -1052,6 +1150,7 @@ function TableauRapport({ resultat, def, changer, surPC }: { resultat: Resultat;
   const pleines = resultat.lignes.filter((l) => !vide(l))
   const vides = resultat.lignes.filter(vide)
   const affichees = pleines.length && vides.length ? [...pleines, ...(voirVides ? vides : [])] : resultat.lignes
+  const fonds = def.couleurs === false ? new Map<string, string>() : fondsCouleur(cols, resultat.lignes)
   const basculeVides = pleines.length > 0 && vides.length > 0 && (
     <Button onClick={() => setVoirVides((v) => !v)} aria-expanded={voirVides} sx={{ minHeight: 48 }}>{voirVides ? `Masquer les ${vides.length} sans chiffres` : `Afficher les ${vides.length} sans chiffres`}</Button>
   )
@@ -1080,9 +1179,11 @@ function TableauRapport({ resultat, def, changer, surPC }: { resultat: Resultat;
           {affichees.map((l) => (
             <TableRow key={l.cle} hover>
               <TableCell sx={{ minWidth: 140, position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 1 }}>
-                {parMagasin ? <Link component={RouterLink} to={`/magasins/${encodeURIComponent(l.libelle)}`} underline="hover" sx={zone}>{l.libelle}</Link> : <>{l.libelle} <Typography component="span" variant="caption" color="text.secondary">({l.magasins.length})</Typography></>}
+                {parMagasin ? <Link component={RouterLink} to={`/magasins/${encodeURIComponent(l.libelle)}`} underline="hover" sx={zone}>{l.libelle}</Link>
+                  : creuser ? <Link component="button" type="button" underline="hover" onClick={() => creuser(l.libelle)} sx={{ ...zone, textAlign: 'left', font: 'inherit', color: 'text.primary' }}>{l.libelle} <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>({l.magasins.length})</Typography></Link>
+                  : <>{l.libelle} <Typography component="span" variant="caption" color="text.secondary">({l.magasins.length})</Typography></>}
               </TableCell>
-              {cols.map(({ i, cle }) => cellule(cle, l.cellules[cle], i, false, l.refs?.[cle]))}
+              {cols.map(({ i, cle }) => cellule(cle, l.cellules[cle], i, false, l.refs?.[cle], fonds.get(`${l.cle}|${cle}`)))}
             </TableRow>
           ))}
           {resultat.lignes.length > 1 && (
@@ -1136,3 +1237,28 @@ function feuilleRapport(titre: string, periode: string, r: Resultat, def: Defini
   }
 }
 
+
+// ── 390 (Joseph, 24/11/2026) : mode présentation, plein écran, pour une réunion de RR ou un point avec un franchisé ──
+function Presentation({ titre, periode, lecture, fermer, children }: { titre: string; periode: string; lecture: string | null; fermer: () => void; children: ReactNode }) {
+  useEffect(() => {
+    // Plein écran du navigateur quand il l'accepte ; sinon la fenêtre occupe déjà toute la page
+    const el = document.documentElement
+    if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => undefined)
+    return () => { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => undefined) }
+  }, [])
+  return (
+    <Dialog open fullScreen onClose={fermer} aria-labelledby="titre-presentation" slotProps={{ paper: { sx: { bgcolor: 'background.default' } } }}>
+      <Box sx={{ maxWidth: 1400, width: '100%', mx: 'auto', px: { xs: 2, md: 5 }, py: { xs: 2, md: 4 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 3 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography id="titre-presentation" component="h2" sx={{ fontSize: { xs: '1.5rem', md: '2.25rem' }, fontWeight: 700, lineHeight: 1.2 }}>{titre}</Typography>
+            <Typography color="text.secondary" sx={{ fontSize: { xs: '1rem', md: '1.25rem' }, mt: 0.5 }}>{periode}</Typography>
+            {lecture && <Typography sx={{ fontSize: { xs: '1.0625rem', md: '1.375rem' }, fontWeight: 600, mt: 1.5, maxWidth: 1100 }}>{lecture}</Typography>}
+          </Box>
+          <IconButton aria-label="Quitter la présentation" onClick={fermer} sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
+        </Box>
+        {children}
+      </Box>
+    </Dialog>
+  )
+}
