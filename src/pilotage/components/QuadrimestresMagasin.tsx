@@ -34,6 +34,8 @@ import { PlanTresorerieAnnee } from './PlanTresorerieAnnee'
 import { PontEcartEBE } from './PontEcartEBE'
 import { Repliable } from './Repliable'
 import { LegendePastilles, Pastille } from './Tableau'
+import { BoutonCouleurs, fondEcart } from '../../components/Visuel'
+import { usePreference } from '../lib/preferences'
 import { calculerBudget } from '../moteur/budget'
 import { comparaisonPeriode, memePeriode, moisDuQuadrimestre, QUADRIMESTRES, quadrimestreLibelle, resultatsQuadrimestres, type Quadrimestre, type ResultatQuadrimestre, type SaisieQuadrimestre } from '../moteur/quadrimestre'
 import { BoutonModele } from './BoutonModele'
@@ -72,6 +74,9 @@ export function QuadrimestresMagasin({ magasin, annee, peutSaisir, vue = 'saisie
   const [textes, setTextes] = useState<Textes>(vers({}))
   const [message, setMessage] = useState<{ gravite: 'success' | 'error' | 'warning'; texte: string } | null>(null)
   const [fec, setFec] = useState<FichierFEC | null>(null)
+  // 403 : écarts du cumul colorés, interrupteur commun avec « Mois par mois »
+  const [choixCouleurs, setChoixCouleurs] = usePreference<'oui' | 'non'>('couleurs-mois', 'oui', ['oui', 'non'])
+  const couleurs = choixCouleurs === 'oui'
   const entreeFEC = useRef<HTMLInputElement>(null)
   const [occupe, setOccupe] = useState(false)
   // Lot 42 (proposition 8) : questions levées avant d'enregistrer ; un second clic confirme les chiffres tels quels
@@ -210,7 +215,7 @@ export function QuadrimestresMagasin({ magasin, annee, peutSaisir, vue = 'saisie
   const fin = dernier ? quadrimestreLibelle[dernier].split(' à ')[1] : ''
 
   const comparaisonCarte = comparaison && (
-        <Repliable titre={`Cumul à fin ${fin} : budget et ${annee - 1}`} nom={`Cumul à fin ${fin} face au budget et à ${annee - 1}`} droite={<LegendePastilles seuil={seuil} />}>
+        <Repliable titre={`Cumul à fin ${fin} : budget et ${annee - 1}`} nom={`Cumul à fin ${fin} face au budget et à ${annee - 1}`} droite={<><BoutonCouleurs actif={couleurs} basculer={() => setChoixCouleurs(couleurs ? 'non' : 'oui')} /><LegendePastilles seuil={seuil} /></>}>
           <TableContainer>
             <Table size="small" className="colonne-fixe" aria-label={`Cumul ${annee} face au budget et à ${annee - 1}`} sx={{ ...styleTableau, '& td:first-of-type, & th:first-of-type': { pl: 2.5, minWidth: 200 } }}>
               <TableHead>
@@ -234,9 +239,9 @@ export function QuadrimestresMagasin({ magasin, annee, peutSaisir, vue = 'saisie
                         <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}><Pastille niveau={niveauEcart(l.reel, l.budget, seuil, l.charge)} />{montant(l.reel)}</Box>
                       )}</TableCell>
                       <TableCell align="right">{l.budget === null ? tiret : montant(l.budget)}</TableCell>
-                      <TableCell align="right" sx={l.ecartBudget === null ? undefined : { color: favorable(l.ecartBudget) ? 'success.dark' : 'error.main' }}>{l.ecartBudget === null ? tiret : ecartMontant(l.ecartBudget)}</TableCell>
+                      <TableCell align="right" sx={l.ecartBudget === null ? undefined : { color: favorable(l.ecartBudget) ? 'success.dark' : 'error.main', bgcolor: couleurs && l.budget ? fondEcart(l.ecartBudget / Math.abs(l.budget), 0.15, l.charge) : undefined }}>{l.ecartBudget === null ? tiret : ecartMontant(l.ecartBudget)}</TableCell>
                       <TableCell align="right">{l.n1 === null ? tiret : montant(l.n1)}</TableCell>
-                      <TableCell align="right" sx={l.evolution === null ? undefined : { color: favorable(l.evolution) ? 'success.dark' : 'error.main' }}>{l.evolution === null ? tiret : ecartTaux(l.evolution)}</TableCell>
+                      <TableCell align="right" sx={l.evolution === null ? undefined : { color: favorable(l.evolution) ? 'success.dark' : 'error.main', bgcolor: couleurs ? fondEcart(l.evolution, 0.15, l.charge) : undefined }}>{l.evolution === null ? tiret : ecartTaux(l.evolution)}</TableCell>
                     </TableRow>
                   )
                 })}
@@ -259,13 +264,17 @@ export function QuadrimestresMagasin({ magasin, annee, peutSaisir, vue = 'saisie
           <Indicateur
             libelle={`EBE réel à fin ${fin}`} aide="ebeReel" valeur={milliers(cumul.ebe)}
             ecart={cumul.ecartEBE === null ? undefined : { texte: `${ecartMilliers(cumul.ecartEBE)} sur le budget`, hausse: cumul.ecartEBE >= 0, favorable: cumul.ecartEBE >= 0 }}
-            detail={cumul.ebeSurCA === null ? undefined : `${taux(cumul.ebeSurCA)} du CA`}
+            detail={cumul.ebeSurCA === null ? undefined : `${taux(cumul.ebeSurCA)} du CA${cumul.ebeSurCABudget === null ? '' : ` (budget ${taux(cumul.ebeSurCABudget)})`}`}
           />
+          {/* 403 (Joseph, 24/11/2026) : marge, % FP et EBE sur CA face au budget des mêmes mois, flèche et couleur */}
           <Indicateur
             libelle="Taux de marge réel" aide="margeReelle" valeur={cumul.tauxMarge === null ? '–' : taux(cumul.tauxMarge)}
+            ecart={cumul.tauxMarge === null || cumul.tauxMargeBudget === null ? undefined : { texte: `${ecartPts(cumul.tauxMarge - cumul.tauxMargeBudget)} sur le budget`, hausse: cumul.tauxMarge >= cumul.tauxMargeBudget, favorable: cumul.tauxMarge >= cumul.tauxMargeBudget }}
             detail={cumul.ecartMargeCaisse === null ? undefined : `${ecartPts(cumul.ecartMargeCaisse)} face à la marge de la caisse`}
           />
-          <Indicateur libelle="% FP" aide="pctFP" valeur={cumul.pctFP === null ? '–' : taux(cumul.pctFP)} />
+          <Indicateur libelle="% FP" aide="pctFP" valeur={cumul.pctFP === null ? '–' : taux(cumul.pctFP)}
+            ecart={cumul.pctFP === null || cumul.pctFPBudget === null ? undefined : { texte: `${ecartPts(cumul.pctFP - cumul.pctFPBudget)} sur le budget`, hausse: cumul.pctFP >= cumul.pctFPBudget, favorable: cumul.pctFP <= cumul.pctFPBudget }}
+            detail={cumul.pctFPBudget === null ? undefined : `Budget : ${taux(cumul.pctFPBudget)}`} />
         </Stack>
       )}
 

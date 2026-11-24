@@ -1,6 +1,7 @@
 import { styleBloc, styleEnteteBloc } from '../components/Section'
 import { styleListe } from '../components/TableauTri'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { BoutonPresenter, Lecture, Presentation } from '../components/Visuel'
 import { Link as RouterLink } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -131,27 +132,17 @@ function Contenu({ reseau, integre }: { reseau: Reseau; integre?: boolean }) {
   const [affichage, setAffichage] = useAffichage('evolution')
   const prochains = aVenir(reseau)
   const prevues = (x: ReturnType<typeof lignes>[number]) => (x.prevues ? `dont ${x.prevues} prévue${x.prevues > 1 ? 's' : ''} · ` : '')
-  return (
-    <>
-      {/* Joseph (23/11/2026) : une entrée de la rubrique Réseau du menu, sous Visites */}
-      {integre
-        ? <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{`${ouverts} magasins ouverts aujourd’hui`}</Typography>
-        : <PageHeader titre="Évolution du parc" sousTitre={`${ouverts} magasins ouverts aujourd’hui`} />}
-      {sansDate > 0 && <Alert severity="info" sx={{ mb: 3 }}>{`${sansDate} magasin${sansDate > 1 ? 's' : ''} sans date d’ouverture ${sansDate > 1 ? 'ne sont' : 'n’est'} pas compté${sansDate > 1 ? 's' : ''}.`}</Alert>}
-      {prochains.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>À venir sur 12 mois</Typography>
-          <CarteLignes label="À venir sur 12 mois">
-            {prochains.map((x) => x.genre === 'ouverture'
-              ? <LigneOuverture key={`${x.genre}-${x.m.nom}-${x.date}`} reseau={reseau} m={x.m} lien={lienFiche(x.m.nom)} avatar={<Initiales nom={x.m.nom} icone={icones[x.genre]} couleur={NEUTRE} />} />
-              : <LigneCompacte key={`${x.genre}-${x.m.nom}-${x.date}-${x.texte}`} lien={lienFiche(x.m.nom)} avatar={<Initiales nom={x.m.nom} icone={icones[x.genre]} couleur={NEUTRE} />}
-                titre={x.m.nom} detail={x.texte} />)}
-          </CarteLignes>
-        </Box>
-      )}
-      <Card sx={{ mb: 3 }}>
+  // 394 / 400 (Joseph, 24/11/2026) : la phrase de lecture et le mode présentation, comme dans Pilotage
+  const [presenter, setPresenter] = useState(false)
+  const enCours = l.find((x) => x.enCours), avant = enCours ? l.find((x) => x.a === enCours.a - 1) : undefined
+  const pl = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
+  const lecture = enCours ? `${enCours.a} : ${pl(enCours.ouvertures.length, 'ouverture')}${enCours.prevues ? ` (dont ${enCours.prevues} prévue${enCours.prevues > 1 ? 's' : ''})` : ''}, ${pl(enCours.sorties.length, 'sortie')}, ${enCours.cumul} magasins en fin d’année${avant ? ` contre ${avant.cumul} fin ${avant.a}` : ''}.` : null
+  const graphe = (      <Card sx={{ mb: 3 }}>
         <Box sx={styleBloc}>
-          <Box sx={styleEnteteBloc}><Typography component="h2" sx={cartouche}>{avecSorties ? 'Ouvertures et sorties par année' : 'Ouvertures par année'}</Typography></Box>
+          <Box sx={[styleEnteteBloc, { display: 'flex', alignItems: 'center', gap: 1 }]}>
+            <Typography component="h2" sx={[cartouche, { flex: 1 }]}>{avecSorties ? 'Ouvertures et sorties par année' : 'Ouvertures par année'}</Typography>
+            {!presenter && <BoutonPresenter onClick={() => setPresenter(true)} />}
+          </Box>
           <CourbeParc annees={recentes} jour={reseau.jour} />
           <Box sx={{ display: 'flex', alignItems: 'flex-end', height: 200 }} role="img"
             aria-label={`Ouvertures : ${recentes.map((x) => `${x.a} ${x.ouvertures.length}${x.sorties.length ? `, ${x.sorties.length} sortie${x.sorties.length > 1 ? 's' : ''}` : ''}`).join(' ; ')}`}>
@@ -173,6 +164,28 @@ function Contenu({ reseau, integre }: { reseau: Reseau; integre?: boolean }) {
           {avecSorties && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.75 }}><Box component="span" aria-hidden sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: 'error.main', flexShrink: 0 }} />Barres rouges : sorties du réseau (fermeture, liquidation, tombée d’enseigne, cession)</Typography>}
         </Box>
       </Card>
+  )
+  return (
+    <>
+      {/* Joseph (23/11/2026) : une entrée de la rubrique Réseau du menu, sous Visites */}
+      {integre
+        ? <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{`${ouverts} magasins ouverts aujourd’hui`}</Typography>
+        : <PageHeader titre="Évolution du parc" sousTitre={`${ouverts} magasins ouverts aujourd’hui`} />}
+      <Lecture texte={lecture} />
+      {presenter && <Presentation titre="Évolution du parc" periode={`${ouverts} magasins ouverts aujourd’hui`} lecture={lecture} fermer={() => setPresenter(false)}>{graphe}</Presentation>}
+      {sansDate > 0 && <Alert severity="info" sx={{ mb: 3 }}>{`${sansDate} magasin${sansDate > 1 ? 's' : ''} sans date d’ouverture ${sansDate > 1 ? 'ne sont' : 'n’est'} pas compté${sansDate > 1 ? 's' : ''}.`}</Alert>}
+      {prochains.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography component="h2" sx={[cartouche, { mb: 1.5 }]}>À venir sur 12 mois</Typography>
+          <CarteLignes label="À venir sur 12 mois">
+            {prochains.map((x) => x.genre === 'ouverture'
+              ? <LigneOuverture key={`${x.genre}-${x.m.nom}-${x.date}`} reseau={reseau} m={x.m} lien={lienFiche(x.m.nom)} avatar={<Initiales nom={x.m.nom} icone={icones[x.genre]} couleur={NEUTRE} />} />
+              : <LigneCompacte key={`${x.genre}-${x.m.nom}-${x.date}-${x.texte}`} lien={lienFiche(x.m.nom)} avatar={<Initiales nom={x.m.nom} icone={icones[x.genre]} couleur={NEUTRE} />}
+                titre={x.m.nom} detail={x.texte} />)}
+          </CarteLignes>
+        </Box>
+      )}
+      {!presenter && graphe}
       {surPC && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}><ChoixAffichage valeur={affichage} onChange={setAffichage} /></Box>}
       {!surPC || affichage === 'lignes' ? (
         <CarteLignes label="Évolution par année">

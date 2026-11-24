@@ -107,3 +107,31 @@ test('réseau : indicateurs à date de chaque magasin et total pondéré par le 
   proche(t.ebeSurCA, la.ebeSurCA!)
   proche(t.caParHeure, la.caParHeure!)             // seulement les magasins dont l'équipe est connue
 })
+
+test('réseau : marge, EBE et % FP face au budget des mêmes mois, en points (397)', () => {
+  const p = { tauxRedevance: 0.02, tauxPublicite: 0.01, charges: { ...chargesParDefaut, taux: { ...chargesParDefaut.taux, gerant_tns: 0.5 } }, annee: 2027 }
+  const gerant: Personne = { poste: 'Gérant', categorie: 'gerant_tns', heuresHebdo: 35, brutMensuel: 2_000, primes: [], entree: null, sortie: null }
+  // Budget complet : chaque mois 20 000 € de CA, 8 000 € de marge (40 %), 5 000 € de personnel (25 %), 2 000 € d'EBE (10 %)
+  const complet = { mois: Array.from({ length: 12 }, () => ({ ca: 20_000, marge: 8_000, personnel: 5_000, ebe: 2_000 })), tauxMarge: 0.4 } as unknown as Budget
+  const frais = [{ code: 'loyer', libelle: 'Loyer', rubrique: 'immobilier', annuel: 12_000 }, { code: 'energie', libelle: 'Énergie', rubrique: 'energies', tauxCA: 0.01 }]
+  const a: EntreeReseau = { magasin: 'Brionne-sur-Lac', n: moisDuReel(lignes, tickets), n1: moisDuReel([], []), budget: complet, equipe: [gerant], frais }
+  const l = ligneReseau(a, p)
+  // Marge : 16 000 / 37 000 = 43,24 % réel, 40 % budgété : +3,24 points
+  proche(l.ecartMarge, 16_000 / 37_000 - 0.4)
+  // % FP : 6 000 / 40 000 = 15 % réel, 10 000 / 40 000 = 25 % budgété : −10 points (mieux)
+  proche(l.ecartFP, -0.1)
+  // EBE / CA : (640 000 / 37 − 9 600) / 40 000 réel, 4 000 / 40 000 = 10 % budgété
+  proche(l.ecartEbe, (640_000 / 37 - 9_600) / 40_000 - 0.1)
+  // L'ancien budget sans personnel ni EBE mois par mois : seule la marge se compare
+  const ancien = ligneReseau({ ...a, budget }, p)
+  proche(ancien.ecartMarge, 16_000 / 37_000 - 0.4)
+  expect(ancien.ecartEbe).toBeNull()
+  expect(ancien.ecartFP).toBeNull()
+  // Sans budget : rien
+  expect(ligneReseau({ ...a, budget: null }, p)).toMatchObject({ ecartMarge: null, ecartEbe: null, ecartFP: null })
+  // Total : avec un seul magasin comparable, le même écart
+  const t = totalReseau([l, ligneReseau({ ...a, magasin: 'Valcourt', budget: null }, p)])
+  proche(t.ecartMarge, l.ecartMarge!)
+  proche(t.ecartFP, -0.1)
+  proche(t.ecartEbe, l.ecartEbe!)
+})

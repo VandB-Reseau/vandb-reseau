@@ -29,7 +29,8 @@ test('vue d’ensemble : atterrissage en barre, CA par univers, 4 derniers mois,
   await expect(univers).toContainText('17 %')
   const evolution = page.getByRole('region', { name: 'Évolution du CA' })
   await expect(evolution).toContainText(`4 derniers mois, face à ${N - 1}`)
-  await expect(evolution.getByRole('img', { name: /4 derniers mois/ })).toContainText(/Avr\. : 60\sk€/)
+  // 405 : chaque mois du graphe est un bouton qui ouvre Mois par mois, le graphe devient un groupe
+  await expect(evolution.getByRole('group', { name: /4 derniers mois/ })).toContainText(/Avr\. : 60\sk€/)
   // La Fiche de visite est sur la ligne des puces, à côté de « Clôturer » : plus de ligne vide sous les puces
   const visite = page.getByRole('button', { name: 'Fiche de visite' })
   await expect(visite).toHaveCount(1)

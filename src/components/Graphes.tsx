@@ -64,18 +64,21 @@ export function Anneau({ parts, centre, sousCentre, format, label }: { parts: Pa
 
 // Barres verticales : une par période ; la dernière (la période en cours) en foncé avec sa valeur au-dessus
 export interface Barre { libelle: string; valeur: number | null; reference?: number | null }
-export function Barres({ barres, format, label, hauteur = 150 }: { barres: Barre[]; format: (n: number) => string; label: string; hauteur?: number }) {
+// ouvrir (405, Joseph 24/11/2026) : un clic sur une barre ouvre son détail (le mois dans « Mois par mois »)
+export function Barres({ barres, format, label, hauteur = 150, ouvrir, libelleOuvrir }: { barres: Barre[]; format: (n: number) => string; label: string; hauteur?: number; ouvrir?: (i: number) => void; libelleOuvrir?: (b: Barre) => string }) {
   const max = Math.max(1, ...barres.flatMap((b) => [b.valeur ?? 0, b.reference ?? 0]))
   const n = barres.length
   const avecRef = barres.some((b) => b.reference != null)
   return (
-    <Box role="img" aria-label={label} sx={{ position: 'relative' }}>
+    <Box role={ouvrir ? 'group' : 'img'} aria-label={label} sx={{ position: 'relative' }}>
       <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`, alignItems: 'end', gap: 1, height: hauteur, borderBottom: '1px solid', borderColor: 'divider', pt: 3 }}>
         {barres.map((b, i) => {
           const dernier = i === n - 1
           const h = b.valeur == null ? 0 : Math.max(2, (b.valeur / max) * (hauteur - 28))
           return (
-            <Box key={b.libelle} sx={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 0.5 }}>
+            <Box key={b.libelle} {...(ouvrir ? { component: 'button' as const, type: 'button' as const, onClick: () => ouvrir(i), 'aria-label': libelleOuvrir?.(b) ?? b.libelle, title: libelleOuvrir?.(b) } : {})}
+              sx={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 0.5,
+                ...(ouvrir ? { border: 0, p: 0, m: 0, bgcolor: 'transparent', font: 'inherit', cursor: 'pointer', minWidth: 0, borderRadius: 1, '&:hover, &:focus-visible': { bgcolor: 'action.hover' } } : {}) }}>
               {avecRef && <Box sx={{ width: '34%', maxWidth: 18, height: b.reference == null ? 0 : Math.max(2, (b.reference / max) * (hauteur - 28)), borderRadius: '4px 4px 0 0', bgcolor: brand.beige, borderBottom: 0 }} />}
               <Box sx={{ position: 'relative', width: avecRef ? '40%' : '62%', maxWidth: avecRef ? 22 : 40, height: h, borderRadius: '6px 6px 0 0', bgcolor: dernier ? brand.vertFonce : 'rgba(48, 118, 114, 0.35)' }}>
                 {dernier && b.valeur != null && <Box component="span" sx={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translate(-50%, -4px)', px: 0.75, py: 0.25, borderRadius: 1, bgcolor: 'text.primary', color: 'background.paper', fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{format(b.valeur)}</Box>}

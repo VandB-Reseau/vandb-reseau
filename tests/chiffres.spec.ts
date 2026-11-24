@@ -144,7 +144,8 @@ test('l’onglet Chiffres donne les indicateurs et la liste des magasins', async
     await expect(table.getByRole('row').nth(2)).toContainText('Nantes Test')
     await expect(table.getByRole('row').nth(2)).toContainText('−7,0 %')
   } else {
-    await expect(page.getByRole('group', { name: 'Affichage' })).toHaveCount(0)
+    // 399 (24/11/2026) : sur téléphone, Lignes ou Carte, pas de tableau
+    await expect(page.getByRole('group', { name: 'Affichage' }).getByRole('button')).toHaveText(['Lignes', 'Carte'])
     expect(await petitesZones(page, 'main a, main button')).toEqual([])
   }
   expect(await textesTropPetits(page)).toEqual([])

@@ -9,6 +9,14 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Écrans à graphes visuels comme Pilotage (Joseph, 24/11/2026, choix 393 à 405), sans migration. Face au budget : tableau
+  coloré (bouton « Couleurs »), phrase de lecture, vue « Face au budget » avec marge, EBE sur CA et % FP en points face au
+  budget, regroupement par RR puis par Coach (un clic descend, « Revenir » remonte), affichage Carte, mode présentation.
+  Chiffres des magasins : phrase, colonne « Face à la médiane », couleurs, Carte, présentation. Évolution du parc : phrase
+  et présentation. Fiche magasin : médiane du réseau en trait jaune sur les courbes Marge et % FP (équipe seulement),
+  phrase du suivi avec % FP et EBE à date dès qu'un quadrimestre est saisi, Mois par mois et cumul du quadrimestre en
+  couleurs, marge et % FP du quadrimestre face au budget, place du magasin sur une barre dans « Face au réseau », clic sur
+  un mois de « Évolution du CA » pour ouvrir Mois par mois.
 - Pilotage encore plus visuel (Joseph, 24/11/2026, choix 385 à 392), sans migration. Tableau coloré selon l'écart ou le
   rang (bouton « Couleurs »), phrase de lecture en tête du rapport, médiane en trait jaune sur les graphes de l'équipe,
   clic sur un groupe (tableau ou barre) pour voir ses magasins et « Revenir », affichage « Carte » des magasins,

@@ -14,11 +14,28 @@ import Typography from '@mui/material/Typography'
 import { chargerComparaison } from '../data/pilotage'
 import { useChargement } from '../data/useChargement'
 import { taux } from '../lib/format'
+import { brand } from '../theme/theme'
 import { enEuros, medianes, plusHautMieux, rang, RATIOS, ratioLibelle, type CleRatio } from '../moteur/comparaison'
 
 const MIN_MAGASINS = 3   // en dessous, une médiane ne dit rien
 const euros = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const texte = (k: CleRatio, v: number | null) => (v === null ? '–' : enEuros(k) ? euros.format(v) : taux(v))
+
+// 404 (Joseph, 24/11/2026) : la place du magasin sur une barre, du plus bas au plus haut du réseau ; trait jaune = médiane
+function Position({ v, m, tous, mieuxHaut, libelle }: { v: number | null; m: number | null; tous: number[]; mieuxHaut: boolean; libelle: string }) {
+  if (v === null || m === null || tous.length < MIN_MAGASINS) return null
+  const bas = Math.min(...tous), haut = Math.max(...tous)
+  const x = (n: number) => (haut === bas ? 50 : ((n - bas) / (haut - bas)) * 100)
+  const bon = Math.abs(v - m) < 1e-9 ? null : (v > m) === mieuxHaut
+  return (
+    <Box role="img" aria-label={libelle} data-position sx={{ position: 'relative', width: 140, height: 16, mx: 'auto' }}>
+      <Box sx={{ position: 'absolute', left: 0, right: 0, top: 6, height: 4, borderRadius: 2, bgcolor: 'divider' }} />
+      <Box sx={{ position: 'absolute', top: 1, height: 14, width: 3, borderRadius: 1, bgcolor: brand.or, left: `calc(${x(m)}% - 1.5px)` }} />
+      <Box sx={{ position: 'absolute', top: 3, width: 10, height: 10, borderRadius: '50%', border: '2px solid', borderColor: 'background.paper', left: `calc(${x(v)}% - 5px)`,
+        bgcolor: bon === null ? 'text.secondary' : bon ? 'success.main' : 'error.main' }} />
+    </Box>
+  )
+}
 
 // Le magasin face à la médiane de son groupe et du réseau (ou des magasins du compte), sur le réel ou sur les budgets
 export function ComparaisonMagasin({ magasin, directeur }: { magasin: string; directeur: boolean }) {
@@ -60,6 +77,7 @@ export function ComparaisonMagasin({ magasin, directeur }: { magasin: string; di
               {mGroupe && <TableCell align="right">Médiane {groupe!.nom}</TableCell>}
               <TableCell align="right">{nomReseau}</TableCell>
               <TableCell align="right">Rang</TableCell>
+              <TableCell align="center" sx={{ display: { xs: 'none', sm: 'table-cell' } }}>Place dans le réseau</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -73,6 +91,10 @@ export function ComparaisonMagasin({ magasin, directeur }: { magasin: string; di
                   {mGroupe && <TableCell align="right">{texte(k, mGroupe[k])}</TableCell>}
                   <TableCell align="right">{texte(k, mReseau[k])}</TableCell>
                   <TableCell align="right" sx={{ color: 'text.secondary' }}>{r && r.sur >= MIN_MAGASINS ? `${r.rang}${r.rang === 1 ? 'er' : 'e'} sur ${r.sur}` : '–'}</TableCell>
+                  <TableCell align="center" sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
+                    <Position v={v} m={mReseau[k]} tous={tous.flatMap((x) => (x.ratios[k] === null ? [] : [x.ratios[k]!]))} mieuxHaut={plusHautMieux[k]}
+                      libelle={`${ratioLibelle[k]} : ${texte(k, v)}, médiane ${texte(k, mReseau[k])}`} />
+                  </TableCell>
                 </TableRow>
               )
             })}
