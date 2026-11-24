@@ -51,17 +51,26 @@ test('S2 : Ma semaine se résume en trois chiffres', async ({ page }, info) => {
   await page.screenshot({ path: `captures/${info.project.name}-semaine-trois-chiffres.png` })
 })
 
-test('S3 : la ligne de chaque Coach dit visites sur référence, avec une jauge, sans texte coupé', async ({ page }, info) => {
+test('S3 : la ligne de chaque Coach tient sur une ligne : taux, visites sur référence, jauge avec repère à date, retard en tête', async ({ page, isMobile }) => {
   await seConnecter(page)
   await page.goto('./#/visites?vue=rythme')
   const coachs = page.getByRole('region', { name: 'Visites par Coach' })
   const noe = coachs.getByRole('link', { name: /Noé MODELE/ })
-  await expect(noe).toContainText(/\d+ visites? sur \d+ · [\d,]+ j par an/)
-  await expect(noe.getByRole('meter', { name: 'Visites de Noé MODELE' })).toBeVisible()
-  const coupe = await noe.getByText(/par an/).evaluate((e) => e.scrollWidth > e.clientWidth + 1)
+  await expect(noe).toContainText(/\d+ %\s*\d+ \/ \d+/)
+  await expect(noe).not.toContainText('par an')
+  const jauge = noe.getByRole('meter', { name: 'Visites de Noé MODELE' })
+  await expect(jauge).toBeVisible()
+  await expect(jauge.locator('[data-attendu]')).toHaveCount(1)
+  const box = (await noe.boundingBox())!
+  expect(box.height).toBeGreaterThanOrEqual(48)
+  expect(box.height).toBeLessThanOrEqual(isMobile ? 72 : 56)
+  const coupe = await noe.getByText(/\d+ \/ \d+/).evaluate((e) => e.scrollWidth > e.clientWidth + 1)
   expect(coupe).toBe(false)
+  // Sur PC, plusieurs Coachs par ligne
+  const y = await Promise.all([0, 1].map(async (i) => (await coachs.getByRole('link').nth(i).boundingBox())!.y))
+  if (isMobile) expect(y[1]).toBeGreaterThan(y[0])
+  else expect(y[1]).toBe(y[0])
   expect(await textesTropPetits(page)).toEqual([])
-  await coachs.screenshot({ path: `captures/${info.project.name}-rythme-par-coach.png` })
 })
 
 test('S4 : une tâche se coche depuis l’accueil et « Annuler » la remet en cours', async ({ page }, info) => {

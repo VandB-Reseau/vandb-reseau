@@ -4,8 +4,8 @@ import { Entete, LigneSansResultat, useTableau, type ColonneTri } from '../compo
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink, Navigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
-import { brand } from '../theme/theme'
 import Button from '@mui/material/Button'
+import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
@@ -58,6 +58,69 @@ const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 const ecart = (l: LigneRythme) => (l.depuis === null ? Infinity : l.depuis - l.delai)
 
 
+// Part de l'année écoulée au jour du réseau (1 pour une année passée) : où l'on devrait en être
+const jourIso = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86400000
+function partEcoulee(a: { debut: string; fin: string }, jour: string): number {
+  if (jour >= a.fin) return 1
+  if (jour < a.debut) return 0
+  return (jourIso(jour) - jourIso(a.debut) + 1) / (jourIso(a.fin) - jourIso(a.debut) + 1)
+}
+
+type GroupeCoach = { coach: string; lien?: string; faites: number; reference: number; signales: LigneRythme[] }
+
+// Une ligne par Coach : nom, jauge (couleur selon l'avance sur le rythme attendu, repère « à date », dépassement), taux, à voir
+function LigneRythmeCoach({ g, part, echelle, surPC }: { g: GroupeCoach; part: number; echelle: number; surPC: boolean }) {
+  const nom = g.coach || 'Sans Coach'
+  const taux = g.reference ? g.faites / g.reference : 0
+  const attendu = g.reference * part
+  const avance = attendu > 0 ? g.faites / attendu : 1
+  const couleur = !g.reference ? ton.neutre : avance < 0.5 ? ton.agir : avance < 0.8 ? ton.surveiller : ton.bon
+  const pct = (x: number) => `${Math.round((x / echelle) * 1000) / 10}%`
+  const pourcent = `${Math.round(taux * 100)} %`
+  const jauge = (
+    <Box role="meter" aria-label={`Visites de ${nom}`} aria-valuemin={0} aria-valuemax={g.reference} aria-valuenow={g.faites}
+      aria-valuetext={`${g.faites} sur ${g.reference}, ${pourcent}`}
+      sx={{ position: 'relative', height: 8, borderRadius: 4, bgcolor: 'action.hover', flex: 1, minWidth: 0 }}>
+      <Box sx={{ position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 4, width: pct(Math.min(taux, 1)), bgcolor: couleur }} />
+      {taux > 1 && <Box data-depassement sx={{ position: 'absolute', top: 0, bottom: 0, left: pct(1), width: pct(Math.min(taux, echelle) - 1), borderRadius: '0 4px 4px 0', bgcolor: couleur, opacity: 0.4 }} />}
+      {part > 0 && part < 1 && g.reference > 0 && <Tooltip title={`À date : ${Math.round(attendu)} visites attendues`}>
+        <Box data-attendu sx={{ position: 'absolute', top: -4, bottom: -4, left: pct(part), width: 2, ml: '-1px', bgcolor: 'text.primary', borderRadius: 1 }} />
+      </Tooltip>}
+    </Box>
+  )
+  const chiffres = (
+    <Box component="span" sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75, flexShrink: 0, justifyContent: 'flex-end', minWidth: surPC ? 96 : 0 }}>
+      <Typography component="span" sx={{ fontWeight: 700, fontSize: 18, color: couleur, fontVariantNumeric: 'tabular-nums' }}>{pourcent}</Typography>
+      <Typography component="span" variant="body2" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{`${g.faites} / ${g.reference}`}</Typography>
+    </Box>
+  )
+  const aVoir = g.signales.length ? <Pastille ton="orange">{`${g.signales.length} à voir`}</Pastille> : null
+  const contenu = surPC ? (
+    <>
+      <Initiales nom={nom} taille={32} />
+      <Typography sx={{ fontWeight: 600, width: 180, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nom}</Typography>
+      {jauge}
+      {chiffres}
+      <Box sx={{ width: 84, flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>{aVoir}</Box>
+    </>
+  ) : (
+    <>
+      <Initiales nom={nom} taille={32} />
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+          <Typography sx={{ fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nom}</Typography>
+          {chiffres}
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.75 }}>{jauge}{aVoir}</Box>
+      </Box>
+    </>
+  )
+  const sx = { display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 0.75, minHeight: 48, width: '100%', textAlign: 'left', justifyContent: 'flex-start', color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } } as const
+  return g.lien
+    ? <ButtonBase component={RouterLink} to={g.lien} aria-label={nom} sx={sx}>{contenu}</ButtonBase>
+    : <Box sx={{ ...sx, '&:hover': undefined }}>{contenu}</Box>
+}
+
 const colonnesRythme: ColonneTri<LigneRythme>[] = [
   { cle: 'magasin', libelle: 'Magasin', valeur: (l) => l.magasin.nom },
   { cle: 'coach', libelle: 'Coach', valeur: (l) => suivi(l.magasin, l.coach) || null, texte: (l) => suivi(l.magasin, l.coach) || 'Sans Coach' },
@@ -76,6 +139,7 @@ function VueRythme({ reseau, surPC, actions }: { reseau: Reseau; surPC: boolean;
   const [etats, setEtats] = useState<string[]>([])
   const a = annees.find((x) => x.cle === cle) ?? annees[0]
   const toutes = useMemo(() => suiviRythme(reseau, a), [reseau, a])
+  const part = partEcoulee(a, reseau.jour)
   const t = texte.trim().toLowerCase()
   const lignes = toutes
     .filter((l) => !coachs.length || coachs.includes(cleFiltreCoach(l.magasin, l.coach)))
@@ -89,10 +153,11 @@ function VueRythme({ reseau, surPC, actions }: { reseau: Reseau; surPC: boolean;
   const parCoach = [...new Set(lignes.map((l) => suivi(l.magasin, l.coach)))].map((c) => {
     const ls = lignes.filter((l) => suivi(l.magasin, l.coach) === c)
     return { coach: c, lien: ls[0].coach ? lienCoach(c) : enDirect(ls[0].magasin, ls[0].coach) ? lienRR(ls[0].magasin.rr!.id) : undefined, ls, faites: ls.reduce((n, l) => n + l.faites, 0), reference: ls.reduce((n, l) => n + l.reference, 0), jours: ls.reduce((n, l) => n + l.jours, 0), signales: ls.filter((l) => l.alerte) }
-  }).sort((x, y) => y.signales.length - x.signales.length || x.coach.localeCompare(y.coach, 'fr'))
+  }).sort((x, y) => (x.faites - x.reference * part) - (y.faites - y.reference * part) || x.coach.localeCompare(y.coach, 'fr'))
+  // Une échelle commune à toutes les barres : au-delà de 100 %, le dépassement se voit (plafonné à 150 %)
+  const echelle = Math.min(1.5, Math.max(1, ...parCoach.map((g) => (g.reference ? g.faites / g.reference : 0))))
   const actifs = coachs.length + cases.length + etats.length
   const mag = (p: (l: LigneRythme) => boolean) => { const n = toutes.filter(p).length; return `${n} magasin${n > 1 ? 's' : ''}` }
-  const jours = (n: number) => `${String(Math.round(n * 10) / 10).replace('.', ',')} j`
   const visites = (l: LigneRythme) => `${pluriel(l.faites, 'visite')} · référence ${l.reference}`
   // 323 (18/11/2026) : « Par magasin » en tableau d'office sur PC, dans l'ordre du retard
   const [affichage, setAffichage] = useAffichage('rythme', 'tableau')
@@ -130,19 +195,18 @@ function VueRythme({ reseau, surPC, actions }: { reseau: Reseau; surPC: boolean;
         <>
           {parCoach.length > 1 && <>
             <TitreSection nombre={parCoach.length}>Par Coach</TitreSection>
-            <CarteLignes label="Visites par Coach">
-              {parCoach.map((g) => (
-                <LigneCompacte key={g.coach} lien={g.lien} avatar={<Initiales nom={g.coach || 'Sans Coach'} />} titre={g.coach || 'Sans Coach'}
-                  detail={<Box component="span" sx={{ display: 'block', whiteSpace: 'normal' }}>
-                    {`${pluriel(g.faites, 'visite')} sur ${g.reference} · ${jours(g.jours)} par an`}
-                    <Box component="span" role="meter" aria-label={`Visites de ${g.coach || 'Sans Coach'}`} aria-valuemin={0} aria-valuemax={g.reference} aria-valuenow={Math.min(g.faites, g.reference)}
-                      sx={{ display: 'block', height: 6, mt: 0.5, borderRadius: 3, bgcolor: 'action.hover', overflow: 'hidden' }}>
-                      <Box component="span" sx={{ display: 'block', height: '100%', width: `${g.reference ? Math.min(100, Math.round((g.faites / g.reference) * 100)) : 0}%`, bgcolor: brand.vertFonce }} />
-                    </Box>
-                  </Box>}
-                  fin={g.signales.length ? <Pastille ton="orange">{`${g.signales.length} à voir`}</Pastille> : undefined} />
-              ))}
-            </CarteLignes>
+            {surPC ? (
+              // PC : plusieurs Coachs par ligne (deux colonnes, trois sur grand écran), filets entre les lignes
+              <Card component="section" aria-label="Visites par Coach" sx={{ overflow: 'hidden', border: 0 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(440px, 1fr))', mb: '-1px', '& > *': { borderBottom: '1px solid', borderColor: 'divider' } }}>
+                  {parCoach.map((g) => <LigneRythmeCoach key={g.coach} g={g} part={part} echelle={echelle} surPC />)}
+                </Box>
+              </Card>
+            ) : (
+              <CarteLignes label="Visites par Coach">
+                {parCoach.map((g) => <LigneRythmeCoach key={g.coach} g={g} part={part} echelle={echelle} surPC={false} />)}
+              </CarteLignes>
+            )}
           </>}
 
           <TitreSection nombre={lignes.length} action={surPC && <ChoixAffichage valeur={affichage} onChange={setAffichage} />}>Par magasin</TitreSection>

@@ -9,6 +9,10 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Rythme de visite par Coach plus visuel (Joseph, 23/11/2026), sans migration. Une ligne par Coach, moitié moins haute :
+  taux de l'année en gros (« 130 % ») et « 70 / 54 », jauge colorée selon l'avance sur le rythme attendu à date (rouge sous
+  50 %, orange sous 80 %, vert au-delà), trait « à date » sur la jauge, dépassement visible au-delà de 100 % ; Coachs les plus
+  en retard en tête ; « j par an » retiré. Sur PC, plusieurs Coachs par ligne (deux colonnes, trois sur grand écran).
 - Vue d'ensemble de l'onglet Chiffres plus visuelle (Joseph, 23/11/2026, choix 1 à 5), sans migration. Courbes sur les
   cartes CA, Marge et % FP, l'an dernier en pointillé ; écarts en flèche de tendance comme la page Chiffres, marge face à
   l'an dernier sans budget ; barre « Atterrissage : … déjà fait » dans la carte CA ; Fiche de visite (et objectifs du mois
