@@ -53,6 +53,10 @@ import type { ParametresAlertes } from '../moteur/alertes'
 import { campagneDe, type Campagne } from '../moteur/campagne'
 import { CONGES_PAYES_PROPOSES, parametresParDefaut } from '../moteur/parametres'
 import type { ParametresReseau } from '../moteur/types'
+import { Indicateur, grilleIndicateurs } from '../../components/Indicateur'
+import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined'
+import ErrorOutlineOutlined from '@mui/icons-material/ErrorOutlineOutlined'
+import EventAvailableOutlined from '@mui/icons-material/EventAvailableOutlined'
 import type { OperationReseau, ParametresTresorerie } from '../moteur/tresorerie'
 import { stockParDefaut } from '../moteur/stock'
 import { UNIVERS, universLibelle, type Univers } from '../moteur/types'
@@ -88,6 +92,28 @@ function Retour({ message, fermer }: { message: Message; fermer: () => void }) {
 }
 function Ligne({ libelle, children }: { libelle: string; children: ReactNode }) {
   return <TableRow><TableCell>{libelle}</TableCell><TableCell align="right">{children}</TableCell></TableRow>
+}
+
+// 412 (Joseph, 24/11/2026) : une carte par rubrique avec son état ; un réglage resté à 0 (aucun budget ne bouge seul)
+// ressort « À régler » tant que le Directeur ne l'a pas saisi. Un clic ouvre la rubrique.
+function EtatReglages({ annee, enregistres, p, ouvrir, actif }: { annee: number; enregistres: boolean; p: ParametresReseau; ouvrir: (o: Onglet) => void; actif: Onglet }) {
+  const rubriques: { cle: Onglet; libelle: string; manques: string[] }[] = [
+    { cle: 'franchise', libelle: 'Franchise et impôts', manques: (p.tauxCommunication ?? 0) > 0 ? [] : ['budget communication'] },
+    { cle: 'equipe', libelle: 'Équipe', manques: (p.charges.congesPayes ?? 0) > 0 ? [] : ['congés payés'] },
+    { cle: 'tresorerie', libelle: 'Trésorerie', manques: ((p.tresorerie.stock ?? stockParDefaut).mois.exterieur ?? 0) > 0 ? [] : ['stock cible de l’Extérieur'] },
+  ]
+  const aRegler = rubriques.filter((r) => r.manques.length).length + (enregistres ? 0 : 1)
+  return (
+    <Box component="section" aria-label={`État des paramètres ${annee}`} sx={{ ...grilleIndicateurs, mb: 2 }}>
+      <Indicateur icone={<EventAvailableOutlined />} libelle={`Paramètres ${annee}`} valeur={enregistres ? 'Enregistrés' : 'Par défaut'} couleur={enregistres ? 'success.dark' : 'warning.dark'}
+        detail={aRegler ? `${aRegler} point${aRegler > 1 ? 's' : ''} à régler` : 'Tout est réglé'} onClick={() => ouvrir('annees')} actif={actif === 'annees'} />
+      {rubriques.map((r) => (
+        <Indicateur key={r.cle} icone={r.manques.length ? <ErrorOutlineOutlined /> : <CheckCircleOutlined />} libelle={r.libelle} valeur={r.manques.length ? 'À régler' : 'Réglé'}
+          couleur={r.manques.length ? 'warning.dark' : 'success.dark'} detail={r.manques.length ? r.manques.join(', ').replace(/^./, (c) => c.toUpperCase()) : 'Valeurs saisies'}
+          onClick={() => ouvrir(r.cle)} actif={actif === r.cle} />
+      ))}
+    </Box>
+  )
 }
 
 export function Parametres() {
@@ -317,6 +343,7 @@ export function Parametres() {
         )}
       </Box>
       <Retour message={messageCopie} fermer={() => setMessageCopie(null)} />
+      {p && donnees && <EtatReglages annee={annee} enregistres={!!donnees.enregistres} p={p} ouvrir={setOnglet} actif={onglet} />}
       <Tabs value={onglet} onChange={(_, v: Onglet) => setOnglet(v)} variant="scrollable" scrollButtons="auto" aria-label="Rubriques des paramètres"
         sx={{ mb: 2, borderBottom: 1, borderColor: 'divider', '& .MuiTab-root': { minHeight: 48 } }}>
         {onglets.map((o) => <Tab key={o.cle} value={o.cle} label={o.libelle} />)}

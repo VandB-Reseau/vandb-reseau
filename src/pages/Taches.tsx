@@ -22,6 +22,8 @@ import { Onglets, type Rubrique } from '../components/Onglets'
 import Typography from '@mui/material/Typography'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import FlagOutlined from '@mui/icons-material/FlagOutlined'
+import DoneAllOutlined from '@mui/icons-material/DoneAllOutlined'
+import { Indicateur, grilleIndicateurs } from '../components/Indicateur'
 import { PageHeader } from '../components/PageHeader'
 import { ChampRecherche } from '../components/Outils'
 import { RechercheFiltres } from '../components/RechercheFiltres'
@@ -61,11 +63,43 @@ function groupeDe(x: ActionSuivie, jour: string, dansUneSemaine: string): Groupe
 const plusSept = (jour: string) => { const d = new Date(`${jour}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 7); return d.toISOString().slice(0, 10) }
 
 // Intertitre d'un groupe, à l'intérieur de la liste (pas une tâche)
-function Intertitre({ titre, nombre }: { titre: string; nombre: number }) {
+// 406 (Joseph, 24/11/2026) : par magasin ou par personne, une barre d'avancement (tâches faites sur l'ensemble)
+function Intertitre({ titre, nombre, faites }: { titre: string; nombre: number; faites?: number }) {
+  const total = nombre + (faites ?? 0)
+  const part = faites != null && total ? faites / total : null
   return (
     <Box component="li" role="presentation" sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, pt: 1.5, pb: 0.5, bgcolor: 'action.hover' }}>
       <Typography component="h2" sx={cartouche}>{titre}</Typography><Box sx={{ flex: 1 }} />
+      {part != null && (
+        <Box role="img" aria-label={`${faites} faite${faites! > 1 ? 's' : ''} sur ${total}`} data-testid="avancement-groupe" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ width: { xs: 64, md: 120 }, height: 8, borderRadius: 4, bgcolor: 'divider', overflow: 'hidden' }}>
+            <Box sx={{ width: `${Math.round(part * 100)}%`, height: '100%', bgcolor: 'success.main' }} />
+          </Box>
+          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{Math.round(part * 100)} % faites</Typography>
+        </Box>
+      )}
       <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.secondary' }}>{nombre}</Typography>
+    </Box>
+  )
+}
+
+const moinsJours = (jour: string, n: number) => { const d = new Date(`${jour}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10) }
+
+// 406 (Joseph, 24/11/2026) : quatre cartes chiffrées en tête de liste ; les faites sur 30 jours comparées aux 30 jours d'avant
+function CartesTaches({ reseau, aFaire, faites }: { reseau: Reseau; aFaire: ActionSuivie[]; faites: ActionSuivie[] }) {
+  const j30 = moinsJours(reseau.jour, 30), j60 = moinsJours(reseau.jour, 60)
+  const retard = aFaire.filter((x) => enRetard(x.a, reseau.jour)).length
+  const bloquees = aFaire.filter((x) => x.a.statut === 'bloquee').length
+  const recentes = faites.filter((x) => (x.a.faite ?? '').slice(0, 10) > j30).length
+  const avant = faites.filter((x) => { const d = (x.a.faite ?? '').slice(0, 10); return d > j60 && d <= j30 }).length
+  const ecart = recentes - avant
+  return (
+    <Box aria-label="Tâches en chiffres" role="group" sx={{ ...grilleIndicateurs, mb: 2 }}>
+      <Indicateur icone={<TaskAltOutlined />} libelle="À faire" valeur={String(aFaire.length)} detail={aFaire.length ? `dont ${aFaire.filter((x) => x.a.statut === 'en_cours').length} en cours` : 'Rien en attente'} />
+      <Indicateur icone={<ScheduleOutlined />} libelle="En retard" valeur={String(retard)} couleur={retard ? 'error.main' : undefined} detail={aFaire.length ? `${Math.round((retard / aFaire.length) * 100)} % des tâches à faire` : '—'} />
+      <Indicateur icone={<BlockOutlined />} libelle="Bloquées" valeur={String(bloquees)} couleur={bloquees ? 'warning.dark' : undefined} detail={bloquees ? 'À débloquer' : 'Aucune'} />
+      <Indicateur icone={<DoneAllOutlined />} libelle="Faites sur 30 jours" valeur={String(recentes)}
+        evolution={avant || recentes ? { texte: `${ecart > 0 ? '+' : ''}${ecart}`, sens: ecart > 0 ? 'hausse' : ecart < 0 ? 'baisse' : 'stable', reference: `vs ${avant} les 30 jours d’avant` } : null} />
     </Box>
   )
 }
@@ -163,13 +197,16 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajoutVide }: { r
   if (!noms.length) return <EmptyState icone={<TaskAltOutlined />} titre="Aucun magasin" texte="Aucun magasin n’est rattaché à ton accès pour le moment." />
   if (!porteur) return <EmptyState icone={<TaskAltOutlined />} titre="Aucune liste" texte="Ton nom n’est pas encore relié à ton accès. Contacte la direction du réseau." />
   const dansUneSemaine = plusSept(reseau.jour)
-  const parCle = (cle: (x: ActionSuivie) => string[]) => {
+  const parCle = (cle: (x: ActionSuivie) => string[], avecAvancement = false) => {
     const m = new Map<string, ActionSuivie[]>()
     for (const x of aFaire) for (const k of cle(x)) m.set(k, [...(m.get(k) ?? []), x])
-    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0], 'fr')).map(([k, lignes]) => ({ g: k, titre: k, lignes }))
+    const f = new Map<string, number>()
+    if (avecAvancement) for (const x of faites) for (const k of cle(x)) f.set(k, (f.get(k) ?? 0) + 1)
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0], 'fr')).map(([k, lignes]) => ({ g: k, titre: k, lignes, faites: avecAvancement ? f.get(k) ?? 0 : undefined as number | undefined }))
   }
-  const parGroupe = regroupement === 'magasin' ? parCle((x) => [x.magasin])
-    : regroupement === 'personne' ? parCle((x) => (porteursDe(x.a).length ? porteursDe(x.a) : ['Sans porteur']))
+  const parPorteur = (x: ActionSuivie) => (porteursDe(x.a).length ? porteursDe(x.a) : ['Sans porteur'])
+  const parGroupe: { g: string; titre: string; lignes: ActionSuivie[]; faites?: number }[] = regroupement === 'magasin' ? parCle((x) => [x.magasin], true)
+    : regroupement === 'personne' ? parCle(parPorteur, true)
     : regroupement === 'priorite' ? parCle((x) => { const p = prioriteDe(x); return [p ? `${noms.length > 1 && !choix ? `${x.magasin} · ` : ''}${p.titre}` : '~Sans priorité'] }).map((g) => ({ ...g, titre: g.titre.replace(/^~/, '') }))
     : groupes.map((g) => ({ ...g, lignes: aFaire.filter((x) => groupeDe(x, reseau.jour, dansUneSemaine) === g.g) })).filter((g) => g.lignes.length)
   const bascule = (
@@ -210,11 +247,12 @@ function Liste({ reseau, noms, porteur, signaler, choixPorteur, ajoutVide }: { r
           <Chip label="Sans priorité" icon={<FlagOutlined />} color={sansPrio ? 'primary' : 'default'} variant={sansPrio ? 'filled' : 'outlined'} onClick={() => setSansPrio((v) => !v)} aria-pressed={sansPrio} sx={{ minHeight: 48 }} />
         </Box>
       </RechercheFiltres>
+      {(aFaire.length > 0 || faites.length > 0) && <CartesTaches reseau={reseau} aFaire={aFaire} faites={faites} />}
       <Box sx={{ display: 'grid', gap: 2 }}>
         <CarteLignes label="À faire">
           {aFaire.length
             ? <Box component="ul" aria-label="Tâches à faire" sx={{ listStyle: 'none', m: 0, p: 0, '& > li:not([role=presentation])': { px: 1 } }}>
-                {parGroupe.flatMap((g) => [<Intertitre key={`t-${g.g}`} titre={g.titre} nombre={g.lignes.length} />, ...g.lignes.map((x) => <Fragment key={`${g.g}-${x.cle}`}>{ligne(x)}</Fragment>)])}
+                {parGroupe.flatMap((g) => [<Intertitre key={`t-${g.g}`} titre={g.titre} nombre={g.lignes.length} faites={g.faites} />, ...g.lignes.map((x) => <Fragment key={`${g.g}-${x.cle}`}>{ligne(x)}</Fragment>)])}
               </Box>
             : q || faites.length
               ? <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>{q ? 'Aucune tâche ne correspond à la recherche.' : 'Toutes tes tâches sont faites.'}</Typography>

@@ -22,7 +22,7 @@ test('la nine box classe les magasins évalués', async ({ page, isMobile }, inf
   await page.screenshot({ path: `captures/${info.project.name}-sante-ninebox-case.png` })
   await panneau.getByRole('button', { name: 'Fermer' }).click()
   await expect(panneau).toBeHidden()
-  await expect(page.getByText('Non classés')).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Non classés/ })).toBeVisible()
   // Les deux axes sont lisibles, téléphone compris : Franchisé (vertical) et Résultats (horizontal)
   for (const n of ['fort', 'moyen', 'faible']) {
     const axe = page.getByText(`Franchisé ${n}`, { exact: true })

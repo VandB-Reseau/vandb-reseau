@@ -100,3 +100,69 @@ export function Barres({ barres, format, label, hauteur = 150, ouvrir, libelleOu
     </Box>
   )
 }
+
+// Barres empilées (407 / 408, Joseph 24/11/2026) : une colonne par période, chaque série en aplat de la charte, le total
+// au-dessus ; un clic sur une colonne la choisit (actif), un second clic la relâche. La légende sous le graphe.
+export interface Serie { libelle: string; couleur: string }
+export interface Colonne { libelle: string; cle: string; valeurs: number[] }
+export function BarresEmpilees({ colonnes, series, label, hauteur = 150, ouvrir, actif, libelleOuvrir, enPart = false }: {
+  colonnes: Colonne[]; series: Serie[]; label: string; hauteur?: number; ouvrir?: (cle: string) => void; actif?: string | null; libelleOuvrir?: (c: Colonne) => string
+  enPart?: boolean // chaque colonne à 100 % (répartition) plutôt qu'en nombre
+}) {
+  const total = (c: Colonne) => c.valeurs.reduce((a, v) => a + v, 0)
+  const max = Math.max(1, ...colonnes.map(total))
+  const n = colonnes.length
+  const visibles = series.map((s, i) => ({ ...s, i })).filter((s) => colonnes.some((c) => (c.valeurs[s.i] ?? 0) > 0))
+  return (
+    <Box role={ouvrir ? 'group' : 'img'} aria-label={label} sx={{ position: 'relative' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`, alignItems: 'end', gap: { xs: 0.5, md: 1 }, height: hauteur, borderBottom: '1px solid', borderColor: 'divider', pt: 2.5 }}>
+        {colonnes.map((c) => {
+          const t = total(c)
+          const h = enPart ? (t ? hauteur - 24 : 0) : t ? Math.max(3, (t / max) * (hauteur - 24)) : 0
+          const choisie = actif === c.cle
+          return (
+            <Box key={c.cle} {...(ouvrir ? { component: 'button' as const, type: 'button' as const, onClick: () => ouvrir(c.cle), 'aria-label': libelleOuvrir?.(c) ?? c.libelle, 'aria-pressed': choisie, title: libelleOuvrir?.(c) } : {})}
+              sx={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', minWidth: 0,
+                ...(ouvrir ? { border: 0, p: 0, m: 0, bgcolor: choisie ? 'action.selected' : 'transparent', font: 'inherit', cursor: 'pointer', borderRadius: 1, '&:hover, &:focus-visible': { bgcolor: 'action.hover' } } : {}),
+                opacity: actif && !choisie ? 0.45 : 1 }}>
+              <Box sx={{ position: 'relative', width: '64%', maxWidth: 40, height: h, display: 'flex', flexDirection: 'column-reverse', borderRadius: '6px 6px 0 0', overflow: 'hidden' }}>
+                {c.valeurs.map((v, i) => v > 0 && <Box key={i} sx={{ flex: `${v} 0 0`, bgcolor: series[i]?.couleur ?? brand.vertFonce, minHeight: 2 }} />)}
+              </Box>
+              {t > 0 && !enPart && <Box component="span" sx={{ position: 'absolute', bottom: h + 2, left: 0, right: 0, textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{t}</Box>}
+            </Box>
+          )
+        })}
+      </Box>
+      <Box aria-hidden sx={{ display: 'grid', gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`, gap: { xs: 0.5, md: 1 }, mt: 0.5 }}>
+        {colonnes.map((c) => <Typography key={c.cle} sx={{ fontSize: '0.75rem', textAlign: 'center', color: actif === c.cle ? 'text.primary' : 'text.secondary', fontWeight: actif === c.cle ? 700 : 400, overflow: 'hidden', whiteSpace: 'nowrap' }}>{c.libelle}</Typography>)}
+      </Box>
+      <Box aria-hidden sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 2, rowGap: 0.5, mt: 1, fontSize: '0.75rem', color: 'text.secondary' }}>
+        {visibles.map((s) => <Box key={s.libelle} component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}><Box component="span" sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: s.couleur }} />{s.libelle}</Box>)}
+      </Box>
+      <Box component="span" sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+        {colonnes.map((c) => `${c.libelle} : ${visibles.filter((s) => c.valeurs[s.i]).map((s) => `${s.libelle} ${c.valeurs[s.i]}`).join(', ') || 'rien'}`).join(' ; ')}
+      </Box>
+    </Box>
+  )
+}
+
+// Barre de répartition horizontale (408) : une seule barre, chaque part en aplat avec son nombre dessous
+export function BarreRepartition({ parts, label }: { parts: Part[]; label: string }) {
+  const total = parts.reduce((a, p) => a + Math.max(0, p.valeur), 0)
+  return (
+    <Box role="img" aria-label={`${label} : ${parts.map((p) => `${p.libelle} ${p.valeur}`).join(', ')}`}>
+      <Box sx={{ display: 'flex', height: 16, borderRadius: 8, overflow: 'hidden', bgcolor: 'divider' }}>
+        {total > 0 && parts.map((p, i) => p.valeur > 0 && <Box key={p.libelle} sx={{ flex: `${p.valeur} 0 0`, bgcolor: p.couleur ?? couleursParts[i % couleursParts.length], '& + &': { borderLeft: '2px solid', borderColor: 'background.paper' } }} />)}
+      </Box>
+      <Box aria-hidden sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 2.5, rowGap: 0.5, mt: 1 }}>
+        {parts.map((p, i) => (
+          <Box key={p.libelle} component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontSize: '0.875rem' }}>
+            <Box component="span" sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: p.couleur ?? couleursParts[i % couleursParts.length] }} />
+            {p.libelle}<Box component="span" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{p.valeur}</Box>
+            <Box component="span" sx={{ color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>{total ? `${Math.round((p.valeur / total) * 100)} %` : ''}</Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  )
+}

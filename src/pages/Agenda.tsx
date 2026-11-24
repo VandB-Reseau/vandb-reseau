@@ -1,4 +1,4 @@
-import { couleurEvenement, texteSur } from '../theme/theme'
+import { brand, couleurEvenement, texteSur } from '../theme/theme'
 import { useEffect, useMemo, useRef, useState, type PointerEvent as EvenementPointeur, type ReactElement } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -145,6 +145,17 @@ const datesApres = (g: Glisse): Dates => {
 }
 type Ajout = 'visite' | 'evenement' | 'formation'
 interface Ancre { jour: string; x: number; y: number }
+
+// 411 (Joseph, 24/11/2026) : la charge du jour en pastille, beige jusqu'à 2 rendez-vous, orange dès 3 (journée pleine)
+const CHARGE_PLEINE = 3
+function PastilleCharge({ n }: { n: number }) {
+  if (!n) return <Box sx={{ flex: 1 }} />
+  const pleine = n >= CHARGE_PLEINE
+  return (
+    <Box component="span" data-charge={pleine ? 'pleine' : 'normale'} aria-label={`${n} rendez-vous${pleine ? ', journée chargée' : ''}`} title={`${n} rendez-vous${pleine ? ', journée chargée' : ''}`}
+      sx={{ ml: 'auto', mr: 0.5, px: 0.75, minWidth: 22, textAlign: 'center', borderRadius: 11, fontSize: '0.75rem', fontWeight: 700, lineHeight: '20px', fontVariantNumeric: 'tabular-nums', bgcolor: pleine ? brand.orange : brand.beige, color: pleine ? '#fff' : brand.noir }}>{n}</Box>
+  )
+}
 
 function Pastille({ e, onClick, glissement, poignee, actif }: { e: Element; onClick?: () => void; glissement?: (ev: EvenementPointeur, mode: Mode) => void; poignee?: boolean; actif?: boolean }) {
   const contenu = <Box component="span" sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.titre}</Box>
@@ -346,6 +357,7 @@ function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, semaine = fal
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
                   {/* 353 (18/11/2026) : aujourd'hui dans un rond noir, comme sur le téléphone */}
                   <Typography variant="body2" sx={{ fontWeight: j === reseau.jour ? 800 : 500, color: horsMois ? 'text.secondary' : j === reseau.jour ? 'background.paper' : 'text.primary', ...(j === reseau.jour ? { bgcolor: 'text.primary', borderRadius: '50%', width: 26, height: 26, display: 'grid', placeItems: 'center' } : {}) }}>{Number(j.slice(8))}</Typography>
+                  {!horsMois && <PastilleCharge n={duJour(j).length} />}
                   <IconButton className="ajout-jour" size="small" aria-label={`Ajouter le ${jourLong(j)}`} onClick={(ev) => ajouter(ancreDe(j, ev.currentTarget))} sx={{ opacity: 0, p: 0.25, m: -0.25 }}><AddOutlined fontSize="small" /></IconButton>
                 </Box>
                 {!horsMois && duJour(j).map((e) => {
@@ -381,7 +393,9 @@ function ContenuMois({ reseau, debut, fin, actives, surPC, modifs, semaine = fal
             sx={{ flexShrink: 0, width: 48, minHeight: 64, scrollSnapAlign: 'center', flexDirection: 'column', gap: 0.25, fontFamily: 'inherit', borderRadius: 3, bgcolor: aujourdhui ? 'text.primary' : undefined, color: aujourdhui ? 'background.paper' : occupe ? 'text.primary' : 'text.secondary' }}>
             <Box component="span" sx={{ fontSize: '0.75rem', textTransform: 'capitalize' }}>{jourUTC(j).toLocaleDateString('fr-FR', { weekday: 'short', timeZone: 'UTC' }).slice(0, 3)}</Box>
             <Box component="span" sx={{ fontWeight: 700 }}>{Number(j.slice(8))}</Box>
-            <Box component="span" sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: duJour(j).length ? (aujourdhui ? 'background.paper' : 'primary.main') : 'transparent' }} />
+            {duJour(j).length >= 2
+              ? <Box component="span" data-charge={duJour(j).length >= CHARGE_PLEINE ? 'pleine' : 'normale'} sx={{ minWidth: 18, px: 0.5, borderRadius: 9, fontSize: '0.75rem', fontWeight: 700, lineHeight: '16px', bgcolor: duJour(j).length >= CHARGE_PLEINE ? brand.orange : aujourdhui ? 'background.paper' : brand.beige, color: duJour(j).length >= CHARGE_PLEINE ? '#fff' : brand.noir }}>{duJour(j).length}</Box>
+              : <Box component="span" sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: duJour(j).length ? (aujourdhui ? 'background.paper' : 'primary.main') : 'transparent' }} />}
           </ButtonBase>
         )
       })}
