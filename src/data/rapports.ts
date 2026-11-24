@@ -305,13 +305,22 @@ export const axesVisibles = (equipe: boolean) => tousAxes().filter((a) => equipe
 // ── Définition d'un rapport (enregistrée telle quelle) ──────────────────
 export type Affichage = 'tableau' | 'graphes' | 'deux'
 // Type de graphe choisi dans le rendu (Joseph, 18/11/2026) ; « auto » = colonnes dans le temps, barres sinon
-export type TypeGraphe = 'auto' | 'barres' | 'colonnes' | 'courbe' | 'camembert'
+// 382 / 383 (Joseph, 24/11/2026) : le type se choisit graphe par graphe ; « topflop » = les 5 meilleurs et les 5 moins bons
+export type TypeGraphe = 'auto' | 'barres' | 'colonnes' | 'courbe' | 'camembert' | 'topflop'
 export const TYPES_GRAPHE: { cle: TypeGraphe; libelle: string }[] = [
   { cle: 'auto', libelle: 'Automatique' },
   { cle: 'barres', libelle: 'Barres' },
   { cle: 'colonnes', libelle: 'Bâtons' },
   { cle: 'courbe', libelle: 'Courbe' },
   { cle: 'camembert', libelle: 'Camembert' },
+  { cle: 'topflop', libelle: 'Top / Flop' },
+]
+// 381 (Joseph, 24/11/2026) : comparer chaque chiffre à l'an dernier ou au budget, en un bouton
+export type Comparaison = 'aucune' | 'n1' | 'budget'
+export const COMPARAISONS: { cle: Comparaison; libelle: string; court: string }[] = [
+  { cle: 'aucune', libelle: 'Rien', court: '' },
+  { cle: 'n1', libelle: 'An dernier', court: 'l’an dernier' },
+  { cle: 'budget', libelle: 'Budget', court: 'le budget' },
 ]
 export interface Definition {
   lignes: AxeId
@@ -321,6 +330,8 @@ export interface Definition {
   colonnes: Decoupage
   affichage: Affichage
   graphe?: TypeGraphe
+  graphes?: Record<string, TypeGraphe> // type choisi pour un indicateur (382), sinon graphe
+  comparer?: Comparaison
   tri?: { cle: string; sens: 'asc' | 'desc' } | null
 }
 export const definitionVide = (): Definition => ({ lignes: 'magasin', indicateurs: ['ca', 'evolution'], filtres: {}, periode: { type: 'cumul' }, colonnes: 'aucun', affichage: 'deux', graphe: 'auto', tri: null })
@@ -343,12 +354,20 @@ export function normaliserDefinition(v: unknown, equipe: boolean): Definition {
   const graphe = TYPES_GRAPHE.some((g) => g.cle === o.graphe) ? o.graphe as TypeGraphe : 'auto'
   const t = o.tri && typeof o.tri === 'object' ? o.tri as Record<string, unknown> : null
   const tri = t && typeof t.cle === 'string' && (t.sens === 'asc' || t.sens === 'desc') ? { cle: t.cle, sens: t.sens } as const : null
-  return { lignes, indicateurs: indicateurs.length ? indicateurs : base.indicateurs, filtres, periode, colonnes, affichage, graphe, tri }
+  const g = o.graphes && typeof o.graphes === 'object' && !Array.isArray(o.graphes) ? o.graphes as Record<string, unknown> : {}
+  const graphes: Record<string, TypeGraphe> = {}
+  for (const [k, x] of Object.entries(g)) if (ids.has(k) && TYPES_GRAPHE.some((y) => y.cle === x)) graphes[k] = x as TypeGraphe
+  const comparer = COMPARAISONS.some((x) => x.cle === o.comparer) ? o.comparer as Comparaison : undefined
+  return { lignes, indicateurs: indicateurs.length ? indicateurs : base.indicateurs, filtres, periode, colonnes, affichage, graphe, tri,
+    ...(Object.keys(graphes).length ? { graphes } : {}), ...(comparer && comparer !== 'aucune' ? { comparer } : {}) }
 }
 
 // ── Calcul ──────────────────────────────────────────────────────────────
 export interface Cellule { valeur: number | null; texte: string | null }
-export interface LigneRapport { cle: string; libelle: string; magasins: string[]; cellules: Record<string, Cellule> } // clé de cellule : `${indicateur}|${colonne}`
+export interface LigneRapport {
+  cle: string; libelle: string; magasins: string[]; cellules: Record<string, Cellule> // clé de cellule : `${indicateur}|${colonne}`
+  refs?: Record<string, Cellule> // 381 : même clé, chiffre de référence (an dernier ou budget) quand il a un sens
+}
 export interface Resultat {
   mois: string[]
   colonnes: { cle: string; libelle: string; mois: string[] }[]
@@ -398,13 +417,23 @@ export function calculer(c: Contexte, d: Definition): Resultat {
     for (const i of indicateurs) for (const col of colonnes) parCle.set(`${i.id}|${col.cle}`, i.temporel || col.cle === colonnes[0].cle || d.colonnes === 'aucun' ? i.mesure(c, m, i.temporel ? col.mois : mois) : null)
     mesures.set(m.nom, parCle)
   }
+  // Références (381) : mêmes mois l'an dernier, ou budget des mois réalisés
+  const comp = d.comparer && d.comparer !== 'aucune' ? d.comparer : null
+  const refs = new Map<string, Map<string, Mesure | null>>()
+  if (comp) for (const m of magasins) {
+    const parCle = new Map<string, Mesure | null>()
+    for (const i of indicateurs) if (comparable(i, comp)) for (const col of colonnes) parCle.set(`${i.id}|${col.cle}`, mesureReference(c, m, i, comp, i.temporel ? col.mois : mois))
+    refs.set(m.nom, parCle)
+  }
   const ligne = (cle: string, libelle: string, liste: Magasin[]): LigneRapport => {
     const cellules: Record<string, Cellule> = {}
+    const r: Record<string, Cellule> = {}
     for (const i of indicateurs) for (const col of colonnes) {
       const k = `${i.id}|${col.cle}`
       cellules[k] = !i.temporel && d.colonnes !== 'aucun' && col.cle !== colonnes[0].cle ? { valeur: null, texte: null } : agreger(i, liste.map((m) => mesures.get(m.nom)!.get(k) ?? null))
+      if (comp && comparable(i, comp)) r[k] = agreger(i, liste.map((m) => refs.get(m.nom)!.get(k) ?? null))
     }
-    return { cle, libelle, magasins: liste.map((m) => m.nom), cellules }
+    return { cle, libelle, magasins: liste.map((m) => m.nom), cellules, ...(comp ? { refs: r } : {}) }
   }
   const groupes = new Map<string, Magasin[]>()
   for (const m of magasins) { const v = a.valeur(c, m); groupes.set(v, [...(groupes.get(v) ?? []), m]) }
@@ -423,6 +452,51 @@ export function calculer(c: Contexte, d: Definition): Resultat {
     return (tri.sens === 'asc' ? r : -r) || x.libelle.localeCompare(y.libelle, 'fr')
   })
   return { mois, colonnes, indicateurs, lignes, total: ligne('total', 'Ensemble de la sélection', magasins), magasins: magasins.length }
+}
+
+// ── Comparaison (381) ───────────────────────────────────────────────────
+// An dernier : tout indicateur chiffré qui suit la période et n'est pas déjà une évolution ni un chiffre du budget.
+// Budget : le CA HT seul (le budget n'a pas d'autre chiffre mensuel), sur les mois où le magasin a un CA en caisse.
+export function comparable(i: Indicateur, comp: Comparaison): boolean {
+  if (comp === 'budget') return i.id === 'ca'
+  if (comp === 'n1') return i.temporel && i.agregat !== 'texte' && i.format !== 'ecart' && i.theme !== 'budget' && i.id !== 'caN1'
+  return false
+}
+function mesureReference(c: Contexte, m: Magasin, i: Indicateur, comp: Comparaison, mois: string[]): Mesure | null {
+  if (comp === 'n1') return i.mesure(c, m, n1(mois))
+  const f = fin(c, m)
+  if (!f?.caBudget) return null
+  const l = mois.filter((x) => Number(x.slice(0, 4)) === f.annee && caDe(chiffre(c.reseau, m.nom, x)) !== null).map((x) => Number(x.slice(5, 7)) - 1)
+  return l.length ? { n: l.reduce((s, k) => s + (f.caBudget![k] ?? 0), 0) } : null
+}
+// Écart à la référence : en points pour un pourcentage, en % sinon ; null sans référence utilisable
+export function ecartReference(i: Indicateur, v: Cellule, ref: Cellule | undefined): number | null {
+  if (!ref || v.valeur === null || ref.valeur === null) return null
+  if (i.format === 'pct') return v.valeur - ref.valeur
+  return ref.valeur === 0 ? null : v.valeur / ref.valeur - 1
+}
+export function formaterEcart(i: Indicateur, e: number): string {
+  const s = e > 0 ? '+' : e < 0 ? '−' : ''
+  return i.format === 'pct' ? `${s}${un.format(Math.abs(e) * 100)} pt` : `${s}${un.format(Math.abs(e) * 100)} %`
+}
+export const ecartFavorable = (i: Indicateur, e: number) => e !== 0 && (e > 0) !== !!i.inverse
+
+// ── Tendance (378) : total de la sélection mois par mois, sur les 12 mois qui finissent au mois de la période ─
+export function tendance(c: Contexte, d: Definition, i: Indicateur, magasins = magasinsRetenus(c, d), n = 12): (number | null)[] {
+  if (!i.temporel || i.agregat === 'texte') return []
+  const fin_ = moisDeLaPeriode(d.periode, c.jour).at(-1)!
+  return Array.from({ length: n }, (_, k) => agreger(i, magasins.map((m) => i.mesure(c, m, [decalerMois(fin_, k - n + 1)]))).valeur)
+}
+
+// Aperçu d'un rapport (377) : son premier indicateur chiffré, total de la sélection sur sa période, et sa tendance
+export function apercuRapport(c: Contexte, d: Definition): { libelle: string; valeur: string; serie: (number | null)[]; ton: 'bon' | 'mauvais' | null } | null {
+  const i = d.indicateurs.map(indicateur).find((x): x is Indicateur => !!x && x.agregat !== 'texte' && (c.equipe || !x.equipeSeule))
+  if (!i) return null
+  const magasins = magasinsRetenus(c, d)
+  if (!magasins.length) return null
+  const mois = moisDeLaPeriode(d.periode, c.jour)
+  const v = agreger(i, magasins.map((m) => i.mesure(c, m, mois)))
+  return { libelle: i.libelle, valeur: formater(i.format, v), serie: tendance(c, d, i, magasins), ton: tonCellule(i, v) }
 }
 
 // Valeurs proposées pour filtrer un axe, dans l'ordre alphabétique
