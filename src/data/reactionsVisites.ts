@@ -29,15 +29,16 @@ async function charger(): Promise<Omit<ReactionsVisites, 'recharger'> | null> {
 }
 
 // null : réactions pas encore activées dans la base (migration 0022 pas encore passée)
-export function useReactionsVisites(): ReactionsVisites | null {
-  const [etat, setEtat] = useState<Omit<ReactionsVisites, 'recharger'> | null>(null)
+export function useReactionsVisites(): ReactionsVisites | null | undefined {
+  // undefined : lecture en cours (le fil garde la place des boutons, sans changer de forme à l'arrivée)
+  const [etat, setEtat] = useState<Omit<ReactionsVisites, 'recharger'> | null | undefined>(undefined)
   const recharger = useCallback(async () => { setEtat(await charger()) }, [])
   useEffect(() => {
     let actif = true
     void charger().then((r) => { if (actif) setEtat(r) })
     return () => { actif = false }
   }, [])
-  return useMemo(() => (etat ? { ...etat, recharger } : null), [etat, recharger])
+  return useMemo(() => (etat ? { ...etat, recharger } : etat), [etat, recharger])
 }
 
 async function appeler(fn: string, args: Record<string, unknown>) {

@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Accueil sans saut au chargement (Joseph, 24/11/2026), sans migration. Pendant la lecture des « J'aime », un compte rendu
+  ou une bonne pratique du fil montre déjà sa barre « J'aime » / « Commenter », inactive, au lieu d'un bouton « Voir le compte
+  rendu » remplacé une seconde plus tard.
 - Pilotage plus visuel et plus simple (Joseph, 24/11/2026, choix 377 à 384), sans migration. Rapports de la liste en
   cartes avec leur chiffre clé et leur courbe sur 12 mois ; cartes chiffrées en tête de chaque rapport (total, écart à l'an
   dernier ou au budget, courbe) ; période en pastilles (Mois dernier, Depuis janvier, 12 mois glissants, Quadrimestre,
