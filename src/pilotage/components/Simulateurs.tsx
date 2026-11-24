@@ -285,8 +285,11 @@ function Bloc({ titre, total, children }: { titre: string; total?: { libelle: st
 }
 // Le compte du simulateur, du chiffre d'affaires au résultat : une ligne par bloc, le total en gras (en tête du bloc Résultat)
 // 409 (Joseph, 24/11/2026) : chaque ligne porte sa marche de la cascade (du CA au résultat), le trait pointillé marque le
-// point mort (0 €) : ce qui reste à droite du trait est gagné, à gauche perdu
-function Compte({ titre, lignes, total }: { titre: string; lignes: { libelle: string; valeur: number; detail?: string }[]; total: { libelle: string; valeur: number } }) {
+// zéro : ce qui reste à droite du trait est gagné, à gauche perdu.
+// Point mort (Joseph, 24/11/2026 : « le point mort n'est pas 0 € ») : le trait marque 0 €, pas le point mort ; le point
+// mort, quand le simulateur en a un, est un volume (fûts) donné à part (`pointMort`). Sans gain possible (coût d'une
+// formation, consignes), pas de trait (`sansZero`).
+function Compte({ titre, lignes, total, pointMort, sansZero }: { titre: string; lignes: { libelle: string; valeur: number; detail?: string }[]; total: { libelle: string; valeur: number }; pointMort?: string; sansZero?: boolean }) {
   const vues = lignes.filter((l, i) => i === 0 || Math.abs(l.valeur) >= 0.5)
   const marches: { de: number; a: number }[] = []
   let cumul = 0
@@ -297,7 +300,7 @@ function Compte({ titre, lignes, total }: { titre: string; lignes: { libelle: st
   const pos = (v: number) => ((v - bas) / etendue) * 100
   const marche = (de: number, a: number, fort: boolean) => (
     <Box aria-hidden className="cascade" sx={{ position: 'relative', alignSelf: 'center', flexShrink: 0, width: { xs: 72, sm: 140, md: 200 }, height: 14 }}>
-      <Box sx={{ position: 'absolute', top: -4, bottom: -4, left: `${pos(0)}%`, borderLeft: '1px dashed', borderColor: 'text.secondary', opacity: 0.6 }} />
+      {!sansZero && <Box sx={{ position: 'absolute', top: -4, bottom: -4, left: `${pos(0)}%`, borderLeft: '1px dashed', borderColor: 'text.secondary', opacity: 0.6 }} />}
       <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: `${pos(Math.min(de, a))}%`, width: `max(2px, ${pos(Math.max(de, a)) - pos(Math.min(de, a))}%)`, borderRadius: '3px',
         bgcolor: fort ? (a >= 0 ? brand.vertFonce : brand.brique) : a >= de ? 'rgba(48, 118, 114, 0.45)' : 'rgba(194, 65, 25, 0.45)' }} />
     </Box>
@@ -317,7 +320,8 @@ function Compte({ titre, lignes, total }: { titre: string; lignes: { libelle: st
     <Box role="table" aria-label={titre} sx={{ maxWidth: 760 }}>
       {vues.map((l, i) => ligne(l.libelle, l.valeur, l.detail, false, marches[i]))}
       {ligne(total.libelle, total.valeur, undefined, true, { de: 0, a: total.valeur })}
-      <Typography aria-hidden sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.5, textAlign: 'right' }}>Trait pointillé : point mort (0 €)</Typography>
+      {pointMort && <Typography sx={{ mt: 0.5, textAlign: 'right', fontWeight: 600 }}>Point mort : {pointMort}</Typography>}
+      {!sansZero && <Typography aria-hidden sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.5, textAlign: 'right' }}>Trait pointillé : 0 €, gain à droite, perte à gauche</Typography>}
     </Box>
   )
 }
@@ -1548,7 +1552,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           <Compte titre="Consignes de l’année" lignes={[
             { libelle: 'Sorties', valeur: -r.consignes.sorties, detail: `${entier(e.futs + r.futsOfferts)} fûts et ${entier(bouteilles)} bouteille${bouteilles >= 2 ? 's' : ''} de CO2` },
             { libelle: 'Rentrées', valeur: r.consignes.rentrees, detail: 'au retour des fûts vides, des bouteilles en fin de contrat' },
-          ]} total={{ libelle: 'Bloqué au plus fort', valeur: -r.consignes.bloque }} />
+          ]} total={{ libelle: 'Bloqué au plus fort', valeur: -r.consignes.bloque }} sansZero />
           <Typography color="text.secondary">
             {e.consignesClient
               ? `Le client avance les consignes (${montant(r.consignes.avanceClient)} au plus fort), à lui rendre au retour.`
@@ -1573,7 +1577,8 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           { libelle: 'Livraisons', valeur: -r.livraisonsAn },
           { libelle: 'Matériel, gobelets et astreinte', valeur: -(r.materiel + r.gobeletsAn + r.astreinte) },
           { libelle: 'Don ou sponsoring', valeur: -donSponso, detail: r.don.reduction ? 'réduction d’impôt déduite' : undefined },
-        ]} total={{ libelle: r.gain >= 0 ? 'Gain de l’année' : 'Perte de l’année', valeur: r.gain }} />
+        ]} total={{ libelle: r.gain >= 0 ? 'Gain de l’année' : 'Perte de l’année', valeur: r.gain }}
+          pointMort={r.equilibre === 0 ? 'dès le premier fût' : r.equilibre !== null ? `${entier(r.equilibre)} fût${r.equilibre >= 2 ? 's' : ''} par an, ${entier(e.futs)} prévus` : 'jamais, chaque fût fait perdre'} />
       <Resultats>
         <Indicateur libelle="Marge par fût" valeur={centimes(margeExt.valeur)} detail={margeExt.taux !== null ? `HT, ${taux(margeExt.taux)} du prix de vente HT après remise` : 'pas de prix de vente'} />
         <Indicateur libelle="Net par fût" valeur={centimes(r.netParFut)} detail={`HT, après achat et ${centimes(r.redevanceParFut)} de redevance et publicité`} />
@@ -1738,7 +1743,8 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
             { libelle: 'Autres coûts annexes', valeur: -r.annexes },
             { libelle: billetLibelle, valeur: -r.billet.cout, detail: r.billet.reduction ? 'réduction d’impôt déduite' : undefined },
             { libelle: 'Redevance et publicité', valeur: -r.redevance },
-          ]} total={{ libelle: 'Masse de marge', valeur: r.masseMarge }} />
+          ]} total={{ libelle: 'Masse de marge', valeur: r.masseMarge }}
+            pointMort={r.equilibre === 0 ? 'dès le premier fût' : r.equilibre !== null ? `${entier(r.equilibre)} fût${r.equilibre >= 2 ? 's' : ''} par an à ce prix, ${entier(e.futs)} prévus` : 'jamais à ce prix'} />
           <Box sx={{ overflowX: 'auto' }}>
             <Table size="small" aria-label="Ce que paie le prix d’un fût" sx={{ minWidth: 300, maxWidth: 560, '& td, & th': { fontVariantNumeric: 'tabular-nums' } }}>
               <TableHead><TableRow><TableCell>Dans le prix d’un fût</TableCell><TableCell align="right">HT</TableCell></TableRow></TableHead>
@@ -2840,7 +2846,7 @@ export function Simulateurs({ magasin, budget: b, hypotheses: h, parametres: p, 
           { libelle: 'OPCO : salaire pendant la formation', valeur: r.opcoSalaire, detail: `jusqu’à ${centimes(s.formation.opcoSalaireHeure)} par heure, dans le même budget` },
           { libelle: 'OPCO : autres frais', valeur: r.opcoAutres },
           { libelle: 'Aide à l’embauche de l’apprenti', valeur: r.aide, detail: '1re année' },
-        ]} total={{ libelle: r.resteACharge >= 0 ? 'Reste à charge du magasin' : 'Les aides dépassent le coût de', valeur: -r.resteACharge }} />
+        ]} total={{ libelle: r.resteACharge >= 0 ? 'Reste à charge du magasin' : 'Les aides dépassent le coût de', valeur: -r.resteACharge }} sansZero />
         <Resultats>
           <Indicateur libelle={r.resteACharge >= 0 ? 'Reste à charge du magasin' : 'Les aides dépassent le coût de'} valeur={montant(Math.abs(r.resteACharge))} detail={r.coutTotal > 0 ? `sur ${montant(r.coutTotal)} de coût, ${taux(r.financements / r.coutTotal)} pris en charge` : undefined} />
           {r.parJour !== null && r.resteACharge >= 0 && <Indicateur libelle="Par jour de formation" valeur={montant(r.parJour)} detail={r.parHeure !== null ? `${centimes(r.parHeure)} par heure` : undefined} />}

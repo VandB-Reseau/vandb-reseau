@@ -28,7 +28,7 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs, 'aucune erreur JavaScript').toEqual([])
 })
 
-test('409 : le compte du simulateur se lit en cascade, point mort marqué', async ({ page }) => {
+test('409 : le compte du simulateur se lit en cascade, zéro marqué', async ({ page }) => {
   await connecter(page, franchise, { role: 'franchise' })
   await page.goto(`./#/magasins/${encodeURIComponent(NOM)}?vue=chiffres&partie=simulateurs&sim=soiree`)
   await page.getByRole('group', { name: 'Formule' }).getByRole('button', { name: 'Soirée animée sans billet' }).click()
@@ -40,7 +40,9 @@ test('409 : le compte du simulateur se lit en cascade, point mort marqué', asyn
   await expect(compte.getByRole('row')).toHaveCount(4)
   await expect(compte.locator('.cascade')).toHaveCount(4)
   await expect(compte.getByRole('row').last()).toHaveText(/Gain.*1\s168\s€/)
-  await expect(compte).toContainText('Trait pointillé : point mort (0 €)')
+  await expect(compte).toContainText('Trait pointillé : 0 €, gain à droite, perte à gauche')
+  // La soirée n'a pas de point mort en volume : rien n'est annoncé comme tel (Joseph, 24/11/2026)
+  await expect(compte).not.toContainText('Point mort')
   const r = (await compte.boundingBox())!
   expect(r.width).toBeLessThanOrEqual(page.viewportSize()!.width)
 })
