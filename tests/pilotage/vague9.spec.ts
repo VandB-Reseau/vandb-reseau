@@ -66,6 +66,7 @@ test('138 et 141 : contrat extérieur rentable, don avec reçu Cerfa, gardé', a
   // 43 fûts ; 40 × 25,59 + 24,67 − 1 105 = − 56,73 € ; si la tireuse ressert : 880,33 ÷ 25,59 = 34,4, 35 fûts.
   // Consignes : 4 fûts d'une livraison × 60 € + 2 bouteilles × 85 € = 410 € bloqués au plus fort
   await expect(page.getByRole('status')).toContainText(/25,59\s€ nets par fût, 1\s105\s€ de coûts fixes, équilibre à 43 fûts ; perte de 57\s€ au volume prévu\. Tireuse payée sur les 3 ans du contrat : 600\s€ non amortis si le client part, équilibre à 35 fûts si elle ressert ailleurs\. Consignes : 410\s€ de trésorerie bloqués au plus fort\./)
+  await expect(page.getByRole('table', { name: 'Compte de l’année' })).toContainText(/Point mort : 43 fûts par an, \d+ prévus/)
   await expect(page.getByText('Perte sur la durée du contrat')).toBeVisible()
   // Contrat de 5 ans : on revient à l'amortissement sur la durée de vie : 905 € ; 1 048,27 − 905 = 143 €
   await page.getByLabel('Durée du contrat').fill('5')
