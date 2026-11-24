@@ -212,3 +212,19 @@ test('J’aime : aimer, retirer, remettre, même avec une base lente, le bouton 
   await expect(carte.getByText('2 J’aime', { exact: true })).toBeVisible()
   expect(liste.find((c) => c.id === 2)!.pouces!.some((p) => p.user_id !== 'x' && p.user_id !== 'y')).toBe(false)
 })
+
+test('Accueil (24/11) : un compte rendu montre tout de suite sa barre J’aime / Commenter, sans autre bouton remplacé une seconde plus tard', async ({ page }) => {
+  await seConnecter(page, { reactionsVisites: { pouces: {}, commentaires: {} } })
+  // Base lente pour les « J'aime » des comptes rendus
+  await page.route('**/rest/v1/rpc/reactions_visites', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.fallback() })
+  await page.reload()
+  const compteRendu = page.getByRole('region', { name: 'Actualités' }).getByRole('article', { name: /^Compte rendu de / }).first()
+  await expect(compteRendu).toBeVisible()
+  const jaime = compteRendu.getByRole('button', { name: 'J’aime' })
+  await expect(jaime).toBeVisible()
+  await expect(jaime).toBeDisabled()
+  await expect(compteRendu.getByRole('link', { name: 'Voir le compte rendu' })).toHaveCount(0)
+  // Les « J'aime » arrivés, la même barre devient active
+  await expect(jaime).toBeEnabled()
+  await expect(compteRendu.getByRole('link', { name: 'Voir le compte rendu' })).toHaveCount(0)
+})

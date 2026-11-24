@@ -30,15 +30,16 @@ async function charger(): Promise<Omit<ReactionsPratiques, 'recharger'> | null> 
 }
 
 // null : réactions pas encore activées dans la base
-export function useReactionsPratiques(): ReactionsPratiques | null {
-  const [etat, setEtat] = useState<Omit<ReactionsPratiques, 'recharger'> | null>(null)
+export function useReactionsPratiques(): ReactionsPratiques | null | undefined {
+  // undefined : lecture en cours (le fil garde la place des boutons, sans changer de forme à l'arrivée)
+  const [etat, setEtat] = useState<Omit<ReactionsPratiques, 'recharger'> | null | undefined>(undefined)
   const recharger = useCallback(async () => { setEtat(await charger()) }, [])
   useEffect(() => {
     let actif = true
     void charger().then((r) => { if (actif) setEtat(r) })
     return () => { actif = false }
   }, [])
-  return useMemo(() => (etat ? { ...etat, recharger } : null), [etat, recharger])
+  return useMemo(() => (etat ? { ...etat, recharger } : etat), [etat, recharger])
 }
 
 async function appeler(fn: string, args: Record<string, unknown>) {

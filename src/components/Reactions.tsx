@@ -137,3 +137,14 @@ export function Reactions({ titre, pouces: initiaux, commentaires: tous, autres 
   )
 }
 
+
+// Pendant la lecture des « J'aime » (Joseph, 24/11/2026) : la carte du fil montre déjà sa barre « J'aime » / « Commenter »,
+// inactive, au lieu d'un autre bouton remplacé une seconde plus tard
+export function ReactionsEnAttente() {
+  return (
+    <Box aria-busy="true" sx={{ display: 'flex', alignItems: 'stretch', mx: 1, mt: 0.5, borderTop: '1px solid', borderColor: 'divider', '& > *': { flex: 1, minHeight: 48 } }}>
+      <Button disabled startIcon={<ThumbUpOutlined />} sx={{ px: 1, minHeight: 48 }}>J’aime</Button>
+      <Button disabled startIcon={<ChatBubbleOutlineOutlined />} sx={{ px: 1, minHeight: 48 }}>Commenter</Button>
+    </Box>
+  )
+}

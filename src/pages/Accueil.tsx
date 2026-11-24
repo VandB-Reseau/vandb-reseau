@@ -82,7 +82,7 @@ import { VisuelFil } from '../components/MiseEnForme'
 import { ReactionsPratique } from '../components/BonnesPratiques'
 import { useReactionsPratiques, type ReactionsPratiques } from '../data/reactionsPratiques'
 import { basculerPouceVisite, commenterVisite, messageReactionVisite, supprimerCommentaireVisite, useReactionsVisites, type ReactionsVisites } from '../data/reactionsVisites'
-import { Reactions } from '../components/Reactions'
+import { Reactions, ReactionsEnAttente } from '../components/Reactions'
 import { BandeCollante } from '../components/Collant'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
@@ -652,6 +652,7 @@ export interface ConnaissancesDuFil { carte: Map<number, Connaissance> | null; f
 
 export function FilActivite({ elements, jour, sansMagasin = false, sansFiltre = false, titre = 'Actualités', communications, reactionsPratiques, reactionsVisites, action, ouvrirJournal, limite, lienTout, social = false, partager, connaissances, telephone = false }: {
   elements: ElementFil[]; jour: string; sansMagasin?: boolean; sansFiltre?: boolean; titre?: string; communications?: CommunicationsDuFil; reactionsPratiques?: ReactionsPratiques | null
+  // undefined : en cours de lecture (les deux écrans du fil les passent toujours)
   reactionsVisites?: ReactionsVisites | null
   action?: ReactNode; ouvrirJournal?: (e: ElementFil) => void
   // Vague 8 (Joseph, 11/11/2026, « les actus en premier plan, comme un réseau social ») : sur téléphone, l'accueil montre
@@ -705,6 +706,8 @@ export function FilActivite({ elements, jour, sansMagasin = false, sansFiltre = 
         moi={reactionsVisites.moi} jour={jour} lectureSeule={lectureSeule} basculer={() => basculerPouceVisite(e.visiteId!)} commenter={(t) => commenterVisite(e.visiteId!, t)}
         supprimer={supprimerCommentaireVisite} message={messageReactionVisite} apres={reactionsVisites.recharger} signaler={setMessage} />
     )
+    // Réactions encore en lecture : même barre, inactive, pour que la carte ne change pas de forme
+    if ((e.visiteId && reactionsVisites === undefined) || (e.pratique && reactionsPratiques === undefined)) return <ReactionsEnAttente />
     return <ActionsSimples lien={e.lien} libelle={e.genre === 'visite' ? 'Voir le compte rendu' : 'Voir le détail'} />
   }
   return (
