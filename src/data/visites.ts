@@ -165,3 +165,11 @@ export function libelleEtapeVisite(v: Visite, jour: string, preparee: { maj: str
   return nb ? `Actions ${v.plan.filter((a) => a.faite).length} sur ${nb}` : 'Faite'
 }
 export const lienVisite = (v: Visite) => `/magasins/${encodeURIComponent(v.magasin)}/visite${v.id !== null ? `?id=${v.id}` : ''}`
+
+// Part de l'année écoulée au jour du réseau (1 pour une année passée) : où l'on devrait en être (Rythme de visite, fiches Coach et RR)
+const jourIsoPart = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86400000
+export function partEcoulee(a: { debut: string; fin: string }, jour: string): number {
+  if (jour >= a.fin) return 1
+  if (jour < a.debut) return 0
+  return (jourIsoPart(jour) - jourIsoPart(a.debut) + 1) / (jourIsoPart(a.fin) - jourIsoPart(a.debut) + 1)
+}

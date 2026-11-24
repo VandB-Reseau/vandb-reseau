@@ -1,4 +1,4 @@
-import { styleIntertitre } from '../theme/theme'
+import { brand, styleIntertitre } from '../theme/theme'
 import { memo, useCallback, useRef, useState } from 'react'
 import Chip from '@mui/material/Chip'
 import Box from '@mui/material/Box'
@@ -194,3 +194,14 @@ export function NotesParAxe({ integre, notes, noter, libelleMagasin, colonnes = 
     </>
   )
 }
+
+// 408 (Joseph, 24/11/2026) : la répartition des magasins en 4 tons ; partagée par Santé du parc et les fiches Coach et RR (414)
+const SURVEILLER_PARC = ['redressement', 'relance', 'renforcer']
+const SOLIDES_PARC = ['locomotive', 'grandir', 'potentiel']
+export const tonsParc = [
+  { libelle: 'Prioritaires', couleur: brand.brique, ids: SURVEILLER_PARC },
+  { libelle: 'À suivre', couleur: brand.or, ids: null },
+  { libelle: 'Solides', couleur: brand.vertFonce, ids: SOLIDES_PARC },
+  { libelle: 'Non classés', couleur: '#9a948d', ids: [] as string[] },
+]
+export const tonParcDe = (caseId: string | null | undefined) => (!caseId ? 3 : SURVEILLER_PARC.includes(caseId) ? 0 : SOLIDES_PARC.includes(caseId) ? 2 : 1)

@@ -19,6 +19,7 @@ import { porteursDe, echeanceDate } from '../data/actions'
 import { dateCourte, lienCoach, lienFiche, lienRR } from '../lib/format'
 import type { Magasin, Reseau } from '../data/modele'
 import { Indicateur } from './Indicateur'
+import { Jauge, couleurRythme } from './FicheEquipe'
 
 // À l'impression, seule la revue sort
 const styleImpression = (
@@ -42,8 +43,9 @@ const LienMagasin = ({ nom }: { nom: string }) => <Link component={RouterLink} t
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 
 // 332 (18/11/2026) : la tuile chiffre commune (Indicateur), plus une tuile grise propre à la revue
-function Compteur({ valeur, libelle }: { valeur: string | number; libelle: string }) {
-  return <Indicateur libelle={libelle.charAt(0).toUpperCase() + libelle.slice(1)} valeur={String(valeur)} />
+// 419 (24/11/2026) : la carte prend la couleur de son sens (rouge s'il faut agir, vert si c'est tenu)
+function Compteur({ valeur, libelle, couleur }: { valeur: string | number; libelle: string; couleur?: string }) {
+  return <Indicateur libelle={libelle.charAt(0).toUpperCase() + libelle.slice(1)} valeur={String(valeur)} couleur={couleur} />
 }
 
 // parRR : revue du réseau entier pour le Directeur (sprint 24, F4), une ligne par Responsable Régional en tête
@@ -79,9 +81,9 @@ export function RevueRR({ reseau, nom, magasins, parRR = false }: { reseau: Rese
       </Box>
 
       <Box role="list" aria-label="En bref" sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' } }}>
-        <Box role="listitem"><Compteur valeur={r.chiffresSaisis ? decroche : '—'} libelle={decroche > 1 ? 'magasins en Décroche' : 'magasin en Décroche'} /></Box>
-        <Box role="listitem"><Compteur valeur={`${faites} / ${reference}`} libelle="visites du mois" /></Box>
-        <Box role="listitem"><Compteur valeur={r.retards.length} libelle={r.retards.length > 1 ? 'tâches en retard' : 'tâche en retard'} /></Box>
+        <Box role="listitem"><Compteur valeur={r.chiffresSaisis ? decroche : '—'} libelle={decroche > 1 ? 'magasins en Décroche' : 'magasin en Décroche'} couleur={r.chiffresSaisis && decroche ? 'error.main' : undefined} /></Box>
+        <Box role="listitem"><Compteur valeur={`${faites} / ${reference}`} libelle="visites du mois" couleur={reference ? couleurRythme(faites, reference, 1) : undefined} /></Box>
+        <Box role="listitem"><Compteur valeur={r.retards.length} libelle={r.retards.length > 1 ? 'tâches en retard' : 'tâche en retard'} couleur={r.retards.length ? 'error.main' : undefined} /></Box>
         <Box role="listitem"><Compteur valeur={r.changements.length} libelle={r.changements.length > 1 ? 'changements de case' : 'changement de case'} /></Box>
       </Box>
 
@@ -132,6 +134,10 @@ export function RevueRR({ reseau, nom, magasins, parRR = false }: { reseau: Rese
                     {c.coach ? <Link component={RouterLink} to={c.rrDirect ? lienRR(c.rrDirect) : lienCoach(c.coach)} sx={{ fontWeight: 500, py: 1 }}>{c.coach}</Link> : <Typography sx={{ fontWeight: 500 }}>Sans Coach</Typography>}
                     <Typography variant="body2" color="text.secondary">{pluriel(c.magasins, 'magasin')}</Typography>
                   </Box>
+                  {/* 418 : la jauge du mois, même code couleur que le rythme de visite */}
+                  {c.reference > 0 && <Box sx={{ width: { xs: '100%', sm: 140 }, display: 'flex', order: { xs: 3, sm: 0 } }}>
+                    <Jauge valeur={c.faites} max={c.reference} couleur={couleurRythme(c.faites, c.reference, 1)} libelle={`Visites du mois de ${c.coach || 'Sans Coach'}`} texte={`${c.faites} sur ${c.reference.toLocaleString('fr-FR')}`} />
+                  </Box>}
                   <Typography variant="body2" sx={{ fontWeight: 600 }} aria-label={`${pluriel(c.faites, 'visite')} pour une référence de ${c.reference.toLocaleString('fr-FR')}`}>
                     {c.faites} / {c.reference.toLocaleString('fr-FR')}
                   </Typography>

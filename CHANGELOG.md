@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche d'un Coach ou d'un RR plus visuelle (Joseph, 24/11/2026, choix 413 à 420), sans migration. Vue d'ensemble : phrase
+  de lecture, portefeuille en cartes chiffrées avec l'écart au réseau ou à la région en flèche, répartition des magasins
+  en 4 tons, jauge du rythme de visite de l'année avec le trait « à date ». Magasins (PC) : tableau en couleurs, médiane de
+  ses magasins en première ligne, écart face à la médiane, interrupteur « Couleurs » ; Coachs d'un RR avec deux jauges
+  (charge, rythme de visite). Activité du Coach : cartes des tâches et avancement de l'année, visites des 12 derniers mois
+  par type (un clic limite la liste au mois), magasins pas vus avec la barre du retard. Revue du mois du RR : cartes en
+  couleur et jauge par Coach. Les calculs des deux fiches ne se refont plus à chaque affichage.
 - Pages plus rapides (Joseph, 24/11/2026, « trop de latence sur chaque page »), sans migration ni changement à l'écran.
   Ouverture de l'app : les chiffres de la caisse, les visites, le suivi et les fiches se lisent par pages de 1 000 lignes
   parties ensemble (le nombre de lignes est demandé avec la première), au lieu de l'une après l'autre. Pilotage : les courbes
