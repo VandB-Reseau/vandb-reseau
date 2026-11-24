@@ -33,6 +33,10 @@ export async function chargerFinancesRapports(annee: number): Promise<Map<string
       statut: l.statut ? STATUTS[l.statut] ?? 'Proposé' : 'Sans budget', groupe: l.groupeId ? groupes.get(l.groupeId) ?? '' : '',
       moisRealises: ligne.moisRealises, personnel: ligne.sommes.personnel, heures: ligne.sommes.heures, ebe: ligne.sommes.ebe,
       loyer: ligne.sommes.loyer, caADate: ligne.sommes.ca, moisStock: stock?.moisCouverts ?? null,
+      budgetMois: budget ? {
+        marge: budget.mois.map((x) => x.marge), personnel: budget.mois.map((x) => x.personnel), ebe: budget.mois.map((x) => x.ebe),
+        cave: budget.mois.map((x) => x.univers?.cave.ca ?? 0), bar: budget.mois.map((x) => x.univers?.bar.ca ?? 0), exterieur: budget.mois.map((x) => x.univers?.exterieur.ca ?? 0),
+      } : null,
     })
   }
   return resultat
