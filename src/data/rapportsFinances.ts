@@ -11,11 +11,25 @@ import type { FinanceMagasin } from './rapports'
 const STATUTS: Record<string, string> = { valide: 'Validé', en_discussion: 'En discussion', propose: 'Proposé' }
 const douze = (): MoisReel[] => Array.from({ length: 12 }, () => ({ caHT: 0, margeHT: 0, caAvecMarge: 0, caTTC: 0, tickets: 0 }))
 
-export async function chargerFinancesRapports(annee: number): Promise<Map<string, FinanceMagasin>> {
-  const [d, { parametres }, reel] = await Promise.all([chargerBudgets(annee), chargerParametres(annee), chargerReelDuCompte(annee)])
-  const [quadrimestres, stocks] = await Promise.all([
-    chargerQuadrimestres(annee).catch(() => ({} as SaisiesQuadrimestres)),
-    chargerStocksReseau(annee).catch(() => ({} as Awaited<ReturnType<typeof chargerStocksReseau>>)),
+// Calcul gardé tant que ses lectures sont les mêmes (mémoire du pilotage, vidée à chaque écriture) : revenir sur Pilotage
+// ne refait pas le budget de chaque magasin (Joseph, 24/11/2026)
+let dernier: { lectures: Promise<unknown>[]; resultat: Promise<Map<string, FinanceMagasin>> } | null = null
+export function chargerFinancesRapports(annee: number): Promise<Map<string, FinanceMagasin>> {
+  // Toutes les lectures partent ensemble
+  const lectures = [chargerBudgets(annee), chargerParametres(annee), chargerReelDuCompte(annee), chargerQuadrimestres(annee), chargerStocksReseau(annee)] as const
+  if (dernier && dernier.lectures.every((l, i) => l === lectures[i])) return dernier.resultat
+  const resultat = calculerFinances(annee, lectures)
+  dernier = { lectures: [...lectures], resultat }
+  resultat.catch(() => { if (dernier?.resultat === resultat) dernier = null })
+  return resultat
+}
+
+async function calculerFinances(annee: number, [budgets, params, reelDuCompte, quad, stocksReseau]: readonly [
+  ReturnType<typeof chargerBudgets>, ReturnType<typeof chargerParametres>, ReturnType<typeof chargerReelDuCompte>, ReturnType<typeof chargerQuadrimestres>, ReturnType<typeof chargerStocksReseau>,
+]): Promise<Map<string, FinanceMagasin>> {
+  const [d, { parametres }, reel, quadrimestres, stocks] = await Promise.all([budgets, params, reelDuCompte,
+    quad.catch(() => ({} as SaisiesQuadrimestres)),
+    stocksReseau.catch(() => ({} as Awaited<ReturnType<typeof chargerStocksReseau>>)),
   ])
   const groupes = new Map(d.groupes.map((g) => [g.id, g.nom]))
   const p = { tauxRedevance: parametres.tauxRedevance, tauxPublicite: parametres.tauxPublicite, charges: parametres.charges, annee }
