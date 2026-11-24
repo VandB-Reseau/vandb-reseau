@@ -70,10 +70,11 @@ export function hypothesesValides(x: unknown): x is Hypotheses {
 
 export class ErreurChargement extends Error {}
 
-// Lectures gardées une minute : passer d'un onglet ou d'un magasin à l'autre ne recharge rien ;
-// toute écriture vide la mémoire, la lecture suivante repart de la base
+// Lectures gardées cinq minutes, comme celles du réseau : passer d'un onglet ou d'un magasin à l'autre ne recharge rien ;
+// toute écriture vide la mémoire, la lecture suivante repart de la base. Une minute ne suffisait pas : la fiche d'un
+// magasin, Pilotage et les budgets relisaient alors les budgets, frais et équipes de tout le réseau (Joseph, 24/11/2026)
 const memoire = new Map<string, { quand: number; promesse: Promise<unknown> }>()
-const DUREE = 60_000
+const DUREE = 5 * 60_000
 function memo<T>(cle: string, lire: () => Promise<T>): Promise<T> {
   const m = memoire.get(cle)
   if (m && Date.now() - m.quand < DUREE) return m.promesse as Promise<T>

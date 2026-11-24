@@ -159,7 +159,19 @@ function moisBudget(f: FinanceMagasin, mois: string[]): number[] {
 }
 const fin = (c: Contexte, m: Magasin) => c.finances?.get(m.nom) ?? null
 
-const visitesFaites = (c: Contexte, m: Magasin) => c.reseau.visites.filter((v) => v.magasin === m.nom && estVisite(v) && visiteFaite(v, c.jour))
+// Visites faites rangées par magasin une fois par réseau lu : les courbes des rapports (377) les demandent pour chaque
+// magasin et chaque mois, et parcourir toutes les visites à chaque fois figeait l'onglet Pilotage (Joseph, 24/11/2026)
+const cacheVisites = new WeakMap<Reseau, { jour: string; parMagasin: Map<string, Reseau['visites']> }>()
+function visitesFaites(c: Contexte, m: Magasin): Reseau['visites'] {
+  let x = cacheVisites.get(c.reseau)
+  if (!x || x.jour !== c.jour) {
+    const parMagasin = new Map<string, Reseau['visites']>()
+    for (const v of c.reseau.visites) if (estVisite(v) && visiteFaite(v, c.jour)) { const l = parMagasin.get(v.magasin); if (l) l.push(v); else parMagasin.set(v.magasin, [v]) }
+    x = { jour: c.jour, parMagasin }
+    cacheVisites.set(c.reseau, x)
+  }
+  return x.parMagasin.get(m.nom) ?? []
+}
 const eng = (c: Contexte, m: Magasin) => (c.equipe && c.engagement ? c.engagement(m) : null)
 const tachesOuvertes = (c: Contexte, m: Magasin) => (c.reseau.actionsLibres[m.nom] ?? []).filter((t) => !t.faite)
 const planExterieur = (c: Contexte, m: Magasin) => {

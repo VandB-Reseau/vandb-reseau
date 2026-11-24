@@ -204,7 +204,11 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         const caisse = options.chiffresCaisse ?? []
         const cle = (l: Record<string, unknown>) => `${l.store_name}|${String(l.month).slice(0, 7)}`
         const deCaisse = new Set(caisse.map(cle))
-        return route.fulfill({ json: [...chiffresFictifs.filter((l) => !deCaisse.has(cle(l))).map((l) => ({ ...l, source: 'saisie' })), ...caisse.map((l) => ({ ...l, source: 'caisse' }))] })
+        const toutes = [...chiffresFictifs.filter((l) => !deCaisse.has(cle(l))).map((l) => ({ ...l, source: 'saisie' })), ...caisse.map((l) => ({ ...l, source: 'caisse' }))]
+        // Pages de 1 000 lignes au plus (offset et limit), et leur nombre si l'app le demande (Prefer: count=exact), comme la base
+        const de = Number(url.searchParams.get('offset') ?? 0), lignes = toutes.slice(de, de + Math.min(1000, Number(url.searchParams.get('limit') ?? 1000)))
+        const compte = /count=exact/.test(req.headers()['prefer'] ?? '')
+        return route.fulfill({ json: lignes, headers: compte ? { 'Content-Range': `${lignes.length ? `${de}-${de + lignes.length - 1}` : '*'}/${toutes.length}`, 'Access-Control-Expose-Headers': 'Content-Range' } : {} })
       }
       // Lien de l'agenda dans Google Agenda (script 0034_agenda_abonne.sql) : refusé au franchisé
       if (fn === 'mon_agenda') {

@@ -9,6 +9,15 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Pages plus rapides (Joseph, 24/11/2026, « trop de latence sur chaque page »), sans migration ni changement à l'écran.
+  Ouverture de l'app : les chiffres de la caisse, les visites, le suivi et les fiches se lisent par pages de 1 000 lignes
+  parties ensemble (le nombre de lignes est demandé avec la première), au lieu de l'une après l'autre. Pilotage : les courbes
+  des cartes de rapports (377) rangent les visites par magasin une fois, au lieu de parcourir toutes les visites pour chaque
+  magasin et chaque mois (2 s de calcul à chaque ouverture sur un réseau de 280 magasins). Budgets du réseau (fiche magasin,
+  Pilotage, Budget prévisionnel) gardés 5 minutes au lieu d'une, comme les données du réseau ; toute écriture les relit ;
+  le calcul des budgets de Pilotage est gardé tant que ses lectures n'ont pas changé. Mesuré sur un réseau fictif de 280
+  magasins, 6 000 visites et 150 ms par requête : ouverture 2,0 s → 1,1 s, Pilotage 2,6 s → 1,3 s (retour 1,4 s → 0,5 s),
+  fiche magasin 2,4 s → 0,7 s.
 - Écrans encore peu visuels (Joseph, 24/11/2026, choix 406 à 412), sans migration. Tâches : quatre cartes chiffrées (à faire,
   en retard, bloquées, faites sur 30 jours face aux 30 jours d'avant) et, par magasin ou par personne, une barre d'avancement.
   Visites › Historique : visites par mois et par type (12 mois sur PC, 6 sur téléphone), un clic limite la liste au mois.

@@ -48,21 +48,35 @@ export interface Tables {
 const absente = (message: string) => /does not exist|schema cache|Could not find the table/i.test(message)
 
 // Une réponse Supabase compte au plus 1 000 lignes : les grandes tables se lisent par pages
-type Requete = { range: (debut: number, fin: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }> }
+type Requete = { range: (debut: number, fin: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null; count?: number | null }> }
+const COMPTER = { count: 'exact' as const }
 // Chiffres mensuels : ceux de la caisse d'abord (0039), sinon la table des chiffres saisis
 async function lireChiffres() {
-  const r = await toutLire(() => supabase.rpc('chiffres_mensuels') as unknown as Requete)
+  const r = await toutLire((compter) => supabase.rpc('chiffres_mensuels', {}, compter ? COMPTER : undefined) as unknown as Requete)
   if (!r.error || !absente(r.error.message)) return r
-  return toutLire(() => supabase.from('store_finance').select('*').order('month').order('store_name'))
+  return toutLire((compter) => supabase.from('store_finance').select('*', compter ? COMPTER : undefined).order('month').order('store_name'))
 }
 
-async function toutLire(requete: () => Requete): Promise<{ data: Ligne[]; error: { message: string } | null }> {
-  const data: Ligne[] = []
-  for (let debut = 0; ; debut += 1000) {
-    const r = await requete().range(debut, debut + 999)
+// Lecture par pages de 1 000 lignes (limite de l'API). La première page demande aussi le nombre de lignes, les suivantes
+// partent ensemble (Joseph, 24/11/2026 : chiffres de la caisse et visites lus page après page retardaient l'ouverture de
+// l'app d'une seconde et plus) ; sans ce nombre, l'une après l'autre jusqu'à une page incomplète
+const PAGE = 1000
+async function toutLire(requete: (compter: boolean) => Requete): Promise<{ data: Ligne[]; error: { message: string } | null }> {
+  const premiere = await requete(true).range(0, PAGE - 1)
+  if (premiere.error) return { data: [], error: premiere.error }
+  const data = (premiere.data ?? []) as Ligne[]
+  if (data.length < PAGE) return { data, error: null }
+  if (typeof premiere.count === 'number') {
+    const suites = await Promise.all(Array.from({ length: Math.ceil(premiere.count / PAGE) - 1 }, (_, i) => requete(false).range((i + 1) * PAGE, (i + 2) * PAGE - 1)))
+    const erreur = suites.find((r) => r.error)?.error
+    if (erreur) return { data, error: erreur }
+    return { data: data.concat(...suites.map((r) => (r.data ?? []) as Ligne[])), error: null }
+  }
+  for (let debut = PAGE; ; debut += PAGE) {
+    const r = await requete(false).range(debut, debut + PAGE - 1)
     if (r.error) return { data, error: r.error }
     data.push(...((r.data ?? []) as Ligne[]))
-    if ((r.data ?? []).length < 1000) return { data, error: null }
+    if ((r.data ?? []).length < PAGE) return { data, error: null }
   }
 }
 
@@ -85,12 +99,12 @@ const lectures: { [P in Partie]: () => Promise<Lectures[P]> } = {
   affectations: async () => await supabase.from('reassigns').select('id,store,cs,date,note,type,created_at').order('date').order('id') as Lu,
   coachs: async () => await supabase.from('cs_overrides').select('*') as Lu,
   recrues: async () => await supabase.from('recruits').select('*') as Lu,
-  visites: () => toutLire(() => supabase.from('visits').select('*').order('visit_date', { ascending: false }).order('id')),
+  visites: () => toutLire((compter) => supabase.from('visits').select('*', compter ? COMPTER : undefined).order('visit_date', { ascending: false }).order('id')),
   evenements: async () => await supabase.from('events').select('*').order('start_date') as Lu,
   finances: () => lireChiffres(),
-  suivi: () => toutLire(() => supabase.from('suivi_magasins').select(SUIVI).order('store_name').order('cle')),
+  suivi: () => toutLire((compter) => supabase.from('suivi_magasins').select(SUIVI, compter ? COMPTER : undefined).order('store_name').order('cle')),
   regions: async () => await supabase.from('campagnes_regions').select('id,rr,valeur').order('id') as Lu,
-  fiches: () => toutLire(() => supabase.from('fiches_personnes').select('cle,fiche').order('cle')),
+  fiches: () => toutLire((compter) => supabase.from('fiches_personnes').select('cle,fiche', compter ? COMPTER : undefined).order('cle')),
   // 0041 : saisie à la main des chiffres fermée (fonction absente : encore ouverte)
   fermes: () => Promise.resolve(supabase.rpc('saisie_chiffres_fermee')).then((r) => r.data === true, () => false),
 }
@@ -130,7 +144,7 @@ async function relireTouchees(avant: Lectures, touchees: Map<string, Touche>): P
   relues.forEach((p, i) => { (nouveau as unknown as Record<Partie, unknown>)[p] = valeurs[i] })
   if (rubriques !== 'tout' && rubriques.size) {
     const liste = [...rubriques]
-    const r = await toutLire(() => supabase.from('suivi_magasins').select(SUIVI).in('cle', liste).order('store_name').order('cle'))
+    const r = await toutLire((compter) => supabase.from('suivi_magasins').select(SUIVI, compter ? COMPTER : undefined).in('cle', liste).order('store_name').order('cle'))
     if (r.error) return null
     const garde = avant.suivi.data.filter((l) => !rubriques.has(String(l.cle)))
     const suivi = [...garde, ...r.data].sort((a, b) => String(a.store_name).localeCompare(String(b.store_name)) || String(a.cle).localeCompare(String(b.cle)))
@@ -423,7 +437,7 @@ async function lireSuivi<T>(cle: CleSuivie, defaut: T): Promise<LuSuivi<T>> {
   const avecCommun = cle === 'deploiements' || cle === 'campagnes'
   const [commun, lu] = await Promise.all([
     avecCommun ? lireCle<unknown>(cle, {}) : Promise.resolve({ valeur: undefined, existe: false }),
-    toutLire(() => supabase.from('suivi_magasins').select('store_name,valeur').eq('cle', rubriques[cle]).order('store_name')),
+    toutLire((compter) => supabase.from('suivi_magasins').select('store_name,valeur', compter ? COMPTER : undefined).eq('cle', rubriques[cle]).order('store_name')),
   ])
   if (lu.error) throw new ErreurEnregistrement(lu.error.message)
   const parMagasin = Object.fromEntries(lu.data.map((l) => [String(l.store_name), l.valeur]))
@@ -618,7 +632,7 @@ function modifierFiches(changer: (f: Record<string, Partial<FichePersonnelle>>) 
       changer(valeur)
       return ecrireCle('fiches_personnes', valeur, existe)
     }
-    const lu = await toutLire(() => supabase.from('fiches_personnes').select('cle,fiche').order('cle'))
+    const lu = await toutLire((compter) => supabase.from('fiches_personnes').select('cle,fiche', compter ? COMPTER : undefined).order('cle'))
     if (lu.error) throw new ErreurEnregistrement(lu.error.message)
     const avant = new Map(lu.data.map((l) => [String(l.cle), JSON.stringify(l.fiche)]))
     const valeur = Object.fromEntries(lu.data.map((l) => [String(l.cle), l.fiche as Partial<FichePersonnelle>]))
