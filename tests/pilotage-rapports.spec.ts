@@ -323,18 +323,18 @@ test('Pilotage : type de graphe au choix et périmètre choisi pris en compte', 
   await expect(lignes.nth(1)).toBeVisible()
   const avant = await lignes.count()
 
-  // Type de graphe (Joseph, 18/11/2026) : automatique par défaut, puis barres, bâtons, courbe ou camembert
+  // Type de graphe choisi graphe par graphe, en pictos (382, Joseph 24/11/2026) : barres par défaut
   const graphe = page.getByLabel('Graphe CA HT', { exact: true })
   await expect(graphe.locator('[data-graphe="barres"]')).toBeVisible()
-  const type = page.getByRole('combobox', { name: 'Type de graphe' })
+  const type = graphe.getByRole('group', { name: 'Dessin de CA HT' })
   for (const [libelle, cle] of [['Camembert', 'camembert'], ['Courbe', 'courbe'], ['Bâtons', 'colonnes']] as const) {
-    await type.click()
-    await page.getByRole('option', { name: libelle, exact: true }).click()
+    await type.getByRole('button', { name: libelle, exact: true }).click()
     await expect(graphe.locator(`[data-graphe="${cle}"]`)).toBeVisible()
   }
-  await type.click()
-  await page.getByRole('option', { name: 'Camembert', exact: true }).click()
+  await type.getByRole('button', { name: 'Camembert', exact: true }).click()
   await expect(graphe.locator('[data-graphe="camembert"] svg path, [data-graphe="camembert"] svg circle').first()).toBeVisible()
+  // Les autres graphes gardent leur type
+  await expect(page.getByLabel('Graphe Tickets Cave sur l’an dernier', { exact: true }).locator('[data-graphe="barres"]')).toBeVisible()
   await expect(page.getByRole('heading', { level: 2, name: 'Ventes sur l’an dernier' }).locator('..')).toContainText('modifié')
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
@@ -348,4 +348,72 @@ test('Pilotage : type de graphe au choix et périmètre choisi pris en compte', 
   await page.getByRole('menu', { name: 'Choisir le périmètre' }).getByRole('menuitem', { name: /Région Alex NORD/ }).click()
   await expect(page.getByRole('button', { name: 'Périmètre : Région Alex NORD' }).first()).toBeVisible()
   await expect.poll(() => lignes.count()).toBeLessThan(avant)
+})
+
+test('Pilotage plus visuel : cartes chiffrées, période et magasins en pastilles, comparaison, Top / Flop, envoi (377 à 384)', async ({ page, isMobile }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, rapports: [] })
+  await page.goto('./#/pilotage')
+  await choisirRapport(page, 'Ventes sur l’an dernier', isMobile)
+  const sousTitre = page.getByRole('heading', { level: 2, name: 'Ventes sur l’an dernier' }).locator('..')
+
+  // 377 : sur PC, chaque rapport de la liste montre son chiffre clé
+  if (!isMobile) await expect(page.getByRole('list', { name: 'Proposés par le siège' }).getByRole('button', { name: 'Le CA mois par mois', exact: true })).toContainText('€')
+
+  // 378 : une carte par indicateur chiffré, avec l'écart à l'an dernier
+  const cartes = page.getByRole('list', { name: 'Chiffres clés du rapport' })
+  await expect(cartes.getByRole('listitem')).toHaveCount(4)
+  await expect(cartes.getByRole('listitem').first()).toContainText('CA HT')
+  await expect(cartes.getByRole('listitem').first()).toContainText('vs l’an dernier')
+
+  // 379 : période en un clic
+  const periode = page.getByRole('group', { name: 'Choisir les dates' })
+  await periode.getByRole('button', { name: 'Mois dernier' }).click()
+  await expect(sousTitre).toContainText('septembre 2026')
+  await periode.getByRole('button', { name: 'Année dernière' }).click()
+  await expect(sousTitre).toContainText('Année 2025')
+  await periode.getByRole('button', { name: 'Depuis janvier' }).click()
+  await expect(sousTitre).toContainText('De janvier à septembre 2026')
+
+  // 380 : magasins en un clic
+  const lignes = tableau(page).getByRole('row')
+  await expect(lignes.nth(1)).toBeVisible()
+  const avant = await lignes.count()
+  const magasins = page.getByRole('group', { name: 'Choisir les magasins' })
+  await magasins.getByRole('button', { name: 'Responsable Régional', exact: true }).click()
+  await page.getByRole('menu').getByRole('menuitem').nth(1).click()
+  await expect(magasins.getByRole('button', { name: /^Responsable Régional : / })).toBeVisible()
+  await expect.poll(() => lignes.count()).toBeLessThan(avant)
+  await magasins.getByRole('button', { name: 'Tous les magasins' }).click()
+  await expect.poll(() => lignes.count()).toBe(avant)
+
+  // 381 : comparer à l'an dernier, écart sous chaque chiffre et pointillés sur les graphes
+  await page.getByRole('group', { name: 'Comparer à' }).getByRole('button', { name: 'An dernier' }).click()
+  await expect(tableau(page).locator('[data-ecart]').first()).toBeVisible()
+  await expect(page.getByLabel('Graphe CA HT', { exact: true }).locator('[data-reference]').first()).toBeAttached()
+  await expect(page.getByLabel('Graphe CA HT', { exact: true })).toContainText('Pointillés : l’an dernier')
+  // Le budget ne se compare qu'au CA HT
+  await expect(page.getByRole('group', { name: 'Comparer à' }).getByRole('button', { name: 'Budget' })).toBeEnabled()
+
+  // 383 : Top / Flop
+  const graphe = page.getByLabel('Graphe CA HT', { exact: true })
+  const topflop = graphe.getByRole('button', { name: 'Top / Flop' })
+  if (await topflop.count()) {
+    await topflop.click()
+    await expect(graphe.getByRole('group', { name: /^Les \d meilleurs$/ })).toBeVisible()
+    await expect(graphe.getByRole('group', { name: /^Les \d moins bons$/ })).toBeVisible()
+  }
+  expect(await textesTropPetits(page)).toEqual([])
+  if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
+
+  // 384 : export PDF et envoi aux Coachs par la messagerie
+  await page.getByRole('main').getByRole('button', { name: 'Autres actions' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Exporter en PDF' })).toBeVisible()
+  await page.getByRole('menuitem', { name: 'Envoyer à mes RR ou Coachs' }).click()
+  const dialogue = page.getByRole('dialog', { name: 'Envoyer le rapport' })
+  await dialogue.getByLabel(/^Tous les Coachs/).check()
+  await expect(dialogue.getByLabel('Message')).toHaveValue(/Ventes sur l’an dernier/)
+  await dialogue.getByRole('button', { name: /^Envoyer/ }).click()
+  await expect(page.getByText(/Rapport envoyé/)).toBeVisible()
+  expect(ecritures.some((x) => /rpc\/(envoyer_a|ecrire_a|envoyer_message)/.test(x.table))).toBe(true)
 })

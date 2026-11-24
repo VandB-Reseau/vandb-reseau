@@ -9,6 +9,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Pilotage plus visuel et plus simple (Joseph, 24/11/2026, choix 377 à 384), sans migration. Rapports de la liste en
+  cartes avec leur chiffre clé et leur courbe sur 12 mois ; cartes chiffrées en tête de chaque rapport (total, écart à l'an
+  dernier ou au budget, courbe) ; période en pastilles (Mois dernier, Depuis janvier, 12 mois glissants, Quadrimestre,
+  Année dernière) ; magasins en pastilles (Tous, Responsable Régional, Coach, groupe budgétaire, typologie…) ; « Comparer
+  à » Rien / An dernier / Budget (écart sous chaque chiffre, référence en pointillés sur les graphes, colonnes en plus dans
+  l'Excel) ; type de graphe en pictos sur chaque graphe ; Top / Flop des 5 meilleurs et 5 moins bons ; export PDF et
+  « Envoyer à mes RR ou Coachs » par la messagerie.
 - Rythme de visite par Coach plus visuel (Joseph, 23/11/2026), sans migration. Une ligne par Coach, moitié moins haute :
   taux de l'année en gros (« 130 % ») et « 70 / 54 », jauge colorée selon l'avance sur le rythme attendu à date (rouge sous
   50 %, orange sous 80 %, vert au-delà), trait « à date » sur la jauge, dépassement visible au-delà de 100 % ; Coachs les plus
