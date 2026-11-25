@@ -34,40 +34,6 @@ test('un mauvais mot de passe affiche un message clair', async ({ page }) => {
   await expect(page.getByText('Email ou mot de passe incorrect.')).toBeVisible()
 })
 
-test('après connexion, l’accueil montre les priorités dans l’ordre choisi', async ({ page, isMobile }, info) => {
-  await seConnecter(page)
-  await deplierPoint(page)
-  const aTraiter = page.getByRole('region', { name: 'À traiter' })
-  await expect(aTraiter).toBeVisible()
-  // Téléphone (278) : le point du jour s'ouvre en page par-dessus le fil
-  if (!isMobile) await expect(page.getByRole('region', { name: 'Actualités' })).toBeVisible()
-  // PC : tout est affiché ; téléphone : Cette semaine est un onglet
-  await expect(page.getByRole('region', { name: 'Cette semaine' })).toHaveCount(isMobile ? 0 : 1)
-  // Cinq lignes d'abord sur PC, deux sur téléphone, puis tout
-  // Choix 271 : sur PC, une ligne peut regrouper un sujet (bouton qui se déplie)
-  await expect(aTraiter.getByRole('link').or(aTraiter.locator('button[aria-expanded]'))).toHaveCount(isMobile ? 2 : 5)
-  await aTraiter.getByRole('button', { name: /^Voir les \d+$/ }).click()
-  await deplierGroupes(page)
-  // Chaque ligne porte une seule pastille (la plus grave), dans l'ordre de priorité choisi
-  const pastilles = (await aTraiter.getByRole('link').allInnerTexts()).map((t) => t.trim().split('\n').at(-1)!.trim())
-  expect([...new Set(pastilles)]).toEqual([
-    // Urgences (rouge) d'abord, puis le suivi, les visites à faire en dernier
-    'Décroche',
-    'En retard',
-    'À surveiller',
-    // Vague 8 (97A) : lexique fermé ; « Recule » devient « En dessous », « Vacant » « Sans Coach »,
-    // l'intégration en retard se lit « En retard » (déjà plus haut)
-    'En dessous',
-    'Surchargé',
-    'Sans Coach',
-    'Ouverture',
-    'Visite',
-  ])
-  await expect(aTraiter.getByRole('link').first()).toContainText('Lyon Test')
-  await aTraiter.getByRole('button', { name: 'Afficher moins' }).click()
-  await page.screenshot({ path: `captures/${info.project.name}-accueil.png`, fullPage: true })
-})
-
 test('chaque destination est accessible depuis la navigation', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })

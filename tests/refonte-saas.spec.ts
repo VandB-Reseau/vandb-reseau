@@ -149,14 +149,12 @@ test('PC : les magasins en tableau, une ligne ouvre l’aperçu ; téléphone : 
   await expect(page).toHaveURL(new RegExp(`/magasins/${encodeURIComponent(M)}`))
 })
 
-test('accueil : période en tête, actualités visibles dès l’arrivée sur PC ; style de la charte gardé sur l’accueil seulement', async ({ page, isMobile }, info) => {
+// 429 (25/11/2026) : plus de chiffre d'affaires ni de période sur l'accueil
+test('accueil : sans chiffre d’affaires ni période, actualités visibles dès l’arrivée sur PC ; style de la charte gardé sur l’accueil seulement', async ({ page, isMobile }, info) => {
   await connecter(page)
   await deplierPoint(page)
-  const ca = page.getByRole('link', { name: /^CA de / })
-  await expect(ca).toContainText('k€')
-  await expect(ca).toContainText('vs N-1')
-  await page.getByRole('group', { name: 'Période des chiffres' }).getByRole('button', { name: 'Cumul' }).click()
-  await expect(page.getByRole('link', { name: /^CA cumulé à fin / })).toBeVisible()
+  await expect(page.getByRole('link', { name: /^CA de / })).toHaveCount(0)
+  await expect(page.getByRole('group', { name: 'Période des chiffres' })).toHaveCount(0)
   if (!isMobile) {
     const actualites = page.getByRole('region', { name: 'Actualités' })
     const b = (await actualites.boundingBox())!

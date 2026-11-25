@@ -61,7 +61,8 @@ test('361, 362, 367 : vues à compteur, colonne Statut, sous-ligne et menu « �
 test('366 : sections de l’accueil avec leur compteur en pastille', async ({ page, isMobile }) => {
   test.skip(isMobile, 'Accueil du PC')
   await seConnecter(page)
-  const taches = page.getByRole('region', { name: 'Mes tâches' })
-  await expect(taches.getByRole('link', { name: 'Toutes' })).toBeVisible()
+  const taches = page.getByRole('region', { name: 'Tâches' })
+  await expect(taches.getByRole('link', { name: 'Ouvrir' })).toBeVisible()
+  await expect(taches.getByRole('heading', { name: 'Tâches' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
 })

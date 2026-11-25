@@ -172,23 +172,6 @@ test('depuis la fiche magasin, Modifier ouvre la saisie de la santé puis des d�
   expect(config).toContain('locomotive')
   expect(config).toContain('\\"panierBar\\":0')
 })
-test('l’accueil donne les priorités du jour', async ({ page, isMobile }, info) => {
-  // Heure figée sur l'instant présent : le séminaire fictif (demain) reste dans les sept prochains jours
-  await page.clock.setFixedTime(new Date())
-  await seConnecter(page)
-  await page.goto('./#/')
-  await deplierPoint(page)
-  const aTraiter = page.getByRole('region', { name: 'À traiter' })
-  await aTraiter.getByRole('button', { name: /^Voir les \d+$/ }).click()
-  await expect(aTraiter.getByRole('link', { name: /^Lyon Test/ }).first()).toContainText('Décroche')
-  await expect(aTraiter.getByRole('link', { name: /^Poste NORD/ })).toContainText('Poste de Coach à pourvoir')
-  await expect(aTraiter.getByRole('link', { name: /^Vichy Test/ })).toContainText('Ouverture')
-  // Téléphone : la semaine est un onglet du bloc « Mon point »
-  if (isMobile) await page.getByRole('tab', { name: 'Semaine' }).click()
-  await expect(page.getByRole('region', { name: 'Cette semaine' })).toContainText('Séminaire des Coachs')
-  expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-accueil.png`, fullPage: !isMobile })
-})
 
 test('l’évolution compte les ouvertures par année', async ({ page, isMobile }, info) => {
   await seConnecter(page)

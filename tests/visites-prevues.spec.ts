@@ -23,14 +23,12 @@ async function avecVisites(page: Page, ajout: Record<string, unknown>[]) {
 
 test('visite planifiée passée sans compte rendu : pas comptée, à confirmer dans À traiter', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
-  await seConnecter(page, { ecritures })
+  // 436 (25/11/2026) : le Coach voit chaque visite à clore ; le RR et le Directeur, une ligne par personne
+  await seConnecter(page, { ecritures, appMetadata: { role: 'coach', coach: 'Inès EXEMPLE' } })
   await avecVisites(page, [{ id: 50, store: 'Nantes Test', visit_date: jour(-3), type: 'terrain', visitor: 'Inès EXEMPLE', docs: [], prevue: true }])
   await page.goto('./#/')
   await page.reload()
   await deplierATraiter(page)
-  // Vague 8 : la liste courte de l'accueil se filtre ; la visite à confirmer est dans « Suivi »
-  const puceVisites = page.getByRole('region', { name: 'À traiter' }).getByRole('button', { name: /^Suivi · \d+$/ })
-  if (await puceVisites.count()) await puceVisites.click()
   const bloc = page.getByRole('region', { name: 'À traiter' })
   // Nantes Test reste « pas vu » : la visite prévue ne compte pas
   await expect(bloc.getByRole('button', { name: 'Visite de Nantes Test faite' })).toBeVisible()
@@ -47,14 +45,12 @@ test('visite planifiée passée sans compte rendu : pas comptée, à confirmer d
 test('reporter une visite planifiée passée : nouvelle date, toujours prévue', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await page.addInitScript(() => { window.open = () => null })
-  await seConnecter(page, { ecritures })
+  // 436 (25/11/2026) : le Coach voit chaque visite à clore ; le RR et le Directeur, une ligne par personne
+  await seConnecter(page, { ecritures, appMetadata: { role: 'coach', coach: 'Inès EXEMPLE' } })
   await avecVisites(page, [{ id: 50, store: 'Nantes Test', visit_date: jour(-3), type: 'terrain', visitor: 'Inès EXEMPLE', docs: [], prevue: true }])
   await page.goto('./#/')
   await page.reload()
   await deplierATraiter(page)
-  // Vague 8 : la liste courte de l'accueil se filtre ; la visite à confirmer est dans « Suivi »
-  const puceVisites = page.getByRole('region', { name: 'À traiter' }).getByRole('button', { name: /^Suivi · \d+$/ })
-  if (await puceVisites.count()) await puceVisites.click()
   await page.getByRole('button', { name: 'Reporter la visite de Nantes Test' }).click()
   const d = page.getByRole('dialog', { name: 'Visite de Nantes Test' })
   await d.getByLabel('Date').fill(jour(2))

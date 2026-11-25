@@ -51,19 +51,24 @@ test('ajouter, modifier et supprimer une note du journal', async ({ page }) => {
   expect(JSON.stringify(suppression.corps)).not.toContain('travaux de vitrine')
 })
 
-test('l’accueil signale les magasins pas vus depuis longtemps et les changements de case', async ({ page }) => {
+// 434 et 436 (25/11/2026) : le Coach voit chaque magasin pas vu ; le Directeur, une ligne par Coach. Les changements de
+// case (santé du parc) ne remontent plus à l'accueil
+test('l’accueil signale les magasins pas vus depuis longtemps', async ({ page }) => {
   await seConnecter(page)
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
   await toutATraiter(page)
-  await expect(aTraiter).not.toContainText('retard de visite')
+  const parCoach = aTraiter.getByRole('region', { name: 'Magasins à visiter' }).getByRole('link')
+  await expect(parCoach.filter({ hasText: 'Hugo FICTIF' })).toContainText('Agen Test')
+  await expect(parCoach.filter({ hasText: 'Inès EXEMPLE' })).toContainText('Nantes Test')
+  await expect(aTraiter).not.toContainText('Cœur de réseau vers Redressement urgent')
+
+  await page.evaluate(() => { localStorage.clear(); sessionStorage.clear() })
+  await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Inès EXEMPLE' } })
+  await toutATraiter(page)
   const aVoir = aTraiter.getByRole('link').filter({ hasText: /pas vu depuis|jamais visité/ })
-  // Nantes (Cœur de réseau, vu en mars) dépasse son délai de 150 jours ; Agen n'a eu qu'un appel ; Lyon vient d'être vu
+  // Nantes (Cœur de réseau, vu en mars) dépasse son délai de 150 jours ; Lyon (autre Coach) n'apparaît pas
   await expect(aVoir.filter({ hasText: 'Nantes Test' })).toContainText(/Cœur de réseau · pas vu depuis \d+ j/)
-  await expect(aVoir.filter({ hasText: 'Agen Test' })).toContainText('jamais visité · appel le 1 oct.')
   await expect(aVoir.filter({ hasText: 'Lyon Test' })).toHaveCount(0)
-  const recul = aTraiter.getByRole('link').filter({ hasText: 'Cœur de réseau vers Redressement urgent' })
-  await expect(recul).toBeVisible()
-  await expect(recul).toContainText('En dessous')
 })
 
 test('noter un magasin garde l’historique daté', async ({ page }) => {
